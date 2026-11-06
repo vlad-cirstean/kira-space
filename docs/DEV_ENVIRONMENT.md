@@ -426,7 +426,7 @@ temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:mobile
   set in the server's env is lost. Point `HOME` at a dir whose `.bash_profile` prepends the fake bin dir,
   then confirm with `/proc/<pid>/cmdline`. Discovery uses `exec.LookPath` for `gh`.
 - **Review smoke seeding** (P150): `code_repos.repo_id` is the repo path; copy sample workflows into
-  `<home>/workflows`; task rows need `entry_step_id`. To patch git discovery without touching source,
+  `<home>/config/workflows`; task rows need `entry_step_id`. To patch git discovery without touching source,
   build with a `-overlay` JSON replacing the discovery file.
 - **In harness scripts never `pkill -f` or `pgrep -f` a pattern that appears in your own command line**
   (e.g. `claude --session-id`): it kills the calling shell. Anchor it (`pgrep -f '^claude --session-id'`).

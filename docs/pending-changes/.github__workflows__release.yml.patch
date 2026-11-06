@@ -141,7 +141,7 @@ index 71a06b3f..fc71ce0f 100644
  
            ## Install or update
  
-@@ -264,17 +254,20 @@ jobs:
+@@ -264,17 +254,21 @@ jobs:
            opens the app:
  
            ```
@@ -152,6 +152,7 @@ index 71a06b3f..fc71ce0f 100644
 +          Coming from Kira Studio, the old app's own update offer runs the same installer with
 +          `--app=studio`: it installs Kira Space, then moves Kira Studio.app to the Trash. Your data
 +          in `~/.kira-studio` folds into `~/.kira-space` on first launch (backup kept).
++          Config files move into `~/.kira-space/config/` (backup kept).
 +
            This is the only supported install method. These builds aren't signed by Apple; a disk
            image downloaded through a browser is blocked by Gatekeeper, while the installer's own
@@ -164,7 +165,7 @@ index 71a06b3f..fc71ce0f 100644
            same installer, quits the app, and reopens the new version. Nothing installs without
            that click. Installer log: `~/Library/Logs/<app name>/install.log`.
            EOF
-@@ -286,9 +279,8 @@ jobs:
+@@ -286,9 +280,8 @@ jobs:
            case "$TAG" in *-*) PRE="--prerelease" ;; esac
            gh release create "$TAG" \
              --draft --verify-tag $PRE \
@@ -175,7 +176,7 @@ index 71a06b3f..fc71ce0f 100644
              kira-space-macos-arm64.dmg
            ID="$(gh api --paginate "repos/$GH_REPO/releases" \
              --jq ".[] | select(.draft and .tag_name == \"$TAG\") | .id" | head -1)"
-@@ -298,12 +290,12 @@ jobs:
+@@ -298,12 +291,12 @@ jobs:
        - name: Verify the uploaded assets
          run: |
            set -eu
@@ -190,7 +191,7 @@ index 71a06b3f..fc71ce0f 100644
                break
              fi
              n=$((n + 1))
-@@ -338,3 +330,44 @@ jobs:
+@@ -338,3 +331,44 @@ jobs:
            if [ "$(gh api "repos/$GH_REPO/releases/$RELEASE_ID" --jq '.draft' 2>/dev/null)" = true ]; then
              gh api -X DELETE "repos/$GH_REPO/releases/$RELEASE_ID"
            fi

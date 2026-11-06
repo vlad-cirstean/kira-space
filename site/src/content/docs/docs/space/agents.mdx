@@ -81,7 +81,7 @@ No rebase starts on its own when a base moves.
 
 ## Workflows
 
-A workflow is a YAML file in the `workflows` folder of the Space home, `~/.kira-space/workflows`. No workflow ships preinstalled. Sample files live in `apps/kira-space/internal/adeflow/testdata`.
+A workflow is a YAML file in the `workflows` folder of the Space config, `~/.kira-space/config/workflows`. No workflow ships preinstalled. Sample files live in `apps/kira-space/internal/adeflow/testdata`.
 
 The app watches the folder. A broken edit keeps the last valid version and reports the line.
 
@@ -240,7 +240,7 @@ Finished and stopped sessions sit behind the **Finished or stopped** dropdown at
 
 ## Agent context
 
-The **Context** sub-tab of **Agent config** edits one Markdown file that every agent gets as extra system prompt: `~/.kira-space/agent/context.md`.
+The **Context** sub-tab of **Agent config** edits one Markdown file that every agent gets as extra system prompt: `~/.kira-space/config/agent/context.md`.
 
 - Every module uses it: sessions, Take over, resume, headless steps, smart scripts and Continue in terminal. Memory calls do not.
 - Up to 32 KiB. Empty or missing means no context. A broken file gives agents the last good text.
@@ -250,7 +250,7 @@ The **Context** sub-tab of **Agent config** edits one Markdown file that every a
 
 ## Agent settings
 
-The **Settings** sub-tab of **Agent config** edits `~/.kira-space/agent/settings.yaml`. One file serves every agent. Kira renders it in each agent's own format. The file is up to 256 KiB, and an unknown key is refused with its line.
+The **Settings** sub-tab of **Agent config** edits `~/.kira-space/config/agent/settings.yaml`. One file serves every agent. Kira renders it in each agent's own format. The file is up to 256 KiB, and an unknown key is refused with its line.
 
 Common keys:
 
@@ -350,7 +350,7 @@ The Studio modules have no switch. Their launches are always hermetic.
 
 ## Config files
 
-Workflows and agent config are plain files in `~/.kira-space`, in the `workflows` and `agent` folders.
+Workflows and agent config are plain files in `~/.kira-space/config`, in the `workflows` and `agent` folders.
 
 - Each folder has a generated `AGENTS.md` that lists every option, so an AI agent can edit the files. Kira rewrites it at start. Edits to it are lost.
 - The file bar on the Workflows, Context and Settings pages shows the path and status, with Open, Reveal, Copy path and **About these files**.

@@ -118,4 +118,4 @@ Git log level (default info) and the popup notification (on).
 | Git, agents, automations | `~/.kira-space` | `KIRA_SPACE_HOME` | `kira.db` |
 | Memory | `~/.kira-memory` | `KIRA_MEMORY_HOME` | `memory.db` |
 
-Each home keeps `logs` and `llm-prompts.json`. The Git, agents and memory home also keeps `workflows/`, `agent/` (context and agent settings) and `agent-secrets.db`. The Studio modules read the same agent folder. The two homes stay separate until a later release merges them.
+Kira Space keeps one home, `~/.kira-space`. Its `config/` folder holds the plain-file config, one folder per module: `connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent` (context and agent settings) and `prompts` (`llm-prompts.json`). Databases (`kira.db`, `studio.db`, `review.db`, `agent-secrets.db`), tokens, `logs/` and `backups/` stay outside `config/`. Memory keeps its own home.

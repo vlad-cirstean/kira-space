@@ -391,7 +391,7 @@ whatever sandbox a session happens to be in),
 
 ## Storage
 
-- ~/.kira-space/ (mode 0700) is the one data home. It holds kira.db (Space), studio.db (Studio modules), connections/, api/, logs/ and the DB MCP server's token mcp-db-token.json (one per KIRA_SPACE_HOME, no slug). The retired ~/.kira-studio home folds in once (see Home fold below).
+- ~/.kira-space/ (mode 0700) is the one data home. It holds config/ (every config folder, see Config files), kira.db (Space), studio.db (Studio modules), logs/ and the DB MCP server's token mcp-db-token.json (one per KIRA_SPACE_HOME, no slug). The retired ~/.kira-studio home folds in once (see Home fold below).
 - As of P100, the home holds no git state in the Studio modules; review.db lives in the same home.
 
 ### Home fold (P539)
@@ -402,6 +402,16 @@ whatever sandbox a session happens to be in),
 - Runs stage: back up the Space DB to `<backup>/space.db`, then in one Space transaction `INSERT OR IGNORE` the Studio scripts, collections, runs, run logs and `script-param` secrets. Space wins a script id; a Studio clash becomes `<id>-studio`, `-studio-2` and so on. A run id clash gets a new id. `cwd` under the legacy automations path is rewritten. Run yaml files and automations dirs copy to mapped names. Then one Studio transaction deletes the copied rows.
 - After a fold the Claude Code `kira-db` registration names the moved helper script. The first start with the DB MCP server running rewrites it (`mcpinstall.Registered`, then `InstallAgent`) and clears `reregister`.
 - The backup folder stays until the user deletes it.
+
+### Config fold (P540)
+
+- `configfold.Run` moves the legacy config entries from `<home>/<name>` to `<home>/config/<name>` once: `connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent`, and `llm-prompts.json` into `config/prompts/`. One ordered `entries` slice in `configfold.go`.
+- Boot order: after `storage.Open`, before `homefold.Files`. `homefold` then writes Studio data straight into the new layout through the resolver.
+- Marker: row `configfold.p540` in the Space `settings` table, JSON `state` (`moving`, `done`), `fresh`, `backup`. Absent marker and no legacy entry: `done` with `fresh`. Steps `backup/<name>`, `move/<name>`, `done`; a failed run resumes from the marker.
+- Backup first: `<home>/backups/p540-<UTC ts>/<name>` per entry (copy, verify, rename), kept until the user deletes it.
+- Move: `os.Rename`; on EXDEV copy to `<dst>.tmp`, verify, rename, remove the source. A symlink moves as a link.
+- Collision (both source and target exist): `config/` wins. A source child the target lacks moves in; a differing child stays only in the backup and logs a warning.
+- Restore: close the app, move `<backup>/<name>` back to the home, delete `config/<name>` and the marker row.
 
 - Credentials in the connections table's password column are encrypted at rest (P25) from Go, using a single symmetric key in the OS keychain for all values, with ciphertext in the app's own database.
 - A single keychain key was kept because one keychain item means one authorization decision rather than a prompt per connection, item-count and item-size limits become irrelevant, and SecretStore.copy() stays a raw column copy that never needs the OS key.
@@ -506,7 +516,7 @@ custom_scripts(id, name, command, working_dir, dir_mode, color, collection, sort
                kind, params_json, smart_json, use_ade_dir, schedule_json, schedule_task_id,
                schedule_branch_id, config_json)
                                                        -- P472 (Studio 0054 / Space 0064): the projection
-                                                       -- of <home>/runs/<id>.yaml; the file is config.
+                                                       -- of <home>/config/runs/<id>.yaml; the file is config.
                                                        -- id is the file stem; collection is a name
                                                        -- ('' = ungrouped); config_json is the last good
                                                        -- File JSON and is the source of every run.
@@ -1329,7 +1339,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 | Per-device convenience | `usePersistedState`, key `kira.<module>.<name>` |
 | Git view state | `ViewStateStore` |
 | Files under KIRA_SPACE_HOME | Atomic write (`renameio`) |
-| LLM prompt overrides | `<home>/llm-prompts.json` (`renameio`), see "App prompts" |
+| LLM prompt overrides | `<home>/config/prompts/llm-prompts.json` (`renameio`), see "App prompts" |
 
 - Settings sections and leaves are camelCase and new booleans are positive; api.disableCookieJar keeps its name because renaming it rewrites user data.
 - Inside the Settings dialog every leaf is draft plus Save; a control outside the dialog applies at once through patchSettings.
@@ -2336,7 +2346,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 
 ### Process wiring
 
-- In internal/appwire/wire.go, wireAdeTask builds ade.TaskBoard from TaskBoardDeps: repos, discovery GitStatus (no GitPath), its own gitsession.Conn named ade-board, adeflow.Reader over <home>/workflows, the agentmcp finish_step server, the Tracker, log sink and session store.
+- In internal/appwire/wire.go, wireAdeTask builds ade.TaskBoard from TaskBoardDeps: repos, discovery GitStatus (no GitPath), its own gitsession.Conn named ade-board, adeflow.Reader over <home>/config/workflows, the agentmcp finish_step server, the Tracker, log sink and session store.
 - wireAdeTask calls Recover() then Start() on the task board, and installs board.OnTUIStopped as the tracker's stopped handler.
 - bridge.AdeTaskService binds 71 methods, each with one adeTask* entry in frontend/src/bridge/index.ts.
 - AdeTaskService push channels are defined in bridge/adewire/channels.go with prefix kira:adetask: and suffixes board, workflows, repos, runs, log, sessions, updates and open-session; open-session is emitted to one window via EmitTo.
@@ -2389,7 +2399,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 
 ### Workflows
 
-- Workflows are YAML files in <home>/workflows, parsed by adeflow.Reader; no workflow is seeded (D2).
+- Workflows are YAML files in <home>/config/workflows, parsed by adeflow.Reader; no workflow is seeded (D2).
 - The workflows folder is a `configfs.Folder` (P450, see Config files): watched, debounced 200 ms; a broken edit keeps the last valid version and reports the line plus a message. Saves are atomic with a baseHash check. `ade_workflow_last_valid` rows follow file deletion. The writer keeps key order and comments.
 - `apps/kira-space/internal/adeflow/options.go` is the single list of workflow keys (P451): `Parse` and the writer derive their key sets from it, and the folder's `AGENTS.md` is generated from it. A new key needs a row there or the parser refuses it.
 - A workflow has a flat list `steps` of kind agent|script|review|manual (P293); `kind` is required and each kind allows only its own keys.
@@ -2423,11 +2433,11 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - If the review target is lost (EndResumeLost), the round fails with outcome.lost and queueFallback starts a round on `new` with the note.
 - RecoverRunning keeps launch_resume_id for review rounds, so a quit leaves the round `stuck` and resumable; ResumeRun on a round resumes it.
 - FinishReview accepts a result of the step only while no round is live, ends the review run and routes like any step result; the note travels as the next step's send-back note.
-- Step library (P526): steps are standalone YAML files in `<home>/steps/<id>.yaml` (file stem = `id`), a `configfs.Folder` like workflows (watched, atomic saves with baseHash, last valid kept in `config_last_valid` folder `steps`, no SQL migration). Library mode forbids `skip`, `review.implementer` and a result `next` naming a step id.
+- Step library (P526): steps are standalone YAML files in `<home>/config/steps/<id>.yaml` (file stem = `id`), a `configfs.Folder` like workflows (watched, atomic saves with baseHash, last valid kept in `config_last_valid` folder `steps`, no SQL migration). Library mode forbids `skip`, `review.implementer` and a result `next` naming a step id.
 - A workflow item `step: <libId>` references a library step (`WorkflowStep.use`). It may set `id` (default the library id), override keys (scalars and lists replace; `params`, `settings`, `review` merge by key; `sandbox` and `results` replace whole), `routes` (result id to target; not with `results`), `skip` and `prompt_extra` (appended to the prompt after a blank line at run time, `WorkflowStep.promptExtra`). Inline steps stay valid. Library errors surface with the prefix `library step "x":`.
 - The writer saves a reference as a diff against the library step (`adeflow/writer_ref.go`). Known limit: an override cannot unset some library values (e.g. `status` or `agent` back to empty).
 - A library edit changes every workflow that references it, for new work only: `adeflow.SnapshotJSON` clears `use` and the snapshot stores effective values, so a started task keeps its steps. Delete is refused while a workflow uses the step (`StepUsers`).
-- Migration (`Reader.MigrateInlineSteps`, run in `Start`): once, when `<home>/workflows/.p526-backup/` is absent, every inline step moves into the library and its workflow item becomes a reference. The backup folder (built as `.tmp`, then renamed) is the marker and holds the original workflow files. Library ids are `<id>`, then `<id>-2` and so on when the body differs; an identical body is reused.
+- Migration (`Reader.MigrateInlineSteps`, run in `Start`): once, when `<home>/config/workflows/.p526-backup/` is absent, every inline step moves into the library and its workflow item becomes a reference. The backup folder (built as `.tmp`, then renamed) is the marker and holds the original workflow files. Library ids are `<id>`, then `<id>-2` and so on when the body differs; an identical body is reused.
 - Workflows page (P526) has tabs Statuses, Steps and Workflows (`adeWorkflowsUi.tab`). The Steps tab edits a library step as Form (the step inspector over a one-step `adeWorkflowDraft`, `library` prop) or YAML. A workflow step inspector shows the library link, overridden fields with Reset, Detach, Extra prompt and Save to library.
 - Task snapshot (P196, ade/taskwf.go): a task follows the live workflow file until its first run, session or move; then snapshotWorkflow (idempotent, first wins) stores the workflow in ade_tasks.workflow_json with a sha256 workflow_hash.
 - StepDone, SetTaskStep and refreshSnapshot read the task snapshot. Wire Task.workflow is null until started; Task.workflowOutdated is a drift flag shown as an "updated, applies to new work only" badge.
@@ -3381,7 +3391,7 @@ Built-in `PreLimit` `expensive_query`: an agent `run_query` whose plan estimates
 - Prompts use text/template, one set per resolve, with only the funcs inc and join; an entry with NoVars and no fragments is literal and never parsed.
 - After an intended default prompt change, regenerate testdata/golden with go test ./internal/llmprompts -run TestGolden -update and review the diff.
 - RenderParts wraps each string variable in marker runes and splits, so Settings Preview marks resolved values with VarText; a failed self-check returns one literal part.
-- Prompt overrides are stored in <home>/llm-prompts.json (~/.kira-space/), written with renameio at mode 0600, shaped {version, revision, overrides: {id: {text, defaultHash, updatedAt}}}.
+- Prompt overrides are stored in <home>/config/prompts/llm-prompts.json (~/.kira-space/), written with renameio at mode 0600, shaped {version, revision, overrides: {id: {text, defaultHash, updatedAt}}}.
 - Saving the default text removes the override; override text must be 1 byte to 32 KiB.
 - A prompt change carries baseHash, and a stale one is refused with E_CONFLICT.
 - If the store file is corrupt or an override no longer validates, the default is used, a warning is logged, and it is flagged in Settings (storeError, invalid); defaultChanged flags an override made against an older default.
@@ -3437,8 +3447,10 @@ Agent-written evidence the user reviews in a dedicated window. Part 1 is storage
 
 Config lives as plain files in app-home folders; `internal/configfs` is the one foundation every module uses. Terse facts, decisions in `docs/HISTORY.md` (v0.2.26 P450).
 
-- Layout: a config folder is a direct child of an app home, `<home>/<module>/`. Workflows stay `<home>/workflows/`. A module's folder lives in the home of the app whose DB holds its state; a process projects files only into its own DB.
-- A definition shared by both apps has one folder, `~/.kira-space/agent/`. Both apps read, write and watch it. `agentctx` is the first user (P452); `kirapaths.SharedAgentDir()` is the resolver.
+- Layout (P540): every config folder is `<home>/config/<module>/`. `configfs.Root(home)` and `configfs.ModuleDir(home, module)` are the one resolver; no other code joins a home and a module name. Module names are package constants: `connfiles.Folder`, `apifiles.Folder`, `scripts.Folder` (`runs`), `adeflow.WorkflowsFolder`, `adeflow.StepsFolder`, `repocfg.Folder`, `agentctx.Folder` (`agent`), `llmprompts.Folder` (`prompts`). `config.EnsureLayoutAt` creates `<home>/config` before any watcher starts. A process projects files only into its own DB.
+- `agentctx` and `agentcfg` share `<home>/config/agent/`; both resolve it through `ModuleDir(home, agentctx.Folder)`.
+- Exception: `<home>/config/prompts/llm-prompts.json` is JSON and not a `configfs` module. It holds prompt overrides, no secrets.
+- Stays at the home root, outside `config/`: databases (`kira.db`, `studio.db`, `review.db`, `agent-secrets.db`), tokens (`mcp-db-token.json`, `mcp-db-header.token`), `mcp-header-helper.sh`, `app.lock`, `logs/`, `backups/`, `agent-usage.json`, `agent-context/`, `ade/`, `automations/`, `automations-mcp/`, `op-owners/`, `mobile/`. `config/` holds no secret, so it can become a git repo.
 - Reserved names: `AGENTS.md` (generated) and hidden files. The store never reads either as config. Folder mode 0755, file mode 0644; files never hold a secret value.
 - Per-machine values: `<name>.local.yaml` beside `<name>.yaml`, merged over it key by key. Code lands with the first module that has one (P461).
 - Formats: structured config is YAML (`.yaml`), prose is Markdown (`.md`). No JSON config files. Anchors, aliases and merge keys are refused with a line. Collections are one item per file, `<id>.yaml`, stem is the id. Singletons are one fixed file name. Cap 1 MiB, refused on read and write.
@@ -3460,7 +3472,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 
 ### Runs config files (P472)
 
-- A run is `<home>/runs/<id>.yaml` (`~/.kira-space/runs`); the file stem is the run id (`^[a-z0-9][a-z0-9_-]{0,79}$`). Another name is listed as a problem with `id` empty and never used. `AGENTS.md` beside them is generated from the schema.
+- A run is `<home>/config/runs/<id>.yaml` (`~/.kira-space/config/runs`); the file stem is the run id (`^[a-z0-9][a-z0-9_-]{0,79}$`). Another name is listed as a problem with `id` empty and never used. `AGENTS.md` beside them is generated from the schema.
 - Keys: `name`, `kind` (`script` default, `smart`), `command` (the shell command, or `prompt` for a smart run), `params`, `smart`, `schedule`, `mcp` (agent access, Studio; see Scripts tools, P521), `dir` (`kira`, `fixed`), `path`, `color`, `collection` (a name), `use_ade_dir` (Space only; Studio refuses it). `internal/scripts/run.schema.json` is the base; `assembleSchema` writes every enum and bound the Go validator owns into it, so schema and `AGENTS.md` cannot drift.
 - `scripts.Loader` owns the folder (`configfs.Folder[File]`) and the projection (`Repo.Projection`): `custom_scripts.config_json` is the last good file value. Files to DB only. Invalid file: the row keeps the last good version, a `FileProblem{file, id, line, message, lastGood}` is published, one Warn per new hash. A run with no last good version has a problem and no row. File gone: row, saved secrets and (through Delete) the kira folder go; run history stays.
 - State the file never holds, kept in the row: `sort_order`, `schedule_task_id`, `schedule_branch_id`. `Record` never writes them. The schedule target is set by `SetScheduleTarget` (Space only), apart from the file text.
@@ -3473,7 +3485,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 
 ### Api config files (P473)
 
-- Folder `~/.kira-space/api` (config folder `api`, `ConfigFilesService` Open and Reveal). A collection is `<id>.collection.yaml` (name, `variables`, `items`: folders nest, requests carry the HTTP or gRPC body). An environment is `<id>.environment.yaml` (name, colour, `variables`). File stem is the id. `AGENTS.md` beside them is generated from the schema (`apifiles/agents_intro.md` plus rule docs). Cap 1 MiB per file.
+- Folder `~/.kira-space/config/api` (config folder `api`, `ConfigFilesService` Open and Reveal). A collection is `<id>.collection.yaml` (name, `variables`, `items`: folders nest, requests carry the HTTP or gRPC body). An environment is `<id>.environment.yaml` (name, colour, `variables`). File stem is the id. `AGENTS.md` beside them is generated from the schema (`apifiles/agents_intro.md` plus rule docs). Cap 1 MiB per file.
 - Package `apps/kira-space/internal/apifiles`: `Store` owns the folder, the load path and every write to `api_*`. Files to DB only. Invalid file: rows keep the last good version, a `Problem` with line is published, one Warn per new hash. File gone: rows go (history cascades).
 - Projection: `api_collections`, `api_items`, `api_environments`, `api_variables` are derived from the files. Surrogate uuid ids stay; new columns `stem`, `item_key`, `secret_ref` bind them to file ids. Renaming a file or item `id` is a delete plus a create; changing `name` keeps history. State kept in the DB: `is_active` (only `SetActiveEnvironment` writes it), response and call history, variable history, tab state.
 - Order: item order is file order (`items` order is the tree order). Collection and environment order is app state in `sort_order`, set by `ReorderCollections` and `ReorderEnvironments` (`apifiles.Store`, `sqlitex.ReorderSortOrder`; no file write). New rows append, a rename keeps the place, a file renamed on disk (new stem) moves to the end, a fresh DB starts from file-load order.
@@ -3489,7 +3501,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 
 ### Repo config files (P474)
 
-- Folder `~/.kira-space/repos` (config folder `repos`, Space only). One `<stem>.yaml` per repo; `AGENTS.md` beside them is generated. The binding key is the `path` key (the code repo's `repo_id`, NFC-cleaned absolute path), not the stem: the stem is a readable slug chosen at first save and made unique. This is the keyed-by exception to P450's stem-is-id rule (`configfs.DocModel.KeyedBy`); P475 keeps it.
+- Folder `~/.kira-space/config/repos` (config folder `repos`, Space only). One `<stem>.yaml` per repo; `AGENTS.md` beside them is generated. The binding key is the `path` key (the code repo's `repo_id`, NFC-cleaned absolute path), not the stem: the stem is a readable slug chosen at first save and made unique. This is the keyed-by exception to P450's stem-is-id rule (`configfs.DocModel.KeyedBy`); P475 keeps it.
 - Keys: `path`, `nickname`, `integration_branches`, `environments` (`name`, `deployed_sha_script`, `deployed_sha_run`), `worktree` (`prepare_script`, `prepare_run`, `prepare_timeout`, `base_path`), `graph` (`page_size`, `scope`), `stash` (`show_in_graph`, `include_untracked`), `review.base_candidates`, `pull.strategy`, `git_host.provider`, `checkout.auto_stash`. An absent leaf means the default. Limits: nickname 40 runes, 10 integration branches, 10 environments, 4 KiB per environment script, 64 KiB prepare script; `base_path` is absolute; `git_host.provider` is `auto`, `off` or a registered host id.
 - Package `internal/repocfg`. `Store` keeps an in-memory index `path -> Config` rebuilt by `Reload`; settings are never read from SQLite. Files to DB only: the `config_last_valid` projection (`repos`, file) keeps the last good value across restart. Invalid file: last good applies, a `Problem` with line is published, one Warn per new hash. File gone: that repo returns to defaults; env marks of removed environments are pruned.
 - Duplicate `path` across files: the first file by name applies; each later one gets a `Problem` on its `path` line and applies nothing. It lists under Other files, bound to no repo.
@@ -3515,7 +3527,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 
 ### Connection config files (P475)
 
-- Folder `~/.kira-space/connections` (config folder `connections`; `ConfigFilesService` Open and Reveal). One `<stem>.yaml` per connection; `AGENTS.md` beside them is generated from the schema. File stem is the id. Cap 1 MiB per file.
+- Folder `~/.kira-space/config/connections` (config folder `connections`; `ConfigFilesService` Open and Reveal). One `<stem>.yaml` per connection; `AGENTS.md` beside them is generated from the schema. File stem is the id. Cap 1 MiB per file.
 - Keys: name, kind, color, mode (fields or URI), host, port, database, username, read-only, pre-connect command, sidecar, delay, auto-explain, throttle, MCP settings (enabled, description, read, write and DDL modes, auto-explain, review results) and the per-connection tree visibility filters. An absent leaf means the default.
 - Package `internal/connfiles`: `Loader` owns the folder and every write to `connections`. Files to DB only. A surrogate uuid row binds to a file by `stem`. `connections.config_json` holds the last valid file JSON and is the record source. Invalid file: row keeps the last good version, a `Problem` with line is published, one Warn per new hash. File gone: row goes. A file that never held a valid connection lists as a broken entry, bound to no row.
 - Secrets: password and URI are `${secret:<stem>.password}` and `${secret:<stem>.uri}`; values live in `secret_values`. `ConnectionConfigService.SetSecret` and `DeleteSecret` are write-only; Reveal keeps its confirm-before-reveal flow. No value reaches a file, a log or a problem message.
@@ -3544,7 +3556,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 
 ### Agent context (P452)
 
-- File `~/.kira-space/agent/context.md`, plain Markdown, cap 32 KiB (`agentctx.MaxBytes`). A blank or missing file means no context.
+- File `~/.kira-space/config/agent/context.md`, plain Markdown, cap 32 KiB (`agentctx.MaxBytes`). A blank or missing file means no context.
 - `agentctx.Store` reads it per launch. Invalid file (over cap, bad UTF-8) keeps the last good text, projected in `config_last_valid` (shared `configfs.TableProjection`, both apps). No last good text means no context.
 - `ContextFile()` writes an immutable snapshot `<snapshots>/<hash16>/AGENTS.md` (0600), touches its mtime on reuse, prunes dirs older than 30 days. A running agent never sees an edit; its path never changes under it.
 - Launch sites that set `ContextFile`: `ade.Tracker.Prepare`, `TaskBoard.superviseAgent`, scriptruns smart run, `ResumeCommand`. `superviseAgent` resolves it before `prepareSandbox` so the sandbox knows `ContextDir` (plan said after `Register`). A resolve error fails the launch.
@@ -3555,11 +3567,11 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 
 ### Agent settings (P453)
 
-- File `~/.kira-space/agent/settings.yaml`, cap 256 KiB (`agentcfg.MaxBytes`). One schema assembled at start: common keys `env`, `permissions` (`allow`, `deny`), `mcp_servers` (stdio `command`, `args`, `env`; http `url`, `headers`; `enabled`), `hooks` (name to `event`, `matcher`, `command`, `timeout`) plus one section per `SettingsHost` provider under its id (`claude`: `model`, `permission_mode`, `status_line`, `hooks`, `skip_hooks`; `opencode`: `model` as `provider/model`, `plugins` as `file://` URLs, `skip_hooks`). Extra keys are refused with a line.
+- File `~/.kira-space/config/agent/settings.yaml`, cap 256 KiB (`agentcfg.MaxBytes`). One schema assembled at start: common keys `env`, `permissions` (`allow`, `deny`), `mcp_servers` (stdio `command`, `args`, `env`; http `url`, `headers`; `enabled`), `hooks` (name to `event`, `matcher`, `command`, `timeout`) plus one section per `SettingsHost` provider under its id (`claude`: `model`, `permission_mode`, `status_line`, `hooks`, `skip_hooks`; `opencode`: `model` as `provider/model`, `plugins` as `file://` URLs, `skip_hooks`). Extra keys are refused with a line.
 - Rules (`agentcfg/rules.go`): a server has a command or a url, never both; transport fields match the transport; names starting `kira` and env starting `KIRA_` are reserved; `matcher` only on `tool_start` and `tool_end`; `skip_hooks` names a common hook.
 - Hooks: Kira's own hooks always run and never appear in the file. User hooks run in addition; a provider's `skip_hooks` drops a common hook for that provider.
 - References: only `x-kira-ref` fields (`env` values, server `url`, `command`, `args`, `headers`, `env`) take `${NAME}` and `${secret:name}`. The Claude section has no ref field, so no secret reaches `settings.json`. Env comes from one login-shell probe (`loginshell.ProbeEnv`, `-l -i -c`, 5 s, only the names asked for), then the process env. A missing env var or secret fails the launch naming the reference.
-- Secrets: `~/.kira-space/agent-secrets.db`, one file both apps open (`kirapaths.SharedAgentSecrets`, `agentcfg.OpenSecrets`, `sqlitex.OpenImmediate`, own migration). Table `secret_values`, scope `agent-credential`, owner `agent`, sealed by the shared cipher. Set from Agents > Settings; write-only, no call returns a value. Storage off: `E_SECRET_STORE` on save.
+- Secrets: `~/.kira-space/agent-secrets.db`, one file both apps open (`wireAgentSettings` joins the path, `agentcfg.OpenSecrets`, `sqlitex.OpenImmediate`, own migration). Table `secret_values`, scope `agent-credential`, owner `agent`, sealed by the shared cipher. Set from Agents > Settings; write-only, no call returns a value. Storage off: `E_SECRET_STORE` on save.
 - Which launches get settings: every Space TUI (`prepareWithGrant`), Continue in terminal in both apps (`ResumeCommand`), and non-isolated ADE agent steps and review rounds (headless). Not isolated runs (smart scripts in both apps, ADE smart steps, rebase runs): their tool and MCP policy is explicit. Not structured calls (memory).
 - Preparation (`Store.Prepare`): last good settings, resolve, `RenderSettings`, write each file as `<dir>/<stem>-app.<role>.json` (0600, dir 0700) in the ADE agent dir (`ade/runs`) or `automations-mcp`. `Prepared.Release` removes them: TUI with the grant release at record stop or intent expiry; headless after the run; Continue in terminal with the token (`BeginAgent` binds it to the terminal, `Exited` releases, token expiry and `Service.Close` sweep the rest); `Store.Close` at quit; `Store.Sweep` at start for a crash.
 - OpenCode (`opencode/settings.go`): `RenderSettings` returns an inline `NativeFile` (`opencode config`), the app part of `OPENCODE_CONFIG_CONTENT`: `model` (only when the section has one), `permission` (allow then deny through the tool table, last match wins), `plugin`; and, when servers exist, a file `NativeFile` (`opencode mcp.json`, role `mcp`: remote `type`/`url`/`headers`, local `command` array/`environment`) so resolved credentials never ride an environment variable every child of the agent inherits (R1-3). Interactive merges the inline part with Kira's `instructions`; headless renders deny only and merges into the permission document (app deny joins Kira's, deny wins; allow never widens `Tools`), and an isolated run refuses app settings. Untranslatable deny fails the launch naming the entry; untranslatable allow and each common hook are view notes. OpenCode substitutes the content text (Q-OC7) and, on the same rule, the mcp file, so a value with `{env:` or `{file:` fails rendering of either (`MCPConfig` checks too). Cap 64 KiB. Layers merge, not replace: `plugin` with the hooks `OPENCODE_CONFIG_DIR` (Q-OC5), `mcp` with the grant `OPENCODE_CONFIG` file (Q-OC6; one path, so Kira merges the grant into the app file), `permission` with `OPENCODE_PERMISSION` (Q-OC8); local `environment` reaches the server (Q-OC9). Files that hold a secret: the app mcp file and, for hermetic smart runs and smart steps, the ticked-servers file from `Wire`; both 0600, removed on release or by `Store.Sweep` (`*-app.*.json`), as is a headless merge file. The content document holds none. The view shows both documents with references verbatim and a note per document. Tests: flow `TestAgentSettingsOpenCode`.

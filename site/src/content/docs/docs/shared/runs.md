@@ -18,7 +18,7 @@ Runs exist in the Automations mode and the Studio modules. A run is a YAML file.
 
 ## Run files
 
-A run lives in `<id>.yaml` in the `runs` folder of the home: `~/.kira-space/runs`. The file name without `.yaml` is the run id. Use lowercase letters, digits, `-` and `_`.
+A run lives in `<id>.yaml` in the `runs` folder of the home config: `~/.kira-space/config/runs`. The file name without `.yaml` is the run id. Use lowercase letters, digits, `-` and `_`.
 
 - **New script** and **New smart script** write a small valid file and open it.
 - Double-click a row, or choose **Edit file**, to edit it as a form or as YAML. Both tabs edit the same text; **Save** writes the file. A form edit keeps your comments and key order. **Open** opens the file in your editor. **Reveal** and **Copy path** work as in other config files.
@@ -74,7 +74,7 @@ The run history lists denied tools.
 
 Kira adds a closing instruction to the prompt so the run reports through `finish_step`. See [Prompts](../../reference/prompts/).
 
-Studio-module smart scripts use the same agent settings and context files, from `~/.kira-space/agent/`. They always launch hermetic.
+Studio-module smart scripts use the same agent settings and context files, from `~/.kira-space/config/agent/`. They always launch hermetic.
 
 ## Schedules
 

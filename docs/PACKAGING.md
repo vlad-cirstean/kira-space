@@ -239,9 +239,9 @@ human to launch the packaged app and use it.
 5. Gatekeeper: an unsigned, unnotarized build needs right-click → Open, or
    `xattr -dr com.apple.quarantine "/Applications/Kira Space.app"`. Expected, not a defect. —
    *not yet run*
-6. `~/.kira-space/` is created with `kira.db`, `studio.db` and `logs/` on first launch — the real home, since
+6. `~/.kira-space/` is created with `kira.db`, `studio.db`, `config/` and `logs/` on first launch — the real home, since
    `KIRA_SPACE_HOME` is unset in a packaged run. An existing `~/.kira-studio/` folds in once and moves to
-   `~/.kira-space/backups/p539-<UTC>/kira-studio`, kept until deleted by hand. — *not yet run*
+   `~/.kira-space/backups/p539-<UTC>/kira-studio`, kept until deleted by hand. Existing config folders (`connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent`, `llm-prompts.json`) move into `config/` once, backup `~/.kira-space/backups/p540-<UTC>/`, kept until deleted by hand. — *not yet run*
 7. Create a connection, expand the tree, open a data tab, scroll, open the cell editor, quit cleanly.
    The View menu has no Reload / Toggle DevTools in a `-tags production` build. — *not yet run*
 8. Kafka: connecting is **expected to succeed** in a packaged build — Kafka has been served

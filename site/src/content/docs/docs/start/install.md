@@ -30,7 +30,7 @@ The script:
 
 A disk image downloaded through a browser does trigger Gatekeeper. The script avoids that.
 
-Kira Studio is now part of Kira Space. On first launch Kira Space moves the data in `~/.kira-studio` into `~/.kira-space`, including scripts and runs. Quit Kira Studio first. The old folder is kept whole as a backup in `~/.kira-space/backups/`; delete it when you no longer need it.
+Kira Studio is now part of Kira Space. On first launch Kira Space moves the data in `~/.kira-studio` into `~/.kira-space`, including scripts and runs. Quit Kira Studio first. The old folder is kept whole as a backup in `~/.kira-space/backups/`; delete it when you no longer need it. Config folders (connections, API files, runs, workflows, steps, repository settings, agent) then move once into `~/.kira-space/config/`, with a second backup in `~/.kira-space/backups/`.
 
 Failures land in `~/Library/Logs/<app name>/install.log`.
 

@@ -34,7 +34,7 @@ SQS never polls on its own. Reads happen only when you press **Poll**, because `
 
 ## Save a connection
 
-**New connection** asks for a name, an engine and a colour. It writes a file in `~/.kira-space/connections`, one `<name>.yaml` per connection. Use **Edit connection file…** to change anything else, as a form or as YAML. Or open the file in your editor with **Open in editor**. The dialog also has **Duplicate** and **Delete**.
+**New connection** asks for a name, an engine and a colour. It writes a file in `~/.kira-space/config/connections`, one `<name>.yaml` per connection. Use **Edit connection file…** to change anything else, as a form or as YAML. Or open the file in your editor with **Open in editor**. The dialog also has **Duplicate** and **Delete**.
 
 The file holds host, port, database, username, URI mode, the read-only guard, the pre-connect command, MCP settings, the row colour and the tree filters. The app watches the folder. A saved edit applies at once.
 

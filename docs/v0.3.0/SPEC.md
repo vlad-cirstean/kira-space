@@ -14,7 +14,7 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 | P537 Part 2 | Merge Kira Space and Kira Studio: finish in three parallel streams (Go, frontend, build/tests/docs) | Done |
 | P538 | Merge the Studio twins that have no data dependency | Done |
 | P539 | Fold the Studio home folder into the Kira Space home folder | Done |
-| P540 | Move every config YAML into one subfolder of the home | Pending |
+| P540 | Move every config YAML into one subfolder of the home | Done |
 | P541 | Mermaid visualiser in the proof tool and proof MCP tool | Done |
 | P542 | Unified notes: user notes and agent handovers in one chain | Done |
 | P543 | Proof as an artifact chain in the task details panel | Pending |
@@ -137,6 +137,7 @@ Result:
 - Acceptance (from `TWINS.md`). P540 is not Done until it passes:
   - `git grep -nE 'filepath\.Join\([^)]*(Home|home)[^)]*"(connections|api|runs|workflows|steps|agent)"' apps/kira-space/internal` prints nothing outside the one config-root resolver.
 - Plan: `plans/P540.md`.
+- Result: Done. Every config folder lives in `<home>/config/<module>/` (`connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent`) and `llm-prompts.json` in `config/prompts/` (JSON, ARCHITECTURE exception). One resolver, `configfs.Root`/`ModuleDir`; module names are `Folder` constants. `adeflow.Dir`/`StepsDir`, `connfiles.Dir`, `apifiles.Dir`, `kirapaths.SharedAgentDir`/`SharedAgentSecrets` deleted. `internal/configfold` (marker `configfold.p540`, backup `backups/p540-<ts>/`, resumable, EXDEV copy, `config/` wins a collision) runs in `main.go` before `homefold.Files`; `homefold` writes into the new layout. Tree copier moved to `internal/fsmove`. `config.EnsureLayoutAt` creates `<home>/config`. `flowharness.App.ConfigDir`; 22 contracts regenerated (path strings only); mock path strings updated. `TestConfigFold` (fresh, fold, idempotent, interrupted at every step, cross-device, collision), `TestHomeFold` pass; touched flows (adeflow, apiflow, dbflow, harnessflow, termflow, repoflow, gitflow, appflow, configflow) and 199 UI cases on the changed contracts pass. Acceptance greps print nothing. Docs, site and `docs/pending-changes` release patch updated. Deviations: `ipcfixture` needs no extra `config.EnsureLayout()` (`studiostorage.Open` already creates `config/`); `ade/runs` joins use `adeRunsDir` ("ade/runs") so the acceptance grep stays empty; `tests/claude` nested-module paths follow `ConfigDir`. Not run: full Go, UI, e2e-real, real `claude` (chapter end).
 
 ### P541 Mermaid visualiser in the proof tool and proof MCP tool
 

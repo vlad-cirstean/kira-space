@@ -56,4 +56,4 @@ Some prompts must include shared paragraphs. Click one in the editor to insert i
 - Most prompts apply on the next call.
 - Memory MCP instructions, tool descriptions and argument descriptions apply to new Claude sessions. Running sessions keep the old text.
 
-Edits live in `llm-prompts.json` in each app's home.
+Edits live in `~/.kira-space/config/prompts/llm-prompts.json`.

@@ -129,7 +129,7 @@ blocked state.
 
 - **Agents** — a task planner with workflows, runs and interactive agent sessions. Claude Code or
   OpenCode, picked per launch, per step or in Settings. One shared context and settings file for
-  every agent (`~/.kira-space/agent/`), secrets sealed in the keychain layer. Launches are
+  every agent (`~/.kira-space/config/agent/`), secrets sealed in the keychain layer. Launches are
   hermetic by default: agents skip your user config. A task picks its base branch, and a workflow
   step routes its results to the next step, an earlier step, the stage end or a stop. Desktop
   notifications fire when a session finishes or needs input.
