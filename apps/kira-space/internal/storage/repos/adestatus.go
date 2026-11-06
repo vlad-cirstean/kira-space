@@ -24,13 +24,6 @@ type AdeStatusRepo struct {
 	Dialect sqlb.Dialect
 }
 
-// queryer is satisfied by both *sql.DB and *sql.Tx, so one query/scan loop serves a plain call and
-// a transaction.
-type queryer interface {
-	Query(query string, args ...any) (*sql.Rows, error)
-	QueryRow(query string, args ...any) *sql.Row
-}
-
 func listStatuses(q sqlb.Querier, d sqlb.Dialect) ([]model.AdeTaskStatus, error) {
 	c := kiraschema.AdeTaskStatuses
 	rows, err := sqlb.Query(q, d.Select(c.ID, c.Name, c.Color, c.Position).From(c.Table).OrderBy(c.Position, c.ID))

@@ -36,15 +36,6 @@ func adeCount(q sqlb.Querier, d sqlb.Dialect, table string, where func(sb *sqlbu
 	return n, err
 }
 
-// adeUpdateOne runs ub and requires exactly one row changed.
-func adeUpdateOne(q sqlb.Querier, ub *sqlbuilder.UpdateBuilder, what string) error {
-	res, err := sqlb.Exec(q, ub)
-	if err != nil {
-		return err
-	}
-	return sqlitex.RequireOneRow(res, what)
-}
-
 // adeLiveTaskIDs selects the ids of unarchived tasks, for IN subqueries.
 func adeLiveTaskIDs(d sqlb.Dialect) *sqlbuilder.SelectBuilder {
 	t := kiraschema.AdeTasks
