@@ -38,6 +38,35 @@ func TestLayoutAdePanelWidth(t *testing.T) {
 	}
 }
 
+// P538: the cell editor dock height is a layout leaf, kept across a restart and range-checked.
+func TestLayoutCellEditorHeight(t *testing.T) {
+	app := flowharness.New(t)
+	set := func(h float64) (model.Layout, error) {
+		return app.W.Layout.Set(bridge.LayoutSetArgs{Patch: model.LayoutPatch{Panel: &model.PanelsPatch{CellEditor: &model.PanelCellEditorPatch{Height: &h}}}})
+	}
+	if got, err := app.W.Layout.GetAll(); err != nil || got.Panel.CellEditor.Height != 180 {
+		t.Fatalf("Layout.GetAll default = %+v, %v, want cell editor height 180", got.Panel.CellEditor, err)
+	}
+	if merged, err := set(300); err != nil || merged.Panel.CellEditor.Height != 300 {
+		t.Fatalf("Layout.Set = %+v, %v, want cell editor height 300", merged.Panel.CellEditor, err)
+	}
+
+	app.Restart()
+	got, err := app.W.Layout.GetAll()
+	if err != nil || got.Panel.CellEditor.Height != 300 {
+		t.Fatalf("Layout.GetAll after restart = %+v, %v, want cell editor height 300", got.Panel.CellEditor, err)
+	}
+	app.Contract(t, "layout-cell-editor", "LayoutService.GetAll#cellEditor", got)
+
+	for _, h := range []float64{50, 900} {
+		_, err = set(h)
+		var coded *ipcerr.Error
+		if !errors.As(err, &coded) || coded.Code != string(ipcerr.CodeContract) {
+			t.Fatalf("Layout.Set(height %v) = %v, want %s", h, err, ipcerr.CodeContract)
+		}
+	}
+}
+
 // P312: panel sizes are per module; a patch to one module leaves the others at their own values.
 func TestLayoutPanelSizesPerModule(t *testing.T) {
 	app := flowharness.New(t)

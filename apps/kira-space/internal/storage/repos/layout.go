@@ -38,6 +38,7 @@ func decodeLayout(stored map[string]json.RawMessage) model.Layout {
 		result.Modes[mode] = sizes
 	}
 	appsettings.LeafValid(stored, "panel.ade.width", &result.Panel.Ade.Width, model.ValidAdePanelWidth)
+	appsettings.LeafValid(stored, "panel.cellEditor.height", &result.Panel.CellEditor.Height, model.ValidCellEditorHeight)
 	return result
 }
 
@@ -85,12 +86,16 @@ func (r *LayoutRepo) Set(patch model.LayoutPatch) (model.Layout, error) {
 			if p.Ade != nil && p.Ade.Width != nil {
 				merged.Panel.Ade.Width = *p.Ade.Width
 			}
+			if p.CellEditor != nil && p.CellEditor.Height != nil {
+				merged.Panel.CellEditor.Height = *p.CellEditor.Height
+			}
 		}
 
-		leaves := make([]appstorage.Leaf, 0, 2+3*len(merged.Modes))
+		leaves := make([]appstorage.Leaf, 0, 3+3*len(merged.Modes))
 		leaves = append(leaves,
 			appstorage.Leaf{Key: "panel.project.visible", Value: merged.Panel.Project.Visible},
 			appstorage.Leaf{Key: "panel.ade.width", Value: merged.Panel.Ade.Width},
+			appstorage.Leaf{Key: "panel.cellEditor.height", Value: merged.Panel.CellEditor.Height},
 		)
 		for mode, sizes := range merged.Modes {
 			leaves = append(leaves,

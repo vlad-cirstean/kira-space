@@ -1,0 +1,89 @@
+{
+  "LayoutService.GetAll#cellEditor": {
+    "modes": {
+      "ade": {
+        "operations": {
+          "height": 200
+        },
+        "project": {
+          "width": 260,
+          "widthUserSet": false
+        }
+      },
+      "api": {
+        "operations": {
+          "height": 200
+        },
+        "project": {
+          "width": 260,
+          "widthUserSet": false
+        }
+      },
+      "automations": {
+        "operations": {
+          "height": 200
+        },
+        "project": {
+          "width": 260,
+          "widthUserSet": false
+        }
+      },
+      "docker": {
+        "operations": {
+          "height": 200
+        },
+        "project": {
+          "width": 260,
+          "widthUserSet": false
+        }
+      },
+      "git": {
+        "operations": {
+          "height": 200
+        },
+        "project": {
+          "width": 260,
+          "widthUserSet": false
+        }
+      },
+      "kubernetes": {
+        "operations": {
+          "height": 200
+        },
+        "project": {
+          "width": 260,
+          "widthUserSet": false
+        }
+      },
+      "memory": {
+        "operations": {
+          "height": 200
+        },
+        "project": {
+          "width": 260,
+          "widthUserSet": false
+        }
+      },
+      "studio": {
+        "operations": {
+          "height": 200
+        },
+        "project": {
+          "width": 260,
+          "widthUserSet": false
+        }
+      }
+    },
+    "panel": {
+      "ade": {
+        "width": 0
+      },
+      "cellEditor": {
+        "height": 300
+      },
+      "project": {
+        "visible": true
+      }
+    }
+  }
+}

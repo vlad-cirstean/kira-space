@@ -14,7 +14,6 @@ import (
 // cipher is wired.
 type Repos struct {
 	Settings        *SettingsRepo
-	Layout          *LayoutRepo
 	Tabs            *TabsRepo
 	Windows         *WindowsRepo
 	Connections     *ConnectionsRepo
@@ -44,16 +43,12 @@ type Repos struct {
 	stmts []*sql.Stmt // every prepared statement below, for Close.
 }
 
-// New prepares P52 §5.4's five hot statements once (settings read, layout read, tabs list,
+// New prepares P52 §5.4's four hot statements once (settings read, tabs list,
 // op-log append/finish) and constructs every repo that needs no cipher.
 func New(db *sql.DB) (*Repos, error) {
 	settingsSelectAll, err := db.Prepare(settingsSelectAllSQL)
 	if err != nil {
 		return nil, fmt.Errorf("repos: prepare settings select: %w", err)
-	}
-	layoutSelectAll, err := db.Prepare(appstorage.LayoutSelectAllSQL)
-	if err != nil {
-		return nil, fmt.Errorf("repos: prepare layout select: %w", err)
 	}
 	tabsSelectAll, err := db.Prepare(tabsSelectAllSQL)
 	if err != nil {
@@ -70,7 +65,6 @@ func New(db *sql.DB) (*Repos, error) {
 
 	return &Repos{
 		Settings:        &SettingsRepo{DB: db, selectAll: settingsSelectAll},
-		Layout:          &LayoutRepo{DB: db, selectAll: layoutSelectAll},
 		Tabs:            &TabsRepo{DB: db, selectAll: tabsSelectAll},
 		Windows:         &WindowsRepo{DB: db},
 		Connections:     &ConnectionsRepo{DB: db},
@@ -88,7 +82,7 @@ func New(db *sql.DB) (*Repos, error) {
 		DockerRestore:   &DockerRestoreRepo{DB: db},
 		KubeClusters:    &KubeClustersRepo{DB: db},
 		Proof:           &ProofRepo{DB: db},
-		stmts:           []*sql.Stmt{settingsSelectAll, layoutSelectAll, tabsSelectAll, opsInsert, opsUpdate},
+		stmts:           []*sql.Stmt{settingsSelectAll, tabsSelectAll, opsInsert, opsUpdate},
 	}, nil
 }
 
