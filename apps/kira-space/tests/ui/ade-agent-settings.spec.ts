@@ -44,7 +44,7 @@ test('the YAML and the resulting config show, with references as written', async
   const files = page.locator(t('ade-settings-file'));
   await expect(files.first()).toContainText(`Bearer ${ref}`);
   await expect(page.locator(t('ade-settings-result'))).not.toContainText('p453-');
-  await expect(page.locator(t('ade-settings-kira'))).toContainText('kira-ade');
+  await expect(page.locator(t('ade-settings-kira'))).toContainText('kira-space');
   await expect(page.locator(t('ade-settings-notes'))).toContainText('Headless');
 });
 

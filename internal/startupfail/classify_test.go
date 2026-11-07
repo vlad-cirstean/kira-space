@@ -52,7 +52,6 @@ func allSteps() []startupfail.Step {
 		startupfail.StepInstanceLock,
 		startupfail.StepRun,
 		startupfail.StepPlatform,
-		startupfail.StepOldStudio,
 	}
 }
 
@@ -87,7 +86,6 @@ func TestClassifyExpectedColumn(t *testing.T) {
 		startupfail.StepInstanceLock: true,
 		startupfail.StepRun:          false,
 		startupfail.StepPlatform:     false,
-		startupfail.StepOldStudio:    true,
 	}
 	for step, wantExpected := range want {
 		if got := startupfail.Classify(step, errors.New("boom"), testInfo()).Expected; got != wantExpected {
@@ -139,6 +137,22 @@ func TestClassifySchemaTooNewArm(t *testing.T) {
 	}
 	if strings.Contains(msg.Headline, "19") || strings.Contains(msg.Headline, "17") {
 		t.Fatalf("schema-too-new headline should not contain the raw numbers either: %q", msg.Headline)
+	}
+}
+
+type localSchemaTooOld struct{ found, baseline int }
+
+func (e *localSchemaTooOld) Error() string            { return "too old" }
+func (e *localSchemaTooOld) SchemaTooOld() (int, int) { return e.found, e.baseline }
+
+// TestClassifySchemaTooOldArm: a pre-baseline database gets its own pointed message.
+func TestClassifySchemaTooOldArm(t *testing.T) {
+	msg := startupfail.Classify(startupfail.StepStorage, &localSchemaTooOld{found: 82, baseline: 90}, testInfo())
+	if !msg.Expected || !strings.Contains(msg.Headline, "predates v0.3.1") {
+		t.Fatalf("schema-too-old arm = %+v", msg)
+	}
+	if !strings.Contains(msg.Advice, "82") || !strings.Contains(msg.Advice, "90") || !strings.Contains(msg.Advice, "v0.3.1 first") {
+		t.Fatalf("advice = %q", msg.Advice)
 	}
 }
 

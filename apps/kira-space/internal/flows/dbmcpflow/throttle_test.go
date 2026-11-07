@@ -186,7 +186,7 @@ func TestThrottleCancelFreesSlot(t *testing.T) {
 	}
 
 	if res := cancelOp(t, b, op.OpID); res.IsError {
-		t.Fatalf("cancel_operation = %q", text(res))
+		t.Fatalf("operations cancel = %q", text(res))
 	}
 	select {
 	case err := <-next:

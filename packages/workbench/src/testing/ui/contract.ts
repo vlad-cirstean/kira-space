@@ -14,7 +14,6 @@ const FIXED: Record<string, string> = {
   '<work>': '/home/test/work',
   '<tmp>': '/tmp/test',
   '<space>': '/home/test/.kira-space',
-  '<memory>': '/home/test/.kira-memory',
   '<bin>': '/home/test/bin',
   '<fake>': '/home/test/fake',
   '<masked>': '',

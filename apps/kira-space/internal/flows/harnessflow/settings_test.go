@@ -23,7 +23,6 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeprovider"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/shell"
-	"github.com/kirathecat/kira-studio/internal/sqlitex"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -214,7 +213,7 @@ func TestAgentSettingsReachEveryLaunch(t *testing.T) {
 	}
 	tk := task(t, app, repoRec.ID, "flow", "id: flow\nname: Flow\nsteps:\n"+
 		"  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 1m\n    prompt: work on {branch} in {repo}\n"+
-		"  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n")
+		"  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n")
 	row := branchOf(t, app, tk.ID, repoRec.ID)
 	br, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: row.ID, Name: "feat/api-set"})
 	if err != nil {
@@ -342,14 +341,9 @@ func TestAgentSettingsReachEveryLaunch(t *testing.T) {
 	if err := app.DB().QueryRow(`SELECT value_json FROM config_last_valid WHERE folder = 'agent' AND file = 'settings.yaml'`).Scan(&js); err != nil || !strings.Contains(js, "${secret:gh-token}") {
 		t.Fatalf("projection row = %q, %v, want the reference", js, err)
 	}
-	sealed, err := sqlitex.OpenImmediate(filepath.Join(app.SpaceHome, "agent-secrets.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = sealed.Close() }()
 	_, _ = svc.SetSecret(agentcfg.SetSecretArgs{Name: "gh-token", Value: secret})
-	if hits := columnsHolding(t, sealed, secret); len(hits) != 0 {
-		t.Fatalf("agent-secrets.db holds the secret in %v", hits)
+	if hits := columnsHolding(t, app.DB(), secret); len(hits) != 0 {
+		t.Fatalf("kira.db holds the secret in %v", hits)
 	}
 	_ = filepath.WalkDir(app.Root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || strings.HasPrefix(p, app.FakeDir) || strings.HasPrefix(p, app.Work) || strings.Contains(filepath.Base(p), "-app.") {

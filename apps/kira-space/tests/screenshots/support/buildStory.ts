@@ -52,7 +52,7 @@ function storyBoardFx() {
     for (const b of board.branches as Rec[]) {
       if (b.id !== STORY.webBranchId && b.id !== STORY.apiBranchId) continue;
       b.name = STORY.branch;
-      b.worktree = `~/wt/${b.id === STORY.webBranchId ? 'acme-web' : 'acme-api'}/orders-csv-export`;
+      b.worktree = `~/kira-space-wts/${b.id === STORY.webBranchId ? 'acme-web' : 'acme-api'}/orders-csv-export`;
       b.base = 'main';
       b.baseBranchId = '';
     }
@@ -408,7 +408,7 @@ export function storyReview(key = 'answered'): {
   const target = {
     ...adeFixture<{ codeRepoId: string; gitRepoId: string }>('review-target'),
     branch: STORY.branch,
-    worktree: '~/wt/acme-web/orders-csv-export',
+    worktree: '~/kira-space-wts/acme-web/orders-csv-export',
   };
   return {
     storage: AGENT_PANEL_ON,

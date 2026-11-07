@@ -84,7 +84,7 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
     branch: '',
     pending: false,
   };
-  const ALLOWED = ['Read', 'Grep', 'Glob', 'mcp__kira-ade__finish_step'];
+  const ALLOWED = ['Read', 'Grep', 'Glob', 'mcp__kira-space__finish_step'];
 
   const PREVIEW = {
     kind: 'smart',

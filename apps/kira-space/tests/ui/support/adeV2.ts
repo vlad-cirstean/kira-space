@@ -347,6 +347,24 @@ export async function openBillTask(page: Page): Promise<void> {
   await page.locator('[data-testid="ade-panel"]').waitFor();
 }
 
+/** From any mode: opens the ADE Repositories page through the title-bar mode tab. */
+export async function gotoAdeRepos(page: Page): Promise<void> {
+  await page.locator('[data-testid="mode-tab"][data-mode="ade"]').click();
+  await page.locator('[data-testid="ade-tab-repos"]').click();
+  await page.locator('[data-testid="ade-repos"]').waitFor();
+}
+
+/** Boots into the Repositories page. */
+export async function openAdeRepos(
+  relaunch: Parameters<typeof openPlan>[0],
+  extra: readonly ControlSnapshot[] = [],
+) {
+  const app = await openPlan(relaunch, extra);
+  await app.window.locator('[data-testid="ade-tab-repos"]').click();
+  await app.window.locator('[data-testid="ade-repos"]').waitFor();
+  return app;
+}
+
 /** Boots into the Workflows tab. */
 export async function openWorkflows(
   relaunch: Parameters<typeof openPlan>[0],

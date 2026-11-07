@@ -1387,7 +1387,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": true,
       "mergedAt": 1789894800000,
-      "worktree": "~/wt/web-app/cart-flaky",
+      "worktree": "~/kira-space-wts/web-app/cart-flaky",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -1452,7 +1452,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/web-app/usage-billing",
+      "worktree": "~/kira-space-wts/web-app/usage-billing",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -1503,7 +1503,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/web-app/billing-dashboard",
+      "worktree": "~/kira-space-wts/web-app/billing-dashboard",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -1549,7 +1549,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/api/usage-metering",
+      "worktree": "~/kira-space-wts/api/usage-metering",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -1611,7 +1611,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/web-app/oauth-login",
+      "worktree": "~/kira-space-wts/web-app/oauth-login",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -1676,7 +1676,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/web-app/oauth-login-ui",
+      "worktree": "~/kira-space-wts/web-app/oauth-login-ui",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -1727,7 +1727,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/api/oauth-callback",
+      "worktree": "~/kira-space-wts/api/oauth-callback",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -1798,7 +1798,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/api/webhooks",
+      "worktree": "~/kira-space-wts/api/webhooks",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -1860,7 +1860,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/api/webhooks-retry",
+      "worktree": "~/kira-space-wts/api/webhooks-retry",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -1917,7 +1917,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/web-app/payments-refactor",
+      "worktree": "~/kira-space-wts/web-app/payments-refactor",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -1963,7 +1963,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/web-app/search-schema",
+      "worktree": "~/kira-space-wts/web-app/search-schema",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -2009,7 +2009,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/web-app/search-index",
+      "worktree": "~/kira-space-wts/web-app/search-index",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -2060,7 +2060,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/web-app/search-ui",
+      "worktree": "~/kira-space-wts/web-app/search-ui",
       "setup": {
         "state": "failed",
         "startedAt": 1790067000000,
@@ -2106,7 +2106,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/web-app/notifications",
+      "worktree": "~/kira-space-wts/web-app/notifications",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -2152,7 +2152,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/web-app/deps-bump",
+      "worktree": "~/kira-space-wts/web-app/deps-bump",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -2198,7 +2198,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/mobile/mob-17-push-notification-settings-quiet-hours-and-digests",
+      "worktree": "~/kira-space-wts/mobile/mob-17-push-notification-settings-quiet-hours-and-digests",
       "setup": {
         "state": "running",
         "startedAt": 1790067000000,
@@ -2237,7 +2237,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/api/push-tokens",
+      "worktree": "~/kira-space-wts/api/push-tokens",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -2289,7 +2289,7 @@
       "upstreamBehind": 0,
       "mergedIntoMain": false,
       "mergedAt": null,
-      "worktree": "~/wt/web-app/header-redesign",
+      "worktree": "~/kira-space-wts/web-app/header-redesign",
       "setup": {
         "state": "ready",
         "startedAt": 1789894800000,
@@ -2547,6 +2547,6 @@
       "lastFetchAt": 1790064000000
     }
   ],
-  "worktreeBasePath": "~/wt",
+  "worktreeBasePath": "~/kira-space-wts",
   "autofetchMinutes": 5
 }

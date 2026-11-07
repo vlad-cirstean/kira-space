@@ -7,7 +7,7 @@ import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
 
-// Kira DB audit trail in the Details list. Contract ade-db-audit; backend half: flows/adeflow
+// Kira Studio audit trail in the Details list. Contract ade-db-audit; backend half: flows/adeflow
 // TestDbAuditTrail. The contract masks ids and times, so the specs fill them in.
 
 const t = (id: string) => `[data-testid="${id}"]`;
@@ -81,7 +81,7 @@ test('the toggle is on by default and counts the actions', async ({ relaunch }) 
   const { window: page } = await openPlan(relaunch, snapshots());
   await openDetails(page);
   await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true');
-  await expect(toggle(page)).toContainText('Kira DB (7)');
+  await expect(toggle(page)).toContainText('Kira Studio (7)');
   await expect(rows(page)).toHaveCount(7);
   const times = await rows(page).evaluateAll((els) =>
     els.map((e) => e.getAttribute('data-status')),

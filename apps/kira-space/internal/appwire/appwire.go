@@ -265,7 +265,7 @@ type Wired struct {
 	// AgentPort imports and exports a provider's native user-level agent config.
 	AgentPort    *agentport.Service
 	AgentPortSvc *bridge.AgentPortService
-	// AgentSettings is the shared agent settings every launch gets; AgentSecrets holds the values it references.
+	// AgentSettings is the agent settings every launch gets; AgentSecrets holds the values it references.
 	AgentSettings *agentcfg.Store
 	AgentSecrets  *agentcfg.SecretStore
 
@@ -519,8 +519,6 @@ func Build(opts Options) (*Wired, error) {
 		embedSpec = *opts.EmbedSpec
 	}
 	w.Memory = bridge.NewMemoryService(emitter, harness.ActiveInstaller(w.Agents), promptStore, embedSpec, w.Agents, memoryModelFrom(repositories.Settings))
-	removeLegacyGitSocket()
-	go removeRetiredModels()
 
 	proofSvc, dbMcpSessions := w.wireDbServices(dbm, opts)
 	// Archive closes a task's review windows through the registry.
@@ -533,6 +531,8 @@ func Build(opts Options) (*Wired, error) {
 			return w.Windows.Close(key)
 		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions)
 	runs.ADE = w.AdeBoard
+	// proof_save on the session server attaches to the task through the board, which exists only now.
+	w.DbMcp.ProofAttach = w.AdeBoard
 	w.watchRepoConfig(events)
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
 	loader, err := scripts.NewLoader(scripts.LoaderOptions{
@@ -770,16 +770,11 @@ func keepsContextOnResume(r *harness.Registry) []string {
 	return out
 }
 
-// wireAgentSettings opens the shared credential store, builds the settings store, writes the agent
+// wireAgentSettings wraps the credential store on kira.db, builds the settings store, writes the agent
 // folder's AGENTS.md and watches the folder. It returns the watcher's stop. A failure leaves the
 // settings off with a warning: launches start without them, never without Kira's own wiring.
 func (w *Wired) wireAgentSettings(registry *harness.Registry, repositories *repos.Repos, home string, cipher *secrets.Cipher, events *bridge.Events) func() {
-	sec, err := agentcfg.OpenSecrets(filepath.Join(home, "agent-secrets.db"), cipher)
-	if err != nil {
-		slog.Warn("agent settings: open secrets", "scope", "startup", "err", err)
-	} else {
-		w.AgentSecrets = sec
-	}
+	w.AgentSecrets = agentcfg.NewSecrets(repositories.CustomScripts.DB, cipher)
 	store, err := agentcfg.New(agentcfg.Options{
 		Dir: configfs.ModuleDir(home, agentctx.Folder), Providers: registry, Secrets: w.AgentSecrets, App: "Space",
 		Projection: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: agentctx.Folder},
@@ -841,9 +836,6 @@ func (w *Wired) closeAgentSettings() {
 	}
 	if w.AgentSettings != nil {
 		_ = w.AgentSettings.Close()
-	}
-	if w.AgentSecrets != nil {
-		_ = w.AgentSecrets.Close()
 	}
 }
 

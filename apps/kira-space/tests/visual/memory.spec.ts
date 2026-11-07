@@ -1,13 +1,13 @@
 import { expect, test } from '../ui/fixtures';
 import { contract } from '../ui/support/contract';
 import { IPC } from '../ui/support/ipcChannels';
-import { openMemory } from '../ui/support/memoryNav';
+import { openMemory, withMemory } from '../ui/support/memoryNav';
 
 // P285 Part 4: the distill view after a run, every line picked. Backend values from contract
 // memory-distill.
 test('memory: distill result (P285)', async ({ relaunch }) => {
   const { window } = await relaunch({
-    control: [
+    control: withMemory([
       {
         channel: IPC.memoryDistillLimits,
         response: contract('memory-distill', 'MemoryDistillService.Limits'),
@@ -16,7 +16,7 @@ test('memory: distill result (P285)', async ({ relaunch }) => {
         channel: IPC.memoryDistillRun,
         response: contract('memory-distill', 'MemoryDistillService.Distill#done'),
       },
-    ],
+    ]),
   });
   await openMemory(window);
   await window.locator('[data-testid="memory-distill"]').click();

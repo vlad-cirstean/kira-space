@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,7 +18,6 @@ import (
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 
-	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -267,166 +265,6 @@ func TestConnectionSecrets(t *testing.T) {
 
 	if _, err := cfg.SetSecret(bridge.ConnectionSecretArgs{Kind: "bogus", Name: "x", Value: "v"}); testx.AsIpcErr(t, err).Code != "E_CONTRACT" {
 		t.Errorf("SetSecret with an unknown kind = %v, want a contract error", err)
-	}
-}
-
-// Rows and secrets written before the connection files existed become files at the next start: ids and
-// sealed secrets carry over, masks, filters and DDL move into the file, and the superseded columns and
-// tables are gone.
-func TestConnectionFilesMigration(t *testing.T) {
-	app := flowharness.New(t)
-	const sc = "connection-files-migration"
-	const now = int64(1767225600000)
-	exec := func(q string, args ...any) {
-		t.Helper()
-		if _, err := app.DB().Exec(q, args...); err != nil {
-			t.Fatalf("seed %q: %v", q, err)
-		}
-	}
-	seal := func(scope secrets.Scope, plain string) string {
-		t.Helper()
-		sealed, err := secrets.New().Encrypt(scope, plain)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return sealed
-	}
-
-	// Put the schema back the way it was before the export dropped it.
-	exec(`ALTER TABLE connections ADD COLUMN password TEXT`)
-	exec(`ALTER TABLE connections ADD COLUMN uri TEXT`)
-	exec(`CREATE TABLE connection_tree_filters (connection_id TEXT NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
-		scope TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (connection_id, scope, value))`)
-	exec(`CREATE TABLE connection_ddl (connection_id TEXT PRIMARY KEY REFERENCES connections(id) ON DELETE CASCADE,
-		ddl TEXT NOT NULL, updated_at TEXT NOT NULL)`)
-	exec(`DELETE FROM settings WHERE key = 'config.migrated.connections'`)
-
-	exec(`INSERT INTO connections (id, name, kind, color, mode, host, port, database, username, password, created_at, updated_at)
-		VALUES ('11111111-1111-4111-8111-111111111111', 'Legacy Pg', 'postgres', 'red', 'fields', '127.0.0.1', 5432, 'app', 'kira', ?, ?, ?)`,
-		seal(secrets.ScopeConnection, fileSecret), now, now)
-	exec(`INSERT INTO connections (id, name, kind, color, mode, uri, created_at, updated_at)
-		VALUES ('22222222-2222-4222-8222-222222222222', 'Legacy Mongo', 'mongodb', 'none', 'uri', ?, ?, ?)`,
-		seal(secrets.ScopeConnectionURI, "mongodb://u:p@127.0.0.1:27017/app"), now, now)
-	exec(`INSERT INTO connection_tree_filters (connection_id, scope, value) VALUES ('11111111-1111-4111-8111-111111111111', 'kind', 'view')`)
-	exec(`INSERT INTO connection_ddl (connection_id, ddl, updated_at) VALUES ('11111111-1111-4111-8111-111111111111', 'create table t (id int);', ?)`, now)
-	exec(`INSERT INTO connection_mask_rules (id, connection_id, table_name, column_name, mask_kind, keep_hint, correlate, created_at, updated_at)
-		VALUES ('m1', '11111111-1111-4111-8111-111111111111', '*', 'email', 'redact', 1, 1, ?, ?)`, now, now)
-
-	app.Restart()
-
-	dir := app.W.ConnectionFiles.Dir()
-	text, err := os.ReadFile(filepath.Join(dir, "legacy-pg.yaml"))
-	if err != nil {
-		t.Fatalf("connection file: %v", err)
-	}
-	for _, want := range []string{"name: Legacy Pg", "color: red", "${secret:legacy-pg.password}", "hidden_kinds", "create table t", "email"} {
-		if !strings.Contains(string(text), want) {
-			t.Errorf("legacy-pg.yaml lacks %q:\n%s", want, text)
-		}
-	}
-	if strings.Contains(string(text), fileSecret) {
-		t.Errorf("the secret value is in the file:\n%s", text)
-	}
-	if _, err := os.Stat(filepath.Join(dir, "legacy-mongo.yaml")); err != nil {
-		t.Fatalf("uri connection file: %v", err)
-	}
-
-	pg, ok := connectionNamed(t, app, "11111111-1111-4111-8111-111111111111")
-	if !ok || pg.File != "legacy-pg.yaml" || pg.Color != "red" {
-		t.Fatalf("migrated row = %+v (%v), want the same id bound to legacy-pg.yaml", pg, ok)
-	}
-	if r := app.W.Connections.Reveal(bridge.ConnectionsRevealArgs{ID: pg.ID, Confirmed: true}); r.Password == nil || *r.Password != fileSecret {
-		t.Fatalf("Reveal after migration = %+v, want the original password", r)
-	}
-	if vis, err := app.W.Filters.List(bridge.FiltersListArgs{ConnectionID: pg.ID}); err != nil || len(vis.HiddenKinds) != 1 || vis.HiddenKinds[0] != "view" {
-		t.Fatalf("Filters.List = %+v (%v), want the migrated filter", vis, err)
-	}
-	if ddl, err := app.W.Schema.Get(bridge.SchemaGetArgs{ConnectionID: pg.ID}); err != nil || ddl.DDL != "create table t (id int);" {
-		t.Fatalf("Schema.Get = %+v (%v), want the migrated DDL", ddl, err)
-	}
-	if rules, err := app.W.MaskRules.List(bridge.MaskRulesListArgs{ConnectionID: pg.ID}); err != nil || len(rules) != 1 || rules[0].ColumnName != "email" {
-		t.Fatalf("MaskRules.List = %+v (%v), want the migrated rule", rules, err)
-	}
-	view, err := app.W.ConnectionConfig.View()
-	if err != nil {
-		t.Fatal(err)
-	}
-	app.Contract(t, sc, "ConnectionConfigService.View", view, flowharness.Replace(app.SpaceHome, "<home>"))
-
-	// The superseded columns and tables are gone, and a later start exports nothing again.
-	var n int
-	if err := app.DB().QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE name IN ('connection_tree_filters', 'connection_ddl')`).Scan(&n); err != nil || n != 0 {
-		t.Errorf("legacy tables left = %d (%v), want 0", n, err)
-	}
-	if err := app.DB().QueryRow(`SELECT COUNT(*) FROM pragma_table_info('connections') WHERE name IN ('password', 'uri')`).Scan(&n); err != nil || n != 0 {
-		t.Errorf("legacy columns left = %d (%v), want 0", n, err)
-	}
-	before, _ := os.ReadFile(filepath.Join(dir, "legacy-pg.yaml"))
-	if err := os.Remove(filepath.Join(dir, "legacy-pg.yaml")); err != nil {
-		t.Fatal(err)
-	}
-	app.Restart()
-	if _, err := os.Stat(filepath.Join(dir, "legacy-pg.yaml")); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("a later start rewrote the deleted file (%d bytes before): %v", len(before), err)
-	}
-}
-
-// A failed file write during the export leaves every legacy row in place, and the next start finishes it.
-func TestConnectionFilesMigrationFailedWrite(t *testing.T) {
-	app := flowharness.New(t)
-	const now = int64(1767225600000)
-	ids := []string{"11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"}
-	for _, q := range []string{
-		`ALTER TABLE connections ADD COLUMN password TEXT`,
-		`ALTER TABLE connections ADD COLUMN uri TEXT`,
-		`CREATE TABLE connection_tree_filters (connection_id TEXT NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
-			scope TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (connection_id, scope, value))`,
-		`CREATE TABLE connection_ddl (connection_id TEXT PRIMARY KEY REFERENCES connections(id) ON DELETE CASCADE,
-			ddl TEXT NOT NULL, updated_at TEXT NOT NULL)`,
-		`DELETE FROM settings WHERE key = 'config.migrated.connections'`,
-	} {
-		if _, err := app.DB().Exec(q); err != nil {
-			t.Fatalf("seed %q: %v", q, err)
-		}
-	}
-	for i, name := range []string{"Legacy One", "Legacy Two"} {
-		if _, err := app.DB().Exec(`INSERT INTO connections (id, name, kind, color, mode, host, port, database, username, created_at, updated_at)
-			VALUES (?, ?, 'postgres', 'none', 'fields', '127.0.0.1', 5432, 'app', 'kira', ?, ?)`, ids[i], name, now, now); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	// An immutable folder makes every file write fail, even for root.
-	dir := app.W.ConnectionFiles.Dir()
-	app.Quit(t)
-	if err := os.RemoveAll(dir); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := exec.Command("chattr", "+i", dir).Run(); err != nil {
-		t.Skipf("cannot make the folder immutable: %v", err)
-	}
-	unlock := func() { _ = exec.Command("chattr", "-i", dir).Run() }
-	t.Cleanup(unlock)
-	app.Restart()
-	for _, id := range ids {
-		if _, ok := connectionNamed(t, app, id); !ok {
-			t.Fatalf("connection %s is gone after a failed export", id)
-		}
-	}
-
-	app.Quit(t)
-	unlock()
-	app.Restart()
-	for i, file := range []string{"legacy-one.yaml", "legacy-two.yaml"} {
-		if _, err := os.Stat(filepath.Join(dir, file)); err != nil {
-			t.Errorf("rerun did not write %s: %v", file, err)
-		}
-		if c, ok := connectionNamed(t, app, ids[i]); !ok || c.File != file {
-			t.Errorf("connection %s = %+v (%v), want bound to %s", ids[i], c, ok, file)
-		}
 	}
 }
 

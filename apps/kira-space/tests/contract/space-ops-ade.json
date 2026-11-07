@@ -3,7 +3,7 @@
     "background": false,
     "cancellable": false,
     "category": "git",
-    "command": "git worktree add -b feat/ops -- <home>/wt/api/<folder-id> refs/remotes/origin/main",
+    "command": "git worktree add -b feat/ops -- <home>/kira-space-wts/api/<folder-id> refs/remotes/origin/main",
     "commandTruncated": false,
     "connectionId": null,
     "durationMs": 0,
@@ -46,7 +46,7 @@
         "stderr": null
       },
       {
-        "argv": "git worktree add -b feat/ops -- <home>/wt/api/<folder-id> refs/remotes/origin/main",
+        "argv": "git worktree add -b feat/ops -- <home>/kira-space-wts/api/<folder-id> refs/remotes/origin/main",
         "durationMs": 0,
         "exitCode": 0,
         "readOnly": false,

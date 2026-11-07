@@ -80,7 +80,7 @@ func (c *Cipher) Status() Status { return c.status }
 // Scope becomes AES-GCM's additional
 // authenticated data (Scope.aad), so a ciphertext sealed for one kind of secret refuses to
 // authenticate anywhere but a column holding that same kind — an attacker who can write
-// ~/.kira-studio/kira.db but cannot read the Keychain item can no longer move a
+// ~/.kira-space/kira.db but cannot read the Keychain item can no longer move a
 // connections.password ciphertext into an api_variables.secret_value row and get the user to
 // decrypt it through the lower-friction variables Reveal gate.
 //

@@ -513,6 +513,8 @@ export class ReviewSessionState {
 /** What a host gets from `onReviewApi`: open a file's diff, and walk the list in its shown order. */
 export interface ReviewApi {
   selectFile(path: string): void;
+  /** Moves the list cursor to a file the host already shows; opens nothing. Unlisted paths are ignored. */
+  revealFile(section: 'committed' | 'working', path: string): void;
   /** The path after/before `path` in the list as shown (tree order or flat, filter applied), or
    *  null at either end or when `path` is not listed. */
   adjacentFile(path: string, dir: 'next' | 'previous'): string | null;

@@ -103,7 +103,7 @@ func (e *LimitError) Error() string {
 	if hasLimit(e.Hits, LimitExpensiveQuery) && e.Browse {
 		b.WriteString(". expensive_query is the query plan's estimated rows read, not rows returned. Filter or order on an indexed column, or reduce scope")
 	} else if hasLimit(e.Hits, LimitExpensiveQuery) {
-		b.WriteString(". expensive_query is the query plan's estimated rows read, not rows returned; explain_query shows which scan. Filter on an indexed column or narrow the join")
+		b.WriteString(". expensive_query is the query plan's estimated rows read, not rows returned; explain shows which scan. Filter on an indexed column or narrow the join")
 	}
 	if e.Browse {
 		fmt.Fprintf(&b, `. Improve the call, or ask the user to lift the limit for this call only: repeat this exact browse_table call with exemption {"id":%q,"reason":"<one sentence why>"}. The id works once and expires in %s.`, e.ExemptionID, approvalWindow())

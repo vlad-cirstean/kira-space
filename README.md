@@ -11,9 +11,6 @@ engines (DataGrip/DBeaver class), an HTTP/gRPC API client (Postman/Insomnia clas
 view and a Docker manager. You switch between modules with the mode switcher: **Agents**,
 **Automations**, **Memory**, **Git**, **Studio** (databases), **Api**, **Docker** and **Kubernetes**.
 
-Kira Space replaces the former Kira Studio app. Its database, API and Docker modules now live inside
-Kira Space. See [Upgrading from Kira Studio](#upgrading-from-kira-studio).
-
 See the presentation page: [Kira Space](https://vlad-cirstean.github.io/kira-studio/).
 
 ## Screenshots
@@ -60,18 +57,8 @@ curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scri
 ```
 
 The script downloads the latest release's disk image, moves the app into `/Applications` and opens
-it, with no Gatekeeper prompt (unlike a DMG downloaded through a browser). If an old Kira Studio is
-installed, the script moves it to the Trash. Once installed, the app checks GitHub for a newer
+it, with no Gatekeeper prompt (unlike a DMG downloaded through a browser). Once installed, the app checks GitHub for a newer
 release and offers to update; nothing installs until you click **Update**.
-
-### Upgrading from Kira Studio
-
-Kira Studio no longer ships as a separate app. Running the install command above installs Kira Space
-and moves `Kira Studio.app` to the Trash. The installer does not touch `~/.kira-studio/`. On first
-launch Kira Space folds that folder into `~/.kira-space/`: your saved connections, scripts, runs and
-Api collections move over, and the whole old folder is kept as a backup under
-`~/.kira-space/backups/` until you delete it. Quit Kira Studio first; Kira Space refuses to start
-while the old app is still running.
 
 ### Building from source
 
@@ -223,14 +210,13 @@ An optional local [MCP](https://modelcontextprotocol.io) server lets an AI clien
 databases under rules you set. It is off by default and enabled from Settings → Database MCP.
 
 - Loopback only, on port 8766, with its own bearer token.
-- Six core tools: `list_connections`, `list_children`, `describe_table`, `describe_schema`, `run_query`,
-  `explain_query`. Two more let the client see and stop running work: `list_operations` and
-  `cancel_operation`.
+- Core tools: `list_connections`, `list_children`, `describe`, `browse_table` and `run_query`
+  (with `explain` to plan a statement first). `operations` lets the client see and stop running work.
 - Tool descriptions suggest the AI client read a table's schema before querying it. Nothing enforces this.
 - **Scripts, opt-in** — a normal script exposes itself to the AI client with an `mcp` block in its
-  run file or the MCP tab of its dialog. Four tools: `list_scripts`, `run_script`, `get_script_run`
-  and `get_script_logs`. A script can run straight away or wait for your approval. A run result
-  never holds output; the client reads a size-limited, filterable log. A secret parameter keeps
+  run file or the MCP tab of its dialog. Three tools: `list_scripts`, `run_script` and
+  `get_script_run`. A script can run straight away or wait for your approval. A finished run returns
+  the last 50 output lines; `get_script_run` reads a size-limited, filterable log. A secret parameter keeps
   its saved value and the client can't set it.
 - **Deny by default** — a connection stays invisible to the AI client until you expose it.
 - **Per-connection permissions** — read, write and DDL are each *allow*, *deny* or *prompt*
@@ -288,8 +274,8 @@ Other scripts you'll use most:
 typecheck, `pre-push` runs the Go build and linters.
 
 **App data:** Kira Space keeps `kira.db`, `config/`, `logs/` and `review.db`
-under `~/.kira-space/` (override with `KIRA_SPACE_HOME`). Memories live in `~/.kira-memory/`
-(`KIRA_MEMORY_HOME`).
+under `~/.kira-space/` (override with `KIRA_SPACE_HOME`). Memories live in `~/.kira-space/memory/`.
+An old `~/.kira-memory` folder is no longer read and can be deleted.
 
 For local test databases, see [`scripts/demo-dbs/README.md`](scripts/demo-dbs/README.md). Test tiers
 are described in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)'s Testing section, and

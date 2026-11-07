@@ -121,7 +121,7 @@ test('a kind without a write console disables write and DDL, never hides them', 
 const line = (page: Awaited<ReturnType<typeof open>>, id: string) =>
   page.locator(`[data-testid="connection-mcp-enforce-${id}"]`);
 
-test('modes, DDL, exemption, throttle, rows and masking lines render for a SQL engine', async ({
+test('modes, DDL, exemption, throttle and rows lines render for a SQL engine, masking does not', async ({
   relaunch,
 }) => {
   const page = await open(relaunch, {
@@ -135,12 +135,10 @@ test('modes, DDL, exemption, throttle, rows and masking lines render for a SQL e
     'A dialog always appears, even when the mode is allow',
   );
   await expect(line(page, 'exemption')).toContainText('Approve all does not cover it');
-  await expect(line(page, 'throttle')).toContainText('one gate per connection');
+  await expect(line(page, 'throttle')).toContainText('An exemption does not lift it');
   await expect(line(page, 'rows')).toContainText('200 rows');
   await expect(line(page, 'rows')).toContainText('up to 2000');
-  await expect(line(page, 'masking')).toContainText('lowercased name');
-  await expect(line(page, 'masking')).toContainText('The rule’s table is ignored');
-  await expect(line(page, 'masking')).toContainText('can reveal values by which rows come back');
+  await expect(line(page, 'masking')).toHaveCount(0);
 });
 
 test('the DDL line hides for a kind without a write console, the rest stay', async ({
@@ -161,10 +159,11 @@ test('the exemption, throttle, rows and masking lines hide while MCP is off', as
   await expect(line(page, 'modes')).toBeVisible();
 });
 
-test('the Privacy tab repeats the masking limits', async ({ relaunch }) => {
+test('the Privacy tab holds the masking enforcement text', async ({ relaunch }) => {
   const page = await open(relaunch, { kind: 'sqlite', mcp: {} });
   await page.locator('[data-testid="connection-tab-privacy"]').click();
-  await expect(page.locator('[data-testid="connection-privacy-enforce-masking"]')).toContainText(
-    'best effort',
-  );
+  const masking = page.locator('[data-testid="connection-privacy-enforce-masking"]');
+  await expect(masking).toContainText('lowercased name');
+  await expect(masking).toContainText('table is ignored');
+  await expect(masking).toContainText('Best effort');
 });

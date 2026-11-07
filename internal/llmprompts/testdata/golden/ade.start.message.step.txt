@@ -3,5 +3,5 @@ Task: Add login form
 - Repo: kira-space · Branch: feat/a · Worktree: /wt/kira-space/feat-a
 Step: Implement
 - Last rebase of feat/a failed: conflicts (run r1; call run_outcome for details)
-Kira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every branch; you name each, the user approves. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.
+Kira Space tools: task_info, declare_repos, request_branches. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for all; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.
 Call handover with notes for the next stage; they join the task's notes. Set finished true when this stage is done.

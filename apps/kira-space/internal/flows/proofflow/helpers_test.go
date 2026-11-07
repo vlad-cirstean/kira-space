@@ -103,25 +103,35 @@ func (f *fixture) fail(t *testing.T, name string, args map[string]any) string {
 	return text(res)
 }
 
-func (f *fixture) start(t *testing.T, name string) string {
-	t.Helper()
-	var r proof.StartResult
-	f.call(t, "proof_start_session", map[string]any{"name": name}, &r)
-	return r.DraftID
+func saveArgs(name string, steps []map[string]any) map[string]any {
+	list := make([]any, len(steps))
+	for i, st := range steps {
+		list[i] = st
+	}
+	return map[string]any{"name": name, "steps": list}
 }
 
-func (f *fixture) addStep(t *testing.T, draft string, args map[string]any) int {
-	t.Helper()
-	args["draftId"] = draft
-	var r struct{ Ordinal int }
-	f.call(t, "proof_add_step", args, &r)
-	return r.Ordinal
-}
-
-func (f *fixture) closeDraft(t *testing.T, draft string) proof.CloseResult {
+// save creates a proof through proof_save and returns its answer.
+func (f *fixture) save(t *testing.T, name string, steps ...map[string]any) proof.CloseResult {
 	t.Helper()
 	var r proof.CloseResult
-	f.call(t, "proof_close_session", map[string]any{"draftId": draft}, &r)
+	f.call(t, "proof_save", saveArgs(name, steps), &r)
+	return r
+}
+
+// saveFail runs a proof_save that must be refused and returns the message the agent sees.
+func (f *fixture) saveFail(t *testing.T, name string, steps ...map[string]any) string {
+	t.Helper()
+	return f.fail(t, "proof_save", saveArgs(name, steps))
+}
+
+// edit changes a closed proof through proof_save with a reason.
+func (f *fixture) edit(t *testing.T, name, reason string, steps ...map[string]any) proof.CloseResult {
+	t.Helper()
+	args := saveArgs(name, steps)
+	args["reason"] = reason
+	var r proof.CloseResult
+	f.call(t, "proof_save", args, &r)
 	return r
 }
 

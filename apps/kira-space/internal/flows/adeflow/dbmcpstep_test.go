@@ -25,12 +25,12 @@ import (
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-// P548 Kira DB tools in workflow steps. Contract ade-db-mcp-step: tests/ui/ade-v2-workflow-db-mcp.spec.ts reads it.
+// P548 Kira Studio tools in workflow steps. Contract ade-db-mcp-step: tests/ui/ade-v2-workflow-db-mcp.spec.ts reads it.
 
 const (
 	dbScenario  = "ade-db-mcp-step"
-	dbSrvName   = "kira-db-session"
-	dbAllowRule = "mcp__kira-db-session"
+	dbSrvName   = "kira-studio-session"
+	dbAllowRule = "mcp__kira-studio-session"
 )
 
 var dbURLRe = regexp.MustCompile(`"url":"([^"]+)"`)
@@ -141,8 +141,11 @@ func TestDbMcpStep(t *testing.T) {
 		t.Fatal(err)
 	}
 	listConnections := fakeagent.MCPCall{Server: dbSrvName, Tool: "list_connections"}
+	proofSave := fakeagent.MCPCall{Server: dbSrvName, Tool: "proof_save", Args: map[string]any{"name": "Db step proof", "steps": []any{map[string]any{
+		"description": "Notes", "view": "keyvalue", "data": map[string]any{"entries": []any{map[string]any{"field": "rows", "value": 1}}},
+	}}}}
 	claude(app, map[string][]fakeagent.Action{"*": {
-		{MCP: []fakeagent.MCPCall{listConnections, {Server: dbSrvName, Tool: "proof_list_sessions"}}, Name: "done"},
+		{MCP: []fakeagent.MCPCall{listConnections, {Server: dbSrvName, Tool: "proof_list"}, proofSave}, Name: "done"},
 		{MCP: []fakeagent.MCPCall{listConnections}, Name: "done"},
 		{WaitFile: hold},
 	}})
@@ -190,18 +193,26 @@ func TestDbMcpStep(t *testing.T) {
 	if got := fakeFile(t, app, "mcp-list_connections-1.json"); !strings.Contains(got, "step db") {
 		t.Fatalf("list_connections result = %s, want the connection", got)
 	}
-	fakeFile(t, app, "mcp-proof_list_sessions-1.json")
+	fakeFile(t, app, "mcp-proof_list-1.json")
+	// proof_save on the session server attaches the new proof to the step's task.
+	if got := taskProofs(t, app, task.ID); len(got) != 1 || got[0].Name != "Db step proof" || got[0].Source != "agent" || got[0].StepID != "withdb" {
+		t.Fatalf("task proofs = %+v, want the saved proof attached by the agent", got)
+	}
 	args1 := fakeFile(t, app, "api-1.args")
 	mustContain(t, "withdb argv", args1, dbAllowRule)
+	if !regexp.MustCompile(`(?m)^mcp__kira-studio$`).MatchString(args1) {
+		t.Fatalf("withdb argv = %q, want the user-scope kira-studio denied beside %s", args1, dbSrvName)
+	}
 	if names := mcpServerNames(t, fakeFile(t, app, "api-1.mcp0")); len(names) != 2 {
-		t.Fatalf("withdb servers = %v, want kira-ade and %s", names, dbSrvName)
+		t.Fatalf("withdb servers = %v, want kira-space and %s", names, dbSrvName)
 	}
 
-	// 3. A step without db_mcp has only kira-ade; calling the session server fails.
+	// 3. A step without db_mcp has only kira-space; calling the session server fails.
 	waitRun(t, app, task.ID, "plain", "failed")
 	mustLack(t, "plain argv", fakeFile(t, app, "api-2.args"), dbAllowRule)
-	if names := mcpServerNames(t, fakeFile(t, app, "api-2.mcp0")); len(names) != 1 || names[0] != "kira-ade" {
-		t.Fatalf("plain servers = %v, want only kira-ade", names)
+	mustLack(t, "plain argv", fakeFile(t, app, "api-2.args"), "mcp__kira-studio\n")
+	if names := mcpServerNames(t, fakeFile(t, app, "api-2.mcp0")); len(names) != 1 || names[0] != "kira-space" {
+		t.Fatalf("plain servers = %v, want only kira-space", names)
 	}
 	mustContain(t, "plain run log", logText(t, app, "run", latestRunID(t, app, task.ID, "plain")), "mcp:")
 

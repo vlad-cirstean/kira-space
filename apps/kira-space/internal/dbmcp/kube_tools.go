@@ -208,18 +208,24 @@ func (s *Server) kubeListClusters(ctx context.Context, _ *mcp.CallToolRequest, _
 	return jsonResult(out)
 }
 
-func (s *Server) kubeListNamespaces(ctx context.Context, _ *mcp.CallToolRequest, a kubeClusterArgs) (*mcp.CallToolResult, any, error) {
-	return s.kubeRun(ctx, a.ClusterID, kubeDiscover, "",
-		func(c kubernetes.Cluster) string { return kubernetes.NamespacesCommand(c.Context) },
-		func(ctx context.Context) (any, error) {
-			return s.cfg.Kube.Namespaces(ctx, kubernetes.ClusterArgs{ClusterID: a.ClusterID})
-		})
+// kubeDiscoverResult is kube_discover's answer: the namespaces and the listable kinds of one cluster.
+type kubeDiscoverResult struct {
+	kubernetes.NamespacesResult
+	Kinds   []kubeKindView `json:"kinds"`
+	Partial bool           `json:"partial"`
 }
 
-func (s *Server) kubeListKinds(ctx context.Context, _ *mcp.CallToolRequest, a kubeClusterArgs) (*mcp.CallToolResult, any, error) {
+// kubeDiscoverTool returns namespaces and kinds under one discover approval.
+func (s *Server) kubeDiscoverTool(ctx context.Context, _ *mcp.CallToolRequest, a kubeClusterArgs) (*mcp.CallToolResult, any, error) {
 	return s.kubeRun(ctx, a.ClusterID, kubeDiscover, "",
-		func(c kubernetes.Cluster) string { return kubernetes.KindsCommand(c.Context) },
+		func(c kubernetes.Cluster) string {
+			return kubernetes.NamespacesCommand(c.Context) + "\n" + kubernetes.KindsCommand(c.Context)
+		},
 		func(ctx context.Context) (any, error) {
+			ns, err := s.cfg.Kube.Namespaces(ctx, kubernetes.ClusterArgs{ClusterID: a.ClusterID})
+			if err != nil {
+				return nil, err
+			}
 			r, err := s.cfg.Kube.Kinds(ctx, kubernetes.ClusterArgs{ClusterID: a.ClusterID})
 			if err != nil {
 				return nil, err
@@ -228,7 +234,7 @@ func (s *Server) kubeListKinds(ctx context.Context, _ *mcp.CallToolRequest, a ku
 			for _, k := range r.Kinds {
 				kinds = append(kinds, kubeKindView{Key: k.Key, Kind: k.Kind, Namespaced: k.Namespaced, Category: k.Category})
 			}
-			return map[string]any{"kinds": kinds, "partial": r.Partial}, nil
+			return kubeDiscoverResult{NamespacesResult: ns, Kinds: kinds, Partial: r.Partial}, nil
 		})
 }
 
@@ -311,20 +317,16 @@ func cutLines(s string, max int) (string, bool) {
 	return cut, true
 }
 
-// addKubeTools registers the six read-only kube_* tools next to the database tools.
+// addKubeTools registers the five read-only kube tools next to the database tools.
 func (s *Server) addKubeTools(srv *mcp.Server, src llmprompts.Source) {
 	desc := func(e llmprompts.Prompt[llmprompts.NoVars]) string { return e.Text(src, llmprompts.NoVars{}) }
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "kube_list_clusters", Description: desc(llmprompts.DbmcpToolKubeListClusters),
 	}, withPanicRecovery(s, "kube_list_clusters", s.kubeListClusters))
 	mcp.AddTool(srv, &mcp.Tool{
-		Name: "kube_list_namespaces", Description: desc(llmprompts.DbmcpToolKubeListNamespaces),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeClusterArgs](src, llmprompts.DbmcpToolKubeListNamespaces.ID(), nil), "clusterId"),
-	}, withPanicRecovery(s, "kube_list_namespaces", s.kubeListNamespaces))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name: "kube_list_kinds", Description: desc(llmprompts.DbmcpToolKubeListKinds),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeClusterArgs](src, llmprompts.DbmcpToolKubeListKinds.ID(), nil), "clusterId"),
-	}, withPanicRecovery(s, "kube_list_kinds", s.kubeListKinds))
+		Name: "kube_discover", Description: desc(llmprompts.DbmcpToolKubeDiscover),
+		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeClusterArgs](src, llmprompts.DbmcpToolKubeDiscover.ID(), nil), "clusterId"),
+	}, withPanicRecovery(s, "kube_discover", s.kubeDiscoverTool))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "kube_list_resources", Description: desc(llmprompts.DbmcpToolKubeListResources),
 		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeListArgs](src, llmprompts.DbmcpToolKubeListResources.ID(),

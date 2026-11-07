@@ -1,4 +1,4 @@
-// Package dbaudit records what agent sessions do through the Kira DB session server: one row per
+// Package dbaudit records what agent sessions do through the Kira Studio session server: one row per
 // tool call and per approval, never row data, bound values or results (docs/ARCHITECTURE.md
 // "Audit trail").
 package dbaudit
@@ -118,7 +118,7 @@ func (r *Recorder) CallStarted(c dbmcp.AuditCall) {
 	if connID != "" && r.d.ConnName != nil {
 		row.ConnectionName = r.d.ConnName(connID)
 	}
-	if c.Tool == "run_query" || c.Tool == "explain_query" {
+	if c.Tool == "run_query" {
 		var ok bool
 		row.Statement, row.StatementLen, ok, row.StatementTruncated = r.redactStatement(connID, str("sql"))
 		if !ok && row.StatementLen > 0 {

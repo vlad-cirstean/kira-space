@@ -78,7 +78,7 @@ test('the field defaults to 10 and states what a hit does', async ({ relaunch })
     '0 turns the timeout off. Default 10 s.',
   );
   await expect(enforcement(page)).toContainText('The database stops the statement itself.');
-  await expect(enforcement(page)).toContainText('approve it in a dialog');
+  await expect(enforcement(page)).toContainText('approved exemption');
   await expect(enforcement(page)).toContainText('queued behind other ops does not count');
 });
 
@@ -86,7 +86,7 @@ test('0 turns the timeout off and says so', async ({ relaunch }) => {
   const page = await openTimeoutTab(relaunch, { kind: 'postgres', timeout: 0 });
   await expect(field(page)).toHaveValue('0');
   await expect(enforcement(page)).toContainText('No timeout.');
-  await expect(enforcement(page)).not.toContainText('approve it in a dialog');
+  await expect(enforcement(page)).not.toContainText('approved exemption');
 });
 
 test('a value over the range shows the range error', async ({ relaunch }) => {

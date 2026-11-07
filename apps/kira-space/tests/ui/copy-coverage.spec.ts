@@ -46,9 +46,10 @@ import {
   openBrowseLeaf,
   openRowMenu,
 } from './studio/support/tree';
-import { adeFixture, adeV2Control, bandOf, openPlan } from './support/adeV2';
+import { adeFixture, adeV2Control, bandOf, openAdeRepos, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
+import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 
 // Chrome text on the ADE, repos, settings, memory and title bar surfaces comes from
@@ -226,26 +227,22 @@ reviewTest('review window', async ({ relaunch }) => {
   });
 });
 
-test('repositories dialog', async ({ relaunch }) => {
-  const { window: page } = await relaunch({
-    control: adeV2Control([{ channel: IPC.windowsEnsure, response: { mode: 'git' } }]),
-  });
-  await page.locator(t('manage-repos')).click();
-  await page.locator(t('repos-dialog')).waitFor();
+test('repositories page', async ({ relaunch }) => {
+  const { window: page } = await openAdeRepos(relaunch);
   await setPseudoLocale(page);
   // The settings file's path is data from the contract, not chrome.
   const allow = [...fixtureData(), /^(?:\/[\w.-]+)*\/repos\/$|^proj\.yaml$/];
-  await expectCatalogText(page.locator(t('repos-dialog')), { allow });
-  await page.locator(t('repos-dialog-repo')).nth(1).click();
-  await expectCatalogText(page.locator(t('repos-dialog')), { allow });
-  await page.locator(t('repos-dialog-tab-folders')).click();
-  await expectCatalogText(page.locator(t('repos-dialog')), { allow });
+  await expectCatalogText(page.locator(t('ade-repos')), { allow });
+  await page.locator(t('ade-repos-repo')).nth(1).click();
+  await expectCatalogText(page.locator(t('ade-repos')), { allow });
+  await page.locator(t('ade-repos-tab-folders')).click();
+  await expectCatalogText(page.locator(t('ade-repos')), { allow });
 });
 
 test('settings dialog, every pane', async ({ relaunch }) => {
   const status = contract<{ command: string }>('memory-settings', 'MemoryService.McpStatus');
   const { window: page } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryMcpStatus, response: status },
       {
         channel: IPC.fileHandlersStatus,
@@ -255,7 +252,7 @@ test('settings dialog, every pane', async ({ relaunch }) => {
         channel: IPC.memoryCheckHook,
         response: contract('memory-settings', 'MemoryService.CheckHook'),
       },
-    ],
+    ]),
   });
   await emitWailsEvent(page, IPC.openSettings, undefined);
   await page.locator(t('settings-dialog')).waitFor();
@@ -278,6 +275,7 @@ test('settings dialog, every pane', async ({ relaunch }) => {
     'Agent',
     'Memory',
     'Advanced',
+    'Experimental',
   ]) {
     await page.locator(t(`settings-section-${section}`)).click();
     await expectCatalogText(page.locator(t('settings-dialog')), { allow });
@@ -285,7 +283,7 @@ test('settings dialog, every pane', async ({ relaunch }) => {
 });
 
 test('memory panel, add memory dialog and import view', async ({ relaunch }) => {
-  const { window: page } = await relaunch();
+  const { window: page } = await relaunch({ control: withMemory() });
   await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
   await expect(page.locator(t('memory-panel'))).toBeVisible();
   await setPseudoLocale(page);

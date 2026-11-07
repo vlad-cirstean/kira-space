@@ -21,7 +21,7 @@ import { connectionRow } from './support/tree';
 
 const FILE = 'local.yaml';
 const dlg = '[data-testid="connection-file-dialog"]';
-const DESCRIPTION_START = 'Ops per second this app admits to the database for this connection';
+const DESCRIPTION_START = 'Ops per second sent to the database';
 
 const list = () => contract<ConnectionSummary[]>('connection-files', 'ConnectionsService.List');
 const view = () =>
@@ -69,14 +69,14 @@ test('the MCP tab names the shared throttle', async ({ relaunch }) => {
   const line = on.locator('[data-testid="connection-mcp-throttle"]');
   await expect(line).toContainText('share this connection’s throttle of 2 ops per second');
   await expect(line).toContainText('Advanced tab');
-  await expect(line).toContainText(DESCRIPTION_START);
+  await expect(line).not.toContainText(DESCRIPTION_START);
 });
 
 test('the MCP tab says MCP calls are not throttled at 0', async ({ relaunch }) => {
   const page = await open(relaunch, 0, 'mcp');
   const line = page.locator('[data-testid="connection-mcp-throttle"]');
   await expect(line).toContainText('MCP calls are not throttled on this connection');
-  await expect(line).toContainText('0 turns the throttle off');
+  await expect(line).toContainText('throttle 0');
 });
 
 test('a console run that waits too long for the connection shows the busy error', async ({

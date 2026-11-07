@@ -219,15 +219,15 @@ func (r *ProofRepo) CreateSessionDraft(id, name, nameKey, summary, draftID strin
 		if n, err := draftCount(tx, r.Dialect); err != nil {
 			return err
 		} else if n >= ProofMaxDrafts {
-			return proofErr(ProofLimit, "%d proof drafts are already open; close one with proof_close_session first", n)
+			return proofErr(ProofLimit, "%d proof saves are in flight; retry in a moment", n)
 		}
 		if ex, ok, err := sessionByKey(tx, r.Dialect, nameKey); err != nil {
 			return err
 		} else if ok {
 			if ex.State == "open" {
-				return proofErr(ProofNameTaken, "a proof session named %q is still open; pick another name, or close it first", ex.Name)
+				return proofErr(ProofNameTaken, "a proof session named %q is still being saved; retry in a moment", ex.Name)
 			}
-			return proofErr(ProofNameTaken, "a proof session named %q already exists (closed %s); pick another name, or call proof_edit_session to change it", ex.Name, time.UnixMilli(*ex.ClosedAt).UTC().Format(time.RFC3339))
+			return proofErr(ProofNameTaken, "a proof session named %q already exists (closed %s); pick another name, or call proof_save with a reason to change it", ex.Name, time.UnixMilli(*ex.ClosedAt).UTC().Format(time.RFC3339))
 		}
 		ps := kiraschema.ProofSessions
 		ins := r.Dialect.InsertInto(ps.Table).Cols(ps.ID, ps.Name, ps.NameKey, ps.State, ps.Summary, ps.CreatedAt, ps.UpdatedAt).
@@ -256,9 +256,9 @@ func (r *ProofRepo) CreateEditDraft(nameKey, draftID, reason string, now time.Ti
 		}
 		switch {
 		case !ok:
-			return proofErr(ProofNotFound, "no proof session with that name; call proof_list_sessions for the existing names")
+			return proofErr(ProofNotFound, "no proof session with that name; call proof_list for the existing names")
 		case s.State != "closed" || s.CurrentRev == nil:
-			return proofErr(ProofBadState, "proof session %q is still open; close it before editing", s.Name)
+			return proofErr(ProofBadState, "proof session %q is still being saved; retry in a moment", s.Name)
 		case s.PendingRev != nil:
 			return proofErr(ProofBadState, "proof session %q already has an edit waiting for the user's review", s.Name)
 		}
@@ -270,12 +270,12 @@ func (r *ProofRepo) CreateEditDraft(nameKey, draftID, reason string, now time.Ti
 			return err
 		}
 		if open > 0 {
-			return proofErr(ProofBadState, "proof session %q already has an edit draft open", s.Name)
+			return proofErr(ProofBadState, "proof session %q is already being edited; retry in a moment", s.Name)
 		}
 		if n, err := draftCount(tx, r.Dialect); err != nil {
 			return err
 		} else if n >= ProofMaxDrafts {
-			return proofErr(ProofLimit, "%d proof drafts are already open; close one with proof_close_session first", n)
+			return proofErr(ProofLimit, "%d proof saves are in flight; retry in a moment", n)
 		}
 		var rev int
 		rq := r.Dialect.Select("COALESCE(MAX(" + pr.Rev + "), 0) + 1").From(pr.Table)
@@ -371,7 +371,7 @@ func (r *ProofRepo) AddStep(draftID string, in ProofNewStep) (int, error) {
 		}
 		edit := cur.Valid
 		if (in.Keep != nil || in.Replaces != nil) && !edit {
-			return proofErr(ProofBadRef, "keepOrdinal and replacesOrdinal only apply to a draft from proof_edit_session")
+			return proofErr(ProofBadRef, "keepOrdinal and replacesOrdinal only apply when a reason edits an existing proof")
 		}
 		var count int
 		pst := kiraschema.ProofSteps
@@ -412,6 +412,36 @@ func (r *ProofRepo) AddStep(draftID string, in ProofNewStep) (int, error) {
 	return ordinal, err
 }
 
+// DiscardDraft drops an open draft: a never-closed session with its steps, or an unfinished edit
+// revision. An unknown draft id is not an error.
+func (r *ProofRepo) DiscardDraft(draftID string) error {
+	return r.tx(func(tx *sql.Tx) error {
+		var sid string
+		var rev int
+		var cur sql.NullInt64
+		err := sqlb.QueryRow(tx, r.draftSessionSelect(draftID, "r."+kiraschema.ProofRevisions.SessionID, "r."+kiraschema.ProofRevisions.Rev, "s."+kiraschema.ProofSessions.CurrentRev)).
+			Scan(&sid, &rev, &cur)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if !cur.Valid {
+			ps := kiraschema.ProofSessions
+			del := r.Dialect.DeleteFrom(ps.Table)
+			del.Where(del.Equal(ps.ID, sid))
+			_, err = sqlb.Exec(tx, del)
+			return err
+		}
+		pr := kiraschema.ProofRevisions
+		del := r.Dialect.DeleteFrom(pr.Table)
+		del.Where(del.Equal(pr.SessionID, sid), del.Equal(pr.Rev, rev))
+		_, err = sqlb.Exec(tx, del)
+		return err
+	})
+}
+
 // ProofClosed is CloseDraft's result.
 type ProofClosed struct {
 	SessionID, Name string
@@ -442,7 +472,7 @@ func (r *ProofRepo) CloseDraft(draftID string, now time.Time) (ProofClosed, erro
 			return err
 		}
 		if out.Steps == 0 {
-			return proofErr(ProofBadState, "the draft has no steps; call proof_add_step first")
+			return proofErr(ProofBadState, "the draft has no steps")
 		}
 		closedAt, err := monotonicClose(tx, r.Dialect, now)
 		if err != nil {
@@ -555,6 +585,18 @@ func (r *ProofRepo) Session(id string) (ProofSessionRow, bool, error) {
 	ps := kiraschema.ProofSessions
 	sb := r.Dialect.Select(proofSessionCols...).From(ps.Table)
 	sb.Where(sb.Equal(ps.ID, id), sb.Equal(ps.State, "closed"))
+	s, err := scanProofSession(sqlb.QueryRow(r.DB, sb))
+	if errors.Is(err, sql.ErrNoRows) {
+		return ProofSessionRow{}, false, nil
+	}
+	return s, err == nil, err
+}
+
+// SessionByKey returns the closed session with that name key; ok is false when absent or still open.
+func (r *ProofRepo) SessionByKey(nameKey string) (ProofSessionRow, bool, error) {
+	ps := kiraschema.ProofSessions
+	sb := r.Dialect.Select(proofSessionCols...).From(ps.Table)
+	sb.Where(sb.Equal(ps.NameKey, nameKey), sb.Equal(ps.State, "closed"))
 	s, err := scanProofSession(sqlb.QueryRow(r.DB, sb))
 	if errors.Is(err, sql.ErrNoRows) {
 		return ProofSessionRow{}, false, nil
@@ -806,13 +848,13 @@ func (r *ProofRepo) LinkTask(idOrKey string, byKey bool, l ProofTaskLink, now ti
 		sb.Where(sb.Equal(col, idOrKey))
 		s, err := scanProofSession(sqlb.QueryRow(tx, sb))
 		if errors.Is(err, sql.ErrNoRows) {
-			return proofErr(ProofNotFound, "no proof session with that name; call proof_list_sessions")
+			return proofErr(ProofNotFound, "no proof session with that name; call proof_list")
 		}
 		if err != nil {
 			return err
 		}
 		if s.State != "closed" {
-			return proofErr(ProofBadState, "close it with proof_close_session first")
+			return proofErr(ProofBadState, "the proof is still being saved; retry in a moment")
 		}
 		out = s
 		var taskID string

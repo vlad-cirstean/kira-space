@@ -56,7 +56,4 @@ const (
 	// caught via application.Options.ErrorHandler, never reachable from any log.Fatal* site
 	// in main.go because Wails calls os.Exit itself without ever returning to main.
 	StepPlatform Step = "platform"
-	// StepOldStudio is a running Kira Studio.app found at launch: P537 folded it into this app,
-	// and both would write the same data.
-	StepOldStudio Step = "oldStudio"
 )

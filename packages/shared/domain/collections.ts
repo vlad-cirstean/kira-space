@@ -42,7 +42,7 @@ export const httpSavedRequestSchema = /*#__PURE__*/ z.object({
   urlEncoded: /*#__PURE__*/ z.array(httpUrlEncodedFieldSchema).default([]),
   formData: /*#__PURE__*/ z.array(httpFormDataFieldSchema).default([]),
   binaryFile: httpBinaryFileSchema,
-  // P22b D7: a query param's own description, keyed by name — see httpRequestTabStateShape's own
+  // P22b D7: a query param's own description, keyed by name — see httpRequestTabStateSchema's own
   // comment (domain/http.ts) for why this is a side-car map rather than a `params` array. A plain
   // `.default({})` is not enough here, unlike every other field's `.default()` on this schema:
   // this member is brand new, so *every* row saved before this phase omits the Go struct field

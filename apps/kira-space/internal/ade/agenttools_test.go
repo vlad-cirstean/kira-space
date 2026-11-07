@@ -51,7 +51,7 @@ func TestSpaceTools_declareIsAdditiveAndIdempotent(t *testing.T) {
 		t.Fatalf("%d agent-origin branches; want 1 (web only)", agent)
 	}
 	_, err = e.board.DeclareRepos(ctx, id, []string{"nope"})
-	if msg := toolErrText(t, err); !strings.Contains(msg, "Manage repositories") || !strings.Contains(msg, "api") {
+	if msg := toolErrText(t, err); !strings.Contains(msg, "Agents > Repositories") || !strings.Contains(msg, "api") {
 		t.Fatalf("unknown repo message = %q", msg)
 	}
 }

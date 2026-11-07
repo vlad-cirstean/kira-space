@@ -5,7 +5,11 @@ import { installShot } from '../lib/installShots';
 import Icon from './Icon.astro';
 
 const { macos } = INSTALL;
-const dialogs = macos.items.map((item) => ({ ...item, image: installShot(item.file) }));
+const dialogs = macos.items.map((item) => ({
+  title: item.title,
+  body: item.body,
+  image: 'image' in item ? { ...item.image, shot: installShot(item.image.file) } : undefined,
+}));
 ---
 
 <section id="install" class="mx-auto max-w-5xl px-4 pb-20">
@@ -42,27 +46,20 @@ const dialogs = macos.items.map((item) => ({ ...item, image: installShot(item.fi
         <li>
           <h4 class="font-medium text-fg">{d.title}</h4>
           <p class="mt-1 text-base text-muted">{d.body}</p>
-          <figure class="m-0 mt-3">
-            {d.image ? (
+          {d.image && (
+            <figure class="m-0 mt-3">
               <img
-                src={d.image.src}
-                width={d.image.width}
-                height={d.image.height}
-                alt={d.alt}
+                src={d.image.shot.src}
+                width={d.image.shot.width / 2}
+                height={d.image.shot.height / 2}
+                alt={d.image.alt}
                 loading="lazy"
                 decoding="async"
-                class="h-auto max-w-full rounded-lg ring-1 ring-border-strong"
+                class="h-auto max-w-full drop-shadow-lg"
               >
-            ) : (
-              <div
-                data-install-pending
-                class="rounded-lg border border-dashed border-border-strong p-6 text-base text-muted"
-              >
-                Screenshot pending: {d.alt}
-              </div>
-            )}
-            <figcaption class="mt-2 text-base text-muted">{d.caption}</figcaption>
-          </figure>
+              <figcaption class="mt-2 text-base text-muted">{d.image.caption}</figcaption>
+            </figure>
+          )}
         </li>
       ))}
     </ul>

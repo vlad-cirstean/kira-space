@@ -45,7 +45,7 @@ func TestClaudeSettingsUntouched(t *testing.T) {
 
 	t.Run("ade_session_start", func(t *testing.T) {
 		rec := importRepo(t, app, repo.Dir)
-		saveWorkflow(t, app, "flow", "id: flow\nname: Flow\nsteps:\n  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n")
+		saveWorkflow(t, app, "flow", "id: flow\nname: Flow\nsteps:\n  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n")
 		task, err := app.W.AdeTask.CreateTask(ctx, adewire.CreateTaskArgs{Title: "Fix login", CodeRepoIDs: []string{rec.ID}, WorkflowID: "flow"})
 		if err != nil {
 			t.Fatal(err)

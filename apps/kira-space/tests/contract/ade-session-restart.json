@@ -1,7 +1,7 @@
 {
   "AdeTaskService.RestartSession": {
     "command": "<masked>",
-    "cwd": "<home>/wt/api/<wt>",
+    "cwd": "<home>/kira-space-wts/api/<wt>",
     "sessionId": "<masked>",
     "terminalId": "<masked>"
   }

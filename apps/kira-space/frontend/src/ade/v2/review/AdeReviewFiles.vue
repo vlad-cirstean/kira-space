@@ -7,13 +7,17 @@ import { useTimeoutFn, useWindowFocus } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import { errorText } from '@workbench/bridge/codedError';
 import { logError } from '@workbench/bridge/log';
-import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
+import { useWorkbenchHost } from '@workbench/host';
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 import { loadGitUi } from '../../../repo/git/gitUiModule';
 import { useGitRepoHold } from '../../../repo/git/repoHolds';
 import { notifyReviewRepaint } from '../../../repo/git/reviewRepaint';
 import { gitTransportFor } from '../../../repo/git/transport';
 import { openRepoWorkingReviewTab } from '../../../state/repoTabs';
 import { useReviewNavigationStore } from '../../../state/reviewNavigation';
+import { asRepoDiffTab } from '../../../state/tabDomain';
+import { useTabsStore } from '../../../state/tabs';
+import { repoIdOfTab } from '../../../state/workspace';
 import type { ReviewWindowTarget } from '../wire';
 import {
   invalidateReviewWorking,
@@ -58,6 +62,33 @@ useReviewWorkingStamp(
     ...(working.data.value?.files.map((f) => f.path) ?? []),
   ],
   () => working.data.value?.worktree !== '' && api.value !== null,
+);
+
+// The list follows the centre: the active review diff tab of this branch moves the list cursor.
+const host = useWorkbenchHost();
+const tabs = useTabsStore();
+const activeKey = computed(() => {
+  const id = tabs.activeIdByWorkspace[host.activeWorkspace.value];
+  const tab = asRepoDiffTab(tabs.tabs.find((t) => t.id === id));
+  if (!tab || repoIdOfTab(tab) !== props.target.codeRepoId) return null;
+  if (tab.state.working) {
+    return tab.state.working.branchId === props.target.branchId ? `working:${tab.path}` : null;
+  }
+  return tab.state.review?.branch === props.target.branch ? `committed:${tab.path}` : null;
+});
+watch(
+  [
+    activeKey,
+    api,
+    () => api.value?.committedPaths().length,
+    () => working.data.value?.files.length,
+  ],
+  ([key, a]) => {
+    if (!key || !a) return;
+    const split = key.indexOf(':');
+    a.revealFile(key.slice(0, split) as 'committed' | 'working', key.slice(split + 1));
+  },
+  { immediate: true },
 );
 
 // Every open diff of these paths re-reads its working review.

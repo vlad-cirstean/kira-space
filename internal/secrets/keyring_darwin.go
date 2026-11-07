@@ -5,6 +5,7 @@ package secrets
 import (
 	"crypto/rand"
 	"fmt"
+	"log/slog"
 
 	"github.com/keybase/go-keychain"
 )
@@ -16,16 +17,21 @@ const (
 	// "Safe Storage" is Chromium/Electron's own naming convention for this kind of Keychain item
 	// (what safeStorage itself would have called it) — this app has no Electron/Chromium in it
 	// (P57), so naming this item after a mechanism it doesn't use would be misleading.
-	keychainService = "Kira Studio Secrets"
-	keychainAccount = "Kira Studio"
-	keychainLabel   = "Kira Studio Secrets"
+	keychainService = "Kira Space Secrets"
+	keychainAccount = "Kira Space"
+	keychainLabel   = "Kira Space Secrets"
 	keyBytes        = 32
 )
 
 // loadOrCreateKey returns the app's single AES-256-GCM key, creating it on first run. This round
 // trip is also the darwin availability probe (P55 §2 D2): a canary item would be strictly weaker
-// and would leave litter in the user's Keychain.
+// and would leave litter in the user's Keychain. A v0.3.1 item is moved to the current names first;
+// if that fails the key is unavailable rather than regenerated, so no stored secret is orphaned.
 func loadOrCreateKey() ([]byte, error) {
+	if err := moveLegacyKey(); err != nil {
+		slog.Error("keychain: move the Kira Studio key to Kira Space failed", "scope", "secrets", "err", err)
+		return nil, err
+	}
 	return loadOrCreateKeyIn(keychainService, keychainAccount)
 }
 

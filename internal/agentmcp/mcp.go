@@ -243,7 +243,7 @@ func (s *Server) buildMCPServer(finish, space, outcomes, git, review, sandbox, h
 	if space {
 		opts.Instructions = llmprompts.HeadlessSpaceInstructions.Text(s.prompts, llmprompts.NoVars{})
 	}
-	srv := mcp.NewServer(&mcp.Implementation{Name: ServerName, Title: "Kira ADE", Version: "1"}, opts)
+	srv := mcp.NewServer(&mcp.Implementation{Name: ServerName, Title: "Kira Space", Version: "1"}, opts)
 	if finish {
 		schema, err := s.finishSchema(results)
 		if err != nil {

@@ -55,7 +55,7 @@ func (b *TaskBoard) proofLink(taskID, source, sessionID string) (proof.TaskLink,
 	return proof.TaskLink{TaskID: taskID, Source: source, KiraSessionID: sessionID, StepID: cur, StepName: stepName(tc, cur)}, nil
 }
 
-// AttachProof is attach_proof: a closed session, by name, joins the call's task.
+// AttachProof is report_artifacts kind proof: a closed session, by name, joins the call's task.
 func (b *TaskBoard) AttachProof(_ context.Context, call agentmcp.SpaceCall, name string) (agentmcp.AttachProofResult, error) {
 	links := b.proofLinks()
 	if links == nil {

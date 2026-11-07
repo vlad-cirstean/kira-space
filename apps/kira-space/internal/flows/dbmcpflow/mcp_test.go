@@ -491,9 +491,13 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 		t.Fatal("fixture connection missing")
 		return model.ConnectionSummary{}
 	}
-	// The legacy review_results key reads as every mode.
+	// Sets every mode of the per-mode review key.
 	setReview := func(value string) (model.ConnectionSummary, error) {
-		err := f.app.W.ConnectionFiles.Patch(f.connID, configfs.NodeSet{Path: []string{"mcp", "review_results"}, Value: value})
+		var sets []configfs.NodeSet
+		for _, mode := range []string{"read", "write", "ddl", "masked"} {
+			sets = append(sets, configfs.NodeSet{Path: []string{"mcp", "review", mode}, Value: value})
+		}
+		err := f.app.W.ConnectionFiles.Patch(f.connID, sets...)
 		return current(), err
 	}
 	replace := flowharness.Replace(f.dbPath, "/data/mcp.db")

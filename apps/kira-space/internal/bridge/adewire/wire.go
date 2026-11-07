@@ -128,7 +128,7 @@ type WorkflowStep struct {
 	Timeout      string   `json:"timeout"`
 	Prompt       string   `json:"prompt"` // agent prompt; manual: first session message
 	AllowedTools []string `json:"allowedTools"`
-	// DbMcp gives the step's agent sessions the Kira DB tools, for that session only (agent, review, manual session).
+	// DbMcp gives the step's agent sessions the Kira Studio tools, for that session only (agent, review, manual session).
 	DbMcp bool `json:"dbMcp"`
 	// SmartScript runs the named smart script instead of Prompt; Params are its values per param name.
 	SmartScript string              `json:"smartScript"`
@@ -615,7 +615,7 @@ type DbAuditLimit struct {
 	Threshold string `json:"threshold"`
 }
 
-// DbAuditApproval is one approval raised inside a Kira DB call. Outcome is pending, approved,
+// DbAuditApproval is one approval raised inside a Kira Studio call. Outcome is pending, approved,
 // denied, timedOut, abandoned, queueFull, tooLarge or heldFull.
 type DbAuditApproval struct {
 	ID              string         `json:"id"`
@@ -629,7 +629,7 @@ type DbAuditApproval struct {
 	ExemptionReason string         `json:"exemptionReason"`
 }
 
-// DbAuditEntry is one tool call of an agent session on the Kira DB session server. Statement is
+// DbAuditEntry is one tool call of an agent session on the Kira Studio session server. Statement is
 // masked (no literals); Status is running, ok, error, refused or cancelled.
 type DbAuditEntry struct {
 	ID                 string            `json:"id"`

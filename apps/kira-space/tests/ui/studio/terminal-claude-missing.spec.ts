@@ -55,7 +55,7 @@ const PREVIEW = {
   maxBudgetUsd: 1,
   timeout: '15m',
   tools: ['Read'],
-  allowedTools: ['Read', 'mcp__kira-ade__finish_step'],
+  allowedTools: ['Read', 'mcp__kira-space__finish_step'],
   mcpServers: [],
   hash: 'h1',
   needs: { tasks: [], branches: [] },

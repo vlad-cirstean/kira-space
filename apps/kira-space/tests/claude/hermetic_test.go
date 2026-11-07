@@ -99,8 +99,8 @@ func TestHermeticSession(t *testing.T) {
 			_, hookRan := os.Stat(hookMarker)
 			seen := strings.Contains(result+log, userMark)
 			if hermetic {
-				if !has("proj-probe") || !has("kira-ade") || has("user-probe") {
-					t.Fatalf("MCP servers = %v, want proj-probe and kira-ade, not user-probe", servers)
+				if !has("proj-probe") || !has("kira-space") || has("user-probe") {
+					t.Fatalf("MCP servers = %v, want proj-probe and kira-space, not user-probe", servers)
 				}
 				if seen || hookRan == nil {
 					t.Fatalf("user config leaked: marker seen %v, hook ran %v; servers %v; result %q; log:\n%s", seen, hookRan == nil, servers, result, tail(log, 2500))

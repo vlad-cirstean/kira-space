@@ -13,26 +13,21 @@ import AdeNeedsPage from '../needs/AdeNeedsPage.vue';
 import AdePanel from '../panel/AdePanel.vue';
 import AdePlanView from '../plan/AdePlanView.vue';
 import { usePlanModel } from '../plan/usePlanModel';
+import AdeReposPage from '../repos/AdeReposPage.vue';
 import { useReviewCode } from '../review/useReviewCode';
 import AdeRunDialog from '../run/AdeRunDialog.vue';
 import AdeTakeOverDialog from '../sessions/AdeTakeOverDialog.vue';
 import AdeStageDialog from '../stage/AdeStageDialog.vue';
-import { useAdeAgentsUiStore } from '../state/adeAgentsUi';
-import { useAdeBoardUiStore } from '../state/adeBoardUi';
-import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
+import { type AdeView, useAdeBoardUiStore } from '../state/adeBoardUi';
+import { switchAdeView } from '../state/adeView';
 import AdeWorkflowsPage from '../workflows/AdeWorkflowsPage.vue';
 import AdeCaptureBox from './AdeCaptureBox.vue';
 
 // Top bar (tabs, capture box, Add) over the active tab; the Plan opens the panel beside it.
 const ui = useAdeBoardUiStore();
-const wfUi = useAdeWorkflowsUiStore();
-const agentsUi = useAdeAgentsUiStore();
 
-async function onView(view: unknown): Promise<void> {
-  if (view === ui.view) return;
-  if (ui.view === 'workflows' && !(await wfUi.leave())) return;
-  if (ui.view === 'agents' && !(await agentsUi.leave())) return;
-  ui.view = view as typeof ui.view;
+function onView(view: unknown): void {
+  void switchAdeView(view as AdeView);
 }
 const { model } = usePlanModel();
 /** The panel on the Later tab opens only for a task that sits on a shelf. */
@@ -137,6 +132,13 @@ onScopeDispose(() => offReviewCode?.());
       </div>
       <TabsList class="justify-self-end">
         <TabsTrigger
+          value="repos"
+          :class="tabChipVariants({ active: ui.view === 'repos', size: 'wide' })"
+          data-testid="ade-tab-repos"
+        >
+          {{ t('common.module.repositories.label') }}
+        </TabsTrigger>
+        <TabsTrigger
           value="agents"
           :class="tabChipVariants({ active: ui.view === 'agents', size: 'wide' })"
           data-testid="ade-tab-agents"
@@ -159,6 +161,7 @@ onScopeDispose(() => offReviewCode?.());
       </template>
       <AdeNeedsPage v-else-if="ui.view === 'needs'" />
       <AdeAgentsPage v-else-if="ui.view === 'agents'" />
+      <AdeReposPage v-else-if="ui.view === 'repos'" />
       <AdeWorkflowsPage v-else-if="ui.view === 'workflows'" />
       <template v-else>
         <AdePlanView />

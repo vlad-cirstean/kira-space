@@ -48,8 +48,8 @@ func slug(s string) string {
 	return out
 }
 
-// safeSegment makes a repo name safe as one path segment.
-func safeSegment(s string) string {
+// PathSegment makes a repo name safe as one path segment.
+func PathSegment(s string) string {
 	s = strings.NewReplacer("/", "-", "\\", "-", "\x00", "").Replace(s)
 	if s == "" || s == "." || s == ".." {
 		return "repo"

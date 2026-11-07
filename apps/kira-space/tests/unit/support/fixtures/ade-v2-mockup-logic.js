@@ -551,7 +551,7 @@ class Component extends DCLogic {
           style: 'font-family: \'IBM Plex Mono\', monospace; font-size: 10.5px; font-weight: 500; white-space: nowrap; flex-shrink: 0; color: ' + (st === 'merged' ? '#6b7f72' : '#c9944a') + ';' };
       });
     }
-    function wtOf(b) { return '~/wt/' + b.repo + '/' + (b.name || b.suggest || '').split('/').pop(); }
+    function wtOf(b) { return '~/kira-space-wts/' + b.repo + '/' + (b.name || b.suggest || '').split('/').pop(); }
     // ---------- dialog openers
     function agentTargets(ids) { return ids.map(function (id) { var r = running(byB[id]); return { branch: id, choice: r.length ? r[0].id : 'new' }; }); }
     function stackIds(rootId) { var out = [rootId]; (function down(x) { (kids[x] || []).forEach(function (c) { if (byB[c].kind === 'mine' && !byB[c].draft) { out.push(c); down(c); } }); })(rootId); return out; }
@@ -1294,7 +1294,7 @@ class Component extends DCLogic {
         if (ontoB && ontoB.kind === 'review') lines.push('Do not modify ' + ontoB.name + '.');
         lines.push('Resolve any conflicts. ' + pushLine); lines.push(ask);
       } else if (D.kind === 'merge') {
-        var mb = byB[D.branch], twt = '~/wt/' + mb.repo + '/_' + D.target;
+        var mb = byB[D.branch], twt = '~/kira-space-wts/' + mb.repo + '/_' + D.target;
         lines.push('Merge ' + mb.name + ' into ' + D.target + ' (repo ' + mb.repo + ').');
         lines.push('1. git fetch origin');
         lines.push('2. Use the ' + D.target + ' worktree at ' + twt + ' (create it if missing: git worktree add ' + twt + ' origin/' + D.target + ' -B ' + D.target + ')');
@@ -1321,7 +1321,7 @@ class Component extends DCLogic {
         if (rj) lines.push('- Jira: ' + rj.key + ' ' + rj.url);
         if (D.create.length) {
           lines.push('- Create a branch from origin/main in each repo, each in its own new worktree:');
-          D.create.forEach(function (c) { var nm = (s.dialogBranches[c.id] || '').trim(); lines.push('  - ' + c.repo + ': ' + (nm ? 'branch ' + nm + ', worktree ~/wt/' + c.repo + '/' + nm.split('/').pop() : 'pick a short descriptive branch name; worktree under ~/wt/' + c.repo + '/')); });
+          D.create.forEach(function (c) { var nm = (s.dialogBranches[c.id] || '').trim(); lines.push('  - ' + c.repo + ': ' + (nm ? 'branch ' + nm + ', worktree ~/kira-space-wts/' + c.repo + '/' + nm.split('/').pop() : 'pick a short descriptive branch name; worktree under ~/kira-space-wts/' + c.repo + '/')); });
         }
         (D.bids || []).filter(function (bid) { return !byB[bid].draft; }).forEach(function (bid) { var b = byB[bid]; lines.push('- Repo: ' + b.repo + ' · Branch: ' + b.name + ' · Worktree: ' + wtOf(b)); });
         if (rSt) {
@@ -1339,7 +1339,7 @@ class Component extends DCLogic {
         if (st0.notes && D.create.length) lines.push('- Notes: ' + st0.notes);
         if (D.create.length) {
           lines.push('- Create a branch from origin/main in each repo, each in its own new worktree:');
-          D.create.forEach(function (c) { var nm = (s.dialogBranches[c.id] || '').trim(); lines.push('  - ' + c.repo + ': ' + (nm ? 'branch ' + nm + ', worktree ~/wt/' + c.repo + '/' + nm.split('/').pop() : 'pick a short descriptive branch name; worktree under ~/wt/' + c.repo + '/')); });
+          D.create.forEach(function (c) { var nm = (s.dialogBranches[c.id] || '').trim(); lines.push('  - ' + c.repo + ': ' + (nm ? 'branch ' + nm + ', worktree ~/kira-space-wts/' + c.repo + '/' + nm.split('/').pop() : 'pick a short descriptive branch name; worktree under ~/kira-space-wts/' + c.repo + '/')); });
         }
         var others = (D.sessionOn || []).filter(function (bid) { return !byB[bid].draft; });
         others.forEach(function (bid) { var b = byB[bid]; lines.push('- Repo: ' + b.repo + ' · Branch: ' + b.name + ' · Worktree: ' + wtOf(b)); });

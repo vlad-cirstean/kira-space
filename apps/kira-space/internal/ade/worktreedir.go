@@ -11,11 +11,17 @@ import (
 
 const maxWorktreeDirTry = 5
 
-// worktreeDirFor returns <home>/wt/<repo>/<wt_id> for the row, reserving the folder name on first use.
+// WorktreesDir is the visible folder under the user home that holds every task worktree.
+const WorktreesDir = "kira-space-wts"
+
+// WorktreesBase returns <home>/kira-space-wts.
+func WorktreesBase(home string) string { return filepath.Join(home, WorktreesDir) }
+
+// worktreeDirFor returns <home>/kira-space-wts/<repo>/<wt_id> for the row, reserving the folder name on first use.
 // owned is the path where the row's branch is already checked out ("" = none): any other existing
 // path counts as taken and the name is redrawn.
 func (b *TaskBoard) worktreeDirFor(sb model.AdeTaskBranch, repoName, owned string) (string, error) {
-	parent := filepath.Join(b.deps.HomeDir, "wt", safeSegment(repoName))
+	parent := filepath.Join(WorktreesBase(b.deps.HomeDir), PathSegment(repoName))
 	dir := sb.WorktreeDir
 	for range maxWorktreeDirTry {
 		if !ids.Is(ids.Worktree, dir) {

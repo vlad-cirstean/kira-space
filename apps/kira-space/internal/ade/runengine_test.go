@@ -388,7 +388,7 @@ func selfReturn(id string, limit int) string {
 	return backTo(id) + "    max_returns: " + strconv.Itoa(limit) + "\n"
 }
 
-const manualStep = "  - id: review\n    name: Review\n    kind: manual\n    status: In review\n"
+const manualStep = "  - id: review\n    name: Review\n    kind: manual\n    status: in-review\n"
 
 // --- tests -------------------------------------------------------------------------------------
 
@@ -606,7 +606,7 @@ func TestRunEngine_onceOnlyAndUnresolved(t *testing.T) {
 
 func TestRunEngine_scriptStep(t *testing.T) {
 	script := func(command string) string {
-		return flowYAML("  - id: ship\n    name: Ship\n    kind: script\n    status: In review\n    runs_on: each repo\n    timeout: 1m\n    command: |\n      " + command + "\n")
+		return flowYAML("  - id: ship\n    name: Ship\n    kind: script\n    status: in-review\n    runs_on: each repo\n    timeout: 1m\n    command: |\n      " + command + "\n")
 	}
 	t.Run("quoted variables and done", func(t *testing.T) {
 		e := newEngine(t, nil)

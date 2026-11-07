@@ -16,10 +16,12 @@ import (
 
 const (
 	// SessionServerName is the MCP server name an agent session sees. It differs from the external
-	// "kira-db" so a user-scope registration of that name never shadows it.
-	SessionServerName = "kira-db-session"
+	// "kira-studio" so a user-scope registration of that name never shadows it.
+	SessionServerName = "kira-studio-session"
 	// SessionAllowTool allows every tool of the session server (server-level allow rule).
 	SessionAllowTool = "mcp__" + SessionServerName
+	// ExternalDenyTool denies every tool of the user-scope "kira-studio" server.
+	ExternalDenyTool = "mcp__kira-studio"
 )
 
 // SessionIdentity names the agent session behind a call on the session server.

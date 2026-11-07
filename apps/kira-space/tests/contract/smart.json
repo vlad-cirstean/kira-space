@@ -121,7 +121,7 @@
         "Grep",
         "Glob",
         "mcp__fake__echo",
-        "mcp__kira-ade__finish_step"
+        "mcp__kira-space__finish_step"
       ],
       "mcpServers": [
         "fake"
@@ -171,7 +171,7 @@
         "Read",
         "Grep",
         "Glob",
-        "mcp__kira-ade__finish_step"
+        "mcp__kira-space__finish_step"
       ],
       "mcpServers": [],
       "tools": [
@@ -189,7 +189,7 @@
       "Grep",
       "Glob",
       "mcp__fake__echo",
-      "mcp__kira-ade__finish_step"
+      "mcp__kira-space__finish_step"
     ],
     "blocker": "",
     "body": "Say hi about {topic}",

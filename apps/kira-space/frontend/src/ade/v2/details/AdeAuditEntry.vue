@@ -10,7 +10,7 @@ import AdeRow from '../panel/AdeRow.vue';
 import type { DbAuditApproval, DbAuditEntry } from '../wire';
 import AdeOriginSession from './AdeOriginSession.vue';
 
-// One Kira DB action of an agent session in the Details list, with the approvals it raised.
+// One Kira Studio action of an agent session in the Details list, with the approvals it raised.
 // Read-only. The statement has its literals masked by the backend; nothing here can show a value.
 const props = defineProps<{ entry: DbAuditEntry; taskId: string; archived?: boolean }>();
 const emit = defineEmits<{ openSession: [sessionId: string] }>();

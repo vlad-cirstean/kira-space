@@ -18,8 +18,8 @@ import (
 // excludes this file by build tag rather than skipping it at runtime).
 func TestRealKeychainRoundTrip(t *testing.T) {
 	const (
-		testService = "Kira Studio Secrets (test)"
-		testAccount = "Kira Studio (test)"
+		testService = "Kira Space Secrets (test)"
+		testAccount = "Kira Space (test)"
 	)
 
 	cleanup := func() {

@@ -369,7 +369,7 @@ export interface HttpRequestSettingsWire {
 // Every body mode keeps its own buffer (flat siblings, not one nullable per-mode object) —
 // switching between modes must not lose any of their text, and flat keeps every field individually
 // `.default()`-able, which is what the restore-through-schema normalization relies on.
-const httpRequestTabStateShape = /*#__PURE__*/ z.object({
+export const httpRequestTabStateSchema = /*#__PURE__*/ z.object({
   method: httpMethodSchema.default('GET'),
   url: z.string().default(''),
   headers: /*#__PURE__*/ z.array(httpHeaderSchema).default([]),
@@ -421,22 +421,6 @@ const httpRequestTabStateShape = /*#__PURE__*/ z.object({
   requestPaneHeight: z.number().int().min(0).default(0),
 });
 
-// The legacy alias, kept working: `bodyMode: 'json'` with its text in `body`. `raw` used to carry
-// a language sub-selector. Now that `raw` means plain text only, the equivalent mode is `code`
-// with `codeLanguage: 'json'` — and because `raw` and `code` are separate buffers, the legacy text
-// has to move from `body` into `code`, not just have its mode value renamed. That is the one thing
-// a per-field enum preprocess (mapping just `bodyMode`) cannot do, so this preprocesses the whole
-// object instead, only for exactly this legacy shape; every other value passes through untouched.
-// Works only because a restored tab's state is normalized through this schema at all
-// (`state/tabKinds.ts`'s `parseState`).
-export const httpRequestTabStateSchema = /*#__PURE__*/ z.preprocess((v) => {
-  if (v !== null && typeof v === 'object' && (v as Record<string, unknown>).bodyMode === 'json') {
-    const obj = v as Record<string, unknown>;
-    const legacyBody = typeof obj.body === 'string' ? obj.body : '';
-    return { ...obj, bodyMode: 'code', code: legacyBody, codeLanguage: 'json' };
-  }
-  return v;
-}, httpRequestTabStateShape);
 export type HttpRequestTabState = z.infer<typeof httpRequestTabStateSchema>;
 
 export function defaultHttpRequestTabState(): HttpRequestTabState {

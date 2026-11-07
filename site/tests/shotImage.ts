@@ -14,6 +14,9 @@ export async function expectShotImage(page: Page, id: ShotId, phone: boolean): P
     else expect(src).not.toContain('-detail');
     return;
   }
+  await expect
+    .poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth))
+    .toBeGreaterThan(0);
   const { clientWidth, naturalWidth } = await img.evaluate((el: HTMLImageElement) => ({
     clientWidth: el.clientWidth,
     naturalWidth: el.naturalWidth,

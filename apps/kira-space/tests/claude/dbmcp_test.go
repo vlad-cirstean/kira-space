@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const dbServer = "kira-db"
+const dbServer = "kira-studio"
 
 // enableDbMcp creates an MCP-exposed SQLite connection, turns the DB MCP server on and returns
 // the connection name plus the URL and headersHelper path the app would register with Claude Code.
@@ -162,7 +162,7 @@ func TestDbMcpBrowseThroughClaude(t *testing.T) {
 	out, _ := app.claudeP(t, t.TempDir(), nil,
 		"Show me 3 rows of the notes table in the connection named "+connName+". Then reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", "mcp__"+dbServer+"__list_connections,"+tool+",mcp__"+dbServer+"__list_children,mcp__"+dbServer+"__describe_table",
+		"--allowedTools", "mcp__"+dbServer+"__list_connections,"+tool+",mcp__"+dbServer+"__list_children,mcp__"+dbServer+"__describe",
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 	uses := toolUses(msgs, tool)
@@ -176,8 +176,8 @@ func TestDbMcpBrowseThroughClaude(t *testing.T) {
 }
 
 // TestDbMcpScriptThroughClaude has the real claude run an allow-mode script over MCP, then read
-// its output with get_script_logs: the run result itself carries no output. The filter is the
-// model's choice, so the flow test covers it.
+// the output from the run result itself. The get_script_run filter is the model's choice, so the
+// flow test covers it.
 func TestDbMcpScriptThroughClaude(t *testing.T) {
 	app := newRealApp(t)
 	_, url, helper := enableDbMcp(t, app)
@@ -199,23 +199,18 @@ func TestDbMcpScriptThroughClaude(t *testing.T) {
 	}
 
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"You must use the kira-db MCP tools, loading them with ToolSearch if they are deferred. Call list_scripts, then run_script for the script probe with waitSeconds 20, then call get_script_logs for that run with contains set to marker. Reply with the matching line.",
+		"You must use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. Call list_scripts, then run_script for the script probe with waitSeconds 20. Reply with the output line containing marker.",
 		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_scripts,mcp__"+dbServer+"__run_script,mcp__"+dbServer+"__get_script_logs",
+		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_scripts,mcp__"+dbServer+"__run_script",
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 	runs := toolUses(msgs, "mcp__"+dbServer+"__run_script")
-	logs := toolUses(msgs, "mcp__"+dbServer+"__get_script_logs")
-	if len(runs) == 0 || len(logs) == 0 {
-		t.Fatalf("run_script uses %d, get_script_logs uses %d, want both:\n%s", len(runs), len(logs), tail(out, 1500))
+	if len(runs) == 0 {
+		t.Fatalf("no run_script use:\n%s", tail(out, 1500))
 	}
 	runText, isErr, ok := toolResult(msgs, runs[0].ID)
-	if !ok || isErr || strings.Contains(runText, "beta-marker") {
-		t.Fatalf("run_script result missing, an error or holding output (ok=%v, text=%q)", ok, runText)
-	}
-	logText, isErr, ok := toolResult(msgs, logs[0].ID)
-	if !ok || isErr || !strings.Contains(logText, "beta-marker") {
-		t.Fatalf("get_script_logs result = %q (ok=%v, err=%v), want the marker line", logText, ok, isErr)
+	if !ok || isErr || !strings.Contains(runText, "beta-marker") {
+		t.Fatalf("run_script result = %q (ok=%v, err=%v), want the marker line inline", runText, ok, isErr)
 	}
 }
 
@@ -274,14 +269,14 @@ func TestDbMcpSessionStep(t *testing.T) {
 		t.Fatalf("Connections.Connect: %v", err)
 	}
 	f.saveWorkflow(t, "flow", "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 3m\n    db_mcp: true\n"+
-		"    prompt: Call the list_connections tool of the kira-db-session server once, then call finish_step with status done and summary ok.\n"+
+		"    prompt: Call the list_connections tool of the kira-studio-session server once, then call finish_step with status done and summary ok.\n"+
 		manualStepYAML)
 	run := f.startRun(t, f.createTask(t, "flow"), "feat/real-claude-db")
 	log := f.runLog(t, run.ID)
 	if run.State != "done" {
 		t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 1500))
 	}
-	if !strings.Contains(log, "mcp__kira-db-session__list_connections") || !strings.Contains(log, connName) {
+	if !strings.Contains(log, "mcp__kira-studio-session__list_connections") || !strings.Contains(log, connName) {
 		t.Fatalf("run log lacks the list_connections call or %q:\n%s", connName, tail(log, 1500))
 	}
 }

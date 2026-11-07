@@ -44,18 +44,6 @@ function serializerFor<T>(defaultValue: T, schema: Schema<T> | undefined) {
   };
 }
 
-function migrateLegacyKey(key: string, legacyKey: string): void {
-  try {
-    if (localStorage.getItem(key) !== null) return;
-    const legacy = localStorage.getItem(legacyKey);
-    if (legacy === null) return;
-    localStorage.setItem(key, legacy);
-    localStorage.removeItem(legacyKey);
-  } catch {
-    // Storage blocked (private window): the default stands.
-  }
-}
-
 function readStored<T>(key: string, read: (raw: string) => T, defaultValue: T): T {
   try {
     const raw = localStorage.getItem(key);
@@ -93,18 +81,17 @@ function listenForRemoteChanges(): void {
 /**
  * Per-device UI state in `localStorage` under `kira.<module>.<name>` (each app and the phone UI is
  * its own origin, so no app segment). A stored value that fails `schema` reads as the default.
- * `migrateFrom` moves a value stored under an older key, once. Geometry that follows the user
+ * Geometry that follows the user
  * across windows belongs in the Go layout store and per-tab view state in the tab's `state_json`,
  * not here.
  */
 export function usePersistedState<T>(
   key: string,
   defaultValue: T,
-  opts: { schema?: Schema<T>; migrateFrom?: string } = {},
+  opts: { schema?: Schema<T> } = {},
 ): Ref<T> {
   const cached = cache.get(key);
   if (cached) return cached.state as Ref<T>;
-  if (opts.migrateFrom) migrateLegacyKey(key, opts.migrateFrom);
   const serializer = serializerFor(defaultValue, opts.schema);
   const state = ref(readStored(key, serializer.read, defaultValue)) as Ref<T>;
   const entry: Entry = { state, read: serializer.read, defaultValue };

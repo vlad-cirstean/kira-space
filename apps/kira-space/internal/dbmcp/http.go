@@ -190,7 +190,7 @@ func (s *Server) tokenVerifier() auth.TokenVerifier {
 	if s.cfg.Sessions != nil {
 		return s.cfg.Sessions.verifier()
 	}
-	return mcpauth.TokenVerifier("kira-db", func() mcpauth.Record {
+	return mcpauth.TokenVerifier("kira-studio", func() mcpauth.Record {
 		s.tokenMu.RLock()
 		defer s.tokenMu.RUnlock()
 		return s.token

@@ -3,6 +3,7 @@ import { defaultSettings } from '../../frontend/src/state/settingsDomain';
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
+import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
 
@@ -28,10 +29,10 @@ test('contract: Connect Claude Code shows the registration command', async ({ re
   const installed = contract<{ outcome: string }>('memory-settings', 'MemoryService.InstallAgent');
   expect(installed.outcome).toBe('installed');
   const { window: page } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryMcpStatus, response: status },
       { channel: IPC.memoryMcpInstall, response: installed },
-    ],
+    ]),
   });
   await openMemorySettings(page);
   await expect(page.locator('[data-testid="memory-mcp-command"]')).toContainText('kira-memory');
@@ -50,7 +51,7 @@ test('contract: check hook shows the install commands and copies each', async ({
   expect(check.installCommand).toContain('memory-check --install-hook');
   expect(check.hookLine).toContain('memory-check --staged');
   const { window: page } = await relaunch({
-    control: [{ channel: IPC.memoryCheckHook, response: check }],
+    control: withMemory([{ channel: IPC.memoryCheckHook, response: check }]),
   });
   await openMemorySettings(page);
   await expect(page.locator('[data-testid="memory-check-section"]')).toBeVisible();
@@ -81,10 +82,10 @@ for (const key of ['not-installed', 'cancelled'] as const) {
     );
     expect(status.state).toBe('notInstalled');
     const { window: page, control } = await relaunch({
-      control: [
+      control: withMemory([
         { channel: IPC.memorySemanticStatus, response: status },
         { channel: IPC.memorySemanticInstall, response: undefined },
-      ],
+      ]),
     });
     await openMemorySettings(page);
     const download = page.locator('[data-testid="memory-semantic-download"]');
@@ -114,12 +115,12 @@ test('contract: semantic install shows the download progress, then the installed
   );
   expect(downloading.state).toBe('downloading');
   const { window: page, control } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memorySemanticStatus, response: notInstalled },
       { channel: IPC.memorySemanticStatus, response: downloading },
       { channel: IPC.memorySemanticStatus, response: installed },
       { channel: IPC.memorySemanticInstall, response: undefined, hold: true },
-    ],
+    ]),
   });
   await openMemorySettings(page);
   const section = page.locator('[data-testid="memory-semantic"]');
@@ -143,10 +144,10 @@ test('contract: semantic install checksum failure shows the error', async ({ rel
     'MemoryService.SemanticStatus#not-installed',
   );
   const { window: page } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memorySemanticStatus, response: status },
       { channel: IPC.memorySemanticInstall, error: failure },
-    ],
+    ]),
   });
   await openMemorySettings(page);
   await page.locator('[data-testid="memory-semantic-download"]').click();
@@ -157,10 +158,10 @@ test('contract: semantic install checksum failure shows the error', async ({ rel
 
 test('semantic unavailable: shows the reason and a retry', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({
-    control: [
+    control: withMemory([
       semantic('unavailable', { message: 'model corrupt' }),
       { channel: IPC.memorySemanticRetry, response: undefined },
-    ],
+    ]),
   });
   await openMemorySettings(page);
   await expect(page.locator('[data-testid="memory-semantic-error"]')).toContainText(
@@ -183,7 +184,9 @@ test('contract: memory model saves memory.models with the dialog', async ({ rela
     'SettingsService.Set#memory-model',
   );
   const { window: page, control } = await relaunch({
-    control: [{ channel: IPC.settingsGetAll, response: { ...defaultSettings, memory } }],
+    control: withMemory([
+      { channel: IPC.settingsGetAll, response: { ...defaultSettings, memory } },
+    ]),
   });
   await openMemorySettings(page);
   const select = page.locator('[data-testid="settings-memory-agent-model"]');

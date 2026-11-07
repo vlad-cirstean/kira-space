@@ -167,7 +167,7 @@ export const INSTALL = {
   command:
     'curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh',
   steps: [
-    'Run the command in Terminal. It installs a fresh copy or replaces an older one, then opens the app. An installed Kira Studio moves to the Trash.',
+    'Run the command in Terminal. It installs a fresh copy or replaces an older one, then opens the app.',
   ],
   note: 'Kira Space is beta. Builds are ad-hoc signed.',
   source: 'Build from source: see the README on GitHub.',
@@ -179,16 +179,15 @@ export const INSTALL = {
       {
         title: 'Keychain access',
         body: 'Kira Space asks to use its own key. It is the one item the app stores, and it encrypts your saved credentials. Choose Always Allow once per build. Kira Space never reads items of other apps.',
-        file: 'keychain-access.webp',
-        alt: 'macOS Keychain dialog asking to let Kira Space use its own key.',
-        caption: 'Keychain. Choose Always Allow.',
+        image: {
+          file: 'keychain-access.webp',
+          alt: 'macOS Keychain dialog asking to let Kira Space use its own key.',
+          caption: 'Keychain. Choose Always Allow.',
+        },
       },
       {
         title: 'Folder access',
         body: 'macOS asks for access to folders that hold your repositories, such as Documents or Desktop. Allow it. Without access, Kira Space cannot read those repositories.',
-        file: 'folder-access.webp',
-        alt: 'macOS dialog asking to let Kira Space access a folder.',
-        caption: 'Folders. Allow the ones with your repositories.',
       },
     ],
   },

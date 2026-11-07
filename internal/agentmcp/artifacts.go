@@ -36,6 +36,10 @@ const (
 	ArtifactLink          = "link"
 )
 
+// ArtifactProof is the report_artifacts kind that attaches a closed proof session by name (ref). It is
+// not stored as an artifact, so ReportableArtifactKind refuses it.
+const ArtifactProof = "proof"
+
 // ReportableArtifactKind reports whether a kind may be reported.
 func ReportableArtifactKind(kind string) bool {
 	switch kind {
@@ -49,7 +53,7 @@ func ReportableArtifactKind(kind string) bool {
 // name), plus a title.
 type ArtifactInput struct {
 	Kind  string `json:"kind"`
-	Title string `json:"title"`
+	Title string `json:"title,omitempty"`
 	URL   string `json:"url,omitempty"`
 	Ref   string `json:"ref,omitempty"`
 }
@@ -82,6 +86,8 @@ type TaskArtifacts struct {
 // ReportArtifactsResult is report_artifacts' answer.
 type ReportArtifactsResult struct {
 	Recorded int `json:"recorded"`
+	// Proofs lists the proof sessions attached to the task by kind proof items.
+	Proofs []AttachProofResult `json:"proofs,omitempty"`
 }
 
 // CleanArtifact trims an input and returns it, or the refusal text when it breaks a rule.

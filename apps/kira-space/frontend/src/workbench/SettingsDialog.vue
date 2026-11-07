@@ -14,12 +14,14 @@ import ApiPane from '../studio/workbench/settings/ApiPane.vue';
 import CachePane from '../studio/workbench/settings/CachePane.vue';
 import DatabaseMcpPane from '../studio/workbench/settings/DatabaseMcpPane.vue';
 import DataPane from '../studio/workbench/settings/DataPane.vue';
+import { useMemoryEnabled } from './experimental';
 import AdvancedPane from './settings/AdvancedPane.vue';
 import AgentPane from './settings/AgentPane.vue';
 import AppearancePane from './settings/AppearancePane.vue';
 import CapturePane from './settings/CapturePane.vue';
 import CliToolsPane from './settings/CliToolsPane.vue';
 import ConfigSyncPane from './settings/ConfigSyncPane.vue';
+import ExperimentalPane from './settings/ExperimentalPane.vue';
 import FileTypesPane from './settings/FileTypesPane.vue';
 import GitPane from './settings/GitPane.vue';
 import MemoryPane from './settings/MemoryPane.vue';
@@ -49,7 +51,17 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
   'Database MCP': t('studio.settings.nav.databaseMcp.label'),
   Prompts: t('llmPrompts.nav.label'),
   Advanced: t('common.advanced.label'),
+  Experimental: t('space.settings.nav.experimental.label'),
 }));
+
+// Memory leaves the nav and unmounts while its flag is off: a mounted MemoryPane queries
+// MemoryService, which opens memory.db.
+const memoryEnabled = useMemoryEnabled();
+const shownSections = computed(() => sections.filter((s) => s !== 'Memory' || memoryEnabled.value));
+const initialSection = computed(() => {
+  const s = settingsStore.settingsSection;
+  return s && shownSections.value.includes(s) ? s : undefined;
+});
 
 // §10.1: a later plain open (the title bar's gear icon) must not inherit a deep link this instance
 // was opened with.
@@ -61,14 +73,15 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
 <template>
   <SettingsShell
     :section-labels="sectionLabels"
-    :sections="sections"
-    :initial-section="settingsStore.settingsSection ?? undefined"
+    :sections="shownSections"
+    :initial-section="initialSection"
     :defaults="{
       appearance: defaultSettings.appearance,
       advanced: defaultSettings.advanced,
       git: defaultSettings.git,
       agent: defaultSettings.agent,
       memory: defaultSettings.memory,
+      experimental: defaultSettings.experimental,
       capture: defaultSettings.capture,
       tracking: defaultSettings.tracking,
       data: defaultSettings.data,
@@ -84,6 +97,7 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
       git: settingsStore.git,
       agent: settingsStore.agent,
       memory: settingsStore.memory,
+      experimental: settingsStore.experimental,
       capture: settingsStore.capture,
       tracking: settingsStore.tracking,
       data: settingsStore.data,
@@ -162,6 +176,7 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
         :register-field-error="s.registerFieldError"
       />
       <MemoryPane
+        v-if="memoryEnabled"
         :active="s.activeSection === 'Memory'"
         :draft="s.draft"
         :is-at-default="s.isAtDefault"
@@ -199,6 +214,13 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
       <PromptsPane :active="s.activeSection === 'Prompts'" />
       <AdvancedPane
         :active="s.activeSection === 'Advanced'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <ExperimentalPane
+        :active="s.activeSection === 'Experimental'"
         :draft="s.draft"
         :is-at-default="s.isAtDefault"
         :reset-leaf="s.resetLeaf"

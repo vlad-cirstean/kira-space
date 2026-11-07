@@ -39,6 +39,11 @@ type schemaTooNew interface {
 	SchemaTooNew() (found, known int)
 }
 
+// schemaTooOld is the duck-typed interface for sqlitex.SchemaTooOldError, for the same reason.
+type schemaTooOld interface {
+	SchemaTooOld() (found, baseline int)
+}
+
 // collapse turns a possibly multi-line, possibly huge error string into one line bounded to max
 // bytes, so what a child process said never reaches a UI string unbounded. Every newline is
 // collapsed, not only the first, since a Go error's own text can carry embedded newlines anywhere.
@@ -113,6 +118,19 @@ func Classify(step Step, err error, info Info) Message {
 				Detail: detail,
 			}
 		}
+		if to, ok := err.(schemaTooOld); ok {
+			found, baseline := to.SchemaTooOld()
+			return Message{
+				Step: step, Expected: true,
+				Headline: "Your " + app + " data predates v0.3.1.",
+				Advice: fmt.Sprintf(
+					"Your data is at format version %d; this copy (%s) starts at %d. "+
+						"Open it with v0.3.1 first, then update. Your data has not been changed.",
+					found, info.Version, baseline,
+				),
+				Detail: detail,
+			}
+		}
 		return Message{
 			Step: step, Expected: true,
 			Headline: app + " couldn't open its database.",
@@ -142,13 +160,6 @@ func Classify(step Step, err error, info Info) Message {
 			Advice: "Check that " + info.home() +
 				" exists, is a folder you can write to, and that the disk isn't full.",
 			Detail: detail,
-		}
-	case StepOldStudio:
-		return Message{
-			Step: step, Expected: true,
-			Headline: "Kira Studio is still running.",
-			Advice:   "Kira Studio is now part of " + app + ". Quit Kira Studio, then open " + app + " again.",
-			Detail:   detail,
 		}
 	case StepRun:
 		return bugMessage(step, app+" couldn't open its main window.", detail)

@@ -15,7 +15,7 @@ var trailingSemicolonRE = regexp.MustCompile(`;\s*$`)
 
 // Explainable ports explain.ts's isExplainable verbatim:
 // strips leading comments, then requires a leading SELECT/WITH. Reused, not re-decided — see
-// explain_query's own refusal of anything else.
+// explain's own refusal of anything else.
 //
 // A leading SELECT/WITH says nothing about a second statement smuggled behind it — the
 // splitter that decided this was "one statement" can itself be fooled, and Postgres's simple

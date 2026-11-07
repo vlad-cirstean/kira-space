@@ -22,7 +22,7 @@ func TestLaunchWithoutClaude(t *testing.T) {
 	t.Setenv("SHELL", stub)
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	rec := importRepo(t, app, repo.Dir)
-	saveWorkflow(t, app, "flow", flowYAML("flow", "  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n"))
+	saveWorkflow(t, app, "flow", flowYAML("flow", "  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n"))
 	task := createTask(t, app, "Fix login", "flow", rec.ID)
 
 	_, err := app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: task.ID})

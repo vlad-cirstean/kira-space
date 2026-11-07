@@ -157,7 +157,7 @@ func TestTaskBoard_snapshotAssembly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(board.Tasks) != 6 || board.WorktreeBasePath != "/home/u/wt" || board.AutofetchMinutes != 5 {
+	if len(board.Tasks) != 6 || board.WorktreeBasePath != "/home/u/kira-space-wts" || board.AutofetchMinutes != 5 {
 		t.Fatalf("board shell: %d tasks, %q, %d", len(board.Tasks), board.WorktreeBasePath, board.AutofetchMinutes)
 	}
 	if got := board.Repos[0]; got.MainName != "main" || got.Remote != "origin" {

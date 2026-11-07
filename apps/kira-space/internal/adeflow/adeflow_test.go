@@ -75,7 +75,6 @@ func TestParse_rules(t *testing.T) {
 		{"status optional", head + "  - id: u\n    name: U\n    kind: manual\n", 0, ""},
 		{"skip", head + manual("u", "    skip: true\n") + manual("v", ""), 0, ""},
 		{"all skipped", head + manual("u", "    skip: true\n"), 0, "at least one step must not be skipped"},
-		{"stages refused", "id: w\nname: W\nstages:\n  - id: u\n", 3, "\"stages\" is no longer supported: list every step under \"steps\" (see the Agents docs)"},
 		{"unknown top key", "id: w\nname: W\nbogus: 1\nsteps: []\n", 3, "unknown key"},
 		{"empty steps", "id: w\nname: W\nsteps: []\n", 3, "steps must be a non-empty list"},
 		{"missing name", "id: w\nsteps:\n  - id: u\n", 0, "name is required"},

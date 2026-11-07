@@ -61,7 +61,7 @@ test('contract: with no list every table is allowed and the enforcement is state
   await expect(page.locator(rows)).toHaveCount(0);
   const enforce = page.locator('[data-testid="connection-mcp-tables-enforce"]');
   await expect(enforce).toContainText('parses every MCP statement');
-  await expect(enforce).toContainText('refused');
+  await expect(enforce).toContainText('refuses any');
   await expect(enforce).toContainText('view is checked by its own name');
   await expect(enforce).toContainText('No exemption applies');
 });

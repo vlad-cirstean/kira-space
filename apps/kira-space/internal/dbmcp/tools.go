@@ -70,13 +70,13 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 	return jsonResult(out)
 }
 
-// resolveReadGated is list_children/describe_table/describe_schema's shared preamble:
+// resolveReadGated is list_children/describe's shared preamble:
 // resolve the connection, then refuse if read mode denies. done is true whenever the caller should
 // return (res, out, err) immediately, same convention as resolveVerdict/awaitApproval below.
 //
 // Schema-browsing tools are gated at read-mode's own minimum bar — deny refuses, same as every other
 // read here — except that an open masked read passes too: browse_table needs the columns. Not extended to prompt's own approval dialog: unlike run_query/
-// explain_query, none of these run caller-supplied SQL against the connection, so there is no
+// explain, none of these run caller-supplied SQL against the connection, so there is no
 // statement to show the human in an approval request.
 func (s *Server) resolveReadGated(connectionID string) (summary model.ConnectionSummary, res *mcp.CallToolResult, out any, err error, done bool) {
 	summary, err = s.resolveEnabled(connectionID)
@@ -137,18 +137,18 @@ func (s *Server) listChildren(ctx context.Context, _ *mcp.CallToolRequest, args 
 	return jsonResult(filterNodes(summary, set, result.Nodes))
 }
 
-// --- describe_table (§4.3) ---
+// --- describe ---
 
-type describeTableArgs struct {
+type describeArgs struct {
 	ConnectionID string `json:"connectionId"`
 	Path         string `json:"path"`
 	Refresh      bool   `json:"refresh,omitempty"`
 }
 
-// describeTable is gated on Caps().Describe only in the sense that an adapter which cannot serve
-// it already answers E_UNSUPPORTED in its own words (kafka/s3/sqs/redis) — surfaced verbatim by
-// toolError rather than an invented message here (§4.3).
-func (s *Server) describeTable(ctx context.Context, _ *mcp.CallToolRequest, args describeTableArgs) (*mcp.CallToolResult, any, error) {
+// describe answers for the node the path ends at: a database or schema returns the columns of its
+// relations, anything else returns that one node's structure. An adapter that cannot describe a node
+// answers E_UNSUPPORTED in its own words (kafka/s3/sqs/redis), surfaced verbatim by toolError.
+func (s *Server) describe(ctx context.Context, _ *mcp.CallToolRequest, args describeArgs) (*mcp.CallToolResult, any, error) {
 	summary, res, out, err, done := s.resolveReadGated(args.ConnectionID)
 	if done {
 		return res, out, err
@@ -156,6 +156,13 @@ func (s *Server) describeTable(ctx context.Context, _ *mcp.CallToolRequest, args
 	set, serr := allowListOf(summary)
 	if serr != nil {
 		return badListResult(summary)
+	}
+	if isContainerPath(summary, args.Path) {
+		result, err := s.cfg.Tree.SchemaColumns(ctx, args.ConnectionID, args.Path, args.Refresh)
+		if err != nil {
+			return toolError(err)
+		}
+		return jsonResult(filterRelations(summary, set, args.Path, result.Relations))
 	}
 	if msg := allowedPath(summary, set, args.Path, true); msg != "" {
 		return errResult(msg)
@@ -167,28 +174,14 @@ func (s *Server) describeTable(ctx context.Context, _ *mcp.CallToolRequest, args
 	return jsonResult(result.Meta)
 }
 
-// --- describe_schema (§4.4) ---
-
-type describeSchemaArgs struct {
-	ConnectionID string `json:"connectionId"`
-	Path         string `json:"path"`
-	Refresh      bool   `json:"refresh,omitempty"`
-}
-
-func (s *Server) describeSchema(ctx context.Context, _ *mcp.CallToolRequest, args describeSchemaArgs) (*mcp.CallToolResult, any, error) {
-	summary, res, out, err, done := s.resolveReadGated(args.ConnectionID)
-	if done {
-		return res, out, err
+// isContainerPath reports whether the path's last segment is a database or schema.
+func isContainerPath(summary model.ConnectionSummary, path string) bool {
+	p, err := model.DecodePath(summary.ID, path)
+	if err != nil || len(p.Segments) == 0 {
+		return false
 	}
-	set, serr := allowListOf(summary)
-	if serr != nil {
-		return badListResult(summary)
-	}
-	result, err := s.cfg.Tree.SchemaColumns(ctx, args.ConnectionID, args.Path, args.Refresh)
-	if err != nil {
-		return toolError(err)
-	}
-	return jsonResult(filterRelations(summary, set, args.Path, result.Relations))
+	k := p.Segments[len(p.Segments)-1].Kind
+	return k == "database" || k == "schema"
 }
 
 // --- run_query (§4.5) ---
@@ -204,6 +197,9 @@ type runQueryArgs struct {
 	Path         string `json:"path"`
 	Mode         string `json:"mode"`
 	MaxRows      int    `json:"maxRows,omitempty"`
+	// Explain plans the statement without running it; IncludeRaw keeps the server's own plan text.
+	Explain    bool `json:"explain,omitempty"`
+	IncludeRaw bool `json:"includeRaw,omitempty"`
 	// Exemption asks the user to lift the limits of an earlier refusal for this exact call.
 	Exemption *exemptionArgs `json:"exemption,omitempty"`
 }
@@ -232,7 +228,16 @@ type exemptionArgs struct {
 // exempted is checked, and an exempted call raises exactly one
 // db.exemption approval in place of the db.query one, whatever the mode's verdict. Exec limits wrap the
 // execute step; one that trips refuses with a fresh id.
-func (s *Server) runQuery(ctx context.Context, _ *mcp.CallToolRequest, args runQueryArgs) (*mcp.CallToolResult, any, error) {
+func (s *Server) runQuery(ctx context.Context, req *mcp.CallToolRequest, args runQueryArgs) (*mcp.CallToolResult, any, error) {
+	if args.IncludeRaw && !args.Explain {
+		return errResult("includeRaw needs explain: true")
+	}
+	if args.Explain {
+		if args.Mode != modeRead || args.Exemption != nil {
+			return errResult("explain plans a read: use mode read and no exemption")
+		}
+		return s.explainQuery(ctx, req, explainQueryArgs{ConnectionID: args.ConnectionID, SQL: args.SQL, Path: args.Path, IncludeRaw: args.IncludeRaw})
+	}
 	rv, res, out, err, done := s.resolveVerdict(ctx, args)
 	if done {
 		return res, out, err
@@ -714,13 +719,13 @@ func approvalOutcomeError(outcome ApprovalOutcome, subject string) (*mcp.CallToo
 	}
 }
 
-// --- explain_query (§4) ---
+// --- explain: run_query with explain true ---
 
 type explainQueryArgs struct {
 	ConnectionID string `json:"connectionId"`
-	SQL          string `json:"sql"`
-	Path         string `json:"path"`
-	IncludeRaw   bool   `json:"includeRaw,omitempty"`
+	SQL          string
+	Path         string
+	IncludeRaw   bool
 }
 
 // explainQueryResult embeds queryplan.Plan so its own fields inline directly into the result
@@ -732,7 +737,7 @@ type explainQueryResult struct {
 	ThresholdRows int `json:"thresholdRows"`
 }
 
-// explainPreflight runs the explain_query checks that need no connection. A non-empty msg refuses the call.
+// explainPreflight runs the explain checks that need no connection. A non-empty msg refuses the call.
 func (s *Server) explainPreflight(args explainQueryArgs) (model.ConnectionSummary, modes, string, error) {
 	summary, err := s.resolveEnabled(args.ConnectionID)
 	if err != nil {
@@ -745,10 +750,10 @@ func (s *Server) explainPreflight(args explainQueryArgs) (model.ConnectionSummar
 	if !queryplan.Supported(summary.Kind) {
 		return summary, modes{}, fmt.Sprintf("connection %q (%s) has no EXPLAIN this app can parse", summary.Name, summary.Kind), nil
 	}
-	// §8.1: explain_query accepts only what queryplan.Explainable accepts — a DELETE/UPDATE never
+	// §8.1: explain accepts only what queryplan.Explainable accepts — a DELETE/UPDATE never
 	// gets its own EXPLAIN path (ClickHouse's EXPLAIN can execute its target on some forms).
 	if !queryplan.Explainable(args.SQL) {
-		return summary, modes{}, "explain_query only accepts a SELECT or WITH statement", nil
+		return summary, modes{}, "explain only accepts a SELECT or WITH statement", nil
 	}
 	m := modesOf(summary)
 	if m.read == "deny" {

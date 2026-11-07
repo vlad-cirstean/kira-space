@@ -69,11 +69,12 @@ import { useObjectStoreStore } from './studio/state/objectStore';
 import GenerateDataDialog from './studio/workbench/GenerateDataDialog.vue';
 import UploadObjectDialog from './studio/workbench/UploadObjectDialog.vue';
 import { createAutomationsModule } from './workbench/automationsModule';
+import { installMemoryGate, useVisibleModes } from './workbench/experimental';
 import GitCredentialDialog from './workbench/GitCredentialDialog.vue';
 import { createWorkbenchHost } from './workbench/host';
 import MobilePairingDialog from './workbench/MobilePairingDialog.vue';
 import { createMemoryModule } from './workbench/memoryModule';
-import { CONNECTION_PANEL_MODES, MODE_ORDER, MODES } from './workbench/modes';
+import { CONNECTION_PANEL_MODES, MODES } from './workbench/modes';
 import SettingsDialog from './workbench/SettingsDialog.vue';
 import WorkbenchShell from './workbench/WorkbenchShell.vue';
 
@@ -97,6 +98,8 @@ const layoutStore = useLayoutStore();
 const settingsStore = useSettingsStore();
 useAgentMessageDefaults(() => settingsStore.agent.provider, control);
 const modeStore = useModeStore();
+const visibleModes = useVisibleModes();
+installMemoryGate();
 const keepAwakeStore = useKeepAwakeStore();
 const paletteStore = usePaletteStore();
 providePaletteCommands(appPaletteCommands());
@@ -215,7 +218,7 @@ function onToggleKeepAwake(): void {
     <ProofWindow v-else-if="proofWindow.active" />
     <div v-else class="h-full flex flex-col">
       <WorkbenchTitleBar
-        :order="MODE_ORDER"
+        :order="visibleModes"
         :modes="MODES"
         :active="modeStore.active"
         :panel-label="panelLabel"

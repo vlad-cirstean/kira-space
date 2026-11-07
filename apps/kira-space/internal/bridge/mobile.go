@@ -1,16 +1,12 @@
 package bridge
 
 import (
-	"errors"
 	"io/fs"
 	"log/slog"
 	"net/netip"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/lannet"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mobileterm"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mobileweb"
@@ -417,7 +413,6 @@ func (s *MobileAccessService) Deny(args MobileIDArgs) (MobilePairingActionResult
 // StartMobileIfEnabled and StopMobile are main.go's boot and shutdown hooks, package-level so
 // Wails does not bind them.
 func StartMobileIfEnabled(s *MobileAccessService) {
-	removeLegacyMobileCA(filepath.Join(config.KiraSpaceHome(), "mobile"))
 	cfg, err := s.Deps.Repos.Settings.GetAll()
 	if err != nil {
 		slog.Warn("mobileweb: read settings at boot", "scope", "mobileweb", "err", err)
@@ -431,24 +426,4 @@ func StartMobileIfEnabled(s *MobileAccessService) {
 func StopMobile(s *MobileAccessService) {
 	s.stopSupervisor()
 	s.embedded.Stop()
-}
-
-// removeLegacyMobileCA deletes the pre-P223 local CA. Its key must not linger: a phone that
-// installed the CA would trust any leaf the key signs for private addresses.
-func removeLegacyMobileCA(dir string) {
-	removed := false
-	tmps, _ := filepath.Glob(filepath.Join(dir, "*.tmp"))
-	for _, p := range append([]string{filepath.Join(dir, "ca.key"), filepath.Join(dir, "ca.crt")}, tmps...) {
-		err := os.Remove(p)
-		switch {
-		case err == nil:
-			removed = true
-		case !errors.Is(err, fs.ErrNotExist):
-			slog.Warn("mobileweb: remove legacy CA file", "scope", "mobileweb", "path", p, "err", err)
-		}
-	}
-	_ = os.Remove(dir) // only succeeds when empty
-	if removed {
-		slog.Info("mobileweb: removed legacy local CA", "scope", "mobileweb", "dir", dir)
-	}
 }

@@ -125,7 +125,7 @@ func (b *TaskBoard) requestedWorktreeDirs(taskID string) ([]string, error) {
 		if rec == nil {
 			continue
 		}
-		dir := filepath.Join(b.deps.HomeDir, "wt", safeSegment(rec.Name))
+		dir := filepath.Join(WorktreesBase(b.deps.HomeDir), PathSegment(rec.Name))
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, err
 		}

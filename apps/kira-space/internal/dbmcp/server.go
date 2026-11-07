@@ -60,7 +60,7 @@ type ConnectionsReader interface {
 }
 
 // MetadataReader is dbmcp's own consumer-declared interface over *tree.Service — list_children/
-// describe_table/describe_schema's own backend.
+// describe's own backend.
 type MetadataReader interface {
 	Children(ctx context.Context, connectionID, path string, refresh bool) (tree.ChildrenResult, error)
 	Describe(ctx context.Context, connectionID, path string, refresh bool, tabID *string) (tree.DescribeResult, error)
@@ -158,11 +158,13 @@ type Config struct {
 	// client gets them (dbMcp.previewResponses) — read fresh on every call. It is the default for connections whose review setting is inherit. Required for the same
 	// reason as ExplainThreshold: a silently-defaulted switch would send unreviewed data.
 	PreviewResponses func() bool
-	// Proof backs the proof_* tools (P420); nil leaves them unregistered.
-	Proof ProofStore
+	// Proof backs proof_save and proof_list; nil leaves them unregistered. ProofAttach attaches a saved
+	// proof to the calling session's Kira Space task; nil attaches nothing.
+	Proof       ProofStore
+	ProofAttach ProofAttacher
 	// Kube backs the kube_* tools; its calls record their own op-log rows. Nil leaves them unregistered.
 	Kube KubeReader
-	// Ops backs list_operations and cancel_operation; nil leaves both unregistered. Runs adds
+	// Ops backs operations; nil leaves it unregistered. Runs adds
 	// script runs to them; nil means none are listed or stoppable.
 	Ops  OpsControl
 	Runs ScriptRunControl
@@ -359,8 +361,8 @@ func (s *Server) server() *mcp.Server {
 // every handler closes over s and calls into s.cfg.Conns/Tree/Query through access.go's gates.
 func (s *Server) buildMCPServer() *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{
-		Name:    "kira-db",
-		Title:   "Kira Space databases",
+		Name:    "kira-studio",
+		Title:   "Kira Studio",
 		Version: serverVersion,
 	}, &mcp.ServerOptions{Instructions: llmprompts.DbmcpInstructions.Text(s.prompts(), llmprompts.NoVars{})})
 
@@ -375,15 +377,10 @@ func (s *Server) buildMCPServer() *mcp.Server {
 		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[listChildrenArgs](src, llmprompts.DbmcpToolListChildren.ID(), nil), "connectionId"),
 	}, withPanicRecovery(s, "list_children", s.listChildren))
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "describe_table",
-		Description: llmprompts.DbmcpToolDescribeTable.Text(src, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[describeTableArgs](src, llmprompts.DbmcpToolDescribeTable.ID(), nil), "connectionId", "path"),
-	}, withPanicRecovery(s, "describe_table", s.describeTable))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "describe_schema",
-		Description: llmprompts.DbmcpToolDescribeSchema.Text(src, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[describeSchemaArgs](src, llmprompts.DbmcpToolDescribeSchema.ID(), nil), "connectionId", "path"),
-	}, withPanicRecovery(s, "describe_schema", s.describeSchema))
+		Name:        "describe",
+		Description: llmprompts.DbmcpToolDescribe.Text(src, llmprompts.NoVars{}),
+		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[describeArgs](src, llmprompts.DbmcpToolDescribe.ID(), nil), "connectionId", "path"),
+	}, withPanicRecovery(s, "describe", s.describe))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "browse_table",
 		Description: llmprompts.DbmcpToolBrowseTable.Text(src, llmprompts.NoVars{}),
@@ -394,11 +391,6 @@ func (s *Server) buildMCPServer() *mcp.Server {
 		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}),
 		InputSchema: runQuerySchema(src),
 	}, withPanicRecovery(s, "run_query", s.runQuery))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "explain_query",
-		Description: llmprompts.DbmcpToolExplainQuery.Text(src, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[explainQueryArgs](src, llmprompts.DbmcpToolExplainQuery.ID(), nil), "connectionId", "sql"),
-	}, withPanicRecovery(s, "explain_query", s.explainQuery))
 	if s.cfg.Proof != nil {
 		s.addProofTools(srv, src)
 	}

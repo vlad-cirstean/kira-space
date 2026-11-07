@@ -24,7 +24,13 @@ async function openTask(page: Page, id: string): Promise<void> {
 const CLEAR_RISK = {
   taskId: 'T_cart',
   branches: [
-    { branchId: 'b_cart', worktree: '~/wt/web-app/cart', dirty: [], unmerged: 0, blocked: '' },
+    {
+      branchId: 'b_cart',
+      worktree: '~/kira-space-wts/web-app/cart',
+      dirty: [],
+      unmerged: 0,
+      blocked: '',
+    },
   ],
 };
 

@@ -244,7 +244,7 @@ func TestDbMcpReadLaneLifecycle(t *testing.T) {
 	}
 }
 
-// cancel_operation stops a read running on the lane, and the lane stays usable.
+// operations cancel stops a read running on the lane, and the lane stays usable.
 func TestDbMcpCancelReadLaneOp(t *testing.T) {
 	f := newFixture(t)
 	a := f.session(t)
@@ -256,7 +256,7 @@ func TestDbMcpCancelReadLaneOp(t *testing.T) {
 	}()
 	op := waitListed(t, b, func(o listedOp) bool { return o.Type == "op" && o.Kind == "execute" })
 	if res := cancelOp(t, b, op.OpID); res.IsError || !strings.Contains(text(res), `"cancelled":true`) {
-		t.Fatalf("cancel_operation = %q", text(res))
+		t.Fatalf("operations cancel = %q", text(res))
 	}
 	select {
 	case res := <-pending:
@@ -264,7 +264,7 @@ func TestDbMcpCancelReadLaneOp(t *testing.T) {
 			t.Fatalf("cancelled read = %+v, want a cancel error", res)
 		}
 	case <-time.After(20 * time.Second):
-		t.Fatal("read still running after cancel_operation")
+		t.Fatal("read still running after operations cancel")
 	}
 	f.waitStatus(t, op.OpID, "cancelled")
 	if res := call(t, b, withMode(f.connID, "select 1", "read")); res.IsError {

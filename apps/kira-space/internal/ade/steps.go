@@ -24,7 +24,7 @@ type stepDef struct {
 	// ReturnLimit is how many returns the step may make before the run stops; 0 is no limit.
 	ReturnLimit  int
 	AllowedTools []string
-	// DbMcp gives the step's agent sessions the Kira DB tools.
+	// DbMcp gives the step's agent sessions the Kira Studio tools.
 	DbMcp bool
 	// DisallowedTools become --disallowedTools; only the rebase step sets them.
 	DisallowedTools []string

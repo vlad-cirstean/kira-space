@@ -53,7 +53,7 @@ func columnIndex(pg page.TabularPage, name string) int {
 // FromPages ports plan.ts's parseExplainPages verbatim: turns the page.Page(s) an EXPLAIN batch
 // returned back into one normalized Plan — the glue between statements.go's own composer and this
 // package's five dialect parsers. Returns ErrTruncated for a clipped single-cell plan; any
-// other page shape mismatch is a plain error naming what was expected. Both explain_query and
+// other page shape mismatch is a plain error naming what was expected. Both explain and
 // auto-force-explain (internal/dbmcp's own explain.go) run this and must treat any error as "no
 // plan" rather than failing the call outright — that posture lives in dbmcp, not here.
 func FromPages(kind string, pages []page.Page, thresholdRows int) (Plan, error) {

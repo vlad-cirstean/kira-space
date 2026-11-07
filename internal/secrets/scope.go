@@ -22,7 +22,7 @@ const (
 	// a custom script, read and written only through Store.
 	ScopeScriptParam Scope = "script-param"
 	// ScopeAgentCredential seals a credential an agent setting references (P453) — secret_values
-	// rows of the shared agent-secrets.db, owner "agent", read and written only through Store.
+	// rows of kira.db, owner "agent", read and written only through Store.
 	ScopeAgentCredential Scope = "agent-credential"
 )
 

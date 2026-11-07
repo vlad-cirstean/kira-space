@@ -13,6 +13,7 @@ type SettingsSections = Pick<
   | 'git'
   | 'agent'
   | 'memory'
+  | 'experimental'
   | 'capture'
   | 'tracking'
   | 'data'

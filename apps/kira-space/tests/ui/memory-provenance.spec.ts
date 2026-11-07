@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
+import { withMemory } from './support/memoryNav';
 
 // P272: provenance in the Memory module. Backend halves: memoryflow TestStoreScopedFromModule,
 // TestContextOfStoredFact and TestMcpStoreProvenance. The grade guard (TestAgentCannotSupersedeUser)
@@ -44,11 +45,11 @@ test('contract: Add memory in Project scope sends the chosen project key', async
   const stored = contract<{ status: string }>('memory', 'MemoryService.Store#stored');
   const key = projects[0] ?? '';
   const { window: page, control } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryRecent, response: recent },
       { channel: IPC.memoryProjects, response: projects },
       { channel: IPC.memoryStore, response: stored },
-    ],
+    ]),
   });
   await enterMemoryMode(page);
 
@@ -86,7 +87,7 @@ test('contract: a stored fact lists the facts stored with it and opens one', asy
     groups: raw.groups.map((g) => ({ ...g, facts: g.facts.map(timed) })),
   };
   const { window: page } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryRecent, response: [ctx.memory, sibling] },
       {
         channel: IPC.memoryHistory,
@@ -104,7 +105,7 @@ test('contract: a stored fact lists the facts stored with it and opens one', asy
         args: { id: sibling.id, limit: 0 },
         response: { memory: sibling, groups: [] },
       },
-    ],
+    ]),
   });
   await enterMemoryMode(page);
 
@@ -131,11 +132,11 @@ test('contract: an agent-stored external fact shows its source, scope, session a
     groups: rawCtx.groups.map((g) => ({ ...g, facts: g.facts.map(timed) })),
   };
   const { window: page } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryRecent, response: recent },
       { channel: IPC.memoryHistory, response: { memories: [ctx.memory], events: [] } },
       { channel: IPC.memoryContext, response: ctx },
-    ],
+    ]),
   });
   await enterMemoryMode(page);
 

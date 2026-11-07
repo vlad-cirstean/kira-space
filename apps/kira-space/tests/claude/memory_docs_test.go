@@ -37,7 +37,7 @@ func TestMemoryMcpFollowsDocs(t *testing.T) {
 	cfg := filepath.Join(t.TempDir(), "mcp.json")
 	writeFile(t, cfg, string(mustRaw(map[string]any{"mcpServers": map[string]any{
 		memoryServer: map[string]any{"command": exe, "args": []string{"memory-mcp"}, "env": map[string]string{
-			"KIRA_MEMORY_HOME": app.MemoryHome, "KIRA_SPACE_HOME": app.SpaceHome, "HOME": app.Home, "PATH": os.Getenv("PATH"),
+			"KIRA_SPACE_HOME": app.SpaceHome, "HOME": app.Home, "PATH": os.Getenv("PATH"),
 		}},
 	}})))
 	var memTools []string

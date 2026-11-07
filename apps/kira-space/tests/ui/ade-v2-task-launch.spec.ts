@@ -39,7 +39,7 @@ test('one worktree: Terminal opens a shell there', async ({ relaunch }) => {
   await page.locator(item('terminal-b_cart')).click();
   await expect.poll(() => calls(control, IPC.terminalOpen)).toHaveLength(1);
   expect(calls(control, IPC.terminalOpen)[0]?.args).toMatchObject({
-    cwd: '~/wt/web-app/cart-flaky',
+    cwd: '~/kira-space-wts/web-app/cart-flaky',
     launchKind: 'shell',
   });
   await expect(

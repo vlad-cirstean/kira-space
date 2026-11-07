@@ -2,6 +2,7 @@ import type { Locator } from '@playwright/test';
 import type { ConnectionSummary } from '@shared/domain/connection';
 import { expect, studioTest, test } from './fixtures';
 import { modeTab } from './studio/support/apiMode';
+import { gotoAdeRepos } from './support/adeV2';
 import { installGitStreamMock } from './support/gitStreamMock';
 import { IPC } from './support/ipcChannels';
 
@@ -111,9 +112,9 @@ test('repo, worktree, quick-command and dialog rails share one class, geometry a
   const worktreeRow = page.locator('[data-testid="repo-worktree-row"]').first();
   await expectRail(worktreeRow.locator('[data-testid="repo-worktree-rail"]'), worktreeRow);
 
-  await page.locator('[data-testid="manage-repos"]').click();
-  const navRow = page.locator(`[data-testid="repos-dialog-repo"][data-repo-id="${REPO.id}"]`);
-  const navRail = navRow.locator('[data-testid="repos-dialog-repo-rail"]');
+  await gotoAdeRepos(page);
+  const navRow = page.locator(`[data-testid="ade-repos-repo"][data-repo-id="${REPO.id}"]`);
+  const navRail = navRow.locator('[data-testid="ade-repos-repo-rail"]');
   await expect(navRail).toHaveAttribute('class', RAIL_CLASS);
   const navBox = await navRail.boundingBox();
   expect(navBox?.width).toBe(4);

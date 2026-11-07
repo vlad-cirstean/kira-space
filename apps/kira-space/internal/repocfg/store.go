@@ -86,11 +86,8 @@ func New(o Options) (*Store, error) {
 	return s, nil
 }
 
-// Start moves the legacy rows into files once, loads the folder and writes AGENTS.md.
+// Start loads the folder and writes AGENTS.md.
 func (s *Store) Start() error {
-	if err := s.migrate(); err != nil {
-		return err
-	}
 	s.Reload()
 	if err := s.folder.WriteDocs(s.doc); err != nil {
 		slog.Warn("repo config: write docs", "scope", "config", "err", err)

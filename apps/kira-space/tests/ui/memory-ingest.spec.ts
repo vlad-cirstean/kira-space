@@ -1,7 +1,7 @@
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
-import { openMemory } from './support/memoryNav';
+import { openMemory, withMemory } from './support/memoryNav';
 
 // P274: an agent's ingest job in the imports view. Backend half: memoryflow TestMcpIngestExternal.
 
@@ -26,10 +26,10 @@ test('contract: ingest: an agent job shows its channel, provenance and files', a
     files: recorded.files.map((f, i) => ({ ...f, groupId: `kg_flowgroup0${i}` })),
   };
   const { window: page } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryImportJobs, response: jobs.map((j) => ({ ...j, state: 'running' })) },
       { channel: IPC.memoryImportJob, args: { id: detail.job.id }, response: detail },
-    ],
+    ]),
   });
   await openMemory(page);
   await page.locator('[data-testid="memory-import-open"]').click();

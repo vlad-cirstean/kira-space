@@ -30,7 +30,7 @@ The server is off by default. Turn it on with **Enable the database MCP server**
 
 A workflow step with `db_mcp: true` gets the database tools in its own session. Tick **Kira database tools** in the step inspector. No token to copy: Kira creates one per launch, keeps it in memory and revokes it when the session ends.
 
-This works with the server switch off. The session talks to a separate server named `kira-db-session` on a random loopback port. It shares your exposed connections, limits and approvals. External clients never reach it, and the server on port 8766 stays as the switch sets it. Turning the switch off leaves running steps connected, and approvals they wait on stay open until the session ends.
+This works with the server switch off. The session talks to a separate server named `kira-studio-session` on a random loopback port. It shares your exposed connections, limits and approvals. External clients never reach it, and the server on port 8766 stays as the switch sets it. Turning the switch off leaves running steps connected, and approvals they wait on stay open until the session ends.
 
 ## Audit trail
 
@@ -40,7 +40,7 @@ When a workflow step gives its session the Kira database tools, Kira Space recor
 
 Approvals the call raised show under it: accepted, denied, timed out or not answered. An exemption approval lists the limits it lifted and the reason.
 
-Kira never stores results, bound values or error text, only an error code. Use the **Kira DB** toggle in the Details header to hide the rows. Calls from external clients are not recorded.
+Kira never stores results, bound values or error text, only an error code. Use the **Kira Studio** toggle in the Details header to hide the rows. Calls from external clients are not recorded.
 
 ## Exposed connections
 
@@ -74,7 +74,7 @@ A timed-out statement is refused, and the AI client can ask for an exemption. Yo
 
 By default an exposed connection shows every table, including tables created later. In the MCP tab, untick **All tables** to choose which tables, views and collections the client may touch. The choice is saved in the connection file as `mcp.tables`: leave the key out for all tables, `[]` for none.
 
-The app parses every `run_query` and `explain_query` statement before it runs. A statement that touches an unlisted table is refused, in every mode, and no approval or exemption applies. A statement the app cannot parse is refused too. So are `CALL`, `SET`, `USE`, `PRAGMA`, calls to your own functions, and engine features that read other tables. `list_children` and `describe_schema` hide unlisted tables, and `describe_table` refuses them.
+The app parses every `run_query` statement, planned or run, before it runs. A statement that touches an unlisted table is refused, in every mode, and no approval or exemption applies. A statement the app cannot parse is refused too. So are `CALL`, `SET`, `USE`, `PRAGMA`, calls to your own functions, and engine features that read other tables. `list_children` and `describe` on a database or schema hide unlisted tables, and `describe` on one refuses it.
 
 Limits: a view is checked by its own name, so listing a view grants what it shows. Scripts and operations are not checked. Kafka, S3, SQS and Redis have no tables, so the list does not apply. Triggers, rules and other code that runs inside the database can still reach unlisted tables; use database permissions for a hard guarantee.
 

@@ -88,7 +88,7 @@ export function installAdeSignals(
     void queryClient.invalidateQueries({ queryKey: proofsPrefix });
     void queryClient.invalidateQueries({ queryKey: proofChoicesKey });
   });
-  // A burst of Kira DB calls refetches the trail once.
+  // A burst of Kira Studio calls refetches the trail once.
   const refreshDbAudit = useDebounceFn(() => {
     void queryClient.invalidateQueries({ queryKey: dbAuditPrefix });
   }, TIMING.search);

@@ -1,21 +1,16 @@
-// Package agentcfg is the app's one agent settings definition: a YAML file in the shared agent folder
-// that every launched agent receives, rendered natively per provider. Kira Space hosts the folder and
-// its editor; Kira Studio reads it for its own launches. Credentials the file references live sealed
-// in one store both apps open.
+// Package agentcfg is the app's one agent settings definition: a YAML file in the agent folder that
+// every launched agent receives, rendered natively per provider. Credentials the file references live
+// sealed in kira.db.
 package agentcfg
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sync"
 
-	"github.com/kirathecat/kira-studio/internal/agentcfg/migrations"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/secrets"
-	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
 // secretNamespace is the resolver namespace of agent settings, fixed here and never written in a file.
@@ -24,35 +19,17 @@ const secretNamespace = "agent"
 // SecretOwner is the owner of every agent credential: one shared definition.
 const SecretOwner = "agent"
 
-// SecretStore is the open shared credential store: sealed values in agent-secrets.db.
+// SecretStore is the agent credential store: sealed values in kira.db's secret_values, scope
+// agent-credential.
 type SecretStore struct {
 	Store *secrets.Store
 	DB    *sql.DB
 }
 
-// OpenSecrets opens (creating it) the shared credential store at path. Both apps open the file, so
-// it is written through immediate transactions. Close closes the database.
-func OpenSecrets(path string, cipher *secrets.Cipher) (*SecretStore, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return nil, fmt.Errorf("agentcfg: create %s: %w", filepath.Dir(path), err)
-	}
-	db, err := sqlitex.OpenImmediate(path)
-	if err != nil {
-		return nil, err
-	}
-	steps, err := migrations.All()
-	if err == nil {
-		err = sqlitex.Migrate(db, steps)
-	}
-	if err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	return &SecretStore{Store: secrets.NewStore(db, cipher), DB: db}, nil
+// NewSecrets wraps db, the shared kira.db pool, which the caller owns and closes.
+func NewSecrets(db *sql.DB, cipher *secrets.Cipher) *SecretStore {
+	return &SecretStore{Store: secrets.NewStore(db, cipher), DB: db}
 }
-
-// Close closes the database.
-func (s *SecretStore) Close() error { return s.DB.Close() }
 
 // Put seals value as name.
 func (s *SecretStore) Put(name, value string) error {

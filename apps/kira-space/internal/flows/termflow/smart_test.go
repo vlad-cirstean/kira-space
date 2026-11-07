@@ -56,7 +56,7 @@ func TestSmartScriptSpace(t *testing.T) {
 	app.Contract(t, "smart", "CustomScriptsService.Create", rec)
 	app.Contract(t, "smart", "ScriptRunsService.Preview", pv, flowharness.Mask("hash"))
 	app.Contract(t, "smart", "args:ScriptRunsService.Start", scriptruns.StartArgs{RunArgs: args, Hash: pv.Hash}, flowharness.Mask("hash"))
-	if got := strings.Join(pv.Allowed, " "); strings.Contains(got, "mcp__kira-space") || !strings.Contains(got, "mcp__fake__echo") {
+	if got := strings.Join(pv.Allowed, " "); strings.Contains(got, "mcp__kira-space__task_info") || !strings.Contains(got, "mcp__fake__echo") {
 		t.Fatalf("allowed = %q, want the fake tool and no Space tools without a task", got)
 	}
 	started, err := app.W.ScriptRuns.Start(scriptruns.StartArgs{RunArgs: args, Hash: pv.Hash})
@@ -69,7 +69,7 @@ func TestSmartScriptSpace(t *testing.T) {
 		return run.State == "done"
 	})
 	if raw, err := os.ReadFile(filepath.Join(app.FakeDir, "automations-1.settings")); err != nil ||
-		string(raw) != `{"disableAllHooks":true,"allowedMcpServers":[{"serverName":"kira-ade"},{"serverName":"fake"}],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}` {
+		string(raw) != `{"disableAllHooks":true,"allowedMcpServers":[{"serverName":"kira-space"},{"serverName":"fake"}],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}` {
 		t.Fatalf("--settings = %s, %v", raw, err)
 	}
 	app.Contract(t, "smart", "ScriptRunsService.Get#done", run, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))

@@ -40,7 +40,7 @@ type genTable struct {
 }
 
 // migrationOnly tables hold runner state, not app data.
-var migrationOnly = map[string]bool{"schema_version": true, "schema_quarantine": true}
+var migrationOnly = map[string]bool{"schema_version": true}
 
 func schemaTables(t *testing.T, db *sql.DB) []genTable {
 	t.Helper()

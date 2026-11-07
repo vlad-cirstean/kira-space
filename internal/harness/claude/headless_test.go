@@ -43,8 +43,8 @@ func TestScriptSandboxWrap(t *testing.T) {
 }
 
 func TestScriptIsolatedUserMCP(t *testing.T) {
-	s := harness.HeadlessSpec{Bin: "claude", SessionID: "s-1", MCPConfigs: []string{"/c/run.mcp.json"}, Isolated: true, GrantMCP: []string{"kira-ade"}, UserMCP: []string{"fake", "b"}}
-	want := `exec claude -p --output-format stream-json --verbose --session-id 's-1' --mcp-config '/c/run.mcp.json' --setting-sources 'user' --settings '{"disableAllHooks":true,"allowedMcpServers":[{"serverName":"kira-ade"},{"serverName":"fake"},{"serverName":"b"}],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}' --permission-prompts none`
+	s := harness.HeadlessSpec{Bin: "claude", SessionID: "s-1", MCPConfigs: []string{"/c/run.mcp.json"}, Isolated: true, GrantMCP: []string{"kira-space"}, UserMCP: []string{"fake", "b"}}
+	want := `exec claude -p --output-format stream-json --verbose --session-id 's-1' --mcp-config '/c/run.mcp.json' --setting-sources 'user' --settings '{"disableAllHooks":true,"allowedMcpServers":[{"serverName":"kira-space"},{"serverName":"fake"},{"serverName":"b"}],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}' --permission-prompts none`
 	if got := Script(s); got != want {
 		t.Fatalf("got  %s\nwant %s", got, want)
 	}

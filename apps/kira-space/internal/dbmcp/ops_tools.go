@@ -32,11 +32,9 @@ type ScriptRunControl interface {
 
 const scriptRunPrefix = "run:"
 
-type cancelOperationArgs struct {
-	OpID string `json:"opId"`
+type operationsArgs struct {
+	Cancel string `json:"cancel,omitempty"`
 }
-
-type listOperationsArgs struct{}
 
 type opEntry struct {
 	OpID           string `json:"opId"`
@@ -74,10 +72,10 @@ func (e *exposure) check(id string) (string, bool) {
 }
 
 func notFoundResult(opID string) (*mcp.CallToolResult, any, error) {
-	return errResult("no running operation with id \"" + opID + "\"; it may have finished. Call list_operations for current ids.")
+	return errResult("no running operation with id \"" + opID + "\"; it may have finished. Call operations for current ids.")
 }
 
-func (s *Server) listOperations(_ context.Context, _ *mcp.CallToolRequest, _ listOperationsArgs) (*mcp.CallToolResult, any, error) {
+func (s *Server) listOperations() (*mcp.CallToolResult, any, error) {
 	now := time.Now()
 	ex := s.newExposure()
 	out := make([]opEntry, 0)
@@ -121,13 +119,21 @@ func (s *Server) liveRuns() ([]LiveRun, error) {
 	return s.cfg.Runs.Live()
 }
 
-func (s *Server) cancelOperation(ctx context.Context, _ *mcp.CallToolRequest, a cancelOperationArgs) (*mcp.CallToolResult, any, error) {
-	if id, ok := strings.CutPrefix(a.OpID, scriptRunPrefix); ok {
-		return s.cancelScriptRun(a.OpID, id)
+// operations lists the running operations, or with cancel stops one by id.
+func (s *Server) operations(ctx context.Context, _ *mcp.CallToolRequest, a operationsArgs) (*mcp.CallToolResult, any, error) {
+	if a.Cancel == "" {
+		return s.listOperations()
+	}
+	return s.cancelOperation(ctx, a.Cancel)
+}
+
+func (s *Server) cancelOperation(ctx context.Context, opID string) (*mcp.CallToolResult, any, error) {
+	if id, ok := strings.CutPrefix(opID, scriptRunPrefix); ok {
+		return s.cancelScriptRun(opID, id)
 	}
 	ex := s.newExposure()
 	for _, op := range s.cfg.Ops.RunningOps() {
-		if op.OpID != a.OpID {
+		if op.OpID != opID {
 			continue
 		}
 		if op.ConnectionID != nil {
@@ -135,16 +141,16 @@ func (s *Server) cancelOperation(ctx context.Context, _ *mcp.CallToolRequest, a 
 				break
 			}
 		}
-		done, err := s.cfg.Ops.CancelRunning(ctx, a.OpID)
+		done, err := s.cfg.Ops.CancelRunning(ctx, opID)
 		if err != nil {
 			return nil, nil, err
 		}
 		if !done {
 			break
 		}
-		return jsonResult(map[string]any{"opId": a.OpID, "type": "op", "kind": op.Kind, "cancelled": true})
+		return jsonResult(map[string]any{"opId": opID, "type": "op", "kind": op.Kind, "cancelled": true})
 	}
-	return notFoundResult(a.OpID)
+	return notFoundResult(opID)
 }
 
 func (s *Server) cancelScriptRun(opID, runID string) (*mcp.CallToolResult, any, error) {
@@ -164,14 +170,11 @@ func (s *Server) cancelScriptRun(opID, runID string) (*mcp.CallToolResult, any, 
 	return notFoundResult(opID)
 }
 
-// addOpsTools registers list_operations and cancel_operation.
+// addOpsTools registers operations.
 func (s *Server) addOpsTools(srv *mcp.Server, src llmprompts.Source) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name: "list_operations", Description: llmprompts.DbmcpToolListOperations.Text(src, llmprompts.NoVars{}),
-	}, withPanicRecovery(s, "list_operations", s.listOperations))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "cancel_operation",
-		Description: llmprompts.DbmcpToolCancelOperation.Text(src, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[cancelOperationArgs](src, llmprompts.DbmcpToolCancelOperation.ID(), nil), "opId"),
-	}, withPanicRecovery(s, "cancel_operation", s.cancelOperation))
+		Name:        "operations",
+		Description: llmprompts.DbmcpToolOperations.Text(src, llmprompts.NoVars{}),
+		InputSchema: llmprompts.InputSchema[operationsArgs](src, llmprompts.DbmcpToolOperations.ID(), nil),
+	}, withPanicRecovery(s, "operations", s.operations))
 }

@@ -3,9 +3,9 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import ModuleStart from '@workbench/components/ModuleStart.vue';
-import { useReposDialogStore } from './state/reposDialog';
+import { useAdeReposUiStore } from '../ade/v2/state/adeReposUi';
 
-const reposDialog = useReposDialogStore();
+const reposUi = useAdeReposUiStore();
 </script>
 
 <template>
@@ -18,7 +18,7 @@ const reposDialog = useReposDialogStore();
       variant="dialog-primary"
       size="kira-lg"
       data-testid="git-start-import"
-      @click="reposDialog.show()"
+      @click="reposUi.open()"
     >
       <CodiconIcon name="repo" :size="13" />
       {{ t('space.repo.manage.label') }}

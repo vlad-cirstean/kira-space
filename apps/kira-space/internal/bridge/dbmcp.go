@@ -17,7 +17,7 @@ import (
 
 // dbMcpServerName is the one name every Install call registers under — internal/dbmcp's own
 // server identity (Implementation.Name, dbmcp/server.go).
-const dbMcpServerName = "kira-db"
+const dbMcpServerName = "kira-studio"
 
 // dbMcpTokenName is mcpauth.PathNamed's own file-name argument — no repo-id slug (M1 §2.2): one DB
 // MCP instance exists per app process per Space home, with no second identity to key several apart
@@ -35,8 +35,9 @@ type DbMcpService struct {
 	// service's own server start/stop, so the event subscription wired at boot (Events.Attach)
 	// stays valid across a restart of the embedded server.
 	Approvals *dbmcp.ApprovalBroker
-	// Proof backs the proof_* tools (P420).
-	Proof dbmcp.ProofStore
+	// Proof backs the proof tools (P420). ProofAttach attaches a saved proof to a session's task.
+	Proof       dbmcp.ProofStore
+	ProofAttach dbmcp.ProofAttacher
 	// Kube backs the kube_* tools (P440).
 	Kube dbmcp.KubeReader
 	// Runs backs the script-run half of the operations tools.
@@ -133,6 +134,7 @@ func (s *DbMcpService) serverConfig(port int) dbmcp.Config {
 		Query:            s.Deps.Router,
 		Approvals:        s.Approvals,
 		Proof:            s.Proof,
+		ProofAttach:      s.ProofAttach,
 		Kube:             s.Kube,
 		Ops:              s.Deps.Router,
 		Runs:             s.Runs,
@@ -390,28 +392,6 @@ func (s *DbMcpService) InstallAgent(ctx context.Context) DbMcpInstallResult {
 	s.embedded.Mu.Unlock()
 	helperPath := mcpauth.HeaderHelperScriptPath(config.KiraSpaceHome())
 	return toWireDbMcpInstallResult(s.Installer.Install(ctx, dbMcpServerName, url, helperPath))
-}
-
-// ReregisterAfterFold rewrites an existing kira-db registration, whose headersHelper still names the
-// helper script the home fold moved. It reports done when no rewrite is left: installed, not
-// registered, or an installer that cannot tell. A server not running yet, or a failed install, is
-// not done; the caller retries on the next start.
-func ReregisterAfterFold(ctx context.Context, s *DbMcpService) bool {
-	r, ok := s.Installer.(interface {
-		Registered(context.Context, string) (bool, error)
-	})
-	if !ok {
-		return true
-	}
-	registered, err := r.Registered(ctx, dbMcpServerName)
-	if err != nil {
-		slog.Warn("db mcp: read registration", "scope", "dbmcp", "err", err)
-		return false
-	}
-	if !registered {
-		return true
-	}
-	return s.InstallAgent(ctx).Outcome == harness.OutcomeInstalled
 }
 
 // DbMcpApprovalArgs names one held run_query result.

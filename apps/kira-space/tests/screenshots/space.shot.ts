@@ -4,7 +4,7 @@ import { expect, test } from '../ui/fixtures';
 import { adeV2Control, FIXED_NOW } from '../ui/support/adeV2';
 import { buildGraphStreamChunk } from '../ui/support/graphStreamFixture';
 import { IPC } from '../ui/support/ipcChannels';
-import { openMemory } from '../ui/support/memoryNav';
+import { openMemory, withMemory } from '../ui/support/memoryNav';
 import type { ControlSnapshot } from '../ui/support/types';
 import { shoot } from './support/shoot';
 
@@ -338,7 +338,7 @@ const MEMORIES = FACTS.map((f, i) => ({
 test('space memory', async ({ relaunch, consoleErrors }) => {
   const { window: win } = await relaunch({
     ...CAPTURE_LAUNCH,
-    control: [
+    control: withMemory([
       { channel: IPC.memoryRecent, response: MEMORIES },
       { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/config/repos', files: [] } },
       { channel: IPC.memoryProjects, response: [PROJECT] },
@@ -351,7 +351,7 @@ test('space memory', async ({ relaunch, consoleErrors }) => {
         channel: IPC.memorySemanticStatus,
         response: { state: 'installed', message: '', model: '', done: 0, total: 0 },
       },
-    ],
+    ]),
   });
   await openMemory(win);
   const first = win.locator('[data-testid="memory-row-m1.1"]');

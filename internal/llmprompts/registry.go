@@ -818,7 +818,7 @@ var HeadlessSpaceSuffix = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceSuffix.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceSuffix.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceSuffix.usedBy.body",
-	Default:    `Kira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every branch; you name each, the user approves. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.`,
+	Default:    `Kira Space tools: task_info, declare_repos, request_branches. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for all; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.`,
 }, NoVars{})
 
 // HeadlessSandboxNote tells a sandboxed agent what it may write and what to do on a denial.
@@ -860,7 +860,7 @@ var HeadlessSpaceInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceInstructions.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceInstructions.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceInstructions.usedBy.body",
-	Default:    `Kira Space tools for this task. Call task_info first. Declare repos the work touches with declare_repos before branching. Create branches and worktrees only with request_branches, one call for all; you name each branch, the user approves. Never git branch or git worktree. A new worktree may still be preparing: call branch_status before editing there. Record docs, deployments and links you make with report_artifacts; finishing replies list every artifact.`,
+	Default:    `Kira Space tools for this task. Call task_info first. Declare repos the work touches with declare_repos before branching. Create branches and worktrees only with request_branches, one call for all; you name each branch, the user approves. Never git branch or git worktree. Record docs, deployments and links you make with report_artifacts; finishing replies list every artifact.`,
 }, NoVars{})
 
 // HeadlessToolFinishStep describes the finish_step tool.
@@ -913,8 +913,14 @@ var HeadlessReviewReplyAck = define(Entry{
 // HeadlessToolTaskInfo describes the task_info tool.
 var HeadlessToolTaskInfo = define(Entry{
 	ID: "headless.tool.task_info", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "task_info",
-	Default: `Your Kira Space task: title, Jira key, workflow, step, its repos and branches (a repo may list several), and repos registered in Kira Space.`,
+	Default: `Your Kira Space task: title, Jira key, workflow, step, repos, branches, registered repos. With repo and branch: that worktree's state.`,
 }, NoVars{})
+
+var (
+	_ = arg(HeadlessToolTaskInfo.id, "repo", spaceApp, NextCall, `Task repo: nickname, name or id. With branch.`, NoVars{})
+	_ = arg(HeadlessToolTaskInfo.id, "branch", spaceApp, NextCall, `Branch name. With repo.`, NoVars{})
+	_ = arg(HeadlessToolTaskInfo.id, "waitSeconds", spaceApp, NextCall, `Seconds to wait for setup, 0 to {{.Max}}. Default 0.`, MaxVars{Max: 600})
+)
 
 // HeadlessToolDeclareRepos describes the declare_repos tool.
 var HeadlessToolDeclareRepos = define(Entry{
@@ -928,7 +934,7 @@ var _ = arg(HeadlessToolDeclareRepos.id, "repos", spaceApp, NextCall,
 // HeadlessToolRequestBranches describes the request_branches tool.
 var HeadlessToolRequestBranches = define(Entry{
 	ID: "headless.tool.request_branches", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "request_branches",
-	Default: `Ask the user to approve branches and worktrees, all in one call; waits for the answer. You name each branch; Kira Space picks the folder. A repo may get several branches. Approval adds a registered repo missing from the task. Per branch: created, existing, denied, failed or timeout. A new worktree may still be preparing: call branch_status before editing there.`,
+	Default: `Ask the user to approve branches and worktrees, all in one call; waits for the answer. You name each branch; Kira Space picks the folder. A repo may get several branches. Approval adds a registered repo missing from the task. Per branch: created, existing, denied, failed or timeout. A new worktree may still be preparing; task_info with repo and branch shows it.`,
 }, NoVars{})
 
 var (
@@ -937,31 +943,13 @@ var (
 	_ = arg(HeadlessToolRequestBranches.id, "branches.branch", spaceApp, NextCall, `New branch name, such as feat/login-form. Must not exist yet.`, NoVars{})
 )
 
-// HeadlessToolBranchStatus describes the branch_status tool.
-var HeadlessToolBranchStatus = define(Entry{
-	ID: "headless.tool.branch_status", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "branch_status",
-	Default: `Worktree and setup state of a task branch, found by repo and branch name. With waitSeconds, waits until setup stops running.`,
+// HeadlessToolOperations describes the operations tool.
+var HeadlessToolOperations = define(Entry{
+	ID: "headless.tool.operations", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "operations",
+	Default: `List this task's stoppable operations, such as a slow git fetch or push. With cancel: stop one by id.`,
 }, NoVars{})
 
-var (
-	_ = arg(HeadlessToolBranchStatus.id, "repo", spaceApp, NextCall, `Task repo: nickname, name or code repo id.`, NoVars{})
-	_ = arg(HeadlessToolBranchStatus.id, "branch", spaceApp, NextCall, `Branch name, as in task_info or request_branches.`, NoVars{})
-	_ = arg(HeadlessToolBranchStatus.id, "waitSeconds", spaceApp, NextCall, `Seconds to wait for worktree setup, 0 to {{.Max}}. Default 0.`, MaxVars{Max: 600})
-)
-
-// HeadlessToolListOperations describes the list_operations tool.
-var HeadlessToolListOperations = define(Entry{
-	ID: "headless.tool.list_operations", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "list_operations",
-	Default: `List this task's running operations that can be stopped, such as a slow git fetch or push. Ids feed cancel_operation.`,
-}, NoVars{})
-
-// HeadlessToolCancelOperation describes the cancel_operation tool.
-var HeadlessToolCancelOperation = define(Entry{
-	ID: "headless.tool.cancel_operation", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "cancel_operation",
-	Default: `Stop one running operation of this task by id from list_operations. The caller of a stopped operation gets a cancelled error.`,
-}, NoVars{})
-
-var _ = arg(HeadlessToolCancelOperation.id, "opId", spaceApp, NextCall, `Operation id from list_operations.`, NoVars{})
+var _ = arg(HeadlessToolOperations.id, "cancel", spaceApp, NextCall, `Operation id. Omit to list.`, NoVars{})
 
 // HeadlessToolRenameBranch describes the rename_branch tool.
 var HeadlessToolRenameBranch = define(Entry{
@@ -1028,24 +1016,16 @@ var HeadlessHandoverAck = define(Entry{
 // HeadlessToolReportArtifacts describes the report_artifacts tool.
 var HeadlessToolReportArtifacts = define(Entry{
 	ID: "headless.tool.report_artifacts", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "report_artifacts",
-	Default: `Record what you made outside the task's git branches: docs, deployments, PRs in other repos, issues, links. The task's branches, their PRs and configured deployments are found already.`,
+	Default: `Record what you made outside the task's git branches: docs, deployments, PRs in other repos, issues, links. The task's branches, their PRs and configured deployments are found already. Kind proof attaches a saved proof by name.`,
 }, NoVars{})
 
 var (
 	_ = arg(HeadlessToolReportArtifacts.id, "artifacts", spaceApp, NextCall, `1 to {{.Max}} items to record. A url already recorded is updated.`, MaxVars{Max: 20})
-	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.kind", spaceApp, NextCall, `changeRequest, issue, deployment, doc or link.`, NoVars{})
-	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.title", spaceApp, NextCall, `Short name, at most 200 bytes.`, NoVars{})
+	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.kind", spaceApp, NextCall, `changeRequest, issue, deployment, doc, link or proof.`, NoVars{})
+	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.title", spaceApp, NextCall, `Short name, at most 200 bytes. Skip for proof.`, NoVars{})
 	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.url", spaceApp, NextCall, `http or https address. Give url or ref.`, NoVars{})
-	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.ref", spaceApp, NextCall, `What names it without a url, such as a file path.`, NoVars{})
+	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.ref", spaceApp, NextCall, `Name without a url, such as a file path. Proof: its name.`, NoVars{})
 )
-
-// HeadlessToolAttachProof describes the attach_proof tool.
-var HeadlessToolAttachProof = define(Entry{
-	ID: "headless.tool.attach_proof", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "attach_proof",
-	Default: `Show a closed proof session in this task's notes chain. Call it after proof_close_session with the session name. A session belongs to one task; a repeat call is fine.`,
-}, NoVars{})
-
-var _ = arg(HeadlessToolAttachProof.id, "name", spaceApp, NextCall, `Name of a closed proof session, as proof_close_session or proof_list_sessions returns it.`, NoVars{})
 
 // HeadlessArtifactsHeader opens the artifact list a finishing call returns.
 var HeadlessArtifactsHeader = define(Entry{
@@ -1374,13 +1354,13 @@ var DbmcpInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructions.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructions.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructions.usedBy.body",
-	Default:    "Read and query the databases configured in this Kira Space app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` and `explain_query` need the database's `path` on engines with several databases. Before writing a query, inspect the schema of the tables it touches: `describe_schema` returns every relation's columns in one call, cheaper than one `describe_table` per table. To read rows, use `browse_table` first: pick a table, columns, filters, order and up to 100 rows; masking always applies. Use `run_query` only when `browse_table` does not fit (joins, aggregates, expressions, several tables). `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `access` names the modes `run_query` may use and which need approval, and its `description`, when set, says what the connection is for — read both before calling `run_query`, and declare the least powerful `mode` that fits. Run `explain_query` before an expensive-looking query: `run_query` refuses a SELECT or WITH whose plan estimates at least the connection's `expensiveQuery` threshold of rows read. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to 10 minutes for the user. `list_operations` shows what is running; `cancel_operation` stops one, including your own long `run_query`. `run_script` runs a `list_scripts` script; read output with `get_script_logs`. `api_request` tools appear only when the user enabled them; they see variable names, never values, and a credential is refused for a host the user did not allow.",
+	Default:    "Query the databases, Kubernetes clusters and scripts the user exposed in Kira Studio. Start with `list_connections`: each entry's `access` names the modes `run_query` may use and which need approval, `description` says what it is for, `maskedColumns` lists masked columns. Declare the least powerful `mode` that fits. Walk structure with `list_children`, passing back a returned `path`; levels differ per engine. `describe` a database or schema path for every table's columns before writing a query. Read rows with `browse_table`; use `run_query` only for joins, aggregates or expressions, and `explain` an expensive-looking one first. A masked cell is redacted; a trailing `#TAG` is a correlation token: equal values share a tag, rarely two distinct ones do, so a match is a hint, not proof. A prompt permission waits up to 10 minutes for the user. `operations` lists running work; its `cancel` stops one. `run_script` runs a `list_scripts` script and returns its output tail. `kube_*` tools are read only; start with `kube_list_clusters`. `api_request` appears only when the user enabled it; you see variable names, never values. `proof_save` saves proof of your work.",
 }, NoVars{})
 
 // DbmcpToolListConnections describes the list_connections tool.
 var DbmcpToolListConnections = define(Entry{
 	ID: "dbmcp.tool.list_connections", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_connections",
-	Default: "List every database connection exposed to MCP, with kind, read-only flag, live status and, once connected, capabilities. `access` lists the modes run_query may use and which need approval. `enforcement` says what backs mode read: session (the database refuses writes), app (Kira checks; the engine has no read-only session) or none. `statementTimeout` is the seconds a statement may run (0 off) and per mode what stops it: session (the database) or app (Kira cancels it). `tables` is all, or the only tables MCP may touch; a statement on another table, or one the list cannot check, is refused. `expensiveQuery` gives rowsThreshold and check: plan (run_query refuses at or above it), off, or none (no row estimate). `columnReview.withheld` lists columns not yet reviewed for masking: results drop them, and a query that renames or filters on one is refused. `reviewResults` per mode: true holds each result until the user sends or withholds it. `access.masked` is browse_table's permission.",
+	Default: "List database connections exposed to MCP: kind, read-only flag, live status and, once connected, capabilities. `access` lists the modes run_query may use and which need approval; `access.masked` is browse_table's permission. `enforcement` says what backs mode read: session (the database refuses writes), app (Kira checks) or none. `tables` is all, or the only tables MCP may touch; others are refused. `expensiveQuery` gives rowsThreshold and check: plan, off or none. `columnReview.withheld` lists columns not yet reviewed for masking: results drop them and a query using one is refused. `reviewResults` true holds each result until the user sends it.",
 }, NoVars{})
 
 // DbmcpToolListChildren describes the list_children tool.
@@ -1395,28 +1375,16 @@ var (
 	_ = arg(DbmcpToolListChildren.id, "refresh", studioApp, NextCall, `Bypass the cache and re-read from the server. Default false.`, NoVars{})
 )
 
-// DbmcpToolDescribeTable describes the describe_table tool.
-var DbmcpToolDescribeTable = define(Entry{
-	ID: "dbmcp.tool.describe_table", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "describe_table",
-	Default: "Describe one table, view or collection's own columns, primary key, foreign keys, indexes and row estimate. Call it before querying that table.",
+// DbmcpToolDescribe describes the describe tool.
+var DbmcpToolDescribe = define(Entry{
+	ID: "dbmcp.tool.describe", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "describe",
+	Default: "Describe a table, view or collection: columns, primary key, foreign keys, indexes, row estimate. On a database or schema path: the columns of every table and view in it, in one call. Call it before querying.",
 }, NoVars{})
 
 var (
-	_ = arg(DbmcpToolDescribeTable.id, "connectionId", studioApp, NextCall, `Connection id from list_connections.`, NoVars{})
-	_ = arg(DbmcpToolDescribeTable.id, "path", studioApp, NextCall, `Encoded table, view or collection path, from list_children.`, NoVars{})
-	_ = arg(DbmcpToolDescribeTable.id, "refresh", studioApp, NextCall, `Bypass the cache and re-read from the server. Default false.`, NoVars{})
-)
-
-// DbmcpToolDescribeSchema describes the describe_schema tool.
-var DbmcpToolDescribeSchema = define(Entry{
-	ID: "dbmcp.tool.describe_schema", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "describe_schema",
-	Default: "Describe the columns of every table and view in one database or schema, in one call. Cheaper than one describe_table per table. Call it before querying those tables.",
-}, NoVars{})
-
-var (
-	_ = arg(DbmcpToolDescribeSchema.id, "connectionId", studioApp, NextCall, `Connection id from list_connections.`, NoVars{})
-	_ = arg(DbmcpToolDescribeSchema.id, "path", studioApp, NextCall, `Encoded database or schema path, from list_children.`, NoVars{})
-	_ = arg(DbmcpToolDescribeSchema.id, "refresh", studioApp, NextCall, `Bypass the cache and re-read from the server. Default false.`, NoVars{})
+	_ = arg(DbmcpToolDescribe.id, "connectionId", studioApp, NextCall, `Connection id from list_connections.`, NoVars{})
+	_ = arg(DbmcpToolDescribe.id, "path", studioApp, NextCall, `Encoded path from list_children: a table, or a database or schema.`, NoVars{})
+	_ = arg(DbmcpToolDescribe.id, "refresh", studioApp, NextCall, `Bypass the cache and re-read from the server. Default false.`, NoVars{})
 )
 
 // DbmcpToolBrowseTable describes the browse_table tool.
@@ -1447,100 +1415,58 @@ var (
 // DbmcpToolRunQuery describes the run_query tool.
 var DbmcpToolRunQuery = define(Entry{
 	ID: "dbmcp.tool.run_query", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "run_query",
-	Default: "Fallback for reading: try browse_table first. Run one statement per call, not a script. Declare `mode`: read runs on a separate read-only connection (where list_connections reports enforcement session, the database itself refuses writes, including writes hidden in functions); write and ddl run on the normal connection. The connection's permission for the declared mode applies: a denied mode is refused, an approval mode waits up to 10 minutes for the user. list_connections' `access` shows which modes each connection allows and which need approval. A held result waits for the user; a withheld one returns no rows. A statement that looks more powerful than its mode is refused with the mode to use. Reading stops at maxRows: rowCount is rows fetched, a lower bound when truncated is true. A SELECT or WITH whose plan estimates at least list_connections' expensiveQuery.rowsThreshold rows read is refused before it runs. On a kibana connection, `sql` is one Discover request as a JSON object (see the `sql` argument); mode read only. A call over a limit (statement timeout, row estimate) is refused with an exemption id: improve the statement, or repeat the exact call with `exemption` to ask the user to lift that limit once. The user always decides. On engines with tables, inspect the tables a statement touches with describe_schema or describe_table before writing it.",
+	Default: "Run one statement per call, not a script, when browse_table does not fit. Declare `mode`: read runs on a separate read-only connection (enforcement session: the database refuses writes); write and ddl run on the normal one. A denied mode is refused; an approval mode waits up to 10 minutes for the user. A statement more powerful than its mode is refused with the mode to use. Reading stops at maxRows: rowCount is rows fetched, a lower bound when truncated is true. explain: true plans a SELECT or WITH without running it: node tree, estimated rows and cost, issues such as full scans; not on mongodb, redis, kafka, s3, sqs or kibana. A call over a limit (statement timeout, expensiveQuery row estimate) is refused with an exemption id: improve the statement, or repeat it with `exemption` to ask the user to lift the limit once.",
 }, NoVars{})
 
 var (
 	_ = arg(DbmcpToolRunQuery.id, "connectionId", studioApp, NextCall, `Connection id from list_connections.`, NoVars{})
-	_ = arg(DbmcpToolRunQuery.id, "sql", studioApp, NextCall, `One statement; not a script. On kibana: a JSON object with exactly the keys dataView (data view id from list_children), query (KQL or Lucene text), language ("kuery" or "lucene"), timeRange ({"from","to"} ISO-8601 or date math such as "now-15m", or null), filters (array of {"field","operator","values","disabled"}; operator is, is_not, is_one_of, is_not_one_of, exists, does_not_exist or between), sort (array of {"field","order"}), size (hits to return) and timeZone (IANA name).`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "sql", studioApp, NextCall, `One statement. On kibana: a JSON object with keys dataView (id from list_children), query, language (kuery or lucene), timeRange ({"from","to"} ISO-8601 or date math, or null), filters ([{"field","operator","values","disabled"}]; operator is, is_not, is_one_of, is_not_one_of, exists, does_not_exist or between), sort ([{"field","order"}]), size, timeZone (IANA).`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "path", studioApp, NextCall, `Encoded database path from list_children. Required on postgres, mysql, mariadb and mongodb; pass "" on other engines.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "mode", studioApp, NextCall, `read, write or ddl: read for SELECT-like statements, write for data changes, ddl for schema changes. Must be allowed for the connection (see list_connections access).`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "maxRows", studioApp, NextCall, `Rows to return, 1-{{.Max}}. Default {{.Default}}. Reading stops at this many rows; rowCount is then a lower bound.`, LimitVars{Default: 200, Max: 2000})
-	_ = arg(DbmcpToolRunQuery.id, "exemption", studioApp, NextCall, `Only after a limit refusal: asks the user to lift that limit for this exact call. Same connectionId, sql, path and mode as the refused call.`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "explain", studioApp, NextCall, `true plans the statement without running it. Mode read only. Default false.`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "includeRaw", studioApp, NextCall, `With explain: also return the raw plan text. Default false.`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "exemption", studioApp, NextCall, `Only after a limit refusal: asks the user to lift it for this exact call. Same connectionId, sql, path and mode.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption.id", studioApp, NextCall, `Exemption id from the refusal. Works once; expires in 10 minutes.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption.reason", studioApp, NextCall, `One sentence for the user: why this statement needs the limit lifted. Max 300 characters.`, NoVars{})
 )
 
-// DbmcpToolExplainQuery describes the explain_query tool.
-var DbmcpToolExplainQuery = define(Entry{
-	ID: "dbmcp.tool.explain_query", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "explain_query",
-	Default: "Plan one SELECT or WITH statement without running it. Returns the normalized plan: node tree, each node's estimated rows and native cost, and structural issues the app detects (full scans, unused indexes, filesorts). Not available on mongodb, redis, kafka, s3, sqs or kibana. Metric order within a node is not contractual; pass includeRaw for the server's own text. Inspect the tables with describe_schema or describe_table first.",
+// DbmcpToolProofSave describes the proof_save tool.
+var DbmcpToolProofSave = define(Entry{
+	ID: "dbmcp.tool.proof_save", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_save",
+	Default: "Save proof that your work is correct: one call creates and closes it, and the user reviews it in a window. Steps show in order. Pick each step's view for its data: table, document and keyvalue show values; chart plots numbers and shows no table, so add a table step when exact values matter; diagram draws Mermaid text. Names are unique, ignoring case and outer spaces. In a Kira Space task the new proof also attaches to the task. With reason, changes a closed proof instead: a step may keepOrdinal an old step unchanged or replacesOrdinal one, an old step not listed is dropped; read ordinals with proof_list and name. An edit returns pending_review until the user accepts or rejects it. Every value is validated: a bad step rejects the call, saves nothing and names steps[i] and the limit.",
 }, NoVars{})
 
 var (
-	_ = arg(DbmcpToolExplainQuery.id, "connectionId", studioApp, NextCall, `Connection id from list_connections.`, NoVars{})
-	_ = arg(DbmcpToolExplainQuery.id, "sql", studioApp, NextCall, `One SELECT or WITH statement. Not executed: EXPLAIN always runs without ANALYZE.`, NoVars{})
-	_ = arg(DbmcpToolExplainQuery.id, "path", studioApp, NextCall, `Encoded database path from list_children. Required on postgres, mysql, mariadb and mongodb; pass "" on other engines.`, NoVars{})
-	_ = arg(DbmcpToolExplainQuery.id, "includeRaw", studioApp, NextCall, `Also return the server's raw EXPLAIN text. Default false: can be tens of kilobytes; the parsed plan is the point.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "name", studioApp, NextCall, `Unique name, 1-80 characters.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "summary", studioApp, NextCall, `What it proves, up to 500 characters. New proofs only.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "reason", studioApp, NextCall, `Edits the closed proof with this name: what changes and why, up to 500 characters.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps", studioApp, NextCall, `1 to 100 steps, in display order.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.description", studioApp, NextCall, `One line, up to 200 characters, saying what this step shows. Required unless keepOrdinal is set.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.query", studioApp, NextCall, `The query or command you ran, up to 64 KiB. Shown above the data.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.language", studioApp, NextCall, `Highlighting for query: sql, json, shell or text. Default text.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.source", studioApp, NextCall, `Short label of the tool that produced the data, such as elasticsearch. Up to 64 characters.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.view", studioApp, NextCall, `table, document, keyvalue, chart or diagram. Required unless keepOrdinal is set.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.data", studioApp, NextCall, `table: {columns:[{name,type?}],rows:[[cell,...]]}, type number, text, boolean, temporal, json or other (inferred when omitted). document: {documents:[{id?,body:{...}}]}. keyvalue: {entries:[{field,value}]}. chart, type bar, line, area or scatter: {type,x:{type,name?},y?:{name?,unit?},stacked?,horizontal?,series:[{name,points:[[x,y],...]}]}; x.type is category (x a string label), time (ISO-8601 or epoch milliseconds) or value (number); y is a number, null for a gap; stacked: bar and area only; horizontal: bar only. Histogram: bar, one point per bucket. Time series: line or area, x.type time. Up to 20 series, 1000 categories, 20000 points (bar and scatter 1000). chart, type pie: {type,unit?,slices:[{name,value}]}, up to 50 slices, values 0 or more. diagram: {source}, Mermaid text whose first line starts with flowchart, graph, sequenceDiagram, classDiagram, stateDiagram, stateDiagram-v2, erDiagram, gantt, journey, gitGraph, mindmap or timeline. No front matter, %%{...}%% directives, click lines, url(), @import or images. Up to 20000 bytes, 1000 lines, 500 edges. Quote labels that hold punctuation: A["label (x)"]; a syntax error shows the user the parser message and your source. Limits: 10000 rows or documents, 64 KiB per cell, 4 MiB per step. Required unless keepOrdinal is set.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.keepOrdinal", studioApp, NextCall, `Edits only: reuse the old step with this ordinal unchanged. Pass no other step field.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.replacesOrdinal", studioApp, NextCall, `Edits only: this step is a changed version of the old step with this ordinal.`, NoVars{})
 )
 
-// DbmcpToolProofStartSession describes the proof_start_session tool.
-var DbmcpToolProofStartSession = define(Entry{
-	ID: "dbmcp.tool.proof_start_session", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_start_session",
-	Default: "Start a validation proof session: an ordered record of the checks that show your work is correct, which the user reviews in a window once you close it. Returns a draftId for proof_add_step. Names are unique, ignoring case and outer spaces. Touches no connection.",
+// DbmcpToolProofList describes the proof_list tool.
+var DbmcpToolProofList = define(Entry{
+	ID: "dbmcp.tool.proof_list", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_list",
+	Default: "List closed proofs, newest first, with step count and whether an edit waits for review. With name: that proof's current steps (ordinal, description, view), for an edit. The app keeps the newest 30 not attached to a task.",
 }, NoVars{})
 
-var (
-	_ = arg(DbmcpToolProofStartSession.id, "name", studioApp, NextCall, `Unique session name, 1-80 characters.`, NoVars{})
-	_ = arg(DbmcpToolProofStartSession.id, "summary", studioApp, NextCall, `What the session proves, up to 500 characters. Optional.`, NoVars{})
-)
+var _ = arg(DbmcpToolProofList.id, "name", studioApp, NextCall, `Name of a closed proof. Omit to list all.`, NoVars{})
 
-// DbmcpToolProofEditSession describes the proof_edit_session tool.
-var DbmcpToolProofEditSession = define(Entry{
-	ID: "dbmcp.tool.proof_edit_session", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_edit_session",
-	Default: "Change a closed proof session. Returns a draftId and the current steps. Rebuild the full step list with proof_add_step: keepOrdinal reuses an old step unchanged, replacesOrdinal marks a changed version of one, neither adds a new step, and an old step you leave out is removed. The user sees old and new side by side and accepts or rejects.",
+// DbmcpToolOperations describes the operations tool.
+var DbmcpToolOperations = define(Entry{
+	ID: "dbmcp.tool.operations", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "operations",
+	Default: "List running operations: queries, metadata reads, HTTP, gRPC and Kubernetes calls on exposed connections, and script runs. With cancel: stop one by id. A stopped query returns a cancelled error to its caller; a write rolls back.",
 }, NoVars{})
 
-var (
-	_ = arg(DbmcpToolProofEditSession.id, "name", studioApp, NextCall, `Name of a closed session, as proof_list_sessions returns it.`, NoVars{})
-	_ = arg(DbmcpToolProofEditSession.id, "reason", studioApp, NextCall, `What changes and why, up to 500 characters.`, NoVars{})
-)
-
-// DbmcpToolProofAddStep describes the proof_add_step tool.
-var DbmcpToolProofAddStep = define(Entry{
-	ID: "dbmcp.tool.proof_add_step", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_add_step",
-	Default: "Add the next step to a draft. Steps show in the order added; the call returns the step's ordinal. The data can come from any tool you used: pick the view that shows it best. table, document and keyvalue show values; chart plots numbers (a count over time, a before/after comparison, a share of a total) and shows no table, so add a table step too when exact values matter; diagram draws Mermaid text (a flow, a call sequence, states, entities; no images). Every value is validated and rejected with the field and limit when it does not fit.",
-}, NoVars{})
-
-var (
-	_ = arg(DbmcpToolProofAddStep.id, "draftId", studioApp, NextCall, `Draft id from proof_start_session or proof_edit_session.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "description", studioApp, NextCall, `One line, up to 200 characters, saying what this step shows. Required unless keepOrdinal is set.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "query", studioApp, NextCall, `The query or command you ran, up to 64 KiB. Shown above the data.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "language", studioApp, NextCall, `Highlighting for query: sql, json, shell or text. Default text.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "source", studioApp, NextCall, `Short label of the tool that produced the data, such as elasticsearch. Up to 64 characters.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "view", studioApp, NextCall, `table, document, keyvalue, chart or diagram. Required unless keepOrdinal is set.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "data", studioApp, NextCall, `table: {columns:[{name,type?}],rows:[[cell,...]]} with type number, text, boolean, temporal, json or other (inferred when omitted). document: {documents:[{id?,body:{...}}]}. keyvalue: {entries:[{field,value}]}. chart, type bar, line, area or scatter: {type,x:{type,name?},y?:{name?,unit?},stacked?,horizontal?,series:[{name,points:[[x,y],...]}]}. x.type is category (x a string label), time (ISO-8601 or epoch milliseconds) or value (number). y is a number, or null for a gap. stacked: bar and area only; horizontal: bar only. Histogram: bar, one point per bucket. Time series: line or area, x.type time. Up to 20 series, 1000 categories, 20000 points (bar and scatter 1000). chart, type pie: {type,unit?,slices:[{name,value}]}, up to 50 slices, values 0 or more. diagram: {source}, Mermaid text whose first line starts with flowchart, graph, sequenceDiagram, classDiagram, stateDiagram, stateDiagram-v2, erDiagram, gantt, journey, gitGraph, mindmap or timeline. No front matter, %%{...}%% directives, click lines, url() or @import. No images (no img or image nodes, no markdown or html images). Up to 20000 bytes, 1000 lines, 500 edges. Only these rules are checked here; a syntax error shows the user the parser message and your source, so quote labels that hold punctuation: A["label (x)"]. Limits: 10000 rows or documents, 64 KiB per cell, 4 MiB per step. Required unless keepOrdinal is set.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "keepOrdinal", studioApp, NextCall, `Edit drafts only: reuse the old step with this ordinal unchanged. Pass no other step field.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "replacesOrdinal", studioApp, NextCall, `Edit drafts only: this step is a changed version of the old step with this ordinal.`, NoVars{})
-)
-
-// DbmcpToolProofCloseSession describes the proof_close_session tool.
-var DbmcpToolProofCloseSession = define(Entry{
-	ID: "dbmcp.tool.proof_close_session", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_close_session",
-	Default: "Finish a draft and notify the user. Needs at least one step. A new session returns status closed; an edit returns pending_review until the user accepts or rejects it. The draftId is spent. In a Kira Space task, then call attach_proof with the name.",
-}, NoVars{})
-
-var _ = arg(DbmcpToolProofCloseSession.id, "draftId", studioApp, NextCall, `Draft id from proof_start_session or proof_edit_session.`, NoVars{})
-
-// DbmcpToolProofListSessions describes the proof_list_sessions tool.
-var DbmcpToolProofListSessions = define(Entry{
-	ID: "dbmcp.tool.proof_list_sessions", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_list_sessions",
-	Default: "List closed proof sessions, newest first, with step count and whether an edit waits for review. Use it to find the name proof_edit_session needs. The app keeps the newest 30 not attached to a task.",
-}, NoVars{})
-
-// DbmcpToolListOperations describes the list_operations tool.
-var DbmcpToolListOperations = define(Entry{
-	ID: "dbmcp.tool.list_operations", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_operations",
-	Default: "List running operations: queries, metadata reads, HTTP, gRPC and Kubernetes calls on exposed connections, and running or waiting script runs. Ids feed cancel_operation.",
-}, NoVars{})
-
-// DbmcpToolCancelOperation describes the cancel_operation tool.
-var DbmcpToolCancelOperation = define(Entry{
-	ID: "dbmcp.tool.cancel_operation", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "cancel_operation",
-	Default: "Stop one running operation by id from list_operations. A stopped query returns a cancelled error to its caller; a write rolls back.",
-}, NoVars{})
-
-var _ = arg(DbmcpToolCancelOperation.id, "opId", studioApp, NextCall, `Operation id from list_operations.`, NoVars{})
+var _ = arg(DbmcpToolOperations.id, "cancel", studioApp, NextCall, `Operation id from the list. Omit to list.`, NoVars{})
 
 // DbmcpToolListScripts describes the list_scripts tool.
 var DbmcpToolListScripts = define(Entry{
@@ -1551,7 +1477,7 @@ var DbmcpToolListScripts = define(Entry{
 // DbmcpToolRunScript describes the run_script tool.
 var DbmcpToolRunScript = define(Entry{
 	ID: "dbmcp.tool.run_script", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "run_script",
-	Default: "Run a script exposed to MCP. Returns run id, state and exit code, never output; call get_script_logs. The user may be asked to approve. A run still going after waitSeconds keeps running; poll get_script_run.",
+	Default: "Run a script exposed to MCP. Returns run id, state, exit code and, once the run ends, the last 50 output lines. The user may be asked to approve. A run still going after waitSeconds keeps running; call get_script_run.",
 }, NoVars{})
 
 var (
@@ -1563,25 +1489,15 @@ var (
 // DbmcpToolGetScriptRun describes the get_script_run tool.
 var DbmcpToolGetScriptRun = define(Entry{
 	ID: "dbmcp.tool.get_script_run", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "get_script_run",
-	Default: "Read a script run's state, exit code and duration, optionally waiting for it to end. No output; call get_script_logs.",
+	Default: "Read a script run's state, exit code and duration, optionally waiting for it to end. Once ended, or with from, lines or contains, also returns stored output, at most 500 lines. Secret values are masked.",
 }, NoVars{})
 
 var (
 	_ = arg(DbmcpToolGetScriptRun.id, "runId", studioApp, NextCall, `Run id from run_script.`, NoVars{})
 	_ = arg(DbmcpToolGetScriptRun.id, "waitSeconds", studioApp, NextCall, `Seconds to wait for the run to end, 0-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 25, Max: 50})
-)
-
-// DbmcpToolGetScriptLogs describes the get_script_logs tool.
-var DbmcpToolGetScriptLogs = define(Entry{
-	ID: "dbmcp.tool.get_script_logs", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "get_script_logs",
-	Default: "Read a run's stored output: tail or head, at most 500 lines, optional substring filter. Secret values are masked.",
-}, NoVars{})
-
-var (
-	_ = arg(DbmcpToolGetScriptLogs.id, "runId", studioApp, NextCall, `Run id from run_script.`, NoVars{})
-	_ = arg(DbmcpToolGetScriptLogs.id, "from", studioApp, NextCall, `tail: last lines. head: first lines. Default tail.`, NoVars{})
-	_ = arg(DbmcpToolGetScriptLogs.id, "lines", studioApp, NextCall, `Lines to return, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 100, Max: 500})
-	_ = arg(DbmcpToolGetScriptLogs.id, "contains", studioApp, NextCall, `Keep lines containing this text (case-sensitive), before the line cap.`, NoVars{})
+	_ = arg(DbmcpToolGetScriptRun.id, "from", studioApp, NextCall, `tail: last lines. head: first lines. Default tail.`, NoVars{})
+	_ = arg(DbmcpToolGetScriptRun.id, "lines", studioApp, NextCall, `Output lines to return, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 50, Max: 500})
+	_ = arg(DbmcpToolGetScriptRun.id, "contains", studioApp, NextCall, `Keep lines containing this text (case-sensitive), before the line cap.`, NoVars{})
 )
 
 // DbmcpToolAPIListEnvironments describes the api_list_environments tool.
@@ -1622,21 +1538,13 @@ var DbmcpToolKubeListClusters = define(Entry{
 	Default: "List the Kubernetes clusters (kubeconfig contexts) exposed to MCP, with each one's description and per-operation permissions (deny, allow or prompt).",
 }, NoVars{})
 
-// DbmcpToolKubeListNamespaces describes the kube_list_namespaces tool.
-var DbmcpToolKubeListNamespaces = define(Entry{
-	ID: "dbmcp.tool.kube_list_namespaces", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_list_namespaces",
-	Default: "List one cluster's namespaces. restricted is true when the cluster denied the list; fallback is then the context's own namespace.",
+// DbmcpToolKubeDiscover describes the kube_discover tool.
+var DbmcpToolKubeDiscover = define(Entry{
+	ID: "dbmcp.tool.kube_discover", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_discover",
+	Default: "List one cluster's namespaces and resource kinds. restricted: the cluster denied the namespace list; fallback is then the context's own namespace. partial: some API groups failed discovery. Pass a kind's key to kube_list_resources and kube_describe.",
 }, NoVars{})
 
-var _ = arg(DbmcpToolKubeListNamespaces.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
-
-// DbmcpToolKubeListKinds describes the kube_list_kinds tool.
-var DbmcpToolKubeListKinds = define(Entry{
-	ID: "dbmcp.tool.kube_list_kinds", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_list_kinds",
-	Default: "List the resource kinds a cluster serves. Pass a kind's key to kube_list_resources and kube_describe. partial is true when some API groups failed discovery.",
-}, NoVars{})
-
-var _ = arg(DbmcpToolKubeListKinds.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
+var _ = arg(DbmcpToolKubeDiscover.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
 
 // DbmcpToolKubeListResources describes the kube_list_resources tool.
 var DbmcpToolKubeListResources = define(Entry{
@@ -1646,7 +1554,7 @@ var DbmcpToolKubeListResources = define(Entry{
 
 var (
 	_ = arg(DbmcpToolKubeListResources.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
-	_ = arg(DbmcpToolKubeListResources.id, "kind", studioApp, NextCall, `Kind key from kube_list_kinds, such as v1/pods or apps/v1/deployments.`, NoVars{})
+	_ = arg(DbmcpToolKubeListResources.id, "kind", studioApp, NextCall, `Kind key from kube_discover, such as v1/pods or apps/v1/deployments.`, NoVars{})
 	_ = arg(DbmcpToolKubeListResources.id, "namespace", studioApp, NextCall, `Namespace to list. Omit for all namespaces.`, NoVars{})
 	_ = arg(DbmcpToolKubeListResources.id, "labelSelector", studioApp, NextCall, `Label selector, such as app=web,tier!=db. Omit for none.`, NoVars{})
 	_ = arg(DbmcpToolKubeListResources.id, "maxRows", studioApp, NextCall, `Rows to return, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 200, Max: 2000})
@@ -1660,7 +1568,7 @@ var DbmcpToolKubeDescribe = define(Entry{
 
 var (
 	_ = arg(DbmcpToolKubeDescribe.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
-	_ = arg(DbmcpToolKubeDescribe.id, "kind", studioApp, NextCall, `Kind key from kube_list_kinds, such as v1/pods.`, NoVars{})
+	_ = arg(DbmcpToolKubeDescribe.id, "kind", studioApp, NextCall, `Kind key from kube_discover, such as v1/pods.`, NoVars{})
 	_ = arg(DbmcpToolKubeDescribe.id, "name", studioApp, NextCall, `Object name.`, NoVars{})
 	_ = arg(DbmcpToolKubeDescribe.id, "namespace", studioApp, NextCall, `Object namespace. Omit for a cluster-scoped kind.`, NoVars{})
 )

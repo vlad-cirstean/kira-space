@@ -163,7 +163,7 @@ type ApprovalTarget struct {
 	Host string
 	// Database is the configured database (SQLite: the file path); "" when unset.
 	Database string
-	// Path is the decoded run_query/explain_query path; empty when the call passed none.
+	// Path is the decoded run_query/explain path; empty when the call passed none.
 	Path []model.PathSegment
 }
 

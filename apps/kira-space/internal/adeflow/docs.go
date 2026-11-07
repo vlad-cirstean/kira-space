@@ -22,7 +22,6 @@ type rule struct{ ID, Doc string }
 
 var rules = []rule{
 	{"stem", "The file name without `.yaml` equals `id`."},
-	{"stages", "`stages` is no longer supported. List every step under `steps`."},
 	{"steps", "`steps` is not empty and at least one step is not skipped."},
 	{"unique-step", "Step ids are unique."},
 	{"kind-keys", "A step takes only the keys of its kind (see each option)."},
@@ -37,7 +36,6 @@ var rules = []rule{
 	{"implementer", "`review.implementer` is an earlier agent step without `smart_script`."},
 	{"sandbox-off", "`sandbox` with `access: off` takes no other key."},
 	{"sandbox-paths", "Sandbox paths are absolute or start with `~/`. They never name the root, the home folder or an ancestor of it, an agent config folder or the keychain folder."},
-	{"legacy-status", "The old status names `To do`, `In progress`, `In review` and `Done` read as their ids."},
 	{"runtime-checks", "Whether a `status` exists and whether an `only <repo>` repo exists is checked when a task runs, not when the file loads."},
 	{"reference", "A step with `step` references a library step that exists and is valid. It takes no `kind`. `id` defaults to the `step` value."},
 	{"overrides", "On a reference, a scalar or list key replaces the library value. `params` and `settings` merge by key. `sandbox` and `results` replace whole."},
@@ -126,9 +124,6 @@ func StepDocModel() configfs.DocModel {
 // optionDoc puts the facts derived from the table's kind and flag fields in front of its line.
 func optionDoc(o option) string {
 	var parts []string
-	if o.Legacy {
-		parts = append(parts, "Legacy: accepted and ignored; Kira drops it on save.")
-	}
 	if o.Kinds != nil {
 		k := kindList(o.Kinds)
 		parts = append(parts, strings.ToUpper(k[:1])+k[1:]+" only.")

@@ -593,7 +593,7 @@ func TestAutomationStep(t *testing.T) {
 		if n := strings.Count(args, "--mcp-config"); n != 1 || strings.Contains(args, "--strict-mcp-config") || !strings.Contains(args, "--setting-sources\nuser") || !strings.Contains(args, "mcp__fake") {
 			t.Errorf("argv:\n%s", args)
 		}
-		if got, want := fakeFile(t, f.app, "api-1.settings"), `{"disableAllHooks":true,"allowedMcpServers":[{"serverName":"kira-ade"},{"serverName":"fake"}],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}`; got != want {
+		if got, want := fakeFile(t, f.app, "api-1.settings"), `{"disableAllHooks":true,"allowedMcpServers":[{"serverName":"kira-space"},{"serverName":"fake"}],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}`; got != want {
 			t.Errorf("--settings = %s, want %s", got, want)
 		}
 		if _, err := os.Stat(filepath.Join(f.app.FakeDir, "mcp-echo-1.json")); err != nil {

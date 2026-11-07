@@ -2,9 +2,7 @@ package appwire
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -42,11 +40,9 @@ import (
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
-	"github.com/kirathecat/kira-studio/internal/memory"
 	memembed "github.com/kirathecat/kira-studio/internal/memory/embed"
 	"github.com/kirathecat/kira-studio/internal/memory/memcheck"
 	"github.com/kirathecat/kira-studio/internal/memory/memorycli"
-	"github.com/kirathecat/kira-studio/internal/memory/modelstore"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
@@ -79,23 +75,6 @@ func RunArgvShim(args []string) (code int, ok bool) {
 		return memcheck.Run(args[2:], os.Stdout, os.Stderr), true
 	}
 	return 0, false
-}
-
-// removeRetiredModels deletes model directories no feature loads any more (P224).
-func removeRetiredModels() {
-	if err := modelstore.RemoveRetired(memory.Home()); err != nil {
-		slog.Warn("remove retired models", "scope", "memory", "err", err)
-	}
-}
-
-// removeLegacyGitSocket deletes the git.sock and git.sock.lock a pre-P243 build left in the home.
-// Safe in Build: the single-instance lock means no other Space owns this home.
-func removeLegacyGitSocket() {
-	for _, name := range []string{"git.sock", "git.sock.lock"} {
-		if err := os.Remove(filepath.Join(config.KiraSpaceHome(), name)); err != nil && !errors.Is(err, fs.ErrNotExist) {
-			slog.Warn("remove legacy git socket", "scope", "startup", "file", name, "err", err)
-		}
-	}
 }
 
 // gitWired is wireGit's own result.

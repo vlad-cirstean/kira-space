@@ -101,7 +101,7 @@ Open **Repository settings** from the Git toolbar. Each setting applies to one r
 
 ### Settings file
 
-Every repository setting lives in one YAML file under `~/.kira-space/config/repos/`, matched to its repository by the `path:` key. The file also holds the nickname, the integration branches, the deployment environments and the worktree options (prepare script, timeout, base path). Edit it in the **Repositories** dialog, or in your own editor: a saved change applies at once.
+Every repository setting lives in one YAML file under `~/.kira-space/config/repos/`, matched to its repository by the `path:` key. The file also holds the nickname, the integration branches, the deployment environments and the worktree options (prepare script, timeout, base path). The base path only pre-fills the New worktree dialog in the Git module. ADE task worktrees always go to `~/kira-space-wts/<repo>/`. Edit it in the **Repositories** dialog, or in your own editor: a saved change applies at once.
 
 In the dialog, the prepare script and each environment's deployed-SHA script can be a command or a Run script picked from the list. A repository file runs normal Run scripts only, not smart ones.
 

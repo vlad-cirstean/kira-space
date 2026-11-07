@@ -22,7 +22,7 @@ func (a *Adapter) ClassifyStatement(_ context.Context, statement string) (adapte
 // target, so ClassifySQL classifies it ClassRead unconditionally — docs/HISTORY.md records that
 // ClickHouse is "the one it does not clear", the reason queryplan.Explainable already
 // refuses to ever compose a ClickHouse EXPLAIN over anything but SELECT/WITH. That restriction only
-// covers explain_query's own composed statements, not run_query, which accepts raw SQL text a
+// covers explain's own composed statements, not run_query, which accepts raw SQL text a
 // caller could type `EXPLAIN <DELETE ...>` into directly — classified ClassRead by the shared
 // scanner, letting a connection with write:deny run a write through it. Reclassify by the
 // EXPLAIN's own target instead, the same worst-case reasoning ClassifySQL already applies when
@@ -48,7 +48,7 @@ func classifyClickHouseSQL(statement string) adapters.OpClass {
 		// queryplan.StatementsFor composes exactly this shape ("EXPLAIN PLAN json = 1, ... SELECT
 		// ..."). Left unstripped, ExplainAnalyzeTarget/ClassifySQL below see a leading "PLAN"/
 		// "ESTIMATE" token instead of the real target and classify it ClassUnknown, so every
-		// composed explain_query statement failed to classify.
+		// composed explain statement failed to classify.
 		rest = stripClickHouseExplainKindAndSettings(rest)
 		if hasAnalyze, target, ok := adapters.ExplainAnalyzeTarget(rest); ok && !hasAnalyze {
 			return adapters.ClassifySQL(target, adapters.ClickHouseDialect)

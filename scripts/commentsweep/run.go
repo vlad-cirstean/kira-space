@@ -60,7 +60,7 @@ func (w *worker) ensure(ctx context.Context) error {
 	}
 	cmd := exec.Command(w.bin, "memory-mcp")
 	cmd.Dir = w.home
-	cmd.Env = append(os.Environ(), "KIRA_MEMORY_HOME="+filepath.Join(w.home, "memory"), "KIRA_SPACE_HOME="+filepath.Join(w.home, "space"))
+	cmd.Env = append(os.Environ(), "KIRA_SPACE_HOME="+filepath.Join(w.home, "space"))
 	client := mcp.NewClient(&mcp.Implementation{Name: "commentsweep", Version: "1"}, nil)
 	s, err := client.Connect(ctx, &mcp.CommandTransport{Command: cmd, TerminateDuration: time.Second}, nil)
 	if err != nil {

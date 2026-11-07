@@ -7,7 +7,7 @@ import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
-import { computed, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue';
 import { control } from '../bridge/control';
 import RepoConfigForm from './RepoConfigForm.vue';
 import { useRepoConfigFile, useSaveRepoConfigFile } from './state/repoConfigQueries';
@@ -19,6 +19,7 @@ import type { RepoFileModel } from './state/repoFormTypes';
 // the draft was edited from; a file changed elsewhere is refused with Reload and Overwrite. A repo
 // with no file shows a template, and Save creates it.
 const props = defineProps<{ path: string; file?: string }>();
+const emit = defineEmits<{ dirty: [value: boolean] }>();
 
 const FOLDER = 'repos';
 
@@ -53,6 +54,9 @@ watch(
   },
   { immediate: true },
 );
+
+watch(draft.dirty, (v) => emit('dirty', v));
+onBeforeUnmount(() => emit('dirty', false));
 
 const items = computed(() => [
   { value: 'form', label: t('common.form.label'), testid: 'repo-file-tab-form' },

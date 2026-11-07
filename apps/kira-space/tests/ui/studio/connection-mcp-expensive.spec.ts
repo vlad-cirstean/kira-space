@@ -65,16 +65,15 @@ async function openMcpTab(
 
 const at = (page: Page, id: string) => page.locator(`[data-testid="connection-mcp-rows-${id}"]`);
 
-test('postgres: the check says who enforces, what a hit does and its limits', async ({
+test('postgres: the check says who enforces, what a hit does and its limits, and repeats no threshold text', async ({
   relaunch,
 }) => {
   const page = await openMcpTab(relaunch, { kind: 'postgres' });
   await expect(page.getByText('Check agent queries against the row threshold')).toBeVisible();
-  await expect(at(page, 'threshold')).toContainText('estimated rows a query’s plan reads');
-  await expect(at(page, 'who')).toContainText('Kira enforces this, not the database');
+  await expect(at(page, 'threshold')).toHaveCount(0);
+  await expect(at(page, 'who')).toContainText('Kira, not the database');
   await expect(at(page, 'who')).toContainText('100,000 rows');
   await expect(at(page, 'hit')).toContainText('refused before it runs');
-  await expect(at(page, 'hit')).toContainText('you always approve it in a dialog');
   await expect(at(page, 'limits')).toContainText('ignore LIMIT');
   await expect(at(page, 'off')).toHaveCount(0);
 });

@@ -203,8 +203,8 @@ Run from the repo root. Shared scripts (`setup`, `lint`, `typecheck`, `test:go`)
 `bun run test:unit`, `bun run test:go` and unscoped `bun run typecheck` cover the whole workspace.
 
 **App data:** `kira.db`, `logs/`, `review.db`, connections, Api collections and runs under
-`~/.kira-space/` (`KIRA_SPACE_HOME`). Memories in `~/.kira-memory/` (`KIRA_MEMORY_HOME`): `memory.db`
-and downloaded `models/`. The home has one lock; two instances on different homes never contend.
+`~/.kira-space/` (`KIRA_SPACE_HOME`). Memories in `~/.kira-space/memory/`: `memory.db`
+and downloaded `models/`. An old `~/.kira-memory` is ignored; Kira Space deletes it once at boot. The home has one lock; two instances on different homes never contend.
 
 ## Tests
 

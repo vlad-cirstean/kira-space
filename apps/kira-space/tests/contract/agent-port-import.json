@@ -362,7 +362,7 @@
       },
       {
         "current": "",
-        "id": "mcp/kira-db",
+        "id": "mcp/kira-studio",
         "kind": "mcp",
         "modes": [],
         "reason": "Names starting with kira are Kira’s own.",

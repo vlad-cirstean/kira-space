@@ -28,8 +28,8 @@
   (literal "/Users/ada/.bashrc")
   (literal "/Users/ada/.bash_profile")
   (literal "/Users/ada/.profile")
-  (subpath "/Users/ada/.kira-memory")
   (subpath "/Users/ada/Library/Keychains")
+  (subpath "/Users/ada/.kira-space/memory")
   (subpath "/Users/ada/.nvm/versions/node/v22.1.0")
   (subpath "/Users/ada/go")
   (subpath "/Users/ada/.local/share/claude")
@@ -54,7 +54,7 @@
   (subpath "/private/var/folders/ab/cd/C")
   (subpath "/Users/ada/.claude")
   (regex #"^/Users/ada/\.claude\.json")
-  (subpath "/Users/ada/.kira-memory"))
+  (subpath "/Users/ada/.kira-space/memory"))
 
 ;; worktrees
 (allow file-write*

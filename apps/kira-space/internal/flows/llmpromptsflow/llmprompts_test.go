@@ -61,8 +61,8 @@ func failure(t *testing.T, err error) map[string]any {
 func TestList(t *testing.T) {
 	app := flowharness.New(t)
 	l := list(t, app)
-	if len(l.Prompts) != 270 {
-		t.Fatalf("listed %d prompts, want 270", len(l.Prompts))
+	if len(l.Prompts) != 250 {
+		t.Fatalf("listed %d prompts, want 250", len(l.Prompts))
 	}
 	for _, p := range l.Prompts {
 		if p.Overridden || p.Text != p.DefaultText || p.Hash != llmprompts.Hash(p.Text) {

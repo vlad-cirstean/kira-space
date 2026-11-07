@@ -32,7 +32,9 @@ import {
   openBrowseLeaf,
   openRowMenu,
 } from './studio/support/tree';
+import { gotoAdeRepos } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
+import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
 
@@ -263,10 +265,10 @@ test('git panel repo list — arrows, Home/End, Enter, Shift+F10 and inline rena
   await expect(row('repo-2')).toContainText('other-repo');
 });
 
-test('repos dialog — arrows move the selected repository', async ({ relaunch }) => {
+test('repos page — arrows move the selected repository', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: REPO_CONTROL });
-  await page.locator('[data-testid="manage-repos"]').click();
-  const rows = page.locator('[data-testid="repos-dialog-repo"]');
+  await gotoAdeRepos(page);
+  const rows = page.locator('[data-testid="ade-repos-repo"]');
   await expect(rows).toHaveCount(2);
   await expect(rows.first()).toHaveAttribute('aria-selected', 'true');
   await rows.first().focus();
@@ -357,11 +359,11 @@ test('memory list — focus on mount, arrows, Home/End, Enter selects and a type
   const first = memoryRecord('ma', 'First fact.');
   const second = memoryRecord('mb', 'Second fact.');
   const { window: page } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryRecent, response: [first, second] },
       { channel: IPC.memoryHistory, response: { memories: [second], events: [] } },
       { channel: IPC.memoryContext, response: { memory: second, groups: [] } },
-    ],
+    ]),
   });
   await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
   const search = page.locator('[data-testid="memory-search"]');
@@ -390,7 +392,7 @@ test('memory list — focus on mount, arrows, Home/End, Enter selects and a type
 test('memory list — 200 memories virtualize, End and Home reach the ends', async ({ relaunch }) => {
   const records = Array.from({ length: 200 }, (_, i) => memoryRecord(`m${i}`, `Fact ${i}.`));
   const { window: page } = await relaunch({
-    control: [{ channel: IPC.memoryRecent, response: records }],
+    control: withMemory([{ channel: IPC.memoryRecent, response: records }]),
   });
   await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
 

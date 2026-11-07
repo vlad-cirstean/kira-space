@@ -422,9 +422,6 @@ func applyWorkflow(root *yaml.Node, wf adewire.Workflow, lib *StepLibrary) error
 	}
 	setScalar(root, "id", kText, wf.ID, true, topOrder)
 	setScalar(root, "name", kText, wf.Name, true, topOrder)
-	if i, _ := find(root, "kira_space_mcp"); i >= 0 { // legacy switch (P408)
-		root.Content = append(root.Content[:i], root.Content[i+2:]...)
-	}
 	ids := make([]string, len(wf.Steps))
 	for i, st := range wf.Steps {
 		ids[i] = st.ID

@@ -92,12 +92,6 @@ type Config struct {
 	Environments        []model.AdeRepoEnv
 }
 
-// isDefault reports whether the file sets nothing beyond its path.
-func (f File) isDefault() bool {
-	return f.Nickname == "" && len(f.IntegrationBranches) == 0 && len(f.Environments) == 0 && f.Worktree == nil &&
-		f.Graph == nil && f.Stash == nil && f.Review == nil && f.Pull == nil && f.GitHost == nil && f.Checkout == nil
-}
-
 // Key is the path as the index keys it.
 func Key(path string) string { return gitpath.CleanNFC(path) }
 

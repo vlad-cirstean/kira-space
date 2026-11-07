@@ -66,7 +66,7 @@ func TestStageHandover(t *testing.T) {
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	rec := importRepo(t, app, repo.Dir)
 	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("one", "")+
-		"  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n"+
+		"  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n"+
 		agentStep("two", "")+
 		"  - id: ship\n    name: Ship\n    kind: manual\n"))
 	task := createTask(t, app, "Fix login", "flow", rec.ID)

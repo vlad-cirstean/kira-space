@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test';
-import { expect, type KiraApp, type RelaunchOptions, test } from './fixtures';
+import { expect, type KiraApp, type Relaunch, type RelaunchOptions, test } from './fixtures';
 import { contract } from './support/contract';
 import { installGitStreamMock } from './support/gitStreamMock';
 import { IPC } from './support/ipcChannels';
-import { openMemory } from './support/memoryNav';
+import { openMemory, withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import { repoRowById, treeRow } from './support/repoRows';
 import type { ControlSnapshot } from './support/types';
@@ -63,7 +63,9 @@ const scanned = contract<{ job: Record<string, unknown>; files: unknown[] }>(
   'MemoryImportService.Job#awaiting',
 );
 
-const BASE: ControlSnapshot[] = [{ channel: IPC.memoryDistillLimits, response: limits }];
+const BASE: ControlSnapshot[] = withMemory([
+  { channel: IPC.memoryDistillLimits, response: limits },
+]);
 const TEXT = 'The worker keeps port 8000 open and the queue never retries.';
 
 async function openDistill(page: Page): Promise<void> {
@@ -396,12 +398,11 @@ const REPO = {
 };
 const FILE = 'export const a = 1;\n';
 
-test('distill: Distill selection in a file view opens the distill view with the text and origin', async ({
-  relaunch,
-}) => {
+// Opens a.ts with its first line selected, Memory on or off.
+async function selectInFile(relaunch: Relaunch, memory: boolean): Promise<Page> {
   const { window: page } = await relaunch({
     control: [
-      ...BASE,
+      ...(memory ? BASE : []),
       { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
       {
         channel: IPC.codeWorkspaceListFiles,
@@ -434,6 +435,13 @@ test('distill: Distill selection in a file view opens the distill view with the 
     .click({ position: { x: 10, y: 5 } });
   await page.keyboard.press('Home');
   await page.keyboard.press('Shift+End');
+  return page;
+}
+
+test('distill: Distill selection in a file view opens the distill view with the text and origin', async ({
+  relaunch,
+}) => {
+  const page = await selectInFile(relaunch, true);
   // The action sits in the context menu and the command palette; the palette keeps the selection.
   await page.keyboard.press('F1');
   await page.keyboard.type('Distill selection');
@@ -445,4 +453,14 @@ test('distill: Distill selection in a file view opens the distill view with the 
   await expect(page.locator('[data-testid="distill-view"]')).toBeVisible();
   await expect(page.locator('[data-testid="distill-input"]')).toHaveValue(FILE.trimEnd());
   await expect(page.locator('[data-testid="distill-origin"]')).toContainText('a.ts lines 1 to 1');
+});
+
+test('distill: Distill selection is absent while Memory is off', async ({ relaunch }) => {
+  const page = await selectInFile(relaunch, false);
+  await page.keyboard.press('F1');
+  await page.keyboard.type('Distill selection');
+  await expect(page.locator('.quick-input-widget')).toBeVisible();
+  await expect(
+    page.locator('.quick-input-list .monaco-list-row', { hasText: 'Distill selection' }),
+  ).toHaveCount(0);
 });

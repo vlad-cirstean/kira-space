@@ -16,7 +16,7 @@ import (
 
 var ctx = context.Background()
 
-// importVia imports dir the way ReposDialog does: scripted folder picker, then ImportRepo.
+// importVia imports dir the way the ADE Repositories page does: scripted folder picker, then ImportRepo.
 func importVia(t *testing.T, app *flowharness.App, dir string) model.CodeRepo {
 	t.Helper()
 	app.Dialogs.AnswerDirectory(dir)

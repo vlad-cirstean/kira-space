@@ -2,9 +2,9 @@
   "launch": {
     "terminalId": "term-rv02",
     "sessionId": "rv02",
-    "command": "claude --session-id claude-rv02 --add-dir ~/wt/web-app/usage-billing",
-    "cwd": "~/wt/web-app/billing-dashboard"
+    "command": "claude --session-id claude-rv02 --add-dir ~/kira-space-wts/web-app/usage-billing",
+    "cwd": "~/kira-space-wts/web-app/billing-dashboard"
   },
   "resumed": false,
-  "note": "The previous review conversation ran in ~/wt/web-app/old, which no longer exists. Started a new one."
+  "note": "The previous review conversation ran in ~/kira-space-wts/web-app/old, which no longer exists. Started a new one."
 }

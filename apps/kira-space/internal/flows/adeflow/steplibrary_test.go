@@ -1,8 +1,6 @@
 package adeflow_test
 
 import (
-	"bytes"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -183,92 +181,4 @@ func TestStepLibraryYaml(t *testing.T) {
 	}
 	app.Contract(t, slScenario, "AdeTaskService.ValidateStepYaml#skip", bad)
 	app.Contract(t, slScenario, "AdeTaskService.Workflows#broken-step", list)
-}
-
-const slMigrateOne = "id: m-one\nname: M one\nsteps:\n" +
-	"  - id: implement\n    name: implement\n    kind: agent\n    runs_on: each repo\n    timeout: 1m\n    prompt: first body\n" +
-	"  - id: gate\n    name: Gate\n    kind: manual\n    skip: true\n"
-
-const slMigrateTwo = "id: m-two\nname: M two\nsteps:\n" +
-	"  - id: implement\n    name: implement\n    kind: agent\n    runs_on: each repo\n    timeout: 1m\n    prompt: second body\n"
-
-func TestStepLibraryMigration(t *testing.T) {
-	app := flowharness.New(t)
-	claude(app, map[string][]fakeagent.Action{"*": {{Name: "done"}}})
-	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
-	rec := importRepo(t, app, repo.Dir)
-
-	// Plant pre-library files, as an older release left them, and start a task on one.
-	wfDir := app.ConfigDir("workflows")
-	files := map[string]string{"m-one.yaml": slMigrateOne, "m-two.yaml": slMigrateTwo, "m-broken.yaml": "id: m-broken\n  oops: [\n"}
-	for name, src := range files {
-		if err := os.WriteFile(filepath.Join(wfDir, name), []byte(src), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	task := createTask(t, app, "Started before", "m-one", rec.ID)
-	br := branchOf(t, board(t, app), task.ID, rec.ID)
-	if _, err := app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: task.ID, BranchNames: map[string]string{br.ID: "feat/old"}}); err != nil {
-		t.Fatal(err)
-	}
-	waitRun(t, app, task.ID, "implement", "done")
-	before := map[string]adewire.Workflow{}
-	for _, f := range []string{"m-one.yaml", "m-two.yaml"} {
-		e, _ := workflowEntry(t, app, f)
-		before[f] = *e.Workflow
-	}
-
-	// The first boot already ran the migration on an empty home; drop its marker to run it for these files.
-	if err := os.RemoveAll(filepath.Join(wfDir, ".p526-backup")); err != nil {
-		t.Fatal(err)
-	}
-	app.Restart()
-
-	stepsDir := app.ConfigDir("steps")
-	for _, f := range []string{"implement.yaml", "implement-2.yaml", "gate.yaml"} {
-		if _, err := os.Stat(filepath.Join(stepsDir, f)); err != nil {
-			t.Errorf("library file %s: %v", f, err)
-		}
-	}
-	for name, src := range files {
-		if bak, err := os.ReadFile(filepath.Join(wfDir, ".p526-backup", name)); err != nil || string(bak) != src {
-			t.Errorf("backup of %s: %v", name, err)
-		}
-	}
-	if raw, _ := os.ReadFile(filepath.Join(wfDir, "m-broken.yaml")); string(raw) != files["m-broken.yaml"] {
-		t.Errorf("broken workflow touched: %q", raw)
-	}
-	one, _ := workflowEntry(t, app, "m-one.yaml")
-	two, _ := workflowEntry(t, app, "m-two.yaml")
-	if one.Workflow.Steps[0].Use != "implement" || two.Workflow.Steps[0].Use != "implement-2" {
-		t.Fatalf("uses = %q / %q, want implement / implement-2", one.Workflow.Steps[0].Use, two.Workflow.Steps[0].Use)
-	}
-	for name, got := range map[string]adewire.Workflow{"m-one.yaml": *one.Workflow, "m-two.yaml": *two.Workflow} {
-		want := before[name]
-		for i := range got.Steps {
-			got.Steps[i].Use = ""
-		}
-		if !sameWorkflow(want, got) {
-			t.Errorf("%s resolves differently after the move:\n%+v\n%+v", name, got, want)
-		}
-	}
-	if t1 := taskOf(t, board(t, app), task.ID); t1.WorkflowOutdated {
-		t.Error("the move flagged a started task as outdated")
-	}
-
-	// A second start does not extract again.
-	y, err := app.W.AdeTask.WorkflowYaml(ctx, adewire.FileNameArgs{FileName: "m-one.yaml"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	app.Restart()
-	if again, _ := app.W.AdeTask.WorkflowYaml(ctx, adewire.FileNameArgs{FileName: "m-one.yaml"}); again.Hash != y.Hash {
-		t.Error("the migration ran twice")
-	}
-}
-
-func sameWorkflow(a, b adewire.Workflow) bool {
-	x, _ := json.Marshal(a)
-	y, _ := json.Marshal(b)
-	return bytes.Equal(x, y)
 }

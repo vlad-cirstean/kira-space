@@ -9,23 +9,23 @@ import (
 	"github.com/kirathecat/kira-studio/internal/harness"
 )
 
-// DbMcpSessions mints the per-session Kira DB server entry; *dbmcp.SessionPool implements it.
+// DbMcpSessions mints the per-session Kira Studio server entry; *dbmcp.SessionPool implements it.
 type DbMcpSessions interface {
 	Grant(dbmcp.SessionIdentity) (harness.MCPServer, func(), error)
 }
 
-// grantDbMcp adds the Kira DB tools to g when the step asks for them. The returned release is never nil.
+// grantDbMcp adds the Kira Studio tools to g when the step asks for them. The returned release is never nil.
 func (b *TaskBoard) grantDbMcp(def stepDef, id dbmcp.SessionIdentity, g *agentmcp.Grant) (release func(), err error) {
 	if !def.DbMcp {
 		return func() {}, nil
 	}
 	if b.deps.DbMcp == nil {
-		return nil, fmt.Errorf("Kira DB tools could not start: the database server is not available")
+		return nil, fmt.Errorf("Kira Studio tools could not start: the database server is not available")
 	}
 	id.StepID = def.ID
 	entry, release, err := b.deps.DbMcp.Grant(id)
 	if err != nil {
-		return nil, fmt.Errorf("Kira DB tools could not start: %w", err)
+		return nil, fmt.Errorf("Kira Studio tools could not start: %w", err)
 	}
 	g.Extra = append(slices.Clone(g.Extra), entry)
 	return release, nil
@@ -37,6 +37,15 @@ func withDbMcpTool(def stepDef, tools []string) []string {
 		return tools
 	}
 	return append(slices.Clone(tools), dbmcp.SessionAllowTool)
+}
+
+// withoutExternalDb denies the user-scope kira-studio server in a headless db_mcp step: the session
+// server already carries the tools, audited, so the agent sees one set.
+func withoutExternalDb(def stepDef, denied []string) []string {
+	if !def.DbMcp || slices.Contains(denied, dbmcp.ExternalDenyTool) {
+		return denied
+	}
+	return append(slices.Clone(denied), dbmcp.ExternalDenyTool)
 }
 
 // joinRelease runs a, then b, once.

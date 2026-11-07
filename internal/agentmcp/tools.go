@@ -3,7 +3,7 @@ package agentmcp
 import "github.com/kirathecat/kira-studio/internal/harness"
 
 // ServerName is the MCP server name in the run's --mcp-config.
-const ServerName = "kira-ade"
+const ServerName = "kira-space"
 
 // Tool ids of the Kira tool server; harness.ToolNames renders them in a provider's names.
 var (
@@ -19,12 +19,9 @@ var (
 		{Server: ServerName, Tool: "task_info"},
 		{Server: ServerName, Tool: "declare_repos"},
 		{Server: ServerName, Tool: "request_branches"},
-		{Server: ServerName, Tool: "branch_status"},
 		{Server: ServerName, Tool: "rename_branch"},
 		{Server: ServerName, Tool: "report_artifacts"},
-		{Server: ServerName, Tool: "attach_proof"},
-		{Server: ServerName, Tool: "list_operations"},
-		{Server: ServerName, Tool: "cancel_operation"},
+		{Server: ServerName, Tool: "operations"},
 	}
 
 	// SandboxToolIDs are the sandbox git tools.

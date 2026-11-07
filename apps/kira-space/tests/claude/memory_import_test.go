@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/internal/kirapaths"
 	"github.com/kirathecat/kira-studio/internal/memory"
 	"github.com/kirathecat/kira-studio/internal/memory/importer"
 )
@@ -44,7 +45,7 @@ func TestMemoryImport(t *testing.T) {
 	defer ms.Close()
 	svc := memory.NewService(ms, newAgentRunner(), memory.ServiceOptions{})
 	defer svc.Close()
-	agent := importer.ModelAgent{Runner: newAgentRunner(), Executable: exe, Home: memory.Home(),
+	agent := importer.ModelAgent{Runner: newAgentRunner(), Executable: exe, SpaceHome: kirapaths.SpaceHome(),
 		Env: map[string]string{"KIRA_TEST_MEMORY_MCP": "1"}}
 	// A small budget forces billing.md's second section into its own chunk, so "It restarts..."
 	// reaches step 1 without the service name; releases.md's last sentence leaves its references open,

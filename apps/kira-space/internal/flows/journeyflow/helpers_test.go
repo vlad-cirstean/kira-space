@@ -28,19 +28,19 @@ steps:
   - id: one
     name: one
     kind: agent
-    status: In progress
+    status: in-progress
     runs_on: each repo
     timeout: 1m
     prompt: work on {branch} in {repo}
   - id: review
     name: Review
     kind: manual
-    status: In review
+    status: in-review
     session: true
   - id: ship
     name: Ship
     kind: manual
-    status: In review
+    status: in-review
     session: true
 `
 

@@ -206,9 +206,6 @@ const timeoutThrottled = computed(
     />
     <template v-if="enabled">
       <template v-if="rowCheck === 'plan'">
-        <FieldDescription class="w-full" data-testid="connection-mcp-rows-threshold">
-          {{ t('studio.settings.advanced.expensiveRows.description') }}
-        </FieldDescription>
         <FieldDescription class="w-full" data-testid="connection-mcp-rows-who">
           {{
             t('studio.project.connectionDialog.mcp.rowsWho.body', {
@@ -291,7 +288,6 @@ const timeoutThrottled = computed(
     </FieldDescription>
     <FieldDescription v-if="enabled" class="w-full" data-testid="connection-mcp-throttle">
       {{ throttleLead }}
-      {{ t('studio.project.connectionDialog.throttle.description') }}
       <span data-testid="connection-mcp-enforce-throttle">{{
         t('studio.project.connectionDialog.mcp.enforceThrottle.body')
       }}</span>
@@ -302,9 +298,6 @@ const timeoutThrottled = computed(
       </FieldDescription>
       <FieldDescription class="w-full" data-testid="connection-mcp-enforce-rows">
         {{ t('studio.project.connectionDialog.mcp.enforceRows.body') }}
-      </FieldDescription>
-      <FieldDescription class="w-full" data-testid="connection-mcp-enforce-masking">
-        {{ t('studio.project.connectionDialog.mcp.enforceMasking.body') }}
       </FieldDescription>
     </template>
 

@@ -298,7 +298,7 @@ func New(t *testing.T, opts ...Opt) *App {
 	a := &App{
 		t: t, Root: root,
 		Home: filepath.Join(root, "home"), SpaceHome: filepath.Join(root, "space"),
-		MemoryHome: filepath.Join(root, "memory"), Work: filepath.Join(root, "work"),
+		MemoryHome: filepath.Join(root, "space", "memory"), Work: filepath.Join(root, "work"),
 		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"),
 		Events: newEvents(), Browser: &Browser{}, FileOpener: &FileOpener{}, Dialogs: &Dialogs{}, WindowMgr: newWindowManager(),
 		KeepAwake: &KeepAwakeDriver{}, McpInstaller: &McpInstaller{}, OSAuth: &OSAuth{}, Focus: &WindowFocus{},
@@ -313,7 +313,6 @@ func New(t *testing.T, opts ...Opt) *App {
 	a.writeHome()
 	a.writeBin(o)
 	t.Setenv("KIRA_SPACE_HOME", a.SpaceHome)
-	t.Setenv("KIRA_MEMORY_HOME", a.MemoryHome)
 	t.Setenv("HOME", a.Home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(a.Home, ".config"))
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
@@ -437,14 +436,24 @@ func (a *App) build() {
 	if err != nil {
 		a.t.Fatalf("storage.Open: %v", err)
 	}
-	r, err := repos.New(db.DB)
-	if err != nil {
-		a.t.Fatalf("repos.New: %v", err)
-	}
 	cipher := secrets.New()
 	if !a.opts.noSecretStore && !cipher.Status().Available {
 		a.t.Fatalf("cipher unavailable: %+v", cipher.Status())
 	}
+	appwire.RunOneTimeMoves(db.DB, a.SpaceHome, cipher, a.McpInstaller)
+	r, err := repos.New(db.DB)
+	if err != nil {
+		a.t.Fatalf("repos.New: %v", err)
+	}
+	settings, err := r.Settings.GetAll()
+	if err != nil {
+		a.t.Fatalf("settings: %v", err)
+	}
+	userHome, err := os.UserHomeDir()
+	if err != nil {
+		a.t.Fatalf("user home: %v", err)
+	}
+	appwire.RunWorktreeMove(db.DB, userHome, settings.Git.GitPath, gitclient.NewHostLocator())
 	// Packages run in parallel, so they cannot share DefaultPort; a restart keeps its port so
 	// open client sessions reconnect.
 	dbMcpPort := dbmcp.EphemeralPort

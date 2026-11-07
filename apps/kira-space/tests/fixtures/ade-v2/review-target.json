@@ -5,6 +5,6 @@
   "gitRepoId": "git_web",
   "branch": "feat/billing-dashboard",
   "base": "main",
-  "worktree": "~/wt/web-app/billing-dashboard",
+  "worktree": "~/kira-space-wts/web-app/billing-dashboard",
   "changeRequest": 0
 }

@@ -30,7 +30,6 @@ type option struct {
 	Default    string
 	Enum       []string
 	Range      string
-	Legacy     bool // accepted and ignored; the writer drops it
 	Doc        string
 }
 
@@ -47,7 +46,6 @@ var (
 var options = []option{
 	{Path: "id", Type: "text", Required: true, Range: "pattern `" + idPattern.String() + "`", Doc: "Workflow id. Must equal the file name without `.yaml`."},
 	{Path: "name", Type: "text", Required: true, Doc: "Display name."},
-	{Path: "kira_space_mcp", Type: "boolean", Legacy: true, Doc: "Old switch for the Kira Space MCP server."},
 	{Path: "steps", Type: "list", Required: true, Range: "at least 1 step", Doc: "Steps run top to bottom. One step must not be skipped."},
 	{Path: "steps[]", Type: "mapping", Doc: "One step."},
 	{Path: "steps[].id", Type: "text", Required: true, Range: fmt.Sprintf("pattern `%s`", idPattern), Doc: "Step id, unique in the workflow."},
@@ -78,7 +76,7 @@ var options = []option{
 	{Path: "steps[].settings", Type: "mapping", Kinds: withSession, Doc: "Agent settings for the step, by agent id then setting key. Manual steps: only with `session: true`."},
 	{Path: "steps[].prompt", Type: "text", Kinds: []adewire.StepKind{adewire.KindAgent, adewire.KindManual}, RequiredOn: agentOnly, Doc: "What the agent does. On an agent step, required unless `smart_script` is set."},
 	{Path: "steps[].allowed_tools", Type: "list of text", Kinds: agentOnly, Doc: "Tools the agent may use without asking, such as `Bash(git *)` or `mcp__server__tool`. Not with `smart_script`."},
-	{Path: "steps[].db_mcp", Type: "boolean", Kinds: withSession, Default: "false", Doc: "Give the step's agent sessions the Kira DB tools (MCP server `kira-db-session`), for that session only. Works with the Database MCP server off in Settings. Not with `smart_script`. Manual steps: only with `session: true`."},
+	{Path: "steps[].db_mcp", Type: "boolean", Kinds: withSession, Default: "false", Doc: "Give the step's agent sessions the Kira Studio tools (MCP server `kira-studio-session`), for that session only. Works with the Database MCP server off in Settings. Not with `smart_script`. Manual steps: only with `session: true`."},
 	{Path: "steps[].results[]", Type: "mapping", Doc: "One outcome."},
 	{Path: "steps[].results[].id", Type: "text", Required: true, Range: fmt.Sprintf("pattern `%s`, unique in the step", idPattern), Doc: "Outcome id. `needs_input` is reserved."},
 	{Path: "steps[].results[].ok", Type: "boolean", Required: true, Doc: "Whether the outcome counts as success."},
@@ -104,12 +102,10 @@ func childKeys(parent string, include func(option) bool) []string {
 	return out
 }
 
-func notLegacy(o option) bool { return !o.Legacy }
-
 // Key sets derived from the table; fields() refuses any key outside them.
 var (
 	topKeys     = childKeys("", nil)
-	topOrder    = childKeys("", notLegacy)
+	topOrder    = topKeys
 	stepOrder   = childKeys("steps[]", nil)
 	resultKeys  = childKeys("steps[].results[]", nil)
 	resultOrder = resultKeys

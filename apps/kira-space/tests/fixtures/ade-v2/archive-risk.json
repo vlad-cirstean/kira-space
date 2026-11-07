@@ -3,7 +3,7 @@
   "branches": [
     {
       "branchId": "b_bill",
-      "worktree": "~/wt/web-app/usage-billing",
+      "worktree": "~/kira-space-wts/web-app/usage-billing",
       "dirty": [
         {
           "code": "M",

@@ -16,7 +16,7 @@ Kira Space is one native macOS app. A mode switcher moves between its modules: A
 
 ## Local data
 
-Kira Space keeps its data in `~/.kira-space`. Config files such as workflows, steps, connections and Api collections live in `~/.kira-space/config`. Backups from a migration live in `~/.kira-space/backups`.
+Kira Space keeps its data in `~/.kira-space`. Config files such as workflows, steps, connections and Api collections live in `~/.kira-space/config`. Backups of one-time upgrades live in `~/.kira-space/backups`.
 
 Saved credentials, secret script parameters and agent secrets are encrypted at rest. The key sits in the macOS Keychain. See [Security and privacy](../../reference/security/).
 
@@ -29,8 +29,8 @@ Kira starts the `claude` or `opencode` command that you installed and signed in 
 Kira offers MCP servers to agents:
 
 - `kira-memory` recalls stored facts in Claude Code sessions.
-- `kira-db` and `kira-db-session` give a client your databases, under rules you set.
-- `kira-ade` gives a task agent its task, branches and proof.
+- `kira-studio` and `kira-studio-session` give a client your databases, under rules you set.
+- `kira-space` gives a task agent its task, branches and proof.
 
 See [MCP and agents](../../space/mcp/).
 

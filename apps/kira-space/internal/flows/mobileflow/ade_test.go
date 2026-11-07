@@ -27,7 +27,7 @@ steps:
   - id: review
     name: Review
     kind: manual
-    status: In review
+    status: in-review
     session: true
 `
 )

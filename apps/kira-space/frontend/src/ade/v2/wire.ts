@@ -103,7 +103,7 @@ export interface WorkflowStep {
   /** Agent prompt; manual: the session's first message. */
   prompt: string;
   allowedTools: string[] /* D6, [] = none added */;
-  /** The step's agent sessions get the Kira DB tools (agent, review, manual session; not with a smart script). */
+  /** The step's agent sessions get the Kira Studio tools (agent, review, manual session; not with a smart script). */
   dbMcp: boolean;
   /** Name of the smart script that replaces `prompt`; '' = a prompt step. */
   smartScript: string;
@@ -580,7 +580,7 @@ interface DbAuditLimit {
   name: string;
   threshold: string;
 }
-/** An approval raised inside a Kira DB call. */
+/** An approval raised inside a Kira Studio call. */
 export interface DbAuditApproval {
   id: string;
   /** The approvals kind: db.query, db.response, db.exemption, kube.read, script.run or api.request. */
@@ -601,7 +601,7 @@ export interface DbAuditApproval {
   exemptionLimits: DbAuditLimit[];
   exemptionReason: string;
 }
-/** One tool call of an agent session on the Kira DB session server. The statement has no literals. */
+/** One tool call of an agent session on the Kira Studio session server. The statement has no literals. */
 export interface DbAuditEntry {
   id: string;
   sessionId: string;

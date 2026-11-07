@@ -188,8 +188,8 @@ func TestKubeMcp(t *testing.T) {
 				t.Errorf("kube_list_clusters leaks %q: %s", hidden, out)
 			}
 		}
-		wantToolError(t, k.call(t, "kube_list_namespaces", map[string]any{"clusterId": k.ids["down"]}), "no cluster")
-		wantToolError(t, k.call(t, "kube_list_namespaces", map[string]any{"clusterId": "missing"}), "no cluster")
+		wantToolError(t, k.call(t, "kube_discover", map[string]any{"clusterId": k.ids["down"]}), "no cluster")
+		wantToolError(t, k.call(t, "kube_discover", map[string]any{"clusterId": "missing"}), "no cluster")
 	})
 
 	t.Run("off-refuses", func(t *testing.T) {
@@ -289,11 +289,8 @@ func TestKubeMcp(t *testing.T) {
 
 	t.Run("allow", func(t *testing.T) {
 		k.setMcp(t, "kind-dev", allModes("allow"))
-		if res := k.call(t, "kube_list_namespaces", map[string]any{"clusterId": dev}); res.IsError || !strings.Contains(text(res), "kube-system") {
-			t.Fatalf("kube_list_namespaces = %q", text(res))
-		}
-		if res := k.call(t, "kube_list_kinds", map[string]any{"clusterId": dev}); res.IsError || !strings.Contains(text(res), `"key":"v1/pods"`) {
-			t.Fatalf("kube_list_kinds = %q", text(res))
+		if res := k.call(t, "kube_discover", map[string]any{"clusterId": dev}); res.IsError || !strings.Contains(text(res), "kube-system") || !strings.Contains(text(res), `"key":"v1/pods"`) {
+			t.Fatalf("kube_discover = %q, want namespaces and kinds", text(res))
 		}
 		res := k.call(t, "kube_list_resources", k.listPods("", map[string]any{"maxRows": 1}))
 		if res.IsError || !strings.Contains(text(res), `"truncated":true`) || !strings.Contains(text(res), `"rowCount":1`) {

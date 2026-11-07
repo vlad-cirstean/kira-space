@@ -55,6 +55,7 @@ import {
   toggleTitleKey,
 } from '../lib/reviewAttention.ts';
 import { buildFileRowMenu } from '../lib/rowMenuModel.ts';
+import { useRevealSelectedFile } from '../lib/useRevealSelectedFile.ts';
 import type { FileListMode } from '../state/detail.ts';
 import type { DetailActions } from '../state/detailActions.ts';
 import FileTreeToolbar from './FileTreeToolbar.vue';
@@ -206,6 +207,9 @@ watch(
   },
   { immediate: true },
 );
+
+const selectedPath = computed(() => props.files[props.selectedFile]?.path ?? null);
+useRevealSelectedFile(selectedPath, { collapsedDirs, rows, visibleRows, showMore, treeEl });
 
 /** P5 W14: announces §8's render cap once per boundary crossing (a fresh commit whose file count
  *  is over the cap, or the filter narrowing back above it after being below) — not on every

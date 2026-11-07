@@ -122,6 +122,7 @@ function onOpenWorkingIndex(index: number, pinned: boolean): void {
 }
 
 const selectedIndex = computed(() => {
+  if (props.cursor?.section === 'working') return -1;
   const path = props.reviewFiles.selectedPath.value;
   if (path === null) return -1;
   return files.value.findIndex((f) => f.path === path);

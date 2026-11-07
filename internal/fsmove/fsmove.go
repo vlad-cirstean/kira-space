@@ -1,4 +1,4 @@
-// Package fsmove copies, verifies and tests config trees for the startup folds (homefold, configfold).
+// Package fsmove copies, verifies and tests config trees (config sync apply).
 package fsmove
 
 import (

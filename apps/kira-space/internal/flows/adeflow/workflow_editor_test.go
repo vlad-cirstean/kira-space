@@ -64,7 +64,7 @@ func TestWorkflowReturnToStepThatNeverRuns(t *testing.T) {
 	t.Run("yaml return to a manual step", func(t *testing.T) {
 		app := flowharness.New(t)
 		y := flowYAML("flow",
-			"  - id: m\n    name: m\n    kind: manual\n    status: In review\n"+
+			"  - id: m\n    name: m\n    kind: manual\n    status: in-review\n"+
 				agentStep("s", "    results:\n      - id: done\n        ok: true\n      - id: failed\n        ok: false\n        next: m\n"))
 		line := 0
 		for i, l := range strings.Split(y, "\n") {

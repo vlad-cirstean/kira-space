@@ -68,9 +68,9 @@ type TaskBoardDeps struct {
 	Workflows *adeflow.Reader
 	// Proofs attaches validation-proof sessions to tasks; nil turns the proof tools off.
 	Proofs ProofLinks
-	// DbMcp mints the per-session Kira DB server entry; nil makes a db_mcp step fail to launch.
+	// DbMcp mints the per-session Kira Studio server entry; nil makes a db_mcp step fail to launch.
 	DbMcp DbMcpSessions
-	// DbAudit reads the Kira DB audit trail of a task.
+	// DbAudit reads the Kira Studio audit trail of a task.
 	DbAudit DbAuditReader
 	// Runner spawns git for repo identification (folder import).
 	Runner gitclient.Runner
@@ -151,8 +151,9 @@ type TaskBoardDeps struct {
 	// Credentials receives the remote ops' credential prompts, shown in Kira Space's windows.
 	Credentials      *gitcred.Relay
 	AutofetchMinutes func() int
-	HomeDir          string
-	Now              func() time.Time
+	// HomeDir is the user home; worktrees go under WorktreesBase(HomeDir).
+	HomeDir string
+	Now     func() time.Time
 }
 
 // TaskBoard is the v2 engine: one gitsession.Conn holding every repo a live task touches, a per-repo
@@ -579,7 +580,7 @@ func (b *TaskBoard) assemble(d boardData, repoIDs []string, results map[string]*
 	}
 	return adewire.Board{
 		Tasks: tasks, Statuses: toWireStatuses(d.statuses), StatusDefaults: toWireDefaults(d.defaults), Branches: branches, Plan: plan, Pairs: pairs, History: toWireHistory(d.archived, d.archBranch),
-		Repos: states, WorktreeBasePath: filepath.Join(b.deps.HomeDir, "wt"), AutofetchMinutes: autofetch,
+		Repos: states, WorktreeBasePath: WorktreesBase(b.deps.HomeDir), AutofetchMinutes: autofetch,
 	}
 }
 

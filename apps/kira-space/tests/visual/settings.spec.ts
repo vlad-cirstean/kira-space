@@ -1,15 +1,16 @@
 import { expect, test } from '../ui/fixtures';
 import { IPC } from '../ui/support/ipcChannels';
+import { withMemory } from '../ui/support/memoryNav';
 
 // P110 I2-1b: one baseline per settings pane, mirroring Kira Studio's own tests/visual/settings.spec.ts.
 // Space has no shared openSettings() helper (tests/ui/repo-workspace.spec.ts inlines the same two
 // lines), so this spec does too rather than adding one just for itself.
-const sections = ['Appearance', 'Git', 'Memory', 'Advanced'] as const;
+const sections = ['Appearance', 'Git', 'Memory', 'Advanced', 'Experimental'] as const;
 
 for (const section of sections) {
   test(`settings dialog: ${section} pane (P110 I2-1b)`, async ({ relaunch }) => {
     const { window } = await relaunch({
-      control: [
+      control: withMemory([
         {
           channel: IPC.memoryMcpStatus,
           response: {
@@ -28,7 +29,7 @@ for (const section of sections) {
               "if [ -x '/Applications/Kira Space' ]; then '/Applications/Kira Space' memory-check --staged; fi",
           },
         },
-      ],
+      ]),
     });
     await window.click('[data-testid="open-settings"]');
     await expect(window.locator('[data-testid="settings-dialog"]')).toBeVisible();

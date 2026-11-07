@@ -7,19 +7,19 @@ export interface ChainSources {
   proofs: readonly TaskProof[];
   /** Empty while the Timeline toggle is off. */
   events: readonly TimelineEvent[];
-  /** Empty while the Kira DB toggle is off. */
+  /** Empty while the Kira Studio toggle is off. */
   audit: readonly DbAuditEntry[];
 }
 
 // `layer` names the toggle that governs an entry: `chain` always shows, `timeline` only with the
-// Timeline toggle on, `audit` only with the Kira DB toggle on.
+// Timeline toggle on, `audit` only with the Kira Studio toggle on.
 export type ChainEntry =
   | { kind: 'handover'; layer: 'chain'; key: string; at: number; handover: Handover }
   | { kind: 'proof'; layer: 'chain'; key: string; at: number; proof: TaskProof }
   | { kind: 'event'; layer: 'timeline'; key: string; at: number; event: TimelineEvent }
   | { kind: 'audit'; layer: 'audit'; key: string; at: number; audit: DbAuditEntry };
 
-// Same millisecond: a proof with a diagram, a handover, any other proof, a Kira DB action, an event,
+// Same millisecond: a proof with a diagram, a handover, any other proof, a Kira Studio action, an event,
 // task creation last.
 function rank(e: ChainEntry): number {
   if (e.kind === 'handover') return 1;
@@ -28,7 +28,7 @@ function rank(e: ChainEntry): number {
   return e.proof.steps.some((s) => s.view === 'diagram') ? 0 : 2;
 }
 
-/** Notes, handovers, attached proof, Kira DB actions and task events in one list, newest first. */
+/** Notes, handovers, attached proof, Kira Studio actions and task events in one list, newest first. */
 export function taskChain({ handovers, proofs, events, audit }: ChainSources): ChainEntry[] {
   const entries: ChainEntry[] = [
     ...handovers.map(

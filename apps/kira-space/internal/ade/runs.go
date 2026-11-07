@@ -900,7 +900,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	agent := l.agent
 	spec := harness.HeadlessSpec{
 		Bin: b.deps.AgentBin, Dir: l.path, Prompt: l.prompt, SessionID: b.sessionAgentID(sessionID),
-		Resume: l.resume, MCPConfigs: []string{cfg}, Config: b.configScope(), AllowedTools: roundTools(agent, allowedTools(agent, withDbMcpTool(def, def.AllowedTools), space), round), DisallowedTools: def.DisallowedTools,
+		Resume: l.resume, MCPConfigs: []string{cfg}, Config: b.configScope(), AllowedTools: roundTools(agent, allowedTools(agent, withDbMcpTool(def, def.AllowedTools), space), round), DisallowedTools: withoutExternalDb(def, def.DisallowedTools),
 		Timeout: l.timeout, Stage: stageValues(def.Settings, agent), ContextFile: l.contextFile, App: prep.App,
 		Hermetic: b.hermetic() && len(ticked.UserMCP) == 0,
 	}

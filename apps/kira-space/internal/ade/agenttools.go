@@ -89,7 +89,7 @@ func resolveRepoRef(ref string, cands []repoCandidate, kind string) (string, err
 		names[i] = cmpNonEmpty(c.nickname, c.name)
 	}
 	if kind == "registered" {
-		return "", agentmcp.ToolError(fmt.Sprintf("Repo %q is not registered in Kira Space. Registered: %s. Ask the user to import it from Git > Manage repositories, then try again.",
+		return "", agentmcp.ToolError(fmt.Sprintf("Repo %q is not registered in Kira Space. Registered: %s. Ask the user to import it from Agents > Repositories, then try again.",
 			ref, joinOrNone(names)))
 	}
 	return "", agentmcp.ToolError(fmt.Sprintf("Repo %q is not on this task. On the task: %s. Call declare_repos first.", ref, joinOrNone(names)))
@@ -330,7 +330,7 @@ func (b *TaskBoard) branchInfo(sb model.AdeTaskBranch, nick, worktree string) ag
 	info := agentmcp.BranchInfo{Repo: nick, Branch: sb.Name, Worktree: worktree, Setup: b.setupInfo(sb, worktree)}
 	switch info.Setup.State {
 	case model.AdeSetupRunning:
-		info.Next = "The worktree is still preparing. Call branch_status with waitSeconds, then edit in " + worktree + "."
+		info.Next = "The worktree is still preparing. Call task_info with repo, branch and waitSeconds, then edit in " + worktree + "."
 	case model.AdeSetupFailed:
 		info.Next = "The worktree setup failed. Tell the user; do not edit until it is fixed."
 		if info.Setup.Note != "" {
@@ -509,5 +509,5 @@ func (b *TaskBoard) CancelOperation(ctx context.Context, taskID, opID string) (a
 		}
 		break
 	}
-	return agentmcp.CancelOperationResult{}, agentmcp.ToolError(fmt.Sprintf("No running operation with id %q; it may have finished. Call list_operations for current ids.", opID))
+	return agentmcp.CancelOperationResult{}, agentmcp.ToolError(fmt.Sprintf("No running operation with id %q; it may have finished. Call operations for current ids.", opID))
 }
