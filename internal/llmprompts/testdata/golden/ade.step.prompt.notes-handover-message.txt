@@ -5,6 +5,6 @@ Do the thing for Add login form.
 Handover from Design:
 Form wired; validation missing.
 
-Kira Space tools: task_info, declare_repos, request_branches. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every branch; you name each, the user approves. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.
+Kira Space tools: task_info, declare_repos, request_branches. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for all; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.
 
 When this step is done, call finish_step with status "done" and a one-line summary. If it failed, call it with status "failed", what failed and the reason. If you need a decision from me, call it with status "needs_input" and your question.
