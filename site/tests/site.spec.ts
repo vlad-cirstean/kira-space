@@ -230,7 +230,8 @@ test('install holds the Keychain image and the folder text', async ({ page }) =>
     'img[alt="macOS Keychain dialog asking to let Kira Space use its own key."]',
   );
   await expect(keychain).toHaveCount(1);
-  expect(await keychain.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(868);
+  await keychain.scrollIntoViewIfNeeded();
+  await expect.poll(() => keychain.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(868);
   await expect(install.locator('img[alt*="access a folder"]')).toHaveCount(0);
   await expect(install).not.toContainText('Screenshot pending');
 });
