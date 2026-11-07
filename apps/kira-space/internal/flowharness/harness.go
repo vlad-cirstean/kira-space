@@ -437,6 +437,7 @@ func (a *App) build() {
 	if err != nil {
 		a.t.Fatalf("storage.Open: %v", err)
 	}
+	appwire.RunOneTimeMoves(db.DB, a.SpaceHome)
 	r, err := repos.New(db.DB)
 	if err != nil {
 		a.t.Fatalf("repos.New: %v", err)

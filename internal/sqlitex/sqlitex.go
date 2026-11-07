@@ -72,6 +72,10 @@ func escapeDSNPath(path string) string {
 	return path
 }
 
+// ReadOnlyURI is the URI of the database file at path opened read-only, for ATTACH on a connection
+// opened through BuildDSN (which enables URIs).
+func ReadOnlyURI(path string) string { return "file:" + escapeDSNPath(path) + "?mode=ro" }
+
 // Open opens (or creates) the sqlite database file at path, applies the six startup pragmas via
 // BuildDSN, forces the first real connection (database/sql's Open is lazy — Ping is what
 // creates the file and applies the DSN pragmas), serializes every statement onto one connection
