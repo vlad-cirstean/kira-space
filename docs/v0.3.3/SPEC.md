@@ -6,7 +6,7 @@ Cleanup chapter. Branch `chapter/v0.3.3`, tag `v0.3.3`. First `P` is P564 (highe
 |---|---|---|
 | P564 | Cleanup: drop v0.3.2 one-time migrations, repo rename URLs | Done |
 | P565 | Presentation site: redesign, repo URLs, mobile zoom, drop carousel | Done |
-| P566 | Presentation site: second design pass (identity, color, bento) | Pending |
+| P566 | Presentation site: second design pass (identity, color, bento) | Done |
 | P567 | Close chapter | Pending |
 
 P564 and P565 run as parallel streams (own worktree each): P564 owns everything outside `site/`, P565 owns `site/`. Grouping in `plans/batch-P564-P565.md`.
@@ -48,6 +48,7 @@ Chapter end: non-UI full run, 1 code review round, close phase, PR.
 
 - Ask: user verdict on P565: grey cards and text, no personality. Give the landing page and /build/ a real identity: bold brand palette from the app icon, memorable hero, varied bento tiles with CSS/SVG visuals, scroll story, voice in copy. Zero client JS, reduced-motion respected.
 - Plan: `plans/P566.md`. User reviews design shots before implementation.
+- Result: done. Brand tokens from the app icon, flashy hero stage, engine marquee, bento of CSS and SVG mini UIs, scroll-held story, light Build band, install bookend, `/build/` carries the sparkle thread. Banner now reads "Personal project. Use with care." Large `blur`, `backdrop-filter` and `mask-image` layers stalled WebKit (landing under 2 fps, tests timed out); replaced by gradient fades, now WebKit holds 15 to 50 fps. Site Playwright in WebKit: 223 pass, 1 skip; Chromium site and build specs: 68 pass. Visual baselines refreshed from real shots. Zero client JS, no new dependency.
 
 ## P567 Close chapter
 
