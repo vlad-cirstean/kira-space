@@ -89,7 +89,7 @@ func resolveRepoRef(ref string, cands []repoCandidate, kind string) (string, err
 		names[i] = cmpNonEmpty(c.nickname, c.name)
 	}
 	if kind == "registered" {
-		return "", agentmcp.ToolError(fmt.Sprintf("Repo %q is not registered in Kira Space. Registered: %s. Ask the user to import it from Git > Manage repositories, then try again.",
+		return "", agentmcp.ToolError(fmt.Sprintf("Repo %q is not registered in Kira Space. Registered: %s. Ask the user to import it from Agents > Repositories, then try again.",
 			ref, joinOrNone(names)))
 	}
 	return "", agentmcp.ToolError(fmt.Sprintf("Repo %q is not on this task. On the task: %s. Call declare_repos first.", ref, joinOrNone(names)))
