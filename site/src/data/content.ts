@@ -1,7 +1,7 @@
 import type { IconName } from './icons';
 import type { ShotId } from './shotCapture';
 
-export interface Feature {
+interface Feature {
   readonly title: string;
   /** Docs path relative to the site root, rendered as a link on the tile title. */
   readonly href: string;
