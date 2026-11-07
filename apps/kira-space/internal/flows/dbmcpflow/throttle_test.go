@@ -124,7 +124,12 @@ func TestThrottleSerialAcrossUserAndMcp(t *testing.T) {
 			if err := <-userDone; err != nil {
 				t.Fatal(err)
 			}
-			testx.WaitUntil(t, 10*time.Second, func() bool { return indexOf(marks(), oplog.DbEventOpEnd, userOp) >= 0 })
+			// Events reach the recorder asynchronously, after run_query and the user op have returned:
+			// wait for both marks the assertions read, not just the user's op:end.
+			testx.WaitUntil(t, 10*time.Second, func() bool {
+				got := marks()
+				return indexOf(got, oplog.DbEventOpEnd, userOp) >= 0 && indexOf(got, oplog.DbEventOpStart, "mcp") >= 0
+			})
 
 			got := marks()
 			mcpStart, userEnd := indexOf(got, oplog.DbEventOpStart, "mcp"), indexOf(got, oplog.DbEventOpEnd, userOp)
