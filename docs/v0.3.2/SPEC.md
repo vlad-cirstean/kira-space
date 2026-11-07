@@ -43,7 +43,7 @@ More rows follow as the user adds them. Table order is execution order.
 - Scope: every install is exactly v0.3.1 (tag `v0.3.1`, merge `e7356a352`). Squash each SQLite chain into one baseline at the version v0.3.1 records: kira.db 90, review.db 8, memory.db 8. An older non-empty DB refuses to open with a pointed error. Delete the home, config and DB folds, the old-Studio checks, one-time DB-to-file exports, legacy cleanups, the frontend key migration, `install.sh --app=studio` and its release job. Keep the migration runner, `schema_version`, `SchemaTooNewError` and the foreign-keys-off step type for future migrations. Keep the v0.3.1 updater contract (`--app=space`, `--wait-pid`, `--notify-fd`).
 - Added by the user: fold `agent-secrets.db` into kira.db `secret_values` (scope `agent-credential`, owner `agent`, same cipher, only through `secrets.Store`, values never in logs or the op log); rename the macOS Keychain item from "Kira Studio" to "Kira Space" keeping the existing master key. Both are one-time boot data moves of live v0.3.1 data, idempotent, source kept until verified. Out of scope: `~/.kira-memory` move and the add-repos dialog move (separate phases).
 - Zero data loss on the user's v90 kira.db: baseline proven byte-for-byte against a chain-built DB, and a chain-upgraded DB with data opens unchanged.
-- User decisions (plan "Decisions"): delete all four old config keys (each verified pure back-compat); kira `0091` drops old JSON state (numeric review comment ids in `ade_runs.spec_json`, http tabs with `bodyMode: 'json'`), `schema_quarantine` and stale marker rows, then both readers go; delete `install.sh --app=studio` and its release job (pending-changes patch); keep `memory_legacy_ids`.
+- User decisions (plan "Decisions"): delete all four old config keys (each verified pure back-compat); kira `0091` drops old JSON state (numeric review comment ids in `ade_runs.spec_json`, http tabs with `bodyMode: 'json'`), `schema_quarantine` and stale marker rows, then both readers go; delete `install.sh --app=studio` and its release job (pending-changes patch); drop `memory_legacy_ids` and the legacy-uuid lookup (memory baseline without it, memory `0009` drops it from the user's DB).
 - Order: runs after P556 lands (P556 already removed its Memory upgrade seed, `4ef78a6b1`). Single implementer, no streams.
 - Plan: `plans/P557.md`.
 - Result: pending.
@@ -72,7 +72,7 @@ Runs after the last phase and the full suite run, before the code review. Close 
 
 ### P557 Baseline check (mandatory)
 
-- [ ] Each DB package has one baseline: kira `0090` (plus `0091_p557_drop_legacy.sql`), review `0008`, memory `0008`. Baseline proof test passed at the base commit (result in plan).
+- [ ] Each DB package has one baseline: kira `0090` (plus `0091_p557_drop_legacy.sql`), review `0008`, memory `0008` (plus `0009_p557_drop_legacy_ids.sql`). Baseline proof test passed at the base commit (result in plan).
 - [ ] Copy of a chain-upgraded v90 DB with data opens: version 90, row counts and content hash unchanged, `integrity_check` ok, `foreign_key_check` empty.
 - [ ] v82 DB refuses with the schema-too-old startup alert; v91 refuses with schema-too-new.
 - [ ] `grep -rn "homefold\|configfold\|dbfold\|MigrateOnce\|app=studio\|\.kira-studio" apps internal scripts` returns nothing outside keychain names.
