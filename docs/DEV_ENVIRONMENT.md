@@ -79,9 +79,9 @@ needs.
 - The `screenshots` project runs 3 workers, files and tests in parallel. Each id writes its own
   files; output is byte-identical to a serial run. 26 shots: about 80 s wall locally. Drop to 2
   workers if CI flakes, and record it.
-- Install dialog images (`site/src/assets/install/keychain-access.webp`, `folder-access.webp`) are
-  user-supplied WebP, committed. Missing: local build and `astro dev` show a "Screenshot pending"
-  box and warn; `CI=true` fails the build. `KIRA_SITE_SHOTS=placeholder` does not lift this.
+- Install Keychain dialog image (`site/src/assets/install/keychain-access.webp`) is user-supplied
+  WebP, committed. Missing file fails every site build. Folder prompt is prose only, no image.
+  `KIRA_SITE_SHOTS=placeholder` does not lift this.
 - Local site with no images: `bun run site:dev` serves placeholders and warns per missing file.
   `site:build` fails on a missing image; `KIRA_SITE_SHOTS=placeholder bun run site:build` uses
   placeholders. For real images run `bun run screenshots` first.
