@@ -18,8 +18,7 @@ Api, Docker and Database MCP features.
 - macOS 26+, Apple Silicon (`arm64`) only. Dark mode only.
 - Packaged build is ad-hoc signed, not notarized. First launch after an install may show one
   keychain prompt; **Always Allow** answers it for that build.
-- One data home, `~/.kira-space/`. First launch folds the retired Studio home in and keeps it as a backup
-  under `~/.kira-space/backups/`.
+- One data home, `~/.kira-space/`.
 
 ## Code workspace features
 
@@ -204,7 +203,7 @@ Run from the repo root. Shared scripts (`setup`, `lint`, `typecheck`, `test:go`)
 
 **App data:** `kira.db`, `logs/`, `review.db`, connections, Api collections and runs under
 `~/.kira-space/` (`KIRA_SPACE_HOME`). Memories in `~/.kira-space/memory/`: `memory.db`
-and downloaded `models/`. An old `~/.kira-memory` is ignored; Kira Space deletes it once at boot. The home has one lock; two instances on different homes never contend.
+and downloaded `models/`. The home has one lock; two instances on different homes never contend.
 
 ## Tests
 

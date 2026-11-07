@@ -7,26 +7,17 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/leftovers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/wtmove"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
-	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 // RunOneTimeMoves runs the v0.3.1 to v0.3.2 data moves (the worktree move is RunWorktreeMove) after the database opens and before Build. The
 // Keychain item moves when the cipher is created, so the caller creates it first. A failed move logs and
-// leaves its source in place; the next boot retries. The leftovers cleanup runs only when every move
-// succeeded in this boot. The next chapter deletes this file and everything it calls.
-func RunOneTimeMoves(db *sql.DB, home string, cipher *secrets.Cipher) {
+// leaves its source in place; the next boot retries. The next chapter deletes this file and everything it calls.
+func RunOneTimeMoves(db *sql.DB, home string) {
 	if err := agentcfg.MoveSecretsFile(db, home); err != nil {
 		slog.Warn("move agent secrets into kira.db", "scope", "startup", "err", err)
-		return
 	}
-	if !cipher.Status().Available {
-		slog.Warn("leftovers cleanup skipped: secret storage is unavailable", "scope", "startup")
-		return
-	}
-	leftovers.Run(leftovers.Options{SpaceHome: home, StudioHome: leftovers.StudioHomeDefault(), MemoryHome: leftovers.MemoryHomeDefault()})
 }
 
 // RunWorktreeMove moves task worktrees from <userHome>/wt to <userHome>/kira-space-wts (P563). It runs

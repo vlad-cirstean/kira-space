@@ -240,7 +240,6 @@ historical prose.
   is `${KIRA_SPACE_HOME}/app.lock`, so two `KIRA_SPACE_HOME`s are two fully independent backends
   and a test never contends with a `bun run dev` session. Anything needing a server builds
   one over its own temp `KIRA_SPACE_HOME` — never the fixed path.
-  `KIRA_HOME` is read only by the one-time leftovers cleanup (`leftovers.StudioHomeDefault`); either variable set means the retired `~/.kira-studio/` is never touched.
 - **A test binary panics if it resolves an app home with `KIRA_SPACE_HOME` unset** (`kirapaths.Home`, non-`production` builds). A package whose tests reach one calls `testx.RunWithTempHomes` from `TestMain`.
 - **`bun run dev` runs the one dev loop** (`cd apps/kira-space && wails3 task dev`): native window,
   Vite dev server on port 9246.
@@ -1088,7 +1087,6 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 
 | Name | Purpose | Set by |
 |---|---|---|
-| `KIRA_HOME` | Retired Studio data dir (`~/.kira-studio/`); read only by the one-time leftovers cleanup | you |
 | `KIRA_SPACE_HOME` | The one data dir and instance-lock dir (`app.lock`). Panics in a non-`production` test binary when unset | you; `testx.RunWithTempHomes` |
 | `KIRA_DEV` | Overrides the production check on a non-`production` build (`kirapaths`) | you |
 | `KIRA_INSECURE_SECRETS` | `1` stores secrets unencrypted on Linux without a keyring. Dev only | you; IPC fixture harness |
