@@ -6,9 +6,8 @@ import (
 	"strings"
 )
 
-// MigrationSource names one embedded migration file in application order — the shared shape each
-// app's own migrations/embed.go walked separately (storage/migrations for both apps,
-// gitreview/migrations) before P107 I2-4 pulled the read-and-sort loop out from under all three.
+// MigrationSource names one embedded migration file in application order, the shared shape of each
+// database's migrations/embed.go (storage, gitreview, memory).
 type MigrationSource struct {
 	Version int
 	Name    string
@@ -16,8 +15,7 @@ type MigrationSource struct {
 }
 
 // LoadMigrations reads every source's file from fsys and returns them as Migration, sorted by
-// Version. Each caller keeps its own //go:embed directive and its own MigrationSource table; this
-// owns only the loop the three copies shared.
+// Version. Each caller keeps its own //go:embed directive and its own MigrationSource table.
 func LoadMigrations(fsys fs.FS, sources []MigrationSource) ([]Migration, error) {
 	out := make([]Migration, 0, len(sources))
 	for _, s := range sources {

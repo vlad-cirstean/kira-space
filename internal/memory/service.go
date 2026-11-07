@@ -480,8 +480,8 @@ func (s *Service) History(ctx context.Context, id string) (History, error) {
 	return s.store.Lineage(ctx, id)
 }
 
-// Context returns a fact with the other facts stored in its groups. id is a fact id, version id or
-// legacy uuid; limit caps the facts per group (0 means DefaultContextLimit).
+// Context returns a fact with the other facts stored in its groups. id is a fact id or version id;
+// limit caps the facts per group (0 means DefaultContextLimit).
 func (s *Service) Context(ctx context.Context, id string, limit int) (Context, error) {
 	switch {
 	case limit <= 0:

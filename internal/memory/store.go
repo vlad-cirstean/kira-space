@@ -272,11 +272,11 @@ func (s *Store) Recent(ctx context.Context, limit int) ([]Memory, error) {
 	return collect(rows)
 }
 
-// lineageOf resolves a fact id, a version id or a legacy uuid to its fact id.
+// lineageOf resolves a fact id or a version id to its fact id.
 func lineageOf(ctx context.Context, q queryer, id string) (string, error) {
 	var lineage string
 	err := q.QueryRowContext(ctx, `SELECT lineage_id FROM memories
-		WHERE lineage_id = ?1 OR id = ?1 OR id = (SELECT memory_id FROM memory_legacy_ids WHERE legacy_id = ?1)
+		WHERE lineage_id = ?1 OR id = ?1
 		LIMIT 1`, id).Scan(&lineage)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrNotFound
@@ -287,8 +287,7 @@ func lineageOf(ctx context.Context, q queryer, id string) (string, error) {
 	return lineage, nil
 }
 
-// Lineage returns every version of a fact plus its events. id is the fact id, any version id or a
-// legacy uuid.
+// Lineage returns every version of a fact plus its events. id is the fact id or any version id.
 func (s *Store) Lineage(ctx context.Context, id string) (History, error) {
 	db, err := s.conn()
 	if err != nil {

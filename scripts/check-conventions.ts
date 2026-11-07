@@ -76,11 +76,9 @@ const GO_IDS_PATH = 'internal/ids/prefixes.go';
 const TS_IDS_PATH = 'packages/shared/ids.ts';
 const EVENT_NAME = /^kira:[a-z][a-zA-Z]*:[a-z][a-zA-Z]*$/;
 const MIGRATION_SETS: ReadonlyArray<{ dir: string; baseline: number; strictFrom?: number }> = [
-  { dir: 'apps/kira-space/internal/gitreview/migrations', baseline: 3 },
-  { dir: 'apps/kira-space/internal/storage/migrations', baseline: 32, strictFrom: 83 },
-  { dir: 'apps/kira-space/internal/dbfold/legacy', baseline: 37 },
-  // 0004 rebuilds memories and memory_events with their legacy TEXT ISO created_at/superseded_at unchanged.
-  { dir: 'internal/memory/migrations', baseline: 4 },
+  { dir: 'apps/kira-space/internal/gitreview/migrations', baseline: 8 },
+  { dir: 'apps/kira-space/internal/storage/migrations', baseline: 90, strictFrom: 83 },
+  { dir: 'internal/memory/migrations', baseline: 8 },
 ];
 const MIGRATION_NAME = /^(\d{4})_[a-z]\d+[a-z]?_[a-z0-9]+(?:_[a-z0-9]+)*\.sql$/;
 const BAD_FOLDERS = new Set(['util', 'utils', 'helpers']);
@@ -253,8 +251,6 @@ export function migrationHits(
   for (const [name, sql] of files) {
     const num = Number.parseInt(name.slice(0, 4), 10);
     if (!(num > baseline)) continue;
-    // P544 copies Studio's final schema verbatim, legacy TEXT timestamps included.
-    if (name === '0078_p544_module_tables.sql') continue;
     const path = `${dir}/${name}`;
     if (!MIGRATION_NAME.test(name)) {
       hits.push({

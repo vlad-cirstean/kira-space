@@ -122,8 +122,6 @@ type Migration struct {
 	// DROP TABLE of a parent would otherwise fire ON DELETE CASCADE on every child. The step is
 	// followed by PRAGMA foreign_key_check; any violation rolls the whole step back.
 	ForeignKeysOff bool
-	// Func runs after SQL inside the same transaction, for a step whose shape varies at runtime.
-	Func func(*sql.Tx) error
 }
 
 // ForeignKeysOffMarker is the first line of a migration file that wants Migration.ForeignKeysOff.
@@ -223,12 +221,6 @@ func Migrate(db *sql.DB, migrations []Migration) error {
 			_ = tx.Rollback()
 			return fmt.Errorf("sqlitex: apply migration %s: %w", m.Name, err)
 		}
-		if m.Func != nil {
-			if err := m.Func(tx); err != nil {
-				_ = tx.Rollback()
-				return fmt.Errorf("sqlitex: apply migration %s: %w", m.Name, err)
-			}
-		}
 		if _, err := tx.Exec(`UPDATE schema_version SET version = ?`, m.Version); err != nil {
 			_ = tx.Rollback()
 			return fmt.Errorf("sqlitex: record migration %s: %w", m.Name, err)
@@ -264,12 +256,6 @@ func applyForeignKeysOff(db *sql.DB, m Migration) (err error) {
 	if _, err := tx.Exec(m.SQL); err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("sqlitex: apply migration %s: %w", m.Name, err)
-	}
-	if m.Func != nil {
-		if err := m.Func(tx); err != nil {
-			_ = tx.Rollback()
-			return fmt.Errorf("sqlitex: apply migration %s: %w", m.Name, err)
-		}
 	}
 	if err := checkForeignKeys(tx); err != nil {
 		_ = tx.Rollback()
