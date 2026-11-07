@@ -22,5 +22,5 @@ func RunOneTimeMoves(db *sql.DB, home string, cipher *secrets.Cipher) {
 		slog.Warn("leftovers cleanup skipped: secret storage is unavailable", "scope", "startup")
 		return
 	}
-	leftovers.Run(leftovers.Options{SpaceHome: home, StudioHome: leftovers.StudioHomeDefault()})
+	leftovers.Run(leftovers.Options{SpaceHome: home, StudioHome: leftovers.StudioHomeDefault(), MemoryHome: leftovers.MemoryHomeDefault()})
 }

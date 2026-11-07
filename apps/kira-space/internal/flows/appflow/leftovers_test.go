@@ -115,3 +115,66 @@ func TestLeftoversStudioHome(t *testing.T) {
 	}
 	leftovers.Run(leftovers.Options{SpaceHome: app.SpaceHome, StudioHome: studio})
 }
+
+// The retired memory home goes whole when it is a real folder no runner holds; a boot under a home
+// override, a symlink, a wrong name and a similar sibling all survive. The new memory folder under the
+// Space home is never touched.
+func TestLeftoversMemoryHome(t *testing.T) {
+	var old, notes, outside, live string
+	app := flowharness.New(t, flowharness.WithSeed(func(a *flowharness.App) {
+		old = filepath.Join(a.Home, ".kira-memory")
+		notes = filepath.Join(a.Home, ".kira-memory-notes")
+		outside = filepath.Join(a.Root, "outside")
+		live = filepath.Join(a.SpaceHome, "memory", "memory.db")
+		touch(t, filepath.Join(old, "memory.db"))
+		touch(t, filepath.Join(old, "models", "m", "model.onnx"))
+		touch(t, notes)
+		touch(t, filepath.Join(outside, "precious.txt"))
+		touch(t, live)
+	}))
+	if !exists(old) {
+		t.Fatal("a boot under KIRA_SPACE_HOME removed the old memory home")
+	}
+
+	held, ok, err := filelock.TryLock(filepath.Join(old, "import-runner.lock"))
+	if err != nil || !ok {
+		t.Fatalf("lock = %v, %v", ok, err)
+	}
+	leftovers.Run(leftovers.Options{SpaceHome: app.SpaceHome, MemoryHome: old})
+	if !exists(filepath.Join(old, "memory.db")) {
+		t.Fatal("the old memory home was removed while its runner lock was held")
+	}
+	_ = held.Close()
+
+	wrong := filepath.Join(app.Home, "memory-data")
+	touch(t, filepath.Join(wrong, "memory.db"))
+	leftovers.Run(leftovers.Options{SpaceHome: app.SpaceHome, MemoryHome: wrong})
+	if !exists(filepath.Join(wrong, "memory.db")) {
+		t.Fatal("a folder with another name was removed")
+	}
+	inside := filepath.Join(app.SpaceHome, ".kira-memory")
+	touch(t, filepath.Join(inside, "x"))
+	leftovers.Run(leftovers.Options{SpaceHome: app.SpaceHome, MemoryHome: inside})
+	if !exists(filepath.Join(inside, "x")) {
+		t.Fatal("a folder inside the Space home was removed")
+	}
+
+	leftovers.Run(leftovers.Options{SpaceHome: app.SpaceHome, MemoryHome: old})
+	if exists(old) {
+		t.Fatal("the old memory home survived with no lock held")
+	}
+	for _, p := range []string{notes, live, filepath.Join(outside, "precious.txt")} {
+		if !exists(p) {
+			t.Fatalf("%s was removed", p)
+		}
+	}
+
+	link := filepath.Join(app.Home, ".kira-memory")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Fatal(err)
+	}
+	leftovers.Run(leftovers.Options{SpaceHome: app.SpaceHome, MemoryHome: link})
+	if !exists(filepath.Join(outside, "precious.txt")) || !exists(link) {
+		t.Fatal("a symlinked memory home was followed or removed")
+	}
+}

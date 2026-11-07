@@ -1,6 +1,6 @@
 // Package leftovers is a one-time boot cleanup that deletes what v0.3.1 and earlier left behind and
 // the current code never reads (P557). It deletes only by the allowlist below: exact names, three fixed
-// patterns and the retired Studio home. Logs carry names and counts, never contents. The next chapter
+// patterns and the retired Studio and memory homes. Logs carry names and counts, never contents. The next chapter
 // deletes this package and its call in appwire.RunOneTimeMoves.
 package leftovers
 
@@ -41,22 +41,33 @@ const mobileTmp = "mobile/*.tmp"
 
 var backupName = regexp.MustCompile(`^p(\d{3})-\d{8}T\d{6}Z$`)
 
-// Options names the locations. StudioHome "" skips the Studio home.
+// Options names the locations. An empty StudioHome or MemoryHome skips that home.
 type Options struct {
 	SpaceHome  string
 	StudioHome string
+	MemoryHome string
 }
 
 // StudioHomeDefault is ~/.kira-studio, or "" when a dev or test override is set.
 func StudioHomeDefault() string {
-	if os.Getenv("KIRA_SPACE_HOME") != "" || os.Getenv("KIRA_HOME") != "" {
+	return retiredHomeDefault(".kira-studio", "KIRA_HOME")
+}
+
+// MemoryHomeDefault is ~/.kira-memory, the home before memory moved under the Space home, or "" when
+// a dev or test override is set.
+func MemoryHomeDefault() string {
+	return retiredHomeDefault(".kira-memory", "KIRA_MEMORY_HOME")
+}
+
+func retiredHomeDefault(name, overrideEnv string) string {
+	if os.Getenv("KIRA_SPACE_HOME") != "" || os.Getenv(overrideEnv) != "" {
 		return ""
 	}
 	h, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(h, ".kira-studio")
+	return filepath.Join(h, name)
 }
 
 // Run deletes the allowlisted items that exist. A failed item is logged and skipped.
@@ -65,7 +76,8 @@ func Run(o Options) {
 	if home, err := filepath.EvalSymlinks(o.SpaceHome); err == nil {
 		c.home = home
 		c.spaceHome(home)
-		c.studioHome(o.StudioHome)
+		c.retiredHome(o.StudioHome, ".kira-studio", "app.lock")
+		c.retiredHome(o.MemoryHome, ".kira-memory", "import-runner.lock")
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		slog.Warn("leftovers: resolve the Space home", "scope", "startup", "err", err)
 	}
@@ -170,41 +182,42 @@ func (c *cleaner) remove(home, rel string, dir bool) {
 	c.removed = append(c.removed, rel)
 }
 
-// studioHome removes the retired Studio home when it is a real folder that no running Studio holds.
-func (c *cleaner) studioHome(studio string) {
-	if studio == "" {
+// retiredHome removes a retired home folder when it is a real folder named name that nothing running
+// holds through lock. Logs carry the name and the entry count, never contents.
+func (c *cleaner) retiredHome(path, name, lock string) {
+	if path == "" {
 		return
 	}
-	if filepath.Base(studio) != ".kira-studio" {
-		slog.Warn("leftovers: refused, not a .kira-studio folder", "scope", "startup")
+	if filepath.Base(path) != name {
+		slog.Warn("leftovers: refused, wrong folder name", "scope", "startup", "name", name)
 		return
 	}
-	fi, err := os.Lstat(studio)
+	fi, err := os.Lstat(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return
 	}
 	if err != nil {
-		slog.Warn("leftovers: inspect the Studio home failed", "scope", "startup", "err", err)
+		slog.Warn("leftovers: inspect failed", "scope", "startup", "name", name, "err", err)
 		return
 	}
 	if fi.Mode()&fs.ModeSymlink != 0 || !fi.IsDir() {
-		slog.Warn("leftovers: refused, the Studio home is not a real folder", "scope", "startup")
+		slog.Warn("leftovers: refused, not a real folder", "scope", "startup", "name", name)
 		return
 	}
-	if within(studio, c.home) || within(c.home, studio) {
-		slog.Warn("leftovers: refused, the Studio home overlaps the Space home", "scope", "startup")
+	if within(path, c.home) || within(c.home, path) {
+		slog.Warn("leftovers: refused, overlaps the Space home", "scope", "startup", "name", name)
 		return
 	}
-	if inUse(filepath.Join(studio, "app.lock")) {
-		slog.Warn("leftovers: skipped, Kira Studio is running", "scope", "startup")
+	if inUse(filepath.Join(path, lock)) {
+		slog.Warn("leftovers: skipped, in use", "scope", "startup", "name", name)
 		return
 	}
-	entries, _ := os.ReadDir(studio)
-	if err := os.RemoveAll(studio); err != nil {
-		slog.Warn("leftovers: remove the Studio home failed", "scope", "startup", "err", err)
+	entries, _ := os.ReadDir(path)
+	if err := os.RemoveAll(path); err != nil {
+		slog.Warn("leftovers: remove failed", "scope", "startup", "name", name, "err", err)
 		return
 	}
-	c.removed = append(c.removed, fmt.Sprintf(".kira-studio (%d entries)", len(entries)))
+	c.removed = append(c.removed, fmt.Sprintf("%s (%d entries)", name, len(entries)))
 }
 
 // inUse reports whether the lock file is held, or cannot be probed.
