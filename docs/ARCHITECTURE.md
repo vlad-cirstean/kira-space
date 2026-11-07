@@ -3859,9 +3859,10 @@ repo's CI runs.
 ## Presentation site (P280)
 
 - The public presentation page for both apps is https://vlad-cirstean.github.io/kira-space/; it is static with zero client JavaScript.
-- Motion is CSS only: keyframes and scroll-driven `view()` timelines under `@supports`, all gated by `prefers-reduced-motion: no-preference`. No animation library. Without support or under reduce, content renders static and visible.
+- Motion is CSS only: keyframes and scroll-driven `view()` timelines under `@supports`, all gated by `prefers-reduced-motion: no-preference`. No animation library. Without support or under reduce, content renders static and visible. Infinite animations are limited to hero orb drift, sparkle twinkle, status-dot pulse, marquee, chip float and the rotating gradient border (a registered `@property --angle`). Animate `transform` and `opacity` only. Avoid `filter` blur, `backdrop-filter` and `mask-image` on animated or large layers: WebKit in the sandbox stalls on them (use radial-gradient fades and overlay gradients).
 - Routes: / (landing) and /build/. `/space` redirects to /.
-- main data-app sets the --tint variable (--kira-info for Studio, --kira-ok for Space), which utilities such as text-tint and bg-tint/10 read. Only existing tokens are used; no new hues.
+- main data-app sets the --tint variable (`--brand-sky` on the landing), which utilities such as text-tint and bg-tint/10 read. Brand hues from the app icon (`--brand-sky`, `-deep`, `-glow`, `-spark`, `-ink`) are defined site-only in `site/src/styles/theme.css`; every other colour comes from `packages/theme` tokens.
+- Landing composition: hero with a three-shot product stage, engine marquee, bento of CSS and SVG mini UIs, scroll-held story, light Build band and install. The four-point sparkle and the sky-pink-lime thread are the shared device, also used on /build/.
 - Icons are Codicons (@vscode/codicons, CC BY 4.0) inlined as SVG through Icon.astro and the typed src/data/icons.ts map. The footer carries the attribution; decorative icons are aria-hidden.
 - site/ is a Bun workspace member (@kira/site) using Astro 7 and Tailwind 4 through @tailwindcss/vite, because @astrojs/tailwind supports only Tailwind 3.
 - Route every link and asset through import.meta.env.BASE_URL or astro:assets, never a hard-coded '/' path, because astro.config.mjs sets base to '/kira-space'.
