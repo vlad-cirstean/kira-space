@@ -98,11 +98,6 @@ type MCPInstaller interface {
 	StdioCommand(name, command string, args []string) string
 }
 
-// MCPRemover removes a user-scope registration by name. An absent name or a missing CLI is success.
-type MCPRemover interface {
-	Remove(ctx context.Context, name string) error
-}
-
 // JSONInstaller is an MCPInstaller that registers a server from the CLI's own JSON document,
 // replacing a registration of the same name. extraEnv is added to the CLI's environment.
 type JSONInstaller interface {
