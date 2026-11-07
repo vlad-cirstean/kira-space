@@ -109,10 +109,7 @@ Git log level (default info) and the popup notification (on).
 
 ## Where data lives
 
-| Modules | Home | Override | Database |
-|---|---|---|---|
-| Studio modules | `~/.kira-space` | `KIRA_SPACE_HOME` | `studio.db` |
-| Git, agents, automations | `~/.kira-space` | `KIRA_SPACE_HOME` | `kira.db` |
-| Memory | `~/.kira-memory` | `KIRA_MEMORY_HOME` | `memory.db` |
+- Database, Api, Git, agents and automations: home `~/.kira-space`, override `KIRA_SPACE_HOME`, database `kira.db`.
+- Memory: home `~/.kira-memory`, override `KIRA_MEMORY_HOME`, database `memory.db`.
 
-Kira Space keeps one home, `~/.kira-space`. Its `config/` folder holds the plain-file config, one folder per module: `connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent` (context and agent settings) and `prompts` (`llm-prompts.json`). Databases (`kira.db`, `studio.db`, `review.db`, `agent-secrets.db`), tokens, `logs/` and `backups/` stay outside `config/`. Memory keeps its own home.
+Kira Space keeps one home, `~/.kira-space`. Its `config/` folder holds the plain-file config, one folder per module: `connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent` (context and agent settings) and `prompts` (`llm-prompts.json`). Databases (`kira.db`, `review.db`), tokens, `logs/` and `backups/` stay outside `config/`. Memory keeps its own home.

@@ -177,7 +177,7 @@ SPEC.md §3; the app is arm64-only, so a universal binary has nothing to be univ
 
 **Keychain consequence of ad-hoc signing.** Credentials are encrypted under an AES-256-GCM key held in
 a macOS Keychain generic-password item (`internal/secrets/keyring_darwin.go`, service
-"Kira Studio Secrets", shared by Studio and Space). Keychain ACLs are keyed to a stable code-signing identity, which is
+"Kira Space Secrets"). Keychain ACLs are keyed to a stable code-signing identity, which is
 exactly what ad-hoc signing defers, so the first launch after installing a new build may show one
 "Kira Space wants to use your confidential information stored in…" prompt; **Always Allow** answers it
 permanently for that build. Expected, and the honest cost of deferring signing — not worth working
@@ -239,9 +239,8 @@ human to launch the packaged app and use it.
 5. Gatekeeper: an unsigned, unnotarized build needs right-click → Open, or
    `xattr -dr com.apple.quarantine "/Applications/Kira Space.app"`. Expected, not a defect. —
    *not yet run*
-6. `~/.kira-space/` is created with `kira.db`, `studio.db`, `config/` and `logs/` on first launch — the real home, since
-   `KIRA_SPACE_HOME` is unset in a packaged run. An existing `~/.kira-studio/` folds in once and moves to
-   `~/.kira-space/backups/p539-<UTC>/kira-studio`, kept until deleted by hand. Existing config folders (`connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent`, `llm-prompts.json`) move into `config/` once, backup `~/.kira-space/backups/p540-<UTC>/`, kept until deleted by hand. — *not yet run*
+6. `~/.kira-space/` is created with `kira.db`, `config/` and `logs/` on first launch — the real home, since
+   `KIRA_SPACE_HOME` is unset in a packaged run. An older database fails with a clear alert instead of migrating (see ARCHITECTURE.md, one baseline per database). — *not yet run*
 7. Create a connection, expand the tree, open a data tab, scroll, open the cell editor, quit cleanly.
    The View menu has no Reload / Toggle DevTools in a `-tags production` build. — *not yet run*
 8. Kafka: connecting is **expected to succeed** in a packaged build — Kafka has been served
@@ -494,7 +493,7 @@ the running build, shows a status-bar item (`internal/bridge/update.go`,
 `packages/workbench/src/components/{UpdateAvailableItem,UpdateDialog}.vue`) that opens a modal
 dialog with an **Update** button. Clicking it re-checks availability, then `internal/
 appupdate.Installer` fetches `scripts/install.sh` fresh from `main` (never bundled), validates its
-contract marker, and spawns it detached with `--app=space` (`--app=studio`, from an old Studio updater, is the migration path: installs Space, retires Studio); the script and the app hand off
+contract marker, and spawns it detached with `--app=space`; the script and the app hand off
 over an fd once the disk image is staged, the app quits, and the script swaps the bundle into
 `/Applications` and reopens it. **Nothing downloads or installs without that click** — S10/S11
 above are what keep the app-code half of that true; `scripts/install.sh` itself is the one
@@ -568,9 +567,6 @@ apps/kira-space && wails3 task darwin:package:dmg`, then `sh scripts/sign-bundle
 "Kira Space"`) is the entry point. `sign-bundle.sh` takes app dir and app name as `$1`/`$2`.
 Artifacts: `apps/kira-space/bin/Kira Space.dmg`/`.app`/`Kira Space` (DMG, bundle, bare binary). The
 DMG ships as `kira-space-macos-arm64.dmg`; `release.yml` builds one app, one tag, one release (§7).
-Kira Studio is retired: `install.sh` moves an installed `Kira Studio.app` to the Trash and leaves
-`~/.kira-studio/`; Space folds it into `~/.kira-space/` on first launch and keeps a backup under `~/.kira-space/backups/`. A running old Studio updater still passes
-`--app=studio`; `install.sh` installs Space and retires Studio.
 
 **ONNX Runtime (P210).** `darwin:package` and `darwin:package:universal` depend on `fetch:onnxruntime`
 (`scripts/fetch-onnxruntime.sh osx-arm64`: MIT release tgz, SHA-256 pinned, extracted to the gitignored

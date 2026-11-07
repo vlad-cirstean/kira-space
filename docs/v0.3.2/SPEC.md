@@ -49,7 +49,23 @@ More rows follow as the user adds them. Table order is execution order.
 - User decision (irreversible, authorized): a one-time boot cleanup, isolated in `apps/kira-space/internal/leftovers`, deletes every file and folder the post-P557 code never reads: dead names inside `~/.kira-space` by an exact allowlist, the pre-P557 `backups/p5xx-*` folders (not `backups/p557-*`, not `~/.kira-memory`) and the retired `~/.kira-studio`. It runs only after the baseline check, the agent-secrets move and the Keychain move succeed in the same boot. Allowlist in the plan.
 - Order: runs after P556 lands (P556 already removed its Memory upgrade seed, `4ef78a6b1`). Single implementer, no streams.
 - Plan: `plans/P557.md`.
-- Result: pending.
+- Result: implemented (row stays Pending until the Mac keychain test and the release.yml patch land).
+  - One baseline per DB at v0.3.1: kira 0090 plus `0091_p557_drop_legacy.sql`, review 0008, memory 0008 plus `0009_p557_drop_legacy_ids.sql`. Proof at base `72907efb1`: chain-built and baseline-built DBs match exactly for all three (kira 62 tables, 116 indexes, 8 seed rows, v90; review 9, 10, 0, v8; memory 15, 23, 9 triggers, 1 seed row, v8). Real-data copies open unchanged (memory 8 to 9 via `0009`). Older DB refuses with `SchemaTooOldError`, newer with `SchemaTooNewError`.
+  - Deleted: home, config and DB folds, exports, `MigrateOnce`, old-Studio alert, `--app=studio`, four old config keys, adeflow legacy status names, legacy frontend storage keys, install.sh Studio path.
+  - Moved once: `agent-secrets.db` into kira.db `secret_values` (original parked in `backups/p557-<UTC ts>/`); Keychain item "Kira Studio" to "Kira Space" with the same key; boot cleanup of dead leftovers.
+  - Pending patch: `docs/pending-changes/.github__workflows__release.yml.patch` (`.github/workflows/` cannot be pushed from a session).
+  - User precondition before first v0.3.2 launch: back up `~/.kira-space/kira.db`, `review.db`, `agent-secrets.db` and `~/.kira-memory/memory.db`.
+  - Unverified here: darwin keychain tests (`go test ./internal/secrets -run Keychain`) need a real Mac; the darwin cgo files compile only there.
+  - Left out of the leftovers allowlist: `config/workflows/.p526-backup` (not an authorized location). Needs a user decision.
+  - Next chapter: delete (each one commit):
+    - `agentcfg.MoveSecretsFile` (`internal/agentcfg/movesecrets.go`) and `flows/harnessflow/secretsmove_test.go`.
+    - `moveLegacyKey` and `moveKeyIn` (`internal/secrets/keychain_move_darwin.go`), `keychain_move_darwin_test.go`, and the `moveLegacyKey` call in `loadOrCreateKey`.
+    - `apps/kira-space/internal/leftovers/` and `flows/appflow/leftovers_test.go`.
+    - `appwire/onetime.go` (`RunOneTimeMoves`) and its calls in `main.go` and `flowharness/harness.go`.
+    - `sqlitex.ReadOnlyURI` when nothing else uses it.
+    - `backups/p557-*` folders (user deletes by hand).
+    - `docs/pending-changes/.github__workflows__release.yml.patch` (whoever applies it).
+    - `0091_p557_drop_legacy.sql` and memory `0009` stay as history.
 
 ### P558 Repositories page in ADE, replacing the Git module dialog
 

@@ -11,9 +11,6 @@ engines (DataGrip/DBeaver class), an HTTP/gRPC API client (Postman/Insomnia clas
 view and a Docker manager. You switch between modules with the mode switcher: **Agents**,
 **Automations**, **Memory**, **Git**, **Studio** (databases), **Api**, **Docker** and **Kubernetes**.
 
-Kira Space replaces the former Kira Studio app. Its database, API and Docker modules now live inside
-Kira Space. See [Upgrading from Kira Studio](#upgrading-from-kira-studio).
-
 See the presentation page: [Kira Space](https://vlad-cirstean.github.io/kira-studio/).
 
 ## Screenshots
@@ -60,18 +57,8 @@ curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scri
 ```
 
 The script downloads the latest release's disk image, moves the app into `/Applications` and opens
-it, with no Gatekeeper prompt (unlike a DMG downloaded through a browser). If an old Kira Studio is
-installed, the script moves it to the Trash. Once installed, the app checks GitHub for a newer
+it, with no Gatekeeper prompt (unlike a DMG downloaded through a browser). Once installed, the app checks GitHub for a newer
 release and offers to update; nothing installs until you click **Update**.
-
-### Upgrading from Kira Studio
-
-Kira Studio no longer ships as a separate app. Running the install command above installs Kira Space
-and moves `Kira Studio.app` to the Trash. The installer does not touch `~/.kira-studio/`. On first
-launch Kira Space folds that folder into `~/.kira-space/`: your saved connections, scripts, runs and
-Api collections move over, and the whole old folder is kept as a backup under
-`~/.kira-space/backups/` until you delete it. Quit Kira Studio first; Kira Space refuses to start
-while the old app is still running.
 
 ### Building from source
 
