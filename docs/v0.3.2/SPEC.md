@@ -9,6 +9,7 @@ Source: user request. The table is open: the user adds more phases to this chapt
 | P555 | Keychain install image and Pages build | Pending |
 | P556 | Experimental settings menu, Memory behind a toggle | Pending |
 | P557 | Drop backward compatibility, single baseline migration | Pending |
+| P558 | Repositories page in ADE, replacing the Git module dialog | Pending |
 
 More rows follow as the user adds them. Table order is execution order.
 
@@ -48,6 +49,16 @@ More rows follow as the user adds them. Table order is execution order.
 - Plan: `plans/P557.md`.
 - Result: pending.
 
+### P558 Repositories page in ADE, replacing the Git module dialog
+
+- Ask (verbatim): "Adding git repos dialog should be moved from the git module to the ade module as a normal panel like workflow is".
+- Scope: `repo/ReposDialog.vue` becomes `ade/v2/repos/AdeReposPage.vue`, a Repositories tab in the ADE top bar beside Agent config and Workflows. It gets its own in-memory store (`adeReposUi`) and the same unsaved-edits leave guard. The Git module stops mounting the dialog; its panel header button goes. GitStart and the repo row "Configure repository…" jump to the ADE page (default; user decision 1). ADE with no repos opens the page from its empty state. No binding or bound-service change.
+- Tests: no new backend behaviour, so no new flow test. UI specs open the page from the ADE tab; testids `repos-dialog-*` become `ade-repos-*`. Visual: `git-repos-dialog` baseline deleted, new `ade-repos-page` baseline recorded on Linux.
+- Order: runs after P557. Shares only `en.json` and ARCHITECTURE with P556/P557, different keys and sections.
+- Single implementer, no streams. Plan lists 2 NEEDS USER DECISION items, each with a default.
+- Plan: `plans/P558.md`.
+- Result: pending.
+
 ## Close
 
 1 code review round unless the user says otherwise. After the last phase: one full suite run with all failures fixed, review round, hand-written close per CLAUDE.md, PR. The table is open: add checklist items for each new phase.
@@ -79,3 +90,11 @@ Runs after the last phase and the full suite run, before the code review. Close 
 - [ ] Pending release.yml patch committed under `docs/pending-changes/`; README, ARCHITECTURE, PACKAGING, DEV_ENVIRONMENT carry no fold or `--app=studio` text.
 - [ ] Agent secrets: flow test moves rows from a seeded `agent-secrets.db` into kira.db, file lands under `backups/p557-*`, second boot no-op, conflicting value refuses; no plaintext anywhere in kira.db or logs.
 - [ ] Keychain: user runs `go test ./internal/secrets -run Keychain` on the Mac (old only moves, both equal deletes old, both differ refuses, neither no-op); first real launch keeps connection passwords and agent credentials readable.
+
+### P558 Repositories page check (mandatory)
+
+- [ ] ADE top bar has a Repositories tab; the page imports, lists, configures, hides and removes repos, and manages scan folders and other files.
+- [ ] Unsaved settings-file edits ask before leaving the tab or picking another repo.
+- [ ] Git panel has no repositories dialog and no Manage repositories button; GitStart and "Configure repository…" land on the ADE page (or per user decision 1).
+- [ ] `grep -rn "repos-dialog\|reposDialog\|ReposDialog" apps/kira-space` returns nothing.
+- [ ] `ade-repos-page` baseline recorded on Linux with Inter; `git-repos-dialog` baseline deleted; ARCHITECTURE updated.
