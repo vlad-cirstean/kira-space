@@ -7,7 +7,8 @@ Cleanup chapter. Branch `chapter/v0.3.3`, tag `v0.3.3`. First `P` is P564 (highe
 | P564 | Cleanup: drop v0.3.2 one-time migrations, repo rename URLs | Done |
 | P565 | Presentation site: redesign, repo URLs, mobile zoom, drop carousel | Done |
 | P566 | Presentation site: second design pass (identity, color, bento) | Done |
-| P567 | Close chapter | Pending |
+| P567 | Presentation site: real app images only, performance | Pending |
+| P568 | Close chapter | Pending |
 
 P564 and P565 run as parallel streams (own worktree each): P564 owns everything outside `site/`, P565 owns `site/`. Grouping in `plans/batch-P564-P565.md`.
 
@@ -50,6 +51,14 @@ Chapter end: non-UI full run, 1 code review round, close phase, PR.
 - Plan: `plans/P566.md`. User reviews design shots before implementation.
 - Result: done. Brand tokens from the app icon, flashy hero stage, engine marquee, bento of CSS and SVG mini UIs, scroll-held story, light Build band, install bookend, `/build/` carries the sparkle thread. Banner now reads "Personal project. Use with care." Large `blur`, `backdrop-filter` and `mask-image` layers stalled WebKit (landing under 2 fps, tests timed out); replaced by gradient fades, now WebKit holds 15 to 50 fps. Site Playwright in WebKit: 223 pass, 1 skip; Chromium site and build specs: 68 pass. Visual baselines refreshed from real shots. Zero client JS, no new dependency.
 
-## P567 Close chapter
+## P567 Presentation site: real app images only, performance
+
+- Ask: user verdict on P566: looks good, but parts are invented (a fake API request, mini UIs). Use images from the real app; never design drawings of what the app does. Landing is slow: improve it.
+- Also: site banner is only "Personal project. Use with care." (drop its "Install notes" link; README keeps its sentence). Tone down the blue bleed (glow, halo, coloured shadow) around buttons, keep the glassy look.
+- Evaluate looping clips of the real app in place of stills; do it only if cheap to produce and run (plan decides).
+- Real shots come from CI (`pages.yml` capture step); locally placeholders are fine. No Mac step.
+- Plan: `plans/P567.md`. Single implementer, no streams.
+
+## P568 Close chapter
 
 - Fold chapter into `docs/HISTORY.md` by hand per `CLAUDE.md`.
