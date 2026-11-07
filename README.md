@@ -1,4 +1,4 @@
-> **Beta, not production ready, not notarized.** Read the [install notes](https://vlad-cirstean.github.io/kira-space/#install) before you install.
+> **Personal project. Use with care.** Read the [install notes](https://vlad-cirstean.github.io/kira-space/#install) before you install.
 
 # Kira Space
 
