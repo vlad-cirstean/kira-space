@@ -14,6 +14,7 @@ Source: user request. The table is open: the user adds more phases to this chapt
 | P560 | Agent MCP tools: use-case pass, Kira Space and Kira Studio rename | Pending |
 | P561 | Review window file list follows the shown file | Pending |
 | P562 | Trim connection dialog explanations | Pending |
+| P563 | Worktrees move to ~/kira-space-wts | Pending |
 
 More rows follow as the user adds them. Table order is execution order.
 
@@ -66,6 +67,7 @@ More rows follow as the user adds them. Table order is execution order.
     - `moveLegacyKey` and `moveKeyIn` (`internal/secrets/keychain_move_darwin.go`), `keychain_move_darwin_test.go`, and the `moveLegacyKey` call in `loadOrCreateKey`.
     - `apps/kira-space/internal/leftovers/` (Studio home and, since P559, `~/.kira-memory`) and `flows/appflow/leftovers_test.go`.
     - `appwire/onetime.go` (`RunOneTimeMoves`) and its calls in `main.go` and `flowharness/harness.go`.
+    - P563: `apps/kira-space/internal/wtmove/`, `claude.MoveProjectDir` (`internal/harness/claude/projectdir.go`) and `flows/appflow/wtmove_test.go`.
     - `sqlitex.ReadOnlyURI` when nothing else uses it.
     - `backups/p557-*` folders (user deletes by hand).
     - `docs/pending-changes/.github__workflows__release.yml.patch` (whoever applies it).
@@ -121,6 +123,18 @@ More rows follow as the user adds them. Table order is execution order.
 - Single implementer, no streams. No NEEDS USER DECISION items.
 - Plan: `plans/P562.md`.
 - Result: 55 values trimmed, `mcp.tablesEnforceFail` deleted (90 strings become 89). Changed values 1,511 words become 918. MCP tab stops rendering three texts (`connection-mcp-rows-threshold`, throttle description, `connection-mcp-enforce-masking`); masking text lives on Privacy only. Six values reworded for catalog C6 (no lowercase sentence start after `;` or `:`). Specs updated: connection-mcp-access, -expensive, -throttle, -timeout, -masked, plus `connection-mcp-tables` (`refused` became `refuses any`). Pre-existing failure fixed: `dbmcp-review-mode` "changing one mode saves the per-mode key" expected unchanged keys in the edit payload; failed on base too, now asserts only `mcp.review.read`. Ran: check-catalog --unused, check-copy, typecheck, lint (commit hooks), 11 targeted UI specs plus copy-wording, copy-coverage, consistency, all green. Visual: `connection-dialog` new-connection spec passes on Linux with Inter, no diff, no re-record. No doc edit needed.
+
+### P563 Worktrees move to ~/kira-space-wts
+
+- Ask (user decision): ADE task worktrees move from `<userHome>/wt/<repo>/<wt_id>` to a visible folder `<userHome>/kira-space-wts/<repo>/<wt_id>`. Not under `~/.kira-space`; no `KIRA_SPACE_HOME` link. Base derives from the user home: one constant (`ade.WorktreesDir`); tests override through `TaskBoardDeps.HomeDir`.
+- Scope: `worktreeDirFor`, `requestedWorktreeDirs` (sandbox) and the board's `worktreeBasePath` use the new base. Per-repo `worktree.base_path` keeps today's meaning: it pre-fills the Git module's New worktree dialog only and never applied to ADE worktrees; its description now says so. No global base setting (not requested).
+- One-time move (`internal/wtmove`, called from `RunOneTimeMoves` before Build, so before any run, terminal or agent): one `git worktree move` per worktree, never a file copy, so uncommitted work and git's two-way paths stay valid. Only folders of `ade_task_branches.worktree_dir` rows under the old base. Locked: unlock, move, relock with the same reason (default; user decision 3). Target exists, folder missing, or folder unknown to git: report, leave, retry next boot. Foreign content in `~/wt` untouched; `~/wt/<repo>` and `~/wt` removed only when empty. No marker: no row folder under the old base and no stored old path means done.
+- Stored absolute paths rewritten after each move: `ade_sessions.cwd` (TUI resume stats it), terminal tab `state_json.cwd`, `local-file` tab `path`, `script_runs.cwd`. History stays: op log, sandbox policy rows, prompts, logs. review.db keys on repo id and branch: unaffected. Claude transcript folder `~/.claude/projects/<encoded cwd>` renamed so `--resume` finds the conversation (default; user decision 1); OpenCode resume falls to the existing lost-conversation path.
+- Sandbox: worktrees stay explicit write subpaths under the user home, outside the Space home, as with `~/wt`; no profile or golden change.
+- Tests: one backend flow test with a real repo (dirty, locked, foreign folder, target exists, missing folder, DB and transcript rewrite, idempotent second boot). No UI spec: no bound method or UI behaviour change; contracts carrying `<home>/wt` regenerate. UI mock fixtures and the screenshot story move to `~/kira-space-wts` (default; user decision 2); baselines re-recorded only where pixels change.
+- Order: after P562 in table order. Shares with P560: `en.json` (different key), ARCHITECTURE (different section), `tests/contract/` (different files; regenerate after rebase). Single implementer, no streams. Plan lists 3 NEEDS USER DECISION items, each with a default.
+- Plan: `plans/P563.md`.
+- Result: pending.
 
 ## Close
 
@@ -198,3 +212,12 @@ Runs after the last phase and the full suite run, before the code review. Close 
 - [ ] Exemption rules appear only in the MCP exemption note; no per-control "approve it in a dialog" text left.
 - [ ] Touched connection UI specs pass with the new phrases; no meaning left unasserted.
 - [ ] New-connection visual baseline unchanged on Linux with Inter (or re-recorded with a stated reason).
+
+### P563 Worktrees move check (mandatory)
+
+- [ ] New task worktree lands in `<userHome>/kira-space-wts/<repo>/wt_<id>`; board `worktreeBasePath` shows that base; no `"wt"` path join left in `apps/kira-space/internal/ade` outside tests.
+- [ ] Flow test `TestWorktreesMoveOnce` passes: modified and untracked files survive, `git worktree list` shows only the new path, locked worktree moved and still locked with its reason, foreign `~/wt/other` kept, blocked target and missing folder reported and left, second boot changes nothing.
+- [ ] `ade_sessions.cwd`, terminal tab cwd, local-file tab path and `script_runs.cwd` point at the new path; TUI resume of a moved session starts in the new folder; Claude transcript folder renamed (or per user decision 1).
+- [ ] `rg -n '~/wt\b|<home>/wt\b' -g '!docs/HISTORY.md' -g '!docs/v0.3.2/**'` returns only `wtmove` code and its test.
+- [ ] Repository config "Worktree base path" text says it pre-fills the Git module dialog only; site `space/git` and the ADE page name `~/kira-space-wts`; ARCHITECTURE documents base and move.
+- [ ] Removal listed in P557 "Next chapter: delete".
