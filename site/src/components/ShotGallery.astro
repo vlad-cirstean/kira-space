@@ -4,14 +4,25 @@ import Shot from './Shot.astro';
 
 interface Props {
   shots: readonly ResolvedShot[];
+  tint?: string;
 }
 
-const { shots } = Astro.props;
+const { shots, tint = 'sky' } = Astro.props;
 ---
 
-<div class="mt-8 grid gap-6 md:grid-cols-2" data-gallery>
+<div
+  class="mt-8 grid gap-6 md:grid-cols-2"
+  data-gallery
+  style={`--tint-c:var(--kira-status-${tint})`}
+>
   {shots.map((shot, i) => (
-    <div class:list={['reveal', shot.kind === 'window' && 'md:col-span-2']} style={`--i:${i % 2}`}>
+    <div
+      class:list={[
+        'reveal rounded-3xl bg-(--tint-c)/[0.06] p-3 ring-1 ring-(--tint-c)/20 sm:p-4',
+        shot.kind === 'window' && 'md:col-span-2',
+      ]}
+      style={`--i:${i % 2}`}
+    >
       <Shot shot={shot} tile={shot.kind !== 'window'} eager={i === 0} />
     </div>
   ))}

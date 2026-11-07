@@ -6,9 +6,10 @@ interface Props {
   shot: ResolvedShot;
   eager?: boolean;
   tile?: boolean;
+  sizes?: string;
 }
 
-const { shot, eager = false, tile = false } = Astro.props;
+const { shot, eager = false, tile = false, sizes } = Astro.props;
 ---
 
 <figure class="relative m-0">
@@ -18,7 +19,7 @@ const { shot, eager = false, tile = false } = Astro.props;
       class="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       aria-label={`Open full size: ${shot.title}`}
     >
-      <ShotPicture shot={shot} eager={eager} />
+      <ShotPicture shot={shot} eager={eager} sizes={sizes} />
     </a>
   ) : (
     <a

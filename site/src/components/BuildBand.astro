@@ -1,0 +1,82 @@
+---
+import { BUILD_SECTIONS } from '../data/build';
+import { BUILD_TEASER } from '../data/content';
+import { href } from '../data/nav';
+import Icon from './Icon.astro';
+import Sparkle from './Sparkle.astro';
+---
+
+<section class="px-4 py-8 lg:py-16" aria-labelledby="build-title">
+  <div
+    class="relative isolate mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] bg-brand-spark px-6 py-16 text-brand-ink shadow-[0_40px_120px_-30px_var(--brand-sky)] sm:px-12 lg:py-24"
+  >
+    <div
+      aria-hidden="true"
+      class="absolute -left-24 -top-32 -z-10 size-[28rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--brand-sky)_35%,transparent),transparent)]"
+    ></div>
+    <div
+      aria-hidden="true"
+      class="absolute -bottom-40 -right-24 -z-10 size-[30rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--kira-status-pink)_30%,transparent),transparent)]"
+    ></div>
+    <div class="reveal mx-auto max-w-3xl text-center">
+      <span
+        class="inline-flex items-center gap-2 rounded-full bg-brand-deep px-3 py-1 text-sm font-semibold uppercase tracking-[0.14em] text-white"
+      >
+        <Sparkle class="size-3" /> {BUILD_TEASER.title}
+      </span>
+      <h2
+        id="build-title"
+        class="mt-5 text-4xl leading-[1.05] font-bold tracking-[-0.03em] sm:text-5xl lg:text-6xl"
+      >
+        Plan. Ask. Branch. Review. Prove.
+      </h2>
+      <p class="mt-5 text-lg text-brand-ink/80 sm:text-xl">{BUILD_TEASER.body}</p>
+    </div>
+    <ol class="relative mt-14 grid gap-6 lg:grid-cols-5 lg:gap-4">
+      <span
+        aria-hidden="true"
+        class="absolute bottom-6 left-6 top-6 w-0.5 bg-brand-sky/25 lg:hidden"
+      ></span>
+      <span
+        aria-hidden="true"
+        class="fill-y absolute bottom-6 left-6 top-6 w-0.5 bg-linear-to-b from-brand-sky to-brand-deep lg:hidden"
+      ></span>
+      <span
+        aria-hidden="true"
+        class="absolute inset-x-[10%] top-6 hidden h-0.5 bg-brand-sky/25 lg:block"
+      ></span>
+      <span
+        aria-hidden="true"
+        class="fill-x absolute inset-x-[10%] top-6 hidden h-0.5 bg-linear-to-r from-brand-sky to-brand-deep lg:block"
+      ></span>
+      {BUILD_SECTIONS.map((s) => (
+        <li class="relative">
+          <a
+            href={href(`build/#${s.anchor}`)}
+            class="group flex min-h-11 gap-4 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-ink lg:flex-col lg:items-center lg:text-center"
+          >
+            <span class="relative z-10 flex size-12 shrink-0 items-center justify-center rounded-full bg-white text-brand-deep shadow-[0_8px_24px_-8px_var(--brand-sky)] ring-2 ring-brand-sky motion-safe:transition-transform motion-safe:group-hover:scale-110">
+              <Sparkle class="absolute -right-1 -top-1 size-3.5 text-brand-sky" />
+              <span class="text-lg font-bold">{s.step}</span>
+            </span>
+            <span class="self-center text-base font-semibold leading-snug underline-offset-4 group-hover:underline lg:self-auto">
+              {s.name}
+            </span>
+          </a>
+        </li>
+      ))}
+    </ol>
+    <div class="mt-12 flex justify-center">
+      <a
+        href={href('build/')}
+        class="group flex min-h-12 items-center gap-2 rounded-xl bg-brand-deep px-6 text-base font-semibold text-white shadow-[0_12px_32px_-8px_var(--brand-deep)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-ink motion-safe:transition-transform motion-safe:hover:-translate-y-0.5"
+      >
+        {BUILD_TEASER.link}
+        <Icon
+          name="arrow-right"
+          class="size-4 motion-safe:transition-transform motion-safe:group-hover:translate-x-1"
+        />
+      </a>
+    </div>
+  </div>
+</section>

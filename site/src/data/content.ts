@@ -14,7 +14,7 @@ export interface Feature {
   readonly line: string;
 }
 
-export interface Highlight {
+export interface StoryChapter {
   readonly shot: string;
   readonly title: string;
   readonly points: readonly string[];
@@ -29,13 +29,11 @@ export interface AppContent {
   readonly hero: string;
   readonly docs: string;
   readonly features: readonly Feature[];
-  readonly highlights: readonly Highlight[];
 }
 
 // Facts come only from README.md and apps/kira-space/README.md.
 export const SITE = {
   title: 'Kira Space',
-  tagline: 'One native macOS app. Git and coding agents. Databases and APIs.',
   availability: 'Free and open source. macOS 26+ on Apple Silicon.',
 } as const;
 
@@ -184,36 +182,46 @@ export const APP: AppContent = {
       href: 'docs/reference/security/',
     },
   ],
-  highlights: [
-    {
-      shot: 'space-git-graph',
-      title: 'Read history at a glance',
-      points: [
-        'Browse a virtualized commit log with branches and tags.',
-        'Open diffs in the detail pane.',
-        'Review a whole branch.',
-      ],
-    },
-    {
-      shot: 'studio-sql-console',
-      title: 'Write SQL, read the result',
-      points: [
-        'Run one statement or the whole script.',
-        'Keep saved queries.',
-        'Read EXPLAIN plans.',
-      ],
-    },
-    {
-      shot: 'studio-api',
-      title: 'Call an API without leaving the app',
-      points: [
-        'Send HTTP and gRPC requests.',
-        'Group requests in collections and environments.',
-        'Import a curl command.',
-      ],
-    },
-  ],
 };
+
+export const STORY: readonly StoryChapter[] = [
+  {
+    shot: 'build-start-workflow',
+    title: 'Plan it.',
+    points: [
+      'Pick a workflow for the task.',
+      'Each step sets agent, prompt and tools.',
+      'Start Claude Code or OpenCode from the task.',
+    ],
+  },
+  {
+    shot: 'space-git-graph',
+    title: 'Read it.',
+    points: [
+      'Browse a virtualized commit log with branches and tags.',
+      'Open diffs in the detail pane.',
+      'Review a whole branch.',
+    ],
+  },
+  {
+    shot: 'studio-sql-console',
+    title: 'Query it.',
+    points: [
+      'Run one statement or the whole script.',
+      'Keep saved queries.',
+      'Read EXPLAIN plans.',
+    ],
+  },
+  {
+    shot: 'studio-api',
+    title: 'Call it.',
+    points: [
+      'Send HTTP and gRPC requests.',
+      'Group requests in collections and environments.',
+      'Import a curl command.',
+    ],
+  },
+];
 
 export const BUILD_TEASER = {
   title: 'Build with Kira',

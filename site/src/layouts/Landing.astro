@@ -1,18 +1,18 @@
 ---
 import Bento from '../components/Bento.astro';
-import BuildTeaser from '../components/BuildTeaser.astro';
+import BuildBand from '../components/BuildBand.astro';
 import EngineMarquee from '../components/EngineMarquee.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import Hero from '../components/Hero.astro';
-import Highlight from '../components/Highlight.astro';
 import Install from '../components/Install.astro';
-import { APP as content } from '../data/content';
+import Story from '../components/Story.astro';
+import { APP as content, STORY } from '../data/content';
 import { type ResolvedWindowShot, resolveAllShots } from '../lib/shots';
 import Base from './Base.astro';
 
 const shots = await resolveAllShots();
-// Hero and highlights show a whole window, and og:image needs the window's social PNG.
+// Hero and story show a whole window, and og:image needs the window's social PNG.
 function windowShot(id: string): ResolvedWindowShot {
   const shot = shots.find((s) => s.id === id);
   if (!shot) throw new Error(`Missing shot ${id}`);
@@ -33,10 +33,8 @@ const hero = windowShot(content.hero);
     />
     <EngineMarquee />
     <Bento />
-    <BuildTeaser />
-    {content.highlights.map((h, i) => {
-      return <Highlight highlight={h} shot={windowShot(h.shot)} flip={i % 2 === 1} />;
-    })}
+    <Story shots={STORY.map((c) => windowShot(c.shot))} />
+    <BuildBand />
     <Install app={content} />
   </main>
   <Footer />

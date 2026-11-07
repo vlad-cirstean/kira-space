@@ -1,8 +1,10 @@
 ---
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
+import HeroBackdrop from '../components/HeroBackdrop.astro';
 import Icon from '../components/Icon.astro';
 import ShotGallery from '../components/ShotGallery.astro';
+import Sparkle from '../components/Sparkle.astro';
 import { BUILD } from '../data/build';
 import { href } from '../data/nav';
 import Base from '../layouts/Base.astro';
@@ -15,57 +17,65 @@ const first = sections[0];
 <Base title={BUILD.title} description={BUILD.description} image={first?.lead.social}>
   <Header />
   <main data-app="space" class="relative isolate overflow-x-clip pb-20">
-    <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[30rem]">
-      <div
-        class="absolute -top-32 left-[10%] size-[28rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--tint)_28%,transparent),transparent)] motion-safe:animate-drift-a"
-      > </div>
-      <div
-        class="absolute -top-20 right-[8%] size-[24rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--kira-accent)_24%,transparent),transparent)] motion-safe:animate-drift-b"
-      > </div>
-    </div>
-    <div class="mx-auto max-w-5xl px-4 pt-10 pb-8">
+    <HeroBackdrop size="sm" />
+    <div class="mx-auto max-w-5xl px-4 pb-10 pt-14 text-center sm:pt-20">
       <h1
-        class="hero-in bg-linear-to-b from-fg from-40% to-tint bg-clip-text pb-1 text-5xl font-semibold tracking-tight text-transparent sm:text-7xl"
+        class="hero-in text-[2.75rem] leading-[1.04] font-extrabold tracking-[-0.045em] sm:text-6xl lg:text-7xl"
       >
-        {BUILD.heading}
+        <span class="bg-linear-to-b from-white to-white/70 bg-clip-text text-transparent"
+          >Build</span
+        >{' '}
+        <span class="gradient-text pb-1">with Kira</span>
       </h1>
-      <p style="--d:120ms" class="hero-in mt-4 max-w-3xl text-lg text-muted">{BUILD.intro}</p>
+      <p style="--d:120ms" class="hero-in mx-auto mt-5 max-w-3xl text-lg text-muted sm:text-xl"
+        >{BUILD.intro}</p
+      >
     </div>
-    <nav
-      aria-label="Steps"
-      class="z-[5] border-y border-border bg-chrome/95 backdrop-blur md:sticky md:top-[3.75rem]"
-    >
+    <nav aria-label="Steps" class="z-[5] bg-chrome/90 md:sticky md:top-[3.75rem]">
       <ol class="mx-auto flex max-w-5xl flex-col px-4 md:flex-row md:flex-wrap md:gap-x-2">
         {sections.map((s) => (
           <li>
             <a
               href={`#${s.anchor}`}
-              class="flex min-h-11 items-center gap-2 text-base text-muted hover:text-fg md:px-2"
+              class="group flex min-h-11 items-center gap-2 text-base text-muted hover:text-fg md:px-2"
             >
-              <span class="font-medium text-fg">{s.step}.</span>
+              <span class="flex size-6 items-center justify-center rounded-full bg-brand-sky/20 text-sm font-bold text-brand-glow ring-1 ring-brand-sky/40 motion-safe:transition-colors group-hover:bg-brand-sky group-hover:text-white">
+                {s.step}
+              </span>
               {s.name}
             </a>
           </li>
         ))}
       </ol>
     </nav>
-    {sections.map((s) => (
-      <section id={s.anchor} class="mx-auto max-w-5xl scroll-mt-20 px-4 pt-16 md:scroll-mt-32">
-        <div class="reveal">
-          <p class="w-fit rounded-full bg-tint/10 px-3 py-0.5 text-base font-medium text-tint ring-1 ring-tint/25">
+    {sections.map((s, i) => (
+      <section id={s.anchor} class="mx-auto max-w-5xl scroll-mt-20 px-4 pt-20 md:scroll-mt-32">
+        <div class="reveal relative pl-10">
+          <span
+            aria-hidden="true"
+            class="absolute bottom-0 left-[7px] top-0 w-0.5 rounded-full bg-white/15"
+          ></span>
+          <span
+            aria-hidden="true"
+            class="fill-y absolute bottom-0 left-[7px] top-0 w-0.5 rounded-full bg-linear-to-b from-brand-sky via-pink to-lime"
+          ></span>
+          <Sparkle class="absolute left-0 top-1 size-4 text-brand-glow drop-shadow-[0_0_8px_var(--brand-glow)]" />
+          <p class="w-fit rounded-full bg-linear-to-b from-brand-sky to-brand-deep px-3 py-0.5 text-base font-semibold text-white shadow-[0_6px_20px_-6px_var(--brand-sky)]">
             Step {s.step}
           </p>
-          <h2 class="mt-1 text-2xl font-semibold tracking-tight sm:text-4xl">{s.name}</h2>
-          <p class="mt-4 max-w-3xl text-lg text-fg">{s.pitch}</p>
+          <h2 class="mt-3 text-3xl leading-[1.08] font-bold tracking-[-0.03em] sm:text-4xl lg:text-5xl">
+            {s.name}
+          </h2>
+          <p class="mt-4 max-w-3xl text-lg text-fg sm:text-xl">{s.pitch}</p>
           <p class="mt-3 max-w-3xl text-base text-muted">{s.body}</p>
         </div>
-        <ShotGallery shots={s.resolved} />
+        <ShotGallery shots={s.resolved} tint={['sky', 'pink', 'lime', 'violet', 'amber'][i % 5]} />
       </section>
     ))}
     <div class="mx-auto max-w-5xl px-4 pt-16">
       <a
         href={`${href()}#install`}
-        class="reveal flex min-h-11 w-fit items-center gap-2 rounded-lg bg-accent px-5 font-medium text-accent-fg shadow-[0_8px_28px_-8px_color-mix(in_srgb,var(--kira-accent)_70%,transparent)] hover:opacity-90 motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        class="reveal mx-auto flex min-h-12 w-fit items-center gap-2 rounded-xl bg-linear-to-b from-brand-sky to-brand-deep px-6 text-base font-semibold text-white shadow-[0_10px_34px_-6px_color-mix(in_srgb,var(--brand-sky)_75%,transparent),inset_0_1px_0_rgb(255_255_255/0.35)] hover:brightness-110 motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <Icon name="arrow-right" class="size-4" />
         Install Kira Space
