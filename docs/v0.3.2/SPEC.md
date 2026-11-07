@@ -61,17 +61,7 @@ More rows follow as the user adds them. Table order is execution order.
   - User precondition before first v0.3.2 launch: back up `~/.kira-space/kira.db`, `review.db`, and `agent-secrets.db`. No memory backup: `~/.kira-memory` is deleted at first boot.
   - Unverified here: darwin keychain tests (`go test ./internal/secrets -run Keychain`) need a real Mac; the darwin cgo files compile only there.
   - Left out of the leftovers allowlist: `config/workflows/.p526-backup` (not an authorized location). Needs a user decision.
-  - Next chapter: delete (each one commit):
-    - `agentcfg.MoveSecretsFile` (`internal/agentcfg/movesecrets.go`) and `flows/harnessflow/secretsmove_test.go`.
-    - `moveLegacyKey` and `moveKeyIn` (`internal/secrets/keychain_move_darwin.go`), `keychain_move_darwin_test.go`, and the `moveLegacyKey` call in `loadOrCreateKey`.
-    - `apps/kira-space/internal/leftovers/` (Studio home and, since P559, `~/.kira-memory`) and `flows/appflow/leftovers_test.go`.
-    - `appwire/onetime.go` (`RunOneTimeMoves`) and its calls in `main.go` and `flowharness/harness.go`.
-    - P560: `appwire/legacymcp.go` (removes the old user-scope `kira-db` and `kira-ade`), `harness.MCPRemover`, `mcpinstall.Installer.Remove` when nothing else uses it, `flows/dbmcpflow/legacymcp_test.go`.
-    - P563: `apps/kira-space/internal/wtmove/`, `claude.MoveProjectDir` (`internal/harness/claude/projectdir.go`) and `flows/adeflow/wtmove_test.go`.
-    - `sqlitex.ReadOnlyURI` when nothing else uses it.
-    - `backups/p557-*` folders (user deletes by hand).
-    - `docs/pending-changes/.github__workflows__release.yml.patch` (whoever applies it).
-    - `0091_p557_drop_legacy.sql` stays as history.
+  - Next chapter: delete every one-time move. Inventory, precondition and phase row: `docs/NEXT_CHAPTER.md`.
 
 ### P558 Repositories page in ADE, replacing the Git module dialog
 
@@ -220,4 +210,4 @@ Runs after the last phase and the full suite run, before the code review. Close 
 - [ ] `ade_sessions.cwd`, terminal tab cwd, local-file tab path and `script_runs.cwd` point at the new path; TUI resume of a moved session starts in the new folder; Claude transcript folder renamed (or per user decision 1).
 - [ ] `rg -n '~/wt\b|<home>/wt\b' -g '!docs/HISTORY.md' -g '!docs/v0.3.2/**'` returns only `wtmove` code and its test.
 - [ ] Repository config "Worktree base path" text says it pre-fills the Git module dialog only; site `space/git` and the ADE page name `~/kira-space-wts`; ARCHITECTURE documents base and move.
-- [ ] Removal listed in P557 "Next chapter: delete".
+- [ ] Removal listed in `docs/NEXT_CHAPTER.md`.
