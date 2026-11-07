@@ -487,7 +487,7 @@ by construction rather than deleted per build.
 
 **P66 (v1.6) added an update-*availability* check; P119 (v1.9) added the install itself, still only
 on an explicit click.** A tagged release build polls `GET https://api.github.com/repos/
-vlad-cirstean/kira-studio/releases/latest` (repo-root `internal/appupdate`, no
+vlad-cirstean/kira-space/releases/latest` (repo-root `internal/appupdate`, no
 `gh` CLI dependency — public metadata needs no per-user credential) and, when the tag is newer than
 the running build, shows a status-bar item (`internal/bridge/update.go`,
 `packages/workbench/src/components/{UpdateAvailableItem,UpdateDialog}.vue`) that opens a modal

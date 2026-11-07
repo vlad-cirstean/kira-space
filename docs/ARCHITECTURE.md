@@ -1646,7 +1646,7 @@ packaged app does not), where the identical application code runs unchanged over
 - The status bar is 22px (`--kira-statusbar-h`); every item is a StatusBarItem (icon, tone, text, `tip` slot) in the interface font. Kira Space's right group is agents, runs, update, metrics. The agents item (`ade/v2/status/`) shows `N agents · M needs input` from `useSessions`, plus a pulsing `StatusDot` while any agent is working (static under reduced motion), and opens a popover list sorted by activity rank; a row opens the session through `useOpenSession`, the footer opens the needs page with `adeBoardUi.showAllSessions`.
 - The update check and in-app install (P66, P119) are shared by both apps. The status bar's right-hand group can show an update-available item, placed first so the app-metrics readout keeps its position.
 - Clicking the update item, or a new version becoming available while the app is open, opens a modal UpdateDialog.vue with an Update button. P119 deliberately replaced Kira Studio's click-opens-the-release-page behavior with this dialog.
-- Repo-root internal/appupdate.Checker, moved out of Kira Studio's internal/ at P119 so Kira Space can share it, makes one plain net/http GET against the kira-studio GitHub releases/latest API and imports nothing under either app's internal/.
+- Repo-root internal/appupdate.Checker, moved out of Kira Studio's internal/ at P119 so Kira Space can share it, makes one plain net/http GET against the kira-space GitHub releases/latest API and imports nothing under either app's internal/.
 - The update checker does not depend on githost/github (it needs an authenticated gh CLI, the wrong precondition for a check run for every user) or internal/httpclient (the user-facing request builder); it only restates their GitHub API version header value.
 - When buildinfo.Version is a dev sentinel (0.0.0, 0.0.0-dev, 0.0.0-unknown), the update check is suppressed entirely (no request, cache write or goroutine) and InstallUpdate refuses. Only tagged release builds reach the network or install.
 - Each app's renderer polls for updates hourly after the first window mounts, off the boot critical path. Go caches the answer for 6 hours after a successful check and 30 minutes after a failed one, and singleflight collapses concurrent callers, so Go sets the real network cadence.
@@ -1658,6 +1658,7 @@ packaged app does not), where the identical application code runs unchanged over
 - Every install run appends to ~/Library/Logs/<app name>/install.log, truncated once past 1 MiB, and UpdateStatus.installLogPath gives the dialog this path to show on a failed install.
 - The renderer never sends or receives a URL: UpdateService.Status, Check, InstallUpdate and CancelInstall are all nullary, and Go decides where the script comes from and what it does.
 - scripts/verify-packaging.sh check S10 (scoped to apps/, packages/, internal/) enforces that no app code downloads a release asset itself, and only scripts/install.sh may. S11 pins the one raw.githubusercontent.com reference and the two sides' shared contract marker.
+- The repo was renamed from vlad-cirstean/kira-studio to vlad-cirstean/kira-space in v0.3.3. Builds up to v0.3.2 still fetch the old raw.githubusercontent.com and api.github.com URLs; GitHub's rename redirect serves them only while no new repo takes the old name, so never recreate vlad-cirstean/kira-studio.
 - Self-update runs a shell script downloaded at click time with the user's privileges from the main branch of a public repo, so anyone who can push to main can change what every user's Update click runs. Branch protection on main is therefore a security boundary; TLS and the contract marker guard transport and compatibility, not authorship. Since P330 a chapter PR from this repo squash-merges itself once `pr.yml`'s required checks pass, with no review, so push access to a `chapter/v*` branch is the same boundary.
 
 ## Git module (v1.3), Kira Space's own app as of P100
@@ -3857,7 +3858,7 @@ repo's CI runs.
 
 ## Presentation site (P280)
 
-- The public presentation page for both apps is https://vlad-cirstean.github.io/kira-studio/; it is static with zero client JavaScript.
+- The public presentation page for both apps is https://vlad-cirstean.github.io/kira-space/; it is static with zero client JavaScript.
 - The site has two static routes: / is Studio and /space/ is Space. AppTabs renders a nav with aria-label "Apps" holding two links, the current one with aria-current="page"; no tablist, no script, so deep links work.
 - layouts/Landing.astro renders both tabs; each tab sets its own title, description and og:image.
 - main data-app sets the --tint variable (--kira-info for Studio, --kira-ok for Space), which utilities such as text-tint and bg-tint/10 read. Only existing tokens are used; no new hues.

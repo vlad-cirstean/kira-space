@@ -1,8 +1,8 @@
-> **Beta, not production ready, not notarized.** Read the [install notes](https://vlad-cirstean.github.io/kira-studio/#install) before you install.
+> **Beta, not production ready, not notarized.** Read the [install notes](https://vlad-cirstean.github.io/kira-space/#install) before you install.
 
 # Kira Space
 
-[![PR](https://github.com/vlad-cirstean/kira-studio/actions/workflows/pr.yml/badge.svg)](https://github.com/vlad-cirstean/kira-studio/actions/workflows/pr.yml)
+[![PR](https://github.com/vlad-cirstean/kira-space/actions/workflows/pr.yml/badge.svg)](https://github.com/vlad-cirstean/kira-space/actions/workflows/pr.yml)
 
 Kira Space is a native macOS workbench for developers, built on Wails (Go) and Vue 3. One app holds
 a git client and code workspace, coding agents (Claude Code or OpenCode), a memory store, a terminal
@@ -11,31 +11,31 @@ engines (DataGrip/DBeaver class), an HTTP/gRPC API client (Postman/Insomnia clas
 view and a Docker manager. You switch between modules with the mode switcher: **Agents**,
 **Automations**, **Memory**, **Git**, **Studio** (databases), **Api**, **Docker** and **Kubernetes**.
 
-See the presentation page: [Kira Space](https://vlad-cirstean.github.io/kira-studio/).
+See the presentation page: [Kira Space](https://vlad-cirstean.github.io/kira-space/).
 
 ## Screenshots
 
-![Kira Space commit graph with branches, tags and the commit detail pane open.](https://vlad-cirstean.github.io/kira-studio/shots/space-git-graph.webp)
+![Kira Space commit graph with branches, tags and the commit detail pane open.](https://vlad-cirstean.github.io/kira-space/shots/space-git-graph.webp)
 
 The git graph: branches, tags and commit detail.
 
-![Kira Space agents board with tasks across stages and live runs.](https://vlad-cirstean.github.io/kira-studio/shots/space-agents-board.webp)
+![Kira Space agents board with tasks across stages and live runs.](https://vlad-cirstean.github.io/kira-space/shots/space-agents-board.webp)
 
 The agents board: tasks across stages, with runs live.
 
-![Kira Space memory list showing each fact with its origin and scope.](https://vlad-cirstean.github.io/kira-studio/shots/space-memory.webp)
+![Kira Space memory list showing each fact with its origin and scope.](https://vlad-cirstean.github.io/kira-space/shots/space-memory.webp)
 
 Memory: every fact shows its origin and scope.
 
-![Kira Space data grid showing an orders table with one row selected.](https://vlad-cirstean.github.io/kira-studio/shots/studio-data-grid.webp)
+![Kira Space data grid showing an orders table with one row selected.](https://vlad-cirstean.github.io/kira-space/shots/studio-data-grid.webp)
 
 The Studio module's data grid: filter, sort, edit and commit rows.
 
-![Kira Space SQL console with a join query and its result grid.](https://vlad-cirstean.github.io/kira-studio/shots/studio-sql-console.webp)
+![Kira Space SQL console with a join query and its result grid.](https://vlad-cirstean.github.io/kira-space/shots/studio-sql-console.webp)
 
 The SQL console: run a statement or the whole script.
 
-![Kira Space Api module showing an HTTP request and its JSON response.](https://vlad-cirstean.github.io/kira-studio/shots/studio-api.webp)
+![Kira Space Api module showing an HTTP request and its JSON response.](https://vlad-cirstean.github.io/kira-space/shots/studio-api.webp)
 
 The Api module: HTTP and gRPC requests with a JSON response.
 
@@ -53,7 +53,7 @@ The Api module: HTTP and gRPC requests with a JSON response.
 Run in Terminal. It installs a fresh copy or replaces an older one, then opens the app:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-space/main/scripts/install.sh | sh
 ```
 
 The script downloads the latest release's disk image, moves the app into `/Applications` and opens
@@ -63,8 +63,8 @@ release and offers to update; nothing installs until you click **Update**.
 ### Building from source
 
 ```sh
-git clone https://github.com/vlad-cirstean/kira-studio.git
-cd kira-studio
+git clone https://github.com/vlad-cirstean/kira-space.git
+cd kira-space
 bun run package
 ```
 
@@ -300,7 +300,7 @@ README is [`apps/kira-space/README.md`](apps/kira-space/README.md).
 
 ## Documentation
 
-- [Documentation site](https://vlad-cirstean.github.io/kira-studio/docs/) — user guides and reference pages.
+- [Documentation site](https://vlad-cirstean.github.io/kira-space/docs/) — user guides and reference pages.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the app works today, plus known open
   limitations.
 - [`docs/PACKAGING.md`](docs/PACKAGING.md) — building, releasing, install and update.
