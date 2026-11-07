@@ -2398,7 +2398,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - Space migrations 0020 (scripts) and 0024 (code_repos.color, P222) are not ADE migrations.
 - code_repos.color is a PaletteColor name and is never empty; migration 0024 backfills it by sort_order % 6 over blue, amber, magenta, green, red, cyan, and Create assigns the next hue via internal/palette.AutoRepoColor.
 - Repo colour is written by CodeWorkspaceService.SetRepoColor and read through state/coderepos.ts (colorOf, repoTint).
-- Repo colour is painted via --kira-conn-* as colorMarkClass row rails on the Repositories dialog and Git panel, repo tab bars, and ADE repo tags; the 20-slot ADE work palette now colours tasks only.
+- Repo colour is painted via --kira-conn-* as colorMarkClass row rails on the ADE Repositories page and Git panel, repo tab bars, and ADE repo tags; the 20-slot ADE work palette now colours tasks only.
 - internal/palette is the one Go palette set, though Studio's model.ValidPaletteColor still has its own.
 - Worktrees take their anchor repo's colour (repo/state/repoLinks.ts repoColorOf, used by tabKinds.ts and ADE; P227).
 - A deployment environment (the `environments` key of the repo file) is a name plus a shell command that prints the deployed commit SHA; it runs in the repo root on board refresh and marks branches ▲name ✓/⚠/?.
@@ -2749,20 +2749,20 @@ role (`harness.UsageReporter`): only a provider that reports it feeds the servic
 ### Frontend
 
 - Pure logic of the ADE frontend lives in frontend/src/ade/v2/board/ (status, actions, needs-you rank, timeline, drop plan, fix menu); components use <script setup>.
-- ADE Pinia stores each have one concern: adeBoardUi (selection, view), adePanelTabs (last tab per task and branch, picked session per task; in memory, pruned against the board), adeDialogs (dialog flow and pending keys such as merge:<branch>:<target>), adeTakeOver, adeTerminals.
+- ADE Pinia stores each have one concern: adeBoardUi (selection, view), adeReposUi (Repositories page tab, picked repo, unsaved-edit guard; in memory), adePanelTabs (last tab per task and branch, picked session per task; in memory, pruned against the board), adeDialogs (dialog flow and pending keys such as merge:<branch>:<target>), adeTakeOver, adeTerminals.
 - ADE server state goes through TanStack Query (queries.ts), invalidated by the push channels.
 - Task panel (P501): tabs Main, Details, Sessions (`state/adePanelTabs.ts`, default Main). Main (`AdeMainTab.vue`, `AdeMainBranches.vue`) holds status, estimate, branches, then the workflow. P502: branches use the Plan's `AdeBranchRow` (testid `ade-task-branch`, stack indent, tag and action icons) plus the edit menu; a branch with a change request gets a PR line under its row with state, base ref and checks glyphs (`ChangeRequest.baseRef`, `checksState`). Step blocks list no branches (no Release or Review rows); a run line names its branch when another branch of the task shares its repo, and run lines follow branch-list order. Details (`details/`) holds the links, then one list (`AdeTaskChain.vue`: notes, handovers and proof, newest first; the Timeline toggle adds task events). The Jira issue line sits under the Jira link.
 - Task plus menu (P410, `sessions/AdeTaskLaunchMenu.vue`) on the Sessions tab bar only (not the task list card): per worktree a Terminal (Git module tab via `openRepoTerminalTab`) or an ad hoc agent session (`StartAdHoc`). Disabled items show their reason inline.
 - The repository list is one Pinia store (state/coderepos.ts) fed by the boot-time kira:adetask:repos subscription (initCodeRepos, called from main.ts), so every module in every window sees every change.
-- All repository configuration lives in one Git-module dialog, repo/ReposDialog.vue (P205), with a Repositories tab (import, list, per-repo form, remove) and a Scan folders tab (add, watch, hide all, remove). Agents has no Repos tab.
-- ReposDialog shows per repo `RepoIdentity` (colour, path, source) and `RepoFilePane`, the editor of its settings file. Nickname, integration branches, environments and every Git leaf are keys of that file; there is no per-field form and no UpdateRepo.
-- ReposDialog opens from the Git panel header, GitStart.vue, a repo-row "Configure repository…" item and the Agents empty state.
+- All repository configuration lives on the ADE Repositories page, ade/v2/repos/AdeReposPage.vue (P558), a top-bar tab beside Agent config and Workflows. A repo list pane (import) sits beside the picked repo's per-repo settings, Scan folders (add, watch, hide all, remove) and Other files. State is `adeReposUi`; switching repo, pane or tab goes through the same unsaved-edit leave guard as Workflows and Agents (`switchAdeView` in state/adeView.ts).
+- The page shows per repo `RepoIdentity` (colour, path, source) and `RepoFilePane`, the editor of its settings file. Nickname, integration branches, environments and every Git leaf are keys of that file; there is no per-field form and no UpdateRepo.
+- The page opens from its ADE tab, the Agents empty state, GitStart.vue and the Git repo-row "Configure repository…" item; the last two jump to ADE through `adeReposUi.open()`. The Git module mounts no repositories UI.
 - Repo hiding (P259): code_repos.hidden decides visibility for one-by-one and folder imports alike; ade_folders.hidden is the folder "hide all", which bulk-writes its repos, makes later discoveries import hidden, and still lets a single repo be shown inside a hidden folder.
-- Hidden only filters the Git panel Repos list (repo/state/repoVisibility.ts); ADE, agent task_info, mobile and open workspaces ignore it, and the dialog lists every repo.
+- Hidden only filters the Git panel Repos list (repo/state/repoVisibility.ts); ADE, agent task_info, mobile and open workspaces ignore it, and the Repositories page lists every repo.
 - The header eye toggle "Show hidden" is session-only; hiding a repo from the panel closes that repo's workspace in this window.
 - Re-importing a hidden repo unhides it (ExistingRecord, no E_ALREADY_IMPORTED). RepoHeads runs for listed repos only.
 - Hiding is bound to CodeWorkspaceService.SetRepoHidden and AdeTaskService.SetFolderHidden.
-- "Remove repository…" lives in the dialog's repo head (ViewToolbar) and always goes through confirmRemoveCodeRepo, which names the scan folder that would re-import the repo.
+- "Remove repository…" lives in the page's repo head (ViewToolbar) and always goes through confirmRemoveCodeRepo, which names the scan folder that would re-import the repo.
 - Session tabs (P193) are named "<step> · <repo>" (headless) or "<step> · <repo|spec>" (TUI), from the session's own stepId; review keeps "Review agent".
 - `sessions/useOpenSession.ts` is the one path that opens a session (terminal id from `useSessions`); needs actions and the status bar agents list call it.
 - Session tabs show state and age in a tooltip. Right-click menu (`sessions/useSessionMenu.ts`) has Copy session ID and, for a running TUI, Restart: `AdeTaskService.RestartSession` stops the record (`Tracker.Stop`, no grace wait), closes the terminal, then runs Take over on it.
