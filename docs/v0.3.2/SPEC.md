@@ -120,7 +120,7 @@ More rows follow as the user adds them. Table order is execution order.
 - Order: after P561 in table order. Concurrent with P560: shares only `en.json` (different keys).
 - Single implementer, no streams. No NEEDS USER DECISION items.
 - Plan: `plans/P562.md`.
-- Result: pending.
+- Result: 55 values trimmed, `mcp.tablesEnforceFail` deleted (90 strings become 89). Changed values 1,511 words become 918. MCP tab stops rendering three texts (`connection-mcp-rows-threshold`, throttle description, `connection-mcp-enforce-masking`); masking text lives on Privacy only. Six values reworded for catalog C6 (no lowercase sentence start after `;` or `:`). Specs updated: connection-mcp-access, -expensive, -throttle, -timeout, -masked, plus `connection-mcp-tables` (`refused` became `refuses any`). Pre-existing failure fixed: `dbmcp-review-mode` "changing one mode saves the per-mode key" expected unchanged keys in the edit payload; failed on base too, now asserts only `mcp.review.read`. Ran: check-catalog --unused, check-copy, typecheck, lint (commit hooks), 11 targeted UI specs plus copy-wording, copy-coverage, consistency, all green. Visual: `connection-dialog` new-connection spec passes on Linux with Inter, no diff, no re-record. No doc edit needed.
 
 ## Close
 
