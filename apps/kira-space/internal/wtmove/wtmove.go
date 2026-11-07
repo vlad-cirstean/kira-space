@@ -58,7 +58,7 @@ func (s *stats) leave(reason string) { s.left[reason]++ }
 // Run moves every worktree row's folder and rewrites the stored paths. It never overwrites or prunes.
 func Run(o Options) {
 	old := filepath.Join(o.Home, oldBase)
-	if !needed(o.DB, old) {
+	if !Needed(o.DB, o.Home) {
 		return
 	}
 	rows, err := loadRows(o.DB)
@@ -76,24 +76,31 @@ func Run(o Options) {
 		byRepo[r.root] = append(byRepo[r.root], r)
 	}
 	sort.Strings(roots)
-	segs := map[string]bool{}
 	for _, root := range roots {
-		for _, r := range byRepo[root] {
-			segs[o.Segment(r.repoName)] = true
-		}
 		moveRepo(o, old, root, byRepo[root], st)
 	}
-	for seg := range segs {
-		_ = os.Remove(filepath.Join(old, seg)) // empty only
-	}
-	_ = os.Remove(old)
+	removeEmptyDirs(old)
 	if st.moved > 0 || st.rewritten > 0 || st.transcripts > 0 || len(st.left) > 0 {
 		slog.Info("worktree move", "scope", "startup", "moved", st.moved, "rewritten", st.rewritten, "transcripts", st.transcripts, "left", fmt.Sprint(st.left))
 	}
 }
 
-// needed reports whether the old folder exists or a session still points into it.
-func needed(db *sql.DB, old string) bool {
+// removeEmptyDirs removes empty repo folders under old, then old itself when empty. Files stay.
+func removeEmptyDirs(old string) {
+	if entries, err := os.ReadDir(old); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				_ = os.Remove(filepath.Join(old, e.Name()))
+			}
+		}
+	}
+	_ = os.Remove(old)
+}
+
+// Needed reports whether the old folder exists or a session still points into it. It is cheap, so a
+// caller can skip git discovery when nothing is left to move.
+func Needed(db *sql.DB, home string) bool {
+	old := filepath.Join(home, oldBase)
 	if _, err := os.Lstat(old); err == nil {
 		return true
 	}
@@ -151,14 +158,27 @@ func moveRepo(o Options, old, root string, rows []row, st *stats) {
 		return
 	}
 	byPath := map[string]porcelain.WorktreeRecord{}
+	// byDir holds the records at <old>/<any>/<dir>, keyed by dir: the repo folder is the name at creation,
+	// which a rename or re-import since may have changed.
+	byDir := map[string]porcelain.WorktreeRecord{}
+	canonOld := canon(old)
 	for _, r := range recs {
-		byPath[canon(r.Path)] = r
+		c := canon(r.Path)
+		byPath[c] = r
+		if filepath.Dir(filepath.Dir(c)) == canonOld {
+			byDir[filepath.Base(c)] = r
+		}
 	}
 	for _, r := range rows {
 		seg := o.Segment(r.repoName)
 		oldPath := filepath.Join(old, seg, r.dir)
 		newPath := filepath.Join(o.NewBase, seg, r.dir)
 		oldRec, inOld := byPath[canon(oldPath)]
+		if !inOld {
+			if rec, ok := byDir[r.dir]; ok {
+				oldRec, inOld, oldPath = rec, true, rec.Path
+			}
+		}
 		_, inNew := byPath[canon(newPath)]
 		switch {
 		case inNew:
@@ -173,6 +193,16 @@ func moveRepo(o Options, old, root string, rows []row, st *stats) {
 			}
 			continue
 		}
+		// Transcripts first: a failure keeps the stored old paths, so the next boot retries both.
+		moved, err := claude.MoveProjectDir(o.Home, oldPath, newPath)
+		if err != nil {
+			slog.Warn("worktree move: rename Claude transcripts", "scope", "startup", "dir", r.dir, "err", err)
+			st.leave("transcripts failed")
+			continue
+		}
+		if moved {
+			st.transcripts++
+		}
 		n, err := rewrite(o.DB, oldPath, newPath)
 		if err != nil {
 			slog.Warn("worktree move: rewrite stored paths", "scope", "startup", "dir", r.dir, "err", err)
@@ -180,12 +210,6 @@ func moveRepo(o Options, old, root string, rows []row, st *stats) {
 			continue
 		}
 		st.rewritten += n
-		moved, err := claude.MoveProjectDir(o.Home, oldPath, newPath)
-		if err != nil {
-			slog.Warn("worktree move: rename Claude transcripts", "scope", "startup", "dir", r.dir, "err", err)
-		} else if moved {
-			st.transcripts++
-		}
 	}
 }
 
@@ -278,6 +302,12 @@ func rewrite(db *sql.DB, oldPath, newPath string) (int, error) {
 		{fmt.Sprintf("UPDATE %s SET %s = ? || substr(%s, ?)", sr.Table, sr.Cwd, sr.Cwd), sr.Cwd, ""},
 	}
 	n := utf8.RuneCountInString(oldPath)
+	// A rebase run's spec holds each stack worktree as an absolute path.
+	stack := fmt.Sprintf("UPDATE %[1]s SET %[2]s = json_set(%[2]s, '$.stack', json((SELECT json_group_array(json(CASE WHEN json_extract(value, '$.worktree') = ? OR substr(json_extract(value, '$.worktree'), 1, ?) = ? THEN json_set(value, '$.worktree', ? || substr(json_extract(value, '$.worktree'), ?)) ELSE value END)) FROM json_each(%[2]s, '$.stack')))) WHERE %[2]s <> '' AND json_type(%[2]s, '$.stack') = 'array' AND EXISTS (SELECT 1 FROM json_each(%[2]s, '$.stack') WHERE json_extract(value, '$.worktree') = ? OR substr(json_extract(value, '$.worktree'), 1, ?) = ?)",
+		kiraschema.AdeRuns.Table, kiraschema.AdeRuns.SpecJSON)
+	if _, err := tx.Exec(stack, oldPath, n+1, oldPath+"/", newPath, n+1, oldPath, n+1, oldPath+"/"); err != nil {
+		return 0, err
+	}
 	for _, st := range steps {
 		// substr, never LIKE: "_" in a path is a LIKE wildcard.
 		q := fmt.Sprintf("%s WHERE (%s = ? OR substr(%s, 1, ?) = ?)%s", st.set, st.expr, st.expr, st.extra)
