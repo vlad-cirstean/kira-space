@@ -472,7 +472,7 @@ P29 added three more static checks, guarding §2.1/§2.2's own findings against 
   downloaded at runtime: the ONNX Runtime dylib is fetched at build time by `scripts/fetch-onnxruntime.sh`.
 - **S11** (P119) — the curl installer and its Go counterpart agree on their one shared contract:
   `scripts/install.sh` exists and passes `sh -n`; its line-2 contract marker
-  (`# kira-install-contract: 1`) matches `internal/appupdate/install.go`'s own constant;
+  (`# kira-install-contract: 2`) matches `internal/appupdate/install.go`'s own constant;
   `raw.githubusercontent.com` appears exactly once across `apps/`, `packages/`, `internal/`
   (`InstallScriptURL`); `shellcheck` runs against the script when it's on `PATH`.
 - **S12** (P210) — the bundled ONNX Runtime version agrees: `internal/memory/embed/paths.go`'s
@@ -493,7 +493,7 @@ the running build, shows a status-bar item (`internal/bridge/update.go`,
 `packages/workbench/src/components/{UpdateAvailableItem,UpdateDialog}.vue`) that opens a modal
 dialog with an **Update** button. Clicking it re-checks availability, then `internal/
 appupdate.Installer` fetches `scripts/install.sh` fresh from `main` (never bundled), validates its
-contract marker, and spawns it detached with `--app=space`; the script and the app hand off
+contract marker, and spawns it detached with `--wait-pid`/`--notify-fd`; the script and the app hand off
 over an fd once the disk image is staged, the app quits, and the script swaps the bundle into
 `/Applications` and reopens it. **Nothing downloads or installs without that click** — S10/S11
 above are what keep the app-code half of that true; `scripts/install.sh` itself is the one

@@ -130,10 +130,10 @@ elif ! sh -n scripts/install.sh; then
 fi
 
 SCRIPT_CONTRACT_LINE="$(sed -n '2p' scripts/install.sh 2>/dev/null || true)"
-if [ "$SCRIPT_CONTRACT_LINE" != "# kira-install-contract: 1" ]; then
-  fail "installer contract marker changed" "scripts/install.sh:2 is '$SCRIPT_CONTRACT_LINE', want '# kira-install-contract: 1'"
+if [ "$SCRIPT_CONTRACT_LINE" != "# kira-install-contract: 2" ]; then
+  fail "installer contract marker changed" "scripts/install.sh:2 is '$SCRIPT_CONTRACT_LINE', want '# kira-install-contract: 2'"
 fi
-GO_CONTRACT_COUNT="$(grep -c 'installContract *= *"# kira-install-contract: 1"' internal/appupdate/install.go 2>/dev/null || true)"
+GO_CONTRACT_COUNT="$(grep -c 'installContract *= *"# kira-install-contract: 2"' internal/appupdate/install.go 2>/dev/null || true)"
 if [ "${GO_CONTRACT_COUNT:-0}" -ne 1 ]; then
   fail "installer contract marker out of sync" "internal/appupdate/install.go's installContract does not match scripts/install.sh's own contract line"
 fi

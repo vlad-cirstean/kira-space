@@ -1,5 +1,5 @@
 #!/bin/sh
-# kira-install-contract: 1
+# kira-install-contract: 2
 # scripts/install.sh installs or updates Kira Space on this Mac: it downloads the latest published
 # release's disk image, verifies it, and swaps it into /Applications, then opens the app.
 # Interactive: `curl -fsSL <raw-url> | sh` — the same command installs a fresh
@@ -8,13 +8,13 @@
 # hand-off — the app never overwrites its own running binary. Log file, either mode:
 # ~/Library/Logs/<App name>/install.log.
 #
-# Usage: install.sh [--app=space] [--wait-pid=<pid> --notify-fd=<3-9>]
+# Usage: install.sh [--wait-pid=<pid> --notify-fd=<3-9>]
 # Exit codes: 0 installed and launched; 1 any failure; 2 usage; 130 interrupted.
 #
 # P119 §2: rewritten by hand, not generated — every requirement in the plan's own §2 is load-
-# bearing, none of it optional polish. Never break the --app/--wait-pid/--notify-fd flags or the
-# fd-3 "staged <tag>" handshake without bumping the line-2 marker above to 2 — an older app then
-# refuses the new script with a clear error instead of misdriving it (internal/appupdate/
+# bearing, none of it optional polish. Never break the --wait-pid/--notify-fd flags or the
+# fd-3 "staged <tag>" handshake without bumping the line-2 marker above (marker 2 dropped --app) —
+# an older app then refuses the new script with a clear error instead of misdriving it (internal/appupdate/
 # install.go's own installContract constant is the other side of this same contract; S11 in
 # scripts/verify-packaging.sh checks the two agree literally).
 set -eu
@@ -30,8 +30,13 @@ main() {
   # Every global this script touches gets a default here, up front — set -u then never trips on a
   # variable a later step hasn't reached yet, including inside cleanup, which can run at any point
   # once its trap is armed.
-  APP_ARG="space" WAIT_PID="" NOTIFY_FD="" LOG=""
-  APP_NAME="" BUNDLE_ID="" ASSET="" SLUG="" LOG_NAME=""
+  WAIT_PID="" NOTIFY_FD="" LOG=""
+  # Kira Space is the only app.
+  APP_NAME="Kira Space"
+  BUNDLE_ID="com.kirathecat.kira-space"
+  ASSET="kira-space-macos-arm64.dmg"
+  SLUG="space"
+  LOG_NAME="Kira Space"
   WORK="" STAGE="" MNT=""
   MOUNTED=0
   HANDED_OFF=0
@@ -99,30 +104,14 @@ APPLESCRIPT_EOF
   # ---- 1: parse args ----------------------------------------------------------------------------
   for ARG in "$@"; do
     case "$ARG" in
-      --app=*) APP_ARG="${ARG#--app=}" ;;
       --wait-pid=*) WAIT_PID="${ARG#--wait-pid=}" ;;
       --notify-fd=*) NOTIFY_FD="${ARG#--notify-fd=}" ;;
       *)
-        echo "usage: install.sh [--app=space] [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
+        echo "usage: install.sh [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
         exit 2
         ;;
     esac
   done
-
-  # Kira Space is the only app: no --app means space; any other --app value is rejected.
-  case "$APP_ARG" in
-    space)
-      APP_NAME="Kira Space"
-      BUNDLE_ID="com.kirathecat.kira-space"
-      ASSET="kira-space-macos-arm64.dmg"
-      SLUG="space"
-      LOG_NAME="Kira Space"
-      ;;
-    *)
-      echo "usage: install.sh [--app=space] [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
-      exit 2
-      ;;
-  esac
 
   # --wait-pid/--notify-fd are passed only by the app itself (self-update mode) — both or neither.
   # The regex on --notify-fd is what keeps the eval below safe: it is interpolated into a
@@ -161,7 +150,7 @@ APPLESCRIPT_EOF
   else
     MODE_LABEL="interactive"
   fi
-  log "kira-install starting: mode=$MODE_LABEL app=$APP_ARG pid=$$"
+  log "kira-install starting: mode=$MODE_LABEL pid=$$"
 
   # ---- 2: preflight -------------------------------------------------------------------------
   # sysctl, not `uname -m` — a Rosetta shell reports x86_64 on Apple Silicon.

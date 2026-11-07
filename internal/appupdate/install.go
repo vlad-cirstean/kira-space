@@ -27,7 +27,7 @@ const (
 	// installContract is scripts/install.sh's own line 2, byte-exact (§2.1/§2.2 there). A fetched
 	// script missing this exact line is refused before it ever reaches sh — the one thing keeping
 	// an incompatible future script version, or a captive-portal HTML page, from being executed.
-	installContract = "# kira-install-contract: 1"
+	installContract = "# kira-install-contract: 2"
 	maxScriptBytes  = 256 << 10
 	scriptTimeout   = 30 * time.Second
 	// stageTimeout is a backstop only — the script's own `curl --speed-limit` aborts a stalled
@@ -86,7 +86,7 @@ type Installer struct {
 }
 
 // NewInstaller builds an Installer over the real network fetch and the real shell, for app
-// (App.ScriptArg is what --app= the script receives) and runningVersion (the dev-build guard).
+// and runningVersion (the dev-build guard).
 func NewInstaller(app App, runningVersion string) *Installer {
 	i := &Installer{
 		app:     app,
@@ -303,7 +303,6 @@ func (i *Installer) spawnAndAwait(ctx context.Context, scriptPath string, logFil
 	}
 
 	cmd := exec.Command(i.shell, scriptPath,
-		"--app="+i.app.ScriptArg,
 		"--wait-pid="+strconv.Itoa(os.Getpid()),
 		"--notify-fd=3",
 	)

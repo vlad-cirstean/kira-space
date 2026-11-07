@@ -186,7 +186,7 @@ whatever sandbox a session happens to be in),
 - The Node engine child process was removed in P58f M10, along with its build/vendoring machinery and supervision code; it already served no connection traffic after C2 (P58e M9.3).
 - Kira Space is the only app (P537). Organisation kirathecat, bundle ID com.kirathecat.kira-space, executable Contents/MacOS/Kira Space (space included). Kira Studio is retired; its modules (Studio, Api, Docker, Kubernetes) are Space modes.
 - There is no silent auto-update; P119 adds a user-initiated update through scripts/install.sh.
-- Kira Space ships as one DMG (kira-space-macos-arm64.dmg); bundle ID is set in apps/kira-space/build/config.yml and mirrored in build/darwin/Info.plist. scripts/install.sh installs it (`--app=space`).
+- Kira Space ships as one DMG (kira-space-macos-arm64.dmg); bundle ID is set in apps/kira-space/build/config.yml and mirrored in build/darwin/Info.plist. scripts/install.sh installs it (no flags besides the app's own `--wait-pid`/`--notify-fd`).
 
 ## Invariants
 
@@ -1652,8 +1652,8 @@ packaged app does not), where the identical application code runs unchanged over
 - When buildinfo.Version is a dev sentinel (0.0.0, 0.0.0-dev, 0.0.0-unknown), the update check is suppressed entirely (no request, cache write or goroutine) and InstallUpdate refuses. Only tagged release builds reach the network or install.
 - Each app's renderer polls for updates hourly after the first window mounts, off the boot critical path. Go caches the answer for 6 hours after a successful check and 30 minutes after a failed one, and singleflight collapses concurrent callers, so Go sets the real network cadence.
 - A failed update check (network error, 404, or 403 rate-limit) is silent: no item, no error dialog, no console output, only a debug-level log. A 404 occurs because release.yml publishes only after all gates pass and drafts are invisible to /releases/latest.
-- On Update click, internal/appupdate.Installer re-checks availability from cache, then Stage fetches scripts/install.sh fresh from main (never bundled, so installer bugfixes reach every installed version) and checks its first two lines for the marker '# kira-install-contract: 1' to guard against captive-portal HTML and incompatible future scripts.
-- Stage writes the install script to a 0700 temp file and spawns it detached with Setsid (own session and process group, surviving app exit) using --app=space, --wait-pid=<this process>, and --notify-fd=3.
+- On Update click, internal/appupdate.Installer re-checks availability from cache, then Stage fetches scripts/install.sh fresh from main (never bundled, so installer bugfixes reach every installed version) and checks its first two lines for the marker '# kira-install-contract: 2' to guard against captive-portal HTML and incompatible future scripts. Marker 2 dropped the `--app` flag (Kira Space is the only app), so an app older than this contract refuses the script with the contract error and must be reinstalled by hand once.
+- Stage writes the install script to a 0700 temp file and spawns it detached with Setsid (own session and process group, surviving app exit) using --wait-pid=<this process>, and --notify-fd=3.
 - The install script prints 'staged <dmg path>' to fd 3 and closes it once the disk image is mounted and copying has started. Stage reads that line and returns, and the app quits only then, because the swap into /Applications needs the app's bundle closed. The script then waits for the pid to exit, replaces the bundle, relaunches, and cleans up.
 - Cancel (effective only while idle before hand-off) and the 15-minute backstop timeout signal the whole process group via internal/procgroup.Kill, never just the script's pid, so children like hdiutil and cp are not orphaned.
 - Every install run appends to ~/Library/Logs/<app name>/install.log, truncated once past 1 MiB, and UpdateStatus.installLogPath gives the dialog this path to show on a failed install.
