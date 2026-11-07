@@ -173,16 +173,6 @@ func upsertExperimental(tx *sql.Tx, e *model.ExperimentalPatch) error {
 	return appsettings.UpsertOptional(tx, "experimental.memory", e.Memory)
 }
 
-// LeafStored reports whether key has a stored row, as opposed to reading its default.
-func (r *SettingsRepo) LeafStored(key string) (bool, error) {
-	stored, err := sqlb.QueryLeaves(r.DB, r.Dialect, r.selectAll, settingsLeaves)
-	if err != nil {
-		return false, err
-	}
-	_, ok := stored[key]
-	return ok, nil
-}
-
 // readCapture reads the capture.* leaves on top of model.DefaultCaptureSettings().
 func readCapture(stored map[string]json.RawMessage) model.CaptureSettings {
 	result := model.DefaultCaptureSettings()

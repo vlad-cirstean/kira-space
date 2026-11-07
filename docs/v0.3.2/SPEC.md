@@ -32,7 +32,7 @@ More rows follow as the user adds them. Table order is execution order.
 
 - Ask (verbatim): "Add an experimental menu in settings and hide memory module under a toggle."
 - Scope: new Experimental pane in Kira Space Settings, built as a list of flag rows. First row: `experimental.memory`, default off. Off hides every Memory UI surface: the Memory mode tab, the Memory settings pane, the editor "Distill selection" action. Memory data, memory.db, the `memory-mcp` server and its agent registration stay untouched.
-- Upgrade: an install whose `memory.db` already exists gets `experimental.memory = true` once, at first boot after the update. Reason and mechanics in the plan.
+- Existing installs: off too, including ones with a `memory.db`. No boot-time write.
 - Tests: backend flow test plus UI spec, same scenario, one contract. Existing Memory specs enable the flag first. Settings and title-bar visual baselines re-recorded on Linux.
 - Plan: `plans/P556.md`.
 - Result: pending.
@@ -66,7 +66,7 @@ Runs after the last phase and the full suite run, before the code review. Close 
 
 - [ ] Fresh home: no Memory mode tab, no Memory settings section, no "Distill selection"; Settings has an Experimental section with the Memory switch off.
 - [ ] Turning the switch on and saving shows all three; off hides them again, and a window on Memory falls back to Git.
-- [ ] Existing `memory.db` before first boot reads the flag on; a later explicit off survives restart.
+- [ ] Existing `memory.db` at boot: flag still reads off.
 - [ ] Opening Settings with the flag off never opens memory.db (no Memory pane mounted).
 - [ ] Visual baselines re-recorded on Linux with Inter; ARCHITECTURE notes the gate.
 
