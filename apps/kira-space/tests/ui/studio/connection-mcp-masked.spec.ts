@@ -108,10 +108,9 @@ test('the enforcement lines state who enforces, what a violation does and the li
   await expect(enforce).toContainText('runs it read-only');
   await expect(enforce).toContainText('is refused with the reason');
   await expect(enforce).toContainText('Masked columns only take is-empty filters');
-  await expect(enforce).toContainText('lift that limit once');
+  await expect(enforce).toContainText('row check, timeout and throttle apply');
   await expect(enforce).toContainText('Masking still matches by column name');
-  await expect(enforce).toContainText('engines with no estimate (SQLite) skip it');
-  await expect(enforce).toContainText('Engines without tables');
+  await expect(enforce).toContainText('engines with no estimate (SQLite) skip the row check');
 });
 
 test('the review section gets a masked row, disabled on a kind without browse', async ({

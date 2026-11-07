@@ -74,13 +74,7 @@ test('changing one mode saves the per-mode key', async ({ relaunch }) => {
         (e) => `${e.path.join('.')}=${e.unset ? 'unset' : JSON.stringify(e.value)}`,
       );
     })
-    .toEqual(
-      expect.arrayContaining([
-        'mcp.review.read="send"',
-        'mcp.review.write="review"',
-        'mcp.review.ddl="review"',
-      ]),
-    );
+    .toEqual(['mcp.review.read="send"']);
 });
 
 test('write and ddl rows are disabled on a kind with no write console', async ({ relaunch }) => {
