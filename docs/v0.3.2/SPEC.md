@@ -8,6 +8,7 @@ Source: user request. The table is open: the user adds more phases to this chapt
 |---|---|---|
 | P555 | Keychain install image and Pages build | Pending |
 | P556 | Experimental settings menu, Memory behind a toggle | Pending |
+| P557 | Drop backward compatibility, single baseline migration | Pending |
 
 More rows follow as the user adds them. Table order is execution order.
 
@@ -36,6 +37,17 @@ More rows follow as the user adds them. Table order is execution order.
 - Plan: `plans/P556.md`.
 - Result: pending.
 
+### P557 Drop backward compatibility, single baseline migration
+
+- Ask (verbatim): "I'm the only user of this app, I updated to this latest published version 0.3.1, any migration should be dropped. I don't only mean reconciling all sqlite migrations into 1, but dropping any scripts, paths etc dedicated for backwards compat."
+- Scope: every install is exactly v0.3.1 (tag `v0.3.1`, merge `e7356a352`). Squash each SQLite chain into one baseline at the version v0.3.1 records: kira.db 90, review.db 8, memory.db 8. An older non-empty DB refuses to open with a pointed error. Delete the home, config and DB folds, the old-Studio checks, one-time DB-to-file exports, legacy cleanups, the frontend key migration, `install.sh --app=studio` and its release job. Keep the migration runner, `schema_version`, `SchemaTooNewError` and the foreign-keys-off step type for future migrations. Keep the v0.3.1 updater contract (`--app=space`, `--wait-pid`, `--notify-fd`).
+- Added by the user: fold `agent-secrets.db` into kira.db `secret_values` (scope `agent-credential`, owner `agent`, same cipher, only through `secrets.Store`, values never in logs or the op log); rename the macOS Keychain item from "Kira Studio" to "Kira Space" keeping the existing master key. Both are one-time boot data moves of live v0.3.1 data, idempotent, source kept until verified. Out of scope: `~/.kira-memory` move and the add-repos dialog move (separate phases).
+- Zero data loss on the user's v90 kira.db: baseline proven byte-for-byte against a chain-built DB, and a chain-upgraded DB with data opens unchanged.
+- Order: runs after P556 lands; deletes P556's one-time Memory upgrade seed (user decision).
+- Single implementer, no streams. Plan lists 6 NEEDS USER DECISION items; the implementer starts only after the user answers them.
+- Plan: `plans/P557.md`.
+- Result: pending.
+
 ## Close
 
 1 code review round unless the user says otherwise. After the last phase: one full suite run with all failures fixed, review round, hand-written close per CLAUDE.md, PR. The table is open: add checklist items for each new phase.
@@ -57,3 +69,13 @@ Runs after the last phase and the full suite run, before the code review. Close 
 - [ ] Existing `memory.db` before first boot reads the flag on; a later explicit off survives restart.
 - [ ] Opening Settings with the flag off never opens memory.db (no Memory pane mounted).
 - [ ] Visual baselines re-recorded on Linux with Inter; ARCHITECTURE notes the gate.
+
+### P557 Baseline check (mandatory)
+
+- [ ] Each DB package has exactly one migration file: kira `0090`, review `0008`, memory `0008`. Baseline proof test passed at the base commit (result in plan).
+- [ ] Copy of a chain-upgraded v90 DB with data opens: version 90, row counts and content hash unchanged, `integrity_check` ok, `foreign_key_check` empty.
+- [ ] v82 DB refuses with the schema-too-old startup alert; v91 refuses with schema-too-new.
+- [ ] `grep -rn "homefold\|configfold\|dbfold\|MigrateOnce\|app=studio\|\.kira-studio" apps internal scripts` returns nothing outside keychain names.
+- [ ] Pending release.yml patch committed under `docs/pending-changes/`; README, ARCHITECTURE, PACKAGING, DEV_ENVIRONMENT carry no fold or `--app=studio` text.
+- [ ] Agent secrets: flow test moves rows from a seeded `agent-secrets.db` into kira.db, file lands under `backups/p557-*`, second boot no-op, conflicting value refuses; no plaintext anywhere in kira.db or logs.
+- [ ] Keychain: user runs `go test ./internal/secrets -run Keychain` on the Mac (old only moves, both equal deletes old, both differ refuses, neither no-op); first real launch keeps connection passwords and agent credentials readable.
