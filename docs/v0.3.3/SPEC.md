@@ -6,7 +6,8 @@ Cleanup chapter. Branch `chapter/v0.3.3`, tag `v0.3.3`. First `P` is P564 (highe
 |---|---|---|
 | P564 | Cleanup: drop v0.3.2 one-time migrations, repo rename URLs | Done |
 | P565 | Presentation site: redesign, repo URLs, mobile zoom, drop carousel | Done |
-| P566 | Close chapter | Pending |
+| P566 | Presentation site: second design pass (identity, color, bento) | Pending |
+| P567 | Close chapter | Pending |
 
 P564 and P565 run as parallel streams (own worktree each): P564 owns everything outside `site/`, P565 owns `site/`. Grouping in `plans/batch-P564-P565.md`.
 
@@ -43,6 +44,11 @@ Chapter end: non-UI full run, 1 code review round, close phase, PR.
 - Verify with Playwright at phone width.
 - Result: done. Repo URLs and Pages base point at `kira-space`. Carousel and detail crop removed; window shots serve the whole framed image with a 1136 px `srcset` derivative. Memory removed from `/` only. Redesign is CSS only (aurora hero, scroll-driven reveals, hover states) gated by `prefers-reduced-motion`; no new dependency. Site Playwright run: 215 pass; the only failure is the README `github.io/kira-space` check, pending P564. Visual baselines refreshed from real shots.
 
-## P566 Close chapter
+## P566 Presentation site: second design pass (identity, color, bento)
+
+- Ask: user verdict on P565: grey cards and text, no personality. Give the landing page and /build/ a real identity: bold brand palette from the app icon, memorable hero, varied bento tiles with CSS/SVG visuals, scroll story, voice in copy. Zero client JS, reduced-motion respected.
+- Plan: `plans/P566.md`. User reviews design shots before implementation.
+
+## P567 Close chapter
 
 - Fold chapter into `docs/HISTORY.md` by hand per `CLAUDE.md`.
