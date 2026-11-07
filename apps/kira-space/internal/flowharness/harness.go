@@ -444,15 +444,6 @@ func (a *App) build() {
 	if err != nil {
 		a.t.Fatalf("repos.New: %v", err)
 	}
-	settings, err := r.Settings.GetAll()
-	if err != nil {
-		a.t.Fatalf("settings: %v", err)
-	}
-	userHome, err := os.UserHomeDir()
-	if err != nil {
-		a.t.Fatalf("user home: %v", err)
-	}
-	appwire.RunWorktreeMove(db.DB, userHome, settings.Git.GitPath, gitclient.NewHostLocator())
 	// Packages run in parallel, so they cannot share DefaultPort; a restart keeps its port so
 	// open client sessions reconnect.
 	dbMcpPort := dbmcp.EphemeralPort

@@ -21,7 +21,7 @@ func WorktreesBase(home string) string { return filepath.Join(home, WorktreesDir
 // owned is the path where the row's branch is already checked out ("" = none): any other existing
 // path counts as taken and the name is redrawn.
 func (b *TaskBoard) worktreeDirFor(sb model.AdeTaskBranch, repoName, owned string) (string, error) {
-	parent := filepath.Join(WorktreesBase(b.deps.HomeDir), PathSegment(repoName))
+	parent := filepath.Join(WorktreesBase(b.deps.HomeDir), pathSegment(repoName))
 	dir := sb.WorktreeDir
 	for range maxWorktreeDirTry {
 		if !ids.Is(ids.Worktree, dir) {
