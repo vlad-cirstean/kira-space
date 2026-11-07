@@ -6,15 +6,15 @@ Source: user request. The table is open: the user adds more phases to this chapt
 
 | Phase | Title | Status |
 |---|---|---|
-| P555 | Keychain install image and Pages build | Pending |
-| P556 | Experimental settings menu, Memory behind a toggle | Pending |
-| P557 | Drop backward compatibility, single baseline migration | Pending |
-| P558 | Repositories page in ADE, replacing the Git module dialog | Pending |
-| P559 | Memory home under the Kira Space home | Pending |
-| P560 | Agent MCP tools: use-case pass, Kira Space and Kira Studio rename | Pending |
-| P561 | Review window file list follows the shown file | Pending |
-| P562 | Trim connection dialog explanations | Pending |
-| P563 | Worktrees move to ~/kira-space-wts | Pending |
+| P555 | Keychain install image and Pages build | Done |
+| P556 | Experimental settings menu, Memory behind a toggle | Done |
+| P557 | Drop backward compatibility, single baseline migration | Done |
+| P558 | Repositories page in ADE, replacing the Git module dialog | Done |
+| P559 | Memory home under the Kira Space home | Done |
+| P560 | Agent MCP tools: use-case pass, Kira Space and Kira Studio rename | Done |
+| P561 | Review window file list follows the shown file | Done |
+| P562 | Trim connection dialog explanations | Done |
+| P563 | Worktrees move to ~/kira-space-wts | Done |
 
 More rows follow as the user adds them. Table order is execution order.
 
@@ -32,7 +32,7 @@ More rows follow as the user adds them. Table order is execution order.
 - Why Pages fails: last run 42348265274 failed solely with "Missing install image site/src/assets/install/keychain-access.webp" at `/`. `site/src/lib/installShots.ts` fails under `CI=true` on a missing image, by design.
 - Done: `CI=true bun run build` in `site` passes; affected site specs pass; Pages workflow run for `main` green after merge (confirmable only after merge).
 - Plan: `plans/P555.md`.
-- Result: `keychain-access.webp` added; `Install.astro`, `installShots.ts`, `content.ts`, `site.spec.ts` drop the folder image, folder prompt is prose; landing visual baselines re-recorded on Linux; lazy-image load waits added to site specs (`bbf38079a`, `af1b48f14`, `f399be747`, `c06ad0c08`). Pages run on `main` confirmable only after merge. Recovered from commits: plan file holds no Result.
+- Result: `keychain-access.webp` added; `Install.astro`, `installShots.ts`, `content.ts`, `site.spec.ts` drop the folder image, folder prompt is prose; landing visual baselines re-recorded on Linux; lazy-image load waits added to site specs (`bbf38079a`, `af1b48f14`, `f399be747`, `c06ad0c08`). Pages run on `main` confirmable only after merge.
 
 ### P556 Experimental settings menu, Memory behind a toggle
 
@@ -41,7 +41,7 @@ More rows follow as the user adds them. Table order is execution order.
 - Existing installs: off too, including ones with a `memory.db`. No boot-time write.
 - Tests: backend flow test plus UI spec, same scenario, one contract. Existing Memory specs enable the flag first. Settings and title-bar visual baselines re-recorded on Linux.
 - Plan: `plans/P556.md`.
-- Result: Experimental settings pane with `experimental.memory` flag (default off, no boot-time seed, `0b4deb5b5`). Flag hides Memory mode tab, Memory settings pane and Distill selection. Flow test `appflow/experimental_test.go`, UI spec `settings-experimental.spec.ts`; Memory specs enable the flag first; settings and shell visual baselines re-recorded on Linux. `ARCHITECTURE.md` notes the gate. Recovered from commits: plan file holds no Result.
+- Result: Experimental settings pane with `experimental.memory` flag (default off, no boot-time seed, `0b4deb5b5`). Flag hides Memory mode tab, Memory settings pane and Distill selection. Flow test `appflow/experimental_test.go`, UI spec `settings-experimental.spec.ts`; Memory specs enable the flag first; settings and shell visual baselines re-recorded on Linux. `ARCHITECTURE.md` notes the gate.
 
 ### P557 Drop backward compatibility, single baseline migration
 
@@ -53,15 +53,18 @@ More rows follow as the user adds them. Table order is execution order.
 - User decision (irreversible, authorized): a one-time boot cleanup, isolated in `apps/kira-space/internal/leftovers`, deletes every file and folder the post-P557 code never reads: dead names inside `~/.kira-space` by an exact allowlist, the pre-P557 `backups/p5xx-*` folders (not `backups/p557-*`) and the retired `~/.kira-studio` (P559 adds `~/.kira-memory`, user-authorized: they do not use Memory). It runs only after the baseline check, the agent-secrets move and the Keychain move succeed in the same boot. Allowlist in the plan.
 - Order: runs after P556 lands (P556 already removed its Memory upgrade seed, `4ef78a6b1`). Single implementer, no streams.
 - Plan: `plans/P557.md`.
-- Result: implemented (row stays Pending until the Mac keychain test and the release.yml patch land).
+- Result: implemented. Release patch applied (`b02f983dd`).
   - One baseline per DB at v0.3.1: kira 0090 plus `0091_p557_drop_legacy.sql`, review 0008, memory 0008 (P559 deleted `0009_p557_drop_legacy_ids.sql`). Proof at base `72907efb1`: chain-built and baseline-built DBs match exactly for all three (kira 62 tables, 116 indexes, 8 seed rows, v90; review 9, 10, 0, v8; memory 15, 23, 9 triggers, 1 seed row, v8). Real-data copies open unchanged (memory 8 to 9 via `0009`, since deleted). Older DB refuses with `SchemaTooOldError`, newer with `SchemaTooNewError`.
   - Deleted: home, config and DB folds, exports, `MigrateOnce`, old-Studio alert, `--app=studio`, four old config keys, adeflow legacy status names, legacy frontend storage keys, install.sh Studio path.
   - Moved once: `agent-secrets.db` into kira.db `secret_values` (original parked in `backups/p557-<UTC ts>/`); Keychain item "Kira Studio" to "Kira Space" with the same key; boot cleanup of dead leftovers.
-  - Pending patch: `docs/pending-changes/.github__workflows__release.yml.patch` (`.github/workflows/` cannot be pushed from a session).
-  - User precondition before first v0.3.2 launch: back up `~/.kira-space/kira.db`, `review.db`, and `agent-secrets.db`. No memory backup: `~/.kira-memory` is deleted at first boot.
-  - Unverified here: darwin keychain tests (`go test ./internal/secrets -run Keychain`) need a real Mac; the darwin cgo files compile only there.
-  - Left out of the leftovers allowlist: `config/workflows/.p526-backup` (not an authorized location). Needs a user decision.
-  - Next chapter: delete every one-time move. Inventory, precondition and phase row: `docs/NEXT_CHAPTER.md`.
+  - User to-dos:
+    - On the Mac run `go test ./internal/secrets -run Keychain`. Highest-risk step, unrun on Linux: darwin cgo files compile only there.
+    - Before first v0.3.2 launch back up `~/.kira-space/kira.db`, `review.db`, `agent-secrets.db`. Leftovers cleanup is irreversible. No memory backup: `~/.kira-memory` is deleted at first boot.
+    - Keychain prompt image still shows old "Kira Studio" name (P555 image).
+    - Re-run workflow `Release v0.3.0` (never published). v0.3.0 HISTORY entry is stale and cannot be edited.
+    - Confirm Pages workflow on `main` after merge.
+    - Delete `~/.kira-space/config/workflows/.p526-backup/` and `backups/p557-*` by hand (not in leftovers allowlist).
+  - Next chapter: delete every one-time move, including the migration drop. Inventory and phase row: `docs/NEXT_CHAPTER.md`.
 
 ### P558 Repositories page in ADE, replacing the Git module dialog
 
@@ -71,7 +74,7 @@ More rows follow as the user adds them. Table order is execution order.
 - Order: runs after P557. Shares only `en.json` and ARCHITECTURE with P556/P557, different keys and sections.
 - Single implementer, no streams. Plan lists 2 NEEDS USER DECISION items, each with a default.
 - Plan: `plans/P558.md`.
-- Result: Repositories page is an ADE top-bar tab beside Agent config and Workflows, with own store and leave guard; Git panel header button removed, GitStart and repo-row Configure jump to it; agent tool error points at it (`2f23f9499`, `771e2987f`). Specs renamed `ade-repos` with opener, absence and leave-guard scenarios; old dialog baseline dropped, page baseline recorded on Linux; `ARCHITECTURE.md` updated. Recovered from commits: plan file holds no Result.
+- Result: Repositories page is an ADE top-bar tab beside Agent config and Workflows, with own store and leave guard; Git panel header button removed, GitStart and repo-row Configure jump to it; agent tool error points at it (`2f23f9499`, `771e2987f`). Specs renamed `ade-repos` with opener, absence and leave-guard scenarios; old dialog baseline dropped, page baseline recorded on Linux; `ARCHITECTURE.md` updated.
 
 ### P559 Memory home under the Kira Space home
 
@@ -102,7 +105,7 @@ More rows follow as the user adds them. Table order is execution order.
 - Order: after P560 in table order. Concurrent with P559 and P560: no Go, no `en.json`; shares only one ARCHITECTURE sentence (review navigation paragraph) and SPEC.
 - Single implementer, no streams. Plan lists 2 NEEDS USER DECISION items, each with a default.
 - Plan: `plans/P561.md`.
-- Result: Review file tree follows the shown file: `useRevealSelectedFile` scrolls and reveals it; wired in `FileTree`, `ReviewFilesPane`, `ReviewView`, `useReviewStepping`, `review.ts`, `reviewFiles.ts`, `AdeReviewFiles.vue` (`1ed2f1c64`). Specs `ade-v2-review-follow` and `ade-v2-review-working`; `ARCHITECTURE.md` note (`3483da296`). Recovered from commits: plan file holds no Result.
+- Result: Review file tree follows the shown file: `useRevealSelectedFile` scrolls and reveals it; wired in `FileTree`, `ReviewFilesPane`, `ReviewView`, `useReviewStepping`, `review.ts`, `reviewFiles.ts`, `AdeReviewFiles.vue` (`1ed2f1c64`). Specs `ade-v2-review-follow` and `ade-v2-review-working`; `ARCHITECTURE.md` note (`3483da296`).
 
 ### P562 Trim connection dialog explanations
 
@@ -125,6 +128,8 @@ More rows follow as the user adds them. Table order is execution order.
 - Order: after P562 in table order. Shares with P560: `en.json` (different key), ARCHITECTURE (different section), `tests/contract/` (different files; regenerate after rebase). Single implementer, no streams. Plan lists 3 NEEDS USER DECISION items, each with a default.
 - Plan: `plans/P563.md`.
 - Result: Base `ade.WorktreesDir` / `WorktreesBase` (`<userHome>/kira-space-wts`); `safeSegment` exported as `PathSegment`. One-time move in `internal/wtmove`, called from new `appwire.RunWorktreeMove` (not `RunOneTimeMoves`: it needs the git path setting, so it runs after `repos.New` and the settings read in `main.go` and `flowharness`, still before Build). Git resolved through `gitclient.Discovery`; missing git logs and retries next boot. Moves per D4 to D9 (unlock, move, relock; never overwrite or prune), rewrites `ade_sessions.cwd`, terminal tab cwd, local-file tab path, `script_runs.cwd` in one transaction, `claude.MoveProjectDir` renames the transcript folder. Flow test `TestWorktreesMoveOnce` lives in `flows/adeflow` (reuses its repo and task helpers), real git, passes. Contracts regenerated (12 files, diff is only `<home>/wt` to `<home>/kira-space-wts`; four more than the plan listed: ade-automation, ade-ids, ade-review-open, ade-base). Fixtures, mock specs and `ade-v2-mockup-logic.js` moved to the new text; `ade-v2-dialogs.spec.ts` regex updated. Copy: `space.repo.config.basePath.description` reworded. Docs: ARCHITECTURE, site git and agents pages. Ran: go build, vet, `go test` ade, appflow, harness/claude, internal layering, full adeflow with `KIRA_CONTRACT=write` (4 disk-full failures reran green), unit `ade-v2-dialog`, all 559 `ade-v2` UI specs (2 failed: dialogs regex fixed, details-list passed on rerun), mobile agents and consistency, ADE and other visual specs. Visual: re-recorded only `ade-sandbox` `sandbox-popover-visual-linux.png` (contract path text). `tests/screenshots` project not run (disk); site images not regenerated.
+  - Full non-UI run, once (`plans/full-run.md`): 148 Go packages, 2014 unit tests, lint, typecheck, knip clean; real `claude` DB MCP, ADE and memory rows pass. 0 failures, no second run. Not run: Docker-backed Go tests, site real-screenshot Playwright, UI suites (PR CI).
+  - Review round 1: 7 findings (1 Medium, 6 Low), all fixed. R1-1 Repos `open()` skipped leave guard (`6dd912309`), shipped without UI spec, path unreachable. R1-2 renamed repo worktrees, R1-3 `ade_runs.spec_json` rewrite, R1-4 transcript retry (`5aac72e13`). R1-5, R1-6 per-boot cost (`529b61417`). R1-7 log line cap (`d84d76a88`). Known gap R1-6: missing `claude` CLI counts as legacy-MCP removal done.
 
 ## Close
 
