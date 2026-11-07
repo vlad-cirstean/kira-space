@@ -90,7 +90,7 @@ func Check(presented string, rec Record, now time.Time) Outcome {
 
 // TokenVerifier is the auth.TokenVerifier the DB MCP server mounts. load reads the server's own
 // current record under its own lock, so a Regenerate mid-flight is picked up by the very next
-// request. label names the server in the lapsed-token error text ("kira-db").
+// request. label names the server in the lapsed-token error text ("kira-studio").
 func TokenVerifier(label string, load func() Record) auth.TokenVerifier {
 	return func(_ context.Context, token string, _ *http.Request) (*auth.TokenInfo, error) {
 		rec := load()

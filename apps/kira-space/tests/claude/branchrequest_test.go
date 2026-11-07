@@ -102,7 +102,7 @@ func TestAdeBranchRequest(t *testing.T) {
 	if run.State != "done" {
 		t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 2500))
 	}
-	if !strings.Contains(log, "mcp__kira-ade__request_branches") {
+	if !strings.Contains(log, "mcp__kira-space__request_branches") {
 		t.Fatalf("run log lacks the request_branches call:\n%s", tail(log, 2500))
 	}
 

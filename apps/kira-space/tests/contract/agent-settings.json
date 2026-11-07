@@ -30,7 +30,7 @@
         "id": "claude",
         "kira": [
           "Kira hooks on every agent event, for session state and notifications.",
-          "MCP server kira-ade, for the agent board tools.",
+          "MCP server kira-space, for the agent board tools.",
           "A status line wrapper that reads usage limits, when usage limits are on."
         ],
         "label": "Claude",
@@ -54,7 +54,7 @@
         "id": "opencode",
         "kira": [
           "Kira hooks on every agent event, for session state and notifications.",
-          "MCP server kira-ade, for the agent board tools."
+          "MCP server kira-space, for the agent board tools."
         ],
         "label": "OpenCode",
         "notes": [

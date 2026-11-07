@@ -195,7 +195,7 @@ func TestAgentPortClaude(t *testing.T) {
 	}
 	lit.absent(t, "the import preview", prev)
 	want := map[string]string{
-		"mcp/gh": "conflict", "mcp/notes": "new", "mcp/old": "skipped", "mcp/kira-db": "skipped",
+		"mcp/gh": "conflict", "mcp/notes": "new", "mcp/old": "skipped", "mcp/kira-studio": "skipped",
 		"env/NODE_ENV": "new", "env/JIRA_TOKEN": "new", "claude/model": "conflict", "claude/status_line": "new",
 		"claude/permission_mode": "new", "context": "conflict", "allow/Read": "new", "deny/Bash(rm:*)": "new",
 	}

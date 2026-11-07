@@ -110,7 +110,7 @@ func TestSmartScriptRun(t *testing.T) {
 		if !strings.HasPrefix(run.Cwd, filepath.Join(f.Home, "wt")) || run.TaskID != task.ID || run.BranchID != branchID {
 			t.Fatalf("run cwd %q task %q branch %q, want the task worktree", run.Cwd, run.TaskID, run.BranchID)
 		}
-		if !strings.Contains(strings.Join(run.Tools.AllowedTools, " "), "mcp__kira-ade__task_info") {
+		if !strings.Contains(strings.Join(run.Tools.AllowedTools, " "), "mcp__kira-space__task_info") {
 			t.Fatalf("allowed tools = %v, want the Space tools", run.Tools.AllowedTools)
 		}
 		t.Logf("PASS in task worktree: cost %.4f USD in %s", *o.CostUSD, run.Cwd)

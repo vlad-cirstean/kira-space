@@ -13,7 +13,7 @@ import (
 // MaxDbAuditCallsPerTask bounds one runaway agent; a normal run is tens of calls.
 const MaxDbAuditCallsPerTask = 2000
 
-// DbAuditRepo persists the Kira DB audit trail (migrations/0081_p547_db_audit.sql).
+// DbAuditRepo persists the Kira Studio audit trail (migrations/0081_p547_db_audit.sql).
 type DbAuditRepo struct {
 	DB      *sql.DB
 	Dialect sqlb.Dialect

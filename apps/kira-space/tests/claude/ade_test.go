@@ -130,9 +130,9 @@ func (f *adeFixture) runLog(t *testing.T, runID string) string {
 }
 
 // poison is a project setting that breaks any run that loads it.
-var poison = map[string]string{".claude/settings.json": `{"permissions":{"deny":["mcp__kira-ade__finish_step"]}}` + "\n"}
+var poison = map[string]string{".claude/settings.json": `{"permissions":{"deny":["mcp__kira-space__finish_step"]}}` + "\n"}
 
-// TestAdeHeadlessRun runs a one-step workflow through the real claude -p and its kira-ade MCP
+// TestAdeHeadlessRun runs a one-step workflow through the real claude -p and its kira-space MCP
 // server. The second case poisons the repo's project settings and runs with
 // ade.headlessSettingSources=user: the run passes only if --setting-sources user keeps them out.
 func TestAdeHeadlessRun(t *testing.T) {
@@ -166,7 +166,7 @@ func TestAdeHeadlessRun(t *testing.T) {
 			if run.State != "done" {
 				t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 1500))
 			}
-			if !strings.Contains(log, "mcp__kira-ade__finish_step") {
+			if !strings.Contains(log, "mcp__kira-space__finish_step") {
 				t.Fatalf("run log lacks the finish_step tool call:\n%s", tail(log, 1500))
 			}
 			f.requireCostUnder(t)
@@ -426,7 +426,7 @@ func TestAdeReportArtifacts(t *testing.T) {
 	if run.State != "done" {
 		t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 1500))
 	}
-	if !strings.Contains(log, "mcp__kira-ade__report_artifacts") {
+	if !strings.Contains(log, "mcp__kira-space__report_artifacts") {
 		t.Fatalf("run log lacks the report_artifacts tool call:\n%s", tail(log, 1500))
 	}
 	res, err := f.W.AdeTask.Artifacts(ctx, adewire.TaskArgs{TaskID: task.ID})

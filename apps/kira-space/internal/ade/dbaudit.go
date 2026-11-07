@@ -13,7 +13,7 @@ type DbAuditReader interface {
 	ListForTask(taskID string) ([]model.DbAuditCall, error)
 }
 
-// DbAudit lists the Kira DB calls of a task, newest first, each with its approvals. Archived tasks work too.
+// DbAudit lists the Kira Studio calls of a task, newest first, each with its approvals. Archived tasks work too.
 func (b *TaskBoard) DbAudit(_ context.Context, taskID string) ([]adewire.DbAuditEntry, error) {
 	task, err := b.deps.Tasks.GetTask(taskID)
 	if err != nil {

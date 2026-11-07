@@ -1,4 +1,4 @@
-// Package dbaudit records what agent sessions do through the Kira DB session server: one row per
+// Package dbaudit records what agent sessions do through the Kira Studio session server: one row per
 // tool call and per approval, never row data, bound values or results (docs/ARCHITECTURE.md
 // "Audit trail").
 package dbaudit

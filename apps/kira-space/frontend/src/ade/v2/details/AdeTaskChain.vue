@@ -29,7 +29,7 @@ import { taskChain } from './taskChain';
 import { type TimelineBranch, timelineEvents } from './taskTimeline';
 
 // The task chain: the user's notes, what each stage left for the next and the proof sessions
-// attached to the task, one list, newest first; the Timeline toggle adds task events and the Kira DB
+// attached to the task, one list, newest first; the Timeline toggle adds task events and the Kira Studio
 // toggle (on by default) the DB actions of its agent sessions. An entry edits
 // in place unless the task is archived.
 const props = defineProps<{

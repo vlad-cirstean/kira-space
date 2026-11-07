@@ -359,7 +359,7 @@ func (s *Server) server() *mcp.Server {
 // every handler closes over s and calls into s.cfg.Conns/Tree/Query through access.go's gates.
 func (s *Server) buildMCPServer() *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{
-		Name:    "kira-db",
+		Name:    "kira-studio",
 		Title:   "Kira Space databases",
 		Version: serverVersion,
 	}, &mcp.ServerOptions{Instructions: llmprompts.DbmcpInstructions.Text(s.prompts(), llmprompts.NoVars{})})

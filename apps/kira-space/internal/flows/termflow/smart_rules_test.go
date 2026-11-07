@@ -109,7 +109,7 @@ func TestSmartScriptRules(t *testing.T) {
 		args := scriptruns.RunArgs{ScriptID: rec.ID, Params: map[string][]string{"topic": {"the build"}}}
 		pv := previewOf(t, app, args)
 		if strings.Join(pv.Tools, " ") != "Read Grep Glob" ||
-			strings.Join(pv.Allowed, " ") != "Read Grep Glob mcp__kira-ade__finish_step" {
+			strings.Join(pv.Allowed, " ") != "Read Grep Glob mcp__kira-space__finish_step" {
 			t.Fatalf("tools = %v, allowed = %v", pv.Tools, pv.Allowed)
 		}
 		if got := scripts.PlainText(pv.Prompt); got != "Fix the build in {branch} using low" {
@@ -143,7 +143,7 @@ func TestSmartScriptRules(t *testing.T) {
 		})
 		pv = previewOf(t, app, scriptruns.RunArgs{ScriptID: bash.ID})
 		if strings.Join(pv.Tools, " ") != "Read Bash" ||
-			strings.Join(pv.Allowed, " ") != "Read Bash(git status:*) Bash(git diff:*) mcp__kira-ade__finish_step" {
+			strings.Join(pv.Allowed, " ") != "Read Bash(git status:*) Bash(git diff:*) mcp__kira-space__finish_step" {
 			t.Fatalf("bash tools = %v, allowed = %v", pv.Tools, pv.Allowed)
 		}
 	})
@@ -177,7 +177,7 @@ func TestSmartScriptRules(t *testing.T) {
 		}
 		argv := callFile(t, app, 1, ".args")
 		for _, want := range []string{
-			"--model\nsonnet\n--max-budget-usd\n1\n--setting-sources\n\n--strict-mcp-config\n--permission-prompts\nnone\n--tools\nRead,Grep,Glob\n--allowedTools\nRead\nGrep\nGlob\nmcp__kira-ade__finish_step",
+			"--model\nsonnet\n--max-budget-usd\n1\n--setting-sources\n\n--strict-mcp-config\n--permission-prompts\nnone\n--tools\nRead,Grep,Glob\n--allowedTools\nRead\nGrep\nGlob\nmcp__kira-space__finish_step",
 		} {
 			if !strings.Contains(argv, want) {
 				t.Errorf("argv lacks %q:\n%s", want, argv)
@@ -584,7 +584,7 @@ func TestSmartScriptRules(t *testing.T) {
 		if i := slices.Index(argv, "--permission-prompts"); i < 0 || argv[i+1] != "none" {
 			t.Errorf("argv wants --permission-prompts none:\n%v", argv)
 		}
-		if got, want := callFile(t, app, 1, ".settings"), `{"disableAllHooks":true,"allowedMcpServers":[{"serverName":"kira-ade"},{"serverName":"fake"}],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}`; got != want {
+		if got, want := callFile(t, app, 1, ".settings"), `{"disableAllHooks":true,"allowedMcpServers":[{"serverName":"kira-space"},{"serverName":"fake"}],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}`; got != want {
 			t.Errorf("--settings = %s, want %s", got, want)
 		}
 		if i := slices.Index(argv, "--allowedTools"); i < 0 || !slices.Contains(argv[i+1:], "mcp__fake__echo") {

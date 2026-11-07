@@ -76,7 +76,7 @@ var options = []option{
 	{Path: "steps[].settings", Type: "mapping", Kinds: withSession, Doc: "Agent settings for the step, by agent id then setting key. Manual steps: only with `session: true`."},
 	{Path: "steps[].prompt", Type: "text", Kinds: []adewire.StepKind{adewire.KindAgent, adewire.KindManual}, RequiredOn: agentOnly, Doc: "What the agent does. On an agent step, required unless `smart_script` is set."},
 	{Path: "steps[].allowed_tools", Type: "list of text", Kinds: agentOnly, Doc: "Tools the agent may use without asking, such as `Bash(git *)` or `mcp__server__tool`. Not with `smart_script`."},
-	{Path: "steps[].db_mcp", Type: "boolean", Kinds: withSession, Default: "false", Doc: "Give the step's agent sessions the Kira DB tools (MCP server `kira-db-session`), for that session only. Works with the Database MCP server off in Settings. Not with `smart_script`. Manual steps: only with `session: true`."},
+	{Path: "steps[].db_mcp", Type: "boolean", Kinds: withSession, Default: "false", Doc: "Give the step's agent sessions the Kira Studio tools (MCP server `kira-studio-session`), for that session only. Works with the Database MCP server off in Settings. Not with `smart_script`. Manual steps: only with `session: true`."},
 	{Path: "steps[].results[]", Type: "mapping", Doc: "One outcome."},
 	{Path: "steps[].results[].id", Type: "text", Required: true, Range: fmt.Sprintf("pattern `%s`, unique in the step", idPattern), Doc: "Outcome id. `needs_input` is reserved."},
 	{Path: "steps[].results[].ok", Type: "boolean", Required: true, Doc: "Whether the outcome counts as success."},

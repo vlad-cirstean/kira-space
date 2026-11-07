@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const dbServer = "kira-db"
+const dbServer = "kira-studio"
 
 // enableDbMcp creates an MCP-exposed SQLite connection, turns the DB MCP server on and returns
 // the connection name plus the URL and headersHelper path the app would register with Claude Code.
@@ -199,7 +199,7 @@ func TestDbMcpScriptThroughClaude(t *testing.T) {
 	}
 
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"You must use the kira-db MCP tools, loading them with ToolSearch if they are deferred. Call list_scripts, then run_script for the script probe with waitSeconds 20, then call get_script_logs for that run with contains set to marker. Reply with the matching line.",
+		"You must use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. Call list_scripts, then run_script for the script probe with waitSeconds 20, then call get_script_logs for that run with contains set to marker. Reply with the matching line.",
 		"--strict-mcp-config", "--mcp-config", cfg,
 		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_scripts,mcp__"+dbServer+"__run_script,mcp__"+dbServer+"__get_script_logs",
 		"--output-format", "stream-json", "--verbose")
@@ -274,14 +274,14 @@ func TestDbMcpSessionStep(t *testing.T) {
 		t.Fatalf("Connections.Connect: %v", err)
 	}
 	f.saveWorkflow(t, "flow", "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 3m\n    db_mcp: true\n"+
-		"    prompt: Call the list_connections tool of the kira-db-session server once, then call finish_step with status done and summary ok.\n"+
+		"    prompt: Call the list_connections tool of the kira-studio-session server once, then call finish_step with status done and summary ok.\n"+
 		manualStepYAML)
 	run := f.startRun(t, f.createTask(t, "flow"), "feat/real-claude-db")
 	log := f.runLog(t, run.ID)
 	if run.State != "done" {
 		t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 1500))
 	}
-	if !strings.Contains(log, "mcp__kira-db-session__list_connections") || !strings.Contains(log, connName) {
+	if !strings.Contains(log, "mcp__kira-studio-session__list_connections") || !strings.Contains(log, connName) {
 		t.Fatalf("run log lacks the list_connections call or %q:\n%s", connName, tail(log, 1500))
 	}
 }

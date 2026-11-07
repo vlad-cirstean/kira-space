@@ -14,6 +14,6 @@
       "env": { "API_KEY": "@NOTES@" }
     },
     "old": { "type": "sse", "url": "https://example.com/sse" },
-    "kira-db": { "type": "http", "url": "http://127.0.0.1:1/mcp" }
+    "kira-studio": { "type": "http", "url": "http://127.0.0.1:1/mcp" }
   }
 }

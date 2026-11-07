@@ -68,9 +68,9 @@ type TaskBoardDeps struct {
 	Workflows *adeflow.Reader
 	// Proofs attaches validation-proof sessions to tasks; nil turns the proof tools off.
 	Proofs ProofLinks
-	// DbMcp mints the per-session Kira DB server entry; nil makes a db_mcp step fail to launch.
+	// DbMcp mints the per-session Kira Studio server entry; nil makes a db_mcp step fail to launch.
 	DbMcp DbMcpSessions
-	// DbAudit reads the Kira DB audit trail of a task.
+	// DbAudit reads the Kira Studio audit trail of a task.
 	DbAudit DbAuditReader
 	// Runner spawns git for repo identification (folder import).
 	Runner gitclient.Runner

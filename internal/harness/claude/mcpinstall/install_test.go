@@ -41,14 +41,14 @@ func TestCommandRoundTripsThroughShell(t *testing.T) {
 		"/Users/a b/.kira/mcp-header-helper.sh",
 		"/Users/o'n/.kira/mcp-header-helper.sh",
 	} {
-		cmd := New(Deps{}).Command("kira-db", "http://127.0.0.1:8766/mcp", helperPath)
+		cmd := New(Deps{}).Command("kira-studio", "http://127.0.0.1:8766/mcp", helperPath)
 		script := "claude() { for a; do printf '%s\\n' \"$a\"; done; }\n" + cmd
 		out, err := exec.Command("sh", "-c", script).Output()
 		if err != nil {
 			t.Fatalf("sh rejected %q: %v", cmd, err)
 		}
 		payload, _ := json.Marshal(httpServer("http://127.0.0.1:8766/mcp", helperPath))
-		want := "mcp\nremove\n--scope\nuser\nkira-db\nmcp\nadd-json\n--scope\nuser\nkira-db\n" + string(payload) + "\n"
+		want := "mcp\nremove\n--scope\nuser\nkira-studio\nmcp\nadd-json\n--scope\nuser\nkira-studio\n" + string(payload) + "\n"
 		if string(out) != want {
 			t.Errorf("helper %q: shell argv = %q, want %q", helperPath, out, want)
 		}
@@ -70,7 +70,7 @@ func TestInstallRefusesRelativeHeaderHelperPath(t *testing.T) {
 		},
 	})
 
-	res := installer.Install(context.Background(), "kira-db", "http://127.0.0.1:8766/mcp", "relative/path.sh")
+	res := installer.Install(context.Background(), "kira-studio", "http://127.0.0.1:8766/mcp", "relative/path.sh")
 	if res.Outcome != harness.OutcomeInstallFailed {
 		t.Fatalf("Outcome = %q, want %q", res.Outcome, harness.OutcomeInstallFailed)
 	}
@@ -94,7 +94,7 @@ func TestInstallQuotesHeaderHelperPathInPayload(t *testing.T) {
 		},
 	})
 
-	res := installer.Install(context.Background(), "kira-db", "http://127.0.0.1:8766/mcp", helperPath)
+	res := installer.Install(context.Background(), "kira-studio", "http://127.0.0.1:8766/mcp", helperPath)
 	if res.Outcome != harness.OutcomeInstalled {
 		t.Fatalf("Outcome = %q, want %q (detail: %s)", res.Outcome, harness.OutcomeInstalled, res.Detail)
 	}

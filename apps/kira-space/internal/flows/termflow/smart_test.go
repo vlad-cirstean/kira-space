@@ -69,7 +69,7 @@ func TestSmartScriptSpace(t *testing.T) {
 		return run.State == "done"
 	})
 	if raw, err := os.ReadFile(filepath.Join(app.FakeDir, "automations-1.settings")); err != nil ||
-		string(raw) != `{"disableAllHooks":true,"allowedMcpServers":[{"serverName":"kira-ade"},{"serverName":"fake"}],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}` {
+		string(raw) != `{"disableAllHooks":true,"allowedMcpServers":[{"serverName":"kira-space"},{"serverName":"fake"}],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}` {
 		t.Fatalf("--settings = %s, %v", raw, err)
 	}
 	app.Contract(t, "smart", "ScriptRunsService.Get#done", run, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))

@@ -12,7 +12,7 @@ import AdeStepAgentPick from './AdeStepAgentPick.vue';
 import AdeStepSettings from './AdeStepSettings.vue';
 import AdeStepStatus from './AdeStepStatus.vue';
 
-// Rarely changed: allowed tools, Kira DB tools, agent settings and skipping the step. A manual step keeps its status and agent here.
+// Rarely changed: allowed tools, Kira Studio tools, agent settings and skipping the step. A manual step keeps its status and agent here.
 const props = defineProps<{ step: WorkflowStep }>();
 const emit = defineEmits<{ patch: [p: Partial<WorkflowStep>] }>();
 const draft = useAdeWorkflowDraftStore();

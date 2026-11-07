@@ -17,7 +17,7 @@
       "Grep",
       "Glob",
       "mcp__user-srv__echo",
-      "mcp__kira-ade__finish_step"
+      "mcp__kira-space__finish_step"
     ],
     "blocker": "MCP server user-srv is no longer in your Kira agent settings config",
     "body": "Reply ok.",

@@ -17,7 +17,7 @@ import (
 
 // dbMcpServerName is the one name every Install call registers under — internal/dbmcp's own
 // server identity (Implementation.Name, dbmcp/server.go).
-const dbMcpServerName = "kira-db"
+const dbMcpServerName = "kira-studio"
 
 // dbMcpTokenName is mcpauth.PathNamed's own file-name argument — no repo-id slug (M1 §2.2): one DB
 // MCP instance exists per app process per Space home, with no second identity to key several apart

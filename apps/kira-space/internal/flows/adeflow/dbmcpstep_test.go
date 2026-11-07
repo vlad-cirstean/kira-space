@@ -25,12 +25,12 @@ import (
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-// P548 Kira DB tools in workflow steps. Contract ade-db-mcp-step: tests/ui/ade-v2-workflow-db-mcp.spec.ts reads it.
+// P548 Kira Studio tools in workflow steps. Contract ade-db-mcp-step: tests/ui/ade-v2-workflow-db-mcp.spec.ts reads it.
 
 const (
 	dbScenario  = "ade-db-mcp-step"
-	dbSrvName   = "kira-db-session"
-	dbAllowRule = "mcp__kira-db-session"
+	dbSrvName   = "kira-studio-session"
+	dbAllowRule = "mcp__kira-studio-session"
 )
 
 var dbURLRe = regexp.MustCompile(`"url":"([^"]+)"`)
@@ -194,14 +194,14 @@ func TestDbMcpStep(t *testing.T) {
 	args1 := fakeFile(t, app, "api-1.args")
 	mustContain(t, "withdb argv", args1, dbAllowRule)
 	if names := mcpServerNames(t, fakeFile(t, app, "api-1.mcp0")); len(names) != 2 {
-		t.Fatalf("withdb servers = %v, want kira-ade and %s", names, dbSrvName)
+		t.Fatalf("withdb servers = %v, want kira-space and %s", names, dbSrvName)
 	}
 
-	// 3. A step without db_mcp has only kira-ade; calling the session server fails.
+	// 3. A step without db_mcp has only kira-space; calling the session server fails.
 	waitRun(t, app, task.ID, "plain", "failed")
 	mustLack(t, "plain argv", fakeFile(t, app, "api-2.args"), dbAllowRule)
-	if names := mcpServerNames(t, fakeFile(t, app, "api-2.mcp0")); len(names) != 1 || names[0] != "kira-ade" {
-		t.Fatalf("plain servers = %v, want only kira-ade", names)
+	if names := mcpServerNames(t, fakeFile(t, app, "api-2.mcp0")); len(names) != 1 || names[0] != "kira-space" {
+		t.Fatalf("plain servers = %v, want only kira-space", names)
 	}
 	mustContain(t, "plain run log", logText(t, app, "run", latestRunID(t, app, task.ID, "plain")), "mcp:")
 

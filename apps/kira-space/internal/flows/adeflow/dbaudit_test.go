@@ -26,7 +26,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-// P547 Kira DB audit trail. Contract ade-db-audit: tests/ui/ade-v2-db-audit.spec.ts reads it.
+// P547 Kira Studio audit trail. Contract ade-db-audit: tests/ui/ade-v2-db-audit.spec.ts reads it.
 
 const dbAuditScenario = "ade-db-audit"
 

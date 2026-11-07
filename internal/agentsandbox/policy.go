@@ -51,7 +51,7 @@ type Policy struct {
 	ContextDir string
 	// ReadFiles are single files the run reads (an interactive launch's MCP config and app settings).
 	ReadFiles []string
-	// Ports are the loopback ports the run reaches: the kira-ade MCP server, the allowlist proxy.
+	// Ports are the loopback ports the run reaches: the kira-space MCP server, the allowlist proxy.
 	Ports []int
 	// Branch maps a worktree to the branch it may advance.
 	Branch map[string]string

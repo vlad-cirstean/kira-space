@@ -29,8 +29,8 @@ Kira starts the `claude` or `opencode` command that you installed and signed in 
 Kira offers MCP servers to agents:
 
 - `kira-memory` recalls stored facts in Claude Code sessions.
-- `kira-db` and `kira-db-session` give a client your databases, under rules you set.
-- `kira-ade` gives a task agent its task, branches and proof.
+- `kira-studio` and `kira-studio-session` give a client your databases, under rules you set.
+- `kira-space` gives a task agent its task, branches and proof.
 
 See [MCP and agents](../../space/mcp/).
 

@@ -80,7 +80,7 @@ Run `/mcp__kira-memory__remember` to store durable facts from given text or the 
 
 ## Database MCP server (Studio modules)
 
-Server name `kira-db`. Workflow steps with `db_mcp` reach the same tools as `kira-db-session`. See [Database MCP server](../../studio/database-mcp/).
+Server name `kira-studio`. Workflow steps with `db_mcp` reach the same tools as `kira-studio-session`. See [Database MCP server](../../studio/database-mcp/).
 
 - `list_connections`: every exposed connection with its kind, read-only flag, status, `access` per mode, `enforcement`, `tables` and masked columns. `statementTimeout` gives the seconds (0 for off) and who enforces it per mode. `tables` is all, or the only tables MCP may touch. `columnReview` shows whether column review is on and `withheld` lists the columns results drop until you review masking. `expensiveQuery` gives `rowsThreshold` and `check`: `plan` (`run_query` refuses a SELECT or WITH at or above it), `off` or `none` (the engine gives no row estimate). `reviewResults` lists the modes whose results the user reviews first, `masked` included. `access.masked` and `permissions.masked` are `browse_table`'s permission; `browse` says whether the connection's kind supports it.
 - `list_children`: the children of one container; tables outside the connection's allow list are hidden. Arguments: `connectionId`, `path`, `refresh`.
@@ -93,7 +93,7 @@ Server name `kira-db`. Workflow steps with `db_mcp` reach the same tools as `kir
 
 ## Agent tools (Kira Space)
 
-Server name `kira-ade`. `finish_step` is available to every agent run. `fetch_remote` and `push_branch` come with a sandboxed run. The other tools are always on. See [Agents](../../space/agents/).
+Server name `kira-space`. `finish_step` is available to every agent run. `fetch_remote` and `push_branch` come with a sandboxed run. The other tools are always on. See [Agents](../../space/agents/).
 
 - `finish_step`: report how a step ended. Call it once, last. The reply lists the task's artifacts. Arguments: `status`, `summary`, `reason`, `conflictedFiles`, `lastGitError`, `tried`.
 - `reply_review_comment`: answer one review comment. Only in a workflow review round. Call once per comment. Arguments: `id`, `reply`, `resolved`.

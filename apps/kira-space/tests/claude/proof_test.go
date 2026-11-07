@@ -10,7 +10,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 )
 
-// proofMcpApp starts the real app with the kira-db MCP enabled and writes the claude MCP config.
+// proofMcpApp starts the real app with the kira-studio MCP enabled and writes the claude MCP config.
 func proofMcpApp(t *testing.T) (*realApp, string, string) {
 	t.Helper()
 	app := newRealApp(t)
@@ -28,12 +28,12 @@ func proofMcpApp(t *testing.T) (*realApp, string, string) {
 	return app, cfg, "mcp__" + dbServer + "__"
 }
 
-// TestProofMcpThroughClaude has the real claude write a validation proof through the kira-db proof
+// TestProofMcpThroughClaude has the real claude write a validation proof through the kira-studio proof
 // tools and checks the stored session.
 func TestProofMcpThroughClaude(t *testing.T) {
 	app, cfg, pre := proofMcpApp(t)
 	app.claudeP(t, t.TempDir(), nil,
-		`Use the kira-db proof tools. Call proof_start_session with name "Claude proof". Then call proof_add_step twice with the returned draftId: `+
+		`Use the kira-studio proof tools. Call proof_start_session with name "Claude proof". Then call proof_add_step twice with the returned draftId: `+
 			`first a table step (description "Two rows", view "table", data {"columns":[{"name":"id"},{"name":"label"}],"rows":[[1,"a"],[2,"b"]]}), `+
 			`then a document step (description "One doc", view "document", data {"documents":[{"body":{"ok":true}}]}). `+
 			`Then call proof_close_session with the draftId. Reply with the word done.`,
@@ -60,7 +60,7 @@ func TestProofMcpThroughClaude(t *testing.T) {
 func TestProofChartThroughClaude(t *testing.T) {
 	app, cfg, pre := proofMcpApp(t)
 	app.claudeP(t, t.TempDir(), nil,
-		`Use the kira-db proof tools. Call proof_start_session with name "Chart proof". Then call proof_add_step once with the returned draftId: `+
+		`Use the kira-studio proof tools. Call proof_start_session with name "Chart proof". Then call proof_add_step once with the returned draftId: `+
 			`a chart step with description "Errors by service" showing errors per service as a bar chart: api 3, web 5, worker 0. `+
 			`Then call proof_close_session with the draftId. Reply with the word done.`,
 		"--strict-mcp-config", "--mcp-config", cfg,

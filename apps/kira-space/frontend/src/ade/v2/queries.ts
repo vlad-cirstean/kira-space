@@ -530,7 +530,7 @@ export function useTaskProofs(taskId: MaybeRefOrGetter<string>) {
   });
 }
 
-/** The Kira DB calls and approvals of a task's agent sessions, newest first; a dbAudit push refetches it. */
+/** The Kira Studio calls and approvals of a task's agent sessions, newest first; a dbAudit push refetches it. */
 export function useTaskDbAudit(taskId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: [...dbAuditPrefix, taskId] as const,
