@@ -12,7 +12,6 @@ var files embed.FS
 
 var names = []sqlitex.MigrationSource{
 	{Version: 8, Name: "p557_baseline", File: "0008_p557_baseline.sql"},
-	{Version: 9, Name: "p557_drop_legacy_ids", File: "0009_p557_drop_legacy_ids.sql"},
 }
 
 // All returns every migration in ascending version order.
