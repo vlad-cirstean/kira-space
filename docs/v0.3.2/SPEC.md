@@ -11,6 +11,7 @@ Source: user request. The table is open: the user adds more phases to this chapt
 | P557 | Drop backward compatibility, single baseline migration | Pending |
 | P558 | Repositories page in ADE, replacing the Git module dialog | Pending |
 | P559 | Memory home under the Kira Space home | Pending |
+| P560 | Agent MCP tools: use-case pass, Kira Space and Kira Studio rename | Pending |
 
 More rows follow as the user adds them. Table order is execution order.
 
@@ -18,6 +19,7 @@ More rows follow as the user adds them. Table order is execution order.
 
 - Re-run the Release workflow for v0.3.0.
 - Verify the folder prompt text (site Install block, `docs/start/install.md`) on a real Mac.
+- After P560 lands: run `claude mcp remove --scope user kira-db` once, then click Install in Settings, Database MCP (or per P560 user decision 5).
 
 ## Rows
 
@@ -87,6 +89,16 @@ More rows follow as the user adds them. Table order is execution order.
 - Plan: `plans/P559.md`.
 - Result: pending.
 
+### P560 Agent MCP tools: use-case pass, Kira Space and Kira Studio rename
+
+- Ask (verbatim): "add a phase in this chapter to analise both and tighten them up drop redundancies. Most importantly is to think how actual usecases look like and try to make the mcp tools follow that. I want these to be clear streamlined efficient to use. Also rename kira db to kira studio and kira ade to kira space. This can be started now in parallel".
+- Scope: the agent board server and the database server; `kira-memory` untouched. Rename `kira-ade` to `kira-space`; `kira-db` to `kira-studio` (session server `kira-studio-session`); labels "Kira DB" and "Kira ADE" follow. Tools designed from use cases: `kira-space` 16 to 13 (branch_status into task_info, attach_proof into report_artifacts, list/cancel operations into `operations`); `kira-studio` 26 to 18 (`describe`, explain into run_query, one-call `proof_save` with task auto-attach, script logs into get_script_run, `kube_discover`, `operations`). finish_step/handover, git/sandbox push, browse_table/run_query stay apart (guardrails in plan). Headless `db_mcp` steps see only the audited session server. Texts shortened under a lowered `budget.tsv`. No back-compat code: the old user-scope `kira-db` entry is a user to-do. No binding or bound-service change.
+- Tests: flow tests for every merged tool (adeflow, dbmcpflow, proofflow); UI specs only for the renamed audit toggle and agent settings text; goldens and contracts regenerated; real `claude` ADE, smart script, DB MCP, prompt registry, hermetic and agent config rows once per chapter.
+- Order: requested in parallel. Own stream beside P558 and P559 (batch rule, own worktree); P557 implementation already landed, so no Go overlap. Shared files: `en.json`, ARCHITECTURE, DEV_ENVIRONMENT, README, each a different section.
+- Single implementer, no streams inside the phase. Plan lists 5 NEEDS USER DECISION items, each with a default.
+- Plan: `plans/P560.md`.
+- Result: pending.
+
 ## Close
 
 1 code review round unless the user says otherwise. After the last phase: one full suite run with all failures fixed, review round, hand-written close per CLAUDE.md, PR. The table is open: add checklist items for each new phase.
@@ -136,3 +148,14 @@ Runs after the last phase and the full suite run, before the code review. Close 
 - [ ] Sandbox profile allows the memory subtree only; goldens show `.kira-space/memory`, never the Space home root.
 - [ ] Memory migrations: baseline `0008` only (or per user decision 2).
 - [ ] README, ARCHITECTURE, DEV_ENVIRONMENT, site `space/memory` and `reference/settings` name the new path; no site baseline changed.
+
+### P560 Agent MCP tools check (mandatory)
+
+- [ ] `kira-space` registers 13 tools, `kira-studio` 18 with every flag on; counts asserted in tests.
+- [ ] `rg -n 'kira-ade|kira-db|Kira ADE|Kira DB' -g '!docs/HISTORY.md' -g '!docs/v0.3.2/**'` returns only the user to-do lines.
+- [ ] No merged tool name left outside history and eval corpora (plan "Checks" rg).
+- [ ] Every merged tool's capability reachable per the plan's capability map; flow tests pass.
+- [ ] Headless `db_mcp` step argv lists `kira-studio-session`, not `kira-studio`; `internal/memory` unchanged.
+- [ ] `budget.tsv` lowered for every rewritten text; goldens and contracts regenerated.
+- [ ] Real `claude` ADE, smart script, DB MCP, prompt registry, hermetic and agent config rows pass.
+- [ ] ARCHITECTURE, DEV_ENVIRONMENT, README and site MCP pages name the new servers and tools.
