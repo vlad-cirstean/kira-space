@@ -179,6 +179,13 @@ export class ReviewFilesState {
     void this.#openInEditor(opts.pinned ?? false); // always re-opens: the tab may since have closed.
   }
 
+  /** Moves the selection to a file the host already shows; never opens it. */
+  followFile(path: string): void {
+    if (this.selectedPath.value === path) return;
+    this.selectedPath.value = path;
+    void this.#loadDiff();
+  }
+
   /** Returns to the file list without discarding which file was selected. */
   showList(): void {
     this.selectedPath.value = null;

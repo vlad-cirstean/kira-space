@@ -340,7 +340,7 @@ watch(
   },
 );
 
-const { cursor, canStep, step } = useReviewStepping({
+const { cursor, canStep, step, reveal } = useReviewStepping({
   reviewFiles,
   committedOrder: () => orderedPaths.value,
   working: () => props.workingChanges,
@@ -363,6 +363,7 @@ const filesActions = createReviewFilesActions(bridge, () => repoId.value, announ
 onMounted(() => {
   props.onReviewApi?.({
     selectFile: (path) => reviewFiles.value?.selectFile(path),
+    revealFile: reveal,
     adjacentFile: (path, dir) => adjacentInOrder(orderedPaths.value, path, dir),
     committedPaths: () => (reviewFiles.value?.files.value ?? []).map((e) => e.change.path),
     refresh: () => {

@@ -64,6 +64,13 @@ export function useReviewStepping(input: SteppingInput) {
     else input.reviewFiles.value?.selectFile(slot.path);
   }
 
+  /** Moves the cursor to a file the host already shows; opens nothing. Unlisted paths are ignored. */
+  function reveal(section: ReviewSlot['section'], path: string): void {
+    if (!slots.value.some((s) => s.section === section && s.path === path)) return;
+    if (section === 'committed') input.reviewFiles.value?.followFile(path);
+    cursor.value = { section, path };
+  }
+
   useShortcut(
     window,
     ['review.nextUnreviewed', 'review.previousUnreviewed'],
@@ -71,5 +78,5 @@ export function useReviewStepping(input: SteppingInput) {
     { when: input.shortcuts, capture: true },
   );
 
-  return { cursor, canStep, step };
+  return { cursor, canStep, step, reveal };
 }
