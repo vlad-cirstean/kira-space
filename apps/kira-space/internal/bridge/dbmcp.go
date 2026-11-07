@@ -35,8 +35,9 @@ type DbMcpService struct {
 	// service's own server start/stop, so the event subscription wired at boot (Events.Attach)
 	// stays valid across a restart of the embedded server.
 	Approvals *dbmcp.ApprovalBroker
-	// Proof backs the proof_* tools (P420).
-	Proof dbmcp.ProofStore
+	// Proof backs the proof tools (P420). ProofAttach attaches a saved proof to a session's task.
+	Proof       dbmcp.ProofStore
+	ProofAttach dbmcp.ProofAttacher
 	// Kube backs the kube_* tools (P440).
 	Kube dbmcp.KubeReader
 	// Runs backs the script-run half of the operations tools.
@@ -133,6 +134,7 @@ func (s *DbMcpService) serverConfig(port int) dbmcp.Config {
 		Query:            s.Deps.Router,
 		Approvals:        s.Approvals,
 		Proof:            s.Proof,
+		ProofAttach:      s.ProofAttach,
 		Kube:             s.Kube,
 		Ops:              s.Deps.Router,
 		Runs:             s.Runs,

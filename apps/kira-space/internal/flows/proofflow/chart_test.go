@@ -20,12 +20,7 @@ func chartPayload(t *testing.T, f *fixture, id string, rev, ordinal int) proof.S
 
 func TestProofCharts(t *testing.T) {
 	f := newFixture(t)
-	d := f.start(t, "Deploy health")
-	steps := []map[string]any{lineChartStep(), stackedBarStep(6), histogramStep(), areaStep(), scatterStep(), pieStep()}
-	for _, s := range steps {
-		f.addStep(t, d, s)
-	}
-	f.closeDraft(t, d)
+	f.save(t, "Deploy health", lineChartStep(), stackedBarStep(6), histogramStep(), areaStep(), scatterStep(), pieStep())
 	id := sessionID(t, f.app, "Deploy health")
 
 	list, err := f.app.W.Proof.Sessions()
@@ -82,7 +77,7 @@ func TestProofCharts(t *testing.T) {
 		"type": "bar", "x": map[string]any{"type": "category"},
 		"series": manySeries(21),
 	}}
-	if msg := f.fail(t, "proof_add_step", withDraft(args, f.start(t, "Too many series"))); !strings.Contains(msg, "20") {
+	if msg := f.saveFail(t, "Too many series", args); !strings.Contains(msg, "20") {
 		t.Fatalf("message = %q, want the series limit", msg)
 	}
 
@@ -104,16 +99,13 @@ func TestProofCharts(t *testing.T) {
 	}
 	f.app.Contract(t, "proof-chart", "ProofService.ViewState#chart", vs, maskIDs)
 
-	var ed proof.StartResult
-	f.call(t, "proof_edit_session", map[string]any{"name": "Deploy health", "reason": "Recount after replay"}, &ed)
-	f.addStep(t, ed.DraftID, map[string]any{"keepOrdinal": 1})
 	replaced := stackedBarStep(9)
 	replaced["replacesOrdinal"] = 2
-	f.addStep(t, ed.DraftID, replaced)
+	edited := []map[string]any{{"keepOrdinal": 1}, replaced}
 	for o := 3; o <= 6; o++ {
-		f.addStep(t, ed.DraftID, map[string]any{"keepOrdinal": o})
+		edited = append(edited, map[string]any{"keepOrdinal": o})
 	}
-	f.closeDraft(t, ed.DraftID)
+	f.edit(t, "Deploy health", "Recount after replay", edited...)
 	det = session(t, f.app, id)
 	if det.Pending == nil {
 		t.Fatal("no pending revision")

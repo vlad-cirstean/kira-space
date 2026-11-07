@@ -151,8 +151,8 @@ func TestProofChain(t *testing.T) {
 	call := agentmcp.SpaceCall{TaskID: other.ID}
 	for name, want := range map[string]string{
 		"Login checks":  `proof session "Login checks" belongs to another task`,
-		"Draft proof":   "close it with proof_close_session first",
-		"No such proof": "no proof session with that name; call proof_list_sessions",
+		"Draft proof":   "the proof is still being saved; retry in a moment",
+		"No such proof": "no proof session with that name; call proof_list",
 	} {
 		_, err := app.W.AdeBoard.AttachProof(ctx, call, name)
 		var te agentmcp.ToolError

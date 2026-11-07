@@ -1431,59 +1431,34 @@ var (
 	_ = arg(DbmcpToolRunQuery.id, "exemption.reason", studioApp, NextCall, `One sentence for the user: why this statement needs the limit lifted. Max 300 characters.`, NoVars{})
 )
 
-// DbmcpToolProofStartSession describes the proof_start_session tool.
-var DbmcpToolProofStartSession = define(Entry{
-	ID: "dbmcp.tool.proof_start_session", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_start_session",
-	Default: "Start a validation proof session: an ordered record of the checks that show your work is correct, which the user reviews in a window once you close it. Returns a draftId for proof_add_step. Names are unique, ignoring case and outer spaces. Touches no connection.",
+// DbmcpToolProofSave describes the proof_save tool.
+var DbmcpToolProofSave = define(Entry{
+	ID: "dbmcp.tool.proof_save", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_save",
+	Default: "Save proof that your work is correct: one call creates and closes it, and the user reviews it in a window. Steps show in order. Pick each step's view for its data: table, document and keyvalue show values; chart plots numbers and shows no table, so add a table step when exact values matter; diagram draws Mermaid text. Names are unique, ignoring case and outer spaces. In a Kira Space task the new proof also attaches to the task. With reason, changes a closed proof instead: a step may keepOrdinal an old step unchanged or replacesOrdinal one, an old step not listed is dropped; read ordinals with proof_list and name. An edit returns pending_review until the user accepts or rejects it. Every value is validated: a bad step rejects the call, saves nothing and names steps[i] and the limit.",
 }, NoVars{})
 
 var (
-	_ = arg(DbmcpToolProofStartSession.id, "name", studioApp, NextCall, `Unique session name, 1-80 characters.`, NoVars{})
-	_ = arg(DbmcpToolProofStartSession.id, "summary", studioApp, NextCall, `What the session proves, up to 500 characters. Optional.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "name", studioApp, NextCall, `Unique name, 1-80 characters.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "summary", studioApp, NextCall, `What it proves, up to 500 characters. New proofs only.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "reason", studioApp, NextCall, `Edits the closed proof with this name: what changes and why, up to 500 characters.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps", studioApp, NextCall, `1 to 100 steps, in display order.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.description", studioApp, NextCall, `One line, up to 200 characters, saying what this step shows. Required unless keepOrdinal is set.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.query", studioApp, NextCall, `The query or command you ran, up to 64 KiB. Shown above the data.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.language", studioApp, NextCall, `Highlighting for query: sql, json, shell or text. Default text.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.source", studioApp, NextCall, `Short label of the tool that produced the data, such as elasticsearch. Up to 64 characters.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.view", studioApp, NextCall, `table, document, keyvalue, chart or diagram. Required unless keepOrdinal is set.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.data", studioApp, NextCall, `table: {columns:[{name,type?}],rows:[[cell,...]]}, type number, text, boolean, temporal, json or other (inferred when omitted). document: {documents:[{id?,body:{...}}]}. keyvalue: {entries:[{field,value}]}. chart, type bar, line, area or scatter: {type,x:{type,name?},y?:{name?,unit?},stacked?,horizontal?,series:[{name,points:[[x,y],...]}]}; x.type is category (x a string label), time (ISO-8601 or epoch milliseconds) or value (number); y is a number, null for a gap; stacked: bar and area only; horizontal: bar only. Histogram: bar, one point per bucket. Time series: line or area, x.type time. Up to 20 series, 1000 categories, 20000 points (bar and scatter 1000). chart, type pie: {type,unit?,slices:[{name,value}]}, up to 50 slices, values 0 or more. diagram: {source}, Mermaid text whose first line starts with flowchart, graph, sequenceDiagram, classDiagram, stateDiagram, stateDiagram-v2, erDiagram, gantt, journey, gitGraph, mindmap or timeline. No front matter, %%{...}%% directives, click lines, url(), @import or images. Up to 20000 bytes, 1000 lines, 500 edges. Quote labels that hold punctuation: A["label (x)"]; a syntax error shows the user the parser message and your source. Limits: 10000 rows or documents, 64 KiB per cell, 4 MiB per step. Required unless keepOrdinal is set.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.keepOrdinal", studioApp, NextCall, `Edits only: reuse the old step with this ordinal unchanged. Pass no other step field.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.replacesOrdinal", studioApp, NextCall, `Edits only: this step is a changed version of the old step with this ordinal.`, NoVars{})
 )
 
-// DbmcpToolProofEditSession describes the proof_edit_session tool.
-var DbmcpToolProofEditSession = define(Entry{
-	ID: "dbmcp.tool.proof_edit_session", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_edit_session",
-	Default: "Change a closed proof session. Returns a draftId and the current steps. Rebuild the full step list with proof_add_step: keepOrdinal reuses an old step unchanged, replacesOrdinal marks a changed version of one, neither adds a new step, and an old step you leave out is removed. The user sees old and new side by side and accepts or rejects.",
+// DbmcpToolProofList describes the proof_list tool.
+var DbmcpToolProofList = define(Entry{
+	ID: "dbmcp.tool.proof_list", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_list",
+	Default: "List closed proofs, newest first, with step count and whether an edit waits for review. With name: that proof's current steps (ordinal, description, view), for an edit. The app keeps the newest 30 not attached to a task.",
 }, NoVars{})
 
-var (
-	_ = arg(DbmcpToolProofEditSession.id, "name", studioApp, NextCall, `Name of a closed session, as proof_list_sessions returns it.`, NoVars{})
-	_ = arg(DbmcpToolProofEditSession.id, "reason", studioApp, NextCall, `What changes and why, up to 500 characters.`, NoVars{})
-)
-
-// DbmcpToolProofAddStep describes the proof_add_step tool.
-var DbmcpToolProofAddStep = define(Entry{
-	ID: "dbmcp.tool.proof_add_step", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_add_step",
-	Default: "Add the next step to a draft. Steps show in the order added; the call returns the step's ordinal. The data can come from any tool you used: pick the view that shows it best. table, document and keyvalue show values; chart plots numbers (a count over time, a before/after comparison, a share of a total) and shows no table, so add a table step too when exact values matter; diagram draws Mermaid text (a flow, a call sequence, states, entities; no images). Every value is validated and rejected with the field and limit when it does not fit.",
-}, NoVars{})
-
-var (
-	_ = arg(DbmcpToolProofAddStep.id, "draftId", studioApp, NextCall, `Draft id from proof_start_session or proof_edit_session.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "description", studioApp, NextCall, `One line, up to 200 characters, saying what this step shows. Required unless keepOrdinal is set.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "query", studioApp, NextCall, `The query or command you ran, up to 64 KiB. Shown above the data.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "language", studioApp, NextCall, `Highlighting for query: sql, json, shell or text. Default text.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "source", studioApp, NextCall, `Short label of the tool that produced the data, such as elasticsearch. Up to 64 characters.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "view", studioApp, NextCall, `table, document, keyvalue, chart or diagram. Required unless keepOrdinal is set.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "data", studioApp, NextCall, `table: {columns:[{name,type?}],rows:[[cell,...]]} with type number, text, boolean, temporal, json or other (inferred when omitted). document: {documents:[{id?,body:{...}}]}. keyvalue: {entries:[{field,value}]}. chart, type bar, line, area or scatter: {type,x:{type,name?},y?:{name?,unit?},stacked?,horizontal?,series:[{name,points:[[x,y],...]}]}. x.type is category (x a string label), time (ISO-8601 or epoch milliseconds) or value (number). y is a number, or null for a gap. stacked: bar and area only; horizontal: bar only. Histogram: bar, one point per bucket. Time series: line or area, x.type time. Up to 20 series, 1000 categories, 20000 points (bar and scatter 1000). chart, type pie: {type,unit?,slices:[{name,value}]}, up to 50 slices, values 0 or more. diagram: {source}, Mermaid text whose first line starts with flowchart, graph, sequenceDiagram, classDiagram, stateDiagram, stateDiagram-v2, erDiagram, gantt, journey, gitGraph, mindmap or timeline. No front matter, %%{...}%% directives, click lines, url() or @import. No images (no img or image nodes, no markdown or html images). Up to 20000 bytes, 1000 lines, 500 edges. Only these rules are checked here; a syntax error shows the user the parser message and your source, so quote labels that hold punctuation: A["label (x)"]. Limits: 10000 rows or documents, 64 KiB per cell, 4 MiB per step. Required unless keepOrdinal is set.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "keepOrdinal", studioApp, NextCall, `Edit drafts only: reuse the old step with this ordinal unchanged. Pass no other step field.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "replacesOrdinal", studioApp, NextCall, `Edit drafts only: this step is a changed version of the old step with this ordinal.`, NoVars{})
-)
-
-// DbmcpToolProofCloseSession describes the proof_close_session tool.
-var DbmcpToolProofCloseSession = define(Entry{
-	ID: "dbmcp.tool.proof_close_session", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_close_session",
-	Default: "Finish a draft and notify the user. Needs at least one step. A new session returns status closed; an edit returns pending_review until the user accepts or rejects it. The draftId is spent. In a Kira Space task, then call attach_proof with the name.",
-}, NoVars{})
-
-var _ = arg(DbmcpToolProofCloseSession.id, "draftId", studioApp, NextCall, `Draft id from proof_start_session or proof_edit_session.`, NoVars{})
-
-// DbmcpToolProofListSessions describes the proof_list_sessions tool.
-var DbmcpToolProofListSessions = define(Entry{
-	ID: "dbmcp.tool.proof_list_sessions", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_list_sessions",
-	Default: "List closed proof sessions, newest first, with step count and whether an edit waits for review. Use it to find the name proof_edit_session needs. The app keeps the newest 30 not attached to a task.",
-}, NoVars{})
+var _ = arg(DbmcpToolProofList.id, "name", studioApp, NextCall, `Name of a closed proof. Omit to list all.`, NoVars{})
 
 // DbmcpToolOperations describes the operations tool.
 var DbmcpToolOperations = define(Entry{

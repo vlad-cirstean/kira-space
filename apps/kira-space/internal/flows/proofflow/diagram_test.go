@@ -14,16 +14,15 @@ func diagramStep(desc string, source string) map[string]any {
 
 func TestProofDiagram(t *testing.T) {
 	f := newFixture(t)
-	d := f.start(t, "Checkout flow")
-
 	sources := []string{
 		"flowchart TD\r\n  Cart --> Checkout\r\n  Checkout --> Paid\r\n\r\n",
 		"sequenceDiagram\n  Browser->>API: POST /pay\n  API->>DB: insert\n",
 		"flowchart LR\n  I@{ img: \"https://example.invalid/x.png\" }\n  I --> J",
 		"flowchart TD\n  A -->",
 	}
+	steps := make([]map[string]any, len(sources))
 	for i, src := range sources {
-		f.addStep(t, d, diagramStep("Diagram "+string(rune('1'+i)), src))
+		steps[i] = diagramStep("Diagram "+string(rune('1'+i)), src)
 	}
 
 	refused := []struct{ name, source, want string }{
@@ -40,18 +39,18 @@ func TestProofDiagram(t *testing.T) {
 		{"control", "flowchart TD\n  A --> B\x00", "control characters"},
 	}
 	for _, c := range refused {
-		msg := f.fail(t, "proof_add_step", withDraft(diagramStep("bad", c.source), d))
+		msg := f.saveFail(t, "Bad diagram", diagramStep("bad", c.source))
 		if !strings.Contains(msg, c.want) {
 			t.Errorf("%s: message = %q, want %q", c.name, msg, c.want)
 		}
 	}
 	extra := diagramStep("bad", "flowchart TD\n  A --> B")
 	extra["data"] = map[string]any{"source": "flowchart TD\n  A --> B", "theme": "dark"}
-	if msg := f.fail(t, "proof_add_step", withDraft(extra, d)); !strings.Contains(msg, "theme") {
+	if msg := f.saveFail(t, "Bad diagram", extra); !strings.Contains(msg, "theme") {
 		t.Errorf("unknown field: message = %q, want it named", msg)
 	}
 
-	f.closeDraft(t, d)
+	f.save(t, "Checkout flow", steps...)
 	id := sessionID(t, f.app, "Checkout flow")
 	list, err := f.app.W.Proof.Sessions()
 	if err != nil {

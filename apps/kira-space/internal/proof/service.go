@@ -3,6 +3,7 @@ package proof
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -163,7 +164,7 @@ func (s *Service) RaiseUnreviewed() {
 	}
 }
 
-// StartResult answers proof_start_session and proof_edit_session.
+// StartResult answers StartSession and EditSession.
 type StartResult struct {
 	DraftID string      `json:"draftId"`
 	Name    string      `json:"name"`
@@ -235,7 +236,7 @@ func (s *Service) AddStep(in StepInput) (int, error) {
 	return s.d.Repo.AddStep(in.DraftID, step)
 }
 
-// CloseResult answers proof_close_session.
+// CloseResult answers CloseSession and Save.
 type CloseResult struct {
 	Name   string `json:"name"`
 	Steps  int    `json:"steps"`
@@ -263,7 +264,7 @@ func (s *Service) CloseSession(draftID string) (CloseResult, error) {
 	return CloseResult{Name: c.Name, Steps: c.Steps, Status: status}, nil
 }
 
-// AgentSession is one row of proof_list_sessions.
+// AgentSession is one row of proof_list.
 type AgentSession struct {
 	Name        string `json:"name"`
 	ClosedAt    string `json:"closedAt"`
@@ -280,6 +281,101 @@ func (s *Service) ListForAgent() ([]AgentSession, error) {
 	out := make([]AgentSession, len(list))
 	for i, p := range list {
 		out[i] = AgentSession{Name: p.Name, ClosedAt: time.UnixMilli(p.ClosedAt).UTC().Format(time.RFC3339), Steps: p.Steps, PendingEdit: p.Pending}
+	}
+	return out, nil
+}
+
+// SaveInput is one proof_save call. Reason set edits the closed proof Name; a Step may then keep or
+// replace a step of the current revision, and a step left out is dropped.
+type SaveInput struct {
+	Name, Summary, Reason string
+	Steps                 []StepInput
+}
+
+// Save validates every step, then creates or edits the proof and closes it in one go. A failure at any
+// point leaves no draft behind; step failures name the step as steps[i].
+func (s *Service) Save(in SaveInput) (CloseResult, error) {
+	edit := strings.TrimSpace(in.Reason) != ""
+	if edit && strings.TrimSpace(in.Summary) != "" {
+		return CloseResult{}, invalid("summary only applies to a new proof; an edit gives a reason")
+	}
+	if len(in.Steps) < 1 || len(in.Steps) > repos.ProofMaxSteps {
+		return CloseResult{}, invalid("steps must hold 1-%d steps", repos.ProofMaxSteps)
+	}
+	for i, st := range in.Steps {
+		if !edit && (st.KeepOrdinal != nil || st.ReplacesOrdinal != nil) {
+			return CloseResult{}, stepErr(i, invalid("keepOrdinal and replacesOrdinal only apply when a reason edits an existing proof"))
+		}
+		if _, _, err := st.validate(); err != nil {
+			return CloseResult{}, stepErr(i, err)
+		}
+	}
+	var draft string
+	if edit {
+		r, err := s.EditSession(in.Name, in.Reason)
+		if err != nil {
+			return CloseResult{}, err
+		}
+		draft = r.DraftID
+	} else {
+		r, err := s.StartSession(in.Name, in.Summary)
+		if err != nil {
+			return CloseResult{}, err
+		}
+		draft = r.DraftID
+	}
+	fail := func(err error) (CloseResult, error) {
+		if derr := s.d.Repo.DiscardDraft(draft); derr != nil {
+			slog.Warn("proof: discard draft", "scope", "proof", "err", derr)
+		}
+		return CloseResult{}, err
+	}
+	for i, st := range in.Steps {
+		st.DraftID = draft
+		if _, err := s.AddStep(st); err != nil {
+			return fail(stepErr(i, err))
+		}
+	}
+	res, err := s.CloseSession(draft)
+	if err != nil {
+		return fail(err)
+	}
+	return res, nil
+}
+
+// stepErr prefixes a caller-correctable error with the step it came from; any other error passes.
+func stepErr(i int, err error) error {
+	var inv *InvalidError
+	var pe *repos.ProofError
+	switch {
+	case errors.As(err, &inv):
+		return &InvalidError{Msg: fmt.Sprintf("steps[%d].%s", i, inv.Msg)}
+	case errors.As(err, &pe):
+		return &repos.ProofError{Code: pe.Code, Msg: fmt.Sprintf("steps[%d]: %s", i, pe.Msg)}
+	}
+	return err
+}
+
+// StepsForAgent lists a closed proof's current steps, the ordinals an edit keeps or replaces.
+func (s *Service) StepsForAgent(name string) ([]StepBrief, error) {
+	_, key, err := NormalizeName(name)
+	if err != nil {
+		return nil, err
+	}
+	row, ok, err := s.d.Repo.SessionByKey(key)
+	if err != nil {
+		return nil, err
+	}
+	if !ok || row.CurrentRev == nil {
+		return nil, &repos.ProofError{Code: repos.ProofNotFound, Msg: "no proof session with that name; call proof_list without a name for the existing ones"}
+	}
+	list, err := s.d.Repo.Steps(row.ID, *row.CurrentRev)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]StepBrief, len(list))
+	for i, st := range list {
+		out[i] = StepBrief{Ordinal: st.Ordinal, Description: st.Description, View: st.View}
 	}
 	return out, nil
 }

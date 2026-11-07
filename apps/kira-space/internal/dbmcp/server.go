@@ -158,11 +158,13 @@ type Config struct {
 	// client gets them (dbMcp.previewResponses) — read fresh on every call. It is the default for connections whose review setting is inherit. Required for the same
 	// reason as ExplainThreshold: a silently-defaulted switch would send unreviewed data.
 	PreviewResponses func() bool
-	// Proof backs the proof_* tools (P420); nil leaves them unregistered.
-	Proof ProofStore
+	// Proof backs proof_save and proof_list; nil leaves them unregistered. ProofAttach attaches a saved
+	// proof to the calling session's Kira Space task; nil attaches nothing.
+	Proof       ProofStore
+	ProofAttach ProofAttacher
 	// Kube backs the kube_* tools; its calls record their own op-log rows. Nil leaves them unregistered.
 	Kube KubeReader
-	// Ops backs operations; nil leaves both unregistered. Runs adds
+	// Ops backs operations; nil leaves it unregistered. Runs adds
 	// script runs to them; nil means none are listed or stoppable.
 	Ops  OpsControl
 	Runs ScriptRunControl
