@@ -43,7 +43,7 @@ func TestClassifyClickHouseSQLReclassifiesBareExplainByTarget(t *testing.T) {
 
 // TestClassifyClickHouseSQLHandlesComposedExplainStatements guards: every statement
 // queryplan.StatementsFor("clickhouse", ...) composes must classify by its real target,
-// not ClassUnknown, so explain_query and run_query's auto-explain never silently fail to
+// not ClassUnknown, so explain and run_query's auto-explain never silently fail to
 // classify. Built from the composer itself (not a hand-copied string) so the two can't drift
 // apart again.
 func TestClassifyClickHouseSQLHandlesComposedExplainStatements(t *testing.T) {

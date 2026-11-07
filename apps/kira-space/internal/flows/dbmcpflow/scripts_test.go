@@ -202,7 +202,7 @@ func TestDbMcpScriptRunAndLogs(t *testing.T) {
 	})
 	for _, o := range listOps(t, sess) {
 		if o.OpID == "run:"+hiddenRun {
-			t.Fatalf("list_operations leaks the run of a hidden script: %+v", o)
+			t.Fatalf("operations leaks the run of a hidden script: %+v", o)
 		}
 	}
 	if res := cancelOp(t, sess, "run:"+hiddenRun); !res.IsError || !strings.Contains(text(res), "no running operation") {
@@ -216,7 +216,7 @@ func TestDbMcpScriptRunAndLogs(t *testing.T) {
 	}
 
 	if res := cancelOp(t, sess, "run:"+started.RunID); res.IsError || !strings.Contains(text(res), `"stopped":true`) {
-		t.Fatalf("cancel_operation = %q", text(res))
+		t.Fatalf("operations cancel = %q", text(res))
 	}
 	done := decodeResult[scriptRunResult](t, callTool(t, sess, "get_script_run", map[string]any{"runId": started.RunID, "waitSeconds": 5}))
 	if done.State != "cancelled" {

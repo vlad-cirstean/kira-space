@@ -21,7 +21,7 @@ func (r *tablerRunner) StatementTables(context.Context, string, string, string) 
 	return adapterhost.TablesResult{Refs: []tableref.Ref{r.ref}}, nil
 }
 
-// Every statement path reaches the allow list before any execution: run_query and explain_query refuse an
+// Every statement path reaches the allow list before any execution: run_query and explain refuse an
 // unlisted table, and the same call on a listed one gets past the gate.
 func TestStatementToolsCheckTheAllowList(t *testing.T) {
 	summary := model.ConnectionSummary{
@@ -46,10 +46,10 @@ func TestStatementToolsCheckTheAllowList(t *testing.T) {
 			res, _, err := s.explainQuery(context.Background(), nil, explainQueryArgs{ConnectionID: "c1", SQL: "SELECT 1", Path: path})
 			if tc.block {
 				if err != nil || res == nil || !res.IsError || !strings.Contains(resultText(res), "not listed: shop.public.payroll") {
-					t.Fatalf("explain_query = %+v (%v), want a not-listed refusal", res, err)
+					t.Fatalf("explain = %+v (%v), want a not-listed refusal", res, err)
 				}
 			} else if res != nil && strings.Contains(resultText(res), "not listed") {
-				t.Fatalf("explain_query on a listed table was refused: %s", resultText(res))
+				t.Fatalf("explain on a listed table was refused: %s", resultText(res))
 			}
 			res, _, err = s.checkStatementTables(context.Background(), summary, path, "SELECT 1")
 			if (res != nil || err != nil) != tc.block {

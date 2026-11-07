@@ -118,7 +118,7 @@ func (r *Recorder) CallStarted(c dbmcp.AuditCall) {
 	if connID != "" && r.d.ConnName != nil {
 		row.ConnectionName = r.d.ConnName(connID)
 	}
-	if c.Tool == "run_query" || c.Tool == "explain_query" {
+	if c.Tool == "run_query" {
 		var ok bool
 		row.Statement, row.StatementLen, ok, row.StatementTruncated = r.redactStatement(connID, str("sql"))
 		if !ok && row.StatementLen > 0 {

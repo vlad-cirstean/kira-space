@@ -1354,7 +1354,7 @@ var DbmcpInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructions.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructions.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructions.usedBy.body",
-	Default:    "Read and query the databases configured in this Kira Space app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` and `explain_query` need the database's `path` on engines with several databases. Before writing a query, inspect the schema of the tables it touches: `describe_schema` returns every relation's columns in one call, cheaper than one `describe_table` per table. To read rows, use `browse_table` first: pick a table, columns, filters, order and up to 100 rows; masking always applies. Use `run_query` only when `browse_table` does not fit (joins, aggregates, expressions, several tables). `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `access` names the modes `run_query` may use and which need approval, and its `description`, when set, says what the connection is for — read both before calling `run_query`, and declare the least powerful `mode` that fits. Run `explain_query` before an expensive-looking query: `run_query` refuses a SELECT or WITH whose plan estimates at least the connection's `expensiveQuery` threshold of rows read. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to 10 minutes for the user. `list_operations` shows what is running; `cancel_operation` stops one, including your own long `run_query`. `run_script` runs a `list_scripts` script; read output with `get_script_logs`. `api_request` tools appear only when the user enabled them; they see variable names, never values, and a credential is refused for a host the user did not allow.",
+	Default:    "Read and query the databases configured in this Kira Space app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` needs the database's `path` on engines with several databases. Before writing a query, inspect the schema of the tables it touches: `describe` on a database or schema path returns every relation's columns in one call. To read rows, use `browse_table` first: pick a table, columns, filters, order and up to 100 rows; masking always applies. Use `run_query` only when `browse_table` does not fit (joins, aggregates, expressions, several tables). `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `access` names the modes `run_query` may use and which need approval, and its `description`, when set, says what the connection is for — read both before calling `run_query`, and declare the least powerful `mode` that fits. Run `run_query` with `explain` before an expensive-looking query: `run_query` refuses a SELECT or WITH whose plan estimates at least the connection's `expensiveQuery` threshold of rows read. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to 10 minutes for the user. `operations` shows what is running; its `cancel` stops one, including your own long `run_query`. `run_script` runs a `list_scripts` script; read output with `get_script_logs`. `api_request` tools appear only when the user enabled them; they see variable names, never values, and a credential is refused for a host the user did not allow.",
 }, NoVars{})
 
 // DbmcpToolListConnections describes the list_connections tool.
@@ -1375,28 +1375,16 @@ var (
 	_ = arg(DbmcpToolListChildren.id, "refresh", studioApp, NextCall, `Bypass the cache and re-read from the server. Default false.`, NoVars{})
 )
 
-// DbmcpToolDescribeTable describes the describe_table tool.
-var DbmcpToolDescribeTable = define(Entry{
-	ID: "dbmcp.tool.describe_table", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "describe_table",
-	Default: "Describe one table, view or collection's own columns, primary key, foreign keys, indexes and row estimate. Call it before querying that table.",
+// DbmcpToolDescribe describes the describe tool.
+var DbmcpToolDescribe = define(Entry{
+	ID: "dbmcp.tool.describe", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "describe",
+	Default: "Describe a table, view or collection: columns, primary key, foreign keys, indexes, row estimate. On a database or schema path: the columns of every table and view in it, in one call. Call it before querying.",
 }, NoVars{})
 
 var (
-	_ = arg(DbmcpToolDescribeTable.id, "connectionId", studioApp, NextCall, `Connection id from list_connections.`, NoVars{})
-	_ = arg(DbmcpToolDescribeTable.id, "path", studioApp, NextCall, `Encoded table, view or collection path, from list_children.`, NoVars{})
-	_ = arg(DbmcpToolDescribeTable.id, "refresh", studioApp, NextCall, `Bypass the cache and re-read from the server. Default false.`, NoVars{})
-)
-
-// DbmcpToolDescribeSchema describes the describe_schema tool.
-var DbmcpToolDescribeSchema = define(Entry{
-	ID: "dbmcp.tool.describe_schema", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "describe_schema",
-	Default: "Describe the columns of every table and view in one database or schema, in one call. Cheaper than one describe_table per table. Call it before querying those tables.",
-}, NoVars{})
-
-var (
-	_ = arg(DbmcpToolDescribeSchema.id, "connectionId", studioApp, NextCall, `Connection id from list_connections.`, NoVars{})
-	_ = arg(DbmcpToolDescribeSchema.id, "path", studioApp, NextCall, `Encoded database or schema path, from list_children.`, NoVars{})
-	_ = arg(DbmcpToolDescribeSchema.id, "refresh", studioApp, NextCall, `Bypass the cache and re-read from the server. Default false.`, NoVars{})
+	_ = arg(DbmcpToolDescribe.id, "connectionId", studioApp, NextCall, `Connection id from list_connections.`, NoVars{})
+	_ = arg(DbmcpToolDescribe.id, "path", studioApp, NextCall, `Encoded path from list_children: a table, or a database or schema.`, NoVars{})
+	_ = arg(DbmcpToolDescribe.id, "refresh", studioApp, NextCall, `Bypass the cache and re-read from the server. Default false.`, NoVars{})
 )
 
 // DbmcpToolBrowseTable describes the browse_table tool.
@@ -1427,7 +1415,7 @@ var (
 // DbmcpToolRunQuery describes the run_query tool.
 var DbmcpToolRunQuery = define(Entry{
 	ID: "dbmcp.tool.run_query", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "run_query",
-	Default: "Fallback for reading: try browse_table first. Run one statement per call, not a script. Declare `mode`: read runs on a separate read-only connection (where list_connections reports enforcement session, the database itself refuses writes, including writes hidden in functions); write and ddl run on the normal connection. The connection's permission for the declared mode applies: a denied mode is refused, an approval mode waits up to 10 minutes for the user. list_connections' `access` shows which modes each connection allows and which need approval. A held result waits for the user; a withheld one returns no rows. A statement that looks more powerful than its mode is refused with the mode to use. Reading stops at maxRows: rowCount is rows fetched, a lower bound when truncated is true. A SELECT or WITH whose plan estimates at least list_connections' expensiveQuery.rowsThreshold rows read is refused before it runs. On a kibana connection, `sql` is one Discover request as a JSON object (see the `sql` argument); mode read only. A call over a limit (statement timeout, row estimate) is refused with an exemption id: improve the statement, or repeat the exact call with `exemption` to ask the user to lift that limit once. The user always decides. On engines with tables, inspect the tables a statement touches with describe_schema or describe_table before writing it.",
+	Default: "Fallback for reading: try browse_table first. Run one statement per call, not a script. Declare `mode`: read runs on a separate read-only connection (where list_connections reports enforcement session, the database itself refuses writes, including writes hidden in functions); write and ddl run on the normal connection. The connection's permission for the declared mode applies: a denied mode is refused, an approval mode waits up to 10 minutes for the user. list_connections' `access` shows which modes each connection allows and which need approval. A held result waits for the user; a withheld one returns no rows. A statement that looks more powerful than its mode is refused with the mode to use. explain: true plans a SELECT or WITH without running it (mode read): node tree, estimated rows and cost, issues found such as full scans, unused indexes and filesorts; not on mongodb, redis, kafka, s3, sqs or kibana. Reading stops at maxRows: rowCount is rows fetched, a lower bound when truncated is true. A SELECT or WITH whose plan estimates at least list_connections' expensiveQuery.rowsThreshold rows read is refused before it runs. On a kibana connection, `sql` is one Discover request as a JSON object (see the `sql` argument); mode read only. A call over a limit (statement timeout, row estimate) is refused with an exemption id: improve the statement, or repeat the exact call with `exemption` to ask the user to lift that limit once. The user always decides. On engines with tables, inspect the tables a statement touches with describe before writing it.",
 }, NoVars{})
 
 var (
@@ -1436,22 +1424,11 @@ var (
 	_ = arg(DbmcpToolRunQuery.id, "path", studioApp, NextCall, `Encoded database path from list_children. Required on postgres, mysql, mariadb and mongodb; pass "" on other engines.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "mode", studioApp, NextCall, `read, write or ddl: read for SELECT-like statements, write for data changes, ddl for schema changes. Must be allowed for the connection (see list_connections access).`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "maxRows", studioApp, NextCall, `Rows to return, 1-{{.Max}}. Default {{.Default}}. Reading stops at this many rows; rowCount is then a lower bound.`, LimitVars{Default: 200, Max: 2000})
+	_ = arg(DbmcpToolRunQuery.id, "explain", studioApp, NextCall, `true plans the statement without running it. Mode read only. Default false.`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "includeRaw", studioApp, NextCall, `With explain: also return the server's raw plan text, up to tens of kilobytes. Default false.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption", studioApp, NextCall, `Only after a limit refusal: asks the user to lift that limit for this exact call. Same connectionId, sql, path and mode as the refused call.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption.id", studioApp, NextCall, `Exemption id from the refusal. Works once; expires in 10 minutes.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption.reason", studioApp, NextCall, `One sentence for the user: why this statement needs the limit lifted. Max 300 characters.`, NoVars{})
-)
-
-// DbmcpToolExplainQuery describes the explain_query tool.
-var DbmcpToolExplainQuery = define(Entry{
-	ID: "dbmcp.tool.explain_query", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "explain_query",
-	Default: "Plan one SELECT or WITH statement without running it. Returns the normalized plan: node tree, each node's estimated rows and native cost, and structural issues the app detects (full scans, unused indexes, filesorts). Not available on mongodb, redis, kafka, s3, sqs or kibana. Metric order within a node is not contractual; pass includeRaw for the server's own text. Inspect the tables with describe_schema or describe_table first.",
-}, NoVars{})
-
-var (
-	_ = arg(DbmcpToolExplainQuery.id, "connectionId", studioApp, NextCall, `Connection id from list_connections.`, NoVars{})
-	_ = arg(DbmcpToolExplainQuery.id, "sql", studioApp, NextCall, `One SELECT or WITH statement. Not executed: EXPLAIN always runs without ANALYZE.`, NoVars{})
-	_ = arg(DbmcpToolExplainQuery.id, "path", studioApp, NextCall, `Encoded database path from list_children. Required on postgres, mysql, mariadb and mongodb; pass "" on other engines.`, NoVars{})
-	_ = arg(DbmcpToolExplainQuery.id, "includeRaw", studioApp, NextCall, `Also return the server's raw EXPLAIN text. Default false: can be tens of kilobytes; the parsed plan is the point.`, NoVars{})
 )
 
 // DbmcpToolProofStartSession describes the proof_start_session tool.
@@ -1508,19 +1485,13 @@ var DbmcpToolProofListSessions = define(Entry{
 	Default: "List closed proof sessions, newest first, with step count and whether an edit waits for review. Use it to find the name proof_edit_session needs. The app keeps the newest 30 not attached to a task.",
 }, NoVars{})
 
-// DbmcpToolListOperations describes the list_operations tool.
-var DbmcpToolListOperations = define(Entry{
-	ID: "dbmcp.tool.list_operations", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_operations",
-	Default: "List running operations: queries, metadata reads, HTTP, gRPC and Kubernetes calls on exposed connections, and running or waiting script runs. Ids feed cancel_operation.",
+// DbmcpToolOperations describes the operations tool.
+var DbmcpToolOperations = define(Entry{
+	ID: "dbmcp.tool.operations", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "operations",
+	Default: "List running operations: queries, metadata reads, HTTP, gRPC and Kubernetes calls on exposed connections, and script runs. With cancel: stop one by id. A stopped query returns a cancelled error to its caller; a write rolls back.",
 }, NoVars{})
 
-// DbmcpToolCancelOperation describes the cancel_operation tool.
-var DbmcpToolCancelOperation = define(Entry{
-	ID: "dbmcp.tool.cancel_operation", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "cancel_operation",
-	Default: "Stop one running operation by id from list_operations. A stopped query returns a cancelled error to its caller; a write rolls back.",
-}, NoVars{})
-
-var _ = arg(DbmcpToolCancelOperation.id, "opId", studioApp, NextCall, `Operation id from list_operations.`, NoVars{})
+var _ = arg(DbmcpToolOperations.id, "cancel", studioApp, NextCall, `Operation id from the list. Omit to list.`, NoVars{})
 
 // DbmcpToolListScripts describes the list_scripts tool.
 var DbmcpToolListScripts = define(Entry{
@@ -1602,21 +1573,13 @@ var DbmcpToolKubeListClusters = define(Entry{
 	Default: "List the Kubernetes clusters (kubeconfig contexts) exposed to MCP, with each one's description and per-operation permissions (deny, allow or prompt).",
 }, NoVars{})
 
-// DbmcpToolKubeListNamespaces describes the kube_list_namespaces tool.
-var DbmcpToolKubeListNamespaces = define(Entry{
-	ID: "dbmcp.tool.kube_list_namespaces", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_list_namespaces",
-	Default: "List one cluster's namespaces. restricted is true when the cluster denied the list; fallback is then the context's own namespace.",
+// DbmcpToolKubeDiscover describes the kube_discover tool.
+var DbmcpToolKubeDiscover = define(Entry{
+	ID: "dbmcp.tool.kube_discover", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_discover",
+	Default: "List one cluster's namespaces and resource kinds. restricted: the cluster denied the namespace list; fallback is then the context's own namespace. partial: some API groups failed discovery. Pass a kind's key to kube_list_resources and kube_describe.",
 }, NoVars{})
 
-var _ = arg(DbmcpToolKubeListNamespaces.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
-
-// DbmcpToolKubeListKinds describes the kube_list_kinds tool.
-var DbmcpToolKubeListKinds = define(Entry{
-	ID: "dbmcp.tool.kube_list_kinds", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_list_kinds",
-	Default: "List the resource kinds a cluster serves. Pass a kind's key to kube_list_resources and kube_describe. partial is true when some API groups failed discovery.",
-}, NoVars{})
-
-var _ = arg(DbmcpToolKubeListKinds.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
+var _ = arg(DbmcpToolKubeDiscover.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
 
 // DbmcpToolKubeListResources describes the kube_list_resources tool.
 var DbmcpToolKubeListResources = define(Entry{
@@ -1626,7 +1589,7 @@ var DbmcpToolKubeListResources = define(Entry{
 
 var (
 	_ = arg(DbmcpToolKubeListResources.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
-	_ = arg(DbmcpToolKubeListResources.id, "kind", studioApp, NextCall, `Kind key from kube_list_kinds, such as v1/pods or apps/v1/deployments.`, NoVars{})
+	_ = arg(DbmcpToolKubeListResources.id, "kind", studioApp, NextCall, `Kind key from kube_discover, such as v1/pods or apps/v1/deployments.`, NoVars{})
 	_ = arg(DbmcpToolKubeListResources.id, "namespace", studioApp, NextCall, `Namespace to list. Omit for all namespaces.`, NoVars{})
 	_ = arg(DbmcpToolKubeListResources.id, "labelSelector", studioApp, NextCall, `Label selector, such as app=web,tier!=db. Omit for none.`, NoVars{})
 	_ = arg(DbmcpToolKubeListResources.id, "maxRows", studioApp, NextCall, `Rows to return, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 200, Max: 2000})
@@ -1640,7 +1603,7 @@ var DbmcpToolKubeDescribe = define(Entry{
 
 var (
 	_ = arg(DbmcpToolKubeDescribe.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
-	_ = arg(DbmcpToolKubeDescribe.id, "kind", studioApp, NextCall, `Kind key from kube_list_kinds, such as v1/pods.`, NoVars{})
+	_ = arg(DbmcpToolKubeDescribe.id, "kind", studioApp, NextCall, `Kind key from kube_discover, such as v1/pods.`, NoVars{})
 	_ = arg(DbmcpToolKubeDescribe.id, "name", studioApp, NextCall, `Object name.`, NoVars{})
 	_ = arg(DbmcpToolKubeDescribe.id, "namespace", studioApp, NextCall, `Object namespace. Omit for a cluster-scoped kind.`, NoVars{})
 )

@@ -124,15 +124,15 @@ func TestDbMcpTableAllowList(t *testing.T) {
 		t.Fatalf("list_children under a list = %v, want only notes", names)
 	}
 	secretPath := strings.Replace(notesPath, "notes", "secret", 1)
-	if r := tool("describe_table", map[string]any{"connectionId": f.connID, "path": notesPath}); r.IsError {
-		t.Fatalf("describe_table notes = %q", text(r))
+	if r := tool("describe", map[string]any{"connectionId": f.connID, "path": notesPath}); r.IsError {
+		t.Fatalf("describe notes = %q", text(r))
 	}
-	if r := tool("describe_table", map[string]any{"connectionId": f.connID, "path": secretPath}); !r.IsError || !strings.Contains(text(r), "not listed") {
-		t.Fatalf("describe_table secret = %q, want a refusal", text(r))
+	if r := tool("describe", map[string]any{"connectionId": f.connID, "path": secretPath}); !r.IsError || !strings.Contains(text(r), "not listed") {
+		t.Fatalf("describe secret = %q, want a refusal", text(r))
 	}
-	schema := tool("describe_schema", map[string]any{"connectionId": f.connID, "path": mainPath})
+	schema := tool("describe", map[string]any{"connectionId": f.connID, "path": mainPath})
 	if schema.IsError || strings.Contains(text(schema), "secret") || !strings.Contains(text(schema), "notes") {
-		t.Fatalf("describe_schema under a list = %q, want only notes", text(schema))
+		t.Fatalf("describe under a list = %q, want only notes", text(schema))
 	}
 	conns := tool("list_connections", nil)
 	var listed []struct {

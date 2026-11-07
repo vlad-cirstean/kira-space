@@ -51,7 +51,7 @@ func TestExplainQueryRefusesApprovedReadAfterReadModeDeniedMidWait(t *testing.T)
 	for requestID == "" {
 		select {
 		case <-deadline:
-			t.Fatal("explain_query never raised an approval request")
+			t.Fatal("explain never raised an approval request")
 		default:
 		}
 		if items := approvals.Queue.List(); len(items) > 0 {

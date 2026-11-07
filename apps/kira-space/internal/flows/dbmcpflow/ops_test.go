@@ -37,24 +37,24 @@ type listedOp struct {
 
 func listOps(t *testing.T, sess *mcp.ClientSession) []listedOp {
 	t.Helper()
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list_operations"})
+	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "operations"})
 	if err != nil || res.IsError {
-		t.Fatalf("list_operations = %q (%v)", text(res), err)
+		t.Fatalf("operations = %q (%v)", text(res), err)
 	}
 	var out struct {
 		Operations []listedOp `json:"operations"`
 	}
 	if err := json.Unmarshal([]byte(text(res)), &out); err != nil {
-		t.Fatalf("list_operations JSON: %v", err)
+		t.Fatalf("operations JSON: %v", err)
 	}
 	return out.Operations
 }
 
 func cancelOp(t *testing.T, sess *mcp.ClientSession, id string) *mcp.CallToolResult {
 	t.Helper()
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "cancel_operation", Arguments: map[string]any{"opId": id}})
+	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "operations", Arguments: map[string]any{"cancel": id}})
 	if err != nil {
-		t.Fatalf("cancel_operation %q: %v", id, err)
+		t.Fatalf("operations cancel %q: %v", id, err)
 	}
 	return res
 }
@@ -122,7 +122,7 @@ func TestDbMcpCancelOperation(t *testing.T) {
 	f.app.Contract(t, "ops-running", "OpsService.Recent", []oplog.Record{row}, flowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
 
 	if res := cancelOp(t, b, op.OpID); res.IsError || !strings.Contains(text(res), `"cancelled":true`) {
-		t.Fatalf("cancel_operation = %q", text(res))
+		t.Fatalf("operations cancel = %q", text(res))
 	}
 	select {
 	case out := <-pending:
@@ -130,11 +130,11 @@ func TestDbMcpCancelOperation(t *testing.T) {
 			t.Fatalf("cancelled run_query = %+v (%v), want a cancel error", out.res, out.err)
 		}
 	case <-time.After(15 * time.Second):
-		t.Fatal("run_query still running after cancel_operation")
+		t.Fatal("run_query still running after operations cancel")
 	}
 	f.waitStatus(t, op.OpID, "cancelled")
 	if res := cancelOp(t, b, op.OpID); !res.IsError || !strings.Contains(text(res), "no running operation") {
-		t.Fatalf("second cancel_operation = %q, want the no-running-operation error", text(res))
+		t.Fatalf("second operations cancel = %q, want the no-running-operation error", text(res))
 	}
 
 	hidden, err := f.app.W.Connections.Create(connections.Input{ConnectionFields: model.ConnectionFields{
@@ -156,7 +156,7 @@ func TestDbMcpCancelOperation(t *testing.T) {
 	f.waitStatus(t, hiddenOp, "running")
 	for _, o := range listOps(t, b) {
 		if o.OpID == hiddenOp {
-			t.Fatalf("list_operations leaks hidden op: %+v", o)
+			t.Fatalf("operations leaks hidden op: %+v", o)
 		}
 	}
 	if res := cancelOp(t, b, hiddenOp); !res.IsError || !strings.Contains(text(res), "no running operation") {
@@ -209,7 +209,7 @@ func TestDbMcpCancelScriptRun(t *testing.T) {
 		t.Fatalf("listed run = %+v", entry)
 	}
 	if res := cancelOp(t, sess, entry.OpID); res.IsError || !strings.Contains(text(res), `"stopped":true`) {
-		t.Fatalf("cancel_operation = %q", text(res))
+		t.Fatalf("operations cancel = %q", text(res))
 	}
 	testx.WaitUntil(t, 20*time.Second, func() bool {
 		r, err := f.app.W.ScriptRuns.Get(scriptruns.IDArgs{ID: runID})

@@ -88,23 +88,13 @@ func TestSchemaBrowsingToolsRefuseWhenReadModeDeny(t *testing.T) {
 		}
 	})
 
-	t.Run("describeTable", func(t *testing.T) {
-		res, _, err := s.describeTable(ctx, nil, describeTableArgs{ConnectionID: "c1", Path: "t"})
+	t.Run("describe", func(t *testing.T) {
+		res, _, err := s.describe(ctx, nil, describeArgs{ConnectionID: "c1", Path: "t"})
 		if err != nil {
-			t.Fatalf("describeTable: %v", err)
+			t.Fatalf("describe: %v", err)
 		}
 		if got := isErrorResult(t, res); !strings.Contains(got, "deny read statements") {
-			t.Fatalf("describeTable error = %q, want it to mention denied read statements", got)
-		}
-	})
-
-	t.Run("describeSchema", func(t *testing.T) {
-		res, _, err := s.describeSchema(ctx, nil, describeSchemaArgs{ConnectionID: "c1", Path: "s"})
-		if err != nil {
-			t.Fatalf("describeSchema: %v", err)
-		}
-		if got := isErrorResult(t, res); !strings.Contains(got, "deny read statements") {
-			t.Fatalf("describeSchema error = %q, want it to mention denied read statements", got)
+			t.Fatalf("describe error = %q, want it to mention denied read statements", got)
 		}
 	})
 
@@ -125,13 +115,10 @@ func TestSchemaBrowsingToolsAllowWhenReadModeAllow(t *testing.T) {
 	if _, _, err := s.listChildren(ctx, nil, listChildrenArgs{ConnectionID: "c1"}); err != nil {
 		t.Fatalf("listChildren: %v", err)
 	}
-	if _, _, err := s.describeTable(ctx, nil, describeTableArgs{ConnectionID: "c1", Path: "t"}); err != nil {
-		t.Fatalf("describeTable: %v", err)
+	if _, _, err := s.describe(ctx, nil, describeArgs{ConnectionID: "c1", Path: "t"}); err != nil {
+		t.Fatalf("describe: %v", err)
 	}
-	if _, _, err := s.describeSchema(ctx, nil, describeSchemaArgs{ConnectionID: "c1", Path: "s"}); err != nil {
-		t.Fatalf("describeSchema: %v", err)
-	}
-	if tr.calls != 3 {
-		t.Fatalf("tree service called %d times, want 3 (one per tool) when read mode is allow", tr.calls)
+	if tr.calls != 2 {
+		t.Fatalf("tree service called %d times, want 2 (one per tool) when read mode is allow", tr.calls)
 	}
 }

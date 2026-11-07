@@ -197,12 +197,12 @@ func TestDbMcpBrowseMaskedOnly(t *testing.T) {
 	if !r.IsError || !strings.Contains(text(r), "browse_table") || strings.Contains(text(r), "ada@x.io") {
 		t.Fatalf("run_query = %q, want a refusal pointing at browse_table", text(r))
 	}
-	if d, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "describe_table", Arguments: map[string]any{"connectionId": f.connID, "path": peoplePath}}); err != nil || d.IsError {
-		t.Fatalf("describe_table = %q (%v), want it allowed", text(d), err)
+	if d, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "describe", Arguments: map[string]any{"connectionId": f.connID, "path": peoplePath}}); err != nil || d.IsError {
+		t.Fatalf("describe = %q (%v), want it allowed", text(d), err)
 	}
-	ex, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "explain_query", Arguments: map[string]any{"connectionId": f.connID, "sql": "select 1", "path": ""}})
+	ex, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": f.connID, "sql": "select 1", "path": "", "mode": "read", "explain": true}})
 	if err != nil || !ex.IsError || !strings.Contains(text(ex), "deny read statements") {
-		t.Fatalf("explain_query = %q (%v), want a read refusal", text(ex), err)
+		t.Fatalf("explain = %q (%v), want a read refusal", text(ex), err)
 	}
 }
 

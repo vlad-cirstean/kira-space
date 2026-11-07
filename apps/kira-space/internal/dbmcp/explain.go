@@ -51,7 +51,7 @@ func approvalPlanFrom(plan *queryplan.Plan, thresholdRows int) *ApprovalPlan {
 }
 
 // planSummary is what an AI client gets beside a run_query result, and what the approval dialog
-// renders: the numbers a decision turns on, never the whole tree (that is explain_query's job).
+// renders: the numbers a decision turns on, never the whole tree (that is explain's job).
 type planSummary struct {
 	EstimatedRowsRead *float64          `json:"estimatedRowsRead,omitempty"`
 	ThresholdRows     int               `json:"thresholdRows"`
