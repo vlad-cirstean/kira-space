@@ -68,7 +68,7 @@ function watchErrors(page: Page): string[] {
 }
 
 test('the page list is not empty', () => {
-  expect(PAGES.length).toBeGreaterThanOrEqual(26);
+  expect(PAGES.length).toBeGreaterThanOrEqual(25);
 });
 
 test('the Develop section is gone', async ({ request }) => {

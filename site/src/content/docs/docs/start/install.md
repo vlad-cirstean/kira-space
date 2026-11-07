@@ -27,11 +27,8 @@ The script:
 1. Downloads the latest release's disk image.
 2. Moves the app into `/Applications`.
 3. Opens the app, with no Gatekeeper prompt.
-4. Moves an installed Kira Studio to the Trash.
 
 A disk image downloaded through a browser does trigger Gatekeeper. The script avoids that.
-
-Coming from Kira Studio? See [Migrate from Kira Studio](../migrate/).
 
 Failures land in `~/Library/Logs/<app name>/install.log`.
 

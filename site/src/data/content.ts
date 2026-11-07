@@ -167,7 +167,7 @@ export const INSTALL = {
   command:
     'curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh',
   steps: [
-    'Run the command in Terminal. It installs a fresh copy or replaces an older one, then opens the app. An installed Kira Studio moves to the Trash.',
+    'Run the command in Terminal. It installs a fresh copy or replaces an older one, then opens the app.',
   ],
   note: 'Kira Space is beta. Builds are ad-hoc signed.',
   source: 'Build from source: see the README on GitHub.',

@@ -16,7 +16,7 @@ Kira Space is one native macOS app. A mode switcher moves between its modules: A
 
 ## Local data
 
-Kira Space keeps its data in `~/.kira-space`. Config files such as workflows, steps, connections and Api collections live in `~/.kira-space/config`. Backups from a migration live in `~/.kira-space/backups`.
+Kira Space keeps its data in `~/.kira-space`. Config files such as workflows, steps, connections and Api collections live in `~/.kira-space/config`. Backups of one-time upgrades live in `~/.kira-space/backups`.
 
 Saved credentials, secret script parameters and agent secrets are encrypted at rest. The key sits in the macOS Keychain. See [Security and privacy](../../reference/security/).
 
