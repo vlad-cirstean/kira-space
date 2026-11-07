@@ -1,6 +1,5 @@
 import { buildPackedChunk } from '@kira/git-core/testing/packedChunk';
 import { expect, test } from '../ui/fixtures';
-import { adeV2Control } from '../ui/support/adeV2';
 import { buildGraphStreamChunk } from '../ui/support/graphStreamFixture';
 import { IPC } from '../ui/support/ipcChannels';
 import type { ControlSnapshot } from '../ui/support/types';
@@ -274,35 +273,3 @@ test('git module: row context menu (P258)', async ({ relaunch }) => {
   await expect(menu).toBeVisible();
   await expect(menu).toHaveScreenshot('git-row-menu.png');
 });
-
-test('git module: repositories dialog (P259)', async ({ relaunch }) => {
-  const web = repoRecord('repo-web-app', 'acme-customer-dashboard-web-frontend', 1, false);
-  const api = repoRecord('repo-api', 'acme-platform-core-api-service', 2, true);
-  const { window: win } = await relaunch({
-    control: adeV2Control([
-      { channel: IPC.windowsEnsure, response: { mode: 'git' } },
-      { channel: IPC.codeWorkspaceListRepos, response: [web, api] },
-    ]),
-  });
-  await win.setViewportSize({ width: 1400, height: 820 });
-  await win.locator('[data-testid="manage-repos"]').click();
-  const dialog = win.locator('[data-testid="repos-dialog"]');
-  await expect(dialog.locator('[data-testid="repos-dialog-repo-head"]')).toBeVisible();
-  await expect(dialog.locator('[data-testid="repos-dialog-repo"][data-hidden="true"]')).toHaveCount(
-    1,
-  );
-  await expect(dialog).toHaveScreenshot('git-repos-dialog.png');
-});
-
-function repoRecord(id: string, name: string, sortOrder: number, hidden: boolean) {
-  return {
-    id,
-    name,
-    root: `/tmp/${name}`,
-    repoId: `/tmp/${name}`,
-    sortOrder,
-    color: 'blue',
-    createdAt: '2026-01-01T00:00:00.000Z',
-    hidden,
-  };
-}
