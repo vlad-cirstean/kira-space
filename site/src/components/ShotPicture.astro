@@ -5,20 +5,31 @@ interface Props {
   shot: ResolvedWindowShot;
   eager?: boolean;
   class?: string;
+  sizes?: string;
+  decorative?: boolean;
+  lowPriority?: boolean;
 }
 
-const { shot, eager = false, class: className } = Astro.props;
+const {
+  shot,
+  eager = false,
+  class: className,
+  sizes = '(min-width: 1024px) 1024px, 100vw',
+  decorative = false,
+  lowPriority = false,
+} = Astro.props;
 ---
 
 <img
   src={shot.framed}
   srcset={`${shot.framedSmall} 1136w, ${shot.framed} ${shot.framedWidth}w`}
-  sizes="(min-width: 1024px) 1024px, 100vw"
-  alt={shot.alt}
+  sizes={sizes}
+  alt={decorative ? '' : shot.alt}
   data-shot={shot.id}
   width={shot.framedWidth}
   height={shot.framedHeight}
   loading={eager ? 'eager' : 'lazy'}
+  fetchpriority={lowPriority ? 'low' : undefined}
   decoding="async"
   class:list={['h-auto w-full', className]}
 >

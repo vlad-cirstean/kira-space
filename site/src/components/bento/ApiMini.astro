@@ -1,0 +1,32 @@
+---
+import { API_BODY } from '../../data/visuals';
+---
+
+<div class="flex h-full flex-col justify-center gap-3 font-mono text-xs sm:text-sm">
+  <div class="flex items-center gap-2 rounded-xl bg-black/40 p-2 pr-3 ring-1 ring-white/10">
+    <span class="rounded-md px-2 py-1 font-bold text-bg" style="background:var(--kira-method-get)"
+      >GET</span
+    >
+    <span class="min-w-0 flex-1 truncate text-muted">api.acme.example/v1/orders/4217</span>
+    <span class="rounded-md bg-pink/20 px-2 py-1 font-semibold text-pink">Send</span>
+  </div>
+  <div class="flex items-center gap-2">
+    <span
+      class="flex items-center gap-1.5 rounded-full bg-lime/15 px-2.5 py-0.5 font-semibold text-lime"
+    >
+      <span class="size-2 rounded-full bg-lime text-lime motion-safe:animate-pulse-dot"></span>200
+      OK
+    </span>
+    <span class="text-muted">84 ms</span>
+  </div>
+  <div class="rounded-xl bg-black/40 p-3 ring-1 ring-white/10">
+    <div class="text-subtle">{'{'}</div>
+    {API_BODY.map(([k, v, t]) => (
+      <div class="pl-4">
+        <span style="color:var(--kira-syntax-property)">"{k}"</span>:{' '}
+        <span style={`color:var(--kira-syntax-${t})`}>{v}</span>,
+      </div>
+    ))}
+    <div class="text-subtle">{'}'}</div>
+  </div>
+</div>

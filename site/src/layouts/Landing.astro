@@ -1,12 +1,13 @@
 ---
-import AppHero from '../components/AppHero.astro';
+import Bento from '../components/Bento.astro';
 import BuildTeaser from '../components/BuildTeaser.astro';
-import FeatureGrid from '../components/FeatureGrid.astro';
+import EngineMarquee from '../components/EngineMarquee.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
+import Hero from '../components/Hero.astro';
 import Highlight from '../components/Highlight.astro';
 import Install from '../components/Install.astro';
-import { APP as content, SITE } from '../data/content';
+import { APP as content } from '../data/content';
 import { type ResolvedWindowShot, resolveAllShots } from '../lib/shots';
 import Base from './Base.astro';
 
@@ -25,23 +26,13 @@ const hero = windowShot(content.hero);
 <Base title={content.pageTitle} description={content.description} image={hero.social}>
   <Header />
   <main data-app="space" class="relative isolate overflow-hidden">
-    <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[46rem]">
-      <div
-        class="absolute -top-40 left-[8%] size-[34rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--tint)_34%,transparent),transparent)] motion-safe:animate-drift-a"
-      > </div>
-      <div
-        class="absolute -top-24 right-[6%] size-[30rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--kira-accent)_30%,transparent),transparent)] motion-safe:animate-drift-b"
-      > </div>
-      <div
-        class="absolute top-24 left-[38%] size-[26rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--kira-info)_22%,transparent),transparent)] motion-safe:animate-drift-a"
-      > </div>
-      <div
-        class="absolute inset-0 bg-[radial-gradient(color-mix(in_srgb,var(--kira-fg)_16%,transparent)_1px,transparent_1px)] bg-[size:26px_26px] [mask-image:radial-gradient(ellipse_70%_65%_at_50%_0%,#000,transparent)]"
-      > </div>
-    </div>
-    <p class="mx-auto max-w-5xl px-4 pt-8 text-base text-muted">{SITE.tagline}</p>
-    <AppHero app={content} shot={hero} />
-    <FeatureGrid features={content.features} />
+    <Hero
+      front={hero}
+      left={windowShot('space-git-graph')}
+      right={windowShot('studio-sql-console')}
+    />
+    <EngineMarquee />
+    <Bento />
     <BuildTeaser />
     {content.highlights.map((h, i) => {
       return <Highlight highlight={h} shot={windowShot(h.shot)} flip={i % 2 === 1} />;

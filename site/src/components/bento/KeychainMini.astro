@@ -1,0 +1,18 @@
+---
+import Icon from '../Icon.astro';
+import Sparkle from '../Sparkle.astro';
+---
+
+<div class="relative flex h-full items-center justify-center">
+  <span
+    class="flex size-24 items-center justify-center rounded-full bg-linear-to-b from-pink/40 to-brand-deep/40 text-white ring-1 ring-white/30 shadow-[0_0_60px_-4px_var(--kira-status-pink)]"
+  >
+    <Icon name="lock" class="size-11" />
+  </span>
+  <Sparkle
+    class="absolute left-[28%] top-[12%] size-4 text-brand-spark motion-safe:animate-twinkle"
+  />
+  <Sparkle
+    class="absolute right-[26%] bottom-[14%] size-3 text-pink motion-safe:animate-twinkle [animation-delay:1.5s]"
+  />
+</div>

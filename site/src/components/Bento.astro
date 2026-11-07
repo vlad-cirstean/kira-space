@@ -1,0 +1,103 @@
+---
+import { APP, type Feature } from '../data/content';
+import { href } from '../data/nav';
+import AgentsMini from './bento/AgentsMini.astro';
+import ApiMini from './bento/ApiMini.astro';
+import DockerMini from './bento/DockerMini.astro';
+import EnginesMini from './bento/EnginesMini.astro';
+import GraphMini from './bento/GraphMini.astro';
+import KeychainMini from './bento/KeychainMini.astro';
+import McpMini from './bento/McpMini.astro';
+import PhoneMini from './bento/PhoneMini.astro';
+import RunsMini from './bento/RunsMini.astro';
+import SqlMini from './bento/SqlMini.astro';
+import WorkspaceMini from './bento/WorkspaceMini.astro';
+import Sparkle from './Sparkle.astro';
+
+const visuals = {
+  agents: AgentsMini,
+  graph: GraphMini,
+  engines: EnginesMini,
+  sql: SqlMini,
+  api: ApiMini,
+  workspace: WorkspaceMini,
+  runs: RunsMini,
+  phone: PhoneMini,
+  docker: DockerMini,
+  mcp: McpMini,
+  keychain: KeychainMini,
+} as const;
+type Key = keyof typeof visuals;
+const order = Object.keys(visuals) as Key[];
+const tiles = [...APP.features].sort(
+  (a, b) => order.indexOf(a.visual as Key) - order.indexOf(b.visual as Key),
+);
+const spans: Record<Feature['span'], string> = {
+  hero: 'md:col-span-2 lg:col-span-7 lg:row-span-2',
+  wide: 'lg:col-span-6',
+  half: 'lg:col-span-5',
+  third: 'lg:col-span-4',
+};
+---
+
+<section class="relative isolate mx-auto max-w-6xl px-4 py-24 lg:py-32">
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute left-1/2 top-0 -z-10 h-[60rem] w-screen -translate-x-1/2 bg-[radial-gradient(ellipse_50%_50%_at_20%_30%,color-mix(in_srgb,var(--brand-sky)_16%,transparent),transparent),radial-gradient(ellipse_45%_45%_at_85%_60%,color-mix(in_srgb,var(--kira-status-pink)_12%,transparent),transparent)]"
+  ></div>
+  <div class="reveal mx-auto max-w-3xl text-center">
+    <span
+      class="inline-flex items-center gap-2 rounded-full bg-brand-sky/10 px-3 py-1 text-sm font-semibold uppercase tracking-[0.14em] text-brand-glow ring-1 ring-brand-sky/30"
+    >
+      <Sparkle class="size-3" />
+      Everything in one window
+    </span>
+    <h2 class="mt-5 text-4xl leading-[1.05] font-bold tracking-[-0.03em] sm:text-5xl lg:text-6xl">
+      Less tab juggling.
+      <span class="gradient-text block pb-1">More shipping.</span>
+    </h2>
+  </div>
+  <ul
+    class="mt-14 grid gap-4 md:grid-cols-2 lg:auto-rows-[minmax(17rem,auto)] lg:grid-cols-12 lg:gap-5"
+  >
+    {tiles.map((f, i) => {
+      const Visual = visuals[f.visual as Key];
+      return (
+        <li
+          style={`--tile:var(--kira-status-${f.color});--glass:var(--kira-status-${f.color});--i:${i % 3}`}
+          class={`reveal glass group relative isolate flex flex-col overflow-hidden rounded-3xl p-5 sm:p-6 motion-safe:transition-[transform,box-shadow] motion-safe:duration-300 motion-safe:hover:-translate-y-1 hover:shadow-[0_24px_60px_-20px_var(--tile)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent ${spans[f.span]}`}
+        >
+          <span
+            aria-hidden="true"
+            class="pointer-events-none absolute -right-16 -top-20 -z-10 size-80 rounded-full bg-(--tile) opacity-40 blur-3xl motion-safe:transition-opacity motion-safe:duration-500 group-hover:opacity-45"
+          ></span>
+          <span
+            aria-hidden="true"
+            class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-1/2 bg-linear-to-b from-(--tile)/25 to-transparent"
+          ></span>
+          <div
+            aria-hidden="true"
+            class:list={[
+              'relative min-h-52 flex-1 motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:-translate-y-1',
+              f.span === 'hero' && 'min-h-72',
+            ]}
+          >
+            <Visual />
+          </div>
+          <h3 class="relative mt-5 text-xl font-semibold tracking-tight text-fg lg:text-2xl">
+            <a
+              href={f.href ? href(f.href) : undefined}
+              class="inline-flex min-h-11 items-center gap-2 after:absolute after:-inset-5 after:content-[''] focus-visible:outline-none sm:after:-inset-6"
+            >
+              {f.title}
+              <span class="text-(--tile) motion-safe:transition-transform motion-safe:group-hover:translate-x-1">
+                →
+              </span>
+            </a>
+          </h3>
+          <p class="relative mt-1 text-base text-muted">{f.line}</p>
+        </li>
+      );
+    })}
+  </ul>
+</section>

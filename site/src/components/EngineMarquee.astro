@@ -1,0 +1,80 @@
+---
+import { ALSO, ENGINES } from '../data/content';
+import Sparkle from './Sparkle.astro';
+
+const palette = [
+  'blue',
+  'cyan',
+  'orange',
+  'teal',
+  'amber',
+  'green',
+  'red',
+  'violet',
+  'magenta',
+  'indigo',
+];
+const glyph = (name: string) => (name.length <= 3 ? name : name.slice(0, 2));
+const rows = [
+  {
+    items: ENGINES.map((n, i) => ({ n, c: palette[i % palette.length] })),
+    cls: 'motion-safe:animate-marquee',
+  },
+  {
+    items: ALSO.map((n, i) => ({ n, c: palette[(i * 3 + 2) % palette.length] })),
+    cls: 'motion-safe:animate-marquee-rev',
+  },
+];
+const pill =
+  'group/pill flex items-center gap-3 whitespace-nowrap rounded-full bg-white/10 py-2 pl-2 pr-5 font-mono text-base font-semibold text-white ring-1 ring-white/25 backdrop-blur hover:bg-white/20 hover:shadow-[0_0_28px_-4px_var(--brand-glow)] sm:text-lg motion-safe:transition-[background-color,box-shadow]';
+---
+
+<section
+  aria-labelledby="engines-title"
+  class="relative isolate overflow-hidden bg-linear-to-r from-brand-deep via-brand-sky to-brand-deep py-10 sm:py-14"
+>
+  <div
+    aria-hidden="true"
+    class="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,rgb(255_255_255/0.28),transparent),linear-gradient(rgb(255_255_255/0.07)_1px,transparent_1px)] bg-[size:auto,100%_14px]"
+  > </div>
+  <div class="mx-auto max-w-6xl px-4 text-center">
+    <span
+      class="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-white/80"
+    >
+      <Sparkle class="size-3" />
+      Ten engines. One grid. <Sparkle class="size-3" />
+    </span>
+    <h2 id="engines-title" class="sr-only">Supported engines and protocols</h2>
+  </div>
+  <div class="mt-7 flex flex-col gap-3 sm:gap-4">
+    {rows.map((row) => (
+      <div class="overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_10%,#000_90%,transparent)] motion-reduce:[mask-image:none]">
+        <div
+          class={`flex w-max gap-3 hover:[animation-play-state:paused] focus-within:[animation-play-state:paused] ${row.cls} motion-reduce:w-auto motion-reduce:flex-wrap motion-reduce:justify-center motion-reduce:px-4 sm:gap-4`}
+        >
+          {[0, 1].map((copy) => (
+            <ul
+              aria-hidden={copy === 1 ? 'true' : undefined}
+              class:list={[
+                'flex shrink-0 gap-3 pr-3 sm:gap-4 sm:pr-4 motion-reduce:flex-wrap motion-reduce:justify-center motion-reduce:pr-0',
+                copy === 1 && 'motion-reduce:hidden',
+              ]}
+            >
+              {row.items.map((it) => (
+                <li class={pill}>
+                  <span
+                    class="flex size-8 items-center justify-center rounded-full text-sm font-bold text-bg"
+                    style={`background:var(--kira-conn-${it.c});box-shadow:0 0 14px var(--kira-conn-${it.c})`}
+                  >
+                    {glyph(it.n)}
+                  </span>
+                  {it.n}
+                </li>
+              ))}
+            </ul>
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
+</section>

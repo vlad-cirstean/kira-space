@@ -6,6 +6,12 @@ export interface Feature {
   readonly body: string;
   /** Docs path relative to the site root, rendered as a link on the card title. */
   readonly href?: string;
+  /** Bento tile: mini UI key, accent colour token and grid span. */
+  readonly visual: string;
+  readonly color: 'sky' | 'pink' | 'lime' | 'violet' | 'amber' | 'teal';
+  readonly span: 'hero' | 'wide' | 'half' | 'third';
+  /** One punchy line shown on the tile. */
+  readonly line: string;
 }
 
 export interface Highlight {
@@ -33,6 +39,29 @@ export const SITE = {
   availability: 'Free and open source. macOS 26+ on Apple Silicon.',
 } as const;
 
+export const ENGINES = [
+  'PostgreSQL',
+  'MariaDB',
+  'MySQL',
+  'SQLite',
+  'ClickHouse',
+  'MongoDB',
+  'Redis',
+  'Kafka',
+  'SQS',
+  'S3',
+] as const;
+
+export const ALSO = ['HTTP', 'gRPC', 'Docker', 'Kubernetes', 'Claude Code', 'OpenCode'] as const;
+
+export const HERO = {
+  eyebrow: 'Kira Space',
+  line1: 'Git, agents and data.',
+  line2: 'One native window.',
+  lead: 'Plan with coding agents, read history, query ten database engines and call APIs. Kira Space keeps it in one Mac app.',
+  command: 'curl -fsSL …/install.sh | sh',
+} as const;
+
 export const APP: AppContent = {
   name: 'Kira Space',
   icon: 'git-branch',
@@ -47,66 +76,110 @@ export const APP: AppContent = {
     {
       icon: 'git-branch',
       title: 'Git graph',
+      visual: 'graph',
+      color: 'teal',
+      span: 'half',
+      line: 'Branches, tags and diffs. Fast on any history.',
       body: 'Virtualized commit log, detail pane, diffs, search and branch review.',
       href: 'docs/space/git/',
     },
     {
       icon: 'files',
       title: 'Code workspace',
+      visual: 'workspace',
+      color: 'sky',
+      span: 'third',
+      line: 'File tree, Monaco, blame, search.',
       body: 'File tree, Monaco viewer, diffs, repository search, inline blame.',
       href: 'docs/space/workspace/',
     },
     {
       icon: 'robot',
       title: 'Agents',
+      visual: 'agents',
+      color: 'sky',
+      span: 'hero',
+      line: 'Every task on a workflow. Every agent run in view.',
       body: 'Task planner with workflows, agent runs and Claude Code or OpenCode sessions.',
       href: 'docs/space/agents/',
     },
     {
       icon: 'sparkle',
       title: 'Runs',
+      visual: 'runs',
+      color: 'lime',
+      span: 'third',
+      line: 'Scripts on a schedule, run by Claude Code.',
       body: 'Scripts and smart scripts run by headless Claude Code, with cron schedules.',
       href: 'docs/shared/runs/',
     },
     {
       icon: 'device-mobile',
       title: 'Phone view',
+      visual: 'phone',
+      color: 'teal',
+      span: 'third',
+      line: 'Your agents board on your phone, at home.',
       body: 'Serves the agents board to a phone on your home network.',
       href: 'docs/space/phone/',
     },
     {
       icon: 'database',
       title: 'Studio: ten engines',
+      visual: 'engines',
+      color: 'violet',
+      span: 'half',
+      line: 'PostgreSQL to S3. One grid.',
       body: 'PostgreSQL, MariaDB, MySQL, SQLite, ClickHouse, MongoDB, Redis, Kafka, SQS, S3.',
       href: 'docs/studio/databases/',
     },
     {
       icon: 'table',
       title: 'Data grid and SQL console',
+      visual: 'sql',
+      color: 'amber',
+      span: 'wide',
+      line: 'Write SQL, read EXPLAIN, stage edits.',
       body: 'Server-side filter and sort, staged SQL edits, saved queries, EXPLAIN plans.',
       href: 'docs/studio/data-grid/',
     },
     {
       icon: 'globe',
       title: 'Api module',
+      visual: 'api',
+      color: 'pink',
+      span: 'wide',
+      line: 'HTTP and gRPC. Paste a curl, get a request.',
       body: 'HTTP and gRPC requests, collections, environments, curl import.',
       href: 'docs/studio/api-client/',
     },
     {
       icon: 'vm',
       title: 'Docker',
+      visual: 'docker',
+      color: 'sky',
+      span: 'third',
+      line: 'Containers, logs, exec. No context switch.',
       body: 'Containers, images, volumes, networks, logs and exec terminals.',
       href: 'docs/studio/docker/',
     },
     {
       icon: 'plug',
       title: 'Database MCP server',
+      visual: 'mcp',
+      color: 'violet',
+      span: 'third',
+      line: 'Agent access to data: off until you say so.',
       body: 'Local, off by default, with per-connection permissions.',
       href: 'docs/studio/database-mcp/',
     },
     {
       icon: 'lock',
       title: 'Keychain',
+      visual: 'keychain',
+      color: 'pink',
+      span: 'third',
+      line: 'Credentials stay encrypted in the Keychain.',
       body: 'Credentials stay encrypted in the macOS Keychain.',
       href: 'docs/reference/security/',
     },

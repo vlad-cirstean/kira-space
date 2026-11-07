@@ -1,0 +1,56 @@
+---
+import { SQL_ROWS } from '../../data/visuals';
+---
+
+<div class="flex h-full flex-col justify-center gap-3 font-mono text-xs sm:text-sm">
+  <div class="rounded-xl bg-black/40 p-3 ring-1 ring-white/10">
+    <div class="flex gap-1.5 pb-2">
+      <span class="size-2 rounded-full bg-red/70"></span
+      ><span class="size-2 rounded-full bg-amber/70"></span
+      ><span class="size-2 rounded-full bg-lime/70"></span>
+    </div>
+    <div class="overflow-hidden whitespace-nowrap">
+      <span style="color:var(--kira-syntax-keyword)">select</span>{' '}c.name{' '}<span
+        style="color:var(--kira-syntax-keyword)"
+        >as</span
+      >{' '}customer,{' '}<span style="color:var(--kira-syntax-keyword)">count</span>(*)
+    </div>
+    <div class="overflow-hidden whitespace-nowrap">
+      <span style="color:var(--kira-syntax-keyword)">where</span>{' '}o.status{' '}<span
+        style="color:var(--kira-syntax-keyword)"
+        >in</span
+      >{' '}(<span style="color:var(--kira-syntax-string)">'paid'</span>,{' '}<span
+        style="color:var(--kira-syntax-string)"
+        >'shipped'</span
+      >)<span
+        class="ml-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 bg-amber motion-safe:animate-caret"
+      ></span>
+    </div>
+  </div>
+  <div class="overflow-hidden rounded-xl ring-1 ring-white/10">
+    <div class="grid grid-cols-[1.6fr_0.7fr_1fr] bg-white/10 px-3 py-1.5 text-subtle">
+      <span>customer</span><span class="text-right">orders</span
+      ><span class="text-right">revenue</span>
+    </div>
+    {SQL_ROWS.map((r) => (
+      <div
+        class:list={[
+          'grid grid-cols-[1.6fr_0.7fr_1fr] px-3 py-1.5',
+          r.hot ? 'bg-amber/20 text-fg' : 'bg-white/[0.03] text-muted',
+        ]}
+      >
+        <span class="truncate">{r.customer}</span>
+        <span class="text-right" style="color:var(--kira-syntax-number)">
+          {r.orders}
+        </span>
+        <span class="text-right" style="color:var(--kira-syntax-number)">
+          {r.revenue}
+        </span>
+      </div>
+    ))}
+  </div>
+  <div class="flex items-center gap-2 text-muted"
+    ><span class="rounded-full bg-lime/15 px-2 text-lime">6 rows</span>
+    12 ms</div
+  >
+</div>

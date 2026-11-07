@@ -1,0 +1,80 @@
+---
+import { Image } from 'astro:assets';
+import appIcon from '../../../apps/kira-space/build/appicon.png';
+import { APP, HERO, SITE } from '../data/content';
+import { href, REPO_URL } from '../data/nav';
+import type { ResolvedWindowShot } from '../lib/shots';
+import HeroBackdrop from './HeroBackdrop.astro';
+import HeroStage from './HeroStage.astro';
+import Icon from './Icon.astro';
+import Sparkle from './Sparkle.astro';
+
+interface Props {
+  front: ResolvedWindowShot;
+  left: ResolvedWindowShot;
+  right: ResolvedWindowShot;
+}
+
+const { front, left, right } = Astro.props;
+const button =
+  'group relative flex min-h-12 items-center gap-2 overflow-hidden rounded-xl px-6 text-base font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:transition-[transform,box-shadow] motion-safe:hover:-translate-y-0.5';
+const primary = `${button} bg-linear-to-b from-brand-sky to-brand-deep text-white shadow-[0_10px_34px_-6px_color-mix(in_srgb,var(--brand-sky)_75%,transparent),inset_0_1px_0_rgb(255_255_255/0.35)] hover:shadow-[0_14px_44px_-6px_color-mix(in_srgb,var(--brand-sky)_95%,transparent),inset_0_1px_0_rgb(255_255_255/0.35)]`;
+const secondary = `${button} bg-white/5 text-fg ring-1 ring-white/12 backdrop-blur hover:bg-white/10 hover:ring-brand-glow/60`;
+---
+
+<section class="relative">
+  <HeroBackdrop />
+  <div class="mx-auto max-w-6xl px-4 pt-14 text-center sm:pt-24">
+    <span
+      class="hero-in glass inline-flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 rounded-full py-1.5 pl-2 pr-4 text-sm font-medium"
+    >
+      <Image src={appIcon} alt="" width={40} height={40} format="png" class="size-5 rounded-md" />
+      <span class="font-semibold text-fg">{HERO.eyebrow}</span>
+      <Sparkle class="size-3 text-brand-glow" />
+      <span class="text-muted">{SITE.availability}</span>
+    </span>
+    <h1
+      style="--d:90ms"
+      class="hero-in mx-auto mt-7 max-w-4xl text-[2.75rem] leading-[1.04] font-extrabold tracking-[-0.045em] sm:text-6xl lg:text-[5.5rem]"
+    >
+      <span class="bg-linear-to-b from-white to-white/70 bg-clip-text text-transparent"
+        >{HERO.line1}</span
+      >
+      <span class="gradient-text block pb-2">{HERO.line2}</span>
+    </h1>
+    <p style="--d:180ms" class="hero-in mx-auto mt-6 max-w-2xl text-lg text-muted sm:text-xl">
+      {HERO.lead}
+    </p>
+    <div style="--d:270ms" class="hero-in mt-9 flex flex-wrap justify-center gap-3">
+      <a href="#install" class={primary}>
+        <span
+          aria-hidden="true"
+          class="absolute inset-y-0 -left-full w-full skew-x-[-20deg] bg-linear-to-r from-transparent via-white/40 to-transparent motion-safe:group-hover:translate-x-[200%] motion-safe:transition-transform motion-safe:duration-700"
+        ></span>
+        <Icon name="cloud-download" class="size-5" />
+        Install
+        <Icon
+          name="arrow-right"
+          class="size-4 motion-safe:transition-transform motion-safe:group-hover:translate-x-1"
+        />
+      </a>
+      <a href={href(APP.docs)} class={secondary}>
+        <Icon name="book" class="size-5" />
+        Read the docs
+      </a>
+      <a href={REPO_URL} rel="noopener" class={secondary}>
+        <Icon name="github" class="size-5" />
+        GitHub
+      </a>
+    </div>
+    <a
+      href="#install"
+      style="--d:340ms"
+      class="hero-in mx-auto mt-6 flex min-h-11 w-fit max-w-full items-center gap-2 rounded-full bg-black/30 px-4 font-mono text-sm text-muted ring-1 ring-white/10 hover:text-fg hover:ring-brand-glow/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      <span class="text-lime">$</span>
+      <span class="truncate">{HERO.command}</span>
+    </a>
+  </div>
+  <HeroStage front={front} left={left} right={right} />
+</section>

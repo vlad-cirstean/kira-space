@@ -1,0 +1,24 @@
+---
+import { FILES } from '../../data/visuals';
+---
+
+<div class="flex h-full flex-col justify-center gap-2 font-mono text-xs sm:text-sm">
+  <div class="rounded-xl bg-black/40 p-2 ring-1 ring-white/10">
+    {FILES.map((f) => (
+      <div
+        class:list={[
+          'flex items-center gap-2 rounded-md px-2 py-1',
+          'open' in f && f.open ? 'bg-sky/20 text-fg' : 'text-muted',
+        ]}
+        style={`padding-left:${0.5 + f.depth * 1.1}rem`}
+      >
+        <span class:list={['size-2 rounded-sm', f.dir ? 'bg-amber' : 'bg-sky/70']}></span>
+        {f.name}
+      </div>
+    ))}
+  </div>
+  <div class="rounded-lg bg-white/[0.05] px-3 py-2 text-subtle">
+    <span class="text-sky">Alice</span>
+    · 3 days ago · add order search
+  </div>
+</div>
