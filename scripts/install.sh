@@ -25,7 +25,7 @@ main() {
   export PATH
   umask 022
 
-  RAW_BASE="https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh"
+  RAW_BASE="https://raw.githubusercontent.com/vlad-cirstean/kira-space/main/scripts/install.sh"
 
   # Every global this script touches gets a default here, up front — set -u then never trips on a
   # variable a later step hasn't reached yet, including inside cleanup, which can run at any point
@@ -196,7 +196,7 @@ APPLESCRIPT_EOF
   HTTP_STATUS="$(curl --proto '=https' --tlsv1.2 -fsSL --connect-timeout 20 --retry 3 --retry-delay 2 \
     -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' \
     -o "$RELEASE_JSON" -w '%{http_code}' \
-    https://api.github.com/repos/vlad-cirstean/kira-studio/releases/latest </dev/null)"
+    https://api.github.com/repos/vlad-cirstean/kira-space/releases/latest </dev/null)"
   CURL_STATUS=$?
   set -e
   if [ "$CURL_STATUS" != "0" ]; then
@@ -255,7 +255,7 @@ JXA_EOF
     die "release tag '$TAG' does not look like v<major>.<minor>.<patch>"
   fi
   case "$ASSET_URL" in
-    "https://github.com/vlad-cirstean/kira-studio/releases/download/$TAG/"*) ;;
+    "https://github.com/vlad-cirstean/kira-space/releases/download/$TAG/"*) ;;
     *) die "release asset URL is not the expected GitHub download URL" ;;
   esac
   case "$ASSET_SIZE" in

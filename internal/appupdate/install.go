@@ -23,7 +23,7 @@ import (
 const (
 	// InstallScriptURL is fetched fresh on every Stage call, never bundled — see this file's own
 	// "fresh-fetch, not bundled" doc comment on Installer for why.
-	InstallScriptURL = "https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh"
+	InstallScriptURL = "https://raw.githubusercontent.com/vlad-cirstean/kira-space/main/scripts/install.sh"
 	// installContract is scripts/install.sh's own line 2, byte-exact (§2.1/§2.2 there). A fetched
 	// script missing this exact line is refused before it ever reaches sh — the one thing keeping
 	// an incompatible future script version, or a captive-portal HTML page, from being executed.

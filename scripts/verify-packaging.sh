@@ -142,9 +142,9 @@ INSTALL_URL_HITS="$(grep -rn 'raw.githubusercontent.com' apps/ packages/ interna
   --include=*.go --include=*.ts --include=*.vue 2>/dev/null || true)"
 INSTALL_URL_COUNT="$(printf '%s\n' "$INSTALL_URL_HITS" | grep -c . || true)"
 case "$INSTALL_URL_HITS" in
-  *"internal/appupdate/install.go"*"/vlad-cirstean/kira-studio/main/scripts/install.sh"*) ;;
+  *"internal/appupdate/install.go"*"/vlad-cirstean/kira-space/main/scripts/install.sh"*) ;;
   *)
-    fail "installer URL not pinned as expected" "expected exactly one raw.githubusercontent.com reference, in internal/appupdate/install.go's InstallScriptURL, pointing at /vlad-cirstean/kira-studio/main/scripts/install.sh; got: $INSTALL_URL_HITS"
+    fail "installer URL not pinned as expected" "expected exactly one raw.githubusercontent.com reference, in internal/appupdate/install.go's InstallScriptURL, pointing at /vlad-cirstean/kira-space/main/scripts/install.sh; got: $INSTALL_URL_HITS"
     ;;
 esac
 if [ "${INSTALL_URL_COUNT:-0}" -ne 1 ]; then
