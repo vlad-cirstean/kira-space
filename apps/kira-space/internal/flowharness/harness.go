@@ -86,7 +86,6 @@ type options struct {
 	rebaseTimeout   time.Duration
 	branchWait      time.Duration
 	mobilePoll      time.Duration
-	seed            func(*App)
 	embedSpec       *embed.Spec
 	providers       []harness.Provider
 	crSync          gitsession.CRSyncConfig
@@ -176,10 +175,6 @@ func WithEmbedSpec(s embed.Spec) Opt { return func(o *options) { o.embedSpec = &
 
 // WithProvider registers test-only agent providers next to claude, in order.
 func WithProvider(ps ...harness.Provider) Opt { return func(o *options) { o.providers = ps } }
-
-// WithSeed runs seed on the isolated homes before the first boot. Startup work that runs in the
-// background (sweeps) would race a seed written after New.
-func WithSeed(seed func(*App)) Opt { return func(o *options) { o.seed = seed } }
 
 // WithWindowFocus replaces the window registry's focus state and raise with App.Focus, for prompt
 // raise tests.
@@ -327,9 +322,6 @@ func New(t *testing.T, opts ...Opt) *App {
 	t.Setenv(fakeagent.EnvDir, a.FakeDir)
 	t.Setenv(fakeagent.EnvScenario, a.scenario.Encode())
 	useDockerHost(t)
-	if o.seed != nil {
-		o.seed(a)
-	}
 	a.build()
 	t.Cleanup(a.stop)
 	return a
