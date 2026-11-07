@@ -8,7 +8,7 @@ Cleanup chapter. Branch `chapter/v0.3.3`, tag `v0.3.3`. First `P` is P564 (highe
 | P565 | Presentation site: redesign, repo URLs, mobile zoom, drop carousel | Done |
 | P566 | Presentation site: second design pass (identity, color, bento) | Done |
 | P567 | Presentation site: real app images only, performance | Done |
-| P568 | Close chapter | Pending |
+| P568 | Close chapter | Done |
 
 P564 and P565 run as parallel streams (own worktree each): P564 owns everything outside `site/`, P565 owns `site/`. Grouping in `plans/batch-P564-P565.md`.
 
@@ -65,4 +65,11 @@ Chapter end: non-UI full run, 1 code review round, close phase, PR.
 
 ## P568 Close chapter
 
-- Fold chapter into `docs/HISTORY.md` by hand per `CLAUDE.md`.
+- Fold chapter into `docs/HISTORY.md` by hand per `docs/WORKING_AGREEMENT.md`.
+
+### Result
+
+- Non-UI full run: one chapter-caused failure, `TestStartupSweepsLeftovers` (test outlived deleted `leftovers_test.go`), fixed in `52fcde80` with unused `flowharness.WithSeed`. Container-backed suites not runnable here (no Docker): left to CI. UI suites run in PR CI.
+- Review round 1: 8 findings. #1 dropped by user (sole user is on v0.3.2, no v0.3.1 upgrade path reaches v0.3.3). #2 to #4 and #6 to #8 fixed in P567; #5 not applicable after the rewrite.
+- Extra work outside the phase table: `CLAUDE.md` split into general and repo parts, `docs/WORKING_AGREEMENT.md` (`c6ee9401`).
+- Fold written by hand; PR opened from `chapter/v0.3.3`.
