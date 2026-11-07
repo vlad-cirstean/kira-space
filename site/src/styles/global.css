@@ -2,10 +2,87 @@
 @import "./theme.css";
 
 html {
-  scroll-behavior: smooth;
   scroll-padding-top: 4rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 [data-app="space"] {
   --tint: var(--kira-ok);
+}
+
+@theme {
+  --animate-drift-a: drift-a 22s ease-in-out infinite alternate;
+  --animate-drift-b: drift-b 18s ease-in-out infinite alternate;
+  --animate-breathe: breathe 9s ease-in-out infinite alternate;
+
+  @keyframes drift-a {
+    to {
+      transform: translate3d(12%, 10%, 0) scale(1.15);
+    }
+  }
+  @keyframes drift-b {
+    to {
+      transform: translate3d(-14%, 8%, 0) scale(0.9);
+    }
+  }
+  @keyframes breathe {
+    from {
+      opacity: 0.55;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+@keyframes hero-tilt {
+  from {
+    opacity: 0;
+    transform: perspective(1400px) rotateX(9deg) translateY(36px) scale(0.96);
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
+  }
+}
+
+/* Motion is opt-in: under reduce nothing animates and nothing starts hidden. */
+@utility hero-in {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: hero-in 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: var(--d, 0ms);
+  }
+}
+
+@utility hero-tilt {
+  transform-origin: 50% 0;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: hero-tilt 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s both;
+  }
+}
+
+/* Scroll-driven; without support the element stays static and visible. --i staggers siblings. */
+@utility reveal {
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry calc(var(--i, 0) * 3%) cover calc(24% + var(--i, 0) * 3%);
+    }
+  }
 }

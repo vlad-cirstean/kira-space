@@ -11,14 +11,21 @@ const { features } = Astro.props;
 ---
 
 <section class="mx-auto max-w-5xl px-4 pb-16">
-  <h2 class="text-2xl font-semibold tracking-tight sm:text-4xl">What you get</h2>
+  <h2 class="reveal text-2xl font-semibold tracking-tight sm:text-4xl">What you get</h2>
   <ul class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-    {features.map((f) => (
-      <li class="rounded-xl border border-border bg-elevated p-5 shadow-card hover:border-tint/40 motion-safe:transition-colors">
-        <span class="flex size-10 items-center justify-center rounded-lg bg-tint/10 text-tint ring-1 ring-tint/20">
+    {features.map((f, i) => (
+      <li
+        style={`--i:${i % 3}`}
+        class="reveal group relative overflow-hidden rounded-xl border border-border bg-elevated p-5 shadow-card hover:border-tint/50 motion-safe:transition-[transform,border-color] motion-safe:hover:-translate-y-1"
+      >
+        <span
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,color-mix(in_srgb,var(--tint)_14%,transparent),transparent)] opacity-0 group-hover:opacity-100 motion-safe:transition-opacity motion-safe:duration-300"
+        ></span>
+        <span class="relative flex size-10 items-center justify-center rounded-lg bg-tint/10 text-tint ring-1 ring-tint/20 motion-safe:transition-transform motion-safe:group-hover:scale-110">
           <Icon name={f.icon} class="size-5" />
         </span>
-        <h3 class="mt-4 font-medium text-fg">
+        <h3 class="relative mt-4 font-medium text-fg">
           {f.href ? (
             <a
               href={href(f.href)}
@@ -30,7 +37,7 @@ const { features } = Astro.props;
             f.title
           )}
         </h3>
-        <p class="mt-1 text-base text-muted">{f.body}</p>
+        <p class="relative mt-1 text-base text-muted">{f.body}</p>
       </li>
     ))}
   </ul>

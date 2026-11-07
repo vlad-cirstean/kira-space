@@ -25,7 +25,7 @@ const home = href();
           <a
             href={link.href}
             rel={link.external ? 'noopener' : undefined}
-            class="flex min-h-11 items-center px-2 text-sm text-muted hover:text-fg sm:px-3 sm:text-base"
+            class="relative flex min-h-11 items-center px-2 text-sm text-muted hover:text-fg sm:px-3 sm:text-base after:absolute after:inset-x-2 after:bottom-2 after:h-px after:origin-center after:scale-x-0 after:bg-tint hover:after:scale-x-100 focus-visible:after:scale-x-100 sm:after:inset-x-3 motion-safe:after:transition-transform motion-safe:after:duration-300"
           >
             {link.label}
           </a>

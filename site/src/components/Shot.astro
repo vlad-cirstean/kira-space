@@ -5,17 +5,13 @@ import ShotPicture from './ShotPicture.astro';
 interface Props {
   shot: ResolvedShot;
   eager?: boolean;
-  glow?: boolean;
   tile?: boolean;
 }
 
-const { shot, eager = false, glow = false, tile = false } = Astro.props;
+const { shot, eager = false, tile = false } = Astro.props;
 ---
 
 <figure class="relative m-0">
-  {glow && (
-    <div aria-hidden="true" class="absolute -inset-4 -z-10 rounded-3xl bg-tint/10 blur-3xl"></div>
-  )}
   {shot.kind === 'window' ? (
     <a
       href={shot.framed}

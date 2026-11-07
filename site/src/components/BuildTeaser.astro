@@ -6,30 +6,41 @@ import Icon from './Icon.astro';
 ---
 
 <section class="mx-auto max-w-5xl px-4 pb-16" aria-labelledby="build-teaser">
-  <div class="rounded-xl border border-border bg-elevated p-6 shadow-card">
-    <h2 id="build-teaser" class="text-2xl font-semibold tracking-tight sm:text-4xl">
-      {BUILD_TEASER.title}
-    </h2>
-    <p class="mt-2 text-base text-muted">{BUILD_TEASER.body}</p>
-    <ol class="mt-4 flex flex-col md:flex-row md:flex-wrap md:gap-x-4">
-      {BUILD_SECTIONS.map((s) => (
-        <li>
-          <a
-            href={href(`build/#${s.anchor}`)}
-            class="flex min-h-11 items-center gap-2 text-base text-fg underline-offset-4 hover:underline"
-          >
-            <span class="font-medium text-tint">{s.step}.</span>
-            {s.name}
-          </a>
-        </li>
-      ))}
-    </ol>
-    <a
-      href={href('build/')}
-      class="mt-4 flex min-h-11 w-fit items-center gap-2 text-base font-medium text-accent underline underline-offset-4"
-    >
-      <Icon name="arrow-right" class="size-4" />
-      {BUILD_TEASER.link}
-    </a>
+  <div
+    class="reveal rounded-xl bg-linear-to-br from-tint/60 via-border to-accent/60 p-px shadow-card"
+  >
+    <div class="rounded-[calc(var(--radius-xl)-1px)] bg-elevated p-6">
+      <h2 id="build-teaser" class="text-2xl font-semibold tracking-tight sm:text-4xl">
+        {BUILD_TEASER.title}
+      </h2>
+      <p class="mt-2 text-base text-muted">{BUILD_TEASER.body}</p>
+      <ol class="mt-4 flex flex-col md:flex-row md:flex-wrap md:gap-x-4">
+        {BUILD_SECTIONS.map((s) => (
+          <li>
+            <a
+              href={href(`build/#${s.anchor}`)}
+              class="group flex min-h-11 items-center gap-2 text-base text-fg underline-offset-4 hover:underline"
+            >
+              <span class="font-medium text-tint">{s.step}.</span>
+              {s.name}
+              <Icon
+                name="arrow-right"
+                class="size-4 text-tint opacity-0 group-hover:opacity-100 motion-safe:-translate-x-1 motion-safe:transition-[transform,opacity] motion-safe:group-hover:translate-x-0"
+              />
+            </a>
+          </li>
+        ))}
+      </ol>
+      <a
+        href={href('build/')}
+        class="group mt-4 flex min-h-11 w-fit items-center gap-2 text-base font-medium text-accent underline underline-offset-4"
+      >
+        <Icon
+          name="arrow-right"
+          class="size-4 motion-safe:transition-transform motion-safe:group-hover:translate-x-1"
+        />
+        {BUILD_TEASER.link}
+      </a>
+    </div>
   </div>
 </section>
