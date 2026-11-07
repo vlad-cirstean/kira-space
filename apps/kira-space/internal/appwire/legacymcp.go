@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/google/renameio/v2"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
 )
@@ -47,7 +48,7 @@ func removeLegacyMCP(r harness.MCPRemover, home string) {
 	if failed {
 		return
 	}
-	if err := os.WriteFile(marker, nil, 0o600); err != nil {
+	if err := renameio.WriteFile(marker, nil, 0o600); err != nil {
 		slog.Warn("record retired MCP removal", "scope", "startup", "err", err)
 	}
 }
