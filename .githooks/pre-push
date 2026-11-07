@@ -7,6 +7,9 @@
 # Bypass mid-investigation only: git push --no-verify
 set -e
 
+# A linked worktree push exports GIT_DIR/GIT_INDEX_FILE; tests that run git in temp repos then fail.
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE
+
 # Branch names first (P330): cheap, and needs no node_modules.
 REFS="$(cat)"
 printf '%s\n' "$REFS" | sh scripts/check-push-refs.sh
