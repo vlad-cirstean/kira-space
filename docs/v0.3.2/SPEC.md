@@ -12,6 +12,7 @@ Source: user request. The table is open: the user adds more phases to this chapt
 | P558 | Repositories page in ADE, replacing the Git module dialog | Pending |
 | P559 | Memory home under the Kira Space home | Pending |
 | P560 | Agent MCP tools: use-case pass, Kira Space and Kira Studio rename | Pending |
+| P561 | Review window file list follows the shown file | Pending |
 
 More rows follow as the user adds them. Table order is execution order.
 
@@ -99,6 +100,17 @@ More rows follow as the user adds them. Table order is execution order.
 - Plan: `plans/P560.md`.
 - Result: pending.
 
+### P561 Review window file list follows the shown file
+
+- Ask (verbatim): "In the Review window. Go to next file also moves the left panel with the files."
+- Reading: request, not bug. When the centre diff moves to another file, the left Files list selects that file and scrolls it into view, expanding collapsed folders and the render cap as needed. Today cross-file next/previous change and "Next file to review" move the highlight only, never scroll, and miss a file inside a collapsed folder. Tab clicks and working-file comment jumps do not move the list at all.
+- Scope: one source of truth, the active centre tab. `AdeReviewFiles.vue` watches it and calls new `ReviewApi.revealFile(section, path)`, which moves git-ui's list cursor without opening anything. FileTree reveals its selected row whenever the selected path changes (expand parents, raise cap, `revealElement` nearest, no focus move). The committed highlight clears while the cursor sits in the Uncommitted section. Frontend only: `packages/git-ui` and the review window host. Git module sidebar gets the reveal but no tab watcher (default; user decision 1). A filter-hidden file stays hidden (default; user decision 2).
+- Tests: no backend change, so no flow test. UI specs (WebKit Playwright): cross-file next/previous reveals and expands, tab click follows, one highlight across sections, working comment jump highlights; selection and in-view assertions. No visual baseline expected to change; three review and git visual specs rerun on Linux with Inter to confirm.
+- Order: after P560 in table order. Concurrent with P559 and P560: no Go, no `en.json`; shares only one ARCHITECTURE sentence (review navigation paragraph) and SPEC.
+- Single implementer, no streams. Plan lists 2 NEEDS USER DECISION items, each with a default.
+- Plan: `plans/P561.md`.
+- Result: pending.
+
 ## Close
 
 1 code review round unless the user says otherwise. After the last phase: one full suite run with all failures fixed, review round, hand-written close per CLAUDE.md, PR. The table is open: add checklist items for each new phase.
@@ -159,3 +171,11 @@ Runs after the last phase and the full suite run, before the code review. Close 
 - [ ] `budget.tsv` lowered for every rewritten text; goldens and contracts regenerated.
 - [ ] Real `claude` ADE, smart script, DB MCP, prompt registry, hermetic and agent config rows pass.
 - [ ] ARCHITECTURE, DEV_ENVIRONMENT, README and site MCP pages name the new servers and tools.
+
+### P561 Review file list follow check (mandatory)
+
+- [ ] Review window: next change past the last hunk opens the next file; its row is selected and scrolled into view, its collapsed folder expanded. Previous does the same backwards.
+- [ ] Clicking another centre diff tab, or a working-file comment jump, moves the list selection to that file and scrolls it in; no tab opens or closes.
+- [ ] Only one row looks selected when the cursor moves between committed and uncommitted files.
+- [ ] `rg -n "revealFile" packages apps/kira-space/frontend` shows the interface, git-ui implementation and `AdeReviewFiles.vue` caller.
+- [ ] Review and git visual baselines unchanged on Linux with Inter (or re-recorded with a stated reason); ARCHITECTURE notes the follow.
