@@ -13,6 +13,7 @@ Source: user request. The table is open: the user adds more phases to this chapt
 | P559 | Memory home under the Kira Space home | Pending |
 | P560 | Agent MCP tools: use-case pass, Kira Space and Kira Studio rename | Pending |
 | P561 | Review window file list follows the shown file | Pending |
+| P562 | Trim connection dialog explanations | Pending |
 
 More rows follow as the user adds them. Table order is execution order.
 
@@ -111,6 +112,16 @@ More rows follow as the user adds them. Table order is execution order.
 - Plan: `plans/P561.md`.
 - Result: pending.
 
+### P562 Trim connection dialog explanations
+
+- Ask (verbatim): "trym the explainations in the connection edit dialog. Keep what they do and what they mean, but only the essential not it s so extremely verbose and worse repeated for each button etc. Do it now".
+- Scope: copy only, connection edit dialog (`ConnectionFileDialog.vue` and its tabs) and the `en.json` values behind them. 90 explanatory strings (about 1,870 words) inventoried with a verdict and new text each. Trim to the essential meaning; one home per repeated idea (exemption rules, throttle detail, masking enforcement, row threshold, unclassifiable statements). MCP tab stops rendering three texts shown elsewhere; one key (`mcp.tablesEnforceFail`) folds and is deleted. Labels, behaviour and test ids of rendered controls unchanged. Security caveats stay, compressed. NewConnectionDialog untouched. Edge-case detail stays in site `studio/database-mcp`.
+- Tests: no backend change, no flow test. Touched UI specs updated to the new phrases (connection-mcp-access, -expensive, -throttle, -timeout, -masked) plus verify-only specs and copy-wording, copy-coverage, consistency. `check-catalog --unused` clean. No visual baseline shows the edit dialog; new-connection visual rerun on Linux with Inter to confirm no diff.
+- Order: after P561 in table order. Concurrent with P560: shares only `en.json` (different keys).
+- Single implementer, no streams. No NEEDS USER DECISION items.
+- Plan: `plans/P562.md`.
+- Result: pending.
+
 ## Close
 
 1 code review round unless the user says otherwise. After the last phase: one full suite run with all failures fixed, review round, hand-written close per CLAUDE.md, PR. The table is open: add checklist items for each new phase.
@@ -179,3 +190,11 @@ Runs after the last phase and the full suite run, before the code review. Close 
 - [ ] Only one row looks selected when the cursor moves between committed and uncommitted files.
 - [ ] `rg -n "revealFile" packages apps/kira-space/frontend` shows the interface, git-ui implementation and `AdeReviewFiles.vue` caller.
 - [ ] Review and git visual baselines unchanged on Linux with Inter (or re-recorded with a stated reason); ARCHITECTURE notes the follow.
+
+### P562 Connection dialog copy check (mandatory)
+
+- [ ] Every key in `plans/P562.md` inventory carries its planned text (or a minimal C-rule reword); `check-catalog --unused` clean; `rg -n "tablesEnforceFail" apps packages` empty.
+- [ ] MCP tab no longer renders the throttle description, masking enforcement or Settings row-threshold text; each still renders in its one home (Advanced, Privacy, Settings).
+- [ ] Exemption rules appear only in the MCP exemption note; no per-control "approve it in a dialog" text left.
+- [ ] Touched connection UI specs pass with the new phrases; no meaning left unasserted.
+- [ ] New-connection visual baseline unchanged on Linux with Inter (or re-recorded with a stated reason).
