@@ -106,7 +106,9 @@ test('Merge from the fix menu: path, push line, recorded only after a Stop', asy
   await page.getByRole('menuitem', { name: 'Merge into develop' }).click();
   await expect(page.locator(t('ade-dialog-title'))).toHaveText('Merge into develop');
   const message = page.locator(t('ade-dialog-message'));
-  await expect(message).toHaveValue(/~\/wt\/acme-customer-dashboard-web-frontend\/_develop/);
+  await expect(message).toHaveValue(
+    /~\/kira-space-wts\/acme-customer-dashboard-web-frontend\/_develop/,
+  );
   await expect(page.locator(t('ade-dialog-push-label'))).toHaveText('Also push develop');
   await page.locator(t('ade-dialog-push')).click();
   await expect(message).toHaveValue(/git push origin develop/);
