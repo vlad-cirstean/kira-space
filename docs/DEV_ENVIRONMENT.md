@@ -694,8 +694,8 @@ The sandbox (P287) enforces on macOS only. The sandbox session cannot run Seatbe
   of it. `--shard=N/4` splits the same cores, so it saves nothing on one host (CI runs 4 shards on 4 machines).
   `bun run test:ui:changed` runs only the app suites a change can affect (`ui_target_of` in `scripts/hook-scope.sh`:
   `packages/**`, config, `scripts/` and unknown paths run both; Go, docs and `*.md` run none;
-  `--dry-run` prints the choice; one-app change saves about 17 min). Space `ui` runs in no CI job, so a local
-  run is its only gate. Re-run failures with
+  `--dry-run` prints the choice; one-app change saves about 17 min). UI suites run in PR CI, not as a full local run.
+  Re-run failures with
   `playwright test --last-failed`; `--only-changed=<ref>` selects spec and support files only, since app code is a
   built bundle. Hooks run no UI test: pre-commit lints and typechecks only the staged files (full run when config,
   a lockfile, `scripts/` or a shared package changed), pre-push builds, lints and tests only changed Go packages.

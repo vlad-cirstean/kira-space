@@ -77,13 +77,17 @@ duplicated here; this file only points at them.
   end, with fixes landing as follow-up commits. Commits still land incrementally as work completes,
   for legible history — only *when* the expensive verification happens changes, not whether the
   result must be correct or commits stay granular.
-- **One full run of an expensive suite per chapter, not per phase.** Implementers run fast checks
-  (typecheck, lint, build) and only their own new or changed specs per phase. After the last
-  implementation phase, before the code review, run the full end-to-end/UI/Go suites once. The run
-  isn't done until every failure is fixed, committed and passing on rerun. After a fix, rerun only the failing specs and the specs that share its code. A timeout under load gets a
-  lone rerun of that spec first. Rerun the full suite a second time only when a fix touched shared
-  code (a package, a fixture, a config) that targeted reruns cannot cover; say so in the Result.
-- **Every chapter ends the same way, unasked:** last implementation phase, then the one full suite
+- **One full non-UI run per chapter, not per phase.** Implementers run fast checks (typecheck, lint,
+  build) and only their own new or changed specs per phase. After the last implementation phase,
+  before the code review, run every test except the UI suites once: Go, typecheck, lint, site and
+  package tests, flow tests. Not Playwright UI, visual or screenshots. The run isn't done until every
+  failure is fixed, committed and passing on rerun. Collect all failures from the full run first, fix
+  them all, then push once. After a fix, rerun only the failing tests and those sharing its code. A
+  timeout under load gets a lone rerun first. Rerun the full suite a second time only when a fix
+  touched shared code (a package, a fixture, a config) that targeted reruns cannot cover; say so in
+  the Result. UI suites (Playwright `ui`, `visual`, `ui-timing`) run in PR CI, not locally beyond the
+  implementer's own targeted specs.
+- **Every chapter ends the same way, unasked:** last implementation phase, then the one non-UI full
   run with its fixes committed, then 1 code review round (unless the spec row says more), then the
   close phase, then the PR. The user need not restate it.
 - **The loop per phase:** check for a plan, spawn an Opus subagent to write one if missing, spawn
@@ -181,7 +185,7 @@ duplicated here; this file only points at them.
   `Source: docs/<ch>/ at <commit>. N phases.` with the true row count, then one `### <ch> <id> (Done)`
   heading per `SPEC.md` row in table order, distilled from each row's Result. Fix links to the chapter
   by hand. Commit. Then `git rm -r docs/<ch>/` (and `docs/history-runs/` if it exists) and commit.
-  Push, then open the PR from `chapter/v<version>` to `main` (command in `docs/DEV_ENVIRONMENT.md`). It auto-merges once CI passes. Opening the PR is part of closing, unless changes are still pending (uncommitted, unpushed or unfinished work) — then report them and hold the PR. After opening it, subscribe to it (`subscribe_pr_activity`) and watch it: when a check fails, reproduce the failure, fix it on the chapter branch, rerun that check, push. Repeat until CI is green and the PR merges. Never skip, disable or quarantine a test to get green.
+  Push, then open the PR from `chapter/v<version>` to `main` (command in `docs/DEV_ENVIRONMENT.md`). It auto-merges once CI passes. Opening the PR is part of closing, unless changes are still pending (uncommitted, unpushed or unfinished work) — then report them and hold the PR. After opening it, subscribe to it (`subscribe_pr_activity`) and watch it: UI and visual failures in CI are expected. Wait for the whole CI run to finish, collect every failing check, reproduce and fix all of them on the chapter branch, rerun them, then push once; never push per failure. Repeat until CI is green and the PR merges. Never skip, disable or quarantine a test to get green.
   A chapter started from another chapter's branch rebases onto `main` before its PR opens. If the previous chapter's PR has not merged, even after trying to fix its CI, do not open the dependent PR. Continue with the next chapters, finish every other step (suite run, reviews, close, push), and report the PR as held.
   Between chapters no `docs/v*/` exists. Open the next with `docs/v<new>/SPEC.md`
   (intro: first `P` is highest plus one, branch `chapter/v<new>`) and `plans/`.
