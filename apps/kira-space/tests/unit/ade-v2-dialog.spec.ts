@@ -52,7 +52,7 @@ function ctxWith(sessions: Session[], repoName?: (id: string) => string): Dialog
   };
 }
 
-const SPACE_NOTE = 'Kira Space tools: task_info, declare_repos, request_branches, branch_status.';
+const SPACE_NOTE = 'Kira Space tools: task_info, declare_repos, request_branches.';
 const HANDOVER_LINE =
   "Call handover with notes for the next stage. Set finished true when this stage's work is done.";
 

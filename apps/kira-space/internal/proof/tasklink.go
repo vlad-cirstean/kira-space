@@ -4,7 +4,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 )
 
-// Sources of a task link: the agent called attach_proof, or the user picked the session.
+// Sources of a task link: the agent reported it as a proof artifact, or the user picked the session.
 const (
 	LinkSourceAgent = "agent"
 	LinkSourceUser  = "user"

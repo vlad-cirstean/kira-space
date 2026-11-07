@@ -13,11 +13,10 @@ import (
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-// Backend half of an agent stopping its task's git operation through list_operations and
-// cancel_operation; UI half: tests/ui/operations.spec.ts. Contract space-ops-agent-cancel.
+// Backend half of an agent stopping its task's git operation through the operations tool; UI half: tests/ui/operations.spec.ts. Contract space-ops-agent-cancel.
 
 func TestAgentCancelsTaskOperation(t *testing.T) {
-	listCall := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "list_operations"}
+	listCall := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "operations"}
 	f := newRunFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{listCall}, Name: "done"}},
 		agentStep("one", "")+agentStep("two", "    before: approval\n"))
 	log := f.app.W.Ops.Log
@@ -37,20 +36,20 @@ func TestAgentCancelsTaskOperation(t *testing.T) {
 	var listed struct {
 		Operations []agentmcp.OperationInfo `json:"operations"`
 	}
-	raw, err := os.ReadFile(filepath.Join(f.app.FakeDir, "mcp-list_operations-1.json"))
+	raw, err := os.ReadFile(filepath.Join(f.app.FakeDir, "mcp-operations-1.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := json.Unmarshal(raw, &listed); err != nil {
-		t.Fatalf("list_operations result %s: %v", raw, err)
+		t.Fatalf("operations result %s: %v", raw, err)
 	}
 	if len(listed.Operations) != 1 || listed.Operations[0].OpID != mine.ID() {
-		t.Fatalf("list_operations = %s, want only the task's git op %s", raw, mine.ID())
+		t.Fatalf("operations = %s, want only the task's git op %s", raw, mine.ID())
 	}
 
 	// Step two cancels the listed id, then an id of another task's op and of the session op.
 	cancel := func(id string) fakeagent.MCPCall {
-		return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "cancel_operation", Tolerate: true, Args: map[string]any{"opId": id}}
+		return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "operations", Tolerate: true, Args: map[string]any{"cancel": id}}
 	}
 	claude(f.app, map[string][]fakeagent.Action{"*": {{Name: "done"}, {
 		MCP:  []fakeagent.MCPCall{cancel(mine.ID()), cancel(other.ID()), cancel(session.ID())},

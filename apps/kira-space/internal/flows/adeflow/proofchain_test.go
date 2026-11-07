@@ -27,7 +27,7 @@ const proofChainScenario = "ade-proof-chain"
 var proofChainMask = flowharness.Mask("id", "proofId", "taskId", "sessionId", "createdAt", "updatedAt", "closedAt", "linkedAt")
 
 func attachCall(name string) fakeagent.MCPCall {
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "attach_proof", Tolerate: true, Args: map[string]any{"name": name}}
+	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "report_artifacts", Tolerate: true, Args: map[string]any{"artifacts": []map[string]any{{"kind": "proof", "ref": name}}}}
 }
 
 // closedProof builds a closed proof session of the given steps; a "diagram" step is a flowchart, any other a one-row table.
