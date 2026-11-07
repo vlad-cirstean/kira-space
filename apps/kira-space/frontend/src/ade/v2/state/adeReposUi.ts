@@ -45,8 +45,13 @@ export const useAdeReposUiStore = defineStore('adeReposUi', () => {
   async function open(opts: { repoId?: string; tab?: ReposTab } = {}): Promise<void> {
     useModeStore().setMode('ade');
     if (!(await switchAdeView('repos'))) return;
+    // switchAdeView skips the guard when the page is already open, so guard a change of file here.
+    const nextTab = opts.tab ?? 'repos';
+    const changes =
+      (opts.repoId !== undefined && opts.repoId !== selectedRepoId.value) || nextTab !== tab.value;
+    if (changes && !(await leave())) return;
     if (opts.repoId) selectedRepoId.value = opts.repoId;
-    tab.value = opts.tab ?? 'repos';
+    tab.value = nextTab;
   }
 
   return { tab, selectedRepoId, dirty, leave, setTab, pickRepo, open };
