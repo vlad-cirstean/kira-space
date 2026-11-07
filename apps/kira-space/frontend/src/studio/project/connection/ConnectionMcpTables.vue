@@ -202,7 +202,6 @@ function toggleShown(on: boolean): void {
       </template>
       <FieldDescription class="w-full" data-testid="connection-mcp-tables-enforce">
         {{ t('studio.project.connectionDialog.mcp.tablesEnforceParse.body') }}
-        {{ t('studio.project.connectionDialog.mcp.tablesEnforceFail.body') }}
         {{ t('studio.project.connectionDialog.mcp.tablesEnforceScope.body') }}
         {{ t('studio.project.connectionDialog.mcp.tablesEnforceExempt.body') }}
       </FieldDescription>
