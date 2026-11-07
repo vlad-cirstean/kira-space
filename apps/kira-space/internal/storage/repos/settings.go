@@ -62,6 +62,7 @@ func (r *SettingsRepo) GetAll() (model.Settings, error) {
 	readTracking(stored, &result.Tracking)
 	appsettings.Leaf(stored, "memory.models", &result.Memory.Models)
 	result.Memory.Models = model.CleanMemoryModels(r.agents(), result.Memory.Models)
+	appsettings.Leaf(stored, "experimental.memory", &result.Experimental.Memory)
 	appsettings.LeafValid(stored, "advanced.gitLogLevel", &result.Advanced.GitLogLevel, appsettings.ValidLogLevel)
 	appsettings.Leaf(stored, "advanced.notifyPrompts", &result.Advanced.NotifyPrompts)
 	appsettings.LeafValid(stored, "advanced.opLogRetentionDays", &result.Advanced.OpLogRetentionDays, appsettings.InRange(1, 365))
@@ -163,6 +164,23 @@ func upsertMemory(tx *sql.Tx, m *model.MemoryPatch) error {
 		return nil
 	}
 	return appsettings.UpsertOptional(tx, "memory.models", m.Models)
+}
+
+func upsertExperimental(tx *sql.Tx, e *model.ExperimentalPatch) error {
+	if e == nil {
+		return nil
+	}
+	return appsettings.UpsertOptional(tx, "experimental.memory", e.Memory)
+}
+
+// LeafStored reports whether key has a stored row, as opposed to reading its default.
+func (r *SettingsRepo) LeafStored(key string) (bool, error) {
+	stored, err := sqlb.QueryLeaves(r.DB, r.Dialect, r.selectAll, settingsLeaves)
+	if err != nil {
+		return false, err
+	}
+	_, ok := stored[key]
+	return ok, nil
 }
 
 // readCapture reads the capture.* leaves on top of model.DefaultCaptureSettings().
@@ -356,6 +374,9 @@ func (r *SettingsRepo) Set(patch model.SettingsPatch) (model.Settings, error) {
 			return err
 		}
 		if err := upsertMemory(tx, patch.Memory); err != nil {
+			return err
+		}
+		if err := upsertExperimental(tx, patch.Experimental); err != nil {
 			return err
 		}
 		if err := upsertTracking(tx, patch.Tracking); err != nil {

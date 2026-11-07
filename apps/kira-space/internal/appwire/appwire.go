@@ -65,6 +65,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
 	"github.com/kirathecat/kira-studio/internal/keepawake"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
+	"github.com/kirathecat/kira-studio/internal/memory"
 	"github.com/kirathecat/kira-studio/internal/memory/embed"
 	"github.com/kirathecat/kira-studio/internal/metrics"
 	"github.com/kirathecat/kira-studio/internal/prompts"
@@ -512,6 +513,9 @@ func Build(opts Options) (*Wired, error) {
 	w.Settings.OnChanged = func(m model.Settings) {
 		bridge.KeepAwakeRecompute(w.KeepAwake)
 		bridge.CaptureApply(w.Capture, m.Capture)
+	}
+	if err := seedExperimentalMemory(repositories.Settings, memory.DefaultPath()); err != nil {
+		slog.Warn("seed experimental.memory", "scope", "startup", "err", err)
 	}
 	// memory.db opens on the Memory module's first call.
 	embedSpec := embed.Default

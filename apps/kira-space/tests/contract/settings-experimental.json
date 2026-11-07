@@ -1,0 +1,13 @@
+{
+  "SettingsService.GetAll#experimental-default": {
+    "memory": false
+  },
+  "SettingsService.GetAll#experimental-on": {
+    "memory": true
+  },
+  "SettingsService.Set#experimental-memory": {
+    "experimental": {
+      "memory": true
+    }
+  }
+}
