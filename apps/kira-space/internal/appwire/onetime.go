@@ -21,7 +21,7 @@ import (
 // spawns the agent CLI; a nil legacyMCP skips it. The next chapter deletes this file and everything it calls.
 func RunOneTimeMoves(db *sql.DB, home string, cipher *secrets.Cipher, legacyMCP harness.MCPRemover) {
 	if legacyMCP != nil {
-		go removeLegacyMCP(legacyMCP)
+		go removeLegacyMCP(legacyMCP, home)
 	}
 	if err := agentcfg.MoveSecretsFile(db, home); err != nil {
 		slog.Warn("move agent secrets into kira.db", "scope", "startup", "err", err)
@@ -36,8 +36,11 @@ func RunOneTimeMoves(db *sql.DB, home string, cipher *secrets.Cipher, legacyMCP 
 
 // RunWorktreeMove moves task worktrees from <userHome>/wt to <userHome>/kira-space-wts (P563). It runs
 // after the settings read and before Build, so no board, terminal or run holds a worktree yet. It
-// needs a working git: otherwise it logs and the next boot retries. Independent of RunOneTimeMoves.
+// needs a working git, looked up only when a move is pending: otherwise it logs and the next boot retries. Independent of RunOneTimeMoves.
 func RunWorktreeMove(db *sql.DB, userHome, configuredGitPath string, locator gitclient.Locator) {
+	if !wtmove.Needed(db, userHome) {
+		return
+	}
 	status := gitclient.NewDiscovery(locator, gitclient.NewExecRunner(), gitclient.NewRealClock()).Status(context.Background(), configuredGitPath)
 	if status.Kind != "ok" {
 		slog.Warn("worktree move skipped: git unavailable", "scope", "startup", "kind", status.Kind)
