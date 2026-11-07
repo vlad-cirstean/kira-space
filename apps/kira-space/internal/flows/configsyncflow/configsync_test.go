@@ -200,7 +200,8 @@ func TestConfigSync(t *testing.T) {
 	}
 
 	// Gate: a literal credential is blocked and never offered.
-	repo.Commit("leak", map[string]string{"connections/leaky.yaml": "name: leaky\ntoken: sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789\n"})
+	repo.Commit("leak", map[string]string{"connections/leaky.yaml": "name: leaky\ntoken: sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789\n",
+		"connections/plain.yaml": "name: plain\npassword: hunter2\n"})
 	if _, err := svc.FetchNow(bridge.ConfigSyncFetchArgs{WindowKey: "w1"}); err != nil {
 		t.Fatal(err)
 	}
@@ -213,11 +214,16 @@ func TestConfigSync(t *testing.T) {
 		t.Fatalf("blocked row = %+v", blocked)
 	}
 	app.Contract(t, scenario, "ConfigSyncService.Preview#blocked", blocked)
+	if r := row(t, pv, "connections/plain.yaml"); r.Kind != configsync.KindBlocked || strings.Contains(r.Problem, "hunter2") {
+		t.Fatalf("password row = %+v", r)
+	}
 	if _, err := svc.Apply(bridge.ConfigSyncApplyArgs{Token: pv.Token}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(configPath(app, "leaky.yaml")); !os.IsNotExist(err) {
-		t.Fatalf("blocked unit applied: %v", err)
+	for _, f := range []string{"leaky.yaml", "plain.yaml"} {
+		if _, err := os.Stat(configPath(app, f)); !os.IsNotExist(err) {
+			t.Fatalf("blocked unit %s applied: %v", f, err)
+		}
 	}
 
 	// Dismiss hides the toast for this commit.

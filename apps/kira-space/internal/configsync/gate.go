@@ -1,6 +1,7 @@
 package configsync
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -11,7 +12,8 @@ import (
 )
 
 // credentialProblem scans a shared YAML or JSON text for a literal credential: a value shaped like
-// one anywhere, or a value under an env or headers key whose name marks one. Text holding a
+// one anywhere (a URI with a password included), or a literal under a key that marks one: any
+// env or headers key by credshape.Name, a password or token style key anywhere. Text holding a
 // reference (${...}) passes. The message names the line and field, never the value; "" means clean.
 func credentialProblem(text []byte, md bool) string {
 	if md {
@@ -27,16 +29,37 @@ func credentialProblem(text []byte, md bool) string {
 	return ""
 }
 
-// entryCredentialProblem is credentialProblem for one entry value, which has no line.
-func entryCredentialProblem(v any) string {
+// entryCredentialProblem is credentialProblem for one entry value, which has no line. The entry id
+// carries the key name (env/<name>), so a bare scalar gets the same name rule as in a shared file.
+func entryCredentialProblem(id string, v any) string {
 	var n yaml.Node
 	if err := n.Encode(v); err != nil {
 		return ""
 	}
-	if _, path, hit := scanNode(&n, "", nil); hit {
+	parent, name, _ := strings.Cut(id, "/")
+	if (parent == "env" || parent == "headers") && isLiteralString(&n) && credshape.Name(name) {
+		return literalCredentialMessage(0, []string{parent, name})
+	}
+	if _, path, hit := scanNode(&n, "", []string{id}); hit {
 		return literalCredentialMessage(0, path)
 	}
 	return ""
+}
+
+// secretKeys are keys that hold a credential wherever they appear: a literal under one is blocked,
+// a reference passes. Narrower than credshape.Name, which flags names such as bearer_token_env_var
+// whose value is a variable name.
+var secretKeys = map[string]bool{"password": true, "passwd": true, "pwd": true, "secret": true, "token": true,
+	"api_key": true, "apikey": true, "access_token": true, "client_secret": true, "private_key": true}
+
+// uriPassword matches a URI with a password in its userinfo.
+var uriPassword = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9+.-]*://[^/\s:@]*:[^/\s@]+@`)
+
+func holdsSecretName(parentKey, k string) bool {
+	if parentKey == "env" || parentKey == "headers" {
+		return credshape.Name(k)
+	}
+	return secretKeys[strings.ReplaceAll(strings.ToLower(k), "-", "_")]
 }
 
 func literalCredentialMessage(line int, path []string) string {
@@ -62,7 +85,7 @@ func scanNode(n *yaml.Node, parentKey string, path []string) (line int, at []str
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			k, v := n.Content[i].Value, n.Content[i+1]
 			child := append(append([]string(nil), path...), k)
-			if (parentKey == "env" || parentKey == "headers") && isLiteralString(v) && credshape.Name(k) {
+			if isLiteralString(v) && holdsSecretName(parentKey, k) {
 				return v.Line, child, true
 			}
 			if l, p, h := scanNode(v, k, child); h {
@@ -76,7 +99,7 @@ func scanNode(n *yaml.Node, parentKey string, path []string) (line int, at []str
 			}
 		}
 	case yaml.ScalarNode:
-		if isLiteralString(n) && credshape.Value(n.Value) {
+		if isLiteralString(n) && (credshape.Value(n.Value) || uriPassword.MatchString(n.Value)) {
 			return n.Line, path, true
 		}
 	case yaml.AliasNode:

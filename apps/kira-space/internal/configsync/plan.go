@@ -386,7 +386,7 @@ func (s *Service) planEntryFile(fp *filePlan, deact map[string]bool) error {
 func gateEntries(theirs entrySet, base map[string]string) (adjusted map[string]string, blocked map[string]string) {
 	adjusted, blocked = map[string]string{}, map[string]string{}
 	for id, canon := range theirs.canon {
-		if msg := entryCredentialProblem(theirs.raw[id]); msg != "" {
+		if msg := entryCredentialProblem(id, theirs.raw[id]); msg != "" {
 			blocked[id] = msg
 			if b, ok := base[id]; ok {
 				adjusted[id] = b
