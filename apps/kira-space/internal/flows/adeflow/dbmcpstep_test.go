@@ -200,6 +200,9 @@ func TestDbMcpStep(t *testing.T) {
 	}
 	args1 := fakeFile(t, app, "api-1.args")
 	mustContain(t, "withdb argv", args1, dbAllowRule)
+	if !regexp.MustCompile(`(?m)^mcp__kira-studio$`).MatchString(args1) {
+		t.Fatalf("withdb argv = %q, want the user-scope kira-studio denied beside %s", args1, dbSrvName)
+	}
 	if names := mcpServerNames(t, fakeFile(t, app, "api-1.mcp0")); len(names) != 2 {
 		t.Fatalf("withdb servers = %v, want kira-space and %s", names, dbSrvName)
 	}
@@ -207,6 +210,7 @@ func TestDbMcpStep(t *testing.T) {
 	// 3. A step without db_mcp has only kira-space; calling the session server fails.
 	waitRun(t, app, task.ID, "plain", "failed")
 	mustLack(t, "plain argv", fakeFile(t, app, "api-2.args"), dbAllowRule)
+	mustLack(t, "plain argv", fakeFile(t, app, "api-2.args"), "mcp__kira-studio\n")
 	if names := mcpServerNames(t, fakeFile(t, app, "api-2.mcp0")); len(names) != 1 || names[0] != "kira-space" {
 		t.Fatalf("plain servers = %v, want only kira-space", names)
 	}

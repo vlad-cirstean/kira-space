@@ -39,6 +39,15 @@ func withDbMcpTool(def stepDef, tools []string) []string {
 	return append(slices.Clone(tools), dbmcp.SessionAllowTool)
 }
 
+// withoutExternalDb denies the user-scope kira-studio server in a headless db_mcp step: the session
+// server already carries the tools, audited, so the agent sees one set.
+func withoutExternalDb(def stepDef, denied []string) []string {
+	if !def.DbMcp || slices.Contains(denied, dbmcp.ExternalDenyTool) {
+		return denied
+	}
+	return append(slices.Clone(denied), dbmcp.ExternalDenyTool)
+}
+
 // joinRelease runs a, then b, once.
 func joinRelease(a, b func()) func() {
 	return func() { a(); b() }
