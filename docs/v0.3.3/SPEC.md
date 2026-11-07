@@ -6,7 +6,7 @@ Cleanup chapter. Branch `chapter/v0.3.3`, tag `v0.3.3`. First `P` is P564 (highe
 |---|---|---|
 | P564 | Drop v0.3.2 one-time migrations | Pending |
 | P565 | Repo rename: point URLs at kira-space (non-site) | Pending |
-| P566 | Presentation site: repo URLs, mobile zoom, drop carousel | Pending |
+| P566 | Presentation site: redesign, repo URLs, mobile zoom, drop carousel | Pending |
 | P567 | Remove memory module, keep presentation docs | Pending |
 | P568 | Close chapter | Pending |
 
@@ -25,9 +25,10 @@ Chapter end: non-UI full run, 1 code review round, close phase, PR.
 - Out of scope (user decision): Go module path `github.com/kirathecat/kira-studio`, code identifiers, "Kira Studio" prose, `docs/HISTORY.md`.
 - `.github/workflows/release.yml` cannot be pushed from a session: use `docs/pending-changes/` per `docs/DEV_ENVIRONMENT.md`.
 
-## P566 Presentation site: repo URLs, mobile zoom, drop carousel
+## P566 Presentation site: redesign, repo URLs, mobile zoom, drop carousel
 
 - Ask, one phase for all `site/` work:
+  - Redesign: modern, flashy look that grabs attention. Subtle animation (scroll reveals, hero motion, hover states); respect `prefers-reduced-motion`; no heavy runtime cost. Planner picks an open-source animation approach (CSS first, a small library only against a named need).
   - Repo URLs: `REPO_URL` (`astro.config.mjs`, `src/data/nav.ts`), install snippets, release links in `site/`.
   - Mobile: images zoom in too far on phones. Fix so images fit the viewport.
   - Build with Kira page: drop the carousel (`BuildCarousel.astro`); keep the rest of the page.
