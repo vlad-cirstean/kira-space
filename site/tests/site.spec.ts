@@ -5,7 +5,7 @@ import { BUILD_SECTIONS } from '../src/data/build';
 import type { ShotId } from '../src/data/shotCapture';
 import { expectShotImage } from './shotImage';
 
-const BASE = '/kira-studio/';
+const BASE = '/kira-space/';
 interface Route {
   readonly path: string;
   readonly name: string;
@@ -213,7 +213,7 @@ for (const path of ['', 'build/']) {
     await expect(first).toContainText('Beta, not production ready, not notarized.');
     await expect(first.locator('a')).toHaveAttribute(
       'href',
-      new RegExp(path === '' ? '^#install$' : '/kira-studio/#install$'),
+      new RegExp(path === '' ? '^#install$' : '/kira-space/#install$'),
     );
     await expect(first).not.toContainText(/keychain|folder|macos/i);
   });
@@ -241,5 +241,5 @@ test('the README opens with the beta notice and the install link', () => {
     .split('\n')
     .find((line) => line.trim() !== '');
   expect(first).toContain('Beta, not production ready, not notarized.');
-  expect(first).toContain('https://vlad-cirstean.github.io/kira-studio/#install');
+  expect(first).toContain('https://vlad-cirstean.github.io/kira-space/#install');
 });

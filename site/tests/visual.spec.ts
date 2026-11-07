@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const BASE = '/kira-studio/';
+const BASE = '/kira-space/';
 
 test.skip(process.platform !== 'linux', 'Linux-recorded baseline');
 

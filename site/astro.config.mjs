@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'astro/config';
 import { SHOT_CAPTURE, shotFiles } from './src/data/shotCapture.ts';
 
-const REPO_URL = 'https://github.com/vlad-cirstean/kira-studio';
+const REPO_URL = 'https://github.com/vlad-cirstean/kira-space';
 
 /** Copies each shot's main image to dist/shots/<id>.webp: an unhashed URL the README links to. */
 const publishShots = {
@@ -24,11 +24,11 @@ const publishShots = {
 
 export default defineConfig({
   site: 'https://vlad-cirstean.github.io',
-  base: '/kira-studio',
+  base: '/kira-space',
   trailingSlash: 'ignore',
   redirects: {
-    '/docs/shared/automations': '/kira-studio/docs/shared/runs/',
-    '/space': '/kira-studio/',
+    '/docs/shared/automations': '/kira-space/docs/shared/runs/',
+    '/space': '/kira-space/',
   },
   output: 'static',
   vite: { plugins: [tailwindcss()] },

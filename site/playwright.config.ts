@@ -11,7 +11,7 @@ export default defineConfig({
   use: { baseURL: ORIGIN },
   webServer: {
     command: 'bun run preview',
-    url: `${ORIGIN}/kira-studio/`,
+    url: `${ORIGIN}/kira-space/`,
     reuseExistingServer: !process.env.CI,
   },
   projects: [

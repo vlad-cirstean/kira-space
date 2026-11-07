@@ -3,7 +3,7 @@ import { BUILD_SECTIONS } from '../src/data/build';
 import { SHOT_CAPTURE, type ShotId } from '../src/data/shotCapture';
 import { expectShotImage } from './shotImage';
 
-const URL = '/kira-studio/build/';
+const URL = '/kira-space/build/';
 const ALL: readonly ShotId[] = BUILD_SECTIONS.flatMap((s) => s.shots);
 
 const dots = (page: Page) => page.locator('[data-carousel] [data-dot]');

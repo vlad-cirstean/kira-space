@@ -4,7 +4,7 @@ import { expect, type Page, test } from '@playwright/test';
 import type { ShotId } from '../src/data/shotCapture';
 import { expectShotImage } from './shotImage';
 
-const BASE = '/kira-studio/';
+const BASE = '/kira-space/';
 const DOCS_DIR = join(import.meta.dirname, '..', 'src', 'content', 'docs', 'docs');
 
 interface DocPage {
