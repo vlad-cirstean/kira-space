@@ -2,13 +2,13 @@
 # kira-install-contract: 1
 # scripts/install.sh installs or updates Kira Space on this Mac: it downloads the latest published
 # release's disk image, verifies it, and swaps it into /Applications, then opens the app.
-# Interactive: `curl -fsSL <raw-url> | sh -s -- --app=space` — the same command installs a fresh
+# Interactive: `curl -fsSL <raw-url> | sh` — the same command installs a fresh
 # copy or replaces an older one. Self-update: the app itself runs this script with
 # --wait-pid/--notify-fd, stages the new bundle, hands off over fd 3, then quits once it reads that
 # hand-off — the app never overwrites its own running binary. Log file, either mode:
 # ~/Library/Logs/<App name>/install.log.
 #
-# Usage: install.sh --app=space [--wait-pid=<pid> --notify-fd=<3-9>]
+# Usage: install.sh [--app=space] [--wait-pid=<pid> --notify-fd=<3-9>]
 # Exit codes: 0 installed and launched; 1 any failure; 2 usage; 130 interrupted.
 #
 # P119 §2: rewritten by hand, not generated — every requirement in the plan's own §2 is load-
@@ -30,7 +30,7 @@ main() {
   # Every global this script touches gets a default here, up front — set -u then never trips on a
   # variable a later step hasn't reached yet, including inside cleanup, which can run at any point
   # once its trap is armed.
-  APP_ARG="" WAIT_PID="" NOTIFY_FD="" LOG=""
+  APP_ARG="space" WAIT_PID="" NOTIFY_FD="" LOG=""
   APP_NAME="" BUNDLE_ID="" ASSET="" SLUG="" LOG_NAME=""
   WORK="" STAGE="" MNT=""
   MOUNTED=0
@@ -81,7 +81,7 @@ main() {
         open "/Applications/$APP_NAME.app" >/dev/null 2>&1 </dev/null || true
         ALERT_MSG="$FAIL_MSG Details: ~/Library/Logs/$LOG_NAME/install.log"
       else
-        ALERT_MSG="$FAIL_MSG Details: ~/Library/Logs/$LOG_NAME/install.log. To reinstall: curl -fsSL $RAW_BASE | sh -s -- --app=$APP_ARG"
+        ALERT_MSG="$FAIL_MSG Details: ~/Library/Logs/$LOG_NAME/install.log. To reinstall: curl -fsSL $RAW_BASE | sh"
       fi
       # argv-passed strings, never interpolated into the AppleScript source itself.
       osascript - "$APP_NAME couldn't update" "$ALERT_MSG" >/dev/null 2>&1 <<'APPLESCRIPT_EOF' || true
@@ -103,12 +103,13 @@ APPLESCRIPT_EOF
       --wait-pid=*) WAIT_PID="${ARG#--wait-pid=}" ;;
       --notify-fd=*) NOTIFY_FD="${ARG#--notify-fd=}" ;;
       *)
-        echo "usage: install.sh --app=space [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
+        echo "usage: install.sh [--app=space] [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
         exit 2
         ;;
     esac
   done
 
+  # Kira Space is the only app: no --app means space; any other --app value is rejected.
   case "$APP_ARG" in
     space)
       APP_NAME="Kira Space"
@@ -118,7 +119,7 @@ APPLESCRIPT_EOF
       LOG_NAME="Kira Space"
       ;;
     *)
-      echo "usage: install.sh --app=space [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
+      echo "usage: install.sh [--app=space] [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
       exit 2
       ;;
   esac
