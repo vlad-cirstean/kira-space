@@ -56,7 +56,7 @@ func TestSmartScriptSpace(t *testing.T) {
 	app.Contract(t, "smart", "CustomScriptsService.Create", rec)
 	app.Contract(t, "smart", "ScriptRunsService.Preview", pv, flowharness.Mask("hash"))
 	app.Contract(t, "smart", "args:ScriptRunsService.Start", scriptruns.StartArgs{RunArgs: args, Hash: pv.Hash}, flowharness.Mask("hash"))
-	if got := strings.Join(pv.Allowed, " "); strings.Contains(got, "mcp__kira-space") || !strings.Contains(got, "mcp__fake__echo") {
+	if got := strings.Join(pv.Allowed, " "); strings.Contains(got, "mcp__kira-space__task_info") || !strings.Contains(got, "mcp__fake__echo") {
 		t.Fatalf("allowed = %q, want the fake tool and no Space tools without a task", got)
 	}
 	started, err := app.W.ScriptRuns.Start(scriptruns.StartArgs{RunArgs: args, Hash: pv.Hash})
