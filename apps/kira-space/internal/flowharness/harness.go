@@ -440,7 +440,7 @@ func (a *App) build() {
 	if !a.opts.noSecretStore && !cipher.Status().Available {
 		a.t.Fatalf("cipher unavailable: %+v", cipher.Status())
 	}
-	appwire.RunOneTimeMoves(db.DB, a.SpaceHome, cipher)
+	appwire.RunOneTimeMoves(db.DB, a.SpaceHome, cipher, a.McpInstaller)
 	r, err := repos.New(db.DB)
 	if err != nil {
 		a.t.Fatalf("repos.New: %v", err)
