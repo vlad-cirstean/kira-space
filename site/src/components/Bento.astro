@@ -1,43 +1,25 @@
 ---
-import { APP, type Feature } from '../data/content';
+import { APP } from '../data/content';
 import { href } from '../data/nav';
-import AgentsMini from './bento/AgentsMini.astro';
-import ApiMini from './bento/ApiMini.astro';
-import DockerMini from './bento/DockerMini.astro';
-import EnginesMini from './bento/EnginesMini.astro';
-import GraphMini from './bento/GraphMini.astro';
-import KeychainMini from './bento/KeychainMini.astro';
-import McpMini from './bento/McpMini.astro';
-import PhoneMini from './bento/PhoneMini.astro';
-import RunsMini from './bento/RunsMini.astro';
-import SqlMini from './bento/SqlMini.astro';
-import WorkspaceMini from './bento/WorkspaceMini.astro';
+import type { ResolvedWindowShot } from '../lib/shots';
+import Icon from './Icon.astro';
+import ShotPicture from './ShotPicture.astro';
 import Sparkle from './Sparkle.astro';
 
-const visuals = {
-  agents: AgentsMini,
-  graph: GraphMini,
-  engines: EnginesMini,
-  sql: SqlMini,
-  api: ApiMini,
-  workspace: WorkspaceMini,
-  runs: RunsMini,
-  phone: PhoneMini,
-  docker: DockerMini,
-  mcp: McpMini,
-  keychain: KeychainMini,
-} as const;
-type Key = keyof typeof visuals;
-const order = Object.keys(visuals) as Key[];
-const tiles = [...APP.features].sort(
-  (a, b) => order.indexOf(a.visual as Key) - order.indexOf(b.visual as Key),
-);
-const spans: Record<Feature['span'], string> = {
-  hero: 'md:col-span-2 lg:col-span-7 lg:row-span-2',
-  wide: 'lg:col-span-6',
-  half: 'lg:col-span-5',
-  third: 'lg:col-span-4',
-};
+interface Props {
+  shots: readonly ResolvedWindowShot[];
+}
+
+const { shots } = Astro.props;
+const shotTiles = APP.features.flatMap((f) => {
+  const shot = shots.find((s) => s.id === f.shot);
+  return f.shot && shot ? [{ ...f, resolved: shot }] : [];
+});
+const textTiles = APP.features.filter((f) => !f.shot);
+const link =
+  "relative inline-flex min-h-11 items-center text-xl font-semibold tracking-tight text-fg after:absolute after:-inset-5 after:content-[''] focus-visible:outline-none";
+const tile =
+  'glass group relative isolate flex flex-col overflow-hidden rounded-3xl focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent motion-safe:transition-[transform,box-shadow] motion-safe:duration-300 motion-safe:hover:-translate-y-1 hover:shadow-[0_12px_30px_-18px_var(--tile)]';
 ---
 
 <section class="relative isolate mx-auto max-w-6xl px-4 py-24 lg:py-32">
@@ -45,7 +27,7 @@ const spans: Record<Feature['span'], string> = {
     aria-hidden="true"
     class="pointer-events-none absolute left-1/2 top-0 -z-10 h-[60rem] w-screen -translate-x-1/2 bg-[radial-gradient(ellipse_50%_30%_at_20%_40%,color-mix(in_srgb,var(--brand-sky)_16%,transparent),transparent),radial-gradient(ellipse_45%_30%_at_85%_60%,color-mix(in_srgb,var(--kira-status-pink)_12%,transparent),transparent)]"
   ></div>
-  <div class="reveal mx-auto max-w-3xl text-center">
+  <div class="mx-auto max-w-3xl text-center">
     <span
       class="inline-flex items-center gap-2 rounded-full bg-brand-sky/10 px-3 py-1 text-sm font-semibold uppercase tracking-[0.14em] text-brand-glow ring-1 ring-brand-sky/30"
     >
@@ -57,47 +39,46 @@ const spans: Record<Feature['span'], string> = {
       <span class="gradient-text block pb-1">More shipping.</span>
     </h2>
   </div>
-  <ul
-    class="mt-14 grid gap-4 md:grid-cols-2 lg:auto-rows-[minmax(17rem,auto)] lg:grid-cols-12 lg:gap-5"
-  >
-    {tiles.map((f, i) => {
-      const Visual = visuals[f.visual as Key];
-      return (
-        <li
-          style={`--tile:var(--kira-status-${f.color});--glass:var(--kira-status-${f.color});--i:${i % 3}`}
-          class={`reveal glass group relative isolate flex flex-col overflow-hidden rounded-3xl p-5 sm:p-6 motion-safe:transition-[transform,box-shadow] motion-safe:duration-300 motion-safe:hover:-translate-y-1 hover:shadow-[0_24px_60px_-20px_var(--tile)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent ${spans[f.span]}`}
-        >
+  <ul class="mt-14 grid gap-5 md:grid-cols-2">
+    {shotTiles.map((f) => (
+      <li
+        style={`--tile:var(--kira-status-${f.color});--glass:var(--kira-status-${f.color})`}
+        class={`${tile} p-4 sm:p-5`}
+      >
+        <ShotPicture
+          shot={f.resolved}
+          sizes="(min-width: 1152px) 560px, (min-width: 768px) 50vw, 100vw"
+        />
+        <h3 class="mt-3">
+          <a href={href(f.href)} class={link}>
+            {f.title}
+          </a>
+        </h3>
+        <p class="mt-1 text-base text-muted">{f.line}</p>
+      </li>
+    ))}
+  </ul>
+  <ul class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    {textTiles.map((f) => (
+      <li
+        style={`--tile:var(--kira-status-${f.color});--glass:var(--kira-status-${f.color})`}
+        class={`${tile} p-5`}
+      >
+        {f.icon && (
           <span
             aria-hidden="true"
-            class="pointer-events-none absolute -right-16 -top-20 -z-10 size-80 rounded-full bg-[radial-gradient(closest-side,var(--tile),transparent)] opacity-40 motion-safe:transition-opacity motion-safe:duration-500 group-hover:opacity-45"
-          ></span>
-          <span
-            aria-hidden="true"
-            class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-1/2 bg-linear-to-b from-(--tile)/25 to-transparent"
-          ></span>
-          <div
-            aria-hidden="true"
-            class:list={[
-              'relative min-h-52 flex-1 motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:-translate-y-1',
-              f.span === 'hero' && 'min-h-72',
-            ]}
+            class="flex size-11 items-center justify-center rounded-full bg-(--tile)/15 text-(--tile) ring-1 ring-(--tile)/30"
           >
-            <Visual />
-          </div>
-          <h3 class="relative mt-5 text-xl font-semibold tracking-tight text-fg lg:text-2xl">
-            <a
-              href={f.href ? href(f.href) : undefined}
-              class="inline-flex min-h-11 items-center gap-2 after:absolute after:-inset-5 after:content-[''] focus-visible:outline-none sm:after:-inset-6"
-            >
-              {f.title}
-              <span class="text-(--tile) motion-safe:transition-transform motion-safe:group-hover:translate-x-1">
-                →
-              </span>
-            </a>
-          </h3>
-          <p class="relative mt-1 text-base text-muted">{f.line}</p>
-        </li>
-      );
-    })}
+            <Icon name={f.icon} class="size-6" />
+          </span>
+        )}
+        <h3 class="mt-3">
+          <a href={href(f.href)} class={link}>
+            {f.title}
+          </a>
+        </h3>
+        <p class="mt-1 text-base text-muted">{f.line}</p>
+      </li>
+    ))}
   </ul>
 </section>

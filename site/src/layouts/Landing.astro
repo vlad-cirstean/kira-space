@@ -26,13 +26,9 @@ const hero = windowShot(content.hero);
 <Base title={content.pageTitle} description={content.description} image={hero.social}>
   <Header />
   <main data-app="space" class="relative isolate overflow-hidden">
-    <Hero
-      front={hero}
-      left={windowShot('space-git-graph')}
-      right={windowShot('studio-sql-console')}
-    />
+    <Hero front={hero} />
     <EngineMarquee />
-    <Bento />
+    <Bento shots={content.features.flatMap((f) => (f.shot ? [windowShot(f.shot)] : []))} />
     <Story shots={STORY.map((c) => windowShot(c.shot))} />
     <BuildBand />
     <Install app={content} />

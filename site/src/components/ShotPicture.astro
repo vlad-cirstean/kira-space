@@ -6,8 +6,7 @@ interface Props {
   eager?: boolean;
   class?: string;
   sizes?: string;
-  decorative?: boolean;
-  lowPriority?: boolean;
+  priority?: boolean;
 }
 
 const {
@@ -15,21 +14,20 @@ const {
   eager = false,
   class: className,
   sizes = '(min-width: 1024px) 1024px, 100vw',
-  decorative = false,
-  lowPriority = false,
+  priority = false,
 } = Astro.props;
 ---
 
 <img
   src={shot.framed}
-  srcset={`${shot.framedSmall} 1136w, ${shot.framed} ${shot.framedWidth}w`}
+  srcset={`${shot.framedThumb} 800w, ${shot.framedSmall} 1136w, ${shot.framed} ${shot.framedWidth}w`}
   sizes={sizes}
-  alt={decorative ? '' : shot.alt}
+  alt={shot.alt}
   data-shot={shot.id}
   width={shot.framedWidth}
   height={shot.framedHeight}
   loading={eager ? 'eager' : 'lazy'}
-  fetchpriority={lowPriority ? 'low' : undefined}
+  fetchpriority={priority ? 'high' : undefined}
   decoding="async"
   class:list={['h-auto w-full', className]}
 >

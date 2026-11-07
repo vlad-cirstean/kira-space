@@ -5,17 +5,15 @@ import { APP, HERO, SITE } from '../data/content';
 import { href, REPO_URL } from '../data/nav';
 import type { ResolvedWindowShot } from '../lib/shots';
 import HeroBackdrop from './HeroBackdrop.astro';
-import HeroStage from './HeroStage.astro';
 import Icon from './Icon.astro';
+import ShotPicture from './ShotPicture.astro';
 import Sparkle from './Sparkle.astro';
 
 interface Props {
   front: ResolvedWindowShot;
-  left: ResolvedWindowShot;
-  right: ResolvedWindowShot;
 }
 
-const { front, left, right } = Astro.props;
+const { front } = Astro.props;
 const button =
   'group relative flex min-h-12 items-center gap-2 overflow-hidden rounded-xl px-6 text-base font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:transition-[transform,box-shadow] motion-safe:hover:-translate-y-0.5';
 const primary = `${button} bg-linear-to-b from-brand-sky to-brand-deep text-white shadow-[0_10px_34px_-6px_color-mix(in_srgb,var(--brand-sky)_75%,transparent),inset_0_1px_0_rgb(255_255_255/0.35)] hover:shadow-[0_14px_44px_-6px_color-mix(in_srgb,var(--brand-sky)_95%,transparent),inset_0_1px_0_rgb(255_255_255/0.35)]`;
@@ -76,5 +74,17 @@ const secondary = `${button} bg-white/5 text-fg ring-1 ring-white/12 hover:bg-wh
       <span class="truncate">{HERO.command}</span>
     </a>
   </div>
-  <HeroStage front={front} left={left} right={right} />
+  <div class="relative mx-auto mt-14 max-w-6xl px-4 pb-14 sm:mt-20 sm:pb-20">
+    <div
+      aria-hidden="true"
+      class="absolute inset-x-[4%] -inset-y-[6%] -z-10 bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--brand-sky)_30%,transparent),transparent)]"
+    ></div>
+    <a
+      href={front.framed}
+      aria-label={`Open full size: ${front.title}`}
+      class="mx-auto block w-[96%] max-w-[62rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      <ShotPicture shot={front} eager priority sizes="(min-width: 1024px) 990px, 96vw" />
+    </a>
+  </div>
 </section>
