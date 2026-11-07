@@ -147,12 +147,28 @@ func (e *SchemaTooNewError) Error() string {
 // internal/startupfail stays a leaf with no modernc.org/sqlite in its dependency graph).
 func (e *SchemaTooNewError) SchemaTooNew() (found, known int) { return e.Found, e.Known }
 
+// SchemaTooOldError is Migrate's refusal when the database on disk predates the baseline: the
+// first migration is a full-schema baseline, so a stored version between 0 and that baseline has
+// no step that can bring it forward. Found is the schema_version row's value; Baseline is the
+// first migration's version.
+type SchemaTooOldError struct{ Found, Baseline int }
+
+func (e *SchemaTooOldError) Error() string {
+	return fmt.Sprintf(
+		"sqlitex: database schema_version (%d) predates this build's baseline (%d) — "+
+			"open it with the release that wrote the baseline first", e.Found, e.Baseline,
+	)
+}
+
+// SchemaTooOld is the duck-typed counterpart of SchemaTooNew, for internal/startupfail.
+func (e *SchemaTooOldError) SchemaTooOld() (found, baseline int) { return e.Found, e.Baseline }
+
 // Migrate runs the forward-only schema_version runner against db: create schema_version if
 // missing, seed it at 0, refuse (SchemaTooNewError) if the stored version is newer than the
-// highest version in migrations, then apply every pending step in ascending order, one transaction
-// per step, recording the new version in the same transaction as the step's own SQL. Identical
-// shape to storage/migrate.go's own db.migrate(), generalized to take its migration list as a
-// parameter instead of importing one embedded package directly.
+// highest version in migrations, refuse (SchemaTooOldError) if it is above 0 and below the lowest
+// migration version (the baseline), then apply every pending step in ascending order, one
+// transaction per step, recording the new version in the same transaction as the step's own SQL.
+// A fresh database (version 0) applies the baseline first.
 func Migrate(db *sql.DB, migrations []Migration) error {
 	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)`); err != nil {
 		return fmt.Errorf("sqlitex: create schema_version: %w", err)
@@ -173,13 +189,20 @@ func Migrate(db *sql.DB, migrations []Migration) error {
 	}
 
 	var maxVersion int
-	for _, m := range migrations {
+	baseline := 0
+	for i, m := range migrations {
 		if m.Version > maxVersion {
 			maxVersion = m.Version
+		}
+		if i == 0 || m.Version < baseline {
+			baseline = m.Version
 		}
 	}
 	if current > maxVersion {
 		return &SchemaTooNewError{Found: current, Known: maxVersion}
+	}
+	if current > 0 && current < baseline {
+		return &SchemaTooOldError{Found: current, Baseline: baseline}
 	}
 
 	for _, m := range migrations {

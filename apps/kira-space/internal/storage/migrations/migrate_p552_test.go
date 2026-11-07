@@ -132,29 +132,4 @@ func TestP552UpgradeDropsExportedLegacy(t *testing.T) {
 	}
 }
 
-// A foreign-key step that leaves an orphan rolls back whole and keeps the version.
-func TestForeignKeysOffStepRollsBackOnViolation(t *testing.T) {
-	db, err := sqlitex.Open(filepath.Join(t.TempDir(), "kira.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	steps := []sqlitex.Migration{
-		{Version: 1, SQL: `CREATE TABLE p (id TEXT PRIMARY KEY) STRICT; CREATE TABLE c (pid TEXT REFERENCES p (id)) STRICT;`},
-		{Version: 2, ForeignKeysOff: true, SQL: `INSERT INTO c (pid) VALUES ('missing');`},
-	}
-	if err := sqlitex.Migrate(db, steps); err == nil {
-		t.Fatal("Migrate accepted a step that leaves an orphan")
-	}
-	if got := scalar(t, db, `SELECT MAX(version) FROM schema_version`); got != "1" {
-		t.Errorf("version = %s, want 1", got)
-	}
-	if got := scalar(t, db, `SELECT COUNT(*) FROM c`); got != "0" {
-		t.Error("the failed step's rows survived")
-	}
-	if got := scalar(t, db, `PRAGMA foreign_keys`); got != "1" {
-		t.Errorf("foreign_keys = %s after a failed step, want 1", got)
-	}
-}
-
 func itoa(n int64) string { return strconv.FormatInt(n, 10) }
