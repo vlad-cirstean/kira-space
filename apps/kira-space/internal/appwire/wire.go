@@ -2,9 +2,7 @@ package appwire
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -85,16 +83,6 @@ func RunArgvShim(args []string) (code int, ok bool) {
 func removeRetiredModels() {
 	if err := modelstore.RemoveRetired(memory.Home()); err != nil {
 		slog.Warn("remove retired models", "scope", "memory", "err", err)
-	}
-}
-
-// removeLegacyGitSocket deletes the git.sock and git.sock.lock a pre-P243 build left in the home.
-// Safe in Build: the single-instance lock means no other Space owns this home.
-func removeLegacyGitSocket() {
-	for _, name := range []string{"git.sock", "git.sock.lock"} {
-		if err := os.Remove(filepath.Join(config.KiraSpaceHome(), name)); err != nil && !errors.Is(err, fs.ErrNotExist) {
-			slog.Warn("remove legacy git socket", "scope", "startup", "file", name, "err", err)
-		}
 	}
 }
 

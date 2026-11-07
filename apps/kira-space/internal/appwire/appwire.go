@@ -519,7 +519,6 @@ func Build(opts Options) (*Wired, error) {
 		embedSpec = *opts.EmbedSpec
 	}
 	w.Memory = bridge.NewMemoryService(emitter, harness.ActiveInstaller(w.Agents), promptStore, embedSpec, w.Agents, memoryModelFrom(repositories.Settings))
-	removeLegacyGitSocket()
 	go removeRetiredModels()
 
 	proofSvc, dbMcpSessions := w.wireDbServices(dbm, opts)
