@@ -24,17 +24,14 @@ type scriptRunResult struct {
 	ExitCode   *int   `json:"exitCode"`
 	DurationMs int64  `json:"durationMs"`
 	LogLines   int    `json:"logLines"`
-}
-
-type scriptLogsResult struct {
-	Lines []struct {
+	Lines      []struct {
 		Seq    int    `json:"seq"`
 		Stream string `json:"stream"`
 		Text   string `json:"text"`
 	} `json:"lines"`
-	Matched        int  `json:"matched"`
-	Returned       int  `json:"returned"`
-	TruncatedBytes bool `json:"truncatedBytes"`
+	Matched   *int   `json:"matched"`
+	Truncated bool   `json:"truncated"`
+	Next      string `json:"next"`
 }
 
 func (f *fixture) createScript(t *testing.T, fields scripts.CustomScriptFields, secrets map[string]*string) scripts.CustomScript {
@@ -80,7 +77,7 @@ func decodeResult[T any](t *testing.T, res *mcp.CallToolResult) T {
 	return out
 }
 
-func lineTexts(r scriptLogsResult) []string {
+func lineTexts(r scriptRunResult) []string {
 	out := make([]string, 0, len(r.Lines))
 	for _, l := range r.Lines {
 		out = append(out, l.Text)
@@ -145,36 +142,38 @@ func TestDbMcpScriptRunAndLogs(t *testing.T) {
 	if run.State != "failed" || run.ExitCode == nil || *run.ExitCode != 3 || run.LogLines != 3 || run.OpID != "run:"+run.RunID {
 		t.Fatalf("run_script fails = %s", text(res))
 	}
-	for _, leak := range []string{"ERR", "lastError", "outputTail", "two"} {
-		if strings.Contains(text(res), leak) {
-			t.Fatalf("run result leaks %q: %s", leak, text(res))
-		}
+	if !equalStrings(lineTexts(run), []string{"one", "two", "ERR three"}) || run.Next != "" || strings.Contains(text(res), "lastError") {
+		t.Fatalf("run_script fails = %s, want the 3 output lines inline", text(res))
 	}
 	runs, err := f.app.W.ScriptRuns.List(scriptruns.ListArgs{})
 	if err != nil || len(runs) == 0 || runs[0].ID != run.RunID || runs[0].Trigger != scriptruns.TriggerMCP {
 		t.Fatalf("runs = %+v (%v), want the agent run first with trigger mcp", runs, err)
 	}
 
-	tail := decodeResult[scriptLogsResult](t, callTool(t, sess, "get_script_logs", map[string]any{"runId": run.RunID, "lines": 2}))
-	if !equalStrings(lineTexts(tail), []string{"two", "ERR three"}) || tail.Matched != 3 {
+	logs := func(args map[string]any) scriptRunResult {
+		args["runId"] = run.RunID
+		return decodeResult[scriptRunResult](t, callTool(t, sess, "get_script_run", args))
+	}
+	tail := logs(map[string]any{"lines": 2})
+	if !equalStrings(lineTexts(tail), []string{"two", "ERR three"}) || tail.LogLines != 3 || !tail.Truncated {
 		t.Fatalf("tail 2 = %+v, want two, ERR three of 3", tail)
 	}
-	head := decodeResult[scriptLogsResult](t, callTool(t, sess, "get_script_logs", map[string]any{"runId": run.RunID, "from": "head", "lines": 1}))
+	head := logs(map[string]any{"from": "head", "lines": 1})
 	if !equalStrings(lineTexts(head), []string{"one"}) {
 		t.Fatalf("head 1 = %+v, want one", head)
 	}
-	filtered := decodeResult[scriptLogsResult](t, callTool(t, sess, "get_script_logs", map[string]any{"runId": run.RunID, "contains": "ERR"}))
-	if !equalStrings(lineTexts(filtered), []string{"ERR three"}) || filtered.Matched != 1 {
-		t.Fatalf("contains ERR = %+v, want one matched line", filtered)
+	filtered := logs(map[string]any{"contains": "ERR"})
+	if !equalStrings(lineTexts(filtered), []string{"ERR three"}) || filtered.Matched == nil || *filtered.Matched != 1 || filtered.LogLines != 3 {
+		t.Fatalf("contains ERR = %+v, want one matched line of 3", filtered)
 	}
-	over, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "get_script_logs", Arguments: map[string]any{"runId": run.RunID, "lines": 501}})
+	over, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "get_script_run", Arguments: map[string]any{"runId": run.RunID, "lines": 501}})
 	if err == nil && !over.IsError {
 		t.Fatalf("lines 501 = %q, want the schema to refuse", text(over))
 	}
 
 	started := decodeResult[scriptRunResult](t, callTool(t, sess, "run_script", map[string]any{"scriptId": "slow", "waitSeconds": 1}))
-	if started.State != "running" {
-		t.Fatalf("run_script slow = %+v, want running after the wait", started)
+	if started.State != "running" || started.Next == "" || len(started.Lines) != 0 {
+		t.Fatalf("run_script slow = %+v, want running after the wait, no lines, a next hint", started)
 	}
 	entry := waitListed(t, sess, func(o listedOp) bool { return o.OpID == "run:"+started.RunID })
 	if entry.Source != "mcp" || entry.Type != "scriptRun" || entry.Name != "slow" {
@@ -314,8 +313,7 @@ func TestDbMcpScriptApproval(t *testing.T) {
 	if run.State != "done" {
 		t.Fatalf("approved run = %s, want done", text(res))
 	}
-	logs := callTool(t, sess, "get_script_logs", map[string]any{"runId": run.RunID})
-	if strings.Contains(text(logs), secret) || !strings.Contains(text(logs), "area=eu token="+scripts.SecretMask) {
-		t.Fatalf("logs = %s, want the masked token and never the value", text(logs))
+	if strings.Contains(text(res), secret) || !strings.Contains(text(res), "area=eu token="+scripts.SecretMask) {
+		t.Fatalf("run = %s, want the masked token and never the value", text(res))
 	}
 }

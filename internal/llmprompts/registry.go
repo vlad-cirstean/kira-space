@@ -1354,7 +1354,7 @@ var DbmcpInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructions.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructions.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructions.usedBy.body",
-	Default:    "Read and query the databases configured in this Kira Space app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` needs the database's `path` on engines with several databases. Before writing a query, inspect the schema of the tables it touches: `describe` on a database or schema path returns every relation's columns in one call. To read rows, use `browse_table` first: pick a table, columns, filters, order and up to 100 rows; masking always applies. Use `run_query` only when `browse_table` does not fit (joins, aggregates, expressions, several tables). `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `access` names the modes `run_query` may use and which need approval, and its `description`, when set, says what the connection is for — read both before calling `run_query`, and declare the least powerful `mode` that fits. Run `run_query` with `explain` before an expensive-looking query: `run_query` refuses a SELECT or WITH whose plan estimates at least the connection's `expensiveQuery` threshold of rows read. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to 10 minutes for the user. `operations` shows what is running; its `cancel` stops one, including your own long `run_query`. `run_script` runs a `list_scripts` script; read output with `get_script_logs`. `api_request` tools appear only when the user enabled them; they see variable names, never values, and a credential is refused for a host the user did not allow.",
+	Default:    "Read and query the databases configured in this Kira Space app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` needs the database's `path` on engines with several databases. Before writing a query, inspect the schema of the tables it touches: `describe` on a database or schema path returns every relation's columns in one call. To read rows, use `browse_table` first: pick a table, columns, filters, order and up to 100 rows; masking always applies. Use `run_query` only when `browse_table` does not fit (joins, aggregates, expressions, several tables). `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `access` names the modes `run_query` may use and which need approval, and its `description`, when set, says what the connection is for — read both before calling `run_query`, and declare the least powerful `mode` that fits. Run `run_query` with `explain` before an expensive-looking query: `run_query` refuses a SELECT or WITH whose plan estimates at least the connection's `expensiveQuery` threshold of rows read. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to 10 minutes for the user. `operations` shows what is running; its `cancel` stops one, including your own long `run_query`. `run_script` runs a `list_scripts` script and returns its output tail; `get_script_run` waits and filters output. `api_request` tools appear only when the user enabled them; they see variable names, never values, and a credential is refused for a host the user did not allow.",
 }, NoVars{})
 
 // DbmcpToolListConnections describes the list_connections tool.
@@ -1477,7 +1477,7 @@ var DbmcpToolListScripts = define(Entry{
 // DbmcpToolRunScript describes the run_script tool.
 var DbmcpToolRunScript = define(Entry{
 	ID: "dbmcp.tool.run_script", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "run_script",
-	Default: "Run a script exposed to MCP. Returns run id, state and exit code, never output; call get_script_logs. The user may be asked to approve. A run still going after waitSeconds keeps running; poll get_script_run.",
+	Default: "Run a script exposed to MCP. Returns run id, state, exit code and, once the run ends, the last 50 output lines. The user may be asked to approve. A run still going after waitSeconds keeps running; call get_script_run.",
 }, NoVars{})
 
 var (
@@ -1489,25 +1489,15 @@ var (
 // DbmcpToolGetScriptRun describes the get_script_run tool.
 var DbmcpToolGetScriptRun = define(Entry{
 	ID: "dbmcp.tool.get_script_run", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "get_script_run",
-	Default: "Read a script run's state, exit code and duration, optionally waiting for it to end. No output; call get_script_logs.",
+	Default: "Read a script run's state, exit code and duration, optionally waiting for it to end. Once ended, or with from, lines or contains, also returns stored output, at most 500 lines. Secret values are masked.",
 }, NoVars{})
 
 var (
 	_ = arg(DbmcpToolGetScriptRun.id, "runId", studioApp, NextCall, `Run id from run_script.`, NoVars{})
 	_ = arg(DbmcpToolGetScriptRun.id, "waitSeconds", studioApp, NextCall, `Seconds to wait for the run to end, 0-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 25, Max: 50})
-)
-
-// DbmcpToolGetScriptLogs describes the get_script_logs tool.
-var DbmcpToolGetScriptLogs = define(Entry{
-	ID: "dbmcp.tool.get_script_logs", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "get_script_logs",
-	Default: "Read a run's stored output: tail or head, at most 500 lines, optional substring filter. Secret values are masked.",
-}, NoVars{})
-
-var (
-	_ = arg(DbmcpToolGetScriptLogs.id, "runId", studioApp, NextCall, `Run id from run_script.`, NoVars{})
-	_ = arg(DbmcpToolGetScriptLogs.id, "from", studioApp, NextCall, `tail: last lines. head: first lines. Default tail.`, NoVars{})
-	_ = arg(DbmcpToolGetScriptLogs.id, "lines", studioApp, NextCall, `Lines to return, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 100, Max: 500})
-	_ = arg(DbmcpToolGetScriptLogs.id, "contains", studioApp, NextCall, `Keep lines containing this text (case-sensitive), before the line cap.`, NoVars{})
+	_ = arg(DbmcpToolGetScriptRun.id, "from", studioApp, NextCall, `tail: last lines. head: first lines. Default tail.`, NoVars{})
+	_ = arg(DbmcpToolGetScriptRun.id, "lines", studioApp, NextCall, `Output lines to return, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 50, Max: 500})
+	_ = arg(DbmcpToolGetScriptRun.id, "contains", studioApp, NextCall, `Keep lines containing this text (case-sensitive), before the line cap.`, NoVars{})
 )
 
 // DbmcpToolAPIListEnvironments describes the api_list_environments tool.

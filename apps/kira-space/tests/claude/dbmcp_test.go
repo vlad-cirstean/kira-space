@@ -176,8 +176,8 @@ func TestDbMcpBrowseThroughClaude(t *testing.T) {
 }
 
 // TestDbMcpScriptThroughClaude has the real claude run an allow-mode script over MCP, then read
-// its output with get_script_run: the run result itself carries no output. The filter is the
-// model's choice, so the flow test covers it.
+// the output from the run result itself. The get_script_run filter is the model's choice, so the
+// flow test covers it.
 func TestDbMcpScriptThroughClaude(t *testing.T) {
 	app := newRealApp(t)
 	_, url, helper := enableDbMcp(t, app)
@@ -199,23 +199,18 @@ func TestDbMcpScriptThroughClaude(t *testing.T) {
 	}
 
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"You must use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. Call list_scripts, then run_script for the script probe with waitSeconds 20, then call get_script_run for that run with contains set to marker. Reply with the matching line.",
+		"You must use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. Call list_scripts, then run_script for the script probe with waitSeconds 20. Reply with the output line containing marker.",
 		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_scripts,mcp__"+dbServer+"__run_script,mcp__"+dbServer+"__get_script_run",
+		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_scripts,mcp__"+dbServer+"__run_script",
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 	runs := toolUses(msgs, "mcp__"+dbServer+"__run_script")
-	logs := toolUses(msgs, "mcp__"+dbServer+"__get_script_run")
-	if len(runs) == 0 || len(logs) == 0 {
-		t.Fatalf("run_script uses %d, get_script_run uses %d, want both:\n%s", len(runs), len(logs), tail(out, 1500))
+	if len(runs) == 0 {
+		t.Fatalf("no run_script use:\n%s", tail(out, 1500))
 	}
 	runText, isErr, ok := toolResult(msgs, runs[0].ID)
-	if !ok || isErr || strings.Contains(runText, "beta-marker") {
-		t.Fatalf("run_script result missing, an error or holding output (ok=%v, text=%q)", ok, runText)
-	}
-	logText, isErr, ok := toolResult(msgs, logs[0].ID)
-	if !ok || isErr || !strings.Contains(logText, "beta-marker") {
-		t.Fatalf("get_script_run result = %q (ok=%v, err=%v), want the marker line", logText, ok, isErr)
+	if !ok || isErr || !strings.Contains(runText, "beta-marker") {
+		t.Fatalf("run_script result = %q (ok=%v, err=%v), want the marker line inline", runText, ok, isErr)
 	}
 }
 

@@ -88,10 +88,10 @@ type ScriptLog struct {
 const (
 	scriptWaitDefault  = 25
 	scriptWaitMax      = 50
-	scriptLogsDefault  = 100
+	scriptLogsDefault  = 50
 	scriptLogsMax      = 500
 	scriptLogsMaxBytes = 64 << 10
-	scriptNext         = "Call get_script_logs for output."
+	scriptNext         = "Still running: call get_script_run to wait."
 )
 
 type runScriptArgs struct {
@@ -103,13 +103,9 @@ type runScriptArgs struct {
 type getScriptRunArgs struct {
 	RunID       string `json:"runId"`
 	WaitSeconds *int   `json:"waitSeconds,omitempty"`
-}
-
-type getScriptLogsArgs struct {
-	RunID    string `json:"runId"`
-	From     string `json:"from,omitempty"`
-	Lines    *int   `json:"lines,omitempty"`
-	Contains string `json:"contains,omitempty"`
+	From        string `json:"from,omitempty"`
+	Lines       *int   `json:"lines,omitempty"`
+	Contains    string `json:"contains,omitempty"`
 }
 
 type scriptParamView struct {
@@ -130,16 +126,20 @@ type scriptView struct {
 	Params      []scriptParamView `json:"params"`
 }
 
-// scriptRunView never carries output: logs only come from get_script_logs.
+// scriptRunView carries output lines once the run has ended, or when get_script_run filters them.
 type scriptRunView struct {
-	RunID      string `json:"runId"`
-	OpID       string `json:"opId"`
-	State      string `json:"state"`
-	ExitCode   *int   `json:"exitCode,omitempty"`
-	Reason     string `json:"reason,omitempty"`
-	DurationMs int64  `json:"durationMs"`
-	LogLines   int    `json:"logLines"`
-	Next       string `json:"next"`
+	RunID      string          `json:"runId"`
+	OpID       string          `json:"opId"`
+	State      string          `json:"state"`
+	ExitCode   *int            `json:"exitCode,omitempty"`
+	Reason     string          `json:"reason,omitempty"`
+	DurationMs int64           `json:"durationMs"`
+	LogLines   int             `json:"logLines"`
+	Lines      []ScriptLogLine `json:"lines,omitempty"`
+	Matched    *int            `json:"matched,omitempty"`
+	Truncated  bool            `json:"truncated,omitempty"`
+	Note       string          `json:"note,omitempty"`
+	Next       string          `json:"next,omitempty"`
 }
 
 func noScriptResult(id string) (*mcp.CallToolResult, any, error) {
@@ -291,22 +291,23 @@ func (s *Server) runScript(ctx context.Context, req *mcp.CallToolRequest, a runS
 	if err != nil {
 		return toolError(err)
 	}
-	return s.waitedRun(ctx, runID, waitFor(a.WaitSeconds))
+	return s.waitedRun(ctx, runID, waitFor(a.WaitSeconds), nil)
 }
 
-// waitedRun waits up to d for the run to end and answers its state.
-func (s *Server) waitedRun(ctx context.Context, runID string, d time.Duration) (*mcp.CallToolResult, any, error) {
+// waitedRun waits up to d for the run to end and answers its state. A nil query returns the last
+// scriptLogsDefault lines once the run has ended; a query returns its lines at any state.
+func (s *Server) waitedRun(ctx context.Context, runID string, d time.Duration, q *ScriptLogQuery) (*mcp.CallToolResult, any, error) {
 	wctx, cancel := context.WithTimeout(ctx, d)
 	defer cancel()
 	run, err := s.cfg.Scripts.Wait(wctx, runID)
 	if err != nil {
 		return toolError(err)
 	}
-	return s.scriptRunResult(run)
+	return s.scriptRunResult(run, q)
 }
 
-func (s *Server) scriptRunResult(run ScriptRun) (*mcp.CallToolResult, any, error) {
-	v := scriptRunView{RunID: run.ID, OpID: scriptRunPrefix + run.ID, State: run.State, ExitCode: run.ExitCode, Reason: run.Reason, Next: scriptNext}
+func (s *Server) scriptRunResult(run ScriptRun, q *ScriptLogQuery) (*mcp.CallToolResult, any, error) {
+	v := scriptRunView{RunID: run.ID, OpID: scriptRunPrefix + run.ID, State: run.State, ExitCode: run.ExitCode, Reason: run.Reason}
 	if run.StartedAt != nil {
 		end := time.Now().UnixMilli()
 		if run.FinishedAt != nil {
@@ -314,12 +315,39 @@ func (s *Server) scriptRunResult(run ScriptRun) (*mcp.CallToolResult, any, error
 		}
 		v.DurationMs = max(end-*run.StartedAt, 0)
 	}
-	if run.Headless {
-		log, err := s.cfg.Scripts.Log(run.ID, ScriptLogQuery{Limit: 1})
+	ended := run.FinishedAt != nil
+	if !ended {
+		v.Next = scriptNext
+	}
+	switch {
+	case !run.Headless:
+		v.Note = "This run ran in a terminal tab; its output is not stored."
+	case ended || q != nil:
+		if q == nil {
+			q = &ScriptLogQuery{FromEnd: true, Limit: scriptLogsDefault}
+		}
+		log, err := s.cfg.Scripts.Log(run.ID, *q)
 		if err != nil {
 			return toolError(err)
 		}
-		v.LogLines = log.Matched
+		lines, cut := capLogBytes(log.Lines, q.FromEnd)
+		v.Lines, v.Truncated = lines, log.Truncated || cut || len(lines) < log.Matched
+		if q.Contains == "" {
+			v.LogLines = log.Matched
+		} else {
+			v.Matched = &log.Matched
+			total, err := s.cfg.Scripts.Log(run.ID, ScriptLogQuery{Limit: 1})
+			if err != nil {
+				return toolError(err)
+			}
+			v.LogLines = total.Matched
+		}
+	default:
+		total, err := s.cfg.Scripts.Log(run.ID, ScriptLogQuery{Limit: 1})
+		if err != nil {
+			return toolError(err)
+		}
+		v.LogLines = total.Matched
 	}
 	return jsonResult(v)
 }
@@ -332,7 +360,15 @@ func (s *Server) getScriptRun(ctx context.Context, _ *mcp.CallToolRequest, a get
 	if !found {
 		return noRunResult(a.RunID)
 	}
-	return s.waitedRun(ctx, run.ID, waitFor(a.WaitSeconds))
+	var q *ScriptLogQuery
+	if a.From != "" || a.Lines != nil || a.Contains != "" {
+		n := scriptLogsDefault
+		if a.Lines != nil {
+			n = min(max(*a.Lines, 1), scriptLogsMax)
+		}
+		q = &ScriptLogQuery{FromEnd: a.From != "head", Limit: n, Contains: a.Contains}
+	}
+	return s.waitedRun(ctx, run.ID, waitFor(a.WaitSeconds), q)
 }
 
 // capLogBytes drops lines from the far end until the text fits scriptLogsMaxBytes: the oldest for a
@@ -356,36 +392,6 @@ func capLogBytes(lines []ScriptLogLine, fromEnd bool) ([]ScriptLogLine, bool) {
 	return lines, dropped
 }
 
-func (s *Server) getScriptLogs(_ context.Context, _ *mcp.CallToolRequest, a getScriptLogsArgs) (*mcp.CallToolResult, any, error) {
-	run, found, err := s.exposedRun(a.RunID)
-	if err != nil {
-		return toolError(err)
-	}
-	if !found {
-		return noRunResult(a.RunID)
-	}
-	if !run.Headless {
-		return jsonResult(map[string]any{"runId": run.ID, "state": run.State, "lines": []ScriptLogLine{}, "note": "This run ran in a terminal tab; its output is not stored."})
-	}
-	n := scriptLogsDefault
-	if a.Lines != nil {
-		n = min(max(*a.Lines, 1), scriptLogsMax)
-	}
-	q := ScriptLogQuery{FromEnd: a.From != "head", Limit: n, Contains: a.Contains}
-	log, err := s.cfg.Scripts.Log(run.ID, q)
-	if err != nil {
-		return toolError(err)
-	}
-	lines, cut := capLogBytes(log.Lines, q.FromEnd)
-	if lines == nil {
-		lines = []ScriptLogLine{}
-	}
-	return jsonResult(map[string]any{
-		"runId": run.ID, "state": run.State, "lines": lines, "matched": log.Matched, "returned": len(lines),
-		"truncated": log.Truncated, "truncatedBytes": cut,
-	})
-}
-
 // boundWait sets the 0..scriptWaitMax bounds of a waitSeconds property.
 func boundWait(sch *jsonschema.Schema) *jsonschema.Schema {
 	p := sch.Properties["waitSeconds"]
@@ -393,7 +399,7 @@ func boundWait(sch *jsonschema.Schema) *jsonschema.Schema {
 	return sch
 }
 
-// addScriptTools registers list_scripts, run_script, get_script_run and get_script_logs.
+// addScriptTools registers list_scripts, run_script and get_script_run.
 func (s *Server) addScriptTools(srv *mcp.Server, src llmprompts.Source) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "list_scripts", Description: llmprompts.DbmcpToolListScripts.Text(src, llmprompts.NoVars{}),
@@ -404,18 +410,13 @@ func (s *Server) addScriptTools(srv *mcp.Server, src llmprompts.Source) {
 		Description: llmprompts.DbmcpToolRunScript.Text(src, llmprompts.NoVars{}),
 		InputSchema: boundWait(llmprompts.RequireNonEmpty(llmprompts.InputSchema[runScriptArgs](src, llmprompts.DbmcpToolRunScript.ID(), wait), "scriptId")),
 	}, withPanicRecovery(s, "run_script", s.runScript))
+	runSch := boundWait(llmprompts.RequireNonEmpty(llmprompts.InputSchema[getScriptRunArgs](src, llmprompts.DbmcpToolGetScriptRun.ID(),
+		map[string]any{"waitSeconds": wait["waitSeconds"], "lines": llmprompts.LimitVars{Default: scriptLogsDefault, Max: scriptLogsMax}}), "runId"))
+	runSch.Properties["from"].Enum = []any{"tail", "head"}
+	runSch.Properties["lines"].Minimum, runSch.Properties["lines"].Maximum = jsonschema.Ptr(1.0), jsonschema.Ptr(float64(scriptLogsMax))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_script_run",
 		Description: llmprompts.DbmcpToolGetScriptRun.Text(src, llmprompts.NoVars{}),
-		InputSchema: boundWait(llmprompts.RequireNonEmpty(llmprompts.InputSchema[getScriptRunArgs](src, llmprompts.DbmcpToolGetScriptRun.ID(), wait), "runId")),
+		InputSchema: runSch,
 	}, withPanicRecovery(s, "get_script_run", s.getScriptRun))
-	logs := llmprompts.RequireNonEmpty(llmprompts.InputSchema[getScriptLogsArgs](src, llmprompts.DbmcpToolGetScriptLogs.ID(),
-		map[string]any{"lines": llmprompts.LimitVars{Default: scriptLogsDefault, Max: scriptLogsMax}}), "runId")
-	logs.Properties["from"].Enum = []any{"tail", "head"}
-	logs.Properties["lines"].Minimum, logs.Properties["lines"].Maximum = jsonschema.Ptr(1.0), jsonschema.Ptr(float64(scriptLogsMax))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "get_script_logs",
-		Description: llmprompts.DbmcpToolGetScriptLogs.Text(src, llmprompts.NoVars{}),
-		InputSchema: logs,
-	}, withPanicRecovery(s, "get_script_logs", s.getScriptLogs))
 }
