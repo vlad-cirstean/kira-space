@@ -7,8 +7,7 @@ Cleanup chapter. Branch `chapter/v0.3.3`, tag `v0.3.3`. First `P` is P564 (highe
 | P564 | Drop v0.3.2 one-time migrations | Pending |
 | P565 | Repo rename: point URLs at kira-space (non-site) | Pending |
 | P566 | Presentation site: redesign, repo URLs, mobile zoom, drop carousel | Pending |
-| P567 | Remove memory module, keep presentation docs | Pending |
-| P568 | Close chapter | Pending |
+| P567 | Close chapter | Pending |
 
 Chapter end: non-UI full run, 1 code review round, close phase, PR.
 
@@ -32,14 +31,9 @@ Chapter end: non-UI full run, 1 code review round, close phase, PR.
   - Repo URLs: `REPO_URL` (`astro.config.mjs`, `src/data/nav.ts`), install snippets, release links in `site/`.
   - Mobile: images zoom in too far on phones. Fix so images fit the viewport.
   - Build with Kira page: drop the carousel (`BuildCarousel.astro`); keep the rest of the page.
-  - Memory: remove from site marketing pages (landing, features, build page, nav, images); keep only in site docs pages (`site/src/content/docs/**`). P567 does not touch `site/`.
+  - Memory: remove mentions from the site's first page (landing) only. Other pages, site docs and all app code stay as is.
 - Verify with Playwright at phone width.
 
-## P567 Remove memory module, keep presentation docs
-
-- Ask: remove the memory module from the app for now (backend, frontend, MCP, settings flag, tests, app docs). Keep it mentioned only in the presentation site docs.
-- Planner defines exact boundary (what counts as module vs shared code) and the git-revival note.
-
-## P568 Close chapter
+## P567 Close chapter
 
 - Fold chapter into `docs/HISTORY.md` by hand per `CLAUDE.md`.
