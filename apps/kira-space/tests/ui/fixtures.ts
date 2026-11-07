@@ -109,4 +109,11 @@ export const filesTest = createUiFixtures<KiraAppExtra, RelaunchOptions>({
   readySelector: '[data-testid="opened-files-window"]',
 });
 
+/** The config sync review window has no status bar: it is ready once its own root renders. */
+export const configSyncReviewTest = createUiFixtures<KiraAppExtra, RelaunchOptions>({
+  distDir: DIST_DIR,
+  installMocks,
+  readySelector: '[data-testid="config-sync-window"]',
+});
+
 export { expect } from '@playwright/test';

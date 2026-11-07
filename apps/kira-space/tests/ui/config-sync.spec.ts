@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { configSyncReviewTest, expect, test } from './fixtures';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -100,25 +100,26 @@ test('contract: the toast offers Review and Dismiss for the fetched commit', asy
   expect(calls(control, IPC.configSyncDismiss)[0]?.args).toEqual({ sha: SHA });
 });
 
-test('contract: the review window lists the units and pulls with the token', async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await relaunch({
-    control: [
-      ...withStatus({ showToast: false }),
-      { channel: IPC.configSyncIsReviewWindow, response: true },
-      { channel: IPC.configSyncPreview, response: preview },
-      { channel: IPC.configSyncApply, response: applied },
-    ],
-  });
-  await expect(page.locator(t('config-sync-window'))).toBeVisible();
-  await expect(page.locator(t('config-sync-toast'))).toHaveCount(0);
-  await expect(page.locator(t('config-sync-row-connections/team.yaml'))).toBeVisible();
-  await expect(page.locator(t('config-sync-row-kind-connections/team.yaml'))).toHaveText('Add');
-  await page.locator(t('config-sync-select-connections/team.yaml')).click();
-  await expect(page.locator(t('config-sync-diff'))).toBeVisible();
-  await page.locator(t('config-sync-pull')).click();
-  await expect.poll(() => calls(control, IPC.configSyncApply)).toHaveLength(1);
-  expect(calls(control, IPC.configSyncApply)[0]?.args).toEqual({ token: 'tok-1', choices: {} });
-  await expect.poll(() => calls(control, IPC.configSyncCloseReview)).toHaveLength(1);
-});
+configSyncReviewTest(
+  'contract: the review window lists the units and pulls with the token',
+  async ({ relaunch }) => {
+    const { window: page, control } = await relaunch({
+      control: [
+        ...withStatus({ showToast: false }),
+        { channel: IPC.configSyncIsReviewWindow, response: true },
+        { channel: IPC.configSyncPreview, response: preview },
+        { channel: IPC.configSyncApply, response: applied },
+      ],
+    });
+    await expect(page.locator(t('config-sync-window'))).toBeVisible();
+    await expect(page.locator(t('config-sync-toast'))).toHaveCount(0);
+    await expect(page.locator(t('config-sync-row-connections/team.yaml'))).toBeVisible();
+    await expect(page.locator(t('config-sync-row-kind-connections/team.yaml'))).toHaveText('Add');
+    await page.locator(t('config-sync-select-connections/team.yaml')).click();
+    await expect(page.locator(t('config-sync-diff'))).toBeVisible();
+    await page.locator(t('config-sync-pull')).click();
+    await expect.poll(() => calls(control, IPC.configSyncApply)).toHaveLength(1);
+    expect(calls(control, IPC.configSyncApply)[0]?.args).toEqual({ token: 'tok-1', choices: {} });
+    await expect.poll(() => calls(control, IPC.configSyncCloseReview)).toHaveLength(1);
+  },
+);
