@@ -1930,6 +1930,9 @@
         "internal": {
           "body": "Shared config failed. See the log."
         },
+        "interrupted": {
+          "body": "An earlier pull did not finish, so new pulls stop. Restart Kira Space to retry the recovery."
+        },
         "interval": {
           "invalid": {
             "body": "Enter 0 to turn fetching off, or 5 to 1440 minutes."

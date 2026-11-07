@@ -36,10 +36,13 @@ type ApplyResult struct {
 	Backup string `json:"backup"`
 }
 
-// Preview computes the plan for the fetched commit and opens a ten-minute, single-use session.
+// Preview computes the plan for the fetched commit and opens a ten-minute, single-use session. Each call has its own token; earlier ones stay valid.
 func (s *Service) Preview(ctx context.Context) (Preview, error) {
 	s.opMu.Lock()
 	defer s.opMu.Unlock()
+	if s.checkJournal() {
+		return Preview{}, errf(ErrConflict, "backend.space.configSync.interrupted.body")
+	}
 	s.mu.Lock()
 	_ = s.load()
 	set, fetched := s.set, s.st.Fetched
@@ -63,7 +66,7 @@ func (s *Service) Preview(ctx context.Context) (Preview, error) {
 		return Preview{}, internal(err)
 	}
 	s.mu.Lock()
-	s.sess = &session{token: token, expires: s.now().Add(previewTTL), plan: p}
+	s.addSession(&session{token: token, expires: s.now().Add(previewTTL), plan: p})
 	s.mu.Unlock()
 	rows := p.rows()
 	if rows == nil {
@@ -107,6 +110,9 @@ type pending struct {
 func (s *Service) Apply(ctx context.Context, token string, choices map[string]string) (ApplyResult, error) {
 	s.opMu.Lock()
 	defer s.opMu.Unlock()
+	if s.checkJournal() {
+		return ApplyResult{}, errf(ErrConflict, "backend.space.configSync.interrupted.body")
+	}
 	p, err := s.takeSession(token)
 	if err != nil {
 		return ApplyResult{}, err
@@ -121,6 +127,8 @@ func (s *Service) Apply(ctx context.Context, token string, choices map[string]st
 		}
 	}
 	if err := s.commit(p, jr, work, skipBase); err != nil {
+		s.checkJournal()
+		s.emit()
 		return ApplyResult{}, internal(err)
 	}
 	s.pruneBackups()
@@ -133,14 +141,34 @@ func (s *Service) Apply(ctx context.Context, token string, choices map[string]st
 	return out, nil
 }
 
+// addSession stores sess, dropping expired sessions and, past maxSessions, the oldest. mu is held.
+func (s *Service) addSession(sess *session) {
+	now := s.now()
+	for tok, o := range s.sessions {
+		if now.After(o.expires) {
+			delete(s.sessions, tok)
+		}
+	}
+	for len(s.sessions) >= maxSessions {
+		var oldest string
+		for tok, o := range s.sessions {
+			if oldest == "" || o.expires.Before(s.sessions[oldest].expires) {
+				oldest = tok
+			}
+		}
+		delete(s.sessions, oldest)
+	}
+	s.sessions[sess.token] = sess
+}
+
 // takeSession spends the preview session and checks nothing moved since it was made.
 func (s *Service) takeSession(token string) (*plan, error) {
 	s.mu.Lock()
-	sess := s.sess
-	s.sess = nil
+	sess := s.sessions[token]
+	delete(s.sessions, token)
 	fetched := s.st.Fetched
 	s.mu.Unlock()
-	if sess == nil || sess.token != token || s.now().After(sess.expires) {
+	if sess == nil || s.now().After(sess.expires) {
 		return nil, errf(ErrNotFound, "backend.space.configSync.previewExpired.body")
 	}
 	if sess.plan.commit != fetched {
@@ -330,7 +358,7 @@ func rollbackFiles(home string, jr journal) error {
 		if f.Existed {
 			data, err := os.ReadFile(filepath.Join(jr.Backup, f.Module, f.File))
 			if err == nil {
-				err = configfs.WriteAtomic(path, data, 0o644)
+				err = configfs.WriteAtomic(path, data, modeOf(path, filepath.Join(jr.Backup, f.Module, f.File)))
 			}
 			if err != nil && first == nil {
 				first = err

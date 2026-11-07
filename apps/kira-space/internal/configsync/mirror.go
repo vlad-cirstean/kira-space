@@ -29,6 +29,8 @@ const (
 	ProblemGit      = "git"
 	ProblemManifest = "manifest"
 	ProblemSettings = "settings"
+	// ProblemInterrupted marks an apply journal no recovery settled.
+	ProblemInterrupted = "interrupted"
 )
 
 // syncError is a failed fetch or tree read, classified for retry and display.

@@ -17,6 +17,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
 // ValidateFunc runs a module's own decoder over shared text; "" when valid, else a message that
@@ -111,6 +112,8 @@ const (
 	fetchTimeout = 2 * time.Minute
 	// promptTimeout leaves time for the user to answer a credential prompt.
 	promptTimeout   = 10 * time.Minute
+	// maxSessions bounds open previews; the oldest is dropped past it.
+	maxSessions = 8
 	backoffCap      = 60 * time.Minute
 	defaultStartLag = time.Minute
 	keepBackups     = 10
@@ -139,7 +142,9 @@ type Service struct {
 	changes  int
 	counts   map[string]moduleCount
 	fetching bool
-	sess     *session
+	sessions map[string]*session
+	// interrupted is true while .sync/apply.json holds an apply no recovery settled.
+	interrupted bool
 
 	fetchMu sync.Mutex
 
@@ -164,7 +169,7 @@ func New(o Options) *Service {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Service{
-		o: o, ctx: ctx, cancel: cancel, counts: map[string]moduleCount{},
+		o: o, ctx: ctx, cancel: cancel, counts: map[string]moduleCount{}, sessions: map[string]*session{},
 		mirror: &mirror{dir: filepath.Join(syncDir(o.Home), mirrorDir), runner: o.Runner, gitPath: o.GitPath},
 	}
 }
@@ -193,6 +198,7 @@ func (s *Service) Start() {
 	_ = s.load()
 	configured := s.set.Repo != nil
 	s.mu.Unlock()
+	s.checkJournal()
 	if configured {
 		s.refreshLocked(s.ctx)
 	}
@@ -216,6 +222,9 @@ func (s *Service) Stop() {
 // statusLocked builds the status. mu is held.
 func (s *Service) statusLocked() Status {
 	st := Status{Problem: s.st.Problem, Fetching: s.fetching, Modules: []ModuleInfo{}}
+	if s.interrupted {
+		st.Problem = &Problem{Kind: ProblemInterrupted, Message: i18n.T("backend.space.configSync.interrupted.body", nil)}
+	}
 	if s.set.Repo == nil {
 		return st
 	}
@@ -303,6 +312,7 @@ func (s *Service) SetRepo(ctx context.Context, url, branch, windowKey string) (S
 	if !validBranch(branch) {
 		return Status{}, errf(ErrBadRequest, "backend.space.configSync.branch.invalid.body")
 	}
+	s.fetchMu.Lock()
 	s.opMu.Lock()
 	s.mu.Lock()
 	_ = s.load()
@@ -311,23 +321,28 @@ func (s *Service) SetRepo(ctx context.Context, url, branch, windowKey string) (S
 		if err := os.RemoveAll(syncDir(s.o.Home)); err != nil {
 			s.mu.Unlock()
 			s.opMu.Unlock()
+			s.fetchMu.Unlock()
 			return Status{}, internal(err)
 		}
 		s.set = Settings{Repo: &Repo{URL: url, Branch: branch}}
-		s.st, s.changes, s.counts, s.sess = State{}, 0, map[string]moduleCount{}, nil
+		s.st, s.changes, s.counts, s.sessions = State{}, 0, map[string]moduleCount{}, map[string]*session{}
 		if err := saveSettings(s.o.Home, s.set); err != nil {
 			s.mu.Unlock()
 			s.opMu.Unlock()
+			s.fetchMu.Unlock()
 			return Status{}, internal(err)
 		}
 	}
 	s.mu.Unlock()
 	s.opMu.Unlock()
+	s.fetchMu.Unlock()
 	return s.FetchNow(ctx, windowKey)
 }
 
 // RemoveRepo deletes the mirror, base, state and settings. Applied files stay as local files.
 func (s *Service) RemoveRepo() (Status, error) {
+	s.fetchMu.Lock()
+	defer s.fetchMu.Unlock()
 	s.opMu.Lock()
 	defer s.opMu.Unlock()
 	s.timerMu.Lock()
@@ -340,7 +355,7 @@ func (s *Service) RemoveRepo() (Status, error) {
 		s.mu.Unlock()
 		return Status{}, internal(err)
 	}
-	s.set, s.st, s.changes, s.counts, s.sess, s.loaded = Settings{}, State{}, 0, map[string]moduleCount{}, nil, true
+	s.set, s.st, s.changes, s.counts, s.sessions, s.loaded = Settings{}, State{}, 0, map[string]moduleCount{}, map[string]*session{}, true
 	st := s.statusLocked()
 	s.mu.Unlock()
 	if s.o.Emit != nil {
@@ -372,7 +387,7 @@ func (s *Service) mutate(fn func(*Settings) *Error) (Status, error) {
 		s.opMu.Unlock()
 		return Status{}, internal(err)
 	}
-	s.set, s.sess = next, nil
+	s.set, s.sessions = next, map[string]*session{}
 	s.mu.Unlock()
 	s.refreshLocked(s.ctx)
 	s.opMu.Unlock()
@@ -463,4 +478,26 @@ func randomToken() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// modeOf is the permission of the file at path, else of fallback, else 0644.
+func modeOf(path, fallback string) os.FileMode {
+	for _, p := range []string{path, fallback} {
+		if p == "" {
+			continue
+		}
+		if fi, err := os.Stat(p); err == nil {
+			return fi.Mode().Perm()
+		}
+	}
+	return 0o644
+}
+
+// checkJournal refreshes interrupted from the journal file and reports it.
+func (s *Service) checkJournal() bool {
+	_, err := os.Stat(s.journalPath())
+	s.mu.Lock()
+	s.interrupted = err == nil
+	s.mu.Unlock()
+	return err == nil
 }

@@ -57,7 +57,6 @@ func (s *Service) fetch(ctx context.Context, windowKey string, explicit bool) *s
 			s.mu.Lock()
 			s.st.Fetched, s.st.FetchedAt, s.st.Problem = sha, s.o.Now().UTC().Format(time.RFC3339), nil
 			s.st.Manifest = tree.modules
-			s.sess = nil
 			_ = saveState(s.o.Home, s.st)
 			s.mu.Unlock()
 			s.refreshLocked(ctx)

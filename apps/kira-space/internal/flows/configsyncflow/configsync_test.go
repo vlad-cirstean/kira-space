@@ -169,6 +169,15 @@ func TestConfigSync(t *testing.T) {
 	if row(t, pv, "connections/team.yaml").Kind != configsync.KindConflict {
 		t.Fatalf("rows = %+v", pv.Rows)
 	}
+	// A second Preview (another window) and a no-change fetch leave the first token valid.
+	first := pv.Token
+	if pv, err = svc.Preview(); err != nil || pv.Token == first {
+		t.Fatalf("second preview = %+v, %v", pv, err)
+	}
+	if _, err := svc.FetchNow(bridge.ConfigSyncFetchArgs{WindowKey: "w1"}); err != nil {
+		t.Fatal(err)
+	}
+	pv.Token = first
 	res, err = svc.Apply(bridge.ConfigSyncApplyArgs{Token: pv.Token, Choices: map[string]string{"connections/team.yaml": configsync.ChoiceMine}})
 	if err != nil || res.Kept != 1 {
 		t.Fatalf("keep mine = %+v, %v", res, err)
@@ -344,6 +353,13 @@ func TestRecoverRollsBackInterruptedApply(t *testing.T) {
 	}
 	if _, err := os.Stat(journalPath(home)); err != nil {
 		t.Fatalf("no journal after the interrupted apply: %v", err)
+	}
+	// While the journal stays, a new preview is refused and the status says why.
+	if _, err := svc.Preview(ctx); err == nil {
+		t.Fatal("preview accepted over an unsettled journal")
+	}
+	if st := svc.Status(); st.Problem == nil || st.Problem.Kind != configsync.ProblemInterrupted {
+		t.Fatalf("status problem = %+v", st.Problem)
 	}
 	if err := configsync.Recover(home); err != nil {
 		t.Fatalf("Recover: %v", err)
