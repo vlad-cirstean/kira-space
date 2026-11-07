@@ -22,6 +22,12 @@ const ROUTES: readonly Route[] = [
     hero: 'space-agents-board',
     shots: [
       'space-agents-board',
+      'build-start-board',
+      'studio-connections',
+      'studio-data-grid',
+      'space-workspace',
+      'space-runs',
+      'studio-docker',
       'build-start-workflow',
       'space-git-graph',
       'studio-sql-console',
@@ -143,15 +149,9 @@ for (const route of ROUTES) {
       expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
     });
 
-    test('scroll reveals leave no content hidden', async ({ page }) => {
+    test('ships no document script', async ({ page }) => {
       await openPage(page, route);
-      await scrollThrough(page);
-      const hidden = await page.evaluate(() =>
-        [...document.querySelectorAll('.reveal')]
-          .filter((el) => getComputedStyle(el).opacity !== '1')
-          .map((el) => el.className),
-      );
-      expect(hidden).toEqual([]);
+      expect(await page.evaluate(() => document.scripts.length)).toBe(0);
     });
 
     test('every shot shows the whole image and fits the viewport', async ({ page }, info) => {
@@ -244,10 +244,8 @@ for (const path of ['', 'build/']) {
     const first = page.locator('body > *').first();
     await expect(first).toHaveAttribute('data-beta-notice', '');
     await expect(first).toContainText('Personal project. Use with care.');
-    await expect(first.locator('a')).toHaveAttribute(
-      'href',
-      new RegExp(path === '' ? '^#install$' : '/kira-space/#install$'),
-    );
+    await expect(first.locator('a')).toHaveCount(0);
+    expect((await first.innerText()).trim()).toBe('Personal project. Use with care.');
     await expect(first).not.toContainText(/keychain|folder|macos/i);
   });
 }
