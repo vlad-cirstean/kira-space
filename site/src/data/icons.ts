@@ -6,7 +6,6 @@ import check from '@vscode/codicons/src/icons/check.svg?raw';
 import cloudDownload from '@vscode/codicons/src/icons/cloud-download.svg?raw';
 import code from '@vscode/codicons/src/icons/code.svg?raw';
 import database from '@vscode/codicons/src/icons/database.svg?raw';
-import debugPause from '@vscode/codicons/src/icons/debug-pause.svg?raw';
 import deviceMobile from '@vscode/codicons/src/icons/device-mobile.svg?raw';
 import files from '@vscode/codicons/src/icons/files.svg?raw';
 import gitBranch from '@vscode/codicons/src/icons/git-branch.svg?raw';
@@ -15,7 +14,6 @@ import github from '@vscode/codicons/src/icons/github.svg?raw';
 import globe from '@vscode/codicons/src/icons/globe.svg?raw';
 import lightbulb from '@vscode/codicons/src/icons/lightbulb.svg?raw';
 import lock from '@vscode/codicons/src/icons/lock.svg?raw';
-import play from '@vscode/codicons/src/icons/play.svg?raw';
 import playCircle from '@vscode/codicons/src/icons/play-circle.svg?raw';
 import plug from '@vscode/codicons/src/icons/plug.svg?raw';
 import robot from '@vscode/codicons/src/icons/robot.svg?raw';
@@ -27,8 +25,6 @@ import warning from '@vscode/codicons/src/icons/warning.svg?raw';
 
 export const ICONS = {
   database: database,
-  pause: debugPause,
-  play: play,
   table: table,
   code: code,
   globe: globe,

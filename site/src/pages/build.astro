@@ -1,5 +1,4 @@
 ---
-import BuildCarousel from '../components/BuildCarousel.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import Icon from '../components/Icon.astro';
@@ -20,10 +19,9 @@ const first = sections[0];
       <h1 class="text-4xl font-semibold tracking-tight sm:text-6xl">{BUILD.heading}</h1>
       <p class="mt-4 max-w-3xl text-lg text-muted">{BUILD.intro}</p>
     </div>
-    <BuildCarousel sections={sections} />
     <nav
       aria-label="Steps"
-      class="z-[5] mt-8 border-y border-border bg-chrome/95 backdrop-blur md:sticky md:top-[3.75rem]"
+      class="z-[5] border-y border-border bg-chrome/95 backdrop-blur md:sticky md:top-[3.75rem]"
     >
       <ol class="mx-auto flex max-w-5xl flex-col px-4 md:flex-row md:flex-wrap md:gap-x-2">
         {sections.map((s) => (
