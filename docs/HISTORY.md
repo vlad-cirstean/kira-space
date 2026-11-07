@@ -7758,3 +7758,19 @@ Site image pipeline: CI generates site images. Manifest `site/src/data/shotCaptu
 
 Full Go suite and cheap checks green; UI suites run in PR CI; real `claude` tests passed. 2 code review rounds, all findings fixed. All 8 site images viewed and good.
 <!-- /chapter v0.3.0 -->
+<!-- chapter v0.3.1 -->
+## v0.3.1
+Source: docs/v0.3.1/ at 71ca3d163. 4 phases.
+
+### v0.3.1 P551 (Done)
+Site expansion. 26 shot specs (`tests/screenshots/build/*.shot.ts`, `support/buildStory.ts`), one story; manifest 34 ids; `screenshots` project 3 workers, `fullyParallel`; full run 78 to 86 s, byte-identical across two runs. `/build/` page (BuildCarousel, ShotGallery, ShotPicture, `build.ts`), BetaNotice first in body, README first line, Install macOS block (`installShots.ts`; `CI=true` fails without both WebP), N15 message reworded, 8 new docs pages, reordered sidebar, site specs. Pages patch gained cache-key hunks. Open: user-supplied `keychain-access.webp` and `folder-access.webp` land next chapter; until then `CI=true bun run build` in `site` fails and visual baselines show placeholder boxes; re-record baselines after. Folder-access docs text unverified on a real Mac.
+
+### v0.3.1 P552 (Done)
+Migrations 0083-0090 rebuild every kira.db table `STRICT` (60 app tables plus `schema_version`, `schema_quarantine`). Instants INTEGER unix ms; bools, enums, JSON, FKs carry CHECKs and explicit `ON DELETE`. Tables renamed (`scripts`, `script_collections`, `connection_*`, `api_grpc_history`); `ade_workflow_last_valid` merged into `config_last_valid`. Runner gains `ForeignKeysOff` steps and `Migration.Func`. Repair and removal land in `schema_quarantine`; `OpenAt` backs up to `backups/p552-<ts>/kira.db` first. Lint N7 requires `STRICT` from 0083. Golden schema `storage/testdata/schema.sql`. Upgrade of a v82 DB with 50,000 `op_log` rows takes 0.6 s.
+
+### v0.3.1 P553 (Done)
+`github.com/huandu/go-sqlbuilder` v1.44.1 (MIT) builds every runtime SQL statement on `kira.db`. `internal/sqlb` holds dialect (zero value SQLite), run helpers, upsert tail, `Cached`, `Sub`. `internal/kiraschema` holds generated identifiers (`TestKiraSchemaGenerated`). Raw SQL stays in migrations, runner, fold code, separate DBs, `maintenance.go`. Lint N16 fails literal SQL in converted files. Old `sqlitex` and `appstorage` SQL-string helpers deleted. `repos/hotplans_test.go` pins nine hot plans. Builder cost above 5% (`OpLogRepo.Upsert`, `AdeTaskRepo.ListLive`) builds once.
+
+### v0.3.1 P554 (Done)
+GitOps for config files. `internal/configsync`: pull-only sync of one shared git repo into `<home>/config/<module>/`, three-way merge per file and per entry, per-entry deactivate, gate (YAML parse, module validators, literal-credential scan), preview session, backup to `<home>/backups/configsync-<ts>/`, journal, rollback, boot `Recover`, prune to 10. Bridge `ConfigSyncService`, toast, review window, Shared config settings pane. Flow test `configsyncflow` passes; UI spec `config-sync.spec.ts` written and typechecked. Open: module validators only for agent, steps, prompts; connections, api, runs, workflows get the generic gate (ARCHITECTURE Known open items).
+<!-- /chapter v0.3.1 -->
