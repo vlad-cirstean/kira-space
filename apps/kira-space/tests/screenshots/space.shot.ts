@@ -5,6 +5,7 @@ import { adeV2Control, FIXED_NOW } from '../ui/support/adeV2';
 import { buildGraphStreamChunk } from '../ui/support/graphStreamFixture';
 import { IPC } from '../ui/support/ipcChannels';
 import { openMemory, withMemory } from '../ui/support/memoryNav';
+import { repoRowById, treeRow } from '../ui/support/repoRows';
 import type { ControlSnapshot } from '../ui/support/types';
 import { shoot } from './support/shoot';
 
@@ -227,6 +228,107 @@ test('space git graph', async ({ relaunch, consoleErrors }) => {
   await shoot(win, 'space-commit-detail', consoleErrors);
 });
 
+const WORKSPACE_FILES = [
+  'README.md',
+  'package.json',
+  'src/App.vue',
+  'src/components/OrderTable.vue',
+  'src/components/SearchBox.vue',
+  'src/lib/paging.ts',
+  'src/main.ts',
+  'src/stores/cart.ts',
+  'src/stores/orders.ts',
+  'tests/paging.spec.ts',
+  'tsconfig.json',
+];
+
+const PAGING_SOURCE = [
+  'export interface Page<T> {',
+  '  rows: T[];',
+  '  offset: number;',
+  '  hasMore: boolean;',
+  '}',
+  '',
+  '/** Slices one page of `rows`, clamping the offset into range. */',
+  'export function pageOf<T>(rows: readonly T[], offset: number, size: number): Page<T> {',
+  '  const start = Math.min(Math.max(offset, 0), rows.length);',
+  '  const end = Math.min(start + size, rows.length);',
+  '  return { rows: rows.slice(start, end), offset: start, hasMore: end < rows.length };',
+  '}',
+  '',
+  'export function pageCount(total: number, size: number): number {',
+  '  return Math.max(1, Math.ceil(total / size));',
+  '}',
+  '',
+].join('\n');
+
+test('space workspace', async ({ relaunch, consoleErrors }) => {
+  const control: ControlSnapshot[] = [
+    { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
+    { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/config/repos', files: [] } },
+    { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
+    { channel: IPC.adeTaskSessions, response: { sessions: [] } },
+    {
+      channel: IPC.codeWorkspaceRepoHeads,
+      args: { ids: [REPO.id] },
+      response: [{ id: REPO.id, head: { kind: 'branch', name: 'main' } }],
+    },
+    {
+      channel: IPC.codeWorkspaceListFiles,
+      args: { id: REPO.id },
+      response: {
+        paths: WORKSPACE_FILES,
+        status: { 'src/App.vue': 'M', 'src/components/SearchBox.vue': 'A' },
+        truncated: false,
+      },
+    },
+    {
+      channel: IPC.codeWorkspaceReadFile,
+      args: { id: REPO.id, path: 'src/lib/paging.ts' },
+      response: {
+        kind: 'found',
+        text: PAGING_SOURCE,
+        bytes: PAGING_SOURCE.length,
+        limitBytes: 8 * 1024 * 1024,
+        language: 'typescript',
+      },
+    },
+  ];
+  const { window: win } = await relaunch({
+    ...CAPTURE_LAUNCH,
+    control,
+    gitStream: {
+      repoId: REPO.repoId,
+      extraResults: MOCK_RESULTS,
+      graphStreamChunks: [
+        buildGraphStreamChunk(
+          REPO.repoId,
+          0,
+          buildPackedChunk(rows, {
+            timestamp: IDENTITY.timestamp,
+            dictionary: [IDENTITY.name, IDENTITY.email],
+          }),
+        ),
+      ],
+    },
+  });
+  await repoRowById(win, REPO.id).click();
+  await win.locator('[data-testid="git-panel-tab-files"]').click();
+  for (const dir of ['src', 'src/lib', 'src/stores']) {
+    await expect(treeRow(win, dir)).toBeVisible();
+    if ((await treeRow(win, dir).getAttribute('aria-expanded')) === 'false') {
+      await treeRow(win, dir).click();
+    }
+  }
+  await treeRow(win, 'src/lib/paging.ts').dblclick();
+  const editor = win.locator('.monaco-editor').first();
+  await expect(editor).toContainText('pageCount');
+  await win.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await expect(win.locator('.monaco-editor.focused')).toHaveCount(0);
+
+  await shoot(win, 'space-workspace', consoleErrors);
+});
+
 test('space agents board', async ({ relaunch, consoleErrors }) => {
   const { window: win } = await relaunch({ ...CAPTURE_LAUNCH, control: adeV2Control() });
   await win.locator('[data-testid="ade-plan"]').waitFor();
@@ -363,4 +465,168 @@ test('space memory', async ({ relaunch, consoleErrors }) => {
   await expect(win.locator('[data-testid="memory-detail"]')).toBeVisible();
 
   await shoot(win, 'space-memory', consoleErrors);
+});
+
+const RUN_STAMP = '2026-09-01T09:00:00.000Z';
+const RUN_SCHEDULE = {
+  cron: '0 9 * * 1-5',
+  timezone: 'UTC',
+  enabled: true,
+  confirm: false,
+  timeout: '30m',
+  params: {},
+  taskId: '',
+  branchId: '',
+};
+const runScript = (
+  id: string,
+  name: string,
+  order: number,
+  extra: Record<string, unknown> = {},
+) => ({
+  id,
+  kind: 'script',
+  name,
+  command: 'make build',
+  params: [],
+  smart: null,
+  schedule: null,
+  workingDir: '',
+  dirMode: 'kira',
+  useAdeDir: false,
+  color: 'none',
+  collection: '',
+  sortOrder: order,
+  createdAt: RUN_STAMP,
+  updatedAt: RUN_STAMP,
+  ...extra,
+});
+const RUN_SCRIPTS = [
+  runScript('nightly', 'Nightly build', 0, {
+    command: 'make build && make test',
+    color: 'blue',
+    schedule: { ...RUN_SCHEDULE, cron: '0 2 * * *' },
+  }),
+  runScript('triage', 'Triage new issues', 1, {
+    kind: 'smart',
+    command: 'Read the new issues and label each by area.',
+    color: 'green',
+    smart: {
+      model: 'sonnet',
+      maxBudgetUsd: 1,
+      noCostCap: false,
+      timeout: '15m',
+      tools: ['Read', 'Grep', 'Glob'],
+      bashPatterns: [],
+      mcp: [],
+    },
+    schedule: RUN_SCHEDULE,
+  }),
+  runScript('lint', 'Lint all', 2, { command: 'bun run lint' }),
+  runScript('seed', 'Seed demo data', 3, { command: './scripts/seed.sh' }),
+];
+
+const HOUR = 3_600_000;
+const scriptRun = (
+  id: string,
+  script: (typeof RUN_SCRIPTS)[number],
+  hoursAgo: number,
+  state: 'done' | 'failed',
+  reason: string,
+) => ({
+  id,
+  scriptId: script.id,
+  scriptName: script.name,
+  color: script.color,
+  kind: script.kind,
+  trigger: script.schedule ? 'scheduled' : 'terminal',
+  state,
+  terminalId: '',
+  cwd: `/kira/automations/${script.id}`,
+  command: script.kind === 'smart' ? '' : script.command,
+  outcome: { status: state, reason, source: 'exit', reported: false },
+  createdAt: CAPTURE_NOW - hoursAgo * HOUR,
+  startedAt: CAPTURE_NOW - hoursAgo * HOUR,
+  finishedAt: CAPTURE_NOW - hoursAgo * HOUR + 41_000,
+  model: '',
+  sessionId: '',
+  prompt: '',
+  params: [],
+  tools: { tools: [], allowedTools: [], mcpServers: [] },
+  taskId: '',
+  taskTitle: '',
+  branchId: '',
+  branchLabel: '',
+});
+const [NIGHTLY, TRIAGE, LINT] = RUN_SCRIPTS as [
+  (typeof RUN_SCRIPTS)[number],
+  (typeof RUN_SCRIPTS)[number],
+  (typeof RUN_SCRIPTS)[number],
+];
+const RUNS = [
+  scriptRun('run-1', NIGHTLY, 7, 'done', 'finished'),
+  scriptRun('run-2', TRIAGE, 5, 'done', 'finished'),
+  scriptRun('run-3', LINT, 26, 'failed', 'exited with status 1'),
+  scriptRun('run-4', NIGHTLY, 31, 'done', 'finished'),
+  scriptRun('run-5', TRIAGE, 29, 'done', 'finished'),
+];
+
+test('space runs', async ({ relaunch, consoleErrors }) => {
+  const { window: win } = await relaunch({
+    ...CAPTURE_LAUNCH,
+    control: [
+      { channel: IPC.windowsEnsure, response: { mode: 'git' } },
+      { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/config/repos', files: [] } },
+      { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
+      { channel: IPC.adeTaskSessions, response: { sessions: [] } },
+      {
+        channel: IPC.customScriptsList,
+        response: {
+          dir: '~/.kira-space/runs',
+          collections: [],
+          scripts: RUN_SCRIPTS,
+          problems: [],
+          secretStorage: {
+            available: true,
+            backend: 'keychain',
+            insecureFallback: false,
+            reason: null,
+          },
+        },
+      },
+      { channel: IPC.scriptRunsList, response: RUNS },
+      { channel: IPC.scriptRunsRestoreState, response: { items: [] } },
+      { channel: IPC.scriptRunsNextFires, response: [CAPTURE_NOW + 3 * HOUR] },
+      {
+        channel: IPC.scriptRunsResolveDir,
+        response: {
+          path: '/kira/automations/triage',
+          mode: 'kira',
+          base: '/kira',
+          blocker: '',
+          branch: '',
+          pending: false,
+        },
+      },
+      {
+        channel: IPC.scriptRunsReadLog,
+        response: {
+          chunks: [
+            {
+              text: 'Reading 6 new issues\r\nLabelled #412 as area/checkout\r\nLabelled #413 as area/search\r\nDone.\r\n',
+            },
+          ],
+          truncated: false,
+        },
+      },
+    ],
+  });
+  await win.locator('[data-testid="mode-tab"][data-mode="automations"]').click();
+  await expect(win.locator('[data-testid="automations-panel"]')).toBeVisible();
+  await expect(win.locator('[data-testid="script-triage"]')).toBeVisible();
+  await win.locator('[data-testid="script-triage"]').click();
+  await win.locator('[data-testid="toggle-operations-panel"]').click();
+  await expect(win.locator('[data-op-id="run:run-2"]')).toBeVisible();
+
+  await shoot(win, 'space-runs', consoleErrors);
 });

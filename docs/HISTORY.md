@@ -7805,3 +7805,23 @@ Connection edit dialog copy trimmed: 55 values, changed words 1,511 to 918, `mcp
 ### v0.3.2 P563 (Done)
 ADE task worktrees move from `~/wt/<repo>/<wt_id>` to `~/kira-space-wts/<repo>/<wt_id>` (`ade.WorktreesDir`). One-time `git worktree move` per worktree in `internal/wtmove` (`appwire.RunWorktreeMove`): unlock, move, relock; rewrites session cwd, terminal and local-file tab paths, `script_runs.cwd`, `ade_runs.spec_json`; renames the Claude transcript folder, retried next boot on failure. Flow test `TestWorktreesMoveOnce`. Contracts regenerated. Closing: one full non-UI run (148 Go packages, 2014 unit tests, lint, typecheck, knip, real `claude` rows; 0 failures); review round 1 found 7 (1 Medium, 6 Low), all fixed. Known gap: a missing `claude` CLI counts as legacy-MCP removal done.
 <!-- /chapter v0.3.2 -->
+
+<!-- chapter v0.3.3 -->
+## v0.3.3
+Source: docs/v0.3.3/ at 6c2c5afcb. 5 phases.
+
+### v0.3.3 P564 (Done)
+Every v0.3.2 one-time move dropped: legacy MCP removal, leftovers cleanup, agent secrets fold, Keychain rename, worktree move (`wtmove`, `projectdir.go`); `ade.PathSegment` now unexported; dead ARCHITECTURE, DEV_ENVIRONMENT and README text and `docs/NEXT_CHAPTER.md` deleted. Repo renamed `vlad-cirstean/kira-studio` to `vlad-cirstean/kira-space`: installer, update checker, `verify-packaging.sh` pin, README and docs URLs updated; Go module path, identifiers and "Kira Studio" prose unchanged by decision. `release.yml` change waits in `docs/pending-changes/.github__workflows__release.yml.patch` (apply from a Mac session, delete the patch in that commit). By hand, user: delete `~/.kira-space/backups/p557-*`, `~/.kira-space/config/workflows/.p526-backup/`, `~/.kira-space/.legacy-mcp-removed`. Mac hand-off: `go vet ./internal/secrets && go test ./internal/secrets -run Keychain`.
+
+### v0.3.3 P565 (Done)
+Site redesign, CSS only, gated by `prefers-reduced-motion`, no new dependency. Repo URLs and Pages base point at `kira-space`. Build carousel and detail crop removed; window shots serve the whole framed image with a 1136 px `srcset` derivative, fixing phone zoom. Memory removed from `/` only. Visual baselines refreshed from real shots.
+
+### v0.3.3 P566 (Done)
+Second design pass after the verdict "grey, no personality": brand tokens from the app icon, hero stage, bento of CSS and SVG mini UIs, scroll-held story, light Build band, install bookend, `/build/` sparkle thread. Banner reads "Personal project. Use with care." Large `blur`, `backdrop-filter` and `mask-image` layers stalled WebKit (under 2 fps); replaced by gradient fades, WebKit holds 15 to 50 fps. Zero client JS.
+
+### v0.3.3 P567 (Done)
+Real app images only, no invented UI drawings: four new real scenes (workspace, runs, connections, docker), Monaco capture made deterministic. Bento has six real shot tiles and five text tiles; hero is one real window. Banner text only; looping clips deferred. Button glow moved to `--shadow-cta` tokens. Performance: animations on `/` 28 to 5 (kept `hero-in`, hover transitions), zero document scripts (`prefetch: false`). WebKit `/` idle/scroll fps 61.9/58.7 at 1280, 61.9/57.1 at 390; Chromium 60/60. Review round 1 (8 findings): #1 dropped by user (sole user is on v0.3.2); #2 to #4, #6 to #8 fixed; #5 not applicable after the rewrite.
+
+### v0.3.3 P568 (Done)
+Chapter closed. Non-UI full run: one chapter-caused failure (`TestStartupSweepsLeftovers`, orphaned after `leftovers_test.go` deletion), fixed with unused `flowharness.WithSeed` removed. Container-backed suites not runnable without Docker; left to CI, as are UI suites. `CLAUDE.md` split into `docs/WORKING_AGREEMENT.md` (extra work outside the phase table).
+<!-- /chapter v0.3.3 -->

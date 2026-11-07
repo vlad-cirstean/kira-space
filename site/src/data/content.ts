@@ -1,14 +1,19 @@
 import type { IconName } from './icons';
+import type { ShotId } from './shotCapture';
 
-export interface Feature {
-  readonly icon: IconName;
+interface Feature {
   readonly title: string;
-  readonly body: string;
-  /** Docs path relative to the site root, rendered as a link on the card title. */
-  readonly href?: string;
+  /** Docs path relative to the site root, rendered as a link on the tile title. */
+  readonly href: string;
+  readonly color: 'sky' | 'pink' | 'lime' | 'violet' | 'amber' | 'teal';
+  /** One punchy line shown on the tile. */
+  readonly line: string;
+  /** Real window shot shown on the tile. Without one the tile is text with `icon`. */
+  readonly shot?: ShotId;
+  readonly icon?: IconName;
 }
 
-export interface Highlight {
+export interface StoryChapter {
   readonly shot: string;
   readonly title: string;
   readonly points: readonly string[];
@@ -16,146 +21,167 @@ export interface Highlight {
 
 export interface AppContent {
   readonly name: string;
-  readonly icon: IconName;
   readonly pageTitle: string;
   readonly description: string;
-  readonly summary: string;
   readonly hero: string;
   readonly docs: string;
   readonly features: readonly Feature[];
-  readonly highlights: readonly Highlight[];
 }
 
 // Facts come only from README.md and apps/kira-space/README.md.
 export const SITE = {
-  title: 'Kira Space',
-  tagline: 'One native macOS app. Git and coding agents. Databases and APIs.',
   availability: 'Free and open source. macOS 26+ on Apple Silicon.',
+} as const;
+
+export const ENGINES = [
+  'PostgreSQL',
+  'MariaDB',
+  'MySQL',
+  'SQLite',
+  'ClickHouse',
+  'MongoDB',
+  'Redis',
+  'Kafka',
+  'SQS',
+  'S3',
+] as const;
+
+export const ALSO = ['HTTP', 'gRPC', 'Docker', 'Kubernetes', 'Claude Code', 'OpenCode'] as const;
+
+export const HERO = {
+  eyebrow: 'Kira Space',
+  line1: 'Git, agents and data.',
+  line2: 'One native window.',
+  lead: 'Plan with coding agents, read history, query ten database engines and call APIs. Kira Space keeps it in one Mac app.',
+  command: 'curl -fsSL …/install.sh | sh',
 } as const;
 
 export const APP: AppContent = {
   name: 'Kira Space',
-  icon: 'git-branch',
   pageTitle: 'Kira Space: git, coding agents, databases and APIs for macOS',
   description:
-    'Kira Space is a native macOS workbench: git client, code workspace, coding agents, memory, a database client for ten engines, and an HTTP and gRPC client. Free and open source.',
-  summary:
-    'Git client and code workspace with coding agents, memory and a terminal. Database, API, Docker and Kubernetes modules in the same window.',
+    'Kira Space is a native macOS workbench: git client, code workspace, coding agents, a database client for ten engines, and an HTTP and gRPC client. Free and open source.',
   hero: 'space-agents-board',
   docs: 'docs/space/git/',
   features: [
     {
-      icon: 'git-branch',
-      title: 'Git graph',
-      body: 'Virtualized commit log, detail pane, diffs, search and branch review.',
-      href: 'docs/space/git/',
-    },
-    {
-      icon: 'files',
-      title: 'Code workspace',
-      body: 'File tree, Monaco viewer, diffs, repository search, inline blame.',
-      href: 'docs/space/workspace/',
-    },
-    {
-      icon: 'robot',
       title: 'Agents',
-      body: 'Task planner with workflows, agent runs and Claude Code or OpenCode sessions.',
+      shot: 'build-start-board',
+      color: 'sky',
+      line: 'Every task on a workflow. Every agent run in view.',
       href: 'docs/space/agents/',
     },
     {
-      icon: 'lightbulb',
-      title: 'Memory',
-      body: 'MCP server for Claude Code with keyword and semantic search.',
-      href: 'docs/space/memory/',
-    },
-    {
-      icon: 'sparkle',
-      title: 'Runs',
-      body: 'Scripts and smart scripts run by headless Claude Code, with cron schedules.',
-      href: 'docs/shared/runs/',
-    },
-    {
-      icon: 'device-mobile',
-      title: 'Phone view',
-      body: 'Serves the agents board to a phone on your home network.',
-      href: 'docs/space/phone/',
-    },
-    {
-      icon: 'database',
       title: 'Studio: ten engines',
-      body: 'PostgreSQL, MariaDB, MySQL, SQLite, ClickHouse, MongoDB, Redis, Kafka, SQS, S3.',
+      shot: 'studio-connections',
+      color: 'violet',
+      line: 'PostgreSQL to S3. One tree of connections.',
       href: 'docs/studio/databases/',
     },
     {
-      icon: 'table',
       title: 'Data grid and SQL console',
-      body: 'Server-side filter and sort, staged SQL edits, saved queries, EXPLAIN plans.',
+      shot: 'studio-data-grid',
+      color: 'amber',
+      line: 'Write SQL, read EXPLAIN, stage edits.',
       href: 'docs/studio/data-grid/',
     },
     {
-      icon: 'globe',
-      title: 'Api module',
-      body: 'HTTP and gRPC requests, collections, environments, curl import.',
-      href: 'docs/studio/api-client/',
+      title: 'Code workspace',
+      shot: 'space-workspace',
+      color: 'sky',
+      line: 'File tree, Monaco, blame, search.',
+      href: 'docs/space/workspace/',
     },
     {
-      icon: 'vm',
+      title: 'Runs',
+      shot: 'space-runs',
+      color: 'lime',
+      line: 'Scripts on a schedule, run by Claude Code.',
+      href: 'docs/shared/runs/',
+    },
+    {
       title: 'Docker',
-      body: 'Containers, images, volumes, networks, logs and exec terminals.',
+      shot: 'studio-docker',
+      color: 'teal',
+      line: 'Containers, logs, exec. No context switch.',
       href: 'docs/studio/docker/',
     },
     {
-      icon: 'plug',
+      title: 'Git graph',
+      icon: 'git-branch',
+      color: 'teal',
+      line: 'Branches, tags and diffs. Fast on any history.',
+      href: 'docs/space/git/',
+    },
+    {
+      title: 'Api module',
+      icon: 'globe',
+      color: 'pink',
+      line: 'HTTP and gRPC. Paste a curl, get a request.',
+      href: 'docs/studio/api-client/',
+    },
+    {
+      title: 'Phone view',
+      icon: 'device-mobile',
+      color: 'teal',
+      line: 'Your agents board on your phone, at home.',
+      href: 'docs/space/phone/',
+    },
+    {
       title: 'Database MCP server',
-      body: 'Local, off by default, with per-connection permissions.',
+      icon: 'plug',
+      color: 'violet',
+      line: 'Agent access to data: off until you say so.',
       href: 'docs/studio/database-mcp/',
     },
     {
-      icon: 'lock',
       title: 'Keychain',
-      body: 'Credentials stay encrypted in the macOS Keychain.',
+      icon: 'lock',
+      color: 'pink',
+      line: 'Credentials stay encrypted in the Keychain.',
       href: 'docs/reference/security/',
     },
   ],
-  highlights: [
-    {
-      shot: 'space-git-graph',
-      title: 'Read history at a glance',
-      points: [
-        'Browse a virtualized commit log with branches and tags.',
-        'Open diffs in the detail pane.',
-        'Review a whole branch.',
-      ],
-    },
-    {
-      shot: 'space-memory',
-      title: 'Memory that shows its source',
-      points: [
-        'Every fact shows its origin and scope.',
-        'Search by keyword or by meaning.',
-        'Claude Code reads it through an MCP server.',
-      ],
-    },
-    {
-      shot: 'studio-sql-console',
-      title: 'Write SQL, read the result',
-      points: [
-        'Run one statement or the whole script.',
-        'Keep saved queries.',
-        'Read EXPLAIN plans.',
-      ],
-    },
-    {
-      shot: 'studio-api',
-      title: 'Call an API without leaving the app',
-      points: [
-        'Send HTTP and gRPC requests.',
-        'Group requests in collections and environments.',
-        'Import a curl command.',
-      ],
-    },
-  ],
 };
+
+export const STORY: readonly StoryChapter[] = [
+  {
+    shot: 'build-start-workflow',
+    title: 'Plan it.',
+    points: [
+      'Pick a workflow for the task.',
+      'Each step sets agent, prompt and tools.',
+      'Start Claude Code or OpenCode from the task.',
+    ],
+  },
+  {
+    shot: 'space-git-graph',
+    title: 'Read it.',
+    points: [
+      'Browse a virtualized commit log with branches and tags.',
+      'Open diffs in the detail pane.',
+      'Review a whole branch.',
+    ],
+  },
+  {
+    shot: 'studio-sql-console',
+    title: 'Query it.',
+    points: [
+      'Run one statement or the whole script.',
+      'Keep saved queries.',
+      'Read EXPLAIN plans.',
+    ],
+  },
+  {
+    shot: 'studio-api',
+    title: 'Call it.',
+    points: [
+      'Send HTTP and gRPC requests.',
+      'Group requests in collections and environments.',
+      'Import a curl command.',
+    ],
+  },
+];
 
 export const BUILD_TEASER = {
   title: 'Build with Kira',
@@ -165,7 +191,7 @@ export const BUILD_TEASER = {
 
 export const INSTALL = {
   command:
-    'curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh',
+    'curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-space/main/scripts/install.sh | sh',
   steps: [
     'Run the command in Terminal. It installs a fresh copy or replaces an older one, then opens the app.',
   ],

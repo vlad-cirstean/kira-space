@@ -1,4 +1,4 @@
-export const REPO_URL = 'https://github.com/vlad-cirstean/kira-studio';
+export const REPO_URL = 'https://github.com/vlad-cirstean/kira-space';
 
 /** Joins a site-relative path to the Pages base path. */
 export function href(path = ''): string {

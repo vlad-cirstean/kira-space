@@ -1,17 +1,18 @@
 ---
-import AppHero from '../components/AppHero.astro';
-import BuildTeaser from '../components/BuildTeaser.astro';
-import FeatureGrid from '../components/FeatureGrid.astro';
+import Bento from '../components/Bento.astro';
+import BuildBand from '../components/BuildBand.astro';
+import Engines from '../components/Engines.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
-import Highlight from '../components/Highlight.astro';
+import Hero from '../components/Hero.astro';
 import Install from '../components/Install.astro';
-import { APP as content, SITE } from '../data/content';
+import Story from '../components/Story.astro';
+import { APP as content, STORY } from '../data/content';
 import { type ResolvedWindowShot, resolveAllShots } from '../lib/shots';
 import Base from './Base.astro';
 
 const shots = await resolveAllShots();
-// Hero and highlights show a whole window, and og:image needs the window's social PNG.
+// Hero and story show a whole window, and og:image needs the window's social PNG.
 function windowShot(id: string): ResolvedWindowShot {
   const shot = shots.find((s) => s.id === id);
   if (!shot) throw new Error(`Missing shot ${id}`);
@@ -24,18 +25,12 @@ const hero = windowShot(content.hero);
 
 <Base title={content.pageTitle} description={content.description} image={hero.social}>
   <Header />
-  <main data-app="space" class="relative isolate overflow-hidden">
-    <div
-      aria-hidden="true"
-      class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[40rem] bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,color-mix(in_srgb,var(--tint)_18%,transparent),transparent)]"
-    > </div>
-    <p class="mx-auto max-w-5xl px-4 pt-8 text-base text-muted">{SITE.tagline}</p>
-    <AppHero app={content} shot={hero} />
-    <FeatureGrid features={content.features} />
-    <BuildTeaser />
-    {content.highlights.map((h, i) => {
-      return <Highlight highlight={h} shot={windowShot(h.shot)} flip={i % 2 === 1} />;
-    })}
+  <main data-app="space" class="relative isolate overflow-x-clip">
+    <Hero front={hero} />
+    <Engines />
+    <Bento shots={content.features.flatMap((f) => (f.shot ? [windowShot(f.shot)] : []))} />
+    <Story shots={STORY.map((c) => windowShot(c.shot))} />
+    <BuildBand />
     <Install app={content} />
   </main>
   <Footer />

@@ -1,0 +1,60 @@
+---
+import { ALSO, ENGINES } from '../data/content';
+import Sparkle from './Sparkle.astro';
+
+const palette = [
+  'blue',
+  'cyan',
+  'orange',
+  'teal',
+  'amber',
+  'green',
+  'red',
+  'violet',
+  'magenta',
+  'indigo',
+];
+const glyph = (name: string) => (name.length <= 3 ? name : name.slice(0, 2));
+const rows = [
+  ENGINES.map((n, i) => ({ n, c: palette[i % palette.length] })),
+  ALSO.map((n, i) => ({ n, c: palette[(i * 3 + 2) % palette.length] })),
+];
+const pill =
+  'group/pill flex items-center gap-3 whitespace-nowrap rounded-full bg-white/[0.06] py-2 pl-2 pr-5 font-mono text-base font-semibold text-fg border border-white/15 hover:bg-white/12 hover:shadow-[0_0_14px_-6px_var(--brand-glow)] sm:text-lg';
+---
+
+<section
+  aria-labelledby="engines-title"
+  class="relative isolate bg-linear-to-b from-transparent via-brand-deep/30 to-transparent py-14 sm:py-20"
+>
+  <div
+    aria-hidden="true"
+    class="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,color-mix(in_srgb,var(--brand-sky)_26%,transparent),transparent)]"
+  > </div>
+  <div class="mx-auto max-w-6xl px-4 text-center">
+    <span
+      class="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-brand-glow"
+    >
+      <Sparkle class="size-3" />
+      Ten engines. One grid. <Sparkle class="size-3" />
+    </span>
+    <h2 id="engines-title" class="sr-only">Supported engines and protocols</h2>
+  </div>
+  <div class="mx-auto mt-7 flex max-w-5xl flex-col gap-3 px-4 sm:gap-4">
+    {rows.map((items) => (
+      <ul class="flex flex-wrap justify-center gap-3 sm:gap-4">
+        {items.map((it) => (
+          <li class={pill}>
+            <span
+              class="flex size-8 items-center justify-center rounded-full text-sm font-bold text-bg"
+              style={`background:var(--kira-conn-${it.c});box-shadow:0 0 14px var(--kira-conn-${it.c})`}
+            >
+              {glyph(it.n)}
+            </span>
+            {it.n}
+          </li>
+        ))}
+      </ul>
+    ))}
+  </div>
+</section>

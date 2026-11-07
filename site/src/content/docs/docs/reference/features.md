@@ -8,7 +8,7 @@ sidebar:
   order: 6
 ---
 
-Release notes are on [GitHub Releases](https://github.com/vlad-cirstean/kira-studio/releases).
+Release notes are on [GitHub Releases](https://github.com/vlad-cirstean/kira-space/releases).
 
 | Feature | Module | Docs |
 |---|---|---|

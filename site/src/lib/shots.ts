@@ -18,9 +18,10 @@ export interface ResolvedWindowShot extends ShotDef {
   readonly framed: string;
   readonly framedWidth: number;
   readonly framedHeight: number;
-  readonly detail: string;
-  readonly detailWidth: number;
-  readonly detailHeight: number;
+  /** 800 px wide WebP of the framed shot, for a tile or a phone at DPR 2. */
+  readonly framedThumb: string;
+  /** 1136 px wide WebP of the framed shot, for the `srcset` of narrow viewports. */
+  readonly framedSmall: string;
   /** Build-time PNG of the framed shot for og:image; scrapers handle WebP unevenly. Not committed. */
   readonly social: string;
 }
@@ -53,7 +54,7 @@ export async function resolveShot(id: string): Promise<ResolvedShot> {
   const def = SHOTS.find((s) => s.id === id);
   if (!def) throw new Error(`Unknown shot ${id}`);
   const capture = SHOT_CAPTURE[def.id];
-  const { main, phone } = shotFiles(def.id);
+  const { main } = shotFiles(def.id);
   const mainFound = find(main);
   const mainMeta = mainFound ?? placeholder;
 
@@ -67,18 +68,21 @@ export async function resolveShot(id: string): Promise<ResolvedShot> {
       cropHeight: mainMeta.height,
     };
   }
-  const detailFound = phone ? find(phone) : undefined;
-  const detailMeta = detailFound ?? placeholder;
+  const framedThumb = mainFound
+    ? (await getImage({ src: mainFound, width: 800, format: 'webp' })).src
+    : placeholder.src;
+  const framedSmall = mainFound
+    ? (await getImage({ src: mainFound, width: 1136, format: 'webp' })).src
+    : placeholder.src;
   return {
     ...def,
     kind: 'window',
-    placeholder: !mainFound || !detailFound,
+    placeholder: !mainFound,
     framed: mainMeta.src,
     framedWidth: mainMeta.width,
     framedHeight: mainMeta.height,
-    detail: detailMeta.src,
-    detailWidth: detailMeta.width,
-    detailHeight: detailMeta.height,
+    framedThumb,
+    framedSmall,
     social: mainFound ? (await getImage({ src: mainFound, format: 'png' })).src : placeholder.src,
   };
 }

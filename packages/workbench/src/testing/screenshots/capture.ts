@@ -25,8 +25,6 @@ export const FRAME = {
   shadow: '0 18px 48px rgb(0 0 0 / 0.45)',
 } as const;
 
-const DETAIL_SIZE = { width: 440, height: 330 } as const;
-
 // Fontsource packages live in the site workspace, so resolve from there.
 const siteRequire = createRequire(join(ROOT_DIR, 'site', 'package.json'));
 
@@ -98,8 +96,6 @@ export const CAPTURE_LAUNCH = {
 
 export interface ShotOptions {
   readonly id: string;
-  /** Top-left of the 440 x 330 CSS px detail crop, over the feature the shot shows. */
-  readonly detail: { readonly x: number; readonly y: number };
   /** The `consoleErrors` fixture of the run. */
   readonly consoleErrors: readonly string[];
 }
@@ -151,26 +147,44 @@ export async function saveShot(name: string, png: Buffer): Promise<string> {
   return file;
 }
 
+/** Monaco tokenizes and applies its theme asynchronously: wait until every editor's token classes
+ *  stop changing, or a frame may show a half-coloured file. */
+async function settleMonacoTokens(page: Page): Promise<void> {
+  let last = '';
+  let steady = 0;
+  while (steady < 6) {
+    const sig = await page.evaluate(() =>
+      [...document.querySelectorAll('.monaco-editor .view-line span[class^="mtk"]')]
+        .map((el) => el.className)
+        .join('|'),
+    );
+    steady = sig === last ? steady + 1 : 0;
+    last = sig;
+    await page.waitForTimeout(100);
+  }
+}
+
 /** Readiness steps every capture needs before the first screenshot. */
 export async function prepareCapture(page: Page, consoleErrors: readonly string[]): Promise<void> {
   await page.mouse.move(0, 0);
   // Monaco fades its scrollbars on a JS timer, which `animations: 'disabled'` cannot freeze.
-  await page.addStyleTag({ content: '.monaco-editor .scrollbar { opacity: 0 !important; }' });
+  await page.addStyleTag({
+    content:
+      '.monaco-editor .scrollbar, .monaco-scrollable-element > .scrollbar, .minimap-slider, .decorationsOverviewRuler { opacity: 0 !important; }',
+  });
   await page.evaluate(() => document.fonts.ready);
   expect(await page.evaluate(() => document.fonts.check('13px Inter'))).toBe(true);
+  await settleMonacoTokens(page);
   expect(consoleErrors).toEqual([]);
 }
 
-/** Writes `screenshots/<id>-detail.webp` and `framed/<id>.webp`; the raw PNG stays in
- *  memory. Call once the view shows its key content: the caller asserts that first. */
+/** Writes `screenshots/framed/<id>.webp`; the raw PNG stays in memory. Call once the view shows its key content: the caller asserts that first. */
 export async function captureShot(page: Page, options: ShotOptions): Promise<void> {
-  const { id, detail, consoleErrors } = options;
+  const { id, consoleErrors } = options;
   await prepareCapture(page, consoleErrors);
 
   const capture = { animations: 'disabled', caret: 'hide', scale: 'device' } as const;
   const raw = await page.screenshot(capture);
-  const crop = await page.screenshot({ ...capture, clip: { ...detail, ...DETAIL_SIZE } });
 
-  await saveShot(`${id}-detail`, crop);
   await saveShot(join('framed', id), await frame(page, raw));
 }

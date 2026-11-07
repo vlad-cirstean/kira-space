@@ -1,5 +1,5 @@
 /**
- * P284: docs style rules D1-D9 for site/src/content/docs. Mirrors CLAUDE.md "Communication style".
+ * P284: docs style rules D1-D9 for site/src/content/docs. Mirrors docs/WORKING_AGREEMENT.md "Communication style".
  * Each rule is a pure function over prose text; `checkDocument` parses Markdown and applies them.
  */
 import { existsSync } from 'node:fs';

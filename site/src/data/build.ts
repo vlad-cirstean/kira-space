@@ -6,7 +6,7 @@ export interface BuildSection {
   readonly name: string;
   readonly pitch: string;
   readonly body: string;
-  /** The first shot is the carousel slide and must be a window shot. */
+  /** The first shot leads the section and supplies og:image, so it must be a window shot. */
   readonly shots: readonly ShotId[];
 }
 
@@ -17,7 +17,6 @@ export const BUILD = {
     'One task, from plan to proof, in one app. Follow a single story: export orders as a CSV file.',
   description:
     'Plan a task on a workflow, let the agent ask your database with your approval, track branches and handover notes, review the change, and keep proof it works. Kira Space, step by step.',
-  carouselLabel: 'Build with Kira in five steps',
 } as const;
 
 export const BUILD_SECTIONS: readonly BuildSection[] = [

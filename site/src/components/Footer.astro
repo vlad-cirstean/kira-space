@@ -1,9 +1,25 @@
 ---
+import { Image } from 'astro:assets';
+import appIcon from '../../../apps/kira-space/build/appicon.png';
 import { REPO_URL } from '../data/nav';
 ---
 
-<footer class="border-t border-border bg-chrome">
+<footer class="relative bg-chrome">
+  <div
+    aria-hidden="true"
+    class="absolute inset-x-0 top-0 h-px bg-linear-to-r from-brand-sky via-pink to-lime"
+  ></div>
   <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 px-4 py-6 text-base text-muted">
+    <span class="flex items-center gap-2 font-semibold text-fg">
+      <Image
+        src={appIcon}
+        alt=""
+        width={40}
+        height={40}
+        format="png"
+        class="size-5 rounded-md"
+      />Kira Space</span
+    >
     <span>MIT licence.</span>
     <a href={REPO_URL} rel="noopener" class="flex min-h-11 items-center hover:text-fg">GitHub</a>
     <a

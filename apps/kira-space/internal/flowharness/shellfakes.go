@@ -282,7 +282,6 @@ type McpInstaller struct {
 	mu       sync.Mutex
 	Installs []McpInstall
 	Known    map[string]bool
-	Removes  []string
 }
 
 // McpInstall is one Install call.
@@ -302,21 +301,6 @@ func (m *McpInstaller) InstallCalls() []McpInstall {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return append([]McpInstall(nil), m.Installs...)
-}
-
-// Remove records the name of a retired registration being removed.
-func (m *McpInstaller) Remove(_ context.Context, name string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.Removes = append(m.Removes, name)
-	return nil
-}
-
-// RemoveCalls returns a copy of the recorded Remove names.
-func (m *McpInstaller) RemoveCalls() []string {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return append([]string(nil), m.Removes...)
 }
 
 // Registered answers the optional registration probe from Known.

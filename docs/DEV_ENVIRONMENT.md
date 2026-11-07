@@ -2,7 +2,8 @@
 
 How to build, run and test this repo in whatever sandbox/container a session happens to be in —
 credential and tooling constraints, container quirks, per-subsystem run instructions. Not app
-facts: those live in `docs/ARCHITECTURE.md`. Not team process: that lives in `CLAUDE.md`.
+facts: those live in `docs/ARCHITECTURE.md`. Not team process: that lives in `CLAUDE.md` and
+`docs/WORKING_AGREEMENT.md`.
 
 ## Check the OS at session start
 
@@ -53,7 +54,7 @@ needs.
    by hand: run the "Pages" workflow on `main`. The `github-pages` environment accepts deployments
    from `main` only, by default. A run from another branch fails unless that branch is added under
    Settings > Environments > github-pages.
-3. Open `https://vlad-cirstean.github.io/kira-studio/`.
+3. Open `https://vlad-cirstean.github.io/kira-space/`.
 
 ## Branches, chapter PR, release (P330)
 
@@ -62,7 +63,7 @@ needs.
   `claude/*` working branch pushes to the chapter branch instead: `git push origin HEAD:chapter/vX.Y.Z`.
 - Next version when the user names none: `git fetch --tags origin && git tag -l 'v*' --sort=-v:refname | head -1`, patch plus 1.
 - `gh pr create` uses GraphQL, which returns 403 in cloud sessions. Open the chapter PR over REST:
-  `gh api repos/vlad-cirstean/kira-studio/pulls -f head=chapter/vX.Y.Z -f base=main -f title=vX.Y.Z -f body='…'`.
+  `gh api repos/vlad-cirstean/kira-space/pulls -f head=chapter/vX.Y.Z -f base=main -f title=vX.Y.Z -f body='…'`.
 - After that, nothing is manual: `pr-auto-merge.yml` squash-merges once the required checks pass, and
   `release-on-merge.yml` tags and releases. Flow and recovery: `docs/PACKAGING.md` §7.
 
@@ -77,7 +78,7 @@ needs.
   it runs with `--fallback <dir>`: last-good copy, else placeholder, exit 0. Under `CI=true` it
   exits 1 when a shot still has no image: a placeholder there hid a capture failure before.
 - The `screenshots` project runs 3 workers, files and tests in parallel. Each id writes its own
-  files; output is byte-identical to a serial run. 26 shots: about 80 s wall locally. Drop to 2
+  files; output is byte-identical to a serial run. 38 shots: about 65 s wall locally. Drop to 2
   workers if CI flakes, and record it.
 - Install Keychain dialog image (`site/src/assets/install/keychain-access.webp`) is user-supplied
   WebP, committed. Missing file fails every site build. Folder prompt is prose only, no image.
@@ -240,7 +241,6 @@ historical prose.
   is `${KIRA_SPACE_HOME}/app.lock`, so two `KIRA_SPACE_HOME`s are two fully independent backends
   and a test never contends with a `bun run dev` session. Anything needing a server builds
   one over its own temp `KIRA_SPACE_HOME` — never the fixed path.
-  `KIRA_HOME` is read only by the one-time leftovers cleanup (`leftovers.StudioHomeDefault`); either variable set means the retired `~/.kira-studio/` is never touched.
 - **A test binary panics if it resolves an app home with `KIRA_SPACE_HOME` unset** (`kirapaths.Home`, non-`production` builds). A package whose tests reach one calls `testx.RunWithTempHomes` from `TestMain`.
 - **`bun run dev` runs the one dev loop** (`cd apps/kira-space && wails3 task dev`): native window,
   Vite dev server on port 9246.
@@ -851,7 +851,8 @@ pre-push design.
 - **Pre-commit stays exactly `bun run lint` + `bun run typecheck`** (~15s) — golangci-lint and knip
   are deliberately not in it. `golangci-lint`'s cost is bimodal: ~1s warm, but minutes on a cold Go
   build cache (fresh clone, dependency bump, toolchain change) — a per-commit hook with a multi-
-  minute p99 gets routed around with `--no-verify`, which `CLAUDE.md` forbids as a way of finishing.
+  minute p99 gets routed around with `--no-verify`, which `docs/WORKING_AGREEMENT.md` forbids as a
+  way of finishing.
   `knip` is a whole-graph analysis; gating it per commit punishes a normal, legible multi-commit
   refactor (deleting a consumer in one commit, adding its replacement in the next). Both instead run
   in the `.githooks/pre-push` hook (`go build ./...`, `bun run lint:go`, `bun run lint:dead`, ~30s
@@ -902,7 +903,8 @@ registry directly:
 3. Rewrite `@/lib/utils` to `@theme/lib/utils`, and any `@/…` sibling import to
    `@theme/components/ui/…`.
 4. Pull `registryDependencies` recursively the same way; check `dependencies` against the root
-   `package.json` before adding anything (and against `CLAUDE.md`'s open-source-only rule).
+   `package.json` before adding anything (and against `docs/WORKING_AGREEMENT.md`'s open-source-only
+   rule).
 5. Run `bun run format` over the new files.
 
 P110 iter2 used this for `empty` and for `resizable`'s `ResizablePanel`/`ResizablePanelGroup`.
@@ -1088,7 +1090,6 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 
 | Name | Purpose | Set by |
 |---|---|---|
-| `KIRA_HOME` | Retired Studio data dir (`~/.kira-studio/`); read only by the one-time leftovers cleanup | you |
 | `KIRA_SPACE_HOME` | The one data dir and instance-lock dir (`app.lock`). Panics in a non-`production` test binary when unset | you; `testx.RunWithTempHomes` |
 | `KIRA_DEV` | Overrides the production check on a non-`production` build (`kirapaths`) | you |
 | `KIRA_INSECURE_SECRETS` | `1` stores secrets unencrypted on Linux without a keyring. Dev only | you; IPC fixture harness |

@@ -14,10 +14,9 @@ import (
 func TestMemoryHomeLazy(t *testing.T) {
 	app := flowharness.New(t)
 	home := filepath.Join(app.SpaceHome, "memory")
-	oldHome := filepath.Join(app.Home, ".kira-memory")
 	absent := func(step string) {
 		t.Helper()
-		for _, p := range []string{home, oldHome} {
+		for _, p := range []string{home} {
 			if _, err := os.Stat(p); !os.IsNotExist(err) {
 				t.Fatalf("%s: %s exists (%v)", step, p, err)
 			}
@@ -43,9 +42,6 @@ func TestMemoryHomeLazy(t *testing.T) {
 	db := filepath.Join(home, "memory.db")
 	if _, err := os.Stat(db); err != nil {
 		t.Fatalf("first tool call left no memory.db: %v", err)
-	}
-	if _, err := os.Stat(oldHome); !os.IsNotExist(err) {
-		t.Fatalf("%s exists (%v)", oldHome, err)
 	}
 
 	if got := memory.DefaultPath(); got != db {

@@ -1,13 +1,13 @@
 # Kira Space
 
-[![PR](https://github.com/vlad-cirstean/kira-studio/actions/workflows/pr.yml/badge.svg)](https://github.com/vlad-cirstean/kira-studio/actions/workflows/pr.yml)
+[![PR](https://github.com/vlad-cirstean/kira-space/actions/workflows/pr.yml/badge.svg)](https://github.com/vlad-cirstean/kira-space/actions/workflows/pr.yml)
 
 Native macOS workbench: git client, code workspace, coding agents, memory store, terminal, phone
 view, plus the database (Studio), Api, Docker and Kubernetes modules. Wails (Go) and Vue 3. Modes:
 Agents, Automations, Memory, Git, Studio, Api, Docker, Kubernetes. Replaces the former Kira Studio
 app.
 
-[Presentation page](https://vlad-cirstean.github.io/kira-studio/) and
+[Presentation page](https://vlad-cirstean.github.io/kira-space/) and
 [screenshots](../../README.md#screenshots). Root [`README.md`](../../README.md) covers the Studio,
 Api, Docker and Database MCP features.
 
@@ -18,8 +18,7 @@ Api, Docker and Database MCP features.
 - macOS 26+, Apple Silicon (`arm64`) only. Dark mode only.
 - Packaged build is ad-hoc signed, not notarized. First launch after an install may show one
   keychain prompt; **Always Allow** answers it for that build.
-- One data home, `~/.kira-space/`. First launch folds the retired Studio home in and keeps it as a backup
-  under `~/.kira-space/backups/`.
+- One data home, `~/.kira-space/`.
 
 ## Code workspace features
 
@@ -148,7 +147,7 @@ Two limits worth knowing up front:
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-space/main/scripts/install.sh | sh
 ```
 
 Downloads the latest release's ad-hoc signed disk image, moves the app into `/Applications`, opens
@@ -159,7 +158,7 @@ Build from source:
 
 ```sh
 git clone <repo-url>
-cd kira-studio
+cd kira-space
 bun run package
 ```
 
@@ -204,7 +203,7 @@ Run from the repo root. Shared scripts (`setup`, `lint`, `typecheck`, `test:go`)
 
 **App data:** `kira.db`, `logs/`, `review.db`, connections, Api collections and runs under
 `~/.kira-space/` (`KIRA_SPACE_HOME`). Memories in `~/.kira-space/memory/`: `memory.db`
-and downloaded `models/`. An old `~/.kira-memory` is ignored; Kira Space deletes it once at boot. The home has one lock; two instances on different homes never contend.
+and downloaded `models/`. The home has one lock; two instances on different homes never contend.
 
 ## Tests
 

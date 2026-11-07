@@ -171,21 +171,6 @@ func (i *Installer) Registered(ctx context.Context, name string) (bool, error) {
 	return false, nil
 }
 
-// Remove deletes the user-scope registration called name. A missing CLI and a name that is not
-// registered both succeed.
-func (i *Installer) Remove(ctx context.Context, name string) error {
-	claudePath, _, found := i.locateClaude()
-	if !found {
-		return nil
-	}
-	spawnCtx, cancel := context.WithTimeout(ctx, spawnTimeout)
-	defer cancel()
-	if err := i.run(spawnCtx, claudePath, []string{"mcp", "remove", "--scope", "user", name}); err != nil && !isNotRegisteredError(err) {
-		return errors.New(detailFor(spawnCtx, err))
-	}
-	return nil
-}
-
 // Install re-resolves `claude` fresh and never returns a Go error — every outcome is a named
 // Result value. helperPath is EnsureHeaderHelperScript's own
 // return value — the local script's path, never a token.

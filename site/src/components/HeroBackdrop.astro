@@ -1,0 +1,54 @@
+---
+import Sparkle from './Sparkle.astro';
+
+interface Props {
+  size?: 'lg' | 'sm';
+}
+
+const { size = 'lg' } = Astro.props;
+
+const sparkles = [
+  ['left-[6%] top-[14rem]', 'size-4', '0s'],
+  ['left-[18%] top-[6rem]', 'size-2.5', '1.2s'],
+  ['left-[30%] top-[22rem]', 'size-3', '2.4s'],
+  ['right-[8%] top-[10rem]', 'size-5', '0.6s'],
+  ['right-[20%] top-[4rem]', 'size-3', '1.8s'],
+  ['right-[4%] top-[26rem]', 'size-2.5', '3s'],
+  ['left-[48%] top-[2rem]', 'size-2.5', '2.1s'],
+] as const;
+---
+
+<div
+  aria-hidden="true"
+  class:list={[
+    'pointer-events-none absolute inset-x-0 top-0 -z-10 overflow-hidden',
+    size === 'lg' ? 'h-[64rem]' : 'h-[36rem]',
+  ]}
+>
+  <div
+    class="absolute -top-24 left-1/2 h-[46rem] w-[90rem] -translate-x-1/2 bg-[conic-gradient(from_180deg_at_50%_0%,transparent_158deg,color-mix(in_srgb,var(--brand-glow)_42%,transparent)_180deg,transparent_202deg)]"
+  > </div>
+  <div
+    class="absolute -top-48 left-[-6%] size-[40rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--brand-sky)_55%,transparent),transparent)]"
+  > </div>
+  <div
+    class="absolute -top-32 right-[-8%] size-[38rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--kira-status-pink)_38%,transparent),transparent)]"
+  > </div>
+  <div
+    class="absolute top-72 left-[30%] size-[34rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--kira-status-lime)_26%,transparent),transparent)]"
+  > </div>
+  <div
+    class="absolute inset-x-0 top-0 h-[44rem] bg-[linear-gradient(color-mix(in_srgb,var(--brand-glow)_11%,transparent)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_srgb,var(--brand-glow)_11%,transparent)_1px,transparent_1px)] bg-[size:56px_56px]"
+  > </div>
+  <div
+    class="absolute inset-x-0 top-0 h-[44rem] bg-[radial-gradient(ellipse_75%_70%_at_50%_0%,transparent,var(--color-bg))]"
+  > </div>
+  {sparkles
+    .slice(0, size === 'lg' ? 7 : 4)
+    .map(([pos, size], i) => (
+      <Sparkle
+        class={`absolute ${pos} ${size} text-brand-spark ${i >= 4 ? 'max-sm:hidden' : ''}`}
+      />
+    ))}
+  <div class="absolute inset-x-0 bottom-0 h-48 bg-linear-to-b from-transparent to-bg"></div>
+</div>

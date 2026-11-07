@@ -1,6 +1,27 @@
 @import "../../../packages/theme/src/tokens.css";
 
+/* Site-only brand hues from the app icon art; the app UI tokens stay untouched. */
+:root {
+  --brand-sky: #3b9be8;
+  --brand-deep: #0a5fa8;
+  --brand-glow: #9fd2f7;
+  --brand-spark: #e8f4fe;
+  --brand-ink: #0b4c85;
+}
+
 @theme inline {
+  --color-brand-sky: var(--brand-sky);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-glow: var(--brand-glow);
+  --color-brand-spark: var(--brand-spark);
+  --color-brand-ink: var(--brand-ink);
+  --color-pink: var(--kira-status-pink);
+  --color-lime: var(--kira-status-lime);
+  --color-violet: var(--kira-status-violet);
+  --color-amber: var(--kira-status-amber);
+  --color-teal: var(--kira-status-teal);
+  --color-sky: var(--kira-status-sky);
+  --color-red: var(--kira-status-red);
   --color-bg: var(--kira-bg);
   --color-elevated: var(--kira-bg-elevated);
   --color-chrome: var(--kira-bg-chrome);

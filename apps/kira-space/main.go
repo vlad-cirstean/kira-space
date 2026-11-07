@@ -44,7 +44,7 @@ var assets embed.FS
 var mobileAssets embed.FS
 
 // Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> config.EnsureLayout ->
-// logging.Init/Sweep -> instance lock -> storage.Open -> one-time moves -> configsync.Recover -> appwire.Build (every
+// logging.Init/Sweep -> instance lock -> storage.Open -> configsync.Recover -> appwire.Build (every
 // service) -> application.New (bound services, git and engine streams) -> the menu -> the startup
 // window list, opened -> app.Run().
 func main() {
@@ -84,8 +84,7 @@ func main() {
 	if err != nil {
 		reporter.Fatal(startupfail.StepStorage, err)
 	}
-	cipher := secrets.New() // moves the v0.3.1 Keychain item on first use
-	appwire.RunOneTimeMoves(db.DB, config.KiraSpaceHome(), cipher, appwire.NewLegacyMCPRemover())
+	cipher := secrets.New()
 	repositories, err := repos.New(db.DB)
 	if err != nil {
 		reporter.Fatal(startupfail.StepRepos, err)
@@ -99,11 +98,6 @@ func main() {
 		reporter.Fatal(startupfail.StepSettings, err)
 	}
 	logging.SetLevel(settings.Advanced.GitLogLevel)
-	if userHome, err := os.UserHomeDir(); err != nil {
-		slog.Warn("worktree move skipped: no user home", "scope", "startup", "err", err)
-	} else {
-		appwire.RunWorktreeMove(db.DB, userHome, settings.Git.GitPath, platformLocator())
-	}
 
 	mobileAssetsFS, err := fs.Sub(mobileAssets, "frontend/dist-mobile")
 	if err != nil {

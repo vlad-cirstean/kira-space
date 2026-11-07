@@ -15,7 +15,7 @@ export async function shoot(
 ): Promise<void> {
   const capture: ShotCapture = SHOT_CAPTURE[id];
   if (capture.kind === 'window') {
-    await captureShot(page, { id, detail: capture.detail, consoleErrors });
+    await captureShot(page, { id, consoleErrors });
     return;
   }
   await captureCrop(page, {

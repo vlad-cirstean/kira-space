@@ -32,7 +32,7 @@ import (
 
 const (
 	repoOwner = "vlad-cirstean"
-	repoName  = "kira-studio"
+	repoName  = "kira-space"
 
 	latestReleaseURL = "https://api.github.com/repos/" + repoOwner + "/" + repoName + "/releases/latest"
 

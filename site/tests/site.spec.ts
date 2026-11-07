@@ -5,10 +5,11 @@ import { BUILD_SECTIONS } from '../src/data/build';
 import type { ShotId } from '../src/data/shotCapture';
 import { expectShotImage } from './shotImage';
 
-const BASE = '/kira-studio/';
+const BASE = '/kira-space/';
 interface Route {
   readonly path: string;
   readonly name: string;
+  readonly h1: string;
   readonly hero: ShotId;
   readonly shots: readonly ShotId[];
 }
@@ -17,11 +18,18 @@ const ROUTES: readonly Route[] = [
   {
     path: '',
     name: 'Kira Space',
+    h1: 'Git, agents and data. One native window.',
     hero: 'space-agents-board',
     shots: [
       'space-agents-board',
+      'build-start-board',
+      'studio-connections',
+      'studio-data-grid',
+      'space-workspace',
+      'space-runs',
+      'studio-docker',
+      'build-start-workflow',
       'space-git-graph',
-      'space-memory',
       'studio-sql-console',
       'studio-api',
     ],
@@ -29,10 +37,21 @@ const ROUTES: readonly Route[] = [
   {
     path: 'build/',
     name: 'Build with Kira',
+    h1: 'Build with Kira',
     hero: 'build-start-board',
     shots: BUILD_SECTIONS.flatMap((section) => section.shots),
   },
 ];
+
+async function scrollThrough(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    for (let y = 0; y <= document.documentElement.scrollHeight; y += 300) {
+      window.scrollTo(0, y);
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+  });
+  await page.waitForTimeout(300);
+}
 
 async function openPage(page: Page, route: Route): Promise<string[]> {
   const errors: string[] = [];
@@ -123,13 +142,22 @@ for (const route of ROUTES) {
       expect(errors).toEqual([]);
     });
 
-    test('shots use the crop on a phone and the framed window on desktop', async ({
-      page,
-    }, info) => {
+    test('reduced motion runs no animation', async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
       await openPage(page, route);
-      const phone = info.project.name === 'phone';
-      if (phone) expect(page.viewportSize()?.width).toBe(375);
-      for (const id of route.shots) await expectShotImage(page, id, phone);
+      await scrollThrough(page);
+      expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
+    });
+
+    test('ships no document script', async ({ page }) => {
+      await openPage(page, route);
+      expect(await page.evaluate(() => document.scripts.length)).toBe(0);
+    });
+
+    test('every shot shows the whole image and fits the viewport', async ({ page }, info) => {
+      await openPage(page, route);
+      if (info.project.name === 'phone') expect(page.viewportSize()?.width).toBe(375);
+      for (const id of route.shots) await expectShotImage(page, id);
     });
 
     test('body text is readable and tap targets are large enough', async ({ page }, info) => {
@@ -168,7 +196,7 @@ for (const route of ROUTES) {
 
     test('head names this tab and its hero image', async ({ page }) => {
       await openPage(page, route);
-      await expect(page.locator('h1')).toHaveText(route.name);
+      await expect(page.locator('h1')).toHaveText(route.h1);
       await expect(page).toHaveTitle(new RegExp(route.name));
       const og = await page.locator('meta[property="og:image"]').getAttribute('content');
       expect(og).toContain(route.hero);
@@ -189,7 +217,12 @@ for (const route of ROUTES) {
 test('the retired /space/ URL redirects to the landing page', async ({ page }) => {
   await page.goto(`${BASE}space/`);
   await expect(page).toHaveURL(BASE);
-  await expect(page.locator('h1')).toHaveText('Kira Space');
+  await expect(page.locator('h1')).toContainText('One native window');
+});
+
+test('the landing page never mentions memory', async ({ page }) => {
+  await page.goto(BASE);
+  expect(await page.locator('main').innerText()).not.toMatch(/memor/i);
 });
 
 test('the landing page has no app tab bar', async ({ page }) => {
@@ -210,11 +243,9 @@ for (const path of ['', 'build/']) {
     await page.goto(`${BASE}${path}`);
     const first = page.locator('body > *').first();
     await expect(first).toHaveAttribute('data-beta-notice', '');
-    await expect(first).toContainText('Beta, not production ready, not notarized.');
-    await expect(first.locator('a')).toHaveAttribute(
-      'href',
-      new RegExp(path === '' ? '^#install$' : '/kira-studio/#install$'),
-    );
+    await expect(first).toContainText('Personal project. Use with care.');
+    await expect(first.locator('a')).toHaveCount(0);
+    expect((await first.innerText()).trim()).toBe('Personal project. Use with care.');
     await expect(first).not.toContainText(/keychain|folder|macos/i);
   });
 }
@@ -240,6 +271,6 @@ test('the README opens with the beta notice and the install link', () => {
   const first = readFileSync(join(import.meta.dirname, '..', '..', 'README.md'), 'utf8')
     .split('\n')
     .find((line) => line.trim() !== '');
-  expect(first).toContain('Beta, not production ready, not notarized.');
-  expect(first).toContain('https://vlad-cirstean.github.io/kira-studio/#install');
+  expect(first).toContain('Personal project. Use with care.');
+  expect(first).toContain('https://vlad-cirstean.github.io/kira-space/#install');
 });

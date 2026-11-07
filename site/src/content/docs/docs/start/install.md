@@ -17,7 +17,7 @@ sidebar:
 Run this in Terminal to install Kira Space:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-space/main/scripts/install.sh | sh
 ```
 
 The same command replaces an older copy.
@@ -47,4 +47,4 @@ The app checks GitHub for a newer release and offers to update. Nothing installs
 
 ## Build from source
 
-Building is the developer path. See [Building from source](https://github.com/vlad-cirstean/kira-studio#building-from-source) in the README.
+Building is the developer path. See [Building from source](https://github.com/vlad-cirstean/kira-space#building-from-source) in the README.

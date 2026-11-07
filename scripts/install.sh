@@ -1,20 +1,20 @@
 #!/bin/sh
-# kira-install-contract: 1
+# kira-install-contract: 2
 # scripts/install.sh installs or updates Kira Space on this Mac: it downloads the latest published
 # release's disk image, verifies it, and swaps it into /Applications, then opens the app.
-# Interactive: `curl -fsSL <raw-url> | sh -s -- --app=space` — the same command installs a fresh
+# Interactive: `curl -fsSL <raw-url> | sh` — the same command installs a fresh
 # copy or replaces an older one. Self-update: the app itself runs this script with
 # --wait-pid/--notify-fd, stages the new bundle, hands off over fd 3, then quits once it reads that
 # hand-off — the app never overwrites its own running binary. Log file, either mode:
 # ~/Library/Logs/<App name>/install.log.
 #
-# Usage: install.sh --app=space [--wait-pid=<pid> --notify-fd=<3-9>]
+# Usage: install.sh [--wait-pid=<pid> --notify-fd=<3-9>]
 # Exit codes: 0 installed and launched; 1 any failure; 2 usage; 130 interrupted.
 #
 # P119 §2: rewritten by hand, not generated — every requirement in the plan's own §2 is load-
-# bearing, none of it optional polish. Never break the --app/--wait-pid/--notify-fd flags or the
-# fd-3 "staged <tag>" handshake without bumping the line-2 marker above to 2 — an older app then
-# refuses the new script with a clear error instead of misdriving it (internal/appupdate/
+# bearing, none of it optional polish. Never break the --wait-pid/--notify-fd flags or the
+# fd-3 "staged <tag>" handshake without bumping the line-2 marker above (marker 2 dropped --app) —
+# an older app then refuses the new script with a clear error instead of misdriving it (internal/appupdate/
 # install.go's own installContract constant is the other side of this same contract; S11 in
 # scripts/verify-packaging.sh checks the two agree literally).
 set -eu
@@ -25,13 +25,18 @@ main() {
   export PATH
   umask 022
 
-  RAW_BASE="https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh"
+  RAW_BASE="https://raw.githubusercontent.com/vlad-cirstean/kira-space/main/scripts/install.sh"
 
   # Every global this script touches gets a default here, up front — set -u then never trips on a
   # variable a later step hasn't reached yet, including inside cleanup, which can run at any point
   # once its trap is armed.
-  APP_ARG="" WAIT_PID="" NOTIFY_FD="" LOG=""
-  APP_NAME="" BUNDLE_ID="" ASSET="" SLUG="" LOG_NAME=""
+  WAIT_PID="" NOTIFY_FD="" LOG=""
+  # Kira Space is the only app.
+  APP_NAME="Kira Space"
+  BUNDLE_ID="com.kirathecat.kira-space"
+  ASSET="kira-space-macos-arm64.dmg"
+  SLUG="space"
+  LOG_NAME="Kira Space"
   WORK="" STAGE="" MNT=""
   MOUNTED=0
   HANDED_OFF=0
@@ -81,7 +86,7 @@ main() {
         open "/Applications/$APP_NAME.app" >/dev/null 2>&1 </dev/null || true
         ALERT_MSG="$FAIL_MSG Details: ~/Library/Logs/$LOG_NAME/install.log"
       else
-        ALERT_MSG="$FAIL_MSG Details: ~/Library/Logs/$LOG_NAME/install.log. To reinstall: curl -fsSL $RAW_BASE | sh -s -- --app=$APP_ARG"
+        ALERT_MSG="$FAIL_MSG Details: ~/Library/Logs/$LOG_NAME/install.log. To reinstall: curl -fsSL $RAW_BASE | sh"
       fi
       # argv-passed strings, never interpolated into the AppleScript source itself.
       osascript - "$APP_NAME couldn't update" "$ALERT_MSG" >/dev/null 2>&1 <<'APPLESCRIPT_EOF' || true
@@ -99,29 +104,14 @@ APPLESCRIPT_EOF
   # ---- 1: parse args ----------------------------------------------------------------------------
   for ARG in "$@"; do
     case "$ARG" in
-      --app=*) APP_ARG="${ARG#--app=}" ;;
       --wait-pid=*) WAIT_PID="${ARG#--wait-pid=}" ;;
       --notify-fd=*) NOTIFY_FD="${ARG#--notify-fd=}" ;;
       *)
-        echo "usage: install.sh --app=space [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
+        echo "usage: install.sh [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
         exit 2
         ;;
     esac
   done
-
-  case "$APP_ARG" in
-    space)
-      APP_NAME="Kira Space"
-      BUNDLE_ID="com.kirathecat.kira-space"
-      ASSET="kira-space-macos-arm64.dmg"
-      SLUG="space"
-      LOG_NAME="Kira Space"
-      ;;
-    *)
-      echo "usage: install.sh --app=space [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
-      exit 2
-      ;;
-  esac
 
   # --wait-pid/--notify-fd are passed only by the app itself (self-update mode) — both or neither.
   # The regex on --notify-fd is what keeps the eval below safe: it is interpolated into a
@@ -160,7 +150,7 @@ APPLESCRIPT_EOF
   else
     MODE_LABEL="interactive"
   fi
-  log "kira-install starting: mode=$MODE_LABEL app=$APP_ARG pid=$$"
+  log "kira-install starting: mode=$MODE_LABEL pid=$$"
 
   # ---- 2: preflight -------------------------------------------------------------------------
   # sysctl, not `uname -m` — a Rosetta shell reports x86_64 on Apple Silicon.
@@ -196,7 +186,7 @@ APPLESCRIPT_EOF
   HTTP_STATUS="$(curl --proto '=https' --tlsv1.2 -fsSL --connect-timeout 20 --retry 3 --retry-delay 2 \
     -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' \
     -o "$RELEASE_JSON" -w '%{http_code}' \
-    https://api.github.com/repos/vlad-cirstean/kira-studio/releases/latest </dev/null)"
+    https://api.github.com/repos/vlad-cirstean/kira-space/releases/latest </dev/null)"
   CURL_STATUS=$?
   set -e
   if [ "$CURL_STATUS" != "0" ]; then
@@ -255,7 +245,7 @@ JXA_EOF
     die "release tag '$TAG' does not look like v<major>.<minor>.<patch>"
   fi
   case "$ASSET_URL" in
-    "https://github.com/vlad-cirstean/kira-studio/releases/download/$TAG/"*) ;;
+    "https://github.com/vlad-cirstean/kira-space/releases/download/$TAG/"*) ;;
     *) die "release asset URL is not the expected GitHub download URL" ;;
   esac
   case "$ASSET_SIZE" in

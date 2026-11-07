@@ -5,24 +5,21 @@ import ShotPicture from './ShotPicture.astro';
 interface Props {
   shot: ResolvedShot;
   eager?: boolean;
-  glow?: boolean;
   tile?: boolean;
+  sizes?: string;
 }
 
-const { shot, eager = false, glow = false, tile = false } = Astro.props;
+const { shot, eager = false, tile = false, sizes } = Astro.props;
 ---
 
 <figure class="relative m-0">
-  {glow && (
-    <div aria-hidden="true" class="absolute -inset-4 -z-10 rounded-3xl bg-tint/10 blur-3xl"></div>
-  )}
   {shot.kind === 'window' ? (
     <a
       href={shot.framed}
-      class="block overflow-hidden rounded-xl bg-chrome shadow-shot ring-1 ring-border-strong md:overflow-visible md:rounded-none md:bg-transparent md:shadow-none md:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      class="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       aria-label={`Open full size: ${shot.title}`}
     >
-      <ShotPicture shot={shot} eager={eager} />
+      <ShotPicture shot={shot} eager={eager} sizes={sizes} />
     </a>
   ) : (
     <a
@@ -30,7 +27,7 @@ const { shot, eager = false, glow = false, tile = false } = Astro.props;
       class:list={[
         'block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
         tile &&
-          'flex aspect-[4/3] items-center justify-center rounded-xl bg-elevated p-3 ring-1 ring-border-strong',
+          'flex aspect-[4/3] items-center justify-center rounded-xl bg-elevated p-3 border border-border-strong',
       ]}
       aria-label={`Open full size: ${shot.title}`}
     >
@@ -45,7 +42,7 @@ const { shot, eager = false, glow = false, tile = false } = Astro.props;
         class:list={[
           'mx-auto block h-auto max-w-full',
           tile && 'max-h-full object-contain',
-          shot.kind === 'region' && 'overflow-hidden rounded-xl ring-1 ring-border-strong',
+          shot.kind === 'region' && 'overflow-hidden rounded-xl border border-border-strong',
         ]}
       >
     </a>
