@@ -16,9 +16,9 @@ const colors = ['sky', 'teal', 'amber', 'pink'] as const;
   class="relative isolate mx-auto max-w-6xl px-4 pb-8 pt-8 lg:pb-8"
   aria-labelledby="story-title"
 >
-  <div class="reveal mx-auto max-w-3xl text-center">
+  <div class="mx-auto max-w-3xl text-center">
     <span
-      class="inline-flex items-center gap-2 rounded-full bg-pink/10 px-3 py-1 text-sm font-semibold uppercase tracking-[0.14em] text-pink ring-1 ring-pink/30"
+      class="inline-flex items-center gap-2 rounded-full bg-pink/10 px-3 py-1 text-sm font-semibold uppercase tracking-[0.14em] text-pink border border-pink/30"
     >
       <Sparkle class="size-3" />
       How it feels
@@ -30,22 +30,19 @@ const colors = ['sky', 'teal', 'amber', 'pink'] as const;
       From idea to <span class="gradient-text">merged.</span>
     </h2>
   </div>
-  <div class="mt-16 flex flex-col gap-20 lg:mt-24 lg:gap-0">
+  <div class="mt-16 flex flex-col gap-20 lg:mt-24 lg:gap-28">
     {STORY.map((c, i) => (
-      <article class="story-chapter grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16">
-        <div
-          class="story-hold relative pl-8 lg:pt-8"
-          style={`--glass:var(--kira-status-${colors[i]})`}
-        >
+      <article class="grid items-center gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16">
+        <div class="relative pl-8" style={`--glass:var(--kira-status-${colors[i]})`}>
           <span
             aria-hidden="true"
             class="absolute bottom-0 left-[7px] top-0 w-0.5 rounded-full bg-white/15"
           ></span>
           <span
             aria-hidden="true"
-            class="fill-y absolute bottom-0 left-[7px] top-0 w-0.5 rounded-full bg-linear-to-b from-brand-sky via-pink to-lime shadow-[0_0_10px_var(--brand-sky)]"
+            class="absolute bottom-0 left-[7px] top-0 w-0.5 rounded-full bg-linear-to-b from-brand-sky via-pink to-lime"
           ></span>
-          <Sparkle class="absolute left-0 top-1.5 size-4 text-brand-glow drop-shadow-[0_0_8px_var(--brand-glow)] lg:top-9" />
+          <Sparkle class="absolute left-0 top-1.5 size-4 text-brand-glow" />
           <span class="gradient-text block text-7xl leading-none font-extrabold tracking-[-0.05em] lg:text-9xl">
             0{i + 1}
           </span>
@@ -63,10 +60,10 @@ const colors = ['sky', 'teal', 'amber', 'pink'] as const;
             ))}
           </ul>
         </div>
-        <div class="story-shot relative">
+        <div class="relative">
           <div
             aria-hidden="true"
-            class="absolute inset-[8%] -z-10 rounded-full bg-[conic-gradient(from_160deg,var(--brand-sky),var(--kira-status-pink),var(--kira-status-lime),var(--brand-sky))] opacity-25 [mask-image:radial-gradient(closest-side,#000_35%,transparent)]"
+            class="absolute inset-[8%] -z-10 rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--brand-sky)_30%,transparent),color-mix(in_srgb,var(--kira-status-pink)_14%,transparent)_65%,transparent)]"
           ></div>
           <Shot shot={shots[i] as ResolvedWindowShot} sizes="(min-width: 1152px) 660px, 100vw" />
         </div>

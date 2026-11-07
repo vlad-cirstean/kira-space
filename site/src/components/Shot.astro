@@ -27,7 +27,7 @@ const { shot, eager = false, tile = false, sizes } = Astro.props;
       class:list={[
         'block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
         tile &&
-          'flex aspect-[4/3] items-center justify-center rounded-xl bg-elevated p-3 ring-1 ring-border-strong',
+          'flex aspect-[4/3] items-center justify-center rounded-xl bg-elevated p-3 border border-border-strong',
       ]}
       aria-label={`Open full size: ${shot.title}`}
     >
@@ -42,7 +42,7 @@ const { shot, eager = false, tile = false, sizes } = Astro.props;
         class:list={[
           'mx-auto block h-auto max-w-full',
           tile && 'max-h-full object-contain',
-          shot.kind === 'region' && 'overflow-hidden rounded-xl ring-1 ring-border-strong',
+          shot.kind === 'region' && 'overflow-hidden rounded-xl border border-border-strong',
         ]}
       >
     </a>

@@ -18,7 +18,7 @@ const { shots, tint = 'sky' } = Astro.props;
   {shots.map((shot, i) => (
     <div
       class:list={[
-        'reveal rounded-3xl bg-(--tint-c)/[0.06] p-3 ring-1 ring-(--tint-c)/20 sm:p-4',
+        'rounded-3xl bg-(--tint-c)/[0.06] p-3 border border-(--tint-c)/20 sm:p-4',
         shot.kind === 'window' && 'md:col-span-2',
       ]}
       style={`--i:${i % 2}`}

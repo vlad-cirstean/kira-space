@@ -31,6 +31,7 @@ export default defineConfig({
     '/space': '/kira-space/',
   },
   output: 'static',
+  prefetch: false,
   vite: { plugins: [tailwindcss()] },
   integrations: [
     publishShots,

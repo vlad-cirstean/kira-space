@@ -15,9 +15,9 @@ interface Props {
 
 const { front } = Astro.props;
 const button =
-  'group relative flex min-h-12 items-center gap-2 overflow-hidden rounded-xl px-6 text-base font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:transition-[transform,box-shadow] motion-safe:hover:-translate-y-0.5';
-const primary = `${button} bg-linear-to-b from-brand-sky to-brand-deep text-white shadow-[0_10px_34px_-6px_color-mix(in_srgb,var(--brand-sky)_75%,transparent),inset_0_1px_0_rgb(255_255_255/0.35)] hover:shadow-[0_14px_44px_-6px_color-mix(in_srgb,var(--brand-sky)_95%,transparent),inset_0_1px_0_rgb(255_255_255/0.35)]`;
-const secondary = `${button} bg-white/5 text-fg ring-1 ring-white/12 hover:bg-white/10 hover:ring-brand-glow/60`;
+  'group flex min-h-12 items-center gap-2 rounded-xl px-6 text-base font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:transition-[transform,box-shadow] motion-safe:hover:-translate-y-0.5';
+const primary = `${button} bg-linear-to-b from-brand-sky to-brand-deep text-white shadow-cta hover:shadow-cta-hover`;
+const secondary = `${button} bg-white/5 text-fg border border-white/12 hover:bg-white/10 hover:border-white/25`;
 ---
 
 <section class="relative">
@@ -45,10 +45,6 @@ const secondary = `${button} bg-white/5 text-fg ring-1 ring-white/12 hover:bg-wh
     </p>
     <div style="--d:270ms" class="hero-in mt-9 flex flex-wrap justify-center gap-3">
       <a href="#install" class={primary}>
-        <span
-          aria-hidden="true"
-          class="absolute inset-y-0 -left-full w-full skew-x-[-20deg] bg-linear-to-r from-transparent via-white/40 to-transparent motion-safe:group-hover:translate-x-[200%] motion-safe:transition-transform motion-safe:duration-700"
-        ></span>
         <Icon name="cloud-download" class="size-5" />
         Install
         <Icon
@@ -68,7 +64,7 @@ const secondary = `${button} bg-white/5 text-fg ring-1 ring-white/12 hover:bg-wh
     <a
       href="#install"
       style="--d:340ms"
-      class="hero-in mx-auto mt-6 flex min-h-11 w-fit max-w-full items-center gap-2 rounded-full bg-black/30 px-4 font-mono text-sm text-muted ring-1 ring-white/10 hover:text-fg hover:ring-brand-glow/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      class="hero-in mx-auto mt-6 flex min-h-11 w-fit max-w-full items-center gap-2 rounded-full bg-black/30 px-4 font-mono text-sm text-muted border border-white/10 hover:text-fg hover:border-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <span class="text-lime">$</span>
       <span class="truncate">{HERO.command}</span>

@@ -1,7 +1,7 @@
 ---
 import Bento from '../components/Bento.astro';
 import BuildBand from '../components/BuildBand.astro';
-import EngineMarquee from '../components/EngineMarquee.astro';
+import Engines from '../components/Engines.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import Hero from '../components/Hero.astro';
@@ -25,9 +25,9 @@ const hero = windowShot(content.hero);
 
 <Base title={content.pageTitle} description={content.description} image={hero.social}>
   <Header />
-  <main data-app="space" class="relative isolate overflow-hidden">
+  <main data-app="space" class="relative isolate overflow-x-clip">
     <Hero front={hero} />
-    <EngineMarquee />
+    <Engines />
     <Bento shots={content.features.flatMap((f) => (f.shot ? [windowShot(f.shot)] : []))} />
     <Story shots={STORY.map((c) => windowShot(c.shot))} />
     <BuildBand />

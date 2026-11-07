@@ -14,8 +14,7 @@ const dialogs = macos.items.map((item) => ({
   body: item.body,
   image: 'image' in item ? { ...item.image, shot: installShot(item.image.file) } : undefined,
 }));
-const card =
-  'glass relative flex flex-col overflow-hidden rounded-3xl p-6 before:z-10 [&>*]:relative';
+const card = 'glass relative flex flex-col overflow-hidden rounded-3xl p-6 [&>*]:relative';
 ---
 
 <section id="install" class="relative isolate overflow-hidden px-4 pb-24 pt-24 lg:pt-32">
@@ -24,33 +23,25 @@ const card =
     class="absolute left-1/2 top-0 -z-10 h-[40rem] w-[70rem] max-w-none -translate-x-1/2 bg-[radial-gradient(ellipse_50%_45%_at_50%_45%,color-mix(in_srgb,var(--brand-sky)_30%,transparent),transparent),radial-gradient(ellipse_30%_35%_at_70%_45%,color-mix(in_srgb,var(--kira-status-pink)_16%,transparent),transparent)]"
   ></div>
   <div class="mx-auto max-w-3xl text-center">
-    <div class="relative mx-auto size-24 motion-safe:animate-float">
+    <div class="relative mx-auto size-24">
       <span
         aria-hidden="true"
-        class="absolute -inset-4 rounded-full bg-[conic-gradient(var(--brand-sky),var(--kira-status-pink),var(--kira-status-lime),var(--brand-sky))] opacity-50 [mask-image:radial-gradient(closest-side,#000_35%,transparent)]"
+        class="absolute -inset-4 rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--brand-sky)_55%,transparent),color-mix(in_srgb,var(--kira-status-pink)_30%,transparent)_60%,transparent)]"
       ></span>
       <div
         aria-hidden="true"
-        class="relative size-full rounded-[1.4rem] bg-cover shadow-[0_20px_50px_-10px_var(--brand-sky)] ring-1 ring-white/30"
+        class="relative size-full rounded-[1.4rem] bg-cover border border-white/30"
         style={`background-image:url(${icon.src})`}
       ></div>
-      <Sparkle
-        class="absolute -right-6 -top-2 size-5 text-brand-spark motion-safe:animate-twinkle"
-      />
-      <Sparkle
-        class="absolute -bottom-1 -left-7 size-3 text-pink motion-safe:animate-twinkle [animation-delay:1.5s]"
-      />
+      <Sparkle class="absolute -right-6 -top-2 size-5 text-brand-spark" />
+      <Sparkle class="absolute -bottom-1 -left-7 size-3 text-pink" />
     </div>
-    <h2
-      class="reveal mt-8 text-4xl leading-[1.05] font-bold tracking-[-0.03em] sm:text-5xl lg:text-6xl"
-    >
+    <h2 class="mt-8 text-4xl leading-[1.05] font-bold tracking-[-0.03em] sm:text-5xl lg:text-6xl">
       Install in <span class="gradient-text">one line.</span>
     </h2>
-    <p class="reveal mt-4 text-lg text-muted sm:text-xl">{INSTALL.steps[0]}</p>
+    <p class="mt-4 text-lg text-muted sm:text-xl">{INSTALL.steps[0]}</p>
   </div>
-  <div
-    class="reveal gradient-border mx-auto mt-10 max-w-3xl rounded-2xl p-px shadow-[0_0_80px_-20px_var(--brand-sky)]"
-  >
+  <div class="gradient-border mx-auto mt-10 max-w-3xl rounded-2xl p-px">
     <div class="overflow-hidden rounded-[calc(1rem-1px)] bg-chrome">
       <div class="flex items-center gap-2 border-b border-white/10 px-4 py-3 text-sm text-subtle">
         <span aria-hidden="true" class="size-3 rounded-full bg-red/80"></span>
@@ -65,7 +56,7 @@ const card =
     </div>
   </div>
   <div class="mx-auto mt-20 max-w-5xl">
-    <div class="reveal text-center">
+    <div class="text-center">
       <h3
         class="flex items-center justify-center gap-3 text-2xl font-semibold tracking-tight text-fg sm:text-3xl"
       >
@@ -77,7 +68,7 @@ const card =
     <ul class="mt-10 grid gap-5 md:grid-cols-2">
       {dialogs.map((d, i) => (
         <li
-          class={`reveal ${card}`}
+          class={`${card}`}
           style={`--glass:var(--kira-status-${i === 0 ? 'sky' : 'pink'});--i:${i}`}
         >
           <span
@@ -95,14 +86,14 @@ const card =
                 alt={d.image.alt}
                 loading="lazy"
                 decoding="async"
-                class="h-auto max-w-full drop-shadow-lg"
+                class="h-auto max-w-full"
               >
               <figcaption class="mt-2 text-base text-muted">{d.image.caption}</figcaption>
             </figure>
           ) : (
             <span
               aria-hidden="true"
-              class="mt-auto flex size-16 items-center justify-center self-start rounded-full bg-pink/15 text-pink ring-1 ring-pink/30 shadow-[0_0_30px_-4px_var(--kira-status-pink)]"
+              class="mt-auto flex size-16 items-center justify-center self-start rounded-full bg-pink/15 text-pink border border-pink/30"
             >
               <Icon name="files" class="size-8" />
             </span>
@@ -111,7 +102,7 @@ const card =
       ))}
     </ul>
     <div
-      class="mx-auto mt-8 flex max-w-3xl items-start gap-3 rounded-2xl bg-warn/10 p-4 text-base text-fg ring-1 ring-warn/40"
+      class="mx-auto mt-8 flex max-w-3xl items-start gap-3 rounded-2xl bg-warn/10 p-4 text-base text-fg border border-warn/40"
     >
       <Icon name="warning" class="mt-1 size-4 text-warn" />
       <p>{INSTALL.note}</p>
