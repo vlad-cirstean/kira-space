@@ -167,9 +167,9 @@ for (const doc of PAGES) {
     });
 
     for (const shot of SHOT_PAGES[doc.file] ?? []) {
-      test(`shot ${shot} uses the right image for the viewport`, async ({ page }, info) => {
+      test(`shot ${shot} shows the whole image`, async ({ page }) => {
         await page.goto(doc.url);
-        await expectShotImage(page, shot, info.project.name === 'phone');
+        await expectShotImage(page, shot);
       });
     }
   });

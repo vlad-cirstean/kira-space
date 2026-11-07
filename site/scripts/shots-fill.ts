@@ -29,15 +29,13 @@ for (const id of ids) {
     print(`shots-fill: ${id} has unknown kind ${kind}`);
     process.exit(1);
   }
-  const { main, phone } = shotFiles(id);
-  for (const file of phone ? [main, phone] : [main]) {
-    const other = owner.get(file);
-    if (other) {
-      print(`shots-fill: ${id} and ${other} both write ${file}`);
-      process.exit(1);
-    }
-    owner.set(file, id);
+  const { main } = shotFiles(id);
+  const other = owner.get(main);
+  if (other) {
+    print(`shots-fill: ${id} and ${other} both write ${main}`);
+    process.exit(1);
   }
+  owner.set(main, id);
 }
 
 const filled: string[] = [];

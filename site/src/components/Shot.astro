@@ -19,7 +19,7 @@ const { shot, eager = false, glow = false, tile = false } = Astro.props;
   {shot.kind === 'window' ? (
     <a
       href={shot.framed}
-      class="block overflow-hidden rounded-xl bg-chrome shadow-shot ring-1 ring-border-strong md:overflow-visible md:rounded-none md:bg-transparent md:shadow-none md:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      class="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       aria-label={`Open full size: ${shot.title}`}
     >
       <ShotPicture shot={shot} eager={eager} />

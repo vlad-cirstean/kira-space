@@ -123,13 +123,10 @@ for (const route of ROUTES) {
       expect(errors).toEqual([]);
     });
 
-    test('shots use the crop on a phone and the framed window on desktop', async ({
-      page,
-    }, info) => {
+    test('every shot shows the whole image and fits the viewport', async ({ page }, info) => {
       await openPage(page, route);
-      const phone = info.project.name === 'phone';
-      if (phone) expect(page.viewportSize()?.width).toBe(375);
-      for (const id of route.shots) await expectShotImage(page, id, phone);
+      if (info.project.name === 'phone') expect(page.viewportSize()?.width).toBe(375);
+      for (const id of route.shots) await expectShotImage(page, id);
     });
 
     test('body text is readable and tap targets are large enough', async ({ page }, info) => {

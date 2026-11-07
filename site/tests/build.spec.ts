@@ -40,8 +40,7 @@ test('the page ships no carousel and no script', async ({ page }) => {
   await expect(page.locator('main script')).toHaveCount(0);
 });
 
-test('every Build shot serves the right image for its kind', async ({ page }, info) => {
-  const phone = info.project.name === 'phone';
-  for (const id of ALL) await expectShotImage(page, id, phone);
+test('every Build shot shows the whole image', async ({ page }) => {
+  for (const id of ALL) await expectShotImage(page, id);
   for (const s of BUILD_SECTIONS) expect(SHOT_CAPTURE[s.shots[0] as ShotId].kind).toBe('window');
 });

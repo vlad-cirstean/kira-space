@@ -10,17 +10,15 @@ interface Props {
 const { shot, eager = false, class: className } = Astro.props;
 ---
 
-<picture>
-  <source media="(min-width: 768px)" srcset={shot.framed} type="image/webp">
-  <img
-    src={shot.detail}
-    alt={shot.alt}
-    data-shot={shot.id}
-    width={shot.detailWidth}
-    height={shot.detailHeight}
-    loading={eager ? 'eager' : 'lazy'}
-    decoding="async"
-    style={`--shot-ar:${shot.framedWidth}/${shot.framedHeight}`}
-    class:list={['aspect-[4/3] h-auto w-full md:aspect-(--shot-ar)', className]}
-  >
-</picture>
+<img
+  src={shot.framed}
+  srcset={`${shot.framedSmall} 1136w, ${shot.framed} ${shot.framedWidth}w`}
+  sizes="(min-width: 1024px) 1024px, 100vw"
+  alt={shot.alt}
+  data-shot={shot.id}
+  width={shot.framedWidth}
+  height={shot.framedHeight}
+  loading={eager ? 'eager' : 'lazy'}
+  decoding="async"
+  class:list={['h-auto w-full', className]}
+>
