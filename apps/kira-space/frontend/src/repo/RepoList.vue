@@ -23,6 +23,7 @@ import TextPromptDialog from '@workbench/prompt/TextPromptDialog.vue';
 import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
+import { useAdeReposUiStore } from '../ade/v2/state/adeReposUi';
 import { useCodeReposStore } from '../state/coderepos';
 import { openRepoTerminalTab } from '../state/repoTabs';
 import { useTerminalsStore } from '../state/terminals';
@@ -30,7 +31,6 @@ import { repoWorkspaceKey, useWorkspaceStore } from '../state/workspace';
 import RepoWorktreeRow from './RepoWorktreeRow.vue';
 import { useRepoHeadsStore } from './state/repoHeads';
 import { useRepoLinksStore } from './state/repoLinks';
-import { useReposDialogStore } from './state/reposDialog';
 import { useRepoVisibilityStore } from './state/repoVisibility';
 import { useRepoWorktreeLists } from './state/worktreeQueries';
 import { useWorktreesStore, worktreeLabel } from './state/worktrees';
@@ -50,7 +50,7 @@ const worktreeLists = useRepoWorktreeLists(() => worktreesStore.expandedRows);
 const repoLinksStore = useRepoLinksStore();
 const visibility = useRepoVisibilityStore();
 const terminalsStore = useTerminalsStore();
-const reposDialog = useReposDialogStore();
+const reposUi = useAdeReposUiStore();
 
 // Every top-level repo hidden and Show hidden off: the list is empty by choice, not for lack of imports.
 const allHidden = computed(() => visibility.listed.length === 0 && visibility.hasHidden);
@@ -207,7 +207,7 @@ function repoMenuItems(repo: RepoSummary): MenuItem[] {
       id: 'configure',
       label: t('space.repo.panel.configure.label'),
       icon: 'settings-gear',
-      run: () => reposDialog.show({ repoId: repo.id }),
+      run: () => reposUi.open({ repoId: repo.id }),
     },
     {
       type: 'submenu' as const,

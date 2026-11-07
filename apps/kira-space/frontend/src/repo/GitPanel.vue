@@ -17,11 +17,9 @@ import RepoFileTree from './RepoFileTree.vue';
 import RepoList from './RepoList.vue';
 import RepoReviewView from './RepoReviewView.vue';
 import RepoSearchView from './RepoSearchView.vue';
-import ReposDialog from './ReposDialog.vue';
 import { useFileTreeStore } from './state/fileTree';
 import { useRepoHeadsStore } from './state/repoHeads';
 import { useRepoLinksStore } from './state/repoLinks';
-import { useReposDialogStore } from './state/reposDialog';
 import { useRepoVisibilityStore } from './state/repoVisibility';
 import { useRepoPanelTabStore, useRepoSearchStore } from './state/search';
 
@@ -34,7 +32,6 @@ const repoLinksStore = useRepoLinksStore();
 const visibility = useRepoVisibilityStore();
 const repoPanelTabStore = useRepoPanelTabStore();
 const repoSearchStore = useRepoSearchStore();
-const reposDialog = useReposDialogStore();
 
 // The Git module's own panel — one PanelShell, not a shell inside a shell. Absorbs the
 // repository list that used to live in ProjectPanel.vue's "Connections" section (the
@@ -181,13 +178,6 @@ onUnmounted(() => {
           data-testid="repos-show-hidden"
           @click="visibility.showHidden = !visibility.showHidden"
         />
-        <TooltipIconButton
-          v-if="tab === 'repos'"
-          icon="repo"
-          :label="t('space.repo.manage.label')"
-          data-testid="manage-repos"
-          @click="reposDialog.show()"
-        />
         <!-- Files mode only: in Search mode the panel's own tree filter is meaningless, and a tree
              refresh has nothing to do with a search result list. -->
         <TooltipIconButton
@@ -286,7 +276,6 @@ onUnmounted(() => {
     />
   </div>
 
-  <ReposDialog />
   <!-- Row state comes from `rowVariants` (selected/muted). `active` stays a real class on both
        rows (repo-workspace.spec.ts asserts `toHaveClass(/active/)`); `.repo-head`/`.worktree-badge`
        stay real classes too (the same spec locates them by class). -->

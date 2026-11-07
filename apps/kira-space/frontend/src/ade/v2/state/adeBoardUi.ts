@@ -4,13 +4,16 @@ import { ref } from 'vue';
 import type { OpenSessionEvent } from '../wire';
 import { useAdePanelTabsStore } from './adePanelTabs';
 
-// Board view state: which page is open and what the panel shows. Workflows and the Add
-// popover keep their own state in `adeWorkflowsUi` and `adeAddUi`. The three Plan toggles persist
+// Board view state: which page is open and what the panel shows. Workflows, Agents, Repositories
+// and the Add popover keep their own state in `adeWorkflowsUi`, `adeAgentsUi`, `adeReposUi` and
+// `adeAddUi`. The three Plan toggles persist
 // per window profile; selection and the last refresh summaries are in memory only. Panel tabs
 // and the picked session live in `adePanelTabs`.
+export type AdeView = 'plan' | 'later' | 'needs' | 'agents' | 'workflows' | 'repos';
+
 export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
   const tabs = useAdePanelTabsStore();
-  const view = ref<'plan' | 'later' | 'needs' | 'agents' | 'workflows'>('plan');
+  const view = ref<AdeView>('plan');
   const selectedTaskId = ref<string | null>(null);
   const selectedBranchId = ref<string | null>(null);
   /** An explicit open asked the Sessions tab to show this session, even if stopped. */

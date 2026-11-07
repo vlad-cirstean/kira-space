@@ -9852,6 +9852,63 @@
           "status": "{count} ref changed | {count} refs changed"
         }
       },
+      "repos": {
+        "addFolder": {
+          "label": "Add folder…",
+          "title": "Add scan folder"
+        },
+        "configureHint": {
+          "emptyHint": "Import a repository to configure it."
+        },
+        "discardConfirm": {
+          "body": "Your edits to this repository’s settings file are not saved."
+        },
+        "empty": {
+          "empty": "No repositories imported"
+        },
+        "folder": {
+          "hiddenCount": {
+            "label": "{count} hidden"
+          },
+          "hideAll": {
+            "label": "Hide all"
+          },
+          "remove": {
+            "tooltip": "Remove folder"
+          },
+          "repoCount": {
+            "label": "{count} repository | {count} repositories"
+          },
+          "watch": {
+            "label": "Watch",
+            "tooltip": "Import new repositories that appear in this folder"
+          }
+        },
+        "foldersHint": {
+          "hint": "Every Git repository inside a scan folder is imported."
+        },
+        "hide": {
+          "tooltip": "Hide from Git panel"
+        },
+        "import": {
+          "label": "Import repository…"
+        },
+        "imported": {
+          "announce": "Imported {count} repository | Imported {count} repositories"
+        },
+        "noFolders": {
+          "empty": "No scan folders"
+        },
+        "remove": {
+          "tooltip": "Remove from Kira Space"
+        },
+        "scanFolders": {
+          "label": "Scan folders"
+        },
+        "show": {
+          "tooltip": "Show in Git panel"
+        }
+      },
       "review": {
         "actions": {
           "closed": {
@@ -10673,7 +10730,7 @@
       },
       "view": {
         "empty": {
-          "hint": "Add repositories from the Git module to start planning agent work.",
+          "hint": "Import repositories to start planning agent work.",
           "title": "No repositories yet"
         },
         "import": {
@@ -11694,63 +11751,6 @@
           "description": "Besides main. Branches are checked for being merged or stale in these.",
           "example": "develop, staging",
           "label": "Integration branches"
-        }
-      },
-      "dialog": {
-        "addFolder": {
-          "label": "Add folder…",
-          "title": "Add scan folder"
-        },
-        "configureHint": {
-          "emptyHint": "Import a repository to configure it."
-        },
-        "description": {
-          "description": "Import repositories, configure them and manage scan folders."
-        },
-        "empty": {
-          "empty": "No repositories imported"
-        },
-        "folder": {
-          "hiddenCount": {
-            "label": "{count} hidden"
-          },
-          "hideAll": {
-            "label": "Hide all"
-          },
-          "remove": {
-            "tooltip": "Remove folder"
-          },
-          "repoCount": {
-            "label": "{count} repository | {count} repositories"
-          },
-          "watch": {
-            "label": "Watch",
-            "tooltip": "Import new repositories that appear in this folder"
-          }
-        },
-        "foldersHint": {
-          "hint": "Every Git repository inside a scan folder is imported."
-        },
-        "hide": {
-          "tooltip": "Hide from Git panel"
-        },
-        "import": {
-          "label": "Import repository…"
-        },
-        "imported": {
-          "announce": "Imported {count} repository | Imported {count} repositories"
-        },
-        "noFolders": {
-          "empty": "No scan folders"
-        },
-        "remove": {
-          "tooltip": "Remove from Kira Space"
-        },
-        "scanFolders": {
-          "label": "Scan folders"
-        },
-        "show": {
-          "tooltip": "Show in Git panel"
         }
       },
       "env": {
