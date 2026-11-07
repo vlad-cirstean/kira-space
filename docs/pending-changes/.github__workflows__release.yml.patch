@@ -1,0 +1,14 @@
+# Repo renamed to kira-space (P565): release notes install URL.
+diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
+index 38e44f62..f4f4d3bb 100644
+--- a/.github/workflows/release.yml
++++ b/.github/workflows/release.yml
+@@ -256,7 +256,7 @@ jobs:
+           opens the app:
+ 
+           ```
+-          curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh -s -- --app=space
++          curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-space/main/scripts/install.sh | sh -s -- --app=space
+           ```
+ 
+           This is the only supported install method. These builds aren't signed by Apple; a disk
