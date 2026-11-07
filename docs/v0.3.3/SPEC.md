@@ -4,7 +4,7 @@ Cleanup chapter. Branch `chapter/v0.3.3`, tag `v0.3.3`. First `P` is P564 (highe
 
 | Phase | Title | Status |
 |---|---|---|
-| P564 | Cleanup: drop v0.3.2 one-time migrations, repo rename URLs | Pending |
+| P564 | Cleanup: drop v0.3.2 one-time migrations, repo rename URLs | Done |
 | P565 | Presentation site: redesign, repo URLs, mobile zoom, drop carousel | Pending |
 | P566 | Close chapter | Pending |
 
@@ -24,6 +24,14 @@ Chapter end: non-UI full run, 1 code review round, close phase, PR.
 - Ask: repo renamed `vlad-cirstean/kira-studio` to `vlad-cirstean/kira-space`. Update only strings that must point at the real repo outside `site/`: install script URLs, release/API URLs, badges, clone URL, `InstallScriptURL`, `verify-packaging.sh` pin, docs.
 - Out of scope (user decision): Go module path `github.com/kirathecat/kira-studio`, code identifiers, "Kira Studio" prose, `docs/HISTORY.md`.
 - `.github/workflows/release.yml` cannot be pushed from a session: use `docs/pending-changes/` per `docs/DEV_ENVIRONMENT.md`.
+
+### Result
+
+- Dropped: legacy MCP removal, leftovers cleanup, agent secrets fold, Keychain rename, worktree move (`wtmove`, `projectdir.go`), `ade.PathSegment` now unexported, dead ARCHITECTURE/DEV_ENVIRONMENT/README text, `docs/NEXT_CHAPTER.md`.
+- Rename: installer, update checker, `verify-packaging.sh` pin, README/docs URLs; `release.yml` change in `docs/pending-changes/.github__workflows__release.yml.patch` (apply from a Mac session, delete the patch in that commit).
+- Left for stream B (`site/`): memory sentence in `site/src/content/docs/docs/space/memory.mdx` ("old `~/.kira-memory`"), and "Backups of one-time upgrades live in" in `site/src/content/docs/docs/start/how-it-works.md` (becomes "Config sync backups live in"). Pages links need `base: '/kira-space'` in `site/astro.config.mjs`.
+- By hand, user: delete `~/.kira-space/backups/p557-*`, `~/.kira-space/config/workflows/.p526-backup/`, `~/.kira-space/.legacy-mcp-removed`.
+- Mac hand-off: `go vet ./internal/secrets && go test ./internal/secrets -run Keychain` (`keyring_darwin.go` not buildable on Linux).
 
 ## P565 Presentation site: redesign, repo URLs, mobile zoom, drop carousel
 
