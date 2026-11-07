@@ -5,7 +5,6 @@ package secrets
 import (
 	"crypto/rand"
 	"fmt"
-	"log/slog"
 
 	"github.com/keybase/go-keychain"
 )
@@ -25,13 +24,8 @@ const (
 
 // loadOrCreateKey returns the app's single AES-256-GCM key, creating it on first run. This round
 // trip is also the darwin availability probe (P55 §2 D2): a canary item would be strictly weaker
-// and would leave litter in the user's Keychain. A v0.3.1 item is moved to the current names first;
-// if that fails the key is unavailable rather than regenerated, so no stored secret is orphaned.
+// and would leave litter in the user's Keychain.
 func loadOrCreateKey() ([]byte, error) {
-	if err := moveLegacyKey(); err != nil {
-		slog.Error("keychain: move the Kira Studio key to Kira Space failed", "scope", "secrets", "err", err)
-		return nil, err
-	}
 	return loadOrCreateKeyIn(keychainService, keychainAccount)
 }
 

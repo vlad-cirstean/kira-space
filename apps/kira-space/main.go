@@ -84,7 +84,7 @@ func main() {
 	if err != nil {
 		reporter.Fatal(startupfail.StepStorage, err)
 	}
-	cipher := secrets.New() // moves the v0.3.1 Keychain item on first use
+	cipher := secrets.New()
 	repositories, err := repos.New(db.DB)
 	if err != nil {
 		reporter.Fatal(startupfail.StepRepos, err)
