@@ -6,7 +6,7 @@ Source: user request. The table is open: the user adds more phases to this chapt
 
 | Phase | Title | Status |
 |---|---|---|
-| P555 | Install images and Pages build | Pending |
+| P555 | Keychain install image and Pages build | Pending |
 | P556 | Experimental settings menu, Memory behind a toggle | Pending |
 
 More rows follow as the user adds them. Table order is execution order.
@@ -14,16 +14,16 @@ More rows follow as the user adds them. Table order is execution order.
 ## User to-dos (note, not phases)
 
 - Re-run the Release workflow for v0.3.0.
-- Verify the folder-access docs text on a real Mac.
+- Verify the folder prompt text (site Install block, `docs/start/install.md`) on a real Mac.
 
 ## Rows
 
-### P555 Install images and Pages build
+### P555 Keychain install image and Pages build
 
-- Ask: user supplies `site/src/assets/install/keychain-access.webp` and `site/src/assets/install/folder-access.webp` (WebP, cropped to the dialog). Add them. Re-record the site visual baselines so they show the real images, not placeholders. `CI=true bun run build` in `site` must pass. The Pages workflow run for `main` must be green after merge.
-- Baseline method: site Playwright WebKit on Linux, as CI does. Recording command in `docs/DEV_ENVIRONMENT.md` (site visual baselines): `bunx playwright test --config=site/playwright.config.ts visual --update-snapshots` after `bun run site:build`. Check the Inter font setup there first.
+- Ask: add the user-supplied Keychain prompt image as `site/src/assets/install/keychain-access.webp`. Source: ready WebP, cropped to the dialog, transparent rounded corners, 868x372. No folder prompt image exists or will exist: the folder permission prompt is prose only. Remove the folder image requirement everywhere (content, Install component, placeholder fallback, site spec, DEV_ENVIRONMENT). Keep the build guard for the required image (now only `keychain-access.webp`); never weaken it.
+- Baselines: re-record the site visual baselines so they show the real Keychain image and no folder placeholder. Method: site Playwright WebKit on Linux, `docs/DEV_ENVIRONMENT.md` (site visual baselines).
 - Why Pages fails: last run 42348265274 failed solely with "Missing install image site/src/assets/install/keychain-access.webp" at `/`. `site/src/lib/installShots.ts` fails under `CI=true` on a missing image, by design.
-- Input: the two WebP files come from the user. Phase does not start until both exist.
+- Done: `CI=true bun run build` in `site` passes; affected site specs pass; Pages workflow run for `main` green after merge (confirmable only after merge).
 - Plan: `plans/P555.md`.
 - Result: pending.
 
@@ -44,9 +44,9 @@ More rows follow as the user adds them. Table order is execution order.
 
 Runs after the last phase and the full suite run, before the code review. Close does not start until every item passes.
 
-- [ ] Both install WebP images present under `site/src/assets/install/`, cropped to the dialog, with alt text. Orchestrator views both.
+- [ ] `site/src/assets/install/keychain-access.webp` present, cropped to the dialog, with alt text; orchestrator views it. Folder prompt is prose only, no image or placeholder.
 - [ ] `CI=true bun run build` in `site` passes with no placeholder.
-- [ ] Site visual baselines re-recorded on Linux WebKit, showing the real images, no placeholder boxes.
+- [ ] Site visual baselines re-recorded on Linux WebKit, showing the real Keychain image, no placeholder box.
 - [ ] Pages workflow run for `main` green after merge.
 - [ ] Docs match final behaviour: README, ARCHITECTURE, PACKAGING, DEV_ENVIRONMENT, site docs.
 
