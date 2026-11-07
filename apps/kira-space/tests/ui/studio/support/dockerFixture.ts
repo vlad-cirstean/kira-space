@@ -159,9 +159,14 @@ export function containerDetailWithSecret(c: ReturnType<typeof container>) {
 
 export async function setupDocker(
   relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunch'],
-  opts: { status?: unknown; handlers?: Record<string, (args: unknown) => unknown> } = {},
+  opts: {
+    status?: unknown;
+    handlers?: Record<string, (args: unknown) => unknown>;
+    /** Extra `relaunch` options, for example the presentation capture launch. */
+    launch?: Parameters<typeof relaunch>[0];
+  } = {},
 ) {
-  const { window: page, control } = await relaunch({ control: [] });
+  const { window: page, control } = await relaunch({ ...opts.launch, control: [] });
   const state = {
     status: opts.status ?? OK_STATUS,
     containers: seedContainers(),

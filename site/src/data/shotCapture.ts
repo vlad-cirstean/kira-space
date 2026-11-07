@@ -16,9 +16,13 @@ export type ShotCapture =
 export const SHOT_CAPTURE = {
   'studio-data-grid': { kind: 'window' },
   'studio-sql-console': { kind: 'window' },
+  'studio-connections': { kind: 'window' },
+  'studio-docker': { kind: 'window' },
   'studio-api': { kind: 'window' },
   'space-git-graph': { kind: 'window' },
   'space-agents-board': { kind: 'window' },
+  'space-workspace': { kind: 'window' },
+  'space-runs': { kind: 'window' },
   'space-memory': { kind: 'window' },
   'studio-grid-row-menu': { kind: 'floating', selector: '[data-testid="context-menu"]' },
   'space-commit-detail': {

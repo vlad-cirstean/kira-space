@@ -147,13 +147,34 @@ export async function saveShot(name: string, png: Buffer): Promise<string> {
   return file;
 }
 
+/** Monaco tokenizes and applies its theme asynchronously: wait until every editor's token classes
+ *  stop changing, or a frame may show a half-coloured file. */
+async function settleMonacoTokens(page: Page): Promise<void> {
+  let last = '';
+  let steady = 0;
+  while (steady < 6) {
+    const sig = await page.evaluate(() =>
+      [...document.querySelectorAll('.monaco-editor .view-line span[class^="mtk"]')]
+        .map((el) => el.className)
+        .join('|'),
+    );
+    steady = sig === last ? steady + 1 : 0;
+    last = sig;
+    await page.waitForTimeout(100);
+  }
+}
+
 /** Readiness steps every capture needs before the first screenshot. */
 export async function prepareCapture(page: Page, consoleErrors: readonly string[]): Promise<void> {
   await page.mouse.move(0, 0);
   // Monaco fades its scrollbars on a JS timer, which `animations: 'disabled'` cannot freeze.
-  await page.addStyleTag({ content: '.monaco-editor .scrollbar { opacity: 0 !important; }' });
+  await page.addStyleTag({
+    content:
+      '.monaco-editor .scrollbar, .monaco-scrollable-element > .scrollbar, .minimap-slider, .decorationsOverviewRuler { opacity: 0 !important; }',
+  });
   await page.evaluate(() => document.fonts.ready);
   expect(await page.evaluate(() => document.fonts.check('13px Inter'))).toBe(true);
+  await settleMonacoTokens(page);
   expect(consoleErrors).toEqual([]);
 }
 

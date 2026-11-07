@@ -4,10 +4,18 @@ import { CAPTURE_LAUNCH } from '@workbench/testing/screenshots/capture';
 import type { ControlSnapshot, LogicalPage, PortSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../../ui/fixtures';
 import { openHttpModeAndNewRequest } from '../../ui/studio/support/apiMode';
+import {
+  container,
+  openContainer,
+  openDocker,
+  setupDocker,
+} from '../../ui/studio/support/dockerFixture';
 import { typeInto } from '../../ui/studio/support/editor';
+import { connectionSummary } from '../../ui/studio/support/engineFixture';
 import { gutterCell } from '../../ui/studio/support/grid';
 import { connectionRow, expandRow, findRow, openRowMenu } from '../../ui/studio/support/tree';
 import { IPC } from '../../ui/support/ipcChannels';
+import { emitWailsEvent } from '../../ui/support/mockRuntime';
 import { shoot } from '../support/shoot';
 import {
   ACME,
@@ -259,4 +267,126 @@ test('studio api request', async ({ relaunch, consoleErrors }) => {
     .toBeGreaterThan(2);
 
   await shoot(page, 'studio-api', consoleErrors);
+});
+
+const ENGINE_CONNECTIONS = [
+  SUMMARY,
+  connectionSummary(
+    'mariadb',
+    3306,
+    'orders_replica',
+    'reader',
+    'conn-orders',
+    'Orders replica',
+    'teal',
+  ),
+  connectionSummary('mysql', 3306, 'crm', 'crm_app', 'conn-crm', 'Legacy CRM', 'orange'),
+  connectionSummary(
+    'sqlite',
+    0,
+    'analytics.db',
+    '',
+    'conn-analytics',
+    'Analytics scratch',
+    'violet',
+  ),
+  connectionSummary('clickhouse', 8123, 'events', 'default', 'conn-events', 'Clickstream', 'amber'),
+  connectionSummary(
+    'mongodb',
+    27017,
+    'catalog',
+    'catalog_app',
+    'conn-catalog',
+    'Product catalog',
+    'green',
+  ),
+  connectionSummary('redis', 6379, '0', '', 'conn-cache', 'Session cache', 'red'),
+  connectionSummary('kafka', 9092, '', '', 'conn-stream', 'Order events', 'indigo'),
+  connectionSummary('sqs', 443, '', '', 'conn-queue', 'Fulfilment queue', 'magenta'),
+  connectionSummary('s3', 443, 'acme-exports', '', 'conn-bucket', 'Export bucket', 'blue'),
+].map((c, i) => ({ ...c, sortOrder: i }));
+
+test('studio connections', async ({ relaunch, consoleErrors }) => {
+  const { window: page } = await relaunch({
+    ...CAPTURE_LAUNCH,
+    control: [
+      { channel: IPC.connectionsList, response: ENGINE_CONNECTIONS },
+      { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [] } },
+      { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
+      { channel: IPC.adeTaskSessions, response: { sessions: [] } },
+      ...ACME.control,
+    ],
+    stream: ACME.port,
+  });
+  const row = connectionRow(page, 'Acme shop');
+  await expect(row).toBeVisible();
+  await row.click({ button: 'right' });
+  await page.click('[data-testid="menu-item-connect"]');
+  await expect(row.locator('.status-dot')).toHaveAttribute('data-status', 'connected', {
+    timeout: 10_000,
+  });
+  await row.locator('[data-testid="tree-twisty"]').click();
+  await expandRow(page, DB_PATH);
+  await expandRow(page, SCHEMA_PATH);
+  await expect(connectionRow(page)).toHaveCount(ENGINE_CONNECTIONS.length);
+
+  await shoot(page, 'studio-connections', consoleErrors);
+});
+
+const DOCKER_CONTAINERS = [
+  container('c-web', 'shop-web-1', 'running', {
+    image: 'acme/shop-web:1.4.0',
+    status: 'Up 3 hours',
+    ports: [{ ip: '0.0.0.0', privatePort: 3000, publicPort: 3000, type: 'tcp' }],
+    composeProject: 'shop',
+    composeService: 'web',
+    origin: 'compose',
+    originName: 'shop',
+  }),
+  container('c-db', 'shop-db-1', 'running', {
+    image: 'postgres:16',
+    status: 'Up 3 hours',
+    ports: [{ ip: '0.0.0.0', privatePort: 5432, publicPort: 5432, type: 'tcp' }],
+    composeProject: 'shop',
+    composeService: 'db',
+    origin: 'compose',
+    originName: 'shop',
+  }),
+  container('c-cache', 'shop-cache-1', 'running', {
+    image: 'redis:7',
+    status: 'Up 3 hours',
+    composeProject: 'shop',
+    composeService: 'cache',
+    origin: 'compose',
+    originName: 'shop',
+  }),
+  container('c-mail', 'mailpit', 'running', {
+    image: 'axllent/mailpit:latest',
+    status: 'Up 2 days',
+  }),
+  container('c-old', 'seed-job', 'exited', { image: 'acme/shop-web:1.4.0' }),
+];
+
+test('studio docker', async ({ relaunch, consoleErrors }) => {
+  const { page, docker, state } = await setupDocker(relaunch, { launch: CAPTURE_LAUNCH });
+  state.containers.splice(0, state.containers.length, ...DOCKER_CONTAINERS);
+  await openDocker(page);
+  await openContainer(page, 'shop-web-1', 'logs');
+  await expect.poll(() => docker.calls('LogsOpen').length).toBe(1);
+  const { streamId } = docker.calls('LogsOpen')[0].args as { streamId: string };
+  await emitWailsEvent(page, 'kira:docker:logs', {
+    streamId,
+    lines: [
+      { stream: 'stdout', text: 'ready on http://0.0.0.0:3000' },
+      { stream: 'stdout', text: 'GET /api/orders 200 12ms' },
+      { stream: 'stdout', text: 'GET /api/orders/4217 200 9ms' },
+      { stream: 'stderr', text: 'warn: slow query on orders (240ms)' },
+      { stream: 'stdout', text: 'POST /api/orders 201 31ms' },
+      { stream: 'stdout', text: 'GET /api/customers 200 14ms' },
+    ],
+    ended: false,
+  });
+  await expect(page.locator('[data-testid="docker-log-line"]')).toHaveCount(6);
+
+  await shoot(page, 'studio-docker', consoleErrors);
 });

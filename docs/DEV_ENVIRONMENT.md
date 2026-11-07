@@ -78,7 +78,7 @@ needs.
   it runs with `--fallback <dir>`: last-good copy, else placeholder, exit 0. Under `CI=true` it
   exits 1 when a shot still has no image: a placeholder there hid a capture failure before.
 - The `screenshots` project runs 3 workers, files and tests in parallel. Each id writes its own
-  files; output is byte-identical to a serial run. 26 shots: about 80 s wall locally. Drop to 2
+  files; output is byte-identical to a serial run. 38 shots: about 65 s wall locally. Drop to 2
   workers if CI flakes, and record it.
 - Install Keychain dialog image (`site/src/assets/install/keychain-access.webp`) is user-supplied
   WebP, committed. Missing file fails every site build. Folder prompt is prose only, no image.
