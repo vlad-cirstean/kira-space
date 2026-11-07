@@ -519,7 +519,6 @@ func Build(opts Options) (*Wired, error) {
 		embedSpec = *opts.EmbedSpec
 	}
 	w.Memory = bridge.NewMemoryService(emitter, harness.ActiveInstaller(w.Agents), promptStore, embedSpec, w.Agents, memoryModelFrom(repositories.Settings))
-	go removeRetiredModels()
 
 	proofSvc, dbMcpSessions := w.wireDbServices(dbm, opts)
 	// Archive closes a task's review windows through the registry.

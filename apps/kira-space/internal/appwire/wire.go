@@ -40,11 +40,9 @@ import (
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
-	"github.com/kirathecat/kira-studio/internal/memory"
 	memembed "github.com/kirathecat/kira-studio/internal/memory/embed"
 	"github.com/kirathecat/kira-studio/internal/memory/memcheck"
 	"github.com/kirathecat/kira-studio/internal/memory/memorycli"
-	"github.com/kirathecat/kira-studio/internal/memory/modelstore"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
@@ -77,13 +75,6 @@ func RunArgvShim(args []string) (code int, ok bool) {
 		return memcheck.Run(args[2:], os.Stdout, os.Stderr), true
 	}
 	return 0, false
-}
-
-// removeRetiredModels deletes model directories no feature loads any more (P224).
-func removeRetiredModels() {
-	if err := modelstore.RemoveRetired(memory.Home()); err != nil {
-		slog.Warn("remove retired models", "scope", "memory", "err", err)
-	}
 }
 
 // gitWired is wireGit's own result.
