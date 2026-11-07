@@ -2,7 +2,8 @@
 
 How to build, run and test this repo in whatever sandbox/container a session happens to be in —
 credential and tooling constraints, container quirks, per-subsystem run instructions. Not app
-facts: those live in `docs/ARCHITECTURE.md`. Not team process: that lives in `CLAUDE.md`.
+facts: those live in `docs/ARCHITECTURE.md`. Not team process: that lives in `CLAUDE.md` and
+`docs/WORKING_AGREEMENT.md`.
 
 ## Check the OS at session start
 
@@ -850,7 +851,8 @@ pre-push design.
 - **Pre-commit stays exactly `bun run lint` + `bun run typecheck`** (~15s) — golangci-lint and knip
   are deliberately not in it. `golangci-lint`'s cost is bimodal: ~1s warm, but minutes on a cold Go
   build cache (fresh clone, dependency bump, toolchain change) — a per-commit hook with a multi-
-  minute p99 gets routed around with `--no-verify`, which `CLAUDE.md` forbids as a way of finishing.
+  minute p99 gets routed around with `--no-verify`, which `docs/WORKING_AGREEMENT.md` forbids as a
+  way of finishing.
   `knip` is a whole-graph analysis; gating it per commit punishes a normal, legible multi-commit
   refactor (deleting a consumer in one commit, adding its replacement in the next). Both instead run
   in the `.githooks/pre-push` hook (`go build ./...`, `bun run lint:go`, `bun run lint:dead`, ~30s
@@ -901,7 +903,8 @@ registry directly:
 3. Rewrite `@/lib/utils` to `@theme/lib/utils`, and any `@/…` sibling import to
    `@theme/components/ui/…`.
 4. Pull `registryDependencies` recursively the same way; check `dependencies` against the root
-   `package.json` before adding anything (and against `CLAUDE.md`'s open-source-only rule).
+   `package.json` before adding anything (and against `docs/WORKING_AGREEMENT.md`'s open-source-only
+   rule).
 5. Run `bun run format` over the new files.
 
 P110 iter2 used this for `empty` and for `resizable`'s `ResizablePanel`/`ResizablePanelGroup`.

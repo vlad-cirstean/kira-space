@@ -22,7 +22,8 @@ reality — see each chapter's own `README.md` for what those folders are and ar
 [`docs/design/kira-design-system/`](design/kira-design-system/) (the workbench visual reference),
 [`docs/DEV_ENVIRONMENT.md`](DEV_ENVIRONMENT.md) (how to build, run and test this repo in
 whatever sandbox a session happens to be in),
-[`CLAUDE.md`](../CLAUDE.md) (the working agreement for changes to this repo).
+[`CLAUDE.md`](../CLAUDE.md) (repo-specific working rules; imports the general
+[`docs/WORKING_AGREEMENT.md`](WORKING_AGREEMENT.md)).
 
 ## Stack
 
@@ -157,7 +158,7 @@ whatever sandbox a session happens to be in),
 - Every gRPC descriptor source gets its own private *protoregistry.Files, never protoregistry.GlobalFiles, because GlobalFiles panics on a duplicate file path, which is realistic when two users' .proto files declare the same package.
 - The Git module transport was moved entirely to Kira Space as of v1.9 P100 and is no longer part of Kira Studio's stack.
 - The MCP server for internal/dbmcp uses github.com/modelcontextprotocol/go-sdk v1.8.0 over the SDK's Streamable HTTP transport, not stdio.
-- The official MCP go-sdk was chosen as the protocol org's reference implementation at stable v1; mark3labs/mcp-go (second implementation) and hand-rolled JSON-RPC framing were declined, since CLAUDE.md's library-first rule finds nothing hand-rolling would earn.
+- The official MCP go-sdk was chosen as the protocol org's reference implementation at stable v1; mark3labs/mcp-go (second implementation) and hand-rolled JSON-RPC framing were declined, since docs/WORKING_AGREEMENT.md's library-first rule finds nothing hand-rolling would earn.
 - The MCP server uses Streamable HTTP rather than stdio because it is one long-running process serving many concurrent clients and tool calls, not a process spawned per client; the SDK's auth.RequireBearerToken middleware gates every request.
 - mcp.AddTool[In, Out] derives each MCP tool's input schema from a Go struct's tags, so every tool's schema has exactly one source. A tool argument the handler needs carries no `omitempty` (schema-required). A string or array that must be non-empty also goes through `llmprompts.RequireNonEmpty`. go-sdk rejects either before the handler runs.
 - The repo-map MCP server was removed in v1.9 P97.
@@ -3434,7 +3435,7 @@ Built-in `PreLimit` `expensive_query`: an agent `run_query` whose plan estimates
 - The guard also fails a copy of a registry default (first 48 characters; whole text when 24 to 47) in a non-test .go, .ts or .vue file outside internal/llmprompts and internal/flowtest.
 - The guard fails a default containing a filler word (e.g. please, just, simply, basically, actually, really, very, of course, certainly, kindly, in order to, make sure, note that, it is important, you should, feel free, →) outside template actions, backticks and double-quoted spans.
 - The guard fails an entry whose rendered example exceeds its line in internal/llmprompts/testdata/budget.tsv; it is a ratchet, so a new prompt needs a line and a longer one a visible diff.
-- Prompt defaults (P289) follow CLAUDE.md Communication style: fragments, imperative, no filler.
+- Prompt defaults (P289) follow docs/WORKING_AGREEMENT.md Communication style: fragments, imperative, no filler.
 - When tersening prompt defaults, keep verbatim: memory.dataHygiene, the secrets clauses, the dbmcp.instructions permissions and masked-columns sentences, error strings, negations, numbers, template actions, and the fakeagent match keys.
 - promptsizes (under go run ./internal/llmprompts/cmd/...) prints sizes; -snapshot f.json writes defaults and sizes; -compare f.json prints before/after per id and fails on a lost protected token, with allowed losses in internal/llmprompts/testdata/P289-runs/allowed-losses.tsv.
 - Protected tokens checked by -compare are actions, numbers, quoted spans, identifiers, tool argument names and negations.
@@ -3867,7 +3868,7 @@ repo's CI runs.
 - site/ is a Bun workspace member (@kira/site) using Astro 7 and Tailwind 4 through @tailwindcss/vite, because @astrojs/tailwind supports only Tailwind 3.
 - Route every link and asset through import.meta.env.BASE_URL or astro:assets, never a hard-coded '/' path, because astro.config.mjs sets base to '/kira-space'.
 - The site palette comes from packages/theme/src/tokens.css, which global.css maps into @theme. Fonts are Inter and JetBrains Mono (Fontsource), the same pair the screenshots use.
-- Page copy lives in site/src/data/ and follows the CLAUDE.md "Communication style".
+- Page copy lives in site/src/data/ and follows the docs/WORKING_AGREEMENT.md "Communication style".
 - No product image is committed. The pages.yml build job generates every shot: restore `screenshots/` from a cache keyed on app source, shot specs, `shotCapture.ts` and frame assets; on a miss install WebKit, run `bun run screenshots --retries=1` (`continue-on-error`), then `site:shots:fill --fallback`. Per shot: fresh capture, else last-good cached copy, else placeholder (`KIRA_SITE_SHOTS=placeholder`, a workflow warning). A partial or fallback set is never saved to the cache. Go-live steps are in docs/DEV_ENVIRONMENT.md.
 - `site/src/data/shotCapture.ts` (zero imports, read by the site and the shot specs) is the capture manifest: per shot id a kind, `window` (full window, P549 frame), `floating` (element on a transparent canvas with padding and a light shadow, corners clipped to its border radius) or `region` (viewport clip around the element, real neighbours at the edges). `shotFiles(id)` names the files: `framed/<id>.webp` for `window`, `crop/<id>.webp` for the others. Specs call `shoot(page, id, consoleErrors)` (`tests/screenshots/support/shoot.ts`), which dispatches to `captureShot` or `captureCrop` (`packages/workbench/src/testing/screenshots/crop.ts`). `site/src/data/shots.ts` holds the copy per id; `resolveAllShots` fails when the two lists differ.
 - A hero or highlight must be a `window` shot (`og:image` needs its social PNG). A window shot serves the framed image at every width, with a 1136 px derivative in `srcset`; no phone crop. A crop shot renders at half its pixel size, never upscaled.
@@ -3883,7 +3884,7 @@ repo's CI runs.
 - Keep screenshot generation byte-identical: two runs must give files that `cmp` equal. Monaco tokenizes JSON asynchronously (the shot waits for coloured tokens) and fades scrollbars on a JS timer (capture hides them).
 - Docs use Starlight (MIT), serving 18 pages from site/src/content/docs/docs/ at /docs/. The docs collection extends docsSchema with a required sources: list of repo-relative paths.
 - Starlight's Tailwind layer is wired in global.css, Docs is in src/data/nav.ts, and src/lib/shots.ts serves screenshot imports to any page, with placeholders under `astro dev` or `KIRA_SITE_SHOTS=placeholder`.
-- site/scripts/check-docs.ts (rules in docsRules.ts) parses each docs page with unified and remark and enforces the CLAUDE.md style rules plus frontmatter and link checks. Each sources: path must exist. It runs inside root lint and site:build.
+- site/scripts/check-docs.ts (rules in docsRules.ts) parses each docs page with unified and remark and enforces the docs/WORKING_AGREEMENT.md style rules plus frontmatter and link checks. Each sources: path must exist. It runs inside root lint and site:build.
 - Developer docs are not on the site: P290 removed the Develop section; they live in README.md and docs/.
 - A phase that changes a file listed in a docs page's sources: must update that page in the same phase; grep sources: for the changed path to find it.
 - Take docs claims from code and packages/theme/src/i18n/en.json, never from README wording alone.
@@ -3920,7 +3921,7 @@ config, project files.
 - **Config sync validators.** `connections`, `api`, `runs` and `workflows` get the generic gate (YAML parse, credential scan) on shared files; their decoders are package-private, so a malformed file that parses as YAML reaches disk and the module's loader flags it on reload. Agent, steps and prompts validate with their own decoders.
 
 Kept only while genuinely open — delete an item the moment it's resolved, never mark it done in
-place. `CLAUDE.md` states the process rule; this is the list itself.
+place. `docs/WORKING_AGREEMENT.md` states the process rule; this is the list itself.
 
 - Table allow list (P532) cannot see: postgres console `SET search_path`; triggers, rules, FK cascades and view definitions that run server-side; user-defined operators; regclass-literal built-ins such as `nextval`; mysql loadable UDFs. ClickHouse and MariaDB syntax the parser lacks is refused, so such statements cannot run under a list.
 - Masked browse (P535): a filter value containing `;` fails the statement classifier and is refused while the plan check is on. An unfiltered browse of a table past the row threshold is refused as expensive, as `run_query` is. Masking matches by column name, as everywhere. Paging is offset only.
@@ -4191,8 +4192,8 @@ repo-wide).
   a watcher's worth of complexity on a button.
 - **`.vue`/`.svelte` files color as plain HTML in C5's Monaco viewer** (§9.4). No Monaco grammar
   exists for either, so a `<script>` block's contents color as HTML text, not as TypeScript/
-  JavaScript — the alternative is a hand-written SFC Monarch grammar, which `CLAUDE.md`'s
-  library-reuse-first rule declines.
+  JavaScript — the alternative is a hand-written SFC Monarch grammar, which
+  `docs/WORKING_AGREEMENT.md`'s library-reuse-first rule declines.
 - **C7's repository-wide search has no include/exclude filter.** A repository that commits its
   dependencies (a vendored `vendor/` tree) searches them, because enumeration is unchanged
   `codeworkspace.EnumerateAll` — the right answer is a glob library (`bmatcuk/doublestar` or

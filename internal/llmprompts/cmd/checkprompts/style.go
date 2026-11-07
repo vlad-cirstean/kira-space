@@ -19,14 +19,14 @@ var (
 	fillerRe    = regexp.MustCompile(`(?i)\b(please|just|simply|basically|actually|really|very|of course|certainly|kindly|in order to|make sure|note that|it is important|you should|feel free)\b|→`)
 )
 
-// styleProblems flags filler outside template actions, backticks and double-quoted spans (CLAUDE.md
-// Communication style).
+// styleProblems flags filler outside template actions, backticks and double-quoted spans
+// (docs/WORKING_AGREEMENT.md Communication style).
 func styleProblems() []string {
 	var out []string
 	for _, in := range llmprompts.All() {
 		text := protectedRe.ReplaceAllString(in.Default, " ")
 		for _, m := range fillerRe.FindAllString(text, -1) {
-			out = append(out, fmt.Sprintf("%s: filler %q (CLAUDE.md Communication style)", in.ID, strings.ToLower(m)))
+			out = append(out, fmt.Sprintf("%s: filler %q (docs/WORKING_AGREEMENT.md Communication style)", in.ID, strings.ToLower(m)))
 		}
 	}
 	return out
@@ -66,7 +66,7 @@ func budgetProblems(root string) []string {
 		case !ok:
 			out = append(out, fmt.Sprintf("%s: no size budget; write it terse and add a line to %s", id, budgetFile))
 		case n > limit:
-			out = append(out, fmt.Sprintf("%s: %d characters, budget %d; tighten it (CLAUDE.md Communication style) or raise the line in %s", id, n, limit, budgetFile))
+			out = append(out, fmt.Sprintf("%s: %d characters, budget %d; tighten it (docs/WORKING_AGREEMENT.md Communication style) or raise the line in %s", id, n, limit, budgetFile))
 		}
 	}
 	for id := range max {
