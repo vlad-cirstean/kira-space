@@ -12212,6 +12212,15 @@
           "label": "Repository URL"
         }
       },
+      "experimental": {
+        "intro": {
+          "description": "Features still being worked on. They may change or go away."
+        },
+        "memory": {
+          "description": "Shows the memory module and its settings. Stored memories and agent connections stay as they are when off.",
+          "label": "Memory module"
+        }
+      },
       "fileTypes": {
         "description": "Make Kira Space the app that opens code and data files from Finder. It opens them read-only. Turning a switch off gives each type back to the app that had it.",
         "ext": {
@@ -12379,6 +12388,9 @@
         },
         "cliTools": {
           "label": "CLI tools"
+        },
+        "experimental": {
+          "label": "Experimental"
         },
         "fileTypes": {
           "label": "File types"

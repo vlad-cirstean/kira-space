@@ -21,6 +21,7 @@ export const sections = [
   'Database MCP',
   'Prompts',
   'Advanced',
+  'Experimental',
 ] as const;
 export type Section = (typeof sections)[number];
 
