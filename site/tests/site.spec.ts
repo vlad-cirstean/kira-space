@@ -18,13 +18,7 @@ const ROUTES: readonly Route[] = [
     path: '',
     name: 'Kira Space',
     hero: 'space-agents-board',
-    shots: [
-      'space-agents-board',
-      'space-git-graph',
-      'space-memory',
-      'studio-sql-console',
-      'studio-api',
-    ],
+    shots: ['space-agents-board', 'space-git-graph', 'studio-sql-console', 'studio-api'],
   },
   {
     path: 'build/',

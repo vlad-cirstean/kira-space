@@ -38,9 +38,9 @@ export const APP: AppContent = {
   icon: 'git-branch',
   pageTitle: 'Kira Space: git, coding agents, databases and APIs for macOS',
   description:
-    'Kira Space is a native macOS workbench: git client, code workspace, coding agents, memory, a database client for ten engines, and an HTTP and gRPC client. Free and open source.',
+    'Kira Space is a native macOS workbench: git client, code workspace, coding agents, a database client for ten engines, and an HTTP and gRPC client. Free and open source.',
   summary:
-    'Git client and code workspace with coding agents, memory and a terminal. Database, API, Docker and Kubernetes modules in the same window.',
+    'Git client and code workspace with coding agents and a terminal. Database, API, Docker and Kubernetes modules in the same window.',
   hero: 'space-agents-board',
   docs: 'docs/space/git/',
   features: [
@@ -61,12 +61,6 @@ export const APP: AppContent = {
       title: 'Agents',
       body: 'Task planner with workflows, agent runs and Claude Code or OpenCode sessions.',
       href: 'docs/space/agents/',
-    },
-    {
-      icon: 'lightbulb',
-      title: 'Memory',
-      body: 'MCP server for Claude Code with keyword and semantic search.',
-      href: 'docs/space/memory/',
     },
     {
       icon: 'sparkle',
@@ -125,15 +119,6 @@ export const APP: AppContent = {
         'Browse a virtualized commit log with branches and tags.',
         'Open diffs in the detail pane.',
         'Review a whole branch.',
-      ],
-    },
-    {
-      shot: 'space-memory',
-      title: 'Memory that shows its source',
-      points: [
-        'Every fact shows its origin and scope.',
-        'Search by keyword or by meaning.',
-        'Claude Code reads it through an MCP server.',
       ],
     },
     {
