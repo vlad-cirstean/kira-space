@@ -74,7 +74,7 @@ A timed-out statement is refused, and the AI client can ask for an exemption. Yo
 
 By default an exposed connection shows every table, including tables created later. In the MCP tab, untick **All tables** to choose which tables, views and collections the client may touch. The choice is saved in the connection file as `mcp.tables`: leave the key out for all tables, `[]` for none.
 
-The app parses every `run_query` and `explain_query` statement before it runs. A statement that touches an unlisted table is refused, in every mode, and no approval or exemption applies. A statement the app cannot parse is refused too. So are `CALL`, `SET`, `USE`, `PRAGMA`, calls to your own functions, and engine features that read other tables. `list_children` and `describe_schema` hide unlisted tables, and `describe_table` refuses them.
+The app parses every `run_query` statement, planned or run, before it runs. A statement that touches an unlisted table is refused, in every mode, and no approval or exemption applies. A statement the app cannot parse is refused too. So are `CALL`, `SET`, `USE`, `PRAGMA`, calls to your own functions, and engine features that read other tables. `list_children` and `describe_schema` hide unlisted tables, and `describe_table` refuses them.
 
 Limits: a view is checked by its own name, so listing a view grants what it shows. Scripts and operations are not checked. Kafka, S3, SQS and Redis have no tables, so the list does not apply. Triggers, rules and other code that runs inside the database can still reach unlisted tables; use database permissions for a hard guarantee.
 

@@ -22,7 +22,6 @@ More rows follow as the user adds them. Table order is execution order.
 
 - Re-run the Release workflow for v0.3.0.
 - Verify the folder prompt text (site Install block, `docs/start/install.md`) on a real Mac.
-- After P560 lands: run `claude mcp remove --scope user kira-db` once, then click Install in Settings, Database MCP (or per P560 user decision 5).
 
 ## Rows
 
@@ -68,6 +67,7 @@ More rows follow as the user adds them. Table order is execution order.
     - `apps/kira-space/internal/leftovers/` (Studio home and, since P559, `~/.kira-memory`) and `flows/appflow/leftovers_test.go`.
     - `appwire/onetime.go` (`RunOneTimeMoves`) and its calls in `main.go` and `flowharness/harness.go`.
     - P563: `apps/kira-space/internal/wtmove/`, `claude.MoveProjectDir` (`internal/harness/claude/projectdir.go`) and `flows/appflow/wtmove_test.go`.
+    - P560: `appwire/legacymcp.go` (removes the old user-scope `kira-db` and `kira-ade`), `harness.MCPRemover`, `mcpinstall.Installer.Remove` when nothing else uses it, `flows/dbmcpflow/legacymcp_test.go`.
     - `sqlitex.ReadOnlyURI` when nothing else uses it.
     - `backups/p557-*` folders (user deletes by hand).
     - `docs/pending-changes/.github__workflows__release.yml.patch` (whoever applies it).
@@ -189,7 +189,7 @@ Runs after the last phase and the full suite run, before the code review. Close 
 ### P560 Agent MCP tools check (mandatory)
 
 - [ ] `kira-space` registers 13 tools, `kira-studio` 18 with every flag on; counts asserted in tests.
-- [ ] `rg -n 'kira-ade|kira-db|Kira ADE|Kira DB' -g '!docs/HISTORY.md' -g '!docs/v0.3.2/**'` returns only the user to-do lines.
+- [ ] `rg -n 'kira-ade|kira-db|Kira ADE|Kira DB' -g '!docs/HISTORY.md' -g '!docs/v0.3.2/**'` returns nothing.
 - [ ] No merged tool name left outside history and eval corpora (plan "Checks" rg).
 - [ ] Every merged tool's capability reachable per the plan's capability map; flow tests pass.
 - [ ] Headless `db_mcp` step argv lists `kira-studio-session`, not `kira-studio`; `internal/memory` unchanged.

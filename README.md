@@ -210,14 +210,13 @@ An optional local [MCP](https://modelcontextprotocol.io) server lets an AI clien
 databases under rules you set. It is off by default and enabled from Settings → Database MCP.
 
 - Loopback only, on port 8766, with its own bearer token.
-- Six core tools: `list_connections`, `list_children`, `describe_table`, `describe_schema`, `run_query`,
-  `explain_query`. Two more let the client see and stop running work: `list_operations` and
-  `cancel_operation`.
+- Core tools: `list_connections`, `list_children`, `describe`, `browse_table` and `run_query`
+  (with `explain` to plan a statement first). `operations` lets the client see and stop running work.
 - Tool descriptions suggest the AI client read a table's schema before querying it. Nothing enforces this.
 - **Scripts, opt-in** — a normal script exposes itself to the AI client with an `mcp` block in its
-  run file or the MCP tab of its dialog. Four tools: `list_scripts`, `run_script`, `get_script_run`
-  and `get_script_logs`. A script can run straight away or wait for your approval. A run result
-  never holds output; the client reads a size-limited, filterable log. A secret parameter keeps
+  run file or the MCP tab of its dialog. Three tools: `list_scripts`, `run_script` and
+  `get_script_run`. A script can run straight away or wait for your approval. A finished run returns
+  the last 50 output lines; `get_script_run` reads a size-limited, filterable log. A secret parameter keeps
   its saved value and the client can't set it.
 - **Deny by default** — a connection stays invisible to the AI client until you expose it.
 - **Per-connection permissions** — read, write and DDL are each *allow*, *deny* or *prompt*
