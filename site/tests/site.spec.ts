@@ -28,6 +28,16 @@ const ROUTES: readonly Route[] = [
   },
 ];
 
+async function scrollThrough(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    for (let y = 0; y <= document.documentElement.scrollHeight; y += 300) {
+      window.scrollTo(0, y);
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+  });
+  await page.waitForTimeout(300);
+}
+
 async function openPage(page: Page, route: Route): Promise<string[]> {
   const errors: string[] = [];
   page.on('console', (msg) => {
@@ -115,6 +125,24 @@ for (const route of ROUTES) {
       });
       await page.waitForLoadState('networkidle');
       expect(errors).toEqual([]);
+    });
+
+    test('reduced motion runs no animation', async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await openPage(page, route);
+      await scrollThrough(page);
+      expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
+    });
+
+    test('scroll reveals leave no content hidden', async ({ page }) => {
+      await openPage(page, route);
+      await scrollThrough(page);
+      const hidden = await page.evaluate(() =>
+        [...document.querySelectorAll('.reveal')]
+          .filter((el) => getComputedStyle(el).opacity !== '1')
+          .map((el) => el.className),
+      );
+      expect(hidden).toEqual([]);
     });
 
     test('every shot shows the whole image and fits the viewport', async ({ page }, info) => {
