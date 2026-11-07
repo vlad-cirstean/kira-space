@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { adeBoard, adeFixture, adeV2Control, openPlan } from './support/adeV2';
+import { adeBoard, adeFixture, openAdeRepos, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 
@@ -125,18 +125,13 @@ test('contract: a repo file with an invalid Run script reference shows its error
   const repos = adeFixture<{ repos: Repo[] }>('repos');
   const web = repos.repos.find((r) => r.codeRepoId === 'repo-web-app');
   if (web) web.problem = problem;
-  const { window: page } = await relaunch({
-    control: adeV2Control([
-      { channel: IPC.windowsEnsure, response: { mode: 'git' } },
-      { channel: IPC.adeTaskRepos, response: repos },
-      { channel: IPC.repoConfigFile, response: { ...file, problem } },
-    ]),
-  });
-  await page.locator(t('manage-repos')).click();
-  await page.locator(t('repos-dialog')).waitFor();
+  const { window: page } = await openAdeRepos(relaunch, [
+    { channel: IPC.adeTaskRepos, response: repos },
+    { channel: IPC.repoConfigFile, response: { ...file, problem } },
+  ]);
   await expect(
     page.locator(
-      `${t('repos-dialog-repo')}[data-repo-id="repo-web-app"] ${t('repos-dialog-repo-problem')}`,
+      `${t('ade-repos-repo')}[data-repo-id="repo-web-app"] ${t('ade-repos-repo-problem')}`,
     ),
   ).toBeVisible();
   await expect(page.locator(t('config-file-status'))).toContainText(problem.message);

@@ -32,6 +32,7 @@ import {
   openBrowseLeaf,
   openRowMenu,
 } from './studio/support/tree';
+import { gotoAdeRepos } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
 import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
@@ -264,10 +265,10 @@ test('git panel repo list — arrows, Home/End, Enter, Shift+F10 and inline rena
   await expect(row('repo-2')).toContainText('other-repo');
 });
 
-test('repos dialog — arrows move the selected repository', async ({ relaunch }) => {
+test('repos page — arrows move the selected repository', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: REPO_CONTROL });
-  await page.locator('[data-testid="manage-repos"]').click();
-  const rows = page.locator('[data-testid="repos-dialog-repo"]');
+  await gotoAdeRepos(page);
+  const rows = page.locator('[data-testid="ade-repos-repo"]');
   await expect(rows).toHaveCount(2);
   await expect(rows.first()).toHaveAttribute('aria-selected', 'true');
   await rows.first().focus();

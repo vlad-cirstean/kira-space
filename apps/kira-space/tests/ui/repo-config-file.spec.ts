@@ -4,7 +4,7 @@ import {
   replaceCodeEditorText,
 } from '@workbench/testing/ui/codeEditor';
 import { expect, test } from './fixtures';
-import { adeV2Control, type openPlan } from './support/adeV2';
+import { openAdeRepos, type openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -38,11 +38,7 @@ const none = () => contract<FileFx>('repo-config-file', 'RepoConfigService.File#
 const broken = () => contract<FileFx>('repo-config-file', 'RepoConfigService.File#broken');
 
 async function open(relaunch: Parameters<typeof openPlan>[0], extra: ControlSnapshot[] = []) {
-  const app = await relaunch({
-    control: adeV2Control([{ channel: IPC.windowsEnsure, response: { mode: 'git' } }, ...extra]),
-  });
-  await app.window.locator(t('manage-repos')).click();
-  await app.window.locator(t('repos-dialog')).waitFor();
+  const app = await openAdeRepos(relaunch, extra);
   await app.window.locator(t('repo-file')).waitFor();
   await app.window.locator(t('repo-file-tab-yaml')).click();
   return app;
@@ -142,19 +138,17 @@ test('contract: a repo with a file error shows a dot, and unbound files list und
     { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/config/repos', files: [dup] } },
   ]);
   await expect(
-    page.locator(
-      `${t('repos-dialog-repo')}[data-repo-id="repo-api"] ${t('repos-dialog-repo-problem')}`,
-    ),
+    page.locator(`${t('ade-repos-repo')}[data-repo-id="repo-api"] ${t('ade-repos-repo-problem')}`),
   ).toBeVisible();
   await expect(
     page.locator(
-      `${t('repos-dialog-repo')}[data-repo-id="repo-web-app"] ${t('repos-dialog-repo-problem')}`,
+      `${t('ade-repos-repo')}[data-repo-id="repo-web-app"] ${t('ade-repos-repo-problem')}`,
     ),
   ).toHaveCount(0);
 
-  await expect(page.locator(t('repos-dialog-files-count'))).toHaveText('1');
-  await page.locator(t('repos-dialog-tab-files')).click();
-  await expect(page.locator(t('repos-dialog-file'))).toHaveCount(1);
+  await expect(page.locator(t('ade-repos-files-count'))).toHaveText('1');
+  await page.locator(t('ade-repos-tab-files')).click();
+  await expect(page.locator(t('ade-repos-file'))).toHaveCount(1);
   await expect
     .poll(() => calls(control, IPC.repoConfigFile).map((e) => e.args))
     .toContainEqual({ path: dup.path, file: dup.file });

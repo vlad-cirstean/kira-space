@@ -46,7 +46,7 @@ import {
   openBrowseLeaf,
   openRowMenu,
 } from './studio/support/tree';
-import { adeFixture, adeV2Control, bandOf, openPlan } from './support/adeV2';
+import { adeFixture, adeV2Control, bandOf, openAdeRepos, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import { withMemory } from './support/memoryNav';
@@ -227,20 +227,16 @@ reviewTest('review window', async ({ relaunch }) => {
   });
 });
 
-test('repositories dialog', async ({ relaunch }) => {
-  const { window: page } = await relaunch({
-    control: adeV2Control([{ channel: IPC.windowsEnsure, response: { mode: 'git' } }]),
-  });
-  await page.locator(t('manage-repos')).click();
-  await page.locator(t('repos-dialog')).waitFor();
+test('repositories page', async ({ relaunch }) => {
+  const { window: page } = await openAdeRepos(relaunch);
   await setPseudoLocale(page);
   // The settings file's path is data from the contract, not chrome.
   const allow = [...fixtureData(), /^(?:\/[\w.-]+)*\/repos\/$|^proj\.yaml$/];
-  await expectCatalogText(page.locator(t('repos-dialog')), { allow });
-  await page.locator(t('repos-dialog-repo')).nth(1).click();
-  await expectCatalogText(page.locator(t('repos-dialog')), { allow });
-  await page.locator(t('repos-dialog-tab-folders')).click();
-  await expectCatalogText(page.locator(t('repos-dialog')), { allow });
+  await expectCatalogText(page.locator(t('ade-repos')), { allow });
+  await page.locator(t('ade-repos-repo')).nth(1).click();
+  await expectCatalogText(page.locator(t('ade-repos')), { allow });
+  await page.locator(t('ade-repos-tab-folders')).click();
+  await expectCatalogText(page.locator(t('ade-repos')), { allow });
 });
 
 test('settings dialog, every pane', async ({ relaunch }) => {

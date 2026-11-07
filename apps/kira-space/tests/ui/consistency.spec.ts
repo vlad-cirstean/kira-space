@@ -13,7 +13,14 @@ import {
 } from './studio/support/kubernetesFixture';
 import { openSettings } from './studio/support/settings';
 import { connectionRow } from './studio/support/tree';
-import { adeFixture, adeV2Control, emitLog, FIXED_NOW, openPlan } from './support/adeV2';
+import {
+  adeFixture,
+  adeV2Control,
+  emitLog,
+  FIXED_NOW,
+  openAdeRepos,
+  openPlan,
+} from './support/adeV2';
 import { IPC } from './support/ipcChannels';
 import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
@@ -203,11 +210,7 @@ test('a stale workflow save shows the same text the backend answers with', async
 });
 
 test('a repo colour swatch tooltip names the colour', async ({ relaunch }) => {
-  const { window: page } = await relaunch({
-    control: adeV2Control([{ channel: IPC.windowsEnsure, response: { mode: 'git' } }]),
-  });
-  await page.locator(t('manage-repos')).click();
-  await page.locator(t('repos-dialog')).waitFor();
+  const { window: page } = await openAdeRepos(relaunch);
   await page.locator(`${t('repo-color')} ${t('color-blue')}`).hover({ force: true });
   await expect(page.locator('[data-slot="tooltip-content"]')).toContainText('Blue');
 });

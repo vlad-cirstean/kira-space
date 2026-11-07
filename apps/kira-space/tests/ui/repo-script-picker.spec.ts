@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import { codeEditorText, replaceCodeEditorText } from '@workbench/testing/ui/codeEditor';
 import { expect, test } from './fixtures';
-import { adeV2Control, type openPlan } from './support/adeV2';
+import { openAdeRepos, type openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -42,18 +42,13 @@ async function open(
   scripts: unknown = list(),
   extra: ControlSnapshot[] = [],
 ) {
-  const app = await relaunch({
-    control: adeV2Control([
-      { channel: IPC.windowsEnsure, response: { mode: 'git' } },
-      { channel: IPC.repoConfigFile, response: file() },
-      { channel: IPC.customScriptsList, response: scripts },
-      formCall('read'),
-      ...forms.map(formCall),
-      ...extra,
-    ]),
-  });
-  await app.window.locator(t('manage-repos')).click();
-  await app.window.locator(t('repos-dialog')).waitFor();
+  const app = await openAdeRepos(relaunch, [
+    { channel: IPC.repoConfigFile, response: file() },
+    { channel: IPC.customScriptsList, response: scripts },
+    formCall('read'),
+    ...forms.map(formCall),
+    ...extra,
+  ]);
   await app.window.locator(t('repo-file')).waitFor();
   await expect(app.window.locator(t('repo-nick'))).toHaveValue('Web');
   return app;

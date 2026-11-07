@@ -16,7 +16,7 @@ import { loc, openKubernetes, setupKubernetes } from './studio/support/kubernete
 import { COMPOSITE_PK_PATH } from './studio/support/postgresFixture';
 import { readOnlySqsSnapshots, SQS_QUEUE_PATH } from './studio/support/sqsFixture';
 import { connectionRow, expandRow, findRow, openRowMenu } from './studio/support/tree';
-import { adeBoard, adeFixture, adeV2Control, openPlan } from './support/adeV2';
+import { adeBoard, adeFixture, adeV2Control, openAdeRepos, openPlan } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
 import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
@@ -29,20 +29,14 @@ const t = (id: string) => `[data-testid="${id}"]`;
 
 type Relaunch = Parameters<typeof openPlan>[0];
 
-async function openReposDialog(relaunch: Relaunch, extra: ControlSnapshot[] = []) {
-  const app = await relaunch({
-    control: adeV2Control([{ channel: IPC.windowsEnsure, response: { mode: 'git' } }, ...extra]),
-  });
-  await app.window.locator(t('manage-repos')).click();
-  await app.window.locator(t('repos-dialog')).waitFor();
-  return app;
-}
+const openReposPage = (relaunch: Relaunch, extra: ControlSnapshot[] = []) =>
+  openAdeRepos(relaunch, extra);
 
 test('removing a repository says what stays and offers Remove / Cancel', async ({ relaunch }) => {
-  const { window: page } = await openReposDialog(relaunch, [
+  const { window: page } = await openReposPage(relaunch, [
     { channel: IPC.codeWorkspaceRemoveRepo },
   ]);
-  await page.locator(t('repos-dialog-repo-remove')).click();
+  await page.locator(t('ade-repos-repo-remove')).click();
   const dialog = page.locator(t('confirm-dialog'));
   await expect(dialog).toContainText('Remove repository?');
   await expect(page.locator(t('confirm-dialog-message'))).toContainText('Files on disk stay.');
@@ -94,15 +88,13 @@ test('a stuck run offers Take over on the Needs you page', async ({ relaunch }) 
   );
 });
 
-test('the plan board with no repositories says where to add them', async ({ relaunch }) => {
+test('the plan board with no repositories says how to add them', async ({ relaunch }) => {
   const { window: page } = await relaunch({
     control: adeV2Control([{ channel: IPC.codeWorkspaceListRepos, response: [] }]),
   });
   const view = page.locator(t('ade-view'));
   await expect(view).toContainText('No repositories yet');
-  await expect(view).toContainText(
-    'Add repositories from the Git module to start planning agent work.',
-  );
+  await expect(view).toContainText('Import repositories to start planning agent work.');
 });
 
 test('the needs footer pluralises interactive sessions', async ({ relaunch }) => {
