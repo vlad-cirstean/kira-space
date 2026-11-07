@@ -8,14 +8,12 @@ import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 import {
   boxOf,
-  change,
   GIT,
   HUNK_COMMENT,
+  openDiffWindow,
   openHunkDiff,
-  REVIEW_FILES,
   renderedLine,
   reviewControl,
-  status,
   t,
   target,
 } from './support/reviewHunkDiff';
@@ -234,55 +232,6 @@ reviewTest('a commented line number is tinted and opens its thread', async ({ re
   await thread.getByRole('button', { name: 'Close' }).click();
   await expect(thread).toHaveCount(0);
 });
-
-async function openDiffWindow(
-  relaunch: Parameters<Parameters<typeof reviewTest>[2]>[0]['relaunch'],
-  files: readonly string[],
-  extraResults: Record<string, unknown>,
-): Promise<Page> {
-  const { window: page } = await relaunch({
-    storage: AGENT_PANEL_ON,
-    control: reviewControl([
-      { channel: IPC.windowsEnsure, response: { mode: 'git' } },
-      {
-        channel: IPC.codeWorkspaceListRepos,
-        response: [
-          {
-            id: target.codeRepoId,
-            name: 'web-app',
-            root: '/tmp/web-app',
-            repoId: target.gitRepoId,
-            sortOrder: 1,
-            color: 'none',
-            createdAt: '2026-01-01T00:00:00.000Z',
-          },
-        ],
-      },
-    ]),
-    gitStream: {
-      ...GIT,
-      extraResults: {
-        ...GIT.extraResults,
-        'review.files': {
-          ...REVIEW_FILES,
-          files: files.map((path) => ({ change: change(path), review: status('none', false) })),
-        },
-        'review.snapshot': { kind: 'none', text: null, reviewedAtSha: null },
-        'review.fileDiff': {
-          path: files[0],
-          deltaSource: 'noSnapshot',
-          body: { kind: 'text', hunks: [] },
-          reviewedRanges: [],
-          lineCount: 200,
-          reviewedAtSha: null,
-        },
-        ...extraResults,
-      },
-    },
-  });
-  await page.locator(t('ade-review-window')).waitFor();
-  return page;
-}
 
 reviewTest('a folder checkbox marks every file under it', async ({ relaunch }) => {
   const marked = contract<{ results: { path: string; review: object }[] }>(

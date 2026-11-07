@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import type { reviewTest } from '../fixtures';
+import { AGENT_PANEL_ON, type reviewTest } from '../fixtures';
 import { adeFixture, adeV2Control } from './adeV2';
 import { contract } from './contract';
 import { IPC } from './ipcChannels';
@@ -148,4 +148,54 @@ export async function openHunkDiff(
     .click();
   const modified = page.locator(t('repo-diff-editor')).locator('.editor.modified');
   return { page, modified };
+}
+
+/** A review window over `files`, with the diff reads left to `extraResults`. */
+export async function openDiffWindow(
+  relaunch: Parameters<Parameters<typeof reviewTest>[2]>[0]['relaunch'],
+  files: readonly string[],
+  extraResults: Record<string, unknown>,
+): Promise<Page> {
+  const { window: page } = await relaunch({
+    storage: AGENT_PANEL_ON,
+    control: reviewControl([
+      { channel: IPC.windowsEnsure, response: { mode: 'git' } },
+      {
+        channel: IPC.codeWorkspaceListRepos,
+        response: [
+          {
+            id: target.codeRepoId,
+            name: 'web-app',
+            root: '/tmp/web-app',
+            repoId: target.gitRepoId,
+            sortOrder: 1,
+            color: 'none',
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      },
+    ]),
+    gitStream: {
+      ...GIT,
+      extraResults: {
+        ...GIT.extraResults,
+        'review.files': {
+          ...REVIEW_FILES,
+          files: files.map((path) => ({ change: change(path), review: status('none', false) })),
+        },
+        'review.snapshot': { kind: 'none', text: null, reviewedAtSha: null },
+        'review.fileDiff': {
+          path: files[0],
+          deltaSource: 'noSnapshot',
+          body: { kind: 'text', hunks: [] },
+          reviewedRanges: [],
+          lineCount: 200,
+          reviewedAtSha: null,
+        },
+        ...extraResults,
+      },
+    },
+  });
+  await page.locator(t('ade-review-window')).waitFor();
+  return page;
 }

@@ -264,3 +264,55 @@ reviewTest('a refused list mark tells the user and reloads the list', async ({ r
   await expect(page.locator(t('ade-review-files-mark-refused'))).toBeVisible();
   await expect.poll(listReads).toBeGreaterThan(before);
 });
+
+reviewTest(
+  'stepping into the uncommitted section leaves one row selected',
+  async ({ relaunch }) => {
+    const { window: page } = await relaunch({ control: control(), gitStream: GIT });
+    await page.locator(t('ade-review-window')).waitFor();
+    const selected = (tree: string) =>
+      page.locator(`${t(tree)} ${t('file-tree-row')}[aria-selected="true"]`);
+    const next = page.locator(t('review-next-unreviewed'));
+    await page
+      .locator(`${t('review-files-tree')} ${t('file-tree-row')}`, { hasText: 'pending.ts' })
+      .click();
+    await expect(selected('review-files-tree')).toHaveCount(1);
+    for (let i = 0; i < 6 && (await selected('review-working-tree').count()) === 0; i++) {
+      await next.click();
+    }
+    await expect(selected('review-working-tree')).toHaveCount(1);
+    await expect(selected('review-files-tree')).toHaveCount(0);
+  },
+);
+
+reviewTest('a comment jump to an uncommitted file highlights its row', async ({ relaunch }) => {
+  const { window: page } = await relaunch({
+    control: control(listed.comments),
+    gitStream: {
+      ...GIT,
+      extraResults: {
+        ...GIT.extraResults,
+        'review.comment.list': {
+          at: 'a'.repeat(40),
+          comments: listed.comments.map((c, i) => ({ ...c, id: i + 1 })),
+        },
+      },
+    },
+  });
+  await page.locator(t('ade-review-window')).waitFor();
+  const tree = page.locator(t('review-working-tree'));
+  const selected = tree.locator(`${t('file-tree-row')}[aria-selected="true"]`);
+  await expect(selected).toHaveCount(0);
+  await page.locator(t('review-pane-comments')).click();
+  await page
+    .getByRole('button', { name: /^Open / })
+    .first()
+    .click();
+  await expect(page.locator(t('repo-diff-uncommitted'))).toHaveText('Uncommitted');
+  await page.locator(t('review-pane-files')).click();
+  await expect(selected).toHaveCount(1);
+  const [row, area] = await Promise.all([selected.boundingBox(), tree.boundingBox()]);
+  if (!row || !area) throw new Error('no box');
+  expect(row.y).toBeGreaterThanOrEqual(area.y - 1);
+  expect(row.y + row.height).toBeLessThanOrEqual(area.y + area.height + 1);
+});
