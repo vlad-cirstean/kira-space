@@ -10,6 +10,7 @@ Source: user request. The table is open: the user adds more phases to this chapt
 | P556 | Experimental settings menu, Memory behind a toggle | Pending |
 | P557 | Drop backward compatibility, single baseline migration | Pending |
 | P558 | Repositories page in ADE, replacing the Git module dialog | Pending |
+| P559 | Memory home under the Kira Space home | Pending |
 
 More rows follow as the user adds them. Table order is execution order.
 
@@ -59,6 +60,16 @@ More rows follow as the user adds them. Table order is execution order.
 - Plan: `plans/P558.md`.
 - Result: pending.
 
+### P559 Memory home under the Kira Space home
+
+- Ask (verbatim): "Having a separate db is fine. But It should be in the kira space folder so add this as a phase too".
+- Scope: memory.db stays its own SQLite file but moves to `<Space home>/memory/memory.db` (default `~/.kira-space/memory/`), with `models/`, `distilled/` and the import runner log and lock beside it; never under `config/`. One resolver, `kirapaths.MemoryHome`. `KIRA_MEMORY_HOME` dropped (default; user decision 1); memory follows `KIRA_SPACE_HOME`. No migration or move code: an old `~/.kira-memory` is ignored, and docs say it can be deleted. Agent sandbox allows the memory subtree only, never the Space home. Lazy creation: `memory-mcp` start no longer opens memory.db (the ingest engine opens on first ingest call), so a Claude session start with Memory off creates nothing; the boot-time retired-model cleanup goes. Memory migration `0009` deleted (default; user decision 2). No backend gate on the Memory flag (default; user decision 3).
+- Tests: one backend flow test (boot and `memory-mcp` start create no memory home; first tool call creates `<space>/memory/memory.db`; `~/.kira-memory` never appears). No UI spec: no bound method or UI change. Sandbox goldens regenerated. Real `claude` memory rows run.
+- Order: runs after P557 (both touch Go memory code, migrations, `appwire`, `config/paths.go` and docs). Shares only ARCHITECTURE with P558, different sections.
+- Single implementer, no streams. Plan lists 3 NEEDS USER DECISION items, each with a default.
+- Plan: `plans/P559.md`.
+- Result: pending.
+
 ## Close
 
 1 code review round unless the user says otherwise. After the last phase: one full suite run with all failures fixed, review round, hand-written close per CLAUDE.md, PR. The table is open: add checklist items for each new phase.
@@ -98,3 +109,12 @@ Runs after the last phase and the full suite run, before the code review. Close 
 - [ ] Git panel has no repositories dialog and no Manage repositories button; GitStart and "Configure repository…" land on the ADE page (or per user decision 1).
 - [ ] `grep -rn "repos-dialog\|reposDialog\|ReposDialog" apps/kira-space` returns nothing.
 - [ ] `ade-repos-page` baseline recorded on Linux with Inter; `git-repos-dialog` baseline deleted; ARCHITECTURE updated.
+
+### P559 Memory home check (mandatory)
+
+- [ ] `memory.Home()` is `<KIRA_SPACE_HOME>/memory`; memory.db, `models/`, `distilled/`, runner log and lock land there.
+- [ ] `rg -n 'KIRA_MEMORY_HOME|\.kira-memory' --hidden -g '!docs/HISTORY.md' -g '!docs/v0.3.2/**'` returns only the "ignored, can be deleted" doc lines (or per user decision 1).
+- [ ] Fresh home, Memory off: app boot plus a `memory-mcp` start (`printf '' | <bin> memory-mcp`) leave no `memory/` folder and no `~/.kira-memory`; flow test `TestMemoryHomeLazy` passes.
+- [ ] Sandbox profile allows the memory subtree only; goldens show `.kira-space/memory`, never the Space home root.
+- [ ] Memory migrations: baseline `0008` only (or per user decision 2).
+- [ ] README, ARCHITECTURE, DEV_ENVIRONMENT, site `space/memory` and `reference/settings` name the new path; no site baseline changed.
