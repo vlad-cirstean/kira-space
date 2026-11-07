@@ -3,15 +3,12 @@
 # scripts/install.sh installs or updates Kira Space on this Mac: it downloads the latest published
 # release's disk image, verifies it, and swaps it into /Applications, then opens the app.
 # Interactive: `curl -fsSL <raw-url> | sh -s -- --app=space` — the same command installs a fresh
-# copy or replaces an older one. `--app=studio` is the migration path for the retired Kira Studio
-# app (its updater still passes it): it installs Kira Space the same way, then moves
-# /Applications/Kira Studio.app to the Trash. It never touches ~/.kira-studio (the app folds it into ~/.kira-space). Self-update: the app itself runs this
-# script with --wait-pid/--notify-fd, stages the new bundle, hands off over fd 3, then quits once
-# it reads that hand-off — the app never overwrites its own running binary. Log file, either mode:
-# ~/Library/Logs/<App name>/install.log (the retired app's name for --app=studio, where the old
-# app's own dialog points).
+# copy or replaces an older one. Self-update: the app itself runs this script with
+# --wait-pid/--notify-fd, stages the new bundle, hands off over fd 3, then quits once it reads that
+# hand-off — the app never overwrites its own running binary. Log file, either mode:
+# ~/Library/Logs/<App name>/install.log.
 #
-# Usage: install.sh --app=studio|space [--wait-pid=<pid> --notify-fd=<3-9>]
+# Usage: install.sh --app=space [--wait-pid=<pid> --notify-fd=<3-9>]
 # Exit codes: 0 installed and launched; 1 any failure; 2 usage; 130 interrupted.
 #
 # P119 §2: rewritten by hand, not generated — every requirement in the plan's own §2 is load-
@@ -34,7 +31,7 @@ main() {
   # variable a later step hasn't reached yet, including inside cleanup, which can run at any point
   # once its trap is armed.
   APP_ARG="" WAIT_PID="" NOTIFY_FD="" LOG=""
-  APP_NAME="" BUNDLE_ID="" ASSET="" SLUG="" LEGACY_NAME="" LEGACY_ID="" LOG_NAME=""
+  APP_NAME="" BUNDLE_ID="" ASSET="" SLUG="" LOG_NAME=""
   WORK="" STAGE="" MNT=""
   MOUNTED=0
   HANDED_OFF=0
@@ -76,16 +73,12 @@ main() {
     [ -n "$STAGE" ] && rm -rf "$STAGE"
 
     # Non-zero status after the app already quit on our word (HANDED_OFF=1): the user has no app
-    # open and no dialog, so this is the one place that reopens the old app (if it's still there)
+    # open and no dialog, so this is the one place that reopens the app (if it's still there)
     # and shows a blocking alert. Before hand-off, the app itself is still running and shows the
     # failure in its own dialog (§5) — no alert here.
     if [ "$STATUS" != "0" ] && [ "$HANDED_OFF" = "1" ]; then
-      REOPEN="$APP_NAME"
-      if [ -n "$LEGACY_NAME" ] && [ -d "/Applications/$LEGACY_NAME.app" ]; then
-        REOPEN="$LEGACY_NAME"
-      fi
-      if [ -d "/Applications/$REOPEN.app" ]; then
-        open "/Applications/$REOPEN.app" >/dev/null 2>&1 </dev/null || true
+      if [ -d "/Applications/$APP_NAME.app" ]; then
+        open "/Applications/$APP_NAME.app" >/dev/null 2>&1 </dev/null || true
         ALERT_MSG="$FAIL_MSG Details: ~/Library/Logs/$LOG_NAME/install.log"
       else
         ALERT_MSG="$FAIL_MSG Details: ~/Library/Logs/$LOG_NAME/install.log. To reinstall: curl -fsSL $RAW_BASE | sh -s -- --app=$APP_ARG"
@@ -110,23 +103,13 @@ APPLESCRIPT_EOF
       --wait-pid=*) WAIT_PID="${ARG#--wait-pid=}" ;;
       --notify-fd=*) NOTIFY_FD="${ARG#--notify-fd=}" ;;
       *)
-        echo "usage: install.sh --app=studio|space [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
+        echo "usage: install.sh --app=space [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
         exit 2
         ;;
     esac
   done
 
   case "$APP_ARG" in
-    studio)
-      # Kira Studio is retired: the merged Kira Space replaces it. The old app's updater lands here.
-      APP_NAME="Kira Space"
-      BUNDLE_ID="com.kirathecat.kira-space"
-      ASSET="kira-space-macos-arm64.dmg"
-      SLUG="studio"
-      LEGACY_NAME="Kira Studio"
-      LEGACY_ID="com.kirathecat.kira-studio"
-      LOG_NAME="Kira Studio"
-      ;;
     space)
       APP_NAME="Kira Space"
       BUNDLE_ID="com.kirathecat.kira-space"
@@ -135,7 +118,7 @@ APPLESCRIPT_EOF
       LOG_NAME="Kira Space"
       ;;
     *)
-      echo "usage: install.sh --app=studio|space [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
+      echo "usage: install.sh --app=space [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
       exit 2
       ;;
   esac
@@ -332,12 +315,6 @@ JXA_EOF
     die "downloaded app's version ('$GOT_VERSION') does not match the release tag ('$WANT_VERSION')"
   fi
 
-  # Studio's updater lands here while Space may be open. Fail before the hand-off, while Studio
-  # still shows the error in its own dialog.
-  if [ "$APP_ARG" = "studio" ] && [ -n "$NOTIFY_FD" ] && pgrep -xq "$APP_NAME" </dev/null; then
-    die "Quit $APP_NAME, then update again"
-  fi
-
   # ---- 9: hand off (self-update mode only) -------------------------------------------------------
   if [ -n "$NOTIFY_FD" ]; then
     eval "printf 'staged %s\\n' \"\$TAG\" >&$NOTIFY_FD"
@@ -355,10 +332,7 @@ JXA_EOF
   fi
 
   # ---- 10: running check ----------------------------------------------------------------------
-  # Process name is the bundle executable (<=16 chars for both apps).
-  if [ -n "$LEGACY_NAME" ] && pgrep -xq "$LEGACY_NAME" </dev/null; then
-    die "Quit $LEGACY_NAME first, then rerun."
-  fi
+  # Process name is the bundle executable.
   if pgrep -xq "$APP_NAME" </dev/null; then
     if [ -n "$NOTIFY_FD" ]; then
       die "$APP_NAME was reopened before the update finished"
@@ -396,39 +370,7 @@ JXA_EOF
   # goes with $STAGE in cleanup.
   trap 'exit 130' INT TERM HUP
 
-  # ---- 12: retire the old app (--app=studio only) ---------------------------------------------
-  # Kira Space is installed and verified; only now does Kira Studio.app go, to the Trash and only
-  # when it is the real Kira Studio bundle. ~/.kira-studio holds the user's data and is never
-  # touched here: Kira Space folds it into ~/.kira-space on first launch.
-  if [ -n "$LEGACY_NAME" ] && [ -d "/Applications/$LEGACY_NAME.app" ]; then
-    if ! codesign --verify --deep --strict "/Applications/$APP_NAME.app" >/dev/null 2>&1 </dev/null; then
-      die "the installed $APP_NAME.app failed verification; leaving $LEGACY_NAME.app in place"
-    fi
-    INSTALLED_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' \
-      "/Applications/$APP_NAME.app/Contents/Info.plist" 2>/dev/null || echo '')"
-    OLD_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' \
-      "/Applications/$LEGACY_NAME.app/Contents/Info.plist" 2>/dev/null || echo '')"
-    if [ "$INSTALLED_ID" != "$BUNDLE_ID" ]; then
-      die "the installed app's bundle id ('$INSTALLED_ID') is not '$BUNDLE_ID'; leaving $LEGACY_NAME.app in place"
-    fi
-    if [ "$OLD_ID" != "$LEGACY_ID" ]; then
-      log "/Applications/$LEGACY_NAME.app has bundle id '$OLD_ID', not '$LEGACY_ID'; leaving it in place"
-    else
-      TRASH="$HOME/.Trash"
-      TRASHED="$TRASH/$LEGACY_NAME.app"
-      if [ -e "$TRASHED" ]; then
-        TRASHED="$TRASH/$LEGACY_NAME $(date +%Y-%m-%d-%H%M%S).app"
-      fi
-      mkdir -p "$TRASH"
-      if mv -f "/Applications/$LEGACY_NAME.app" "$TRASHED" 2>/dev/null; then
-        log "moved $LEGACY_NAME.app to the Trash ($TRASHED); your data in ~/.kira-studio moves into ~/.kira-space on first launch"
-      else
-        log "couldn't move $LEGACY_NAME.app to the Trash; delete it by hand. Your data in ~/.kira-studio moves into ~/.kira-space on first launch"
-      fi
-    fi
-  fi
-
-  # ---- 13: launch -----------------------------------------------------------------------------
+  # ---- 12: launch -----------------------------------------------------------------------------
   open "/Applications/$APP_NAME.app" </dev/null >/dev/null 2>&1 \
     || die "$APP_NAME installed but couldn't be opened automatically — open it from /Applications"
   log "installed $TAG"
