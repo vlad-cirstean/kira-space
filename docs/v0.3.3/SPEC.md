@@ -29,7 +29,6 @@ Chapter end: non-UI full run, 1 code review round, close phase, PR.
 
 - Dropped: legacy MCP removal, leftovers cleanup, agent secrets fold, Keychain rename, worktree move (`wtmove`, `projectdir.go`), `ade.PathSegment` now unexported, dead ARCHITECTURE/DEV_ENVIRONMENT/README text, `docs/NEXT_CHAPTER.md`.
 - Rename: installer, update checker, `verify-packaging.sh` pin, README/docs URLs; `release.yml` change in `docs/pending-changes/.github__workflows__release.yml.patch` (apply from a Mac session, delete the patch in that commit).
-- Left for stream B (`site/`): memory sentence in `site/src/content/docs/docs/space/memory.mdx` ("old `~/.kira-memory`"), and "Backups of one-time upgrades live in" in `site/src/content/docs/docs/start/how-it-works.md` (becomes "Config sync backups live in"). Pages links need `base: '/kira-space'` in `site/astro.config.mjs`.
 - By hand, user: delete `~/.kira-space/backups/p557-*`, `~/.kira-space/config/workflows/.p526-backup/`, `~/.kira-space/.legacy-mcp-removed`.
 - Mac hand-off: `go vet ./internal/secrets && go test ./internal/secrets -run Keychain` (`keyring_darwin.go` not buildable on Linux).
 
