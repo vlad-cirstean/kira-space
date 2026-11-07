@@ -17,28 +17,28 @@ CREATE TABLE proof_sessions__n (
   summary TEXT NOT NULL DEFAULT ''
 ) STRICT;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'empty id', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'empty id', 'removed', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_sessions WHERE id = '';
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'invalid state', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'invalid state', 'removed', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_sessions WHERE state NOT IN ('open', 'closed');
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'out-of-range current_rev', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'out-of-range current_rev', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_sessions WHERE "current_rev" < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'out-of-range pending_rev', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'out-of-range pending_rev', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_sessions WHERE "pending_rev" < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'negative created_at', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'negative created_at', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_sessions WHERE created_at < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'negative closed_at', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'negative closed_at', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_sessions WHERE closed_at < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'negative seen_at', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'negative seen_at', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_sessions WHERE seen_at < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'negative updated_at', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_sessions', json_object('id', "id", 'name', "name", 'name_key', "name_key", 'state', "state", 'current_rev', "current_rev", 'pending_rev', "pending_rev", 'summary', "summary", 'created_at', "created_at", 'closed_at', "closed_at", 'seen_at', "seen_at", 'updated_at', "updated_at"), 'negative updated_at', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_sessions WHERE updated_at < 0;
 INSERT INTO proof_sessions__n (rowid, id, state, current_rev, pending_rev, created_at, closed_at, seen_at, updated_at, name, name_key, summary)
   SELECT rowid, id, state, MAX(0, "current_rev"), MAX(0, "pending_rev"), MAX(0, created_at), MAX(0, closed_at), MAX(0, seen_at), MAX(0, updated_at), name, name_key, summary
@@ -60,19 +60,19 @@ CREATE TABLE proof_revisions__n (
   PRIMARY KEY (session_id, rev)
 ) STRICT;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_revisions', json_object('session_id', "session_id", 'rev', "rev", 'draft_id', "draft_id", 'reason', "reason", 'state', "state", 'created_at', "created_at", 'closed_at', "closed_at"), 'orphan session_id', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_revisions', json_object('session_id', "session_id", 'rev', "rev", 'draft_id', "draft_id", 'reason', "reason", 'state', "state", 'created_at', "created_at", 'closed_at', "closed_at"), 'orphan session_id', 'removed', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_revisions WHERE NOT EXISTS (SELECT 1 FROM proof_sessions p WHERE p.id = proof_revisions."session_id");
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_revisions', json_object('session_id', "session_id", 'rev', "rev", 'draft_id', "draft_id", 'reason', "reason", 'state', "state", 'created_at', "created_at", 'closed_at', "closed_at"), 'out-of-range rev', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_revisions', json_object('session_id', "session_id", 'rev', "rev", 'draft_id', "draft_id", 'reason', "reason", 'state', "state", 'created_at', "created_at", 'closed_at', "closed_at"), 'out-of-range rev', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_revisions WHERE "rev" < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_revisions', json_object('session_id', "session_id", 'rev', "rev", 'draft_id', "draft_id", 'reason', "reason", 'state', "state", 'created_at', "created_at", 'closed_at', "closed_at"), 'invalid state', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_revisions', json_object('session_id', "session_id", 'rev', "rev", 'draft_id', "draft_id", 'reason', "reason", 'state', "state", 'created_at', "created_at", 'closed_at', "closed_at"), 'invalid state', 'removed', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_revisions WHERE state NOT IN ('draft', 'current', 'pending');
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_revisions', json_object('session_id', "session_id", 'rev', "rev", 'draft_id', "draft_id", 'reason', "reason", 'state', "state", 'created_at', "created_at", 'closed_at', "closed_at"), 'negative created_at', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_revisions', json_object('session_id', "session_id", 'rev', "rev", 'draft_id', "draft_id", 'reason', "reason", 'state', "state", 'created_at', "created_at", 'closed_at', "closed_at"), 'negative created_at', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_revisions WHERE created_at < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_revisions', json_object('session_id', "session_id", 'rev', "rev", 'draft_id', "draft_id", 'reason', "reason", 'state', "state", 'created_at', "created_at", 'closed_at', "closed_at"), 'negative closed_at', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_revisions', json_object('session_id', "session_id", 'rev', "rev", 'draft_id', "draft_id", 'reason', "reason", 'state', "state", 'created_at', "created_at", 'closed_at', "closed_at"), 'negative closed_at', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_revisions WHERE closed_at < 0;
 INSERT INTO proof_revisions__n (rowid, session_id, rev, state, created_at, closed_at, draft_id, reason)
   SELECT rowid, session_id, MAX(0, COALESCE("rev", 0)), state, MAX(0, created_at), MAX(0, closed_at), draft_id, reason
@@ -99,25 +99,25 @@ CREATE TABLE proof_steps__n (
   FOREIGN KEY (session_id, rev) REFERENCES proof_revisions (session_id, rev) ON DELETE CASCADE
 ) STRICT;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'out-of-range rev', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'out-of-range rev', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_steps WHERE "rev" < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'out-of-range ordinal', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'out-of-range ordinal', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_steps WHERE "ordinal" < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'invalid view', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'invalid view', 'removed', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_steps WHERE view NOT IN ('table', 'document', 'keyvalue', 'chart', 'diagram');
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'invalid diff', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'invalid diff', 'removed', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_steps WHERE diff NOT IN ('added', 'unchanged', 'changed');
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'out-of-range payload_bytes', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'out-of-range payload_bytes', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_steps WHERE "payload_bytes" < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'out-of-range origin_ordinal', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'out-of-range origin_ordinal', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_steps WHERE "origin_ordinal" < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'orphan revision', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_steps', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'description', "description", 'query', "query", 'language', "language", 'source', "source", 'view', "view", 'payload_bytes', "payload_bytes", 'diff', "diff", 'origin_ordinal', "origin_ordinal"), 'orphan revision', 'removed', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_steps WHERE NOT EXISTS (SELECT 1 FROM proof_revisions r WHERE r.session_id = proof_steps.session_id AND r.rev = proof_steps.rev);
 INSERT INTO proof_steps__n (rowid, session_id, rev, ordinal, view, diff, payload_bytes, origin_ordinal, description, query, language, source, payload)
   SELECT rowid, session_id, MAX(0, COALESCE("rev", 0)), MAX(0, COALESCE("ordinal", 0)), view, diff, MAX(0, COALESCE("payload_bytes", 0)), MAX(0, "origin_ordinal"), description, query, language, source, payload
@@ -138,19 +138,19 @@ CREATE TABLE proof_view_state__n (
   FOREIGN KEY (session_id, rev, ordinal) REFERENCES proof_steps (session_id, rev, ordinal) ON DELETE CASCADE
 ) STRICT;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_view_state', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'state', "state", 'updated_at', "updated_at"), 'out-of-range rev', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_view_state', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'state', "state", 'updated_at', "updated_at"), 'out-of-range rev', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_view_state WHERE "rev" < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_view_state', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'state', "state", 'updated_at', "updated_at"), 'out-of-range ordinal', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_view_state', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'state', "state", 'updated_at', "updated_at"), 'out-of-range ordinal', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_view_state WHERE "ordinal" < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_view_state', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'state', "state", 'updated_at', "updated_at"), 'negative updated_at', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_view_state', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'state', "state", 'updated_at', "updated_at"), 'negative updated_at', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_view_state WHERE updated_at < 0;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_view_state', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'state', "state", 'updated_at', "updated_at"), 'invalid JSON state', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_view_state', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'state', "state", 'updated_at', "updated_at"), 'invalid JSON state', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_view_state WHERE NOT json_valid(state);
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_view_state', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'state', "state", 'updated_at', "updated_at"), 'orphan step', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_view_state', json_object('session_id', "session_id", 'rev', "rev", 'ordinal', "ordinal", 'state', "state", 'updated_at', "updated_at"), 'orphan step', 'removed', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_view_state WHERE NOT EXISTS (SELECT 1 FROM proof_steps s WHERE s.session_id = proof_view_state.session_id AND s.rev = proof_view_state.rev AND s.ordinal = proof_view_state.ordinal);
 INSERT INTO proof_view_state__n (rowid, session_id, rev, ordinal, updated_at, state)
   SELECT rowid, session_id, MAX(0, COALESCE("rev", 0)), MAX(0, COALESCE("ordinal", 0)), MAX(0, updated_at), CASE WHEN json_valid(state) THEN state ELSE '{}' END
@@ -169,16 +169,16 @@ CREATE TABLE proof_task_links__n (
   step_name TEXT NOT NULL DEFAULT ''
 ) STRICT;
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_task_links', json_object('session_id', "session_id", 'task_id', "task_id", 'source', "source", 'kira_session_id', "kira_session_id", 'step_id', "step_id", 'step_name', "step_name", 'linked_at', "linked_at"), 'orphan session_id', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_task_links', json_object('session_id', "session_id", 'task_id', "task_id", 'source', "source", 'kira_session_id', "kira_session_id", 'step_id', "step_id", 'step_name', "step_name", 'linked_at', "linked_at"), 'orphan session_id', 'removed', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_task_links WHERE NOT EXISTS (SELECT 1 FROM proof_sessions p WHERE p.id = proof_task_links."session_id");
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_task_links', json_object('session_id', "session_id", 'task_id', "task_id", 'source', "source", 'kira_session_id', "kira_session_id", 'step_id', "step_id", 'step_name', "step_name", 'linked_at', "linked_at"), 'orphan task_id', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_task_links', json_object('session_id', "session_id", 'task_id', "task_id", 'source', "source", 'kira_session_id', "kira_session_id", 'step_id', "step_id", 'step_name', "step_name", 'linked_at', "linked_at"), 'orphan task_id', 'removed', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_task_links WHERE NOT EXISTS (SELECT 1 FROM ade_tasks p WHERE p.id = proof_task_links."task_id");
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_task_links', json_object('session_id', "session_id", 'task_id', "task_id", 'source', "source", 'kira_session_id', "kira_session_id", 'step_id', "step_id", 'step_name', "step_name", 'linked_at', "linked_at"), 'invalid source', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_task_links', json_object('session_id', "session_id", 'task_id', "task_id", 'source', "source", 'kira_session_id', "kira_session_id", 'step_id', "step_id", 'step_name', "step_name", 'linked_at', "linked_at"), 'invalid source', 'removed', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_task_links WHERE source NOT IN ('agent', 'user');
 INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
-  SELECT 'proof_task_links', json_object('session_id', "session_id", 'task_id', "task_id", 'source', "source", 'kira_session_id', "kira_session_id", 'step_id', "step_id", 'step_name', "step_name", 'linked_at', "linked_at"), 'negative linked_at', 'repaired', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  SELECT 'proof_task_links', json_object('session_id', "session_id", 'task_id', "task_id", 'source', "source", 'kira_session_id', "kira_session_id", 'step_id', "step_id", 'step_name', "step_name", 'linked_at', "linked_at"), 'negative linked_at', 'repaired', 89, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
   FROM proof_task_links WHERE linked_at < 0;
 INSERT INTO proof_task_links__n (rowid, session_id, task_id, source, linked_at, kira_session_id, step_id, step_name)
   SELECT rowid, session_id, task_id, source, MAX(0, linked_at), kira_session_id, step_id, step_name
