@@ -36,9 +36,7 @@ type Attached = ReturnType<Renderer['getOrCreateTerminal']>;
 const router = useRouter();
 const { permissions } = storeToRefs(useAuthStore());
 const container = ref<HTMLElement | null>(null);
-const fontSize = usePersistedState('kira.mobileTerminal.fontSize', 12, {
-  migrateFrom: 'kira-mobile-terminal-font',
-});
+const fontSize = usePersistedState('kira.mobileTerminal.fontSize', 12);
 const compose = ref('');
 const ctrl = ref(false);
 const appCursor = ref(false);

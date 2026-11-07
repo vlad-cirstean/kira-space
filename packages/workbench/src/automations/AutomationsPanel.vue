@@ -94,9 +94,7 @@ const problemById = computed(
   () => new Map(scripts.problems().map((p): [string, ScriptFileProblem] => [p.id, p])),
 );
 
-const collapsed = usePersistedState<string[]>('kira.automations.collapsedCollections', [], {
-  migrateFrom: 'kira.quickCommands.collapsedCollections',
-});
+const collapsed = usePersistedState<string[]>('kira.automations.collapsedCollections', []);
 
 // A search shows every matching row, collapsed or not.
 function isOpen(name: string): boolean {
