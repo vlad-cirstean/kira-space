@@ -22,6 +22,18 @@ const btn =
   aria-label={BUILD.carouselLabel}
   class="relative mx-auto max-w-5xl px-4"
 >
+  <div class="mb-3 flex justify-end">
+    <button
+      type="button"
+      data-rotation
+      aria-label="Pause automatic rotation"
+      class="flex h-11 items-center gap-2 rounded-full bg-chrome/90 px-4 text-sm text-fg ring-1 ring-border-strong hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      <span data-when-running><Icon name="pause" class="size-4" /></span>
+      <span data-when-stopped hidden><Icon name="play" class="size-4" /></span>
+      <span data-rotation-text>Pause</span>
+    </button>
+  </div>
   <div
     data-track
     aria-live="off"
@@ -98,9 +110,23 @@ function setup(root: HTMLElement): void {
     window.clearTimeout(timer);
     timer = undefined;
   };
+  const rotation = root.querySelector<HTMLElement>('[data-rotation]');
   const live = () => {
     root.dataset.paused = [...pauses].join(' ');
     track.setAttribute('aria-live', timer === undefined ? 'polite' : 'off');
+    if (!rotation) return;
+    const stopped = pauses.has('user');
+    rotation.hidden = reduced();
+    rotation.setAttribute(
+      'aria-label',
+      stopped ? 'Start automatic rotation' : 'Pause automatic rotation',
+    );
+    const text = rotation.querySelector('[data-rotation-text]');
+    if (text) text.textContent = stopped ? 'Play' : 'Pause';
+    const running = rotation.querySelector<HTMLElement>('[data-when-running]');
+    const stoppedIcon = rotation.querySelector<HTMLElement>('[data-when-stopped]');
+    if (running) running.hidden = stopped;
+    if (stoppedIcon) stoppedIcon.hidden = !stopped;
   };
   const arm = () => {
     stop();
@@ -125,6 +151,7 @@ function setup(root: HTMLElement): void {
     arm();
   };
 
+  rotation?.addEventListener('click', () => pause('user', !pauses.has('user')));
   root.querySelector('[data-prev]')?.addEventListener('click', () => go(active - 1));
   root.querySelector('[data-next]')?.addEventListener('click', () => go(active + 1));
   for (const [n, d] of dots.entries()) d.addEventListener('click', () => go(n));

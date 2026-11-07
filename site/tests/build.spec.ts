@@ -82,8 +82,10 @@ test('arrows, keys and dots move the active slide and wrap', async ({ page }) =>
   await expect.poll(() => active(page)).toBe(0);
 });
 
-test('the carousel has no play or pause control', async ({ page }) => {
-  await expect(page.getByRole('button', { name: /play|pause/i })).toHaveCount(0);
+test('the rotation control comes first in the carousel tab order', async ({ page }) => {
+  const control = page.getByRole('button', { name: 'Pause automatic rotation' });
+  await expect(control).toBeVisible();
+  await expect(page.locator('[data-carousel] button').first()).toHaveAttribute('data-rotation', '');
 });
 
 test.describe('autoplay', () => {
@@ -104,6 +106,22 @@ test.describe('autoplay', () => {
     await page.clock.runFor(13_000);
     expect(await active(page)).toBe(0);
     await page.mouse.move(0, 0);
+    await page.clock.runFor(6100);
+    await expect.poll(() => active(page)).toBe(1);
+  });
+
+  test('the rotation control stops autoplay until it is pressed again', async ({ page }) => {
+    await page.getByRole('button', { name: 'Pause automatic rotation' }).focus();
+    await page.keyboard.press('Enter');
+    await page.mouse.move(0, 0);
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.clock.runFor(13_000);
+    expect(await active(page)).toBe(0);
+    expect(await paused(page, 100)).toBe('user');
+    await page.getByRole('button', { name: 'Start automatic rotation' }).focus();
+    await page.keyboard.press('Space');
+    await page.mouse.move(0, 0);
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await page.clock.runFor(6100);
     await expect.poll(() => active(page)).toBe(1);
   });
@@ -152,6 +170,7 @@ test('reduced motion never autoplays while the arrows still work', async ({ page
   await page.goto(URL);
   await page.clock.runFor(20_000);
   expect(await active(page)).toBe(0);
+  await expect(page.locator('[data-carousel] [data-rotation]')).toBeHidden();
   await page.getByRole('button', { name: 'Next step' }).click();
   await expect.poll(() => active(page)).toBe(1);
 });
