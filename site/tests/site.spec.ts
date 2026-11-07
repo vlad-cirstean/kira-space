@@ -219,23 +219,20 @@ for (const path of ['', 'build/']) {
   });
 }
 
-test('install holds the Keychain and folder text with two dialog images', async ({ page }) => {
+test('install holds the Keychain image and the folder text', async ({ page }) => {
   await page.goto(BASE);
   const install = page.locator('#install');
   await expect(install).toContainText('its own key');
   await expect(install).toContainText('Always Allow');
   await expect(install).toContainText('folders that hold your repositories');
-  const pending = await install.locator('[data-install-pending]').count();
-  const images = await install.locator('img').count();
-  expect(pending + images).toBe(2);
-  if (process.env.CI === 'true') expect(pending).toBe(0);
-  for (const alt of [
-    'macOS Keychain dialog asking to let Kira Space use its own key.',
-    'macOS dialog asking to let Kira Space access a folder.',
-  ]) {
-    const shown = install.locator(`img[alt="${alt}"], [data-install-pending]:has-text("${alt}")`);
-    await expect(shown).toHaveCount(1);
-  }
+  await expect(install.locator('img')).toHaveCount(1);
+  const keychain = install.locator(
+    'img[alt="macOS Keychain dialog asking to let Kira Space use its own key."]',
+  );
+  await expect(keychain).toHaveCount(1);
+  expect(await keychain.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(868);
+  await expect(install.locator('img[alt*="access a folder"]')).toHaveCount(0);
+  await expect(install).not.toContainText('Screenshot pending');
 });
 
 test('the README opens with the beta notice and the install link', () => {
