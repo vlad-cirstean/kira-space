@@ -326,6 +326,9 @@ func importRows(o *Options, path string, m *marker) (err error) {
 	if err := copyTabs(t, o.Ephemeral); err != nil {
 		return fmt.Errorf("tabs: %w", err)
 	}
+	if err := sweepOrphans(t, o.now()); err != nil {
+		return fmt.Errorf("orphans: %w", err)
+	}
 	m.Imported = true
 	if err := writeMarker(t, *m); err != nil {
 		m.Imported = false
@@ -417,26 +420,6 @@ func instantExpr(col string, required bool) string {
 	return e
 }
 
-// selectList is the source select expression of every shared column, converting instants.
-func selectList(dst string, cols []string) string {
-	conv := map[string]string{}
-	for _, c := range instantCols[dst].required {
-		conv[c] = instantExpr(c, true)
-	}
-	for _, c := range instantCols[dst].nullable {
-		conv[c] = instantExpr(c, false)
-	}
-	out := make([]string, len(cols))
-	for i, c := range cols {
-		if e, ok := conv[c]; ok {
-			out[i] = e
-		} else {
-			out[i] = `"` + c + `"`
-		}
-	}
-	return strings.Join(out, ", ")
-}
-
 // ensureLegacyConnections gives the Space connections table the superseded columns and tables a Studio
 // database holds when it has not exported its connections to files yet, so connfiles exports them on its
 // first load. A fresh Space schema does not carry them.
@@ -506,11 +489,15 @@ func copyModuleTables(t tx) error {
 			continue
 		}
 		list := strings.Join(quoteAll(cols), ", ")
+		sel, err := repairList(t, mt.dst, cols)
+		if err != nil {
+			return err
+		}
 		where := ""
 		if mt.dst == "proof_task_links" {
 			where = ` WHERE task_id IN (SELECT id FROM main.ade_tasks)`
 		}
-		res, err := t.Exec(`INSERT OR IGNORE INTO main.` + mt.dst + ` (` + list + `) SELECT ` + selectList(mt.dst, cols) + ` FROM studio.` + mt.src + where)
+		res, err := t.Exec(`INSERT OR IGNORE INTO main.` + mt.dst + ` (` + list + `) SELECT ` + sel + ` FROM studio.` + mt.src + where)
 		if err != nil {
 			return fmt.Errorf("copy %s: %w", mt.src, err)
 		}

@@ -111,9 +111,9 @@ const (
 	previewTTL   = 10 * time.Minute
 	fetchTimeout = 2 * time.Minute
 	// promptTimeout leaves time for the user to answer a credential prompt.
-	promptTimeout   = 10 * time.Minute
+	promptTimeout = 10 * time.Minute
 	// maxSessions bounds open previews; the oldest is dropped past it.
-	maxSessions = 8
+	maxSessions     = 8
 	backoffCap      = 60 * time.Minute
 	defaultStartLag = time.Minute
 	keepBackups     = 10
