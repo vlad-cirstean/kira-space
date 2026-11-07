@@ -275,16 +275,19 @@ func PreviewSQLMutation(plan model.MutationPlan, relationSQL string, literalRend
 // it always reaches the server regardless of the caller's own ctx state (common to all three
 // adapters' mutate()).
 func RunSQLMutation(ctx context.Context, beginSQL string, exec func(sqlText string, params []any) (int64, error), rollback func(context.Context), compiled []CompiledOp) (model.MutationResult, error) {
-	if _, err := exec(beginSQL, nil); err != nil {
-		return model.MutationResult{}, err
-	}
 	committed := false
+	// Armed before BEGIN: a ctx cancelled mid-BEGIN can return an error after the engine already
+	// opened the transaction (driver interrupt races statement completion), and the pooled conn
+	// would then reject the next op's BEGIN. ROLLBACK with no open transaction is a harmless no-op.
 	defer func() {
 		if committed {
 			return
 		}
 		rollback(ctx)
 	}()
+	if _, err := exec(beginSQL, nil); err != nil {
+		return model.MutationResult{}, err
+	}
 	var affectedRows int64
 	for _, c := range compiled {
 		n, err := exec(c.SQL, c.Params)
