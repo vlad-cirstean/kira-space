@@ -68,14 +68,9 @@ func (s *Store) Dir() string { return s.o.Dir }
 // Folder is the api module folder name under <home>/config.
 const Folder = "api"
 
-// Start migrates the legacy rows once, loads the folder, writes AGENTS.md and watches the folder. A
-// failed migration skips the rest: an unfinished export never projects. A failure of the docs or the
+// Start loads the folder, writes AGENTS.md and watches the folder. A failure of the docs or the
 // watch is logged and never fatal.
 func (s *Store) Start() {
-	if err := configfs.MigrateOnce(s.o.DB, "api", s.migrate); err != nil {
-		slog.Warn("api: migrate to files", "scope", "startup", "err", err)
-		return
-	}
 	s.Sync()
 	model, err := DocModel()
 	if err == nil {

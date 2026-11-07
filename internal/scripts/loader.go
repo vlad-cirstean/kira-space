@@ -13,8 +13,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
-	"github.com/kirathecat/kira-studio/internal/kiraschema"
-	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // Folder is the runs module folder name under <home>/config.
@@ -67,12 +65,9 @@ func NewLoader(o LoaderOptions) (*Loader, error) {
 // Dir is the runs folder.
 func (l *Loader) Dir() string { return l.o.Dir }
 
-// Start migrates once, loads the folder, writes AGENTS.md and watches the folder. A failure of the
-// migration, the docs or the watch is logged and never fatal.
+// Start loads the folder, writes AGENTS.md and watches the folder. A failure of the docs or the
+// watch is logged and never fatal.
 func (l *Loader) Start() {
-	if err := configfs.MigrateOnce(l.o.Repo.DB, "runs", l.migrate); err != nil {
-		slog.Warn("runs: migrate to files", "scope", "startup", "err", err)
-	}
 	l.Reload()
 	if err := l.folder.WriteDocs(l.docs); err != nil {
 		slog.Warn("runs: write AGENTS.md", "scope", "startup", "err", err)
@@ -337,71 +332,4 @@ func (l *Loader) SaveFile(file, text, baseHash string) (FileView, error) {
 	}
 	l.Reload()
 	return l.View(file)
-}
-
-// migrate exports the rows that predate run files: it seeds config_json, the last good value, and
-// writes <id>.yaml unless one exists. A crash before the marker reruns it idempotently.
-func (l *Loader) migrate() error {
-	repo := l.o.Repo
-	c := kiraschema.Scripts
-	legacyQ := repo.Dialect.Select(selectColumns...).From(c.Table)
-	legacyQ.Where(legacyQ.Equal(c.ConfigJSON, ""))
-	rows, err := sqlb.Query(repo.DB, legacyQ)
-	if err != nil {
-		return fmt.Errorf("scripts: read legacy runs: %w", err)
-	}
-	var legacy []CustomScript
-	for rows.Next() {
-		rec, err := scanRow(rows)
-		if err != nil {
-			rows.Close()
-			return err
-		}
-		legacy = append(legacy, rec)
-	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
-		return err
-	}
-	rows.Close()
-	for _, rec := range legacy {
-		if _, ok := StemOf(FileName(rec.ID)); !ok {
-			slog.Warn("runs: legacy id is not a file name, left in the database", "scope", "startup", "id", rec.ID)
-			continue
-		}
-		dirMode, dir := rec.DirMode, rec.WorkingDir
-		if dirMode == "home" {
-			home, err := os.UserHomeDir()
-			if err != nil || home == "" {
-				slog.Warn("runs: legacy home folder unresolved", "scope", "startup", "id", rec.ID)
-				continue
-			}
-			dirMode, dir = DirModeFixed, home
-		}
-		f := FileOf(CustomScriptFields{
-			Name: rec.Name, Command: rec.Command, WorkingDir: dir, DirMode: dirMode, Color: rec.Color, Collection: rec.Collection,
-			Kind: rec.Kind, Params: rec.Params, Smart: rec.Smart, UseAdeDir: rec.UseAdeDir, Schedule: rec.Schedule,
-		})
-		js, err := json.Marshal(f)
-		if err != nil {
-			return fmt.Errorf("scripts: encode %s: %w", rec.ID, err)
-		}
-		path := filepath.Join(l.o.Dir, FileName(rec.ID))
-		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-			text, err := f.Render()
-			if err != nil {
-				return err
-			}
-			if err := configfs.WriteAtomic(path, text, 0o644); err != nil {
-				return err
-			}
-		}
-		seed := repo.Dialect.Update(c.Table)
-		seed.Set(seed.Assign(c.ConfigJSON, string(js)), seed.Assign(c.DirMode, dirMode), seed.Assign(c.WorkingDir, dir)).
-			Where(seed.Equal(c.ID, rec.ID))
-		if _, err := sqlb.Exec(repo.DB, seed); err != nil {
-			return fmt.Errorf("scripts: seed last good of %s: %w", rec.ID, err)
-		}
-	}
-	return nil
 }

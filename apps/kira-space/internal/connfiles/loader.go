@@ -84,14 +84,9 @@ func (l *Loader) Dir() string { return l.o.Dir }
 // Folder is the connections module folder name under <home>/config.
 const Folder = "connections"
 
-// Start migrates the legacy rows once, loads the folder, writes AGENTS.md and watches the folder. A
-// failed migration skips the rest: an unfinished export never projects. A failure of the docs or the
+// Start loads the folder, writes AGENTS.md and watches the folder. A failure of the docs or the
 // watch is logged and never fatal.
 func (l *Loader) Start() {
-	if err := configfs.MigrateOnce(l.o.DB, "connections", l.migrate); err != nil {
-		slog.Warn("connections: migrate to files", "scope", "startup", "err", err)
-		return
-	}
 	l.Reload()
 	model, err := DocModel()
 	if err == nil {

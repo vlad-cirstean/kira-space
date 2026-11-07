@@ -1,7 +1,6 @@
 package termflow_test
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -162,103 +161,5 @@ func TestRunsConfigFile(t *testing.T) {
 	snap = waitSnapshot(t, app, mark, func(s scripts.Snapshot) bool { return len(s.Problems) == 1 })
 	if p := snap.Problems[0]; p.File != "bad stem.yaml" || p.ID != "" || len(snap.Scripts) != 1 {
 		t.Fatalf("bad stem: problem %+v, scripts %d, want an id-less problem and no record", p, len(snap.Scripts))
-	}
-}
-
-// TestRunsFileMigration: legacy rows become files on the first start after the schema change.
-func TestRunsFileMigration(t *testing.T) {
-	app := flowharness.New(t)
-	db := app.DB()
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	smart, _ := json.Marshal(scripts.Smart{Model: "sonnet"})
-	for _, r := range []struct {
-		id, name, kind, cmd, dirMode, dir, collection, smart string
-		sort                                                 int
-		task, branch                                         string
-	}{
-		{"11111111-aaaa-4aaa-8aaa-111111111111", "Legacy", "script", "echo legacy", "home", "", "Old", "", 1, "", ""},
-		{"22222222-bbbb-4bbb-8bbb-222222222222", "Brain", "smart", "Think", "kira", "", "", string(smart), 2, "task-1", "branch-1"},
-	} {
-		if r.collection != "" {
-			if _, err := db.Exec(`INSERT OR IGNORE INTO script_collections (name, sort_order) VALUES (?, 0)`, r.collection); err != nil {
-				t.Fatal(err)
-			}
-		}
-		if _, err := db.Exec(`INSERT INTO scripts (id, name, command, kind, dir_mode, working_dir, color, collection, sort_order, schedule_task_id, schedule_branch_id, smart_json, config_json, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, 'blue', ?, ?, ?, ?, ?, '', 1, 1)`,
-			r.id, r.name, r.cmd, r.kind, r.dirMode, r.dir, r.collection, r.sort, r.task, r.branch, r.smart); err != nil {
-			t.Fatalf("seed %s: %v", r.name, err)
-		}
-	}
-	keyed, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
-		Name: "Keyed", Command: "true", Color: "blue", Params: []scripts.Param{{Name: "token", Type: scripts.ParamText, Secret: true}},
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := app.W.CustomScripts.SetSecrets(bridge.CustomScriptsSetSecretsArgs{ID: keyed.ID, Values: map[string]*string{"token": ptr("s3cret")}}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`UPDATE scripts SET config_json = '' WHERE id = ?`, keyed.ID); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(filepath.Join(app.ConfigDir("runs"), keyed.ID+".yaml")); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`DELETE FROM settings WHERE key = 'config.migrated.runs'`); err != nil {
-		t.Fatal(err)
-	}
-	app.Restart()
-
-	snap, err := app.W.CustomScripts.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	legacy, ok := scriptOf(snap, "11111111-aaaa-4aaa-8aaa-111111111111")
-	brain, ok2 := scriptOf(snap, "22222222-bbbb-4bbb-8bbb-222222222222")
-	if !ok || !ok2 || len(snap.Problems) != 0 {
-		t.Fatalf("snapshot = %+v", snap)
-	}
-	if legacy.DirMode != scripts.DirModeFixed || legacy.WorkingDir != home || legacy.Collection != "Old" || legacy.Command != "echo legacy" {
-		t.Fatalf("legacy record = %+v, want fixed home and collection Old", legacy)
-	}
-	if brain.Kind != scripts.KindSmart || brain.Smart == nil || brain.Smart.Model != "sonnet" {
-		t.Fatalf("smart record = %+v", brain)
-	}
-	for _, id := range []string{legacy.ID, brain.ID} {
-		if _, err := os.Stat(filepath.Join(app.ConfigDir("runs"), id+".yaml")); err != nil {
-			t.Fatalf("legacy run %s not exported: %v", id, err)
-		}
-	}
-	var task, branch string
-	if err := app.DB().QueryRow(`SELECT schedule_task_id, schedule_branch_id FROM scripts WHERE id = ?`, brain.ID).Scan(&task, &branch); err != nil {
-		t.Fatal(err)
-	}
-	if task != "task-1" || branch != "branch-1" {
-		t.Fatalf("schedule target = %q/%q, want task-1/branch-1 kept", task, branch)
-	}
-	if keyed, ok := scriptOf(snap, keyed.ID); !ok || len(keyed.SavedSecrets) != 1 || keyed.SavedSecrets[0] != "token" {
-		t.Fatalf("keyed record = %+v, want its saved secret kept", keyed)
-	}
-
-	if err := os.Remove(filepath.Join(app.ConfigDir("runs"), legacy.ID+".yaml")); err != nil {
-		t.Fatal(err)
-	}
-	app.Restart()
-	snap, err = app.W.CustomScripts.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := scriptOf(snap, legacy.ID); ok {
-		t.Fatal("deleted file's run is back after a restart")
-	}
-	if _, err := os.Stat(filepath.Join(app.ConfigDir("runs"), legacy.ID+".yaml")); !os.IsNotExist(err) {
-		t.Fatalf("deleted file was exported again: %v", err)
-	}
-	if _, ok := scriptOf(snap, brain.ID); !ok {
-		t.Fatal("kept run is gone")
 	}
 }
