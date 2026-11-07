@@ -372,7 +372,8 @@ func (s *Server) getScriptRun(ctx context.Context, _ *mcp.CallToolRequest, a get
 }
 
 // capLogBytes drops lines from the far end until the text fits scriptLogsMaxBytes: the oldest for a
-// tail, the newest for a head. It reports whether any line was dropped.
+// tail, the newest for a head. A single remaining line over the cap is cut to it, on a rune boundary.
+// It reports whether anything was dropped or cut.
 func capLogBytes(lines []ScriptLogLine, fromEnd bool) ([]ScriptLogLine, bool) {
 	total := 0
 	for _, l := range lines {
@@ -388,6 +389,11 @@ func capLogBytes(lines []ScriptLogLine, fromEnd bool) ([]ScriptLogLine, bool) {
 			total -= len(lines[len(lines)-1].Text)
 			lines = lines[:len(lines)-1]
 		}
+	}
+	if len(lines) == 1 && len(lines[0].Text) > scriptLogsMaxBytes {
+		l := lines[0]
+		l.Text = strings.ToValidUTF8(l.Text[:scriptLogsMaxBytes], "")
+		lines, dropped = []ScriptLogLine{l}, true
 	}
 	return lines, dropped
 }
