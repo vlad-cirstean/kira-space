@@ -8,21 +8,11 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/wtmove"
-	"github.com/kirathecat/kira-studio/internal/agentcfg"
 )
-
-// RunOneTimeMoves runs the v0.3.1 to v0.3.2 data moves (the worktree move is RunWorktreeMove) after the database opens and before Build. The
-// Keychain item moves when the cipher is created, so the caller creates it first. A failed move logs and
-// leaves its source in place; the next boot retries. The next chapter deletes this file and everything it calls.
-func RunOneTimeMoves(db *sql.DB, home string) {
-	if err := agentcfg.MoveSecretsFile(db, home); err != nil {
-		slog.Warn("move agent secrets into kira.db", "scope", "startup", "err", err)
-	}
-}
 
 // RunWorktreeMove moves task worktrees from <userHome>/wt to <userHome>/kira-space-wts (P563). It runs
 // after the settings read and before Build, so no board, terminal or run holds a worktree yet. It
-// needs a working git, looked up only when a move is pending: otherwise it logs and the next boot retries. Independent of RunOneTimeMoves.
+// needs a working git, looked up only when a move is pending: otherwise it logs and the next boot retries.
 func RunWorktreeMove(db *sql.DB, userHome, configuredGitPath string, locator gitclient.Locator) {
 	if !wtmove.Needed(db, userHome) {
 		return
