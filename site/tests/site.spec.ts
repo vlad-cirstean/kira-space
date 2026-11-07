@@ -9,6 +9,7 @@ const BASE = '/kira-space/';
 interface Route {
   readonly path: string;
   readonly name: string;
+  readonly h1: string;
   readonly hero: ShotId;
   readonly shots: readonly ShotId[];
 }
@@ -17,12 +18,20 @@ const ROUTES: readonly Route[] = [
   {
     path: '',
     name: 'Kira Space',
+    h1: 'Git, agents and data. One native window.',
     hero: 'space-agents-board',
-    shots: ['space-agents-board', 'space-git-graph', 'studio-sql-console', 'studio-api'],
+    shots: [
+      'space-agents-board',
+      'build-start-workflow',
+      'space-git-graph',
+      'studio-sql-console',
+      'studio-api',
+    ],
   },
   {
     path: 'build/',
     name: 'Build with Kira',
+    h1: 'Build with Kira',
     hero: 'build-start-board',
     shots: BUILD_SECTIONS.flatMap((section) => section.shots),
   },
@@ -187,7 +196,7 @@ for (const route of ROUTES) {
 
     test('head names this tab and its hero image', async ({ page }) => {
       await openPage(page, route);
-      await expect(page.locator('h1')).toHaveText(route.name);
+      await expect(page.locator('h1')).toHaveText(route.h1);
       await expect(page).toHaveTitle(new RegExp(route.name));
       const og = await page.locator('meta[property="og:image"]').getAttribute('content');
       expect(og).toContain(route.hero);
@@ -208,7 +217,12 @@ for (const route of ROUTES) {
 test('the retired /space/ URL redirects to the landing page', async ({ page }) => {
   await page.goto(`${BASE}space/`);
   await expect(page).toHaveURL(BASE);
-  await expect(page.locator('h1')).toHaveText('Kira Space');
+  await expect(page.locator('h1')).toContainText('One native window');
+});
+
+test('the landing page never mentions memory', async ({ page }) => {
+  await page.goto(BASE);
+  expect(await page.locator('main').innerText()).not.toMatch(/memor/i);
 });
 
 test('the landing page has no app tab bar', async ({ page }) => {
@@ -229,7 +243,7 @@ for (const path of ['', 'build/']) {
     await page.goto(`${BASE}${path}`);
     const first = page.locator('body > *').first();
     await expect(first).toHaveAttribute('data-beta-notice', '');
-    await expect(first).toContainText('Beta, not production ready, not notarized.');
+    await expect(first).toContainText('Personal project. Use with care.');
     await expect(first.locator('a')).toHaveAttribute(
       'href',
       new RegExp(path === '' ? '^#install$' : '/kira-space/#install$'),
@@ -259,6 +273,6 @@ test('the README opens with the beta notice and the install link', () => {
   const first = readFileSync(join(import.meta.dirname, '..', '..', 'README.md'), 'utf8')
     .split('\n')
     .find((line) => line.trim() !== '');
-  expect(first).toContain('Beta, not production ready, not notarized.');
+  expect(first).toContain('Personal project. Use with care.');
   expect(first).toContain('https://vlad-cirstean.github.io/kira-space/#install');
 });
