@@ -10,7 +10,5 @@ import (
 // FactIDPattern matches a fact id inside text (word-boundary grep).
 var FactIDPattern = regexp.MustCompile(`\b` + memfmt.FactID + `\b`)
 
-var factIDExact = regexp.MustCompile(`^` + memfmt.FactID + `$`)
-
 // versionID is the id of one version of a fact: "<fact id>.<version>".
 func versionID(factID string, version int) string { return factID + "." + strconv.Itoa(version) }
