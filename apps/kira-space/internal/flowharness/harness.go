@@ -298,7 +298,7 @@ func New(t *testing.T, opts ...Opt) *App {
 	a := &App{
 		t: t, Root: root,
 		Home: filepath.Join(root, "home"), SpaceHome: filepath.Join(root, "space"),
-		MemoryHome: filepath.Join(root, "memory"), Work: filepath.Join(root, "work"),
+		MemoryHome: filepath.Join(root, "space", "memory"), Work: filepath.Join(root, "work"),
 		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"),
 		Events: newEvents(), Browser: &Browser{}, FileOpener: &FileOpener{}, Dialogs: &Dialogs{}, WindowMgr: newWindowManager(),
 		KeepAwake: &KeepAwakeDriver{}, McpInstaller: &McpInstaller{}, OSAuth: &OSAuth{}, Focus: &WindowFocus{},
@@ -313,7 +313,6 @@ func New(t *testing.T, opts ...Opt) *App {
 	a.writeHome()
 	a.writeBin(o)
 	t.Setenv("KIRA_SPACE_HOME", a.SpaceHome)
-	t.Setenv("KIRA_MEMORY_HOME", a.MemoryHome)
 	t.Setenv("HOME", a.Home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(a.Home, ".config"))
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")

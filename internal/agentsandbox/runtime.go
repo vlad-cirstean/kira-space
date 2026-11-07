@@ -11,12 +11,16 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/kirapaths"
 	"github.com/kirathecat/kira-studio/internal/toolexec"
 )
 
 // Runtime is what the sandboxed agent and its tools need from the machine.
 type Runtime struct {
 	Home string
+	// MemoryHome is the memory folder under the Space home, read and write for a kira-memory server the
+	// agent starts. Never the Space home itself: kira.db and the tokens stay denied.
+	MemoryHome string
 	// Agent is what the agent itself needs; Provider answers the rest of the sandbox questions.
 	Agent    harness.SandboxNeeds
 	Provider harness.Sandboxed
@@ -88,6 +92,7 @@ func discover(ctx context.Context, p harness.Provider, bin string) (Runtime, boo
 	} else {
 		slog.Warn("sandbox: no home dir", "scope", "agentsandbox", "err", err)
 	}
+	rt.MemoryHome = filepath.Join(realPath(kirapaths.SpaceHome()), kirapaths.MemoryDir)
 	if p != nil {
 		resolved := ""
 		if path, err := p.Locate(ctx, bin); err == nil {

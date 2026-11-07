@@ -9,9 +9,9 @@ import (
 	"github.com/kirathecat/kira-studio/internal/kirapaths"
 )
 
-// Home resolves the memory data directory: $KIRA_MEMORY_HOME, else ~/.kira-memory.
+// Home resolves the memory data directory: <Space home>/memory, default ~/.kira-space/memory.
 func Home() string {
-	return kirapaths.Home("KIRA_MEMORY_HOME", ".kira-memory")
+	return kirapaths.MemoryHome()
 }
 
 // DefaultPath is memory.db under Home.

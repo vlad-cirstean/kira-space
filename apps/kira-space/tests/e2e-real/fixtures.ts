@@ -104,7 +104,6 @@ export const test = base.extend<KiraSpaceFixtures, { prerequisites: true }>({
       ...process.env,
       HOME: home,
       KIRA_SPACE_HOME: join(root, 'space'),
-      KIRA_MEMORY_HOME: join(root, 'memory'),
       GIT_CONFIG_NOSYSTEM: '1',
       GIT_CONFIG_GLOBAL: join(home, '.gitconfig'),
       PATH: `${binDir}:${process.env.PATH ?? ''}`,

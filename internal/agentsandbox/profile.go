@@ -51,7 +51,10 @@ func Profile(p Policy, rt Runtime) string {
 		for _, f := range shellRC {
 			allowRead = append(allowRead, lit(filepath.Join(h, f)))
 		}
-		allowRead = append(allowRead, sub(filepath.Join(h, ".kira-memory")), sub(filepath.Join(h, "Library", "Keychains")))
+		allowRead = append(allowRead, sub(filepath.Join(h, "Library", "Keychains")))
+	}
+	if rt.MemoryHome != "" {
+		allowRead = append(allowRead, sub(rt.MemoryHome))
 	}
 	allowRead = append(allowRead, subs(rt.PathPrefixes)...)
 	if rt.Agent.InstallPrefix != "" {
@@ -91,9 +94,10 @@ func Profile(p Policy, rt Runtime) string {
 		allowWrite = append(allowWrite, sub(rt.UserCache))
 	}
 	if rt.Home != "" {
-		h := rt.Home
 		allowWrite = append(allowWrite, agentConfig(rt.Agent)...)
-		allowWrite = append(allowWrite, sub(filepath.Join(h, ".kira-memory")))
+	}
+	if rt.MemoryHome != "" {
+		allowWrite = append(allowWrite, sub(rt.MemoryHome))
 	}
 	b.rule("allow", "file-write*", allowWrite...)
 	if len(p.Allow) > 0 {

@@ -40,9 +40,10 @@ type extractWire struct {
 // ModelAgent drives both steps through the active agent provider (memory.ResultRunner).
 type ModelAgent struct {
 	Runner memory.ResultRunner
-	// Executable and Home start the kira-memory MCP server the finalize step uses.
+	// Executable and SpaceHome start the kira-memory MCP server the finalize step uses; the server resolves
+	// memory under that Space home.
 	Executable string
-	Home       string
+	SpaceHome  string
 	// Env is extra environment for that server (tests only).
 	Env map[string]string
 	// Prompts resolves the extract and finalize prompts; nil means the registry defaults.

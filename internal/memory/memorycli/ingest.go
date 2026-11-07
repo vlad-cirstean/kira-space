@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/kirapaths"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/memory"
 	"github.com/kirathecat/kira-studio/internal/memory/embed"
@@ -46,7 +47,7 @@ func RunIngest(args []string, promptsPath string, agents harness.Selector, model
 	})
 	defer svc.Close()
 	runner, err := importer.NewRunner(store, importer.RunnerOptions{
-		Agent: importer.ModelAgent{Runner: agent, Executable: exe, Home: memory.Home(), Prompts: prompts},
+		Agent: importer.ModelAgent{Runner: agent, Executable: exe, SpaceHome: kirapaths.SpaceHome(), Prompts: prompts},
 		Docs:  svc,
 	})
 	if err != nil {

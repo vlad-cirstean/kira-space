@@ -38,7 +38,7 @@ func (a *App) contract(t testing.TB, scenario, key string, got any, opts ...Cont
 	repl := make([]ContractOption, 0, 8+len(opts))
 	repl = append(repl,
 		Replace(a.Work, "<work>"), Replace(a.BinDir, "<bin>"), Replace(a.FakeDir, "<fake>"),
-		Replace(a.SpaceHome, "<space>"), Replace(a.MemoryHome, "<memory>"),
+		Replace(a.SpaceHome, "<space>"),
 		Replace(a.Home, "<home>"), Replace(a.Root, "<tmp>"))
 	repl = append(repl, opts...)
 	flowtest.Contract(t, contractDir(), scenario, key, got, repl...)

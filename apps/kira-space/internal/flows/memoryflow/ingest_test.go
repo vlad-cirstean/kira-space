@@ -122,7 +122,7 @@ func docRules(t *testing.T, doc string, facts [2]extracted) []fakeagent.PromptRu
 func memorySession(t *testing.T, app *flowharness.App) *mcp.ClientSession {
 	t.Helper()
 	cmd := exec.Command(app.W.Memory.McpStatus().Executable, "memory-mcp")
-	cmd.Env = append(os.Environ(), "KIRA_MEMORY_HOME="+app.MemoryHome, "CLAUDE_CODE_SESSION_ID="+flowSession)
+	cmd.Env = append(os.Environ(), "CLAUDE_CODE_SESSION_ID="+flowSession)
 	sess, err := mcp.NewClient(&mcp.Implementation{Name: "flow", Version: "1"}, nil).Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
 	if err != nil {
 		t.Fatal(err)

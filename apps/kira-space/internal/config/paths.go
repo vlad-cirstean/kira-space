@@ -1,7 +1,7 @@
 // Package config resolves this app's on-disk locations and dev/packaged mode.
 //
-// The path logic itself is repo-root internal/kirapaths. This file supplies Kira Space's own env
-// var (KIRA_SPACE_HOME), directory name (.kira-space) and database file name (kira.db).
+// The path logic itself is repo-root internal/kirapaths, which also resolves the Space home
+// (KIRA_SPACE_HOME, .kira-space). This file supplies the database file name (kira.db).
 package config
 
 import (
@@ -13,7 +13,7 @@ import (
 
 // KiraSpaceHome is this app's data directory, honouring KIRA_SPACE_HOME.
 func KiraSpaceHome() string {
-	return kirapaths.Home("KIRA_SPACE_HOME", ".kira-space")
+	return kirapaths.SpaceHome()
 }
 
 // DbPath is Kira Space's own database file, named kira.db — its own file under its own home, never

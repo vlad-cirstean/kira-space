@@ -46,7 +46,7 @@ func distillOne(ctx context.Context, bin, text string) (distilled, error) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, bin, "memory-mcp")
 	cmd.Dir = home
-	cmd.Env = append(os.Environ(), "KIRA_MEMORY_HOME="+filepath.Join(home, "memory"), "KIRA_SPACE_HOME="+filepath.Join(home, "space"))
+	cmd.Env = append(os.Environ(), "KIRA_SPACE_HOME="+filepath.Join(home, "space"))
 	client := mcp.NewClient(&mcp.Implementation{Name: "docshistory", Version: "1"}, nil)
 	session, err := client.Connect(ctx, &mcp.CommandTransport{Command: cmd, TerminateDuration: time.Second}, nil)
 	if err != nil {

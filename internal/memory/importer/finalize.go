@@ -51,8 +51,8 @@ type finalizeWire struct {
 
 // mcpServer is the one MCP server the finalize agent may use: this binary in import mode, so
 // every memory it stores is attributed to the file.
-func mcpServer(exe, home, fileID string, extraEnv map[string]string) harness.MCPServer {
-	env := map[string]string{"KIRA_MEMORY_HOME": home}
+func mcpServer(exe, spaceHome, fileID string, extraEnv map[string]string) harness.MCPServer {
+	env := map[string]string{"KIRA_SPACE_HOME": spaceHome}
 	for k, v := range extraEnv {
 		env[k] = v
 	}
@@ -78,7 +78,7 @@ func (a ModelAgent) Finalize(ctx context.Context, in FinalizeInput) (FinalizeOut
 	timeout, budget := finalizeLimits(len(in.Facts))
 	res, err := a.Runner.RunResult(ctx, memory.Call{
 		System: llmprompts.MemoryImportFinalizeSystem.Text(a.prompts(), llmprompts.FinalizeVars{MaxItems: memory.MaxItems}), Input: string(input), Schema: llmprompts.MemoryImportFinalizeSystem.Schema(),
-		MCPServers: []harness.MCPServer{mcpServer(a.Executable, a.Home, in.FileID, a.Env)}, MCPTools: finalizeTools,
+		MCPServers: []harness.MCPServer{mcpServer(a.Executable, a.SpaceHome, in.FileID, a.Env)}, MCPTools: finalizeTools,
 		Timeout: timeout, Budget: budget,
 	})
 	out := FinalizeOutput{CostUSD: res.CostUSD}

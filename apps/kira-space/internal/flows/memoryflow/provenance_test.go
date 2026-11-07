@@ -83,7 +83,7 @@ func runMemoryMCP(t *testing.T, app *flowharness.App, args map[string]any, promp
 	cfg, err := json.Marshal(map[string]any{"mcpServers": map[string]any{"kira-memory": map[string]any{
 		"command": app.W.Memory.McpStatus().Executable,
 		"args":    []string{"memory-mcp"},
-		"env":     map[string]string{"KIRA_MEMORY_HOME": app.MemoryHome},
+		"env":     map[string]string{"KIRA_SPACE_HOME": app.SpaceHome},
 	}}})
 	if err != nil {
 		t.Fatal(err)
