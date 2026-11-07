@@ -84,7 +84,8 @@ func main() {
 	if err != nil {
 		reporter.Fatal(startupfail.StepStorage, err)
 	}
-	appwire.RunOneTimeMoves(db.DB, config.KiraSpaceHome())
+	cipher := secrets.New() // moves the v0.3.1 Keychain item on first use
+	appwire.RunOneTimeMoves(db.DB, config.KiraSpaceHome(), cipher)
 	repositories, err := repos.New(db.DB)
 	if err != nil {
 		reporter.Fatal(startupfail.StepRepos, err)
@@ -109,7 +110,7 @@ func main() {
 	rawDialogs, attachDialogs := shell.NewDeferredDialogs()
 	wired, err := appwire.Build(appwire.Options{
 		Repos: repositories, DB: db,
-		Cipher: secrets.New(), Authorizer: localauth.New(time.Now, localauth.Evaluate, localauth.Available), Emitter: rawEmitter, Browser: browserOpener, FileOpener: fileOpener,
+		Cipher: cipher, Authorizer: localauth.New(time.Now, localauth.Evaluate, localauth.Available), Emitter: rawEmitter, Browser: browserOpener, FileOpener: fileOpener,
 		Dialogs: appshell.NewDialogs(rawDialogs), Locator: platformLocator(),
 		KeepAwakeDriver: keepawake.NewPlatformDriver(), MobileAssets: mobileAssetsFS,
 		FileHandlers: filehandlers.NewRegistry(),
