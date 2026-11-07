@@ -8,15 +8,30 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/appstorage"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
-const tabsSelectAllSQL = `SELECT id, connection_id, path, kind, state_json, "order", active, workspace_id FROM tabs WHERE window_key = ? ORDER BY "order" ASC`
+// tabsColumns is the select list in Scan order, window_key excluded.
+var tabsColumns = []string{
+	kiraschema.Tabs.ID, kiraschema.Tabs.ConnectionID, kiraschema.Tabs.Path, kiraschema.Tabs.Kind,
+	kiraschema.Tabs.StateJSON, kiraschema.Tabs.SortOrder, kiraschema.Tabs.Active, kiraschema.Tabs.WorkspaceID,
+}
+
+// tabsSelectAllSQL is the per-window list query repos.New prepares once.
+var tabsSelectAllSQL = func() string {
+	sb := sqlb.SQLite.Select(tabsColumns...).From(kiraschema.Tabs.Table)
+	sb.Where(sb.Equal(kiraschema.Tabs.WindowKey, "")).OrderBy(kiraschema.Tabs.SortOrder + " ASC")
+	q, _ := sb.Build()
+	return q
+}()
 
 // TabsRepo reads and writes the `tabs` table: repository tabs carry a workspace, database-module
 // tabs a connection, so both columns are nullable.
 type TabsRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 
 	selectAll *sql.Stmt
 }
@@ -29,7 +44,10 @@ func (r *TabsRepo) List(windowKey string) ([]model.TabRecord, error) {
 	if r.selectAll != nil {
 		rows, err = r.selectAll.Query(windowKey)
 	} else {
-		rows, err = r.DB.Query(tabsSelectAllSQL, windowKey)
+		c := kiraschema.Tabs
+		sb := r.Dialect.Select(tabsColumns...).From(c.Table)
+		sb.Where(sb.Equal(c.WindowKey, windowKey)).OrderBy(c.SortOrder + " ASC")
+		rows, err = sqlb.Query(r.DB, sb)
 	}
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.TabRecord, bool, error) {
 		var (
@@ -74,22 +92,15 @@ func (r *TabsRepo) Save(windowKey string, records []model.TabRecord) error {
 		keep = append(keep, rec.ID)
 	}
 
-	return appstorage.ReplaceKeyed(r.DB, "tabs", "window_key", windowKey, keep, func(tx *sql.Tx) error {
+	c := kiraschema.Tabs
+	return sqlb.ReplaceKeyed(r.DB, r.Dialect, c.Table, c.WindowKey, c.ID, windowKey, keep, func(tx *sql.Tx) error {
 		for i, rec := range records {
-			res, err := tx.Exec(
-				`INSERT INTO tabs (id, connection_id, path, kind, state_json, "order", active, window_key, workspace_id)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-				 ON CONFLICT(id) DO UPDATE SET
-				   connection_id = excluded.connection_id,
-				   path          = excluded.path,
-				   kind          = excluded.kind,
-				   state_json    = excluded.state_json,
-				   "order"       = excluded."order",
-				   active        = excluded.active,
-				   workspace_id  = excluded.workspace_id
-				 WHERE tabs.window_key = excluded.window_key`,
-				rec.ID, rec.ConnectionID, rec.Path, rec.Kind, string(rec.State), i, rec.Active, windowKey, rec.WorkspaceID,
-			)
+			ib := r.Dialect.InsertInto(c.Table).Cols(append(append([]string{}, tabsColumns...), c.WindowKey)...).
+				Values(rec.ID, rec.ConnectionID, rec.Path, rec.Kind, string(rec.State), i, rec.Active, rec.WorkspaceID, windowKey)
+			sqlb.Upsert(ib, []string{c.ID},
+				[]string{c.ConnectionID, c.Path, c.Kind, c.StateJSON, c.SortOrder, c.Active, c.WorkspaceID},
+				c.Table+"."+c.WindowKey+" = excluded."+c.WindowKey)
+			res, err := sqlb.Exec(tx, ib)
 			if err != nil {
 				return fmt.Errorf("repos/tabs: upsert %s: %w", rec.ID, err)
 			}

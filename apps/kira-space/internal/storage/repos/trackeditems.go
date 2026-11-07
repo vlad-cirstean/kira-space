@@ -3,16 +3,18 @@ package repos
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
 // AdeTrackedItemsRepo reads and writes `ade_tracked_items`. Rows hold no SQL foreign key; the
 // update watcher deletes the rows of a task or item that is gone.
 type AdeTrackedItemsRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 func scanTrackedItem(rows *sql.Rows) (model.AdeTrackedItem, bool, error) {
@@ -23,8 +25,10 @@ func scanTrackedItem(rows *sql.Rows) (model.AdeTrackedItem, bool, error) {
 
 // List returns every tracked item.
 func (r *AdeTrackedItemsRepo) List() ([]model.AdeTrackedItem, error) {
-	rows, err := r.DB.Query(`SELECT task_id, item_key, kind, seen_json, current_json, seen_at, observed_at, changed_at
-		FROM ade_tracked_items ORDER BY task_id, item_key`)
+	c := kiraschema.AdeTrackedItems
+	sb := r.Dialect.Select(c.TaskID, c.ItemKey, c.Kind, c.SeenJSON, c.CurrentJSON, c.SeenAt, c.ObservedAt, c.ChangedAt).From(c.Table).
+		OrderBy(c.TaskID, c.ItemKey)
+	rows, err := sqlb.Query(r.DB, sb)
 	out, err := sqlitex.QueryAll(rows, err, scanTrackedItem)
 	if err != nil {
 		return nil, fmt.Errorf("repos: list tracked items: %w", err)
@@ -42,18 +46,19 @@ func (r *AdeTrackedItemsRepo) Apply(upserts []model.AdeTrackedItem, deletes []mo
 		return fmt.Errorf("repos: begin apply tracked items: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+	c := kiraschema.AdeTrackedItems
 	for _, it := range upserts {
-		if _, err := tx.Exec(`INSERT INTO ade_tracked_items (task_id, item_key, kind, seen_json, current_json, seen_at, observed_at, changed_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT (task_id, item_key) DO UPDATE SET kind = excluded.kind, seen_json = excluded.seen_json,
-				current_json = excluded.current_json, seen_at = excluded.seen_at, observed_at = excluded.observed_at,
-				changed_at = excluded.changed_at`,
-			it.TaskID, it.ItemKey, it.Kind, it.SeenJSON, it.CurrentJSON, it.SeenAt, it.ObservedAt, it.ChangedAt); err != nil {
+		ib := r.Dialect.InsertInto(c.Table).Cols(c.TaskID, c.ItemKey, c.Kind, c.SeenJSON, c.CurrentJSON, c.SeenAt, c.ObservedAt, c.ChangedAt).
+			Values(it.TaskID, it.ItemKey, it.Kind, it.SeenJSON, it.CurrentJSON, it.SeenAt, it.ObservedAt, it.ChangedAt)
+		sqlb.Upsert(ib, []string{c.TaskID, c.ItemKey}, []string{c.Kind, c.SeenJSON, c.CurrentJSON, c.SeenAt, c.ObservedAt, c.ChangedAt}, "")
+		if _, err := sqlb.Exec(tx, ib); err != nil {
 			return fmt.Errorf("repos: upsert tracked item %s %s: %w", it.TaskID, it.ItemKey, err)
 		}
 	}
 	for _, k := range deletes {
-		if _, err := tx.Exec(`DELETE FROM ade_tracked_items WHERE task_id = ? AND item_key = ?`, k.TaskID, k.ItemKey); err != nil {
+		del := r.Dialect.DeleteFrom(c.Table)
+		del.Where(del.Equal(c.TaskID, k.TaskID), del.Equal(c.ItemKey, k.ItemKey))
+		if _, err := sqlb.Exec(tx, del); err != nil {
 			return fmt.Errorf("repos: delete tracked item %s %s: %w", k.TaskID, k.ItemKey, err)
 		}
 	}
@@ -66,16 +71,15 @@ func (r *AdeTrackedItemsRepo) Apply(upserts []model.AdeTrackedItem, deletes []mo
 // MarkSeen copies current to seen on the task's items, or on itemKeys when given, and reports
 // whether any item changed.
 func (r *AdeTrackedItemsRepo) MarkSeen(taskID string, itemKeys []string, now int64) (bool, error) {
-	q := `UPDATE ade_tracked_items SET seen_json = current_json, seen_at = ?, changed_at = 0
-		WHERE task_id = ? AND seen_json != current_json`
-	args := []any{now, taskID}
+	c := kiraschema.AdeTrackedItems
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(c.SeenJSON+" = "+c.CurrentJSON, ub.Assign(c.SeenAt, now), ub.Assign(c.ChangedAt, 0))
+	where := []string{ub.Equal(c.TaskID, taskID), c.SeenJSON + " <> " + c.CurrentJSON}
 	if len(itemKeys) > 0 {
-		q += ` AND item_key IN (?` + strings.Repeat(`, ?`, len(itemKeys)-1) + `)`
-		for _, k := range itemKeys {
-			args = append(args, k)
-		}
+		where = append(where, ub.In(c.ItemKey, sqlb.Args(itemKeys)...))
 	}
-	res, err := r.DB.Exec(q, args...)
+	ub.Where(where...)
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return false, fmt.Errorf("repos: mark tracked items seen for %s: %w", taskID, err)
 	}

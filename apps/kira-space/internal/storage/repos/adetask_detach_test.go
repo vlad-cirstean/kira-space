@@ -33,7 +33,7 @@ func TestAdeTaskRepo_DetachBranch(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = db.Close() })
 			for _, id := range []string{"r1", "r2", "r3"} {
-				if _, err := db.DB.Exec(`INSERT INTO code_repos (id, name, root, repo_id, sort_order, created_at) VALUES (?, ?, ?, ?, 0, '')`, id, id, "/"+id, id); err != nil {
+				if _, err := db.DB.Exec(`INSERT INTO code_repos (id, name, root, repo_id, sort_order, created_at) VALUES (?, ?, ?, ?, 0, 0)`, id, id, "/"+id, id); err != nil {
 					t.Fatalf("code repo: %v", err)
 				}
 			}

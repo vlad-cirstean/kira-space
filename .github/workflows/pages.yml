@@ -14,14 +14,14 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    # Cache miss: setup with bindings 4 to 6 min, WebKit 1 to 2, frontend build and 8 shots 2 to 3, site 1.
+    runs-on: ubuntu-24.04
+    # Cache miss: setup with bindings 4 to 6 min, WebKit 1 to 2, frontend build and 26 shots 3 to 3.5 (local capture 80 s at 3 workers), site 1.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - name: Shot cache key (app source, shot specs, manifest, frame assets)
         id: key
-        run: echo "key=site-shots-${{ hashFiles('apps/kira-space/frontend/**', 'packages/**', 'apps/kira-space/tests/screenshots/**', 'apps/kira-space/tests/ui/fixtures.ts', 'apps/kira-space/tests/ui/support/**', 'apps/kira-space/tests/ui/studio/support/**', 'apps/kira-space/tests/ipc/support/**', 'apps/kira-space/tests/support/**', 'apps/kira-space/playwright.config.ts', 'screenshots/assets/**', 'site/src/data/shotCapture.ts', 'package.json', 'bun.lock', 'go.mod', 'go.sum', 'apps/kira-space/**/*.go', 'internal/**/*.go', '!**/*_test.go') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=site-shots-${{ hashFiles('apps/kira-space/frontend/**', 'packages/**', 'apps/kira-space/tests/screenshots/**', 'apps/kira-space/tests/ui/fixtures.ts', 'apps/kira-space/tests/fixtures/**', 'apps/kira-space/tests/contract/**', 'apps/kira-space/tests/ui/support/**', 'apps/kira-space/tests/ui/studio/support/**', 'apps/kira-space/tests/ipc/support/**', 'apps/kira-space/tests/support/**', 'apps/kira-space/playwright.config.ts', 'screenshots/assets/**', 'site/src/data/shotCapture.ts', 'package.json', 'bun.lock', 'go.mod', 'go.sum', 'apps/kira-space/**/*.go', 'internal/**/*.go', '!**/*_test.go') }}" >> "$GITHUB_OUTPUT"
       - name: Restore site shots (an exact hit is fresh, a prefix hit is the last-good fallback)
         id: shots
         uses: actions/cache/restore@v6
@@ -73,7 +73,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment:
       name: github-pages

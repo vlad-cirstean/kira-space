@@ -5,8 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/huandu/go-sqlbuilder"
+
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // RepoFiles is the repo config files: nickname, integration branches and environments of a repo.
@@ -18,31 +22,36 @@ type RepoFiles interface {
 // import source. The rest of a repo's config (nickname, integration branches, environments, prepare
 // script) lives in the repo files.
 type AdeRepoConfigRepo struct {
-	DB    *sql.DB
-	Files RepoFiles
+	DB      *sql.DB
+	Dialect sqlb.Dialect
+	Files   RepoFiles
 }
 
 // List returns every code repo (sort order) joined with its import source and its repo file's
 // nickname, integration branches and environments. A repo with no file carries the defaults.
 func (r *AdeRepoConfigRepo) List() ([]model.AdeRepoConfig, error) {
-	rows, err := r.DB.Query(`SELECT c.id, c.repo_id, c.name, c.root, COALESCE(a.source, 'added')
-		FROM code_repos c LEFT JOIN ade_repo_config a ON a.code_repo_id = c.id ORDER BY c.sort_order, c.id`)
+	c, a := kiraschema.CodeRepos, kiraschema.AdeRepoConfig
+	sb := r.Dialect.Select()
+	sb.Select("c."+c.ID, "c."+c.RepoID, "c."+c.Name, "c."+c.Root, "COALESCE(a."+a.Source+", "+sb.Var("added")+")").
+		From(c.Table+" c").JoinWithOption(sqlbuilder.LeftJoin, a.Table+" a", "a."+a.CodeRepoID+" = c."+c.ID).
+		OrderBy("c."+c.SortOrder, "c."+c.ID)
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade repo config: %w", err)
 	}
 	defer rows.Close()
 	out := make([]model.AdeRepoConfig, 0)
 	for rows.Next() {
-		var c model.AdeRepoConfig
-		if err := rows.Scan(&c.CodeRepoID, &c.RepoID, &c.Name, &c.Root, &c.Source); err != nil {
+		var rc model.AdeRepoConfig
+		if err := rows.Scan(&rc.CodeRepoID, &rc.RepoID, &rc.Name, &rc.Root, &rc.Source); err != nil {
 			return nil, fmt.Errorf("repos: scan ade repo config: %w", err)
 		}
-		cfg := repocfg.Defaults(c.RepoID)
+		cfg := repocfg.Defaults(rc.RepoID)
 		if r.Files != nil {
-			cfg = r.Files.Repo(c.RepoID)
+			cfg = r.Files.Repo(rc.RepoID)
 		}
-		c.Nickname, c.IntegrationBranches, c.Environments = cfg.Nickname, cfg.IntegrationBranches, cfg.Environments
-		out = append(out, c)
+		rc.Nickname, rc.IntegrationBranches, rc.Environments = cfg.Nickname, cfg.IntegrationBranches, cfg.Environments
+		out = append(out, rc)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("repos: ade repo config rows: %w", err)
@@ -52,10 +61,16 @@ func (r *AdeRepoConfigRepo) List() ([]model.AdeRepoConfig, error) {
 
 // Folders returns every watched folder with its imported repo count (repos whose source is the path).
 func (r *AdeRepoConfigRepo) Folders() ([]model.AdeFolder, error) {
-	rows, err := r.DB.Query(`SELECT f.path, f.watch, f.hidden, (SELECT COUNT(*) FROM ade_repo_config a WHERE a.source = f.path),
-		(SELECT COUNT(*) FROM ade_repo_config a JOIN code_repos c ON c.id = a.code_repo_id
-			WHERE a.source = f.path AND c.hidden = 1)
-		FROM ade_folders f ORDER BY f.path`)
+	f, a, c := kiraschema.AdeFolders, kiraschema.AdeRepoConfig, kiraschema.CodeRepos
+	imported := r.Dialect.Select("COUNT(*)").From(a.Table + " a")
+	imported.Where("a." + a.Source + " = f." + f.Path)
+	hiddenN := r.Dialect.Select("COUNT(*)").From(a.Table + " a")
+	hiddenN.Join(c.Table+" c", "c."+c.ID+" = a."+a.CodeRepoID).
+		Where("a."+a.Source+" = f."+f.Path, hiddenN.Equal("c."+c.Hidden, 1))
+	sb := r.Dialect.Select()
+	sb.Select("f."+f.Path, "f."+f.Watch, "f."+f.Hidden, sb.BuilderAs(imported, "repo_count"), sb.BuilderAs(hiddenN, "hidden_count")).
+		From(f.Table + " f").OrderBy("f." + f.Path)
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade folders: %w", err)
 	}
@@ -79,8 +94,10 @@ func (r *AdeRepoConfigRepo) Folders() ([]model.AdeFolder, error) {
 
 // AddFolder inserts a watched folder; an existing path keeps its row and updates its watch flag.
 func (r *AdeRepoConfigRepo) AddFolder(path string, watch bool) error {
-	if _, err := r.DB.Exec(`INSERT INTO ade_folders (path, watch) VALUES (?, ?)
-		ON CONFLICT(path) DO UPDATE SET watch = excluded.watch`, path, boolInt(watch)); err != nil {
+	f := kiraschema.AdeFolders
+	ib := r.Dialect.InsertInto(f.Table).Cols(f.Path, f.Watch).Values(path, boolInt(watch))
+	sqlb.Upsert(ib, []string{f.Path}, []string{f.Watch}, "")
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
 		return fmt.Errorf("repos: add ade folder: %w", err)
 	}
 	return nil
@@ -88,7 +105,10 @@ func (r *AdeRepoConfigRepo) AddFolder(path string, watch bool) error {
 
 // SetFolderWatch flips a folder's watch flag; false when the folder is unknown.
 func (r *AdeRepoConfigRepo) SetFolderWatch(path string, watch bool) (bool, error) {
-	res, err := r.DB.Exec(`UPDATE ade_folders SET watch = ? WHERE path = ?`, boolInt(watch), path)
+	f := kiraschema.AdeFolders
+	ub := r.Dialect.Update(f.Table)
+	ub.Set(ub.Assign(f.Watch, boolInt(watch))).Where(ub.Equal(f.Path, path))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return false, fmt.Errorf("repos: set ade folder watch: %w", err)
 	}
@@ -107,7 +127,10 @@ func (r *AdeRepoConfigRepo) SetFolderHidden(path string, hidden bool) (bool, err
 		return false, fmt.Errorf("repos: begin set ade folder hidden: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	res, err := tx.Exec(`UPDATE ade_folders SET hidden = ? WHERE path = ?`, boolInt(hidden), path)
+	f, a, c := kiraschema.AdeFolders, kiraschema.AdeRepoConfig, kiraschema.CodeRepos
+	folderUp := r.Dialect.Update(f.Table)
+	folderUp.Set(folderUp.Assign(f.Hidden, boolInt(hidden))).Where(folderUp.Equal(f.Path, path))
+	res, err := sqlb.Exec(tx, folderUp)
 	if err != nil {
 		return false, fmt.Errorf("repos: set ade folder hidden: %w", err)
 	}
@@ -118,8 +141,11 @@ func (r *AdeRepoConfigRepo) SetFolderHidden(path string, hidden bool) (bool, err
 	if n == 0 {
 		return false, nil
 	}
-	if _, err := tx.Exec(`UPDATE code_repos SET hidden = ?, hidden_rev = hidden_rev + 1 WHERE id IN
-		(SELECT code_repo_id FROM ade_repo_config WHERE source = ?)`, boolInt(hidden), path); err != nil {
+	imported := r.Dialect.Select(a.CodeRepoID).From(a.Table)
+	imported.Where(imported.Equal(a.Source, path))
+	repoUp := r.Dialect.Update(c.Table)
+	repoUp.Set(repoUp.Assign(c.Hidden, boolInt(hidden)), c.HiddenRev+" = "+c.HiddenRev+" + 1").Where(repoUp.In(c.ID, imported))
+	if _, err := sqlb.Exec(tx, repoUp); err != nil {
 		return false, fmt.Errorf("repos: hide folder repos: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -147,9 +173,14 @@ func (r *AdeRepoConfigRepo) ApplyFolderHidden(path string, imported []ImportedRe
 		return fmt.Errorf("repos: begin apply ade folder hidden: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+	f, c := kiraschema.AdeFolders, kiraschema.CodeRepos
 	for _, in := range imported {
-		if _, err := tx.Exec(`UPDATE code_repos SET hidden = COALESCE((SELECT hidden FROM ade_folders WHERE path = ?), hidden),
-			hidden_rev = hidden_rev + 1 WHERE id = ? AND hidden_rev = ?`, path, in.ID, in.Rev); err != nil {
+		stored := r.Dialect.Select(f.Hidden).From(f.Table)
+		stored.Where(stored.Equal(f.Path, path))
+		ub := r.Dialect.Update(c.Table)
+		ub.Set(c.Hidden+" = COALESCE("+sqlb.Sub(ub, stored)+", "+c.Hidden+")", c.HiddenRev+" = "+c.HiddenRev+" + 1").
+			Where(ub.Equal(c.ID, in.ID), ub.Equal(c.HiddenRev, in.Rev))
+		if _, err := sqlb.Exec(tx, ub); err != nil {
 			return fmt.Errorf("repos: apply ade folder hidden: %w", err)
 		}
 	}
@@ -162,7 +193,10 @@ func (r *AdeRepoConfigRepo) ApplyFolderHidden(path string, imported []ImportedRe
 // FolderHidden reports a folder's hidden flag; false for an unknown folder.
 func (r *AdeRepoConfigRepo) FolderHidden(path string) (bool, error) {
 	var hidden int
-	err := r.DB.QueryRow(`SELECT hidden FROM ade_folders WHERE path = ?`, path).Scan(&hidden)
+	f := kiraschema.AdeFolders
+	sb := r.Dialect.Select(f.Hidden).From(f.Table)
+	sb.Where(sb.Equal(f.Path, path))
+	err := sqlb.QueryRow(r.DB, sb).Scan(&hidden)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -180,7 +214,10 @@ func (r *AdeRepoConfigRepo) RemoveFolder(path string) (bool, error) {
 		return false, fmt.Errorf("repos: begin remove ade folder: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	res, err := tx.Exec(`DELETE FROM ade_folders WHERE path = ?`, path)
+	f, a := kiraschema.AdeFolders, kiraschema.AdeRepoConfig
+	del := r.Dialect.DeleteFrom(f.Table)
+	del.Where(del.Equal(f.Path, path))
+	res, err := sqlb.Exec(tx, del)
 	if err != nil {
 		return false, fmt.Errorf("repos: delete ade folder: %w", err)
 	}
@@ -191,7 +228,9 @@ func (r *AdeRepoConfigRepo) RemoveFolder(path string) (bool, error) {
 	if n == 0 {
 		return false, nil
 	}
-	if _, err := tx.Exec(`UPDATE ade_repo_config SET source = 'added' WHERE source = ?`, path); err != nil {
+	ub := r.Dialect.Update(a.Table)
+	ub.Set(ub.Assign(a.Source, "added")).Where(ub.Equal(a.Source, path))
+	if _, err := sqlb.Exec(tx, ub); err != nil {
 		return false, fmt.Errorf("repos: release folder repos: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -202,8 +241,10 @@ func (r *AdeRepoConfigRepo) RemoveFolder(path string) (bool, error) {
 
 // SetSource records where a repo was imported from ('added' or a folder path).
 func (r *AdeRepoConfigRepo) SetSource(codeRepoID, source string) error {
-	if _, err := r.DB.Exec(`INSERT INTO ade_repo_config (code_repo_id, source) VALUES (?, ?)
-		ON CONFLICT(code_repo_id) DO UPDATE SET source = excluded.source`, codeRepoID, source); err != nil {
+	a := kiraschema.AdeRepoConfig
+	ib := r.Dialect.InsertInto(a.Table).Cols(a.CodeRepoID, a.Source).Values(codeRepoID, source)
+	sqlb.Upsert(ib, []string{a.CodeRepoID}, []string{a.Source}, "")
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
 		return fmt.Errorf("repos: set ade repo source: %w", err)
 	}
 	return nil

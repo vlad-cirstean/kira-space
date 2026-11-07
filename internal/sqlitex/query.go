@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-// Queryer is satisfied by *sql.DB and *sql.Tx — QueryOne/NextSortOrder run as a standalone call or
+// Queryer is satisfied by *sql.DB and *sql.Tx — QueryOne runs as a standalone call or
 // inside a caller's own transaction, whichever that call site already needs.
 type Queryer interface {
 	QueryRow(query string, args ...any) *sql.Row
@@ -55,22 +55,4 @@ func QueryOne[T any](q Queryer, scan func(*sql.Row) (*T, error), query string, a
 		return nil, err
 	}
 	return v, nil
-}
-
-// NextSortOrder is Create/Insert's shared "append to the end" query, unifying the three
-// spellings repeated across both apps' repos (some `COALESCE(MAX(sort_order) + 1, 0)`, one a
-// separate nullable-scan-then-+1-in-Go dance) — all equivalent: 0 for an empty (or empty-scope)
-// table, one past the current max otherwise. where, when non-empty, is appended as "WHERE <where>"
-// verbatim (a caller-built column/comparison clause, e.g. "collection_id = ? AND parent_id IS ?");
-// args are that clause's own bind values, in order.
-func NextSortOrder(q Queryer, table, where string, args ...any) (int, error) {
-	query := `SELECT COALESCE(MAX(sort_order), -1) + 1 FROM ` + table
-	if where != "" {
-		query += ` WHERE ` + where
-	}
-	var order int
-	if err := q.QueryRow(query, args...).Scan(&order); err != nil {
-		return 0, fmt.Errorf("sqlitex: next sort order: %w", err)
-	}
-	return order, nil
 }

@@ -35,7 +35,7 @@ func TestMetadataCacheDifferentKindsShareOneRow(t *testing.T) {
 	}
 
 	var rowCount int
-	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM metadata_cache WHERE connection_id = 'c1' AND path = 'db:t'`).Scan(&rowCount); err != nil {
+	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM connection_metadata_cache WHERE connection_id = 'c1' AND path = 'db:t'`).Scan(&rowCount); err != nil {
 		t.Fatalf("count: %v", err)
 	}
 	if rowCount != 1 {
@@ -63,7 +63,7 @@ func TestMetadataCacheEvictionKeepsNewestAndIsolatesConnections(t *testing.T) {
 	}
 
 	var c1Count int
-	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM metadata_cache WHERE connection_id = 'c1'`).Scan(&c1Count); err != nil {
+	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM connection_metadata_cache WHERE connection_id = 'c1'`).Scan(&c1Count); err != nil {
 		t.Fatalf("count c1: %v", err)
 	}
 	if c1Count != 200 {
@@ -100,9 +100,9 @@ func TestMetadataCachePerKindFetchedAtIsIndependent(t *testing.T) {
 	oldFetchedAt := "2020-01-01T00:00:00.000Z"
 	oldPayload := fmt.Sprintf(`{"children":["a"],"fetchedAt":{"children":%q}}`, oldFetchedAt)
 	if _, err := r.DB.Exec(
-		`INSERT INTO metadata_cache (connection_id, path, kind, payload_json, fetched_at, etag)
+		`INSERT INTO connection_metadata_cache (connection_id, path, kind, payload_json, fetched_at, etag)
 		 VALUES ('c1', 'db:t', 'children', ?, ?, NULL)`,
-		oldPayload, oldFetchedAt,
+		oldPayload, kiratime.ISOOrZero(oldFetchedAt),
 	); err != nil {
 		t.Fatalf("seed old children row: %v", err)
 	}
@@ -163,9 +163,9 @@ func TestMetadataCacheLegacyRowFetchedAtIsEmpty(t *testing.T) {
 	seedConnection(t, r.DB, "c1")
 
 	if _, err := r.DB.Exec(
-		`INSERT INTO metadata_cache (connection_id, path, kind, payload_json, fetched_at, etag)
+		`INSERT INTO connection_metadata_cache (connection_id, path, kind, payload_json, fetched_at, etag)
 		 VALUES ('c1', 'db:legacy', 'children', '{"children":["a"]}', ?, NULL)`,
-		kiratime.NowISO(),
+		kiratime.NowMs(),
 	); err != nil {
 		t.Fatalf("seed legacy row: %v", err)
 	}

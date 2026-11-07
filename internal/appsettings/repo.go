@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // UpsertLeaf mirrors both apps' own upsertSettingsLeaf verbatim — the settings table's own
@@ -14,11 +17,10 @@ func UpsertLeaf(tx *sql.Tx, key string, value any) error {
 	if err != nil {
 		return fmt.Errorf("appsettings: encode %s: %w", key, err)
 	}
-	if _, err := tx.Exec(
-		`INSERT INTO settings (key, value) VALUES (?, ?)
-		   ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-		key, string(encoded),
-	); err != nil {
+	c := kiraschema.Settings
+	ib := sqlb.SQLite.InsertInto(c.Table).Cols(c.Key, c.Value).Values(key, string(encoded))
+	sqlb.Upsert(ib, []string{c.Key}, []string{c.Value}, "")
+	if _, err := sqlb.Exec(tx, ib); err != nil {
 		return fmt.Errorf("appsettings: upsert %s: %w", key, err)
 	}
 	return nil

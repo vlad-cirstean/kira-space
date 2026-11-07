@@ -105,11 +105,11 @@ func backupSpaceDB(o Options, backup string) error {
 // buildMaps assigns Space ids to every Studio script and run whose id would collide; an unmapped id
 // keeps itself. Space wins its own script ids.
 func buildMaps(o Options, src string) (scripts, runs map[string]string, err error) {
-	studioIDs, err := scriptIDs(o.Studio, filepath.Join(src, "runs"))
+	studioIDs, err := scriptIDs(o.Studio, "custom_scripts", filepath.Join(src, "runs"))
 	if err != nil {
 		return nil, nil, err
 	}
-	taken, err := scriptIDs(o.Space, runsDir(o.SpaceHome))
+	taken, err := scriptIDs(o.Space, "scripts", runsDir(o.SpaceHome))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -157,9 +157,9 @@ func freeID(base string, taken map[string]bool) string {
 	}
 }
 
-// scriptIDs is a database's custom_scripts ids plus the stems of the run files in dir.
-func scriptIDs(db *sql.DB, dir string) (map[string]bool, error) {
-	set, err := columnSet(db, `SELECT id FROM custom_scripts`)
+// scriptIDs is a database's script ids (table) plus the stems of the run files in dir.
+func scriptIDs(db *sql.DB, table, dir string) (map[string]bool, error) {
+	set, err := columnSet(db, `SELECT id FROM `+table)
 	if err != nil {
 		return nil, err
 	}
@@ -228,14 +228,14 @@ func tableRows(db *sql.DB, table string, cols []string, where string, args ...an
 	return out, rows.Err()
 }
 
-// sharedColumns is the columns both databases hold for table, in the Studio order, so a column
-// added later on one side cannot make the copy drop or fail.
-func sharedColumns(a, b *sql.DB, table string) ([]string, error) {
-	studio, err := tableColumns(a, table)
+// sharedColumns is the columns both databases hold for a table, in the Studio order, so a column
+// added later on one side cannot make the copy drop or fail. src and dst name the table in each.
+func sharedColumns(a, b *sql.DB, src, dst string) ([]string, error) {
+	studio, err := tableColumns(a, src)
 	if err != nil {
 		return nil, err
 	}
-	space, err := tableColumns(b, table)
+	space, err := tableColumns(b, dst)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +295,16 @@ func insertRows(tx *sql.Tx, table string, cols []string, rows []map[string]any) 
 	return ignored, nil
 }
 
-var runTables = []string{"custom_script_collections", "custom_scripts", "script_runs", "script_run_logs", "secret_values"}
+// runTable maps a Studio table to its Space name.
+type runTable struct{ src, dst string }
+
+var runTables = []runTable{
+	{"custom_script_collections", "script_collections"},
+	{"custom_scripts", "scripts"},
+	{"script_runs", "script_runs"},
+	{"script_run_logs", "script_run_logs"},
+	{"secret_values", "secret_values"},
+}
 
 // tableData is one table's shared columns and Studio rows.
 type tableData struct {
@@ -311,16 +320,16 @@ func readStudioTables(o Options) (map[string]tableData, error) {
 	}
 	where := map[string]string{"secret_values": ` WHERE scope = '` + string(secrets.ScopeScriptParam) + `'`}
 	out := map[string]tableData{}
-	for _, table := range runTables {
-		cols, err := sharedColumns(o.Studio, o.Space, table)
+	for _, t := range runTables {
+		cols, err := sharedColumns(o.Studio, o.Space, t.src, t.dst)
 		if err != nil {
 			return nil, err
 		}
-		rows, err := tableRows(o.Studio, table, cols, where[table])
+		rows, err := tableRows(o.Studio, t.src, cols, where[t.dst])
 		if err != nil {
 			return nil, err
 		}
-		out[table] = tableData{cols, rows}
+		out[t.dst] = tableData{cols, rows}
 	}
 	return out, nil
 }
@@ -329,7 +338,7 @@ func readStudioTables(o Options) (map[string]tableData, error) {
 func remapRows(o Options, m marker, data map[string]tableData) (needExport bool) {
 	legacyAuto := filepath.Join(m.Legacy, "automations") + string(filepath.Separator)
 	spaceAuto := filepath.Join(o.SpaceHome, "automations") + string(filepath.Separator)
-	for _, r := range data["custom_scripts"].rows {
+	for _, r := range data["scripts"].rows {
 		r["id"] = mapped(m.Scripts, asString(r["id"]))
 		needExport = needExport || asString(r["config_json"]) == ""
 	}
@@ -364,17 +373,19 @@ func copyRows(o Options, m *marker) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	for _, table := range runTables {
+	runIDs := map[string]bool{}
+	for _, r := range data["script_runs"].rows {
+		runIDs[asString(r["id"])] = true
+	}
+	for _, t := range runTables {
+		table := t.dst
 		d := data[table]
-		if table == "custom_script_collections" || table == "custom_scripts" {
-			var offset int64
-			if err := tx.QueryRow(`SELECT COALESCE(MAX(sort_order) + 1, 0) FROM ` + table).Scan(&offset); err != nil {
+		if table == "script_run_logs" {
+			d.rows = dropOrphanLogs(d.rows, runIDs)
+		}
+		if table == "script_collections" || table == "scripts" {
+			if err := offsetSort(tx, table, d.rows); err != nil {
 				return err
-			}
-			for _, r := range d.rows {
-				if n, ok := r["sort_order"].(int64); ok {
-					r["sort_order"] = n + offset
-				}
 			}
 		}
 		ignored, err := insertRows(tx, table, d.cols, d.rows)
@@ -398,6 +409,32 @@ func copyRows(o Options, m *marker) error {
 	if err := tx.Commit(); err != nil {
 		m.RowsCopied = false
 		return err
+	}
+	return nil
+}
+
+func dropOrphanLogs(rows []map[string]any, runIDs map[string]bool) []map[string]any {
+	kept := rows[:0]
+	for _, r := range rows {
+		if runIDs[asString(r["run_id"])] {
+			kept = append(kept, r)
+		}
+	}
+	if len(kept) < len(rows) {
+		slog.Warn("homefold: Studio run logs without a run dropped", "scope", "homefold", "dropped", len(rows)-len(kept))
+	}
+	return kept
+}
+
+func offsetSort(tx *sql.Tx, table string, rows []map[string]any) error {
+	var offset int64
+	if err := tx.QueryRow(`SELECT COALESCE(MAX(sort_order) + 1, 0) FROM ` + table).Scan(&offset); err != nil {
+		return err
+	}
+	for _, r := range rows {
+		if n, ok := r["sort_order"].(int64); ok {
+			r["sort_order"] = n + offset
+		}
 	}
 	return nil
 }

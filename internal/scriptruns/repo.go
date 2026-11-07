@@ -7,17 +7,35 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/huandu/go-sqlbuilder"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
+	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
-const columns = `id, script_id, script_name, color, kind, trigger_kind, state, terminal_id, cwd, command, outcome_json, created_at, started_at, finished_at, model, session_id, prompt, params_json, tools_json, task_id, task_title, branch_id, branch_label, resume_id, resumed_from, provider`
+var columns = []string{
+	kiraschema.ScriptRuns.ID, kiraschema.ScriptRuns.ScriptID, kiraschema.ScriptRuns.ScriptName, kiraschema.ScriptRuns.Color,
+	kiraschema.ScriptRuns.Kind, kiraschema.ScriptRuns.TriggerKind, kiraschema.ScriptRuns.State, kiraschema.ScriptRuns.TerminalID,
+	kiraschema.ScriptRuns.Cwd, kiraschema.ScriptRuns.Command, kiraschema.ScriptRuns.OutcomeJSON, kiraschema.ScriptRuns.CreatedAt,
+	kiraschema.ScriptRuns.StartedAt, kiraschema.ScriptRuns.FinishedAt, kiraschema.ScriptRuns.Model, kiraschema.ScriptRuns.SessionID,
+	kiraschema.ScriptRuns.Prompt, kiraschema.ScriptRuns.ParamsJSON, kiraschema.ScriptRuns.ToolsJSON, kiraschema.ScriptRuns.TaskID,
+	kiraschema.ScriptRuns.TaskTitle, kiraschema.ScriptRuns.BranchID, kiraschema.ScriptRuns.BranchLabel, kiraschema.ScriptRuns.ResumeID,
+	kiraschema.ScriptRuns.ResumedFrom, kiraschema.ScriptRuns.Provider,
+}
+
+// liveStates are the states of a run that has not finished.
+var liveStates = []any{StateRunning, StateWaiting}
 
 // keepFinished is how many finished runs are retained.
 const keepFinished = 500
 
 // Repo reads and writes script_runs.
-type Repo struct{ DB *sql.DB }
+type Repo struct {
+	DB      *sql.DB
+	Dialect sqlb.Dialect
+}
 
 type rowScanner interface{ Scan(dest ...any) error }
 
@@ -81,11 +99,12 @@ func (r *Repo) Insert(run Run) error {
 	if err != nil {
 		return fmt.Errorf("scriptruns: encode tools: %w", err)
 	}
-	if _, err := r.DB.Exec(`INSERT INTO script_runs (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)`,
+	ib := r.Dialect.InsertInto(kiraschema.ScriptRuns.Table).Cols(columns...).Values(
 		run.ID, run.ScriptID, run.ScriptName, run.Color, run.Kind, run.Trigger, run.State, run.TerminalID,
 		run.Cwd, run.Command, outcome, run.CreatedAt, run.StartedAt, run.FinishedAt,
 		run.Model, run.SessionID, run.Prompt, string(params), string(tools),
-		run.TaskID, run.TaskTitle, run.BranchID, run.BranchLabel, run.ResumedFrom, run.Provider); err != nil {
+		run.TaskID, run.TaskTitle, run.BranchID, run.BranchLabel, "", run.ResumedFrom, run.Provider)
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
 		return fmt.Errorf("scriptruns: insert %s: %w", run.ID, err)
 	}
 	return nil
@@ -93,16 +112,25 @@ func (r *Repo) Insert(run Run) error {
 
 // Get returns one run; sql.ErrNoRows wrapped when absent.
 func (r *Repo) Get(id string) (Run, error) {
-	run, err := scan(r.DB.QueryRow(`SELECT `+columns+` FROM script_runs WHERE id = ?`, id))
+	c := kiraschema.ScriptRuns
+	sb := r.Dialect.Select(columns...).From(c.Table)
+	sb.Where(sb.Equal(c.ID, id))
+	run, err := scan(sqlb.QueryRow(r.DB, sb))
 	if err != nil {
 		return Run{}, fmt.Errorf("scriptruns: get %s: %w", id, err)
 	}
 	return run, nil
 }
 
+// ListQuery is List's statement; exported so the hot-plan test pins its plan.
+func (r *Repo) ListQuery(limit int) *sqlbuilder.SelectBuilder {
+	c := kiraschema.ScriptRuns
+	return r.Dialect.Select(columns...).From(c.Table).OrderBy(c.CreatedAt+" DESC", c.ID+" DESC").Limit(limit)
+}
+
 // List returns the newest runs first.
 func (r *Repo) List(limit int) ([]Run, error) {
-	rows, err := r.DB.Query(`SELECT `+columns+` FROM script_runs ORDER BY created_at DESC, id DESC LIMIT ?`, limit)
+	rows, err := sqlb.Query(r.DB, r.ListQuery(limit))
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Run, bool, error) {
 		run, err := scan(rows)
 		return run, true, err
@@ -111,7 +139,10 @@ func (r *Repo) List(limit int) ([]Run, error) {
 
 // Live returns the running and waiting runs, newest first.
 func (r *Repo) Live() ([]Run, error) {
-	rows, err := r.DB.Query(`SELECT ` + columns + ` FROM script_runs WHERE state IN ('running', 'waiting') ORDER BY created_at DESC, id DESC`)
+	c := kiraschema.ScriptRuns
+	sb := r.Dialect.Select(columns...).From(c.Table)
+	sb.Where(sb.In(c.State, liveStates...)).OrderBy(c.CreatedAt+" DESC", c.ID+" DESC")
+	rows, err := sqlb.Query(r.DB, sb)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Run, bool, error) {
 		run, err := scan(rows)
 		return run, true, err
@@ -120,7 +151,10 @@ func (r *Repo) Live() ([]Run, error) {
 
 // ListByTask returns the newest runs started for a task first.
 func (r *Repo) ListByTask(taskID string, limit int) ([]Run, error) {
-	rows, err := r.DB.Query(`SELECT `+columns+` FROM script_runs WHERE task_id = ? ORDER BY created_at DESC, id DESC LIMIT ?`, taskID, limit)
+	c := kiraschema.ScriptRuns
+	sb := r.Dialect.Select(columns...).From(c.Table)
+	sb.Where(sb.Equal(c.TaskID, taskID)).OrderBy(c.CreatedAt+" DESC", c.ID+" DESC").Limit(limit)
+	rows, err := sqlb.Query(r.DB, sb)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Run, bool, error) {
 		run, err := scan(rows)
 		return run, true, err
@@ -128,12 +162,29 @@ func (r *Repo) ListByTask(taskID string, limit int) ([]Run, error) {
 }
 
 // restoreExpr marks a run a quit or crash ended (source `restart`) to be offered at the next start;
-// the argument is the source the outcome carries.
-const restoreExpr = `CASE WHEN ? = 'restart' THEN 1 ELSE restore_pending END`
+// src is the source the outcome carries.
+func restoreExpr(ub *sqlbuilder.UpdateBuilder, src runoutcome.Source) string {
+	c := kiraschema.ScriptRuns
+	return c.RestorePending + " = CASE WHEN " + ub.Var(string(src)) + " = " + ub.Var(string(runoutcome.SourceRestart)) +
+		" THEN " + ub.Var(true) + " ELSE " + c.RestorePending + " END"
+}
 
-// resumeExpr keeps a smart run's Claude session as resume_id when a restart ended it; the argument
-// is the source the outcome carries.
-const resumeExpr = `CASE WHEN kind = 'smart' AND ? = 'restart' THEN session_id ELSE '' END`
+// resumeExpr keeps a smart run's Claude session as resume_id when a restart ended it; src is the
+// source the outcome carries.
+func resumeExpr(ub *sqlbuilder.UpdateBuilder, src runoutcome.Source) string {
+	c := kiraschema.ScriptRuns
+	return c.ResumeID + " = CASE WHEN " + c.Kind + " = " + ub.Var(scripts.KindSmart) + " AND " + ub.Var(string(src)) + " = " +
+		ub.Var(string(runoutcome.SourceRestart)) + " THEN " + c.SessionID + " ELSE " + ub.Var("") + " END"
+}
+
+// finishSet is the assignment list that ends a run with out.
+func finishSet(ub *sqlbuilder.UpdateBuilder, out runoutcome.Outcome, outcome string, now int64) []string {
+	c := kiraschema.ScriptRuns
+	return []string{
+		ub.Assign(c.State, string(out.Status)), ub.Assign(c.OutcomeJSON, outcome), ub.Assign(c.FinishedAt, now),
+		resumeExpr(ub, out.Source), restoreExpr(ub, out.Source),
+	}
+}
 
 // Finish ends the running run matched by where (a column and value) with out; it returns the updated
 // run, or (nil, nil) when no running row matches (a repeated exit).
@@ -143,8 +194,10 @@ func (r *Repo) finish(column, value string, out runoutcome.Outcome, now int64) (
 		return nil, err
 	}
 	var id string
-	err = r.DB.QueryRow(`UPDATE script_runs SET state = ?, outcome_json = ?, finished_at = ?, resume_id = `+resumeExpr+`, restore_pending = `+restoreExpr+`
-		WHERE `+column+` = ? AND state = 'running' RETURNING id`, string(out.Status), outcome, now, string(out.Source), string(out.Source), value).Scan(&id)
+	c := kiraschema.ScriptRuns
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(finishSet(ub, out, outcome, now)...).Where(ub.Equal(column, value), ub.Equal(c.State, StateRunning)).Returning(c.ID)
+	err = sqlb.QueryRow(r.DB, ub).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -174,8 +227,10 @@ func (r *Repo) FailRunning(out runoutcome.Outcome, now int64) ([]Run, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := r.DB.Query(`UPDATE script_runs SET state = ?, outcome_json = ?, finished_at = ?, resume_id = `+resumeExpr+`, restore_pending = `+restoreExpr+`
-		WHERE state = 'running' RETURNING `+columns, string(out.Status), outcome, now, string(out.Source), string(out.Source))
+	c := kiraschema.ScriptRuns
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(finishSet(ub, out, outcome, now)...).Where(ub.Equal(c.State, StateRunning)).Returning(columns...)
+	rows, err := sqlb.Query(r.DB, ub)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Run, bool, error) {
 		run, err := scan(rows)
 		return run, true, err
@@ -184,7 +239,10 @@ func (r *Repo) FailRunning(out runoutcome.Outcome, now int64) ([]Run, error) {
 
 // TakeRestore clears every restore mark and returns the marked run ids.
 func (r *Repo) TakeRestore() ([]string, error) {
-	rows, err := r.DB.Query(`UPDATE script_runs SET restore_pending = 0 WHERE restore_pending = 1 RETURNING id`)
+	c := kiraschema.ScriptRuns
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.RestorePending, false)).Where(ub.Equal(c.RestorePending, true)).Returning(c.ID)
+	rows, err := sqlb.Query(r.DB, ub)
 	ids, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (string, bool, error) {
 		var id string
 		err := rows.Scan(&id)
@@ -199,7 +257,10 @@ func (r *Repo) TakeRestore() ([]string, error) {
 // TakeResume claims a run's resume spec once: it clears resume_id and returns the Claude session
 // id, ok false when the run has none (already taken, or not resumable).
 func (r *Repo) TakeResume(id string) (sessionID string, ok bool, err error) {
-	err = r.DB.QueryRow(`UPDATE script_runs SET resume_id = '' WHERE id = ? AND resume_id <> '' RETURNING session_id`, id).Scan(&sessionID)
+	c := kiraschema.ScriptRuns
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.ResumeID, "")).Where(ub.Equal(c.ID, id), ub.NotEqual(c.ResumeID, "")).Returning(c.SessionID)
+	err = sqlb.QueryRow(r.DB, ub).Scan(&sessionID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", false, nil
 	}
@@ -211,7 +272,10 @@ func (r *Repo) TakeResume(id string) (sessionID string, ok bool, err error) {
 
 // RestoreResume puts a taken resume spec back when the launch failed before it began.
 func (r *Repo) RestoreResume(id, sessionID string) error {
-	if _, err := r.DB.Exec(`UPDATE script_runs SET resume_id = ? WHERE id = ?`, sessionID, id); err != nil {
+	c := kiraschema.ScriptRuns
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.ResumeID, sessionID)).Where(ub.Equal(c.ID, id))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("scriptruns: restore resume %s: %w", id, err)
 	}
 	return nil
@@ -219,7 +283,10 @@ func (r *Repo) RestoreResume(id, sessionID string) error {
 
 // SetSessionID stores the conversation id an agent assigned a running run.
 func (r *Repo) SetSessionID(id, sessionID string) error {
-	if _, err := r.DB.Exec(`UPDATE script_runs SET session_id = ? WHERE id = ?`, sessionID, id); err != nil {
+	c := kiraschema.ScriptRuns
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.SessionID, sessionID)).Where(ub.Equal(c.ID, id))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("scriptruns: set session id %s: %w", id, err)
 	}
 	return nil
@@ -228,8 +295,11 @@ func (r *Repo) SetSessionID(id, sessionID string) error {
 // Active returns the newest running or waiting run of a script other than exceptID, (nil, nil)
 // when none.
 func (r *Repo) Active(scriptID, exceptID string) (*Run, error) {
-	run, err := scan(r.DB.QueryRow(`SELECT `+columns+` FROM script_runs WHERE script_id = ? AND id <> ? AND state IN ('running', 'waiting')
-		ORDER BY created_at DESC, id DESC LIMIT 1`, scriptID, exceptID))
+	c := kiraschema.ScriptRuns
+	sb := r.Dialect.Select(columns...).From(c.Table)
+	sb.Where(sb.Equal(c.ScriptID, scriptID), sb.NotEqual(c.ID, exceptID), sb.In(c.State, liveStates...)).
+		OrderBy(c.CreatedAt+" DESC", c.ID+" DESC").Limit(1)
+	run, err := scan(sqlb.QueryRow(r.DB, sb))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -242,8 +312,11 @@ func (r *Repo) Active(scriptID, exceptID string) (*Run, error) {
 // Running returns the newest running run of one script for one task and branch ("" for none),
 // (nil, nil) when none.
 func (r *Repo) Running(scriptID, taskID, branchID string) (*Run, error) {
-	run, err := scan(r.DB.QueryRow(`SELECT `+columns+` FROM script_runs WHERE script_id = ? AND task_id = ? AND branch_id = ? AND state = 'running'
-		ORDER BY created_at DESC, id DESC LIMIT 1`, scriptID, taskID, branchID))
+	c := kiraschema.ScriptRuns
+	sb := r.Dialect.Select(columns...).From(c.Table)
+	sb.Where(sb.Equal(c.ScriptID, scriptID), sb.Equal(c.TaskID, taskID), sb.Equal(c.BranchID, branchID), sb.Equal(c.State, StateRunning)).
+		OrderBy(c.CreatedAt+" DESC", c.ID+" DESC").Limit(1)
+	run, err := scan(sqlb.QueryRow(r.DB, sb))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -255,7 +328,10 @@ func (r *Repo) Running(scriptID, taskID, branchID string) (*Run, error) {
 
 // Waiting returns the runs waiting for the user's answer, oldest first.
 func (r *Repo) Waiting() ([]Run, error) {
-	rows, err := r.DB.Query(`SELECT ` + columns + ` FROM script_runs WHERE state = 'waiting' ORDER BY created_at ASC, id ASC`)
+	c := kiraschema.ScriptRuns
+	sb := r.Dialect.Select(columns...).From(c.Table)
+	sb.Where(sb.Equal(c.State, StateWaiting)).OrderBy(c.CreatedAt+" ASC", c.ID+" ASC")
+	rows, err := sqlb.Query(r.DB, sb)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Run, bool, error) {
 		run, err := scan(rows)
 		return run, true, err
@@ -273,10 +349,15 @@ func (r *Repo) BeginWaiting(id string, run Run) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("scriptruns: encode tools: %w", err)
 	}
-	res, err := r.DB.Exec(`UPDATE script_runs SET state = 'running', started_at = ?, cwd = ?, command = ?, prompt = ?, params_json = ?,
-		tools_json = ?, model = ?, session_id = ?, provider = ?, task_id = ?, task_title = ?, branch_id = ?, branch_label = ?
-		WHERE id = ? AND state = 'waiting'`, run.StartedAt, run.Cwd, run.Command, run.Prompt, string(params), string(tools),
-		run.Model, run.SessionID, run.Provider, run.TaskID, run.TaskTitle, run.BranchID, run.BranchLabel, id)
+	c := kiraschema.ScriptRuns
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.State, StateRunning), ub.Assign(c.StartedAt, run.StartedAt), ub.Assign(c.Cwd, run.Cwd),
+		ub.Assign(c.Command, run.Command), ub.Assign(c.Prompt, run.Prompt), ub.Assign(c.ParamsJSON, string(params)),
+		ub.Assign(c.ToolsJSON, string(tools)), ub.Assign(c.Model, run.Model), ub.Assign(c.SessionID, run.SessionID),
+		ub.Assign(c.Provider, run.Provider), ub.Assign(c.TaskID, run.TaskID), ub.Assign(c.TaskTitle, run.TaskTitle),
+		ub.Assign(c.BranchID, run.BranchID), ub.Assign(c.BranchLabel, run.BranchLabel)).
+		Where(ub.Equal(c.ID, id), ub.Equal(c.State, StateWaiting))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return false, fmt.Errorf("scriptruns: begin waiting %s: %w", id, err)
 	}
@@ -288,9 +369,9 @@ func (r *Repo) BeginWaiting(id string, run Run) (bool, error) {
 }
 
 // What SkipWaiting matches: one run, every waiting run of a script, or all of them.
-const (
-	skipByID     = "id"
-	skipByScript = "script_id"
+var (
+	skipByID     = kiraschema.ScriptRuns.ID
+	skipByScript = kiraschema.ScriptRuns.ScriptID
 	skipAll      = ""
 )
 
@@ -302,27 +383,30 @@ func (r *Repo) SkipWaiting(by, value, reason string, src runoutcome.Source, now 
 	if err != nil {
 		return nil, err
 	}
-	query := `UPDATE script_runs SET state = ?, outcome_json = ?, finished_at = ? WHERE state = 'waiting'`
-	args := []any{string(out.Status), outcome, now}
+	c := kiraschema.ScriptRuns
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.State, string(out.Status)), ub.Assign(c.OutcomeJSON, outcome), ub.Assign(c.FinishedAt, now))
+	conds := []string{ub.Equal(c.State, StateWaiting)}
 	if by != skipAll {
-		query += ` AND ` + by + ` = ?`
-		args = append(args, value)
+		conds = append(conds, ub.Equal(by, value))
 	}
-	rows, err := r.DB.Query(query+` RETURNING `+columns, args...)
+	ub.Where(conds...).Returning(columns...)
+	rows, err := sqlb.Query(r.DB, ub)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Run, bool, error) {
 		run, err := scan(rows)
 		return run, true, err
 	})
 }
 
-// Purge keeps only the newest keepFinished finished runs and drops the logs of the rest.
+// Purge keeps only the newest keepFinished finished runs; the logs of the rest cascade.
 func (r *Repo) Purge() error {
-	if _, err := r.DB.Exec(`DELETE FROM script_runs WHERE state NOT IN ('running', 'waiting') AND id NOT IN
-		(SELECT id FROM script_runs WHERE state NOT IN ('running', 'waiting') ORDER BY created_at DESC, id DESC LIMIT ?)`, keepFinished); err != nil {
+	c := kiraschema.ScriptRuns
+	keep := r.Dialect.Select(c.ID).From(c.Table)
+	keep.Where(keep.NotIn(c.State, liveStates...)).OrderBy(c.CreatedAt+" DESC", c.ID+" DESC").Limit(keepFinished)
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(del.NotIn(c.State, liveStates...), del.NotIn(c.ID, keep))
+	if _, err := sqlb.Exec(r.DB, del); err != nil {
 		return fmt.Errorf("scriptruns: purge: %w", err)
-	}
-	if _, err := r.DB.Exec(`DELETE FROM script_run_logs WHERE run_id NOT IN (SELECT id FROM script_runs)`); err != nil {
-		return fmt.Errorf("scriptruns: purge logs: %w", err)
 	}
 	return nil
 }
@@ -368,7 +452,9 @@ func (r *Repo) AppendLogs(runID string, chunks []LogChunk) error {
 		return fmt.Errorf("scriptruns: append logs: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	stmt, err := tx.Prepare(`INSERT INTO script_run_logs (run_id, seq, stream, text) VALUES (?, ?, ?, ?)`)
+	c := kiraschema.ScriptRunLogs
+	insert, _ := r.Dialect.InsertInto(c.Table).Cols(c.RunID, c.Seq, c.Stream, c.Text).Values(runID, 0, "", "").Build()
+	stmt, err := tx.Prepare(insert)
 	if err != nil {
 		return fmt.Errorf("scriptruns: append logs: %w", err)
 	}
@@ -379,7 +465,9 @@ func (r *Repo) AppendLogs(runID string, chunks []LogChunk) error {
 		}
 	}
 	last := chunks[len(chunks)-1].Seq
-	if _, err := tx.Exec(`DELETE FROM script_run_logs WHERE run_id = ? AND seq <= ?`, runID, last-maxLogLines); err != nil {
+	trim := r.Dialect.DeleteFrom(c.Table)
+	trim.Where(trim.Equal(c.RunID, runID), trim.LessEqualThan(c.Seq, last-maxLogLines))
+	if _, err := sqlb.Exec(tx, trim); err != nil {
 		return fmt.Errorf("scriptruns: trim logs: %w", err)
 	}
 	return tx.Commit()
@@ -408,26 +496,33 @@ type LogSlice struct {
 	Truncated bool
 }
 
-// logFilter is the WHERE clause and arguments of a log query.
-func logFilter(runID, contains string) (string, []any) {
-	if contains == "" {
-		return `run_id = ?`, []any{runID}
+// logFilter is the WHERE conditions of a log query on sb.
+func (r *Repo) logFilter(sb *sqlbuilder.SelectBuilder, runID, contains string) []string {
+	c := kiraschema.ScriptRunLogs
+	conds := []string{sb.Equal(c.RunID, runID)}
+	if contains != "" {
+		// Cond methods escape "$" in the field, so the placeholder goes through Build.
+		conds = append(conds, sb.Var(sqlbuilder.Build(sqlb.ContainsExpr(r.Dialect, c.Text, "$0")+" > 0", contains)))
 	}
-	return `run_id = ? AND instr(text, ?) > 0`, []any{runID, contains}
+	return conds
 }
 
 // QueryLog returns up to q.Limit stored lines of a run, filtered, oldest first.
 func (r *Repo) QueryLog(runID string, q LogQuery) (LogSlice, error) {
-	where, args := logFilter(runID, q.Contains)
+	c := kiraschema.ScriptRunLogs
 	var out LogSlice
-	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM script_run_logs WHERE `+where, args...).Scan(&out.Matched); err != nil {
+	cq := r.Dialect.Select("COUNT(*)").From(c.Table)
+	cq.Where(r.logFilter(cq, runID, q.Contains)...)
+	if err := sqlb.QueryRow(r.DB, cq).Scan(&out.Matched); err != nil {
 		return LogSlice{}, fmt.Errorf("scriptruns: count log %s: %w", runID, err)
 	}
 	order := "ASC"
 	if q.FromEnd {
 		order = "DESC"
 	}
-	rows, err := r.DB.Query(`SELECT seq, stream, text FROM script_run_logs WHERE `+where+` ORDER BY seq `+order+` LIMIT ?`, append(args, q.Limit)...)
+	sb := r.Dialect.Select(c.Seq, c.Stream, c.Text).From(c.Table)
+	sb.Where(r.logFilter(sb, runID, q.Contains)...).OrderBy(c.Seq + " " + order).Limit(q.Limit)
+	rows, err := sqlb.Query(r.DB, sb)
 	chunks, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (LogChunk, bool, error) {
 		var c LogChunk
 		err := rows.Scan(&c.Seq, &c.Stream, &c.Text)
@@ -444,7 +539,7 @@ func (r *Repo) QueryLog(runID string, q LogQuery) (LogSlice, error) {
 		out.Chunks = []LogChunk{}
 	}
 	var first sql.NullInt64
-	if err := r.DB.QueryRow(`SELECT MIN(seq) FROM script_run_logs WHERE run_id = ?`, runID).Scan(&first); err != nil {
+	if err := r.firstSeq(runID).Scan(&first); err != nil {
 		return LogSlice{}, fmt.Errorf("scriptruns: query log %s: %w", runID, err)
 	}
 	out.Truncated = first.Valid && first.Int64 > 1
@@ -453,8 +548,10 @@ func (r *Repo) QueryLog(runID string, q LogQuery) (LogSlice, error) {
 
 // ReadLog returns the lines of a run after afterSeq, oldest first.
 func (r *Repo) ReadLog(runID string, afterSeq int) (LogPage, error) {
-	rows, err := r.DB.Query(`SELECT seq, stream, text FROM script_run_logs WHERE run_id = ? AND seq > ? ORDER BY seq ASC LIMIT ?`,
-		runID, afterSeq, maxLogLines)
+	c := kiraschema.ScriptRunLogs
+	sb := r.Dialect.Select(c.Seq, c.Stream, c.Text).From(c.Table)
+	sb.Where(sb.Equal(c.RunID, runID), sb.GreaterThan(c.Seq, afterSeq)).OrderBy(c.Seq + " ASC").Limit(maxLogLines)
+	rows, err := sqlb.Query(r.DB, sb)
 	chunks, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (LogChunk, bool, error) {
 		var c LogChunk
 		err := rows.Scan(&c.Seq, &c.Stream, &c.Text)
@@ -467,8 +564,16 @@ func (r *Repo) ReadLog(runID string, afterSeq int) (LogPage, error) {
 		chunks = []LogChunk{}
 	}
 	var first sql.NullInt64
-	if err := r.DB.QueryRow(`SELECT MIN(seq) FROM script_run_logs WHERE run_id = ?`, runID).Scan(&first); err != nil {
+	if err := r.firstSeq(runID).Scan(&first); err != nil {
 		return LogPage{}, fmt.Errorf("scriptruns: read log %s: %w", runID, err)
 	}
 	return LogPage{Chunks: chunks, Truncated: first.Valid && first.Int64 > 1}, nil
+}
+
+// firstSeq selects the oldest stored line number of a run.
+func (r *Repo) firstSeq(runID string) *sql.Row {
+	c := kiraschema.ScriptRunLogs
+	sb := r.Dialect.Select("MIN(" + c.Seq + ")").From(c.Table)
+	sb.Where(sb.Equal(c.RunID, runID))
+	return sqlb.QueryRow(r.DB, sb)
 }

@@ -1894,6 +1894,106 @@
           "body": "The workspace was closed. Reopen it and retry."
         }
       },
+      "configSync": {
+        "auth": {
+          "required": {
+            "body": "The repository asked for credentials. Fetch it by hand to be prompted."
+          }
+        },
+        "branch": {
+          "invalid": {
+            "body": "Enter a plain branch name."
+          },
+          "missing": {
+            "body": "The repository has no such branch."
+          }
+        },
+        "changed": {
+          "body": "Config files or the repository changed since the review. Review again."
+        },
+        "gate": {
+          "invalid": {
+            "body": "The file is not valid ({message})."
+          },
+          "literalCredential": {
+            "body": "Literal credential at {at}. Use a secret reference instead. The shared repository must not hold one."
+          },
+          "localInvalid": {
+            "body": "The local file is not valid, so it can’t be merged. Fix it first."
+          }
+        },
+        "git": {
+          "unavailable": {
+            "body": "Git is not available. Set it up in the Git settings."
+          }
+        },
+        "internal": {
+          "body": "Shared config failed. See the log."
+        },
+        "interrupted": {
+          "body": "An earlier pull did not finish, so new pulls stop. Restart Kira Space to retry the recovery."
+        },
+        "interval": {
+          "invalid": {
+            "body": "Enter 0 to turn fetching off, or 5 to 1440 minutes."
+          }
+        },
+        "manifest": {
+          "invalid": {
+            "body": "The manifest is not valid. It needs a version and a list of modules."
+          },
+          "missing": {
+            "body": "The repository has no manifest at its root."
+          },
+          "module": {
+            "body": "The manifest lists an unknown module: {name}."
+          },
+          "repos": {
+            "body": "The repos module is never shared. Its files are keyed by local path and carry the worktree prepare script."
+          },
+          "tooLarge": {
+            "body": "{file} is too large."
+          },
+          "tooMany": {
+            "body": "The repository has too many files."
+          },
+          "version": {
+            "body": "The manifest has a version this Kira does not know."
+          }
+        },
+        "mode": {
+          "invalid": {
+            "body": "That module does not offer this mode."
+          }
+        },
+        "notConfigured": {
+          "body": "No shared config repository is set."
+        },
+        "nothingFetched": {
+          "body": "Nothing is fetched yet. Fetch the repository first."
+        },
+        "previewExpired": {
+          "body": "The review expired. Open it again."
+        },
+        "repo": {
+          "notFound": {
+            "body": "The repository was not found."
+          }
+        },
+        "unit": {
+          "invalid": {
+            "body": "That is not a shared file or entry."
+          }
+        },
+        "url": {
+          "invalid": {
+            "body": "Enter an https, ssh or file URL without credentials in it."
+          }
+        },
+        "window": {
+          "title": "Shared config changes"
+        }
+      },
       "gitGraph": {
         "frameTooLarge": {
           "body": "The graph data is larger than the frame size limit."
@@ -11110,6 +11210,60 @@
         "label": "Workflows"
       }
     },
+    "configSync": {
+      "diff": {
+        "empty": {
+          "empty": "Select a unit to see its changes"
+        }
+      },
+      "footer": {
+        "commit": {
+          "label": "Commit"
+        }
+      },
+      "kind": {
+        "modify": {
+          "label": "Modify"
+        }
+      },
+      "row": {
+        "deactivate": {
+          "label": "Never apply on this machine"
+        },
+        "mine": {
+          "option": "Keep mine"
+        },
+        "runsCommands": {
+          "label": "Runs commands"
+        },
+        "shared": {
+          "option": "Take shared"
+        },
+        "unsetSecrets": {
+          "hint": "Secrets not set here: {names}."
+        }
+      },
+      "toast": {
+        "count": {
+          "status": "{count} change | {count} changes"
+        },
+        "review": {
+          "label": "Review changes"
+        },
+        "title": {
+          "status": "New shared config available"
+        }
+      },
+      "window": {
+        "empty": {
+          "empty": "Nothing to pull"
+        },
+        "loading": {
+          "loading": "Loading the changes…"
+        },
+        "title": "Shared config changes"
+      }
+    },
     "gitCredential": {
       "dialog": {
         "title": "Git credentials"
@@ -11980,6 +12134,84 @@
           }
         }
       },
+      "configSync": {
+        "add": {
+          "label": "Add repository"
+        },
+        "change": {
+          "label": "Change repository"
+        },
+        "changes": {
+          "status": "{count} change available | {count} changes available"
+        },
+        "deactivated": {
+          "label": "Deactivated"
+        },
+        "description": "Pull configuration files from one shared Git repository. Nothing is pushed, and you review every change before it applies.",
+        "fetched": {
+          "status": "Last fetched {time}"
+        },
+        "fetchNow": {
+          "label": "Fetch now"
+        },
+        "interval": {
+          "label": "Fetch interval (minutes)"
+        },
+        "mode": {
+          "combined": {
+            "option": "Combined"
+          },
+          "local": {
+            "option": "Keep local"
+          },
+          "shared": {
+            "option": "Shared"
+          }
+        },
+        "module": {
+          "agent": {
+            "label": "Agent settings"
+          },
+          "api": {
+            "label": "Api requests"
+          },
+          "label": "Config module",
+          "prompts": {
+            "label": "Prompt overrides"
+          },
+          "runs": {
+            "label": "Run definitions"
+          },
+          "steps": {
+            "label": "Step library"
+          },
+          "workflows": {
+            "label": "Workflow definitions"
+          }
+        },
+        "neverFetched": {
+          "status": "Not fetched yet"
+        },
+        "pullConflicts": {
+          "hint": "This pull has conflicts. Review them before you pull."
+        },
+        "pulled": {
+          "announce": "Shared config applied"
+        },
+        "removeConfirm": {
+          "body": "Kira deletes its local sync data. Files already applied stay as local files.",
+          "title": "Remove the shared repository?"
+        },
+        "units": {
+          "label": "Units"
+        },
+        "upToDate": {
+          "status": "Everything is up to date"
+        },
+        "url": {
+          "label": "Repository URL"
+        }
+      },
       "fileTypes": {
         "description": "Make Kira Space the app that opens code and data files from Finder. It opens them read-only. Turning a switch off gives each type back to the app that had it.",
         "ext": {
@@ -12153,6 +12385,9 @@
         },
         "mobileAccess": {
           "label": "Mobile access"
+        },
+        "sharedConfig": {
+          "label": "Shared config"
         },
         "updates": {
           "label": "Updates"

@@ -8,7 +8,7 @@ sources:
   - apps/kira-space/internal/lannet
   - packages/theme/src/i18n/en.json
 sidebar:
-  order: 4
+  order: 7
 ---
 
 The phone view shows the agents board on a phone: Backlog, Need You and Plan. It is off by default.

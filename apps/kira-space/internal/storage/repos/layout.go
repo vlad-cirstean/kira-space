@@ -6,13 +6,23 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/appsettings"
-	"github.com/kirathecat/kira-studio/internal/appstorage"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
+
+var layoutLeaves = sqlb.LeafTable{Table: kiraschema.UiLayout.Table, Key: kiraschema.UiLayout.Key, Value: kiraschema.UiLayout.Value}
+
+// layoutSelectAllSQL is the "every stored leaf" query repos.New prepares once.
+var layoutSelectAllSQL = func() string {
+	q, _ := sqlb.SQLite.Select(layoutLeaves.Key, layoutLeaves.Value).From(layoutLeaves.Table).Build()
+	return q
+}()
 
 // LayoutRepo reads and writes the `ui_layout` table — Kira Studio's own LayoutRepo, trimmed to
 // this app's own model.Layout (P100 Part 2).
 type LayoutRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 
 	// selectAll is prepared once by repos.New; nil when constructed directly, which falls back to
 	// an ad-hoc query with identical SQL.
@@ -63,7 +73,7 @@ func applyModesPatch(merged *model.Layout, modes map[string]model.PanelSizesPatc
 }
 
 func (r *LayoutRepo) GetAll() (model.Layout, error) {
-	stored, err := appstorage.QueryLeaves(r.DB, r.selectAll, appstorage.LayoutSelectAllSQL)
+	stored, err := sqlb.QueryLeaves(r.DB, r.Dialect, r.selectAll, layoutLeaves)
 	if err != nil {
 		return model.Layout{}, err
 	}
@@ -76,7 +86,7 @@ func (r *LayoutRepo) GetAll() (model.Layout, error) {
 // Set can race it — same fix Kira Studio's own copy documents).
 func (r *LayoutRepo) Set(patch model.LayoutPatch) (model.Layout, error) {
 	var merged model.Layout
-	err := appstorage.UpdateLeaves(r.DB, r.selectAll, appstorage.LayoutSelectAllSQL, func(tx *sql.Tx, stored map[string]json.RawMessage) error {
+	err := sqlb.UpdateLeaves(r.DB, r.Dialect, r.selectAll, layoutLeaves, func(tx *sql.Tx, stored map[string]json.RawMessage) error {
 		merged = decodeLayout(stored)
 		applyModesPatch(&merged, patch.Modes)
 		if p := patch.Panel; p != nil {
@@ -91,20 +101,20 @@ func (r *LayoutRepo) Set(patch model.LayoutPatch) (model.Layout, error) {
 			}
 		}
 
-		leaves := make([]appstorage.Leaf, 0, 3+3*len(merged.Modes))
+		leaves := make([]sqlb.Leaf, 0, 3+3*len(merged.Modes))
 		leaves = append(leaves,
-			appstorage.Leaf{Key: "panel.project.visible", Value: merged.Panel.Project.Visible},
-			appstorage.Leaf{Key: "panel.ade.width", Value: merged.Panel.Ade.Width},
-			appstorage.Leaf{Key: "panel.cellEditor.height", Value: merged.Panel.CellEditor.Height},
+			sqlb.Leaf{Key: "panel.project.visible", Value: merged.Panel.Project.Visible},
+			sqlb.Leaf{Key: "panel.ade.width", Value: merged.Panel.Ade.Width},
+			sqlb.Leaf{Key: "panel.cellEditor.height", Value: merged.Panel.CellEditor.Height},
 		)
 		for mode, sizes := range merged.Modes {
 			leaves = append(leaves,
-				appstorage.Leaf{Key: modeWidthKey(mode), Value: sizes.Project.Width},
-				appstorage.Leaf{Key: modeWidthUserSetKey(mode), Value: sizes.Project.WidthUserSet},
-				appstorage.Leaf{Key: modeHeightKey(mode), Value: sizes.Operations.Height},
+				sqlb.Leaf{Key: modeWidthKey(mode), Value: sizes.Project.Width},
+				sqlb.Leaf{Key: modeWidthUserSetKey(mode), Value: sizes.Project.WidthUserSet},
+				sqlb.Leaf{Key: modeHeightKey(mode), Value: sizes.Operations.Height},
 			)
 		}
-		return appstorage.UpsertLeafList(tx, "ui_layout", leaves)
+		return sqlb.UpsertLeafList(tx, r.Dialect, layoutLeaves, leaves)
 	})
 	if err != nil {
 		return model.Layout{}, err

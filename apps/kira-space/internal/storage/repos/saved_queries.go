@@ -6,10 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kirathecat/kira-studio/internal/ids"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"log/slog"
 	"strings"
 
+	"github.com/huandu/go-sqlbuilder"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
@@ -19,10 +22,23 @@ var ErrSavedQueryNotFound = errors.New("repos/saved_queries: not found")
 // ErrSavedQueryNameTaken is a rename or save into a name another discover query of the connection holds.
 var ErrSavedQueryNameTaken = errors.New("repos/saved_queries: name taken")
 
-const savedQuerySelectColumns = `id, connection_id, path, name, kind, body, pinned, created_at, used_at`
+var savedQuerySelectColumns = func() []string {
+	c := kiraschema.ConnectionSavedQueries
+	return []string{c.ID, c.ConnectionID, c.Path, c.Name, c.Kind, c.Body, c.Pinned, c.CreatedAt, c.UsedAt}
+}()
 
 type SavedQueriesRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
+}
+
+// savedQueryList is the discover/filter/console list query: pinned first, then most recently used.
+func (r *SavedQueriesRepo) savedQueryList(connectionID string, conds func(sb *sqlbuilder.SelectBuilder) []string) *sqlbuilder.SelectBuilder {
+	c := kiraschema.ConnectionSavedQueries
+	sb := r.Dialect.Select(savedQuerySelectColumns...).From(c.Table)
+	sb.Where(append([]string{sb.Equal(c.ConnectionID, connectionID)}, conds(sb)...)...).
+		OrderBy(c.Pinned+" DESC", c.UsedAt+" DESC", c.Name)
+	return sb
 }
 
 // scanSavedQueryRow scans one row and validates it the same way saved-queries.ts's
@@ -30,17 +46,20 @@ type SavedQueriesRepo struct {
 // drops the row (nil, nil) rather than propagating it.
 func scanSavedQueryRow(row rowScanner) (*model.SavedQuery, error) {
 	var (
-		q      model.SavedQuery
-		pinned int
-		usedAt sql.NullString
-		body   string
+		q         model.SavedQuery
+		pinned    int
+		usedAt    sql.NullInt64
+		createdMs int64
+		body      string
 	)
-	if err := row.Scan(&q.ID, &q.ConnectionID, &q.Path, &q.Name, &q.Kind, &body, &pinned, &q.CreatedAt, &usedAt); err != nil {
+	if err := row.Scan(&q.ID, &q.ConnectionID, &q.Path, &q.Name, &q.Kind, &body, &pinned, &createdMs, &usedAt); err != nil {
 		return nil, err
 	}
+	q.CreatedAt = kiratime.MsToISO(createdMs)
 	q.Pinned = pinned != 0
 	if usedAt.Valid {
-		q.UsedAt = &usedAt.String
+		used := kiratime.MsToISO(usedAt.Int64)
+		q.UsedAt = &used
 	}
 
 	if !json.Valid([]byte(body)) {
@@ -90,28 +109,26 @@ func decodeStrict[T any](body string) (T, error) {
 }
 
 func (r *SavedQueriesRepo) listByKind(connectionID, path, kind string) ([]model.SavedQuery, error) {
-	return r.queryRows(
-		`SELECT `+savedQuerySelectColumns+`
-		   FROM saved_queries
-		  WHERE connection_id = ? AND path = ? AND kind = ?
-		  ORDER BY pinned DESC, used_at DESC, name`,
-		connectionID, path, kind,
-	)
+	return r.queryRows(r.listByKindQuery(connectionID, path, kind))
+}
+
+func (r *SavedQueriesRepo) listByKindQuery(connectionID, path, kind string) *sqlbuilder.SelectBuilder {
+	c := kiraschema.ConnectionSavedQueries
+	return r.savedQueryList(connectionID, func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(c.Path, path), sb.Equal(c.Kind, kind)}
+	})
 }
 
 // ListDiscover lists a connection's discover queries regardless of path.
 func (r *SavedQueriesRepo) ListDiscover(connectionID string) ([]model.SavedQuery, error) {
-	return r.queryRows(
-		`SELECT `+savedQuerySelectColumns+`
-		   FROM saved_queries
-		  WHERE connection_id = ? AND kind = 'discover'
-		  ORDER BY pinned DESC, used_at DESC, name`,
-		connectionID,
-	)
+	c := kiraschema.ConnectionSavedQueries
+	return r.queryRows(r.savedQueryList(connectionID, func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(c.Kind, "discover")}
+	}))
 }
 
-func (r *SavedQueriesRepo) queryRows(query string, args ...any) ([]model.SavedQuery, error) {
-	rows, err := r.DB.Query(query, args...)
+func (r *SavedQueriesRepo) queryRows(sb *sqlbuilder.SelectBuilder) ([]model.SavedQuery, error) {
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos/saved_queries: query: %w", err)
 	}
@@ -147,12 +164,11 @@ func (r *SavedQueriesRepo) insert(connectionID, path, name, kind string, body []
 	}
 	name = strings.TrimSpace(name)
 	newID := ids.NewID()
-	now := kiratime.NowISO()
-	if _, err := r.DB.Exec(
-		`INSERT INTO saved_queries (id, connection_id, path, name, kind, body, pinned, created_at, used_at)
-		 VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
-		newID, connectionID, path, name, kind, string(body), now, now,
-	); err != nil {
+	now := kiratime.NowMs()
+	c := kiraschema.ConnectionSavedQueries
+	ib := r.Dialect.InsertInto(c.Table).Cols(c.ID, c.ConnectionID, c.Path, c.Name, c.Kind, c.Body, c.Pinned, c.CreatedAt, c.UsedAt).
+		Values(newID, connectionID, path, name, kind, string(body), 0, now, now)
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
 		if isUniqueViolation(err) {
 			return model.SavedQuery{}, fmt.Errorf("%w: %s", ErrSavedQueryNameTaken, name)
 		}
@@ -165,8 +181,10 @@ func (r *SavedQueriesRepo) insert(connectionID, path, name, kind string, body []
 func (r *SavedQueriesRepo) Get(queryID string) (model.SavedQuery, error) { return r.mustGet(queryID) }
 
 func (r *SavedQueriesRepo) mustGet(queryID string) (model.SavedQuery, error) {
-	row := r.DB.QueryRow(`SELECT `+savedQuerySelectColumns+` FROM saved_queries WHERE id = ?`, queryID)
-	q, err := scanSavedQueryRow(row)
+	c := kiraschema.ConnectionSavedQueries
+	sb := r.Dialect.Select(savedQuerySelectColumns...).From(c.Table)
+	sb.Where(sb.Equal(c.ID, queryID))
+	q, err := scanSavedQueryRow(sqlb.QueryRow(r.DB, sb))
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.SavedQuery{}, fmt.Errorf("%w: %s", ErrSavedQueryNotFound, queryID)
 	}
@@ -224,8 +242,11 @@ func (r *SavedQueriesRepo) UpdateDiscover(queryID string, body model.DiscoverBod
 	if err != nil {
 		return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: encode discover body: %w", err)
 	}
-	res, err := r.DB.Exec(`UPDATE saved_queries SET body = ?, used_at = ? WHERE id = ? AND kind = 'discover'`,
-		string(encoded), kiratime.NowISO(), queryID)
+	c := kiraschema.ConnectionSavedQueries
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.Body, string(encoded)), ub.Assign(c.UsedAt, kiratime.NowMs())).
+		Where(ub.Equal(c.ID, queryID), ub.Equal(c.Kind, "discover"))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: update body %s: %w", queryID, err)
 	}
@@ -236,7 +257,10 @@ func (r *SavedQueriesRepo) UpdateDiscover(queryID string, body model.DiscoverBod
 }
 
 func (r *SavedQueriesRepo) setPinned(queryID string, pinned bool) error {
-	if _, err := r.DB.Exec(`UPDATE saved_queries SET pinned = ? WHERE id = ?`, boolToInt(pinned), queryID); err != nil {
+	c := kiraschema.ConnectionSavedQueries
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.Pinned, boolToInt(pinned))).Where(ub.Equal(c.ID, queryID))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos/saved_queries: set pinned %s: %w", queryID, err)
 	}
 	return nil
@@ -249,7 +273,10 @@ func (r *SavedQueriesRepo) Update(queryID string, patch model.SavedQueryPatch) (
 		if err := model.ValidSavedQueryName(*patch.Name); err != nil {
 			return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: %w", err)
 		}
-		if _, err := r.DB.Exec(`UPDATE saved_queries SET name = ? WHERE id = ?`, strings.TrimSpace(*patch.Name), queryID); err != nil {
+		c := kiraschema.ConnectionSavedQueries
+		ub := r.Dialect.Update(c.Table)
+		ub.Set(ub.Assign(c.Name, strings.TrimSpace(*patch.Name))).Where(ub.Equal(c.ID, queryID))
+		if _, err := sqlb.Exec(r.DB, ub); err != nil {
 			if isUniqueViolation(err) {
 				return model.SavedQuery{}, fmt.Errorf("%w: %s", ErrSavedQueryNameTaken, strings.TrimSpace(*patch.Name))
 			}
@@ -265,14 +292,20 @@ func (r *SavedQueriesRepo) Update(queryID string, patch model.SavedQueryPatch) (
 }
 
 func (r *SavedQueriesRepo) Delete(queryID string) error {
-	if _, err := r.DB.Exec(`DELETE FROM saved_queries WHERE id = ?`, queryID); err != nil {
+	c := kiraschema.ConnectionSavedQueries
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.ID, queryID))
+	if _, err := sqlb.Exec(r.DB, del); err != nil {
 		return fmt.Errorf("repos/saved_queries: delete %s: %w", queryID, err)
 	}
 	return nil
 }
 
 func (r *SavedQueriesRepo) Touch(queryID string) error {
-	if _, err := r.DB.Exec(`UPDATE saved_queries SET used_at = ? WHERE id = ?`, kiratime.NowISO(), queryID); err != nil {
+	c := kiraschema.ConnectionSavedQueries
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.UsedAt, kiratime.NowMs())).Where(ub.Equal(c.ID, queryID))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos/saved_queries: touch %s: %w", queryID, err)
 	}
 	return nil

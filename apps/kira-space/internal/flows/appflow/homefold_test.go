@@ -58,6 +58,8 @@ func newFoldFixture(t *testing.T) *foldFixture {
 		t.Fatal(err)
 	}
 	execAll(t, scratch.DB,
+		`ALTER TABLE scripts RENAME TO custom_scripts`,
+		`ALTER TABLE script_collections RENAME TO custom_script_collections`,
 		`INSERT INTO custom_script_collections (name, sort_order) VALUES ('shared', 0), ('only-studio', 1)`,
 		`INSERT INTO custom_scripts (id, name, command, sort_order, created_at, updated_at, collection, config_json) VALUES
 			('build', 'Build', 'make', 0, 1, 1, 'shared', '{"id":"build"}'),
@@ -109,8 +111,8 @@ func newFoldFixture(t *testing.T) *foldFixture {
 	}
 	t.Cleanup(func() { _ = f.spaceDB.Close() })
 	execAll(t, f.spaceDB.DB,
-		`INSERT INTO custom_script_collections (name, sort_order) VALUES ('shared', 0)`,
-		`INSERT INTO custom_scripts (id, name, command, sort_order, created_at, updated_at, collection, config_json) VALUES
+		`INSERT INTO script_collections (name, sort_order) VALUES ('shared', 0)`,
+		`INSERT INTO scripts (id, name, command, sort_order, created_at, updated_at, collection, config_json) VALUES
 			('build', 'Space build', 'cargo', 0, 1, 1, 'shared', '{"id":"build"}')`,
 		`INSERT INTO script_runs (id, script_id, script_name, trigger_kind, state, created_at) VALUES ('run-dup', 'build', 'Space build', 'manual', 'done', 1)`,
 		`INSERT INTO settings (key, value) VALUES ('config.migrated.runs', '1')`,
@@ -190,10 +192,10 @@ func dump(t *testing.T, db *sql.DB, queries ...string) string {
 	return uuidRE.ReplaceAllString(strings.Join(out, "\n"), "<uuid>")
 }
 
-const spaceRows = `SELECT id || '|' || name || '|' || collection || '|' || sort_order || '|' || config_json AS r FROM custom_scripts`
+const spaceRows = `SELECT id || '|' || name || '|' || collection || '|' || sort_order || '|' || config_json AS r FROM scripts`
 
 var spaceQueries = []string{
-	`SELECT name || '|' || sort_order AS r FROM custom_script_collections`,
+	`SELECT name || '|' || sort_order AS r FROM script_collections`,
 	spaceRows,
 	`SELECT id || '|' || script_id || '|' || cwd AS r FROM script_runs`,
 	`SELECT run_id || '|' || seq || '|' || text AS r FROM script_run_logs`,
@@ -419,16 +421,16 @@ func checkFolded(t *testing.T, f *foldFixture, legacyBefore string) {
 	}
 
 	db := f.spaceDB.DB
-	if got := scalar(t, db, `SELECT group_concat(id, ',') FROM (SELECT id FROM custom_scripts ORDER BY id)`); got != "build,build-studio,deploy,legacy-cfg" {
+	if got := scalar(t, db, `SELECT group_concat(id, ',') FROM (SELECT id FROM scripts ORDER BY id)`); got != "build,build-studio,deploy,legacy-cfg" {
 		t.Errorf("scripts = %q", got)
 	}
-	if got := scalar(t, db, `SELECT name FROM custom_scripts WHERE id = 'build'`); got != "Space build" {
+	if got := scalar(t, db, `SELECT name FROM scripts WHERE id = 'build'`); got != "Space build" {
 		t.Errorf("Space script overwritten: %q", got)
 	}
-	if got := scalar(t, db, `SELECT group_concat(name || ':' || sort_order, ',') FROM (SELECT * FROM custom_script_collections ORDER BY sort_order)`); got != "shared:0,only-studio:2" {
+	if got := scalar(t, db, `SELECT group_concat(name || ':' || sort_order, ',') FROM (SELECT * FROM script_collections ORDER BY sort_order)`); got != "shared:0,only-studio:2" {
 		t.Errorf("collections = %q", got)
 	}
-	if got := scalar(t, db, `SELECT group_concat(id, ',') FROM (SELECT id FROM custom_scripts WHERE sort_order > 0 ORDER BY sort_order)`); got != "build-studio,deploy,legacy-cfg" {
+	if got := scalar(t, db, `SELECT group_concat(id, ',') FROM (SELECT id FROM scripts WHERE sort_order > 0 ORDER BY sort_order)`); got != "build-studio,deploy,legacy-cfg" {
 		t.Errorf("studio scripts not after Space's: %q", got)
 	}
 	if got := scalar(t, db, `SELECT script_id || '|' || cwd FROM script_runs WHERE id = 'r1'`); got != "build-studio|"+f.space+"/automations/build-studio/work" {

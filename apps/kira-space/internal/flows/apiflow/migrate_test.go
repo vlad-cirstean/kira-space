@@ -22,7 +22,7 @@ func TestApiConfigMigration(t *testing.T) {
 	const (
 		legacyKey = "legacy-secret-9"
 		legacyEnv = "legacy-env-secret-3"
-		now       = "2026-01-01T00:00:00Z"
+		now       = int64(1767225600000)
 	)
 	cipher := secrets.New()
 	seal := func(plain string) string {

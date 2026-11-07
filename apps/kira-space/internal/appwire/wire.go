@@ -230,7 +230,7 @@ func wireAdeTask(
 		Trackers:  git.trackers,
 		GitStatus: func(ctx context.Context) gitclient.GitStatus { return git.discovery.Status(ctx, gitPath()) },
 		Askpass:   git.askpassBroker,
-		Workflows: &adeflow.Reader{Dir: configfs.ModuleDir(config.KiraSpaceHome(), adeflow.WorkflowsFolder), Store: repositories.AdeTasks,
+		Workflows: &adeflow.Reader{Dir: configfs.ModuleDir(config.KiraSpaceHome(), adeflow.WorkflowsFolder), Store: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: adeflow.WorkflowsFolder},
 			Steps: &adeflow.StepLibrary{Dir: configfs.ModuleDir(config.KiraSpaceHome(), adeflow.StepsFolder), DB: repositories.CustomScripts.DB}},
 		OnBoard:      func() { bridge.AdeTaskBoardChanged(events) },
 		OnUpdates:    func() { bridge.AdeTaskUpdatesChanged(events) },

@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
+import { BUILD_SECTIONS } from '../src/data/build';
 import type { ShotId } from '../src/data/shotCapture';
 import { expectShotImage } from './shotImage';
 
@@ -23,6 +26,12 @@ const ROUTES: readonly Route[] = [
       'studio-api',
     ],
   },
+  {
+    path: 'build/',
+    name: 'Build with Kira',
+    hero: 'build-start-board',
+    shots: BUILD_SECTIONS.flatMap((section) => section.shots),
+  },
 ];
 
 async function openPage(page: Page, route: Route): Promise<string[]> {
@@ -36,7 +45,7 @@ async function openPage(page: Page, route: Route): Promise<string[]> {
 }
 
 for (const route of ROUTES) {
-  test.describe('landing', () => {
+  test.describe(route.path === '' ? 'landing' : route.path, () => {
     test('no horizontal scroll and no hidden overflow', async ({ page }) => {
       await openPage(page, route);
       const metrics = await page.evaluate(() => ({
@@ -194,4 +203,45 @@ test('the hero shot is published at the stable URL the README links to', async (
     expect(res.status()).toBe(200);
     expect(res.headers()['content-type']).toContain('image/webp');
   }
+});
+
+for (const path of ['', 'build/']) {
+  test(`beta notice is first in the body of /${path}`, async ({ page }) => {
+    await page.goto(`${BASE}${path}`);
+    const first = page.locator('body > *').first();
+    await expect(first).toHaveAttribute('data-beta-notice', '');
+    await expect(first).toContainText('Beta, not production ready, not notarized.');
+    await expect(first.locator('a')).toHaveAttribute(
+      'href',
+      new RegExp(path === '' ? '^#install$' : '/kira-studio/#install$'),
+    );
+    await expect(first).not.toContainText(/keychain|folder|macos/i);
+  });
+}
+
+test('install holds the Keychain and folder text with two dialog images', async ({ page }) => {
+  await page.goto(BASE);
+  const install = page.locator('#install');
+  await expect(install).toContainText('its own key');
+  await expect(install).toContainText('Always Allow');
+  await expect(install).toContainText('folders that hold your repositories');
+  const pending = await install.locator('[data-install-pending]').count();
+  const images = await install.locator('img').count();
+  expect(pending + images).toBe(2);
+  if (process.env.CI === 'true') expect(pending).toBe(0);
+  for (const alt of [
+    'macOS Keychain dialog asking to let Kira Space use its own key.',
+    'macOS dialog asking to let Kira Space access a folder.',
+  ]) {
+    const shown = install.locator(`img[alt="${alt}"], [data-install-pending]:has-text("${alt}")`);
+    await expect(shown).toHaveCount(1);
+  }
+});
+
+test('the README opens with the beta notice and the install link', () => {
+  const first = readFileSync(join(import.meta.dirname, '..', '..', 'README.md'), 'utf8')
+    .split('\n')
+    .find((line) => line.trim() !== '');
+  expect(first).toContain('Beta, not production ready, not notarized.');
+  expect(first).toContain('https://vlad-cirstean.github.io/kira-studio/#install');
 });

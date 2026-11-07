@@ -10,7 +10,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/huandu/go-sqlbuilder"
+
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -70,15 +74,50 @@ func EstOverCap(est string) bool {
 	return n > MaxEstDays
 }
 
-const adeTaskColumns = `id, kind, title, owner, jira_key, jira_url, host_url, workflow_id, entry_step_id, since_json, workflow_json, workflow_hash, est, color, created_at, archived_at, status_id, status_by, status_step`
-const adeTaskBranchInsertColumns = `id, task_id, code_repo_id, name, kind, base, base_branch_id, base_pending_from, queued_after, position, had_commits, added_at, merged_at, archived_at, origin`
-const adeTaskBranchColumns = adeTaskBranchInsertColumns + `, cr_number, cr_title, cr_state, cr_url, review_comments, worktree_dir`
-const adeRunColumns = `id, task_id, step_id, branch_id, attempt, state, loops, note, summary, session_id, exit_code, started_at, finished_at, outcome_json, purpose, spec_json, launch_note, launch_resume_id, launch_prompt, launch_extra`
+// Column lists in scan order.
+var (
+	adeTaskColumns = []string{
+		kiraschema.AdeTasks.ID, kiraschema.AdeTasks.Kind, kiraschema.AdeTasks.Title, kiraschema.AdeTasks.Owner,
+		kiraschema.AdeTasks.JiraKey, kiraschema.AdeTasks.JiraURL, kiraschema.AdeTasks.HostURL, kiraschema.AdeTasks.WorkflowID,
+		kiraschema.AdeTasks.EntryStepID, kiraschema.AdeTasks.SinceJSON, kiraschema.AdeTasks.WorkflowJSON,
+		kiraschema.AdeTasks.WorkflowHash, kiraschema.AdeTasks.Est, kiraschema.AdeTasks.Color, kiraschema.AdeTasks.CreatedAt,
+		kiraschema.AdeTasks.ArchivedAt, kiraschema.AdeTasks.StatusID, kiraschema.AdeTasks.StatusBy, kiraschema.AdeTasks.StatusStep,
+	}
+	adeTaskBranchInsertColumns = []string{
+		kiraschema.AdeTaskBranches.ID, kiraschema.AdeTaskBranches.TaskID, kiraschema.AdeTaskBranches.CodeRepoID,
+		kiraschema.AdeTaskBranches.Name, kiraschema.AdeTaskBranches.Kind, kiraschema.AdeTaskBranches.Base,
+		kiraschema.AdeTaskBranches.BaseBranchID, kiraschema.AdeTaskBranches.BasePendingFrom,
+		kiraschema.AdeTaskBranches.QueuedAfter, kiraschema.AdeTaskBranches.Position, kiraschema.AdeTaskBranches.HadCommits,
+		kiraschema.AdeTaskBranches.AddedAt, kiraschema.AdeTaskBranches.MergedAt, kiraschema.AdeTaskBranches.ArchivedAt,
+		kiraschema.AdeTaskBranches.Origin,
+	}
+	adeTaskBranchColumns = append(slices.Clone(adeTaskBranchInsertColumns),
+		kiraschema.AdeTaskBranches.CrNumber, kiraschema.AdeTaskBranches.CrTitle, kiraschema.AdeTaskBranches.CrState,
+		kiraschema.AdeTaskBranches.CrURL, kiraschema.AdeTaskBranches.ReviewComments, kiraschema.AdeTaskBranches.WorktreeDir)
+	adeRunColumns = []string{
+		kiraschema.AdeRuns.ID, kiraschema.AdeRuns.TaskID, kiraschema.AdeRuns.StepID, kiraschema.AdeRuns.BranchID,
+		kiraschema.AdeRuns.Attempt, kiraschema.AdeRuns.State, kiraschema.AdeRuns.Loops, kiraschema.AdeRuns.Note,
+		kiraschema.AdeRuns.Summary, kiraschema.AdeRuns.SessionID, kiraschema.AdeRuns.ExitCode, kiraschema.AdeRuns.StartedAt,
+		kiraschema.AdeRuns.FinishedAt, kiraschema.AdeRuns.OutcomeJSON, kiraschema.AdeRuns.Purpose, kiraschema.AdeRuns.SpecJSON,
+		kiraschema.AdeRuns.LaunchNote, kiraschema.AdeRuns.LaunchResumeID, kiraschema.AdeRuns.LaunchPrompt, kiraschema.AdeRuns.LaunchExtra,
+	}
+)
+
+func (r *AdeTaskRepo) selectTask() *sqlbuilder.SelectBuilder {
+	return r.Dialect.Select(adeTaskColumns...).From(kiraschema.AdeTasks.Table)
+}
+
+func (r *AdeTaskRepo) selectRuns() *sqlbuilder.SelectBuilder {
+	return r.Dialect.Select(adeRunColumns...).From(kiraschema.AdeRuns.Table)
+}
 
 // AdeTaskRepo reads and writes the v2 task store: tasks, branches, plan, runs, worktree setup and
 // last-valid workflows.
 type AdeTaskRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
+
+	listLiveSQL sqlb.Cached
 }
 
 func nullInt64Ptr(n sql.NullInt64) *int64 {
@@ -130,8 +169,12 @@ func scanAdeTaskBranch(row rowScanner) (model.AdeTaskBranch, error) {
 	return b, nil
 }
 
-func (r *AdeTaskRepo) queryTasks(query string, args ...any) ([]model.AdeTask, error) {
-	rows, err := r.DB.Query(query, args...)
+func (r *AdeTaskRepo) queryTasks(b sqlb.Builder) ([]model.AdeTask, error) {
+	rows, err := sqlb.Query(r.DB, b)
+	return r.scanTasks(rows, err)
+}
+
+func (r *AdeTaskRepo) scanTasks(rows *sql.Rows, err error) ([]model.AdeTask, error) {
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade tasks: %w", err)
 	}
@@ -152,20 +195,32 @@ func (r *AdeTaskRepo) queryTasks(query string, args ...any) ([]model.AdeTask, er
 
 // ListLive returns non-archived tasks in plan order (a task with no plan row sorts last).
 func (r *AdeTaskRepo) ListLive() ([]model.AdeTask, error) {
-	return r.queryTasks(`SELECT t.id, t.kind, t.title, t.owner, t.jira_key, t.jira_url, t.host_url, t.workflow_id,
-		t.entry_step_id, t.since_json, t.workflow_json, t.workflow_hash, t.est, t.color, t.created_at, t.archived_at, t.status_id, t.status_by, t.status_step
-		FROM ade_tasks t LEFT JOIN ade_task_plan p ON p.task_id = t.id
-		WHERE t.archived_at IS NULL ORDER BY p.position IS NULL, p.position, t.created_at, t.id`)
+	// Argument-free and fixed, so the statement builds once.
+	query := r.listLiveSQL.SQL(func() sqlb.Builder {
+		t, p := kiraschema.AdeTasks, kiraschema.AdeTaskPlan
+		sb := r.Dialect.Select(adeQual("t", adeTaskColumns)...).From(t.Table + " t")
+		sb.JoinWithOption(sqlbuilder.LeftJoin, p.Table+" p", "p."+p.TaskID+" = t."+t.ID)
+		sb.Where(sb.IsNull("t."+t.ArchivedAt)).
+			OrderBy("p."+p.Position+" IS NULL", "p."+p.Position, "t."+t.CreatedAt, "t."+t.ID)
+		return sb
+	})
+	rows, err := r.DB.Query(query)
+	return r.scanTasks(rows, err)
 }
 
 // ListArchived returns archived tasks, newest archive first.
 func (r *AdeTaskRepo) ListArchived() ([]model.AdeTask, error) {
-	return r.queryTasks(`SELECT ` + adeTaskColumns + ` FROM ade_tasks WHERE archived_at IS NOT NULL ORDER BY archived_at DESC, id`)
+	c := kiraschema.AdeTasks
+	sb := r.selectTask()
+	sb.Where(sb.IsNotNull(c.ArchivedAt)).OrderBy(c.ArchivedAt+" DESC", c.ID)
+	return r.queryTasks(sb)
 }
 
 // GetTask returns one task, live or archived; ErrTaskNotFound if absent.
 func (r *AdeTaskRepo) GetTask(id string) (model.AdeTask, error) {
-	t, err := scanAdeTask(r.DB.QueryRow(`SELECT `+adeTaskColumns+` FROM ade_tasks WHERE id = ?`, id))
+	sb := r.selectTask()
+	sb.Where(sb.Equal(kiraschema.AdeTasks.ID, id))
+	t, err := scanAdeTask(sqlb.QueryRow(r.DB, sb))
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.AdeTask{}, ErrTaskNotFound
 	}
@@ -178,11 +233,11 @@ func (r *AdeTaskRepo) GetTask(id string) (model.AdeTask, error) {
 // insertTask writes the task, its branches and a plan row on `day` (Later when nil), in tx: at the end of
 // the order, or at the top when top is set, plus the first user note when given. It assigns the task's color: the first slot no live task uses,
 // else the least-used slot overall.
-func insertTask(tx *sql.Tx, t model.AdeTask, branches []model.AdeTaskBranch, day *string, top bool, note *model.AdeHandover) (model.AdeTask, error) {
+func insertTask(tx *sql.Tx, d sqlb.Dialect, t model.AdeTask, branches []model.AdeTaskBranch, day *string, top bool, note *model.AdeHandover) (model.AdeTask, error) {
 	if err := t.Validate(); err != nil {
 		return model.AdeTask{}, err
 	}
-	rows, err := tx.Query(`SELECT color, archived_at IS NULL FROM ade_tasks`)
+	rows, err := sqlb.Query(tx, d.Select(kiraschema.AdeTasks.Color, kiraschema.AdeTasks.ArchivedAt+" IS NULL").From(kiraschema.AdeTasks.Table))
 	if err != nil {
 		return model.AdeTask{}, fmt.Errorf("repos: query ade task colors: %w", err)
 	}
@@ -212,7 +267,7 @@ func insertTask(tx *sql.Tx, t model.AdeTask, branches []model.AdeTaskBranch, day
 		since = t.SinceJSON
 	}
 	if t.StatusID == "" {
-		id, err := statusForNew(tx, t.Kind == model.AdeTaskKindReview)
+		id, err := statusForNew(tx, d, t.Kind == model.AdeTaskKindReview)
 		if err != nil {
 			return model.AdeTask{}, err
 		}
@@ -221,27 +276,32 @@ func insertTask(tx *sql.Tx, t model.AdeTask, branches []model.AdeTaskBranch, day
 	if t.StatusBy == "" {
 		t.StatusBy = model.AdeStatusByAuto
 	}
-	if _, err := tx.Exec(`INSERT INTO ade_tasks (id, kind, title, owner, jira_key, jira_url, host_url, workflow_id, entry_step_id, since_json, est, color, created_at, archived_at, status_id, status_by, status_step) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
-		t.ID, t.Kind, t.Title, t.Owner, t.JiraKey, t.JiraURL, t.HostURL, t.WorkflowID, t.EntryStepID, since, t.Est,
-		t.Color, t.CreatedAt, t.StatusID, t.StatusBy, t.StatusStep); err != nil {
+	c := kiraschema.AdeTasks
+	ib := d.InsertInto(c.Table).Cols(c.ID, c.Kind, c.Title, c.Owner, c.JiraKey, c.JiraURL, c.HostURL, c.WorkflowID, c.EntryStepID,
+		c.SinceJSON, c.Est, c.Color, c.CreatedAt, c.StatusID, c.StatusBy, c.StatusStep).
+		Values(t.ID, t.Kind, t.Title, t.Owner, t.JiraKey, t.JiraURL, t.HostURL, t.WorkflowID, t.EntryStepID, since, t.Est,
+			t.Color, t.CreatedAt, t.StatusID, t.StatusBy, t.StatusStep)
+	if _, err := sqlb.Exec(tx, ib); err != nil {
 		return model.AdeTask{}, fmt.Errorf("repos: insert ade task %s: %w", t.ID, err)
 	}
 	for _, b := range branches {
-		if err := insertTaskBranch(tx, b); err != nil {
+		if err := insertTaskBranch(tx, d, b); err != nil {
 			return model.AdeTask{}, err
 		}
 	}
 	if note != nil {
-		if err := insertNote(tx, *note); err != nil {
+		if err := insertNote(tx, d, *note); err != nil {
 			return model.AdeTask{}, err
 		}
 	}
-	position := `COALESCE(MAX(position) + 1, 0)`
+	pl := kiraschema.AdeTaskPlan
+	position := "COALESCE(MAX(" + pl.Position + ") + 1, 0)"
 	if top {
-		position = `COALESCE(MIN(position) - 1, 0)`
+		position = "COALESCE(MIN(" + pl.Position + ") - 1, 0)"
 	}
-	if _, err := tx.Exec(`INSERT INTO ade_task_plan (task_id, day, position)
-		SELECT ?, ?, `+position+` FROM ade_task_plan`, t.ID, day); err != nil {
+	sel := d.Select()
+	sel.Select(sel.Var(t.ID), sel.Var(day), position).From(pl.Table)
+	if _, err := sqlb.Exec(tx, sqlb.AdeInsertSelect(d, pl.Table, []string{pl.TaskID, pl.Day, pl.Position}, sel, "")); err != nil {
 		return model.AdeTask{}, fmt.Errorf("repos: insert ade task plan %s: %w", t.ID, err)
 	}
 	return t, nil
@@ -262,12 +322,16 @@ func pickColorSlot(visible map[int]bool, count map[int]int) int {
 	return best
 }
 
-func insertTaskBranch(tx *sql.Tx, b model.AdeTaskBranch) error {
+func insertTaskBranch(tx *sql.Tx, d sqlb.Dialect, b model.AdeTaskBranch) error {
 	if err := b.Validate(); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`INSERT INTO ade_task_branches (`+adeTaskBranchInsertColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`,
-		b.ID, b.TaskID, b.CodeRepoID, b.Name, b.Kind, b.Base, b.BaseBranchID, b.BasePendingFrom, b.QueuedAfter, b.Position, boolInt(b.HadCommits), b.AddedAt, b.Origin); err != nil {
+	c := kiraschema.AdeTaskBranches
+	ib := d.InsertInto(c.Table).Cols(c.ID, c.TaskID, c.CodeRepoID, c.Name, c.Kind, c.Base, c.BaseBranchID, c.BasePendingFrom,
+		c.QueuedAfter, c.Position, c.HadCommits, c.AddedAt, c.Origin).
+		Values(b.ID, b.TaskID, b.CodeRepoID, b.Name, b.Kind, b.Base, b.BaseBranchID, b.BasePendingFrom, b.QueuedAfter,
+			b.Position, boolInt(b.HadCommits), b.AddedAt, b.Origin)
+	if _, err := sqlb.Exec(tx, ib); err != nil {
 		if isUniqueViolation(err) {
 			return ErrBranchOnTask
 		}
@@ -288,7 +352,7 @@ func (r *AdeTaskRepo) CreateTask(t model.AdeTask, branches []model.AdeTaskBranch
 		return model.AdeTask{}, fmt.Errorf("repos: begin create ade task: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	out, err := insertTask(tx, t, branches, day, false, note)
+	out, err := insertTask(tx, r.Dialect, t, branches, day, false, note)
 	if err != nil {
 		return model.AdeTask{}, err
 	}
@@ -306,7 +370,7 @@ func (r *AdeTaskRepo) CaptureTask(t model.AdeTask, day *string) (model.AdeTask, 
 		return model.AdeTask{}, fmt.Errorf("repos: begin capture ade task: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	out, err := insertTask(tx, t, nil, day, true, nil)
+	out, err := insertTask(tx, r.Dialect, t, nil, day, true, nil)
 	if err != nil {
 		return model.AdeTask{}, err
 	}
@@ -324,7 +388,9 @@ func (r *AdeTaskRepo) UpdateTask(id string, p model.AdeTaskPatch) (model.AdeTask
 		return model.AdeTask{}, fmt.Errorf("repos: begin update ade task: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	cur, err := scanAdeTask(tx.QueryRow(`SELECT `+adeTaskColumns+` FROM ade_tasks WHERE id = ?`, id))
+	curQ := r.selectTask()
+	curQ.Where(curQ.Equal(kiraschema.AdeTasks.ID, id))
+	cur, err := scanAdeTask(sqlb.QueryRow(tx, curQ))
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.AdeTask{}, ErrTaskNotFound
 	}
@@ -332,7 +398,7 @@ func (r *AdeTaskRepo) UpdateTask(id string, p model.AdeTaskPatch) (model.AdeTask
 		return model.AdeTask{}, fmt.Errorf("repos: select ade task %s: %w", id, err)
 	}
 	prevKind := cur.Kind
-	if err := checkStatusExists(tx, p.StatusID); err != nil {
+	if err := checkStatusExists(tx, r.Dialect, p.StatusID); err != nil {
 		return model.AdeTask{}, err
 	}
 	if p.Kind != nil && *p.Kind != cur.Kind {
@@ -341,7 +407,7 @@ func (r *AdeTaskRepo) UpdateTask(id string, p model.AdeTaskPatch) (model.AdeTask
 		}
 	}
 	if prevKind == model.AdeTaskKindReview && cur.Kind == model.AdeTaskKindTask {
-		id, err := statusForNew(tx, false)
+		id, err := statusForNew(tx, r.Dialect, false)
 		if err != nil {
 			return model.AdeTask{}, err
 		}
@@ -358,12 +424,17 @@ func (r *AdeTaskRepo) UpdateTask(id string, p model.AdeTaskPatch) (model.AdeTask
 		return model.AdeTask{}, ErrTaskUnnamed
 	}
 	if cur.Kind != prevKind {
-		if err := moveBranchKinds(tx, id, prevKind, cur.Kind); err != nil {
+		if err := moveBranchKinds(tx, r.Dialect, id, prevKind, cur.Kind); err != nil {
 			return model.AdeTask{}, err
 		}
 	}
-	if _, err := tx.Exec(`UPDATE ade_tasks SET kind = ?, owner = ?, title = ?, jira_key = ?, jira_url = ?, host_url = ?, est = ?, color = ?, status_id = ?, status_by = ?, status_step = ? WHERE id = ?`,
-		cur.Kind, cur.Owner, cur.Title, cur.JiraKey, cur.JiraURL, cur.HostURL, cur.Est, cur.Color, cur.StatusID, cur.StatusBy, cur.StatusStep, id); err != nil {
+	c := kiraschema.AdeTasks
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.Kind, cur.Kind), ub.Assign(c.Owner, cur.Owner), ub.Assign(c.Title, cur.Title), ub.Assign(c.JiraKey, cur.JiraKey),
+		ub.Assign(c.JiraURL, cur.JiraURL), ub.Assign(c.HostURL, cur.HostURL), ub.Assign(c.Est, cur.Est), ub.Assign(c.Color, cur.Color),
+		ub.Assign(c.StatusID, cur.StatusID), ub.Assign(c.StatusBy, cur.StatusBy), ub.Assign(c.StatusStep, cur.StatusStep)).
+		Where(ub.Equal(c.ID, id))
+	if _, err := sqlb.Exec(tx, ub); err != nil {
 		return model.AdeTask{}, fmt.Errorf("repos: update ade task %s: %w", id, err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -373,12 +444,13 @@ func (r *AdeTaskRepo) UpdateTask(id string, p model.AdeTaskPatch) (model.AdeTask
 }
 
 // checkStatusExists refuses a status id outside the set; nil passes.
-func checkStatusExists(tx *sql.Tx, statusID *string) error {
+func checkStatusExists(tx *sql.Tx, d sqlb.Dialect, statusID *string) error {
 	if statusID == nil {
 		return nil
 	}
-	var n int
-	if err := tx.QueryRow(`SELECT COUNT(*) FROM ade_task_statuses WHERE id = ?`, *statusID).Scan(&n); err != nil {
+	s := kiraschema.AdeTaskStatuses
+	n, err := adeCount(tx, d, s.Table, func(sb *sqlbuilder.SelectBuilder) []string { return []string{sb.Equal(s.ID, *statusID)} })
+	if err != nil {
 		return fmt.Errorf("repos: check ade task status %s: %w", *statusID, err)
 	}
 	if n == 0 {
@@ -427,7 +499,7 @@ func moveTaskKind(cur *model.AdeTask, to string) error {
 }
 
 // moveBranchKinds flips a task's branches to follow its kind move.
-func moveBranchKinds(tx *sql.Tx, id string, prev, to string) error {
+func moveBranchKinds(tx *sql.Tx, d sqlb.Dialect, id string, prev, to string) error {
 	from, toKind := model.AdeBranchKindMine, model.AdeBranchKindParked
 	if to == model.AdeTaskKindTask {
 		from, toKind = model.AdeBranchKindParked, model.AdeBranchKindMine
@@ -435,7 +507,10 @@ func moveBranchKinds(tx *sql.Tx, id string, prev, to string) error {
 			from = model.AdeBranchKindReview
 		}
 	}
-	if _, err := tx.Exec(`UPDATE ade_task_branches SET kind = ? WHERE task_id = ? AND kind = ?`, toKind, id, from); err != nil {
+	c := kiraschema.AdeTaskBranches
+	ub := d.Update(c.Table)
+	ub.Set(ub.Assign(c.Kind, toKind)).Where(ub.Equal(c.TaskID, id), ub.Equal(c.Kind, from))
+	if _, err := sqlb.Exec(tx, ub); err != nil {
 		return fmt.Errorf("repos: move ade task branches to %s: %w", toKind, err)
 	}
 	return nil
@@ -450,27 +525,33 @@ func (r *AdeTaskRepo) AddBranch(b model.AdeTaskBranch) (model.AdeTaskBranch, err
 		return model.AdeTaskBranch{}, fmt.Errorf("repos: begin add ade task branch: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	var exists int
-	if err := tx.QueryRow(`SELECT COUNT(*) FROM ade_tasks WHERE id = ? AND archived_at IS NULL`, b.TaskID).Scan(&exists); err != nil {
+	tk, bc := kiraschema.AdeTasks, kiraschema.AdeTaskBranches
+	exists, err := adeCount(tx, r.Dialect, tk.Table, func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(tk.ID, b.TaskID), sb.IsNull(tk.ArchivedAt)}
+	})
+	if err != nil {
 		return model.AdeTaskBranch{}, fmt.Errorf("repos: check ade task %s: %w", b.TaskID, err)
 	}
 	if exists == 0 {
 		return model.AdeTaskBranch{}, ErrTaskNotFound
 	}
 	if b.Name == "" {
-		var drafts int
-		if err := tx.QueryRow(`SELECT COUNT(*) FROM ade_task_branches WHERE task_id = ? AND code_repo_id = ? AND name = '' AND archived_at IS NULL`,
-			b.TaskID, b.CodeRepoID).Scan(&drafts); err != nil {
+		drafts, err := adeCount(tx, r.Dialect, bc.Table, func(sb *sqlbuilder.SelectBuilder) []string {
+			return []string{sb.Equal(bc.TaskID, b.TaskID), sb.Equal(bc.CodeRepoID, b.CodeRepoID), sb.Equal(bc.Name, ""), sb.IsNull(bc.ArchivedAt)}
+		})
+		if err != nil {
 			return model.AdeTaskBranch{}, fmt.Errorf("repos: check ade task repo drafts: %w", err)
 		}
 		if drafts > 0 {
 			return model.AdeTaskBranch{}, ErrDraftInRepo
 		}
 	}
-	if err := tx.QueryRow(`SELECT COALESCE(MAX(position) + 1, 0) FROM ade_task_branches WHERE task_id = ?`, b.TaskID).Scan(&b.Position); err != nil {
+	next := r.Dialect.Select("COALESCE(MAX(" + bc.Position + ") + 1, 0)").From(bc.Table)
+	next.Where(next.Equal(bc.TaskID, b.TaskID))
+	if err := sqlb.QueryRow(tx, next).Scan(&b.Position); err != nil {
 		return model.AdeTaskBranch{}, fmt.Errorf("repos: next ade branch position: %w", err)
 	}
-	if err := insertTaskBranch(tx, b); err != nil {
+	if err := insertTaskBranch(tx, r.Dialect, b); err != nil {
 		return model.AdeTaskBranch{}, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -491,22 +572,30 @@ func (r *AdeTaskRepo) DetachBranch(id string, replacement *model.AdeTaskBranch, 
 		return fmt.Errorf("repos: begin detach ade branch %s: %w", id, err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	old, err := scanAdeTaskBranch(tx.QueryRow(`SELECT `+adeTaskBranchColumns+` FROM ade_task_branches
-		WHERE id = ? AND archived_at IS NULL AND task_id IN (SELECT id FROM ade_tasks WHERE archived_at IS NULL)`, id))
+	bc := kiraschema.AdeTaskBranches
+	oldQ := r.Dialect.Select(adeTaskBranchColumns...).From(bc.Table)
+	oldQ.Where(oldQ.Equal(bc.ID, id), oldQ.IsNull(bc.ArchivedAt), oldQ.In(bc.TaskID, adeLiveTaskIDs(r.Dialect)))
+	old, err := scanAdeTaskBranch(sqlb.QueryRow(tx, oldQ))
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrBranchMissing
 	}
 	if err != nil {
 		return fmt.Errorf("repos: load ade branch %s: %w", id, err)
 	}
-	var runs int
-	if err := tx.QueryRow(`SELECT COUNT(*) FROM ade_runs WHERE branch_id = ?`, id).Scan(&runs); err != nil {
+	runs, err := adeCount(tx, r.Dialect, kiraschema.AdeRuns.Table, func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(kiraschema.AdeRuns.BranchID, id)}
+	})
+	if err != nil {
 		return fmt.Errorf("repos: count ade runs of branch %s: %w", id, err)
 	}
 	if old.Name == "" && runs == 0 {
-		_, err = tx.Exec(`DELETE FROM ade_task_branches WHERE id = ?`, id)
+		del := r.Dialect.DeleteFrom(bc.Table)
+		del.Where(del.Equal(bc.ID, id))
+		_, err = sqlb.Exec(tx, del)
 	} else {
-		_, err = tx.Exec(`UPDATE ade_task_branches SET archived_at = ? WHERE id = ?`, now, id)
+		ub := r.Dialect.Update(bc.Table)
+		ub.Set(ub.Assign(bc.ArchivedAt, now)).Where(ub.Equal(bc.ID, id))
+		_, err = sqlb.Exec(tx, ub)
 	}
 	if err != nil {
 		return fmt.Errorf("repos: detach ade branch %s: %w", id, err)
@@ -514,25 +603,33 @@ func (r *AdeTaskRepo) DetachBranch(id string, replacement *model.AdeTaskBranch, 
 	fill := replacement != nil && old.Name == "" && replacement.CodeRepoID == old.CodeRepoID
 	if replacement != nil {
 		replacement.Position = old.Position
-		if err := insertTaskBranch(tx, *replacement); err != nil {
+		if err := insertTaskBranch(tx, r.Dialect, *replacement); err != nil {
 			return err
 		}
 	}
 	if fill {
 		// The replacement fills the same not-created row, so what depended on the row keeps depending on it.
-		if _, err := tx.Exec(`UPDATE ade_task_branches SET base_branch_id = ? WHERE base_branch_id = ? AND archived_at IS NULL`, replacement.ID, id); err != nil {
+		stackedUp := r.Dialect.Update(bc.Table)
+		stackedUp.Set(stackedUp.Assign(bc.BaseBranchID, replacement.ID)).Where(stackedUp.Equal(bc.BaseBranchID, id), stackedUp.IsNull(bc.ArchivedAt))
+		if _, err := sqlb.Exec(tx, stackedUp); err != nil {
 			return fmt.Errorf("repos: repoint ade branches stacked on %s: %w", id, err)
 		}
-		if _, err := tx.Exec(`UPDATE ade_task_branches SET queued_after = ? WHERE queued_after = ?`, replacement.ID, id); err != nil {
+		queuedUp := r.Dialect.Update(bc.Table)
+		queuedUp.Set(queuedUp.Assign(bc.QueuedAfter, replacement.ID)).Where(queuedUp.Equal(bc.QueuedAfter, id))
+		if _, err := sqlb.Exec(tx, queuedUp); err != nil {
 			return fmt.Errorf("repos: repoint ade branches queued after %s: %w", id, err)
 		}
 	} else {
 		newBase := cmp.Or(old.Name, old.Base)
-		if _, err := tx.Exec(`UPDATE ade_task_branches SET base_branch_id = '', base = ?, base_pending_from = ''
-			WHERE base_branch_id = ? AND archived_at IS NULL`, newBase, id); err != nil {
+		stackedUp := r.Dialect.Update(bc.Table)
+		stackedUp.Set(stackedUp.Assign(bc.BaseBranchID, ""), stackedUp.Assign(bc.Base, newBase), stackedUp.Assign(bc.BasePendingFrom, "")).
+			Where(stackedUp.Equal(bc.BaseBranchID, id), stackedUp.IsNull(bc.ArchivedAt))
+		if _, err := sqlb.Exec(tx, stackedUp); err != nil {
 			return fmt.Errorf("repos: free ade branches stacked on %s: %w", id, err)
 		}
-		if _, err := tx.Exec(`UPDATE ade_task_branches SET queued_after = '' WHERE queued_after = ?`, id); err != nil {
+		queuedUp := r.Dialect.Update(bc.Table)
+		queuedUp.Set(queuedUp.Assign(bc.QueuedAfter, "")).Where(queuedUp.Equal(bc.QueuedAfter, id))
+		if _, err := sqlb.Exec(tx, queuedUp); err != nil {
 			return fmt.Errorf("repos: free ade branches queued after %s: %w", id, err)
 		}
 	}
@@ -542,10 +639,12 @@ func (r *AdeTaskRepo) DetachBranch(id string, replacement *model.AdeTaskBranch, 
 	return nil
 }
 
-func (r *AdeTaskRepo) queryBranches(where string, args ...any) ([]model.AdeTaskBranch, error) {
-	rows, err := r.DB.Query(`SELECT b.id, b.task_id, b.code_repo_id, b.name, b.kind, b.base, b.base_branch_id, b.base_pending_from, b.queued_after, b.position,
-		b.had_commits, b.added_at, b.merged_at, b.archived_at, b.origin, b.cr_number, b.cr_title, b.cr_state, b.cr_url, b.review_comments, b.worktree_dir
-		FROM ade_task_branches b JOIN ade_tasks t ON t.id = b.task_id WHERE `+where+` ORDER BY b.task_id, b.position, b.id`, args...)
+func (r *AdeTaskRepo) queryBranches(where func(sb *sqlbuilder.SelectBuilder) []string) ([]model.AdeTaskBranch, error) {
+	b, t := kiraschema.AdeTaskBranches, kiraschema.AdeTasks
+	sb := r.Dialect.Select(adeQual("b", adeTaskBranchColumns)...).From(b.Table + " b")
+	sb.Join(t.Table+" t", "t."+t.ID+" = b."+b.TaskID)
+	sb.Where(where(sb)...).OrderBy("b."+b.TaskID, "b."+b.Position, "b."+b.ID)
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade task branches: %w", err)
 	}
@@ -566,22 +665,30 @@ func (r *AdeTaskRepo) queryBranches(where string, args ...any) ([]model.AdeTaskB
 
 // BranchesLive returns the non-archived branches of live tasks.
 func (r *AdeTaskRepo) BranchesLive() ([]model.AdeTaskBranch, error) {
-	return r.queryBranches(`t.archived_at IS NULL AND b.archived_at IS NULL`)
+	return r.queryBranches(func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.IsNull("t." + kiraschema.AdeTasks.ArchivedAt), sb.IsNull("b." + kiraschema.AdeTaskBranches.ArchivedAt)}
+	})
 }
 
 // BranchesArchived returns the branches of archived tasks (history).
 func (r *AdeTaskRepo) BranchesArchived() ([]model.AdeTaskBranch, error) {
-	return r.queryBranches(`t.archived_at IS NOT NULL`)
+	return r.queryBranches(func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.IsNotNull("t." + kiraschema.AdeTasks.ArchivedAt)}
+	})
 }
 
 // BranchesOfTask returns every branch row of one task, archived or not, in position order.
 func (r *AdeTaskRepo) BranchesOfTask(taskID string) ([]model.AdeTaskBranch, error) {
-	return r.queryBranches(`b.task_id = ?`, taskID)
+	return r.queryBranches(func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal("b."+kiraschema.AdeTaskBranches.TaskID, taskID)}
+	})
 }
 
 // GetBranch returns one branch by id; ErrBranchMissing if absent.
 func (r *AdeTaskRepo) GetBranch(id string) (model.AdeTaskBranch, error) {
-	b, err := scanAdeTaskBranch(r.DB.QueryRow(`SELECT `+adeTaskBranchColumns+` FROM ade_task_branches WHERE id = ?`, id))
+	sb := r.Dialect.Select(adeTaskBranchColumns...).From(kiraschema.AdeTaskBranches.Table)
+	sb.Where(sb.Equal(kiraschema.AdeTaskBranches.ID, id))
+	b, err := scanAdeTaskBranch(sqlb.QueryRow(r.DB, sb))
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.AdeTaskBranch{}, ErrBranchMissing
 	}
@@ -593,7 +700,9 @@ func (r *AdeTaskRepo) GetBranch(id string) (model.AdeTaskBranch, error) {
 
 // PlanRows returns every plan row in position order.
 func (r *AdeTaskRepo) PlanRows() ([]model.AdeTaskPlanRow, error) {
-	rows, err := r.DB.Query(`SELECT task_id, day, position, backlog FROM ade_task_plan ORDER BY position, task_id`)
+	pl := kiraschema.AdeTaskPlan
+	sb := r.Dialect.Select(pl.TaskID, pl.Day, pl.Position, pl.Backlog).From(pl.Table).OrderBy(pl.Position, pl.TaskID)
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade task plan: %w", err)
 	}
@@ -625,7 +734,8 @@ func (r *AdeTaskRepo) SetPlan(order []string, days map[string]*string) error {
 		return fmt.Errorf("repos: begin set ade task plan: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	rows, err := tx.Query(`SELECT task_id FROM ade_task_plan ORDER BY position, task_id`)
+	pl := kiraschema.AdeTaskPlan
+	rows, err := sqlb.Query(tx, r.Dialect.Select(pl.TaskID).From(pl.Table).OrderBy(pl.Position, pl.TaskID))
 	if err != nil {
 		return fmt.Errorf("repos: query ade task plan: %w", err)
 	}
@@ -650,7 +760,9 @@ func (r *AdeTaskRepo) SetPlan(order []string, days map[string]*string) error {
 	}
 	rows.Close()
 	for i, id := range final {
-		res, err := tx.Exec(`UPDATE ade_task_plan SET position = ? WHERE task_id = ?`, i, id)
+		ub := r.Dialect.Update(pl.Table)
+		ub.Set(ub.Assign(pl.Position, i)).Where(ub.Equal(pl.TaskID, id))
+		res, err := sqlb.Exec(tx, ub)
 		if err != nil {
 			return fmt.Errorf("repos: set ade task plan position %s: %w", id, err)
 		}
@@ -659,7 +771,9 @@ func (r *AdeTaskRepo) SetPlan(order []string, days map[string]*string) error {
 		}
 	}
 	for id, day := range days {
-		res, err := tx.Exec(`UPDATE ade_task_plan SET day = ?, backlog = 0 WHERE task_id = ?`, day, id)
+		ub := r.Dialect.Update(pl.Table)
+		ub.Set(ub.Assign(pl.Day, day), ub.Assign(pl.Backlog, 0)).Where(ub.Equal(pl.TaskID, id))
+		res, err := sqlb.Exec(tx, ub)
 		if err != nil {
 			return fmt.Errorf("repos: set ade task plan day %s: %w", id, err)
 		}
@@ -684,20 +798,28 @@ func (r *AdeTaskRepo) Shelve(taskID string, backlog bool, beforeID string) error
 	}
 	defer tx.Rollback() //nolint:errcheck
 	var live bool
-	err = tx.QueryRow(`SELECT archived_at IS NULL FROM ade_tasks WHERE id = ?`, taskID).Scan(&live)
+	tk, pl := kiraschema.AdeTasks, kiraschema.AdeTaskPlan
+	liveQ := r.Dialect.Select(tk.ArchivedAt + " IS NULL").From(tk.Table)
+	liveQ.Where(liveQ.Equal(tk.ID, taskID))
+	err = sqlb.QueryRow(tx, liveQ).Scan(&live)
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && !live) {
 		return ErrTaskNotFound
 	}
 	if err != nil {
 		return fmt.Errorf("repos: load ade task %s: %w", taskID, err)
 	}
-	if _, err := tx.Exec(`INSERT INTO ade_task_plan (task_id, day, position, backlog)
-		SELECT ?, NULL, COALESCE(MAX(position) + 1, 0), ? FROM ade_task_plan WHERE true
-		ON CONFLICT (task_id) DO UPDATE SET day = NULL, backlog = excluded.backlog`, taskID, boolInt(backlog)); err != nil {
+	sel := r.Dialect.Select()
+	sel.Select(sel.Var(taskID), "NULL", "COALESCE(MAX("+pl.Position+") + 1, 0)", sel.Var(boolInt(backlog))).From(pl.Table).Where("true")
+	shelve := sqlb.AdeInsertSelect(r.Dialect, pl.Table, []string{pl.TaskID, pl.Day, pl.Position, pl.Backlog}, sel,
+		"ON CONFLICT ("+pl.TaskID+") DO UPDATE SET "+pl.Day+" = NULL, "+pl.Backlog+" = excluded."+pl.Backlog)
+	if _, err := sqlb.Exec(tx, shelve); err != nil {
 		return fmt.Errorf("repos: upsert ade task plan %s: %w", taskID, err)
 	}
-	rows, err := tx.Query(`SELECT p.task_id, p.day IS NULL AND p.backlog = ? AND (? = 1 OR t.kind <> 'review')
-		FROM ade_task_plan p JOIN ade_tasks t ON t.id = p.task_id ORDER BY p.position, p.task_id`, boolInt(backlog), boolInt(backlog))
+	members := r.Dialect.Select()
+	members.Select("p."+pl.TaskID, "p."+pl.Day+" IS NULL AND p."+pl.Backlog+" = "+members.Var(boolInt(backlog))+
+		" AND ("+members.Var(boolInt(backlog))+" = 1 OR t."+tk.Kind+" <> "+members.Var(model.AdeTaskKindReview)+")").
+		From(pl.Table+" p").Join(tk.Table+" t", "t."+tk.ID+" = p."+pl.TaskID).OrderBy("p."+pl.Position, "p."+pl.TaskID)
+	rows, err := sqlb.Query(tx, members)
 	if err != nil {
 		return fmt.Errorf("repos: query ade task plan: %w", err)
 	}
@@ -736,7 +858,9 @@ func (r *AdeTaskRepo) Shelve(taskID string, backlog bool, beforeID string) error
 	}
 	ids = slices.Insert(ids, at, taskID)
 	for i, id := range ids {
-		if _, err := tx.Exec(`UPDATE ade_task_plan SET position = ? WHERE task_id = ?`, i, id); err != nil {
+		ub := r.Dialect.Update(pl.Table)
+		ub.Set(ub.Assign(pl.Position, i)).Where(ub.Equal(pl.TaskID, id))
+		if _, err := sqlb.Exec(tx, ub); err != nil {
 			return fmt.Errorf("repos: set ade task plan position %s: %w", id, err)
 		}
 	}
@@ -748,7 +872,10 @@ func (r *AdeTaskRepo) Shelve(taskID string, backlog bool, beforeID string) error
 
 // SetQueuedAfter sets one branch's queued-after branch id ("" clears it).
 func (r *AdeTaskRepo) SetQueuedAfter(branchID, after string) error {
-	res, err := r.DB.Exec(`UPDATE ade_task_branches SET queued_after = ? WHERE id = ?`, after, branchID)
+	bc := kiraschema.AdeTaskBranches
+	ub := r.Dialect.Update(bc.Table)
+	ub.Set(ub.Assign(bc.QueuedAfter, after)).Where(ub.Equal(bc.ID, branchID))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return fmt.Errorf("repos: set ade queued after %s: %w", branchID, err)
 	}
@@ -765,8 +892,11 @@ func (r *AdeTaskRepo) SetQueuedAfter(branchID, after string) error {
 // SetBranchBase stores a branch's base: the ref name, the planner branch it stacks on ("" = none) and
 // the previous base's display name while a rebase onto the new one is pending ("" = none).
 func (r *AdeTaskRepo) SetBranchBase(id, base, baseBranchID, pendingFrom string) error {
-	res, err := r.DB.Exec(`UPDATE ade_task_branches SET base = ?, base_branch_id = ?, base_pending_from = ? WHERE id = ?`,
-		base, baseBranchID, pendingFrom, id)
+	bc := kiraschema.AdeTaskBranches
+	ub := r.Dialect.Update(bc.Table)
+	ub.Set(ub.Assign(bc.Base, base), ub.Assign(bc.BaseBranchID, baseBranchID), ub.Assign(bc.BasePendingFrom, pendingFrom)).
+		Where(ub.Equal(bc.ID, id))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return fmt.Errorf("repos: set ade branch base %s: %w", id, err)
 	}
@@ -782,8 +912,11 @@ func (r *AdeTaskRepo) SetBranchBase(id, base, baseBranchID, pendingFrom string) 
 
 // ClearBasePending drops the pending-rebase mark of the given branches.
 func (r *AdeTaskRepo) ClearBasePending(ids []string) error {
+	bc := kiraschema.AdeTaskBranches
 	for _, id := range ids {
-		if _, err := r.DB.Exec(`UPDATE ade_task_branches SET base_pending_from = '' WHERE id = ?`, id); err != nil {
+		ub := r.Dialect.Update(bc.Table)
+		ub.Set(ub.Assign(bc.BasePendingFrom, "")).Where(ub.Equal(bc.ID, id))
+		if _, err := sqlb.Exec(r.DB, ub); err != nil {
 			return fmt.Errorf("repos: clear ade base pending %s: %w", id, err)
 		}
 	}
@@ -800,13 +933,18 @@ func (r *AdeTaskRepo) MarkBranchFacts(hadCommits []string, merged map[string]int
 		return fmt.Errorf("repos: begin mark ade branch facts: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+	bc := kiraschema.AdeTaskBranches
 	for _, id := range hadCommits {
-		if _, err := tx.Exec(`UPDATE ade_task_branches SET had_commits = 1 WHERE id = ? AND had_commits = 0`, id); err != nil {
+		ub := r.Dialect.Update(bc.Table)
+		ub.Set(ub.Assign(bc.HadCommits, 1)).Where(ub.Equal(bc.ID, id), ub.Equal(bc.HadCommits, 0))
+		if _, err := sqlb.Exec(tx, ub); err != nil {
 			return fmt.Errorf("repos: mark ade branch had commits %s: %w", id, err)
 		}
 	}
 	for id, at := range merged {
-		if _, err := tx.Exec(`UPDATE ade_task_branches SET merged_at = ? WHERE id = ? AND merged_at IS NULL`, at, id); err != nil {
+		ub := r.Dialect.Update(bc.Table)
+		ub.Set(ub.Assign(bc.MergedAt, at)).Where(ub.Equal(bc.ID, id), ub.IsNull(bc.MergedAt))
+		if _, err := sqlb.Exec(tx, ub); err != nil {
 			return fmt.Errorf("repos: mark ade branch merged %s: %w", id, err)
 		}
 	}
@@ -818,17 +956,24 @@ func (r *AdeTaskRepo) MarkBranchFacts(hadCommits []string, merged map[string]int
 
 // RunsByLiveTask returns the runs of live (unarchived) tasks grouped by task id, oldest first.
 func (r *AdeTaskRepo) RunsByLiveTask() (map[string][]model.AdeRun, error) {
-	return r.queryRunsByTask(` WHERE task_id IN (SELECT id FROM ade_tasks WHERE archived_at IS NULL)`)
+	return r.queryRunsByTask(func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.In(kiraschema.AdeRuns.TaskID, adeLiveTaskIDs(r.Dialect))}
+	})
 }
 
 // RunsOfTask returns one task's runs, oldest first.
 func (r *AdeTaskRepo) RunsOfTask(taskID string) ([]model.AdeRun, error) {
-	by, err := r.queryRunsByTask(` WHERE task_id = ?`, taskID)
+	by, err := r.queryRunsByTask(func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(kiraschema.AdeRuns.TaskID, taskID)}
+	})
 	return by[taskID], err
 }
 
-func (r *AdeTaskRepo) queryRunsByTask(where string, args ...any) (map[string][]model.AdeRun, error) {
-	rows, err := r.DB.Query(`SELECT `+adeRunColumns+` FROM ade_runs`+where+` ORDER BY COALESCE(started_at, 0), id`, args...)
+func (r *AdeTaskRepo) queryRunsByTask(where func(sb *sqlbuilder.SelectBuilder) []string) (map[string][]model.AdeRun, error) {
+	c := kiraschema.AdeRuns
+	sb := r.selectRuns()
+	sb.Where(where(sb)...).OrderBy("COALESCE("+c.StartedAt+", 0)", c.ID)
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade runs: %w", err)
 	}
@@ -849,7 +994,7 @@ func (r *AdeTaskRepo) queryRunsByTask(where string, args ...any) (map[string][]m
 
 // SetupByBranch returns every worktree-setup row keyed by branch id.
 func (r *AdeTaskRepo) SetupByBranch() (map[string]model.AdeWorktreeSetup, error) {
-	rows, err := r.DB.Query(`SELECT branch_id, state, started_at, finished_at, exit_code, note FROM ade_worktree_setup`)
+	rows, err := sqlb.Query(r.DB, r.selectSetup())
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade worktree setup: %w", err)
 	}
@@ -870,49 +1015,13 @@ func (r *AdeTaskRepo) SetupByBranch() (map[string]model.AdeWorktreeSetup, error)
 	return out, nil
 }
 
-// LastValid returns the last valid workflow JSON recorded per file name.
-func (r *AdeTaskRepo) LastValid() (map[string]string, error) {
-	rows, err := r.DB.Query(`SELECT file_name, workflow_json FROM ade_workflow_last_valid`)
-	if err != nil {
-		return nil, fmt.Errorf("repos: query ade workflow last valid: %w", err)
-	}
-	defer rows.Close()
-	out := make(map[string]string)
-	for rows.Next() {
-		var file, js string
-		if err := rows.Scan(&file, &js); err != nil {
-			return nil, fmt.Errorf("repos: scan ade workflow last valid: %w", err)
-		}
-		out[file] = js
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("repos: ade workflow last valid rows: %w", err)
-	}
-	return out, nil
-}
-
-// RecordLastValid upserts the last valid workflow JSON for a file.
-func (r *AdeTaskRepo) RecordLastValid(file, workflowJSON string, now int64) error {
-	if _, err := r.DB.Exec(`INSERT INTO ade_workflow_last_valid (file_name, workflow_json, recorded_at) VALUES (?, ?, ?)
-		ON CONFLICT(file_name) DO UPDATE SET workflow_json = excluded.workflow_json, recorded_at = excluded.recorded_at`,
-		file, workflowJSON, now); err != nil {
-		return fmt.Errorf("repos: record ade workflow last valid %s: %w", file, err)
-	}
-	return nil
-}
-
-// ForgetLastValid drops the last valid workflow row of a file that no longer exists.
-func (r *AdeTaskRepo) ForgetLastValid(file string) error {
-	if _, err := r.DB.Exec(`DELETE FROM ade_workflow_last_valid WHERE file_name = ?`, file); err != nil {
-		return fmt.Errorf("repos: forget ade workflow last valid %s: %w", file, err)
-	}
-	return nil
-}
-
 // SetBranchName records the created branch name; ErrBranchNameTaken when a live branch of the repo
 // already holds it, ErrBranchMissing when the branch is gone.
 func (r *AdeTaskRepo) SetBranchName(id, name string) error {
-	res, err := r.DB.Exec(`UPDATE ade_task_branches SET name = ? WHERE id = ?`, name, id)
+	bc := kiraschema.AdeTaskBranches
+	ub := r.Dialect.Update(bc.Table)
+	ub.Set(ub.Assign(bc.Name, name)).Where(ub.Equal(bc.ID, id))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return ErrBranchNameTaken
@@ -938,20 +1047,30 @@ func (r *AdeTaskRepo) RenameBranch(id, from, to string) ([]string, error) {
 	}
 	defer tx.Rollback() //nolint:errcheck
 	var repoID string
-	if err := tx.QueryRow(`SELECT code_repo_id FROM ade_task_branches WHERE id = ? AND name = ?`, id, from).Scan(&repoID); err != nil {
+	bc := kiraschema.AdeTaskBranches
+	repoQ := r.Dialect.Select(bc.CodeRepoID).From(bc.Table)
+	repoQ.Where(repoQ.Equal(bc.ID, id), repoQ.Equal(bc.Name, from))
+	if err := sqlb.QueryRow(tx, repoQ).Scan(&repoID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrBranchMissing
 		}
 		return nil, fmt.Errorf("repos: rename ade branch %s: %w", id, err)
 	}
-	if _, err := tx.Exec(`UPDATE ade_task_branches SET name = ? WHERE id = ?`, to, id); err != nil {
+	nameUp := r.Dialect.Update(bc.Table)
+	nameUp.Set(nameUp.Assign(bc.Name, to)).Where(nameUp.Equal(bc.ID, id))
+	if _, err := sqlb.Exec(tx, nameUp); err != nil {
 		if isUniqueViolation(err) {
 			return nil, ErrBranchNameTaken
 		}
 		return nil, fmt.Errorf("repos: rename ade branch %s: %w", id, err)
 	}
-	rows, err := tx.Query(`SELECT id FROM ade_task_branches WHERE id <> ? AND code_repo_id = ? AND (base_branch_id = ? OR (base_branch_id = '' AND base = ?))`,
-		id, repoID, id, from)
+	stackedCond := func(c *sqlbuilder.Cond) []string {
+		return []string{c.NotEqual(bc.ID, id), c.Equal(bc.CodeRepoID, repoID),
+			c.Or(c.Equal(bc.BaseBranchID, id), c.And(c.Equal(bc.BaseBranchID, ""), c.Equal(bc.Base, from)))}
+	}
+	stackedQ := r.Dialect.Select(bc.ID).From(bc.Table)
+	stackedQ.Where(stackedCond(&stackedQ.Cond)...)
+	rows, err := sqlb.Query(tx, stackedQ)
 	if err != nil {
 		return nil, fmt.Errorf("repos: rename ade branch %s stacked: %w", id, err)
 	}
@@ -970,11 +1089,14 @@ func (r *AdeTaskRepo) RenameBranch(id, from, to string) ([]string, error) {
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("repos: rename ade branch %s stacked: %w", id, err)
 	}
-	if _, err := tx.Exec(`UPDATE ade_task_branches SET base = ? WHERE id <> ? AND code_repo_id = ? AND (base_branch_id = ? OR (base_branch_id = '' AND base = ?))`,
-		to, id, repoID, id, from); err != nil {
+	baseUp := r.Dialect.Update(bc.Table)
+	baseUp.Set(baseUp.Assign(bc.Base, to)).Where(stackedCond(&baseUp.Cond)...)
+	if _, err := sqlb.Exec(tx, baseUp); err != nil {
 		return nil, fmt.Errorf("repos: rename ade branch %s bases: %w", id, err)
 	}
-	if _, err := tx.Exec(`UPDATE ade_task_branches SET base_pending_from = ? WHERE code_repo_id = ? AND base_pending_from = ?`, to, repoID, from); err != nil {
+	pendUp := r.Dialect.Update(bc.Table)
+	pendUp.Set(pendUp.Assign(bc.BasePendingFrom, to)).Where(pendUp.Equal(bc.CodeRepoID, repoID), pendUp.Equal(bc.BasePendingFrom, from))
+	if _, err := sqlb.Exec(tx, pendUp); err != nil {
 		return nil, fmt.Errorf("repos: rename ade branch %s pending: %w", id, err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -985,7 +1107,10 @@ func (r *AdeTaskRepo) RenameBranch(id, from, to string) ([]string, error) {
 
 // SetBranchOrigin marks who made the branch row ("" user, "agent").
 func (r *AdeTaskRepo) SetBranchOrigin(id, origin string) error {
-	res, err := r.DB.Exec(`UPDATE ade_task_branches SET origin = ? WHERE id = ?`, origin, id)
+	bc := kiraschema.AdeTaskBranches
+	ub := r.Dialect.Update(bc.Table)
+	ub.Set(ub.Assign(bc.Origin, origin)).Where(ub.Equal(bc.ID, id))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return fmt.Errorf("repos: set ade branch origin %s: %w", id, err)
 	}
@@ -1002,11 +1127,16 @@ func (r *AdeTaskRepo) SetBranchOrigin(id, origin string) error {
 // ReserveWorktreeDir stores dir as the row's worktree folder when it has none and returns the stored
 // value, so the first writer wins.
 func (r *AdeTaskRepo) ReserveWorktreeDir(branchID, dir string) (string, error) {
-	if _, err := r.DB.Exec(`UPDATE ade_task_branches SET worktree_dir = ? WHERE id = ? AND worktree_dir = ''`, dir, branchID); err != nil {
+	bc := kiraschema.AdeTaskBranches
+	ub := r.Dialect.Update(bc.Table)
+	ub.Set(ub.Assign(bc.WorktreeDir, dir)).Where(ub.Equal(bc.ID, branchID), ub.Equal(bc.WorktreeDir, ""))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return "", fmt.Errorf("repos: reserve ade worktree dir %s: %w", branchID, err)
 	}
 	var stored string
-	err := r.DB.QueryRow(`SELECT worktree_dir FROM ade_task_branches WHERE id = ?`, branchID).Scan(&stored)
+	sb := r.Dialect.Select(bc.WorktreeDir).From(bc.Table)
+	sb.Where(sb.Equal(bc.ID, branchID))
+	err := sqlb.QueryRow(r.DB, sb).Scan(&stored)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrBranchMissing
 	}
@@ -1018,7 +1148,10 @@ func (r *AdeTaskRepo) ReserveWorktreeDir(branchID, dir string) (string, error) {
 
 // ReplaceWorktreeDir swaps the row's worktree folder from old to next; a no-op when it changed meanwhile.
 func (r *AdeTaskRepo) ReplaceWorktreeDir(branchID, old, next string) error {
-	if _, err := r.DB.Exec(`UPDATE ade_task_branches SET worktree_dir = ? WHERE id = ? AND worktree_dir = ?`, next, branchID, old); err != nil {
+	bc := kiraschema.AdeTaskBranches
+	ub := r.Dialect.Update(bc.Table)
+	ub.Set(ub.Assign(bc.WorktreeDir, next)).Where(ub.Equal(bc.ID, branchID), ub.Equal(bc.WorktreeDir, old))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos: replace ade worktree dir %s: %w", branchID, err)
 	}
 	return nil
@@ -1034,15 +1167,17 @@ func (r *AdeTaskRepo) SetEntryStep(taskID, stepID string, since map[string]int, 
 	}
 	defer tx.Rollback() //nolint:errcheck
 	var res sql.Result
-	if since == nil {
-		res, err = tx.Exec(`UPDATE ade_tasks SET entry_step_id = ? WHERE id = ?`, stepID, taskID)
-	} else {
+	tk := kiraschema.AdeTasks
+	ub := r.Dialect.Update(tk.Table)
+	ub.Set(ub.Assign(tk.EntryStepID, stepID)).Where(ub.Equal(tk.ID, taskID))
+	if since != nil {
 		var js []byte
 		if js, err = json.Marshal(since); err != nil {
 			return fmt.Errorf("repos: encode ade task since %s: %w", taskID, err)
 		}
-		res, err = tx.Exec(`UPDATE ade_tasks SET entry_step_id = ?, since_json = ? WHERE id = ?`, stepID, string(js), taskID)
+		ub.SetMore(ub.Assign(tk.SinceJSON, string(js)))
 	}
+	res, err = sqlb.Exec(tx, ub)
 	if err != nil {
 		return fmt.Errorf("repos: set ade task entry step %s: %w", taskID, err)
 	}
@@ -1050,7 +1185,7 @@ func (r *AdeTaskRepo) SetEntryStep(taskID, stepID string, since map[string]int, 
 		return err
 	}
 	if handoff != nil {
-		if err := applyHandoff(tx, taskID, *handoff); err != nil {
+		if err := applyHandoff(tx, r.Dialect, taskID, *handoff); err != nil {
 			return err
 		}
 	}
@@ -1065,18 +1200,31 @@ func (r *AdeTaskRepo) ResetWorkflow(taskID, workflowID, entryStepID string) erro
 		return fmt.Errorf("repos: begin reset ade task workflow %s: %w", taskID, err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	const runIDs = `SELECT id FROM ade_runs WHERE task_id = ?`
-	if _, err := tx.Exec(`DELETE FROM ade_log_chunks WHERE kind = 'run' AND id IN (`+runIDs+`)`, taskID); err != nil {
+	runs, chunks, logs, tk := kiraschema.AdeRuns, kiraschema.AdeLogChunks, kiraschema.AdeLogs, kiraschema.AdeTasks
+	runIDs := func() *sqlbuilder.SelectBuilder {
+		sb := r.Dialect.Select(runs.ID).From(runs.Table)
+		sb.Where(sb.Equal(runs.TaskID, taskID))
+		return sb
+	}
+	delChunks := r.Dialect.DeleteFrom(chunks.Table)
+	delChunks.Where(delChunks.Equal(chunks.Kind, "run"), delChunks.In(chunks.ID, runIDs()))
+	if _, err := sqlb.Exec(tx, delChunks); err != nil {
 		return fmt.Errorf("repos: delete ade run log chunks %s: %w", taskID, err)
 	}
-	if _, err := tx.Exec(`DELETE FROM ade_logs WHERE kind = 'run' AND id IN (`+runIDs+`)`, taskID); err != nil {
+	delLogs := r.Dialect.DeleteFrom(logs.Table)
+	delLogs.Where(delLogs.Equal(logs.Kind, "run"), delLogs.In(logs.ID, runIDs()))
+	if _, err := sqlb.Exec(tx, delLogs); err != nil {
 		return fmt.Errorf("repos: delete ade run logs %s: %w", taskID, err)
 	}
-	if _, err := tx.Exec(`DELETE FROM ade_runs WHERE task_id = ?`, taskID); err != nil {
+	delRuns := r.Dialect.DeleteFrom(runs.Table)
+	delRuns.Where(delRuns.Equal(runs.TaskID, taskID))
+	if _, err := sqlb.Exec(tx, delRuns); err != nil {
 		return fmt.Errorf("repos: delete ade runs %s: %w", taskID, err)
 	}
-	res, err := tx.Exec(`UPDATE ade_tasks SET workflow_id = ?, entry_step_id = ?, since_json = NULL, workflow_json = NULL, workflow_hash = '' WHERE id = ?`,
-		workflowID, entryStepID, taskID)
+	reset := r.Dialect.Update(tk.Table)
+	reset.Set(reset.Assign(tk.WorkflowID, workflowID), reset.Assign(tk.EntryStepID, entryStepID), reset.Assign(tk.SinceJSON, nil),
+		reset.Assign(tk.WorkflowJSON, nil), reset.Assign(tk.WorkflowHash, "")).Where(reset.Equal(tk.ID, taskID))
+	res, err := sqlb.Exec(tx, reset)
 	if err != nil {
 		return fmt.Errorf("repos: reset ade task workflow %s: %w", taskID, err)
 	}
@@ -1091,8 +1239,11 @@ func (r *AdeTaskRepo) ResetWorkflow(taskID, workflowID, entryStepID string) erro
 
 // SetAutoStatus stores the status the engine applied for step key `step` (status_by = auto).
 func (r *AdeTaskRepo) SetAutoStatus(taskID, statusID, step string) error {
-	res, err := r.DB.Exec(`UPDATE ade_tasks SET status_id = ?, status_by = ?, status_step = ? WHERE id = ?`,
-		statusID, model.AdeStatusByAuto, step, taskID)
+	tk := kiraschema.AdeTasks
+	ub := r.Dialect.Update(tk.Table)
+	ub.Set(ub.Assign(tk.StatusID, statusID), ub.Assign(tk.StatusBy, model.AdeStatusByAuto), ub.Assign(tk.StatusStep, step)).
+		Where(ub.Equal(tk.ID, taskID))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return fmt.Errorf("repos: set ade task status %s: %w", taskID, err)
 	}
@@ -1101,8 +1252,11 @@ func (r *AdeTaskRepo) SetAutoStatus(taskID, statusID, step string) error {
 
 // HasRunning reports whether any run of the task is running.
 func (r *AdeTaskRepo) HasRunning(taskID string) (bool, error) {
-	var n int
-	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM ade_runs WHERE task_id = ? AND state = ?`, taskID, model.AdeRunRunning).Scan(&n); err != nil {
+	c := kiraschema.AdeRuns
+	n, err := adeCount(r.DB, r.Dialect, c.Table, func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(c.TaskID, taskID), sb.Equal(c.State, model.AdeRunRunning)}
+	})
+	if err != nil {
 		return false, fmt.Errorf("repos: count running ade runs %s: %w", taskID, err)
 	}
 	return n > 0, nil
@@ -1111,11 +1265,23 @@ func (r *AdeTaskRepo) HasRunning(taskID string) (bool, error) {
 // SetWorkflowSnapshot stores the whole workflow a task began with. A task that already has one keeps
 // it: the first snapshot wins.
 func (r *AdeTaskRepo) SetWorkflowSnapshot(taskID, workflowJSON, hash string) error {
-	if _, err := r.DB.Exec(`UPDATE ade_tasks SET workflow_json = ?, workflow_hash = ? WHERE id = ? AND workflow_json IS NULL`,
-		workflowJSON, hash, taskID); err != nil {
+	tk := kiraschema.AdeTasks
+	ub := r.Dialect.Update(tk.Table)
+	ub.Set(ub.Assign(tk.WorkflowJSON, workflowJSON), ub.Assign(tk.WorkflowHash, hash)).Where(ub.Equal(tk.ID, taskID), ub.IsNull(tk.WorkflowJSON))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos: set ade task workflow snapshot %s: %w", taskID, err)
 	}
 	return nil
+}
+
+func (r *AdeTaskRepo) selectSetup() *sqlbuilder.SelectBuilder {
+	c := kiraschema.AdeWorktreeSetup
+	return r.Dialect.Select(c.BranchID, c.State, c.StartedAt, c.FinishedAt, c.ExitCode, c.Note).From(c.Table)
+}
+
+func (r *AdeTaskRepo) selectReviews() *sqlbuilder.SelectBuilder {
+	c := kiraschema.AdeReviews
+	return r.Dialect.Select(c.RunID, c.Route, c.TargetRunID, c.DedicatedClaudeID, c.Rounds).From(c.Table)
 }
 
 func scanAdeRun(row rowScanner) (model.AdeRun, error) {
@@ -1159,10 +1325,11 @@ func (r *AdeTaskRepo) InsertRun(run model.AdeRun) error {
 	if err != nil {
 		return err
 	}
-	if _, err := r.DB.Exec(`INSERT INTO ade_runs (`+adeRunColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		run.ID, run.TaskID, run.StepID, run.BranchID, run.Attempt, run.State,
-		run.Loops, run.Note, run.Summary, run.SessionID, run.ExitCode, run.StartedAt, run.FinishedAt, outcome, run.Purpose, run.SpecJSON,
-		run.Launch.Note, run.Launch.ResumeID, run.Launch.Prompt, run.Launch.Extra); err != nil {
+	ib := r.Dialect.InsertInto(kiraschema.AdeRuns.Table).Cols(adeRunColumns...).
+		Values(run.ID, run.TaskID, run.StepID, run.BranchID, run.Attempt, run.State,
+			run.Loops, run.Note, run.Summary, run.SessionID, run.ExitCode, run.StartedAt, run.FinishedAt, outcome, run.Purpose, run.SpecJSON,
+			run.Launch.Note, run.Launch.ResumeID, run.Launch.Prompt, run.Launch.Extra)
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
 		return fmt.Errorf("repos: insert ade run %s: %w", run.ID, err)
 	}
 	return nil
@@ -1175,7 +1342,9 @@ func (r *AdeTaskRepo) UpdateRun(id string, p model.AdeRunPatch) (model.AdeRun, e
 		return model.AdeRun{}, fmt.Errorf("repos: begin update ade run: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	cur, err := scanAdeRun(tx.QueryRow(`SELECT `+adeRunColumns+` FROM ade_runs WHERE id = ?`, id))
+	curQ := r.selectRuns()
+	curQ.Where(curQ.Equal(kiraschema.AdeRuns.ID, id))
+	cur, err := scanAdeRun(sqlb.QueryRow(tx, curQ))
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.AdeRun{}, ErrRunNotFound
 	}
@@ -1216,11 +1385,14 @@ func (r *AdeTaskRepo) UpdateRun(id string, p model.AdeRunPatch) (model.AdeRun, e
 	if err != nil {
 		return model.AdeRun{}, err
 	}
-	if _, err := tx.Exec(`UPDATE ade_runs SET state = ?, note = ?, summary = ?, session_id = ?,
-		exit_code = ?, started_at = ?, finished_at = ?, outcome_json = ?, launch_note = ?, launch_resume_id = ?, launch_prompt = ?,
-		launch_extra = ?, spec_json = ? WHERE id = ?`,
-		cur.State, cur.Note, cur.Summary, cur.SessionID, cur.ExitCode, cur.StartedAt,
-		cur.FinishedAt, outcome, cur.Launch.Note, cur.Launch.ResumeID, cur.Launch.Prompt, cur.Launch.Extra, cur.SpecJSON, id); err != nil {
+	c := kiraschema.AdeRuns
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.State, cur.State), ub.Assign(c.Note, cur.Note), ub.Assign(c.Summary, cur.Summary),
+		ub.Assign(c.SessionID, cur.SessionID), ub.Assign(c.ExitCode, cur.ExitCode), ub.Assign(c.StartedAt, cur.StartedAt),
+		ub.Assign(c.FinishedAt, cur.FinishedAt), ub.Assign(c.OutcomeJSON, outcome), ub.Assign(c.LaunchNote, cur.Launch.Note),
+		ub.Assign(c.LaunchResumeID, cur.Launch.ResumeID), ub.Assign(c.LaunchPrompt, cur.Launch.Prompt),
+		ub.Assign(c.LaunchExtra, cur.Launch.Extra), ub.Assign(c.SpecJSON, cur.SpecJSON)).Where(ub.Equal(c.ID, id))
+	if _, err := sqlb.Exec(tx, ub); err != nil {
 		return model.AdeRun{}, fmt.Errorf("repos: update ade run %s: %w", id, err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -1231,7 +1403,9 @@ func (r *AdeTaskRepo) UpdateRun(id string, p model.AdeRunPatch) (model.AdeRun, e
 
 // GetRun returns one run; ErrRunNotFound if absent.
 func (r *AdeTaskRepo) GetRun(id string) (model.AdeRun, error) {
-	run, err := scanAdeRun(r.DB.QueryRow(`SELECT `+adeRunColumns+` FROM ade_runs WHERE id = ?`, id))
+	sb := r.selectRuns()
+	sb.Where(sb.Equal(kiraschema.AdeRuns.ID, id))
+	run, err := scanAdeRun(sqlb.QueryRow(r.DB, sb))
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.AdeRun{}, ErrRunNotFound
 	}
@@ -1243,9 +1417,13 @@ func (r *AdeTaskRepo) GetRun(id string) (model.AdeRun, error) {
 
 // LatestRuns returns the latest attempt of every (step, branch, purpose) of one task.
 func (r *AdeTaskRepo) LatestRuns(taskID string) ([]model.AdeRun, error) {
-	rows, err := r.DB.Query(`SELECT `+adeRunColumns+` FROM ade_runs a WHERE task_id = ? AND attempt = (
-		SELECT MAX(attempt) FROM ade_runs b WHERE b.task_id = a.task_id
-		AND b.step_id = a.step_id AND b.branch_id = a.branch_id AND b.purpose = a.purpose) ORDER BY COALESCE(started_at, 0), id`, taskID)
+	c := kiraschema.AdeRuns
+	newest := r.Dialect.Select("MAX(" + c.Attempt + ")").From(c.Table + " b")
+	newest.Where("b."+c.TaskID+" = a."+c.TaskID, "b."+c.StepID+" = a."+c.StepID, "b."+c.BranchID+" = a."+c.BranchID,
+		"b."+c.Purpose+" = a."+c.Purpose)
+	sb := r.Dialect.Select(adeRunColumns...).From(c.Table + " a")
+	sb.Where(sb.Equal(c.TaskID, taskID), c.Attempt+" = "+sqlb.Sub(sb, newest)).OrderBy("COALESCE("+c.StartedAt+", 0)", c.ID)
+	rows, err := sqlb.Query(r.DB, sb)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeRun, bool, error) {
 		run, err := scanAdeRun(rows)
 		return run, true, err
@@ -1254,11 +1432,11 @@ func (r *AdeTaskRepo) LatestRuns(taskID string) ([]model.AdeRun, error) {
 
 // UpsertSetup writes a branch's worktree-setup row.
 func (r *AdeTaskRepo) UpsertSetup(s model.AdeWorktreeSetup) error {
-	if _, err := r.DB.Exec(`INSERT INTO ade_worktree_setup (branch_id, state, started_at, finished_at, exit_code, note)
-		VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(branch_id) DO UPDATE SET state = excluded.state,
-		started_at = excluded.started_at, finished_at = excluded.finished_at, exit_code = excluded.exit_code,
-		note = excluded.note`,
-		s.BranchID, s.State, s.StartedAt, s.FinishedAt, s.ExitCode, s.Note); err != nil {
+	c := kiraschema.AdeWorktreeSetup
+	ib := r.Dialect.InsertInto(c.Table).Cols(c.BranchID, c.State, c.StartedAt, c.FinishedAt, c.ExitCode, c.Note).
+		Values(s.BranchID, s.State, s.StartedAt, s.FinishedAt, s.ExitCode, s.Note)
+	sqlb.Upsert(ib, []string{c.BranchID}, []string{c.State, c.StartedAt, c.FinishedAt, c.ExitCode, c.Note}, "")
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
 		return fmt.Errorf("repos: upsert ade worktree setup %s: %w", s.BranchID, err)
 	}
 	return nil
@@ -1268,8 +1446,9 @@ func (r *AdeTaskRepo) UpsertSetup(s model.AdeWorktreeSetup) error {
 func (r *AdeTaskRepo) GetSetup(branchID string) (*model.AdeWorktreeSetup, error) {
 	var s model.AdeWorktreeSetup
 	var finished, exit sql.NullInt64
-	err := r.DB.QueryRow(`SELECT branch_id, state, started_at, finished_at, exit_code, note FROM ade_worktree_setup WHERE branch_id = ?`,
-		branchID).Scan(&s.BranchID, &s.State, &s.StartedAt, &finished, &exit, &s.Note)
+	sb := r.selectSetup()
+	sb.Where(sb.Equal(kiraschema.AdeWorktreeSetup.BranchID, branchID))
+	err := sqlb.QueryRow(r.DB, sb).Scan(&s.BranchID, &s.State, &s.StartedAt, &finished, &exit, &s.Note)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -1282,10 +1461,15 @@ func (r *AdeTaskRepo) GetSetup(branchID string) (*model.AdeWorktreeSetup, error)
 
 // SetPendingNote rewrites the note of a branch's pending runs and returns them.
 func (r *AdeTaskRepo) SetPendingNote(branchID, note string) ([]model.AdeRun, error) {
-	if _, err := r.DB.Exec(`UPDATE ade_runs SET note = ? WHERE branch_id = ? AND state = ?`, note, branchID, model.AdeRunPending); err != nil {
+	c := kiraschema.AdeRuns
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.Note, note)).Where(ub.Equal(c.BranchID, branchID), ub.Equal(c.State, model.AdeRunPending))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return nil, fmt.Errorf("repos: set pending ade run note %s: %w", branchID, err)
 	}
-	rows, err := r.DB.Query(`SELECT `+adeRunColumns+` FROM ade_runs WHERE branch_id = ? AND state = ? ORDER BY id`, branchID, model.AdeRunPending)
+	sb := r.selectRuns()
+	sb.Where(sb.Equal(c.BranchID, branchID), sb.Equal(c.State, model.AdeRunPending)).OrderBy(c.ID)
+	rows, err := sqlb.Query(r.DB, sb)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeRun, bool, error) {
 		run, err := scanAdeRun(rows)
 		return run, true, err
@@ -1295,8 +1479,9 @@ func (r *AdeTaskRepo) SetPendingNote(branchID, note string) ([]model.AdeRun, err
 // GetReview returns the review run's send state; (nil, nil) when it has none.
 func (r *AdeTaskRepo) GetReview(runID string) (*model.AdeReview, error) {
 	var v model.AdeReview
-	err := r.DB.QueryRow(`SELECT run_id, route, target_run_id, dedicated_claude_id, rounds FROM ade_reviews WHERE run_id = ?`, runID).
-		Scan(&v.RunID, &v.Route, &v.TargetRunID, &v.DedicatedClaudeID, &v.Rounds)
+	sb := r.selectReviews()
+	sb.Where(sb.Equal(kiraschema.AdeReviews.RunID, runID))
+	err := sqlb.QueryRow(r.DB, sb).Scan(&v.RunID, &v.Route, &v.TargetRunID, &v.DedicatedClaudeID, &v.Rounds)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -1308,9 +1493,10 @@ func (r *AdeTaskRepo) GetReview(runID string) (*model.AdeReview, error) {
 
 // UpsertReview writes the route and target of a review run; the round count and dedicated session stay.
 func (r *AdeTaskRepo) UpsertReview(v model.AdeReview) error {
-	if _, err := r.DB.Exec(`INSERT INTO ade_reviews (run_id, route, target_run_id) VALUES (?, ?, ?)
-		ON CONFLICT(run_id) DO UPDATE SET route = excluded.route, target_run_id = excluded.target_run_id`,
-		v.RunID, v.Route, v.TargetRunID); err != nil {
+	c := kiraschema.AdeReviews
+	ib := r.Dialect.InsertInto(c.Table).Cols(c.RunID, c.Route, c.TargetRunID).Values(v.RunID, v.Route, v.TargetRunID)
+	sqlb.Upsert(ib, []string{c.RunID}, []string{c.Route, c.TargetRunID}, "")
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
 		return fmt.Errorf("repos: upsert ade review %s: %w", v.RunID, err)
 	}
 	return nil
@@ -1319,7 +1505,10 @@ func (r *AdeTaskRepo) UpsertReview(v model.AdeReview) error {
 // BumpReviewRound counts one more round and returns the new count.
 func (r *AdeTaskRepo) BumpReviewRound(runID string) (int, error) {
 	var n int
-	if err := r.DB.QueryRow(`UPDATE ade_reviews SET rounds = rounds + 1 WHERE run_id = ? RETURNING rounds`, runID).Scan(&n); err != nil {
+	c := kiraschema.AdeReviews
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(c.Rounds + " = " + c.Rounds + " + 1").Where(ub.Equal(c.RunID, runID)).Returning(c.Rounds)
+	if err := sqlb.QueryRow(r.DB, ub).Scan(&n); err != nil {
 		return 0, fmt.Errorf("repos: bump ade review round %s: %w", runID, err)
 	}
 	return n, nil
@@ -1327,7 +1516,10 @@ func (r *AdeTaskRepo) BumpReviewRound(runID string) (int, error) {
 
 // SetReviewDedicated stores the dedicated route's Claude session id ("" forgets a lost one).
 func (r *AdeTaskRepo) SetReviewDedicated(runID, claudeID string) error {
-	if _, err := r.DB.Exec(`UPDATE ade_reviews SET dedicated_claude_id = ? WHERE run_id = ?`, claudeID, runID); err != nil {
+	c := kiraschema.AdeReviews
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.DedicatedClaudeID, claudeID)).Where(ub.Equal(c.RunID, runID))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos: set ade review session %s: %w", runID, err)
 	}
 	return nil
@@ -1335,8 +1527,12 @@ func (r *AdeTaskRepo) SetReviewDedicated(runID, claudeID string) error {
 
 // Reviews returns the send state of every review run, by run id.
 func (r *AdeTaskRepo) Reviews() (map[string]model.AdeReview, error) {
-	rows, err := r.DB.Query(`SELECT run_id, route, target_run_id, dedicated_claude_id, rounds FROM ade_reviews
-		WHERE run_id IN (SELECT id FROM ade_runs WHERE task_id IN (SELECT id FROM ade_tasks WHERE archived_at IS NULL))`)
+	runs := kiraschema.AdeRuns
+	liveRuns := r.Dialect.Select(runs.ID).From(runs.Table)
+	liveRuns.Where(liveRuns.In(runs.TaskID, adeLiveTaskIDs(r.Dialect)))
+	sb := r.selectReviews()
+	sb.Where(sb.In(kiraschema.AdeReviews.RunID, liveRuns))
+	rows, err := sqlb.Query(r.DB, sb)
 	list, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeReview, bool, error) {
 		var v model.AdeReview
 		err := rows.Scan(&v.RunID, &v.Route, &v.TargetRunID, &v.DedicatedClaudeID, &v.Rounds)
@@ -1354,28 +1550,41 @@ func (r *AdeTaskRepo) Reviews() (map[string]model.AdeReview, error) {
 
 // ReviewRounds returns the task's review rounds, oldest first.
 func (r *AdeTaskRepo) ReviewRounds(taskID string) ([]model.AdeRun, error) {
-	rows, err := r.DB.Query(`SELECT `+adeRunColumns+` FROM ade_runs WHERE task_id = ? AND purpose = ? ORDER BY attempt, id`,
-		taskID, model.AdeRunPurposeReview)
+	rows, err := sqlb.Query(r.DB, r.reviewRoundsQuery(taskID))
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeRun, bool, error) {
 		run, err := scanAdeRun(rows)
 		return run, true, err
 	})
+}
+
+func (r *AdeTaskRepo) reviewRoundsQuery(taskID string) *sqlbuilder.SelectBuilder {
+	c := kiraschema.AdeRuns
+	sb := r.selectRuns()
+	return sb.Where(sb.Equal(c.TaskID, taskID), sb.Equal(c.Purpose, model.AdeRunPurposeReview)).OrderBy(c.Attempt, c.ID)
 }
 
 // PendingOnBranch lists the pending runs of a branch with the given purpose.
 func (r *AdeTaskRepo) PendingOnBranch(branchID, purpose string) ([]model.AdeRun, error) {
-	rows, err := r.DB.Query(`SELECT `+adeRunColumns+` FROM ade_runs WHERE branch_id = ? AND purpose = ? AND state = ? ORDER BY id`,
-		branchID, purpose, model.AdeRunPending)
+	rows, err := sqlb.Query(r.DB, r.pendingOnBranchQuery(branchID, purpose))
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeRun, bool, error) {
 		run, err := scanAdeRun(rows)
 		return run, true, err
 	})
 }
 
+func (r *AdeTaskRepo) pendingOnBranchQuery(branchID, purpose string) *sqlbuilder.SelectBuilder {
+	c := kiraschema.AdeRuns
+	sb := r.selectRuns()
+	return sb.Where(sb.Equal(c.BranchID, branchID), sb.Equal(c.Purpose, purpose), sb.Equal(c.State, model.AdeRunPending)).OrderBy(c.ID)
+}
+
 // CountRunning counts runs in the running state.
 func (r *AdeTaskRepo) CountRunning() (int, error) {
-	var n int
-	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM ade_runs WHERE state = 'running'`).Scan(&n); err != nil {
+	c := kiraschema.AdeRuns
+	n, err := adeCount(r.DB, r.Dialect, c.Table, func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(c.State, model.AdeRunRunning)}
+	})
+	if err != nil {
 		return 0, fmt.Errorf("repos: count running ade runs: %w", err)
 	}
 	return n, nil
@@ -1389,12 +1598,15 @@ func (r *AdeTaskRepo) RecoverRunning(now int64, out model.AdeRunOutcome) ([]mode
 	if err != nil {
 		return nil, err
 	}
-	rows, err := r.DB.Query(`UPDATE ade_runs SET state = ?, note = ?, finished_at = ?, outcome_json = ?,
-		launch_note = '', launch_prompt = '', launch_extra = '',
-		launch_resume_id = CASE WHEN purpose IN ('', 'review') AND session_id <> '' THEN
-			COALESCE((SELECT agent_session_id FROM ade_sessions s WHERE s.id = ade_runs.session_id), '') ELSE '' END
-		WHERE state = 'running' RETURNING `+adeRunColumns,
-		model.AdeRunStuck, out.Reason, now, outcome)
+	c, s := kiraschema.AdeRuns, kiraschema.AdeSessions
+	ub := r.Dialect.Update(c.Table)
+	resume := c.LaunchResumeID + " = CASE WHEN " + c.Purpose + " IN (" + ub.Var("") + ", " + ub.Var(model.AdeRunPurposeReview) +
+		") AND " + c.SessionID + " <> " + ub.Var("") + " THEN COALESCE((SELECT " + s.AgentSessionID + " FROM " + s.Table +
+		" s WHERE s." + s.ID + " = " + c.Table + "." + c.SessionID + "), " + ub.Var("") + ") ELSE " + ub.Var("") + " END"
+	ub.Set(ub.Assign(c.State, model.AdeRunStuck), ub.Assign(c.Note, out.Reason), ub.Assign(c.FinishedAt, now),
+		ub.Assign(c.OutcomeJSON, outcome), ub.Assign(c.LaunchNote, ""), ub.Assign(c.LaunchPrompt, ""), ub.Assign(c.LaunchExtra, ""), resume).
+		Where(ub.Equal(c.State, model.AdeRunRunning)).Returning(adeRunColumns...)
+	rows, err := sqlb.Query(r.DB, ub)
 	runs, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeRun, bool, error) {
 		run, err := scanAdeRun(rows)
 		return run, true, err
@@ -1414,8 +1626,11 @@ func (r *AdeTaskRepo) FailRunningSetups(now int64, note string) ([]model.AdeTask
 		return nil, fmt.Errorf("repos: begin recover ade setups: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	rows, err := tx.Query(`SELECT b.id, b.task_id FROM ade_worktree_setup s JOIN ade_task_branches b ON b.id = s.branch_id
-		WHERE s.state = 'running' ORDER BY b.id`)
+	su, bc := kiraschema.AdeWorktreeSetup, kiraschema.AdeTaskBranches
+	runQ := r.Dialect.Select("b."+bc.ID, "b."+bc.TaskID).From(su.Table + " s")
+	runQ.Join(bc.Table+" b", "b."+bc.ID+" = s."+su.BranchID).
+		Where(runQ.Equal("s."+su.State, model.AdeSetupRunning)).OrderBy("b." + bc.ID)
+	rows, err := sqlb.Query(tx, runQ)
 	out, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeTaskBranch, bool, error) {
 		var b model.AdeTaskBranch
 		err := rows.Scan(&b.ID, &b.TaskID)
@@ -1424,8 +1639,10 @@ func (r *AdeTaskRepo) FailRunningSetups(now int64, note string) ([]model.AdeTask
 	if err != nil {
 		return nil, fmt.Errorf("repos: select running ade setups: %w", err)
 	}
-	if _, err := tx.Exec(`UPDATE ade_worktree_setup SET state = ?, finished_at = ?, note = ? WHERE state = 'running'`,
-		model.AdeSetupFailed, now, note); err != nil {
+	failUp := r.Dialect.Update(su.Table)
+	failUp.Set(failUp.Assign(su.State, model.AdeSetupFailed), failUp.Assign(su.FinishedAt, now), failUp.Assign(su.Note, note)).
+		Where(failUp.Equal(su.State, model.AdeSetupRunning))
+	if _, err := sqlb.Exec(tx, failUp); err != nil {
 		return nil, fmt.Errorf("repos: recover ade setups: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -1436,9 +1653,11 @@ func (r *AdeTaskRepo) FailRunningSetups(now int64, note string) ([]model.AdeTask
 
 // CountRuns counts a step's runs on one branch in the given state, across attempts.
 func (r *AdeTaskRepo) CountRuns(taskID, stepID, branchID, state string) (int, error) {
-	var n int
-	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM ade_runs WHERE task_id = ? AND step_id = ? AND branch_id = ? AND state = ?`,
-		taskID, stepID, branchID, state).Scan(&n); err != nil {
+	c := kiraschema.AdeRuns
+	n, err := adeCount(r.DB, r.Dialect, c.Table, func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(c.TaskID, taskID), sb.Equal(c.StepID, stepID), sb.Equal(c.BranchID, branchID), sb.Equal(c.State, state)}
+	})
+	if err != nil {
 		return 0, fmt.Errorf("repos: count ade runs %s: %w", taskID, err)
 	}
 	return n, nil
@@ -1446,8 +1665,11 @@ func (r *AdeTaskRepo) CountRuns(taskID, stepID, branchID, state string) (int, er
 
 // HasRunningOn reports whether a run on the branch is running.
 func (r *AdeTaskRepo) HasRunningOn(branchID string) (bool, error) {
-	var n int
-	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM ade_runs WHERE branch_id = ? AND state = ?`, branchID, model.AdeRunRunning).Scan(&n); err != nil {
+	c := kiraschema.AdeRuns
+	n, err := adeCount(r.DB, r.Dialect, c.Table, func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(c.BranchID, branchID), sb.Equal(c.State, model.AdeRunRunning)}
+	})
+	if err != nil {
 		return false, fmt.Errorf("repos: count running ade runs on %s: %w", branchID, err)
 	}
 	return n > 0, nil
@@ -1455,9 +1677,11 @@ func (r *AdeTaskRepo) HasRunningOn(branchID string) (bool, error) {
 
 // HasActiveStepRunOn reports whether a step run (not a rebase) on the branch is running or pending.
 func (r *AdeTaskRepo) HasActiveStepRunOn(branchID string) (bool, error) {
-	var n int
-	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM ade_runs WHERE branch_id = ? AND purpose = '' AND state IN (?, ?)`,
-		branchID, model.AdeRunRunning, model.AdeRunPending).Scan(&n); err != nil {
+	c := kiraschema.AdeRuns
+	n, err := adeCount(r.DB, r.Dialect, c.Table, func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(c.BranchID, branchID), sb.Equal(c.Purpose, ""), sb.In(c.State, model.AdeRunRunning, model.AdeRunPending)}
+	})
+	if err != nil {
 		return false, fmt.Errorf("repos: count active ade step runs on %s: %w", branchID, err)
 	}
 	return n > 0, nil
@@ -1488,8 +1712,10 @@ func (r *AdeTaskRepo) RunningRebaseOn(branchID string) (*model.AdeRun, error) {
 
 // RunningRebases lists the rebase runs in state running.
 func (r *AdeTaskRepo) RunningRebases() ([]model.AdeRun, error) {
-	rows, err := r.DB.Query(`SELECT `+adeRunColumns+` FROM ade_runs WHERE purpose = ? AND state = ? ORDER BY id`,
-		model.AdeRunPurposeRebase, model.AdeRunRunning)
+	c := kiraschema.AdeRuns
+	sb := r.selectRuns()
+	sb.Where(sb.Equal(c.Purpose, model.AdeRunPurposeRebase), sb.Equal(c.State, model.AdeRunRunning)).OrderBy(c.ID)
+	rows, err := sqlb.Query(r.DB, sb)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeRun, bool, error) {
 		run, err := scanAdeRun(rows)
 		return run, true, err
@@ -1498,8 +1724,11 @@ func (r *AdeTaskRepo) RunningRebases() ([]model.AdeRun, error) {
 
 // LatestRebaseRun returns the newest rebase run rooted at the branch, nil when none.
 func (r *AdeTaskRepo) LatestRebaseRun(branchID string) (*model.AdeRun, error) {
-	run, err := scanAdeRun(r.DB.QueryRow(`SELECT `+adeRunColumns+` FROM ade_runs WHERE branch_id = ? AND purpose = ?
-		ORDER BY attempt DESC, id DESC LIMIT 1`, branchID, model.AdeRunPurposeRebase))
+	c := kiraschema.AdeRuns
+	sb := r.selectRuns()
+	sb.Where(sb.Equal(c.BranchID, branchID), sb.Equal(c.Purpose, model.AdeRunPurposeRebase)).
+		OrderBy(c.Attempt+" DESC", c.ID+" DESC").Limit(1)
+	run, err := scanAdeRun(sqlb.QueryRow(r.DB, sb))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -1511,8 +1740,11 @@ func (r *AdeTaskRepo) LatestRebaseRun(branchID string) (*model.AdeRun, error) {
 
 // CountRebaseRuns counts the rebase runs rooted at the branch.
 func (r *AdeTaskRepo) CountRebaseRuns(branchID string) (int, error) {
-	var n int
-	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM ade_runs WHERE branch_id = ? AND purpose = ?`, branchID, model.AdeRunPurposeRebase).Scan(&n); err != nil {
+	c := kiraschema.AdeRuns
+	n, err := adeCount(r.DB, r.Dialect, c.Table, func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(c.BranchID, branchID), sb.Equal(c.Purpose, model.AdeRunPurposeRebase)}
+	})
+	if err != nil {
 		return 0, fmt.Errorf("repos: count ade rebase runs %s: %w", branchID, err)
 	}
 	return n, nil
@@ -1529,14 +1761,20 @@ func (r *AdeTaskRepo) SetBranchChangeRequests(ids []string, crs map[string]model
 		return fmt.Errorf("repos: begin set ade branch change requests: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+	bc := kiraschema.AdeTaskBranches
 	for _, id := range ids {
-		if _, err := tx.Exec(`UPDATE ade_task_branches SET cr_number = NULL, cr_title = NULL, cr_state = NULL, cr_url = NULL WHERE id = ?`, id); err != nil {
+		ub := r.Dialect.Update(bc.Table)
+		ub.Set(ub.Assign(bc.CrNumber, nil), ub.Assign(bc.CrTitle, nil), ub.Assign(bc.CrState, nil), ub.Assign(bc.CrURL, nil)).
+			Where(ub.Equal(bc.ID, id))
+		if _, err := sqlb.Exec(tx, ub); err != nil {
 			return fmt.Errorf("repos: clear ade branch %s change request: %w", id, err)
 		}
 	}
 	for id, cr := range crs {
-		if _, err := tx.Exec(`UPDATE ade_task_branches SET cr_number = ?, cr_title = ?, cr_state = ?, cr_url = ? WHERE id = ?`,
-			cr.Number, cr.Title, cr.State, cr.URL, id); err != nil {
+		ub := r.Dialect.Update(bc.Table)
+		ub.Set(ub.Assign(bc.CrNumber, cr.Number), ub.Assign(bc.CrTitle, cr.Title), ub.Assign(bc.CrState, cr.State), ub.Assign(bc.CrURL, cr.URL)).
+			Where(ub.Equal(bc.ID, id))
+		if _, err := sqlb.Exec(tx, ub); err != nil {
 			return fmt.Errorf("repos: set ade branch %s change request: %w", id, err)
 		}
 	}
@@ -1552,7 +1790,10 @@ func (r *AdeTaskRepo) SetBranchReviewComments(id, json string) error {
 	if json != "" {
 		v = json
 	}
-	if _, err := r.DB.Exec(`UPDATE ade_task_branches SET review_comments = ? WHERE id = ?`, v, id); err != nil {
+	bc := kiraschema.AdeTaskBranches
+	ub := r.Dialect.Update(bc.Table)
+	ub.Set(ub.Assign(bc.ReviewComments, v)).Where(ub.Equal(bc.ID, id))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos: set ade branch %s review comments: %w", id, err)
 	}
 	return nil
@@ -1567,7 +1808,9 @@ func (r *AdeTaskRepo) RestoreTask(taskID string) error {
 		return fmt.Errorf("repos: begin restore ade task %s: %w", taskID, err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	t, err := scanAdeTask(tx.QueryRow(`SELECT `+adeTaskColumns+` FROM ade_tasks WHERE id = ?`, taskID))
+	tq := r.selectTask()
+	tq.Where(tq.Equal(kiraschema.AdeTasks.ID, taskID))
+	t, err := scanAdeTask(sqlb.QueryRow(tx, tq))
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrTaskNotFound
 	}
@@ -1578,25 +1821,36 @@ func (r *AdeTaskRepo) RestoreTask(taskID string) error {
 		return ErrTaskNotArchived
 	}
 	var held, holder string
-	err = tx.QueryRow(`SELECT mine.name, COALESCE(NULLIF(other_t.title, ''), other_t.jira_key, '')
-		FROM ade_task_branches mine
-		JOIN ade_task_branches other ON other.code_repo_id = mine.code_repo_id AND other.name = mine.name AND other.archived_at IS NULL
-		JOIN ade_tasks other_t ON other_t.id = other.task_id
-		WHERE mine.task_id = ? AND mine.archived_at = ? AND mine.name <> '' LIMIT 1`, taskID, *t.ArchivedAt).Scan(&held, &holder)
+	bc, tk := kiraschema.AdeTaskBranches, kiraschema.AdeTasks
+	heldQ := r.Dialect.Select()
+	heldQ.Select("mine."+bc.Name, "COALESCE(NULLIF(other_t."+tk.Title+", ''), other_t."+tk.JiraKey+", '')").
+		From(bc.Table+" mine").
+		Join(bc.Table+" other", "other."+bc.CodeRepoID+" = mine."+bc.CodeRepoID, "other."+bc.Name+" = mine."+bc.Name,
+			heldQ.IsNull("other."+bc.ArchivedAt)).
+		Join(tk.Table+" other_t", "other_t."+tk.ID+" = other."+bc.TaskID).
+		Where(heldQ.Equal("mine."+bc.TaskID, taskID), heldQ.Equal("mine."+bc.ArchivedAt, *t.ArchivedAt),
+			heldQ.NotEqual("mine."+bc.Name, "")).Limit(1)
+	err = sqlb.QueryRow(tx, heldQ).Scan(&held, &holder)
 	if err == nil {
 		return &BranchHeldError{Branch: held, TaskTitle: holder}
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("repos: check ade task %s branch names: %w", taskID, err)
 	}
-	if _, err := tx.Exec(`UPDATE ade_task_branches SET archived_at = NULL WHERE task_id = ? AND archived_at = ?`, taskID, *t.ArchivedAt); err != nil {
+	brUp := r.Dialect.Update(bc.Table)
+	brUp.Set(brUp.Assign(bc.ArchivedAt, nil)).Where(brUp.Equal(bc.TaskID, taskID), brUp.Equal(bc.ArchivedAt, *t.ArchivedAt))
+	if _, err := sqlb.Exec(tx, brUp); err != nil {
 		return fmt.Errorf("repos: restore ade task branches %s: %w", taskID, err)
 	}
-	if _, err := tx.Exec(`UPDATE ade_tasks SET archived_at = NULL WHERE id = ?`, taskID); err != nil {
+	taskUp := r.Dialect.Update(tk.Table)
+	taskUp.Set(taskUp.Assign(tk.ArchivedAt, nil)).Where(taskUp.Equal(tk.ID, taskID))
+	if _, err := sqlb.Exec(tx, taskUp); err != nil {
 		return fmt.Errorf("repos: restore ade task %s: %w", taskID, err)
 	}
-	if _, err := tx.Exec(`INSERT INTO ade_task_plan (task_id, day, position)
-		SELECT ?, NULL, COALESCE(MAX(position) + 1, 0) FROM ade_task_plan`, taskID); err != nil {
+	pl := kiraschema.AdeTaskPlan
+	planSel := r.Dialect.Select()
+	planSel.Select(planSel.Var(taskID), "NULL", "COALESCE(MAX("+pl.Position+") + 1, 0)").From(pl.Table)
+	if _, err := sqlb.Exec(tx, sqlb.AdeInsertSelect(r.Dialect, pl.Table, []string{pl.TaskID, pl.Day, pl.Position}, planSel, "")); err != nil {
 		return fmt.Errorf("repos: insert ade task plan row %s: %w", taskID, err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -1612,17 +1866,24 @@ func (r *AdeTaskRepo) ArchiveTask(taskID string, now int64) error {
 		return fmt.Errorf("repos: begin archive ade task %s: %w", taskID, err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	res, err := tx.Exec(`UPDATE ade_tasks SET archived_at = ? WHERE id = ? AND archived_at IS NULL`, now, taskID)
+	tk, bc, pl := kiraschema.AdeTasks, kiraschema.AdeTaskBranches, kiraschema.AdeTaskPlan
+	taskUp := r.Dialect.Update(tk.Table)
+	taskUp.Set(taskUp.Assign(tk.ArchivedAt, now)).Where(taskUp.Equal(tk.ID, taskID), taskUp.IsNull(tk.ArchivedAt))
+	res, err := sqlb.Exec(tx, taskUp)
 	if err != nil {
 		return fmt.Errorf("repos: archive ade task %s: %w", taskID, err)
 	}
 	if err := sqlitex.RequireOneRow(res, "ade task "+taskID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`UPDATE ade_task_branches SET archived_at = ? WHERE task_id = ? AND archived_at IS NULL`, now, taskID); err != nil {
+	brUp := r.Dialect.Update(bc.Table)
+	brUp.Set(brUp.Assign(bc.ArchivedAt, now)).Where(brUp.Equal(bc.TaskID, taskID), brUp.IsNull(bc.ArchivedAt))
+	if _, err := sqlb.Exec(tx, brUp); err != nil {
 		return fmt.Errorf("repos: archive ade task branches %s: %w", taskID, err)
 	}
-	if _, err := tx.Exec(`DELETE FROM ade_task_plan WHERE task_id = ?`, taskID); err != nil {
+	planDel := r.Dialect.DeleteFrom(pl.Table)
+	planDel.Where(planDel.Equal(pl.TaskID, taskID))
+	if _, err := sqlb.Exec(tx, planDel); err != nil {
 		return fmt.Errorf("repos: drop ade task plan row %s: %w", taskID, err)
 	}
 	if err := tx.Commit(); err != nil {

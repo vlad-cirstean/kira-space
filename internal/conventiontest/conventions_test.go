@@ -108,7 +108,8 @@ func scan(t *testing.T, root, rel string) []finding {
 	inAdapters := strings.HasSuffix(filepath.ToSlash(filepath.Dir(rel)), "internal/adapters")
 	inHTTPClient := strings.HasSuffix(filepath.ToSlash(filepath.Dir(rel)), "internal/httpclient")
 	dir := filepath.ToSlash(filepath.Dir(rel))
-	inHostAdapters := strings.HasPrefix(dir, "apps/kira-space/internal/githost") || strings.HasPrefix(dir, "apps/kira-space/internal/issuetracker")
+	inHostAdapters := strings.HasPrefix(dir, "apps/kira-space/internal/githost") || strings.HasPrefix(dir, "apps/kira-space/internal/issuetracker") ||
+		dir == "apps/kira-space/internal/configsync"
 	inDocker := dir == "internal/docker"
 	inClaudeOnly := dir == "internal/harness/claude" || strings.HasPrefix(dir, "internal/harness/claude/")
 	inOpenCode := dir == "internal/harness/opencode" || strings.HasPrefix(dir, "internal/harness/opencode/")

@@ -1,5 +1,6 @@
 ---
 import AppHero from '../components/AppHero.astro';
+import BuildTeaser from '../components/BuildTeaser.astro';
 import FeatureGrid from '../components/FeatureGrid.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
@@ -31,6 +32,7 @@ const hero = windowShot(content.hero);
     <p class="mx-auto max-w-5xl px-4 pt-8 text-base text-muted">{SITE.tagline}</p>
     <AppHero app={content} shot={hero} />
     <FeatureGrid features={content.features} />
+    <BuildTeaser />
     {content.highlights.map((h, i) => {
       return <Highlight highlight={h} shot={windowShot(h.shot)} flip={i % 2 === 1} />;
     })}

@@ -6,13 +6,20 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/huandu/go-sqlbuilder"
+
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // OpLogRepo persists operation log records (migrations/0060_p415_op_log.sql).
 type OpLogRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
+
+	upsertSQL sqlb.Cached
 }
 
 // Upsert inserts or replaces the row for rec.ID.
@@ -25,22 +32,18 @@ func (r *OpLogRepo) Upsert(rec oplog.Record) error {
 	if err != nil {
 		return fmt.Errorf("repos: parse op start %q: %w", rec.StartedAt, err)
 	}
-	bg := 0
-	if rec.Background {
-		bg = 1
-	}
-	_, err = r.DB.Exec(`INSERT INTO op_log (id, started_ms, duration_ms, category, kind, status, module, trigger_, source,
-		subject, repo_root, repo_name, task_id, parent_id, command, error, steps_json, steps_dropped, background, repeat_count,
-		connection_id, tab_id, rows, command_truncated, path)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET duration_ms = excluded.duration_ms, status = excluded.status, source = excluded.source,
-		subject = excluded.subject, command = excluded.command, error = excluded.error, steps_json = excluded.steps_json,
-		steps_dropped = excluded.steps_dropped, repeat_count = excluded.repeat_count, rows = excluded.rows,
-		command_truncated = excluded.command_truncated, path = excluded.path`,
+	// Shape never varies, so the statement builds once; args follow opColumns order.
+	query := r.upsertSQL.SQL(func() sqlb.Builder {
+		c := kiraschema.OpLog
+		ib := r.Dialect.InsertInto(c.Table).Cols(opColumns...).Values(make([]any, len(opColumns))...)
+		sqlb.Upsert(ib, []string{c.ID}, []string{c.DurationMs, c.Status, c.Source, c.Subject, c.Command, c.Error, c.StepsJSON,
+			c.StepsDropped, c.RepeatCount, c.Rows, c.CommandTruncated, c.Path}, "")
+		return ib
+	})
+	if _, err = r.DB.Exec(query,
 		rec.ID, started.UnixMilli(), rec.DurationMs, rec.Category, rec.Kind, rec.Status, rec.Module, rec.Trigger, rec.Source,
 		rec.Subject, rec.RepoRoot, rec.RepoName, rec.TaskID, rec.ParentID, rec.Command, rec.Error, string(steps),
-		rec.StepsDropped, bg, rec.Repeat, rec.ConnectionID, rec.TabID, rec.Rows, rec.CommandTruncated, rec.Path)
-	if err != nil {
+		rec.StepsDropped, rec.Background, rec.Repeat, rec.ConnectionID, rec.TabID, rec.Rows, rec.CommandTruncated, rec.Path); err != nil {
 		return fmt.Errorf("repos: upsert op %s: %w", rec.ID, err)
 	}
 	return nil
@@ -48,7 +51,7 @@ func (r *OpLogRepo) Upsert(rec oplog.Record) error {
 
 // Recent returns up to limit rows, newest first.
 func (r *OpLogRepo) Recent(limit int) ([]oplog.Record, error) {
-	rows, err := r.DB.Query(`SELECT `+opColumns+` FROM op_log ORDER BY started_ms DESC, id DESC LIMIT ?`, limit)
+	rows, err := sqlb.Query(r.DB, r.recentQuery(limit))
 	if err != nil {
 		return nil, fmt.Errorf("repos: list ops: %w", err)
 	}
@@ -64,16 +67,27 @@ func (r *OpLogRepo) Recent(limit int) ([]oplog.Record, error) {
 	return out, rows.Err()
 }
 
-// opColumns is the column list scanOp reads.
-const opColumns = `id, started_ms, duration_ms, category, kind, status, module, trigger_, source, subject,
-	repo_root, repo_name, task_id, parent_id, command, error, steps_json, steps_dropped, background, repeat_count,
-	connection_id, tab_id, rows, command_truncated, path`
+func (r *OpLogRepo) recentQuery(limit int) *sqlbuilder.SelectBuilder {
+	sb := r.Dialect.Select(opColumns...).From(kiraschema.OpLog.Table)
+	return sb.OrderBy(kiraschema.OpLog.StartedMs+" DESC", kiraschema.OpLog.ID+" DESC").Limit(limit)
+}
+
+// opColumns is the column list scanOp reads, in scan order.
+var opColumns = []string{
+	kiraschema.OpLog.ID, kiraschema.OpLog.StartedMs, kiraschema.OpLog.DurationMs, kiraschema.OpLog.Category,
+	kiraschema.OpLog.Kind, kiraschema.OpLog.Status, kiraschema.OpLog.Module, kiraschema.OpLog.Trigger,
+	kiraschema.OpLog.Source, kiraschema.OpLog.Subject, kiraschema.OpLog.RepoRoot, kiraschema.OpLog.RepoName,
+	kiraschema.OpLog.TaskID, kiraschema.OpLog.ParentID, kiraschema.OpLog.Command, kiraschema.OpLog.Error,
+	kiraschema.OpLog.StepsJSON, kiraschema.OpLog.StepsDropped, kiraschema.OpLog.Background,
+	kiraschema.OpLog.RepeatCount, kiraschema.OpLog.ConnectionID, kiraschema.OpLog.TabID, kiraschema.OpLog.Rows,
+	kiraschema.OpLog.CommandTruncated, kiraschema.OpLog.Path,
+}
 
 // scanOp reads one row of opColumns; withRowID means the query selected rowid first.
 func scanOp(rows *sql.Rows, withRowID bool) (oplog.Record, int64, error) {
 	var rec oplog.Record
 	var steps string
-	var bg, truncated int
+	var bg, truncated bool
 	var startedMs, rid int64
 	dest := []any{&rec.ID, &startedMs, &rec.DurationMs, &rec.Category, &rec.Kind, &rec.Status, &rec.Module,
 		&rec.Trigger, &rec.Source, &rec.Subject, &rec.RepoRoot, &rec.RepoName, &rec.TaskID, &rec.ParentID,
@@ -86,8 +100,8 @@ func scanOp(rows *sql.Rows, withRowID bool) (oplog.Record, int64, error) {
 		return rec, 0, fmt.Errorf("repos: scan op: %w", err)
 	}
 	rec.StartedAt = kiratime.FormatISO(time.UnixMilli(startedMs))
-	rec.Background = bg != 0
-	rec.CommandTruncated = truncated != 0
+	rec.Background = bg
+	rec.CommandTruncated = truncated
 	rec.Steps = []oplog.Step{}
 	if err := json.Unmarshal([]byte(steps), &rec.Steps); err != nil {
 		return rec, 0, fmt.Errorf("repos: decode op steps %s: %w", rec.ID, err)
@@ -101,10 +115,11 @@ func scanOp(rows *sql.Rows, withRowID bool) (oplog.Record, int64, error) {
 // Prune deletes rows older than cutoff, then the oldest beyond maxRows. Database rows have their own
 // retention and cap (PruneCategory).
 func (r *OpLogRepo) Prune(cutoff time.Time, maxRows int) error {
-	if _, err := r.DB.Exec(`DELETE FROM op_log WHERE category <> 'db' AND started_ms < ?`, cutoff.UnixMilli()); err != nil {
+	notDB := func(c *sqlbuilder.Cond) string { return c.NotEqual(kiraschema.OpLog.Category, oplog.CategoryDB) }
+	if err := r.pruneAge(notDB, cutoff); err != nil {
 		return fmt.Errorf("repos: prune ops by age: %w", err)
 	}
-	if _, err := r.DB.Exec(`DELETE FROM op_log WHERE id IN (SELECT id FROM op_log WHERE category <> 'db' ORDER BY started_ms DESC, id DESC LIMIT -1 OFFSET ?)`, maxRows); err != nil {
+	if err := r.pruneCount(notDB, maxRows); err != nil {
 		return fmt.Errorf("repos: prune ops by count: %w", err)
 	}
 	return nil
@@ -112,19 +127,48 @@ func (r *OpLogRepo) Prune(cutoff time.Time, maxRows int) error {
 
 // PruneCategory deletes one category's rows older than cutoff, then its oldest beyond maxRows.
 func (r *OpLogRepo) PruneCategory(category string, cutoff time.Time, maxRows int) error {
-	if _, err := r.DB.Exec(`DELETE FROM op_log WHERE category = ? AND started_ms < ?`, category, cutoff.UnixMilli()); err != nil {
+	inCategory := func(c *sqlbuilder.Cond) string { return c.Equal(kiraschema.OpLog.Category, category) }
+	if err := r.pruneAge(inCategory, cutoff); err != nil {
 		return fmt.Errorf("repos: prune %s ops by age: %w", category, err)
 	}
-	if _, err := r.DB.Exec(`DELETE FROM op_log WHERE id IN (SELECT id FROM op_log WHERE category = ? ORDER BY started_ms DESC, id DESC LIMIT -1 OFFSET ?)`, category, maxRows); err != nil {
+	if err := r.pruneCount(inCategory, maxRows); err != nil {
 		return fmt.Errorf("repos: prune %s ops by count: %w", category, err)
 	}
 	return nil
 }
 
+func (r *OpLogRepo) pruneAge(scope func(*sqlbuilder.Cond) string, cutoff time.Time) error {
+	c := kiraschema.OpLog
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(scope(&del.Cond), del.LessThan(c.StartedMs, cutoff.UnixMilli()))
+	_, err := sqlb.Exec(r.DB, del)
+	return err
+}
+
+// pruneCount keeps the newest maxRows rows of scope.
+func (r *OpLogRepo) pruneCount(scope func(*sqlbuilder.Cond) string, maxRows int) error {
+	_, err := sqlb.Exec(r.DB, r.pruneCountQuery(scope, maxRows))
+	return err
+}
+
+func (r *OpLogRepo) pruneCountQuery(scope func(*sqlbuilder.Cond) string, maxRows int) *sqlbuilder.DeleteBuilder {
+	c := kiraschema.OpLog
+	old := r.Dialect.Select(c.ID).From(c.Table)
+	old.Where(scope(&old.Cond)).OrderBy(c.StartedMs+" DESC", c.ID+" DESC")
+	sqlb.OffsetOnly(r.Dialect, old, maxRows)
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(del.In(c.ID, old))
+	return del
+}
+
 // ReconcileInterrupted turns rows left running by a quit into errors carrying msg. Foreign rows
 // (id holds a '.') belong to a process that may outlive the app; the owner sweep handles them.
 func (r *OpLogRepo) ReconcileInterrupted(msg string) error {
-	if _, err := r.DB.Exec(`UPDATE op_log SET status = 'error', error = ? WHERE status = 'running' AND instr(id, '.') = 0`, msg); err != nil {
+	c := kiraschema.OpLog
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.Status, oplog.StatusError), ub.Assign(c.Error, msg)).
+		Where(ub.Equal(c.Status, oplog.StatusRunning), ub.NotLike(c.ID, foreignIDLike))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos: reconcile ops: %w", err)
 	}
 	return nil

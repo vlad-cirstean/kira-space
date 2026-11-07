@@ -1,8 +1,9 @@
 package agentport
 
 import (
-	"regexp"
 	"strings"
+
+	"github.com/kirathecat/kira-studio/internal/credshape"
 )
 
 // loc is where a string sits in a native config; it decides which credential rules apply.
@@ -26,47 +27,8 @@ var (
 	// safeHeaders carry no credential.
 	safeHeaders = map[string]bool{"accept": true, "content-type": true, "user-agent": true, "mcp-protocol-version": true}
 
-	secretNameParts = []string{"token", "secret", "passw", "pwd", "apikey", "api_key", "auth", "credential", "bearer", "private", "cookie"}
-	secretNameEnds  = []string{"_pat", "_key"}
-
-	valuePrefixes = []string{"sk-", "ghp_", "gho_", "github_pat_", "glpat-", "AKIA", "AIza"}
-	slackToken    = regexp.MustCompile(`^xox[abp]-`)
-	jwt           = regexp.MustCompile(`^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*$`)
-	hexValue      = regexp.MustCompile(`^[0-9a-fA-F]{32,}$`)
-	b64Value      = regexp.MustCompile(`^[A-Za-z0-9_-]{32,}$`)
-	schemes       = []string{"Bearer ", "Basic ", "token "}
+	schemes = []string{"Bearer ", "Basic ", "token "}
 )
-
-// nameIsSecret reports whether a variable, header-less flag or query parameter name marks a credential.
-func nameIsSecret(name string) bool {
-	n := strings.ReplaceAll(strings.ToLower(name), "-", "_")
-	for _, p := range secretNameParts {
-		if strings.Contains(n, p) {
-			return true
-		}
-	}
-	for _, e := range secretNameEnds {
-		if strings.HasSuffix(n, e) {
-			return true
-		}
-	}
-	return false
-}
-
-// valueIsSecret reports whether v looks like a credential on its own: a known prefix, a JWT, or a long
-// hex or mixed-case base64url run.
-func valueIsSecret(v string) bool {
-	for _, p := range valuePrefixes {
-		if strings.HasPrefix(v, p) && len(v) > len(p) {
-			return true
-		}
-	}
-	if slackToken.MatchString(v) || jwt.MatchString(v) || hexValue.MatchString(v) {
-		return true
-	}
-	return b64Value.MatchString(v) && strings.ContainsAny(v, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") &&
-		strings.ContainsAny(v, "abcdefghijklmnopqrstuvwxyz") && strings.ContainsAny(v, "0123456789")
-}
 
 // classify splits value into literal and credential parts. A value with a reference, an empty value
 // and a value with no credential come back as one literal part.
@@ -77,7 +39,7 @@ func classify(l loc, name, value string) []part {
 	}
 	switch l {
 	case locEnv:
-		if nameIsSecret(name) || valueIsSecret(value) {
+		if credshape.Name(name) || credshape.Value(value) {
 			return split(value)
 		}
 		return urlValue(value)
@@ -88,7 +50,7 @@ func classify(l loc, name, value string) []part {
 	case locURL:
 		return urlParts(value)
 	case locCommand:
-		if valueIsSecret(value) {
+		if credshape.Value(value) {
 			return []part{{text: value, secret: true}}
 		}
 	case locArg:
@@ -110,15 +72,15 @@ func split(value string) []part {
 // argParts classifies one argument: --flag=value or a value after a secret-named flag, else by pattern.
 func argParts(prev, v string) []part {
 	if strings.HasPrefix(v, "-") {
-		if flag, val, ok := strings.Cut(v, "="); ok && val != "" && nameIsSecret(strings.TrimLeft(flag, "-")) {
+		if flag, val, ok := strings.Cut(v, "="); ok && val != "" && credshape.Name(strings.TrimLeft(flag, "-")) {
 			return append([]part{{text: flag + "="}}, split(val)...)
 		}
 		return []part{{text: v}}
 	}
-	if strings.HasPrefix(prev, "-") && !strings.Contains(prev, "=") && nameIsSecret(strings.TrimLeft(prev, "-")) {
+	if strings.HasPrefix(prev, "-") && !strings.Contains(prev, "=") && credshape.Name(strings.TrimLeft(prev, "-")) {
 		return split(v)
 	}
-	if valueIsSecret(v) {
+	if credshape.Value(v) {
 		return []part{{text: v, secret: true}}
 	}
 	return urlValue(v)
@@ -156,7 +118,7 @@ func urlParts(u string) []part {
 			out = append(out, part{text: "/"})
 		}
 		// The first segment is the host when a scheme came first.
-		if i > 0 && valueIsSecret(seg) {
+		if i > 0 && credshape.Value(seg) {
 			out = append(out, part{text: seg, secret: true})
 			continue
 		}
@@ -169,7 +131,7 @@ func urlParts(u string) []part {
 				out = append(out, part{text: "&"})
 			}
 			k, v, ok := strings.Cut(kv, "=")
-			if ok && v != "" && (nameIsSecret(k) || strings.EqualFold(k, "key") || valueIsSecret(v)) {
+			if ok && v != "" && (credshape.Name(k) || strings.EqualFold(k, "key") || credshape.Value(v)) {
 				out = append(out, part{text: k + "="}, part{text: v, secret: true})
 				continue
 			}

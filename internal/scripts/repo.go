@@ -3,13 +3,17 @@ package scripts
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/huandu/go-sqlbuilder"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/secrets"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -17,12 +21,19 @@ type rowScanner interface {
 	Scan(dest ...any) error
 }
 
-const selectColumns = `id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at, kind, params_json, smart_json, use_ade_dir, schedule_json, schedule_task_id, schedule_branch_id, config_json`
+var selectColumns = []string{
+	kiraschema.Scripts.ID, kiraschema.Scripts.Name, kiraschema.Scripts.Command, kiraschema.Scripts.WorkingDir,
+	kiraschema.Scripts.DirMode, kiraschema.Scripts.Color, kiraschema.Scripts.Collection, kiraschema.Scripts.SortOrder,
+	kiraschema.Scripts.CreatedAt, kiraschema.Scripts.UpdatedAt, kiraschema.Scripts.Kind, kiraschema.Scripts.ParamsJSON,
+	kiraschema.Scripts.SmartJSON, kiraschema.Scripts.UseAdeDir, kiraschema.Scripts.ScheduleJSON,
+	kiraschema.Scripts.ScheduleTaskID, kiraschema.Scripts.ScheduleBranchID, kiraschema.Scripts.ConfigJSON,
+}
 
-// Repo reads and writes the `custom_scripts` table: the projection of the run files plus the state
+// Repo reads and writes the `scripts` table: the projection of the run files plus the state
 // columns (order, schedule target). List is ordered deterministically.
 type Repo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 	// Agents supplies the model aliases a smart script may name; nil means the built-in providers.
 	Agents *harness.Registry
 	// Secrets holds saved secret param values; set by each appwire.
@@ -108,7 +119,9 @@ func encodeExtras(f CustomScriptFields) (extras, error) {
 
 // List orders by sort_order, name for a stable, deterministic tiebreak.
 func (r *Repo) List() ([]CustomScript, error) {
-	rows, err := r.DB.Query(`SELECT ` + selectColumns + ` FROM custom_scripts ORDER BY sort_order ASC, name ASC`)
+	c := kiraschema.Scripts
+	sb := r.Dialect.Select(selectColumns...).From(c.Table).OrderBy(c.SortOrder+" ASC", c.Name+" ASC")
+	rows, err := sqlb.Query(r.DB, sb)
 	list, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (CustomScript, bool, error) {
 		rec, err := scanRow(rows)
 		return rec, true, err
@@ -128,13 +141,17 @@ func (r *Repo) List() ([]CustomScript, error) {
 
 // Get reads one row by id, (nil, nil) when not found.
 func (r *Repo) Get(id string) (*CustomScript, error) {
-	rec, err := sqlitex.QueryOne(r.DB, func(row *sql.Row) (*CustomScript, error) {
-		s, err := scanRow(row)
-		if err != nil {
-			return nil, err
-		}
-		return &s, nil
-	}, `SELECT `+selectColumns+` FROM custom_scripts WHERE id = ?`, id)
+	c := kiraschema.Scripts
+	sb := r.Dialect.Select(selectColumns...).From(c.Table)
+	sb.Where(sb.Equal(c.ID, id))
+	var rec *CustomScript
+	s, err := scanRow(sqlb.QueryRow(r.DB, sb))
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		err = nil
+	case err == nil:
+		rec = &s
+	}
 	if err != nil {
 		return nil, fmt.Errorf("scripts: get %s: %w", id, err)
 	}
@@ -152,38 +169,39 @@ func (r *Repo) Get(id string) (*CustomScript, error) {
 // Reorder applies a user's drag order to one set: the ungrouped scripts ("") or one collection's.
 // sort_order becomes dense per set.
 func (r *Repo) Reorder(collection string, ids []string) error {
-	return r.reorderTx("custom_scripts",
-		`SELECT id FROM custom_scripts WHERE collection = ? ORDER BY sort_order ASC, name ASC`,
-		`UPDATE custom_scripts SET sort_order = ? WHERE id = ?`,
-		ids, collection)
+	c := kiraschema.Scripts
+	sel := r.Dialect.Select(c.ID).From(c.Table)
+	sel.Where(sel.Equal(c.Collection, collection)).OrderBy(c.SortOrder+" ASC", c.Name+" ASC")
+	return r.reorderTx(sqlb.SortSet{Table: c.Table, Key: c.ID, Order: c.SortOrder, Select: sel}, ids)
 }
 
 // ReorderCollections applies a user's drag order to the collections, named by name.
 func (r *Repo) ReorderCollections(names []string) error {
-	return r.reorderTx("custom_script_collections",
-		`SELECT name FROM custom_script_collections ORDER BY sort_order ASC, name ASC`,
-		`UPDATE custom_script_collections SET sort_order = ? WHERE name = ?`,
-		names)
+	c := kiraschema.ScriptCollections
+	sel := r.Dialect.Select(c.Name).From(c.Table).OrderBy(c.SortOrder+" ASC", c.Name+" ASC")
+	return r.reorderTx(sqlb.SortSet{Table: c.Table, Key: c.Name, Order: c.SortOrder, Select: sel}, names)
 }
 
-func (r *Repo) reorderTx(table, selectSQL, updateSQL string, ids []string, args ...any) error {
+func (r *Repo) reorderTx(set sqlb.SortSet, ids []string) error {
 	tx, err := r.DB.Begin()
 	if err != nil {
-		return fmt.Errorf("scripts: reorder %s: begin: %w", table, err)
+		return fmt.Errorf("scripts: reorder %s: begin: %w", set.Table, err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if err := sqlitex.ReorderSortOrder(tx, selectSQL, updateSQL, ids, args...); err != nil {
-		return fmt.Errorf("scripts: reorder %s: %w", table, err)
+	if err := sqlb.ReorderSortOrder(tx, r.Dialect, set, ids); err != nil {
+		return fmt.Errorf("scripts: reorder %s: %w", set.Table, err)
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("scripts: reorder %s: commit: %w", table, err)
+		return fmt.Errorf("scripts: reorder %s: commit: %w", set.Table, err)
 	}
 	return nil
 }
 
 // ListCollections orders by sort_order (user drag order), name as the tiebreak.
 func (r *Repo) ListCollections() ([]Collection, error) {
-	rows, err := r.DB.Query(`SELECT name, sort_order FROM custom_script_collections ORDER BY sort_order ASC, name ASC`)
+	c := kiraschema.ScriptCollections
+	sb := r.Dialect.Select(c.Name, c.SortOrder).From(c.Table).OrderBy(c.SortOrder+" ASC", c.Name+" ASC")
+	rows, err := sqlb.Query(r.DB, sb)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Collection, bool, error) {
 		var c Collection
 		err := rows.Scan(&c.Name, &c.SortOrder)
@@ -197,7 +215,10 @@ func (r *Repo) SetScheduleTarget(id, taskID, branchID string) error {
 	if taskID == "" {
 		branchID = ""
 	}
-	res, err := r.DB.Exec(`UPDATE custom_scripts SET schedule_task_id = ?, schedule_branch_id = ? WHERE id = ?`, taskID, branchID, id)
+	c := kiraschema.Scripts
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.ScheduleTaskID, taskID), ub.Assign(c.ScheduleBranchID, branchID)).Where(ub.Equal(c.ID, id))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return fmt.Errorf("scripts: set schedule target of %s: %w", id, err)
 	}
@@ -206,7 +227,11 @@ func (r *Repo) SetScheduleTarget(id, taskID, branchID string) error {
 
 // pruneCollections drops order rows no run names.
 func (r *Repo) pruneCollections() error {
-	if _, err := r.DB.Exec(`DELETE FROM custom_script_collections WHERE name NOT IN (SELECT collection FROM custom_scripts)`); err != nil {
+	sc, s := kiraschema.ScriptCollections, kiraschema.Scripts
+	used := r.Dialect.Select(s.Collection).From(s.Table)
+	del := r.Dialect.DeleteFrom(sc.Table)
+	del.Where(del.NotIn(sc.Name, used))
+	if _, err := sqlb.Exec(r.DB, del); err != nil {
 		return fmt.Errorf("scripts: prune collections: %w", err)
 	}
 	return nil
@@ -223,7 +248,7 @@ func requireRow(res sql.Result, op, id string) error {
 	return nil
 }
 
-// projection implements configfs.Projection over custom_scripts: the last good file value lives in
+// projection implements configfs.Projection over scripts: the last good file value lives in
 // config_json and the config columns follow it. State columns are never written here.
 type projection struct{ r *Repo }
 
@@ -231,7 +256,10 @@ type projection struct{ r *Repo }
 func (r *Repo) Projection() *projection { return &projection{r} }
 
 func (p *projection) Snapshot() (map[string]string, error) {
-	rows, err := p.r.DB.Query(`SELECT id, config_json FROM custom_scripts WHERE config_json <> ''`)
+	c := kiraschema.Scripts
+	sb := p.r.Dialect.Select(c.ID, c.ConfigJSON).From(c.Table)
+	sb.Where(sb.NotEqual(c.ConfigJSON, ""))
+	rows, err := sqlb.Query(p.r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("scripts: read last good: %w", err)
 	}
@@ -270,26 +298,26 @@ func (p *projection) Record(file, valueJSON string, now int64) error {
 		return fmt.Errorf("scripts: record %s: begin: %w", file, err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	order, err := sqlitex.NextSortOrder(tx, "custom_scripts", "collection = ?", fields.Collection)
+	c, sc := kiraschema.Scripts, kiraschema.ScriptCollections
+	order, err := sqlb.NextSortOrder(tx, r.Dialect, c.Table, c.SortOrder, func(sb *sqlbuilder.SelectBuilder) string {
+		return sb.Equal(c.Collection, fields.Collection)
+	})
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(
-		`INSERT INTO custom_scripts (id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at,
-		   kind, params_json, smart_json, use_ade_dir, schedule_json, config_json)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(id) DO UPDATE SET name = excluded.name, command = excluded.command, working_dir = excluded.working_dir,
-		   dir_mode = excluded.dir_mode, color = excluded.color, collection = excluded.collection, updated_at = excluded.updated_at,
-		   kind = excluded.kind, params_json = excluded.params_json, smart_json = excluded.smart_json,
-		   use_ade_dir = excluded.use_ade_dir, schedule_json = excluded.schedule_json, config_json = excluded.config_json`,
-		id, fields.Name, fields.Command, fields.WorkingDir, fields.DirMode, fields.Color, fields.Collection, order, now, now,
-		fields.Kind, ex.params, ex.smart, fields.UseAdeDir, ex.schedule, valueJSON,
-	); err != nil {
+	ib := r.Dialect.InsertInto(c.Table).Cols(c.ID, c.Name, c.Command, c.WorkingDir, c.DirMode, c.Color, c.Collection, c.SortOrder,
+		c.CreatedAt, c.UpdatedAt, c.Kind, c.ParamsJSON, c.SmartJSON, c.UseAdeDir, c.ScheduleJSON, c.ConfigJSON).
+		Values(id, fields.Name, fields.Command, fields.WorkingDir, fields.DirMode, fields.Color, fields.Collection, order, now, now,
+			fields.Kind, ex.params, ex.smart, fields.UseAdeDir, ex.schedule, valueJSON)
+	sqlb.Upsert(ib, []string{c.ID}, []string{c.Name, c.Command, c.WorkingDir, c.DirMode, c.Color, c.Collection, c.UpdatedAt,
+		c.Kind, c.ParamsJSON, c.SmartJSON, c.UseAdeDir, c.ScheduleJSON, c.ConfigJSON}, "")
+	if _, err := sqlb.Exec(tx, ib); err != nil {
 		return fmt.Errorf("scripts: record %s: %w", file, err)
 	}
 	if fields.Collection != "" {
-		if _, err := tx.Exec(`INSERT OR IGNORE INTO custom_script_collections (name, sort_order)
-			VALUES (?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM custom_script_collections))`, fields.Collection); err != nil {
+		next := sqlbuilder.Raw("(SELECT COALESCE(MAX(" + sc.SortOrder + "), -1) + 1 FROM " + sc.Table + ")")
+		ins := r.Dialect.InsertIgnoreInto(sc.Table).Cols(sc.Name, sc.SortOrder).Values(fields.Collection, next)
+		if _, err := sqlb.Exec(tx, ins); err != nil {
 			return fmt.Errorf("scripts: record %s: collection: %w", file, err)
 		}
 	}
@@ -310,7 +338,10 @@ func (p *projection) Forget(file string) error {
 		return fmt.Errorf("scripts: forget %s: begin: %w", file, err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(`DELETE FROM custom_scripts WHERE id = ?`, id); err != nil {
+	c := kiraschema.Scripts
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.ID, id))
+	if _, err := sqlb.Exec(tx, del); err != nil {
 		return fmt.Errorf("scripts: forget %s: %w", file, err)
 	}
 	if err := r.pruneSecrets(tx, id); err != nil {

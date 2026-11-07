@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/kirathecat/kira-studio/internal/ids"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"log/slog"
 	"unicode/utf8"
 
@@ -15,7 +17,7 @@ import (
 // historyLimit mirrors filter-history.ts's HISTORY_LIMIT.
 const historyLimit = 20
 
-// filter_history was capped per (connection_id, path) but had no bound on the number of
+// connection_filter_history was capped per (connection_id, path) but had no bound on the number of
 // paths a connection accumulates — every table/collection a person has ever filtered, on a
 // connection they have never deleted, with no liveness oracle to sweep a dropped one. Not a
 // new number: metadata_cache's own 200-paths-per-connection cap (the adjacent "how many
@@ -86,7 +88,8 @@ func capOrderByJSON(s *string) *string {
 }
 
 type FilterHistoryRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 // Record mirrors filter-history.ts's recordFilterUse. "I cleared the filter" (both nil) is not
@@ -124,32 +127,23 @@ func (r *FilterHistoryRepo) Record(connectionID, path string, where *string, ord
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	if _, err := tx.Exec(
-		`DELETE FROM filter_history
-		  WHERE connection_id = ? AND path = ? AND where_text IS ? AND order_by_json IS ?`,
-		connectionID, path, where, orderByJSON,
-	); err != nil {
+	c := kiraschema.ConnectionFilterHistory
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(
+		del.Equal(c.ConnectionID, connectionID), del.Equal(c.Path, path),
+		del.IsNotDistinctFrom(c.WhereText, where), del.IsNotDistinctFrom(c.OrderByJSON, orderByJSON),
+	)
+	if _, err := sqlb.Exec(tx, del); err != nil {
 		return fmt.Errorf("repos/filter_history: dedupe delete: %w", err)
 	}
 
-	if _, err := tx.Exec(
-		`INSERT INTO filter_history (id, connection_id, path, where_text, order_by_json, used_at)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		ids.NewID(), connectionID, path, where, orderByJSON, kiratime.NowISO(),
-	); err != nil {
+	ib := r.Dialect.InsertInto(c.Table).Cols(c.ID, c.ConnectionID, c.Path, c.WhereText, c.OrderByJSON, c.UsedAt).
+		Values(ids.NewID(), connectionID, path, where, orderByJSON, kiratime.NowMs())
+	if _, err := sqlb.Exec(tx, ib); err != nil {
 		return fmt.Errorf("repos/filter_history: insert: %w", err)
 	}
 
-	if _, err := tx.Exec(`
-		DELETE FROM filter_history
-		 WHERE connection_id = ? AND path = ?
-		   AND id NOT IN (
-		     SELECT id FROM filter_history
-		      WHERE connection_id = ? AND path = ?
-		      ORDER BY used_at DESC, rowid DESC
-		      LIMIT ?
-		   )
-	`, connectionID, path, connectionID, path, historyLimit); err != nil {
+	if err := r.capNewest(tx, connectionID, &path, historyLimit); err != nil {
 		return fmt.Errorf("repos/filter_history: cap: %w", err)
 	}
 
@@ -157,16 +151,7 @@ func (r *FilterHistoryRepo) Record(connectionID, path string, where *string, ord
 	// been filtered on, keeping the historyPerConnectionLimit most recently used rows regardless
 	// of which path they belong to, so a path filtered once long ago falls off before one still in
 	// regular use.
-	if _, err := tx.Exec(`
-		DELETE FROM filter_history
-		 WHERE connection_id = ?
-		   AND id NOT IN (
-		     SELECT id FROM filter_history
-		      WHERE connection_id = ?
-		      ORDER BY used_at DESC, rowid DESC
-		      LIMIT ?
-		   )
-	`, connectionID, connectionID, historyPerConnectionLimit); err != nil {
+	if err := r.capNewest(tx, connectionID, nil, historyPerConnectionLimit); err != nil {
 		return fmt.Errorf("repos/filter_history: cap connection: %w", err)
 	}
 
@@ -176,15 +161,29 @@ func (r *FilterHistoryRepo) Record(connectionID, path string, where *string, ord
 	return nil
 }
 
+// capNewest keeps the limit newest rows of the connection, or of one path when path is non-nil.
+func (r *FilterHistoryRepo) capNewest(tx *sql.Tx, connectionID string, path *string, limit int) error {
+	c := kiraschema.ConnectionFilterHistory
+	del := r.Dialect.DeleteFrom(c.Table)
+	keep := r.Dialect.Select(c.ID).From(c.Table)
+	conds := []string{del.Equal(c.ConnectionID, connectionID)}
+	keepConds := []string{keep.Equal(c.ConnectionID, connectionID)}
+	if path != nil {
+		conds = append(conds, del.Equal(c.Path, *path))
+		keepConds = append(keepConds, keep.Equal(c.Path, *path))
+	}
+	keep.Where(keepConds...).OrderBy(c.UsedAt+" DESC", sqlb.RowID+" DESC").Limit(limit)
+	del.Where(append(conds, del.NotIn(c.ID, keep))...)
+	_, err := sqlb.Exec(tx, del)
+	return err
+}
+
 func (r *FilterHistoryRepo) List(connectionID, path string, limit int) ([]model.FilterHistoryEntry, error) {
-	rows, err := r.DB.Query(
-		`SELECT id, connection_id, path, where_text, order_by_json, used_at
-		   FROM filter_history
-		  WHERE connection_id = ? AND path = ?
-		  ORDER BY used_at DESC, rowid DESC
-		  LIMIT ?`,
-		connectionID, path, limit,
-	)
+	c := kiraschema.ConnectionFilterHistory
+	sb := r.Dialect.Select(c.ID, c.ConnectionID, c.Path, c.WhereText, c.OrderByJSON, c.UsedAt).From(c.Table)
+	sb.Where(sb.Equal(c.ConnectionID, connectionID), sb.Equal(c.Path, path)).
+		OrderBy(c.UsedAt+" DESC", sqlb.RowID+" DESC").Limit(limit)
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos/filter_history: query: %w", err)
 	}
@@ -196,10 +195,12 @@ func (r *FilterHistoryRepo) List(connectionID, path string, limit int) ([]model.
 			e           model.FilterHistoryEntry
 			whereText   sql.NullString
 			orderByJSON sql.NullString
+			usedMs      int64
 		)
-		if err := rows.Scan(&e.ID, &e.ConnectionID, &e.Path, &whereText, &orderByJSON, &e.UsedAt); err != nil {
+		if err := rows.Scan(&e.ID, &e.ConnectionID, &e.Path, &whereText, &orderByJSON, &usedMs); err != nil {
 			return nil, fmt.Errorf("repos/filter_history: scan: %w", err)
 		}
+		e.UsedAt = kiratime.MsToISO(usedMs)
 		if whereText.Valid {
 			e.Where = &whereText.String
 		}

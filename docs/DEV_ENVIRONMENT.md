@@ -74,14 +74,24 @@ needs.
   --project=screenshots <file>`. Never run it beside a UI suite in the same checkout. Output is
   lossless WebP, never PNG (guard N15).
 - `bun run site:shots:fill` checks every manifest id has its files: exit 1 on a missing one. In CI
-  it runs with `--fallback <dir>` and never fails (last-good copy, else placeholder).
+  it runs with `--fallback <dir>`: last-good copy, else placeholder, exit 0. Under `CI=true` it
+  exits 1 when a shot still has no image: a placeholder there hid a capture failure before.
+- The `screenshots` project runs 3 workers, files and tests in parallel. Each id writes its own
+  files; output is byte-identical to a serial run. 26 shots: about 80 s wall locally. Drop to 2
+  workers if CI flakes, and record it.
+- Install dialog images (`site/src/assets/install/keychain-access.webp`, `folder-access.webp`) are
+  user-supplied WebP, committed. Missing: local build and `astro dev` show a "Screenshot pending"
+  box and warn; `CI=true` fails the build. `KIRA_SITE_SHOTS=placeholder` does not lift this.
 - Local site with no images: `bun run site:dev` serves placeholders and warns per missing file.
   `site:build` fails on a missing image; `KIRA_SITE_SHOTS=placeholder bun run site:build` uses
   placeholders. For real images run `bun run screenshots` first.
 - Add a shot: an entry in `site/src/data/shotCapture.ts`, copy in `site/src/data/shots.ts`, a
   `shoot(page, '<id>', consoleErrors)` call in the spec, a `<DocShot id="<id>" />` or hero use.
+- Clear generated shots with `find screenshots -mindepth 1 -maxdepth 1 ! -name assets -exec rm -rf {} +`
+  (never delete `screenshots/assets/`, it is tracked).
 - Determinism check: run `bun run screenshots` twice and `cmp` every file in `screenshots/`. A diff
-  means a nondeterministic input; fix the cause, never add tolerance.
+  means a nondeterministic input; fix the cause, never add tolerance. A live clock input
+  (approval expiry countdown) is fixed with `page.clock.setFixedTime`.
 - Shot flows: `apps/*/tests/screenshots/*.shot.ts`. A shot fails on a console error, so a mocked
   channel without a fixture (`E_FIXTURE_MISS`, HTTP 422) shows up as one; add the snapshot.
 - `bun run site:check` builds the site, then runs the 375 px and 1280 px WebKit checks.
@@ -193,6 +203,12 @@ See `docs/ARCHITECTURE.md`'s ClickHouse section for the adapter's own design fac
   driven by a plain Playwright tab. Prerequisites (`scripts/setup.sh`, `bun run build`, and
   `go build -tags server`) are memoized per worker process by
   `apps/kira-space/tests/e2e-real/studio/fixtures.ts`'s `buildPrerequisites()`.
+
+## kira.db schema identifiers (P553)
+
+- After a schema change regenerate the Go identifiers: `go generate ./internal/kiraschema` (same as
+  `go test ./apps/kira-space/internal/storage -run 'TestKiraSchema|TestSchemaSnapshot' -update`). Commit
+  `internal/kiraschema/kiraschema_gen.go` and `storage/testdata/schema.sql`. Without it `TestKiraSchemaGenerated` fails.
 
 ## Secrets / `KIRA_INSECURE_SECRETS` (P25, moved to Go in P52/P57)
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -237,7 +238,7 @@ func newEngine(t *testing.T, scen map[string][]string) *engine {
 		Tasks: r.AdeTasks, Statuses: r.AdeStatuses, RepoConfig: r.AdeRepoConfig, Facts: r.AdeFacts, CodeRepos: r.CodeRepos,
 		GitRepoSettings: e.files.Settings, Runner: gitclient.NewExecRunner(), Registry: registry,
 		GitStatus: func(context.Context) gitclient.GitStatus { return gitclient.GitStatus{Kind: "ok", Path: "git"} },
-		Workflows: &adeflow.Reader{Dir: wfDir, Store: r.AdeTasks},
+		Workflows: &adeflow.Reader{Dir: wfDir, Store: configfs.TableProjection{DB: db.DB, Folder: adeflow.WorkflowsFolder}},
 		Logs:      r.AdeLogs, Sessions: r.AdeSessions, AgentDir: filepath.Join(t.TempDir(), "agent"), AgentBin: self,
 		OnLog:            func(ev adewire.LogEvent) { e.mu.Lock(); e.logs = append(e.logs, ev); e.mu.Unlock() },
 		AutofetchMinutes: func() int { return 0 }, HomeDir: e.home,

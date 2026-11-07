@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -13,8 +15,12 @@ const MaxDbAuditCallsPerTask = 2000
 
 // DbAuditRepo persists the Kira DB audit trail (migrations/0081_p547_db_audit.sql).
 type DbAuditRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
+
+// dbAuditAbandoned is the outcome of an approval left pending by a quit.
+const dbAuditAbandoned = "abandoned"
 
 // StartCall inserts a running call row and drops the task's oldest calls past the cap
 // (their approvals follow by cascade).
@@ -24,17 +30,22 @@ func (r *DbAuditRepo) StartCall(c model.DbAuditCall) error {
 		return fmt.Errorf("repos: begin db audit call: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(`INSERT INTO ade_db_audit (id, task_id, kind, session_id, step_id, run_id, started_ms, status,
-		tool, connection_id, connection_name, mode, target, statement, statement_len, statement_withheld,
-		statement_truncated, summary)
-		VALUES (?, ?, 'call', ?, ?, ?, ?, 'running', ?, NULLIF(?, ''), ?, ?, ?, ?, ?, ?, ?, ?)`,
-		c.ID, c.TaskID, c.SessionID, c.StepID, c.RunID, c.StartedMs, c.Tool, c.ConnectionID, c.ConnectionName,
-		c.Mode, c.Target, c.Statement, c.StatementLen, c.StatementWithheld, c.StatementTruncated, c.Summary); err != nil {
+	a := kiraschema.AdeDbAudit
+	ib := r.Dialect.InsertInto(a.Table).Cols(a.ID, a.TaskID, a.Kind, a.SessionID, a.StepID, a.RunID, a.StartedMs, a.Status,
+		a.Tool, a.ConnectionID, a.ConnectionName, a.Mode, a.Target, a.Statement, a.StatementLen, a.StatementWithheld,
+		a.StatementTruncated, a.Summary).
+		Values(c.ID, c.TaskID, model.DbAuditKindCall, c.SessionID, c.StepID, c.RunID, c.StartedMs, model.DbAuditRunning,
+			c.Tool, nullableString(c.ConnectionID), c.ConnectionName, c.Mode, c.Target, c.Statement, c.StatementLen,
+			c.StatementWithheld, c.StatementTruncated, c.Summary)
+	if _, err := sqlb.Exec(tx, ib); err != nil {
 		return fmt.Errorf("repos: insert db audit call: %w", err)
 	}
-	if _, err := tx.Exec(`DELETE FROM ade_db_audit WHERE kind = 'call' AND task_id = ? AND id NOT IN (
-		SELECT id FROM ade_db_audit WHERE kind = 'call' AND task_id = ? ORDER BY started_ms DESC, rowid DESC LIMIT ?)`,
-		c.TaskID, c.TaskID, MaxDbAuditCallsPerTask); err != nil {
+	keep := r.Dialect.Select(a.ID).From(a.Table)
+	keep.Where(keep.Equal(a.Kind, model.DbAuditKindCall), keep.Equal(a.TaskID, c.TaskID)).
+		OrderBy(a.StartedMs+" DESC", sqlb.RowID+" DESC").Limit(MaxDbAuditCallsPerTask)
+	trim := r.Dialect.DeleteFrom(a.Table)
+	trim.Where(trim.Equal(a.Kind, model.DbAuditKindCall), trim.Equal(a.TaskID, c.TaskID), trim.NotIn(a.ID, keep))
+	if _, err := sqlb.Exec(tx, trim); err != nil {
 		return fmt.Errorf("repos: trim db audit: %w", err)
 	}
 	return tx.Commit()
@@ -42,8 +53,11 @@ func (r *DbAuditRepo) StartCall(c model.DbAuditCall) error {
 
 // FinishCall sets a call's final status, end time and error text.
 func (r *DbAuditRepo) FinishCall(id, status string, endedMs int64, errText string) error {
-	if _, err := r.DB.Exec(`UPDATE ade_db_audit SET status = ?, ended_ms = ?, error = NULLIF(?, '') WHERE id = ? AND kind = 'call'`,
-		status, endedMs, errText, id); err != nil {
+	a := kiraschema.AdeDbAudit
+	ub := r.Dialect.Update(a.Table)
+	ub.Set(ub.Assign(a.Status, status), ub.Assign(a.EndedMs, endedMs), ub.Assign(a.Error, nullableString(errText))).
+		Where(ub.Equal(a.ID, id), ub.Equal(a.Kind, model.DbAuditKindCall))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos: finish db audit call %s: %w", id, err)
 	}
 	return nil
@@ -51,8 +65,11 @@ func (r *DbAuditRepo) FinishCall(id, status string, endedMs int64, errText strin
 
 // SetStatement stores a call's redacted statement once it can be produced.
 func (r *DbAuditRepo) SetStatement(id, statement string, length int, withheld, truncated bool) error {
-	if _, err := r.DB.Exec(`UPDATE ade_db_audit SET statement = ?, statement_len = ?, statement_withheld = ?, statement_truncated = ?
-		WHERE id = ? AND kind = 'call'`, statement, length, withheld, truncated, id); err != nil {
+	a := kiraschema.AdeDbAudit
+	ub := r.Dialect.Update(a.Table)
+	ub.Set(ub.Assign(a.Statement, statement), ub.Assign(a.StatementLen, length), ub.Assign(a.StatementWithheld, withheld),
+		ub.Assign(a.StatementTruncated, truncated)).Where(ub.Equal(a.ID, id), ub.Equal(a.Kind, model.DbAuditKindCall))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos: set db audit statement %s: %w", id, err)
 	}
 	return nil
@@ -64,11 +81,12 @@ func (r *DbAuditRepo) RaiseApproval(a model.DbAuditApproval) error {
 	if outcome == "" {
 		outcome = model.DbAuditPending
 	}
-	if _, err := r.DB.Exec(`INSERT INTO ade_db_audit (id, task_id, call_id, kind, session_id, step_id, run_id, started_ms,
-		ended_ms, status, subject, reason, stage, exemption_json)
-		VALUES (?, ?, ?, 'approval', ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''))`,
-		a.ID, a.TaskID, a.CallID, a.SessionID, a.StepID, a.RunID, a.StartedMs, a.EndedMs, outcome,
-		a.Subject, a.Reason, a.Stage, a.ExemptionJSON); err != nil {
+	c := kiraschema.AdeDbAudit
+	ib := r.Dialect.InsertInto(c.Table).Cols(c.ID, c.TaskID, c.CallID, c.Kind, c.SessionID, c.StepID, c.RunID, c.StartedMs,
+		c.EndedMs, c.Status, c.Subject, c.Reason, c.Stage, c.ExemptionJSON).
+		Values(a.ID, a.TaskID, a.CallID, model.DbAuditKindApproval, a.SessionID, a.StepID, a.RunID, a.StartedMs, a.EndedMs, outcome,
+			a.Subject, a.Reason, a.Stage, nullableString(a.ExemptionJSON))
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
 		return fmt.Errorf("repos: insert db audit approval: %w", err)
 	}
 	return nil
@@ -76,21 +94,35 @@ func (r *DbAuditRepo) RaiseApproval(a model.DbAuditApproval) error {
 
 // ResolveApproval sets a pending approval's outcome and end time.
 func (r *DbAuditRepo) ResolveApproval(id, outcome string, endedMs int64) error {
-	if _, err := r.DB.Exec(`UPDATE ade_db_audit SET status = ?, ended_ms = ? WHERE id = ? AND kind = 'approval'`,
-		outcome, endedMs, id); err != nil {
+	a := kiraschema.AdeDbAudit
+	ub := r.Dialect.Update(a.Table)
+	ub.Set(ub.Assign(a.Status, outcome), ub.Assign(a.EndedMs, endedMs)).Where(ub.Equal(a.ID, id), ub.Equal(a.Kind, model.DbAuditKindApproval))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos: resolve db audit approval %s: %w", id, err)
 	}
 	return nil
 }
 
-const dbAuditCols = `id, COALESCE(call_id, ''), task_id, session_id, step_id, run_id, started_ms, ended_ms, status, tool,
-	COALESCE(connection_id, ''), connection_name, mode, target, COALESCE(statement, ''), statement_len,
-	statement_withheld, statement_truncated, COALESCE(summary, ''), COALESCE(error, ''), subject, reason, stage,
-	COALESCE(exemption_json, '')`
+func dbAuditCoalesce(col string) string { return "COALESCE(" + col + ", '')" }
+
+// dbAuditCols is in scan order.
+var dbAuditCols = []string{
+	kiraschema.AdeDbAudit.ID, dbAuditCoalesce(kiraschema.AdeDbAudit.CallID), kiraschema.AdeDbAudit.TaskID,
+	kiraschema.AdeDbAudit.SessionID, kiraschema.AdeDbAudit.StepID, kiraschema.AdeDbAudit.RunID, kiraschema.AdeDbAudit.StartedMs,
+	kiraschema.AdeDbAudit.EndedMs, kiraschema.AdeDbAudit.Status, kiraschema.AdeDbAudit.Tool,
+	dbAuditCoalesce(kiraschema.AdeDbAudit.ConnectionID), kiraschema.AdeDbAudit.ConnectionName, kiraschema.AdeDbAudit.Mode,
+	kiraschema.AdeDbAudit.Target, dbAuditCoalesce(kiraschema.AdeDbAudit.Statement), kiraschema.AdeDbAudit.StatementLen,
+	kiraschema.AdeDbAudit.StatementWithheld, kiraschema.AdeDbAudit.StatementTruncated,
+	dbAuditCoalesce(kiraschema.AdeDbAudit.Summary), dbAuditCoalesce(kiraschema.AdeDbAudit.Error), kiraschema.AdeDbAudit.Subject,
+	kiraschema.AdeDbAudit.Reason, kiraschema.AdeDbAudit.Stage, dbAuditCoalesce(kiraschema.AdeDbAudit.ExemptionJSON),
+}
 
 // ListForTask returns the task's calls newest first, each with its approvals oldest first.
 func (r *DbAuditRepo) ListForTask(taskID string) ([]model.DbAuditCall, error) {
-	rows, err := r.DB.Query(`SELECT `+dbAuditCols+` FROM ade_db_audit WHERE task_id = ? ORDER BY started_ms DESC, rowid DESC`, taskID)
+	a := kiraschema.AdeDbAudit
+	sb := r.Dialect.Select(dbAuditCols...).From(a.Table)
+	sb.Where(sb.Equal(a.TaskID, taskID)).OrderBy(a.StartedMs+" DESC", sqlb.RowID+" DESC")
+	rows, err := sqlb.Query(r.DB, sb)
 	all, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (dbAuditRow, bool, error) {
 		var x dbAuditRow
 		var withheld, truncated bool
@@ -147,10 +179,17 @@ type dbAuditRow struct {
 // ReconcileRunning turns calls left running by a quit into errors carrying msg and their pending
 // approvals into abandoned.
 func (r *DbAuditRepo) ReconcileRunning(msg string) error {
-	if _, err := r.DB.Exec(`UPDATE ade_db_audit SET status = 'error', error = ? WHERE kind = 'call' AND status = 'running'`, msg); err != nil {
+	a := kiraschema.AdeDbAudit
+	calls := r.Dialect.Update(a.Table)
+	calls.Set(calls.Assign(a.Status, model.DbAuditError), calls.Assign(a.Error, msg)).
+		Where(calls.Equal(a.Kind, model.DbAuditKindCall), calls.Equal(a.Status, model.DbAuditRunning))
+	if _, err := sqlb.Exec(r.DB, calls); err != nil {
 		return fmt.Errorf("repos: reconcile db audit calls: %w", err)
 	}
-	if _, err := r.DB.Exec(`UPDATE ade_db_audit SET status = 'abandoned' WHERE kind = 'approval' AND status = 'pending'`); err != nil {
+	approvals := r.Dialect.Update(a.Table)
+	approvals.Set(approvals.Assign(a.Status, dbAuditAbandoned)).
+		Where(approvals.Equal(a.Kind, model.DbAuditKindApproval), approvals.Equal(a.Status, model.DbAuditPending))
+	if _, err := sqlb.Exec(r.DB, approvals); err != nil {
 		return fmt.Errorf("repos: reconcile db audit approvals: %w", err)
 	}
 	return nil

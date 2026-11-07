@@ -1,13 +1,15 @@
 ---
 import type { ResolvedShot } from '../lib/shots';
+import ShotPicture from './ShotPicture.astro';
 
 interface Props {
   shot: ResolvedShot;
   eager?: boolean;
   glow?: boolean;
+  tile?: boolean;
 }
 
-const { shot, eager = false, glow = false } = Astro.props;
+const { shot, eager = false, glow = false, tile = false } = Astro.props;
 ---
 
 <figure class="relative m-0">
@@ -20,25 +22,16 @@ const { shot, eager = false, glow = false } = Astro.props;
       class="block overflow-hidden rounded-xl bg-chrome shadow-shot ring-1 ring-border-strong md:overflow-visible md:rounded-none md:bg-transparent md:shadow-none md:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       aria-label={`Open full size: ${shot.title}`}
     >
-      <picture>
-        <source media="(min-width: 768px)" srcset={shot.framed} type="image/webp">
-        <img
-          src={shot.detail}
-          alt={shot.alt}
-          data-shot={shot.id}
-          width={shot.detailWidth}
-          height={shot.detailHeight}
-          loading={eager ? 'eager' : 'lazy'}
-          decoding="async"
-          style={`--shot-ar:${shot.framedWidth}/${shot.framedHeight}`}
-          class="aspect-[4/3] h-auto w-full md:aspect-(--shot-ar)"
-        >
-      </picture>
+      <ShotPicture shot={shot} eager={eager} />
     </a>
   ) : (
     <a
       href={shot.crop}
-      class="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      class:list={[
+        'block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+        tile &&
+          'flex aspect-[4/3] items-center justify-center rounded-xl bg-elevated p-3 ring-1 ring-border-strong',
+      ]}
       aria-label={`Open full size: ${shot.title}`}
     >
       <img
@@ -51,6 +44,7 @@ const { shot, eager = false, glow = false } = Astro.props;
         decoding="async"
         class:list={[
           'mx-auto block h-auto max-w-full',
+          tile && 'max-h-full object-contain',
           shot.kind === 'region' && 'overflow-hidden rounded-xl ring-1 ring-border-strong',
         ]}
       >

@@ -8,7 +8,9 @@ import (
 	"sync"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/secrets"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // SecretOwner owns every Api secret: one module-wide namespace of names a file's `${secret:name}` refers to.
@@ -19,8 +21,9 @@ var ErrSecretUnreadable = errors.New("apifiles: the saved secret cannot be read"
 
 // Secrets is the module's sealed values: secret_values rows of scope variable, owner api.
 type Secrets struct {
-	Store *secrets.Store
-	DB    *sql.DB
+	Store   *secrets.Store
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 // Status reports whether values can be sealed here.
@@ -33,7 +36,10 @@ func (s *Secrets) Put(name, value string) error {
 
 // Delete removes name; an absent name is not an error.
 func (s *Secrets) Delete(name string) error {
-	_, err := s.DB.Exec(`DELETE FROM secret_values WHERE scope = ? AND owner = ? AND name = ?`, string(secrets.ScopeVariable), SecretOwner, name)
+	c := kiraschema.SecretValues
+	del := s.Dialect.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.Scope, string(secrets.ScopeVariable)), del.Equal(c.Owner, SecretOwner), del.Equal(c.Name, name))
+	_, err := sqlb.Exec(s.DB, del)
 	return err
 }
 

@@ -10,7 +10,7 @@ import (
 
 func newTabsRepo(t *testing.T) *repos.TabsRepo {
 	r := &repos.TabsRepo{DB: newRepos(t).DB}
-	if _, err := r.DB.Exec(`INSERT INTO windows (key, "order") VALUES ('main', 0)`); err != nil {
+	if _, err := r.DB.Exec(`INSERT INTO windows (key, sort_order) VALUES ('main', 0)`); err != nil {
 		t.Fatalf("seed main window: %v", err)
 	}
 	return r
@@ -101,7 +101,7 @@ func TestTabsRepoSaveScopesUpsertAndPruneByWindow(t *testing.T) {
 	r := newTabsRepo(t)
 
 	// A second window ("other") needs its own `windows` row — `tabs.window_key` is a foreign key onto it.
-	if _, err := r.DB.Exec(`INSERT INTO windows (key, "order", bounds_json) VALUES ('other', 1, NULL)`); err != nil {
+	if _, err := r.DB.Exec(`INSERT INTO windows (key, sort_order, bounds_json) VALUES ('other', 1, NULL)`); err != nil {
 		t.Fatalf("seed windows row: %v", err)
 	}
 

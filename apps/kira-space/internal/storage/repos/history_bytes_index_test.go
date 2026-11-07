@@ -48,8 +48,8 @@ func TestResponseHistory_ByteBudgetSumUsesCoveringIndex(t *testing.T) {
 func TestGrpcHistory_ByteBudgetSumUsesCoveringIndex(t *testing.T) {
 	repo := newGrpcHistoryRepo(t)
 	plan := explainPlanDetail(t, repo.DB,
-		"EXPLAIN QUERY PLAN SELECT COALESCE(SUM(stored_bytes), 0) FROM grpc_call_history")
-	if !strings.Contains(plan, "COVERING INDEX grpc_call_history_bytes") {
+		"EXPLAIN QUERY PLAN SELECT COALESCE(SUM(stored_bytes), 0) FROM api_grpc_history")
+	if !strings.Contains(plan, "COVERING INDEX api_grpc_history_bytes") {
 		t.Errorf("query plan = %q, want it to use the covering index (an index-only scan), not a full table scan", plan)
 	}
 }

@@ -1,0 +1,26 @@
+---
+import type { ResolvedWindowShot } from '../lib/shots';
+
+interface Props {
+  shot: ResolvedWindowShot;
+  eager?: boolean;
+  class?: string;
+}
+
+const { shot, eager = false, class: className } = Astro.props;
+---
+
+<picture>
+  <source media="(min-width: 768px)" srcset={shot.framed} type="image/webp">
+  <img
+    src={shot.detail}
+    alt={shot.alt}
+    data-shot={shot.id}
+    width={shot.detailWidth}
+    height={shot.detailHeight}
+    loading={eager ? 'eager' : 'lazy'}
+    decoding="async"
+    style={`--shot-ar:${shot.framedWidth}/${shot.framedHeight}`}
+    class:list={['aspect-[4/3] h-auto w-full md:aspect-(--shot-ar)', className]}
+  >
+</picture>

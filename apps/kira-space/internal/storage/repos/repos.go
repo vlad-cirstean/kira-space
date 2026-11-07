@@ -61,7 +61,7 @@ func New(db *sql.DB) (*Repos, error) {
 	if err != nil {
 		return nil, fmt.Errorf("repos: prepare settings select: %w", err)
 	}
-	layoutSelectAll, err := db.Prepare(appstorage.LayoutSelectAllSQL)
+	layoutSelectAll, err := db.Prepare(layoutSelectAllSQL)
 	if err != nil {
 		return nil, fmt.Errorf("repos: prepare layout select: %w", err)
 	}

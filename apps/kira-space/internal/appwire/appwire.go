@@ -27,6 +27,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configsync"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbaudit"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
@@ -245,6 +246,8 @@ type Wired struct {
 	CodeWorkspace   *bridge.CodeWorkspaceService
 	OpenedFiles     *openedfiles.Service
 	OpenedFilesSvc  *bridge.OpenedFilesService
+	ConfigSync      *configsync.Service
+	ConfigSyncSvc   *bridge.ConfigSyncService
 	FileHandlersSvc *bridge.FileHandlersService
 	AgentNotifySvc  *bridge.AgentNotifyService
 	AgentUsage      *agentusage.Service
@@ -451,6 +454,7 @@ func Build(opts Options) (*Wired, error) {
 	w.AgentContext.View() // follows the file into the DB projection
 	stopContextWatch := w.wireAgentSettings(registry, repositories, deps.Home, opts.Cipher, events)
 	w.stopAgentContext = stopContextWatch
+	w.wireConfigSync(git, repositories, deps.Home, emitter)
 	w.AgentContextSvc = &bridge.AgentContextService{Service: &agentctx.Service{Store: w.AgentContext}}
 	w.AgentSettingsSvc = &bridge.AgentSettingsService{Service: &agentcfg.Service{Store: w.AgentSettings}}
 	w.RepoConfigSvc = &bridge.RepoConfigService{Service: &repocfg.Service{Store: w.RepoConfig, CodeRepos: codeRepoIDs(repositories)}}
@@ -542,6 +546,7 @@ func Build(opts Options) (*Wired, error) {
 	w.runLoader = loader
 	loader.Start()
 	w.sched.Start()
+	w.ConfigSync.Start()
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
 	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry}
 	w.Capture.Tasks = w.AdeTask
@@ -630,6 +635,10 @@ func (w *Wired) BindShell(h ShellHooks) {
 	w.OpenedFiles.OpenWindow = h.OpenNewWindowKeyed
 	w.OpenedFiles.FocusWindow = focusWindow
 	w.OpenedFiles.SetWindowTitle = setTitle
+	w.ConfigSyncSvc.Review.OpenWindow = h.OpenNewWindowKeyed
+	w.ConfigSyncSvc.Review.FocusWindow = focusWindow
+	w.ConfigSyncSvc.Review.CloseWindow = closeWindow
+	w.ConfigSyncSvc.Review.SetWindowTitle = setTitle
 	w.bindCapture(h, closeWindow, focusWindow)
 }
 
@@ -679,7 +688,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.KeepAwake), application.NewService(w.Mobile), application.NewService(w.Memory),
 		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
-		application.NewService(w.PromptsSvc), application.NewService(w.ApprovalsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
+		application.NewService(w.PromptsSvc), application.NewService(w.ApprovalsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc), application.NewService(w.ConfigSyncSvc),
 		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
 		application.NewService(w.App), application.NewService(w.Connections),
 		application.NewService(w.MaskRules), application.NewService(w.Tree),
@@ -708,6 +717,7 @@ func (w *Wired) teardown(db io.Closer) {
 	w.stopAgentContext()
 	w.RepoConfig.Close()
 	w.OpenedFiles.Close()
+	w.ConfigSync.Stop()
 	w.detachMetrics()
 	w.detachOpLog()
 	w.detachApprovals()

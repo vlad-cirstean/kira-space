@@ -7,6 +7,7 @@ import { defaultSettings, type Settings, type SettingsPatch } from './settingsDo
 export const sections = [
   'Appearance',
   'Git',
+  'Shared config',
   'CLI tools',
   'File types',
   'Capture',

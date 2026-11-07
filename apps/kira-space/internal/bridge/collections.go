@@ -14,6 +14,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -515,7 +517,10 @@ func (s *CollectionsService) importEnvironment(env *postman.Environment) (*Envir
 		return nil, apiFilesErr(err)
 	}
 	var id string
-	if err := s.Deps.DB.QueryRow(`SELECT id FROM api_environments WHERE stem = ?`, stem).Scan(&id); err != nil {
+	c := kiraschema.APIEnvironments
+	sel := sqlb.SQLite.Select(c.ID).From(c.Table)
+	sel.Where(sel.Equal(c.Stem, stem))
+	if err := sqlb.QueryRow(s.Deps.DB, sel).Scan(&id); err != nil {
 		return nil, ipcerr.InternalErr(err)
 	}
 	report := &EnvironmentImportReport{
@@ -546,7 +551,10 @@ func (s *CollectionsService) importCollection(tree *postman.Tree) (importedFile,
 	}
 	out := importedFile{treeCommitted: true}
 	var id string
-	if err := s.Deps.DB.QueryRow(`SELECT id FROM api_collections WHERE stem = ?`, stem).Scan(&id); err != nil {
+	c := kiraschema.APICollections
+	sel := sqlb.SQLite.Select(c.ID).From(c.Table)
+	sel.Where(sel.Equal(c.Stem, stem))
+	if err := sqlb.QueryRow(s.Deps.DB, sel).Scan(&id); err != nil {
 		return out, ipcerr.InternalErr(err)
 	}
 	report := &ImportReport{

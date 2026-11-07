@@ -5,31 +5,39 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
-const maskRulesSelectColumns = `
-	id, connection_id, table_name, column_name, mask_kind, keep_hint, correlate, created_at, updated_at
-`
+var maskRulesSelectColumns = []string{
+	kiraschema.ConnectionMaskRules.ID, kiraschema.ConnectionMaskRules.ConnectionID, kiraschema.ConnectionMaskRules.TableName,
+	kiraschema.ConnectionMaskRules.ColumnName, kiraschema.ConnectionMaskRules.MaskKind, kiraschema.ConnectionMaskRules.KeepHint,
+	kiraschema.ConnectionMaskRules.Correlate, kiraschema.ConnectionMaskRules.CreatedAt, kiraschema.ConnectionMaskRules.UpdatedAt,
+}
 
 // MaskRulesRepo reads connection_mask_rules, the projection of each connection file's masks: a
 // selectColumns const, a scan*Row(rowScanner) helper, each query ordered deterministically.
 type MaskRulesRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 func scanMaskRuleRow(row rowScanner) (model.MaskRule, error) {
 	var (
-		r                   model.MaskRule
-		kind                string
-		keepHint, correlate int
+		r                    model.MaskRule
+		kind                 string
+		keepHint, correlate  int
+		createdMs, updatedMs int64
 	)
 	if err := row.Scan(
 		&r.ID, &r.ConnectionID, &r.TableName, &r.ColumnName, &kind, &keepHint, &correlate,
-		&r.CreatedAt, &r.UpdatedAt,
+		&createdMs, &updatedMs,
 	); err != nil {
 		return model.MaskRule{}, err
 	}
+	r.CreatedAt, r.UpdatedAt = kiratime.MsToISO(createdMs), kiratime.MsToISO(updatedMs)
 	r.Kind = model.MaskKind(kind)
 	r.KeepHint = keepHint != 0
 	r.Correlate = correlate != 0
@@ -40,14 +48,10 @@ func scanMaskRuleRow(row rowScanner) (model.MaskRule, error) {
 // the unique index's own ordering, so two rules that would collide under the case-insensitive
 // constraint never come back in arbitrary order relative to each other.
 func (r *MaskRulesRepo) ListForConnection(connectionID string) ([]model.MaskRule, error) {
-	return listForConnection(r.DB, connectionID)
-}
-
-func listForConnection(q queryer, connectionID string) ([]model.MaskRule, error) {
-	rows, err := q.Query(
-		`SELECT `+maskRulesSelectColumns+` FROM connection_mask_rules WHERE connection_id = ? ORDER BY lower(table_name), lower(column_name)`,
-		connectionID,
-	)
+	c := kiraschema.ConnectionMaskRules
+	sb := r.Dialect.Select(maskRulesSelectColumns...).From(c.Table)
+	sb.Where(sb.Equal(c.ConnectionID, connectionID)).OrderBy("lower("+c.TableName+")", "lower("+c.ColumnName+")")
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos/maskrules: list %s: %w", connectionID, err)
 	}
@@ -69,13 +73,16 @@ func listForConnection(q queryer, connectionID string) ([]model.MaskRule, error)
 
 // Get reads one rule by id, (nil, nil) when not found.
 func (r *MaskRulesRepo) Get(id string) (*model.MaskRule, error) {
+	sb := r.Dialect.Select(maskRulesSelectColumns...).From(kiraschema.ConnectionMaskRules.Table)
+	sb.Where(sb.Equal(kiraschema.ConnectionMaskRules.ID, id))
+	query, args := sb.Build()
 	rec, err := sqlitex.QueryOne(r.DB, func(row *sql.Row) (*model.MaskRule, error) {
 		m, err := scanMaskRuleRow(row)
 		if err != nil {
 			return nil, err
 		}
 		return &m, nil
-	}, `SELECT `+maskRulesSelectColumns+` FROM connection_mask_rules WHERE id = ?`, id)
+	}, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("repos/maskrules: get %s: %w", id, err)
 	}
@@ -86,7 +93,9 @@ func (r *MaskRulesRepo) Get(id string) (*model.MaskRule, error) {
 // count — the Settings glance's own backend (§7.5), and the "does this connection have any rules
 // at all" check §4.4's document/stream refusal and §6.2's toolbar-button visibility both need.
 func (r *MaskRulesRepo) CountByConnection() (map[string]int, error) {
-	rows, err := r.DB.Query(`SELECT connection_id, COUNT(*) FROM connection_mask_rules GROUP BY connection_id`)
+	c := kiraschema.ConnectionMaskRules
+	sb := r.Dialect.Select(c.ConnectionID, "COUNT(*)").From(c.Table).GroupBy(c.ConnectionID)
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos/maskrules: count by connection: %w", err)
 	}

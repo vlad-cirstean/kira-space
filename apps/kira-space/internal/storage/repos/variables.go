@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
@@ -17,8 +19,9 @@ import (
 // projection of the api config files, written only by apifiles.Store; the repo itself writes the
 // active environment alone. Secret values live in secret_values, named by api_variables.secret_ref.
 type VariablesRepo struct {
-	db     *sql.DB
-	cipher Cipher
+	db      *sql.DB
+	cipher  Cipher
+	Dialect sqlb.Dialect
 }
 
 // NewVariables takes the cipher that opens a history entry's sealed value.
@@ -36,7 +39,10 @@ func coerceEnvironmentColor(id, color string) string {
 }
 
 func (r *VariablesRepo) ListEnvironments() ([]model.Environment, error) {
-	rows, err := r.db.Query(`SELECT id, name, sort_order, is_active, description, color, COALESCE(stem || '.environment.yaml', '') FROM api_environments ORDER BY sort_order, name`)
+	c := kiraschema.APIEnvironments
+	sb := r.Dialect.Select(c.ID, c.Name, c.SortOrder, c.IsActive, c.Description, c.Color,
+		"COALESCE("+c.Stem+" || '.environment.yaml', '')").From(c.Table).OrderBy(c.SortOrder, c.Name)
+	rows, err := sqlb.Query(r.db, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos/variables: list environments: %w", err)
 	}
@@ -70,11 +76,16 @@ func (r *VariablesRepo) SetActiveEnvironment(id string) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if _, err := tx.Exec(`UPDATE api_environments SET is_active = 0`); err != nil {
+	c := kiraschema.APIEnvironments
+	clear := r.Dialect.Update(c.Table)
+	clear.Set(clear.Assign(c.IsActive, false))
+	if _, err := sqlb.Exec(tx, clear); err != nil {
 		return fmt.Errorf("repos/variables: clear active environment: %w", err)
 	}
 	if id != "" {
-		res, err := tx.Exec(`UPDATE api_environments SET is_active = 1, updated_at = ? WHERE id = ?`, kiratime.NowISO(), id)
+		set := r.Dialect.Update(c.Table)
+		set.Set(set.Assign(c.IsActive, true), set.Assign(c.UpdatedAt, kiratime.NowMs())).Where(set.Equal(c.ID, id))
+		res, err := sqlb.Exec(tx, set)
 		if err != nil {
 			return fmt.Errorf("repos/variables: set active environment %s: %w", id, err)
 		}
@@ -93,9 +104,9 @@ func (r *VariablesRepo) SetActiveEnvironment(id string) error {
 func scopeColumn(scope model.VariableScope) (string, error) {
 	switch scope {
 	case model.VariableScopeCollection:
-		return "collection_id", nil
+		return kiraschema.APIVariables.CollectionID, nil
 	case model.VariableScopeEnvironment:
-		return "environment_id", nil
+		return kiraschema.APIVariables.EnvironmentID, nil
 	}
 	return "", fmt.Errorf("repos/variables: unrecognised scope %q", scope)
 }
@@ -111,11 +122,10 @@ func (r *VariablesRepo) List(scope model.VariableScope, ownerID string) ([]model
 	if ownerID == "" {
 		return nil, fmt.Errorf("repos/variables: ownerId is required")
 	}
-	rows, err := r.db.Query(
-		`SELECT id, name, value, is_secret, sort_order, description FROM api_variables
-		  WHERE `+column+` = ? ORDER BY sort_order, name`,
-		ownerID,
-	)
+	c := kiraschema.APIVariables
+	sb := r.Dialect.Select(c.ID, c.Name, c.Value, c.IsSecret, c.SortOrder, c.Description).From(c.Table)
+	sb.Where(sb.Equal(column, ownerID)).OrderBy(c.SortOrder, c.Name)
+	rows, err := sqlb.Query(r.db, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos/variables: query %s: %w", scope, err)
 	}
@@ -153,11 +163,10 @@ func (r *VariablesRepo) List(scope model.VariableScope, ownerID string) ([]model
 // History returns one variable's prior values, newest first — never a secret's plaintext or
 // ciphertext (the same list-projection discipline as List above). Reveal is the gated path to one.
 func (r *VariablesRepo) History(variableID string) ([]model.VariableHistoryEntry, error) {
-	rows, err := r.db.Query(
-		`SELECT id, variable_id, value, is_secret, recorded_at FROM api_variable_history
-		  WHERE variable_id = ? ORDER BY recorded_at DESC, rowid DESC`,
-		variableID,
-	)
+	c := kiraschema.APIVariableHistory
+	sb := r.Dialect.Select(c.ID, c.VariableID, c.Value, c.IsSecret, c.RecordedAt).From(c.Table)
+	sb.Where(sb.Equal(c.VariableID, variableID)).OrderBy(c.RecordedAt+" DESC", sqlb.RowID+" DESC")
+	rows, err := sqlb.Query(r.db, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos/variables: query history: %w", err)
 	}
@@ -169,7 +178,7 @@ func (r *VariablesRepo) History(variableID string) ([]model.VariableHistoryEntry
 			e        model.VariableHistoryEntry
 			isSecret int
 		)
-		if err := rows.Scan(&e.ID, &e.VariableID, &e.Value, &isSecret, &e.RecordedAt); err != nil {
+		if err := rows.Scan(&e.ID, &e.VariableID, &e.Value, &isSecret, msISO(&e.RecordedAt)); err != nil {
 			return nil, fmt.Errorf("repos/variables: scan history entry: %w", err)
 		}
 		e.IsSecret = isSecret != 0
@@ -194,7 +203,10 @@ func (r *VariablesRepo) History(variableID string) ([]model.VariableHistoryEntry
 func (r *VariablesRepo) SecretRefOf(variableID string) (string, error) {
 	var isSecret int
 	var ref sql.NullString
-	err := r.db.QueryRow(`SELECT is_secret, secret_ref FROM api_variables WHERE id = ?`, variableID).Scan(&isSecret, &ref)
+	c := kiraschema.APIVariables
+	sb := r.Dialect.Select(c.IsSecret, c.SecretRef).From(c.Table)
+	sb.Where(sb.Equal(c.ID, variableID))
+	err := sqlb.QueryRow(r.db, sb).Scan(&isSecret, &ref)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", fmt.Errorf("repos/variables: no variable %s", variableID)
 	}
@@ -211,7 +223,10 @@ func (r *VariablesRepo) SecretRefOf(variableID string) (string, error) {
 func (r *VariablesRepo) RevealHistoryValue(historyID string) (string, error) {
 	var isSecret int
 	var sealed sql.NullString
-	err := r.db.QueryRow(`SELECT is_secret, secret_value FROM api_variable_history WHERE id = ?`, historyID).Scan(&isSecret, &sealed)
+	c := kiraschema.APIVariableHistory
+	sb := r.Dialect.Select(c.IsSecret, c.SecretValue).From(c.Table)
+	sb.Where(sb.Equal(c.ID, historyID))
+	err := sqlb.QueryRow(r.db, sb).Scan(&isSecret, &sealed)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", fmt.Errorf("repos/variables: no history entry %s", historyID)
 	}
@@ -232,7 +247,7 @@ func (r *VariablesRepo) RevealHistoryValue(historyID string) (string, error) {
 // environment wins over the collection, and within one scope the first row by sort order wins.
 func (r *VariablesRepo) SecretRefsFor(collectionID, environmentID string) (map[string]string, error) {
 	out := map[string]string{}
-	for _, owner := range []struct{ column, id string }{{"collection_id", collectionID}, {"environment_id", environmentID}} {
+	for _, owner := range []struct{ column, id string }{{kiraschema.APIVariables.CollectionID, collectionID}, {kiraschema.APIVariables.EnvironmentID, environmentID}} {
 		if owner.id == "" {
 			continue
 		}
@@ -244,7 +259,10 @@ func (r *VariablesRepo) SecretRefsFor(collectionID, environmentID string) (map[s
 }
 
 func (r *VariablesRepo) mergeSecretRefs(out map[string]string, column, ownerID string) error {
-	rows, err := r.db.Query(`SELECT name, is_secret, secret_ref FROM api_variables WHERE `+column+` = ? ORDER BY sort_order`, ownerID)
+	c := kiraschema.APIVariables
+	sb := r.Dialect.Select(c.Name, c.IsSecret, c.SecretRef).From(c.Table)
+	sb.Where(sb.Equal(column, ownerID)).OrderBy(c.SortOrder)
+	rows, err := sqlb.Query(r.db, sb)
 	if err != nil {
 		return fmt.Errorf("repos/variables: query secrets: %w", err)
 	}

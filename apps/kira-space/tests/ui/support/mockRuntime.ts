@@ -88,6 +88,19 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   codeWorkspaceWriteFile: 'CodeWorkspaceService.WriteFile',
   fileHandlersStatus: 'FileHandlersService.Status',
   fileHandlersSet: 'FileHandlersService.Set',
+  configSyncStatus: 'ConfigSyncService.Status',
+  configSyncSetRepo: 'ConfigSyncService.SetRepo',
+  configSyncRemoveRepo: 'ConfigSyncService.RemoveRepo',
+  configSyncSetFetchMinutes: 'ConfigSyncService.SetFetchMinutes',
+  configSyncSetMode: 'ConfigSyncService.SetMode',
+  configSyncSetDeactivated: 'ConfigSyncService.SetDeactivated',
+  configSyncFetchNow: 'ConfigSyncService.FetchNow',
+  configSyncPreview: 'ConfigSyncService.Preview',
+  configSyncApply: 'ConfigSyncService.Apply',
+  configSyncDismiss: 'ConfigSyncService.Dismiss',
+  configSyncOpenReview: 'ConfigSyncService.OpenReview',
+  configSyncCloseReview: 'ConfigSyncService.CloseReview',
+  configSyncIsReviewWindow: 'ConfigSyncService.IsReviewWindow',
   openedFilesIsFilesWindow: 'OpenedFilesService.IsFilesWindow',
   openedFilesPending: 'OpenedFilesService.Pending',
   openedFilesRead: 'OpenedFilesService.Read',
@@ -538,12 +551,32 @@ const EMPTY_OBJECT_META = {
 // because some of its specs restore an Api-mode tab as active); every Space spec boots into `git`
 // today, and a spec that wants `terminal`/`ade` instead (modules.spec.ts) provides its own
 // `windowsEnsure` snapshot, which always wins over this default.
+// P554: no shared repository; specs that exercise config sync provide their own status.
+const IDLE_CONFIG_SYNC = {
+  configured: false,
+  url: '',
+  branch: '',
+  fetchMinutes: 60,
+  fetched: '',
+  applied: '',
+  fetchedAt: '',
+  appliedAt: '',
+  fetching: false,
+  problem: null,
+  changes: 0,
+  available: false,
+  showToast: false,
+  modules: [],
+};
+
 const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   // Boot resets the window's git connection (repo/git/boundGit.ts).
   [IPC.gitResetWindow]: 'null',
   [IPC.tabsSave]: 'null',
   // Boot drains Finder-opened files; none by default.
   [IPC.openedFilesIsFilesWindow]: 'false',
+  [IPC.configSyncIsReviewWindow]: 'false',
+  [IPC.configSyncStatus]: JSON.stringify(IDLE_CONFIG_SYNC),
   [IPC.openedFilesPending]: '[]',
   [IPC.openedFilesTerminalResolve]: '{"openable":[]}',
   [IPC.openedFilesTerminalOpen]: 'null',

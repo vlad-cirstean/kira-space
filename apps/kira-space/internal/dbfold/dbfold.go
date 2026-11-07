@@ -326,6 +326,9 @@ func importRows(o *Options, path string, m *marker) (err error) {
 	if err := copyTabs(t, o.Ephemeral); err != nil {
 		return fmt.Errorf("tabs: %w", err)
 	}
+	if err := sweepOrphans(t, o.now()); err != nil {
+		return fmt.Errorf("orphans: %w", err)
+	}
 	m.Imported = true
 	if err := writeMarker(t, *m); err != nil {
 		m.Imported = false
@@ -346,16 +349,16 @@ var moduleTables = []moduleTable{
 	{"connections", "connections"},
 	{"connection_tree_filters", "connection_tree_filters"},
 	{"connection_ddl", "connection_ddl"},
-	{"saved_queries", "saved_queries"},
-	{"filter_history", "filter_history"},
-	{"metadata_cache", "metadata_cache"},
+	{"saved_queries", "connection_saved_queries"},
+	{"filter_history", "connection_filter_history"},
+	{"metadata_cache", "connection_metadata_cache"},
 	{"api_collections", "api_collections"},
 	{"api_items", "api_items"},
 	{"api_environments", "api_environments"},
 	{"api_variables", "api_variables"},
 	{"api_variable_history", "api_variable_history"},
 	{"api_response_history", "api_response_history"},
-	{"grpc_call_history", "grpc_call_history"},
+	{"grpc_call_history", "api_grpc_history"},
 	{"connection_mask_rules", "connection_mask_rules"},
 	{"connection_mask_reviewed", "connection_mask_reviewed"},
 	{"docker_restore_engines", "docker_restore_engines"},
@@ -388,7 +391,88 @@ func copyOps(t tx) error {
 	return nil
 }
 
+// instantCols are the destination columns that hold unix milliseconds while the Studio source holds an ISO
+// TEXT instant. A nullable one maps an unparsable value to NULL, a required one to 0.
+var instantCols = map[string]struct{ required, nullable []string }{
+	"connections":               {required: []string{"created_at", "updated_at"}},
+	"connection_mask_rules":     {required: []string{"created_at", "updated_at"}},
+	"connection_saved_queries":  {required: []string{"created_at"}, nullable: []string{"used_at"}},
+	"connection_filter_history": {required: []string{"used_at"}},
+	"connection_metadata_cache": {required: []string{"fetched_at"}},
+	"api_collections":           {required: []string{"created_at", "updated_at"}},
+	"api_environments":          {required: []string{"created_at", "updated_at"}},
+	"api_items":                 {required: []string{"created_at", "updated_at"}},
+	"api_variables":             {required: []string{"created_at", "updated_at"}},
+	"api_variable_history":      {required: []string{"recorded_at"}},
+	"api_response_history":      {required: []string{"sent_at"}},
+	"api_grpc_history":          {required: []string{"called_at"}},
+}
+
+// instantExpr converts one ISO TEXT source column to unix milliseconds; a value already numeric is kept.
+func instantExpr(col string, required bool) string {
+	q := `"` + col + `"`
+	e := `CASE WHEN typeof(` + q + `) IN ('integer', 'real') THEN CAST(` + q + ` AS INTEGER)
+		ELSE CAST(ROUND(unixepoch(` + q + `, 'subsec') * 1000) AS INTEGER) END`
+	e = `MAX(0, ` + e + `)`
+	if required {
+		return `COALESCE(` + e + `, 0)`
+	}
+	return e
+}
+
+// ensureLegacyConnections gives the Space connections table the superseded columns and tables a Studio
+// database holds when it has not exported its connections to files yet, so connfiles exports them on its
+// first load. A fresh Space schema does not carry them.
+func ensureLegacyConnections(t tx) error {
+	has, err := studioHasTable(t, "connections")
+	if err != nil || !has {
+		return err
+	}
+	var n int
+	if err := t.queryRow(`SELECT COUNT(*) FROM studio.settings WHERE key = 'config.migrated.connections' AND value = 'true'`).Scan(&n); err != nil {
+		return fmt.Errorf("read studio connections marker: %w", err)
+	}
+	if n > 0 {
+		return nil
+	}
+	have, err := columns(t, "main", "connections")
+	if err != nil {
+		return err
+	}
+	present := map[string]bool{}
+	for _, c := range have {
+		present[c] = true
+	}
+	for _, c := range []string{"password", "uri", "mcp_review_results"} {
+		if !present[c] {
+			def := ""
+			if c == "mcp_review_results" {
+				def = " NOT NULL DEFAULT 'inherit'"
+			}
+			if _, err := t.Exec(`ALTER TABLE main.connections ADD COLUMN ` + c + ` TEXT` + def); err != nil {
+				return fmt.Errorf("add legacy column %s: %w", c, err)
+			}
+		}
+	}
+	for _, ddl := range []string{
+		`CREATE TABLE IF NOT EXISTS main.connection_tree_filters (
+			connection_id TEXT NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
+			scope TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (connection_id, scope, value))`,
+		`CREATE TABLE IF NOT EXISTS main.connection_ddl (
+			connection_id TEXT PRIMARY KEY REFERENCES connections(id) ON DELETE CASCADE,
+			ddl TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+	} {
+		if _, err := t.Exec(ddl); err != nil {
+			return fmt.Errorf("create legacy table: %w", err)
+		}
+	}
+	return nil
+}
+
 func copyModuleTables(t tx) error {
+	if err := ensureLegacyConnections(t); err != nil {
+		return err
+	}
 	for _, mt := range moduleTables {
 		has, err := studioHasTable(t, mt.src)
 		if err != nil {
@@ -405,24 +489,25 @@ func copyModuleTables(t tx) error {
 			continue
 		}
 		list := strings.Join(quoteAll(cols), ", ")
+		sel, err := repairList(t, mt.dst, cols)
+		if err != nil {
+			return err
+		}
 		where := ""
 		if mt.dst == "proof_task_links" {
 			where = ` WHERE task_id IN (SELECT id FROM main.ade_tasks)`
 		}
-		res, err := t.Exec(`INSERT OR IGNORE INTO main.` + mt.dst + ` (` + list + `) SELECT ` + list + ` FROM studio.` + mt.src + where)
+		res, err := t.Exec(`INSERT OR IGNORE INTO main.` + mt.dst + ` (` + list + `) SELECT ` + sel + ` FROM studio.` + mt.src + where)
 		if err != nil {
 			return fmt.Errorf("copy %s: %w", mt.src, err)
 		}
-		if mt.dst != "proof_task_links" {
-			continue
-		}
 		var total int
-		if err := t.queryRow(`SELECT COUNT(*) FROM studio.proof_task_links`).Scan(&total); err != nil {
+		if err := t.queryRow(`SELECT COUNT(*) FROM studio.` + mt.src).Scan(&total); err != nil {
 			return err
 		}
 		copied, _ := res.RowsAffected()
 		if dropped := total - int(copied); dropped > 0 {
-			slog.Warn("dbfold: proof links to missing tasks dropped", "scope", "dbfold", "count", dropped)
+			slog.Warn("dbfold: rows not imported", "scope", "dbfold", "table", mt.dst, "count", dropped)
 		}
 	}
 	return nil
@@ -618,7 +703,7 @@ func copyTabs(t tx, ephemeral func(string) bool) error {
 		if !known[s.windowKey] {
 			if primary == "" {
 				primary = ids.NewID()
-				if _, err := t.Exec(`INSERT INTO main.windows (key, "order") VALUES (?, (SELECT COALESCE(MAX("order"), -1) + 1 FROM main.windows))`, primary); err != nil {
+				if _, err := t.Exec(`INSERT INTO main.windows (key, sort_order) VALUES (?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM main.windows))`, primary); err != nil {
 					return err
 				}
 				known[primary] = true
@@ -636,7 +721,7 @@ func copyTabs(t tx, ephemeral func(string) bool) error {
 }
 
 func spaceWindows(t tx, ephemeral func(string) bool) (known map[string]bool, primary string, err error) {
-	rows, err := t.conn.QueryContext(t.ctx, `SELECT key FROM main.windows ORDER BY "order" ASC`)
+	rows, err := t.conn.QueryContext(t.ctx, `SELECT key FROM main.windows ORDER BY sort_order ASC`)
 	if err != nil {
 		return nil, "", err
 	}
@@ -659,7 +744,7 @@ func spaceWindows(t tx, ephemeral func(string) bool) (known map[string]bool, pri
 func appendTab(t tx, window string, s studioTab) error {
 	var next int
 	var activeTaken bool
-	if err := t.queryRow(`SELECT COALESCE(MAX("order"), -1) + 1, COALESCE(MAX(active), 0) FROM main.tabs WHERE window_key = ?`,
+	if err := t.queryRow(`SELECT COALESCE(MAX(sort_order), -1) + 1, COALESCE(MAX(active), 0) FROM main.tabs WHERE window_key = ?`,
 		window).Scan(&next, &activeTaken); err != nil {
 		return err
 	}
@@ -679,7 +764,7 @@ func insertTab(t tx, window string, order int, active bool, s studioTab) error {
 	if !s.connNull {
 		conn = s.connectionID
 	}
-	_, err := t.Exec(`INSERT INTO main.tabs (id, connection_id, path, kind, state_json, "order", active, window_key, workspace_id)
+	_, err := t.Exec(`INSERT INTO main.tabs (id, connection_id, path, kind, state_json, sort_order, active, window_key, workspace_id)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, conn, s.path, s.kind, s.state, order, active, window, s.workspaceID)
 	return err
 }

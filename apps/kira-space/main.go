@@ -17,6 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configfold"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configsync"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/homefold"
@@ -94,6 +95,9 @@ func main() {
 		reporter.Fatal(startupfail.StepRepos, err)
 	}
 	foldConfig(reporter, db)
+	if err := configsync.Recover(config.KiraSpaceHome()); err != nil {
+		slog.Warn("config sync recover", "scope", "startup", "err", err)
+	}
 	foldLegacyHome(reporter, db)
 	foldDB(reporter, db)
 
@@ -180,7 +184,7 @@ func main() {
 		Terminal: wired.Terminal.Registry, Repo: repositories.Windows,
 		Cfg: shell.Config{AppName: "Kira Space", WindowTitle: "Kira Space"},
 		Ephemeral: func(key string) bool {
-			if bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) || proof.IsWindowKey(key) {
+			if ephemeralWindowKey(key) {
 				return true
 			}
 			ok, _ := repositories.AdeReview.IsReviewKey(key)
@@ -188,7 +192,7 @@ func main() {
 		},
 	}
 	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OnWindowClosing...)
-	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OpenedFiles.Forget, wired.HostView.Targets.Forget, wired.GitWindows.Close,
+	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OpenedFiles.Forget, wired.ConfigSyncSvc.Review.Forget, wired.HostView.Targets.Forget, wired.GitWindows.Close,
 		func(key string) { bridge.CaptureForget(wired.Capture, key) })
 	openNew := func() { shell.OpenNewWindow(winDeps) }
 	// OpenNewWindow is the title bar's "New window" button (P116 G6) — the same action the ⇧⌘N
@@ -290,7 +294,7 @@ func purgeKeyedWindows(repositories *repos.Repos) {
 		return
 	}
 	for _, r := range records {
-		if !bridge.IsHostViewKey(r.Key) && !bridge.IsCaptureKey(r.Key) && !openedfiles.IsWindowKey(r.Key) && !proof.IsWindowKey(r.Key) {
+		if !ephemeralWindowKey(r.Key) {
 			continue
 		}
 		if err := repositories.Windows.Delete(r.Key); err != nil {
@@ -299,13 +303,18 @@ func purgeKeyedWindows(repositories *repos.Repos) {
 	}
 }
 
+// ephemeralWindowKey reports a window that is never restored: host view, capture, files, proof or
+// shared-config review.
+func ephemeralWindowKey(key string) bool {
+	return bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) ||
+		proof.IsWindowKey(key) || bridge.IsConfigSyncKey(key)
+}
+
 // foldDB folds a Kira Studio database into the Space one once (P544).
 func foldDB(reporter *startupfail.Reporter, db *storage.DB) {
 	err := dbfold.Run(dbfold.Options{
 		Home: config.KiraSpaceHome(), Space: db.DB,
-		Ephemeral: func(key string) bool {
-			return bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) || proof.IsWindowKey(key)
-		},
+		Ephemeral: ephemeralWindowKey,
 	})
 	if err != nil {
 		reporter.Fatal(startupfail.StepStorage, err)

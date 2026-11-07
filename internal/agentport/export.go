@@ -14,6 +14,7 @@ import (
 	"github.com/tailscale/hujson"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/credshape"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -392,7 +393,7 @@ func collectSecrets(std []byte, out *[]string) {
 				walk(key, e)
 			}
 		case string:
-			if len(t) >= 6 && !strings.Contains(t, "${") && !strings.Contains(t, "{env:") && (valueIsSecret(t) || nameIsSecret(key)) && !slices.Contains(*out, t) {
+			if len(t) >= 6 && !strings.Contains(t, "${") && !strings.Contains(t, "{env:") && (credshape.Value(t) || credshape.Name(key)) && !slices.Contains(*out, t) {
 				*out = append(*out, t)
 			}
 		}

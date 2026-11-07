@@ -1,0 +1,85 @@
+{
+  "ConfigSyncService.Apply": {
+    "applied": 1,
+    "blocked": 0,
+    "kept": 0
+  },
+  "ConfigSyncService.Preview": {
+    "files": [
+      {
+        "after": "name: extra\n",
+        "afterExists": true,
+        "current": "",
+        "currentExists": false,
+        "file": "extra.yaml",
+        "module": "connections"
+      },
+      {
+        "after": "name: team\nhost: db.example.com\n",
+        "afterExists": true,
+        "current": "",
+        "currentExists": false,
+        "file": "team.yaml",
+        "module": "connections"
+      }
+    ],
+    "rows": [
+      {
+        "deactivated": false,
+        "entry": "",
+        "file": "extra.yaml",
+        "id": "connections/extra.yaml",
+        "kind": "add",
+        "module": "connections",
+        "problem": "",
+        "runsCommands": false,
+        "unsetSecrets": []
+      },
+      {
+        "deactivated": false,
+        "entry": "",
+        "file": "team.yaml",
+        "id": "connections/team.yaml",
+        "kind": "add",
+        "module": "connections",
+        "problem": "",
+        "runsCommands": false,
+        "unsetSecrets": []
+      }
+    ]
+  },
+  "ConfigSyncService.Preview#blocked": {
+    "deactivated": false,
+    "entry": "",
+    "file": "leaky.yaml",
+    "id": "connections/leaky.yaml",
+    "kind": "blocked",
+    "module": "connections",
+    "problem": "Literal credential at /token (line 2). Use a secret reference instead. The shared repository must not hold one.",
+    "runsCommands": false,
+    "unsetSecrets": []
+  },
+  "ConfigSyncService.Status": {
+    "applied": "",
+    "available": true,
+    "branch": "main",
+    "changes": 2,
+    "configured": true,
+    "fetchMinutes": 30,
+    "fetching": false,
+    "modules": [
+      {
+        "deactivated": 0,
+        "mode": "shared",
+        "modes": [
+          "local",
+          "shared"
+        ],
+        "name": "connections",
+        "units": 2
+      }
+    ],
+    "problem": null,
+    "showToast": true
+  }
+}

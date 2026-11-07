@@ -2,10 +2,11 @@ package repos
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 var _ oplog.ForeignStore = (*OpLogRepo)(nil)
@@ -19,10 +20,14 @@ func (r *OpLogRepo) DataVersion() (int64, error) {
 	return v, nil
 }
 
+// foreignIDLike matches ids written by another process (the id holds a '.').
+const foreignIDLike = "%.%"
+
 // MaxRowID returns the newest op_log rowid, 0 for an empty table.
 func (r *OpLogRepo) MaxRowID() (int64, error) {
 	var v int64
-	if err := r.DB.QueryRow(`SELECT COALESCE(MAX(rowid), 0) FROM op_log`).Scan(&v); err != nil {
+	sb := r.Dialect.Select("COALESCE(MAX(" + sqlb.RowID + "), 0)").From(kiraschema.OpLog.Table)
+	if err := sqlb.QueryRow(r.DB, sb).Scan(&v); err != nil {
 		return 0, fmt.Errorf("repos: max op rowid: %w", err)
 	}
 	return v, nil
@@ -31,16 +36,14 @@ func (r *OpLogRepo) MaxRowID() (int64, error) {
 // ForeignAfter returns rows written by another process (their id holds a '.') with a rowid past
 // rowid or an id in ids, oldest first, and the newest rowid seen (rowid when none is newer).
 func (r *OpLogRepo) ForeignAfter(rowid int64, ids []string) ([]oplog.Record, int64, error) {
-	q := `SELECT rowid, ` + opColumns + `
-		FROM op_log WHERE instr(id, '.') > 0 AND (rowid > ?`
-	args := []any{rowid}
+	c := kiraschema.OpLog
+	sb := r.Dialect.Select(append([]string{sqlb.RowID}, opColumns...)...).From(c.Table)
+	newer := []string{sb.GreaterThan(sqlb.RowID, rowid)}
 	if len(ids) > 0 {
-		q += ` OR id IN (?` + strings.Repeat(`,?`, len(ids)-1) + `)`
-		for _, id := range ids {
-			args = append(args, id)
-		}
+		newer = append(newer, sb.In(c.ID, sqlb.Args(ids)...))
 	}
-	rows, err := r.DB.Query(q+`) ORDER BY rowid`, args...)
+	sb.Where(sb.Like(c.ID, foreignIDLike), sb.Or(newer...)).OrderBy(sqlb.RowID)
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, rowid, fmt.Errorf("repos: list foreign ops: %w", err)
 	}
@@ -59,7 +62,10 @@ func (r *OpLogRepo) ForeignAfter(rowid int64, ids []string) ([]oplog.Record, int
 
 // RunningForeignIDs lists the ids of foreign rows still marked running.
 func (r *OpLogRepo) RunningForeignIDs() ([]string, error) {
-	rows, err := r.DB.Query(`SELECT id FROM op_log WHERE status = 'running' AND instr(id, '.') > 0`)
+	c := kiraschema.OpLog
+	sb := r.Dialect.Select(c.ID).From(c.Table)
+	sb.Where(sb.Equal(c.Status, oplog.StatusRunning), sb.Like(c.ID, foreignIDLike))
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos: list running foreign ops: %w", err)
 	}
@@ -80,13 +86,14 @@ func (r *OpLogRepo) FailRunning(ids []string, msg string) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	args := []any{msg, time.Now().UnixMilli()}
-	for _, id := range ids {
-		args = append(args, id)
-	}
-	_, err := r.DB.Exec(`UPDATE op_log SET status = 'error', error = ?, duration_ms = MAX(0, ? - started_ms)
-		WHERE status = 'running' AND id IN (?`+strings.Repeat(`,?`, len(ids)-1)+`)`, args...)
-	if err != nil {
+	c := kiraschema.OpLog
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(
+		ub.Assign(c.Status, oplog.StatusError),
+		ub.Assign(c.Error, msg),
+		c.DurationMs+" = MAX(0, "+ub.Var(time.Now().UnixMilli())+" - "+c.StartedMs+")",
+	).Where(ub.Equal(c.Status, oplog.StatusRunning), ub.In(c.ID, sqlb.Args(ids)...))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos: fail running ops: %w", err)
 	}
 	return nil

@@ -2,7 +2,6 @@ package repos_test
 
 import (
 	"fmt"
-	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"strings"
 	"testing"
 	"time"
@@ -75,7 +74,7 @@ func TestFilterHistoryPerConnectionCapEvictsLeastRecentlyUsedPath(t *testing.T) 
 	if err != nil {
 		t.Fatalf("begin seed tx: %v", err)
 	}
-	stmt, err := tx.Prepare(`INSERT INTO filter_history (id, connection_id, path, where_text, order_by_json, used_at)
+	stmt, err := tx.Prepare(`INSERT INTO connection_filter_history (id, connection_id, path, where_text, order_by_json, used_at)
 		VALUES (?, 'c1', ?, 'seed', NULL, ?)`)
 	if err != nil {
 		t.Fatalf("prepare seed insert: %v", err)
@@ -86,7 +85,7 @@ func TestFilterHistoryPerConnectionCapEvictsLeastRecentlyUsedPath(t *testing.T) 
 	for i := 0; i < total; i++ {
 		id := fmt.Sprintf("fh-%05d", i)
 		path := fmt.Sprintf("p%05d", i) // one row per path: the per-path cap (20) never fires here.
-		usedAt := kiratime.FormatISO(base.Add(time.Duration(i) * time.Millisecond))
+		usedAt := base.Add(time.Duration(i) * time.Millisecond).UnixMilli()
 		if _, err := stmt.Exec(id, path, usedAt); err != nil {
 			t.Fatalf("seed row %d: %v", i, err)
 		}
@@ -106,7 +105,7 @@ func TestFilterHistoryPerConnectionCapEvictsLeastRecentlyUsedPath(t *testing.T) 
 	}
 
 	var count int
-	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM filter_history WHERE connection_id = 'c1'`).Scan(&count); err != nil {
+	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM connection_filter_history WHERE connection_id = 'c1'`).Scan(&count); err != nil {
 		t.Fatalf("count: %v", err)
 	}
 	if count != total {
@@ -115,7 +114,7 @@ func TestFilterHistoryPerConnectionCapEvictsLeastRecentlyUsedPath(t *testing.T) 
 
 	// p00000 has the oldest used_at of the whole seeded set — the least-recently-used path.
 	var lruSurvived int
-	err = r.DB.QueryRow(`SELECT 1 FROM filter_history WHERE path = 'p00000'`).Scan(&lruSurvived)
+	err = r.DB.QueryRow(`SELECT 1 FROM connection_filter_history WHERE path = 'p00000'`).Scan(&lruSurvived)
 	if err == nil {
 		t.Error("the least-recently-used path's row survived the per-connection sweep, want it evicted")
 	}

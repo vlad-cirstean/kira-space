@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/secrets"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -24,8 +26,9 @@ const maskKeyBytes = 32
 // ConnectionFields (model/connection.go), so a key can never reach the renderer, the
 // connection URI, or the Copy URI menu item.
 type MaskKeysRepo struct {
-	db     *sql.DB
-	cipher Cipher
+	db      *sql.DB
+	cipher  Cipher
+	Dialect sqlb.Dialect
 }
 
 // NewMaskKeys is separate from repos.New: it needs a Cipher that does not exist inside that
@@ -37,13 +40,17 @@ func NewMaskKeys(db *sql.DB, cipher Cipher) *MaskKeysRepo {
 // Get returns the connection's own key, or nil when none has been minted yet (empty string stored). Never
 // mints — EnsureKey is the only writer.
 func (r *MaskKeysRepo) Get(connectionID string) ([]byte, error) {
+	c := kiraschema.Connections
+	sb := r.Dialect.Select(c.MaskCorrelationKey).From(c.Table)
+	sb.Where(sb.Equal(c.ID, connectionID))
+	query, args := sb.Build()
 	stored, err := sqlitex.QueryOne(r.db, func(row *sql.Row) (*string, error) {
 		var s string
 		if err := row.Scan(&s); err != nil {
 			return nil, err
 		}
 		return &s, nil
-	}, `SELECT mask_correlation_key FROM connections WHERE id = ?`, connectionID)
+	}, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("repos/maskkeys: get %s: %w", connectionID, err)
 	}
@@ -87,10 +94,10 @@ func (r *MaskKeysRepo) EnsureKey(connectionID string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("repos/maskkeys: encrypt %s: %w", connectionID, err)
 	}
-	res, err := r.db.Exec(
-		`UPDATE connections SET mask_correlation_key = ? WHERE id = ? AND mask_correlation_key = ''`,
-		encrypted, connectionID,
-	)
+	c := kiraschema.Connections
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.MaskCorrelationKey, encrypted)).Where(ub.Equal(c.ID, connectionID), ub.Equal(c.MaskCorrelationKey, ""))
+	res, err := sqlb.Exec(r.db, ub)
 	if err != nil {
 		return nil, fmt.Errorf("repos/maskkeys: set %s: %w", connectionID, err)
 	}
@@ -124,7 +131,10 @@ func (r *MaskKeysRepo) setKey(connectionID string, key []byte) error {
 	if err != nil {
 		return fmt.Errorf("repos/maskkeys: encrypt %s: %w", connectionID, err)
 	}
-	res, err := r.db.Exec(`UPDATE connections SET mask_correlation_key = ? WHERE id = ?`, encrypted, connectionID)
+	c := kiraschema.Connections
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.MaskCorrelationKey, encrypted)).Where(ub.Equal(c.ID, connectionID))
+	res, err := sqlb.Exec(r.db, ub)
 	if err != nil {
 		return fmt.Errorf("repos/maskkeys: set %s: %w", connectionID, err)
 	}

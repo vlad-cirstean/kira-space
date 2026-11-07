@@ -55,6 +55,8 @@ export const CHANNEL = {
   codeSearch: 'kira:code:search',
   // P520: the pending agent approvals list (internal/approvals), Emit app-wide.
   approvalsChanged: 'kira:approvals:changed',
+  // P554: the shared-config sync Status (internal/configsync), Emit app-wide.
+  configSyncChanged: 'kira:configSync:changed',
   // P83 §3.2: one terminal's coalesced output and its exit, delivered via EmitTo (one window
   // only) — codeSearch's own shape, restated for a byte payload.
   terminal: 'kira:terminal:data',

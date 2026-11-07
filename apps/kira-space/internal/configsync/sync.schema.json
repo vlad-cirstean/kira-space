@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "repo": {
+      "type": "object",
+      "description": "The shared config repository.",
+      "additionalProperties": false,
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "description": "Repository URL: https, ssh, scp-like or file. No credentials in it."
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Branch to follow. Default main."
+        }
+      }
+    },
+    "fetch_minutes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1440,
+      "description": "Minutes between background fetches. 0 turns them off."
+    },
+    "modules": {
+      "type": "object",
+      "description": "How each module follows the repository: local, shared or combined.",
+      "propertyNames": {
+        "enum": ["connections", "api", "runs", "workflows", "steps", "agent", "prompts"]
+      },
+      "additionalProperties": { "enum": ["local", "shared", "combined"] }
+    },
+    "deactivated": {
+      "type": "object",
+      "description": "Shared units this machine never applies, by module: a file name, or file#entry.",
+      "propertyNames": {
+        "enum": ["connections", "api", "runs", "workflows", "steps", "agent", "prompts"]
+      },
+      "additionalProperties": {
+        "type": "array",
+        "maxItems": 2000,
+        "items": { "type": "string", "minLength": 1, "maxLength": 700 }
+      }
+    }
+  }
+}

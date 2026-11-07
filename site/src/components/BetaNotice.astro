@@ -1,0 +1,19 @@
+---
+import { href } from '../data/nav';
+
+const home = Astro.url.pathname === href() || Astro.url.pathname === href().replace(/\/$/, '');
+const install = home ? '#install' : href('#install');
+---
+
+<div
+  data-beta-notice
+  class="border-b border-warn/40 bg-warn/10 px-4 py-1 text-center text-base text-fg"
+>
+  <strong class="font-semibold">Beta, not production ready, not notarized.</strong>
+  <a
+    href={install}
+    class="ml-1 inline-flex min-h-11 items-center text-accent underline underline-offset-4"
+  >
+    Install notes
+  </a>
+</div>

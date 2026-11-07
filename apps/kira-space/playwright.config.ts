@@ -118,14 +118,14 @@ export default defineConfig({
       },
     },
     // Presentation screenshots (`bun run screenshots`). `.shot.ts` keeps these out of `ui` and
-    // `visual`. Serial: the output files are shared.
+    // `visual`. Parallel: each shot id writes its own files, and output is byte-identical to serial.
     {
       name: 'screenshots',
       testDir: './tests/screenshots',
       testMatch: '**/*.shot.ts',
       use: { browserName: 'webkit' },
-      fullyParallel: false,
-      workers: 1,
+      fullyParallel: true,
+      workers: 3,
       retries: 0,
     },
   ],

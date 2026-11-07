@@ -5,11 +5,14 @@ import (
 	"errors"
 
 	"github.com/kirathecat/kira-studio/internal/docker"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // DockerRestoreRepo reads and writes docker_restore_engines / docker_restore_containers (P334).
 type DockerRestoreRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 var _ docker.RestoreStore = (*DockerRestoreRepo)(nil)
@@ -17,10 +20,10 @@ var _ docker.RestoreStore = (*DockerRestoreRepo)(nil)
 func (r *DockerRestoreRepo) LoadRestore(engineID string) (docker.RestoreSnapshot, bool, error) {
 	s := docker.RestoreSnapshot{EngineID: engineID, Entries: []docker.RestoreEntry{}}
 	var detected sql.NullInt64
-	err := r.DB.QueryRow(
-		`SELECT context, host, boot_id, boot_at, state, detected_at, updated_at FROM docker_restore_engines WHERE engine_id = ?`,
-		engineID,
-	).Scan(&s.Context, &s.Host, &s.BootID, &s.BootAt, &s.State, &detected, &s.UpdatedAt)
+	e := kiraschema.DockerRestoreEngines
+	eb := r.Dialect.Select(e.Context, e.Host, e.BootID, e.BootAt, e.State, e.DetectedAt, e.UpdatedAt).From(e.Table)
+	eb.Where(eb.Equal(e.EngineID, engineID))
+	err := sqlb.QueryRow(r.DB, eb).Scan(&s.Context, &s.Host, &s.BootID, &s.BootAt, &s.State, &detected, &s.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return docker.RestoreSnapshot{}, false, nil
 	}
@@ -28,9 +31,11 @@ func (r *DockerRestoreRepo) LoadRestore(engineID string) (docker.RestoreSnapshot
 		return docker.RestoreSnapshot{}, false, err
 	}
 	s.DetectedAt = detected.Int64
-	rows, err := r.DB.Query(
-		`SELECT container_id, name, image, compose_project, compose_service, compose_depends_on, restart_policy, added_at, stopped_seen_at
-		 FROM docker_restore_containers WHERE engine_id = ? ORDER BY name, container_id`, engineID)
+	k := kiraschema.DockerRestoreContainers
+	kb := r.Dialect.Select(k.ContainerID, k.Name, k.Image, k.ComposeProject, k.ComposeService, k.ComposeDependsOn, k.RestartPolicy, k.AddedAt, k.StoppedSeenAt).
+		From(k.Table)
+	kb.Where(kb.Equal(k.EngineID, engineID)).OrderBy(k.Name, k.ContainerID)
+	rows, err := sqlb.Query(r.DB, kb)
 	if err != nil {
 		return docker.RestoreSnapshot{}, false, err
 	}
@@ -59,16 +64,17 @@ func (r *DockerRestoreRepo) SaveRestore(s docker.RestoreSnapshot) error {
 	if s.DetectedAt != 0 {
 		detected = s.DetectedAt
 	}
-	if _, err := tx.Exec(
-		`INSERT INTO docker_restore_engines (engine_id, context, host, boot_id, boot_at, state, detected_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(engine_id) DO UPDATE SET context = excluded.context, host = excluded.host, boot_id = excluded.boot_id,
-		   boot_at = excluded.boot_at, state = excluded.state, detected_at = excluded.detected_at, updated_at = excluded.updated_at`,
-		s.EngineID, s.Context, s.Host, s.BootID, s.BootAt, s.State, detected, s.UpdatedAt,
-	); err != nil {
+	e := kiraschema.DockerRestoreEngines
+	ib := r.Dialect.InsertInto(e.Table).Cols(e.EngineID, e.Context, e.Host, e.BootID, e.BootAt, e.State, e.DetectedAt, e.UpdatedAt).
+		Values(s.EngineID, s.Context, s.Host, s.BootID, s.BootAt, s.State, detected, s.UpdatedAt)
+	sqlb.Upsert(ib, []string{e.EngineID}, []string{e.Context, e.Host, e.BootID, e.BootAt, e.State, e.DetectedAt, e.UpdatedAt}, "")
+	if _, err := sqlb.Exec(tx, ib); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`DELETE FROM docker_restore_containers WHERE engine_id = ?`, s.EngineID); err != nil {
+	k := kiraschema.DockerRestoreContainers
+	del := r.Dialect.DeleteFrom(k.Table)
+	del.Where(del.Equal(k.EngineID, s.EngineID))
+	if _, err := sqlb.Exec(tx, del); err != nil {
 		return err
 	}
 	for _, e := range s.Entries {
@@ -76,12 +82,10 @@ func (r *DockerRestoreRepo) SaveRestore(s docker.RestoreSnapshot) error {
 		if e.StoppedSeenAt != 0 {
 			stopped = e.StoppedSeenAt
 		}
-		if _, err := tx.Exec(
-			`INSERT INTO docker_restore_containers
-			 (engine_id, container_id, name, image, compose_project, compose_service, compose_depends_on, restart_policy, added_at, stopped_seen_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			s.EngineID, e.ID, e.Name, e.Image, e.ComposeProject, e.ComposeService, e.ComposeDependsOn, e.RestartPolicy, e.AddedAt, stopped,
-		); err != nil {
+		cb := r.Dialect.InsertInto(k.Table).
+			Cols(k.EngineID, k.ContainerID, k.Name, k.Image, k.ComposeProject, k.ComposeService, k.ComposeDependsOn, k.RestartPolicy, k.AddedAt, k.StoppedSeenAt).
+			Values(s.EngineID, e.ID, e.Name, e.Image, e.ComposeProject, e.ComposeService, e.ComposeDependsOn, e.RestartPolicy, e.AddedAt, stopped)
+		if _, err := sqlb.Exec(tx, cb); err != nil {
 			return err
 		}
 	}
@@ -89,6 +93,9 @@ func (r *DockerRestoreRepo) SaveRestore(s docker.RestoreSnapshot) error {
 }
 
 func (r *DockerRestoreRepo) PruneRestore(updatedBefore int64) error {
-	_, err := r.DB.Exec(`DELETE FROM docker_restore_engines WHERE updated_at < ?`, updatedBefore)
+	e := kiraschema.DockerRestoreEngines
+	db := r.Dialect.DeleteFrom(e.Table)
+	db.Where(db.LessThan(e.UpdatedAt, updatedBefore))
+	_, err := sqlb.Exec(r.DB, db)
 	return err
 }

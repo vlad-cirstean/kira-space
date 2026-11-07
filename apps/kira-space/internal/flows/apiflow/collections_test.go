@@ -154,7 +154,7 @@ func TestVariablePrecedence(t *testing.T) {
 			t.Fatal(err)
 		}
 		if _, err := app.DB().Exec(`INSERT INTO api_variable_history (id, variable_id, value, is_secret, secret_value, recorded_at)
-			VALUES ('legacy-h1', ?, '', 1, ?, '2026-01-01T00:00:00Z')`, vars[0].ID, sealed); err != nil {
+			VALUES ('legacy-h1', ?, '', 1, ?, 1767225600000)`, vars[0].ID, sealed); err != nil {
 			t.Fatal(err)
 		}
 		old := app.W.Variables.RevealHistory(bridge.VariablesRevealHistoryArgs{HistoryID: "legacy-h1", Confirmed: true})

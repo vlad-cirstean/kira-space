@@ -45,7 +45,7 @@ func newLegacyDB(t *testing.T, home string) {
 		t.Fatal(err)
 	}
 	execAll(t, db,
-		`INSERT INTO connections (id, name, kind, color, mode, created_at, updated_at) VALUES ('c1', 'Main', 'postgres', 'red', 'rw', 'x', 'x')`,
+		`INSERT INTO connections (id, name, kind, color, mode, created_at, updated_at) VALUES ('c1', 'Main', 'postgres', 'red', 'rw', '2026-01-02T03:04:05.678Z', '2026-01-02T03:04:05.678Z')`,
 		`INSERT INTO op_log (id, connection_id, started_at, kind, status) VALUES ('o1', 'c1', '2026-01-02T03:04:05.678Z', 'execute', 'ok')`,
 		`INSERT INTO windows (key, "order") VALUES ('w-old', 0)`,
 		`INSERT INTO tabs (id, connection_id, window_key, path, kind, state_json, "order", active, workspace_id)
@@ -66,6 +66,7 @@ func assertFolded(t *testing.T, db *sql.DB, home string) {
 	for q, want := range map[string]string{
 		`SELECT name FROM connections WHERE id = 'c1'`:                                                   "Main",
 		`SELECT kind || category || subject FROM op_log WHERE id = 'o1'`:                                 "executedbMain",
+		`SELECT created_at || ',' || typeof(created_at) FROM connections WHERE id = 'c1'`:                "1767323045678,integer",
 		`SELECT value FROM settings WHERE key = 'dbMcp.serverEnabled'`:                                   "true",
 		`SELECT value FROM settings WHERE key = 'appearance.fontSize'`:                                   "17",
 		`SELECT COUNT(*) FROM settings WHERE key = 'config.migrated.runs'`:                               "0",
@@ -149,5 +150,60 @@ func TestDbFoldFresh(t *testing.T) {
 	}
 	if got := scalar(t, space.DB, `SELECT value FROM settings WHERE key = 'dbfold.p544'`); got != `{"state":"done","fresh":true}` {
 		t.Errorf("marker = %s", got)
+	}
+}
+
+// Rows the P552 schema rejects are repaired like the migrations repair them; a row whose parent is not
+// taken is quarantined with its children instead of failing the import at COMMIT.
+func TestDbFoldRepairsAndOrphans(t *testing.T) {
+	home := t.TempDir()
+	steps, err := legacy.All()
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := appstorage.OpenAt(config.ModuleDbPathAt(home), steps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.SetMaxOpenConns(1)
+	execAll(t, db,
+		`PRAGMA foreign_keys = OFF`,
+		`INSERT INTO connections (id, name, kind, color, mode, created_at, updated_at, port, read_only, mcp_read_mode)
+			VALUES ('c-bad', 'Bad', 'postgres', 'red', 'rw', '2026-01-02T03:04:05Z', '2026-01-02T03:04:05Z', 0, 5, 'bogus'),
+			       ('c-text', 'Text', 'postgres', 'red', 'rw', '2026-01-02T03:04:05Z', 'not a time', 'abc', 0, 'allow'),
+			       ('', 'NoId', 'postgres', 'red', 'rw', '2026-01-02T03:04:05Z', '2026-01-02T03:04:05Z', 5432, 0, 'allow')`,
+		`INSERT INTO saved_queries (id, connection_id, path, name, kind, body, created_at) VALUES
+			('q-ok', 'c-bad', 'p', 'ok', 'console', '', '2026-01-02T03:04:05Z'),
+			('q-orph', '', 'p', 'orphan', 'console', '', '2026-01-02T03:04:05Z')`,
+		`INSERT INTO connection_mask_rules (id, connection_id, table_name, column_name, mask_kind, created_at, updated_at)
+			VALUES ('m-orph', '', '*', 'email', 'email', '2026-01-02T03:04:05Z', '2026-01-02T03:04:05Z')`,
+		`INSERT INTO windows (key, "order") VALUES ('w-old', 0)`,
+		`INSERT INTO tabs (id, connection_id, window_key, path, kind, state_json, "order", active)
+			VALUES ('t-orph', '', 'w-old', 'p', 'query', '{}', 0, 1)`,
+	)
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	space, err := storage.OpenAt(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = space.Close() })
+	if err := dbfold.Run(dbfold.Options{Home: home, Space: space.DB}); err != nil {
+		t.Fatalf("fold failed: %v", err)
+	}
+	for q, want := range map[string]string{
+		`SELECT COALESCE(port, 'null') || ',' || read_only || ',' || mcp_read_mode FROM connections WHERE id = 'c-bad'`:                                "null,1,allow",
+		`SELECT COALESCE(port, 'null') || ',' || updated_at FROM connections WHERE id = 'c-text'`:                                                      "null,0",
+		`SELECT COUNT(*) FROM connections WHERE id = ''`:                                                                                               "0",
+		`SELECT group_concat(id) FROM connection_saved_queries`:                                                                                        "q-ok",
+		`SELECT COUNT(*) FROM connection_mask_rules`:                                                                                                   "0",
+		`SELECT COALESCE(connection_id, 'null') FROM tabs WHERE id = 't-orph'`:                                                                         "null",
+		`SELECT group_concat(table_name) FROM (SELECT table_name FROM schema_quarantine WHERE reason = 'parent row not imported' ORDER BY table_name)`: "connection_mask_rules,connection_saved_queries",
+		`SELECT json_extract(value, '$.state') FROM settings WHERE key = 'dbfold.p544'`:                                                                "done",
+	} {
+		if got := scalar(t, space.DB, q); got != want {
+			t.Errorf("%s = %q, want %q", q, got, want)
+		}
 	}
 }

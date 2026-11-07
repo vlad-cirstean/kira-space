@@ -1,0 +1,35 @@
+---
+import { BUILD_SECTIONS } from '../data/build';
+import { BUILD_TEASER } from '../data/content';
+import { href } from '../data/nav';
+import Icon from './Icon.astro';
+---
+
+<section class="mx-auto max-w-5xl px-4 pb-16" aria-labelledby="build-teaser">
+  <div class="rounded-xl border border-border bg-elevated p-6 shadow-card">
+    <h2 id="build-teaser" class="text-2xl font-semibold tracking-tight sm:text-4xl">
+      {BUILD_TEASER.title}
+    </h2>
+    <p class="mt-2 text-base text-muted">{BUILD_TEASER.body}</p>
+    <ol class="mt-4 flex flex-col md:flex-row md:flex-wrap md:gap-x-4">
+      {BUILD_SECTIONS.map((s) => (
+        <li>
+          <a
+            href={href(`build/#${s.anchor}`)}
+            class="flex min-h-11 items-center gap-2 text-base text-fg underline-offset-4 hover:underline"
+          >
+            <span class="font-medium text-tint">{s.step}.</span>
+            {s.name}
+          </a>
+        </li>
+      ))}
+    </ol>
+    <a
+      href={href('build/')}
+      class="mt-4 flex min-h-11 w-fit items-center gap-2 text-base font-medium text-accent underline underline-offset-4"
+    >
+      <Icon name="arrow-right" class="size-4" />
+      {BUILD_TEASER.link}
+    </a>
+  </div>
+</section>
