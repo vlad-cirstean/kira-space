@@ -7774,3 +7774,34 @@ Migrations 0083-0090 rebuild every kira.db table `STRICT` (60 app tables plus `s
 ### v0.3.1 P554 (Done)
 GitOps for config files. `internal/configsync`: pull-only sync of one shared git repo into `<home>/config/<module>/`, three-way merge per file and per entry, per-entry deactivate, gate (YAML parse, module validators, literal-credential scan), preview session, backup to `<home>/backups/configsync-<ts>/`, journal, rollback, boot `Recover`, prune to 10. Bridge `ConfigSyncService`, toast, review window, Shared config settings pane. Flow test `configsyncflow` passes; UI spec `config-sync.spec.ts` written and typechecked. Open: module validators only for agent, steps, prompts; connections, api, runs, workflows get the generic gate (ARCHITECTURE Known open items).
 <!-- /chapter v0.3.1 -->
+<!-- chapter v0.3.2 -->
+## v0.3.2
+Source: docs/v0.3.2/ at 9cc5dbff4. 9 phases.
+
+### v0.3.2 P555 (Done)
+`keychain-access.webp` added to the site Install block; folder prompt is prose only, folder image requirement removed everywhere. Build guard for the required image kept (`CI=true` fails without it). Landing visual baselines re-recorded on Linux, lazy-image load waits added to site specs. Open: Pages run on `main` confirmable only after merge; image still shows the old "Kira Studio" Keychain name.
+
+### v0.3.2 P556 (Done)
+Experimental settings pane with flag rows; first row `experimental.memory`, default off, no boot-time seed, also off for installs with a `memory.db`. Off hides the Memory mode tab, Memory settings pane and Distill selection; Memory data, `memory-mcp` and its registration stay. Flow test `appflow/experimental_test.go`, UI spec `settings-experimental.spec.ts`; Memory specs enable the flag first; settings and shell baselines re-recorded.
+
+### v0.3.2 P557 (Done)
+Backward compatibility dropped; every install is v0.3.1. One baseline per SQLite DB: kira 0090 plus `0091_p557_drop_legacy.sql`, review 0008, memory 0008; chain-built and baseline-built DBs match exactly. Older DB refuses with `SchemaTooOldError`. Deleted: home, config and DB folds, exports, `MigrateOnce`, old-Studio alert, `install.sh --app=studio` and its release job, four old config keys, legacy status names and frontend storage keys. One-time moves: `agent-secrets.db` into kira.db `secret_values` (original parked in `backups/p557-<ts>/`), Keychain item "Kira Studio" to "Kira Space" keeping the key, `internal/leftovers` deletes dead leftovers. Release patch applied. Open: darwin keychain tests need a real Mac; back up kira.db, review.db, agent-secrets.db before first launch; `config/workflows/.p526-backup` and `backups/p557-*` need deleting by hand. Next chapter drops every one-time move (`docs/NEXT_CHAPTER.md`).
+
+### v0.3.2 P558 (Done)
+Repositories page is an ADE top-bar tab beside Agent config and Workflows (`ade/v2/repos/AdeReposPage.vue`, store `adeReposUi`, leave guard); the Git module dialog and header button are gone. GitStart and repo-row Configure jump to it; the agent tool error points at it. Specs renamed `ade-repos`; page baseline recorded, dialog baseline dropped.
+
+### v0.3.2 P559 (Done)
+memory.db moves under the Space home: `kirapaths.MemoryHome` is `<Space home>/memory` (with `models/`, `distilled/`, runner log and lock); `KIRA_MEMORY_HOME` dropped. Import engine opens on first ingest call (`TestMemoryHomeLazy`); memory `0009` deleted; sandbox allows the memory subtree only. `leftovers` deletes `~/.kira-memory`. Site `start/migrate.md` deleted.
+
+### v0.3.2 P560 (Done)
+Agent MCP servers renamed `kira-space` (13 tools, from 16) and `kira-studio` (18, from 26); boot removes old user-scope `kira-db` and `kira-ade`. Tools merged by use case: task_info, `operations`, one-call `proof_save`, `describe`, inline script logs, `kube_discover`. One DB server per headless step (`kira-studio-session`). Tool texts shortened under a lowered `budget.tsv`. Flow tests per merged tool; real `claude` rows pass. Not run: memory prompt-registry row.
+
+### v0.3.2 P561 (Done)
+Review window file list follows the shown file: `useRevealSelectedFile` selects the active tab's file, expands folders and the render cap, scrolls it into view; one highlight across committed and uncommitted sections. `ReviewApi.revealFile` called from `AdeReviewFiles.vue`. UI specs `ade-v2-review-follow`, `ade-v2-review-working`.
+
+### v0.3.2 P562 (Done)
+Connection edit dialog copy trimmed: 55 values, changed words 1,511 to 918, `mcp.tablesEnforceFail` deleted. MCP tab no longer renders three texts shown elsewhere. Connection UI specs follow the new phrases; `dbmcp-review-mode` pre-existing failure fixed. New-connection baseline unchanged.
+
+### v0.3.2 P563 (Done)
+ADE task worktrees move from `~/wt/<repo>/<wt_id>` to `~/kira-space-wts/<repo>/<wt_id>` (`ade.WorktreesDir`). One-time `git worktree move` per worktree in `internal/wtmove` (`appwire.RunWorktreeMove`): unlock, move, relock; rewrites session cwd, terminal and local-file tab paths, `script_runs.cwd`, `ade_runs.spec_json`; renames the Claude transcript folder, retried next boot on failure. Flow test `TestWorktreesMoveOnce`. Contracts regenerated. Closing: one full non-UI run (148 Go packages, 2014 unit tests, lint, typecheck, knip, real `claude` rows; 0 failures); review round 1 found 7 (1 Medium, 6 Low), all fixed. Known gap: a missing `claude` CLI counts as legacy-MCP removal done.
+<!-- /chapter v0.3.2 -->
