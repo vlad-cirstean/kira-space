@@ -11670,7 +11670,7 @@
           "chooseTitle": {
             "title": "Choose worktree base path"
           },
-          "description": "Pre-fills the path of new worktrees. Empty uses the default.",
+          "description": "Pre-fills the path in the Git module’s new worktree dialog. Task worktrees always go to ~/kira-space-wts.",
           "label": "Worktree base path",
           "placeholder": "Default location"
         },

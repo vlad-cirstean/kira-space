@@ -32,7 +32,9 @@ test('the reply sheet buttons are at least 44px tall', async ({ page, server, ap
   server.state.auth = 'ok';
   server.state.permissions = { write: true, agentInput: true };
   server.state.agentInputGlobal = true;
-  server.state.agentSessions = [{ terminalId: 'term-9ab0', cwd: '~/wt/web-app/oauth-login' }];
+  server.state.agentSessions = [
+    { terminalId: 'term-9ab0', cwd: '~/kira-space-wts/web-app/oauth-login' },
+  ];
   await app();
   const item = page.locator(t('needs-item')).filter({ hasText: 'waiting for your answer' });
   await waitForQuestion(server, item);

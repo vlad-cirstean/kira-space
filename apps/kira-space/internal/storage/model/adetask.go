@@ -106,7 +106,7 @@ type AdeTaskBranch struct {
 	// ReviewCommentsJSON holds the review comments moved off the branch at archive or detach; ""
 	// = no snapshot.
 	ReviewCommentsJSON string
-	// WorktreeDir is the reserved worktree folder name (wt_<id>) under <home>/wt/<repo>; "" until first needed.
+	// WorktreeDir is the reserved worktree folder name (wt_<id>) under <home>/kira-space-wts/<repo>; "" until first needed.
 	WorktreeDir string
 }
 

@@ -124,9 +124,9 @@ func TestOpsAde(t *testing.T) {
 		if child.Kind != "worktreeAdd" || child.Module != oplog.ModuleADE || len(child.Steps) == 0 || child.Command == nil {
 			t.Fatalf("child op = %+v, want an ade worktreeAdd with steps", child)
 		}
-		folder := regexp.MustCompile(`/wt/api/(\w+)`).FindStringSubmatch(*child.Command)
+		folder := regexp.MustCompile(`/kira-space-wts/api/(\w+)`).FindStringSubmatch(*child.Command)
 		if folder == nil {
-			t.Fatalf("no wt/api/<folder> worktree in %q", *child.Command)
+			t.Fatalf("no kira-space-wts/api/<folder> worktree in %q", *child.Command)
 		}
 		f.app.Contract(t, opsScenario, "record#child", child, flowharness.Mask("id", "startedAt", "durationMs", "parentId", "taskId"),
 			flowharness.Replace(f.app.Work, "<work>"), flowharness.Replace(folder[1], "<folder-id>"))

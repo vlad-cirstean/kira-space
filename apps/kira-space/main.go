@@ -99,6 +99,11 @@ func main() {
 		reporter.Fatal(startupfail.StepSettings, err)
 	}
 	logging.SetLevel(settings.Advanced.GitLogLevel)
+	if userHome, err := os.UserHomeDir(); err != nil {
+		slog.Warn("worktree move skipped: no user home", "scope", "startup", "err", err)
+	} else {
+		appwire.RunWorktreeMove(db.DB, userHome, settings.Git.GitPath, platformLocator())
+	}
 
 	mobileAssetsFS, err := fs.Sub(mobileAssets, "frontend/dist-mobile")
 	if err != nil {

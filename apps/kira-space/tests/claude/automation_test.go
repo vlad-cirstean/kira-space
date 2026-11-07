@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
@@ -107,7 +108,7 @@ func TestSmartScriptRun(t *testing.T) {
 		if run.State != "done" || o == nil || !o.Reported || o.CostUSD == nil || *o.CostUSD <= 0 {
 			t.Fatalf("run = %s, outcome = %+v, want done, reported, cost > 0", run.State, o)
 		}
-		if !strings.HasPrefix(run.Cwd, filepath.Join(f.Home, "wt")) || run.TaskID != task.ID || run.BranchID != branchID {
+		if !strings.HasPrefix(run.Cwd, filepath.Join(f.Home, ade.WorktreesDir)) || run.TaskID != task.ID || run.BranchID != branchID {
 			t.Fatalf("run cwd %q task %q branch %q, want the task worktree", run.Cwd, run.TaskID, run.BranchID)
 		}
 		if !strings.Contains(strings.Join(run.Tools.AllowedTools, " "), "mcp__kira-space__task_info") {

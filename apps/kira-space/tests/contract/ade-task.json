@@ -11,7 +11,7 @@
           }
         ],
         "unmerged": 1,
-        "worktree": "<home>/wt/api/<wt>"
+        "worktree": "<home>/kira-space-wts/api/<wt>"
       }
     ],
     "taskId": "<id:2>"
@@ -23,7 +23,7 @@
         "branchId": "<id:1>",
         "dirty": [],
         "unmerged": 0,
-        "worktree": "<home>/wt/api/<wt>"
+        "worktree": "<home>/kira-space-wts/api/<wt>"
       }
     ],
     "taskId": "<id:2>"

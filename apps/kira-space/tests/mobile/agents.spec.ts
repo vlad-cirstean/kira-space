@@ -33,7 +33,9 @@ test.describe('with agent input', () => {
     server.state.auth = 'ok';
     server.state.permissions = { write: true, agentInput: true };
     server.state.agentInputGlobal = true;
-    server.state.agentSessions = [{ terminalId: 'term-9ab0', cwd: '~/wt/web-app/oauth-login' }];
+    server.state.agentSessions = [
+      { terminalId: 'term-9ab0', cwd: '~/kira-space-wts/web-app/oauth-login' },
+    ];
     await app();
   });
 
@@ -69,7 +71,9 @@ test('without agent input a waiting agent shows the hint, not Reply', async ({
 }) => {
   server.state.auth = 'ok';
   server.state.permissions = { write: true, agentInput: false };
-  server.state.agentSessions = [{ terminalId: 'term-9ab0', cwd: '~/wt/web-app/oauth-login' }];
+  server.state.agentSessions = [
+    { terminalId: 'term-9ab0', cwd: '~/kira-space-wts/web-app/oauth-login' },
+  ];
   await app();
   await waitForQuestion(
     server,

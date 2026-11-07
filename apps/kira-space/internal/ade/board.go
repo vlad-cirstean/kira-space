@@ -151,8 +151,9 @@ type TaskBoardDeps struct {
 	// Credentials receives the remote ops' credential prompts, shown in Kira Space's windows.
 	Credentials      *gitcred.Relay
 	AutofetchMinutes func() int
-	HomeDir          string
-	Now              func() time.Time
+	// HomeDir is the user home; worktrees go under WorktreesBase(HomeDir).
+	HomeDir string
+	Now     func() time.Time
 }
 
 // TaskBoard is the v2 engine: one gitsession.Conn holding every repo a live task touches, a per-repo
@@ -579,7 +580,7 @@ func (b *TaskBoard) assemble(d boardData, repoIDs []string, results map[string]*
 	}
 	return adewire.Board{
 		Tasks: tasks, Statuses: toWireStatuses(d.statuses), StatusDefaults: toWireDefaults(d.defaults), Branches: branches, Plan: plan, Pairs: pairs, History: toWireHistory(d.archived, d.archBranch),
-		Repos: states, WorktreeBasePath: filepath.Join(b.deps.HomeDir, "wt"), AutofetchMinutes: autofetch,
+		Repos: states, WorktreeBasePath: WorktreesBase(b.deps.HomeDir), AutofetchMinutes: autofetch,
 	}
 }
 

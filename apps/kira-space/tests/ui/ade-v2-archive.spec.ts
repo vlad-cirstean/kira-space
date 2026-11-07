@@ -19,7 +19,7 @@ async function openArchive(page: Page): Promise<void> {
 
 const branchRisk = (over: Record<string, unknown> = {}) => ({
   branchId: 'b_cart',
-  worktree: '~/wt/web-app/cart',
+  worktree: '~/kira-space-wts/web-app/cart',
   dirty: [],
   unmerged: 0,
   blocked: '',

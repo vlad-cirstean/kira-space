@@ -1,6 +1,6 @@
 {
   "branchId": "b_cart",
-  "worktree": "~/wt/web-app/cart-flaky",
+  "worktree": "~/kira-space-wts/web-app/cart-flaky",
   "dirty": [
     {
       "code": "M",

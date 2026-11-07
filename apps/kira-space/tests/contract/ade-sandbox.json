@@ -191,7 +191,7 @@
     "read": [],
     "reason": "",
     "write": [
-      "<home>/wt/api/<wt>"
+      "<home>/kira-space-wts/api/<wt>"
     ]
   },
   "AdeTaskService.RunSandbox#notEnforced": {
@@ -205,7 +205,7 @@
     "read": [],
     "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands.",
     "write": [
-      "<home>/wt/api/<wt>"
+      "<home>/kira-space-wts/api/<wt>"
     ]
   },
   "AdeTaskService.RunSandbox#off": {
@@ -231,7 +231,7 @@
     "read": [],
     "reason": "",
     "write": [
-      "<home>/wt/api/<wt>"
+      "<home>/kira-space-wts/api/<wt>"
     ]
   },
   "AdeTaskService.RunSandbox#script": {
@@ -243,7 +243,7 @@
     "network": false,
     "profile": "<masked>",
     "read": [
-      "<home>/wt/api/<wt>"
+      "<home>/kira-space-wts/api/<wt>"
     ],
     "reason": "",
     "write": []
@@ -266,7 +266,7 @@
     "read": [],
     "reason": "",
     "write": [
-      "<home>/wt/api/<wt>"
+      "<home>/kira-space-wts/api/<wt>"
     ]
   },
   "AdeTaskService.Sessions#manual-off": {
@@ -299,7 +299,7 @@
         "activity": "",
         "agentSessionId": "<masked>",
         "branchId": "<masked>",
-        "cwd": "<home>/wt/api/<wt>",
+        "cwd": "<home>/kira-space-wts/api/<wt>",
         "cwdMissing": false,
         "id": "<masked>",
         "lastActiveAt": 0,

@@ -236,7 +236,7 @@
         "workflowOutdated": false
       }
     ],
-    "worktreeBasePath": "<home>/wt"
+    "worktreeBasePath": "<home>/kira-space-wts"
   },
   "AdeTaskService.AddNote": {
     "body": "Use the **new** API.",

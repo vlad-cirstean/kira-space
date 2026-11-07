@@ -39,7 +39,7 @@
         "upstream": "refs/remotes/origin/main",
         "upstreamAhead": 0,
         "upstreamBehind": 0,
-        "worktree": "<home>/wt/api/<wt>"
+        "worktree": "<home>/kira-space-wts/api/<wt>"
       }
     ],
     "history": [],
@@ -340,7 +340,7 @@
         "workflowOutdated": false
       }
     ],
-    "worktreeBasePath": "<home>/wt"
+    "worktreeBasePath": "<home>/kira-space-wts"
   },
   "AdeTaskService.Handovers": {
     "handovers": [

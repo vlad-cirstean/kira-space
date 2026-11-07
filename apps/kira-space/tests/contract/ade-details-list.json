@@ -182,7 +182,7 @@
         "workflowOutdated": false
       }
     ],
-    "worktreeBasePath": "<home>/wt"
+    "worktreeBasePath": "<home>/kira-space-wts"
   },
   "AdeTaskService.Handovers#list": {
     "handovers": [

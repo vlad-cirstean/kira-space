@@ -100,8 +100,10 @@ describe('merge path', () => {
   test('uses the repo name with slashes as dashes, not the nickname', () => {
     const c = ctxWith([], (id) => (id === 'repo-web-app' ? 'acme/web-app' : id));
     const text = templateFor(c, mergeSpec(c, 'b_auth', 'develop'), STATE);
-    expect(text).toContain('~/wt/acme-web-app/_develop');
-    expect(text).toContain('git worktree add ~/wt/acme-web-app/_develop origin/develop -B develop');
+    expect(text).toContain('~/kira-space-wts/acme-web-app/_develop');
+    expect(text).toContain(
+      'git worktree add ~/kira-space-wts/acme-web-app/_develop origin/develop -B develop',
+    );
   });
 
   test('the push switch prints the push line and the label names the target', () => {
@@ -222,14 +224,14 @@ describe('archive', () => {
       branches: [
         {
           branchId: 'b_bill',
-          worktree: '~/wt/web-app/usage-billing',
+          worktree: '~/kira-space-wts/web-app/usage-billing',
           dirty: [{ code: 'M', path: 'src/a.ts' }],
           unmerged: 5,
           blocked: '',
         },
         {
           branchId: 'b_meter',
-          worktree: '~/wt/api/usage-metering',
+          worktree: '~/kira-space-wts/api/usage-metering',
           dirty: [],
           unmerged: 0,
           blocked: '',
@@ -242,7 +244,7 @@ describe('archive', () => {
     expect(v.message).toBe(
       [
         'Task "Usage-based billing" is being archived and its worktrees will be deleted.',
-        '- web-app · feat/usage-billing · ~/wt/web-app/usage-billing · uncommitted: src/a.ts · commits not merged into main: 5',
+        '- web-app · feat/usage-billing · ~/kira-space-wts/web-app/usage-billing · uncommitted: src/a.ts · commits not merged into main: 5',
         'Before they are deleted: ',
       ].join('\n'),
     );
@@ -276,9 +278,9 @@ describe('session and start mirror the server defaults', () => {
     expect(text.split('\n')).toEqual([
       'Spec: Usage-based billing',
       '- Jira: PAY-102 https://j/PAY-102',
-      '- Repo: api · Branch: feat/usage-metering · Worktree: ~/wt/api/usage-metering',
-      '- Repo: web-app · Branch: feat/usage-billing · Worktree: ~/wt/web-app/usage-billing',
-      '- Repo: web-app · Branch: feat/billing-dashboard · Worktree: ~/wt/web-app/billing-dashboard',
+      '- Repo: api · Branch: feat/usage-metering · Worktree: ~/kira-space-wts/api/usage-metering',
+      '- Repo: web-app · Branch: feat/usage-billing · Worktree: ~/kira-space-wts/web-app/usage-billing',
+      '- Repo: web-app · Branch: feat/billing-dashboard · Worktree: ~/kira-space-wts/web-app/billing-dashboard',
       '- Notes: Reuse line items.',
       'Ask me questions until the spec is clear about Usage-based billing in api, web-app, web-app.',
       SPACE_NOTE,
@@ -299,7 +301,7 @@ describe('session and start mirror the server defaults', () => {
     expect(text.split('\n')).toEqual([
       'Task: Usage-based billing',
       '- Jira: PAY-102 https://acme.atlassian.net/browse/PAY-102',
-      '- Repo: api · Branch: feat/usage-metering · Worktree: ~/wt/api/usage-metering',
+      '- Repo: api · Branch: feat/usage-metering · Worktree: ~/kira-space-wts/api/usage-metering',
       'Step: Metering endpoints',
       SPACE_NOTE,
       HANDOVER_LINE,
