@@ -5,8 +5,8 @@ Cleanup chapter. Branch `chapter/v0.3.3`, tag `v0.3.3`. First `P` is P564 (highe
 | Phase | Title | Status |
 |---|---|---|
 | P564 | Drop v0.3.2 one-time migrations | Pending |
-| P565 | Repo rename: point URLs at kira-space | Pending |
-| P566 | Site: mobile image zoom | Pending |
+| P565 | Repo rename: point URLs at kira-space (non-site) | Pending |
+| P566 | Presentation site: repo URLs, mobile zoom, drop carousel | Pending |
 | P567 | Remove memory module, keep presentation docs | Pending |
 | P568 | Close chapter | Pending |
 
@@ -19,15 +19,19 @@ Chapter end: non-UI full run, 1 code review round, close phase, PR.
 - Precondition: user confirmed all 7 Mac checks in `NEXT_CHAPTER.md` (confirmed in session, 2026-11-07).
 - Single implementer, no streams.
 
-## P565 Repo rename: point URLs at kira-space
+## P565 Repo rename: point URLs at kira-space (non-site)
 
-- Ask: repo renamed `vlad-cirstean/kira-studio` to `vlad-cirstean/kira-space`. Update only strings that must point at the real repo: install script URLs, release/API URLs, badges, clone URL, `REPO_URL`, `InstallScriptURL`, `verify-packaging.sh` pin, docs.
+- Ask: repo renamed `vlad-cirstean/kira-studio` to `vlad-cirstean/kira-space`. Update only strings that must point at the real repo outside `site/`: install script URLs, release/API URLs, badges, clone URL, `InstallScriptURL`, `verify-packaging.sh` pin, docs.
 - Out of scope (user decision): Go module path `github.com/kirathecat/kira-studio`, code identifiers, "Kira Studio" prose, `docs/HISTORY.md`.
 - `.github/workflows/release.yml` cannot be pushed from a session: use `docs/pending-changes/` per `docs/DEV_ENVIRONMENT.md`.
 
-## P566 Site: mobile image zoom
+## P566 Presentation site: repo URLs, mobile zoom, drop carousel
 
-- Ask: presentation site images zoom in too far on mobile. Fix so images fit the viewport.
+- Ask, one phase for all `site/` work:
+  - Repo URLs: `REPO_URL` (`astro.config.mjs`, `src/data/nav.ts`), install snippets, release links in `site/`.
+  - Mobile: images zoom in too far on phones. Fix so images fit the viewport.
+  - Build with Kira page: drop the carousel (`BuildCarousel.astro`); keep the rest of the page.
+  - Memory stays mentioned in site docs (P567 does not touch `site/`).
 - Verify with Playwright at phone width.
 
 ## P567 Remove memory module, keep presentation docs
