@@ -32,7 +32,7 @@ Chapter end: non-UI full run, 1 code review round, close phase, PR.
   - Repo URLs: `REPO_URL` (`astro.config.mjs`, `src/data/nav.ts`), install snippets, release links in `site/`.
   - Mobile: images zoom in too far on phones. Fix so images fit the viewport.
   - Build with Kira page: drop the carousel (`BuildCarousel.astro`); keep the rest of the page.
-  - Memory stays mentioned in site docs (P567 does not touch `site/`).
+  - Memory: remove from site marketing pages (landing, features, build page, nav, images); keep only in site docs pages (`site/src/content/docs/**`). P567 does not touch `site/`.
 - Verify with Playwright at phone width.
 
 ## P567 Remove memory module, keep presentation docs
