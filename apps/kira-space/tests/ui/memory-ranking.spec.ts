@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
-import { openMemory } from './support/memoryNav';
+import { openMemory, withMemory } from './support/memoryNav';
 
 // P275: ranked search in the Memory module. Backend halves: memoryflow TestSearchRankedWithBoost and
 // TestSearchOriginFilter. TestMcpSearchScoreMeta is a backend text format with no UI state.
@@ -38,11 +38,11 @@ test('contract: a ranked search sends the filters and boost project and shows sc
   const sent = contract<SearchArgs>('memory', 'args:MemoryService.Search#ranked');
   const hits = contract<Mem[]>('memory', 'MemoryService.Search#ranked');
   const { window: page, control } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryRecent, response: [] },
       { channel: IPC.memoryProjects, response: [BILLING, WEB] },
       { channel: IPC.memorySearch, response: hits },
-    ],
+    ]),
   });
   await openMemory(page);
 
@@ -80,11 +80,11 @@ test('contract: unchecking agent and external searches user facts only', async (
   const sent = contract<SearchArgs>('memory', 'args:MemoryService.Search#user');
   const hits = contract<Mem[]>('memory', 'MemoryService.Search#user');
   const { window: page, control } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryRecent, response: [] },
       { channel: IPC.memoryProjects, response: [BILLING, WEB] },
       { channel: IPC.memorySearch, response: hits },
-    ],
+    ]),
   });
   await openMemory(page);
 

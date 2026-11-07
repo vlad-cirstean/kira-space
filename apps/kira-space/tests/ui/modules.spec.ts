@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { IPC } from './support/ipcChannels';
+import { withMemory } from './support/memoryNav';
 import type { ControlSnapshot } from './support/types';
 
 // Module switching is multi-step, cross-store state (the mode store, the workspace
@@ -14,10 +15,18 @@ function modeTab(page: Page, mode: 'git' | 'automations' | 'ade') {
   return page.locator(`[data-testid="mode-tab"][data-mode="${mode}"]`);
 }
 
-test('the title bar lists Agents, Runs, Memory, Git, then the Studio modules', async ({
+test('the title bar hides Memory by default', async ({ relaunch }) => {
+  const { window: page } = await relaunch();
+  const modes = await page
+    .locator('[data-testid="mode-tab"]')
+    .evaluateAll((els) => els.map((e) => e.getAttribute('data-mode')));
+  expect(modes).toEqual(['ade', 'automations', 'git', 'studio', 'api', 'docker', 'kubernetes']);
+});
+
+test('the title bar lists Agents, Runs, Memory, Git, then the Studio modules with Memory on', async ({
   relaunch,
 }) => {
-  const { window: page } = await relaunch();
+  const { window: page } = await relaunch({ control: withMemory() });
   const modes = await page
     .locator('[data-testid="mode-tab"]')
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-mode')));

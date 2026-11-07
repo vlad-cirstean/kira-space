@@ -18,6 +18,7 @@ import { readOnlySqsSnapshots, SQS_QUEUE_PATH } from './studio/support/sqsFixtur
 import { connectionRow, expandRow, findRow, openRowMenu } from './studio/support/tree';
 import { adeBoard, adeFixture, adeV2Control, openPlan } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
+import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
 
@@ -153,11 +154,11 @@ test('discarding a memory import asks with Discard / Cancel', async ({ relaunch 
     finishedAt: null,
   };
   const { window: page } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryImportJobs, response: [job] },
       { channel: IPC.memoryImportJob, args: { id: 'J2' }, response: { job, files: [] } },
       { channel: IPC.memoryImportDiscard },
-    ],
+    ]),
   });
   await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
   await page.locator(t('memory-import-open')).click();

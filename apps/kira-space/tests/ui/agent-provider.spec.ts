@@ -11,6 +11,7 @@ import {
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
+import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 
 // A second agent provider: the names, models and optional roles come from AgentService.Info.
@@ -28,7 +29,7 @@ async function openSettings(page: Page, section: string): Promise<void> {
 }
 
 test('the Memory pane lists the provider models and its default', async ({ relaunch }) => {
-  const { window: page } = await relaunch({ control: info });
+  const { window: page } = await relaunch({ control: withMemory(info) });
   await openSettings(page, 'Memory');
   const select = page.locator('[data-testid="settings-memory-agent-model"]');
   await expect(select).toHaveValue(fake.defaultModel);

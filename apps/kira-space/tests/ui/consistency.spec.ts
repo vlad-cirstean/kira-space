@@ -15,6 +15,7 @@ import { openSettings } from './studio/support/settings';
 import { connectionRow } from './studio/support/tree';
 import { adeFixture, adeV2Control, emitLog, FIXED_NOW, openPlan } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
+import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
 
@@ -100,7 +101,7 @@ test('the menu find event focuses the open diff find widget', async ({ relaunch 
 
 test('Memory mode has no tab strip', async ({ relaunch }) => {
   const { window: page } = await relaunch({
-    control: [{ channel: IPC.windowsEnsure, response: { mode: 'memory' } }],
+    control: withMemory([{ channel: IPC.windowsEnsure, response: { mode: 'memory' } }]),
   });
   await expect(page.locator(t('memory-panel'))).toBeVisible();
   await expect(page.locator(t('tab-strip'))).toHaveCount(0);

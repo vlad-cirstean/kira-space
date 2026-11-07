@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
+import { withMemory } from './support/memoryNav';
 import type { ControlSnapshot } from './support/types';
 
 // P201: the Memory module against a mocked bridge — search, history flags, the version trail, the
@@ -113,7 +114,7 @@ async function openMemory(page: Page): Promise<void> {
 }
 
 test('Memory mode lists recent memories, searches, and flags history', async ({ relaunch }) => {
-  const { window: page, control } = await relaunch({ control: BASE });
+  const { window: page, control } = await relaunch({ control: withMemory(BASE) });
   await openMemory(page);
 
   const rows = page.locator('button[data-testid^="memory-row-"]');
@@ -144,11 +145,11 @@ test('a rule carries a Rule badge in the list and detail; a fact carries none', 
     reason: 'The ledger rejects fractions.',
   });
   const { window: page } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryRecent, response: [CURRENT, rule] },
       { channel: IPC.memoryHistory, response: { memories: [rule], events: [] } },
       { channel: IPC.memoryContext, response: { memory: rule, groups: [] } },
-    ],
+    ]),
   });
   await openMemory(page);
 
@@ -164,7 +165,7 @@ test('a rule carries a Rule badge in the list and detail; a fact carries none', 
 });
 
 test('selecting a memory shows its reason and version trail', async ({ relaunch }) => {
-  const { window: page } = await relaunch({ control: BASE });
+  const { window: page } = await relaunch({ control: withMemory(BASE) });
   await openMemory(page);
 
   await page.locator('[data-testid="memory-row-m2"]').click();
@@ -198,7 +199,7 @@ test('contract: Add memory: free text, a challenge shows questions, resubmit sen
   const question = challenged.challenges[0]?.questions[0] ?? '';
   const answer = { question, answer: 'billing-api' };
   const { window: page, control } = await relaunch({
-    control: [
+    control: withMemory([
       ...BASE,
       {
         channel: IPC.memoryStore,
@@ -213,7 +214,7 @@ test('contract: Add memory: free text, a challenge shows questions, resubmit sen
         args: { items: [item], clarifications: [answer], scope: 'personal', project: '' },
         response: stored,
       },
-    ],
+    ]),
   });
   await openMemory(page);
 
@@ -241,13 +242,13 @@ test('contract: Add memory: free text, a challenge shows questions, resubmit sen
 
 test('module hosts no setup; hints open Settings > Memory', async ({ relaunch }) => {
   const { window: page } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryRecent, response: [] },
       {
         channel: IPC.memorySemanticStatus,
         response: { state: 'notInstalled', message: '', model: '', done: 0, total: 0 },
       },
-    ],
+    ]),
   });
   await openMemory(page);
 
@@ -267,7 +268,7 @@ for (const [scenario, key] of [
   test(`contract: ${scenario} Recent list shows every stored fact`, async ({ relaunch }) => {
     const recent = contract<{ id: string; fact: string }[]>(scenario, key);
     const { window: page } = await relaunch({
-      control: [{ channel: IPC.memoryRecent, response: recent }],
+      control: withMemory([{ channel: IPC.memoryRecent, response: recent }]),
     });
     await openMemory(page);
     await expect(page.locator('button[data-testid^="memory-row-"]')).toHaveCount(recent.length);
@@ -283,10 +284,10 @@ test('contract: a search hit lists the fact found by its gate keyword', async ({
     'MemoryService.Search#postgresql',
   );
   const { window: page } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryRecent, response: [] },
       { channel: IPC.memorySearch, response: hits },
-    ],
+    ]),
   });
   await openMemory(page);
   await page.locator('[data-testid="memory-search"]').fill('postgresql');

@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
-import { openMemory } from './support/memoryNav';
+import { openMemory, withMemory } from './support/memoryNav';
 import type { ControlSnapshot } from './support/types';
 
 // P211: bulk memory import against a mocked bridge — pick, scan confirmation with the estimate,
@@ -138,7 +138,7 @@ const BASE: ControlSnapshot[] = [
 
 test('contract: import: pick a folder, confirm the estimate, start', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({
-    control: [...BASE, { channel: IPC.memoryImportJobs, response: [SCANNED] }],
+    control: withMemory([...BASE, { channel: IPC.memoryImportJobs, response: [SCANNED] }]),
   });
   await openMemory(page);
 
@@ -163,7 +163,7 @@ test('contract: import: a paused job shows its reason, per-file results, retry a
   relaunch,
 }) => {
   const { window: page, control } = await relaunch({
-    control: [...BASE, { channel: IPC.memoryImportJobs, response: [PAUSED] }],
+    control: withMemory([...BASE, { channel: IPC.memoryImportJobs, response: [PAUSED] }]),
   });
   await openMemory(page);
 
@@ -233,11 +233,11 @@ test('contract: import: the confirm dialog sends the chosen provenance and doc w
     writeDoc: boolean;
   }>('memory-import', 'args:MemoryImportService.Start#provenance');
   const { window: page, control } = await relaunch({
-    control: [
+    control: withMemory([
       ...BASE,
       { channel: IPC.memoryImportJobs, response: [SCANNED] },
       { channel: IPC.memoryProjects, response: [sent.project] },
-    ],
+    ]),
   });
   await openMemory(page);
   await page.locator('[data-testid="memory-import"]').click();
@@ -276,7 +276,7 @@ test('contract: import: a finished file with a written doc shows the doc path', 
   relaunch,
 }) => {
   const written = contract<ImportDetail>('memory-import', 'MemoryImportService.Job#writeDoc');
-  const { window: page } = await relaunch({ control: withDetail(written) });
+  const { window: page } = await relaunch({ control: withMemory(withDetail(written)) });
   await openImports(page, written);
 
   await expect(page.locator('[data-testid="import-job-origin"]')).toHaveText('User');
@@ -293,7 +293,7 @@ test('contract: import: a kira-memory doc shows as a parsed file with its counts
 }) => {
   const parsed = contract<ImportDetail>('memory-import', 'MemoryImportService.Job#memdoc');
   const doc = parsed.files[0] as { relPath: string; added: number; groupId: string };
-  const { window: page } = await relaunch({ control: withDetail(parsed) });
+  const { window: page } = await relaunch({ control: withMemory(withDetail(parsed)) });
   await openImports(page, parsed);
 
   const row = page.locator(`[data-testid="import-file-${doc.relPath}"]`);
@@ -307,7 +307,7 @@ test('contract: import: an agent job awaiting confirmation shows why and starts 
   relaunch,
 }) => {
   const claims = contract<ImportDetail>('memory-import', 'MemoryImportService.Job#claims');
-  const { window: page, control } = await relaunch({ control: withDetail(claims) });
+  const { window: page, control } = await relaunch({ control: withMemory(withDetail(claims)) });
   await openImports(page, claims);
 
   await expect(page.locator('[data-testid="import-reason"]')).toContainText(
@@ -328,7 +328,7 @@ test('contract: import: cross-checked facts count and the unsupported one is dro
     verified: number;
     dropped: { fact: string; why: string }[];
   };
-  const { window: page } = await relaunch({ control: withDetail(checked) });
+  const { window: page } = await relaunch({ control: withMemory(withDetail(checked)) });
   await openImports(page, checked);
 
   const row = page.locator(`[data-testid="import-file-${f.relPath}"]`);

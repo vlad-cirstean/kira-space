@@ -33,6 +33,7 @@ import {
   openRowMenu,
 } from './studio/support/tree';
 import { IPC } from './support/ipcChannels';
+import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
 
@@ -357,11 +358,11 @@ test('memory list — focus on mount, arrows, Home/End, Enter selects and a type
   const first = memoryRecord('ma', 'First fact.');
   const second = memoryRecord('mb', 'Second fact.');
   const { window: page } = await relaunch({
-    control: [
+    control: withMemory([
       { channel: IPC.memoryRecent, response: [first, second] },
       { channel: IPC.memoryHistory, response: { memories: [second], events: [] } },
       { channel: IPC.memoryContext, response: { memory: second, groups: [] } },
-    ],
+    ]),
   });
   await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
   const search = page.locator('[data-testid="memory-search"]');
@@ -390,7 +391,7 @@ test('memory list — focus on mount, arrows, Home/End, Enter selects and a type
 test('memory list — 200 memories virtualize, End and Home reach the ends', async ({ relaunch }) => {
   const records = Array.from({ length: 200 }, (_, i) => memoryRecord(`m${i}`, `Fact ${i}.`));
   const { window: page } = await relaunch({
-    control: [{ channel: IPC.memoryRecent, response: records }],
+    control: withMemory([{ channel: IPC.memoryRecent, response: records }]),
   });
   await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
 
