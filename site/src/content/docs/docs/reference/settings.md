@@ -110,6 +110,6 @@ Git log level (default info) and the popup notification (on).
 ## Where data lives
 
 - Database, Api, Git, agents and automations: home `~/.kira-space`, override `KIRA_SPACE_HOME`, database `kira.db`.
-- Memory: home `~/.kira-memory`, override `KIRA_MEMORY_HOME`, database `memory.db`.
+- Memory: home `~/.kira-space/memory`, override `KIRA_SPACE_HOME`, database `memory.db`.
 
-Kira Space keeps one home, `~/.kira-space`. Its `config/` folder holds the plain-file config, one folder per module: `connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent` (context and agent settings) and `prompts` (`llm-prompts.json`). Databases (`kira.db`, `review.db`), tokens, `logs/` and `backups/` stay outside `config/`. Memory keeps its own home.
+Kira Space keeps one home, `~/.kira-space`. Its `config/` folder holds the plain-file config, one folder per module: `connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent` (context and agent settings) and `prompts` (`llm-prompts.json`). Databases (`kira.db`, `review.db`), tokens, `logs/` and `backups/` stay outside `config/`. Memory lives in `memory/`, created on first use: `memory.db`, the downloaded model, imported documents and the import log.

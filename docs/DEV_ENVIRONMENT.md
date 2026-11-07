@@ -563,7 +563,7 @@ Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-c
 - Hermetic launches (P455): `internal/harness/**`, `internal/agentcfg/servers.go`, `apps/*/internal/ade/launches.go`, `internal/scriptruns/**`: `bun run test:claude -run 'TestHermeticSession|TestAgentSettingsClaude|TestRealClaudeSettingsUntouched|TestSmartScriptRun|TestTerminalAgentHooks' -count=1` and `bun run test:claude:db -run TestSmartScriptRun -count=1`. `TestHermeticSession` runs two haiku steps (hermetic, control with hermetic off), a few cents.
 - Spend, measured on 2026-10-09 (CLI 2.1.295, haiku): `claude -p` results of the Space suite 0.014 USD, TUI sessions (about 4 at 1 to 2 haiku prompts) an estimated 0.02 USD, Studio suite under 0.01 USD, memory gate smoke a few cents, import smoke 0.14 USD (P211), memory docs test 0.01 USD (P276). Space suite about 75 s, Studio about 12 s. The Space run prints its measured `claude -p` spend. P279 (CLI 2.1.296): resume rows 0.0067 USD per run of the three (about 55 s), whole Space ADE and smart set 0.020 USD (about 156 s). P296: `comment` subtest of the memory docs test 0.006 USD (about 16 s), prompt-registry row of the Space suite 0.083 USD (about 427 s). P297 (CLI 2.1.302): `TestMemoryDistill` 0.03 USD (about 21 s), `TestMemoryDistillBridge` 0.03 USD (about 13 s), `TestMemoryMcpFollowsDocs` 0.022 USD (about 85 s), prompt-registry row 0.082 USD (about 444 s); `TestMemoryGate` now also checks rule kind (about 32 s). Eval subset round `round-p297-01` 1.50 USD (ledger `spend-p297.jsonl`, needs `KIRA_EVAL_PHASE_CAP_USD` above the run cap plus 2); a shallow clone must first `git fetch --depth=1 origin <corpus commit>`.
 - `scripts/docshistory` (docs chapter fold, P299): needs the logged-in `claude` CLI, builds `kira-space` itself
-  (or `--binary`), gives each unit temp `KIRA_MEMORY_HOME`/`KIRA_SPACE_HOME` and never touches your memory DB.
+  (or `--binary`), gives each unit a temp `KIRA_SPACE_HOME` (memory lives under it) and never touches your memory DB.
   Defaults (also `doc`): `--runs docs/history-runs`, `--out -`, `--jobs 1`. Cost per phase 0.02 to 0.25 USD (P299 pilot, mean 0.07);
   v2.5 (P300): 27 units, 1.45 USD real, 3.20 USD charged (failed tries charge a 0.25 USD estimate).
   v2.6 (P305): 12 units (13 tries), 0.78 USD real, 0.78 charged. `--max-usd` stops new
@@ -774,8 +774,8 @@ exits 0. It overrides `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` for that one install 
 
 ## Memory MCP and the `claude` CLI (P201)
 
-- `KIRA_MEMORY_HOME` scopes `memory.db` (default `~/.kira-memory`). `testx.RunWithTempHomes` sets it
-  for test binaries.
+- `memory.db` lives in `$KIRA_SPACE_HOME/memory` (default `~/.kira-space/memory`). `testx.RunWithTempHomes`
+  sets `KIRA_SPACE_HOME` for test binaries.
 - Smoke against the real CLI, opt-in: `bun run test:claude -run TestMemoryGate`.
   Needs an authenticated `claude` on `PATH` (`claude -p` works here, CLI 2.1.292; ~14 s, a few cents).
   The gate uses `--safe-mode --setting-sources "" --strict-mcp-config --tools "" --no-session-persistence`;
@@ -785,12 +785,12 @@ exits 0. It overrides `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` for that one install 
   `apps/kira-space/tests/claude/testdata/smoke` with a small chunk budget and re-executes the test binary as
   `memory-mcp` (set `KIRA_TEST_MEMORY_MCP=1`; `TestMain` in that module handles it), so no built app is needed.
   P274: the import now runs in a detached `memory-ingest` runner (flow binary and `tests/claude` binary
-  serve it through `flowharness.Main`); its log is `$KIRA_MEMORY_HOME/import-runner.log`. Check no runner
+  serve it through `flowharness.Main`); its log is `$KIRA_SPACE_HOME/memory/import-runner.log`. Check no runner
   outlives a suite: `pgrep -f '^.*memory-ingest$'` is empty 35 s after.
   Import UI states: `bun run build:test`, then Playwright `memory-import` (mock bridge).
 - MCP path: `go build -tags server ./apps/kira-space`, then `claude -p --mcp-config <file>
   --strict-mcp-config` with a `stdio` server `{command: <binary>, args: ["memory-mcp"], env:
-  {KIRA_MEMORY_HOME: <tmp>}}`. `printf '' | <binary> memory-mcp` exits 0. The macOS app-bundle binary
+  {KIRA_SPACE_HOME: <tmp>}}`. `printf '' | <binary> memory-mcp` exits 0. The macOS app-bundle binary
   is unchecked (Known open items).
 - Semantic search (P210): the ONNX Runtime library is not in the repo. `sh scripts/fetch-onnxruntime.sh
   linux-x64` downloads the pinned 1.31.1 build (checksum-verified, idempotent) to
@@ -1090,7 +1090,6 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 |---|---|---|
 | `KIRA_HOME` | Retired Studio data dir (`~/.kira-studio/`); read only by the one-time leftovers cleanup | you |
 | `KIRA_SPACE_HOME` | The one data dir and instance-lock dir (`app.lock`). Panics in a non-`production` test binary when unset | you; `testx.RunWithTempHomes` |
-| `KIRA_MEMORY_HOME` | Memory data dir, else `~/.kira-memory` | you; `testx.RunWithTempHomes` |
 | `KIRA_DEV` | Overrides the production check on a non-`production` build (`kirapaths`) | you |
 | `KIRA_INSECURE_SECRETS` | `1` stores secrets unencrypted on Linux without a keyring. Dev only | you; IPC fixture harness |
 | `KIRA_NO_STARTUP_ALERT` | Skips the native startup-failure dialog; the failure is still logged (`startupfail`) | you, CI and headless runs |

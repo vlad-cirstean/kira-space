@@ -275,8 +275,8 @@ Other scripts you'll use most:
 typecheck, `pre-push` runs the Go build and linters.
 
 **App data:** Kira Space keeps `kira.db`, `config/`, `logs/` and `review.db`
-under `~/.kira-space/` (override with `KIRA_SPACE_HOME`). Memories live in `~/.kira-memory/`
-(`KIRA_MEMORY_HOME`).
+under `~/.kira-space/` (override with `KIRA_SPACE_HOME`). Memories live in `~/.kira-space/memory/`.
+An old `~/.kira-memory` folder is no longer read and can be deleted.
 
 For local test databases, see [`scripts/demo-dbs/README.md`](scripts/demo-dbs/README.md). Test tiers
 are described in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)'s Testing section, and

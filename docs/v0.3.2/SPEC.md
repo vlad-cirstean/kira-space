@@ -49,26 +49,26 @@ More rows follow as the user adds them. Table order is execution order.
 - Added by the user: fold `agent-secrets.db` into kira.db `secret_values` (scope `agent-credential`, owner `agent`, same cipher, only through `secrets.Store`, values never in logs or the op log); rename the macOS Keychain item from "Kira Studio" to "Kira Space" keeping the existing master key. Both are one-time boot data moves of live v0.3.1 data, idempotent, source kept until verified. Out of scope: `~/.kira-memory` move and the add-repos dialog move (separate phases).
 - Zero data loss on the user's v90 kira.db: baseline proven byte-for-byte against a chain-built DB, and a chain-upgraded DB with data opens unchanged.
 - User decisions (plan "Decisions"): delete all four old config keys (each verified pure back-compat); kira `0091` drops old JSON state (numeric review comment ids in `ade_runs.spec_json`, http tabs with `bodyMode: 'json'`), `schema_quarantine` and stale marker rows, then both readers go; delete `install.sh --app=studio` and its release job (pending-changes patch); drop `memory_legacy_ids` and the legacy-uuid lookup (memory baseline without it, memory `0009` drops it from the user's DB).
-- User decision (irreversible, authorized): a one-time boot cleanup, isolated in `apps/kira-space/internal/leftovers`, deletes every file and folder the post-P557 code never reads: dead names inside `~/.kira-space` by an exact allowlist, the pre-P557 `backups/p5xx-*` folders (not `backups/p557-*`, not `~/.kira-memory`) and the retired `~/.kira-studio`. It runs only after the baseline check, the agent-secrets move and the Keychain move succeed in the same boot. Allowlist in the plan.
+- User decision (irreversible, authorized): a one-time boot cleanup, isolated in `apps/kira-space/internal/leftovers`, deletes every file and folder the post-P557 code never reads: dead names inside `~/.kira-space` by an exact allowlist, the pre-P557 `backups/p5xx-*` folders (not `backups/p557-*`) and the retired `~/.kira-studio` (P559 adds `~/.kira-memory`, user-authorized: they do not use Memory). It runs only after the baseline check, the agent-secrets move and the Keychain move succeed in the same boot. Allowlist in the plan.
 - Order: runs after P556 lands (P556 already removed its Memory upgrade seed, `4ef78a6b1`). Single implementer, no streams.
 - Plan: `plans/P557.md`.
 - Result: implemented (row stays Pending until the Mac keychain test and the release.yml patch land).
-  - One baseline per DB at v0.3.1: kira 0090 plus `0091_p557_drop_legacy.sql`, review 0008, memory 0008 plus `0009_p557_drop_legacy_ids.sql`. Proof at base `72907efb1`: chain-built and baseline-built DBs match exactly for all three (kira 62 tables, 116 indexes, 8 seed rows, v90; review 9, 10, 0, v8; memory 15, 23, 9 triggers, 1 seed row, v8). Real-data copies open unchanged (memory 8 to 9 via `0009`). Older DB refuses with `SchemaTooOldError`, newer with `SchemaTooNewError`.
+  - One baseline per DB at v0.3.1: kira 0090 plus `0091_p557_drop_legacy.sql`, review 0008, memory 0008 (P559 deleted `0009_p557_drop_legacy_ids.sql`). Proof at base `72907efb1`: chain-built and baseline-built DBs match exactly for all three (kira 62 tables, 116 indexes, 8 seed rows, v90; review 9, 10, 0, v8; memory 15, 23, 9 triggers, 1 seed row, v8). Real-data copies open unchanged (memory 8 to 9 via `0009`, since deleted). Older DB refuses with `SchemaTooOldError`, newer with `SchemaTooNewError`.
   - Deleted: home, config and DB folds, exports, `MigrateOnce`, old-Studio alert, `--app=studio`, four old config keys, adeflow legacy status names, legacy frontend storage keys, install.sh Studio path.
   - Moved once: `agent-secrets.db` into kira.db `secret_values` (original parked in `backups/p557-<UTC ts>/`); Keychain item "Kira Studio" to "Kira Space" with the same key; boot cleanup of dead leftovers.
   - Pending patch: `docs/pending-changes/.github__workflows__release.yml.patch` (`.github/workflows/` cannot be pushed from a session).
-  - User precondition before first v0.3.2 launch: back up `~/.kira-space/kira.db`, `review.db`, `agent-secrets.db` and `~/.kira-memory/memory.db`.
+  - User precondition before first v0.3.2 launch: back up `~/.kira-space/kira.db`, `review.db`, and `agent-secrets.db`. No memory backup: `~/.kira-memory` is deleted at first boot.
   - Unverified here: darwin keychain tests (`go test ./internal/secrets -run Keychain`) need a real Mac; the darwin cgo files compile only there.
   - Left out of the leftovers allowlist: `config/workflows/.p526-backup` (not an authorized location). Needs a user decision.
   - Next chapter: delete (each one commit):
     - `agentcfg.MoveSecretsFile` (`internal/agentcfg/movesecrets.go`) and `flows/harnessflow/secretsmove_test.go`.
     - `moveLegacyKey` and `moveKeyIn` (`internal/secrets/keychain_move_darwin.go`), `keychain_move_darwin_test.go`, and the `moveLegacyKey` call in `loadOrCreateKey`.
-    - `apps/kira-space/internal/leftovers/` and `flows/appflow/leftovers_test.go`.
+    - `apps/kira-space/internal/leftovers/` (Studio home and, since P559, `~/.kira-memory`) and `flows/appflow/leftovers_test.go`.
     - `appwire/onetime.go` (`RunOneTimeMoves`) and its calls in `main.go` and `flowharness/harness.go`.
     - `sqlitex.ReadOnlyURI` when nothing else uses it.
     - `backups/p557-*` folders (user deletes by hand).
     - `docs/pending-changes/.github__workflows__release.yml.patch` (whoever applies it).
-    - `0091_p557_drop_legacy.sql` and memory `0009` stay as history.
+    - `0091_p557_drop_legacy.sql` stays as history.
 
 ### P558 Repositories page in ADE, replacing the Git module dialog
 
@@ -83,7 +83,7 @@ More rows follow as the user adds them. Table order is execution order.
 ### P559 Memory home under the Kira Space home
 
 - Ask (verbatim): "Having a separate db is fine. But It should be in the kira space folder so add this as a phase too".
-- Scope: memory.db stays its own SQLite file but moves to `<Space home>/memory/memory.db` (default `~/.kira-space/memory/`), with `models/`, `distilled/` and the import runner log and lock beside it; never under `config/`. One resolver, `kirapaths.MemoryHome`. `KIRA_MEMORY_HOME` dropped (default; user decision 1); memory follows `KIRA_SPACE_HOME`. No migration or move code: an old `~/.kira-memory` is ignored, and docs say it can be deleted. Agent sandbox allows the memory subtree only, never the Space home. Lazy creation: `memory-mcp` start no longer opens memory.db (the ingest engine opens on first ingest call), so a Claude session start with Memory off creates nothing; the boot-time retired-model cleanup goes. Memory migration `0009` deleted (default; user decision 2). No backend gate on the Memory flag (default; user decision 3).
+- Scope: memory.db stays its own SQLite file but moves to `<Space home>/memory/memory.db` (default `~/.kira-space/memory/`), with `models/`, `distilled/` and the import runner log and lock beside it; never under `config/`. One resolver, `kirapaths.MemoryHome`. `KIRA_MEMORY_HOME` dropped (default; user decision 1); memory follows `KIRA_SPACE_HOME`. No migration or move code: nothing reads an old `~/.kira-memory`; the one-time leftovers cleanup deletes it (user-authorized, same guards as `~/.kira-studio`). Agent sandbox allows the memory subtree only, never the Space home. Lazy creation: `memory-mcp` start no longer opens memory.db (the ingest engine opens on first ingest call), so a Claude session start with Memory off creates nothing; the boot-time retired-model cleanup goes. Memory migration `0009` deleted (default; user decision 2). No backend gate on the Memory flag (default; user decision 3).
 - Tests: one backend flow test (boot and `memory-mcp` start create no memory home; first tool call creates `<space>/memory/memory.db`; `~/.kira-memory` never appears). No UI spec: no bound method or UI change. Sandbox goldens regenerated. Real `claude` memory rows run.
 - Order: runs after P557 (both touch Go memory code, migrations, `appwire`, `config/paths.go` and docs). Shares only ARCHITECTURE with P558, different sections.
 - Single implementer, no streams. Plan lists 3 NEEDS USER DECISION items, each with a default.
@@ -135,7 +135,7 @@ Runs after the last phase and the full suite run, before the code review. Close 
 
 ### P557 Baseline check (mandatory)
 
-- [ ] Each DB package has one baseline: kira `0090` (plus `0091_p557_drop_legacy.sql`), review `0008`, memory `0008` (plus `0009_p557_drop_legacy_ids.sql`). Baseline proof test passed at the base commit (result in plan).
+- [ ] Each DB package has one baseline: kira `0090` (plus `0091_p557_drop_legacy.sql`), review `0008`, memory `0008`. Baseline proof test passed at the base commit (result in plan).
 - [ ] Copy of a chain-upgraded v90 DB with data opens: version 90, row counts and content hash unchanged, `integrity_check` ok, `foreign_key_check` empty.
 - [ ] v82 DB refuses with the schema-too-old startup alert; v91 refuses with schema-too-new.
 - [ ] `grep -rn "homefold\|configfold\|dbfold\|MigrateOnce\|app=studio\|\.kira-studio" apps internal scripts` returns nothing outside keychain names and `internal/leftovers`.
@@ -155,7 +155,7 @@ Runs after the last phase and the full suite run, before the code review. Close 
 ### P559 Memory home check (mandatory)
 
 - [ ] `memory.Home()` is `<KIRA_SPACE_HOME>/memory`; memory.db, `models/`, `distilled/`, runner log and lock land there.
-- [ ] `rg -n 'KIRA_MEMORY_HOME|\.kira-memory' --hidden -g '!docs/HISTORY.md' -g '!docs/v0.3.2/**'` returns only the "ignored, can be deleted" doc lines (or per user decision 1).
+- [ ] `rg -n 'KIRA_MEMORY_HOME|\.kira-memory' --hidden -g '!docs/HISTORY.md' -g '!docs/v0.3.2/**'` returns only the "ignored, can be deleted" doc lines, the leftovers code and its tests (or per user decision 1).
 - [ ] Fresh home, Memory off: app boot plus a `memory-mcp` start (`printf '' | <bin> memory-mcp`) leave no `memory/` folder and no `~/.kira-memory`; flow test `TestMemoryHomeLazy` passes.
 - [ ] Sandbox profile allows the memory subtree only; goldens show `.kira-space/memory`, never the Space home root.
 - [ ] Memory migrations: baseline `0008` only (or per user decision 2).
