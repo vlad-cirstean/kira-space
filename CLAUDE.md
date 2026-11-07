@@ -81,8 +81,7 @@ duplicated here; this file only points at them.
   build) and only their own new or changed specs per phase. After the last implementation phase,
   before the code review, run every test except the UI suites once: Go, typecheck, lint, site and
   package tests, flow tests. Not Playwright UI, visual or screenshots. The run isn't done until every
-  failure is fixed, committed and passing on rerun. Collect all failures from the full run first, fix
-  them all, then push once; never push after an isolated fix. After a fix, rerun only the failing tests and those sharing its code. A
+  failure is fixed, committed and passing on rerun. After a fix, rerun only the failing tests and those sharing its code. A
   timeout under load gets a lone rerun first. Rerun the full suite a second time only when a fix
   touched shared code (a package, a fixture, a config) that targeted reruns cannot cover; say so in
   the Result. UI suites (Playwright `ui`, `visual`, `ui-timing`) run in PR CI, not locally beyond the
