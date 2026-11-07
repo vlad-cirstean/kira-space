@@ -7,7 +7,7 @@ Cleanup chapter. Branch `chapter/v0.3.3`, tag `v0.3.3`. First `P` is P564 (highe
 | P564 | Cleanup: drop v0.3.2 one-time migrations, repo rename URLs | Done |
 | P565 | Presentation site: redesign, repo URLs, mobile zoom, drop carousel | Done |
 | P566 | Presentation site: second design pass (identity, color, bento) | Done |
-| P567 | Presentation site: real app images only, performance | Pending |
+| P567 | Presentation site: real app images only, performance | Done |
 | P568 | Close chapter | Pending |
 
 P564 and P565 run as parallel streams (own worktree each): P564 owns everything outside `site/`, P565 owns `site/`. Grouping in `plans/batch-P564-P565.md`.
@@ -58,6 +58,10 @@ Chapter end: non-UI full run, 1 code review round, close phase, PR.
 - Evaluate looping clips of the real app in place of stills; do it only if cheap to produce and run (plan decides).
 - Real shots come from CI (`pages.yml` capture step); locally placeholders are fine. No Mac step.
 - Plan: `plans/P567.md`. Single implementer, no streams.
+- Result: four new real scenes (workspace, runs, connections, docker), Monaco capture made deterministic. Bento: six real shot tiles, five text tiles. Hero: one real window. Banner text only. Clips deferred. Button glow via `--shadow-cta` tokens (landed in the perf commit, not a separate one).
+- Result perf: animations on `/` 28 to 5. Removed: marquee, blob drift, breathe, twinkle, float, pulse, spin border, sweep, caret, tilt, scroll reveals, fills, story hold, hover shine. Kept: `hero-in`, hover transitions. Zero document scripts (`prefetch: false`).
+- Result fps idle/scroll: WebKit `/` 1280 61.9/58.7, 390 61.9/57.1; `/build/` 61.9/60.9, 61.8/60.8. Chromium 60/60 everywhere. WebKit landing scroll sits 1 to 3 under 60 (image decode, sticky header, gradient text).
+- Result review round 1: #2, #3, #4 fixed by the rewrite; #5 not applicable; #6, #7 fixed; #8 pointer fixed, animation list rewritten.
 
 ## P568 Close chapter
 
