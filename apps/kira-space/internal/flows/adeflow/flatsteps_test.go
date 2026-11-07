@@ -10,7 +10,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-const flatSpec = "  - id: spec\n    name: Spec\n    kind: manual\n    status: To do\n    session: true\n    prompt: Write the spec for {task}\n"
+const flatSpec = "  - id: spec\n    name: Spec\n    kind: manual\n    status: todo\n    session: true\n    prompt: Write the spec for {task}\n"
 
 var taskMask = flowharness.Mask("id", "createdAt", "branchIds", "taskId", "branchId", "startedAt", "finishedAt", "sessionId", "exitCode", "updatedAt")
 

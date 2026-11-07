@@ -30,7 +30,6 @@ type option struct {
 	Default    string
 	Enum       []string
 	Range      string
-	Legacy     bool // accepted and ignored; the writer drops it
 	Doc        string
 }
 
@@ -47,7 +46,6 @@ var (
 var options = []option{
 	{Path: "id", Type: "text", Required: true, Range: "pattern `" + idPattern.String() + "`", Doc: "Workflow id. Must equal the file name without `.yaml`."},
 	{Path: "name", Type: "text", Required: true, Doc: "Display name."},
-	{Path: "kira_space_mcp", Type: "boolean", Legacy: true, Doc: "Old switch for the Kira Space MCP server."},
 	{Path: "steps", Type: "list", Required: true, Range: "at least 1 step", Doc: "Steps run top to bottom. One step must not be skipped."},
 	{Path: "steps[]", Type: "mapping", Doc: "One step."},
 	{Path: "steps[].id", Type: "text", Required: true, Range: fmt.Sprintf("pattern `%s`", idPattern), Doc: "Step id, unique in the workflow."},
@@ -104,12 +102,10 @@ func childKeys(parent string, include func(option) bool) []string {
 	return out
 }
 
-func notLegacy(o option) bool { return !o.Legacy }
-
 // Key sets derived from the table; fields() refuses any key outside them.
 var (
 	topKeys     = childKeys("", nil)
-	topOrder    = childKeys("", notLegacy)
+	topOrder    = topKeys
 	stepOrder   = childKeys("steps[]", nil)
 	resultKeys  = childKeys("steps[].results[]", nil)
 	resultOrder = resultKeys

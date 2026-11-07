@@ -105,7 +105,7 @@ describe('Go/TS HTTP body vocabulary parity (P3 D12)', () => {
       'utf8',
     );
     const goModes = extractGoStringSet(source, 'validBodyModes');
-    // The legacy 'json' alias (httpRequestTabStateSchema's preprocess) is input-only and
+    // 'json' is a presentation-only segment (api-core body.ts) and
     // deliberately has no Go counterpart — HTTP_BODY_MODES itself never contains it.
     expect(goModes).toEqual(new Set(HTTP_BODY_MODES));
   });

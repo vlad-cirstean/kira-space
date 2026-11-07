@@ -49,22 +49,19 @@ function optionsOf(cls: Mode) {
   }));
 }
 
-// A mode left out of mcp.review follows the legacy review_results, else inherit.
+// A mode left out of mcp.review is inherit.
 function reviewOf(cls: Mode): string {
-  return props.mcp.review?.[cls] ?? props.mcp.review_results ?? 'inherit';
+  return props.mcp.review?.[cls] ?? 'inherit';
 }
 
-// Writes the resolved values with inherit left out, and retires the legacy single key.
+// Writes the resolved values with inherit left out.
 function setValue(cls: Mode, value: string): void {
   const next: Record<string, string> = {};
   for (const m of MODES) {
     const v = m.cls === cls ? value : reviewOf(m.cls);
     if (v !== 'inherit') next[m.cls] = v;
   }
-  emit('change', {
-    review: Object.keys(next).length > 0 ? next : undefined,
-    review_results: undefined,
-  });
+  emit('change', { review: Object.keys(next).length > 0 ? next : undefined });
 }
 </script>
 

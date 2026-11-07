@@ -196,7 +196,7 @@ func TestHermeticClaude(t *testing.T) {
 // launchArgv starts a task step on the repo and returns the argv of the claude TUI it opens.
 func launchArgv(t *testing.T, app *flowharness.App, rec model.CodeRepo, flow string) []string {
 	t.Helper()
-	saveWorkflow(t, app, flow, "id: "+flow+"\nname: Flow\nsteps:\n  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n")
+	saveWorkflow(t, app, flow, "id: "+flow+"\nname: Flow\nsteps:\n  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n")
 	tk, err := app.W.AdeTask.CreateTask(ctx, adewire.CreateTaskArgs{Title: "Fix " + flow, CodeRepoIDs: []string{rec.ID}, WorkflowID: flow})
 	if err != nil {
 		t.Fatal(err)

@@ -50,7 +50,7 @@ func TestRunEngine_StartedTaskKeepsItsWorkflowAfterAnEdit(t *testing.T) {
 	e.start(started)
 	e.waitRun(started, "one/api", model.AdeRunDone)
 
-	qa := "  - id: qa\n    name: QA\n    kind: manual\n    status: In review\n"
+	qa := "  - id: qa\n    name: QA\n    kind: manual\n    status: in-review\n"
 	e.workflow(flowYAML(agentStep("one", "") + qa + manualStep))
 
 	board, err := e.board.Board(ctx)

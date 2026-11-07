@@ -408,7 +408,7 @@ func TestRunEngine_takeOver(t *testing.T) {
 	waitUntil(t, "mcp config released", func() bool { _, err := os.Stat(cfg); return os.IsNotExist(err) })
 }
 
-const manualSessionStep = "  - id: spec\n    name: Spec\n    kind: manual\n    status: To do\n    session: true\n    prompt: Write the spec for {task}\n"
+const manualSessionStep = "  - id: spec\n    name: Spec\n    kind: manual\n    status: todo\n    session: true\n    prompt: Write the spec for {task}\n"
 
 // handoverLine ends every interactive launch message, after the Kira Space note.
 var handoverLine = llmprompts.HeadlessSpaceSuffix.Text(llmprompts.Defaults(), llmprompts.NoVars{}) + "\n" +

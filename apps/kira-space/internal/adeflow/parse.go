@@ -36,9 +36,6 @@ var (
 	maxStepTimeout   = 24 * time.Hour
 )
 
-// stagesRemoved is the error for a file in the pre-P293 format.
-const stagesRemoved = `"stages" is no longer supported: list every step under "steps" (see the Agents docs)`
-
 // Parse decodes and validates one workflow file. src is the whole file; the file stem is checked
 // separately by the Reader (Parse has no file name).
 func Parse(src []byte) (adewire.Workflow, *adewire.WorkflowError) { return ParseWith(src, nil) }
@@ -162,14 +159,6 @@ func (v *validator) boolean(m map[string]*yaml.Node, prefix, key string) bool {
 
 func (v *validator) workflow(root *yaml.Node) adewire.Workflow {
 	wf := adewire.Workflow{Steps: make([]adewire.WorkflowStep, 0)}
-	if root.Kind == yaml.MappingNode {
-		for i := 0; i+1 < len(root.Content); i += 2 {
-			if k := root.Content[i]; k.Kind == yaml.ScalarNode && k.Value == "stages" {
-				v.fail(k, "", "%s", stagesRemoved)
-				return wf
-			}
-		}
-	}
 	m := v.fields(root, "", topKeys...)
 	if v.err != nil {
 		return wf
@@ -179,7 +168,6 @@ func (v *validator) workflow(root *yaml.Node) adewire.Workflow {
 		v.fail(m["id"], "", "id must be lowercase letters, digits, - or _")
 	}
 	wf.Name = v.str(m, "", "name", true)
-	v.boolean(m, "", "kira_space_mcp") // legacy switch (P408): still valid, ignored, dropped on save
 	if v.err != nil {
 		return wf
 	}
@@ -411,10 +399,6 @@ func (v *validator) agent(sm map[string]*yaml.Node, sp string) string {
 	return id
 }
 
-// legacyStatuses maps the names files used before statuses became ids to the ids the app first shipped;
-// a file-format compatibility shim, not a status rule.
-var legacyStatuses = map[string]string{"To do": "todo", "In progress": "in-progress", "In review": "in-review", "Done": "done"}
-
 // status reads a step's task status id; absent, it is "" and the default of the step's kind applies.
 // Membership in the user's set is checked at run time, so a file loads without the DB.
 func (v *validator) status(sm map[string]*yaml.Node, sp string) string {
@@ -422,9 +406,6 @@ func (v *validator) status(sm map[string]*yaml.Node, sp string) string {
 		return ""
 	}
 	val := v.str(sm, sp, "status", true)
-	if id, legacy := legacyStatuses[val]; legacy {
-		return id
-	}
 	if v.err == nil && (!idPattern.MatchString(val) || len(val) > maxStatusID) {
 		v.fail(sm["status"], sp, "status must be a status id")
 	}

@@ -68,7 +68,7 @@ func (f *adeFixture) createTask(t *testing.T, workflow string) adewire.Task {
 const (
 	agentStepYAML = "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 2m\n" +
 		"    prompt: This step has no work. Call finish_step with status done and summary ok.\n"
-	manualStepYAML = "  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n"
+	manualStepYAML = "  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n"
 )
 
 // startRun starts the task's agent step on branch and returns the run once it left running.

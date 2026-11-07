@@ -58,19 +58,10 @@ async function openTab(
 const checked = (page: import('@playwright/test').Page, mode: string, value: string) =>
   page.locator(`[data-testid="connection-mcp-review-${mode}-${value}"]`);
 
-test('a legacy single review value shows on every mode', async ({ relaunch }) => {
-  const { page } = await openTab(relaunch, 'sqlite', { enabled: true, review_results: 'review' });
-  for (const mode of ['read', 'write', 'ddl']) {
-    await expect(checked(page, mode, 'review')).toHaveAttribute('aria-pressed', 'true');
-  }
-});
-
-test('changing one mode saves the per-mode key and retires the legacy one', async ({
-  relaunch,
-}) => {
+test('changing one mode saves the per-mode key', async ({ relaunch }) => {
   const { page, control } = await openTab(relaunch, 'sqlite', {
     enabled: true,
-    review_results: 'review',
+    review: { read: 'review', write: 'review', ddl: 'review' },
   });
   await checked(page, 'read', 'send').click();
   await expect
@@ -88,7 +79,6 @@ test('changing one mode saves the per-mode key and retires the legacy one', asyn
         'mcp.review.read="send"',
         'mcp.review.write="review"',
         'mcp.review.ddl="review"',
-        'mcp.review_results=unset',
       ]),
     );
 });

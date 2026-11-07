@@ -214,7 +214,7 @@ func TestAgentSettingsReachEveryLaunch(t *testing.T) {
 	}
 	tk := task(t, app, repoRec.ID, "flow", "id: flow\nname: Flow\nsteps:\n"+
 		"  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 1m\n    prompt: work on {branch} in {repo}\n"+
-		"  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n")
+		"  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n")
 	row := branchOf(t, app, tk.ID, repoRec.ID)
 	br, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: row.ID, Name: "feat/api-set"})
 	if err != nil {

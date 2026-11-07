@@ -55,5 +55,5 @@ func TestStepAgentKey(t *testing.T) {
 		mustContain(t, name+" error", e.Error.Message, want)
 	}
 	bad("unknown", flowYAML("unknown", agentStep("one", "    agent: nope\n")), "agent")
-	bad("nosession", flowYAML("nosession", "  - id: m\n    name: M\n    kind: manual\n    status: In review\n    agent: opencode\n"), "agent")
+	bad("nosession", flowYAML("nosession", "  - id: m\n    name: M\n    kind: manual\n    status: in-review\n    agent: opencode\n"), "agent")
 }

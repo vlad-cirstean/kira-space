@@ -84,9 +84,7 @@ type MCP struct {
 	// Masked is the browse_table permission (P535): inherit (absent) follows Read.
 	Masked      string `json:"masked,omitempty"`
 	AutoExplain *bool  `json:"auto_explain,omitempty"`
-	// ReviewResults is the legacy single value: it applies to every mode a Review entry leaves unset.
-	ReviewResults string `json:"review_results,omitempty"`
-	// Review is the result review per mode (P536); an absent mode falls back to ReviewResults, then inherit.
+	// Review is the result review per mode (P536); an absent mode is inherit.
 	Review *McpReviewFile `json:"review,omitempty"`
 	// StatementTimeoutSec nil means the default; a pointer so 0 (off) survives omitempty.
 	StatementTimeoutSec *int `json:"statement_timeout_sec,omitempty"`
@@ -220,14 +218,13 @@ func (f File) ReviewedColumns() []string {
 	return dedupe(f.MaskReview.Columns)
 }
 
-// reviewFields is the per-mode review with the legacy single value and inherit as fallbacks.
+// reviewFields is the per-mode review; an absent mode is inherit.
 func (m MCP) reviewFields() model.McpReview {
-	legacy := orDefault(m.ReviewResults, ReviewInherit)
 	r := m.Review
 	if r == nil {
 		r = &McpReviewFile{}
 	}
-	return model.McpReview{Read: orDefault(r.Read, legacy), Write: orDefault(r.Write, legacy), Ddl: orDefault(r.DDL, legacy), Masked: orDefault(r.Masked, legacy)}
+	return model.McpReview{Read: orDefault(r.Read, ReviewInherit), Write: orDefault(r.Write, ReviewInherit), Ddl: orDefault(r.DDL, ReviewInherit), Masked: orDefault(r.Masked, ReviewInherit)}
 }
 
 // reviewFileOf writes the non-inherit modes only; nil when all inherit.

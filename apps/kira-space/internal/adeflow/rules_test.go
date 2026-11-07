@@ -16,7 +16,6 @@ func TestRuleDocsEnforced(t *testing.T) {
 	const ref = head + "  - step: lib\n"
 	fix := map[string]fixture{
 		"stem":           {file: "other.yaml", src: head + agent},
-		"stages":         {src: "id: w\nname: W\nstages: []\n"},
 		"steps":          {src: head + manual + "    skip: true\n"},
 		"unique-step":    {src: head + agent + agent},
 		"kind-keys":      {src: head + manual + "    runs_on: once\n"},
@@ -31,7 +30,6 @@ func TestRuleDocsEnforced(t *testing.T) {
 		"implementer":    {src: head + "  - id: r\n    name: R\n    kind: review\n    runs_on: once\n    timeout: 5m\n    review:\n      implementer: nope\n" + agent},
 		"sandbox-off":    {src: head + agent + "    sandbox:\n      access: off\n      network: true\n"},
 		"sandbox-paths":  {src: head + agent + "    sandbox:\n      read:\n        - /\n"},
-		"legacy-status":  {src: head + manual + "    status: In review\n", accepted: true},
 		"reference":      {src: head + "  - step: nope\n", ref: true},
 		"overrides":      {src: ref + "    timeout: 1h\n    settings: {}\n", accepted: true, ref: true},
 		"ref-routes":     {src: ref + "    routes: {done: end}\n    results:\n      - id: done\n        ok: true\n", ref: true},
@@ -45,9 +43,9 @@ func TestRuleDocsEnforced(t *testing.T) {
 			continue
 		}
 		delete(fix, r.ID)
-		wf, perr := Parse([]byte(f.src))
+		_, perr := Parse([]byte(f.src))
 		if f.ref {
-			wf, perr = ParseWith([]byte(f.src), libReader(t, map[string]string{"lib.yaml": "id: lib\nname: L\nkind: agent\nruns_on: once\ntimeout: 5m\nprompt: p\n"}).lookup())
+			_, perr = ParseWith([]byte(f.src), libReader(t, map[string]string{"lib.yaml": "id: lib\nname: L\nkind: agent\nruns_on: once\ntimeout: 5m\nprompt: p\n"}).lookup())
 		}
 		if r.ID == "stem" {
 			_, p := decodeWorkflow(f.file, []byte(f.src), nil)
@@ -61,9 +59,6 @@ func TestRuleDocsEnforced(t *testing.T) {
 			t.Errorf("rule %q: fixture rejected: %s", r.ID, perr.Message)
 		case !f.accepted && perr == nil:
 			t.Errorf("rule %q: fixture accepted", r.ID)
-		}
-		if r.ID == "legacy-status" && perr == nil && wf.Steps[0].Status != "in-review" {
-			t.Errorf("legacy status read as %q", wf.Steps[0].Status)
 		}
 	}
 	if _, perr := Parse([]byte(head + manual + "    sandbox:\n      access: read\n")); perr == nil {

@@ -4,11 +4,11 @@ steps:
   - id: plan
     name: Plan
     kind: manual
-    status: To do
+    status: todo
   - id: ship
     name: Ship
     kind: script
-    status: In review
+    status: in-review
     runs_on: each repo
     timeout: 1m
     command: |

@@ -176,7 +176,7 @@ func mustAbs(t *testing.T, p string) string {
 	return abs
 }
 
-const manualStep = "  - id: signoff\n    name: Sign off\n    kind: manual\n    status: In review\n    session: true\n"
+const manualStep = "  - id: signoff\n    name: Sign off\n    kind: manual\n    status: in-review\n    session: true\n"
 
 func logText(t *testing.T, app *flowharness.App, kind, id string) string {
 	t.Helper()

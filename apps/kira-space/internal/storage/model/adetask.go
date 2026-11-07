@@ -1,7 +1,6 @@
 package model
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"slices"
@@ -173,11 +172,11 @@ const AdeRunPurposeReview = "review"
 
 // AdeReviewSpec is a review round's plan, stored in ade_runs.spec_json.
 type AdeReviewSpec struct {
-	ReviewRunID string        `json:"reviewRunId"`
-	Round       int           `json:"round"`
-	Route       string        `json:"route"`
-	CommentIDs  CommentIDList `json:"commentIds"`
-	HeadBefore  string        `json:"headBefore,omitempty"`
+	ReviewRunID string   `json:"reviewRunId"`
+	Round       int      `json:"round"`
+	Route       string   `json:"route"`
+	CommentIDs  []string `json:"commentIds"`
+	HeadBefore  string   `json:"headBefore,omitempty"`
 	// HeadAfter is the worktree tip when the round ended ("" while it runs).
 	HeadAfter string `json:"headAfter,omitempty"`
 	// GitRepoID and Branch key the comments in review.db.
@@ -479,32 +478,6 @@ func (d AdeStatusDefaults) Validate(set []AdeTaskStatus) error {
 		if n.id != "" && !in(n.id) {
 			return fmt.Errorf("model: ade status defaults: %s names unknown status %q", n.slot, n.id)
 		}
-	}
-	return nil
-}
-
-// CommentIDList holds review comment ids. Runs stored before ids became strings hold JSON numbers.
-type CommentIDList []string
-
-// LegacyCommentID is the id migration 0007 gave the review comment that had integer id n.
-func LegacyCommentID(n int64) string {
-	return fmt.Sprintf("00000000-0000-7000-8000-%012x", n)
-}
-
-// UnmarshalJSON accepts strings and legacy numbers, mapping a number to its migrated id.
-func (l *CommentIDList) UnmarshalJSON(b []byte) error {
-	var s []string
-	if err := json.Unmarshal(b, &s); err == nil {
-		*l = s
-		return nil
-	}
-	var raw []int64
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return err
-	}
-	*l = make(CommentIDList, len(raw))
-	for i, n := range raw {
-		(*l)[i] = LegacyCommentID(n)
 	}
 	return nil
 }

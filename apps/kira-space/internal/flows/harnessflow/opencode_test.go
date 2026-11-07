@@ -33,7 +33,7 @@ func ocWorkflow(id, agent string) string {
 		line = "    agent: " + agent + "\n"
 	}
 	return "id: " + id + "\nname: " + id + "\nsteps:\n" +
-		"  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n" + line
+		"  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n" + line
 }
 
 func ocAgentFlow(id, extra string) string {

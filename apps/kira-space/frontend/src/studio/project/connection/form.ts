@@ -28,7 +28,6 @@ export const CONNECTION_FIELDS: readonly FieldSpec[] = [
   { path: ['mcp', 'ddl'], unsetWhen: 'deny' },
   { path: ['mcp', 'masked'], unsetWhen: 'inherit' },
   { path: ['mcp', 'auto_explain'], unsetWhen: true },
-  { path: ['mcp', 'review_results'], unsetWhen: 'inherit' },
   { path: ['mcp', 'review'], presence: true },
   { path: ['mcp', 'review', 'read'], unsetWhen: 'inherit' },
   { path: ['mcp', 'review', 'write'], unsetWhen: 'inherit' },

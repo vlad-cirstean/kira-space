@@ -423,23 +423,6 @@ func TestBranchRequest(t *testing.T) {
 		}
 	})
 
-	t.Run("legacy kira_space_mcp key loads and is dropped on save", func(t *testing.T) {
-		f := newBRFixture(t, nil, onceStepYML, false)
-		legacy := "id: old\nname: Old\nkira_space_mcp: true\nsteps:\n" + onceStepYML
-		entry, err := f.app.W.AdeTask.SaveWorkflowYaml(ctx, adewire.SaveWorkflowYamlArgs{FileName: "old.yaml", Yaml: legacy})
-		if err != nil || entry.Error != nil || entry.Workflow == nil {
-			t.Fatalf("legacy workflow = %+v, %v, want it to load", entry, err)
-		}
-		saved, err := f.app.W.AdeTask.SaveWorkflow(ctx, adewire.SaveWorkflowArgs{FileName: "old.yaml", Workflow: *entry.Workflow})
-		if err != nil || saved.Error != nil {
-			t.Fatalf("SaveWorkflow = %+v, %v", saved, err)
-		}
-		y, err := f.app.W.AdeTask.WorkflowYaml(ctx, adewire.FileNameArgs{FileName: "old.yaml"})
-		if err != nil || strings.Contains(y.Yaml, "kira_space_mcp") {
-			t.Fatalf("saved yaml = %q, %v, want the legacy key dropped", y.Yaml, err)
-		}
-	})
-
 	t.Run("a script step names an unnamed branch", func(t *testing.T) {
 		f := newBRFixture(t, nil, scriptStep("s", "'exit 0'"), false)
 		f.startRun(t)

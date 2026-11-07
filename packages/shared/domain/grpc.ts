@@ -203,7 +203,7 @@ export const grpcRequestTabStateSchema = /*#__PURE__*/ z.object({
   responsePane: grpcResponsePaneSchema.default('messages'),
   requestPaneHeight: z.number().int().min(0).default(0),
   // P22b D6/D7: MetadataTable's own description-column toggle, persisted per tab — the gRPC
-  // sibling of httpRequestTabStateShape's own fieldDescriptions (domain/http.ts).
+  // sibling of httpRequestTabStateSchema's own fieldDescriptions (domain/http.ts).
   fieldDescriptions: z.boolean().default(false),
 });
 export type GrpcRequestTabState = z.infer<typeof grpcRequestTabStateSchema>;

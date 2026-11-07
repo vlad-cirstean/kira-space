@@ -37,7 +37,7 @@ func TestWorkflowsYaml(t *testing.T) {
 		t.Fatalf("saving invalid yaml = %+v, want the file kept with its error", saved)
 	}
 
-	two := flowYAML("two-step", agentStep("one", "")+"  - id: review\n    name: Review\n    kind: manual\n    status: In review\n")
+	two := flowYAML("two-step", agentStep("one", "")+"  - id: review\n    name: Review\n    kind: manual\n    status: in-review\n")
 	saveWorkflow(t, app, "two-step", two)
 
 	imported, err := svc.ImportWorkflow(ctx, adewire.ImportWorkflowArgs{Path: mustAbs(t, filepath.Join("testdata", "imported.yaml"))})

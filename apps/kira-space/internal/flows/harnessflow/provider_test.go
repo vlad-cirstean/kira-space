@@ -203,7 +203,7 @@ func TestSecondProviderRegistered(t *testing.T) {
 	}
 	flow := "id: flow\nname: Flow\nsteps:\n" +
 		"  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 1m\n    prompt: work on {branch} in {repo}\n" +
-		"  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n"
+		"  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n"
 	if entry, err := app.W.AdeTask.SaveWorkflowYaml(ctx, adewire.SaveWorkflowYamlArgs{FileName: "flow.yaml", Yaml: flow}); err != nil || entry.Error != nil {
 		t.Fatalf("SaveWorkflowYaml: %v %+v", err, entry.Error)
 	}
@@ -421,7 +421,7 @@ func TestLeanProviderSeams(t *testing.T) {
 	setProvider(t, app, fakeprovider.LeanID)
 
 	// Env-carried config: the command line has none, the agent process has it.
-	manual := task(t, app, repoRec.ID, "manual", "id: manual\nname: Manual\nsteps:\n  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n")
+	manual := task(t, app, repoRec.ID, "manual", "id: manual\nname: Manual\nsteps:\n  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n")
 	step, err := app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: manual.ID})
 	if err != nil {
 		t.Fatal(err)

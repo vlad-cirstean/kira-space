@@ -270,7 +270,7 @@ func TestTaskBranchEditRefusals(t *testing.T) {
 		repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 		rec := importRepo(t, app, repo.Dir)
 		saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("one", "")+
-			"  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n"))
+			"  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n"))
 		task := createTask(t, app, "Fix login", "flow", rec.ID)
 		br := branchOf(t, board(t, app), task.ID, rec.ID)
 		if _, err := app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: task.ID, BranchNames: map[string]string{br.ID: "feat/api-work"}}); err != nil {

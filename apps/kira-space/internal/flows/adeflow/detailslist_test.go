@@ -30,7 +30,7 @@ func TestDetailsList(t *testing.T) {
 	}})
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	rec := importRepo(t, app, repo.Dir)
-	saveWorkflow(t, app, "flow", flowYAML("flow", "  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n"))
+	saveWorkflow(t, app, "flow", flowYAML("flow", "  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n"))
 	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
 	t.Cleanup(func() { _ = os.WriteFile(hold, nil, 0o644) })
 

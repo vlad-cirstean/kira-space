@@ -15,7 +15,7 @@ var ctx = context.Background()
 
 const flowSteps = "id: flow\nname: Flow\nsteps:\n" +
 	"  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 1m\n    prompt: work on {branch} in {repo}\n" +
-	"  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n"
+	"  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n"
 
 // adeTask imports a clone, saves the two-step workflow and creates the task "Fix login".
 func adeTask(t *testing.T, app *flowharness.App) (adewire.Task, model.CodeRepo) {

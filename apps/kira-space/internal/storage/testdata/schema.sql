@@ -684,16 +684,6 @@ CREATE TABLE "proof_view_state" (
   FOREIGN KEY (session_id, rev, ordinal) REFERENCES proof_steps (session_id, rev, ordinal) ON DELETE CASCADE
 ) STRICT;
 
-CREATE TABLE schema_quarantine (
-  id          INTEGER PRIMARY KEY,
-  table_name  TEXT NOT NULL,
-  row_json    TEXT NOT NULL CHECK (json_valid(row_json)),
-  reason      TEXT NOT NULL,
-  action      TEXT NOT NULL CHECK (action IN ('repaired', 'removed')),
-  migration   INTEGER NOT NULL,
-  recorded_at INTEGER NOT NULL CHECK (recorded_at >= 0)
-) STRICT;
-
 CREATE TABLE schema_version (version INTEGER NOT NULL);
 
 CREATE TABLE script_collections (

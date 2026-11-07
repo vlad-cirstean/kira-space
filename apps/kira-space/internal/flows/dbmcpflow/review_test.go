@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -13,7 +11,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
@@ -394,35 +391,5 @@ func TestDbMcpReviewTimeoutAndThrottle(t *testing.T) {
 	f.answerItems(t, false, items[1].ID)
 	if res := wait(t, b); !res.IsError {
 		t.Fatalf("withheld second result = %q", text(res))
-	}
-}
-
-// A file that still carries review_results reads as that value in every mode, and a new file written from
-// it uses the per-mode key.
-func TestDbMcpReviewLegacyKey(t *testing.T) {
-	f := newFixture(t)
-	sess := f.session(t)
-	f.mcpSet(t, map[string]string{"review_results": "review"})
-	got := f.summary(t)
-	if want := (model.McpReview{Read: "review", Write: "review", Ddl: "review", Masked: "review"}); got.McpReview != want {
-		t.Fatalf("review = %+v, want %+v", got.McpReview, want)
-	}
-	if rr := f.listReviewResults(t, sess); !rr["read"] || !rr["write"] || !rr["ddl"] {
-		t.Fatalf("reviewResults = %v, want all true", rr)
-	}
-
-	copied, err := f.app.W.Connections.Create(connections.Input{ConnectionFields: model.ConnectionFields{
-		Name: "legacy copy", Kind: "sqlite", Color: "teal", Mode: "fields", Database: ptr(f.dbPath), Options: map[string]any{},
-		McpEnabled: true, McpReadMode: "allow", McpWriteMode: "prompt", McpDdlMode: "deny", McpReview: got.McpReview,
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	file, err := os.ReadFile(filepath.Join(f.app.W.ConnectionFiles.Dir(), copied.File))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(file), "review_results") || !strings.Contains(string(file), "review:") {
-		t.Fatalf("new file:\n%s\nwant the per-mode review key and no review_results", file)
 	}
 }
