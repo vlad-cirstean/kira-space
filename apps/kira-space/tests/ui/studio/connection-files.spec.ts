@@ -121,7 +121,45 @@ test('a file that never held a valid connection is listed and opens its dialog',
   await expect(entry).toContainText('Line 2');
   await entry.click();
   await expect(page.locator('[data-testid="connection-file-dialog"]')).toBeVisible();
+  await page.locator('[data-testid="connection-tab-yaml"]').click();
   await expect(page.locator('[data-testid="config-file-status"]')).toContainText('Line 2');
+});
+
+test('the file bar shows only on the YAML tab', async ({ relaunch }) => {
+  const { window: page } = await relaunch({
+    control: boot([{ channel: IPC.connectionConfigFile, response: detail() }]),
+  });
+  await (await connectionRow(page, 'Local')).click({ button: 'right' });
+  await page.click('[data-testid="menu-item-edit"]');
+  const dialog = page.locator('[data-testid="connection-file-dialog"]');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('[data-testid="config-file-bar"]')).toHaveCount(0);
+  await dialog.locator('[data-testid="connection-tab-yaml"]').click();
+  await expect(dialog.locator('[data-testid="config-file-bar"]')).toContainText('local.yaml');
+});
+
+test('a file problem the form does not show stays visible on General', async ({ relaunch }) => {
+  const { window: page } = await relaunch({
+    control: boot([
+      {
+        channel: IPC.connectionConfigFile,
+        response: detail({ problem: { line: 2, message: 'kind must be valid' } }),
+      },
+      // The form decodes clean: only the file loader reports the problem.
+      {
+        channel: IPC.connectionConfigForm,
+        response: contract('connection-form', 'form#read'),
+      },
+    ]),
+  });
+  await (await connectionRow(page, 'Local')).click({ button: 'right' });
+  await page.click('[data-testid="menu-item-edit"]');
+  const dialog = page.locator('[data-testid="connection-file-dialog"]');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('[data-testid="config-file-bar"]')).toHaveCount(0);
+  await expect(dialog.locator('[data-testid="config-file-problem"]')).toContainText('Line 2');
+  await dialog.locator('[data-testid="config-file-problem-show-yaml"]').click();
+  await expect(dialog.locator('[data-testid="config-file-bar"]')).toBeVisible();
 });
 
 test('Edit file shows the file error and Save sends the text with its base hash', async ({
@@ -146,9 +184,9 @@ test('Edit file shows the file error and Save sends the text with its base hash'
 
   const dialog = page.locator('[data-testid="connection-file-dialog"]');
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('[data-testid="config-file-status"]')).toContainText('Line 2');
   await expect(dialog.locator('[data-testid="connection-file-last-good"]')).toBeVisible();
   await dialog.locator('[data-testid="connection-tab-yaml"]').click();
+  await expect(dialog.locator('[data-testid="config-file-status"]')).toContainText('Line 2');
   await expectHighlighted(dialog.locator('[data-testid="connection-file-text"]'), 'yaml');
 
   await replaceCodeEditorText(

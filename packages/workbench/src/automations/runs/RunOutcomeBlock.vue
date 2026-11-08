@@ -33,10 +33,10 @@ async function copyForAgent(): Promise<void> {
 
 <template>
   <div class="flex flex-col gap-1 text-kira-sm" data-testid="run-outcome">
-    <span data-testid="run-outcome-reason">{{
+    <span class="select-text" data-testid="run-outcome-reason">{{
       run.outcome?.reason || t('automations.run.outcome.none.emptyHint')
     }}</span>
-    <span v-if="run.outcome?.summary" data-testid="run-outcome-summary">{{
+    <span v-if="run.outcome?.summary" class="select-text" data-testid="run-outcome-summary">{{
       run.outcome.summary
     }}</span>
     <span
@@ -67,14 +67,14 @@ async function copyForAgent(): Promise<void> {
       </span>
       <span
         v-if="run.outcome?.lastError"
-        class="font-data text-error whitespace-pre-wrap"
+        class="select-text font-data text-error whitespace-pre-wrap"
         data-testid="run-outcome-error"
       >
         {{ run.outcome.lastError }}
       </span>
       <span
         v-if="run.outcome?.outputTail"
-        class="font-data text-error whitespace-pre-wrap"
+        class="select-text font-data text-error whitespace-pre-wrap"
         data-testid="run-outcome-tail"
       >
         {{ run.outcome.outputTail }}

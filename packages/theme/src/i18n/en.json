@@ -3004,6 +3004,9 @@
       "copyId": {
         "label": "Copy ID"
       },
+      "copyLog": {
+        "label": "Copy log"
+      },
       "copyName": {
         "label": "Copy name"
       },
@@ -3321,6 +3324,9 @@
       "copiedJson": {
         "announce": "Copied JSON"
       },
+      "copiedLog": {
+        "announce": "Copied log"
+      },
       "copiedName": {
         "announce": "Copied name"
       },
@@ -3332,6 +3338,9 @@
       },
       "failed": {
         "error": "Couldn’t copy: {error}"
+      },
+      "logTruncated": {
+        "notice": "[Earlier output was dropped.]"
       }
     },
     "copyCommand": {

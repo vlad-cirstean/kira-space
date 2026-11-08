@@ -24,6 +24,7 @@ import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
 import { errorText } from '../bridge/codedError';
 import ConfigFileBar from '../config/ConfigFileBar.vue';
+import ConfigFileProblem from '../config/ConfigFileProblem.vue';
 import { useConfigFormDraft } from '../config/useConfigFormDraft';
 import McpToolsField from './form/McpToolsField.vue';
 import ParamsEditor from './form/ParamsEditor.vue';
@@ -269,6 +270,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
       <DialogBody class="min-h-80">
         <div v-if="view" class="flex min-w-0 flex-col gap-3">
           <ConfigFileBar
+            v-if="!view.editable || section === 'yaml'"
             :path="view.path"
             :error="view.problem"
             :open="() => ctx.files.open(view!.file)"
@@ -291,6 +293,11 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
           </div>
           <template v-else>
             <template v-if="section !== 'yaml'">
+              <ConfigFileProblem
+                :error="view.problem"
+                :shown="draft.problem.value"
+                :show-yaml="() => (section = 'yaml')"
+              />
               <Alert v-if="draft.problem.value" variant="error" data-testid="run-form-problem">
                 <AlertDescription>{{
                   t('common.configForm.problem.status', {

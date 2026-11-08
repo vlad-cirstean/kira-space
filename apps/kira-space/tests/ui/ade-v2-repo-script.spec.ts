@@ -134,5 +134,7 @@ test('contract: a repo file with an invalid Run script reference shows its error
       `${t('ade-repos-repo')}[data-repo-id="repo-web-app"] ${t('ade-repos-repo-problem')}`,
     ),
   ).toBeVisible();
+  await expect(page.locator(t('config-file-problem'))).toContainText(problem.message);
+  await page.locator(t('repo-file-tab-yaml')).click();
   await expect(page.locator(t('config-file-status'))).toContainText(problem.message);
 });

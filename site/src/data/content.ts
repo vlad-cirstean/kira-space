@@ -28,11 +28,6 @@ export interface AppContent {
   readonly features: readonly Feature[];
 }
 
-// Facts come only from README.md and apps/kira-space/README.md.
-export const SITE = {
-  availability: 'Free and open source. macOS 26+ on Apple Silicon.',
-} as const;
-
 export const ENGINES = [
   'PostgreSQL',
   'MariaDB',
@@ -50,10 +45,16 @@ export const ALSO = ['HTTP', 'gRPC', 'Docker', 'Kubernetes', 'Claude Code', 'Ope
 
 export const HERO = {
   eyebrow: 'Kira Space',
-  line1: 'Git, agents and data.',
-  line2: 'One native window.',
+  line1: 'Everything agents need,',
+  line2: 'in one place.',
   lead: 'Plan with coding agents, read history, query ten database engines and call APIs. Kira Space keeps it in one Mac app.',
   command: 'curl -fsSL …/install.sh | sh',
+} as const;
+
+// Facts come only from README.md and apps/kira-space/README.md.
+export const SITE = {
+  shareAlt: `${HERO.eyebrow} icon with the headline: ${HERO.line1} ${HERO.line2}`,
+  availability: 'Free and open source. macOS 26+ on Apple Silicon.',
 } as const;
 
 export const APP: AppContent = {
@@ -192,6 +193,11 @@ export const BUILD_TEASER = {
 export const INSTALL = {
   command:
     'curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-space/main/scripts/install.sh | sh',
+  copy: {
+    label: 'Copy install command',
+    done: 'Copied',
+    failed: 'Copy failed. Select the command and copy it.',
+  },
   steps: [
     'Run the command in Terminal. It installs a fresh copy or replaces an older one, then opens the app.',
   ],

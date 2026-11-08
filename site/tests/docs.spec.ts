@@ -71,6 +71,23 @@ test('the page list is not empty', () => {
   expect(PAGES.length).toBeGreaterThanOrEqual(25);
 });
 
+test('landing and docs share one favicon', async ({ page, request }) => {
+  const favicon = async (url: string) => {
+    await page.goto(url);
+    return page
+      .locator('link[rel~="icon"]')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+  };
+  expect(await favicon(BASE)).toEqual([`${BASE}favicon.png`]);
+  const first = PAGES[0];
+  if (!first) throw new Error('no docs pages');
+  expect(await favicon(first.url)).toEqual([`${BASE}favicon.png`]);
+  const res = await request.get(`${BASE}favicon.png`);
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toBe('image/png');
+  expect(await page.locator('a.site-title img').getAttribute('src')).toContain('appicon');
+});
+
 test('the Develop section is gone', async ({ request }) => {
   const res = await request.get(`${BASE}docs/develop/`);
   expect(res.status()).toBe(404);
@@ -96,6 +113,8 @@ for (const doc of PAGES) {
       expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.innerWidth);
       expect(['hidden', 'clip']).not.toContain(metrics.html);
       expect(['hidden', 'clip']).not.toContain(metrics.body);
+
+      expect(await page.locator('main a img').count()).toBe(0);
 
       const width = page.viewportSize()?.width ?? 0;
       const images = page.locator('main img');

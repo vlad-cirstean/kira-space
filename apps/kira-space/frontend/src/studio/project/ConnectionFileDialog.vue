@@ -18,6 +18,7 @@ import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
+import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
@@ -265,13 +266,6 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
 
       <DialogBody v-if="detail">
         <div class="flex flex-col gap-3">
-          <ConfigFileBar
-            :path="detail.path"
-            :error="detail.problem"
-            :open="() => control.configFilesOpen({ folder: FOLDER, file: detail!.file })"
-            :reveal="() => control.configFilesReveal({ folder: FOLDER, file: detail!.file })"
-            :about="() => control.configFilesOpen({ folder: FOLDER, file: 'AGENTS.md' })"
-          />
           <div
             v-if="detail.lastGood"
             class="text-kira-sm text-subtle"
@@ -280,6 +274,11 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             {{ t('studio.connections.file.lastGood.hint') }}
           </div>
           <template v-if="section !== 'yaml'">
+            <ConfigFileProblem
+              :error="detail.problem"
+              :shown="unclaimed"
+              :show-yaml="() => (section = 'yaml')"
+            />
             <Alert v-if="unclaimed" variant="error" data-testid="connection-form-problem">
               <AlertDescription>{{
                 t('common.configForm.problem.status', {
@@ -340,6 +339,13 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             </fieldset>
           </template>
           <template v-else>
+            <ConfigFileBar
+              :path="detail.path"
+              :error="detail.problem"
+              :open="() => control.configFilesOpen({ folder: FOLDER, file: detail!.file })"
+              :reveal="() => control.configFilesReveal({ folder: FOLDER, file: detail!.file })"
+              :about="() => control.configFilesOpen({ folder: FOLDER, file: 'AGENTS.md' })"
+            />
             <CodeTextEditor
               :model-value="draft.draft.value"
               language="yaml"

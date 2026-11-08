@@ -9,12 +9,12 @@ import { BUILD } from '../data/build';
 import { href } from '../data/nav';
 import Base from '../layouts/Base.astro';
 import { resolveBuild } from '../lib/build';
+import { button } from '../lib/buttons';
 
 const sections = await resolveBuild();
-const first = sections[0];
 ---
 
-<Base title={BUILD.title} description={BUILD.description} image={first?.lead.social}>
+<Base title={BUILD.title} description={BUILD.description}>
   <Header />
   <main data-app="space" class="relative isolate overflow-x-clip pb-20">
     <HeroBackdrop size="sm" />
@@ -73,10 +73,7 @@ const first = sections[0];
       </section>
     ))}
     <div class="mx-auto max-w-5xl px-4 pt-16">
-      <a
-        href={`${href()}#install`}
-        class="mx-auto flex min-h-12 w-fit items-center gap-2 rounded-xl bg-linear-to-b from-brand-sky to-brand-deep px-6 text-base font-semibold text-white shadow-cta hover:shadow-cta-hover motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-      >
+      <a href={`${href()}#install`} class:list={['mx-auto w-fit', button('primary')]}>
         <Icon name="arrow-right" class="size-4" />
         Install Kira Space
       </a>

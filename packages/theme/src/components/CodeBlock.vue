@@ -10,7 +10,7 @@ const props = defineProps<{ class?: HTMLAttributes['class'] }>();
 <template>
   <Card
     data-slot="code-block"
-    :class="cn('font-data text-kira-sm whitespace-pre-wrap break-all', props.class)"
+    :class="cn('select-text font-data text-kira-sm whitespace-pre-wrap break-all', props.class)"
   >
     <slot />
   </Card>

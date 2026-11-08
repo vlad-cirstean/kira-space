@@ -1,8 +1,10 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
 import { BUILD_SECTIONS } from '../src/data/build';
-import type { ShotId } from '../src/data/shotCapture';
+import { HERO, INSTALL } from '../src/data/content';
+import { SHOT_CAPTURE, type ShotId } from '../src/data/shotCapture';
 import { expectShotImage } from './shotImage';
 
 const BASE = '/kira-space/';
@@ -12,13 +14,15 @@ interface Route {
   readonly h1: string;
   readonly hero: ShotId;
   readonly shots: readonly ShotId[];
+  /** Document scripts the page ships. */
+  readonly scripts: number;
 }
 
 const ROUTES: readonly Route[] = [
   {
     path: '',
     name: 'Kira Space',
-    h1: 'Git, agents and data. One native window.',
+    h1: 'Everything agents need, in one place.',
     hero: 'space-agents-board',
     shots: [
       'space-agents-board',
@@ -33,6 +37,7 @@ const ROUTES: readonly Route[] = [
       'studio-sql-console',
       'studio-api',
     ],
+    scripts: 1,
   },
   {
     path: 'build/',
@@ -40,6 +45,7 @@ const ROUTES: readonly Route[] = [
     h1: 'Build with Kira',
     hero: 'build-start-board',
     shots: BUILD_SECTIONS.flatMap((section) => section.shots),
+    scripts: 0,
   },
 ];
 
@@ -76,6 +82,15 @@ for (const route of ROUTES) {
       expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.innerWidth);
       expect(['hidden', 'clip']).not.toContain(metrics.html);
       expect(['hidden', 'clip']).not.toContain(metrics.body);
+    });
+
+    test('no screenshot is inside a link and clicking one opens nothing', async ({ page }) => {
+      await openPage(page, route);
+      expect(await page.locator('main a img, main a picture').count()).toBe(0);
+      const shot = page.locator('img[data-shot]').first();
+      await shot.scrollIntoViewIfNeeded();
+      await shot.click();
+      await expect(page).toHaveURL(new RegExp(`${BASE}${route.path}$`));
     });
 
     test('every image loads and fits the viewport', async ({ page }) => {
@@ -149,9 +164,9 @@ for (const route of ROUTES) {
       expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
     });
 
-    test('ships no document script', async ({ page }) => {
+    test('ships only the copy script', async ({ page }) => {
       await openPage(page, route);
-      expect(await page.evaluate(() => document.scripts.length)).toBe(0);
+      expect(await page.evaluate(() => document.scripts.length)).toBe(route.scripts);
     });
 
     test('every shot shows the whole image and fits the viewport', async ({ page }, info) => {
@@ -194,12 +209,54 @@ for (const route of ROUTES) {
       ).toHaveCount(1);
     });
 
-    test('head names this tab and its hero image', async ({ page }) => {
+    test('head names this tab and carries the share image', async ({ page, baseURL }) => {
       await openPage(page, route);
       await expect(page.locator('h1')).toHaveText(route.h1);
       await expect(page).toHaveTitle(new RegExp(route.name));
-      const og = await page.locator('meta[property="og:image"]').getAttribute('content');
-      expect(og).toContain(route.hero);
+      const meta = (name: string) =>
+        page.locator(`meta[property="${name}"], meta[name="${name}"]`).getAttribute('content');
+      const og = await meta('og:image');
+      expect(og).toMatch(
+        /^https:\/\/vlad-cirstean\.github\.io\/kira-space\/_astro\/kira-share\.[^/]+\.png$/,
+      );
+      expect(await meta('twitter:image')).toBe(og);
+      expect(await meta('og:image:width')).toBe('1200');
+      expect(await meta('og:image:height')).toBe('630');
+      const response = await page.request.get(`${baseURL}${new URL(og ?? '').pathname}`);
+      expect(response.status()).toBe(200);
+      expect(response.headers()['content-type']).toBe('image/png');
+      const body = await response.body();
+      expect(body.length).toBeLessThan(1_000_000);
+      expect(body.readUInt32BE(16)).toBe(1200);
+      expect(body.readUInt32BE(20)).toBe(630);
+    });
+
+    test("header Install matches the page's primary button", async ({ page }) => {
+      await openPage(page, route);
+      const header = page.locator('header');
+      const install = header.getByRole('link', { name: 'Install', exact: true });
+      const primary =
+        route.path === ''
+          ? page.locator('main a[href="#install"]', { hasText: 'Install' }).first()
+          : page.locator('main a[href$="#install"]').first();
+      const style = (loc: typeof install) =>
+        loc.evaluate((el) => {
+          const css = getComputedStyle(el);
+          return {
+            radius: css.borderTopLeftRadius,
+            image: css.backgroundImage,
+            shadow: css.boxShadow,
+            weight: css.fontWeight,
+          };
+        });
+      expect(await style(install)).toEqual(await style(primary));
+      const docs = header.getByRole('link', { name: 'Docs', exact: true });
+      const metrics = (loc: typeof install) =>
+        loc.evaluate((el) => ({
+          height: el.getBoundingClientRect().height,
+          size: getComputedStyle(el).fontSize,
+        }));
+      expect(await metrics(install)).toEqual(await metrics(docs));
     });
 
     test('every icon is hidden from assistive tech or labelled', async ({ page }) => {
@@ -217,7 +274,54 @@ for (const route of ROUTES) {
 test('the retired /space/ URL redirects to the landing page', async ({ page }) => {
   await page.goto(`${BASE}space/`);
   await expect(page).toHaveURL(BASE);
-  await expect(page.locator('h1')).toContainText('One native window');
+  await expect(page.locator('h1')).toContainText('in one place');
+});
+
+test('copy button copies the install command without the prompt', async ({ page }) => {
+  await page.addInitScript(() => {
+    const copied: string[] = [];
+    Object.defineProperty(window, '__copied', { value: copied });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: async (text: string) => {
+          copied.push(text);
+        },
+      },
+    });
+  });
+  await page.goto(BASE);
+  const copied = () => page.evaluate(() => (window as unknown as { __copied: string[] }).__copied);
+  const button = page.getByRole('button', { name: INSTALL.copy.label });
+  const status = page.locator('[data-copy-status]');
+  await button.scrollIntoViewIfNeeded();
+  await button.click();
+  await expect.poll(copied).toEqual([INSTALL.command]);
+  await expect(status).toHaveText(INSTALL.copy.done);
+  await button.focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Space');
+  await expect.poll(async () => (await copied()).length).toBe(3);
+  expect(new Set(await copied())).toEqual(new Set([INSTALL.command]));
+  await expect(status).toHaveText('', { timeout: 3000 });
+});
+
+test('selecting a command yields no prompt', async ({ page }) => {
+  await page.goto(BASE);
+  const selected = async (selector: string) => {
+    await page.locator(selector).selectText();
+    return (await page.evaluate(() => getSelection()?.toString() ?? '')).trim();
+  };
+  expect(await selected('#install pre')).toBe(INSTALL.command);
+  expect(await selected('main a[href="#install"].font-mono')).toBe(HERO.command);
+  const prompts = await page
+    .locator('main span')
+    .evaluateAll((els) =>
+      els
+        .filter((el) => el.textContent?.trim() === '$')
+        .map((el) => el.closest('[aria-hidden="true"]') !== null),
+    );
+  expect(prompts.length).toBeGreaterThan(0);
+  expect(prompts.every(Boolean)).toBe(true);
 });
 
 test('the landing page never mentions memory', async ({ page }) => {
@@ -273,4 +377,29 @@ test('the README opens with the beta notice and the install link', () => {
     .find((line) => line.trim() !== '');
   expect(first).toContain('Personal project. Use with care.');
   expect(first).toContain('https://vlad-cirstean.github.io/kira-space/#install');
+});
+
+test('every README image is a published shot or a tracked file, never the memory shot', () => {
+  const readme = readFileSync(join(import.meta.dirname, '..', '..', 'README.md'), 'utf8');
+  expect(readme).not.toContain('space-memory');
+  const urls = [
+    ...[...readme.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)].map((m) => m[1] ?? ''),
+    ...[...readme.matchAll(/<img[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1] ?? ''),
+  ];
+  expect(urls.length).toBeGreaterThan(0);
+  const BADGE = 'https://github.com/vlad-cirstean/kira-space/actions/workflows/pr.yml/badge.svg';
+  const published = /^https:\/\/vlad-cirstean\.github\.io\/kira-space\/shots\/([\w-]+)\.webp$/;
+  for (const url of urls) {
+    const id = published.exec(url)?.[1];
+    if (id) {
+      expect(Object.keys(SHOT_CAPTURE), url).toContain(id);
+      continue;
+    }
+    if (url === BADGE) continue;
+    expect(url, url).not.toMatch(/^[a-z]+:/);
+    const tracked = spawnSync('git', ['ls-files', '--error-unmatch', url], {
+      cwd: join(import.meta.dirname, '..', '..'),
+    });
+    expect(tracked.status, `${url} is not tracked`).toBe(0);
+  }
 });

@@ -2,6 +2,7 @@
 import { Image } from 'astro:assets';
 import appIcon from '../../../apps/kira-space/build/appicon.png';
 import { href, NAV } from '../data/nav';
+import { button } from '../lib/buttons';
 
 const home = href();
 ---
@@ -28,10 +29,9 @@ const home = href();
             href={link.href}
             rel={link.external ? 'noopener' : undefined}
             class:list={[
-              'relative flex min-h-11 items-center px-2 text-sm sm:px-3 sm:text-base',
               link.label === 'Install'
-                ? 'rounded-full bg-linear-to-b from-brand-sky to-brand-deep font-semibold text-white border border-white/25 hover:brightness-110'
-                : 'text-muted hover:text-fg after:absolute after:inset-x-2 after:bottom-2 after:h-px after:origin-center after:scale-x-0 after:bg-tint hover:after:scale-x-100 focus-visible:after:scale-x-100 sm:after:inset-x-3 motion-safe:after:transition-transform motion-safe:after:duration-300',
+                ? button('primary', 'sm')
+                : 'relative flex min-h-11 items-center px-2 text-sm sm:px-3 sm:text-base text-muted hover:text-fg after:absolute after:inset-x-2 after:bottom-2 after:h-px after:origin-center after:scale-x-0 after:bg-tint hover:after:scale-x-100 focus-visible:after:scale-x-100 sm:after:inset-x-3 motion-safe:after:transition-transform motion-safe:after:duration-300',
             ]}
           >
             {link.label}

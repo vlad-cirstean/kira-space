@@ -221,6 +221,7 @@ function onToggleKeepAwake(): void {
         :order="visibleModes"
         :modes="MODES"
         :active="modeStore.active"
+        :app-title="t('common.product.kiraSpace.label')"
         :panel-label="panelLabel"
         :project-visible="layoutStore.panel.project.visible"
         :operations-visible="layoutStore.panel.operations.visible"

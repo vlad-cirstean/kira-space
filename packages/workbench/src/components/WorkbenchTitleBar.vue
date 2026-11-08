@@ -8,7 +8,7 @@ import ModeSwitcher from './ModeSwitcher.vue';
 import TitleBarBase from './TitleBar.vue';
 import TitleBarWindowActions from './TitleBarWindowActions.vue';
 
-// Both apps' title bar: mode switcher, the two panel toggles, Settings, window actions. Stores and
+// Both apps' title bar: app title, mode switcher, the two panel toggles, Settings, window actions. Stores and
 // bridge calls stay app-side (each app's own instances), so state arrives as props and actions
 // leave as events. `panelLabel` names the left panel's toggle (Connections / Repositories).
 // `beforeModeChange` can veto a switch (Space's unsaved ADE workflow edits).
@@ -16,6 +16,7 @@ const props = defineProps<{
   order: readonly M[];
   modes: ModeRegistry<M>;
   active: M;
+  appTitle: string;
   panelLabel: string;
   projectVisible: boolean;
   operationsVisible: boolean;
@@ -40,6 +41,14 @@ async function onSelect(mode: M): Promise<void> {
 
 <template>
   <TitleBarBase>
+    <!-- First in-flow child: sits at the traffic-light inset. Plain text stays in the drag region. -->
+    <span
+      class="shrink-0 whitespace-nowrap text-kira-md font-medium"
+      data-testid="titlebar-app-title"
+      >{{
+        appTitle
+      }}</span
+    >
     <ModeSwitcher :order="order" :modes="modes" :active="active" @select="onSelect" />
 
     <!-- Every interactive child overrides --wails-draggable (wails-no-drag), or clicking it would

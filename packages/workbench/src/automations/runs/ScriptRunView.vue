@@ -66,7 +66,8 @@ async function rerun(): Promise<void> {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col gap-2 p-3" data-testid="script-run-view">
+  <!-- h-full: MainView's host is not a flex column, flex-1 alone takes content height. -->
+  <div class="flex h-full min-h-0 flex-col gap-2 overflow-y-auto p-3" data-testid="script-run-view">
     <InlineState
       v-if="!run"
       :kind="query.isPending.value ? 'loading' : 'empty'"

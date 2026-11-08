@@ -1,13 +1,14 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import type { VariablesSection } from '../variablesForm';
 
 // Which collection or environment file the variables dialog edits, or null when it is closed.
 export const useApiVariablesDialogStore = defineStore('apiVariablesDialog', () => {
   const file = ref<string | null>(null);
   /** The tab the dialog opens on. */
-  const tab = ref<'environment' | 'variables' | 'agent'>('variables');
+  const tab = ref<VariablesSection>('variables');
 
-  function open(name: string, on: 'environment' | 'variables' | 'agent' = 'variables'): void {
+  function open(name: string, on: VariablesSection = 'variables'): void {
     file.value = name;
     tab.value = on;
   }

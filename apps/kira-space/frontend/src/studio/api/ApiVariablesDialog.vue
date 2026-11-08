@@ -19,6 +19,7 @@ import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
+import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
@@ -102,7 +103,9 @@ watch(
     secretError.value = '';
     bulk.value = false;
     section.value =
-      isEnvironment.value && dialogStore.tab !== 'variables' ? dialogStore.tab : 'variables';
+      dialogStore.tab === 'yaml' || (isEnvironment.value && dialogStore.tab !== 'variables')
+        ? dialogStore.tab
+        : 'variables';
   },
 );
 
@@ -178,13 +181,6 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
 
       <DialogBody v-if="detail">
         <div class="flex flex-col gap-3">
-          <ConfigFileBar
-            :path="detail.path"
-            :error="detail.problem"
-            :open="() => control.configFilesOpen({ folder: FOLDER, file: detail!.file })"
-            :reveal="() => control.configFilesReveal({ folder: FOLDER, file: detail!.file })"
-            :about="() => control.configFilesOpen({ folder: FOLDER, file: 'AGENTS.md' })"
-          />
           <div
             v-if="detail.lastGood"
             class="text-kira-sm text-subtle"
@@ -193,6 +189,11 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             {{ t('studio.api.config.lastGood.hint') }}
           </div>
           <template v-if="section !== 'yaml'">
+            <ConfigFileProblem
+              :error="detail.problem"
+              :shown="unclaimed"
+              :show-yaml="() => (section = 'yaml')"
+            />
             <Alert v-if="unclaimed" variant="error" data-testid="api-variables-problem">
               <AlertDescription>{{
                 t('common.configForm.problem.status', {
@@ -273,18 +274,26 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
               </div>
             </fieldset>
           </template>
-          <CodeTextEditor
-            v-else
-            :model-value="draft.draft.value"
-            language="yaml"
-            :problem="draft.problem.value"
-            :ariaLabel="t('studio.api.variablesDialog.file.aria')"
-            class="h-72"
-            data-testid="api-variables-text"
-            @update:model-value="draft.onYamlInput"
-            @save="saveNow"
-            @submit="saveNow"
-          />
+          <template v-else>
+            <ConfigFileBar
+              :path="detail.path"
+              :error="detail.problem"
+              :open="() => control.configFilesOpen({ folder: FOLDER, file: detail!.file })"
+              :reveal="() => control.configFilesReveal({ folder: FOLDER, file: detail!.file })"
+              :about="() => control.configFilesOpen({ folder: FOLDER, file: 'AGENTS.md' })"
+            />
+            <CodeTextEditor
+              :model-value="draft.draft.value"
+              language="yaml"
+              :problem="draft.problem.value"
+              :ariaLabel="t('studio.api.variablesDialog.file.aria')"
+              class="h-72"
+              data-testid="api-variables-text"
+              @update:model-value="draft.onYamlInput"
+              @save="saveNow"
+              @submit="saveNow"
+            />
+          </template>
           <Alert v-if="saveError" variant="error" data-testid="api-variables-save-error">
             <AlertDescription>{{ saveError }}</AlertDescription>
             <AlertAction v-if="draft.conflict.value">

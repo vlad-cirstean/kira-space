@@ -9,8 +9,9 @@ import { useVirtualRows, VIRTUAL_ROW_CLASS } from '../behaviour/virtualRows';
 import { type AnsiSegment, parseAnsi } from '../lib/ansi';
 
 // The one log viewer (run logs, worktree setup, container logs): virtualized, ANSI-coloured,
-// follows the tail until the reader scrolls up. Callers own loading and fetching; `testid` keeps
-// each caller's own locator ids. The `line` slot replaces a line's content (match highlighting).
+// follows the tail until the reader scrolls up. Text selects (body is select-none); rows outside the
+// window are unmounted, so a whole-log copy goes through the caller's data (CopyLogButton).
+// Callers own loading and fetching; `testid` keeps each caller's own locator ids. The `line` slot replaces a line's content (match highlighting).
 export interface LogLine {
   id: string | number;
   text: string;
@@ -77,7 +78,7 @@ function streamClass(stream: string): string {
     :class="
       cn(
         cardVariants(),
-        'min-h-0 flex-1 gap-0 overflow-auto font-data text-kira-sm leading-relaxed',
+        'min-h-0 flex-1 cursor-text select-text gap-0 overflow-auto font-data text-kira-sm leading-relaxed',
         !maxHeight && 'max-h-60',
       )
     "

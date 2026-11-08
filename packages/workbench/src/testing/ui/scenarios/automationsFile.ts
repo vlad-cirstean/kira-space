@@ -140,6 +140,7 @@ export function registerFileScenarios(env: Env, options: Options): void {
     });
     await openPanel(page);
     await page.locator('[data-testid="script-deploy"]').dblclick();
+    await yamlTab(page).click();
     await dialog(page).locator('[data-testid="config-file-open"]').click();
     await expect
       .poll(() => control.log().find((e) => e.channel === IPC.configFilesOpen)?.args)
@@ -170,8 +171,50 @@ export function registerFileScenarios(env: Env, options: Options): void {
     const row = page.locator('[data-testid="script-broken-Bad Name.yaml"]');
     await expect(row).toBeVisible();
     await row.dblclick();
+    await expect(dialog(page).locator('[data-testid="run-form-problem"]')).toContainText(
+      'Invalid file name.',
+    );
+    await expect(dialog(page).locator('[data-testid="config-file-bar"]')).toHaveCount(0);
+    await expect(dialog(page).locator('[data-testid="config-file-problem"]')).toHaveCount(0);
+    await yamlTab(page).click();
     await expect(dialog(page).locator('[data-testid="config-file-status"]')).toContainText(
       'Invalid file name.',
     );
+  });
+
+  test('the file bar shows only on the YAML tab', async ({ relaunch }) => {
+    const { window: page } = await relaunch({
+      control: base(snapshot('valid'), file('edited')),
+    });
+    await openPanel(page);
+    await page.locator('[data-testid="script-deploy"]').dblclick();
+    await expect(dialog(page)).toBeVisible();
+    await expect(dialog(page).locator('[data-testid="config-file-bar"]')).toHaveCount(0);
+    await yamlTab(page).click();
+    await expect(dialog(page).locator('[data-testid="config-file-bar"]')).toContainText(
+      'deploy.yaml',
+    );
+  });
+
+  test('a loader problem shows on a form tab without the bar', async ({ relaunch }) => {
+    const bad = file('bad');
+    const { window: page } = await relaunch({
+      control: [
+        ...base(snapshot('bad'), bad).filter((e) => e.channel !== IPC.customScriptsForm),
+        // The form decodes clean: only the file loader reports the problem.
+        {
+          channel: IPC.customScriptsForm,
+          response: { text: bad.text, value: { name: 'Deploy' }, problem: null },
+        },
+      ],
+    });
+    await openPanel(page);
+    await page.locator('[data-testid="script-deploy"]').dblclick();
+    await expect(dialog(page).locator('[data-testid="config-file-bar"]')).toHaveCount(0);
+    await expect(dialog(page).locator('[data-testid="config-file-problem"]')).toContainText(
+      'Line 3',
+    );
+    await dialog(page).locator('[data-testid="config-file-problem-show-yaml"]').click();
+    await expect(dialog(page).locator('[data-testid="config-file-bar"]')).toBeVisible();
   });
 }

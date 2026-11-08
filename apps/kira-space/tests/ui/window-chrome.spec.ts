@@ -79,6 +79,45 @@ test('the title bar has a New window button, rightmost of the action row, that c
   await expect.poll(() => openNewCalls().length).toBe(1);
 });
 
+test('the title bar shows Kira Space right after the window controls, inside the drag region', async ({
+  relaunch,
+}) => {
+  const { window } = await relaunch();
+  const title = window.locator('[data-testid="titlebar-app-title"]');
+  await expect(title).toHaveText('Kira Space');
+
+  const info = await title.evaluate((el) => {
+    const bar = el.parentElement as HTMLElement;
+    return {
+      first: bar.firstElementChild === el,
+      offset: el.getBoundingClientRect().left - bar.getBoundingClientRect().left,
+      inset: parseFloat(getComputedStyle(bar).paddingLeft),
+      drag: getComputedStyle(el).getPropertyValue('--wails-draggable').trim(),
+    };
+  });
+  expect(info.first).toBe(true);
+  expect(info.inset).toBe(78);
+  expect(info.offset).toBe(info.inset);
+  expect(info.drag).toBe('drag');
+
+  // Window floor: title, mode switcher and action row must not overlap or clip the title.
+  await window.setViewportSize({ width: 1024, height: 640 });
+  const box = async (sel: string, parent: boolean) =>
+    window
+      .locator(sel)
+      .first()
+      .evaluate((el, up) => {
+        const r = ((up ? el.parentElement : el) as HTMLElement).getBoundingClientRect();
+        return { left: r.left, right: r.right };
+      }, parent);
+  const titleBox = await box('[data-testid="titlebar-app-title"]', false);
+  const switcher = await box('[data-testid="mode-tab"]', true);
+  const actions = await box('[data-testid="toggle-project-panel"]', true);
+  expect(titleBox.right).toBeLessThanOrEqual(switcher.left);
+  expect(switcher.right).toBeLessThanOrEqual(actions.left);
+  expect(await title.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+});
+
 test('the keep-awake button is hidden when unsupported, shown and toggleable when supported', async ({
   relaunch,
 }) => {

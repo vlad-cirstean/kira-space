@@ -6,11 +6,12 @@ import {
   scriptsSnapshotSchema,
 } from '@shared/domain/scripts';
 import { codeEditorText } from '@workbench/testing/ui/codeEditor';
-import { expect, test } from './fixtures';
+import { expect, type KiraApp, type RelaunchOptions, test } from './fixtures';
 import { modeTab } from './studio/support/apiMode';
 import { openSettings } from './studio/support/settings';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
+import { dragSelect, longLog, longLogText, stubClipboard } from './support/logSpecs';
 
 // Contracts runs-form and automations. Backend half: termflow TestRunsForm (the mcp edits)
 // and dbmcpflow TestDbMcpScriptRunAndLogs (a run started by an agent has trigger mcp).
@@ -144,4 +145,73 @@ test('contract: a run started by an agent reads Agent run in Operations', async 
   await expect(
     page.locator('[data-testid="operations-panel"] [data-op-id="run:run-mcp"]'),
   ).toContainText('Agent run');
+});
+
+async function openAgentRunLog(relaunch: (options?: RelaunchOptions) => Promise<KiraApp>) {
+  const script = contract('automations', 'CustomScriptsService.Create#failed', {
+    schema: customScriptSchema,
+  });
+  const failed = contract('automations', 'ScriptRunsService.Get#failed', {
+    schema: scriptRunSchema,
+  });
+  const running = {
+    ...failed,
+    id: 'run-mcp',
+    trigger: 'mcp',
+    state: 'running',
+    terminalId: '',
+    finishedAt: null,
+    outcome: null,
+    createdAt: 1_000,
+    startedAt: 1_000,
+  };
+  const { window: page } = await relaunch({
+    control: [
+      { channel: IPC.customScriptsList, response: { collections: [], scripts: [script] } },
+      { channel: IPC.scriptRunsList, response: [running] },
+      { channel: IPC.scriptRunsReadLog, response: { chunks: longLog(300), truncated: false } },
+    ],
+  });
+  await page.locator('[data-testid="toggle-operations-panel"]').click();
+  await page.locator('[data-op-id="run:run-mcp"]').click({ button: 'right' });
+  await page.locator('[data-testid="menu-item-open-run"]').click();
+  const log = page.locator('[data-testid="script-run-view"] [data-testid="run-log"]');
+  await expect(log).toContainText('line 2 of the log');
+  return { page, log };
+}
+
+test("an agent run's log tab scrolls inside the tab", async ({ relaunch }) => {
+  const { page, log } = await openAgentRunLog(relaunch);
+  const main = await page.locator('[data-testid="main-view"]').boundingBox();
+  const box = await log.boundingBox();
+  expect(box!.y + box!.height).toBeLessThanOrEqual(main!.y + main!.height + 1);
+  expect(await log.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  await log.hover();
+  await page.mouse.wheel(0, 2000);
+  await expect.poll(() => log.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await log.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await expect(log).toContainText('line 300 of the log');
+});
+
+test("an agent run's log text selects", async ({ relaunch }) => {
+  const { page, log } = await openAgentRunLog(relaunch);
+  const rows = log.locator('[data-testid="run-log-line"]');
+  expect(await log.evaluate((el) => getComputedStyle(el).userSelect)).toBe('text');
+  const text = await dragSelect(page, rows);
+  expect(text).toContain('line 2 of the log');
+  expect(text).toContain('line 3 of the log');
+  const command = page.locator('[data-testid="script-run-command"]');
+  expect(await command.evaluate((el) => getComputedStyle(el).userSelect)).toBe('text');
+});
+
+test('Copy log copies the whole agent run log as plain text', async ({ relaunch }) => {
+  const { page } = await openAgentRunLog(relaunch);
+  const clipboard = await stubClipboard(page);
+  const button = page.locator('[data-testid="run-log-copy"]');
+  await button.click();
+  await expect.poll(async () => (await clipboard()).length).toBe(1);
+  expect((await clipboard())[0]).toBe(longLogText(300));
+  await expect(button).toHaveText('Copied log');
 });

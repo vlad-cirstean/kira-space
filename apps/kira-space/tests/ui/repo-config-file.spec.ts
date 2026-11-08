@@ -104,6 +104,28 @@ test('contract: a broken file shows its line and the last-good note', async ({ r
   await expect.poll(() => codeEditorText(page.locator(t('repo-file-text')))).toBe(fx.text);
 });
 
+test('the file bar shows only on the YAML tab', async ({ relaunch }) => {
+  const { window: page } = await openAdeRepos(relaunch, [
+    { channel: IPC.repoConfigFile, response: saved() },
+  ]);
+  await page.locator(t('repo-file')).waitFor();
+  await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
+  await page.locator(t('repo-file-tab-yaml')).click();
+  await expect(page.locator(t('config-file-bar'))).toContainText('proj.yaml');
+});
+
+test("a broken file's problem shows on the Form tab without the bar", async ({ relaunch }) => {
+  const fx = broken();
+  const { window: page } = await openAdeRepos(relaunch, [
+    { channel: IPC.repoConfigFile, response: fx },
+  ]);
+  await page.locator(t('repo-file')).waitFor();
+  await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
+  await expect(page.locator(t('config-file-problem'))).toContainText(String(fx.problem?.line));
+  await page.locator(t('config-file-problem-show-yaml')).click();
+  await expect(page.locator(t('config-file-status'))).toContainText(String(fx.problem?.line));
+});
+
 test('a save refused for a changed file offers Reload and Overwrite', async ({ relaunch }) => {
   const { window: page, control } = await open(relaunch, [
     {

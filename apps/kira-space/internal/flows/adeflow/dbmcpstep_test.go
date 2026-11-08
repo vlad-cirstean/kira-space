@@ -148,7 +148,7 @@ func TestDbMcpStep(t *testing.T) {
 		{MCP: []fakeagent.MCPCall{listConnections, {Server: dbSrvName, Tool: "proof_list"}, proofSave}, Name: "done"},
 		{MCP: []fakeagent.MCPCall{listConnections}, Name: "done"},
 		{WaitFile: hold},
-	}})
+	}, "work": {{WaitFile: hold}}}) // the interactive session runs as repo "work": it must outlive the tracker grace
 	t.Cleanup(func() { _ = os.WriteFile(hold, nil, 0o644) })
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	rec := importRepo(t, app, repo.Dir)

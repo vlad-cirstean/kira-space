@@ -72,6 +72,7 @@ test('the header + writes a new run file and opens it', async ({ relaunch }) => 
   await page.locator('[data-testid="automations-add"]').click();
   await page.locator('[data-testid="menu-item-new-script"]').click();
   await expect(page.locator('[data-testid="run-file-dialog"]')).toBeVisible();
+  await page.locator('[data-testid="run-file-tab-yaml"]').click();
   await expect(page.locator('[data-testid="config-file-bar"]')).toContainText('script-1.yaml');
 
   await expect

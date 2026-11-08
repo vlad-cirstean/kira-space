@@ -14,10 +14,9 @@ import { cn } from '@theme/lib/utils';
 import RunState from '@theme/RunState.vue';
 import { matchesQuery } from '@workbench/behaviour/match';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
+import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { computed } from 'vue';
 import type { VariableSetTabRecord } from '../../state/tabDomain';
-import { control } from '../bridge/control';
 import { useConnectionsStore } from '../state/connections';
 import { useRunState } from '../state/runState';
 import { useApiConfig } from './state/apiConfig';
@@ -28,8 +27,8 @@ import { useVariableSetStore, useVariablesStore } from './state/variables';
 import VariableRow from './VariableRow.vue';
 
 // A variable set is a config file (P473): this tab shows what the app reads from it, with the
-// file's path and validity on top. Edit the file to change a variable; a secret's value is set in
-// the environments tab's Secrets section.
+// file's problem on top when it is invalid (Show in YAML opens the dialog on its YAML tab). Edit
+// the file to change a variable; a secret's value is set in the environments tab's Secrets section.
 //
 // `data-testid="variables-dialog"`/`"variables-filter"`/`"variables-error"` keep the names the
 // dialog this tab replaced used.
@@ -117,15 +116,12 @@ function onHistoryClickFor(row: ApiVariable): void {
       <span class="ml-auto flex items-center gap-1" />
     </ViewToolbar>
     <div :class="colorMarkClass('band', railColor)" />
-    <ViewToolbar v-if="ownerExists && fileName">
-      <ConfigFileBar
-        :path="fileInfo?.path ?? fileName"
-        :error="fileInfo?.problem ?? null"
-        :open="() => control.configFilesOpen({ folder: 'api', file: fileName })"
-        :reveal="() => control.configFilesReveal({ folder: 'api', file: fileName })"
-        :about="() => control.configFilesOpen({ folder: 'api', file: 'AGENTS.md' })"
+    <div v-if="ownerExists && fileName && fileInfo?.problem" class="shrink-0 p-2">
+      <ConfigFileProblem
+        :error="fileInfo.problem"
+        :show-yaml="() => variablesDialogStore.open(fileName, 'yaml')"
       />
-    </ViewToolbar>
+    </div>
     <ViewToolbar>
       <div class="w-64"
         ><SearchField

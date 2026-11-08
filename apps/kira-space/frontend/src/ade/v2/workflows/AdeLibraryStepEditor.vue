@@ -6,6 +6,7 @@ import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
 import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
+import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
 import { control } from '../../../bridge/control';
@@ -16,7 +17,7 @@ import type { StepEntry } from '../wire';
 import AdeLibraryStepForm from './AdeLibraryStepForm.vue';
 import AdeLibraryStepYaml from './AdeLibraryStepYaml.vue';
 
-// One library step: Form or YAML mode, the config file bar, Copy YAML and Delete. A step that
+// One library step: Form or YAML mode, the config file bar in YAML mode (the file's problem in Form mode), Copy YAML and Delete. A step that
 // workflows use cannot be deleted; the workflows are listed instead.
 const props = defineProps<{ entry: StepEntry }>();
 const wfUi = useAdeWorkflowsUiStore();
@@ -79,6 +80,7 @@ async function remove(): Promise<void> {
         @update:model-value="setMode"
       />
       <ConfigFileBar
+        v-if="wfUi.stepMode === 'yaml'"
         :path="entry.path"
         :error="entry.error"
         :open="() => control.configFilesOpen({ folder: 'steps', file: entry.fileName })"
@@ -88,6 +90,7 @@ async function remove(): Promise<void> {
       <Button
         variant="dialog"
         size="kira-lg"
+        class="ml-auto"
         :disabled="!yaml.data.value"
         data-testid="ade-step-copy"
         @click="yaml.data.value && copy(yaml.data.value.yaml)"
@@ -114,6 +117,12 @@ async function remove(): Promise<void> {
     <FieldError v-if="deleteError" data-testid="ade-step-delete-error">{{
       deleteError
     }}</FieldError>
+    <ConfigFileProblem
+      v-if="wfUi.stepMode !== 'yaml'"
+      :error="entry.error"
+      :show-yaml="() => void setMode('yaml')"
+      class="shrink-0"
+    />
     <AdeLibraryStepYaml v-if="wfUi.stepMode === 'yaml'" :entry="entry" />
     <AdeLibraryStepForm v-else :entry="entry" />
   </div>

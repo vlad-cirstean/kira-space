@@ -12,7 +12,7 @@ import { type ResolvedWindowShot, resolveAllShots } from '../lib/shots';
 import Base from './Base.astro';
 
 const shots = await resolveAllShots();
-// Hero and story show a whole window, and og:image needs the window's social PNG.
+// Hero, bento and story show whole windows.
 function windowShot(id: string): ResolvedWindowShot {
   const shot = shots.find((s) => s.id === id);
   if (!shot) throw new Error(`Missing shot ${id}`);
@@ -23,7 +23,7 @@ function windowShot(id: string): ResolvedWindowShot {
 const hero = windowShot(content.hero);
 ---
 
-<Base title={content.pageTitle} description={content.description} image={hero.social}>
+<Base title={content.pageTitle} description={content.description}>
   <Header />
   <main data-app="space" class="relative isolate overflow-x-clip">
     <Hero front={hero} />

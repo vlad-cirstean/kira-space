@@ -75,6 +75,17 @@ const CONTROL: ControlSnapshot[] = [
     args: { scope: 'collection', ownerId: collection.id },
     response: VARIABLES,
   },
+  // The dialog Show in YAML opens: the file as the loader reports it, and a clean form decode.
+  {
+    channel: IPC.apiConfigFile,
+    response: {
+      ...contract<Record<string, unknown>>('api-variables-form', 'file#collection'),
+      file,
+      problem,
+      lastGood: true,
+    },
+  },
+  { channel: IPC.apiConfigForm, response: contract('api-variables-form', 'form#collection') },
   { channel: IPC.configFilesOpen, response: undefined },
   { channel: IPC.configFilesReveal, response: undefined },
   { channel: IPC.apiConfigSetSecret, response: afterSet },
@@ -124,8 +135,9 @@ test('api config files — the tree shows the file, a bad edit shows its line, O
   await page.click('[data-testid="menu-item-variables"]');
   const view = page.locator('[data-testid="variables-dialog"][data-scope="collection"]');
   await expect(view).toBeVisible();
-  await expect(view.locator('[data-testid="config-file-status"]')).toHaveText(
-    `✕ Line ${problem.line}: ${problem.message}`,
+  await expect(view.locator('[data-testid="config-file-bar"]')).toHaveCount(0);
+  await expect(view.locator('[data-testid="config-file-problem"]')).toHaveText(
+    new RegExp(`Line ${problem.line}: ${problem.message}`),
   );
   await expect(view.locator('[data-testid="variable-row"]')).toHaveCount(2);
   await expect(
@@ -137,6 +149,17 @@ test('api config files — the tree shows the file, a bad edit shows its line, O
     ),
   ).toBeVisible();
   await expect(view.locator('input')).toHaveCount(1); // the name filter only: no cell is editable
+
+  // Show in YAML opens the variables dialog on its YAML tab, with the file bar and the same line.
+  await view.locator('[data-testid="config-file-problem-show-yaml"]').click();
+  const dialog = page.locator('[data-testid="api-variables-dialog"]');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('[data-testid="api-tab-yaml"]')).toHaveAttribute('data-state', 'on');
+  await expect(dialog.locator('[data-testid="config-file-status"]')).toHaveText(
+    `✕ Line ${problem.line}: ${problem.message}`,
+  );
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
 
   // The Secrets section lists the name the file references; Set writes it without echoing it back.
   await page.click('[data-testid="api-environments"]');

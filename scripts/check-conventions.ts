@@ -16,7 +16,7 @@
  *
  * N15 no tracked PNG under `screenshots/` or `site/` (product screenshots are WebP) and no tracked
  * WebP under `screenshots/` (CI generates every product shot, P550); the user-supplied install
- * dialogs under `site/src/assets/install/` are the only committed WebP; Playwright `toHaveScreenshot`
+ * dialogs under `site/src/assets/install/` and the share image under `site/src/assets/share/` are the only committed WebP; Playwright `toHaveScreenshot`
  * baselines in `-snapshots` dirs under `site/tests` are PNG only and stay.
  *
  * N16 no string-literal SQL passed to `Exec`/`Query`/`QueryRow`/`Prepare` (or their `Context`
@@ -515,7 +515,7 @@ function imageHits(tracked: readonly string[]): Hit[] {
       rule: 'N15' as const,
       path,
       message:
-        'product screenshots are generated, not committed (run bun run screenshots); only the user-supplied install dialogs under site/src/assets/install/ are committed WebP',
+        'product screenshots are generated, not committed (run bun run screenshots); only the user-supplied install dialogs under site/src/assets/install/ and the share image under site/src/assets/share/ (bun run site:share-image) are committed WebP',
     }));
 }
 

@@ -95,6 +95,15 @@ test('contract: a form edit lands in the YAML tab with its comments', async ({ r
   await expectHighlighted(editor, 'yaml');
 });
 
+test('the file bar shows only on the YAML tab', async ({ relaunch }) => {
+  const { window: page } = await openEnvironment(relaunch);
+  await expect(page.locator(`${dlg} [data-testid="config-file-bar"]`)).toHaveCount(0);
+  await page.locator('[data-testid="api-tab-variables"]').click();
+  await expect(page.locator(`${dlg} [data-testid="config-file-bar"]`)).toHaveCount(0);
+  await page.locator('[data-testid="api-tab-yaml"]').click();
+  await expect(page.locator(`${dlg} [data-testid="config-file-bar"]`)).toContainText(ENV_FILE);
+});
+
 test('contract: a YAML edit shows in the form', async ({ relaunch }) => {
   const { window: page } = await openEnvironment(relaunch, [formCall('yaml')]);
   await page.locator('[data-testid="api-tab-yaml"]').click();

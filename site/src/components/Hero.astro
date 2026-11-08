@@ -3,6 +3,7 @@ import { Image } from 'astro:assets';
 import appIcon from '../../../apps/kira-space/build/appicon.png';
 import { APP, HERO, SITE } from '../data/content';
 import { href, REPO_URL } from '../data/nav';
+import { button } from '../lib/buttons';
 import type { ResolvedWindowShot } from '../lib/shots';
 import HeroBackdrop from './HeroBackdrop.astro';
 import Icon from './Icon.astro';
@@ -14,10 +15,6 @@ interface Props {
 }
 
 const { front } = Astro.props;
-const button =
-  'group flex min-h-12 items-center gap-2 rounded-xl px-6 text-base font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:transition-[transform,box-shadow] motion-safe:hover:-translate-y-0.5';
-const primary = `${button} bg-linear-to-b from-brand-sky to-brand-deep text-white shadow-cta hover:shadow-cta-hover`;
-const secondary = `${button} bg-white/5 text-fg border border-white/12 hover:bg-white/10 hover:border-white/25`;
 ---
 
 <section class="relative">
@@ -33,7 +30,7 @@ const secondary = `${button} bg-white/5 text-fg border border-white/12 hover:bg-
     </span>
     <h1
       style="--d:90ms"
-      class="hero-in mx-auto mt-7 max-w-4xl text-[2.75rem] leading-[1.04] font-extrabold tracking-[-0.045em] sm:text-6xl lg:text-[5.5rem]"
+      class="hero-in mx-auto mt-7 max-w-6xl text-[2.75rem] leading-[1.04] font-extrabold tracking-[-0.045em] sm:text-6xl lg:text-[5.5rem]"
     >
       <span class="bg-linear-to-b from-white to-white/70 bg-clip-text text-transparent"
         >{HERO.line1}</span
@@ -44,7 +41,7 @@ const secondary = `${button} bg-white/5 text-fg border border-white/12 hover:bg-
       {HERO.lead}
     </p>
     <div style="--d:270ms" class="hero-in mt-9 flex flex-wrap justify-center gap-3">
-      <a href="#install" class={primary}>
+      <a href="#install" class={button('primary')}>
         <Icon name="cloud-download" class="size-5" />
         Install
         <Icon
@@ -52,11 +49,11 @@ const secondary = `${button} bg-white/5 text-fg border border-white/12 hover:bg-
           class="size-4 motion-safe:transition-transform motion-safe:group-hover:translate-x-1"
         />
       </a>
-      <a href={href(APP.docs)} class={secondary}>
+      <a href={href(APP.docs)} class={button('secondary')}>
         <Icon name="book" class="size-5" />
         Read the docs
       </a>
-      <a href={REPO_URL} rel="noopener" class={secondary}>
+      <a href={REPO_URL} rel="noopener" class={button('secondary')}>
         <Icon name="github" class="size-5" />
         GitHub
       </a>
@@ -66,7 +63,7 @@ const secondary = `${button} bg-white/5 text-fg border border-white/12 hover:bg-
       style="--d:340ms"
       class="hero-in mx-auto mt-6 flex min-h-11 w-fit max-w-full items-center gap-2 rounded-full bg-black/30 px-4 font-mono text-sm text-muted border border-white/10 hover:text-fg hover:border-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
-      <span class="text-lime">$</span>
+      <span aria-hidden="true" class="select-none text-lime">$</span>
       <span class="truncate">{HERO.command}</span>
     </a>
   </div>
@@ -75,12 +72,8 @@ const secondary = `${button} bg-white/5 text-fg border border-white/12 hover:bg-
       aria-hidden="true"
       class="absolute inset-x-[4%] -inset-y-[6%] -z-10 bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--brand-sky)_30%,transparent),transparent)]"
     ></div>
-    <a
-      href={front.framed}
-      aria-label={`Open full size: ${front.title}`}
-      class="mx-auto block w-[96%] max-w-[62rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-    >
+    <div class="mx-auto block w-[96%] max-w-[62rem]">
       <ShotPicture shot={front} eager priority sizes="(min-width: 1024px) 990px, 96vw" />
-    </a>
+    </div>
   </div>
 </section>
