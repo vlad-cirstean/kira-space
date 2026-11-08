@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -135,6 +136,8 @@ type TaskBoardDeps struct {
 	ArtifactSources []ArtifactSource
 	// BranchRequestWait is how long an agent's branch request waits for the user; 0 = defaultBranchRequestWait.
 	BranchRequestWait time.Duration
+	// TaskRequestWait is how long an orchestrator's create_task waits for the user; 0 = defaultTaskRequestWait.
+	TaskRequestWait time.Duration
 	// RebaseTimeout bounds a rebase run; 0 = defaultRebaseTimeout.
 	RebaseTimeout time.Duration
 	// RepoFile names the repo file that applies to a repo (its stem, "" for none) and its error, if any.
@@ -204,6 +207,7 @@ type TaskBoard struct {
 	stepMsgs         map[string]string          // task|step -> the Run dialog's edited message
 	agent            *agentmcp.Server
 	branchReqs       branchRequests // open agent branch requests (P408)
+	taskReqs         taskRequests   // open orchestrator create_task requests (P571)
 	runNotes         runNotes       // run notes held while an MCP call waits on the user
 	wg               sync.WaitGroup // background setups and runs; Close waits
 	closeMu          sync.Mutex     // orders goTracked's wg.Add before Close's wg.Wait
@@ -232,8 +236,9 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	}
 	if deps.Approvals != nil {
 		deps.Approvals.Register(approvals.KindBranchRequest, branchOwner{b})
+		deps.Approvals.Register(approvals.KindTaskCreate, taskCreateOwner{b})
 	}
-	b.agent = agentmcp.NewServer(agentmcp.Options{Dir: deps.AgentDir, OnFinish: b.recordFinish, Space: b, Outcomes: b, Review: b, SandboxGit: b, Git: b, Handover: b, Prompts: b.prompts(), OnToolCall: b.mcpRecorder})
+	b.agent = agentmcp.NewServer(agentmcp.Options{Dir: deps.AgentDir, OnFinish: b.recordFinish, Space: b, Outcomes: b, Review: b, SandboxGit: b, Git: b, Handover: b, Orchestrator: b, Prompts: b.prompts(), OnToolCall: b.mcpRecorder})
 	if deps.Tracker != nil {
 		deps.Tracker.deps.Ops, deps.Tracker.deps.OpSubject = deps.Ops, b.opSubject
 	}
@@ -285,6 +290,7 @@ func (b *TaskBoard) Close() {
 	b.closed = true
 	b.closeMu.Unlock()
 	b.abandonAllBranchRequests()
+	b.abandonAllTaskRequests()
 	// Stop the MCP server first: a late finish_step must not start work after wg.Wait returns.
 	if err := b.agent.Close(); err != nil {
 		slog.Warn("ade: close agent server", "scope", "ade", "err", err)
@@ -541,6 +547,7 @@ func (b *TaskBoard) assemble(d boardData, repoIDs []string, results map[string]*
 		tasks = append(tasks, wt)
 	}
 	b.badgeTasks(tasks)
+	b.applyParents(tasks)
 
 	plan := adewire.Plan{Day: map[string]string{}, Order: make([]string, 0, len(d.tasks)), QueuedAfter: map[string]string{}, Unpushed: map[string]bool{}, Backlog: []string{}}
 	live := make(map[string]bool, len(d.tasks))
@@ -589,7 +596,7 @@ func (b *TaskBoard) toWireTask(t model.AdeTask, branchIDs []string, runs []model
 	out := adewire.Task{
 		ID: t.ID, Kind: t.Kind, Title: t.Title, Owner: t.Owner, HostURL: t.HostURL, HostLink: b.hostLink(t.HostURL), WorkflowID: t.WorkflowID,
 		EntryStepID: t.EntryStepID, Since: map[string]int{}, Est: t.Est, Color: t.Color, CreatedAt: t.CreatedAt,
-		StatusID: t.StatusID, StatusBy: t.StatusBy, StatusStep: t.StatusStep,
+		StatusID: t.StatusID, StatusBy: t.StatusBy, StatusStep: t.StatusStep, ParentID: t.ParentID,
 		BranchIDs: make([]string, 0, len(branchIDs)), Runs: make([]adewire.Run, 0, len(runs)),
 		HandoverDrafts: []adewire.Handover{}, BranchRequestID: b.branchRequestOf(t.ID),
 	}
@@ -962,4 +969,28 @@ func lastFetchAt(entry *gitsession.RepoEntry) *int64 {
 	}
 	v := info.ModTime().UnixMilli()
 	return &v
+}
+
+// applyParents names each child's orchestrator and whether it is archived, even when the parent is off the
+// board.
+func (b *TaskBoard) applyParents(tasks []adewire.Task) {
+	var parents []string
+	for _, t := range tasks {
+		if t.ParentID != "" && !slices.Contains(parents, t.ParentID) {
+			parents = append(parents, t.ParentID)
+		}
+	}
+	if len(parents) == 0 {
+		return
+	}
+	titles, err := b.deps.Tasks.TaskTitles(parents)
+	if err != nil {
+		slog.Warn("ade board: parent titles", "scope", "ade", "err", err)
+		return
+	}
+	for i := range tasks {
+		if p, ok := titles[tasks[i].ParentID]; ok {
+			tasks[i].ParentTitle, tasks[i].ParentArchived = p.Title, p.Archived
+		}
+	}
 }

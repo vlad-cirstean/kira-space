@@ -429,7 +429,7 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 	if pa.Resume == "" && pa.RecordID == "" {
 		pa.RecordID = ids.NewID()
 	}
-	grant := agentmcp.Grant{RunID: runID, TaskID: tc.task.ID, SessionID: cmpNonEmpty(pa.Resume, pa.RecordID), Space: true, Agent: agent}
+	grant := agentmcp.Grant{RunID: runID, TaskID: tc.task.ID, SessionID: cmpNonEmpty(pa.Resume, pa.RecordID), Space: true, Orchestrator: tc.task.Kind == model.AdeTaskKindOrchestrator, Agent: agent}
 	var tools []harness.MCPTool
 	if runID != "" {
 		grant.Results = resultSpecs(stepResultsOf(tc, pa.StepID))
@@ -454,6 +454,9 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 		tools = append(tools, agentmcp.Handover)
 	}
 	tools = append(tools, agentmcp.SpaceToolIDs...)
+	if grant.Orchestrator {
+		tools = append(tools, agentmcp.OrchestratorToolIDs...)
+	}
 	pa.MCPConfig, pa.AllowedTools = cfg, withDbMcpTool(sdef, harness.ToolNames(agent, tools...))
 	stem := ids.New(ids.TUI)
 	prep, err := b.prepareApp(ctx, agentcfg.Launch{Provider: agent, Kind: harness.LaunchInteractive, Dir: b.deps.AgentDir, Stem: stem})

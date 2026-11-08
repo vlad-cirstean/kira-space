@@ -69,7 +69,9 @@ func (b *TaskBoard) wireTask(t model.AdeTask) (adewire.Task, error) {
 	}
 	applyHandovers(&out, bh[t.ID])
 	b.badgeTasks([]adewire.Task{out})
-	return out, nil
+	one := []adewire.Task{out}
+	b.applyParents(one)
+	return one[0], nil
 }
 
 // firstStepID is the id of the step a workflow's new task enters, "" when every step is skipped.
@@ -121,28 +123,36 @@ func jiraFields(j *adewire.Jira) (key, url string) {
 
 // --- tasks -------------------------------------------------------------------------------------
 
-// CreateTask creates a task with one not-created branch per repo, appended to the plan on `Day` (Later when nil).
-func (b *TaskBoard) CreateTask(ctx context.Context, args adewire.CreateTaskArgs) (adewire.Task, error) {
+// newTask is a task ready to insert: its row, one not-created branch per repo and the name of its first step.
+type newTask struct {
+	task      model.AdeTask
+	branches  []model.AdeTaskBranch
+	entryName string
+}
+
+// buildNewTask validates args and builds the task of kind (parentID set for an orchestrator's child), without
+// writing it.
+func (b *TaskBoard) buildNewTask(ctx context.Context, args adewire.CreateTaskArgs, kind, parentID string) (newTask, error) {
 	jiraKey, jiraURL := jiraFields(args.Jira)
 	title := strings.TrimSpace(args.Title)
 	if title == "" && jiraKey == "" {
-		return adewire.Task{}, invalid("a task needs a title or a Jira key")
+		return newTask{}, invalid("a task needs a title or a Jira key")
 	}
 	if err := b.requireRepos(args.CodeRepoIDs); err != nil {
-		return adewire.Task{}, err
+		return newTask{}, err
 	}
 	var entryName string
 	task := model.AdeTask{
-		ID: ids.NewID(), Kind: model.AdeTaskKindTask, Title: title, JiraKey: jiraKey, JiraURL: jiraURL,
-		HostURL: args.HostURL, CreatedAt: b.deps.Now().UnixMilli(),
+		ID: ids.NewID(), Kind: kind, Title: title, JiraKey: jiraKey, JiraURL: jiraURL,
+		HostURL: args.HostURL, CreatedAt: b.deps.Now().UnixMilli(), ParentID: parentID,
 	}
 	if args.WorkflowID != "" {
 		if b.deps.Workflows == nil {
-			return adewire.Task{}, invalid("workflow %q not found", args.WorkflowID)
+			return newTask{}, invalid("workflow %q not found", args.WorkflowID)
 		}
 		wf, ok := b.deps.Workflows.Get(args.WorkflowID)
 		if !ok {
-			return adewire.Task{}, invalid("workflow %q not found", args.WorkflowID)
+			return newTask{}, invalid("workflow %q not found", args.WorkflowID)
 		}
 		task.WorkflowID, task.EntryStepID = wf.ID, firstStepID(wf)
 		for _, st := range wf.Steps {
@@ -153,27 +163,45 @@ func (b *TaskBoard) CreateTask(ctx context.Context, args adewire.CreateTaskArgs)
 	}
 	for id := range args.Bases {
 		if !slices.Contains(args.CodeRepoIDs, id) {
-			return adewire.Task{}, invalid("bases: repo %s is not on the task", id)
+			return newTask{}, invalid("bases: repo %s is not on the task", id)
 		}
 	}
 	branches := make([]model.AdeTaskBranch, len(args.CodeRepoIDs))
 	for i, repoID := range args.CodeRepoIDs {
 		base, baseBranchID, err := b.storedBase(ctx, repoID, b.repoNickOf(repoID), args.Bases[repoID])
 		if err != nil {
-			return adewire.Task{}, err
+			return newTask{}, err
 		}
 		branches[i] = model.AdeTaskBranch{
 			ID: ids.NewID(), TaskID: task.ID, CodeRepoID: repoID, Kind: model.AdeBranchKindMine,
 			Position: i, AddedAt: task.CreatedAt, Base: base, BaseBranchID: baseBranchID,
 		}
 	}
+	return newTask{task: task, branches: branches, entryName: entryName}, nil
+}
+
+// CreateTask creates a task with one not-created branch per repo, appended to the plan on `Day` (Later when nil).
+// Kind is task, or orchestrator for a task that spawns children.
+func (b *TaskBoard) CreateTask(ctx context.Context, args adewire.CreateTaskArgs) (adewire.Task, error) {
+	kind := model.AdeTaskKindTask
+	switch args.Kind {
+	case "", model.AdeTaskKindTask:
+	case model.AdeTaskKindOrchestrator:
+		kind = model.AdeTaskKindOrchestrator
+	default:
+		return adewire.Task{}, invalid("kind %q cannot be created", args.Kind)
+	}
+	nt, err := b.buildNewTask(ctx, args, kind, "")
+	if err != nil {
+		return adewire.Task{}, err
+	}
 	var note *model.AdeHandover
 	if strings.TrimSpace(args.Notes) != "" {
 		note = &model.AdeHandover{
-			ID: ids.NewID(), TaskID: task.ID, FromStepID: task.EntryStepID, FromStepName: entryName, Body: args.Notes, CreatedAt: task.CreatedAt,
+			ID: ids.NewID(), TaskID: nt.task.ID, FromStepID: nt.task.EntryStepID, FromStepName: nt.entryName, Body: args.Notes, CreatedAt: nt.task.CreatedAt,
 		}
 	}
-	stored, err := b.deps.Tasks.CreateTask(task, branches, args.Day, note)
+	stored, err := b.deps.Tasks.CreateTask(nt.task, nt.branches, args.Day, note)
 	if err != nil {
 		return adewire.Task{}, err
 	}
@@ -181,7 +209,7 @@ func (b *TaskBoard) CreateTask(ctx context.Context, args adewire.CreateTaskArgs)
 	return b.wireTask(stored)
 }
 
-// UpdateTask applies a patch; kind moves only between task and parked. A review task that becomes
+// UpdateTask applies a patch; kind moves between task and parked, or task and orchestrator. A review task that becomes
 // a task gets a worktree and prepare script on each branch, as an attached own branch does.
 func (b *TaskBoard) UpdateTask(ctx context.Context, args adewire.UpdateTaskArgs) (adewire.Task, error) {
 	p := args.Patch

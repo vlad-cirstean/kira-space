@@ -109,9 +109,9 @@ type TaskChainResult struct {
 }
 
 // OrchestratorTools is what the orchestrator tools call; *ade.TaskBoard implements it. Each method acts for
-// the calling task only. CreateTask blocks until the user answers; ctx ends when the caller is gone.
+// the calling task only. SpawnTask blocks until the user answers; ctx ends when the caller is gone.
 type OrchestratorTools interface {
-	CreateTask(ctx context.Context, call SpaceCall, args CreateTaskArgs) (CreateTaskResult, error)
+	SpawnTask(ctx context.Context, call SpaceCall, args CreateTaskArgs) (CreateTaskResult, error)
 	ListTasks(ctx context.Context, call SpaceCall, args ListTasksArgs) (ListTasksResult, error)
 	TaskChain(ctx context.Context, call SpaceCall, args TaskChainArgs) (TaskChainResult, error)
 }
@@ -195,7 +195,7 @@ func (s *Server) addCreateTaskTool(srv *mcp.Server) {
 		}
 		ctx, done := s.callCtx(ctx, req)
 		defer done()
-		res, err := s.orchestrator.CreateTask(ctx, call, args)
+		res, err := s.orchestrator.SpawnTask(ctx, call, args)
 		if err != nil {
 			return fail("create_task", err), CreateTaskResult{}, nil
 		}

@@ -1654,6 +1654,9 @@
       "schedule": {
         "title": "Run {name}"
       },
+      "taskCreate": {
+        "title": "Approve task · {task}"
+      },
       "test": {
         "body": "A popup that waits for you posts like this.",
         "title": "Kira {app} notifications work"

@@ -163,6 +163,7 @@ func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string) error {
 	}
 
 	b.abandonBranchRequests(taskID)
+	b.abandonTaskRequests(taskID)
 	if err := b.stopTaskWork(tc); err != nil {
 		return err
 	}
