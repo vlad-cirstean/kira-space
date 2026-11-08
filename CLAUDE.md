@@ -38,14 +38,21 @@ Chapter's last phase closes it by hand. Its Sonnet implementer writes the close 
 
 1. In the commit before the fold, mark the row Done and write its Result in `SPEC.md`, so its entry
    folds closed.
-2. Append the `<!-- chapter <ch> -->` block to newest history file (last entry of `docs/HISTORY.md`
-   index, highest number in `docs/history/`), copying the previous chapter block's format: header
-   `Source: docs/<ch>/ at <commit>. N phases.` with the true row count, then one
+2. Append the `<!-- chapter <ch> -->` block to a history file, copying the previous chapter block's
+   format: header `Source: docs/<ch>/ at <commit>. N phases.` with the true row count, then one
    `### <ch> <id> (Done)` heading per `SPEC.md` row in table order, distilled from each row's Result.
-   Fix links to the chapter by hand. History files have no line limit. New history file starts only
-   for a new version series (v3 opens `04-v3.md`), on user request: next number, series in its name,
-   index entry added. Agents never start a
-   file or move blocks between files unasked. A close never splits its block across files. Commit.
+   Fix links to the chapter by hand. Placement rules (detail and example: `docs/HISTORY.md`), no user
+   request needed:
+   - Limit: 1,500 lines per file in `docs/history/`.
+   - Newest file = highest number in `docs/history/` = last index entry.
+   - Count its lines. If appending your block keeps it at or under 1,500, append there.
+   - Otherwise create `NN-<first chapter in file>.md` (next number), put the block there, add its
+     index entry with chapter range.
+   - A block never splits across files. A single block over 1,500 lines sits alone in its file.
+   - Never move existing blocks between files.
+   - Update the chapter range of the index entry you touched.
+
+   Commit.
 3. `git rm -r docs/<ch>/` (and `docs/history-runs/` if it exists). Commit.
 4. Push, then open the PR from `chapter/v<version>` to `main` (command in `docs/DEV_ENVIRONMENT.md`).
    It auto-merges once CI passes. Opening the PR is part of closing, unless changes are still pending
