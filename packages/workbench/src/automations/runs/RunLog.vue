@@ -11,7 +11,7 @@ const log = useRunLog(() => props.runId);
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col">
+  <div class="flex min-h-48 flex-1 flex-col">
     <QueryState :query="log" variant="inline" :is-empty="() => false">
       <template #error="{ message }">
         <LogLines testid="run-log" max-height="none" :lines="[]" :error="message" />

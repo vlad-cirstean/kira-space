@@ -6,7 +6,7 @@ import {
   scriptsSnapshotSchema,
 } from '@shared/domain/scripts';
 import { codeEditorText } from '@workbench/testing/ui/codeEditor';
-import { expect, test } from './fixtures';
+import { expect, type KiraApp, type RelaunchOptions, test } from './fixtures';
 import { modeTab } from './studio/support/apiMode';
 import { openSettings } from './studio/support/settings';
 import { contract } from './support/contract';
@@ -144,4 +144,60 @@ test('contract: a run started by an agent reads Agent run in Operations', async 
   await expect(
     page.locator('[data-testid="operations-panel"] [data-op-id="run:run-mcp"]'),
   ).toContainText('Agent run');
+});
+
+const longLog = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({
+    seq: i + 1,
+    at: 1_000 + i,
+    stream: 'stdout',
+    text: `${i === 0 ? '\u001b[32mfirst\u001b[0m' : `line ${i + 1}`} of the log\n`,
+  }));
+
+async function openAgentRunLog(relaunch: (options?: RelaunchOptions) => Promise<KiraApp>) {
+  const script = contract('automations', 'CustomScriptsService.Create#failed', {
+    schema: customScriptSchema,
+  });
+  const failed = contract('automations', 'ScriptRunsService.Get#failed', {
+    schema: scriptRunSchema,
+  });
+  const running = {
+    ...failed,
+    id: 'run-mcp',
+    trigger: 'mcp',
+    state: 'running',
+    terminalId: '',
+    finishedAt: null,
+    outcome: null,
+    createdAt: 1_000,
+    startedAt: 1_000,
+  };
+  const { window: page } = await relaunch({
+    control: [
+      { channel: IPC.customScriptsList, response: { collections: [], scripts: [script] } },
+      { channel: IPC.scriptRunsList, response: [running] },
+      { channel: IPC.scriptRunsReadLog, response: { chunks: longLog(300), truncated: false } },
+    ],
+  });
+  await page.locator('[data-testid="toggle-operations-panel"]').click();
+  await page.locator('[data-op-id="run:run-mcp"]').click({ button: 'right' });
+  await page.locator('[data-testid="menu-item-open-run"]').click();
+  const log = page.locator('[data-testid="script-run-view"] [data-testid="run-log"]');
+  await expect(log).toContainText('line 2 of the log');
+  return { page, log };
+}
+
+test("an agent run's log tab scrolls inside the tab", async ({ relaunch }) => {
+  const { page, log } = await openAgentRunLog(relaunch);
+  const main = await page.locator('[data-testid="main-view"]').boundingBox();
+  const box = await log.boundingBox();
+  expect(box!.y + box!.height).toBeLessThanOrEqual(main!.y + main!.height + 1);
+  expect(await log.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  await log.hover();
+  await page.mouse.wheel(0, 2000);
+  await expect.poll(() => log.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await log.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await expect(log).toContainText('line 300 of the log');
 });
