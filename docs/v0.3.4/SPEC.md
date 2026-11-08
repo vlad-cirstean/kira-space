@@ -8,10 +8,12 @@ Proof images and agent branch bases. Branch `chapter/v0.3.4`, tag `v0.3.4`. Firs
 | P570 | Agents choose the base of a requested branch | Planned |
 | P571 Part 1 | Orchestrator tasks, backend: passes, spawn, chain reads | Planned |
 | P571 Part 2 | Orchestrator tasks, frontend: kind choice, card, Run pass | Planned |
+| P572 | About: GitHub link, add an About settings section if none | Planned |
+| P573 | Close chapter | Planned |
 
 P569, P570 and P571 run as parallel streams (own worktree each): P569 owns proof, `dbmcp` proof tools and the proof window menu entry; P570 owns `request_branches` and the ADE base path; P571 owns the orchestrator task kind. Grouping in `plans/batch-P569-P570.md`.
 
-Chapter stays open after both phases: no close phase yet (user decision).
+Chapter ends the standard way after the last implementation phase: landing, one non-UI full run, 1 code review round, close phase P573, PR.
 
 ## P569 Proof: JPEG screenshots, agent image steps, menu bar entry
 
@@ -44,3 +46,13 @@ Split by the planner (plan `plans/P571.md`): Part 1 backend (migration, engine, 
 - Planner decides, from code: pass mechanics (a finished task moves back to the first step via `SetTaskStep`; `ResetWorkflow` deletes runs, so not it; verify `SinceJSON`, `syncStatus` and status slots handle it), migration for the parent link (next free number, P569 takes 0092: whichever lands second renumbers), `create_task` tool shape (title, workflow, repos, brief as child's first handover with source `orchestrator`, optional base through the existing `BaseChoice` and `resolveChoice`, not P570's new field), approval prompt kind, read tools (`list_tasks`, `task_chain`), board presentation (card, children grouped, parent links both ways), grant rules (which task kinds carry which tools), wire types and bindings.
 - Streams: confirm no ordering dependency on P570 (P571 must not need P570's `request_branches` field). If one exists, stop and report. Size: if the phase is too large for one implementer, propose `Part 1`/`Part 2` per the numbering rule instead of cutting scope.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+
+## P572 About: GitHub link
+
+- Ask: add a link to the GitHub repo in the app's About section. If the app has no About section, add one to Settings.
+- Planner decides: find an existing About surface (settings pane, app menu About, window) from code; where the repo URL comes from (one source, no new hard-coded copy); how external links open (`LinkService.OpenExternal`, never `window.open`); Settings pane wiring if new (shadcn-vue, Tailwind, `<script setup lang="ts">`); i18n; ARCHITECTURE update.
+- Tests: flow test plus UI spec on the same scenario where it applies at the IPC boundary (opening the link goes through the bridge).
+
+## P573 Close chapter
+
+- Chapter close by hand per CLAUDE.md "Closing a chapter": one Sonnet implementer, no planner, no plan file.
