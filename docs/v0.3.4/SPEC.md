@@ -6,8 +6,9 @@ Proof images and agent branch bases. Branch `chapter/v0.3.4`, tag `v0.3.4`. Firs
 |---|---|---|
 | P569 | Proof: JPEG screenshots, agent image steps, menu bar entry | Planned |
 | P570 | Agents choose the base of a requested branch | Planned |
+| P571 | Orchestrator tasks: spawn child tasks, passes, chain reads | Planned |
 
-P569 and P570 run as parallel streams (own worktree each): P569 owns proof, `dbmcp` proof tools and the proof window menu entry; P570 owns `request_branches` and the ADE base path. Grouping in `plans/batch-P569-P570.md`.
+P569, P570 and P571 run as parallel streams (own worktree each): P569 owns proof, `dbmcp` proof tools and the proof window menu entry; P570 owns `request_branches` and the ADE base path; P571 owns the orchestrator task kind. Grouping in `plans/batch-P569-P570.md`.
 
 Chapter stays open after both phases: no close phase yet (user decision).
 
@@ -27,3 +28,16 @@ Chapter stays open after both phases: no close phase yet (user decision).
 - Planner decides: field name and shape (ref name vs task branch id, same options as `adewire.BaseChoice`), validation through the existing `resolveChoice` path (same repo, no cycles, `check-ref-format`, base not created yet), how the approval dialog shows each branch's base, behavior for an `existing` branch with a different base, prompt text and tool schema.
 - Pointers: `internal/agentmcp/space.go`, `apps/kira-space/internal/ade/agenttools.go`, `branchrequest.go`, `base.go`, `setup.go`, `docs/ARCHITECTURE.md` "Task base and rebase runs (P241)" and "Branch requests".
 - Tests: flow test plus UI spec on the same scenario (branch request dialog showing the base).
+
+## P571 Orchestrator tasks: spawn child tasks, passes, chain reads
+
+- Ask: new task kind `orchestrator`. It runs a normal workflow (script, agent and interactive steps), may edit code, and coordinates work across other tasks. Manual trigger only, no cron.
+- Decided (user):
+  - Only orchestrator tasks can spawn tasks, so depth is always 1; children get no spawn tool.
+  - No parallel limit: every spawn waits for a user prompt.
+  - One orchestrator, many passes. A Run action starts the next pass, with an optional message through the stage dialog.
+  - Its own stage handovers are its reference to previous work (newest through the existing handover path, older ones through a read tool). No Memory module.
+  - No wake of the orchestrator when a child finishes; a child's final handover lands in the parent's chain.
+- Planner decides, from code: pass mechanics (a finished task moves back to the first step via `SetTaskStep`; `ResetWorkflow` deletes runs, so not it; verify `SinceJSON`, `syncStatus` and status slots handle it), migration for the parent link (next free number, P569 takes 0092: whichever lands second renumbers), `create_task` tool shape (title, workflow, repos, brief as child's first handover with source `orchestrator`, optional base through the existing `BaseChoice` and `resolveChoice`, not P570's new field), approval prompt kind, read tools (`list_tasks`, `task_chain`), board presentation (card, children grouped, parent links both ways), grant rules (which task kinds carry which tools), wire types and bindings.
+- Streams: confirm no ordering dependency on P570 (P571 must not need P570's `request_branches` field). If one exists, stop and report. Size: if the phase is too large for one implementer, propose `Part 1`/`Part 2` per the numbering rule instead of cutting scope.
+- Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
