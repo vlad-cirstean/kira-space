@@ -305,7 +305,8 @@ README is [`apps/kira-space/README.md`](apps/kira-space/README.md).
   limitations.
 - [`docs/PACKAGING.md`](docs/PACKAGING.md) — building, releasing, install and update.
 - [`docs/DEV_ENVIRONMENT.md`](docs/DEV_ENVIRONMENT.md) — building and testing in a given sandbox.
-- [`docs/HISTORY.md`](docs/HISTORY.md) distills every finished chapter. An open chapter's spec and
+- [`docs/HISTORY.md`](docs/HISTORY.md) indexes the history files in `docs/history/`, which distill every
+  finished chapter. An open chapter's spec and
   phase plans live in `docs/v<n>/`.
 - [`CLAUDE.md`](CLAUDE.md) — the working agreement for changes to this repo; it imports the
   general, repo-independent rules in [`docs/WORKING_AGREEMENT.md`](docs/WORKING_AGREEMENT.md).
