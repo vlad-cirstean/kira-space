@@ -1,0 +1,9 @@
+{
+  "AppService.Info#about": {
+    "appVersion": "0.0.0-dev",
+    "repoUrl": "https://github.com/vlad-cirstean/kira-space"
+  },
+  "args:LinkService.OpenExternal": {
+    "url": "https://github.com/vlad-cirstean/kira-space"
+  }
+}
