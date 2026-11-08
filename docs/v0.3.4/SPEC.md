@@ -4,13 +4,13 @@ Proof images and agent branch bases. Branch `chapter/v0.3.4`, tag `v0.3.4`. Firs
 
 | Phase | Title | Status |
 |---|---|---|
-| P569 | Proof: JPEG screenshots, agent image steps, menu bar entry | Implemented |
-| P570 | Agents choose the base of a requested branch | Implemented |
-| P571 Part 1 | Orchestrator tasks, backend: passes, spawn, chain reads | Implemented |
-| P571 Part 2 | Orchestrator tasks, frontend: kind choice, card, Run pass | Implemented |
-| P572 | About: GitHub link, add an About settings section if none | Implemented |
-| P573 | Split docs/HISTORY.md into files | Implemented |
-| P574 | Close chapter | Planned |
+| P569 | Proof: JPEG screenshots, agent image steps, menu bar entry | Done |
+| P570 | Agents choose the base of a requested branch | Done |
+| P571 Part 1 | Orchestrator tasks, backend: passes, spawn, chain reads | Done |
+| P571 Part 2 | Orchestrator tasks, frontend: kind choice, card, Run pass | Done |
+| P572 | About: GitHub link, add an About settings section if none | Done |
+| P573 | Split docs/HISTORY.md into files | Done |
+| P574 | Close chapter | Done |
 
 P569, P570 and P571 run as parallel streams (own worktree each): P569 owns proof, `dbmcp` proof tools and the proof window menu entry; P570 owns `request_branches` and the ADE base path; P571 owns the orchestrator task kind. Grouping in `plans/batch-P569-P570.md`.
 
@@ -25,7 +25,7 @@ Chapter ends the standard way after the last implementation phase: landing, one 
 - Planner decides: step shape (`view` value, `data` fields), path validation (sandbox, size cap, JPEG signature check), how the window renders an image step, how the existing 32 MiB session cap and 8 MiB HTTP body cap apply, quality value for screenshots, clipboard handling (clipboard holds one image; PNG may stay there if JPEG copy is unsupported, planner verifies).
 - Pointers: `apps/kira-space/internal/dbmcp/proof_tools.go`, `apps/kira-space/internal/proof/`, `apps/kira-space/internal/bridge/proof.go`, `proofshots.go`, `apps/kira-space/frontend/src/studio/proof/` (`screenshot.ts`, `useProofScreenshot.ts`), `docs/ARCHITECTURE.md` "Validation proof (P420)".
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary (CLAUDE.md Tests).
-- Result: Implemented (stream A, branch `stream/p569`).
+- Result: Done (stream A, branch `stream/p569`).
   - Image step: `proof_save` view `image`, `data` `{path}` or `{base64}`, JPEG only. Caps 3071 KiB, 16384 a side, 25 MP; each step validated once and its bytes copied at save. Migration 0092 widens the view CHECK.
   - Window: `ProofImage.vue` draws a data URL image, fit to width, result scroll as view state.
   - Screenshots: save and save all encode JPEG (0.92, opaque background). Copy stays PNG: `ClipboardItem.supports('image/jpeg')` is false in Playwright webkit and chromium. Bridge `SavePng`/`SavePngTo` renamed `SaveJpeg`/`SaveJpegTo`.
@@ -94,3 +94,11 @@ Kind choice in the Add popover (`ade-nw-kind`), task panel switch and card menu;
 ## P574 Close chapter
 
 - Chapter close by hand per CLAUDE.md "Closing a chapter": one Sonnet implementer, no planner, no plan file. History placement (limit 1,500 lines per file): append the v0.3.4 block (about 100 lines) to the newest file `docs/history/06-v2.8.md` (1,185 lines) if `wc -l` afterward is at most 1,500, and set its index range to "v2.8 to v0.3.4"; else open `07-v0.3.4.md` and add an index entry. Follow `docs/HISTORY.md` "Rules for a close".
+
+Result: chapter closed by hand. Statuses P569 to P573 set to Done. Non-UI full run fixed 2 failures: `2da5cdef8` (scope key in the shell menu action slog call), `ecb6e7739` (llmprompts list count for orchestrator prompts). UI suites run in PR CI. Review round 1 found 5 issues, all fixed in `77d8a47b4`, `66683ad8d`, `a65d29bd3`, `29ebef046`:
+- F1: a child's automatic finish added a duplicate child row to the parent chain; now mirrored once.
+- F2: `proof_save` image memory and decode cost uncapped; retention and decode now bounded.
+- F3: path errors acted as an oracle; errors now uniform.
+- F4: `list_tasks` N+1 lookups; batched, child run reads batched.
+- F5: archived child step name missing in `list_tasks`; now named.
+History entry in `docs/history/06-v2.8.md`, chapter files removed.
