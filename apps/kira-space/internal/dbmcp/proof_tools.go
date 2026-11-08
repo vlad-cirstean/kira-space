@@ -123,7 +123,7 @@ func (s *Server) addProofTools(srv *mcp.Server, src llmprompts.Source) {
 	saveSch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[proofSaveArgs](src, llmprompts.DbmcpToolProofSave.ID(), nil), "name", "steps")
 	saveSch.Properties["steps"].MinItems = jsonschema.Ptr(1)
 	step := saveSch.Properties["steps"].Items
-	step.Properties["view"].Enum = []any{proof.ViewTable, proof.ViewDocument, proof.ViewKeyValue, proof.ViewChart, proof.ViewDiagram}
+	step.Properties["view"].Enum = []any{proof.ViewTable, proof.ViewDocument, proof.ViewKeyValue, proof.ViewChart, proof.ViewDiagram, proof.ViewImage}
 	step.Properties["language"].Enum = []any{"sql", "json", "shell", "text"}
 	step.Properties["keepOrdinal"].Minimum = jsonschema.Ptr(1.0)
 	step.Properties["replacesOrdinal"].Minimum = jsonschema.Ptr(1.0)

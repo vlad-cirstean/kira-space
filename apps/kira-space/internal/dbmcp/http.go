@@ -99,8 +99,9 @@ func clientFromUserAgent(ua string) string {
 	return out
 }
 
-// maxRequestBytes caps one MCP request body: a proof step carries up to 4 MiB of data plus the
-// JSON-RPC envelope; every other tool sends kilobytes.
+// maxRequestBytes caps one MCP request body: a proof step carries up to 4 MiB of data, inline
+// base64 images included, plus the JSON-RPC envelope; every other tool sends kilobytes. An image
+// step given a path bypasses this cap.
 const maxRequestBytes = 8 << 20
 
 func limitBody(next http.Handler) http.Handler {

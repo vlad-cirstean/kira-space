@@ -651,7 +651,7 @@ CREATE TABLE "proof_steps" (
   session_id TEXT NOT NULL,
   rev INTEGER NOT NULL CHECK (rev >= 0),
   ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
-  view TEXT NOT NULL CHECK (view IN ('table', 'document', 'keyvalue', 'chart', 'diagram')),
+  view TEXT NOT NULL CHECK (view IN ('table', 'document', 'keyvalue', 'chart', 'diagram', 'image')),
   diff TEXT NOT NULL DEFAULT 'added' CHECK (diff IN ('added', 'unchanged', 'changed')),
   payload_bytes INTEGER NOT NULL CHECK (payload_bytes >= 0),
   origin_ordinal INTEGER CHECK (origin_ordinal IS NULL OR origin_ordinal >= 0),
@@ -681,7 +681,7 @@ CREATE TABLE "proof_view_state" (
   updated_at INTEGER NOT NULL CHECK (updated_at >= 0),
   state TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(state)),
   PRIMARY KEY (session_id, rev, ordinal),
-  FOREIGN KEY (session_id, rev, ordinal) REFERENCES proof_steps (session_id, rev, ordinal) ON DELETE CASCADE
+  FOREIGN KEY (session_id, rev, ordinal) REFERENCES "proof_steps" (session_id, rev, ordinal) ON DELETE CASCADE
 ) STRICT;
 
 CREATE TABLE schema_version (version INTEGER NOT NULL);

@@ -39,6 +39,7 @@ const (
 	ViewKeyValue = "keyvalue"
 	ViewChart    = "chart"
 	ViewDiagram  = "diagram"
+	ViewImage    = "image"
 )
 
 // InvalidError is a caller-correctable validation failure; the message names the field and limit.
@@ -143,8 +144,10 @@ func (in StepInput) validate() (checked, bool, error) {
 		payload, err = checkChart(in.Data)
 	case ViewDiagram:
 		payload, err = checkDiagram(in.Data)
+	case ViewImage:
+		payload, err = checkImage(in.Data)
 	default:
-		return checked{}, false, invalid("view must be one of table, document, keyvalue, chart, diagram")
+		return checked{}, false, invalid("view must be one of table, document, keyvalue, chart, diagram, image")
 	}
 	if err != nil {
 		return checked{}, false, err

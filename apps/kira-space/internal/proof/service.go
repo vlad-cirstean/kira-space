@@ -226,6 +226,11 @@ func (s *Service) AddStep(in StepInput) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	return s.addChecked(in.DraftID, in, c, keep)
+}
+
+// addChecked appends a step that validate already accepted, so a file-backed step is read once.
+func (s *Service) addChecked(draftID string, in StepInput, c checked, keep bool) (int, error) {
 	step := repos.ProofNewStep{
 		Description: c.Description, Query: c.Query, Language: c.Language, Source: c.Source, View: c.View, Payload: c.Payload,
 		Replaces: in.ReplacesOrdinal,
@@ -233,7 +238,7 @@ func (s *Service) AddStep(in StepInput) (int, error) {
 	if keep {
 		step.Keep = in.KeepOrdinal
 	}
-	return s.d.Repo.AddStep(in.DraftID, step)
+	return s.d.Repo.AddStep(draftID, step)
 }
 
 // CloseResult answers CloseSession and Save.
@@ -302,13 +307,20 @@ func (s *Service) Save(in SaveInput) (CloseResult, error) {
 	if len(in.Steps) < 1 || len(in.Steps) > repos.ProofMaxSteps {
 		return CloseResult{}, invalid("steps must hold 1-%d steps", repos.ProofMaxSteps)
 	}
+	type vetted struct {
+		c    checked
+		keep bool
+	}
+	vet := make([]vetted, len(in.Steps))
 	for i, st := range in.Steps {
 		if !edit && (st.KeepOrdinal != nil || st.ReplacesOrdinal != nil) {
 			return CloseResult{}, stepErr(i, invalid("keepOrdinal and replacesOrdinal only apply when a reason edits an existing proof"))
 		}
-		if _, _, err := st.validate(); err != nil {
+		c, keep, err := st.validate()
+		if err != nil {
 			return CloseResult{}, stepErr(i, err)
 		}
+		vet[i] = vetted{c, keep}
 	}
 	var draft string
 	if edit {
@@ -331,8 +343,7 @@ func (s *Service) Save(in SaveInput) (CloseResult, error) {
 		return CloseResult{}, err
 	}
 	for i, st := range in.Steps {
-		st.DraftID = draft
-		if _, err := s.AddStep(st); err != nil {
+		if _, err := s.addChecked(draft, st, vet[i].c, vet[i].keep); err != nil {
 			return fail(stepErr(i, err))
 		}
 	}
