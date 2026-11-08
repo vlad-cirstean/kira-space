@@ -183,7 +183,7 @@ func TestRepointText(t *testing.T) {
 	for p, want := range map[string]bool{
 		"scripts/docshistory/parse_test.go":                                           true,
 		"apps/kira-space/tests/claude/testdata/memory-eval/P285-corpus/manifest.json": true,
-		"docs/history/06-v0.2.10.md":                                                  true,
+		"docs/history/03-v0.md":                                                       true,
 		"src/x.go":                                                                    false,
 	} {
 		if skipRepoint(p) != want {

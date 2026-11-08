@@ -43,7 +43,8 @@ Chapter's last phase closes it by hand. Its Sonnet implementer writes the close 
    `Source: docs/<ch>/ at <commit>. N phases.` with the true row count, then one
    `### <ch> <id> (Done)` heading per `SPEC.md` row in table order, distilled from each row's Result.
    Fix links to the chapter by hand. History files have no line limit. New history file starts only
-   on user request: next number, first chapter in its name, index entry added. Agents never start a
+   for a new version series (v3 opens `04-v3.md`), on user request: next number, series in its name,
+   index entry added. Agents never start a
    file or move blocks between files unasked. A close never splits its block across files. Commit.
 3. `git rm -r docs/<ch>/` (and `docs/history-runs/` if it exists). Commit.
 4. Push, then open the PR from `chapter/v<version>` to `main` (command in `docs/DEV_ENVIRONMENT.md`).
