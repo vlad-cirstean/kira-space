@@ -59,6 +59,7 @@ export const TASK_ACTION_ICON: Record<TaskActionKind, string> = {
   approve: 'check',
   retry: 'debug-restart',
   archive: 'archive',
+  nextPass: 'run-all',
 };
 
 export const BRANCH_ACTION_ICON: Record<BranchActionKind, string> = {

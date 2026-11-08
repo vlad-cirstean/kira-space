@@ -8755,6 +8755,10 @@
         "notMerging": {
           "label": "Not merging"
         },
+        "passDone": {
+          "label": "Pass done",
+          "tooltip": "This pass is finished; start the next one when you are ready"
+        },
         "rebaseList": {
           "label": "Rebase {names}"
         },
@@ -8803,6 +8807,10 @@
           "finish": {
             "label": "Finish",
             "tooltip": "{step} is done; finish the workflow"
+          },
+          "nextPass": {
+            "label": "Run next pass",
+            "tooltip": "Start the next pass at {step}"
           },
           "resume": {
             "label": "Resume {step}",
@@ -10395,6 +10403,14 @@
           "hint": "The next stage’s agent and sessions read these. Leave empty to pass nothing on.",
           "label": "Handover notes",
           "placeholder": "What the next stage needs to know"
+        },
+        "passMessage": {
+          "hint": "Optional. The first stage reads it with the last pass’s final handover.",
+          "label": "Message for the next pass",
+          "placeholder": "What this pass should focus on"
+        },
+        "passTitle": {
+          "title": "Next pass · {task}"
         },
         "sessions": {
           "close": {
