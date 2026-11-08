@@ -3,12 +3,15 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Label } from '@theme/components/ui/label';
 import { Switch } from '@theme/components/ui/switch';
+import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { errorText } from '@workbench/bridge/codedError';
 import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, ref } from 'vue';
 import AdeChip from '../AdeChip.vue';
+import AdeTip from '../AdeTip.vue';
+import { orchestratorToggle } from '../board/kind';
 import { statusWhy, taskPatch } from '../board/panelFacts';
 import type { CardModel } from '../plan/usePlanModel';
 import { useUpdateTask } from '../queries';
@@ -56,6 +59,9 @@ async function saveEst(value: string): Promise<void> {
   }
 }
 const spanDays = computed(() => props.card.entry.span);
+
+// ---- kind
+const toggle = computed(() => orchestratorToggle(props.card));
 </script>
 
 <template>
@@ -102,13 +108,41 @@ const spanDays = computed(() => props.card.entry.span);
             t('space.ade.board.notMerging.label')
           }}</Label>
         </template>
-        <Switch
-          id="ade-task-parked"
-          :model-value="card.parked"
-          data-testid="ade-task-parked"
-          @update:model-value="(v: boolean) => write({ kind: v ? 'parked' : 'task' })"
-        />
+        <AdeTip :text="card.orchestrator ? t('space.ade.orchestrator.parkRefused.tooltip') : ''">
+          <TooltipDisabledTrigger :disabled="card.orchestrator">
+            <Switch
+              id="ade-task-parked"
+              :model-value="card.parked"
+              :disabled="card.orchestrator"
+              data-testid="ade-task-parked"
+              @update:model-value="(v: boolean) => write({ kind: v ? 'parked' : 'task' })"
+            />
+          </TooltipDisabledTrigger>
+        </AdeTip>
         <span class="truncate" :class="rowMeta">{{ t('space.ade.taskTab.notMerging.hint') }}</span>
+      </AdeRow>
+      <AdeRow v-if="!review" term data-testid="ade-task-orchestrator-row">
+        <template #label>
+          <Label
+            for="ade-task-orchestrator"
+            class="text-kira-sm font-normal text-muted-foreground"
+            >{{
+              t('space.ade.orchestrator.badge.label')
+            }}</Label
+          >
+        </template>
+        <AdeTip :text="toggle.why">
+          <TooltipDisabledTrigger :disabled="toggle.disabled">
+            <Switch
+              id="ade-task-orchestrator"
+              :model-value="card.orchestrator"
+              :disabled="toggle.disabled"
+              data-testid="ade-task-orchestrator"
+              @update:model-value="(v: boolean) => write({ kind: v ? 'orchestrator' : 'task' })"
+            />
+          </TooltipDisabledTrigger>
+        </AdeTip>
+        <span class="truncate" :class="rowMeta">{{ t('space.ade.orchestrator.switch.hint') }}</span>
       </AdeRow>
     </dl>
     <AdeRowDetail v-if="fieldError">

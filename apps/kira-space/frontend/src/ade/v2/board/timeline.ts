@@ -17,6 +17,7 @@ import {
   parseEst,
   spanDays,
 } from './calendar';
+import { isWorkKind } from './kind';
 import { shelfOf } from './shelf';
 
 // Pure port of mockup v2 `renderVals()` lines 1527-1572 (task order) and 1864-1985 (first-10 cap,
@@ -435,7 +436,7 @@ export function buildTimeline(input: TimelineInput): TimelineView {
   for (const e of seq) entries.set(e.taskId, e);
 
   const mergeOrder = new Map<string, number>();
-  for (const e of seq) if (e.kind === 'task') mergeOrder.set(e.taskId, mergeOrder.size + 1);
+  for (const e of seq) if (isWorkKind(e.kind)) mergeOrder.set(e.taskId, mergeOrder.size + 1);
 
   const branchRows = makeBranchRows(graph, input.repoLabel);
   const after = computeAfter(seq, branchRows, graph);
@@ -531,7 +532,7 @@ export function rippleOf(
   const roots: string[] = [];
   if (selection.kind === 'task') {
     const t = graph.byTask.get(selection.id);
-    if (t?.kind !== 'task') return { branchIds: [], taskIds: [], text: '—', tone: 'grey' };
+    if (!t || !isWorkKind(t.kind)) return { branchIds: [], taskIds: [], text: '—', tone: 'grey' };
     for (const id of t.branchIds) if (graph.byBranch.get(id)?.kind === 'mine') roots.push(id);
   } else {
     const b = graph.byBranch.get(selection.id);

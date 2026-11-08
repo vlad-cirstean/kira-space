@@ -50,6 +50,7 @@ test('New task lands today without repos and selects it', async ({ relaunch }) =
     workflowId: '',
     bases: {},
     day: '2026-09-22',
+    kind: 'task',
   });
   await expect(page.locator('[data-testid="ade-add-popover"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="ade-task"][data-task-id="T_deps"]')).toHaveAttribute(

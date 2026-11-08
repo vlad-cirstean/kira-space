@@ -111,6 +111,12 @@ export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
             patch: taskPatch({ kind: cmd.parked ? 'parked' : 'task' }),
           });
           return;
+        case 'orchestrator':
+          await update.mutateAsync({
+            taskId,
+            patch: taskPatch({ kind: cmd.on ? 'orchestrator' : 'task' }),
+          });
+          return;
         case 'makeTask':
           await update.mutateAsync({ taskId, patch: taskPatch({ kind: 'task' }) });
           return;

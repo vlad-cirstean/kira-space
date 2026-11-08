@@ -15,6 +15,7 @@ import { useSettingsStore } from '../../../state/settings';
 import AdeForcePushDialog from '../AdeForcePushDialog.vue';
 import { dayLabel, firstWork, isoToOffset, LATER, nextWork } from '../board/calendar';
 import { dropVerdict, shiftPlanArgs } from '../board/dropPlan';
+import { isWorkKind } from '../board/kind';
 import { dayMenuFor } from '../board/menu';
 import { refreshNote, remoteErrorText } from '../board/panelFacts';
 import { ITEM_LIMIT, type TimelineBand, WINDOW_DAYS } from '../board/timeline';
@@ -189,7 +190,10 @@ const dayOff = ref<{ title: string; text: string; yes: string; ids: string[]; to
 
 function startIdsOf(band: TimelineBand): string[] {
   const entries = model.value?.view.entries;
-  return band.taskIds.filter((id) => entries?.get(id)?.kind === 'task');
+  return band.taskIds.filter((id) => {
+    const kind = entries?.get(id)?.kind;
+    return kind !== undefined && isWorkKind(kind);
+  });
 }
 
 function onDayMenu(band: TimelineBand, ev: MouseEvent): void {

@@ -9422,6 +9422,39 @@
           "aria": "Empty checklist item"
         }
       },
+      "orchestrator": {
+        "badge": {
+          "label": "Orchestrator"
+        },
+        "kind": {
+          "orchestrator": {
+            "hint": "Spawns child tasks and works in passes. You start each pass."
+          }
+        },
+        "menu": {
+          "makeOrchestrator": {
+            "label": "Make orchestrator"
+          },
+          "plainTask": {
+            "label": "Make plain task"
+          }
+        },
+        "parkRefused": {
+          "tooltip": "An orchestrator can’t be parked; switch it back to a task first"
+        },
+        "switch": {
+          "hasChildren": {
+            "tooltip": "This orchestrator has child tasks, archived ones included"
+          },
+          "hasParent": {
+            "tooltip": "An orchestrator spawned this task, so it can’t spawn tasks"
+          },
+          "hint": "Spawns child tasks and works in passes you start.",
+          "notTask": {
+            "tooltip": "Only a task can become an orchestrator"
+          }
+        }
+      },
       "outcome": {
         "back": {
           "status": "Sent back"
