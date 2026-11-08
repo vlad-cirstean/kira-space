@@ -247,6 +247,15 @@ func (b *TaskBoard) DeclareRepos(ctx context.Context, taskID string, refs []stri
 // checkNewBranchName returns the refusal text for a name git rejects or one a new branch must never
 // take, "" when the name is fine.
 func (b *TaskBoard) checkNewBranchName(ctx context.Context, rec model.CodeRepo, name string) (string, error) {
+	if refusal, err := b.branchNameRefusal(ctx, rec, name); refusal != "" || err != nil {
+		return refusal, err
+	}
+	return b.reservedBranchText(ctx, rec.ID, name)
+}
+
+// branchNameRefusal returns the refusal text for a name git rejects, "" when the name is valid. The repo's
+// main and integration branches are valid names.
+func (b *TaskBoard) branchNameRefusal(ctx context.Context, rec model.CodeRepo, name string) (string, error) {
 	switch {
 	case name == "" || strings.TrimSpace(name) != name:
 		return "The branch name is empty or has leading or trailing spaces.", nil
@@ -266,7 +275,7 @@ func (b *TaskBoard) checkNewBranchName(ctx context.Context, rec model.CodeRepo, 
 	if !valid {
 		return fmt.Sprintf("%q is not a valid git branch name.", name), nil
 	}
-	return b.reservedBranchText(ctx, rec.ID, name)
+	return "", nil
 }
 
 // reservedBranchText says why a branch name belongs to the repo itself (its main or an integration
@@ -327,7 +336,7 @@ func (b *TaskBoard) createBranch(ctx context.Context, sb model.AdeTaskBranch, ni
 }
 
 func (b *TaskBoard) branchInfo(sb model.AdeTaskBranch, nick, worktree string) agentmcp.BranchInfo {
-	info := agentmcp.BranchInfo{Repo: nick, Branch: sb.Name, Worktree: worktree, Setup: b.setupInfo(sb, worktree)}
+	info := agentmcp.BranchInfo{Repo: nick, Branch: sb.Name, Base: sb.Base, Worktree: worktree, Setup: b.setupInfo(sb, worktree)}
 	switch info.Setup.State {
 	case model.AdeSetupRunning:
 		info.Next = "The worktree is still preparing. Call task_info with repo, branch and waitSeconds, then edit in " + worktree + "."

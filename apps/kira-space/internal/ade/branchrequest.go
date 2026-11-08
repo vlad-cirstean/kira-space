@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/approvals"
@@ -457,16 +458,18 @@ type requestSlot struct {
 	codeRepoID string
 	nick       string
 	branch     string
+	asked      string // base the agent asked for, trimmed; "" for none
+	note       string // prefix for Next when the branch exists with another base
 	result     *agentmcp.RequestedBranch
 	item       *adewire.BranchRequestItem
 }
 
-func noBranchInfo(nick, branch, next string) agentmcp.BranchInfo {
-	return agentmcp.BranchInfo{Repo: nick, Branch: branch, Setup: agentmcp.SetupInfo{State: "none"}, Next: next}
+func noBranchInfo(nick, branch, base, next string) agentmcp.BranchInfo {
+	return agentmcp.BranchInfo{Repo: nick, Branch: branch, Base: base, Setup: agentmcp.SetupInfo{State: "none"}, Next: next}
 }
 
-func failedBranch(nick, branch, text string) *agentmcp.RequestedBranch {
-	return &agentmcp.RequestedBranch{BranchInfo: noBranchInfo(nick, branch, text), Outcome: agentmcp.BranchFailed}
+func failedBranch(nick, branch, base, text string) *agentmcp.RequestedBranch {
+	return &agentmcp.RequestedBranch{BranchInfo: noBranchInfo(nick, branch, base, text), Outcome: agentmcp.BranchFailed}
 }
 
 func waitText(d time.Duration) string {
@@ -552,18 +555,21 @@ func (b *TaskBoard) planBranchRequest(ctx context.Context, call agentmcp.SpaceCa
 	}
 	slots := make([]requestSlot, 0, len(specs))
 	var items []adewire.BranchRequestItem
-	seen := map[string]bool{}
+	seen := map[string]string{} // repo and branch to the first entry's base
 	for i, sp := range specs {
 		id, err := resolveRepoRef(sp.Repo, cands, "registered")
 		if err != nil {
 			return nil, nil, err
 		}
 		key := id + "\x00" + sp.Branch
-		if seen[key] {
+		if base, dup := seen[key]; dup {
+			if base != sp.Base {
+				return nil, nil, agentmcp.ToolError(fmt.Sprintf("Branch %s of %s is asked twice with different bases.", sp.Branch, sp.Repo))
+			}
 			continue
 		}
-		seen[key] = true
-		slot, err := b.planItem(ctx, tc, fmt.Sprintf("i%d", i), id, sp.Branch, cfgs)
+		seen[key] = sp.Base
+		slot, err := b.planItem(ctx, tc, fmt.Sprintf("i%d", i), id, sp.Branch, sp.Base, cfgs)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -604,8 +610,9 @@ func taskRepoRows(tc *taskCtx, codeRepoID, branch string) (named, draft *model.A
 
 const outsideTaskText = "Branch %s exists outside this task. Pick another name or ask the user to attach it."
 
-// planItem decides one requested branch: failed, already existing, or an item for the user.
-func (b *TaskBoard) planItem(ctx context.Context, tc *taskCtx, itemID, codeRepoID, branch string, cfgs []model.AdeRepoConfig) (requestSlot, error) {
+// planItem decides one requested branch: failed, already existing, or an item for the user. asked is the
+// base the agent chose, "" for none.
+func (b *TaskBoard) planItem(ctx context.Context, tc *taskCtx, itemID, codeRepoID, branch, asked string, cfgs []model.AdeRepoConfig) (requestSlot, error) {
 	nick := tc.nick[codeRepoID]
 	if nick == "" {
 		for _, c := range cfgs {
@@ -614,42 +621,80 @@ func (b *TaskBoard) planItem(ctx context.Context, tc *taskCtx, itemID, codeRepoI
 			}
 		}
 	}
-	slot := requestSlot{id: itemID, codeRepoID: codeRepoID, nick: nick, branch: branch}
+	slot := requestSlot{id: itemID, codeRepoID: codeRepoID, nick: nick, branch: branch, asked: asked}
 	rec, err := b.deps.CodeRepos.Get(codeRepoID)
 	if err != nil {
 		return slot, err
 	}
 	if rec == nil {
-		slot.result = failedBranch(nick, branch, fmt.Sprintf("Repo %s is no longer registered.", nick))
+		slot.result = failedBranch(nick, branch, asked, fmt.Sprintf("Repo %s is no longer registered.", nick))
 		return slot, nil
 	}
 	named, draft := taskRepoRows(tc, codeRepoID, branch)
-	item := adewire.BranchRequestItem{ID: itemID, CodeRepoID: codeRepoID, Repo: nick, Kind: branchKindWorktree, Branch: branch}
 	if named != nil {
-		if named.Kind != model.AdeBranchKindMine {
-			slot.result = failedBranch(nick, branch, fmt.Sprintf("The branch %s of %s on this task is not yours to create.", branch, nick))
-			return slot, nil
-		}
-		path, err := b.worktreeOf(ctx, *named)
+		return b.planNamed(ctx, slot, itemID, *named)
+	}
+	return b.planNew(ctx, tc, slot, *rec, draft)
+}
+
+// planNamed decides a branch the task already has a row for. Its base stays as it is; a different asked
+// base is reported in Next, never refused, so a retry of the same call stays idempotent.
+func (b *TaskBoard) planNamed(ctx context.Context, slot requestSlot, itemID string, named model.AdeTaskBranch) (requestSlot, error) {
+	item := adewire.BranchRequestItem{ID: itemID, CodeRepoID: slot.codeRepoID, Repo: slot.nick, Kind: branchKindWorktree, Branch: slot.branch}
+	if named.Kind != model.AdeBranchKindMine {
+		slot.result = failedBranch(slot.nick, slot.branch, slot.asked, fmt.Sprintf("The branch %s of %s on this task is not yours to create.", slot.branch, slot.nick))
+		return slot, nil
+	}
+	if slot.asked != "" {
+		note, err := b.keptBaseNote(ctx, named, slot.asked)
 		if err != nil {
 			return slot, err
 		}
-		if path != "" {
-			slot.result = &agentmcp.RequestedBranch{BranchInfo: b.branchInfo(*named, nick, path), Outcome: agentmcp.BranchExisting}
-			return slot, nil
-		}
-		slot.item = &item
+		slot.note = note
+	}
+	path, err := b.worktreeOf(ctx, named)
+	if err != nil {
+		return slot, err
+	}
+	if path != "" {
+		slot.result = &agentmcp.RequestedBranch{BranchInfo: b.branchInfo(named, slot.nick, path), Outcome: agentmcp.BranchExisting}
+		slot.result.Next = slot.note + slot.result.Next
 		return slot, nil
 	}
-	refusal, err := b.checkNewBranchName(ctx, *rec, branch)
+	slot.item = &item
+	return slot, nil
+}
+
+// keptBaseNote is the Next prefix for an existing branch whose base differs from asked, "" when they match.
+func (b *TaskBoard) keptBaseNote(ctx context.Context, named model.AdeTaskBranch, asked string) (string, error) {
+	entry, err := b.openRepo(ctx, named.CodeRepoID)
+	if err != nil {
+		return "", err
+	}
+	sc, err := b.baseCtxFor(ctx, entry, named.CodeRepoID)
+	if err != nil {
+		return "", err
+	}
+	current := sc.resolveBase(named).name
+	if current == asked {
+		return "", nil
+	}
+	return fmt.Sprintf("This branch exists and keeps its base %s; base %s was not applied. Ask the user to change it if needed. ", current, asked), nil
+}
+
+// planNew decides a branch with no row yet: name and base checks, then an item for the user.
+func (b *TaskBoard) planNew(ctx context.Context, tc *taskCtx, slot requestSlot, rec model.CodeRepo, draft *model.AdeTaskBranch) (requestSlot, error) {
+	nick, branch, asked := slot.nick, slot.branch, slot.asked
+	item := adewire.BranchRequestItem{ID: slot.id, CodeRepoID: slot.codeRepoID, Repo: nick, Kind: branchKindWorktree, Branch: branch}
+	refusal, err := b.checkNewBranchName(ctx, rec, branch)
 	if err != nil {
 		return slot, err
 	}
 	if refusal != "" {
-		slot.result = failedBranch(nick, branch, refusal)
+		slot.result = failedBranch(nick, branch, asked, refusal)
 		return slot, nil
 	}
-	entry, err := b.openRepo(ctx, codeRepoID)
+	entry, err := b.openRepo(ctx, slot.codeRepoID)
 	if err != nil {
 		return slot, err
 	}
@@ -658,24 +703,82 @@ func (b *TaskBoard) planItem(ctx context.Context, tc *taskCtx, itemID, codeRepoI
 		return slot, err
 	}
 	if branchExists(inv, branch) {
-		slot.result = failedBranch(nick, branch, fmt.Sprintf(outsideTaskText, branch))
+		slot.result = failedBranch(nick, branch, asked, fmt.Sprintf(outsideTaskText, branch))
 		return slot, nil
 	}
-	base := model.AdeTaskBranch{TaskID: tc.task.ID, CodeRepoID: codeRepoID, Kind: model.AdeBranchKindMine}
+	base := model.AdeTaskBranch{TaskID: tc.task.ID, CodeRepoID: slot.codeRepoID, Kind: model.AdeBranchKindMine}
 	if draft != nil {
 		base = *draft
+	}
+	if asked != "" {
+		refusal, err := b.baseNameRefusal(ctx, rec, asked)
+		if err != nil {
+			return slot, err
+		}
+		if refusal == "" {
+			var t baseTarget
+			if t, refusal, err = b.agentBase(ctx, entry, slot.codeRepoID, nick, draft, asked); err != nil {
+				return slot, err
+			}
+			base.Base, base.BaseBranchID = t.base, t.baseBranchID
+		}
+		if refusal != "" {
+			slot.result = failedBranch(nick, branch, asked, refusal)
+			return slot, nil
+		}
 	}
 	_, display, refusal, err := b.newBranchBase(ctx, entry, base)
 	if err != nil {
 		return slot, err
 	}
 	if refusal != "" {
-		slot.result = failedBranch(nick, branch, "Cannot create a branch here: "+refusal+".")
+		slot.result = failedBranch(nick, branch, asked, "Cannot create a branch here: "+refusal+".")
 		return slot, nil
 	}
 	item.Kind, item.Base = branchKindBranch, display
 	slot.item = &item
 	return slot, nil
+}
+
+// baseNameRefusal says why asked cannot be a git branch name, "" when it can.
+func (b *TaskBoard) baseNameRefusal(ctx context.Context, rec model.CodeRepo, asked string) (string, error) {
+	refusal, err := b.branchNameRefusal(ctx, rec, asked)
+	if refusal == "" || err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Cannot use base %s: %s", asked, refusal), nil
+}
+
+// agentBase resolves the base an agent asked for as the base of the repo's waiting row draft (nil when the
+// task has none). refusal is the text for the agent; err is a git or DB fault.
+func (b *TaskBoard) agentBase(ctx context.Context, entry *gitsession.RepoEntry, codeRepoID, nick string, draft *model.AdeTaskBranch, asked string) (t baseTarget, refusal string, err error) {
+	sc, err := b.baseCtxFor(ctx, entry, codeRepoID)
+	if err != nil {
+		return baseTarget{}, "", err
+	}
+	t, err = b.resolveChoice(sc, draft, nick, adewire.BaseChoice{Ref: asked})
+	switch {
+	case errors.Is(err, ErrInvalidInput):
+		text := fmt.Sprintf("Cannot use base %s: %s.", asked, trimInvalid(err))
+		if strings.Contains(text, " not found in ") {
+			text += " Give an existing branch; a branch asked for in this same call must be created first."
+		}
+		return baseTarget{}, text, nil
+	case err != nil:
+		return baseTarget{}, "", err
+	case t.reason == baseParentDraft:
+		return baseTarget{}, fmt.Sprintf("Cannot use base %s: it is not created yet.", asked), nil
+	}
+	if draft != nil {
+		set := draft.Base
+		if set == sc.mainName && draft.BaseBranchID == "" {
+			set = ""
+		}
+		if (set != "" || draft.BaseBranchID != "") && (set != t.base || draft.BaseBranchID != t.baseBranchID) {
+			return baseTarget{}, fmt.Sprintf("The task's %s branch starts from %s, set by the user. Omit base, or use %s.", nick, set, set), nil
+		}
+	}
+	return t, "", nil
 }
 
 // callSource says who asks: a step run, a session, or an automation.
@@ -752,10 +855,13 @@ func (b *TaskBoard) finishBranchRequest(ctx context.Context, call agentmcp.Space
 				return
 			}
 			if err != nil {
-				s.result = failedBranch(s.nick, s.branch, toolMessage(err))
+				s.result = failedBranch(s.nick, s.branch, s.item.Base, toolMessage(err))
 				return
 			}
 			s.result = b.createApproved(ctx, tc, s)
+			if s.result.Outcome == agentmcp.BranchCreated || s.result.Outcome == agentmcp.BranchExisting {
+				s.result.Next = s.note + s.result.Next
+			}
 		}
 	}
 	for i := range slots {
@@ -770,7 +876,7 @@ func (b *TaskBoard) finishBranchRequest(ctx context.Context, call agentmcp.Space
 const deniedText = "The user declined this branch. Do not create it with git; continue without it or ask the user."
 
 func outcomeBranch(s *requestSlot, outcome, next string) *agentmcp.RequestedBranch {
-	return &agentmcp.RequestedBranch{BranchInfo: noBranchInfo(s.nick, s.item.Branch, next), Outcome: outcome}
+	return &agentmcp.RequestedBranch{BranchInfo: noBranchInfo(s.nick, s.item.Branch, s.item.Base, next), Outcome: outcome}
 }
 
 func toolMessage(err error) string {
@@ -782,24 +888,48 @@ func toolMessage(err error) string {
 }
 
 // createApproved re-reads the task rows, since the task may have changed during the wait, and creates the
-// branch: in the repo's waiting row when it has one, else in a new row.
+// branch: in the repo's waiting row when it has one, else in a new row. A base the agent asked for is
+// resolved again and stored on the row first; the user approved it, so a failed start leaves it there.
 func (b *TaskBoard) createApproved(ctx context.Context, tc *taskCtx, s *requestSlot) *agentmcp.RequestedBranch {
 	named, draft := taskRepoRows(tc, s.codeRepoID, s.branch)
 	switch {
 	case named != nil:
 		return b.createFor(ctx, s, *named)
 	case s.item.Kind == branchKindWorktree:
-		return failedBranch(s.nick, s.branch, fmt.Sprintf("Branch %s is no longer on this task.", s.branch))
-	case draft != nil:
+		return failedBranch(s.nick, s.branch, s.item.Base, fmt.Sprintf("Branch %s is no longer on this task.", s.branch))
+	}
+	var t baseTarget
+	if s.asked != "" {
+		entry, err := b.openRepo(ctx, s.codeRepoID)
+		if err == nil {
+			var refusal string
+			if t, refusal, err = b.agentBase(ctx, entry, s.codeRepoID, s.nick, draft, s.asked); refusal != "" {
+				return failedBranch(s.nick, s.branch, s.item.Base, refusal)
+			}
+		}
+		if err != nil {
+			slog.Warn("ade: resolve requested base", "scope", "ade", "repo", s.codeRepoID, "err", err)
+			return failedBranch(s.nick, s.branch, s.item.Base, "Kira Space could not resolve the base of this branch.")
+		}
+	}
+	if draft != nil {
+		if s.asked != "" {
+			if err := b.deps.Tasks.SetBranchBase(draft.ID, t.base, t.baseBranchID, ""); err != nil {
+				slog.Warn("ade: store requested base", "scope", "ade", "repo", s.codeRepoID, "err", err)
+				return failedBranch(s.nick, s.branch, s.item.Base, "Kira Space could not store the base of this branch.")
+			}
+			draft.Base, draft.BaseBranchID = t.base, t.baseBranchID
+		}
 		return b.createFor(ctx, s, *draft)
 	}
 	sb, err := b.deps.Tasks.AddBranch(model.AdeTaskBranch{
 		ID: ids.NewID(), TaskID: tc.task.ID, CodeRepoID: s.codeRepoID, Kind: model.AdeBranchKindMine,
+		Base: t.base, BaseBranchID: t.baseBranchID,
 		AddedAt: b.deps.Now().UnixMilli(), Origin: model.AdeBranchOriginAgent,
 	})
 	if err != nil {
 		slog.Warn("ade: add requested branch", "scope", "ade", "repo", s.codeRepoID, "err", err)
-		return failedBranch(s.nick, s.branch, "Kira Space could not add this branch to the task.")
+		return failedBranch(s.nick, s.branch, s.item.Base, "Kira Space could not add this branch to the task.")
 	}
 	return b.createFor(ctx, s, sb)
 }
@@ -809,10 +939,10 @@ func (b *TaskBoard) createFor(ctx context.Context, s *requestSlot, sb model.AdeT
 	if err != nil {
 		var te agentmcp.ToolError
 		if errors.As(err, &te) {
-			return failedBranch(s.nick, sb.Name, te.Error())
+			return failedBranch(s.nick, sb.Name, s.item.Base, te.Error())
 		}
 		slog.Warn("ade: create requested branch", "scope", "ade", "repo", s.codeRepoID, "err", err)
-		return failedBranch(s.nick, sb.Name, "Kira Space could not create this branch.")
+		return failedBranch(s.nick, sb.Name, s.item.Base, "Kira Space could not create this branch.")
 	}
 	return &rb
 }
