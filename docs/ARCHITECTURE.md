@@ -1344,7 +1344,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 
 - Settings sections and leaves are camelCase and new booleans are positive; api.disableCookieJar keeps its name because renaming it rewrites user data.
 - Inside the Settings dialog every leaf is draft plus Save; a control outside the dialog applies at once through patchSettings.
-- SettingsShell in both apps orders panes with Appearance first and Advanced last.
+- SettingsShell orders panes with Appearance first; Advanced, Experimental, then About last.
 - Settings field anatomy is a label row with reset button, the control, FieldError, then description; booleans are Switch.
 - Shared settings fields live in packages/workbench/src/settings/fields/ (e.g. FontFamilyField used in both Appearance panes); rowColoring is Studio-only.
 - Adding a setting requires: Go model, default and validation; leaf upsert; zod schema and default in state/settingsDomain.ts; pane field; catalog keys; reset button; flow test.
@@ -1660,6 +1660,8 @@ packaged app does not), where the identical application code runs unchanged over
 - The renderer never sends or receives a URL: UpdateService.Status, Check, InstallUpdate and CancelInstall are all nullary, and Go decides where the script comes from and what it does.
 - scripts/verify-packaging.sh check S10 (scoped to apps/, packages/, internal/) enforces that no app code downloads a release asset itself, and only scripts/install.sh may. S11 pins the one raw.githubusercontent.com reference and the two sides' shared contract marker.
 - The repo was renamed from vlad-cirstean/kira-studio to vlad-cirstean/kira-space in v0.3.3. Builds up to v0.3.2 still fetch the old raw.githubusercontent.com and api.github.com URLs; GitHub's rename redirect serves them only while no new repo takes the old name, so never recreate vlad-cirstean/kira-studio.
+- `appupdate.RepoURL` (composed from `repoOwner`/`repoName`) is the one source of the repo URL. `AppService.Info` returns it as `repoUrl`; Settings About opens it through `LinkService.OpenExternal`. `InstallScriptURL` keeps its own literal (`verify-packaging.sh` S11 pins it). `site/` keeps its own `REPO_URL` (Astro build, no Go).
+- The App menu About is Wails' `NSAlert` (name, description, version) and cannot hold a link, so the GitHub link lives in Settings About.
 - Self-update runs a shell script downloaded at click time with the user's privileges from the main branch of a public repo, so anyone who can push to main can change what every user's Update click runs. Branch protection on main is therefore a security boundary; TLS and the contract marker guard transport and compatibility, not authorship. Since P330 a chapter PR from this repo squash-merges itself once `pr.yml`'s required checks pass, with no review, so push access to a `chapter/v*` branch is the same boundary.
 
 ## Git module (v1.3), Kira Space's own app as of P100
