@@ -3819,6 +3819,9 @@
     "user": {
       "label": "User"
     },
+    "version": {
+      "label": "Version"
+    },
     "view": {
       "label": "View"
     },
@@ -4249,9 +4252,6 @@
       },
       "title": {
         "title": "Docker engine"
-      },
-      "version": {
-        "label": "Version"
       },
       "versionApi": {
         "label": "{version} (API {api})"
