@@ -97,6 +97,8 @@ for (const doc of PAGES) {
       expect(['hidden', 'clip']).not.toContain(metrics.html);
       expect(['hidden', 'clip']).not.toContain(metrics.body);
 
+      expect(await page.locator('main a img').count()).toBe(0);
+
       const width = page.viewportSize()?.width ?? 0;
       const images = page.locator('main img');
       for (let i = 0; i < (await images.count()); i++) {

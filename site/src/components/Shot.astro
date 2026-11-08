@@ -14,22 +14,14 @@ const { shot, eager = false, tile = false, sizes } = Astro.props;
 
 <figure class="relative m-0">
   {shot.kind === 'window' ? (
-    <a
-      href={shot.framed}
-      class="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-      aria-label={`Open full size: ${shot.title}`}
-    >
-      <ShotPicture shot={shot} eager={eager} sizes={sizes} />
-    </a>
+    <ShotPicture shot={shot} eager={eager} sizes={sizes} />
   ) : (
-    <a
-      href={shot.crop}
+    <div
       class:list={[
-        'block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+        'block',
         tile &&
           'flex aspect-[4/3] items-center justify-center rounded-xl bg-elevated p-3 border border-border-strong',
       ]}
-      aria-label={`Open full size: ${shot.title}`}
     >
       <img
         src={shot.crop}
@@ -45,7 +37,7 @@ const { shot, eager = false, tile = false, sizes } = Astro.props;
           shot.kind === 'region' && 'overflow-hidden rounded-xl border border-border-strong',
         ]}
       >
-    </a>
+    </div>
   )}
   <figcaption class="mt-3 text-base text-muted">
     <span class="font-medium text-fg">{shot.title}.</span>{' '}

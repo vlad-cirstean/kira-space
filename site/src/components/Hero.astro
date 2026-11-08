@@ -75,12 +75,8 @@ const secondary = `${button} bg-white/5 text-fg border border-white/12 hover:bg-
       aria-hidden="true"
       class="absolute inset-x-[4%] -inset-y-[6%] -z-10 bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--brand-sky)_30%,transparent),transparent)]"
     ></div>
-    <a
-      href={front.framed}
-      aria-label={`Open full size: ${front.title}`}
-      class="mx-auto block w-[96%] max-w-[62rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-    >
+    <div class="mx-auto block w-[96%] max-w-[62rem]">
       <ShotPicture shot={front} eager priority sizes="(min-width: 1024px) 990px, 96vw" />
-    </a>
+    </div>
   </div>
 </section>

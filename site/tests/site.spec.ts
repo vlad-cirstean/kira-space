@@ -78,6 +78,15 @@ for (const route of ROUTES) {
       expect(['hidden', 'clip']).not.toContain(metrics.body);
     });
 
+    test('no screenshot is inside a link and clicking one opens nothing', async ({ page }) => {
+      await openPage(page, route);
+      expect(await page.locator('main a img, main a picture').count()).toBe(0);
+      const shot = page.locator('img[data-shot]').first();
+      await shot.scrollIntoViewIfNeeded();
+      await shot.click();
+      await expect(page).toHaveURL(new RegExp(`${BASE}${route.path}$`));
+    });
+
     test('every image loads and fits the viewport', async ({ page }) => {
       await openPage(page, route);
       const images = page.locator('img');
