@@ -5,6 +5,8 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'astro/config';
 import { SHOT_CAPTURE, shotFiles } from './src/data/shotCapture.ts';
 
+/** The one site icon: header, favicon, apple-touch icon, docs logo and share image all derive from it. */
+const APP_ICON = fileURLToPath(new URL('../apps/kira-space/build/appicon.png', import.meta.url));
 const REPO_URL = 'https://github.com/vlad-cirstean/kira-space';
 
 /** Copies each shot's main image to dist/shots/<id>.webp: an unhashed URL the README links to. */
@@ -32,13 +34,13 @@ export default defineConfig({
   },
   output: 'static',
   prefetch: false,
-  vite: { plugins: [tailwindcss()] },
+  vite: { define: { __APP_ICON__: JSON.stringify(APP_ICON) }, plugins: [tailwindcss()] },
   integrations: [
     publishShots,
     starlight({
       title: 'Kira Space',
-      logo: { src: '../apps/kira-space/build/appicon.icon/Assets/kira_icon_vector.svg', alt: '' },
-      favicon: '/favicon.svg',
+      logo: { src: '../apps/kira-space/build/appicon.png', alt: '' },
+      favicon: '/favicon.png',
       social: [{ icon: 'github', label: 'GitHub', href: REPO_URL }],
       customCss: ['./src/styles/docs.css'],
       disable404Route: true,

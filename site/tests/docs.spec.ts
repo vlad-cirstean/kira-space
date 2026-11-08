@@ -74,6 +74,23 @@ test('the page list is not empty', () => {
 test('the Develop section is gone', async ({ request }) => {
   const res = await request.get(`${BASE}docs/develop/`);
   expect(res.status()).toBe(404);
+  test('landing and docs share one favicon', async ({ page, request }) => {
+    const favicon = async (url: string) => {
+      await page.goto(url);
+      return page
+        .locator('link[rel~="icon"]')
+        .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+    };
+    expect(await favicon(BASE)).toEqual([`${BASE}favicon.png`]);
+    const first = PAGES[0];
+    if (!first) throw new Error('no docs pages');
+    expect(await favicon(first.url)).toEqual([`${BASE}favicon.png`]);
+    const res = await request.get(`${BASE}favicon.png`);
+    expect(res.status()).toBe(200);
+    expect(res.headers()['content-type']).toBe('image/png');
+    expect(await page.locator('a.site-title img').getAttribute('src')).toContain('appicon');
+  });
+
   for (const doc of PAGES) {
     expect(readFileSync(doc.path, 'utf8'), doc.file).not.toContain('develop/');
   }

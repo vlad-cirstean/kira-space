@@ -3,9 +3,9 @@ import '@fontsource-variable/inter';
 import '@fontsource/jetbrains-mono/400.css';
 import '../styles/global.css';
 import { getImage } from 'astro:assets';
-import iconSvg from '../../../apps/kira-space/build/appicon.icon/Assets/kira_icon_vector.svg';
 import appIcon from '../../../apps/kira-space/build/appicon.png';
 import BetaNotice from '../components/BetaNotice.astro';
+import { href } from '../data/nav';
 
 interface Props {
   title: string;
@@ -29,7 +29,7 @@ const ogImage = image ? new URL(image, Astro.site).href : undefined;
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#181818">
     <link rel="canonical" href={canonical.href}>
-    <link rel="icon" type="image/svg+xml" href={iconSvg.src}>
+    <link rel="icon" type="image/png" sizes="64x64" href={href('favicon.png')}>
     <link rel="apple-touch-icon" href={touchIcon.src}>
     <meta property="og:type" content="website">
     <meta property="og:title" content={title}>
