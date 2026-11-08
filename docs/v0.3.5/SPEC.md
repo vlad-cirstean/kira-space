@@ -1,14 +1,14 @@
 # v0.3.5
 
-User-requested fixes after v0.3.4. Chapter stays open: more phases get added later. Branch `chapter/v0.3.5`, tag `v0.3.5`. First `P` is P575 (highest prior: P574).
+User-requested fixes after v0.3.4. Chapter closes with P579. Branch `chapter/v0.3.5`, tag `v0.3.5`. First `P` is P575 (highest prior: P574).
 
 | Phase | Title | Status |
 |---|---|---|
-| P575 | Presentation site and README: headline, share image, screenshot click, install copy, one icon, header Install button, README images | Implemented |
-| P576 | Title bar: app title after window controls | Implemented |
-| P577 | Terminal-less run logs and sessions: scroll, select, copy | Implemented |
-| P578 | Config file bar only on the YAML tab | Implemented |
-| P579 | Darker dialog surface | Implemented |
+| P575 | Presentation site and README: headline, share image, screenshot click, install copy, one icon, header Install button, README images | Done |
+| P576 | Title bar: app title after window controls | Done |
+| P577 | Terminal-less run logs and sessions: scroll, select, copy | Done |
+| P578 | Config file bar only on the YAML tab | Done |
+| P579 | Darker dialog surface | Done |
 
 Phases run in table order, one at a time, unless the user asks for a batch.
 
@@ -86,3 +86,5 @@ Phases run in table order, one at a time, unless the user asks for a batch.
   - Spec: `tests/ui/dialog-surface.spec.ts` (settings dialog and scrim, command palette and inner command, dropdown menu stays elevated). Renderer only, no backend half.
   - Checks: ui `dialog-surface consistency focus-ring ade-v2-dialogs` 82 passed; visual run after `build:test`.
   - Deviations: Playwright's default colour threshold hides the surface change in the 10 locator-scoped baselines (settings x5, git-stash, git-repo-settings, approvals, runs-restore, docker-restore); they still pass, so not refreshed. Only full-page `new-connection-dialog` and `schema-dialog` changed; refreshed after viewing (Inter confirmed, dialog near black, border and text legible, backdrop darker). `console`, `data-grid`, `workbench-shell` baselines were stale before this phase (title bar "Kira Space" text missing in baseline, bbox only the title); refreshed too. Popover, menu and toast baselines unchanged.
+  - Chapter close notes. Non-UI full run: `lint`, `typecheck`, `build`, `lint:go`, `lint:dead`, `test:unit`, `site:build`, `test:go:rest`, `test:flows` pass. Docker-dependent packages skipped (no Docker); UI suites left to PR CI. Fixes: `43090d43f` (knip: site `check-icons` and `share-image` added as entries), `d36e07dde` (adeflow test holds the db mcp step's interactive session open).
+  - Review round 1, base `f69087cde`, 2 findings, both fixed. F1: copy-log paged only the first page; fixed in `57cfcf147` (copies the whole log, paging past the first page). F2: share image alt and hash drifted from the hero; fixed in `d8764cc09` (alt derived from the hero, drift guarded).
