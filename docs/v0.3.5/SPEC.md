@@ -7,6 +7,8 @@ User-requested fixes after v0.3.4. Chapter stays open: more phases get added lat
 | P575 | Presentation site and README: headline, share image, screenshot click, install copy, one icon, header Install button, README images | Implemented |
 | P576 | Title bar: app title after window controls | Implemented |
 | P577 | Terminal-less run logs and sessions: scroll, select, copy | Implemented |
+| P578 | Config file bar only on the YAML tab | Planned |
+| P579 | Darker dialog surface | Planned |
 
 Phases run in table order, one at a time, unless the user asks for a batch.
 
@@ -55,3 +57,20 @@ Phases run in table order, one at a time, unless the user asks for a batch.
   - Deviation: spec asserts `userSelect` `text` on the log root, not rows (`user-select` is not inherited, rows compute `auto`); drag selection covers rows. Shared helpers in `tests/ui/support/logSpecs.ts` (N8 forbids copies); drag targets rows by `data-index` (virtual rows remount).
   - Backend half: none (renderer only). No visual baseline change.
   - Checks: `automations-mcp automations-tabs studio/ui-leftovers-docker-automations` 18 passed; select run (`ade-v2-*`, `consistency`, ...) 181 passed; `automations-mcp ade-v2-sessions copy-coverage studio/copy-coverage-docker-automations` 96 passed; typecheck and lint clean.
+
+## P578 Config file bar only on the YAML tab
+
+- Ask (user): every config-backed editor mounts `packages/workbench/src/config/ConfigFileBar.vue` (file path, Open, Reveal, copy, validity error) on every tab. Show it only on the tab with the YAML editor, not on a resource's other tabs.
+- Callers: `AdeWorkflowEditor`, `AdeLibraryStepEditor`, `AdeSettingsPane`, `AdeContextPane`, `RepoFilePane`, `ApiConfigProblems`, `VariableSetView`, `ApiVariablesDialog`, `ConnectionFileDialog`, `RunFileDialog`.
+- Planner decides per caller. Where a validity error must stay visible on other tabs, plan says how without the path row.
+- Acceptance: bar renders only on the YAML tab of each caller; a caller with no other tab is unchanged; a validity error never goes unseen on a tab where it blocks the user.
+- Tests: UI spec per changed caller (bar present on YAML tab, absent elsewhere). Renderer only, no backend half.
+- Result: _pending_
+
+## P579 Darker dialog surface
+
+- Ask (user): dialogs use `bg-elevated` (`#212125`, `packages/theme/src/tokens.css:5`) over `bg-scrim` (`rgb(0 0 0 / 0.4)`) and read pale grey. Want a darker, blacker look.
+- Choice delegated to planner: lower `--kira-bg-elevated` (also affects menus, popovers, cards, active tab), darker scrim, or dialog-only token. Plan names the pick and why.
+- Planner must check contrast ratios for text on the new surface (WCAG AA, every text token used on it) and list which visual baselines change.
+- Acceptance: dialogs visibly darker; text contrast stays at or above AA; changed baselines refreshed after a look at both themes if the theme has more than one.
+- Result: _pending_
