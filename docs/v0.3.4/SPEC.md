@@ -9,7 +9,7 @@ Proof images and agent branch bases. Branch `chapter/v0.3.4`, tag `v0.3.4`. Firs
 | P571 Part 1 | Orchestrator tasks, backend: passes, spawn, chain reads | Implemented |
 | P571 Part 2 | Orchestrator tasks, frontend: kind choice, card, Run pass | Implemented |
 | P572 | About: GitHub link, add an About settings section if none | Implemented |
-| P573 | Split docs/HISTORY.md into files | Planned |
+| P573 | Split docs/HISTORY.md into files | Implemented |
 | P574 | Close chapter | Planned |
 
 P569, P570 and P571 run as parallel streams (own worktree each): P569 owns proof, `dbmcp` proof tools and the proof window menu entry; P570 owns `request_branches` and the ADE base path; P571 owns the orchestrator task kind. Grouping in `plans/batch-P569-P570.md`.
@@ -89,6 +89,7 @@ Kind choice in the Add popover (`ade-nw-kind`), task panel switch and card menu;
 - Decided: `docs/HISTORY.md` stays as a short index linking each file with its chapter range, so existing references to it resolve. Blocks move unchanged into `docs/history/`, cut at chapter boundaries only. A close appends its block to the newest history file. One-time split verified by concatenating the new files in order and comparing with the old file (minus the index).
 - Planner decides: file naming and grouping, index format, `scripts/docshistory` changes (it reads and repoints links in HISTORY.md), `check-docs` and any other tool that reads HISTORY.md, link and code-comment references to `docs/HISTORY.md` (some cite chapter anchors), the CLAUDE.md "Closing a chapter" step 2 wording (hand-written close appends to the newest history file) and WORKING_AGREEMENT mentions, README mentions.
 - Stream: own worktree, touches only docs, scripts and `CLAUDE.md`. Overlap with other streams: `docs/v0.3.4/SPEC.md` only.
+- Result: `docs/HISTORY.md` is now a 6-entry index. Blocks moved unchanged into `docs/history/01-v1.md` (v1 to v1.2), `02-v1.3.md` (v1.3 to v1.8), `03-v1.9.md`, `04-v2.0.md`, `05-v2.1.md` (v2.1 to v2.8), `06-v0.2.10.md` (v0.2.10 onward plus "Fixes outside chapters"), 1,086 to 1,540 lines each. Newest file is the highest prefix, `06-v0.2.10.md`; P574 appends there. Verified after the move: `concat-ok` (files joined equal old lines 7-7827 byte for byte), 45 blocks, `order-ok`, no duplicate chapter, six files `balanced` each starting with an opening marker, no missing index link. `scripts/docshistory`: `readBlocks(dir)`, `spliceBlock`, `requireBlocks`, `--history` default `docs/history`, `skipRepoint` skips `docs/history/`; `render` only re-renders existing blocks and refuses a chapter with none (checked: `render v1.1` leaves tree clean, `render v9.9` exits 1). `TestBlocksSplice` replaces `TestBlocksIdempotent`; go vet, `go test ./scripts/docshistory/`, golangci-lint, `check-docs` pass. CLAUDE.md (close step 2, highest-`P` line, forbidden-edit line), README.md and DEV_ENVIRONMENT.md reworded. No `docs/HISTORY.md (<ch>)` citation rewritten (index resolves them). No deviations.
 
 ## P574 Close chapter
 
