@@ -4,7 +4,7 @@ User-requested fixes after v0.3.4. Chapter stays open: more phases get added lat
 
 | Phase | Title | Status |
 |---|---|---|
-| P575 | Presentation site and README: headline, share image, screenshot click, install copy, one icon, header Install button, README images | Planned |
+| P575 | Presentation site and README: headline, share image, screenshot click, install copy, one icon, header Install button, README images | Implemented |
 | P576 | Title bar: app title after window controls | Planned |
 | P577 | Terminal-less run logs and sessions: scroll, select, copy | Planned |
 
@@ -24,6 +24,9 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 - Acceptance: new headline renders on the site and in `README.md`; `og:image` and twitter image meta point to the new image; no screenshot is wrapped in a link to its file; copy button copies the bare command; selecting the command yields no `$`; landing and docs `<link rel="icon">` resolve to the same asset; header Install button matches the shared button style; `README.md` shows no memory screenshot and every README image resolves; `bun site/scripts/check-docs.ts` reports 0 violations.
 - Out of scope: app icon variants (`apps/kira-space/build/appicon.icon/`, macOS bundle icons).
 - Pointers: `site/` (Astro), `docs/DEV_ENVIRONMENT.md`.
+- Result: headline "Everything agents need, in one place." on the hero (two lines) and as the README's first paragraph. Screenshots sit in no link (`Shot.astro`, `Hero.astro`); clicking one opens nothing. Install card has a copy button (Codicon `copy`, swaps to `check`, `role="status"` text, native button so Enter and Space work); the `$` prompts are `aria-hidden` plus `select-none`, selection yields the bare command (WebKit test). One icon, `apps/kira-space/build/appicon.png`: header, footer, hero, `/favicon.png` (64 px endpoint, replaces `favicon.svg.ts`), apple-touch, Starlight logo and favicon, share image; `site/scripts/check-icons.ts` runs in `site:build` (28 pages, 0 violations). Share image `site/src/assets/share/kira-share.webp` from `bun run site:share-image` (two runs `cmp` equal), PNG built in `Base.astro` for `og:image` and `twitter:image`; `social` and `lead` removed. Header Install uses `site/src/lib/buttons.ts`, shared with Hero and the Build CTA. README opens with the icon, headline and agents board; `space-memory` replaced by `space-runs`; README test checks every image path. ARCHITECTURE and DEV_ENVIRONMENT updated. Checks: `bun run lint`, `bun run typecheck:site`, `typecheck:docs-check`, biome, `check-docs` (0 violations), full site Playwright suite on real shots from `bun run screenshots` (239 passed, 1 skipped). Visual baselines refreshed locally (`fc-match sans-serif` is Inter) after a look at both widths.
+  - User may overrule: trailing period in the headline; no lightbox (images are plain, non-focusable); one small script on the site, so `ships no document script` became `ships only the copy script` and ARCHITECTURE no longer says zero client JavaScript; WebP share image committed (guard N15 allows it) with the PNG built at site build; README image order and `space-runs` as the memory replacement.
+  - Deviations from the plan: share image headline wraps over three lines at the 640 px column (Inter 76 px), tagline uses `text-wrap: balance`; hero `h1` widened to `max-w-6xl` so the desktop headline breaks after the comma; "no image inside a link" tests scope to `main` because the header and Starlight logos link home; added `site/scripts/raw.d.ts` so `typecheck:docs-check` accepts `content.ts` through `icons.ts`; check-icons skips meta-refresh redirect pages; README test allows the PR badge URL.
 
 ## P576 Title bar: app title after window controls
 
