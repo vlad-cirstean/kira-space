@@ -23,3 +23,14 @@ export const branchRequestPayloadSchema = /*#__PURE__*/ z.object({
   taskTitle: z.string(),
   items: z.array(branchRequestItemSchema),
 });
+
+// payload of a task.create approval item (internal/ade taskCreatePayload): an orchestrator's request
+// for one child task. Approve or deny only; the brief becomes the child's first handover.
+export const taskCreatePayloadSchema = /*#__PURE__*/ z.object({
+  parentTaskId: z.string(),
+  parentTitle: z.string(),
+  title: z.string(),
+  workflow: z.object({ id: z.string(), name: z.string() }),
+  repos: z.array(z.object({ codeRepoId: z.string(), name: z.string(), base: z.string() })),
+  brief: z.string(),
+});

@@ -10009,6 +10009,22 @@
           "tooltip": "Show in Git panel"
         }
       },
+      "request": {
+        "taskCreate": {
+          "base": {
+            "label": "Branches off {base}"
+          },
+          "baseMain": {
+            "label": "Branches off the repository’s main branch"
+          },
+          "brief": {
+            "label": "Brief"
+          },
+          "noRepos": {
+            "label": "None; add one on the task later"
+          }
+        }
+      },
       "review": {
         "actions": {
           "closed": {
