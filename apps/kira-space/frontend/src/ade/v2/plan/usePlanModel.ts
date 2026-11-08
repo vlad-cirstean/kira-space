@@ -81,7 +81,7 @@ export interface BranchRowModel {
 }
 
 /** A live child of an orchestrator, one row of its card. */
-export interface ChildModel {
+interface ChildModel {
   id: string;
   title: string;
   status: TaskStatusDef;
