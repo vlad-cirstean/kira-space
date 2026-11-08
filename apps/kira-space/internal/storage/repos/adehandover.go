@@ -54,9 +54,10 @@ func (r *AdeTaskRepo) queryHandovers(b sqlb.Builder) ([]model.AdeHandover, error
 }
 
 // handoverKey is the order key of a row: an open draft sorts by its last write, any other row by creation.
-func handoverKey(alias string, sb *sqlbuilder.SelectBuilder) string {
+// The state is a literal: condition builders escape placeholders inside a field expression.
+func handoverKey(alias string) string {
 	c := kiraschema.AdeTaskHandovers
-	return "CASE " + alias + c.State + " WHEN " + sb.Var(handoverDraft) + " THEN " + alias + c.UpdatedAt + " ELSE " + alias + c.CreatedAt + " END"
+	return "CASE " + alias + c.State + " WHEN '" + handoverDraft + "' THEN " + alias + c.UpdatedAt + " ELSE " + alias + c.CreatedAt + " END"
 }
 
 // selectHandoversTitled selects handoverCols of table alias h plus the title of the child a mirrored row
@@ -81,7 +82,7 @@ func (r *AdeTaskRepo) queryHandoversTitled(b sqlb.Builder) ([]model.AdeHandover,
 func (r *AdeTaskRepo) Handovers(taskID string) ([]model.AdeHandover, error) {
 	c := kiraschema.AdeTaskHandovers
 	sb := r.selectHandoversTitled()
-	sb.Where(sb.Equal("h."+c.TaskID, taskID)).OrderBy(handoverKey("h.", sb)+" DESC", "h."+sqlb.RowID+" DESC")
+	sb.Where(sb.Equal("h."+c.TaskID, taskID)).OrderBy(handoverKey("h.")+" DESC", "h."+sqlb.RowID+" DESC")
 	return r.queryHandoversTitled(sb)
 }
 
@@ -97,17 +98,17 @@ func (r *AdeTaskRepo) HandoverPage(taskID, before string, limit int) (rows []mod
 	if before != "" {
 		var key, rowid int64
 		kq := r.Dialect.Select()
-		kq.Select(handoverKey("", kq), sqlb.RowID).From(c.Table).Where(kq.Equal(c.ID, before), kq.Equal(c.TaskID, taskID))
+		kq.Select(handoverKey(""), sqlb.RowID).From(c.Table).Where(kq.Equal(c.ID, before), kq.Equal(c.TaskID, taskID))
 		switch err := sqlb.QueryRow(r.DB, kq).Scan(&key, &rowid); {
 		case errors.Is(err, sql.ErrNoRows):
 			return nil, false, ErrHandoverNotFound
 		case err != nil:
 			return nil, false, fmt.Errorf("repos: read handover cursor %s: %w", before, err)
 		}
-		k := handoverKey("h.", sb)
-		conds = append(conds, sb.Or(sb.LessThan(k, key), sb.And(sb.Equal(k, key), sb.LessThan("h."+sqlb.RowID, rowid))))
+		conds = append(conds, sb.Or(sb.LessThan(handoverKey("h."), key),
+			sb.And(sb.Equal(handoverKey("h."), key), sb.LessThan("h."+sqlb.RowID, rowid))))
 	}
-	sb.Where(conds...).OrderBy(handoverKey("h.", sb)+" DESC", "h."+sqlb.RowID+" DESC").Limit(limit + 1)
+	sb.Where(conds...).OrderBy(handoverKey("h.")+" DESC", "h."+sqlb.RowID+" DESC").Limit(limit + 1)
 	rows, err = r.queryHandoversTitled(sb)
 	if err != nil {
 		return nil, false, err

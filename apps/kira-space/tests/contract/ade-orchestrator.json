@@ -1,0 +1,349 @@
+{
+  "AdeTaskService.Board#orchestrator": {
+    "autofetchMinutes": 0,
+    "branches": [
+      {
+        "addedAt": 0,
+        "ahead": 0,
+        "base": "main",
+        "baseBranchId": "",
+        "baseMissing": false,
+        "baseOwner": "",
+        "basePendingFrom": "",
+        "behind": 0,
+        "codeRepoId": "<masked>",
+        "conflictCheck": "done",
+        "conflictCheckReason": "",
+        "conflictsIfRebased": [],
+        "deployments": [],
+        "dirty": [],
+        "id": "<masked>",
+        "integration": [],
+        "kind": "mine",
+        "lastCommitAt": null,
+        "mergedAt": null,
+        "mergedIntoMain": false,
+        "name": "",
+        "origin": "",
+        "owner": "",
+        "rebaseInProgress": false,
+        "setup": null,
+        "taskId": "<masked>",
+        "tip": "",
+        "upstream": "",
+        "upstreamAhead": 0,
+        "upstreamBehind": 0,
+        "worktree": ""
+      }
+    ],
+    "history": [],
+    "pairs": [],
+    "plan": {
+      "backlog": [],
+      "day": {},
+      "order": [
+        "<id:2>",
+        "<id:3>"
+      ],
+      "queuedAfter": {},
+      "unpushed": {}
+    },
+    "repos": [
+      {
+        "codeRepoId": "<masked>",
+        "lastFetchAt": null,
+        "mainName": "main",
+        "remote": "origin"
+      }
+    ],
+    "statusDefaults": {
+      "finished": "done",
+      "new": "todo",
+      "review": "in-review",
+      "step": "in-progress"
+    },
+    "statuses": [
+      {
+        "color": "grey",
+        "id": "<masked>",
+        "name": "To do"
+      },
+      {
+        "color": "amber",
+        "id": "<masked>",
+        "name": "In progress"
+      },
+      {
+        "color": "blue",
+        "id": "<masked>",
+        "name": "In review"
+      },
+      {
+        "color": "green",
+        "id": "<masked>",
+        "name": "Done"
+      }
+    ],
+    "tasks": [
+      {
+        "branchIds": [],
+        "branchRequestId": "",
+        "color": 0,
+        "createdAt": 0,
+        "entryStepId": "plan",
+        "est": "",
+        "handoverDrafts": [],
+        "handoverIn": null,
+        "hostLink": null,
+        "hostUrl": "",
+        "id": "<masked>",
+        "jira": null,
+        "kind": "orchestrator",
+        "notes": "",
+        "owner": "",
+        "runs": [
+          {
+            "attempt": 0,
+            "branchId": "<masked>",
+            "exitCode": null,
+            "finishedAt": null,
+            "id": "<masked>",
+            "loops": 0,
+            "note": "waiting for task approval",
+            "outcome": null,
+            "purpose": "",
+            "resumable": false,
+            "returns": 0,
+            "review": null,
+            "sandbox": {
+              "access": "write",
+              "denials": 0,
+              "enforced": false,
+              "last": ""
+            },
+            "sessionId": "<masked>",
+            "startedAt": 0,
+            "state": "running",
+            "stepId": "plan",
+            "summary": "",
+            "taskId": "<masked>"
+          }
+        ],
+        "since": {},
+        "statusBy": "auto",
+        "statusId": "in-progress",
+        "statusStep": "plan",
+        "title": "Ship login",
+        "workflow": {
+          "id": "<masked>",
+          "name": "Flow",
+          "steps": [
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "auto",
+              "command": "",
+              "dbMcp": false,
+              "id": "<masked>",
+              "kind": "agent",
+              "maxReturns": 3,
+              "name": "Plan",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "plan the next pass",
+              "results": [
+                {
+                  "description": "",
+                  "id": "<masked>",
+                  "loop": false,
+                  "next": "next",
+                  "ok": true
+                },
+                {
+                  "description": "",
+                  "id": "<masked>",
+                  "loop": false,
+                  "next": "stop",
+                  "ok": false
+                }
+              ],
+              "review": null,
+              "runsOn": "once",
+              "sandbox": {
+                "access": "write",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": false,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "",
+              "timeout": "1m"
+            }
+          ]
+        },
+        "workflowId": "orch",
+        "workflowOutdated": false
+      },
+      {
+        "branchIds": [],
+        "branchRequestId": "",
+        "color": 1,
+        "createdAt": 0,
+        "entryStepId": "one",
+        "est": "",
+        "handoverDrafts": [],
+        "handoverIn": {
+          "body": "Wire the login form to the API.\n\nHand back the endpoint list.",
+          "createdAt": 0,
+          "dismissed": false,
+          "edited": false,
+          "finished": false,
+          "fromStepId": "",
+          "fromStepName": "Ship login",
+          "fromTaskId": "<masked>",
+          "id": "<masked>",
+          "sessionId": "<masked>",
+          "source": "orchestrator",
+          "state": "handed",
+          "taskId": "<masked>",
+          "toStepId": "one",
+          "toStepName": "one",
+          "updatedAt": 0
+        },
+        "hostLink": null,
+        "hostUrl": "",
+        "id": "<masked>",
+        "jira": null,
+        "kind": "task",
+        "notes": "",
+        "owner": "",
+        "parentId": "<masked>",
+        "parentTitle": "Ship login",
+        "runs": [],
+        "since": {},
+        "statusBy": "auto",
+        "statusId": "todo",
+        "statusStep": "",
+        "title": "API login",
+        "workflow": null,
+        "workflowId": "flow",
+        "workflowOutdated": false
+      }
+    ],
+    "worktreeBasePath": "<home>/kira-space-wts"
+  },
+  "AdeTaskService.Handovers#parent": {
+    "handovers": [
+      {
+        "body": "",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "",
+        "fromStepName": "Ship",
+        "fromTaskId": "<masked>",
+        "fromTaskTitle": "Without row",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "child",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "Endpoints: POST /login.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "",
+        "fromStepName": "Ship",
+        "fromTaskId": "<masked>",
+        "fromTaskTitle": "With notes",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "child",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "summary-done",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "plan",
+        "fromStepName": "Plan",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "run",
+        "state": "handed",
+        "taskId": "<masked>",
+        "toStepId": "done",
+        "toStepName": "",
+        "updatedAt": 0
+      }
+    ]
+  },
+  "AdeTaskService.NextPass": {
+    "started": true,
+    "stepId": "plan"
+  },
+  "ApprovalsService.List#taskCreate": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "task.create:<id:1>",
+      "kind": "task.create",
+      "operation": {
+        "class": "create",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "run",
+        "step": "Plan",
+        "task": "Ship login"
+      },
+      "payload": {
+        "brief": "Wire the login form to the API.\n\nHand back the endpoint list.",
+        "parentTaskId": "<masked>",
+        "parentTitle": "Ship login",
+        "repos": [
+          {
+            "base": "main",
+            "codeRepoId": "<masked>",
+            "name": "api"
+          }
+        ],
+        "title": "API login",
+        "workflow": {
+          "id": "flow",
+          "name": "Flow"
+        }
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "API login",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:AdeTaskService.NextPass": {
+    "notes": "Focus on the API tasks.",
+    "taskId": "<id:1>"
+  }
+}

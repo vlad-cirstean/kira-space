@@ -265,6 +265,7 @@ func wireAdeTask(
 		HomeDir:           userHome,
 		RebaseTimeout:     rebaseTimeout,
 		BranchRequestWait: branchRequestWait,
+		TaskRequestWait:   branchRequestWait,
 		Now:               time.Now,
 	})
 	tracker.SetStoppedHandler(board.OnTUIStopped)
