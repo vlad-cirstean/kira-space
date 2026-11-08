@@ -7,7 +7,7 @@ User-requested fixes after v0.3.4. Chapter stays open: more phases get added lat
 | P575 | Presentation site and README: headline, share image, screenshot click, install copy, one icon, header Install button, README images | Implemented |
 | P576 | Title bar: app title after window controls | Implemented |
 | P577 | Terminal-less run logs and sessions: scroll, select, copy | Implemented |
-| P578 | Config file bar only on the YAML tab | Planned |
+| P578 | Config file bar only on the YAML tab | Implemented |
 | P579 | Darker dialog surface | Planned |
 
 Phases run in table order, one at a time, unless the user asks for a batch.
@@ -65,7 +65,16 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 - Planner decides per caller. Where a validity error must stay visible on other tabs, plan says how without the path row.
 - Acceptance: bar renders only on the YAML tab of each caller; a caller with no other tab is unchanged; a validity error never goes unseen on a tab where it blocks the user.
 - Tests: UI spec per changed caller (bar present on YAML tab, absent elsewhere). Renderer only, no backend half.
-- Result: _pending_
+- Result:
+  - Per caller: `AdeWorkflowEditor`, `AdeLibraryStepEditor`, `RepoFilePane`, `RunFileDialog`, `ConnectionFileDialog`, `ApiVariablesDialog` show the bar on the YAML tab only. `VariableSetView` loses it (no YAML there). `RepoFilePane` and `RunFileDialog` keep it when read-only (tabs hidden).
+  - Unchanged, no other tab: `AdeSettingsPane`, `AdeContextPane`, `ApiConfigProblems` (error surface for a broken file; user may overrule).
+  - New `packages/workbench/src/config/ConfigFileProblem.vue` on every non-YAML tab: Alert with the file's problem and Show in YAML. Renders nothing when valid or when the tab already shows the same line and message (`shown`), so one problem never shows twice. No new catalog key. Variable-set tab: Show in YAML opens `ApiVariablesDialog` on YAML; `useApiVariablesDialogStore.tab` type is now `VariablesSection` (gained `yaml`).
+  - Red before fix: workflow and step editors, `config-file-bar` count 1, expected 0; repo pane and run dialog the same; connection dialog `config-file-bar` count 1 on General; api dialog count 1 on the default tab, variable-set tab count 1.
+  - Existing specs changed: `ade-v2-workflows` (2), `ade-v2-repo-script`, `automations-scripts`, `automationsFile.ts` (Open, broken row), `connection-files` (2), `api-config-files`. New specs: workflow steps (2), repo-config-file (2), automationsFile (2), connection-files (2), api-variables-form (1).
+  - Deviation: a broken workflow or step file opens in YAML mode (`AdeWorkflowsTab`, `AdeStepsTab` watchers), so those specs switch to Graph or Form first, then assert the problem alert. Broken run row: the form decode returns the same problem, so `run-form-problem` shows and `config-file-problem` stays hidden (dedupe), as planned. Bar asserted via `config-file-bar` text, not `config-file-path`.
+  - Backend half: none (renderer only).
+  - Baselines refreshed after viewing diffs (only the bar row vanishes, Inter font confirmed): `workflow-graph`, `-branches`, `-manual`, `-script`, `workflow-graph-review`, `ade-repos-page`.
+  - Checks: ui `ade-v2-workflows ade-v2-workflow-steps repo-config-file ade-v2-repo-script automations-file automations-scripts studio/connection-files studio/api-config-files studio/api-variables-form ade-agent-settings ade-agent-context` 116 passed; per-task runs also green (`ade-v2-workflow-layout`, `ade-repos`, `automations-tabs`, `automations-form`, `studio/connection-form`, `studio/connection-lifecycle`, `studio/api-agent-access`); visual `ade-workflow-graph ade-review-step ade-repos` 7 passed after refresh; typecheck and lint clean via pre-commit on every commit.
 
 ## P579 Darker dialog surface
 
