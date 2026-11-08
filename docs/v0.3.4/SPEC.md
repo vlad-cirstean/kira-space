@@ -7,7 +7,7 @@ Proof images and agent branch bases. Branch `chapter/v0.3.4`, tag `v0.3.4`. Firs
 | P569 | Proof: JPEG screenshots, agent image steps, menu bar entry | Implemented |
 | P570 | Agents choose the base of a requested branch | Implemented |
 | P571 Part 1 | Orchestrator tasks, backend: passes, spawn, chain reads | Implemented |
-| P571 Part 2 | Orchestrator tasks, frontend: kind choice, card, Run pass | Planned |
+| P571 Part 2 | Orchestrator tasks, frontend: kind choice, card, Run pass | Implemented |
 | P572 | About: GitHub link, add an About settings section if none | Implemented |
 | P573 | Close chapter | Planned |
 
@@ -56,13 +56,24 @@ Split by the planner (plan `plans/P571.md`): Part 1 backend (migration, engine, 
 - Streams: confirm no ordering dependency on P570 (P571 must not need P570's `request_branches` field). If one exists, stop and report. Size: if the phase is too large for one implementer, propose `Part 1`/`Part 2` per the numbering rule instead of cutting scope.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
 
-### P571 Part 1 Result
+### P571 Result
+
+Part 1
+
 
 Backend done. Migration `0093_p571_orchestrator` (marker `-- kira:foreign-keys off`; P569 owns 0092, whichever lands second renumbers). Kind `orchestrator` with `parent_id`; handover sources `orchestrator`, `pass`, `child` with `from_task_id`. Engine: `NextPass`, `create_task` approval (`task.create`), `list_tasks`, `task_chain`, child mirror, read-only child rows. Contract for Part 2: `apps/kira-space/tests/contract/ade-orchestrator.json`. Tests: flows `TestOrchestrator*`, `TestMigrateP571`, real claude `TestAdeOrchestrator` plus the ADE row, all passing.
 
 - `create_task` waits on the `BranchRequestWait` app knob (one knob, `TaskBoardDeps.TaskRequestWait` carries it).
 - Handover paging fix: the order key embeds the `draft` literal; condition builders escape placeholders in a field.
 - Real claude run: the first `next` text made the agent pause; it now says not to wait.
+
+Part 2 (frontend)
+
+Kind choice in the Add popover (`ade-nw-kind`), task panel switch and card menu; refused once the orchestrator has children, a parent or is not a plain task (`board/kind.ts`). Orchestrator badge, children group on the card, parent chip and parent row (archived parent muted, no select), archived children from a popover. Run next pass reuses the stage dialog in `pass` mode (optional message, `NextPass` via `useNextPass`). Chain gains child and brief rows (child rows read-only, link selects the child). `task.create` approval body `TaskCreateBody` (title, workflow, repos with base, brief). i18n under `space.ade.orchestrator.*`. The orchestrator is never woken: manual trigger only.
+
+- Deviation: `HistoryEntry.parentId` added to the wire (`adewire`, `toWireHistory`) because archived children are known only through history. Small Part 1 file edit.
+- UI spec `tests/ui/ade-v2-orchestrator.spec.ts` (5 tests, same contract as the flow tests). Board ids are patched by the spec: the contract masks them.
+- Tests: new spec plus `ade-v2-stage-move`, `ade-v2-notes`, `ade-v2-branch-request`, `ade-v2-add`, `ade-v2-handover`, 40 passed after `build:test`; `typecheck:tests` clean. No Go test rerun beyond build and vet.
 
 ## P572 About: GitHub link
 
