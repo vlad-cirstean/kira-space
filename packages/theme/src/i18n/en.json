@@ -11963,6 +11963,12 @@
       }
     },
     "settings": {
+      "about": {
+        "github": {
+          "aria": "Open the repository on GitHub",
+          "label": "GitHub"
+        }
+      },
       "advanced": {
         "gitLogLevel": {
           "description": "Kira Space’s own diagnostic log verbosity.",
@@ -12383,6 +12389,9 @@
         }
       },
       "nav": {
+        "about": {
+          "label": "About"
+        },
         "capture": {
           "label": "Capture"
         },

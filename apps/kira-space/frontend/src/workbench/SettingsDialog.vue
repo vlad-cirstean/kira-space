@@ -15,6 +15,7 @@ import CachePane from '../studio/workbench/settings/CachePane.vue';
 import DatabaseMcpPane from '../studio/workbench/settings/DatabaseMcpPane.vue';
 import DataPane from '../studio/workbench/settings/DataPane.vue';
 import { useMemoryEnabled } from './experimental';
+import AboutPane from './settings/AboutPane.vue';
 import AdvancedPane from './settings/AdvancedPane.vue';
 import AgentPane from './settings/AgentPane.vue';
 import AppearancePane from './settings/AppearancePane.vue';
@@ -52,6 +53,7 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
   Prompts: t('llmPrompts.nav.label'),
   Advanced: t('common.advanced.label'),
   Experimental: t('space.settings.nav.experimental.label'),
+  About: t('space.settings.nav.about.label'),
 }));
 
 // Memory leaves the nav and unmounts while its flag is off: a mounted MemoryPane queries
@@ -226,6 +228,7 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
         :reset-leaf="s.resetLeaf"
         :register-field-error="s.registerFieldError"
       />
+      <AboutPane :active="s.activeSection === 'About'" />
     </template>
 
     <template #footer="f">
