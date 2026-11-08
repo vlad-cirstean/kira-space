@@ -1290,7 +1290,7 @@ func (r *AdeTaskRepo) ReplaceWorktreeDir(branchID, old, next string) error {
 // SetEntryStep sets the step the task last entered ("done" when finished). since, when not nil, replaces the
 // pass watermark ({"<stepId>/<branchId>": attempt}); nil keeps it. handoff, when not nil, is applied in the
 // same transaction, so a move and its handover never land apart. A move to done mirrors the finish into the
-// parent's chain (mirrorFinish).
+// parent's chain (mirrorFinish), unless it carries no handoff and a run's end already mirrored it.
 func (r *AdeTaskRepo) SetEntryStep(taskID, stepID string, since map[string]int, handoff *model.AdeHandoff) error {
 	tx, err := r.DB.Begin()
 	if err != nil {
@@ -1324,8 +1324,17 @@ func (r *AdeTaskRepo) SetEntryStep(taskID, stepID string, since map[string]int, 
 		fromName, now = handoff.FromStepName, handoff.Now
 	}
 	if stepID == entryDone {
-		if err := mirrorFinish(tx, r.Dialect, taskID, fromName, body, now); err != nil {
-			return err
+		// The run that ended the last automatic step already mirrored this finish with its text.
+		mirrored := false
+		if handoff == nil {
+			if mirrored, err = finishMirrored(tx, r.Dialect, taskID); err != nil {
+				return err
+			}
+		}
+		if !mirrored {
+			if err := mirrorFinish(tx, r.Dialect, taskID, fromName, body, now); err != nil {
+				return err
+			}
 		}
 	}
 	return tx.Commit()

@@ -474,6 +474,26 @@ func mirrorFinish(tx *sql.Tx, d sqlb.Dialect, taskID, fromStepName, body string,
 	return nil
 }
 
+// finishMirrored reports whether the parent's chain holds a child row of taskID at or after the end of the
+// task's latest run, so a rewound task that finishes again mirrors again.
+func finishMirrored(tx *sql.Tx, d sqlb.Dialect, taskID string) (bool, error) {
+	rc := kiraschema.AdeRuns
+	var last sql.NullInt64
+	lq := d.Select("MAX(" + rc.FinishedAt + ")").From(rc.Table)
+	lq.Where(lq.Equal(rc.TaskID, taskID))
+	if err := sqlb.QueryRow(tx, lq).Scan(&last); err != nil {
+		return false, fmt.Errorf("repos: read last run end of %s: %w", taskID, err)
+	}
+	c := kiraschema.AdeTaskHandovers
+	cq := d.Select("COUNT(*)").From(c.Table)
+	cq.Where(cq.Equal(c.FromTaskID, taskID), cq.Equal(c.Source, model.AdeHandoverSourceChild), cq.GreaterEqualThan(c.CreatedAt, last.Int64))
+	var n int
+	if err := sqlb.QueryRow(tx, cq).Scan(&n); err != nil {
+		return false, fmt.Errorf("repos: count finish mirrors of %s: %w", taskID, err)
+	}
+	return n > 0, nil
+}
+
 // MirrorFinish mirrors a child's finish that wrote no handover row into its parent's chain.
 func (r *AdeTaskRepo) MirrorFinish(taskID, fromStepName string, now int64) error {
 	tx, err := r.DB.Begin()

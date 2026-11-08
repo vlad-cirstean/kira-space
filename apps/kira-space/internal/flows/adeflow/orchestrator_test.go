@@ -482,3 +482,36 @@ func TestOrchestratorToolGrants(t *testing.T) {
 		}
 	}
 }
+
+// A child whose last step is automatic finishes without StepDone; its parent chain still gets one finish row.
+func TestOrchestratorChildChainAutomaticFinish(t *testing.T) {
+	f := newORFixture(t,
+		[]fakeagent.Action{{MCP: []fakeagent.MCPCall{
+			createTaskCall("Automatic", "auto", "brief", map[string]any{"repo": "api"}),
+		}, Name: "done"}},
+		[]fakeagent.Action{{Name: "done"}})
+	saveWorkflow(t, f.app, "auto", flowYAML("auto", agentStep("one", "")+scriptStep("check", "'exit 0'")))
+	f.startOrchestrator(t)
+	answerTask(t, f.app, waitTaskItem(t, f.app), true)
+	id, _ := mcpResult(t, f.app, "create_task", 1)["taskId"].(string)
+	if id == "" {
+		t.Fatal("create_task created no task")
+	}
+	waitRun(t, f.app, f.orch.ID, "plan", "done")
+	br := branchOf(t, board(t, f.app), id, f.api)
+	if _, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: id, BranchNames: map[string]string{br.ID: "feat/automatic"}}); err != nil {
+		t.Fatal(err)
+	}
+	waitRun(t, f.app, id, "check", "done")
+	testx.WaitUntil(t, waitFor, func() bool { return taskByID(t, f.app, id).EntryStepID == "done" })
+
+	var mirrors []adewire.Handover
+	for _, h := range handovers(t, f.app, f.orch.ID) {
+		if h.Source == "child" {
+			mirrors = append(mirrors, h)
+		}
+	}
+	if len(mirrors) != 1 || mirrors[0].FromTaskID != id || mirrors[0].FromStepName == "" {
+		t.Fatalf("parent child rows = %+v, want exactly one named finish row", mirrors)
+	}
+}
