@@ -515,3 +515,29 @@ func TestOrchestratorChildChainAutomaticFinish(t *testing.T) {
 		t.Fatalf("parent child rows = %+v, want exactly one named finish row", mirrors)
 	}
 }
+
+// An archived, unfinished child reports its step by name, like a live one.
+func TestOrchestratorArchivedChildStepName(t *testing.T) {
+	f := newORFixture(t,
+		[]fakeagent.Action{{MCP: []fakeagent.MCPCall{createTaskCall("Open child", "manual", "brief")}, Name: "done"}},
+		[]fakeagent.Action{{Name: "done"}})
+	f.startOrchestrator(t)
+	answerTask(t, f.app, waitTaskItem(t, f.app), true)
+	id, _ := mcpResult(t, f.app, "create_task", 1)["taskId"].(string)
+	if id == "" {
+		t.Fatal("create_task created no task")
+	}
+	waitRun(t, f.app, f.orch.ID, "plan", "done")
+	call := agentmcp.SpaceCall{TaskID: f.orch.ID}
+	live, err := f.app.W.AdeTask.Engine.ListTasks(ctx, call, agentmcp.ListTasksArgs{State: "live"})
+	if err != nil || len(live.Tasks) != 1 || live.Tasks[0].Step != "Ship" {
+		t.Fatalf("live child = %+v, %v, want step Ship", live, err)
+	}
+	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: id}); err != nil {
+		t.Fatal(err)
+	}
+	archived, err := f.app.W.AdeTask.Engine.ListTasks(ctx, call, agentmcp.ListTasksArgs{State: "archived"})
+	if err != nil || len(archived.Tasks) != 1 || archived.Tasks[0].Step != "Ship" || archived.Tasks[0].Finished {
+		t.Fatalf("archived child = %+v, %v, want step Ship", archived, err)
+	}
+}

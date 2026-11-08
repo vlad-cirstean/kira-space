@@ -119,7 +119,42 @@ func (b *TaskBoard) loadTaskCtx(taskID string) (*taskCtx, error) {
 	if task.ArchivedAt != nil {
 		return nil, invalid("task %s is archived", taskID)
 	}
-	tc := &taskCtx{task: task, nick: map[string]string{}, entry: task.EntryStepID, since: map[string]int{}}
+	shared, err := b.loadSpaceFacts()
+	if err != nil {
+		return nil, err
+	}
+	return b.buildTaskCtx(task, shared)
+}
+
+// spaceFacts is what every task context reads from the whole space: live branches by task and repo nicknames.
+// A caller building many contexts loads it once.
+type spaceFacts struct {
+	branches map[string][]model.AdeTaskBranch
+	nick     map[string]string
+}
+
+func (b *TaskBoard) loadSpaceFacts() (spaceFacts, error) {
+	live, err := b.deps.Tasks.BranchesLive()
+	if err != nil {
+		return spaceFacts{}, err
+	}
+	cfgs, err := b.deps.RepoConfig.List()
+	if err != nil {
+		return spaceFacts{}, err
+	}
+	f := spaceFacts{branches: map[string][]model.AdeTaskBranch{}, nick: make(map[string]string, len(cfgs))}
+	for _, br := range live {
+		f.branches[br.TaskID] = append(f.branches[br.TaskID], br)
+	}
+	for _, c := range cfgs {
+		f.nick[c.CodeRepoID] = cmpNonEmpty(c.Nickname, c.Name)
+	}
+	return f, nil
+}
+
+// buildTaskCtx resolves a live task's workflow, pass watermark and branches.
+func (b *TaskBoard) buildTaskCtx(task model.AdeTask, f spaceFacts) (*taskCtx, error) {
+	tc := &taskCtx{task: task, nick: f.nick, entry: task.EntryStepID, since: map[string]int{}}
 	if wf, ok := b.taskWorkflow(task); ok {
 		tc.wf = &wf
 		if task.WorkflowJSON == "" {
@@ -131,25 +166,10 @@ func (b *TaskBoard) loadTaskCtx(taskID string) (*taskCtx, error) {
 	}
 	if task.SinceJSON != "" {
 		if err := json.Unmarshal([]byte(task.SinceJSON), &tc.since); err != nil {
-			return nil, fmt.Errorf("ade: unreadable pass of task %s: %w", taskID, err)
+			return nil, fmt.Errorf("ade: unreadable pass of task %s: %w", task.ID, err)
 		}
 	}
-	live, err := b.deps.Tasks.BranchesLive()
-	if err != nil {
-		return nil, err
-	}
-	for _, br := range live {
-		if br.TaskID == taskID {
-			tc.branches = append(tc.branches, br)
-		}
-	}
-	cfgs, err := b.deps.RepoConfig.List()
-	if err != nil {
-		return nil, err
-	}
-	for _, c := range cfgs {
-		tc.nick[c.CodeRepoID] = cmpNonEmpty(c.Nickname, c.Name)
-	}
+	tc.branches = f.branches[task.ID]
 	for _, br := range tc.branches {
 		if br.Kind == model.AdeBranchKindMine {
 			tc.mine = append(tc.mine, mineBranch{ID: br.ID, Nick: tc.nick[br.CodeRepoID]})

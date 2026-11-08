@@ -153,6 +153,18 @@ func (b *TaskBoard) ListTasks(_ context.Context, call agentmcp.SpaceCall, args a
 	for _, s := range statuses {
 		statusName[s.ID] = s.Name
 	}
+	facts, err := b.loadSpaceFacts()
+	if err != nil {
+		return agentmcp.ListTasksResult{}, err
+	}
+	taskIDs := make([]string, len(tasks))
+	for i, t := range tasks {
+		taskIDs[i] = t.ID
+	}
+	lastByTask, err := b.deps.Tasks.LatestHandovers(taskIDs)
+	if err != nil {
+		return agentmcp.ListTasksResult{}, err
+	}
 	out := agentmcp.ListTasksResult{Tasks: make([]agentmcp.ChildTaskInfo, 0, len(tasks)), More: more}
 	for _, t := range tasks {
 		info := agentmcp.ChildTaskInfo{
@@ -165,12 +177,8 @@ func (b *TaskBoard) ListTasks(_ context.Context, call agentmcp.SpaceCall, args a
 		if wf, ok := b.taskWorkflow(t); ok {
 			info.Workflow = cmpNonEmpty(wf.Name, wf.ID)
 		}
-		b.fillChildStep(&info, t)
-		last, err := b.deps.Tasks.LatestHandover(t.ID)
-		if err != nil {
-			return agentmcp.ListTasksResult{}, err
-		}
-		if last != nil {
+		b.fillChildStep(&info, t, facts)
+		if last, ok := lastByTask[t.ID]; ok {
 			info.LastHandover = capBytes(last.Body, lastHandoverBytes)
 		}
 		out.Tasks = append(out.Tasks, info)
@@ -179,15 +187,18 @@ func (b *TaskBoard) ListTasks(_ context.Context, call agentmcp.SpaceCall, args a
 }
 
 // fillChildStep sets the child's current step name and whether it is done.
-func (b *TaskBoard) fillChildStep(info *agentmcp.ChildTaskInfo, t model.AdeTask) {
+func (b *TaskBoard) fillChildStep(info *agentmcp.ChildTaskInfo, t model.AdeTask, facts spaceFacts) {
 	if t.ArchivedAt != nil {
 		info.Finished = t.EntryStepID == entryDone
 		if !info.Finished {
 			info.Step = t.EntryStepID
+			if wf, ok := b.taskWorkflow(t); ok {
+				info.Step = cmpNonEmpty(stepName(&taskCtx{wf: &wf}, t.EntryStepID), t.EntryStepID)
+			}
 		}
 		return
 	}
-	tc, err := b.loadTaskCtx(t.ID)
+	tc, err := b.buildTaskCtx(t, facts)
 	if err != nil {
 		return
 	}

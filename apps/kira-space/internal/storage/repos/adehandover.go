@@ -200,6 +200,33 @@ func (r *AdeTaskRepo) LatestHandover(taskID string) (*model.AdeHandover, error) 
 	})
 }
 
+// LatestHandovers returns the newest handed row of each given task in one query; a task without one is absent.
+func (r *AdeTaskRepo) LatestHandovers(taskIDs []string) (map[string]model.AdeHandover, error) {
+	out := make(map[string]model.AdeHandover, len(taskIDs))
+	if len(taskIDs) == 0 {
+		return out, nil
+	}
+	c := kiraschema.AdeTaskHandovers
+	newer := r.Dialect.Select("1").From(c.Table + " n")
+	newer.Where("n."+c.TaskID+" = h."+c.TaskID, newer.Equal("n."+c.State, handoverHanded),
+		newer.Or("n."+c.CreatedAt+" > h."+c.CreatedAt,
+			newer.And("n."+c.CreatedAt+" = h."+c.CreatedAt, "n."+sqlb.RowID+" > h."+sqlb.RowID)))
+	args := make([]any, len(taskIDs))
+	for i, id := range taskIDs {
+		args[i] = id
+	}
+	sb := r.Dialect.Select(handoverCols...).From(c.Table + " h")
+	sb.Where(sb.In(c.TaskID, args...), sb.Equal(c.State, handoverHanded), sb.NotExists(newer))
+	rows, err := r.queryHandovers(sb)
+	if err != nil {
+		return nil, fmt.Errorf("repos: latest handovers: %w", err)
+	}
+	for _, h := range rows {
+		out[h.TaskID] = h
+	}
+	return out, nil
+}
+
 // FinishedDrafts lists every open draft marked finished and not dismissed, across live tasks.
 func (r *AdeTaskRepo) FinishedDrafts() ([]model.AdeHandover, error) {
 	c, t := kiraschema.AdeTaskHandovers, kiraschema.AdeTasks
