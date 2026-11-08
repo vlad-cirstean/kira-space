@@ -13,6 +13,7 @@ const (
 	ItemEmit               // a custom item calling MenuDeps.OnEmit with Channel
 	ItemQuit               // the custom, role-free Quit item (§1.3)
 	ItemNewWindow          // opens a second window (P8 D8) — handled in Go, not a renderer emit (§0.4)
+	ItemAction             // runs MenuDeps.Actions[Action] in Go: works with no window focused, unlike ItemEmit
 )
 
 // Item.Role is application.Role, so this file is not literally Wails-free — but Role is a bare
@@ -25,6 +26,7 @@ type Item struct {
 	Role        application.Role // ItemRole only
 	Accelerator string           // "" for none; also used to re-accelerate an ItemRole
 	Channel     string           // ItemEmit only, an app-defined channel string
+	Action      string           // ItemAction only, a key of MenuDeps.Actions
 }
 
 type Section struct {

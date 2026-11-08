@@ -218,7 +218,7 @@ func main() {
 	isDev := app.Env.Info().Debug
 	app.Menu.Set(shell.BuildMenu(shell.MenuDeps{
 		AppName: "Kira Space", IsDev: isDev, Template: appshell.BuildTemplate("Kira Space", isDev),
-		OnEmit: wired.Events.Signal, Quit: quitter.RequestQuit, NewWindow: openNew,
+		OnEmit: wired.Events.Signal, Quit: quitter.RequestQuit, NewWindow: openNew, Actions: wired.MenuActions(),
 	}))
 
 	purgeReviewWindows(repositories)

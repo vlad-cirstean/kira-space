@@ -293,16 +293,23 @@ export function imageStep(
 }
 
 /** Boot snapshots for the image session; steps 1-4 in the contract's order. */
-export function imageControl(extra: ControlSnapshot[] = []): ControlSnapshot[] {
+export function imageControl(
+  extra: ControlSnapshot[] = [],
+  target: Json = { sessionId: SESSION_ID },
+  older: Json[] = [],
+): ControlSnapshot[] {
   return [
-    { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
+    { channel: IPC.proofWindowTarget, response: target },
     {
       channel: IPC.proofSessions,
-      response: (fixture('proof-image', 'ProofService.Sessions') as unknown as Json[]).map((x) => ({
-        ...x,
-        id: SESSION_ID,
-        closedAt: CLOSED_AT,
-      })),
+      response: [
+        ...(fixture('proof-image', 'ProofService.Sessions') as unknown as Json[]).map((x) => ({
+          ...x,
+          id: SESSION_ID,
+          closedAt: CLOSED_AT,
+        })),
+        ...older,
+      ],
     },
     {
       channel: IPC.proofSession,
@@ -316,3 +323,6 @@ export function imageControl(extra: ControlSnapshot[] = []): ControlSnapshot[] {
     ...extra,
   ];
 }
+
+/** What a proof window opened from the Window menu (no task) boots with: a null session. */
+export const menuTarget = (): Json => fixture('proof-image', 'ProofService.WindowTarget#menu');

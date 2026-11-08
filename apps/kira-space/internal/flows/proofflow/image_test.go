@@ -18,7 +18,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appshell"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/internal/shell"
+	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
 const maxImageBytes = 3<<20 - 1<<10
@@ -228,5 +231,48 @@ func TestProofImageSessionCap(t *testing.T) {
 	}
 	if c := f.save(t, "Eight images", steps[:8]...); c.Steps != 8 {
 		t.Fatalf("eight images = %+v", c)
+	}
+}
+
+// The Window menu opens the proof window outside any task: no session is targeted.
+func TestProofMenuOpensWindow(t *testing.T) {
+	f := newFixture(t)
+	var inWindow bool
+	for _, sec := range appshell.BuildTemplate("Kira Space", false) {
+		if sec.Label != i18n.T("backend.menu.window.label", nil) {
+			continue
+		}
+		for _, it := range sec.Items {
+			if it.Kind == shell.ItemAction && it.Action == appshell.ActionOpenProofs {
+				inWindow = true
+			}
+		}
+	}
+	if !inWindow {
+		t.Fatal("no Validation proof item in the Window section")
+	}
+	open := f.app.W.MenuActions()[appshell.ActionOpenProofs]
+	if open == nil {
+		t.Fatal("proof.open action not wired")
+	}
+
+	open()
+	opened := f.app.ProofWindows.Opened
+	if len(opened) != 1 || !strings.HasPrefix(opened[0].Key, "proof-") {
+		t.Fatalf("opened windows = %+v, want one proof-* window", opened)
+	}
+	key := opened[0].Key
+	tg, err := f.app.W.Proof.WindowTarget(bridge.ProofWindowKeyArgs{Key: key})
+	if err != nil || tg.SessionID != nil {
+		t.Fatalf("WindowTarget = %+v, %v; want a null session", tg, err)
+	}
+	f.app.Contract(t, "proof-image", "ProofService.WindowTarget#menu", tg)
+
+	open()
+	if got := f.app.ProofWindows.Opened; len(got) != 1 {
+		t.Fatalf("second menu click opened %d windows, want the first raised", len(got))
+	}
+	if raised := f.app.ProofWindows.Raised; len(raised) == 0 || raised[len(raised)-1] != key {
+		t.Fatalf("raised = %v, want %s last", raised, key)
 	}
 }

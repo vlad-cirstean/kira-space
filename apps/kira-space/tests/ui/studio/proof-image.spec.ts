@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
-import { imageControl, jpegHeight, openProofWindow } from './support/proof';
+import { imageControl, jpegHeight, menuTarget, openProofWindow, SESSION_ID } from './support/proof';
 
 // UI half of the proof-image scenario; the Go half is proofflow TestProofImage. Every answer is
 // that test's recorded result, so bytes the backend stores are what the window draws here.
@@ -104,4 +104,32 @@ test('contract: save tab writes a JPEG of the image step', async ({ relaunch, ui
   expect(args.filename).toBe('Login-page-01.jpg');
   expect(args.jpegBase64.startsWith('/9j/')).toBe(true);
   expect(jpegHeight(args.jpegBase64)).toBeGreaterThan(0);
+});
+
+test('contract: a window opened from the menu shows the newest session', async ({
+  relaunch,
+  uiServer,
+}) => {
+  const older = {
+    id: 'session-9',
+    name: 'Older proof',
+    closedAt: 1,
+    steps: 1,
+    pending: false,
+    seen: true,
+  };
+  const { window: page, control: log } = await relaunch({
+    control: imageControl([], menuTarget(), [older]),
+  });
+  await openProofWindow(page, uiServer.url);
+  await stepReady(page);
+  expect(menuTarget()).toEqual({ sessionId: null });
+  await expect(tab(page, 1)).toBeVisible();
+  await expect(region(page)).toBeVisible();
+  expect(
+    log
+      .log()
+      .filter((c) => c.channel === IPC.proofSession)
+      .map((c) => (c.args as Json).sessionId),
+  ).toEqual([SESSION_ID]);
 });
