@@ -136,6 +136,14 @@ type HandoverBlockVars struct {
 	HandoverFrom string `json:"handoverFrom"`
 }
 
+// PassHandoverVars fills the handover that starts an orchestrator pass: the user's optional message and the
+// previous pass's final handover.
+type PassHandoverVars struct {
+	Message      string `json:"message"`
+	Previous     string `json:"previous"`
+	PreviousFrom string `json:"previousFrom"`
+}
+
 // JiraLineVars fills the Jira line.
 type JiraLineVars struct {
 	JiraKey string `json:"jiraKey"`
@@ -1066,6 +1074,41 @@ var (
 	_ = arg(HeadlessToolGit.id, "args", spaceApp, NextCall, `Words after git, one per entry, such as ["rebase","--continue"]. Paths go after a "--" entry.`, NoVars{})
 )
 
+// HeadlessToolCreateTask describes the create_task tool.
+var HeadlessToolCreateTask = define(Entry{
+	ID: "headless.tool.create_task", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "create_task",
+	Default: `Ask the user to approve a new child task; waits for the answer. The brief is the child's first handover. Child tasks cannot create tasks. Every call waits for the user, so ask for what you need in one call. Outcome: created, denied, timeout or failed. Read results with list_tasks and task_chain; you are not woken when a child finishes.`,
+}, NoVars{})
+
+var (
+	_ = arg(HeadlessToolCreateTask.id, "title", spaceApp, NextCall, `Child task title, 1 to 200 characters.`, NoVars{})
+	_ = arg(HeadlessToolCreateTask.id, "workflow", spaceApp, NextCall, `Workflow id or name. It must exist and have a step.`, NoVars{})
+	_ = arg(HeadlessToolCreateTask.id, "repos", spaceApp, NextCall, `Repos of the child, 0 to {{.Max}}. Each gets a branch slot the child names later.`, MaxVars{Max: 10})
+	_ = arg(HeadlessToolCreateTask.id, "repos.repo", spaceApp, NextCall, `Repo: nickname, name or code repo id, from task_info.`, NoVars{})
+	_ = arg(HeadlessToolCreateTask.id, "repos.base", spaceApp, NextCall, `Ref the child's branch starts from, such as main. Default: the repo's default branch.`, NoVars{})
+	_ = arg(HeadlessToolCreateTask.id, "brief", spaceApp, NextCall, `What the child must do, what it needs to know and what to hand back. Markdown, at most {{.Max}} bytes.`, MaxVars{Max: 16384})
+)
+
+// HeadlessToolListTasks describes the list_tasks tool.
+var HeadlessToolListTasks = define(Entry{
+	ID: "headless.tool.list_tasks", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "list_tasks",
+	Default: `List the child tasks you created, newest first: id, title, workflow, status, step, whether finished or archived, and the start of the child's last handover. At most 100.`,
+}, NoVars{})
+
+var _ = arg(HeadlessToolListTasks.id, "state", spaceApp, NextCall, `live, archived or all. Default all.`, NoVars{})
+
+// HeadlessToolTaskChain describes the task_chain tool.
+var HeadlessToolTaskChain = define(Entry{
+	ID: "headless.tool.task_chain", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "task_chain",
+	Default: `Read the handover chain of your own task or of one of your children, newest first: your earlier passes' handovers and finished children's results. Drafts included. Page with before.`,
+}, NoVars{})
+
+var (
+	_ = arg(HeadlessToolTaskChain.id, "taskId", spaceApp, NextCall, `A child's task id from list_tasks. Omit for your own chain.`, NoVars{})
+	_ = arg(HeadlessToolTaskChain.id, "limit", spaceApp, NextCall, `Rows per page, 1 to {{.Max}}. Default 10.`, MaxVars{Max: 50})
+	_ = arg(HeadlessToolTaskChain.id, "before", spaceApp, NextCall, `The next value of the previous page: rows older than that row.`, NoVars{})
+)
+
 // ADE.
 
 // AdeRebasePrompt is the rebase prompt the preview shows and the run sends.
@@ -1292,6 +1335,19 @@ var AdeHandoverBlock = define(Entry{
 	Default: `Handover from {{.HandoverFrom}}:
 {{.Handover}}`,
 }, HandoverBlockVars{HandoverFrom: "Design", Handover: "Form wired; validation still missing."})
+
+// AdePassHandover is the handover an orchestrator carries into a new pass.
+var AdePassHandover = define(Entry{
+	ID: "ade.pass.handover", Kind: KindFragment, Apps: spaceApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.adePassHandover.title",
+	PurposeKey: "llmPrompts.entry.adePassHandover.description",
+	UsedByKey:  "llmPrompts.entry.adePassHandover.usedBy.body",
+	Default: `{{if .Message}}New pass. Message from the user:
+{{.Message}}{{end}}{{if and .Message .Previous}}
+
+{{end}}{{if .Previous}}Previous pass{{if .PreviousFrom}}, ended at {{.PreviousFrom}}{{end}}:
+{{.Previous}}{{end}}`,
+}, PassHandoverVars{Message: "Start with the API tasks.", Previous: "Spawned 3 tasks; 2 finished.", PreviousFrom: "Review"})
 
 // AdeHandoverLine tells an interactive session to leave notes for the next stage.
 var AdeHandoverLine = define(Entry{

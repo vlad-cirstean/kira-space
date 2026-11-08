@@ -115,6 +115,19 @@ headless.artifacts.unavailable	30
 headless.tool.git	325
 headless.tool.git.arg.worktree	36
 headless.tool.git.arg.args	93
+headless.tool.create_task	337
+headless.tool.create_task.arg.title	38
+headless.tool.create_task.arg.workflow	51
+headless.tool.create_task.arg.repos	75
+headless.tool.create_task.arg.repos.repo	53
+headless.tool.create_task.arg.repos.base	85
+headless.tool.create_task.arg.brief	99
+headless.tool.list_tasks	169
+headless.tool.list_tasks.arg.state	35
+headless.tool.task_chain	181
+headless.tool.task_chain.arg.taskId	59
+headless.tool.task_chain.arg.limit	35
+headless.tool.task_chain.arg.before	62
 ade.rebase.prompt	338
 ade.step.prompt	880
 ade.manual.message	772
@@ -124,6 +137,7 @@ ade.start.message	677
 ade.repoLine	79
 ade.handoverBlock	59
 ade.handoverLine	115
+ade.pass.handover	120
 ade.jiraLine	55
 ade.rebase.contextLine	95
 ade.sendBack.line	63

@@ -6915,6 +6915,13 @@
           "body": "Sent when you forward pending task panel changes to the running agents."
         }
       },
+      "adePassHandover": {
+        "description": "The handover that starts an orchestrator pass. It holds the user’s message and the previous pass’s final handover.",
+        "title": "Orchestrator pass handover",
+        "usedBy": {
+          "body": "Written when an orchestrator task starts its next pass. The first step’s message carries it as the handover."
+        }
+      },
       "adeRebaseContextLine": {
         "description": "Tells the agent that the last rebase of a branch did not finish and points to run_outcome.",
         "title": "Unfinished rebase line",

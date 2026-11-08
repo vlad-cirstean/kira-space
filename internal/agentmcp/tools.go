@@ -24,6 +24,13 @@ var (
 		{Server: ServerName, Tool: "operations"},
 	}
 
+	// OrchestratorToolIDs are the tools only an orchestrator task carries, next to SpaceToolIDs.
+	OrchestratorToolIDs = []harness.MCPTool{
+		{Server: ServerName, Tool: "create_task"},
+		{Server: ServerName, Tool: "list_tasks"},
+		{Server: ServerName, Tool: "task_chain"},
+	}
+
 	// SandboxToolIDs are the sandbox git tools.
 	SandboxToolIDs = []harness.MCPTool{
 		{Server: ServerName, Tool: "fetch_remote"},

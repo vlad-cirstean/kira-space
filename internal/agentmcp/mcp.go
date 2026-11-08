@@ -69,6 +69,8 @@ type Grant struct {
 	// Sandbox, when set on a run grant, adds fetch_remote and push_branch: the git operations a
 	// sandboxed agent cannot do itself.
 	Sandbox *SandboxGrant
+	// Orchestrator, on a Space grant, adds create_task, list_tasks and task_chain.
+	Orchestrator bool
 	// StepID is the stage a task session without a run was opened for; handover refuses a task that moved on.
 	StepID string
 	// Agent is the provider the run's CLI belongs to; it writes the grant's MCP config.
@@ -115,16 +117,17 @@ const grantPrefix = "g"
 // an OS-assigned port, started by the first Register. Each run gets its own bearer token and a
 // 0600 config file holding it; the token never reaches argv.
 type Server struct {
-	dir      string
-	onFinish FinishFunc
-	space    SpaceTools
-	outcomes Outcomes
-	review   ReviewReplier
-	sandbox  SandboxGit
-	git      GitRunner
-	onCall   func(ctx context.Context, c ToolCall) (context.Context, func(isError bool, text string, err error))
-	handover HandoverRecorder
-	prompts  llmprompts.Source
+	dir          string
+	onFinish     FinishFunc
+	space        SpaceTools
+	orchestrator OrchestratorTools
+	outcomes     Outcomes
+	review       ReviewReplier
+	sandbox      SandboxGit
+	git          GitRunner
+	onCall       func(ctx context.Context, c ToolCall) (context.Context, func(isError bool, text string, err error))
+	handover     HandoverRecorder
+	prompts      llmprompts.Source
 
 	mu     sync.Mutex
 	seq    uint64
@@ -143,7 +146,9 @@ type Options struct {
 	Dir      string
 	OnFinish FinishFunc
 	Space    SpaceTools
-	Outcomes Outcomes
+	// Orchestrator runs the orchestrator tools; nil refuses orchestrator grants.
+	Orchestrator OrchestratorTools
+	Outcomes     Outcomes
 	// Review answers reply_review_comment calls; nil refuses review grants.
 	Review ReviewReplier
 	// SandboxGit runs fetch_remote and push_branch; nil refuses sandbox grants.
@@ -164,7 +169,7 @@ func NewServer(o Options) *Server {
 	if o.Prompts == nil {
 		o.Prompts = llmprompts.Defaults()
 	}
-	return &Server{dir: o.Dir, onFinish: o.OnFinish, space: o.Space, outcomes: o.Outcomes, review: o.Review, sandbox: o.SandboxGit, git: o.Git, onCall: o.OnToolCall, handover: o.Handover, prompts: o.Prompts}
+	return &Server{dir: o.Dir, onFinish: o.OnFinish, space: o.Space, orchestrator: o.Orchestrator, outcomes: o.Outcomes, review: o.Review, sandbox: o.SandboxGit, git: o.Git, onCall: o.OnToolCall, handover: o.Handover, prompts: o.Prompts}
 }
 
 type finishArgs struct {
@@ -239,7 +244,7 @@ func (s *Server) finishSchema(results []ResultSpec) (*jsonschema.Schema, error) 
 
 // toolSet is the set of tool groups a grant sees; it keys the shared servers.
 type toolSet struct {
-	finish, space, outcomes, git, review, sandbox, handover bool
+	finish, space, outcomes, git, review, sandbox, handover, orchestrator bool
 }
 
 func (ts toolSet) any() bool {
@@ -252,6 +257,7 @@ func (s *Server) toolSetOf(g Grant, review bool) toolSet {
 	return toolSet{
 		finish: g.RunID != "", space: g.Space, outcomes: g.TaskID != "" && s.outcomes != nil, git: g.Git != nil,
 		review: review, sandbox: g.Sandbox != nil, handover: s.handoverGranted(g),
+		orchestrator: g.Space && g.Orchestrator,
 	}
 }
 
@@ -290,6 +296,9 @@ func (s *Server) buildMCPServer(ts toolSet, results []ResultSpec) *mcp.Server {
 	}
 	if ts.handover {
 		s.addHandoverTool(srv)
+	}
+	if ts.orchestrator {
+		s.addOrchestratorTools(srv)
 	}
 	s.recordCalls(srv)
 	return srv
@@ -419,6 +428,9 @@ func (s *Server) Register(g Grant) (configPath string, release func(), err error
 	}
 	if g.Agent == nil {
 		return "", nil, errors.New("agentmcp: grant needs a provider")
+	}
+	if g.Orchestrator && (!g.Space || s.orchestrator == nil) {
+		return "", nil, errors.New("agentmcp: orchestrator grant needs a space grant and orchestrator tools")
 	}
 	if g.Git != nil {
 		if s.git == nil {
