@@ -4,6 +4,7 @@ import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
+import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
@@ -71,13 +72,13 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
 <template>
   <div v-if="view" ref="root" class="flex max-w-4xl flex-col gap-3" data-testid="repo-file">
     <ConfigFileBar
-      v-if="view.exists"
+      v-if="view.exists && (!view.editable || draft.tab.value === 'yaml')"
       :path="view.filePath"
       :error="view.problem"
       :open="() => control.configFilesOpen({ folder: FOLDER, file: view!.file })"
       :reveal="() => control.configFilesReveal({ folder: FOLDER, file: view!.file })"
     />
-    <div v-else class="text-kira-sm text-subtle" data-testid="repo-file-none">
+    <div v-if="!view.exists" class="text-kira-sm text-subtle" data-testid="repo-file-none">
       {{ t('space.repo.settingsFile.none.hint') }}
     </div>
     <div v-if="view.lastGood" class="text-kira-sm text-subtle" data-testid="repo-file-last-good">
@@ -94,6 +95,11 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
         @update:model-value="(v) => draft.showTab(v as 'form' | 'yaml')"
       />
       <template v-if="draft.tab.value === 'form'">
+        <ConfigFileProblem
+          :error="view.problem"
+          :shown="unclaimed"
+          :show-yaml="() => void draft.showTab('yaml')"
+        />
         <Alert v-if="unclaimed" variant="error" data-testid="repo-form-problem">
           <AlertDescription>{{
             t('common.configForm.problem.status', {
