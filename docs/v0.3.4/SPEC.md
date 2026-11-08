@@ -6,7 +6,7 @@ Proof images and agent branch bases. Branch `chapter/v0.3.4`, tag `v0.3.4`. Firs
 |---|---|---|
 | P569 | Proof: JPEG screenshots, agent image steps, menu bar entry | Implemented |
 | P570 | Agents choose the base of a requested branch | Implemented |
-| P571 Part 1 | Orchestrator tasks, backend: passes, spawn, chain reads | Planned |
+| P571 Part 1 | Orchestrator tasks, backend: passes, spawn, chain reads | Implemented |
 | P571 Part 2 | Orchestrator tasks, frontend: kind choice, card, Run pass | Planned |
 | P572 | About: GitHub link, add an About settings section if none | Implemented |
 | P573 | Close chapter | Planned |
@@ -55,6 +55,14 @@ Split by the planner (plan `plans/P571.md`): Part 1 backend (migration, engine, 
 - Planner decides, from code: pass mechanics (a finished task moves back to the first step via `SetTaskStep`; `ResetWorkflow` deletes runs, so not it; verify `SinceJSON`, `syncStatus` and status slots handle it), migration for the parent link (next free number, P569 takes 0092: whichever lands second renumbers), `create_task` tool shape (title, workflow, repos, brief as child's first handover with source `orchestrator`, optional base through the existing `BaseChoice` and `resolveChoice`, not P570's new field), approval prompt kind, read tools (`list_tasks`, `task_chain`), board presentation (card, children grouped, parent links both ways), grant rules (which task kinds carry which tools), wire types and bindings.
 - Streams: confirm no ordering dependency on P570 (P571 must not need P570's `request_branches` field). If one exists, stop and report. Size: if the phase is too large for one implementer, propose `Part 1`/`Part 2` per the numbering rule instead of cutting scope.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+
+### P571 Part 1 Result
+
+Backend done. Migration `0093_p571_orchestrator` (marker `-- kira:foreign-keys off`; P569 owns 0092, whichever lands second renumbers). Kind `orchestrator` with `parent_id`; handover sources `orchestrator`, `pass`, `child` with `from_task_id`. Engine: `NextPass`, `create_task` approval (`task.create`), `list_tasks`, `task_chain`, child mirror, read-only child rows. Contract for Part 2: `apps/kira-space/tests/contract/ade-orchestrator.json`. Tests: flows `TestOrchestrator*`, `TestMigrateP571`, real claude `TestAdeOrchestrator` plus the ADE row, all passing.
+
+- `create_task` waits on the `BranchRequestWait` app knob (one knob, `TaskBoardDeps.TaskRequestWait` carries it).
+- Handover paging fix: the order key embeds the `draft` literal; condition builders escape placeholders in a field.
+- Real claude run: the first `next` text made the agent pause; it now says not to wait.
 
 ## P572 About: GitHub link
 

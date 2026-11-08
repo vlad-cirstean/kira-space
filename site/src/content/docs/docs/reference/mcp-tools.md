@@ -110,3 +110,11 @@ Server name `kira-space`. `finish_step` is available to every agent run. `fetch_
 - `fetch_remote`: fetch one remote of the repository, in the app. Sandboxed runs only. Argument: `remote` (default `origin`).
 - `push_branch`: push the task branch to the same-named remote branch, in the app. Sandboxed write runs only. Never a protected branch. Argument: `force` (lease-checked force push).
 - `git`: run restricted git in a named worktree. Used by rebase runs. Arguments: `worktree`, `args`.
+
+### Orchestrator tools
+
+Only a task of kind orchestrator carries these. A child task never does.
+
+- `create_task`: ask the user to approve a child task. The call waits for the answer, up to 30 minutes. The result is `created` with the `taskId`, `denied`, `timeout` or `failed`. The child starts on the first step of its workflow with your brief as its first handover, and waits for the user to run it. Arguments: `title`, `workflow` (id or name), `repos` (0 to 10 items of `repo` and `base`), `brief`.
+- `list_tasks`: your child tasks, newest first, at most 100. Each row has the step, whether it finished, whether it is archived and the start of its newest handover. Argument: `state` (`live`, `archived`, `all`).
+- `task_chain`: a handover chain, newest first, drafts included. A finished child's handover is copied into your chain. Arguments: `taskId` (a child; empty for your own), `limit` (default 10, maximum 50), `before` (the `next` of the previous page).
