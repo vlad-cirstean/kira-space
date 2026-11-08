@@ -733,7 +733,9 @@ type Plan struct {
 }
 
 type HistoryEntry struct {
-	TaskID      string   `json:"taskId"`
+	TaskID string `json:"taskId"`
+	// ParentID is the orchestrator that spawned the archived task.
+	ParentID    string   `json:"parentId,omitempty"`
 	Title       string   `json:"title"`
 	CodeRepoIDs []string `json:"codeRepoIds"`
 	MergedAt    *int64   `json:"mergedAt"`

@@ -707,6 +707,8 @@ export interface Plan {
 }
 export interface HistoryEntry {
   taskId: string;
+  /** The orchestrator that spawned the task; '' for none. */
+  parentId?: string;
   title: string;
   codeRepoIds: string[];
   mergedAt: number | null;
