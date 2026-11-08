@@ -5,7 +5,7 @@ Proof images and agent branch bases. Branch `chapter/v0.3.4`, tag `v0.3.4`. Firs
 | Phase | Title | Status |
 |---|---|---|
 | P569 | Proof: JPEG screenshots, agent image steps, menu bar entry | Implemented |
-| P570 | Agents choose the base of a requested branch | Planned |
+| P570 | Agents choose the base of a requested branch | Implemented |
 | P571 Part 1 | Orchestrator tasks, backend: passes, spawn, chain reads | Planned |
 | P571 Part 2 | Orchestrator tasks, frontend: kind choice, card, Run pass | Planned |
 | P572 | About: GitHub link, add an About settings section if none | Planned |
@@ -38,6 +38,8 @@ Chapter ends the standard way after the last implementation phase: landing, one 
 - Planner decides: field name and shape (ref name vs task branch id, same options as `adewire.BaseChoice`), validation through the existing `resolveChoice` path (same repo, no cycles, `check-ref-format`, base not created yet), how the approval dialog shows each branch's base, behavior for an `existing` branch with a different base, prompt text and tool schema.
 - Pointers: `internal/agentmcp/space.go`, `apps/kira-space/internal/ade/agenttools.go`, `branchrequest.go`, `base.go`, `setup.go`, `docs/ARCHITECTURE.md` "Task base and rebase runs (P241)" and "Branch requests".
 - Tests: flow test plus UI spec on the same scenario (branch request dialog showing the base).
+
+Result: `request_branches` entries take optional `base`, a short branch name. `agentBase` validates it through `resolveChoice` per branch before any prompt (syntax, not found, cycle, not created, user-set draft base). Stored on the row, no pending mark, worktree starts there. Existing branch keeps its base and `next` reports the mismatch. Two bases for one branch fail the call. Dialog shows the base, results and `task_info` carry `base`. Tests: adeflow `TestBranchRequest` (6 subtests), UI spec, real `TestAdeBranchRequest`.
 
 ## P571 Orchestrator tasks
 
