@@ -4,6 +4,7 @@ package proof
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -98,7 +99,7 @@ type checked struct {
 	Payload                                    []byte
 }
 
-func (in StepInput) validate() (checked, bool, error) {
+func (in StepInput) validate(ctx context.Context) (checked, bool, error) {
 	if in.KeepOrdinal != nil && in.ReplacesOrdinal != nil {
 		return checked{}, false, invalid("keepOrdinal and replacesOrdinal are mutually exclusive")
 	}
@@ -145,7 +146,7 @@ func (in StepInput) validate() (checked, bool, error) {
 	case ViewDiagram:
 		payload, err = checkDiagram(in.Data)
 	case ViewImage:
-		payload, err = checkImage(in.Data)
+		payload, err = checkImage(ctx, in.Data)
 	default:
 		return checked{}, false, invalid("view must be one of table, document, keyvalue, chart, diagram, image")
 	}

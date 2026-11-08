@@ -16,7 +16,7 @@ import (
 // ProofStore is dbmcp's consumer-declared interface over *proof.Service: the two proof tools' only
 // backend. They touch no connection, so the permission modes and the approval broker do not apply.
 type ProofStore interface {
-	Save(in proof.SaveInput) (proof.CloseResult, error)
+	Save(ctx context.Context, in proof.SaveInput) (proof.CloseResult, error)
 	ListForAgent() ([]proof.AgentSession, error)
 	StepsForAgent(name string) ([]proof.StepBrief, error)
 }
@@ -91,7 +91,7 @@ func (s *Server) proofSave(ctx context.Context, req *mcp.CallToolRequest, a proo
 			in.Steps[i].Data = raw.Steps[i].Data
 		}
 	}
-	res, err := s.cfg.Proof.Save(in)
+	res, err := s.cfg.Proof.Save(ctx, in)
 	if err != nil {
 		return proofResult(nil, err)
 	}

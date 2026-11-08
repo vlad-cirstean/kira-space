@@ -161,11 +161,15 @@ func TestProofImageRefusals(t *testing.T) {
 	}
 	_ = hf.Close()
 
-	wide := writeFile(t, filepath.Join(dir, "wide.jpg"), jpegBytes(t, 16385, 1))
+	wideBytes := jpegBytes(t, 16385, 1)
+	wide := writeFile(t, filepath.Join(dir, "wide.jpg"), wideBytes)
+	bigArea := jpegBytes(t, 4001, 4001)
 	pngPath := writeFile(t, filepath.Join(dir, "x.jpg"), pngBytes(t))
 	corrupt := writeFile(t, filepath.Join(dir, "corrupt.jpg"), append(append([]byte{}, shot[:len(shot)/2]...), 0xFF))
 	const notJPEG = "data is not a JPEG image (baseline or progressive)"
-	const unreadable = "data.path is not a readable regular file"
+	// Every path-source failure past the absolute check reads the same, so the agent learns nothing about the file.
+	const unreadable = "data.path is not a readable JPEG file within the limits"
+	const tooBigInline = "the limit is 3071 KiB per image"
 
 	cases := []struct {
 		name string
@@ -176,16 +180,18 @@ func TestProofImageRefusals(t *testing.T) {
 		{"tilde path", map[string]any{"path": "~/x.jpg"}, "data.path must be an absolute path"},
 		{"missing file", map[string]any{"path": filepath.Join(dir, "nope.jpg")}, unreadable},
 		{"directory", map[string]any{"path": dir}, unreadable},
-		{"png by path", map[string]any{"path": pngPath}, notJPEG},
+		{"png by path", map[string]any{"path": pngPath}, unreadable},
 		{"png inline", map[string]any{"base64": b64(pngBytes(t))}, notJPEG},
-		{"truncated jpeg", map[string]any{"path": corrupt}, notJPEG},
-		{"sparse over the cap", map[string]any{"path": huge}, "the limit is 3071 KiB per image"},
-		{"inline over the cap", map[string]any{"base64": b64(append(append([]byte{}, shot...), make([]byte, maxImageBytes)...))}, "the limit is 3071 KiB per image"},
+		{"truncated jpeg", map[string]any{"path": corrupt}, unreadable},
+		{"sparse over the cap", map[string]any{"path": huge}, unreadable},
+		{"inline over the cap", map[string]any{"base64": b64(append(append([]byte{}, shot...), make([]byte, maxImageBytes)...))}, tooBigInline},
 		{"both", map[string]any{"path": good, "base64": b64(shot)}, "data must hold exactly one of path or base64"},
 		{"neither", map[string]any{}, "data must hold exactly one of path or base64"},
 		{"url-safe base64", map[string]any{"base64": strings.NewReplacer("+", "-", "/", "_").Replace(b64(append([]byte{0xFF, 0xD8, 0xFF, 0xFB, 0xFF}, shot[3:]...)))}, "data.base64 is not standard base64"},
 		{"data url", map[string]any{"base64": "data:image/jpeg;base64," + b64(shot)}, "data.base64 is not standard base64"},
-		{"too wide", map[string]any{"path": wide}, "image is 16385x1; each side must be 1-16384 pixels"},
+		{"too wide by path", map[string]any{"path": wide}, unreadable},
+		{"too wide inline", map[string]any{"base64": b64(wideBytes)}, "image is 16385x1; each side must be 1-16384 pixels"},
+		{"over the area cap", map[string]any{"base64": b64(bigArea)}, "area at most 16 megapixels"},
 		{"unknown field", map[string]any{"path": good, "mime": "image/jpeg"}, "mime"},
 	}
 	for _, c := range cases {
@@ -195,6 +201,9 @@ func TestProofImageRefusals(t *testing.T) {
 		}
 		if strings.Contains(msg, dir) {
 			t.Errorf("%s: message echoes the path: %q", c.name, msg)
+		}
+		if c.want == unreadable && msg != f.saveFail(t, "Bad image", imageStep("bad", map[string]any{"path": filepath.Join(dir, "nope.jpg")})) {
+			t.Errorf("%s: message differs from the missing-file message: %q", c.name, msg)
 		}
 	}
 
@@ -208,6 +217,21 @@ func TestProofImageRefusals(t *testing.T) {
 
 	if list, err := f.app.W.Proof.Sessions(); err != nil || len(list) != 0 {
 		t.Fatalf("refused saves left sessions behind: %+v, %v", list, err)
+	}
+}
+
+// A call whose steps outgrow the session cap is refused before the remaining files are read.
+func TestProofImageEarlyCap(t *testing.T) {
+	f := newFixture(t)
+	big := append(jpegBytes(t, 64, 48), make([]byte, maxImageBytes)...)[:maxImageBytes]
+	path := writeFile(t, filepath.Join(t.TempDir(), "big.jpg"), big)
+	steps := make([]map[string]any, 12)
+	for i := range steps {
+		steps[i] = imageStep("max image", map[string]any{"path": path})
+	}
+	msg := f.saveFail(t, "Way too many images", steps...)
+	if !strings.Contains(msg, "steps[9]") || !strings.Contains(msg, "32 MiB data limit") {
+		t.Fatalf("message = %q, want steps[9] and the 32 MiB limit", msg)
 	}
 }
 
