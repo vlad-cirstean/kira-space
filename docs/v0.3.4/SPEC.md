@@ -4,7 +4,7 @@ Proof images and agent branch bases. Branch `chapter/v0.3.4`, tag `v0.3.4`. Firs
 
 | Phase | Title | Status |
 |---|---|---|
-| P569 | Proof: JPEG screenshots, agent image steps, menu bar entry | Planned |
+| P569 | Proof: JPEG screenshots, agent image steps, menu bar entry | Implemented |
 | P570 | Agents choose the base of a requested branch | Planned |
 | P571 Part 1 | Orchestrator tasks, backend: passes, spawn, chain reads | Planned |
 | P571 Part 2 | Orchestrator tasks, frontend: kind choice, card, Run pass | Planned |
@@ -24,6 +24,13 @@ Chapter ends the standard way after the last implementation phase: landing, one 
 - Planner decides: step shape (`view` value, `data` fields), path validation (sandbox, size cap, JPEG signature check), how the window renders an image step, how the existing 32 MiB session cap and 8 MiB HTTP body cap apply, quality value for screenshots, clipboard handling (clipboard holds one image; PNG may stay there if JPEG copy is unsupported, planner verifies).
 - Pointers: `apps/kira-space/internal/dbmcp/proof_tools.go`, `apps/kira-space/internal/proof/`, `apps/kira-space/internal/bridge/proof.go`, `proofshots.go`, `apps/kira-space/frontend/src/studio/proof/` (`screenshot.ts`, `useProofScreenshot.ts`), `docs/ARCHITECTURE.md` "Validation proof (P420)".
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary (CLAUDE.md Tests).
+- Result: Implemented (stream A, branch `stream/p569`).
+  - Image step: `proof_save` view `image`, `data` `{path}` or `{base64}`, JPEG only. Caps 3071 KiB, 16384 a side, 25 MP; each step validated once and its bytes copied at save. Migration 0092 widens the view CHECK.
+  - Window: `ProofImage.vue` draws a data URL image, fit to width, result scroll as view state.
+  - Screenshots: save and save all encode JPEG (0.92, opaque background). Copy stays PNG: `ClipboardItem.supports('image/jpeg')` is false in Playwright webkit and chromium. Bridge `SavePng`/`SavePngTo` renamed `SaveJpeg`/`SaveJpegTo`.
+  - Menu: Window > Validation proof through new `shell.ItemAction`, opens the window with no task.
+  - Tests: flow `TestProofImage`, `TestProofImageRefusals`, `TestProofImageSessionCap`, `TestProofMenuOpensWindow`; `TestMigration0092KeepsProofRows`; UI `proof-image.spec.ts` plus updated proof-window and proof-chart specs.
+  - Deviations from the plan: session cap test uses nine max-size images (eight stay under 32 MiB); menu label reuses `backend.studio.proof.window.title` ("Validation proof", sentence case) since the catalog lint rejects a Title Case `backend.space.menu` key and a duplicate text; `JPEG` added to catalog proper nouns; consts live in `proof/image.go`.
 
 ## P570 Agents choose the base of a requested branch
 
