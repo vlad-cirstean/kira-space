@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
 import { BUILD_SECTIONS } from '../src/data/build';
+import { HERO, INSTALL } from '../src/data/content';
 import type { ShotId } from '../src/data/shotCapture';
 import { expectShotImage } from './shotImage';
 
@@ -12,6 +13,8 @@ interface Route {
   readonly h1: string;
   readonly hero: ShotId;
   readonly shots: readonly ShotId[];
+  /** Document scripts the page ships. */
+  readonly scripts: number;
 }
 
 const ROUTES: readonly Route[] = [
@@ -33,6 +36,7 @@ const ROUTES: readonly Route[] = [
       'studio-sql-console',
       'studio-api',
     ],
+    scripts: 1,
   },
   {
     path: 'build/',
@@ -40,6 +44,7 @@ const ROUTES: readonly Route[] = [
     h1: 'Build with Kira',
     hero: 'build-start-board',
     shots: BUILD_SECTIONS.flatMap((section) => section.shots),
+    scripts: 0,
   },
 ];
 
@@ -158,9 +163,9 @@ for (const route of ROUTES) {
       expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
     });
 
-    test('ships no document script', async ({ page }) => {
+    test('ships only the copy script', async ({ page }) => {
       await openPage(page, route);
-      expect(await page.evaluate(() => document.scripts.length)).toBe(0);
+      expect(await page.evaluate(() => document.scripts.length)).toBe(route.scripts);
     });
 
     test('every shot shows the whole image and fits the viewport', async ({ page }, info) => {
@@ -241,6 +246,53 @@ test('the retired /space/ URL redirects to the landing page', async ({ page }) =
   await page.goto(`${BASE}space/`);
   await expect(page).toHaveURL(BASE);
   await expect(page.locator('h1')).toContainText('in one place');
+});
+
+test('copy button copies the install command without the prompt', async ({ page }) => {
+  await page.addInitScript(() => {
+    const copied: string[] = [];
+    Object.defineProperty(window, '__copied', { value: copied });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: async (text: string) => {
+          copied.push(text);
+        },
+      },
+    });
+  });
+  await page.goto(BASE);
+  const copied = () => page.evaluate(() => (window as unknown as { __copied: string[] }).__copied);
+  const button = page.getByRole('button', { name: INSTALL.copy.label });
+  const status = page.locator('[data-copy-status]');
+  await button.scrollIntoViewIfNeeded();
+  await button.click();
+  await expect.poll(copied).toEqual([INSTALL.command]);
+  await expect(status).toHaveText(INSTALL.copy.done);
+  await button.focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Space');
+  await expect.poll(async () => (await copied()).length).toBe(3);
+  expect(new Set(await copied())).toEqual(new Set([INSTALL.command]));
+  await expect(status).toHaveText('', { timeout: 3000 });
+});
+
+test('selecting a command yields no prompt', async ({ page }) => {
+  await page.goto(BASE);
+  const selected = async (selector: string) => {
+    await page.locator(selector).selectText();
+    return (await page.evaluate(() => getSelection()?.toString() ?? '')).trim();
+  };
+  expect(await selected('#install pre')).toBe(INSTALL.command);
+  expect(await selected('main a[href="#install"].font-mono')).toBe(HERO.command);
+  const prompts = await page
+    .locator('main span')
+    .evaluateAll((els) =>
+      els
+        .filter((el) => el.textContent?.trim() === '$')
+        .map((el) => el.closest('[aria-hidden="true"]') !== null),
+    );
+  expect(prompts.length).toBeGreaterThan(0);
+  expect(prompts.every(Boolean)).toBe(true);
 });
 
 test('the landing page never mentions memory', async ({ page }) => {

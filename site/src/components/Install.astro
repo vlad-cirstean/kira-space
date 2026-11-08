@@ -42,17 +42,33 @@ const card = 'glass relative flex flex-col overflow-hidden rounded-3xl p-6 [&>*]
     <p class="mt-4 text-lg text-muted sm:text-xl">{INSTALL.steps[0]}</p>
   </div>
   <div class="gradient-border mx-auto mt-10 max-w-3xl rounded-2xl p-px">
-    <div class="overflow-hidden rounded-[calc(1rem-1px)] bg-chrome">
+    <div data-terminal class="overflow-hidden rounded-[calc(1rem-1px)] bg-chrome">
       <div class="flex items-center gap-2 border-b border-white/10 px-4 py-3 text-sm text-subtle">
         <span aria-hidden="true" class="size-3 rounded-full bg-red/80"></span>
         <span aria-hidden="true" class="size-3 rounded-full bg-amber/80"></span>
         <span aria-hidden="true" class="size-3 rounded-full bg-lime/80"></span>
         <Icon name="terminal" class="ml-2 size-4" />
         <span>{APP.name}</span>
+        <button
+          type="button"
+          data-copy-command
+          aria-label={INSTALL.copy.label}
+          data-done={INSTALL.copy.done}
+          data-failed={INSTALL.copy.failed}
+          class="group -my-3 ml-auto flex size-11 items-center justify-center rounded-lg text-subtle hover:bg-white/10 hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <span class="flex group-data-[state=done]:hidden"
+            ><Icon name="copy" class="size-4" /></span
+          >
+          <span class="hidden text-lime group-data-[state=done]:flex"
+            ><Icon name="check" class="size-4" /></span
+          >
+        </button>
+        <span role="status" class="sr-only" data-copy-status></span>
       </div>
       <pre
         class="whitespace-pre-wrap break-all p-5 font-mono text-sm sm:text-base"
-      ><span class="text-lime">$ </span><code>{INSTALL.command}</code></pre>
+      ><span aria-hidden="true" class="select-none text-lime">$ </span><code>{INSTALL.command}</code></pre>
     </div>
   </div>
   <div class="mx-auto mt-20 max-w-5xl">
@@ -118,3 +134,32 @@ const card = 'glass relative flex flex-col overflow-hidden rounded-3xl p-6 [&>*]
     </p>
   </div>
 </section>
+
+<script>
+const RESET_MS = 2000;
+
+for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy-command]')) {
+  const terminal = button.closest('[data-terminal]');
+  const code = terminal?.querySelector('code');
+  const status = terminal?.querySelector('[data-copy-status]');
+  if (!code || !status) continue;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const show = (state: 'done' | 'failed') => {
+    button.dataset.state = state;
+    status.textContent = (state === 'done' ? button.dataset.done : button.dataset.failed) ?? '';
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      delete button.dataset.state;
+      status.textContent = '';
+    }, RESET_MS);
+  };
+  button.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(code.textContent ?? '');
+      show('done');
+    } catch {
+      show('failed');
+    }
+  });
+}
+</script>

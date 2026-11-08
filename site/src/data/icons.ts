@@ -5,6 +5,7 @@ import book from '@vscode/codicons/src/icons/book.svg?raw';
 import check from '@vscode/codicons/src/icons/check.svg?raw';
 import cloudDownload from '@vscode/codicons/src/icons/cloud-download.svg?raw';
 import code from '@vscode/codicons/src/icons/code.svg?raw';
+import copy from '@vscode/codicons/src/icons/copy.svg?raw';
 import database from '@vscode/codicons/src/icons/database.svg?raw';
 import deviceMobile from '@vscode/codicons/src/icons/device-mobile.svg?raw';
 import files from '@vscode/codicons/src/icons/files.svg?raw';
@@ -24,6 +25,7 @@ import vm from '@vscode/codicons/src/icons/vm.svg?raw';
 import warning from '@vscode/codicons/src/icons/warning.svg?raw';
 
 export const ICONS = {
+  copy: copy,
   database: database,
   table: table,
   code: code,
