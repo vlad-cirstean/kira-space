@@ -87,7 +87,7 @@ func buildItem(sub *application.Menu, item Item, d MenuDeps) {
 	case ItemAction:
 		fn := d.Actions[item.Action]
 		if fn == nil {
-			slog.Error("shell: menu action not wired", "action", item.Action)
+			slog.Error("shell: menu action not wired", "scope", "menu", "action", item.Action)
 			return
 		}
 		actionItem := application.NewMenuItem(item.Label)
