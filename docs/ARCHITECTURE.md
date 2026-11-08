@@ -1360,7 +1360,8 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - ModuleStart (workbench) is the module front door: icon, title, description, one primary action, optional secondary actions and #below; error or unavailable states may carry Retry.
 - The command palette (CommandPalette.vue, palette.ts in packages/workbench/src/shortcuts/) is shared; each app supplies commands with providePaletteCommands.
 - Both app menus carry View: Command palette and Find.
-- WorkbenchTitleBar replaces per-app title bars; LogLines is the one virtualized log viewer; StatusBar stays per app.
+- WorkbenchTitleBar replaces per-app title bars; LogLines is the one virtualized log viewer; its text selects (`select-text`, body is `select-none`), and a whole-log copy goes through CopyLogButton over the loaded chunks, since unmounted virtual rows drop out of a drag selection; StatusBar stays per app.
+- Text a person reads as data opts back into selection with `select-text` (LogLines, CodeBlock, run outcome text, op log, console result cells). A tab view's root fills MainView with `h-full`: MainView's host is not a flex column, so `flex-1` alone takes content height.
 - Shared UI test helpers live in packages/workbench/src/testing/ui/; app-only ones in apps/*/tests/ui/support/.
 - Persistence ids are TEXT UUID (v7 for new keys; legacy v4 rows stay valid, `ids.IsUUID` accepts any version). See "Ids".
 - New timestamp columns are INTEGER unix ms named *_at; older TEXT ISO columns stay as legacy, and N7 refuses new ones.
