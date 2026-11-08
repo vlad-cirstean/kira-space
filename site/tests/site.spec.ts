@@ -203,12 +203,26 @@ for (const route of ROUTES) {
       ).toHaveCount(1);
     });
 
-    test('head names this tab and its hero image', async ({ page }) => {
+    test('head names this tab and carries the share image', async ({ page, baseURL }) => {
       await openPage(page, route);
       await expect(page.locator('h1')).toHaveText(route.h1);
       await expect(page).toHaveTitle(new RegExp(route.name));
-      const og = await page.locator('meta[property="og:image"]').getAttribute('content');
-      expect(og).toContain(route.hero);
+      const meta = (name: string) =>
+        page.locator(`meta[property="${name}"], meta[name="${name}"]`).getAttribute('content');
+      const og = await meta('og:image');
+      expect(og).toMatch(
+        /^https:\/\/vlad-cirstean\.github\.io\/kira-space\/_astro\/kira-share\.[^/]+\.png$/,
+      );
+      expect(await meta('twitter:image')).toBe(og);
+      expect(await meta('og:image:width')).toBe('1200');
+      expect(await meta('og:image:height')).toBe('630');
+      const response = await page.request.get(`${baseURL}${new URL(og ?? '').pathname}`);
+      expect(response.status()).toBe(200);
+      expect(response.headers()['content-type']).toBe('image/png');
+      const body = await response.body();
+      expect(body.length).toBeLessThan(1_000_000);
+      expect(body.readUInt32BE(16)).toBe(1200);
+      expect(body.readUInt32BE(20)).toBe(630);
     });
 
     test('every icon is hidden from assistive tech or labelled', async ({ page }) => {

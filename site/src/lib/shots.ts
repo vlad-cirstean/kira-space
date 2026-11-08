@@ -22,8 +22,6 @@ export interface ResolvedWindowShot extends ShotDef {
   readonly framedThumb: string;
   /** 1136 px wide WebP of the framed shot, for the `srcset` of narrow viewports. */
   readonly framedSmall: string;
-  /** Build-time PNG of the framed shot for og:image; scrapers handle WebP unevenly. Not committed. */
-  readonly social: string;
 }
 
 interface ResolvedCropShot extends ShotDef {
@@ -83,7 +81,6 @@ export async function resolveShot(id: string): Promise<ResolvedShot> {
     framedHeight: mainMeta.height,
     framedThumb,
     framedSmall,
-    social: mainFound ? (await getImage({ src: mainFound, format: 'png' })).src : placeholder.src,
   };
 }
 

@@ -11,10 +11,9 @@ import Base from '../layouts/Base.astro';
 import { resolveBuild } from '../lib/build';
 
 const sections = await resolveBuild();
-const first = sections[0];
 ---
 
-<Base title={BUILD.title} description={BUILD.description} image={first?.lead.social}>
+<Base title={BUILD.title} description={BUILD.description}>
   <Header />
   <main data-app="space" class="relative isolate overflow-x-clip pb-20">
     <HeroBackdrop size="sm" />

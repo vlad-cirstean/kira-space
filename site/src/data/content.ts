@@ -30,6 +30,7 @@ export interface AppContent {
 
 // Facts come only from README.md and apps/kira-space/README.md.
 export const SITE = {
+  shareAlt: 'Kira Space icon with the headline: Everything agents need, in one place.',
   availability: 'Free and open source. macOS 26+ on Apple Silicon.',
 } as const;
 

@@ -6,7 +6,7 @@ export interface BuildSection {
   readonly name: string;
   readonly pitch: string;
   readonly body: string;
-  /** The first shot leads the section and supplies og:image, so it must be a window shot. */
+  /** The first shot leads the section, so it must be a window shot. */
   readonly shots: readonly ShotId[];
 }
 
