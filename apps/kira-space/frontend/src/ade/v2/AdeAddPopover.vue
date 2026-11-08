@@ -6,6 +6,7 @@ import { FieldDescription, FieldError } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
+import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { refDebounced } from '@vueuse/core';
@@ -58,6 +59,7 @@ const repoLabel = (id: string): string => {
 const title = ref('');
 const jira = ref('');
 const notes = ref('');
+const kind = ref<'task' | 'orchestrator'>('task');
 const createTask = useCreateTask();
 const { model, today } = usePlanModel();
 
@@ -85,11 +87,13 @@ async function addNew(): Promise<void> {
       workflowId: '',
       bases: {},
       day: model.value ? offsetToIso(today.value, firstWork(model.value.cal, 0)) : today.value,
+      kind: kind.value,
     });
     ui.select(task.id);
     title.value = '';
     jira.value = '';
     notes.value = '';
+    kind.value = 'task';
     open.value = false;
   } catch (err) {
     error.value = errorText(err);
@@ -197,6 +201,28 @@ async function pick(value: string): Promise<void> {
           :placeholder="t('space.ade.add.notes.placeholder')"
           data-testid="ade-nw-notes"
         />
+        <span class="text-muted-foreground">{{ t('common.field.kind.label') }}</span>
+        <div class="flex flex-col gap-1">
+          <RadioGroup v-model="kind" class="flex gap-4" data-testid="ade-nw-kind">
+            <div class="flex items-center gap-2">
+              <RadioGroupItem id="ade-nw-kind-task" value="task" data-testid="ade-nw-kind-task" />
+              <Label for="ade-nw-kind-task">{{ t('common.task.label') }}</Label>
+            </div>
+            <div class="flex items-center gap-2">
+              <RadioGroupItem
+                id="ade-nw-kind-orchestrator"
+                value="orchestrator"
+                data-testid="ade-nw-kind-orchestrator"
+              />
+              <Label for="ade-nw-kind-orchestrator">{{
+                t('space.ade.orchestrator.badge.label')
+              }}</Label>
+            </div>
+          </RadioGroup>
+          <FieldDescription v-if="kind === 'orchestrator'" data-testid="ade-nw-kind-hint">{{
+            t('space.ade.orchestrator.kind.orchestrator.hint')
+          }}</FieldDescription>
+        </div>
         <span />
         <div class="flex items-center gap-3">
           <Button

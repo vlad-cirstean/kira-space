@@ -92,5 +92,52 @@
         "readOnly": false
       }
     }
+  ],
+  "ApprovalsService.List#branchBase": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "branch.request:<id:1>",
+      "kind": "branch.request",
+      "operation": {
+        "class": "create",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "run",
+        "step": "one",
+        "task": "Fix login"
+      },
+      "payload": {
+        "items": [
+          {
+            "base": "feat/api-base",
+            "branch": "feat/login",
+            "codeRepoId": "<masked>",
+            "from": "",
+            "id": "c0i0",
+            "kind": "branch",
+            "repo": "api",
+            "session": "<id:2>",
+            "source": "run",
+            "stacked": [],
+            "stepName": "one",
+            "upstream": ""
+          }
+        ],
+        "taskId": "<masked>",
+        "taskTitle": "Fix login"
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Fix login",
+        "readOnly": false
+      }
+    }
   ]
 }

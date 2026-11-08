@@ -27,12 +27,12 @@ const (
 )
 
 const (
-	maxPngBytes    = 64 << 20
-	maxPngBase64   = maxPngBytes/3*4 + 8
+	maxShotBytes   = 64 << 20
+	maxShotBase64  = maxShotBytes/3*4 + 8
 	maxFilenameLen = 120
 )
 
-var pngMagic = []byte("\x89PNG\r\n\x1a\n")
+var jpegMagic = []byte{0xFF, 0xD8, 0xFF}
 
 var unsafeFilenameChars = regexp.MustCompile(`[^\p{L}\p{N}._ -]+`)
 
@@ -143,14 +143,14 @@ type ProofSelect struct {
 	SessionID string `json:"sessionId"`
 }
 
-// ProofSavePngArgs saves a screenshot.
-type ProofSavePngArgs struct {
-	Filename  string `json:"filename"`
-	PngBase64 string `json:"pngBase64"`
+// ProofSaveJpegArgs saves a screenshot.
+type ProofSaveJpegArgs struct {
+	Filename   string `json:"filename"`
+	JpegBase64 string `json:"jpegBase64"`
 }
 
-// ProofSavePngResult reports where a screenshot went; saved is false when the user cancelled.
-type ProofSavePngResult struct {
+// ProofSaveJpegResult reports where a screenshot went; saved is false when the user cancelled.
+type ProofSaveJpegResult struct {
 	Saved bool    `json:"saved"`
 	Path  *string `json:"path"`
 }
@@ -313,31 +313,35 @@ func (s *ProofService) WindowTarget(args ProofWindowKeyArgs) (ProofWindowTarget,
 	return ProofWindowTarget{}, nil
 }
 
-// SavePng asks where to save a screenshot and writes it there.
-func (s *ProofService) SavePng(args ProofSavePngArgs) (ProofSavePngResult, error) {
-	if len(args.PngBase64) > maxPngBase64 {
-		return ProofSavePngResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.tooLarge.body", nil)
+// SaveJpeg asks where to save a screenshot and writes it there.
+func (s *ProofService) SaveJpeg(args ProofSaveJpegArgs) (ProofSaveJpegResult, error) {
+	if len(args.JpegBase64) > maxShotBase64 {
+		return ProofSaveJpegResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.tooLarge.body", nil)
 	}
-	data, err := base64.StdEncoding.DecodeString(args.PngBase64)
-	if err != nil || len(data) > maxPngBytes || !bytes.HasPrefix(data, pngMagic) {
-		return ProofSavePngResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.notPng.body", nil)
+	data, err := base64.StdEncoding.DecodeString(args.JpegBase64)
+	if err != nil || len(data) > maxShotBytes || !bytes.HasPrefix(data, jpegMagic) {
+		return ProofSaveJpegResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.notJpeg.body", nil)
 	}
-	path, err := s.Dialogs.SaveFile(SaveFileRequest{Directory: downloadsDir(), Filename: safePngName(args.Filename)})
+	path, err := s.Dialogs.SaveFile(SaveFileRequest{Directory: downloadsDir(), Filename: safeJpegName(args.Filename)})
 	if err != nil {
-		return ProofSavePngResult{}, ipcerr.InternalErr(err)
+		return ProofSaveJpegResult{}, ipcerr.InternalErr(err)
 	}
 	if path == "" {
-		return ProofSavePngResult{}, nil
+		return ProofSaveJpegResult{}, nil
 	}
 	if err := renameio.WriteFile(path, data, 0o644); err != nil {
-		return ProofSavePngResult{}, ipcerr.InternalErr(err)
+		return ProofSaveJpegResult{}, ipcerr.InternalErr(err)
 	}
-	return ProofSavePngResult{Saved: true, Path: &path}, nil
+	return ProofSaveJpegResult{Saved: true, Path: &path}, nil
 }
 
-// safePngName reduces a suggested name to a plain file name ending in .png.
-func safePngName(name string) string {
-	base := strings.TrimSuffix(filepath.Base(strings.TrimSpace(name)), ".png")
+// safeBaseName reduces a suggested name to a plain file name without its image suffix.
+func safeBaseName(name string) string {
+	base := filepath.Base(strings.TrimSpace(name))
+	switch strings.ToLower(filepath.Ext(base)) {
+	case ".jpg", ".jpeg", ".png":
+		base = strings.TrimSuffix(base, filepath.Ext(base))
+	}
 	base = strings.Trim(unsafeFilenameChars.ReplaceAllString(base, "_"), " .")
 	if base == "" {
 		base = "proof"
@@ -345,5 +349,8 @@ func safePngName(name string) string {
 	if r := []rune(base); len(r) > maxFilenameLen {
 		base = string(r[:maxFilenameLen])
 	}
-	return base + ".png"
+	return base
 }
+
+// safeJpegName is safeBaseName with the .jpg suffix.
+func safeJpegName(name string) string { return safeBaseName(name) + ".jpg" }

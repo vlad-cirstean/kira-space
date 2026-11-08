@@ -1,49 +1,71 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 )
 
-const preamble = `# Kira Studio history
+type histBlock struct{ file, body string }
 
-Built by ` + "`go run ./scripts/docshistory`" + `; never hand-edit. Phase IDs are chapter-local before v1.6.
-Deleted chapter files: ` + "`git show <commit>:docs/<chapter>/<file>`" + ` with the commit named in each chapter header.
-Lines distilled by the memory MCP ` + "`ingest_files`" + ` distill mode, one phase per input.
-`
+var chapterBlockRe = regexp.MustCompile(`(?s)<!-- chapter (\S+) -->\n(.*?)<!-- /chapter (\S+) -->\n`)
 
-var chapterBlockRe = regexp.MustCompile(`(?s)<!-- chapter (\S+) -->\n(.*?)<!-- /chapter \S+ -->\n`)
-
-func readBlocks(path string) (map[string]string, error) {
-	blocks := map[string]string{}
-	raw, err := os.ReadFile(path)
-	if os.IsNotExist(err) {
-		return blocks, nil
-	}
+// readBlocks maps each chapter in dir/*.md to its file and body.
+func readBlocks(dir string) (map[string]histBlock, error) {
+	files, err := filepath.Glob(filepath.Join(dir, "*.md"))
 	if err != nil {
 		return nil, err
 	}
-	for _, m := range chapterBlockRe.FindAllStringSubmatch(string(raw), -1) {
-		blocks[m[1]] = m[2]
+	blocks := map[string]histBlock{}
+	for _, f := range files {
+		raw, err := os.ReadFile(f)
+		if err != nil {
+			return nil, err
+		}
+		for _, m := range chapterBlockRe.FindAllStringSubmatch(string(raw), -1) {
+			if m[1] != m[3] {
+				return nil, fmt.Errorf("%s: chapter %s closed as %s", f, m[1], m[3])
+			}
+			if prev, ok := blocks[m[1]]; ok {
+				return nil, fmt.Errorf("chapter %s in both %s and %s", m[1], prev.file, f)
+			}
+			blocks[m[1]] = histBlock{file: f, body: m[2]}
+		}
 	}
 	return blocks, nil
 }
 
-func writeBlocks(path string, blocks map[string]string) (int, error) {
-	chs := make([]string, 0, len(blocks))
-	for ch := range blocks {
-		chs = append(chs, ch)
+// spliceBlock replaces chapter ch's body in path; every other byte stays.
+func spliceBlock(path, ch, body string) error {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return err
 	}
-	var b strings.Builder
-	b.WriteString(preamble)
-	for _, ch := range sortChapters(chs, false) {
-		b.WriteString("\n<!-- chapter " + ch + " -->\n" + blocks[ch] + "<!-- /chapter " + ch + " -->\n")
+	text := string(raw)
+	q := regexp.QuoteMeta(ch)
+	re := regexp.MustCompile(`(?s)<!-- chapter ` + q + ` -->\n(.*?)<!-- /chapter ` + q + ` -->\n`)
+	m := re.FindStringSubmatchIndex(text)
+	if m == nil {
+		return fmt.Errorf("%s: no block for %s", path, ch)
 	}
-	return b.Len(), os.WriteFile(path, []byte(b.String()), 0o644)
+	return os.WriteFile(path, []byte(text[:m[2]]+body+text[m[3]:]), 0o644)
+}
+
+func requireBlocks(dir string, chapters []string) (map[string]histBlock, error) {
+	blocks, err := readBlocks(dir)
+	if err != nil {
+		return nil, err
+	}
+	var errs []error
+	for _, ch := range chapters {
+		if _, ok := blocks[ch]; !ok {
+			errs = append(errs, fmt.Errorf("%s: no block in %s; a new chapter is closed by hand (CLAUDE.md \"Closing a chapter\")", ch, dir))
+		}
+	}
+	return blocks, errors.Join(errs...)
 }
 
 func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
@@ -126,9 +148,9 @@ func fallbackLines(u Unit, r Record) []string {
 	return append(out, "(not distilled: "+r.Reason+")")
 }
 
-// cmdRender writes the given chapters' blocks into the history file and prints sizes.
-func cmdRender(runs, history string, chapters []string) error {
-	blocks, err := readBlocks(history)
+// cmdRender re-renders the chapters' existing blocks in dir and prints sizes.
+func cmdRender(runs, dir string, chapters []string) error {
+	blocks, err := requireBlocks(dir, chapters)
 	if err != nil {
 		return err
 	}
@@ -138,10 +160,7 @@ func cmdRender(runs, history string, chapters []string) error {
 			return err
 		}
 		if len(recs) == 0 {
-			if _, ok := blocks[ch]; ok {
-				continue
-			}
-			return fmt.Errorf("%s: no runs recorded and no block in %s", ch, history)
+			continue
 		}
 		commit := ""
 		for _, r := range recs {
@@ -152,20 +171,11 @@ func cmdRender(runs, history string, chapters []string) error {
 		if err != nil {
 			return err
 		}
-		blocks[ch] = renderChapter(ch, p, recs, commit)
+		body := renderChapter(ch, p, recs, commit)
+		if err := spliceBlock(blocks[ch].file, ch, body); err != nil {
+			return err
+		}
+		fmt.Printf("%s %s %d bytes, %d lines\n", ch, blocks[ch].file, len(body), strings.Count(body, "\n"))
 	}
-	total, err := writeBlocks(history, blocks)
-	if err != nil {
-		return err
-	}
-	var chs []string
-	for ch := range blocks {
-		chs = append(chs, ch)
-	}
-	sort.Strings(chs)
-	for _, ch := range sortChapters(chs, false) {
-		fmt.Printf("%s %d bytes, %d lines\n", ch, len(blocks[ch]), strings.Count(blocks[ch], "\n"))
-	}
-	fmt.Printf("total %d bytes\n", total)
 	return nil
 }

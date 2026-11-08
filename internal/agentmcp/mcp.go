@@ -69,6 +69,8 @@ type Grant struct {
 	// Sandbox, when set on a run grant, adds fetch_remote and push_branch: the git operations a
 	// sandboxed agent cannot do itself.
 	Sandbox *SandboxGrant
+	// Orchestrator, on a Space grant, adds create_task, list_tasks and task_chain.
+	Orchestrator bool
 	// StepID is the stage a task session without a run was opened for; handover refuses a task that moved on.
 	StepID string
 	// Agent is the provider the run's CLI belongs to; it writes the grant's MCP config.
@@ -115,16 +117,17 @@ const grantPrefix = "g"
 // an OS-assigned port, started by the first Register. Each run gets its own bearer token and a
 // 0600 config file holding it; the token never reaches argv.
 type Server struct {
-	dir      string
-	onFinish FinishFunc
-	space    SpaceTools
-	outcomes Outcomes
-	review   ReviewReplier
-	sandbox  SandboxGit
-	git      GitRunner
-	onCall   func(ctx context.Context, c ToolCall) (context.Context, func(isError bool, text string, err error))
-	handover HandoverRecorder
-	prompts  llmprompts.Source
+	dir          string
+	onFinish     FinishFunc
+	space        SpaceTools
+	orchestrator OrchestratorTools
+	outcomes     Outcomes
+	review       ReviewReplier
+	sandbox      SandboxGit
+	git          GitRunner
+	onCall       func(ctx context.Context, c ToolCall) (context.Context, func(isError bool, text string, err error))
+	handover     HandoverRecorder
+	prompts      llmprompts.Source
 
 	mu     sync.Mutex
 	seq    uint64
@@ -133,7 +136,7 @@ type Server struct {
 	srv    *http.Server
 	closed bool
 	// shared holds the per-flags servers of the revision sharedRev; a prompt edit rebuilds them.
-	shared    map[[6]bool]*mcp.Server
+	shared    map[toolSet]*mcp.Server
 	sharedRev uint64
 }
 
@@ -143,7 +146,9 @@ type Options struct {
 	Dir      string
 	OnFinish FinishFunc
 	Space    SpaceTools
-	Outcomes Outcomes
+	// Orchestrator runs the orchestrator tools; nil refuses orchestrator grants.
+	Orchestrator OrchestratorTools
+	Outcomes     Outcomes
 	// Review answers reply_review_comment calls; nil refuses review grants.
 	Review ReviewReplier
 	// SandboxGit runs fetch_remote and push_branch; nil refuses sandbox grants.
@@ -164,7 +169,7 @@ func NewServer(o Options) *Server {
 	if o.Prompts == nil {
 		o.Prompts = llmprompts.Defaults()
 	}
-	return &Server{dir: o.Dir, onFinish: o.OnFinish, space: o.Space, outcomes: o.Outcomes, review: o.Review, sandbox: o.SandboxGit, git: o.Git, onCall: o.OnToolCall, handover: o.Handover, prompts: o.Prompts}
+	return &Server{dir: o.Dir, onFinish: o.OnFinish, space: o.Space, orchestrator: o.Orchestrator, outcomes: o.Outcomes, review: o.Review, sandbox: o.SandboxGit, git: o.Git, onCall: o.OnToolCall, handover: o.Handover, prompts: o.Prompts}
 }
 
 type finishArgs struct {
@@ -237,14 +242,33 @@ func (s *Server) finishSchema(results []ResultSpec) (*jsonschema.Schema, error) 
 	return sch, nil
 }
 
+// toolSet is the set of tool groups a grant sees; it keys the shared servers.
+type toolSet struct {
+	finish, space, outcomes, git, review, sandbox, handover, orchestrator bool
+}
+
+func (ts toolSet) any() bool {
+	return ts.finish || ts.space || ts.outcomes || ts.git || ts.review || ts.sandbox || ts.handover
+}
+
+// toolSetOf is the tool set of a grant: finish_step only for a run, review only when asked for (a shared
+// server never carries it).
+func (s *Server) toolSetOf(g Grant, review bool) toolSet {
+	return toolSet{
+		finish: g.RunID != "", space: g.Space, outcomes: g.TaskID != "" && s.outcomes != nil, git: g.Git != nil,
+		review: review, sandbox: g.Sandbox != nil, handover: s.handoverGranted(g),
+		orchestrator: g.Space && g.Orchestrator,
+	}
+}
+
 // buildMCPServer returns the tool set a grant sees: an agent never lists a tool it cannot call.
-func (s *Server) buildMCPServer(finish, space, outcomes, git, review, sandbox, handover bool, results []ResultSpec) *mcp.Server {
+func (s *Server) buildMCPServer(ts toolSet, results []ResultSpec) *mcp.Server {
 	opts := &mcp.ServerOptions{}
-	if space {
+	if ts.space {
 		opts.Instructions = llmprompts.HeadlessSpaceInstructions.Text(s.prompts, llmprompts.NoVars{})
 	}
 	srv := mcp.NewServer(&mcp.Implementation{Name: ServerName, Title: "Kira Space", Version: "1"}, opts)
-	if finish {
+	if ts.finish {
 		schema, err := s.finishSchema(results)
 		if err != nil {
 			panic(err) // the schema derives from a fixed type: a failure is a programming error
@@ -255,23 +279,26 @@ func (s *Server) buildMCPServer(finish, space, outcomes, git, review, sandbox, h
 			InputSchema: schema,
 		}, s.finishStep)
 	}
-	if space {
+	if ts.space {
 		s.addSpaceTools(srv)
 	}
-	if outcomes {
+	if ts.outcomes {
 		s.addOutcomeTool(srv)
 	}
-	if git {
+	if ts.git {
 		s.addGitTool(srv)
 	}
-	if review {
+	if ts.review {
 		s.addReviewTool(srv)
 	}
-	if sandbox {
+	if ts.sandbox {
 		s.addSandboxGitTools(srv)
 	}
-	if handover {
+	if ts.handover {
 		s.addHandoverTool(srv)
+	}
+	if ts.orchestrator {
+		s.addOrchestratorTools(srv)
 	}
 	s.recordCalls(srv)
 	return srv
@@ -363,8 +390,7 @@ func (s *Server) startLocked() error {
 		if reg.server != nil {
 			return reg.server
 		}
-		g := reg.grant
-		return s.sharedServer([6]bool{g.RunID != "", g.Space, g.TaskID != "" && s.outcomes != nil, g.Git != nil, g.Sandbox != nil, s.handoverGranted(g)})
+		return s.sharedServer(s.toolSetOf(reg.grant, false))
 	}, &mcp.StreamableHTTPOptions{Stateless: true})
 	protected := auth.RequireBearerToken(s.verify, nil)(handler)
 	mux := http.NewServeMux()
@@ -376,36 +402,39 @@ func (s *Server) startLocked() error {
 }
 
 // sharedServer returns the tool set for a grant's flags, rebuilt when a prompt edit moved the revision.
-func (s *Server) sharedServer(key [6]bool) *mcp.Server {
+func (s *Server) sharedServer(key toolSet) *mcp.Server {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if rev := s.prompts.Revision(); s.shared == nil || rev != s.sharedRev {
-		s.shared = map[[6]bool]*mcp.Server{}
+		s.shared = map[toolSet]*mcp.Server{}
 		s.sharedRev = rev
 	}
 	srv := s.shared[key]
-	if srv == nil && (key[0] || key[1] || key[2] || key[3] || key[4] || key[5]) {
-		srv = s.buildMCPServer(key[0], key[1], key[2], key[3], false, key[4], key[5], nil)
+	if srv == nil && key.any() {
+		srv = s.buildMCPServer(key, nil)
 		s.shared[key] = srv
 	}
 	return srv
 }
 
-// Register mints a token for the grant, writes its MCP config file and returns its path. release
-// deletes that registration's file and token only; call it when the process has exited.
-func (s *Server) Register(g Grant) (configPath string, release func(), err error) {
+// checkGrant validates a grant against the server's tools and returns it with its git, review and
+// sandbox parts normalized.
+func (s *Server) checkGrant(g Grant) (Grant, error) {
 	if g.RunID == "" && !g.Space && !s.handoverGranted(g) {
-		return "", nil, errors.New("agentmcp: grant allows nothing")
+		return g, errors.New("agentmcp: grant allows nothing")
 	}
 	if g.Space && (g.TaskID == "" || s.space == nil) {
-		return "", nil, errors.New("agentmcp: space grant needs a task and space tools")
+		return g, errors.New("agentmcp: space grant needs a task and space tools")
 	}
 	if g.Agent == nil {
-		return "", nil, errors.New("agentmcp: grant needs a provider")
+		return g, errors.New("agentmcp: grant needs a provider")
+	}
+	if g.Orchestrator && (!g.Space || s.orchestrator == nil) {
+		return g, errors.New("agentmcp: orchestrator grant needs a space grant and orchestrator tools")
 	}
 	if g.Git != nil {
 		if s.git == nil {
-			return "", nil, errors.New("agentmcp: git grant needs a git runner")
+			return g, errors.New("agentmcp: git grant needs a git runner")
 		}
 		wts := make([]string, len(g.Git.Worktrees))
 		for i, w := range g.Git.Worktrees {
@@ -415,15 +444,25 @@ func (s *Server) Register(g Grant) (configPath string, release func(), err error
 	}
 	if g.Review != nil {
 		if g.RunID == "" || s.review == nil {
-			return "", nil, errors.New("agentmcp: review grant needs a run and a review replier")
+			return g, errors.New("agentmcp: review grant needs a run and a review replier")
 		}
 		g.Review = &ReviewGrant{CommentIDs: slices.Clone(g.Review.CommentIDs)}
 	}
 	if g.Sandbox != nil {
 		if g.RunID == "" || s.sandbox == nil {
-			return "", nil, errors.New("agentmcp: sandbox grant needs a run and sandbox git tools")
+			return g, errors.New("agentmcp: sandbox grant needs a run and sandbox git tools")
 		}
 		g.Sandbox = &SandboxGrant{Push: g.Sandbox.Push}
+	}
+	return g, nil
+}
+
+// Register mints a token for the grant, writes its MCP config file and returns its path. release
+// deletes that registration's file and token only; call it when the process has exited.
+func (s *Server) Register(g Grant) (configPath string, release func(), err error) {
+	g, err = s.checkGrant(g)
+	if err != nil {
+		return "", nil, err
 	}
 	servers, err := extraServers(g.Extra)
 	if err != nil {
@@ -431,7 +470,7 @@ func (s *Server) Register(g Grant) (configPath string, release func(), err error
 	}
 	var perRun *mcp.Server
 	if g.RunID != "" && (!IsImplicit(g.Results) || g.Review != nil) {
-		perRun = s.buildMCPServer(true, g.Space, g.TaskID != "" && s.outcomes != nil, g.Git != nil, g.Review != nil, g.Sandbox != nil, s.handoverGranted(g), g.Results)
+		perRun = s.buildMCPServer(s.toolSetOf(g, g.Review != nil), g.Results)
 	}
 	plain, hash, salt, err := tokenauth.Mint()
 	if err != nil {

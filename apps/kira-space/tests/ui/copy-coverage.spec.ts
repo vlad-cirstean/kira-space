@@ -241,6 +241,10 @@ test('repositories page', async ({ relaunch }) => {
 
 test('settings dialog, every pane', async ({ relaunch }) => {
   const status = contract<{ command: string }>('memory-settings', 'MemoryService.McpStatus');
+  const about = contract<{ appVersion: string; repoUrl: string }>(
+    'settings-about',
+    'AppService.Info#about',
+  );
   const { window: page } = await relaunch({
     control: withMemory([
       { channel: IPC.memoryMcpStatus, response: status },
@@ -252,6 +256,7 @@ test('settings dialog, every pane', async ({ relaunch }) => {
         channel: IPC.memoryCheckHook,
         response: contract('memory-settings', 'MemoryService.CheckHook'),
       },
+      { channel: IPC.appInfo, response: { ...about, go: 'go1.0', wails: 'v3.0.0', kiraHome: '' } },
     ]),
   });
   await emitWailsEvent(page, IPC.openSettings, undefined);
@@ -266,6 +271,10 @@ test('settings dialog, every pane', async ({ relaunch }) => {
     ...fixtureData(),
     ...[agent.productLabel, ...agent.models.map((m) => m.label)].map((v) => new RegExp(`^${v}$`)),
     /^(id|email)$/,
+    // The version and repo URL are data from the app info.
+    ...[about.appVersion, about.repoUrl].map(
+      (v) => new RegExp(`^${v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
+    ),
   ];
   for (const section of [
     'Appearance',
@@ -276,6 +285,7 @@ test('settings dialog, every pane', async ({ relaunch }) => {
     'Memory',
     'Advanced',
     'Experimental',
+    'About',
   ]) {
     await page.locator(t(`settings-section-${section}`)).click();
     await expectCatalogText(page.locator(t('settings-dialog')), { allow });

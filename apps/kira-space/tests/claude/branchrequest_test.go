@@ -39,12 +39,18 @@ func openBranchRequest(f *adeFixture, id string) (adewire.BranchRequest, error) 
 }
 
 // TestAdeBranchRequest runs a headless step on a task with no branch. The agent must ask for one through
-// request_branches, wait for the approval, then work in the returned worktree.
+// request_branches on a chosen base, wait for the approval, then work in the returned worktree.
 func TestAdeBranchRequest(t *testing.T) {
 	f := newAdeFixture(t, nil)
+	// feat/base exists only on origin, one commit ahead of main: the agent starts its branch there.
+	f.repo.Git("checkout", "-q", "-b", "feat/base", "main")
+	f.repo.Commit("base marker", map[string]string{"base-marker.txt": "marker\n"})
+	f.repo.Git("push", "-q", "origin", "feat/base")
+	f.repo.Checkout("main")
+	f.repo.Git("branch", "-D", "feat/base")
 	step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 6m\n" +
 		"    allowed_tools: [\"Write\", \"Bash(git:*)\"]\n" +
-		"    prompt: You have no branch yet. Call request_branches for the repo api with the branch name feat/hello and wait for the answer. " +
+		"    prompt: You have no branch yet. Call request_branches for the repo api with the branch name feat/hello and the base feat/base, and wait for the answer. " +
 		"Then, in the worktree it returns, create the file hello.txt containing hi and commit it with git. " +
 		"Then call finish_step with status done and summary ok.\n"
 	f.saveWorkflow(t, "flow", step+manualStepYAML)
@@ -68,8 +74,8 @@ func TestAdeBranchRequest(t *testing.T) {
 		return false
 	})
 	asked := time.Now()
-	if len(req.Items) != 1 || req.Items[0].Repo != "api" || req.Items[0].Kind != "branch" || req.Items[0].Branch != "feat/hello" {
-		t.Fatalf("request = %+v, want one new branch in api", req)
+	if len(req.Items) != 1 || req.Items[0].Repo != "api" || req.Items[0].Kind != "branch" || req.Items[0].Branch != "feat/hello" || req.Items[0].Base != "feat/base" {
+		t.Fatalf("request = %+v, want one new branch in api from feat/base", req)
 	}
 	time.Sleep(branchHold)
 	opts, err := json.Marshal(map[string][]string{"itemIds": {req.Items[0].ID}})
@@ -118,6 +124,12 @@ func TestAdeBranchRequest(t *testing.T) {
 	}
 	if br.Name != "feat/hello" || !nanoFolder.MatchString(filepath.Base(br.Worktree)) {
 		t.Fatalf("branch = %+v, want feat/hello in a wt_ worktree folder", br)
+	}
+	if br.Base != "feat/base" {
+		t.Fatalf("branch base = %q, want feat/base", br.Base)
+	}
+	if _, err := os.Stat(filepath.Join(br.Worktree, "base-marker.txt")); err != nil {
+		t.Fatalf("base-marker.txt missing: the worktree did not start from feat/base: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(br.Worktree, "hello.txt")); err != nil {
 		t.Fatalf("hello.txt missing from the worktree: %v\nlog:\n%s", err, tail(log, 2500))

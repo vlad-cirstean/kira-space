@@ -13,19 +13,19 @@ import { IPC } from './support/ipcChannels';
 const t = (id: string) => `[data-testid="${id}"]`;
 
 interface Pl {
-  items: { id: string; branch: string }[];
+  items: { id: string; branch: string; base?: string }[];
 }
 
-function item(): ApprovalItem {
-  const [it] = contract<ApprovalItem[]>('ade-branch-request', 'ApprovalsService.List#branch');
+function item(key = 'branch'): ApprovalItem {
+  const [it] = contract<ApprovalItem[]>('ade-branch-request', `ApprovalsService.List#${key}`);
   if (!it) throw new Error('contract has no item');
   return liveItem(it, 1800, FIXED_NOW);
 }
 
 const payload = () => item().payload as Pl;
 
-async function openRequest(relaunch: Parameters<typeof openPlan>[0]) {
-  const it = item();
+async function openRequest(relaunch: Parameters<typeof openPlan>[0], key = 'branch') {
+  const it = item(key);
   const { window: page, control } = await openPlan(relaunch, [
     ...seedApprovals([it]),
     { channel: IPC.approvalsAnswer, response: answeredOk([it.id]) },
@@ -63,6 +63,25 @@ test('contract: the item lists every branch and Approve sends the checked items'
         remoteItemIds: [],
         shownItemIds: items.map((row) => row.id),
       },
+    },
+  });
+});
+
+test('contract: an item with an agent base shows where the branch starts', async ({ relaunch }) => {
+  const { page, control, it } = await openRequest(relaunch, 'branchBase');
+  const dialog = page.locator(t('approvals-dialog'));
+  const [row] = (it.payload as Pl).items;
+  if (!row?.base) throw new Error('contract item has no base');
+  const line = dialog.locator(t(`ade-branch-request-item-${row.id}`));
+  await expect(line).toContainText(row.branch);
+  await expect(line).toContainText(row.base);
+  await dialog.locator(t(`approval-approve-${it.id}`)).click();
+  await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
+  expect(calls(control, IPC.approvalsAnswer)[0]?.args).toEqual({
+    ids: [it.id],
+    approve: true,
+    options: {
+      [it.id]: { itemIds: [row.id], remoteItemIds: [], shownItemIds: [row.id] },
     },
   });
 });

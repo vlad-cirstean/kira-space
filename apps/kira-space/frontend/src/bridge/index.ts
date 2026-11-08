@@ -6,6 +6,7 @@ import * as AgentService from '@bindings/agentservice.js';
 import * as AgentSettingsService from '@bindings/agentsettingsservice.js';
 import * as AgentUsageService from '@bindings/agentusageservice.js';
 import * as ApprovalsService from '@bindings/approvalsservice.js';
+import * as AppService from '@bindings/appservice.js';
 import * as CaptureService from '@bindings/captureservice.js';
 import * as CodeWorkspaceService from '@bindings/codeworkspaceservice.js';
 import * as ConfigFilesService from '@bindings/configfilesservice.js';
@@ -130,6 +131,7 @@ import type {
   RepoConfigSaveArgs,
 } from '../repo/state/repoConfigTypes';
 import type { RepoFormArgs, RepoFormResult } from '../repo/state/repoFormTypes';
+import type { AppInfo } from '../state/appInfoDomain';
 import type { CliToolsResult, IssueTrackers } from '../state/cliToolsDomain';
 import type { SpaceOpRecord } from '../state/opsDomain';
 import type { Settings, SettingsPatch } from '../state/settingsDomain';
@@ -267,6 +269,7 @@ const spaceControl = {
   // Kira Studio never had a real use for it, so this app's own LinkService.OpenExternal call
   // stays here instead.
   openExternal: createOpenExternal((url) => unwrap(LinkService.OpenExternal({ url }))),
+  appInfo: (): Promise<AppInfo> => unwrap(AppService.Info()).then((r) => trust<AppInfo>(r)),
   onCommandPalette: (cb: () => void): (() => void) => on(CHANNEL.commandPalette, cb),
   onViewFind: (cb: () => void): (() => void) => on(CHANNEL.viewFind, cb),
   onReviewCode: (cb: () => void): (() => void) => on(CHANNEL.reviewCode, cb),
@@ -692,6 +695,8 @@ const spaceControl = {
     unwrap(AdeTaskService.RemoveArtifact(args)),
   adeTaskSetTaskStep: (args: V2.SetTaskStepArgs): Promise<V2.Task> =>
     unwrap(AdeTaskService.SetTaskStep(args)).then((r) => trust<V2.Task>(r)),
+  adeTaskNextPass: (args: V2.NextPassArgs): Promise<V2.NextPassResult> =>
+    unwrap(AdeTaskService.NextPass(args)).then((r) => trust<V2.NextPassResult>(r)),
   adeTaskSaveStatuses: (args: V2.SaveStatusesArgs): Promise<V2.SaveStatusesResult> =>
     unwrap(AdeTaskService.SaveStatuses(args)).then((r) => trust<V2.SaveStatusesResult>(r)),
   adeTaskRetrySetup: (args: V2.BranchArgs): Promise<void> =>

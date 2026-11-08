@@ -34,6 +34,9 @@ const (
 	repoOwner = "vlad-cirstean"
 	repoName  = "kira-space"
 
+	// RepoURL is the one source of the GitHub repository URL for the app.
+	RepoURL = "https://github.com/" + repoOwner + "/" + repoName
+
 	latestReleaseURL = "https://api.github.com/repos/" + repoOwner + "/" + repoName + "/releases/latest"
 
 	requestTimeout = 10 * time.Second // githost/github's own apiTimeout, same reasoning

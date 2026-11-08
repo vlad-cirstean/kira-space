@@ -14,7 +14,7 @@ export const PENDING_ID = 'session-2';
 type Json = Record<string, any>;
 
 const fixture = (
-  name: 'proof' | 'proof-pending' | 'proof-chart' | 'proof-diagram',
+  name: 'proof' | 'proof-pending' | 'proof-chart' | 'proof-diagram' | 'proof-image',
   key: string,
 ): Json => contract(name, key) as Json;
 
@@ -26,9 +26,23 @@ export const shotFolder = (): Json => ({
 });
 
 /** Height in pixels from a PNG's IHDR chunk (bytes 20-24), given its base64. */
-export function pngHeight(pngBase64: string): number {
-  const bytes = Buffer.from(pngBase64.slice(0, 44), 'base64');
+export function pngHeight(b64: string): number {
+  const bytes = Buffer.from(b64.slice(0, 44), 'base64');
   return bytes.readUInt32BE(20);
+}
+
+/** Height in pixels from a JPEG's SOF0/SOF2 marker (big-endian, 3 bytes past the length), given its
+ *  base64. Walks the segments so a thumbnail inside an APP marker is never mistaken for the frame. */
+export function jpegHeight(jpegBase64: string): number {
+  const bytes = Buffer.from(jpegBase64, 'base64');
+  let at = 2;
+  while (at + 9 < bytes.length) {
+    if (bytes[at] !== 0xff) throw new Error(`jpegHeight: no marker at ${at}`);
+    const marker = bytes[at + 1];
+    if (marker === 0xc0 || marker === 0xc2) return bytes.readUInt16BE(at + 5);
+    at += 2 + bytes.readUInt16BE(at + 2);
+  }
+  throw new Error('jpegHeight: no SOF marker');
 }
 
 export const CLOSED_AT = Date.UTC(2026, 0, 2, 3, 4, 5);
@@ -259,3 +273,56 @@ export function diagramControl(extra: ControlSnapshot[] = []): ControlSnapshot[]
     ...extra,
   ];
 }
+
+export type ImageKey = 'path' | 'inline' | 'symlink' | 'tall';
+export const IMAGE_KEYS: ImageKey[] = ['path', 'inline', 'symlink', 'tall'];
+
+/** An image step from the Go-written contract; `patch` overrides any field of the step. */
+export function imageStep(
+  sessionId: string,
+  rev: number,
+  ordinal: number,
+  key: ImageKey,
+  patch: Json = {},
+): ControlSnapshot {
+  return {
+    channel: IPC.proofStep,
+    args: { sessionId, rev, ordinal },
+    response: { ...fixture('proof-image', `ProofService.Step#${key}`), ordinal, ...patch },
+  };
+}
+
+/** Boot snapshots for the image session; steps 1-4 in the contract's order. */
+export function imageControl(
+  extra: ControlSnapshot[] = [],
+  target: Json = { sessionId: SESSION_ID },
+  older: Json[] = [],
+): ControlSnapshot[] {
+  return [
+    { channel: IPC.proofWindowTarget, response: target },
+    {
+      channel: IPC.proofSessions,
+      response: [
+        ...(fixture('proof-image', 'ProofService.Sessions') as unknown as Json[]).map((x) => ({
+          ...x,
+          id: SESSION_ID,
+          closedAt: CLOSED_AT,
+        })),
+        ...older,
+      ],
+    },
+    {
+      channel: IPC.proofSession,
+      response: {
+        ...fixture('proof-image', 'ProofService.Session'),
+        id: SESSION_ID,
+        closedAt: CLOSED_AT,
+      },
+    },
+    ...IMAGE_KEYS.map((key, i) => imageStep(SESSION_ID, 1, i + 1, key)),
+    ...extra,
+  ];
+}
+
+/** What a proof window opened from the Window menu (no task) boots with: a null session. */
+export const menuTarget = (): Json => fixture('proof-image', 'ProofService.WindowTarget#menu');

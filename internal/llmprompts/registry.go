@@ -136,6 +136,14 @@ type HandoverBlockVars struct {
 	HandoverFrom string `json:"handoverFrom"`
 }
 
+// PassHandoverVars fills the handover that starts an orchestrator pass: the user's optional message and the
+// previous pass's final handover.
+type PassHandoverVars struct {
+	Message      string `json:"message"`
+	Previous     string `json:"previous"`
+	PreviousFrom string `json:"previousFrom"`
+}
+
 // JiraLineVars fills the Jira line.
 type JiraLineVars struct {
 	JiraKey string `json:"jiraKey"`
@@ -941,6 +949,7 @@ var (
 	_ = arg(HeadlessToolRequestBranches.id, "branches", spaceApp, NextCall, `Branches, 1 to {{.Max}}.`, MaxVars{Max: 20})
 	_ = arg(HeadlessToolRequestBranches.id, "branches.repo", spaceApp, NextCall, `Repo: nickname, name or code repo id, from task_info.`, NoVars{})
 	_ = arg(HeadlessToolRequestBranches.id, "branches.branch", spaceApp, NextCall, `New branch name, such as feat/login-form. Must not exist yet.`, NoVars{})
+	_ = arg(HeadlessToolRequestBranches.id, "branches.base", spaceApp, NextCall, `Existing branch to start from, such as main or feat/api: short name, origin checked first. A branch of a task stacks on it. Omit for main.`, NoVars{})
 )
 
 // HeadlessToolOperations describes the operations tool.
@@ -1063,6 +1072,41 @@ var HeadlessToolGit = define(Entry{
 var (
 	_ = arg(HeadlessToolGit.id, "worktree", spaceApp, NextCall, `A worktree path named in the prompt.`, NoVars{})
 	_ = arg(HeadlessToolGit.id, "args", spaceApp, NextCall, `Words after git, one per entry, such as ["rebase","--continue"]. Paths go after a "--" entry.`, NoVars{})
+)
+
+// HeadlessToolCreateTask describes the create_task tool.
+var HeadlessToolCreateTask = define(Entry{
+	ID: "headless.tool.create_task", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "create_task",
+	Default: `Ask the user to approve a new child task; waits for the answer. The brief is the child's first handover. Child tasks cannot create tasks. Every call waits for the user, so ask for what you need in one call. Outcome: created, denied, timeout or failed. Read results with list_tasks and task_chain; you are not woken when a child finishes.`,
+}, NoVars{})
+
+var (
+	_ = arg(HeadlessToolCreateTask.id, "title", spaceApp, NextCall, `Child task title, 1 to 200 characters.`, NoVars{})
+	_ = arg(HeadlessToolCreateTask.id, "workflow", spaceApp, NextCall, `Workflow id or name. It must exist and have a step.`, NoVars{})
+	_ = arg(HeadlessToolCreateTask.id, "repos", spaceApp, NextCall, `Repos of the child, 0 to {{.Max}}. Each gets a branch slot the child names later.`, MaxVars{Max: 10})
+	_ = arg(HeadlessToolCreateTask.id, "repos.repo", spaceApp, NextCall, `Repo: nickname, name or code repo id, from task_info.`, NoVars{})
+	_ = arg(HeadlessToolCreateTask.id, "repos.base", spaceApp, NextCall, `Ref the child's branch starts from, such as main. Default: the repo's default branch.`, NoVars{})
+	_ = arg(HeadlessToolCreateTask.id, "brief", spaceApp, NextCall, `What the child must do, what it needs to know and what to hand back. Markdown, at most {{.Max}} bytes.`, MaxVars{Max: 16384})
+)
+
+// HeadlessToolListTasks describes the list_tasks tool.
+var HeadlessToolListTasks = define(Entry{
+	ID: "headless.tool.list_tasks", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "list_tasks",
+	Default: `List the child tasks you created, newest first: id, title, workflow, status, step, whether finished or archived, and the start of the child's last handover. At most 100.`,
+}, NoVars{})
+
+var _ = arg(HeadlessToolListTasks.id, "state", spaceApp, NextCall, `live, archived or all. Default all.`, NoVars{})
+
+// HeadlessToolTaskChain describes the task_chain tool.
+var HeadlessToolTaskChain = define(Entry{
+	ID: "headless.tool.task_chain", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "task_chain",
+	Default: `Read the handover chain of your own task or of one of your children, newest first: your earlier passes' handovers and finished children's results. Drafts included. Page with before.`,
+}, NoVars{})
+
+var (
+	_ = arg(HeadlessToolTaskChain.id, "taskId", spaceApp, NextCall, `A child's task id from list_tasks. Omit for your own chain.`, NoVars{})
+	_ = arg(HeadlessToolTaskChain.id, "limit", spaceApp, NextCall, `Rows per page, 1 to {{.Max}}. Default 10.`, MaxVars{Max: 50})
+	_ = arg(HeadlessToolTaskChain.id, "before", spaceApp, NextCall, `The next value of the previous page: rows older than that row.`, NoVars{})
 )
 
 // ADE.
@@ -1292,6 +1336,19 @@ var AdeHandoverBlock = define(Entry{
 {{.Handover}}`,
 }, HandoverBlockVars{HandoverFrom: "Design", Handover: "Form wired; validation still missing."})
 
+// AdePassHandover is the handover an orchestrator carries into a new pass.
+var AdePassHandover = define(Entry{
+	ID: "ade.pass.handover", Kind: KindFragment, Apps: spaceApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.adePassHandover.title",
+	PurposeKey: "llmPrompts.entry.adePassHandover.description",
+	UsedByKey:  "llmPrompts.entry.adePassHandover.usedBy.body",
+	Default: `{{if .Message}}New pass. Message from the user:
+{{.Message}}{{end}}{{if and .Message .Previous}}
+
+{{end}}{{if .Previous}}Previous pass{{if .PreviousFrom}}, ended at {{.PreviousFrom}}{{end}}:
+{{.Previous}}{{end}}`,
+}, PassHandoverVars{Message: "Start with the API tasks.", Previous: "Spawned 3 tasks; 2 finished.", PreviousFrom: "Review"})
+
 // AdeHandoverLine tells an interactive session to leave notes for the next stage.
 var AdeHandoverLine = define(Entry{
 	ID: "ade.handoverLine", Kind: KindFragment, Apps: spaceApp, Applies: NextCall,
@@ -1434,7 +1491,7 @@ var (
 // DbmcpToolProofSave describes the proof_save tool.
 var DbmcpToolProofSave = define(Entry{
 	ID: "dbmcp.tool.proof_save", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_save",
-	Default: "Save proof that your work is correct: one call creates and closes it, and the user reviews it in a window. Steps show in order. Pick each step's view for its data: table, document and keyvalue show values; chart plots numbers and shows no table, so add a table step when exact values matter; diagram draws Mermaid text. Names are unique, ignoring case and outer spaces. In a Kira Space task the new proof also attaches to the task. With reason, changes a closed proof instead: a step may keepOrdinal an old step unchanged or replacesOrdinal one, an old step not listed is dropped; read ordinals with proof_list and name. An edit returns pending_review until the user accepts or rejects it. Every value is validated: a bad step rejects the call, saves nothing and names steps[i] and the limit.",
+	Default: "Save proof that your work is correct: one call creates and closes it, and the user reviews it in a window. Steps show in order. Pick each step's view for its data: table, document and keyvalue show rows; chart plots a table and shows no table, so add a table step when exact values matter; diagram draws Mermaid text; image shows a JPEG, such as a UI screenshot. Names are unique, ignoring case and outer spaces. In a Kira Space task the new proof also attaches to the task. With reason, changes a closed proof instead: a step may keepOrdinal an old step unchanged or replacesOrdinal one, an old step not listed is dropped; read ordinals with proof_list and name. An edit returns pending_review until the user accepts or rejects it. Every value is validated: a bad step rejects the call, saves nothing and names steps[i] and the limit.",
 }, NoVars{})
 
 var (
@@ -1446,8 +1503,8 @@ var (
 	_ = arg(DbmcpToolProofSave.id, "steps.query", studioApp, NextCall, `The query or command you ran, up to 64 KiB. Shown above the data.`, NoVars{})
 	_ = arg(DbmcpToolProofSave.id, "steps.language", studioApp, NextCall, `Highlighting for query: sql, json, shell or text. Default text.`, NoVars{})
 	_ = arg(DbmcpToolProofSave.id, "steps.source", studioApp, NextCall, `Short label of the tool that produced the data, such as elasticsearch. Up to 64 characters.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "steps.view", studioApp, NextCall, `table, document, keyvalue, chart or diagram. Required unless keepOrdinal is set.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "steps.data", studioApp, NextCall, `table: {columns:[{name,type?}],rows:[[cell,...]]}, type number, text, boolean, temporal, json or other (inferred when omitted). document: {documents:[{id?,body:{...}}]}. keyvalue: {entries:[{field,value}]}. chart, type bar, line, area or scatter: {type,x:{type,name?},y?:{name?,unit?},stacked?,horizontal?,series:[{name,points:[[x,y],...]}]}; x.type is category (x a string label), time (ISO-8601 or epoch milliseconds) or value (number); y is a number, null for a gap; stacked: bar and area only; horizontal: bar only. Histogram: bar, one point per bucket. Time series: line or area, x.type time. Up to 20 series, 1000 categories, 20000 points (bar and scatter 1000). chart, type pie: {type,unit?,slices:[{name,value}]}, up to 50 slices, values 0 or more. diagram: {source}, Mermaid text whose first line starts with flowchart, graph, sequenceDiagram, classDiagram, stateDiagram, stateDiagram-v2, erDiagram, gantt, journey, gitGraph, mindmap or timeline. No front matter, %%{...}%% directives, click lines, url(), @import or images. Up to 20000 bytes, 1000 lines, 500 edges. Quote labels that hold punctuation: A["label (x)"]; a syntax error shows the user the parser message and your source. Limits: 10000 rows or documents, 64 KiB per cell, 4 MiB per step. Required unless keepOrdinal is set.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.view", studioApp, NextCall, `table, document, keyvalue, chart, diagram or image. Required unless keepOrdinal is set.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.data", studioApp, NextCall, `table: {columns:[{name,type?}],rows:[[cell,...]]}, type number, text, boolean, temporal, json or other (inferred when omitted). document: {documents:[{id?,body:{...}}]}. keyvalue: {entries:[{field,value}]}. chart, type bar, line, area or scatter: {type,x:{type,name?},y?:{name?,unit?},stacked?,horizontal?,series:[{name,points:[[x,y],...]}]}; x.type is category (x a string label), time (ISO-8601 or epoch milliseconds) or value (number); y is a number, null for a gap; stacked: bar and area only; horizontal: bar only. Histogram: bar, one point per bucket. Time series: line or area, x.type time. Up to 20 series, 1000 categories, 20000 points (bar and scatter 1000). chart, type pie: {type,unit?,slices:[{name,value}]}, up to 50 slices, values 0 or more. diagram: {source}, Mermaid text whose first line starts with flowchart, graph, sequenceDiagram, classDiagram, stateDiagram, stateDiagram-v2, erDiagram, gantt, journey, gitGraph, mindmap or timeline. No front matter, %%{...}%% directives, click lines, url(), @import or image nodes; send screenshots as an image step. Up to 20000 bytes, 1000 lines, 500 edges. Quote labels that hold punctuation: A["label (x)"]; a syntax error shows the user the parser message and your source. image: exactly one of {path} or {base64}. path is the absolute path of a JPEG on this machine; the app reads it at save, follows symlinks and stores a copy. base64 is the file's bytes, standard base64, no data: prefix. JPEG only, at most 3071 KiB, 16384 pixels a side and 16 megapixels. Inline base64 counts toward the 8 MiB request limit; pass paths for large or several images. A proof holds at most 32 MiB of stored data; an image stores about 4/3 of its file size. Limits: 10000 rows or documents, 64 KiB per cell, 4 MiB per step. Required unless keepOrdinal is set.`, NoVars{})
 	_ = arg(DbmcpToolProofSave.id, "steps.keepOrdinal", studioApp, NextCall, `Edits only: reuse the old step with this ordinal unchanged. Pass no other step field.`, NoVars{})
 	_ = arg(DbmcpToolProofSave.id, "steps.replacesOrdinal", studioApp, NextCall, `Edits only: this step is a changed version of the old step with this ordinal.`, NoVars{})
 )

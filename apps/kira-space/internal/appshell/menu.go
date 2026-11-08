@@ -13,6 +13,9 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
+// ActionOpenProofs is the Window menu's Validation proof item: it opens the proof window with no task.
+const ActionOpenProofs = "proof.open"
+
 // BuildTemplate is the merged app menu: Space's items first, then Studio's connection, request and
 // import items (app menu) and refresh, run and format items (View).
 func BuildTemplate(appName string, isDev bool) []shell.Section {
@@ -61,6 +64,7 @@ func BuildTemplate(appName string, isDev bool) []shell.Section {
 		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.closeTab.label", nil), Accelerator: shell.Shortcuts["tab.close"].Accelerator(), Channel: bridge.ChannelTabClose},
 		{Kind: shell.ItemSeparator},
 		{Kind: shell.ItemNewWindow, Label: i18n.T("backend.menu.newWindow.label", nil), Accelerator: shell.Shortcuts["window.new"].Accelerator()},
+		{Kind: shell.ItemAction, Label: i18n.T("backend.studio.proof.window.title", nil), Action: ActionOpenProofs},
 		{Kind: shell.ItemSeparator},
 	}, shell.WindowMenuTail(shell.Shortcuts["window.close"].Accelerator())...)
 	windowSection := shell.Section{Label: i18n.T("backend.menu.window.label", nil), Items: windowItems}

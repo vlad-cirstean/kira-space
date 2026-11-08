@@ -34,6 +34,7 @@ import type {
   LinkProofArgs,
   NewStepArgs,
   NewWorkflowArgs,
+  NextPassArgs,
   OntoArgs,
   PanelForward,
   PanelForwardResult,
@@ -428,6 +429,18 @@ export function useSetTaskStep() {
   return useMutation({
     mutationFn: (args: SetTaskStepArgs) => control.adeTaskSetTaskStep(args),
     ...optimisticUpdate<Board, SetTaskStepArgs>(queryClient, boardKey, withStep),
+  });
+}
+
+/** Starts the next pass of a finished orchestrator. */
+export function useNextPass() {
+  return useMutation({
+    mutationFn: (args: NextPassArgs) => control.adeTaskNextPass(args),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: boardKey }),
+        queryClient.invalidateQueries({ queryKey: handoversPrefix }),
+      ]),
   });
 }
 

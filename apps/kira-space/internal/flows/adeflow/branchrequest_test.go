@@ -3,6 +3,7 @@ package adeflow_test
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -35,6 +36,7 @@ var (
 
 type brFixture struct {
 	app  *flowharness.App
+	repo *flowharness.Repo // the api clone
 	api  string
 	web  string
 	task adewire.Task
@@ -53,7 +55,7 @@ func newBRFixture(t *testing.T, actions []fakeagent.Action, steps string, both b
 	if both {
 		ids = append(ids, web.ID)
 	}
-	return &brFixture{app: app, api: api.ID, web: web.ID, task: createTask(t, app, "Fix login", "flow", ids...)}
+	return &brFixture{app: app, repo: apiRepo, api: api.ID, web: web.ID, task: createTask(t, app, "Fix login", "flow", ids...)}
 }
 
 func (f *brFixture) startRun(t *testing.T) {
@@ -111,6 +113,52 @@ func requestCall(branches ...[2]string) fakeagent.MCPCall {
 		list[i] = map[string]any{"repo": b[0], "branch": b[1]}
 	}
 	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "request_branches", Tolerate: true, Args: map[string]any{"branches": list}}
+}
+
+// requestCallBase is a request_branches call for {repo, branch, base} triples; "" omits the base.
+func requestCallBase(branches ...[3]string) fakeagent.MCPCall {
+	list := make([]any, len(branches))
+	for i, b := range branches {
+		e := map[string]any{"repo": b[0], "branch": b[1]}
+		if b[2] != "" {
+			e["base"] = b[2]
+		}
+		list[i] = e
+	}
+	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "request_branches", Tolerate: true, Args: map[string]any{"branches": list}}
+}
+
+// pushBase creates name from main with one commit and pushes it, then resets the local copy to main:
+// only origin holds the commit. It returns the origin tip.
+func (f *brFixture) pushBase(t *testing.T, name string) string {
+	t.Helper()
+	f.repo.Git("checkout", "-q", "-b", name, "main")
+	sha := f.repo.Commit("work on "+name, map[string]string{strings.ReplaceAll(name, "/", "-") + ".txt": name + "\n"})
+	f.repo.Git("push", "-q", "origin", name)
+	f.repo.Checkout("main")
+	f.repo.Git("branch", "-f", name, "main")
+	return sha
+}
+
+// branchNamed is the task's branch row with that name.
+func (f *brFixture) branchNamed(t *testing.T, name string) adewire.Branch {
+	t.Helper()
+	for _, br := range board(t, f.app).Branches {
+		if br.TaskID == f.task.ID && br.Name == name {
+			return br
+		}
+	}
+	t.Fatalf("task has no branch %q", name)
+	return adewire.Branch{}
+}
+
+func headOf(t *testing.T, dir string) string {
+	t.Helper()
+	out, err := exec.Command("git", "-C", dir, "rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatalf("git rev-parse HEAD in %s: %v", dir, err)
+	}
+	return strings.TrimSpace(string(out))
 }
 
 func (f *brFixture) branchName(t *testing.T, repoID string) string {
@@ -247,6 +295,130 @@ func TestBranchRequest(t *testing.T) {
 		got := f.result(t, 2)
 		if !strings.Contains(got, "existing") || !strings.Contains(got, "denied") {
 			t.Fatalf("second result = %s, want api existing and web denied", got)
+		}
+	})
+
+	t.Run("agent base: the item shows it and the worktree starts there", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCallBase([3]string{"api", "feat/login", "feat/api-base"})}, Name: "done"}}, onceStepYML, false)
+		tip := f.pushBase(t, "feat/api-base")
+		f.startRun(t)
+		req := f.waitRequest(t)
+		if len(req.Items) != 1 || req.Items[0].Kind != "branch" || req.Items[0].Base != "feat/api-base" {
+			t.Fatalf("request = %+v, want one new-branch item from feat/api-base", req)
+		}
+		f.app.Contract(t, brScenario, "ApprovalsService.List#branchBase", []approvals.Item{*branchItem(f.app, req.ID)}, brListMask)
+		if _, err := approveBR(f.app, req.ID, []string{req.Items[0].ID}, nil); err != nil {
+			t.Fatal(err)
+		}
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		if got := f.result(t, 1); !strings.Contains(got, "created") || !strings.Contains(got, `"base":"feat/api-base"`) {
+			t.Fatalf("agent result = %s, want created with the base", got)
+		}
+		row := f.branchNamed(t, "feat/login")
+		if row.Base != "feat/api-base" || row.BaseBranchID != "" || row.BasePendingFrom != "" {
+			t.Fatalf("row base = %q, parent %q, pending %q; want feat/api-base, no parent, not pending", row.Base, row.BaseBranchID, row.BasePendingFrom)
+		}
+		if head := headOf(t, row.Worktree); head != tip {
+			t.Fatalf("worktree HEAD = %s, want the origin tip %s of the base", head, tip)
+		}
+	})
+
+	t.Run("agent base stacks on a task branch", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{
+			MCP:  []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"}), requestCallBase([3]string{"api", "feat/b", "feat/a"})},
+			Name: "done",
+		}}, onceStepYML, false)
+		f.startRun(t)
+		first := f.waitRequest(t)
+		if _, err := approveBR(f.app, first.ID, []string{first.Items[0].ID}, nil); err != nil {
+			t.Fatal(err)
+		}
+		var second adewire.BranchRequest
+		testx.WaitUntil(t, waitFor, func() bool {
+			id := taskOf(t, board(t, f.app), f.task.ID).BranchRequestID
+			if id == "" || id == first.ID {
+				return false
+			}
+			second, _ = branchRequest(f.app, id)
+			return second.ID != ""
+		})
+		if len(second.Items) != 1 || second.Items[0].Base != "feat/a" {
+			t.Fatalf("second request = %+v, want one item from feat/a", second)
+		}
+		if _, err := approveBR(f.app, second.ID, []string{second.Items[0].ID}, nil); err != nil {
+			t.Fatal(err)
+		}
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		a, b := f.branchNamed(t, "feat/a"), f.branchNamed(t, "feat/b")
+		if b.BaseBranchID != a.ID || b.Base != "feat/a" {
+			t.Fatalf("feat/b base = %q parent %q, want feat/a row %s", b.Base, b.BaseBranchID, a.ID)
+		}
+		if err := exec.Command("git", "-C", b.Worktree, "merge-base", "--is-ancestor", headOf(t, a.Worktree), "HEAD").Run(); err != nil {
+			t.Fatalf("feat/b does not descend from feat/a: %v", err)
+		}
+	})
+
+	t.Run("a bad base fails that branch before any prompt", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCallBase([3]string{"api", "feat/x", "no/such"}, [3]string{"api", "feat/y", "bad..name"})}, Name: "done"}}, onceStepYML, false)
+		f.startRun(t)
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		got := f.result(t, 1)
+		if strings.Count(got, "failed") != 2 || strings.Count(got, "Cannot use base") != 2 {
+			t.Fatalf("agent result = %s, want both branches failed with Cannot use base", got)
+		}
+		if ps := f.requestPrompts(t); len(ps) != 0 {
+			t.Fatalf("prompts = %+v, want none", ps)
+		}
+	})
+
+	t.Run("the same branch with two bases fails the call", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCallBase([3]string{"api", "feat/x", "main"}, [3]string{"api", "feat/x", "develop"})}, Name: "done"}}, onceStepYML, false)
+		f.startRun(t)
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		if got := f.result(t, 1); !strings.Contains(got, "asked twice with different bases") {
+			t.Fatalf("agent result = %s, want the contradiction refusal", got)
+		}
+		if ps := f.requestPrompts(t); len(ps) != 0 {
+			t.Fatalf("prompts = %+v, want none", ps)
+		}
+	})
+
+	t.Run("a user-set draft base wins", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{
+			MCP:  []fakeagent.MCPCall{requestCallBase([3]string{"api", "feat/x", "main"}), requestCall([2]string{"api", "feat/x"})},
+			Name: "done",
+		}}, onceStepYML, false)
+		f.pushBase(t, "feat/api-base")
+		draft := branchOf(t, board(t, f.app), f.task.ID, f.api)
+		if err := f.app.W.AdeTask.SetBranchBase(ctx, adewire.SetBranchBaseArgs{BranchID: draft.ID, Base: adewire.BaseChoice{Ref: "feat/api-base"}}); err != nil {
+			t.Fatal(err)
+		}
+		f.startRun(t)
+		req := f.waitRequest(t)
+		if len(req.Items) != 1 || req.Items[0].Base != "feat/api-base" {
+			t.Fatalf("request = %+v, want the item to keep the user's base", req)
+		}
+		mustDeny(t, f.app, req.ID)
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		if got := f.result(t, 1); !strings.Contains(got, "failed") || !strings.Contains(got, "feat/api-base") || !strings.Contains(got, "set by the user") {
+			t.Fatalf("first result = %s, want a refusal naming the user's base", got)
+		}
+	})
+
+	t.Run("an existing branch keeps its base", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{
+			MCP:  []fakeagent.MCPCall{requestCallBase([3]string{"api", "feat/login", "feat/api-base"}), requestCallBase([3]string{"api", "feat/login", "main"})},
+			Name: "done",
+		}}, onceStepYML, false)
+		f.pushBase(t, "feat/api-base")
+		f.startRun(t)
+		req := f.waitRequest(t)
+		if _, err := approveBR(f.app, req.ID, []string{req.Items[0].ID}, nil); err != nil {
+			t.Fatal(err)
+		}
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		if got := f.result(t, 2); !strings.Contains(got, "existing") || !strings.Contains(got, "keeps its base feat/api-base") {
+			t.Fatalf("second result = %s, want existing with the kept-base note", got)
 		}
 	})
 

@@ -16,7 +16,7 @@ import (
 // ProofStore is dbmcp's consumer-declared interface over *proof.Service: the two proof tools' only
 // backend. They touch no connection, so the permission modes and the approval broker do not apply.
 type ProofStore interface {
-	Save(in proof.SaveInput) (proof.CloseResult, error)
+	Save(ctx context.Context, in proof.SaveInput) (proof.CloseResult, error)
 	ListForAgent() ([]proof.AgentSession, error)
 	StepsForAgent(name string) ([]proof.StepBrief, error)
 }
@@ -91,7 +91,7 @@ func (s *Server) proofSave(ctx context.Context, req *mcp.CallToolRequest, a proo
 			in.Steps[i].Data = raw.Steps[i].Data
 		}
 	}
-	res, err := s.cfg.Proof.Save(in)
+	res, err := s.cfg.Proof.Save(ctx, in)
 	if err != nil {
 		return proofResult(nil, err)
 	}
@@ -123,7 +123,7 @@ func (s *Server) addProofTools(srv *mcp.Server, src llmprompts.Source) {
 	saveSch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[proofSaveArgs](src, llmprompts.DbmcpToolProofSave.ID(), nil), "name", "steps")
 	saveSch.Properties["steps"].MinItems = jsonschema.Ptr(1)
 	step := saveSch.Properties["steps"].Items
-	step.Properties["view"].Enum = []any{proof.ViewTable, proof.ViewDocument, proof.ViewKeyValue, proof.ViewChart, proof.ViewDiagram}
+	step.Properties["view"].Enum = []any{proof.ViewTable, proof.ViewDocument, proof.ViewKeyValue, proof.ViewChart, proof.ViewDiagram, proof.ViewImage}
 	step.Properties["language"].Enum = []any{"sql", "json", "shell", "text"}
 	step.Properties["keepOrdinal"].Minimum = jsonschema.Ptr(1.0)
 	step.Properties["replacesOrdinal"].Minimum = jsonschema.Ptr(1.0)

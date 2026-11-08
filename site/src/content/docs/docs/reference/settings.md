@@ -59,7 +59,7 @@ See [Prompts](../prompts/).
 
 ## Git, agents and memory
 
-Sections: Appearance, Git, CLI tools, File types, Capture, Mobile access, the agent (Claude Code or OpenCode), Memory, Prompts, Advanced.
+Sections: Appearance, Git, CLI tools, File types, Capture, Mobile access, the agent (Claude Code or OpenCode), Memory, Prompts, Advanced, About.
 
 ### Appearance
 
@@ -106,6 +106,10 @@ Pick the Claude model memory uses (`haiku`, `sonnet` or `opus`; default `sonnet`
 ### Advanced
 
 Git log level (default info) and the popup notification (on).
+
+### About
+
+Shows the app version and a link to the GitHub repository, opened in the browser.
 
 ## Where data lives
 

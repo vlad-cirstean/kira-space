@@ -2,6 +2,7 @@ package ade
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -97,6 +98,9 @@ func (b *TaskBoard) RecordHandover(_ context.Context, taskID, stepID, sessionID,
 	return nil
 }
 
+// ErrHandoverReadOnly refuses an edit of a row that copies another task's text.
+var ErrHandoverReadOnly = errors.New("ade: handover is a copy of a child task's text")
+
 // handoffFor is the handover a stage move from -> to carries. notes nil keeps the stage's draft.
 func (b *TaskBoard) handoffFor(tc *taskCtx, from, to string, notes *string) *model.AdeHandoff {
 	return &model.AdeHandoff{
@@ -158,6 +162,13 @@ func (b *TaskBoard) recordRunHandoverLocked(run model.AdeRun) {
 		}
 		h.Notes, h.Source, h.SessionID = &body, model.AdeHandoverSourceRun, author
 	} else if draft == nil {
+		if to == entryDone {
+			// The child finished without text; its parent still sees the finish.
+			if err := b.deps.Tasks.MirrorFinish(run.TaskID, stepName(tc, run.StepID), h.Now); err != nil {
+				slog.Warn("ade: mirror finish", "scope", "ade", "task", run.TaskID, "err", err)
+			}
+			b.notifyBoard()
+		}
 		return
 	}
 	if err := b.deps.Tasks.RecordRunHandover(run.TaskID, *h); err != nil {
@@ -295,6 +306,8 @@ func (b *TaskBoard) UpdateHandover(_ context.Context, id, body string) error {
 		return invalid("handover %s not found", id)
 	}
 	switch {
+	case row.Source == model.AdeHandoverSourceChild:
+		return ErrHandoverReadOnly
 	case row.State == model.AdeHandoverNote && len(body) > maxNoteBytes:
 		return noteTooLong()
 	case row.State != model.AdeHandoverNote && len(body) > maxHandoverBytes:
@@ -359,7 +372,7 @@ func (b *TaskBoard) reopenHandoverPrompts() {
 func toWireHandover(h model.AdeHandover) adewire.Handover {
 	return adewire.Handover{
 		ID: h.ID, TaskID: h.TaskID, FromStepID: h.FromStepID, FromStepName: h.FromStepName, ToStepID: h.ToStepID,
-		ToStepName: h.ToStepName, Body: h.Body, Source: h.Source, State: h.State, Finished: h.Finished,
+		ToStepName: h.ToStepName, FromTaskID: h.FromTaskID, FromTaskTitle: h.FromTaskTitle, Body: h.Body, Source: h.Source, State: h.State, Finished: h.Finished,
 		Dismissed: h.Dismissed, Edited: h.Edited, SessionID: h.SessionID, CreatedAt: h.CreatedAt, UpdatedAt: h.UpdatedAt,
 	}
 }

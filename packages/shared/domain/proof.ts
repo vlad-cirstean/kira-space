@@ -10,6 +10,7 @@ export const proofViewSchema = /*#__PURE__*/ z.enum([
   'keyvalue',
   'chart',
   'diagram',
+  'image',
 ]);
 export type ProofView = z.infer<typeof proofViewSchema>;
 
@@ -91,6 +92,15 @@ export const proofDiagramPayloadSchema = /*#__PURE__*/ z.object({
   source: z.string(),
 });
 export type ProofDiagramPayload = z.infer<typeof proofDiagramPayloadSchema>;
+
+// A stored JPEG: the file's dimensions and size, and its bytes as standard base64.
+export const proofImagePayloadSchema = /*#__PURE__*/ z.object({
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  bytes: z.number().int().positive(),
+  base64: z.string(),
+});
+export type ProofImagePayload = z.infer<typeof proofImagePayloadSchema>;
 
 // Legend entries hidden, the clicked point and the zoom window (percent of the axis).
 export const proofChartViewStateSchema = /*#__PURE__*/ z.object({
@@ -187,7 +197,7 @@ export const proofOpenResultSchema = /*#__PURE__*/ z.object({
   opened: z.boolean(),
 });
 export const proofWindowTargetSchema = /*#__PURE__*/ z.object({ sessionId: z.string().nullable() });
-export const proofSavePngResultSchema = /*#__PURE__*/ z.object({
+export const proofSaveJpegResultSchema = /*#__PURE__*/ z.object({
   saved: z.boolean(),
   path: z.string().nullable(),
 });
@@ -196,12 +206,12 @@ export const proofShotFolderResultSchema = /*#__PURE__*/ z.object({
   id: z.string(),
   path: z.string(),
 });
-export const proofSavePngToResultSchema = /*#__PURE__*/ z.object({ path: z.string() });
+export const proofSaveJpegToResultSchema = /*#__PURE__*/ z.object({ path: z.string() });
 export type ProofShotFolderResult = z.infer<typeof proofShotFolderResultSchema>;
-export type ProofSavePngToResult = z.infer<typeof proofSavePngToResultSchema>;
+export type ProofSaveJpegToResult = z.infer<typeof proofSaveJpegToResultSchema>;
 export type ProofOpenResult = z.infer<typeof proofOpenResultSchema>;
 export type ProofWindowTarget = z.infer<typeof proofWindowTargetSchema>;
-export type ProofSavePngResult = z.infer<typeof proofSavePngResultSchema>;
+export type ProofSaveJpegResult = z.infer<typeof proofSaveJpegResultSchema>;
 
 // kira:proof:changed and kira:proof:select payloads.
 export const proofChangedSchema = /*#__PURE__*/ z.object({ sessionId: z.string() });

@@ -433,7 +433,7 @@ export interface HostLink {
 }
 export interface Task {
   id: string;
-  kind: 'task' | 'review' | 'parked';
+  kind: 'task' | 'review' | 'parked' | 'orchestrator';
   title: string /* '' = default title */;
   owner: string;
   jira: Jira | null;
@@ -465,6 +465,10 @@ export interface Task {
   handoverDrafts: Handover[];
   /** The open request an agent waits on for this task; '' when none. */
   branchRequestId: string;
+  /** The orchestrator that spawned the task; the parent may be archived, so it need not be on the board. */
+  parentId?: string;
+  parentTitle?: string;
+  parentArchived?: boolean;
 }
 /** The text one stage leaves for the next. A draft has `state: 'draft'` and an empty `toStepId`. */
 export interface Handover {
@@ -475,7 +479,11 @@ export interface Handover {
   toStepId: string /* 'done' = past the last step */;
   toStepName: string;
   body: string;
-  source: 'agent' | 'run' | 'user';
+  /** 'orchestrator' = a child's brief, 'pass' = an orchestrator's pass handover, 'child' = a child's finish copied into the parent (state 'note', read-only). */
+  source: 'agent' | 'run' | 'user' | 'orchestrator' | 'pass' | 'child';
+  /** Set on 'orchestrator' and 'child' rows: the other task. */
+  fromTaskId?: string;
+  fromTaskTitle?: string;
   /** 'note' = a user note: source 'user', fromStep* the stage it was written in, toStep* empty. */
   state: 'draft' | 'handed' | 'note';
   finished: boolean;
@@ -554,7 +562,7 @@ export interface HandoversResult {
 interface TaskProofStep {
   ordinal: number;
   description: string;
-  view: 'table' | 'document' | 'keyvalue' | 'chart' | 'diagram';
+  view: 'table' | 'document' | 'keyvalue' | 'chart' | 'diagram' | 'image';
   source: string;
 }
 /** A closed proof session attached to a task. `sessionId` is the Kira session that attached it ('' = the user). */
@@ -699,6 +707,8 @@ export interface Plan {
 }
 export interface HistoryEntry {
   taskId: string;
+  /** The orchestrator that spawned the task; '' for none. */
+  parentId?: string;
   title: string;
   codeRepoIds: string[];
   mergedAt: number | null;
@@ -1014,6 +1024,8 @@ export interface CreateTaskArgs {
   bases: Record<string, BaseChoice>;
   /** Plan day (YYYY-MM-DD) the task lands on; null lands in Later. */
   day: string | null;
+  /** '' or 'task' creates a task, 'orchestrator' one that spawns child tasks. */
+  kind?: 'task' | 'orchestrator';
 }
 /** A base: a planner branch (branchId), a git ref (ref), or both empty for the repo main. */
 export interface BaseChoice {
@@ -1095,7 +1107,7 @@ export interface TaskPatch {
   hostUrl: string | null;
   est: string | null;
   color: number | null;
-  kind: 'task' | 'parked' | null;
+  kind: 'task' | 'parked' | 'orchestrator' | null;
   statusId: TaskStatus | null;
 }
 /** `id` '' = a new status. `reassign` maps every removed id to the id its tasks move to; a `defaults` field naming a removed status moves there too. */
@@ -1297,6 +1309,18 @@ export interface SetTaskStepArgs {
   notes?: string | null;
   /** Closes the stage sessions of the move first. */
   closeSessions?: boolean;
+}
+/** Starts the next pass of a finished orchestrator: back to its first step, with `notes` as the user's message. */
+export interface NextPassArgs {
+  taskId: string;
+  fromStepId?: string;
+  notes?: string | null;
+  closeSessions?: boolean;
+}
+export interface NextPassResult {
+  stepId: string;
+  /** False when the first step is manual or its run did not start. */
+  started: boolean;
 }
 export interface SendArgs {
   sessionId: string;

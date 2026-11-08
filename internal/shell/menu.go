@@ -1,6 +1,8 @@
 package shell
 
 import (
+	"log/slog"
+
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -21,6 +23,8 @@ type MenuDeps struct {
 	OnEmit    func(channel string)
 	Quit      func() // Quitter.RequestQuit
 	NewWindow func()
+	// Actions maps an ItemAction's Action to the Go function it runs.
+	Actions map[string]func()
 }
 
 // BuildMenu renders d.Template. It must be called after application.New, because Wails' own role
@@ -79,6 +83,19 @@ func buildItem(sub *application.Menu, item Item, d MenuDeps) {
 		}
 		newWindowItem.OnClick(func(*application.Context) { d.NewWindow() })
 		addItem(sub, newWindowItem)
+
+	case ItemAction:
+		fn := d.Actions[item.Action]
+		if fn == nil {
+			slog.Error("shell: menu action not wired", "scope", "menu", "action", item.Action)
+			return
+		}
+		actionItem := application.NewMenuItem(item.Label)
+		if item.Accelerator != "" {
+			actionItem.SetAccelerator(item.Accelerator)
+		}
+		actionItem.OnClick(func(*application.Context) { fn() })
+		addItem(sub, actionItem)
 	}
 }
 

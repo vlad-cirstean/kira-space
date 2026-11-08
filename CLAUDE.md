@@ -24,8 +24,9 @@ General rules live in `docs/WORKING_AGREEMENT.md`, imported above. Rules below a
   and releases itself (`docs/PACKAGING.md` §7).
 - Phases use `P<n>`: one running sequence across whole repo, not per chapter (v1.6 topped out at
   `P70`; v1.8 starts at `P71`, v1.9 at `P96`, v2.0 at `P126`, v2.1 at `P185`, v2.2 at `P210`, v2.5 at
-  `P271`, v2.6 at `P294`). Before opening a chapter, read highest `P` in `docs/HISTORY.md` and in open
-  chapter's `SPEC.md`, if one exists, and continue from there. v1.5's `C` and v1.7's `M` lettering
+  `P271`, v2.6 at `P294`). Before opening a chapter, read highest `P` in newest history file (last
+  entry of `docs/HISTORY.md` index) and in open chapter's `SPEC.md`, if one exists, and continue from
+  there. v1.5's `C` and v1.7's `M` lettering
   predate this rule and stay as shipped, never renumbered.
 - Chapter's non-UI full run: Go, typecheck, lint, site and package tests, flow tests. UI suites
   (Playwright `ui`, `visual`, `ui-timing`, screenshots) stay out of it and run in PR CI.
@@ -37,17 +38,28 @@ Chapter's last phase closes it by hand. Its Sonnet implementer writes the close 
 
 1. In the commit before the fold, mark the row Done and write its Result in `SPEC.md`, so its entry
    folds closed.
-2. Write the `<!-- chapter <ch> -->` block in `docs/HISTORY.md`, copying the previous chapter block's
+2. Append the `<!-- chapter <ch> -->` block to a history file, copying the previous chapter block's
    format: header `Source: docs/<ch>/ at <commit>. N phases.` with the true row count, then one
    `### <ch> <id> (Done)` heading per `SPEC.md` row in table order, distilled from each row's Result.
-   Fix links to the chapter by hand. Commit.
+   Fix links to the chapter by hand. Placement rules (detail and example: `docs/HISTORY.md`), no user
+   request needed:
+   - Limit: 1,500 lines per file in `docs/history/`.
+   - Newest file = highest number in `docs/history/` = last index entry.
+   - Count its lines. If appending your block keeps it at or under 1,500, append there.
+   - Otherwise create `NN-<first chapter in file>.md` (next number), put the block there, add its
+     index entry with chapter range.
+   - A block never splits across files. A single block over 1,500 lines sits alone in its file.
+   - Never move existing blocks between files.
+   - Update the chapter range of the index entry you touched.
+
+   Commit.
 3. `git rm -r docs/<ch>/` (and `docs/history-runs/` if it exists). Commit.
 4. Push, then open the PR from `chapter/v<version>` to `main` (command in `docs/DEV_ENVIRONMENT.md`).
    It auto-merges once CI passes. Opening the PR is part of closing, unless changes are still pending
    (uncommitted, unpushed or unfinished work). Then report them and hold the PR.
 
-Hand-writing the close entry is the standard close; any other edit to `docs/HISTORY.md` stays
-forbidden.
+Hand-writing the close entry is the standard close; any other edit to `docs/HISTORY.md` or
+`docs/history/` stays forbidden.
 
 PR CI:
 

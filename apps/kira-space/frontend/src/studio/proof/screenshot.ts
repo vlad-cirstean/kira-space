@@ -11,18 +11,49 @@ function paintedProperties(): string[] {
   );
 }
 
+const JPEG_QUALITY = 0.92;
+
+function hasAlpha(color: string): boolean {
+  if (color === 'transparent') return false;
+  const m = /[,/]\s*([\d.]+)(%?)\s*\)$/.exec(color);
+  return !m || Number(m[1]) > 0;
+}
+
+/** JPEG has no alpha, so a transparent area would turn black: take the first painted background
+ *  from the element up through its ancestors, else the page background token. */
+function opaqueBackground(el: HTMLElement): string {
+  for (let node: HTMLElement | null = el; node; node = node.parentElement) {
+    const color = getComputedStyle(node).backgroundColor;
+    if (hasAlpha(color)) return color;
+  }
+  return (
+    getComputedStyle(document.documentElement).getPropertyValue('--kira-bg').trim() || 'Canvas'
+  );
+}
+
 /** Renders the element as it is on screen, scrolled lists included: `restoreScrollPosition` shifts
  *  each scrolled container's children by its offset in the clone. */
 export function captureElement(el: HTMLElement): Promise<HTMLCanvasElement> {
   return domToCanvas(el, {
     scale: window.devicePixelRatio || 1,
-    backgroundColor: getComputedStyle(el).backgroundColor,
+    backgroundColor: opaqueBackground(el),
     includeStyleProperties: paintedProperties(),
     features: { restoreScrollPosition: true },
     filter: (node) => !(node instanceof Element && node.classList.contains(TOOLTIP_CLASS)),
   });
 }
 
+export function canvasToJpeg(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('canvasToJpeg: encode failed'))),
+      'image/jpeg',
+      JPEG_QUALITY,
+    );
+  });
+}
+
+/** PNG for the clipboard only: the Async Clipboard API accepts image/png and nothing else. */
 export function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -52,8 +83,8 @@ export function fileSlug(name: string): string {
   );
 }
 
-/** `NN-step-name.png` for the tab at 1-based `pos`, zero-padded to the tab count's width. */
+/** `NN-step-name.jpg` for the tab at 1-based `pos`, zero-padded to the tab count's width. */
 export function shotFileName(pos: number, total: number, description: string): string {
   const width = Math.max(2, String(total).length);
-  return `${String(pos).padStart(width, '0')}-${fileSlug(description)}.png`;
+  return `${String(pos).padStart(width, '0')}-${fileSlug(description)}.jpg`;
 }

@@ -25,6 +25,7 @@ import {
   LATER,
   monthLabel,
 } from '../board/calendar';
+import { isWorkKind } from '../board/kind';
 import { type BranchLine2, branchLine2, taskTitle } from '../board/labels';
 import { buildNeedsYou, type NeedsItem, type NeedsKind } from '../board/needsYou';
 import {
@@ -79,6 +80,23 @@ export interface BranchRowModel {
   attentionItem: NeedsItem | null;
 }
 
+/** A live child of an orchestrator, one row of its card. */
+interface ChildModel {
+  id: string;
+  title: string;
+  status: TaskStatusDef;
+  /** Step label of the child's progress, `Done` once finished. */
+  step: string;
+  finished: boolean;
+}
+
+/** The orchestrator a task was spawned by. A parent off the board is archived. */
+export interface ParentModel {
+  id: string;
+  title: string;
+  archived: boolean;
+}
+
 export interface CardModel {
   task: Task;
   entry: TimelineEntry;
@@ -106,6 +124,13 @@ export interface CardModel {
   rows: BranchRowModel[];
   review: boolean;
   parked: boolean;
+  orchestrator: boolean;
+  /** The spawning orchestrator; `null` for a task nobody spawned. */
+  parent: ParentModel | null;
+  /** Live children of an orchestrator, in board order. */
+  children: ChildModel[];
+  /** Ids of archived children (History), newest first. */
+  archivedChildren: string[];
   /** Plan timeline, or the Later or Backlog shelf. */
   shelf: TaskShelf;
   allMerged: boolean;
@@ -192,6 +217,37 @@ function cardMeta(c: Ctx, entry: TimelineEntry, task: Task, branches: Branch[]):
   );
 }
 
+function titleOfTask(c: Ctx, task: Task): string {
+  const first = task.branchIds.map((bid) => c.view.graph.byBranch.get(bid)).find(Boolean);
+  return taskTitle(task, first, first ? c.prTitle(first.id) : '');
+}
+
+function parentOf(c: Ctx, task: Task): ParentModel | null {
+  if (!task.parentId) return null;
+  const live = c.view.graph.byTask.get(task.parentId);
+  if (live) return { id: live.id, title: titleOfTask(c, live), archived: false };
+  return {
+    id: task.parentId,
+    title: task.parentTitle || t('space.ade.board.newTask.label'),
+    archived: task.parentArchived ?? true,
+  };
+}
+
+function childrenOf(c: Ctx, id: string): ChildModel[] {
+  return c.board.tasks
+    .filter((x) => x.parentId === id)
+    .map((x) => {
+      const progress = c.progress.get(x.id) as TaskProgress;
+      return {
+        id: x.id,
+        title: titleOfTask(c, x),
+        status: statusOf(x, c.board.statuses),
+        step: progress.hasWorkflow ? progress.label : '',
+        finished: progress.finished,
+      };
+    });
+}
+
 function buildCard(c: Ctx, id: string): CardModel | null {
   const graph = c.view.graph;
   const entry = c.view.entries.get(id);
@@ -204,7 +260,7 @@ function buildCard(c: Ctx, id: string): CardModel | null {
   const blocked = isBlocked(task, progress, branches);
   const cell = taskCell({ task, progress, status, blocked, branches, sessions });
   const workflow = task.workflow ?? c.workflows.get(task.workflowId) ?? null;
-  const hidden = task.kind !== 'task';
+  const hidden = !isWorkKind(task.kind);
   const first = branches[0];
   const mine = branches.filter((br) => br.kind === 'mine');
   const needsOf = c.needs.items.find((n) => ASKS.has(n.kind) && n.taskId === id);
@@ -228,6 +284,10 @@ function buildCard(c: Ctx, id: string): CardModel | null {
     rows: c.view.branchRows(id).map(({ id: bid, depth }) => buildRow(c, task, bid, depth)),
     review: task.kind === 'review',
     parked: task.kind === 'parked',
+    orchestrator: task.kind === 'orchestrator',
+    parent: parentOf(c, task),
+    children: childrenOf(c, id),
+    archivedChildren: c.board.history.filter((h) => h.parentId === id).map((h) => h.taskId),
     shelf: shelfOf(c.board, id),
     allMerged: mine.length > 0 && mine.every((br) => br.mergedIntoMain),
     selected: c.selectedId === id,

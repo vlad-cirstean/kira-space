@@ -21,6 +21,7 @@ const (
 	KindKubeRead      = "kube.read"
 	KindProofReview   = "proof.review"
 	KindBranchRequest = "branch.request"
+	KindTaskCreate    = "task.create"
 	KindScriptRun     = "script.run"
 	KindAPIRequest    = "api.request"
 )

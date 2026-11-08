@@ -1,6 +1,7 @@
 package proof
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -222,10 +223,15 @@ func (s *Service) AddStep(in StepInput) (int, error) {
 	if in.DraftID == "" {
 		return 0, invalid("draftId is required")
 	}
-	c, keep, err := in.validate()
+	c, keep, err := in.validate(context.Background())
 	if err != nil {
 		return 0, err
 	}
+	return s.addChecked(in.DraftID, in, c, keep)
+}
+
+// addChecked appends a step that validate already accepted, so a file-backed step is read once.
+func (s *Service) addChecked(draftID string, in StepInput, c checked, keep bool) (int, error) {
 	step := repos.ProofNewStep{
 		Description: c.Description, Query: c.Query, Language: c.Language, Source: c.Source, View: c.View, Payload: c.Payload,
 		Replaces: in.ReplacesOrdinal,
@@ -233,7 +239,7 @@ func (s *Service) AddStep(in StepInput) (int, error) {
 	if keep {
 		step.Keep = in.KeepOrdinal
 	}
-	return s.d.Repo.AddStep(in.DraftID, step)
+	return s.d.Repo.AddStep(draftID, step)
 }
 
 // CloseResult answers CloseSession and Save.
@@ -294,7 +300,7 @@ type SaveInput struct {
 
 // Save validates every step, then creates or edits the proof and closes it in one go. A failure at any
 // point leaves no draft behind; step failures name the step as steps[i].
-func (s *Service) Save(in SaveInput) (CloseResult, error) {
+func (s *Service) Save(ctx context.Context, in SaveInput) (CloseResult, error) {
 	edit := strings.TrimSpace(in.Reason) != ""
 	if edit && strings.TrimSpace(in.Summary) != "" {
 		return CloseResult{}, invalid("summary only applies to a new proof; an edit gives a reason")
@@ -302,13 +308,30 @@ func (s *Service) Save(in SaveInput) (CloseResult, error) {
 	if len(in.Steps) < 1 || len(in.Steps) > repos.ProofMaxSteps {
 		return CloseResult{}, invalid("steps must hold 1-%d steps", repos.ProofMaxSteps)
 	}
+	type vetted struct {
+		c    checked
+		keep bool
+	}
+	vet := make([]vetted, len(in.Steps))
+	// Vetted payloads stay in memory until AddStep, and a path-backed image is not covered by the request
+	// body cap: refuse once they exceed what a session can store, before reading further files.
+	held := 0
 	for i, st := range in.Steps {
+		if err := ctx.Err(); err != nil {
+			return CloseResult{}, err
+		}
+		if held > repos.ProofMaxSessionBytes {
+			return CloseResult{}, stepErr(i, invalid("the steps before this one already exceed the %d MiB data limit of a session", repos.ProofMaxSessionBytes>>20))
+		}
 		if !edit && (st.KeepOrdinal != nil || st.ReplacesOrdinal != nil) {
 			return CloseResult{}, stepErr(i, invalid("keepOrdinal and replacesOrdinal only apply when a reason edits an existing proof"))
 		}
-		if _, _, err := st.validate(); err != nil {
+		c, keep, err := st.validate(ctx)
+		if err != nil {
 			return CloseResult{}, stepErr(i, err)
 		}
+		vet[i] = vetted{c, keep}
+		held += len(c.Payload)
 	}
 	var draft string
 	if edit {
@@ -331,8 +354,10 @@ func (s *Service) Save(in SaveInput) (CloseResult, error) {
 		return CloseResult{}, err
 	}
 	for i, st := range in.Steps {
-		st.DraftID = draft
-		if _, err := s.AddStep(st); err != nil {
+		if err := ctx.Err(); err != nil {
+			return fail(err)
+		}
+		if _, err := s.addChecked(draft, st, vet[i].c, vet[i].keep); err != nil {
 			return fail(stepErr(i, err))
 		}
 	}

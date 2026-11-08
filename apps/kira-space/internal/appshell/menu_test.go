@@ -22,3 +22,22 @@ func TestBuildTemplateReviewCodeAccelerator(t *testing.T) {
 	}
 	t.Fatal("no Review Code menu item")
 }
+
+// Validation proof sits in the Window section as a Go-side action, so it works with no window focused.
+func TestBuildTemplateValidationProofItem(t *testing.T) {
+	for _, s := range BuildTemplate("Kira Space", false) {
+		for i, it := range s.Items {
+			if it.Kind != shell.ItemAction {
+				continue
+			}
+			if it.Action != ActionOpenProofs || it.Label != "Validation proof" || it.Accelerator != "" {
+				t.Fatalf("action item = %+v", it)
+			}
+			if prev := s.Items[i-1]; prev.Kind != shell.ItemNewWindow {
+				t.Fatalf("item before = %+v, want New Window", prev)
+			}
+			return
+		}
+	}
+	t.Fatal("no action menu item")
+}

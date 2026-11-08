@@ -13,3 +13,8 @@ func toolName(t harness.MCPTool) string { return agentclaude.New().MCPToolName(t
 func spaceToolNames() []string {
 	return harness.ToolNames(agentclaude.New(), agentmcp.SpaceToolIDs...)
 }
+
+// orchestratorToolNames are the claude names of the tools only an orchestrator task carries.
+func orchestratorToolNames() []string {
+	return harness.ToolNames(agentclaude.New(), agentmcp.OrchestratorToolIDs...)
+}

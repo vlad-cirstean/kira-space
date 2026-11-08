@@ -26,6 +26,7 @@ const emit = defineEmits<{ close: []; notNow: [] }>();
 const store = useAdeStageDialogStore();
 
 const open = computed(() => store.isOpen && store.routed === props.routed);
+const pass = computed(() => store.mode === 'pass');
 const live = computed(() => store.moves?.live ?? false);
 const fromName = computed(
   () => store.moves?.options.find((o) => o.id === store.fromStepId)?.name ?? '',
@@ -57,18 +58,24 @@ async function move(): Promise<void> {
     <DialogContent size="lg" :dirty="store.dirty" data-testid="ade-stage-dialog">
       <DialogHeader>
         <DialogTitle>{{
-          t('space.ade.stageDialog.title.title', { task: store.card?.title ?? '' })
+          t(pass ? 'space.ade.stageDialog.passTitle.title' : 'space.ade.stageDialog.title.title', {
+            task: store.card?.title ?? '',
+          })
         }}</DialogTitle>
       </DialogHeader>
       <DialogBody>
         <div class="flex items-center gap-2">
-          <span class="text-muted-foreground" data-testid="ade-stage-from">{{
+          <span v-if="!pass" class="text-muted-foreground" data-testid="ade-stage-from">{{
             t('space.ade.stageDialog.from.label', { stage: fromName })
           }}</span>
           <Label for="ade-stage-target" class="ml-auto text-muted-foreground">{{
             t('space.ade.stageDialog.target.label')
           }}</Label>
+          <span v-if="pass" class="font-medium" data-testid="ade-stage-pass-target">{{
+            store.passStep?.name ?? ''
+          }}</span>
           <NativeSelect
+            v-else
             id="ade-stage-target"
             v-model="store.toStepId"
             variant="bordered"
@@ -80,18 +87,36 @@ async function move(): Promise<void> {
         </div>
         <div class="flex flex-col gap-1">
           <Label for="ade-stage-notes" class="text-muted-foreground">{{
-            t('space.ade.stageDialog.notes.label')
+            t(
+              pass
+                ? 'space.ade.stageDialog.passMessage.label'
+                : 'space.ade.stageDialog.notes.label',
+            )
           }}</Label>
           <AdeNotesEditor
             id="ade-stage-notes"
             v-model="store.notes"
             compact
             :hard-breaks="store.draft?.source !== 'user'"
-            :label="t('space.ade.stageDialog.notes.label')"
-            :placeholder="t('space.ade.stageDialog.notes.placeholder')"
+            :label="
+              t(
+                pass
+                  ? 'space.ade.stageDialog.passMessage.label'
+                  : 'space.ade.stageDialog.notes.label',
+              )
+            "
+            :placeholder="
+              t(
+                pass
+                  ? 'space.ade.stageDialog.passMessage.placeholder'
+                  : 'space.ade.stageDialog.notes.placeholder',
+              )
+            "
             data-testid="ade-stage-notes"
           />
-          <FieldDescription>{{ t('space.ade.stageDialog.notes.hint') }}</FieldDescription>
+          <FieldDescription>{{
+            t(pass ? 'space.ade.stageDialog.passMessage.hint' : 'space.ade.stageDialog.notes.hint')
+          }}</FieldDescription>
         </div>
         <div
           v-if="store.closable.length"
@@ -119,7 +144,7 @@ async function move(): Promise<void> {
           <FieldDescription>{{ t('space.ade.stageDialog.sessions.hint') }}</FieldDescription>
         </div>
         <div
-          v-if="store.taskId && store.toStepId === 'done'"
+          v-if="!pass && store.taskId && store.toStepId === 'done'"
           class="flex flex-col gap-1"
           data-testid="ade-stage-artifacts"
         >
@@ -157,7 +182,7 @@ async function move(): Promise<void> {
           data-testid="ade-stage-move"
           @click="move"
           >{{
-            t('space.common.move.label')
+            pass ? t('space.ade.board.taskAction.nextPass.label') : t('space.common.move.label')
           }}</Button
         >
       </DialogFooter>

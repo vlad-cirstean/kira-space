@@ -120,7 +120,7 @@ const facts = computed<Array<[string, string]>>(() => {
   if (!e) return [];
   return [
     [
-      t('docker.engine.version.label'),
+      t('common.version.label'),
       t('docker.engine.versionApi.label', { version: e.version, api: e.apiVersion }),
     ],
     [t('docker.engine.osArch.label'), `${e.operatingSystem || e.os} / ${e.arch}`],

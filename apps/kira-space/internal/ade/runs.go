@@ -87,6 +87,8 @@ type taskCtx struct {
 	branches []model.AdeTaskBranch
 	mine     []mineBranch
 	nick     map[string]string // code repo id -> nickname, else name
+	// runs, when set, replaces plan's LatestRuns read. Only a short-lived read-only context sets it.
+	runs *[]model.AdeRun
 }
 
 func sinceKey(stepID, branchID string) string { return stepID + "/" + branchID }
@@ -119,7 +121,42 @@ func (b *TaskBoard) loadTaskCtx(taskID string) (*taskCtx, error) {
 	if task.ArchivedAt != nil {
 		return nil, invalid("task %s is archived", taskID)
 	}
-	tc := &taskCtx{task: task, nick: map[string]string{}, entry: task.EntryStepID, since: map[string]int{}}
+	shared, err := b.loadSpaceFacts()
+	if err != nil {
+		return nil, err
+	}
+	return b.buildTaskCtx(task, shared)
+}
+
+// spaceFacts is what every task context reads from the whole space: live branches by task and repo nicknames.
+// A caller building many contexts loads it once.
+type spaceFacts struct {
+	branches map[string][]model.AdeTaskBranch
+	nick     map[string]string
+}
+
+func (b *TaskBoard) loadSpaceFacts() (spaceFacts, error) {
+	live, err := b.deps.Tasks.BranchesLive()
+	if err != nil {
+		return spaceFacts{}, err
+	}
+	cfgs, err := b.deps.RepoConfig.List()
+	if err != nil {
+		return spaceFacts{}, err
+	}
+	f := spaceFacts{branches: map[string][]model.AdeTaskBranch{}, nick: make(map[string]string, len(cfgs))}
+	for _, br := range live {
+		f.branches[br.TaskID] = append(f.branches[br.TaskID], br)
+	}
+	for _, c := range cfgs {
+		f.nick[c.CodeRepoID] = cmpNonEmpty(c.Nickname, c.Name)
+	}
+	return f, nil
+}
+
+// buildTaskCtx resolves a live task's workflow, pass watermark and branches.
+func (b *TaskBoard) buildTaskCtx(task model.AdeTask, f spaceFacts) (*taskCtx, error) {
+	tc := &taskCtx{task: task, nick: f.nick, entry: task.EntryStepID, since: map[string]int{}}
 	if wf, ok := b.taskWorkflow(task); ok {
 		tc.wf = &wf
 		if task.WorkflowJSON == "" {
@@ -131,25 +168,10 @@ func (b *TaskBoard) loadTaskCtx(taskID string) (*taskCtx, error) {
 	}
 	if task.SinceJSON != "" {
 		if err := json.Unmarshal([]byte(task.SinceJSON), &tc.since); err != nil {
-			return nil, fmt.Errorf("ade: unreadable pass of task %s: %w", taskID, err)
+			return nil, fmt.Errorf("ade: unreadable pass of task %s: %w", task.ID, err)
 		}
 	}
-	live, err := b.deps.Tasks.BranchesLive()
-	if err != nil {
-		return nil, err
-	}
-	for _, br := range live {
-		if br.TaskID == taskID {
-			tc.branches = append(tc.branches, br)
-		}
-	}
-	cfgs, err := b.deps.RepoConfig.List()
-	if err != nil {
-		return nil, err
-	}
-	for _, c := range cfgs {
-		tc.nick[c.CodeRepoID] = cmpNonEmpty(c.Nickname, c.Name)
-	}
+	tc.branches = f.branches[task.ID]
 	for _, br := range tc.branches {
 		if br.Kind == model.AdeBranchKindMine {
 			tc.mine = append(tc.mine, mineBranch{ID: br.ID, Nick: tc.nick[br.CodeRepoID]})
@@ -171,9 +193,14 @@ func (b *TaskBoard) plan(tc *taskCtx) ([]stepView, error) {
 		return nil, invalid("the task has no workflow")
 	}
 	steps := workflowSteps(*tc.wf)
-	latest, err := b.deps.Tasks.LatestRuns(tc.task.ID)
-	if err != nil {
-		return nil, err
+	var latest []model.AdeRun
+	if tc.runs != nil {
+		latest = *tc.runs
+	} else {
+		var err error
+		if latest, err = b.deps.Tasks.LatestRuns(tc.task.ID); err != nil {
+			return nil, err
+		}
 	}
 	out := make([]stepView, len(steps))
 	for i, def := range steps {
@@ -728,11 +755,14 @@ func (b *TaskBoard) configScope() harness.ConfigScope {
 	return harness.ConfigAll
 }
 
-func allowedTools(p harness.MCPHost, step []string, space bool) []string {
+func allowedTools(p harness.MCPHost, step []string, space, orchestrator bool) []string {
 	out := slices.Clone(step)
 	want := harness.ToolNames(p, agentmcp.FinishStep, agentmcp.RunOutcome)
 	if space {
 		want = append(want, harness.ToolNames(p, agentmcp.SpaceToolIDs...)...)
+	}
+	if orchestrator {
+		want = append(want, harness.ToolNames(p, agentmcp.OrchestratorToolIDs...)...)
 	}
 	for _, t := range want {
 		if !slices.Contains(out, t) {
@@ -865,7 +895,9 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	if sbx != nil {
 		grantSandbox = sbx.grant
 	}
-	grant := agentmcp.Grant{RunID: run.ID, TaskID: run.TaskID, SessionID: l.sessionID, Space: space, Git: l.git, Review: l.review, Sandbox: grantSandbox, Agent: l.agent, Results: grantResults(rebase || round, def)}
+	// Only an orchestrator's own step runs carry the spawn tools: not rebase or review runs, not smart steps.
+	orchestrator := space && l.smart == nil && b.isOrchestrator(run.TaskID)
+	grant := agentmcp.Grant{RunID: run.ID, TaskID: run.TaskID, SessionID: l.sessionID, Space: space, Orchestrator: orchestrator, Git: l.git, Review: l.review, Sandbox: grantSandbox, Agent: l.agent, Results: grantResults(rebase || round, def)}
 	releaseDb, err := b.grantDbMcp(def, dbmcp.SessionIdentity{SessionID: l.sessionID, TaskID: run.TaskID, RunID: run.ID, Cwd: l.path}, &grant)
 	if err != nil {
 		fail(err)
@@ -900,7 +932,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	agent := l.agent
 	spec := harness.HeadlessSpec{
 		Bin: b.deps.AgentBin, Dir: l.path, Prompt: l.prompt, SessionID: b.sessionAgentID(sessionID),
-		Resume: l.resume, MCPConfigs: []string{cfg}, Config: b.configScope(), AllowedTools: roundTools(agent, allowedTools(agent, withDbMcpTool(def, def.AllowedTools), space), round), DisallowedTools: withoutExternalDb(def, def.DisallowedTools),
+		Resume: l.resume, MCPConfigs: []string{cfg}, Config: b.configScope(), AllowedTools: roundTools(agent, allowedTools(agent, withDbMcpTool(def, def.AllowedTools), space, orchestrator), round), DisallowedTools: withoutExternalDb(def, def.DisallowedTools),
 		Timeout: l.timeout, Stage: stageValues(def.Settings, agent), ContextFile: l.contextFile, App: prep.App,
 		Hermetic: b.hermetic() && len(ticked.UserMCP) == 0,
 	}
@@ -1612,16 +1644,8 @@ func (b *TaskBoard) SetTaskStep(_ context.Context, taskID, stepID, fromStepID st
 	}
 	var since map[string]int
 	if target >= 0 {
-		runs, err := b.deps.Tasks.LatestRuns(taskID)
-		if err != nil {
+		if since, err = b.passSince(tc, target); err != nil {
 			return adewire.Task{}, err
-		}
-		since = maps.Clone(tc.since)
-		for _, r := range runs {
-			if i := slices.IndexFunc(tc.wf.Steps, func(st adewire.WorkflowStep) bool { return st.ID == r.StepID }); r.Purpose == "" && i >= target {
-				k := sinceKey(r.StepID, r.BranchID)
-				since[k] = max(since[k], r.Attempt)
-			}
 		}
 	}
 	if err := b.deps.Tasks.SetEntryStep(taskID, stepID, since, b.handoffFor(tc, from, stepID, notes)); err != nil {
@@ -1636,6 +1660,26 @@ func (b *TaskBoard) SetTaskStep(_ context.Context, taskID, stepID, fromStepID st
 		return adewire.Task{}, err
 	}
 	return b.wireTask(task)
+}
+
+// passSince is the pass watermark for a move to the workflow step at index target: every run of that step
+// and the later ones becomes history. Nothing is deleted.
+func (b *TaskBoard) passSince(tc *taskCtx, target int) (map[string]int, error) {
+	runs, err := b.deps.Tasks.LatestRuns(tc.task.ID)
+	if err != nil {
+		return nil, err
+	}
+	since := maps.Clone(tc.since)
+	if since == nil {
+		since = map[string]int{}
+	}
+	for _, r := range runs {
+		if i := slices.IndexFunc(tc.wf.Steps, func(st adewire.WorkflowStep) bool { return st.ID == r.StepID }); r.Purpose == "" && i >= target {
+			k := sinceKey(r.StepID, r.BranchID)
+			since[k] = max(since[k], r.Attempt)
+		}
+	}
+	return since, nil
 }
 
 // RetrySetup reruns a failed prepare script.

@@ -7,6 +7,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/internal/appupdate"
 )
 
 // wailsModulePath is the module debug.ReadBuildInfo reports the pinned Wails runtime dependency
@@ -31,14 +32,14 @@ func wailsVersion() string {
 
 // AppInfo replaces packages/shared/protocol/ipc.ts's AppInfo.electron/.chrome fields with go/wails
 // — there is no Chromium or Electron version to report under Wails, and no Node version
-// either now that there is no vendored runtime to report on. Nothing in the current
-// renderer reads AppInfo's fields (control.appInfo has zero renderer callers), so both are clean
-// deletes rather than compatibility shims.
+// either now that there is no vendored runtime to report on. Settings About
+// reads AppVersion and RepoURL through control.appInfo.
 type AppInfo struct {
 	AppVersion string `json:"appVersion"`
 	Go         string `json:"go"`
 	Wails      string `json:"wails"`
 	KiraHome   string `json:"kiraHome"`
+	RepoURL    string `json:"repoUrl"`
 }
 
 // AppService.Info is the direct analogue of today's IPC.appInfo (src/main/ipc/app.ts).
@@ -52,5 +53,6 @@ func (s *AppService) Info() (AppInfo, error) {
 		Go:         runtime.Version(),
 		Wails:      wailsVersion(),
 		KiraHome:   config.KiraSpaceHome(),
+		RepoURL:    appupdate.RepoURL,
 	}, nil
 }

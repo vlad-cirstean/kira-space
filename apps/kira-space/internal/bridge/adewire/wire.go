@@ -480,7 +480,7 @@ type ReviewEvent struct {
 
 type Task struct {
 	ID      string `json:"id"`
-	Kind    string `json:"kind"` // 'task' | 'review' | 'parked'
+	Kind    string `json:"kind"` // 'task' | 'review' | 'parked' | 'orchestrator'
 	Title   string `json:"title"`
 	Owner   string `json:"owner"`
 	Jira    *Jira  `json:"jira"`
@@ -514,6 +514,11 @@ type Task struct {
 	HandoverDrafts []Handover `json:"handoverDrafts"`
 	// BranchRequestID is the open request an agent waits on for this task; '' when none.
 	BranchRequestID string `json:"branchRequestId"`
+	// ParentID is the orchestrator that spawned the task; ParentTitle and ParentArchived describe it (the
+	// parent may be archived, so the client cannot always find it on the board).
+	ParentID       string `json:"parentId,omitempty"`
+	ParentTitle    string `json:"parentTitle,omitempty"`
+	ParentArchived bool   `json:"parentArchived,omitempty"`
 }
 
 // BranchRequestItem is one branch an agent asks work for. ID is the item's key in the request. Kind 'branch':
@@ -550,7 +555,10 @@ type BranchRequest struct {
 
 // Handover is the text one stage leaves for the next. A draft (State 'draft', ToStepID empty) is open until
 // the task moves; a handed row is one stage move. Step names are snapshots; a step id of 'done' is past
-// the last step. Source is 'agent' (a session's handover call), 'run' (a finished run's summary) or 'user'.
+// the last step. Source is 'agent' (a session's handover call), 'run' (a finished run's summary), 'user',
+// 'orchestrator' (a child's brief: FromStepName is the parent's title), 'pass' (the start of an orchestrator
+// pass) or 'child' (a finished child's handover mirrored into its orchestrator's chain, State 'note',
+// FromTaskID and FromTaskTitle name the child).
 // State 'note' is a user note: Source 'user', FromStep* the stage it was written in, ToStep* empty.
 type Handover struct {
 	ID           string `json:"id"`
@@ -568,6 +576,10 @@ type Handover struct {
 	SessionID    string `json:"sessionId"` // the Kira session that wrote it; '' = user or unknown
 	CreatedAt    int64  `json:"createdAt"`
 	UpdatedAt    int64  `json:"updatedAt"`
+	// FromTaskID and FromTaskTitle name the child behind a source 'child' row, and the parent behind a
+	// 'orchestrator' brief; '' otherwise.
+	FromTaskID    string `json:"fromTaskId,omitempty"`
+	FromTaskTitle string `json:"fromTaskTitle,omitempty"`
 }
 
 type HandoversResult struct {
@@ -721,7 +733,9 @@ type Plan struct {
 }
 
 type HistoryEntry struct {
-	TaskID      string   `json:"taskId"`
+	TaskID string `json:"taskId"`
+	// ParentID is the orchestrator that spawned the archived task.
+	ParentID    string   `json:"parentId,omitempty"`
 	Title       string   `json:"title"`
 	CodeRepoIDs []string `json:"codeRepoIds"`
 	MergedAt    *int64   `json:"mergedAt"`
@@ -929,6 +943,8 @@ type OpenSessionEvent struct {
 }
 
 type CreateTaskArgs struct {
+	// Kind is 'task' (also '') or 'orchestrator'.
+	Kind        string   `json:"kind,omitempty"`
 	Title       string   `json:"title"`
 	Jira        *Jira    `json:"jira"`
 	HostURL     string   `json:"hostUrl"`
@@ -948,7 +964,7 @@ type TaskPatch struct {
 	HostURL   *string `json:"hostUrl"`
 	Est       *string `json:"est"`
 	Color     *int    `json:"color"`
-	Kind      *string `json:"kind"` // 'task' | 'parked'
+	Kind      *string `json:"kind"` // 'task' | 'parked' | 'orchestrator'
 	// StatusID moves the task to that status by hand.
 	StatusID *string `json:"statusId"`
 }
@@ -1354,6 +1370,23 @@ type SetTaskStepArgs struct {
 	Notes *string `json:"notes,omitempty"`
 	// CloseSessions closes the stage sessions of the move first.
 	CloseSessions bool `json:"closeSessions,omitempty"`
+}
+
+// NextPassArgs starts the next pass of a finished orchestrator task: it moves back to its first step and
+// starts it. FromStepID, when set, is the step the caller saw (ErrStale otherwise). Notes is an optional
+// message the pass starts with. CloseSessions closes the finished stage's sessions first.
+type NextPassArgs struct {
+	TaskID        string  `json:"taskId"`
+	FromStepID    string  `json:"fromStepId,omitempty"`
+	Notes         *string `json:"notes,omitempty"`
+	CloseSessions bool    `json:"closeSessions,omitempty"`
+}
+
+// NextPassResult names the step the pass entered; Started is false when that step is manual or its run did
+// not start (the task then waits on its normal Run action).
+type NextPassResult struct {
+	StepID  string `json:"stepId"`
+	Started bool   `json:"started"`
 }
 
 type SendArgs struct {

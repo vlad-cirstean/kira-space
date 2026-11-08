@@ -23,7 +23,8 @@ export type TaskActionKind =
   | 'takeOver'
   | 'approve'
   | 'run'
-  | 'retry';
+  | 'retry'
+  | 'nextPass';
 
 export interface TaskAction {
   kind: TaskActionKind;
@@ -200,6 +201,25 @@ export function taskCell(i: TaskCellInput): TaskCell | null {
         tip: t('space.ade.board.taskStatus.tooltip'),
       },
       action: null,
+    };
+  }
+  if (task.kind === 'orchestrator' && progress.finished) {
+    // A finished pass is no merge state: the orchestrator waits for the next pass. Archive stays in the task menu.
+    return {
+      tag: {
+        kind: 'status',
+        label: t('space.ade.board.passDone.label'),
+        tone: 'purple',
+        tip: t('space.ade.board.passDone.tooltip'),
+      },
+      action: {
+        kind: 'nextPass',
+        label: t('space.ade.board.taskAction.nextPass.label'),
+        tip: t('space.ade.board.taskAction.nextPass.tooltip', {
+          step: progress.steps.find((s) => !s.skip)?.name ?? '',
+        }),
+        tone: 'agent',
+      },
     };
   }
   const mine = i.branches.filter((b) => b.kind === 'mine');

@@ -123,6 +123,7 @@ export const PROPER_NOUNS: readonly string[] = [
   // Additions beyond the plan list: widely-known acronyms that sentence-case prose needs.
   'PDF',
   'PNG',
+  'JPEG',
   'SSH',
   'DNS',
   'IP',

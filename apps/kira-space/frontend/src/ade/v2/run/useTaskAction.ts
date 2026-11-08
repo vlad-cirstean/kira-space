@@ -29,6 +29,7 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
     const taskId = c.task.id;
     delete ui.actionError[taskId];
     if (a.kind === 'archive') return dialogs.archive(taskId);
+    if (a.kind === 'nextPass') return stage.openPass(taskId);
     if (a.kind === 'session') return dialogs.session(taskId);
     if (a.kind === 'takeOver' || a.kind === 'resume') return takeOver.request(a.sessionId ?? '');
     if (!step) return;

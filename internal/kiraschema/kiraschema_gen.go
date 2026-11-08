@@ -419,6 +419,7 @@ var AdeTaskHandovers = struct {
 	ToStepName   string
 	SessionID    string
 	Body         string
+	FromTaskID   string
 }{
 	Table:        "ade_task_handovers",
 	ID:           "id",
@@ -436,6 +437,7 @@ var AdeTaskHandovers = struct {
 	ToStepName:   "to_step_name",
 	SessionID:    "session_id",
 	Body:         "body",
+	FromTaskID:   "from_task_id",
 }
 
 // AdeTaskPlan names table ade_task_plan.
@@ -501,6 +503,7 @@ var AdeTasks = struct {
 	WorkflowHash string
 	SinceJSON    string
 	WorkflowJSON string
+	ParentID     string
 }{
 	Table:        "ade_tasks",
 	ID:           "id",
@@ -522,6 +525,7 @@ var AdeTasks = struct {
 	WorkflowHash: "workflow_hash",
 	SinceJSON:    "since_json",
 	WorkflowJSON: "workflow_json",
+	ParentID:     "parent_id",
 }
 
 // AdeTrackedItems names table ade_tracked_items.

@@ -69,7 +69,7 @@ func (b *TaskBoard) statusKey(tc *taskCtx) (key string, ok bool) {
 // task moves on. Only work tasks sync.
 func (b *TaskBoard) syncStatus(taskID string) {
 	tc, err := b.loadTaskCtx(taskID)
-	if err != nil || tc.task.Kind != model.AdeTaskKindTask {
+	if err != nil || !model.IsWorkKind(tc.task.Kind) {
 		return
 	}
 	key, ok := b.statusKey(tc)

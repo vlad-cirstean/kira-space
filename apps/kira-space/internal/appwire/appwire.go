@@ -116,8 +116,8 @@ type Options struct {
 	TrackerGrace time.Duration
 	// RebaseTimeout bounds one ADE rebase run; 0 keeps the default (20 minutes).
 	RebaseTimeout time.Duration
-	// BranchRequestWait is how long an agent's branch request waits for the user; 0 keeps the default
-	// (30 minutes).
+	// BranchRequestWait is how long an agent's branch request or create_task waits for the user; 0 keeps
+	// the default (30 minutes).
 	BranchRequestWait time.Duration
 	// Sandbox confines headless agents; nil uses the OS enforcer (a flow-test seam).
 	Sandbox agentsandbox.Enforcer

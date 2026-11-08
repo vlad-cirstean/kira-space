@@ -11,8 +11,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 )
 
-func pngB64(extra string) string {
-	return base64.StdEncoding.EncodeToString(append([]byte("\x89PNG\r\n\x1a\n"), extra...))
+func jpegB64(extra string) string {
+	return base64.StdEncoding.EncodeToString(append([]byte("\xff\xd8\xff"), extra...))
 }
 
 func TestProofShotFolder(t *testing.T) {
@@ -44,40 +44,40 @@ func TestProofShotFolder(t *testing.T) {
 		t.Fatalf("picker requests = %+v", got)
 	}
 
-	for i, name := range []string{"01-a.png", "02-b.png", "03-c.png"} {
+	for i, name := range []string{"01-a.jpg", "02-b.jpg", "03-c.jpg"} {
 		body := string(rune('a' + i))
-		res, err := p.SavePngTo(bridge.ProofSavePngToArgs{FolderID: first.ID, Filename: name, PngBase64: pngB64(body)})
+		res, err := p.SaveJpegTo(bridge.ProofSaveJpegToArgs{FolderID: first.ID, Filename: name, JpegBase64: jpegB64(body)})
 		if err != nil || res.Path != filepath.Join(first.Path, name) {
 			t.Fatalf("save %s = %+v, %v", name, res, err)
 		}
 		got, err := os.ReadFile(res.Path)
-		if err != nil || !bytes.Equal(got, append([]byte("\x89PNG\r\n\x1a\n"), body...)) {
+		if err != nil || !bytes.Equal(got, append([]byte("\xff\xd8\xff"), body...)) {
 			t.Fatalf("read back %s = %q, %v", name, got, err)
 		}
 	}
-	res, err := p.SavePngTo(bridge.ProofSavePngToArgs{FolderID: first.ID, Filename: "../x.png", PngBase64: pngB64("x")})
-	if err != nil || res.Path != filepath.Join(first.Path, "x.png") {
+	res, err := p.SaveJpegTo(bridge.ProofSaveJpegToArgs{FolderID: first.ID, Filename: "../x.jpg", JpegBase64: jpegB64("x")})
+	if err != nil || res.Path != filepath.Join(first.Path, "x.jpg") {
 		t.Fatalf("traversal = %+v, %v", res, err)
 	}
 
-	refused := []bridge.ProofSavePngToArgs{
-		{FolderID: first.ID, Filename: "01-a.png", PngBase64: pngB64("again")},
-		{FolderID: first.ID, Filename: "n.png", PngBase64: base64.StdEncoding.EncodeToString([]byte("not a png"))},
-		{FolderID: "shot_unknown", Filename: "n.png", PngBase64: pngB64("n")},
+	refused := []bridge.ProofSaveJpegToArgs{
+		{FolderID: first.ID, Filename: "01-a.jpg", JpegBase64: jpegB64("again")},
+		{FolderID: first.ID, Filename: "n.jpg", JpegBase64: base64.StdEncoding.EncodeToString([]byte("not a jpeg"))},
+		{FolderID: "shot_unknown", Filename: "n.jpg", JpegBase64: jpegB64("n")},
 	}
 	for _, a := range refused {
-		if _, err := p.SavePngTo(a); err == nil {
-			t.Fatalf("SavePngTo(%+v) succeeded, want refusal", a)
+		if _, err := p.SaveJpegTo(a); err == nil {
+			t.Fatalf("SaveJpegTo(%+v) succeeded, want refusal", a)
 		}
 	}
-	if got, _ := os.ReadFile(filepath.Join(first.Path, "01-a.png")); !bytes.HasSuffix(got, []byte("a")) {
+	if got, _ := os.ReadFile(filepath.Join(first.Path, "01-a.jpg")); !bytes.HasSuffix(got, []byte("a")) {
 		t.Fatalf("existing file overwritten: %q", got)
 	}
 
 	if err := p.ForgetShotFolder(bridge.ProofForgetShotFolderArgs{FolderID: first.ID}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.SavePngTo(bridge.ProofSavePngToArgs{FolderID: first.ID, Filename: "late.png", PngBase64: pngB64("l")}); err == nil {
+	if _, err := p.SaveJpegTo(bridge.ProofSaveJpegToArgs{FolderID: first.ID, Filename: "late.jpg", JpegBase64: jpegB64("l")}); err == nil {
 		t.Fatal("save after forget succeeded")
 	}
 }

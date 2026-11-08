@@ -7,6 +7,7 @@ import type { Plan, Run, Session, TaskStatusDef } from '../wire';
 import type { BranchGraph } from './branchGraph';
 import { type Calendar, isWeekend, LATER, nextWork, offsetToIso } from './calendar';
 import type { ChangeBaseChoice } from './changeBase';
+import { orchestratorToggle } from './kind';
 import { type RebaseAct, rebaseActs } from './rebaseActions';
 import type { ReviewChoice } from './reviewCode';
 import { nextStepId } from './stepBlocks';
@@ -28,6 +29,7 @@ export type TaskMenuCmd =
   | { kind: 'shelve'; shelf: 'later' | 'backlog' }
   | { kind: 'park'; parked: boolean }
   | { kind: 'makeTask' }
+  | { kind: 'orchestrator'; on: boolean }
   | { kind: 'link'; url: string }
   | { kind: 'copy'; text: string }
   | { kind: 'review'; branchId: string }
@@ -344,6 +346,21 @@ export function taskMenuModel(i: TaskMenuInput): TaskMenuEntry[] {
           : 'space.ade.board.taskMenu.markNotMerging.label',
       ),
       cmd: { kind: 'park', parked: !c.parked },
+      disabled: c.orchestrator,
+      hint: c.orchestrator ? t('space.ade.orchestrator.parkRefused.tooltip') : undefined,
+    });
+    const toggle = orchestratorToggle(c);
+    out.push({
+      type: 'item',
+      id: 'ade-task-orchestrator',
+      label: t(
+        c.orchestrator
+          ? 'space.ade.orchestrator.menu.plainTask.label'
+          : 'space.ade.orchestrator.menu.makeOrchestrator.label',
+      ),
+      cmd: { kind: 'orchestrator', on: !c.orchestrator },
+      disabled: toggle.disabled,
+      hint: toggle.why || undefined,
     });
     out.push(...changeBaseEntry(i.baseChoices));
   }

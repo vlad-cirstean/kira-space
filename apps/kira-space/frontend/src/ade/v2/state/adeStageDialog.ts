@@ -4,22 +4,26 @@ import { computed, ref } from 'vue';
 import { stageSessions } from '../board/stageSessions';
 import { stepMoves } from '../board/stepMoves';
 import { usePlanModel } from '../plan/usePlanModel';
-import { useDismissHandover, useSetTaskStep, useStepDone } from '../queries';
+import { useDismissHandover, useNextPass, useSetTaskStep, useStepDone } from '../queries';
 import { useSessions } from '../readQueries';
 
 // The stage-change dialog: which task it is open for, the target stage and the handover notes typed
 // for it. One concern: the stage move with notes. Every opener (step mover, task menu, Next stage action,
-// the routed `handover` prompt) goes through here.
+// the routed `handover` prompt) goes through here. Pass mode is the same dialog for a finished
+// orchestrator: the target is fixed to its first step and the notes are the optional pass message.
 export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
   const { model } = usePlanModel();
   const stepDone = useStepDone();
   const setStep = useSetTaskStep();
+  const nextPass = useNextPass();
   const dismissM = useDismissHandover();
   const sessions = useSessions();
 
   const taskId = ref<string | null>(null);
   /** Opened by the routed `handover` prompt rather than by a board action. */
   const routed = ref(false);
+  /** `pass` starts the next pass of a finished orchestrator instead of moving between stages. */
+  const mode = ref<'move' | 'pass'>('move');
   /** The stage the dialog was asked to move to; '' = the natural next one. */
   const asked = ref('');
   /** What the user picked or typed; null until then, so the defaults follow the board as it loads. */
@@ -37,13 +41,22 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
   const moves = computed(() =>
     card.value ? stepMoves(card.value.blocks, fromStepId.value, card.value.task.runs) : null,
   );
-  /** The open draft of the stage being left, the notes' starting text. */
-  const draft = computed(
-    () => card.value?.task.handoverDrafts.find((d) => d.fromStepId === fromStepId.value) ?? null,
+  /** The open draft of the stage being left, the notes' starting text; a pass has none. */
+  const draft = computed(() =>
+    mode.value === 'pass'
+      ? null
+      : (card.value?.task.handoverDrafts.find((d) => d.fromStepId === fromStepId.value) ?? null),
+  );
+  /** The first step a pass enters. */
+  const passStep = computed(
+    () => moves.value?.options.find((o) => o.id !== 'done' && !o.skipped) ?? null,
   );
   const prefill = computed(() => draft.value?.body ?? '');
   const toStepId = computed({
-    get: () => picked.value ?? (asked.value || (moves.value?.next?.id ?? '')),
+    get: () =>
+      mode.value === 'pass'
+        ? (passStep.value?.id ?? '')
+        : (picked.value ?? (asked.value || (moves.value?.next?.id ?? ''))),
     set: (v: string) => {
       picked.value = v;
     },
@@ -67,11 +80,18 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
 
   function open(args: { taskId: string; toStepId?: string; routed?: boolean }): void {
     taskId.value = args.taskId;
+    mode.value = 'move';
     routed.value = args.routed ?? false;
     asked.value = args.toStepId ?? '';
     picked.value = null;
     typed.value = null;
     closeChoice.value = 'close';
+  }
+
+  /** Opens the dialog for the next pass of a finished orchestrator. */
+  function openPass(id: string): void {
+    open({ taskId: id });
+    mode.value = 'pass';
   }
 
   function close(): void {
@@ -86,6 +106,16 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     const sendNotes = notes.value !== prefill.value ? { notes: notes.value } : {};
     const closing =
       closable.value.length > 0 && closeChoice.value === 'close' ? { closeSessions: true } : {};
+    if (mode.value === 'pass') {
+      await nextPass.mutateAsync({
+        taskId: c.task.id,
+        fromStepId: fromStepId.value,
+        ...(notes.value.trim() === '' ? {} : { notes: notes.value }),
+        ...closing,
+      });
+      close();
+      return;
+    }
     const manual = c.progress.step?.kind === 'manual' && !c.progress.finished;
     if (manual && toStepId.value === m.next?.id) {
       await stepDone.mutateAsync({ taskId: c.task.id, ...sendNotes, ...closing });
@@ -112,6 +142,8 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
 
   return {
     taskId,
+    mode,
+    passStep,
     toStepId,
     notes,
     error,
@@ -126,6 +158,7 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     routed,
     isOpen,
     open,
+    openPass,
     close,
     submit: move.run,
     dismiss: dismissal.run,

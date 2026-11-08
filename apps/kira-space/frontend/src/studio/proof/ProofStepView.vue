@@ -3,9 +3,11 @@ import type { EditorLanguageId } from '@shared/domain/editor';
 import {
   type ProofChartPayload,
   type ProofDiagramPayload,
+  type ProofImagePayload,
   type ProofStepDetail,
   proofChartPayloadSchema,
   proofDiagramPayloadSchema,
+  proofImagePayloadSchema,
 } from '@shared/domain/proof';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
@@ -20,6 +22,7 @@ import ConsoleResultGrid from '../views/console/ConsoleResultGrid.vue';
 import CellEditorDock from '../views/shared/celleditor/CellEditorDock.vue';
 import ProofChart from './ProofChart.vue';
 import ProofDiagram from './ProofDiagram.vue';
+import ProofImage from './ProofImage.vue';
 import { buildProofPage, mountProofPage, proofPageKey, releaseProofPage } from './pages';
 import { useProofStep } from './queries';
 import { useProofWindowStore } from './state';
@@ -67,15 +70,25 @@ const pageError = shallowRef<string | null>(null);
 const pageMounted = ref(false);
 const chartPayload = shallowRef<ProofChartPayload | null>(null);
 const diagramPayload = shallowRef<ProofDiagramPayload | null>(null);
+const imagePayload = shallowRef<ProofImagePayload | null>(null);
 watch(
   () => step.data.value,
   (data) => {
-    if (!data || pageMounted.value || chartPayload.value || diagramPayload.value) return;
+    if (
+      !data ||
+      pageMounted.value ||
+      chartPayload.value ||
+      diagramPayload.value ||
+      imagePayload.value
+    )
+      return;
     try {
       if (data.view === 'chart') {
         chartPayload.value = proofChartPayloadSchema.parse(data.data);
       } else if (data.view === 'diagram') {
         diagramPayload.value = proofDiagramPayloadSchema.parse(data.data);
+      } else if (data.view === 'image') {
+        imagePayload.value = proofImagePayloadSchema.parse(data.data);
       } else {
         mountProofPage(key, buildProofPage(data.view, data.data));
         pageMounted.value = true;
@@ -200,11 +213,22 @@ onBeforeUnmount(() => {
                 top: view.seed.value.resultScrollTop,
                 left: view.seed.value.resultScrollLeft,
               }"
-              @update:scroll="view.setDiagramScroll"
+              @update:scroll="view.setScroll"
+              @ready="resultReady = true"
+            />
+            <ProofImage
+              v-else-if="imagePayload && view.seed.value"
+              :payload="imagePayload"
+              :description="data.description"
+              :seed="{
+                top: view.seed.value.resultScrollTop,
+                left: view.seed.value.resultScrollLeft,
+              }"
+              @update:scroll="view.setScroll"
               @ready="resultReady = true"
             />
           </div>
-          <CellEditorDock :tab-id="key" readonly @ready="dockReady = true" />
+          <CellEditorDock v-if="!imagePayload" :tab-id="key" readonly @ready="dockReady = true" />
         </template>
       </template>
     </QueryState>

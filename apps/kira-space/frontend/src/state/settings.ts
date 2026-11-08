@@ -3,7 +3,7 @@ import { reactive } from 'vue';
 import { control } from '../bridge/control';
 import { defaultSettings, type Settings, type SettingsPatch } from './settingsDomain';
 
-// `sections` is the dialog's nav: Space's panes, then the Studio modules'.
+// `sections` is the dialog's nav: Space's panes, then the Studio modules', then About.
 export const sections = [
   'Appearance',
   'Git',
@@ -22,6 +22,7 @@ export const sections = [
   'Prompts',
   'Advanced',
   'Experimental',
+  'About',
 ] as const;
 export type Section = (typeof sections)[number];
 

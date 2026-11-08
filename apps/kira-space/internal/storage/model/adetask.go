@@ -14,11 +14,18 @@ const (
 	AdeTaskKindTask   = "task"
 	AdeTaskKindReview = "review"
 	AdeTaskKindParked = "parked"
+	// AdeTaskKindOrchestrator is a task that runs a workflow and spawns child tasks.
+	AdeTaskKindOrchestrator = "orchestrator"
 )
 
 // ValidAdeTaskKind mirrors ade_tasks.kind's CHECK.
 func ValidAdeTaskKind(v string) bool {
-	return v == AdeTaskKindTask || v == AdeTaskKindReview || v == AdeTaskKindParked
+	return v == AdeTaskKindTask || v == AdeTaskKindReview || v == AdeTaskKindParked || v == AdeTaskKindOrchestrator
+}
+
+// IsWorkKind reports a kind that runs workflow steps: task or orchestrator (not review or parked).
+func IsWorkKind(kind string) bool {
+	return kind == AdeTaskKindTask || kind == AdeTaskKindOrchestrator
 }
 
 // AdeRunState* mirror ade_runs.state's CHECK; AdeSetupState* mirror ade_worktree_setup.state's.
@@ -49,6 +56,8 @@ type AdeTask struct {
 	Color        int
 	CreatedAt    int64
 	ArchivedAt   *int64
+	// ParentID is the orchestrator that spawned the task; "" for any other task.
+	ParentID string
 	// StatusID is the task's status; StatusBy says who set it (AdeStatusBy*). StatusStep is the step key
 	// whose status the engine last applied ("done" when finished, "" not started).
 	StatusID   string

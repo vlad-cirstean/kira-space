@@ -164,7 +164,7 @@ func WithClock(c scriptruns.Clock) Opt { return func(o *options) { o.clock = c }
 // WithMobilePoll sets how often the phone server's network supervisor re-checks (10s by default).
 func WithMobilePoll(d time.Duration) Opt { return func(o *options) { o.mobilePoll = d } }
 
-// WithBranchRequestWait bounds how long an agent's branch request waits for the user.
+// WithBranchRequestWait bounds how long an agent's branch request or create_task waits for the user.
 func WithBranchRequestWait(d time.Duration) Opt { return func(o *options) { o.branchWait = d } }
 
 // WithRebaseTimeout bounds an ADE rebase run (20 minutes by default).

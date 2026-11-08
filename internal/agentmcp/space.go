@@ -60,8 +60,10 @@ type TaskInfo struct {
 
 // BranchInfo is one branch of the task and the state of its worktree.
 type BranchInfo struct {
-	Repo     string    `json:"repo"`
-	Branch   string    `json:"branch"`
+	Repo   string `json:"repo"`
+	Branch string `json:"branch"`
+	// Base is the branch this one starts from; absent for the repo's main.
+	Base     string    `json:"base,omitempty"`
 	Worktree string    `json:"worktree"`
 	Setup    SetupInfo `json:"setup"`
 	Next     string    `json:"next"`
@@ -190,10 +192,12 @@ type declareArgs struct {
 	Repos []string `json:"repos"`
 }
 
-// BranchSpec is one branch an agent asks for: a task or registered repo and the branch name the agent chose.
+// BranchSpec is one branch an agent asks for: a task or registered repo, the branch name the agent chose
+// and an optional existing branch to start from.
 type BranchSpec struct {
 	Repo   string `json:"repo"`
 	Branch string `json:"branch"`
+	Base   string `json:"base,omitempty"`
 }
 
 type requestBranchesArgs struct {
@@ -223,7 +227,7 @@ func (s *Server) spaceTask(req *mcp.CallToolRequest) (SpaceCall, *mcp.CallToolRe
 	return SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID}, nil
 }
 
-// cleanBranches trims and dedups specs by (repo, branch); it returns the refusal text when the list is
+// cleanBranches trims and dedups specs by (repo, branch, base); it returns the refusal text when the list is
 // empty, too long or holds a blank field.
 func cleanBranches(specs []BranchSpec) ([]BranchSpec, string) {
 	if n := len(specs); n == 0 || n > maxDeclareRepos {
@@ -232,7 +236,7 @@ func cleanBranches(specs []BranchSpec) ([]BranchSpec, string) {
 	out := make([]BranchSpec, 0, len(specs))
 	seen := map[BranchSpec]bool{}
 	for _, sp := range specs {
-		sp = BranchSpec{Repo: strings.TrimSpace(sp.Repo), Branch: strings.TrimSpace(sp.Branch)}
+		sp = BranchSpec{Repo: strings.TrimSpace(sp.Repo), Branch: strings.TrimSpace(sp.Branch), Base: strings.TrimSpace(sp.Base)}
 		if sp.Repo == "" || sp.Branch == "" {
 			return nil, "Every branches entry needs a repo and a branch."
 		}
