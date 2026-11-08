@@ -8,7 +8,7 @@ Proof images and agent branch bases. Branch `chapter/v0.3.4`, tag `v0.3.4`. Firs
 | P570 | Agents choose the base of a requested branch | Implemented |
 | P571 Part 1 | Orchestrator tasks, backend: passes, spawn, chain reads | Planned |
 | P571 Part 2 | Orchestrator tasks, frontend: kind choice, card, Run pass | Planned |
-| P572 | About: GitHub link, add an About settings section if none | Planned |
+| P572 | About: GitHub link, add an About settings section if none | Implemented |
 | P573 | Close chapter | Planned |
 
 P569, P570 and P571 run as parallel streams (own worktree each): P569 owns proof, `dbmcp` proof tools and the proof window menu entry; P570 owns `request_branches` and the ADE base path; P571 owns the orchestrator task kind. Grouping in `plans/batch-P569-P570.md`.
@@ -61,6 +61,7 @@ Split by the planner (plan `plans/P571.md`): Part 1 backend (migration, engine, 
 - Ask: add a link to the GitHub repo in the app's About section. If the app has no About section, add one to Settings.
 - Planner decides: find an existing About surface (settings pane, app menu About, window) from code; where the repo URL comes from (one source, no new hard-coded copy); how external links open (`LinkService.OpenExternal`, never `window.open`); Settings pane wiring if new (shadcn-vue, Tailwind, `<script setup lang="ts">`); i18n; ARCHITECTURE update.
 - Tests: flow test plus UI spec on the same scenario where it applies at the IPC boundary (opening the link goes through the bridge).
+- Result: native About (Wails `NSAlert`) cannot hold a link, so new Settings section About (last) shows name, version and the repo link. URL from `appupdate.RepoURL`, returned as `AppService.Info` `repoUrl`, opened through `LinkService.OpenExternal`. Info fetched by TanStack Query only while About is active (a mount-time fetch broke every spec that opens Settings without an `appInfo` fixture). `docker.engine.version.label` moved to `common.version.label`. Flow `TestAboutGitHubLink` and UI `settings-about.spec.ts` share contract `settings-about`; `copy-coverage.spec.ts` gained the About pane. Deviation: no `useQuery` `staleTime` (lint U53, client default already Infinity). Verified: flow, bridge and appupdate tests, typecheck, lint, UI `settings-about`, `settings-*`, `copy-coverage`, `consistency`, `docker-module`.
 
 ## P573 Close chapter
 
