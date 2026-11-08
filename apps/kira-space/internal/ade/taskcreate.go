@@ -367,7 +367,7 @@ func (b *TaskBoard) createChild(call agentmcp.SpaceCall, p childPlan, res agentm
 	}
 	b.notifyBoard()
 	res.Outcome, res.TaskID = agentmcp.TaskCreated, child.ID
-	res.Next = "Task created. The user starts it. Its final handover is copied into your chain: read it with task_chain, or list the children with list_tasks."
+	res.Next = "Task created. The user starts it and you are not woken when it finishes, so do not wait: carry on or finish your step. In a later pass, read its final handover with task_chain or list_tasks."
 	return res, nil
 }
 
