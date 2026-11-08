@@ -1,14 +1,15 @@
 /* Flat zinc dark palette. The only colour source for the app. */
 :root {
-  /* Surface ladder, darkest to lightest: chrome < bg < elevated < field. */
+  /* Surface ladder, darkest to lightest: chrome < dialog < bg < elevated < field. */
   --kira-bg: #1b1b1e;
-  --kira-bg-elevated: #212125; /* raised + overlay: cards, table head, active tab, popover, menu, dialog */
+  --kira-bg-elevated: #212125; /* raised + overlay: cards, table head, active tab, popover, menu */
+  --kira-bg-dialog: #141416; /* dialog, command palette, text prompt: darker than bg so the modal reads black over the scrim (P579) */
   --kira-bg-chrome: #131315; /* frame: sideBar / statusBar / titleBar / ADE plan ground */
   --kira-bg-input: #27272c; /* field + hover + pressed: inputs, inset card, kbd, row hover */
   --kira-fg: #d4d4d8;
   --kira-fg-muted: #a1a1aa;
   /* Tertiary, non-interactive text: separators, captions, row numbers, NULL markers, empty-state
-     copy. 5.29:1 on --kira-bg, 4.94:1 on --kira-bg-elevated. */
+     copy. 5.29:1 on --kira-bg, 4.94:1 on --kira-bg-elevated, 5.67:1 on --kira-bg-dialog. */
   --kira-fg-subtle: #8e8e97;
   --kira-border: #323237; /* the one line: input edge, secondary button, floating edge, grid cell, resize, menu separator */
   --kira-focus: #5a8ae6; /* lighter than the accent so the ring reads on dark surfaces */
@@ -19,7 +20,7 @@
   --kira-scrollbar: var(--kira-border);
   --kira-scrollbar-hover: var(--kira-fg-subtle);
   --kira-scrollbar-active: var(--kira-fg-subtle);
-  --kira-scrim: rgb(0 0 0 / 0.4);
+  --kira-scrim: rgb(0 0 0 / 0.6);
   --kira-error: #e66e68;
   --kira-warn: #d5b449;
   --kira-ok: #57bc8a;

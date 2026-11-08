@@ -18,6 +18,7 @@
 @theme {
   --color-bg: var(--kira-bg);
   --color-elevated: var(--kira-bg-elevated);
+  --color-dialog: var(--kira-bg-dialog);
   --color-chrome: var(--kira-bg-chrome);
   /* P110 B5: --color-input/-muted/-border are NOT redeclared here any more. shadcn-bridge.css's
      own @theme inline already owns those three names (--input/--muted/--border, shadcn's own
