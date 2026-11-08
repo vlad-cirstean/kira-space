@@ -3,7 +3,7 @@ import { adeBoard, emitOpenSession, openPlan, openSessions } from './support/ade
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
-import { dragSelect, longLog } from './support/logSpecs';
+import { dragSelect, longLog, longLogText, stubClipboard } from './support/logSpecs';
 
 // The Sessions tab of a task and of a branch, Take over and the terminal pane.
 
@@ -218,6 +218,16 @@ test("a headless session's log scrolls and its text selects", async ({ relaunch 
   const text = await dragSelect(page, rows);
   expect(text).toContain('line 2 of the log');
   expect(text).toContain('line 3 of the log');
+});
+
+test('Copy log copies the whole headless session log as plain text', async ({ relaunch }) => {
+  const { page } = await openHeadlessLog(relaunch);
+  const clipboard = await stubClipboard(page);
+  const button = page.locator(t('ade-headless-copy-log'));
+  await button.click();
+  await expect.poll(async () => (await clipboard()).length).toBe(1);
+  expect((await clipboard())[0]).toBe(longLogText(300));
+  await expect(button).toHaveText('Copied log');
 });
 
 test('Take over of a running run confirms, stops it and selects the resumed session', async ({

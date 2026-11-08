@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CopyLogButton from '@workbench/components/CopyLogButton.vue';
 import LogLines from '@workbench/components/LogLines.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { useRunLog } from './runsQueries';
@@ -17,6 +18,9 @@ const log = useRunLog(() => props.runId);
         <LogLines testid="run-log" max-height="none" :lines="[]" :error="message" />
       </template>
       <template #default="{ data }">
+        <div class="flex shrink-0 justify-end">
+          <CopyLogButton :chunks="data.chunks" data-testid="run-log-copy" />
+        </div>
         <LogLines
           testid="run-log"
           max-height="none"

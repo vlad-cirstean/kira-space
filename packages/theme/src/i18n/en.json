@@ -3004,6 +3004,9 @@
       "copyId": {
         "label": "Copy ID"
       },
+      "copyLog": {
+        "label": "Copy log"
+      },
       "copyName": {
         "label": "Copy name"
       },
@@ -3320,6 +3323,9 @@
       },
       "copiedJson": {
         "announce": "Copied JSON"
+      },
+      "copiedLog": {
+        "announce": "Copied log"
       },
       "copiedName": {
         "announce": "Copied name"

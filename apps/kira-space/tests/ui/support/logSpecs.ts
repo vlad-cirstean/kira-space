@@ -23,3 +23,21 @@ export async function dragSelect(page: Page, rows: Locator): Promise<string> {
   await page.mouse.up();
   return page.evaluate(() => window.getSelection()?.toString() ?? '');
 }
+
+/** The `longLog(n)` text as Copy log writes it: ANSI stripped, one line each. */
+export const longLogText = (n: number) =>
+  ['first of the log', ...Array.from({ length: n - 1 }, (_, i) => `line ${i + 2} of the log`)].join(
+    '\n',
+  );
+
+/** Replaces the clipboard write with a recorder in `window.__clipboard`. */
+export async function stubClipboard(page: Page): Promise<() => Promise<string[]>> {
+  await page.evaluate(() => {
+    const w = window as unknown as { __clipboard: string[] };
+    w.__clipboard = [];
+    navigator.clipboard.writeText = async (text: string) => {
+      w.__clipboard.push(text);
+    };
+  });
+  return () => page.evaluate(() => (window as unknown as { __clipboard: string[] }).__clipboard);
+}

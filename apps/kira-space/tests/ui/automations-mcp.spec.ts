@@ -11,7 +11,7 @@ import { modeTab } from './studio/support/apiMode';
 import { openSettings } from './studio/support/settings';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
-import { dragSelect, longLog } from './support/logSpecs';
+import { dragSelect, longLog, longLogText, stubClipboard } from './support/logSpecs';
 
 // Contracts runs-form and automations. Backend half: termflow TestRunsForm (the mcp edits)
 // and dbmcpflow TestDbMcpScriptRunAndLogs (a run started by an agent has trigger mcp).
@@ -204,4 +204,14 @@ test("an agent run's log text selects", async ({ relaunch }) => {
   expect(text).toContain('line 3 of the log');
   const command = page.locator('[data-testid="script-run-command"]');
   expect(await command.evaluate((el) => getComputedStyle(el).userSelect)).toBe('text');
+});
+
+test('Copy log copies the whole agent run log as plain text', async ({ relaunch }) => {
+  const { page } = await openAgentRunLog(relaunch);
+  const clipboard = await stubClipboard(page);
+  const button = page.locator('[data-testid="run-log-copy"]');
+  await button.click();
+  await expect.poll(async () => (await clipboard()).length).toBe(1);
+  expect((await clipboard())[0]).toBe(longLogText(300));
+  await expect(button).toHaveText('Copied log');
 });

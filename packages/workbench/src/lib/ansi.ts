@@ -10,6 +10,11 @@ export interface AnsiSegment {
 
 const rgb = (v: string | null | undefined): string | undefined => (v ? `rgb(${v})` : undefined);
 
+/** A log's chunks as plain text, one line each: ANSI escapes and the trailing newline dropped. */
+export function logPlainText(chunks: readonly { text: string }[]): string {
+  return chunks.map((c) => Anser.ansiToText(c.text).replace(/\n$/, '')).join('\n');
+}
+
 /** One log line's ANSI escapes as styled text segments. */
 export function parseAnsi(line: string): AnsiSegment[] {
   if (!line.includes('\u001b')) return [{ text: line, bold: false, faint: false }];
