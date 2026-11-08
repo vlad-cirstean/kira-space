@@ -15,9 +15,8 @@ const emit = defineEmits<{ select: [mode: M] }>();
 </script>
 
 <template>
-  <!-- No app title (HideTitle already drops AppKit's own). Centered on the bar's true full width via
-       absolute positioning, not `justify-content: center` in the flex row, which would center within
-       the padded box and read off-centre. -->
+  <!-- Centered on the bar's true full width via absolute positioning, not `justify-content: center`
+       in the flex row, which would center within the padded box and read off-centre. -->
   <div
     class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-0.5"
   >
