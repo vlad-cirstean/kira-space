@@ -50,8 +50,8 @@ export const ALSO = ['HTTP', 'gRPC', 'Docker', 'Kubernetes', 'Claude Code', 'Ope
 
 export const HERO = {
   eyebrow: 'Kira Space',
-  line1: 'Git, agents and data.',
-  line2: 'One native window.',
+  line1: 'Everything agents need,',
+  line2: 'in one place.',
   lead: 'Plan with coding agents, read history, query ten database engines and call APIs. Kira Space keeps it in one Mac app.',
   command: 'curl -fsSL …/install.sh | sh',
 } as const;

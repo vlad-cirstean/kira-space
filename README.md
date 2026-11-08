@@ -4,6 +4,8 @@
 
 [![PR](https://github.com/vlad-cirstean/kira-space/actions/workflows/pr.yml/badge.svg)](https://github.com/vlad-cirstean/kira-space/actions/workflows/pr.yml)
 
+**Everything agents need, in one place.**
+
 Kira Space is a native macOS workbench for developers, built on Wails (Go) and Vue 3. One app holds
 a git client and code workspace, coding agents (Claude Code or OpenCode), a memory store, a terminal
 and a phone view on your home network. The same window also holds a visual database client for ten

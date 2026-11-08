@@ -18,7 +18,7 @@ const ROUTES: readonly Route[] = [
   {
     path: '',
     name: 'Kira Space',
-    h1: 'Git, agents and data. One native window.',
+    h1: 'Everything agents need, in one place.',
     hero: 'space-agents-board',
     shots: [
       'space-agents-board',
@@ -217,7 +217,7 @@ for (const route of ROUTES) {
 test('the retired /space/ URL redirects to the landing page', async ({ page }) => {
   await page.goto(`${BASE}space/`);
   await expect(page).toHaveURL(BASE);
-  await expect(page.locator('h1')).toContainText('One native window');
+  await expect(page.locator('h1')).toContainText('in one place');
 });
 
 test('the landing page never mentions memory', async ({ page }) => {
