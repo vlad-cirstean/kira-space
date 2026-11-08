@@ -1,4 +1,4 @@
-// Command docshistory folds finished docs chapters into docs/HISTORY.md.
+// Command docshistory re-renders folded chapter blocks in docs/history/.
 //
 //	go run ./scripts/docshistory units|distill|render|verify|repoint|fold [flags] <chapter...>
 //	go run ./scripts/docshistory doc units|distill|keep|render|verify|show [flags] <standing doc>
@@ -15,7 +15,7 @@ import (
 const usage = `usage: docshistory <units|distill|render|verify|repoint|fold> [flags] <chapter...>
   units    print the unit list and sizes (no tokens)
   distill  distill each unit through the memory MCP ingest_files (costs tokens, resumable)
-  render   write the chapters' blocks into the history file
+  render   rewrite the chapters' existing blocks in docs/history/ (a chapter with no block is refused)
   verify   write a sample report to check decisions survived
   repoint  rewrite docs/<chapter>/ references in the rest of the repo
   fold     distill, render and verify
@@ -49,7 +49,7 @@ func run(cmd string, args []string) error {
 	}
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
 	runs := fs.String("runs", "docs/history-runs", "runs directory")
-	history := fs.String("history", "docs/HISTORY.md", "history file")
+	history := fs.String("history", "docs/history", "history directory")
 	only := fs.String("only", "", "comma-separated unit slugs")
 	binary := fs.String("binary", "", "prebuilt kira-space binary (default: build one)")
 	jobs := fs.Int("jobs", 1, "concurrent units")
@@ -89,6 +89,9 @@ func run(cmd string, args []string) error {
 	case "repoint":
 		return cmdRepoint(*runs, *dry, chapters)
 	case "fold":
+		if _, err := requireBlocks(*history, chapters); err != nil {
+			return err
+		}
 		if err := runDistill(context.Background(), distillOpts{runs: *runs, binary: *binary, jobs: *jobs, maxUSD: *maxUSD, retryFall: *retryFall, only: onlySet}, chapters); err != nil {
 			return err
 		}

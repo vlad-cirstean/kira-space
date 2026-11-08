@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -122,25 +121,50 @@ func TestPlanResult(t *testing.T) {
 	}
 }
 
-func TestBlocksIdempotent(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "H.md")
-	blocks := map[string]string{"v1.9": "## v1.9\nx\n", "v1": "## v1\ny\n", "v1.1": "## v1.1\nz\n"}
-	if _, err := writeBlocks(path, blocks); err != nil {
-		t.Fatal(err)
+func TestBlocksSplice(t *testing.T) {
+	dir := t.TempDir()
+	aPath, bPath := filepath.Join(dir, "a.md"), filepath.Join(dir, "b.md")
+	aOrig := "<!-- chapter v1 -->\n## v1\nx\n<!-- /chapter v1 -->\n\n## Fixes\nfree text\n\n<!-- chapter v1.1 -->\n## v1.1\nz\n<!-- /chapter v1.1 -->\n"
+	bOrig := "<!-- chapter v1.9 -->\n## v1.9\ny\n<!-- /chapter v1.9 -->\n"
+	write := func(p, s string) {
+		if err := os.WriteFile(p, []byte(s), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
-	first, _ := os.ReadFile(path)
-	got, err := readBlocks(path)
-	if err != nil || !reflect.DeepEqual(got, blocks) {
+	write(aPath, aOrig)
+	write(bPath, bOrig)
+	got, err := readBlocks(dir)
+	want := map[string]histBlock{
+		"v1":   {aPath, "## v1\nx\n"},
+		"v1.1": {aPath, "## v1.1\nz\n"},
+		"v1.9": {bPath, "## v1.9\ny\n"},
+	}
+	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("readBlocks = %v, %v", got, err)
 	}
-	got["v1.1"] = "## v1.1\nnew\n"
-	got["v1.1"] = blocks["v1.1"]
-	if _, err := writeBlocks(path, got); err != nil {
+	if err := spliceBlock(aPath, "v1.1", "## v1.1\nnew $1\n"); err != nil {
 		t.Fatal(err)
 	}
-	second, _ := os.ReadFile(path)
-	if !bytes.Equal(first, second) || bytes.Index(first, []byte("chapter v1 -->")) > bytes.Index(first, []byte("chapter v1.1 -->")) {
-		t.Errorf("splice changed bytes or order:\n%s", second)
+	spliced, _ := os.ReadFile(aPath)
+	wantA := strings.Replace(aOrig, "z\n", "new $1\n", 1)
+	bAfter, _ := os.ReadFile(bPath)
+	if string(spliced) != wantA || string(bAfter) != bOrig {
+		t.Errorf("splice result:\n%s", spliced)
+	}
+	if err := spliceBlock(aPath, "v1.1", "## v1.1\nz\n"); err != nil {
+		t.Fatal(err)
+	}
+	if back, _ := os.ReadFile(aPath); string(back) != aOrig {
+		t.Errorf("restore differs:\n%s", back)
+	}
+	cPath := filepath.Join(dir, "c.md")
+	write(cPath, "<!-- chapter v1 -->\nd\n<!-- /chapter v1 -->\n")
+	if _, err := readBlocks(dir); err == nil {
+		t.Error("duplicate chapter across files accepted")
+	}
+	write(cPath, "<!-- chapter v2.0 -->\nd\n<!-- /chapter v2.1 -->\n")
+	if _, err := readBlocks(dir); err == nil {
+		t.Error("mismatched close marker accepted")
 	}
 }
 
@@ -159,7 +183,8 @@ func TestRepointText(t *testing.T) {
 	for p, want := range map[string]bool{
 		"scripts/docshistory/parse_test.go":                                           true,
 		"apps/kira-space/tests/claude/testdata/memory-eval/P285-corpus/manifest.json": true,
-		"src/x.go": false,
+		"docs/history/06-v0.2.10.md":                                                  true,
+		"src/x.go":                                                                    false,
 	} {
 		if skipRepoint(p) != want {
 			t.Errorf("skipRepoint(%q) != %v", p, want)
