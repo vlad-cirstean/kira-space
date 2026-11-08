@@ -9,9 +9,9 @@ import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { control } from '../../bridge/control';
 import { useAppInfo } from './useAppInfo';
 
-defineProps<{ active: boolean }>();
+const props = defineProps<{ active: boolean }>();
 
-const info = useAppInfo();
+const info = useAppInfo(() => props.active);
 
 function open(url: string): void {
   fireAndForget(control.openExternal(url), 'settings.about');
