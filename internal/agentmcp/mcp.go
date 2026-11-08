@@ -417,24 +417,24 @@ func (s *Server) sharedServer(key toolSet) *mcp.Server {
 	return srv
 }
 
-// Register mints a token for the grant, writes its MCP config file and returns its path. release
-// deletes that registration's file and token only; call it when the process has exited.
-func (s *Server) Register(g Grant) (configPath string, release func(), err error) {
+// checkGrant validates a grant against the server's tools and returns it with its git, review and
+// sandbox parts normalized.
+func (s *Server) checkGrant(g Grant) (Grant, error) {
 	if g.RunID == "" && !g.Space && !s.handoverGranted(g) {
-		return "", nil, errors.New("agentmcp: grant allows nothing")
+		return g, errors.New("agentmcp: grant allows nothing")
 	}
 	if g.Space && (g.TaskID == "" || s.space == nil) {
-		return "", nil, errors.New("agentmcp: space grant needs a task and space tools")
+		return g, errors.New("agentmcp: space grant needs a task and space tools")
 	}
 	if g.Agent == nil {
-		return "", nil, errors.New("agentmcp: grant needs a provider")
+		return g, errors.New("agentmcp: grant needs a provider")
 	}
 	if g.Orchestrator && (!g.Space || s.orchestrator == nil) {
-		return "", nil, errors.New("agentmcp: orchestrator grant needs a space grant and orchestrator tools")
+		return g, errors.New("agentmcp: orchestrator grant needs a space grant and orchestrator tools")
 	}
 	if g.Git != nil {
 		if s.git == nil {
-			return "", nil, errors.New("agentmcp: git grant needs a git runner")
+			return g, errors.New("agentmcp: git grant needs a git runner")
 		}
 		wts := make([]string, len(g.Git.Worktrees))
 		for i, w := range g.Git.Worktrees {
@@ -444,15 +444,25 @@ func (s *Server) Register(g Grant) (configPath string, release func(), err error
 	}
 	if g.Review != nil {
 		if g.RunID == "" || s.review == nil {
-			return "", nil, errors.New("agentmcp: review grant needs a run and a review replier")
+			return g, errors.New("agentmcp: review grant needs a run and a review replier")
 		}
 		g.Review = &ReviewGrant{CommentIDs: slices.Clone(g.Review.CommentIDs)}
 	}
 	if g.Sandbox != nil {
 		if g.RunID == "" || s.sandbox == nil {
-			return "", nil, errors.New("agentmcp: sandbox grant needs a run and sandbox git tools")
+			return g, errors.New("agentmcp: sandbox grant needs a run and sandbox git tools")
 		}
 		g.Sandbox = &SandboxGrant{Push: g.Sandbox.Push}
+	}
+	return g, nil
+}
+
+// Register mints a token for the grant, writes its MCP config file and returns its path. release
+// deletes that registration's file and token only; call it when the process has exited.
+func (s *Server) Register(g Grant) (configPath string, release func(), err error) {
+	g, err = s.checkGrant(g)
+	if err != nil {
+		return "", nil, err
 	}
 	servers, err := extraServers(g.Extra)
 	if err != nil {

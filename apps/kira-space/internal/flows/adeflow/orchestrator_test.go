@@ -33,8 +33,6 @@ var (
 	childSteps = agentStep("one", "") + "  - id: ship\n    name: Ship\n    kind: manual\n"
 )
 
-const taskItemPrefix = approvals.KindTaskCreate + ":"
-
 type orFixture struct {
 	app  *flowharness.App
 	api  string
