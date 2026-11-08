@@ -71,21 +71,12 @@ type branchRequest struct {
 	next  int // call counter; item ids are never renumbered
 }
 
-// runWait counts the calls of one run waiting on the user, so the run keeps its approval note until the last.
-type runWait struct {
-	prev string
-	n    int
-}
-
 // branchRequests holds the open requests, at most one per task. Items open and close under mu, so a
 // fast answer cannot close an item before it opened.
 type branchRequests struct {
 	mu     sync.Mutex
 	byID   map[string]*branchRequest
 	byTask map[string]string
-
-	noteMu sync.Mutex
-	notes  map[string]*runWait
 }
 
 // requestDraft is what one call asks of the user, before it joins the task's request.
@@ -413,45 +404,6 @@ func (b *TaskBoard) branchRequestWait() time.Duration {
 	return defaultBranchRequestWait
 }
 
-// holdRunNote shows the approval note on the run while any of its calls waits.
-func (b *TaskBoard) holdRunNote(runID string) bool {
-	if runID == "" {
-		return false
-	}
-	q := &b.branchReqs
-	q.noteMu.Lock()
-	defer q.noteMu.Unlock()
-	if w := q.notes[runID]; w != nil {
-		w.n++
-		return true
-	}
-	prev, ok := b.setRunNote(runID, noteBranchApproval)
-	if !ok {
-		return false
-	}
-	if q.notes == nil {
-		q.notes = map[string]*runWait{}
-	}
-	q.notes[runID] = &runWait{prev: prev, n: 1}
-	return true
-}
-
-// releaseRunNote puts the note back when the run's last waiting call ends.
-func (b *TaskBoard) releaseRunNote(taskID, runID string) {
-	q := &b.branchReqs
-	q.noteMu.Lock()
-	defer q.noteMu.Unlock()
-	w := q.notes[runID]
-	if w == nil {
-		return
-	}
-	if w.n--; w.n > 0 {
-		return
-	}
-	delete(q.notes, runID)
-	b.restoreRunNote(taskID, runID, w.prev)
-}
-
 // requestSlot is one branch of a request_branches call: a final result, or an item awaiting the user.
 type requestSlot struct {
 	id         string
@@ -503,7 +455,7 @@ func (b *TaskBoard) RequestBranches(ctx context.Context, call agentmcp.SpaceCall
 // until the user decides, the wait runs out or the caller is gone. prefix is the call's item id prefix.
 func (b *TaskBoard) awaitBranchRequest(ctx context.Context, call agentmcp.SpaceCall, d *requestDraft) (dec branchDecision, prefix string) {
 	reqID, bc := b.joinBranchRequest(call.TaskID, d)
-	noted := b.holdRunNote(call.RunID)
+	noted := b.holdRunNote(call.RunID, noteBranchApproval)
 	b.notifyBoard()
 
 	timer := time.NewTimer(b.branchRequestWait())
@@ -790,42 +742,6 @@ func (b *TaskBoard) callSource(tc *taskCtx, call agentmcp.SpaceCall) (source, st
 		return sourceAutomation, ""
 	}
 	return sourceSession, stepName(tc, call.StepID)
-}
-
-// setRunNote sets the note of an ADE run and returns the old one; ok is false when runID is no ADE run.
-func (b *TaskBoard) setRunNote(runID, note string) (prev string, ok bool) {
-	if runID == "" {
-		return "", false
-	}
-	run, err := b.deps.Tasks.GetRun(runID)
-	if err != nil {
-		return "", false
-	}
-	updated, err := b.deps.Tasks.UpdateRun(runID, model.AdeRunPatch{Note: &note})
-	if err != nil {
-		slog.Warn("ade: branch request run note", "scope", "ade", "run", runID, "err", err)
-		return "", false
-	}
-	b.emitRuns(updated)
-	return run.Note, true
-}
-
-// restoreRunNote puts the pre-request note back only while the run still runs and still shows the
-// approval note; a run that ended during the wait keeps the note its end path wrote.
-func (b *TaskBoard) restoreRunNote(taskID, runID, note string) {
-	mu := b.taskMu(taskID)
-	mu.Lock()
-	defer mu.Unlock()
-	run, err := b.deps.Tasks.GetRun(runID)
-	if err != nil || run.State != model.AdeRunRunning || run.Note != noteBranchApproval {
-		return
-	}
-	updated, err := b.deps.Tasks.UpdateRun(runID, model.AdeRunPatch{Note: &note})
-	if err != nil {
-		slog.Warn("ade: branch request run note", "scope", "ade", "run", runID, "err", err)
-		return
-	}
-	b.emitRuns(updated)
 }
 
 // finishBranchRequest maps the user's decision to a result per repo; approved repos are created under

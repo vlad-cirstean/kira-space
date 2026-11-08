@@ -204,6 +204,7 @@ type TaskBoard struct {
 	stepMsgs         map[string]string          // task|step -> the Run dialog's edited message
 	agent            *agentmcp.Server
 	branchReqs       branchRequests // open agent branch requests (P408)
+	runNotes         runNotes       // run notes held while an MCP call waits on the user
 	wg               sync.WaitGroup // background setups and runs; Close waits
 	closeMu          sync.Mutex     // orders goTracked's wg.Add before Close's wg.Wait
 	closed           bool
