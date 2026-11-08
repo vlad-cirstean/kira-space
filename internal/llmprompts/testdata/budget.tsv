@@ -84,6 +84,7 @@ headless.tool.request_branches	363
 headless.tool.request_branches.arg.branches	18
 headless.tool.request_branches.arg.branches.repo	53
 headless.tool.request_branches.arg.branches.branch	61
+headless.tool.request_branches.arg.branches.base	138
 headless.tool.rename_branch	338
 headless.tool.rename_branch.arg.repo	42
 headless.tool.rename_branch.arg.from	20

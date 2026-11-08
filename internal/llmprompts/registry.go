@@ -941,6 +941,7 @@ var (
 	_ = arg(HeadlessToolRequestBranches.id, "branches", spaceApp, NextCall, `Branches, 1 to {{.Max}}.`, MaxVars{Max: 20})
 	_ = arg(HeadlessToolRequestBranches.id, "branches.repo", spaceApp, NextCall, `Repo: nickname, name or code repo id, from task_info.`, NoVars{})
 	_ = arg(HeadlessToolRequestBranches.id, "branches.branch", spaceApp, NextCall, `New branch name, such as feat/login-form. Must not exist yet.`, NoVars{})
+	_ = arg(HeadlessToolRequestBranches.id, "branches.base", spaceApp, NextCall, `Existing branch to start from, such as main or feat/api: short name, origin checked first. A branch of a task stacks on it. Omit for main.`, NoVars{})
 )
 
 // HeadlessToolOperations describes the operations tool.
