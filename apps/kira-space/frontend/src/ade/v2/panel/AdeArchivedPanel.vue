@@ -11,11 +11,13 @@ import QueryState from '@workbench/components/QueryState.vue';
 import { computed, ref, watch } from 'vue';
 import { control } from '../../../bridge/control';
 import AdeChip from '../AdeChip.vue';
+import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
+import AdeParentChip from '../AdeParentChip.vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import AdeTip from '../AdeTip.vue';
 import AdeDetailsTab from '../details/AdeDetailsTab.vue';
 import { useHostLabels } from '../hostLabels';
-import { usePlanModel } from '../plan/usePlanModel';
+import { type ParentModel, usePlanModel } from '../plan/usePlanModel';
 import { useRestoreTask } from '../queries';
 import { useArchivedTask } from '../readQueries';
 import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
@@ -68,6 +70,12 @@ function titleOf(a: ArchivedTask): string {
     first?.name ||
     t('space.ade.board.newTask.label')
   );
+}
+function parentOf(a: ArchivedTask): ParentModel | null {
+  const { parentId, parentTitle, parentArchived } = a.task;
+  return parentId
+    ? { id: parentId, title: parentTitle ?? '', archived: parentArchived ?? true }
+    : null;
 }
 function repos(a: ArchivedTask): string {
   return [...new Set(a.branches.map((b) => repoLabel(b.codeRepoId)))].join(' · ');
@@ -124,6 +132,12 @@ async function onRestore(): Promise<void> {
           <div class="flex items-start gap-2">
             <span class="mt-1 box-border size-3 shrink-0 rounded-kira-sm bg-subtle" />
             <AdeChip :label="t('space.ade.panel.archived.label')" tone="grey" />
+            <AdeOrchestratorBadge v-if="a.task.kind === 'orchestrator'" />
+            <AdeParentChip
+              v-if="parentOf(a)"
+              :parent="parentOf(a)!"
+              @select="boardUi.select(a.task.parentId ?? '')"
+            />
             <AdeChip
               v-if="status(a)"
               :label="status(a)!.name"

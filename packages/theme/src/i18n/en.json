@@ -9423,8 +9423,16 @@
         }
       },
       "orchestrator": {
+        "archivedChildren": {
+          "label": "{count} archived child | {count} archived children"
+        },
         "badge": {
-          "label": "Orchestrator"
+          "label": "Orchestrator",
+          "tooltip": "Orchestrator that spawns child tasks and works in passes"
+        },
+        "children": {
+          "empty": "No child tasks yet",
+          "label": "Child tasks"
         },
         "kind": {
           "orchestrator": {
@@ -9438,6 +9446,16 @@
           "plainTask": {
             "label": "Make plain task"
           }
+        },
+        "parent": {
+          "archived": {
+            "tooltip": "Spawned by {title}, which is archived"
+          },
+          "label": "Spawned by",
+          "open": {
+            "aria": "Open orchestrator {title}"
+          },
+          "tooltip": "Spawned by {title}; click to open it"
         },
         "parkRefused": {
           "tooltip": "An orchestrator can’t be parked; switch it back to a task first"

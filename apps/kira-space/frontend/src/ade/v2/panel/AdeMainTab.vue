@@ -10,11 +10,14 @@ import { errorText } from '@workbench/bridge/codedError';
 import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, ref } from 'vue';
 import AdeChip from '../AdeChip.vue';
+import AdeParentChip from '../AdeParentChip.vue';
 import AdeTip from '../AdeTip.vue';
 import { orchestratorToggle } from '../board/kind';
 import { statusWhy, taskPatch } from '../board/panelFacts';
+import AdeTaskChildren from '../plan/AdeTaskChildren.vue';
 import type { CardModel } from '../plan/usePlanModel';
 import { useUpdateTask } from '../queries';
+import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import AdeTaskUpdates from '../updates/AdeTaskUpdates.vue';
 import type { TaskPatch } from '../wire';
 import AdeEstimateField from './AdeEstimateField.vue';
@@ -29,6 +32,7 @@ const props = defineProps<{ card: CardModel }>();
 
 const approvalsStore = useApprovalsStore();
 const update = useUpdateTask();
+const boardUi = useAdeBoardUiStore();
 
 const task = computed(() => props.card.task);
 const review = computed(() => props.card.review);
@@ -102,6 +106,17 @@ const toggle = computed(() => orchestratorToggle(props.card));
           >
         </template>
       </AdeRow>
+      <AdeRow
+        v-if="card.parent"
+        term
+        :label="t('space.ade.orchestrator.parent.label')"
+        data-testid="ade-task-parent-row"
+      >
+        <AdeParentChip
+          :parent="card.parent"
+          @select="card.parent && boardUi.select(card.parent.id)"
+        />
+      </AdeRow>
       <AdeRow v-if="!review" term>
         <template #label>
           <Label for="ade-task-parked" class="text-kira-sm font-normal text-muted-foreground">{{
@@ -150,6 +165,19 @@ const toggle = computed(() => orchestratorToggle(props.card));
         ><AlertDescription>{{ fieldError }}</AlertDescription></Alert
       >
     </AdeRowDetail>
+
+    <div v-if="card.orchestrator" class="flex flex-col gap-1 px-1.5">
+      <span class="text-kira-sm text-subtle">{{ t('space.ade.orchestrator.children.label') }}</span>
+      <AdeTaskChildren :card="card" testid="ade-main-children" />
+      <span
+        v-if="!card.children.length && !card.archivedChildren.length"
+        class="text-muted-foreground"
+        data-testid="ade-main-children-empty"
+        >{{
+          t('space.ade.orchestrator.children.empty')
+        }}</span
+      >
+    </div>
 
     <AdeTaskUpdates :task-id="task.id" />
 

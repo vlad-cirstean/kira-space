@@ -9,6 +9,7 @@ import { t } from '@theme/i18n';
 import { useInlineEdit } from '@workbench/behaviour/inlineEdit';
 import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
+import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
 import AdeTip from '../AdeTip.vue';
 import AdeAutomationsBlock from '../automation/AdeAutomationsBlock.vue';
 import { dayLabel, LATER } from '../board/calendar';
@@ -138,6 +139,7 @@ const facts = computed(() => {
           data-testid="ade-panel-dot"
         />
         <AdeChip :label="label" v-bind="chip" />
+        <AdeOrchestratorBadge v-if="card.orchestrator" />
         <AdeChip
           v-if="card.blocked"
           :label="t('space.common.status.blocked.status')"

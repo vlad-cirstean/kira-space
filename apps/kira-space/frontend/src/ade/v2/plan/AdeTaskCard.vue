@@ -15,6 +15,8 @@ import { formatPercent } from '@workbench/behaviour/format';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { computed, useTemplateRef } from 'vue';
+import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
+import AdeParentChip from '../AdeParentChip.vue';
 import AdeTip from '../AdeTip.vue';
 import AdeAutomationChip from '../automation/AdeAutomationChip.vue';
 import { changeBaseChoices } from '../board/changeBase';
@@ -28,6 +30,7 @@ import { useTaskUpdates } from '../updates/useTaskUpdates';
 import AdeAttention from './AdeAttention.vue';
 import AdeBranchRow from './AdeBranchRow.vue';
 import AdeTagIcon from './AdeTagIcon.vue';
+import AdeTaskChildren from './AdeTaskChildren.vue';
 import AdeTaskSessions from './AdeTaskSessions.vue';
 import { TASK_TAG_GLYPH } from './glyphs';
 import { type BranchRowModel, type CardModel, usePlanModel } from './usePlanModel';
@@ -125,6 +128,7 @@ const boxClass = computed(() => {
             :tone="card.tag.tone"
             :color="card.tag.color"
           />
+          <AdeOrchestratorBadge v-if="card.orchestrator" icon-only />
           <template v-if="p.hasWorkflow && !card.parked">
             <AdeTip :text="p.workflowTip">
               <span
@@ -169,6 +173,11 @@ const boxClass = computed(() => {
             v-if="taskUpdates.length"
             :tip="taskUpdates.map(describe).join('; ')"
             testid="ade-task-updated"
+          />
+          <AdeParentChip
+            v-if="card.parent"
+            :parent="card.parent"
+            @select="card.parent && ui.select(card.parent.id)"
           />
           <AdeTip :text="card.meta">
             <span
@@ -255,6 +264,7 @@ const boxClass = computed(() => {
         @force-push="emit('forcePush', row)"
         @task-menu="taskMenu.open"
       />
+      <AdeTaskChildren v-if="card.orchestrator" :card="card" />
     </Card>
   </div>
 </template>
