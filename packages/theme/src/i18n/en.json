@@ -1704,6 +1704,9 @@
         "estimateTooLong": {
           "body": "An estimate can be at most 480h or 60d."
         },
+        "handoverReadOnly": {
+          "body": "This note is a copy of a child task’s handover. Edit the child’s handover instead."
+        },
         "handoverTooLong": {
           "body": "The handover notes are too long."
         },
@@ -1727,6 +1730,9 @@
         },
         "notesTooLong": {
           "body": "The notes are too long."
+        },
+        "orchestratorKind": {
+          "body": "An orchestrator with child tasks stays an orchestrator, and a child task never becomes one."
         },
         "panelForward": {
           "empty": {

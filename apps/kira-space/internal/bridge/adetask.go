@@ -111,6 +111,8 @@ var adeTaskCatalog = []struct {
 	{repos.ErrRunNotFound, ipcerr.CodeNotFound, "backend.space.ade.runNotFound.body"},
 	{ade.ErrSessionNotFound, ipcerr.CodeNotFound, "backend.space.ade.sessionNotFound.body"},
 	{ade.ErrBranchRequestGone, ipcerr.CodeNotFound, "backend.space.ade.branchRequestGone.body"},
+	{repos.ErrOrchestratorKind, ipcerr.CodeBadRequest, "backend.space.ade.orchestratorKind.body"},
+	{ade.ErrHandoverReadOnly, ipcerr.CodeBadRequest, "backend.space.ade.handoverReadOnly.body"},
 	{harness.ErrProviderGone, ipcerr.CodeConflict, "backend.core.agent.providerGone.body"},
 }
 
@@ -179,6 +181,9 @@ func validateAdeTaskRepoIDs(ids []string) error {
 }
 
 func validateCreateTask(a adewire.CreateTaskArgs) error {
+	if a.Kind != "" && a.Kind != "task" && a.Kind != "orchestrator" {
+		return adeTaskInvalid("kind must be task or orchestrator")
+	}
 	if err := validateAdeName(a.Title, "title"); err != nil {
 		return err
 	}
@@ -270,8 +275,8 @@ func validateUpdateTask(a adewire.UpdateTaskArgs) error {
 	if p.Color != nil && (*p.Color < 0 || *p.Color >= adeTaskMaxColor) {
 		return adeTaskInvalid("color is out of range")
 	}
-	if p.Kind != nil && *p.Kind != "task" && *p.Kind != "parked" {
-		return adeTaskInvalid("kind must be task or parked")
+	if p.Kind != nil && *p.Kind != "task" && *p.Kind != "parked" && *p.Kind != "orchestrator" {
+		return adeTaskInvalid("kind must be task, parked or orchestrator")
 	}
 	if p.StatusID != nil && !model.ValidAdeStatusID(*p.StatusID) {
 		return adeTaskInvalid("statusId is not a status id")
@@ -1143,6 +1148,23 @@ func (s *AdeTaskService) SetTaskStep(ctx context.Context, args adewire.SetTaskSt
 	}
 	t, err := s.Engine.SetTaskStep(ctx, args.TaskID, args.StepID, args.FromStepID, args.Notes, args.CloseSessions)
 	return t, adeTaskError(err)
+}
+
+// NextPass starts an orchestrator's next pass: back to the first step, with the optional message and the
+// previous pass's final handover as the pass handover.
+func (s *AdeTaskService) NextPass(ctx context.Context, args adewire.NextPassArgs) (adewire.NextPassResult, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return adewire.NextPassResult{}, err
+	}
+	if err := validateAdeFromStep(args.FromStepID); err != nil {
+		return adewire.NextPassResult{}, err
+	}
+	if err := validateAdeHandoverNotes(args.Notes); err != nil {
+		return adewire.NextPassResult{}, err
+	}
+	res, err := s.Engine.NextPass(ctx, args)
+	return res, adeTaskError(err)
 }
 
 func (s *AdeTaskService) RetrySetup(ctx context.Context, args adewire.BranchArgs) error {

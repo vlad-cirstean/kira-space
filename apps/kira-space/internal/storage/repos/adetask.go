@@ -30,7 +30,7 @@ var (
 	ErrShelfTarget  = errors.New("repos: before task is not on that shelf")
 	ErrBranchOnTask = errors.New("repos: branch is already on a task")
 	ErrDraftInRepo  = errors.New("repos: task already has a branch slot waiting for a name in that repo")
-	ErrReviewKind   = errors.New("repos: a task only moves between task and parked, and a review task only becomes a task")
+	ErrReviewKind   = errors.New("repos: a task only moves between task and parked or orchestrator, and a review task only becomes a task")
 	// ErrOrchestratorKind marks a kind move or child creation the orchestrator rules refuse: depth stays 1,
 	// and an orchestrator never parks or turns back into a task while it has children.
 	ErrOrchestratorKind = errors.New("repos: that task cannot change to or from orchestrator")

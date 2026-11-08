@@ -695,6 +695,8 @@ const spaceControl = {
     unwrap(AdeTaskService.RemoveArtifact(args)),
   adeTaskSetTaskStep: (args: V2.SetTaskStepArgs): Promise<V2.Task> =>
     unwrap(AdeTaskService.SetTaskStep(args)).then((r) => trust<V2.Task>(r)),
+  adeTaskNextPass: (args: V2.NextPassArgs): Promise<V2.NextPassResult> =>
+    unwrap(AdeTaskService.NextPass(args)).then((r) => trust<V2.NextPassResult>(r)),
   adeTaskSaveStatuses: (args: V2.SaveStatusesArgs): Promise<V2.SaveStatusesResult> =>
     unwrap(AdeTaskService.SaveStatuses(args)).then((r) => trust<V2.SaveStatusesResult>(r)),
   adeTaskRetrySetup: (args: V2.BranchArgs): Promise<void> =>

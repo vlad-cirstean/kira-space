@@ -293,6 +293,7 @@ export const IPC = {
   adeTaskEditLink: 'kira:adetask:editLink',
   adeTaskRemoveArtifact: 'kira:adetask:removeArtifact',
   adeTaskSetTaskStep: 'kira:adetask:setTaskStep',
+  adeTaskNextPass: 'kira:adetask:nextPass',
   adeTaskSaveStatuses: 'kira:adetask:saveStatuses',
   adeTaskRetrySetup: 'kira:adetask:retrySetup',
   adeTaskReadLog: 'kira:adetask:readLog',
