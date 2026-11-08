@@ -25,7 +25,7 @@
     "site:dev": "cd site && bun run dev",
     "site:shots:fill": "bun site/scripts/shots-fill.ts",
     "site:share-image": "bun site/scripts/share-image.ts",
-    "site:build": "cd site && bun run check && bun run build && bun scripts/check-icons.ts",
+    "site:build": "cd site && bun run check && bun run build && bun scripts/check-icons.ts && bun scripts/check-share-image.ts",
     "site:check": "bun run site:build && playwright test --config=site/playwright.config.ts",
     "screenshots": "bun run build:test && playwright test --config=apps/kira-space/playwright.config.ts --project=screenshots",
     "build": "cd apps/kira-space/frontend && bun run build && bun run build:mobile",

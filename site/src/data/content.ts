@@ -28,12 +28,6 @@ export interface AppContent {
   readonly features: readonly Feature[];
 }
 
-// Facts come only from README.md and apps/kira-space/README.md.
-export const SITE = {
-  shareAlt: 'Kira Space icon with the headline: Everything agents need, in one place.',
-  availability: 'Free and open source. macOS 26+ on Apple Silicon.',
-} as const;
-
 export const ENGINES = [
   'PostgreSQL',
   'MariaDB',
@@ -55,6 +49,12 @@ export const HERO = {
   line2: 'in one place.',
   lead: 'Plan with coding agents, read history, query ten database engines and call APIs. Kira Space keeps it in one Mac app.',
   command: 'curl -fsSL …/install.sh | sh',
+} as const;
+
+// Facts come only from README.md and apps/kira-space/README.md.
+export const SITE = {
+  shareAlt: `${HERO.eyebrow} icon with the headline: ${HERO.line1} ${HERO.line2}`,
+  availability: 'Free and open source. macOS 26+ on Apple Silicon.',
 } as const;
 
 export const APP: AppContent = {

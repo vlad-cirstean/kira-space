@@ -110,6 +110,7 @@
         "scripts/**/*.spec.ts",
         "scripts/check-docs.ts",
         "scripts/check-icons.ts",
+        "scripts/check-share-image.ts",
         "scripts/share-image.ts",
         "scripts/shots-fill.ts"
       ],

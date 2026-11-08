@@ -101,8 +101,8 @@ needs.
   sandbox and skipped elsewhere. They stay PNG: Playwright `toHaveScreenshot` writes PNG only. Refresh only for an intended change:
   `bunx playwright test --config=site/playwright.config.ts visual --update-snapshots` (after
   `bun run site:build`).
-- `bun run site:build` runs `astro check`, the build, then `site/scripts/check-icons.ts` (one icon source).
-  `bun run site:share-image` regenerates the share image (needs Chromium).
+- `bun run site:build` runs `astro check`, the build, then `site/scripts/check-icons.ts` (one icon source) and `check-share-image.ts` (share image matches its recorded input hash).
+  `bun run site:share-image` regenerates the share image and its `.sha256` sidecar (needs Chromium).
   Root `lint` runs `site/scripts/check-docs.ts`
   (docs style lint); run it alone with `bun site/scripts/check-docs.ts`. Its spec runs in `test:unit`.
   A `sources:` path that does not exist fails lint.
