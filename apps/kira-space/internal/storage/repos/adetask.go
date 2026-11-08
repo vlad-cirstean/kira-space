@@ -1565,17 +1565,38 @@ func (r *AdeTaskRepo) GetRun(id string) (model.AdeRun, error) {
 
 // LatestRuns returns the latest attempt of every (step, branch, purpose) of one task.
 func (r *AdeTaskRepo) LatestRuns(taskID string) ([]model.AdeRun, error) {
+	by, err := r.LatestRunsOf([]string{taskID})
+	return by[taskID], err
+}
+
+// LatestRunsOf is LatestRuns for several tasks in one query, grouped by task id, each in LatestRuns order.
+func (r *AdeTaskRepo) LatestRunsOf(taskIDs []string) (map[string][]model.AdeRun, error) {
+	out := make(map[string][]model.AdeRun, len(taskIDs))
+	if len(taskIDs) == 0 {
+		return out, nil
+	}
+	args := make([]any, len(taskIDs))
+	for i, id := range taskIDs {
+		args[i] = id
+	}
 	c := kiraschema.AdeRuns
 	newest := r.Dialect.Select("MAX(" + c.Attempt + ")").From(c.Table + " b")
 	newest.Where("b."+c.TaskID+" = a."+c.TaskID, "b."+c.StepID+" = a."+c.StepID, "b."+c.BranchID+" = a."+c.BranchID,
 		"b."+c.Purpose+" = a."+c.Purpose)
 	sb := r.Dialect.Select(adeRunColumns...).From(c.Table + " a")
-	sb.Where(sb.Equal(c.TaskID, taskID), c.Attempt+" = "+sqlb.Sub(sb, newest)).OrderBy("COALESCE("+c.StartedAt+", 0)", c.ID)
+	sb.Where(sb.In(c.TaskID, args...), c.Attempt+" = "+sqlb.Sub(sb, newest)).OrderBy("COALESCE("+c.StartedAt+", 0)", c.ID)
 	rows, err := sqlb.Query(r.DB, sb)
-	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeRun, bool, error) {
+	list, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeRun, bool, error) {
 		run, err := scanAdeRun(rows)
 		return run, true, err
 	})
+	if err != nil {
+		return nil, err
+	}
+	for _, run := range list {
+		out[run.TaskID] = append(out[run.TaskID], run)
+	}
+	return out, nil
 }
 
 // UpsertSetup writes a branch's worktree-setup row.

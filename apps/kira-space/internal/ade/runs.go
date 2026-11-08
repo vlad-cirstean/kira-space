@@ -87,6 +87,8 @@ type taskCtx struct {
 	branches []model.AdeTaskBranch
 	mine     []mineBranch
 	nick     map[string]string // code repo id -> nickname, else name
+	// runs, when set, replaces plan's LatestRuns read. Only a short-lived read-only context sets it.
+	runs *[]model.AdeRun
 }
 
 func sinceKey(stepID, branchID string) string { return stepID + "/" + branchID }
@@ -191,9 +193,14 @@ func (b *TaskBoard) plan(tc *taskCtx) ([]stepView, error) {
 		return nil, invalid("the task has no workflow")
 	}
 	steps := workflowSteps(*tc.wf)
-	latest, err := b.deps.Tasks.LatestRuns(tc.task.ID)
-	if err != nil {
-		return nil, err
+	var latest []model.AdeRun
+	if tc.runs != nil {
+		latest = *tc.runs
+	} else {
+		var err error
+		if latest, err = b.deps.Tasks.LatestRuns(tc.task.ID); err != nil {
+			return nil, err
+		}
 	}
 	out := make([]stepView, len(steps))
 	for i, def := range steps {

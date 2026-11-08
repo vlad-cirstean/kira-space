@@ -165,6 +165,10 @@ func (b *TaskBoard) ListTasks(_ context.Context, call agentmcp.SpaceCall, args a
 	if err != nil {
 		return agentmcp.ListTasksResult{}, err
 	}
+	runsByTask, err := b.deps.Tasks.LatestRunsOf(taskIDs)
+	if err != nil {
+		return agentmcp.ListTasksResult{}, err
+	}
 	out := agentmcp.ListTasksResult{Tasks: make([]agentmcp.ChildTaskInfo, 0, len(tasks)), More: more}
 	for _, t := range tasks {
 		info := agentmcp.ChildTaskInfo{
@@ -177,7 +181,7 @@ func (b *TaskBoard) ListTasks(_ context.Context, call agentmcp.SpaceCall, args a
 		if wf, ok := b.taskWorkflow(t); ok {
 			info.Workflow = cmpNonEmpty(wf.Name, wf.ID)
 		}
-		b.fillChildStep(&info, t, facts)
+		b.fillChildStep(&info, t, facts, runsByTask[t.ID])
 		if last, ok := lastByTask[t.ID]; ok {
 			info.LastHandover = capBytes(last.Body, lastHandoverBytes)
 		}
@@ -187,7 +191,7 @@ func (b *TaskBoard) ListTasks(_ context.Context, call agentmcp.SpaceCall, args a
 }
 
 // fillChildStep sets the child's current step name and whether it is done.
-func (b *TaskBoard) fillChildStep(info *agentmcp.ChildTaskInfo, t model.AdeTask, facts spaceFacts) {
+func (b *TaskBoard) fillChildStep(info *agentmcp.ChildTaskInfo, t model.AdeTask, facts spaceFacts, runs []model.AdeRun) {
 	if t.ArchivedAt != nil {
 		info.Finished = t.EntryStepID == entryDone
 		if !info.Finished {
@@ -202,6 +206,7 @@ func (b *TaskBoard) fillChildStep(info *agentmcp.ChildTaskInfo, t model.AdeTask,
 	if err != nil {
 		return
 	}
+	tc.runs = &runs
 	cur := b.currentStepID(tc)
 	if info.Finished = cur == entryDone; !info.Finished {
 		info.Step = cmpNonEmpty(stepName(tc, cur), cur)
