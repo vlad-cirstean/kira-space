@@ -90,7 +90,7 @@ export function useStepViewState(ids: StepIds) {
     loadFailed: query.isError,
     setResult: (state: ResultViewState) => update(state),
     setQueryScroll: (queryScrollTop: number) => update({ queryScrollTop }),
-    setDiagramScroll: (resultScrollTop: number, resultScrollLeft: number) =>
+    setScroll: (resultScrollTop: number, resultScrollLeft: number) =>
       update({ resultScrollTop, resultScrollLeft }),
     setChart: (chart: ProofChartViewState) => update({ chart }),
   };

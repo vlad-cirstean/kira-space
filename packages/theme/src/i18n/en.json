@@ -16592,6 +16592,14 @@
           "aria": "Not opened yet"
         }
       },
+      "image": {
+        "invalid": {
+          "title": "The image couldn’t be shown"
+        },
+        "region": {
+          "aria": "Image: {description}"
+        }
+      },
       "pending": {
         "label": "Edit pending"
       },

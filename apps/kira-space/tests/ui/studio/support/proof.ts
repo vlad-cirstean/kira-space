@@ -14,7 +14,7 @@ export const PENDING_ID = 'session-2';
 type Json = Record<string, any>;
 
 const fixture = (
-  name: 'proof' | 'proof-pending' | 'proof-chart' | 'proof-diagram',
+  name: 'proof' | 'proof-pending' | 'proof-chart' | 'proof-diagram' | 'proof-image',
   key: string,
 ): Json => contract(name, key) as Json;
 
@@ -256,6 +256,49 @@ export function diagramControl(extra: ControlSnapshot[] = []): ControlSnapshot[]
       },
     },
     ...DIAGRAM_KEYS.map((key, i) => diagramStep(SESSION_ID, 1, i + 1, key)),
+    ...extra,
+  ];
+}
+
+export type ImageKey = 'path' | 'inline' | 'symlink' | 'tall';
+export const IMAGE_KEYS: ImageKey[] = ['path', 'inline', 'symlink', 'tall'];
+
+/** An image step from the Go-written contract; `patch` overrides any field of the step. */
+export function imageStep(
+  sessionId: string,
+  rev: number,
+  ordinal: number,
+  key: ImageKey,
+  patch: Json = {},
+): ControlSnapshot {
+  return {
+    channel: IPC.proofStep,
+    args: { sessionId, rev, ordinal },
+    response: { ...fixture('proof-image', `ProofService.Step#${key}`), ordinal, ...patch },
+  };
+}
+
+/** Boot snapshots for the image session; steps 1-4 in the contract's order. */
+export function imageControl(extra: ControlSnapshot[] = []): ControlSnapshot[] {
+  return [
+    { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
+    {
+      channel: IPC.proofSessions,
+      response: (fixture('proof-image', 'ProofService.Sessions') as unknown as Json[]).map((x) => ({
+        ...x,
+        id: SESSION_ID,
+        closedAt: CLOSED_AT,
+      })),
+    },
+    {
+      channel: IPC.proofSession,
+      response: {
+        ...fixture('proof-image', 'ProofService.Session'),
+        id: SESSION_ID,
+        closedAt: CLOSED_AT,
+      },
+    },
+    ...IMAGE_KEYS.map((key, i) => imageStep(SESSION_ID, 1, i + 1, key)),
     ...extra,
   ];
 }

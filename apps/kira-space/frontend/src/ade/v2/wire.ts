@@ -554,7 +554,7 @@ export interface HandoversResult {
 interface TaskProofStep {
   ordinal: number;
   description: string;
-  view: 'table' | 'document' | 'keyvalue' | 'chart' | 'diagram';
+  view: 'table' | 'document' | 'keyvalue' | 'chart' | 'diagram' | 'image';
   source: string;
 }
 /** A closed proof session attached to a task. `sessionId` is the Kira session that attached it ('' = the user). */
