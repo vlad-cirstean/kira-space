@@ -5,7 +5,7 @@ User-requested fixes after v0.3.4. Chapter stays open: more phases get added lat
 | Phase | Title | Status |
 |---|---|---|
 | P575 | Presentation site and README: headline, share image, screenshot click, install copy, one icon, header Install button, README images | Implemented |
-| P576 | Title bar: app title after window controls | Planned |
+| P576 | Title bar: app title after window controls | Implemented |
 | P577 | Terminal-less run logs and sessions: scroll, select, copy | Planned |
 
 Phases run in table order, one at a time, unless the user asks for a batch.
@@ -33,6 +33,13 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 - Ask (user): app title bar shows the app title "Kira Space" immediately after the window control buttons (macOS traffic-light buttons).
 - Spelling: "Kira Space" is in `PROPER_NOUNS` (`scripts/copy/catalogRules.ts`); copy-catalog sentence-case rules apply and the catalog lint must pass.
 - Acceptance: title sits directly after the window controls, no gap element between.
+- Result:
+  - Title is first child of the `TitleBar` slot in `WorkbenchTitleBar` (`appTitle` prop, `data-testid="titlebar-app-title"`), at the 78 px traffic-light inset. Stays in the drag region (no `wails-no-drag`). Spec asserts first child, offset equals inset 78, `--wails-draggable: drag`.
+  - App.vue passes existing catalog key `common.product.kiraSpace.label`; no new key. Stale "No app title" comment in `ModeSwitcher.vue` dropped.
+  - Rendered on every platform, no sniff (macOS only target). Linux dev builds show the title twice (native frame plus bar).
+  - Spec pins no overlap or clipping at the 1024 px window floor.
+  - No visual baseline changed (no `*-snapshots/` touched).
+  - Checks: `window-chrome studio/workbench copy-coverage` ui specs, 76 passed; typecheck and lint clean.
 
 ## P577 Terminal-less run logs and sessions: scroll, select, copy
 
