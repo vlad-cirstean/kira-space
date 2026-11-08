@@ -6,7 +6,7 @@ User-requested fixes after v0.3.4. Chapter stays open: more phases get added lat
 |---|---|---|
 | P575 | Presentation site and README: headline, share image, screenshot click, install copy, one icon, header Install button, README images | Implemented |
 | P576 | Title bar: app title after window controls | Implemented |
-| P577 | Terminal-less run logs and sessions: scroll, select, copy | Planned |
+| P577 | Terminal-less run logs and sessions: scroll, select, copy | Implemented |
 
 Phases run in table order, one at a time, unless the user asks for a batch.
 
@@ -48,3 +48,10 @@ Phases run in table order, one at a time, unless the user asks for a batch.
   - (b) Text in those logs cannot be selected or copied. Fix selection and copy.
   - (c) Non-interactive Claude sessions (stream/transcript view of headless Claude sessions) have the same selection and copy problem. Fix it too.
 - Tests: where a backend half exists, flow test plus UI spec on the same scenario, split at the IPC boundary (CLAUDE.md Tests).
+- Result:
+  - Root causes: `ScriptRunView` root `flex-1` inert under non-flex `main-view`, so log grew to full virtual height and was clipped; body `select-none` with `LogLines` and `CodeBlock` never opting in.
+  - Repro failures before fixes: run tab, log box bottom 5570.5 vs `main-view` bottom 725; selection, `userSelect` `auto` (inherits none) on the run tab and empty selection in the headless pane. Headless pane scroll assertions already passed.
+  - Fixes: `h-full overflow-y-auto` tab root, `min-h-48` `RunLog`; `select-text` on `LogLines` (root, `cursor-text`), `CodeBlock`, outcome spans; one scroller in `AdeHeadlessPane`; `CopyLogButton` (RunLog, AdeHeadlessPane) over loaded chunks, `logPlainText`, keys `common.action.copyLog.label` and `common.copy.copiedLog.announce`.
+  - Deviation: spec asserts `userSelect` `text` on the log root, not rows (`user-select` is not inherited, rows compute `auto`); drag selection covers rows. Shared helpers in `tests/ui/support/logSpecs.ts` (N8 forbids copies); drag targets rows by `data-index` (virtual rows remount).
+  - Backend half: none (renderer only). No visual baseline change.
+  - Checks: `automations-mcp automations-tabs studio/ui-leftovers-docker-automations` 18 passed; select run (`ade-v2-*`, `consistency`, ...) 181 passed; `automations-mcp ade-v2-sessions copy-coverage studio/copy-coverage-docker-automations` 96 passed; typecheck and lint clean.
