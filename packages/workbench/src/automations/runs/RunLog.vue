@@ -19,7 +19,11 @@ const log = useRunLog(() => props.runId);
       </template>
       <template #default="{ data }">
         <div class="flex shrink-0 justify-end">
-          <CopyLogButton :chunks="data.chunks" data-testid="run-log-copy" />
+          <CopyLogButton
+            :load="async () => data"
+            :disabled="data.chunks.length === 0"
+            data-testid="run-log-copy"
+          />
         </div>
         <LogLines
           testid="run-log"

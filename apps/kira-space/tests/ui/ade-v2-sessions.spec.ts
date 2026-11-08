@@ -230,6 +230,34 @@ test('Copy log copies the whole headless session log as plain text', async ({ re
   await expect(button).toHaveText('Copied log');
 });
 
+test('Copy log pages through a headless log past 500 chunks and notes a dropped head', async ({
+  relaunch,
+}) => {
+  const all = longLog(620);
+  const page1 = { kind: 'run', id: 'r_T_bill_impl_b_bill', done: false, truncated: true };
+  const { window: page } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskReadLog,
+      args: { kind: 'run', id: 'r_T_bill_impl_b_bill', afterSeq: 0 },
+      response: { ...page1, chunks: all.slice(0, 500), nextSeq: 500 },
+    },
+    {
+      channel: IPC.adeTaskReadLog,
+      args: { kind: 'run', id: 'r_T_bill_impl_b_bill', afterSeq: 500 },
+      response: { ...page1, chunks: all.slice(500), nextSeq: 620 },
+    },
+  ]);
+  await openSessions(page, 'T_bill');
+  await page.locator(t('ade-session-tab-b1c2')).click();
+  await expect(page.locator(t('ade-headless-pane')).locator(t('ade-run-log'))).toContainText(
+    'line 2 of the log',
+  );
+  const clipboard = await stubClipboard(page);
+  await page.locator(t('ade-headless-copy-log')).click();
+  await expect.poll(async () => (await clipboard()).length).toBe(1);
+  expect((await clipboard())[0]).toBe(`[Earlier output was dropped.]\n${longLogText(620)}`);
+});
+
 test('Take over of a running run confirms, stops it and selects the resumed session', async ({
   relaunch,
 }) => {

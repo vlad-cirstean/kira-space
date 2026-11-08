@@ -3338,6 +3338,9 @@
       },
       "failed": {
         "error": "Couldn’t copy: {error}"
+      },
+      "logTruncated": {
+        "notice": "[Earlier output was dropped.]"
       }
     },
     "copyCommand": {
