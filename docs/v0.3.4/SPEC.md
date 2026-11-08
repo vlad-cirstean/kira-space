@@ -6,7 +6,8 @@ Proof images and agent branch bases. Branch `chapter/v0.3.4`, tag `v0.3.4`. Firs
 |---|---|---|
 | P569 | Proof: JPEG screenshots, agent image steps, menu bar entry | Planned |
 | P570 | Agents choose the base of a requested branch | Planned |
-| P571 | Orchestrator tasks: spawn child tasks, passes, chain reads | Planned |
+| P571 Part 1 | Orchestrator tasks, backend: passes, spawn, chain reads | Planned |
+| P571 Part 2 | Orchestrator tasks, frontend: kind choice, card, Run pass | Planned |
 
 P569, P570 and P571 run as parallel streams (own worktree each): P569 owns proof, `dbmcp` proof tools and the proof window menu entry; P570 owns `request_branches` and the ADE base path; P571 owns the orchestrator task kind. Grouping in `plans/batch-P569-P570.md`.
 
@@ -29,7 +30,9 @@ Chapter stays open after both phases: no close phase yet (user decision).
 - Pointers: `internal/agentmcp/space.go`, `apps/kira-space/internal/ade/agenttools.go`, `branchrequest.go`, `base.go`, `setup.go`, `docs/ARCHITECTURE.md` "Task base and rebase runs (P241)" and "Branch requests".
 - Tests: flow test plus UI spec on the same scenario (branch request dialog showing the base).
 
-## P571 Orchestrator tasks: spawn child tasks, passes, chain reads
+## P571 Orchestrator tasks
+
+Split by the planner (plan `plans/P571.md`): Part 1 backend (migration, engine, tools, flow tests), Part 2 frontend (starts after Part 1 is committed; its UI spec reads Part 1's contract).
 
 - Ask: new task kind `orchestrator`. It runs a normal workflow (script, agent and interactive steps), may edit code, and coordinates work across other tasks. Manual trigger only, no cron.
 - Decided (user):

@@ -1,6 +1,6 @@
-# Batch P569 + P570
+# Batch P569 + P570 + P571
 
-Two streams, each its own git worktree off the same base commit (chapter/v0.3.4 head). No ordering dependency: P569 never touches `internal/agentmcp/` or `apps/kira-space/internal/ade/`; P570 touches neither proof nor menu code. Plans: `P569.md` (Stream A), `P570.md` (Stream B). Each plan's file-ownership table is authoritative.
+Three streams (Stream C: P571, plan `P571.md`, Part 1 then Part 2 sequential in one worktree). Two streams, each its own git worktree off the same base commit (chapter/v0.3.4 head). No ordering dependency: P569 never touches `internal/agentmcp/` or `apps/kira-space/internal/ade/`; P570 touches neither proof nor menu code. Plans: `P569.md` (Stream A), `P570.md` (Stream B). Each plan's file-ownership table is authoritative.
 
 ## Shared files (additive hunks, resolve on landing)
 
@@ -17,3 +17,7 @@ Generated bindings: regenerate after rebase, never hand-merge. If B adds a migra
 ## Landing
 
 Both implemented and independently verified, then rebase each stream branch onto `chapter/v0.3.4` in any order, resolve conflicts only in the files above, stop on any other. Remove worktrees. Chapter stays open (no close phase).
+
+## Stream C (P571) overlaps
+
+P571 Part 1 owns `ade/{orchestrator,taskcreate,runnote}.go`, migration 0093 and `agentmcp/orchestrator.go`. Shared hunks: `ade/branchrequest.go` (P570: move-only run-note helpers to `runnote.go`), `ade/agenttools.go` (P570: one kind check), registry, budget, ARCHITECTURE, mcp-tools, en.json, wire.ts, bindings, ipcChannels, mockRuntime, migrations `embed.go`/`schema.sql` (P569 0092; second to land renumbers). Resolve only these on landing; regenerate bindings and schema, never hand-merge.
