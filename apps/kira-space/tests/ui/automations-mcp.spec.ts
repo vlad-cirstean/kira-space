@@ -11,6 +11,7 @@ import { modeTab } from './studio/support/apiMode';
 import { openSettings } from './studio/support/settings';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
+import { dragSelect, longLog } from './support/logSpecs';
 
 // Contracts runs-form and automations. Backend half: termflow TestRunsForm (the mcp edits)
 // and dbmcpflow TestDbMcpScriptRunAndLogs (a run started by an agent has trigger mcp).
@@ -146,14 +147,6 @@ test('contract: a run started by an agent reads Agent run in Operations', async 
   ).toContainText('Agent run');
 });
 
-const longLog = (n: number) =>
-  Array.from({ length: n }, (_, i) => ({
-    seq: i + 1,
-    at: 1_000 + i,
-    stream: 'stdout',
-    text: `${i === 0 ? '\u001b[32mfirst\u001b[0m' : `line ${i + 1}`} of the log\n`,
-  }));
-
 async function openAgentRunLog(relaunch: (options?: RelaunchOptions) => Promise<KiraApp>) {
   const script = contract('automations', 'CustomScriptsService.Create#failed', {
     schema: customScriptSchema,
@@ -200,4 +193,15 @@ test("an agent run's log tab scrolls inside the tab", async ({ relaunch }) => {
     el.scrollTop = el.scrollHeight;
   });
   await expect(log).toContainText('line 300 of the log');
+});
+
+test("an agent run's log text selects", async ({ relaunch }) => {
+  const { page, log } = await openAgentRunLog(relaunch);
+  const rows = log.locator('[data-testid="run-log-line"]');
+  expect(await log.evaluate((el) => getComputedStyle(el).userSelect)).toBe('text');
+  const text = await dragSelect(page, rows);
+  expect(text).toContain('line 2 of the log');
+  expect(text).toContain('line 3 of the log');
+  const command = page.locator('[data-testid="script-run-command"]');
+  expect(await command.evaluate((el) => getComputedStyle(el).userSelect)).toBe('text');
 });

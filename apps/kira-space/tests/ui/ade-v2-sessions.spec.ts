@@ -3,6 +3,7 @@ import { adeBoard, emitOpenSession, openPlan, openSessions } from './support/ade
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
+import { dragSelect, longLog } from './support/logSpecs';
 
 // The Sessions tab of a task and of a branch, Take over and the terminal pane.
 
@@ -178,6 +179,45 @@ test('a headless tab shows its status on hover, its log, and Stop sends the run 
   await page.locator(t('ade-session-stop')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStopRun)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskStopRun)[0]?.args).toEqual({ runId: 'r_T_bill_impl_b_bill' });
+});
+
+async function openHeadlessLog(relaunch: Parameters<typeof openPlan>[0]) {
+  const { window: page } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskReadLog,
+      response: {
+        kind: 'run',
+        id: 'r_T_bill_impl_b_bill',
+        chunks: longLog(300),
+        nextSeq: 301,
+        truncated: false,
+        done: false,
+      },
+    },
+  ]);
+  await openSessions(page, 'T_bill');
+  await page.locator(t('ade-session-tab-b1c2')).click();
+  const log = page.locator(`${t('ade-headless-pane')} ${t('ade-run-log')}`);
+  await expect(log).toContainText('line 2 of the log');
+  return { page, log };
+}
+
+test("a headless session's log scrolls and its text selects", async ({ relaunch }) => {
+  const { page, log } = await openHeadlessLog(relaunch);
+  const pane = (await page.locator(t('ade-headless-pane')).boundingBox())!;
+  const box = (await log.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(pane.y + pane.height + 1);
+  await log.hover();
+  await page.mouse.wheel(0, 2000);
+  await expect.poll(() => log.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await log.evaluate((el) => {
+    el.scrollTop = 0;
+  });
+  const rows = log.locator(t('ade-run-log-line'));
+  await expect(rows.nth(2)).toBeVisible();
+  const text = await dragSelect(page, rows);
+  expect(text).toContain('line 2 of the log');
+  expect(text).toContain('line 3 of the log');
 });
 
 test('Take over of a running run confirms, stops it and selects the resumed session', async ({
