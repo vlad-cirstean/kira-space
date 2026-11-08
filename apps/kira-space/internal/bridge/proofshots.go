@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/google/renameio/v2"
@@ -75,15 +74,15 @@ type ProofShotFolderResult struct {
 	Path     string `json:"path"`
 }
 
-// ProofSavePngToArgs saves one screenshot into a folder from ChooseShotFolder.
-type ProofSavePngToArgs struct {
-	FolderID  string `json:"folderId"`
-	Filename  string `json:"filename"`
-	PngBase64 string `json:"pngBase64"`
+// ProofSaveJpegToArgs saves one screenshot into a folder from ChooseShotFolder.
+type ProofSaveJpegToArgs struct {
+	FolderID   string `json:"folderId"`
+	Filename   string `json:"filename"`
+	JpegBase64 string `json:"jpegBase64"`
 }
 
-// ProofSavePngToResult is the written file.
-type ProofSavePngToResult struct {
+// ProofSaveJpegToResult is the written file.
+type ProofSaveJpegToResult struct {
 	Path string `json:"path"`
 }
 
@@ -101,7 +100,7 @@ func (s *ProofService) ChooseShotFolder(args ProofChooseShotFolderArgs) (ProofSh
 	if parent == "" {
 		return ProofShotFolderResult{Canceled: true}, nil
 	}
-	path, err := mkFreshDir(parent, strings.TrimSuffix(safePngName(args.SessionName), ".png"))
+	path, err := mkFreshDir(parent, safeBaseName(args.SessionName))
 	if err != nil {
 		return ProofShotFolderResult{}, err
 	}
@@ -127,29 +126,29 @@ func mkFreshDir(parent, name string) (string, error) {
 	return "", ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotFolderTaken.body", nil)
 }
 
-// SavePngTo writes one screenshot into a picked folder, never over an existing file.
-func (s *ProofService) SavePngTo(args ProofSavePngToArgs) (ProofSavePngToResult, error) {
+// SaveJpegTo writes one screenshot into a picked folder, never over an existing file.
+func (s *ProofService) SaveJpegTo(args ProofSaveJpegToArgs) (ProofSaveJpegToResult, error) {
 	dir, ok := s.shots.get(args.FolderID)
 	if !ok {
-		return ProofSavePngToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotFolderGone.body", nil)
+		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotFolderGone.body", nil)
 	}
-	if len(args.PngBase64) > maxPngBase64 {
-		return ProofSavePngToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.tooLarge.body", nil)
+	if len(args.JpegBase64) > maxShotBase64 {
+		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.tooLarge.body", nil)
 	}
-	data, err := base64.StdEncoding.DecodeString(args.PngBase64)
-	if err != nil || len(data) > maxPngBytes || !bytes.HasPrefix(data, pngMagic) {
-		return ProofSavePngToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.notPng.body", nil)
+	data, err := base64.StdEncoding.DecodeString(args.JpegBase64)
+	if err != nil || len(data) > maxShotBytes || !bytes.HasPrefix(data, jpegMagic) {
+		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.notJpeg.body", nil)
 	}
-	path := filepath.Join(dir, safePngName(args.Filename))
+	path := filepath.Join(dir, safeJpegName(args.Filename))
 	if _, err := os.Lstat(path); err == nil {
-		return ProofSavePngToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotExists.body", nil)
+		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotExists.body", nil)
 	} else if !errors.Is(err, os.ErrNotExist) {
-		return ProofSavePngToResult{}, ipcerr.InternalErr(err)
+		return ProofSaveJpegToResult{}, ipcerr.InternalErr(err)
 	}
 	if err := renameio.WriteFile(path, data, 0o644); err != nil {
-		return ProofSavePngToResult{}, ipcerr.InternalErr(err)
+		return ProofSaveJpegToResult{}, ipcerr.InternalErr(err)
 	}
-	return ProofSavePngToResult{Path: path}, nil
+	return ProofSaveJpegToResult{Path: path}, nil
 }
 
 // ForgetShotFolder releases a folder id once a save-all walk ends.

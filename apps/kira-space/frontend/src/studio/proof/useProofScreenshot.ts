@@ -5,7 +5,14 @@ import { announceApp } from '@workbench/behaviour/liveRegion';
 import { errorText } from '@workbench/bridge/codedError';
 import { type MaybeRefOrGetter, nextTick, toValue } from 'vue';
 import { control } from '../bridge/control';
-import { blobToBase64, canvasToPng, captureElement, fileSlug, shotFileName } from './screenshot';
+import {
+  blobToBase64,
+  canvasToJpeg,
+  canvasToPng,
+  captureElement,
+  fileSlug,
+  shotFileName,
+} from './screenshot';
 import { useProofWindowStore } from './state';
 import type { ProofTab } from './tabHost';
 
@@ -40,7 +47,7 @@ interface Source {
   sessionName: MaybeRefOrGetter<string>;
 }
 
-/** The active tab to the clipboard or a PNG, or every tab as its own PNG in a fresh folder. */
+/** The active tab to the clipboard (PNG) or a JPEG, or every tab as its own JPEG in a fresh folder. */
 export function useProofScreenshot(source: Source) {
   const store = useProofWindowStore();
 
@@ -61,11 +68,11 @@ export function useProofScreenshot(source: Source) {
   }
 
   async function saveActive(): Promise<void> {
-    const png = await canvasToPng(await shoot());
+    const jpeg = await canvasToJpeg(await shoot());
     const only = toValue(source.tabs).find((tab) => tab.active);
     const base = fileSlug(toValue(source.sessionName));
     const name = only ? `${base}-${String(only.state.meta.ordinal).padStart(2, '0')}` : base;
-    const result = await control.proofSavePng(`${name}.png`, await blobToBase64(png));
+    const result = await control.proofSaveJpeg(`${name}.jpg`, await blobToBase64(jpeg));
     if (result.saved && result.path) {
       announceApp(t('studio.proof.shot.saved.announce', { path: result.path }));
     }
@@ -82,9 +89,9 @@ export function useProofScreenshot(source: Source) {
       for (const [i, tab] of tabs.entries()) {
         store.activeId = tab.id;
         await nextTick();
-        const png = await canvasToPng(await shoot());
+        const jpeg = await canvasToJpeg(await shoot());
         const name = shotFileName(i + 1, tabs.length, tab.state.meta.description);
-        await control.proofSavePngTo(folder.id, name, await blobToBase64(png));
+        await control.proofSaveJpegTo(folder.id, name, await blobToBase64(jpeg));
         saved += 1;
       }
     } catch (e) {

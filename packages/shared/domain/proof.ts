@@ -197,7 +197,7 @@ export const proofOpenResultSchema = /*#__PURE__*/ z.object({
   opened: z.boolean(),
 });
 export const proofWindowTargetSchema = /*#__PURE__*/ z.object({ sessionId: z.string().nullable() });
-export const proofSavePngResultSchema = /*#__PURE__*/ z.object({
+export const proofSaveJpegResultSchema = /*#__PURE__*/ z.object({
   saved: z.boolean(),
   path: z.string().nullable(),
 });
@@ -206,12 +206,12 @@ export const proofShotFolderResultSchema = /*#__PURE__*/ z.object({
   id: z.string(),
   path: z.string(),
 });
-export const proofSavePngToResultSchema = /*#__PURE__*/ z.object({ path: z.string() });
+export const proofSaveJpegToResultSchema = /*#__PURE__*/ z.object({ path: z.string() });
 export type ProofShotFolderResult = z.infer<typeof proofShotFolderResultSchema>;
-export type ProofSavePngToResult = z.infer<typeof proofSavePngToResultSchema>;
+export type ProofSaveJpegToResult = z.infer<typeof proofSaveJpegToResultSchema>;
 export type ProofOpenResult = z.infer<typeof proofOpenResultSchema>;
 export type ProofWindowTarget = z.infer<typeof proofWindowTargetSchema>;
-export type ProofSavePngResult = z.infer<typeof proofSavePngResultSchema>;
+export type ProofSaveJpegResult = z.infer<typeof proofSaveJpegResultSchema>;
 
 // kira:proof:changed and kira:proof:select payloads.
 export const proofChangedSchema = /*#__PURE__*/ z.object({ sessionId: z.string() });

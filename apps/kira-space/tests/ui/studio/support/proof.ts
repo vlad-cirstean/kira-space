@@ -26,9 +26,23 @@ export const shotFolder = (): Json => ({
 });
 
 /** Height in pixels from a PNG's IHDR chunk (bytes 20-24), given its base64. */
-export function pngHeight(pngBase64: string): number {
-  const bytes = Buffer.from(pngBase64.slice(0, 44), 'base64');
+export function pngHeight(b64: string): number {
+  const bytes = Buffer.from(b64.slice(0, 44), 'base64');
   return bytes.readUInt32BE(20);
+}
+
+/** Height in pixels from a JPEG's SOF0/SOF2 marker (big-endian, 3 bytes past the length), given its
+ *  base64. Walks the segments so a thumbnail inside an APP marker is never mistaken for the frame. */
+export function jpegHeight(jpegBase64: string): number {
+  const bytes = Buffer.from(jpegBase64, 'base64');
+  let at = 2;
+  while (at + 9 < bytes.length) {
+    if (bytes[at] !== 0xff) throw new Error(`jpegHeight: no marker at ${at}`);
+    const marker = bytes[at + 1];
+    if (marker === 0xc0 || marker === 0xc2) return bytes.readUInt16BE(at + 5);
+    at += 2 + bytes.readUInt16BE(at + 2);
+  }
+  throw new Error('jpegHeight: no SOF marker');
 }
 
 export const CLOSED_AT = Date.UTC(2026, 0, 2, 3, 4, 5);

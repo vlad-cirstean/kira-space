@@ -2869,8 +2869,8 @@
         }
       },
       "proof": {
-        "notPng": {
-          "body": "The screenshot is not a PNG image."
+        "notJpeg": {
+          "body": "The screenshot is not a JPEG image."
         },
         "shotExists": {
           "body": "A screenshot with that name is already in the folder."
@@ -16633,7 +16633,7 @@
           "error": "The step did not finish loading."
         },
         "save": {
-          "label": "Save tab as PNG…"
+          "label": "Save tab as JPEG…"
         },
         "saveAll": {
           "label": "Save all tabs to folder…"

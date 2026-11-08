@@ -233,7 +233,7 @@ func TestProofSaveIsAtomic(t *testing.T) {
 	}
 }
 
-func TestProofWindowAndSavePng(t *testing.T) {
+func TestProofWindowAndSaveJpeg(t *testing.T) {
 	f := newFixture(t)
 	f.save(t, "Window", keyValueStep("x"))
 	id := sessionID(t, f.app, "Window")
@@ -254,17 +254,21 @@ func TestProofWindowAndSavePng(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	png := append([]byte("\x89PNG\r\n\x1a\n"), 1, 2, 3)
-	out := filepath.Join(t.TempDir(), "shot.png")
+	jpg := jpegBytes(t, 64, 48)
+	out := filepath.Join(t.TempDir(), "shot.jpg")
 	f.app.Dialogs.AnswerSave(out)
-	sv, err := f.app.W.Proof.SavePng(bridge.ProofSavePngArgs{Filename: "../a b.png", PngBase64: base64.StdEncoding.EncodeToString(png)})
+	sv, err := f.app.W.Proof.SaveJpeg(bridge.ProofSaveJpegArgs{Filename: "../a b.png", JpegBase64: base64.StdEncoding.EncodeToString(jpg)})
 	if err != nil || !sv.Saved {
-		t.Fatalf("SavePng = %+v, %v", sv, err)
+		t.Fatalf("SaveJpeg = %+v, %v", sv, err)
 	}
-	if b, err := os.ReadFile(out); err != nil || !bytes.Equal(b, png) {
+	if b, err := os.ReadFile(out); err != nil || !bytes.Equal(b, jpg) {
 		t.Fatalf("saved file = %v, %v", b, err)
 	}
-	if _, err := f.app.W.Proof.SavePng(bridge.ProofSavePngArgs{Filename: "x.png", PngBase64: base64.StdEncoding.EncodeToString([]byte("nope"))}); err == nil {
-		t.Fatal("non-PNG accepted")
+	if got := f.app.Dialogs.Save; len(got) != 1 || got[0].Filename != "a b.jpg" {
+		t.Fatalf("save dialog = %+v, want the name a b.jpg", got)
+	}
+	_, err = f.app.W.Proof.SaveJpeg(bridge.ProofSaveJpegArgs{Filename: "x.jpg", JpegBase64: base64.StdEncoding.EncodeToString(pngBytes(t))})
+	if err == nil || !strings.Contains(err.Error(), "The screenshot is not a JPEG image.") {
+		t.Fatalf("PNG bytes: err = %v, want the notJpeg message", err)
 	}
 }

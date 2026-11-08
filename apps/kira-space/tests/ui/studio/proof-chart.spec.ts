@@ -10,9 +10,9 @@ import {
   chartStep,
   chartViewStates,
   diffClipboardImage,
+  jpegHeight,
   openProofWindow,
   PENDING_ID,
-  pngHeight,
   shotFolder,
 } from './support/proof';
 
@@ -208,14 +208,14 @@ test('contract: the copied screenshot holds the chart and never a tooltip', asyn
   await page.locator('[data-testid="proof-shot-more"]').click();
   await page.locator('[data-testid="proof-shot-save-all"]').click();
   await expect
-    .poll(() => control.log().filter((c) => c.channel === IPC.proofSavePngTo).length, {
+    .poll(() => control.log().filter((c) => c.channel === IPC.proofSaveJpegTo).length, {
       timeout: CAPTURE_MS,
     })
     .toBe(6);
   const centre = await page.locator('[data-testid="proof-centre"]').boundingBox();
   const dpr = await page.evaluate(() => window.devicePixelRatio);
-  for (const c of control.log().filter((c) => c.channel === IPC.proofSavePngTo)) {
-    const height = pngHeight((c.args as Json).pngBase64);
+  for (const c of control.log().filter((c) => c.channel === IPC.proofSaveJpegTo)) {
+    const height = jpegHeight((c.args as Json).jpegBase64);
     expect(Math.abs(height - (centre?.height ?? 0) * dpr)).toBeLessThanOrEqual(3);
   }
 });

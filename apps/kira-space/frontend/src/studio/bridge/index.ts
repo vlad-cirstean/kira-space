@@ -49,8 +49,8 @@ import type {
   ProofChanged,
   ProofDetail,
   ProofOpenResult,
-  ProofSavePngResult,
-  ProofSavePngToResult,
+  ProofSaveJpegResult,
+  ProofSaveJpegToResult,
   ProofSelect,
   ProofShotFolderResult,
   ProofStepDetail,
@@ -402,19 +402,21 @@ const studioControl = {
     unwrap(ProofService.OpenWindow({ sessionId })).then((r) => trust<ProofOpenResult>(r)),
   proofWindowTarget: (): Promise<ProofWindowTarget> =>
     unwrap(ProofService.WindowTarget({ key: windowKey })).then((r) => trust<ProofWindowTarget>(r)),
-  proofSavePng: (filename: string, pngBase64: string): Promise<ProofSavePngResult> =>
-    unwrap(ProofService.SavePng({ filename, pngBase64 })).then((r) => trust<ProofSavePngResult>(r)),
+  proofSaveJpeg: (filename: string, jpegBase64: string): Promise<ProofSaveJpegResult> =>
+    unwrap(ProofService.SaveJpeg({ filename, jpegBase64 })).then((r) =>
+      trust<ProofSaveJpegResult>(r),
+    ),
   proofChooseShotFolder: (sessionName: string): Promise<ProofShotFolderResult> =>
     unwrap(ProofService.ChooseShotFolder({ sessionName })).then((r) =>
       trust<ProofShotFolderResult>(r),
     ),
-  proofSavePngTo: (
+  proofSaveJpegTo: (
     folderId: string,
     filename: string,
-    pngBase64: string,
-  ): Promise<ProofSavePngToResult> =>
-    unwrap(ProofService.SavePngTo({ folderId, filename, pngBase64 })).then((r) =>
-      trust<ProofSavePngToResult>(r),
+    jpegBase64: string,
+  ): Promise<ProofSaveJpegToResult> =>
+    unwrap(ProofService.SaveJpegTo({ folderId, filename, jpegBase64 })).then((r) =>
+      trust<ProofSaveJpegToResult>(r),
     ),
   proofForgetShotFolder: (folderId: string): Promise<void> =>
     unwrap(ProofService.ForgetShotFolder({ folderId })),

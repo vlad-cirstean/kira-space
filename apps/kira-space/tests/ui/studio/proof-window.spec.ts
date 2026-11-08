@@ -9,11 +9,11 @@ import { editorText } from './support/editorText';
 import {
   bigTable,
   diffClipboardImage,
+  jpegHeight,
   LONG_QUERY,
   openProofWindow,
   PENDING_ID,
   pendingSession,
-  pngHeight,
   proofControl,
   RESULT_VIEWPORT,
   SESSION_ID,
@@ -242,7 +242,7 @@ test('the copied screenshot matches the screen, scroll and highlight included', 
 });
 
 const savedFiles = (log: { channel: string; args: unknown }[]) =>
-  log.filter((c) => c.channel === IPC.proofSavePngTo).map((c) => c.args as Json);
+  log.filter((c) => c.channel === IPC.proofSaveJpegTo).map((c) => c.args as Json);
 
 test('the copied screenshot includes an open cell editor', async ({ relaunch, uiServer }) => {
   const { window: page } = await relaunch({ control: proofControl(threeSteps()) });
@@ -265,7 +265,7 @@ test('the copied screenshot includes an open cell editor', async ({ relaunch, ui
   expect(diff.mean).toBeLessThan(6);
 });
 
-test('save all tabs writes one PNG per tab into the chosen folder', async ({
+test('save all tabs writes one JPEG per tab into the chosen folder', async ({
   relaunch,
   uiServer,
 }) => {
@@ -285,16 +285,16 @@ test('save all tabs writes one PNG per tab into the chosen folder', async ({
 
   const files = savedFiles(control.log());
   expect(files.map((f) => f.filename)).toEqual([
-    '01-Orders-before.png',
-    '02-Doc-hit.png',
-    '03-Stats.png',
+    '01-Orders-before.jpg',
+    '02-Doc-hit.jpg',
+    '03-Stats.jpg',
   ]);
   const centre = await page.locator('[data-testid="proof-centre"]').boundingBox();
   const dpr = await page.evaluate(() => window.devicePixelRatio);
   for (const f of files) {
     expect(f.folderId).toBe('shot_test');
-    expect(f.pngBase64.startsWith('iVBORw0KGgo')).toBe(true);
-    expect(Math.abs(pngHeight(f.pngBase64) - (centre?.height ?? 0) * dpr)).toBeLessThanOrEqual(3);
+    expect(f.jpegBase64.startsWith('/9j/')).toBe(true);
+    expect(Math.abs(jpegHeight(f.jpegBase64) - (centre?.height ?? 0) * dpr)).toBeLessThanOrEqual(3);
   }
   await expect
     .poll(() => control.log().filter((c) => c.channel === IPC.proofForgetShotFolder).length)
@@ -328,12 +328,12 @@ test('cancelling the folder picker captures nothing', async ({ relaunch, uiServe
   expect(control.log().filter((c) => c.channel === IPC.proofForgetShotFolder)).toHaveLength(0);
 });
 
-test('save tab writes the active tab as one PNG', async ({ relaunch, uiServer }) => {
+test('save tab writes the active tab as one JPEG', async ({ relaunch, uiServer }) => {
   test.setTimeout(180_000);
   const { window: page, control } = await relaunch({
     control: proofControl([
       ...threeSteps(),
-      { channel: IPC.proofSavePng, response: { saved: true, path: '/tmp/test/Checkout-fix.png' } },
+      { channel: IPC.proofSaveJpeg, response: { saved: true, path: '/tmp/test/Checkout-fix.jpg' } },
     ]),
   });
   await openProofWindow(page, uiServer.url);
@@ -342,13 +342,13 @@ test('save tab writes the active tab as one PNG', async ({ relaunch, uiServer })
   await page.locator('[data-testid="proof-shot-more"]').click();
   await page.locator('[data-testid="proof-shot-save"]').click();
   await expect
-    .poll(() => control.log().filter((c) => c.channel === IPC.proofSavePng).length, {
+    .poll(() => control.log().filter((c) => c.channel === IPC.proofSaveJpeg).length, {
       timeout: CAPTURE_MS,
     })
     .toBe(1);
-  const args = control.log().find((c) => c.channel === IPC.proofSavePng)?.args as Json;
-  expect(args.filename).toBe('Checkout-fix-01.png');
-  expect(args.pngBase64.startsWith('iVBORw0KGgo')).toBe(true);
+  const args = control.log().find((c) => c.channel === IPC.proofSaveJpeg)?.args as Json;
+  expect(args.filename).toBe('Checkout-fix-01.jpg');
+  expect(args.jpegBase64.startsWith('/9j/')).toBe(true);
 });
 
 test('save all does not wait on a step that failed to load', async ({ relaunch, uiServer }) => {
