@@ -1,10 +1,16 @@
 > **Personal project. Use with care.** Read the [install notes](https://vlad-cirstean.github.io/kira-space/#install) before you install.
 
+<img src="apps/kira-space/build/appicon.png" alt="Kira Space icon" width="96">
+
 # Kira Space
 
 [![PR](https://github.com/vlad-cirstean/kira-space/actions/workflows/pr.yml/badge.svg)](https://github.com/vlad-cirstean/kira-space/actions/workflows/pr.yml)
 
 **Everything agents need, in one place.**
+
+![Kira Space agents board with tasks across stages and live runs.](https://vlad-cirstean.github.io/kira-space/shots/space-agents-board.webp)
+
+The agents board: tasks across stages, with runs live.
 
 Kira Space is a native macOS workbench for developers, built on Wails (Go) and Vue 3. One app holds
 a git client and code workspace, coding agents (Claude Code or OpenCode), a memory store, a terminal
@@ -21,13 +27,9 @@ See the presentation page: [Kira Space](https://vlad-cirstean.github.io/kira-spa
 
 The git graph: branches, tags and commit detail.
 
-![Kira Space agents board with tasks across stages and live runs.](https://vlad-cirstean.github.io/kira-space/shots/space-agents-board.webp)
+![Kira Space Runs module with scheduled scripts, a smart script selected and the run history below.](https://vlad-cirstean.github.io/kira-space/shots/space-runs.webp)
 
-The agents board: tasks across stages, with runs live.
-
-![Kira Space memory list showing each fact with its origin and scope.](https://vlad-cirstean.github.io/kira-space/shots/space-memory.webp)
-
-Memory: every fact shows its origin and scope.
+Runs: scripts and smart scripts on a schedule, with their history.
 
 ![Kira Space data grid showing an orders table with one row selected.](https://vlad-cirstean.github.io/kira-space/shots/studio-data-grid.webp)
 

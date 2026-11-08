@@ -1,9 +1,10 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
 import { BUILD_SECTIONS } from '../src/data/build';
 import { HERO, INSTALL } from '../src/data/content';
-import type { ShotId } from '../src/data/shotCapture';
+import { SHOT_CAPTURE, type ShotId } from '../src/data/shotCapture';
 import { expectShotImage } from './shotImage';
 
 const BASE = '/kira-space/';
@@ -376,4 +377,29 @@ test('the README opens with the beta notice and the install link', () => {
     .find((line) => line.trim() !== '');
   expect(first).toContain('Personal project. Use with care.');
   expect(first).toContain('https://vlad-cirstean.github.io/kira-space/#install');
+});
+
+test('every README image is a published shot or a tracked file, never the memory shot', () => {
+  const readme = readFileSync(join(import.meta.dirname, '..', '..', 'README.md'), 'utf8');
+  expect(readme).not.toContain('space-memory');
+  const urls = [
+    ...[...readme.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)].map((m) => m[1] ?? ''),
+    ...[...readme.matchAll(/<img[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1] ?? ''),
+  ];
+  expect(urls.length).toBeGreaterThan(0);
+  const BADGE = 'https://github.com/vlad-cirstean/kira-space/actions/workflows/pr.yml/badge.svg';
+  const published = /^https:\/\/vlad-cirstean\.github\.io\/kira-space\/shots\/([\w-]+)\.webp$/;
+  for (const url of urls) {
+    const id = published.exec(url)?.[1];
+    if (id) {
+      expect(Object.keys(SHOT_CAPTURE), url).toContain(id);
+      continue;
+    }
+    if (url === BADGE) continue;
+    expect(url, url).not.toMatch(/^[a-z]+:/);
+    const tracked = spawnSync('git', ['ls-files', '--error-unmatch', url], {
+      cwd: join(import.meta.dirname, '..', '..'),
+    });
+    expect(tracked.status, `${url} is not tracked`).toBe(0);
+  }
 });
