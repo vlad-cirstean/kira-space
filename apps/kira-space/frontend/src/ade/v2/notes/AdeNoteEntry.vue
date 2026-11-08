@@ -7,14 +7,24 @@ import { Card } from '@theme/components/ui/card';
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { formatRelative } from '@workbench/behaviour/format';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeOriginSession from '../details/AdeOriginSession.vue';
 import { useUpdateHandover } from '../queries';
+import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import type { Handover } from '../wire';
 import AdeNotesEditor from './AdeNotesEditor.vue';
-import { entryTitle, noteAuthor, noteStage } from './noteChain';
+import {
+  AUTHOR_ICON,
+  authorAria,
+  authorLabel,
+  childOf,
+  entryTitle,
+  isReadOnlyEntry,
+  noteAuthor,
+  noteStage,
+} from './noteChain';
 
 // One note or handover of the task chain. It edits in place while `editing` is set; the chain keeps
 // the one open edit.
@@ -27,6 +37,9 @@ const props = defineProps<{
 const emit = defineEmits<{ edit: []; done: []; openSession: [sessionId: string] }>();
 const stage = useAdeStageDialogStore();
 const update = useUpdateHandover();
+const boardUi = useAdeBoardUiStore();
+const child = computed(() => childOf(props.handover));
+const author = computed(() => noteAuthor(props.handover));
 
 const text = ref('');
 watch(
@@ -52,7 +65,8 @@ function time(h: Handover): string {
   <Card
     class="flex flex-col gap-1 p-2 text-kira-md"
     data-kind="handover"
-    :data-author="noteAuthor(handover)"
+    :data-author="author"
+    :data-source="handover.source"
     :data-testid="
       handover.state === 'draft'
         ? 'ade-handover-draft'
@@ -65,26 +79,28 @@ function time(h: Handover): string {
       <span
         class="inline-flex items-center gap-1"
         role="img"
-        :aria-label="
-          t(
-            noteAuthor(handover) === 'user'
-              ? 'space.ade.notes.author.user.aria'
-              : 'space.ade.notes.author.agent.aria',
-          )
-        "
+        :aria-label="authorAria(author)"
         data-testid="ade-note-author"
       >
-        <CodiconIcon :name="noteAuthor(handover) === 'user' ? 'account' : 'hubot'" :size="12" />
-        <AdeChip
-          :label="
-            noteAuthor(handover) === 'user'
-              ? t('common.picker.you.label')
-              : t('memory.common.origin.agent.label')
-          "
-          tone="grey"
-        />
+        <CodiconIcon :name="AUTHOR_ICON[author]" :size="12" />
+        <AdeChip :label="authorLabel(author)" tone="grey" />
       </span>
-      <span class="font-medium" data-testid="ade-handover-title">{{ entryTitle(handover) }}</span>
+      <Button
+        v-if="child"
+        type="button"
+        variant="link"
+        size="inline"
+        class="font-medium"
+        data-testid="ade-handover-child-link"
+        :data-task-id="child.id"
+        @click="boardUi.select(child.id)"
+        >{{
+          entryTitle(handover)
+        }}</Button
+      >
+      <span v-else class="font-medium" data-testid="ade-handover-title">{{
+        entryTitle(handover)
+      }}</span>
       <span v-if="noteStage(handover)" class="text-muted-foreground" data-testid="ade-note-stage">{{
         noteStage(handover)
       }}</span>
@@ -108,7 +124,7 @@ function time(h: Handover): string {
         @open="emit('openSession', $event)"
       />
       <TooltipIconButton
-        v-if="!readonly && !editing"
+        v-if="!readonly && !editing && !isReadOnlyEntry(handover)"
         icon="edit"
         :label="t('space.ade.handover.edit.tooltip')"
         data-testid="ade-handover-edit"
@@ -121,7 +137,7 @@ function time(h: Handover): string {
         v-model="text"
         compact
         focus-on-mount
-        :hard-breaks="noteAuthor(handover) === 'agent'"
+        :hard-breaks="author !== 'user'"
         data-testid="ade-handover-text"
         @submit="saving.run"
       />
@@ -150,12 +166,20 @@ function time(h: Handover): string {
         >
       </div>
     </template>
+    <span
+      v-else-if="isReadOnlyEntry(handover) && !handover.body.trim()"
+      class="text-muted-foreground"
+      data-testid="ade-handover-child-empty"
+      >{{
+        t('space.ade.notes.childFinishedEmpty.label')
+      }}</span
+    >
     <AdeNotesEditor
       v-else
       :key="`view-${handover.id}`"
       :model-value="handover.body"
       readonly
-      :hard-breaks="noteAuthor(handover) === 'agent'"
+      :hard-breaks="author !== 'user'"
       data-testid="ade-handover-body"
     />
     <div v-if="handover.state === 'draft' && !readonly && !editing" class="flex justify-end">

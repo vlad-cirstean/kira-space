@@ -9377,6 +9377,15 @@
           "agent": {
             "aria": "Written by an agent"
           },
+          "child": {
+            "aria": "Copied from a child task"
+          },
+          "orchestrator": {
+            "aria": "Written by the orchestrator"
+          },
+          "pass": {
+            "aria": "Start of a pass"
+          },
           "user": {
             "aria": "Written by you"
           }
@@ -9389,6 +9398,9 @@
         },
         "checklist": {
           "tooltip": "Checklist"
+        },
+        "childFinishedEmpty": {
+          "label": "Finished without a handover"
         },
         "empty": {
           "body": "No notes yet. Add one, or an agent leaves one when it hands over."
@@ -9437,6 +9449,19 @@
         "badge": {
           "label": "Orchestrator",
           "tooltip": "Orchestrator that spawns child tasks and works in passes"
+        },
+        "chain": {
+          "brief": {
+            "title": "Brief from {title}"
+          },
+          "child": {
+            "label": "Child",
+            "title": "From child {title}"
+          },
+          "pass": {
+            "label": "Pass",
+            "title": "Pass message"
+          }
         },
         "children": {
           "empty": "No child tasks yet",
