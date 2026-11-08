@@ -200,7 +200,7 @@ CREATE TABLE "ade_task_branches" (
 CREATE TABLE "ade_task_handovers" (
   id TEXT NOT NULL PRIMARY KEY CHECK (id <> ''),
   task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,
-  source TEXT NOT NULL CHECK (source IN ('agent', 'run', 'user')),
+  source TEXT NOT NULL CHECK (source IN ('agent', 'run', 'user', 'orchestrator', 'pass', 'child')),
   state TEXT NOT NULL CHECK (state IN ('draft', 'handed', 'note')),
   finished INTEGER NOT NULL DEFAULT 0 CHECK (finished IN (0, 1)),
   dismissed INTEGER NOT NULL DEFAULT 0 CHECK (dismissed IN (0, 1)),
@@ -212,7 +212,8 @@ CREATE TABLE "ade_task_handovers" (
   to_step_id TEXT NOT NULL DEFAULT '',
   to_step_name TEXT NOT NULL DEFAULT '',
   session_id TEXT NOT NULL DEFAULT '',
-  body TEXT NOT NULL
+  body TEXT NOT NULL,
+  from_task_id TEXT REFERENCES ade_tasks (id) ON DELETE SET NULL
 ) STRICT;
 
 CREATE TABLE "ade_task_plan" (
@@ -236,7 +237,7 @@ CREATE TABLE "ade_task_statuses" (
 
 CREATE TABLE "ade_tasks" (
   id TEXT NOT NULL PRIMARY KEY CHECK (id <> ''),
-  kind TEXT NOT NULL CHECK (kind IN ('task', 'review', 'parked')),
+  kind TEXT NOT NULL CHECK (kind IN ('task', 'review', 'parked', 'orchestrator')),
   status_id TEXT NOT NULL DEFAULT 'todo' REFERENCES ade_task_statuses (id) ON DELETE NO ACTION DEFERRABLE INITIALLY DEFERRED,
   status_by TEXT NOT NULL DEFAULT 'auto' CHECK (status_by IN ('auto', 'user')),
   status_step TEXT NOT NULL DEFAULT '',
@@ -253,7 +254,8 @@ CREATE TABLE "ade_tasks" (
   est TEXT NOT NULL DEFAULT '',
   workflow_hash TEXT NOT NULL DEFAULT '',
   since_json TEXT CHECK (since_json IS NULL OR json_valid(since_json)),
-  workflow_json TEXT CHECK (workflow_json IS NULL OR json_valid(workflow_json))
+  workflow_json TEXT CHECK (workflow_json IS NULL OR json_valid(workflow_json)),
+  parent_id TEXT REFERENCES ade_tasks (id) ON DELETE SET NULL
 ) STRICT;
 
 CREATE TABLE "ade_tracked_items" (
@@ -820,9 +822,13 @@ CREATE INDEX ade_task_branches_task ON ade_task_branches (task_id);
 
 CREATE UNIQUE INDEX ade_task_handovers_draft ON ade_task_handovers (task_id, from_step_id) WHERE state = 'draft';
 
+CREATE INDEX ade_task_handovers_from_task ON ade_task_handovers (from_task_id) WHERE from_task_id IS NOT NULL;
+
 CREATE INDEX ade_task_handovers_task ON ade_task_handovers (task_id, created_at);
 
 CREATE INDEX ade_tasks_archived ON ade_tasks (archived_at) WHERE archived_at IS NOT NULL;
+
+CREATE INDEX ade_tasks_parent ON ade_tasks (parent_id) WHERE parent_id IS NOT NULL;
 
 CREATE UNIQUE INDEX api_collections_stem ON api_collections (stem) WHERE stem IS NOT NULL;
 

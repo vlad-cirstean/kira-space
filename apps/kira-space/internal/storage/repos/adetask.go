@@ -14,6 +14,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
@@ -26,13 +27,16 @@ var (
 	// ErrStatusUnknown marks a status id missing from the status set.
 	ErrStatusUnknown = errors.New("repos: unknown task status")
 	// ErrShelfTarget marks a Shelve beforeID that is not on the target shelf.
-	ErrShelfTarget   = errors.New("repos: before task is not on that shelf")
-	ErrBranchOnTask  = errors.New("repos: branch is already on a task")
-	ErrDraftInRepo   = errors.New("repos: task already has a branch slot waiting for a name in that repo")
-	ErrReviewKind    = errors.New("repos: a task only moves between task and parked, and a review task only becomes a task")
-	ErrTaskUnnamed   = errors.New("a task needs a title or a Jira key")
-	ErrBranchMissing = errors.New("repos: branch not found")
-	ErrRunNotFound   = errors.New("repos: run not found")
+	ErrShelfTarget  = errors.New("repos: before task is not on that shelf")
+	ErrBranchOnTask = errors.New("repos: branch is already on a task")
+	ErrDraftInRepo  = errors.New("repos: task already has a branch slot waiting for a name in that repo")
+	ErrReviewKind   = errors.New("repos: a task only moves between task and parked, and a review task only becomes a task")
+	// ErrOrchestratorKind marks a kind move or child creation the orchestrator rules refuse: depth stays 1,
+	// and an orchestrator never parks or turns back into a task while it has children.
+	ErrOrchestratorKind = errors.New("repos: that task cannot change to or from orchestrator")
+	ErrTaskUnnamed      = errors.New("a task needs a title or a Jira key")
+	ErrBranchMissing    = errors.New("repos: branch not found")
+	ErrRunNotFound      = errors.New("repos: run not found")
 	// ErrBranchNameTaken marks a created-branch name already used by a live branch of the repo.
 	ErrBranchNameTaken = errors.New("repos: a live branch in that repo already has that name")
 )
@@ -82,6 +86,7 @@ var (
 		kiraschema.AdeTasks.EntryStepID, kiraschema.AdeTasks.SinceJSON, kiraschema.AdeTasks.WorkflowJSON,
 		kiraschema.AdeTasks.WorkflowHash, kiraschema.AdeTasks.Est, kiraschema.AdeTasks.Color, kiraschema.AdeTasks.CreatedAt,
 		kiraschema.AdeTasks.ArchivedAt, kiraschema.AdeTasks.StatusID, kiraschema.AdeTasks.StatusBy, kiraschema.AdeTasks.StatusStep,
+		kiraschema.AdeTasks.ParentID,
 	}
 	adeTaskBranchInsertColumns = []string{
 		kiraschema.AdeTaskBranches.ID, kiraschema.AdeTaskBranches.TaskID, kiraschema.AdeTaskBranches.CodeRepoID,
@@ -138,12 +143,14 @@ func nullIntPtr(n sql.NullInt64) *int {
 
 func scanAdeTask(row rowScanner) (model.AdeTask, error) {
 	var t model.AdeTask
-	var since, workflow sql.NullString
+	var since, workflow, parent sql.NullString
 	var archived sql.NullInt64
 	if err := row.Scan(&t.ID, &t.Kind, &t.Title, &t.Owner, &t.JiraKey, &t.JiraURL, &t.HostURL, &t.WorkflowID,
-		&t.EntryStepID, &since, &workflow, &t.WorkflowHash, &t.Est, &t.Color, &t.CreatedAt, &archived, &t.StatusID, &t.StatusBy, &t.StatusStep); err != nil {
+		&t.EntryStepID, &since, &workflow, &t.WorkflowHash, &t.Est, &t.Color, &t.CreatedAt, &archived, &t.StatusID, &t.StatusBy, &t.StatusStep,
+		&parent); err != nil {
 		return model.AdeTask{}, err
 	}
+	t.ParentID = parent.String
 	t.SinceJSON = since.String
 	t.WorkflowJSON = workflow.String
 	t.ArchivedAt = nullInt64Ptr(archived)
@@ -230,10 +237,68 @@ func (r *AdeTaskRepo) GetTask(id string) (model.AdeTask, error) {
 	return t, nil
 }
 
+// ChildTasks lists the tasks parentID spawned, newest first: state "live" or "archived" keeps one side, any
+// other value both. At most limit rows; more reports rows left.
+func (r *AdeTaskRepo) ChildTasks(parentID, state string, limit int) (out []model.AdeTask, more bool, err error) {
+	c := kiraschema.AdeTasks
+	sb := r.selectTask()
+	conds := []string{sb.Equal(c.ParentID, parentID)}
+	switch state {
+	case "live":
+		conds = append(conds, sb.IsNull(c.ArchivedAt))
+	case "archived":
+		conds = append(conds, sb.IsNotNull(c.ArchivedAt))
+	}
+	sb.Where(conds...).OrderBy(c.CreatedAt+" DESC", sqlb.RowID+" DESC").Limit(limit + 1)
+	out, err = r.queryTasks(sb)
+	if err != nil {
+		return nil, false, err
+	}
+	if len(out) > limit {
+		out, more = out[:limit], true
+	}
+	return out, more, nil
+}
+
+// TaskTitle is a task's display title and whether it is archived.
+type TaskTitle struct {
+	Title    string
+	Archived bool
+}
+
+// TaskTitles reads the title (the Jira key when untitled) and archive state of the given tasks.
+func (r *AdeTaskRepo) TaskTitles(taskIDs []string) (map[string]TaskTitle, error) {
+	out := make(map[string]TaskTitle, len(taskIDs))
+	if len(taskIDs) == 0 {
+		return out, nil
+	}
+	c := kiraschema.AdeTasks
+	sb := r.Dialect.Select(c.ID, "COALESCE(NULLIF("+c.Title+", ''), "+c.JiraKey+", '')", c.ArchivedAt+" IS NOT NULL").From(c.Table)
+	args := make([]any, len(taskIDs))
+	for i, id := range taskIDs {
+		args[i] = id
+	}
+	sb.Where(sb.In(c.ID, args...))
+	rows, err := sqlb.Query(r.DB, sb)
+	if err != nil {
+		return nil, fmt.Errorf("repos: query task titles: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var t TaskTitle
+		if err := rows.Scan(&id, &t.Title, &t.Archived); err != nil {
+			return nil, fmt.Errorf("repos: scan task title: %w", err)
+		}
+		out[id] = t
+	}
+	return out, rows.Err()
+}
+
 // insertTask writes the task, its branches and a plan row on `day` (Later when nil), in tx: at the end of
-// the order, or at the top when top is set, plus the first user note when given. It assigns the task's color: the first slot no live task uses,
+// the order, or at the top when top is set, plus the first user note and the brief (a handed orchestrator row) when given. It assigns the task's color: the first slot no live task uses,
 // else the least-used slot overall.
-func insertTask(tx *sql.Tx, d sqlb.Dialect, t model.AdeTask, branches []model.AdeTaskBranch, day *string, top bool, note *model.AdeHandover) (model.AdeTask, error) {
+func insertTask(tx *sql.Tx, d sqlb.Dialect, t model.AdeTask, branches []model.AdeTaskBranch, day *string, top bool, note, brief *model.AdeHandover) (model.AdeTask, error) {
 	if err := t.Validate(); err != nil {
 		return model.AdeTask{}, err
 	}
@@ -262,9 +327,12 @@ func insertTask(tx *sql.Tx, d sqlb.Dialect, t model.AdeTask, branches []model.Ad
 	rows.Close()
 	t.Color = pickColorSlot(visible, count)
 
-	var since any
+	var since, parent any
 	if t.SinceJSON != "" {
 		since = t.SinceJSON
+	}
+	if t.ParentID != "" {
+		parent = t.ParentID
 	}
 	if t.StatusID == "" {
 		id, err := statusForNew(tx, d, t.Kind == model.AdeTaskKindReview)
@@ -278,9 +346,9 @@ func insertTask(tx *sql.Tx, d sqlb.Dialect, t model.AdeTask, branches []model.Ad
 	}
 	c := kiraschema.AdeTasks
 	ib := d.InsertInto(c.Table).Cols(c.ID, c.Kind, c.Title, c.Owner, c.JiraKey, c.JiraURL, c.HostURL, c.WorkflowID, c.EntryStepID,
-		c.SinceJSON, c.Est, c.Color, c.CreatedAt, c.StatusID, c.StatusBy, c.StatusStep).
+		c.SinceJSON, c.Est, c.Color, c.CreatedAt, c.StatusID, c.StatusBy, c.StatusStep, c.ParentID).
 		Values(t.ID, t.Kind, t.Title, t.Owner, t.JiraKey, t.JiraURL, t.HostURL, t.WorkflowID, t.EntryStepID, since, t.Est,
-			t.Color, t.CreatedAt, t.StatusID, t.StatusBy, t.StatusStep)
+			t.Color, t.CreatedAt, t.StatusID, t.StatusBy, t.StatusStep, parent)
 	if _, err := sqlb.Exec(tx, ib); err != nil {
 		return model.AdeTask{}, fmt.Errorf("repos: insert ade task %s: %w", t.ID, err)
 	}
@@ -291,6 +359,11 @@ func insertTask(tx *sql.Tx, d sqlb.Dialect, t model.AdeTask, branches []model.Ad
 	}
 	if note != nil {
 		if err := insertNote(tx, d, *note); err != nil {
+			return model.AdeTask{}, err
+		}
+	}
+	if brief != nil {
+		if err := insertBrief(tx, d, *brief); err != nil {
 			return model.AdeTask{}, err
 		}
 	}
@@ -352,12 +425,49 @@ func (r *AdeTaskRepo) CreateTask(t model.AdeTask, branches []model.AdeTaskBranch
 		return model.AdeTask{}, fmt.Errorf("repos: begin create ade task: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	out, err := insertTask(tx, r.Dialect, t, branches, day, false, note)
+	out, err := insertTask(tx, r.Dialect, t, branches, day, false, note, nil)
 	if err != nil {
 		return model.AdeTask{}, err
 	}
 	if err := tx.Commit(); err != nil {
 		return model.AdeTask{}, fmt.Errorf("repos: commit create ade task: %w", err)
+	}
+	return out, nil
+}
+
+// CreateChildTask is CreateTask for a task t.ParentID spawned, with brief as its first handover (a handed
+// row from the parent, to its first step). The parent must be a live orchestrator that has no parent
+// itself, checked in the same transaction (ErrOrchestratorKind otherwise): depth stays 1.
+func (r *AdeTaskRepo) CreateChildTask(t model.AdeTask, branches []model.AdeTaskBranch, day *string, brief model.AdeHandover) (model.AdeTask, error) {
+	if t.ParentID == "" || !model.IsWorkKind(t.Kind) || t.Kind == model.AdeTaskKindOrchestrator {
+		return model.AdeTask{}, ErrOrchestratorKind
+	}
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return model.AdeTask{}, fmt.Errorf("repos: begin create child ade task: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	tk := kiraschema.AdeTasks
+	var kind string
+	var grand sql.NullString
+	var archived sql.NullInt64
+	pq := r.Dialect.Select(tk.Kind, tk.ParentID, tk.ArchivedAt).From(tk.Table)
+	pq.Where(pq.Equal(tk.ID, t.ParentID))
+	switch err := sqlb.QueryRow(tx, pq).Scan(&kind, &grand, &archived); {
+	case errors.Is(err, sql.ErrNoRows):
+		return model.AdeTask{}, ErrTaskNotFound
+	case err != nil:
+		return model.AdeTask{}, fmt.Errorf("repos: read parent ade task %s: %w", t.ParentID, err)
+	}
+	if kind != model.AdeTaskKindOrchestrator || grand.Valid || archived.Valid {
+		return model.AdeTask{}, ErrOrchestratorKind
+	}
+	out, err := insertTask(tx, r.Dialect, t, branches, day, false, nil, &brief)
+	if err != nil {
+		return model.AdeTask{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return model.AdeTask{}, fmt.Errorf("repos: commit create child ade task: %w", err)
 	}
 	return out, nil
 }
@@ -370,7 +480,7 @@ func (r *AdeTaskRepo) CaptureTask(t model.AdeTask, day *string) (model.AdeTask, 
 		return model.AdeTask{}, fmt.Errorf("repos: begin capture ade task: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	out, err := insertTask(tx, r.Dialect, t, nil, day, true, nil)
+	out, err := insertTask(tx, r.Dialect, t, nil, day, true, nil, nil)
 	if err != nil {
 		return model.AdeTask{}, err
 	}
@@ -380,8 +490,8 @@ func (r *AdeTaskRepo) CaptureTask(t model.AdeTask, day *string) (model.AdeTask, 
 	return out, nil
 }
 
-// UpdateTask writes the patched leaves. Kind moves only between task and parked; a review task
-// only becomes a task, clearing its owner and turning its review branches into mine.
+// UpdateTask writes the patched leaves. Kind moves between task and parked or task and orchestrator
+// (moveTaskKind); a review task only becomes a task, clearing its owner and turning its review branches into mine.
 func (r *AdeTaskRepo) UpdateTask(id string, p model.AdeTaskPatch) (model.AdeTask, error) {
 	tx, err := r.DB.Begin()
 	if err != nil {
@@ -402,7 +512,7 @@ func (r *AdeTaskRepo) UpdateTask(id string, p model.AdeTaskPatch) (model.AdeTask
 		return model.AdeTask{}, err
 	}
 	if p.Kind != nil && *p.Kind != cur.Kind {
-		if err := moveTaskKind(&cur, *p.Kind); err != nil {
+		if err := moveTaskKind(tx, r.Dialect, &cur, *p.Kind); err != nil {
 			return model.AdeTask{}, err
 		}
 	}
@@ -423,7 +533,7 @@ func (r *AdeTaskRepo) UpdateTask(id string, p model.AdeTaskPatch) (model.AdeTask
 	if (p.Title != nil || p.JiraKey != nil) && cur.Title == "" && cur.JiraKey == "" {
 		return model.AdeTask{}, ErrTaskUnnamed
 	}
-	if cur.Kind != prevKind {
+	if cur.Kind != prevKind && !(model.IsWorkKind(prevKind) && model.IsWorkKind(cur.Kind)) {
 		if err := moveBranchKinds(tx, r.Dialect, id, prevKind, cur.Kind); err != nil {
 			return model.AdeTask{}, err
 		}
@@ -485,14 +595,34 @@ func patchLeaves(cur *model.AdeTask, p model.AdeTaskPatch) error {
 	return nil
 }
 
-// moveTaskKind sets cur's kind: task <-> parked, or review -> task (which clears the owner).
-func moveTaskKind(cur *model.AdeTask, to string) error {
-	toTask := to == model.AdeTaskKindTask
-	if (cur.Kind == model.AdeTaskKindReview && !toTask) || (!toTask && to != model.AdeTaskKindParked) {
-		return ErrReviewKind
-	}
-	if cur.Kind == model.AdeTaskKindReview {
-		cur.Owner = ""
+// moveTaskKind sets cur's kind: task <-> parked, task <-> orchestrator, or review -> task (which clears the
+// owner). An orchestrator never parks and never takes a parent's task (depth stays 1), and turns back into a
+// task only without children, archived ones included.
+func moveTaskKind(tx *sql.Tx, d sqlb.Dialect, cur *model.AdeTask, to string) error {
+	switch {
+	case cur.Kind == model.AdeTaskKindOrchestrator && to == model.AdeTaskKindTask:
+		tk := kiraschema.AdeTasks
+		n, err := adeCount(tx, d, tk.Table, func(sb *sqlbuilder.SelectBuilder) []string { return []string{sb.Equal(tk.ParentID, cur.ID)} })
+		if err != nil {
+			return fmt.Errorf("repos: count children of %s: %w", cur.ID, err)
+		}
+		if n > 0 {
+			return ErrOrchestratorKind
+		}
+	case to == model.AdeTaskKindOrchestrator:
+		if cur.Kind != model.AdeTaskKindTask || cur.ParentID != "" {
+			return ErrOrchestratorKind
+		}
+	case cur.Kind == model.AdeTaskKindOrchestrator:
+		return ErrOrchestratorKind
+	default:
+		toTask := to == model.AdeTaskKindTask
+		if (cur.Kind == model.AdeTaskKindReview && !toTask) || (!toTask && to != model.AdeTaskKindParked) {
+			return ErrReviewKind
+		}
+		if cur.Kind == model.AdeTaskKindReview {
+			cur.Owner = ""
+		}
 	}
 	cur.Kind = to
 	return nil
@@ -1159,7 +1289,8 @@ func (r *AdeTaskRepo) ReplaceWorktreeDir(branchID, old, next string) error {
 
 // SetEntryStep sets the step the task last entered ("done" when finished). since, when not nil, replaces the
 // pass watermark ({"<stepId>/<branchId>": attempt}); nil keeps it. handoff, when not nil, is applied in the
-// same transaction, so a move and its handover never land apart.
+// same transaction, so a move and its handover never land apart. A move to done mirrors the finish into the
+// parent's chain (mirrorFinish).
 func (r *AdeTaskRepo) SetEntryStep(taskID, stepID string, since map[string]int, handoff *model.AdeHandoff) error {
 	tx, err := r.DB.Begin()
 	if err != nil {
@@ -1184,8 +1315,16 @@ func (r *AdeTaskRepo) SetEntryStep(taskID, stepID string, since map[string]int, 
 	if err := sqlitex.RequireOneRow(res, "ade task "+taskID); err != nil {
 		return err
 	}
+	var body, fromName string
+	now := kiratime.NowMs()
 	if handoff != nil {
-		if err := applyHandoff(tx, r.Dialect, taskID, *handoff); err != nil {
+		if body, _, err = applyHandoff(tx, r.Dialect, taskID, *handoff); err != nil {
+			return err
+		}
+		fromName, now = handoff.FromStepName, handoff.Now
+	}
+	if stepID == entryDone {
+		if err := mirrorFinish(tx, r.Dialect, taskID, fromName, body, now); err != nil {
 			return err
 		}
 	}

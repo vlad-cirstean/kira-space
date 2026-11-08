@@ -2,11 +2,14 @@ package repos
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/huandu/go-sqlbuilder"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
@@ -17,7 +20,7 @@ var handoverCols = []string{
 	kiraschema.AdeTaskHandovers.FromStepName, kiraschema.AdeTaskHandovers.ToStepID, kiraschema.AdeTaskHandovers.ToStepName,
 	kiraschema.AdeTaskHandovers.Body, kiraschema.AdeTaskHandovers.Source, kiraschema.AdeTaskHandovers.State,
 	kiraschema.AdeTaskHandovers.Finished, kiraschema.AdeTaskHandovers.Dismissed, kiraschema.AdeTaskHandovers.Edited,
-	kiraschema.AdeTaskHandovers.CreatedAt, kiraschema.AdeTaskHandovers.UpdatedAt, kiraschema.AdeTaskHandovers.SessionID,
+	kiraschema.AdeTaskHandovers.CreatedAt, kiraschema.AdeTaskHandovers.UpdatedAt, kiraschema.AdeTaskHandovers.SessionID, kiraschema.AdeTaskHandovers.FromTaskID,
 }
 
 func (r *AdeTaskRepo) selectHandovers() *sqlbuilder.SelectBuilder {
@@ -26,9 +29,20 @@ func (r *AdeTaskRepo) selectHandovers() *sqlbuilder.SelectBuilder {
 
 func scanHandover(row rowScanner) (model.AdeHandover, error) {
 	var h model.AdeHandover
-	err := row.Scan(&h.ID, &h.TaskID, &h.FromStepID, &h.FromStepName, &h.ToStepID, &h.ToStepName, &h.Body,
-		&h.Source, &h.State, &h.Finished, &h.Dismissed, &h.Edited, &h.CreatedAt, &h.UpdatedAt, &h.SessionID)
+	err := scanHandoverInto(row, &h)
 	return h, err
+}
+
+// scanHandoverInto scans handoverCols into h, then extra (columns a join appends).
+func scanHandoverInto(row rowScanner, h *model.AdeHandover, extra ...any) error {
+	var from sql.NullString
+	dest := append([]any{&h.ID, &h.TaskID, &h.FromStepID, &h.FromStepName, &h.ToStepID, &h.ToStepName, &h.Body,
+		&h.Source, &h.State, &h.Finished, &h.Dismissed, &h.Edited, &h.CreatedAt, &h.UpdatedAt, &h.SessionID, &from}, extra...)
+	if err := row.Scan(dest...); err != nil {
+		return err
+	}
+	h.FromTaskID = from.String
+	return nil
 }
 
 func (r *AdeTaskRepo) queryHandovers(b sqlb.Builder) ([]model.AdeHandover, error) {
@@ -39,20 +53,76 @@ func (r *AdeTaskRepo) queryHandovers(b sqlb.Builder) ([]model.AdeHandover, error
 	})
 }
 
+// handoverKey is the order key of a row: an open draft sorts by its last write, any other row by creation.
+func handoverKey(alias string, sb *sqlbuilder.SelectBuilder) string {
+	c := kiraschema.AdeTaskHandovers
+	return "CASE " + alias + c.State + " WHEN " + sb.Var(handoverDraft) + " THEN " + alias + c.UpdatedAt + " ELSE " + alias + c.CreatedAt + " END"
+}
+
+// selectHandoversTitled selects handoverCols of table alias h plus the title of the child a mirrored row
+// copies ("" for any other row).
+func (r *AdeTaskRepo) selectHandoversTitled() *sqlbuilder.SelectBuilder {
+	c, t := kiraschema.AdeTaskHandovers, kiraschema.AdeTasks
+	sb := r.Dialect.Select(append(adeQual("h", handoverCols), "COALESCE(NULLIF(ft."+t.Title+", ''), ft."+t.JiraKey+", '')")...).From(c.Table + " h")
+	sb.JoinWithOption(sqlbuilder.LeftJoin, t.Table+" ft", "ft."+t.ID+" = h."+c.FromTaskID)
+	return sb
+}
+
+func (r *AdeTaskRepo) queryHandoversTitled(b sqlb.Builder) ([]model.AdeHandover, error) {
+	rows, err := sqlb.Query(r.DB, b)
+	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeHandover, bool, error) {
+		var h model.AdeHandover
+		err := scanHandoverInto(rows, &h, &h.FromTaskTitle)
+		return h, true, err
+	})
+}
+
 // Handovers lists the task's handover rows, newest first (an open draft sorts by its last write).
 func (r *AdeTaskRepo) Handovers(taskID string) ([]model.AdeHandover, error) {
 	c := kiraschema.AdeTaskHandovers
-	sb := r.selectHandovers()
-	sb.Where(sb.Equal(c.TaskID, taskID)).
-		OrderBy("CASE "+c.State+" WHEN "+sb.Var(handoverDraft)+" THEN "+c.UpdatedAt+" ELSE "+c.CreatedAt+" END DESC", sqlb.RowID+" DESC")
-	return r.queryHandovers(sb)
+	sb := r.selectHandoversTitled()
+	sb.Where(sb.Equal("h."+c.TaskID, taskID)).OrderBy(handoverKey("h.", sb)+" DESC", "h."+sqlb.RowID+" DESC")
+	return r.queryHandoversTitled(sb)
 }
 
-// Notes lists the task's user notes, newest first.
+// ErrHandoverNotFound marks a paging cursor that names no row.
+var ErrHandoverNotFound = errors.New("repos: handover not found")
+
+// HandoverPage lists up to limit of the task's handover rows in Handovers' order, strictly older than the row
+// `before` (all when ""); more reports rows left beyond the page.
+func (r *AdeTaskRepo) HandoverPage(taskID, before string, limit int) (rows []model.AdeHandover, more bool, err error) {
+	c := kiraschema.AdeTaskHandovers
+	sb := r.selectHandoversTitled()
+	conds := []string{sb.Equal("h."+c.TaskID, taskID)}
+	if before != "" {
+		var key, rowid int64
+		kq := r.Dialect.Select()
+		kq.Select(handoverKey("", kq), sqlb.RowID).From(c.Table).Where(kq.Equal(c.ID, before), kq.Equal(c.TaskID, taskID))
+		switch err := sqlb.QueryRow(r.DB, kq).Scan(&key, &rowid); {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, false, ErrHandoverNotFound
+		case err != nil:
+			return nil, false, fmt.Errorf("repos: read handover cursor %s: %w", before, err)
+		}
+		k := handoverKey("h.", sb)
+		conds = append(conds, sb.Or(sb.LessThan(k, key), sb.And(sb.Equal(k, key), sb.LessThan("h."+sqlb.RowID, rowid))))
+	}
+	sb.Where(conds...).OrderBy(handoverKey("h.", sb)+" DESC", "h."+sqlb.RowID+" DESC").Limit(limit + 1)
+	rows, err = r.queryHandoversTitled(sb)
+	if err != nil {
+		return nil, false, err
+	}
+	if len(rows) > limit {
+		rows, more = rows[:limit], true
+	}
+	return rows, more, nil
+}
+
+// Notes lists the task's user notes, newest first. Mirrored child rows are notes too but never user text.
 func (r *AdeTaskRepo) Notes(taskID string) ([]model.AdeHandover, error) {
 	c := kiraschema.AdeTaskHandovers
 	sb := r.selectHandovers()
-	sb.Where(sb.Equal(c.TaskID, taskID), sb.Equal(c.State, handoverNote)).
+	sb.Where(sb.Equal(c.TaskID, taskID), sb.Equal(c.State, handoverNote), sb.Equal(c.Source, model.AdeHandoverSourceUser)).
 		OrderBy(c.CreatedAt+" DESC", sqlb.RowID+" DESC")
 	return r.queryHandovers(sb)
 }
@@ -179,7 +249,7 @@ func (r *AdeTaskRepo) BoardHandovers() (map[string]BoardHandover, error) {
 		out[d.TaskID] = bh
 	}
 	sbNotes := r.selectHandovers()
-	sbNotes.Where(sbNotes.Equal(c.State, handoverNote)).OrderBy(c.CreatedAt+" DESC", sqlb.RowID+" DESC")
+	sbNotes.Where(sbNotes.Equal(c.State, handoverNote), sbNotes.Equal(c.Source, model.AdeHandoverSourceUser)).OrderBy(c.CreatedAt+" DESC", sqlb.RowID+" DESC")
 	notes, err := r.queryHandovers(sbNotes)
 	if err != nil {
 		return nil, fmt.Errorf("repos: board notes: %w", err)
@@ -266,13 +336,21 @@ func (r *AdeTaskRepo) RecordRunHandover(taskID string, h model.AdeHandoff) error
 		return fmt.Errorf("repos: begin run handover %s: %w", taskID, err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	if err := applyHandoff(tx, r.Dialect, taskID, h); err != nil {
+	body, _, err := applyHandoff(tx, r.Dialect, taskID, h)
+	if err != nil {
 		return err
+	}
+	if h.ToStepID == entryDone {
+		if err := mirrorFinish(tx, r.Dialect, taskID, h.FromStepName, body, h.Now); err != nil {
+			return err
+		}
 	}
 	return tx.Commit()
 }
 
-func applyHandoff(tx *sql.Tx, d sqlb.Dialect, taskID string, h model.AdeHandoff) error {
+// applyHandoff turns h into the stage move's handed row. It returns the body of the handed row it wrote or
+// promoted, and whether it wrote one.
+func applyHandoff(tx *sql.Tx, d sqlb.Dialect, taskID string, h model.AdeHandoff) (string, bool, error) {
 	var draft *model.AdeHandover
 	c := kiraschema.AdeTaskHandovers
 	find := d.Select(handoverCols...).From(c.Table)
@@ -281,40 +359,46 @@ func applyHandoff(tx *sql.Tx, d sqlb.Dialect, taskID string, h model.AdeHandoff)
 	if d, err := scanHandover(row); err == nil {
 		draft = &d
 	} else if err != sql.ErrNoRows {
-		return fmt.Errorf("repos: read handover draft %s: %w", taskID, err)
+		return "", false, fmt.Errorf("repos: read handover draft %s: %w", taskID, err)
 	}
-	insert := func(body, source, sessionID string) error {
+	insert := func(body, source, sessionID string) (string, bool, error) {
 		ib := d.InsertInto(c.Table).Cols(c.ID, c.TaskID, c.FromStepID, c.FromStepName, c.ToStepID, c.ToStepName, c.Body, c.Source,
 			c.State, c.CreatedAt, c.UpdatedAt, c.SessionID).
 			Values(h.ID, taskID, h.FromStepID, h.FromStepName, h.ToStepID, h.ToStepName, body, source,
 				handoverHanded, h.Now, h.Now, sessionID)
 		if _, err := sqlb.Exec(tx, ib); err != nil {
-			return fmt.Errorf("repos: insert handover %s: %w", taskID, err)
+			return "", false, fmt.Errorf("repos: insert handover %s: %w", taskID, err)
 		}
-		return nil
+		return body, true, nil
+	}
+	if h.Source == model.AdeHandoverSourcePass {
+		if h.Notes == nil || *h.Notes == "" {
+			return "", false, nil
+		}
+		return insert(*h.Notes, model.AdeHandoverSourcePass, h.SessionID)
 	}
 	if h.Source == model.AdeHandoverSourceRun {
 		if draft != nil {
 			if _, err := sqlb.Exec(tx, deleteHandoverByID(d, draft.ID)); err != nil {
-				return fmt.Errorf("repos: replace handover draft %s: %w", taskID, err)
+				return "", false, fmt.Errorf("repos: replace handover draft %s: %w", taskID, err)
 			}
 		}
 		if h.Notes == nil || *h.Notes == "" {
-			return nil
+			return "", false, nil
 		}
 		return insert(*h.Notes, model.AdeHandoverSourceRun, h.SessionID)
 	}
 	if draft == nil {
 		if h.Notes == nil || *h.Notes == "" {
-			return nil
+			return "", false, nil
 		}
 		return insert(*h.Notes, model.AdeHandoverSourceUser, "")
 	}
 	if h.Notes != nil && *h.Notes == "" {
 		if _, err := sqlb.Exec(tx, deleteHandoverByID(d, draft.ID)); err != nil {
-			return fmt.Errorf("repos: drop handover draft %s: %w", taskID, err)
+			return "", false, fmt.Errorf("repos: drop handover draft %s: %w", taskID, err)
 		}
-		return nil
+		return "", false, nil
 	}
 	body, edited := draft.Body, draft.Edited
 	if h.Notes != nil && *h.Notes != draft.Body {
@@ -326,9 +410,80 @@ func applyHandoff(tx *sql.Tx, d sqlb.Dialect, taskID string, h model.AdeHandoff)
 		ub.Assign(c.Dismissed, false), ub.Assign(c.CreatedAt, h.Now), ub.Assign(c.UpdatedAt, h.Now)).
 		Where(ub.Equal(c.ID, draft.ID))
 	if _, err := sqlb.Exec(tx, ub); err != nil {
-		return fmt.Errorf("repos: hand over draft %s: %w", taskID, err)
+		return "", false, fmt.Errorf("repos: hand over draft %s: %w", taskID, err)
+	}
+	return body, true, nil
+}
+
+// insertBrief writes a child's first handover: a handed orchestrator row from its parent to its first step.
+func insertBrief(tx *sql.Tx, d sqlb.Dialect, h model.AdeHandover) error {
+	c := kiraschema.AdeTaskHandovers
+	ib := d.InsertInto(c.Table).Cols(c.ID, c.TaskID, c.FromStepID, c.FromStepName, c.ToStepID, c.ToStepName, c.Body, c.Source,
+		c.State, c.CreatedAt, c.UpdatedAt, c.FromTaskID).
+		Values(h.ID, h.TaskID, "", h.FromStepName, h.ToStepID, h.ToStepName, h.Body, model.AdeHandoverSourceOrchestrator,
+			handoverHanded, h.CreatedAt, h.CreatedAt, nilIfEmpty(h.FromTaskID))
+	if _, err := sqlb.Exec(tx, ib); err != nil {
+		return fmt.Errorf("repos: insert brief %s: %w", h.TaskID, err)
 	}
 	return nil
+}
+
+func nilIfEmpty(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+// mirrorMaxBytes caps a mirrored body (agentmcp.MaxHandoverBytes).
+const mirrorMaxBytes = 16 << 10
+
+func capMirrorBody(s string) string {
+	if len(s) <= mirrorMaxBytes {
+		return s
+	}
+	s = s[:mirrorMaxBytes]
+	for !utf8.ValidString(s) {
+		s = s[:len(s)-1]
+	}
+	return s
+}
+
+// mirrorFinish copies a finished child's final handover into its parent's chain as a note row of source child
+// (kept out of drafts, the latest handed row and the prompts' Notes). A task without a parent does nothing. An
+// empty body is a finish without a handover.
+func mirrorFinish(tx *sql.Tx, d sqlb.Dialect, taskID, fromStepName, body string, now int64) error {
+	tk := kiraschema.AdeTasks
+	var parent sql.NullString
+	pq := d.Select(tk.ParentID).From(tk.Table)
+	pq.Where(pq.Equal(tk.ID, taskID))
+	if err := sqlb.QueryRow(tx, pq).Scan(&parent); err != nil {
+		return fmt.Errorf("repos: read parent of %s: %w", taskID, err)
+	}
+	if !parent.Valid {
+		return nil
+	}
+	c := kiraschema.AdeTaskHandovers
+	ib := d.InsertInto(c.Table).Cols(c.ID, c.TaskID, c.FromStepID, c.FromStepName, c.Body, c.Source, c.State, c.CreatedAt,
+		c.UpdatedAt, c.FromTaskID).
+		Values(ids.NewID(), parent.String, "", fromStepName, capMirrorBody(body), model.AdeHandoverSourceChild, handoverNote, now, now, taskID)
+	if _, err := sqlb.Exec(tx, ib); err != nil {
+		return fmt.Errorf("repos: mirror finish of %s: %w", taskID, err)
+	}
+	return nil
+}
+
+// MirrorFinish mirrors a child's finish that wrote no handover row into its parent's chain.
+func (r *AdeTaskRepo) MirrorFinish(taskID, fromStepName string, now int64) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("repos: begin mirror finish %s: %w", taskID, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if err := mirrorFinish(tx, r.Dialect, taskID, fromStepName, "", now); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func deleteHandoverByID(d sqlb.Dialect, id string) *sqlbuilder.DeleteBuilder {
@@ -336,7 +491,9 @@ func deleteHandoverByID(d sqlb.Dialect, id string) *sqlbuilder.DeleteBuilder {
 	return del.Where(del.Equal(kiraschema.AdeTaskHandovers.ID, id))
 }
 
+// entryDone is ade_tasks.entry_step_id and a handover's to_step_id once the task finished.
 const (
+	entryDone      = "done"
 	handoverDraft  = "draft"
 	handoverNote   = "note"
 	handoverHanded = "handed"
