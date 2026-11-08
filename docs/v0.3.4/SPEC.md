@@ -9,11 +9,12 @@ Proof images and agent branch bases. Branch `chapter/v0.3.4`, tag `v0.3.4`. Firs
 | P571 Part 1 | Orchestrator tasks, backend: passes, spawn, chain reads | Implemented |
 | P571 Part 2 | Orchestrator tasks, frontend: kind choice, card, Run pass | Implemented |
 | P572 | About: GitHub link, add an About settings section if none | Implemented |
-| P573 | Close chapter | Planned |
+| P573 | Split docs/HISTORY.md into files | Planned |
+| P574 | Close chapter | Planned |
 
 P569, P570 and P571 run as parallel streams (own worktree each): P569 owns proof, `dbmcp` proof tools and the proof window menu entry; P570 owns `request_branches` and the ADE base path; P571 owns the orchestrator task kind. Grouping in `plans/batch-P569-P570.md`.
 
-Chapter ends the standard way after the last implementation phase: landing, one non-UI full run, 1 code review round, close phase P573, PR.
+Chapter ends the standard way after the last implementation phase: landing, one non-UI full run, 1 code review round, close phase P574, PR.
 
 ## P569 Proof: JPEG screenshots, agent image steps, menu bar entry
 
@@ -82,6 +83,13 @@ Kind choice in the Add popover (`ade-nw-kind`), task panel switch and card menu;
 - Tests: flow test plus UI spec on the same scenario where it applies at the IPC boundary (opening the link goes through the bridge).
 - Result: native About (Wails `NSAlert`) cannot hold a link, so new Settings section About (last) shows name, version and the repo link. URL from `appupdate.RepoURL`, returned as `AppService.Info` `repoUrl`, opened through `LinkService.OpenExternal`. Info fetched by TanStack Query only while About is active (a mount-time fetch broke every spec that opens Settings without an `appInfo` fixture). `docker.engine.version.label` moved to `common.version.label`. Flow `TestAboutGitHubLink` and UI `settings-about.spec.ts` share contract `settings-about`; `copy-coverage.spec.ts` gained the About pane. Deviation: no `useQuery` `staleTime` (lint U53, client default already Infinity). Verified: flow, bridge and appupdate tests, typecheck, lint, UI `settings-about`, `settings-*`, `copy-coverage`, `consistency`, `docker-module`.
 
-## P573 Close chapter
+## P573 Split docs/HISTORY.md into files
+
+- Ask (user): `docs/HISTORY.md` is 7,827 lines (45 chapter blocks); split it into several files. No size cap rule, just split.
+- Decided: `docs/HISTORY.md` stays as a short index linking each file with its chapter range, so existing references to it resolve. Blocks move unchanged into `docs/history/`, cut at chapter boundaries only. A close appends its block to the newest history file. One-time split verified by concatenating the new files in order and comparing with the old file (minus the index).
+- Planner decides: file naming and grouping, index format, `scripts/docshistory` changes (it reads and repoints links in HISTORY.md), `check-docs` and any other tool that reads HISTORY.md, link and code-comment references to `docs/HISTORY.md` (some cite chapter anchors), the CLAUDE.md "Closing a chapter" step 2 wording (hand-written close appends to the newest history file) and WORKING_AGREEMENT mentions, README mentions.
+- Stream: own worktree, touches only docs, scripts and `CLAUDE.md`. Overlap with other streams: `docs/v0.3.4/SPEC.md` only.
+
+## P574 Close chapter
 
 - Chapter close by hand per CLAUDE.md "Closing a chapter": one Sonnet implementer, no planner, no plan file.
