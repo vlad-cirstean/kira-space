@@ -8,7 +8,7 @@ User-requested fixes after v0.3.4. Chapter stays open: more phases get added lat
 | P576 | Title bar: app title after window controls | Implemented |
 | P577 | Terminal-less run logs and sessions: scroll, select, copy | Implemented |
 | P578 | Config file bar only on the YAML tab | Implemented |
-| P579 | Darker dialog surface | Planned |
+| P579 | Darker dialog surface | Implemented |
 
 Phases run in table order, one at a time, unless the user asks for a batch.
 
@@ -82,4 +82,7 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 - Choice delegated to planner: lower `--kira-bg-elevated` (also affects menus, popovers, cards, active tab), darker scrim, or dialog-only token. Plan names the pick and why.
 - Planner must check contrast ratios for text on the new surface (WCAG AA, every text token used on it) and list which visual baselines change.
 - Acceptance: dialogs visibly darker; text contrast stays at or above AA; changed baselines refreshed after a look at both themes if the theme has more than one.
-- Result: _pending_
+- Result: Dialog-only token `--kira-bg-dialog: #141416` (`bg-dialog`, new `dialogSurface` frame) for dialog, command palette (inner `Command` too) and text prompt; scrim 0.4 to 0.6. `--kira-bg-elevated` untouched (35 files, Monaco, SlickGrid, charts use it), so popover, menu, toast keep `#212125`. Contrast on `#141416` (old `#212125`): `fg` 12.45 (10.86), `fg-muted` 7.18 (6.26), `fg-subtle` 5.67 (4.94), `error` 5.95 (5.19); all AA. One theme only.
+  - Spec: `tests/ui/dialog-surface.spec.ts` (settings dialog and scrim, command palette and inner command, dropdown menu stays elevated). Renderer only, no backend half.
+  - Checks: ui `dialog-surface consistency focus-ring ade-v2-dialogs` 82 passed; visual run after `build:test`.
+  - Deviations: Playwright's default colour threshold hides the surface change in the 10 locator-scoped baselines (settings x5, git-stash, git-repo-settings, approvals, runs-restore, docker-restore); they still pass, so not refreshed. Only full-page `new-connection-dialog` and `schema-dialog` changed; refreshed after viewing (Inter confirmed, dialog near black, border and text legible, backdrop darker). `console`, `data-grid`, `workbench-shell` baselines were stale before this phase (title bar "Kira Space" text missing in baseline, bbox only the title); refreshed too. Popover, menu and toast baselines unchanged.
