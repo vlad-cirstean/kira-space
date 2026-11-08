@@ -230,6 +230,34 @@ for (const route of ROUTES) {
       expect(body.readUInt32BE(20)).toBe(630);
     });
 
+    test("header Install matches the page's primary button", async ({ page }) => {
+      await openPage(page, route);
+      const header = page.locator('header');
+      const install = header.getByRole('link', { name: 'Install', exact: true });
+      const primary =
+        route.path === ''
+          ? page.locator('main a[href="#install"]', { hasText: 'Install' }).first()
+          : page.locator('main a[href$="#install"]').first();
+      const style = (loc: typeof install) =>
+        loc.evaluate((el) => {
+          const css = getComputedStyle(el);
+          return {
+            radius: css.borderTopLeftRadius,
+            image: css.backgroundImage,
+            shadow: css.boxShadow,
+            weight: css.fontWeight,
+          };
+        });
+      expect(await style(install)).toEqual(await style(primary));
+      const docs = header.getByRole('link', { name: 'Docs', exact: true });
+      const metrics = (loc: typeof install) =>
+        loc.evaluate((el) => ({
+          height: el.getBoundingClientRect().height,
+          size: getComputedStyle(el).fontSize,
+        }));
+      expect(await metrics(install)).toEqual(await metrics(docs));
+    });
+
     test('every icon is hidden from assistive tech or labelled', async ({ page }) => {
       await openPage(page, route);
       const bare = await page.evaluate(() =>
