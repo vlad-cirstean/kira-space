@@ -136,6 +136,37 @@ test('YAML mode validates the text and saves it', async ({ relaunch }) => {
   });
 });
 
+test('the step file bar shows only in YAML mode', async ({ relaunch }) => {
+  const { window: page } = await openWorkflows(relaunch, withLibrary);
+  await openSteps(page);
+  await expect(page.locator(t('ade-step-editor'))).toBeVisible();
+  await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
+  await expect(page.locator(t('config-file-problem'))).toHaveCount(0);
+  await page.locator(t('ade-step-mode-yaml')).click();
+  await expect(page.locator(t('config-file-bar'))).toContainText('implement.yaml');
+});
+
+test('a broken step file shows its problem in Form mode', async ({ relaunch }) => {
+  const [first, ...rest] = listing.steps;
+  const { window: page } = await openWorkflows(relaunch, [
+    {
+      channel: IPC.adeTaskWorkflows,
+      response: {
+        ...listing,
+        steps: [{ ...first, error: { line: 3, message: 'prompt is required' } }, ...rest],
+      },
+    },
+  ]);
+  await openSteps(page);
+  // A broken file opens in YAML mode; switch to Form.
+  await expect(page.locator(t('config-file-bar'))).toBeVisible();
+  await page.locator(t('ade-step-mode-form')).click();
+  await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
+  await expect(page.locator(t('config-file-problem'))).toContainText('Line 3: prompt is required');
+  await page.locator(t('config-file-problem-show-yaml')).click();
+  await expect(page.locator(t('config-file-status'))).toContainText('✕ Line 3: prompt is required');
+});
+
 test('New step creates a library step of the picked kind', async ({ relaunch }) => {
   const { window: page, control } = await openWorkflows(relaunch, withLibrary);
   await openSteps(page);

@@ -468,11 +468,14 @@ test('Copy YAML confirms the copy', async ({ relaunch }) => {
   await expect(copy).toHaveText('Copied');
 });
 
-test('the config file bar shows a valid file, Open and Reveal name the folder and file', async ({
+test('the config file bar shows only in YAML mode; Open and Reveal name the folder and file', async ({
   relaunch,
 }) => {
   const fx = adeFixture<WorkflowsFx>('workflows');
   const { window: page, control } = await openWorkflows(relaunch);
+  await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
+  await expect(page.locator(t('config-file-problem'))).toHaveCount(0);
+  await openYaml(page);
   await expect(page.locator(t('config-file-status'))).toContainText('✓ Valid');
   await page.locator(t('config-file-open')).click();
   await page.locator(t('config-file-reveal')).click();
@@ -489,7 +492,7 @@ test('the config file bar shows a valid file, Open and Reveal name the folder an
   });
 });
 
-test('a broken workflow file shows its error with the line in the config file bar', async ({
+test('a broken workflow file shows its problem in Graph mode and its line in the YAML file bar', async ({
   relaunch,
 }) => {
   const fx = adeFixture<WorkflowsFx>('workflows');
@@ -506,6 +509,14 @@ test('a broken workflow file shows its error with the line in the config file ba
       },
     },
   ]);
+  // A broken file opens in YAML mode; switch to Graph.
+  await expect(page.locator(t('config-file-bar'))).toBeVisible();
+  await page.locator(t('ade-wf-mode-graph')).click();
+  await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
+  await expect(page.locator(t('config-file-problem'))).toContainText(
+    'Line 7: kind must be agent, script, review or manual',
+  );
+  await page.locator(t('config-file-problem-show-yaml')).click();
   await expect(page.locator(t('config-file-status'))).toContainText(
     '✕ Line 7: kind must be agent, script, review or manual',
   );

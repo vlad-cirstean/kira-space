@@ -4,6 +4,7 @@ import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
+import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { defineAsyncComponent } from 'vue';
 import { control } from '../../../bridge/control';
 import { useWorkflowYaml } from '../queries';
@@ -11,7 +12,7 @@ import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import type { WorkflowEntry } from '../wire';
 import AdeWorkflowYaml from './AdeWorkflowYaml.vue';
 
-// One workflow: mode toggle, the config file bar (path, status, Open, Reveal), Copy YAML, then the Graph or YAML pane. The graph editor (Vue Flow)
+// One workflow: mode toggle, the config file bar in YAML mode (the file's problem in Graph mode), Copy YAML, then the Graph or YAML pane. The graph editor (Vue Flow)
 // loads on first use so the board bundle does not carry it.
 const AdeWorkflowGraph = defineAsyncComponent(() => import('./AdeWorkflowGraph.vue'));
 const modeItems = [
@@ -46,6 +47,7 @@ async function setMode(v: unknown): Promise<void> {
         @update:model-value="setMode"
       />
       <ConfigFileBar
+        v-if="wfUi.workflowMode === 'yaml'"
         :path="entry.path"
         :error="entry.error"
         :open="() => control.configFilesOpen({ folder: 'workflows', file: entry.fileName })"
@@ -55,6 +57,7 @@ async function setMode(v: unknown): Promise<void> {
       <Button
         variant="dialog"
         size="kira-lg"
+        class="ml-auto"
         :disabled="!yaml.data.value"
         data-testid="ade-wf-copy"
         @click="yaml.data.value && copy(yaml.data.value.yaml)"
@@ -64,6 +67,12 @@ async function setMode(v: unknown): Promise<void> {
         }}
       </Button>
     </div>
+    <ConfigFileProblem
+      v-if="wfUi.workflowMode !== 'yaml'"
+      :error="entry.error"
+      :show-yaml="() => void setMode('yaml')"
+      class="shrink-0"
+    />
     <AdeWorkflowYaml v-if="wfUi.workflowMode === 'yaml'" :entry="entry" />
     <AdeWorkflowGraph v-else :entry="entry" />
   </div>
