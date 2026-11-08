@@ -2,6 +2,7 @@
 
 Finished chapters, one `<!-- chapter <ch> -->` to `<!-- /chapter <ch> -->` block each, oldest first, in the files below.
 Cite a chapter as `docs/HISTORY.md (<ch>)` or `docs/HISTORY.md (<ch> <phase>)`; this list maps it to its file.
+A chapter block always stays whole in one file; no file is cut inside a block.
 Phase IDs are chapter-local before v1.6.
 Deleted chapter files: `git show <commit>:docs/<chapter>/<file>` with the commit named in each chapter header.
 Older chapters were distilled by `go run ./scripts/docshistory` (memory MCP `ingest_files`, one phase per input); each close since appends its block by hand (CLAUDE.md "Closing a chapter").
