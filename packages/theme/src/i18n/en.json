@@ -9201,6 +9201,9 @@
         "title": "Force push?"
       },
       "handover": {
+        "copy": {
+          "tooltip": "Copy text"
+        },
         "draftFrom": {
           "label": "{from} (open)"
         },
