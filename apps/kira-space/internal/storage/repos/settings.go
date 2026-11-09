@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/updates"
 	"github.com/kirathecat/kira-studio/internal/appsettings"
@@ -81,7 +83,31 @@ func (r *SettingsRepo) GetAll() (model.Settings, error) {
 	appsettings.Leaf(stored, "dbMcp.focusOnApproval", &result.DbMcp.FocusOnApproval)
 	appsettings.Leaf(stored, "dbMcp.apiRequests", &result.DbMcp.APIRequests)
 	appsettings.LeafValid(stored, "dbMcp.apiApproval", &result.DbMcp.APIApproval, model.ValidAPIApproval)
+	readAPIRules(stored, &result.DbMcp)
 	return result, nil
+}
+
+// readAPIRules fails closed: a stored list that cannot decode or compile would otherwise fall back to the
+// empty default, which allows every request.
+func readAPIRules(stored map[string]json.RawMessage, dm *model.DbMcpSettings) {
+	dm.APIRules = []apiaccess.Rule{}
+	raw, ok := stored["dbMcp.apiRules"]
+	if !ok {
+		return
+	}
+	var rules []apiaccess.Rule
+	err := json.Unmarshal(raw, &rules)
+	if err == nil {
+		_, err = apiaccess.Compile(rules)
+	}
+	if err != nil {
+		slog.Warn("settings: dbMcp.apiRules unreadable, refusing API requests", "err", err)
+		dm.APIRulesInvalid = true
+		return
+	}
+	if rules != nil {
+		dm.APIRules = rules
+	}
 }
 
 // readAppearance reads the shared appearance.* leaves plus this app's own two (inlineBlame/
@@ -331,7 +357,10 @@ func upsertDbMcpSection(tx *sql.Tx, dm *model.DbMcpPatch) error {
 	if err := appsettings.UpsertOptional(tx, "dbMcp.apiRequests", dm.APIRequests); err != nil {
 		return err
 	}
-	return appsettings.UpsertOptional(tx, "dbMcp.apiApproval", dm.APIApproval)
+	if err := appsettings.UpsertOptional(tx, "dbMcp.apiApproval", dm.APIApproval); err != nil {
+		return err
+	}
+	return appsettings.UpsertOptional(tx, "dbMcp.apiRules", dm.APIRules)
 }
 
 // Set validates the patch, writes only the leaves the caller actually patched in one transaction,

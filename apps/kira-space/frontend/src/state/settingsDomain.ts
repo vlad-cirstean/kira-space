@@ -114,6 +114,14 @@ const apiSettingsSchema = /*#__PURE__*/ z.object({
 });
 export type ApiSettings = z.infer<typeof apiSettingsSchema>;
 
+// Lenient on purpose: Go validates and is authoritative, so an entry it accepts never fails hydrate here.
+const apiRuleSchema = /*#__PURE__*/ z.object({
+  effect: z.enum(['allow', 'deny']),
+  hosts: z.array(z.string()),
+  methods: z.array(z.string()),
+});
+export type ApiRule = z.infer<typeof apiRuleSchema>;
+
 // M1 §6.2: one leaf, default false. The embedded DB MCP server instance's own on/off switch
 // (internal/bridge/dbmcp.go owns the actual start/stop side effect; this leaf is only the
 // persisted, cross-restart record of "should it be on"). A section on its own, not folded into
@@ -126,6 +134,10 @@ const dbMcpSettingsSchema = /*#__PURE__*/ z.object({
   // Let agents send API requests with the variables an environment shares with them.
   apiRequests: z.boolean().default(false),
   apiApproval: z.enum(['always', 'never']).default('always'),
+  // Host and method rules for api_request; empty allows everything.
+  apiRules: z.array(apiRuleSchema).default([]),
+  // Read-only: stored rules could not be read, so every API request is refused.
+  apiRulesInvalid: z.boolean().default(false),
 });
 
 // advanced carries just gitLogLevel here — this app's own diagnostic log verbosity, its entire
@@ -328,6 +340,8 @@ const settingsSchema = /*#__PURE__*/ z.object({
     focusOnApproval: true,
     apiRequests: false,
     apiApproval: 'always',
+    apiRules: [],
+    apiRulesInvalid: false,
   }),
 });
 export type Settings = z.infer<typeof settingsSchema>;
@@ -346,7 +360,7 @@ const settingsPatchSchema = /*#__PURE__*/ z.object({
   data: dataSettingsSchema.partial().optional(),
   cache: cacheSettingsSchema.partial().optional(),
   api: apiSettingsSchema.partial().optional(),
-  dbMcp: dbMcpSettingsSchema.partial().optional(),
+  dbMcp: dbMcpSettingsSchema.omit({ apiRulesInvalid: true }).partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 
@@ -432,5 +446,7 @@ export const defaultSettings: Settings = {
     focusOnApproval: true,
     apiRequests: false,
     apiApproval: 'always',
+    apiRules: [],
+    apiRulesInvalid: false,
   },
 };

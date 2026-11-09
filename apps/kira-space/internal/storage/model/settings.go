@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"regexp"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/updates"
 	"github.com/kirathecat/kira-studio/internal/appsettings"
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -261,7 +262,7 @@ func DefaultSettings() Settings {
 			MaxRedirects:     10,
 			DisableCookieJar: true,
 		},
-		DbMcp: DbMcpSettings{ServerEnabled: false, PreviewResponses: false, FocusOnApproval: true, APIRequests: false, APIApproval: "always"},
+		DbMcp: DbMcpSettings{ServerEnabled: false, PreviewResponses: false, FocusOnApproval: true, APIRequests: false, APIApproval: "always", APIRules: []apiaccess.Rule{}},
 	}
 }
 
