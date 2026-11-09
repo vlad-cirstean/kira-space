@@ -55,7 +55,7 @@ watch(
         <Badge variant="count" data-testid="approvals-count">{{ items.length }}</Badge>
       </DialogHeader>
 
-      <DialogBody>
+      <DialogBody class="gap-0 py-0 divide-y divide-border">
         <ApprovalItemCard v-for="(item, i) in items" :key="item.id" :item="item" :first="i === 0" />
       </DialogBody>
 

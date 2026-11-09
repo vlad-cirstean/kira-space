@@ -3484,6 +3484,12 @@
       "number": {
         "label": "Number"
       },
+      "reason": {
+        "label": "Reason"
+      },
+      "result": {
+        "label": "Result"
+      },
       "scope": {
         "label": "Scope"
       },
@@ -8001,9 +8007,6 @@
       "noSession": {
         "description": "Not stored from a {product} session."
       },
-      "reason": {
-        "label": "Reason:"
-      },
       "session": {
         "label": "Session ID"
       },
@@ -9014,40 +9017,19 @@
         }
       },
       "branchRequest": {
-        "dirty": {
-          "hint": "{count} uncommitted change stays in that worktree. | {count} uncommitted changes stay in that worktree."
-        },
-        "item": {
-          "adopt": {
-            "label": "Check out {branch}, detached first in {holder}"
-          },
-          "adoptMain": {
-            "label": "Check out {branch}, detached first in the main checkout"
-          },
-          "branch": {
-            "label": "Create {branch} from {base}"
-          },
-          "branchMain": {
-            "label": "Create {branch} from the repository’s main branch"
-          },
-          "checkout": {
-            "label": "Check out {branch}"
-          },
-          "rename": {
-            "label": "Rename {from} to {branch}"
-          },
-          "worktree": {
-            "label": "Worktree for {branch}"
-          }
-        },
-        "mainCheckout": {
-          "hint": "Your main checkout is left on a detached commit."
-        },
-        "naming": {
-          "hint": "The agent names each branch. Kira Space picks each worktree folder. Approving adds a repository the task does not have yet."
+        "op": {
+          "label": "Branches · {count}"
         },
         "renameRemote": {
           "label": "Also rename {upstream} on the remote"
+        },
+        "risk": {
+          "detachesMain": {
+            "status": "Detaches main"
+          },
+          "dirty": {
+            "status": "Dirty worktree ({count})"
+          }
         },
         "source": {
           "automation": {
@@ -9060,8 +9042,25 @@
             "label": "Session · {step}"
           }
         },
-        "stacked": {
-          "hint": "The worktree folder stays. Branches built on it follow: {branches}."
+        "tag": {
+          "heldBy": {
+            "label": "Held by {task}"
+          },
+          "heldByMain": {
+            "label": "Held by main checkout"
+          },
+          "new": {
+            "label": "New · from {base}"
+          },
+          "newMain": {
+            "label": "New · from main branch"
+          },
+          "rename": {
+            "label": "Rename from {from}"
+          },
+          "stacked": {
+            "label": "Also renames {branches}"
+          }
         }
       },
       "changes": {
@@ -10094,6 +10093,9 @@
           },
           "noRepos": {
             "label": "None; add one on the task later"
+          },
+          "op": {
+            "label": "Create task"
           }
         }
       },
@@ -10505,8 +10507,7 @@
           },
           "tabs": {
             "aria": "Provider"
-          },
-          "title": "Result"
+          }
         },
         "secrets": {
           "deleteConfirm": {
@@ -14187,46 +14188,36 @@
     "dbMcp": {
       "approval": {
         "api": {
-          "body": {
-            "label": "Body {type}"
-          },
           "credential": {
             "label": "Uses credential {name} (hosts: {hosts})"
           },
           "dontSend": {
             "label": "Don’t send"
           },
-          "form": {
-            "label": "Form fields"
-          },
           "headers": {},
           "noEnvironment": {},
-          "options": {
-            "label": "{redirects}, timeout {seconds} s"
-          },
           "query": {},
-          "redirectsOff": {
-            "option": "Redirects not followed"
+          "redirectsOffTimeout": {
+            "status": "Redirects off · {seconds} s"
           },
-          "redirectsOn": {
-            "option": "Redirects followed"
+          "redirectsOnTimeout": {
+            "status": "Redirects on · {seconds} s"
           },
-          "send": {},
-          "truncated": {
-            "status": "Body truncated for display"
-          },
-          "variables": {
-            "label": "Variables used"
-          }
+          "send": {}
         },
         "asSent": {
           "option": "As sent"
         },
-        "ddl": {
-          "body": "{connection} ({kind}) wants to run a schema-changing (DDL) statement through the database MCP server."
-        },
-        "declaredHigher": {
-          "body": "Declared {declared}, looks like a {detected}. Mode read would run it read-only."
+        "detail": {
+          "env": {
+            "label": "Env"
+          },
+          "options": {
+            "label": "Options"
+          },
+          "statement": {
+            "label": "Statement"
+          }
         },
         "detected": {
           "label": "Looks like {class}"
@@ -14242,79 +14233,54 @@
             "body": "Reads are enforced by the database."
           }
         },
-        "estimate": {
-          "body": "Estimated {count} row read, threshold {threshold}. | Estimated {count} rows read, threshold {threshold}."
-        },
         "exemption": {
           "approve": {
             "label": "Lift for this query"
           },
           "deny": {
             "label": "Keep the limit"
-          },
-          "expensiveQuery": {
-            "label": "Estimated rows read"
-          },
-          "lede": {
-            "body": "{connection} ({kind}) asks to run one statement past a limit. Approving runs this statement once; the limit stays for every other call."
-          },
-          "limit": {
-            "label": "{label}: {measured}, limit {max}"
-          },
-          "noTimeout": {
-            "body": "Approving runs this statement with no time limit. Stop it from the operations panel if needed."
-          },
-          "reason": {
-            "label": "Agent’s reason"
-          },
-          "statementTimeout": {
-            "label": "Statement timeout"
           }
         },
         "formatted": {
           "option": "Formatted"
         },
-        "kube": {
-          "describe": {
-            "body": "An MCP client wants to describe an object in {cluster} through the database MCP server."
+        "op": {
+          "liftLimit": {
+            "label": "Lift limit"
           },
-          "discover": {
-            "body": "An MCP client wants to list namespaces and resource kinds in {cluster} through the database MCP server."
-          },
-          "list": {
-            "body": "An MCP client wants to list resources in {cluster} through the database MCP server."
-          },
-          "logs": {
-            "body": "An MCP client wants to read pod logs in {cluster} through the database MCP server."
+          "maskedRead": {
+            "label": "Masked read"
           }
-        },
-        "other": {
-          "body": "{connection} ({kind}) wants to run a statement through the database MCP server."
-        },
-        "read": {
-          "body": "{connection} ({kind}) wants to run a read statement through the database MCP server."
-        },
-        "reviewResult": {
-          "label": "Review the result before the AI gets it"
         },
         "reviewResultOn": {
           "body": "This connection reviews {mode} results."
         },
+        "reviewResultShort": {
+          "label": "Review result"
+        },
+        "risk": {
+          "alreadyRan": {
+            "status": "Already ran"
+          },
+          "bodyTruncated": {
+            "status": "Body truncated"
+          },
+          "credentialSent": {
+            "status": "Credential sent"
+          },
+          "rows": {
+            "status": "~{rows} rows"
+          },
+          "timeout": {
+            "status": "Timeout {measured} / {max}"
+          }
+        },
         "script": {
-          "folder": {
-            "label": "Runs in {folder}"
+          "secretMissing": {
+            "status": "Secret · unset"
           },
-          "lede": {
-            "body": "An MCP client wants to run this script on your computer. It sees the output only if it asks for the logs."
-          },
-          "operation": {
-            "label": "Agent run request"
-          },
-          "secretSaved": {
-            "status": "Saved value, not shown"
-          },
-          "secretUnset": {
-            "status": "No saved value"
+          "secretSet": {
+            "status": "Secret · saved"
           }
         },
         "statementView": {
@@ -14324,35 +14290,20 @@
           "unclassified": {
             "label": "Unclassified"
           }
-        },
-        "unknown": {
-          "body": "{connection} ({kind}) wants to run a statement this app couldn’t classify through the database MCP server."
-        },
-        "write": {
-          "body": "{connection} ({kind}) wants to run a write statement through the database MCP server."
         }
       },
       "preview": {
-        "lede": {
-          "body": "{connection} ({kind}) ran this statement. Check its result before the AI gets it."
-        },
         "masked": {
           "hint": "A masking rule applies to this column."
         },
-        "ran": {
-          "body": "This statement already ran. Withhold hides the result from the AI; it does not undo the change."
+        "moreRows": {
+          "label": "{count} more row | {count} more rows"
         },
         "redisType": {
           "status": "Type {type}"
         },
-        "requested": {
-          "body": "{connection} ({kind}) ran this statement. You asked to check its result before the AI gets it."
-        },
         "send": {
           "label": "Send to AI"
-        },
-        "summary": {
-          "status": "{returned} of {count} rows returned"
         },
         "truncated": {
           "status": "Cut off at the row limit"
@@ -16766,6 +16717,11 @@
       }
     },
     "proof": {
+      "approval": {
+        "rev": {
+          "label": "Rev {n}"
+        }
+      },
       "change": {
         "accept": {
           "label": "Accept"
@@ -16777,7 +16733,7 @@
           "label": "Current"
         },
         "openWindow": {
-          "label": "Open in proof window"
+          "label": "Open window"
         },
         "proposed": {
           "label": "Proposed"
@@ -17814,8 +17770,13 @@
       "expired": {
         "status": "Expired"
       },
-      "origin": {
-        "status": "Requested by {origin}"
+      "left": {
+        "status": "{time} left"
+      },
+      "risk": {
+        "unsupported": {
+          "status": "Unsupported"
+        }
       },
       "toast": {
         "count": {
@@ -17824,9 +17785,6 @@
         "expires": {
           "status": "Next expires in {time}"
         }
-      },
-      "unsupported": {
-        "body": "This version can’t show this request. Deny it."
       }
     },
     "bootFailure": {
