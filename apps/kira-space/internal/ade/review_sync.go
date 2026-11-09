@@ -239,4 +239,3 @@ func (b *TaskBoard) checkFastForward(ctx context.Context, entry *gitsession.Repo
 	}
 	return nil
 }
-
