@@ -151,6 +151,9 @@ func (b *TaskBoard) renameRefusal(ctx context.Context, sb model.AdeTaskBranch, t
 	if text, err := b.nameRefusal(ctx, *rec, sb.Name, to); text != "" || err != nil {
 		return text, renameFacts{}, err
 	}
+	if text, err := b.sharedRefusal(sb); text != "" || err != nil {
+		return text, renameFacts{}, err
+	}
 	if text := b.busyRefusal(ctx, sb); text != "" {
 		return text, renameFacts{}, nil
 	}
@@ -183,6 +186,25 @@ func (b *TaskBoard) nameRefusal(ctx context.Context, rec model.CodeRepo, from, t
 		return fmt.Sprintf("%q cannot be renamed: it belongs to the repo.", from), nil
 	}
 	return "", err
+}
+
+// sharedRefusal refuses while another live row of the repo has the same branch name.
+func (b *TaskBoard) sharedRefusal(sb model.AdeTaskBranch) (string, error) {
+	live, err := b.deps.Tasks.BranchesLive()
+	if err != nil {
+		return "", err
+	}
+	for _, row := range live {
+		if row.ID == sb.ID || row.CodeRepoID != sb.CodeRepoID || row.Name != sb.Name {
+			continue
+		}
+		title := row.TaskID
+		if t, err := b.deps.Tasks.GetTask(row.TaskID); err == nil && t.Title != "" {
+			title = t.Title
+		}
+		return fmt.Sprintf("Branch %s is also on task %q; it cannot be renamed while shared.", sb.Name, title), nil
+	}
+	return "", nil
 }
 
 // busyRefusal refuses while Kira Space itself works on the branch: a sandbox, a rebase or a prepare script.

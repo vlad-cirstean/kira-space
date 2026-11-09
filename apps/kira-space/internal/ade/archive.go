@@ -43,14 +43,22 @@ func (b *TaskBoard) linkedBranches(ctx context.Context, tc *taskCtx) ([]linkedBr
 }
 
 // linkedBranchOf reports the branch's linked worktree; false for a not-created branch or one checked
-// out at the repo root.
+// out at the repo root. A row's linked worktree is its own folder, attached or detached; it is never a
+// folder another live row owns.
 func (b *TaskBoard) linkedBranchOf(ctx context.Context, sb model.AdeTaskBranch) (linkedBranch, bool, error) {
 	if sb.Name == "" {
 		return linkedBranch{}, false, nil
 	}
-	path, err := b.worktreeOf(ctx, sb)
-	if err != nil || path == "" {
+	at, err := b.rowWorktree(ctx, sb)
+	if err != nil {
 		return linkedBranch{}, false, err
+	}
+	path := at.attached
+	if at.detached {
+		path = at.own
+	}
+	if path == "" {
+		return linkedBranch{}, false, nil
 	}
 	entry, err := b.openRepo(ctx, sb.CodeRepoID)
 	if err != nil {

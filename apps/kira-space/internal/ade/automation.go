@@ -106,10 +106,11 @@ func (b *TaskBoard) Context(taskID, branchID string) (scriptruns.ADEContext, err
 
 // branchContext adds a chosen branch's variables, worktree and setup state to c.
 func (b *TaskBoard) branchContext(tc *taskCtx, sb model.AdeTaskBranch, c *scriptruns.ADEContext) error {
-	path, err := b.worktreeOf(b.ctx, sb)
+	at, err := b.rowWorktree(b.ctx, sb)
 	if err != nil {
 		return err
 	}
+	path := at.attached
 	if path == "" {
 		rec, err := b.deps.CodeRepos.Get(sb.CodeRepoID)
 		if err != nil {
@@ -118,7 +119,9 @@ func (b *TaskBoard) branchContext(tc *taskCtx, sb model.AdeTaskBranch, c *script
 		if rec == nil {
 			return fmt.Errorf("code repo %s is no longer registered", sb.CodeRepoID)
 		}
-		if path, err = b.worktreeDirFor(sb, rec.Name, ""); err != nil {
+		if at.detached {
+			path = at.own // the next start reattaches the row's own folder
+		} else if path, err = b.worktreeDirFor(sb, rec.Name, ""); err != nil {
 			return err
 		}
 		c.Pending = true

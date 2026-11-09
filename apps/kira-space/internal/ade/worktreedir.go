@@ -1,6 +1,7 @@
 package ade
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,4 +51,102 @@ func (b *TaskBoard) worktreeDirFor(sb model.AdeTaskBranch, repoName, owned strin
 		dir = name
 	}
 	return "", fmt.Errorf("ade: no free worktree folder after %d tries", maxWorktreeDirTry)
+}
+
+// ownWorktreePath is the folder reserved for the row, "" while it has none.
+func (b *TaskBoard) ownWorktreePath(repoName string, sb model.AdeTaskBranch) string {
+	if !ids.Is(ids.Worktree, sb.WorktreeDir) {
+		return ""
+	}
+	return filepath.Join(WorktreesBase(b.deps.HomeDir), pathSegment(repoName), sb.WorktreeDir)
+}
+
+// worktreeOwners maps each own worktree path of the live rows of one repo to its row.
+func (b *TaskBoard) worktreeOwners(repoName string, live []model.AdeTaskBranch, codeRepoID string) map[string]model.AdeTaskBranch {
+	out := map[string]model.AdeTaskBranch{}
+	for _, row := range live {
+		if row.CodeRepoID != codeRepoID {
+			continue
+		}
+		if p := b.ownWorktreePath(repoName, row); p != "" {
+			out[filepath.Clean(p)] = row
+		}
+	}
+	return out
+}
+
+// attachment is where a row's branch is checked out, seen from the row.
+type attachment struct {
+	// attached is the path the row works in now: its branch is checked out there and no other live
+	// row owns that folder. "" = detached or not checked out.
+	attached string
+	// own is the row's reserved folder ("" = none yet).
+	own string
+	// holder is the path where git has the branch checked out, wherever that is.
+	holder string
+	// detached is true when the row's own folder exists but its branch is held elsewhere or nowhere.
+	detached bool
+	// owner is the other live row whose own folder holds the branch; nil when none.
+	owner *model.AdeTaskBranch
+}
+
+// resolveAttachment derives the attach state of sb from git's holder path, the live rows' own
+// folders and whether the row's own folder exists on disk. The row identity is its own folder, never
+// the branch name: two rows can share a name.
+func resolveAttachment(sb model.AdeTaskBranch, own, holder string, owners map[string]model.AdeTaskBranch, ownExists bool) attachment {
+	a := attachment{own: own, holder: holder}
+	cleanHolder := ""
+	if holder != "" {
+		cleanHolder = filepath.Clean(holder)
+		if row, ok := owners[cleanHolder]; ok && row.ID != sb.ID {
+			r := row
+			a.owner = &r
+		}
+	}
+	switch {
+	case holder == "":
+	case own != "" && cleanHolder == filepath.Clean(own):
+		a.attached = holder
+	case a.owner == nil:
+		a.attached = holder
+	}
+	a.detached = a.attached == "" && own != "" && ownExists
+	return a
+}
+
+// rowWorktree reads the row's attach state: its repo's inventory, registered name and live rows.
+func (b *TaskBoard) rowWorktree(ctx context.Context, sb model.AdeTaskBranch) (attachment, error) {
+	if sb.Name == "" {
+		return attachment{}, nil
+	}
+	entry, err := b.openRepo(ctx, sb.CodeRepoID)
+	if err != nil {
+		return attachment{}, err
+	}
+	inv, err := entry.BranchInventory(ctx)
+	if err != nil {
+		return attachment{}, err
+	}
+	holder := ""
+	if row, ok := localBranch(inv, sb.Name); ok {
+		holder = row.WorktreePath
+	}
+	rec, err := b.deps.CodeRepos.Get(sb.CodeRepoID)
+	if err != nil {
+		return attachment{}, err
+	}
+	if rec == nil {
+		return resolveAttachment(sb, "", holder, nil, false), nil
+	}
+	live, err := b.deps.Tasks.BranchesLive()
+	if err != nil {
+		return attachment{}, err
+	}
+	own := b.ownWorktreePath(rec.Name, sb)
+	ownExists := false
+	if own != "" {
+		_, statErr := os.Lstat(own)
+		ownExists = statErr == nil
+	}
+	return resolveAttachment(sb, own, holder, b.worktreeOwners(rec.Name, live, sb.CodeRepoID), ownExists), nil
 }

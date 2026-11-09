@@ -216,10 +216,16 @@ func (b *TaskBoard) planRebase(ctx context.Context, tc *taskCtx, args adewire.On
 	// Worktrees: the task's own branches go through the launch gate on a real rebase.
 	paths := make([]string, len(p.stack))
 	for i, n := range p.stack {
-		if row, ok := localBranch(sc.inv, n.sb.Name); ok {
-			paths[i] = row.WorktreePath
+		at, err := b.rowWorktree(ctx, n.sb)
+		if err != nil {
+			return nil, err
 		}
-		if paths[i] == "" {
+		paths[i] = at.attached
+		switch {
+		case paths[i] != "":
+		case at.detached:
+			p.predicted[n.sb.ID] = at.own
+		default:
 			if p.predicted[n.sb.ID], err = b.worktreeDirFor(n.sb, rec.Name, ""); err != nil {
 				return nil, err
 			}
@@ -345,6 +351,10 @@ func (b *TaskBoard) rebaseBlockers(ctx context.Context, p *rebasePlan, entry *gi
 		}
 		if s, ok := setups[sb.ID]; ok && s.State != model.AdeSetupReady {
 			p.block(sb.ID, "setup", "the worktree of %s is still being prepared", sb.Name)
+		}
+		if at, err := b.rowWorktree(ctx, sb); err == nil && at.owner != nil {
+			p.block(sb.ID, "attachedElsewhere", "%s is checked out in the worktree of another task (%s)", sb.Name, at.holder)
+			continue
 		}
 		if paths[i] == "" {
 			p.block(sb.ID, "noWorktree", "%s has no worktree yet: one is created", sb.Name)

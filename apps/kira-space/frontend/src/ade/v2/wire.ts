@@ -1086,6 +1086,7 @@ type RebaseBlockerKind =
   | 'baseMissing'
   | 'parentDraft'
   | 'noWorktree'
+  | 'attachedElsewhere'
   | 'setup';
 export interface RebaseBlocker {
   branchId: string;

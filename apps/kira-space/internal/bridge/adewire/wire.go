@@ -1470,7 +1470,7 @@ type RebaseStackItem struct {
 	OntoRef  string `json:"ontoRef"`
 }
 
-// RebaseBlocker kinds: dirty, running, inProgress, baseMissing, parentDraft, noWorktree, setup.
+// RebaseBlocker kinds: dirty, running, inProgress, baseMissing, parentDraft, noWorktree, attachedElsewhere, setup.
 type RebaseBlocker struct {
 	BranchID string `json:"branchId"`
 	Kind     string `json:"kind"`
