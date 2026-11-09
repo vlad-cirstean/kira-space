@@ -7,7 +7,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 | P580 | Database MCP `api_request`: per-host and per-method rules with wildcards | Planned |
 | P581 | Review tool: diff against target branch like a source control app, fetch buttons | Planned |
 | P582 | Handovers: select and copy text | Planned |
-| P583 | Agent worktree: work on an already existing branch | Planned (design choice pending) |
+| P583 | Agent worktree: work on an already existing branch | Planned |
 | P584 | Shared config: readable YAML file names and step names | Planned |
 | P585 | Shared config: share repos by origin, with prepare-worktree configs | Planned |
 | P586 | Task panel Details: open links externally | Planned |
@@ -39,7 +39,8 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 ## P583 Agent worktree: work on an already existing branch
 
 - Ask (user): an agent cannot check out an already existing branch in its worktree. It cannot run tests on finished work or fix something on it. User believes the cause is git refusing one branch in two worktrees, and asked which solutions exist.
-- Status: user has not yet chosen. Options put to the user: (1) detached checkout of the branch tip (run tests, no commits on the branch); (2) new branch forked from the existing one, merged or fast-forwarded back; (3) adopt: the worktree that holds the branch releases it (detaches) and the agent's worktree takes it; (4) point the agent at the worktree that already holds the branch (`existing` outcome of `request_branches`); (5) `--ignore-other-worktrees` (unsafe, listed for completeness). Plan starts only after the user picks.
+- Decision (user): option 3, adopt. The agent checks out the existing branch; when another worktree holds it, Kira asks the user to detach it there first, then checks out.
+- UI (user): a task's branch row shows the branch name, never `HEAD`. When two tasks use the same branch, the row shows that. A worktree whose branch was detached away shows a detached icon; hover names the task and worktree where the branch is attached now. Attached versus detached must be visible at a glance.
 - Context: `request_branches` and `ensureWorktree` (`docs/ARCHITECTURE.md` "Branch requests"), `internal/gitops` worktree add, `internal/gitpreflight`.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
 
