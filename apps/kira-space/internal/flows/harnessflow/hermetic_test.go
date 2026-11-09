@@ -30,9 +30,7 @@ func TestHermeticOpenCode(t *testing.T) {
 
 func hermeticOpenCode(t *testing.T, on bool) {
 	app := flowharness.New(t, flowharness.WithOpenCode(), flowharness.WithTrackerGrace(time.Second))
-	if !on {
-		app.SetHermetic(t, false)
-	}
+	app.SetHermetic(t, on)
 	for _, f := range []string{".config/opencode/opencode.json", ".config/git/config"} {
 		p := filepath.Join(app.Home, f)
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {

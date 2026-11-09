@@ -211,6 +211,7 @@ func TestSmartScriptRules(t *testing.T) {
 
 	t.Run("outcomes", func(t *testing.T) {
 		app := flowharness.New(t)
+		app.SetHermetic(t, true) // the resume command carries the hermetic flags; off by default since P588
 		dir := t.TempDir()
 		budget := filepath.Join(dir, "budget.jsonl")
 		denied := filepath.Join(dir, "denied.jsonl")

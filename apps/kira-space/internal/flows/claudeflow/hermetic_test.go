@@ -46,6 +46,7 @@ func TestHermeticClaude(t *testing.T) {
 	const secret = "hermetic-secret-value"
 	t.Setenv(fakeagent.EnvRecordEnv, "ENABLE_CLAUDEAI_MCP_SERVERS,CLAUDE_CODE_DISABLE_AUTO_MEMORY")
 	app := flowharness.New(t)
+	app.SetHermetic(t, true) // off by default since P588
 	repo := app.NewRepo("proj")
 	repo.Commit("base", map[string]string{"a.txt": "a\n"})
 	claude(app, map[string][]fakeagent.Action{"*": {{Name: "done"}}})

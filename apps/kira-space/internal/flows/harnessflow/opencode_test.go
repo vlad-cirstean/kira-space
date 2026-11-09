@@ -120,6 +120,7 @@ func TestOpenCodeNotFound(t *testing.T) {
 // refuses what it cannot do. Frontend half: agent-provider.spec.ts.
 func TestOpenCodeProvider(t *testing.T) {
 	app := flowharness.New(t, flowharness.WithOpenCode(), flowharness.WithTrackerGrace(time.Second))
+	app.SetHermetic(t, true) // the env-word launch is hermetic only; off by default since P588
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	repoRec, err := app.W.CodeWorkspace.ImportRepo(ctx, bridge.CodeWorkspaceImportArgs{Path: repo.Dir})
 	if err != nil {
