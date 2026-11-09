@@ -13,6 +13,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 | P586 | Task panel Details: open links externally | Done |
 | P587 | Database MCP script runner: per-script short or long running | Done |
 | P588 | Defaults: step sandbox off, step Database MCP on, hermetic off | Done |
+| P589 | Approval dialog redesign | Planned |
 
 Phases run in table order, one at a time, unless the user asks for a batch.
 
@@ -112,3 +113,9 @@ Phases run in table order, one at a time, unless the user asks for a batch.
   - `agent.hermetic`: default false in `appsettings.DefaultAgent`, `settings.ts` and `settingsDomain.ts`. Unchanged on purpose: nil `Hermetic` readers stay on (scriptruns and agentcfg serve Studio, always hermetic) and a settings read error still launches hermetic (fail closed).
   - Running tasks keep their snapshot (stored access and `dbMcp`) and show `workflowOutdated` until they end; no migration.
   - Tests: contracts regenerated (diff is only `access` write to off, `dbMcp` false to true, hashes). `ade` test boards get a `fakeDbMcp`. Sandbox, rename and context flows name `access: write`; hermetic flows call `SetHermetic(true)`. Fixed on the spot, failing at the phase start: `journeyflow` restart (P584 file rename) and `llmpromptsflow` TestList (266 prompts).
+
+## P589 Approval dialog redesign
+
+- Ask (user): redesign the approvals dialog. The grey line left of each item has no meaning; the item repeats data (connection, kind, operation, origin) in several places; cards, boxes and sentences make it hard to scan. Final design after 6 rounds, approved ("Perfect"): `plans/P589-design/approval-dialog-proposal.md` (spec), `approval-dialog-proposal.html` (mockup), `approval-dialog-proposal-dark.png` (render). Extra: "some things are a bit misaligned in the mockup; make sure they are correctly aligned in the implementation."
+- Context: `packages/workbench/src/approvals/` (`ApprovalItemCard.vue`, `ApprovalsDialog.vue`, `registry.ts`), Studio kinds `frontend/src/studio/approvals/`, Space kinds `frontend/src/ade/v2/request/`; `docs/ARCHITECTURE.md` colour marks rule and "Approvals surface (P520)". Frontend only: item payloads and IPC do not change.
+- Tests: UI only. Payloads unchanged, so Go flow tests and contracts stay as they are; the UI specs that replay those contracts carry the scenario (split-at-IPC rule). New Playwright alignment spec per kind; visual snapshot regenerated in PR CI.
