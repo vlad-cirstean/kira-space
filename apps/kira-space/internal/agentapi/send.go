@@ -112,7 +112,7 @@ func optionsFor(p Planned, g Globals, m mask) httpclient.Options {
 	opts := httpclient.Options{
 		RequestTimeoutMs: &timeoutMs, MaxResponseMb: &maxMb, SSLVerify: &verify,
 		FollowRedirects: &follow, MaxRedirects: &maxHops, Ephemeral: true,
-		WireMask: m.repl, RedirectGuard: redirectGuard(p.creds),
+		WireMask: m.repl, RedirectGuard: redirectGuard(p.Method, p.creds, p.access),
 	}
 	if g.HTTPVersion != "" {
 		opts.HTTPVersion = &g.HTTPVersion

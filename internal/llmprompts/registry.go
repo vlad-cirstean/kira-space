@@ -1566,7 +1566,7 @@ var DbmcpToolAPIListEnvironments = define(Entry{
 // DbmcpToolAPIRequest describes the api_request tool.
 var DbmcpToolAPIRequest = define(Entry{
 	ID: "dbmcp.tool.api_request", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "api_request",
-	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve. TLS is always verified. Secret values are masked in the response, which is capped.",
+	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve. User access rules may refuse a host or method; the error names the allowed ones. TLS is always verified. Secret values are masked in the response, which is capped.",
 }, NoVars{})
 
 var (
