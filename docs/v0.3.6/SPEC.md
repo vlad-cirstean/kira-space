@@ -11,6 +11,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 | P584 | Shared config: readable YAML file names and step names | Done |
 | P585 | Shared config: share repos by origin, with prepare-worktree configs | Planned |
 | P586 | Task panel Details: open links externally | Planned |
+| P587 | Database MCP script runner: per-script short or long running | Planned |
 
 Phases run in table order, one at a time, unless the user asks for a batch.
 
@@ -79,4 +80,10 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 
 - Ask (user): each link in the task panel Details tab gets a button that opens it externally, in the system browser.
 - Context: Details tab (`details/`, `AdeTaskChain.vue`, Jira and other link lines); existing external-open path (`TestOpenLinks` in `internal/flows/appflow/misc_test.go`, `openLink` in `AdeArtifactList.vue`). Reuse that path; the renderer sends no raw URL to a browser API of its own. Planner lists every link kind in the panel and which already have the button.
+- Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+
+## P587 Database MCP script runner: per-script short or long running
+
+- Ask (user): the MCP script runner (`run_script`, `get_script_run`) makes the AI wait a fixed 50 s for a script (`scriptWaitMax` in `apps/kira-space/internal/dbmcp/script_tools.go`). A script can be a long running process that runs for hours. Whether a script is short or long running must be configurable in the script itself.
+- Context: `run_script` and `get_script_run` (`docs/ARCHITECTURE.md` "Database MCP"), the script (run/automation) YAML and editor in Runs, the agent-facing tool descriptions in the prompt registry (`internal/llmprompts`, `budget.tsv`). Planner establishes the current wait, polling and result flow first, then decides the script setting (for example a short/long mode or a wait limit), how a long script returns at once with a run id the AI polls or follows, how output and exit state stay readable while it runs, schema and validation, UI for the setting, and config sync impact (module `runs`).
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
