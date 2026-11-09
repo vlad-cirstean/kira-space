@@ -207,7 +207,7 @@ func (s *Store) write(args SaveArgs) (string, error) {
 		if s.FileFor(args.Path) != "" {
 			return "", ipcerr.T(ipcerr.CodeConflict, "backend.space.repoFiles.pathTaken.body", nil)
 		}
-		name, err := s.freeName(slug(Key(args.Path)))
+		name, err := s.freeName(slug(Key(args.Path)), nil)
 		if err != nil {
 			return "", err
 		}

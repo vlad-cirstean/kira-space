@@ -2298,6 +2298,9 @@
         "nicknameLong": {
           "body": "The nickname must be at most 40 characters on one line."
         },
+        "originInvalid": {
+          "body": "Set origin to the repository’s remote URL, with no credentials in it."
+        },
         "pathAbsolute": {
           "body": "The path must be absolute and free of ~ and relative segments."
         },
