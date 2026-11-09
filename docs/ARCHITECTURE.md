@@ -2827,6 +2827,7 @@ Stage = workflow step. A handover is text one stage leaves for the next. Table `
 - Frontend: one editor, `notes/AdeNotesEditor.vue` (`v-model`, emits only after a user edit so an untouched editor never reports normalized text). It serves the chain entries (read-only view, edit in place), the composer, the stage dialog and the Add popover. `parseWithLineBreaks` (`notes/notesDoc.ts`) keeps single newlines in agent text; `marked` options are global, so a per-editor option would leak. The composer is hidden by default; `state/adeNoteComposer.ts` keeps it revealed with its draft across tab and task switches, in memory only. The timeline skips `note` rows.
 - Mobile keeps plain text: the step-move notes field in `PlanTaskCard.vue` stays a `Textarea` (no Wails bridge or TipTap in the mobile entry); the Later shelf reads the derived `Task.notes`.
 - Tests: flows/adeflow `TestUnifiedNotes` (contract `ade-notes`), the migration test `migrate_unified_notes_test.go`, tests/ui/ade-v2-notes.spec.ts.
+- Selection (P582): body is `select-none`, and TipTap with `editable: false` renders `contenteditable="false"`, which the `base.css` opt-in misses; a read-only `AdeNotesEditor` adds `select-text` on `EditorContent`. Each chain entry with a body has a copy icon button (`useCopy`, body verbatim). The Run dialog handover and task notes cards are `select-text`.
 
 #### Stage move sessions (P469)
 

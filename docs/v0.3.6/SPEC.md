@@ -6,7 +6,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 |---|---|---|
 | P580 | Database MCP `api_request`: per-host and per-method rules with wildcards | Done |
 | P581 | Review tool: diff against target branch like a source control app, fetch buttons | Done |
-| P582 | Handovers: select and copy text | Planned |
+| P582 | Handovers: select and copy text | Done |
 | P583 | Agent worktree: work on an already existing branch | Planned |
 | P584 | Shared config: readable YAML file names and step names | Planned |
 | P585 | Shared config: share repos by origin, with prepare-worktree configs | Planned |
@@ -52,6 +52,7 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 - Ask (user): text in handovers cannot be selected and copied easily. Make it so.
 - Context: handover rendering in the task panel Details chain (`AdeTaskChain.vue`), stage handover (P407). Same class of fix as P577.
 - Tests: UI spec; backend half only if one exists.
+- Result: read-only `AdeNotesEditor` and the Run dialog handover and notes cards opt into `select-text` (root cause: body `select-none`, TipTap `contenteditable="false"` missed the `base.css` opt-in). Each chain entry gets a `useCopy` copy icon button (`ade-handover-copy`, body verbatim). UI spec `ade-v2-handover.spec.ts` covers selection, clipboard write and the Run dialog card. No backend half: no IPC, wire or Go change. Docs: ARCHITECTURE Unified notes bullet.
 
 ## P583 Agent worktree: work on an already existing branch
 
