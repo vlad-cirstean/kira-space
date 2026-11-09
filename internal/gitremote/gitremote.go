@@ -27,7 +27,11 @@ func Key(raw string) (key string, ok bool) {
 			return "", false
 		}
 		colon := strings.IndexByte(raw, ':')
-		if colon < 1 {
+		if colon < 1 || strings.Contains(raw, `\`) {
+			return "", false
+		}
+		// A drive letter ("C:/work/repo") is a local path, not a host.
+		if colon == 1 && len(raw) > 2 && raw[2] == '/' {
 			return "", false
 		}
 		host, path = raw[:colon], raw[colon+1:]

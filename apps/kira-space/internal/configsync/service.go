@@ -16,6 +16,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpath"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -536,6 +537,7 @@ func (s *Service) RepoSharedText(ctx context.Context, repoID string) (string, er
 	if s.o.Repos == nil {
 		return "", errf(ErrNotFound, "backend.space.configSync.repo.notFound.body")
 	}
+	repoID = gitpath.CleanNFC(repoID) // target ids are repocfg.Key forms
 	known := slices.ContainsFunc(s.o.Repos.Targets(), func(t RepoTarget) bool { return t.RepoID == repoID })
 	if !known {
 		return "", errf(ErrNotFound, "backend.space.configSync.repo.notFound.body")
@@ -550,6 +552,10 @@ func (s *Service) RepoSharedText(ctx context.Context, repoID string) (string, er
 	text, err := s.o.Repos.SharedText(repoID, "https://"+st.keys[0])
 	if err != nil {
 		return "", internal(err)
+	}
+	// Same gate the import side runs: the user commits this text to a shared repository.
+	if at, hit := sharedCredentialAt(text); hit {
+		return "", &Error{Kind: ErrBadRequest, Key: "backend.space.configSync.gate.literalCredential.body", Params: map[string]string{"at": at}}
 	}
 	return string(text), nil
 }

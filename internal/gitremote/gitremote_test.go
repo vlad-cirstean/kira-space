@@ -22,6 +22,8 @@ func TestKey(t *testing.T) {
 		{"./billing", "", false},
 		{"file:///srv/git/billing.git", "", false},
 		{"~/billing", "", false},
+		{"C:/work/repo", "", false},
+		{`C:\work\repo`, "", false},
 		{"https://github.com", "", false},
 		{"https://github.com/", "", false},
 		{"https://github.com/a/../b", "", false},
