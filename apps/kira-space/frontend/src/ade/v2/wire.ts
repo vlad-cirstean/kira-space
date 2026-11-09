@@ -932,6 +932,30 @@ export interface ReviewWorkingStampArgs {
 export interface ReviewWorkingStamp {
   stamp: string /* digest of size, mtime and mode of the listed worktree files; '' without a worktree */;
 }
+/** One ref of a review against its remote twin; counts are local refs as of the last fetch. */
+export interface RefSync {
+  name: string /* spelling the review uses: feat/x or origin/feat/x */;
+  short: string /* branch name without remote */;
+  local: boolean;
+  twin: string /* '' when none */;
+  ahead: number;
+  behind: number;
+  state: 'current' | 'behind' | 'ahead' | 'diverged' | 'remote' | 'noRemote';
+  worktree: string /* where name is checked out; '' when nowhere */;
+}
+export interface ReviewSync {
+  remote: string /* default remote; '' when none */;
+  lastFetchAt: number | null;
+  branch: RefSync;
+  base: RefSync;
+}
+export interface ReviewUpdateLocalArgs {
+  branchId: string;
+  side: 'branch' | 'base';
+}
+export interface ReviewFetchResult {
+  error: RemoteOpError | null;
+}
 export interface ReviewWorkingMarkResult {
   files: { path: string; review: ReviewFileStatus }[];
 }

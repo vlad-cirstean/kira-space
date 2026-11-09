@@ -10184,6 +10184,40 @@
             "label": "Whole file"
           }
         },
+        "sync": {
+          "ahead": {
+            "status": "{count} not pushed"
+          },
+          "diverged": {
+            "hint": "Local {name} and {twin} both have new commits. The review leaves them as they are.",
+            "status": "Diverged"
+          },
+          "fetch": {
+            "tooltip": "Fetch {remote} · fetched {ago}"
+          },
+          "fetchNever": {
+            "tooltip": "Fetch {remote} · never fetched"
+          },
+          "prBase": {
+            "hint": "This review compares with {base}. Change the branch base on the board to match.",
+            "label": "{short} targets {prBase}"
+          },
+          "remoteBase": {
+            "hint": "Compares with {base} as of the last fetch."
+          },
+          "update": {
+            "tooltip": "Fast-forward local {name} to {twin}"
+          },
+          "updateBase": {
+            "label": "Update base · {count} behind"
+          },
+          "updateBranch": {
+            "label": "Update branch · {count} behind"
+          },
+          "updateWorktree": {
+            "tooltip": "Fast-forward local {name} to {twin} in {path}"
+          }
+        },
         "window": {
           "diffs": {
             "aria": "Diffs"
