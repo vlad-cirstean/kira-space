@@ -268,8 +268,8 @@ func (b *backupper) save(module, path, file string) error {
 
 // --- library step rename -------------------------------------------------------------------------
 
-// SaveLibraryStep saves a library step from the Form editor. When the name's slug no longer matches the
-// file stem and keep is false, the file is renamed to the new stem and every workflow that references the
+// SaveLibraryStep saves a library step from the Form editor. When the name changed, its slug no longer
+// matches the file stem and keep is false, the file is renamed to the new stem and every workflow that references the
 // step follows. keep marks a file that came from the shared repo: it never moves.
 func (r *Reader) SaveLibraryStep(file, baseHash string, st adewire.WorkflowStep, keep bool) (adewire.StepEntry, error) {
 	l := r.Steps
@@ -287,7 +287,7 @@ func (r *Reader) SaveLibraryStep(file, baseHash string, st adewire.WorkflowStep,
 	if st.ID != stem {
 		return adewire.StepEntry{}, invalidf("id must equal the file name without .yaml")
 	}
-	if _, err := os.Stat(p); err != nil {
+	if !nameChanged(p, st.Name) {
 		return l.Save(file, baseHash, st)
 	}
 	r.wmu.Lock()
@@ -302,6 +302,25 @@ func (r *Reader) SaveLibraryStep(file, baseHash string, st adewire.WorkflowStep,
 		return adewire.StepEntry{}, err
 	}
 	return l.entry(newFile)
+}
+
+// nameChanged reports whether the file at path exists, parses and holds a different `name`. A save that
+// leaves the name alone never moves a file, so a hand-named file keeps its name until it is renamed.
+func nameChanged(path, name string) bool {
+	src, err := configfs.ReadCapped(path, configfs.MaxFileBytes)
+	if err != nil {
+		return false
+	}
+	var doc yaml.Node
+	if yaml.Unmarshal(src, &doc) != nil {
+		return false
+	}
+	root := docRoot(&doc)
+	if root == nil || root.Kind != yaml.MappingNode {
+		return false
+	}
+	_, n := find(root, "name")
+	return n == nil || strings.TrimSpace(n.Value) != strings.TrimSpace(name)
 }
 
 func stepTakenIn(dir string) func(string) bool {
@@ -431,8 +450,8 @@ func (r *Reader) removeOld(dir string, j renameJournal) {
 
 // --- workflow rename -----------------------------------------------------------------------------
 
-// SaveRenaming saves a workflow from the graph editor. When the name's slug no longer matches the file
-// stem and keep is false, the file moves to the new stem and retarget(oldID, newID) updates what points at
+// SaveRenaming saves a workflow from the graph editor. When the name changed, its slug no longer matches
+// the file stem and keep is false, the file moves to the new stem and retarget(oldID, newID) updates what points at
 // the id (the task rows). keep marks a shared file, which never moves.
 func (r *Reader) SaveRenaming(file, baseHash string, wf adewire.Workflow, keep bool, retarget func(oldID, newID string) error) (adewire.WorkflowEntry, error) {
 	stem := strings.TrimSuffix(file, ".yaml")
@@ -446,7 +465,7 @@ func (r *Reader) SaveRenaming(file, baseHash string, wf adewire.Workflow, keep b
 	if wf.ID != stem {
 		return adewire.WorkflowEntry{}, invalidf("id must equal the file name without .yaml")
 	}
-	if _, err := os.Stat(p); err != nil {
+	if !nameChanged(p, wf.Name) {
 		return r.Save(file, baseHash, wf)
 	}
 	r.wmu.Lock()

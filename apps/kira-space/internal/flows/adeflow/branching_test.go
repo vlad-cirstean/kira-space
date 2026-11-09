@@ -253,7 +253,8 @@ func TestBranching(t *testing.T) {
 		if !errors.As(err, &ie) || ie.Code != "E_CONFLICT" {
 			t.Fatalf("stale save err = %v, want E_CONFLICT", err)
 		}
-		if _, err := f.app.W.AdeTask.SaveWorkflow(ctx, adewire.SaveWorkflowArgs{FileName: "flow.yaml", Workflow: wf, BaseHash: first.Hash}); err != nil {
+		wf.ID = first.Workflow.ID
+		if _, err := f.app.W.AdeTask.SaveWorkflow(ctx, adewire.SaveWorkflowArgs{FileName: first.FileName, Workflow: wf, BaseHash: first.Hash}); err != nil {
 			t.Fatalf("save on the current hash: %v", err)
 		}
 	})
