@@ -16903,6 +16903,50 @@
             "option": "Send without asking"
           }
         },
+        "apiRules": {
+          "add": {
+            "label": "Add rule"
+          },
+          "anyMethod": {
+            "label": "Any method"
+          },
+          "description": "With no rules, agents can send any method to any host. With rules, a request needs an allow rule and no deny rule.",
+          "dialog": {
+            "title": "API access rule"
+          },
+          "edit": {
+            "aria": "Edit rule"
+          },
+          "effect": {
+            "label": "Effect"
+          },
+          "empty": {
+            "body": "No rules. Agents can reach any host."
+          },
+          "hostInvalid": {
+            "error": "{host} is not a valid host entry."
+          },
+          "hosts": {
+            "example": "127.0.0.1, *.example.com",
+            "hint": "Enter a host, a host with a port, a wildcard domain or * for any host. A wildcard domain matches subdomains, not the domain itself.",
+            "label": "Hosts"
+          },
+          "invalid": {
+            "body": "Saved rules couldn’t be read. Every API request is refused until you replace them."
+          },
+          "legend": {
+            "label": "API access rules"
+          },
+          "methods": {
+            "label": "Methods"
+          },
+          "noAllow": {
+            "body": "No allow rule. Every API request is refused."
+          },
+          "save": {
+            "label": "Save rule"
+          }
+        },
         "copyCommandAbove": {
           "label": "Copy command above"
         },
