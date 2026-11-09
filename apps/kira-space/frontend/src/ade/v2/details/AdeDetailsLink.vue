@@ -10,9 +10,10 @@ import AdeRow from '../panel/AdeRow.vue';
 import type { Artifact } from '../wire';
 import AdeDetailsLinkEdit from './AdeDetailsLinkEdit.vue';
 import AdeLinkKindMenu from './AdeLinkKindMenu.vue';
+import AdeLinkOpenExternal from './AdeLinkOpenExternal.vue';
 import type { LinkItem } from './linkGroups';
 
-// One link row: kind, title as a link, status, then edit and remove. Detected rows are read-only; a
+// One link row: kind, title as a link, status, then open in browser, edit and remove. Detected rows are read-only; a
 // stored row's kind chip is a menu.
 const props = defineProps<{
   item: LinkItem;
@@ -78,6 +79,7 @@ function open(e: MouseEvent): void {
       <AdeChip v-else :label="artifactKindLabel(item.kind)" tone="grey" wide />
     </template>
     <template v-if="!editing" #actions>
+      <AdeLinkOpenExternal :url="item.url" />
       <slot name="trailing" />
       <template v-if="canEdit()">
         <TooltipIconButton

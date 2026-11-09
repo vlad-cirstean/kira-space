@@ -9158,6 +9158,9 @@
         "links": {
           "title": "Links"
         },
+        "openExternal": {
+          "tooltip": "Open in browser"
+        },
         "related": {
           "title": "Related"
         },
