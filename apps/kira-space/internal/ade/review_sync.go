@@ -3,6 +3,7 @@ package ade
 import (
 	"context"
 	"slices"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
@@ -12,6 +13,9 @@ import (
 
 // review_sync.go: how fresh a review's branch and base are, and the two actions that refresh them
 // (P581). Facts compare local refs only, so they are as current as the last fetch.
+
+// reviewFetchTimeout bounds a review fetch, long enough to answer a credential prompt.
+const reviewFetchTimeout = 10 * time.Minute
 
 const (
 	reviewSideBranch = "branch"
@@ -121,36 +125,14 @@ func (b *TaskBoard) ReviewFetch(ctx context.Context, branchID string) (adewire.R
 	if err != nil {
 		return adewire.ReviewFetchResult{}, err
 	}
-	mu := b.repoMutex(sb.CodeRepoID)
-	mu.Lock()
-	defer mu.Unlock()
-	refs, err := b.reviewRefs(ctx, entry, sb)
+	remotes, err := b.reviewFetchRemotes(ctx, entry, sb)
 	if err != nil {
 		return adewire.ReviewFetchResult{}, err
 	}
-	var remotes []string
-	add := func(r string) {
-		if r != "" && !slices.Contains(remotes, r) {
-			remotes = append(remotes, r)
-		}
-	}
-	add(refs.remote)
-	for _, side := range []string{reviewSideBranch, reviewSideBase} {
-		s, err := b.syncSideOf(ctx, entry, refs, side)
-		if err != nil {
-			return adewire.ReviewFetchResult{}, err
-		}
-		if s.missing {
-			continue
-		}
-		add(s.row.Remote)
-		if s.hasTwin {
-			add(s.twin.Remote)
-		}
-	}
-	if len(remotes) == 0 {
-		return adewire.ReviewFetchResult{}, invalid("the repository has no remote")
-	}
+	// The network step runs outside the repo mutex: an askpass prompt or slow host would otherwise block
+	// adopt, detach, worktree setup and archive on this repo. git's ref locking covers concurrent fetches.
+	ctx, cancel := context.WithTimeout(ctx, reviewFetchTimeout)
+	defer cancel()
 	defer b.notifyBoard()
 	for _, remote := range remotes {
 		res, err := entry.RunRemote(ctx, b.conn, gitsession.RemoteOpParams{Kind: "fetch", Remote: remote, Prune: true}, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
@@ -162,6 +144,41 @@ func (b *TaskBoard) ReviewFetch(ctx context.Context, branchID string) (adewire.R
 		}
 	}
 	return adewire.ReviewFetchResult{}, nil
+}
+
+// reviewFetchRemotes lists the remotes a review fetch covers, reading local state under the repo mutex.
+func (b *TaskBoard) reviewFetchRemotes(ctx context.Context, entry *gitsession.RepoEntry, sb model.AdeTaskBranch) ([]string, error) {
+	mu := b.repoMutex(sb.CodeRepoID)
+	mu.Lock()
+	defer mu.Unlock()
+	refs, err := b.reviewRefs(ctx, entry, sb)
+	if err != nil {
+		return nil, err
+	}
+	var remotes []string
+	add := func(r string) {
+		if r != "" && !slices.Contains(remotes, r) {
+			remotes = append(remotes, r)
+		}
+	}
+	add(refs.remote)
+	for _, side := range []string{reviewSideBranch, reviewSideBase} {
+		s, err := b.syncSideOf(ctx, entry, refs, side)
+		if err != nil {
+			return nil, err
+		}
+		if s.missing {
+			continue
+		}
+		add(s.row.Remote)
+		if s.hasTwin {
+			add(s.twin.Remote)
+		}
+	}
+	if len(remotes) == 0 {
+		return nil, invalid("the repository has no remote")
+	}
+	return remotes, nil
 }
 
 // ReviewUpdateLocal fast-forwards the local branch or base to its remote twin, never anything else:
@@ -187,6 +204,9 @@ func (b *TaskBoard) ReviewUpdateLocal(ctx context.Context, branchID, side string
 		return adewire.ReviewSync{}, err
 	}
 	if err := b.checkFastForward(ctx, entry, s); err != nil {
+		return adewire.ReviewSync{}, err
+	}
+	if err := b.checkWorktreeIdle(ctx, entry, sb.CodeRepoID, s); err != nil {
 		return adewire.ReviewSync{}, err
 	}
 	if s.row.WorktreePath != "" {
@@ -236,6 +256,34 @@ func (b *TaskBoard) checkFastForward(ctx context.Context, entry *gitsession.Repo
 	}
 	if head != s.row.Ref {
 		return invalid("%s is not the checked-out branch of %s", s.name, s.row.WorktreePath)
+	}
+	return nil
+}
+
+// checkWorktreeIdle refuses while task activity (run, rebase, script, prepare, sandbox, agent session)
+// uses the task worktree s is checked out in: the fast-forward rewrites its files under that work.
+func (b *TaskBoard) checkWorktreeIdle(ctx context.Context, entry *gitsession.RepoEntry, codeRepoID string, s syncSide) error {
+	if s.row.WorktreePath == "" {
+		return nil
+	}
+	rec, err := b.deps.CodeRepos.Get(codeRepoID)
+	if err != nil {
+		return err
+	}
+	live, err := b.deps.Tasks.BranchesLive()
+	if err != nil {
+		return err
+	}
+	h := b.classifyHolder(*rec, entry.Summary.Root, live, nil, s.row.WorktreePath)
+	if h.class != holderTask {
+		return nil
+	}
+	why, err := b.donorBusy(ctx, *h.row)
+	if err != nil {
+		return err
+	}
+	if why != "" {
+		return invalid("%s cannot be updated now: %s", s.name, why)
 	}
 	return nil
 }
