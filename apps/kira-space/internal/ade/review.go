@@ -33,32 +33,53 @@ func refSpelling(row porcelain.InventoryRef) string {
 	return row.Remote + "/" + row.Short
 }
 
-// reviewSpellings resolves the branch and its base to ref spellings usable by review.* requests.
-func (b *TaskBoard) reviewSpellings(ctx context.Context, entry *gitsession.RepoEntry, sb model.AdeTaskBranch) (branch, base string, err error) {
+// reviewRefs is a review's two refs as resolved against one inventory.
+type reviewRefs struct {
+	inv    []porcelain.InventoryRef
+	remote string // default remote, "" when none
+	branch porcelain.InventoryRef
+	// base is the resolved base; ok is false when it is missing, with baseSpelling the stored name.
+	base         baseRef
+	baseSpelling string
+}
+
+// reviewRefs resolves the branch row and its base for review.* requests.
+func (b *TaskBoard) reviewRefs(ctx context.Context, entry *gitsession.RepoEntry, sb model.AdeTaskBranch) (reviewRefs, error) {
 	inv, err := entry.BranchInventory(ctx)
 	if err != nil {
-		return "", "", err
+		return reviewRefs{}, err
 	}
 	remote, _ := entry.DefaultRemote(ctx)
 	row, ok := resolveQueuedRef(inv, sb.Name, remote)
 	if !ok {
-		return "", "", invalid("branch %s not found in its repo", sb.Name)
+		return reviewRefs{}, invalid("branch %s not found in its repo", sb.Name)
 	}
-	branch = refSpelling(row)
 	sc, err := b.baseCtxFor(ctx, entry, sb.CodeRepoID)
+	if err != nil {
+		return reviewRefs{}, err
+	}
+	br := sc.resolveBase(sb)
+	out := reviewRefs{inv: inv, remote: remote, branch: row, base: br}
+	switch {
+	case br.ok:
+		out.baseSpelling = br.ref
+		return out, nil
+	case br.reason == baseMissing:
+		out.baseSpelling = cmpNonEmpty(sb.Base, br.name)
+		return out, nil
+	case br.reason == baseParentDraft:
+		return reviewRefs{}, invalid("the base of %s is not created yet", sb.Name)
+	}
+	return reviewRefs{}, invalid("the repo has no main branch to review against")
+}
+
+// reviewSpellings resolves the branch and its base to ref spellings usable by review.* requests.
+func (b *TaskBoard) reviewSpellings(ctx context.Context, entry *gitsession.RepoEntry, sb model.AdeTaskBranch) (branch, base string, err error) {
+	refs, err := b.reviewRefs(ctx, entry, sb)
 	if err != nil {
 		return "", "", err
 	}
-	br := sc.resolveBase(sb)
-	switch {
-	case br.ok:
-		return branch, br.ref, nil
-	case br.reason == baseMissing:
-		return branch, cmpNonEmpty(sb.Base, br.name), nil
-	case br.reason == baseParentDraft:
-		return "", "", invalid("the base of %s is not created yet", sb.Name)
-	}
-	return "", "", invalid("the repo has no main branch to review against")
+	return refSpelling(refs.branch), refs.baseSpelling, nil
 }
 
 func (b *TaskBoard) reviewTarget(ctx context.Context, tc *taskCtx, sb model.AdeTaskBranch) (adewire.ReviewWindowTarget, error) {

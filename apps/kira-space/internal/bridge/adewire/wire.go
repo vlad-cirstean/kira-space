@@ -1256,6 +1256,38 @@ type ReviewWorkingStamp struct {
 	Stamp string `json:"stamp"`
 }
 
+// RefSync is one ref of a review against its remote twin. Counts are local refs as of the last fetch.
+type RefSync struct {
+	Name   string `json:"name"`   // spelling the review uses: feat/x or origin/feat/x
+	Short  string `json:"short"`  // branch name without remote
+	Local  bool   `json:"local"`  // Name is a local branch
+	Twin   string `json:"twin"`   // twin spelling, "" when none
+	Ahead  int    `json:"ahead"`  // commits Name has over the twin
+	Behind int    `json:"behind"` // commits the twin has over Name
+	// State is current | behind | ahead | diverged | remote | noRemote.
+	State    string `json:"state"`
+	Worktree string `json:"worktree"` // where Name is checked out, "" when nowhere
+}
+
+// ReviewSync is how fresh a review's branch and base are against their remotes.
+type ReviewSync struct {
+	Remote      string  `json:"remote"` // default remote, "" when none
+	LastFetchAt *int64  `json:"lastFetchAt"`
+	Branch      RefSync `json:"branch"`
+	Base        RefSync `json:"base"`
+}
+
+// ReviewUpdateLocalArgs fast-forwards the local branch or base of a review to its remote twin.
+type ReviewUpdateLocalArgs struct {
+	BranchID string `json:"branchId"`
+	Side     string `json:"side"` // branch | base
+}
+
+// ReviewFetchResult carries a failed fetch's error; nil on success.
+type ReviewFetchResult struct {
+	Error *RemoteOpError `json:"error"`
+}
+
 // ReviewAgentState is the task's review agent row; HostWindowKey is ” unless it runs.
 type ReviewAgentState struct {
 	Session       *Session `json:"session"`

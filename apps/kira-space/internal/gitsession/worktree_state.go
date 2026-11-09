@@ -80,6 +80,38 @@ func (e *RepoEntry) WorktreeAbort(ctx context.Context, path string) error {
 	})
 }
 
+// FastForwardWorktree fast-forwards the branch checked out in the worktree at dir to target
+// (`git merge --ff-only`). git refuses when it is not a fast-forward or local changes would be
+// overwritten; its message is the error.
+func (e *RepoEntry) FastForwardWorktree(ctx context.Context, dir, target string) error {
+	defer e.invalidateAfterWrite()
+	return e.writeIn(ctx, dir, gitops.MergeFFOnlyArgs(target))
+}
+
+// FastForwardRef moves a branch checked out nowhere from oldSha to newSha; it fails when the ref
+// no longer holds oldSha.
+func (e *RepoEntry) FastForwardRef(ctx context.Context, ref, newSha, oldSha string) error {
+	defer e.invalidateAfterWrite()
+	return e.writeIn(ctx, repoWorkingDir(e.Summary), gitops.FastForwardRefArgs(ref, newSha, oldSha))
+}
+
+// writeIn runs one write spawn in dir through the repo's write gate.
+func (e *RepoEntry) writeIn(ctx context.Context, dir string, args []string) error {
+	return e.Repo.Write(ctx, func(ctx context.Context) error {
+		res, rerr := gitclient.Run(ctx, e.Repo.Runner(), e.Repo.GitPath(), gitclient.Spec{
+			Dir: dir, Args: args, ReadOnly: false, Setsid: true,
+		})
+		if ctx.Err() != nil || rerr != nil {
+			return gitclient.Classify(ctx, args, res, rerr)
+		}
+		if res.ExitCode != 0 {
+			_, msg := gitops.ClassifyOpError(string(res.Stderr), res.ExitCode)
+			return fmt.Errorf("git %s: %s", strings.Join(args, " "), msg)
+		}
+		return nil
+	})
+}
+
 // runInDirAllowing runs a read-only spawn in dir, tolerating the given exit codes.
 func (e *RepoEntry) runInDirAllowing(ctx context.Context, dir string, args []string, ok ...int) (gitclient.Result, error) {
 	var res gitclient.Result
