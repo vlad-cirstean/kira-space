@@ -163,13 +163,10 @@ func (r *Reader) New(name string) (adewire.WorkflowEntry, error) {
 	base := slug(name, "workflow")
 	r.wmu.Lock()
 	defer r.wmu.Unlock()
-	id := base
-	for n := 2; ; n++ {
-		if _, err := os.Lstat(filepath.Join(r.Dir, id+".yaml")); os.IsNotExist(err) {
-			break
-		}
-		id = fmt.Sprintf("%s-%d", base, n)
-	}
+	id := freeStem(base, func(s string) bool {
+		_, err := os.Lstat(filepath.Join(r.Dir, s+".yaml"))
+		return err == nil
+	})
 	wf := adewire.Workflow{ID: id, Name: name, Steps: []adewire.WorkflowStep{
 		{ID: "work", Name: "Work", Kind: adewire.KindManual, Results: []adewire.StepResult{}},
 	}}

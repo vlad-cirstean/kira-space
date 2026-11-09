@@ -23,6 +23,9 @@ type Reader struct {
 	Now   func() time.Time
 	// Steps is the step library that `step:` items resolve against; nil refuses every reference.
 	Steps *StepLibrary
+	// Journal is the file a rename records its plan in so a crash can finish it (RecoverRename). It lives
+	// outside the config folder; empty disables journaling.
+	Journal string
 
 	wmu  sync.Mutex // serializes the writer methods
 	once sync.Once

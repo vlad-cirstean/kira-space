@@ -264,14 +264,7 @@ func (l *StepLibrary) New(name string, kind adewire.StepKind, from *adewire.Work
 	}
 	l.wmu.Lock()
 	defer l.wmu.Unlock()
-	base := slug(name, "step")
-	id := base
-	for n := 2; ; n++ {
-		if _, err := os.Lstat(filepath.Join(l.Dir, id+".yaml")); os.IsNotExist(err) {
-			break
-		}
-		id = fmt.Sprintf("%s-%d", base, n)
-	}
+	id := freeStem(slug(name, "step"), stepTakenIn(l.Dir))
 	st.ID, st.Name = id, name
 	out, err := encodeStep(&yaml.Node{}, st)
 	if err != nil {
