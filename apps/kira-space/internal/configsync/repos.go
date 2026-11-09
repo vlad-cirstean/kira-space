@@ -68,51 +68,70 @@ func repoEntries(text []byte) (entrySet, error) {
 	if !ok {
 		return set, errNotMap
 	}
-	put := func(id string, v any) error { return set.put(id, v) }
+	if err := putTopEntries(&set, top); err != nil {
+		return set, err
+	}
+	return set, nil
+}
+
+// putTopEntries puts the entries of a decoded repos file's top-level mapping into set.
+func putTopEntries(set *entrySet, top map[string]any) error {
 	if w, ok := top["worktree"].(map[string]any); ok {
-		prep := map[string]any{}
-		for _, k := range []string{"prepare_script", "prepare_run"} {
-			if v, has := w[k]; has {
-				prep[k] = v
-			}
-		}
-		if len(prep) > 0 {
-			if err := put("worktree/prepare", prep); err != nil {
-				return set, err
-			}
-		}
-		if v, has := w["prepare_timeout"]; has {
-			if err := put("worktree/prepare_timeout", v); err != nil {
-				return set, err
-			}
+		if err := putWorktreeEntries(set, w); err != nil {
+			return err
 		}
 	}
 	if v, has := top["integration_branches"]; has {
-		if err := put("integration_branches", v); err != nil {
-			return set, err
+		if err := set.put("integration_branches", v); err != nil {
+			return err
 		}
 	}
 	if r, ok := top["review"].(map[string]any); ok {
 		if v, has := r["base_candidates"]; has {
-			if err := put("review/base_candidates", v); err != nil {
-				return set, err
+			if err := set.put("review/base_candidates", v); err != nil {
+				return err
 			}
 		}
 	}
 	if envs, ok := top["environments"].([]any); ok {
-		for _, e := range envs {
-			m, isMap := e.(map[string]any)
-			name, _ := m["name"].(string)
-			if !isMap || name == "" {
-				continue
-			}
-			if err := put("environments/"+name, m); err != nil {
-				return set, err
-			}
-			set.order = append(set.order, name)
+		return putEnvironmentEntries(set, envs)
+	}
+	return nil
+}
+
+// putWorktreeEntries puts the prepare keys as one unit and the prepare timeout.
+func putWorktreeEntries(set *entrySet, w map[string]any) error {
+	prep := map[string]any{}
+	for _, k := range []string{"prepare_script", "prepare_run"} {
+		if v, has := w[k]; has {
+			prep[k] = v
 		}
 	}
-	return set, nil
+	if len(prep) > 0 {
+		if err := set.put("worktree/prepare", prep); err != nil {
+			return err
+		}
+	}
+	if v, has := w["prepare_timeout"]; has {
+		return set.put("worktree/prepare_timeout", v)
+	}
+	return nil
+}
+
+// putEnvironmentEntries puts each named environment and records their order.
+func putEnvironmentEntries(set *entrySet, envs []any) error {
+	for _, e := range envs {
+		m, isMap := e.(map[string]any)
+		name, _ := m["name"].(string)
+		if !isMap || name == "" {
+			continue
+		}
+		if err := set.put("environments/"+name, m); err != nil {
+			return err
+		}
+		set.order = append(set.order, name)
+	}
+	return nil
 }
 
 // applyRepoEntries returns the repo file text with the take ids set to their shared value, or removed
@@ -329,6 +348,43 @@ func (s *Service) planRepos(ctx context.Context, p *plan, t *sharedTree, set Set
 		return err
 	}
 	p.repoFP = rt.fp
+	sorted := s.sharedRepoNames(t)
+	files, claimed := s.collectSharedRepoFiles(t, sorted)
+	deact := set.deactivated(reposModule)
+	taken := map[string]bool{}
+	for _, name := range sorted {
+		sh := files[name]
+		if row, blocked := sharedFileBlock(s, name, sh); blocked {
+			p.files = append(p.files, row)
+			continue
+		}
+		p.repoOwned[name] = true
+		if sh.ok {
+			p.repoOrigin[name] = sh.key
+		} else {
+			p.repoGone[name] = true
+			if _, live := claimed[sh.key]; live || sh.key == "" {
+				continue
+			}
+		}
+		p.files = append(p.files, s.originConflictRows(name, sh, rt)...)
+		matched := rt.single[sh.key]
+		if sh.ok && len(matched) == 0 && len(rt.several[sh.key]) == 0 {
+			p.files = append(p.files, s.repoRowFile(name, Row{Kind: KindUnmatched, Origin: sh.key}))
+		}
+		for _, tg := range matched {
+			fp, err := s.planRepoTarget(name, sh, tg, deact, taken)
+			if err != nil {
+				return err
+			}
+			p.files = append(p.files, fp)
+		}
+	}
+	return nil
+}
+
+// sharedRepoNames lists, sorted, the shared repos files of the tree and of the repo base dirs.
+func (s *Service) sharedRepoNames(t *sharedTree) []string {
 	names := map[string]bool{}
 	for f := range t.files[reposModule] {
 		names[f] = true
@@ -343,8 +399,14 @@ func (s *Service) planRepos(ctx context.Context, p *plan, t *sharedTree, set Set
 		sorted = append(sorted, f)
 	}
 	sort.Strings(sorted)
-	claimed := map[string]string{}
-	files := map[string]*sharedRepoFile{}
+	return sorted
+}
+
+// collectSharedRepoFiles reads each named shared file; claimed maps an origin key to the first
+// file that holds it.
+func (s *Service) collectSharedRepoFiles(t *sharedTree, sorted []string) (files map[string]*sharedRepoFile, claimed map[string]string) {
+	claimed = map[string]string{}
+	files = map[string]*sharedRepoFile{}
 	for _, name := range sorted {
 		data, ok := t.files[reposModule][name]
 		sh := &sharedRepoFile{data: data, ok: ok}
@@ -363,48 +425,32 @@ func (s *Service) planRepos(ctx context.Context, p *plan, t *sharedTree, set Set
 		}
 		claimed[sh.key] = name
 	}
-	deact := set.deactivated(reposModule)
-	taken := map[string]bool{}
-	for _, name := range sorted {
-		sh := files[name]
-		switch {
-		case sh.problem != "":
-			p.files = append(p.files, s.repoRowFile(name, Row{Kind: KindBlocked, Problem: sh.problem}))
-			continue
-		case sh.dup != "":
-			msg := i18n.T("backend.space.configSync.gate.duplicateOrigin.body", map[string]string{"file": sh.dup})
-			p.files = append(p.files, s.repoRowFile(name, Row{Kind: KindBlocked, Problem: msg, Origin: sh.key}))
-			continue
-		}
-		p.repoOwned[name] = true
-		if sh.ok {
-			p.repoOrigin[name] = sh.key
-		} else {
-			p.repoGone[name] = true
-			if _, live := claimed[sh.key]; live || sh.key == "" {
-				continue
-			}
-		}
-		for _, tg := range rt.several[sh.key] {
-			if !sh.ok {
-				break
-			}
-			msg := i18n.T("backend.space.configSync.gate.repoOrigins.body", nil)
-			p.files = append(p.files, s.repoRowFile(name, Row{Kind: KindBlocked, Problem: msg, Origin: sh.key, Target: tg.File, Repo: tg.RepoID}))
-		}
-		matched := rt.single[sh.key]
-		if sh.ok && len(matched) == 0 && len(rt.several[sh.key]) == 0 {
-			p.files = append(p.files, s.repoRowFile(name, Row{Kind: KindUnmatched, Origin: sh.key}))
-		}
-		for _, tg := range matched {
-			fp, err := s.planRepoTarget(name, sh, tg, deact, taken)
-			if err != nil {
-				return err
-			}
-			p.files = append(p.files, fp)
-		}
+	return files, claimed
+}
+
+// sharedFileBlock is the blocked row of a shared file with a problem or a duplicate origin.
+func sharedFileBlock(s *Service, name string, sh *sharedRepoFile) (*filePlan, bool) {
+	switch {
+	case sh.problem != "":
+		return s.repoRowFile(name, Row{Kind: KindBlocked, Problem: sh.problem}), true
+	case sh.dup != "":
+		msg := i18n.T("backend.space.configSync.gate.duplicateOrigin.body", map[string]string{"file": sh.dup})
+		return s.repoRowFile(name, Row{Kind: KindBlocked, Problem: msg, Origin: sh.key}), true
 	}
-	return nil
+	return nil, false
+}
+
+// originConflictRows blocks a live shared file once per target whose origin several repos share.
+func (s *Service) originConflictRows(name string, sh *sharedRepoFile, rt repoTargets) []*filePlan {
+	if !sh.ok {
+		return nil
+	}
+	var rows []*filePlan
+	for _, tg := range rt.several[sh.key] {
+		msg := i18n.T("backend.space.configSync.gate.repoOrigins.body", nil)
+		rows = append(rows, s.repoRowFile(name, Row{Kind: KindBlocked, Problem: msg, Origin: sh.key, Target: tg.File, Repo: tg.RepoID}))
+	}
+	return rows
 }
 
 // repoRowFile is a file plan that holds one row and writes nothing.
@@ -465,22 +511,9 @@ func (s *Service) stageRepoBase(p *plan, next string) error {
 	}
 	for name := range p.repoOwned {
 		dir := filepath.Join(next, reposModule, name)
-		ents, err := os.ReadDir(dir)
-		if err != nil && !os.IsNotExist(err) {
+		left, err := pruneRepoBaseDir(dir, name, keep)
+		if err != nil {
 			return err
-		}
-		left := 0
-		for _, e := range ents {
-			if e.IsDir() || e.Name() == "origin" {
-				continue
-			}
-			if !keep[reposModule+"/"+name+"/"+e.Name()] {
-				if err := os.Remove(filepath.Join(dir, e.Name())); err != nil {
-					return err
-				}
-				continue
-			}
-			left++
 		}
 		if p.repoGone[name] && left == 0 {
 			if err := os.RemoveAll(dir); err != nil {
@@ -495,6 +528,27 @@ func (s *Service) stageRepoBase(p *plan, next string) error {
 		}
 	}
 	return nil
+}
+
+// pruneRepoBaseDir removes the base files of dir no plan keeps and counts those left.
+func pruneRepoBaseDir(dir, name string, keep map[string]bool) (left int, err error) {
+	ents, err := os.ReadDir(dir)
+	if err != nil && !os.IsNotExist(err) {
+		return 0, err
+	}
+	for _, e := range ents {
+		if e.IsDir() || e.Name() == "origin" {
+			continue
+		}
+		if !keep[reposModule+"/"+name+"/"+e.Name()] {
+			if err := os.Remove(filepath.Join(dir, e.Name())); err != nil {
+				return left, err
+			}
+			continue
+		}
+		left++
+	}
+	return left, nil
 }
 
 // scriptCredentialProblem finds a credential embedded in a word of a string value, such as a token
