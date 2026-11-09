@@ -8998,12 +8998,24 @@
         }
       },
       "branchRequest": {
+        "dirty": {
+          "hint": "{count} uncommitted change stays in that worktree. | {count} uncommitted changes stay in that worktree."
+        },
         "item": {
+          "adopt": {
+            "label": "Check out {branch}, detached first in {holder}"
+          },
+          "adoptMain": {
+            "label": "Check out {branch}, detached first in the main checkout"
+          },
           "branch": {
             "label": "Create {branch} from {base}"
           },
           "branchMain": {
             "label": "Create {branch} from the repository’s main branch"
+          },
+          "checkout": {
+            "label": "Check out {branch}"
           },
           "rename": {
             "label": "Rename {from} to {branch}"
@@ -9011,6 +9023,9 @@
           "worktree": {
             "label": "Worktree for {branch}"
           }
+        },
+        "mainCheckout": {
+          "hint": "Your main checkout is left on a detached commit."
         },
         "naming": {
           "hint": "The agent names each branch. Kira Space picks each worktree folder. Approving adds a repository the task does not have yet."
@@ -9656,11 +9671,26 @@
           }
         },
         "branchRow": {
+          "detachedMain": {
+            "tooltip": "Detached. {branch} is checked out in the main checkout, {worktree}"
+          },
+          "detachedNone": {
+            "tooltip": "Detached. {branch} is not checked out anywhere. The next start checks it out here again"
+          },
+          "detachedOther": {
+            "tooltip": "Detached. {branch} is checked out in {worktree}"
+          },
+          "detachedTask": {
+            "tooltip": "Detached. {branch} is checked out in {task}, worktree {worktree}"
+          },
           "menuTitle": {
             "label": "{name} in {repo}"
           },
           "review": {
             "tooltip": "Someone else’s branch, read-only here"
+          },
+          "shared": {
+            "tooltip": "Checked out here. Also on {tasks}"
           }
         },
         "branchTip": {

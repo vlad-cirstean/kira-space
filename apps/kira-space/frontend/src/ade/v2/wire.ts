@@ -238,6 +238,24 @@ export interface ChangeRequest {
   /** '' | SUCCESS | FAILURE | PENDING | ERROR | EXPECTED. */
   checksState: string;
 }
+/** Where a branch is checked out: another task's worktree, the main checkout, any other worktree, or nowhere. */
+export interface BranchHolder {
+  kind: 'task' | 'main' | 'other' | 'none';
+  taskId: string;
+  branchId: string;
+  worktree: string;
+}
+/** The row's own worktree folder is left on a detached commit; the branch is checked out elsewhere now. */
+export interface BranchDetached {
+  worktree: string;
+  holder: BranchHolder;
+}
+/** Another live row of the same repo and branch name. */
+export interface BranchPeer {
+  taskId: string;
+  branchId: string;
+  attached: boolean;
+}
 export interface Branch {
   id: string;
   taskId: string;
@@ -256,7 +274,11 @@ export interface Branch {
   upstreamBehind: number;
   mergedIntoMain: boolean;
   mergedAt: number | null;
-  worktree: string /* '' none */;
+  worktree: string /* where the branch is checked out for this row; '' none or detached */;
+  /** Set when the row's own worktree is detached because its branch is checked out elsewhere. */
+  detached?: BranchDetached;
+  /** The other live rows of the same repo and branch name. */
+  shared?: BranchPeer[];
   setup: WorktreeSetup | null /* null until a worktree exists */;
   integration: Integration[] /* one per configured target */;
   deployments: Deployment[];

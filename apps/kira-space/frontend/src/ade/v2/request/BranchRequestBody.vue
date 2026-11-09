@@ -5,6 +5,8 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { computed, ref, watch } from 'vue';
+import { taskTitle } from '../board/labels';
+import { useBoard } from '../queries';
 import { type BranchRequestItem, branchRequestPayloadSchema } from './payload';
 
 // One approvals item for a task's branch calls. Concurrent calls merge into it, so the items group by
@@ -14,6 +16,7 @@ const emit = defineEmits<{
   options: [{ itemIds: string[]; remoteItemIds: string[]; shownItemIds: string[] }];
 }>();
 
+const board = useBoard();
 const payload = computed(() => branchRequestPayloadSchema.parse(props.item.payload));
 
 const groups = computed(() => {
@@ -63,7 +66,35 @@ function source(it: BranchRequestItem): string {
     : t('space.settings.agentUsage.session.label');
 }
 
+// The holder of an adopt item: its task and worktree, the main checkout, or the path alone.
+function holderText(it: BranchRequestItem): string {
+  const h = it.holder;
+  if (!h) return '';
+  if (h.kind !== 'task') return h.worktree; // main has its own label
+  const data = board.data.value;
+  const task = data?.tasks.find((x) => x.id === h.taskId);
+  const title = task
+    ? taskTitle(
+        task,
+        data?.branches.find((b) => b.taskId === task.id),
+        '',
+      )
+    : t('space.ade.board.newTask.label');
+  return `${title}, ${h.worktree}`;
+}
+
 function itemText(it: BranchRequestItem): string {
+  if (it.kind === 'checkout') {
+    return t('space.ade.branchRequest.item.checkout.label', { branch: it.branch });
+  }
+  if (it.kind === 'adopt') {
+    return it.holder?.kind === 'main'
+      ? t('space.ade.branchRequest.item.adoptMain.label', { branch: it.branch })
+      : t('space.ade.branchRequest.item.adopt.label', {
+          branch: it.branch,
+          holder: holderText(it),
+        });
+  }
   if (it.kind === 'rename') {
     return t('space.ade.branchRequest.item.rename.label', { from: it.from, branch: it.branch });
   }
@@ -111,6 +142,18 @@ const hasCreate = computed(() => payload.value.items.some((i) => i.kind !== 'ren
               it.repo
             }}</Label>
             <span class="text-muted-foreground">{{ itemText(it) }}</span>
+          </div>
+          <div
+            v-if="it.kind === 'adopt'"
+            class="flex flex-col gap-0.5 pl-6"
+            :data-testid="`ade-branch-request-holder-${it.id}`"
+          >
+            <FieldDescription v-if="it.dirty" :data-testid="`ade-branch-request-dirty-${it.id}`">{{
+              t('space.ade.branchRequest.dirty.hint', { count: it.dirty })
+            }}</FieldDescription>
+            <FieldDescription v-if="it.holder?.kind === 'main'">{{
+              t('space.ade.branchRequest.mainCheckout.hint')
+            }}</FieldDescription>
           </div>
           <div v-if="it.kind === 'rename' && it.upstream" class="flex items-center gap-2 pl-6">
             <Checkbox
