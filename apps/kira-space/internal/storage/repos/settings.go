@@ -101,7 +101,7 @@ func readAPIRules(stored map[string]json.RawMessage, dm *model.DbMcpSettings) {
 		_, err = apiaccess.Compile(rules)
 	}
 	if err != nil {
-		slog.Warn("settings: dbMcp.apiRules unreadable, refusing API requests", "err", err)
+		slog.Warn("settings: dbMcp.apiRules unreadable, refusing API requests", "scope", "settings", "err", err)
 		dm.APIRulesInvalid = true
 		return
 	}
