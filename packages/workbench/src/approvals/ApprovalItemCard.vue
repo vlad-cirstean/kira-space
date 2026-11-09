@@ -149,11 +149,9 @@ const risks = computed<ApprovalRisk[]>(() => {
     </div>
 
     <div class="flex items-center gap-3" data-testid="approval-footer">
-      <TruncatedText
-        class="min-w-0 flex-1 text-kira-sm text-subtle"
-        :text="requester"
-        data-testid="approval-origin"
-      />
+      <div class="min-w-0 flex-1 text-kira-sm text-subtle" data-testid="approval-origin">
+        <TruncatedText :text="requester" />
+      </div>
       <component
         :is="def?.footerAction"
         v-if="def?.footerAction"

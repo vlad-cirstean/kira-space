@@ -179,6 +179,7 @@ const padBottom = computed(() => {
         v-else
         v-model="view"
         :tabs="grid !== null"
+        :first-line="showTable ? rowHeight : undefined"
         :items="items"
         :label="t('studio.dbMcp.preview.view.aria')"
       >
@@ -198,7 +199,7 @@ const padBottom = computed(() => {
               @scroll.passive="onScroll"
             >
               <Table class="w-auto">
-                <TableHeader>
+                <TableHeader class="static bg-transparent">
                   <TableRow>
                     <TableHead
                       v-for="(col, c) in grid.columns"
@@ -265,7 +266,7 @@ const padBottom = computed(() => {
               <Button
                 variant="link"
                 size="inline"
-                class="justify-self-start text-kira-sm font-normal text-muted-foreground underline decoration-border underline-offset-3"
+                class="self-start text-kira-sm font-normal text-muted-foreground underline decoration-border underline-offset-3"
                 data-testid="db-mcp-preview-more"
               >
                 {{ t('studio.dbMcp.preview.moreRows.label', { count: hiddenRows }) }}

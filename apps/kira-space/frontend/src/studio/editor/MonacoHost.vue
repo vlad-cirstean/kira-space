@@ -490,6 +490,7 @@ function applyBaseOptions(): ConstructionOptions {
           padding: { top: 0, bottom: 0 },
           // Multiplier: sibling content text uses leading-normal (1.5).
           lineHeight: 1.5,
+          guides: { indentation: false, bracketPairs: false },
           overviewRulerLanes: 0,
           overviewRulerBorder: false,
           hideCursorInOverviewRuler: true,
@@ -857,7 +858,7 @@ watch(
     :class="[
       singleLine && 'monaco-host--single-line',
       flush &&
-        '[&_.monaco-editor]:[--vscode-editor-background:transparent] [&_.monaco-editor]:[--vscode-editorGutter-background:transparent]',
+        '[&_.monaco-editor]:[--vscode-editor-background:transparent] [&_.monaco-editor]:[--vscode-editorGutter-background:transparent] [&_.monaco-editor]:bg-transparent! [&_.monaco-editor-background]:bg-transparent! [&_.margin]:bg-transparent!',
     ]"
   >
     <pre
