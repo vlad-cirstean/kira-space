@@ -2,11 +2,12 @@
 import { dbMcpRunQueryResultSchema } from '@shared/domain/dbmcp';
 import { useQuery } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
-import SecondaryTabs, { type SecondaryTabItem } from '@theme/components/SecondaryTabs.vue';
+import type { SecondaryTabItem } from '@theme/components/SecondaryTabs.vue';
 import TooltipDetails from '@theme/components/TooltipDetails.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
-import { FieldDescription } from '@theme/components/ui/field';
+import { Button } from '@theme/components/ui/button';
+import { Collapsible, CollapsibleTrigger } from '@theme/components/ui/collapsible';
+import { FieldError } from '@theme/components/ui/field';
 import {
   Table,
   TableBody,
@@ -22,8 +23,9 @@ import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed, ref } from 'vue';
 import { control } from '../bridge/control';
-import MonacoHost from '../editor/MonacoHost.vue';
 import { loadMaskRules, maskRulesQueryKey } from '../state/maskRules';
+import FlushEditor from './FlushEditor.vue';
+import TabbedContent from './TabbedContent.vue';
 
 // The held run_query result of a response-stage approval: the table is a view of the exact bytes
 // the AI client receives on Send. Those bytes are shown on the As sent tab, and nothing here
@@ -120,6 +122,29 @@ const items = computed<SecondaryTabItem[]>(() => [
 const showTable = computed(() => view.value === 'table' && grid.value !== null);
 const unreadable = computed(() => response.data.value && !isError.value && parsed.value === null);
 
+// The rows below the first few hide behind "+N more rows"; open shows all of them, virtualized.
+const PLAIN_ROWS = 3;
+const open = ref(false);
+const hiddenRows = computed(() => Math.max(0, (grid.value?.rows.length ?? 0) - PLAIN_ROWS));
+// What sits under the table: truncation, shortened cells, Redis type and TTL, the engine's note.
+const footnote = computed(() => {
+  const r = parsed.value;
+  if (!r) return '';
+  if (r.kind === 'empty')
+    return [t('studio.common.noRows.empty'), r.note].filter(Boolean).join(' · ');
+  const parts: string[] = [];
+  if (r.truncated) parts.push(t('studio.dbMcp.preview.truncated.status'));
+  if (r.kind === 'tabular' && r.truncatedCells > 0) {
+    parts.push(t('studio.dbMcp.preview.truncatedCells.status', { count: r.truncatedCells }));
+  }
+  if (r.kind === 'keyvalue') {
+    parts.push(t('studio.dbMcp.preview.redisType.status', { type: r.redisType }));
+    if (r.ttlMs !== undefined) parts.push(t('studio.dbMcp.preview.ttl.status', { ms: r.ttlMs }));
+  }
+  if (r.note) parts.push(r.note);
+  return parts.join(' · ');
+});
+
 const { single: rowHeight } = useRowHeight();
 const scrollRef = ref<HTMLElement | null>(null);
 const {
@@ -127,11 +152,16 @@ const {
   totalSize,
   onScroll,
 } = useVirtualRows({
-  count: () => grid.value?.rows.length ?? 0,
+  count: () => (open.value ? (grid.value?.rows.length ?? 0) : 0),
   rowHeight: () => rowHeight.value,
   scrollElement: scrollRef,
   overscan: 8,
 });
+const shownRows = computed(() =>
+  open.value
+    ? virtualRows.value.map((vr) => vr.index)
+    : Array.from({ length: Math.min(PLAIN_ROWS, grid.value?.rows.length ?? 0) }, (_, i) => i),
+);
 const padTop = computed(() => virtualRows.value[0]?.start ?? 0);
 const padBottom = computed(() => {
   const last = virtualRows.value[virtualRows.value.length - 1];
@@ -140,133 +170,119 @@ const padBottom = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-72 flex-col gap-1.5" data-testid="db-mcp-preview">
+  <div data-testid="db-mcp-preview">
     <QueryState :query="response" variant="inline" :is-empty="() => false">
-      <Alert v-if="isError" variant="error" data-testid="db-mcp-preview-error">
-        <AlertDescription class="whitespace-pre-wrap">{{ text }}</AlertDescription>
-      </Alert>
-      <template v-else>
-        <SecondaryTabs
-          v-if="grid"
-          v-model="view"
-          class="self-start"
-          variant="segmented"
-          :items="items"
-          :aria-label="t('studio.dbMcp.preview.view.aria')"
-        />
-        <FieldDescription v-if="unreadable">{{
-          t('studio.dbMcp.preview.unreadable.hint')
-        }}</FieldDescription>
-        <template v-if="parsed">
-          <FieldDescription data-testid="db-mcp-preview-summary">
-            <template v-if="parsed.kind === 'empty'">{{
-              t('studio.common.noRows.empty')
-            }}</template>
-            <template v-else>
-              {{
-                t('studio.dbMcp.preview.summary.status', {
-                  returned: parsed.returned,
-                  count: parsed.rowCount,
-                })
-              }}
-              <template v-if="parsed.truncated">
-                · {{ t('studio.dbMcp.preview.truncated.status') }}</template
+      <FieldError v-if="isError" class="whitespace-pre-wrap" data-testid="db-mcp-preview-error">{{
+        text
+      }}</FieldError>
+      <TabbedContent
+        v-else
+        v-model="view"
+        :tabs="grid !== null"
+        :items="items"
+        :label="t('studio.dbMcp.preview.view.aria')"
+      >
+        <div class="flex flex-col gap-1.5">
+          <span v-if="unreadable" class="text-kira-sm text-subtle">{{
+            t('studio.dbMcp.preview.unreadable.hint')
+          }}</span>
+          <Collapsible
+            v-if="showTable && grid"
+            v-model:open="open"
+            class="flex flex-col gap-1.5"
+            data-testid="db-mcp-preview-table"
+          >
+            <div
+              ref="scrollRef"
+              :class="open ? 'max-h-72 overflow-auto' : 'overflow-hidden'"
+              @scroll.passive="onScroll"
+            >
+              <Table class="w-auto">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead
+                      v-for="(col, c) in grid.columns"
+                      :key="c"
+                      class="first:pl-0"
+                      data-testid="db-mcp-preview-column"
+                    >
+                      <Tooltip :disabled="!col.title && !col.masked">
+                        <TooltipTrigger as-child>
+                          <span class="inline-flex items-center gap-1">
+                            {{ col.label }}
+                            <CodiconIcon v-if="col.masked" name="lock" :size="12" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <TooltipDetails
+                            :title="col.label"
+                            :rows="
+                              col.title
+                                ? [{ label: t('common.field.type.label'), value: col.title }]
+                                : []
+                            "
+                            :hint="col.masked ? t('studio.dbMcp.preview.masked.hint') : undefined"
+                          />
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow
+                    v-if="padTop > 0"
+                    aria-hidden="true"
+                    class="border-0 hover:bg-transparent"
+                    :style="{ height: `${padTop}px` }"
+                  >
+                    <TableCell :colspan="grid.columns.length" class="p-0" />
+                  </TableRow>
+                  <TableRow v-for="r in shownRows" :key="r" data-testid="db-mcp-preview-row">
+                    <TableCell
+                      v-for="(cell, c) in grid.rows[r]"
+                      :key="c"
+                      class="max-w-80 truncate font-data first:pl-0"
+                      :data-null="cell === null ? '' : undefined"
+                    >
+                      <span v-if="cell === null" class="italic text-muted-foreground">{{
+                        t('studio.common.nullValue.label')
+                      }}</span>
+                      <TruncatedText v-else :text="cell" />
+                    </TableCell>
+                  </TableRow>
+                  <TableRow
+                    v-if="padBottom > 0"
+                    aria-hidden="true"
+                    class="border-0 hover:bg-transparent"
+                    :style="{ height: `${padBottom}px` }"
+                  >
+                    <TableCell :colspan="grid.columns.length" class="p-0" />
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+            <CollapsibleTrigger v-if="hiddenRows > 0 && !open" as-child>
+              <Button
+                variant="link"
+                size="inline"
+                class="justify-self-start text-kira-sm font-normal text-muted-foreground underline decoration-border underline-offset-3"
+                data-testid="db-mcp-preview-more"
               >
-              <template v-if="parsed.kind === 'tabular' && parsed.truncatedCells > 0">
-                ·
-                {{
-                  t('studio.dbMcp.preview.truncatedCells.status', { count: parsed.truncatedCells })
-                }}
-              </template>
-              <template v-if="parsed.kind === 'keyvalue'">
-                · {{ t('studio.dbMcp.preview.redisType.status', { type: parsed.redisType }) }}
-                <template v-if="parsed.ttlMs !== undefined">
-                  · {{ t('studio.dbMcp.preview.ttl.status', { ms: parsed.ttlMs }) }}
-                </template>
-              </template>
-            </template>
-            <template v-if="parsed.note"> · {{ parsed.note }}</template>
-          </FieldDescription>
-        </template>
-        <div
-          v-if="showTable && grid"
-          ref="scrollRef"
-          class="min-h-24 flex-1 overflow-auto rounded-kira"
-          data-testid="db-mcp-preview-table"
-          @scroll.passive="onScroll"
-        >
-          <Table columns>
-            <TableHeader>
-              <TableRow>
-                <TableHead
-                  v-for="(col, c) in grid.columns"
-                  :key="c"
-                  class="sticky top-0 z-1 bg-elevated"
-                  data-testid="db-mcp-preview-column"
-                >
-                  <Tooltip :disabled="!col.title && !col.masked">
-                    <TooltipTrigger as-child>
-                      <span class="inline-flex items-center gap-1">
-                        {{ col.label }}
-                        <CodiconIcon v-if="col.masked" name="lock" :size="12" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <TooltipDetails
-                        :title="col.label"
-                        :rows="
-                          col.title
-                            ? [{ label: t('common.field.type.label'), value: col.title }]
-                            : []
-                        "
-                        :hint="col.masked ? t('studio.dbMcp.preview.masked.hint') : undefined"
-                      />
-                    </TooltipContent>
-                  </Tooltip>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow
-                v-if="padTop > 0"
-                aria-hidden="true"
-                class="border-0 hover:bg-transparent"
-                :style="{ height: `${padTop}px` }"
-              >
-                <TableCell :colspan="grid.columns.length" class="p-0" />
-              </TableRow>
-              <TableRow v-for="vr in virtualRows" :key="vr.index" data-testid="db-mcp-preview-row">
-                <TableCell
-                  v-for="(cell, c) in grid.rows[vr.index]"
-                  :key="c"
-                  class="max-w-80 truncate font-data"
-                  :data-null="cell === null ? '' : undefined"
-                >
-                  <span v-if="cell === null" class="italic text-muted-foreground">{{
-                    t('studio.common.nullValue.label')
-                  }}</span>
-                  <TruncatedText v-else :text="cell" />
-                </TableCell>
-              </TableRow>
-              <TableRow
-                v-if="padBottom > 0"
-                aria-hidden="true"
-                class="border-0 hover:bg-transparent"
-                :style="{ height: `${padBottom}px` }"
-              >
-                <TableCell :colspan="grid.columns.length" class="p-0" />
-              </TableRow>
-            </TableBody>
-          </Table>
+                {{ t('studio.dbMcp.preview.moreRows.label', { count: hiddenRows }) }}
+              </Button>
+            </CollapsibleTrigger>
+          </Collapsible>
+          <FlushEditor v-else :doc="text" language="json" data-testid="db-mcp-preview-raw" />
+          <span
+            v-if="footnote"
+            class="text-kira-sm text-subtle"
+            data-testid="db-mcp-preview-summary"
+            >{{
+              footnote
+            }}</span
+          >
         </div>
-        <div
-          v-else
-          class="min-h-24 flex-1 overflow-hidden rounded-kira"
-          data-testid="db-mcp-preview-raw"
-        >
-          <MonacoHost :doc="text" language="json" readonly force-wrap />
-        </div>
-      </template>
+      </TabbedContent>
     </QueryState>
   </div>
 </template>
