@@ -84,7 +84,7 @@ function eventsFor(id: string) {
             selected.fact
           }}</p>
           <p class="m-0 text-kira-md text-muted-foreground whitespace-pre-wrap">
-            <span class="font-medium">{{ t('memory.start.reason.label') }}</span>
+            <span class="font-medium">{{ t('common.field.reason.label') }}</span>
             {{ selected.reason }}
           </p>
           <div v-if="selected.keywords.length" class="flex flex-wrap gap-1">
