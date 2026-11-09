@@ -376,6 +376,7 @@ var AdeTaskBranches = struct {
 	CrState         string
 	CrURL           string
 	ReviewComments  string
+	Adopted         string
 }{
 	Table:           "ade_task_branches",
 	ID:              "id",
@@ -399,6 +400,7 @@ var AdeTaskBranches = struct {
 	CrState:         "cr_state",
 	CrURL:           "cr_url",
 	ReviewComments:  "review_comments",
+	Adopted:         "adopted",
 }
 
 // AdeTaskHandovers names table ade_task_handovers.

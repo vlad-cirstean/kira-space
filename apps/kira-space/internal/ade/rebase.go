@@ -215,11 +215,18 @@ func (b *TaskBoard) planRebase(ctx context.Context, tc *taskCtx, args adewire.On
 
 	// Worktrees: the task's own branches go through the launch gate on a real rebase.
 	paths := make([]string, len(p.stack))
+	attach := b.newAttachCache()
 	for i, n := range p.stack {
-		if row, ok := localBranch(sc.inv, n.sb.Name); ok {
-			paths[i] = row.WorktreePath
+		at, err := attach.worktree(ctx, n.sb)
+		if err != nil {
+			return nil, err
 		}
-		if paths[i] == "" {
+		paths[i] = at.attached
+		switch {
+		case paths[i] != "":
+		case at.detached:
+			p.predicted[n.sb.ID] = at.own
+		default:
 			if p.predicted[n.sb.ID], err = b.worktreeDirFor(n.sb, rec.Name, ""); err != nil {
 				return nil, err
 			}
@@ -334,6 +341,8 @@ func (b *TaskBoard) fillRebaseSpec(p *rebasePlan, paths []string, args adewire.O
 // rebaseBlockers reads each stack branch for the reasons a rebase cannot start now.
 func (b *TaskBoard) rebaseBlockers(ctx context.Context, p *rebasePlan, entry *gitsession.RepoEntry, paths []string) {
 	setups, _ := b.deps.Tasks.SetupByBranch()
+	// Fresh snapshot: the launch gate may have created worktrees since planRebase read the first one.
+	attach := b.newAttachCache()
 	for i, n := range p.stack {
 		sb := n.sb
 		if busy, err := b.deps.Tasks.HasActiveStepRunOn(sb.ID); err == nil && busy {
@@ -345,6 +354,10 @@ func (b *TaskBoard) rebaseBlockers(ctx context.Context, p *rebasePlan, entry *gi
 		}
 		if s, ok := setups[sb.ID]; ok && s.State != model.AdeSetupReady {
 			p.block(sb.ID, "setup", "the worktree of %s is still being prepared", sb.Name)
+		}
+		if at, err := attach.worktree(ctx, sb); err == nil && at.owner != nil {
+			p.block(sb.ID, "attachedElsewhere", "%s is checked out in the worktree of another task (%s)", sb.Name, at.holder)
+			continue
 		}
 		if paths[i] == "" {
 			p.block(sb.ID, "noWorktree", "%s has no worktree yet: one is created", sb.Name)

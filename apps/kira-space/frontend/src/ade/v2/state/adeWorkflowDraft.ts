@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { detachedStep, type Overridable, referenceStep, resetKey } from '../board/stepLibrary';
-import { cloneWorkflow, newId, runnableSteps } from '../board/workflowForm';
+import { cloneWorkflow, runnableSteps, stepIdFor } from '../board/workflowForm';
 import {
   addResult,
   addStep,
@@ -12,6 +12,7 @@ import {
   patchResult,
   removeResult,
   removeStep,
+  renameStepRefs,
   setRoute,
   setStart,
 } from '../board/workflowGraph';
@@ -33,6 +34,10 @@ export const useAdeWorkflowDraftStore = defineStore('adeWorkflowDraft', () => {
   /** The last save was refused because the file changed since `baseHash`. */
   const conflict = ref(false);
   const selection = ref<Selection | null>(null);
+  /** Bumped when another step is selected, not when the selected step's id follows its name. */
+  const selectionKey = ref(0);
+  /** Ids of steps added since the draft was opened or last saved: their id still follows the name. */
+  const fresh = ref(new Set<string>());
 
   const step = computed(
     () => draft.value?.steps.find((s) => s.id === selection.value?.stepId) ?? null,
@@ -46,6 +51,8 @@ export const useAdeWorkflowDraftStore = defineStore('adeWorkflowDraft', () => {
     dirty.value = false;
     error.value = '';
     selection.value = null;
+    selectionKey.value++;
+    fresh.value = new Set();
   }
   /** A pushed workflow: taken only while nothing is unsaved. */
   function push(wf: Workflow | null, hash: string): void {
@@ -74,19 +81,39 @@ export const useAdeWorkflowDraftStore = defineStore('adeWorkflowDraft', () => {
     error.value = '';
     conflict.value = false;
     baseHash.value = hash;
+    fresh.value = new Set();
     if (JSON.stringify(draft.value) === sent) dirty.value = false;
   }
   function select(sel: Selection | null): void {
     selection.value = sel;
+    selectionKey.value++;
   }
 
   const wf = (): Workflow | null => draft.value;
   function patchWorkflow(p: Partial<Pick<Workflow, 'name'>>): void {
     if (draft.value) edit({ ...draft.value, ...p });
   }
+  /** A step's id follows its name until the first save, with every route and implementer naming it. */
   function patchStep(stepId: string, p: Partial<WorkflowStep>): void {
     const w = wf();
-    if (w) edit({ ...w, steps: w.steps.map((x) => (x.id === stepId ? { ...x, ...p } : x)) });
+    if (!w) return;
+    let next: Workflow = {
+      ...w,
+      steps: w.steps.map((x) => (x.id === stepId ? { ...x, ...p } : x)),
+    };
+    if (p.name !== undefined && fresh.value.has(stepId)) {
+      const id = stepIdFor(
+        p.name,
+        w.steps.filter((x) => x.id !== stepId).map((x) => x.id),
+      );
+      if (id !== stepId) {
+        next = renameStepRefs(next, stepId, id);
+        fresh.value.delete(stepId);
+        fresh.value.add(id);
+        if (selection.value?.stepId === stepId) selection.value = { stepId: id };
+      }
+    }
+    edit(next);
   }
   /** The step replaced whole, e.g. after a kind change. */
   function replaceStep(next: WorkflowStep): void {
@@ -99,15 +126,20 @@ export const useAdeWorkflowDraftStore = defineStore('adeWorkflowDraft', () => {
     if (!w) return;
     const r = addStep(w, kind, afterId);
     edit(r.wf);
-    selection.value = { stepId: r.stepId };
+    fresh.value.add(r.stepId);
+    select({ stepId: r.stepId });
   }
   /** A reference to library step `lib` at the end, or right after `afterId`; it becomes the selection. */
   function createFromLibrary(lib: WorkflowStep, afterId?: string): void {
     const w = wf();
     if (!w) return;
-    const r = insertStep(w, (taken) => referenceStep(lib, taken, newId(taken)), afterId);
+    const r = insertStep(
+      w,
+      (taken) => referenceStep(lib, taken, stepIdFor(lib.id, taken)),
+      afterId,
+    );
     edit(r.wf);
-    selection.value = { stepId: r.stepId };
+    select({ stepId: r.stepId });
   }
   /** The step turned into an inline copy of what it is now. */
   function detach(stepId: string): void {
@@ -164,6 +196,7 @@ export const useAdeWorkflowDraftStore = defineStore('adeWorkflowDraft', () => {
     baseHash,
     conflict,
     selection,
+    selectionKey,
     step,
     canSkip,
     open,

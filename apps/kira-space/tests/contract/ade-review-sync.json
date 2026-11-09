@@ -1,0 +1,112 @@
+{
+  "AdeTaskService.ReviewFetch#fetchError": {
+    "error": {
+      "kind": "RemoteNotFound",
+      "message": "fatal: '<work>/no-such-remote.git' does not appear to be a git repository\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.",
+      "remoteMessage": null
+    }
+  },
+  "AdeTaskService.ReviewSync#afterFetch": {
+    "base": {
+      "ahead": 0,
+      "behind": 0,
+      "local": false,
+      "name": "origin/main",
+      "short": "main",
+      "state": "remote",
+      "twin": "",
+      "worktree": ""
+    },
+    "branch": {
+      "ahead": 0,
+      "behind": 1,
+      "local": true,
+      "name": "feat/api-sync",
+      "short": "feat/api-sync",
+      "state": "behind",
+      "twin": "origin/feat/api-sync",
+      "worktree": "<worktree>"
+    },
+    "lastFetchAt": 0,
+    "remote": "origin"
+  },
+  "AdeTaskService.ReviewSync#before": {
+    "base": {
+      "ahead": 0,
+      "behind": 0,
+      "local": false,
+      "name": "origin/main",
+      "short": "main",
+      "state": "remote",
+      "twin": "",
+      "worktree": ""
+    },
+    "branch": {
+      "ahead": 0,
+      "behind": 0,
+      "local": true,
+      "name": "feat/api-sync",
+      "short": "feat/api-sync",
+      "state": "current",
+      "twin": "origin/feat/api-sync",
+      "worktree": "<worktree>"
+    },
+    "lastFetchAt": null,
+    "remote": "origin"
+  },
+  "AdeTaskService.ReviewSync#diverged": {
+    "base": {
+      "ahead": 0,
+      "behind": 0,
+      "local": false,
+      "name": "origin/main",
+      "short": "main",
+      "state": "remote",
+      "twin": "",
+      "worktree": ""
+    },
+    "branch": {
+      "ahead": 1,
+      "behind": 1,
+      "local": true,
+      "name": "feat/api-sync",
+      "short": "feat/api-sync",
+      "state": "diverged",
+      "twin": "origin/feat/api-sync",
+      "worktree": "<worktree>"
+    },
+    "lastFetchAt": 0,
+    "remote": "origin"
+  },
+  "AdeTaskService.ReviewUpdateLocal#afterUpdate": {
+    "base": {
+      "ahead": 0,
+      "behind": 0,
+      "local": false,
+      "name": "origin/main",
+      "short": "main",
+      "state": "remote",
+      "twin": "",
+      "worktree": ""
+    },
+    "branch": {
+      "ahead": 0,
+      "behind": 0,
+      "local": true,
+      "name": "feat/api-sync",
+      "short": "feat/api-sync",
+      "state": "current",
+      "twin": "origin/feat/api-sync",
+      "worktree": "<worktree>"
+    },
+    "lastFetchAt": 0,
+    "remote": "origin"
+  },
+  "args:AdeTaskService.ReviewSync": {
+    "branchId": "<id:1>"
+  },
+  "args:AdeTaskService.ReviewUpdateLocal": {
+    "branchId": "<id:1>",
+    "side": "branch"
+  }
+}

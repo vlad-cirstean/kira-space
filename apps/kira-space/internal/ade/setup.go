@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -130,26 +131,49 @@ func (b *TaskBoard) ensureWorktree(ctx context.Context, rec model.CodeRepo, sb m
 		return worktreeResult{}, err
 	}
 	if sb.Name != "" {
-		if row, ok := localBranch(inv, sb.Name); ok && row.WorktreePath != "" {
-			return worktreeResult{Path: row.WorktreePath, Name: sb.Name}, nil
-		}
-		path, err := b.worktreeDirFor(sb, rec.Name, "")
-		if err != nil {
-			return worktreeResult{}, err
-		}
-		req := gitsession.OpRequest{Kind: "worktreeAdd", Mode: "existingBranch", Path: path, Branch: sb.Name}
-		if _, local := localBranch(inv, sb.Name); !local {
-			// Remote-only: git cannot resolve the bare short name, so branch it off the tracking ref.
-			if rb, ok := remoteBranch(inv, sb.Name); ok {
-				req.Mode, req.StartPoint = "newBranch", rb.Remote+"/"+rb.Short
-			}
-		}
-		if err := b.addWorktree(ctx, entry, req); err != nil {
-			return worktreeResult{}, err
-		}
-		return worktreeResult{Path: path, Name: sb.Name, Fresh: true}, nil
+		return b.namedWorktree(ctx, entry, rec, sb, inv)
 	}
+	return b.newBranchWorktree(ctx, entry, rec, sb, naming, inv)
+}
 
+// namedWorktree makes the worktree of a branch that already has a name.
+func (b *TaskBoard) namedWorktree(ctx context.Context, entry *gitsession.RepoEntry, rec model.CodeRepo, sb model.AdeTaskBranch, inv []porcelain.InventoryRef) (worktreeResult, error) {
+	at, err := b.rowWorktree(ctx, sb)
+	if err != nil {
+		return worktreeResult{}, err
+	}
+	if at.attached != "" {
+		return worktreeResult{Path: at.attached, Name: sb.Name}, nil
+	}
+	if at.owner != nil {
+		return worktreeResult{}, invalid("branch %s is checked out in the worktree of another task (%s). An agent can take it back with request_branches existing: true.", sb.Name, at.holder)
+	}
+	if at.detached && at.holder == "" && b.registeredWorktree(ctx, entry, at.own) {
+		// The row's own folder was detached for another task; the branch is free again.
+		if err := entry.SwitchWorktree(ctx, at.own, sb.Name); err != nil {
+			return worktreeResult{}, err
+		}
+		return worktreeResult{Path: at.own, Name: sb.Name}, nil
+	}
+	path, err := b.worktreeDirFor(sb, rec.Name, "")
+	if err != nil {
+		return worktreeResult{}, err
+	}
+	req := gitsession.OpRequest{Kind: "worktreeAdd", Mode: "existingBranch", Path: path, Branch: sb.Name}
+	if _, local := localBranch(inv, sb.Name); !local {
+		// Remote-only: git cannot resolve the bare short name, so branch it off the tracking ref.
+		if rb, ok := remoteBranch(inv, sb.Name); ok {
+			req.Mode, req.StartPoint = "newBranch", rb.Remote+"/"+rb.Short
+		}
+	}
+	if err := b.addWorktree(ctx, entry, req); err != nil {
+		return worktreeResult{}, err
+	}
+	return worktreeResult{Path: path, Name: sb.Name, Fresh: true}, nil
+}
+
+// newBranchWorktree names a not-created branch and gives it a newBranch worktree from its base.
+func (b *TaskBoard) newBranchWorktree(ctx context.Context, entry *gitsession.RepoEntry, rec model.CodeRepo, sb model.AdeTaskBranch, naming newBranchName, inv []porcelain.InventoryRef) (worktreeResult, error) {
 	start, err := b.startPoint(ctx, entry, sb)
 	if err != nil {
 		return worktreeResult{}, err
@@ -170,6 +194,20 @@ func (b *TaskBoard) ensureWorktree(ctx context.Context, rec model.CodeRepo, sb m
 		return worktreeResult{}, err
 	}
 	return worktreeResult{Path: path, Name: name, Fresh: true}, nil
+}
+
+// registeredWorktree reports whether git lists path as a worktree of the repo.
+func (b *TaskBoard) registeredWorktree(ctx context.Context, entry *gitsession.RepoEntry, path string) bool {
+	list, err := entry.Worktrees(ctx)
+	if err != nil {
+		return false
+	}
+	for _, w := range list {
+		if filepath.Clean(w.Path) == filepath.Clean(path) {
+			return true
+		}
+	}
+	return false
 }
 
 // newBranchName is how a not-created branch gets its name: wanted as given, else derived from title.
@@ -265,23 +303,11 @@ func (b *TaskBoard) addWorktree(ctx context.Context, entry *gitsession.RepoEntry
 	return nil
 }
 
-// worktreeOf is the path where the branch is checked out, "" when nowhere.
+// worktreeOf is the path where the row's branch is checked out for it, "" when nowhere or when
+// another task's worktree holds the branch (the row is then detached).
 func (b *TaskBoard) worktreeOf(ctx context.Context, sb model.AdeTaskBranch) (string, error) {
-	if sb.Name == "" {
-		return "", nil
-	}
-	entry, err := b.openRepo(ctx, sb.CodeRepoID)
-	if err != nil {
-		return "", err
-	}
-	inv, err := entry.BranchInventory(ctx)
-	if err != nil {
-		return "", err
-	}
-	if row, ok := localBranch(inv, sb.Name); ok {
-		return row.WorktreePath, nil
-	}
-	return "", nil
+	at, err := b.rowWorktree(ctx, sb)
+	return at.attached, err
 }
 
 // setupReady is the gate: the branch's setup row is ready, or it has none and its worktree exists.

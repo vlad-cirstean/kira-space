@@ -53,6 +53,7 @@ type Store struct {
 
 	o      Options
 	folder *configfs.Folder[File]
+	shared configfs.DecodeFunc[SharedFile]
 	doc    configfs.DocModel
 
 	op sync.Mutex // serializes loads and writes
@@ -75,9 +76,17 @@ func New(o Options) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	sharedSchema, err := assembleSharedSchema(o.GitHosts)
+	if err != nil {
+		return nil, err
+	}
+	shared, _, err := configfs.YAMLSchema[SharedFile](sharedSchema, sharedRules()...)
+	if err != nil {
+		return nil, err
+	}
 	doc.Pattern, doc.Format, doc.KeyedBy, doc.Intro, doc.App, doc.Title = "<name>.yaml", "YAML", "path", intro, "Space", "Repos"
 	s := &Store{
-		o: o, doc: doc, index: map[string]Config{}, owner: map[string]string{},
+		o: o, doc: doc, shared: shared, index: map[string]Config{}, owner: map[string]string{},
 		folder: &configfs.Folder[File]{
 			Dir: o.Dir, Ext: ".yaml", Name: regexp.MustCompile(`^[^.].*\.yaml$`), Decode: decode,
 			Projection: configfs.TableProjection{DB: o.DB, Folder: Folder}, Now: o.Now,

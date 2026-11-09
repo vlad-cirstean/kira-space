@@ -52,6 +52,7 @@ import { taskColor } from '../palette';
 import { useBoard, useChangeRequests, useSessions, useWorkflows } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import type { Board, Branch, Session, Task, TaskStatusDef, Workflow } from '../wire';
+import { type AttachFact, attachOf } from './attach';
 
 /** Needs-you kinds that put a `!` on a card and row: a waiting question, a stuck run. */
 const ASKS: ReadonlySet<NeedsKind> = new Set(['question', 'stuck run']);
@@ -78,6 +79,8 @@ export interface BranchRowModel {
   attention: string;
   /** What a click on the `!` does. */
   attentionItem: NeedsItem | null;
+  /** Detached or shared glyph and its tooltip; `null` for a row that is neither. */
+  attach: AttachFact | null;
 }
 
 /** A live child of an orchestrator, one row of its card. */
@@ -196,6 +199,10 @@ function buildRow(c: Ctx, task: Task, bid: string, depth: number): BranchRowMode
     chips: { merged: line2.merged, deployed: line2.deployed, divider: line2.divider },
     attention: attn?.what ?? '',
     attentionItem: attn ?? null,
+    attach: attachOf(br, (id) => {
+      const other = graph.byTask.get(id);
+      return other ? titleOfTask(c, other) : t('space.ade.board.newTask.label');
+    }),
   };
 }
 

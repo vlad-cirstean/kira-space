@@ -43,7 +43,7 @@ const exportOpen = computed({
 
 <template>
   <div class="flex min-w-0 flex-col gap-3" data-testid="ade-settings-result">
-    <h3 class="m-0 text-kira-lg font-medium">{{ t('space.ade.settings.result.title') }}</h3>
+    <h3 class="m-0 text-kira-lg font-medium">{{ t('common.field.result.label') }}</h3>
     <FieldDescription>{{ t('space.ade.settings.result.hint') }}</FieldDescription>
     <SecondaryTabs
       v-if="providers.length > 1"

@@ -6,9 +6,9 @@ import (
 	"strings"
 )
 
-// Module names a sync can carry. repos is never one: its files are keyed by local path and carry
-// the worktree prepare script, which never comes from a repo-carried source.
-var syncModules = []string{"connections", "api", "runs", "workflows", "steps", "agent", "prompts"}
+// Module names a sync can carry. repos syncs by origin URL, entry by entry: a shared repos file
+// names its repository by origin, never by a local path, and only the shared keys of repocfg apply.
+var syncModules = []string{"connections", "api", "runs", "workflows", "steps", "agent", "prompts", "repos"}
 
 // Modes of a module.
 const (
@@ -24,12 +24,17 @@ const (
 	manifestName      = "kira-config.yaml"
 )
 
-func isEntryModule(module string) bool { return module == "agent" || module == "prompts" }
+func isEntryModule(module string) bool {
+	return module == "agent" || module == "prompts" || module == "repos"
+}
 
 func validMode(module, mode string) bool {
 	switch mode {
-	case ModeLocal, ModeShared:
+	case ModeLocal:
 		return slices.Contains(syncModules, module)
+	case ModeShared:
+		// A repos file merges into a local file of another name, so it is never taken whole.
+		return slices.Contains(syncModules, module) && module != "repos"
 	case ModeCombined:
 		return isEntryModule(module)
 	}
@@ -45,6 +50,9 @@ func defaultMode(module string) string {
 
 // modesOf lists the modes a module offers.
 func modesOf(module string) []string {
+	if module == "repos" {
+		return []string{ModeLocal, ModeCombined}
+	}
 	if isEntryModule(module) {
 		return []string{ModeLocal, ModeShared, ModeCombined}
 	}
@@ -73,7 +81,7 @@ func syncableFile(module, name string) bool {
 	return strings.HasSuffix(name, ".yaml")
 }
 
-// unitKind of a file under a mode: entries only for a combined settings or prompts file.
+// isEntryFile: entries only for a combined settings or prompts file. repos plans its own entry files.
 func isEntryFile(module, file, mode string) bool {
 	return mode == ModeCombined && (module == "agent" && file == agentSettingsName || module == "prompts" && file == promptsName)
 }

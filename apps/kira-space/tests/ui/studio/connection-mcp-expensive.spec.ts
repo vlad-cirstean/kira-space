@@ -103,17 +103,12 @@ test('contract: the check state follows list_connections', async () => {
   }
 });
 
-test('contract: the exemption dialog shows the estimate against the limit and the plan', async ({
-  relaunch,
-}) => {
+test('contract: the exemption dialog shows the estimate over the limit', async ({ relaunch }) => {
   const it = contract<ApprovalItem>('dbmcp-expensive-query', 'item');
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
   const card = page.locator(`[data-testid="approval-item-${it.id}"]`);
-  await expect(card.locator('[data-testid="db-mcp-exemption-limit"]')).toHaveText(
-    'Estimated rows read: 5,000, limit 1,000',
-  );
-  await expect(card.locator('[data-testid="db-mcp-approval-plan"]')).toBeVisible();
+  await expect(card.locator('[data-testid="db-mcp-exemption-limit"]')).toHaveText('~5,000 rows');
 });
 
 test('settings: Advanced explains the estimate and who acts on it', async ({ relaunch }) => {

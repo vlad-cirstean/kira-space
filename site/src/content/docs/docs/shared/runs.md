@@ -63,7 +63,7 @@ A smart script sets:
 - A model, a budget in dollars and a timeout. The budget must be above 0.
 - A list of tools and MCP servers the script may use. Bash commands take patterns such as `git status:*`.
 
-Name the servers a smart script may use under `smart.mcp` in its file: a server with all its tools, or a list of tool names. What Kira allows depends on **Hermetic agent launches**, on by default.
+Name the servers a smart script may use under `smart.mcp` in its file: a server with all its tools, or a list of tool names. What Kira allows depends on **Hermetic agent launches**, off by default in Space and always on in Studio.
 
 - Hermetic on: only the MCP servers in Kira's agent settings are allowed. Secrets in them resolve at launch and are masked in the log. A named server missing from the settings blocks the run.
 - Hermetic off: the servers `claude mcp list` reports for your user config are allowed. A run that uses one of your servers loads your Claude settings file, so your permission rules, environment and plugins apply. Hooks stay off, and only the servers you named load.

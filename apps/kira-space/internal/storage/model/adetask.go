@@ -117,6 +117,9 @@ type AdeTaskBranch struct {
 	ReviewCommentsJSON string
 	// WorktreeDir is the reserved worktree folder name (wt_<id>) under <home>/kira-space-wts/<repo>; "" until first needed.
 	WorktreeDir string
+	// Adopted marks a row that shares a branch name another live row already owns (P583). The
+	// owner row is the one with Adopted false.
+	Adopted bool
 }
 
 // AdeChangeRequest is a pull or merge request stored on a branch row.

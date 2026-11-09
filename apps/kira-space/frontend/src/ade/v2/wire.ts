@@ -238,6 +238,24 @@ export interface ChangeRequest {
   /** '' | SUCCESS | FAILURE | PENDING | ERROR | EXPECTED. */
   checksState: string;
 }
+/** Where a branch is checked out: another task's worktree, the main checkout, any other worktree, or nowhere. */
+interface BranchHolder {
+  kind: 'task' | 'main' | 'other' | 'none';
+  taskId: string;
+  branchId: string;
+  worktree: string;
+}
+/** The row's own worktree folder is left on a detached commit; the branch is checked out elsewhere now. */
+interface BranchDetached {
+  worktree: string;
+  holder: BranchHolder;
+}
+/** Another live row of the same repo and branch name. */
+interface BranchPeer {
+  taskId: string;
+  branchId: string;
+  attached: boolean;
+}
 export interface Branch {
   id: string;
   taskId: string;
@@ -256,7 +274,11 @@ export interface Branch {
   upstreamBehind: number;
   mergedIntoMain: boolean;
   mergedAt: number | null;
-  worktree: string /* '' none */;
+  worktree: string /* where the branch is checked out for this row; '' none or detached */;
+  /** Set when the row's own worktree is detached because its branch is checked out elsewhere. */
+  detached?: BranchDetached;
+  /** The other live rows of the same repo and branch name. */
+  shared?: BranchPeer[];
   setup: WorktreeSetup | null /* null until a worktree exists */;
   integration: Integration[] /* one per configured target */;
   deployments: Deployment[];
@@ -932,6 +954,30 @@ export interface ReviewWorkingStampArgs {
 export interface ReviewWorkingStamp {
   stamp: string /* digest of size, mtime and mode of the listed worktree files; '' without a worktree */;
 }
+/** One ref of a review against its remote twin; counts are local refs as of the last fetch. */
+export interface RefSync {
+  name: string /* spelling the review uses: feat/x or origin/feat/x */;
+  short: string /* branch name without remote */;
+  local: boolean;
+  twin: string /* '' when none */;
+  ahead: number;
+  behind: number;
+  state: 'current' | 'behind' | 'ahead' | 'diverged' | 'remote' | 'noRemote';
+  worktree: string /* where name is checked out; '' when nowhere */;
+}
+export interface ReviewSync {
+  remote: string /* default remote; '' when none */;
+  lastFetchAt: number | null;
+  branch: RefSync;
+  base: RefSync;
+}
+export interface ReviewUpdateLocalArgs {
+  branchId: string;
+  side: 'branch' | 'base';
+}
+export interface ReviewFetchResult {
+  error: RemoteOpError | null;
+}
 export interface ReviewWorkingMarkResult {
   files: { path: string; review: ReviewFileStatus }[];
 }
@@ -1062,6 +1108,7 @@ type RebaseBlockerKind =
   | 'baseMissing'
   | 'parentDraft'
   | 'noWorktree'
+  | 'attachedElsewhere'
   | 'setup';
 export interface RebaseBlocker {
   branchId: string;

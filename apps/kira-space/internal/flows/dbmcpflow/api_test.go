@@ -10,11 +10,13 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/servers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/appsettings"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -67,6 +69,17 @@ func (f *fixture) patchAPI(t *testing.T, key string, patch *model.DbMcpPatch) {
 		t.Fatal(err)
 	}
 	f.app.Contract(t, "dbmcp-api-settings", "args:SettingsService.Set#"+key, args)
+}
+
+// patchRules applies one apiRules list as the settings pane does and records the call in the dbmcp-api-rules
+// contract tests/ui/studio/dbmcp-api-rules.spec.ts replays.
+func (f *fixture) patchRules(t *testing.T, key string, rules []apiaccess.Rule) {
+	t.Helper()
+	args := bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: &model.DbMcpPatch{APIRules: &rules}}}
+	if _, err := f.app.W.Settings.Set(args); err != nil {
+		t.Fatal(err)
+	}
+	f.app.Contract(t, "dbmcp-api-rules", "args:SettingsService.Set#"+key, args)
 }
 
 func (f *fixture) setAPI(t *testing.T, enabled bool, approval string) {
@@ -417,4 +430,102 @@ func TestApiRequestBodies(t *testing.T) {
 	if len(srv.Requests()) != 0 {
 		t.Fatalf("server saw %d requests, want none", len(srv.Requests()))
 	}
+}
+
+// TestApiAccessRules: host and method rules gate api_request in front of approval, deny wins, any rule makes
+// the default refuse, and unreadable stored rules refuse everything. UI half: tests/ui/studio/dbmcp-api-rules.spec.ts.
+func TestApiAccessRules(t *testing.T) {
+	f := newFixture(t)
+	srv, sess, envID := f.apiSetup(t, "127.0.0.1", false)
+
+	local := apiaccess.Rule{Effect: "allow", Hosts: []string{"127.0.0.1"}, Methods: []string{"GET"}}
+	wild := apiaccess.Rule{Effect: "allow", Hosts: []string{"*.example.com"}, Methods: []string{"*"}}
+	noDelete := apiaccess.Rule{Effect: "deny", Hosts: []string{"*"}, Methods: []string{"DELETE"}}
+	f.patchRules(t, "allow", []apiaccess.Rule{local})
+	f.patchRules(t, "wildcard", []apiaccess.Rule{local, wild})
+	f.patchRules(t, "deny", []apiaccess.Rule{local, wild, noDelete})
+
+	refused := func(res *mcp.CallToolResult, want ...string) {
+		t.Helper()
+		if !res.IsError {
+			t.Fatalf("result = %q, want a refusal", text(res))
+		}
+		for _, w := range want {
+			if !strings.Contains(text(res), w) {
+				t.Fatalf("error = %q, want it to contain %q", text(res), w)
+			}
+		}
+		if f.queueLen(t) != 0 {
+			t.Fatalf("queue = %d, want no approval item for a refused request", f.queueLen(t))
+		}
+	}
+
+	// Rules are a gate in front of approval, never a replacement: an allowed GET still waits.
+	pending := callToolAsync(sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo"))
+	f.answer(t, true, f.pending(t).RequestID)
+	if out := decodeResult[apiResult](t, wait(t, pending)); out.Status != 200 || len(srv.Requests()) != 1 {
+		t.Fatalf("allowed GET = %+v, server saw %d, want 200 and one request", out, len(srv.Requests()))
+	}
+
+	post := apiArgs(envID, "POST", "{{base_url}}/echo")
+	post["body"] = "x"
+	refused(callTool(t, sess, "api_request", post), "not allowed by the API access rules", "GET on 127.0.0.1")
+	refused(callTool(t, sess, "api_request", apiArgs(envID, "DELETE", "https://api.example.com/x")), "denied by the API access rule")
+	if len(srv.Requests()) != 1 {
+		t.Fatalf("server saw %d requests, want the one allowed GET only", len(srv.Requests()))
+	}
+
+	f.setAPI(t, true, "never")
+	res := callTool(t, sess, "api_request", apiArgs(envID, "GET", srv.URL+"/redirect?to="+srv.AltURL+"/echo"))
+	refused(res, "redirect to localhost", "blocked")
+	if len(srv.Requests()) != 2 {
+		t.Fatalf("server saw %d requests, want the first hop only", len(srv.Requests()))
+	}
+	f.setAPI(t, true, "always")
+
+	// An invalid list is refused and leaves the stored rules alone.
+	bad := []apiaccess.Rule{{Effect: "allow", Hosts: []string{"a/b"}, Methods: []string{"*"}}}
+	if _, err := f.app.W.Settings.Set(bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: &model.DbMcpPatch{APIRules: &bad}}}); err == nil {
+		t.Fatal("Set with host a/b succeeded, want a validation error")
+	}
+	if got := f.rules(t); len(got) != 3 {
+		t.Fatalf("rules after a refused Set = %+v, want the 3 stored rules", got)
+	}
+
+	f.patchRules(t, "remove", []apiaccess.Rule{wild, noDelete})
+	refused(callTool(t, sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo")), "not allowed by the API access rules")
+	f.patchRules(t, "removeWildcard", []apiaccess.Rule{noDelete})
+	refused(callTool(t, sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo")), "not allowed by the API access rules")
+
+	f.setAPI(t, true, "never")
+	f.patchRules(t, "clear", []apiaccess.Rule{})
+	if out := decodeResult[apiResult](t, callTool(t, sess, "api_request", post)); out.Status != 200 {
+		t.Fatalf("POST with no rules = %+v, want allow-all again", out)
+	}
+
+	// Stored rules that cannot be read fail closed.
+	tx, err := f.app.W.Settings.Deps.Repos.Settings.DB.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := appsettings.UpsertLeaf(tx, "dbMcp.apiRules", map[string]int{"x": 1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	all, err := f.app.W.Settings.GetAll()
+	if err != nil || !all.DbMcp.APIRulesInvalid || len(all.DbMcp.APIRules) != 0 {
+		t.Fatalf("settings = %+v, %v, want apiRulesInvalid with no rules", all.DbMcp, err)
+	}
+	refused(callTool(t, sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo")), "could not be read")
+}
+
+func (f *fixture) rules(t *testing.T) []apiaccess.Rule {
+	t.Helper()
+	all, err := f.app.W.Settings.GetAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return all.DbMcp.APIRules
 }

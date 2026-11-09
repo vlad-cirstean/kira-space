@@ -22,6 +22,7 @@ import { windowKey } from '@workbench/bridge/rpc';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref, useId } from 'vue';
 import { control } from '../../bridge/control';
+import { MODULE_LABEL } from '../../configsync/domain';
 import { useConfigSyncMutations, useConfigSyncStatus } from '../../configsync/queries';
 import type { SettingsPaneProps } from './types';
 
@@ -55,15 +56,6 @@ const failure = computed(
     pullError.value,
 );
 
-const MODULE_LABEL: Record<string, MessageKey> = {
-  connections: 'common.module.connections.label',
-  api: 'space.settings.configSync.module.api.label',
-  runs: 'space.settings.configSync.module.runs.label',
-  workflows: 'space.settings.configSync.module.workflows.label',
-  steps: 'space.settings.configSync.module.steps.label',
-  agent: 'space.settings.configSync.module.agent.label',
-  prompts: 'space.settings.configSync.module.prompts.label',
-};
 const MODE_LABEL: Record<string, MessageKey> = {
   local: 'space.settings.configSync.mode.local.option',
   shared: 'space.settings.configSync.mode.shared.option',

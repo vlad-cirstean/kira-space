@@ -84,7 +84,7 @@ func (s *Store) patchLocked(id string, p model.GitRepoSettingsPatch) (loaded, er
 	sets := leafSets(p)
 	file := s.FileFor(id)
 	if file == "" {
-		name, err := s.freeName(slug(id))
+		name, err := s.freeName(slug(id), nil)
 		if err != nil {
 			return loaded{}, err
 		}
@@ -141,12 +141,15 @@ func slug(path string) string {
 	return s
 }
 
-// freeName is the first of stem.yaml, stem-2.yaml, ... with no file of that name.
-func (s *Store) freeName(stem string) (string, error) {
+// freeName is the first of stem.yaml, stem-2.yaml, ... with no file of that name and not in taken.
+func (s *Store) freeName(stem string, taken map[string]bool) (string, error) {
 	for n := 1; n < 10000; n++ {
 		name := stem + ".yaml"
 		if n > 1 {
 			name = stem + "-" + strconv.Itoa(n) + ".yaml"
+		}
+		if taken[name] {
+			continue
 		}
 		if _, err := os.Stat(filepath.Join(s.folder.Dir, name)); errors.Is(err, os.ErrNotExist) {
 			return name, nil

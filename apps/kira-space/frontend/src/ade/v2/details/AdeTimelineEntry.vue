@@ -4,6 +4,7 @@ import { formatRelative } from '@workbench/behaviour/format';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { control } from '../../../bridge/control';
 import AdeRow from '../panel/AdeRow.vue';
+import AdeLinkOpenExternal from './AdeLinkOpenExternal.vue';
 import AdeOriginSession from './AdeOriginSession.vue';
 import type { TimelineEvent } from './taskTimeline';
 
@@ -33,6 +34,7 @@ function openLink(e: MouseEvent): void {
     }}</a>
     <span v-else class="min-w-0 truncate">{{ event.label }}</span>
     <template #actions>
+      <AdeLinkOpenExternal :url="event.url" />
       <AdeOriginSession
         :task-id="taskId"
         :session-id="event.sessionId"

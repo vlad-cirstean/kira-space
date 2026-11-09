@@ -135,7 +135,7 @@ type WorkflowStep struct {
 	Params      map[string][]string `json:"params"`
 	// Review is set on review steps: they wait for the user instead of running an agent.
 	Review *ReviewStepConfig `json:"review"`
-	// Sandbox is what the step's agent or script may do on the machine; always set, the kind's default when absent.
+	// Sandbox is what the step's agent or script may do on the machine; always set, the default (off) when absent.
 	Sandbox StepSandbox `json:"sandbox"`
 	// Settings are the stage settings per agent provider id, key to value; empty means every provider's defaults.
 	Settings map[string]map[string]string `json:"settings"`
@@ -176,24 +176,21 @@ type StepSandbox struct {
 	Network bool     `json:"network"`
 }
 
-// DefaultSandbox is the policy of an agent or review step without a sandbox block: write its worktree, network on.
+// DefaultSandbox is the policy of a step without a sandbox block: unconfined (access off), network on.
 func DefaultSandbox() StepSandbox {
+	return StepSandbox{Access: SandboxOff, Read: []string{}, Allow: []string{}, Network: true}
+}
+
+// WriteSandbox is the confined policy: write the worktree, network on. A sandbox block without
+// access starts from it, and rebase runs always use it.
+func WriteSandbox() StepSandbox {
 	return StepSandbox{Access: SandboxWrite, Read: []string{}, Allow: []string{}, Network: true}
 }
 
-// DefaultSandboxFor is the policy of a step of kind without a sandbox block: scripts and manual
-// sessions run unconfined.
-func DefaultSandboxFor(kind StepKind) StepSandbox {
-	if kind == KindScript || kind == KindManual {
-		return StepSandbox{Access: SandboxOff, Read: []string{}, Allow: []string{}, Network: true}
-	}
-	return DefaultSandbox()
-}
-
-// NormalizedFor fills the kind's default into a zero value (a snapshot from before the field existed).
-func (s StepSandbox) NormalizedFor(kind StepKind) StepSandbox {
+// Normalized fills the default into a zero value (a snapshot from before the field existed).
+func (s StepSandbox) Normalized() StepSandbox {
 	if s.Access == "" {
-		return DefaultSandboxFor(kind)
+		return DefaultSandbox()
 	}
 	if s.Read == nil {
 		s.Read = []string{}
@@ -204,10 +201,10 @@ func (s StepSandbox) NormalizedFor(kind StepKind) StepSandbox {
 	return s
 }
 
-// IsDefaultFor reports whether s equals the default policy of kind.
-func (s StepSandbox) IsDefaultFor(kind StepKind) bool {
-	s = s.NormalizedFor(kind)
-	d := DefaultSandboxFor(kind)
+// IsDefault reports whether s equals the default policy.
+func (s StepSandbox) IsDefault() bool {
+	s = s.Normalized()
+	d := DefaultSandbox()
 	return s.Access == d.Access && len(s.Read) == 0 && len(s.Allow) == 0 && s.Network == d.Network
 }
 
@@ -328,7 +325,7 @@ type Branch struct {
 	UpstreamBehind      int            `json:"upstreamBehind"`
 	MergedIntoMain      bool           `json:"mergedIntoMain"`
 	MergedAt            *int64         `json:"mergedAt"`
-	Worktree            string         `json:"worktree"`
+	Worktree            string         `json:"worktree"` // where the branch is checked out for this row; '' when detached or nowhere
 	Setup               *WorktreeSetup `json:"setup"`
 	Integration         []Integration  `json:"integration"`
 	Deployments         []Deployment   `json:"deployments"`
@@ -339,6 +336,11 @@ type Branch struct {
 	LastCommitAt        *int64         `json:"lastCommitAt"`
 	AddedAt             int64          `json:"addedAt"`
 	Origin              string         `json:"origin"` // '' user | 'agent'
+	// Detached is set when the row's own worktree folder is left on a detached commit because its
+	// branch is checked out elsewhere, or nowhere, now.
+	Detached *BranchDetached `json:"detached,omitempty"`
+	// Shared lists the other live rows of the same repo and branch name.
+	Shared []BranchPeer `json:"shared,omitempty"`
 }
 
 type Pair struct {
@@ -521,9 +523,33 @@ type Task struct {
 	ParentArchived bool   `json:"parentArchived,omitempty"`
 }
 
+// BranchHolder says where a branch is checked out. Kind 'task': the own worktree of a live task row
+// (TaskID, BranchID); 'main': the repo's main checkout; 'other': any other worktree; 'none': nowhere.
+type BranchHolder struct {
+	Kind     string `json:"kind"`
+	TaskID   string `json:"taskId"`
+	BranchID string `json:"branchId"`
+	Worktree string `json:"worktree"`
+}
+
+// BranchDetached marks a row whose own worktree folder is left on a detached commit because its branch
+// is checked out elsewhere (or nowhere) now.
+type BranchDetached struct {
+	Worktree string       `json:"worktree"`
+	Holder   BranchHolder `json:"holder"`
+}
+
+// BranchPeer is another live row of the same repo and branch name.
+type BranchPeer struct {
+	TaskID   string `json:"taskId"`
+	BranchID string `json:"branchId"`
+	Attached bool   `json:"attached"`
+}
+
 // BranchRequestItem is one branch an agent asks work for. ID is the item's key in the request. Kind 'branch':
 // a new branch named Branch from Base (” = the repo's main branch). Kind 'worktree': a worktree for the named,
-// not yet checked out Branch. Kind 'rename': rename From to Branch; Upstream names the same-named remote branch
+// not yet checked out Branch. Kind 'checkout': check out the existing Branch, held nowhere. Kind 'adopt':
+// check out the existing Branch after detaching it in Holder; Dirty counts the uncommitted changes that stay there. Kind 'rename': rename From to Branch; Upstream names the same-named remote branch
 // (such as origin/feat/x) the user may rename too, ” when there is none; Stacked lists the branches built on From.
 type BranchRequestItem struct {
 	ID         string   `json:"id"`
@@ -540,6 +566,10 @@ type BranchRequestItem struct {
 	Source   string `json:"source"`
 	StepName string `json:"stepName"`
 	Session  string `json:"session"`
+	// Holder and Dirty describe an 'adopt' item: where the branch is checked out now and how many
+	// uncommitted changes stay in that worktree.
+	Holder *BranchHolder `json:"holder,omitempty"`
+	Dirty  int           `json:"dirty,omitempty"`
 }
 
 // BranchRequest is a task's open request for branches and worktrees, merged from the agent's concurrent
@@ -1256,6 +1286,38 @@ type ReviewWorkingStamp struct {
 	Stamp string `json:"stamp"`
 }
 
+// RefSync is one ref of a review against its remote twin. Counts are local refs as of the last fetch.
+type RefSync struct {
+	Name   string `json:"name"`   // spelling the review uses: feat/x or origin/feat/x
+	Short  string `json:"short"`  // branch name without remote
+	Local  bool   `json:"local"`  // Name is a local branch
+	Twin   string `json:"twin"`   // twin spelling, "" when none
+	Ahead  int    `json:"ahead"`  // commits Name has over the twin
+	Behind int    `json:"behind"` // commits the twin has over Name
+	// State is current | behind | ahead | diverged | remote | noRemote.
+	State    string `json:"state"`
+	Worktree string `json:"worktree"` // where Name is checked out, "" when nowhere
+}
+
+// ReviewSync is how fresh a review's branch and base are against their remotes.
+type ReviewSync struct {
+	Remote      string  `json:"remote"` // default remote, "" when none
+	LastFetchAt *int64  `json:"lastFetchAt"`
+	Branch      RefSync `json:"branch"`
+	Base        RefSync `json:"base"`
+}
+
+// ReviewUpdateLocalArgs fast-forwards the local branch or base of a review to its remote twin.
+type ReviewUpdateLocalArgs struct {
+	BranchID string `json:"branchId"`
+	Side     string `json:"side"` // branch | base
+}
+
+// ReviewFetchResult carries a failed fetch's error; nil on success.
+type ReviewFetchResult struct {
+	Error *RemoteOpError `json:"error"`
+}
+
 // ReviewAgentState is the task's review agent row; HostWindowKey is ” unless it runs.
 type ReviewAgentState struct {
 	Session       *Session `json:"session"`
@@ -1438,7 +1500,7 @@ type RebaseStackItem struct {
 	OntoRef  string `json:"ontoRef"`
 }
 
-// RebaseBlocker kinds: dirty, running, inProgress, baseMissing, parentDraft, noWorktree, setup.
+// RebaseBlocker kinds: dirty, running, inProgress, baseMissing, parentDraft, noWorktree, attachedElsewhere, setup.
 type RebaseBlocker struct {
 	BranchID string `json:"branchId"`
 	Kind     string `json:"kind"`

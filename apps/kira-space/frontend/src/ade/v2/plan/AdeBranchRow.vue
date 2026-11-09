@@ -16,6 +16,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import { useRepoLinksStore } from '../../../repo/state/repoLinks';
 import { useRepos } from '../../../repo/state/reposQueries';
 import { repoTint } from '../../../state/coderepos';
+import AdeTip from '../AdeTip.vue';
 import { useRunAutomation } from '../automation/useRunAutomation';
 import { type BranchAction, tagLabel } from '../board/actions';
 import { fixItems } from '../board/menu';
@@ -35,7 +36,7 @@ import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import AdeAttention from './AdeAttention.vue';
 import AdeBranchTip from './AdeBranchTip.vue';
 import AdeTagIcon from './AdeTagIcon.vue';
-import { BRANCH_ACTION_ICON, BRANCH_TAG_GLYPH, rowActionSplit } from './glyphs';
+import { ATTACH_GLYPH, BRANCH_ACTION_ICON, BRANCH_TAG_GLYPH, rowActionSplit } from './glyphs';
 import { type BranchRowModel, usePlanModel } from './usePlanModel';
 
 const props = withDefaults(
@@ -316,14 +317,29 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           class="min-w-0 flex-1 text-left"
           :class="panel ? 'flex items-center gap-1.5' : 'flex h-full flex-col justify-center'"
         >
-          <span
-            class="truncate font-data text-kira-md font-medium"
-            :class="[row.draft ? 'text-muted-foreground' : 'text-fg', panel ? '' : 'leading-4']"
-            data-testid="ade-branch-name"
-            >{{
-              row.name
-            }}</span
-          >
+          <span class="flex min-w-0 items-center gap-1">
+            <span
+              class="truncate font-data text-kira-md font-medium"
+              :class="[
+                row.draft || row.attach?.state === 'detached' ? 'text-muted-foreground' : 'text-fg',
+                panel ? '' : 'leading-4',
+              ]"
+              data-testid="ade-branch-name"
+              >{{
+                row.name
+              }}</span
+            >
+            <AdeTip v-if="row.attach" :text="row.attach.tip">
+              <span
+                role="img"
+                class="inline-flex shrink-0 text-subtle"
+                :aria-label="row.attach.tip"
+                :data-testid="`ade-branch-${row.attach.state}`"
+              >
+                <CodiconIcon :name="ATTACH_GLYPH[row.attach.state].icon" :size="13" />
+              </span>
+            </AdeTip>
+          </span>
           <span
             v-if="row.context || row.prog || hasChips"
             class="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap"

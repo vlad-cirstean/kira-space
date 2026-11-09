@@ -1,0 +1,247 @@
+{
+  "AdeTaskBoard.Board#adopted": [
+    {
+      "addedAt": 0,
+      "ahead": 0,
+      "base": "<masked>",
+      "baseBranchId": "",
+      "baseMissing": false,
+      "baseOwner": "",
+      "basePendingFrom": "",
+      "behind": 0,
+      "codeRepoId": "<masked>",
+      "conflictCheck": "done",
+      "conflictCheckReason": "",
+      "conflictsIfRebased": [],
+      "deployments": [],
+      "detached": {
+        "holder": {
+          "branchId": "<masked>",
+          "kind": "task",
+          "taskId": "<masked>",
+          "worktree": "<masked>"
+        },
+        "worktree": "<masked>"
+      },
+      "dirty": [],
+      "id": "<masked>",
+      "integration": [],
+      "kind": "mine",
+      "lastCommitAt": 1700000060000,
+      "mergedAt": null,
+      "mergedIntoMain": false,
+      "name": "feat/x",
+      "origin": "",
+      "owner": "",
+      "rebaseInProgress": false,
+      "setup": null,
+      "shared": [
+        {
+          "attached": true,
+          "branchId": "<masked>",
+          "taskId": "<masked>"
+        }
+      ],
+      "taskId": "<masked>",
+      "tip": "<masked>",
+      "upstream": "",
+      "upstreamAhead": 0,
+      "upstreamBehind": 0,
+      "worktree": "<masked>"
+    },
+    {
+      "addedAt": 0,
+      "ahead": 0,
+      "base": "<masked>",
+      "baseBranchId": "",
+      "baseMissing": false,
+      "baseOwner": "",
+      "basePendingFrom": "",
+      "behind": 0,
+      "codeRepoId": "<masked>",
+      "conflictCheck": "done",
+      "conflictCheckReason": "",
+      "conflictsIfRebased": [],
+      "deployments": [],
+      "dirty": [],
+      "id": "<masked>",
+      "integration": [],
+      "kind": "mine",
+      "lastCommitAt": 1700000060000,
+      "mergedAt": null,
+      "mergedIntoMain": false,
+      "name": "feat/x",
+      "origin": "agent",
+      "owner": "",
+      "rebaseInProgress": false,
+      "setup": {},
+      "shared": [
+        {
+          "attached": false,
+          "branchId": "<masked>",
+          "taskId": "<masked>"
+        }
+      ],
+      "taskId": "<masked>",
+      "tip": "<masked>",
+      "upstream": "",
+      "upstreamAhead": 0,
+      "upstreamBehind": 0,
+      "worktree": "<masked>"
+    }
+  ],
+  "ApprovalsService.List#adopt": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "branch.request",
+      "operation": {
+        "class": "create",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "session",
+        "step": "",
+        "task": "Adopter"
+      },
+      "payload": {
+        "items": [
+          {
+            "base": "<masked>",
+            "branch": "feat/x",
+            "codeRepoId": "<masked>",
+            "from": "",
+            "holder": {
+              "branchId": "<masked>",
+              "kind": "task",
+              "taskId": "<masked>",
+              "worktree": "<masked>"
+            },
+            "id": "<masked>",
+            "kind": "adopt",
+            "repo": "api",
+            "session": "<masked>",
+            "source": "session",
+            "stacked": [],
+            "stepName": "",
+            "upstream": ""
+          }
+        ],
+        "taskId": "<masked>",
+        "taskTitle": "Adopter"
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Adopter",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#adoptMain": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "branch.request",
+      "operation": {
+        "class": "create",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "session",
+        "step": "",
+        "task": "Adopter"
+      },
+      "payload": {
+        "items": [
+          {
+            "base": "<masked>",
+            "branch": "feat/main-held",
+            "codeRepoId": "<masked>",
+            "dirty": 1,
+            "from": "",
+            "holder": {
+              "branchId": "<masked>",
+              "kind": "main",
+              "taskId": "<masked>",
+              "worktree": "<masked>"
+            },
+            "id": "<masked>",
+            "kind": "adopt",
+            "repo": "api",
+            "session": "<masked>",
+            "source": "session",
+            "stacked": [],
+            "stepName": "",
+            "upstream": ""
+          }
+        ],
+        "taskId": "<masked>",
+        "taskTitle": "Adopter"
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Adopter",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#checkout": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "branch.request",
+      "operation": {
+        "class": "create",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "session",
+        "step": "",
+        "task": "Adopter"
+      },
+      "payload": {
+        "items": [
+          {
+            "base": "<masked>",
+            "branch": "feat/free",
+            "codeRepoId": "<masked>",
+            "from": "",
+            "id": "<masked>",
+            "kind": "checkout",
+            "repo": "api",
+            "session": "<masked>",
+            "source": "session",
+            "stacked": [],
+            "stepName": "",
+            "upstream": ""
+          }
+        ],
+        "taskId": "<masked>",
+        "taskTitle": "Adopter"
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Adopter",
+        "readOnly": false
+      }
+    }
+  ]
+}

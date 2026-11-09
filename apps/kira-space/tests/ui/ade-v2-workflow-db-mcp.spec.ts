@@ -61,7 +61,7 @@ test('a smart script step has no option and switching to one clears it', async (
   expect(stepOf(out, 'plan')?.smartScript).not.toBe('');
 });
 
-test('a manual step shows the option only with a session and clears it without one', async ({
+test('a manual step shows the option only with a session; a new session starts with it on', async ({
   relaunch,
 }) => {
   const { window: page, control } = await openWorkflows(relaunch);
@@ -73,9 +73,9 @@ test('a manual step shows the option only with a session and clears it without o
   await expect(dbMcp(page)).toHaveCount(0);
   await page.locator(t('ade-wf-step-session')).click();
   await openAdvanced(page);
-  await expect(dbMcp(page)).not.toBeChecked();
+  await expect(dbMcp(page)).toBeChecked();
   const out = await saved<SavedWorkflow>(page, control, 1);
-  expect(stepOf(out, 'spec')).toMatchObject({ session: true, dbMcp: false });
+  expect(stepOf(out, 'spec')).toMatchObject({ session: true, dbMcp: true });
 });
 
 test('the Database MCP settings say step sessions get their own access', async ({ relaunch }) => {

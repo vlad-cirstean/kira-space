@@ -1,0 +1,162 @@
+{
+  "ConfigSyncService.Apply#repos": {
+    "applied": 1,
+    "blocked": 3,
+    "kept": 0
+  },
+  "ConfigSyncService.Preview#repos": {
+    "files": [
+      {
+        "after": "# local notes\npath: <work>/a\nnickname: Alpha\ngraph:\n  page_size: 150\nworktree:\n  base_path: <work>/trees\n  prepare_script: bun install\n  prepare_timeout: 15m\nintegration_branches:\n  - develop\nreview:\n  base_candidates:\n    - main\n    - develop\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n",
+        "afterExists": true,
+        "current": "# local notes\npath: <work>/a\nnickname: Alpha\ngraph:\n  page_size: 150\nworktree:\n  base_path: <work>/trees\n",
+        "currentExists": true,
+        "file": "a.yaml",
+        "module": "repos"
+      }
+    ],
+    "rows": [
+      {
+        "deactivated": false,
+        "entry": "",
+        "file": "acme-app.yaml",
+        "id": "repos/acme-app.yaml@<work>/c",
+        "kind": "blocked",
+        "module": "repos",
+        "origin": "example.com/acme/app",
+        "problem": "This repository has more than one origin address, so it doesn’t sync.",
+        "repo": "<work>/c",
+        "runsCommands": false,
+        "unsetSecrets": []
+      },
+      {
+        "deactivated": false,
+        "entry": "environments/staging",
+        "file": "acme-app.yaml",
+        "id": "repos/acme-app.yaml#environments/staging@a.yaml",
+        "kind": "add",
+        "module": "repos",
+        "origin": "example.com/acme/app",
+        "problem": "",
+        "repo": "<work>/a",
+        "runsCommands": true,
+        "target": "a.yaml",
+        "unsetSecrets": []
+      },
+      {
+        "deactivated": false,
+        "entry": "integration_branches",
+        "file": "acme-app.yaml",
+        "id": "repos/acme-app.yaml#integration_branches@a.yaml",
+        "kind": "add",
+        "module": "repos",
+        "origin": "example.com/acme/app",
+        "problem": "",
+        "repo": "<work>/a",
+        "runsCommands": false,
+        "target": "a.yaml",
+        "unsetSecrets": []
+      },
+      {
+        "deactivated": false,
+        "entry": "review/base_candidates",
+        "file": "acme-app.yaml",
+        "id": "repos/acme-app.yaml#review/base_candidates@a.yaml",
+        "kind": "add",
+        "module": "repos",
+        "origin": "example.com/acme/app",
+        "problem": "",
+        "repo": "<work>/a",
+        "runsCommands": false,
+        "target": "a.yaml",
+        "unsetSecrets": []
+      },
+      {
+        "deactivated": false,
+        "entry": "worktree/prepare",
+        "file": "acme-app.yaml",
+        "id": "repos/acme-app.yaml#worktree/prepare@a.yaml",
+        "kind": "add",
+        "module": "repos",
+        "origin": "example.com/acme/app",
+        "problem": "",
+        "repo": "<work>/a",
+        "runsCommands": true,
+        "target": "a.yaml",
+        "unsetSecrets": []
+      },
+      {
+        "deactivated": false,
+        "entry": "worktree/prepare_timeout",
+        "file": "acme-app.yaml",
+        "id": "repos/acme-app.yaml#worktree/prepare_timeout@a.yaml",
+        "kind": "add",
+        "module": "repos",
+        "origin": "example.com/acme/app",
+        "problem": "",
+        "repo": "<work>/a",
+        "runsCommands": false,
+        "target": "a.yaml",
+        "unsetSecrets": []
+      },
+      {
+        "deactivated": false,
+        "entry": "",
+        "file": "leaky.yaml",
+        "id": "repos/leaky.yaml",
+        "kind": "blocked",
+        "module": "repos",
+        "problem": "Literal credential at /environments/0/deployed_sha_script (line 4). Use a secret reference instead. The shared repository must not hold one.",
+        "runsCommands": false,
+        "unsetSecrets": []
+      },
+      {
+        "deactivated": false,
+        "entry": "",
+        "file": "local-key.yaml",
+        "id": "repos/local-key.yaml",
+        "kind": "blocked",
+        "module": "repos",
+        "problem": "The file is not valid (path is not a known option.).",
+        "runsCommands": false,
+        "unsetSecrets": []
+      },
+      {
+        "deactivated": false,
+        "entry": "",
+        "file": "other.yaml",
+        "id": "repos/other.yaml",
+        "kind": "unmatched",
+        "module": "repos",
+        "origin": "example.com/other/thing",
+        "problem": "",
+        "runsCommands": false,
+        "unsetSecrets": []
+      }
+    ]
+  },
+  "ConfigSyncService.RepoSharedText": "# Shared Kira repo settings: applies to every repository with this origin.\norigin: https://example.com/acme/app\nintegration_branches:\n  - develop\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\nworktree:\n  prepare_script: bun install\n  prepare_timeout: 15m\nreview:\n  base_candidates:\n    - main\n    - develop\n",
+  "ConfigSyncService.Status#repos": {
+    "applied": "",
+    "available": true,
+    "branch": "main",
+    "changes": 5,
+    "configured": true,
+    "fetchMinutes": 30,
+    "fetching": false,
+    "modules": [
+      {
+        "deactivated": 0,
+        "mode": "combined",
+        "modes": [
+          "local",
+          "combined"
+        ],
+        "name": "repos",
+        "units": 9
+      }
+    ],
+    "problem": null,
+    "showToast": true
+  }
+}

@@ -78,7 +78,9 @@ function taskCreateItem(): ApprovalItem {
   return liveItem(it, 1800, FIXED_NOW);
 }
 
-test('task.create approval shows child, workflow, repos and brief', async ({ relaunch }) => {
+test('task.create approval shows title, parent, workflow, repos and brief', async ({
+  relaunch,
+}) => {
   const it = taskCreateItem();
   const { window: page, control } = await openPlan(relaunch, [
     ...seedApprovals([it]),
@@ -86,9 +88,9 @@ test('task.create approval shows child, workflow, repos and brief', async ({ rel
   ]);
   const dialog = page.locator(t('approvals-dialog'));
   await expect(dialog).toBeVisible();
-  const body = dialog.locator(t('ade-task-create-body'));
-  await expect(body.locator(t('ade-task-create-parent'))).toContainText('Ship login');
-  await expect(body.locator(t('ade-task-create-title'))).toHaveText('API login');
+  await expect(dialog.locator(t('approval-origin'))).toContainText('Ship login');
+  await expect(dialog.locator(t('approval-target-name'))).toHaveText('API login');
+  const body = dialog.locator(t(`approval-item-${it.id}`));
   await expect(body.locator(t('ade-task-create-workflow'))).toContainText('Flow');
   const repo = body.locator(t('ade-task-create-repo'));
   await expect(repo).toHaveCount(1);

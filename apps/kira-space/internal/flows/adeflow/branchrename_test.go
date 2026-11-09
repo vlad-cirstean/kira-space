@@ -21,6 +21,9 @@ const renameScenario = "ade-branch-rename"
 // noSandbox turns the sandbox off for the second step, so the run is not bound to the branch it renames.
 const noSandbox = "    sandbox:\n      access: off\n"
 
+// writeSandbox confines the second step: no block means access off since P588.
+const writeSandbox = "    sandbox:\n      access: write\n"
+
 func renameCall(from, to string, remote bool) fakeagent.MCPCall {
 	return fakeagent.MCPCall{
 		Server: agentmcp.ServerName, Tool: "rename_branch", Tolerate: true,
@@ -154,7 +157,7 @@ func TestBranchRename(t *testing.T) {
 	})
 
 	t.Run("a sandboxed run keeps its branch name", func(t *testing.T) {
-		f, _, _ := newRenameFixture(t, renameCall("feat/old", "feat/new", false), "")
+		f, _, _ := newRenameFixture(t, renameCall("feat/old", "feat/new", false), writeSandbox)
 		f.startRun(t)
 		first := f.waitRequest(t)
 		if _, err := approveBR(f.app, first.ID, []string{first.Items[0].ID}, nil); err != nil {

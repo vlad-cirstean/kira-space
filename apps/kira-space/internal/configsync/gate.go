@@ -63,6 +63,11 @@ func holdsSecretName(parentKey, k string) bool {
 }
 
 func literalCredentialMessage(line int, path []string) string {
+	return i18n.T("backend.space.configSync.gate.literalCredential.body", map[string]string{"at": credentialAt(line, path)})
+}
+
+// credentialAt names where a literal credential sits: its field path and line.
+func credentialAt(line int, path []string) string {
 	at := "/" + strings.Join(path, "/")
 	switch {
 	case len(path) == 0:
@@ -70,7 +75,23 @@ func literalCredentialMessage(line int, path []string) string {
 	case line > 0:
 		at += " (line " + strconv.Itoa(line) + ")"
 	}
-	return i18n.T("backend.space.configSync.gate.literalCredential.body", map[string]string{"at": at})
+	return at
+}
+
+// sharedCredentialAt is the location of the first literal credential in a rendered shared repos
+// file, with the same two scans the import gate runs.
+func sharedCredentialAt(text []byte) (string, bool) {
+	var doc yaml.Node
+	if yaml.Unmarshal(text, &doc) != nil {
+		return "", false
+	}
+	if line, path, hit := scanNode(&doc, "", nil); hit {
+		return credentialAt(line, path), true
+	}
+	if line, path, hit := scanWords(&doc, nil); hit {
+		return credentialAt(line, path), true
+	}
+	return "", false
 }
 
 func scanNode(n *yaml.Node, parentKey string, path []string) (line int, at []string, hit bool) {

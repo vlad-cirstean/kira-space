@@ -56,7 +56,7 @@ type liveTUISandbox struct {
 // lines and cwd come from launchDirs; folder is the task folder when the session works outside the
 // repos or the task has none. It returns nil when the step's sandbox is off.
 func (b *TaskBoard) manualSandboxPlan(sd adewire.StepSandbox, tc *taskCtx, lines []repoLine, cwd, folder string) (*tuiSandboxPlan, error) {
-	sd = sd.NormalizedFor(adewire.KindManual)
+	sd = sd.Normalized()
 	if agentsandbox.Access(sd.Access) == agentsandbox.AccessOff {
 		return nil, nil
 	}
@@ -100,7 +100,7 @@ func (b *TaskBoard) resumeSandboxPlan(ctx context.Context, tc *taskCtx, rec *mod
 	if step == nil || step.Kind != adewire.KindManual || !step.Session || step.ID == reviewStepID {
 		return nil, nil
 	}
-	if agentsandbox.Access(step.Sandbox.NormalizedFor(step.Kind).Access) == agentsandbox.AccessOff {
+	if agentsandbox.Access(step.Sandbox.Normalized().Access) == agentsandbox.AccessOff {
 		return nil, nil
 	}
 	var lines []repoLine
@@ -126,7 +126,7 @@ func (b *TaskBoard) prepareTUISandbox(ctx context.Context, recordID string, agen
 	if b.deps.Sandbox == nil || plan == nil {
 		return nil, nil
 	}
-	sd := plan.sd.NormalizedFor(adewire.KindManual)
+	sd := plan.sd.Normalized()
 	if agentsandbox.Access(sd.Access) == agentsandbox.AccessOff {
 		return nil, nil
 	}

@@ -33,9 +33,9 @@ const outsideVars = computed(() => props.step.outsideRepo && usesRepoTokens(prop
             session: v === true,
             prompt: v === true ? step.prompt : '',
             settings: v === true ? step.settings : {},
-            dbMcp: v === true ? step.dbMcp : false,
+            dbMcp: v === true,
             outsideRepo: v === true ? step.outsideRepo : false,
-            sandbox: v === true ? step.sandbox : defaultSandbox('manual'),
+            sandbox: v === true ? step.sandbox : defaultSandbox(),
           })
       "
     />

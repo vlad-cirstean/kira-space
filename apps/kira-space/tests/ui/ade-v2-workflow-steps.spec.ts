@@ -174,19 +174,19 @@ test('New step creates a library step of the picked kind', async ({ relaunch }) 
   await page.locator(t('ade-step-new-script')).click();
   await expect.poll(() => calls(control, IPC.adeTaskNewStep)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskNewStep)[0]?.args).toEqual({
-    name: 'New step',
+    name: 'Script step',
     kind: 'script',
     from: null,
   });
 });
 
-test('the add menu offers library steps and adds a reference with a fresh id', async ({
+test('the add menu offers library steps and adds a reference with a free id', async ({
   relaunch,
 }) => {
   const { window: page, control } = await openWorkflows(relaunch, withLibrary);
   await page.locator(t('ade-wf-add-step')).click();
   await page.locator(t('ade-wf-add-library-implement')).click();
-  const added = page.locator(`${t('ade-wf-node')}[data-step-id^="stp_"]`);
+  const added = page.locator(`${t('ade-wf-node')}[data-step-id="implement-2"]`);
   await expect(added).toHaveCount(1);
   await expect(added.locator(t('ade-wf-node-library'))).toBeVisible();
   await expect(page.locator(t('ade-wf-step-library'))).toContainText('Implement');
@@ -264,7 +264,7 @@ test('Save to library sends the inline step to NewStep and references the new fi
     kind: string;
     from: LibStep;
   };
-  expect(args).toMatchObject({ name: 'New step', kind: 'agent' });
-  expect(args.from.id).toMatch(/^stp_[0-9a-hjkmnp-tv-z]{12}$/);
+  expect(args).toMatchObject({ name: 'Agent step', kind: 'agent' });
+  expect(args.from.id).toBe('agent-step');
   await expect(page.locator(t('ade-wf-step-library'))).toBeVisible();
 });

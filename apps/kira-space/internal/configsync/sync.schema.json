@@ -33,7 +33,7 @@
       "type": "object",
       "description": "How each module follows the repository: local, shared or combined.",
       "propertyNames": {
-        "enum": ["connections", "api", "runs", "workflows", "steps", "agent", "prompts"]
+        "enum": ["connections", "api", "runs", "workflows", "steps", "agent", "prompts", "repos"]
       },
       "additionalProperties": { "enum": ["local", "shared", "combined"] }
     },
@@ -41,7 +41,7 @@
       "type": "object",
       "description": "Shared units this machine never applies, by module: a file name, or file#entry.",
       "propertyNames": {
-        "enum": ["connections", "api", "runs", "workflows", "steps", "agent", "prompts"]
+        "enum": ["connections", "api", "runs", "workflows", "steps", "agent", "prompts", "repos"]
       },
       "additionalProperties": {
         "type": "array",

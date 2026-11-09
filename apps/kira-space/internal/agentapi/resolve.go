@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"golang.org/x/net/http/httpguts"
@@ -34,7 +34,7 @@ var methods = map[string]bool{"GET": true, "HEAD": true, "OPTIONS": true, "POST"
 type credential struct {
 	name       string
 	secretName string
-	rules      []apifiles.HostRule
+	rules      []apiaccess.HostRule
 }
 
 // Plan checks in against the policy without sending it. A problem is returned as an error the
@@ -56,7 +56,27 @@ func (s *Service) Plan(in Input) (Planned, error) {
 	if err != nil {
 		return Planned{}, err
 	}
+	if err := s.checkAccess(&p); err != nil {
+		return Planned{}, err
+	}
 	return p, checkCredentials(p)
+}
+
+// checkAccess applies the user's host and method rules before any credential or approval step.
+func (s *Service) checkAccess(p *Planned) error {
+	if s.Access == nil {
+		return nil
+	}
+	policy, err := s.Access()
+	if err != nil {
+		return err
+	}
+	u, err := url.Parse(p.URL)
+	if err != nil {
+		return errors.New("url is not valid")
+	}
+	p.access = policy
+	return policy.Check(p.Method, u)
 }
 
 func (s *Service) environmentOf(id string) (EnvInfo, map[string]available, error) {
@@ -390,7 +410,7 @@ func checkCredentials(p Planned) error {
 	return nil
 }
 
-func allowsAny(rules []apifiles.HostRule, u *url.URL) bool {
+func allowsAny(rules []apiaccess.HostRule, u *url.URL) bool {
 	for _, r := range rules {
 		if r.Allows(u) {
 			return true
@@ -399,7 +419,7 @@ func allowsAny(rules []apifiles.HostRule, u *url.URL) bool {
 	return false
 }
 
-func hostList(rules []apifiles.HostRule) string {
+func hostList(rules []apiaccess.HostRule) string {
 	if len(rules) == 0 {
 		return "none"
 	}
@@ -410,9 +430,10 @@ func hostList(rules []apifiles.HostRule) string {
 	return strings.Join(names, ", ")
 }
 
-// redirectGuard blocks a redirect that would carry a credential to a host its list does not allow.
-func redirectGuard(creds []credential) func(*url.URL) error {
-	if len(creds) == 0 {
+// redirectGuard blocks a redirect that would carry a credential to a host its list does not allow, or that the
+// access rules refuse. The hop is checked with the request's own method, even when a 303 turns it into a GET.
+func redirectGuard(method string, creds []credential, access apiaccess.Policy) func(*url.URL) error {
+	if len(creds) == 0 && access.Empty() {
 		return nil
 	}
 	return func(next *url.URL) error {
@@ -420,6 +441,9 @@ func redirectGuard(creds []credential) func(*url.URL) error {
 			if !allowsAny(c.rules, next) {
 				return fmt.Errorf("redirect to %s blocked: credential %q is not allowed there", next.Host, c.name)
 			}
+		}
+		if err := access.Check(method, next); err != nil {
+			return fmt.Errorf("redirect to %s blocked: %w", next.Host, err)
 		}
 		return nil
 	}

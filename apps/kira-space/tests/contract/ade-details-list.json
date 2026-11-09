@@ -152,7 +152,7 @@
               "allowedTools": [],
               "before": "",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "<masked>",
               "kind": "manual",
               "maxReturns": 0,

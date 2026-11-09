@@ -264,14 +264,7 @@ func (l *StepLibrary) New(name string, kind adewire.StepKind, from *adewire.Work
 	}
 	l.wmu.Lock()
 	defer l.wmu.Unlock()
-	base := slug(name, "step")
-	id := base
-	for n := 2; ; n++ {
-		if _, err := os.Lstat(filepath.Join(l.Dir, id+".yaml")); os.IsNotExist(err) {
-			break
-		}
-		id = fmt.Sprintf("%s-%d", base, n)
-	}
+	id := freeStem(slug(name, "step"), stepTakenIn(l.Dir))
 	st.ID, st.Name = id, name
 	out, err := encodeStep(&yaml.Node{}, st)
 	if err != nil {
@@ -306,7 +299,8 @@ func withTimeout(st adewire.WorkflowStep, kind adewire.StepKind) adewire.Workflo
 	st.Timeout = "30m"
 	st.Before = beforeValues[0]
 	st.MaxReturns = adewire.DefaultLimit(kind == adewire.KindReview)
-	st.Sandbox = adewire.DefaultSandboxFor(kind)
+	st.Sandbox = adewire.DefaultSandbox()
+	st.DbMcp = kind == adewire.KindAgent || kind == adewire.KindReview
 	return st
 }
 

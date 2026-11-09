@@ -42,7 +42,7 @@ test('contract: a script request shows the script, who asked and the masked secr
   );
   const token = card.locator('[data-testid="db-mcp-approval-script-env-KIRA_PARAM_TOKEN"]');
   await expect(token).toContainText('Secret');
-  await expect(token).toContainText('Saved value, not shown');
+  await expect(token).toContainText('Secret · saved');
   await expect(card.locator('[data-testid="db-mcp-approval-statement"]')).toHaveCount(0);
 });
 

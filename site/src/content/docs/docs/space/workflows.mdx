@@ -117,7 +117,7 @@ If the implementer session is gone, the round moves to a new review agent and th
 
 ## Sandbox
 
-On macOS every agent, script and session step runs under a Seatbelt sandbox, unless its access is `off`. An agent or review step without a `sandbox` block gets the default: write the branch worktree, network on. A script step or manual session step without one runs with no sandbox, so existing steps behave as before.
+On macOS every agent, script and session step runs under a Seatbelt sandbox, unless its access is `off`. A step without a `sandbox` block gets the default, `off`: no sandbox. Set `access: write` or `read` to confine a step. A `sandbox` block that leaves out `access` means `write`.
 
 ```yaml
 sandbox:
@@ -129,7 +129,7 @@ sandbox:
 
 - `write`: writes the worktree and the scratch folder. Reads the worktree, tools and the `read` list. A home file outside them fails.
 - `read`: same reads, no worktree writes.
-- `off`: no sandbox, no other keys. The step badge shows `No sandbox`. This is the script and manual session default.
+- `off`: no sandbox, no other keys. The step badge shows `No sandbox`. This is the default for every step.
 - A script step can set `sandbox` like an agent step. `read` fits a check that must not change files.
 - A manual step with a session can set `sandbox` too. The session chip shows the policy and blocked actions. A sandboxed session cannot push or fetch, change agent settings or sign in again; push from the branch menu.
 - Paths are absolute or start with `~/`. Keychain paths are refused.
@@ -153,12 +153,12 @@ A step with `outside_repo: true` (agent, script or session) runs in the task fol
 
 ## Kira database tools
 
-`db_mcp: true` gives an agent, review or session step the [Kira database tools](../../studio/database-mcp/) for its session. In the inspector, tick **Kira database tools** under Advanced. Smart script steps and manual steps without a session have no such option. Each call shows in the task's Details list; see [Audit trail](../../studio/database-mcp/#audit-trail).
+An agent, review or session step gets the [Kira database tools](../../studio/database-mcp/) for its session by default. A step without a `db_mcp` key has them on; `db_mcp: false` turns them off. In the inspector, untick **Kira database tools** under Advanced. Smart script steps and manual steps without a session have no such option. Each call shows in the task's Details list; see [Audit trail](../../studio/database-mcp/#audit-trail).
 
 ```yaml
 - id: migrate
   kind: agent
-  db_mcp: true
+  db_mcp: false
   prompt: Check the schema with list_connections.
 ```
 

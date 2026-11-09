@@ -445,6 +445,8 @@ const spaceControl = {
     ),
   configSyncDismiss: (sha: string): Promise<ConfigSyncStatus> =>
     unwrap(ConfigSyncService.Dismiss({ sha })).then((r) => trust<ConfigSyncStatus>(r)),
+  configSyncRepoSharedText: (path: string): Promise<string> =>
+    unwrap(ConfigSyncService.RepoSharedText({ path })).then((r) => trust<string>(r)),
   configSyncOpenReview: (): Promise<void> => unwrap(ConfigSyncService.OpenReview()),
   configSyncCloseReview: (): Promise<void> => unwrap(ConfigSyncService.CloseReview()),
   configSyncIsReviewWindow: (args: { windowKey: string }): Promise<boolean> =>
@@ -757,6 +759,12 @@ const spaceControl = {
     ),
   adeTaskReviewWorkingStamp: (args: V2.ReviewWorkingStampArgs): Promise<V2.ReviewWorkingStamp> =>
     unwrap(AdeTaskService.ReviewWorkingStamp(args)).then((r) => trust<V2.ReviewWorkingStamp>(r)),
+  adeTaskReviewSync: (args: V2.BranchArgs): Promise<V2.ReviewSync> =>
+    unwrap(AdeTaskService.ReviewSync(args)).then((r) => trust<V2.ReviewSync>(r)),
+  adeTaskReviewFetch: (args: V2.BranchArgs): Promise<V2.ReviewFetchResult> =>
+    unwrap(AdeTaskService.ReviewFetch(args)).then((r) => trust<V2.ReviewFetchResult>(r)),
+  adeTaskReviewUpdateLocal: (args: V2.ReviewUpdateLocalArgs): Promise<V2.ReviewSync> =>
+    unwrap(AdeTaskService.ReviewUpdateLocal(args)).then((r) => trust<V2.ReviewSync>(r)),
   adeTaskReviewWorkingMark: (args: V2.ReviewWorkingMarkArgs): Promise<V2.ReviewWorkingMarkResult> =>
     unwrap(AdeTaskService.ReviewWorkingMark(args)).then((r) =>
       trust<V2.ReviewWorkingMarkResult>(r),

@@ -10,6 +10,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 )
 
@@ -60,6 +61,7 @@ type EnvInfo struct {
 // Planned is a request checked against the policy but not yet sent. It holds no secret value: URL,
 // headers, body and form keep a secret as {{name}}.
 type Planned struct {
+	access      apiaccess.Policy
 	Env         EnvInfo
 	Method      string
 	URL         string
@@ -159,4 +161,6 @@ type Service struct {
 	Ops     OpRunner
 	// Globals is read fresh per send.
 	Globals func() (Globals, error)
+	// Access is the user's API access rules, read fresh per plan; nil means no rules.
+	Access func() (apiaccess.Policy, error)
 }

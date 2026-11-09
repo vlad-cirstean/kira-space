@@ -67,6 +67,12 @@ type TaskBoardDeps struct {
 	GitStatus func(ctx context.Context) gitclient.GitStatus
 	Askpass   *gitaskpass.Broker
 	Workflows *adeflow.Reader
+	// NamesMarker, BackupDir and KeepStem drive the one-time readable names migration at Start. An empty
+	// NamesMarker disables it. BackupDir is the backup folder prefix (a UTC stamp is appended). KeepStem
+	// reports a file that came from the shared repo, which keeps its stem; nil keeps none.
+	NamesMarker string
+	BackupDir   string
+	KeepStem    func(module, file string) bool
 	// Proofs attaches validation-proof sessions to tasks; nil turns the proof tools off.
 	Proofs ProofLinks
 	// DbMcp mints the per-session Kira Studio server entry; nil makes a db_mcp step fail to launch.

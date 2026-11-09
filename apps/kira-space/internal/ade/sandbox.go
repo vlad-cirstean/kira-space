@@ -142,10 +142,10 @@ func (b *TaskBoard) prepareSandbox(ctx context.Context, run model.AdeRun, l agen
 	if b.deps.Sandbox == nil {
 		return nil, nil
 	}
-	sd := l.def.Sandbox.NormalizedFor(l.def.Kind)
+	sd := l.def.Sandbox.Normalized()
 	rebase := run.Purpose == model.AdeRunPurposeRebase
 	if rebase {
-		sd = adewire.DefaultSandbox()
+		sd = adewire.WriteSandbox()
 	}
 	agent := l.agent
 	sr := &sandboxRun{access: agentsandbox.Access(sd.Access), agent: agent}
@@ -188,7 +188,7 @@ func (b *TaskBoard) prepareSandbox(ctx context.Context, run model.AdeRun, l agen
 // prepareScriptSandbox resolves and prepares the sandbox of a script step run in path. It returns nil
 // when the board has no enforcer or the step's access is off: an unconfined script keeps no row.
 func (b *TaskBoard) prepareScriptSandbox(ctx context.Context, run model.AdeRun, def stepDef, branch, path string) (*sandboxRun, error) {
-	sd := def.Sandbox.NormalizedFor(def.Kind)
+	sd := def.Sandbox.Normalized()
 	if b.deps.Sandbox == nil || agentsandbox.Access(sd.Access) == agentsandbox.AccessOff {
 		return nil, nil
 	}
@@ -276,7 +276,7 @@ func (b *TaskBoard) applySandbox(spec harness.HeadlessSpec, sr *sandboxRun, l ag
 	if sr.grant != nil {
 		spec.AllowedTools = append(slices.Clone(spec.AllowedTools), harness.ToolNames(l.agent, agentmcp.SandboxToolIDs...)...)
 	}
-	sd := l.def.Sandbox.NormalizedFor(l.def.Kind)
+	sd := l.def.Sandbox.Normalized()
 	note := llmprompts.HeadlessSandboxNote.Text(b.prompts(), llmprompts.SandboxNoteVars{
 		Access: string(sr.access), Worktree: sr.policy.RunDir, Read: sd.Read, Network: sr.policy.Network,
 		Enforced: b.deps.Sandbox.Support().Enforced, Tools: sr.grant != nil,

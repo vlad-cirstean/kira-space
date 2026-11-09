@@ -1,0 +1,148 @@
+{
+  "CustomScriptsService.List#long": {
+    "collections": [],
+    "dir": "<space>/config/runs",
+    "problems": [],
+    "scripts": [
+      {
+        "collection": "",
+        "color": "none",
+        "command": "echo started; while [ ! -f '<stop>' ]; do sleep 0.1; done; echo bye; exit 4",
+        "createdAt": "<masked>",
+        "dirMode": "kira",
+        "id": "serve",
+        "kind": "script",
+        "mcp": {
+          "description": "Serves until stopped.",
+          "enabled": true,
+          "mode": "long",
+          "run": "allow",
+          "timeout": ""
+        },
+        "name": "serve",
+        "params": [],
+        "savedSecrets": [],
+        "schedule": null,
+        "smart": null,
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "useAdeDir": false,
+        "workingDir": ""
+      },
+      {
+        "collection": "",
+        "color": "none",
+        "command": "echo hi",
+        "createdAt": "<masked>",
+        "dirMode": "kira",
+        "id": "quick",
+        "kind": "script",
+        "mcp": {
+          "description": "",
+          "enabled": true,
+          "mode": "short",
+          "run": "allow",
+          "timeout": ""
+        },
+        "name": "quick",
+        "params": [],
+        "savedSecrets": [],
+        "schedule": null,
+        "smart": null,
+        "sortOrder": 1,
+        "updatedAt": "<time>",
+        "useAdeDir": false,
+        "workingDir": ""
+      }
+    ],
+    "secretStorage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  },
+  "ScriptRunsService.Get#ended": {
+    "branchId": "",
+    "branchLabel": "",
+    "color": "none",
+    "command": "echo started; while [ ! -f '<stop>' ]; do sleep 0.1; done; echo bye; exit 4",
+    "createdAt": 0,
+    "cwd": "<masked>",
+    "finishedAt": 0,
+    "id": "<masked>",
+    "kind": "script",
+    "model": "",
+    "outcome": {
+      "exitCode": 4,
+      "outputTail": "started\nbye",
+      "reason": "exited with status 4",
+      "reported": false,
+      "source": "exit",
+      "status": "failed"
+    },
+    "params": [],
+    "prompt": "",
+    "provider": "",
+    "resumable": false,
+    "resumedFrom": "",
+    "scriptId": "serve",
+    "scriptName": "serve",
+    "sessionId": "",
+    "startedAt": 0,
+    "state": "failed",
+    "taskId": "",
+    "taskTitle": "",
+    "terminalId": "",
+    "tools": {
+      "allowedTools": [],
+      "mcpServers": [],
+      "tools": []
+    },
+    "trigger": "mcp"
+  },
+  "ScriptRunsService.List#running": [
+    {
+      "branchId": "",
+      "branchLabel": "",
+      "color": "none",
+      "command": "echo started; while [ ! -f '<stop>' ]; do sleep 0.1; done; echo bye; exit 4",
+      "createdAt": 0,
+      "cwd": "<masked>",
+      "finishedAt": null,
+      "id": "<masked>",
+      "kind": "script",
+      "model": "",
+      "outcome": null,
+      "params": [],
+      "prompt": "",
+      "provider": "",
+      "resumable": false,
+      "resumedFrom": "",
+      "scriptId": "serve",
+      "scriptName": "serve",
+      "sessionId": "",
+      "startedAt": 0,
+      "state": "running",
+      "taskId": "",
+      "taskTitle": "",
+      "terminalId": "",
+      "tools": {
+        "allowedTools": [],
+        "mcpServers": [],
+        "tools": []
+      },
+      "trigger": "mcp"
+    }
+  ],
+  "ScriptRunsService.ReadLog#running": {
+    "chunks": [
+      {
+        "seq": 1,
+        "stream": "stdout",
+        "text": "started"
+      }
+    ],
+    "truncated": false
+  }
+}

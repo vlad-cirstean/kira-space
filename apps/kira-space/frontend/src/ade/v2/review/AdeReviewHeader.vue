@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { shortSha } from '@kira/git-core';
+import { useQuery } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
@@ -14,8 +15,10 @@ import { taskColor } from '../palette';
 import { useAdeReviewWindowStore } from '../state/adeReviewWindow';
 import type { ReviewWindowTarget } from '../wire';
 import AdeReviewActions from './AdeReviewActions.vue';
+import AdeReviewSync from './AdeReviewSync.vue';
 import { useReviewContext } from './useReviewContext';
 import { useReviewHead } from './useReviewHead';
+import { reviewSyncOptions } from './useReviewSync';
 import { useReviewWorking } from './useReviewWorking';
 
 const props = defineProps<{ target: ReviewWindowTarget }>();
@@ -31,6 +34,13 @@ const hint = computed(() =>
   t('space.ade.review.header.uncommitted.hint', { count: dirtyCount.value }),
 );
 const { head } = useReviewHead(() => props.target);
+// Shares AdeReviewSync's query; a remote base is as fresh as the last fetch.
+const sync = useQuery(reviewSyncOptions(props.target.branchId));
+const remoteBaseHint = computed(() =>
+  sync.data.value?.base.state === 'remote'
+    ? t('space.ade.review.sync.remoteBase.hint', { base: props.target.base })
+    : '',
+);
 const headHint = computed(() => {
   const h = head.value;
   if (!h) return '';
@@ -55,9 +65,15 @@ const headHint = computed(() => {
       <span class="min-w-0 truncate font-data text-kira-sm" data-testid="ade-review-branch">{{
         target.branch
       }}</span>
-      <span class="shrink-0 text-kira-sm text-muted-foreground" data-testid="ade-review-base">{{
-        t('space.ade.review.header.base.label', { base: target.base })
-      }}</span>
+      <Tooltip :disabled="remoteBaseHint === ''">
+        <TooltipTrigger as-child>
+          <span class="shrink-0 text-kira-sm text-muted-foreground" data-testid="ade-review-base">{{
+            t('space.ade.review.header.base.label', { base: target.base })
+          }}</span>
+        </TooltipTrigger>
+        <TooltipContent>{{ remoteBaseHint }}</TooltipContent>
+      </Tooltip>
+      <AdeReviewSync :target="target" />
       <Tooltip v-if="dirtyCount > 0">
         <TooltipTrigger as-child>
           <Badge

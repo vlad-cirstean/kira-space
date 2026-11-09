@@ -17,6 +17,12 @@ func RecreateRefArgs(ref, sha string) []string {
 	return []string{"update-ref", ref, sha, ""}
 }
 
+// FastForwardRefArgs builds `git update-ref <ref> <new> <old>`: git moves the ref only while it
+// still holds old, so a concurrent move makes the write fail instead of being overwritten.
+func FastForwardRefArgs(ref, newSha, oldSha string) []string {
+	return []string{"update-ref", ref, newSha, oldSha}
+}
+
 // BranchCreateAndSwitchArgs builds `git switch -c <name> <startPoint>`.
 func BranchCreateAndSwitchArgs(name, startPoint string) []string {
 	return []string{"switch", "-c", name, startPoint}

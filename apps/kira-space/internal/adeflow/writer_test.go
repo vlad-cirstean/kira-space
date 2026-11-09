@@ -188,8 +188,8 @@ func TestSave_edits(t *testing.T) {
 				t.Fatalf("%q missing:\n%s", k, out)
 			}
 		}
-		wf.Steps[i].Sandbox = adewire.StepSandbox{Access: "off", Read: []string{}, Allow: []string{}, Network: true}
-		if out := saveOK(t, r, "standard.yaml", wf); !strings.Contains(out, "access: off") || strings.Contains(out, "network:") || strings.Contains(out, "~/specs") {
+		wf.Steps[i].Sandbox = adewire.WriteSandbox()
+		if out := saveOK(t, r, "standard.yaml", wf); !strings.Contains(out, "access: write") || strings.Contains(out, "network:") || strings.Contains(out, "~/specs") {
 			t.Fatalf("off block:\n%s", out)
 		}
 		wf.Steps[i].Sandbox = adewire.DefaultSandbox()

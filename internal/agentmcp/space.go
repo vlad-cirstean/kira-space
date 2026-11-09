@@ -73,9 +73,11 @@ type BranchInfo struct {
 const (
 	BranchCreated  = "created"
 	BranchExisting = "existing"
-	BranchDenied   = "denied"
-	BranchFailed   = "failed"
-	BranchTimeout  = "timeout"
+	// BranchCheckedOut: an existing branch was checked out in the task's own worktree.
+	BranchCheckedOut = "checkedOut"
+	BranchDenied     = "denied"
+	BranchFailed     = "failed"
+	BranchTimeout    = "timeout"
 )
 
 // RequestedBranch is the answer for one branch of a request_branches call.
@@ -193,11 +195,13 @@ type declareArgs struct {
 }
 
 // BranchSpec is one branch an agent asks for: a task or registered repo, the branch name the agent chose
-// and an optional existing branch to start from.
+// and an optional existing branch to start from. Existing asks for a branch that already exists instead
+// of creating one; it takes no base.
 type BranchSpec struct {
-	Repo   string `json:"repo"`
-	Branch string `json:"branch"`
-	Base   string `json:"base,omitempty"`
+	Repo     string `json:"repo"`
+	Branch   string `json:"branch"`
+	Base     string `json:"base,omitempty"`
+	Existing bool   `json:"existing,omitempty"`
 }
 
 type requestBranchesArgs struct {
@@ -236,7 +240,7 @@ func cleanBranches(specs []BranchSpec) ([]BranchSpec, string) {
 	out := make([]BranchSpec, 0, len(specs))
 	seen := map[BranchSpec]bool{}
 	for _, sp := range specs {
-		sp = BranchSpec{Repo: strings.TrimSpace(sp.Repo), Branch: strings.TrimSpace(sp.Branch), Base: strings.TrimSpace(sp.Base)}
+		sp = BranchSpec{Repo: strings.TrimSpace(sp.Repo), Branch: strings.TrimSpace(sp.Branch), Base: strings.TrimSpace(sp.Base), Existing: sp.Existing}
 		if sp.Repo == "" || sp.Branch == "" {
 			return nil, "Every branches entry needs a repo and a branch."
 		}

@@ -24,13 +24,13 @@ test('contract: a pending write shows connection, operation and statement; Appro
   const statement = page.locator('[data-testid="db-mcp-approval-statement"]');
   const name = card.locator('[data-testid="approval-target-name"]');
   await expect(name).toHaveText(item.target.name);
-  await expect(card.locator('[data-testid="approval-target-kind"]')).toHaveText('SQLite');
+  await expect(card.locator('[data-testid="approval-target-kind"]')).toContainText('SQLite');
   await expect(card.locator('[data-testid="approval-operation"]')).toHaveText(
     new RegExp(`^${item.operation.class}$`, 'i'),
   );
   await expect(card.locator('[data-testid="approval-origin"]')).toContainText(item.origin.client);
   await expect(card).toContainText(item.target.location);
-  await expect(card.locator('[data-testid="approval-countdown"]')).toContainText('Expires in');
+  await expect(card.locator('[data-testid="approval-countdown"]')).toContainText('left');
   const nameBox = await name.boundingBox();
   const statementBox = await statement.boundingBox();
   expect(nameBox?.y).toBeLessThan(statementBox?.y ?? 0);

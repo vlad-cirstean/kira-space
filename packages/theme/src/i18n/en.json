@@ -129,11 +129,24 @@
           "hint": "An agent on the database MCP server can list this script and start it. It gets the run result, never the output; logs come from a separate, size-capped read.",
           "label": "Let agents run this script"
         },
+        "long": {
+          "label": "Long running, the agent follows it while it runs"
+        },
+        "longTimeout": {
+          "example": "24h"
+        },
+        "mode": {
+          "hint": "A long-running script returns to the agent at once; the agent reads its output while it runs and can stop it.",
+          "label": "How long it runs"
+        },
         "prompt": {
           "label": "Ask me first"
         },
         "run": {
           "label": "When an agent runs it"
+        },
+        "short": {
+          "label": "Short, the agent waits for the result"
         }
       },
       "smart": {},
@@ -1063,6 +1076,9 @@
         "mcpDescriptionLong": {
           "body": "The MCP description is at most {max} characters."
         },
+        "mcpMode": {
+          "body": "The MCP mode must be short or long."
+        },
         "mcpRun": {
           "body": "The MCP approval is prompt or allow."
         },
@@ -1921,6 +1937,9 @@
           "body": "Config files or the repository changed since the review. Review again."
         },
         "gate": {
+          "duplicateOrigin": {
+            "body": "{file} already shares this origin."
+          },
           "invalid": {
             "body": "The file is not valid ({message})."
           },
@@ -1929,6 +1948,9 @@
           },
           "localInvalid": {
             "body": "The local file is not valid, so it can’t be merged. Fix it first."
+          },
+          "repoOrigins": {
+            "body": "This repository has more than one origin address, so it doesn’t sync."
           }
         },
         "git": {
@@ -1957,9 +1979,6 @@
           "module": {
             "body": "The manifest lists an unknown module: {name}."
           },
-          "repos": {
-            "body": "The repos module is never shared. Its files are keyed by local path and carry the worktree prepare script."
-          },
           "tooLarge": {
             "body": "{file} is too large."
           },
@@ -1987,6 +2006,11 @@
         "repo": {
           "notFound": {
             "body": "The repository was not found."
+          }
+        },
+        "repoSync": {
+          "noOrigin": {
+            "body": "This repository has no single origin URL to share it by."
           }
         },
         "unit": {
@@ -2297,6 +2321,9 @@
         },
         "nicknameLong": {
           "body": "The nickname must be at most 40 characters on one line."
+        },
+        "originInvalid": {
+          "body": "Set origin to the repository’s remote URL, with no credentials in it."
         },
         "pathAbsolute": {
           "body": "The path must be absolute and free of ~ and relative segments."
@@ -3456,6 +3483,12 @@
       },
       "number": {
         "label": "Number"
+      },
+      "reason": {
+        "label": "Reason"
+      },
+      "result": {
+        "label": "Result"
       },
       "scope": {
         "label": "Scope"
@@ -7974,9 +8007,6 @@
       "noSession": {
         "description": "Not stored from a {product} session."
       },
-      "reason": {
-        "label": "Reason:"
-      },
       "session": {
         "label": "Session ID"
       },
@@ -8987,25 +9017,19 @@
         }
       },
       "branchRequest": {
-        "item": {
-          "branch": {
-            "label": "Create {branch} from {base}"
-          },
-          "branchMain": {
-            "label": "Create {branch} from the repository’s main branch"
-          },
-          "rename": {
-            "label": "Rename {from} to {branch}"
-          },
-          "worktree": {
-            "label": "Worktree for {branch}"
-          }
-        },
-        "naming": {
-          "hint": "The agent names each branch. Kira Space picks each worktree folder. Approving adds a repository the task does not have yet."
+        "op": {
+          "label": "Branches · {count}"
         },
         "renameRemote": {
           "label": "Also rename {upstream} on the remote"
+        },
+        "risk": {
+          "detachesMain": {
+            "status": "Detaches main"
+          },
+          "dirty": {
+            "status": "Dirty worktree ({count})"
+          }
         },
         "source": {
           "automation": {
@@ -9018,8 +9042,25 @@
             "label": "Session · {step}"
           }
         },
-        "stacked": {
-          "hint": "The worktree folder stays. Branches built on it follow: {branches}."
+        "tag": {
+          "heldBy": {
+            "label": "Held by {task}"
+          },
+          "heldByMain": {
+            "label": "Held by main checkout"
+          },
+          "new": {
+            "label": "New · from {base}"
+          },
+          "newMain": {
+            "label": "New · from main branch"
+          },
+          "rename": {
+            "label": "Rename from {from}"
+          },
+          "stacked": {
+            "label": "Also renames {branches}"
+          }
         }
       },
       "changes": {
@@ -9132,6 +9173,9 @@
         "links": {
           "title": "Links"
         },
+        "openExternal": {
+          "tooltip": "Open in browser"
+        },
         "related": {
           "title": "Related"
         },
@@ -9201,6 +9245,9 @@
         "title": "Force push?"
       },
       "handover": {
+        "copy": {
+          "tooltip": "Copy text"
+        },
         "draftFrom": {
           "label": "{from} (open)"
         },
@@ -9642,11 +9689,26 @@
           }
         },
         "branchRow": {
+          "detachedMain": {
+            "tooltip": "Detached. {branch} is checked out in the main checkout, {worktree}"
+          },
+          "detachedNone": {
+            "tooltip": "Detached. {branch} is not checked out anywhere. The next start checks it out here again"
+          },
+          "detachedOther": {
+            "tooltip": "Detached. {branch} is checked out in {worktree}"
+          },
+          "detachedTask": {
+            "tooltip": "Detached. {branch} is checked out in {task}, worktree {worktree}"
+          },
           "menuTitle": {
             "label": "{name} in {repo}"
           },
           "review": {
             "tooltip": "Someone else’s branch, read-only here"
+          },
+          "shared": {
+            "tooltip": "Checked out here. Also on {tasks}"
           }
         },
         "branchTip": {
@@ -10031,6 +10093,9 @@
           },
           "noRepos": {
             "label": "None; add one on the task later"
+          },
+          "op": {
+            "label": "Create task"
           }
         }
       },
@@ -10182,6 +10247,40 @@
           },
           "wholeFile": {
             "label": "Whole file"
+          }
+        },
+        "sync": {
+          "ahead": {
+            "status": "{count} not pushed"
+          },
+          "diverged": {
+            "hint": "Local {name} and {twin} both have new commits. The review leaves them as they are.",
+            "status": "Diverged"
+          },
+          "fetch": {
+            "tooltip": "Fetch {remote} · fetched {ago}"
+          },
+          "fetchNever": {
+            "tooltip": "Fetch {remote} · never fetched"
+          },
+          "prBase": {
+            "hint": "This review compares with {base}. Change the branch base on the board to match.",
+            "label": "{short} targets {prBase}"
+          },
+          "remoteBase": {
+            "hint": "Compares with {base} as of the last fetch."
+          },
+          "update": {
+            "tooltip": "Fast-forward local {name} to {twin}"
+          },
+          "updateBase": {
+            "label": "Update base · {count} behind"
+          },
+          "updateBranch": {
+            "label": "Update branch · {count} behind"
+          },
+          "updateWorktree": {
+            "tooltip": "Fast-forward local {name} to {twin} in {path}"
           }
         },
         "window": {
@@ -10408,8 +10507,7 @@
           },
           "tabs": {
             "aria": "Provider"
-          },
-          "title": "Result"
+          }
         },
         "secrets": {
           "deleteConfirm": {
@@ -10908,6 +11006,9 @@
             "label": "Runs on"
           }
         },
+        "fileName": {
+          "description": "Saved as {file}. A new name renames the file on save."
+        },
         "gate": {
           "approval": {
             "option": "Wait for my approval"
@@ -11084,14 +11185,14 @@
           "networkScript": {
             "hint": "Off blocks all network access from the script."
           },
+          "offAgent": {
+            "hint": "Off. The agent runs with your full rights."
+          },
           "offManual": {
             "hint": "Off. The session runs with your full rights."
           },
           "offScript": {
             "hint": "The script runs with your full rights."
-          },
-          "offWarning": {
-            "body": "Agent runs with your full rights."
           },
           "pathInvalid": {
             "error": "Use absolute paths or paths starting with ~/. Root, home and credential or config folders are not allowed."
@@ -11414,6 +11515,9 @@
       "kind": {
         "modify": {
           "label": "Modify"
+        },
+        "unmatched": {
+          "label": "No local repository"
         }
       },
       "row": {
@@ -12006,6 +12110,9 @@
         }
       },
       "settingsFile": {
+        "copyShared": {
+          "label": "Copy for shared config"
+        },
         "create": {
           "label": "Create settings file"
         },
@@ -14081,46 +14188,36 @@
     "dbMcp": {
       "approval": {
         "api": {
-          "body": {
-            "label": "Body {type}"
-          },
           "credential": {
             "label": "Uses credential {name} (hosts: {hosts})"
           },
           "dontSend": {
             "label": "Don’t send"
           },
-          "form": {
-            "label": "Form fields"
-          },
           "headers": {},
           "noEnvironment": {},
-          "options": {
-            "label": "{redirects}, timeout {seconds} s"
-          },
           "query": {},
-          "redirectsOff": {
-            "option": "Redirects not followed"
+          "redirectsOffTimeout": {
+            "status": "Redirects off · {seconds} s"
           },
-          "redirectsOn": {
-            "option": "Redirects followed"
+          "redirectsOnTimeout": {
+            "status": "Redirects on · {seconds} s"
           },
-          "send": {},
-          "truncated": {
-            "status": "Body truncated for display"
-          },
-          "variables": {
-            "label": "Variables used"
-          }
+          "send": {}
         },
         "asSent": {
           "option": "As sent"
         },
-        "ddl": {
-          "body": "{connection} ({kind}) wants to run a schema-changing (DDL) statement through the database MCP server."
-        },
-        "declaredHigher": {
-          "body": "Declared {declared}, looks like a {detected}. Mode read would run it read-only."
+        "detail": {
+          "env": {
+            "label": "Env"
+          },
+          "options": {
+            "label": "Options"
+          },
+          "statement": {
+            "label": "Statement"
+          }
         },
         "detected": {
           "label": "Looks like {class}"
@@ -14136,79 +14233,54 @@
             "body": "Reads are enforced by the database."
           }
         },
-        "estimate": {
-          "body": "Estimated {count} row read, threshold {threshold}. | Estimated {count} rows read, threshold {threshold}."
-        },
         "exemption": {
           "approve": {
             "label": "Lift for this query"
           },
           "deny": {
             "label": "Keep the limit"
-          },
-          "expensiveQuery": {
-            "label": "Estimated rows read"
-          },
-          "lede": {
-            "body": "{connection} ({kind}) asks to run one statement past a limit. Approving runs this statement once; the limit stays for every other call."
-          },
-          "limit": {
-            "label": "{label}: {measured}, limit {max}"
-          },
-          "noTimeout": {
-            "body": "Approving runs this statement with no time limit. Stop it from the operations panel if needed."
-          },
-          "reason": {
-            "label": "Agent’s reason"
-          },
-          "statementTimeout": {
-            "label": "Statement timeout"
           }
         },
         "formatted": {
           "option": "Formatted"
         },
-        "kube": {
-          "describe": {
-            "body": "An MCP client wants to describe an object in {cluster} through the database MCP server."
+        "op": {
+          "liftLimit": {
+            "label": "Lift limit"
           },
-          "discover": {
-            "body": "An MCP client wants to list namespaces and resource kinds in {cluster} through the database MCP server."
-          },
-          "list": {
-            "body": "An MCP client wants to list resources in {cluster} through the database MCP server."
-          },
-          "logs": {
-            "body": "An MCP client wants to read pod logs in {cluster} through the database MCP server."
+          "maskedRead": {
+            "label": "Masked read"
           }
-        },
-        "other": {
-          "body": "{connection} ({kind}) wants to run a statement through the database MCP server."
-        },
-        "read": {
-          "body": "{connection} ({kind}) wants to run a read statement through the database MCP server."
-        },
-        "reviewResult": {
-          "label": "Review the result before the AI gets it"
         },
         "reviewResultOn": {
           "body": "This connection reviews {mode} results."
         },
+        "reviewResultShort": {
+          "label": "Review result"
+        },
+        "risk": {
+          "alreadyRan": {
+            "status": "Already ran"
+          },
+          "bodyTruncated": {
+            "status": "Body truncated"
+          },
+          "credentialSent": {
+            "status": "Credential sent"
+          },
+          "rows": {
+            "status": "~{rows} rows"
+          },
+          "timeout": {
+            "status": "Timeout {measured} / {max}"
+          }
+        },
         "script": {
-          "folder": {
-            "label": "Runs in {folder}"
+          "secretMissing": {
+            "status": "Secret · unset"
           },
-          "lede": {
-            "body": "An MCP client wants to run this script on your computer. It sees the output only if it asks for the logs."
-          },
-          "operation": {
-            "label": "Agent run request"
-          },
-          "secretSaved": {
-            "status": "Saved value, not shown"
-          },
-          "secretUnset": {
-            "status": "No saved value"
+          "secretSet": {
+            "status": "Secret · saved"
           }
         },
         "statementView": {
@@ -14218,35 +14290,20 @@
           "unclassified": {
             "label": "Unclassified"
           }
-        },
-        "unknown": {
-          "body": "{connection} ({kind}) wants to run a statement this app couldn’t classify through the database MCP server."
-        },
-        "write": {
-          "body": "{connection} ({kind}) wants to run a write statement through the database MCP server."
         }
       },
       "preview": {
-        "lede": {
-          "body": "{connection} ({kind}) ran this statement. Check its result before the AI gets it."
-        },
         "masked": {
           "hint": "A masking rule applies to this column."
         },
-        "ran": {
-          "body": "This statement already ran. Withhold hides the result from the AI; it does not undo the change."
+        "moreRows": {
+          "label": "{count} more row | {count} more rows"
         },
         "redisType": {
           "status": "Type {type}"
         },
-        "requested": {
-          "body": "{connection} ({kind}) ran this statement. You asked to check its result before the AI gets it."
-        },
         "send": {
           "label": "Send to AI"
-        },
-        "summary": {
-          "status": "{returned} of {count} rows returned"
         },
         "truncated": {
           "status": "Cut off at the row limit"
@@ -16660,6 +16717,11 @@
       }
     },
     "proof": {
+      "approval": {
+        "rev": {
+          "label": "Rev {n}"
+        }
+      },
       "change": {
         "accept": {
           "label": "Accept"
@@ -16671,7 +16733,7 @@
           "label": "Current"
         },
         "openWindow": {
-          "label": "Open in proof window"
+          "label": "Open window"
         },
         "proposed": {
           "label": "Proposed"
@@ -16903,6 +16965,50 @@
             "option": "Send without asking"
           }
         },
+        "apiRules": {
+          "add": {
+            "label": "Add rule"
+          },
+          "anyMethod": {
+            "label": "Any method"
+          },
+          "description": "With no rules, agents can send any method to any host. With rules, a request needs an allow rule and no deny rule.",
+          "dialog": {
+            "title": "API access rule"
+          },
+          "edit": {
+            "aria": "Edit rule"
+          },
+          "effect": {
+            "label": "Effect"
+          },
+          "empty": {
+            "body": "No rules. Agents can reach any host."
+          },
+          "hostInvalid": {
+            "error": "{host} is not a valid host entry."
+          },
+          "hosts": {
+            "example": "127.0.0.1, *.example.com",
+            "hint": "Enter a host, a host with a port, a wildcard domain or * for any host. A wildcard domain matches subdomains, not the domain itself.",
+            "label": "Hosts"
+          },
+          "invalid": {
+            "body": "Saved rules couldn’t be read. Every API request is refused until you replace them."
+          },
+          "legend": {
+            "label": "API access rules"
+          },
+          "methods": {
+            "label": "Methods"
+          },
+          "noAllow": {
+            "body": "No allow rule. Every API request is refused."
+          },
+          "save": {
+            "label": "Save rule"
+          }
+        },
         "copyCommandAbove": {
           "label": "Copy command above"
         },
@@ -16976,6 +17082,9 @@
           },
           "legend": {
             "label": "Scripts"
+          },
+          "long": {
+            "status": "Long running"
           },
           "prompt": {
             "status": "Asks before each run"
@@ -17661,8 +17770,13 @@
       "expired": {
         "status": "Expired"
       },
-      "origin": {
-        "status": "Requested by {origin}"
+      "left": {
+        "status": "{time} left"
+      },
+      "risk": {
+        "unsupported": {
+          "status": "Unsupported"
+        }
       },
       "toast": {
         "count": {
@@ -17671,9 +17785,6 @@
         "expires": {
           "status": "Next expires in {time}"
         }
-      },
-      "unsupported": {
-        "body": "This version can’t show this request. Deny it."
       }
     },
     "bootFailure": {

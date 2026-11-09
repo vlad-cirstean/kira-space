@@ -6,6 +6,7 @@ import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { useCopy } from '@workbench/behaviour/clipboard';
 import { formatRelative } from '@workbench/behaviour/format';
 import { computed, ref, watch } from 'vue';
 import AdeChip from '../AdeChip.vue';
@@ -27,7 +28,7 @@ import {
 } from './noteChain';
 
 // One note or handover of the task chain. It edits in place while `editing` is set; the chain keeps
-// the one open edit.
+// the one open edit. The body selects and copies.
 const props = defineProps<{
   handover: Handover;
   taskId: string;
@@ -37,6 +38,7 @@ const props = defineProps<{
 const emit = defineEmits<{ edit: []; done: []; openSession: [sessionId: string] }>();
 const stage = useAdeStageDialogStore();
 const update = useUpdateHandover();
+const { copy, copied, error: copyError } = useCopy();
 const boardUi = useAdeBoardUiStore();
 const child = computed(() => childOf(props.handover));
 const author = computed(() => noteAuthor(props.handover));
@@ -122,6 +124,14 @@ function time(h: Handover): string {
         :session-id="handover.sessionId"
         :archived="readonly"
         @open="emit('openSession', $event)"
+      />
+      <TooltipIconButton
+        v-if="!editing && handover.body.trim()"
+        :icon="copied ? 'check' : 'copy'"
+        :tone="copyError ? 'error' : undefined"
+        :label="t('space.ade.handover.copy.tooltip')"
+        data-testid="ade-handover-copy"
+        @click="copy(handover.body)"
       />
       <TooltipIconButton
         v-if="!readonly && !editing && !isReadOnlyEntry(handover)"

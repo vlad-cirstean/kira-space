@@ -5,6 +5,7 @@ import { type AdeBoardFx, adeBoard, openPlan, openTask } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
+import { stubClipboard } from './support/logSpecs';
 import type { ControlSnapshot } from './support/types';
 
 // Stage handover: the routed prompt, the stage dialog, the Details notes chain and the Run dialog block.
@@ -27,6 +28,17 @@ interface HandoverFx {
   edited: boolean;
   createdAt: number;
   updatedAt: number;
+}
+
+/** Drags from the box's top-left to its bottom-right and returns the page selection. */
+async function dragAcross(page: Page, target: ReturnType<Page['locator']>): Promise<string> {
+  const box = await target.boundingBox();
+  if (!box) throw new Error('drag target has no box');
+  await page.mouse.move(box.x + 1, box.y + 1);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width - 1, box.y + box.height - 1, { steps: 5 });
+  await page.mouse.up();
+  return page.evaluate(() => window.getSelection()?.toString() ?? '');
 }
 
 const BODY = 'Form wired; validation missing.';
@@ -199,4 +211,51 @@ test('the Run dialog shows the handover the step gets', async ({ relaunch }) => 
   await expect(dialog.locator(t('ade-run-handover'))).toContainText('Handover from Spec');
   await expect(dialog.locator(t('ade-run-handover'))).toContainText(handed[0]?.body ?? '');
   await expect(dialog.locator(t('ade-run-notes'))).toContainText('Mind the rate limit.');
+});
+
+test('handover text selects and copies: Details chain body and Run dialog card', async ({
+  relaunch,
+}) => {
+  const { handed } = recorded();
+  const first = handed[0]?.body ?? '';
+  const { window: page } = await openPlan(relaunch, snapshots(withDraft));
+  await openTask(page, 'T_alerts');
+  await page.locator(t('ade-panel-tab-details')).click();
+  const list = page.locator(t('ade-task-chain'));
+
+  const row = list.locator(t('ade-handover-row')).first();
+  const prose = row.locator('.ProseMirror');
+  // `auto` on .ProseMirror resolves to the wrapper's value, so the wrapper carries the opt-in.
+  await expect(row.locator(t('ade-notes-editor'))).toHaveCSS('user-select', 'text');
+  expect(await dragAcross(page, prose)).toContain(first.split('\n')[0]?.trim() ?? first);
+
+  const clipboard = await stubClipboard(page);
+  const copyBtn = list.locator(t('ade-handover-draft')).locator(t('ade-handover-copy'));
+  await copyBtn.click();
+  await expect.poll(clipboard).toEqual([BODY]);
+  await expect(copyBtn.locator('.codicon-check')).toBeVisible();
+
+  await row.locator(t('ade-handover-edit')).click();
+  await expect(row.locator(t('ade-handover-copy'))).toHaveCount(0);
+});
+
+test('the Run dialog handover card selects', async ({ relaunch }) => {
+  const { handed } = recorded();
+  const { window: page } = await openPlan(
+    relaunch,
+    snapshots((b) => {
+      const alerts = b.tasks.find((x) => x.id === 'T_alerts');
+      if (!alerts) throw new Error('T_alerts missing');
+      alerts.entryStepId = 'plan';
+      alerts.workflowId = 'standard';
+      alerts.runs = [];
+      alerts.handoverIn = { ...(handed[0] as HandoverFx), toStepId: 'plan', fromStepName: 'Spec' };
+    }),
+  );
+  await page
+    .locator(`${t('ade-task')}[data-task-id="T_alerts"] ${t('ade-task-action-run')}`)
+    .click();
+  const card = page.locator(t('ade-run-handover')).locator('[data-slot="card"]');
+  const selected = await dragAcross(page, card);
+  expect(selected).toContain((handed[0]?.body ?? '').split('\n')[0]?.trim());
 });

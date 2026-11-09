@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -57,7 +58,7 @@ func (s *Service) Preview(ctx context.Context) (Preview, error) {
 	if se != nil {
 		return Preview{}, &Error{Kind: ErrInternal, Key: "backend.space.configSync.internal.body", Cause: se}
 	}
-	p, err := s.buildPlan(tree, set)
+	p, err := s.buildPlan(ctx, tree, set)
 	if err != nil {
 		return Preview{}, internal(err)
 	}
@@ -113,7 +114,7 @@ func (s *Service) Apply(ctx context.Context, token string, choices map[string]st
 	if s.checkJournal() {
 		return ApplyResult{}, errf(ErrConflict, "backend.space.configSync.interrupted.body")
 	}
-	p, err := s.takeSession(token)
+	p, err := s.takeSession(ctx, token)
 	if err != nil {
 		return ApplyResult{}, err
 	}
@@ -132,6 +133,10 @@ func (s *Service) Apply(ctx context.Context, token string, choices map[string]st
 		return ApplyResult{}, internal(err)
 	}
 	s.pruneBackups()
+	if s.o.Repos != nil && slices.ContainsFunc(work, func(w pending) bool { return w.fp.module == reposModule }) {
+		// The repo config store sees the files now, so the ADE board and Git clients do not wait for the watcher.
+		s.o.Repos.Reload()
+	}
 	out.Applied, out.Backup = len(work), jr.Backup
 	s.mu.Lock()
 	s.st = loadState(s.o.Home)
@@ -162,7 +167,7 @@ func (s *Service) addSession(sess *session) {
 }
 
 // takeSession spends the preview session and checks nothing moved since it was made.
-func (s *Service) takeSession(token string) (*plan, error) {
+func (s *Service) takeSession(ctx context.Context, token string) (*plan, error) {
 	s.mu.Lock()
 	sess := s.sessions[token]
 	delete(s.sessions, token)
@@ -174,7 +179,19 @@ func (s *Service) takeSession(token string) (*plan, error) {
 	if sess.plan.commit != fetched {
 		return nil, errf(ErrConflict, "backend.space.configSync.changed.body")
 	}
+	if sess.plan.repoFP != "" {
+		rt, err := s.repoTargets(ctx)
+		if err != nil {
+			return nil, internal(err)
+		}
+		if rt.fp != sess.plan.repoFP {
+			return nil, errf(ErrConflict, "backend.space.configSync.changed.body")
+		}
+	}
 	for _, fp := range sess.plan.files {
+		if fp.file == "" {
+			continue
+		}
 		cur, _, err := readLocal(s.localPath(fp.module, fp.file))
 		if err != nil {
 			return nil, internal(err)
@@ -294,10 +311,10 @@ func (s *Service) stageBase(p *plan, skip map[*filePlan]bool) error {
 		return err
 	}
 	for _, fp := range p.files {
-		if skip[fp] {
+		if skip[fp] || fp.keepBase || fp.baseRel == "" {
 			continue
 		}
-		path := filepath.Join(next, fp.module, baseName(fp.file, fp.entry))
+		path := filepath.Join(next, fp.baseRel)
 		if !fp.newBaseExist {
 			if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
 				return err
@@ -308,7 +325,7 @@ func (s *Service) stageBase(p *plan, skip map[*filePlan]bool) error {
 			return err
 		}
 	}
-	return nil
+	return s.stageRepoBase(p, next)
 }
 
 // finish swaps base.next in and records the applied commit, then drops the journal. It is safe to repeat.

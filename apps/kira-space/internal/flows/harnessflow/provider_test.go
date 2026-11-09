@@ -132,6 +132,7 @@ func TestSecondProviderRegistered(t *testing.T) {
 	fake.Answers[extractSystem] = raw(t, extractOut())
 	fake.Answers[mergeSystem] = raw(t, mergeOut())
 	app := flowharness.New(t, flowharness.WithProvider(fake), flowharness.WithTrackerGrace(time.Second))
+	app.SetHermetic(t, true) // the fake's --hermetic flag is judged below; off by default since P588
 	usage := app.W.AgentUsage.Get()
 
 	// 1. The provider's facts reach the display call.

@@ -80,8 +80,13 @@ func scanRow(row rowScanner) (CustomScript, error) {
 		if err != nil {
 			return CustomScript{}, fmt.Errorf("scripts: decode config of %s: %w", s.ID, err)
 		}
-		if s.MCP = f.Fields().MCP; s.MCP != nil && s.MCP.Run == "" {
-			s.MCP.Run = MCPRunPrompt
+		if s.MCP = f.Fields().MCP; s.MCP != nil {
+			if s.MCP.Run == "" {
+				s.MCP.Run = MCPRunPrompt
+			}
+			if s.MCP.Mode == "" {
+				s.MCP.Mode = MCPModeShort
+			}
 		}
 	}
 	return s, nil

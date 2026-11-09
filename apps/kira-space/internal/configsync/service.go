@@ -16,6 +16,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpath"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -36,6 +37,8 @@ type Options struct {
 	Auth AuthFunc
 	// Validate maps a module to its decoder, for shared files and merged combined files.
 	Validate map[string]ValidateFunc
+	// Repos is the repo config side of the repos module; nil leaves the module inert.
+	Repos RepoFiles
 	// SecretUnset reports whether a ${secret:name} of module has no local value.
 	SecretUnset func(module, name string) bool
 	// Emit receives the status after every change.
@@ -148,6 +151,13 @@ type Service struct {
 
 	fetchMu sync.Mutex
 
+	// refreshMu guards the coalescing flags of RefreshAsync.
+	refreshMu     sync.Mutex
+	refreshing    bool
+	refreshQueued bool
+	// refreshRun is one refresh pass; a field so a test can count passes.
+	refreshRun func()
+
 	timerMu sync.Mutex
 	timer   *time.Timer
 	bo      *backoff.ExponentialBackOff
@@ -168,10 +178,12 @@ func New(o Options) *Service {
 		o.StartDelay = defaultStartLag
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Service{
+	s := &Service{
 		o: o, ctx: ctx, cancel: cancel, counts: map[string]moduleCount{}, sessions: map[string]*session{},
 		mirror: &mirror{dir: filepath.Join(syncDir(o.Home), mirrorDir), runner: o.Runner, gitPath: o.GitPath},
 	}
+	s.refreshRun = s.refreshOnce
+	return s
 }
 
 func (s *Service) now() time.Time { return s.o.Now() }
@@ -270,7 +282,7 @@ func (s *Service) refreshLocked(ctx context.Context) {
 		s.setProblem(se.problem())
 		return
 	}
-	p, err := s.buildPlan(tree, set)
+	p, err := s.buildPlan(ctx, tree, set)
 	if err != nil {
 		s.setProblem(&Problem{Kind: ProblemGit, Message: err.Error()})
 		return
@@ -500,4 +512,86 @@ func (s *Service) checkJournal() bool {
 	s.interrupted = err == nil
 	s.mu.Unlock()
 	return err == nil
+}
+
+// RefreshAsync recomputes the change count after the set of registered repositories moved: a repos
+// file may now match a new repository. It never blocks the caller and is a no-op without a shared
+// repository.
+func (s *Service) RefreshAsync() {
+	if s == nil {
+		return
+	}
+	s.refreshMu.Lock()
+	defer s.refreshMu.Unlock()
+	if s.refreshing {
+		s.refreshQueued = true
+		return
+	}
+	s.refreshing = true
+	go s.refreshLoop()
+}
+
+// refreshLoop runs one refresh per burst: calls that arrive while one runs collapse into a single
+// follow-up, so a bulk change costs at most two plans, not one per call.
+func (s *Service) refreshLoop() {
+	for {
+		s.refreshMu.Lock()
+		s.refreshQueued = false
+		s.refreshMu.Unlock()
+		s.refreshRun()
+		s.refreshMu.Lock()
+		if !s.refreshQueued {
+			s.refreshing = false
+			s.refreshMu.Unlock()
+			return
+		}
+		s.refreshMu.Unlock()
+	}
+}
+
+func (s *Service) refreshOnce() {
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
+	if s.ctx.Err() != nil {
+		return
+	}
+	s.mu.Lock()
+	_ = s.load()
+	configured := s.set.Repo != nil
+	s.mu.Unlock()
+	if !configured || s.checkJournal() {
+		return
+	}
+	s.refreshLocked(s.ctx)
+	s.emit()
+}
+
+// RepoSharedText is the shared repos file of repoID: its origin as an https URL plus the shared keys
+// of its settings file, ready for a shared config repository. A repository without a single origin
+// has nothing to bind by.
+func (s *Service) RepoSharedText(ctx context.Context, repoID string) (string, error) {
+	if s.o.Repos == nil {
+		return "", errf(ErrNotFound, "backend.space.configSync.repo.notFound.body")
+	}
+	repoID = gitpath.CleanNFC(repoID) // target ids are repocfg.Key forms
+	known := slices.ContainsFunc(s.o.Repos.Targets(), func(t RepoTarget) bool { return t.RepoID == repoID })
+	if !known {
+		return "", errf(ErrNotFound, "backend.space.configSync.repo.notFound.body")
+	}
+	st, err := s.originsOf(ctx, repoID)
+	if err != nil {
+		return "", internal(err)
+	}
+	if !st.single {
+		return "", errf(ErrBadRequest, "backend.space.configSync.repoSync.noOrigin.body")
+	}
+	text, err := s.o.Repos.SharedText(repoID, "https://"+st.keys[0])
+	if err != nil {
+		return "", internal(err)
+	}
+	// Same gate the import side runs: the user commits this text to a shared repository.
+	if at, hit := sharedCredentialAt(text); hit {
+		return "", &Error{Kind: ErrBadRequest, Key: "backend.space.configSync.gate.literalCredential.body", Params: map[string]string{"at": at}}
+	}
+	return string(text), nil
 }

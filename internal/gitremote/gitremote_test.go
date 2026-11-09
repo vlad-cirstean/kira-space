@@ -1,8 +1,8 @@
-package memory
+package gitremote
 
 import "testing"
 
-func TestNormalizeRemote(t *testing.T) {
+func TestKey(t *testing.T) {
 	cases := []struct {
 		in, want string
 		ok       bool
@@ -22,6 +22,8 @@ func TestNormalizeRemote(t *testing.T) {
 		{"./billing", "", false},
 		{"file:///srv/git/billing.git", "", false},
 		{"~/billing", "", false},
+		{"C:/work/repo", "", false},
+		{`C:\work\repo`, "", false},
 		{"https://github.com", "", false},
 		{"https://github.com/", "", false},
 		{"https://github.com/a/../b", "", false},
@@ -30,9 +32,9 @@ func TestNormalizeRemote(t *testing.T) {
 		{"billing", "", false},
 	}
 	for _, c := range cases {
-		got, ok := NormalizeRemote(c.in)
+		got, ok := Key(c.in)
 		if ok != c.ok || got != c.want {
-			t.Errorf("NormalizeRemote(%q) = %q, %v; want %q, %v", c.in, got, ok, c.want, c.ok)
+			t.Errorf("Key(%q) = %q, %v; want %q, %v", c.in, got, ok, c.want, c.ok)
 		}
 	}
 }

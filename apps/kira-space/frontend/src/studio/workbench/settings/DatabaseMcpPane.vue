@@ -23,6 +23,7 @@ import { useConnectionDialogStore } from '../../state/connectionDialogs';
 import { useConnectionsStore } from '../../state/connections';
 import { useDbMcpStore } from '../../state/dbmcp';
 import { loadMaskRuleCounts, maskRuleCountsQueryKey } from '../../state/maskRules';
+import ApiAccessRulesSection from './ApiAccessRulesSection.vue';
 import ScriptsMcpSection from './ScriptsMcpSection.vue';
 
 // P103 Part 2 (§5.5): extracted verbatim from workbench/SettingsDialog.vue's own
@@ -266,6 +267,7 @@ const dbMcpApiApprovalId = useId();
         <AlertDescription>{{ t('studio.settings.dbMcp.apiApproval.never.body') }}</AlertDescription>
       </Alert>
     </Field>
+    <ApiAccessRulesSection v-if="settingsStore.dbMcp.apiRequests" />
 
     <template v-if="settingsStore.dbMcp.serverEnabled">
       <Alert v-if="dbMcpStore.status.error" variant="error" data-testid="db-mcp-error">

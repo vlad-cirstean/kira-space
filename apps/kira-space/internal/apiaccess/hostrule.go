@@ -1,4 +1,4 @@
-package apifiles
+package apiaccess
 
 import (
 	"errors"
@@ -120,19 +120,25 @@ func (r HostRule) String() string {
 	return b.String()
 }
 
-// Allows reports whether u is a place the entry permits: scheme, host and port.
-func (r HostRule) Allows(u *url.URL) bool {
+// MatchesHost reports whether u's host and port fall under the entry, ignoring scheme.
+func (r HostRule) MatchesHost(u *url.URL) bool {
 	host, err := normalizeHost(strings.ToLower(u.Hostname()))
 	if err != nil || !r.hostMatches(host) {
 		return false
 	}
-	if r.Port != 0 && r.Port != effectivePort(u) {
+	return r.Port == 0 || r.Port == effectivePort(u)
+}
+
+// Allows reports whether u is a place the entry permits: scheme, host and port.
+func (r HostRule) Allows(u *url.URL) bool {
+	if !r.MatchesHost(u) {
 		return false
 	}
 	switch strings.ToLower(u.Scheme) {
 	case "https":
 		return true
 	case "http":
+		host, _ := normalizeHost(strings.ToLower(u.Hostname()))
 		return r.HTTP || isLoopback(host)
 	}
 	return false

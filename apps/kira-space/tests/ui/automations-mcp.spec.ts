@@ -14,7 +14,8 @@ import { IPC } from './support/ipcChannels';
 import { dragSelect, longLog, longLogText, stubClipboard } from './support/logSpecs';
 
 // Contracts runs-form and automations. Backend half: termflow TestRunsForm (the mcp edits)
-// and dbmcpflow TestDbMcpScriptRunAndLogs (a run started by an agent has trigger mcp).
+// and dbmcpflow TestDbMcpScriptRunAndLogs (a run started by an agent has trigger mcp). The mcp.mode
+// tests read the same runs-form contract (termflow TestRunsForm mcpLong, mcpModeInvalid).
 
 const file = (key: string) =>
   contract('runs-form', `file#${key}`, { schema: scriptFileViewSchema });
@@ -94,6 +95,50 @@ test('contract: a problem on mcp.run badges the MCP tab and shows on the field',
   await dialog(page).locator('[data-testid="script-mcp-enabled"]').click();
   await expect(dialog(page).locator('[data-testid="run-file-tab-mcp-errors"]')).toBeVisible();
   await expect(dialog(page).locator('[data-testid="run-file-save"]')).toBeDisabled();
+});
+
+test('contract: choosing Long running sends an mcp.mode edit and the YAML tab shows it', async ({
+  relaunch,
+}) => {
+  const long = form('mcpLong');
+  const { window: page, control } = await relaunch({ control: base() });
+  await openDialog(page);
+  await dialog(page).locator('[data-testid="run-file-tab-mcp"]').click();
+  control.respond(IPC.customScriptsForm, form('mcp'));
+  await dialog(page).locator('[data-testid="script-mcp-enabled"]').click();
+  await expect(dialog(page).locator('[data-testid="script-mcp-mode"]')).toBeVisible();
+  control.respond(IPC.customScriptsForm, long);
+  await dialog(page).locator('[data-testid="script-mcp-long"]').click();
+  await expect
+    .poll(() =>
+      control
+        .log()
+        .filter((e) => e.channel === IPC.customScriptsForm)
+        .flatMap((e) => (e.args as { edits: { path: string[]; value?: unknown }[] }).edits),
+    )
+    .toContainEqual(
+      expect.objectContaining({ path: ['mcp', 'mode'], value: 'long', unset: false }),
+    );
+  await dialog(page).locator('[data-testid="run-file-tab-yaml"]').click();
+  await expect
+    .poll(() => codeEditorText(dialog(page).locator('[data-testid="run-file-text"]')))
+    .toContain('mode: long');
+});
+
+test('contract: a problem on mcp.mode badges the MCP tab and shows on the field', async ({
+  relaunch,
+}) => {
+  const invalid = form('mcpModeInvalid');
+  expect(invalid.problem?.path).toBe('/mcp/mode');
+  const { window: page, control } = await relaunch({ control: base() });
+  await openDialog(page);
+  await dialog(page).locator('[data-testid="run-file-tab-mcp"]').click();
+  control.respond(IPC.customScriptsForm, form('mcp'));
+  await dialog(page).locator('[data-testid="script-mcp-enabled"]').click();
+  control.respond(IPC.customScriptsForm, invalid);
+  await dialog(page).locator('[data-testid="script-mcp-long"]').click();
+  await expect(dialog(page).locator('[data-testid="run-file-tab-mcp-errors"]')).toBeVisible();
+  await expect(dialog(page).locator('[data-testid="script-mcp-mode-error"]')).toBeVisible();
 });
 
 test('contract: the settings switch reads the file, applies the edit and saves on the read hash', async ({

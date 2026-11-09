@@ -86,6 +86,8 @@ export const mcpAccessSchema = /*#__PURE__*/ z.object({
   description: z.string(),
   // 'prompt' asks before each agent run.
   run: /*#__PURE__*/ z.enum(['prompt', 'allow']),
+  // 'long' returns at once; the agent reads output while it runs.
+  mode: /*#__PURE__*/ z.enum(['short', 'long']),
   // An agent run's limit; '' = the default.
   timeout: z.string(),
 });
@@ -237,6 +239,7 @@ export const runFileSchema = /*#__PURE__*/ z.object({
       enabled: z.boolean().optional(),
       description: z.string().optional(),
       run: z.enum(['prompt', 'allow']).optional(),
+      mode: z.enum(['short', 'long']).optional(),
       timeout: z.string().optional(),
     })
     .optional(),

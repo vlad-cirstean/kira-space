@@ -23,7 +23,7 @@
       {
         "error": null,
         "fileName": "flow.yaml",
-        "hash": "9f311f4805760888dfc6174dc8498d1c878e436931f9cb5e87d0915b0a192cd3",
+        "hash": "d05060244e046b1d529352c812d1662e54977f6ea83d330f59d11342cc4bba49",
         "path": "<space>/config/workflows/flow.yaml",
         "usedBy": 0,
         "workflow": {
@@ -62,7 +62,7 @@
               "review": null,
               "runsOn": "each repo",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []
@@ -106,7 +106,7 @@
               "review": null,
               "runsOn": "each repo",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []

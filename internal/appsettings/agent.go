@@ -12,7 +12,7 @@ import (
 // Agent is the agent.* section both apps share. Provider is the id of the harness every new agent
 // run, launch and structured call uses. Registration is not checked on write: an unknown id falls
 // back to the default provider when it is resolved, so a removed provider's stored id still boots.
-// Hermetic: agents the app starts load none of the user's own agent config (default on).
+// Hermetic: agents the app starts load none of the user's own agent config (default off, P588).
 type Agent struct {
 	Provider string `json:"provider"`
 	Hermetic bool   `json:"hermetic"`
@@ -25,7 +25,7 @@ type AgentPatch struct {
 }
 
 // DefaultAgent mirrors settings.ts's agent defaults.
-func DefaultAgent() Agent { return Agent{Provider: harness.DefaultProvider, Hermetic: true} }
+func DefaultAgent() Agent { return Agent{Provider: harness.DefaultProvider, Hermetic: false} }
 
 var providerIDRE = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
 

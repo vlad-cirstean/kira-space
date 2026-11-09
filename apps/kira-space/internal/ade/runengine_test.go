@@ -226,6 +226,7 @@ func newEngine(t *testing.T, scen map[string][]string) *engine {
 	})
 	e.board = NewTaskBoard(TaskBoardDeps{
 		Agent:       testAgents,
+		DbMcp:       fakeDbMcp{},
 		Credentials: gitcred.New(),
 		Tracker:     e.tracker,
 		CloseTerminal: func(id string) error {

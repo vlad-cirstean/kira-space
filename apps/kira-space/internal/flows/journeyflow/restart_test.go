@@ -122,10 +122,12 @@ func TestRestartKeepsUserData(t *testing.T) {
 	}
 	wf.Name = "Renamed flow"
 	wf.Steps[1].Name = "Peer review"
-	if entry, err := app.W.AdeTask.SaveWorkflow(ctx, adewire.SaveWorkflowArgs{FileName: "flow.yaml", Workflow: wf}); err != nil || entry.Error != nil {
+	entry, err := app.W.AdeTask.SaveWorkflow(ctx, adewire.SaveWorkflowArgs{FileName: "flow.yaml", Workflow: wf})
+	if err != nil || entry.Error != nil {
 		t.Fatalf("SaveWorkflow = %+v, %v", entry, err)
 	}
-	yaml, err := app.W.AdeTask.WorkflowYaml(ctx, adewire.FileNameArgs{FileName: "flow.yaml"})
+	// P584: the file follows the name, so the save renamed it.
+	yaml, err := app.W.AdeTask.WorkflowYaml(ctx, adewire.FileNameArgs{FileName: entry.FileName})
 	if err != nil || !strings.Contains(yaml.Yaml, "Renamed flow") || !strings.Contains(yaml.Yaml, "Peer review") {
 		t.Fatalf("WorkflowYaml = %+v, %v, want the saved names", yaml, err)
 	}
@@ -148,7 +150,7 @@ func TestRestartKeepsUserData(t *testing.T) {
 		t.Fatalf("memories after restart = %d (%v), want %d equal", len(recent2), err, len(recent1))
 	}
 	app.Contract(t, "restart", "MemoryService.Recent#after-restart", recent2, flowharness.Mask("createdAt"))
-	yaml2, err := app.W.AdeTask.WorkflowYaml(ctx, adewire.FileNameArgs{FileName: "flow.yaml"})
+	yaml2, err := app.W.AdeTask.WorkflowYaml(ctx, adewire.FileNameArgs{FileName: entry.FileName})
 	if err != nil || yaml2.Yaml != yaml.Yaml {
 		t.Fatalf("workflow text changed across restart: %v", err)
 	}

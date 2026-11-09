@@ -68,6 +68,8 @@ const props = defineProps<{
    *  pure lookup itself here. */
   hoverSource?: (doc: string, offset: number) => ConsoleHoverInfo | null;
   singleLine?: boolean;
+  /** Blends into the surface it sits on: no gutter, padding, scrollbar or own background. */
+  flush?: boolean;
   /** The save chord emits `save`; Monaco consumes it before the view handler otherwise. */
   saveCommand?: boolean;
   /** Wraps regardless of the appearance setting. */
@@ -480,6 +482,21 @@ function applyBaseOptions(): ConstructionOptions {
     ...(props.singleLine
       ? { lineDecorationsWidth: 0, lineNumbersMinChars: 0, padding: { top: 0, bottom: 0 } }
       : { padding: { top: 8, bottom: 8 } }),
+    ...(props.flush
+      ? {
+          lineNumbers: 'off' as const,
+          lineDecorationsWidth: 0,
+          lineNumbersMinChars: 0,
+          padding: { top: 0, bottom: 0 },
+          // Multiplier: sibling content text uses leading-normal (1.5).
+          lineHeight: 1.5,
+          guides: { indentation: false, bracketPairs: false },
+          overviewRulerLanes: 0,
+          overviewRulerBorder: false,
+          hideCursorInOverviewRuler: true,
+          scrollbar: { horizontal: 'hidden' as const, alwaysConsumeMouseWheel: false },
+        }
+      : {}),
   };
 }
 
@@ -838,12 +855,20 @@ watch(
   <div
     ref="rootRef"
     class="monaco-host h-full min-h-0 overflow-hidden"
-    :class="{ 'monaco-host--single-line': singleLine }"
+    :class="[
+      singleLine && 'monaco-host--single-line',
+      flush &&
+        '[&_.monaco-editor]:[--vscode-editor-background:transparent] [&_.monaco-editor]:[--vscode-editorGutter-background:transparent] [&_.monaco-editor]:bg-transparent! [&_.monaco-editor-background]:bg-transparent! [&_.margin]:bg-transparent!',
+    ]"
   >
     <pre
       v-if="previewShown"
-      class="m-0 font-data text-kira-md text-fg bg-bg overflow-auto"
-      :class="singleLine ? 'p-0 whitespace-pre' : 'py-2 px-0 whitespace-pre-wrap'"
+      class="m-0 font-data text-kira-md text-fg overflow-auto"
+      :class="[
+        flush ? 'bg-transparent' : 'bg-bg',
+        singleLine || flush ? 'p-0' : 'py-2 px-0',
+        singleLine ? 'whitespace-pre' : 'whitespace-pre-wrap',
+      ]"
       v-text="previewDoc"
     ></pre>
   </div>

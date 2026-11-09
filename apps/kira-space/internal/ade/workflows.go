@@ -103,13 +103,13 @@ func secretParamMsg(step, param string) string {
 	return fmt.Sprintf("step %q: %s is a secret param, save its value in the script, not in the workflow file", step, param)
 }
 
-// SaveWorkflow rewrites a file from the structured workflow. Running tasks keep the snapshot
-// they started with; an edit applies to new work only.
+// SaveWorkflow rewrites a file from the structured workflow. A new name renames the file and the tasks'
+// workflow id. Running tasks keep the snapshot they started with; an edit applies to new work only.
 func (b *TaskBoard) SaveWorkflow(_ context.Context, args adewire.SaveWorkflowArgs) (adewire.WorkflowEntry, error) {
 	if step, param := b.workflowSecretParam(&args.Workflow); param != "" {
 		return adewire.WorkflowEntry{}, invalid("%s", secretParamMsg(step, param))
 	}
-	e, err := b.deps.Workflows.Save(args.FileName, args.BaseHash, args.Workflow)
+	e, err := b.deps.Workflows.SaveRenaming(args.FileName, args.BaseHash, args.Workflow, b.keepStem(adeflow.WorkflowsFolder, args.FileName), b.deps.Tasks.RenameWorkflowID)
 	if err != nil {
 		return adewire.WorkflowEntry{}, wfErr(err)
 	}
@@ -152,6 +152,7 @@ func (b *TaskBoard) NewWorkflow(_ context.Context, args adewire.NewWorkflowArgs)
 func (b *TaskBoard) Start() {
 	b.startOnce.Do(func() {
 		if b.deps.Workflows != nil {
+			b.settleNames()
 			if err := b.deps.Workflows.WriteDocs(); err != nil {
 				slog.Warn("ade workflows: write AGENTS.md", "scope", "ade", "err", err)
 			}
@@ -201,5 +202,25 @@ func (b *TaskBoard) stopWatchers() {
 	}
 	for _, w := range watchers {
 		w.stop()
+	}
+}
+
+// keepStem reports a file that came from the shared repo: it keeps its stem on a rename.
+func (b *TaskBoard) keepStem(module, file string) bool {
+	return b.deps.KeepStem != nil && b.deps.KeepStem(module, file)
+}
+
+// settleNames finishes a rename a crash interrupted, then runs the one-time readable names migration.
+func (b *TaskBoard) settleNames() {
+	var retarget func(oldID, newID string) error
+	if b.deps.Tasks != nil {
+		retarget = b.deps.Tasks.RenameWorkflowID
+	}
+	b.deps.Workflows.RecoverRename(retarget)
+	err := b.deps.Workflows.MigrateNames(adeflow.MigrateOptions{
+		Marker: b.deps.NamesMarker, BackupDir: b.deps.BackupDir, Keep: b.deps.KeepStem, Retarget: retarget, Now: b.deps.Now,
+	})
+	if err != nil {
+		slog.Warn("ade names migration", "scope", "ade", "err", err)
 	}
 }

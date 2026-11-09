@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/internal/appsettings"
 )
 
@@ -26,6 +27,11 @@ type DbMcpSettings struct {
 	APIRequests bool `json:"apiRequests"`
 	// APIApproval is "always" (each request waits for the user) or "never".
 	APIApproval string `json:"apiApproval"`
+	// APIRules gate api_request by host and method. Empty allows everything.
+	APIRules []apiaccess.Rule `json:"apiRules"`
+	// APIRulesInvalid is read-only: the stored rules failed to decode or compile, so APIRules is empty
+	// and the access reader refuses every request until a valid Set replaces them.
+	APIRulesInvalid bool `json:"apiRulesInvalid"`
 }
 
 // ApiSettings mirrors packages/shared/domain/settings.ts's apiSettingsSchema — the
@@ -67,11 +73,12 @@ type ApiPatch struct {
 
 // DbMcpPatch mirrors DbMcpSettings' own `.partial()` shape (M1 §6.2).
 type DbMcpPatch struct {
-	ServerEnabled    *bool   `json:"serverEnabled,omitempty"`
-	PreviewResponses *bool   `json:"previewResponses,omitempty"`
-	FocusOnApproval  *bool   `json:"focusOnApproval,omitempty"`
-	APIRequests      *bool   `json:"apiRequests,omitempty"`
-	APIApproval      *string `json:"apiApproval,omitempty"`
+	ServerEnabled    *bool             `json:"serverEnabled,omitempty"`
+	PreviewResponses *bool             `json:"previewResponses,omitempty"`
+	FocusOnApproval  *bool             `json:"focusOnApproval,omitempty"`
+	APIRequests      *bool             `json:"apiRequests,omitempty"`
+	APIApproval      *string           `json:"apiApproval,omitempty"`
+	APIRules         *[]apiaccess.Rule `json:"apiRules,omitempty"`
 }
 
 // ValidHTTPVersion mirrors settings.ts's HTTP_VERSIONS — Go's HTTP/1 *is* 1.1, so "1" is never a
@@ -143,6 +150,11 @@ func validateApiSection(a *ApiPatch) error {
 func validateDbMcpSection(d *DbMcpPatch) error {
 	if d != nil && d.APIApproval != nil && !ValidAPIApproval(*d.APIApproval) {
 		return fmt.Errorf("model: dbMcp.apiApproval: invalid value %q", *d.APIApproval)
+	}
+	if d != nil && d.APIRules != nil {
+		if _, err := apiaccess.Compile(*d.APIRules); err != nil {
+			return fmt.Errorf("model: dbMcp.apiRules: %w", err)
+		}
 	}
 	return nil
 }

@@ -346,7 +346,11 @@ func (b *TaskBoard) branchInfo(sb model.AdeTaskBranch, nick, worktree string) ag
 			info.Next += " Reason: " + info.Setup.Note
 		}
 	default:
-		info.Next = "Ready. Work in " + worktree + "."
+		if worktree == "" {
+			info.Next = "No worktree. Call request_branches with existing: true to check it out."
+		} else {
+			info.Next = "Ready. Work in " + worktree + "."
+		}
 	}
 	return info
 }

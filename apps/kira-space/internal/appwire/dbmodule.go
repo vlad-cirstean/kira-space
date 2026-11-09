@@ -270,7 +270,7 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 	if installer == nil {
 		installer = harness.ActiveInstaller(w.Agents)
 	}
-	agentAPI := &agentapi.Service{Envs: dbm.apiFiles, Secrets: dbm.apiSecrets, Ops: dbm.router.Host(), Globals: bridge.AgentAPIGlobals(repositories.Settings)}
+	agentAPI := &agentapi.Service{Envs: dbm.apiFiles, Secrets: dbm.apiSecrets, Ops: dbm.router.Host(), Globals: bridge.AgentAPIGlobals(repositories.Settings), Access: bridge.AgentAPIAccess(repositories.Settings)}
 	embedded := w.wireEmbedded(deps, installer, dbm.connectionsSvc, dbm.oplogWiring, proofSvc, agentAPI, opts)
 	dbm.apiFiles.Start()
 	dbm.connFiles.Start()

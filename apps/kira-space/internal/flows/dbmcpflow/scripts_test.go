@@ -2,6 +2,8 @@ package dbmcpflow
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -32,6 +34,7 @@ type scriptRunResult struct {
 	Matched   *int   `json:"matched"`
 	Truncated bool   `json:"truncated"`
 	Next      string `json:"next"`
+	Mode      string `json:"mode"`
 }
 
 func (f *fixture) createScript(t *testing.T, fields scripts.CustomScriptFields, secrets map[string]*string) scripts.CustomScript {
@@ -316,4 +319,94 @@ func TestDbMcpScriptApproval(t *testing.T) {
 	if strings.Contains(text(res), secret) || !strings.Contains(text(res), "area=eu token="+scripts.SecretMask) {
 		t.Fatalf("run = %s, want the masked token and never the value", text(res))
 	}
+}
+
+// TestDbMcpScriptLongRunning: a script with mcp.mode long returns at once with a run id, its output
+// reads while it runs, and its exit state reads once it ends. UI half:
+// tests/ui/studio/dbmcp-script-long.spec.ts (contract dbmcp-script-long).
+func TestDbMcpScriptLongRunning(t *testing.T) {
+	f := newFixture(t)
+	sess, err := f.connect(t, f.token(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sess.Close()
+
+	stop := filepath.Join(t.TempDir(), "stop")
+	long := allowMCP("Serves until stopped.")
+	long.Mode = scripts.MCPModeLong
+	f.createScript(t, scripts.CustomScriptFields{
+		Name: "serve", Command: "echo started; while [ ! -f '" + stop + "' ]; do sleep 0.1; done; echo bye; exit 4", MCP: long,
+	}, nil)
+	f.createScript(t, scripts.CustomScriptFields{Name: "quick", Command: "echo hi", MCP: allowMCP("")}, nil)
+
+	list := decodeResult[struct {
+		Scripts []struct {
+			ScriptID string `json:"scriptId"`
+			Mode     string `json:"mode"`
+		} `json:"scripts"`
+	}](t, callTool(t, sess, "list_scripts", nil))
+	modes := map[string]string{}
+	for _, sc := range list.Scripts {
+		modes[sc.ScriptID] = sc.Mode
+	}
+	if len(modes) != 2 || modes["quick"] != "short" || modes["serve"] != "long" {
+		t.Fatalf("list_scripts = %+v, want quick short and serve long", list.Scripts)
+	}
+
+	began := time.Now()
+	res := callTool(t, sess, "run_script", map[string]any{"scriptId": "serve"})
+	run := decodeResult[scriptRunResult](t, res)
+	if d := time.Since(began); d > 5*time.Second {
+		t.Fatalf("run_script of a long script took %v, want it to return at once", d)
+	}
+	if run.State != "running" || run.Mode != "long" || run.OpID != "run:"+run.RunID || !strings.Contains(run.Next, "operations") {
+		t.Fatalf("run_script serve = %s", text(res))
+	}
+
+	var polled scriptRunResult
+	testx.WaitUntil(t, 20*time.Second, func() bool {
+		began := time.Now()
+		polled = decodeResult[scriptRunResult](t, callTool(t, sess, "get_script_run", map[string]any{"runId": run.RunID}))
+		if d := time.Since(began); d > 5*time.Second {
+			t.Fatalf("get_script_run of a long script took %v, want it to return at once", d)
+		}
+		return equalStrings(lineTexts(polled), []string{"started"})
+	})
+	if polled.State != "running" || polled.Mode != "long" || polled.Next == "" {
+		t.Fatalf("get_script_run while running = %+v, want running with the output so far", polled)
+	}
+
+	// Contract dbmcp-script-long: tests/ui/studio/dbmcp-script-long.spec.ts renders the settings row
+	// and the run while it runs, then after it ended.
+	runs, err := f.app.W.ScriptRuns.List(scriptruns.ListArgs{})
+	if err != nil || len(runs) == 0 || runs[0].ID != run.RunID || runs[0].State != "running" || runs[0].Trigger != scriptruns.TriggerMCP {
+		t.Fatalf("runs = %+v (%v), want the agent run first, running, trigger mcp", runs, err)
+	}
+	runMasks := []flowharness.ContractOption{flowharness.Mask("createdAt", "startedAt", "finishedAt", "id", "cwd"), flowharness.Replace(stop, "<stop>")}
+	snap, err := f.app.W.CustomScripts.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.app.Contract(t, "dbmcp-script-long", "CustomScriptsService.List#long", snap, flowharness.Mask("createdAt"), flowharness.Replace(stop, "<stop>"))
+	f.app.Contract(t, "dbmcp-script-long", "ScriptRunsService.List#running", runs, runMasks...)
+	page, err := f.app.W.ScriptRuns.ReadLog(scriptruns.ReadLogArgs{ID: run.RunID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.app.Contract(t, "dbmcp-script-long", "ScriptRunsService.ReadLog#running", page, runMasks...)
+
+	if err := os.WriteFile(stop, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	done := decodeResult[scriptRunResult](t, callTool(t, sess, "get_script_run", map[string]any{"runId": run.RunID, "waitSeconds": 10}))
+	if done.State != "failed" || done.ExitCode == nil || *done.ExitCode != 4 || done.Next != "" ||
+		!equalStrings(lineTexts(done), []string{"started", "bye"}) {
+		t.Fatalf("get_script_run after the stop = %+v, want failed, exit 4, started and bye", done)
+	}
+	ended, err := f.app.W.ScriptRuns.Get(scriptruns.IDArgs{ID: run.RunID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.app.Contract(t, "dbmcp-script-long", "ScriptRunsService.Get#ended", ended, runMasks...)
 }

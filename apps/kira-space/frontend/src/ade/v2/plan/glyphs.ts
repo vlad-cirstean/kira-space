@@ -49,6 +49,12 @@ export const BRANCH_TAG_GLYPH: Record<BranchTagKind, Glyph> = {
   clean: { icon: 'check' },
 };
 
+// Attach state of a branch row: detached from its branch, or sharing it with another task.
+export const ATTACH_GLYPH: Record<'detached' | 'shared', Glyph> = {
+  detached: { icon: 'git-commit' },
+  shared: { icon: 'link' },
+};
+
 export const TASK_ACTION_ICON: Record<TaskActionKind, string> = {
   run: 'play',
   session: 'debug-start',

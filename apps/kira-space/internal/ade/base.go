@@ -42,7 +42,7 @@ func (b *TaskBoard) baseCtxFor(ctx context.Context, entry *gitsession.RepoEntry,
 		}
 		sc.byID[br.ID] = br
 		if br.Name != "" {
-			sc.byName[br.Name] = br
+			putByName(sc.byName, br)
 		}
 	}
 	return sc, nil

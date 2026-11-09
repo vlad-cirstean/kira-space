@@ -47,9 +47,7 @@ test('contract: the held result shows as a table and Send answers by item id', a
   const { window: page, control } = await relaunch({ control: mocks(item.id) });
 
   await pushApprovals(page, [item]);
-  await expect(page.locator('[data-testid="approval-operation"]')).toHaveText(
-    new RegExp(`^${item.operation.class}$`, 'i'),
-  );
+  await expect(page.locator('[data-testid="approval-operation"]')).toHaveText('Result');
   const headers = page.locator('[data-testid="db-mcp-preview-column"]');
   await expect(headers).toHaveText(result.columns.map((c) => c.name));
   const rows = page.locator('[data-testid="db-mcp-preview-row"]');
@@ -68,6 +66,28 @@ test('contract: the held result shows as a table and Send answers by item id', a
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
     .toEqual({ ...answer, options: null });
+});
+
+test('contract: rows past the third hide behind a count and open on click', async ({
+  relaunch,
+}) => {
+  const item = first();
+  const result = JSON.parse(held().text) as Tabular;
+  const rows = Array.from({ length: 6 }, (_, i) => result.columns.map((c) => `${c.name}${i}`));
+  const text = JSON.stringify({ ...result, rowCount: 6, returned: 6, rows });
+  const { window: page } = await relaunch({
+    control: [
+      { channel: IPC.dbMcpPendingResponse, response: { ...held(), text } },
+      { channel: IPC.approvalsAnswer, response: answeredOk([item.id]) },
+    ],
+  });
+  await pushApprovals(page, [item]);
+  const shown = page.locator('[data-testid="db-mcp-preview-row"]');
+  await expect(shown).toHaveCount(3);
+  await page.click('[data-testid="db-mcp-preview-more"]');
+  await expect(page.locator('[data-testid="db-mcp-preview-more"]')).toHaveCount(0);
+  await expect(shown.first()).toBeVisible();
+  expect(await shown.count()).toBeGreaterThanOrEqual(6);
 });
 
 test('contract: Withhold denies the held result', async ({ relaunch }) => {

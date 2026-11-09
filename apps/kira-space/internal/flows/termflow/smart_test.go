@@ -91,6 +91,7 @@ func TestSmartScriptSpace(t *testing.T) {
 
 func TestSmartScriptFailedSpace(t *testing.T) {
 	app := flowharness.New(t)
+	app.SetHermetic(t, true) // the resume command carries the hermetic flags; off by default since P588
 	app.Scenario(fakeagent.Scenario{Claude: map[string][]fakeagent.Action{"*": {{Name: "failed"}}}})
 	rec, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
 		Name: "ask", Kind: scripts.KindSmart, Command: "Say hi", Color: "blue",

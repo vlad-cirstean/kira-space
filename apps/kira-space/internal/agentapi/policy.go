@@ -3,6 +3,7 @@ package agentapi
 import (
 	"sort"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 )
 
@@ -13,7 +14,7 @@ type available struct {
 	// secretName is the Api secret a secret variable points to.
 	secretName string
 	value      string
-	hosts      []apifiles.HostRule
+	hosts      []apiaccess.HostRule
 }
 
 func (a available) hostStrings() []string {
@@ -39,7 +40,7 @@ func availableOf(ref apifiles.EnvironmentRef) map[string]available {
 				continue
 			}
 			for _, h := range v.AgentHosts {
-				if r, err := apifiles.ParseHostRule(h); err == nil {
+				if r, err := apiaccess.ParseHostRule(h); err == nil {
 					a.hosts = append(a.hosts, r)
 				}
 			}

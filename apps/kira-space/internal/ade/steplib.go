@@ -90,16 +90,16 @@ func (b *TaskBoard) ValidateStepYaml(_ context.Context, src string) adewire.Step
 	return v
 }
 
-// SaveStep rewrites a library file from the structured step. Started tasks keep their snapshot.
+// SaveStep rewrites a library file from the structured step. A new name renames the file and the workflows
+// that reference it. Started tasks keep their snapshot.
 func (b *TaskBoard) SaveStep(_ context.Context, args adewire.SaveStepArgs) (adewire.StepEntry, error) {
-	lib, err := b.steps()
-	if err != nil {
+	if _, err := b.steps(); err != nil {
 		return adewire.StepEntry{}, err
 	}
 	if err := b.stepSecretParam(args.Step); err != nil {
 		return adewire.StepEntry{}, err
 	}
-	e, err := lib.Save(args.FileName, args.BaseHash, args.Step)
+	e, err := b.deps.Workflows.SaveLibraryStep(args.FileName, args.BaseHash, args.Step, b.keepStem(adeflow.StepsFolder, args.FileName))
 	if err != nil {
 		return adewire.StepEntry{}, wfErr(err)
 	}

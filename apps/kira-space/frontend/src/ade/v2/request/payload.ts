@@ -6,7 +6,7 @@ const branchRequestItemSchema = /*#__PURE__*/ z.object({
   id: z.string(),
   codeRepoId: z.string(),
   repo: z.string(),
-  kind: z.enum(['branch', 'worktree', 'rename']),
+  kind: z.enum(['branch', 'worktree', 'rename', 'checkout', 'adopt']),
   branch: z.string(),
   base: z.string(),
   from: z.string(),
@@ -15,6 +15,16 @@ const branchRequestItemSchema = /*#__PURE__*/ z.object({
   source: z.string(),
   stepName: z.string(),
   session: z.string(),
+  // 'adopt': where the branch is checked out now, and the uncommitted changes that stay there.
+  holder: z
+    .object({
+      kind: z.enum(['task', 'main', 'other', 'none']),
+      taskId: z.string(),
+      branchId: z.string(),
+      worktree: z.string(),
+    })
+    .optional(),
+  dirty: z.number().optional(),
 });
 export type BranchRequestItem = z.infer<typeof branchRequestItemSchema>;
 

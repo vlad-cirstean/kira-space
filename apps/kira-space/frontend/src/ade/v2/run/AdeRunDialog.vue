@@ -216,7 +216,7 @@ const send = sending.run;
             <span class="text-muted-foreground">{{
               t('space.ade.runDialog.handover.label', { stage: handoverIn.fromStepName })
             }}</span>
-            <Card class="whitespace-pre-wrap break-words font-data text-kira-sm">{{
+            <Card class="select-text whitespace-pre-wrap break-words font-data text-kira-sm">{{
               handoverIn.body
             }}</Card>
           </div>
@@ -224,7 +224,7 @@ const send = sending.run;
             <span class="text-muted-foreground">{{
               t('space.ade.runDialog.taskNotes.label')
             }}</span>
-            <Card class="whitespace-pre-wrap break-words font-data text-kira-sm">{{
+            <Card class="select-text whitespace-pre-wrap break-words font-data text-kira-sm">{{
               taskNotes
             }}</Card>
           </div>

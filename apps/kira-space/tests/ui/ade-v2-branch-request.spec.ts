@@ -39,7 +39,7 @@ test('contract: the item lists every branch and Approve sends the checked items'
 }) => {
   const { page, control, it } = await openRequest(relaunch);
   const dialog = page.locator(t('approvals-dialog'));
-  await expect(dialog.locator(t('ade-branch-request-source')).first()).toContainText(
+  await expect(dialog.locator(t('approval-origin'))).toContainText(
     (it.origin.step || 'run').toString(),
   );
   const { items } = payload();

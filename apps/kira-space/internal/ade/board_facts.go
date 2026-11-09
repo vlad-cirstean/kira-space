@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"golang.org/x/sync/errgroup"
@@ -57,6 +59,10 @@ type boardCtx struct {
 	resolved  map[string]resolvedRef // branch id -> resolved ref
 	byName    map[string]model.AdeTaskBranch
 	byID      map[string]model.AdeTaskBranch
+	// P583: the repo's registered name and live rows, to tell which worktree folder belongs to which row.
+	repoName string
+	live     []model.AdeTaskBranch
+	owners   map[string]model.AdeTaskBranch // own worktree path -> live row
 	// P145 facts: configured integration targets and environments, the stored marks and env states.
 	targets  []string
 	envs     []model.AdeRepoEnv
@@ -208,12 +214,15 @@ func (b *TaskBoard) collectRepo(ctx context.Context, entry *gitsession.RepoEntry
 	if err := b.loadFacts(sc, branches); err != nil {
 		return err
 	}
+	if err := b.loadOwners(sc); err != nil {
+		return err
+	}
 	for _, sb := range branches {
 		sc.byID[sb.ID] = sb
 		if sb.Name == "" {
 			continue
 		}
-		sc.byName[sb.Name] = sb
+		putByName(sc.byName, sb)
 		row, found := resolveQueuedRef(inv, sb.Name, remote)
 		sc.resolved[sb.ID] = resolvedRef{row: row, found: found}
 	}
@@ -296,7 +305,7 @@ func (b *TaskBoard) computeBranch(ctx context.Context, sc *boardCtx, sb model.Ad
 	wb.Tip, wb.Owner = row.Tip, sc.ownerOf(row)
 	lastCommit := row.CommitterUnix * 1000
 	wb.LastCommitAt = &lastCommit
-	wb.Worktree = row.WorktreePath
+	b.fillAttach(sc, wb, sb, row.WorktreePath)
 	if wb.Worktree == "" && wb.Setup != nil && wb.Setup.State == "ready" {
 		wb.Setup = nil // worktree gone (archive, restore): a ready setup row is stale
 	}
@@ -374,18 +383,14 @@ func (b *TaskBoard) computeBranch(ctx context.Context, sc *boardCtx, sb model.Ad
 // fillUpstream sets the tracked upstream, falling back to a same-named remote branch.
 func (sc *boardCtx) fillUpstream(ctx context.Context, wb *adewire.Branch, sb model.AdeTaskBranch, row porcelain.InventoryRef) error {
 	wb.Upstream, wb.UpstreamAhead, wb.UpstreamBehind = row.Upstream, row.UpstreamAhead, row.UpstreamBehind
-	if row.Upstream != "" || sc.remote == "" {
+	if row.Upstream != "" {
 		return nil
 	}
-	remoteRow, found := findRemoteRow(sc.inv, sc.remote, sb.Name)
-	if !found {
-		return nil
-	}
-	ahead, behind, err := sc.entry.AheadBehind(ctx, row.Tip, remoteRow.Tip)
-	if err != nil {
+	twin, ahead, behind, ok, err := remoteTwin(ctx, sc.entry, sc.inv, row, sc.remote)
+	if err != nil || !ok {
 		return err
 	}
-	wb.Upstream, wb.UpstreamAhead, wb.UpstreamBehind = remoteRow.Ref, ahead, behind
+	wb.Upstream, wb.UpstreamAhead, wb.UpstreamBehind = twin.Ref, ahead, behind
 	return nil
 }
 
@@ -427,4 +432,72 @@ func (b *TaskBoard) loadFacts(sc *boardCtx, branches []model.AdeTaskBranch) erro
 	}
 	sc.envState, err = b.deps.Facts.EnvStates(sc.repoID)
 	return err
+}
+
+// loadOwners reads the repo's live rows and the folder each one owns.
+func (b *TaskBoard) loadOwners(sc *boardCtx) error {
+	rec, err := b.deps.CodeRepos.Get(sc.repoID)
+	if err != nil {
+		return err
+	}
+	if rec == nil {
+		return nil
+	}
+	live, err := b.deps.Tasks.BranchesLive()
+	if err != nil {
+		return err
+	}
+	sc.repoName = rec.Name
+	for _, row := range live {
+		if row.CodeRepoID == sc.repoID {
+			sc.live = append(sc.live, row)
+		}
+	}
+	sc.owners = b.worktreeOwners(rec.Name, sc.live, sc.repoID)
+	return nil
+}
+
+// putByName indexes sb by its name; the owner row of a shared name wins over an adopted one, and of two
+// adopted rows the older wins.
+func putByName(m map[string]model.AdeTaskBranch, sb model.AdeTaskBranch) {
+	cur, ok := m[sb.Name]
+	switch {
+	case !ok, cur.ID == sb.ID, cur.Adopted && !sb.Adopted:
+		m[sb.Name] = sb
+	case !cur.Adopted && sb.Adopted:
+	case sb.AddedAt < cur.AddedAt:
+		m[sb.Name] = sb
+	}
+}
+
+// fillAttach sets the row's worktree to where its branch is checked out for it, and the detached and
+// shared facts. holder is the path where git has the branch checked out.
+func (b *TaskBoard) fillAttach(sc *boardCtx, wb *adewire.Branch, sb model.AdeTaskBranch, holder string) {
+	own := b.ownWorktreePath(sc.repoName, sb)
+	ownExists := false
+	if own != "" {
+		_, err := os.Lstat(own)
+		ownExists = err == nil
+	}
+	at := resolveAttachment(sb, own, holder, sc.owners, ownExists)
+	wb.Worktree = at.attached
+	if at.detached {
+		h := adewire.BranchHolder{Kind: holderNone}
+		switch {
+		case at.owner != nil:
+			h = adewire.BranchHolder{Kind: holderTask, TaskID: at.owner.TaskID, BranchID: at.owner.ID, Worktree: at.holder}
+		case at.holder != "" && filepath.Clean(at.holder) == filepath.Clean(sc.entry.Summary.Root):
+			h = adewire.BranchHolder{Kind: holderMain, Worktree: at.holder}
+		case at.holder != "":
+			h = adewire.BranchHolder{Kind: holderOther, Worktree: at.holder}
+		}
+		wb.Detached = &adewire.BranchDetached{Worktree: own, Holder: h}
+	}
+	for _, peer := range sc.live {
+		if peer.ID == sb.ID || peer.Name == "" || peer.Name != sb.Name {
+			continue
+		}
+		peerAt := resolveAttachment(peer, b.ownWorktreePath(sc.repoName, peer), holder, sc.owners, false)
+		wb.Shared = append(wb.Shared, adewire.BranchPeer{TaskID: peer.TaskID, BranchID: peer.ID, Attached: peerAt.attached != ""})
+	}
 }

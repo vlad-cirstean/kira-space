@@ -63,6 +63,7 @@ func newIntegFixture(t *testing.T) *integFixture {
 	h.status.Store(gitclient.GitStatus{Kind: "ok", Path: "git"})
 	h.board = NewTaskBoard(TaskBoardDeps{
 		Agent:       testAgents,
+		DbMcp:       fakeDbMcp{},
 		Credentials: gitcred.New(),
 		Tasks:       r.AdeTasks, Statuses: r.AdeStatuses, RepoConfig: r.AdeRepoConfig, Facts: r.AdeFacts, CodeRepos: r.CodeRepos,
 		GitRepoSettings: h.files.Settings,

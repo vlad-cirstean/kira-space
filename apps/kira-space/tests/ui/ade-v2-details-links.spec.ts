@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { openPlan, openTask } from './support/adeV2';
+import { openDetails, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -55,12 +55,6 @@ const base = (addLink: Partial<ControlSnapshot> = {}): ControlSnapshot[] => [
     response: contract('ade-details-links', 'AdeTaskService.EditLink'),
   },
 ];
-
-async function openDetails(page: Page): Promise<void> {
-  await openTask(page, 'T_alerts');
-  await page.locator(t('ade-panel-tab-details')).click();
-  await expect(page.locator(t('ade-details-tab'))).toBeVisible();
-}
 
 const row = (page: Page, text: string) => page.locator(t('ade-details-link'), { hasText: text });
 

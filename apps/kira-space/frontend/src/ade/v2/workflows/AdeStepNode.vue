@@ -48,9 +48,7 @@ const SANDBOX_CHIP = {
 } as const;
 const manual = computed(() => step.value.kind === 'manual');
 const showMeta = computed(
-  () =>
-    (!manual.value && !step.value.outsideRepo) ||
-    !isDefaultSandbox(step.value.kind, step.value.sandbox),
+  () => (!manual.value && !step.value.outsideRepo) || !isDefaultSandbox(step.value.sandbox),
 );
 const body = computed(() => {
   const s = step.value;
@@ -242,7 +240,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
         runsOnLabel(step.runsOn)
       }}</span>
       <span
-        v-if="!isDefaultSandbox(step.kind, step.sandbox)"
+        v-if="!isDefaultSandbox(step.sandbox)"
         class="shrink-0"
         :class="step.sandbox.access === 'off' ? 'text-warn-text' : ''"
         data-testid="ade-wf-node-sandbox"

@@ -61,7 +61,7 @@ func workflowSteps(wf adewire.Workflow) []stepDef {
 		}
 		out[i] = stepDef{ID: s.ID, Name: s.Name, Kind: s.Kind, RunsOn: s.RunsOn, Before: s.Before, Timeout: s.Timeout, Prompt: prompt,
 			Skip: s.Skip, Session: s.Session, OutsideRepo: s.OutsideRepo, Results: results, ReturnLimit: s.MaxReturns, AllowedTools: s.AllowedTools, DbMcp: s.DbMcp,
-			SmartScript: s.SmartScript, Params: s.Params, Review: s.Review, Sandbox: s.Sandbox.NormalizedFor(s.Kind), Settings: s.Settings, Agent: s.Agent}
+			SmartScript: s.SmartScript, Params: s.Params, Review: s.Review, Sandbox: s.Sandbox.Normalized(), Settings: s.Settings, Agent: s.Agent}
 		if s.Kind == adewire.KindScript {
 			out[i].Settings, out[i].Agent, out[i].DbMcp = nil, "", false
 		}

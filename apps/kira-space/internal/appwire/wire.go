@@ -19,6 +19,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configsync"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitaskpass"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
@@ -189,7 +190,7 @@ func wireAdeTask(
 	closeReviewWindows func(taskID string), credentials *gitcred.Relay, keepAwake *bridge.KeepAwakeService,
 	notifier *agentnotify.Notifier, usage *agentusage.Service, rebaseTimeout, branchRequestWait time.Duration, updates ade.UpdatesConfig, runs *scriptruns.Service,
 	agents harness.Selector, promptSink prompts.Sink, approvalQueue *approvals.Queue, repoFiles *repocfg.Store,
-	proofs ade.ProofLinks, dbMcp ade.DbMcpSessions,
+	proofs ade.ProofLinks, dbMcp ade.DbMcpSessions, onReposChanged func(),
 ) *ade.TaskBoard {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
@@ -210,12 +211,16 @@ func wireAdeTask(
 		GitStatus: func(ctx context.Context) gitclient.GitStatus { return git.discovery.Status(ctx, gitPath()) },
 		Askpass:   git.askpassBroker,
 		Workflows: &adeflow.Reader{Dir: configfs.ModuleDir(config.KiraSpaceHome(), adeflow.WorkflowsFolder), Store: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: adeflow.WorkflowsFolder},
-			Steps: &adeflow.StepLibrary{Dir: configfs.ModuleDir(config.KiraSpaceHome(), adeflow.StepsFolder), DB: repositories.CustomScripts.DB}},
+			Journal: filepath.Join(config.KiraSpaceHome(), "ade", "rename.json"),
+			Steps:   &adeflow.StepLibrary{Dir: configfs.ModuleDir(config.KiraSpaceHome(), adeflow.StepsFolder), DB: repositories.CustomScripts.DB}},
+		NamesMarker:  filepath.Join(config.KiraSpaceHome(), "ade", "names-v1.done"),
+		BackupDir:    filepath.Join(config.KiraSpaceHome(), "backups", "readable-names"),
+		KeepStem:     func(module, file string) bool { return configsync.HasBase(config.KiraSpaceHome(), module, file) },
 		OnBoard:      func() { bridge.AdeTaskBoardChanged(events) },
 		OnUpdates:    func() { bridge.AdeTaskUpdatesChanged(events) },
 		TrackedItems: repositories.AdeTrackedItems, Updates: updates,
 		OnWorkflows: func() { bridge.AdeTaskWorkflowsChanged(events) },
-		OnRepos:     func() { bridge.AdeTaskReposChanged(events) },
+		OnRepos:     func() { bridge.AdeTaskReposChanged(events); onReposChanged() },
 		Facts:       repositories.AdeFacts,
 		Runner:      git.runner,
 		Credentials: credentials,

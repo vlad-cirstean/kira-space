@@ -431,6 +431,13 @@ export async function openTask(page: Page, id: string): Promise<void> {
   await page.locator('[data-testid="ade-main-tab"]').waitFor();
 }
 
+/** Selects task `id` and opens its Details tab. */
+export async function openDetails(page: Page, id = 'T_alerts'): Promise<void> {
+  await openTask(page, id);
+  await page.locator('[data-testid="ade-panel-tab-details"]').click();
+  await expect(page.locator('[data-testid="ade-details-tab"]')).toBeVisible();
+}
+
 /** Opens the inspector's collapsed Advanced section. */
 export const openAdvanced = async (page: Page): Promise<void> => {
   const toggle = page.locator('[data-testid="ade-wf-step-advanced"]');

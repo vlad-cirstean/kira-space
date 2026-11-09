@@ -507,21 +507,25 @@ func (b *TaskBoard) planBranchRequest(ctx context.Context, call agentmcp.SpaceCa
 	}
 	slots := make([]requestSlot, 0, len(specs))
 	var items []adewire.BranchRequestItem
-	seen := map[string]string{} // repo and branch to the first entry's base
+	type asked struct {
+		base     string
+		existing bool
+	}
+	seen := map[string]asked{} // repo and branch to the first entry's base and kind
 	for i, sp := range specs {
 		id, err := resolveRepoRef(sp.Repo, cands, "registered")
 		if err != nil {
 			return nil, nil, err
 		}
 		key := id + "\x00" + sp.Branch
-		if base, dup := seen[key]; dup {
-			if base != sp.Base {
-				return nil, nil, agentmcp.ToolError(fmt.Sprintf("Branch %s of %s is asked twice with different bases.", sp.Branch, sp.Repo))
+		if first, dup := seen[key]; dup {
+			if first.base != sp.Base || first.existing != sp.Existing {
+				return nil, nil, agentmcp.ToolError(fmt.Sprintf("Branch %s of %s is asked twice with different bases or existing flags.", sp.Branch, sp.Repo))
 			}
 			continue
 		}
-		seen[key] = sp.Base
-		slot, err := b.planItem(ctx, tc, fmt.Sprintf("i%d", i), id, sp.Branch, sp.Base, cfgs)
+		seen[key] = asked{base: sp.Base, existing: sp.Existing}
+		slot, err := b.planItem(ctx, tc, fmt.Sprintf("i%d", i), id, sp.Branch, sp.Base, sp.Existing, cfgs)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -560,11 +564,11 @@ func taskRepoRows(tc *taskCtx, codeRepoID, branch string) (named, draft *model.A
 	return named, draft
 }
 
-const outsideTaskText = "Branch %s exists outside this task. Pick another name or ask the user to attach it."
+const outsideTaskText = "Branch %s exists outside this task. Pick another name, or pass existing: true to work on it."
 
 // planItem decides one requested branch: failed, already existing, or an item for the user. asked is the
 // base the agent chose, "" for none.
-func (b *TaskBoard) planItem(ctx context.Context, tc *taskCtx, itemID, codeRepoID, branch, asked string, cfgs []model.AdeRepoConfig) (requestSlot, error) {
+func (b *TaskBoard) planItem(ctx context.Context, tc *taskCtx, itemID, codeRepoID, branch, asked string, existing bool, cfgs []model.AdeRepoConfig) (requestSlot, error) {
 	nick := tc.nick[codeRepoID]
 	if nick == "" {
 		for _, c := range cfgs {
@@ -582,9 +586,16 @@ func (b *TaskBoard) planItem(ctx context.Context, tc *taskCtx, itemID, codeRepoI
 		slot.result = failedBranch(nick, branch, asked, fmt.Sprintf("Repo %s is no longer registered.", nick))
 		return slot, nil
 	}
+	if existing && asked != "" {
+		slot.result = failedBranch(nick, branch, asked, "Cannot use base with existing: true; base only applies to a new branch.")
+		return slot, nil
+	}
 	named, draft := taskRepoRows(tc, codeRepoID, branch)
-	if named != nil {
+	switch {
+	case named != nil:
 		return b.planNamed(ctx, slot, itemID, *named)
+	case existing:
+		return b.planExisting(ctx, slot, *rec)
 	}
 	return b.planNew(ctx, tc, slot, *rec, draft)
 }
@@ -604,14 +615,22 @@ func (b *TaskBoard) planNamed(ctx context.Context, slot requestSlot, itemID stri
 		}
 		slot.note = note
 	}
-	path, err := b.worktreeOf(ctx, named)
+	at, err := b.rowWorktree(ctx, named)
 	if err != nil {
 		return slot, err
 	}
-	if path != "" {
-		slot.result = &agentmcp.RequestedBranch{BranchInfo: b.branchInfo(named, slot.nick, path), Outcome: agentmcp.BranchExisting}
+	if at.attached != "" {
+		slot.result = &agentmcp.RequestedBranch{BranchInfo: b.branchInfo(named, slot.nick, at.attached), Outcome: agentmcp.BranchExisting}
 		slot.result.Next = slot.note + slot.result.Next
 		return slot, nil
+	}
+	if at.owner != nil {
+		// Another task's worktree holds the branch: taking it back detaches it there.
+		rec, err := b.deps.CodeRepos.Get(slot.codeRepoID)
+		if err != nil || rec == nil {
+			return slot, err
+		}
+		return b.planTake(ctx, slot, *rec, &named)
 	}
 	slot.item = &item
 	return slot, nil
@@ -775,7 +794,7 @@ func (b *TaskBoard) finishBranchRequest(ctx context.Context, call agentmcp.Space
 				return
 			}
 			s.result = b.createApproved(ctx, tc, s)
-			if s.result.Outcome == agentmcp.BranchCreated || s.result.Outcome == agentmcp.BranchExisting {
+			if s.result.Outcome == agentmcp.BranchCreated || s.result.Outcome == agentmcp.BranchExisting || s.result.Outcome == agentmcp.BranchCheckedOut {
 				s.result.Next = s.note + s.result.Next
 			}
 		}
@@ -807,6 +826,9 @@ func toolMessage(err error) string {
 // branch: in the repo's waiting row when it has one, else in a new row. A base the agent asked for is
 // resolved again and stored on the row first; the user approved it, so a failed start leaves it there.
 func (b *TaskBoard) createApproved(ctx context.Context, tc *taskCtx, s *requestSlot) *agentmcp.RequestedBranch {
+	if s.item.Kind == branchKindCheckout || s.item.Kind == branchKindAdopt {
+		return b.applyExisting(ctx, tc, s)
+	}
 	named, draft := taskRepoRows(tc, s.codeRepoID, s.branch)
 	switch {
 	case named != nil:

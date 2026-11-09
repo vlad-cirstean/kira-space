@@ -942,13 +942,14 @@ var _ = arg(HeadlessToolDeclareRepos.id, "repos", spaceApp, NextCall,
 // HeadlessToolRequestBranches describes the request_branches tool.
 var HeadlessToolRequestBranches = define(Entry{
 	ID: "headless.tool.request_branches", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "request_branches",
-	Default: `Ask the user to approve branches and worktrees, all in one call; waits for the answer. You name each branch; Kira Space picks the folder. A repo may get several branches. Approval adds a registered repo missing from the task. Per branch: created, existing, denied, failed or timeout. A new worktree may still be preparing; task_info with repo and branch shows it.`,
+	Default: `Ask the user to approve branches and worktrees, all in one call; waits for the answer. You name each branch; Kira Space picks the folder. A repo may get several branches. Approval adds a registered repo missing from the task. With existing: true, checks out a branch that exists; if another worktree holds it, the user approves detaching it there. Per branch: created, checkedOut, existing, denied, failed or timeout. A new worktree may still be preparing; task_info with repo and branch shows it.`,
 }, NoVars{})
 
 var (
 	_ = arg(HeadlessToolRequestBranches.id, "branches", spaceApp, NextCall, `Branches, 1 to {{.Max}}.`, MaxVars{Max: 20})
 	_ = arg(HeadlessToolRequestBranches.id, "branches.repo", spaceApp, NextCall, `Repo: nickname, name or code repo id, from task_info.`, NoVars{})
-	_ = arg(HeadlessToolRequestBranches.id, "branches.branch", spaceApp, NextCall, `New branch name, such as feat/login-form. Must not exist yet.`, NoVars{})
+	_ = arg(HeadlessToolRequestBranches.id, "branches.branch", spaceApp, NextCall, `Branch name, such as feat/login-form. New unless existing is true.`, NoVars{})
+	_ = arg(HeadlessToolRequestBranches.id, "branches.existing", spaceApp, NextCall, `true: work on this existing branch instead of creating it. No base.`, NoVars{})
 	_ = arg(HeadlessToolRequestBranches.id, "branches.base", spaceApp, NextCall, `Existing branch to start from, such as main or feat/api: short name, origin checked first. A branch of a task stacks on it. Omit for main.`, NoVars{})
 )
 
@@ -1528,30 +1529,30 @@ var _ = arg(DbmcpToolOperations.id, "cancel", studioApp, NextCall, `Operation id
 // DbmcpToolListScripts describes the list_scripts tool.
 var DbmcpToolListScripts = define(Entry{
 	ID: "dbmcp.tool.list_scripts", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_scripts",
-	Default: "List scripts exposed to MCP with description, approval mode and parameters. You can't set secret parameters.",
+	Default: "List scripts exposed to MCP with description, approval mode, mode (short or long) and parameters. You can't set secret parameters.",
 }, NoVars{})
 
 // DbmcpToolRunScript describes the run_script tool.
 var DbmcpToolRunScript = define(Entry{
 	ID: "dbmcp.tool.run_script", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "run_script",
-	Default: "Run a script exposed to MCP. Returns run id, state, exit code and, once the run ends, the last 50 output lines. The user may be asked to approve. A run still going after waitSeconds keeps running; call get_script_run.",
+	Default: "Run a script exposed to MCP. Returns run id, state, exit code and, once the run ends, the last 50 output lines. The user may be asked to approve. A short script waits up to waitSeconds, then keeps running; call get_script_run. A long script returns at once and keeps running: read its output with get_script_run, stop it with operations.",
 }, NoVars{})
 
 var (
 	_ = arg(DbmcpToolRunScript.id, "scriptId", studioApp, NextCall, `Script id from list_scripts.`, NoVars{})
 	_ = arg(DbmcpToolRunScript.id, "params", studioApp, NextCall, `Values by parameter name: a string, or a list for multiselect.`, NoVars{})
-	_ = arg(DbmcpToolRunScript.id, "waitSeconds", studioApp, NextCall, `Seconds to wait for the run to end, 0-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 25, Max: 50})
+	_ = arg(DbmcpToolRunScript.id, "waitSeconds", studioApp, NextCall, `Seconds to wait for the run to end, 0-{{.Max}}. Default {{.Default}}, 0 for a long script.`, LimitVars{Default: 25, Max: 50})
 )
 
 // DbmcpToolGetScriptRun describes the get_script_run tool.
 var DbmcpToolGetScriptRun = define(Entry{
 	ID: "dbmcp.tool.get_script_run", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "get_script_run",
-	Default: "Read a script run's state, exit code and duration, optionally waiting for it to end. Once ended, or with from, lines or contains, also returns stored output, at most 500 lines. Secret values are masked.",
+	Default: "Read a script run's state, exit code and duration, optionally waiting for it to end. Once ended, while a long script runs, or with from, lines or contains, also returns stored output, at most 500 lines. Secret values are masked.",
 }, NoVars{})
 
 var (
 	_ = arg(DbmcpToolGetScriptRun.id, "runId", studioApp, NextCall, `Run id from run_script.`, NoVars{})
-	_ = arg(DbmcpToolGetScriptRun.id, "waitSeconds", studioApp, NextCall, `Seconds to wait for the run to end, 0-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 25, Max: 50})
+	_ = arg(DbmcpToolGetScriptRun.id, "waitSeconds", studioApp, NextCall, `Seconds to wait for the run to end, 0-{{.Max}}. Default {{.Default}}, 0 for a long script.`, LimitVars{Default: 25, Max: 50})
 	_ = arg(DbmcpToolGetScriptRun.id, "from", studioApp, NextCall, `tail: last lines. head: first lines. Default tail.`, NoVars{})
 	_ = arg(DbmcpToolGetScriptRun.id, "lines", studioApp, NextCall, `Output lines to return, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 50, Max: 500})
 	_ = arg(DbmcpToolGetScriptRun.id, "contains", studioApp, NextCall, `Keep lines containing this text (case-sensitive), before the line cap.`, NoVars{})
@@ -1566,7 +1567,7 @@ var DbmcpToolAPIListEnvironments = define(Entry{
 // DbmcpToolAPIRequest describes the api_request tool.
 var DbmcpToolAPIRequest = define(Entry{
 	ID: "dbmcp.tool.api_request", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "api_request",
-	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve. TLS is always verified. Secret values are masked in the response, which is capped.",
+	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve. User access rules may refuse a host or method; the error names the allowed ones. TLS is always verified. Secret values are masked in the response, which is capped.",
 }, NoVars{})
 
 var (
