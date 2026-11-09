@@ -33,9 +33,9 @@ const view = computed(() => query.data.value);
 // The shared repos file of this repo, for a shared config repository: origin plus the shared keys.
 const sharedText = useRepoSharedText();
 const { copy: copyShared } = useCopy();
-async function onCopyShared(): Promise<void> {
-  const text = await sharedText.mutateAsync(props.path);
-  await copyShared(text);
+// A failed export shows through the mutation's error alert; mutate keeps it from also rejecting here.
+function onCopyShared(): void {
+  sharedText.mutate(props.path, { onSuccess: (text) => void copyShared(text) });
 }
 const creating = computed(() => view.value !== undefined && !view.value.exists);
 const applyForm = useRepoForm(() => view.value?.file ?? props.file ?? '');
