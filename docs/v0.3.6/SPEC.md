@@ -10,7 +10,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 | P583 | Agent worktree: work on an already existing branch | Done |
 | P584 | Shared config: readable YAML file names and step names | Done |
 | P585 | Shared config: share repos by origin, with prepare-worktree configs | Done |
-| P586 | Task panel Details: open links externally | Planned |
+| P586 | Task panel Details: open links externally | Done |
 | P587 | Database MCP script runner: per-script short or long running | Planned |
 
 Phases run in table order, one at a time, unless the user asks for a batch.
@@ -91,6 +91,7 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 - Ask (user): each link in the task panel Details tab gets a button that opens it externally, in the system browser.
 - Context: Details tab (`details/`, `AdeTaskChain.vue`, Jira and other link lines); existing external-open path (`TestOpenLinks` in `internal/flows/appflow/misc_test.go`, `openLink` in `AdeArtifactList.vue`). Reuse that path; the renderer sends no raw URL to a browser API of its own. Planner lists every link kind in the panel and which already have the button.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+- Result: Plan `plans/P586.md`. New `details/AdeLinkOpenExternal.vue` (`TooltipIconButton` `link-external`, testid `ade-details-open`, hidden without a url) calls `control.openExternal` to `LinkService.OpenExternal`; no new bridge method, no renderer browser API. First in `#actions` of `AdeDetailsLink` (every link row: Jira slot, host slot, detected and stored rows, read-only and archived included, hidden while editing) and of `AdeTimelineEntry` (artifact events). Change request titles keep the in-app host view; the button opens the same url externally, so forge and Azure urls open too. Rows without a url (bare key) show no button. Out of scope: handover and note prose links (inline text, Cmd/Ctrl-click kept) and `AdeTaskIssueLine` (no url of its own; the Jira row above carries the button). Copy key `space.ade.details.openExternal.tooltip`. Flow `TestDetailsOpenExternal` (contract `ade-details-open`), UI `ade-v2-details-open.spec.ts` (5 pass). Ran: flows adeflow `TestDetailsOpenExternal|TestDetailsLinks`, appflow `TestOpenLinks|TestTerminalLinkOpen`; UI details-open, details-links, details-list, task-panel, panel, artifacts, copy-coverage (96 pass); typecheck web and tests, lint, `lint:dead`, golangci-lint adeflow. Deviations: flow picks stored artifacts by `source: user` (the listing also holds derived slot rows); `openDetails` moved to `support/adeV2.ts` and shared by details-links and details-open specs (lint N8).
 
 ## P587 Database MCP script runner: per-script short or long running
 
