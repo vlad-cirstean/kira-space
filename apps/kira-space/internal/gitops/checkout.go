@@ -27,6 +27,12 @@ func SwitchDetachArgs(target string, discard bool) []string {
 	return []string{"switch", "--no-guess", "--detach", target}
 }
 
+// DetachHeadArgs builds `git switch --detach`: leave the current branch for the commit it points
+// at. It never touches files, so it works with local changes.
+func DetachHeadArgs() []string {
+	return []string{"switch", "--no-guess", "--detach"}
+}
+
 // SwitchCreateTrackingArgs builds `git switch -c <branch> <upstream>` — the executor's route for
 // CheckoutPreflight.createsTracking: `switch -c` with a remote-tracking start point sets up
 // tracking automatically (git's own default branch.autoSetupMerge behaviour). No --no-guess here:

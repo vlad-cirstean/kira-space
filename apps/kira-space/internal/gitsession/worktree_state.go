@@ -88,6 +88,20 @@ func (e *RepoEntry) FastForwardWorktree(ctx context.Context, dir, target string)
 	return e.writeIn(ctx, dir, gitops.MergeFFOnlyArgs(target))
 }
 
+// DetachWorktree leaves the branch checked out in the worktree at dir for the same commit
+// (`git switch --detach`); files and local changes stay.
+func (e *RepoEntry) DetachWorktree(ctx context.Context, dir string) error {
+	defer e.invalidateAfterWrite()
+	return e.writeIn(ctx, dir, gitops.DetachHeadArgs())
+}
+
+// SwitchWorktree checks branch out in the worktree at dir (`git switch --no-guess`). git refuses
+// when the branch is held elsewhere or local changes would be overwritten; its message is the error.
+func (e *RepoEntry) SwitchWorktree(ctx context.Context, dir, branch string) error {
+	defer e.invalidateAfterWrite()
+	return e.writeIn(ctx, dir, gitops.SwitchArgs(branch, false))
+}
+
 // FastForwardRef moves a branch checked out nowhere from oldSha to newSha; it fails when the ref
 // no longer holds oldSha.
 func (e *RepoEntry) FastForwardRef(ctx context.Context, ref, newSha, oldSha string) error {
