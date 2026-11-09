@@ -33,8 +33,19 @@ type ScriptControl interface {
 type ExposedScript struct {
 	ID, Name, Description string
 	// Run is the approval mode: "prompt" or "allow".
-	Run    string
+	Run string
+	// Mode is "short" (the call waits for the result) or "long" (the call returns at once).
+	Mode   string
 	Params []ScriptParamInfo
+}
+
+const scriptModeLong = "long"
+
+func (e ExposedScript) mode() string {
+	if e.Mode == scriptModeLong {
+		return scriptModeLong
+	}
+	return "short"
 }
 
 // ScriptParamInfo describes one parameter of an exposed script. A secret never shows a value.
@@ -86,12 +97,14 @@ type ScriptLog struct {
 }
 
 const (
-	scriptWaitDefault  = 25
-	scriptWaitMax      = 50
-	scriptLogsDefault  = 50
-	scriptLogsMax      = 500
-	scriptLogsMaxBytes = 64 << 10
-	scriptNext         = "Still running: call get_script_run to wait."
+	scriptWaitDefault     = 25
+	scriptWaitMax         = 50
+	scriptLogsDefault     = 50
+	scriptLogsMax         = 500
+	scriptLogsMaxBytes    = 64 << 10
+	scriptWaitLongDefault = 0
+	scriptNext            = "Still running: call get_script_run to wait."
+	scriptNextLong        = "Long-running script, still running: call get_script_run to read output; stop it with operations cancel and this opId."
 )
 
 type runScriptArgs struct {
@@ -123,6 +136,7 @@ type scriptView struct {
 	Name        string            `json:"name"`
 	Description string            `json:"description"`
 	Approval    string            `json:"approval"`
+	Mode        string            `json:"mode"`
 	Params      []scriptParamView `json:"params"`
 }
 
@@ -130,6 +144,7 @@ type scriptView struct {
 type scriptRunView struct {
 	RunID      string          `json:"runId"`
 	OpID       string          `json:"opId"`
+	Mode       string          `json:"mode"`
 	State      string          `json:"state"`
 	ExitCode   *int            `json:"exitCode,omitempty"`
 	Reason     string          `json:"reason,omitempty"`
@@ -165,16 +180,16 @@ func (s *Server) exposedScript(id string) (ExposedScript, bool, error) {
 }
 
 // exposedRun reads a run of a script that is exposed now; any other run reads as unknown.
-func (s *Server) exposedRun(runID string) (ScriptRun, bool, error) {
+func (s *Server) exposedRun(runID string) (ScriptRun, ExposedScript, bool, error) {
 	run, ok, err := s.cfg.Scripts.Run(runID)
 	if err != nil || !ok {
-		return ScriptRun{}, false, err
+		return ScriptRun{}, ExposedScript{}, false, err
 	}
-	_, exposed, err := s.exposedScript(run.ScriptID)
+	es, exposed, err := s.exposedScript(run.ScriptID)
 	if err != nil || !exposed {
-		return ScriptRun{}, false, err
+		return ScriptRun{}, ExposedScript{}, false, err
 	}
-	return run, true, nil
+	return run, es, true, nil
 }
 
 func (s *Server) listScripts(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
@@ -184,7 +199,7 @@ func (s *Server) listScripts(_ context.Context, _ *mcp.CallToolRequest, _ struct
 	}
 	out := make([]scriptView, 0, len(list))
 	for _, e := range list {
-		v := scriptView{ScriptID: e.ID, Name: e.Name, Description: e.Description, Approval: e.Run, Params: make([]scriptParamView, 0, len(e.Params))}
+		v := scriptView{ScriptID: e.ID, Name: e.Name, Description: e.Description, Approval: e.Run, Mode: e.mode(), Params: make([]scriptParamView, 0, len(e.Params))}
 		for _, p := range e.Params {
 			v.Params = append(v.Params, scriptParamView(p))
 		}
@@ -217,9 +232,12 @@ func parseScriptParams(in map[string]any) (map[string][]string, string) {
 	return out, ""
 }
 
-// waitFor bounds a wait argument to 0..scriptWaitMax seconds; nil takes the default.
-func waitFor(seconds *int) time.Duration {
+// waitFor bounds a wait argument to 0..scriptWaitMax seconds; nil takes the default of the mode.
+func waitFor(seconds *int, long bool) time.Duration {
 	n := scriptWaitDefault
+	if long {
+		n = scriptWaitLongDefault
+	}
 	if seconds != nil {
 		n = min(max(*seconds, 0), scriptWaitMax)
 	}
@@ -291,23 +309,25 @@ func (s *Server) runScript(ctx context.Context, req *mcp.CallToolRequest, a runS
 	if err != nil {
 		return toolError(err)
 	}
-	return s.waitedRun(ctx, runID, waitFor(a.WaitSeconds), nil)
+	return s.waitedRun(ctx, runID, waitFor(a.WaitSeconds, es.mode() == scriptModeLong), nil, es.mode())
 }
 
 // waitedRun waits up to d for the run to end and answers its state. A nil query returns the last
-// scriptLogsDefault lines once the run has ended; a query returns its lines at any state.
-func (s *Server) waitedRun(ctx context.Context, runID string, d time.Duration, q *ScriptLogQuery) (*mcp.CallToolResult, any, error) {
+// scriptLogsDefault lines once the run has ended, or at any state for a long script; a query returns
+// its lines at any state.
+func (s *Server) waitedRun(ctx context.Context, runID string, d time.Duration, q *ScriptLogQuery, mode string) (*mcp.CallToolResult, any, error) {
 	wctx, cancel := context.WithTimeout(ctx, d)
 	defer cancel()
 	run, err := s.cfg.Scripts.Wait(wctx, runID)
 	if err != nil {
 		return toolError(err)
 	}
-	return s.scriptRunResult(run, q)
+	return s.scriptRunResult(run, q, mode)
 }
 
-func (s *Server) scriptRunResult(run ScriptRun, q *ScriptLogQuery) (*mcp.CallToolResult, any, error) {
-	v := scriptRunView{RunID: run.ID, OpID: scriptRunPrefix + run.ID, State: run.State, ExitCode: run.ExitCode, Reason: run.Reason}
+func (s *Server) scriptRunResult(run ScriptRun, q *ScriptLogQuery, mode string) (*mcp.CallToolResult, any, error) {
+	long := mode == scriptModeLong
+	v := scriptRunView{RunID: run.ID, OpID: scriptRunPrefix + run.ID, Mode: mode, State: run.State, ExitCode: run.ExitCode, Reason: run.Reason}
 	if run.StartedAt != nil {
 		end := time.Now().UnixMilli()
 		if run.FinishedAt != nil {
@@ -318,11 +338,14 @@ func (s *Server) scriptRunResult(run ScriptRun, q *ScriptLogQuery) (*mcp.CallToo
 	ended := run.FinishedAt != nil
 	if !ended {
 		v.Next = scriptNext
+		if long {
+			v.Next = scriptNextLong
+		}
 	}
 	switch {
 	case !run.Headless:
 		v.Note = "This run ran in a terminal tab; its output is not stored."
-	case ended || q != nil:
+	case ended || q != nil || long:
 		if q == nil {
 			q = &ScriptLogQuery{FromEnd: true, Limit: scriptLogsDefault}
 		}
@@ -353,7 +376,7 @@ func (s *Server) scriptRunResult(run ScriptRun, q *ScriptLogQuery) (*mcp.CallToo
 }
 
 func (s *Server) getScriptRun(ctx context.Context, _ *mcp.CallToolRequest, a getScriptRunArgs) (*mcp.CallToolResult, any, error) {
-	run, found, err := s.exposedRun(a.RunID)
+	run, es, found, err := s.exposedRun(a.RunID)
 	if err != nil {
 		return toolError(err)
 	}
@@ -368,7 +391,7 @@ func (s *Server) getScriptRun(ctx context.Context, _ *mcp.CallToolRequest, a get
 		}
 		q = &ScriptLogQuery{FromEnd: a.From != "head", Limit: n, Contains: a.Contains}
 	}
-	return s.waitedRun(ctx, run.ID, waitFor(a.WaitSeconds), q)
+	return s.waitedRun(ctx, run.ID, waitFor(a.WaitSeconds, es.mode() == scriptModeLong), q, es.mode())
 }
 
 // capLogBytes drops lines from the far end until the text fits scriptLogsMaxBytes: the oldest for a

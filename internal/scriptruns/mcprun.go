@@ -44,11 +44,11 @@ func (s *Service) PlanMCP(args RunArgs) (Preview, error) {
 
 // mcpTimeout sets a planned run's limit from the script's mcp block.
 func mcpTimeout(p *planned) {
-	p.timeoutText = scripts.DefaultScheduleTimeout
-	p.timeout = scripts.MCPAccess{}.TimeoutDuration()
-	if m := p.script.MCP; m != nil && m.Timeout != "" {
-		p.timeout, p.timeoutText = m.TimeoutDuration(), m.Timeout
+	m := scripts.MCPAccess{}
+	if p.script.MCP != nil {
+		m = *p.script.MCP
 	}
+	p.timeout, p.timeoutText = m.TimeoutDuration(), m.TimeoutText()
 }
 
 // StartMCP starts the run PlanMCP showed as a headless run with trigger mcp. A script that changed

@@ -98,7 +98,7 @@ func ruleOwners() []ruleOwner {
 			func(k string) bool {
 				return keyPrefix("cron")(k) || keyPrefix("timezone")(k) || keyPrefix("schedule")(k)
 			}},
-		{"mcp.run is prompt or allow. mcp.description is at most 1000 characters. mcp.timeout is between 1m and 24h. A smart run cannot set mcp.enabled.",
+		{"mcp.run is prompt or allow. mcp.description is at most 1000 characters. mcp.mode is short or long. mcp.timeout is between 1m and 24h, default 30m, 24h for mode long. A smart run cannot set mcp.enabled.",
 			keyPrefix("mcp")},
 	}
 }

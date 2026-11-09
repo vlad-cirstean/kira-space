@@ -50,7 +50,7 @@ func (c scriptControl) Exposed() ([]dbmcp.ExposedScript, error) {
 	}
 	out := make([]dbmcp.ExposedScript, 0, len(recs))
 	for _, rec := range recs {
-		e := dbmcp.ExposedScript{ID: rec.ID, Name: rec.Name, Description: rec.MCP.Description, Run: rec.MCP.Run, Params: make([]dbmcp.ScriptParamInfo, 0, len(rec.Params))}
+		e := dbmcp.ExposedScript{ID: rec.ID, Name: rec.Name, Description: rec.MCP.Description, Run: rec.MCP.Run, Mode: rec.MCP.Mode, Params: make([]dbmcp.ScriptParamInfo, 0, len(rec.Params))}
 		for _, p := range rec.Params {
 			e.Params = append(e.Params, dbmcp.ScriptParamInfo{
 				Name: p.Name, Type: p.Type, Options: p.Options, Default: p.Default, Required: p.Required,

@@ -155,9 +155,15 @@
           "default": "prompt",
           "description": "prompt asks the user before each agent run. allow runs at once."
         },
+        "mode": {
+          "type": "string",
+          "enum": ["short", "long"],
+          "default": "short",
+          "description": "short: the agent waits up to 50 s per call for the result. long: the call returns at once with a run id; the agent reads output while it runs."
+        },
         "timeout": {
           "type": "string",
-          "description": "Duration limit of an agent run, like 30m. Default 30m."
+          "description": "Duration limit of an agent run, like 30m. Default 30m, 24h for mode long."
         }
       }
     },

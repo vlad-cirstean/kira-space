@@ -71,6 +71,7 @@ type FileMCPAccess struct {
 	Enabled     bool   `json:"enabled,omitempty"`
 	Description string `json:"description,omitempty"`
 	Run         string `json:"run,omitempty"`
+	Mode        string `json:"mode,omitempty"`
 	Timeout     string `json:"timeout,omitempty"`
 }
 
@@ -147,7 +148,7 @@ func (f File) Fields() CustomScriptFields {
 		out.Schedule = sc
 	}
 	if f.MCP != nil {
-		out.MCP = &MCPAccess{Enabled: f.MCP.Enabled, Description: f.MCP.Description, Run: f.MCP.Run, Timeout: f.MCP.Timeout}
+		out.MCP = &MCPAccess{Enabled: f.MCP.Enabled, Description: f.MCP.Description, Run: f.MCP.Run, Mode: f.MCP.Mode, Timeout: f.MCP.Timeout}
 	}
 	return out
 }
@@ -192,9 +193,12 @@ func FileOf(f CustomScriptFields) File {
 		out.Schedule = sc
 	}
 	if f.MCP != nil && !f.MCP.isZero() {
-		out.MCP = &FileMCPAccess{Enabled: f.MCP.Enabled, Description: f.MCP.Description, Run: f.MCP.Run, Timeout: f.MCP.Timeout}
+		out.MCP = &FileMCPAccess{Enabled: f.MCP.Enabled, Description: f.MCP.Description, Run: f.MCP.Run, Mode: f.MCP.Mode, Timeout: f.MCP.Timeout}
 		if out.MCP.Run == MCPRunPrompt {
 			out.MCP.Run = ""
+		}
+		if out.MCP.Mode == MCPModeShort {
+			out.MCP.Mode = ""
 		}
 	}
 	return out

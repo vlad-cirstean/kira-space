@@ -1529,30 +1529,30 @@ var _ = arg(DbmcpToolOperations.id, "cancel", studioApp, NextCall, `Operation id
 // DbmcpToolListScripts describes the list_scripts tool.
 var DbmcpToolListScripts = define(Entry{
 	ID: "dbmcp.tool.list_scripts", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_scripts",
-	Default: "List scripts exposed to MCP with description, approval mode and parameters. You can't set secret parameters.",
+	Default: "List scripts exposed to MCP with description, approval mode, mode (short or long) and parameters. You can't set secret parameters.",
 }, NoVars{})
 
 // DbmcpToolRunScript describes the run_script tool.
 var DbmcpToolRunScript = define(Entry{
 	ID: "dbmcp.tool.run_script", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "run_script",
-	Default: "Run a script exposed to MCP. Returns run id, state, exit code and, once the run ends, the last 50 output lines. The user may be asked to approve. A run still going after waitSeconds keeps running; call get_script_run.",
+	Default: "Run a script exposed to MCP. Returns run id, state, exit code and, once the run ends, the last 50 output lines. The user may be asked to approve. A short script waits up to waitSeconds, then keeps running; call get_script_run. A long script returns at once and keeps running: read its output with get_script_run, stop it with operations.",
 }, NoVars{})
 
 var (
 	_ = arg(DbmcpToolRunScript.id, "scriptId", studioApp, NextCall, `Script id from list_scripts.`, NoVars{})
 	_ = arg(DbmcpToolRunScript.id, "params", studioApp, NextCall, `Values by parameter name: a string, or a list for multiselect.`, NoVars{})
-	_ = arg(DbmcpToolRunScript.id, "waitSeconds", studioApp, NextCall, `Seconds to wait for the run to end, 0-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 25, Max: 50})
+	_ = arg(DbmcpToolRunScript.id, "waitSeconds", studioApp, NextCall, `Seconds to wait for the run to end, 0-{{.Max}}. Default {{.Default}}, 0 for a long script.`, LimitVars{Default: 25, Max: 50})
 )
 
 // DbmcpToolGetScriptRun describes the get_script_run tool.
 var DbmcpToolGetScriptRun = define(Entry{
 	ID: "dbmcp.tool.get_script_run", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "get_script_run",
-	Default: "Read a script run's state, exit code and duration, optionally waiting for it to end. Once ended, or with from, lines or contains, also returns stored output, at most 500 lines. Secret values are masked.",
+	Default: "Read a script run's state, exit code and duration, optionally waiting for it to end. Once ended, while a long script runs, or with from, lines or contains, also returns stored output, at most 500 lines. Secret values are masked.",
 }, NoVars{})
 
 var (
 	_ = arg(DbmcpToolGetScriptRun.id, "runId", studioApp, NextCall, `Run id from run_script.`, NoVars{})
-	_ = arg(DbmcpToolGetScriptRun.id, "waitSeconds", studioApp, NextCall, `Seconds to wait for the run to end, 0-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 25, Max: 50})
+	_ = arg(DbmcpToolGetScriptRun.id, "waitSeconds", studioApp, NextCall, `Seconds to wait for the run to end, 0-{{.Max}}. Default {{.Default}}, 0 for a long script.`, LimitVars{Default: 25, Max: 50})
 	_ = arg(DbmcpToolGetScriptRun.id, "from", studioApp, NextCall, `tail: last lines. head: first lines. Default tail.`, NoVars{})
 	_ = arg(DbmcpToolGetScriptRun.id, "lines", studioApp, NextCall, `Output lines to return, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 50, Max: 500})
 	_ = arg(DbmcpToolGetScriptRun.id, "contains", studioApp, NextCall, `Keep lines containing this text (case-sensitive), before the line cap.`, NoVars{})
