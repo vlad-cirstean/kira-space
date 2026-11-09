@@ -195,7 +195,7 @@ CREATE TABLE "ade_task_branches" (
   cr_state TEXT,
   cr_url TEXT,
   review_comments TEXT CHECK (review_comments IS NULL OR json_valid(review_comments))
-) STRICT;
+, adopted INTEGER NOT NULL DEFAULT 0 CHECK (adopted IN (0, 1))) STRICT;
 
 CREATE TABLE "ade_task_handovers" (
   id TEXT NOT NULL PRIMARY KEY CHECK (id <> ''),
@@ -814,7 +814,7 @@ CREATE INDEX ade_task_artifacts_task ON ade_task_artifacts (task_id, created_at)
 
 CREATE UNIQUE INDEX ade_task_artifacts_url ON ade_task_artifacts (task_id, url) WHERE url <> '';
 
-CREATE UNIQUE INDEX ade_task_branches_live_name ON ade_task_branches (code_repo_id, name) WHERE name <> '' AND archived_at IS NULL;
+CREATE UNIQUE INDEX ade_task_branches_live_name ON ade_task_branches (code_repo_id, name) WHERE name <> '' AND archived_at IS NULL AND adopted = 0;
 
 CREATE INDEX ade_task_branches_repo ON ade_task_branches (code_repo_id);
 

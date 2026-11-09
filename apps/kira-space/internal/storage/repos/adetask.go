@@ -37,6 +37,8 @@ var (
 	ErrTaskUnnamed      = errors.New("a task needs a title or a Jira key")
 	ErrBranchMissing    = errors.New("repos: branch not found")
 	ErrRunNotFound      = errors.New("repos: run not found")
+	// ErrBranchHasRuns marks a branch row DeleteFreshBranch refuses because runs reference it.
+	ErrBranchHasRuns = errors.New("repos: the branch has runs")
 	// ErrBranchNameTaken marks a created-branch name already used by a live branch of the repo.
 	ErrBranchNameTaken = errors.New("repos: a live branch in that repo already has that name")
 )
@@ -98,7 +100,8 @@ var (
 	}
 	adeTaskBranchColumns = append(slices.Clone(adeTaskBranchInsertColumns),
 		kiraschema.AdeTaskBranches.CrNumber, kiraschema.AdeTaskBranches.CrTitle, kiraschema.AdeTaskBranches.CrState,
-		kiraschema.AdeTaskBranches.CrURL, kiraschema.AdeTaskBranches.ReviewComments, kiraschema.AdeTaskBranches.WorktreeDir)
+		kiraschema.AdeTaskBranches.CrURL, kiraschema.AdeTaskBranches.ReviewComments, kiraschema.AdeTaskBranches.WorktreeDir,
+		kiraschema.AdeTaskBranches.Adopted)
 	adeRunColumns = []string{
 		kiraschema.AdeRuns.ID, kiraschema.AdeRuns.TaskID, kiraschema.AdeRuns.StepID, kiraschema.AdeRuns.BranchID,
 		kiraschema.AdeRuns.Attempt, kiraschema.AdeRuns.State, kiraschema.AdeRuns.Loops, kiraschema.AdeRuns.Note,
@@ -159,11 +162,11 @@ func scanAdeTask(row rowScanner) (model.AdeTask, error) {
 
 func scanAdeTaskBranch(row rowScanner) (model.AdeTaskBranch, error) {
 	var b model.AdeTaskBranch
-	var had int
+	var had, adopted int
 	var merged, archived, crNumber sql.NullInt64
 	var crTitle, crState, crURL, comments sql.NullString
 	if err := row.Scan(&b.ID, &b.TaskID, &b.CodeRepoID, &b.Name, &b.Kind, &b.Base, &b.BaseBranchID, &b.BasePendingFrom, &b.QueuedAfter, &b.Position,
-		&had, &b.AddedAt, &merged, &archived, &b.Origin, &crNumber, &crTitle, &crState, &crURL, &comments, &b.WorktreeDir); err != nil {
+		&had, &b.AddedAt, &merged, &archived, &b.Origin, &crNumber, &crTitle, &crState, &crURL, &comments, &b.WorktreeDir, &adopted); err != nil {
 		return model.AdeTaskBranch{}, err
 	}
 	if crNumber.Valid {
@@ -171,6 +174,7 @@ func scanAdeTaskBranch(row rowScanner) (model.AdeTaskBranch, error) {
 	}
 	b.ReviewCommentsJSON = comments.String
 	b.HadCommits = had != 0
+	b.Adopted = adopted != 0
 	b.MergedAt = nullInt64Ptr(merged)
 	b.ArchivedAt = nullInt64Ptr(archived)
 	return b, nil
@@ -401,9 +405,9 @@ func insertTaskBranch(tx *sql.Tx, d sqlb.Dialect, b model.AdeTaskBranch) error {
 	}
 	c := kiraschema.AdeTaskBranches
 	ib := d.InsertInto(c.Table).Cols(c.ID, c.TaskID, c.CodeRepoID, c.Name, c.Kind, c.Base, c.BaseBranchID, c.BasePendingFrom,
-		c.QueuedAfter, c.Position, c.HadCommits, c.AddedAt, c.Origin).
+		c.QueuedAfter, c.Position, c.HadCommits, c.AddedAt, c.Origin, c.Adopted).
 		Values(b.ID, b.TaskID, b.CodeRepoID, b.Name, b.Kind, b.Base, b.BaseBranchID, b.BasePendingFrom, b.QueuedAfter,
-			b.Position, boolInt(b.HadCommits), b.AddedAt, b.Origin)
+			b.Position, boolInt(b.HadCommits), b.AddedAt, b.Origin, boolInt(b.Adopted))
 	if _, err := sqlb.Exec(tx, ib); err != nil {
 		if isUniqueViolation(err) {
 			return ErrBranchOnTask
@@ -1164,6 +1168,61 @@ func (r *AdeTaskRepo) SetBranchName(id, name string) error {
 	}
 	if n == 0 {
 		return ErrBranchMissing
+	}
+	return nil
+}
+
+// AdoptBranchName records name on a not-created row that shares it with the live owner row
+// (adopted = 1), in one statement so the live-name index never sees the row as an owner.
+func (r *AdeTaskRepo) AdoptBranchName(id, name string) error {
+	bc := kiraschema.AdeTaskBranches
+	ub := r.Dialect.Update(bc.Table)
+	ub.Set(ub.Assign(bc.Name, name), ub.Assign(bc.Adopted, 1)).Where(ub.Equal(bc.ID, id))
+	res, err := sqlb.Exec(r.DB, ub)
+	if err != nil {
+		return fmt.Errorf("repos: adopt ade branch name %s: %w", id, err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("repos: adopt ade branch name %s: %w", id, err)
+	}
+	if n == 0 {
+		return ErrBranchMissing
+	}
+	return nil
+}
+
+// DeleteFreshBranch hard-deletes a live row that has no runs yet: the undo of an add whose git step
+// failed. Any other row is refused (ErrBranchHasRuns), so history is never lost.
+func (r *AdeTaskRepo) DeleteFreshBranch(id string) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("repos: begin delete fresh ade branch %s: %w", id, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	bc, rc := kiraschema.AdeTaskBranches, kiraschema.AdeRuns
+	runs, err := adeCount(tx, r.Dialect, rc.Table, func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(rc.BranchID, id)}
+	})
+	if err != nil {
+		return fmt.Errorf("repos: count runs of ade branch %s: %w", id, err)
+	}
+	if runs > 0 {
+		return ErrBranchHasRuns
+	}
+	db := r.Dialect.DeleteFrom(bc.Table)
+	db.Where(db.Equal(bc.ID, id), db.IsNull(bc.ArchivedAt))
+	res, err := sqlb.Exec(tx, db)
+	if err != nil {
+		return fmt.Errorf("repos: delete fresh ade branch %s: %w", id, err)
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return fmt.Errorf("repos: delete fresh ade branch %s: %w", id, err)
+	} else if n == 0 {
+		return ErrBranchMissing
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("repos: commit delete fresh ade branch %s: %w", id, err)
 	}
 	return nil
 }
