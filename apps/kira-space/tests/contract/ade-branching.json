@@ -22,7 +22,7 @@
     "returns": 0,
     "review": null,
     "sandbox": {
-      "access": "write",
+      "access": "off",
       "denials": 0,
       "enforced": false,
       "last": ""
@@ -57,7 +57,7 @@
     "returns": 1,
     "review": null,
     "sandbox": {
-      "access": "write",
+      "access": "off",
       "denials": 0,
       "enforced": false,
       "last": ""
@@ -92,7 +92,7 @@
     "returns": 2,
     "review": null,
     "sandbox": {
-      "access": "write",
+      "access": "off",
       "denials": 0,
       "enforced": false,
       "last": ""
@@ -140,7 +140,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "impl",
               "kind": "agent",
               "maxReturns": 3,
@@ -167,7 +167,7 @@
               "review": null,
               "runsOn": "each repo",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []
@@ -184,7 +184,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "review",
               "kind": "agent",
               "maxReturns": 2,
@@ -211,7 +211,7 @@
               "review": null,
               "runsOn": "each repo",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []

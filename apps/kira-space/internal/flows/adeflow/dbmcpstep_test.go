@@ -154,22 +154,20 @@ func TestDbMcpStep(t *testing.T) {
 	rec := importRepo(t, app, repo.Dir)
 
 	// 1. The step option saves, rereads and reaches the YAML; a script step refuses it.
-	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("withdb", "    allowed_tools: []\n")+agentStep("plain", "")))
+	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("withdb", "    allowed_tools: []\n")+agentStep("plain", "    db_mcp: false\n")))
 	entry, _ := workflowEntry(t, app, "flow.yaml")
 	wf := *entry.Workflow
-	wf.Steps = append([]adewire.WorkflowStep(nil), wf.Steps...)
-	wf.Steps[stepIndex(t, wf, "withdb")].DbMcp = true
 	saved, err := app.W.AdeTask.SaveWorkflow(ctx, adewire.SaveWorkflowArgs{FileName: "flow.yaml", Workflow: wf, BaseHash: entry.Hash})
 	if err != nil || saved.Error != nil {
 		t.Fatalf("SaveWorkflow = %+v, %v", saved, err)
 	}
 	entry, list := workflowEntry(t, app, "flow.yaml")
 	if !entry.Workflow.Steps[stepIndex(t, *entry.Workflow, "withdb")].DbMcp || entry.Workflow.Steps[stepIndex(t, *entry.Workflow, "plain")].DbMcp {
-		t.Fatalf("steps = %+v, want db_mcp on withdb only", entry.Workflow.Steps)
+		t.Fatalf("steps = %+v, want db_mcp on withdb only (absent key is on, db_mcp: false is off)", entry.Workflow.Steps)
 	}
 	raw, err := os.ReadFile(entry.Path)
-	if err != nil || strings.Count(string(raw), "db_mcp: true") != 1 {
-		t.Fatalf("workflow file (%v):\n%s\nwant one db_mcp: true", err, raw)
+	if err != nil || strings.Count(string(raw), "db_mcp: false") != 1 || strings.Contains(string(raw), "db_mcp: true") {
+		t.Fatalf("workflow file (%v):\n%s\nwant one db_mcp: false and no db_mcp: true", err, raw)
 	}
 	app.Contract(t, dbScenario, "AdeTaskService.Workflows", list)
 	refused, err := app.W.AdeTask.ValidateWorkflowYaml(ctx, adewire.ValidateWorkflowYamlArgs{Yaml: flowYAML("bad", "  - id: s\n    name: s\n    kind: script\n    runs_on: each repo\n    timeout: 1m\n    command: echo\n    db_mcp: true\n")})
@@ -177,7 +175,7 @@ func TestDbMcpStep(t *testing.T) {
 		t.Fatalf("script db_mcp = %+v / %v, want a refusal", refused.Workflow, refused.Error)
 	}
 
-	// 2. The Database MCP switch is off; the step still gets the tools, and the one without db_mcp does not.
+	// 2. The Database MCP switch is off; the step still gets the tools, and the one with db_mcp: false does not.
 	if app.W.DbMcp.Status().Running {
 		t.Fatal("Database MCP server runs without the switch")
 	}
@@ -207,7 +205,7 @@ func TestDbMcpStep(t *testing.T) {
 		t.Fatalf("withdb servers = %v, want kira-space and %s", names, dbSrvName)
 	}
 
-	// 3. A step without db_mcp has only kira-space; calling the session server fails.
+	// 3. A step with db_mcp: false has only kira-space; calling the session server fails.
 	waitRun(t, app, task.ID, "plain", "failed")
 	mustLack(t, "plain argv", fakeFile(t, app, "api-2.args"), dbAllowRule)
 	mustLack(t, "plain argv", fakeFile(t, app, "api-2.args"), "mcp__kira-studio\n")
@@ -217,7 +215,7 @@ func TestDbMcpStep(t *testing.T) {
 	mustContain(t, "plain run log", logText(t, app, "run", latestRunID(t, app, task.ID, "plain")), "mcp:")
 
 	// 4. A manual session step: the token lives in the launch config, works only on the session server.
-	saveWorkflow(t, app, "tui", flowYAML("tui", "  - id: work\n    name: Work\n    kind: manual\n    session: true\n    db_mcp: true\n"))
+	saveWorkflow(t, app, "tui", flowYAML("tui", "  - id: work\n    name: Work\n    kind: manual\n    session: true\n"))
 	tuiTask := createTask(t, app, "Session task", "tui", rec.ID)
 	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
 	launch, err := app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: tuiTask.ID})

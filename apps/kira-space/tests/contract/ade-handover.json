@@ -166,7 +166,7 @@
             "returns": 0,
             "review": null,
             "sandbox": {
-              "access": "write",
+              "access": "off",
               "denials": 0,
               "enforced": false,
               "last": ""
@@ -193,7 +193,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "<masked>",
               "kind": "agent",
               "maxReturns": 3,
@@ -220,7 +220,7 @@
               "review": null,
               "runsOn": "each repo",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []
@@ -237,7 +237,7 @@
               "allowedTools": [],
               "before": "",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "<masked>",
               "kind": "manual",
               "maxReturns": 0,
@@ -266,7 +266,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "<masked>",
               "kind": "agent",
               "maxReturns": 3,
@@ -293,7 +293,7 @@
               "review": null,
               "runsOn": "each repo",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []
@@ -438,7 +438,7 @@
         "returns": 0,
         "review": null,
         "sandbox": {
-          "access": "write",
+          "access": "off",
           "denials": 0,
           "enforced": false,
           "last": ""
@@ -465,7 +465,7 @@
           "allowedTools": [],
           "before": "auto",
           "command": "",
-          "dbMcp": false,
+          "dbMcp": true,
           "id": "<masked>",
           "kind": "agent",
           "maxReturns": 3,
@@ -492,7 +492,7 @@
           "review": null,
           "runsOn": "each repo",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -509,7 +509,7 @@
           "allowedTools": [],
           "before": "",
           "command": "",
-          "dbMcp": false,
+          "dbMcp": true,
           "id": "<masked>",
           "kind": "manual",
           "maxReturns": 0,
@@ -538,7 +538,7 @@
           "allowedTools": [],
           "before": "auto",
           "command": "",
-          "dbMcp": false,
+          "dbMcp": true,
           "id": "<masked>",
           "kind": "agent",
           "maxReturns": 3,
@@ -565,7 +565,7 @@
           "review": null,
           "runsOn": "each repo",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []

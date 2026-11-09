@@ -20,7 +20,7 @@
     "returns": 0,
     "review": null,
     "sandbox": {
-      "access": "write",
+      "access": "off",
       "denials": 0,
       "enforced": false,
       "last": ""

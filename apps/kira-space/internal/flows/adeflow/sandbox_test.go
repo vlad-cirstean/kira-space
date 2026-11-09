@@ -43,7 +43,11 @@ func sandboxOf(t *testing.T, f *runFixture, runID string) adewire.RunSandboxDeta
 	return d
 }
 
+// sbStep is an agent step. An empty sandbox is the explicit write block: no block means access off since P588.
 func sbStep(id, sandbox string) string {
+	if sandbox == "" {
+		sandbox = "    sandbox:\n      access: write\n"
+	}
 	return agentStep(id, sandbox)
 }
 
@@ -65,7 +69,7 @@ func mustLack(t *testing.T, what, got string, nots ...string) {
 	}
 }
 
-func TestSandboxStepDefault(t *testing.T) {
+func TestSandboxStepWrite(t *testing.T) {
 	t.Setenv("SSH_AUTH_SOCK", "/tmp/kira-test-agent.sock")
 	fake := &sandboxtest.Fake{}
 	f := newSandboxFx(t, fake, []fakeagent.Action{{Name: "done"}}, sbStep("one", ""))
@@ -111,9 +115,10 @@ func TestSandboxReadStep(t *testing.T) {
 	mustContain(t, "prompt", fakeFile(t, f.app, "api-1.prompt"), "read only")
 }
 
+// P588 a step without a sandbox block runs with access off.
 func TestSandboxOff(t *testing.T) {
 	fake := &sandboxtest.Fake{}
-	f := newSandboxFx(t, fake, []fakeagent.Action{{Name: "done"}}, sbStep("one", "    sandbox:\n      access: off\n"))
+	f := newSandboxFx(t, fake, []fakeagent.Action{{Name: "done"}}, agentStep("one", ""))
 	f.start(t, "feat/api-sb")
 	run := waitRun(t, f.app, f.taskID, "one", "done")
 	if run.Sandbox == nil || run.Sandbox.Access != "off" || run.Sandbox.Enforced {
@@ -283,8 +288,8 @@ func TestSmartRunSandboxed(t *testing.T) {
 	f.run(t, started.RunID, "done")
 	mustContain(t, "argv", fakeFile(t, f.app, "api-2.args"), "--disallowedTools", "--add-dir")
 	mustContain(t, "env", fakeFile(t, f.app, "api-2.sandbox-env"), "TMPDIR=")
-	if got := fake.Policies(); len(got) != 3 {
-		t.Fatalf("policies = %d, want two step runs and the smart run", len(got))
+	if got := fake.Policies(); len(got) != 1 {
+		t.Fatalf("policies = %d, want the smart run only (steps without a sandbox block run unconfined)", len(got))
 	}
 }
 

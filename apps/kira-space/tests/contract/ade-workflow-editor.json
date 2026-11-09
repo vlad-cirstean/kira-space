@@ -14,7 +14,7 @@
           "allowedTools": [],
           "before": "auto",
           "command": "",
-          "dbMcp": false,
+          "dbMcp": true,
           "id": "plan",
           "kind": "agent",
           "maxReturns": 3,
@@ -41,7 +41,7 @@
           "review": null,
           "runsOn": "each repo",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -58,7 +58,7 @@
           "allowedTools": [],
           "before": "auto",
           "command": "",
-          "dbMcp": false,
+          "dbMcp": true,
           "id": "review",
           "kind": "review",
           "maxReturns": 0,
@@ -88,7 +88,7 @@
           },
           "runsOn": "each repo",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -105,7 +105,7 @@
           "allowedTools": [],
           "before": "auto",
           "command": "",
-          "dbMcp": false,
+          "dbMcp": true,
           "id": "verify",
           "kind": "agent",
           "maxReturns": 3,
@@ -132,7 +132,7 @@
           "review": null,
           "runsOn": "each repo",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -192,7 +192,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "plan",
               "kind": "agent",
               "maxReturns": 3,
@@ -219,7 +219,7 @@
               "review": null,
               "runsOn": "each repo",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []
@@ -236,7 +236,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "impl",
               "kind": "agent",
               "maxReturns": 3,
@@ -263,7 +263,7 @@
               "review": null,
               "runsOn": "each repo",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []
@@ -280,7 +280,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "review",
               "kind": "review",
               "maxReturns": 0,
@@ -310,7 +310,7 @@
               },
               "runsOn": "each repo",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []
@@ -327,7 +327,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "verify",
               "kind": "agent",
               "maxReturns": 3,
@@ -354,7 +354,7 @@
               "review": null,
               "runsOn": "each repo",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []
@@ -395,7 +395,7 @@
       {
         "error": null,
         "fileName": "flow.yaml",
-        "hash": "a2d174c7a3c310449e81b3fc70d748689f76c5f1edd6043299dc8701042bbd36",
+        "hash": "fe282a04b06aa9169ce818c07664d4d744fd740212d979dc8ca72b3dcf6749da",
         "path": "<space>/config/workflows/flow.yaml",
         "usedBy": 0,
         "workflow": {
@@ -407,7 +407,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "plan",
               "kind": "agent",
               "maxReturns": 3,
@@ -434,7 +434,7 @@
               "review": null,
               "runsOn": "each repo",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []
@@ -533,7 +533,7 @@
       {
         "error": null,
         "fileName": "flow.yaml",
-        "hash": "0e817cc6f5da83cb5ba9e945f3e9a5676ab652e44dbfea600c68bb1737e5f6f0",
+        "hash": "3b83746fa6f2e7f5aa0d21d9b8d0dbdff6ed39897a543e833a5b620c34be1211",
         "path": "<space>/config/workflows/flow.yaml",
         "usedBy": 0,
         "workflow": {
@@ -545,7 +545,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "plan",
               "kind": "agent",
               "maxReturns": 3,
@@ -572,7 +572,7 @@
               "review": null,
               "runsOn": "each repo",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []

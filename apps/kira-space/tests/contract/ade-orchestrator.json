@@ -116,7 +116,7 @@
             "returns": 0,
             "review": null,
             "sandbox": {
-              "access": "write",
+              "access": "off",
               "denials": 0,
               "enforced": false,
               "last": ""
@@ -143,7 +143,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
-              "dbMcp": false,
+              "dbMcp": true,
               "id": "<masked>",
               "kind": "agent",
               "maxReturns": 3,
@@ -170,7 +170,7 @@
               "review": null,
               "runsOn": "once",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []
