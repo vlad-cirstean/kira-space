@@ -91,8 +91,8 @@ Server name `kira-studio`. Workflow steps with `db_mcp` reach the same tools as 
 - `proof_save`: save proof of your work in one call. Arguments: `name`, `summary`, `reason`, `steps` (1 to 100 of `description`, `query`, `language`, `source`, `view`, `data`). `view` is `table`, `document`, `keyvalue`, `chart`, `diagram` or `image`; an image step takes `data` as `{path}` or `{base64}` of a JPEG. With `reason` it edits a closed proof; a step may carry `keepOrdinal` or `replacesOrdinal`. A bad step rejects the call and saves nothing. In a Kira Space task the new proof also joins the task's notes chain.
 - `proof_list`: closed proofs, newest first. With `name`, that proof's steps and ordinals for an edit.
 - `operations`: running database and script work. Argument `cancel` (an `opId` from the list) stops one.
-- `run_script`: run a script the user exposed. Arguments: `scriptId`, `params`, `waitSeconds`. Returns state, exit code and, once the run ends, the last 50 output lines.
-- `get_script_run`: state of a run, optionally waiting. Arguments: `runId`, `waitSeconds`, `from`, `lines`, `contains`. Returns stored output once the run ended or when a filter is given.
+- `run_script`: run a script the user exposed. Arguments: `scriptId`, `params`, `waitSeconds`. Returns state, exit code and, once the run ends, the last 50 output lines. A script with `mode: long` in its run file returns at once and keeps running. Read its output with `get_script_run`; stop it with `operations`.
+- `get_script_run`: state of a run, optionally waiting. Arguments: `runId`, `waitSeconds`, `from`, `lines`, `contains`. Returns stored output once the run ended or when a filter is given. A long script returns its last 50 lines at any state.
 
 ## Agent tools (Kira Space)
 

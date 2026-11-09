@@ -383,12 +383,12 @@ func TestDbMcpScriptLongRunning(t *testing.T) {
 	if err != nil || len(runs) == 0 || runs[0].ID != run.RunID || runs[0].State != "running" || runs[0].Trigger != scriptruns.TriggerMCP {
 		t.Fatalf("runs = %+v (%v), want the agent run first, running, trigger mcp", runs, err)
 	}
-	runMasks := []flowharness.ContractOption{flowharness.Mask("createdAt", "startedAt", "finishedAt", "id", "scriptId", "cwd"), flowharness.Replace(stop, "<stop>")}
+	runMasks := []flowharness.ContractOption{flowharness.Mask("createdAt", "startedAt", "finishedAt", "id", "cwd"), flowharness.Replace(stop, "<stop>")}
 	snap, err := f.app.W.CustomScripts.List()
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.app.Contract(t, "dbmcp-script-long", "CustomScriptsService.List#long", snap, runMasks...)
+	f.app.Contract(t, "dbmcp-script-long", "CustomScriptsService.List#long", snap, flowharness.Mask("createdAt"), flowharness.Replace(stop, "<stop>"))
 	f.app.Contract(t, "dbmcp-script-long", "ScriptRunsService.List#running", runs, runMasks...)
 	page, err := f.app.W.ScriptRuns.ReadLog(scriptruns.ReadLogArgs{ID: run.RunID})
 	if err != nil {
