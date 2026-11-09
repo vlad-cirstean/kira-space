@@ -487,6 +487,18 @@ export function insertStep(
   return { wf: next, stepId };
 }
 
+/** Step `oldId` renamed to `newId`: the step, every result route to it and every review implementer. */
+export function renameStepRefs(wf: Workflow, oldId: string, newId: string): Workflow {
+  return mapSteps(wf, (steps) => {
+    for (const s of steps) {
+      if (s.id === oldId) s.id = newId;
+      for (const r of s.results) if (r.next === oldId) r.next = newId;
+      if (s.review?.implementer === oldId) s.review.implementer = newId;
+    }
+    return steps;
+  });
+}
+
 /** Removes a step; routes that went to it fall back to their default. */
 export function removeStep(wf: Workflow, stepId: string): Workflow {
   return mapSteps(wf, (steps) => {

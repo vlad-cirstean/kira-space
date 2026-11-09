@@ -10945,6 +10945,9 @@
             "label": "Runs on"
           }
         },
+        "fileName": {
+          "description": "Saved as {file}. A new name renames the file on save."
+        },
         "gate": {
           "approval": {
             "option": "Wait for my approval"

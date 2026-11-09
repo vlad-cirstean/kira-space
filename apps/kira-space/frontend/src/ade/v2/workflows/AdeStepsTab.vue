@@ -63,7 +63,7 @@ async function createNew(kind: StepKind): Promise<void> {
   listError.value = '';
   try {
     const entry = await newStep.mutateAsync({
-      name: t('space.ade.workflows.step.defaultName.label'),
+      name: kindLabel(kind),
       kind,
       from: null,
     });

@@ -1,12 +1,11 @@
-import { newId as mintId } from '@shared/ids';
 import { t } from '@theme/i18n';
 import type { StepKind, Workflow, WorkflowStep } from '../wire';
 import type { Tone } from './actions';
 import { DEFAULT_MAX_RETURNS, defaultResults, reviewDefaultResults } from './stepResults';
 import { defaultSandbox } from './stepSandbox';
 
-// Pure helpers behind the Workflows form editor (SPEC2 section 5.1.1). Step ids are run keys: they
-// are minted once, here, and never follow a rename.
+// Pure helpers behind the Workflows form editor (SPEC2 section 5.1.1). A step id is the slug of its
+// name; it follows the name while the step is new (see adeWorkflowDraft) and is frozen once saved.
 
 export const STEP_KINDS: readonly StepKind[] = ['agent', 'script', 'review', 'manual'];
 
@@ -39,14 +38,34 @@ export function kindLabel(kind: StepKind): string {
   return t(`space.ade.workflows.kind.${kind}.option`);
 }
 
-/** `stp_<12 chars>`, never in `taken`. Runs are keyed by these ids, so a removed id must not come
- *  back: the lowest free `step-N` would hand a new step the old one's runs. */
-export function newId(taken: readonly string[]): string {
+const MAX_STEM = 60;
+/** Route words and the finished-task marker; no step takes them as id. */
+const RESERVED_IDS: ReadonlySet<string> = new Set(['next', 'end', 'stop', 'done']);
+
+/** Lowercase `text` to the id alphabet (the Go side's `slug`); `step` when nothing is left. */
+function slugOf(text: string): string {
+  const base = text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const cut = base.length > MAX_STEM ? base.slice(0, MAX_STEM).replace(/-+$/g, '') : base;
+  return cut || 'step';
+}
+
+/** The step id for `name`: its slug, suffixed `-2`, `-3` ... (within 60 characters) while taken. Run
+ *  keys stay safe because a started task reads its own snapshot of the workflow. */
+export function stepIdFor(name: string, taken: readonly string[]): string {
   const used = new Set(taken);
-  let id: string;
-  do id = mintId('stp');
-  while (used.has(id));
-  return id;
+  const base = slugOf(name);
+  for (let n = 1; ; n++) {
+    const suffix = n < 2 ? '' : `-${n}`;
+    const stem =
+      base.length + suffix.length > MAX_STEM
+        ? base.slice(0, MAX_STEM - suffix.length).replace(/-+$/g, '')
+        : base;
+    const id = stem + suffix;
+    if (!used.has(id) && !RESERVED_IDS.has(id)) return id;
+  }
 }
 
 /** The fields a kind owns at their defaults; the other kinds' fields hold their zero value. */
@@ -91,11 +110,8 @@ function kindDefaults(kind: StepKind): Omit<WorkflowStep, 'id' | 'name'> {
 }
 
 export function newStep(kind: StepKind, taken: readonly string[]): WorkflowStep {
-  return {
-    id: newId(taken),
-    name: t('space.ade.workflows.step.defaultName.label'),
-    ...kindDefaults(kind),
-  };
+  const name = kindLabel(kind);
+  return { id: stepIdFor(name, taken), name, ...kindDefaults(kind) };
 }
 
 /** The step turned into `kind`: id, name, status, skip and `runs_on` (when the kind has one) stay,

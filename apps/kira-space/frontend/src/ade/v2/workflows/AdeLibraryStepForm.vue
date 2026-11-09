@@ -50,6 +50,7 @@ async function saveNow(): Promise<void> {
       baseHash: draft.baseHash,
     });
     draft.saved(sent, entry.hash);
+    if (entry.fileName !== props.entry.fileName) wfUi.stepFile = entry.fileName;
   } catch (err) {
     draft.error = errorText(err);
     draft.conflict = (err as { code?: string }).code === 'E_CONFLICT';
@@ -88,6 +89,7 @@ onBeforeUnmount(() => {
         :key="draft.step.id"
         :step="draft.step"
         :steps="draft.draft.steps"
+        :file-name="entry.fileName"
         library
       />
     </div>

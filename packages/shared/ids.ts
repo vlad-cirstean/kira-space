@@ -20,7 +20,6 @@ export const PREFIXES = {
   dtc: 12,
   dfl: 12,
   frn: 12,
-  stp: 12,
   exm: 12,
 } as const;
 

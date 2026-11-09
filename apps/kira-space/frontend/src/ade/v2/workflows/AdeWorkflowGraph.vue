@@ -82,6 +82,7 @@ async function saveNow(): Promise<void> {
       baseHash: draft.baseHash,
     });
     draft.saved(sent, entry.hash);
+    if (entry.fileName !== props.entry.fileName) wfUi.workflowFile = entry.fileName;
   } catch (err) {
     draft.error = errorText(err);
     draft.conflict = (err as { code?: string }).code === 'E_CONFLICT';
@@ -258,6 +259,9 @@ onBeforeUnmount(() => {
         data-testid="ade-wf-form-name"
         @update:model-value="(v: string | number) => draft.patchWorkflow({ name: String(v) })"
       />
+      <FieldDescription data-testid="ade-wf-form-file">{{
+        t('space.ade.workflows.fileName.description', { file: entry.fileName })
+      }}</FieldDescription>
     </div>
     <div ref="split" class="flex min-h-96 flex-1 rounded-kira bg-bg">
       <div class="relative min-w-0" :style="{ flex: `0 0 ${graphPane.size.value}%` }">
@@ -369,7 +373,7 @@ onBeforeUnmount(() => {
         <div class="flex h-full min-h-0 flex-col" data-testid="ade-wf-inspector">
           <AdeStepInspector
             v-if="draft.step"
-            :key="draft.step.id"
+            :key="draft.selectionKey"
             :step="draft.step"
             :steps="draft.draft.steps"
           />
