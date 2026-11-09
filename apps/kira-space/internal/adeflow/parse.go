@@ -219,7 +219,6 @@ func (v *validator) step(sn *yaml.Node, sp string, earlier, candidates map[strin
 	if !v.stepHead(&step, sm, sp, earlier) {
 		return step, nil
 	}
-	step.Sandbox = adewire.DefaultSandboxFor(step.Kind)
 	step.Status = v.status(sm, sp)
 	step.Skip = v.boolean(sm, sp, "skip")
 	if v.err != nil {
@@ -282,10 +281,13 @@ func (v *validator) step(sn *yaml.Node, sp string, earlier, candidates map[strin
 	return step, rn
 }
 
-// stepExtras reads the settings block and the db_mcp flag.
+// stepExtras reads the settings block and the db_mcp flag; db_mcp defaults to on where it applies.
 func (v *validator) stepExtras(step *adewire.WorkflowStep, sm map[string]*yaml.Node, sp string) {
 	if n, has := sm["settings"]; has && v.err == nil {
 		step.Settings = v.settings(n, sp)
+	}
+	if step.Kind != adewire.KindScript && step.SmartScript == "" {
+		step.DbMcp = true // absent db_mcp means on
 	}
 	if _, has := sm["db_mcp"]; has && v.err == nil {
 		step.DbMcp = v.boolean(sm, sp, "db_mcp")
@@ -377,6 +379,9 @@ func (v *validator) manualStep(step *adewire.WorkflowStep, sm map[string]*yaml.N
 		} else {
 			v.fail(n, sp, "settings is not allowed on %s steps without a session", step.Kind)
 		}
+	}
+	if step.Session {
+		step.DbMcp = true // absent db_mcp means on
 	}
 	if n, has := sm["db_mcp"]; has && v.err == nil {
 		if step.Session {
@@ -486,7 +491,7 @@ const (
 
 // sandbox reads a step's sandbox block. An empty mapping is the default.
 func (v *validator) sandbox(n *yaml.Node, sp string) adewire.StepSandbox {
-	sb := adewire.DefaultSandbox()
+	sb := adewire.WriteSandbox()
 	if n.Kind != yaml.MappingNode {
 		v.fail(n, sp, "sandbox must be a mapping")
 		return sb

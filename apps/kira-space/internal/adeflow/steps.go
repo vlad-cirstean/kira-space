@@ -299,7 +299,8 @@ func withTimeout(st adewire.WorkflowStep, kind adewire.StepKind) adewire.Workflo
 	st.Timeout = "30m"
 	st.Before = beforeValues[0]
 	st.MaxReturns = adewire.DefaultLimit(kind == adewire.KindReview)
-	st.Sandbox = adewire.DefaultSandboxFor(kind)
+	st.Sandbox = adewire.DefaultSandbox()
+	st.DbMcp = kind == adewire.KindAgent || kind == adewire.KindReview
 	return st
 }
 

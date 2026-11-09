@@ -114,7 +114,7 @@ func manualOf(s adewire.WorkflowStep) adewire.WorkflowStep {
 	return adewire.WorkflowStep{
 		ID: s.ID, Name: s.Name, Kind: adewire.KindManual, Status: s.Status, Skip: s.Skip,
 		Results: []adewire.StepResult{}, AllowedTools: []string{}, Params: map[string][]string{},
-		Sandbox: adewire.DefaultSandboxFor(adewire.KindManual),
+		Sandbox: adewire.DefaultSandbox(),
 	}
 }
 
@@ -194,7 +194,7 @@ func TestWorkflowEditorOutsideRepo(t *testing.T) {
 	}
 	session := adewire.WorkflowStep{
 		ID: "work", Name: "work", Kind: adewire.KindManual, Session: true, OutsideRepo: true, Results: []adewire.StepResult{},
-		AllowedTools: []string{}, Params: map[string][]string{}, Sandbox: adewire.DefaultSandboxFor(adewire.KindManual),
+		AllowedTools: []string{}, Params: map[string][]string{}, Sandbox: adewire.DefaultSandbox(),
 	}
 	wf.Steps = append(wf.Steps, script, session)
 	saved, err := app.W.AdeTask.SaveWorkflow(ctx, adewire.SaveWorkflowArgs{FileName: "flow.yaml", Workflow: wf, BaseHash: entry.Hash})
@@ -244,7 +244,7 @@ func TestWorkflowEditorManualSandbox(t *testing.T) {
 		return s
 	}
 	read := adewire.StepSandbox{Access: adewire.SandboxRead, Read: []string{}, Allow: []string{}, Network: false}
-	wf.Steps = append(wf.Steps, step("look", read), step("free", adewire.DefaultSandboxFor(adewire.KindManual)))
+	wf.Steps = append(wf.Steps, step("look", read), step("free", adewire.DefaultSandbox()))
 	saved, err := app.W.AdeTask.SaveWorkflow(ctx, adewire.SaveWorkflowArgs{FileName: "flow.yaml", Workflow: wf, BaseHash: entry.Hash})
 	if err != nil || saved.Error != nil {
 		t.Fatalf("SaveWorkflow = %+v, %v", saved, err)

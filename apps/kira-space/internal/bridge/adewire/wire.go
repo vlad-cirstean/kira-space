@@ -135,7 +135,7 @@ type WorkflowStep struct {
 	Params      map[string][]string `json:"params"`
 	// Review is set on review steps: they wait for the user instead of running an agent.
 	Review *ReviewStepConfig `json:"review"`
-	// Sandbox is what the step's agent or script may do on the machine; always set, the kind's default when absent.
+	// Sandbox is what the step's agent or script may do on the machine; always set, the default (off) when absent.
 	Sandbox StepSandbox `json:"sandbox"`
 	// Settings are the stage settings per agent provider id, key to value; empty means every provider's defaults.
 	Settings map[string]map[string]string `json:"settings"`
@@ -176,24 +176,21 @@ type StepSandbox struct {
 	Network bool     `json:"network"`
 }
 
-// DefaultSandbox is the policy of an agent or review step without a sandbox block: write its worktree, network on.
+// DefaultSandbox is the policy of a step without a sandbox block: unconfined (access off), network on.
 func DefaultSandbox() StepSandbox {
+	return StepSandbox{Access: SandboxOff, Read: []string{}, Allow: []string{}, Network: true}
+}
+
+// WriteSandbox is the confined policy: write the worktree, network on. A sandbox block without
+// access starts from it, and rebase runs always use it.
+func WriteSandbox() StepSandbox {
 	return StepSandbox{Access: SandboxWrite, Read: []string{}, Allow: []string{}, Network: true}
 }
 
-// DefaultSandboxFor is the policy of a step of kind without a sandbox block: scripts and manual
-// sessions run unconfined.
-func DefaultSandboxFor(kind StepKind) StepSandbox {
-	if kind == KindScript || kind == KindManual {
-		return StepSandbox{Access: SandboxOff, Read: []string{}, Allow: []string{}, Network: true}
-	}
-	return DefaultSandbox()
-}
-
-// NormalizedFor fills the kind's default into a zero value (a snapshot from before the field existed).
-func (s StepSandbox) NormalizedFor(kind StepKind) StepSandbox {
+// Normalized fills the default into a zero value (a snapshot from before the field existed).
+func (s StepSandbox) Normalized() StepSandbox {
 	if s.Access == "" {
-		return DefaultSandboxFor(kind)
+		return DefaultSandbox()
 	}
 	if s.Read == nil {
 		s.Read = []string{}
@@ -204,10 +201,10 @@ func (s StepSandbox) NormalizedFor(kind StepKind) StepSandbox {
 	return s
 }
 
-// IsDefaultFor reports whether s equals the default policy of kind.
-func (s StepSandbox) IsDefaultFor(kind StepKind) bool {
-	s = s.NormalizedFor(kind)
-	d := DefaultSandboxFor(kind)
+// IsDefault reports whether s equals the default policy.
+func (s StepSandbox) IsDefault() bool {
+	s = s.Normalized()
+	d := DefaultSandbox()
 	return s.Access == d.Access && len(s.Read) == 0 && len(s.Allow) == 0 && s.Network == d.Network
 }
 

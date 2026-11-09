@@ -459,7 +459,7 @@ func applyStep(m *yaml.Node, s adewire.WorkflowStep) {
 			dropKeys(m, "prompt")
 		}
 		if s.Session {
-			applySandbox(m, s.Sandbox, s.Kind)
+			applySandbox(m, s.Sandbox)
 			applyAgent(m, s.Agent)
 			applySettings(m, s.Settings)
 			applyDbMcp(m, s.DbMcp)
@@ -480,15 +480,15 @@ func applyStep(m *yaml.Node, s adewire.WorkflowStep) {
 	switch s.Kind {
 	case adewire.KindScript:
 		setScalar(m, "command", kBlock, s.Command, true, stepOrder)
-		applySandbox(m, s.Sandbox, s.Kind)
+		applySandbox(m, s.Sandbox)
 	case adewire.KindReview:
-		applySandbox(m, s.Sandbox, s.Kind)
+		applySandbox(m, s.Sandbox)
 		applyAgent(m, s.Agent)
 		applySettings(m, s.Settings)
 		applyDbMcp(m, s.DbMcp)
 		applyReview(m, defaultReview(s.Review))
 	default:
-		applySandbox(m, s.Sandbox, s.Kind)
+		applySandbox(m, s.Sandbox)
 		applyAgent(m, s.Agent)
 		applySettings(m, s.Settings)
 		if s.SmartScript == "" {
@@ -511,12 +511,13 @@ func defaultReview(r *adewire.ReviewStepConfig) adewire.ReviewStepConfig {
 	return *r
 }
 
-// applyDbMcp writes db_mcp: true, or removes the key.
+// applyDbMcp writes db_mcp: false, or removes the key (absent means on).
 func applyDbMcp(m *yaml.Node, on bool) {
-	setScalar(m, "db_mcp", kBool, "true", on, stepOrder)
-	if !on {
+	if on {
 		dropKeys(m, "db_mcp")
+		return
 	}
+	setScalar(m, "db_mcp", kBool, "false", true, stepOrder)
 }
 
 // applyOutside writes outside_repo: true, or removes the key.
@@ -529,12 +530,12 @@ func applyOutside(m *yaml.Node, outside bool) {
 
 // applySandbox writes a step's sandbox block, or removes it when the policy is the default so a
 // file without one stays unchanged.
-func applySandbox(m *yaml.Node, sb adewire.StepSandbox, kind adewire.StepKind) {
-	if sb.IsDefaultFor(kind) {
+func applySandbox(m *yaml.Node, sb adewire.StepSandbox) {
+	if sb.IsDefault() {
 		dropKeys(m, "sandbox")
 		return
 	}
-	sb = sb.NormalizedFor(kind)
+	sb = sb.Normalized()
 	_, sn := find(m, "sandbox")
 	if sn == nil || sn.Kind != yaml.MappingNode {
 		sn = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}

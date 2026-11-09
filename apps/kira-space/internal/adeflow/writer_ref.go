@@ -118,13 +118,15 @@ func explicitOff(key string, s adewire.WorkflowStep) *yaml.Node {
 		return newScalar(kText, "auto")
 	case "max_returns":
 		return newScalar(kInt, strconv.Itoa(s.MaxReturns))
-	case "outside_repo", "session", "db_mcp":
+	case "outside_repo", "session":
 		return newScalar(kBool, "false")
+	case "db_mcp":
+		return newScalar(kBool, "true")
 	case "allowed_tools":
 		return scalarList(nil)
 	case "sandbox":
 		m := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		put(m, "access", newScalar(kText, s.Sandbox.NormalizedFor(s.Kind).Access), nil)
+		put(m, "access", newScalar(kText, s.Sandbox.Normalized().Access), nil)
 		return m
 	}
 	return nil
