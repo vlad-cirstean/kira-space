@@ -105,8 +105,10 @@ func originHasPassword(raw string) bool {
 
 // sharedRules are the repo rules that apply to the shared keys, plus the origin check.
 func sharedRules() []configfs.Rule[SharedFile] {
-	out := []configfs.Rule[SharedFile]{originRule()}
-	for _, r := range []configfs.Rule[File]{integrationBranchesRule(), environmentsRule(), prepareExclusiveRule(), scriptRefsRule(), prepareTimeoutRule()} {
+	rules := []configfs.Rule[File]{integrationBranchesRule(), environmentsRule(), prepareExclusiveRule(), scriptRefsRule(), prepareTimeoutRule()}
+	out := make([]configfs.Rule[SharedFile], 0, len(rules)+1)
+	out = append(out, originRule())
+	for _, r := range rules {
 		out = append(out, configfs.Rule[SharedFile]{
 			Doc:   r.Doc,
 			Check: func(sf SharedFile, at configfs.Locator) *configfs.Problem { return r.Check(sf.file(), at) },
