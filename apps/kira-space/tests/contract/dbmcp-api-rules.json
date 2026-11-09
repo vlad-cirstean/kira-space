@@ -1,0 +1,130 @@
+{
+  "args:SettingsService.Set#allow": {
+    "patch": {
+      "dbMcp": {
+        "apiRules": [
+          {
+            "effect": "allow",
+            "hosts": [
+              "127.0.0.1"
+            ],
+            "methods": [
+              "GET"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "args:SettingsService.Set#clear": {
+    "patch": {
+      "dbMcp": {
+        "apiRules": []
+      }
+    }
+  },
+  "args:SettingsService.Set#deny": {
+    "patch": {
+      "dbMcp": {
+        "apiRules": [
+          {
+            "effect": "allow",
+            "hosts": [
+              "127.0.0.1"
+            ],
+            "methods": [
+              "GET"
+            ]
+          },
+          {
+            "effect": "allow",
+            "hosts": [
+              "*.example.com"
+            ],
+            "methods": [
+              "*"
+            ]
+          },
+          {
+            "effect": "deny",
+            "hosts": [
+              "*"
+            ],
+            "methods": [
+              "DELETE"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "args:SettingsService.Set#remove": {
+    "patch": {
+      "dbMcp": {
+        "apiRules": [
+          {
+            "effect": "allow",
+            "hosts": [
+              "*.example.com"
+            ],
+            "methods": [
+              "*"
+            ]
+          },
+          {
+            "effect": "deny",
+            "hosts": [
+              "*"
+            ],
+            "methods": [
+              "DELETE"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "args:SettingsService.Set#removeWildcard": {
+    "patch": {
+      "dbMcp": {
+        "apiRules": [
+          {
+            "effect": "deny",
+            "hosts": [
+              "*"
+            ],
+            "methods": [
+              "DELETE"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "args:SettingsService.Set#wildcard": {
+    "patch": {
+      "dbMcp": {
+        "apiRules": [
+          {
+            "effect": "allow",
+            "hosts": [
+              "127.0.0.1"
+            ],
+            "methods": [
+              "GET"
+            ]
+          },
+          {
+            "effect": "allow",
+            "hosts": [
+              "*.example.com"
+            ],
+            "methods": [
+              "*"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
