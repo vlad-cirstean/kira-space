@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -213,6 +214,11 @@ type renameJournal struct {
 func (r *Reader) writeJournal(j renameJournal) error {
 	if r.Journal == "" {
 		return nil
+	}
+	// One slot: an earlier rename that failed mid-way keeps its journal for recovery at start. Overwriting
+	// it would strand that rename's half-moved files.
+	if _, err := os.Stat(r.Journal); err == nil {
+		return fmt.Errorf("%w: an earlier rename is unfinished; restart the app to complete it first", ErrConflict)
 	}
 	b, err := json.Marshal(j)
 	if err != nil {
@@ -552,7 +558,7 @@ func (r *Reader) RecoverRename(retarget func(oldID, newID string) error) {
 		return
 	}
 	var j renameJournal
-	if err := json.Unmarshal(b, &j); err != nil || (j.Kind != "step" && j.Kind != "workflow") || !fileNamePattern.MatchString(j.Old) || !fileNamePattern.MatchString(j.New) {
+	if err := json.Unmarshal(b, &j); err != nil || (j.Kind != "step" && j.Kind != "workflow") || !fileNamePattern.MatchString(j.Old) || !fileNamePattern.MatchString(j.New) || slices.ContainsFunc(j.Workflows, func(w string) bool { return !fileNamePattern.MatchString(w) }) {
 		slog.Warn("ade rename: unreadable journal dropped", "scope", "ade")
 		r.dropJournal()
 		return

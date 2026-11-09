@@ -1,6 +1,7 @@
 package adeflow
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -203,6 +204,31 @@ func TestRecoverRename(t *testing.T) {
 		r.RecoverRename(nil)
 		if _, err := os.Stat(filepath.Join(r.Steps.Dir, "new-step.yaml")); err != nil {
 			t.Error("edited file removed")
+		}
+	})
+	t.Run("journal naming a path outside the workflows dir is dropped untouched", func(t *testing.T) {
+		r := journalReader(t, map[string]string{"new-step.yaml": libOld, "lint-repo.yaml": "id: lint-repo\nname: Lint repo\nkind: manual\n"}, map[string]string{"wf.yaml": wfUses})
+		j := renameJournal{Kind: "step", Old: "new-step.yaml", New: "lint-repo.yaml", OldHash: configfs.TextHash([]byte(libOld)), Workflows: []string{"../x.yaml"}}
+		if err := r.writeJournal(j); err != nil {
+			t.Fatal(err)
+		}
+		r.RecoverRename(nil)
+		if _, err := os.Stat(r.Journal); !os.IsNotExist(err) {
+			t.Error("journal kept")
+		}
+		if read(filepath.Join(r.Dir, "wf.yaml")) != wfUses {
+			t.Error("workflow rewritten from a rejected journal")
+		}
+	})
+	t.Run("a pending journal is never overwritten by the next rename", func(t *testing.T) {
+		r := journalReader(t, map[string]string{"new-step.yaml": libOld}, map[string]string{"wf.yaml": wfUses})
+		jr(r, "hash-a")
+		next := renameJournal{Kind: "step", Old: "other.yaml", New: "other-2.yaml", OldHash: "hash-b"}
+		if err := r.writeJournal(next); !errors.Is(err, ErrConflict) {
+			t.Fatalf("err = %v, want ErrConflict", err)
+		}
+		if b := read(r.Journal); !strings.Contains(b, "hash-a") || strings.Contains(b, "hash-b") {
+			t.Errorf("journal replaced: %s", b)
 		}
 	})
 	t.Run("broken workflow keeps old file and journal", func(t *testing.T) {
