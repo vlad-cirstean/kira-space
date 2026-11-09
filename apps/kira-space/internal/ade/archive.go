@@ -30,8 +30,9 @@ type linkedBranch struct {
 // linkedBranches lists the task's created branches that own a linked worktree.
 func (b *TaskBoard) linkedBranches(ctx context.Context, tc *taskCtx) ([]linkedBranch, error) {
 	var out []linkedBranch
+	cache := b.newAttachCache()
 	for _, sb := range tc.branches {
-		lb, ok, err := b.linkedBranchOf(ctx, sb)
+		lb, ok, err := b.linkedBranchIn(ctx, cache, sb)
 		if err != nil {
 			return nil, err
 		}
@@ -46,10 +47,15 @@ func (b *TaskBoard) linkedBranches(ctx context.Context, tc *taskCtx) ([]linkedBr
 // out at the repo root. A row's linked worktree is its own folder, attached or detached; it is never a
 // folder another live row owns.
 func (b *TaskBoard) linkedBranchOf(ctx context.Context, sb model.AdeTaskBranch) (linkedBranch, bool, error) {
+	return b.linkedBranchIn(ctx, b.newAttachCache(), sb)
+}
+
+// linkedBranchIn is linkedBranchOf over a shared attach cache, for loops over many rows.
+func (b *TaskBoard) linkedBranchIn(ctx context.Context, cache *attachCache, sb model.AdeTaskBranch) (linkedBranch, bool, error) {
 	if sb.Name == "" {
 		return linkedBranch{}, false, nil
 	}
-	at, err := b.rowWorktree(ctx, sb)
+	at, err := cache.worktree(ctx, sb)
 	if err != nil {
 		return linkedBranch{}, false, err
 	}

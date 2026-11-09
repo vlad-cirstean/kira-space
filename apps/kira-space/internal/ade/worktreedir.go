@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
@@ -114,39 +115,79 @@ func resolveAttachment(sb model.AdeTaskBranch, own, holder string, owners map[st
 	return a
 }
 
-// rowWorktree reads the row's attach state: its repo's inventory, registered name and live rows.
-func (b *TaskBoard) rowWorktree(ctx context.Context, sb model.AdeTaskBranch) (attachment, error) {
+// attachFacts is what one repo contributes to every row's attach state: git's inventory, the
+// registered repo and the folders live rows own. Loaded once per repo per call.
+type attachFacts struct {
+	inv    []porcelain.InventoryRef
+	rec    *model.CodeRepo
+	owners map[string]model.AdeTaskBranch
+}
+
+// attachCache loads attachFacts once per repo. It is a snapshot for one call: build a new one after
+// anything that can move a worktree.
+type attachCache struct {
+	b     *TaskBoard
+	facts map[string]*attachFacts
+}
+
+func (b *TaskBoard) newAttachCache() *attachCache {
+	return &attachCache{b: b, facts: map[string]*attachFacts{}}
+}
+
+func (c *attachCache) load(ctx context.Context, codeRepoID string) (*attachFacts, error) {
+	if f, ok := c.facts[codeRepoID]; ok {
+		return f, nil
+	}
+	entry, err := c.b.openRepo(ctx, codeRepoID)
+	if err != nil {
+		return nil, err
+	}
+	inv, err := entry.BranchInventory(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rec, err := c.b.deps.CodeRepos.Get(codeRepoID)
+	if err != nil {
+		return nil, err
+	}
+	f := &attachFacts{inv: inv, rec: rec}
+	if rec != nil {
+		live, err := c.b.deps.Tasks.BranchesLive()
+		if err != nil {
+			return nil, err
+		}
+		f.owners = c.b.worktreeOwners(rec.Name, live, codeRepoID)
+	}
+	c.facts[codeRepoID] = f
+	return f, nil
+}
+
+// worktree reads the row's attach state from the cached repo facts.
+func (c *attachCache) worktree(ctx context.Context, sb model.AdeTaskBranch) (attachment, error) {
 	if sb.Name == "" {
 		return attachment{}, nil
 	}
-	entry, err := b.openRepo(ctx, sb.CodeRepoID)
-	if err != nil {
-		return attachment{}, err
-	}
-	inv, err := entry.BranchInventory(ctx)
+	f, err := c.load(ctx, sb.CodeRepoID)
 	if err != nil {
 		return attachment{}, err
 	}
 	holder := ""
-	if row, ok := localBranch(inv, sb.Name); ok {
+	if row, ok := localBranch(f.inv, sb.Name); ok {
 		holder = row.WorktreePath
 	}
-	rec, err := b.deps.CodeRepos.Get(sb.CodeRepoID)
-	if err != nil {
-		return attachment{}, err
-	}
-	if rec == nil {
+	if f.rec == nil {
 		return resolveAttachment(sb, "", holder, nil, false), nil
 	}
-	live, err := b.deps.Tasks.BranchesLive()
-	if err != nil {
-		return attachment{}, err
-	}
-	own := b.ownWorktreePath(rec.Name, sb)
+	own := c.b.ownWorktreePath(f.rec.Name, sb)
 	ownExists := false
 	if own != "" {
 		_, statErr := os.Lstat(own)
 		ownExists = statErr == nil
 	}
-	return resolveAttachment(sb, own, holder, b.worktreeOwners(rec.Name, live, sb.CodeRepoID), ownExists), nil
+	return resolveAttachment(sb, own, holder, f.owners, ownExists), nil
+}
+
+// rowWorktree reads the row's attach state: its repo's inventory, registered name and live rows.
+func (b *TaskBoard) rowWorktree(ctx context.Context, sb model.AdeTaskBranch) (attachment, error) {
+	return b.newAttachCache().worktree(ctx, sb)
 }
