@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Approval Dialog Final</title>
+<style>
+/* Real token values: packages/theme/src/tokens.css. Kira is dark-only. */
+:root {
+  --kira-bg-dialog: #141416; --kira-bg-input: #27272c; --kira-fg: #d4d4d8; --kira-fg-muted: #a1a1aa;
+  --kira-fg-subtle: #8e8e97; --kira-border: #323237; --kira-accent: #3b6ed1; --kira-error: #e66e68;
+  --kira-warn: #d5b449; --kira-warn-text: #cab76f; --kira-status-red: #eea099; --kira-status-green: #8bc997;
+  --kira-conn-green: #83b28c; --kira-conn-amber: #baa16e; --kira-conn-violet: #ac9acd; --kira-conn-red: #d0938d; --kira-conn-blue: #81a9d2;
+  --kira-syntax-keyword: #6e9fd8; --kira-syntax-string: #d29a7e; --kira-syntax-property: #93c6e8; --kira-syntax-number: #b4c79e;
+  --t-sm: 11px; --t-md: 12px; --t-lg: 13px;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Ubuntu, sans-serif;
+  --font-data: Menlo, "DejaVu Sans Mono", monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #0d0d0f; color: #e4e4e7; font: 14px/1.45 var(--font-ui); }
+main { max-width: 1640px; margin: 0 auto; padding: 28px 16px 40px; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.lede { color: #a1a1aa; margin: 0 0 20px; max-width: 1100px; }
+.cols { display: grid; grid-template-columns: minmax(0, 780px) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 1100px) { .cols { grid-template-columns: 1fr; } }
+.col-h { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #a1a1aa; margin: 0 0 8px; }
+.side { display: flex; flex-direction: column; gap: 28px; }
+.anat { font-size: 13px; color: #a1a1aa; margin: 0; padding-left: 18px; }
+.anat li { margin: 4px 0; } .anat b { color: #e4e4e7; font-weight: 600; }
+code { font-family: var(--font-data); font-size: 12px; }
+
+/* dialog chrome: dialogSurface, dialogHeaderClass, dialogFooterClass (unchanged primitives) */
+.dlg { background: var(--kira-bg-dialog); border: 1px solid var(--kira-border); border-radius: 6px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / .24); overflow: hidden; font: var(--t-md)/1.4 var(--font-ui); color: var(--kira-fg); }
+.dlg-h { display: flex; align-items: center; gap: 6px; padding: 8px 12px; }
+.dlg-title { font-size: var(--t-lg); }
+.count { min-width: 18px; height: 18px; border-radius: 999px; padding: 0 6px; background: var(--kira-bg-input);
+  font-size: var(--t-sm); display: inline-flex; align-items: center; justify-content: center; }
+.x { margin-left: auto; color: var(--kira-fg-muted); }
+.dlg-b { padding: 0 16px; }
+.dlg-f { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--kira-border); }
+.btn { height: 26px; padding: 0 12px; border-radius: 4px; border: 1px solid var(--kira-border); background: transparent;
+  color: var(--kira-fg); font: 500 var(--t-md) var(--font-ui); display: inline-flex; align-items: center; white-space: nowrap; }
+.btn.primary { border-color: var(--kira-accent); } .btn.danger { border-color: var(--kira-error); color: var(--kira-error); }
+.cb { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--kira-accent); background: var(--kira-accent);
+  display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; flex: none; }
+.cb.off { background: var(--kira-bg-input); border-color: var(--kira-border); color: transparent; }
+.mono { font-family: var(--font-data); }
+
+/* item: flat section; sizes 11/12/13, text weights 400/600 */
+.item { padding: 14px 0; display: flex; flex-direction: column; gap: 8px; }
+.item + .item { border-top: 1px solid var(--kira-border); }
+.l1 { display: flex; align-items: baseline; gap: 12px; }
+.lead { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; font-size: var(--t-lg); }
+.lead b { font-weight: 600; color: var(--kira-fg); }
+.op { font-weight: 600; color: var(--kira-fg-muted); }
+.op.warn { color: var(--kira-warn); } .op.error { color: var(--kira-error); }
+.where { font-size: var(--t-md); color: var(--kira-fg-muted); }
+.risk { display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-md); color: var(--kira-warn-text); white-space: nowrap; }
+.ic { width: 13px; height: 13px; color: var(--kira-warn); flex: none; }
+.time { font-size: var(--t-sm); color: var(--kira-fg-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.band { display: block; height: 2px; border-radius: 0; margin-top: -2px; }   /* colorMarkClass('band', color): h-0.5 shrink-0 bg-conn-* */
+.content { padding-left: 12px; position: relative; }
+.code { margin: 0; font: var(--t-md)/18px var(--font-data); white-space: pre-wrap; word-break: break-all; color: var(--kira-fg); }
+.kw { color: var(--kira-syntax-keyword); } .str { color: var(--kira-syntax-string); } .num { color: var(--kira-syntax-number); } .key { color: var(--kira-syntax-property); }
+.del { color: var(--kira-status-red); } .add { color: var(--kira-status-green); }
+.tabs { position: absolute; right: 0; top: 0; font-size: var(--t-sm); color: var(--kira-fg-subtle); display: flex; gap: 10px; }
+.tabs .on { color: var(--kira-fg); text-decoration: underline; text-decoration-color: var(--kira-accent); text-underline-offset: 3px; }
+.text { margin: 0; font-size: var(--t-md); line-height: 18px; }
+.rows { display: grid; grid-template-columns: 14px max-content max-content minmax(0,1fr); column-gap: 12px; row-gap: 6px; align-items: center; line-height: 18px; }
+.tag { color: var(--kira-fg-muted); display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.dl { margin: 0; padding-left: 12px; display: grid; grid-template-columns: 72px minmax(0,1fr); column-gap: 12px; row-gap: 4px; align-items: baseline; }
+.dl dt { font-size: var(--t-sm); color: var(--kira-fg-subtle); }
+.dl dd { margin: 0; min-width: 0; }
+.pairs { display: grid; grid-template-columns: max-content minmax(0,1fr); column-gap: 12px; font: var(--t-md)/18px var(--font-data); }
+.pairs span:nth-child(odd) { color: var(--kira-fg-muted); }
+.trunc { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.more { all: unset; font-size: var(--t-sm); color: var(--kira-fg-muted); text-decoration: underline; text-decoration-color: var(--kira-border); text-underline-offset: 3px; cursor: pointer; }
+.rt { border-collapse: collapse; font: var(--t-md)/18px var(--font-data); margin-bottom: 4px; }
+.rt th { text-align: left; font-weight: 400; color: var(--kira-fg-subtle); font-family: var(--font-ui); font-size: var(--t-sm); padding: 0 24px 2px 0; }
+.rt td { padding: 0 24px 0 0; }
+.steps { display: flex; flex-direction: column; gap: 4px; }
+.steps .n { color: var(--kira-fg-subtle); margin-right: 8px; font-variant-numeric: tabular-nums; }
+.foot { display: flex; align-items: center; gap: 12px; }
+.who { flex: 1; min-width: 0; font-size: var(--t-sm); color: var(--kira-fg-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.opt { display: flex; align-items: center; gap: 6px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-warn" viewBox="0 0 16 16"><path fill="currentColor" d="M8 1.5 15 14H1L8 1.5Zm0 2.3L2.8 13h10.4L8 3.8ZM7.4 6.5h1.2v3.6H7.4V6.5Zm0 4.6h1.2v1.2H7.4v-1.2Z"/></symbol></svg>
+<main>
+  <h1>Approval dialog: final design</h1>
+  <p class="lede">All nine kinds, real token values, dark. Line 1 reads left to right: operation, target, where, risks; the countdown alone sits right. Item colour is a 2px rule under line 1 across the item, drawn only when a colour exists.</p>
+  <div class="cols">
+    <div>
+      <p class="col-h">Studio: 8 items (db.query write + read, db.exemption, db.response, api.request, kube.read, script.run, proof.review)</p>
+      <div class="dlg"><div class="dlg-h"><span class="dlg-title">Awaiting your approval</span><span class="count">8</span><span class="x">✕</span></div><div class="dlg-b"><section class="item">
+<div class="l1"><span class="lead"><span class="op warn">Write</span><b class="">shop db</b><span class="where">PostgreSQL · db.internal · shop / public</span><span class="risk"><svg class="ic" aria-hidden="true"><use href="#i-warn"/></svg>~48,210 rows</span></span><span class="time">1:48 left</span></div>
+<span class="band" style="background:var(--kira-conn-green)"></span>
+<div class="content"><span class="tabs"><span class="on">Formatted</span><span>As sent</span></span><pre class="code"><span class="kw">update</span> orders
+<span class="kw">set</span> status = <span class="str">'void'</span>
+<span class="kw">where</span> created_at &lt; <span class="str">'2025-01-01'</span></pre></div>
+<div class="foot"><span class="who">Claude Code 2.1.318 · ~/shop</span><span class="opt"><span class="cb off">✓</span>Review result</span><span class="btn danger">Deny</span><span class="btn primary">Approve</span></div>
+</section>
+<section class="item">
+<div class="l1"><span class="lead"><span class="op ">Read</span><b class="">notes db</b><span class="where">SQLite · /data/mcp.db</span></span></div>
+<div class="content"><pre class="code"><span class="kw">select</span> id, body <span class="kw">from</span> notes <span class="kw">limit</span> <span class="num">50</span></pre></div>
+<div class="foot"><span class="who">Claude Code 2.1.318</span><span class="btn danger">Deny</span><span class="btn primary">Approve</span></div>
+</section>
+<section class="item">
+<div class="l1"><span class="lead"><span class="op error">Lift limit</span><b class="">shop db</b><span class="where">PostgreSQL · db.internal · shop / public</span><span class="risk"><svg class="ic" aria-hidden="true"><use href="#i-warn"/></svg>Timeout 31 s / 30 s</span></span></div>
+<span class="band" style="background:var(--kira-conn-green)"></span>
+<div class="content"><pre class="code"><span class="kw">select</span> customer_id, sum(total) <span class="kw">from</span> orders <span class="kw">group by</span> <span class="num">1</span></pre></div>
+<dl class="dl"><dt>Reason</dt><dd>Monthly revenue report needs the full scan</dd></dl>
+<div class="foot"><span class="who">Claude Code 2.1.318 · ~/shop</span><span class="btn danger">Keep the limit</span><span class="btn primary">Lift for this query</span></div>
+</section>
+<section class="item">
+<div class="l1"><span class="lead"><span class="op ">Result</span><b class="">analytics</b><span class="where">ClickHouse · ch.internal · events</span></span></div>
+<span class="band" style="background:var(--kira-conn-violet)"></span>
+<div class="content"><table class="rt"><thead><tr><th>country</th><th>sessions</th></tr></thead><tbody><tr><td>DE</td><td>18,204</td></tr><tr><td>NL</td><td>9,771</td></tr><tr><td>FR</td><td>7,430</td></tr></tbody></table><button type="button" class="more">+47 more rows</button></div>
+<dl class="dl"><dt>Statement</dt><dd><span class="mono trunc">select country, count() as sessions from events group by country order by 2 desc</span></dd></dl>
+<div class="foot"><span class="who">Claude Code 2.1.318 · ~/shop</span><span class="btn danger">Withhold</span><span class="btn primary">Send</span></div>
+</section>
+<section class="item">
+<div class="l1"><span class="lead"><span class="op warn">POST</span><b class="mono">api.staging.acme.dev</b><span class="where">Staging</span><span class="risk"><svg class="ic" aria-hidden="true"><use href="#i-warn"/></svg>Credential sent</span></span><span class="time">4:10 left</span></div>
+<span class="band" style="background:var(--kira-conn-amber)"></span>
+<div class="content"><pre class="code">/v1/orders?dryRun=true
+{
+  <span class="key">"orderId"</span>: <span class="num">4711</span>,
+  <span class="key">"items"</span>: [{ <span class="key">"sku"</span>: <span class="str">"KS-22"</span>, <span class="key">"qty"</span>: <span class="num">2</span> }]
+}</pre></div>
+<dl class="dl"><dt>Headers</dt><dd><span class="pairs"><span>Authorization</span><span>Bearer {{stagingToken}}</span><span>Content-Type</span><span>application/json</span><span>Idempotency-Key</span><span>7f3c…e21</span></span><button type="button" class="more">+2 more</button></dd><dt>Variables</dt><dd><span class="pairs"><span>orderId</span><span>4711</span></span></dd><dt>Options</dt><dd>Redirects off · 30 s</dd></dl>
+<div class="foot"><span class="who">Claude Code 2.1.318 · ~/shop</span><span class="btn danger">Don’t send</span><span class="btn primary">Send</span></div>
+</section>
+<section class="item">
+<div class="l1"><span class="lead"><span class="op ">List</span><b class="">prod-eu</b><span class="where">k8s.prod.acme:6443 · payments</span></span></div>
+<div class="content"><pre class="code">pods -l app=checkout</pre></div>
+<div class="foot"><span class="who">Claude Code 2.1.318</span><span class="btn danger">Deny</span><span class="btn primary">Approve</span></div>
+</section>
+<section class="item">
+<div class="l1"><span class="lead"><span class="op warn">Run script</span><b class="">reindex orders</b><span class="where"><span class="mono">~/shop/ops</span></span></span></div>
+<div class="content"><pre class="code">./scripts/reindex.sh --table orders --concurrently</pre></div>
+<dl class="dl"><dt>Params</dt><dd><span class="pairs"><span>table</span><span>orders</span></span></dd><dt>Env</dt><dd><span class="pairs"><span>PGPASSWORD</span><span>secret · saved</span></span></dd></dl>
+<div class="foot"><span class="who">Claude Code 2.1.318 · ~/shop</span><span class="btn danger">Deny</span><span class="btn primary">Approve</span></div>
+</section>
+<section class="item">
+<div class="l1"><span class="lead"><span class="op warn">Edit</span><b class="">Q4 runbook</b><span class="where">rev 3</span></span></div>
+<div class="content"><div class="steps"><div><span class="n">2</span>Replace retry count</div><pre class="code diff"><span class="del">-  retries: 3</span>
+<span class="add">+  retries: 5</span></pre></div></div>
+<dl class="dl"><dt>Reason</dt><dd>Step 2 limit too low for the batch job</dd></dl>
+<div class="foot"><span class="who"></span><button type="button" class="more" style="margin-right:4px">Open window</button><span class="btn danger">Reject</span><span class="btn primary">Accept</span></div>
+</section></div><div class="dlg-f"><span class="btn danger">Deny all (8)</span><span class="btn primary">Approve all (6)</span></div></div>
+    </div>
+    <div class="side">
+      <div>
+        <p class="col-h">Space: 2 items (branch.request, task.create)</p>
+        <div class="dlg"><div class="dlg-h"><span class="dlg-title">Awaiting your approval</span><span class="count">2</span><span class="x">✕</span></div><div class="dlg-b"><section class="item">
+<div class="l1"><span class="lead"><span class="op warn">Branches · 2</span><b class="">Fix login redirect</b></span><span class="time">4:52 left</span></div>
+<div class="content"><div class="rows"><span class="cb">✓</span><b class="mono">kira-web</b><span class="mono">feat/login-redirect</span><span class="tag">new · from main</span><span class="cb">✓</span><b class="mono">kira-api</b><span class="mono">fix/session-ttl</span><span class="tag">checkout · held by Session refresh <span class="risk"><svg class="ic" aria-hidden="true"><use href="#i-warn"/></svg>Dirty worktree (3)</span></span></div></div>
+<div class="foot"><span class="who">Session · Implement</span><span class="btn danger">Deny</span><span class="btn primary">Approve</span></div>
+</section>
+<section class="item">
+<div class="l1"><span class="lead"><span class="op warn">Create task</span><b class="">Add rate limiting to checkout</b></span><span class="time">9:30 left</span></div>
+<div class="content"><p class="text">Limit POST /checkout to 10 requests per minute per user. Return 429 with Retry-After.</p></div>
+<dl class="dl"><dt>Workflow</dt><dd>Feature</dd><dt>Repository</dt><dd><span class="mono">kira-api</span> <span class="where">from main</span></dd></dl>
+<div class="foot"><span class="who">Q4 hardening · Plan</span><span class="btn danger">Deny</span><span class="btn primary">Approve</span></div>
+</section></div><div class="dlg-f"><span class="btn danger">Deny all (2)</span><span class="btn primary">Approve all (2)</span></div></div>
+      </div>
+      <div>
+        <p class="col-h">Anatomy</p>
+        <ol class="anat">
+          <li><b>Line 1, left:</b> operation (13px semibold, tone colour) · target (13px semibold) · where (12px muted) · risk tags (icon + 1-4 words).</li>
+          <li><b>Line 1, right:</b> countdown only (11px subtle).</li>
+          <li><b>Colour rule:</b> <code>colorMarkClass('band', color)</code>, 2px, full item width, under line 1. Drawn only when <code>target.color</code> is set: DB connections and API environments today (shop db, analytics, api). notes db, kube, script, branch, task and proof carry no colour, so nothing is drawn.</li>
+          <li><b>Content:</b> SQL, path + query + body, result rows, command, diff, branch rows, brief. Unboxed, indented 12px, data font.</li>
+          <li><b>Details:</b> label 72px (11px subtle), value 12px. Lists over 3 rows collapse to "+N more".</li>
+          <li><b>Footer:</b> requester (11px subtle), option, Deny, Approve.</li>
+          <li>No cards, no fills, no sentences. One hairline between items.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>
