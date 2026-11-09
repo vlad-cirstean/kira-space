@@ -380,6 +380,11 @@ func (v *validator) manualStep(step *adewire.WorkflowStep, sm map[string]*yaml.N
 			v.fail(n, sp, "settings is not allowed on %s steps without a session", step.Kind)
 		}
 	}
+	v.manualDbMcp(step, sm, sp)
+}
+
+// manualDbMcp reads db_mcp of a manual step: on by default with a session, rejected without one.
+func (v *validator) manualDbMcp(step *adewire.WorkflowStep, sm map[string]*yaml.Node, sp string) {
 	if step.Session {
 		step.DbMcp = true // absent db_mcp means on
 	}
