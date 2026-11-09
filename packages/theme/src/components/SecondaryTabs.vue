@@ -20,7 +20,7 @@ export interface SecondaryTabItem {
 withDefaults(
   defineProps<{
     items: readonly SecondaryTabItem[];
-    variant?: 'tabs' | 'segmented';
+    variant?: 'tabs' | 'segmented' | 'text';
     size?: 'kira' | 'kira-lg';
     ariaLabel?: string;
     countBadge?: boolean;
@@ -32,6 +32,10 @@ withDefaults(
     countBadge: false,
   },
 );
+
+// `text`: bare underlined words, no chip (approval content tabs); `tabs` adds muted idle text.
+const TEXT_ITEM =
+  'h-auto min-w-0 px-0 bg-transparent text-kira-sm font-normal text-subtle hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-fg data-[state=on]:underline data-[state=on]:decoration-primary data-[state=on]:underline-offset-3';
 
 const model = defineModel<string>({ required: true });
 
@@ -47,6 +51,7 @@ function onUpdate(v: unknown): void {
     type="single"
     data-slot="secondary-tabs"
     :variant="variant === 'segmented' ? 'outline' : 'default'"
+    :class="variant === 'text' && 'gap-3'"
     :size="size"
     :model-value="model"
     :aria-label="ariaLabel"
@@ -62,7 +67,12 @@ function onUpdate(v: unknown): void {
               :value="item.value"
               :disabled="item.disabled"
               :data-testid="item.testid"
-              :class="cn(variant === 'tabs' && 'text-muted-foreground data-[state=on]:text-fg')"
+              :class="
+                cn(
+                  variant === 'tabs' && 'text-muted-foreground data-[state=on]:text-fg',
+                  variant === 'text' && TEXT_ITEM,
+                )
+              "
             >
               <slot name="item" :item="item" :active="item.value === model">
                 <CodiconIcon v-if="item.icon" :name="item.icon" :size="13" />
@@ -82,7 +92,12 @@ function onUpdate(v: unknown): void {
         :value="item.value"
         :disabled="item.disabled"
         :data-testid="item.testid"
-        :class="cn(variant === 'tabs' && 'text-muted-foreground data-[state=on]:text-fg')"
+        :class="
+          cn(
+            variant === 'tabs' && 'text-muted-foreground data-[state=on]:text-fg',
+            variant === 'text' && TEXT_ITEM,
+          )
+        "
       >
         <slot name="item" :item="item" :active="item.value === model">
           <CodiconIcon v-if="item.icon" :name="item.icon" :size="13" />

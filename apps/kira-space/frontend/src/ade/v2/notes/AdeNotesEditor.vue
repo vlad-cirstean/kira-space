@@ -29,6 +29,8 @@ const props = defineProps<{
   compact?: boolean;
   /** Focus the end of the text when it mounts. */
   focusOnMount?: boolean;
+  /** No inner padding: text starts at the surrounding content edge. Fixed at mount. */
+  flush?: boolean;
 }>();
 
 const model = defineModel<string>({ required: true });
@@ -38,7 +40,7 @@ const caption = computed(() => props.label ?? t('space.common.notes.label'));
 let lastEmitted = model.value;
 let dirty = false;
 
-function flush(): void {
+function emitPending(): void {
   const ed = editor.value;
   if (!ed || props.readonly || !dirty) return;
   dirty = false;
@@ -49,10 +51,10 @@ function flush(): void {
   }
 }
 
-const debouncedFlush = useDebounceFn(flush, TIMING.autosave);
+const debouncedFlush = useDebounceFn(emitPending, TIMING.autosave);
 
 const PROSE = [
-  'ade-notes-prose kira-prose min-h-full px-3 py-2 outline-none',
+  `ade-notes-prose kira-prose min-h-full ${props.flush ? 'p-0' : 'px-3 py-2'} outline-none`,
   '[&_p:last-child]:mb-0',
   "[&_ul[data-type='taskList']]:list-none [&_ul[data-type='taskList']]:pl-[0.2em]",
   "[&_ul[data-type='taskList']_li]:flex [&_ul[data-type='taskList']_li]:items-start [&_ul[data-type='taskList']_li]:gap-[0.4em]",
@@ -83,7 +85,7 @@ const editor = useEditor({
     handleKeyDown(_view, event) {
       if (props.readonly || event.key !== 'Enter' || !isPrimaryModifier(event)) return false;
       event.preventDefault();
-      flush();
+      emitPending();
       emit('submit');
       return true;
     },
@@ -93,7 +95,7 @@ const editor = useEditor({
     dirty = true;
     debouncedFlush();
   },
-  onBlur: () => flush(),
+  onBlur: () => emitPending(),
 });
 
 // Outside changes (a prefill that loads late, a saved body) replace the text, never mid-edit.
@@ -106,7 +108,7 @@ watch(model, (next) => {
 });
 
 onBeforeUnmount(() => {
-  flush();
+  emitPending();
   editor.value?.destroy();
 });
 
