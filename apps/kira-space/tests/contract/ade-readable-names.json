@@ -1,0 +1,572 @@
+{
+  "AdeTaskService.SaveStep#renamed": {
+    "error": null,
+    "fileName": "lint-repo.yaml",
+    "hash": "60589dadeb228b334b23daab345469f8307d0e9ac0fd5ce2a8e3973fba078046",
+    "path": "<space>/config/steps/lint-repo.yaml",
+    "step": {
+      "agent": "",
+      "allowedTools": [],
+      "before": "auto",
+      "command": "",
+      "dbMcp": false,
+      "id": "lint-repo",
+      "kind": "agent",
+      "maxReturns": 3,
+      "name": "Lint repo",
+      "outsideRepo": false,
+      "params": {},
+      "prompt": "New step",
+      "results": [
+        {
+          "description": "",
+          "id": "done",
+          "loop": false,
+          "next": "next",
+          "ok": true
+        },
+        {
+          "description": "",
+          "id": "failed",
+          "loop": false,
+          "next": "stop",
+          "ok": false
+        }
+      ],
+      "review": null,
+      "runsOn": "each repo",
+      "sandbox": {
+        "access": "write",
+        "allow": [],
+        "network": true,
+        "read": []
+      },
+      "session": false,
+      "settings": {},
+      "skip": false,
+      "smartScript": "",
+      "status": "",
+      "timeout": "30m"
+    },
+    "usedBy": [
+      "wf"
+    ]
+  },
+  "AdeTaskService.SaveWorkflow#renamed": {
+    "error": null,
+    "fileName": "release.yaml",
+    "hash": "4414cd968022b098a0fd22c66caf721cf7249feaa070be8a90fd8c6128c3d1b6",
+    "path": "<space>/config/workflows/release.yaml",
+    "usedBy": 2,
+    "workflow": {
+      "id": "release",
+      "name": "Release",
+      "steps": [
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "",
+          "dbMcp": false,
+          "id": "implement",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "Implement",
+          "outsideRepo": false,
+          "params": {},
+          "prompt": "work on {branch} in {repo}",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "each repo",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "1m"
+        }
+      ]
+    }
+  },
+  "AdeTaskService.Workflows#before": {
+    "dir": "<space>/config/workflows",
+    "sandbox": {
+      "enforced": false,
+      "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands."
+    },
+    "stageSettings": [
+      {
+        "hint": "Tokens of context before Claude Code compacts the conversation, 100000 to 1000000. Empty uses Claude Code’s default.",
+        "key": "auto_compact_window",
+        "kind": "int",
+        "label": "Auto compact limit",
+        "max": 1000000,
+        "min": 100000,
+        "provider": "claude",
+        "providerLabel": "Claude"
+      }
+    ],
+    "steps": [
+      {
+        "error": null,
+        "fileName": "new-step-2.yaml",
+        "hash": "e0cd7a370a7fd8e373cad7b23ef1a5760db3dbf1bb287a05f11dfcf258708cc3",
+        "path": "<space>/config/steps/new-step-2.yaml",
+        "step": {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "",
+          "dbMcp": false,
+          "id": "new-step-2",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "New step",
+          "outsideRepo": false,
+          "params": {},
+          "prompt": "New step",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "each repo",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "30m"
+        },
+        "usedBy": []
+      },
+      {
+        "error": null,
+        "fileName": "new-step.yaml",
+        "hash": "cb5491e9e218d6fb85dbd06446f9a2aeb03fa5449d0d0912fae6f22c58a2b923",
+        "path": "<space>/config/steps/new-step.yaml",
+        "step": {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "",
+          "dbMcp": false,
+          "id": "new-step",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "New step",
+          "outsideRepo": false,
+          "params": {},
+          "prompt": "New step",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "each repo",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "30m"
+        },
+        "usedBy": [
+          "wf"
+        ]
+      }
+    ],
+    "stepsDir": "<space>/config/steps",
+    "workflows": [
+      {
+        "error": null,
+        "fileName": "wf.yaml",
+        "hash": "1a41f4e2cc40f57efeec6c231345ed2aa61eeb018e51e17e43fdca75480c9524",
+        "path": "<space>/config/workflows/wf.yaml",
+        "usedBy": 0,
+        "workflow": {
+          "id": "wf",
+          "name": "Flow",
+          "steps": [
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "auto",
+              "command": "",
+              "dbMcp": false,
+              "id": "new-step",
+              "kind": "agent",
+              "maxReturns": 3,
+              "name": "New step",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "New step",
+              "results": [
+                {
+                  "description": "",
+                  "id": "done",
+                  "loop": false,
+                  "next": "next",
+                  "ok": true
+                },
+                {
+                  "description": "",
+                  "id": "failed",
+                  "loop": false,
+                  "next": "stop",
+                  "ok": false
+                }
+              ],
+              "review": null,
+              "runsOn": "each repo",
+              "sandbox": {
+                "access": "write",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": false,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "",
+              "timeout": "30m",
+              "use": "new-step"
+            },
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "auto",
+              "command": "",
+              "dbMcp": false,
+              "id": "check",
+              "kind": "agent",
+              "maxReturns": 3,
+              "name": "Check",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "check",
+              "results": [
+                {
+                  "description": "",
+                  "id": "done",
+                  "loop": false,
+                  "next": "next",
+                  "ok": true
+                },
+                {
+                  "description": "",
+                  "id": "failed",
+                  "loop": true,
+                  "next": "new-step",
+                  "ok": false
+                }
+              ],
+              "review": null,
+              "runsOn": "each repo",
+              "sandbox": {
+                "access": "write",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": false,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "",
+              "timeout": "1m"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "AdeTaskService.Workflows#renamed": {
+    "dir": "<space>/config/workflows",
+    "sandbox": {
+      "enforced": false,
+      "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands."
+    },
+    "stageSettings": [
+      {
+        "hint": "Tokens of context before Claude Code compacts the conversation, 100000 to 1000000. Empty uses Claude Code’s default.",
+        "key": "auto_compact_window",
+        "kind": "int",
+        "label": "Auto compact limit",
+        "max": 1000000,
+        "min": 100000,
+        "provider": "claude",
+        "providerLabel": "Claude"
+      }
+    ],
+    "steps": [
+      {
+        "error": null,
+        "fileName": "lint-repo.yaml",
+        "hash": "60589dadeb228b334b23daab345469f8307d0e9ac0fd5ce2a8e3973fba078046",
+        "path": "<space>/config/steps/lint-repo.yaml",
+        "step": {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "",
+          "dbMcp": false,
+          "id": "lint-repo",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "Lint repo",
+          "outsideRepo": false,
+          "params": {},
+          "prompt": "New step",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "each repo",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "30m"
+        },
+        "usedBy": [
+          "wf"
+        ]
+      },
+      {
+        "error": null,
+        "fileName": "new-step-2.yaml",
+        "hash": "e0cd7a370a7fd8e373cad7b23ef1a5760db3dbf1bb287a05f11dfcf258708cc3",
+        "path": "<space>/config/steps/new-step-2.yaml",
+        "step": {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "",
+          "dbMcp": false,
+          "id": "new-step-2",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "New step",
+          "outsideRepo": false,
+          "params": {},
+          "prompt": "New step",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "each repo",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "30m"
+        },
+        "usedBy": []
+      }
+    ],
+    "stepsDir": "<space>/config/steps",
+    "workflows": [
+      {
+        "error": null,
+        "fileName": "wf.yaml",
+        "hash": "bc9ce8c08244c85891e8550381f467816e314994d8dc64768f1670e089f0aecd",
+        "path": "<space>/config/workflows/wf.yaml",
+        "usedBy": 0,
+        "workflow": {
+          "id": "wf",
+          "name": "Flow",
+          "steps": [
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "auto",
+              "command": "",
+              "dbMcp": false,
+              "id": "lint-repo",
+              "kind": "agent",
+              "maxReturns": 3,
+              "name": "Lint repo",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "New step",
+              "results": [
+                {
+                  "description": "",
+                  "id": "done",
+                  "loop": false,
+                  "next": "next",
+                  "ok": true
+                },
+                {
+                  "description": "",
+                  "id": "failed",
+                  "loop": false,
+                  "next": "stop",
+                  "ok": false
+                }
+              ],
+              "review": null,
+              "runsOn": "each repo",
+              "sandbox": {
+                "access": "write",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": false,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "",
+              "timeout": "30m",
+              "use": "lint-repo"
+            },
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "auto",
+              "command": "",
+              "dbMcp": false,
+              "id": "check",
+              "kind": "agent",
+              "maxReturns": 3,
+              "name": "Check",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "check",
+              "results": [
+                {
+                  "description": "",
+                  "id": "done",
+                  "loop": false,
+                  "next": "next",
+                  "ok": true
+                },
+                {
+                  "description": "",
+                  "id": "failed",
+                  "loop": true,
+                  "next": "lint-repo",
+                  "ok": false
+                }
+              ],
+              "review": null,
+              "runsOn": "each repo",
+              "sandbox": {
+                "access": "write",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": false,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "",
+              "timeout": "1m"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

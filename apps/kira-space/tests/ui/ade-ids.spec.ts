@@ -43,12 +43,14 @@ test('two v7 sessions sharing a timestamp head show distinct short ids', async (
   await expect(rows.nth(0)).not.toContainText('0192');
 });
 
-test('Add step saves a stp_ id and keeps existing step ids', async ({ relaunch }) => {
+test('Add step saves an id from the step name and keeps existing step ids', async ({
+  relaunch,
+}) => {
   const { window: page, control } = await openWorkflows(relaunch);
   await page.locator(t('ade-wf-add-step')).click();
   await page.locator(t('ade-wf-add-step-agent')).click();
   const out = await saved<{ workflow: { steps: { id: string }[] } }>(page, control, 1);
   const ids = out.workflow.steps.map((s) => s.id);
-  expect(ids.at(-1)).toMatch(/^stp_[0-9a-hjkmnp-tv-z]{12}$/);
+  expect(ids.at(-1)).toBe('agent-step');
   expect(ids).toContain('plan');
 });

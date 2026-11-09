@@ -135,12 +135,14 @@ test('a stored repo nickname that no repo has shows the missing hint', async ({ 
   await expect(page.locator(t('ade-wf-step-scope-missing'))).toContainText('ghost');
 });
 
-test('a new step gets a fresh id and Allowed tools becomes allowedTools', async ({ relaunch }) => {
+test('a new step gets an id from its name and Allowed tools becomes allowedTools', async ({
+  relaunch,
+}) => {
   const { window: page, control } = await openWorkflows(relaunch);
   await page.locator(t('ade-wf-add-step')).click();
   await page.locator(t('ade-wf-add-step-agent')).click();
   const added = await saved<SavedWorkflow>(page, control, 1);
-  expect(added.workflow.steps.at(-1)?.id).toMatch(/^stp_[0-9a-hjkmnp-tv-z]{12}$/);
+  expect(added.workflow.steps.at(-1)?.id).toBe('agent-step');
   expect(added.workflow.steps.at(-1)?.kind).toBe('agent');
 
   await node(page, 'plan').click();
@@ -175,7 +177,7 @@ test('a kind switch on an empty step needs no confirmation', async ({ relaunch }
   const { window: page } = await openWorkflows(relaunch);
   await page.locator(t('ade-wf-add-step')).click();
   await page.locator(t('ade-wf-add-step-agent')).click();
-  const fresh = page.locator(`${t('ade-wf-node')}[data-step-id^="stp_"]`);
+  const fresh = page.locator(`${t('ade-wf-node')}[data-step-id="agent-step"]`);
   await fresh.click();
   await page.locator(t('ade-wf-step-kind-script')).click();
   await expect(page.locator(t('confirm-dialog'))).toHaveCount(0);
