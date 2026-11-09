@@ -240,3 +240,55 @@ func TestRecoverRename(t *testing.T) {
 		}
 	})
 }
+
+func TestMigrateNames(t *testing.T) {
+	r := journalReader(t, map[string]string{
+		"new-step-2.yaml": "id: new-step-2\nname: Lint\nkind: manual\n",
+		"shared.yaml":     "id: shared\nname: Other name\nkind: manual\n",
+	}, map[string]string{
+		"wf-x.yaml": "id: wf-x\nname: Deploy\nsteps:\n  - step: new-step-2\n  - id: stp_8h3k2m9qz7ab\n    name: Ship it\n    kind: manual\n",
+		"keep.yaml": "id: keep\nname: Renamed\nsteps:\n  - step: shared\n",
+	})
+	root := filepath.Dir(r.Dir)
+	o := MigrateOptions{
+		Marker: filepath.Join(root, "done"), BackupDir: filepath.Join(root, "backups", "rn"),
+		Keep:     func(module, file string) bool { return file == "shared.yaml" || file == "keep.yaml" },
+		Retarget: func(old, new string) error { return nil },
+	}
+	if err := r.MigrateNames(o); err != nil {
+		t.Fatal(err)
+	}
+	read := func(p ...string) string { b, _ := os.ReadFile(filepath.Join(p...)); return string(b) }
+	wf := read(r.Dir, "deploy.yaml")
+	for _, want := range []string{"id: deploy", "step: lint", "id: ship-it"} {
+		if !strings.Contains(wf, want) {
+			t.Errorf("deploy.yaml lacks %q:\n%s", want, wf)
+		}
+	}
+	if strings.Contains(wf, "stp_") {
+		t.Errorf("legacy id left:\n%s", wf)
+	}
+	if !strings.Contains(read(r.Steps.Dir, "lint.yaml"), "id: lint") {
+		t.Error("lint.yaml missing")
+	}
+	for _, gone := range []string{filepath.Join(r.Steps.Dir, "new-step-2.yaml"), filepath.Join(r.Dir, "wf-x.yaml")} {
+		if _, err := os.Stat(gone); !os.IsNotExist(err) {
+			t.Errorf("%s kept", gone)
+		}
+	}
+	if read(r.Dir, "keep.yaml") == "" || read(r.Steps.Dir, "shared.yaml") == "" {
+		t.Error("kept files moved")
+	}
+	if _, err := os.Stat(o.Marker); err != nil {
+		t.Error("no marker")
+	}
+	dirs, _ := filepath.Glob(o.BackupDir + "-*")
+	if len(dirs) != 1 || read(dirs[0], "workflows", "wf-x.yaml") == "" || read(dirs[0], "steps", "new-step-2.yaml") == "" {
+		t.Errorf("backups = %v", dirs)
+	}
+	before := read(r.Dir, "deploy.yaml")
+	os.Remove(o.Marker)
+	if err := r.MigrateNames(o); err != nil || read(r.Dir, "deploy.yaml") != before {
+		t.Errorf("second run changed files (%v)", err)
+	}
+}
