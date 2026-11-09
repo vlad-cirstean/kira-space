@@ -3005,7 +3005,7 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 - Reconcile may not update a candidate of higher grade; Go turns it into add ("Kept beside a higher-graded fact."). CHECKs tie source_tag to external.
 - Provenance migration backfill: origin derived from old author, and external/doc for import-created versions.
 - Each item names scope (required): company, project or personal. Hash noop and reconcile candidates stay within the same scope and project, so an update never crosses scopes. Backfill made every old row personal.
-- Project key is the normalised origin remote (host/path lowercase, no scheme, credentials, port or .git, via memory.NormalizeRemote); with no remote it is local:<main worktree path> with whitespace percent-escaped (memory.DetectProject).
+- Project key is the normalised origin remote (host/path lowercase, no scheme, credentials, port or .git, via gitremote.Key); with no remote it is local:<main worktree path> with whitespace percent-escaped (memory.DetectProject).
 - Outside a git repo memory.DetectProject returns ErrNotGitRepo, and the MCP ingest_files falls back to the server's project only for that error. memory-mcp detects the project once from its cwd; a project item without a key uses it.
 - memories.session_id is the session tool argument, else CLAUDE_CODE_SESSION_ID read by memorycli.Run at start, else NULL; UI, import and pre-existing rows are NULL. Shape: 1 to 128 chars of [A-Za-z0-9._:-].
 - Memory groups are stored in memory_groups(id kg_…, kind, key, title, UNIQUE(kind, key)) and memory_group_members(group_id, lineage_id), append-only by trigger; membership is per fact so it survives versions.
