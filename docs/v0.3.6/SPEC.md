@@ -5,7 +5,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 | Phase | Title | Status |
 |---|---|---|
 | P580 | Database MCP `api_request`: per-host and per-method rules with wildcards | Done |
-| P581 | Review tool: diff against target branch like a source control app, fetch buttons | Planned |
+| P581 | Review tool: diff against target branch like a source control app, fetch buttons | Done |
 | P582 | Handovers: select and copy text | Planned |
 | P583 | Agent worktree: work on an already existing branch | Planned |
 | P584 | Shared config: readable YAML file names and step names | Planned |
@@ -45,6 +45,7 @@ Phases run in table order, one at a time, unless the user asks for a batch.
   - When the local branch or base is not the latest, show easy buttons to fetch the correct branches.
 - Context: `internal/gitsession/crreview.go` (`reviewHost`), `internal/gitrpc/incremental.go` (`handleReviewFileDiff`), `ChangeRequest.baseRef`. Planner establishes the current behavior for both refs first.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+- Result: Plan `plans/P581.md`. Diff semantics already matched a source control app (three-dot, merge base of base and branch to branch tip); the gap was ref freshness, so nothing in `rangeFilesRecords` or `ReviewFileDiff` changed. New `ReviewSync` (read only facts per side against the remote twin: `current`, `behind`, `ahead`, `diverged`, `remote`, `noRemote`), `ReviewFetch` (default remote plus twin remotes, prune, askpass through `RunRemote`) and `ReviewUpdateLocal` (fast-forward only: `merge --ff-only` in the worktree that has the ref, else `update-ref` with old value check). `remoteTwin` is shared with the board's `fillUpstream`. Review title bar shows `AdeReviewSync`: Fetch button with last fetch age, `Update branch` and `Update base` on `behind`, `Diverged` and `not pushed` badges, change request base mismatch badge, error line. Flow tests `TestReviewSync` and `TestReviewSyncStackedBase`, UI spec `ade-v2-review-sync.spec.ts`, contract `ade-review-sync`. Ran: Go `adeflow` ReviewSync tests, `ade`, `gitsession`, `gitops`, `bridge` packages, `ade-v2-review*` UI specs (4 new, 102 existing pass), typecheck, lint. Out of scope as planned: Git sidebar review base picker, branch-onto-base update, fork branches without upstream, retargeting a locked git-ui mount.
 
 ## P582 Handovers: select and copy text
 
