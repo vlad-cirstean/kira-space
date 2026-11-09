@@ -10,6 +10,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 | P583 | Agent worktree: work on an already existing branch | Planned (design choice pending) |
 | P584 | Shared config: readable YAML file names and step names | Planned |
 | P585 | Shared config: share repos by origin, with prepare-worktree configs | Planned |
+| P586 | Task panel Details: open links externally | Planned |
 
 Phases run in table order, one at a time, unless the user asks for a batch.
 
@@ -52,4 +53,10 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 
 - Ask (user): repos cannot be shared. They could be shared by carrying the origin URL. The `worktree` prepare config (`prepare_script`, `prepare_run`, `prepare_timeout`) is the valuable part to share.
 - Context: `docs/ARCHITECTURE.md` "Config sync (P554)" says `repos` is never syncable (files keyed by local path; worktree prepare script must never come from a repo). This phase changes that rule: key shared repo entries by normalized origin URL, map to local registered repos by origin, share only portable keys (not `path`, not machine-local values). Planner decides the exact key set, the credential and trust gate, the command-running badge and review (as for runs, steps, workflows), and updates the architecture doc rule.
+- Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+
+## P586 Task panel Details: open links externally
+
+- Ask (user): each link in the task panel Details tab gets a button that opens it externally, in the system browser.
+- Context: Details tab (`details/`, `AdeTaskChain.vue`, Jira and other link lines); existing external-open path (`TestOpenLinks` in `internal/flows/appflow/misc_test.go`, `openLink` in `AdeArtifactList.vue`). Reuse that path; the renderer sends no raw URL to a browser API of its own. Planner lists every link kind in the panel and which already have the button.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
