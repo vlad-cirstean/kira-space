@@ -115,6 +115,10 @@ type ConfigSyncDismissArgs struct {
 	Sha string `json:"sha"`
 }
 
+type ConfigSyncRepoArgs struct {
+	Path string `json:"path"`
+}
+
 type ConfigSyncWindowArgs struct {
 	WindowKey string `json:"windowKey"`
 }
@@ -155,6 +159,11 @@ func (s *ConfigSyncService) Apply(args ConfigSyncApplyArgs) (configsync.ApplyRes
 
 func (s *ConfigSyncService) Dismiss(args ConfigSyncDismissArgs) (configsync.Status, error) {
 	return syncResult(s.Sync.Dismiss(args.Sha))
+}
+
+// RepoSharedText is the shared repos file of a registered repository, ready to commit to the shared config repository.
+func (s *ConfigSyncService) RepoSharedText(args ConfigSyncRepoArgs) (string, error) {
+	return syncResult(s.Sync.RepoSharedText(context.Background(), args.Path))
 }
 
 // IsReviewWindow reports whether windowKey is the shared-config review window.

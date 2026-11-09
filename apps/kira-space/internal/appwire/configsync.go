@@ -46,6 +46,9 @@ func (w *Wired) wireConfigSync(git gitWired, repositories *repos.Repos, home str
 		},
 		Emit: func(st configsync.Status) { emitter.Emit(bridge.ChannelConfigSyncChanged, st) },
 	}
+	if w.RepoConfig != nil {
+		o.Repos = repoSyncFiles{store: w.RepoConfig, repos: repositories}
+	}
 	if w.AgentSettings != nil {
 		o.Validate["agent"] = func(file string, data []byte) string {
 			if file != "settings.yaml" {

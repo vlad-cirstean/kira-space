@@ -190,7 +190,7 @@ func wireAdeTask(
 	closeReviewWindows func(taskID string), credentials *gitcred.Relay, keepAwake *bridge.KeepAwakeService,
 	notifier *agentnotify.Notifier, usage *agentusage.Service, rebaseTimeout, branchRequestWait time.Duration, updates ade.UpdatesConfig, runs *scriptruns.Service,
 	agents harness.Selector, promptSink prompts.Sink, approvalQueue *approvals.Queue, repoFiles *repocfg.Store,
-	proofs ade.ProofLinks, dbMcp ade.DbMcpSessions,
+	proofs ade.ProofLinks, dbMcp ade.DbMcpSessions, onReposChanged func(),
 ) *ade.TaskBoard {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
@@ -220,7 +220,7 @@ func wireAdeTask(
 		OnUpdates:    func() { bridge.AdeTaskUpdatesChanged(events) },
 		TrackedItems: repositories.AdeTrackedItems, Updates: updates,
 		OnWorkflows: func() { bridge.AdeTaskWorkflowsChanged(events) },
-		OnRepos:     func() { bridge.AdeTaskReposChanged(events) },
+		OnRepos:     func() { bridge.AdeTaskReposChanged(events); onReposChanged() },
 		Facts:       repositories.AdeFacts,
 		Runner:      git.runner,
 		Credentials: credentials,

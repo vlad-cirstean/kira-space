@@ -403,7 +403,7 @@ func Build(opts Options) (*Wired, error) {
 
 	w.CodeWorkspace = &bridge.CodeWorkspaceService{
 		Deps: deps, Discovery: git.discovery, Runner: git.runner, Registry: codeworkspace.NewRegistry(),
-		OnReposChanged: func() { bridge.AdeTaskReposChanged(events) },
+		OnReposChanged: func() { bridge.AdeTaskReposChanged(events); w.ConfigSync.RefreshAsync() },
 	}
 	w.OpenedFiles = openedfiles.New(repositories.CodeRepos)
 	w.OpenedFiles.Events = emitter
@@ -529,7 +529,7 @@ func Build(opts Options) (*Wired, error) {
 				return w.AdeTask.CloseWindow(key)
 			}
 			return w.Windows.Close(key)
-		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions)
+		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
 	runs.ADE = w.AdeBoard
 	// proof_save on the session server attaches to the task through the board, which exists only now.
 	w.DbMcp.ProofAttach = w.AdeBoard
