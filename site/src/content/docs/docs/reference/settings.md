@@ -93,7 +93,7 @@ Off by default. Port 1024 to 65535, default 7790. See [Phone view](../../space/p
 This section is named after the current agent: **Claude Code** or **OpenCode**. See [Agent providers](../../space/agents/#agent-providers).
 
 - **Agent**: the provider for new sessions and background steps. Default `claude`.
-- **Hermetic agent launches**: on by default. See [Hermetic launches](../../space/agents/#hermetic-launches).
+- **Hermetic agent launches**: off by default. See [Hermetic launches](../../space/agents/#hermetic-launches).
 - Keep-awake. Off by default.
 - Notifications per event, on by default. The finished and needs-input switches need an agent with hooks.
 - **Show the start of the reply** in the notification. On by default.

@@ -11168,14 +11168,14 @@
           "networkScript": {
             "hint": "Off blocks all network access from the script."
           },
+          "offAgent": {
+            "hint": "Off. The agent runs with your full rights."
+          },
           "offManual": {
             "hint": "Off. The session runs with your full rights."
           },
           "offScript": {
             "hint": "The script runs with your full rights."
-          },
-          "offWarning": {
-            "body": "Agent runs with your full rights."
           },
           "pathInvalid": {
             "error": "Use absolute paths or paths starting with ~/. Root, home and credential or config folders are not allowed."

@@ -12,6 +12,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 | P585 | Shared config: share repos by origin, with prepare-worktree configs | Done |
 | P586 | Task panel Details: open links externally | Done |
 | P587 | Database MCP script runner: per-script short or long running | Planned |
+| P588 | Defaults: step sandbox off, step Database MCP on, hermetic off | Planned |
 
 Phases run in table order, one at a time, unless the user asks for a batch.
 
@@ -98,3 +99,9 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 - Ask (user): the MCP script runner (`run_script`, `get_script_run`) makes the AI wait a fixed 50 s for a script (`scriptWaitMax` in `apps/kira-space/internal/dbmcp/script_tools.go`). A script can be a long running process that runs for hours. Whether a script is short or long running must be configurable in the script itself.
 - Context: `run_script` and `get_script_run` (`docs/ARCHITECTURE.md` "Database MCP"), the script (run/automation) YAML and editor in Runs, the agent-facing tool descriptions in the prompt registry (`internal/llmprompts`, `budget.tsv`). Planner establishes the current wait, polling and result flow first, then decides the script setting (for example a short/long mode or a wait limit), how a long script returns at once with a run id the AI polls or follows, how output and exit state stay readable while it runs, schema and validation, UI for the setting, and config sync impact (module `runs`).
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+
+## P588 Defaults: step sandbox off, step Database MCP on, hermetic off
+
+- Ask (user): "In the workflow config make sandbox off by default. Kira db on by default, and for the global setting have hermetic mode off by default."
+- Context: step `sandbox` (`adewire.DefaultSandbox`, `adeflow` parse, writer and new-step, `stepSandbox.ts`), step `db_mcp` (`parse.go` `stepExtras`, `applyDbMcp`), `agent.hermetic` (`internal/appsettings/agent.go`, `settings.ts`, `settingsDomain.ts`). Direct implementation, no Opus plan (user request: change is simple).
+- Tests: Go adeflow, ade, adewire, appsettings; flow contracts regenerated for the default flip; UI specs that assert the three defaults.

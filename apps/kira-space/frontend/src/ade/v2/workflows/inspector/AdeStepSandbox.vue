@@ -29,7 +29,13 @@ import AdeInspectorRow from './AdeInspectorRow.vue';
 const props = defineProps<{ sandbox: StepSandbox; stepId: string; kind: StepKind }>();
 const script = computed(() => props.kind === 'script');
 const manual = computed(() => props.kind === 'manual');
-const unconfinedByDefault = computed(() => script.value || manual.value);
+const offHint = computed<MessageKey>(() =>
+  script.value
+    ? 'space.ade.workflows.sandbox.offScript.hint'
+    : manual.value
+      ? 'space.ade.workflows.sandbox.offManual.hint'
+      : 'space.ade.workflows.sandbox.offAgent.hint',
+);
 const emit = defineEmits<{ patch: [sandbox: StepSandbox] }>();
 const workflows = useWorkflows();
 const support = computed(() => workflows.data.value?.sandbox ?? null);
@@ -95,18 +101,9 @@ const preset = (paths: readonly string[]): void => {
         @update:model-value="(v: string) => set({ access: v as SandboxAccess })"
       />
     </AdeInspectorRow>
-    <FieldDescription
-      v-if="sandbox.access === 'off' && unconfinedByDefault"
-      data-testid="ade-wf-sandbox-off"
-      >{{
-        manual
-          ? t('space.ade.workflows.sandbox.offManual.hint')
-          : t('space.ade.workflows.sandbox.offScript.hint')
-      }}</FieldDescription
-    >
-    <Alert v-else-if="sandbox.access === 'off'" variant="warn" data-testid="ade-wf-sandbox-off">
-      <AlertDescription>{{ t('space.ade.workflows.sandbox.offWarning.body') }}</AlertDescription>
-    </Alert>
+    <FieldDescription v-if="sandbox.access === 'off'" data-testid="ade-wf-sandbox-off">{{
+      t(offHint)
+    }}</FieldDescription>
     <template v-else>
       <AdeInspectorRow stack :label="t('space.ade.workflows.sandbox.read.label')" :for="id('read')">
         <Textarea

@@ -182,7 +182,7 @@ test('the inspector edits access, paths, preset and network, and Save carries th
   });
 });
 
-test('Read only drops the allow list and Off warns', async ({ relaunch }) => {
+test('Read only drops the allow list and Off says full rights', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch);
   await openStep(page, 'plan');
   const node = page.locator(`${t('ade-wf-node')}[data-step-id="plan"]`);
@@ -191,7 +191,7 @@ test('Read only drops the allow list and Off warns', async ({ relaunch }) => {
   await expect(node.locator(t('ade-wf-node-sandbox'))).toHaveText('Read only');
   await page.locator(t('ade-wf-sandbox-access-off')).click();
   await expect(page.locator(t('ade-wf-sandbox-off'))).toContainText('full rights');
-  await expect(node.locator(t('ade-wf-node-sandbox'))).toHaveText('No sandbox');
+  await expect(node.locator(t('ade-wf-node-sandbox'))).toHaveCount(0); // off is the default
   const args = await saved(page, control);
   expect(args.workflow.steps.find((s) => s.id === 'plan')?.sandbox.access).toBe('off');
 });

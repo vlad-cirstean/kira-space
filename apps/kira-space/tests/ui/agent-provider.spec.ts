@@ -87,21 +87,21 @@ test('the Agent pane lists every provider, disables a missing one and saves the 
     .toEqual({ patch: { agent: { provider: 'opencode' } } });
 });
 
-test('the hermetic switch is on by default, saves off and resets', async ({ relaunch }) => {
+test('the hermetic switch is off by default, saves on and resets', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({ control: bothList });
   await openSettings(page, 'Agent');
   const sw = page.locator(t('settings-agent-hermetic'));
-  await expect(sw).toHaveAttribute('aria-checked', 'true');
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
   await expect(page.getByText('Agents Kira starts skip your own agent config')).toBeVisible();
   await sw.click();
-  await expect(sw).toHaveAttribute('aria-checked', 'false');
-  await page.locator(t('settings-reset-agent-hermetic')).click();
   await expect(sw).toHaveAttribute('aria-checked', 'true');
+  await page.locator(t('settings-reset-agent-hermetic')).click();
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
   await sw.click();
   await page.locator(t('settings-save')).click();
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
-    .toEqual({ patch: { agent: { hermetic: false } } });
+    .toEqual({ patch: { agent: { hermetic: true } } });
 });
 
 test('a provider whose CLI is missing is disabled and says so', async ({ relaunch }) => {

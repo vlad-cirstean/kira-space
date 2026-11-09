@@ -138,7 +138,7 @@ export function mkStep(over: Partial<WorkflowStep> & Pick<WorkflowStep, 'id'>): 
     smartScript: '',
     params: {},
     review: null,
-    sandbox: defaultSandbox('agent'),
+    sandbox: defaultSandbox(),
     agent: '',
     settings: {},
     ...over,

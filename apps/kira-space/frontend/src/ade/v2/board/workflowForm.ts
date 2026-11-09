@@ -84,11 +84,11 @@ function kindDefaults(kind: StepKind): Omit<WorkflowStep, 'id' | 'name'> {
     timeout: '',
     prompt: '',
     allowedTools: [],
-    dbMcp: false,
+    dbMcp: kind === 'agent' || kind === 'review',
     smartScript: '',
     params: {},
     review: null,
-    sandbox: defaultSandbox(kind),
+    sandbox: defaultSandbox(),
     agent: '',
     settings: {},
   };

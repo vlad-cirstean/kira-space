@@ -43,7 +43,7 @@ function setMode(v: string): void {
           dbMcp: false,
           params: {},
         }
-      : { smartScript: '', params: {} },
+      : { smartScript: '', params: {}, dbMcp: true },
   );
 }
 const bodyParts = computed(() =>

@@ -301,7 +301,7 @@ const settingsSchema = /*#__PURE__*/ z.object({
   }),
   agent: appAgentSettingsSchema.default({
     provider: DEFAULT_AGENT_PROVIDER,
-    hermetic: true,
+    hermetic: false,
     keepAwakeWithAgents: false,
     notifyEnabled: true,
     notifyOnFinished: true,
@@ -396,7 +396,7 @@ export const defaultSettings: Settings = {
   },
   agent: {
     provider: DEFAULT_AGENT_PROVIDER,
-    hermetic: true,
+    hermetic: false,
     keepAwakeWithAgents: false,
     notifyEnabled: true,
     notifyOnFinished: true,
