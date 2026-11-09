@@ -1,4 +1,4 @@
-package apifiles
+package apiaccess
 
 import (
 	"net/url"

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/palette"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -131,7 +132,7 @@ func agentProblem(i int, v Variable) *configfs.Problem {
 		return problem(fmt.Sprintf("/variables/%d/agent", i), "backend.studio.apiFiles.agentHostsRequired.body", vars)
 	}
 	for j, h := range v.AgentHosts {
-		if _, err := ParseHostRule(h); err != nil {
+		if _, err := apiaccess.ParseHostRule(h); err != nil {
 			return problem(fmt.Sprintf("%s/%d", at, j), "backend.studio.apiFiles.agentHostInvalid.body", map[string]string{"name": v.Name, "host": h})
 		}
 	}

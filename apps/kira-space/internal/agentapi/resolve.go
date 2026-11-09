@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"golang.org/x/net/http/httpguts"
@@ -34,7 +34,7 @@ var methods = map[string]bool{"GET": true, "HEAD": true, "OPTIONS": true, "POST"
 type credential struct {
 	name       string
 	secretName string
-	rules      []apifiles.HostRule
+	rules      []apiaccess.HostRule
 }
 
 // Plan checks in against the policy without sending it. A problem is returned as an error the
@@ -390,7 +390,7 @@ func checkCredentials(p Planned) error {
 	return nil
 }
 
-func allowsAny(rules []apifiles.HostRule, u *url.URL) bool {
+func allowsAny(rules []apiaccess.HostRule, u *url.URL) bool {
 	for _, r := range rules {
 		if r.Allows(u) {
 			return true
@@ -399,7 +399,7 @@ func allowsAny(rules []apifiles.HostRule, u *url.URL) bool {
 	return false
 }
 
-func hostList(rules []apifiles.HostRule) string {
+func hostList(rules []apiaccess.HostRule) string {
 	if len(rules) == 0 {
 		return "none"
 	}
