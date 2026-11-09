@@ -147,6 +147,29 @@ func TestRunsForm(t *testing.T) {
 	}
 	app.Contract(t, "runs-form", "form#mcpInvalid", invalid, runsMasks...)
 
+	longArgs := bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: view.Text, Edits: []configfs.Edit{
+		{Path: []string{"mcp", "enabled"}, Value: true},
+		{Path: []string{"mcp", "mode"}, Value: "long"},
+	}}
+	app.Contract(t, "runs-form", "args:CustomScriptsService.Form#mcpLong", longArgs, runsMasks...)
+	withLong, err := cs.Form(longArgs)
+	if err != nil || withLong.Problem != nil {
+		t.Fatalf("Form of mcp.mode long = %+v, %v", withLong, err)
+	}
+	if v, ok := withLong.Value.(scripts.File); !ok || v.MCP == nil || v.MCP.Mode != "long" || !strings.Contains(withLong.Text, "mode: long") {
+		t.Fatalf("decoded mcp = %#v, want mode long in %q", withLong.Value, withLong.Text)
+	}
+	app.Contract(t, "runs-form", "form#mcpLong", withLong, runsMasks...)
+
+	modeInvalid, err := cs.Form(bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: view.Text, Edits: []configfs.Edit{
+		{Path: []string{"mcp", "enabled"}, Value: true},
+		{Path: []string{"mcp", "mode"}, Value: "forever"},
+	}})
+	if err != nil || modeInvalid.Problem == nil || modeInvalid.Problem.Path != "/mcp/mode" {
+		t.Fatalf("Form of mcp.mode forever = %+v, %v, want a problem at /mcp/mode", modeInvalid, err)
+	}
+	app.Contract(t, "runs-form", "form#mcpModeInvalid", modeInvalid, runsMasks...)
+
 	smartText := "name: Thinker\nkind: smart\nprompt: think\nmcp:\n  enabled: true\n"
 	smart, err := cs.Form(bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: smartText, Edits: []configfs.Edit{}})
 	if err != nil || smart.Problem == nil || smart.Problem.Path != "/mcp/enabled" {

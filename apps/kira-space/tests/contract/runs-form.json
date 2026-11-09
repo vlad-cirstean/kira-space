@@ -75,6 +75,28 @@
     "file": "ship.yaml",
     "text": "# Ship the build.\nname: Ship # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: \"0 9 * * *\"\ncommand: echo ship\ncolor: blue\ncollection: Ops\n"
   },
+  "args:CustomScriptsService.Form#mcpLong": {
+    "edits": [
+      {
+        "path": [
+          "mcp",
+          "enabled"
+        ],
+        "unset": false,
+        "value": true
+      },
+      {
+        "path": [
+          "mcp",
+          "mode"
+        ],
+        "unset": false,
+        "value": "long"
+      }
+    ],
+    "file": "ship.yaml",
+    "text": "# Ship the build.\nname: Ship # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: \"0 9 * * *\"\ncommand: echo ship\ncolor: blue\ncollection: Ops\n"
+  },
   "args:CustomScriptsService.Form#read": {
     "edits": [],
     "file": "ship.yaml",
@@ -182,6 +204,35 @@
       "path": "/mcp/run"
     },
     "text": "# Ship the build.\nname: Ship # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: \"0 9 * * *\"\ncommand: echo ship\ncolor: blue\ncollection: Ops\nmcp:\n  enabled: true\n  run: always\n",
+    "value": null
+  },
+  "form#mcpLong": {
+    "problem": null,
+    "text": "# Ship the build.\nname: Ship # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: \"0 9 * * *\"\ncommand: echo ship\ncolor: blue\ncollection: Ops\nmcp:\n  enabled: true\n  mode: long\n",
+    "value": {
+      "collection": "Ops",
+      "color": "blue",
+      "command": "echo ship",
+      "mcp": {
+        "enabled": true,
+        "mode": "long"
+      },
+      "name": "Ship",
+      "schedule": {
+        "confirm": false,
+        "cron": "0 9 * * *",
+        "enabled": false
+      }
+    }
+  },
+  "form#mcpModeInvalid": {
+    "problem": {
+      "col": 3,
+      "line": 12,
+      "message": "mcp.mode must be one of \"short\", \"long\".",
+      "path": "/mcp/mode"
+    },
+    "text": "# Ship the build.\nname: Ship # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: \"0 9 * * *\"\ncommand: echo ship\ncolor: blue\ncollection: Ops\nmcp:\n  enabled: true\n  mode: forever\n",
     "value": null
   },
   "form#read": {
