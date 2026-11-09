@@ -32,11 +32,11 @@ export function useReviewSync(target: () => ReviewWindowTarget) {
     }),
   );
 
-  const settled = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: reviewSyncOptions(target().branchId).queryKey }),
-      queryClient.invalidateQueries({ queryKey: ['changeRequestReviewState'] }),
-    ]);
+  // Not awaited: the action is done when the call returns, the re-reads follow.
+  const settled = () => {
+    void queryClient.invalidateQueries({ queryKey: reviewSyncOptions(target().branchId).queryKey });
+    void queryClient.invalidateQueries({ queryKey: ['changeRequestReviewState'] });
+  };
   const fetch = useMutation({
     mutationFn: async () => {
       const res = await control.adeTaskReviewFetch({ branchId: target().branchId });

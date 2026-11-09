@@ -102,8 +102,12 @@ reviewTest('fetch shows pending and then a failure message', async ({ relaunch }
   expect(calls(mock, IPC.adeTaskReviewFetch).map((c) => c.args)).toContainEqual({
     branchId: target.branchId,
   });
-  mock.respond(IPC.adeTaskReviewFetch, fetchError);
   mock.release(IPC.adeTaskReviewFetch);
+  await expect(fetch).not.toHaveAttribute('aria-busy', 'true');
+  await expect(page.locator(t('ade-review-sync-error'))).toHaveCount(0);
+
+  mock.respond(IPC.adeTaskReviewFetch, fetchError);
+  await fetch.click();
   await expect(page.locator(t('ade-review-sync-error'))).toContainText(
     'does not appear to be a git repository',
   );
