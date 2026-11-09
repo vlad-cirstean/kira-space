@@ -311,7 +311,13 @@ func (s *Service) sharedProblem(module, file string, data []byte) string {
 			return i18n.T("backend.space.configSync.gate.invalid.body", map[string]string{"message": msg})
 		}
 	}
-	return credentialProblem(data, md)
+	if msg := credentialProblem(data, md); msg != "" {
+		return msg
+	}
+	if module == "repos" {
+		return scriptCredentialProblem(data)
+	}
+	return ""
 }
 
 func (s *Service) unsetSecrets(module, text string) []string {

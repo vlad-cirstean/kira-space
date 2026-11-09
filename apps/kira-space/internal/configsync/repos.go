@@ -5,15 +5,18 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/credshape"
 	"github.com/kirathecat/kira-studio/internal/gitremote"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -118,7 +121,7 @@ func applyRepoEntries(src []byte, theirs entrySet, take []string) ([]byte, error
 	var sets []configfs.NodeSet
 	setOrUnset := func(id string, path ...string) {
 		v, ok := theirs.raw[id]
-		sets = append(sets, configfs.NodeSet{Path: path, Value: v, Unset: !ok})
+		sets = append(sets, configfs.NodeSet{Path: path, Value: ordered(v), Unset: !ok})
 	}
 	envTake := map[string]bool{}
 	for _, id := range take {
@@ -127,7 +130,7 @@ func applyRepoEntries(src []byte, theirs entrySet, take []string) ([]byte, error
 			prep, _ := theirs.raw[id].(map[string]any)
 			for _, k := range []string{"prepare_script", "prepare_run"} {
 				v, ok := prep[k]
-				sets = append(sets, configfs.NodeSet{Path: []string{"worktree", k}, Value: v, Unset: !ok})
+				sets = append(sets, configfs.NodeSet{Path: []string{"worktree", k}, Value: ordered(v), Unset: !ok})
 			}
 		case id == "worktree/prepare_timeout":
 			setOrUnset(id, "worktree", "prepare_timeout")
@@ -159,16 +162,16 @@ func mergeEnvironments(src []byte, theirs entrySet, take map[string]bool) []any 
 		name, _ := e["name"].(string)
 		local[name] = true
 		if !take[name] {
-			out = append(out, e)
+			out = append(out, ordered(e))
 			continue
 		}
 		if v, ok := theirs.raw["environments/"+name]; ok {
-			out = append(out, v)
+			out = append(out, ordered(v))
 		}
 	}
 	for _, name := range theirs.order {
 		if v, ok := theirs.raw["environments/"+name]; ok && take[name] && !local[name] {
-			out = append(out, v)
+			out = append(out, ordered(v))
 		}
 	}
 	return out
@@ -492,4 +495,125 @@ func (s *Service) stageRepoBase(p *plan, next string) error {
 		}
 	}
 	return nil
+}
+
+// scriptCredentialProblem finds a credential embedded in a word of a string value, such as a token
+// pasted into a script. credentialProblem only sees values that are a credential on their own. Pure
+// hex words pass: commit ids are common in scripts. The message names the line and field.
+func scriptCredentialProblem(text []byte) string {
+	var doc yaml.Node
+	if yaml.Unmarshal(text, &doc) != nil {
+		return ""
+	}
+	if line, path, hit := scanWords(&doc, nil); hit {
+		return literalCredentialMessage(line, path)
+	}
+	return ""
+}
+
+func scanWords(n *yaml.Node, path []string) (line int, at []string, hit bool) {
+	switch n.Kind {
+	case yaml.DocumentNode, yaml.SequenceNode, yaml.MappingNode:
+		for i, c := range n.Content {
+			child := path
+			switch {
+			case n.Kind == yaml.MappingNode && i%2 == 0:
+				continue
+			case n.Kind == yaml.MappingNode:
+				child = append(append([]string(nil), path...), n.Content[i-1].Value)
+			case n.Kind == yaml.SequenceNode:
+				child = append(append([]string(nil), path...), strconv.Itoa(i))
+			}
+			if l, p, h := scanWords(c, child); h {
+				return l, p, true
+			}
+		}
+	case yaml.ScalarNode:
+		if n.Tag == "!!str" && wordsHoldCredential(n.Value) {
+			return n.Line, path, true
+		}
+	}
+	return 0, nil, false
+}
+
+func wordsHoldCredential(s string) bool {
+	for _, w := range strings.Fields(s) {
+		if strings.Contains(w, "${") {
+			continue
+		}
+		if uriPassword.MatchString(strings.Trim(w, "\"'")) {
+			return true
+		}
+		for _, p := range strings.FieldsFunc(w, func(r rune) bool { return strings.ContainsRune("\"'=:;,()[]{}<>|&", r) }) {
+			if p != "" && !isHex(p) && credshape.Value(p) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// keyMap renders a decoded mapping with name and script first, then the other keys sorted, so an
+// entry written into a local file reads like one a person wrote.
+type keyMap map[string]any
+
+func (m keyMap) MarshalJSON() ([]byte, error) {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	rank := func(k string) int {
+		switch k {
+		case "name":
+			return 0
+		case "script":
+			return 1
+		}
+		return 2
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if ri, rj := rank(keys[i]), rank(keys[j]); ri != rj {
+			return ri < rj
+		}
+		return keys[i] < keys[j]
+	})
+	var b bytes.Buffer
+	b.WriteByte('{')
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		kb, err := json.Marshal(k)
+		if err != nil {
+			return nil, err
+		}
+		vb, err := json.Marshal(m[k])
+		if err != nil {
+			return nil, err
+		}
+		b.Write(kb)
+		b.WriteByte(':')
+		b.Write(vb)
+	}
+	b.WriteByte('}')
+	return b.Bytes(), nil
+}
+
+// ordered wraps every mapping inside v in a keyMap.
+func ordered(v any) any {
+	switch x := v.(type) {
+	case map[string]any:
+		out := make(keyMap, len(x))
+		for k, e := range x {
+			out[k] = ordered(e)
+		}
+		return out
+	case []any:
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = ordered(e)
+		}
+		return out
+	}
+	return v
 }
