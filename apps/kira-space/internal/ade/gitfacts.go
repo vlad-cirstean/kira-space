@@ -203,6 +203,35 @@ func findRemoteRow(inventory []porcelain.InventoryRef, remote, short string) (po
 	return porcelain.InventoryRef{}, false
 }
 
+// remoteTwin is a local row's remote counterpart and the commit counts against it: the tracked
+// upstream row with git's own counts, else the default remote's branch of the same short name with
+// counts from AheadBehind. ok is false when there is none, or the tracked upstream is gone.
+func remoteTwin(ctx context.Context, entry *gitsession.RepoEntry, inv []porcelain.InventoryRef, row porcelain.InventoryRef, defaultRemote string) (twin porcelain.InventoryRef, ahead, behind int, ok bool, err error) {
+	if row.Upstream != "" {
+		if row.UpstreamGone {
+			return porcelain.InventoryRef{}, 0, 0, false, nil
+		}
+		for _, r := range inv {
+			if r.Ref == row.Upstream {
+				return r, row.UpstreamAhead, row.UpstreamBehind, true, nil
+			}
+		}
+		return porcelain.InventoryRef{}, 0, 0, false, nil
+	}
+	if defaultRemote == "" {
+		return porcelain.InventoryRef{}, 0, 0, false, nil
+	}
+	twin, found := findRemoteRow(inv, defaultRemote, row.Short)
+	if !found {
+		return porcelain.InventoryRef{}, 0, 0, false, nil
+	}
+	ahead, behind, err = entry.AheadBehind(ctx, row.Tip, twin.Tip)
+	if err != nil {
+		return porcelain.InventoryRef{}, 0, 0, false, err
+	}
+	return twin, ahead, behind, true, nil
+}
+
 // rangeFacts is the (parentTip, tip)-keyed LRU cache (§4.2's own 512-entry bound) around
 // ahead/behind/files — the one git-cost-bearing step the TaskBoard
 // repeats often enough (every board build, every branch) to be worth caching on immutable object ids.

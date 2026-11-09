@@ -374,18 +374,14 @@ func (b *TaskBoard) computeBranch(ctx context.Context, sc *boardCtx, sb model.Ad
 // fillUpstream sets the tracked upstream, falling back to a same-named remote branch.
 func (sc *boardCtx) fillUpstream(ctx context.Context, wb *adewire.Branch, sb model.AdeTaskBranch, row porcelain.InventoryRef) error {
 	wb.Upstream, wb.UpstreamAhead, wb.UpstreamBehind = row.Upstream, row.UpstreamAhead, row.UpstreamBehind
-	if row.Upstream != "" || sc.remote == "" {
+	if row.Upstream != "" {
 		return nil
 	}
-	remoteRow, found := findRemoteRow(sc.inv, sc.remote, sb.Name)
-	if !found {
-		return nil
-	}
-	ahead, behind, err := sc.entry.AheadBehind(ctx, row.Tip, remoteRow.Tip)
-	if err != nil {
+	twin, ahead, behind, ok, err := remoteTwin(ctx, sc.entry, sc.inv, row, sc.remote)
+	if err != nil || !ok {
 		return err
 	}
-	wb.Upstream, wb.UpstreamAhead, wb.UpstreamBehind = remoteRow.Ref, ahead, behind
+	wb.Upstream, wb.UpstreamAhead, wb.UpstreamBehind = twin.Ref, ahead, behind
 	return nil
 }
 
