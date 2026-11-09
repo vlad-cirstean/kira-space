@@ -7,7 +7,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 | P580 | Database MCP `api_request`: per-host and per-method rules with wildcards | Done |
 | P581 | Review tool: diff against target branch like a source control app, fetch buttons | Done |
 | P582 | Handovers: select and copy text | Done |
-| P583 | Agent worktree: work on an already existing branch | Planned |
+| P583 | Agent worktree: work on an already existing branch | Done |
 | P584 | Shared config: readable YAML file names and step names | Done |
 | P585 | Shared config: share repos by origin, with prepare-worktree configs | Done |
 | P586 | Task panel Details: open links externally | Planned |
@@ -62,6 +62,15 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 - UI (user): a task's branch row shows the branch name, never `HEAD`. When two tasks use the same branch, the row shows that. A worktree whose branch was detached away shows a detached icon; hover names the task and worktree where the branch is attached now. Attached versus detached must be visible at a glance.
 - Context: `request_branches` and `ensureWorktree` (`docs/ARCHITECTURE.md` "Branch requests"), `internal/gitops` worktree add, `internal/gitpreflight`.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+- Result: Plan `plans/P583.md`. `request_branches` entry `existing: true` (outcome `checkedOut`) checks out a branch that exists in git. Item kinds `checkout` and `adopt`; adopt detaches the holder (task, main or other worktree) after user approval, then checks out. Migration 0094 `ade_task_branches.adopted`; unique live-name index now `AND adopted = 0`. Donor-busy and in-progress git operation refuse before the prompt and at apply; dirty holder files only warn. Undo on failure restores the donor. Ownership fix first: a row's worktree is its own folder (`rowWorktree`), so archive, rebase, automation and `ensureWorktree` no longer follow the branch name into another task's folder; `ensureWorktree` reattaches a detached own folder. Board: `Branch.detached` and `Branch.shared`; rows keep the stored name, with detached and shared glyphs in the Plan and Main tab. Flow test `TestBranchAdopt` (contract `ade-branch-adopt`), UI spec `ade-v2-branch-adopt.spec.ts`. Docs: ARCHITECTURE "Shared branches and detached worktrees (P583)".
+  - Deviations from plan:
+    - `SetBranchNameShared(id, name, adopted)` replaces the planned adopt-name helper, so a draft row is named and flagged in one write and undo can clear it.
+    - No extra review-task check: `spaceWritable` already refuses.
+    - `ensureWorktree` cannot run under the repo mutex, so `takeLocked` holds it for detach and row steps only.
+    - Copy catalog keys renamed for rules C-depth and period: `item.checkout.label`, `item.adopt.label`, `item.adoptMain.label`, `detachedTask.tooltip` (and `detachedMain`, `detachedOther`, `detachedNone`), `shared.tooltip`, `dirty.hint`, `mainCheckout.hint`.
+    - Shared glyph shows only while the row has a worktree. Reserved-name refusal reads "belongs to the repo itself". `branchInfo` with no worktree says to call `request_branches` with `existing: true`.
+    - UI spec asserts the glyph tooltip text through its `aria-label` (same string); hover tooltip collided with the row tooltip.
+    - Adopt dialog item has no separate holder line; the holder sits in the item label. The holder test id element holds only dirty and main-checkout hints.
 
 ## P584 Shared config: readable YAML file names and step names
 
