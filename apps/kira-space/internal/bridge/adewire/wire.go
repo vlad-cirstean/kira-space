@@ -521,9 +521,33 @@ type Task struct {
 	ParentArchived bool   `json:"parentArchived,omitempty"`
 }
 
+// BranchHolder says where a branch is checked out. Kind 'task': the own worktree of a live task row
+// (TaskID, BranchID); 'main': the repo's main checkout; 'other': any other worktree; 'none': nowhere.
+type BranchHolder struct {
+	Kind     string `json:"kind"`
+	TaskID   string `json:"taskId"`
+	BranchID string `json:"branchId"`
+	Worktree string `json:"worktree"`
+}
+
+// BranchDetached marks a row whose own worktree folder is left on a detached commit because its branch
+// is checked out elsewhere (or nowhere) now.
+type BranchDetached struct {
+	Worktree string       `json:"worktree"`
+	Holder   BranchHolder `json:"holder"`
+}
+
+// BranchPeer is another live row of the same repo and branch name.
+type BranchPeer struct {
+	TaskID   string `json:"taskId"`
+	BranchID string `json:"branchId"`
+	Attached bool   `json:"attached"`
+}
+
 // BranchRequestItem is one branch an agent asks work for. ID is the item's key in the request. Kind 'branch':
 // a new branch named Branch from Base (” = the repo's main branch). Kind 'worktree': a worktree for the named,
-// not yet checked out Branch. Kind 'rename': rename From to Branch; Upstream names the same-named remote branch
+// not yet checked out Branch. Kind 'checkout': check out the existing Branch, held nowhere. Kind 'adopt':
+// check out the existing Branch after detaching it in Holder; Dirty counts the uncommitted changes that stay there. Kind 'rename': rename From to Branch; Upstream names the same-named remote branch
 // (such as origin/feat/x) the user may rename too, ” when there is none; Stacked lists the branches built on From.
 type BranchRequestItem struct {
 	ID         string   `json:"id"`
@@ -540,6 +564,10 @@ type BranchRequestItem struct {
 	Source   string `json:"source"`
 	StepName string `json:"stepName"`
 	Session  string `json:"session"`
+	// Holder and Dirty describe an 'adopt' item: where the branch is checked out now and how many
+	// uncommitted changes stay in that worktree.
+	Holder *BranchHolder `json:"holder,omitempty"`
+	Dirty  int           `json:"dirty,omitempty"`
 }
 
 // BranchRequest is a task's open request for branches and worktrees, merged from the agent's concurrent

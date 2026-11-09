@@ -942,13 +942,14 @@ var _ = arg(HeadlessToolDeclareRepos.id, "repos", spaceApp, NextCall,
 // HeadlessToolRequestBranches describes the request_branches tool.
 var HeadlessToolRequestBranches = define(Entry{
 	ID: "headless.tool.request_branches", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "request_branches",
-	Default: `Ask the user to approve branches and worktrees, all in one call; waits for the answer. You name each branch; Kira Space picks the folder. A repo may get several branches. Approval adds a registered repo missing from the task. Per branch: created, existing, denied, failed or timeout. A new worktree may still be preparing; task_info with repo and branch shows it.`,
+	Default: `Ask the user to approve branches and worktrees, all in one call; waits for the answer. You name each branch; Kira Space picks the folder. A repo may get several branches. Approval adds a registered repo missing from the task. With existing: true, checks out a branch that exists; if another worktree holds it, the user approves detaching it there. Per branch: created, checkedOut, existing, denied, failed or timeout. A new worktree may still be preparing; task_info with repo and branch shows it.`,
 }, NoVars{})
 
 var (
 	_ = arg(HeadlessToolRequestBranches.id, "branches", spaceApp, NextCall, `Branches, 1 to {{.Max}}.`, MaxVars{Max: 20})
 	_ = arg(HeadlessToolRequestBranches.id, "branches.repo", spaceApp, NextCall, `Repo: nickname, name or code repo id, from task_info.`, NoVars{})
-	_ = arg(HeadlessToolRequestBranches.id, "branches.branch", spaceApp, NextCall, `New branch name, such as feat/login-form. Must not exist yet.`, NoVars{})
+	_ = arg(HeadlessToolRequestBranches.id, "branches.branch", spaceApp, NextCall, `Branch name, such as feat/login-form. New unless existing is true.`, NoVars{})
+	_ = arg(HeadlessToolRequestBranches.id, "branches.existing", spaceApp, NextCall, `true: work on this existing branch instead of creating it. No base.`, NoVars{})
 	_ = arg(HeadlessToolRequestBranches.id, "branches.base", spaceApp, NextCall, `Existing branch to start from, such as main or feat/api: short name, origin checked first. A branch of a task stacks on it. Omit for main.`, NoVars{})
 )
 

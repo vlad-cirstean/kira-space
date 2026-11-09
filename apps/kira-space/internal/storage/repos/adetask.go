@@ -1172,19 +1172,23 @@ func (r *AdeTaskRepo) SetBranchName(id, name string) error {
 	return nil
 }
 
-// AdoptBranchName records name on a not-created row that shares it with the live owner row
-// (adopted = 1), in one statement so the live-name index never sees the row as an owner.
-func (r *AdeTaskRepo) AdoptBranchName(id, name string) error {
+// SetBranchNameShared sets the name and the adopted flag of a row in one statement, so the live-name
+// index never sees a row that shares a name as its owner. adopted = true marks a row that shares name with
+// the live owner row; "" and false undo it.
+func (r *AdeTaskRepo) SetBranchNameShared(id, name string, adopted bool) error {
 	bc := kiraschema.AdeTaskBranches
 	ub := r.Dialect.Update(bc.Table)
-	ub.Set(ub.Assign(bc.Name, name), ub.Assign(bc.Adopted, 1)).Where(ub.Equal(bc.ID, id))
+	ub.Set(ub.Assign(bc.Name, name), ub.Assign(bc.Adopted, boolInt(adopted))).Where(ub.Equal(bc.ID, id))
 	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
-		return fmt.Errorf("repos: adopt ade branch name %s: %w", id, err)
+		if isUniqueViolation(err) {
+			return ErrBranchNameTaken
+		}
+		return fmt.Errorf("repos: set shared ade branch name %s: %w", id, err)
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("repos: adopt ade branch name %s: %w", id, err)
+		return fmt.Errorf("repos: set shared ade branch name %s: %w", id, err)
 	}
 	if n == 0 {
 		return ErrBranchMissing
