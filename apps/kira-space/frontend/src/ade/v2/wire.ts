@@ -239,19 +239,19 @@ export interface ChangeRequest {
   checksState: string;
 }
 /** Where a branch is checked out: another task's worktree, the main checkout, any other worktree, or nowhere. */
-export interface BranchHolder {
+interface BranchHolder {
   kind: 'task' | 'main' | 'other' | 'none';
   taskId: string;
   branchId: string;
   worktree: string;
 }
 /** The row's own worktree folder is left on a detached commit; the branch is checked out elsewhere now. */
-export interface BranchDetached {
+interface BranchDetached {
   worktree: string;
   holder: BranchHolder;
 }
 /** Another live row of the same repo and branch name. */
-export interface BranchPeer {
+interface BranchPeer {
   taskId: string;
   branchId: string;
   attached: boolean;
