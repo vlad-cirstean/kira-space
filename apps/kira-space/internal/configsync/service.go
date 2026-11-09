@@ -151,6 +151,13 @@ type Service struct {
 
 	fetchMu sync.Mutex
 
+	// refreshMu guards the coalescing flags of RefreshAsync.
+	refreshMu     sync.Mutex
+	refreshing    bool
+	refreshQueued bool
+	// refreshRun is one refresh pass; a field so a test can count passes.
+	refreshRun func()
+
 	timerMu sync.Mutex
 	timer   *time.Timer
 	bo      *backoff.ExponentialBackOff
@@ -171,10 +178,12 @@ func New(o Options) *Service {
 		o.StartDelay = defaultStartLag
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Service{
+	s := &Service{
 		o: o, ctx: ctx, cancel: cancel, counts: map[string]moduleCount{}, sessions: map[string]*session{},
 		mirror: &mirror{dir: filepath.Join(syncDir(o.Home), mirrorDir), runner: o.Runner, gitPath: o.GitPath},
 	}
+	s.refreshRun = s.refreshOnce
+	return s
 }
 
 func (s *Service) now() time.Time { return s.o.Now() }
@@ -512,22 +521,49 @@ func (s *Service) RefreshAsync() {
 	if s == nil {
 		return
 	}
-	go func() {
-		s.opMu.Lock()
-		defer s.opMu.Unlock()
-		if s.ctx.Err() != nil {
+	s.refreshMu.Lock()
+	defer s.refreshMu.Unlock()
+	if s.refreshing {
+		s.refreshQueued = true
+		return
+	}
+	s.refreshing = true
+	go s.refreshLoop()
+}
+
+// refreshLoop runs one refresh per burst: calls that arrive while one runs collapse into a single
+// follow-up, so a bulk change costs at most two plans, not one per call.
+func (s *Service) refreshLoop() {
+	for {
+		s.refreshMu.Lock()
+		s.refreshQueued = false
+		s.refreshMu.Unlock()
+		s.refreshRun()
+		s.refreshMu.Lock()
+		if !s.refreshQueued {
+			s.refreshing = false
+			s.refreshMu.Unlock()
 			return
 		}
-		s.mu.Lock()
-		_ = s.load()
-		configured := s.set.Repo != nil
-		s.mu.Unlock()
-		if !configured || s.checkJournal() {
-			return
-		}
-		s.refreshLocked(s.ctx)
-		s.emit()
-	}()
+		s.refreshMu.Unlock()
+	}
+}
+
+func (s *Service) refreshOnce() {
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
+	if s.ctx.Err() != nil {
+		return
+	}
+	s.mu.Lock()
+	_ = s.load()
+	configured := s.set.Repo != nil
+	s.mu.Unlock()
+	if !configured || s.checkJournal() {
+		return
+	}
+	s.refreshLocked(s.ctx)
+	s.emit()
 }
 
 // RepoSharedText is the shared repos file of repoID: its origin as an https URL plus the shared keys
