@@ -9,7 +9,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 | P582 | Handovers: select and copy text | Done |
 | P583 | Agent worktree: work on an already existing branch | Planned |
 | P584 | Shared config: readable YAML file names and step names | Done |
-| P585 | Shared config: share repos by origin, with prepare-worktree configs | Planned |
+| P585 | Shared config: share repos by origin, with prepare-worktree configs | Done |
 | P586 | Task panel Details: open links externally | Planned |
 | P587 | Database MCP script runner: per-script short or long running | Planned |
 
@@ -75,6 +75,7 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 - Ask (user): repos cannot be shared. They could be shared by carrying the origin URL. The `worktree` prepare config (`prepare_script`, `prepare_run`, `prepare_timeout`) is the valuable part to share.
 - Context: `docs/ARCHITECTURE.md` "Config sync (P554)" says `repos` is never syncable (files keyed by local path; worktree prepare script must never come from a repo). This phase changes that rule: key shared repo entries by normalized origin URL, map to local registered repos by origin, share only these keys: `worktree` (`prepare_script`, `prepare_run`, `prepare_timeout`), `integration_branches`, `environments`, `review.base_candidates`. `path`, `base_path`, `nickname` and the git preference keys (`graph`, `stash`, `pull`, `git_host`, `checkout`) stay local. A repo with no origin or several origins does not sync. Planner decides the exact key set, the credential and trust gate, the command-running badge and review (as for runs, steps, workflows), and updates the architecture doc rule.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+- Result: Plan `plans/P585.md`. New module `repos` in config sync, entry-level, modes local and combined, keyed by normalized origin (`internal/gitremote`, moved from `memory.NormalizeRemote`). Shared decoder in `repocfg/shared.go`, `RepoFiles` seam implemented in `appwire/configsync_repos.go`, per-target merge base, `unmatched` row kind, Runs commands badge on `worktree/prepare` and `environments/*`, target fingerprint checked at Apply, `Repos.Reload()` after commit, `RefreshAsync` on repo import, `RepoSharedText` bound plus Copy for shared config button. Flow `TestConfigSyncRepos` (contract `config-sync-repos`), UI `config-sync-repos.spec.ts`, unit `repos_test.go`. Ran: Go configsync, gitremote, memory, configsyncflow, repoflow, all flows, conventiontest; UI `config-sync`, `config-sync-repos`, `repo-config-file` (16 pass); `config-sync.json` unchanged. Deviations: labels "Repository settings" and "No local repository" (catalog lint C5, not "repo"); flow step 7 deactivates never-applied `environments/qa` (deactivating an applied entry is a delete verdict); added script credential word scan (`credentialProblem` only caught whole values); `wireAdeTask` gained an `onReposChanged` param; `RepoFiles` gained `SharedText`; `NewFile` and shared schema live in `shared.go`, not `schema.go`; fixed pre-existing G3 slog scope in `storage/repos/settings.go`.
 
 ## P586 Task panel Details: open links externally
 
