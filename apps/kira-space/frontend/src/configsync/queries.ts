@@ -63,6 +63,11 @@ export function useConfigSyncMutations() {
   };
 }
 
+// The shared repos file of one repository, for the repo settings pane to copy.
+export function useRepoSharedText() {
+  return useMutation({ mutationFn: (path: string) => control.configSyncRepoSharedText(path) });
+}
+
 // A preview is single use and time limited, so it never counts as fresh.
 export function useConfigSyncPreview(enabled: () => boolean) {
   return useQuery({

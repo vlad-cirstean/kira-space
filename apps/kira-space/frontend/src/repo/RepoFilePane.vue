@@ -3,6 +3,8 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { useCopy } from '@workbench/behaviour/clipboard';
+import { errorText } from '@workbench/bridge/codedError';
 import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
@@ -10,6 +12,7 @@ import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue';
 import { control } from '../bridge/control';
+import { useRepoSharedText } from '../configsync/queries';
 import RepoConfigForm from './RepoConfigForm.vue';
 import { useRepoConfigFile, useSaveRepoConfigFile } from './state/repoConfigQueries';
 import { REPO_FIELDS, REPO_FORM_POINTERS } from './state/repoFields';
@@ -27,6 +30,13 @@ const FOLDER = 'repos';
 const query = useRepoConfigFile(() => ({ path: props.path, file: props.file ?? '' }));
 const save = useSaveRepoConfigFile();
 const view = computed(() => query.data.value);
+// The shared repos file of this repo, for a shared config repository: origin plus the shared keys.
+const sharedText = useRepoSharedText();
+const { copy: copyShared } = useCopy();
+async function onCopyShared(): Promise<void> {
+  const text = await sharedText.mutateAsync(props.path);
+  await copyShared(text);
+}
 const creating = computed(() => view.value !== undefined && !view.value.exists);
 const applyForm = useRepoForm(() => view.value?.file ?? props.file ?? '');
 
@@ -142,6 +152,16 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
         <Button
           variant="dialog"
           size="kira-lg"
+          class="mr-auto"
+          :pending="sharedText.isPending.value"
+          data-testid="repo-file-copy-shared"
+          @click="onCopyShared"
+        >
+          {{ t('space.repo.settingsFile.copyShared.label') }}
+        </Button>
+        <Button
+          variant="dialog"
+          size="kira-lg"
           :disabled="!draft.dirty.value"
           data-testid="repo-file-discard"
           @click="draft.discard"
@@ -160,6 +180,9 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
         </Button>
       </div>
     </template>
+    <Alert v-if="sharedText.error.value" variant="error" data-testid="repo-file-copy-shared-error">
+      <AlertDescription>{{ errorText(sharedText.error.value) }}</AlertDescription>
+    </Alert>
     <Alert v-if="draft.saveError.value" variant="error" data-testid="repo-file-save-error">
       <AlertDescription>{{ draft.saveError.value }}</AlertDescription>
       <AlertAction v-if="draft.conflict.value">

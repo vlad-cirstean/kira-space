@@ -11465,6 +11465,9 @@
       "kind": {
         "modify": {
           "label": "Modify"
+        },
+        "unmatched": {
+          "label": "No local repository"
         }
       },
       "row": {
@@ -12057,6 +12060,9 @@
         }
       },
       "settingsFile": {
+        "copyShared": {
+          "label": "Copy for shared config"
+        },
         "create": {
           "label": "Create settings file"
         },

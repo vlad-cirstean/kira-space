@@ -98,6 +98,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   configSyncPreview: 'ConfigSyncService.Preview',
   configSyncApply: 'ConfigSyncService.Apply',
   configSyncDismiss: 'ConfigSyncService.Dismiss',
+  configSyncRepoSharedText: 'ConfigSyncService.RepoSharedText',
   configSyncOpenReview: 'ConfigSyncService.OpenReview',
   configSyncCloseReview: 'ConfigSyncService.CloseReview',
   configSyncIsReviewWindow: 'ConfigSyncService.IsReviewWindow',

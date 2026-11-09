@@ -445,6 +445,8 @@ const spaceControl = {
     ),
   configSyncDismiss: (sha: string): Promise<ConfigSyncStatus> =>
     unwrap(ConfigSyncService.Dismiss({ sha })).then((r) => trust<ConfigSyncStatus>(r)),
+  configSyncRepoSharedText: (path: string): Promise<string> =>
+    unwrap(ConfigSyncService.RepoSharedText({ path })).then((r) => trust<string>(r)),
   configSyncOpenReview: (): Promise<void> => unwrap(ConfigSyncService.OpenReview()),
   configSyncCloseReview: (): Promise<void> => unwrap(ConfigSyncService.CloseReview()),
   configSyncIsReviewWindow: (args: { windowKey: string }): Promise<boolean> =>

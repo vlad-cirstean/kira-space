@@ -198,6 +198,7 @@ export const IPC = {
   configSyncPreview: 'kira:configSync:preview',
   configSyncApply: 'kira:configSync:apply',
   configSyncDismiss: 'kira:configSync:dismiss',
+  configSyncRepoSharedText: 'kira:configSync:repoSharedText',
   configSyncOpenReview: 'kira:configSync:openReview',
   configSyncCloseReview: 'kira:configSync:closeReview',
   configSyncIsReviewWindow: 'kira:configSync:isReviewWindow',

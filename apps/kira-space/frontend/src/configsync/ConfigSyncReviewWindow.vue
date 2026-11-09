@@ -5,7 +5,7 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { type MessageKey, t } from '@theme/i18n';
+import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import Identifier from '@workbench/components/Identifier.vue';
@@ -15,22 +15,12 @@ import { computed, reactive, ref } from 'vue';
 import { control } from '../bridge/control';
 import ConfigSyncUnitRow from './ConfigSyncUnitRow.vue';
 import type { ConfigSyncChoice, ConfigSyncRow } from './domain';
-import { unitKey } from './domain';
+import { MODULE_LABEL, unitKey } from './domain';
 import { useConfigSyncMutations, useConfigSyncPreview } from './queries';
 
 // Preview of the fetched commit. Pull sends the conflict choices with the single-use token.
 const preview = useConfigSyncPreview(() => true);
 const { apply, setDeactivated } = useConfigSyncMutations();
-
-const MODULE_LABEL: Record<string, MessageKey> = {
-  connections: 'common.module.connections.label',
-  api: 'space.settings.configSync.module.api.label',
-  runs: 'space.settings.configSync.module.runs.label',
-  workflows: 'space.settings.configSync.module.workflows.label',
-  steps: 'space.settings.configSync.module.steps.label',
-  agent: 'space.settings.configSync.module.agent.label',
-  prompts: 'space.settings.configSync.module.prompts.label',
-};
 
 const choices = reactive<Record<string, ConfigSyncChoice>>({});
 const selectedId = ref('');
@@ -54,9 +44,9 @@ const selected = computed(() => rows.value.find((r) => r.id === selectedId.value
 const diff = computed(() => {
   const row = selected.value;
   if (!row) return null;
-  return (
-    preview.data.value?.files.find((f) => f.module === row.module && f.file === row.file) ?? null
-  );
+  // A repos row's diff is its target file, not the shared file.
+  const file = row.target ?? row.file;
+  return preview.data.value?.files.find((f) => f.module === row.module && f.file === file) ?? null;
 });
 const language = computed<EditorLanguageId>(() => {
   const file = selected.value?.file ?? '';

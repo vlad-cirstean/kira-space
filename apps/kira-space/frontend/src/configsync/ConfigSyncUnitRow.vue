@@ -27,6 +27,7 @@ const KIND_LABEL: Record<ConfigSyncKind, MessageKey> = {
   conflict: 'space.ade.board.branchTag.conflict.label',
   blocked: 'space.common.status.blocked.status',
   unchanged: 'studio.http.diff.unchangedRow.status',
+  unmatched: 'space.configSync.kind.unmatched.label',
 };
 const KIND_TONE: Record<ConfigSyncKind, 'ok' | 'info' | 'warn' | 'error' | 'default'> = {
   add: 'ok',
@@ -35,10 +36,13 @@ const KIND_TONE: Record<ConfigSyncKind, 'ok' | 'info' | 'warn' | 'error' | 'defa
   conflict: 'warn',
   blocked: 'error',
   unchanged: 'default',
+  unmatched: 'default',
 };
 
 const switchId = useId();
 const label = computed(() => unitKey(props.row));
+// A repos unit shows its repository, or the origin when no repository matched.
+const repoLine = computed(() => props.row.repo || props.row.origin || '');
 </script>
 
 <template>
@@ -64,6 +68,13 @@ const label = computed(() => unitKey(props.row));
         </Badge>
       </span>
       <span
+        v-if="repoLine"
+        class="truncate font-data text-kira-sm text-muted-foreground"
+        :data-testid="`config-sync-row-repo-${row.id}`"
+      >
+        {{ repoLine }}
+      </span>
+      <span
         v-if="row.problem"
         class="text-kira-sm text-error"
         :data-testid="`config-sync-row-problem-${row.id}`"
@@ -85,7 +96,7 @@ const label = computed(() => unitKey(props.row));
         <option value="mine">{{ t('space.configSync.row.mine.option') }}</option>
         <option value="shared">{{ t('space.configSync.row.shared.option') }}</option>
       </NativeSelect>
-      <span class="ml-auto flex items-center gap-1.5">
+      <span v-if="row.kind !== 'unmatched'" class="ml-auto flex items-center gap-1.5">
         <Label :for="switchId" class="text-kira-sm text-muted-foreground">
           {{ t('space.configSync.row.deactivate.label') }}
         </Label>
