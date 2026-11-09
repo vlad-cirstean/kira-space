@@ -665,63 +665,80 @@ func (r *Reader) migrateInlineIDs(bk *backupper, skipped *int) int {
 		if !de.Type().IsRegular() || !fileNamePattern.MatchString(file) {
 			continue
 		}
-		p := filepath.Join(r.Dir, file)
-		src, err := configfs.ReadCapped(p, configfs.MaxFileBytes)
-		if err != nil {
-			slog.Warn("ade names migration: read", "scope", "ade", "file", file, "err", err)
+		n, ok := r.migrateInlineIDsFile(bk, file)
+		if !ok {
 			*skipped++
 			continue
 		}
-		var doc yaml.Node
-		if err := yaml.Unmarshal(src, &doc); err != nil {
-			slog.Warn("ade names migration: workflow skipped, YAML error", "scope", "ade", "file", file)
-			*skipped++
-			continue
-		}
-		root := docRoot(&doc)
-		items := stepItems(root)
-		taken := map[string]bool{}
-		for _, it := range items {
-			taken[itemID(it)] = true
-		}
-		changed := 0
-		for _, it := range items {
-			_, idn := find(it, "id")
-			if idn == nil || idn.Kind != yaml.ScalarNode || !legacyStepID.MatchString(strings.TrimSpace(idn.Value)) {
-				continue
-			}
-			old := strings.TrimSpace(idn.Value)
-			name := ""
-			if _, n := find(it, "name"); n != nil && n.Kind == yaml.ScalarNode {
-				name = n.Value
-			} else if _, s := find(it, "step"); s != nil && s.Kind == yaml.ScalarNode {
-				name = s.Value
-			}
-			fresh := freeStem(slug(name, "step"), func(s string) bool { return reservedStepIDs[s] || taken[s] })
-			if renameStepID(root, old, fresh) {
-				delete(taken, old)
-				taken[fresh] = true
-				changed++
-			}
-		}
-		if changed == 0 {
-			continue
-		}
-		out, err := encodeDoc(&doc)
-		if err == nil {
-			err = bk.save(WorkflowsFolder, p, file)
-		}
-		if err == nil {
-			err = configfs.WriteAtomic(p, out, 0o644)
-		}
-		if err != nil {
-			slog.Warn("ade names migration: workflow ids", "scope", "ade", "file", file, "err", err)
-			*skipped++
-			continue
-		}
-		count += changed
+		count += n
 	}
 	return count
+}
+
+// migrateInlineIDsFile rewrites legacy step ids in one workflow file. ok is false when the file was skipped.
+func (r *Reader) migrateInlineIDsFile(bk *backupper, file string) (changed int, ok bool) {
+	p := filepath.Join(r.Dir, file)
+	src, err := configfs.ReadCapped(p, configfs.MaxFileBytes)
+	if err != nil {
+		slog.Warn("ade names migration: read", "scope", "ade", "file", file, "err", err)
+		return 0, false
+	}
+	var doc yaml.Node
+	if err := yaml.Unmarshal(src, &doc); err != nil {
+		slog.Warn("ade names migration: workflow skipped, YAML error", "scope", "ade", "file", file)
+		return 0, false
+	}
+	changed = renameLegacyStepIDs(&doc)
+	if changed == 0 {
+		return 0, true
+	}
+	out, err := encodeDoc(&doc)
+	if err == nil {
+		err = bk.save(WorkflowsFolder, p, file)
+	}
+	if err == nil {
+		err = configfs.WriteAtomic(p, out, 0o644)
+	}
+	if err != nil {
+		slog.Warn("ade names migration: workflow ids", "scope", "ade", "file", file, "err", err)
+		return 0, false
+	}
+	return changed, true
+}
+
+// renameLegacyStepIDs renames each stp_ step id in doc to a free slug of its step name. Returns the count.
+func renameLegacyStepIDs(doc *yaml.Node) int {
+	root := docRoot(doc)
+	items := stepItems(root)
+	taken := map[string]bool{}
+	for _, it := range items {
+		taken[itemID(it)] = true
+	}
+	changed := 0
+	for _, it := range items {
+		_, idn := find(it, "id")
+		if idn == nil || idn.Kind != yaml.ScalarNode || !legacyStepID.MatchString(strings.TrimSpace(idn.Value)) {
+			continue
+		}
+		old := strings.TrimSpace(idn.Value)
+		fresh := freeStem(slug(stepItemName(it), "step"), func(s string) bool { return reservedStepIDs[s] || taken[s] })
+		if renameStepID(root, old, fresh) {
+			delete(taken, old)
+			taken[fresh] = true
+			changed++
+		}
+	}
+	return changed
+}
+
+func stepItemName(it *yaml.Node) string {
+	if _, n := find(it, "name"); n != nil && n.Kind == yaml.ScalarNode {
+		return n.Value
+	}
+	if _, s := find(it, "step"); s != nil && s.Kind == yaml.ScalarNode {
+		return s.Value
+	}
+	return ""
 }
 
 func (r *Reader) migrateStepStems(bk *backupper, keep func(module, file string) bool, skipped *int) int {
