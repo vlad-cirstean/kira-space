@@ -31,6 +31,7 @@ export const RUN_FIELDS: readonly FieldSpec[] = [
   { path: ['mcp', 'enabled'], unsetWhen: false },
   { path: ['mcp', 'description'], unsetWhenEmpty: true },
   { path: ['mcp', 'run'], unsetWhen: 'prompt' },
+  { path: ['mcp', 'mode'], unsetWhen: 'short' },
   { path: ['mcp', 'timeout'], unsetWhenEmpty: true },
   { path: ['schedule'], presence: true },
   { path: ['schedule', 'cron'] },

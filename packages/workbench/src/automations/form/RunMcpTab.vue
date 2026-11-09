@@ -19,6 +19,7 @@ type Mcp = NonNullable<RunFile['mcp']>;
 const mcp = computed<Mcp>(() => file.value.mcp ?? {});
 const enabled = computed(() => mcp.value.enabled === true);
 const run = computed(() => mcp.value.run ?? 'prompt');
+const mode = computed(() => mcp.value.mode ?? 'short');
 
 function patch(change: Partial<Mcp>): void {
   file.value.mcp = { ...mcp.value, ...change };
@@ -85,11 +86,40 @@ function patch(change: Partial<Mcp>): void {
       </Field>
 
       <Field>
+        <FieldLabel>{{ t('automations.form.mcp.mode.label') }}</FieldLabel>
+        <RadioGroup
+          :model-value="mode"
+          class="gap-1.5"
+          data-testid="script-mcp-mode"
+          @update:model-value="(v) => patch({ mode: v === 'long' ? 'long' : 'short' })"
+        >
+          <div class="flex items-center gap-2">
+            <RadioGroupItem id="script-mcp-short" value="short" data-testid="script-mcp-short" />
+            <Label for="script-mcp-short">{{ t('automations.form.mcp.short.label') }}</Label>
+          </div>
+          <div class="flex items-center gap-2">
+            <RadioGroupItem id="script-mcp-long" value="long" data-testid="script-mcp-long" />
+            <Label for="script-mcp-long">{{ t('automations.form.mcp.long.label') }}</Label>
+          </div>
+        </RadioGroup>
+        <FieldDescription>{{ t('automations.form.mcp.mode.hint') }}</FieldDescription>
+        <FieldError v-if="errorFor('/mcp/mode')" data-testid="script-mcp-mode-error">{{
+          errorFor('/mcp/mode')
+        }}</FieldError>
+      </Field>
+
+      <Field>
         <FieldLabel for="script-mcp-timeout">{{ t('common.field.timeout.label') }}</FieldLabel>
         <Input
           id="script-mcp-timeout"
           :model-value="mcp.timeout ?? ''"
-          :placeholder="t('automations.schedule.timeoutExample.example')"
+          :placeholder="
+            t(
+              mode === 'long'
+                ? 'automations.form.mcp.longTimeout.example'
+                : 'automations.schedule.timeoutExample.example',
+            )
+          "
           :aria-invalid="errorFor('/mcp/timeout') ? true : undefined"
           class="w-32 font-data"
           data-testid="script-mcp-timeout"

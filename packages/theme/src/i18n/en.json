@@ -129,11 +129,24 @@
           "hint": "An agent on the database MCP server can list this script and start it. It gets the run result, never the output; logs come from a separate, size-capped read.",
           "label": "Let agents run this script"
         },
+        "long": {
+          "label": "Long running, the agent follows it while it runs"
+        },
+        "longTimeout": {
+          "example": "24h"
+        },
+        "mode": {
+          "hint": "A long-running script returns to the agent at once; the agent reads its output while it runs and can stop it.",
+          "label": "How long it runs"
+        },
         "prompt": {
           "label": "Ask me first"
         },
         "run": {
           "label": "When an agent runs it"
+        },
+        "short": {
+          "label": "Short, the agent waits for the result"
         }
       },
       "smart": {},
@@ -1062,6 +1075,9 @@
         },
         "mcpDescriptionLong": {
           "body": "The MCP description is at most {max} characters."
+        },
+        "mcpMode": {
+          "body": "The MCP mode must be short or long."
         },
         "mcpRun": {
           "body": "The MCP approval is prompt or allow."
@@ -17110,6 +17126,9 @@
           },
           "legend": {
             "label": "Scripts"
+          },
+          "long": {
+            "status": "Long running"
           },
           "prompt": {
             "status": "Asks before each run"

@@ -49,6 +49,14 @@ const toggle = useAsyncAction((id: string, enabled: boolean) =>
         </div>
         <div class="flex shrink-0 items-center gap-1.5">
           <Badge
+            v-if="s.mcp?.enabled && s.mcp.mode === 'long'"
+            variant="default"
+            :data-testid="`db-mcp-script-long-${s.id}`"
+            >{{
+              t('studio.settings.dbMcp.scripts.long.status')
+            }}</Badge
+          >
+          <Badge
             :variant="s.mcp?.enabled ? 'ok' : 'default'"
             :data-testid="`db-mcp-script-${s.id}`"
             >{{
