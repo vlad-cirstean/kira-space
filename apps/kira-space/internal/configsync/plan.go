@@ -2,6 +2,7 @@ package configsync
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io/fs"
 	"os"
@@ -27,6 +28,8 @@ const (
 	KindConflict  = "conflict"
 	KindBlocked   = "blocked"
 	KindUnchanged = "unchanged"
+	// KindUnmatched: a valid shared repos file whose origin matches no local repository.
+	KindUnmatched = "unmatched"
 )
 
 // Choices for a conflicted unit.
@@ -50,6 +53,11 @@ type Row struct {
 	Problem string `json:"problem"`
 	// UnsetSecrets are the ${secret:name} references the unit holds that no local secret answers.
 	UnsetSecrets []string `json:"unsetSecrets"`
+	// Target, Repo and Origin locate a repos unit: the local file it merges into, the repository
+	// path and the normalized origin key. Never a raw URL.
+	Target string `json:"target,omitempty"`
+	Repo   string `json:"repo,omitempty"`
+	Origin string `json:"origin,omitempty"`
 }
 
 func (r Row) actionable() bool {
@@ -78,12 +86,24 @@ type rowPlan struct {
 }
 
 type filePlan struct {
-	module, file string
-	entry        bool
-	ours         []byte
-	oursOK       bool
-	oursHash     string
-	rows         []*rowPlan
+	// file is the local file the unit reads and writes; shared is the shared file's name. They
+	// differ for repos only, whose local file is named by the repository, not by the shared file.
+	module, file, shared string
+	// baseRel is the merge base's path under the base dir; "" when the unit keeps no base.
+	baseRel string
+	// repoID and origin locate a repos unit's target repository.
+	repoID, origin string
+	// seed is the text a repos target without a file starts from; alloc names and seeds it on first use.
+	seed     []byte
+	alloc    func() error
+	allocErr error
+	// keepBase leaves the stored base as it is (a unit that could not be planned).
+	keepBase bool
+	entry    bool
+	ours     []byte
+	oursOK   bool
+	oursHash string
+	rows     []*rowPlan
 	// file unit
 	theirs   []byte
 	theirsOK bool
@@ -100,6 +120,13 @@ type filePlan struct {
 type plan struct {
 	commit string
 	files  []*filePlan
+	// repoFP fingerprints the repos targets the plan was built for; "" when repos was not planned.
+	repoFP string
+	// repoOwned lists the shared repos files whose base directory this plan settles. repoGone are
+	// those deleted upstream; repoOrigin the origin key to record per shared file.
+	repoOwned  map[string]bool
+	repoGone   map[string]bool
+	repoOrigin map[string]string
 }
 
 func (p *plan) rows() []Row {
@@ -147,8 +174,9 @@ func baseName(file string, entry bool) string {
 	return file
 }
 
-func (s *Service) baseFilePath(module, file string, entry bool) string {
-	return filepath.Join(syncDir(s.o.Home), baseDir, module, baseName(file, entry))
+// baseAt is the path of a merge base given its path under the base dir.
+func (s *Service) baseAt(rel string) string {
+	return filepath.Join(syncDir(s.o.Home), baseDir, rel)
 }
 
 // baseFiles lists the shared files last applied for module.
@@ -167,10 +195,16 @@ func (s *Service) baseFiles(module string) []string {
 }
 
 // buildPlan decides every unit of the modules the manifest lists and the settings follow.
-func (s *Service) buildPlan(t *sharedTree, set Settings) (*plan, error) {
+func (s *Service) buildPlan(ctx context.Context, t *sharedTree, set Settings) (*plan, error) {
 	p := &plan{commit: t.commit}
 	for _, module := range syncModules {
 		if !slices.Contains(t.modules, module) || set.mode(module) == ModeLocal {
+			continue
+		}
+		if module == "repos" {
+			if err := s.planRepos(ctx, p, t, set); err != nil {
+				return nil, err
+			}
 			continue
 		}
 		names := map[string]bool{}
@@ -201,7 +235,8 @@ func (s *Service) buildPlan(t *sharedTree, set Settings) (*plan, error) {
 func (s *Service) planFile(module, file string, set Settings, shared []byte) (*filePlan, error) {
 	mode := set.mode(module)
 	deact := set.deactivated(module)
-	fp := &filePlan{module: module, file: file, entry: isEntryFile(module, file, mode), theirs: shared, theirsOK: shared != nil}
+	fp := &filePlan{module: module, file: file, shared: file, entry: isEntryFile(module, file, mode), theirs: shared, theirsOK: shared != nil}
+	fp.baseRel = filepath.Join(module, baseName(file, fp.entry))
 	ours, oursOK, err := readLocal(s.localPath(module, file))
 	if err != nil {
 		return nil, err
@@ -214,7 +249,7 @@ func (s *Service) planFile(module, file string, set Settings, shared []byte) (*f
 }
 
 func (s *Service) planFileUnit(fp *filePlan, deactivated bool) error {
-	base, baseOK, err := readLocal(s.baseFilePath(fp.module, fp.file, false))
+	base, baseOK, err := readLocal(s.baseAt(fp.baseRel))
 	if err != nil {
 		return err
 	}
@@ -266,6 +301,11 @@ func (s *Service) sharedProblem(module, file string, data []byte) string {
 			return i18n.T("backend.space.configSync.gate.invalid.body", map[string]string{"message": firstLine(err.Error())})
 		}
 	}
+	if module == "repos" && s.o.Repos != nil {
+		if msg := s.o.Repos.CheckShared(data); msg != "" {
+			return i18n.T("backend.space.configSync.gate.invalid.body", map[string]string{"message": msg})
+		}
+	}
 	if v := s.o.Validate[module]; v != nil {
 		if msg := v(file, data); msg != "" {
 			return i18n.T("backend.space.configSync.gate.invalid.body", map[string]string{"message": msg})
@@ -302,6 +342,9 @@ func settingsRunCommands(data []byte) bool {
 }
 
 func entryRunsCommands(module, id string, v any) bool {
+	if module == "repos" {
+		return id == "worktree/prepare" || strings.HasPrefix(id, "environments/")
+	}
 	if module != "agent" {
 		return false
 	}
@@ -318,11 +361,16 @@ func entryRunsCommands(module, id string, v any) bool {
 
 func (s *Service) planEntryFile(fp *filePlan, deact map[string]bool) error {
 	parse := agentSettingsEntries
-	if fp.module == "prompts" {
+	switch fp.module {
+	case "prompts":
 		parse = promptEntries
+	case "repos":
+		parse = repoEntries
 	}
+	// A unit that cannot be planned keeps its stored base: repos targets are stored per repository.
 	fileRow := func(msg string) *rowPlan {
-		return &rowPlan{Row: Row{ID: fp.module + "/" + fp.file, Module: fp.module, File: fp.file, Kind: KindBlocked, Problem: msg}}
+		fp.keepBase = fp.keepBase || fp.module == "repos"
+		return fp.newRow(&rowPlan{Row: Row{Kind: KindBlocked, Problem: msg}}, "")
 	}
 	oursSet, err := parse(fp.ours)
 	if err != nil {
@@ -334,7 +382,7 @@ func (s *Service) planEntryFile(fp *filePlan, deact map[string]bool) error {
 		fp.rows = []*rowPlan{fileRow(i18n.T("backend.space.configSync.gate.invalid.body", map[string]string{"message": firstLine(err.Error())}))}
 		return nil
 	}
-	baseData, baseExists, err := readLocal(s.baseFilePath(fp.module, fp.file, true))
+	baseData, baseExists, err := readLocal(s.baseAt(fp.baseRel))
 	if err != nil {
 		return err
 	}
@@ -347,7 +395,7 @@ func (s *Service) planEntryFile(fp *filePlan, deact map[string]bool) error {
 	deactIDs := map[string]bool{}
 	for _, m := range []map[string]string{theirsSet.canon, baseCanon} {
 		for id := range m {
-			deactIDs[id] = deact[fp.file+"#"+id]
+			deactIDs[id] = deact[fp.shared+"#"+id]
 		}
 	}
 	for id := range blockedMsg {
@@ -366,6 +414,10 @@ func (s *Service) planEntryFile(fp *filePlan, deact map[string]bool) error {
 		return err
 	}
 	fp.newBaseFile, fp.newBaseExist = enc, len(nb) > 0 || len(baseCanon) > 0
+	if fp.module == "repos" {
+		// A repos base for a target that has no shared entry left is dropped, not kept as {}.
+		fp.newBaseExist = len(nb) > 0
+	}
 	if len(fp.rows) == 0 {
 		return nil
 	}
@@ -404,8 +456,8 @@ func (s *Service) entryRows(fp *filePlan, decisions []entryDecision, adjusted ma
 	mk := func(id string) *rowPlan {
 		seen[id] = true
 		_, theirsHas := adjusted[id]
-		return &rowPlan{Row: Row{ID: fp.module + "/" + fp.file + "#" + id, Module: fp.module, File: fp.file, Entry: id, Kind: KindUnchanged,
-			Deactivated: deactIDs[id], RunsCommands: entryRunsCommands(fp.module, id, fp.theirsSet.raw[id])}, theirsOK: theirsHas && !deactIDs[id]}
+		return fp.newRow(&rowPlan{Row: Row{Entry: id, Kind: KindUnchanged,
+			Deactivated: deactIDs[id], RunsCommands: entryRunsCommands(fp.module, id, fp.theirsSet.raw[id])}, theirsOK: theirsHas && !deactIDs[id]}, id)
 	}
 	for _, d := range decisions {
 		r := mk(d.id)
@@ -453,9 +505,16 @@ func (s *Service) merged(fp *filePlan, choices map[string]string, now time.Time)
 	if len(take) == 0 {
 		return fp.ours, false, nil
 	}
-	if fp.module == "prompts" {
+	switch fp.module {
+	case "prompts":
 		text, err = applyPromptEntries(fp.ours, fp.oursSet, fp.theirsSet, take, now)
-	} else {
+	case "repos":
+		src := fp.ours
+		if !fp.oursOK {
+			src = fp.seed
+		}
+		text, err = applyRepoEntries(src, fp.theirsSet, take)
+	default:
 		text, err = applyAgentEntries(fp.ours, fp.theirsSet, take)
 	}
 	if err != nil {
@@ -475,6 +534,9 @@ func (s *Service) mergedProblem(fp *filePlan, text []byte) string {
 			return firstLine(err.Error())
 		}
 		return llmprompts.ValidateOverrides(texts)
+	}
+	if fp.module == "repos" {
+		return s.o.Repos.CheckLocal(fp.file, text)
 	}
 	if v := s.o.Validate[fp.module]; v != nil {
 		return v(fp.file, text)
@@ -530,4 +592,38 @@ func (s *Service) diffs(p *plan) []FileDiff {
 		out = append(out, d)
 	}
 	return out
+}
+
+// newRow fills the identity of a row of this file plan: module, shared file, entry and, for a repos
+// unit, the target it merges into. entry is "" for a file-level row.
+func (fp *filePlan) newRow(r *rowPlan, entry string) *rowPlan {
+	r.Module, r.File, r.Entry = fp.module, fp.shared, entry
+	r.ID = fp.module + "/" + fp.shared
+	if entry != "" {
+		r.ID += "#" + entry
+	}
+	if fp.repoID != "" {
+		r.Target, r.Repo, r.Origin = fp.targetName(), fp.repoID, fp.origin
+		r.ID += "@" + rowTargetID(r.Target, fp.repoID)
+	}
+	return r
+}
+
+// targetName is the local file a repos unit merges into; a repository without a file gets one named
+// the first time a row needs it.
+func (fp *filePlan) targetName() string {
+	if fp.file == "" && fp.alloc != nil {
+		if err := fp.alloc(); err != nil {
+			fp.allocErr = err
+		}
+	}
+	return fp.file
+}
+
+// rowTargetID is the id part of a target: its file, else (a repository that has none) its path.
+func rowTargetID(file, repoID string) string {
+	if file != "" {
+		return file
+	}
+	return repoID
 }

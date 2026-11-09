@@ -21,6 +21,8 @@ import (
 type entrySet struct {
 	canon map[string]string
 	raw   map[string]any
+	// order lists environment names in file order (repos only); a new local list follows it.
+	order []string
 }
 
 func newEntrySet() entrySet { return entrySet{canon: map[string]string{}, raw: map[string]any{}} }

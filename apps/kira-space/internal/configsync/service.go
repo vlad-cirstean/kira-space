@@ -36,6 +36,8 @@ type Options struct {
 	Auth AuthFunc
 	// Validate maps a module to its decoder, for shared files and merged combined files.
 	Validate map[string]ValidateFunc
+	// Repos is the repo config side of the repos module; nil leaves the module inert.
+	Repos RepoFiles
 	// SecretUnset reports whether a ${secret:name} of module has no local value.
 	SecretUnset func(module, name string) bool
 	// Emit receives the status after every change.
@@ -270,7 +272,7 @@ func (s *Service) refreshLocked(ctx context.Context) {
 		s.setProblem(se.problem())
 		return
 	}
-	p, err := s.buildPlan(tree, set)
+	p, err := s.buildPlan(ctx, tree, set)
 	if err != nil {
 		s.setProblem(&Problem{Kind: ProblemGit, Message: err.Error()})
 		return
@@ -500,4 +502,54 @@ func (s *Service) checkJournal() bool {
 	s.interrupted = err == nil
 	s.mu.Unlock()
 	return err == nil
+}
+
+// RefreshAsync recomputes the change count after the set of registered repositories moved: a repos
+// file may now match a new repository. It never blocks the caller and is a no-op without a shared
+// repository.
+func (s *Service) RefreshAsync() {
+	if s == nil {
+		return
+	}
+	go func() {
+		s.opMu.Lock()
+		defer s.opMu.Unlock()
+		if s.ctx.Err() != nil {
+			return
+		}
+		s.mu.Lock()
+		_ = s.load()
+		configured := s.set.Repo != nil
+		s.mu.Unlock()
+		if !configured || s.checkJournal() {
+			return
+		}
+		s.refreshLocked(s.ctx)
+		s.emit()
+	}()
+}
+
+// RepoSharedText is the shared repos file of repoID: its origin as an https URL plus the shared keys
+// of its settings file, ready for a shared config repository. A repository without a single origin
+// has nothing to bind by.
+func (s *Service) RepoSharedText(ctx context.Context, repoID string) (string, error) {
+	if s.o.Repos == nil {
+		return "", errf(ErrNotFound, "backend.space.configSync.repo.notFound.body")
+	}
+	known := slices.ContainsFunc(s.o.Repos.Targets(), func(t RepoTarget) bool { return t.RepoID == repoID })
+	if !known {
+		return "", errf(ErrNotFound, "backend.space.configSync.repo.notFound.body")
+	}
+	st, err := s.originsOf(ctx, repoID)
+	if err != nil {
+		return "", internal(err)
+	}
+	if !st.single {
+		return "", errf(ErrBadRequest, "backend.space.configSync.repoSync.noOrigin.body")
+	}
+	text, err := s.o.Repos.SharedText(repoID, "https://"+st.keys[0])
+	if err != nil {
+		return "", internal(err)
+	}
+	return string(text), nil
 }

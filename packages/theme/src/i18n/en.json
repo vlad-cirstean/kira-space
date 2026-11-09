@@ -1921,6 +1921,9 @@
           "body": "Config files or the repository changed since the review. Review again."
         },
         "gate": {
+          "duplicateOrigin": {
+            "body": "{file} already shares this origin."
+          },
           "invalid": {
             "body": "The file is not valid ({message})."
           },
@@ -1929,6 +1932,9 @@
           },
           "localInvalid": {
             "body": "The local file is not valid, so it can’t be merged. Fix it first."
+          },
+          "repoOrigins": {
+            "body": "This repository has more than one origin address, so it doesn’t sync."
           }
         },
         "git": {
@@ -1957,9 +1963,6 @@
           "module": {
             "body": "The manifest lists an unknown module: {name}."
           },
-          "repos": {
-            "body": "The repos module is never shared. Its files are keyed by local path and carry the worktree prepare script."
-          },
           "tooLarge": {
             "body": "{file} is too large."
           },
@@ -1987,6 +1990,11 @@
         "repo": {
           "notFound": {
             "body": "The repository was not found."
+          }
+        },
+        "repoSync": {
+          "noOrigin": {
+            "body": "This repository has no single origin URL to share it by."
           }
         },
         "unit": {

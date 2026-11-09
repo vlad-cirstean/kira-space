@@ -108,7 +108,7 @@ var decodeSettings = func() configfs.DecodeFunc[Settings] {
 			},
 		},
 		configfs.Rule[Settings]{
-			Doc: "Only agent and prompts may be combined.",
+			Doc: "Only agent, prompts and repos may be combined; repos is never shared whole-file.",
 			Check: func(s Settings, _ configfs.Locator) *configfs.Problem {
 				for m, mode := range s.Modules {
 					if !validMode(m, mode) {

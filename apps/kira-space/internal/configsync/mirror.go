@@ -151,9 +151,6 @@ func parseManifest(src []byte) (manifest, *syncError) {
 		return mf, manifestError(i18n.T("backend.space.configSync.manifest.version.body", nil))
 	}
 	for _, name := range mf.Modules {
-		if name == "repos" {
-			return mf, manifestError(i18n.T("backend.space.configSync.manifest.repos.body", nil))
-		}
 		if !slices.Contains(syncModules, name) {
 			return mf, manifestError(i18n.T("backend.space.configSync.manifest.module.body", map[string]string{"name": name}))
 		}
