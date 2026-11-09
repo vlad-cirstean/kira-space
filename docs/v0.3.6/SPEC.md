@@ -4,7 +4,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 
 | Phase | Title | Status |
 |---|---|---|
-| P580 | Database MCP `api_request`: per-host and per-method rules with wildcards | Planned |
+| P580 | Database MCP `api_request`: per-host and per-method rules with wildcards | Done |
 | P581 | Review tool: diff against target branch like a source control app, fetch buttons | Planned |
 | P582 | Handovers: select and copy text | Planned |
 | P583 | Agent worktree: work on an already existing branch | Planned |
@@ -20,6 +20,22 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 - Context: `addAPITools` in `apps/kira-space/internal/dbmcp/api_tools.go`; `docs/ARCHITECTURE.md` "Database MCP" API section (`apiRequests`, `apiApproval`). Planner decides rule shape (allow/deny, host and method patterns, precedence, default), where it lives in settings, how it interacts with `apiApproval`, and the settings UI.
 - Acceptance: rules match host (wildcards such as `*.example.com`) and method (`*` or a list); a request no rule allows is refused with a clear error; existing installs keep current behavior unless they add rules.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary (CLAUDE.md Tests).
+- Result:
+  - Rule: `{effect: allow|deny, hosts, methods}`; list leaf `dbMcp.apiRules`, at most 50 rules, default empty (allow all, existing installs unchanged). Hosts: `*` or `HostRule` entry without `http://` (`*.domain` matches subdomains, not the apex). Methods: `["*"]` or distinct members of the `api_request` enum. Deny wins, order irrelevant; once any rule exists a request needs a matching allow rule.
+  - Enforcement: `agentapi.Plan` (via `Service.Access`, read fresh per plan, nil means none) before credentials and approval, so a refused request raises no item and `Send` re-plans. Every redirect hop is checked with the request's method. Unreadable stored leaf fails closed (`apiRulesInvalid`, every request refused). `apiApproval` unchanged.
+  - Moved: `HostRule` from `internal/apifiles/agenthost.go` to `internal/apiaccess/hostrule.go` (plus test); new `apiaccess/policy.go`. Wired through `storage/model`, `storage/repos`, `bridge.AgentAPIAccess`, `appwire/dbmodule.go`, prompt text of `api_request`.
+  - UI: Settings, Database MCP rules list and add/edit dialog.
+  - Tests passing: `apiaccess` (host rule, `TestPolicyCheck`, `TestCompileRejects`), `apifiles`, `storage/...`, `internal/llmprompts`, `dbmcp`, `dbmcpflow` all `Api*` incl. `TestApiAccessRules` (contract `dbmcp-api-rules.json`), UI `dbmcp-api-rules.spec.ts` and `dbmcp-api-settings.spec.ts`; lint and `typecheck:web` clean.
+  - Deviations from plan:
+    - Dialog and `apiAccessRules.ts` live in `studio/workbench/apiaccess/`, not `settings/`: guard U28 bans `Checkbox` under settings paths.
+    - Methods are a `Checkbox` row, not `ToggleGroup`: guard U4 allows `ToggleGroup` only in `SecondaryTabs`.
+    - Remove button uses `:pending`, not `:disabled` (guard U92).
+    - Dialog has a `dirty` flag (guard U100).
+    - Reused i18n keys for Allow, Deny and Remove (catalog rule C3).
+    - Strings reworded for copy rules (sentences split, no colons, "couldn’t"); `*.domain` explanation moved to `hosts.hint`, new `hosts.example`, `empty.body`.
+    - `api_request` prompt budget in `budget.tsv` raised 282 to 363 for the added sentence.
+    - Redirect error uses `next.Host`, so it reads `redirect to localhost:PORT blocked: ...`; test asserts `redirect to localhost` and `blocked`.
+    - Wails bindings were stale (gitignored, pre-existing) and failed the commit-3 hook; regenerated with `wails3 task common:generate:bindings`.
 
 ## P581 Review tool: diff against target branch like a source control app, fetch buttons
 
