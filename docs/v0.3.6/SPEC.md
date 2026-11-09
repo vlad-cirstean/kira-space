@@ -8,7 +8,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 | P581 | Review tool: diff against target branch like a source control app, fetch buttons | Done |
 | P582 | Handovers: select and copy text | Done |
 | P583 | Agent worktree: work on an already existing branch | Planned |
-| P584 | Shared config: readable YAML file names and step names | Planned |
+| P584 | Shared config: readable YAML file names and step names | Done |
 | P585 | Shared config: share repos by origin, with prepare-worktree configs | Planned |
 | P586 | Task panel Details: open links externally | Planned |
 
@@ -67,6 +67,7 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 - Ask (user): user wants to share their YAML configs. File names (workflow and step library files) look strange and do not reflect the step name. Step names themselves are also strange.
 - Context: `internal/adeflow` (`parse.go`, step library, `StepEntry.fileName`), `internal/configsync` (module `steps`, `workflows`). Planner establishes how file names and default step names are generated today, then decides the scheme (file name derived from the step name, rename handling, collisions, default step names), the migration of existing files, and sync impact (renames across the shared repo).
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+- Result: Plan `plans/P584.md`. Stem = `slug(name)` (`-2`, `-3`, max 60); Form and graph saves rename the file when the slug stops matching, rewrite `step:` references and `ade_tasks.workflow_id`, journal `<home>/ade/rename.json`, recovered at `Start`; shared files (`configsync.HasBase`) keep their stem; YAML saves never rename. Inline step ids are name slugs (follow the name until first save, `stp` prefix dropped from both registries); new steps are named by kind. One-time migration (`names-v1.done`, backups `backups/readable-names-<ts>`). Flow tests `readablenames_test.go` (contract `ade-readable-names`), UI spec `ade-readable-names.spec.ts`, unit `adeflow/rename_test.go`. Ran: adeflow, ade, configsync, flows/adeflow, typecheck, lint rules, UI specs ade-readable-names, ade-ids, ade-v2-workflows, -workflow-layout, -workflow-steps, consistency. Deviations: `kind.<k>.option` already reads "Agent step", so no `kindName` key; a fourth `stp_` spec (`ade-v2-workflow-steps`) updated; reserved ids (`next`, `end`, `stop`, `done`) never taken as step ids; graph rename remounts the editor on the new file, so the selected step resets; migration backup dir is `<BackupDir>-<stamp>`.
 
 ## P585 Shared config: share repos by origin, with prepare-worktree configs
 
