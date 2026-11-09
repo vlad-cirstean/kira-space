@@ -12,7 +12,7 @@ User-requested features after v0.3.5. Chapter stays open: more phases get added 
 | P585 | Shared config: share repos by origin, with prepare-worktree configs | Done |
 | P586 | Task panel Details: open links externally | Done |
 | P587 | Database MCP script runner: per-script short or long running | Planned |
-| P588 | Defaults: step sandbox off, step Database MCP on, hermetic off | Planned |
+| P588 | Defaults: step sandbox off, step Database MCP on, hermetic off | Done |
 
 Phases run in table order, one at a time, unless the user asks for a batch.
 
@@ -105,3 +105,9 @@ Phases run in table order, one at a time, unless the user asks for a batch.
 - Ask (user): "In the workflow config make sandbox off by default. Kira db on by default, and for the global setting have hermetic mode off by default."
 - Context: step `sandbox` (`adewire.DefaultSandbox`, `adeflow` parse, writer and new-step, `stepSandbox.ts`), step `db_mcp` (`parse.go` `stepExtras`, `applyDbMcp`), `agent.hermetic` (`internal/appsettings/agent.go`, `settings.ts`, `settingsDomain.ts`). Direct implementation, no Opus plan (user request: change is simple).
 - Tests: Go adeflow, ade, adewire, appsettings; flow contracts regenerated for the default flip; UI specs that assert the three defaults.
+- Result: no plan (user asked for direct implementation). All three defaults were as the user described.
+  - Step sandbox: `adewire.DefaultSandbox()` is access off for every kind (was write for agent and review). `DefaultSandboxFor`, `NormalizedFor(kind)` and `IsDefaultFor(kind)` lost the kind (`Normalized()`, `IsDefault()`, `stepSandbox.ts` `defaultSandbox()`). A `sandbox` block without `access` and rebase runs use new `adewire.WriteSandbox()`, so an explicit block still confines. The writer drops the block when the policy is off. Inspector shows a hint, not a warning, for off on agent steps (key `offAgent.hint`, `offWarning.body` removed); the node badge hides for the default.
+  - Step `db_mcp`: an absent key parses as on where it applies (agent without `smart_script`, review, manual with `session`); `db_mcp: false` is off. Existing files without the key now get the tools. The writer drops the key when on and writes `db_mcp: false` when off; library override restore (`explicitOff`) writes `true`. New agent and review steps (Go `withTimeout`, `workflowForm.ts`) and new manual sessions start on; switching a smart step back to prompt sets it on.
+  - `agent.hermetic`: default false in `appsettings.DefaultAgent`, `settings.ts` and `settingsDomain.ts`. Unchanged on purpose: nil `Hermetic` readers stay on (scriptruns and agentcfg serve Studio, always hermetic) and a settings read error still launches hermetic (fail closed).
+  - Running tasks keep their snapshot (stored access and `dbMcp`) and show `workflowOutdated` until they end; no migration.
+  - Tests: contracts regenerated (diff is only `access` write to off, `dbMcp` false to true, hashes). `ade` test boards get a `fakeDbMcp`. Sandbox, rename and context flows name `access: write`; hermetic flows call `SetHermetic(true)`. Fixed on the spot, failing at the phase start: `journeyflow` restart (P584 file rename) and `llmpromptsflow` TestList (266 prompts).
