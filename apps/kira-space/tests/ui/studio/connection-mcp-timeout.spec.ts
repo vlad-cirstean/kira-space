@@ -131,13 +131,8 @@ test('contract: the exemption dialog names the timeout limit and the no-limit ru
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
   const card = page.locator(`[data-testid="approval-item-${it.id}"]`);
-  await expect(card.locator('[data-testid="db-mcp-exemption-limit"]')).toContainText(
-    'Statement timeout:',
-  );
-  await expect(card.locator('[data-testid="db-mcp-exemption-limit"]')).toContainText('limit 1');
-  await expect(card.locator('[data-testid="db-mcp-exemption-no-timeout"]')).toContainText(
-    'no time limit',
-  );
+  await expect(card.locator('[data-testid="db-mcp-exemption-limit"]')).toContainText('Timeout');
+  await expect(card.locator('[data-testid="db-mcp-exemption-limit"]')).toContainText('/ 1');
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toHaveText(
     'Lift for this query',
   );

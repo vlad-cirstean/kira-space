@@ -85,8 +85,7 @@ test('contract: a Kubernetes read shows the cluster and answers by item id', asy
   await pushApprovals(page, [liveItem(item)]);
   await expect(loc(page, 'approval-target-name')).toHaveText(item.target.name);
   await expect(loc(page, `approval-item-${item.id}`)).toContainText(item.target.location);
-  await expect(loc(page, 'db-mcp-approval-kube-namespace')).toHaveText(payload.namespace);
-  await expect(loc(page, 'approvals-dialog')).toContainText('wants to list resources');
+  await expect(loc(page, 'approval-target-kind')).toContainText(payload.namespace);
   await expect(loc(page, 'db-mcp-approval-kube')).toContainText(payload.statement);
 
   await page.click(`[data-testid="approval-approve-${item.id}"]`);

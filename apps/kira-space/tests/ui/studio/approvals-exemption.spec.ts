@@ -26,20 +26,16 @@ test('contract: a rows limit shows measured value, reason and statement', async 
   await pushApprovals(page, [liveItem(it)]);
   const c = card(page, it);
   await expect(c.locator('[data-testid="approval-target-name"]')).toHaveText('notes db');
-  await expect(c.locator('[data-testid="approval-operation"]')).toHaveText('Read');
-  await expect(c.locator('[data-testid="db-mcp-exemption-lede"]')).toContainText(
-    'asks to run one statement past a limit',
-  );
+  await expect(c.locator('[data-testid="approval-operation"]')).toHaveText('Lift limit');
   const limits = c.locator('[data-testid="db-mcp-exemption-limit"]');
   await expect(limits).toHaveCount(1);
-  await expect(limits).toHaveText('Estimated rows read: 5,000, limit 1,000');
+  await expect(limits).toHaveText('~5,000 rows');
   await expect(c.locator('[data-testid="db-mcp-exemption-reason"]')).toContainText(
     'the report needs every row',
   );
   const statement = c.locator('[data-testid="db-mcp-approval-statement"]');
   await expect(statement).toContainText('select');
   await expect(statement).toContainText('/* big */');
-  await expect(c.locator('[data-testid="db-mcp-approval-plan"]')).toHaveCount(0);
 });
 
 test('contract: two lifted limits list both, the timeout as a duration', async ({ relaunch }) => {
@@ -50,7 +46,7 @@ test('contract: two lifted limits list both, the timeout as a duration', async (
   await expect(limits).toHaveCount(2);
   await expect(limits.nth(0)).toHaveAttribute('data-limit', 'expensive_query');
   await expect(limits.nth(1)).toHaveAttribute('data-limit', 'statement_timeout');
-  await expect(limits.nth(1)).toHaveText('Statement timeout: 5.2s, limit 5.0s');
+  await expect(limits.nth(1)).toHaveText('Timeout 5.2s / 5.0s');
 });
 
 test('contract: Lift for this query answers the item id, Keep the limit denies it', async ({

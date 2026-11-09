@@ -3,6 +3,7 @@ import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/appro
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
+import { editorText } from './support/editorText';
 
 // Contract approvals-api. Backend half: dbmcpflow TestApiRequestApproved and TestApiRequestBodies. An
 // agent's api_request parks in the approvals dialog as an api.request item: the method and URL, the
@@ -31,22 +32,26 @@ test('contract: a request shows the target, the credential and the masked variab
   await expect(c.locator('[data-testid="approval-operation"]')).toHaveText('GET');
   await expect(c.locator('[data-testid="approval-origin"]')).toContainText(it.origin.client);
   await expect(c.locator('[data-testid="api-approval-url"]')).toContainText('/echo');
-  await expect(c.locator('[data-testid="api-approval-target"]')).toContainText('Dev');
-  await expect(c.locator('[data-testid="api-approval-credential-token"]')).toContainText(
-    '127.0.0.1',
-  );
+  await expect(c.locator('[data-testid="approval-target-kind"]')).toHaveText('Dev');
+  // A read sends its credential without a warning.
+  await expect(c.locator('[data-testid="api-approval-credential"]')).toHaveCount(0);
   await expect(c.locator('[data-testid="api-approval-headers"]')).toContainText('Bearer {{token}}');
   await expect(c.locator('[data-testid="api-approval-variables"]')).toContainText('••••');
-  await expect(c.locator('[data-testid="api-approval-body"]')).toHaveCount(0);
+  await expect(c.locator('[data-testid="api-approval-body-text"]')).toHaveCount(0);
 });
 
-test('contract: a JSON body is pretty-printed', async ({ relaunch }) => {
+test('contract: a JSON body is pretty-printed and a credential on a write is flagged', async ({
+  relaunch,
+}) => {
   const it = item('item#json');
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
+  await expect(card(page, it).locator('[data-testid="api-approval-credential"]')).toHaveText(
+    'Credential sent',
+  );
   const body = card(page, it).locator('[data-testid="api-approval-body-text"]');
-  await expect(body).toContainText('"name": "kira"');
-  await expect(body).toContainText('"tags": [');
+  await expect.poll(() => editorText(body)).toContain('"name": "kira"');
+  await expect.poll(() => editorText(body)).toContain('"tags": [');
 });
 
 test('contract: a form body renders as a table', async ({ relaunch }) => {
@@ -64,7 +69,7 @@ test('contract: a DELETE reads as danger', async ({ relaunch }) => {
   await pushApprovals(page, [liveItem(it)]);
   const op = card(page, it).locator('[data-testid="approval-operation"]');
   await expect(op).toHaveText('DELETE');
-  await expect(op).toHaveAttribute('data-variant', 'error');
+  await expect(op).toHaveClass(/text-error/);
 });
 
 test('contract: Send answers the item id, Don’t send denies it', async ({ relaunch }) => {

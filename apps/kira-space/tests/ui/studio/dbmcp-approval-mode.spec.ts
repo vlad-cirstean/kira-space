@@ -6,7 +6,7 @@ import { contract } from '../support/contract';
 // Contract dbmcp-approval-mode. Backend half: dbmcpflow TestDbMcpModeTightenOnly. A SELECT declared
 // write parks for approval as a write and says what it looks like.
 
-test('contract: a declared write that looks like a read shows both and the read-only hint', async ({
+test('contract: a declared write that looks like a read shows the mismatch', async ({
   relaunch,
 }) => {
   const [item] = contract<ApprovalItem[]>('dbmcp-approval-mode', 'ApprovalsService.List');
@@ -16,17 +16,13 @@ test('contract: a declared write that looks like a read shows both and the read-
 
   const card = page.locator(`[data-testid="approval-item-${item.id}"]`);
   await expect(card).toBeVisible();
-  await expect(card.locator('[data-testid="db-mcp-approval-body"]')).toContainText('write');
-  await expect(card.locator('[data-testid="db-mcp-approval-declared-higher"]')).toContainText(
-    'Declared write, looks like a read',
-  );
-  await expect(card.locator('[data-testid="db-mcp-approval-detected"]')).toContainText(
+  await expect(card.locator('[data-testid="approval-operation"]')).toHaveText('Write');
+  await expect(card.locator('[data-testid="db-mcp-approval-declared-higher"]')).toHaveText(
     'Looks like read',
   );
-  await expect(card.locator('[data-testid="db-mcp-approval-enforcement"]')).toHaveCount(0);
 });
 
-test('a read item names what enforces it', async ({ relaunch }) => {
+test('a read item that is read carries no mismatch tag', async ({ relaunch }) => {
   const [base] = contract<ApprovalItem[]>('dbmcp-approval-mode', 'ApprovalsService.List');
   if (!base) throw new Error('contract has no item');
   const payload = {
@@ -44,8 +40,5 @@ test('a read item names what enforces it', async ({ relaunch }) => {
   await pushApprovals(page, [liveItem(item)]);
 
   const card = page.locator(`[data-testid="approval-item-${item.id}"]`);
-  await expect(card.locator('[data-testid="db-mcp-approval-enforcement"]')).toContainText(
-    'checked by Kira',
-  );
   await expect(card.locator('[data-testid="db-mcp-approval-declared-higher"]')).toHaveCount(0);
 });

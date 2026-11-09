@@ -127,7 +127,10 @@ test('contract: a call the settings already review shows the box on and locked',
   const c = card(page, it);
   await expect(c.locator(box)).toHaveAttribute('aria-checked', 'true');
   await expect(c.locator(box)).toBeDisabled();
-  await expect(c).toContainText('This connection reviews read results.');
+  await c.getByText('Review result').hover();
+  await expect(page.getByRole('tooltip').first()).toContainText(
+    'This connection reviews read results.',
+  );
 });
 
 test('contract: an exemption item offers the same checkbox', async ({ relaunch }) => {
@@ -146,7 +149,7 @@ test('contract: an exemption item offers the same checkbox', async ({ relaunch }
     .toEqual({ ids: [it.id], approve: true, options: { [it.id]: { reviewResult: true } } });
 });
 
-test('contract: a requested result says so, and leaves Approve all', async ({ relaunch }) => {
+test('contract: a requested result leaves Approve all', async ({ relaunch }) => {
   const [it] = items('requested');
   if (!it) throw new Error('contract has no requested item');
   const [other] = items('query');
@@ -159,9 +162,7 @@ test('contract: a requested result says so, and leaves Approve all', async ({ re
     ],
   });
   await pushApprovals(page, [liveItem(it), liveItem(other)]);
-  await expect(card(page, it).locator('[data-testid="db-mcp-preview-body"]')).toContainText(
-    'You asked to check its result before the AI gets it.',
-  );
+  await expect(card(page, it).locator('[data-testid="db-mcp-preview-body"]')).toBeVisible();
   await expect(page.locator('[data-testid="approvals-approve-all"]')).toHaveText('Approve all (1)');
   await page.click('[data-testid="approvals-deny-all"]');
   await expect

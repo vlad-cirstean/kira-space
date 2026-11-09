@@ -325,7 +325,8 @@ studioTest.describe('databases module', () => {
   const BACKEND_NOTE = /^Composed from catalog metadata:/;
 
   // The DB MCP review fixtures (dbmcp.json, dbmcp-preview.json): connection name, file, columns.
-  const DBMCP_FIXTURE = /^(notes db|\/data\/mcp\.db|id|body)$/;
+  const DBMCP_FIXTURE =
+    /^(notes db|\/data\/mcp\.db|id|body|SQLite · \/data\/mcp\.db|select id, body from notes order by id|Claude Code [\d.]+)$/;
 
   const ALLOW: RegExp[] = [...PG_ALLOW, NAMES, BYTES, DBMCP_FIXTURE];
   const loc = (page: Page, testid: string) => page.locator(`[data-testid="${testid}"]`);
