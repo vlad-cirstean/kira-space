@@ -725,9 +725,11 @@ func (b *TaskBoard) Repos(_ context.Context) (adewire.ReposResult, error) {
 func queueCycle(byID map[string]model.AdeTaskBranch, selfID string, start model.AdeTaskBranch) bool {
 	byName := make(map[[2]string]string, len(byID))
 	for _, br := range byID {
-		if br.Name != "" {
-			byName[[2]string{br.CodeRepoID, br.Name}] = br.ID
+		key := [2]string{br.CodeRepoID, br.Name}
+		if br.Name == "" || (br.Adopted && byName[key] != "") {
+			continue
 		}
+		byName[key] = br.ID // the owner row of a shared name wins over adopted rows
 	}
 	cur := start
 	for range len(byID) + 1 {

@@ -328,7 +328,7 @@ type Branch struct {
 	UpstreamBehind      int            `json:"upstreamBehind"`
 	MergedIntoMain      bool           `json:"mergedIntoMain"`
 	MergedAt            *int64         `json:"mergedAt"`
-	Worktree            string         `json:"worktree"`
+	Worktree            string         `json:"worktree"` // where the branch is checked out for this row; '' when detached or nowhere
 	Setup               *WorktreeSetup `json:"setup"`
 	Integration         []Integration  `json:"integration"`
 	Deployments         []Deployment   `json:"deployments"`
@@ -339,6 +339,11 @@ type Branch struct {
 	LastCommitAt        *int64         `json:"lastCommitAt"`
 	AddedAt             int64          `json:"addedAt"`
 	Origin              string         `json:"origin"` // '' user | 'agent'
+	// Detached is set when the row's own worktree folder is left on a detached commit because its
+	// branch is checked out elsewhere, or nowhere, now.
+	Detached *BranchDetached `json:"detached,omitempty"`
+	// Shared lists the other live rows of the same repo and branch name.
+	Shared []BranchPeer `json:"shared,omitempty"`
 }
 
 type Pair struct {
