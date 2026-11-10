@@ -7,7 +7,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P590 | Kira Studio approval prompt: skip when the database connection cannot be established | Done |
 | P591 | Proof tool: behavior not code, larger explanation, terse guidance | Done |
 | P592 | Jira: faster loading | Done |
-| P593 | Database MCP: customizable explain threshold | Todo |
+| P593 | Database MCP: customizable explain threshold | Done |
 | P594 | Open GitHub links inside the app: fix | Done |
 | P595 | `api_request` rules: default action ask or deny | Todo |
 | P596 | Masking and the Privacy tab: make it understandable | Todo |
@@ -48,7 +48,7 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Ask (user): the explain threshold cannot be customized.
 - Context: `ExplainThreshold` in `bridge/dbmcp.go` `serverConfig`; `ConnectionMcpTab.vue` (`auto_explain`). Planner decides the scope (global, per connection, or both) and where the setting lives.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
-- Result:
+- Result: optional per-connection override `explain_threshold_rows` (file key, column and migration 0095, 1,000 to 1,000,000,000, absent = `advanced.expensiveQueryRows`), shown in the connection Advanced tab for postgres, mysql, mariadb and clickhouse with a reset button and engine note. It drives console explain, auto-explain, the verdict text and every MCP path (`dbmcp.Server.thresholdFor`, read per call, live without restart); `list_connections` reports the effective number. MCP tab says where the number comes from. Settings, Advanced text points to the override; the stale "Takes effect after restart" note is removed (op-log retention is read live at each prune). Flow `TestDbMcpConnectionExplainThreshold` plus a Postgres complete-suite step (not run: no Docker here); UI spec `connection-explain-threshold`; `settings-advanced` visual baseline re-recorded (Inter confirmed). Non-UI flows all pass.
 
 ## P594 Open GitHub links inside the app: fix
 
