@@ -9,7 +9,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P592 | Jira: faster loading | Done |
 | P593 | Database MCP: customizable explain threshold | Done |
 | P594 | Open GitHub links inside the app: fix | Done |
-| P595 | `api_request` rules: default action ask or deny | Todo |
+| P595 | `api_request` rules: default action ask or deny | Done |
 | P596 | Masking and the Privacy tab: make it understandable | Todo |
 | P597 | Proof: screenshot button saves all to a Desktop folder, location customizable | Todo |
 | P598 | Task work start: require a repo choice before an agent opens | Todo |
@@ -63,7 +63,7 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: P580 rules (`internal/apiaccess/policy.go`, `dbMcp.apiRules`, `apiApproval`). Today any rule makes unmatched requests refused; replace by an explicit default.
 - Acceptance: default is `ask` or `deny`; existing installs keep behavior.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
-- Result:
+- Result: Rules are allow (runs without approval), deny (refuses), and new leaf `dbMcp.apiDefault` (`ask` | `deny`, default `ask`) for requests no rule matches; it applies with zero rules too. Deliberate user-approved change: allow rules now skip approval, so installs with allow rules and approval on stop prompting for allowed hosts. Migration 0096 writes `deny` for installs with stored rules (unmatched stay refused); an unreadable value reads as `deny`. `Policy.Decide` and `CheckHop` replace `Check`; a redirect hop must go to an allow-matched host unless there are no rules and the default is `ask`; `Planned.AllowedByRule` plus `ErrPlanChanged` in `Send` close the plan-to-send race. Prompt text and budget (363 to 453) updated. UI: default select, hints, allow-any warning, dialog effect hint and host-forms line (key `apiRules.hostForms.body`, catalog caps depth at 6). Plan: `plans/P595.md`. Tests: `TestPolicyDecide`, `TestPolicyAllowsAll`, `TestPolicyCheckHop`, `TestMigration0096APIDefault`, flows `TestApiAccessDefault` and revised `TestApiAccessRules` (contract `dbmcp-api-default`), UI specs `dbmcp-api-default` and `dbmcp-api-rules`. Real `claude` run: REALCLAUDE
 
 ## P596 Masking and the Privacy tab: make it understandable
 

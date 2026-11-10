@@ -82,6 +82,23 @@ func (f *fixture) patchRules(t *testing.T, key string, rules []apiaccess.Rule) {
 	f.app.Contract(t, "dbmcp-api-rules", "args:SettingsService.Set#"+key, args)
 }
 
+func (f *fixture) patchDefault(t *testing.T, key string, patch *model.DbMcpPatch) {
+	t.Helper()
+	args := bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: patch}}
+	if _, err := f.app.W.Settings.Set(args); err != nil {
+		t.Fatal(err)
+	}
+	f.app.Contract(t, "dbmcp-api-default", "args:SettingsService.Set#"+key, args)
+}
+
+func (f *fixture) setDefault(t *testing.T, apiDefault string) {
+	t.Helper()
+	patch := &model.DbMcpPatch{APIDefault: &apiDefault}
+	if _, err := f.app.W.Settings.Set(bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: patch}}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func (f *fixture) setAPI(t *testing.T, enabled bool, approval string) {
 	t.Helper()
 	patch := &model.DbMcpPatch{APIRequests: &enabled, APIApproval: &approval}
@@ -432,8 +449,8 @@ func TestApiRequestBodies(t *testing.T) {
 	}
 }
 
-// TestApiAccessRules: host and method rules gate api_request in front of approval, deny wins, any rule makes
-// the default refuse, and unreadable stored rules refuse everything. UI half: tests/ui/studio/dbmcp-api-rules.spec.ts.
+// TestApiAccessRules: host and method rules gate api_request with unmatched requests denied, deny wins, allow
+// sends without approval, and unreadable stored rules refuse everything. UI half: tests/ui/studio/dbmcp-api-rules.spec.ts.
 func TestApiAccessRules(t *testing.T) {
 	f := newFixture(t)
 	srv, sess, envID := f.apiSetup(t, "127.0.0.1", false)
@@ -441,6 +458,7 @@ func TestApiAccessRules(t *testing.T) {
 	local := apiaccess.Rule{Effect: "allow", Hosts: []string{"127.0.0.1"}, Methods: []string{"GET"}}
 	wild := apiaccess.Rule{Effect: "allow", Hosts: []string{"*.example.com"}, Methods: []string{"*"}}
 	noDelete := apiaccess.Rule{Effect: "deny", Hosts: []string{"*"}, Methods: []string{"DELETE"}}
+	f.setDefault(t, "deny")
 	f.patchRules(t, "allow", []apiaccess.Rule{local})
 	f.patchRules(t, "wildcard", []apiaccess.Rule{local, wild})
 	f.patchRules(t, "deny", []apiaccess.Rule{local, wild, noDelete})
@@ -460,11 +478,9 @@ func TestApiAccessRules(t *testing.T) {
 		}
 	}
 
-	// Rules are a gate in front of approval, never a replacement: an allowed GET still waits.
-	pending := callToolAsync(sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo"))
-	f.answer(t, true, f.pending(t).RequestID)
-	if out := decodeResult[apiResult](t, wait(t, pending)); out.Status != 200 || len(srv.Requests()) != 1 {
-		t.Fatalf("allowed GET = %+v, server saw %d, want 200 and one request", out, len(srv.Requests()))
+	// An allow rule sends without approval.
+	if out := decodeResult[apiResult](t, callTool(t, sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo"))); out.Status != 200 || len(srv.Requests()) != 1 || f.queueLen(t) != 0 {
+		t.Fatalf("allowed GET = %+v, server saw %d, queue %d, want 200, one request and no approval item", out, len(srv.Requests()), f.queueLen(t))
 	}
 
 	post := apiArgs(envID, "POST", "{{base_url}}/echo")
@@ -498,6 +514,7 @@ func TestApiAccessRules(t *testing.T) {
 	refused(callTool(t, sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo")), "not allowed by the API access rules")
 
 	f.setAPI(t, true, "never")
+	f.setDefault(t, "ask")
 	f.patchRules(t, "clear", []apiaccess.Rule{})
 	if out := decodeResult[apiResult](t, callTool(t, sess, "api_request", post)); out.Status != 200 {
 		t.Fatalf("POST with no rules = %+v, want allow-all again", out)
@@ -528,4 +545,111 @@ func (f *fixture) rules(t *testing.T) []apiaccess.Rule {
 		t.Fatal(err)
 	}
 	return all.DbMcp.APIRules
+}
+
+// TestApiAccessDefault: allow runs without approval, deny refuses, a request no rule matches follows the
+// default (ask or deny), and a redirect hop must go to an allowed host. UI half: tests/ui/studio/dbmcp-api-default.spec.ts.
+func TestApiAccessDefault(t *testing.T) {
+	f := newFixture(t)
+	srv, sess, envID := f.apiSetup(t, "127.0.0.1", false)
+
+	if all, err := f.app.W.Settings.GetAll(); err != nil || all.DbMcp.APIDefault != "ask" {
+		t.Fatalf("fresh apiDefault = %q, %v, want ask", all.DbMcp.APIDefault, err)
+	}
+	noDelete := apiaccess.Rule{Effect: "deny", Hosts: []string{"*"}, Methods: []string{"DELETE"}}
+	local := apiaccess.Rule{Effect: "allow", Hosts: []string{"127.0.0.1"}, Methods: []string{"GET"}}
+	rules := func(key string, rs ...apiaccess.Rule) {
+		t.Helper()
+		f.patchDefault(t, key, &model.DbMcpPatch{APIRules: &rs})
+	}
+	dflt := func(key, v string) {
+		t.Helper()
+		f.patchDefault(t, key, &model.DbMcpPatch{APIDefault: &v})
+	}
+	refused := func(res *mcp.CallToolResult, want ...string) {
+		t.Helper()
+		if !res.IsError {
+			t.Fatalf("result = %q, want a refusal", text(res))
+		}
+		for _, w := range want {
+			if !strings.Contains(text(res), w) {
+				t.Fatalf("error = %q, want it to contain %q", text(res), w)
+			}
+		}
+		if f.queueLen(t) != 0 {
+			t.Fatalf("queue = %d, want no approval item for a refused request", f.queueLen(t))
+		}
+	}
+	approved := func(args map[string]any) {
+		t.Helper()
+		pending := callToolAsync(sess, "api_request", args)
+		f.answer(t, true, f.pending(t).RequestID)
+		if out := decodeResult[apiResult](t, wait(t, pending)); out.Status != 200 {
+			t.Fatalf("approved request = %+v, want 200", out)
+		}
+	}
+	runs := func(args map[string]any) {
+		t.Helper()
+		if out := decodeResult[apiResult](t, callTool(t, sess, "api_request", args)); out.Status != 200 || f.queueLen(t) != 0 {
+			t.Fatalf("request = %+v, queue %d, want 200 and no approval item", out, f.queueLen(t))
+		}
+	}
+	post := apiArgs(envID, "POST", "{{base_url}}/echo")
+	post["body"] = "x"
+
+	rules("rules", noDelete)
+	approved(apiArgs(envID, "GET", "{{base_url}}/echo"))
+	refused(callTool(t, sess, "api_request", apiArgs(envID, "DELETE", "{{base_url}}/x")), "denied by the API access rule")
+
+	seen := len(srv.Requests())
+	dflt("deny", "deny")
+	refused(callTool(t, sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo")), "no rule matches", "Allowed: nothing")
+	if len(srv.Requests()) != seen {
+		t.Fatalf("server saw %d requests, want %d", len(srv.Requests()), seen)
+	}
+
+	rules("allow", noDelete, local)
+	runs(apiArgs(envID, "GET", "{{base_url}}/echo"))
+	refused(callTool(t, sess, "api_request", post), "no rule matches")
+
+	dflt("ask", "ask")
+	approved(post)
+	before := len(srv.Requests())
+	runs(apiArgs(envID, "GET", srv.URL+"/redirect?to="+srv.URL+"/echo"))
+	if got := len(srv.Requests()) - before; got != 2 {
+		t.Fatalf("server saw %d requests for a hop to an allowed host, want 2", got)
+	}
+	before = len(srv.Requests())
+	refused(callTool(t, sess, "api_request", apiArgs(envID, "GET", srv.URL+"/redirect?to="+srv.AltURL+"/echo")), "redirect to localhost", "blocked")
+	if got := len(srv.Requests()) - before; got != 1 {
+		t.Fatalf("server saw %d requests for a hop to an unmatched host, want the first hop only", got)
+	}
+
+	f.setAPI(t, true, "never")
+	runs(post)
+	f.setAPI(t, true, "always")
+
+	bad := "allow"
+	if _, err := f.app.W.Settings.Set(bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: &model.DbMcpPatch{APIDefault: &bad}}}); err == nil {
+		t.Fatal("Set with apiDefault allow succeeded, want a validation error")
+	}
+	if all, err := f.app.W.Settings.GetAll(); err != nil || all.DbMcp.APIDefault != "ask" {
+		t.Fatalf("apiDefault after a refused Set = %q, %v, want ask", all.DbMcp.APIDefault, err)
+	}
+
+	// A stored value that is not ask or deny fails closed.
+	tx, err := f.app.W.Settings.Deps.Repos.Settings.DB.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := appsettings.UpsertLeaf(tx, "dbMcp.apiDefault", 7); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if all, err := f.app.W.Settings.GetAll(); err != nil || all.DbMcp.APIDefault != "deny" {
+		t.Fatalf("unreadable apiDefault reads %q, %v, want deny", all.DbMcp.APIDefault, err)
+	}
+	refused(callTool(t, sess, "api_request", post), "no rule matches")
 }
