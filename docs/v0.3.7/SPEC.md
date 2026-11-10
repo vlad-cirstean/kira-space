@@ -6,7 +6,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 |---|---|---|
 | P590 | Kira Studio approval prompt: skip when the database connection cannot be established | Todo |
 | P591 | Proof tool: behavior not code, larger explanation, terse guidance | Done |
-| P592 | Jira: faster loading | Todo |
+| P592 | Jira: faster loading | Done |
 | P593 | Database MCP: customizable explain threshold | Todo |
 | P594 | Open GitHub links inside the app: fix | Todo |
 | P595 | `api_request` rules: default action ask or deny | Todo |
@@ -41,7 +41,7 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 
 - Ask (user): Jira is still very slow. Consider a more efficient approach.
 - Context: `apps/kira-space/internal/issuetracker/jira`. Planner measures first (calls per view, payload size, pagination, caching, `acli` process spawn cost) and picks the approach with evidence.
-- Result:
+- Result: Every Jira read is one `acli` spawn and no timing exists here, so the plan counted spawns on the critical path and cut them. Issue cache keeps the last good copy 30 min (saved detail too, was 10) and serves it `Stale` while one background read refreshes it; an OK status probe re-checks in the background up to 1 h. New optional `IssueBatch` reads 50 issues per `workitem search`, with per-key fallback and a 10 min backoff. The watcher runs issue reads beside host reads, one batch per pass, and reads a detail only where `updated` moved. The task issue line takes `TaskIssueArgs{taskId, fresh}`, shows the copy at once and refreshes in place once. Spawns on the UI path: opening Details on a task read 1 to 30 min ago went 1 blocking (4 when status was past 5 min) to 0; first open after start 1 per task plus probe and discovery to 0 once the start-up pass ran; a board push past 60 s 1 to 0. Watcher with N linked tasks: N heavy detail spawns per 10 min and per Refresh to ceil(N/50) searches plus one detail per changed issue (asserted by `TestTrackedIssueBatch`). Search flags and JSON shape are unverified against a live acli (Known open item); a refused search falls back to per-key reads. A moved `updated` forces a fresh detail read (deviation from plan: avoids a stale saved copy hiding the change). Tests: `TestIssueCacheRules`, `TestIssuesBatch`, `TestStatusStaleWhileRevalidate`, flows `TestTaskIssueFastLoading` and `TestTrackedIssueBatch`, UI `ade-v2-issue-tracker.spec.ts`.
 
 ## P593 Database MCP: customizable explain threshold
 
