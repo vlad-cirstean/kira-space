@@ -15886,6 +15886,15 @@
         "engineSearch": {
           "placeholder": "Search engines"
         },
+        "explainThreshold": {
+          "clickhouse": {
+            "body": "ClickHouse counts every row in the parts it would read, so its numbers run higher than other engines’."
+          },
+          "description": "A query is expensive when its plan estimates reading at least this many rows. That counts rows the database looks at, not rows it returns. The console’s explain warns about it, and agent queries are refused before they run. Leave empty to use the app default of {default} rows, set in the app settings, advanced section.",
+          "scan": {
+            "body": "The estimate is the largest single table scan, from table statistics. LIMIT is not taken into account."
+          }
+        },
         "hidePassword": {
           "label": "Hide password"
         },
@@ -16057,6 +16066,12 @@
           },
           "rowsOff": {
             "body": "Agent queries run without a row check."
+          },
+          "rowsWhereApp": {
+            "body": "This is the app default. Set one for this connection in the {tab} tab."
+          },
+          "rowsWhereConnection": {
+            "body": "This connection sets its own threshold in the {tab} tab."
           },
           "rowsWho": {
             "body": "Kira, not the database, runs EXPLAIN on each agent SELECT or WITH first, without executing it, and compares the estimated rows read with {threshold} rows."
@@ -16908,7 +16923,7 @@
     "settings": {
       "advanced": {
         "expensiveRows": {
-          "description": "The estimated rows a query’s plan reads, not the rows it returns. At or above it, the console’s explain and auto-explain warn you, and the database MCP server refuses an agent’s query before it runs where the connection’s MCP tab has the check on. Not comparable to the engines’ own cost figures.",
+          "description": "The estimated rows a query’s plan reads, not the rows it returns. At or above it, the console’s explain and auto-explain warn you, and the database MCP server refuses an agent’s query before it runs where the connection’s MCP tab has the check on. Not comparable to the engines’ own cost figures. A connection can set its own on its advanced tab.",
           "label": "Expensive query threshold (rows)"
         },
         "opLogRetention": {
@@ -17136,9 +17151,6 @@
         "plain": {
           "status": "{min}–{max}"
         }
-      },
-      "restartNote": {
-        "hint": "Takes effect after restart."
       }
     },
     "shortcuts": {
