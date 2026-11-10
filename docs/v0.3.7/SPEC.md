@@ -11,7 +11,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P594 | Open GitHub links inside the app: fix | Todo |
 | P595 | `api_request` rules: default action ask or deny | Todo |
 | P596 | Masking and the Privacy tab: make it understandable | Todo |
-| P597 | Proof: export all screenshots to a Desktop folder, location customizable | Todo |
+| P597 | Proof: screenshot button saves all to a Desktop folder, location customizable | Todo |
 | P598 | Task work start: require a repo choice before an agent opens | Todo |
 | P599 | Review changes button: also for uncommitted changes | Todo |
 | P600 | Task Details: group the top links by category, more compact and nicer | Todo |
@@ -72,9 +72,11 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Tests: flow test plus UI spec where behavior changes.
 - Result:
 
-## P597 Proof: export all screenshots to a Desktop folder, location customizable
+## P597 Proof: screenshot button saves all to a Desktop folder, location customizable
 
-- Ask (user): export all screenshots creates a folder by default and saves it on the Desktop. The save location is customizable from the export window.
+- Ask (user):
+  - Export all screenshots creates a folder by default and saves it on the Desktop. The save location is customizable from the export window.
+  - The proof window's screenshot button is the save-all-to-folder action: it replaces the single-screenshot save, with no separate export-all control.
 - Context: proof screenshot export (`ProofSaveJpegArgs`, save flow).
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
 - Result:
