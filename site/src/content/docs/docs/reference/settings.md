@@ -44,7 +44,7 @@ See [API client](../../studio/api-client/). Defaults: HTTP version 2, no timeout
 
 ### Database MCP
 
-The server switch, exposed connections and token. Off by default. See [Database MCP server](../../studio/database-mcp/).
+The server switch, exposed connections and token. Off by default. See [Database MCP server](../../studio/database-mcp/). With API requests on: an approval mode, and host and method rules. A deny rule refuses, and an allow rule sends without asking. A request no rule matches is asked or denied, as you choose. Earlier versions still asked for requests an allow rule matched.
 
 ### Prompts
 
