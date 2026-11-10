@@ -2917,14 +2917,23 @@
         "shotExists": {
           "body": "A screenshot with that name is already in the folder."
         },
-        "shotFolder": {
-          "title": "Choose where to save the screenshots"
-        },
         "shotFolderGone": {
           "body": "The screenshot folder is no longer available. Save again."
         },
         "shotFolderTaken": {
-          "body": "Too many folders with that name exist. Choose another location."
+          "body": "Too many folders named {name} exist in {path}. Change the location."
+        },
+        "shotLocation": {
+          "title": "Choose where proof screenshots are saved"
+        },
+        "shotLocationInvalid": {
+          "body": "{path} is not a folder Kira Space can save to."
+        },
+        "shotLocationMissing": {
+          "body": "The save location {path} no longer exists. Change the location or reset it to the Desktop."
+        },
+        "shotLocationUnwritable": {
+          "body": "Kira Space can’t write to {path}. Change the location."
         },
         "tooLarge": {
           "body": "The screenshot is too large to save."

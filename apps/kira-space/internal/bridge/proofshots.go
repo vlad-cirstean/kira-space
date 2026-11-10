@@ -5,9 +5,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 
 	"github.com/google/renameio/v2"
 	"github.com/kirathecat/kira-studio/internal/ids"
@@ -20,61 +23,81 @@ const (
 	maxFolderSuffix = 99
 )
 
-// proofShotFolders maps an opaque id to a folder the user picked, so the renderer never sends a path.
+// shotFolder is a folder ProofService created. A closed folder takes no more saves but can still be revealed.
+type shotFolder struct {
+	path   string
+	closed bool
+}
+
+// proofShotFolders maps an opaque id to a folder ProofService created, so the renderer never sends a path.
 type proofShotFolders struct {
-	mu    sync.Mutex
-	paths map[string]string
-	order []string
+	mu      sync.Mutex
+	folders map[string]*shotFolder
+	order   []string
 }
 
 func (p *proofShotFolders) add(path string) string {
 	id := ids.New(ids.Shot)
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.paths == nil {
-		p.paths = map[string]string{}
+	if p.folders == nil {
+		p.folders = map[string]*shotFolder{}
 	}
-	p.paths[id] = path
+	p.folders[id] = &shotFolder{path: path}
 	p.order = append(p.order, id)
 	if len(p.order) > maxShotFolders {
-		delete(p.paths, p.order[0])
+		delete(p.folders, p.order[0])
 		p.order = p.order[1:]
 	}
 	return id
 }
 
-func (p *proofShotFolders) get(id string) (string, bool) {
+func (p *proofShotFolders) get(id string) (shotFolder, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	path, ok := p.paths[id]
-	return path, ok
-}
-
-func (p *proofShotFolders) forget(id string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	delete(p.paths, id)
-	for i, o := range p.order {
-		if o == id {
-			p.order = append(p.order[:i], p.order[i+1:]...)
-			break
-		}
+	f, ok := p.folders[id]
+	if !ok {
+		return shotFolder{}, false
 	}
+	return *f, true
 }
 
-// ProofChooseShotFolderArgs names the session whose tabs are about to be saved.
-type ProofChooseShotFolderArgs struct {
+func (p *proofShotFolders) close(id string) (string, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	f, ok := p.folders[id]
+	if !ok {
+		return "", false
+	}
+	f.closed = true
+	return f.path, true
+}
+
+// ProofShotLocation is the parent folder screenshot folders are created in.
+type ProofShotLocation struct {
+	Path   string `json:"path"`   // effective parent folder
+	Custom bool   `json:"custom"` // false: the Desktop default
+	Exists bool   `json:"exists"` // false: the custom folder is gone
+}
+
+// ProofChooseShotLocationResult is the outcome of the location picker; canceled leaves the location unchanged.
+type ProofChooseShotLocationResult struct {
+	Canceled bool              `json:"canceled"`
+	Location ProofShotLocation `json:"location"`
+}
+
+// ProofOpenShotFolderArgs names the session whose tabs are about to be saved.
+type ProofOpenShotFolderArgs struct {
 	SessionName string `json:"sessionName"`
 }
 
-// ProofShotFolderResult is the fresh folder screenshots go into; canceled when the user closed the picker.
+// ProofShotFolderResult is the fresh folder screenshots go into.
 type ProofShotFolderResult struct {
-	Canceled bool   `json:"canceled"`
-	ID       string `json:"id"`
-	Path     string `json:"path"`
+	ID   string `json:"id"`
+	Path string `json:"path"`
 }
 
-// ProofSaveJpegToArgs saves one screenshot into a folder from ChooseShotFolder.
+// ProofSaveJpegToArgs saves one screenshot into a folder from OpenShotFolder.
 type ProofSaveJpegToArgs struct {
 	FolderID   string `json:"folderId"`
 	Filename   string `json:"filename"`
@@ -86,26 +109,108 @@ type ProofSaveJpegToResult struct {
 	Path string `json:"path"`
 }
 
-// ProofForgetShotFolderArgs releases a folder id.
-type ProofForgetShotFolderArgs struct {
+// ProofShotFolderArgs names a folder from OpenShotFolder.
+type ProofShotFolderArgs struct {
 	FolderID string `json:"folderId"`
 }
 
-// ChooseShotFolder asks for a parent folder and creates a fresh subfolder named after the session.
-func (s *ProofService) ChooseShotFolder(args ProofChooseShotFolderArgs) (ProofShotFolderResult, error) {
-	parent, err := s.Dialogs.OpenDirectory(OpenDirectoryRequest{Title: i18n.T("backend.studio.proof.shotFolder.title", nil)})
+// desktopDir resolves the default parent on every call, so it follows the current HOME. Never creates ~/Desktop.
+func desktopDir() (string, error) {
+	if d := os.Getenv("XDG_DESKTOP_DIR"); filepath.IsAbs(d) && isDir(d) {
+		return d, nil
+	}
+	home, err := os.UserHomeDir()
 	if err != nil {
-		return ProofShotFolderResult{}, ipcerr.InternalErr(err)
+		return "", ipcerr.InternalErr(err)
 	}
-	if parent == "" {
-		return ProofShotFolderResult{Canceled: true}, nil
+	if d := filepath.Join(home, "Desktop"); isDir(d) {
+		return d, nil
 	}
-	path, err := mkFreshDir(parent, safeBaseName(args.SessionName))
+	return home, nil
+}
+
+func isDir(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.IsDir()
+}
+
+func (s *ProofService) shotLocation() (ProofShotLocation, error) {
+	custom, err := s.Locations.ProofShotLocation()
+	if err != nil {
+		return ProofShotLocation{}, ipcerr.InternalErr(err)
+	}
+	if custom != "" {
+		return ProofShotLocation{Path: custom, Custom: true, Exists: isDir(custom)}, nil
+	}
+	path, err := desktopDir()
+	if err != nil {
+		return ProofShotLocation{}, err
+	}
+	return ProofShotLocation{Path: path, Exists: true}, nil
+}
+
+// ShotLocation returns the parent folder screenshots are saved under. It reads the store every call.
+func (s *ProofService) ShotLocation() (ProofShotLocation, error) { return s.shotLocation() }
+
+// ChooseShotLocation asks for a new parent folder and stores it. Cancel and an unusable pick change nothing.
+func (s *ProofService) ChooseShotLocation() (ProofChooseShotLocationResult, error) {
+	picked, err := s.Dialogs.OpenDirectory(OpenDirectoryRequest{Title: i18n.T("backend.studio.proof.shotLocation.title", nil)})
+	if err != nil {
+		return ProofChooseShotLocationResult{}, ipcerr.InternalErr(err)
+	}
+	if picked == "" {
+		loc, err := s.shotLocation()
+		return ProofChooseShotLocationResult{Canceled: true, Location: loc}, err
+	}
+	picked = filepath.Clean(picked)
+	if err := checkWritableDir(picked); err != nil {
+		return ProofChooseShotLocationResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotLocationInvalid.body", map[string]string{"path": picked})
+	}
+	if err := s.Locations.SetProofShotLocation(picked); err != nil {
+		return ProofChooseShotLocationResult{}, ipcerr.InternalErr(err)
+	}
+	loc, err := s.shotLocation()
+	return ProofChooseShotLocationResult{Location: loc}, err
+}
+
+// checkWritableDir requires an absolute, existing, writable directory.
+func checkWritableDir(path string) error {
+	if !filepath.IsAbs(path) || !isDir(path) {
+		return os.ErrInvalid
+	}
+	probe, err := os.MkdirTemp(path, ".kira-shot-*")
+	if err != nil {
+		return err
+	}
+	return os.Remove(probe)
+}
+
+// ResetShotLocation drops the custom folder, back to the Desktop default.
+func (s *ProofService) ResetShotLocation() (ProofShotLocation, error) {
+	if err := s.Locations.SetProofShotLocation(""); err != nil {
+		return ProofShotLocation{}, ipcerr.InternalErr(err)
+	}
+	return s.shotLocation()
+}
+
+// OpenShotFolder creates a fresh folder named after the session under the save location. No picker.
+func (s *ProofService) OpenShotFolder(args ProofOpenShotFolderArgs) (ProofShotFolderResult, error) {
+	loc, err := s.shotLocation()
 	if err != nil {
 		return ProofShotFolderResult{}, err
 	}
-	id := s.shots.add(path)
-	return ProofShotFolderResult{ID: id, Path: path}, nil
+	if loc.Custom && !loc.Exists {
+		return ProofShotFolderResult{}, missingLocationErr(loc.Path)
+	}
+	path, err := mkFreshDir(loc.Path, safeBaseName(args.SessionName))
+	if err != nil {
+		return ProofShotFolderResult{}, err
+	}
+	return ProofShotFolderResult{ID: s.shots.add(path), Path: path}, nil
+}
+
+func missingLocationErr(path string) error {
+	return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotLocationMissing.body", map[string]string{"path": path})
 }
 
 // mkFreshDir creates parent/name, or parent/name-2 ... when taken. Mkdir, never MkdirAll, so nothing is reused.
@@ -119,19 +224,26 @@ func mkFreshDir(parent, name string) (string, error) {
 		if err == nil {
 			return p, nil
 		}
-		if !errors.Is(err, os.ErrExist) {
+		switch {
+		case errors.Is(err, os.ErrExist):
+		case errors.Is(err, os.ErrNotExist):
+			return "", missingLocationErr(parent)
+		case errors.Is(err, fs.ErrPermission), errors.Is(err, syscall.EROFS):
+			return "", ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotLocationUnwritable.body", map[string]string{"path": parent})
+		default:
 			return "", ipcerr.InternalErr(err)
 		}
 	}
-	return "", ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotFolderTaken.body", nil)
+	return "", ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotFolderTaken.body", map[string]string{"name": name, "path": parent})
 }
 
-// SaveJpegTo writes one screenshot into a picked folder, never over an existing file.
+// SaveJpegTo writes one screenshot into a folder from OpenShotFolder, never over an existing file.
 func (s *ProofService) SaveJpegTo(args ProofSaveJpegToArgs) (ProofSaveJpegToResult, error) {
-	dir, ok := s.shots.get(args.FolderID)
-	if !ok {
+	folder, ok := s.shots.get(args.FolderID)
+	if !ok || folder.closed {
 		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotFolderGone.body", nil)
 	}
+	dir := folder.path
 	if len(args.JpegBase64) > maxShotBase64 {
 		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.tooLarge.body", nil)
 	}
@@ -151,8 +263,28 @@ func (s *ProofService) SaveJpegTo(args ProofSaveJpegToArgs) (ProofSaveJpegToResu
 	return ProofSaveJpegToResult{Path: path}, nil
 }
 
-// ForgetShotFolder releases a folder id once a save-all walk ends.
-func (s *ProofService) ForgetShotFolder(args ProofForgetShotFolderArgs) error {
-	s.shots.forget(args.FolderID)
+// CloseShotFolder ends a save walk: no more saves for the id, and the folder is removed when nothing was written.
+func (s *ProofService) CloseShotFolder(args ProofShotFolderArgs) error {
+	if path, ok := s.shots.close(args.FolderID); ok {
+		// os.Remove only succeeds on an empty directory.
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			slog.Debug("proof: keep shot folder", "scope", "proof", "path", path, "err", err)
+		}
+	}
+	return nil
+}
+
+// RevealShotFolder shows a saved folder in the file manager.
+func (s *ProofService) RevealShotFolder(args ProofShotFolderArgs) error {
+	if s.Opener == nil {
+		return ipcerr.T(ipcerr.CodeUnavailable, "backend.studio.proof.unavailable.body", nil)
+	}
+	folder, ok := s.shots.get(args.FolderID)
+	if !ok || !isDir(folder.path) {
+		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotFolderGone.body", nil)
+	}
+	if err := s.Opener.RevealFile(folder.path); err != nil {
+		return ipcerr.InternalErr(err)
+	}
 	return nil
 }

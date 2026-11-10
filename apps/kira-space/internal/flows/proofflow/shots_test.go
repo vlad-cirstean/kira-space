@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
@@ -15,34 +16,33 @@ func jpegB64(extra string) string {
 	return base64.StdEncoding.EncodeToString(append([]byte("\xff\xd8\xff"), extra...))
 }
 
-func TestProofShotFolder(t *testing.T) {
+func TestProofShotSaveAll(t *testing.T) {
 	f := newFixture(t)
 	p := f.app.W.Proof
-	tmp := t.TempDir()
+	home := f.app.Home
 
-	canceled, err := p.ChooseShotFolder(bridge.ProofChooseShotFolderArgs{SessionName: "Checkout fix"})
-	if err != nil || !canceled.Canceled || canceled.ID != "" {
-		t.Fatalf("cancel = %+v, %v", canceled, err)
+	loc, err := p.ShotLocation()
+	if err != nil || loc != (bridge.ProofShotLocation{Path: home, Exists: true}) {
+		t.Fatalf("no Desktop: location = %+v, %v; want home", loc, err)
 	}
-	if ents, _ := os.ReadDir(tmp); len(ents) != 0 {
-		t.Fatalf("cancel created %v", ents)
+	desktop := filepath.Join(home, "Desktop")
+	if err := os.Mkdir(desktop, 0o755); err != nil {
+		t.Fatal(err)
 	}
+	loc, err = p.ShotLocation()
+	if err != nil || loc != (bridge.ProofShotLocation{Path: desktop, Exists: true}) {
+		t.Fatalf("location = %+v, %v; want the Desktop", loc, err)
+	}
+	f.app.Contract(t, "proof", "ProofService.ShotLocation", loc)
 
-	f.app.Dialogs.AnswerDirectory(tmp)
-	first, err := p.ChooseShotFolder(bridge.ProofChooseShotFolderArgs{SessionName: "Checkout fix"})
-	if err != nil || first.Canceled || first.Path != filepath.Join(tmp, "Checkout fix") {
+	first, err := p.OpenShotFolder(bridge.ProofOpenShotFolderArgs{SessionName: "Checkout fix"})
+	if err != nil || first.Path != filepath.Join(desktop, "Checkout fix") {
 		t.Fatalf("first = %+v, %v", first, err)
 	}
-	f.app.Contract(t, "proof", "ProofService.ChooseShotFolder", first,
-		flowharness.Mask("id", "path"))
-	f.app.Dialogs.AnswerDirectory(tmp)
-	second, err := p.ChooseShotFolder(bridge.ProofChooseShotFolderArgs{SessionName: "Checkout fix"})
-	if err != nil || second.Path != filepath.Join(tmp, "Checkout fix-2") {
-		t.Fatalf("second = %+v, %v", second, err)
+	if len(f.app.Dialogs.Directory) != 0 {
+		t.Fatalf("picker opened: %+v", f.app.Dialogs.Directory)
 	}
-	if got := f.app.Dialogs.Directory; len(got) != 3 || got[0].Title == "" {
-		t.Fatalf("picker requests = %+v", got)
-	}
+	f.app.Contract(t, "proof", "ProofService.OpenShotFolder", first, flowharness.Mask("id"))
 
 	for i, name := range []string{"01-a.jpg", "02-b.jpg", "03-c.jpg"} {
 		body := string(rune('a' + i))
@@ -74,10 +74,99 @@ func TestProofShotFolder(t *testing.T) {
 		t.Fatalf("existing file overwritten: %q", got)
 	}
 
-	if err := p.ForgetShotFolder(bridge.ProofForgetShotFolderArgs{FolderID: first.ID}); err != nil {
+	if err := p.CloseShotFolder(bridge.ProofShotFolderArgs{FolderID: first.ID}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := p.SaveJpegTo(bridge.ProofSaveJpegToArgs{FolderID: first.ID, Filename: "late.jpg", JpegBase64: jpegB64("l")}); err == nil {
-		t.Fatal("save after forget succeeded")
+		t.Fatal("save after close succeeded")
+	}
+	if err := p.RevealShotFolder(bridge.ProofShotFolderArgs{FolderID: first.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.app.FileOpener.RevealedFiles(); len(got) != 1 || got[0] != first.Path {
+		t.Fatalf("revealed = %v, want %s", got, first.Path)
+	}
+
+	second, err := p.OpenShotFolder(bridge.ProofOpenShotFolderArgs{SessionName: "Checkout fix"})
+	if err != nil || second.Path != filepath.Join(desktop, "Checkout fix-2") {
+		t.Fatalf("second = %+v, %v", second, err)
+	}
+	if err := p.CloseShotFolder(bridge.ProofShotFolderArgs{FolderID: second.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(second.Path); !os.IsNotExist(err) {
+		t.Fatalf("empty folder kept: %v", err)
+	}
+	if err := p.RevealShotFolder(bridge.ProofShotFolderArgs{FolderID: second.ID}); err == nil {
+		t.Fatal("reveal of a removed folder succeeded")
+	}
+
+	tmp := t.TempDir()
+	canceled, err := p.ChooseShotLocation()
+	if err != nil || !canceled.Canceled || canceled.Location != loc {
+		t.Fatalf("cancel = %+v, %v", canceled, err)
+	}
+	f.app.Dialogs.AnswerDirectory(tmp)
+	chosen, err := p.ChooseShotLocation()
+	want := bridge.ProofShotLocation{Path: tmp, Custom: true, Exists: true}
+	if err != nil || chosen.Canceled || chosen.Location != want {
+		t.Fatalf("choose = %+v, %v", chosen, err)
+	}
+	f.app.Contract(t, "proof", "ProofService.ChooseShotLocation", chosen, flowharness.Replace(tmp, "<pick>"))
+	if got, err := p.ShotLocation(); err != nil || got != want {
+		t.Fatalf("persisted location = %+v, %v", got, err)
+	}
+	if got := f.app.Dialogs.Directory; len(got) != 2 || got[1].Title == "" {
+		t.Fatalf("picker requests = %+v", got)
+	}
+	inTmp, err := p.OpenShotFolder(bridge.ProofOpenShotFolderArgs{SessionName: "Checkout fix"})
+	if err != nil || inTmp.Path != filepath.Join(tmp, "Checkout fix") {
+		t.Fatalf("custom open = %+v, %v", inTmp, err)
+	}
+
+	file := filepath.Join(tmp, "plain.txt")
+	if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f.app.Dialogs.AnswerDirectory(file)
+	if _, err := p.ChooseShotLocation(); err == nil || !strings.Contains(err.Error(), "is not a folder Kira Space can save to") {
+		t.Fatalf("file pick: err = %v", err)
+	}
+	if got, _ := p.ShotLocation(); got != want {
+		t.Fatalf("location after refused pick = %+v", got)
+	}
+
+	// Root bypasses mode bits, so the unwritable case only runs as a regular user.
+	if os.Geteuid() != 0 {
+		ro := filepath.Join(tmp, "ro")
+		if err := os.Mkdir(ro, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		f.app.Dialogs.AnswerDirectory(ro)
+		if _, err := p.ChooseShotLocation(); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(ro, 0o555); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(ro, 0o755) })
+		if _, err := p.OpenShotFolder(bridge.ProofOpenShotFolderArgs{SessionName: "x"}); err == nil || !strings.Contains(err.Error(), "can't write to") {
+			t.Fatalf("read-only open: err = %v", err)
+		}
+	}
+
+	if err := os.RemoveAll(tmp); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := p.ShotLocation(); err != nil || got.Exists || !got.Custom {
+		t.Fatalf("removed location = %+v, %v", got, err)
+	}
+	if _, err := p.OpenShotFolder(bridge.ProofOpenShotFolderArgs{SessionName: "x"}); err == nil || !strings.Contains(err.Error(), "no longer exists") {
+		t.Fatalf("missing location: err = %v", err)
+	}
+
+	reset, err := p.ResetShotLocation()
+	if err != nil || reset != loc {
+		t.Fatalf("reset = %+v, %v; want %+v", reset, err, loc)
 	}
 }

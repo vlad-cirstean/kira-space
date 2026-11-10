@@ -2,9 +2,6 @@ package proofflow
 
 import (
 	"bytes"
-	"encoding/base64"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -233,7 +230,7 @@ func TestProofSaveIsAtomic(t *testing.T) {
 	}
 }
 
-func TestProofWindowAndSaveJpeg(t *testing.T) {
+func TestProofWindow(t *testing.T) {
 	f := newFixture(t)
 	f.save(t, "Window", keyValueStep("x"))
 	id := sessionID(t, f.app, "Window")
@@ -252,23 +249,5 @@ func TestProofWindowAndSaveJpeg(t *testing.T) {
 	}
 	if err := f.app.W.Proof.MarkSeen(bridge.ProofSessionArgs{SessionID: id}); err != nil {
 		t.Fatal(err)
-	}
-
-	jpg := jpegBytes(t, 64, 48)
-	out := filepath.Join(t.TempDir(), "shot.jpg")
-	f.app.Dialogs.AnswerSave(out)
-	sv, err := f.app.W.Proof.SaveJpeg(bridge.ProofSaveJpegArgs{Filename: "../a b.png", JpegBase64: base64.StdEncoding.EncodeToString(jpg)})
-	if err != nil || !sv.Saved {
-		t.Fatalf("SaveJpeg = %+v, %v", sv, err)
-	}
-	if b, err := os.ReadFile(out); err != nil || !bytes.Equal(b, jpg) {
-		t.Fatalf("saved file = %v, %v", b, err)
-	}
-	if got := f.app.Dialogs.Save; len(got) != 1 || got[0].Filename != "a b.jpg" {
-		t.Fatalf("save dialog = %+v, want the name a b.jpg", got)
-	}
-	_, err = f.app.W.Proof.SaveJpeg(bridge.ProofSaveJpegArgs{Filename: "x.jpg", JpegBase64: base64.StdEncoding.EncodeToString(pngBytes(t))})
-	if err == nil || !strings.Contains(err.Error(), "The screenshot is not a JPEG image.") {
-		t.Fatalf("PNG bytes: err = %v, want the notJpeg message", err)
 	}
 }

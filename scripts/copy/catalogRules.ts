@@ -24,6 +24,7 @@ export const PROPER_NOUNS: readonly string[] = [
   'Kira Space',
   'Kira',
   'Finder',
+  'Desktop',
   'Get Info',
   'Open with',
   'Change All',
