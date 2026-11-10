@@ -579,6 +579,7 @@ func runFamilySuite(t *testing.T, kind string, cfg model.ResolvedConnectionConfi
 	// Wired through scenarios.go's shared constructor (P26 §2.2/P26 review F3) rather than
 	// hand-rolled, so this scenario also backs Tier 2 via RunMatrix's own Then slices.
 	testsupport.RunScenarios(t, connectedAdapter(t, kind, cfg), cfg,
+		testsupport.PingAnswers(),
 		testsupport.ProjectionLimitsColumns(
 			nodePath(cfg.ID, seg("database", "kira_test"), seg("table", "customers")),
 			[]string{"name"},

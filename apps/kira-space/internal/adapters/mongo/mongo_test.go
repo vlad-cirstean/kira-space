@@ -1206,3 +1206,8 @@ func TestMongo_ReadLane(t *testing.T) {
 		}),
 	)
 }
+
+func TestMongo_Ping(t *testing.T) {
+	fixture := testsupport.StartMongo(t)
+	testsupport.RunScenarios(t, connectedAdapter(t, fixture), fixture.Config, testsupport.PingAnswers())
+}

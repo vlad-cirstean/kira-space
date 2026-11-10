@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -482,6 +483,7 @@ func TestSqlite(t *testing.T) {
 	// shared constructors rather than hand-rolled, so this scenario also backs Tier 2 via
 	// RunMatrix's own Then slices for the same capability.
 	testsupport.RunScenarios(t, connectedAdapter(t, cfg), cfg,
+		testsupport.PingAnswers(),
 		testsupport.FilterNarrowsResult(
 			nodePath(cfg.ID, seg("database", "main"), seg("table", "customers")),
 			"region_id = 1", 1, // only Acme Co is in region 1
@@ -1146,4 +1148,30 @@ func TestSqlite_ReadLane(t *testing.T) {
 		}),
 		testsupport.LaneCancel(path, "WITH RECURSIVE s(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM s WHERE n < 2000000000) SELECT count(*) FROM s"),
 	)
+}
+
+// An open handle survives an unlinked file; Ping must still report the database gone.
+func TestSqlite_PingFileRemoved(t *testing.T) {
+	fixture := testsupport.StartSqlite(t)
+	raw, err := os.ReadFile(fixture.Path)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	own := filepath.Join(t.TempDir(), "ping.sqlite")
+	if err := os.WriteFile(own, raw, 0o600); err != nil {
+		t.Fatalf("copy fixture: %v", err)
+	}
+	cfg := fixture.Config
+	cfg.Database = &own
+	a := connectedAdapter(t, cfg)
+	if err := a.(adapters.Pinger).Ping(context.Background()); err != nil {
+		t.Fatalf("Ping: %v", err)
+	}
+	if err := os.Remove(own); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	err = a.(adapters.Pinger).Ping(context.Background())
+	if code, _ := adapters.CodeOf(err); code != adapters.CodeEngineDown {
+		t.Fatalf("Ping after the file is removed: err = %v, want E_ENGINE_DOWN", err)
+	}
 }

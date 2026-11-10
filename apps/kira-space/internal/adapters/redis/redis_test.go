@@ -960,3 +960,8 @@ func TestRedis_ReadLane(t *testing.T) {
 		}),
 	)
 }
+
+func TestRedis_Ping(t *testing.T) {
+	fixture := testsupport.StartRedis(t)
+	testsupport.RunScenarios(t, connectedAdapter(t, fixture), fixture.Config, testsupport.PingAnswers())
+}

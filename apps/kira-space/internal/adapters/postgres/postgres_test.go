@@ -1605,6 +1605,7 @@ func TestPostgres_ExecuteStopsAtResultCap(t *testing.T) {
 	fixture := testsupport.StartPostgres(t)
 	cfg := fixture.Config
 	testsupport.RunScenarios(t, connectedAdapter(t, fixture), cfg,
+		testsupport.PingAnswers(),
 		testsupport.ConsoleResultCap(nodePath(fixture, seg("database", "kira_test")), func(n int) string {
 			return fmt.Sprintf("SELECT generate_series(1, %d)", n)
 		}),

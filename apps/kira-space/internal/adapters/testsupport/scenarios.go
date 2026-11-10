@@ -325,3 +325,28 @@ func ReadOnlyRequestAllowsBackslashRead(path model.NodePath, readSQLs ...string)
 		},
 	}
 }
+
+// PingAnswers asserts the connected adapter's Ping succeeds and a fresh, never-connected adapter of
+// the same kind reports an error. Skipped for a kind without adapters.Pinger.
+func PingAnswers() Scenario {
+	return Scenario{
+		Name: "ping: connected answers, unconnected errors",
+		Run: func(t *testing.T, a adapters.Adapter, cfg model.ResolvedConnectionConfig) {
+			t.Helper()
+			p, ok := a.(adapters.Pinger)
+			if !ok {
+				t.Skipf("%s has no Pinger", a.Kind())
+			}
+			if err := p.Ping(context.Background()); err != nil {
+				t.Fatalf("Ping on a connected adapter: %v", err)
+			}
+			fresh, err := adapters.CreateAdapter(a.Kind(), adapters.Deps{})
+			if err != nil {
+				t.Fatalf("CreateAdapter: %v", err)
+			}
+			if err := fresh.(adapters.Pinger).Ping(context.Background()); err == nil {
+				t.Error("Ping on an unconnected adapter returned nil, want an error")
+			}
+		},
+	}
+}

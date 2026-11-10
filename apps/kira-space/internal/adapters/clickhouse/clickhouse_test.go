@@ -366,6 +366,7 @@ func TestClickHouse(t *testing.T) {
 	// Wired through scenarios.go's shared constructors rather than hand-rolled, so this scenario
 	// also backs Tier 2 via RunMatrix's own Then slices for the same capability.
 	testsupport.RunScenarios(t, connectedAdapter(t, cfg), cfg,
+		testsupport.PingAnswers(),
 		testsupport.FilterNarrowsResult(
 			nodePath(cfg.ID, seg("database", "kira_test"), seg("table", "customers")),
 			"region_id = 1", 1, // only Acme Co is in region 1
