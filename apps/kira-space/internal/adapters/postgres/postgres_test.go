@@ -1717,7 +1717,7 @@ func TestPostgres_StatementTimeout(t *testing.T) {
 			Teardown: []string{"DROP TABLE IF EXISTS app.p602_ddl"},
 			Unchanged: func(t *testing.T, main adapters.Adapter) {
 				t.Helper()
-				if got := testsupport.FirstCell(t, main, path, "SELECT to_regclass('app.p602_ddl') IS NULL"); got != "true" {
+				if got := testsupport.FirstCell(t, main, path, "SELECT count(*) FROM pg_class WHERE oid = to_regclass('app.p602_ddl')"); got != "0" {
 					t.Errorf("p602_ddl exists after the timed-out CREATE TABLE AS")
 				}
 			},
