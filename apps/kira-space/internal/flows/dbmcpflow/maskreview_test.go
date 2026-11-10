@@ -11,6 +11,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -241,4 +242,57 @@ func TestDbMcpColumnReviewValidation(t *testing.T) {
 			t.Fatalf("Patch mask_review %v = nil, want a validation error", v)
 		}
 	}
+}
+
+// P596: a rule masks its column name in every table, so review treats the column as covered whatever
+// table the rule names (the grid once wrote a qualified table that matched no bare table name). UI half:
+// tests/ui/studio/connection-privacy.spec.ts, contract privacy-masking.
+func TestDbMcpMaskRuleMatchesEveryTable(t *testing.T) {
+	f := newFixture(t)
+	sess := f.session(t)
+	const local = "zed.person"
+	f.setReviewed(t, "notes.id", "notes.body", "other.id")
+	f.execSQL(t,
+		"alter table notes add column secret text", "update notes set secret = '"+local+"@corp.test'",
+		"create table other (id integer, secret text)", "insert into other (id, secret) values (1, '"+local+"@corp.test')")
+	if _, err := f.app.W.MaskRules.Upsert(bridge.MaskRulesUpsertArgs{ConnectionID: f.connID, Fields: model.MaskRuleFields{TableName: "public.elsewhere", ColumnName: "secret", Kind: "email"}}); err != nil {
+		t.Fatal(err)
+	}
+	f.app.W.Deps.MaskReview.Wait()
+
+	if n := f.app.W.Deps.MaskReview.PendingCount(f.connID); n != 0 {
+		t.Fatalf("pending = %d, want 0: the rule covers secret in every table", n)
+	}
+	if f.maskingPrompt(t) {
+		t.Fatal("masking prompt open although every column is covered")
+	}
+	for _, stmt := range []string{"select * from notes", "select secret from other"} {
+		r := runQuery(t, sess, f.connID, stmt)
+		cols, w := f.resultColumns(t, r)
+		if r.IsError || len(w) != 0 || strings.Contains(text(r), local) || !contains(cols, "secret") {
+			t.Fatalf("%q = %q withheld %v, want secret returned masked", stmt, text(r), w)
+		}
+	}
+
+	listing, err := f.app.W.MaskRules.ReviewColumns(bridge.MaskReviewColumnsArgs{ID: f.connID})
+	if err != nil || !listing.Applicable {
+		t.Fatalf("ReviewColumns = %+v (%v)", listing, err)
+	}
+	var refs []string
+	for _, c := range listing.Columns {
+		refs = append(refs, c.Ref)
+	}
+	if !contains(refs, "notes.secret") || !contains(refs, "other.secret") {
+		t.Fatalf("ReviewColumns refs = %v, want notes.secret and other.secret", refs)
+	}
+	f.app.Contract(t, "privacy-masking", "MaskRulesService.ReviewColumns", listing, flowharness.Mask("checkedAt"))
+}
+
+func contains(list []string, s string) bool {
+	for _, x := range list {
+		if x == s {
+			return true
+		}
+	}
+	return false
 }
