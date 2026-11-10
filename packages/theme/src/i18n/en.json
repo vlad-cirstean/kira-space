@@ -2880,7 +2880,7 @@
       },
       "kubernetes": {
         "badMcpMode": {
-          "error": "Unknown MCP permission: {mode}"
+          "error": "Unknown MCP approval mode: {mode}"
         },
         "badSelector": {
           "error": "Invalid label selector: {message}"
@@ -6809,30 +6809,28 @@
       }
     },
     "mcp": {
-      "describeNote": {
-        "label": "Whole objects with events and manifest; secret values stay hidden"
+      "allow": {
+        "label": "Read straight away"
+      },
+      "approval": {
+        "label": "When an agent reads it"
       },
       "descriptionNote": {
         "label": "What this cluster is for, read verbatim by MCP clients"
       },
       "dialog": {
-        "description": "Choose what AI clients may read from this cluster through the database MCP server.",
+        "description": "Choose whether AI clients on the database MCP server may read this cluster, and whether each read asks you first.",
         "title": "MCP access · {cluster}"
       },
       "discover": {
         "label": "Discovery"
       },
-      "discoverNote": {
-        "label": "Namespaces and resource kinds"
+      "enable": {
+        "hint": "An agent on the database MCP server can list this cluster and read its namespaces, kinds, objects and pod logs. Reads only; Kira never changes the cluster.",
+        "label": "Let agents read this cluster"
       },
       "list": {
         "label": "List"
-      },
-      "listNote": {
-        "label": "Object names, labels and status columns"
-      },
-      "logsNote": {
-        "label": "Container log output"
       },
       "menu": {
         "label": "MCP settings…"
@@ -17200,17 +17198,23 @@
           "label": "Bring Kira Space forward for approvals"
         },
         "kube": {
+          "allow": {
+            "status": "Reads straight away"
+          },
           "empty": {
             "empty": "No kubeconfig clusters found"
           },
           "intro": {
-            "description": "Clusters from your kubeconfig. Every operation asks first until you change it."
+            "description": "Clusters from your kubeconfig. A cluster stays hidden from agents until you turn it on. Change its description and approval mode with the row’s edit button."
           },
           "legend": {
             "label": "Kubernetes clusters"
           },
-          "modes": {
-            "status": "Discover {discover} · list {list} · describe {describe} · logs {logs}"
+          "prompt": {
+            "status": "Asks before each read"
+          },
+          "toggle": {
+            "aria": "Expose cluster {name} to agents"
           }
         },
         "masked": {
