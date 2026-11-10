@@ -10,3 +10,4 @@ issue-short-dev.json    hand-written; string form whose json part is missing
 issue-detail.json       hand-written; DetailFields view: ADF description (mention, status, info panel, media) and 3 comments (one string body), total 5, 2 attachments
 issue-detail-plain.json hand-written; string description, no comment field, RFC 3339 times
 comment-list.json       hand-written; `comment list` array form, newest first
+search.json             hand-written; `workitem search --json` array form (REST v3 issue shape): one issue with priority, assignee, updated and the Development field, one without

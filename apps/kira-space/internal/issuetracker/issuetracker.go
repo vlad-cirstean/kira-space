@@ -85,3 +85,18 @@ type Provider interface {
 	// are the typed errors of errors.go, so a caller can name the gap.
 	Issue(ctx context.Context, ref Ref, fresh bool) (Issue, error)
 }
+
+// IssueBatch is optional: one tracker call reads many issues.
+type IssueBatch interface {
+	// Issues reads refs in as few calls as the tracker allows and refreshes what Issue answers.
+	// The result maps Ref.Key to its issue; a key the tracker could not read is absent.
+	Issues(ctx context.Context, refs []Ref) (map[string]BatchIssue, error)
+}
+
+// BatchIssue is an issue plus the fields a change check needs.
+type BatchIssue struct {
+	Issue
+	Priority  string
+	Assignee  string // tracker account id
+	UpdatedAt int64  // unix ms; 0 when the tracker did not say
+}

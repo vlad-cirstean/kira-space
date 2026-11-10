@@ -55,6 +55,8 @@ type client struct {
 	mu    sync.Mutex
 	cache map[string]resultEntry
 	dev   map[string]devInfo
+	// noSearchTo: workitem search is skipped until then, after acli refused it.
+	noSearchTo time.Time
 	// details holds the last issue view per key, see detail.
 	details map[string]detailEntry
 	// detailGen counts forgetDetail calls per key; a read that began before one must not save.
@@ -224,15 +226,8 @@ func (c *client) fetch(ctx context.Context, ref issuetracker.Ref) (issuetracker.
 	}
 
 	iss := issuetracker.Issue{
-		Ref:   ref,
+		Ref:   fillRef(ref, st.Site, p.key),
 		Title: p.title, Status: p.status, StatusCategory: p.category,
-	}
-	iss.Ref.Key = p.key
-	if iss.Ref.URL == "" && st.Site != "" {
-		iss.Ref.URL = "https://" + st.Site + "/browse/" + p.key
-	}
-	if iss.Ref.Site == "" {
-		iss.Ref.Site = st.Site
 	}
 	switch {
 	case first:
@@ -250,6 +245,18 @@ func (c *client) fetch(ctx context.Context, ref issuetracker.Ref) (issuetracker.
 	}
 
 	return iss, nil
+}
+
+// fillRef completes ref with the issue's own key and the signed-in site.
+func fillRef(ref issuetracker.Ref, site, key string) issuetracker.Ref {
+	ref.Key = key
+	if ref.URL == "" && site != "" {
+		ref.URL = "https://" + site + "/browse/" + key
+	}
+	if ref.Site == "" {
+		ref.Site = site
+	}
+	return ref
 }
 
 func (c *client) devInfo(site string) devInfo {

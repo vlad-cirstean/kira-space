@@ -1,0 +1,23 @@
+[
+  {
+    "key": "KIRA-12",
+    "fields": {
+      "summary": "Add the thing",
+      "status": { "name": "In Review", "statusCategory": { "key": "indeterminate" } },
+      "priority": { "name": "High" },
+      "assignee": { "accountId": "acc-42", "displayName": "Mia Lee" },
+      "updated": "2026-10-02T09:30:00.000+0000",
+      "customfield_10000": "{pullrequest={dataType=pullrequest, state=OPEN, stateCount=3}, json={\"cachedValue\":{\"errors\":[],\"summary\":{\"pullrequest\":{\"overall\":{\"count\":3,\"lastUpdated\":\"2026-10-01T10:00:00.000+0000\",\"stateCount\":3,\"state\":\"OPEN\",\"dataType\":\"pullrequest\",\"open\":true},\"byInstanceType\":{\"GitHub\":{\"count\":3,\"name\":\"GitHub\"}}}}},\"isStale\":false}}"
+    }
+  },
+  {
+    "key": "KIRA-14",
+    "fields": {
+      "summary": "No development info",
+      "status": { "name": "To Do", "statusCategory": { "key": "new" } },
+      "priority": null,
+      "assignee": null,
+      "updated": "2026-10-03T12:00:00.000+0000"
+    }
+  }
+]
