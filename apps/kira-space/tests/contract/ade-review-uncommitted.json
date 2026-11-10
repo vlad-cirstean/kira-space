@@ -1,0 +1,133 @@
+{
+  "AdeTaskService.Branch#mixed": {
+    "addedAt": 0,
+    "ahead": 1,
+    "base": "main",
+    "baseBranchId": "",
+    "baseMissing": false,
+    "baseOwner": "",
+    "basePendingFrom": "",
+    "behind": 0,
+    "codeRepoId": "<id:1>",
+    "conflictCheck": "done",
+    "conflictCheckReason": "",
+    "conflictsIfRebased": [],
+    "deployments": [],
+    "dirty": [
+      {
+        "code": "??",
+        "path": "more.txt"
+      }
+    ],
+    "id": "<id:2>",
+    "integration": [],
+    "kind": "mine",
+    "lastCommitAt": 0,
+    "mergedAt": null,
+    "mergedIntoMain": false,
+    "name": "feat/api-uncommitted",
+    "origin": "",
+    "owner": "",
+    "rebaseInProgress": false,
+    "setup": {
+      "exitCode": 0,
+      "finishedAt": 0,
+      "note": "",
+      "startedAt": 0,
+      "state": "ready"
+    },
+    "taskId": "<id:3>",
+    "tip": "<masked>",
+    "upstream": "refs/remotes/origin/main",
+    "upstreamAhead": 1,
+    "upstreamBehind": 0,
+    "worktree": "<home>/kira-space-wts/api/<wt>"
+  },
+  "AdeTaskService.Branch#uncommittedOnly": {
+    "addedAt": 0,
+    "ahead": 0,
+    "base": "main",
+    "baseBranchId": "",
+    "baseMissing": false,
+    "baseOwner": "",
+    "basePendingFrom": "",
+    "behind": 0,
+    "codeRepoId": "<id:1>",
+    "conflictCheck": "done",
+    "conflictCheckReason": "",
+    "conflictsIfRebased": [],
+    "deployments": [],
+    "dirty": [
+      {
+        "code": "??",
+        "path": "wip.txt"
+      }
+    ],
+    "id": "<id:2>",
+    "integration": [],
+    "kind": "mine",
+    "lastCommitAt": 0,
+    "mergedAt": null,
+    "mergedIntoMain": false,
+    "name": "feat/api-uncommitted",
+    "origin": "",
+    "owner": "",
+    "rebaseInProgress": false,
+    "setup": {
+      "exitCode": 0,
+      "finishedAt": 0,
+      "note": "",
+      "startedAt": 0,
+      "state": "ready"
+    },
+    "taskId": "<id:3>",
+    "tip": "<masked>",
+    "upstream": "refs/remotes/origin/main",
+    "upstreamAhead": 0,
+    "upstreamBehind": 0,
+    "worktree": "<home>/kira-space-wts/api/<wt>"
+  },
+  "AdeTaskService.ReviewWorking#uncommittedOnly": {
+    "contentHashes": {
+      "wip.txt": "07e763ea703fed3c3d72eb7f97b511186c95cd6c7b80b472b2b56dcd0997a7ee"
+    },
+    "files": [
+      {
+        "kind": "added",
+        "path": "wip.txt"
+      }
+    ],
+    "head": "<masked>",
+    "promoted": [],
+    "reviews": {
+      "wip.txt": {
+        "changedSinceReview": false,
+        "kind": "none"
+      }
+    },
+    "worktree": "<worktree>"
+  },
+  "args:AdeTaskService.OpenReviewWindow": {
+    "branchId": "<id:2>"
+  },
+  "git:review.resolveBase#uncommittedOnly": {
+    "base": "<masked>",
+    "branch": "feat/api-uncommitted",
+    "candidates": [
+      {
+        "kind": "remoteBranch",
+        "reason": "upstream",
+        "ref": "origin/main"
+      },
+      {
+        "kind": "branch",
+        "reason": "defaultBranch",
+        "ref": "main"
+      }
+    ],
+    "range": {
+      "kind": "empty"
+    },
+    "reason": "override"
+  }
+}

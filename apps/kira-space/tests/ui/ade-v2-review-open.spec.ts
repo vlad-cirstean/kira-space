@@ -158,27 +158,6 @@ test('the task panel header opens the review', async ({ relaunch }) => {
   expect(calls(control)[0]?.args).toEqual({ branchId: 'b_deps' });
 });
 
-test('a branch with only uncommitted changes is disabled and says why', async ({ relaunch }) => {
-  const board = adeBoard((b) => {
-    const br = b.branches.find((x) => x.id === 'b_deps');
-    if (br) Object.assign(br, { ahead: 0, dirty: [{ code: 'M', path: 'a.ts' }] });
-  });
-  const { window: page, control } = await openPlan(relaunch, [
-    OPEN,
-    { channel: IPC.adeTaskBoard, response: board },
-  ]);
-  const btn = page.locator(`${card('T_deps')} ${t('ade-card-review')}`);
-  await expect(btn).toBeDisabled();
-  await page.locator(`${card('T_deps')} ${t('ade-card-head')}`).click();
-  await page.locator(t('ade-panel-review')).locator('xpath=..').hover();
-  const tooltip = page.locator(tip);
-  await expect(tooltip).toContainText('Only uncommitted changes on');
-  await expect(tooltip.locator('[data-var="branch"]')).toHaveText('chore/deps-bump');
-  await expect(tooltip.locator('[data-var="base"]')).toHaveText('main');
-  await pressReview(page);
-  expect(calls(control)).toHaveLength(0);
-});
-
 test('an open failure shows in the panel', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     { channel: IPC.adeTaskOpenReviewWindow, error: { code: 'failed', message: 'no window' } },
@@ -256,15 +235,13 @@ for (const phase of ['uncommitted', 'committed'] as const) {
     await btn.locator('xpath=..').hover();
     const tooltip = page.locator(tip);
     await expect(tooltip.locator('[data-var="base"]')).toHaveText(facts.base);
+    await expect(btn).toBeEnabled();
     if (phase === 'uncommitted') {
-      await expect(btn).toBeDisabled();
-      await expect(tooltip).toContainText('Only uncommitted changes on');
-    } else {
-      await expect(btn).toBeEnabled();
-      await expect(tooltip.locator('[data-var="branch"]')).toHaveText(facts.name);
-      await btn.click();
-      await expect.poll(() => calls(control)).toHaveLength(1);
-      expect(calls(control)[0]?.args).toEqual({ branchId: 'b_deps' });
+      await expect(tooltip).toContainText('uncommitted change');
     }
+    await expect(tooltip.locator('[data-var="branch"]')).toHaveText(facts.name);
+    await btn.click();
+    await expect.poll(() => calls(control)).toHaveLength(1);
+    expect(calls(control)[0]?.args).toEqual({ branchId: 'b_deps' });
   });
 }
