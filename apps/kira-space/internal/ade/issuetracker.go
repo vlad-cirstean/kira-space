@@ -69,8 +69,9 @@ func (s trackerSource) Artifacts(ctx context.Context, sc ArtifactScope) ([]adewi
 }
 
 // TaskIssue reads the issue the task links. A tracker failure comes back as Reason, not as an error;
-// the call fails only when the task is unreadable.
-func (b *TaskBoard) TaskIssue(ctx context.Context, taskID string) (adewire.TaskIssue, error) {
+// the call fails only when the task is unreadable. Without fresh a kept copy answers at once, marked
+// Stale. A fresh read that fails keeps showing the copy, with the failure as Reason.
+func (b *TaskBoard) TaskIssue(ctx context.Context, taskID string, fresh bool) (adewire.TaskIssue, error) {
 	task, err := b.deps.Tasks.GetTask(taskID)
 	if err != nil {
 		return adewire.TaskIssue{}, err
@@ -81,7 +82,7 @@ func (b *TaskBoard) TaskIssue(ctx context.Context, taskID string) (adewire.TaskI
 			continue
 		}
 		ictx, cancel := context.WithTimeout(ctx, taskIssueTimeout)
-		iss, err := p.Issue(ictx, ref, false)
+		iss, err := p.Issue(ictx, ref, fresh)
 		cancel()
 		out := adewire.TaskIssue{
 			Provider: p.ID(), Label: p.Terms().Label, Key: ref.Key, URL: task.JiraURL,
@@ -89,10 +90,12 @@ func (b *TaskBoard) TaskIssue(ctx context.Context, taskID string) (adewire.TaskI
 		}
 		if err != nil {
 			out.Reason = issuetracker.Reason(err)
-			return out, nil
+			if iss.Title == "" {
+				return out, nil
+			}
 		}
 		out.Key, out.URL, out.Title = iss.Ref.Key, iss.Ref.URL, iss.Title
-		out.Status, out.StatusCategory = iss.Status, iss.StatusCategory
+		out.Status, out.StatusCategory, out.Stale = iss.Status, iss.StatusCategory, iss.Stale
 		out.Summary = adewire.IssueSummary{
 			Known: iss.Summary.Known, Count: iss.Summary.Count, State: iss.Summary.State, Providers: append([]string{}, iss.Summary.Providers...),
 		}

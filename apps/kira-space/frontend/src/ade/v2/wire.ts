@@ -549,6 +549,12 @@ export interface TaskIssue {
   summary: { known: boolean; count: number; state: string; providers: string[] };
   /** Why the issue could not be read; '' when it was. noTracker: no tracker recognises the link. */
   reason: string;
+  /** A kept copy past the tracker's fresh window; one fresh read follows. */
+  stale?: boolean;
+}
+export interface TaskIssueArgs {
+  taskId: string;
+  fresh?: boolean;
 }
 export interface ArtifactsResult {
   artifacts: Artifact[];

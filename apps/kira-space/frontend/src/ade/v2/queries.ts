@@ -3,7 +3,7 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/vue-query';
 import { optimisticUpdate } from '@workbench/behaviour/optimistic';
 import { queryClient } from '@workbench/state/queryClient';
 import type { MaybeRefOrGetter } from 'vue';
-import { toValue } from 'vue';
+import { toValue, watch } from 'vue';
 import { control } from '../../bridge/control';
 import { withShelved } from './board/shelf';
 import {
@@ -591,15 +591,35 @@ export function useTaskArtifacts(taskId: MaybeRefOrGetter<string>) {
 }
 
 /**
- * The issue a task links, as its tracker reports it. The tracker caches for a minute, so the same
- * window keeps a remount from asking again; a board push refetches it.
+ * The issue a task links, as its tracker reports it. The host answers a kept copy at once (marked
+ * stale) and refreshes in the background; a stale answer of a normal read starts one fresh read, and
+ * the line keeps showing the copy meanwhile. A fresh answer that is still stale (the refresh failed)
+ * starts nothing, so the pair never loops. A board push refetches it.
  */
 export function useTaskIssue(taskId: MaybeRefOrGetter<string>, link: MaybeRefOrGetter<string>) {
-  return useQuery({
-    queryKey: [...issuePrefix, taskId, link] as const,
-    queryFn: () => control.adeTaskIssue({ taskId: toValue(taskId) }),
+  let nextFresh = false;
+  let lastFresh = false;
+  const query = useQuery(() => ({
+    queryKey: [...issuePrefix, toValue(taskId), toValue(link)] as const,
+    queryFn: () => {
+      lastFresh = nextFresh;
+      nextFresh = false;
+      return control.adeTaskIssue(
+        lastFresh ? { taskId: toValue(taskId), fresh: true } : { taskId: toValue(taskId) },
+      );
+    },
     staleTime: 60_000,
-  });
+  }));
+  watch(
+    () => query.data.value,
+    (issue) => {
+      if (!issue?.stale || lastFresh) return;
+      nextFresh = true;
+      void query.refetch();
+    },
+    { immediate: true },
+  );
+  return query;
 }
 
 const refetchArtifacts = () => queryClient.invalidateQueries({ queryKey: artifactsPrefix });

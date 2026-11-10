@@ -5,7 +5,7 @@ import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 
 // The linked issue under the Jira link in the Details tab: title, status and the PR count from the tracker. Contract
-// ade-issue-tracker; backend half: flows/adeflow TestTaskIssueTracker (issuetracker_test.go).
+// ade-issue-tracker; backend half: flows/adeflow TestTaskIssueTracker and TestTaskIssueFastLoading (issuetracker_test.go).
 
 const t = (id: string) => `[data-testid="${id}"]`;
 
@@ -16,6 +16,7 @@ interface IssueFx {
   status: string;
   summary: { known: boolean; count: number };
   reason: string;
+  stale?: boolean;
 }
 const issue = (key: string) => contract<IssueFx>('ade-issue-tracker', key);
 
@@ -35,6 +36,41 @@ test('contract: the Details tab shows the issue title, status and PR count', asy
   );
   await expect.poll(() => calls(control, IPC.adeTaskIssue)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskIssue)[0]?.args).toEqual({ taskId: 'T_alerts' });
+});
+
+test('contract: a stale issue line shows at once and refreshes in place', async ({ relaunch }) => {
+  const stale = issue('IssueTrackerService.TaskIssue#stale');
+  const fresh = issue('IssueTrackerService.TaskIssue#fresh');
+  const freshArgs = contract<Record<string, unknown>>(
+    'ade-issue-tracker',
+    'args:IssueTrackerService.TaskIssue#fresh',
+  );
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskIssue, args: { taskId: 'T_alerts' }, response: stale },
+    {
+      channel: IPC.adeTaskIssue,
+      args: { taskId: 'T_alerts', fresh: true },
+      response: fresh,
+      hold: true,
+    },
+  ]);
+  await openTask(page, 'T_alerts');
+  await page.locator(t('ade-panel-tab-details')).click();
+  await expect(page.locator(t('ade-task-issue-status'))).toHaveText(stale.status);
+  await expect(page.locator(t('ade-task-issue-loading'))).toHaveCount(0);
+  await expect
+    .poll(() => calls(control, IPC.adeTaskIssue).map((c) => c.args))
+    .toEqual([{ taskId: 'T_alerts' }, { taskId: 'T_alerts', fresh: true }]);
+  // The copy stays on screen while the fresh read is pending.
+  await expect(page.locator(t('ade-task-issue-status'))).toHaveText(stale.status);
+  await expect(page.locator(t('ade-task-issue-loading'))).toHaveCount(0);
+  control.release(IPC.adeTaskIssue);
+  await expect(page.locator(t('ade-task-issue-status'))).toHaveText(fresh.status);
+  expect(Object.keys(calls(control, IPC.adeTaskIssue)[1]?.args as object).sort()).toEqual(
+    Object.keys(freshArgs).sort(),
+  );
+  // A fresh answer never starts another read.
+  expect(calls(control, IPC.adeTaskIssue)).toHaveLength(2);
 });
 
 test('contract: View issue opens the issue view for the task link', async ({ relaunch }) => {

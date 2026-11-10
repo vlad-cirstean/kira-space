@@ -20,12 +20,12 @@ type IssueTrackerService struct {
 }
 
 // TaskIssue reads the issue a task links: title, status and the pull requests that name it. A tracker
-// failure comes back as Reason, not as an error.
-func (s *IssueTrackerService) TaskIssue(ctx context.Context, args adewire.TaskArgs) (adewire.TaskIssue, error) {
+// failure comes back as Reason, not as an error. Without Fresh a kept copy answers at once, marked Stale.
+func (s *IssueTrackerService) TaskIssue(ctx context.Context, args adewire.TaskIssueArgs) (adewire.TaskIssue, error) {
 	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
 		return adewire.TaskIssue{}, err
 	}
-	res, err := s.Engine.TaskIssue(ctx, args.TaskID)
+	res, err := s.Engine.TaskIssue(ctx, args.TaskID, args.Fresh)
 	return res, adeTaskError(err)
 }
 

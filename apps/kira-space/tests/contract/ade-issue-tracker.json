@@ -58,6 +58,43 @@
     "title": "Add the thing",
     "url": "https://acme.atlassian.net/browse/KIRA-12"
   },
+  "IssueTrackerService.TaskIssue#fresh": {
+    "key": "KIRA-12",
+    "label": "Jira",
+    "provider": "jira",
+    "reason": "",
+    "status": "Done",
+    "statusCategory": "done",
+    "summary": {
+      "count": 2,
+      "known": true,
+      "providers": [
+        "GitHub"
+      ],
+      "state": "open"
+    },
+    "title": "Add the thing",
+    "url": "https://acme.atlassian.net/browse/KIRA-12"
+  },
+  "IssueTrackerService.TaskIssue#stale": {
+    "key": "KIRA-12",
+    "label": "Jira",
+    "provider": "jira",
+    "reason": "",
+    "stale": true,
+    "status": "In Review",
+    "statusCategory": "indeterminate",
+    "summary": {
+      "count": 2,
+      "known": true,
+      "providers": [
+        "GitHub"
+      ],
+      "state": "open"
+    },
+    "title": "Add the thing",
+    "url": "https://acme.atlassian.net/browse/KIRA-12"
+  },
   "IssueTrackerService.TaskIssue#unauthenticated": {
     "key": "KIRA-72",
     "label": "Jira",
@@ -75,6 +112,10 @@
     "url": ""
   },
   "args:IssueTrackerService.TaskIssue": {
+    "taskId": "<id:1>"
+  },
+  "args:IssueTrackerService.TaskIssue#fresh": {
+    "fresh": true,
     "taskId": "<id:1>"
   }
 }

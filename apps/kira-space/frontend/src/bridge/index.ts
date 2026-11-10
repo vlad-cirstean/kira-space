@@ -678,7 +678,7 @@ const spaceControl = {
     unwrap(AdeTaskService.DismissHandover(args)),
   adeTaskArtifacts: (args: V2.TaskArgs): Promise<V2.ArtifactsResult> =>
     unwrap(AdeTaskService.Artifacts(args)).then((r) => trust<V2.ArtifactsResult>(r)),
-  adeTaskIssue: (args: V2.TaskArgs): Promise<V2.TaskIssue> =>
+  adeTaskIssue: (args: V2.TaskIssueArgs): Promise<V2.TaskIssue> =>
     unwrap(IssueTrackerService.TaskIssue(args)).then((r) => trust<V2.TaskIssue>(r)),
   adeTaskTrackedUpdates: (): Promise<V2.TrackedUpdatesResult> =>
     unwrap(AdeTaskService.TrackedUpdates()).then((r) => trust<V2.TrackedUpdatesResult>(r)),
