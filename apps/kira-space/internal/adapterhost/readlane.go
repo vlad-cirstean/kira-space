@@ -246,3 +246,10 @@ func (r *Router) ReadLaneOpen(connectionID string) bool {
 	defer r.lanes.mu.Unlock()
 	return r.lanes.byID[connectionID] != nil
 }
+
+// busy reports whether anything besides the caller's own checkout uses lane.
+func (l *readLanes) busy(lane *readLane) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return lane.inflight > 1
+}

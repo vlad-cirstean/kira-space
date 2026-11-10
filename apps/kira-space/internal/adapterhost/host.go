@@ -559,3 +559,15 @@ func (h *Host) Subscribe() (<-chan oplog.DbEvent, func()) {
 		sub.close()
 	}
 }
+
+// busyOnPrimary reports whether an op runs on connectionID's live adapter (not a read lane).
+func (h *Host) busyOnPrimary(connectionID string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, op := range h.running {
+		if op.adapter == nil && op.connectionID != nil && *op.connectionID == connectionID {
+			return true
+		}
+	}
+	return false
+}
