@@ -108,10 +108,10 @@ func TestStageMoveSessions(t *testing.T) {
 		t.Fatalf("s3 %q, branch %q, want stopped and running", state(s3), state(adhoc.SessionID))
 	}
 
-	// Repo-less task: its step session runs in the task folder and closes the same way.
-	bare := createTask(t, app, "Plan trip", "flow")
+	// Task with only a draft repo: its step session runs at the repo root and closes the same way.
+	bare := createTask(t, app, "Plan trip", "flow", rec.ID)
 	sb := launch(bare.ID)
 	if got := stepDone(bare.ID, true); got.EntryStepID != "build" || state(sb) != "stopped" {
-		t.Fatalf("repo-less: entry %q, session %q, want build and stopped", got.EntryStepID, state(sb))
+		t.Fatalf("draft-only: entry %q, session %q, want build and stopped", got.EntryStepID, state(sb))
 	}
 }

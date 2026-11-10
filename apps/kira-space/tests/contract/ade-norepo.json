@@ -124,7 +124,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "one",
-          "outsideRepo": false,
+          "outsideRepo": true,
           "params": {},
           "prompt": "ask for branches",
           "results": [
@@ -144,7 +144,7 @@
             }
           ],
           "review": null,
-          "runsOn": "once",
+          "runsOn": "",
           "sandbox": {
             "access": "off",
             "allow": [],
@@ -478,7 +478,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "one",
-          "outsideRepo": false,
+          "outsideRepo": true,
           "params": {},
           "prompt": "ask for branches",
           "results": [
@@ -498,7 +498,7 @@
             }
           ],
           "review": null,
-          "runsOn": "once",
+          "runsOn": "",
           "sandbox": {
             "access": "off",
             "allow": [],
