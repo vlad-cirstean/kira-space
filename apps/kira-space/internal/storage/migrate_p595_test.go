@@ -38,7 +38,7 @@ func TestMigration0096APIDefault(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := sqlitex.Migrate(db, all[:len(all)-1]); err != nil {
+			if err := sqlitex.Migrate(db, migrationsBefore(all, 96)); err != nil {
 				t.Fatal(err)
 			}
 			for k, v := range c.seed {
