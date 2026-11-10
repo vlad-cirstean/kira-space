@@ -8820,8 +8820,8 @@
           "createFirst": {
             "tooltip": "Create the branch first"
           },
-          "noCommits": {
-            "tooltip": "No commits on top of {base} yet"
+          "nothing": {
+            "tooltip": "No commits on top of {base} and no uncommitted changes yet"
           },
           "pick": {
             "tooltip": "Choose a branch to review"
@@ -8829,8 +8829,11 @@
           "review": {
             "tooltip": "Review {branch} against {base}"
           },
-          "uncommitted": {
-            "hint": "Only uncommitted changes on {branch}. Commit them to review against {base}."
+          "reviewMixed": {
+            "tooltip": "Review {branch} against {base}, plus {count} uncommitted change | Review {branch} against {base}, plus {count} uncommitted changes"
+          },
+          "reviewUncommitted": {
+            "tooltip": "Review {count} uncommitted change on {branch}; no commits on top of {base} yet | Review {count} uncommitted changes on {branch}; no commits on top of {base} yet"
           },
           "working": {
             "tooltip": "An agent is still working; the review updates as it commits"

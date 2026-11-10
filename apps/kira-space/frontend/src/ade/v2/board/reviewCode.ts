@@ -22,6 +22,22 @@ export function baseNameOf(row: BranchRowModel, graph: BranchGraph): string {
   return (parent ? graph.byBranch.get(parent)?.name : '') || row.branch.base || 'main';
 }
 
+function enabledTip(
+  ahead: number,
+  dirty: number,
+  vars: { base: string; branch: string },
+): TextPart[] {
+  if (ahead === 0) {
+    return branchParts('space.ade.board.reviewChoice.reviewUncommitted.tooltip', vars, {
+      count: dirty,
+    });
+  }
+  if (dirty > 0) {
+    return branchParts('space.ade.board.reviewChoice.reviewMixed.tooltip', vars, { count: dirty });
+  }
+  return branchParts('space.ade.board.reviewChoice.review.tooltip', vars);
+}
+
 export function reviewChoice(
   row: BranchRowModel,
   task: Task,
@@ -41,14 +57,12 @@ export function reviewChoice(
   if (b.baseMissing) {
     return choice(true, branchParts('space.ade.rebase.baseMissing.tooltip', vars));
   }
-  if (b.ahead === 0 && b.dirty.length > 0) {
-    return choice(true, branchParts('space.ade.board.reviewChoice.uncommitted.hint', vars));
-  }
-  if (b.ahead === 0) {
-    return choice(true, branchParts('space.ade.board.reviewChoice.noCommits.tooltip', vars));
+  const dirty = b.dirty.length;
+  if (b.ahead === 0 && dirty === 0) {
+    return choice(true, branchParts('space.ade.board.reviewChoice.nothing.tooltip', vars));
   }
   const working = task.runs.some((r) => r.branchId === row.id && r.state === 'running');
-  const tip = branchParts('space.ade.board.reviewChoice.review.tooltip', vars);
+  const tip = enabledTip(b.ahead, dirty, vars);
   if (working) tip.push(`\n${t('space.ade.board.reviewChoice.working.tooltip')}`);
   return choice(false, tip);
 }
