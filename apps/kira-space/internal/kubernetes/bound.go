@@ -38,7 +38,7 @@ func (b *BoundService) Status(args StatusArgs) (Status, error) {
 	return b.s.Status(context.Background(), args)
 }
 
-// SetMcp stores a cluster's MCP description and per-operation modes.
+// SetMcp stores a cluster's MCP switch, approval mode and description.
 func (b *BoundService) SetMcp(args SetMcpArgs) (McpSettings, error) {
 	return b.s.SetMcp(context.Background(), args)
 }

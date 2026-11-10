@@ -1605,6 +1605,7 @@ func TestPostgres_ExecuteStopsAtResultCap(t *testing.T) {
 	fixture := testsupport.StartPostgres(t)
 	cfg := fixture.Config
 	testsupport.RunScenarios(t, connectedAdapter(t, fixture), cfg,
+		testsupport.PingAnswers(),
 		testsupport.ConsoleResultCap(nodePath(fixture, seg("database", "kira_test")), func(n int) string {
 			return fmt.Sprintf("SELECT generate_series(1, %d)", n)
 		}),
@@ -1711,5 +1712,85 @@ func TestPostgres_StatementTimeout(t *testing.T) {
 			Slow: "SELECT pg_sleep(5)", WantCode: "57014",
 			Baseline: "SHOW statement_timeout", BaselineWant: "0", Lifted: "SELECT pg_sleep(2)",
 		}),
+		testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
+			Name: "main ddl", Path: path, Slow: "CREATE TABLE app.p602_ddl AS SELECT 1 AS x FROM pg_sleep(5)", WantCode: "57014",
+			Teardown: []string{"DROP TABLE IF EXISTS app.p602_ddl"},
+			Unchanged: func(t *testing.T, main adapters.Adapter) {
+				t.Helper()
+				if got := testsupport.FirstCell(t, main, path, "SELECT count(*) FROM pg_class WHERE oid = to_regclass('app.p602_ddl')"); got != "0" {
+					t.Errorf("p602_ddl exists after the timed-out CREATE TABLE AS")
+				}
+			},
+			Baseline: "SHOW statement_timeout", BaselineWant: "0", Lifted: "SELECT pg_sleep(2)",
+		}),
+		testsupport.ReadStatementTimeout(pgReadTimeoutCase(fixture, true, nil, "")),
+		testsupport.ReadStatementTimeout(pgReadTimeoutCase(fixture, false, nil, "")),
 	)
+}
+
+// pgReadTimeoutCase is the browse-page timeout case over a view whose one row sleeps 5 s.
+// A least-privilege matrix row passes admin (the superuser adapter) and the role to grant SELECT.
+func pgReadTimeoutCase(fixture *testsupport.PgFixture, lane bool, admin func(t *testing.T) adapters.Adapter, grantTo string) testsupport.ReadStatementTimeoutCase {
+	name := "main"
+	if lane {
+		name = "read lane"
+	}
+	db := nodePath(fixture, seg("database", "kira_test"))
+	schema := []model.PathSegment{seg("database", "kira_test"), seg("schema", "app")}
+	setup := []string{"CREATE VIEW app.p602_slow AS SELECT pg_sleep(5)::text AS s"}
+	if grantTo != "" {
+		setup = append(setup, "GRANT SELECT ON app.p602_slow TO "+grantTo)
+	}
+	return testsupport.ReadStatementTimeoutCase{
+		Name: name, SetupOn: db, Lane: lane, WantCode: "57014", Admin: admin,
+		Setup:    setup,
+		Teardown: []string{"DROP VIEW IF EXISTS app.p602_slow"},
+		Path:     nodePath(fixture, append(schema, seg("view", "p602_slow"))...),
+		Fast:     nodePath(fixture, append(schema, seg("table", "big_rows"))...),
+	}
+}
+
+// DB MCP expensive-query check: the composed EXPLAIN runs on the lane and its row estimate
+// separates a full scan of big_rows from a primary-key point read.
+func TestPostgres_ExplainPlan(t *testing.T) {
+	fixture := testsupport.StartPostgres(t)
+	a := connectedAdapter(t, fixture)
+	testsupport.RunScenarios(t, a, fixture.Config, pgExplainPlan(fixture))
+}
+
+func pgExplainPlan(fixture *testsupport.PgFixture) testsupport.Scenario {
+	return testsupport.ExplainPlan(testsupport.ExplainPlanCase{
+		Path:     nodePath(fixture, seg("database", "kira_test")),
+		FullScan: "SELECT * FROM app.big_rows", Point: "SELECT * FROM app.big_rows WHERE id = 1",
+		MinRows: 500000, MaxPointRows: 1000,
+	})
+}
+
+// pgLaneRefusesWrite is the lane write refusal for a role that may touch (not create) the table.
+func pgLaneRefusesWrite(fixture *testsupport.PgFixture, admin func(t *testing.T) adapters.Adapter, grantTo string) testsupport.Scenario {
+	path := nodePath(fixture, seg("database", "kira_test"))
+	return testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+		Path: path, Admin: admin,
+		Setup: []string{
+			"CREATE TABLE app.p602_lane_log (id int)",
+			"GRANT SELECT, INSERT ON app.p602_lane_log TO " + grantTo,
+		},
+		Write: "INSERT INTO app.p602_lane_log VALUES (1)", WantErr: "25006",
+		Unchanged: func(t *testing.T, main adapters.Adapter) {
+			t.Helper()
+			if got := testsupport.FirstCell(t, main, path, "SELECT count(*) FROM app.p602_lane_log"); got != "0" {
+				t.Errorf("p602_lane_log rows = %s, want 0", got)
+			}
+		},
+		Teardown: []string{"DROP TABLE IF EXISTS app.p602_lane_log"},
+	})
+}
+
+// pgLaneStatementTimeout is the lane timeout case for the least-privilege matrix row.
+func pgLaneStatementTimeout(fixture *testsupport.PgFixture) testsupport.Scenario {
+	return testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
+		Name: "read lane", Path: nodePath(fixture, seg("database", "kira_test")), Lane: true,
+		Slow: "SELECT pg_sleep(5)", WantCode: "57014",
+		Baseline: "SHOW statement_timeout", BaselineWant: "0", Lifted: "SELECT pg_sleep(2)",
+	})
 }

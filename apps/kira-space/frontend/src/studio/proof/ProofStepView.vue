@@ -144,16 +144,16 @@ onBeforeUnmount(() => {
         />
         <template v-else>
           <div
-            class="flex h-control-lg shrink-0 items-center gap-2 px-3"
+            class="flex min-h-control-lg shrink-0 items-start gap-2 px-3 py-2"
             data-testid="proof-step-header"
           >
             <CodiconIcon
               :name="proofViewIcon(data.view)"
               :size="16"
-              class="text-muted-foreground"
+              class="mt-0.5 shrink-0 text-muted-foreground"
             />
             <span
-              class="min-w-0 truncate text-kira-md font-medium"
+              class="min-w-0 flex-1 break-words text-kira-lg font-medium leading-snug"
               data-testid="proof-step-description"
               >{{
                 data.description

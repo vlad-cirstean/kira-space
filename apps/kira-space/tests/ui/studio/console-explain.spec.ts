@@ -498,3 +498,44 @@ test('Query console — a failed EXPLAIN does not fail the real run', async ({ r
   await expect(view.locator('[data-testid="console-error"]')).toHaveCount(0);
   await expect(view.locator('[data-testid="console-result-tab"]')).toHaveCount(1);
 });
+
+test('Query console — the connection’s own threshold beats the app default and the verdict names it', async ({
+  relaunch,
+}) => {
+  const CONNECTION_ID = 'conn-console-explain-threshold-own';
+  const CONNECTION_SUMMARY = {
+    ...postgresConnectionSummary(CONNECTION_ID, 'Threshold Own DB', 'blue'),
+    explainThresholdRows: 100_000,
+  };
+  const FIXTURE = orderItemsFixture(CONNECTION_ID);
+  const HIGH_THRESHOLD_SETTINGS = {
+    ...defaultSettings,
+    advanced: { ...defaultSettings.advanced, expensiveQueryRows: 1_000_000 },
+  };
+  const CONTROL: ControlSnapshot[] = [
+    { channel: IPC.settingsGetAll, response: HIGH_THRESHOLD_SETTINGS },
+    { channel: IPC.connectionsList, response: [] },
+    {
+      channel: IPC.connectionsCreate,
+      args: connectionCreateArgs('Threshold Own DB', 'blue'),
+      response: CONNECTION_SUMMARY,
+    },
+    ...FIXTURE.control,
+  ];
+  const PORT: PortSnapshot[] = [
+    ...FIXTURE.port,
+    explainSnap(CONNECTION_ID, JOIN_SQL, JOIN_PLAN_JSON),
+  ];
+
+  const { window: page } = await relaunch({ control: CONTROL, stream: PORT });
+  await connectAndExpand(page, 'Threshold Own DB', 'blue');
+  await openConsoleFromMenu(page, ORDER_ITEMS_PATH);
+  const view = page.locator('[data-testid="console-view"]');
+  await typeInto(view, page, JOIN_SQL);
+  await page.click('[data-testid="console-explain"]');
+
+  const verdict = view.locator('[data-testid="explain-verdict"]');
+  await expect(verdict).toContainText('184,153 rows');
+  await expect(verdict).toContainText('100,000');
+  await expect(verdict).toHaveAttribute('data-over-threshold', 'true');
+});

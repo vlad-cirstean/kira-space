@@ -154,7 +154,7 @@ dbmcp.tool.get_script_run	228
 dbmcp.tool.get_script_run.arg.runId	23
 dbmcp.tool.get_script_run.arg.waitSeconds	74
 dbmcp.tool.api_list_environments	213
-dbmcp.tool.api_request	363
+dbmcp.tool.api_request	453
 dbmcp.tool.api_request.arg.environmentId	68
 dbmcp.tool.api_request.arg.method	47
 dbmcp.tool.api_request.arg.url	53
@@ -212,7 +212,7 @@ headless.tool.reply_review_comment	63
 headless.tool.reply_review_comment.arg.id	29
 headless.tool.reply_review_comment.arg.reply	44
 headless.tool.reply_review_comment.arg.resolved	53
-dbmcp.tool.kube_list_clusters	149
+dbmcp.tool.kube_list_clusters	131
 dbmcp.tool.kube_list_resources	123
 dbmcp.tool.kube_list_resources.arg.clusterId	35
 dbmcp.tool.kube_list_resources.arg.kind	68
@@ -252,7 +252,7 @@ dbmcp.tool.proof_list	220
 dbmcp.tool.proof_save.arg.name	29
 dbmcp.tool.proof_save.arg.reason	82
 dbmcp.tool.proof_save.arg.steps.data	1804
-dbmcp.tool.proof_save.arg.steps.description	96
+dbmcp.tool.proof_save.arg.steps.description	192
 dbmcp.tool.proof_save.arg.steps.keepOrdinal	85
 dbmcp.tool.proof_save.arg.steps.language	63
 dbmcp.tool.proof_save.arg.steps.query	65
@@ -260,8 +260,8 @@ dbmcp.tool.proof_save.arg.steps.replacesOrdinal	77
 dbmcp.tool.proof_save.arg.steps.source	91
 dbmcp.tool.proof_save.arg.steps.view	87
 dbmcp.tool.proof_save.arg.steps	33
-dbmcp.tool.proof_save.arg.summary	54
-dbmcp.tool.proof_save	835
+dbmcp.tool.proof_save.arg.summary	115
+dbmcp.tool.proof_save	1032
 dbmcp.tool.get_script_run.arg.contains	70
 dbmcp.tool.get_script_run.arg.from	50
 dbmcp.tool.get_script_run.arg.lines	42

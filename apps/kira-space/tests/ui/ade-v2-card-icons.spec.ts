@@ -61,13 +61,13 @@ test('the task tag and step action are icons in the head line', async ({ relaunc
     },
   ]);
   const head = page.locator(`${task('T_auth')} ${t('ade-card-head')}`);
-  const tag = head.locator(t('ade-tag'));
-  await expect(tag).toHaveAttribute('data-kind', 'status');
-  await expect(tag).toHaveAttribute('aria-label', /.+/);
+  const status = head.locator(t('ade-row-status'));
+  await expect(status).toHaveAttribute('aria-label', /.+/);
+  await expect(head.locator(`${t('ade-tag')}[data-kind="status"][data-color]`)).toHaveCount(0);
   const order = await head.evaluate((el) => {
     const idx = (id: string) =>
       [...el.querySelectorAll('*')].findIndex((e) => e.getAttribute('data-testid') === id);
-    return { tag: idx('ade-tag'), meta: idx('ade-card-meta') };
+    return { tag: idx('ade-row-status'), meta: idx('ade-card-meta') };
   });
   expect(order.tag).toBeGreaterThanOrEqual(0);
   expect(order.tag).toBeLessThan(order.meta);
@@ -152,10 +152,12 @@ test('row and card icons are always visible, never hover-only', async ({ relaunc
   }
 });
 
-test('right-click on a tag opens the matching menu', async ({ relaunch }) => {
+test('right-click on the status text or a branch tag opens the matching menu', async ({
+  relaunch,
+}) => {
   const { window: page } = await open(relaunch, failedRebase);
   await page
-    .locator(`${task('T_auth')} ${t('ade-card-head')} ${t('ade-tag')}`)
+    .locator(`${task('T_auth')} ${t('ade-card-head')} ${t('ade-row-status')}`)
     .click({ button: 'right' });
   await expect(page.locator(item('ade-task-step'))).toBeVisible();
   await page.keyboard.press('Escape');

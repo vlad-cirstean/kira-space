@@ -1,3 +1,4 @@
+import { EXPLAIN_THRESHOLD_ROWS_RANGE } from '@shared/domain/connection';
 import {
   agentSettingsSchema,
   appearanceSettingsSchema,
@@ -49,7 +50,7 @@ export const OP_LOG_RETENTION_DAYS_RANGE = { min: 1, max: 365 } as const;
 // magnitude for a comparable scan, so no cost-based number could be shared
 // across engines. 1,000 floor keeps the field meaningful; 1e9 ceiling is generous headroom above
 // any real table this app's own fixture corpus uses.
-export const EXPENSIVE_QUERY_ROWS_RANGE = { min: 1_000, max: 1_000_000_000 } as const;
+export const EXPENSIVE_QUERY_ROWS_RANGE = EXPLAIN_THRESHOLD_ROWS_RANGE;
 
 const pageSizeSchema = /*#__PURE__*/ z.union([
   z.literal(10),
@@ -134,8 +135,10 @@ const dbMcpSettingsSchema = /*#__PURE__*/ z.object({
   // Let agents send API requests with the variables an environment shares with them.
   apiRequests: z.boolean().default(false),
   apiApproval: z.enum(['always', 'never']).default('always'),
-  // Host and method rules for api_request; empty allows everything.
+  // Host and method rules for api_request: deny refuses, allow sends without approval.
   apiRules: z.array(apiRuleSchema).default([]),
+  // A request no rule matches: ask follows apiApproval, deny refuses it.
+  apiDefault: z.enum(['ask', 'deny']).default('ask'),
   // Read-only: stored rules could not be read, so every API request is refused.
   apiRulesInvalid: z.boolean().default(false),
 });
@@ -341,6 +344,7 @@ const settingsSchema = /*#__PURE__*/ z.object({
     apiRequests: false,
     apiApproval: 'always',
     apiRules: [],
+    apiDefault: 'ask',
     apiRulesInvalid: false,
   }),
 });
@@ -447,6 +451,7 @@ export const defaultSettings: Settings = {
     apiRequests: false,
     apiApproval: 'always',
     apiRules: [],
+    apiDefault: 'ask',
     apiRulesInvalid: false,
   },
 };

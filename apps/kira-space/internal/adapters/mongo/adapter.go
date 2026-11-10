@@ -6,6 +6,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	mongodriver "go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
@@ -165,6 +166,18 @@ func (a *Adapter) Disconnect(ctx context.Context) error {
 		cancel()
 	}
 	a.clearConnected()
+	return nil
+}
+
+// Ping is adapters.Pinger: a primary-preference ping.
+func (a *Adapter) Ping(ctx context.Context) error {
+	client, err := a.requireClient()
+	if err != nil {
+		return err
+	}
+	if err := client.Ping(ctx, readpref.Primary()); err != nil {
+		return adapters.PingFailure(mapError(err))
+	}
 	return nil
 }
 

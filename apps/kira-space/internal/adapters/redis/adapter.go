@@ -93,6 +93,23 @@ func (a *Adapter) Disconnect(ctx context.Context) error {
 	return nil
 }
 
+// Ping is adapters.Pinger: PING on the primary connection.
+func (a *Adapter) Ping(ctx context.Context) error {
+	set, err := a.requireSet()
+	if err != nil {
+		return err
+	}
+	primary, release, err := set.primary(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if err := primary.Ping(ctx).Err(); err != nil {
+		return adapters.PingFailure(mapError(err))
+	}
+	return nil
+}
+
 func (a *Adapter) requireSet() (*dbConnectionSet, error) {
 	return adapters.RequireConnected(a.state.Load().set)
 }

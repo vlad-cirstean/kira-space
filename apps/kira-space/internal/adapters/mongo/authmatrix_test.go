@@ -186,6 +186,8 @@ func TestMongo_AuthMatrix(t *testing.T) {
 						Values: model.RowValues{{Name: "$document", Value: testsupport.Strp(`{ name: "matrix-nope" }`)}},
 					}},
 				}, adapters.CodeAuth),
+				// P602: the lane's app-side write refusal holds for the read-only user too.
+				mongoLaneRefusesWrite(f.Config.ID),
 			},
 		},
 		{

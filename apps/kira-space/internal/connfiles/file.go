@@ -45,26 +45,27 @@ var (
 
 // File is <stem>.yaml. Keys left out take their default, so a value equal to its default is not written.
 type File struct {
-	Name           string         `json:"name"`
-	Kind           string         `json:"kind"`
-	Color          string         `json:"color,omitempty"`
-	ReadOnly       bool           `json:"read_only,omitempty"`
-	Mode           string         `json:"mode,omitempty"`
-	Host           string         `json:"host,omitempty"`
-	Port           int            `json:"port,omitempty"`
-	Database       string         `json:"database,omitempty"`
-	Username       string         `json:"username,omitempty"`
-	Password       string         `json:"password,omitempty"`
-	URI            string         `json:"uri,omitempty"`
-	Options        map[string]any `json:"options,omitempty"`
-	Preconnect     *Preconnect    `json:"preconnect,omitempty"`
-	AutoExplain    bool           `json:"auto_explain,omitempty"`
-	ThrottlePerSec float64        `json:"throttle_per_sec,omitempty"`
-	MCP            *MCP           `json:"mcp,omitempty"`
-	Masks          []Mask         `json:"masks,omitempty"`
-	MaskReview     *MaskReview    `json:"mask_review,omitempty"`
-	Tree           *Tree          `json:"tree,omitempty"`
-	SchemaDDL      string         `json:"schema_ddl,omitempty"`
+	Name                 string         `json:"name"`
+	Kind                 string         `json:"kind"`
+	Color                string         `json:"color,omitempty"`
+	ReadOnly             bool           `json:"read_only,omitempty"`
+	Mode                 string         `json:"mode,omitempty"`
+	Host                 string         `json:"host,omitempty"`
+	Port                 int            `json:"port,omitempty"`
+	Database             string         `json:"database,omitempty"`
+	Username             string         `json:"username,omitempty"`
+	Password             string         `json:"password,omitempty"`
+	URI                  string         `json:"uri,omitempty"`
+	Options              map[string]any `json:"options,omitempty"`
+	Preconnect           *Preconnect    `json:"preconnect,omitempty"`
+	AutoExplain          bool           `json:"auto_explain,omitempty"`
+	ThrottlePerSec       float64        `json:"throttle_per_sec,omitempty"`
+	ExplainThresholdRows int            `json:"explain_threshold_rows,omitempty"`
+	MCP                  *MCP           `json:"mcp,omitempty"`
+	Masks                []Mask         `json:"masks,omitempty"`
+	MaskReview           *MaskReview    `json:"mask_review,omitempty"`
+	Tree                 *Tree          `json:"tree,omitempty"`
+	SchemaDDL            string         `json:"schema_ddl,omitempty"`
 }
 
 // Preconnect is the command run before a connect.
@@ -180,7 +181,8 @@ func (f File) Fields() model.ConnectionFields {
 		Name: f.Name, Kind: f.Kind, Color: orDefault(f.Color, ColorNone), Mode: f.EffectiveMode(), ReadOnly: f.ReadOnly,
 		Host: nilIfEmpty(f.Host), Database: nilIfEmpty(f.Database), Username: nilIfEmpty(f.Username),
 		Options: map[string]any{}, AutoExplain: f.AutoExplain, ThrottlePerSec: f.ThrottlePerSec,
-		McpReadMode: McpRead, McpWriteMode: McpWrite, McpDdlMode: McpDDL, McpMaskedMode: model.McpMaskedInherit, McpAutoExplain: true, McpReview: model.McpReview{Read: ReviewInherit, Write: ReviewInherit, Ddl: ReviewInherit, Masked: ReviewInherit},
+		ExplainThresholdRows: f.ExplainThresholdRows,
+		McpReadMode:          McpRead, McpWriteMode: McpWrite, McpDdlMode: McpDDL, McpMaskedMode: model.McpMaskedInherit, McpAutoExplain: true, McpReview: model.McpReview{Read: ReviewInherit, Write: ReviewInherit, Ddl: ReviewInherit, Masked: ReviewInherit},
 		McpStatementTimeoutSec: model.McpStatementTimeoutDefault,
 	}
 	if f.Port != 0 {
@@ -288,7 +290,7 @@ func FileOf(c model.ConnectionFields, masks []model.MaskRuleFields, tree model.T
 	f := File{
 		Name: c.Name, Kind: c.Kind, ReadOnly: c.ReadOnly, Host: deref(c.Host), Database: deref(c.Database),
 		Username: deref(c.Username), Password: passwordRef, URI: uriRef, AutoExplain: c.AutoExplain,
-		ThrottlePerSec: c.ThrottlePerSec, SchemaDDL: ddl, Tree: TreeOf(tree),
+		ThrottlePerSec: c.ThrottlePerSec, ExplainThresholdRows: c.ExplainThresholdRows, SchemaDDL: ddl, Tree: TreeOf(tree),
 	}
 	if c.Color != ColorNone {
 		f.Color = c.Color

@@ -1,5 +1,6 @@
 import type {
   ProofDetail,
+  ProofShotLocation,
   ProofStepDetail,
   ProofSummary,
   ProofViewState,
@@ -20,6 +21,7 @@ const proofKey = {
   sessions: ['proof', 'sessions'] as const,
   session: (id: string) => ['proof', 'session', id] as const,
   step: (id: string, rev: number, ordinal: number) => ['proof', 'step', id, rev, ordinal] as const,
+  shotLocation: ['proof', 'shotLocation'] as const,
   viewState: (id: string, rev: number) => ['proof', 'viewState', id, rev] as const,
 };
 
@@ -68,6 +70,30 @@ export function cacheViewState(
     ...(old ?? []).filter((e) => e.ordinal !== ordinal),
     { ordinal, state },
   ]);
+}
+
+export function useShotLocation() {
+  return useQuery<ProofShotLocation>({
+    queryKey: proofKey.shotLocation,
+    queryFn: () => control.proofShotLocation(),
+  });
+}
+
+/** Opens the folder picker; a cancel leaves the cached location as is. */
+export function useChooseShotLocation() {
+  return useMutation({
+    mutationFn: () => control.proofChooseShotLocation(),
+    onSuccess: (result) => {
+      if (!result.canceled) queryClient.setQueryData(proofKey.shotLocation, result.location);
+    },
+  });
+}
+
+export function useResetShotLocation() {
+  return useMutation({
+    mutationFn: () => control.proofResetShotLocation(),
+    onSuccess: (location) => queryClient.setQueryData(proofKey.shotLocation, location),
+  });
 }
 
 function refreshProof(): Promise<void> {

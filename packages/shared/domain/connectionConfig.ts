@@ -97,6 +97,7 @@ export interface ConnectionFileModel {
   preconnect?: { command: string; sidecar?: boolean; delay_sec?: number };
   auto_explain?: boolean;
   throttle_per_sec?: number;
+  explain_threshold_rows?: number;
   mcp?: ConnectionFileMcp;
   masks?: ConnectionFileMask[];
   mask_review?: ConnectionFileMaskReview;

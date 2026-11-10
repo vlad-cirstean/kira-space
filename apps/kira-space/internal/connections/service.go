@@ -131,6 +131,8 @@ type attempt struct {
 type teardown struct {
 	n    int
 	done chan struct{}
+	// joined: another teardown (Disconnect, Remove, Update) shares this slot; it owns the final state.
+	joined bool
 }
 
 // Service is the Go analogue of connections.ts's ConnectionsService.
@@ -575,13 +577,14 @@ func destinationUnchanged(a, b connfiles.File) bool {
 // behaviour, the same non-destination footing as AutoExplain. McpReview gates DB-MCP-path
 // result review, never the destination. McpStatementTimeoutSec bounds DB-MCP statements and McpTables
 // the DB-MCP table set, never the destination. PreconnectDelaySec is timing only,
-// never the destination.
+// never the destination. ExplainThresholdRows only sets when an explain warns or refuses.
 func zeroExemptFields(f *model.ConnectionFields) {
 	f.Name = ""
 	f.Color = ""
 	f.ReadOnly = false
 	f.AutoExplain = false
 	f.ThrottlePerSec = 0
+	f.ExplainThresholdRows = 0
 	f.PreconnectDelaySec = 0
 	f.McpEnabled = false
 	f.McpDescription = ""
@@ -707,14 +710,22 @@ func (s *Service) ConnectContext(parent context.Context, id string) (model.Conne
 // attempts meanwhile.
 func (s *Service) beginTeardown(id string) (end func()) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, end = s.beginTeardownLocked(id)
+	return end
+}
+
+// beginTeardownLocked is beginTeardown with s.mu held by the caller.
+func (s *Service) beginTeardownLocked(id string) (*teardown, func()) {
 	t, ok := s.tearing[id]
 	if !ok {
 		t = &teardown{done: make(chan struct{})}
 		s.tearing[id] = t
+	} else {
+		t.joined = true
 	}
 	t.n++
-	s.mu.Unlock()
-	return func() {
+	return t, func() {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if t.n--; t.n == 0 {
@@ -882,6 +893,39 @@ func (s *Service) Disconnect(id string) (model.ConnectionState, error) {
 	state := model.ConnectionState{ConnectionID: id, Status: "disconnected", Since: nowMillis()}
 	s.emitState(state)
 	return state, nil
+}
+
+// MarkLost tears down a connection whose adapter stopped answering and turns its state to error, so
+// the next use reconnects instead of trusting a stale "connected". No-op unless the state is
+// connected and no connect or teardown is under way: a concurrent attempt wins. The check and the
+// teardown slot are one step under s.mu, so a Connect arriving after waits the teardown out. A
+// Disconnect, Remove or Update that joins the slot owns the final state: MarkLost then skips its emit.
+func (s *Service) MarkLost(id, detail string) {
+	s.mu.Lock()
+	_, tearing := s.tearing[id]
+	if s.states[id].Status != "connected" || s.inFlight[id] != nil || tearing {
+		s.mu.Unlock()
+		return
+	}
+	t, end := s.beginTeardownLocked(id)
+	s.mu.Unlock()
+	defer end()
+	s.deps.Preconnect.Stop(id)
+	_ = s.deps.Backend.Disconnect(context.Background(), id)
+	msg := i18n.T("backend.studio.connection.lost.error", map[string]string{"detail": detail})
+	state := model.ConnectionState{ConnectionID: id, Status: "error", Error: &msg, Since: nowMillis()}
+	// Under emitMu a joiner's emit cannot interleave: it either ran already (joined is set) or runs after ours.
+	s.emitMu.Lock()
+	defer s.emitMu.Unlock()
+	s.mu.Lock()
+	joined := t.joined
+	if !joined {
+		s.states[id] = state
+	}
+	s.mu.Unlock()
+	if !joined {
+		s.stateChanged.Emit(state)
+	}
 }
 
 // States returns every known state sorted by connection id (D7): Go map iteration is randomised,

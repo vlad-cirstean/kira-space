@@ -21,6 +21,8 @@ export const TIMING = {
   reannounce: 100,
   /** How long the status line stays after a review or comment is posted. */
   postedStatus: 6000,
+  /** How long the proof window's "screenshots saved" strip stays. */
+  shotSavedStatus: 10_000,
   /** Wait after agent activity before re-reading the files it may have written. */
   fileSettle: 300,
   /** Stat poll of the files a review window lists. */

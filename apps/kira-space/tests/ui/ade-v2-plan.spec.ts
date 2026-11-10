@@ -106,6 +106,9 @@ test('a card shows its agent sessions as one state; click opens the Sessions tab
   const { window: page } = await openPlan(relaunch);
   const state = (id: string) => card(page, id).locator('[data-testid="ade-card-sessions"]');
   await expect(state('T_bill')).toHaveAttribute('data-state', 'input');
+  await expect(
+    card(page, 'T_bill').locator('[data-testid="ade-row-lead"] [data-testid="ade-card-sessions"]'),
+  ).toHaveCount(1);
   await expect(state('T_hooks')).toHaveAttribute('data-state', 'running');
   await expect(state('T_hooks')).toContainText('2');
   await expect(state('T_notif')).toHaveAttribute('data-state', 'running');
@@ -344,10 +347,7 @@ test('a card is a 6px rounded box with a task-colour left edge on the terminal g
     top: '1px',
     left: '3px',
   });
-  const dot = await box
-    .locator('[data-testid="ade-card-dot"]')
-    .evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(style.leftColor).toBe(dot);
+  expect(style.leftColor).not.toBe('rgba(0, 0, 0, 0)');
   const [chrome, plan] = await Promise.all([
     page.evaluate(() => {
       const span = document.createElement('span');

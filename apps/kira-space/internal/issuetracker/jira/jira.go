@@ -80,6 +80,12 @@ func (p *Provider) Status(ctx context.Context, refresh bool) issuetracker.Status
 	return p.disc.status(ctx, refresh)
 }
 
-func (p *Provider) Issue(ctx context.Context, ref issuetracker.Ref) (issuetracker.Issue, error) {
-	return p.client.issue(ctx, ref)
+func (p *Provider) Issue(ctx context.Context, ref issuetracker.Ref, fresh bool) (issuetracker.Issue, error) {
+	return p.client.issue(ctx, ref, fresh)
+}
+
+var _ issuetracker.IssueBatch = (*Provider)(nil)
+
+func (p *Provider) Issues(ctx context.Context, refs []issuetracker.Ref) (map[string]issuetracker.BatchIssue, error) {
+	return p.client.issues(ctx, refs)
 }

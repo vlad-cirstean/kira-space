@@ -2,6 +2,7 @@ package adeflow_test
 
 import (
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 )
 
 // P417 Jira through acli. Contract ade-issue-tracker: tests/ui/ade-v2-issue-tracker.spec.ts reads these.
+// P592 TestTaskIssueFastLoading is the backend half of that spec's stale-line test.
 
 const (
 	itSite   = "acme.atlassian.net"
@@ -38,7 +40,12 @@ func setLink(t *testing.T, app *flowharness.App, taskID, key, url string) {
 
 func issueOf(t *testing.T, app *flowharness.App, taskID string) adewire.TaskIssue {
 	t.Helper()
-	res, err := app.W.IssueTracker.TaskIssue(ctx, adewire.TaskArgs{TaskID: taskID})
+	return issueWith(t, app, adewire.TaskIssueArgs{TaskID: taskID})
+}
+
+func issueWith(t *testing.T, app *flowharness.App, args adewire.TaskIssueArgs) adewire.TaskIssue {
+	t.Helper()
+	res, err := app.W.IssueTracker.TaskIssue(ctx, args)
 	if err != nil {
 		t.Fatalf("TaskIssue: %v", err)
 	}
@@ -107,7 +114,7 @@ func TestTaskIssueTracker(t *testing.T) {
 	app.Contract(t, "ade-issue-tracker", "AdeTaskService.Artifacts", res, artMask)
 
 	// 2. The task tab line.
-	args := adewire.TaskArgs{TaskID: f.taskID}
+	args := adewire.TaskIssueArgs{TaskID: f.taskID}
 	app.Contract(t, "ade-issue-tracker", "args:IssueTrackerService.TaskIssue", args)
 	ti := issueOf(t, app, f.taskID)
 	if ti.Reason != "" || ti.Title != "Add the thing" || ti.Status != "In Review" || ti.StatusCategory != "indeterminate" ||
@@ -232,5 +239,74 @@ func TestTaskIssueTracker(t *testing.T) {
 	}
 	if !strings.Contains(ops["workitem view"], "workitem view KIRA-") {
 		t.Fatalf("view command = %q", ops["workitem view"])
+	}
+}
+
+// stepClock is the jira provider's clock, moved by hand.
+type stepClock struct {
+	mu sync.Mutex
+	t  time.Time
+}
+
+func (c *stepClock) Now() time.Time { c.mu.Lock(); defer c.mu.Unlock(); return c.t }
+func (c *stepClock) advance(d time.Duration) {
+	c.mu.Lock()
+	c.t = c.t.Add(d)
+	c.mu.Unlock()
+}
+
+// P592 the issue line and Details row answer a kept copy at once, refresh it in the background, and keep
+// the copy when a fresh read fails. Contract ade-issue-tracker; frontend half: ade-v2-issue-tracker.spec.ts.
+func TestTaskIssueFastLoading(t *testing.T) {
+	acli := fakeacli.New(itSite)
+	clk := &stepClock{t: time.Now()}
+	app := flowharness.New(t, flowharness.WithIssueTracker(jira.Options{Locator: acli, Runner: acli, Clock: clk}))
+	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("one", "")))
+	task := createTask(t, app, "Fast", "flow")
+	setLink(t, app, task.ID, "KIRA-12", "https://"+itSite+"/browse/KIRA-12")
+	acli.SetIssue("KIRA-12", fakeacli.IssueJSON("KIRA-12", "Add the thing", "In Review", "indeterminate", 2))
+
+	// 1. A read past the fresh window answers the old copy without waiting for acli.
+	if ti := issueOf(t, app, task.ID); ti.Reason != "" || ti.Stale || ti.Status != "In Review" || acli.Count("view:") != 1 {
+		t.Fatalf("first read = %+v, views %d", ti, acli.Count("view:"))
+	}
+	acli.SetIssue("KIRA-12", fakeacli.IssueJSON("KIRA-12", "Add the thing", "Done", "done", 2))
+	release := acli.Hold()
+	t.Cleanup(release)
+	clk.advance(2 * time.Minute)
+	began := time.Now()
+	stale := issueOf(t, app, task.ID)
+	if took := time.Since(began); took > 2*time.Second {
+		t.Fatalf("stale read took %v while acli was held, want an instant copy", took)
+	}
+	if !stale.Stale || stale.Reason != "" || stale.Status != "In Review" || stale.Title != "Add the thing" {
+		t.Fatalf("stale read = %+v, want the old copy marked stale", stale)
+	}
+	app.Contract(t, "ade-issue-tracker", "IssueTrackerService.TaskIssue#stale", stale)
+
+	// 2. The Details artifacts, inside their budget, list the issue row with its title and no gap.
+	res := artifactsOf(t, app, task.ID)
+	if a, ok := findArtifact(res, "issue", "Add the thing"); !ok || a.Status != "In Review" {
+		t.Fatalf("issue row = %+v in %+v", a, res.Artifacts)
+	}
+	if g, ok := gapOf(res, "jira"); ok {
+		t.Fatalf("jira gap = %+v, want none", g)
+	}
+
+	// 3. A fresh read returns the new status, not stale.
+	release()
+	freshArgs := adewire.TaskIssueArgs{TaskID: task.ID, Fresh: true}
+	app.Contract(t, "ade-issue-tracker", "args:IssueTrackerService.TaskIssue#fresh", freshArgs)
+	fresh := issueWith(t, app, freshArgs)
+	if fresh.Stale || fresh.Reason != "" || fresh.Status != "Done" {
+		t.Fatalf("fresh read = %+v, want Done", fresh)
+	}
+	app.Contract(t, "ade-issue-tracker", "IssueTrackerService.TaskIssue#fresh", fresh)
+
+	// 4. A fresh read that fails keeps the copy, marked stale, with the reason.
+	acli.SetFailing("KIRA-12", true)
+	failed := issueWith(t, app, freshArgs)
+	if !failed.Stale || failed.Reason != "failed" || failed.Title != "Add the thing" || failed.Status != "Done" {
+		t.Fatalf("failed fresh read = %+v, want the copy, stale, reason failed", failed)
 	}
 }

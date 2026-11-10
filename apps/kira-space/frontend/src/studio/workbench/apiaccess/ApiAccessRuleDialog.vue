@@ -102,6 +102,9 @@ function onSave(): void {
             }}</option>
             <option value="deny">{{ t('common.action.deny.label') }}</option>
           </NativeSelect>
+          <FieldDescription data-testid="api-rule-effect-hint">{{
+            t('studio.settings.dbMcp.apiRules.effect.hint')
+          }}</FieldDescription>
         </Field>
         <Field>
           <FieldLabel>{{ t('studio.settings.dbMcp.apiRules.hosts.label') }}</FieldLabel>
@@ -124,6 +127,9 @@ function onSave(): void {
             t('studio.settings.dbMcp.apiRules.hostInvalid.error', { host: badHost })
           }}</FieldError>
           <FieldDescription>{{ t('studio.settings.dbMcp.apiRules.hosts.hint') }}</FieldDescription>
+          <FieldDescription data-testid="api-rule-host-forms">{{
+            t('studio.settings.dbMcp.apiRules.hostForms.body')
+          }}</FieldDescription>
         </Field>
         <Field>
           <FieldLabel>{{ t('studio.settings.dbMcp.apiRules.methods.label') }}</FieldLabel>

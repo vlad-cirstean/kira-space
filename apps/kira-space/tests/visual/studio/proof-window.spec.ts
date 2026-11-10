@@ -3,6 +3,7 @@ import { expect, studioTest as test } from '../../ui/fixtures';
 import {
   bigTable,
   chartControl,
+  explainedControl,
   LONG_QUERY,
   openProofWindow,
   PENDING_ID,
@@ -162,4 +163,12 @@ test.describe('proof chart', () => {
       'proof-chart-pie.png',
     );
   });
+});
+
+test('proof window, explanation and summary (P591)', async ({ relaunch, uiServer }) => {
+  const { window: page } = await relaunch({ control: explainedControl() });
+  await openProofWindow(page, uiServer.url);
+  await ready(page);
+  await expect(page.locator('[data-testid="proof-summary"]')).toBeVisible();
+  await expect(page.locator(WINDOW)).toHaveScreenshot('proof-explanation.png');
 });

@@ -15,7 +15,7 @@ import Identifier from '@workbench/components/Identifier.vue';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, watch } from 'vue';
 import { control } from '../../../bridge/control';
-import { useOpenHostView } from '../../../hostview/queries';
+import { useOpenChangeRequest } from '../../../hostview/queries';
 import { useRepos } from '../../../repo/state/reposQueries';
 import AdeChip from '../AdeChip.vue';
 import AdeForcePushDialog from '../AdeForcePushDialog.vue';
@@ -64,7 +64,7 @@ const contextMenu = useContextMenuStore();
 const setupError = ref('');
 const forcePush = ref(false);
 const { copy, copied } = useCopy();
-const openView = useOpenHostView();
+const openView = useOpenChangeRequest();
 const copiedKey = ref('');
 
 const branch = computed(() => props.row.branch);

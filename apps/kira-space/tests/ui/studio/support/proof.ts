@@ -14,16 +14,29 @@ export const PENDING_ID = 'session-2';
 type Json = Record<string, any>;
 
 const fixture = (
-  name: 'proof' | 'proof-pending' | 'proof-chart' | 'proof-diagram' | 'proof-image',
+  name:
+    | 'proof'
+    | 'proof-pending'
+    | 'proof-explained'
+    | 'proof-chart'
+    | 'proof-diagram'
+    | 'proof-image',
   key: string,
 ): Json => contract(name, key) as Json;
 
-/** A fresh folder from ChooseShotFolder (tests/contract/proof.json) with its masked fields filled. */
-export const shotFolder = (): Json => ({
-  ...fixture('proof', 'ProofService.ChooseShotFolder'),
-  id: 'shot_test',
-  path: '/tmp/test/Checkout fix',
-});
+/** A fresh folder from OpenShotFolder (tests/contract/proof.json) with its masked id filled and the
+ *  `<home>` placeholder replaced. */
+export const shotFolder = (): Json => {
+  const folder = fixture('proof', 'ProofService.OpenShotFolder');
+  return { ...folder, id: 'shot_test', path: String(folder.path).replace('<home>', '/Users/test') };
+};
+
+/** The save location from ShotLocation (default Desktop) or, with `custom`, ChooseShotLocation's pick. */
+export const shotLocation = (custom = false): Json => {
+  const base = fixture('proof', 'ProofService.ShotLocation');
+  if (!custom) return { ...base, path: String(base.path).replace('<home>', '/Users/test') };
+  return { ...base, custom: true, path: '/Users/test/Shots' };
+};
 
 /** Height in pixels from a PNG's IHDR chunk (bytes 20-24), given its base64. */
 export function pngHeight(b64: string): number {
@@ -147,6 +160,33 @@ export function chartControl(
     { channel: IPC.proofSession, response: chartSession() },
     ...CHART_KEYS.map((key, i) => chartStep(SESSION_ID, 1, i + 1, key, patches[i + 1])),
     ...extra,
+  ];
+}
+
+/** Boot snapshots for the explained session (tests/contract/proof-explained.json): a summary and one
+ *  long step explanation. */
+export function explainedControl(): ControlSnapshot[] {
+  return [
+    { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
+    {
+      channel: IPC.proofSessions,
+      response: (fixture('proof-explained', 'ProofService.Sessions') as unknown as Json[]).map(
+        (x) => ({ ...x, id: SESSION_ID, closedAt: CLOSED_AT }),
+      ),
+    },
+    {
+      channel: IPC.proofSession,
+      response: {
+        ...fixture('proof-explained', 'ProofService.Session'),
+        id: SESSION_ID,
+        closedAt: CLOSED_AT,
+      },
+    },
+    {
+      channel: IPC.proofStep,
+      args: { sessionId: SESSION_ID, rev: 1, ordinal: 1 },
+      response: { ...fixture('proof-explained', 'ProofService.Step#table'), ordinal: 1 },
+    },
   ];
 }
 

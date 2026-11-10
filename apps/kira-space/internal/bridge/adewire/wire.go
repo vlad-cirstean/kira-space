@@ -1582,6 +1582,14 @@ type TaskIssue struct {
 	// Reason is why the issue could not be read ('' when it was): a tracker reason word, or noTracker when
 	// no registered tracker recognises the task's link.
 	Reason string `json:"reason"`
+	// Stale marks a kept copy older than the tracker's fresh window; a fresh read may follow.
+	Stale bool `json:"stale,omitempty"`
+}
+
+// TaskIssueArgs asks for a task's linked issue; Fresh skips the kept copy.
+type TaskIssueArgs struct {
+	TaskID string `json:"taskId"`
+	Fresh  bool   `json:"fresh,omitempty"`
 }
 
 // IssueSummary is the tracker's own count of change requests linked to the issue.

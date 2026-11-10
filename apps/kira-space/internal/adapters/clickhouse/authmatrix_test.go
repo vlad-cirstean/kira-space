@@ -96,6 +96,52 @@ func TestClickHouse_AuthMatrix(t *testing.T) {
 					[]string{"CREATE TABLE kira_test.p26_matrix_scratch (id UInt32) ENGINE = MergeTree ORDER BY id"},
 					adapters.CodeAuth,
 				),
+				// P602: the lane's per-request readonly=2 for a grants-only user. The probe table gets an
+				// INSERT grant so the refusal is the read-only session, not a missing privilege.
+				testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+					Path: testsupport.NodePath(f.Config.ID),
+					Admin: chAdmin(f,
+						"CREATE TABLE kira_test.p602_lane_log (id UInt8) ENGINE = Memory; GRANT INSERT ON kira_test.p602_lane_log TO kira_ro",
+						"DROP TABLE IF EXISTS kira_test.p602_lane_log"),
+					Write: "INSERT INTO kira_test.p602_lane_log VALUES (1)", WantErr: "readonly mode",
+					Unchanged: func(t *testing.T, main adapters.Adapter) {
+						t.Helper()
+						if got := testsupport.FirstCell(t, main, testsupport.NodePath(f.Config.ID), "SELECT count() FROM kira_test.p602_lane_log"); got != "0" {
+							t.Errorf("p602_lane_log rows = %s, want 0", got)
+						}
+					},
+				}),
+				testsupport.ReadLaneReads(testsupport.NodePath(f.Config.ID), "SELECT count() FROM kira_test.regions WHERE id > 0", "2"),
+				testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
+					Name: "read lane", Path: testsupport.NodePath(f.Config.ID), Lane: true,
+					Slow: "SELECT sum(cityHash64(number)) FROM numbers(1000000000000)", WantCode: "TIMEOUT_EXCEEDED",
+					Baseline: "SELECT getSetting('max_execution_time')", BaselineWant: "0",
+					Lifted: "SELECT sleepEachRow(1) FROM numbers(2) SETTINGS max_block_size = 1",
+				}),
+				chExplainPlan(f),
+			},
+		},
+		{
+			// P602 hypothesis H1: the lane sends readonly=2 per request. A profile that pins readonly=1
+			// refuses any settings change, so every lane read may fail for such a user. The case asserts
+			// the lane reads and still refuses a write; a failure here confirms H1 (docs/HISTORY.md (v0.3.7 P602)).
+			Name: "kira_ro1 (profile readonly=1), database=kira_test",
+			Principal: &testsupport.Principal{Name: "readonly=1 profile user", Setup: func(t *testing.T, fx any) {
+				t.Helper()
+				f := fx.(*testsupport.ClickHouseFixture)
+				testsupport.AdminStatements(t, f, `
+					CREATE USER IF NOT EXISTS kira_ro1 IDENTIFIED WITH plaintext_password BY 'kira_ro1_pw' SETTINGS readonly = 1;
+					GRANT SELECT ON kira_test.* TO kira_ro1;
+					GRANT SELECT ON system.* TO kira_ro1;`)
+				t.Cleanup(func() { testsupport.AdminStatements(t, f, "DROP USER IF EXISTS kira_ro1") })
+			}},
+			Config: func(c model.ResolvedConnectionConfig) model.ResolvedConnectionConfig {
+				c.Username, c.Password = testsupport.Strp("kira_ro1"), testsupport.Strp("kira_ro1_pw")
+				return c
+			},
+			Expect: testsupport.Outcome{Succeed: true},
+			Then: []testsupport.Scenario{
+				testsupport.ReadLaneReads(testsupport.NodePath(f.Config.ID), "SELECT count() FROM kira_test.regions WHERE id > 0", "2"),
 			},
 		},
 		{

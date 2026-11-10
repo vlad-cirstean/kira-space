@@ -190,14 +190,14 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
         v-for="s in spans"
         :key="s.taskId"
         variant="toolbar"
-        class="h-row w-auto justify-start gap-2 border border-border px-2 font-normal data-[selected]:bg-select"
+        class="h-row w-auto justify-start gap-2 border border-l-3 border-border px-2 font-normal data-[selected]:bg-select"
+        :style="{ borderLeftColor: s.color }"
         :data-task-id="s.taskId"
         :data-selected="ui.selectedTaskId === s.taskId || undefined"
         data-testid="ade-span-row"
         @click="emit('select', s.taskId)"
       >
         <CodiconIcon name="indent" :size="12" class="shrink-0 text-subtle" />
-        <span class="size-2 shrink-0 rounded-kira-sm" :style="{ background: s.color }" />
         <span class="shrink-0 whitespace-nowrap text-kira-sm text-subtle">{{ s.note }}</span>
         <span class="min-w-0 truncate font-medium text-fg">{{ s.title }}</span>
       </Button>

@@ -1,0 +1,349 @@
+{
+  "AdeTaskService.AddTaskRepo": {
+    "addedAt": 0,
+    "ahead": 0,
+    "base": "main",
+    "baseBranchId": "",
+    "baseMissing": false,
+    "baseOwner": "",
+    "basePendingFrom": "",
+    "behind": 0,
+    "codeRepoId": "<id:1>",
+    "conflictCheck": "done",
+    "conflictCheckReason": "",
+    "conflictsIfRebased": [],
+    "deployments": [],
+    "dirty": [],
+    "id": "<id:2>",
+    "integration": [],
+    "kind": "mine",
+    "lastCommitAt": null,
+    "mergedAt": null,
+    "mergedIntoMain": false,
+    "name": "",
+    "origin": "",
+    "owner": "",
+    "rebaseInProgress": false,
+    "setup": null,
+    "taskId": "<id:3>",
+    "tip": "",
+    "upstream": "",
+    "upstreamAhead": 0,
+    "upstreamBehind": 0,
+    "worktree": "<masked>"
+  },
+  "AdeTaskService.Board#started": {
+    "branchIds": [
+      "<id:2>"
+    ],
+    "branchRequestId": "",
+    "color": 0,
+    "createdAt": 0,
+    "entryStepId": "done",
+    "est": "",
+    "handoverDrafts": [],
+    "handoverIn": {
+      "body": "summary-done",
+      "createdAt": 0,
+      "dismissed": false,
+      "edited": false,
+      "finished": false,
+      "fromStepId": "one",
+      "fromStepName": "one",
+      "id": "<id:4>",
+      "sessionId": "<id:5>",
+      "source": "run",
+      "state": "handed",
+      "taskId": "<id:3>",
+      "toStepId": "done",
+      "toStepName": "",
+      "updatedAt": 0
+    },
+    "hostLink": null,
+    "hostUrl": "",
+    "id": "<id:3>",
+    "jira": null,
+    "kind": "task",
+    "notes": "",
+    "owner": "",
+    "runs": [
+      {
+        "attempt": 1,
+        "branchId": "<id:2>",
+        "exitCode": 0,
+        "finishedAt": 0,
+        "id": "<id:6>",
+        "loops": 0,
+        "note": "",
+        "outcome": {
+          "exitCode": 0,
+          "reason": "",
+          "reported": true,
+          "result": "done",
+          "route": "next",
+          "source": "agent",
+          "status": "done",
+          "summary": "summary-done"
+        },
+        "purpose": "",
+        "resumable": false,
+        "returns": 0,
+        "review": null,
+        "sandbox": {
+          "access": "off",
+          "denials": 0,
+          "enforced": false,
+          "last": ""
+        },
+        "sessionId": "<id:5>",
+        "startedAt": 0,
+        "state": "done",
+        "stepId": "one",
+        "summary": "summary-done",
+        "taskId": "<id:3>"
+      }
+    ],
+    "since": {},
+    "statusBy": "auto",
+    "statusId": "done",
+    "statusStep": "done",
+    "title": "Fix login",
+    "workflow": {
+      "id": "flow",
+      "name": "Flow",
+      "steps": [
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "<masked>",
+          "dbMcp": true,
+          "id": "one",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "one",
+          "outsideRepo": false,
+          "params": {},
+          "prompt": "work on {branch} in {repo}",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "each repo",
+          "sandbox": {
+            "access": "off",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "1m"
+        }
+      ]
+    },
+    "workflowId": "flow",
+    "workflowOutdated": false
+  },
+  "AdeTaskService.Board#waitingRepo": {
+    "branchIds": [],
+    "branchRequestId": "",
+    "color": 0,
+    "createdAt": 0,
+    "entryStepId": "one",
+    "est": "",
+    "handoverDrafts": [],
+    "handoverIn": {
+      "body": "summary-done",
+      "createdAt": 0,
+      "dismissed": false,
+      "edited": false,
+      "finished": false,
+      "fromStepId": "one",
+      "fromStepName": "one",
+      "id": "<id:1>",
+      "sessionId": "<id:2>",
+      "source": "run",
+      "state": "handed",
+      "taskId": "<id:3>",
+      "toStepId": "two",
+      "toStepName": "two",
+      "updatedAt": 0
+    },
+    "hostLink": null,
+    "hostUrl": "",
+    "id": "<id:3>",
+    "jira": null,
+    "kind": "task",
+    "notes": "",
+    "owner": "",
+    "runs": [
+      {
+        "attempt": 1,
+        "branchId": "",
+        "exitCode": 0,
+        "finishedAt": 0,
+        "id": "<id:4>",
+        "loops": 0,
+        "note": "",
+        "outcome": {
+          "exitCode": 0,
+          "reason": "",
+          "reported": true,
+          "result": "done",
+          "route": "next",
+          "source": "agent",
+          "status": "done",
+          "summary": "summary-done"
+        },
+        "purpose": "",
+        "resumable": false,
+        "returns": 0,
+        "review": null,
+        "sandbox": {
+          "access": "off",
+          "denials": 0,
+          "enforced": false,
+          "last": ""
+        },
+        "sessionId": "<id:2>",
+        "startedAt": 0,
+        "state": "done",
+        "stepId": "one",
+        "summary": "summary-done",
+        "taskId": "<id:3>"
+      }
+    ],
+    "since": {},
+    "statusBy": "auto",
+    "statusId": "in-progress",
+    "statusStep": "two",
+    "title": "Fix login",
+    "workflow": {
+      "id": "flow",
+      "name": "Flow",
+      "steps": [
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "<masked>",
+          "dbMcp": true,
+          "id": "one",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "one",
+          "outsideRepo": true,
+          "params": {},
+          "prompt": "survey the folder",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "",
+          "sandbox": {
+            "access": "off",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "1m"
+        },
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "<masked>",
+          "dbMcp": true,
+          "id": "two",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "two",
+          "outsideRepo": false,
+          "params": {},
+          "prompt": "work on {branch} in {repo}",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "each repo",
+          "sandbox": {
+            "access": "off",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "1m"
+        }
+      ]
+    },
+    "workflowId": "flow",
+    "workflowOutdated": false
+  },
+  "AdeTaskService.LaunchStep": {
+    "command": "<masked>",
+    "cwd": "<masked>",
+    "sessionId": "<id:1>",
+    "terminalId": "<masked>"
+  },
+  "AdeTaskService.LaunchStep#noRepo": {
+    "code": "E_TASK_NO_REPO",
+    "message": "This task has no repository yet. Choose at least one before starting work."
+  },
+  "AdeTaskService.StartRun#noRepo": {
+    "code": "E_TASK_NO_REPO",
+    "message": "This task has no repository yet. Choose at least one before starting work."
+  }
+}

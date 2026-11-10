@@ -3,6 +3,11 @@ import { ref } from 'vue';
 
 export type ProofSide = 'current' | 'pending';
 
+/** Outcome of the last screenshot save (or location change), shown in the status strip. */
+export type ShotResult =
+  | { kind: 'saved'; count: number; path: string; folderId: string }
+  | { kind: 'error'; message: string };
+
 /** The proof window's own selection: which session, which revision, which step tab. */
 export const useProofWindowStore = defineStore('proofWindow', () => {
   /** True in a proof window: App.vue shows the proof surface instead of the workbench. */
@@ -16,9 +21,20 @@ export const useProofWindowStore = defineStore('proofWindow', () => {
   /** Step keys whose grid and query box have restored their saved view and painted. */
   const ready = ref<Record<string, true>>({});
 
+  const shotResult = ref<ShotResult | null>(null);
+
+  function setShotResult(result: ShotResult): void {
+    shotResult.value = result;
+  }
+
+  function clearShotResult(): void {
+    shotResult.value = null;
+  }
+
   function selectSession(id: string | null): void {
     if (sessionId.value === id) return;
     sessionId.value = id;
+    shotResult.value = null;
     side.value = null;
     compare.value = false;
     activeId.value = null;
@@ -40,6 +56,9 @@ export const useProofWindowStore = defineStore('proofWindow', () => {
     compare,
     activeId,
     ready,
+    shotResult,
+    setShotResult,
+    clearShotResult,
     selectSession,
     markReady,
     unmarkReady,

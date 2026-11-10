@@ -44,7 +44,7 @@ See [API client](../../studio/api-client/). Defaults: HTTP version 2, no timeout
 
 ### Database MCP
 
-The server switch, exposed connections and token. Off by default. See [Database MCP server](../../studio/database-mcp/).
+The server switch, exposed connections and token. Off by default. See [Database MCP server](../../studio/database-mcp/). With API requests on: an approval mode, and host and method rules. A deny rule refuses, and an allow rule sends without asking. A request no rule matches is asked or denied, as you choose. Earlier versions still asked for requests an allow rule matched.
 
 ### Prompts
 
@@ -53,7 +53,7 @@ See [Prompts](../prompts/).
 ### Advanced
 
 - Operation log retention: 1 to 365 days, default 30.
-- Expensive query threshold: 1000 to 1000000000 estimated rows, default 100000.
+- Expensive query threshold: 1000 to 1000000000 estimated rows, default 100000. A connection can override it in its Advanced tab.
 - Log level: off, error, warn, info or debug. Default info.
 - A system notification when a popup waits in a window that is not in front. On by default.
 

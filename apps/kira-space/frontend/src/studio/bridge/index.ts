@@ -47,12 +47,13 @@ import type { MaskRule, MaskRuleFields } from '@shared/domain/mask';
 import type { MaskReviewListing, MaskReviewPending } from '@shared/domain/maskReview';
 import type {
   ProofChanged,
+  ProofChooseShotLocationResult,
   ProofDetail,
   ProofOpenResult,
-  ProofSaveJpegResult,
   ProofSaveJpegToResult,
   ProofSelect,
   ProofShotFolderResult,
+  ProofShotLocation,
   ProofStepDetail,
   ProofSummary,
   ProofViewState,
@@ -402,12 +403,14 @@ const studioControl = {
     unwrap(ProofService.OpenWindow({ sessionId })).then((r) => trust<ProofOpenResult>(r)),
   proofWindowTarget: (): Promise<ProofWindowTarget> =>
     unwrap(ProofService.WindowTarget({ key: windowKey })).then((r) => trust<ProofWindowTarget>(r)),
-  proofSaveJpeg: (filename: string, jpegBase64: string): Promise<ProofSaveJpegResult> =>
-    unwrap(ProofService.SaveJpeg({ filename, jpegBase64 })).then((r) =>
-      trust<ProofSaveJpegResult>(r),
-    ),
-  proofChooseShotFolder: (sessionName: string): Promise<ProofShotFolderResult> =>
-    unwrap(ProofService.ChooseShotFolder({ sessionName })).then((r) =>
+  proofShotLocation: (): Promise<ProofShotLocation> =>
+    unwrap(ProofService.ShotLocation()).then((r) => trust<ProofShotLocation>(r)),
+  proofChooseShotLocation: (): Promise<ProofChooseShotLocationResult> =>
+    unwrap(ProofService.ChooseShotLocation()).then((r) => trust<ProofChooseShotLocationResult>(r)),
+  proofResetShotLocation: (): Promise<ProofShotLocation> =>
+    unwrap(ProofService.ResetShotLocation()).then((r) => trust<ProofShotLocation>(r)),
+  proofOpenShotFolder: (sessionName: string): Promise<ProofShotFolderResult> =>
+    unwrap(ProofService.OpenShotFolder({ sessionName })).then((r) =>
       trust<ProofShotFolderResult>(r),
     ),
   proofSaveJpegTo: (
@@ -418,8 +421,10 @@ const studioControl = {
     unwrap(ProofService.SaveJpegTo({ folderId, filename, jpegBase64 })).then((r) =>
       trust<ProofSaveJpegToResult>(r),
     ),
-  proofForgetShotFolder: (folderId: string): Promise<void> =>
-    unwrap(ProofService.ForgetShotFolder({ folderId })),
+  proofCloseShotFolder: (folderId: string): Promise<void> =>
+    unwrap(ProofService.CloseShotFolder({ folderId })),
+  proofRevealShotFolder: (folderId: string): Promise<void> =>
+    unwrap(ProofService.RevealShotFolder({ folderId })),
   onProofChanged: (cb: (event: ProofChanged) => void): (() => void) => on(CHANNEL.proofChanged, cb),
   onProofSelect: (cb: (event: ProofSelect) => void): (() => void) => on(CHANNEL.proofSelect, cb),
 

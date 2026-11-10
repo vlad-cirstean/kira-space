@@ -579,6 +579,7 @@ func runFamilySuite(t *testing.T, kind string, cfg model.ResolvedConnectionConfi
 	// Wired through scenarios.go's shared constructor (P26 §2.2/P26 review F3) rather than
 	// hand-rolled, so this scenario also backs Tier 2 via RunMatrix's own Then slices.
 	testsupport.RunScenarios(t, connectedAdapter(t, kind, cfg), cfg,
+		testsupport.PingAnswers(),
 		testsupport.ProjectionLimitsColumns(
 			nodePath(cfg.ID, seg("database", "kira_test"), seg("table", "customers")),
 			[]string{"name"},
@@ -657,6 +658,11 @@ func runFamilySuite(t *testing.T, kind string, cfg model.ResolvedConnectionConfi
 			}),
 		}
 	}
+	timeoutCases = append(timeoutCases,
+		testsupport.ReadStatementTimeout(familyReadTimeoutCase(kind, cfg.ID, true, nil)),
+		testsupport.ReadStatementTimeout(familyReadTimeoutCase(kind, cfg.ID, false, nil)),
+		familyExplainPlan(cfg.ID),
+	)
 	testsupport.RunScenarios(t, connectedAdapter(t, kind, cfg), cfg, timeoutCases...)
 
 	t.Run("count", func(t *testing.T) {
@@ -1282,4 +1288,74 @@ func waitForProcesslistClean(t *testing.T, side adapters.Adapter, timeout time.D
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+}
+
+// familyCode is the engine error the statement timeout reports: MySQL 3024 (max_execution_time,
+// SELECT only), MariaDB 1969 (max_statement_time).
+func familyCode(kind string) string {
+	if kind == "mariadb" {
+		return "1969"
+	}
+	return "3024"
+}
+
+// familyReadTimeoutCase is the browse-page timeout case over a view whose rows sleep 5 s (SLEEP in a
+// WHERE over two rows, as the lane case above: the engine interrupts it, SLEEP returns 1).
+// A least-privilege matrix row passes admin; its SELECT grant on kira_test.* already covers the view.
+func familyReadTimeoutCase(kind, connID string, lane bool, admin func(t *testing.T) adapters.Adapter) testsupport.ReadStatementTimeoutCase {
+	name := "main"
+	if lane {
+		name = "read lane"
+	}
+	db := []model.PathSegment{seg("database", "kira_test")}
+	return testsupport.ReadStatementTimeoutCase{
+		Name: name, SetupOn: nodePath(connID, db...), Lane: lane, WantCode: familyCode(kind), Admin: admin,
+		Setup:    []string{"CREATE OR REPLACE VIEW kira_test.p602_slow AS SELECT d.n AS s FROM (SELECT 1 AS n UNION ALL SELECT 2) d WHERE SLEEP(5)"},
+		Teardown: []string{"DROP VIEW IF EXISTS kira_test.p602_slow"},
+		Path:     nodePath(connID, append(db, seg("view", "p602_slow"))...),
+		Fast:     nodePath(connID, append(db, seg("table", "customers"))...),
+	}
+}
+
+// familyExplainPlan: EXPLAIN FORMAT=JSON on the lane; big_rows has 1M analyzed rows, id is its key.
+func familyExplainPlan(connID string) testsupport.Scenario {
+	return testsupport.ExplainPlan(testsupport.ExplainPlanCase{
+		Path:     nodePath(connID, seg("database", "kira_test")),
+		FullScan: "SELECT * FROM kira_test.big_rows", Point: "SELECT * FROM kira_test.big_rows WHERE id = 1",
+		MinRows: 500000, MaxPointRows: 1000,
+	})
+}
+
+// familyLaneRefusesWrite probes a table the user may insert into (granted by admin, a root adapter)
+// so the refusal is the read-only transaction (1792), not a missing privilege.
+func familyLaneRefusesWrite(connID string, admin func(t *testing.T) adapters.Adapter, grantTo string) testsupport.Scenario {
+	path := nodePath(connID, seg("database", "kira_test"))
+	return testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+		Path: path, Admin: admin,
+		Setup: []string{
+			"CREATE TABLE kira_test.p602_lane_log (id int)",
+			"GRANT SELECT, INSERT ON kira_test.p602_lane_log TO " + grantTo,
+		},
+		Write: "INSERT INTO kira_test.p602_lane_log VALUES (1)", WantErr: "1792",
+		Unchanged: func(t *testing.T, main adapters.Adapter) {
+			t.Helper()
+			if got := testsupport.FirstCell(t, main, path, "SELECT count(*) FROM kira_test.p602_lane_log"); got != "0" {
+				t.Errorf("p602_lane_log rows = %s, want 0", got)
+			}
+		},
+		Teardown: []string{"DROP TABLE IF EXISTS kira_test.p602_lane_log"},
+	})
+}
+
+// familyLaneStatementTimeout is the lane timeout case for the least-privilege matrix row.
+func familyLaneStatementTimeout(kind, connID string) testsupport.Scenario {
+	baseline := "SELECT @@SESSION.max_execution_time"
+	if kind == "mariadb" {
+		baseline = "SELECT @@SESSION.max_statement_time"
+	}
+	return testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
+		Name: "read lane", Path: nodePath(connID, seg("database", "kira_test")), Lane: true,
+		Slow: "SELECT 1 FROM (SELECT 1 UNION ALL SELECT 2) d WHERE SLEEP(5)", WantCode: familyCode(kind),
+		Baseline: baseline, BaselineWant: "0", Lifted: "SELECT SLEEP(2)",
+	})
 }

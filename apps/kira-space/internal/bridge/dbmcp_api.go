@@ -32,7 +32,7 @@ func AgentAPIGlobals(settings *repos.SettingsRepo) func() (agentapi.Globals, err
 	}
 }
 
-// AgentAPIAccess reads the user's API access rules, per plan. It fails closed: an unreadable settings store or
+// AgentAPIAccess reads the user's API access rules and the default for requests no rule matches, per plan. It fails closed: an unreadable settings store or
 // unreadable stored rules refuse every request instead of falling back to allow-all.
 func AgentAPIAccess(settings *repos.SettingsRepo) func() (apiaccess.Policy, error) {
 	return func() (apiaccess.Policy, error) {
@@ -44,6 +44,10 @@ func AgentAPIAccess(settings *repos.SettingsRepo) func() (apiaccess.Policy, erro
 		if all.DbMcp.APIRulesInvalid {
 			return apiaccess.Policy{}, errors.New("the API access rules in Kira Space's database MCP settings could not be read; ask the user to replace them")
 		}
-		return apiaccess.Compile(all.DbMcp.APIRules)
+		policy, err := apiaccess.Compile(all.DbMcp.APIRules)
+		if err != nil {
+			return apiaccess.Policy{}, err
+		}
+		return policy.WithDefault(all.DbMcp.APIDefault), nil
 	}
 }

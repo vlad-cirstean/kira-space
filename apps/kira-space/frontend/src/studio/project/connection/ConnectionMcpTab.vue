@@ -2,6 +2,7 @@
 import {
   CONNECTION_MCP_STATEMENT_TIMEOUT,
   EXPLAIN_SUPPORTED_KINDS,
+  explainThresholdOf,
 } from '@shared/domain/connection';
 import type { ConnectionFileMcp, ConnectionFileModel } from '@shared/domain/connectionConfig';
 import {
@@ -115,9 +116,11 @@ function modeOptions(cls: (typeof CLASSES)[number]['cls']) {
   }));
 }
 
+const advancedTab = t('common.advanced.label');
+
 const throttleLead = computed(() => {
   const perSec = file.value.throttle_per_sec ?? 0;
-  const tab = t('common.advanced.label');
+  const tab = advancedTab;
   return perSec > 0
     ? t('studio.project.connectionDialog.mcp.throttle.body', { rate: String(perSec), tab })
     : t('studio.project.connectionDialog.mcp.throttleOff.body', { tab });
@@ -209,8 +212,22 @@ const timeoutThrottled = computed(
         <FieldDescription class="w-full" data-testid="connection-mcp-rows-who">
           {{
             t('studio.project.connectionDialog.mcp.rowsWho.body', {
-              threshold: formatCount(settingsStore.advanced.expensiveQueryRows),
+              threshold: formatCount(
+                explainThresholdOf(
+                  file.explain_threshold_rows,
+                  settingsStore.advanced.expensiveQueryRows,
+                ),
+              ),
             })
+          }}
+        </FieldDescription>
+        <FieldDescription class="w-full" data-testid="connection-mcp-rows-where">
+          {{
+            file.explain_threshold_rows
+              ? t('studio.project.connectionDialog.mcp.rowsWhereConnection.body', {
+                  tab: advancedTab,
+                })
+              : t('studio.project.connectionDialog.mcp.rowsWhereApp.body', { tab: advancedTab })
           }}
         </FieldDescription>
         <FieldDescription class="w-full" data-testid="connection-mcp-rows-hit">

@@ -101,6 +101,7 @@ var adeTaskCatalog = []struct {
 	{ade.ErrWorkingChanged, ipcerr.CodeConflict, "backend.space.ade.workingChanged.body"},
 	{ade.ErrWorkflowChanged, ipcerr.CodeConflict, "backend.space.ade.workflowChanged.body"},
 	{ade.ErrSetupPending, ipcerr.CodePreparing, "backend.space.ade.setupPending.body"},
+	{ade.ErrTaskNoRepo, ipcerr.CodeTaskNoRepo, "backend.space.ade.taskNoRepo.body"},
 	{repos.ErrBranchOnTask, ipcerr.CodeConflict, "backend.space.ade.branchOnTask.body"},
 	{repos.ErrDraftInRepo, ipcerr.CodeConflict, "backend.space.ade.draftInRepo.body"},
 	{ade.ErrSessionRunning, ipcerr.CodeConflict, "backend.space.ade.sessionRunning.body"},

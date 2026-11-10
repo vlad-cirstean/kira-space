@@ -31,6 +31,10 @@ type ConnectionFields struct {
 	// P28 §5.3: commands per second this connection is paced to; 0 = unlimited (default). A
 	// first-class column, not an options_json key — see the migration's own comment for why.
 	ThrottlePerSec float64 `json:"throttlePerSec"`
+	// P593: estimated rows read at or above which this connection's explain warns and agent queries
+	// are refused; 0 = the app default (advanced.expensiveQueryRows). A first-class column, not an
+	// options_json key — see the migration's own comment for why.
+	ExplainThresholdRows int `json:"explainThresholdRows"`
 	// M1 §6.1: whether this connection is exposed to the local DB MCP server. Deny by default. A
 	// first-class column, not an options_json key — see the migration's own comment for why.
 	McpEnabled bool `json:"mcpEnabled"`
@@ -147,6 +151,17 @@ const (
 	McpStatementTimeoutDefault = 10
 	McpStatementTimeoutMax     = 3600
 )
+
+// Bounds of an expensive-query row threshold, shared by the app setting and the per-connection override.
+const (
+	ExplainThresholdRowsMin = 1_000
+	ExplainThresholdRowsMax = 1_000_000_000
+)
+
+// ValidExplainThresholdRows reports whether v is 0 (app default) or within the bounds.
+func ValidExplainThresholdRows(v int) bool {
+	return v == 0 || (v >= ExplainThresholdRowsMin && v <= ExplainThresholdRowsMax)
+}
 
 // ValidMcpStatementTimeout reports whether v is 0 (off) or a whole number of seconds up to the max.
 func ValidMcpStatementTimeout(v int) bool { return v >= 0 && v <= McpStatementTimeoutMax }

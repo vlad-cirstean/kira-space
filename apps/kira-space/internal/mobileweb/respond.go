@@ -52,7 +52,7 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		case string(ipcerr.CodeNotFound):
 			writeError(w, http.StatusNotFound, ie.Code, ie.Message)
 			return
-		case string(ipcerr.CodeConflict), string(ipcerr.CodePreparing), string(ipcerr.CodeUnavailable):
+		case string(ipcerr.CodeConflict), string(ipcerr.CodePreparing), string(ipcerr.CodeTaskNoRepo), string(ipcerr.CodeUnavailable):
 			writeError(w, http.StatusConflict, ie.Code, ie.Message)
 			return
 		case string(ipcerr.CodeTimeout):

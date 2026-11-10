@@ -4,15 +4,17 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
-import { FieldDescription, FieldLegend } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldLegend } from '@theme/components/ui/field';
+import { Label } from '@theme/components/ui/label';
+import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
 import type { ApiRule } from '../../../state/settingsDomain';
 import ApiAccessRuleDialog from '../apiaccess/ApiAccessRuleDialog.vue';
-import { allowsNothing } from '../apiaccess/apiAccessRules';
+import { allowsAnyHost, allowsNothing } from '../apiaccess/apiAccessRules';
 
 // The user's host and method rules for the api_request tool, under the approval mode. Each save or
 // remove sends the whole new list in one settings write, like the other instant settings here.
@@ -28,6 +30,14 @@ const editingRule = computed(() =>
 const write = useAsyncAction((next: ApiRule[]) =>
   settingsStore.patchSettings({ dbMcp: { apiRules: next } }),
 );
+const setDefault = useAsyncAction((apiDefault: 'ask' | 'deny') =>
+  settingsStore.patchSettings({ dbMcp: { apiDefault } }),
+);
+const defaultId = useId();
+const defaultHint = computed(() => {
+  if (settingsStore.dbMcp.apiDefault === 'deny') return 'deny';
+  return settingsStore.dbMcp.apiApproval === 'never' ? 'ask-never' : 'ask';
+});
 const remove = useAsyncAction((next: ApiRule[]) =>
   settingsStore.patchSettings({ dbMcp: { apiRules: next } }),
 );
@@ -43,6 +53,10 @@ async function onSave(rule: ApiRule): Promise<void> {
   if (editing.value === null) next.push(rule);
   else next[editing.value] = rule;
   if (await write.run(next)) dialogOpen.value = false;
+}
+
+function onDefaultChange(value: unknown): void {
+  setDefault.run(value === 'deny' ? 'deny' : 'ask');
 }
 
 function onRemove(index: number): void {
@@ -113,13 +127,6 @@ function onRemove(index: number): void {
   <FieldDescription v-else data-testid="settings-db-mcp-api-rules-empty">{{
     t('studio.settings.dbMcp.apiRules.empty.body')
   }}</FieldDescription>
-  <Alert
-    v-if="allowsNothing(rules)"
-    variant="warn"
-    data-testid="settings-db-mcp-api-rules-no-allow"
-  >
-    <AlertDescription>{{ t('studio.settings.dbMcp.apiRules.noAllow.body') }}</AlertDescription>
-  </Alert>
   <Alert v-if="remove.error.value" variant="error" data-testid="settings-db-mcp-api-rules-error">
     <AlertDescription>{{ remove.error.value }}</AlertDescription>
   </Alert>
@@ -133,6 +140,60 @@ function onRemove(index: number): void {
     <CodiconIcon :name="ICON.add" :size="13" />
     {{ t('studio.settings.dbMcp.apiRules.add.label') }}
   </Button>
+  <Field data-testid="settings-db-mcp-api-default-field">
+    <Label :for="defaultId">{{ t('studio.settings.dbMcp.apiDefault.label') }}</Label>
+    <NativeSelect
+      :id="defaultId"
+      variant="bordered"
+      size="kira-lg"
+      class="self-start"
+      data-testid="settings-db-mcp-api-default"
+      :model-value="settingsStore.dbMcp.apiDefault"
+      :disabled="setDefault.pending.value"
+      @update:model-value="onDefaultChange"
+    >
+      <option value="ask">{{ t('studio.project.connectionDialog.mcp.prompt.label') }}</option>
+      <option value="deny">{{ t('common.action.deny.label') }}</option>
+    </NativeSelect>
+    <FieldDescription
+      v-if="defaultHint === 'deny'"
+      data-testid="settings-db-mcp-api-default-deny"
+      >{{
+        t('studio.settings.dbMcp.apiDefault.deny.body')
+      }}</FieldDescription
+    >
+    <FieldDescription
+      v-else-if="defaultHint === 'ask-never'"
+      data-testid="settings-db-mcp-api-default-ask-never"
+      >{{
+        t('studio.settings.dbMcp.apiDefault.askNever.body')
+      }}</FieldDescription
+    >
+    <FieldDescription v-else data-testid="settings-db-mcp-api-default-ask">{{
+      t('studio.settings.dbMcp.apiDefault.ask.body')
+    }}</FieldDescription>
+    <Alert
+      v-if="setDefault.error.value"
+      variant="error"
+      data-testid="settings-db-mcp-api-default-error"
+    >
+      <AlertDescription>{{ setDefault.error.value }}</AlertDescription>
+    </Alert>
+  </Field>
+  <Alert
+    v-if="allowsNothing(rules, settingsStore.dbMcp.apiDefault)"
+    variant="warn"
+    data-testid="settings-db-mcp-api-rules-no-allow"
+  >
+    <AlertDescription>{{ t('studio.settings.dbMcp.apiRules.noAllow.body') }}</AlertDescription>
+  </Alert>
+  <Alert
+    v-if="allowsAnyHost(rules)"
+    variant="warn"
+    data-testid="settings-db-mcp-api-rules-allow-any"
+  >
+    <AlertDescription>{{ t('studio.settings.dbMcp.apiRules.allowAny.body') }}</AlertDescription>
+  </Alert>
   <ApiAccessRuleDialog
     v-model:open="dialogOpen"
     :rule="editingRule"

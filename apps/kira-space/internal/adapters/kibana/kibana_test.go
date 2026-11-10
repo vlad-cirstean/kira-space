@@ -155,3 +155,13 @@ func TestKibana(t *testing.T) {
 		}
 	})
 }
+
+func TestKibana_Ping(t *testing.T) {
+	f := testsupport.StartKibana(t)
+	a := newAdapter(t)
+	if _, err := a.Connect(context.Background(), f.AdminConfig, opCtx("connect")); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = a.Disconnect(context.Background()) })
+	testsupport.RunScenarios(t, a, f.AdminConfig, testsupport.PingAnswers())
+}

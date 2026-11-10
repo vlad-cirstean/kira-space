@@ -8,7 +8,7 @@ import (
 )
 
 // expensiveQueryLimit is the built-in PreLimit LimitExpensiveQuery (P530): the plan's estimated rows read
-// against advanced.expensiveQueryRows. The server runs the one EXPLAIN; this only compares.
+// against the connection's threshold. The server runs the one EXPLAIN; this only compares.
 type expensiveQueryLimit struct{}
 
 func (expensiveQueryLimit) Name() string { return LimitExpensiveQuery }
@@ -28,6 +28,15 @@ func (expensiveQueryLimit) Check(_ context.Context, c LimitCall) (*LimitHit, err
 		Max:      float64(c.Threshold),
 		Unit:     UnitRows,
 	}, nil
+}
+
+// thresholdFor is the expensive-query row threshold in force for c: its own when set, else the app
+// default (advanced.expensiveQueryRows). Both are read per call, never cached.
+func (s *Server) thresholdFor(c model.ConnectionSummary) int {
+	if c.ExplainThresholdRows > 0 {
+		return c.ExplainThresholdRows
+	}
+	return s.cfg.ExplainThreshold()
 }
 
 // planCheckError is an app-authored check failure: no adapter text, safe on a masked connection.

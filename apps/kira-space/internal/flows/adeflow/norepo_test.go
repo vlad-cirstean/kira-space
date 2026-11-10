@@ -18,6 +18,9 @@ import (
 
 const nrScenario = "ade-norepo"
 
+// outsideOneYML is the stage that picks repos: it runs in the task folder (P598 refuses repo-aware stages without a repo).
+const outsideOneYML = "  - id: one\n    name: one\n    kind: agent\n    outside_repo: true\n    timeout: 1m\n    prompt: ask for branches\n"
+
 var nrMask = flowharness.Mask("terminalId", "command", "cwd", "createdAt", "expiresAt", "startedAt", "finishedAt", "addedAt", "updatedAt",
 	"lastActiveAt", "worktree")
 
@@ -58,7 +61,7 @@ func TestRepolessWorkflow(t *testing.T) {
 		f := newNRFixture(t, map[string][]fakeagent.Action{
 			"tasks": {{WaitBefore: hold, MCP: []fakeagent.MCPCall{pick, requestCall([2]string{"api", "feat/agent"})}, Name: "done"}},
 			"api":   {{Name: "done"}},
-		}, onceStepYML+agentStep("two", ""))
+		}, outsideOneYML+agentStep("two", ""))
 		if _, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: f.task.ID, BranchNames: map[string]string{}}); err != nil {
 			t.Fatalf("StartRun: %v", err)
 		}
@@ -72,7 +75,7 @@ func TestRepolessWorkflow(t *testing.T) {
 		if st, err := os.Stat(f.dir); err != nil || !st.IsDir() {
 			t.Fatalf("task folder: %v", err)
 		}
-		waitFakeText(t, f.app, "tasks-1.prompt", "No repo yet. Folder: "+f.dir)
+		waitFakeText(t, f.app, "tasks-1.prompt", "Outside the repos. Folder: "+f.dir)
 		f.app.Contract(t, nrScenario, "AdeTaskService.Board#started", taskOf(t, board(t, f.app), f.task.ID), nrMask)
 		if err := os.WriteFile(hold, nil, 0o644); err != nil {
 			t.Fatal(err)
@@ -102,8 +105,8 @@ func TestRepolessWorkflow(t *testing.T) {
 		f.app.Contract(t, nrScenario, "AdeTaskService.Board#advanced", taskOf(t, board(t, f.app), f.task.ID), nrMask)
 	})
 
-	t.Run("manual session stage opens in the task folder", func(t *testing.T) {
-		f := newNRFixture(t, nil, "  - id: work\n    name: Work\n    kind: manual\n    session: true\n")
+	t.Run("outside-repo session stage opens in the task folder", func(t *testing.T) {
+		f := newNRFixture(t, nil, "  - id: work\n    name: Work\n    kind: manual\n    session: true\n    outside_repo: true\n")
 		f.app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
 		launch, err := f.app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: f.task.ID})
 		if err != nil {

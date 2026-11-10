@@ -1,8 +1,15 @@
 {
-  "ProofService.ChooseShotFolder": {
+  "ProofService.ChooseShotLocation": {
     "canceled": false,
+    "location": {
+      "custom": true,
+      "exists": true,
+      "path": "<pick>"
+    }
+  },
+  "ProofService.OpenShotFolder": {
     "id": "<masked>",
-    "path": "<masked>"
+    "path": "<home>/Desktop/Checkout fix"
   },
   "ProofService.Session": {
     "closedAt": 0,
@@ -59,6 +66,11 @@
       "steps": 3
     }
   ],
+  "ProofService.ShotLocation": {
+    "custom": false,
+    "exists": true,
+    "path": "<home>/Desktop"
+  },
   "ProofService.Step#document": {
     "bytes": 102,
     "data": {

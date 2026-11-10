@@ -111,6 +111,9 @@ func (f File) checkLimits() *ValidationError {
 	if f.ThrottlePerSec != 0 && (f.ThrottlePerSec < ThrottleMin || f.ThrottlePerSec > ThrottleMax) {
 		return bad("/throttle_per_sec", "backend.studio.connection.throttleRange.body", nil)
 	}
+	if !model.ValidExplainThresholdRows(f.ExplainThresholdRows) {
+		return bad("/explain_threshold_rows", "backend.studio.connection.explainThresholdRange.body", nil)
+	}
 	return nil
 }
 

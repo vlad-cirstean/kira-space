@@ -1,0 +1,86 @@
+{
+  "ProofService.Session": {
+    "closedAt": 0,
+    "current": {
+      "createdAt": 0,
+      "reason": "",
+      "rev": 1,
+      "steps": [
+        {
+          "bytes": 209,
+          "description": "Checkout now rejects an expired card: the orders table shows status declined for order 3 and no charge row, where before the fix it showed paid and charged twice, so no customer pays.",
+          "diff": "added",
+          "language": "sql",
+          "ordinal": 1,
+          "originOrdinal": null,
+          "source": "postgres",
+          "view": "table"
+        }
+      ]
+    },
+    "id": "<masked>",
+    "name": "Explained",
+    "pending": null,
+    "removed": [],
+    "summary": "Checkout rejects an expired card. The orders table shows declined and no charge row."
+  },
+  "ProofService.Sessions": [
+    {
+      "closedAt": 0,
+      "id": "<masked>",
+      "name": "Explained",
+      "pending": false,
+      "seen": false,
+      "steps": 1
+    }
+  ],
+  "ProofService.Step#table": {
+    "bytes": 209,
+    "data": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "number"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "tags",
+          "type": "json"
+        }
+      ],
+      "rows": [
+        [
+          1,
+          "alpha",
+          [
+            "a",
+            "b"
+          ]
+        ],
+        [
+          2,
+          null,
+          null
+        ],
+        [
+          9007199254740992,
+          "<b>bold</b>",
+          {
+            "k": 1
+          }
+        ]
+      ]
+    },
+    "description": "Checkout now rejects an expired card: the orders table shows status declined for order 3 and no charge row, where before the fix it showed paid and charged twice, so no customer pays.",
+    "diff": "added",
+    "language": "sql",
+    "ordinal": 1,
+    "originOrdinal": null,
+    "query": "select id, name, tags from orders",
+    "source": "postgres",
+    "view": "table"
+  }
+}

@@ -61,6 +61,10 @@ export interface StepProgress {
   /** Script step: the shell command; '' on other kinds. */
   command: string;
   runsOn: RunsOn;
+  /** The step works in the task folder, never on a repo. */
+  outsideRepo: boolean;
+  /** The step cannot start until the task has a repo: choose one first. */
+  needsRepo: boolean;
   before: 'auto' | 'approval';
   /** The step's results with their routes; empty on a manual step. */
   results: StepResult[];
@@ -122,22 +126,29 @@ export interface ProgressInput {
   repoNick: (codeRepoId: string) => string;
 }
 
-/** The target of a step on a task with no branch: a run with no branch, in the task folder. */
+/** The target of an outside-repo step, or of a step on an orchestrator task with no branch: a run
+ *  with no branch, in the task folder. */
 const TASK_TARGET = '';
 
 /** Branches a step runs on: `once` is the first mine branch (D12), `each repo` every mine branch,
- *  `only <nick>` the mine branches in that repo. An unmatched `only` has no targets. A task with no
- *  mine branch runs on `TASK_TARGET`, except a review or `only` step, which has none; `pinned` (the
- *  step already ran without a branch in this pass) keeps `TASK_TARGET`. Mirrors Go `stepTargets`. */
+ *  `only <nick>` the mine branches in that repo. An unmatched `only` has no targets. An outside-repo
+ *  step runs on `TASK_TARGET`. A task with no mine branch has no targets (the step waits for a repo),
+ *  except an orchestrator task, which runs on `TASK_TARGET`; `pinned` (the step already ran without a
+ *  branch in this pass) keeps `TASK_TARGET`. Mirrors Go `plan` and `stepTargets`. */
 function stepTargets(
   i: ProgressInput,
   runsOn: RunsOn | '',
   kind: StepKind,
+  outsideRepo: boolean,
   pinned: boolean,
 ): string[] {
-  if (pinned) return [TASK_TARGET];
+  if (pinned || outsideRepo) return [TASK_TARGET];
   const mine = i.task.branchIds.filter((id) => i.branch(id)?.kind === 'mine');
-  if (!mine.length) return kind === 'review' || runsOn.startsWith('only ') ? [] : [TASK_TARGET];
+  if (!mine.length) {
+    return i.task.kind === 'orchestrator' && kind !== 'review' && !runsOn.startsWith('only ')
+      ? [TASK_TARGET]
+      : [];
+  }
   if (runsOn === 'once') return mine.slice(0, 1);
   if (runsOn.startsWith('only ')) {
     const nick = runsOn.slice(5);
@@ -162,7 +173,7 @@ function runFraction(r: StepRun): number {
 /** The step defaults for display: kind-fixed fields filled in. */
 function stepDef(
   s: WorkflowStep,
-): Omit<StepProgress, 'n' | 'state' | 'runs' | 'approval' | 'frac'> {
+): Omit<StepProgress, 'n' | 'state' | 'runs' | 'approval' | 'frac' | 'needsRepo'> {
   const manual = s.kind === 'manual';
   return {
     id: s.id,
@@ -173,6 +184,7 @@ function stepDef(
     session: s.session,
     command: s.command,
     runsOn: s.runsOn || 'once',
+    outsideRepo: s.outsideRepo,
     before: s.before === 'approval' ? 'approval' : 'auto',
     results: manual ? [] : s.results?.length ? s.results : defaultResults(),
     maxReturns: s.maxReturns,
@@ -270,6 +282,16 @@ export function walkPath(
   return { path, skipped };
 }
 
+/** The step cannot start until the task has a repo: no branch of any kind. An automatic step on a task
+ *  with only non-mine branches has a repo, so no picker; the backend refuses it with its own text. A
+ *  review or `only` step shows its own "Needs a repository" instead. */
+function stepNeedsRepo(i: ProgressInput, s: WorkflowStep, runs: readonly StepRun[]): boolean {
+  if (s.outsideRepo || i.task.kind === 'orchestrator') return false;
+  if (s.kind === 'manual') return s.session && !i.task.branchIds.length;
+  if (s.kind === 'review' || s.runsOn.startsWith('only ')) return false;
+  return !runs.length && !i.task.branchIds.length;
+}
+
 /** Every step of the workflow with per-branch runs, step state and approval flag. */
 function buildSteps(i: ProgressInput, workflow: Workflow): StepProgress[] {
   const built = workflow.steps.map((s, idx): StepProgress => {
@@ -277,12 +299,17 @@ function buildSteps(i: ProgressInput, workflow: Workflow): StepProgress[] {
     const runs =
       s.kind === 'manual'
         ? []
-        : stepTargets(i, s.runsOn, s.kind, latestRun(i.task, s.id, TASK_TARGET) !== null).map(
-            (branchId): StepRun => latestRun(i.task, s.id, branchId) ?? emptyRun(branchId),
-          );
+        : stepTargets(
+            i,
+            s.runsOn,
+            s.kind,
+            s.outsideRepo,
+            latestRun(i.task, s.id, TASK_TARGET) !== null,
+          ).map((branchId): StepRun => latestRun(i.task, s.id, branchId) ?? emptyRun(branchId));
     const state = aggregate(runs.map((r) => r.state));
     const frac = runs.length ? runs.reduce((acc, r) => acc + runFraction(r), 0) / runs.length : 0;
-    return { ...def, n: idx + 1, state, runs, approval: false, frac };
+    const needsRepo = stepNeedsRepo(i, s, runs);
+    return { ...def, n: idx + 1, state, runs, approval: false, frac, needsRepo };
   });
   const entry = entryIndex(i.task, built);
   const { path, skipped } = walkPath(

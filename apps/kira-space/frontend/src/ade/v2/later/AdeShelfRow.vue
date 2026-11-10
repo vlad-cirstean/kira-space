@@ -6,6 +6,7 @@ import { cn } from '@theme/lib/utils';
 import { useRelativeTime } from '@workbench/behaviour/format';
 import { computed } from 'vue';
 import AdeTaskSessions from '../plan/AdeTaskSessions.vue';
+import AdeTaskStatusMenu from '../plan/AdeTaskStatusMenu.vue';
 import type { CardModel } from '../plan/usePlanModel';
 import { useTaskMenu } from '../plan/useTaskMenu';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
@@ -30,8 +31,13 @@ const facts = computed(() =>
 <template>
   <!-- biome-ignore lint/a11y/useSemanticElements: the row holds buttons a button cannot. -->
   <div
-    :class="cn(rowVariants({ layout: 'tree', selected: card.selected }), 'cursor-grab gap-2 py-1')"
-    :style="rowIndent(0)"
+    :class="
+      cn(
+        rowVariants({ layout: 'tree', selected: card.selected }),
+        'box-border cursor-grab gap-2 border-l-3 py-1',
+      )
+    "
+    :style="{ ...rowIndent(0), borderLeftColor: card.color }"
     role="button"
     tabindex="0"
     :data-selected="card.selected || undefined"
@@ -43,13 +49,18 @@ const facts = computed(() =>
     @keydown.self.space.prevent="ui.select(card.task.id)"
     @contextmenu="menu.open"
   >
+    <span class="inline-flex min-w-4.5 shrink-0 justify-center" data-testid="ade-row-lead">
+      <AdeTaskSessions v-if="card.sessions" :task-id="card.task.id" :sessions="card.sessions" />
+    </span>
     <span
-      class="box-border size-3 shrink-0 rounded-kira-sm"
-      :class="card.parked ? 'border-2' : ''"
-      :style="card.parked ? { borderColor: card.color } : { background: card.color }"
-      data-testid="ade-shelf-dot"
-    />
-    <span class="min-w-0 flex-1 truncate" data-testid="ade-shelf-title">{{ card.title }}</span>
+      class="min-w-0 flex-1 truncate"
+      :class="card.parked ? 'text-muted-foreground' : ''"
+      data-testid="ade-shelf-title"
+      >{{
+        card.title
+      }}</span
+    >
+    <AdeTaskStatusMenu :card="card" />
     <span
       v-if="facts"
       class="max-w-2/5 shrink-0 truncate text-kira-sm text-subtle"
@@ -58,7 +69,6 @@ const facts = computed(() =>
         facts
       }}</span
     >
-    <AdeTaskSessions v-if="card.sessions" :task-id="card.task.id" :sessions="card.sessions" />
     <span class="w-16 shrink-0 text-kira-sm text-subtle" data-testid="ade-shelf-ago">{{
       ago
     }}</span>

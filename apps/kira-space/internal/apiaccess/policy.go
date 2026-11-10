@@ -14,6 +14,23 @@ const (
 	anyToken   = "*"
 	effectDeny = "deny"
 	effectOK   = "allow"
+
+	// DefaultAsk and DefaultDeny are the values of dbMcp.apiDefault: what happens to a request no rule matches.
+	DefaultAsk  = "ask"
+	DefaultDeny = "deny"
+)
+
+// ValidDefault reports whether v is a dbMcp.apiDefault value.
+func ValidDefault(v string) bool { return v == DefaultAsk || v == DefaultDeny }
+
+// Verdict is the outcome of Decide for a request that no deny rule refused.
+type Verdict int
+
+const (
+	// VerdictUnmatched means no rule matched and the default is ask: approval settings apply.
+	VerdictUnmatched Verdict = iota
+	// VerdictAllowed means an allow rule matched: the request needs no approval.
+	VerdictAllowed
 )
 
 // Methods are the HTTP methods the api_request tool accepts.
@@ -35,13 +52,22 @@ type compiledRule struct {
 	anyVerb bool
 }
 
-// Policy is a validated rule list. The zero value is empty and allows everything.
+// Policy is a validated rule list plus the default for unmatched requests. The zero value has no rules, asks by
+// default and allows everything.
 type Policy struct {
-	rules []compiledRule
+	rules         []compiledRule
+	denyUnmatched bool
 }
 
-// Empty reports whether the policy has no rules, which allows every request.
-func (p Policy) Empty() bool { return len(p.rules) == 0 }
+// WithDefault sets what happens to a request no rule matches. Any value but DefaultAsk denies, so an unknown
+// value fails closed.
+func (p Policy) WithDefault(d string) Policy {
+	p.denyUnmatched = d != DefaultAsk
+	return p
+}
+
+// AllowsAll reports whether the policy has no rules and asks by default: every request and redirect hop passes.
+func (p Policy) AllowsAll() bool { return len(p.rules) == 0 && !p.denyUnmatched }
 
 // Compile validates rules and prepares them for matching. Errors name the 1-based rule and the bad value.
 func Compile(rules []Rule) (Policy, error) {
@@ -132,10 +158,37 @@ func (c compiledRule) String() string {
 	return c.rule.Effect + " " + verbs + " on " + c.hostList()
 }
 
-// Check decides one request. A deny match refuses; otherwise a non-empty policy needs an allow match. The error
-// names the method and scheme://host only, never path or query.
-func (p Policy) Check(method string, u *url.URL) error {
-	if p.Empty() {
+// Decide judges one request. A deny match refuses. An allow match returns VerdictAllowed. With no match the
+// default decides: VerdictUnmatched under ask, a refusal under deny. The error names the method and
+// scheme://host only, never path or query.
+func (p Policy) Decide(method string, u *url.URL) (Verdict, error) {
+	target := method + " " + u.Scheme + "://" + u.Host
+	allowed := false
+	for _, c := range p.rules {
+		if !c.matches(method, u) {
+			continue
+		}
+		if c.deny {
+			return VerdictUnmatched, fmt.Errorf("%s is denied by the API access rule %q", target, c.String())
+		}
+		allowed = true
+	}
+	if allowed {
+		return VerdictAllowed, nil
+	}
+	if !p.denyUnmatched {
+		return VerdictUnmatched, nil
+	}
+	return VerdictUnmatched, errors.New(target + " is not allowed by the API access rules in Kira Space's database MCP settings: " +
+		"no rule matches it, and requests no rule matches are denied. " + p.allowedText() + ". Ask the user to add an allow rule")
+}
+
+// CheckHop judges one redirect hop with the request's own method. A deny match refuses and an allow match
+// follows. With no match the hop is refused, unless the policy allows everything or the request went through
+// approval (approved) and the hop stays on the host and port of the request, origin, the user approved. An
+// allow-matched request skipped the prompt, so its redirect must not leave the hosts the user vetted.
+func (p Policy) CheckHop(method string, u, origin *url.URL, approved bool) error {
+	if p.AllowsAll() {
 		return nil
 	}
 	target := method + " " + u.Scheme + "://" + u.Host
@@ -152,8 +205,15 @@ func (p Policy) Check(method string, u *url.URL) error {
 	if allowed {
 		return nil
 	}
-	return errors.New(target + " is not allowed by the API access rules in Kira Space's database MCP settings. " +
-		p.allowedText() + ". Ask the user to add a rule")
+	if approved {
+		if origin != nil && strings.EqualFold(u.Host, origin.Host) {
+			return nil
+		}
+		return errors.New(target + " matches no allow rule in Kira Space's database MCP settings, " +
+			"and a redirect must stay on the approved host or go to a host an allow rule matches")
+	}
+	return errors.New(target + " matches no allow rule in Kira Space's database MCP settings, " +
+		"and a redirect must go to a host an allow rule matches")
 }
 
 func (p Policy) allowedText() string {
@@ -164,7 +224,7 @@ func (p Policy) allowedText() string {
 		}
 	}
 	if len(parts) == 0 {
-		return "Allowed: nothing, every rule is a deny"
+		return "Allowed: nothing, there is no allow rule"
 	}
 	return "Allowed: " + strings.Join(parts, "; ")
 }

@@ -7,7 +7,7 @@ import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
 import { computed, ref } from 'vue';
-import { useOpenHostView } from '../../../hostview/queries';
+import { useOpenChangeRequest } from '../../../hostview/queries';
 import { useProjectOptions } from '../../../repo/state/projectOptions';
 import AdeForcePushDialog from '../AdeForcePushDialog.vue';
 import AdeTip from '../AdeTip.vue';
@@ -31,7 +31,7 @@ const emit = defineEmits<{ error: [message: string] }>();
 const addUi = useAdeAddUiStore();
 const addRepo = useAddTaskRepo();
 const changeRequests = useChangeRequests();
-const openView = useOpenHostView();
+const openView = useOpenChangeRequest();
 
 const lines = computed(() => {
   const byBranch = changeRequests.data.value?.branches ?? {};

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
+import type { MaskKind } from '@shared/domain/mask';
 import {
   MASK_REVIEW_KINDS,
   type MaskReviewColumn,
@@ -8,16 +9,15 @@ import {
   reviewStateOf,
 } from '@shared/domain/maskReview';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { Checkbox } from '@theme/components/ui/checkbox';
+import { Card, CardHeader, CardTitle } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
-import { t } from '@theme/i18n';
+import { type MessageKey, t } from '@theme/i18n';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import QueryState from '@workbench/components/QueryState.vue';
@@ -26,11 +26,13 @@ import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
 import { control } from '../../bridge/control';
 import CheckboxRow from './CheckboxRow.vue';
+import MaskKindMenu from './MaskKindMenu.vue';
 
-// Column review (P534): live columns the user has not seen are withheld from the MCP agent until reviewed.
-// The reviewed list is part of the file draft (`mask_review.columns`); the live list is server state.
+// New columns (P534, named in the UI "New columns"): live columns no rule masks and the user did not allow
+// are hidden from the MCP agent. "Allowed" is `mask_review.columns`, part of the file draft; the live
+// list is server state.
 const props = defineProps<{ connectionId: string }>();
-const emit = defineEmits<{ mask: [column: MaskReviewColumn] }>();
+const emit = defineEmits<{ mask: [column: MaskReviewColumn, kind: MaskKind] }>();
 const file = defineModel<ConnectionFileModel>({ required: true });
 const confirmDialogStore = useConfirmDialogStore();
 const queryClient = useQueryClient();
@@ -86,10 +88,10 @@ const { virtualItems, totalSize } = useVirtualRows({
 });
 
 const status = computed(() => {
-  if (!on.value) return t('studio.project.connectionDialog.privacy.reviewStatusOff.status');
+  if (!on.value) return t('studio.project.connectionDialog.privacy.reviewOff.status');
   if (!loaded.value || needReview.value === 0)
-    return t('studio.project.connectionDialog.privacy.reviewStatusDone.status');
-  return t('studio.project.connectionDialog.privacy.reviewStatusPending.status', {
+    return t('studio.project.connectionDialog.privacy.reviewDone.status');
+  return t('studio.project.connectionDialog.privacy.reviewWaiting.status', {
     count: needReview.value,
   });
 });
@@ -114,196 +116,199 @@ async function setOn(next: boolean): Promise<void> {
   file.value = rest;
 }
 
-function toggle(ref: string, checked: boolean): void {
+function toggle(ref: string, allowed: boolean): void {
   const next = new Set(reviewed.value);
-  if (checked) next.add(ref);
+  if (allowed) next.add(ref);
   else next.delete(ref);
   setColumns([...next]);
 }
 
-function confirmAll(): void {
-  setColumns(live.value.map((c) => c.ref));
+function allowAllWaiting(): void {
+  setColumns([...new Set([...reviewed.value, ...live.value.map((c) => c.ref)])]);
 }
 
-const STATE_LABEL = {
-  masked: 'studio.project.connectionDialog.privacy.reviewMasked.status',
-  reviewed: 'studio.project.connectionDialog.privacy.reviewReviewed.status',
-  pending: 'studio.project.connectionDialog.privacy.reviewPending.status',
-} as const;
+const stateLabel = computed(() => ({
+  masked: 'studio.project.connectionDialog.privacy.reviewMasked.status' as const,
+  reviewed: 'studio.project.connectionDialog.privacy.reviewAllowed.status' as const,
+  pending: (on.value
+    ? 'studio.project.connectionDialog.privacy.reviewHidden.status'
+    : 'studio.project.connectionDialog.privacy.reviewUnmasked.status') as MessageKey,
+}));
 const STATE_VARIANT = { masked: 'ok', reviewed: 'default', pending: 'warn' } as const;
 </script>
 
 <template>
-  <div class="flex flex-col gap-2" data-testid="connection-privacy-review">
-    <div class="text-fg font-medium">
-      {{ t('studio.project.connectionDialog.privacy.reviewTitle.label') }}
-    </div>
-    <FieldDescription v-if="!applies" class="w-full" data-testid="connection-privacy-review-na">
-      {{ t('studio.project.connectionDialog.privacy.reviewNa.body') }}
-    </FieldDescription>
-    <template v-else>
-      <CheckboxRow
-        :model-value="on"
-        :disabled="!on && (!loaded || !connectionId)"
-        :label="t('studio.project.connectionDialog.privacy.reviewOn.label')"
-        :description="t('studio.project.connectionDialog.privacy.reviewOn.description')"
-        testid="connection-privacy-review-on"
-        @update:model-value="setOn"
-      />
-      <FieldDescription class="w-full" data-testid="connection-privacy-review-enforce">
-        {{ t('studio.project.connectionDialog.privacy.reviewEnforceWho.body') }}
-        {{ t('studio.project.connectionDialog.privacy.reviewEnforceHit.body') }}
-        {{ t('studio.project.connectionDialog.privacy.reviewEnforceLimits.body') }}
+  <Card variant="section" data-testid="connection-privacy-review">
+    <CardHeader>
+      <CardTitle>{{ t('studio.project.connectionDialog.privacy.review.title') }}</CardTitle>
+    </CardHeader>
+    <div class="flex flex-col gap-2 px-3 pb-3">
+      <FieldDescription v-if="!applies" class="w-full" data-testid="connection-privacy-review-na">
+        {{ t('studio.project.connectionDialog.privacy.reviewNa.body') }}
       </FieldDescription>
-      <div class="flex items-center gap-2">
-        <span
-          class="flex-1 text-kira-sm text-subtle"
-          data-testid="connection-privacy-review-status"
-          >{{
-            status
-          }}</span
-        >
-        <TooltipIconButton
-          icon="refresh"
-          :label="t('studio.project.connectionDialog.privacy.reviewRefresh.tooltip')"
-          :disabled="!connectionId || refresh.isPending.value"
-          data-testid="connection-privacy-review-refresh"
-          @click="refresh.mutate()"
+      <template v-else>
+        <CheckboxRow
+          :model-value="on"
+          :disabled="!on && (!loaded || !connectionId)"
+          :label="t('studio.project.connectionDialog.privacy.reviewSwitch.label')"
+          :description="t('studio.project.connectionDialog.privacy.reviewSwitch.description')"
+          testid="connection-privacy-review-on"
+          @update:model-value="setOn"
         />
-      </div>
-      <FieldDescription
-        v-if="!connectionId"
-        class="w-full"
-        data-testid="connection-privacy-review-offline"
-      >
-        {{ t('studio.project.connectionDialog.privacy.reviewOffline.body') }}
-      </FieldDescription>
-      <QueryState
-        v-else
-        :query="columnsQuery"
-        variant="inline"
-        :is-empty="() => false"
-        :loading-label="t('studio.project.connectionDialog.privacy.reviewRefresh.tooltip')"
-      >
-        <template #error="{ retry }">
-          <div
-            class="flex items-center gap-2 text-kira-sm text-subtle"
-            data-testid="connection-privacy-review-offline"
+        <div class="flex items-center gap-2">
+          <span
+            class="flex-1 text-kira-sm text-subtle"
+            data-testid="connection-privacy-review-status"
+            >{{
+              status
+            }}</span
           >
-            <span>{{ t('studio.project.connectionDialog.privacy.reviewOffline.body') }}</span>
-            <Button size="kira" variant="dialog" @click="retry">{{
-              t('common.action.retry.label')
-            }}</Button>
-          </div>
-        </template>
+          <TooltipIconButton
+            icon="refresh"
+            :label="t('studio.project.connectionDialog.privacy.reviewRefresh.tooltip')"
+            :disabled="!connectionId || refresh.isPending.value"
+            data-testid="connection-privacy-review-refresh"
+            @click="refresh.mutate()"
+          />
+        </div>
         <FieldDescription
-          v-if="!loaded"
+          v-if="!connectionId"
           class="w-full"
           data-testid="connection-privacy-review-offline"
         >
           {{ t('studio.project.connectionDialog.privacy.reviewOffline.body') }}
         </FieldDescription>
-        <template v-else>
-          <div class="flex items-center gap-2">
-            <SearchField
-              v-model="search"
-              class="flex-1"
-              :placeholder="t('studio.project.connectionDialog.privacy.reviewSearch.placeholder')"
-              data-testid="connection-privacy-review-search"
-            />
-            <NativeSelect
-              variant="bordered"
-              :model-value="filter"
-              data-testid="connection-privacy-review-filter"
-              @update:model-value="(v) => (filterChoice = v === 'all' ? 'all' : 'pending')"
+        <QueryState
+          v-else
+          :query="columnsQuery"
+          variant="inline"
+          :is-empty="() => false"
+          :loading-label="t('studio.project.connectionDialog.privacy.reviewRefresh.tooltip')"
+        >
+          <template #error="{ retry }">
+            <div
+              class="flex items-center gap-2 text-kira-sm text-subtle"
+              data-testid="connection-privacy-review-offline"
             >
-              <option value="pending">
-                {{ t('studio.project.connectionDialog.privacy.reviewPending.status') }}
-              </option>
-              <option value="all">
-                {{ t('studio.project.connectionDialog.privacy.reviewFilterAll.option') }}
-              </option>
-            </NativeSelect>
-            <Button
-              variant="dialog"
-              size="kira-lg"
-              :disabled="!on || needReview === 0"
-              data-testid="connection-privacy-review-confirm-all"
-              @click="confirmAll"
-            >
-              {{ t('studio.project.connectionDialog.privacy.reviewConfirmAll.label') }}
-            </Button>
-          </div>
-          <div
-            ref="scroll"
-            class="max-h-64 overflow-auto border border-border rounded-kira-sm"
-            data-testid="connection-privacy-review-list"
-          >
-            <div v-if="rows.length === 0" class="p-2 text-kira-sm text-subtle">
-              {{ t('studio.project.connectionDialog.privacy.reviewEmpty.empty') }}
+              <span>{{ t('studio.project.connectionDialog.privacy.reviewOffline.body') }}</span>
+              <Button size="kira" variant="dialog" @click="retry">{{
+                t('common.action.retry.label')
+              }}</Button>
             </div>
-            <div v-else class="relative w-full" :style="{ height: `${totalSize}px` }">
-              <div
-                v-for="item in virtualItems"
-                :key="rows[item.index]?.column.ref"
-                :class="['flex items-center gap-2 px-2 h-row', VIRTUAL_ROW_CLASS]"
-                :style="{ transform: `translateY(${item.start}px)` }"
-                data-testid="connection-privacy-review-row"
-                :data-ref="rows[item.index]?.column.ref"
-                :data-state="rows[item.index]?.state"
+          </template>
+          <FieldDescription
+            v-if="!loaded"
+            class="w-full"
+            data-testid="connection-privacy-review-offline"
+          >
+            {{ t('studio.project.connectionDialog.privacy.reviewOffline.body') }}
+          </FieldDescription>
+          <template v-else>
+            <div class="flex items-center gap-2">
+              <SearchField
+                v-model="search"
+                class="flex-1"
+                :placeholder="t('studio.project.connectionDialog.privacy.reviewSearch.placeholder')"
+                data-testid="connection-privacy-review-search"
+              />
+              <NativeSelect
+                variant="bordered"
+                :model-value="filter"
+                data-testid="connection-privacy-review-filter"
+                @update:model-value="(v) => (filterChoice = v === 'all' ? 'all' : 'pending')"
               >
-                <Checkbox
-                  :model-value="rows[item.index]?.state !== 'pending'"
-                  :disabled="!on || rows[item.index]?.state === 'masked'"
-                  class="size-3.5"
-                  :aria-label="t('common.markReviewed.tooltip')"
-                  data-testid="connection-privacy-review-reviewed"
-                  @update:model-value="
-                    (v) => toggle(rows[item.index]?.column.ref ?? '', v === true)
-                  "
+                <option value="pending">
+                  {{ t('studio.project.connectionDialog.privacy.reviewFilterWaiting.option') }}
+                </option>
+                <option value="all">
+                  {{ t('studio.project.connectionDialog.privacy.reviewFilterAll.option') }}
+                </option>
+              </NativeSelect>
+              <Button
+                variant="dialog"
+                size="kira-lg"
+                :disabled="!on || needReview === 0"
+                data-testid="connection-privacy-review-allow-all"
+                @click="allowAllWaiting"
+              >
+                {{ t('studio.project.connectionDialog.privacy.reviewAllowAll.label') }}
+              </Button>
+            </div>
+            <div
+              ref="scroll"
+              class="max-h-64 overflow-auto border border-border rounded-kira-sm"
+              data-testid="connection-privacy-review-list"
+            >
+              <div v-if="rows.length === 0" class="p-2 text-kira-sm text-subtle">
+                {{ t('studio.project.connectionDialog.privacy.reviewEmpty.empty') }}
+              </div>
+              <div v-else class="relative w-full" :style="{ height: `${totalSize}px` }">
+                <div
+                  v-for="item in virtualItems"
+                  :key="rows[item.index]?.column.ref"
+                  :class="['flex items-center gap-2 px-2 h-row', VIRTUAL_ROW_CLASS]"
+                  :style="{ transform: `translateY(${item.start}px)` }"
+                  data-testid="connection-privacy-review-row"
+                  :data-ref="rows[item.index]?.column.ref"
+                  :data-state="rows[item.index]?.state"
                 >
-                  <CodiconIcon name="check" :size="12" />
-                </Checkbox>
-                <span class="flex-1 min-w-0 font-data">
-                  <TruncatedText :text="rows[item.index]?.column.ref ?? ''" />
-                </span>
-                <span class="text-subtle text-kira-sm truncate">{{
-                  rows[item.index]?.column.dataType
-                }}</span>
-                <Badge
-                  :variant="STATE_VARIANT[rows[item.index]?.state ?? 'pending']"
-                  data-testid="connection-privacy-review-state"
-                >
-                  {{ t(STATE_LABEL[rows[item.index]?.state ?? 'pending']) }}
-                  <template v-if="rows[item.index]?.ruleKind">
-                    · {{ rows[item.index]?.ruleKind }}</template
+                  <span class="flex-1 min-w-0 font-data">
+                    <TruncatedText :text="rows[item.index]?.column.ref ?? ''" />
+                  </span>
+                  <span class="text-subtle text-kira-sm truncate">{{
+                    rows[item.index]?.column.dataType
+                  }}</span>
+                  <Badge
+                    :variant="STATE_VARIANT[rows[item.index]?.state ?? 'pending']"
+                    data-testid="connection-privacy-review-state"
                   >
-                </Badge>
-                <Button
-                  v-if="rows[item.index]?.state !== 'masked'"
-                  size="kira"
-                  variant="dialog"
-                  data-testid="connection-privacy-review-mask"
-                  @click="emit('mask', rows[item.index]?.column as MaskReviewColumn)"
-                >
-                  {{ t('studio.project.connectionDialog.privacy.reviewMask.label') }}
-                </Button>
+                    {{ t(stateLabel[rows[item.index]?.state ?? 'pending']) }}
+                    <template v-if="rows[item.index]?.ruleKind">
+                      · {{ rows[item.index]?.ruleKind }}</template
+                    >
+                  </Badge>
+                  <Button
+                    v-if="rows[item.index]?.state === 'pending' && on"
+                    size="kira"
+                    variant="dialog"
+                    data-testid="connection-privacy-review-allow"
+                    @click="toggle(rows[item.index]?.column.ref ?? '', true)"
+                  >
+                    {{ t('studio.project.connectionDialog.mcp.allow.label') }}
+                  </Button>
+                  <Button
+                    v-if="rows[item.index]?.state === 'reviewed'"
+                    size="kira"
+                    variant="dialog"
+                    data-testid="connection-privacy-review-undo"
+                    @click="toggle(rows[item.index]?.column.ref ?? '', false)"
+                  >
+                    {{ t('studio.project.connectionDialog.privacy.reviewUndo.label') }}
+                  </Button>
+                  <MaskKindMenu
+                    v-if="rows[item.index]?.state === 'pending'"
+                    testid="connection-privacy-review-mask-as"
+                    @select="
+                      (kind) => emit('mask', rows[item.index]?.column as MaskReviewColumn, kind)
+                    "
+                  />
+                </div>
               </div>
             </div>
-          </div>
-          <FieldDescription
-            v-if="columnsQuery.data.value?.incomplete"
-            class="w-full"
-            data-testid="connection-privacy-review-truncated"
-          >
-            {{
-              t('studio.project.connectionDialog.privacy.reviewTruncated.body', {
-                limit: columnsQuery.data.value?.incomplete ?? '',
-              })
-            }}
-          </FieldDescription>
-        </template>
-      </QueryState>
-    </template>
-  </div>
+            <FieldDescription
+              v-if="columnsQuery.data.value?.incomplete"
+              class="w-full"
+              data-testid="connection-privacy-review-truncated"
+            >
+              {{
+                t('studio.project.connectionDialog.privacy.reviewTruncated.body', {
+                  limit: columnsQuery.data.value?.incomplete ?? '',
+                })
+              }}
+            </FieldDescription>
+          </template>
+        </QueryState>
+      </template>
+    </div>
+  </Card>
 </template>

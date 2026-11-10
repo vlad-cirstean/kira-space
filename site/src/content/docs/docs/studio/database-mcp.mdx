@@ -7,6 +7,7 @@ sources:
   - apps/kira-space/internal/dbmcp/tools.go
   - apps/kira-space/frontend/src/state/settingsDomain.ts
   - internal/llmprompts/registry.go
+  - apps/kira-space/frontend/src/studio/project/connection/ConnectionPrivacyTab.vue
   - docs/ARCHITECTURE.md
   - packages/theme/src/i18n/en.json
 sidebar:
@@ -113,11 +114,11 @@ Limits: masking matches by column name. A filter value containing a semicolon is
 
 Masking rules only protect columns you marked. A column added later is unmarked, so it would reach the AI client. Column review closes that gap for PostgreSQL, MySQL, MariaDB, ClickHouse and SQLite.
 
-In the Privacy tab, turn on **Withhold new columns until reviewed**. Kira records every current column as reviewed. From then on a column that no rule masks and nobody reviewed is withheld from MCP results. `run_query` drops it and names it in `withheldColumns`. A query that renames, transforms or filters on it is refused. Kira tells the agent the column name, never a value, and shows a prompt so you can review it.
+In the Privacy tab, turn on **Hide new columns until I decide**. Kira allows every column that exists now. From then on a column that no rule masks and that you did not allow is hidden from MCP results. `run_query` drops it and names it in `withheldColumns`. A query that renames, transforms or filters on it is refused. Kira tells the agent the column name, never a value, and shows a prompt so you can decide.
 
-Review a column by ticking it, masking it with the **Mask** button, or choosing **Confirm all as reviewed**. The choice is saved in the connection file as `mask_review`.
+Decide a column with **Allow**, with the **Mask as** menu (pick a kind and the rule is added), or with **Allow all waiting**. **Undo** takes an allowed column back. The choice is saved in the connection file as `mask_review`.
 
-Limits: matching is by column name, like masking, so a reviewed column can share its name with a withheld one. Kira checks on connect, on Refresh and after an MCP write. It also rechecks every 30 seconds. A column added in the last 30 seconds can slip through. A renamed column counts as new. Scripts are not checked. No exemption applies.
+Limits: matching is by column name, like masking, so an allowed column can share its name with a hidden one. A rule covers a column of its name in every table. Kira checks on connect, on Refresh and after an MCP write. It also rechecks every 30 seconds. A column added in the last 30 seconds can slip through. A renamed column counts as new. Scripts are not checked. No exemption applies.
 
 ## Approvals
 
@@ -138,3 +139,5 @@ Held results stay in memory only. Nothing is stored or logged. A result over 8 M
 ## Masking
 
 PII masking rules apply to results before the AI client sees them.
+
+A rule masks every column with its name, in every table of the connection. Add rules in the connection's Privacy tab or from a column header with **Mark column as sensitive**. Each rule shows what the AI client sees for a sample value, such as `Jane Doe` becoming `J••• D••`. **Matching tag** appends a short tag to the masked value. The same real value always gets the same tag, so the client can still match rows and joins. You always see real values yourself: turn on the masking preview in a table's toolbar to see what the client sees.

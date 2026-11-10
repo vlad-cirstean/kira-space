@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { t } from '@theme/i18n';
+import type { MessageKey } from '@theme/i18n/types';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { errorText } from '@workbench/bridge/codedError';
 import QueryState from '@workbench/components/QueryState.vue';
@@ -20,13 +21,18 @@ import type { Artifact, Task } from '../wire';
 import AdeDetailsLink from './AdeDetailsLink.vue';
 import AdeLinkAddLine from './AdeLinkAddLine.vue';
 import AdeOriginSession from './AdeOriginSession.vue';
-import { type LinkItem, linkGroups } from './linkGroups';
+import { type LinkCategory, type LinkItem, linkGroups } from './linkGroups';
 
-// The task's links in two groups: Main (Jira, host link, detected change requests) and Related
-// (every other artifact). One row edits at a time; the add line files typed or pasted text, the
-// backend picks the category.
+// The task's links grouped by kind: Issues, Change requests, Misc (empty groups hidden). One row
+// edits at a time; the add line files typed or pasted text, the backend picks the kind.
 const props = defineProps<{ task: Task; readonly?: boolean }>();
 const emit = defineEmits<{ openSession: [sessionId: string] }>();
+
+const GROUP_LABEL = {
+  issue: 'space.settings.updates.issue.title',
+  changeRequest: 'space.ade.details.group.changeRequest.label',
+  misc: 'space.ade.details.group.misc.label',
+} as const satisfies Record<LinkCategory, MessageKey>;
 
 const query = useTaskArtifacts(() => props.task.id);
 const update = useUpdateTask();
@@ -34,7 +40,9 @@ const addLink = useAddLink();
 const editLink = useEditLink();
 const removeArtifact = useRemoveArtifact();
 
-const groups = computed(() => linkGroups(props.task, query.data.value?.artifacts ?? []));
+const groups = computed(() =>
+  linkGroups(props.task, query.data.value?.artifacts ?? []).filter((g) => g.items.length > 0),
+);
 const gaps = computed(() => query.data.value?.gaps ?? []);
 const editingKey = ref<string | null>(null);
 const removeError = ref('');
@@ -92,8 +100,12 @@ const add = (line: string) => addLink.mutateAsync({ taskId: props.task.id, text:
 </script>
 
 <template>
-  <div class="flex flex-col gap-2" data-testid="ade-details-links">
-    <AdeRow :label="t('space.ade.details.links.title')" />
+  <div class="flex flex-col gap-1" data-testid="ade-details-links">
+    <div class="flex items-center gap-1 text-kira-sm text-muted-foreground">
+      <span class="flex-1" data-testid="ade-details-links-title">{{
+        t('space.ade.details.links.title')
+      }}</span>
+    </div>
     <QueryState :query="query">
       <Alert
         v-for="g in gaps"
@@ -103,50 +115,45 @@ const add = (line: string) => addLink.mutateAsync({ taskId: props.task.id, text:
       >
         <AlertDescription>{{ gapText(g) }}</AlertDescription>
       </Alert>
-      <div
-        v-for="group in [
-          { id: 'main', title: t('common.main.label'), items: groups.main },
-          { id: 'related', title: t('space.ade.details.related.title'), items: groups.related },
-        ]"
+      <AdeRow v-if="groups.length === 0" label="" data-testid="ade-details-empty">
+        <span :class="rowMeta">{{ t('space.ade.details.empty.body') }}</span>
+      </AdeRow>
+      <ul
+        v-for="group in groups"
         :key="group.id"
-        class="flex flex-col"
-        :data-testid="`ade-details-${group.id}`"
+        class="m-0 flex list-none flex-col p-0"
+        data-testid="ade-details-group"
+        :data-group="group.id"
       >
-        <AdeRow :label="group.title" />
-        <AdeRow v-if="group.items.length === 0" label="" data-testid="ade-details-empty">
-          <span :class="rowMeta">{{ t('space.ade.details.empty.body') }}</span>
-        </AdeRow>
-        <ul
-          v-if="group.items.length > 0 || (group.id === 'related' && !readonly)"
-          class="m-0 flex list-none flex-col p-0"
+        <AdeDetailsLink
+          v-for="(item, i) in group.items"
+          :key="item.key"
+          :item="item"
+          :group-label="i === 0 ? t(GROUP_LABEL[group.id]) : ''"
+          :editing="editingKey === item.key"
+          :readonly="readonly"
+          :commit="commit"
+          @edit="editingKey = item.key"
+          @done="editingKey = null"
+          @remove="remove(item)"
+          @kind="recategorise(item, $event)"
         >
-          <template v-for="item in group.items" :key="item.key">
-            <AdeDetailsLink
-              :item="item"
-              :editing="editingKey === item.key"
-              :readonly="readonly"
-              :commit="commit"
-              @edit="editingKey = item.key"
-              @done="editingKey = null"
-              @remove="remove(item)"
-              @kind="recategorise(item, $event)"
-            >
-              <template #trailing>
-                <AdeOriginSession
-                  :task-id="task.id"
-                  :session-id="item.sessionId"
-                  :archived="readonly"
-                  @open="emit('openSession', $event)"
-                />
-              </template>
-            </AdeDetailsLink>
-            <li v-if="item.origin === 'jira'" class="flex min-w-0 flex-col">
-              <AdeTaskIssueLine :task-id="task.id" :link="`${item.label} ${item.url}`" />
-            </li>
+          <template #trailing>
+            <AdeOriginSession
+              :task-id="task.id"
+              :session-id="item.sessionId"
+              :archived="readonly"
+              @open="emit('openSession', $event)"
+            />
           </template>
-          <AdeLinkAddLine v-if="group.id === 'related' && !readonly" :add="add" />
-        </ul>
-      </div>
+          <template v-if="item.origin === 'jira'" #extra>
+            <AdeTaskIssueLine :task-id="task.id" :link="`${item.label} ${item.url}`" />
+          </template>
+        </AdeDetailsLink>
+      </ul>
+      <ul v-if="!readonly" class="m-0 flex list-none flex-col p-0">
+        <AdeLinkAddLine :add="add" />
+      </ul>
       <Alert v-if="removeError" variant="error" data-testid="ade-details-link-error"
         ><AlertDescription>{{ removeError }}</AlertDescription></Alert
       >

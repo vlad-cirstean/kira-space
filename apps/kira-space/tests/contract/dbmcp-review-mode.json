@@ -196,6 +196,7 @@
     "color": "teal",
     "createdAt": "<masked>",
     "database": "/data/mcp.db",
+    "explainThresholdRows": 0,
     "file": "notes-db.yaml",
     "host": null,
     "id": "<id:1>",

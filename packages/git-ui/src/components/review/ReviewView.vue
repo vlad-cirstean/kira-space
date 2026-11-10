@@ -24,6 +24,7 @@ import { markOnToggle, reviewAttention } from '../../lib/reviewAttention.ts';
 import { createReviewFilesActions } from '../../lib/reviewFilesActions.ts';
 import { useReviewAnnouncements } from '../../lib/useReviewAnnouncements.ts';
 import { useReviewStepping } from '../../lib/useReviewStepping.ts';
+import { useReviewWorkingOnly } from '../../lib/useReviewWorkingOnly.ts';
 import type { MountOptions } from '../../main.ts';
 import { retryBootstrap as sharedRetryBootstrap } from '../../state/bootstrap.ts';
 import type { FileListMode } from '../../state/detail.ts';
@@ -247,12 +248,17 @@ async function goBackToSelection(): Promise<void> {
   if (id) await bridge.request('review.session.save', { repoId: id, session: null });
 }
 
+const { workingOnly, showsPanes, pane, emptyNote } = useReviewWorkingOnly(
+  review,
+  () => props.workingChanges,
+);
+
 // The file filter is revealed by the toolbar's search button; `filterVisible` gates it.
 const filterVisible = ref(false);
 
 // Type to search: a printable key in the commit list reveals the file filter and starts it.
 const { showSearch } = usePanelHeaderSearch(rootEl, {
-  searchable: () => review.value?.phase.value === 'listing',
+  searchable: () => showsPanes.value,
   getSearch: () => filter.value,
   setSearch: (value) => {
     filter.value = value;
@@ -321,7 +327,7 @@ watch(
 watch(
   () => {
     const r = review.value;
-    if (r?.phase.value !== 'listing') return undefined;
+    if (r?.phase.value !== 'listing' && r?.phase.value !== 'empty') return undefined;
     const branch = r.branch.value;
     const id = repoId.value;
     return id && branch ? { repoId: id, branch } : undefined;
@@ -346,7 +352,7 @@ const { cursor, canStep, step, reveal } = useReviewStepping({
   working: () => props.workingChanges,
   filter: () => filter.value,
   listMode: () => listMode.value,
-  shortcuts: () => props.reviewShortcuts === true && review.value?.phase.value === 'listing',
+  shortcuts: () => props.reviewShortcuts === true && showsPanes.value,
   announce,
 });
 
@@ -491,6 +497,7 @@ useReviewAnnouncements(review, announce);
         :files-count="filesChangedCount"
         :comments-count="commentsCount"
         :locked="lockTarget"
+        :working-only="workingOnly"
         @back="goBackToSelection"
       />
 
@@ -534,16 +541,11 @@ useReviewAnnouncements(review, announce);
         </p>
 
         <p
-          v-else-if="review.phase.value === 'empty'"
+          v-else-if="review.phase.value === 'empty' && !workingOnly"
           class="p-3 text-muted-foreground"
           data-testid="review-empty"
         >
-          {{
-            t('git.review.empty.body', {
-              branch: review.branch.value,
-              base: review.resolution.value?.base ?? '',
-            })
-          }}
+          {{ emptyNote }}
         </p>
 
         <template
@@ -561,12 +563,7 @@ useReviewAnnouncements(review, announce);
         </template>
 
         <ReviewFilesPane
-          v-else-if="
-            review.phase.value === 'listing' &&
-            review.pane.value === 'files' &&
-            reviewFiles &&
-            filesActions
-          "
+          v-else-if="showsPanes && pane === 'files' && reviewFiles && filesActions"
           class="flex-1 min-h-0"
           :review-files="reviewFiles"
           :store="review.store"
@@ -574,6 +571,8 @@ useReviewAnnouncements(review, announce);
           :list-mode="listMode"
           :filter="filter"
           :working="workingChanges ?? null"
+          :committed="!workingOnly"
+          :empty-note="emptyNote"
           :cursor="cursor"
           :can-step="canStep"
           :review-shortcuts="reviewShortcuts === true"
@@ -582,9 +581,7 @@ useReviewAnnouncements(review, announce);
         />
 
         <ReviewCommentsPane
-          v-else-if="
-            review.phase.value === 'listing' && review.pane.value === 'comments' && reviewComments
-          "
+          v-else-if="showsPanes && pane === 'comments' && reviewComments"
           class="flex-1 min-h-0"
           :review-comments="reviewComments"
           @select="onSelectComment"

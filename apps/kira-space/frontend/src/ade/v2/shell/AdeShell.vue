@@ -15,6 +15,7 @@ import AdePlanView from '../plan/AdePlanView.vue';
 import { usePlanModel } from '../plan/usePlanModel';
 import AdeReposPage from '../repos/AdeReposPage.vue';
 import { useReviewCode } from '../review/useReviewCode';
+import AdeRepoGateDialog from '../run/AdeRepoGateDialog.vue';
 import AdeRunDialog from '../run/AdeRunDialog.vue';
 import AdeTakeOverDialog from '../sessions/AdeTakeOverDialog.vue';
 import AdeStageDialog from '../stage/AdeStageDialog.vue';
@@ -169,6 +170,7 @@ onScopeDispose(() => offReviewCode?.());
       </template>
     </div>
     <AdeRunDialog />
+    <AdeRepoGateDialog />
     <AdeAgentDialog />
     <AdeAbortRebaseDialog />
     <AdeTakeOverDialog />

@@ -752,6 +752,8 @@ studioTest.describe('databases module', () => {
       .click({ button: 'right' });
     await page.locator('[data-testid="menu-item-kube-cluster-mcp"]').click();
     await expect(loc(page, 'kube-mcp-dialog')).toBeVisible();
+    await loc(page, 'kube-mcp-enabled').click();
+    await expect(loc(page, 'kube-mcp-approval')).toBeVisible();
     await expectCatalogText(loc(page, 'kube-mcp-dialog'), { allow: KUBE_DATA });
   });
 

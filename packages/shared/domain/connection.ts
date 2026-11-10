@@ -71,6 +71,15 @@ export const MIN_SERVER_VERSION: Partial<Record<ConnectionKind, string>> = {
 // interval, so a user reacting to "keep it under N/s" types the same number the server told them.
 export const CONNECTION_THROTTLE_RANGE = { min: 0.01, max: 1000 } as const;
 
+// P593: bounds of an expensive-query row threshold, app-wide and per connection. Mirrors
+// model.ExplainThresholdRowsMin/Max; 0 on a connection means the app default.
+export const EXPLAIN_THRESHOLD_ROWS_RANGE = { min: 1_000, max: 1_000_000_000 } as const;
+
+/** The threshold in force: the connection's own when set, else the app default. */
+export function explainThresholdOf(rows: number | undefined, appDefault: number): number {
+  return rows !== undefined && rows > 0 ? rows : appDefault;
+}
+
 // P307 Part 2: whole seconds; 0 = off. 300 covers a browser-login tunnel; longer means run it by hand.
 export const PRECONNECT_DELAY_RANGE = { min: 0, max: 300 } as const;
 
@@ -156,6 +165,16 @@ const connectionFieldsSchema = /*#__PURE__*/ z.object({
   // dialog's own field error, matching every other numeric field's split between "this schema
   // parses a stored row" and "Save enforces the real bound".
   throttlePerSec: z.number().min(0).max(CONNECTION_THROTTLE_RANGE.max).default(0),
+  // P593: estimated rows read at or above which this connection's explain warns and agent queries
+  // are refused; 0 = the app default (advanced.expensiveQueryRows). `.default(0)` is load-bearing
+  // for an older stored row, like throttlePerSec's.
+  explainThresholdRows: z
+    .number()
+    .int()
+    .min(0)
+    .max(EXPLAIN_THRESHOLD_ROWS_RANGE.max)
+    .refine((v) => v === 0 || v >= EXPLAIN_THRESHOLD_ROWS_RANGE.min)
+    .default(0),
   // Whether this connection is exposed to the local DB MCP server. Deny by default.
   // `.default(false)` is load-bearing the same way autoExplain's/throttlePerSec's are — an older
   // stored row has no such key. A first-class column, not an options_json key — the migration's

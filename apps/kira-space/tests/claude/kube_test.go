@@ -34,7 +34,7 @@ func TestKubeMcpThroughClaude(t *testing.T) {
 		t.Fatalf("no kind-dev cluster in %+v", res.Clusters)
 	}
 	if _, err := app.W.Kubernetes.SetMcp(kubernetes.SetMcpArgs{ClusterID: dev, Mcp: kubernetes.McpSettings{
-		Description: "real-claude kube fixture", Discover: "allow", List: "allow", Describe: "deny", Logs: "deny",
+		Description: "real-claude kube fixture", Enabled: true, Approval: "allow",
 	}}); err != nil {
 		t.Fatalf("Kubernetes.SetMcp: %v", err)
 	}

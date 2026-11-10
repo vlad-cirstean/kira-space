@@ -30,7 +30,7 @@ const (
 	kubeManifestMax     = 256 << 10
 )
 
-// Permission groups, the stored words of kube_clusters.mcp_*_mode.
+// Operation names, shown on the approval card.
 const (
 	kubeDiscover = "discover"
 	kubeList     = "list"
@@ -67,22 +67,15 @@ type kubePodLogsArgs struct {
 	Tail       int    `json:"tail,omitempty"`
 }
 
-type kubePermissions struct {
-	Discover string `json:"discover"`
-	List     string `json:"list"`
-	Describe string `json:"describe"`
-	Logs     string `json:"logs"`
-}
-
 type kubeClusterView struct {
-	ID          string          `json:"id"`
-	Context     string          `json:"context"`
-	Cluster     string          `json:"cluster"`
-	Server      string          `json:"server"`
-	Namespace   string          `json:"namespace"`
-	Current     bool            `json:"current"`
-	Description string          `json:"description"`
-	Permissions kubePermissions `json:"permissions"`
+	ID          string `json:"id"`
+	Context     string `json:"context"`
+	Cluster     string `json:"cluster"`
+	Server      string `json:"server"`
+	Namespace   string `json:"namespace"`
+	Current     bool   `json:"current"`
+	Description string `json:"description"`
+	Approval    string `json:"approval"`
 }
 
 type kubeKindView struct {
@@ -103,31 +96,11 @@ type kubeDescribeResult struct {
 	ManifestTruncated bool `json:"manifestTruncated"`
 }
 
-func modeOfGroup(m kubernetes.McpSettings, group string) string {
-	switch group {
-	case kubeDiscover:
-		return m.Discover
-	case kubeList:
-		return m.List
-	case kubeDescribe:
-		return m.Describe
-	default:
-		return m.Logs
-	}
-}
+// kubeExposed reports whether the user turned the cluster on; an off cluster is hidden, like an
+// unexposed connection.
+func kubeExposed(m kubernetes.McpSettings) bool { return m.Enabled }
 
-// kubeExposed reports whether any operation of the cluster is not denied. A fully denied cluster
-// is hidden, like an unexposed connection.
-func kubeExposed(m kubernetes.McpSettings) bool {
-	for _, g := range []string{kubeDiscover, kubeList, kubeDescribe, kubeLogs} {
-		if modeOfGroup(m, g) != "deny" {
-			return true
-		}
-	}
-	return false
-}
-
-// resolveCluster finds an exposed cluster by id; found is false for an unknown or fully denied one.
+// resolveCluster finds an exposed cluster by id; found is false for an unknown or off one.
 func (s *Server) resolveCluster(ctx context.Context, id string) (c kubernetes.Cluster, found bool, err error) {
 	c, found, err = s.cfg.Kube.Cluster(ctx, id)
 	if err != nil || !found || !kubeExposed(c.Mcp) {
@@ -140,9 +113,9 @@ func noClusterResult(id string) (*mcp.CallToolResult, any, error) {
 	return errResult(fmt.Sprintf("no cluster %q exposed to MCP", id))
 }
 
-// kubeRun is the gate every cluster read passes: exposure, the group's mode, the approval for
-// prompt, then the read. The kubernetes service records the op-log row.
-func (s *Server) kubeRun(ctx context.Context, clusterID, group, namespace string, statement func(kubernetes.Cluster) string, read func(context.Context) (any, error)) (*mcp.CallToolResult, any, error) {
+// kubeRun is the gate every cluster read passes: exposure, the approval for prompt, then the read.
+// The kubernetes service records the op-log row.
+func (s *Server) kubeRun(ctx context.Context, clusterID, op, namespace string, statement func(kubernetes.Cluster) string, read func(context.Context) (any, error)) (*mcp.CallToolResult, any, error) {
 	c, found, err := s.resolveCluster(ctx, clusterID)
 	if err != nil {
 		return toolError(err)
@@ -150,32 +123,25 @@ func (s *Server) kubeRun(ctx context.Context, clusterID, group, namespace string
 	if !found {
 		return noClusterResult(clusterID)
 	}
-	stmt := statement(c)
-	switch modeOfGroup(c.Mcp, group) {
-	case "allow":
-	case "prompt":
+	// Fail closed: anything but "allow" asks.
+	if c.Mcp.Approval != "allow" {
 		outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
 			ConnectionID: c.ID, ConnectionName: c.Context, Kind: "kubernetes",
-			Class: adapters.ClassRead, Statement: stmt, Reason: ApprovalReasonPermission,
-			Cluster: &ApprovalCluster{Context: c.Context, Server: c.Server, Namespace: namespace, Operation: group},
+			Class: adapters.ClassRead, Statement: statement(c), Reason: ApprovalReasonPermission,
+			Cluster: &ApprovalCluster{Context: c.Context, Server: c.Server, Namespace: namespace, Operation: op},
 			Origin:  originFrom(ctx),
 		})
 		if outcome != ApprovalApproved {
 			return approvalOutcomeError(outcome, fmt.Sprintf("Kubernetes read on %q", c.Context))
 		}
-		// The wait can last up to ApprovalTimeout: a tightened mode or a hidden cluster wins.
-		c, found, err = s.resolveCluster(ctx, clusterID)
+		// The wait can last up to ApprovalTimeout: a cluster turned off meanwhile wins.
+		_, found, err = s.resolveCluster(ctx, clusterID)
 		if err != nil {
 			return toolError(err)
 		}
 		if !found {
 			return noClusterResult(clusterID)
 		}
-		if modeOfGroup(c.Mcp, group) == "deny" {
-			return errResult(kubeDeniedText(c.Context, group, "now deny"))
-		}
-	default:
-		return errResult(kubeDeniedText(c.Context, group, "deny"))
 	}
 
 	out, err := read(ctx)
@@ -183,10 +149,6 @@ func (s *Server) kubeRun(ctx context.Context, clusterID, group, namespace string
 		return toolError(err)
 	}
 	return jsonResult(out)
-}
-
-func kubeDeniedText(name, group, verb string) string {
-	return fmt.Sprintf("cluster %q's MCP permissions %s the %s operation; change them in the cluster's MCP settings", name, verb, group)
 }
 
 func (s *Server) kubeListClusters(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
@@ -202,7 +164,7 @@ func (s *Server) kubeListClusters(ctx context.Context, _ *mcp.CallToolRequest, _
 		out = append(out, kubeClusterView{
 			ID: c.ID, Context: c.Context, Cluster: c.Cluster, Server: c.Server, Namespace: c.Namespace,
 			Current: c.Current, Description: c.Mcp.Description,
-			Permissions: kubePermissions{Discover: c.Mcp.Discover, List: c.Mcp.List, Describe: c.Mcp.Describe, Logs: c.Mcp.Logs},
+			Approval: c.Mcp.Approval,
 		})
 	}
 	return jsonResult(out)

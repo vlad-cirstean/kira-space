@@ -456,11 +456,12 @@ func TestOrchestratorChildChain(t *testing.T) {
 }
 
 func TestOrchestratorToolGrants(t *testing.T) {
-	f := newORFixture(t, []fakeagent.Action{{Name: "done"}, {Name: "done"}}, []fakeagent.Action{{Name: "done"}})
+	f := newORFixture(t, []fakeagent.Action{{Name: "done"}}, []fakeagent.Action{{Name: "done"}, {Name: "done"}})
 	f.startOrchestrator(t)
 	waitRun(t, f.app, f.orch.ID, "plan", "done")
-	plain := createTask(t, f.app, "Plain", "orch")
-	if _, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: plain.ID}); err != nil {
+	plain := createTask(t, f.app, "Plain", "orch", f.api)
+	plainBr := branchOf(t, board(t, f.app), plain.ID, f.api)
+	if _, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: plain.ID, BranchNames: map[string]string{plainBr.ID: "feat/api-plain"}}); err != nil {
 		t.Fatal(err)
 	}
 	waitRun(t, f.app, plain.ID, "plan", "done")
@@ -475,7 +476,7 @@ func TestOrchestratorToolGrants(t *testing.T) {
 		if args := fakeFile(t, f.app, "tasks-1.args"); !strings.Contains(args, want) {
 			t.Errorf("orchestrator run lacks %q:\n%s", want, args)
 		}
-		for _, file := range []string{"tasks-2.args", "api-1.args"} {
+		for _, file := range []string{"api-1.args", "api-2.args"} {
 			if args := fakeFile(t, f.app, file); strings.Contains(args, want) {
 				t.Errorf("%s carries %q, want it for an orchestrator only", file, want)
 			}

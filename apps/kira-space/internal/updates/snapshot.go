@@ -31,6 +31,7 @@ type IssueSnap struct {
 	Assignee string `json:"assignee,omitempty"` // tracker account id
 	Comments *int   `json:"comments,omitempty"`
 	Linked   *int   `json:"linked,omitempty"`
+	Updated  int64  `json:"updated,omitempty"` // tracker's updated stamp, unix ms; change check only, never a concept
 }
 
 // BranchSnap is what is observed of a task branch. ConflictsKnown is false until a conflict check

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -26,13 +27,15 @@ type Acli struct {
 	comments  map[string]string
 	posted    map[string][]PostedComment
 	tooLarge  map[string]bool
+	failing   map[string]bool
+	searchOff bool
 	gate      chan struct{}
 	calls     []string
 }
 
 // New returns an installed, logged-in acli for site with no issues.
 func New(site string) *Acli {
-	return &Acli{installed: true, loggedIn: true, site: site, issues: map[string]string{}, details: map[string]string{}, comments: map[string]string{}, tooLarge: map[string]bool{}, posted: map[string][]PostedComment{}}
+	return &Acli{installed: true, loggedIn: true, site: site, issues: map[string]string{}, details: map[string]string{}, comments: map[string]string{}, tooLarge: map[string]bool{}, failing: map[string]bool{}, posted: map[string][]PostedComment{}}
 }
 
 // SetInstalled makes the binary present or absent.
@@ -53,6 +56,12 @@ func (a *Acli) SetIssueDetail(key, raw string) { a.mu.Lock(); a.details[key] = r
 // SetTooLarge makes a detail view of KEY that asks for comments overflow acli's output cap.
 func (a *Acli) SetTooLarge(key string, v bool) { a.mu.Lock(); a.tooLarge[key] = v; a.mu.Unlock() }
 
+// SetSearchBroken makes workitem search exit with `unknown flag: --jql`, as an acli that lacks it would.
+func (a *Acli) SetSearchBroken(v bool) { a.mu.Lock(); a.searchOff = v; a.mu.Unlock() }
+
+// SetFailing makes workitem view of KEY exit 1 with a generic error.
+func (a *Acli) SetFailing(key string, v bool) { a.mu.Lock(); a.failing[key] = v; a.mu.Unlock() }
+
 // SetComments serves raw as the JSON of workitem comment list for KEY. An empty raw removes it.
 func (a *Acli) SetComments(key, raw string) {
 	a.mu.Lock()
@@ -64,7 +73,7 @@ func (a *Acli) SetComments(key, raw string) {
 	a.mu.Unlock()
 }
 
-// Hold blocks every workitem view and comment list until the returned release func is called or the caller gives up.
+// Hold blocks every workitem view, search and comment list until the returned release func is called or the caller gives up.
 func (a *Acli) Hold() (release func()) {
 	gate := make(chan struct{})
 	a.mu.Lock()
@@ -74,7 +83,8 @@ func (a *Acli) Hold() (release func()) {
 	return func() { once.Do(func() { close(gate) }) }
 }
 
-// Calls returns every recorded call, in order: "version", "auth", or "view:<KEY>", "detail:<KEY>" or "comments:<KEY>".
+// Calls returns every recorded call, in order: "version", "auth", or "view:<KEY>", "detail:<KEY>",
+// "comments:<KEY>" or "search:<number of keys>".
 func (a *Acli) Calls() []string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -119,6 +129,8 @@ func (a *Acli) Run(ctx context.Context, _ string, args []string) ([]byte, error)
 		return []byte(fmt.Sprintf("Authenticated\n  Site: %s\n  Email: me@acme.test\n", site)), nil
 	case len(args) == 8 && slices.Equal(args[:4], []string{"jira", "workitem", "comment", "create"}) && args[4] == "--key" && args[6] == "--body-file":
 		return a.commentCreate(ctx, args[5], args[7], loggedIn, gate)
+	case len(args) >= 4 && slices.Equal(args[:3], []string{"jira", "workitem", "search"}):
+		return a.search(ctx, args, gate)
 	case len(args) >= 4 && slices.Equal(args[:3], []string{"jira", "workitem", "view"}):
 		return a.view(ctx, args, gate)
 	case len(args) == 11 && slices.Equal(args[:4], []string{"jira", "workitem", "comment", "list"}) && args[4] == "--key" &&
@@ -127,6 +139,9 @@ func (a *Acli) Run(ctx context.Context, _ string, args []string) ([]byte, error)
 		a.record("comments:" + key)
 		if err := wait(ctx, gate); err != nil {
 			return nil, err
+		}
+		if !loggedIn {
+			return nil, notLoggedIn()
 		}
 		a.mu.Lock()
 		raw, ok := a.comments[key]
@@ -155,7 +170,7 @@ func (a *Acli) commentCreate(ctx context.Context, key, path string, loggedIn boo
 		return nil, err
 	}
 	if !loggedIn {
-		return nil, &toolexec.ExecError{ExitCode: 1, Stderr: "no Jira account is logged in"}
+		return nil, notLoggedIn()
 	}
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -190,6 +205,8 @@ func (a *Acli) view(ctx context.Context, args []string, gate chan struct{}) ([]b
 	detail, hasDetail := a.details[key]
 	large := a.tooLarge[key]
 	raw, ok := a.issues[key]
+	failing := a.failing[key]
+	loggedIn := a.loggedIn
 	a.mu.Unlock()
 	switch {
 	case isDetail && hasDetail:
@@ -199,6 +216,12 @@ func (a *Acli) view(ctx context.Context, args []string, gate chan struct{}) ([]b
 	}
 	if err := wait(ctx, gate); err != nil {
 		return nil, err
+	}
+	if !loggedIn {
+		return nil, notLoggedIn()
+	}
+	if failing {
+		return nil, &toolexec.ExecError{ExitCode: 1, Stderr: "Error: something went wrong"}
 	}
 	if isDetail && hasDetail {
 		if large && withComments {
@@ -218,6 +241,55 @@ func (a *Acli) view(ctx context.Context, args []string, gate chan struct{}) ([]b
 	return []byte(raw), nil
 }
 
+var keyRe = regexp.MustCompile(`[A-Z][A-Z0-9]*-\d+`)
+
+// search answers `workitem search --jql "key in (A, B)"`: a JSON array of the issues, with updated,
+// priority and assignee copied from the SetIssueDetail JSON. One unknown key fails the whole call, as
+// Jira does.
+func (a *Acli) search(ctx context.Context, args []string, gate chan struct{}) ([]byte, error) {
+	jql := ""
+	for i, v := range args {
+		if v == "--jql" && i+1 < len(args) {
+			jql = args[i+1]
+		}
+	}
+	keys := keyRe.FindAllString(jql, -1)
+	a.record(fmt.Sprintf("search:%d", len(keys)))
+	if err := wait(ctx, gate); err != nil {
+		return nil, err
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if !a.loggedIn {
+		return nil, notLoggedIn()
+	}
+	if a.searchOff {
+		return nil, &toolexec.ExecError{ExitCode: 1, Stderr: "Error: unknown flag: --jql"}
+	}
+	out := make([]json.RawMessage, 0, len(keys))
+	for _, key := range keys {
+		base, ok := a.issues[key]
+		detail, hasDetail := a.details[key]
+		if !ok && !hasDetail {
+			return nil, &toolexec.ExecError{ExitCode: 1, Stderr: fmt.Sprintf("Error: An issue with key '%s' does not exist for field 'key'.", key)}
+		}
+		if !ok {
+			base = detail
+		}
+		if hasDetail {
+			for _, f := range []string{"updated", "priority", "assignee"} {
+				base = copyField(base, detail, f)
+			}
+		}
+		out = append(out, json.RawMessage(base))
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
 func wait(ctx context.Context, gate chan struct{}) error {
 	if gate == nil {
 		return nil
@@ -228,6 +300,11 @@ func wait(ctx context.Context, gate chan struct{}) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+// notLoggedIn is what a read says once the login is gone, so a cached ok status is dropped on use.
+func notLoggedIn() error {
+	return &toolexec.ExecError{ExitCode: 1, Stderr: "Error: not logged in. Run `acli jira auth login`."}
 }
 
 func notFound() error {

@@ -1,15 +1,12 @@
 package bridge
 
 import (
-	"bytes"
-	"encoding/base64"
 	"errors"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
 
-	"github.com/google/renameio/v2"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
@@ -76,8 +73,19 @@ func (t *ProofWindowTargets) Forget(key string) {
 	delete(t.m, key)
 }
 
+// ProofShotLocations persists the custom screenshot parent folder.
+type ProofShotLocations interface {
+	ProofShotLocation() (string, error)
+	SetProofShotLocation(path string) error
+}
+
+// ProofRevealer shows a folder in the file manager; configsvc.FileOpener satisfies it.
+type ProofRevealer interface {
+	RevealFile(path string) error
+}
+
 // ProofService is the validation-proof window's surface: history, sessions, steps, view state,
-// accepting an agent's edit, the window itself and saving a screenshot.
+// accepting an agent's edit, the window itself and saving screenshots.
 type ProofService struct {
 	Svc     *proof.Service
 	Dialogs Dialogs
@@ -86,6 +94,9 @@ type ProofService struct {
 	Targets *ProofWindowTargets
 	// Shell is nil until main binds the window opener.
 	Shell ProofShell
+	// Locations stores the custom screenshot folder; Opener reveals a saved folder (nil: reveal unavailable).
+	Locations ProofShotLocations
+	Opener    ProofRevealer
 
 	openMu sync.Mutex
 	shots  proofShotFolders
@@ -141,18 +152,6 @@ type ProofWindowTarget struct {
 // ProofSelect is the kira:proof:select payload.
 type ProofSelect struct {
 	SessionID string `json:"sessionId"`
-}
-
-// ProofSaveJpegArgs saves a screenshot.
-type ProofSaveJpegArgs struct {
-	Filename   string `json:"filename"`
-	JpegBase64 string `json:"jpegBase64"`
-}
-
-// ProofSaveJpegResult reports where a screenshot went; saved is false when the user cancelled.
-type ProofSaveJpegResult struct {
-	Saved bool    `json:"saved"`
-	Path  *string `json:"path"`
 }
 
 func proofErr(err error) error {
@@ -311,28 +310,6 @@ func (s *ProofService) WindowTarget(args ProofWindowKeyArgs) (ProofWindowTarget,
 		return ProofWindowTarget{SessionID: &id}, nil
 	}
 	return ProofWindowTarget{}, nil
-}
-
-// SaveJpeg asks where to save a screenshot and writes it there.
-func (s *ProofService) SaveJpeg(args ProofSaveJpegArgs) (ProofSaveJpegResult, error) {
-	if len(args.JpegBase64) > maxShotBase64 {
-		return ProofSaveJpegResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.tooLarge.body", nil)
-	}
-	data, err := base64.StdEncoding.DecodeString(args.JpegBase64)
-	if err != nil || len(data) > maxShotBytes || !bytes.HasPrefix(data, jpegMagic) {
-		return ProofSaveJpegResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.notJpeg.body", nil)
-	}
-	path, err := s.Dialogs.SaveFile(SaveFileRequest{Directory: downloadsDir(), Filename: safeJpegName(args.Filename)})
-	if err != nil {
-		return ProofSaveJpegResult{}, ipcerr.InternalErr(err)
-	}
-	if path == "" {
-		return ProofSaveJpegResult{}, nil
-	}
-	if err := renameio.WriteFile(path, data, 0o644); err != nil {
-		return ProofSaveJpegResult{}, ipcerr.InternalErr(err)
-	}
-	return ProofSaveJpegResult{Saved: true, Path: &path}, nil
 }
 
 // safeBaseName reduces a suggested name to a plain file name without its image suffix.

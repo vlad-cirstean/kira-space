@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { McpPermissionMode } from '@shared/domain/connection';
-import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
+import { Checkbox } from '@theme/components/ui/checkbox';
 import {
   Dialog,
   DialogBody,
@@ -11,14 +10,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Label } from '@theme/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { Textarea } from '@theme/components/ui/textarea';
-import { type MessageKey, t } from '@theme/i18n';
+import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
 import { errorText } from '@workbench/bridge/codedError';
 import { computed, ref, watch } from 'vue';
 import { useClusters, useSetClusterMcp } from '../queries';
-import type { KubeMcpGroup, KubeMcpSettings } from '../wire';
+import type { KubeMcpSettings } from '../wire';
 
 const props = defineProps<{ clusterId: string }>();
 const open = defineModel<boolean>('open', { required: true });
@@ -44,34 +45,6 @@ watch(
   },
   { immediate: true },
 );
-
-const GROUPS: { group: KubeMcpGroup; label: MessageKey; note: MessageKey }[] = [
-  {
-    group: 'discover',
-    label: 'kubernetes.mcp.discover.label',
-    note: 'kubernetes.mcp.discoverNote.label',
-  },
-  { group: 'list', label: 'kubernetes.mcp.list.label', note: 'kubernetes.mcp.listNote.label' },
-  {
-    group: 'describe',
-    label: 'kubernetes.detail.tab.describe.label',
-    note: 'kubernetes.mcp.describeNote.label',
-  },
-  { group: 'logs', label: 'docker.tab.logs.label', note: 'kubernetes.mcp.logsNote.label' },
-];
-
-function modeItems(group: KubeMcpGroup) {
-  const modes: { value: McpPermissionMode; label: string }[] = [
-    { value: 'deny', label: t('common.action.deny.label') },
-    { value: 'allow', label: t('studio.project.connectionDialog.mcp.allow.label') },
-    { value: 'prompt', label: t('studio.project.connectionDialog.mcp.prompt.label') },
-  ];
-  return modes.map((m) => ({ ...m, testid: `kube-mcp-${group}-${m.value}` }));
-}
-
-function setMode(group: KubeMcpGroup, value: string): void {
-  if (draft.value) draft.value[group] = value as McpPermissionMode;
-}
 
 function onSave(): void {
   if (!draft.value) return;
@@ -100,35 +73,52 @@ function onSave(): void {
         <DialogDescription>{{ t('kubernetes.mcp.dialog.description') }}</DialogDescription>
       </DialogHeader>
       <DialogBody v-if="draft" class="flex flex-col gap-3">
-        <Field>
-          <FieldLabel
-            >{{ t('common.field.description.label') }}
-            <span class="text-subtle"
-              >— {{ t('kubernetes.mcp.descriptionNote.label') }}</span
-            ></FieldLabel
-          >
-          <Textarea
-            v-model="draft.description"
-            class="font-data"
-            rows="2"
-            maxlength="1000"
-            data-testid="kube-mcp-description"
-            @keydown="wrapSelectionOnType"
+        <Field orientation="horizontal">
+          <Checkbox
+            id="kube-mcp-enabled"
+            :model-value="draft.enabled"
+            data-testid="kube-mcp-enabled"
+            @update:model-value="(v) => (draft!.enabled = v === true)"
           />
+          <Label for="kube-mcp-enabled">{{ t('kubernetes.mcp.enable.label') }}</Label>
         </Field>
-        <Field v-for="g in GROUPS" :key="g.group">
-          <FieldLabel
-            >{{ t(g.label) }} <span class="text-subtle">— {{ t(g.note) }}</span></FieldLabel
-          >
-          <SecondaryTabs
-            variant="segmented"
-            size="kira-lg"
-            :model-value="draft[g.group]"
-            :items="modeItems(g.group)"
-            :data-testid="`kube-mcp-${g.group}`"
-            @update:model-value="(v) => setMode(g.group, String(v))"
-          />
-        </Field>
+        <FieldDescription>{{ t('kubernetes.mcp.enable.hint') }}</FieldDescription>
+        <template v-if="draft.enabled">
+          <Field>
+            <FieldLabel
+              >{{ t('common.field.description.label') }}
+              <span class="text-subtle"
+                >— {{ t('kubernetes.mcp.descriptionNote.label') }}</span
+              ></FieldLabel
+            >
+            <Textarea
+              v-model="draft.description"
+              class="font-data"
+              rows="2"
+              maxlength="1000"
+              data-testid="kube-mcp-description"
+              @keydown="wrapSelectionOnType"
+            />
+          </Field>
+          <Field>
+            <FieldLabel>{{ t('kubernetes.mcp.approval.label') }}</FieldLabel>
+            <RadioGroup
+              :model-value="draft.approval"
+              class="gap-1.5"
+              data-testid="kube-mcp-approval"
+              @update:model-value="(v) => (draft!.approval = v === 'allow' ? 'allow' : 'prompt')"
+            >
+              <div class="flex items-center gap-2">
+                <RadioGroupItem id="kube-mcp-prompt" value="prompt" data-testid="kube-mcp-prompt" />
+                <Label for="kube-mcp-prompt">{{ t('automations.form.mcp.prompt.label') }}</Label>
+              </div>
+              <div class="flex items-center gap-2">
+                <RadioGroupItem id="kube-mcp-allow" value="allow" data-testid="kube-mcp-allow" />
+                <Label for="kube-mcp-allow">{{ t('kubernetes.mcp.allow.label') }}</Label>
+              </div>
+            </RadioGroup>
+          </Field>
+        </template>
         <FieldError v-if="error" data-testid="kube-mcp-error">{{ error }}</FieldError>
       </DialogBody>
       <DialogFooter>

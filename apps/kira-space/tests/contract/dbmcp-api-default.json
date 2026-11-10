@@ -1,0 +1,59 @@
+{
+  "args:SettingsService.Set#allow": {
+    "patch": {
+      "dbMcp": {
+        "apiRules": [
+          {
+            "effect": "deny",
+            "hosts": [
+              "*"
+            ],
+            "methods": [
+              "DELETE"
+            ]
+          },
+          {
+            "effect": "allow",
+            "hosts": [
+              "127.0.0.1"
+            ],
+            "methods": [
+              "GET"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "args:SettingsService.Set#ask": {
+    "patch": {
+      "dbMcp": {
+        "apiDefault": "ask"
+      }
+    }
+  },
+  "args:SettingsService.Set#deny": {
+    "patch": {
+      "dbMcp": {
+        "apiDefault": "deny"
+      }
+    }
+  },
+  "args:SettingsService.Set#rules": {
+    "patch": {
+      "dbMcp": {
+        "apiRules": [
+          {
+            "effect": "deny",
+            "hosts": [
+              "*"
+            ],
+            "methods": [
+              "DELETE"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

@@ -125,6 +125,25 @@ export function adeBoard(edit: (board: AdeBoardFx) => void): AdeBoardFx {
   return board;
 }
 
+/** The board snapshot of `adeBoard(edit)`, for a spec's `openPlan` extras. */
+export const adeBoardSnapshot = (edit: (board: AdeBoardFx) => void): ControlSnapshot => ({
+  channel: IPC.adeTaskBoard,
+  response: adeBoard(edit),
+});
+
+/** T_alerts at `step` of the standard workflow with no branch of its own. */
+export function alertsWithoutRepo(step: string, runs: Record<string, unknown>[] = []) {
+  return (b: AdeBoardFx): void => {
+    const alerts = b.tasks.find((x) => x.id === 'T_alerts');
+    if (!alerts) throw new Error('fixture tasks missing');
+    alerts.entryStepId = step;
+    alerts.workflowId = 'standard';
+    alerts.branchIds = [];
+    alerts.runs = runs;
+    b.branches = b.branches.filter((x) => x.taskId !== 'T_alerts');
+  };
+}
+
 /** Fields of `board.json` the specs edit; the rest passes through untyped. */
 export interface AdeBoardFx {
   tasks: ({

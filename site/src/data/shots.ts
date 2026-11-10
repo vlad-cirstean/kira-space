@@ -223,8 +223,8 @@ export const SHOTS: readonly ShotDef[] = [
   {
     id: 'build-artifacts-list',
     title: 'Task links',
-    alt: 'Kira Space task links list with the pull requests, issue, document and branch of the task.',
-    caption: 'Links. Pull requests, issue and docs with kind and status.',
+    alt: 'Kira Space task links grouped under issues, change requests and other links.',
+    caption: 'Links. Issues, change requests and other links, grouped.',
     icon: 'files',
     label: 'Task links',
   },

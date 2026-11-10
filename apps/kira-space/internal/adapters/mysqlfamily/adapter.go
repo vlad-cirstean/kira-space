@@ -144,6 +144,19 @@ func (a *Adapter) requireEntry(ctx context.Context, database string) (Entry, fun
 	return connSet.Acquire(ctx, database)
 }
 
+// Ping is adapters.Pinger: one round trip on the primary pinned connection.
+func (a *Adapter) Ping(ctx context.Context) error {
+	entry, release, err := a.requireEntry(ctx, "")
+	if err != nil {
+		return err
+	}
+	defer release()
+	if err := entry.PingContext(ctx); err != nil {
+		return adapters.PingFailure(mapError(err))
+	}
+	return nil
+}
+
 // Children is index.ts's children.
 func (a *Adapter) Children(ctx context.Context, path model.NodePath, op *adapters.OpCtx) (adapters.TreeChildren, error) {
 	segments := path.Segments

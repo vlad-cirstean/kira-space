@@ -2,6 +2,7 @@ package clickhouse
 
 import (
 	"context"
+	"io"
 	"strconv"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
@@ -96,6 +97,24 @@ func (a *Adapter) Disconnect(ctx context.Context) error {
 		handle.Client.CloseIdleConnections()
 	}
 	a.clearConnected()
+	return nil
+}
+
+// Ping is adapters.Pinger: SELECT 1 over the connected handle.
+func (a *Adapter) Ping(ctx context.Context) error {
+	h, err := a.requireHandle()
+	if err != nil {
+		return err
+	}
+	resp, err := doRequest(ctx, h, "SELECT 1", "", nil, nil, h.ReadOnly)
+	if err != nil {
+		return adapters.PingFailure(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return adapters.PingFailure(mapHTTPError(resp.Header.Get("X-ClickHouse-Exception-Code"), string(body)))
+	}
 	return nil
 }
 

@@ -141,6 +141,18 @@ func (a *Adapter) Disconnect(ctx context.Context) error {
 	return nil
 }
 
+// Ping is adapters.Pinger: Connect's own first request.
+func (a *Adapter) Ping(ctx context.Context) error {
+	h, err := a.requireHandle()
+	if err != nil {
+		return err
+	}
+	if err := h.request(ctx, http.MethodGet, "/api/status", false, false, nil, nil); err != nil {
+		return adapters.PingFailure(err)
+	}
+	return nil
+}
+
 func (a *Adapter) Cancel(_ context.Context, opID string) (bool, error) {
 	r, ok := a.tracker.PopRunning(opID)
 	if !ok {

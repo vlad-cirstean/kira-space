@@ -1857,6 +1857,9 @@
         "taskMoved": {
           "body": "The task moved on. Refresh and retry."
         },
+        "taskNoRepo": {
+          "body": "This task has no repository yet. Choose at least one before starting work."
+        },
         "taskNotFound": {
           "body": "That task no longer exists."
         },
@@ -2706,8 +2709,14 @@
         "databasePathAbsolute": {
           "body": "The database file must be an absolute path."
         },
+        "explainThresholdRange": {
+          "body": "Expensive query threshold must be 1,000 to 1,000,000,000 rows, or left out."
+        },
         "hostRequired": {
           "body": "Host is required."
+        },
+        "lost": {
+          "error": "Connection lost: {detail}"
         },
         "maskReviewEntry": {
           "body": "A column in the masking review list is not valid for this connection kind."
@@ -2790,7 +2799,7 @@
           "body": "A mask needs a column."
         },
         "maskDuplicate": {
-          "body": "Column “{column}” already has a mask for this table."
+          "body": "Column “{column}” already has a mask."
         },
         "maskNumber": {
           "body": "A number mask can’t correlate."
@@ -2871,7 +2880,7 @@
       },
       "kubernetes": {
         "badMcpMode": {
-          "error": "Unknown MCP permission: {mode}"
+          "error": "Unknown MCP approval mode: {mode}"
         },
         "badSelector": {
           "error": "Invalid label selector: {message}"
@@ -2911,14 +2920,23 @@
         "shotExists": {
           "body": "A screenshot with that name is already in the folder."
         },
-        "shotFolder": {
-          "title": "Choose where to save the screenshots"
-        },
         "shotFolderGone": {
           "body": "The screenshot folder is no longer available. Save again."
         },
         "shotFolderTaken": {
-          "body": "Too many folders with that name exist. Choose another location."
+          "body": "Too many folders named {name} exist in {path}. Change the location."
+        },
+        "shotLocation": {
+          "title": "Choose where proof screenshots are saved"
+        },
+        "shotLocationInvalid": {
+          "body": "{path} is not a folder Kira Space can save to."
+        },
+        "shotLocationMissing": {
+          "body": "The save location {path} no longer exists. Change the location or reset it to the Desktop."
+        },
+        "shotLocationUnwritable": {
+          "body": "Kira Space can’t write to {path}. Change the location."
         },
         "tooLarge": {
           "body": "The screenshot is too large to save."
@@ -6791,30 +6809,28 @@
       }
     },
     "mcp": {
-      "describeNote": {
-        "label": "Whole objects with events and manifest; secret values stay hidden"
+      "allow": {
+        "label": "Read straight away"
+      },
+      "approval": {
+        "label": "When an agent reads it"
       },
       "descriptionNote": {
         "label": "What this cluster is for, read verbatim by MCP clients"
       },
       "dialog": {
-        "description": "Choose what AI clients may read from this cluster through the database MCP server.",
+        "description": "Choose whether AI clients on the database MCP server may read this cluster, and whether each read asks you first.",
         "title": "MCP access · {cluster}"
       },
       "discover": {
         "label": "Discovery"
       },
-      "discoverNote": {
-        "label": "Namespaces and resource kinds"
+      "enable": {
+        "hint": "An agent on the database MCP server can list this cluster and read its namespaces, kinds, objects and pod logs. Reads only; Kira never changes the cluster.",
+        "label": "Let agents read this cluster"
       },
       "list": {
         "label": "List"
-      },
-      "listNote": {
-        "label": "Object names, labels and status columns"
-      },
-      "logsNote": {
-        "label": "Container log output"
       },
       "menu": {
         "label": "MCP settings…"
@@ -8805,8 +8821,8 @@
           "createFirst": {
             "tooltip": "Create the branch first"
           },
-          "noCommits": {
-            "tooltip": "No commits on top of {base} yet"
+          "nothing": {
+            "tooltip": "No commits on top of {base} and no uncommitted changes yet"
           },
           "pick": {
             "tooltip": "Choose a branch to review"
@@ -8814,8 +8830,11 @@
           "review": {
             "tooltip": "Review {branch} against {base}"
           },
-          "uncommitted": {
-            "hint": "Only uncommitted changes on {branch}. Commit them to review against {base}."
+          "reviewMixed": {
+            "tooltip": "Review {branch} against {base}, plus {count} uncommitted change | Review {branch} against {base}, plus {count} uncommitted changes"
+          },
+          "reviewUncommitted": {
+            "tooltip": "Review {count} uncommitted change on {branch}; no commits on top of {base} yet | Review {count} uncommitted changes on {branch}; no commits on top of {base} yet"
           },
           "working": {
             "tooltip": "An agent is still working; the review updates as it commits"
@@ -8863,6 +8882,9 @@
           },
           "runAgents": {
             "tooltip": "Run {step} with background agents ({headless})"
+          },
+          "runNeedsRepo": {
+            "tooltip": "Choose a repository, then run {step}"
           },
           "runReview": {
             "tooltip": "Start {step}; it waits for your review"
@@ -9163,8 +9185,16 @@
         "empty": {
           "body": "No links yet."
         },
+        "group": {
+          "changeRequest": {
+            "label": "Change requests"
+          },
+          "misc": {
+            "label": "Misc"
+          }
+        },
         "kindMenu": {
-          "label": "Change kind"
+          "tooltip": "Change kind ({kind})"
         },
         "link": {
           "aria": "Link title",
@@ -9175,9 +9205,6 @@
         },
         "openExternal": {
           "tooltip": "Open in browser"
-        },
-        "related": {
-          "title": "Related"
         },
         "session": {
           "tooltip": "Open the session that added this"
@@ -9731,6 +9758,9 @@
           },
           "sessionsRunning": {
             "tooltip": "{count} agent session running | {count} agent sessions running"
+          },
+          "status": {
+            "aria": "Status: {status}. Change status"
           }
         },
         "header": {
@@ -10022,6 +10052,23 @@
         "refsChanged": {
           "status": "{count} ref changed | {count} refs changed"
         }
+      },
+      "repoGate": {
+        "body": "{task} has no repository. Choose at least one; the agent works in it.",
+        "noRepos": {
+          "action": {
+            "label": "Open repositories"
+          },
+          "hint": "No repository is registered. Add one on the repositories page."
+        },
+        "pick": {
+          "aria": "Add a repository to the task",
+          "option": "Add a repository"
+        },
+        "remove": {
+          "aria": "Unselect {repo}"
+        },
+        "title": "Choose a repository"
       },
       "repos": {
         "addFolder": {
@@ -10379,9 +10426,6 @@
         "handover": {
           "label": "Handover from {stage}"
         },
-        "noRepo": {
-          "hint": "No repository on this task yet. The step runs in the task folder and can choose repositories and branches."
-        },
         "smartMissing": {
           "error": "This smart script was not found."
         },
@@ -10689,6 +10733,9 @@
         }
       },
       "stepBlock": {
+        "chooseRepo": {
+          "status": "Choose a repository to start"
+        },
         "hideOutput": {
           "label": "Hide output"
         },
@@ -15865,9 +15912,6 @@
         "column": {
           "placeholder": "Column"
         },
-        "correlate": {
-          "label": "Correlate"
-        },
         "database": {
           "label": "Database"
         },
@@ -15879,6 +15923,15 @@
         },
         "engineSearch": {
           "placeholder": "Search engines"
+        },
+        "explainThreshold": {
+          "clickhouse": {
+            "body": "ClickHouse counts every row in the parts it would read, so its numbers run higher than other engines’."
+          },
+          "description": "A query is expensive when its plan estimates reading at least this many rows. That counts rows the database looks at, not rows it returns. The console’s explain warns about it, and agent queries are refused before they run. Leave empty to use the app default of {default} rows, set in the app settings, advanced section.",
+          "scan": {
+            "body": "The estimate is the largest single table scan, from table statistics. LIMIT is not taken into account."
+          }
         },
         "hidePassword": {
           "label": "Hide password"
@@ -15944,9 +15997,6 @@
           },
           "enforceExemption": {
             "body": "When a limit refuses a statement, the agent may ask you to lift it for that one statement. A dialog always appears, even when the mode is allow. Approve all does not cover it."
-          },
-          "enforceMasking": {
-            "body": "A rule matches any result column with the same lowercased name. Its table is ignored. A result that aliases or computes a masked column is refused. Best effort only. A renaming view can slip through, and filtering on a masked column shows which rows match."
           },
           "enforceModes": {
             "body": "Kira checks the mode before any query runs. Ask me waits for your approval; no answer in 10 minutes refuses it."
@@ -16051,6 +16101,12 @@
           },
           "rowsOff": {
             "body": "Agent queries run without a row check."
+          },
+          "rowsWhereApp": {
+            "body": "This is the app default. Set one for this connection in the {tab} tab."
+          },
+          "rowsWhereConnection": {
+            "body": "This connection sets its own threshold in the {tab} tab."
           },
           "rowsWho": {
             "body": "Kira, not the database, runs EXPLAIN on each agent SELECT or WITH first, without executing it, and compares the estimated rows read with {threshold} rows."
@@ -16176,35 +16232,75 @@
           }
         },
         "privacy": {
-          "intro": {
-            "description": "Rules mask values for this connection’s MCP clients and the data viewer’s masking preview. Stored data never changes."
+          "agentSees": {
+            "label": "Agent sees"
+          },
+          "key": {
+            "description": "Tags come from a secret key kept for this connection. A new key changes every tag, so earlier results no longer match new ones.",
+            "title": "Matching tag key"
           },
           "keyFallback": {
             "body": "Development fallback. The correlation key is obfuscated with a built-in key, not a real keychain. Anyone with filesystem access could recover it. Redaction itself stays uninvertible."
           },
-          "noRules": {
-            "emptyHint": "No masking rules yet."
+          "limits": {
+            "label": "How masking is enforced"
           },
-          "reviewConfirmAll": {
-            "label": "Confirm all as reviewed"
+          "limitsBestEffort": {
+            "body": "Best effort only. Filtering on a masked column can show which rows match, and a view that renames a column can slip through."
+          },
+          "limitsCheck": {
+            "body": "Kira checks for new columns on connect, on refresh and every 30 seconds. A column added in the last 30 seconds can slip through. A renamed column counts as new."
+          },
+          "limitsMatch": {
+            "body": "Rules match by column name, ignoring case; the table is ignored. A result that renames or computes a masked column is refused."
+          },
+          "limitsScope": {
+            "body": "Masking covers what the agent reads through Kira’s database MCP tools. Scripts are not checked. No exemption lifts it."
+          },
+          "maskAs": {
+            "label": "Mask as"
+          },
+          "overview": {
+            "title": "What the AI agent sees"
+          },
+          "overviewHidden": {
+            "status": "New columns stay hidden from the agent until you decide"
+          },
+          "overviewMcpOff": {
+            "hint": "Database MCP is off for this connection, so no agent reads it. These settings apply once it is on."
+          },
+          "overviewNone": {
+            "status": "No masked columns, so the agent sees every value as stored"
+          },
+          "overviewOpen": {
+            "status": "New columns reach the agent unmasked"
+          },
+          "overviewReal": {
+            "body": "You always see real values. To see what the agent sees, turn on the masking preview in a table’s toolbar. Stored data never changes."
+          },
+          "review": {
+            "title": "New columns"
+          },
+          "reviewAllowAll": {
+            "label": "Allow all waiting"
+          },
+          "reviewAllowed": {
+            "status": "Allowed"
+          },
+          "reviewDone": {
+            "status": "Every column is masked or allowed"
           },
           "reviewEmpty": {
             "empty": "No columns to show"
           },
-          "reviewEnforceHit": {
-            "body": "A new column that no rule masks and nobody reviewed is dropped from results. A query that renames, transforms or filters on it is refused. The agent learns its name, never its values."
-          },
-          "reviewEnforceLimits": {
-            "body": "Matching is by column name. A column added in the last 30 seconds can slip through. A renamed column counts as new. Scripts are not checked. No exemption applies."
-          },
-          "reviewEnforceWho": {
-            "body": "Kira’s MCP server checks columns on connect, on refresh and every 30 seconds."
-          },
           "reviewFilterAll": {
             "option": "All columns"
           },
-          "reviewMask": {
-            "label": "Mask"
+          "reviewFilterWaiting": {
+            "option": "Needs a decision"
+          },
+          "reviewHidden": {
+            "status": "Hidden from agent"
           },
           "reviewMasked": {
             "status": "Masked"
@@ -16212,47 +16308,84 @@
           "reviewNa": {
             "body": "Column review does not apply to this connection kind."
           },
+          "reviewOff": {
+            "status": "Off, so columns without a rule reach the agent unmasked, including new ones"
+          },
           "reviewOffConfirm": {
             "body": "New columns then reach the agent unmasked.",
             "label": "Turn off",
-            "title": "Turn off column review?"
+            "title": "Stop hiding new columns?"
           },
           "reviewOffline": {
             "body": "Connect to list columns. Saved entries are kept."
           },
-          "reviewOn": {
-            "description": "Marks every current column as reviewed.",
-            "label": "Withhold new columns until reviewed"
-          },
-          "reviewPending": {
-            "status": "Needs review"
-          },
           "reviewRefresh": {
             "tooltip": "Refresh columns"
-          },
-          "reviewReviewed": {
-            "status": "Marked reviewed"
           },
           "reviewSearch": {
             "placeholder": "Filter columns"
           },
-          "reviewStatusDone": {
-            "status": "All columns reviewed"
-          },
-          "reviewStatusOff": {
-            "status": "Column review is off, so new columns reach the agent"
-          },
-          "reviewStatusPending": {
-            "status": "{count} columns need review"
-          },
-          "reviewTitle": {
-            "label": "Column review"
+          "reviewSwitch": {
+            "description": "A column with no rule stays hidden from the agent until you mask or allow it. Turning this on allows every column that exists now.",
+            "label": "Hide new columns until you decide"
           },
           "reviewTruncated": {
             "body": "The column list is cut short ({limit}). Database MCP refuses every call until the check fits."
           },
+          "reviewUndo": {
+            "label": "Undo"
+          },
+          "reviewUnmasked": {
+            "status": "Not masked"
+          },
+          "reviewWaiting": {
+            "status": "{count} column hidden until you decide | {count} columns hidden until you decide"
+          },
+          "rules": {
+            "description": "A rule masks every column with this name, in every table of this connection.",
+            "title": "Masked columns"
+          },
+          "rulesDuplicate": {
+            "error": "“{column}” already has a rule."
+          },
+          "rulesEmpty": {
+            "empty": "No masked columns",
+            "emptyHint": "Add a column name below, or right-click a column header in a table and choose “{item}”."
+          },
+          "sampleDate": {
+            "example": "1987-04-12"
+          },
+          "sampleEmail": {
+            "example": "jane.doe{'@'}example.com"
+          },
+          "sampleName": {
+            "example": "Jane Doe"
+          },
+          "sampleNumber": {
+            "example": "48213"
+          },
+          "sampleRedact": {
+            "example": "12 High Street"
+          },
+          "sampleTagged": {
+            "example": "{masked}#K3F9QZ"
+          },
+          "sampleText": {
+            "example": "Call me after 5 pm"
+          },
           "saveFirst": {
             "hint": "Save first to manage masking rules."
+          },
+          "tableIgnored": {
+            "status": "Table ignored",
+            "tooltip": "Rules match the column name in every table. The table {table} in this rule has no effect"
+          },
+          "tag": {
+            "label": "Matching tag",
+            "tooltip": "Adds a short tag. The same real value always gets the same tag, so the agent can match rows and joins without seeing it"
+          },
+          "tagNumber": {
+            "tooltip": "Numbers never get a tag, because many values share one masked number"
           }
         },
         "readOnly": {
@@ -16824,33 +16957,47 @@
           "announce": "Screenshot copied"
         },
         "copy": {
-          "label": "Copy screenshot",
-          "tooltip": "Copy a screenshot of this tab"
+          "label": "Copy current tab"
         },
         "failed": {
           "error": "Couldn’t take the screenshot: {error}"
         },
+        "location": {
+          "choose": {
+            "label": "Change location…"
+          },
+          "missing": {
+            "status": "Folder not found"
+          },
+          "reset": {
+            "label": "Reset to Desktop"
+          }
+        },
         "more": {
           "aria": "Screenshot options"
+        },
+        "none": {
+          "error": "This proof has no screenshots to save."
         },
         "notSettled": {
           "error": "The step did not finish loading."
         },
-        "save": {
-          "label": "Save tab as JPEG…"
-        },
         "saveAll": {
-          "label": "Save all tabs to folder…"
+          "label": "Save screenshots",
+          "tooltip": "Save every tab as a JPEG into a new folder in {path}"
         },
-        "saved": {
-          "announce": "Saved to {path}"
+        "saveAllNoPath": {
+          "tooltip": "Save every tab as a JPEG into a new folder"
         },
         "savedAll": {
-          "announce": "Saved {count} screenshots to {path}"
+          "status": "Saved {count} screenshots to {path}"
         },
         "savedPartial": {
           "error": "Saved {count} of {total} screenshots before failing: {error}"
         }
+      },
+      "summary": {
+        "aria": "Proof summary"
       },
       "tabs": {
         "aria": "Proof steps"
@@ -16899,7 +17046,7 @@
     "settings": {
       "advanced": {
         "expensiveRows": {
-          "description": "The estimated rows a query’s plan reads, not the rows it returns. At or above it, the console’s explain and auto-explain warn you, and the database MCP server refuses an agent’s query before it runs where the connection’s MCP tab has the check on. Not comparable to the engines’ own cost figures.",
+          "description": "The estimated rows a query’s plan reads, not the rows it returns. At or above it, the console’s explain and auto-explain warn you, and the database MCP server refuses an agent’s query before it runs where the connection’s MCP tab has the check on. Not comparable to the engines’ own cost figures. A connection can set its own on its advanced tab.",
           "label": "Expensive query threshold (rows)"
         },
         "opLogRetention": {
@@ -16965,14 +17112,29 @@
             "option": "Send without asking"
           }
         },
+        "apiDefault": {
+          "ask": {
+            "body": "A request that matches no rule waits for your approval, like any other API request."
+          },
+          "askNever": {
+            "body": "A request that matches no rule is sent without asking, because API request approval is off."
+          },
+          "deny": {
+            "body": "A request that matches no rule is refused. Add an allow rule for each host agents may reach."
+          },
+          "label": "When no rule matches"
+        },
         "apiRules": {
           "add": {
             "label": "Add rule"
           },
+          "allowAny": {
+            "body": "An allow rule for any host sends every matching request without asking."
+          },
           "anyMethod": {
             "label": "Any method"
           },
-          "description": "With no rules, agents can send any method to any host. With rules, a request needs an allow rule and no deny rule.",
+          "description": "A deny rule refuses a request. An allow rule sends it without asking you. When both match, deny wins. A redirect of a request you approved may stay on its host; a redirect of a request an allow rule sent may only go to a host an allow rule matches.",
           "dialog": {
             "title": "API access rule"
           },
@@ -16980,10 +17142,14 @@
             "aria": "Edit rule"
           },
           "effect": {
+            "hint": "Allow sends matching requests without asking you. Deny refuses them.",
             "label": "Effect"
           },
           "empty": {
-            "body": "No rules. Agents can reach any host."
+            "body": "No rules."
+          },
+          "hostForms": {
+            "body": "An entry is a host, a host with a port such as localhost:3000, a wildcard domain, or *. No port means any port. Each entry takes one port, and ranges are not supported. A rule matches http and https alike. A secret goes over plain http only to a loopback host."
           },
           "hostInvalid": {
             "error": "{host} is not a valid host entry."
@@ -17032,17 +17198,23 @@
           "label": "Bring Kira Space forward for approvals"
         },
         "kube": {
+          "allow": {
+            "status": "Reads straight away"
+          },
           "empty": {
             "empty": "No kubeconfig clusters found"
           },
           "intro": {
-            "description": "Clusters from your kubeconfig. Every operation asks first until you change it."
+            "description": "Clusters from your kubeconfig. A cluster stays hidden from agents until you turn it on. Change its description and approval mode with the row’s edit button."
           },
           "legend": {
             "label": "Kubernetes clusters"
           },
-          "modes": {
-            "status": "Discover {discover} · list {list} · describe {describe} · logs {logs}"
+          "prompt": {
+            "status": "Asks before each read"
+          },
+          "toggle": {
+            "aria": "Expose cluster {name} to agents"
           }
         },
         "masked": {
@@ -17127,9 +17299,6 @@
         "plain": {
           "status": "{min}–{max}"
         }
-      },
-      "restartNote": {
-        "hint": "Takes effect after restart."
       }
     },
     "shortcuts": {

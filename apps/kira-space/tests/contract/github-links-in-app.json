@@ -1,0 +1,135 @@
+{
+  "AdeTaskService.Artifacts": {
+    "artifacts": [
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "api#12",
+        "repo": "",
+        "sessionId": "",
+        "source": "task",
+        "status": "",
+        "title": "api#12",
+        "url": "https://github.com/acme/api/pull/12/changes"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "api#13",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "api#13",
+        "url": "https://github.com/acme/api/pull/13/files/abc..def"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "api#14",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "api#14",
+        "url": "https://github.com/acme/api/pull/14/commits/abc123"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "api#15",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "api#15",
+        "url": "https://github.com/acme/api/pull/15/"
+      }
+    ],
+    "gaps": []
+  },
+  "HostViewService.WindowTarget#12": {
+    "host": {
+      "changeRequest": "Pull request",
+      "changeRequestNoun": "pull request",
+      "changeRequestShort": "PR",
+      "cli": "GitHub CLI (gh)",
+      "id": "github",
+      "label": "GitHub"
+    },
+    "kind": "changeRequest",
+    "number": 12,
+    "provider": "github",
+    "repo": "acme/api",
+    "url": "https://github.com/acme/api/pull/12"
+  },
+  "HostViewService.WindowTarget#13": {
+    "host": {
+      "changeRequest": "Pull request",
+      "changeRequestNoun": "pull request",
+      "changeRequestShort": "PR",
+      "cli": "GitHub CLI (gh)",
+      "id": "github",
+      "label": "GitHub"
+    },
+    "kind": "changeRequest",
+    "number": 13,
+    "provider": "github",
+    "repo": "acme/api",
+    "url": "https://github.com/acme/api/pull/13"
+  },
+  "HostViewService.WindowTarget#14": {
+    "host": {
+      "changeRequest": "Pull request",
+      "changeRequestNoun": "pull request",
+      "changeRequestShort": "PR",
+      "cli": "GitHub CLI (gh)",
+      "id": "github",
+      "label": "GitHub"
+    },
+    "kind": "changeRequest",
+    "number": 14,
+    "provider": "github",
+    "repo": "acme/api",
+    "url": "https://github.com/acme/api/pull/14"
+  },
+  "HostViewService.WindowTarget#15": {
+    "host": {
+      "changeRequest": "Pull request",
+      "changeRequestNoun": "pull request",
+      "changeRequestShort": "PR",
+      "cli": "GitHub CLI (gh)",
+      "id": "github",
+      "label": "GitHub"
+    },
+    "kind": "changeRequest",
+    "number": 15,
+    "provider": "github",
+    "repo": "acme/api",
+    "url": "https://github.com/acme/api/pull/15"
+  },
+  "Task#links": {
+    "hostLink": {
+      "kind": "changeRequest",
+      "provider": "github",
+      "ref": "api#12"
+    },
+    "hostUrl": "https://github.com/acme/api/pull/12/changes"
+  },
+  "args:HostViewService.Open#12": {
+    "url": "https://github.com/acme/api/pull/12/changes"
+  },
+  "args:HostViewService.Open#13": {
+    "url": "https://github.com/acme/api/pull/13/files/abc..def"
+  },
+  "args:HostViewService.Open#14": {
+    "url": "https://github.com/acme/api/pull/14/commits/abc123"
+  },
+  "args:HostViewService.Open#15": {
+    "url": "https://github.com/acme/api/pull/15/"
+  }
+}

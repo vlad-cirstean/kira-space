@@ -10,7 +10,6 @@ import { cn } from '@theme/lib/utils';
 import { formatCount } from '@workbench/behaviour/format';
 import TreeTwisty from '@workbench/components/TreeTwisty.vue';
 import { computed, reactive, ref } from 'vue';
-import { useSettingsStore } from '../../../state/settings';
 import MonacoHost from '../../editor/MonacoHost.vue';
 import { getPlan } from './explainResults';
 import type { PlanNode } from './planModel';
@@ -20,7 +19,6 @@ import type { PlanNode } from './planModel';
 // explainResults.ts by `pageKey` — same "one prop, resolve everything else from a store" shape
 // ConsoleResultGrid.vue's own `pageKey` already uses.
 const props = defineProps<{ pageKey: string }>();
-const settingsStore = useSettingsStore();
 
 const result = computed(() => getPlan(props.pageKey));
 const plan = computed(() => result.value?.plan);
@@ -51,7 +49,7 @@ const verdict = computed(() => {
   return p.overThreshold
     ? t('studio.console.plan.overThreshold.status', {
         count: p.estimatedRowsRead,
-        threshold: formatCount(settingsStore.advanced.expensiveQueryRows),
+        threshold: formatCount(result.value?.thresholdRows ?? 0),
       })
     : t('studio.console.plan.estimatedRows.status', { count: p.estimatedRowsRead });
 });

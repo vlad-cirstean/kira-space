@@ -28,12 +28,11 @@ type LiveColumn struct {
 }
 
 // Covered reports whether col is masked by a rule or reviewed as clear. A rule covers a column when its
-// column name matches ignoring case and its table is * or the column's table name. reviewed holds
-// tableref.ColumnKey values.
+// column name matches ignoring case; the rule's table is ignored, as in masking (dbmcp render matches
+// result columns by name only). reviewed holds tableref.ColumnKey values.
 func Covered(kind string, col tableref.ColumnRef, rules []model.MaskRule, reviewed map[string]bool) bool {
 	for _, r := range rules {
-		if strings.EqualFold(strings.TrimSpace(r.ColumnName), col.Column) &&
-			(r.TableName == "*" || strings.EqualFold(r.TableName, col.Name)) {
+		if strings.EqualFold(strings.TrimSpace(r.ColumnName), col.Column) {
 			return true
 		}
 	}

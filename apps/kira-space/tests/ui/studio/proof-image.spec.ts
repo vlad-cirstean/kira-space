@@ -1,7 +1,14 @@
 import type { Page } from '@playwright/test';
 import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
-import { imageControl, jpegHeight, menuTarget, openProofWindow, SESSION_ID } from './support/proof';
+import {
+  imageControl,
+  jpegHeight,
+  menuTarget,
+  openProofWindow,
+  SESSION_ID,
+  shotFolder,
+} from './support/proof';
 
 // UI half of the proof-image scenario; the Go half is proofflow TestProofImage. Every answer is
 // that test's recorded result, so bytes the backend stores are what the window draws here.
@@ -73,15 +80,10 @@ test('contract: an image step keeps its scroll', async ({ relaunch, uiServer }) 
   await expect.poll(() => region(page).evaluate((el) => el.scrollTop)).toBeGreaterThan(600);
 });
 
-test('contract: save tab writes a JPEG of the image step', async ({ relaunch, uiServer }) => {
+test('contract: saving writes a JPEG of the image step', async ({ relaunch, uiServer }) => {
   test.setTimeout(180_000);
   const { window: page, control } = await relaunch({
-    control: imageControl([
-      {
-        channel: IPC.proofSaveJpeg,
-        response: { saved: true, path: '/tmp/test/Login-page-01.jpg' },
-      },
-    ]),
+    control: imageControl([{ channel: IPC.proofOpenShotFolder, response: shotFolder() }]),
   });
   await openProofWindow(page, uiServer.url);
   await stepReady(page);
@@ -93,15 +95,14 @@ test('contract: save tab writes a JPEG of the image step', async ({ relaunch, ui
     )
     .toBe(64);
 
-  await page.locator('[data-testid="proof-shot-more"]').click();
-  await page.locator('[data-testid="proof-shot-save"]').click();
+  await page.locator('[data-testid="proof-shot"]').click();
   await expect
-    .poll(() => control.log().filter((c) => c.channel === IPC.proofSaveJpeg).length, {
+    .poll(() => control.log().filter((c) => c.channel === IPC.proofSaveJpegTo).length, {
       timeout: 60_000,
     })
-    .toBe(1);
-  const args = control.log().find((c) => c.channel === IPC.proofSaveJpeg)?.args as Json;
-  expect(args.filename).toBe('Login-page-01.jpg');
+    .toBeGreaterThanOrEqual(1);
+  const args = control.log().find((c) => c.channel === IPC.proofSaveJpegTo)?.args as Json;
+  expect(args.filename).toMatch(/^01-Login-form/);
   expect(args.jpegBase64.startsWith('/9j/')).toBe(true);
   expect(jpegHeight(args.jpegBase64)).toBeGreaterThan(0);
 });

@@ -651,7 +651,7 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 		lines, cwd, extra, err = b.launchDirs(ctx, tc)
 	}
 	folder := ""
-	if step.OutsideRepo || errors.Is(err, errNoRepo) { // outside the repos, or a task with no repo yet: the session works in the task folder
+	if step.OutsideRepo || (errors.Is(err, ErrTaskNoRepo) && tc.task.Kind == model.AdeTaskKindOrchestrator) { // outside the repos, or an orchestrator with no repo: the session works in the task folder
 		lines, extra = nil, nil
 		if cwd, err = b.taskDir(tc.task.ID); err != nil {
 			return adewire.Launch{}, err
@@ -676,9 +676,6 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 	}
 	return b.prepareWithGrant(ctx, tr, tc, pa, opManual, "", step.ID, sbPlan)
 }
-
-// errNoRepo says launchDirs found no repo on the task.
-var errNoRepo = invalid("the task has no repo")
 
 // launchDirs gathers the repos of a task-level session: the first writable branch's worktree is the
 // cwd (else the first repo root), every other worktree and read-only repo root joins via --add-dir.
@@ -710,7 +707,7 @@ func (b *TaskBoard) launchDirs(ctx context.Context, tc *taskCtx) (lines []repoLi
 		dirs = append(dirs, rec.Root)
 	}
 	if len(dirs) == 0 {
-		return nil, "", nil, errNoRepo
+		return nil, "", nil, ErrTaskNoRepo
 	}
 	if firstOwn < 0 {
 		firstOwn = 0

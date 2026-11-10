@@ -1,12 +1,11 @@
 import { expect, test } from './fixtures';
-import { type AdeBoardFx, adeBoard, adeFixture, openPlan } from './support/adeV2';
+import { adeBoardSnapshot, adeFixture, alertsWithoutRepo, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
-import type { ControlSnapshot } from './support/types';
 
 // A task with no repo: the step runs in the task folder. Contract ade-norepo.
-// Backend half: adeflow TestRepolessWorkflow.
+// Backend half: adeflow TestRepolessWorkflow. P598: only outside-repo steps run without a repo.
 
 const t = (id: string) => `[data-testid="${id}"]`;
 const task = (id: string) => `[data-testid="ade-task"][data-task-id="${id}"]`;
@@ -18,43 +17,6 @@ const started = contract<{ runs: Record<string, unknown>[] }>(
   'AdeTaskService.Board#started',
 );
 
-/** T_alerts at `step` of the standard workflow with no branch of its own. */
-function alertsWithoutRepo(step: string, runs: Record<string, unknown>[] = []) {
-  return (b: AdeBoardFx): void => {
-    const alerts = b.tasks.find((x) => x.id === 'T_alerts');
-    if (!alerts) throw new Error('fixture tasks missing');
-    alerts.entryStepId = step;
-    alerts.workflowId = 'standard';
-    alerts.branchIds = [];
-    alerts.runs = runs;
-    b.branches = b.branches.filter((x) => x.taskId !== 'T_alerts');
-  };
-}
-
-const board = (edit: (b: AdeBoardFx) => void): ControlSnapshot => ({
-  channel: IPC.adeTaskBoard,
-  response: adeBoard(edit),
-});
-
-test('Run on a task with no repo shows the hint and sends no branch names', async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await openPlan(relaunch, [board(alertsWithoutRepo('plan'))]);
-  await page.locator(cellAction('T_alerts', 'run')).click();
-  const dialog = page.locator(t('ade-run-dialog'));
-  await expect(dialog.locator(t('ade-run-no-repo'))).toContainText(
-    'No repository on this task yet',
-  );
-  await expect(dialog.locator(t('ade-run-branch'))).toHaveCount(0);
-  await dialog.locator(t('ade-run-send')).click();
-  await expect.poll(() => calls(control, IPC.adeTaskStartRun)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskStartRun)[0]?.args).toEqual({
-    taskId: 'T_alerts',
-    branchNames: {},
-    message: '',
-  });
-});
-
 test('a run without a branch reads as the task folder', async ({ relaunch }) => {
   const run = {
     ...started.runs[0],
@@ -63,7 +25,9 @@ test('a run without a branch reads as the task folder', async ({ relaunch }) => 
     branchId: '',
     note: 'waiting for branch approval',
   };
-  const { window: page } = await openPlan(relaunch, [board(alertsWithoutRepo('plan', [run]))]);
+  const { window: page } = await openPlan(relaunch, [
+    adeBoardSnapshot(alertsWithoutRepo('plan', [run])),
+  ]);
   await page
     .locator(`[data-testid="ade-card"][data-task-id="T_alerts"] [data-testid="ade-card-head"]`)
     .click();
@@ -82,7 +46,7 @@ test('an outside-repo step on a task with repos shows the task folder', async ({
     note: 'waiting for branch approval',
   };
   const { window: page } = await openPlan(relaunch, [
-    board((b) => {
+    adeBoardSnapshot((b) => {
       const alerts = b.tasks.find((x) => x.id === 'T_alerts');
       if (!alerts) throw new Error('fixture tasks missing');
       alerts.entryStepId = 'plan';
@@ -106,9 +70,18 @@ const noTalking = {
   sessions: sessions.sessions.filter((x) => !(x.taskId === 'T_alerts' && x.mode === 'tui')),
 };
 
-test('a manual session stage launches without a repo', async ({ relaunch }) => {
+test('an outside-repo session stage launches without a repo', async ({ relaunch }) => {
+  const workflows = adeFixture<{
+    workflows: { workflow: { id: string; steps: { id: string; outsideRepo: boolean }[] } }[];
+  }>('workflows');
+  const spec = workflows.workflows
+    .find((w) => w.workflow?.id === 'standard')
+    ?.workflow.steps.find((s) => s.id === 'spec');
+  if (!spec) throw new Error('fixture workflow missing');
+  spec.outsideRepo = true;
   const { window: page, control } = await openPlan(relaunch, [
-    board(alertsWithoutRepo('spec')),
+    adeBoardSnapshot(alertsWithoutRepo('spec')),
+    { channel: IPC.adeTaskWorkflows, response: workflows },
     { channel: IPC.adeTaskSessions, response: noTalking },
     {
       channel: IPC.adeTaskLaunchStep,
@@ -116,7 +89,7 @@ test('a manual session stage launches without a repo', async ({ relaunch }) => {
     },
   ]);
   await page.locator(cellAction('T_alerts', 'session')).click();
-  await expect(page.locator(t('ade-dialog-message'))).toHaveValue(/No repo yet/);
+  await expect(page.locator(t('ade-repo-gate'))).toHaveCount(0);
   await page.locator(t('ade-dialog-send')).click();
   await expect.poll(() => calls(control, IPC.adeTaskLaunchStep)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskLaunchStep)[0]?.args).toEqual({
@@ -135,7 +108,7 @@ test('a step that needs a branch shows Needs a repository and no Run', async ({ 
   if (!plan) throw new Error('fixture workflow missing');
   plan.runsOn = 'only api';
   const { window: page } = await openPlan(relaunch, [
-    board(alertsWithoutRepo('plan')),
+    adeBoardSnapshot(alertsWithoutRepo('plan')),
     { channel: IPC.adeTaskWorkflows, response: workflows },
   ]);
   await expect(page.locator(task('T_alerts'))).toBeVisible();

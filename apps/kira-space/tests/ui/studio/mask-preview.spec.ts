@@ -115,7 +115,7 @@ const NOW = '2026-01-01T00:00:00.000Z';
 const EMAIL_RULE = {
   id: 'rule-email-1',
   connectionId: CONNECTION_ID,
-  tableName: 'app.customers',
+  tableName: '*',
   columnName: 'email',
   kind: 'email' as const,
   keepHint: true,
@@ -175,7 +175,7 @@ test('grid mask preview — mark a column PII, preview masks and locks editing, 
       args: {
         connectionId: CONNECTION_ID,
         fields: {
-          tableName: 'app.customers',
+          tableName: '*',
           columnName: 'email',
           kind: 'email',
           keepHint: true,
@@ -356,7 +356,7 @@ test('grid mask preview — turns itself back off when the correlation key fetch
       args: {
         connectionId: CONNECTION_ID,
         fields: {
-          tableName: 'app.customers',
+          tableName: '*',
           columnName: 'email',
           kind: 'email',
           keepHint: true,

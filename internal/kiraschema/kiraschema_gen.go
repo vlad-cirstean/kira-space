@@ -959,6 +959,7 @@ var Connections = struct {
 	OptionsJSON            string
 	MCPTablesJSON          string
 	ConfigJSON             string
+	ExplainThresholdRows   string
 }{
 	Table:                  "connections",
 	ID:                     "id",
@@ -997,6 +998,7 @@ var Connections = struct {
 	OptionsJSON:            "options_json",
 	MCPTablesJSON:          "mcp_tables_json",
 	ConfigJSON:             "config_json",
+	ExplainThresholdRows:   "explain_threshold_rows",
 }
 
 // DockerRestoreContainers names table docker_restore_containers.
@@ -1138,31 +1140,27 @@ var GitHostSyncState = struct {
 
 // KubeClusters names table kube_clusters.
 var KubeClusters = struct {
-	Table           string
-	ID              string
-	SortOrder       string
-	CreatedAt       string
-	LastSeenAt      string
-	Context         string
-	Server          string
-	MCPDescription  string
-	MCPDiscoverMode string
-	MCPListMode     string
-	MCPDescribeMode string
-	MCPLogsMode     string
+	Table          string
+	ID             string
+	SortOrder      string
+	CreatedAt      string
+	LastSeenAt     string
+	Context        string
+	Server         string
+	MCPDescription string
+	MCPEnabled     string
+	MCPApproval    string
 }{
-	Table:           "kube_clusters",
-	ID:              "id",
-	SortOrder:       "sort_order",
-	CreatedAt:       "created_at",
-	LastSeenAt:      "last_seen_at",
-	Context:         "context",
-	Server:          "server",
-	MCPDescription:  "mcp_description",
-	MCPDiscoverMode: "mcp_discover_mode",
-	MCPListMode:     "mcp_list_mode",
-	MCPDescribeMode: "mcp_describe_mode",
-	MCPLogsMode:     "mcp_logs_mode",
+	Table:          "kube_clusters",
+	ID:             "id",
+	SortOrder:      "sort_order",
+	CreatedAt:      "created_at",
+	LastSeenAt:     "last_seen_at",
+	Context:        "context",
+	Server:         "server",
+	MCPDescription: "mcp_description",
+	MCPEnabled:     "mcp_enabled",
+	MCPApproval:    "mcp_approval",
 }
 
 // MobileDevices names table mobile_devices.

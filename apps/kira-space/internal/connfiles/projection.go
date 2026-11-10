@@ -154,7 +154,7 @@ var configColumns = func() []string {
 	c := kiraschema.Connections
 	return []string{
 		c.Name, c.Kind, c.Color, c.Mode, c.ReadOnly, c.Host, c.Port, c.Database, c.Username, c.OptionsJSON,
-		c.Preconnect, c.PreconnectSidecar, c.PreconnectDelaySec, c.AutoExplain, c.ThrottlePerSec,
+		c.Preconnect, c.PreconnectSidecar, c.PreconnectDelaySec, c.AutoExplain, c.ThrottlePerSec, c.ExplainThresholdRows,
 		c.MCPEnabled, c.MCPDescription, c.MCPReadMode, c.MCPWriteMode, c.MCPDdlMode, c.MCPMaskedMode,
 		c.MCPAutoExplain, c.MCPReviewRead, c.MCPReviewWrite, c.MCPReviewDdl, c.MCPReviewMasked,
 		c.MCPStatementTimeoutSec, c.MCPTablesJSON, c.MaskReviewOn,
@@ -183,7 +183,7 @@ func configArgs(c model.ConnectionFields) ([]any, error) {
 	}
 	return []any{
 		c.Name, c.Kind, c.Color, c.Mode, b2i(c.ReadOnly), c.Host, c.Port, c.Database, c.Username, string(opts),
-		c.Preconnect, b2i(c.PreconnectSidecar), c.PreconnectDelaySec, b2i(c.AutoExplain), c.ThrottlePerSec,
+		c.Preconnect, b2i(c.PreconnectSidecar), c.PreconnectDelaySec, b2i(c.AutoExplain), c.ThrottlePerSec, c.ExplainThresholdRows,
 		b2i(c.McpEnabled), c.McpDescription, c.McpReadMode, c.McpWriteMode, c.McpDdlMode, c.McpMaskedMode, b2i(c.McpAutoExplain),
 		c.McpReview.Read, c.McpReview.Write, c.McpReview.Ddl, c.McpReview.Masked, c.McpStatementTimeoutSec, tables, b2i(c.MaskReviewOn),
 	}, nil

@@ -122,6 +122,20 @@ func (a *Adapter) requireClient(ctx context.Context, database string) (*trackedC
 	return connSet.Acquire(ctx, database)
 }
 
+// Ping is adapters.Pinger: one round trip on the primary connection. A failed ping leaves pgx's
+// conn closed, so the next Acquire redials.
+func (a *Adapter) Ping(ctx context.Context) error {
+	conn, release, err := a.requireClient(ctx, "")
+	if err != nil {
+		return err
+	}
+	defer release()
+	if err := conn.Ping(ctx); err != nil {
+		return adapters.PingFailure(mapError(err))
+	}
+	return nil
+}
+
 // Children is index.ts's children.
 func (a *Adapter) Children(ctx context.Context, path model.NodePath, op *adapters.OpCtx) (adapters.TreeChildren, error) {
 	segments := path.Segments

@@ -41,11 +41,9 @@
         "current": true,
         "id": "<masked>",
         "mcp": {
-          "describe": "prompt",
+          "approval": "prompt",
           "description": "",
-          "discover": "prompt",
-          "list": "prompt",
-          "logs": "prompt"
+          "enabled": false
         },
         "namespace": "default",
         "server": "<kube>",
@@ -58,11 +56,9 @@
         "current": false,
         "id": "<masked>",
         "mcp": {
-          "describe": "prompt",
+          "approval": "prompt",
           "description": "",
-          "discover": "prompt",
-          "list": "prompt",
-          "logs": "prompt"
+          "enabled": false
         },
         "namespace": "",
         "server": "<kube>",
@@ -75,11 +71,9 @@
         "current": false,
         "id": "<masked>",
         "mcp": {
-          "describe": "prompt",
+          "approval": "prompt",
           "description": "",
-          "discover": "prompt",
-          "list": "prompt",
-          "logs": "prompt"
+          "enabled": false
         },
         "namespace": "",
         "server": "<down>",
@@ -92,11 +86,80 @@
         "current": false,
         "id": "<masked>",
         "mcp": {
-          "describe": "prompt",
+          "approval": "prompt",
           "description": "",
-          "discover": "prompt",
-          "list": "prompt",
-          "logs": "prompt"
+          "enabled": false
+        },
+        "namespace": "",
+        "server": "<kube>",
+        "source": "<kubeconfig>",
+        "user": "plugin-user"
+      }
+    ],
+    "config": {
+      "message": "",
+      "paths": [
+        "<kubeconfig>"
+      ],
+      "state": "ok"
+    }
+  },
+  "KubernetesService.Clusters:enabled": {
+    "clusters": [
+      {
+        "cluster": "kind-dev",
+        "context": "kind-dev",
+        "current": true,
+        "id": "<masked>",
+        "mcp": {
+          "approval": "allow",
+          "description": "dev cluster, safe to read",
+          "enabled": true
+        },
+        "namespace": "default",
+        "server": "<kube>",
+        "source": "<kubeconfig>",
+        "user": "dev-user"
+      },
+      {
+        "cluster": "kind-dev",
+        "context": "bad-token",
+        "current": false,
+        "id": "<masked>",
+        "mcp": {
+          "approval": "prompt",
+          "description": "",
+          "enabled": false
+        },
+        "namespace": "",
+        "server": "<kube>",
+        "source": "<kubeconfig>",
+        "user": "bad-user"
+      },
+      {
+        "cluster": "down",
+        "context": "down",
+        "current": false,
+        "id": "<masked>",
+        "mcp": {
+          "approval": "prompt",
+          "description": "",
+          "enabled": false
+        },
+        "namespace": "",
+        "server": "<down>",
+        "source": "<kubeconfig>",
+        "user": "dev-user"
+      },
+      {
+        "cluster": "kind-dev",
+        "context": "plugin-ctx",
+        "current": false,
+        "id": "<masked>",
+        "mcp": {
+          "approval": "prompt",
+          "description": "",
+          "enabled": false
         },
         "namespace": "",
         "server": "<kube>",
@@ -113,11 +176,9 @@
     }
   },
   "KubernetesService.SetMcp": {
-    "describe": "deny",
+    "approval": "allow",
     "description": "dev cluster, safe to read",
-    "discover": "allow",
-    "list": "prompt",
-    "logs": "allow"
+    "enabled": true
   },
   "OpsService.Recent": [
     {
@@ -159,11 +220,17 @@
   "args:KubernetesService.SetMcp": {
     "clusterId": "<masked>",
     "mcp": {
-      "describe": "deny",
+      "approval": "allow",
       "description": "dev cluster, safe to read",
-      "discover": "allow",
-      "list": "prompt",
-      "logs": "allow"
+      "enabled": true
+    }
+  },
+  "args:KubernetesService.SetMcp:enable": {
+    "clusterId": "<masked>",
+    "mcp": {
+      "approval": "prompt",
+      "description": "",
+      "enabled": true
     }
   }
 }

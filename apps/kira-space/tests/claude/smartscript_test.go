@@ -76,6 +76,7 @@ func studioSmartScriptMCP(t *testing.T) {
 
 	t.Run("app MCP server loads through claude", func(t *testing.T) {
 		app := newRealApp(t)
+		app.SetHermetic(t, true) // off by default since P588
 		if err := os.Remove(filepath.Join(app.BinDir, "claude")); err != nil {
 			t.Fatal(err)
 		}

@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strconv"
 	"sync"
 
@@ -49,6 +50,26 @@ type Adapter struct {
 	// own point is the opposite direction of B6/B14, but the underlying race is identical: closing
 	// a connection while a goroutine is still using it is a data race regardless of which adapter).
 	inFlight sync.WaitGroup
+}
+
+// Ping is adapters.Pinger. An open handle survives an unlinked file, so the file check is what
+// makes a vanished database fail.
+func (a *Adapter) Ping(ctx context.Context) error {
+	st := a.state.Load()
+	if st.db == nil {
+		return adapters.T(adapters.CodeConnect, "backend.studio.adapter.notConnected.body", nil, nil)
+	}
+	if err := assertFileExists(st.file); err != nil {
+		var ae *adapters.Error
+		if errors.As(err, &ae) {
+			return adapters.New(adapters.CodeEngineDown, ae.Message, err)
+		}
+		return err
+	}
+	if err := st.db.PingContext(ctx); err != nil {
+		return adapters.PingFailure(mapError(err))
+	}
+	return nil
 }
 
 func (a *Adapter) Kind() string        { return "sqlite" }

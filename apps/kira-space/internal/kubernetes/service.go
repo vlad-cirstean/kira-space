@@ -320,7 +320,7 @@ func unavailable(err error, fallback string) Status {
 
 const mcpDescriptionMax = 1000
 
-func validMcpMode(m string) bool { return m == "deny" || m == "prompt" || m == "allow" }
+func validApproval(a string) bool { return a == "prompt" || a == "allow" }
 
 // SetMcp validates and stores a cluster's MCP settings and returns what is stored.
 func (s *Service) SetMcp(_ context.Context, args SetMcpArgs) (McpSettings, error) {
@@ -328,10 +328,8 @@ func (s *Service) SetMcp(_ context.Context, args SetMcpArgs) (McpSettings, error
 		return McpSettings{}, ipcerr.Required("clusterId")
 	}
 	m := args.Mcp
-	for _, mode := range []string{m.Discover, m.List, m.Describe, m.Logs} {
-		if !validMcpMode(mode) {
-			return McpSettings{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.kubernetes.badMcpMode.error", map[string]string{"mode": mode})
-		}
+	if !validApproval(m.Approval) {
+		return McpSettings{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.kubernetes.badMcpMode.error", map[string]string{"mode": m.Approval})
 	}
 	if utf8.RuneCountInString(m.Description) > mcpDescriptionMax {
 		return McpSettings{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.kubernetes.mcpDescriptionTooLong.error", map[string]string{"max": strconv.Itoa(mcpDescriptionMax)})

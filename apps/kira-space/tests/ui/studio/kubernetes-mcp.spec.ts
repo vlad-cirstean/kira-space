@@ -3,18 +3,25 @@ import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/appro
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
-import { idOf, kubeError, loc, openKubernetes, setupKubernetes } from './support/kubernetesFixture';
+import {
+  clusters,
+  idOf,
+  kubeError,
+  loc,
+  openKubernetes,
+  setupKubernetes,
+} from './support/kubernetesFixture';
 import { openSettings } from './support/settings';
 
-// Contract dbmcp-kube. Backend half: dbmcpflow TestKubeMcp. A cluster's MCP settings save as one
-// SetMcp call; an AI client's Kubernetes read parks on the shared approval dialog.
+// Contract dbmcp-kube. Backend half: dbmcpflow TestKubeMcp. A cluster's MCP switch, description and
+// approval save as one SetMcp call; an AI client's Kubernetes read parks on the shared approval dialog.
 
 const SCENARIO = 'dbmcp-kube';
-const setMcpArgs = () =>
-  contract<{ clusterId: string; mcp: Record<string, string> }>(
-    SCENARIO,
-    'args:KubernetesService.SetMcp',
-  );
+interface SetMcpArgs {
+  clusterId: string;
+  mcp: { description: string; enabled: boolean; approval: string };
+}
+const setMcpArgs = (key = 'args:KubernetesService.SetMcp') => contract<SetMcpArgs>(SCENARIO, key);
 
 async function openMcpDialog(page: Parameters<typeof loc>[0]): Promise<void> {
   await openKubernetes(page);
@@ -25,19 +32,20 @@ async function openMcpDialog(page: Parameters<typeof loc>[0]): Promise<void> {
   await expect(loc(page, 'kube-mcp-dialog')).toBeVisible();
 }
 
-test('contract: the cluster menu edits MCP settings and Save sends them', async ({ relaunch }) => {
+test('contract: the cluster menu turns MCP on, sets description and approval, Save sends them', async ({
+  relaunch,
+}) => {
   const args = setMcpArgs();
   const { page, kube } = await setupKubernetes(relaunch);
   await openMcpDialog(page);
 
-  for (const group of ['discover', 'list', 'describe', 'logs']) {
-    await expect(loc(page, `kube-mcp-${group}-prompt`)).toHaveAttribute('data-state', 'on');
-  }
-  await loc(page, 'kube-mcp-description').fill(args.mcp.description ?? '');
-  await loc(page, `kube-mcp-discover-${args.mcp.discover}`).click();
-  await loc(page, `kube-mcp-list-${args.mcp.list}`).click();
-  await loc(page, `kube-mcp-describe-${args.mcp.describe}`).click();
-  await loc(page, `kube-mcp-logs-${args.mcp.logs}`).click();
+  await expect(loc(page, 'kube-mcp-enabled')).toHaveAttribute('data-state', 'unchecked');
+  await expect(loc(page, 'kube-mcp-description')).toHaveCount(0);
+  await expect(loc(page, 'kube-mcp-approval')).toHaveCount(0);
+  await loc(page, 'kube-mcp-enabled').click();
+  await expect(loc(page, 'kube-mcp-prompt')).toHaveAttribute('data-state', 'checked');
+  await loc(page, 'kube-mcp-description').fill(args.mcp.description);
+  await loc(page, `kube-mcp-${args.mcp.approval}`).click();
   await loc(page, 'kube-mcp-save').click();
 
   await expect(loc(page, 'kube-mcp-dialog')).toHaveCount(0);
@@ -57,18 +65,55 @@ test('contract: a rejected Save keeps the dialog open with the error', async ({ 
   await expect(loc(page, 'kube-mcp-dialog')).toBeVisible();
 });
 
-test('contract: Database MCP settings list the clusters and edit one', async ({ relaunch }) => {
-  const { page } = await setupKubernetes(relaunch);
+async function openDbMcpSettings(page: Parameters<typeof loc>[0]): Promise<void> {
   await openSettings(page);
   await page.click('[data-testid="settings-section-Database MCP"]');
+  await expect(loc(page, 'db-mcp-kube-list')).toBeVisible();
+}
+
+test('contract: the Database MCP switch turns a cluster on with one SetMcp call', async ({
+  relaunch,
+}) => {
+  const args = setMcpArgs('args:KubernetesService.SetMcp:enable');
+  const { page, kube } = await setupKubernetes(relaunch);
+  await openDbMcpSettings(page);
 
   const dev = idOf('kind-dev');
-  await expect(loc(page, 'db-mcp-kube-list')).toBeVisible();
-  await expect(loc(page, `db-mcp-kube-row-${dev}`)).toContainText(
-    'Discover prompt · list prompt · describe prompt · logs prompt',
-  );
+  await expect(loc(page, `db-mcp-kube-${dev}`)).toHaveText('Off');
+  await loc(page, `db-mcp-kube-toggle-${dev}`).click();
+
+  await expect
+    .poll(() => kube.calls('SetMcp').map((c) => c.args))
+    .toEqual([{ ...args, clusterId: dev }]);
+});
+
+test('contract: an enabled cluster shows its approval in Database MCP settings', async ({
+  relaunch,
+}) => {
+  const { page } = await setupKubernetes(relaunch, {
+    Clusters: () => {
+      // The flow contract masks ids; swap in the kubernetes.json ids by context.
+      const res = contract<{ clusters: { id: string; context: string }[] }>(
+        SCENARIO,
+        'KubernetesService.Clusters:enabled',
+      );
+      return { ...res, clusters: res.clusters.map((c) => ({ ...c, id: idOf(c.context) })) };
+    },
+  });
+  await openDbMcpSettings(page);
+
+  const dev = idOf('kind-dev');
+  const row = loc(page, `db-mcp-kube-row-${dev}`);
+  await expect(loc(page, `db-mcp-kube-${dev}`)).toHaveText('Exposed');
+  await expect(row).toContainText('Reads straight away');
+  await expect(row).toContainText('dev cluster, safe to read');
+  const others = clusters().filter((c) => c.id !== dev);
+  for (const c of others) await expect(loc(page, `db-mcp-kube-${c.id}`)).toHaveText('Off');
+
   await loc(page, `db-mcp-kube-edit-${dev}`).click();
   await expect(loc(page, 'kube-mcp-dialog')).toBeVisible();
+  await expect(loc(page, 'kube-mcp-enabled')).toHaveAttribute('data-state', 'checked');
+  await expect(loc(page, 'kube-mcp-allow')).toHaveAttribute('data-state', 'checked');
 });
 
 test('contract: a Kubernetes read shows the cluster and answers by item id', async ({

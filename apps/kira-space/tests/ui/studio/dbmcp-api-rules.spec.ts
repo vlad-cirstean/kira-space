@@ -10,6 +10,8 @@ type Patch = { patch: { dbMcp: { apiRules: Rule[] } } };
 
 const KEYS = ['allow', 'wildcard', 'deny', 'remove', 'removeWildcard', 'clear'] as const;
 const dbMcp = { ...defaultSettings.dbMcp, apiRequests: true };
+// The backend half denies unmatched requests until its #clear step, which sets the default back to ask.
+const denying = { ...dbMcp, apiDefault: 'deny' as const };
 
 const rows = (page: Page) => page.locator('[data-testid="settings-db-mcp-api-rule"]');
 const empty = (page: Page) => page.locator('[data-testid="settings-db-mcp-api-rules-empty"]');
@@ -27,7 +29,8 @@ async function addRule(page: Page, host: string, effect: 'allow' | 'deny', metho
 }
 
 // Contract dbmcp-api-rules. Backend half: dbmcpflow TestApiAccessRules, which applies the same six
-// rule lists in the same order and asserts the gate each one produces.
+// rule lists in the same order, with unmatched requests denied until the last one, and asserts the gate
+// each one produces.
 test('contract: add, edit and remove rules send the same lists the backend enforces', async ({
   relaunch,
 }) => {
@@ -37,11 +40,17 @@ test('contract: add, edit and remove rules send the same lists the backend enfor
   }));
   const { window: page, control } = await relaunch({
     control: [
-      { channel: IPC.settingsGetAll, response: { ...defaultSettings, dbMcp } },
-      ...patches.map(({ args }) => ({
+      { channel: IPC.settingsGetAll, response: { ...defaultSettings, dbMcp: denying } },
+      ...patches.map(({ key, args }) => ({
         channel: IPC.settingsSet,
         args,
-        response: { ...defaultSettings, dbMcp: { ...dbMcp, apiRules: args.patch.dbMcp.apiRules } },
+        response: {
+          ...defaultSettings,
+          dbMcp: {
+            ...(key === 'clear' ? dbMcp : denying),
+            apiRules: args.patch.dbMcp.apiRules,
+          },
+        },
       })),
     ],
   });
@@ -55,6 +64,7 @@ test('contract: add, edit and remove rules send the same lists the backend enfor
   await openSettings(page);
   await page.click('[data-testid="settings-section-Database MCP"]');
   await expect(empty(page)).toBeVisible();
+  await expect(page.locator('[data-testid="settings-db-mcp-api-rules-no-allow"]')).toBeVisible();
 
   await addRule(page, '127.0.0.1', 'allow', ['GET']);
   await expect.poll(lastSet).toEqual(allow);

@@ -1186,23 +1186,31 @@ func TestMongo_Connect_CancelledCtxReturns(t *testing.T) {
 func TestMongo_ReadLane(t *testing.T) {
 	fixture := testsupport.StartMongo(t)
 	a := connectedAdapter(t, fixture)
-	path := nodePath(fixture, seg("database", testsupport.MongoDatabase))
-	testsupport.RunScenarios(t, a, fixture.Config,
-		testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
-			Path: path, Write: `db.lane_probe.insertOne({ n: 1 })`, WantErr: "read-only",
-			Unchanged: func(t *testing.T, main adapters.Adapter) {
-				t.Helper()
-				pages, err := main.Execute(context.Background(), model.ConsoleRequest{
-					Path: path, Statements: []string{`db.lane_probe.countDocuments({})`},
-				}, adapters.NewOpCtx("lane-verify"))
-				if err != nil {
-					t.Fatalf("countDocuments: %v", err)
-				}
-				body := docBodyAt(t, pages[0].(page.DocumentPage), 0)
-				if body == nil || !strings.Contains(*body, `"$numberLong":"0"`) {
-					t.Errorf("lane_probe count body = %v, want 0", derefStr(body))
-				}
-			},
-		}),
-	)
+	testsupport.RunScenarios(t, a, fixture.Config, mongoLaneRefusesWrite(fixture.Config.ID))
+}
+
+// mongoLaneRefusesWrite is the lane write refusal, shared with the read-only user's matrix row.
+func mongoLaneRefusesWrite(connID string) testsupport.Scenario {
+	path := testsupport.NodePath(connID, testsupport.Seg("database", testsupport.MongoDatabase))
+	return testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+		Path: path, Write: `db.lane_probe.insertOne({ n: 1 })`, WantErr: "read-only",
+		Unchanged: func(t *testing.T, main adapters.Adapter) {
+			t.Helper()
+			pages, err := main.Execute(context.Background(), model.ConsoleRequest{
+				Path: path, Statements: []string{`db.lane_probe.countDocuments({})`},
+			}, adapters.NewOpCtx("lane-verify"))
+			if err != nil {
+				t.Fatalf("countDocuments: %v", err)
+			}
+			body := docBodyAt(t, pages[0].(page.DocumentPage), 0)
+			if body == nil || !strings.Contains(*body, `"$numberLong":"0"`) {
+				t.Errorf("lane_probe count body = %v, want 0", derefStr(body))
+			}
+		},
+	})
+}
+
+func TestMongo_Ping(t *testing.T) {
+	fixture := testsupport.StartMongo(t)
+	testsupport.RunScenarios(t, connectedAdapter(t, fixture), fixture.Config, testsupport.PingAnswers())
 }

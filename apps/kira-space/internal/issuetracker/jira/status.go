@@ -17,6 +17,8 @@ const (
 	authTimeout    = 10 * time.Second
 	okTTL          = 5 * time.Minute
 	notOKTTL       = 30 * time.Second
+	// okStaleFor bounds how long an OK entry past okTTL is still served while a background probe runs.
+	okStaleFor = time.Hour
 )
 
 type discovery struct {
@@ -24,8 +26,9 @@ type discovery struct {
 	runner  Runner
 	clock   Clock
 
-	mu     sync.Mutex
-	cached *statusEntry
+	mu      sync.Mutex
+	cached  *statusEntry
+	probing bool // a background probe runs
 }
 
 type statusEntry struct {
@@ -38,20 +41,27 @@ func newDiscovery(l Locator, r Runner, c Clock) *discovery {
 }
 
 // status caches one entry: 5 minutes when ok, 30 seconds otherwise, so a login in another terminal is
-// noticed soon. A caller-cancelled probe is never cached.
+// noticed soon. An ok entry up to an hour old is served at once while one background probe replaces
+// it; refresh and every other entry probe inline. A caller-cancelled probe is never cached.
 func (d *discovery) status(ctx context.Context, refresh bool) issuetracker.Status {
 	d.mu.Lock()
 	if refresh {
 		d.cached = nil
 	}
 	if e := d.cached; e != nil {
-		ttl := notOKTTL
-		if e.status.OK() {
-			ttl = okTTL
-		}
-		if d.clock.Now().Sub(e.at) < ttl {
-			s := e.status
+		age := d.clock.Now().Sub(e.at)
+		s := e.status
+		switch {
+		case s.OK() && age < okTTL, !s.OK() && age < notOKTTL:
 			d.mu.Unlock()
+			return s
+		case s.OK() && age < okStaleFor:
+			start := !d.probing
+			d.probing = true
+			d.mu.Unlock()
+			if start {
+				go d.reprobe()
+			}
 			return s
 		}
 	}
@@ -65,6 +75,22 @@ func (d *discovery) status(ctx context.Context, refresh bool) issuetracker.Statu
 	d.cached = &statusEntry{status: s, at: d.clock.Now()}
 	d.mu.Unlock()
 	return s
+}
+
+// reprobe replaces the entry with a fresh probe, ok or not. versionTimeout and authTimeout bound it.
+func (d *discovery) reprobe() {
+	s := d.probe(context.Background())
+	d.mu.Lock()
+	d.cached = &statusEntry{status: s, at: d.clock.Now()}
+	d.probing = false
+	d.mu.Unlock()
+}
+
+// forget drops the entry, so the next status call probes inline.
+func (d *discovery) forget() {
+	d.mu.Lock()
+	d.cached = nil
+	d.mu.Unlock()
 }
 
 func (d *discovery) probe(ctx context.Context) issuetracker.Status {

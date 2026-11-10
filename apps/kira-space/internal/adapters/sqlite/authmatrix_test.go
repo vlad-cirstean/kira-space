@@ -62,6 +62,19 @@ func TestSqlite_AuthMatrix(t *testing.T) {
 					[]string{"CREATE TABLE p26_ro_matrix_scratch (id INTEGER)"},
 					adapters.CodeUnsupported,
 				),
+				// P602: a read-only file under the lane. The write targets a seeded table, since this
+				// connection cannot create a scratch one.
+				testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+					Path:  testsupport.NodePath(f.Config.ID, testsupport.Seg("database", "main")),
+					Write: "INSERT INTO regions (id, name) VALUES (9602, 'p602')", WantErr: "readonly",
+					Unchanged: func(t *testing.T, main adapters.Adapter) {
+						t.Helper()
+						if got := testsupport.FirstCell(t, main, testsupport.NodePath(f.Config.ID, testsupport.Seg("database", "main")), "SELECT count(*) FROM regions WHERE id = 9602"); got != "0" {
+							t.Errorf("regions rows with id 9602 = %s, want 0", got)
+						}
+					},
+				}),
+				sqliteExplainPlan(f.Config.ID),
 			},
 		},
 		{

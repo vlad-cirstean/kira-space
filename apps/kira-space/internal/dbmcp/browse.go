@@ -483,7 +483,7 @@ func (s *Server) resolveBrowse(args browseTableArgs) (rv queryResolution, sh bro
 		res, out, err = errResult(msg)
 		return rv, sh, res, out, err, true
 	}
-	rv.threshold = s.cfg.ExplainThreshold()
+	rv.threshold = s.thresholdFor(rv.summary)
 	return rv, sh, nil, nil, nil, false
 }
 

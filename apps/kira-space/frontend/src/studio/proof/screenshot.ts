@@ -73,7 +73,7 @@ export async function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /** A file-name-safe slug of a session or step name. */
-export function fileSlug(name: string): string {
+function fileSlug(name: string): string {
   return (
     name
       .normalize('NFKD')

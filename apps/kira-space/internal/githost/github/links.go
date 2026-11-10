@@ -13,9 +13,12 @@ import (
 
 var linkNamePattern = regexp.MustCompile(`^[\w.-]+$`)
 
-var pullTabs = map[string]bool{"files": true, "commits": true, "checks": true}
+// pullTabs are the tabs GitHub serves under a pull request; true when the tab takes sub-paths
+// (`files/a..b`, `commits/<sha>`, `changes/<sha>`).
+var pullTabs = map[string]bool{"files": true, "commits": true, "checks": false, "changes": true}
 
-// ParseBranchLink reads a pull, tree or issue link on a claimed host. Query and fragment are ignored.
+// ParseBranchLink reads a pull, tree or issue link on a claimed host. Query, fragment and one trailing
+// slash are ignored. A pull link may name a tab from pullTabs, with sub-paths where the tab takes them.
 func (p *Provider) ParseBranchLink(ctx context.Context, raw string) (githost.BranchLink, bool) {
 	u, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil || u.Scheme != "https" || u.Host == "" || !p.Claims(ctx, u.Host) {
@@ -28,6 +31,9 @@ func (p *Provider) ParseBranchLink(ctx context.Context, raw string) (githost.Bra
 			return githost.BranchLink{}, false
 		}
 		segs = append(segs, d)
+	}
+	if n := len(segs); n > 0 && segs[n-1] == "" {
+		segs = segs[:n-1]
 	}
 	if len(segs) < 4 {
 		return githost.BranchLink{}, false
@@ -49,7 +55,7 @@ func (p *Provider) ParseBranchLink(ctx context.Context, raw string) (githost.Bra
 				return githost.BranchLink{}, false
 			}
 			link.Issue = true
-		} else if len(rest) > 2 || (len(rest) == 2 && !pullTabs[rest[1]]) {
+		} else if !validPullTail(rest[1:]) {
 			return githost.BranchLink{}, false
 		}
 		link.Number = n
@@ -64,6 +70,23 @@ func (p *Provider) ParseBranchLink(ctx context.Context, raw string) (githost.Bra
 		return githost.BranchLink{}, false
 	}
 	return link, true
+}
+
+// validPullTail accepts nothing, or a known tab followed by non-empty sub-paths only where it takes them.
+func validPullTail(tail []string) bool {
+	if len(tail) == 0 {
+		return true
+	}
+	deeper, known := pullTabs[tail[0]]
+	if !known || (len(tail) > 1 && !deeper) {
+		return false
+	}
+	for _, s := range tail[1:] {
+		if s == "" {
+			return false
+		}
+	}
+	return true
 }
 
 func digitsOnly(s string) bool {

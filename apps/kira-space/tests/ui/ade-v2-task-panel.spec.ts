@@ -106,16 +106,17 @@ test('Main shows branches with their PR line and never handover text', async ({ 
   await expect(page.locator(t('ade-task-chain'))).toHaveCount(0);
 });
 
-test('Details groups the Jira and host links in Main and stored links in Related', async ({
-  relaunch,
-}) => {
+test('Details groups links under Issues, Change requests and Misc', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, panel());
   await openDetails(page);
-  const main = page.locator(t('ade-details-main'));
-  await expect(main.locator(t('ade-details-link'), { hasText: 'PAY-130' })).toHaveCount(1);
-  await expect(main.locator(t('ade-details-link'), { hasText: 'Fix login' })).toHaveCount(1);
-  const related = page.locator(t('ade-details-related'));
-  await expect(related.locator(t('ade-details-link'), { hasText: 'Runbook' })).toHaveCount(1);
+  const group = (id: string) => page.locator(`${t('ade-details-group')}[data-group="${id}"]`);
+  await expect(group('issue').locator(t('ade-details-link'), { hasText: 'PAY-130' })).toHaveCount(
+    1,
+  );
+  await expect(
+    group('changeRequest').locator(t('ade-details-link'), { hasText: 'Fix login' }),
+  ).toHaveCount(1);
+  await expect(group('misc').locator(t('ade-details-link'), { hasText: 'Runbook' })).toHaveCount(1);
   const titles = page.locator(t('ade-details-link-title'));
   const count = await titles.count();
   for (let i = 0; i < count; i++) {

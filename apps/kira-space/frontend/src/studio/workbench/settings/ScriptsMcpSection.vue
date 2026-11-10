@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
-import { Card } from '@theme/components/ui/card';
 import { FieldDescription, FieldLegend } from '@theme/components/ui/field';
-import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { applyRunFileEdits } from '@workbench/automations/runFileQueries';
 import { runFileName } from '@workbench/automations/scriptActions';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { computed } from 'vue';
 import { useCustomScriptsStore } from '../../../state/customScripts';
+import McpExposureRow from './McpExposureRow.vue';
 
 // Which normal scripts an agent on the Database MCP server may list and run. The switch edits the
 // script's run file (the mcp block); description and approval mode are edited in its MCP tab.
@@ -32,46 +31,31 @@ const toggle = useAsyncAction((id: string, enabled: boolean) =>
     data-testid="db-mcp-scripts-list"
   >
     <li v-for="s in normal" :key="s.id">
-      <Card
-        variant="list"
-        class="flex-row items-center justify-between gap-1.5"
-        :data-testid="`db-mcp-script-row-${s.id}`"
+      <McpExposureRow
+        :id="s.id"
+        testid="db-mcp-script"
+        :name="s.name"
+        :enabled="s.mcp?.enabled === true"
+        :status="
+          t(
+            s.mcp?.run === 'allow'
+              ? 'studio.settings.dbMcp.scripts.allow.status'
+              : 'studio.settings.dbMcp.scripts.prompt.status',
+          )
+        "
+        :pending="toggle.pending.value"
+        :toggle-aria="t('studio.settings.dbMcp.scripts.toggle.aria', { name: s.name })"
+        @toggle="(on) => toggle.run(s.id, on)"
       >
-        <div class="flex flex-col min-w-0 gap-0.5">
-          <span class="break-words text-fg text-kira-md">{{ s.name }}</span>
-          <FieldDescription v-if="s.mcp?.enabled">{{
-            t(
-              s.mcp.run === 'allow'
-                ? 'studio.settings.dbMcp.scripts.allow.status'
-                : 'studio.settings.dbMcp.scripts.prompt.status',
-            )
-          }}</FieldDescription>
-        </div>
-        <div class="flex shrink-0 items-center gap-1.5">
-          <Badge
-            v-if="s.mcp?.enabled && s.mcp.mode === 'long'"
-            variant="default"
-            :data-testid="`db-mcp-script-long-${s.id}`"
-            >{{
-              t('studio.settings.dbMcp.scripts.long.status')
-            }}</Badge
-          >
-          <Badge
-            :variant="s.mcp?.enabled ? 'ok' : 'default'"
-            :data-testid="`db-mcp-script-${s.id}`"
-            >{{
-              s.mcp?.enabled ? t('studio.settings.dbMcp.exposed.status') : t('common.off.status')
-            }}</Badge
-          >
-          <Switch
-            :model-value="s.mcp?.enabled === true"
-            :disabled="toggle.pending.value"
-            :aria-label="t('studio.settings.dbMcp.scripts.toggle.aria', { name: s.name })"
-            :data-testid="`db-mcp-script-toggle-${s.id}`"
-            @update:model-value="(v) => toggle.run(s.id, v === true)"
-          />
-        </div>
-      </Card>
+        <Badge
+          v-if="s.mcp?.enabled && s.mcp.mode === 'long'"
+          variant="default"
+          :data-testid="`db-mcp-script-long-${s.id}`"
+          >{{
+            t('studio.settings.dbMcp.scripts.long.status')
+          }}</Badge
+        >
+      </McpExposureRow>
     </li>
   </ul>
   <FieldDescription v-else data-testid="db-mcp-scripts-empty">

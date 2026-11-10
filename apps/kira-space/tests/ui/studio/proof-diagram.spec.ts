@@ -99,9 +99,10 @@ test('contract: the copied screenshot holds the diagram', async ({ relaunch, uiS
   await tab(page, 1).click();
   await expect(diagram(page).locator('svg')).toBeVisible();
   await installClipboardSpy(page, { image: true });
-  const button = page.locator('[data-testid="proof-shot"]');
+  const button = page.locator('[data-testid="proof-shot-more"]');
   await button.hover();
   await button.click();
+  await page.locator('[data-testid="proof-shot-copy"]').click();
   await expect
     .poll(
       () =>

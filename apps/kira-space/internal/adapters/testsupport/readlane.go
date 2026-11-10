@@ -21,6 +21,9 @@ type ReadLaneCase struct {
 	WantErr   string
 	Unchanged func(t *testing.T, main adapters.Adapter)
 	Teardown  []string
+	// Admin, when set, runs Setup and Teardown on its adapter instead of the scenario's own one, so
+	// a least-privilege matrix row can probe a table it may touch but not create.
+	Admin func(t *testing.T) adapters.Adapter
 }
 
 func laneAdapter(t *testing.T, a adapters.Adapter, cfg model.ResolvedConnectionConfig) adapters.Adapter {
@@ -70,8 +73,12 @@ func ReadLaneRefusesWrite(c ReadLaneCase) Scenario {
 		Requires: func(caps adapters.Caps) bool { return caps.SQL },
 		Run: func(t *testing.T, a adapters.Adapter, cfg model.ResolvedConnectionConfig) {
 			t.Helper()
-			execAll(t, a, c.Path, c.Setup)
-			t.Cleanup(func() { execAll(t, a, c.Path, c.Teardown) })
+			admin := a
+			if c.Admin != nil {
+				admin = c.Admin(t)
+			}
+			execAll(t, admin, c.Path, c.Setup)
+			t.Cleanup(func() { execAll(t, admin, c.Path, c.Teardown) })
 			lane := laneAdapter(t, a, cfg)
 			_, err := lane.Execute(context.Background(), model.ConsoleRequest{
 				Path: c.Path, Statements: []string{c.Write}, ReadOnly: true,
@@ -83,7 +90,7 @@ func ReadLaneRefusesWrite(c ReadLaneCase) Scenario {
 				t.Errorf("lane refusal = %q, want it to contain %q", err.Error(), c.WantErr)
 			}
 			if c.Unchanged != nil {
-				c.Unchanged(t, a)
+				c.Unchanged(t, admin)
 			}
 		},
 	}
@@ -114,6 +121,23 @@ func LaneCancel(path model.NodePath, longSQL string) Scenario {
 				// Some engines end a killed query with a result (MySQL SLEEP returns 1), not an error.
 			case <-time.After(8 * time.Second):
 				t.Fatal("lane query still running 8s after Cancel")
+			}
+		},
+	}
+}
+
+// ReadLaneReads asserts the lane adapter runs a plain read: sql returns want in its first cell. It
+// pins that the lane's read-only session mechanism does not break reads for a restricted principal
+// (ReadLaneRefusesWrite alone passes when every statement is refused).
+func ReadLaneReads(path model.NodePath, sql, want string) Scenario {
+	return Scenario{
+		Name:     "read lane: a read runs",
+		Requires: func(caps adapters.Caps) bool { return caps.SQL },
+		Run: func(t *testing.T, a adapters.Adapter, cfg model.ResolvedConnectionConfig) {
+			t.Helper()
+			lane := laneAdapter(t, a, cfg)
+			if got := FirstCell(t, lane, path, sql); got != want {
+				t.Errorf("lane %s = %q, want %q", sql, got, want)
 			}
 		},
 	}

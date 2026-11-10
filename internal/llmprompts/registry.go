@@ -1492,15 +1492,15 @@ var (
 // DbmcpToolProofSave describes the proof_save tool.
 var DbmcpToolProofSave = define(Entry{
 	ID: "dbmcp.tool.proof_save", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_save",
-	Default: "Save proof that your work is correct: one call creates and closes it, and the user reviews it in a window. Steps show in order. Pick each step's view for its data: table, document and keyvalue show rows; chart plots a table and shows no table, so add a table step when exact values matter; diagram draws Mermaid text; image shows a JPEG, such as a UI screenshot. Names are unique, ignoring case and outer spaces. In a Kira Space task the new proof also attaches to the task. With reason, changes a closed proof instead: a step may keepOrdinal an old step unchanged or replacesOrdinal one, an old step not listed is dropped; read ordinals with proof_list and name. An edit returns pending_review until the user accepts or rejects it. Every value is validated: a bad step rejects the call, saves nothing and names steps[i] and the limit.",
+	Default: "Save proof that your work is correct. Prove functionality and behavior, not code: show what the system does (query results, responses, screenshots), not source or diffs. One call creates and closes it, and the user reviews it in a window. Steps show in order; each step's description is the explanation the user reads first. Pick each step's view for its data: table, document and keyvalue show rows; chart plots a table and shows no table, so add a table step when exact values matter; diagram draws Mermaid text; image shows a JPEG, such as a UI screenshot. Names are unique, ignoring case and outer spaces. In a Kira Space task the new proof also attaches to the task. With reason, changes a closed proof instead: a step may keepOrdinal an old step unchanged or replacesOrdinal one, an old step not listed is dropped; read ordinals with proof_list and name. An edit returns pending_review until the user accepts or rejects it. Every value is validated: a bad step rejects the call, saves nothing and names steps[i] and the limit.",
 }, NoVars{})
 
 var (
 	_ = arg(DbmcpToolProofSave.id, "name", studioApp, NextCall, `Unique name, 1-80 characters.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "summary", studioApp, NextCall, `What it proves, up to 500 characters. New proofs only.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "summary", studioApp, NextCall, `Which behavior it proves: 1-3 terse, clear sentences, up to 500 characters. Shown above the steps. New proofs only.`, NoVars{})
 	_ = arg(DbmcpToolProofSave.id, "reason", studioApp, NextCall, `Edits the closed proof with this name: what changes and why, up to 500 characters.`, NoVars{})
 	_ = arg(DbmcpToolProofSave.id, "steps", studioApp, NextCall, `1 to 100 steps, in display order.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "steps.description", studioApp, NextCall, `One line, up to 200 characters, saying what this step shows. Required unless keepOrdinal is set.`, NoVars{})
+	_ = arg(DbmcpToolProofSave.id, "steps.description", studioApp, NextCall, `The explanation, shown large above the data: one terse, clear line, ideally under 120 characters, at most 200. Say what the step shows and what that proves. Required unless keepOrdinal is set.`, NoVars{})
 	_ = arg(DbmcpToolProofSave.id, "steps.query", studioApp, NextCall, `The query or command you ran, up to 64 KiB. Shown above the data.`, NoVars{})
 	_ = arg(DbmcpToolProofSave.id, "steps.language", studioApp, NextCall, `Highlighting for query: sql, json, shell or text. Default text.`, NoVars{})
 	_ = arg(DbmcpToolProofSave.id, "steps.source", studioApp, NextCall, `Short label of the tool that produced the data, such as elasticsearch. Up to 64 characters.`, NoVars{})
@@ -1567,7 +1567,7 @@ var DbmcpToolAPIListEnvironments = define(Entry{
 // DbmcpToolAPIRequest describes the api_request tool.
 var DbmcpToolAPIRequest = define(Entry{
 	ID: "dbmcp.tool.api_request", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "api_request",
-	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve. User access rules may refuse a host or method; the error names the allowed ones. TLS is always verified. Secret values are masked in the response, which is capped.",
+	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve; hosts the user allowed are sent without asking. User access rules may refuse a host or method, and redirects to hosts they do not allow; the error names the allowed ones. TLS is always verified. Secret values are masked in the response, which is capped.",
 }, NoVars{})
 
 var (
@@ -1593,7 +1593,7 @@ var (
 // DbmcpToolKubeListClusters describes the kube_list_clusters tool.
 var DbmcpToolKubeListClusters = define(Entry{
 	ID: "dbmcp.tool.kube_list_clusters", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_list_clusters",
-	Default: "List the Kubernetes clusters (kubeconfig contexts) exposed to MCP, with each one's description and per-operation permissions (deny, allow or prompt).",
+	Default: "List the Kubernetes clusters (kubeconfig contexts) exposed to MCP, with each one's description and approval mode (prompt or allow).",
 }, NoVars{})
 
 // DbmcpToolKubeDiscover describes the kube_discover tool.
