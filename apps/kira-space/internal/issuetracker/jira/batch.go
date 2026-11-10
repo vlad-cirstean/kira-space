@@ -68,7 +68,7 @@ func (c *client) issues(ctx context.Context, refs []issuetracker.Ref) (map[strin
 			c.mu.Lock()
 			c.noSearchTo = c.clock.Now().Add(noDevTTL)
 			c.mu.Unlock()
-			slog.Warn("jira: workitem search failed, reading per issue", "err", err)
+			slog.Warn("jira: workitem search failed, reading per issue", "scope", "jira", "err", err)
 			c.readEach(ctx, chunk, out)
 		}
 	}

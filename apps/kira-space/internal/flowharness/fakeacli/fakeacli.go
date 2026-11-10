@@ -140,6 +140,9 @@ func (a *Acli) Run(ctx context.Context, _ string, args []string) ([]byte, error)
 		if err := wait(ctx, gate); err != nil {
 			return nil, err
 		}
+		if !loggedIn {
+			return nil, notLoggedIn()
+		}
 		a.mu.Lock()
 		raw, ok := a.comments[key]
 		a.mu.Unlock()
@@ -167,7 +170,7 @@ func (a *Acli) commentCreate(ctx context.Context, key, path string, loggedIn boo
 		return nil, err
 	}
 	if !loggedIn {
-		return nil, &toolexec.ExecError{ExitCode: 1, Stderr: "no Jira account is logged in"}
+		return nil, notLoggedIn()
 	}
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -203,6 +206,7 @@ func (a *Acli) view(ctx context.Context, args []string, gate chan struct{}) ([]b
 	large := a.tooLarge[key]
 	raw, ok := a.issues[key]
 	failing := a.failing[key]
+	loggedIn := a.loggedIn
 	a.mu.Unlock()
 	switch {
 	case isDetail && hasDetail:
@@ -212,6 +216,9 @@ func (a *Acli) view(ctx context.Context, args []string, gate chan struct{}) ([]b
 	}
 	if err := wait(ctx, gate); err != nil {
 		return nil, err
+	}
+	if !loggedIn {
+		return nil, notLoggedIn()
 	}
 	if failing {
 		return nil, &toolexec.ExecError{ExitCode: 1, Stderr: "Error: something went wrong"}
@@ -253,6 +260,9 @@ func (a *Acli) search(ctx context.Context, args []string, gate chan struct{}) ([
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if !a.loggedIn {
+		return nil, notLoggedIn()
+	}
 	if a.searchOff {
 		return nil, &toolexec.ExecError{ExitCode: 1, Stderr: "Error: unknown flag: --jql"}
 	}
@@ -290,6 +300,11 @@ func wait(ctx context.Context, gate chan struct{}) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+// notLoggedIn is what a read says once the login is gone, so a cached ok status is dropped on use.
+func notLoggedIn() error {
+	return &toolexec.ExecError{ExitCode: 1, Stderr: "Error: not logged in. Run `acli jira auth login`."}
 }
 
 func notFound() error {
