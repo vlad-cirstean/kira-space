@@ -464,6 +464,7 @@ temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:mobile
   `bun run test:e2e-real`, which builds `apps/kira-space/bin/flowservers` (gitignored), the
   HTTP, HTTPS and gRPC servers the Go flows also use.
 - Run `go test` with `CGO_ENABLED=1`.
+- `dbmcpflow` `TestDbMcpEngine*` (P602) run one scenario per engine on the memoized `testsupport` containers, in the complete suite; SQLite runs without Docker, the rest skip without it. One engine: `KIRA_FLOW_COMPLETE=1 go test ./apps/kira-space/internal/flows/dbmcpflow -run 'TestDbMcpEngineTimeout/mysql'`. Scratch objects are `p602_<area>_<kind>`.
 - Fake `claude` also plays `claude mcp list` (reads `$HOME/.claude.json`, records `mcp-list-<n>.args`) and, for `--setting-sources user`, finds tools on those servers within `--settings` `allowedMcpServers`. A test that changes the config sets `claude.SetMCPListTTL(0)`.
 - Docker flows need a daemon; if `docker ps` fails, start one with
   `setsid nohup dockerd > /tmp/dockerd.log 2>&1 < /dev/null &`. Without one they skip, or fail under
