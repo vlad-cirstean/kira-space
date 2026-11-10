@@ -32,6 +32,7 @@ import AdeBranchRow from './AdeBranchRow.vue';
 import AdeTagIcon from './AdeTagIcon.vue';
 import AdeTaskChildren from './AdeTaskChildren.vue';
 import AdeTaskSessions from './AdeTaskSessions.vue';
+import AdeTaskStatusMenu from './AdeTaskStatusMenu.vue';
 import { TASK_TAG_GLYPH } from './glyphs';
 import { type BranchRowModel, type CardModel, usePlanModel } from './usePlanModel';
 import { useTaskMenu } from './useTaskMenu';
@@ -48,6 +49,13 @@ const taskMenu = useTaskMenu(() => props.card);
 const reviewCode = useReviewCode();
 const choices = computed(() => reviewCode.choicesOf(props.card));
 const reviewTip = computed(() => taskReviewTip(choices.value));
+
+// The stored status shows as text; "Pass done" has no colour and keeps its glyph.
+const tagGlyph = computed(() =>
+  props.card.tag && !(props.card.tag.kind === 'status' && props.card.tag.color)
+    ? props.card.tag
+    : null,
+);
 
 const head = useTemplateRef<HTMLElement>('head');
 useShortcut(head, ['menu.open'], () => {
@@ -113,20 +121,22 @@ const boxClass = computed(() => {
         @keydown.space.self.prevent="emit('select')"
       >
         <div class="flex h-4.5 min-w-0 items-center gap-1.5">
-          <span
-            class="box-border size-3 shrink-0 rounded-kira-sm"
-            :class="card.parked ? 'border-2' : ''"
-            :style="card.parked ? { borderColor: card.color } : { background: card.color }"
-            data-testid="ade-card-dot"
-          />
+          <span class="inline-flex min-w-4.5 shrink-0 justify-center" data-testid="ade-row-lead">
+            <AdeTaskSessions
+              v-if="card.sessions"
+              :task-id="card.task.id"
+              :sessions="card.sessions"
+            />
+          </span>
+          <AdeTaskStatusMenu :card="card" />
           <AdeTagIcon
-            v-if="card.tag"
-            :glyph="TASK_TAG_GLYPH[card.tag.kind]"
-            :kind="card.tag.kind"
-            :label="card.tag.label"
-            :tip="card.tag.tip"
-            :tone="card.tag.tone"
-            :color="card.tag.color"
+            v-if="tagGlyph"
+            :glyph="TASK_TAG_GLYPH[tagGlyph.kind]"
+            :kind="tagGlyph.kind"
+            :label="tagGlyph.label"
+            :tip="tagGlyph.tip"
+            :tone="tagGlyph.tone"
+            :color="tagGlyph.color"
           />
           <AdeOrchestratorBadge v-if="card.orchestrator" icon-only />
           <template v-if="p.hasWorkflow && !card.parked">
@@ -166,7 +176,6 @@ const boxClass = computed(() => {
               </span>
             </AdeTip>
           </template>
-          <AdeTaskSessions v-if="card.sessions" :task-id="card.task.id" :sessions="card.sessions" />
           <AdeAttention v-if="card.attention" :tip="card.attention" :item="card.attentionItem" />
           <AdeAutomationChip :task-id="card.task.id" />
           <AdeUpdatesDot

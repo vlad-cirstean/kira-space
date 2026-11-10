@@ -9754,6 +9754,9 @@
           },
           "sessionsRunning": {
             "tooltip": "{count} agent session running | {count} agent sessions running"
+          },
+          "status": {
+            "aria": "Status: {status}. Change status"
           }
         },
         "header": {
