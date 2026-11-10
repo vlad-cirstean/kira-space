@@ -38,19 +38,14 @@ interface RuleLike {
   kind: string;
 }
 
-// Mirrors maskreview.Covered: a rule covers a column by name (ignoring case) and a table of `*` or the
-// column's own table name.
+// Mirrors maskreview.Covered: a rule covers a column by name, ignoring case. Its table is ignored, as
+// in masking: result columns carry no reliable source table.
 export function maskRuleFor(
   col: MaskReviewColumn,
   rules: readonly RuleLike[],
 ): RuleLike | undefined {
   const name = col.column.toLowerCase();
-  const table = col.table.toLowerCase();
-  return rules.find(
-    (r) =>
-      r.column.toLowerCase() === name &&
-      (!r.table || r.table === '*' || r.table.toLowerCase() === table),
-  );
+  return rules.find((r) => r.column.toLowerCase() === name);
 }
 
 export function reviewStateOf(

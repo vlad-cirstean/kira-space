@@ -2796,7 +2796,7 @@
           "body": "A mask needs a column."
         },
         "maskDuplicate": {
-          "body": "Column “{column}” already has a mask for this table."
+          "body": "Column “{column}” already has a mask."
         },
         "maskNumber": {
           "body": "A number mask can’t correlate."
@@ -15871,9 +15871,6 @@
         "column": {
           "placeholder": "Column"
         },
-        "correlate": {
-          "label": "Correlate"
-        },
         "database": {
           "label": "Database"
         },
@@ -15959,9 +15956,6 @@
           },
           "enforceExemption": {
             "body": "When a limit refuses a statement, the agent may ask you to lift it for that one statement. A dialog always appears, even when the mode is allow. Approve all does not cover it."
-          },
-          "enforceMasking": {
-            "body": "A rule matches any result column with the same lowercased name. Its table is ignored. A result that aliases or computes a masked column is refused. Best effort only. A renaming view can slip through, and filtering on a masked column shows which rows match."
           },
           "enforceModes": {
             "body": "Kira checks the mode before any query runs. Ask me waits for your approval; no answer in 10 minutes refuses it."
@@ -16197,35 +16191,75 @@
           }
         },
         "privacy": {
-          "intro": {
-            "description": "Rules mask values for this connection’s MCP clients and the data viewer’s masking preview. Stored data never changes."
+          "agentSees": {
+            "label": "Agent sees"
+          },
+          "key": {
+            "description": "Tags come from a secret key kept for this connection. A new key changes every tag, so earlier results no longer match new ones.",
+            "title": "Matching tag key"
           },
           "keyFallback": {
             "body": "Development fallback. The correlation key is obfuscated with a built-in key, not a real keychain. Anyone with filesystem access could recover it. Redaction itself stays uninvertible."
           },
-          "noRules": {
-            "emptyHint": "No masking rules yet."
+          "limits": {
+            "label": "How masking is enforced"
           },
-          "reviewConfirmAll": {
-            "label": "Confirm all as reviewed"
+          "limitsBestEffort": {
+            "body": "Best effort only. Filtering on a masked column can show which rows match, and a view that renames a column can slip through."
+          },
+          "limitsCheck": {
+            "body": "Kira checks for new columns on connect, on refresh and every 30 seconds. A column added in the last 30 seconds can slip through. A renamed column counts as new."
+          },
+          "limitsMatch": {
+            "body": "Rules match by column name, ignoring case; the table is ignored. A result that renames or computes a masked column is refused."
+          },
+          "limitsScope": {
+            "body": "Masking covers what the agent reads through Kira’s database MCP tools. Scripts are not checked. No exemption lifts it."
+          },
+          "maskAs": {
+            "label": "Mask as"
+          },
+          "overview": {
+            "title": "What the AI agent sees"
+          },
+          "overviewHidden": {
+            "status": "New columns stay hidden from the agent until you decide"
+          },
+          "overviewMcpOff": {
+            "hint": "Database MCP is off for this connection, so no agent reads it. These settings apply once it is on."
+          },
+          "overviewNone": {
+            "status": "No masked columns, so the agent sees every value as stored"
+          },
+          "overviewOpen": {
+            "status": "New columns reach the agent unmasked"
+          },
+          "overviewReal": {
+            "body": "You always see real values. To see what the agent sees, turn on the masking preview in a table’s toolbar. Stored data never changes."
+          },
+          "review": {
+            "title": "New columns"
+          },
+          "reviewAllowAll": {
+            "label": "Allow all waiting"
+          },
+          "reviewAllowed": {
+            "status": "Allowed"
+          },
+          "reviewDone": {
+            "status": "Every column is masked or allowed"
           },
           "reviewEmpty": {
             "empty": "No columns to show"
           },
-          "reviewEnforceHit": {
-            "body": "A new column that no rule masks and nobody reviewed is dropped from results. A query that renames, transforms or filters on it is refused. The agent learns its name, never its values."
-          },
-          "reviewEnforceLimits": {
-            "body": "Matching is by column name. A column added in the last 30 seconds can slip through. A renamed column counts as new. Scripts are not checked. No exemption applies."
-          },
-          "reviewEnforceWho": {
-            "body": "Kira’s MCP server checks columns on connect, on refresh and every 30 seconds."
-          },
           "reviewFilterAll": {
             "option": "All columns"
           },
-          "reviewMask": {
-            "label": "Mask"
+          "reviewFilterWaiting": {
+            "option": "Needs a decision"
+          },
+          "reviewHidden": {
+            "status": "Hidden from agent"
           },
           "reviewMasked": {
             "status": "Masked"
@@ -16233,47 +16267,84 @@
           "reviewNa": {
             "body": "Column review does not apply to this connection kind."
           },
+          "reviewOff": {
+            "status": "Off, so columns without a rule reach the agent unmasked, including new ones"
+          },
           "reviewOffConfirm": {
             "body": "New columns then reach the agent unmasked.",
             "label": "Turn off",
-            "title": "Turn off column review?"
+            "title": "Stop hiding new columns?"
           },
           "reviewOffline": {
             "body": "Connect to list columns. Saved entries are kept."
           },
-          "reviewOn": {
-            "description": "Marks every current column as reviewed.",
-            "label": "Withhold new columns until reviewed"
-          },
-          "reviewPending": {
-            "status": "Needs review"
-          },
           "reviewRefresh": {
             "tooltip": "Refresh columns"
-          },
-          "reviewReviewed": {
-            "status": "Marked reviewed"
           },
           "reviewSearch": {
             "placeholder": "Filter columns"
           },
-          "reviewStatusDone": {
-            "status": "All columns reviewed"
-          },
-          "reviewStatusOff": {
-            "status": "Column review is off, so new columns reach the agent"
-          },
-          "reviewStatusPending": {
-            "status": "{count} columns need review"
-          },
-          "reviewTitle": {
-            "label": "Column review"
+          "reviewSwitch": {
+            "description": "A column with no rule stays hidden from the agent until you mask or allow it. Turning this on allows every column that exists now.",
+            "label": "Hide new columns until you decide"
           },
           "reviewTruncated": {
             "body": "The column list is cut short ({limit}). Database MCP refuses every call until the check fits."
           },
+          "reviewUndo": {
+            "label": "Undo"
+          },
+          "reviewUnmasked": {
+            "status": "Not masked"
+          },
+          "reviewWaiting": {
+            "status": "{count} column hidden until you decide | {count} columns hidden until you decide"
+          },
+          "rules": {
+            "description": "A rule masks every column with this name, in every table of this connection.",
+            "title": "Masked columns"
+          },
+          "rulesDuplicate": {
+            "error": "“{column}” already has a rule."
+          },
+          "rulesEmpty": {
+            "empty": "No masked columns",
+            "emptyHint": "Add a column name below, or right-click a column header in a table and choose “{item}”."
+          },
+          "sampleDate": {
+            "example": "1987-04-12"
+          },
+          "sampleEmail": {
+            "example": "jane.doe{'@'}example.com"
+          },
+          "sampleName": {
+            "example": "Jane Doe"
+          },
+          "sampleNumber": {
+            "example": "48213"
+          },
+          "sampleRedact": {
+            "example": "12 High Street"
+          },
+          "sampleTagged": {
+            "example": "{masked}#K3F9QZ"
+          },
+          "sampleText": {
+            "example": "Call me after 5 pm"
+          },
           "saveFirst": {
             "hint": "Save first to manage masking rules."
+          },
+          "tableIgnored": {
+            "status": "Table ignored",
+            "tooltip": "Rules match the column name in every table. The table {table} in this rule has no effect"
+          },
+          "tag": {
+            "label": "Matching tag",
+            "tooltip": "Adds a short tag. The same real value always gets the same tag, so the agent can match rows and joins without seeing it"
+          },
+          "tagNumber": {
+            "tooltip": "Numbers never get a tag, because many values share one masked number"
           }
         },
         "readOnly": {

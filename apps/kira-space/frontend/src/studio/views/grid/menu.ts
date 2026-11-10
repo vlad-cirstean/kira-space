@@ -1,10 +1,11 @@
 import type { MaskKind, MaskRule } from '@shared/domain/mask';
 import type { ForeignKeyMeta, ObjectMeta } from '@shared/domain/tree';
 import { decodePath } from '@shared/domain/tree';
-import { type MessageKey, t } from '@theme/i18n';
+import { t } from '@theme/i18n';
 import { copyAndAnnounce } from '@workbench/behaviour/clipboard';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { useTabsStore } from '../../../state/tabs';
+import { defaultCorrelateFor, MASK_KIND_OPTIONS } from '../../project/connection/maskKinds';
 import { maskRulesFor, removeMaskRule, upsertMaskRule } from '../../state/maskRules';
 import type { RowSnapshot } from '../shared/clipboardFormats';
 import type { Selection } from '../shared/slick/selection';
@@ -536,53 +537,23 @@ export interface HeaderMenuContext {
   currentProjection: string[] | null;
   allColumnNames: string[];
   columnValues: () => string[]; // the loaded page's values only (§8.5's own scope boundary)
-  // M5 §6.7: the "Mark column as PII" submenu's own inputs — the grid already holds both at the
-  // point this menu opens, so no new metadata path is needed to resolve the qualified table name
-  // Upsert wants (qualifiedNameForPath, above, does that).
+  // The "Mark column as sensitive" submenu's connection: rules are per connection, not per table.
   connectionId: string;
-  tablePath: string;
 }
 
-// The six kinds offered from the header menu. Deliberately not exhaustive of every field a rule
-// carries (keepHint/correlate stay at their sensible defaults here — the Privacy tab is where those
-// get tuned) — "mark this column PII" is meant to be one click, not a form.
-const MASK_KIND_CHOICES: { kind: MaskKind; labelKey: MessageKey }[] = [
-  { kind: 'name', labelKey: 'common.field.name.label' },
-  { kind: 'email', labelKey: 'common.field.email.label' },
-  { kind: 'text', labelKey: 'common.field.text.label' },
-  { kind: 'number', labelKey: 'common.field.number.label' },
-  { kind: 'date', labelKey: 'common.field.date.label' },
-  { kind: 'redact', labelKey: 'studio.project.connectionDialog.redact.label' },
-];
-
-// §2.3: number never correlates (a bucket is many-to-one); date defaults off ("a masked date is a
-// poor join key"). Every other kind defaults on — the join-preserving behaviour is the point.
-function defaultCorrelateFor(kind: MaskKind): boolean {
-  return kind !== 'number' && kind !== 'date';
-}
-
-// The header menu's own scoping choice: matches by column name alone (case-insensitive) — so
-// "Not PII" and the checked kind reflect whatever rule is masking this column today, even one
-// authored in the Privacy tab against a different table_name (or '*'). A rule this menu itself
-// writes always uses THIS tab's own qualified table name (qualifiedNameForPath, below) — so
-// repeat visits from the same tab's header menu edit the same row rather than accumulating
-// duplicates; only a rule already present under a different table_name is left in place by
-// "Not PII" here (removing every rule matching a column name across every table would reach
-// outside this menu's own tab-scoped intent).
+// A rule masks its column name in every table (P596), so the menu finds it by name alone: the
+// checked kind and "Not PII" reflect the rule masking this column today, whatever table it names.
+// A new rule is written with table `*`; marking again edits the existing rule in place.
 function existingMaskRule(ctx: HeaderMenuContext): MaskRule | undefined {
   const lower = ctx.columnName.toLowerCase();
   const rules = maskRulesFor(ctx.connectionId).filter((r) => r.columnName.toLowerCase() === lower);
-  if (rules.length === 0) return undefined;
-  const tableName = qualifiedNameForPath(ctx.connectionId, ctx.tablePath) || '*';
-  return rules.find((r) => r.tableName === tableName) ?? rules[0];
+  return rules.find((r) => r.tableName === '*') ?? rules[0];
 }
 
 async function markColumnMaskKind(ctx: HeaderMenuContext, kind: MaskKind): Promise<void> {
   const existing = existingMaskRule(ctx);
-  const tableName =
-    existing?.tableName ?? qualifiedNameForPath(ctx.connectionId, ctx.tablePath) ?? '*';
   await upsertMaskRule(ctx.connectionId, {
-    tableName: tableName || '*',
+    tableName: existing?.tableName ?? '*',
     columnName: ctx.columnName,
     kind,
     keepHint: true,
@@ -693,11 +664,11 @@ export function headerMenu(ctx: HeaderMenuContext): MenuItem[] {
       label: t('studio.grid.menu.markSensitive.label'),
       icon: 'shield',
       items: [
-        ...MASK_KIND_CHOICES.map(
-          ({ kind, labelKey }): MenuItem => ({
+        ...MASK_KIND_OPTIONS.map(
+          ({ value: kind, label }): MenuItem => ({
             type: 'item',
             id: `mask-${kind}`,
-            label: t(labelKey),
+            label: t(label),
             checked: currentMaskRule?.kind === kind,
             run: () => markColumnMaskKind(ctx, kind),
           }),

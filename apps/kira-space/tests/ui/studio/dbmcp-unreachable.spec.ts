@@ -34,6 +34,7 @@ const CONNECTION: ConnectionSummary = {
   preconnectSidecar: false,
   preconnectDelaySec: 0,
   autoExplain: false,
+  explainThresholdRows: 0,
   throttlePerSec: 0,
   mcpEnabled: true,
   mcpDescription: '',

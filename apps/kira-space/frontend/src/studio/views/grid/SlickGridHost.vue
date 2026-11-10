@@ -1754,9 +1754,7 @@ function onHeaderContextMenuHandler(displayCol: number, e: MouseEvent): void {
       currentProjection: tab()?.state.projection ?? null,
       allColumnNames: getPage(props.tabId)?.columns.map((c) => c.name) ?? [],
       columnValues: () => columnValuesFor(displayCol),
-      // M5 §6.7: the "Mark column as PII" submenu's own inputs.
       connectionId: tab()?.connectionId ?? '',
-      tablePath: tab()?.path ?? '',
     }),
   );
 }
