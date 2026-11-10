@@ -44,23 +44,30 @@ interface DiffModeOption {
   readonly label: MessageKey;
 }
 
-const props = defineProps<{
-  reviewFiles: ReviewFilesState;
-  store: CommitStore;
-  actions: DetailActions;
-  // G12 D13: ReviewView.vue's one panel-level toolbar owns these; this pane's own FileTree
-  // renders no toolbar of its own (show-toolbar="false") and so never emits an update to forward.
-  listMode: FileListMode;
-  filter: string;
-  /** Uncommitted changes under the committed list; `null` hides the section. */
-  working: ReviewWorkingSection | null;
-  /** The file last opened, committed or uncommitted. */
-  cursor: { section: 'committed' | 'working'; path: string } | null;
-  /** Some listed file still needs a review. */
-  canStep: boolean;
-  /** Show the Alt+F8 chords on the step buttons. */
-  reviewShortcuts: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    reviewFiles: ReviewFilesState;
+    store: CommitStore;
+    actions: DetailActions;
+    // G12 D13: ReviewView.vue's one panel-level toolbar owns these; this pane's own FileTree
+    // renders no toolbar of its own (show-toolbar="false") and so never emits an update to forward.
+    listMode: FileListMode;
+    filter: string;
+    /** Uncommitted changes under the committed list; `null` hides the section. */
+    working: ReviewWorkingSection | null;
+    /** The file last opened, committed or uncommitted. */
+    cursor: { section: 'committed' | 'working'; path: string } | null;
+    /** Some listed file still needs a review. */
+    canStep: boolean;
+    /** Show the Alt+F8 chords on the step buttons. */
+    reviewShortcuts: boolean;
+    /** False when the branch has no commits: only the Uncommitted section shows. */
+    committed?: boolean;
+    /** Shown above the Uncommitted section when `committed` is false. */
+    emptyNote?: string;
+  }>(),
+  { committed: true, emptyNote: '' },
+);
 
 const emit = defineEmits<{
   (e: 'step', dir: 'next' | 'previous'): void;
@@ -179,6 +186,7 @@ function onToggleWorkingReviewed(path: string): void {
            capability removing DiffView would otherwise have lost. -->
       <ViewToolbar class="font-ui">
         <SecondaryTabs
+          v-if="committed"
           variant="segmented"
           :aria-label="t('git.review.files.compare.aria')"
           :model-value="reviewFiles.diffMode.value"
@@ -206,9 +214,13 @@ function onToggleWorkingReviewed(path: string): void {
           data-testid="review-next-unreviewed"
           @click="emit('step', 'next')"
         />
-        <span v-if="deltaStatusText" class="ml-auto text-muted-foreground text-graph-sm">{{
-          deltaStatusText
-        }}</span>
+        <span
+          v-if="committed && deltaStatusText"
+          class="ml-auto text-muted-foreground text-graph-sm"
+          >{{
+            deltaStatusText
+          }}</span
+        >
       </ViewToolbar>
       <FieldError v-if="reviewFiles.diffError.value" class="p-3">
         {{ t('git.review.files.diffError.error', { error: reviewFiles.diffError.value }) }}
@@ -221,6 +233,7 @@ function onToggleWorkingReviewed(path: string): void {
       </FieldError>
 
       <div
+        v-if="committed"
         class="flex items-center gap-1.5 px-2 py-1 text-graph-sm font-medium"
         data-testid="review-committed-header"
       >
@@ -242,6 +255,7 @@ function onToggleWorkingReviewed(path: string): void {
         }}</span>
       </div>
       <FileTree
+        v-if="committed"
         data-testid="review-files-tree"
         class="flex-auto min-h-0"
         :files="files"
@@ -258,9 +272,18 @@ function onToggleWorkingReviewed(path: string): void {
         @toggle-reviewed="onToggleReviewed"
         @toggle-reviewed-folder="onToggleReviewedFolder"
       />
+      <p
+        v-if="!committed"
+        class="px-2 py-1 text-graph-sm text-muted-foreground"
+        data-testid="review-empty"
+        >{{
+          emptyNote
+        }}</p
+      >
       <section
         v-if="workingFiles.length > 0"
-        class="flex flex-col min-h-0 max-h-[40%] shrink-0 border-l-2 border-l-warn"
+        class="flex flex-col min-h-0 border-l-2 border-l-warn"
+        :class="committed ? 'max-h-[40%] shrink-0' : 'flex-auto'"
         data-testid="review-working"
       >
         <div

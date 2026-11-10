@@ -31,6 +31,8 @@ const props = defineProps<{
   commentsCount: number;
   /** The compared sides are fixed: no back, swap or base pick. */
   locked?: boolean;
+  /** No commits, only uncommitted files: no Commits pane, the toolbar still shows. */
+  workingOnly?: boolean;
 }>();
 const emit = defineEmits<{ back: [] }>();
 const listMode = defineModel<FileListMode>('listMode', { required: true });
@@ -97,15 +99,20 @@ const panelItems = computed(() => {
       badge: props.commentsCount,
     },
   ];
-  return options.map((o) => ({
-    value: o.id,
-    label: t(o.label),
-    icon: o.icon,
-    count: o.badge,
-    tooltip: t(o.label),
-    testid: `review-pane-${o.id}`,
-  }));
+  return options
+    .filter((o) => !(props.workingOnly && o.id === 'commits'))
+    .map((o) => ({
+      value: o.id,
+      label: t(o.label),
+      icon: o.icon,
+      count: o.badge,
+      tooltip: t(o.label),
+      testid: `review-pane-${o.id}`,
+    }));
 });
+const activePane = computed(() =>
+  props.workingOnly && props.review.pane.value === 'commits' ? 'files' : props.review.pane.value,
+);
 
 const listModeItems = computed(() => {
   const options: readonly ToggleOption[] = [
@@ -186,10 +193,10 @@ const summaryLabel = computed(() => {
     </span>
   </ViewToolbar>
 
-  <ViewToolbar v-if="review.phase.value === 'listing'" data-testid="review-toolbar">
+  <ViewToolbar v-if="review.phase.value === 'listing' || workingOnly" data-testid="review-toolbar">
     <SecondaryTabs
       :aria-label="t('git.review.pane.aria')"
-      :model-value="review.pane.value"
+      :model-value="activePane"
       :items="panelItems"
       @update:model-value="(pane) => review.setPane(pane as ReviewPane)"
     >
