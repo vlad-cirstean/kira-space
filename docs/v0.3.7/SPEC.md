@@ -13,7 +13,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P596 | Masking and the Privacy tab: make it understandable | Done |
 | P597 | Proof: screenshot button saves all to a Desktop folder, location customizable | Done |
 | P598 | Task work start: require a repo choice before an agent opens | Todo |
-| P599 | Review changes button: also for uncommitted changes | Todo |
+| P599 | Review changes button: also for uncommitted changes | Done |
 | P600 | Task Details: group the top links by category, more compact and nicer | Todo |
 | P601 | Task row: agent indicator at the start, manual status as small text with dropdown | Todo |
 
@@ -94,7 +94,7 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Ask (user): the review changes button shows not only for commits but also for uncommitted changes.
 - Context: Review tool (`internal/gitsession/crreview.go`, P581), the review changes button in the task panel and Git sidebar. Planner finds when the button shows today and how a review of the working tree (staged and unstaged) would be modeled.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
-- Result:
+- Result: Done. `reviewChoice` (`board/reviewCode.ts`) now disables only for no commits and a clean worktree; enabled tips name uncommitted changes (`rc.reviewUncommitted.tooltip`, `rc.reviewMixed.tooltip`, plural by count). `noCommits` renamed `nothing`, `uncommitted.hint` removed. Label stays "Review code". No backend change: `OpenReviewWindow` and `ReviewWorking*` already served the case. git-ui: phase `empty` with uncommitted files is a working-only view (`useReviewWorkingOnly`): Files (Uncommitted section plus empty-range note) and Comments, no Commits tab; a clean worktree keeps the empty text. Tests: flow `TestReviewUncommittedOnly` (contract `ade-review-uncommitted`), UI `ade-v2-review-uncommitted.spec.ts`, `ade-v2-review-open.spec.ts` updated, visual `review-uncommitted-only` baseline recorded on Linux (Inter); no existing baseline moved. Git sidebar Review tab and review agent prompt left as is.
 
 ## P600 Task Details: group the top links by category, more compact and nicer
 
