@@ -177,3 +177,87 @@ func TestTrackingSettings(t *testing.T) {
 		t.Fatal("Set accepted an unknown concept")
 	}
 }
+
+// biDetail is the detail view JSON of an issue with the fields the watcher's change check reads.
+func biDetail(key, title, status, updated string) string {
+	return `{"key":"` + key + `","fields":{"summary":"` + title + `","status":{"name":"` + status + `","statusCategory":{"key":"indeterminate"}},` +
+		`"priority":{"name":"High"},"updated":"` + updated + `","comment":{"total":0,"comments":[]}}}`
+}
+
+// P592 batch issue reads: one workitem search per pass, a detail read only where updated moved.
+// Backend half only: no UI behavior changes.
+func TestTrackedIssueBatch(t *testing.T) {
+	acli := fakeacli.New(itSite)
+	const stamp = "2026-10-01T10:00:00.000+0000"
+	set := func(key, status, updated string) {
+		acli.SetIssue(key, fakeacli.IssueJSON(key, "Issue "+key, status, "indeterminate", 1))
+		acli.SetIssueDetail(key, biDetail(key, "Issue "+key, status, updated))
+	}
+	app := flowharness.New(t, flowharness.WithIssueTracker(jira.Options{Locator: acli, Runner: acli}))
+	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("one", "")))
+	tasks := map[string]string{}
+	for _, key := range []string{"KIRA-1", "KIRA-2", "KIRA-3"} {
+		set(key, "In Progress", stamp)
+		task := createTask(t, app, key, "flow")
+		setLink(t, app, task.ID, key, "")
+		tasks[key] = task.ID
+	}
+
+	// 1. First pass: one search for all three, a detail read each (no snapshots yet).
+	refresh(t, app)
+	if acli.Count("search:") != 1 || acli.Count("detail:") != 3 {
+		t.Fatalf("calls %v, want 1 search and 3 details", acli.Calls())
+	}
+
+	// 2. Nothing changed: one more search, no detail read.
+	refresh(t, app)
+	if acli.Count("search:") != 2 || acli.Count("detail:") != 3 {
+		t.Fatalf("calls %v, want 2 searches and still 3 details", acli.Calls())
+	}
+
+	// 3. The search warmed every issue line: no view.
+	views := acli.Count("view:")
+	for _, id := range tasks {
+		if ti := issueOf(t, app, id); ti.Reason != "" || ti.Status != "In Progress" {
+			t.Fatalf("TaskIssue = %+v", ti)
+		}
+	}
+	if acli.Count("view:") != views {
+		t.Fatalf("TaskIssue spawned %d views, want none", acli.Count("view:")-views)
+	}
+
+	// 4. Only KIRA-2 moved: one detail read, one update.
+	set("KIRA-2", "Done", "2026-10-02T10:00:00.000+0000")
+	refresh(t, app)
+	if acli.Count("detail:") != 4 || acli.Count("detail:KIRA-2") != 2 {
+		t.Fatalf("calls %v, want one more detail, of KIRA-2", acli.Calls())
+	}
+	ups := trackedUpdates(t, app)
+	if len(ups) != 1 || ups[0].TaskID != tasks["KIRA-2"] || !slices.Contains(ups[0].Concepts, "statusChanged") {
+		t.Fatalf("updates = %+v, want statusChanged on KIRA-2 only", ups)
+	}
+
+	// 5. A key Jira does not know fails the whole search; the others are read per key.
+	ghost := createTask(t, app, "Ghost", "flow")
+	setLink(t, app, ghost.ID, "KIRA-404", "")
+	details := acli.Count("detail:")
+	refresh(t, app)
+	if acli.Count("detail:") != details+3 {
+		t.Fatalf("calls %v, want a detail read for each of KIRA-1..3", acli.Calls())
+	}
+
+	// 6. A search acli refuses: reads go per issue, and the next pass does not try it again.
+	acli.SetSearchBroken(true)
+	searches, details := acli.Count("search:"), acli.Count("detail:")
+	refresh(t, app)
+	if acli.Count("search:") != searches+1 || acli.Count("detail:") != details+3 {
+		t.Fatalf("calls %v, want one refused search and 3 detail reads", acli.Calls())
+	}
+	refresh(t, app)
+	if acli.Count("search:") != searches+1 {
+		t.Fatalf("search tried again inside the backoff: %v", acli.Calls())
+	}
+	if acli.Count("detail:") != details+6 {
+		t.Fatalf("calls %v, want 3 more detail reads", acli.Calls())
+	}
+}
