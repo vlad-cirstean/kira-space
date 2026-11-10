@@ -18,7 +18,12 @@ export function isHostPattern(entry: string): boolean {
   return !port || (Number(port[1]) >= 1 && Number(port[1]) <= 65535);
 }
 
-/** True when rules exist but none allows a request, so every request is refused. */
-export function allowsNothing(rules: readonly ApiRule[]): boolean {
-  return rules.length > 0 && !rules.some((r) => r.effect === 'allow');
+/** True when unmatched requests are denied and no allow rule exists, so every request is refused. */
+export function allowsNothing(rules: readonly ApiRule[], apiDefault: 'ask' | 'deny'): boolean {
+  return apiDefault === 'deny' && !rules.some((r) => r.effect === 'allow');
+}
+
+/** True when an allow rule matches any host, so its requests all skip approval. */
+export function allowsAnyHost(rules: readonly ApiRule[]): boolean {
+  return rules.some((r) => r.effect === 'allow' && r.hosts.includes('*'));
 }

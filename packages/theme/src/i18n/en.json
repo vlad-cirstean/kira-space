@@ -16989,14 +16989,29 @@
             "option": "Send without asking"
           }
         },
+        "apiDefault": {
+          "ask": {
+            "body": "A request that matches no rule waits for your approval, like any other API request."
+          },
+          "askNever": {
+            "body": "A request that matches no rule is sent without asking, because API request approval is off."
+          },
+          "deny": {
+            "body": "A request that matches no rule is refused. Add an allow rule for each host agents may reach."
+          },
+          "label": "When no rule matches"
+        },
         "apiRules": {
           "add": {
             "label": "Add rule"
           },
+          "allowAny": {
+            "body": "An allow rule for any host sends every matching request without asking."
+          },
           "anyMethod": {
             "label": "Any method"
           },
-          "description": "With no rules, agents can send any method to any host. With rules, a request needs an allow rule and no deny rule.",
+          "description": "A deny rule refuses a request. An allow rule sends it without asking you. When both match, deny wins. With rules, a redirect may only go to a host an allow rule matches.",
           "dialog": {
             "title": "API access rule"
           },
@@ -17004,10 +17019,14 @@
             "aria": "Edit rule"
           },
           "effect": {
+            "hint": "Allow sends matching requests without asking you. Deny refuses them.",
             "label": "Effect"
           },
           "empty": {
-            "body": "No rules. Agents can reach any host."
+            "body": "No rules."
+          },
+          "hostForms": {
+            "body": "An entry is a host, a host with a port such as localhost:3000, a wildcard domain, or *. No port means any port. Each entry takes one port, and ranges are not supported. A rule matches http and https alike. A secret goes over plain http only to a loopback host."
           },
           "hostInvalid": {
             "error": "{host} is not a valid host entry."
