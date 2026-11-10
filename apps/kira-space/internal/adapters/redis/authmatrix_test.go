@@ -66,6 +66,10 @@ func TestRedis_AuthMatrix(t *testing.T) {
 						},
 					}},
 				}, 1),
+				// P602: the lane's app-side write refusal holds under an ACL that allows the write itself.
+				testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+					Path: testsupport.NodePath(f.Config.ID), Write: "SET kira_lane_probe 1", WantErr: "read-only",
+				}),
 				// The write above left its key behind in the shared container —
 				// mongo's own equivalent write scenario cleans up after itself
 				// (mongo/authmatrix_test.go's "the authSource-fixed connection can actually

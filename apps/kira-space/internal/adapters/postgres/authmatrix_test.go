@@ -53,6 +53,7 @@ func TestPostgres_AuthMatrix(t *testing.T) {
 	mustExec(t, side, `REVOKE CONNECT ON DATABASE `+noAccessDB+` FROM PUBLIC`)
 
 	uri := fmt.Sprintf("postgres://%s:%s@%s/kira_test", roleName, rolePassword, hostPort(f.Config))
+	admin := func(t *testing.T) adapters.Adapter { return connectedAdapter(t, f) }
 
 	testsupport.RunMatrix(t, "postgres", f, f.Config, []testsupport.Case{
 		{
@@ -111,6 +112,12 @@ func TestPostgres_AuthMatrix(t *testing.T) {
 					[]string{"CREATE TABLE app.p26_matrix_scratch (id int)"},
 					adapters.CodeQuery,
 				),
+				// P602: the lane and timeout machinery under a role that cannot create or SET anything
+				// special. The admin adapter owns scratch objects the role only reads.
+				pgLaneRefusesWrite(f, admin, roleName),
+				pgLaneStatementTimeout(f),
+				testsupport.ReadStatementTimeout(pgReadTimeoutCase(f, true, admin, roleName)),
+				pgExplainPlan(f),
 			},
 		},
 		{

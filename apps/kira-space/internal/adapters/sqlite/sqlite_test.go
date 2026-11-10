@@ -1175,3 +1175,17 @@ func TestSqlite_PingFileRemoved(t *testing.T) {
 		t.Fatalf("Ping after the file is removed: err = %v, want E_ENGINE_DOWN", err)
 	}
 }
+
+// DB MCP expensive-query check: EXPLAIN QUERY PLAN runs on the lane and parses to a plan. SQLite has
+// no row estimate, so the check never refuses it as expensive.
+func TestSqlite_ExplainPlan(t *testing.T) {
+	fixture := testsupport.StartSqlite(t)
+	testsupport.RunScenarios(t, connectedAdapter(t, fixture.Config), fixture.Config, sqliteExplainPlan(fixture.Config.ID))
+}
+
+func sqliteExplainPlan(connID string) testsupport.Scenario {
+	return testsupport.ExplainPlan(testsupport.ExplainPlanCase{
+		Path:     nodePath(connID, seg("database", "main")),
+		FullScan: "SELECT * FROM big_rows", Point: "SELECT * FROM big_rows WHERE id = 1",
+	})
+}

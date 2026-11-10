@@ -50,6 +50,12 @@ func runFamilyAuthMatrix(t *testing.T, kind string, fixture any, cfg model.Resol
 	mustExecSQL(t, root, "GRANT SELECT ON kira_test.* TO '"+roleName+"'@'%'")
 	mustExecSQL(t, root, "FLUSH PRIVILEGES")
 
+	rootAdapter := func(t *testing.T) adapters.Adapter {
+		rc := cfg
+		rc.Username, rc.Password = testsupport.Strp("root"), testsupport.Strp(testsupport.FixturePassword)
+		rc.Database = nil
+		return connectedAdapter(t, kind, rc)
+	}
 	uri := fmt.Sprintf("%s://kira:%s@%s:%d/kira_test", kind, testsupport.FixturePassword, host, port)
 
 	testsupport.RunMatrix(t, kind, fixture, cfg, []testsupport.Case{
@@ -139,6 +145,12 @@ func runFamilyAuthMatrix(t *testing.T, kind string, fixture any, cfg model.Resol
 					[]string{"CREATE TABLE p26_matrix_scratch (id INT)"},
 					adapters.CodeQuery,
 				),
+				// P602: lane and timeout machinery for a user with SELECT only. A root adapter owns the
+				// scratch objects the user only reads.
+				familyLaneRefusesWrite(cfg.ID, rootAdapter, "'"+roleName+"'@'%'"),
+				familyLaneStatementTimeout(kind, cfg.ID),
+				testsupport.ReadStatementTimeout(familyReadTimeoutCase(kind, cfg.ID, true, rootAdapter)),
+				familyExplainPlan(cfg.ID),
 			},
 		},
 		{

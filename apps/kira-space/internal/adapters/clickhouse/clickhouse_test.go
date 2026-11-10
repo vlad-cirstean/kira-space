@@ -854,6 +854,8 @@ func TestClickHouse_StatementTimeout(t *testing.T) {
 			Baseline: "SELECT getSetting('max_execution_time')", BaselineWant: "0",
 			Lifted: "SELECT sleepEachRow(1) FROM numbers(2) SETTINGS max_block_size = 1",
 		}),
+		testsupport.ReadStatementTimeout(chReadTimeoutCase(fixture, true)),
+		testsupport.ReadStatementTimeout(chReadTimeoutCase(fixture, false)),
 	)
 
 	// A profile that pins max_execution_time (constraint, code 452): the server refuses the timeout
@@ -877,4 +879,51 @@ func TestClickHouse_StatementTimeout(t *testing.T) {
 			}
 		}
 	})
+}
+
+// chAdmin returns an Admin hook for the shared scenarios: it runs the statements as the fixture's
+// admin user (the adapter users cannot GRANT), registers the cleanup, and hands back the kira adapter.
+func chAdmin(fixture *testsupport.ClickHouseFixture, setup, teardown string) func(t *testing.T) adapters.Adapter {
+	return func(t *testing.T) adapters.Adapter {
+		t.Helper()
+		testsupport.AdminStatements(t, fixture, setup)
+		t.Cleanup(func() { testsupport.AdminStatements(t, fixture, teardown) })
+		return connectedAdapter(t, fixture.Config)
+	}
+}
+
+// chReadTimeoutCase is the browse-page timeout case over a view that aggregates an effectively
+// endless number stream (the lane case's own slow statement; max_execution_time is checked between
+// blocks, and sleepEachRow cannot sit in a view because its 3 s per-block cap needs a block-size setting).
+func chReadTimeoutCase(fixture *testsupport.ClickHouseFixture, lane bool) testsupport.ReadStatementTimeoutCase {
+	name := "main"
+	if lane {
+		name = "read lane"
+	}
+	return testsupport.ReadStatementTimeoutCase{
+		Name: name, Lane: lane, WantCode: "TIMEOUT_EXCEEDED",
+		Path: nodePath(fixture.Config.ID, seg("database", "kira_test"), seg("view", "p602_slow")),
+		Fast: nodePath(fixture.Config.ID, seg("database", "kira_test"), seg("table", "customers")),
+		Admin: chAdmin(fixture,
+			"CREATE VIEW kira_test.p602_slow AS SELECT sum(cityHash64(number)) AS s FROM numbers(1000000000000)",
+			"DROP VIEW IF EXISTS kira_test.p602_slow"),
+	}
+}
+
+// chExplainPlan: EXPLAIN PLAN plus EXPLAIN ESTIMATE on the lane. The estimate is granule based
+// (8192 rows), so the point bound is looser than the row-exact engines.
+func chExplainPlan(fixture *testsupport.ClickHouseFixture) testsupport.Scenario {
+	return testsupport.ExplainPlan(testsupport.ExplainPlanCase{
+		Path:     nodePath(fixture.Config.ID),
+		FullScan: "SELECT * FROM kira_test.big_rows", Point: "SELECT * FROM kira_test.big_rows WHERE id = 1",
+		MinRows: 500000, MaxPointRows: 100000,
+	})
+}
+
+// DB MCP expensive-query check: the composed EXPLAIN runs on the lane and its estimate separates a
+// full scan from a primary-key point read.
+func TestClickHouse_ExplainPlan(t *testing.T) {
+	fixture := testsupport.StartClickHouse(t)
+	testsupport.ClickHouseRun(t, fixture)
+	testsupport.RunScenarios(t, connectedAdapter(t, fixture.Config), fixture.Config, chExplainPlan(fixture))
 }
