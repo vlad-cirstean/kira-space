@@ -46,12 +46,22 @@ function fromArtifact(a: Artifact): LinkItem {
   };
 }
 
-/** Main: the task's Jira and host links and its detected change requests. Related: every other
- *  artifact but detected branches (Main shows those), minus what Main already holds. */
+export type LinkCategory = 'issue' | 'changeRequest' | 'misc';
+
+export const LINK_CATEGORIES: readonly LinkCategory[] = ['issue', 'changeRequest', 'misc'];
+
+export function linkCategory(kind: Artifact['kind']): LinkCategory {
+  if (kind === 'issue' || kind === 'changeRequest') return kind;
+  return 'misc';
+}
+
+/** Links bucketed by category (issue, change request, misc; every bucket present, maybe empty).
+ *  Order within a bucket: the task's Jira and host links, detected change requests, then every
+ *  other artifact but detected branches, minus what the first set already holds. */
 export function linkGroups(
   task: Task,
   artifacts: readonly Artifact[],
-): { main: LinkItem[]; related: LinkItem[] } {
+): { id: LinkCategory; items: LinkItem[] }[] {
   const main: LinkItem[] = [];
   const jira = task.jira;
   if (jira) {
@@ -91,5 +101,9 @@ export function linkGroups(
     if (a.kind === 'issue' && jira && (a.title === jira.key || a.ref === jira.key)) continue;
     related.push(fromArtifact(a));
   }
-  return { main, related };
+  const all = [...main, ...related];
+  return LINK_CATEGORIES.map((id) => ({
+    id,
+    items: all.filter((item) => linkCategory(item.kind) === id),
+  }));
 }

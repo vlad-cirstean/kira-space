@@ -40,4 +40,15 @@ const KIND_LABEL = {
   link: 'space.ade.artifacts.kind.link.label',
 } as const satisfies Record<Artifact['kind'], MessageKey>;
 
+const KIND_ICON = {
+  changeRequest: 'git-pull-request',
+  issue: 'issues',
+  branch: 'git-branch',
+  deployment: 'rocket',
+  doc: 'file',
+  link: 'link',
+} as const satisfies Record<Artifact['kind'], string>;
+
+export const kindIcon = (kind: Artifact['kind']): string => KIND_ICON[kind];
+
 export const artifactKindLabel = (kind: Artifact['kind']): string => t(KIND_LABEL[kind]);

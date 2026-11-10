@@ -9181,8 +9181,16 @@
         "empty": {
           "body": "No links yet."
         },
+        "group": {
+          "changeRequest": {
+            "label": "Change requests"
+          },
+          "misc": {
+            "label": "Misc"
+          }
+        },
         "kindMenu": {
-          "label": "Change kind"
+          "tooltip": "Change kind ({kind})"
         },
         "link": {
           "aria": "Link title",
@@ -9193,9 +9201,6 @@
         },
         "openExternal": {
           "tooltip": "Open in browser"
-        },
-        "related": {
-          "title": "Related"
         },
         "session": {
           "tooltip": "Open the session that added this"

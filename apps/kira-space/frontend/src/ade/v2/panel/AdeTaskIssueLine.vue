@@ -2,6 +2,7 @@
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { t } from '@theme/i18n';
+import { cn } from '@theme/lib/utils';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed } from 'vue';
 import { useOpenHostView } from '../../../hostview/queries';
@@ -12,10 +13,10 @@ import { useTaskIssue } from '../queries';
 import { useMarkTrackedSeen } from '../updates/queries';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { ArtifactGap } from '../wire';
-import AdeRow from './AdeRow.vue';
 import { rowMeta } from './adeRow';
 
-// The linked issue as its tracker reports it: title, status and Jira's PR count.
+// The linked issue as its tracker reports it, inline in the Jira link row: title, status, Jira's PR count and a view
+// button.
 // The tracker CLI owns the credentials; a failure reads as a line of text, never an error toast.
 const props = defineProps<{ taskId: string; link: string }>();
 const query = useTaskIssue(
@@ -24,7 +25,7 @@ const query = useTaskIssue(
 );
 
 const issue = computed(() => query.data.value);
-// A task no tracker recognises shows no row at all; nothing shifts when the lookup settles.
+// A task no tracker recognises shows nothing; nothing shifts when the lookup settles.
 const shown = computed(
   () => query.isPending.value || (issue.value !== undefined && issue.value.reason !== 'noTracker'),
 );
@@ -52,43 +53,54 @@ function viewIssue(): void {
 </script>
 
 <template>
-  <div v-if="shown" class="flex min-w-0 flex-col" data-testid="ade-task-issue">
-    <AdeRow v-if="query.isPending.value" label="">
-      <Skeleton class="h-4 w-48" data-testid="ade-task-issue-loading" />
-    </AdeRow>
+  <span
+    v-if="shown"
+    class="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5"
+    data-testid="ade-task-issue"
+  >
+    <Skeleton v-if="query.isPending.value" class="h-3 w-32" data-testid="ade-task-issue-loading" />
     <template v-else-if="issue">
-      <AdeRow v-if="issue.title" label="">
-        <span class="min-w-0 truncate" data-testid="ade-task-issue-title">{{ issue.title }}</span>
-        <AdeChip
-          v-if="issue.status"
-          :label="issue.status"
-          :tone="CATEGORY_TONE[issue.statusCategory] ?? 'grey'"
-          data-testid="ade-task-issue-status"
-        />
-        <template v-if="!issue.reason" #actions>
-          <TooltipIconButton
-            icon="eye"
-            :label="t('space.hostView.issue.view.tooltip')"
-            class="shrink-0"
-            data-testid="ade-task-issue-view"
-            @click="viewIssue"
-          />
-        </template>
-      </AdeRow>
-      <AdeRow v-if="!issue.reason && issue.summary.known" label="">
-        <span :class="rowMeta" data-testid="ade-task-issue-prs">
-          {{
-            issue.summary.count > 0
-              ? t('space.ade.taskTab.issueLine.prs.label', { count: issue.summary.count })
-              : t('space.ade.taskTab.issueLine.prsNone.label')
-          }}
-        </span>
-      </AdeRow>
-      <AdeRow v-if="gap" label="">
-        <span class="text-kira-sm text-tone-amber" data-testid="ade-task-issue-gap">{{
+      <span
+        v-if="issue.title"
+        class="min-w-0 flex-1 truncate text-muted-foreground"
+        data-testid="ade-task-issue-title"
+        >{{
+          issue.title
+        }}</span
+      >
+      <AdeChip
+        v-if="issue.title && issue.status"
+        :label="issue.status"
+        :tone="CATEGORY_TONE[issue.statusCategory] ?? 'grey'"
+        data-testid="ade-task-issue-status"
+      />
+      <span
+        v-if="!issue.reason && issue.summary.known"
+        :class="cn(rowMeta, 'shrink-0 whitespace-nowrap')"
+        data-testid="ade-task-issue-prs"
+      >
+        {{
+          issue.summary.count > 0
+            ? t('space.ade.taskTab.issueLine.prs.label', { count: issue.summary.count })
+            : t('space.ade.taskTab.issueLine.prsNone.label')
+        }}
+      </span>
+      <TooltipIconButton
+        v-if="issue.title && !issue.reason"
+        icon="eye"
+        :label="t('space.hostView.issue.view.tooltip')"
+        class="shrink-0"
+        data-testid="ade-task-issue-view"
+        @click="viewIssue"
+      />
+      <span
+        v-if="gap"
+        class="basis-full text-kira-sm text-tone-amber"
+        data-testid="ade-task-issue-gap"
+        >{{
           gapText(gap)
-        }}</span>
-      </AdeRow>
+        }}</span
+      >
     </template>
-  </div>
+  </span>
 </template>
