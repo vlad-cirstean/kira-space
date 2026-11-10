@@ -14,7 +14,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P597 | Proof: screenshot button saves all to a Desktop folder, location customizable | Done |
 | P598 | Task work start: require a repo choice before an agent opens | Todo |
 | P599 | Review changes button: also for uncommitted changes | Done |
-| P600 | Task Details: group the top links by category, more compact and nicer | Todo |
+| P600 | Task Details: group the top links by category, more compact and nicer | Done |
 | P601 | Task row: agent indicator at the start, manual status as small text with dropdown | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
@@ -102,7 +102,7 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: Details tab top links (`AdeDetailsTab.vue` and children), link kinds on the task (issue links, change request links, other). Planner finds the link model, how misc links are stored and added, and the current layout.
 - Acceptance: links appear under issue, CR and misc groups; the block uses less vertical space than today; add and remove still work.
 - Tests: UI spec; flow test only if the link model changes.
-- Result:
+- Result: Done. Details links group by kind under Issues, Change requests and Misc (branch, deployment, doc, link), fixed order, empty groups hidden; one empty row when there are none. Group name sits in the first row's label column, kind is a lead icon (the kind menu on stored rows, now grouped by category), actions show on hover, the Jira issue's title, status and PR count sit in the Jira row. Example task: 12 rows to 8. Model and backend unchanged, no flow test. Plan: plans/P600.md. Tests: UI "links group under Issues, Change requests and Misc" and "a group without links is hidden" plus updated task-panel, artifacts, issue-tracker specs (77 passed across those and the other Details link specs). Visual: no committed baseline shows Details. Deviations: Issues label reuses `space.settings.updates.issue.title` (catalog rule C3 bans a duplicate key); kind menu tooltip reads "Change kind ({kind})" (rule C6); the kind menu's Tooltip wraps the whole menu in a span, since a Tooltip around the dropdown trigger hijacks its popper anchor; the empty-hint test clears the task's Jira slot and the group-hidden test expects Issues plus Misc, because the task's own Jira keeps Issues present; the two feat commits (grouping, Jira inline) landed as one.
 
 ## P601 Task row: agent indicator at the start, manual status as small text with dropdown
 
