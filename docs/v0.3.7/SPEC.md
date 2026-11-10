@@ -11,7 +11,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P594 | Open GitHub links inside the app: fix | Done |
 | P595 | `api_request` rules: default action ask or deny | Done |
 | P596 | Masking and the Privacy tab: make it understandable | Done |
-| P597 | Proof: screenshot button saves all to a Desktop folder, location customizable | Todo |
+| P597 | Proof: screenshot button saves all to a Desktop folder, location customizable | Done |
 | P598 | Task work start: require a repo choice before an agent opens | Todo |
 | P599 | Review changes button: also for uncommitted changes | Todo |
 | P600 | Task Details: group the top links by category, more compact and nicer | Todo |
@@ -79,7 +79,7 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
   - The proof window's screenshot button is the save-all-to-folder action: it replaces the single-screenshot save, with no separate export-all control.
 - Context: proof screenshot export (`ProofSaveJpegArgs`, save flow).
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
-- Result:
+- Result: The proof window's screenshot button now saves every tab as JPEG into a new `<session>` folder (`-2` on collision) under the Desktop by default, no picker; the single-tab save (`SaveJpeg`) and separate save-all item are gone, and copy-tab stays in the menu. The menu shows the location and changes or resets it (`ChooseShotLocation`/`ResetShotLocation`, persisted as the `proof.shotLocation` settings leaf outside `SettingsPatch`); a missing or unwritable custom folder is an error, never a Desktop fallback. A status strip shows the saved path with Reveal (`RevealShotFolder`) or the error; `CloseShotFolder` removes an empty folder. Plan: `plans/P597.md`. Tests: flow `TestProofShotSaveAll` (contract keys `ShotLocation`, `OpenShotFolder`, `ChooseShotLocation`), UI specs in `proof-window`, `proof-chart`, `proof-image`, `proof-diagram` (26 passed), seven visual baselines re-recorded (Inter confirmed). Deviations: added `TIMING.shotSavedStatus` (10 s) and "Desktop" to `PROPER_NOUNS`; reused `studio.api.saveRequest.target.label` and `common.state.default.option` for the catalog duplicate check; fixed a P593 typecheck miss (`explainThresholdRows` in `dbmcp-unreachable.spec.ts`). Read-only branch of `OpenShotFolder` not exercised as root.
 
 ## P598 Task work start: require a repo choice before an agent opens
 
