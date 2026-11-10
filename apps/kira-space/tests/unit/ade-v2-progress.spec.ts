@@ -83,17 +83,22 @@ describe('step targets and percent', () => {
     expect(p.steps[1]?.state).toBe('pending');
   });
 
-  test('a task with no mine branch runs steps on the task folder, except review and only', () => {
+  test('a task with no mine branch waits for a repo; outside-repo and orchestrator steps run in the task folder', () => {
     const wf: Workflow = {
       ...workflow,
       steps: [
         mkStep({ id: 'a', runsOn: 'once' }),
         mkStep({ id: 'b', runsOn: 'only web-app' }),
         mkStep({ id: 'c', kind: 'review' }),
+        mkStep({ id: 'd', outsideRepo: true }),
       ],
     };
-    const p = buildTaskProgress(input([], { entryStepId: 'a', branchIds: [] }, wf));
-    expect(p.steps.map((s) => s.runs.map((r) => r.branchId))).toEqual([[''], [], []]);
+    const targets = (over: Partial<Task>) =>
+      buildTaskProgress(input([], { entryStepId: 'a', branchIds: [], ...over }, wf)).steps.map(
+        (s) => s.runs.map((r) => r.branchId),
+      );
+    expect(targets({})).toEqual([[], [], [], ['']]);
+    expect(targets({ kind: 'orchestrator' })).toEqual([[''], [], [], ['']]);
   });
 
   test('a step that ran without a branch keeps the task folder once repos exist', () => {
