@@ -15,7 +15,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P598 | Task work start: require a repo choice before an agent opens | Todo |
 | P599 | Review changes button: also for uncommitted changes | Done |
 | P600 | Task Details: group the top links by category, more compact and nicer | Done |
-| P601 | Task row: agent indicator at the start, manual status as small text with dropdown | Todo |
+| P601 | Task row: agent indicator at the start, manual status as small text with dropdown | Done |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -111,4 +111,4 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
   - The manual status the user can set shows as small text in the task itself; clicking it opens a dropdown to change it.
 - Context: task row in the board and lists (`AdeTaskRow`/card components under `apps/kira-space/frontend/src/ade/v2/`), the colored square (task color mark), the agent state indicator, manual status control. Planner finds every place the row renders and whether the color is still needed elsewhere.
 - Tests: UI spec; flow test only if status writes change. Visual baselines move: plan which.
-- Result:
+- Result: Done. Task colour square removed from Plan cards, shelf rows and span rows; the agent indicator (AdeTaskSessions) leads the card head and shelf row in a fixed slot (`ade-row-lead`); task colour stays as the 3px left edge (now also on shelf and span rows). Stored status shows as small coloured text (AdeTaskStatusMenu, shadcn radio dropdown, keyboard, no row open or drag) on cards and shelf rows, writing UpdateTask statusId; status glyph dropped, blocked/merged/not merging/pass done glyphs stay. Unchanged: review cards, orchestrator child rows, history, Needs-you, panel header, mobile. Plan: plans/P601.md. Tests: UI ade-v2-task-row.spec.ts (7 passed) plus updated card-icons, plan specs; no flow test (writes unchanged, TestTaskStatuses contract reused). Visual: plan-branches-stacked re-recorded, no other baseline moved. Deviations: no status tooltip (a Tooltip between DropdownMenu and trigger broke the popper anchor; aria-label names the control), so only the `status.aria` i18n key was added; card-icons right-click test targets the status text since the stored status no longer has a glyph.
