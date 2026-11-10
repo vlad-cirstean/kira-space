@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { CHANNEL } from '@shared/protocol/events';
 import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
 import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 import { emitWailsEvent } from '../support/mockRuntime';
 import { installClipboardSpy } from './support/clipboard';
@@ -9,6 +10,7 @@ import { editorText } from './support/editorText';
 import {
   bigTable,
   diffClipboardImage,
+  explainedControl,
   jpegHeight,
   LONG_QUERY,
   openProofWindow,
@@ -55,6 +57,37 @@ const threeSteps = () => [
   stepSnapshot(SESSION_ID, 1, 3, 'keyvalue'),
 ];
 
+test('the explanation and summary show in full at the larger size', async ({
+  relaunch,
+  uiServer,
+}) => {
+  const { window: page } = await relaunch({ control: explainedControl() });
+  await openProofWindow(page, uiServer.url);
+  await stepsReady(page);
+
+  const detail = contract('proof-explained', 'ProofService.Session') as unknown as {
+    summary: string;
+    current: { steps: { description: string }[] };
+  };
+  const summary = page.locator('[data-testid="proof-summary"]');
+  const description = page.locator('[data-testid="proof-step-description"]');
+  await expect(summary).toHaveText(detail.summary);
+  await expect(description).toHaveText(detail.current.steps[0]?.description ?? '');
+
+  const clipped = await description.evaluate((el) => ({
+    fits: el.scrollWidth <= el.clientWidth,
+    overflow: getComputedStyle(el).textOverflow,
+  }));
+  expect(clipped.fits).toBe(true);
+  expect(clipped.overflow).not.toBe('ellipsis');
+
+  const size = (loc: typeof description) =>
+    loc.evaluate((el) => Number.parseFloat(getComputedStyle(el).fontSize));
+  expect(await size(description)).toBeGreaterThan(
+    await size(page.locator('[data-testid="proof-title"]')),
+  );
+});
+
 test('tabs follow step order and the data renders literally', async ({ relaunch, uiServer }) => {
   const { window: page } = await relaunch({ control: proofControl(threeSteps()) });
   await openProofWindow(page, uiServer.url);
@@ -62,6 +95,7 @@ test('tabs follow step order and the data renders literally', async ({ relaunch,
 
   const titles = await tabTitles(page);
   expect(titles.map((t) => t.trim())).toEqual(['#1 Orders before', '#2 Doc hit', '#3 Stats']);
+  await expect(page.locator('[data-testid="proof-summary"]')).toHaveCount(0);
 
   const result = page.locator('[data-testid="proof-step-result"]');
   await expect(

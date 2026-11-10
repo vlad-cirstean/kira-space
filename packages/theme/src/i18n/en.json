@@ -16852,6 +16852,9 @@
           "error": "Saved {count} of {total} screenshots before failing: {error}"
         }
       },
+      "summary": {
+        "aria": "Proof summary"
+      },
       "tabs": {
         "aria": "Proof steps"
       }

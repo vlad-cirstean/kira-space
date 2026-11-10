@@ -14,7 +14,13 @@ export const PENDING_ID = 'session-2';
 type Json = Record<string, any>;
 
 const fixture = (
-  name: 'proof' | 'proof-pending' | 'proof-chart' | 'proof-diagram' | 'proof-image',
+  name:
+    | 'proof'
+    | 'proof-pending'
+    | 'proof-explained'
+    | 'proof-chart'
+    | 'proof-diagram'
+    | 'proof-image',
   key: string,
 ): Json => contract(name, key) as Json;
 
@@ -147,6 +153,33 @@ export function chartControl(
     { channel: IPC.proofSession, response: chartSession() },
     ...CHART_KEYS.map((key, i) => chartStep(SESSION_ID, 1, i + 1, key, patches[i + 1])),
     ...extra,
+  ];
+}
+
+/** Boot snapshots for the explained session (tests/contract/proof-explained.json): a summary and one
+ *  long step explanation. */
+export function explainedControl(): ControlSnapshot[] {
+  return [
+    { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
+    {
+      channel: IPC.proofSessions,
+      response: (fixture('proof-explained', 'ProofService.Sessions') as unknown as Json[]).map(
+        (x) => ({ ...x, id: SESSION_ID, closedAt: CLOSED_AT }),
+      ),
+    },
+    {
+      channel: IPC.proofSession,
+      response: {
+        ...fixture('proof-explained', 'ProofService.Session'),
+        id: SESSION_ID,
+        closedAt: CLOSED_AT,
+      },
+    },
+    {
+      channel: IPC.proofStep,
+      args: { sessionId: SESSION_ID, rev: 1, ordinal: 1 },
+      response: { ...fixture('proof-explained', 'ProofService.Step#table'), ordinal: 1 },
+    },
   ];
 }
 

@@ -146,6 +146,15 @@ const right = useLiveSize(
       >
         <QueryState v-if="store.sessionId" :query="session">
           <template #default="{ data }">
+            <p
+              v-if="data.summary"
+              class="max-h-32 shrink-0 overflow-y-auto whitespace-pre-line break-words px-3 py-2 text-kira-lg leading-snug"
+              :aria-label="t('studio.proof.summary.aria')"
+              data-testid="proof-summary"
+              >{{
+                data.summary
+              }}</p
+            >
             <div
               class="h-tabbar min-h-0 shrink-0 overflow-hidden bg-chrome"
               :aria-label="t('studio.proof.tabs.aria')"
