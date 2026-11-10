@@ -120,16 +120,24 @@ func TestPolicyCheckHop(t *testing.T) {
 		method string
 		url    string
 		want   string // "" follows
+		// approved: the request went through approval at http://127.0.0.1:9/start.
+		approved bool
 	}{
-		{"no rules ask follows any host", nil, "ask", "GET", "https://anywhere.test/x", ""},
-		{"no rules deny refuses", nil, "deny", "GET", "https://anywhere.test/x", "a redirect must go to a host an allow rule matches"},
-		{"ask allow match follows", []Rule{local}, "ask", "GET", "http://127.0.0.1:9/x", ""},
-		{"ask unmatched host refused", []Rule{local}, "ask", "GET", "https://other.test/x", "a redirect must go to a host an allow rule matches"},
-		{"ask unmatched method refused", []Rule{local}, "ask", "POST", "http://127.0.0.1:9/x", "a redirect must go to a host an allow rule matches"},
-		{"ask deny match refused", []Rule{local, noDelete}, "ask", "DELETE", "http://127.0.0.1:9/x", "denied by the API access rule"},
-		{"deny unmatched refused", []Rule{local}, "deny", "GET", "https://other.test/x", "a redirect must go to a host an allow rule matches"},
-		{"deny allow match follows", []Rule{local}, "deny", "GET", "http://127.0.0.1:9/x", ""},
-		{"hop error hides path and query", []Rule{local}, "ask", "GET", "https://other.test/secret?token=abc", "GET https://other.test matches no allow rule"},
+		{"no rules ask follows any host", nil, "ask", "GET", "https://anywhere.test/x", "", false},
+		{"no rules deny refuses", nil, "deny", "GET", "https://anywhere.test/x", "a redirect must go to a host an allow rule matches", false},
+		{"ask allow match follows", []Rule{local}, "ask", "GET", "http://127.0.0.1:9/x", "", false},
+		{"ask unmatched host refused", []Rule{local}, "ask", "GET", "https://other.test/x", "a redirect must go to a host an allow rule matches", false},
+		{"ask unmatched method refused", []Rule{local}, "ask", "POST", "http://127.0.0.1:9/x", "a redirect must go to a host an allow rule matches", false},
+		{"ask deny match refused", []Rule{local, noDelete}, "ask", "DELETE", "http://127.0.0.1:9/x", "denied by the API access rule", false},
+		{"deny unmatched refused", []Rule{local}, "deny", "GET", "https://other.test/x", "a redirect must go to a host an allow rule matches", false},
+		{"deny allow match follows", []Rule{local}, "deny", "GET", "http://127.0.0.1:9/x", "", false},
+		{"approved same host other scheme follows", []Rule{noDelete}, "ask", "GET", "https://127.0.0.1:9/x", "", true},
+		{"approved same host other path follows", []Rule{noDelete}, "ask", "GET", "http://127.0.0.1:9/other/", "", true},
+		{"approved other host refused", []Rule{noDelete}, "ask", "GET", "https://other.test/x", "stay on the approved host", true},
+		{"approved same host other port refused", []Rule{noDelete}, "ask", "GET", "http://127.0.0.1:10/x", "stay on the approved host", true},
+		{"approved same host deny still wins", []Rule{noDelete}, "ask", "DELETE", "http://127.0.0.1:9/x", "denied by the API access rule", true},
+		{"allow-matched same host unmatched method refused", []Rule{local}, "ask", "POST", "http://127.0.0.1:9/x", "a redirect must go to a host an allow rule matches", false},
+		{"hop error hides path and query", []Rule{local}, "ask", "GET", "https://other.test/secret?token=abc", "GET https://other.test matches no allow rule", false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -138,7 +146,8 @@ func TestPolicyCheckHop(t *testing.T) {
 				t.Fatal(err)
 			}
 			u, _ := url.Parse(c.url)
-			err = p.WithDefault(c.def).CheckHop(c.method, u)
+			origin, _ := url.Parse("http://127.0.0.1:9/start")
+			err = p.WithDefault(c.def).CheckHop(c.method, u, origin, c.approved)
 			switch {
 			case c.want == "" && err != nil:
 				t.Fatalf("want follow, got %v", err)

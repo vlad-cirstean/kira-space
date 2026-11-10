@@ -113,10 +113,11 @@ func optionsFor(p Planned, g Globals, m mask) httpclient.Options {
 	maxHops := min(max(g.MaxRedirects, 0), httpclientMaxHop)
 	verify := true
 	follow := p.FollowRedirects
+	origin, _ := url.Parse(p.URL) // nil on a parse failure: no same-host allowance
 	opts := httpclient.Options{
 		RequestTimeoutMs: &timeoutMs, MaxResponseMb: &maxMb, SSLVerify: &verify,
 		FollowRedirects: &follow, MaxRedirects: &maxHops, Ephemeral: true,
-		WireMask: m.repl, RedirectGuard: redirectGuard(p.Method, p.creds, p.access),
+		WireMask: m.repl, RedirectGuard: redirectGuard(p.Method, p.creds, p.access, origin, !p.AllowedByRule),
 	}
 	if g.HTTPVersion != "" {
 		opts.HTTPVersion = &g.HTTPVersion

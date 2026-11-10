@@ -17134,7 +17134,7 @@
           "anyMethod": {
             "label": "Any method"
           },
-          "description": "A deny rule refuses a request. An allow rule sends it without asking you. When both match, deny wins. With rules, a redirect may only go to a host an allow rule matches.",
+          "description": "A deny rule refuses a request. An allow rule sends it without asking you. When both match, deny wins. A redirect of a request you approved may stay on its host; a redirect of a request an allow rule sent may only go to a host an allow rule matches.",
           "dialog": {
             "title": "API access rule"
           },

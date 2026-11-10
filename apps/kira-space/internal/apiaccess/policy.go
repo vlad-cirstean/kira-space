@@ -184,9 +184,10 @@ func (p Policy) Decide(method string, u *url.URL) (Verdict, error) {
 }
 
 // CheckHop judges one redirect hop with the request's own method. A deny match refuses and an allow match
-// follows. With no match the hop is refused, unless the policy allows everything: an allow rule skips the
-// approval prompt, so a redirect must not leave the hosts the user vetted.
-func (p Policy) CheckHop(method string, u *url.URL) error {
+// follows. With no match the hop is refused, unless the policy allows everything or the request went through
+// approval (approved) and the hop stays on the host and port of the request, origin, the user approved. An
+// allow-matched request skipped the prompt, so its redirect must not leave the hosts the user vetted.
+func (p Policy) CheckHop(method string, u, origin *url.URL, approved bool) error {
 	if p.AllowsAll() {
 		return nil
 	}
@@ -203,6 +204,13 @@ func (p Policy) CheckHop(method string, u *url.URL) error {
 	}
 	if allowed {
 		return nil
+	}
+	if approved {
+		if origin != nil && strings.EqualFold(u.Host, origin.Host) {
+			return nil
+		}
+		return errors.New(target + " matches no allow rule in Kira Space's database MCP settings, " +
+			"and a redirect must stay on the approved host or go to a host an allow rule matches")
 	}
 	return errors.New(target + " matches no allow rule in Kira Space's database MCP settings, " +
 		"and a redirect must go to a host an allow rule matches")

@@ -601,6 +601,11 @@ func TestApiAccessDefault(t *testing.T) {
 	rules("rules", noDelete)
 	approved(apiArgs(envID, "GET", "{{base_url}}/echo"))
 	refused(callTool(t, sess, "api_request", apiArgs(envID, "DELETE", "{{base_url}}/x")), "denied by the API access rule")
+	seenHops := len(srv.Requests())
+	approved(apiArgs(envID, "GET", srv.URL+"/redirect?to="+srv.URL+"/echo"))
+	if got := len(srv.Requests()) - seenHops; got != 2 {
+		t.Fatalf("server saw %d requests for an approved request redirected on its host, want 2", got)
+	}
 
 	seen := len(srv.Requests())
 	dflt("deny", "deny")
