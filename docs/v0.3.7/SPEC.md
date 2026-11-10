@@ -8,7 +8,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P591 | Proof tool: behavior not code, larger explanation, terse guidance | Done |
 | P592 | Jira: faster loading | Done |
 | P593 | Database MCP: customizable explain threshold | Todo |
-| P594 | Open GitHub links inside the app: fix | Todo |
+| P594 | Open GitHub links inside the app: fix | Done |
 | P595 | `api_request` rules: default action ask or deny | Todo |
 | P596 | Masking and the Privacy tab: make it understandable | Todo |
 | P597 | Proof: screenshot button saves all to a Desktop folder, location customizable | Todo |
@@ -55,7 +55,7 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Ask (user): opening GitHub links in the app itself is broken.
 - Context: link handling for GitHub URLs (issues, pull requests) in the task panel and elsewhere; P586 moved Details links to the system browser. Planner reproduces first.
 - Tests: UI spec; backend half only if one exists.
-- Result:
+- Result: Cause: classification (`ParseLink`) is prefix-only but the PR view parser (`github.ParseBranchLink`) allowed only `/pull/<n>` plus one of `files`, `commits`, `checks`. A link ending in `/changes` (GitHub's current Files tab), a trailing slash, `files/a..b` or `commits/<sha>` filed as a change request, then `HostViewService.Open` answered bad request and the click's rejection was swallowed. Fix: parser accepts a trailing slash, the `changes` tab and sub-paths under `files`, `commits`, `changes`; unknown suffixes still miss. New `useOpenChangeRequest` opens the browser when the view refuses or fails, used by the Details title, branch panel View and Main tab PR chip. Tests: flow `TestGitHubLinksInApp` (written first, failed on `/pull/12/changes`) and `tests/ui/github-links-in-app.spec.ts` share contract `github-links-in-app`; parser table extended. Not fixed: GitHub Enterprise Server PR links classify as plain links (`ParseLink` hardcodes `github.com`; needs a signature change across providers), and timeline, archived, notes and PR-body links keep opening the browser by P586 design.
 
 ## P595 `api_request` rules: default action ask or deny
 
