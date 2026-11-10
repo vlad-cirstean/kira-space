@@ -118,4 +118,5 @@ test('settings: Advanced explains the estimate and who acts on it', async ({ rel
   const description = page.locator('[data-testid="settings-expensive-query-rows-description"]');
   await expect(description).toContainText('not the rows it returns');
   await expect(description).toContainText('refuses an agent’s query before it runs');
+  await expect(description).toContainText('A connection can set its own on its advanced tab');
 });

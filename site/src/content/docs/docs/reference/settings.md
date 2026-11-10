@@ -53,7 +53,7 @@ See [Prompts](../prompts/).
 ### Advanced
 
 - Operation log retention: 1 to 365 days, default 30.
-- Expensive query threshold: 1000 to 1000000000 estimated rows, default 100000.
+- Expensive query threshold: 1000 to 1000000000 estimated rows, default 100000. A connection can override it in its Advanced tab.
 - Log level: off, error, warn, info or debug. Default info.
 - A system notification when a popup waits in a window that is not in front. On by default.
 

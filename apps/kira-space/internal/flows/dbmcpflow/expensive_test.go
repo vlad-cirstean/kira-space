@@ -14,6 +14,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
@@ -24,6 +25,8 @@ import (
 // user, and list_connections reports the check per engine. Contract dbmcp-expensive-query.
 
 const expensiveThreshold = 1000
+
+var explainThresholdLineRe = regexp.MustCompile(`(?m)^explain_threshold_rows: .*\n`)
 
 var rowsMeasuredRe = regexp.MustCompile(`measured (\d+) rows, limit (\d+) rows`)
 
@@ -105,6 +108,39 @@ func (f *fixture) setAutoExplain(t *testing.T, connID string, on bool) {
 	if saved, err := cfg.SaveFile(bridge.ConnectionSaveFileArgs{File: file, Text: text, BaseHash: detail.Hash}); err != nil || saved.Problem != nil {
 		t.Fatalf("SaveFile = %+v (%v)", saved, err)
 	}
+}
+
+// setExplainThreshold sets or (rows 0) removes the connection file's explain_threshold_rows, the way the
+// Advanced tab does, and returns the save result so a caller can read its problem.
+func (f *fixture) setExplainThreshold(t *testing.T, connID string, rows int) connfiles.ProblemView {
+	t.Helper()
+	list, err := f.app.W.Connections.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file string
+	for _, c := range list {
+		if c.ID == connID {
+			file = c.File
+		}
+	}
+	cfg := f.app.W.ConnectionConfig
+	detail, err := cfg.File(bridge.ConnectionFileArgs{File: file})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := explainThresholdLineRe.ReplaceAllString(detail.Text, "")
+	if rows > 0 {
+		text += "explain_threshold_rows: " + strconv.Itoa(rows) + "\n"
+	}
+	saved, err := cfg.SaveFile(bridge.ConnectionSaveFileArgs{File: file, Text: text, BaseHash: detail.Hash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved.Problem == nil {
+		return connfiles.ProblemView{}
+	}
+	return *saved.Problem
 }
 
 func resultPlan(t *testing.T, res *mcp.CallToolResult) (rows float64, ok bool) {
@@ -260,7 +296,22 @@ func TestDbMcpExpensiveQueryPostgres(t *testing.T) {
 		t.Fatalf("row 2 after the delete = %q", text(r))
 	}
 
-	// 8. Check off for the connection: the same statement runs.
+	// 8. The connection's own threshold replaces the app default for this connection: above the
+	// 5000-row estimate the same statement runs; removing it restores the refusal.
+	if p := f.setExplainThreshold(t, pg.ID, 10_000); p.Message != "" {
+		t.Fatalf("set explain_threshold_rows: %+v", p)
+	}
+	if r := run(big, "read"); r.IsError {
+		t.Fatalf("big read under a 10000-row connection threshold = %q, want rows", text(r))
+	}
+	if p := f.setExplainThreshold(t, pg.ID, 0); p.Message != "" {
+		t.Fatalf("clear explain_threshold_rows: %+v", p)
+	}
+	if r := run(big, "read"); !r.IsError || !strings.Contains(text(r), "expensive_query") {
+		t.Fatalf("big read after clearing the override = %q, want refused at the app default", text(r))
+	}
+
+	// 9. Check off for the connection: the same statement runs.
 	f.setAutoExplain(t, pg.ID, false)
 	if r := run(big, "read"); r.IsError {
 		t.Fatalf("big read with the check off = %q, want rows", text(r))
