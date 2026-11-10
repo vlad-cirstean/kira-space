@@ -12,7 +12,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P595 | `api_request` rules: default action ask or deny | Done |
 | P596 | Masking and the Privacy tab: make it understandable | Done |
 | P597 | Proof: screenshot button saves all to a Desktop folder, location customizable | Done |
-| P598 | Task work start: require a repo choice before an agent opens | Todo |
+| P598 | Task work start: require a repo choice before an agent opens | Done |
 | P599 | Review changes button: also for uncommitted changes | Done |
 | P600 | Task Details: group the top links by category, more compact and nicer | Done |
 | P601 | Task row: agent indicator at the start, manual status as small text with dropdown | Done |
@@ -87,7 +87,7 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: `AddTaskRepo` (`internal/ade/board_writes.go`), run launch (`internal/ade/runs.go` `queueRun`, `launches.go`), task `AdeTaskRepo`. Planner finds every start path (Run dialog, workflow step start, TUI launch, retry) and what folder an agent gets when the task has no repo.
 - Acceptance: a task with no repo cannot start work without choosing at least one repo in a prompt; no start path falls back to a run folder.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
-- Result:
+- Result: A start on a task with no repo now returns `E_TASK_NO_REPO` (`ade.ErrTaskNoRepo`, catalog `backend.space.ade.taskNoRepo.body`, HTTP 409 on the phone). The guard sits at `queueRun` (StartRun, Approve, auto start, retry, resume, loop) and `LaunchStep` via `folderAllowed`; `stepTargets` takes `folderOK`. Exempt by design: outside-repo steps and orchestrator tasks. Take over and Resume keep the recorded cwd. Pre-P598 passes keep the `""` pin; their retry, resume and loop are refused with a move-back hint. `StartRun` also starts the current step when `nextAction` is `actStart` (auto start owed after an outside-repo stage, no repo yet). Desktop: `AdeRepoGateDialog` (shadcn dialog, `ProjectPicker`, one or more repos) over `useAdeRepoGateStore`; Continue adds each repo with `AddTaskRepo`, then the start goes on, Cancel aborts it. `useRepoGate` wraps Run, Approve (task action and Needs you), Start session and the task menu `startNew`, and retries once after a stale-board `E_TASK_NO_REPO` from the Run dialog and session dialog. `progress.ts` mirrors targets (`outsideRepo`, `needsRepo`); a step that waits for a repo shows Run and "Choose a repository to start". The Run dialog no-repo hint is removed. Prompt templates keep an unreachable "No repo yet" branch. Plan: `plans/P598.md`. Tests: flow `TestTaskStartNeedsRepo` (contract `ade-repo-required`), `TestRepolessWorkflow` rewritten on outside-repo stages (contract `ade-norepo` regenerated), `TestOrchestratorToolGrants` and `TestStageMoveSessions` setups fixed, `stepTargets` table; UI specs `ade-v2-repo-required` (6) and updated `ade-v2-norepo` (4); `ade-v2-run`, `launch`, `handover`, `automations`, `orchestrator`, `needs`, `card` and `copy-coverage` pass; visual `repo-gate` baseline added (Inter confirmed). Deviations: `dbmcp-unreachable.spec.ts` taken from the chapter branch (P593 drift, pre-existing).
 
 ## P599 Review changes button: also for uncommitted changes
 
