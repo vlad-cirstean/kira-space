@@ -86,7 +86,7 @@ func TestStepTargets(t *testing.T) {
 		"only unresolved":    {"only db", nil, true},
 		"empty runsOn = all": {"", []string{"b1", "b2", "b3"}, false},
 	} {
-		got, err := stepTargets(tc.runsOn, false, mine)
+		got, err := stepTargets(tc.runsOn, false, mine, false)
 		if (err != nil) != tc.fails || !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("%s: got %v, %v", name, got, err)
 		}
@@ -94,15 +94,19 @@ func TestStepTargets(t *testing.T) {
 	for name, tc := range map[string]struct {
 		runsOn string
 		review bool
+		folder bool
 		want   []string
 		fails  bool
 	}{
-		"once":        {"once", false, []string{taskTarget}, false},
-		"each repo":   {"", false, []string{taskTarget}, false},
-		"only":        {"only api", false, nil, true},
-		"review step": {"", true, nil, true},
+		"once":                {"once", false, false, nil, true},
+		"each repo":           {"", false, false, nil, true},
+		"only":                {"only api", false, false, nil, true},
+		"review step":         {"", true, false, nil, true},
+		"orchestrator once":   {"once", false, true, []string{taskTarget}, false},
+		"orchestrator all":    {"", false, true, []string{taskTarget}, false},
+		"orchestrator review": {"", true, true, nil, true},
 	} {
-		got, err := stepTargets(tc.runsOn, tc.review, nil)
+		got, err := stepTargets(tc.runsOn, tc.review, nil, tc.folder)
 		if (err != nil) != tc.fails || !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("no branch, %s: got %v, %v", name, got, err)
 		}

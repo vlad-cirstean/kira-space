@@ -92,14 +92,15 @@ func nextStep(wf adewire.Workflow, from int) (int, bool) {
 // mineBranch is a task's mine branch with its repo's display name (nickname, else name).
 type mineBranch struct{ ID, Nick string }
 
-// taskTarget is the target of a step on a task with no branch: a run with no branch, working in the
-// task folder.
+// taskTarget is the target of an outside-repo step, or of a step on an orchestrator task with no
+// branch: a run with no branch, working in the task folder.
 const taskTarget = ""
 
 // stepTargets resolves a step's branches in task order: once = the first, each repo = all, only
-// <nick> = those in that repo. A task with no mine branch runs a step on taskTarget, except a review
-// step and an `only` step, which need a branch.
-func stepTargets(runsOn string, review bool, mine []mineBranch) ([]string, error) {
+// <nick> = those in that repo. A task with no mine branch refuses a step with ErrTaskNoRepo; a review
+// step and an `only` step have their own errors. folderOK (orchestrator task) runs a step on taskTarget
+// instead.
+func stepTargets(runsOn string, review bool, mine []mineBranch, folderOK bool) ([]string, error) {
 	if len(mine) == 0 {
 		if review {
 			return nil, fmt.Errorf("the review step needs a branch to review")
@@ -107,7 +108,10 @@ func stepTargets(runsOn string, review bool, mine []mineBranch) ([]string, error
 		if nick, ok := strings.CutPrefix(runsOn, "only "); ok {
 			return nil, fmt.Errorf("the step runs only on %q, which has no branch in this task", nick)
 		}
-		return []string{taskTarget}, nil
+		if folderOK {
+			return []string{taskTarget}, nil
+		}
+		return nil, ErrTaskNoRepo
 	}
 	if nick, ok := strings.CutPrefix(runsOn, "only "); ok {
 		var out []string

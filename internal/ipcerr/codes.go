@@ -37,6 +37,7 @@ const (
 	CodeGitUnknown          Code = "E_GIT_UNKNOWN"
 	CodeGitUnavailable      Code = "E_GIT_UNAVAILABLE"
 	CodePreparing           Code = "E_PREPARING"
+	CodeTaskNoRepo          Code = "E_TASK_NO_REPO"
 	CodeRevoked             Code = "E_REVOKED"
 	CodeExpired             Code = "E_EXPIRED"
 	CodePairingDenied       Code = "E_PAIRING_DENIED"

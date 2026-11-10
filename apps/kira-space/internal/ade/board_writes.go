@@ -31,6 +31,9 @@ var ErrStale = errors.New("ade: task moved on")
 // the bridge maps it to E_CONFLICT.
 var ErrWorkingChanged = errors.New("ade: working file changed")
 
+// ErrTaskNoRepo marks a work start on a task with no repo; the bridge maps it to E_TASK_NO_REPO.
+var ErrTaskNoRepo = errors.New("ade: the task has no repo")
+
 func invalid(format string, args ...any) error {
 	return fmt.Errorf("%w: %s", ErrInvalidInput, fmt.Sprintf(format, args...))
 }

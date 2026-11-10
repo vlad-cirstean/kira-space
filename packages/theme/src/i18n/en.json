@@ -1857,6 +1857,9 @@
         "taskMoved": {
           "body": "The task moved on. Refresh and retry."
         },
+        "taskNoRepo": {
+          "body": "This task has no repository yet. Choose at least one before starting work."
+        },
         "taskNotFound": {
           "body": "That task no longer exists."
         },

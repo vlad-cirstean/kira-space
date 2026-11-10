@@ -109,7 +109,7 @@ func (b *TaskBoard) resumeSandboxPlan(ctx context.Context, tc *taskCtx, rec *mod
 		lines, _, _, err = b.launchDirs(ctx, tc)
 	}
 	folder := ""
-	if step.OutsideRepo || errors.Is(err, errNoRepo) {
+	if step.OutsideRepo || errors.Is(err, ErrTaskNoRepo) {
 		lines = nil
 		if folder, err = b.taskDir(tc.task.ID); err != nil {
 			return nil, err

@@ -209,7 +209,7 @@ func (b *TaskBoard) plan(tc *taskCtx) ([]stepView, error) {
 		case def.OutsideRepo && !def.manual():
 			v.Targets = []string{taskTarget}
 		case !def.manual():
-			if v.Targets, v.TargetErr = stepTargets(def.RunsOn, def.Kind == adewire.KindReview, tc.mine); v.TargetErr != nil {
+			if v.Targets, v.TargetErr = stepTargets(def.RunsOn, def.Kind == adewire.KindReview, tc.mine, tc.task.Kind == model.AdeTaskKindOrchestrator); v.TargetErr != nil {
 				v.Targets = nil
 			}
 		}
@@ -345,17 +345,22 @@ func (b *TaskBoard) StartRun(ctx context.Context, args adewire.StartRunArgs) (ad
 		return adewire.StartRunResult{}, invalid("step %q is no longer in the workflow", tc.entry)
 	}
 	cur := currentStep(plan, entry)
-	if cur < 0 || plan[cur].Def.manual() || plan[cur].started() || nextAction(plan, entry).Kind != actIdle {
+	if cur < 0 || plan[cur].Def.manual() || plan[cur].started() {
 		return adewire.StartRunResult{}, invalid("the current step does not wait for Run")
 	}
-	if path, _ := walkPath(plan, entry); path[0] != cur {
-		return adewire.StartRunResult{}, invalid("the current step does not wait for Run")
+	// An auto start the engine owed but could not make (no repo yet) waits for Run too.
+	act := nextAction(plan, entry)
+	owed := act.Kind == actStart && act.Step == cur
+	if !owed {
+		if path, _ := walkPath(plan, entry); act.Kind != actIdle || path[0] != cur {
+			return adewire.StartRunResult{}, invalid("the current step does not wait for Run")
+		}
 	}
 	if err := b.checkBranchNames(tc, args.BranchNames); err != nil {
 		return adewire.StartRunResult{}, err
 	}
-	if plan[cur].TargetErr != nil {
-		return adewire.StartRunResult{}, invalid("step %q: %v", plan[cur].Def.Name, plan[cur].TargetErr)
+	if err := targetErr(plan[cur]); err != nil {
+		return adewire.StartRunResult{}, err
 	}
 	paths, err := b.prepareStepWorktrees(ctx, tc, plan[cur].Def, args.BranchNames)
 	if err != nil {
@@ -453,11 +458,35 @@ func (b *TaskBoard) stepMessage(taskID, stepID string) string {
 	return b.stepMsgs[stepMessageKey(taskID, stepID)]
 }
 
+// targetErr is the refusal for a step whose targets did not resolve, nil when they did.
+func targetErr(v stepView) error {
+	switch {
+	case v.TargetErr == nil:
+		return nil
+	case errors.Is(v.TargetErr, ErrTaskNoRepo):
+		return ErrTaskNoRepo
+	}
+	return invalid("step %q: %v", v.Def.Name, v.TargetErr)
+}
+
+// folderAllowed refuses a run in the task folder on a step that needs a repo. Outside-repo steps and
+// orchestrator tasks work there by design; a pass that started there before repos were required keeps
+// its route but cannot rerun.
+func folderAllowed(tc *taskCtx, def stepDef) error {
+	if def.OutsideRepo || tc.task.Kind == model.AdeTaskKindOrchestrator {
+		return nil
+	}
+	if len(tc.mine) == 0 {
+		return ErrTaskNoRepo
+	}
+	return invalid("step %q worked in the task folder before repos were required: move the task back to this step to run it on a repo", def.Name)
+}
+
 // startStep creates attempt-1 runs for every target of plan[idx] and launches those whose worktree
 // gate is open.
 func (b *TaskBoard) startStep(ctx context.Context, tc *taskCtx, plan []stepView, idx int, paths map[string]string) ([]model.AdeRun, error) {
-	if err := plan[idx].TargetErr; err != nil {
-		return nil, invalid("step %q: %v", plan[idx].Def.Name, err)
+	if err := targetErr(plan[idx]); err != nil {
+		return nil, err
 	}
 	out := make([]model.AdeRun, 0, len(plan[idx].Targets))
 	for _, bid := range plan[idx].Targets {
@@ -477,6 +506,9 @@ func (b *TaskBoard) queueRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	}
 	var sb model.AdeTaskBranch
 	if branchID == taskTarget {
+		if err := folderAllowed(tc, plan[idx].Def); err != nil {
+			return model.AdeRun{}, err
+		}
 		sb.TaskID = tc.task.ID
 		if path == "" {
 			var err error
@@ -1309,7 +1341,7 @@ func (b *TaskBoard) advanceLocked(ctx context.Context, taskID string) {
 		if tc, err = b.loadTaskCtx(taskID); err != nil { // branch names changed
 			return
 		}
-		if _, err := b.startStep(ctx, tc, plan, act.Step, paths); err != nil {
+		if _, err := b.startStep(ctx, tc, plan, act.Step, paths); err != nil && !errors.Is(err, ErrTaskNoRepo) {
 			slog.Warn("ade: start step", "scope", "ade", "task", taskID, "err", err)
 		}
 	case actComplete:
