@@ -1,0 +1,11 @@
+{
+  "ApprovalsService.List": [],
+  "event:kira:connection:state#lost": {
+    "caps": null,
+    "connectionId": "<id:1>",
+    "error": "Connection lost: no database file at \"/data/mcp.db\"",
+    "serverVersion": null,
+    "since": 0,
+    "status": "error"
+  }
+}

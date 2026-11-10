@@ -650,6 +650,9 @@ func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *query
 	if rv.verdict != "prompt" {
 		return nil, nil, nil, false
 	}
+	if res, out, err, done := s.ensureReachable(ctx, rv.summary, rv.mode); done {
+		return res, out, err, true
+	}
 
 	outcome, choice := s.cfg.Approvals.RequestChoice(ctx, ApprovalRequest{
 		ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
@@ -762,6 +765,36 @@ func (s *Server) explainPreflight(args explainQueryArgs) (model.ConnectionSummar
 	return summary, m, "", nil
 }
 
+// awaitExplainApproval raises the explain approval once the connection answers. done is true when
+// the call ends here: an unreachable connection (no prompt raised) or a refused approval.
+func (s *Server) awaitExplainApproval(ctx context.Context, args explainQueryArgs, summary model.ConnectionSummary, statements []string) (resolved model.ConnectionSummary, res *mcp.CallToolResult, out any, err error, done bool) {
+	if res, out, err, done := s.ensureReachable(ctx, summary, modeRead); done {
+		return summary, res, out, err, true
+	}
+	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
+		ConnectionID: args.ConnectionID, ConnectionName: summary.Name, Kind: summary.Kind,
+		Class: adapters.ClassRead, Statement: strings.Join(statements, "\n"),
+		Reason: ApprovalReasonPermission, Origin: originFrom(ctx),
+	})
+	if outcome != ApprovalApproved {
+		res, out, err = approvalOutcomeError(outcome, fmt.Sprintf("query against %q", summary.Name))
+		return summary, res, out, err, true
+	}
+	// F6: mirror runQuery's own awaitApproval re-check — summary/m were resolved before this (up to
+	// ApprovalTimeout) wait, so an Approve landing after the user revoked MCP exposure or tightened
+	// read mode to deny must not still run the composed EXPLAIN.
+	resummary, rerr := s.resolveEnabled(args.ConnectionID)
+	if rerr != nil {
+		res, out, err = errResult(rerr.Error())
+		return summary, res, out, err, true
+	}
+	if rm := modesOf(resummary); rm.read == "deny" {
+		res, out, err = errResult(fmt.Sprintf("connection %q's MCP permissions now deny read statements; change them in the connection's MCP tab", resummary.Name))
+		return summary, res, out, err, true
+	}
+	return resummary, nil, nil, nil, false
+}
+
 // explainQuery plans one SELECT/WITH statement without running it (the gate order):
 // resolve → kind support → explainability → read-mode deny (before connecting) → connect →
 // classify-assert every composed statement as a read → verdict on the read mode (prompt
@@ -799,28 +832,11 @@ func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args 
 	case "allow":
 		// fall through to Execute below.
 	case "prompt":
-		outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
-			ConnectionID: args.ConnectionID, ConnectionName: summary.Name, Kind: summary.Kind,
-			Class: adapters.ClassRead, Statement: strings.Join(statements, "\n"),
-			Reason: ApprovalReasonPermission, Origin: originFrom(ctx),
-		})
-		switch outcome {
-		case ApprovalApproved:
-			// F6: mirror runQuery's own awaitApproval re-check — summary/m above were resolved
-			// before this (up to ApprovalTimeout) wait, so an Approve landing after the user revoked MCP
-			// exposure or tightened read mode to deny must not still run the composed EXPLAIN.
-			resummary, rerr := s.resolveEnabled(args.ConnectionID)
-			if rerr != nil {
-				return errResult(rerr.Error())
-			}
-			if rm := modesOf(resummary); rm.read == "deny" {
-				return errResult(fmt.Sprintf("connection %q's MCP permissions now deny read statements; change them in the connection's MCP tab", resummary.Name))
-			}
-			summary = resummary
-			// fall through to Execute below.
-		default:
-			return approvalOutcomeError(outcome, fmt.Sprintf("query against %q", summary.Name))
+		resolved, res, out, err, done := s.awaitExplainApproval(ctx, args, summary, statements)
+		if done {
+			return res, out, err
 		}
+		summary = resolved
 	case "deny":
 		// Already handled above (m.read == "deny", before connecting) — unreachable in practice,
 		// kept so a future change to verdictFor cannot silently skip the read-mode gate here.

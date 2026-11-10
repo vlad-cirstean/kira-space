@@ -40,10 +40,12 @@ func IsConnectionClass(err error) bool {
 }
 
 // Probe checks, right before an approval is raised, that the connection a statement will run on
-// answers. lane selects the read lane (opened here when absent, so the open is the probe) for kinds
-// that have one; otherwise, and for write statements, the main adapter is pinged. It never resolves
-// secrets and never writes an op-log row beyond the lane's own connect op. Kinds without a Pinger
-// have no liveness evidence beyond the connection state, so they pass. The error is a *ProbeError.
+// answers. lane selects the read lane for kinds that have one: opened here when absent, so the open
+// is the probe. A lane failure that says the target is gone (a connect-class code, or not-found, as
+// for a vanished SQLite file) is confirmed on the main adapter. Otherwise, and for writes, the main
+// adapter is pinged. It never resolves secrets and writes no op-log row beyond the lane's own
+// connect op. Kinds without a Pinger have no evidence beyond the connection state, so they pass.
+// The error is a *ProbeError.
 func (r *Router) Probe(ctx context.Context, connectionID string, lane bool) error {
 	primary, err := requireLiveAdapter(connectionID)
 	if err != nil {
@@ -54,7 +56,7 @@ func (r *Router) Probe(ctx context.Context, connectionID string, lane bool) erro
 		if laneErr == nil {
 			return nil
 		}
-		if IsConnectionClass(laneErr) {
+		if code, _ := adapters.CodeOf(laneErr); IsConnectionClass(laneErr) || code == adapters.CodeNotFound {
 			if perr := r.probePrimary(ctx, connectionID, primary, confirmTimeout); perr != nil {
 				return &ProbeError{Primary: true, Err: perr}
 			}
