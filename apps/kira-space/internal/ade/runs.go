@@ -209,7 +209,7 @@ func (b *TaskBoard) plan(tc *taskCtx) ([]stepView, error) {
 		case def.OutsideRepo && !def.manual():
 			v.Targets = []string{taskTarget}
 		case !def.manual():
-			if v.Targets, v.TargetErr = stepTargets(def.RunsOn, def.Kind == adewire.KindReview, tc.mine, tc.task.Kind == model.AdeTaskKindOrchestrator); v.TargetErr != nil {
+			if v.Targets, v.TargetErr = stepTargets(def.RunsOn, def.Kind == adewire.KindReview, tc.mine, len(tc.branches) > 0, tc.task.Kind == model.AdeTaskKindOrchestrator); v.TargetErr != nil {
 				v.Targets = nil
 			}
 		}
@@ -476,7 +476,7 @@ func folderAllowed(tc *taskCtx, def stepDef) error {
 	if def.OutsideRepo || tc.task.Kind == model.AdeTaskKindOrchestrator {
 		return nil
 	}
-	if len(tc.mine) == 0 {
+	if len(tc.branches) == 0 {
 		return ErrTaskNoRepo
 	}
 	return invalid("step %q worked in the task folder before repos were required: move the task back to this step to run it on a repo", def.Name)

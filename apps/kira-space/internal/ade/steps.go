@@ -97,10 +97,11 @@ type mineBranch struct{ ID, Nick string }
 const taskTarget = ""
 
 // stepTargets resolves a step's branches in task order: once = the first, each repo = all, only
-// <nick> = those in that repo. A task with no mine branch refuses a step with ErrTaskNoRepo; a review
-// step and an `only` step have their own errors. folderOK (orchestrator task) runs a step on taskTarget
-// instead.
-func stepTargets(runsOn string, review bool, mine []mineBranch, folderOK bool) ([]string, error) {
+// <nick> = those in that repo. A task with no branch at all refuses a step with ErrTaskNoRepo; a task
+// whose branches are all non-mine (hasBranch) has a repo, so its step gets a plain refusal instead. A
+// review step and an `only` step have their own errors. folderOK (orchestrator task) runs a step on
+// taskTarget instead.
+func stepTargets(runsOn string, review bool, mine []mineBranch, hasBranch, folderOK bool) ([]string, error) {
 	if len(mine) == 0 {
 		if review {
 			return nil, fmt.Errorf("the review step needs a branch to review")
@@ -110,6 +111,9 @@ func stepTargets(runsOn string, review bool, mine []mineBranch, folderOK bool) (
 		}
 		if folderOK {
 			return []string{taskTarget}, nil
+		}
+		if hasBranch {
+			return nil, fmt.Errorf("the task has no branch of your own to run on, only branches to review")
 		}
 		return nil, ErrTaskNoRepo
 	}

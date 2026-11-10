@@ -282,13 +282,14 @@ export function walkPath(
   return { path, skipped };
 }
 
-/** The step cannot start until the task has a repo. An automatic step needs a mine branch (a review
- *  or `only` step shows its own "Needs a repository" instead); a manual session needs any branch. */
+/** The step cannot start until the task has a repo: no branch of any kind. An automatic step on a task
+ *  with only non-mine branches has a repo, so no picker; the backend refuses it with its own text. A
+ *  review or `only` step shows its own "Needs a repository" instead. */
 function stepNeedsRepo(i: ProgressInput, s: WorkflowStep, runs: readonly StepRun[]): boolean {
   if (s.outsideRepo || i.task.kind === 'orchestrator') return false;
   if (s.kind === 'manual') return s.session && !i.task.branchIds.length;
   if (s.kind === 'review' || s.runsOn.startsWith('only ')) return false;
-  return !runs.length;
+  return !runs.length && !i.task.branchIds.length;
 }
 
 /** Every step of the workflow with per-branch runs, step state and approval flag. */

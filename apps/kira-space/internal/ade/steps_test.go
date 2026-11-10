@@ -1,6 +1,7 @@
 package ade
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -86,7 +87,7 @@ func TestStepTargets(t *testing.T) {
 		"only unresolved":    {"only db", nil, true},
 		"empty runsOn = all": {"", []string{"b1", "b2", "b3"}, false},
 	} {
-		got, err := stepTargets(tc.runsOn, false, mine, false)
+		got, err := stepTargets(tc.runsOn, false, mine, true, false)
 		if (err != nil) != tc.fails || !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("%s: got %v, %v", name, got, err)
 		}
@@ -106,10 +107,17 @@ func TestStepTargets(t *testing.T) {
 		"orchestrator all":    {"", false, true, []string{taskTarget}, false},
 		"orchestrator review": {"", true, true, nil, true},
 	} {
-		got, err := stepTargets(tc.runsOn, tc.review, nil, tc.folder)
+		got, err := stepTargets(tc.runsOn, tc.review, nil, false, tc.folder)
 		if (err != nil) != tc.fails || !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("no branch, %s: got %v, %v", name, got, err)
 		}
+	}
+}
+
+func TestStepTargetsNonMineOnly(t *testing.T) {
+	_, err := stepTargets("", false, nil, true, false)
+	if err == nil || errors.Is(err, ErrTaskNoRepo) {
+		t.Fatalf("task with only review branches: err = %v, want a refusal other than ErrTaskNoRepo", err)
 	}
 }
 
