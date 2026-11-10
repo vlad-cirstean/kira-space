@@ -181,7 +181,7 @@ test('contract: the copied screenshot holds the chart and never a tooltip', asyn
   test.setTimeout(180_000);
   const { window: page, control } = await open(relaunch, uiServer.url, [
     { channel: IPC.proofViewState, response: chartViewStates() },
-    { channel: IPC.proofChooseShotFolder, response: shotFolder() },
+    { channel: IPC.proofOpenShotFolder, response: shotFolder() },
   ]);
   await tab(page, 2).click();
   await expect(chart(page)).toHaveAttribute('data-selected', '0:1');
@@ -193,9 +193,10 @@ test('contract: the copied screenshot holds the chart and never a tooltip', asyn
     (box?.y ?? 0) + (box?.height ?? 0) / 2,
   );
   await expect(page.locator('.kira-proof-chart-tooltip')).toBeVisible();
-  const button = page.locator('[data-testid="proof-shot"]');
+  const button = page.locator('[data-testid="proof-shot-more"]');
   await button.hover();
   await button.click();
+  await page.locator('[data-testid="proof-shot-copy"]').click();
   await expect.poll(() => copiedImageCount(page), { timeout: CAPTURE_MS }).toBe(1);
 
   await page.mouse.move(0, 0);
@@ -205,14 +206,14 @@ test('contract: the copied screenshot holds the chart and never a tooltip', asyn
   expect(diff.over).toBeLessThan(0.02);
   expect(diff.mean).toBeLessThan(6);
 
-  await page.locator('[data-testid="proof-shot-more"]').click();
-  await page.locator('[data-testid="proof-shot-save-all"]').click();
+  // Measured before the save: the status strip it raises shrinks the panes.
+  const centre = await page.locator('[data-testid="proof-centre"]').boundingBox();
+  await page.locator('[data-testid="proof-shot"]').click();
   await expect
     .poll(() => control.log().filter((c) => c.channel === IPC.proofSaveJpegTo).length, {
       timeout: CAPTURE_MS,
     })
     .toBe(6);
-  const centre = await page.locator('[data-testid="proof-centre"]').boundingBox();
   const dpr = await page.evaluate(() => window.devicePixelRatio);
   for (const c of control.log().filter((c) => c.channel === IPC.proofSaveJpegTo)) {
     const height = jpegHeight((c.args as Json).jpegBase64);

@@ -14,6 +14,7 @@ import ProofCompare from './ProofCompare.vue';
 import ProofHeader from './ProofHeader.vue';
 import ProofHistory from './ProofHistory.vue';
 import ProofScreenshotMenu from './ProofScreenshotMenu.vue';
+import ProofShotStatus from './ProofShotStatus.vue';
 import ProofStepView from './ProofStepView.vue';
 import { useProofSession, useProofSessions, useProofSync } from './queries';
 import { useProofWindowStore } from './state';
@@ -122,6 +123,7 @@ const right = useLiveSize(
       <ProofScreenshotMenu :target="centre" :tabs="tabs" :session-name="detail.name" />
     </ProofHeader>
     <div v-else class="h-titlebar shrink-0 bg-chrome" />
+    <ProofShotStatus v-if="detail && store.shotResult" />
     <div class="flex min-h-0 flex-1 gap-0.5 bg-chrome px-1.5 pb-0.5">
       <section
         class="min-h-0 flex-none overflow-hidden rounded-kira bg-bg"

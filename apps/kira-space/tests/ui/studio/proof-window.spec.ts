@@ -22,6 +22,7 @@ import {
   session,
   sessions,
   shotFolder,
+  shotLocation,
   stepSnapshot,
   viewState,
 } from './support/proof';
@@ -263,7 +264,8 @@ test('the copied screenshot matches the screen, scroll and highlight included', 
   );
   await installClipboardSpy(page, { image: true });
 
-  await page.locator('[data-testid="proof-shot"]').click();
+  await page.locator('[data-testid="proof-shot-more"]').click();
+  await page.locator('[data-testid="proof-shot-copy"]').click();
 
   await expect.poll(() => copiedImageCount(page), { timeout: CAPTURE_MS }).toBe(1);
 
@@ -289,7 +291,8 @@ test('the copied screenshot includes an open cell editor', async ({ relaunch, ui
   await expect(page.locator('[data-testid="cell-editor"]')).toBeVisible();
   await installClipboardSpy(page, { image: true });
 
-  await page.locator('[data-testid="proof-shot"]').click();
+  await page.locator('[data-testid="proof-shot-more"]').click();
+  await page.locator('[data-testid="proof-shot-copy"]').click();
   await expect.poll(() => copiedImageCount(page), { timeout: CAPTURE_MS }).toBe(1);
 
   await page.mouse.move(0, 0);
@@ -299,7 +302,7 @@ test('the copied screenshot includes an open cell editor', async ({ relaunch, ui
   expect(diff.mean).toBeLessThan(6);
 });
 
-test('save all tabs writes one JPEG per tab into the chosen folder', async ({
+test('save screenshots writes every tab into a new Desktop folder with no picker', async ({
   relaunch,
   uiServer,
 }) => {
@@ -307,14 +310,15 @@ test('save all tabs writes one JPEG per tab into the chosen folder', async ({
   const { window: page, control } = await relaunch({
     control: proofControl([
       ...threeSteps(),
-      { channel: IPC.proofChooseShotFolder, response: shotFolder() },
+      { channel: IPC.proofOpenShotFolder, response: shotFolder() },
     ]),
   });
   await openProofWindow(page, uiServer.url);
   await stepsReady(page);
 
-  await page.locator('[data-testid="proof-shot-more"]').click();
-  await page.locator('[data-testid="proof-shot-save-all"]').click();
+  // Measured before the save: the status strip it raises shrinks the panes.
+  const centre = await page.locator('[data-testid="proof-centre"]').boundingBox();
+  await page.locator('[data-testid="proof-shot"]').click();
   await expect.poll(() => savedFiles(control.log()).length, { timeout: CAPTURE_MS }).toBe(3);
 
   const files = savedFiles(control.log());
@@ -323,7 +327,6 @@ test('save all tabs writes one JPEG per tab into the chosen folder', async ({
     '02-Doc-hit.jpg',
     '03-Stats.jpg',
   ]);
-  const centre = await page.locator('[data-testid="proof-centre"]').boundingBox();
   const dpr = await page.evaluate(() => window.devicePixelRatio);
   for (const f of files) {
     expect(f.folderId).toBe('shot_test');
@@ -331,61 +334,83 @@ test('save all tabs writes one JPEG per tab into the chosen folder', async ({
     expect(Math.abs(jpegHeight(f.jpegBase64) - (centre?.height ?? 0) * dpr)).toBeLessThanOrEqual(3);
   }
   await expect
-    .poll(() => control.log().filter((c) => c.channel === IPC.proofForgetShotFolder).length)
+    .poll(() => control.log().filter((c) => c.channel === IPC.proofCloseShotFolder).length)
     .toBe(1);
+  expect(control.log().filter((c) => c.channel === IPC.proofChooseShotLocation)).toHaveLength(0);
   // The tab the user was on is active again.
   await expect(
     page.locator('[data-testid="proof-tabs"] [data-testid="tab"][data-active="true"]'),
   ).toContainText('#1');
+
+  const status = page.locator('[data-testid="proof-shot-status"]');
+  await expect(status).toContainText(String(shotFolder().path));
+  await page.locator('[data-testid="proof-shot-reveal"]').click();
+  await expect
+    .poll(() => control.log().filter((c) => c.channel === IPC.proofRevealShotFolder))
+    .toHaveLength(1);
+  expect(
+    control.log().find((c) => c.channel === IPC.proofRevealShotFolder)?.args as Json,
+  ).toMatchObject({ folderId: 'shot_test' });
 });
 
-test('cancelling the folder picker captures nothing', async ({ relaunch, uiServer }) => {
+test('the menu shows and changes the save location', async ({ relaunch, uiServer }) => {
+  const { window: page, control } = await relaunch({
+    control: proofControl([
+      ...threeSteps(),
+      { channel: IPC.proofShotLocation, response: shotLocation() },
+      {
+        channel: IPC.proofChooseShotLocation,
+        response: { canceled: false, location: shotLocation(true) },
+      },
+      { channel: IPC.proofResetShotLocation, response: shotLocation() },
+    ]),
+  });
+  await openProofWindow(page, uiServer.url);
+  await stepsReady(page);
+
+  const more = page.locator('[data-testid="proof-shot-more"]');
+  const location = page.locator('[data-testid="proof-shot-location"]');
+  await more.click();
+  await expect(location).toContainText(String(shotLocation().path));
+  await expect(location).toContainText('Default');
+  await expect(page.locator('[data-testid="proof-shot-location-reset"]')).toHaveCount(0);
+
+  await page.locator('[data-testid="proof-shot-location-choose"]').click();
+  await expect
+    .poll(() => control.log().filter((c) => c.channel === IPC.proofChooseShotLocation))
+    .toHaveLength(1);
+  await more.click();
+  await expect(location).toContainText(String(shotLocation(true).path));
+  await page.locator('[data-testid="proof-shot-location-reset"]').click();
+  await expect
+    .poll(() => control.log().filter((c) => c.channel === IPC.proofResetShotLocation))
+    .toHaveLength(1);
+});
+
+test('a missing location shows the error and saves nothing', async ({ relaunch, uiServer }) => {
+  const message = 'The save location /Users/test/Gone no longer exists.';
   const { window: page, control } = await relaunch({
     control: proofControl([
       ...threeSteps(),
       {
-        channel: IPC.proofChooseShotFolder,
-        response: { canceled: true, id: '', path: '' },
+        channel: IPC.proofOpenShotFolder,
+        error: { code: 'E_BAD_REQUEST', message },
       },
     ]),
   });
   await openProofWindow(page, uiServer.url);
   await stepsReady(page);
 
-  await page.locator('[data-testid="proof-shot-more"]').click();
-  await page.locator('[data-testid="proof-shot-save-all"]').click();
-  await expect
-    .poll(() => control.log().filter((c) => c.channel === IPC.proofChooseShotFolder).length)
-    .toBe(1);
-  await page.waitForTimeout(500);
+  await page.locator('[data-testid="proof-shot"]').click();
+  const status = page.locator('[data-testid="proof-shot-status"]');
+  await expect(status).toContainText(message);
+  await expect(status).toHaveAttribute('data-tone', 'error');
   expect(savedFiles(control.log())).toHaveLength(0);
-  expect(control.log().filter((c) => c.channel === IPC.proofForgetShotFolder)).toHaveLength(0);
+  await page.locator('[data-testid="proof-shot-status-dismiss"]').click();
+  await expect(status).toHaveCount(0);
 });
 
-test('save tab writes the active tab as one JPEG', async ({ relaunch, uiServer }) => {
-  test.setTimeout(180_000);
-  const { window: page, control } = await relaunch({
-    control: proofControl([
-      ...threeSteps(),
-      { channel: IPC.proofSaveJpeg, response: { saved: true, path: '/tmp/test/Checkout-fix.jpg' } },
-    ]),
-  });
-  await openProofWindow(page, uiServer.url);
-  await stepsReady(page);
-
-  await page.locator('[data-testid="proof-shot-more"]').click();
-  await page.locator('[data-testid="proof-shot-save"]').click();
-  await expect
-    .poll(() => control.log().filter((c) => c.channel === IPC.proofSaveJpeg).length, {
-      timeout: CAPTURE_MS,
-    })
-    .toBe(1);
-  const args = control.log().find((c) => c.channel === IPC.proofSaveJpeg)?.args as Json;
-  expect(args.filename).toBe('Checkout-fix-01.jpg');
-  expect(args.jpegBase64.startsWith('/9j/')).toBe(true);
-});
-
-test('save all does not wait on a step that failed to load', async ({ relaunch, uiServer }) => {
+test('saving does not wait on a step that failed to load', async ({ relaunch, uiServer }) => {
   test.setTimeout(180_000);
   const { window: page, control } = await relaunch({
     control: proofControl([
@@ -396,15 +421,14 @@ test('save all does not wait on a step that failed to load', async ({ relaunch, 
         error: { code: 'E_INTERNAL', message: 'step unreadable' },
       },
       stepSnapshot(SESSION_ID, 1, 3, 'keyvalue'),
-      { channel: IPC.proofChooseShotFolder, response: shotFolder() },
+      { channel: IPC.proofOpenShotFolder, response: shotFolder() },
     ]),
   });
   await openProofWindow(page, uiServer.url);
   await stepsReady(page);
 
   const started = Date.now();
-  await page.locator('[data-testid="proof-shot-more"]').click();
-  await page.locator('[data-testid="proof-shot-save-all"]').click();
+  await page.locator('[data-testid="proof-shot"]').click();
   await expect.poll(() => savedFiles(control.log()).length, { timeout: CAPTURE_MS }).toBe(3);
   // The ready timeout is 15 s; a failed step must not burn it.
   expect(Date.now() - started).toBeLessThan(14_000);

@@ -10,7 +10,6 @@ import {
   canvasToJpeg,
   canvasToPng,
   captureElement,
-  fileSlug,
   shotFileName,
 } from './screenshot';
 import { useProofWindowStore } from './state';
@@ -47,7 +46,7 @@ interface Source {
   sessionName: MaybeRefOrGetter<string>;
 }
 
-/** The active tab to the clipboard (PNG) or a JPEG, or every tab as its own JPEG in a fresh folder. */
+/** The active tab to the clipboard (PNG), or every tab as its own JPEG in a fresh folder. */
 export function useProofScreenshot(source: Source) {
   const store = useProofWindowStore();
 
@@ -67,22 +66,11 @@ export function useProofScreenshot(source: Source) {
     announceApp(t('studio.proof.shot.copied.announce'));
   }
 
-  async function saveActive(): Promise<void> {
-    const jpeg = await canvasToJpeg(await shoot());
-    const only = toValue(source.tabs).find((tab) => tab.active);
-    const base = fileSlug(toValue(source.sessionName));
-    const name = only ? `${base}-${String(only.state.meta.ordinal).padStart(2, '0')}` : base;
-    const result = await control.proofSaveJpeg(`${name}.jpg`, await blobToBase64(jpeg));
-    if (result.saved && result.path) {
-      announceApp(t('studio.proof.shot.saved.announce', { path: result.path }));
-    }
-  }
-
   /** One tab in memory at a time; a failure keeps the files already written. */
   async function saveAll(): Promise<void> {
     const tabs = toValue(source.tabs);
-    const folder = await control.proofChooseShotFolder(toValue(source.sessionName));
-    if (folder.canceled) return;
+    if (tabs.length === 0) throw new Error(t('studio.proof.shot.none.error'));
+    const folder = await control.proofOpenShotFolder(toValue(source.sessionName));
     const original = store.activeId;
     let saved = 0;
     try {
@@ -107,31 +95,31 @@ export function useProofScreenshot(source: Source) {
     } finally {
       store.activeId = original;
       try {
-        await control.proofForgetShotFolder(folder.id);
+        await control.proofCloseShotFolder(folder.id);
       } catch {
         // Best effort: Go evicts the oldest folder ids past a small cap.
       }
     }
-    announceApp(t('studio.proof.shot.savedAll.announce', { count: saved, path: folder.path }));
+    store.setShotResult({ kind: 'saved', count: saved, path: folder.path, folderId: folder.id });
+    announceApp(t('studio.proof.shot.savedAll.status', { count: saved, path: folder.path }));
   }
 
-  const action = useAsyncAction(async (mode: 'copy' | 'save' | 'saveAll') => {
+  const action = useAsyncAction(async (mode: 'copy' | 'saveAll') => {
     if (mode === 'copy') await copy();
-    else if (mode === 'save') await saveActive();
     else await saveAll();
   });
 
-  async function run(mode: 'copy' | 'save' | 'saveAll'): Promise<void> {
+  async function run(mode: 'copy' | 'saveAll'): Promise<void> {
     if (action.pending.value) return;
-    if (!(await action.run(mode))) {
-      announceApp(t('studio.proof.shot.failed.error', { error: action.error.value ?? '' }));
-    }
+    if (await action.run(mode)) return;
+    const message = t('studio.proof.shot.failed.error', { error: action.error.value ?? '' });
+    if (mode === 'saveAll') store.setShotResult({ kind: 'error', message });
+    announceApp(message);
   }
 
   return {
     busy: action.pending,
     copy: () => run('copy'),
-    save: () => run('save'),
     saveAll: () => run('saveAll'),
   };
 }

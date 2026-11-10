@@ -16925,29 +16925,40 @@
           "announce": "Screenshot copied"
         },
         "copy": {
-          "label": "Copy screenshot",
-          "tooltip": "Copy a screenshot of this tab"
+          "label": "Copy current tab"
         },
         "failed": {
           "error": "Couldn’t take the screenshot: {error}"
         },
+        "location": {
+          "choose": {
+            "label": "Change location…"
+          },
+          "missing": {
+            "status": "Folder not found"
+          },
+          "reset": {
+            "label": "Reset to Desktop"
+          }
+        },
         "more": {
           "aria": "Screenshot options"
+        },
+        "none": {
+          "error": "This proof has no screenshots to save."
         },
         "notSettled": {
           "error": "The step did not finish loading."
         },
-        "save": {
-          "label": "Save tab as JPEG…"
-        },
         "saveAll": {
-          "label": "Save all tabs to folder…"
+          "label": "Save screenshots",
+          "tooltip": "Save every tab as a JPEG into a new folder in {path}"
         },
-        "saved": {
-          "announce": "Saved to {path}"
+        "saveAllNoPath": {
+          "tooltip": "Save every tab as a JPEG into a new folder"
         },
         "savedAll": {
-          "announce": "Saved {count} screenshots to {path}"
+          "status": "Saved {count} screenshots to {path}"
         },
         "savedPartial": {
           "error": "Saved {count} of {total} screenshots before failing: {error}"

@@ -24,12 +24,19 @@ const fixture = (
   key: string,
 ): Json => contract(name, key) as Json;
 
-/** A fresh folder from ChooseShotFolder (tests/contract/proof.json) with its masked fields filled. */
-export const shotFolder = (): Json => ({
-  ...fixture('proof', 'ProofService.ChooseShotFolder'),
-  id: 'shot_test',
-  path: '/tmp/test/Checkout fix',
-});
+/** A fresh folder from OpenShotFolder (tests/contract/proof.json) with its masked id filled and the
+ *  `<home>` placeholder replaced. */
+export const shotFolder = (): Json => {
+  const folder = fixture('proof', 'ProofService.OpenShotFolder');
+  return { ...folder, id: 'shot_test', path: String(folder.path).replace('<home>', '/Users/test') };
+};
+
+/** The save location from ShotLocation (default Desktop) or, with `custom`, ChooseShotLocation's pick. */
+export const shotLocation = (custom = false): Json => {
+  const base = fixture('proof', 'ProofService.ShotLocation');
+  if (!custom) return { ...base, path: String(base.path).replace('<home>', '/Users/test') };
+  return { ...base, custom: true, path: '/Users/test/Shots' };
+};
 
 /** Height in pixels from a PNG's IHDR chunk (bytes 20-24), given its base64. */
 export function pngHeight(b64: string): number {
