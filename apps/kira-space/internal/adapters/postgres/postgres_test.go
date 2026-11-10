@@ -1713,7 +1713,7 @@ func TestPostgres_StatementTimeout(t *testing.T) {
 			Baseline: "SHOW statement_timeout", BaselineWant: "0", Lifted: "SELECT pg_sleep(2)",
 		}),
 		testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
-			Name: "main ddl", Path: path, Slow: "CREATE TABLE app.p602_ddl AS SELECT pg_sleep(5)", WantCode: "57014",
+			Name: "main ddl", Path: path, Slow: "CREATE TABLE app.p602_ddl AS SELECT 1 AS x FROM pg_sleep(5)", WantCode: "57014",
 			Teardown: []string{"DROP TABLE IF EXISTS app.p602_ddl"},
 			Unchanged: func(t *testing.T, main adapters.Adapter) {
 				t.Helper()
