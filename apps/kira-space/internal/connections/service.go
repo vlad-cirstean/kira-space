@@ -884,6 +884,24 @@ func (s *Service) Disconnect(id string) (model.ConnectionState, error) {
 	return state, nil
 }
 
+// MarkLost tears down a connection whose adapter stopped answering and turns its state to error, so
+// the next use reconnects instead of trusting a stale "connected". No-op unless the state is
+// connected and no connect or teardown is under way: a concurrent attempt wins.
+func (s *Service) MarkLost(id, detail string) {
+	s.mu.Lock()
+	_, tearing := s.tearing[id]
+	ok := s.states[id].Status == "connected" && s.inFlight[id] == nil && !tearing
+	s.mu.Unlock()
+	if !ok {
+		return
+	}
+	defer s.beginTeardown(id)()
+	s.deps.Preconnect.Stop(id)
+	_ = s.deps.Backend.Disconnect(context.Background(), id)
+	msg := i18n.T("backend.studio.connection.lost.error", map[string]string{"detail": detail})
+	s.emitState(model.ConnectionState{ConnectionID: id, Status: "error", Error: &msg, Since: nowMillis()})
+}
+
 // States returns every known state sorted by connection id (D7): Go map iteration is randomised,
 // so a literal port of `[...states.values()]` would hand the renderer a different order on every
 // call.

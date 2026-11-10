@@ -2709,6 +2709,9 @@
         "hostRequired": {
           "body": "Host is required."
         },
+        "lost": {
+          "error": "Connection lost: {detail}"
+        },
         "maskReviewEntry": {
           "body": "A column in the masking review list is not valid for this connection kind."
         },
