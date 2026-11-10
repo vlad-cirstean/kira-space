@@ -1,7 +1,7 @@
 package dbmcpflow
 
 import (
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -13,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -74,8 +75,8 @@ func (k *kubeFixture) setMcp(t *testing.T, ctxName string, m kubernetes.McpSetti
 	}
 }
 
-func allModes(mode string) kubernetes.McpSettings {
-	return kubernetes.McpSettings{Discover: mode, List: mode, Describe: mode, Logs: mode}
+func on(approval string) kubernetes.McpSettings {
+	return kubernetes.McpSettings{Enabled: true, Approval: approval}
 }
 
 func (k *kubeFixture) call(t *testing.T, name string, args map[string]any) *mcp.CallToolResult {
@@ -128,29 +129,39 @@ func TestKubeMcp(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, c := range res.Clusters {
-			if c.Mcp != (kubernetes.McpSettings{Discover: "prompt", List: "prompt", Describe: "prompt", Logs: "prompt"}) {
-				t.Fatalf("%s mcp = %+v, want ask for every operation and no description", c.Context, c.Mcp)
+			if c.Mcp != (kubernetes.McpSettings{Approval: "prompt"}) {
+				t.Fatalf("%s mcp = %+v, want off, ask and no description", c.Context, c.Mcp)
 			}
 		}
 		k.contract(t, "KubernetesService.Clusters", res)
 
 		for _, bad := range []kubernetes.McpSettings{
-			{Discover: "bogus", List: "allow", Describe: "allow", Logs: "allow"},
-			{Discover: "allow", List: "allow", Describe: "allow", Logs: "allow", Description: strings.Repeat("é", 1001)},
+			{Enabled: true, Approval: "bogus"},
+			{Enabled: true, Approval: "deny"},
+			{Enabled: true, Approval: ""},
+			{Enabled: true, Approval: "allow", Description: strings.Repeat("é", 1001)},
 		} {
 			_, err := k.app.W.Kubernetes.SetMcp(kubernetes.SetMcpArgs{ClusterID: dev, Mcp: bad})
 			if ie, ok := err.(*ipcerr.Error); !ok || ie.Code != string(ipcerr.CodeBadRequest) {
 				t.Fatalf("SetMcp(%+v) error = %v, want E_BAD_REQUEST", bad, err)
 			}
 		}
-		if _, err := k.app.W.Kubernetes.SetMcp(kubernetes.SetMcpArgs{ClusterID: "nope", Mcp: allModes("allow")}); err == nil {
+		if _, err := k.app.W.Kubernetes.SetMcp(kubernetes.SetMcpArgs{ClusterID: "nope", Mcp: on("allow")}); err == nil {
 			t.Fatal("SetMcp on an unknown cluster succeeded")
 		} else if ie, ok := err.(*ipcerr.Error); !ok || ie.Code != string(ipcerr.CodeNotFound) {
 			t.Fatalf("SetMcp unknown id error = %v, want E_NOT_FOUND", err)
 		}
 
+		// The Settings switch: turn the cluster on, keep the default approval.
+		enable := kubernetes.SetMcpArgs{ClusterID: dev, Mcp: on("prompt")}
+		if got, err := k.app.W.Kubernetes.SetMcp(enable); err != nil || got != enable.Mcp {
+			t.Fatalf("SetMcp enable = %+v (%v), want the stored settings", got, err)
+		}
+		k.contract(t, "args:KubernetesService.SetMcp:enable", enable)
+
+		// The cluster dialog: description and approval.
 		args := kubernetes.SetMcpArgs{ClusterID: dev, Mcp: kubernetes.McpSettings{
-			Description: "dev cluster, safe to read", Discover: "allow", List: "prompt", Describe: "deny", Logs: "allow",
+			Description: "dev cluster, safe to read", Enabled: true, Approval: "allow",
 		}}
 		got, err := k.app.W.Kubernetes.SetMcp(args)
 		if err != nil || got != args.Mcp {
@@ -158,6 +169,11 @@ func TestKubeMcp(t *testing.T) {
 		}
 		k.contract(t, "args:KubernetesService.SetMcp", args)
 		k.contract(t, "KubernetesService.SetMcp", got)
+		enabled, err := k.app.W.Kubernetes.Clusters()
+		if err != nil {
+			t.Fatal(err)
+		}
+		k.contract(t, "KubernetesService.Clusters:enabled", enabled)
 
 		k.app.Restart()
 		again, err := k.app.W.Kubernetes.Clusters()
@@ -165,8 +181,12 @@ func TestKubeMcp(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, c := range again.Clusters {
-			if c.ID == dev && c.Mcp != args.Mcp {
-				t.Fatalf("mcp after restart = %+v, want %+v", c.Mcp, args.Mcp)
+			want := kubernetes.McpSettings{Approval: "prompt"}
+			if c.ID == dev {
+				want = args.Mcp
+			}
+			if c.Mcp != want {
+				t.Fatalf("%s mcp after restart = %+v, want %+v", c.Context, c.Mcp, want)
 			}
 		}
 		k.sess.Close()
@@ -176,33 +196,64 @@ func TestKubeMcp(t *testing.T) {
 	})
 
 	t.Run("list-clusters", func(t *testing.T) {
-		k.setMcp(t, "down", allModes("deny"))
 		res := k.call(t, "kube_list_clusters", nil)
 		out := text(res)
 		if res.IsError || !strings.Contains(out, dev) || !strings.Contains(out, "dev cluster, safe to read") ||
-			!strings.Contains(out, `"permissions":{"discover":"allow","list":"prompt","describe":"deny","logs":"allow"}`) {
+			!strings.Contains(out, `"approval":"allow"`) {
 			t.Fatalf("kube_list_clusters = %q", out)
 		}
-		for _, hidden := range []string{`"user"`, `"source"`, k.cfg, k.ids["down"]} {
+		for _, hidden := range []string{`"permissions"`, `"user"`, `"source"`, k.cfg, k.ids["down"]} {
 			if strings.Contains(out, hidden) {
 				t.Errorf("kube_list_clusters leaks %q: %s", hidden, out)
 			}
 		}
-		wantToolError(t, k.call(t, "kube_discover", map[string]any{"clusterId": k.ids["down"]}), "no cluster")
-		wantToolError(t, k.call(t, "kube_discover", map[string]any{"clusterId": "missing"}), "no cluster")
 	})
 
-	t.Run("off-refuses", func(t *testing.T) {
-		before := k.podRequests()
-		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Discover: "allow", List: "deny", Describe: "allow", Logs: "allow"})
-		wantToolError(t, k.call(t, "kube_list_resources", k.listPods("default", nil)), "deny")
-		if n := k.podRequests(); n != before {
-			t.Fatalf("a denied list reached the API server: %d pod requests, had %d", n, before)
+	t.Run("off-is-unknown", func(t *testing.T) {
+		// Same text for an off cluster and an unknown id, on every tool.
+		toolArgs := func(name, id string) map[string]any {
+			switch name {
+			case "kube_discover":
+				return map[string]any{"clusterId": id}
+			case "kube_list_resources":
+				return map[string]any{"clusterId": id, "kind": "v1/pods"}
+			case "kube_describe":
+				return map[string]any{"clusterId": id, "kind": "v1/pods", "name": "web-1"}
+			default:
+				return map[string]any{"clusterId": id, "namespace": "default", "pod": "web-1"}
+			}
 		}
+		tools := []string{"kube_discover", "kube_list_resources", "kube_describe", "kube_pod_logs"}
+		wantNoCluster := func(id string, args func(name string) map[string]any) {
+			for _, name := range tools {
+				res := k.call(t, name, args(name))
+				want := fmt.Sprintf("no cluster %q exposed to MCP", id)
+				if !res.IsError || text(res) != want {
+					t.Fatalf("%s on %q = %q (error %v), want %q", name, id, text(res), res.IsError, want)
+				}
+			}
+		}
+		for _, id := range []string{k.ids["down"], "missing"} {
+			wantNoCluster(id, func(name string) map[string]any { return toolArgs(name, id) })
+		}
+
+		requests := len(k.fake.Requests(""))
+		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Enabled: false, Approval: "allow"})
+		if out := text(k.call(t, "kube_list_clusters", nil)); out != "[]" {
+			t.Fatalf("kube_list_clusters with every cluster off = %q, want []", out)
+		}
+		wantNoCluster(dev, func(name string) map[string]any { return toolArgs(name, dev) })
+		if n := len(k.fake.Requests("")); n != requests {
+			t.Fatalf("an off cluster reached the API server: %d requests, had %d", n, requests)
+		}
+		if n := len(k.list(t)); n != 0 {
+			t.Fatalf("an off cluster parked %d approvals", n)
+		}
+		k.setMcp(t, "kind-dev", on("prompt"))
 	})
 
 	t.Run("ask", func(t *testing.T) {
-		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Discover: "allow", List: "prompt", Describe: "allow", Logs: "allow"})
+		k.setMcp(t, "kind-dev", on("prompt"))
 		before := k.podRequests()
 		const stmt = "kubectl get pods -n default --context kind-dev"
 		stmtRows := func() (n int) {
@@ -273,22 +324,27 @@ func TestKubeMcp(t *testing.T) {
 			t.Fatal("a denied list reached the API server")
 		}
 
-		tightened := k.callAsync("kube_list_resources", k.listPods("default", nil))
+		turnedOff := k.callAsync("kube_list_resources", k.listPods("default", nil))
 		req = k.pending(t)
-		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Discover: "allow", List: "deny", Describe: "allow", Logs: "allow"})
+		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Enabled: false, Approval: "prompt"})
 		k.answerItems(t, true, req.Item.ID)
-		out = <-tightened
+		out = <-turnedOff
 		if out.err != nil {
 			t.Fatal(out.err)
 		}
-		wantToolError(t, out.res, "now deny")
+		wantToolError(t, out.res, "no cluster")
 		if k.podRequests() != before {
-			t.Fatal("a tightened mode still ran the list")
+			t.Fatal("a cluster turned off during the wait still ran the list")
 		}
 	})
 
 	t.Run("allow", func(t *testing.T) {
-		k.setMcp(t, "kind-dev", allModes("allow"))
+		k.setMcp(t, "kind-dev", on("allow"))
+		defer func() {
+			if n := len(k.list(t)); n != 0 {
+				t.Errorf("allow parked %d approvals", n)
+			}
+		}()
 		if res := k.call(t, "kube_discover", map[string]any{"clusterId": dev}); res.IsError || !strings.Contains(text(res), "kube-system") || !strings.Contains(text(res), `"key":"v1/pods"`) {
 			t.Fatalf("kube_discover = %q, want namespaces and kinds", text(res))
 		}
