@@ -33,6 +33,7 @@ import AdeSetupProgress from '../panel/AdeSetupProgress.vue';
 import { usePlanModel } from '../plan/usePlanModel';
 import { useAdePromptPreview, useStartRun } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useRepoGate } from '../state/useRepoGate';
 import { ACTION_CLASS } from '../tones';
 
 // Agent step Run dialog (SPEC2 section 5, R24): per-branch names for branches not created yet, the
@@ -40,6 +41,7 @@ import { ACTION_CLASS } from '../tones';
 const ui = useAdeBoardUiStore();
 const { model } = usePlanModel();
 const start = useStartRun();
+const { retryAfterRepo } = useRepoGate();
 const card = computed(() => (ui.runTaskId ? (model.value?.cardFor(ui.runTaskId) ?? null) : null));
 const open = computed(() => card.value !== null);
 // What the server adds to the prompt besides the editable message: the previous stage's handover and the task notes.
@@ -52,7 +54,7 @@ const close = (): void => {
   ui.runTaskId = null;
 };
 const step = computed(() => card.value?.progress.step ?? null);
-// No mine branch: the step runs in the task folder and can pick repos itself.
+// No mine branch (an outside-repo step or an orchestrator): the step runs in the task folder.
 const noRepo = computed(() => !card.value?.rows.some((r) => r.branch.kind === 'mine'));
 // The workflow's definition of the step being run: its prompt and smart script params.
 const def = computed(
@@ -158,11 +160,14 @@ const sending = useAsyncAction(async () => {
   if (!card.value) return;
   const branchNames: Record<string, string> = {};
   for (const r of named.value) branchNames[r.id] = (names.value[r.id] ?? '').trim();
-  await start.mutateAsync({
-    taskId: card.value.task.id,
-    branchNames,
-    message: edited.value && !smartStep.value ? message.value : '',
-  });
+  const taskId = card.value.task.id;
+  await retryAfterRepo(taskId, () =>
+    start.mutateAsync({
+      taskId,
+      branchNames,
+      message: edited.value && !smartStep.value ? message.value : '',
+    }),
+  );
   close();
 });
 const { pending: busy, error } = sending;
@@ -178,9 +183,6 @@ const send = sending.run;
         </DialogTitle>
       </DialogHeader>
       <DialogBody>
-        <FieldDescription v-if="noRepo" data-testid="ade-run-no-repo">{{
-          t('space.ade.runDialog.noRepo.hint')
-        }}</FieldDescription>
         <div v-if="named.length" class="flex flex-col gap-1.5" data-testid="ade-run-branches">
           <div v-for="r in named" :key="r.id" class="flex items-center gap-3">
             <AdeRepoTag :code-repo-id="r.branch.codeRepoId" :label="r.repo" />

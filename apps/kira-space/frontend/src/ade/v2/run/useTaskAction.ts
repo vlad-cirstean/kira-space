@@ -8,6 +8,7 @@ import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
+import { useRepoGate } from '../state/useRepoGate';
 
 /** The task's rendered step action and the call behind it. */
 export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
@@ -18,6 +19,7 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
   const approve = useApprove();
   const retry = useRetryRun();
   const stage = useAdeStageDialogStore();
+  const { gated } = useRepoGate();
 
   const action = computed<TaskAction | null>(() => toValue(card).action);
 
@@ -30,15 +32,22 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
     delete ui.actionError[taskId];
     if (a.kind === 'archive') return dialogs.archive(taskId);
     if (a.kind === 'nextPass') return stage.openPass(taskId);
-    if (a.kind === 'session') return dialogs.session(taskId);
     if (a.kind === 'takeOver' || a.kind === 'resume') return takeOver.request(a.sessionId ?? '');
-    if (!step) return;
     try {
+      if (a.kind === 'session') {
+        await gated(taskId, step?.needsRepo ?? false, async () => dialogs.session(taskId));
+        return;
+      }
+      if (!step) return;
       if (a.kind === 'run') {
-        if (step.kind === 'agent') ui.runTaskId = taskId;
-        else await start.mutateAsync({ taskId, branchNames: {}, message: '' });
+        await gated(taskId, step.needsRepo, async () => {
+          if (step.kind === 'agent') ui.runTaskId = taskId;
+          else await start.mutateAsync({ taskId, branchNames: {}, message: '' });
+        });
       } else if (a.kind === 'approve') {
-        await approve.mutateAsync({ taskId, stepId: a.stepId ?? '' });
+        await gated(taskId, step.needsRepo, async () => {
+          await approve.mutateAsync({ taskId, stepId: a.stepId ?? '' });
+        });
       } else if (a.kind === 'retry') {
         const runs = c.progress.steps
           .find((s) => s.id === a.stepId)
@@ -53,10 +62,16 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
     }
   }
 
-  function startNew(): void {
-    const taskId = toValue(card).task.id;
+  async function startNew(): Promise<void> {
+    const c = toValue(card);
+    const taskId = c.task.id;
     delete ui.actionError[taskId];
-    dialogs.session(taskId);
+    try {
+      await gated(taskId, c.progress.step?.needsRepo ?? false, async () => dialogs.session(taskId));
+    } catch (err) {
+      ui.actionError[taskId] = errorText(err);
+      ui.select(taskId);
+    }
   }
 
   /** True while a call is in flight: a repeat click must not launch the step twice. */

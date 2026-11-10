@@ -128,7 +128,16 @@ function manualAction(i: TaskCellInput): TaskAction {
 
 function automaticAction(p: TaskProgress): TaskAction | null {
   const s = p.step;
-  if (!s?.runs.length) return null; // no target: the step needs a repository
+  if (s?.needsRepo && s.state === 'pending' && !s.approval) {
+    return {
+      kind: 'run',
+      label: t('common.action.run.label'),
+      tip: t('space.ade.board.taskAction.runNeedsRepo.tooltip', { step: s.name }),
+      tone: 'agent',
+      stepId: s.id,
+    };
+  }
+  if (!s?.runs.length) return null; // no target: a review or `only` step needs a repository
   const session = s.runs.find((r) => r.sessionId !== '')?.sessionId;
   if ((s.state === 'stuck' || s.state === 'failed') && s.kind === 'agent' && session) {
     return {

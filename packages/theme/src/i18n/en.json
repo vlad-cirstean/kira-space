@@ -8885,6 +8885,9 @@
           "runAgents": {
             "tooltip": "Run {step} with background agents ({headless})"
           },
+          "runNeedsRepo": {
+            "tooltip": "Choose a repository, then run {step}"
+          },
           "runReview": {
             "tooltip": "Start {step}; it waits for your review"
           },
@@ -10052,6 +10055,23 @@
           "status": "{count} ref changed | {count} refs changed"
         }
       },
+      "repoGate": {
+        "body": "{task} has no repository. Choose at least one; the agent works in it.",
+        "noRepos": {
+          "action": {
+            "label": "Open repositories"
+          },
+          "hint": "No repository is registered. Add one on the repositories page."
+        },
+        "pick": {
+          "aria": "Add a repository to the task",
+          "option": "Add a repository"
+        },
+        "remove": {
+          "aria": "Unselect {repo}"
+        },
+        "title": "Choose a repository"
+      },
       "repos": {
         "addFolder": {
           "label": "Add folder…",
@@ -10408,9 +10428,6 @@
         "handover": {
           "label": "Handover from {stage}"
         },
-        "noRepo": {
-          "hint": "No repository on this task yet. The step runs in the task folder and can choose repositories and branches."
-        },
         "smartMissing": {
           "error": "This smart script was not found."
         },
@@ -10718,6 +10735,9 @@
         }
       },
       "stepBlock": {
+        "chooseRepo": {
+          "status": "Choose a repository to start"
+        },
         "hideOutput": {
           "label": "Hide output"
         },

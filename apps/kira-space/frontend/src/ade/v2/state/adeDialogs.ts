@@ -29,6 +29,7 @@ import {
 } from '../queries';
 import type { BaseChoice } from '../wire';
 import { useAdeBoardUiStore } from './adeBoardUi';
+import { useRepoGate } from './useRepoGate';
 import { useSetupWait } from './useSetupWait';
 
 // The Claude dialog: which one is open, its edits and the work in flight behind it. One concern:
@@ -39,6 +40,7 @@ export const useAdeDialogsStore = defineStore('adeDialogs', () => {
   const ctx = useDialogCtx();
   const launchOpener = useLaunchOpener();
   const confirmDialog = useConfirmDialogStore();
+  const { retryAfterRepo } = useRepoGate();
 
   const spec = ref<DialogSpec | null>(null);
   /** `null` = the unedited template. */
@@ -89,7 +91,7 @@ export const useAdeDialogsStore = defineStore('adeDialogs', () => {
       launch: {
         send: (a) => sendM.mutateAsync(a),
         startBranch: (a) => startM.mutateAsync(a),
-        launchStep: (a) => stepM.mutateAsync(a),
+        launchStep: (a) => retryAfterRepo(a.taskId, () => stepM.mutateAsync(a)),
         ...launchOpener.deps,
       },
       turns: { watch: adeTurns.watch },
