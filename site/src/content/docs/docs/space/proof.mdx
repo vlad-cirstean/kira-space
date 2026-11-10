@@ -14,7 +14,7 @@ sidebar:
 
 import DocShot from '../../../../components/DocShot.astro';
 
-An agent records proof that its work does what the task asks. A proof session holds ordered steps. A step is a table, a chart, a diagram, an image, a document or a list of key values. The agent saves a session in one call with `proof_save`, which also shows it in the task.
+An agent records proof that its work does what the task asks. A proof session holds ordered steps. A step is a table, a chart, a diagram, an image, a document or a list of key values. The agent saves a session in one call with `proof_save`, which also shows it in the task. A proof shows behavior (data, responses, screenshots), not code.
 
 ## Proof window
 
@@ -22,7 +22,7 @@ An agent records proof that its work does what the task asks. A proof session ho
 
 The window lists sessions on the left and the steps of one session as tabs. A step shows its source, its query and its data exactly as the agent recorded them. Data renders as literal text, never as markup.
 
-Open the window from **Window > Validation proof**, with or without a task. It shows the newest session. The camera button copies the active tab as a PNG. The menu beside it saves the tab, or every tab into a new folder, as JPEG files.
+Open the window from **Window > Validation proof**, with or without a task. It shows the newest session: the summary above the steps, and each step's explanation above its data. The camera button copies the active tab as a PNG. The menu beside it saves the tab, or every tab into a new folder, as JPEG files.
 
 ## Chart, diagram and image steps
 
