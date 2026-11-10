@@ -51,7 +51,7 @@ func (s trackerSource) Artifacts(ctx context.Context, sc ArtifactScope) ([]adewi
 	if !ok {
 		return nil, nil, nil
 	}
-	iss, err := s.p.Issue(ctx, ref)
+	iss, err := s.p.Issue(ctx, ref, false)
 	if err != nil {
 		return []adewire.Artifact{staticIssueArtifact(s.p, sc.Task, ref)},
 			[]adewire.ArtifactGap{{Source: s.p.ID(), Reason: issuetracker.Reason(err)}}, nil
@@ -81,7 +81,7 @@ func (b *TaskBoard) TaskIssue(ctx context.Context, taskID string) (adewire.TaskI
 			continue
 		}
 		ictx, cancel := context.WithTimeout(ctx, taskIssueTimeout)
-		iss, err := p.Issue(ictx, ref)
+		iss, err := p.Issue(ictx, ref, false)
 		cancel()
 		out := adewire.TaskIssue{
 			Provider: p.ID(), Label: p.Terms().Label, Key: ref.Key, URL: task.JiraURL,

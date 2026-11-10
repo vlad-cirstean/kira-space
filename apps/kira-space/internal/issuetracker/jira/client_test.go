@@ -78,7 +78,7 @@ func TestIssueCoalescesConcurrentCallers(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if _, err := p.Issue(context.Background(), ref); err != nil {
+			if _, err := p.Issue(context.Background(), ref, false); err != nil {
 				t.Error(err)
 			}
 		}()
@@ -96,14 +96,14 @@ func TestIssueDetachedFetchFillsCache(t *testing.T) {
 	p, _ := newTestProvider(r)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
 	defer cancel()
-	_, err := p.Issue(ctx, ref)
+	_, err := p.Issue(ctx, ref, false)
 	if !errors.Is(err, issuetracker.ErrTimeout) {
 		t.Fatalf("err %v, want ErrTimeout", err)
 	}
 	close(r.gate)
 	deadline := time.Now().Add(2 * time.Second)
 	for {
-		iss, err := p.Issue(context.Background(), ref)
+		iss, err := p.Issue(context.Background(), ref, false)
 		if err == nil {
 			if iss.Title != "Add the thing" || iss.Summary.Count != 3 {
 				t.Fatalf("issue %+v", iss)
@@ -128,7 +128,7 @@ func TestIssueErrorTTL(t *testing.T) {
 	}}
 	p, clk := newTestProvider(r)
 	for range 2 {
-		if _, err := p.Issue(context.Background(), ref); !errors.Is(err, issuetracker.ErrNotFound) {
+		if _, err := p.Issue(context.Background(), ref, false); !errors.Is(err, issuetracker.ErrNotFound) {
 			t.Fatalf("err %v, want ErrNotFound", err)
 		}
 	}
@@ -136,7 +136,7 @@ func TestIssueErrorTTL(t *testing.T) {
 		t.Fatalf("error not cached: %d calls", calls.Load())
 	}
 	clk.advance(resultErrTTL + time.Second)
-	_, _ = p.Issue(context.Background(), ref)
+	_, _ = p.Issue(context.Background(), ref, false)
 	if calls.Load() != 2 {
 		t.Fatalf("error cached past its TTL: %d calls", calls.Load())
 	}
@@ -153,11 +153,11 @@ func TestIssueDevFieldLearnedOnce(t *testing.T) {
 		return b(a)
 	}}
 	p, clk := newTestProvider(r)
-	if _, err := p.Issue(context.Background(), ref); err != nil {
+	if _, err := p.Issue(context.Background(), ref, false); err != nil {
 		t.Fatal(err)
 	}
 	clk.advance(2 * resultOKTTL)
-	iss, err := p.Issue(context.Background(), ref)
+	iss, err := p.Issue(context.Background(), ref, true)
 	if err != nil || iss.Summary.Count != 3 {
 		t.Fatalf("second read %+v %v", iss, err)
 	}
@@ -178,8 +178,82 @@ func TestIssueOversizeFirstReadFallsBack(t *testing.T) {
 		return b(a)
 	}}
 	p, _ := newTestProvider(r)
-	iss, err := p.Issue(context.Background(), issuetracker.Ref{Provider: ProviderID, Key: "KIRA-14"})
+	iss, err := p.Issue(context.Background(), issuetracker.Ref{Provider: ProviderID, Key: "KIRA-14"}, false)
 	if err != nil || iss.Title != "No development info" || iss.Summary.Known {
 		t.Fatalf("%+v %v", iss, err)
+	}
+}
+
+// waitViews polls until the runner spawned want views, the background refresh being asynchronous.
+func waitViews(t *testing.T, r *scriptRunner, want int32) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for r.views.Load() != want {
+		if time.Now().After(deadline) {
+			t.Fatalf("views %d, want %d", r.views.Load(), want)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func TestIssueCacheRules(t *testing.T) {
+	good := fixtureView(t, "issue-string-dev.json")
+	var failing atomic.Bool
+	r := &scriptRunner{view: func(a []string) ([]byte, error) {
+		if failing.Load() {
+			return nil, &toolexec.ExecError{ExitCode: 1, Stderr: "something went wrong"}
+		}
+		return good(a)
+	}}
+	p, clk := newTestProvider(r)
+	ctx := context.Background()
+	read := func(fresh bool) (issuetracker.Issue, error) { return p.Issue(ctx, ref, fresh) }
+
+	if iss, err := read(false); err != nil || iss.Stale {
+		t.Fatalf("first read %+v %v", iss, err)
+	}
+	// fresh window: no spawn
+	clk.advance(resultOKTTL - time.Second)
+	if iss, _ := read(false); iss.Stale || r.views.Load() != 1 {
+		t.Fatalf("inside window: stale %v views %d", iss.Stale, r.views.Load())
+	}
+	// past the window: stale copy at once, exactly one background view
+	clk.advance(2 * time.Second)
+	if iss, err := read(false); err != nil || !iss.Stale || iss.Title != "Add the thing" {
+		t.Fatalf("stale serve %+v %v", iss, err)
+	}
+	waitViews(t, r, 2)
+	if iss, _ := read(false); iss.Stale || r.views.Load() != 2 {
+		t.Fatalf("after revalidation: stale %v views %d", iss.Stale, r.views.Load())
+	}
+	// fresh failure returns copy and error; the cooldown then keeps serving the copy without a spawn
+	failing.Store(true)
+	clk.advance(2 * resultOKTTL)
+	iss, err := read(true)
+	if err == nil || !iss.Stale || iss.Title != "Add the thing" {
+		t.Fatalf("fresh failure %+v %v", iss, err)
+	}
+	if iss, err := read(false); err != nil || !iss.Stale || r.views.Load() != 3 {
+		t.Fatalf("error cooldown %+v %v views %d", iss, err, r.views.Load())
+	}
+	// cooldown over: revalidates again
+	clk.advance(resultErrTTL + time.Second)
+	if _, err := read(false); err != nil {
+		t.Fatal(err)
+	}
+	waitViews(t, r, 4)
+	// keep expiry blocks: a failing read now returns the bare error
+	clk.advance(issueKeepFor + time.Minute)
+	if iss, err := read(false); err == nil || iss.Title != "" {
+		t.Fatalf("past keep %+v %v", iss, err)
+	}
+	// a saved detail refreshes the copy
+	failing.Store(false)
+	clk.advance(resultErrTTL + time.Second)
+	key := cacheKey(ref)
+	p.client.saveDetail(key, issuetracker.IssueDetail{Ref: ref, Title: "From detail", Status: "Done"}, p.client.detailGeneration(key))
+	n := r.views.Load()
+	if iss, err := read(false); err != nil || iss.Stale || iss.Title != "From detail" || r.views.Load() != n {
+		t.Fatalf("after saveDetail %+v %v", iss, err)
 	}
 }

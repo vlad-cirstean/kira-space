@@ -35,7 +35,7 @@ func detailFields(devID string, comments bool) string {
 const (
 	detailBound      = 25 * time.Second
 	detailFreshFor   = 30 * time.Second
-	detailKeepFor    = 10 * time.Minute
+	detailKeepFor    = 30 * time.Minute
 	commentListLimit = "50"
 )
 
@@ -124,7 +124,7 @@ func (c *client) saveDetail(key string, d issuetracker.IssueDetail, gen uint64) 
 	c.details[key] = detailEntry{d: d, at: now}
 	c.cache[key] = resultEntry{issue: issuetracker.Issue{
 		Ref: d.Ref, Title: d.Title, Status: d.Status, StatusCategory: d.StatusCategory, Summary: d.Summary,
-	}, until: now.Add(resultOKTTL)}
+	}, okAt: now}
 	c.mu.Unlock()
 }
 
@@ -148,7 +148,7 @@ func (c *client) readDetail(ctx context.Context, st issuetracker.Status, ref iss
 	)
 	if discover {
 		wg.Add(1)
-		go func() { defer wg.Done(); iss, issErr = c.issue(ctx, ref) }()
+		go func() { defer wg.Done(); iss, issErr = c.issue(ctx, ref, true) }()
 	}
 	raw, viewErr := c.detailView(ctx, st.Path, ref.Key, info.id)
 	wg.Wait()
@@ -245,7 +245,7 @@ func (c *client) commentList(ctx context.Context, path, key string) (*commentPag
 	defer cancel()
 	out, err := c.runner.Run(vctx, path, []string{"jira", "workitem", "comment", "list", "--key", key, "--json", "--limit", commentListLimit, "--order", "-created"})
 	if err != nil {
-		return nil, classify(err, vctx, "workitem comment list")
+		return nil, c.noteAuth(classify(err, vctx, "workitem comment list"))
 	}
 	l, ok := splitCommentList(out)
 	if !ok {

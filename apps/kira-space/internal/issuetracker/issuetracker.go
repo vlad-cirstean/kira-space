@@ -32,6 +32,7 @@ type Issue struct {
 	Status         string // workflow status name
 	StatusCategory string // new | indeterminate | done | ''
 	Summary        ChangeRequestSummary
+	Stale          bool // a kept copy past its fresh window; a refresh may be running
 }
 
 // Status kinds, the same words as githost.Status.
@@ -79,6 +80,8 @@ type Provider interface {
 	ParseRef(raw string) (Ref, bool)
 	// Status probes the CLI. refresh drops the cached probe first.
 	Status(ctx context.Context, refresh bool) Status
-	// Issue reads one issue. Failures are the typed errors of errors.go, so a caller can name the gap.
-	Issue(ctx context.Context, ref Ref) (Issue, error)
+	// Issue reads one issue. Unless fresh it may answer from a kept copy marked Stale and refresh it in
+	// the background. A fresh read that fails may still return a Stale copy beside the error. Failures
+	// are the typed errors of errors.go, so a caller can name the gap.
+	Issue(ctx context.Context, ref Ref, fresh bool) (Issue, error)
 }

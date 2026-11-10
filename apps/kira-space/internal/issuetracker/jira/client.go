@@ -17,8 +17,9 @@ import (
 const (
 	viewTimeout  = 10 * time.Second
 	fetchBound   = 20 * time.Second
-	resultOKTTL  = 60 * time.Second
+	resultOKTTL  = 60 * time.Second // fresh window
 	resultErrTTL = 15 * time.Second
+	issueKeepFor = 30 * time.Minute // a copy past resultOKTTL is served Stale up to here
 	noDevTTL     = 10 * time.Minute
 
 	// firstFields reads everything but the heavy fields once per site, to find the Development field.
@@ -26,10 +27,12 @@ const (
 	fallbackFields = "summary,status,*navigable"
 )
 
+// resultEntry keeps the last good copy beside the last error, so a failed refresh never hides a copy.
 type resultEntry struct {
 	issue issuetracker.Issue
+	okAt  time.Time // zero: no good copy
 	err   error
-	until time.Time
+	errAt time.Time
 }
 
 // devInfo is what a site's first read taught: the Development field's id, or that it has none.
@@ -68,24 +71,27 @@ type fetched struct {
 	err   error
 }
 
-// issue answers from the 60 s result cache, else one coalesced fetch per key. The fetch runs on a
-// context detached from the caller, so a caller that gives up (a short artifact budget) leaves it
-// running and the next call finds its result in the cache.
-func (c *client) issue(ctx context.Context, ref issuetracker.Ref) (issuetracker.Issue, error) {
+// issue answers from the kept copy unless fresh: younger than resultOKTTL as is, younger than
+// issueKeepFor marked Stale with one background refresh. Else one coalesced fetch per key. The fetch
+// runs on a context detached from the caller, so a caller that gives up (a short artifact budget)
+// leaves it running and the next call finds its result in the cache. A failed fetch beside a kept
+// copy returns both.
+func (c *client) issue(ctx context.Context, ref issuetracker.Ref, fresh bool) (issuetracker.Issue, error) {
 	key := cacheKey(ref)
-	if e, ok := c.cached(key); ok {
-		return e.issue, e.err
+	if !fresh {
+		if iss, ok, err := c.serve(ctx, key, ref); ok {
+			return iss, err
+		}
 	}
-	ch := c.sf.DoChan(key, func() (any, error) {
-		fctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), c.bound)
-		defer cancel()
-		iss, err := c.fetch(fctx, ref)
-		c.store(key, iss, err)
-		return fetched{iss, err}, nil
-	})
+	ch := c.startFetch(ctx, key, ref)
 	select {
 	case r := <-ch:
 		f := r.Val.(fetched)
+		if f.err != nil {
+			if iss, ok := c.kept(key); ok {
+				return iss, f.err
+			}
+		}
 		return f.issue, f.err
 	case <-ctx.Done():
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
@@ -95,30 +101,71 @@ func (c *client) issue(ctx context.Context, ref issuetracker.Ref) (issuetracker.
 	}
 }
 
-func (c *client) cached(key string) (resultEntry, bool) {
+func (c *client) startFetch(ctx context.Context, key string, ref issuetracker.Ref) <-chan singleflight.Result {
+	return c.sf.DoChan(key, func() (any, error) {
+		fctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), c.bound)
+		defer cancel()
+		iss, err := c.fetch(fctx, ref)
+		c.store(key, iss, err)
+		return fetched{iss, err}, nil
+	})
+}
+
+// serve answers a non-fresh read from the cache. ok is false on a miss.
+func (c *client) serve(ctx context.Context, key string, ref issuetracker.Ref) (issuetracker.Issue, bool, error) {
+	c.mu.Lock()
+	e, found := c.cache[key]
+	now := c.clock.Now()
+	c.mu.Unlock()
+	if !found {
+		return issuetracker.Issue{}, false, nil
+	}
+	hasCopy := !e.okAt.IsZero() && now.Sub(e.okAt) < issueKeepFor
+	errLive := e.err != nil && now.Sub(e.errAt) < resultErrTTL
+	switch {
+	case hasCopy && now.Sub(e.okAt) < resultOKTTL && !errLive:
+		return e.issue, true, nil
+	case errLive && hasCopy:
+		e.issue.Stale = true
+		return e.issue, true, nil
+	case errLive:
+		return issuetracker.Issue{}, true, e.err
+	case hasCopy:
+		_ = c.startFetch(ctx, key, ref) // result lands in the cache; the channel is buffered
+		e.issue.Stale = true
+		return e.issue, true, nil
+	}
+	return issuetracker.Issue{}, false, nil
+}
+
+// kept returns the good copy of key marked Stale, while younger than issueKeepFor.
+func (c *client) kept(key string) (issuetracker.Issue, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	e, ok := c.cache[key]
-	if !ok || !c.clock.Now().Before(e.until) {
-		delete(c.cache, key)
-		return resultEntry{}, false
+	if !ok || e.okAt.IsZero() || c.clock.Now().Sub(e.okAt) >= issueKeepFor {
+		return issuetracker.Issue{}, false
 	}
-	return e, true
+	e.issue.Stale = true
+	return e.issue, true
 }
 
 // store keeps a result. Missing CLI or login is cheap to re-probe through the status cache, so those
-// are not stored; the other errors live the short TTL.
+// are not stored; the other errors live the short TTL and leave the good copy in place.
 func (c *client) store(key string, iss issuetracker.Issue, err error) {
 	if errors.Is(err, issuetracker.ErrUnavailable) || errors.Is(err, issuetracker.ErrUnauthenticated) ||
 		errors.Is(err, issuetracker.ErrOtherSite) {
 		return
 	}
-	ttl := resultOKTTL
-	if err != nil {
-		ttl = resultErrTTL
-	}
 	c.mu.Lock()
-	c.cache[key] = resultEntry{issue: iss, err: err, until: c.clock.Now().Add(ttl)}
+	now := c.clock.Now()
+	if err == nil {
+		c.cache[key] = resultEntry{issue: iss, okAt: now}
+	} else {
+		e := c.cache[key]
+		e.err, e.errAt = err, now
+		c.cache[key] = e
+	}
 	c.mu.Unlock()
 }
 
@@ -225,7 +272,15 @@ func (c *client) view(ctx context.Context, path, key, fields string) ([]byte, er
 	if err == nil {
 		return out, nil
 	}
-	return nil, classify(err, vctx, "workitem view")
+	return nil, c.noteAuth(classify(err, vctx, "workitem view"))
+}
+
+// noteAuth drops the cached OK status when a read finds no login, so the next read re-probes inline.
+func (c *client) noteAuth(err error) error {
+	if errors.Is(err, issuetracker.ErrUnauthenticated) {
+		c.disc.forget()
+	}
+	return err
 }
 
 // classify maps a failed acli run to a typed error; err itself when it matches none.

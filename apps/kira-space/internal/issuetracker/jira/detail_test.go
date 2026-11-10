@@ -216,7 +216,7 @@ func TestDetailFeedsIssueCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := r.views.Load()
-	iss, err := p.Issue(context.Background(), issuetracker.Ref{Provider: ProviderID, Key: "PROJ-12", Site: "acme.atlassian.net"})
+	iss, err := p.Issue(context.Background(), issuetracker.Ref{Provider: ProviderID, Key: "PROJ-12", Site: "acme.atlassian.net"}, false)
 	if err != nil || iss.Title != "Export report as CSV" || r.views.Load() != before {
 		t.Fatalf("%+v %v views %d->%d", iss, err, before, r.views.Load())
 	}
