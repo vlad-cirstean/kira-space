@@ -709,3 +709,55 @@ func TestConnectKeepsMetadataCacheAndEmitsInvalidation(t *testing.T) {
 		t.Errorf("metadataInvalidated emissions = %v, want exactly [%s]", invalidated, created.ID)
 	}
 }
+
+// TestMarkLostOwnsTeardownSlot covers the check-then-teardown race: once MarkLost passes its check
+// no Connect may register an attempt under its Backend.Disconnect, and a Disconnect that joins the
+// slot owns the final state.
+func TestMarkLostOwnsTeardownSlot(t *testing.T) {
+	setup := func(t *testing.T) (*harness, string) {
+		h := newHarness(t)
+		created := mustCreate(t, h.svc, fieldsInput("lost-conn"))
+		if _, err := h.svc.Connect(created.ID); err != nil {
+			t.Fatalf("Connect: %v", err)
+		}
+		h.backend.disconnectGate = make(chan struct{})
+		return h, created.ID
+	}
+	lost := func(h *harness, id string) chan struct{} {
+		done := make(chan struct{})
+		go func() { h.svc.MarkLost(id, "probe failed"); close(done) }()
+		time.Sleep(100 * time.Millisecond) // MarkLost is now blocked in Backend.Disconnect
+		return done
+	}
+
+	t.Run("a Connect waits the teardown out", func(t *testing.T) {
+		h, id := setup(t)
+		lostDone := lost(h, id)
+		connectDone := make(chan struct{})
+		go func() { _, _ = h.svc.Connect(id); close(connectDone) }()
+		time.Sleep(100 * time.Millisecond)
+		if n := h.backend.connectCount(); n != 1 {
+			t.Fatalf("connect count = %d during teardown, want 1", n)
+		}
+		close(h.backend.disconnectGate)
+		<-lostDone
+		<-connectDone
+		if st := h.svc.StateOf(id).Status; st != "connected" {
+			t.Fatalf("state = %q, want connected by the fresh attempt", st)
+		}
+	})
+
+	t.Run("a joining Disconnect owns the final state", func(t *testing.T) {
+		h, id := setup(t)
+		lostDone := lost(h, id)
+		discDone := make(chan struct{})
+		go func() { _, _ = h.svc.Disconnect(id); close(discDone) }()
+		time.Sleep(100 * time.Millisecond)
+		close(h.backend.disconnectGate)
+		<-lostDone
+		<-discDone
+		if st := h.svc.StateOf(id).Status; st != "disconnected" {
+			t.Fatalf("state = %q, want disconnected", st)
+		}
+	})
+}
