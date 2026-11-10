@@ -575,13 +575,14 @@ func destinationUnchanged(a, b connfiles.File) bool {
 // behaviour, the same non-destination footing as AutoExplain. McpReview gates DB-MCP-path
 // result review, never the destination. McpStatementTimeoutSec bounds DB-MCP statements and McpTables
 // the DB-MCP table set, never the destination. PreconnectDelaySec is timing only,
-// never the destination.
+// never the destination. ExplainThresholdRows only sets when an explain warns or refuses.
 func zeroExemptFields(f *model.ConnectionFields) {
 	f.Name = ""
 	f.Color = ""
 	f.ReadOnly = false
 	f.AutoExplain = false
 	f.ThrottlePerSec = 0
+	f.ExplainThresholdRows = 0
 	f.PreconnectDelaySec = 0
 	f.McpEnabled = false
 	f.McpDescription = ""

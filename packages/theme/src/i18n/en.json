@@ -2706,6 +2706,9 @@
         "databasePathAbsolute": {
           "body": "The database file must be an absolute path."
         },
+        "explainThresholdRange": {
+          "body": "Expensive query threshold must be 1,000 to 1,000,000,000 rows, or left out."
+        },
         "hostRequired": {
           "body": "Host is required."
         },

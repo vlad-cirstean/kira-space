@@ -959,6 +959,7 @@ var Connections = struct {
 	OptionsJSON            string
 	MCPTablesJSON          string
 	ConfigJSON             string
+	ExplainThresholdRows   string
 }{
 	Table:                  "connections",
 	ID:                     "id",
@@ -997,6 +998,7 @@ var Connections = struct {
 	OptionsJSON:            "options_json",
 	MCPTablesJSON:          "mcp_tables_json",
 	ConfigJSON:             "config_json",
+	ExplainThresholdRows:   "explain_threshold_rows",
 }
 
 // DockerRestoreContainers names table docker_restore_containers.

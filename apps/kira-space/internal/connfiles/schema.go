@@ -17,7 +17,7 @@ var connectionSchema []byte
 const (
 	ruleName   = "name is not blank."
 	ruleMode   = "Fields mode needs host and port, except sqlite (an absolute database file path) and sqs and s3 (no host or port). password is not for sqlite, sqs and s3. options holds no secret such as password or sslpassword: use uri mode for those. Uri mode needs uri and no host, port, database, username or password."
-	ruleLimits = "throttle_per_sec is 0 or 0.01 to 1000."
+	ruleLimits = "throttle_per_sec is 0 or 0.01 to 1000. explain_threshold_rows is 1000 to 1000000000 when present."
 	ruleMasks  = "A mask rule is unique per table and column, ignoring case. A number mask does not correlate."
 	ruleReview = "mask_review is for postgres, mysql, mariadb, clickhouse and sqlite; each column entry has one part more than a table entry of the kind."
 	ruleTree   = "tree lists each hidden kind and path once."

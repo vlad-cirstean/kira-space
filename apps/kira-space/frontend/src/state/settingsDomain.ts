@@ -1,3 +1,4 @@
+import { EXPLAIN_THRESHOLD_ROWS_RANGE } from '@shared/domain/connection';
 import {
   agentSettingsSchema,
   appearanceSettingsSchema,
@@ -49,7 +50,7 @@ export const OP_LOG_RETENTION_DAYS_RANGE = { min: 1, max: 365 } as const;
 // magnitude for a comparable scan, so no cost-based number could be shared
 // across engines. 1,000 floor keeps the field meaningful; 1e9 ceiling is generous headroom above
 // any real table this app's own fixture corpus uses.
-export const EXPENSIVE_QUERY_ROWS_RANGE = { min: 1_000, max: 1_000_000_000 } as const;
+export const EXPENSIVE_QUERY_ROWS_RANGE = EXPLAIN_THRESHOLD_ROWS_RANGE;
 
 const pageSizeSchema = /*#__PURE__*/ z.union([
   z.literal(10),

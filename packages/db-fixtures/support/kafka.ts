@@ -74,6 +74,7 @@ async function start(): Promise<KafkaFixture> {
     options: {},
     autoExplain: false,
     throttlePerSec: 0,
+    explainThresholdRows: 0,
     mcpEnabled: false,
     mcpDescription: '',
     mcpReadMode: 'allow',

@@ -157,6 +157,7 @@ export function connectionSummary(
     preconnectDelaySec: 0,
     autoExplain: false,
     throttlePerSec: 0,
+    explainThresholdRows: 0,
     mcpEnabled: false,
     mcpDescription: '',
     mcpReadMode: 'allow',

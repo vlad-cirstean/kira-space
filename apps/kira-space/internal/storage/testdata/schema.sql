@@ -487,7 +487,7 @@ CREATE TABLE "connections" (
   options_json TEXT CHECK (options_json IS NULL OR json_valid(options_json)),
   mcp_tables_json TEXT CHECK (mcp_tables_json IS NULL OR json_valid(mcp_tables_json)),
   config_json TEXT NOT NULL DEFAULT '' CHECK (config_json = '' OR json_valid(config_json))
-) STRICT;
+, explain_threshold_rows INTEGER NOT NULL DEFAULT 0 CHECK (explain_threshold_rows >= 0)) STRICT;
 
 CREATE TABLE "docker_restore_containers" (
   engine_id TEXT NOT NULL REFERENCES docker_restore_engines (engine_id) ON DELETE CASCADE,

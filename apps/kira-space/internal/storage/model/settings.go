@@ -391,7 +391,7 @@ func validateAdvancedSection(a *AdvancedPatch) error {
 	if a.OpLogRetentionDays != nil && !appsettings.InRange(1, 365)(*a.OpLogRetentionDays) {
 		return fmt.Errorf("model: advanced.opLogRetentionDays: out of range value %d", *a.OpLogRetentionDays)
 	}
-	if a.ExpensiveQueryRows != nil && !appsettings.InRange(1_000, 1_000_000_000)(*a.ExpensiveQueryRows) {
+	if a.ExpensiveQueryRows != nil && !appsettings.InRange(ExplainThresholdRowsMin, ExplainThresholdRowsMax)(*a.ExpensiveQueryRows) {
 		return fmt.Errorf("model: advanced.expensiveQueryRows: out of range value %d", *a.ExpensiveQueryRows)
 	}
 	return nil

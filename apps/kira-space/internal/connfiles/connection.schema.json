@@ -94,6 +94,12 @@
       "default": false,
       "description": "Run EXPLAIN before every SELECT the console runs and warn about costly plans."
     },
+    "explain_threshold_rows": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 1000000000,
+      "description": "Estimated rows read at or above which this connection's explain warns and agent queries are refused. Absent uses advanced.expensiveQueryRows."
+    },
     "throttle_per_sec": {
       "type": "number",
       "default": 0,
@@ -141,7 +147,7 @@
         "auto_explain": {
           "type": "boolean",
           "default": true,
-          "description": "Run EXPLAIN before an agent's SELECT or WITH and refuse it when the estimated rows read reach advanced.expensiveQueryRows."
+          "description": "Run EXPLAIN before an agent's SELECT or WITH and refuse it when the estimated rows read reach the connection's threshold."
         },
         "review": {
           "type": "object",

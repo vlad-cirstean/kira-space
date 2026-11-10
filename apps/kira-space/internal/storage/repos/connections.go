@@ -19,7 +19,7 @@ var connectionSelectColumns = []string{
 	kiraschema.Connections.Kind, kiraschema.Connections.Color, kiraschema.Connections.Mode, kiraschema.Connections.ReadOnly,
 	kiraschema.Connections.Host, kiraschema.Connections.Port, kiraschema.Connections.Database, kiraschema.Connections.Username,
 	kiraschema.Connections.OptionsJSON, kiraschema.Connections.Preconnect, kiraschema.Connections.PreconnectSidecar,
-	kiraschema.Connections.PreconnectDelaySec, kiraschema.Connections.AutoExplain, kiraschema.Connections.ThrottlePerSec,
+	kiraschema.Connections.PreconnectDelaySec, kiraschema.Connections.AutoExplain, kiraschema.Connections.ThrottlePerSec, kiraschema.Connections.ExplainThresholdRows,
 	kiraschema.Connections.MCPEnabled, kiraschema.Connections.MCPDescription, kiraschema.Connections.MCPReadMode,
 	kiraschema.Connections.MCPWriteMode, kiraschema.Connections.MCPDdlMode, kiraschema.Connections.MCPMaskedMode,
 	kiraschema.Connections.MCPAutoExplain, kiraschema.Connections.MCPReviewRead, kiraschema.Connections.MCPReviewWrite,
@@ -54,7 +54,7 @@ func scanConnectionRow(row rowScanner) (*model.ConnectionSummary, error) {
 	)
 	if err := row.Scan(
 		&c.ID, &c.File, &c.Name, &c.Kind, &c.Color, &c.Mode, &readOnly, &host, &port, &database,
-		&username, &options, &preconnect, &sidecar, &c.PreconnectDelaySec, &autoExplain, &c.ThrottlePerSec,
+		&username, &options, &preconnect, &sidecar, &c.PreconnectDelaySec, &autoExplain, &c.ThrottlePerSec, &c.ExplainThresholdRows,
 		&mcpEnabled, &c.McpDescription, &c.McpReadMode, &c.McpWriteMode, &c.McpDdlMode, &c.McpMaskedMode, &mcpAutoExplain, &c.McpReview.Read, &c.McpReview.Write, &c.McpReview.Ddl, &c.McpReview.Masked, &c.McpStatementTimeoutSec, &mcpTables, &maskReview,
 		&c.SortOrder, &createdMs, &updatedMs,
 	); err != nil {
@@ -105,6 +105,11 @@ func scanConnectionRow(row rowScanner) (*model.ConnectionSummary, error) {
 	if !model.ValidMcpStatementTimeout(c.McpStatementTimeoutSec) {
 		slog.Warn("coercing connection row: unrecognised MCP statement timeout", "scope", "storage/connections", "id", c.ID, "value", c.McpStatementTimeoutSec)
 		c.McpStatementTimeoutSec = model.McpStatementTimeoutDefault
+	}
+	// P593: an unreadable threshold falls back to the app default, never to a lower limit.
+	if !model.ValidExplainThresholdRows(c.ExplainThresholdRows) {
+		slog.Warn("coercing connection row: unrecognised explain threshold", "scope", "storage/connections", "id", c.ID, "value", c.ExplainThresholdRows)
+		c.ExplainThresholdRows = 0
 	}
 
 	// P532: a list that cannot be read must not widen to all; it becomes the empty list.
