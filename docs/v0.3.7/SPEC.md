@@ -12,6 +12,8 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P595 | `api_request` rules: default action ask or deny | Todo |
 | P596 | Masking and the Privacy tab: make it understandable | Todo |
 | P597 | Proof: export all screenshots to a Desktop folder, location customizable | Todo |
+| P598 | Task work start: require a repo choice before an agent opens | Todo |
+| P599 | Review changes button: also for uncommitted changes | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -72,5 +74,20 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 
 - Ask (user): export all screenshots creates a folder by default and saves it on the Desktop. The save location is customizable from the export window.
 - Context: proof screenshot export (`ProofSaveJpegArgs`, save flow).
+- Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+- Result:
+
+## P598 Task work start: require a repo choice before an agent opens
+
+- Ask (user): when starting work in a task, first ask the user to at least select a repo. Today, if they forget, the agent opens in a random run folder. Applies from inside a task when starting work in a workflow.
+- Context: `AddTaskRepo` (`internal/ade/board_writes.go`), run launch (`internal/ade/runs.go` `queueRun`, `launches.go`), task `AdeTaskRepo`. Planner finds every start path (Run dialog, workflow step start, TUI launch, retry) and what folder an agent gets when the task has no repo.
+- Acceptance: a task with no repo cannot start work without choosing at least one repo in a prompt; no start path falls back to a run folder.
+- Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+- Result:
+
+## P599 Review changes button: also for uncommitted changes
+
+- Ask (user): the review changes button shows not only for commits but also for uncommitted changes.
+- Context: Review tool (`internal/gitsession/crreview.go`, P581), the review changes button in the task panel and Git sidebar. Planner finds when the button shows today and how a review of the working tree (staged and unstaged) would be modeled.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
 - Result:
