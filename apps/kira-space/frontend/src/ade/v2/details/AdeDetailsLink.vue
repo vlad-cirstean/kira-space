@@ -3,7 +3,7 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { control } from '../../../bridge/control';
-import { useOpenHostView } from '../../../hostview/queries';
+import { useOpenChangeRequest } from '../../../hostview/queries';
 import AdeChip from '../AdeChip.vue';
 import { artifactKindLabel, artifactStatusLabel, artifactStatusTone } from '../artifacts/status';
 import AdeRow from '../panel/AdeRow.vue';
@@ -23,7 +23,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ edit: []; done: []; remove: []; kind: [kind: Artifact['kind']] }>();
 
-const openView = useOpenHostView();
+const openView = useOpenChangeRequest();
 const canEdit = () => !props.readonly && props.item.origin !== 'detected';
 
 function open(e: MouseEvent): void {

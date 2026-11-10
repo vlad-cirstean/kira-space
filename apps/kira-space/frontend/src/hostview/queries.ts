@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { t } from '@theme/i18n';
 import { optimisticUpdate } from '@workbench/behaviour/optimistic';
+import { logWarn } from '@workbench/bridge/log';
 import type { MaybeRefOrGetter } from 'vue';
 import { toValue, watch } from 'vue';
 import { control } from '../bridge/control';
-import type { HostViewChangeRequest, HostViewIssue, HostViewPosted } from './wire';
+import type { HostViewChangeRequest, HostViewIssue, HostViewOpen, HostViewPosted } from './wire';
 
 export const hostViewTargetKey = (windowKey: string) => ['hostview', 'target', windowKey] as const;
 export const issueKey = (ref: string) => ['hostview', 'issue', ref] as const;
@@ -70,6 +71,25 @@ export function useIssueDetail(ref: MaybeRefOrGetter<string>) {
 /** Opens (or focuses) the view window for a change request URL or an issue key or link. */
 export function useOpenHostView() {
   return useMutation({ mutationFn: (urlOrKey: string) => control.hostViewOpen(urlOrKey) });
+}
+
+/**
+ * Opens (or focuses) the view window for a change request link. A link the view refuses or fails to open
+ * opens in the browser instead, so a click is never dead. Issue keys keep useOpenHostView: a bare key has
+ * no URL to fall back to.
+ */
+export function useOpenChangeRequest() {
+  return useMutation({
+    mutationFn: async (url: string): Promise<HostViewOpen | null> => {
+      try {
+        return await control.hostViewOpen(url);
+      } catch (err) {
+        logWarn('hostView.open', `opening ${url} in the browser instead`, err);
+        await control.openExternal(url);
+        return null;
+      }
+    },
+  });
 }
 
 /** A post the host did not take: the result kind and its reason (a status reason or a reason word). */
