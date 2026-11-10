@@ -135,8 +135,10 @@ const dbMcpSettingsSchema = /*#__PURE__*/ z.object({
   // Let agents send API requests with the variables an environment shares with them.
   apiRequests: z.boolean().default(false),
   apiApproval: z.enum(['always', 'never']).default('always'),
-  // Host and method rules for api_request; empty allows everything.
+  // Host and method rules for api_request: deny refuses, allow sends without approval.
   apiRules: z.array(apiRuleSchema).default([]),
+  // A request no rule matches: ask follows apiApproval, deny refuses it.
+  apiDefault: z.enum(['ask', 'deny']).default('ask'),
   // Read-only: stored rules could not be read, so every API request is refused.
   apiRulesInvalid: z.boolean().default(false),
 });
@@ -342,6 +344,7 @@ const settingsSchema = /*#__PURE__*/ z.object({
     apiRequests: false,
     apiApproval: 'always',
     apiRules: [],
+    apiDefault: 'ask',
     apiRulesInvalid: false,
   }),
 });
@@ -448,6 +451,7 @@ export const defaultSettings: Settings = {
     apiRequests: false,
     apiApproval: 'always',
     apiRules: [],
+    apiDefault: 'ask',
     apiRulesInvalid: false,
   },
 };

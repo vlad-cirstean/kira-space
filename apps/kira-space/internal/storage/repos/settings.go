@@ -84,6 +84,7 @@ func (r *SettingsRepo) GetAll() (model.Settings, error) {
 	appsettings.Leaf(stored, "dbMcp.apiRequests", &result.DbMcp.APIRequests)
 	appsettings.LeafValid(stored, "dbMcp.apiApproval", &result.DbMcp.APIApproval, model.ValidAPIApproval)
 	readAPIRules(stored, &result.DbMcp)
+	readAPIDefault(stored, &result.DbMcp)
 	return result, nil
 }
 
@@ -108,6 +109,23 @@ func readAPIRules(stored map[string]json.RawMessage, dm *model.DbMcpSettings) {
 	if rules != nil {
 		dm.APIRules = rules
 	}
+}
+
+// readAPIDefault fails closed: a stored value that does not decode to ask or deny reads as deny, where
+// appsettings.LeafValid would fall back to ask. An absent leaf reads as ask.
+func readAPIDefault(stored map[string]json.RawMessage, dm *model.DbMcpSettings) {
+	dm.APIDefault = apiaccess.DefaultAsk
+	raw, ok := stored["dbMcp.apiDefault"]
+	if !ok {
+		return
+	}
+	var v string
+	if err := json.Unmarshal(raw, &v); err != nil || !apiaccess.ValidDefault(v) {
+		slog.Warn("settings: dbMcp.apiDefault unreadable, denying unmatched API requests", "scope", "settings", "err", err)
+		dm.APIDefault = apiaccess.DefaultDeny
+		return
+	}
+	dm.APIDefault = v
 }
 
 // readAppearance reads the shared appearance.* leaves plus this app's own two (inlineBlame/
@@ -358,6 +376,9 @@ func upsertDbMcpSection(tx *sql.Tx, dm *model.DbMcpPatch) error {
 		return err
 	}
 	if err := appsettings.UpsertOptional(tx, "dbMcp.apiApproval", dm.APIApproval); err != nil {
+		return err
+	}
+	if err := appsettings.UpsertOptional(tx, "dbMcp.apiDefault", dm.APIDefault); err != nil {
 		return err
 	}
 	return appsettings.UpsertOptional(tx, "dbMcp.apiRules", dm.APIRules)

@@ -262,7 +262,7 @@ func DefaultSettings() Settings {
 			MaxRedirects:     10,
 			DisableCookieJar: true,
 		},
-		DbMcp: DbMcpSettings{ServerEnabled: false, PreviewResponses: false, FocusOnApproval: true, APIRequests: false, APIApproval: "always", APIRules: []apiaccess.Rule{}},
+		DbMcp: DbMcpSettings{ServerEnabled: false, PreviewResponses: false, FocusOnApproval: true, APIRequests: false, APIApproval: "always", APIRules: []apiaccess.Rule{}, APIDefault: apiaccess.DefaultAsk},
 	}
 }
 

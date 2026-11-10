@@ -27,8 +27,11 @@ type DbMcpSettings struct {
 	APIRequests bool `json:"apiRequests"`
 	// APIApproval is "always" (each request waits for the user) or "never".
 	APIApproval string `json:"apiApproval"`
-	// APIRules gate api_request by host and method. Empty allows everything.
+	// APIRules gate api_request by host and method: deny refuses, allow sends without approval, the rest
+	// follows APIDefault.
 	APIRules []apiaccess.Rule `json:"apiRules"`
+	// APIDefault: ask: a request no rule matches follows APIApproval. deny: it is refused.
+	APIDefault string `json:"apiDefault"`
 	// APIRulesInvalid is read-only: the stored rules failed to decode or compile, so APIRules is empty
 	// and the access reader refuses every request until a valid Set replaces them.
 	APIRulesInvalid bool `json:"apiRulesInvalid"`
@@ -79,6 +82,7 @@ type DbMcpPatch struct {
 	APIRequests      *bool             `json:"apiRequests,omitempty"`
 	APIApproval      *string           `json:"apiApproval,omitempty"`
 	APIRules         *[]apiaccess.Rule `json:"apiRules,omitempty"`
+	APIDefault       *string           `json:"apiDefault,omitempty"`
 }
 
 // ValidHTTPVersion mirrors settings.ts's HTTP_VERSIONS — Go's HTTP/1 *is* 1.1, so "1" is never a
@@ -150,6 +154,9 @@ func validateApiSection(a *ApiPatch) error {
 func validateDbMcpSection(d *DbMcpPatch) error {
 	if d != nil && d.APIApproval != nil && !ValidAPIApproval(*d.APIApproval) {
 		return fmt.Errorf("model: dbMcp.apiApproval: invalid value %q", *d.APIApproval)
+	}
+	if d != nil && d.APIDefault != nil && !apiaccess.ValidDefault(*d.APIDefault) {
+		return fmt.Errorf("model: dbMcp.apiDefault: invalid value %q", *d.APIDefault)
 	}
 	if d != nil && d.APIRules != nil {
 		if _, err := apiaccess.Compile(*d.APIRules); err != nil {
