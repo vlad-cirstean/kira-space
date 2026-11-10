@@ -4,7 +4,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 
 | Phase | Title | Status |
 |---|---|---|
-| P590 | Kira Studio approval prompt: skip when the database connection cannot be established | Todo |
+| P590 | Kira Studio approval prompt: skip when the database connection cannot be established | Done |
 | P591 | Proof tool: behavior not code, larger explanation, terse guidance | Done |
 | P592 | Jira: faster loading | Done |
 | P593 | Database MCP: customizable explain threshold | Todo |
@@ -25,7 +25,7 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: `internal/dbmcp` approval flow (`ApprovalBroker`, `run_query` path). Planner finds where the prompt is raised relative to connecting, and whether the approval can wait for a successful connect.
 - Acceptance: a request against a connection that cannot connect returns the connection error without raising an approval item.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
-- Result:
+- Result: Done. A never-connected failing connection already got no prompt (`connectForQuery` gate). Prompts still showed after a server died while the state read `connected`, or when the read lane could not open. New `adapters.Pinger` (postgres, mysql, mariadb, sqlite, clickhouse, mongodb, redis, kibana), `Router.Probe` and `dbmcp.ensureReachable`, called before each `db.query` and `db.exemption` approval (run_query, browse_table, explain), return `connection "<name>" is not reachable: ...` with no item. `connections.Service.MarkLost` turns a connection whose main adapter fails the probe to `error` (`backend.studio.connection.lost.error`); the next call reconnects. Out of scope: `kube.read`, `script.run`, `api.request`, `db.response`. Plan: `plans/P590.md`. Tests: `dbmcpflow` `TestDbMcpUnreachableRaisesNoApproval` (write, lane read, explain, browse masked, exempted, never connected, recovery; contract `dbmcp-unreachable`), UI spec `studio/dbmcp-unreachable.spec.ts`, `adapterhost` `TestRouter_Probe`, conformance `PingAnswers` plus sqlite `TestSqlite_PingFileRemoved`. Deviations from the plan: unconnected `Ping` returns `E_CONNECT` (shared `RequireConnected`), not `E_ENGINE_DOWN`; a lane failure with not-found is also confirmed on the main adapter (a vanished SQLite file); explain approval moved into `awaitExplainApproval` for the gocognit limit. Real-container adapter suites (postgres, mysql, mariadb, clickhouse, mongodb, redis, kibana `Ping`) not run: no Docker in the sandbox.
 
 ## P591 Proof tool: behavior not code, larger explanation, terse guidance
 
