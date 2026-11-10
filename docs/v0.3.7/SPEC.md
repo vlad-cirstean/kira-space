@@ -14,6 +14,8 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P597 | Proof: export all screenshots to a Desktop folder, location customizable | Todo |
 | P598 | Task work start: require a repo choice before an agent opens | Todo |
 | P599 | Review changes button: also for uncommitted changes | Todo |
+| P600 | Task Details: group the top links by category, more compact and nicer | Todo |
+| P601 | Task row: agent indicator at the start, manual status as small text with dropdown | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -90,4 +92,21 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Ask (user): the review changes button shows not only for commits but also for uncommitted changes.
 - Context: Review tool (`internal/gitsession/crreview.go`, P581), the review changes button in the task panel and Git sidebar. Planner finds when the button shows today and how a review of the working tree (staged and unstaged) would be modeled.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
+- Result:
+
+## P600 Task Details: group the top links by category, more compact and nicer
+
+- Ask (user): in the task Details, group the top links by category, with issue, change request (CR) and misc types. Make it more space efficient and nicer.
+- Context: Details tab top links (`AdeDetailsTab.vue` and children), link kinds on the task (issue links, change request links, other). Planner finds the link model, how misc links are stored and added, and the current layout.
+- Acceptance: links appear under issue, CR and misc groups; the block uses less vertical space than today; add and remove still work.
+- Tests: UI spec; flow test only if the link model changes.
+- Result:
+
+## P601 Task row: agent indicator at the start, manual status as small text with dropdown
+
+- Ask (user):
+  - Keep the agent indicators in the task (green circle and the others) but move them from the middle to the very beginning of the task row, replacing the colored square.
+  - The manual status the user can set shows as small text in the task itself; clicking it opens a dropdown to change it.
+- Context: task row in the board and lists (`AdeTaskRow`/card components under `apps/kira-space/frontend/src/ade/v2/`), the colored square (task color mark), the agent state indicator, manual status control. Planner finds every place the row renders and whether the color is still needed elsewhere.
+- Tests: UI spec; flow test only if status writes change. Visual baselines move: plan which.
 - Result:
