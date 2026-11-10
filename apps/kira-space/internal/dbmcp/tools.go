@@ -35,7 +35,6 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 	if err != nil {
 		return nil, nil, err
 	}
-	threshold := s.cfg.ExplainThreshold()
 	out := make([]connectionView, 0, len(conns))
 	for _, c := range conns {
 		if !c.McpEnabled {
@@ -47,7 +46,7 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 			Description: c.McpDescription,
 			Permissions: connectionPermissions{Read: c.McpReadMode, Write: c.McpWriteMode, DDL: c.McpDdlMode, Masked: maskedModeOf(c)},
 			Access:      accessOf(c), Browse: browseView{Supported: HasBrowse(c.Kind), MaxRows: browseMaxRows}, Enforcement: enforcementOf(c.Kind), StatementTimeout: timeoutViewOf(c),
-			ExpensiveQuery: expensiveQueryView{RowsThreshold: threshold, Check: expensiveCheckOf(c)},
+			ExpensiveQuery: expensiveQueryView{RowsThreshold: s.thresholdFor(c), Check: expensiveCheckOf(c)},
 			ReviewResults:  s.reviewViewOf(c),
 		}
 		if state.ServerVersion != nil {
@@ -541,8 +540,8 @@ func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv quer
 		rv.maxRows = runQueryMaxMaxRows
 	}
 
-	// Read once per call, not per use: ExplainThreshold is read fresh on every call, never cached.
-	rv.threshold = s.cfg.ExplainThreshold()
+	// Read once per call, not per use: the threshold is read fresh on every call, never cached.
+	rv.threshold = s.thresholdFor(rv.summary)
 
 	state, cerr := s.connectForQuery(ctx, args.ConnectionID)
 	if cerr != nil {
@@ -872,7 +871,7 @@ func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args 
 		return toolError(err)
 	}
 
-	threshold := s.cfg.ExplainThreshold()
+	threshold := s.thresholdFor(summary)
 	plan, err := queryplan.FromPages(summary.Kind, resp.Pages, threshold)
 	if err != nil {
 		if errors.Is(err, queryplan.ErrTruncated) {
