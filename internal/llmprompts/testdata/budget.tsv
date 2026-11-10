@@ -252,7 +252,7 @@ dbmcp.tool.proof_list	220
 dbmcp.tool.proof_save.arg.name	29
 dbmcp.tool.proof_save.arg.reason	82
 dbmcp.tool.proof_save.arg.steps.data	1804
-dbmcp.tool.proof_save.arg.steps.description	96
+dbmcp.tool.proof_save.arg.steps.description	192
 dbmcp.tool.proof_save.arg.steps.keepOrdinal	85
 dbmcp.tool.proof_save.arg.steps.language	63
 dbmcp.tool.proof_save.arg.steps.query	65
@@ -260,8 +260,8 @@ dbmcp.tool.proof_save.arg.steps.replacesOrdinal	77
 dbmcp.tool.proof_save.arg.steps.source	91
 dbmcp.tool.proof_save.arg.steps.view	87
 dbmcp.tool.proof_save.arg.steps	33
-dbmcp.tool.proof_save.arg.summary	54
-dbmcp.tool.proof_save	835
+dbmcp.tool.proof_save.arg.summary	115
+dbmcp.tool.proof_save	1032
 dbmcp.tool.get_script_run.arg.contains	70
 dbmcp.tool.get_script_run.arg.from	50
 dbmcp.tool.get_script_run.arg.lines	42
