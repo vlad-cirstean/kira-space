@@ -93,6 +93,11 @@ Server name `kira-studio`. Workflow steps with `db_mcp` reach the same tools as 
 - `operations`: running database and script work. Argument `cancel` (an `opId` from the list) stops one.
 - `run_script`: run a script the user exposed. Arguments: `scriptId`, `params`, `waitSeconds`. Returns state, exit code and, once the run ends, the last 50 output lines. A script with `mode: long` in its run file returns at once and keeps running. Read its output with `get_script_run`; stop it with `operations`.
 - `get_script_run`: state of a run, optionally waiting. Arguments: `runId`, `waitSeconds`, `from`, `lines`, `contains`. Returns stored output once the run ended or when a filter is given. A long script returns its last 50 lines at any state.
+- `kube_list_clusters`: the Kubernetes clusters you turned on, with context, server, namespace, description and `approval` (`prompt` or `allow`). A cluster that is off is not listed, and every `kube_*` tool answers it like an unknown id.
+- `kube_discover`: namespaces and listable kinds of one cluster, in one call. Argument: `clusterId`.
+- `kube_list_resources`: one kind's objects as `kubectl get` columns. Arguments: `clusterId`, `kind` (a key from `kube_discover`, such as `v1/pods`), `namespace` (empty for all), `labelSelector`, `maxRows` (default 200, maximum 2000).
+- `kube_describe`: one object's description, events and manifest; Secret values stay hidden. Arguments: `clusterId`, `kind`, `name`, `namespace`.
+- `kube_pod_logs`: a pod's container log. Arguments: `clusterId`, `namespace`, `pod`, `container`, `previous`, `timestamps`, `tail` (default 200, maximum 5000).
 
 ## Agent tools (Kira Space)
 
