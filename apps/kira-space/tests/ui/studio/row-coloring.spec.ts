@@ -91,7 +91,7 @@ test('colouring on (default boot) — a number column is coloured, a text column
   await connectAndOpenBigRows(page);
   await expect.poll(() => computedColor(page, 'id')).toBe(NUMBER_COLOR);
   // The C1 guard: before C1 this read rgb(210, 154, 126) (--kira-syntax-string, #d29a7e).
-  expect(await computedColor(page, 'hash')).toBe(PLAIN_COLOR);
+  await expect.poll(() => computedColor(page, 'hash')).toBe(PLAIN_COLOR);
 });
 
 test('colouring off at boot — both columns plain, no inline colour at all', async ({
