@@ -114,9 +114,12 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 	return jsonResult(out)
 }
 
-// needsAPIApproval says whether the request waits for the user: always, unless the user turned
-// approval off or the environment lets body-less reads through.
+// needsAPIApproval says whether the request waits for the user: never when an allow rule matched; otherwise
+// always, unless the user turned approval off or the environment lets body-less reads through.
 func needsAPIApproval(st APISettings, p agentapi.Planned) bool {
+	if p.AllowedByRule {
+		return false
+	}
 	if st.Approval == "never" {
 		return false
 	}

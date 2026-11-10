@@ -74,6 +74,9 @@ type Planned struct {
 	Variables   []VarUse
 	Credentials []Credential
 
+	// AllowedByRule: an allow rule matched, so the request needs no approval.
+	AllowedByRule bool
+
 	FollowRedirects  bool
 	TimeoutSeconds   int
 	MaxResponseBytes int

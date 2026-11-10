@@ -76,7 +76,9 @@ func (s *Service) checkAccess(p *Planned) error {
 		return errors.New("url is not valid")
 	}
 	p.access = policy
-	return policy.Check(p.Method, u)
+	verdict, err := policy.Decide(p.Method, u)
+	p.AllowedByRule = err == nil && verdict == apiaccess.VerdictAllowed
+	return err
 }
 
 func (s *Service) environmentOf(id string) (EnvInfo, map[string]available, error) {
@@ -431,9 +433,10 @@ func hostList(rules []apiaccess.HostRule) string {
 }
 
 // redirectGuard blocks a redirect that would carry a credential to a host its list does not allow, or that the
-// access rules refuse. The hop is checked with the request's own method, even when a 303 turns it into a GET.
+// access rules refuse. A hop to a host no rule matches is refused unless the policy allows everything. The hop
+// is checked with the request's own method, even when a 303 turns it into a GET.
 func redirectGuard(method string, creds []credential, access apiaccess.Policy) func(*url.URL) error {
-	if len(creds) == 0 && access.Empty() {
+	if len(creds) == 0 && access.AllowsAll() {
 		return nil
 	}
 	return func(next *url.URL) error {
@@ -442,7 +445,7 @@ func redirectGuard(method string, creds []credential, access apiaccess.Policy) f
 				return fmt.Errorf("redirect to %s blocked: credential %q is not allowed there", next.Host, c.name)
 			}
 		}
-		if err := access.Check(method, next); err != nil {
+		if err := access.CheckHop(method, next); err != nil {
 			return fmt.Errorf("redirect to %s blocked: %w", next.Host, err)
 		}
 		return nil

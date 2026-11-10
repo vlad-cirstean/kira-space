@@ -38,6 +38,10 @@ func (s *Service) Send(ctx context.Context, in Input, approved *Planned) (Result
 	if approved != nil && !p.sameRequest(*approved) {
 		return Result{}, ErrPlanChanged
 	}
+	// An allow rule removed since the plan would turn an unprompted send into one that needs a prompt.
+	if approved != nil && approved.AllowedByRule && !p.AllowedByRule {
+		return Result{}, ErrPlanChanged
+	}
 	g, err := s.Globals()
 	if err != nil {
 		slog.Warn("agent api: read settings", "scope", "agentapi", "err", err)
