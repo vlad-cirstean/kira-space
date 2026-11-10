@@ -8,6 +8,8 @@ import type { QueryPlan } from './planModel';
 export interface ExplainResult {
   plan: QueryPlan;
   statement: string;
+  // The threshold the plan's verdict was computed with: the connection's own or the app default.
+  thresholdRows: number;
 }
 
 const results = new Map<string, ExplainResult>();

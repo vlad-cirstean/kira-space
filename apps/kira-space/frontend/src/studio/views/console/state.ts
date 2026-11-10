@@ -1,4 +1,4 @@
-import type { ConnectionKind } from '@shared/domain/connection';
+import { type ConnectionKind, explainThresholdOf } from '@shared/domain/connection';
 import type { KibanaConsoleState } from '@shared/domain/kibana';
 import { newUuid } from '@shared/ids';
 import type { Page } from '@shared/protocol/page';
@@ -192,6 +192,16 @@ function worstFlaggedIndex(plans: AutoExplainPlans): number {
   return best;
 }
 
+// P593: the connection's own threshold when set, else advanced.expensiveQueryRows; the MCP server
+// resolves it the same way, so console warning and agent refusal agree.
+function thresholdRowsFor(connectionId: string | null | undefined): number {
+  const record = connectionId ? useConnectionsStore().connectionRecord(connectionId) : undefined;
+  return explainThresholdOf(
+    record?.explainThresholdRows,
+    useSettingsStore().advanced.expensiveQueryRows,
+  );
+}
+
 // Filters to explainable statements, composes every one of their own EXPLAIN
 // statements (one for most dialects, two for ClickHouse) into a *single* data:execute call,
 // then re-slices the returned pages back per originating statement to parse each one. Returns
@@ -229,7 +239,7 @@ async function autoExplainCheck(
       cursor += pageCount;
       plans.push({
         statement: explainable[i],
-        plan: parseExplainPages(kind, pages, useSettingsStore().advanced.expensiveQueryRows),
+        plan: parseExplainPages(kind, pages, thresholdRowsFor(tab.connectionId)),
       });
     }
     const worstIndex = worstFlaggedIndex(plans);
@@ -451,13 +461,18 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
    *  toggle, same eviction, same close/close-others machinery. Reused by the auto-explain
    *  "Show plan" action (below, same file) so it can push a plan it already parsed without a second
    *  round trip. */
-  function pushPlanResult(tabId: string, statement: string, plan: QueryPlan): void {
+  function pushPlanResult(
+    tabId: string,
+    statement: string,
+    plan: QueryPlan,
+    thresholdRows: number,
+  ): void {
     const tab = useTabsStore().findConsoleTab(tabId);
     if (!tab) return;
     const rt = ensureRuntime(tabId);
     if (!tab.state.newResultSet) dropResults(tabId);
     const key = resultPageKey(tabId, rt.nextSeq++);
-    setPlan(key, { plan, statement });
+    setPlan(key, { plan, statement, thresholdRows });
     rt.results.push({ key, rowCount: 0, kind: 'plan' });
     evictOldestResults(rt, 1);
     rt.activeKey = key;
@@ -574,7 +589,8 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
     if (state?.kind !== 'plans') return; // 'truncated' has no plan to show
     const worst = state.plans[state.worstIndex];
     if (!worst) return;
-    pushPlanResult(tabId, worst.statement, worst.plan);
+    const tab = useTabsStore().findConsoleTab(tabId);
+    pushPlanResult(tabId, worst.statement, worst.plan, thresholdRowsFor(tab?.connectionId ?? null));
   }
 
   /** Composes `kind`'s own EXPLAIN for `statement`, issues it through the same
@@ -613,12 +629,9 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
         statements,
       });
       if (rt.opId !== opId) return { ok: true }; // superseded by a newer op — nothing left to report into
-      const plan = parseExplainPages(
-        kind,
-        response.pages,
-        useSettingsStore().advanced.expensiveQueryRows,
-      );
-      pushPlanResult(tabId, statement, plan);
+      const thresholdRows = thresholdRowsFor(tab.connectionId);
+      const plan = parseExplainPages(kind, response.pages, thresholdRows);
+      pushPlanResult(tabId, statement, plan, thresholdRows);
       useStaleDataStore().stamp(tabId, tab.connectionId);
       rt.status = 'idle';
       rt.opId = null;
