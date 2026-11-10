@@ -10,7 +10,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P593 | Database MCP: customizable explain threshold | Done |
 | P594 | Open GitHub links inside the app: fix | Done |
 | P595 | `api_request` rules: default action ask or deny | Done |
-| P596 | Masking and the Privacy tab: make it understandable | Todo |
+| P596 | Masking and the Privacy tab: make it understandable | Done |
 | P597 | Proof: screenshot button saves all to a Desktop folder, location customizable | Todo |
 | P598 | Task work start: require a repo choice before an agent opens | Todo |
 | P599 | Review changes button: also for uncommitted changes | Todo |
@@ -70,7 +70,7 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Ask (user): masking is confusing; the Privacy tab is not understandable.
 - Context: Privacy tab, `MaskRules`, `MaskReview` in `serverConfig`, column review flow. Planner explains the current model first, then proposes a redesign the user can read.
 - Tests: flow test plus UI spec where behavior changes.
-- Result:
+- Result: Model explained in `plans/P596.md` §1. Bug fixed: column review matched a rule's table but masking ignores it, so a column masked from the grid (`public.users`) stayed "Needs review" and was withheld; review coverage now matches by column name like masking (`maskreview.Covered`, `maskRuleFor`), the grid writes `*`. Privacy tab redesigned: overview of what the agent sees, Masked columns card (no table input, Table ignored badge for old rules, Matching tag replaces Correlate, per-rule example of the masked value, empty state, duplicate check, key in a collapsible), New columns card (checkbox, Allow, Undo, Mask as, Allow all waiting), enforcement text collapsed into How masking is enforced. Tests: flow `TestDbMcpMaskRuleMatchesEveryTable` (contract `privacy-masking`), UI `studio/connection-privacy.spec.ts` (6 passed), updated `connection-mask-review.spec.ts` (8), `connection-mcp-access.spec.ts` (9), `mask-preview.spec.ts` (2), `diff_test.go` case; visual `connection-privacy-tab`, `connection-privacy-empty`, plus `connection-privacy-review` (the dialog clips the New columns card) recorded. Deviations: "New columns" toggle is a checkbox (`CheckboxRow`), not a `Switch`: guard U28 allows `Switch` only in settings panes; collapsible and empty state use the theme's `Disclosure` and `EmptyState`, which wrap shadcn `Collapsible` and `Empty`; sample key names are flat (`sampleName.example`); a `maskKinds.ts` `Tagged` sample uses a placeholder message (`sampleTagged`) to satisfy U69; `HeaderMenuContext.tablePath` removed (unused after the grid change); regenerated three `dbmcp-*` contracts and fixed `dbmcp-unreachable.spec.ts` for P593's `explainThresholdRows` (pre-existing drift).
 
 ## P597 Proof: screenshot button saves all to a Desktop folder, location customizable
 

@@ -27,7 +27,7 @@ export const KEEP_HINT_LABEL: Partial<Record<string, MessageKey>> = {
   date: 'studio.project.connectionDialog.keep.year.label',
 };
 
-export const MASK_SAMPLE: Record<MaskKind, MessageKey> = {
+const MASK_SAMPLE: Record<MaskKind, MessageKey> = {
   name: 'studio.project.connectionDialog.privacy.sampleName.example',
   email: 'studio.project.connectionDialog.privacy.sampleEmail.example',
   text: 'studio.project.connectionDialog.privacy.sampleText.example',
@@ -41,7 +41,7 @@ export function defaultCorrelateFor(kind: MaskKind): boolean {
   return kind !== 'number' && kind !== 'date';
 }
 
-export function isMaskKind(kind: string): kind is MaskKind {
+function isMaskKind(kind: string): kind is MaskKind {
   return MASK_KIND_OPTIONS.some((o) => o.value === kind);
 }
 

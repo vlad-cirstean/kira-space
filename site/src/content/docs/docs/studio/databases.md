@@ -58,4 +58,6 @@ Open the same table in any number of tabs. Each tab keeps its own paging, sort, 
 
 Mark a column as PII with one of six masks: name, email, text, number, date or redact. The preview shows the masked view live.
 
+A rule matches the column name in every table. Set rules in the connection's Privacy tab or from a column header.
+
 Masking is display only. The data never changes.
