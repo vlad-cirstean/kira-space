@@ -124,7 +124,7 @@ func TestClickHouse_AuthMatrix(t *testing.T) {
 		{
 			// P602 hypothesis H1: the lane sends readonly=2 per request. A profile that pins readonly=1
 			// refuses any settings change, so every lane read may fail for such a user. The case asserts
-			// the lane reads and still refuses a write; a failure here confirms H1 (docs/v0.3.7/plans/P602.md §7).
+			// the lane reads and still refuses a write; a failure here confirms H1 (docs/HISTORY.md (v0.3.7 P602)).
 			Name: "kira_ro1 (profile readonly=1), database=kira_test",
 			Principal: &testsupport.Principal{Name: "readonly=1 profile user", Setup: func(t *testing.T, fx any) {
 				t.Helper()
