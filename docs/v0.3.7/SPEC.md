@@ -5,7 +5,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | Phase | Title | Status |
 |---|---|---|
 | P590 | Kira Studio approval prompt: skip when the database connection cannot be established | Todo |
-| P591 | Proof tool: behavior not code, larger explanation, terse guidance | Todo |
+| P591 | Proof tool: behavior not code, larger explanation, terse guidance | Done |
 | P592 | Jira: faster loading | Todo |
 | P593 | Database MCP: customizable explain threshold | Todo |
 | P594 | Open GitHub links inside the app: fix | Todo |
@@ -35,7 +35,7 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
   - Tool text guides the agent to keep the explanation terse but clear.
 - Context: `internal/dbmcp/proof_tools.go` (`addProofTools`), proof window UI. Prompt budget rules in `internal/llmprompts`.
 - Tests: flow test plus UI spec on the same scenario, split at the IPC boundary.
-- Result:
+- Result: `proof_save` text now says a proof shows functionality and behavior, not code, and asks for one terse, clear line per step (soft 120, hard 200 characters; limits unchanged) and 1-3 sentences for the summary; `budget.tsv` ratcheted to 1032/115/192. Step description wraps at `text-kira-lg font-medium` instead of truncating in a fixed-height row; the proof summary, never rendered before, shows above the tabs (`proof-summary`, `max-h-32`, scrolls, in screenshots; new key `studio.proof.summary.aria`). Tests: flow `TestProofExplanation` (contract `proof-explained.json`), UI spec "the explanation and summary show in full at the larger size" plus empty-summary check (14 passed), visual: six baselines re-recorded and `proof-explanation` added (Inter confirmed, rerun green). Real claude `test:claude:db`: `TestProofMcpThroughClaude` and `TestProofChartThroughClaude` pass; `TestSmartScriptRun` fails (user-config MCP server leaks into hermetic list, unrelated to proof, not touched by this phase).
 
 ## P592 Jira: faster loading
 
