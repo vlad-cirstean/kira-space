@@ -17,6 +17,7 @@ User-requested features after v0.3.6. Chapter stays open: more phases get added 
 | P600 | Task Details: group the top links by category, more compact and nicer | Done |
 | P601 | Task row: agent indicator at the start, manual status as small text with dropdown | Done |
 | P602 | Database MCP and database-specific scenarios: real-database test coverage | Todo |
+| P603 | Kubernetes MCP: per-cluster access like scripts (enabled, prompt or allow) | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -120,4 +121,12 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: real-container flow tests (`flowharness.Complete` + `RequireDocker`, `startPostgres`; `internal/flows/dbmcpflow`), adapter conformance and complete matrix suites (`internal/adapters/*`, `Scenario`/`Requires` seam, `KIRA_TEST_MATRIX`), P528 limits, P530 explain threshold (P593 per-connection override), P561 modes, masking and column review (P596), P580/P595 `api_request` rules. Planner inventories every MCP option and every engine-specific session behavior (statement timeout, read-only session/transaction, per-engine limit enforcement), maps each to the existing suite, lists gaps. No Docker in this sandbox: tests must compile and lint here and run in CI's complete suite.
 - Acceptance: every database MCP option and db-specific session behavior has a test that runs against each supported real engine where it applies, in the suite where it belongs; no new mechanism beside the complete suites' own harness; no real `claude` tests added.
 - Tests: Go flow tests and adapter suite scenarios (no UI).
+- Result:
+
+## P603 Kubernetes MCP: per-cluster access like scripts (enabled, prompt or allow)
+
+- Ask (user): "It should be like the scripts. I decide what cluster can be accessed over mcp and if prompt or allow."
+- Context: today a cluster's `McpSettings` (`internal/kubernetes/types.go`, `SetMcp`, `kube_tools.go`, frontend `KubeMcpSettings`) holds a description plus one mode per operation group (discover, list, describe, logs: deny|prompt|allow). Scripts instead have an explicit MCP-enabled flag, and a hidden script is invisible to the agent, with one prompt/allow mode. Planner reads how scripts model and show this (`Exposed()`, `exposedScript`, script settings UI) and designs the same for clusters: per-cluster enable toggle, a single prompt/allow mode, the description kept, a cluster not enabled is invisible to `kube_list_clusters` and refused by every `kube_*` tool alike. Decides what happens to the four per-group modes (user asked for one mode; planner states what granularity is lost and a migration of stored settings that never widens access).
+- Acceptance: only clusters the user enabled appear in `kube_list_clusters` and answer any `kube_*` tool; an enabled cluster asks (prompt) or runs without asking (allow) per its one mode; existing stored settings migrate without exposing any cluster that was not reachable before.
+- Tests: flow test plus UI spec on the same scenario, split at the IPC boundary (fake cluster).
 - Result:
