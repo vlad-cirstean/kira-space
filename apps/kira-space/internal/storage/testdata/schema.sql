@@ -565,10 +565,7 @@ CREATE TABLE "kube_clusters" (
   context TEXT NOT NULL,
   server TEXT NOT NULL,
   mcp_description TEXT NOT NULL DEFAULT '',
-  mcp_discover_mode TEXT NOT NULL DEFAULT 'prompt',
-  mcp_list_mode TEXT NOT NULL DEFAULT 'prompt',
-  mcp_describe_mode TEXT NOT NULL DEFAULT 'prompt',
-  mcp_logs_mode TEXT NOT NULL DEFAULT 'prompt',
+  mcp_enabled INTEGER NOT NULL DEFAULT 0 CHECK (mcp_enabled IN (0, 1)), mcp_approval TEXT NOT NULL DEFAULT 'prompt' CHECK (mcp_approval IN ('prompt', 'allow')),
   UNIQUE (context, server)
 ) STRICT;
 

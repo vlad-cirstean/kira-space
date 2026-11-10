@@ -103,7 +103,7 @@ users:
 	}
 
 	mark = e.app.Events.Mark()
-	if _, err := e.app.W.Kubernetes.SetMcp(kubernetes.SetMcpArgs{ClusterID: e.ids["kind-dev"], Mcp: kubernetes.McpSettings{Discover: "allow", List: "allow", Describe: "allow", Logs: "allow"}}); err != nil {
+	if _, err := e.app.W.Kubernetes.SetMcp(kubernetes.SetMcpArgs{ClusterID: e.ids["kind-dev"], Mcp: kubernetes.McpSettings{Enabled: true, Approval: "allow"}}); err != nil {
 		t.Fatal(err)
 	}
 	if n := len(e.app.Events.Since(mark, kubernetes.ChannelClusters)); n != 1 {

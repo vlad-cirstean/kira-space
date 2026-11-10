@@ -212,7 +212,7 @@ headless.tool.reply_review_comment	63
 headless.tool.reply_review_comment.arg.id	29
 headless.tool.reply_review_comment.arg.reply	44
 headless.tool.reply_review_comment.arg.resolved	53
-dbmcp.tool.kube_list_clusters	149
+dbmcp.tool.kube_list_clusters	131
 dbmcp.tool.kube_list_resources	123
 dbmcp.tool.kube_list_resources.arg.clusterId	35
 dbmcp.tool.kube_list_resources.arg.kind	68

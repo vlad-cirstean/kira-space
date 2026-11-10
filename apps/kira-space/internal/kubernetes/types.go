@@ -40,14 +40,13 @@ type Cluster struct {
 	Mcp       McpSettings `json:"mcp"`
 }
 
-// McpSettings is a cluster's MCP exposure: a description for the AI and one mode per operation group
-// (deny, prompt or allow).
+// McpSettings is a cluster's MCP exposure: a description for the AI, an on/off switch and one
+// approval mode for every read.
 type McpSettings struct {
 	Description string `json:"description"`
-	Discover    string `json:"discover"`
-	List        string `json:"list"`
-	Describe    string `json:"describe"`
-	Logs        string `json:"logs"`
+	Enabled     bool   `json:"enabled"`
+	// Approval is "prompt" (each read asks the user) or "allow" (reads run at once).
+	Approval string `json:"approval"`
 }
 
 // ReorderArgs is Reorder's argument: cluster ids in the wanted order.

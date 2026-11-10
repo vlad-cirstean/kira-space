@@ -140,7 +140,7 @@ func TestOpsRecordEveryAction(t *testing.T) {
 
 	_, err = e.app.W.Kubernetes.Status(kubernetes.StatusArgs{ClusterID: "nope"})
 	wantCode(t, err, "E_NOT_FOUND")
-	if _, err := e.app.W.Kubernetes.SetMcp(kubernetes.SetMcpArgs{ClusterID: dev, Mcp: kubernetes.McpSettings{Discover: "allow", List: "allow", Describe: "allow", Logs: "allow"}}); err != nil {
+	if _, err := e.app.W.Kubernetes.SetMcp(kubernetes.SetMcpArgs{ClusterID: dev, Mcp: kubernetes.McpSettings{Enabled: true, Approval: "allow"}}); err != nil {
 		t.Fatal(err)
 	}
 	recs := e.ops(t)

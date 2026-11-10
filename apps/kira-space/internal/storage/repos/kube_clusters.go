@@ -23,8 +23,8 @@ var _ kubernetes.ClusterStore = (*KubeClustersRepo)(nil)
 var kubeClusterCols = []string{
 	kiraschema.KubeClusters.ID, kiraschema.KubeClusters.Context, kiraschema.KubeClusters.Server,
 	kiraschema.KubeClusters.CreatedAt, kiraschema.KubeClusters.LastSeenAt,
-	kiraschema.KubeClusters.MCPDescription, kiraschema.KubeClusters.MCPDiscoverMode, kiraschema.KubeClusters.MCPListMode,
-	kiraschema.KubeClusters.MCPDescribeMode, kiraschema.KubeClusters.MCPLogsMode, kiraschema.KubeClusters.SortOrder,
+	kiraschema.KubeClusters.MCPDescription, kiraschema.KubeClusters.MCPEnabled, kiraschema.KubeClusters.MCPApproval,
+	kiraschema.KubeClusters.SortOrder,
 }
 
 func (r *KubeClustersRepo) Ensure(context, server string, now time.Time) (kubernetes.ClusterRecord, error) {
@@ -51,8 +51,8 @@ func (r *KubeClustersRepo) Get(id string) (kubernetes.ClusterRecord, bool, error
 func (r *KubeClustersRepo) SetMcp(id string, m kubernetes.McpSettings) (bool, error) {
 	c := kiraschema.KubeClusters
 	ub := r.Dialect.Update(c.Table)
-	ub.Set(ub.Assign(c.MCPDescription, m.Description), ub.Assign(c.MCPDiscoverMode, m.Discover),
-		ub.Assign(c.MCPListMode, m.List), ub.Assign(c.MCPDescribeMode, m.Describe), ub.Assign(c.MCPLogsMode, m.Logs)).
+	ub.Set(ub.Assign(c.MCPDescription, m.Description), ub.Assign(c.MCPEnabled, boolToInt(m.Enabled)),
+		ub.Assign(c.MCPApproval, m.Approval)).
 		Where(ub.Equal(c.ID, id))
 	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
@@ -88,7 +88,7 @@ func scanKubeCluster(row *sql.Row) (kubernetes.ClusterRecord, error) {
 		order         sql.NullInt64
 	)
 	if err := row.Scan(&rec.ID, &rec.Context, &rec.Server, &created, &seen,
-		&rec.Mcp.Description, &rec.Mcp.Discover, &rec.Mcp.List, &rec.Mcp.Describe, &rec.Mcp.Logs, &order); err != nil {
+		&rec.Mcp.Description, &rec.Mcp.Enabled, &rec.Mcp.Approval, &order); err != nil {
 		return kubernetes.ClusterRecord{}, err
 	}
 	rec.CreatedAt, rec.LastSeenAt = time.UnixMilli(created), time.UnixMilli(seen)

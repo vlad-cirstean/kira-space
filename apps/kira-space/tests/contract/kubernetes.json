@@ -7,11 +7,9 @@
         "current": true,
         "id": "<id:1>",
         "mcp": {
-          "describe": "prompt",
+          "approval": "prompt",
           "description": "",
-          "discover": "prompt",
-          "list": "prompt",
-          "logs": "prompt"
+          "enabled": false
         },
         "namespace": "default",
         "server": "<kube>",
@@ -24,11 +22,9 @@
         "current": false,
         "id": "<id:2>",
         "mcp": {
-          "describe": "prompt",
+          "approval": "prompt",
           "description": "",
-          "discover": "prompt",
-          "list": "prompt",
-          "logs": "prompt"
+          "enabled": false
         },
         "namespace": "",
         "server": "<kube>",
@@ -41,11 +37,9 @@
         "current": false,
         "id": "<id:3>",
         "mcp": {
-          "describe": "prompt",
+          "approval": "prompt",
           "description": "",
-          "discover": "prompt",
-          "list": "prompt",
-          "logs": "prompt"
+          "enabled": false
         },
         "namespace": "",
         "server": "<down>",
@@ -58,11 +52,9 @@
         "current": false,
         "id": "<id:4>",
         "mcp": {
-          "describe": "prompt",
+          "approval": "prompt",
           "description": "",
-          "discover": "prompt",
-          "list": "prompt",
-          "logs": "prompt"
+          "enabled": false
         },
         "namespace": "",
         "server": "<kube>",
@@ -506,11 +498,9 @@
         "current": false,
         "id": "<id:3>",
         "mcp": {
-          "describe": "prompt",
+          "approval": "prompt",
           "description": "",
-          "discover": "prompt",
-          "list": "prompt",
-          "logs": "prompt"
+          "enabled": false
         },
         "namespace": "",
         "server": "<down>",
@@ -523,11 +513,9 @@
         "current": true,
         "id": "<id:1>",
         "mcp": {
-          "describe": "prompt",
+          "approval": "prompt",
           "description": "",
-          "discover": "prompt",
-          "list": "prompt",
-          "logs": "prompt"
+          "enabled": false
         },
         "namespace": "default",
         "server": "<kube>",
@@ -540,11 +528,9 @@
         "current": false,
         "id": "<id:2>",
         "mcp": {
-          "describe": "prompt",
+          "approval": "prompt",
           "description": "",
-          "discover": "prompt",
-          "list": "prompt",
-          "logs": "prompt"
+          "enabled": false
         },
         "namespace": "",
         "server": "<kube>",
@@ -557,11 +543,9 @@
         "current": false,
         "id": "<id:4>",
         "mcp": {
-          "describe": "prompt",
+          "approval": "prompt",
           "description": "",
-          "discover": "prompt",
-          "list": "prompt",
-          "logs": "prompt"
+          "enabled": false
         },
         "namespace": "",
         "server": "<kube>",

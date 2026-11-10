@@ -1593,7 +1593,7 @@ var (
 // DbmcpToolKubeListClusters describes the kube_list_clusters tool.
 var DbmcpToolKubeListClusters = define(Entry{
 	ID: "dbmcp.tool.kube_list_clusters", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_list_clusters",
-	Default: "List the Kubernetes clusters (kubeconfig contexts) exposed to MCP, with each one's description and per-operation permissions (deny, allow or prompt).",
+	Default: "List the Kubernetes clusters (kubeconfig contexts) exposed to MCP, with each one's description and approval mode (prompt or allow).",
 }, NoVars{})
 
 // DbmcpToolKubeDiscover describes the kube_discover tool.
