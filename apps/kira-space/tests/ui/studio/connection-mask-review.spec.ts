@@ -66,8 +66,8 @@ async function open(relaunch: Relaunch, d: Draft = {}) {
   return page;
 }
 
-const box = (page: Awaited<ReturnType<typeof open>>, ref: string) =>
-  page.locator(`${rows}[data-ref="${ref}"] [data-testid="connection-privacy-review-reviewed"]`);
+const action = (page: Awaited<ReturnType<typeof open>>, ref: string, id: string) =>
+  page.locator(`${rows}[data-ref="${ref}"] [data-testid="connection-privacy-review-${id}"]`);
 
 test('contract: rows show masked, reviewed and needs-review states from the draft', async ({
   relaunch,
@@ -91,14 +91,13 @@ test('contract: rows show masked, reviewed and needs-review states from the draf
     'data-state',
     'pending',
   );
-  await expect(box(page, 'notes.body')).toBeDisabled();
+  await expect(action(page, 'notes.body', 'allow')).toHaveCount(0);
+  await expect(action(page, 'notes.body', 'mask-as')).toHaveCount(0);
+  await expect(action(page, 'notes.id', 'undo')).toBeVisible();
+  await expect(page.locator(`${rows}[data-ref="notes.secret"]`)).toContainText('Hidden from agent');
   await expect(page.locator('[data-testid="connection-privacy-review-status"]')).toContainText(
-    'need review',
+    'hidden until you decide',
   );
-  const enforce = page.locator('[data-testid="connection-privacy-review-enforce"]');
-  await expect(enforce).toContainText('every 30 seconds');
-  await expect(enforce).toContainText('dropped from results');
-  await expect(enforce).toContainText('No exemption applies');
 });
 
 test('the default filter shows what needs review; search narrows the list', async ({
@@ -111,15 +110,19 @@ test('the default filter shows what needs review; search narrows the list', asyn
   await expect(page.locator(rows)).toHaveCount(1);
 });
 
-test('ticking a row reviews one column; confirm all reviews the rest', async ({ relaunch }) => {
+test('Allow reviews one column; Allow all waiting reviews the rest', async ({ relaunch }) => {
   const page = await open(relaunch, { reviewed: ['notes.id'] });
-  await box(page, 'notes.body').click();
+  await action(page, 'notes.body', 'allow').click();
   await expect(page.locator(rows)).toHaveCount(1);
-  await page.locator('[data-testid="connection-privacy-review-confirm-all"]').click();
+  await page.locator('[data-testid="connection-privacy-review-allow-all"]').click();
   await expect(page.locator('[data-testid="connection-privacy-review-status"]')).toContainText(
-    'All columns reviewed',
+    'Every column is masked or allowed',
   );
-  await expect(box(page, 'notes.secret')).toHaveAttribute('aria-checked', 'true');
+  await page.locator('[data-testid="connection-privacy-review-filter"]').selectOption('all');
+  await expect(page.locator(`${rows}[data-ref="notes.secret"]`)).toHaveAttribute(
+    'data-state',
+    'reviewed',
+  );
 });
 
 test('turning the switch on records every live column as reviewed', async ({ relaunch }) => {
@@ -127,12 +130,12 @@ test('turning the switch on records every live column as reviewed', async ({ rel
   const on = page.locator('[data-testid="connection-privacy-review-on"]');
   await expect(on).toHaveAttribute('aria-checked', 'false');
   await expect(page.locator('[data-testid="connection-privacy-review-status"]')).toContainText(
-    'is off',
+    'Off',
   );
   await on.click();
   await expect(on).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('[data-testid="connection-privacy-review-status"]')).toContainText(
-    'All columns reviewed',
+    'Every column is masked or allowed',
   );
 });
 
@@ -143,15 +146,6 @@ test('turning the switch off asks first', async ({ relaunch }) => {
   await expect(page.locator('[data-testid="confirm-dialog"]')).toContainText('unmasked');
   await page.click('[data-testid="confirm-dialog-confirm"]');
   await expect(on).toHaveAttribute('aria-checked', 'false');
-});
-
-test('Mask prefills the add-rule form', async ({ relaunch }) => {
-  const page = await open(relaunch, { reviewed: ['notes.id'] });
-  await page
-    .locator(`${rows}[data-ref="notes.secret"] [data-testid="connection-privacy-review-mask"]`)
-    .click();
-  await expect(page.locator('[data-testid="mask-rule-add-table"]')).toHaveValue('notes');
-  await expect(page.locator('[data-testid="mask-rule-add-column"]')).toHaveValue('secret');
 });
 
 test('an unreachable server says to connect and keeps the saved entries', async ({ relaunch }) => {

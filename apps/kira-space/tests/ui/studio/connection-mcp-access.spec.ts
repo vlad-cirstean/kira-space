@@ -162,8 +162,9 @@ test('the exemption, throttle, rows and masking lines hide while MCP is off', as
 test('the Privacy tab holds the masking enforcement text', async ({ relaunch }) => {
   const page = await open(relaunch, { kind: 'sqlite', mcp: {} });
   await page.locator('[data-testid="connection-tab-privacy"]').click();
+  await page.locator('[data-testid="connection-privacy-limits"] button').click();
   const masking = page.locator('[data-testid="connection-privacy-enforce-masking"]');
-  await expect(masking).toContainText('lowercased name');
+  await expect(masking).toContainText('column name');
   await expect(masking).toContainText('table is ignored');
   await expect(masking).toContainText('Best effort');
 });
