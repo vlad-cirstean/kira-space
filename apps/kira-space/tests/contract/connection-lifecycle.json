@@ -10,6 +10,7 @@
     "color": "blue",
     "createdAt": "<masked>",
     "database": "app",
+    "explainThresholdRows": 0,
     "file": "pg-copy.yaml",
     "host": "127.0.0.1",
     "id": "<id:2>",
