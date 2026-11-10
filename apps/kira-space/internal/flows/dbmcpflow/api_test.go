@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -652,4 +653,52 @@ func TestApiAccessDefault(t *testing.T) {
 		t.Fatalf("unreadable apiDefault reads %q, %v, want deny", all.DbMcp.APIDefault, err)
 	}
 	refused(callTool(t, sess, "api_request", post), "no rule matches")
+}
+
+// A rule's host:port entry matches that port only; the same host on another port falls to the default.
+func TestApiAccessRulesHostPort(t *testing.T) {
+	f := newFixture(t)
+	srv, sess, envID := f.apiSetup(t, "127.0.0.1", false)
+	other := flowharness.HTTP(t)
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.setDefault(t, "deny")
+	rules := []apiaccess.Rule{{Effect: "allow", Hosts: []string{"127.0.0.1:" + u.Port()}, Methods: []string{"GET"}}}
+	if _, err := f.app.W.Settings.Set(bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: &model.DbMcpPatch{APIRules: &rules}}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if out := decodeResult[apiResult](t, callTool(t, sess, "api_request", apiArgs(envID, "GET", srv.URL+"/echo"))); out.Status != 200 || f.queueLen(t) != 0 {
+		t.Fatalf("GET on the allowed port = %+v, queue %d, want 200 without approval", out, f.queueLen(t))
+	}
+	res := callTool(t, sess, "api_request", apiArgs(envID, "GET", other.URL+"/echo"))
+	if !res.IsError || !strings.Contains(text(res), "not allowed by the API access rules") || f.queueLen(t) != 0 || len(other.Requests()) != 0 {
+		t.Fatalf("GET on another port = %q, other server saw %d, want a refusal and no request", text(res), len(other.Requests()))
+	}
+}
+
+// TLS is always verified: a server whose certificate does not chain to a trusted root is refused and
+// never serves a request. The agent path has no CA seam, so there is no trusted-CA half.
+func TestApiRequestTLSVerified(t *testing.T) {
+	f := newFixture(t)
+	srv := flowharness.HTTPS(t)
+	f.base = srv.URL
+	envID := f.apiEnv(t, "127.0.0.1", false)
+	sess, err := f.connect(t, f.token(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sess.Close() })
+	f.setAPI(t, true, "never")
+
+	res := callTool(t, sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo"))
+	low := strings.ToLower(text(res))
+	if !res.IsError || !(strings.Contains(low, "certificate") || strings.Contains(low, "tls") || strings.Contains(low, "x509")) {
+		t.Fatalf("untrusted https = %q, want a TLS error", text(res))
+	}
+	if got := srv.Requests(); len(got) != 0 {
+		t.Fatalf("server saw %d requests, want none past a failed handshake", len(got))
+	}
 }
