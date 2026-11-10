@@ -150,7 +150,7 @@ func TestProofShotSaveAll(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { _ = os.Chmod(ro, 0o755) })
-		if _, err := p.OpenShotFolder(bridge.ProofOpenShotFolderArgs{SessionName: "x"}); err == nil || !strings.Contains(err.Error(), "can't write to") {
+		if _, err := p.OpenShotFolder(bridge.ProofOpenShotFolderArgs{SessionName: "x"}); err == nil || !strings.Contains(err.Error(), "can’t write to") {
 			t.Fatalf("read-only open: err = %v", err)
 		}
 	}
