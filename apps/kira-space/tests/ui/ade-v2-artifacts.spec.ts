@@ -54,12 +54,18 @@ test('contract: the Details tab lists every link with kind and status', async ({
 
   const rows = page.locator(t('ade-details-link'));
   const nonBranch = res.artifacts.filter((a) => a.kind !== 'branch').length;
-  // Jira PAY-130 is the task's own link; the tracker row KIRA-12 stays in Related.
+  // Jira PAY-130 is the task's own link; the tracker row KIRA-12 stays in its group.
   await expect(rows).toHaveCount(nonBranch + 1);
-  const pr = page.locator(`${t('ade-details-main')} ${t('ade-details-link')}`, {
-    hasText: 'Fix login',
-  });
-  await expect(pr).toContainText('Change request');
+  const pr = page.locator(
+    `${t('ade-details-group')}[data-group="changeRequest"] ${t('ade-details-link')}`,
+    {
+      hasText: 'Fix login',
+    },
+  );
+  await expect(pr.locator(t('ade-details-link-icon'))).toHaveAttribute(
+    'data-kind',
+    'changeRequest',
+  );
   await expect(pr).toContainText('Open');
   await expect(pr).toHaveAttribute('data-origin', 'detected');
   const deployment = rows.filter({ hasText: 'prod' });
@@ -130,7 +136,14 @@ test('contract: a failed source shows a warning above the list', async ({ relaun
 });
 
 test('an empty task shows the hint', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch, [snapshot({ artifacts: [], gaps: [] })]);
+  const bare = adeBoard((board) => {
+    const task = board.tasks.find((x) => x.id === 'T_alerts');
+    if (task) Object.assign(task, { jira: null, hostUrl: '', hostLink: null });
+  });
+  const { window: page } = await openPlan(relaunch, [
+    snapshot({ artifacts: [], gaps: [] }),
+    { channel: IPC.adeTaskBoard, response: bare },
+  ]);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-panel-tab-details')).click();
   await expect(page.locator(t('ade-details-empty')).first()).toBeVisible();

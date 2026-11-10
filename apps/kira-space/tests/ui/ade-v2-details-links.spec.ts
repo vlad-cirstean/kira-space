@@ -77,6 +77,73 @@ test('contract: stored rows show under their kind', async ({ relaunch }) => {
   await expect(row(page, 'PAY-10').locator(t('ade-details-link-kind'))).toHaveCount(0);
 });
 
+const GROUP_NAME: Record<string, string> = {
+  issue: 'Issues',
+  changeRequest: 'Change requests',
+  misc: 'Misc',
+};
+const categoryOf = (kind: string) => (kind === 'issue' || kind === 'changeRequest' ? kind : 'misc');
+
+test('links group under Issues, Change requests and Misc; the block stays compact', async ({
+  relaunch,
+}) => {
+  const issueFx = contract('ade-issue-tracker', 'IssueTrackerService.TaskIssue');
+  const { window: page } = await openPlan(relaunch, [
+    ...base(),
+    { channel: IPC.adeTaskIssue, response: issueFx },
+  ]);
+  await openDetails(page);
+  const groups = page.locator(t('ade-details-group'));
+  await expect(
+    groups.evaluateAll((els) => els.map((e) => e.getAttribute('data-group'))),
+  ).resolves.toEqual(['issue', 'changeRequest', 'misc']);
+  const links = page.locator(t('ade-details-link'));
+  for (const id of ['issue', 'changeRequest', 'misc']) {
+    const group = page.locator(`${t('ade-details-group')}[data-group="${id}"]`);
+    const labels = await group
+      .locator(t('ade-details-group-label'))
+      .evaluateAll((els) => els.map((e) => e.textContent?.trim() ?? ''));
+    expect(labels[0]).toBe(GROUP_NAME[id]);
+    expect(labels.slice(1).every((l) => l === '')).toBe(true);
+  }
+  // Jira slot plus listed artifacts, minus detected branches.
+  const inGroup = (id: string) =>
+    page.locator(`${t('ade-details-group')}[data-group="${id}"] ${t('ade-details-link')}`);
+  await expect(inGroup('issue').filter({ hasText: 'PAY-130' })).toHaveCount(1);
+  for (const a of listed().filter((x) => x.id || x.kind !== 'branch')) {
+    const found = inGroup(categoryOf(a.kind)).filter({ hasText: a.title || a.url });
+    expect(await found.count(), a.title).toBeGreaterThan(0);
+  }
+  const rows = await links.count();
+  for (let i = 0; i < rows; i++) {
+    const r = links.nth(i);
+    const menu = r.locator(t('ade-details-link-kind'));
+    const icon = r.locator(t('ade-details-link-icon'));
+    expect((await menu.count()) + (await icon.count())).toBe(1);
+  }
+  await expect(page.locator(t('ade-details-links')).locator('[data-slot="ade-row"]')).toHaveCount(
+    rows + 1,
+  );
+  await expect(
+    page.locator(`${t('ade-details-link')}[data-origin="jira"] ${t('ade-task-issue')}`),
+  ).toHaveCount(1);
+});
+
+test('a group without links is hidden', async ({ relaunch }) => {
+  const onlyMisc = listed().filter((a) => a.id && categoryOf(a.kind) === 'misc');
+  const { window: page } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskArtifacts, response: { artifacts: onlyMisc, gaps: [] } },
+  ]);
+  await openDetails(page);
+  // The task's own Jira slot keeps Issues; no stored change request, so no Change requests group.
+  await expect(
+    page
+      .locator(t('ade-details-group'))
+      .evaluateAll((els) => els.map((e) => e.getAttribute('data-group'))),
+  ).resolves.toEqual(['issue', 'misc']);
+  await expect(page.locator(t('ade-details-empty'))).toHaveCount(0);
+});
+
 test('pasting into the empty add line files at once', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, base());
   await openDetails(page);

@@ -29,6 +29,9 @@ test('contract: the Details tab shows the issue title, status and PR count', asy
   ]);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-panel-tab-details')).click();
+  await expect(
+    page.locator(`${t('ade-details-link')}[data-origin="jira"] ${t('ade-task-issue')}`),
+  ).toHaveCount(1);
   await expect(page.locator(t('ade-task-issue-title'))).toHaveText(fx.title);
   await expect(page.locator(t('ade-task-issue-status'))).toHaveText(fx.status);
   await expect(page.locator(t('ade-task-issue-prs'))).toHaveText(
