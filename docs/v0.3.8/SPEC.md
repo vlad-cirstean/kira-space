@@ -4,7 +4,7 @@ Fixes after the v0.3.7 release failed. Chapter stays open: more phases may be ad
 
 | Phase | Title | Status |
 |---|---|---|
-| P604 | Release container failures: ClickHouse `readonly=1` connect and MySQL 9.7 explain row estimate | Todo |
+| P604 | Release container failures: ClickHouse `readonly=1` connect and MySQL 9.7 explain row estimate | Done |
 | P605 | Real `claude` test `TestSmartScriptRun`: user MCP server leaks into the hermetic list | Todo |
 | P606 | UI spec `dbmcp-script-long.spec.ts`: ambiguous `run-stop` locator race | Todo |
 
@@ -20,7 +20,7 @@ Two independent failures from the v0.3.7 release, one phase, one plan.
 - Acceptance: a `readonly=1` user connects and reads; settings the adapter needs are sent in a way that user may use, or the adapter degrades without them; every ClickHouse matrix row passes against the real container. The explain scenario passes on the min and max MySQL and MariaDB images; if the parser was wrong for 9.7, the MCP explain threshold still works on 9.7.
 - Scope: every other failure in those suites is in this phase too. Run all of `scripts/test-matrix.sh` and `scripts/db-compat.sh --min` and `--max` end to end, fix every failing test at its root (adapter or test, never weaken), rerun to green.
 - Tests: `go test ./internal/adapters/clickhouse/...` against a real ClickHouse container plus `internal/flows/dbmcpflow` ClickHouse rows; `scripts/test-matrix.sh`, and `scripts/db-compat.sh --min` and `--max` for mysqlfamily. All run here and passing.
-- Result:
+- Result: ClickHouse: Connect reads `getSetting('readonly')`; `buildURL` sends settings and per-request `readonly=2` only as the profile allows (0: all; 2: settings, no `readonly`; 1: nothing). `output_format_json_quote_64bit_integers` and `output_format_json_validate_utf8` dropped; `RunCatalogQuery` re-quotes bare numbers. MySQL: both parsers (Go `queryplan/mysql.go`, TS `planParsers/mysql.ts`) read schema 2.0 (`query_plan`), pinned by three parity fixtures captured from a real `mysql:9.7.2`; the adapter and `ExplainPlan` scenario were right, the parser was not. Extra failures found and fixed at root: Redis console turned a nil reply (missing key, timed-out `XREAD BLOCK`) into `E_QUERY: redis: nil` (adapter fix); `TestDbMcpEngineTimeout` (Postgres CTAS of a void column, bool rendered `t`, MySQL `select sleep(2)` never errors under `max_execution_time`) and `TestDbMcpEngineMasking` (column review ran over every fixture table, name-based drop hid `id`; scoped to the table under test) were test defects, all failing before this phase. Ran here, all passed: `KIRA_TEST_MATRIX=1 go test ./internal/adapters/clickhouse/... -count=1` (rows kira_ro1, kira_ro2 included); `go test ./internal/queryplan/...`; `bun test apps/kira-space/tests/unit/studio/explain-plan.spec.ts`; `KIRA_FLOW_COMPLETE=1 KIRA_FLOW_DOCKER=require go test -p 1 ./apps/kira-space/internal/flows/dbmcpflow/ -run TestDbMcpEngine`; `sh scripts/test-matrix.sh --no-pull` (images were already pulled with `--mirror`; its own pull step fails on disk at `kibana`, unused by the matrix); `sh scripts/db-compat.sh --min --mirror`; `sh scripts/db-compat.sh --max --mirror` (mysql 9.7.2 `explain:` included); `KIRA_TEST_MATRIX=1 sh scripts/db-compat.sh --only clickhouse --min --mirror` and `--max --mirror`; `go test ./internal/adapters/mysqlfamily/... ./internal/adapters/redis/...` on pinned images. Not run: none.
 
 ## P605 Real `claude` test `TestSmartScriptRun`: user MCP server leaks into the hermetic list
 
