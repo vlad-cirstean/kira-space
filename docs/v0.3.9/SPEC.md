@@ -8,6 +8,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 | P608 | Release `test-matrix (Linux)`: split into parallel jobs with tight timeouts | Done |
 | P609 | DB MCP: `browse_table` gets `in`, count and paging; descriptions steer reads to it | Todo |
 | P610 | Agent status: running while subagents or background jobs run; new unseen-finished status | Todo |
+| P612 | Presentation site: review-window images use the inline diff | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -47,4 +48,12 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: find where the app derives agent/session status (ADE sessions, session list, badges, any status enum shared with the frontend) and where it detects subagents and background jobs from the Claude harness stream. Seen state needs a defined moment (user opens the session or its result) and persistence across restarts.
 - Acceptance: planner decides exact signals. Status is running while the main turn runs, or any subagent or background job of that session is live; never idle-looking while work continues. New `unseen` status (finished, not yet viewed) with its own visual, cleared when the user views the session, persisted, shown wherever status shows (lists, badges, tabs, notifications if any). Catalog copy, ARCHITECTURE and any status docs updated.
 - Tests: flow test (backend derives status from a recorded stream with a live subagent and background job after the main turn ends, plus unseen set and cleared) and matching UI spec (same scenario shows the statuses). Run for real.
+- Result:
+
+## P612 Presentation site: review-window images use the inline diff
+
+- Ask (user): in the presentation site images, the review window images must show the inline diff, not the side-by-side one.
+- Context: find how the site images are produced (screenshot specs or scripts under the site package, tests/ui screenshots, any asset pipeline) and where the review window picks side-by-side vs inline.
+- Acceptance: every site image of a review window shows the inline diff; regenerated through the existing pipeline, assets updated; the diff mode is set by the screenshot setup (not by changing the app default).
+- Tests: regenerate the affected images for real and view them; the site build passes.
 - Result:
