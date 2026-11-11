@@ -111,7 +111,6 @@ func auditAdd(r *http.Request, kv ...any) {
 	}
 }
 
-// logWrite is the one audit line of a phone write, attach, release or reclaim.
 // markSeen clears a session's unseen marker. A failure only costs a stale dot, so it logs and goes on.
 func (s *Server) markSeen(ctx context.Context, device, sessionID string) {
 	if s.cfg.Writer == nil {
@@ -124,6 +123,7 @@ func (s *Server) markSeen(ctx context.Context, device, sessionID string) {
 	}
 }
 
+// logWrite is the one audit line of a phone write, attach, release or reclaim.
 func logWrite(device, action string, kv ...any) {
 	audit := slog.With("scope", "mobileweb", "device", device, "action", action)
 	audit.Info("mobileweb: write", kv...)
@@ -290,8 +290,8 @@ func (s *Server) handleTerminal(w http.ResponseWriter, r *http.Request, d repos.
 		row, found, err := s.cfg.Devices.ByID(d.ID)
 		ok := err == nil && found && row.RevokedAt == nil && row.ExpiresAt > s.cfg.Now().UnixMilli() && row.CanAgentInput && s.agentInputGlobal()
 		if ok {
-			// Attaching is the phone's view of the session; best effort.
-			seen.Do(func() { s.markSeen(r.Context(), d.ID, id) })
+			// Attaching is the phone's view of the session; best effort, off the attach path.
+			seen.Do(func() { go s.markSeen(r.Context(), d.ID, id) })
 		}
 		return ok
 	})
