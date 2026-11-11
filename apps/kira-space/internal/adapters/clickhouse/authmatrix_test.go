@@ -5,6 +5,7 @@ package clickhouse_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -193,6 +194,19 @@ func TestClickHouse_AuthMatrix(t *testing.T) {
 						}, opCtx(t, "matrix-ro1-timeout-read")); err != nil {
 							t.Fatalf("Read with a statement timeout: %v", err)
 						}
+						// The readonly=1 profile cannot carry the engine timeout, so the app timer must stop a slow read.
+						const limit = time.Second
+						start := time.Now()
+						_, err = a.Execute(context.Background(), model.ConsoleRequest{
+							Path: path, Statements: []string{"SELECT sum(cityHash64(number)) FROM numbers(1000000000000)"}, StatementTimeout: limit,
+						}, opCtx(t, "matrix-ro1-timeout-slow"))
+						var detail *adapters.TimeoutDetail
+						if !errors.As(err, &detail) {
+							t.Fatalf("slow Execute = %v, want a statement timeout", err)
+						}
+						if took := time.Since(start); took > limit+3*time.Second {
+							t.Errorf("slow Execute took %s, want about %s", took, limit)
+						}
 					},
 				},
 				{
@@ -205,6 +219,19 @@ func TestClickHouse_AuthMatrix(t *testing.T) {
 						path := testsupport.NodePath(cfg.ID, testsupport.Seg("database", "kira_test"), testsupport.Seg("table", "p604_u64"))
 						if _, err := a.Describe(context.Background(), path, opCtx(t, "matrix-ro1-u64-describe")); err != nil {
 							t.Fatalf("Describe: %v", err)
+						}
+						first, err := a.Read(context.Background(), adapters.ReadRequest{
+							Path: path, PageSize: 10, Cursor: model.PageCursor{Mode: "offset"},
+						}, opCtx(t, "matrix-ro1-u64-read"))
+						if err != nil {
+							t.Fatalf("Read: %v", err)
+						}
+						tp, ok := first.(page.TabularPage)
+						if !ok || tp.RowCount != 1 {
+							t.Fatalf("Read page = %#v, want one row", first)
+						}
+						if got := page.CellText(tp.Chunks[0], 0); got != "18446744073709551615" {
+							t.Errorf("UInt64 max read back as %q, want 18446744073709551615", got)
 						}
 						result, err := a.Count(context.Background(), adapters.CountRequest{Path: path}, opCtx(t, "matrix-ro1-u64-count"))
 						if err != nil {
