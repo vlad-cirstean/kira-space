@@ -17,6 +17,8 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
+Close note: review round 1 found 9 issues (4 Medium, 5 Low), all fixed. Its two workflow findings ship in `docs/pending-changes/.github__workflows__pr.yml.patch` for the user to apply (aggregates run on `always()`, `MATRIX_DEADLINE`). CI run #110 failures (llmprompts flow count 266 to 267, status-bar visual specs `unseen: false`) were fixed, fixes not rerun. Full non-UI local run skipped on user instruction; CI is the proof.
+
 ## P607 ClickHouse `readonly=1`: `Execute` ignores the app statement timeout
 
 - Ask (user): fix the failing v0.3.8 release job `test-matrix (Linux)`; run it here to be sure it is fixed.
