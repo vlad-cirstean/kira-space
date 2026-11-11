@@ -6,7 +6,7 @@ Fixes after the v0.3.7 release failed. Chapter stays open: more phases may be ad
 |---|---|---|
 | P604 | Release container failures: ClickHouse `readonly=1` connect and MySQL 9.7 explain row estimate | Done |
 | P605 | Real `claude` test `TestSmartScriptRun`: user MCP server leaks into the hermetic list | Todo |
-| P606 | UI spec `dbmcp-script-long.spec.ts`: ambiguous `run-stop` locator race | Todo |
+| P606 | UI spec `dbmcp-script-long.spec.ts`: ambiguous `run-stop` locator race | Done |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -37,4 +37,4 @@ Two independent failures from the v0.3.7 release, one phase, one plan.
 - Context: `tests/ui/studio/dbmcp-script-long.spec.ts:58` locates `run-stop` without scoping, so it can match a second element. Scope it to `script-run-view`.
 - Acceptance: the locator is unambiguous; the spec passes repeatedly.
 - Tests: the spec, run here several times with `--repeat-each`.
-- Result:
+- Result: Cause: `run-stop` also renders in `RunsSection` `run-row` for live runs, so the unscoped locator matched 2 elements (strict-mode race). Fix: tests 2 and 3 scope `run-log`, `run-stop`, `script-run-result`, `run-outcome-exit` to `script-run-view`; no assertion weakened. Before: `--repeat-each=20 --workers=4` failed 12/60. After `bun run build:test`: 60/60 pass. Siblings `automations-mcp`, `ui-leftovers-docker-automations`, `dbmcp-approval-script` specs: 19/19 pass.
