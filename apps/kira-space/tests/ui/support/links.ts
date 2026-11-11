@@ -12,12 +12,21 @@ export const line = (scope: Page | Locator, category: string): Locator =>
 const cardOf = (scope: Page | Locator): Locator =>
   ('page' in scope ? scope.page() : scope).locator('[data-testid="ade-links-card"]');
 
-/** Clicks the pill and returns the open card. */
+/** Right-clicks the pill (a plain click opens the link) and returns the open card. */
 export async function openCard(scope: Page | Locator, text: string): Promise<Locator> {
-  await pill(scope, text).click();
+  await pill(scope, text).click({ button: 'right' });
   const card = cardOf(scope);
   await card.waitFor();
   return card;
+}
+
+/** Clicks the pill; `external` holds the primary modifier (Meta: the UI harness runs a macOS UA). */
+export async function openIn(
+  scope: Page | Locator,
+  text: string,
+  opts: { external?: boolean } = {},
+): Promise<void> {
+  await pill(scope, text).click(opts.external ? { modifiers: ['Meta'] } : undefined);
 }
 
 /** Opens the add popover with `+`, types the text and presses Enter. */

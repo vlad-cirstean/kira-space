@@ -77,6 +77,16 @@ test('the change request title still opens the in-app view', async ({ relaunch }
   expect(calls(control, IPC.linkOpenExternal)).toHaveLength(0);
 });
 
+test('Cmd-click on the change request title opens the browser', async ({ relaunch }) => {
+  const { window: page, control } = await openPlan(relaunch, snapshots());
+  await openDetails(page);
+  const card = await openCard(page, 'api!8');
+  await card.locator(t('ade-links-card-title')).click({ modifiers: ['Meta'] });
+  await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(1);
+  expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual({ url: links.hostUrl });
+  expect(calls(control, IPC.hostViewOpen)).toHaveLength(0);
+});
+
 test('a link without a URL has no open button', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, snapshots());
   await openDetails(page);
