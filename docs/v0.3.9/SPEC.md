@@ -5,7 +5,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 | Phase | Title | Status |
 |---|---|---|
 | P607 | ClickHouse `readonly=1`: `Execute` ignores the app statement timeout | Todo |
-| P608 | Release `test-matrix (Linux)`: split into parallel jobs with tight timeouts | Todo |
+| P608 | Release `test-matrix (Linux)`: split into parallel jobs with tight timeouts | Done |
 | P609 | DB MCP: `browse_table` gets `in`, count and paging; descriptions steer reads to it | Todo |
 | P610 | Agent status: running while subagents or background jobs run; new unseen-finished status | Todo |
 
@@ -26,7 +26,12 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: `test-matrix (Linux)` runs 9 adapter packages sequentially in one job (about 22 min when a test hangs, 30 min job timeout, `go test -timeout 30m` per package equals the job timeout). `db-compat` is already split min/max at about 5 min each. `scripts/test-matrix.sh` supports `--only <kind>`; check that image pulls are filtered by kind (`pull_images`). Workflow files cannot be pushed from this session: deliver the change as `docs/pending-changes/` patch per `docs/DEV_ENVIRONMENT.md`.
 - Acceptance: release `test-matrix` becomes a matrix job over kinds (grouped by weight: postgres, mysqlfamily, clickhouse, the small kinds together), `fail-fast: false`, each job pulls only its images, job timeout about 12 min, per-package `go test -timeout` about 8 min; an aggregate job keeps the name `test-matrix (Linux)` so `publish`'s `needs` stays valid. Same for `pr.yml` only if it has an equivalently slow job. Script changes (`--only` pull filtering, timeouts) are real commits; the workflow edit is the pending patch.
 - Tests: `scripts/test-matrix.sh --only <kind> --mirror` for each group run here and passing; a dry check of the workflow YAML (actionlint if available, else YAML parse).
-- Result:
+- Result: `testsupport.Images` now reads an ordered kind table; `ImageOf(kind)` added; `testimages [kind...]` prints named kinds (unknown kind exits 2). `scripts/test-matrix.sh`: third MATRIX field lists the image kinds a package starts, `--only` takes a comma list, new `--except`, unknown kind or both flags exit 2, pulls only selected kinds' images, prints a `kinds:` line, `go test -timeout 8m` per package. `scripts/db-compat.sh` per-package timeout 30m to 10m. Workflow edit delivered as `docs/pending-changes/.github__workflows__release.yml.patch` (four group jobs `postgres`/`mysqlfamily`/`clickhouse`/`rest` at 12 min, aggregate `test-matrix (Linux)`, Ryuk off, db-compat job cap 30 to 12 min; `git apply --check` passes, YAML parses, `publish.needs` unchanged). `release.yml` itself untouched. Docs: ARCHITECTURE test-matrix line, PACKAGING §7 step 2 and stale `pr.yml` table (ui 8 shards, visual row, ruleset check list).
+  - Ran here, `TESTCONTAINERS_RYUK_DISABLED=true`: `testimages` output identical to pre-change (10 lines), `testimages mysql mariadb` 2 lines, `nosuch` exit 2. `test-matrix.sh --only nosuch` exit 2; `--only postgres --except redis` exit 2.
+  - `--only postgres --mirror` PASS 44s (pulled postgres only). `--only mysqlfamily --mirror` PASS 68s (mysql, mariadb only). `--except postgres,mysqlfamily,clickhouse --mirror` (rest) PASS 159s (pulled kafka, localstack, mongo, redis; sqlite none). `--only mongo,redis,kafka,sqs,s3,sqlite --no-pull` PASS 95s, same `kinds:` line as rest. No group's `go test` neared 4 min (max 64s).
+  - `db-compat.sh --min --mirror`: first runs hit ENOSPC (shared disk with P607; `go clean -cache`, removed only images this run pulled), one pull pass failed for disk reasons. After freeing space, `--min --only postgres --no-pull` PASS 110s and `--only mysqlfamily` PASS 66s; the earlier full `--min --no-pull` run passed clickhouse, mongo, redis, kafka, sqs, s3 under the 10m timeout. No single uninterrupted `--min` run went green because of ENOSPC; every kind passed in some run.
+  - Not run: `--only clickhouse` (depends on P607's fix, owned by the other stream); `--except` run did not include it. Dry check: no actionlint, YAML parse only.
+  - Assessment: `pr.yml` no split (one `go test` over containers, parallel packages, Go default timeout), `build (macOS)` no split (one sequential artifact pipeline), `db-compat` already split, only timeouts tightened.
 
 ## P609 DB MCP: `browse_table` gets `in`, count and paging; descriptions steer reads to it
 
