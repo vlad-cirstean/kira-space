@@ -8,7 +8,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 | P608 | Release `test-matrix (Linux)`: split into parallel jobs with tight timeouts | Done |
 | P609 | DB MCP: `browse_table` gets `in`, count and paging; descriptions steer reads to it | Todo |
 | P610 | Agent status: running while subagents or background jobs run; new unseen-finished status | Todo |
-| P612 | Presentation site: review-window images use the inline diff | Todo |
+| P612 | Presentation site: review-window images use the inline diff; tile reuses the first-page hero visual | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -50,9 +50,10 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Tests: flow test (backend derives status from a recorded stream with a live subagent and background job after the main turn ends, plus unseen set and cleared) and matching UI spec (same scenario shows the statuses). Run for real.
 - Result:
 
-## P612 Presentation site: review-window images use the inline diff
+## P612 Presentation site: review-window images use the inline diff; tile reuses the first-page hero visual
 
 - Ask (user): in the presentation site images, the review window images must show the inline diff, not the side-by-side one.
+- Ask (user, second part): for the same site change, update the tile to use the same thing as the first page, headed "Everything agents need, in one place" (`site/src/data/content.ts` hero, `site/tests/site.spec.ts`). Planner identifies which tile (the one showing the review-window change) and which hero element (image, component, frame) to reuse, and states the reading in the plan.
 - Context: find how the site images are produced (screenshot specs or scripts under the site package, tests/ui screenshots, any asset pipeline) and where the review window picks side-by-side vs inline.
 - Acceptance: every site image of a review window shows the inline diff; regenerated through the existing pipeline, assets updated; the diff mode is set by the screenshot setup (not by changing the app default).
 - Tests: regenerate the affected images for real and view them; the site build passes.
