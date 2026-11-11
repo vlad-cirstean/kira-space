@@ -1,0 +1,42 @@
+# Why: aggregates run on cancel (a skipped required check counts as passing; review finding 1) and test-matrix.sh gets a job deadline so a hung package panics with a dump before the runner kill (finding 9). Apply with git apply, then delete this file in the same commit.
+diff --git a/.github/workflows/pr.yml b/.github/workflows/pr.yml
+index 60dae6a51..78dbacfe5 100644
+--- a/.github/workflows/pr.yml
++++ b/.github/workflows/pr.yml
+@@ -110,7 +110,7 @@ jobs:
+   ui:
+     name: ui (Linux)
+     needs: ui-shard
+-    if: ${{ !cancelled() }}
++    if: ${{ always() }}
+     runs-on: ubuntu-24.04
+     timeout-minutes: 5
+     steps:
+@@ -289,6 +289,9 @@ jobs:
+           - group: rest
+             args: --except postgres,mysqlfamily,clickhouse
+     steps:
++      # test-matrix.sh gives each package min(8m, time left - 1m) of this deadline.
++      - name: Job deadline for the matrix script
++        run: echo "MATRIX_DEADLINE=$(( $(date +%s) + 12 * 60 ))" >> "$GITHUB_ENV"
+       - uses: actions/checkout@v7
+       - uses: ./.github/actions/setup
+         timeout-minutes: 10
+@@ -325,7 +328,7 @@ jobs:
+   test-matrix:
+     name: test-matrix (Linux)
+     needs: test-matrix-group
+-    if: ${{ !cancelled() }}
++    if: ${{ always() }}
+     runs-on: ubuntu-24.04
+     timeout-minutes: 5
+     steps:
+@@ -363,7 +366,7 @@ jobs:
+   db-compat:
+     name: db-compat (Linux)
+     needs: db-compat-extreme
+-    if: ${{ !cancelled() }}
++    if: ${{ always() }}
+     runs-on: ubuntu-24.04
+     timeout-minutes: 5
+     steps:

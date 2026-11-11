@@ -136,6 +136,13 @@ fi
 RESULTS=""
 FAILED=0
 
+# One job runs every package of a group in sequence under the CI job cap. MATRIX_DEADLINE (epoch
+# seconds, set by the workflow at job start) bounds the whole run; each package gets min(8m,
+# remaining - 1m) so a hang panics with a goroutine dump before the runner kills the job. Unset,
+# the budget is 10m from here.
+MARGIN=60
+: "${MATRIX_DEADLINE:=$(( $(date +%s) + 600 ))}"
+
 IFS='
 '
 for row in $FILTERED; do
@@ -150,10 +157,16 @@ for row in $FILTERED; do
   # -count=1 (db-compat.sh's own documented reason, carried over verbatim): go test's result cache
   # keys on env vars a test actually observed, and a skipped run may never read KIRA_TEST_MATRIX at
   # all, so a stale cache entry can report green without running anything.
-  # -timeout 8m sits under the 12-min CI job cap, so a hang panics with a goroutine dump naming the
-  # test before the runner kills the job.
-  KIRA_TEST_MATRIX=1 go test -count=1 -timeout 8m "$pkg"
-  status=$?
+  # -timeout panics with a goroutine dump naming the test before the runner kills the job.
+  budget=$(( MATRIX_DEADLINE - $(date +%s) - MARGIN ))
+  [ "$budget" -gt 480 ] && budget=480
+  if [ "$budget" -lt 30 ]; then
+    echo "test-matrix: no time left for $kind (${budget}s before the job deadline)" >&2
+    status=1
+  else
+    KIRA_TEST_MATRIX=1 go test -count=1 -timeout "${budget}s" "$pkg"
+    status=$?
+  fi
   set -e
 
   if [ "$status" = "0" ]; then

@@ -536,21 +536,9 @@ push access without the `workflow` OAuth scope, which GitHub requires for any co
 `.github/workflows/*.yml`. A session with that scope applied them; both staging directories are
 gone.
 
-**P616 apply order.** One patch, `docs/pending-changes/.github__workflows__pr.yml.patch`, adds the
-`ui (Linux)` and `db-compat (Linux)` aggregates. Never require a name before a run on the PR's
-head reports it: the PR then waits on "Expected" forever.
-
-1. On `chapter/v0.3.9`, from a session with the `workflow` scope: `git apply` the patch and
-   `git rm` the patch file in the same commit; push.
-2. See one run of the patched `pr.yml` report both new checks: the chapter PR's run, or
-   `gh workflow run pr.yml --ref chapter/v0.3.9` before the PR opens.
-3. Ruleset, step A: add `ui (Linux)` and `db-compat (Linux)` (type them if the picker does not
-   list them). Save.
-4. Ruleset, step B: remove `ui (Linux, shard 1/8)` through `ui (Linux, shard 8/8)`,
-   `db-compat (Linux, min)` and `db-compat (Linux, max)`. Save.
-
-Add before remove, so the legs never go ungated. If the chapter PR merges before step 3, `main`
-already carries the aggregates and the swap stays safe.
+**Pending workflow patch.** `docs/pending-changes/.github__workflows__pr.yml.patch` (aggregates run on
+`always()`, matrix job deadline) must be applied from a session with the `workflow` scope; delete
+the patch in the same commit.
 
 ### Repository settings (user-applied)
 
