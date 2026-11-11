@@ -137,7 +137,7 @@ for row in $FILTERED; do
   # -count=1 (F13): go test's own result cache keys on env vars a test observed, and a skipped
   # (no-Docker) run may never read the override at all, so a stale cache entry can report green
   # without ever starting the container this pair asked for.
-  env $envassign go test -count=1 -timeout 30m $pkg
+  env $envassign go test -count=1 -timeout 10m $pkg
   status=$?
   set -e
 
