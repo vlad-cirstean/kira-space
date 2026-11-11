@@ -6,6 +6,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 |---|---|---|
 | P607 | ClickHouse `readonly=1`: `Execute` ignores the app statement timeout | Todo |
 | P608 | Release `test-matrix (Linux)`: split into parallel jobs with tight timeouts | Todo |
+| P609 | DB MCP: `browse_table` gets `in`, count and paging; descriptions steer reads to it | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -24,4 +25,12 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: `test-matrix (Linux)` runs 9 adapter packages sequentially in one job (about 22 min when a test hangs, 30 min job timeout, `go test -timeout 30m` per package equals the job timeout). `db-compat` is already split min/max at about 5 min each. `scripts/test-matrix.sh` supports `--only <kind>`; check that image pulls are filtered by kind (`pull_images`). Workflow files cannot be pushed from this session: deliver the change as `docs/pending-changes/` patch per `docs/DEV_ENVIRONMENT.md`.
 - Acceptance: release `test-matrix` becomes a matrix job over kinds (grouped by weight: postgres, mysqlfamily, clickhouse, the small kinds together), `fail-fast: false`, each job pulls only its images, job timeout about 12 min, per-package `go test -timeout` about 8 min; an aggregate job keeps the name `test-matrix (Linux)` so `publish`'s `needs` stays valid. Same for `pr.yml` only if it has an equivalently slow job. Script changes (`--only` pull filtering, timeouts) are real commits; the workflow edit is the pending patch.
 - Tests: `scripts/test-matrix.sh --only <kind> --mirror` for each group run here and passing; a dry check of the workflow YAML (actionlint if available, else YAML parse).
+- Result:
+
+## P609 DB MCP: `browse_table` gets `in`, count and paging; descriptions steer reads to it
+
+- Ask (user): agents run SQL for plain reads instead of `browse_table`. Update the tool descriptions and make `browse_table` support `in`, count and paging.
+- Context: `browse_table` (`apps/kira-space/internal/dbmcp/browse.go`, schema in `server.go`, text in `internal/llmprompts/registry.go` `DbmcpToolBrowseTable`/`DbmcpToolRunQuery`) reads at most 100 rows with ANDed filters and order, so agents fall back to `run_query`. Masked columns, column review, expensiveQuery plan check and statement timeout must keep applying to every new feature. No `run_query` refusal in this phase (user chose descriptions plus capability only).
+- Acceptance: filter operator `in` (list of values); count mode returning the matching row count; paging (offset or cursor, planner decides per engine) with a stable order and a next-page marker. `run_query` description leads with "not for plain row reads: use browse_table"; `browse_table` description leads with a one-line example and lists the new options. Adapter kinds without structured browse keep refusing as before. Arg descriptions, Settings prompt catalog, ARCHITECTURE and any MCP docs updated.
+- Tests: flow test (backend, real DB where the browse suite already runs) and matching UI spec only if a UI surface changes; masking and limit interactions covered. Run for real.
 - Result:
