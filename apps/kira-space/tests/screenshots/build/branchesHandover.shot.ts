@@ -59,7 +59,7 @@ test('build handover and artifacts', async ({ relaunch, consoleErrors }) => {
   await expect(chain.locator(t('ade-handover-draft'))).toContainText('Plan agreed');
   await expect(chain.locator(t('ade-handover-row'))).toHaveCount(1);
   await shoot(win, 'build-handover-notes', consoleErrors);
-  await expect(win.locator(t('ade-details-links'))).toBeVisible();
+  await expect(win.locator(t('ade-links'))).toBeVisible();
   await shoot(win, 'build-artifacts-list', consoleErrors);
 });
 
@@ -97,7 +97,7 @@ test('build artifacts: done dialog', async ({ relaunch, consoleErrors }) => {
   await win.locator(t('ade-step-pick')).click();
   await win.locator(t('ade-step-option-done')).click();
   const dialog = win.locator(t('ade-stage-dialog'));
-  await expect(dialog.locator(t('ade-stage-artifacts'))).toBeVisible();
-  await expect(dialog.locator(t('ade-artifact-row')).first()).toBeVisible();
+  await expect(dialog.locator(t('ade-stage-links'))).toBeVisible();
+  await expect(dialog.locator(t('ade-links-pill')).first()).toBeVisible();
   await shoot(win, 'build-artifacts-done', consoleErrors);
 });

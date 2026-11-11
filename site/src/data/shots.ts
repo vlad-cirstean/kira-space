@@ -223,7 +223,7 @@ export const SHOTS: readonly ShotDef[] = [
   {
     id: 'build-artifacts-list',
     title: 'Task links',
-    alt: 'Kira Space task links grouped under issues, change requests and other links.',
+    alt: 'Kira Space task links as one compact strip: issues, change requests and other links.',
     caption: 'Links. Issues, change requests and other links, grouped.',
     icon: 'files',
     label: 'Task links',
@@ -231,8 +231,8 @@ export const SHOTS: readonly ShotDef[] = [
   {
     id: 'build-artifacts-done',
     title: 'Done dialog',
-    alt: 'Kira Space done dialog listing the artifacts of the task, read only.',
-    caption: 'Done. Every artifact of the task, read only.',
+    alt: 'Kira Space done dialog with the task’s links, branches included.',
+    caption: 'Done. Every link of the task, branches included.',
     icon: 'files',
     label: 'Done dialog',
   },

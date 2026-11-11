@@ -3,6 +3,7 @@ import { adeBoard, adeFixture, openDetails, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
+import { openCard } from './support/links';
 
 // A GitHub PR link opens in the in-app view whatever tab of the PR it names, and one the view
 // refuses opens in the browser. Contract github-links-in-app; backend half: flows/githostflow
@@ -43,8 +44,6 @@ function snapshots(open: Record<string, unknown>) {
   ];
 }
 
-const titles = (page: import('@playwright/test').Page) => page.locator(t('ade-details-link-title'));
-
 test('contract: a GitHub PR link title opens the in-app view', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(
     relaunch,
@@ -52,9 +51,9 @@ test('contract: a GitHub PR link title opens the in-app view', async ({ relaunch
   );
   await openDetails(page);
   for (const [i, n] of NUMBERS.entries()) {
-    await titles(page)
-      .filter({ hasText: `#${n}` })
-      .click();
+    const card = await openCard(page, `#${n}`);
+    await card.locator(t('ade-links-card-title')).click();
+    await page.keyboard.press('Escape');
     await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(i + 1);
     expect(calls(control, IPC.hostViewOpen)[i]?.args).toEqual(openArgs(n));
   }
@@ -67,9 +66,8 @@ test('a link the view refuses opens in the browser', async ({ relaunch }) => {
     snapshots({ error: { code: 'E_BAD_REQUEST', message: 'This view opens a GitHub PR link.' } }),
   );
   await openDetails(page);
-  await titles(page)
-    .filter({ hasText: `#${NUMBERS[0]}` })
-    .click();
+  const card = await openCard(page, `#${NUMBERS[0]}`);
+  await card.locator(t('ade-links-card-title')).click();
   await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(1);
   expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual({ url: links.hostUrl });
 });

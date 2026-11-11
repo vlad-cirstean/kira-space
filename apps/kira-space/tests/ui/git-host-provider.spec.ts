@@ -132,7 +132,7 @@ test('the branch panel and the task link use the host words', async ({ relaunch 
   await page.locator(`${t('ade-card')}[data-task-id="T_auth"] ${t('ade-card-head')}`).click();
   await page.locator(t('ade-panel-tab-details')).click();
   await expect(
-    page.locator(`${t('ade-details-link')}[data-origin="host"] ${t('ade-details-link-title')}`),
+    page.locator(`${t('ade-links-pill')}[data-origin="host"] ${t('ade-links-pill-label')}`),
   ).toHaveText('web-app!7');
   await page.locator(t('ade-panel-tab-main')).click();
 

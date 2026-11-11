@@ -4,6 +4,7 @@ import { adeBoard, adeFixture, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
+import { addLine, openCard } from './support/links';
 import { emitWailsEvent } from './support/mockRuntime';
 
 // The Plan's right-hand panel: task fields, notes, branch details, force push, resize.
@@ -96,10 +97,8 @@ test('name, Issue, PR and Not merging write UpdateTask patches', async ({ relaun
     patch: { title: 'Notify on mention', jira: null, hostUrl: null, est: null, kind: null },
   });
 
-  const paste = page.locator('[data-testid="ade-details-paste"]');
   await page.locator('[data-testid="ade-panel-tab-details"]').click();
-  await paste.fill('PAY-9');
-  await paste.press('Enter');
+  await addLine(page, 'PAY-9');
   await expect.poll(() => calls(control, IPC.adeTaskAddLink)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskAddLink)[0]?.args).toEqual({ taskId: 'T_notif', text: 'PAY-9' });
 
@@ -118,10 +117,11 @@ test('a refused link line shows the backend error and keeps the text', async ({ 
   ]);
   await openTask(page, 'T_notif');
   await page.locator('[data-testid="ade-panel-tab-details"]').click();
-  const paste = page.locator('[data-testid="ade-details-paste"]');
+  await page.locator('[data-testid="ade-links-add"]').click();
+  const paste = page.locator('[data-testid="ade-links-paste"]');
   await paste.fill('not a link');
   await paste.press('Enter');
-  await expect(page.locator('[data-testid="ade-details-paste-error"]')).toContainText(
+  await expect(page.locator('[data-testid="ade-links-paste-error"]')).toContainText(
     'Not a link or issue key.',
   );
   await expect(paste).toHaveValue('not a link');
@@ -599,9 +599,8 @@ test('a change request link opens the in-app PR view', async ({ relaunch }) => {
   ]);
   await openTask(page, 'T_bill');
   await page.locator('[data-testid="ade-panel-tab-details"]').click();
-  await page
-    .locator('[data-testid="ade-details-link-title"]', { hasText: 'acme/web-app#7' })
-    .click();
+  const card = await openCard(page, 'acme/web-app#7');
+  await card.locator('[data-testid="ade-links-card-title"]').click();
   await expect
     .poll(() => control.log().filter((e) => e.channel === IPC.hostViewOpen))
     .toHaveLength(1);

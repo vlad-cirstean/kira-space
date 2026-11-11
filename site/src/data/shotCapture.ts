@@ -47,7 +47,7 @@ export const SHOT_CAPTURE = {
   'build-branches-add': { kind: 'floating', selector: '[data-testid="ade-add-popover"]' },
   'build-handover-dialog': { kind: 'floating', selector: '[data-testid="ade-stage-dialog"]' },
   'build-handover-notes': { kind: 'region', selector: '[data-testid="ade-task-chain"]' },
-  'build-artifacts-list': { kind: 'region', selector: '[data-testid="ade-details-links"]' },
+  'build-artifacts-list': { kind: 'region', selector: '[data-testid="ade-links"]' },
   'build-artifacts-done': { kind: 'floating', selector: '[data-testid="ade-stage-dialog"]' },
   'build-review-window': { kind: 'window' },
   'build-review-thread': { kind: 'region', selector: '[data-testid="repo-diff-editor"]' },

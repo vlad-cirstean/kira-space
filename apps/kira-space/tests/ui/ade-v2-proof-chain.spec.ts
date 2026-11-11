@@ -103,9 +103,9 @@ test('Details order: links, then the task chain with the Timeline toggle in its 
   const { window: page } = await openPlan(relaunch, [proofsSnapshot(proofs()), diagramStep]);
   await openChain(page);
   const order = await page
-    .locator(`${t('ade-details-tab')} > :is(${t('ade-details-links')}, ${t('ade-task-chain')})`)
+    .locator(`${t('ade-details-tab')} > :is(${t('ade-links')}, ${t('ade-task-chain')})`)
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
-  expect(order).toEqual(['ade-details-links', 'ade-task-chain']);
+  expect(order).toEqual(['ade-links', 'ade-task-chain']);
   await expect(
     page.locator(`${t('ade-task-chain')} ${t('ade-details-timeline-toggle')}`),
   ).toBeVisible();
