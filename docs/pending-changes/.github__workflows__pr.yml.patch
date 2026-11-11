@@ -1,0 +1,72 @@
+P616: ui (Linux) and db-compat (Linux) aggregates, one stable required-check name per matrix job.
+
+diff --git a/.github/workflows/pr.yml b/.github/workflows/pr.yml
+index 2a21781ec..60dae6a51 100644
+--- a/.github/workflows/pr.yml
++++ b/.github/workflows/pr.yml
+@@ -12,7 +12,7 @@ concurrency:
+   group: pr-${{ github.ref }}
+   cancel-in-progress: true
+ 
+-# Only the test-matrix aggregate `needs` (its groups); every other job starts at once.
++# Only the aggregates `needs` (each its own matrix job); every other job starts at once.
+ # Shared setup lives in .github/actions/setup.
+ jobs:
+   # Only the work that genuinely needs macOS: cgo-aware go vet/build (catches darwin build-tag
+@@ -75,7 +75,7 @@ jobs:
+ 
+   # Playwright `ui` project of the one config, in 8 shards over one test build.
+   # fail-fast off: a red shard must not hide the others.
+-  ui:
++  ui-shard:
+     name: ui (Linux, shard ${{ matrix.shard }}/8)
+     runs-on: ubuntu-24.04
+     timeout-minutes: 15
+@@ -106,6 +106,20 @@ jobs:
+             apps/kira-space/test-results/
+           retention-days: 7
+ 
++  # One stable required-check name over the shards. Fails unless every shard passed.
++  ui:
++    name: ui (Linux)
++    needs: ui-shard
++    if: ${{ !cancelled() }}
++    runs-on: ubuntu-24.04
++    timeout-minutes: 5
++    steps:
++      - env:
++          RESULT: ${{ needs.ui-shard.result }}
++        run: |
++          echo "ui shards: $RESULT"
++          test "$RESULT" = success
++
+   # ipc-frontend (chromium), real-clipboard grid copy (chromium), then ui-timing alone on an idle
+   # machine. `--no-deps` skips the `ui` project that ui-timing depends on in local runs.
+   ui-extra:
+@@ -323,7 +337,7 @@ jobs:
+ 
+   # Conformance against each kind's oldest and newest supported server (P16) on every PR (P614).
+   # No image cache: the compat images (about 12 GB) would push the repo past its 10 GB cache limit.
+-  db-compat:
++  db-compat-extreme:
+     name: db-compat (Linux, ${{ matrix.extreme }})
+     runs-on: ubuntu-24.04
+     timeout-minutes: 12
+@@ -344,3 +358,17 @@ jobs:
+       - env:
+           TESTCONTAINERS_RYUK_DISABLED: "true"
+         run: sh scripts/db-compat.sh --${{ matrix.extreme }} --mirror
++
++  # One stable required-check name over min and max. Fails unless both passed.
++  db-compat:
++    name: db-compat (Linux)
++    needs: db-compat-extreme
++    if: ${{ !cancelled() }}
++    runs-on: ubuntu-24.04
++    timeout-minutes: 5
++    steps:
++      - env:
++          RESULT: ${{ needs.db-compat-extreme.result }}
++        run: |
++          echo "db-compat extremes: $RESULT"
++          test "$RESULT" = success
