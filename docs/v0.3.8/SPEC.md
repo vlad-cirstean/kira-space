@@ -28,7 +28,8 @@ Two independent failures from the v0.3.7 release, one phase, one plan.
 - Ask (user): fix the failing real `claude` test.
 - Context: `bun run test:claude:db` (nested module `apps/kira-space/tests/claude/`): `TestSmartScriptRun` fails because a user-config MCP server appears in the hermetic MCP list. Failing since P591 notes, untouched. Verify auth with the probe in `docs/DEV_ENVIRONMENT.md` "Real `claude` tests" first. Workflow agent step launch is in `internal/harness/claude/headless.go` and `internal/ade/runs.go`.
 - Acceptance: the test passes against the real `claude`; if the leak is a product bug (hermetic or isolated runs load user servers), fix the product, else the test.
-- Tests: the matching `test:claude*` row, run here and passing.
+- Scope: every other failure in the real `claude` tests is in this phase too. Run all `bun run test:claude*` rows, fix each failure at its root (product or test, never weaken), rerun to green.
+- Tests: all `test:claude*` rows, run here and passing.
 - Result:
 
 ## P606 UI spec `dbmcp-script-long.spec.ts`: ambiguous `run-stop` locator race
