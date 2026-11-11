@@ -35,7 +35,7 @@ type Handle struct {
 	DefaultDatabase string
 	ReadOnly        bool
 	// noEngineTimeout is set once the server refused the timeout settings (a readonly=1 profile):
-	// later requests skip them and the host backstop alone enforces the limit.
+	// later requests skip them and the adapter's app timer enforces the limit.
 	noEngineTimeout atomic.Bool
 	// profileReadonly is the profile's `readonly` setting (0, 1 or 2) read at Connect.
 	profileReadonly atomic.Int32
