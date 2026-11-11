@@ -90,6 +90,33 @@ type browseOut struct {
 	HasMore         bool        `json:"hasMore"`
 	NextOffset      *int        `json:"nextOffset"`
 	WithheldColumns []string    `json:"withheldColumns"`
+	Order           []struct {
+		Column    string `json:"column"`
+		Direction string `json:"direction"`
+	} `json:"order"`
+	StableOrder bool   `json:"stableOrder"`
+	PagingNote  string `json:"pagingNote"`
+}
+
+type countOut struct {
+	Count int64 `json:"count"`
+	Exact bool  `json:"exact"`
+}
+
+func decodeCount(t *testing.T, res *mcp.CallToolResult) countOut {
+	t.Helper()
+	if res.IsError {
+		t.Fatalf("browse_table count = %q, want a count", text(res))
+	}
+	var out countOut
+	if err := json.Unmarshal([]byte(text(res)), &out); err != nil {
+		t.Fatalf("result %q: %v", text(res), err)
+	}
+	return out
+}
+
+func idFilter(op string, ids ...any) map[string]any {
+	return map[string]any{"column": "id", "op": op, "values": ids}
 }
 
 func (o browseOut) col(name string) int {
@@ -566,6 +593,9 @@ func TestDbMcpBrowseExpensiveQueryPostgres(t *testing.T) {
 	if !r.IsError || m == nil || m[2] != strconv.Itoa(expensiveThreshold) || !strings.Contains(text(r), "Filter or order on an indexed column") {
 		t.Fatalf("unfiltered browse = %q, want an expensive_query refusal with the browse hint", text(r))
 	}
+	if cr := run(map[string]any{"count": true}); !cr.IsError || !strings.Contains(text(cr), "expensive_query") {
+		t.Fatalf("unfiltered count = %q, want an expensive_query refusal", text(cr))
+	}
 	// A value holding ';' reaches the EXPLAIN as data.
 	sel := run(map[string]any{"filters": []map[string]any{{"column": "id", "op": "eq", "value": 7}}})
 	if rows, ok := resultPlan(t, sel); sel.IsError || !ok || rows >= expensiveThreshold {
@@ -578,5 +608,170 @@ func TestDbMcpBrowseExpensiveQueryPostgres(t *testing.T) {
 	f.setAutoExplain(t, pg.ID, false)
 	if r := run(map[string]any{}); r.IsError {
 		t.Fatalf("unfiltered browse with the check off = %q, want rows", text(r))
+	}
+}
+
+func TestDbMcpBrowseCount(t *testing.T) {
+	f := newFixture(t)
+	f.seedPeople(t)
+	sess := f.session(t)
+	filters := func(fs ...map[string]any) map[string]any { return map[string]any{"count": true, "filters": fs} }
+
+	if got := decodeCount(t, browse(t, sess, f.connID, map[string]any{"count": true})); got.Count != 5 || !got.Exact {
+		t.Fatalf("count all = %+v, want 5 exact", got)
+	}
+	if got := decodeCount(t, browse(t, sess, f.connID, filters(idFilter("in", 1, 3, 9)))); got.Count != 2 {
+		t.Fatalf("count in [1,3,9] = %+v, want 2", got)
+	}
+	if got := decodeCount(t, browse(t, sess, f.connID, filters(map[string]any{"column": "note", "op": "isNull"}))); got.Count != 1 {
+		t.Fatalf("count isNull = %+v, want 1", got)
+	}
+	ne := map[string]any{"column": "name", "op": "ne", "value": "Ada"}
+	if got := decodeCount(t, browse(t, sess, f.connID, filters(idFilter("in", 1, 2, 3), ne))); got.Count != 2 {
+		t.Fatalf("count in plus ne = %+v, want 2", got)
+	}
+
+	const shape = "count takes filters only; drop columns, order, limit and offset"
+	for _, extra := range []map[string]any{
+		{"columns": []string{"id"}},
+		{"order": []map[string]any{{"column": "id", "direction": "asc"}}},
+		{"limit": 10},
+		{"offset": 1},
+	} {
+		args := map[string]any{"count": true}
+		for k, v := range extra {
+			args[k] = v
+		}
+		wantRefusal(t, browse(t, sess, f.connID, args), shape)
+	}
+
+	// A masked column takes null tests in a count too, never a value test.
+	f.maskPeople(t, "email")
+	if got := decodeCount(t, browse(t, sess, f.connID, filters(map[string]any{"column": "email", "op": "isNull"}))); got.Count != 0 {
+		t.Fatalf("masked isNull count = %+v, want 0", got)
+	}
+	r := browse(t, sess, f.connID, filters(map[string]any{"column": "email", "op": "in", "values": []any{"ada@x.io"}}))
+	wantRefusal(t, r, "email", "is masked")
+	if strings.Contains(text(r), "ada@x.io") {
+		t.Fatalf("refusal echoes the value: %q", text(r))
+	}
+}
+
+func TestDbMcpBrowseCountPrompt(t *testing.T) {
+	f := newFixture(t)
+	f.seedPeople(t)
+	sess := f.session(t)
+	f.mcpSet(t, map[string]string{"masked": "prompt"})
+
+	done := browseAsync(sess, f.connID, map[string]any{"count": true, "filters": []map[string]any{idFilter("in", 1, 3)}})
+	req := f.pending(t)
+	if want := `SELECT count(*) FROM "people" WHERE "id" IN (1, 3)`; req.Statement != want {
+		t.Fatalf("statement = %q, want %q", req.Statement, want)
+	}
+	f.answerItems(t, true, req.Item.ID)
+	if got := decodeCount(t, wait(t, done)); got.Count != 2 {
+		t.Fatalf("approved count = %+v, want 2", got)
+	}
+}
+
+// A count over a limit takes the exemption path bound to count: dropping count makes the call another spec.
+func TestDbMcpBrowseCountExemption(t *testing.T) {
+	f := newFixture(t, flowharness.WithDbMcpLimits(fakeBrowseLimit{}))
+	f.seedPeople(t)
+	f.execSQL(t, "insert into people (name, email) values ('big', 'big@x.io')")
+	sess := f.session(t)
+	filters := []map[string]any{{"column": "name", "op": "eq", "value": "big"}}
+	args := map[string]any{"count": true, "filters": filters}
+
+	r := browse(t, sess, f.connID, args)
+	wantRefusal(t, r, "expensive_query")
+	id := exemptionID(t, r)
+	ex := map[string]any{"id": id, "reason": "the report needs it"}
+
+	mismatch := browse(t, sess, f.connID, map[string]any{"filters": filters, "exemption": ex})
+	wantRefusal(t, mismatch, "issued for a different call")
+
+	id = exemptionID(t, browse(t, sess, f.connID, args))
+	done := browseAsync(sess, f.connID, map[string]any{"count": true, "filters": filters, "exemption": map[string]any{"id": id, "reason": "the report needs it"}})
+	items := f.items(t, 1)
+	if pl := decodeExemption(t, items[0]); !strings.HasPrefix(pl.Statement, "SELECT count(*) FROM") {
+		t.Fatalf("exemption statement = %q, want the count preview", pl.Statement)
+	}
+	f.answerItems(t, true, items[0].ID)
+	if got := decodeCount(t, wait(t, done)); got.Count != 1 {
+		t.Fatalf("approved exempt count = %+v, want 1", got)
+	}
+}
+
+func TestDbMcpBrowsePaging(t *testing.T) {
+	f := newFixture(t)
+	f.seedPeople(t)
+	f.execSQL(t, "create table nokey (a text, b text)", "insert into nokey values ('x', 'y'), ('x', 'z')")
+	sess := f.session(t)
+
+	order := func(o browseOut) string {
+		var parts []string
+		for _, t := range o.Order {
+			parts = append(parts, t.Column+" "+t.Direction)
+		}
+		return strings.Join(parts, ",")
+	}
+	// Unordered: the key is appended, pages walk every row once.
+	var ids []string
+	offset := 0
+	for pages := 0; ; pages++ {
+		if pages > 5 {
+			t.Fatal("paging did not end")
+		}
+		args := map[string]any{"limit": 2, "offset": offset}
+		out := decodeBrowse(t, browse(t, sess, f.connID, args))
+		if order(out) != "id asc" || !out.StableOrder || out.PagingNote != "" {
+			t.Fatalf("page %d order = %q stable %v note %q, want id asc stable", pages, order(out), out.StableOrder, out.PagingNote)
+		}
+		ids = append(ids, out.names("id")...)
+		if !out.HasMore {
+			break
+		}
+		if out.NextOffset == nil || *out.NextOffset != offset+2 {
+			t.Fatalf("page %d nextOffset = %v, want %d", pages, out.NextOffset, offset+2)
+		}
+		offset = *out.NextOffset
+	}
+	if strings.Join(ids, ",") != "1,2,3,4,5" {
+		t.Fatalf("paged ids = %v, want 1..5 once each", ids)
+	}
+
+	// A requested order keeps its terms and gains the key in the last term's direction.
+	out := decodeBrowse(t, browse(t, sess, f.connID, map[string]any{"order": []map[string]any{{"column": "name", "direction": "desc"}}}))
+	if order(out) != "name desc,id desc" || !out.StableOrder {
+		t.Fatalf("order = %q stable %v, want name desc,id desc", order(out), out.StableOrder)
+	}
+
+	// in plus paging: three ids, two pages.
+	in := []map[string]any{idFilter("in", 2, 4, 5)}
+	p1 := decodeBrowse(t, browse(t, sess, f.connID, map[string]any{"filters": in, "limit": 2}))
+	p2 := decodeBrowse(t, browse(t, sess, f.connID, map[string]any{"filters": in, "limit": 2, "offset": 2}))
+	if got := append(p1.names("id"), p2.names("id")...); strings.Join(got, ",") != "2,4,5" || !p1.HasMore || p2.HasMore {
+		t.Fatalf("in pages = %v (more %v, %v), want 2,4,5 over two pages", got, p1.HasMore, p2.HasMore)
+	}
+
+	// No primary or unique NOT NULL key: no tiebreaker, a note.
+	nk := decodeBrowse(t, browse(t, sess, f.connID, map[string]any{"path": tablePath("main", "nokey")}))
+	if nk.StableOrder || len(nk.Order) != 0 || !strings.Contains(nk.PagingNote, "no primary or unique NOT NULL key") {
+		t.Fatalf("no-key browse = %+v, want unstable with the no-key note", nk)
+	}
+
+	// A masked key is never added to the order.
+	f.mcpSet(t, map[string]string{"masked": "prompt"})
+	f.maskPeople(t, "id")
+	done := browseAsync(sess, f.connID, nil)
+	req := f.pending(t)
+	if strings.Contains(req.Statement, `ORDER BY "id"`) {
+		t.Fatalf("statement = %q, want no order on the masked key", req.Statement)
+	}
+	f.answerItems(t, true, req.Item.ID)
+	mk := decodeBrowse(t, wait(t, done))
+	if mk.StableOrder || !strings.Contains(mk.PagingNote, "key column is masked") {
+		t.Fatalf("masked-key browse = %+v, want unstable with the masked-key note", mk)
 	}
 }

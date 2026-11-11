@@ -35,7 +35,7 @@ type Handle struct {
 	DefaultDatabase string
 	ReadOnly        bool
 	// noEngineTimeout is set once the server refused the timeout settings (a readonly=1 profile):
-	// later requests skip them and the host backstop alone enforces the limit.
+	// later requests skip them and the adapter's app timer enforces the limit.
 	noEngineTimeout atomic.Bool
 	// profileReadonly is the profile's `readonly` setting (0, 1 or 2) read at Connect.
 	profileReadonly atomic.Int32
@@ -193,6 +193,8 @@ func OpenClient(cfg model.ResolvedConnectionConfig, log func(level, message stri
 		MaxIdleConnsPerHost: 4,
 		DialContext:         (&net.Dialer{Timeout: dialTimeout}).DialContext,
 		TLSHandshakeTimeout: tlsHandshakeTimeout,
+		// Server buffers a gzip body, so a late-emitting read sends nothing and the row cap never fires.
+		DisableCompression: true,
 	}
 	client := &http.Client{Transport: transport}
 	u := target.scheme + "://" + target.host + ":" + strconv.Itoa(target.port)

@@ -196,11 +196,20 @@ func readPage(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track 
 func dollarPlaceholder(i int) string { return "$" + strconv.Itoa(i) }
 
 // countRows is read.ts's countRows.
-func countRows(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, target QualifiedName, filter *string) (adapters.CountResult, error) {
+func countRows(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, target QualifiedName, filter *string, conds []model.Condition, columns []model.ColumnMeta) (adapters.CountResult, error) {
 	relationSQL := quoteIdent(target.Schema) + "." + quoteIdent(target.Relation)
-	sql := adapters.BuildCountSQL(relationSQL, filter)
+	var params []any
+	addParam := func(value any) int {
+		params = append(params, value)
+		return len(params)
+	}
+	whereSQL, err := adapters.ApplyConditions(adapters.WhereClause(filter), conds, columns, quoteIdent, dollarPlaceholder, addParam, typeClassFor)
+	if err != nil {
+		return adapters.CountResult{}, err
+	}
+	sql := adapters.BuildCountSQLWhere(relationSQL, whereSQL)
 
-	rows, err := runArrayQuery(ctx, conn, sql, nil, op, track, QueryOptions{TextMode: true})
+	rows, err := runArrayQuery(ctx, conn, sql, params, op, track, QueryOptions{TextMode: true, LogParams: true})
 	if err != nil {
 		return adapters.CountResult{}, err
 	}

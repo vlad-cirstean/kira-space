@@ -2,6 +2,7 @@ import { expect, test } from './fixtures';
 import { adeFixture, archivedTaskFx, FIXED_NOW, openPlan, openTask } from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
+import { line, openCard } from './support/links';
 import type { ControlSnapshot } from './support/types';
 
 // Task panel: Main, Details and Sessions tabs, link groups and session links. Link adding
@@ -78,9 +79,6 @@ async function openDetails(page: import('@playwright/test').Page): Promise<void>
   await expect(page.locator(t('ade-details-tab'))).toBeVisible();
 }
 
-const row = (page: import('@playwright/test').Page, text: string) =>
-  page.locator(t('ade-details-link'), { hasText: text });
-
 test('the tabs are Main, Details and Sessions, Main first', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, panel());
   await openTask(page, 'T_alerts');
@@ -109,21 +107,23 @@ test('Main shows branches with their PR line and never handover text', async ({ 
 test('Details groups links under Issues, Change requests and Misc', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, panel());
   await openDetails(page);
-  const group = (id: string) => page.locator(`${t('ade-details-group')}[data-group="${id}"]`);
-  await expect(group('issue').locator(t('ade-details-link'), { hasText: 'PAY-130' })).toHaveCount(
+  await expect(
+    line(page, 'issue').locator(t('ade-links-pill'), { hasText: 'PAY-130' }),
+  ).toHaveCount(1);
+  await expect(
+    line(page, 'changeRequest').locator(t('ade-links-pill'), { hasText: 'Fix login' }),
+  ).toHaveCount(1);
+  await expect(line(page, 'misc').locator(t('ade-links-pill'), { hasText: 'Runbook' })).toHaveCount(
     1,
   );
-  await expect(
-    group('changeRequest').locator(t('ade-details-link'), { hasText: 'Fix login' }),
-  ).toHaveCount(1);
-  await expect(group('misc').locator(t('ade-details-link'), { hasText: 'Runbook' })).toHaveCount(1);
-  const titles = page.locator(t('ade-details-link-title'));
-  const count = await titles.count();
+  // Pills show a title or ref, never a bare number; the card title is the link.
+  const labels = page.locator(t('ade-links-pill-label'));
+  const count = await labels.count();
   for (let i = 0; i < count; i++) {
-    const title = titles.nth(i);
-    expect(await title.getAttribute('href')).toBeTruthy();
-    expect((await title.textContent())?.trim()).not.toMatch(/^[#!]?\d+$/);
+    expect((await labels.nth(i).textContent())?.trim()).not.toMatch(/^[#!]?\d+$/);
   }
+  const card = await openCard(page, 'Runbook');
+  expect(await card.locator(t('ade-links-card-title')).getAttribute('href')).toBeTruthy();
 });
 
 test('session links open the Sessions tab on that session', async ({ relaunch }) => {
@@ -134,11 +134,13 @@ test('session links open the Sessions tab on that session', async ({ relaunch })
   await expect(page.locator(t('ade-session-tab-sp22'))).toHaveAttribute('data-selected', 'true');
 
   await page.locator(t('ade-panel-tab-details')).click();
-  await row(page, 'Runbook').locator(t('ade-origin-session')).click();
+  const runbook = await openCard(page, 'Runbook');
+  await runbook.locator(t('ade-origin-session')).click();
   await expect(page.locator(t('ade-sessions-tab'))).toBeVisible();
 
   await page.locator(t('ade-panel-tab-details')).click();
-  await expect(row(page, 'Other docs').locator(t('ade-origin-session'))).toHaveCount(0);
+  const other = await openCard(page, 'Other docs');
+  await expect(other.locator(t('ade-origin-session'))).toHaveCount(0);
 });
 
 test('an archived task opens Details read-only', async ({ relaunch }) => {
@@ -150,9 +152,10 @@ test('an archived task opens Details read-only', async ({ relaunch }) => {
   await page.locator(`${t('ade-archived-find-item')}[data-task-id="H_1"]`).click();
   await page.locator(t('ade-panel-tab-details')).click();
   await expect(page.locator(t('ade-details-tab'))).toBeVisible();
-  await expect(page.locator(t('ade-details-paste'))).toHaveCount(0);
-  await expect(page.locator(t('ade-details-link-edit'))).toHaveCount(0);
-  await expect(page.locator(t('ade-details-link-remove'))).toHaveCount(0);
+  await expect(page.locator(t('ade-links-add'))).toHaveCount(0);
+  const card = await openCard(page, 'Runbook');
+  await expect(card.locator(t('ade-links-card-edit'))).toHaveCount(0);
+  await expect(card.locator(t('ade-links-card-remove'))).toHaveCount(0);
 });
 
 // Layout only, no IPC: the backend half has nothing to assert.

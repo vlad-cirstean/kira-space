@@ -899,6 +899,8 @@ export interface Session {
   sandbox: RunSandboxBadge | null /* tui manual step */;
   startedAt: number;
   lastActiveAt: number;
+  background: number /* running tui: live background task count */;
+  unseen: boolean /* finished, not viewed since */;
 }
 export interface SessionsResult {
   sessions: Session[];
@@ -1315,6 +1317,9 @@ export interface StepArgs {
 }
 export interface RunArgs {
   runId: string;
+}
+export interface MarkSessionSeenArgs {
+  sessionId: string;
 }
 export interface SessionSandboxArgs {
   sessionId: string;

@@ -222,7 +222,8 @@
       "name": "Deploy health",
       "pending": false,
       "seen": false,
-      "steps": 6
+      "steps": 6,
+      "taskTitle": ""
     }
   ],
   "ProofService.Step#area": {

@@ -285,24 +285,42 @@ func paramType(declared string) string {
 	return inner
 }
 
-// countRows is read.ts's own.
-func countRows(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, target QualifiedName, filter *string) (adapters.CountResult, error) {
+// countRows is read.ts's own. Conditions or engine settings need StreamQuery (typed params, settings);
+// a plain count keeps the catalog path.
+func countRows(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, target QualifiedName, filter *string, conds []model.Condition, columns []model.ColumnMeta, settings map[string]string) (adapters.CountResult, error) {
 	relationSQL := quoteIdent(target.Database) + "." + quoteIdent(target.Table)
-	sqlParts := []string{"SELECT toString(count()) AS n", "FROM " + relationSQL}
-	if where := adapters.WhereClause(filter); where != "" {
-		sqlParts = append(sqlParts, where)
-	}
-	sql := strings.Join(sqlParts, "\n")
-
-	rows, err := RunCatalogQuery[struct {
-		N string `json:"n"`
-	}](ctx, h, queryID, sql, op, track, nil)
+	whereSQL, params, err := conditionsWhere(adapters.WhereClause(filter), conds, columns)
 	if err != nil {
 		return adapters.CountResult{}, err
 	}
+	sqlParts := []string{"SELECT toString(count()) AS n", "FROM " + relationSQL}
+	if whereSQL != "" {
+		sqlParts = append(sqlParts, whereSQL)
+	}
+	sql := strings.Join(sqlParts, "\n")
+
 	n := "0"
-	if len(rows) > 0 {
-		n = rows[0].N
+	if len(conds) == 0 && len(settings) == 0 {
+		rows, err := RunCatalogQuery[struct {
+			N string `json:"n"`
+		}](ctx, h, queryID, sql, op, track, nil)
+		if err != nil {
+			return adapters.CountResult{}, err
+		}
+		if len(rows) > 0 {
+			n = rows[0].N
+		}
+	} else {
+		op.SetCommand(sql)
+		err := StreamQuery(ctx, h, queryID, sql, op, track, settings, params, func(names, types []string) {}, func(values []*string) bool {
+			if len(values) > 0 && values[0] != nil {
+				n = *values[0]
+			}
+			return true
+		})
+		if err != nil {
+			return adapters.CountResult{}, err
+		}
 	}
 	value, err := adapters.ParseCountValue(n)
 	if err != nil {

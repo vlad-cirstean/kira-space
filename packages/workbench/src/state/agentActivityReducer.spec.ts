@@ -28,6 +28,8 @@ function event(partial: Partial<AgentEvent> & { event: string }): AgentEvent {
     source: '',
     reason: '',
     lastAssistantMessage: '',
+    agentId: '',
+    background: 0,
     ...partial,
   };
 }
@@ -54,6 +56,7 @@ describe('agentActivity — reduceAgentActivity (P86 §13, P129 Part 1 §4.8)', 
       sessionId: 's2',
       wakeArmed: false,
       at: NOW + 1,
+      background: 0,
     });
   });
 
@@ -246,5 +249,64 @@ describe('agentActivity — reduceAgentActivity (P86 §13, P129 Part 1 §4.8)', 
     );
     expect(finished.phase).toBe('working');
     expect(finished.at).toBe(NOW + 1);
+  });
+
+  test('13. recorded background sequence: Stop sets the count, subagent hooks never move phase', () => {
+    const lines: Array<Partial<AgentEvent> & { event: string }> = [
+      { event: 'SessionStart' },
+      { event: 'UserPromptSubmit' },
+      { event: 'Stop', background: 2 },
+      { event: 'PreToolUse', toolUseId: 'x', toolName: 'Bash', agentId: 'a1' },
+    ];
+    let a = reduceAgentActivity(undefined, event(lines[0]), NOW);
+    a = reduceAgentActivity(a, event(lines[1]), NOW);
+    a = reduceAgentActivity(a, event(lines[2]), NOW);
+    expect(a.phase).toBe('idle');
+    expect(a.background).toBe(2);
+
+    a = reduceAgentActivity(a, event(lines[3]), NOW + 1);
+    expect(a.phase).toBe('idle');
+    expect(a.runningTools).toEqual([]);
+    expect(a.toolName).toBeNull();
+
+    a = reduceAgentActivity(a, event({ event: 'SubagentStop', agentId: 'a1', background: 1 }), NOW);
+    expect(a.phase).toBe('idle');
+    expect(a.background).toBe(1);
+
+    a = reduceAgentActivity(a, event({ event: 'UserPromptSubmit' }), NOW);
+    a = reduceAgentActivity(a, event({ event: 'Stop', background: 0 }), NOW);
+    expect(a.phase).toBe('idle');
+    expect(a.background).toBe(0);
+  });
+
+  test('14. subagent permission prompt enters attention, its PostToolUse leaves it', () => {
+    let a = reduceAgentActivity(undefined, event({ event: 'UserPromptSubmit' }), NOW);
+    a = reduceAgentActivity(
+      a,
+      event({
+        event: 'Notification',
+        agentId: 'a1',
+        notificationType: 'permission_prompt',
+        message: 'ok?',
+      }),
+      NOW + 1,
+    );
+    expect(a.phase).toBe('attention');
+    expect(a.message).toBe('ok?');
+
+    a = reduceAgentActivity(
+      a,
+      event({ event: 'PostToolUse', toolUseId: 'x', agentId: 'a1' }),
+      NOW + 2,
+    );
+    expect(a.phase).toBe('working');
+    expect(a.runningTools).toEqual([]);
+
+    a = reduceAgentActivity(
+      a,
+      event({ event: 'Notification', agentId: 'a1', notificationType: 'idle_prompt' }),
+      NOW + 3,
+    );
+    expect(a.phase).toBe('working');
   });
 });

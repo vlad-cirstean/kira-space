@@ -1,7 +1,7 @@
 #!/bin/sh
 # db-compat.sh — the on-demand DB adapter min/max version compatibility runner (P16 D5,
-# git show bd0c224688d9:docs/v1.1/plans/P16-db-compat-suite.md §5 C3). Not run as part of `bun run test:go` or
-# ci.yml — SPEC.md's own words for this phase are "not run as part of the regular CI/test run".
+# git show bd0c224688d9:docs/v1.1/plans/P16-db-compat-suite.md §5 C3). Not run by `bun run test:go`; CI runs it
+# on every PR (`pr.yml` `db-compat`, min and max jobs, P614).
 #
 # For each (kind, min|max) pair below, this pulls that pair's image(s), retags them, exports the
 # testsupport.ImageFor override(s) (P16 D2), and runs the adapter's existing conformance package
@@ -137,7 +137,7 @@ for row in $FILTERED; do
   # -count=1 (F13): go test's own result cache keys on env vars a test observed, and a skipped
   # (no-Docker) run may never read the override at all, so a stale cache entry can report green
   # without ever starting the container this pair asked for.
-  env $envassign go test -count=1 -timeout 30m $pkg
+  env $envassign go test -count=1 -timeout 10m $pkg
   status=$?
   set -e
 

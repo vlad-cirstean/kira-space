@@ -17,6 +17,7 @@ import { runStateLabel } from '../runState';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import AdeSessionBadge from './AdeSessionBadge.vue';
 import type { SessionView } from './sessionView';
+import { useMarkSeenOnView } from './useMarkSessionSeen';
 import { useSessionMenu } from './useSessionMenu';
 
 // One session of the dropdown (two lines): glyph, badge, name, age; state, where, short id. Enter or
@@ -39,6 +40,13 @@ const moreBtn = useTemplateRef<{ $el: HTMLElement }>('moreBtn');
 
 const id = computed(() => props.view.session.id);
 const running = computed(() => props.view.session.state === 'running');
+// A stopped session is viewed once its row is revealed (an open from the status bar or Needs page)
+// or its finished run's log is open.
+useMarkSeenOnView(
+  () => props.view.session.id,
+  () => props.view.session.unseen,
+  () => logOpen.value || (!!props.selected && !running.value),
+);
 const hasLog = computed(() => props.view.headless && !!props.view.session.runId);
 const pending = computed(() => takeOver.pending.has(id.value));
 const runState = computed(() => props.view.run?.state ?? '');

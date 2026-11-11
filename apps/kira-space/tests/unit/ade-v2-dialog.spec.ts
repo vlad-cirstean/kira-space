@@ -136,6 +136,8 @@ describe('busy and headless blocks', () => {
     sandbox: null,
     startedAt: 0,
     lastActiveAt: 0,
+    background: 0,
+    unseen: false,
     ...over,
   });
 
@@ -193,6 +195,8 @@ describe('targets', () => {
     sandbox: null,
     startedAt: 0,
     lastActiveAt: 0,
+    background: 0,
+    unseen: false,
   });
 
   test('no running session offers a new one', () => {

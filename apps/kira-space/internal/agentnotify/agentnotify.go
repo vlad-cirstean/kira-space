@@ -145,6 +145,10 @@ func (n *Notifier) ReportFocus(f FocusState) {
 
 // HandleEvent reacts to one hook event.
 func (n *Notifier) HandleEvent(ev harness.AgentEvent) {
+	// A subagent's own hooks never move the main session, but its permission prompt still needs the user.
+	if ev.AgentID != "" && ev.Event != harness.EventNotification {
+		return
+	}
 	n.mu.Lock()
 	armed := n.wake[ev.TerminalID]
 	switch ev.Event {
@@ -169,7 +173,8 @@ func (n *Notifier) HandleEvent(ev harness.AgentEvent) {
 
 	switch ev.Event {
 	case harness.EventTurnEnd:
-		if armed {
+		// A Stop with background tasks left is not finished: the last Stop reports none.
+		if armed || ev.Background > 0 {
 			return
 		}
 		n.notifyTerminal(KindFinished, ev, ev.LastAssistantMessage)

@@ -7,7 +7,8 @@ import AdeTip from '../AdeTip.vue';
 import type { TaskSessions } from '../board/taskSessions';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 
-// Card indicator of the task's agent sessions: needs input, working, or all finished. Click opens
+// Card indicator of the task's agent sessions: needs input, working, finished not viewed, or all
+// finished. Click opens
 // the task's Sessions tab.
 const props = defineProps<{ taskId: string; sessions: TaskSessions }>();
 const ui = useAdeBoardUiStore();
@@ -15,6 +16,7 @@ const ui = useAdeBoardUiStore();
 function tip(): string {
   const { state, running } = props.sessions;
   if (state === 'input') return t('space.ade.plan.card.sessionsInput.tooltip');
+  if (state === 'unseen') return t('space.ade.plan.card.sessionsUnseen.tooltip');
   if (state === 'running')
     return t('space.ade.plan.card.sessionsRunning.tooltip', { count: running });
   return t('space.ade.plan.card.sessionsFinished.tooltip');
@@ -34,6 +36,7 @@ function tip(): string {
       @click.stop="ui.openSessions(taskId)"
     >
       <AdeActivityIcon v-if="sessions.state === 'input'" kind="input" bare />
+      <AdeActivityIcon v-else-if="sessions.state === 'unseen'" kind="unseen" bare />
       <template v-else-if="sessions.state === 'running'">
         <AdeActivityIcon kind="working" bare />
         <span v-if="sessions.running > 1" class="text-kira-sm tabular-nums">{{

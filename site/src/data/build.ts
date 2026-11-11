@@ -72,7 +72,7 @@ export const BUILD_SECTIONS: readonly BuildSection[] = [
     name: 'Review the change',
     pitch:
       'Agent changes need a careful read. Kira opens a review window for the branch and sends your comments back.',
-    body: 'The review window shows the changed files, a side by side diff and the review agent. Comment on a line, ask a question or mark a thread addressed. Forward the open comments to the implementer step. Approve or request changes on the pull request from the same window.',
+    body: 'The review window shows the changed files, an inline diff and the review agent. Comment on a line, ask a question or mark a thread addressed. Forward the open comments to the implementer step. Approve or request changes on the pull request from the same window.',
     shots: [
       'build-review-window',
       'build-review-thread',

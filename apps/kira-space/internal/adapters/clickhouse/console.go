@@ -2,6 +2,7 @@ package clickhouse
 
 import (
 	"context"
+	"errors"
 	"regexp"
 	"strconv"
 	"strings"
@@ -135,7 +136,9 @@ func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapter
 	if err != nil {
 		return page.TabularPage{}, err
 	}
-	if truncated && !h.settingsAllowed() {
+	// Cancel-on-close alone leaves a late-emitting query computing: the server notices the closed
+	// socket only when it next writes.
+	if truncated {
 		killQueryBestEffort(h, queryID)
 	}
 	if builder == nil {
@@ -144,12 +147,13 @@ func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapter
 	return builder.Finish(page.CappedPosition(builder.RowCount(), truncated)), nil
 }
 
-// killQueryBestEffort stops a read the cap abandoned on a profile that cannot carry the cancel-on-
-// close setting. The result is ignored: the read may already have finished.
+// killQueryBestEffort stops a query the cap or the app timer abandoned (cancel-on-close
+// is unavailable on readonly=1 and too slow for a late-emitting query). SYNC returns once the server stopped it (5s bound). The result
+// is ignored: the query may already have finished.
 func killQueryBestEffort(h *Handle, queryID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	resp, err := doRequest(ctx, h, "KILL QUERY WHERE query_id = {qid:String}", "", nil, map[string]string{"qid": queryID}, false)
+	resp, err := doRequest(ctx, h, "KILL QUERY WHERE query_id = {qid:String} SYNC", "", nil, map[string]string{"qid": queryID}, false)
 	if err != nil {
 		return
 	}
@@ -195,29 +199,44 @@ func settingsRefused(err error) bool {
 	return strings.Contains(err.Error(), settingMaxExecutionTime) || strings.Contains(err.Error(), settingTimeoutOverflowMode)
 }
 
-// withEngineTimeout runs one request with the engine timeout settings. Settings are validated before
-// execution, so a refusal means nothing ran and one retry without them is safe; later requests
-// skip them and only the host backstop enforces the limit.
-func withEngineTimeout[T any](h *Handle, timeout time.Duration, log func(level, msg string), run func(extra map[string]string) (T, error)) (T, error) {
-	extra := engineTimeoutSettings(h, timeout)
-	v, err := run(extra)
-	if extra != nil && err != nil && settingsRefused(err) {
+var errAppTimer = errors.New("app timer: statement stopped at its limit")
+
+// withStatementTimeout runs one request under the statement timeout. Engine settings go first;
+// a readonly=1 profile refuses them (nothing ran, so one retry is safe) and cannot cancel on client
+// close either, so the app timer is a ctx deadline plus KILL QUERY: RunWithAbortRace leaves the
+// request running, only the kill stops it.
+func withStatementTimeout[T any](ctx context.Context, h *Handle, timeout time.Duration,
+	nextQueryID func() string, log func(level, msg string),
+	run func(ctx context.Context, queryID string, extra map[string]string) (T, error)) (T, error) {
+	if timeout <= 0 {
+		return run(ctx, nextQueryID(), nil)
+	}
+	if extra := engineTimeoutSettings(h, timeout); extra != nil {
+		v, err := run(ctx, nextQueryID(), extra)
+		if err == nil || !settingsRefused(err) {
+			if err != nil && ctx.Err() == nil && codeOf(err) == timeoutExceeded {
+				err = adapters.StatementTimeout(timeout, 0, err)
+			}
+			return v, err
+		}
 		if h.noEngineTimeout.CompareAndSwap(false, true) && log != nil {
 			log("warn", "clickhouse: server refused the statement timeout settings; the app timer enforces the limit")
 		}
-		return run(nil)
+	}
+	tctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	queryID := nextQueryID()
+	v, err := run(tctx, queryID, nil)
+	if err != nil && ctx.Err() == nil && errors.Is(tctx.Err(), context.DeadlineExceeded) {
+		killQueryBestEffort(h, queryID)
+		var zero T
+		return zero, adapters.StatementTimeout(timeout, 0, errAppTimer)
 	}
 	return v, err
 }
 
 // execute is console.ts's own execute.
 func execute(ctx context.Context, h *Handle, op *adapters.OpCtx, track TrackQuery, statements []string, nextQueryID func() string, limit page.ResultCap, timeout time.Duration, log func(level, msg string)) (pages []page.Page, err error) {
-	defer func() {
-		// Stop cancels ctx first; a timeout leaves it live.
-		if err != nil && timeout > 0 && ctx.Err() == nil && codeOf(err) == timeoutExceeded {
-			err = adapters.StatementTimeout(timeout, 0, err)
-		}
-	}()
 	if len(statements) == 0 {
 		return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
 	}
@@ -231,8 +250,8 @@ func execute(ctx context.Context, h *Handle, op *adapters.OpCtx, track TrackQuer
 			return nil, err
 		}
 		if isRowReturning(sql) {
-			p, err := withEngineTimeout(h, timeout, log, func(extra map[string]string) (page.TabularPage, error) {
-				return runRowReturning(ctx, h, nextQueryID(), op, track, sql, limit, extra)
+			p, err := withStatementTimeout(ctx, h, timeout, nextQueryID, log, func(ctx context.Context, queryID string, extra map[string]string) (page.TabularPage, error) {
+				return runRowReturning(ctx, h, queryID, op, track, sql, limit, extra)
 			})
 			if err != nil {
 				return nil, err
@@ -240,8 +259,8 @@ func execute(ctx context.Context, h *Handle, op *adapters.OpCtx, track TrackQuer
 			pages[i] = p
 			limit = adapters.RemainingCap(limit, p.Size())
 		} else {
-			written, err := withEngineTimeout(h, timeout, log, func(extra map[string]string) (int64, error) {
-				return RunCommand(ctx, h, nextQueryID(), sql, op, track, extra)
+			written, err := withStatementTimeout(ctx, h, timeout, nextQueryID, log, func(ctx context.Context, queryID string, extra map[string]string) (int64, error) {
+				return RunCommand(ctx, h, queryID, sql, op, track, extra)
 			})
 			if err != nil {
 				return nil, err

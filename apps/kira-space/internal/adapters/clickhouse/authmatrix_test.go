@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -195,20 +196,37 @@ func TestClickHouse_AuthMatrix(t *testing.T) {
 							t.Fatalf("Read with a statement timeout: %v", err)
 						}
 						// The readonly=1 profile cannot carry the engine timeout, so the app timer must stop a slow read.
+						t.Cleanup(func() { testsupport.AdminStatements(t, f, "KILL QUERY WHERE user = 'kira_ro1' SYNC") })
 						const limit = time.Second
+						ctx, cancel := context.WithTimeout(context.Background(), limit+10*time.Second)
+						defer cancel()
+						op := opCtx(t, "matrix-ro1-timeout-slow")
 						start := time.Now()
-						_, err = a.Execute(context.Background(), model.ConsoleRequest{
+						_, err = a.Execute(ctx, model.ConsoleRequest{
 							Path: path, Statements: []string{"SELECT sum(cityHash64(number)) FROM numbers(1000000000000)"}, StatementTimeout: limit,
-						}, opCtx(t, "matrix-ro1-timeout-slow"))
+						}, op)
 						var detail *adapters.TimeoutDetail
 						if !errors.As(err, &detail) {
 							t.Fatalf("slow Execute = %v, want a statement timeout", err)
 						}
+						if cause := detail.Cause; cause == nil || !strings.Contains(cause.Error(), "app timer") {
+							t.Errorf("timeout cause = %v, want it to contain %q", detail.Cause, "app timer")
+						}
 						if took := time.Since(start); took > limit+3*time.Second {
 							t.Errorf("slow Execute took %s, want about %s", took, limit)
 						}
+						waitForProcessesClean(t, connectedAdapter(t, f.Config), "kira-"+op.OpID+"-0", 5*time.Second)
 					},
 				},
+				testsupport.ReadStatementTimeout(testsupport.ReadStatementTimeoutCase{
+					Name: "readonly=1 app timer", WantCode: "app timer", Lane: false,
+					Path: testsupport.NodePath(f.Config.ID, testsupport.Seg("database", "kira_test"), testsupport.Seg("view", "p607_ro1_slow")),
+					Fast: testsupport.NodePath(f.Config.ID, testsupport.Seg("database", "kira_test"), testsupport.Seg("table", "customers")),
+					Admin: chAdmin(f,
+						"CREATE VIEW kira_test.p607_ro1_slow AS SELECT sum(cityHash64(number)) AS s FROM numbers(1000000000000)",
+						"KILL QUERY WHERE user = 'kira_ro1' SYNC; DROP VIEW IF EXISTS kira_test.p607_ro1_slow"),
+				}),
+				chCapKill(f),
 				{
 					Name: "UInt64 max decodes exactly",
 					Run: func(t *testing.T, a adapters.Adapter, cfg model.ResolvedConnectionConfig) {

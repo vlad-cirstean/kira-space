@@ -59,7 +59,7 @@ export const SITE = {
 
 export const APP: AppContent = {
   name: 'Kira Space',
-  pageTitle: 'Kira Space: git, coding agents, databases and APIs for macOS',
+  pageTitle: `${HERO.line1} ${HERO.line2}`,
   description:
     'Kira Space is a native macOS workbench: git client, code workspace, coding agents, a database client for ten engines, and an HTTP and gRPC client. Free and open source.',
   hero: 'space-agents-board',

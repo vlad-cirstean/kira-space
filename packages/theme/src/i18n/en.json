@@ -8370,6 +8370,9 @@
         "stopped": {
           "status": "Stopped"
         },
+        "unseen": {
+          "status": "Finished, not viewed"
+        },
         "waiting": {
           "status": "Waiting on monitor"
         },
@@ -8537,6 +8540,9 @@
         "summaryInput": {
           "label": "{count} needs input | {count} need input"
         },
+        "summaryUnseen": {
+          "label": "{count} unseen"
+        },
         "summaryWaiting": {
           "label": "{count} waiting on monitor"
         },
@@ -8560,9 +8566,6 @@
         }
       },
       "artifacts": {
-        "empty": {
-          "body": "No artifacts yet. Branches, pull requests and deployments show up as the task produces them."
-        },
         "gap": {
           "body": "Couldn’t read {source} for {repo}. The list may be incomplete.",
           "notFound": {
@@ -8594,9 +8597,6 @@
           "link": {
             "label": "Web link"
           }
-        },
-        "stageDone": {
-          "label": "Produced by this task"
         },
         "status": {
           "local": {
@@ -9193,9 +9193,6 @@
             "label": "Misc"
           }
         },
-        "kindMenu": {
-          "tooltip": "Change kind ({kind})"
-        },
         "link": {
           "aria": "Link title",
           "placeholder": "Title and link"
@@ -9337,6 +9334,20 @@
         },
         "view": {
           "tooltip": "View {label} in Kira"
+        }
+      },
+      "links": {
+        "category": {
+          "tooltip": "{category}: {count} link | {category}: {count} links"
+        },
+        "empty": {
+          "hint": "Paste a link or press +."
+        },
+        "kind": {
+          "aria": "Link kind"
+        },
+        "pill": {
+          "hint": "Enter opens the link. {modifier}+Enter opens it in the browser. Space shows its details."
         }
       },
       "mainTab": {
@@ -9758,6 +9769,9 @@
           },
           "sessionsRunning": {
             "tooltip": "{count} agent session running | {count} agent sessions running"
+          },
+          "sessionsUnseen": {
+            "tooltip": "Agent finished. Open the session to see its result"
           },
           "status": {
             "aria": "Status: {status}. Change status"
@@ -16939,6 +16953,11 @@
       },
       "pending": {
         "label": "Edit pending"
+      },
+      "ready": {
+        "task": {
+          "label": "For task “{taskTitle}”"
+        }
       },
       "resize": {
         "label": "Resize sessions list"

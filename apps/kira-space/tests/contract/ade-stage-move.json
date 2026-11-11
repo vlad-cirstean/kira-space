@@ -4,6 +4,7 @@
       {
         "activity": "",
         "agentSessionId": "<masked>",
+        "background": 0,
         "branchId": "<masked>",
         "cwd": "<masked>",
         "cwdMissing": false,
@@ -19,11 +20,13 @@
         "state": "running",
         "stepId": "build",
         "taskId": "<masked>",
-        "terminalId": "<masked>"
+        "terminalId": "<masked>",
+        "unseen": false
       },
       {
         "activity": "",
         "agentSessionId": "<masked>",
+        "background": 0,
         "branchId": "<masked>",
         "cwd": "<masked>",
         "cwdMissing": false,
@@ -39,7 +42,8 @@
         "state": "running",
         "stepId": "spec",
         "taskId": "<masked>",
-        "terminalId": "<masked>"
+        "terminalId": "<masked>",
+        "unseen": false
       }
     ]
   },

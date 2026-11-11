@@ -198,6 +198,9 @@ func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string) error {
 	if err := b.deps.Tasks.ArchiveTask(taskID, b.deps.Now().UnixMilli()); err != nil {
 		return err
 	}
+	if err := b.deps.Sessions.ClearUnseenOfTask(taskID); err != nil {
+		slog.Warn("ade: archive: clear unseen", "scope", "ade", "task", taskID, "err", err)
+	}
 	b.closeHandoverPrompt(taskID)
 	b.removeTaskDir(taskID)
 	b.snapshotReviewComments(ctx, tc.branches)

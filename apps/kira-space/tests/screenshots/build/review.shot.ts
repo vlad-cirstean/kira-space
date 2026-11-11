@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, reviewTest as test } from '../../ui/fixtures';
 import { emitAgentSessions } from '../../ui/support/adeV2';
 import { REVIEW_AGENT, STORY_LAUNCH, storyReview } from '../support/buildStory';
@@ -7,7 +8,18 @@ const t = (id: string) => `[data-testid="${id}"]`;
 
 test('build review window', async ({ relaunch, consoleErrors }) => {
   const { control, gitStream, storage } = storyReview();
-  const { window: win } = await relaunch({ ...STORY_LAUNCH, control, gitStream, storage });
+  // Site images show the inline diff; the app default stays side by side.
+  const prepare = async (page: Page) => {
+    await STORY_LAUNCH.prepare?.(page);
+    await page.addInitScript(() => localStorage.setItem('kira.repo.diffLayout', 'inline'));
+  };
+  const { window: win } = await relaunch({
+    ...STORY_LAUNCH,
+    prepare,
+    control,
+    gitStream,
+    storage,
+  });
   await win.locator(t('ade-review-window')).waitFor();
   await emitAgentSessions(win, [REVIEW_AGENT.session.terminalId]);
   await win
@@ -18,6 +30,10 @@ test('build review window', async ({ relaunch, consoleErrors }) => {
     timeout: 15_000,
   });
   await expect(win.locator(t('ade-review-comment'))).toHaveCount(3);
+  await expect(win.locator(t('repo-diff-editor')).locator('.monaco-diff-editor')).not.toHaveClass(
+    /side-by-side/,
+  );
+  await expect(win.locator(t('repo-diff-layout-inline'))).toHaveAttribute('data-state', 'on');
   await shoot(win, 'build-review-window', consoleErrors);
   await shoot(win, 'build-review-agent', consoleErrors);
   await win.locator(t('ade-review-tab-ask')).click();

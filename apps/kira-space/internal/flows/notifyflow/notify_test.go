@@ -52,6 +52,15 @@ func TestNeedsInputNotifies(t *testing.T) {
 	}
 }
 
+func TestSubagentNeedsInputNotifies(t *testing.T) {
+	app, sink := newApp(t)
+	cwd := agentTab(t, app, "tab-1")
+	hook(t, app, "tab-1", `{"hook_event_name":"Notification","agent_id":"sub-1","notification_type":"permission_prompt","cwd":`+quote(cwd)+`,"message":"Subagent needs permission"}`)
+	if n := sink.only(t); n.Kind != agentnotify.KindNeedsInput {
+		t.Fatalf("note = %+v, want needs-input from a subagent prompt", n)
+	}
+}
+
 func TestIgnoredNotifications(t *testing.T) {
 	app, sink := newApp(t)
 	cwd := agentTab(t, app, "tab-1")
@@ -72,6 +81,26 @@ func TestWakeArmedStopSilent(t *testing.T) {
 	stop(t, app, "tab-1", cwd, "now done")
 	if n := sink.only(t); n.Kind != agentnotify.KindFinished {
 		t.Fatalf("note = %+v, want finished", n)
+	}
+}
+
+// A Stop that leaves background tasks running is not finished; the last Stop, with none left, is.
+func TestFinishedWaitsForBackground(t *testing.T) {
+	app, sink := newApp(t)
+	setCooldown(t, time.Millisecond)
+	agentTab(t, app, "tab-1")
+	raw, err := os.ReadFile(filepath.Join("testdata", "background-stops.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
+	for _, line := range lines[:len(lines)-1] {
+		hook(t, app, "tab-1", line)
+	}
+	sink.none(t)
+	hook(t, app, "tab-1", lines[len(lines)-1])
+	if n := sink.only(t); n.Kind != agentnotify.KindFinished || n.Body != "all done" {
+		t.Fatalf("note = %+v, want finished with the last reply", n)
 	}
 }
 

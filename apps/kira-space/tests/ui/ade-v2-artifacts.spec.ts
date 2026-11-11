@@ -3,6 +3,7 @@ import { adeBoard, archivedTaskFx, openPlan, openTask } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
+import { addLine, line, openCard } from './support/links';
 import type { ControlSnapshot } from './support/types';
 
 // Task artifacts: the Details tab links, manual add and remove, gap warnings, the Done dialog list and
@@ -52,31 +53,26 @@ test('contract: the Details tab lists every link with kind and status', async ({
   await expect.poll(() => calls(control, IPC.adeTaskArtifacts)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskArtifacts)[0]?.args).toEqual({ taskId: 'T_alerts' });
 
-  const rows = page.locator(t('ade-details-link'));
+  const rows = page.locator(t('ade-links-pill'));
   const nonBranch = res.artifacts.filter((a) => a.kind !== 'branch').length;
   // Jira PAY-130 is the task's own link; the tracker row KIRA-12 stays in its group.
   await expect(rows).toHaveCount(nonBranch + 1);
-  const pr = page.locator(
-    `${t('ade-details-group')}[data-group="changeRequest"] ${t('ade-details-link')}`,
-    {
-      hasText: 'Fix login',
-    },
-  );
-  await expect(pr.locator(t('ade-details-link-icon'))).toHaveAttribute(
-    'data-kind',
-    'changeRequest',
-  );
-  await expect(pr).toContainText('Open');
+  const pr = line(page, 'changeRequest').locator(t('ade-links-pill'), { hasText: 'Fix login' });
+  await expect(pr).toHaveAttribute('data-kind', 'changeRequest');
   await expect(pr).toHaveAttribute('data-origin', 'detected');
-  const deployment = rows.filter({ hasText: 'prod' });
-  await expect(deployment).toContainText('Deployed');
+  const prCard = await openCard(page, 'Fix login');
+  await expect(prCard).toContainText('Open');
+  await expect(prCard.locator(t('ade-links-card-remove'))).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(rows.filter({ hasText: 'prod' })).toContainText('Deployed');
   await expect(rows.filter({ hasText: 'KIRA-12' })).toHaveCount(1);
 
   const stored = res.artifacts.filter((a) => a.id).length;
-  await expect(page.locator(`${t('ade-details-link')}[data-origin="stored"]`)).toHaveCount(stored);
-  await expect(page.locator(t('ade-details-link-remove'))).toHaveCount(stored + 1);
-  await expect(pr.locator(t('ade-details-link-remove'))).toHaveCount(0);
-  const gap = page.locator(t('ade-artifact-gap'));
+  await expect(page.locator(`${t('ade-links-pill')}[data-origin="stored"]`)).toHaveCount(stored);
+  const storedCard = await openCard(page, 'Design notes');
+  await expect(storedCard.locator(t('ade-links-card-remove'))).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  const gap = page.locator(t('ade-links-gap'));
   await expect(gap).toHaveCount(1);
   await expect(gap).toContainText('The Jira command line tool isn’t installed');
 });
@@ -93,12 +89,9 @@ test('contract: submitting a link line sends AddLink with the text as typed', as
   ]);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-panel-tab-details')).click();
-  const paste = page.locator(t('ade-details-paste'));
-  await paste.fill(sent.text);
-  await paste.press('Enter');
+  await addLine(page, sent.text);
   await expect.poll(() => calls(control, IPC.adeTaskAddLink)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskAddLink)[0]?.args).toEqual({ ...sent, taskId: 'T_alerts' });
-  await expect(paste).toHaveValue('');
 });
 
 test('contract: remove on a stored row sends RemoveArtifact; detected rows have no remove', async ({
@@ -111,8 +104,8 @@ test('contract: remove on a stored row sends RemoveArtifact; detected rows have 
   const { window: page, control } = await openPlan(relaunch, [snapshot(res)]);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-panel-tab-details')).click();
-  const doc = page.locator(t('ade-details-link')).filter({ hasText: 'Design notes' });
-  await doc.locator(t('ade-details-link-remove')).click();
+  const doc = await openCard(page, 'Design notes');
+  await doc.locator(t('ade-links-card-remove')).click();
   await expect.poll(() => calls(control, IPC.adeTaskRemoveArtifact)).toHaveLength(1);
   const sent = calls(control, IPC.adeTaskRemoveArtifact)[0]?.args as Record<string, unknown>;
   const id = res.artifacts.find((a) => a.title === 'Design notes')?.id;
@@ -126,13 +119,13 @@ test('contract: a failed source shows a warning above the list', async ({ relaun
   const { window: page } = await openPlan(relaunch, [snapshot(res)]);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-panel-tab-details')).click();
-  const gaps = page.locator(t('ade-artifact-gap'));
+  const gaps = page.locator(t('ade-links-gap'));
   await expect(gaps).toHaveCount(2);
   const host = res.gaps.find((g) => !g.reason);
   await expect(gaps.first()).toContainText(`Couldn’t read ${host?.source} for ${host?.repo}`);
   await expect(gaps.nth(1)).toContainText('The Jira command line tool isn’t installed');
   await expect(gaps.nth(1)).toContainText('under CLI tools');
-  await expect(page.locator(t('ade-details-link'))).not.toHaveCount(0);
+  await expect(page.locator(t('ade-links-pill'))).not.toHaveCount(0);
 });
 
 test('an empty task shows the hint', async ({ relaunch }) => {
@@ -146,7 +139,7 @@ test('an empty task shows the hint', async ({ relaunch }) => {
   ]);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-panel-tab-details')).click();
-  await expect(page.locator(t('ade-details-empty')).first()).toBeVisible();
+  await expect(page.locator(t('ade-links-empty')).first()).toBeVisible();
 });
 
 test('moving a task to Done lists its artifacts, read-only', async ({ relaunch }) => {
@@ -160,9 +153,12 @@ test('moving a task to Done lists its artifacts, read-only', async ({ relaunch }
   await page.locator(t('ade-step-option-done')).click();
   const dialog = page.locator(t('ade-stage-dialog'));
   await expect(dialog).toBeVisible();
-  const list = dialog.locator(t('ade-stage-artifacts'));
-  await expect(list.locator(t('ade-artifact-row'))).toHaveCount(res.artifacts.length);
-  await expect(list.locator(t('ade-artifact-remove'))).toHaveCount(0);
+  const list = dialog.locator(t('ade-stage-links'));
+  await expect(list.locator(t('ade-links'))).toHaveAttribute('data-mode', 'add');
+  // Jira slot plus every artifact, detected branches included.
+  await expect(list.locator(t('ade-links-pill'))).toHaveCount(res.artifacts.length + 1);
+  await openCard(list, 'Design notes');
+  await expect(page.locator(t('ade-links-card-remove'))).toHaveCount(0);
 });
 
 test('an archived task shows the links read-only', async ({ relaunch }) => {
@@ -174,8 +170,9 @@ test('an archived task shows the links read-only', async ({ relaunch }) => {
   await page.locator(t('ade-archived-find')).click();
   await page.locator(`${t('ade-archived-find-item')}[data-task-id="H_1"]`).click();
   await page.locator(t('ade-panel-tab-details')).click();
-  await expect(page.locator(t('ade-details-link'))).not.toHaveCount(0);
-  await expect(page.locator(t('ade-details-paste'))).toHaveCount(0);
-  await expect(page.locator(t('ade-details-link-edit'))).toHaveCount(0);
-  await expect(page.locator(t('ade-details-link-remove'))).toHaveCount(0);
+  await expect(page.locator(t('ade-links-pill'))).not.toHaveCount(0);
+  await expect(page.locator(t('ade-links-add'))).toHaveCount(0);
+  const card = await openCard(page, 'Runbook');
+  await expect(card.locator(t('ade-links-card-edit'))).toHaveCount(0);
+  await expect(card.locator(t('ade-links-card-remove'))).toHaveCount(0);
 });

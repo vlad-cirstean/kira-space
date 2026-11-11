@@ -63,7 +63,8 @@
       "name": "Checkout fix",
       "pending": false,
       "seen": false,
-      "steps": 3
+      "steps": 3,
+      "taskTitle": ""
     }
   ],
   "ProofService.ShotLocation": {

@@ -38,6 +38,36 @@ type hookRequest struct {
 	Reason           string `json:"reason"`
 	// LastAssistantMessage is Stop's reply text.
 	LastAssistantMessage string `json:"last_assistant_message"`
+	// AgentID is set on a subagent's own events.
+	AgentID         string           `json:"agent_id"`
+	BackgroundTasks []backgroundTask `json:"background_tasks"`
+}
+
+// backgroundTask decodes id, type and status only. command and description can carry user text:
+// never decode them (P86 privacy rule).
+type backgroundTask struct {
+	ID     string `json:"id"`
+	Type   string `json:"type"`
+	Status string `json:"status"`
+}
+
+// liveBackground counts running or pending tasks. A stopping subagent still lists itself as
+// running: skip its own entry.
+func liveBackground(req hookRequest, kind harness.EventKind) int {
+	if kind != harness.EventTurnEnd && kind != harness.EventSubagentEnd {
+		return 0
+	}
+	n := 0
+	for _, t := range req.BackgroundTasks {
+		if t.Status != "running" && t.Status != "pending" {
+			continue
+		}
+		if kind == harness.EventSubagentEnd && t.ID == req.AgentID {
+			continue
+		}
+		n++
+	}
+	return n
 }
 
 // eventKinds maps Claude's hook_event_name to the neutral kind; a name not listed is dropped.
@@ -49,6 +79,7 @@ var eventKinds = map[string]harness.EventKind{
 	"PostToolUse":      harness.EventToolEnd,
 	"Notification":     harness.EventNotification,
 	"Stop":             harness.EventTurnEnd,
+	"SubagentStop":     harness.EventSubagentEnd,
 }
 
 // wakeTools are the tools that arm a wake-up: a session that armed one waits, so its Stop is not
@@ -120,7 +151,9 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 			Source:               req.Source,
 			Reason:               req.Reason,
 			LastAssistantMessage: truncateMessage(req.LastAssistantMessage),
-			Wakes:                kind == harness.EventToolStart && wakeTools[req.ToolName],
+			AgentID:              req.AgentID,
+			Background:           liveBackground(req, kind),
+			Wakes:                req.AgentID == "" && kind == harness.EventToolStart && wakeTools[req.ToolName],
 			NeedsInput:           kind == harness.EventNotification && needsInput(req),
 		})
 	}

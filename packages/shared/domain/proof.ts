@@ -146,6 +146,8 @@ export const proofSummarySchema = /*#__PURE__*/ z.object({
   steps: z.number().int(),
   pending: z.boolean(),
   seen: z.boolean(),
+  // Title of the task the session is attached to; '' when none.
+  taskTitle: z.string(),
 });
 export type ProofSummary = z.infer<typeof proofSummarySchema>;
 

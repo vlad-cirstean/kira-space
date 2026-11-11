@@ -4,6 +4,7 @@
       {
         "activity": "",
         "agentSessionId": "<masked>",
+        "background": 0,
         "branchId": "<masked>",
         "cwd": "<masked>",
         "cwdMissing": false,
@@ -19,11 +20,13 @@
         "state": "running",
         "stepId": "<masked>",
         "taskId": "<masked>",
-        "terminalId": "<masked>"
+        "terminalId": "<masked>",
+        "unseen": false
       },
       {
         "activity": "working",
         "agentSessionId": "<masked>",
+        "background": 0,
         "branchId": "<masked>",
         "cwd": "<masked>",
         "cwdMissing": false,
@@ -39,11 +42,13 @@
         "state": "running",
         "stepId": "<masked>",
         "taskId": "<masked>",
-        "terminalId": "<masked>"
+        "terminalId": "<masked>",
+        "unseen": false
       },
       {
         "activity": "idle",
         "agentSessionId": "<masked>",
+        "background": 0,
         "branchId": "<masked>",
         "cwd": "<masked>",
         "cwdMissing": false,
@@ -59,7 +64,8 @@
         "state": "stopped",
         "stepId": "<masked>",
         "taskId": "<masked>",
-        "terminalId": "<masked>"
+        "terminalId": "<masked>",
+        "unseen": true
       }
     ]
   }

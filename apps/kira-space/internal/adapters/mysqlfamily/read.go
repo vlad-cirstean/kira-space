@@ -8,6 +8,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // quoteIdent is read.ts's quoteIdent.
@@ -152,11 +153,16 @@ func readPage(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQu
 }
 
 // countRows is read.ts's countRows.
-func countRows(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQuery, target QualifiedName, filter *string) (adapters.CountResult, error) {
+func countRows(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQuery, target QualifiedName, filter *string, conds []model.Condition, columns []model.ColumnMeta) (adapters.CountResult, error) {
 	relationSQL := quoteIdent(target.Database) + "." + quoteIdent(target.Table)
-	query := adapters.BuildCountSQL(relationSQL, filter)
+	addParam, paramsPtr := adapters.NewParamAccumulator()
+	whereSQL, err := adapters.ApplyConditions(adapters.WhereClause(filter), conds, columns, quoteIdent, questionPlaceholder, addParam, typeClassFor)
+	if err != nil {
+		return adapters.CountResult{}, err
+	}
+	query := adapters.BuildCountSQLWhere(relationSQL, whereSQL)
 
-	rows, err := runArrayQuery(ctx, conn, query, nil, op, track, QueryOptions{})
+	rows, err := runArrayQuery(ctx, conn, query, *paramsPtr, op, track, QueryOptions{LogParams: true})
 	if err != nil {
 		return adapters.CountResult{}, err
 	}

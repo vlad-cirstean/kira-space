@@ -23,8 +23,8 @@ const openSession = useOpenSession();
 
 const rows = computed(() =>
   sessions.value
-    .filter((s) => s.state === 'running')
     .map((s) => ({ session: s, view: view(s) }))
+    .filter((r) => r.session.state === 'running' || r.view.kind === 'unseen')
     .sort(
       (a, b) =>
         ACTIVITY_RANK[a.view.kind] - ACTIVITY_RANK[b.view.kind] ||

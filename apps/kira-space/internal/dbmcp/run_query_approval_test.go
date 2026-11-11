@@ -76,6 +76,12 @@ func (f *fakeQueryRunner) Browse(context.Context, adapterhost.BrowseRequest) (pa
 	return nil, nil
 }
 
+func (f *fakeQueryRunner) BrowseCount(context.Context, adapterhost.BrowseCountRequest) (adapters.CountResult, error) {
+	f.executed.Add(1)
+	f.lane.Add(1)
+	return adapters.CountResult{}, nil
+}
+
 func (f *fakeQueryRunner) ExecuteRead(context.Context, adapterhost.ExecuteRequestWire) (adapterhost.ExecuteResponse, error) {
 	f.executed.Add(1)
 	f.lane.Add(1)

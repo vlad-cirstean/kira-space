@@ -1,13 +1,13 @@
-import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { openDetails, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
+import { line, openCard, pill } from './support/links';
 import type { ControlSnapshot } from './support/types';
 
-// Details links: one add line files typed or pasted text, rows edit in place, a stored row's kind is a
-// menu. Contract ade-details-links; backend half: flows/adeflow TestDetailsLinks.
+// Details links: the strip's add popover files typed or pasted text, a pill's card edits in place and re-files
+// a stored link's kind. Contract ade-details-links; backend half: flows/adeflow TestDetailsLinks.
 
 const t = (id: string) => `[data-testid="${id}"]`;
 
@@ -56,13 +56,35 @@ const base = (addLink: Partial<ControlSnapshot> = {}): ControlSnapshot[] => [
   },
 ];
 
-const row = (page: Page, text: string) => page.locator(t('ade-details-link'), { hasText: text });
+const paste = (page: import('@playwright/test').Page) => page.locator(t('ade-links-paste'));
+const openAdd = async (page: import('@playwright/test').Page) => {
+  await page.locator(t('ade-links-add')).click();
+  await expect(paste(page)).toBeVisible();
+};
+const pasteEvent = (
+  page: import('@playwright/test').Page,
+  testid: string,
+  text: string,
+  has = '',
+) =>
+  page.evaluate(
+    ([id, value, within]) => {
+      const els = [...document.querySelectorAll(`[data-testid="${id}"]`)];
+      const el = els.find((e) => e.textContent?.includes(within ?? '')) ?? els[0];
+      const data = new DataTransfer();
+      data.setData('text', value ?? '');
+      el?.dispatchEvent(
+        new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
+      );
+    },
+    [testid, text, has],
+  );
 
-test('contract: stored rows show under their kind', async ({ relaunch }) => {
+test('contract: stored pills carry their kind', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, base());
   await openDetails(page);
   const kinds = await page
-    .locator(t('ade-details-link-kind'))
+    .locator(`${t('ade-links-pill')}[data-origin="stored"]`)
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-kind')));
   expect(kinds.sort()).toEqual(
     listed()
@@ -70,11 +92,15 @@ test('contract: stored rows show under their kind', async ({ relaunch }) => {
       .map((a) => a.kind)
       .sort(),
   );
-  await expect(row(page, 'feat/x').locator(t('ade-details-link-kind'))).toHaveAttribute(
-    'data-kind',
-    'branch',
+  await expect(pill(page, 'feat/x')).toHaveAttribute('data-kind', 'branch');
+  const card = await openCard(page, 'feat/x');
+  await expect(card.locator(`${t('ade-links-card-kind-branch')}`)).toHaveAttribute(
+    'data-state',
+    'on',
   );
-  await expect(row(page, 'PAY-10').locator(t('ade-details-link-kind'))).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  const detected = await openCard(page, 'PAY-10');
+  await expect(detected.locator(t('ade-links-card-kind'))).toHaveCount(0);
 });
 
 const GROUP_NAME: Record<string, string> = {
@@ -93,100 +119,98 @@ test('links group under Issues, Change requests and Misc; the block stays compac
     { channel: IPC.adeTaskIssue, response: issueFx },
   ]);
   await openDetails(page);
-  const groups = page.locator(t('ade-details-group'));
   await expect(
-    groups.evaluateAll((els) => els.map((e) => e.getAttribute('data-group'))),
+    page
+      .locator(t('ade-links-line'))
+      .evaluateAll((els) => els.map((e) => e.getAttribute('data-category'))),
   ).resolves.toEqual(['issue', 'changeRequest', 'misc']);
-  const links = page.locator(t('ade-details-link'));
   for (const id of ['issue', 'changeRequest', 'misc']) {
-    const group = page.locator(`${t('ade-details-group')}[data-group="${id}"]`);
-    const labels = await group
-      .locator(t('ade-details-group-label'))
-      .evaluateAll((els) => els.map((e) => e.textContent?.trim() ?? ''));
-    expect(labels[0]).toBe(GROUP_NAME[id]);
-    expect(labels.slice(1).every((l) => l === '')).toBe(true);
+    await expect(line(page, id).locator(t('ade-links-category'))).toHaveAttribute(
+      'aria-label',
+      new RegExp(`^${GROUP_NAME[id]}`),
+    );
   }
   // Jira slot plus listed artifacts, minus detected branches.
-  const inGroup = (id: string) =>
-    page.locator(`${t('ade-details-group')}[data-group="${id}"] ${t('ade-details-link')}`);
-  await expect(inGroup('issue').filter({ hasText: 'PAY-130' })).toHaveCount(1);
+  await expect(
+    line(page, 'issue').locator(t('ade-links-pill'), { hasText: 'PAY-130' }),
+  ).toHaveCount(1);
   for (const a of listed().filter((x) => x.id || x.kind !== 'branch')) {
-    const found = inGroup(categoryOf(a.kind)).filter({ hasText: a.title || a.url });
+    const found = line(page, categoryOf(a.kind)).locator(t('ade-links-pill'), {
+      hasText: a.title || a.url,
+    });
     expect(await found.count(), a.title).toBeGreaterThan(0);
   }
-  const rows = await links.count();
-  for (let i = 0; i < rows; i++) {
-    const r = links.nth(i);
-    const menu = r.locator(t('ade-details-link-kind'));
-    const icon = r.locator(t('ade-details-link-icon'));
-    expect((await menu.count()) + (await icon.count())).toBe(1);
-  }
-  await expect(page.locator(t('ade-details-links')).locator('[data-slot="ade-row"]')).toHaveCount(
-    rows + 1,
-  );
-  await expect(
-    page.locator(`${t('ade-details-link')}[data-origin="jira"] ${t('ade-task-issue')}`),
-  ).toHaveCount(1);
+  const box = await page.locator(t('ade-links')).boundingBox();
+  expect(box?.height ?? Infinity).toBeLessThanOrEqual(104);
+  const jira = await openCard(page, 'PAY-130');
+  await expect(jira.locator(t('ade-task-issue'))).toHaveCount(1);
 });
 
-test('a group without links is hidden', async ({ relaunch }) => {
+test('a line without links is hidden', async ({ relaunch }) => {
   const onlyMisc = listed().filter((a) => a.id && categoryOf(a.kind) === 'misc');
   const { window: page } = await openPlan(relaunch, [
     { channel: IPC.adeTaskArtifacts, response: { artifacts: onlyMisc, gaps: [] } },
   ]);
   await openDetails(page);
-  // The task's own Jira slot keeps Issues; no stored change request, so no Change requests group.
+  // The task's own Jira slot keeps Issues; no stored change request, so no Change requests line.
   await expect(
     page
-      .locator(t('ade-details-group'))
-      .evaluateAll((els) => els.map((e) => e.getAttribute('data-group'))),
+      .locator(t('ade-links-line'))
+      .evaluateAll((els) => els.map((e) => e.getAttribute('data-category'))),
   ).resolves.toEqual(['issue', 'misc']);
-  await expect(page.locator(t('ade-details-empty'))).toHaveCount(0);
+  await expect(page.locator(t('ade-links-empty'))).toHaveCount(0);
 });
 
-test('pasting into the empty add line files at once', async ({ relaunch }) => {
+test('pasting into the add popover files at once', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, base());
   await openDetails(page);
-  const paste = page.locator(t('ade-details-paste'));
-  await paste.focus();
-  await page.evaluate(() => {
-    const el = document.querySelector('[data-testid="ade-details-paste"]');
-    const data = new DataTransfer();
-    data.setData('text', 'https://wiki.example/pasted');
-    el?.dispatchEvent(
-      new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
-    );
-  });
+  await openAdd(page);
+  await paste(page).focus();
+  await pasteEvent(page, 'ade-links-paste', 'https://wiki.example/pasted');
   await expect.poll(() => calls(control, IPC.adeTaskAddLink)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskAddLink)[0]?.args).toEqual({
     taskId: 'T_alerts',
     text: 'https://wiki.example/pasted',
   });
-  await expect(paste).toHaveValue('');
+});
+
+test('pasting on a focused pill files at once', async ({ relaunch }) => {
+  const { window: page, control } = await openPlan(relaunch, base());
+  await openDetails(page);
+  await pill(page, 'feat/x').focus();
+  await pasteEvent(page, 'ade-links-pill', 'https://wiki.example/strip', 'feat/x');
+  await expect.poll(() => calls(control, IPC.adeTaskAddLink)).toHaveLength(1);
+  expect(calls(control, IPC.adeTaskAddLink)[0]?.args).toEqual({
+    taskId: 'T_alerts',
+    text: 'https://wiki.example/strip',
+  });
 });
 
 test('a title typed before a pasted link stays; Enter sends both', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, base());
   await openDetails(page);
-  const paste = page.locator(t('ade-details-paste'));
-  await paste.fill('Design notes ');
-  await paste.pressSequentially('https://docs.google.com/document/d/abc/edit');
+  await openAdd(page);
+  await paste(page).fill('Design notes ');
+  await paste(page).pressSequentially('https://docs.google.com/document/d/abc/edit');
   expect(calls(control, IPC.adeTaskAddLink)).toHaveLength(0);
-  await expect(paste).toHaveValue(addArgs.text);
-  await paste.press('Enter');
+  await expect(paste(page)).toHaveValue(addArgs.text);
+  await paste(page).press('Enter');
   await expect.poll(() => calls(control, IPC.adeTaskAddLink)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskAddLink)[0]?.args).toEqual({ ...addArgs, taskId: 'T_alerts' });
-  await expect(paste).toHaveValue('');
 });
 
-test('Escape clears the add line without a call', async ({ relaunch }) => {
+test('Escape closes the add popover without a call; reopening starts empty', async ({
+  relaunch,
+}) => {
   const { window: page, control } = await openPlan(relaunch, base());
   await openDetails(page);
-  const paste = page.locator(t('ade-details-paste'));
-  await paste.fill('half a thought');
-  await paste.press('Escape');
-  await expect(paste).toHaveValue('');
+  await openAdd(page);
+  await paste(page).fill('half a thought');
+  await paste(page).press('Escape');
+  await expect(page.locator(t('ade-links-add-popover'))).toHaveCount(0);
   expect(calls(control, IPC.adeTaskAddLink)).toHaveLength(0);
+  await openAdd(page);
+  await expect(paste(page)).toHaveValue('');
 });
 
 test('a refused line shows the error and keeps the text', async ({ relaunch }) => {
@@ -198,11 +222,11 @@ test('a refused line shows the error and keeps the text', async ({ relaunch }) =
     }),
   );
   await openDetails(page);
-  const paste = page.locator(t('ade-details-paste'));
-  await paste.fill('just some words');
-  await paste.press('Enter');
-  await expect(page.locator(t('ade-details-paste-error'))).toContainText('Not a link');
-  await expect(paste).toHaveValue('just some words');
+  await openAdd(page);
+  await paste(page).fill('just some words');
+  await paste(page).press('Enter');
+  await expect(page.locator(t('ade-links-paste-error'))).toContainText('Not a link');
+  await expect(paste(page)).toHaveValue('just some words');
 });
 
 test('an already-shown link answers with a quiet note', async ({ relaunch }) => {
@@ -211,23 +235,23 @@ test('an already-shown link answers with a quiet note', async ({ relaunch }) => 
     base({ response: { filed: 'known', kind: 'issue', artifact: null } }),
   );
   await openDetails(page);
-  const paste = page.locator(t('ade-details-paste'));
-  await paste.fill('PAY-130');
-  await paste.press('Enter');
-  await expect(page.locator(t('ade-details-paste-known'))).toBeVisible();
-  await expect(paste).toHaveValue('');
+  await openAdd(page);
+  await paste(page).fill('PAY-130');
+  await paste(page).press('Enter');
+  await expect(page.locator(t('ade-links-paste-known'))).toBeVisible();
+  await expect(paste(page)).toHaveValue('');
 });
 
-test('contract: editing a stored row sends its text as typed; Escape cancels; F2 opens', async ({
+test('contract: editing a stored link sends its text as typed; Escape cancels; F2 opens', async ({
   relaunch,
 }) => {
   const { window: page, control } = await openPlan(relaunch, base());
   await openDetails(page);
   const runbook = stored('Runbook');
-  const target = row(page, 'Runbook');
 
-  await target.dblclick();
-  const input = page.locator(t('ade-details-link-input'));
+  const card = await openCard(page, 'Runbook');
+  await card.locator(t('ade-links-card-edit')).click();
+  const input = page.locator(t('ade-links-edit-input'));
   await expect(input).toHaveValue(`${runbook.title} ${runbook.url}`);
   await input.fill(editArgs.text);
   await input.press('Enter');
@@ -238,28 +262,31 @@ test('contract: editing a stored row sends its text as typed; Escape cancels; F2
     id: runbook.id,
   });
 
-  await target.locator(t('ade-details-link-title')).focus();
+  await pill(page, 'Runbook').focus();
   await page.keyboard.press('F2');
   await expect(input).toBeVisible();
   await input.fill('discarded');
   await input.press('Escape');
   await expect(input).toHaveCount(0);
   expect(calls(control, IPC.adeTaskEditLink)).toHaveLength(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator(t('ade-links-card'))).toHaveCount(0);
 
-  await target.locator(t('ade-details-link-edit')).click();
+  const again = await openCard(page, 'Runbook');
+  await again.locator(t('ade-links-card-edit')).click();
   await input.fill('');
   await input.press('Enter');
   await expect.poll(() => calls(control, IPC.adeTaskRemoveArtifact)).toHaveLength(1);
 });
 
-test('the kind menu re-files a stored row; detected rows have no menu or edit', async ({
+test('the card re-files a stored link; detected links have no kind picker or edit', async ({
   relaunch,
 }) => {
   const { window: page, control } = await openPlan(relaunch, base());
   await openDetails(page);
   const link = stored('wiki.example/x');
-  await row(page, 'wiki.example/x').locator(t('ade-details-link-kind')).click();
-  await page.locator(`${t('ade-details-link-kind-item')}[data-kind="doc"]`).click();
+  const card = await openCard(page, 'wiki.example/x');
+  await card.locator(t('ade-links-card-kind-doc')).click();
   await expect.poll(() => calls(control, IPC.adeTaskEditLink)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskEditLink)[0]?.args).toEqual({
     taskId: 'T_alerts',
@@ -268,17 +295,20 @@ test('the kind menu re-files a stored row; detected rows have no menu or edit', 
     text: '',
     kind: 'doc',
   });
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
 
-  const detected = row(page, 'PAY-10');
-  await expect(detected).toHaveAttribute('data-origin', 'detected');
-  await expect(detected.locator(t('ade-details-link-kind'))).toHaveCount(0);
-  await expect(detected.locator(t('ade-details-link-edit'))).toHaveCount(0);
+  await expect(pill(page, 'PAY-10')).toHaveAttribute('data-origin', 'detected');
+  const detected = await openCard(page, 'PAY-10');
+  await expect(detected.locator(t('ade-links-card-kind'))).toHaveCount(0);
+  await expect(detected.locator(t('ade-links-card-edit'))).toHaveCount(0);
 });
 
 test('removing the Jira link clears the slot', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, base());
   await openDetails(page);
-  await row(page, 'PAY-130').locator(t('ade-details-link-remove')).click();
+  const card = await openCard(page, 'PAY-130');
+  await card.locator(t('ade-links-card-remove')).click();
   await expect.poll(() => calls(control, IPC.adeTaskUpdateTask)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskUpdateTask)[0]?.args).toMatchObject({
     taskId: 'T_alerts',

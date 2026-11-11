@@ -355,7 +355,7 @@ func listSchemaColumns(ctx context.Context, exec queryExec, schema string) ([]mo
 // listIndexes is catalog.ts's listIndexes.
 func listIndexes(ctx context.Context, exec queryExec, relOID string) ([]model.IndexMeta, error) {
 	var indexes []model.IndexMeta
-	err := exec(ctx, `SELECT i.relname AS name, ix.indisunique AS unique, ix.indisprimary AS primary,
+	err := exec(ctx, `SELECT i.relname AS name, ix.indisunique AS unique, ix.indisprimary AS primary, ix.indpred IS NOT NULL AS partial,
 	        am.amname AS method,
 	        ARRAY(SELECT pg_get_indexdef(ix.indexrelid, k.i + 1, true)
 	              FROM generate_subscripts(ix.indkey, 1) AS k(i) ORDER BY k.i) AS columns
@@ -364,7 +364,7 @@ func listIndexes(ctx context.Context, exec queryExec, relOID string) ([]model.In
 	 JOIN pg_am am ON am.oid = i.relam
 	 WHERE ix.indrelid = $1::oid`, []any{relOID}, func(rows pgx.Rows) error {
 		var idx model.IndexMeta
-		if err := rows.Scan(&idx.Name, &idx.Unique, &idx.Primary, &idx.Method, &idx.Columns); err != nil {
+		if err := rows.Scan(&idx.Name, &idx.Unique, &idx.Primary, &idx.Partial, &idx.Method, &idx.Columns); err != nil {
 			return err
 		}
 		indexes = append(indexes, idx)

@@ -24,6 +24,8 @@ const (
 	// writeCallLimit bounds one service call. A write detaches from the phone's connection so a
 	// dropped request cannot abort it half way; the idempotency key lets the phone retry.
 	writeCallLimit = 80 * time.Second
+	// seenCallLimit bounds the best-effort seen mark an attach makes.
+	seenCallLimit = 5 * time.Second
 )
 
 type permissionsBody struct {
@@ -106,6 +108,18 @@ func auditAdd(r *http.Request, kv ...any) {
 		f.mu.Lock()
 		f.kv = append(f.kv, kv...)
 		f.mu.Unlock()
+	}
+}
+
+// markSeen clears a session's unseen marker. A failure only costs a stale dot, so it logs and goes on.
+func (s *Server) markSeen(ctx context.Context, device, sessionID string) {
+	if s.cfg.Writer == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), seenCallLimit)
+	defer cancel()
+	if _, err := s.cfg.Writer.MarkSessionSeen(ctx, adewire.MarkSessionSeenArgs{SessionID: sessionID}); err != nil {
+		slog.Warn("mobileweb: mark session seen", "scope", "mobileweb", "device", device, "err", err)
 	}
 }
 
@@ -271,8 +285,14 @@ func (s *Server) handleTerminal(w http.ResponseWriter, r *http.Request, d repos.
 	}
 	id := r.PathValue("id")
 	logWrite(d.ID, "terminal.attach", "session", id)
+	var seen sync.Once
 	s.cfg.Terminals.Serve(w, r, d, id, func() bool {
 		row, found, err := s.cfg.Devices.ByID(d.ID)
-		return err == nil && found && row.RevokedAt == nil && row.ExpiresAt > s.cfg.Now().UnixMilli() && row.CanAgentInput && s.agentInputGlobal()
+		ok := err == nil && found && row.RevokedAt == nil && row.ExpiresAt > s.cfg.Now().UnixMilli() && row.CanAgentInput && s.agentInputGlobal()
+		if ok {
+			// Attaching is the phone's view of the session; best effort, off the attach path.
+			seen.Do(func() { go s.markSeen(r.Context(), d.ID, id) })
+		}
+		return ok
 	})
 }

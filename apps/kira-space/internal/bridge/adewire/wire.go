@@ -941,6 +941,10 @@ type Session struct {
 	CwdMissing     bool   `json:"cwdMissing"`
 	StartedAt      int64  `json:"startedAt"`
 	LastActiveAt   int64  `json:"lastActiveAt"`
+	// Background is a running TUI session's live background task count.
+	Background int `json:"background"`
+	// Unseen: the session finished its work and the user has not viewed it since.
+	Unseen bool `json:"unseen"`
 	// Sandbox is the badge of a manual step session's sandbox; null when it runs without one.
 	Sandbox *RunSandboxBadge `json:"sandbox"`
 }
@@ -1397,6 +1401,10 @@ type RestartSessionArgs struct {
 }
 
 type CloseSessionArgs struct {
+	SessionID string `json:"sessionId"`
+}
+
+type MarkSessionSeenArgs struct {
 	SessionID string `json:"sessionId"`
 }
 

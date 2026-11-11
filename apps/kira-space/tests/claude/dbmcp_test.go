@@ -175,6 +175,64 @@ func TestDbMcpBrowseThroughClaude(t *testing.T) {
 	}
 }
 
+// TestDbMcpBrowsePreferredThroughClaude (P609): with read and masked both allowed, run_query is a real
+// option, yet the real claude counts with browse_table's count and in filter and pages with offset.
+func TestDbMcpBrowsePreferredThroughClaude(t *testing.T) {
+	app := newRealApp(t)
+	connName, url, helper := enableDbMcp(t, app, func(f *model.ConnectionFields, dbFile string) {
+		db, err := sql.Open("sqlite", dbFile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer db.Close()
+		if _, err := db.Exec(`CREATE TABLE notes (id INTEGER PRIMARY KEY, title TEXT);
+			INSERT INTO notes (title) VALUES ('a'),('b'),('c'),('d'),('e')`); err != nil {
+			t.Fatal(err)
+		}
+		f.McpReadMode, f.McpMaskedMode = "allow", "allow"
+	})
+	cfg := filepath.Join(t.TempDir(), "mcp.json")
+	raw, err := json.Marshal(map[string]any{"mcpServers": map[string]any{
+		dbServer: map[string]any{"type": "http", "url": url, "headersHelper": loginshell.Quote(helper)},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	browseTool, queryTool := "mcp__"+dbServer+"__browse_table", "mcp__"+dbServer+"__run_query"
+	out, _ := app.claudeP(t, t.TempDir(), nil,
+		"In the connection named "+connName+", count the rows of the notes table whose id is 1, 2 or 5, then list every note two per page. Then reply with the word done.",
+		"--strict-mcp-config", "--mcp-config", cfg,
+		"--allowedTools", "mcp__"+dbServer+"__list_connections,"+browseTool+","+queryTool+",mcp__"+dbServer+"__list_children,mcp__"+dbServer+"__describe",
+		"--output-format", "stream-json", "--verbose")
+	msgs := parseStream(out)
+	if uses := toolUses(msgs, queryTool); len(uses) > 0 {
+		t.Fatalf("claude called run_query %d time(s), want browse_table only: %s", len(uses), uses[0].Input)
+	}
+	var counted, paged bool
+	for _, u := range toolUses(msgs, browseTool) {
+		var in struct {
+			Count   bool `json:"count"`
+			Offset  int  `json:"offset"`
+			Filters []struct {
+				Op string `json:"op"`
+			} `json:"filters"`
+		}
+		if err := json.Unmarshal(u.Input, &in); err != nil {
+			t.Fatalf("browse_table input %s: %v", u.Input, err)
+		}
+		for _, f := range in.Filters {
+			counted = counted || (in.Count && f.Op == "in")
+		}
+		paged = paged || in.Offset > 0
+	}
+	if !counted || !paged {
+		t.Fatalf("browse_table calls: count with in filter = %v, offset paging = %v, want both:\n%s", counted, paged, tail(out, 2500))
+	}
+}
+
 // TestDbMcpScriptThroughClaude has the real claude run an allow-mode script over MCP, then read
 // the output from the run result itself. The get_script_run filter is the model's choice, so the
 // flow test covers it.

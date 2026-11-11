@@ -103,9 +103,14 @@ func TestDbMcpEngineExpensive(t *testing.T) {
 			t.Fatalf("explain of the full read = %q (rows %v), want a plan estimating the whole table", text(ex), rows)
 		}
 
-		// 6. browse_table runs the same check.
-		if r := browse(t, sess, connID, map[string]any{"path": e.bigPath}); !r.IsError || !strings.Contains(text(r), "expensive_query") {
+		// 6. browse_table runs the same check, rows and count. A page ordered by the key reads about one
+		// page of rows through the index, so the row read sorts on an unindexed column; the count filters on one.
+		scan := []map[string]any{{"column": "payload", "op": "like", "value": "a%"}}
+		if r := browse(t, sess, connID, map[string]any{"path": e.bigPath, "order": []map[string]any{{"column": "payload", "direction": "asc"}}}); !r.IsError || !strings.Contains(text(r), "expensive_query") {
 			t.Fatalf("browse_table of big_rows = %q, want an expensive_query refusal", text(r))
+		}
+		if r := browse(t, sess, connID, map[string]any{"path": e.bigPath, "count": true, "filters": scan}); !r.IsError || !strings.Contains(text(r), "expensive_query") {
+			t.Fatalf("browse_table count of big_rows = %q, want an expensive_query refusal", text(r))
 		}
 
 		// 7. Check off for the connection: no EXPLAIN op, the statement runs.

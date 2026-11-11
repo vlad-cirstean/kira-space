@@ -111,6 +111,7 @@ export const indexMetaSchema = /*#__PURE__*/ z.object({
   columns: /*#__PURE__*/ z.array(z.string()),
   unique: z.boolean(),
   primary: z.boolean(),
+  partial: z.boolean().optional(), // WHERE predicate: uniqueness holds only inside it
   method: z.string().nullable(),
 });
 export type IndexMeta = z.infer<typeof indexMetaSchema>;

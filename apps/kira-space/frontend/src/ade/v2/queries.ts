@@ -32,6 +32,7 @@ import type {
   ImportWorkflowArgs,
   LaunchStepArgs,
   LinkProofArgs,
+  MarkSessionSeenArgs,
   NewStepArgs,
   NewWorkflowArgs,
   NextPassArgs,
@@ -59,6 +60,7 @@ import type {
   SaveWorkflowYamlArgs,
   SendArgs,
   SendReviewArgs,
+  SessionsResult,
   SetBranchBaseArgs,
   SetPlanArgs,
   SetTaskBranchArgs,
@@ -515,6 +517,21 @@ export function useRestoreTask() {
   });
 }
 
+function withSeen(prev: SessionsResult, args: MarkSessionSeenArgs): SessionsResult {
+  return {
+    ...prev,
+    sessions: prev.sessions.map((s) => (s.id === args.sessionId ? { ...s, unseen: false } : s)),
+  };
+}
+
+/** Marks a finished session viewed; the cached list drops its unseen flag at once. */
+export function useMarkSessionSeen() {
+  return useMutation({
+    mutationFn: (args: MarkSessionSeenArgs) => control.adeTaskMarkSessionSeen(args),
+    ...optimisticUpdate<SessionsResult, MarkSessionSeenArgs>(queryClient, sessionsKey, withSeen),
+  });
+}
+
 export function useFocusSession() {
   return useMutation({ mutationFn: (args: FocusSessionArgs) => control.adeTaskFocusSession(args) });
 }
@@ -596,7 +613,11 @@ export function useTaskArtifacts(taskId: MaybeRefOrGetter<string>) {
  * the line keeps showing the copy meanwhile. A fresh answer that is still stale (the refresh failed)
  * starts nothing, so the pair never loops. A board push refetches it.
  */
-export function useTaskIssue(taskId: MaybeRefOrGetter<string>, link: MaybeRefOrGetter<string>) {
+export function useTaskIssue(
+  taskId: MaybeRefOrGetter<string>,
+  link: MaybeRefOrGetter<string>,
+  enabled: MaybeRefOrGetter<boolean> = true,
+) {
   let nextFresh = false;
   let lastFresh = false;
   const query = useQuery(() => ({
@@ -609,11 +630,13 @@ export function useTaskIssue(taskId: MaybeRefOrGetter<string>, link: MaybeRefOrG
       );
     },
     staleTime: 60_000,
+    enabled: toValue(enabled),
   }));
   watch(
     () => query.data.value,
     (issue) => {
-      if (!issue?.stale || lastFresh) return;
+      // A refresh another reader of this key already started is not restarted.
+      if (!issue?.stale || lastFresh || query.isFetching.value) return;
       nextFresh = true;
       void query.refetch();
     },

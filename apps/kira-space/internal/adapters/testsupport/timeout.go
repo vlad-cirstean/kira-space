@@ -47,7 +47,10 @@ func StatementTimeout(c StatementTimeoutCase) Scenario {
 			}
 			const limit = time.Second
 			start := time.Now()
-			_, err := target.Execute(context.Background(), model.ConsoleRequest{
+			// Bounded so a missing timeout fails in seconds instead of waiting out the query.
+			ctx, cancel := context.WithTimeout(context.Background(), limit+10*time.Second)
+			defer cancel()
+			_, err := target.Execute(ctx, model.ConsoleRequest{
 				Path: c.Path, Statements: []string{c.Slow}, ReadOnly: c.Lane, StatementTimeout: limit,
 			}, adapters.NewOpCtx("timeout-slow"))
 			var detail *adapters.TimeoutDetail
@@ -111,7 +114,10 @@ func ReadStatementTimeout(c ReadStatementTimeoutCase) Scenario {
 				target = laneAdapter(t, a, cfg)
 			}
 			read := func(path model.NodePath, limit time.Duration) error {
-				_, err := target.Read(context.Background(), adapters.ReadRequest{
+				// Bounded so a missing timeout fails in seconds instead of waiting out the query.
+				ctx, cancel := context.WithTimeout(context.Background(), limit+10*time.Second)
+				defer cancel()
+				_, err := target.Read(ctx, adapters.ReadRequest{
 					Path: path, PageSize: 10, Cursor: model.PageCursor{Mode: "offset"}, StatementTimeout: limit,
 				}, adapters.NewOpCtx("read-timeout"))
 				return err

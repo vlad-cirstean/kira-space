@@ -1039,6 +1039,17 @@ type browseResult struct {
 	Offset     int  `json:"offset"`
 	HasMore    bool `json:"hasMore"`
 	NextOffset *int `json:"nextOffset,omitempty"`
+	// Order is the effective sort, key tiebreaker included; StableOrder says pages cannot overlap.
+	Order       []browseOrder `json:"order,omitempty"`
+	StableOrder bool          `json:"stableOrder"`
+	PagingNote  string        `json:"pagingNote,omitempty"`
+}
+
+// browseCountResult is browse_table's answer to count: true.
+type browseCountResult struct {
+	Count int64        `json:"count"`
+	Exact bool         `json:"exact"`
+	Plan  *planSummary `json:"plan,omitempty"`
 }
 
 // renderBrowsePage renders one browse page. No statement-text guard runs: the statement is app-built from
@@ -1051,10 +1062,24 @@ func renderBrowsePage(pg page.TabularPage, p browsePlan, mk *maskset, plan *plan
 		t.WithheldColumns = append(append([]string(nil), p.withheld...), t.WithheldColumns...)
 		t.WithheldNote = withheldNoteFor(len(t.WithheldColumns))
 	}
-	res := browseResult{tabularResult: t, Offset: p.offset, HasMore: pg.Position.HasMore}
+	res := browseResult{tabularResult: t, Offset: p.offset, HasMore: pg.Position.HasMore, StableOrder: p.stable, PagingNote: p.pagingNote}
+	if p.sort != nil {
+		for _, term := range p.sort.Terms {
+			res.Order = append(res.Order, browseOrder{Column: term.Column, Direction: term.Direction})
+		}
+	}
 	if res.HasMore {
 		next := p.offset + pg.RowCount
-		res.NextOffset = &next
+		if next > browseMaxOffset {
+			note := fmt.Sprintf("next offset passes %d: narrow the read with a filter on the key column, or use run_query where reads are allowed", browseMaxOffset)
+			if p.stable && len(res.Order) == 1 {
+				// One key column as the whole order: gt or lt on it is an exact keyset step.
+				note = fmt.Sprintf("next offset passes %d: continue with a gt or lt filter on the last row's %s and offset 0", browseMaxOffset, res.Order[0].Column)
+			}
+			res.PagingNote = strings.TrimSpace(res.PagingNote + " " + note)
+		} else {
+			res.NextOffset = &next
+		}
 	}
 	return res
 }

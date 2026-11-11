@@ -187,11 +187,16 @@ func readPage(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx, target Re
 }
 
 // countRows is read.ts's countRows.
-func countRows(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx, target QualifiedName, filter *string) (adapters.CountResult, error) {
+func countRows(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx, target QualifiedName, filter *string, conds []model.Condition, columns []model.ColumnMeta) (adapters.CountResult, error) {
 	relationSQL := quoteIdent(target.Database) + "." + quoteIdent(target.Table)
-	query := adapters.BuildCountSQL(relationSQL, filter)
+	addParam, paramsPtr := adapters.NewParamAccumulator()
+	whereSQL, err := adapters.ApplyConditions(adapters.WhereClause(filter), conds, columns, quoteIdent, questionPlaceholder, addParam, typeClassFor)
+	if err != nil {
+		return adapters.CountResult{}, err
+	}
+	query := adapters.BuildCountSQLWhere(relationSQL, whereSQL)
 
-	rows, err := runArrayQuery(ctx, conn, query, nil, op, false)
+	rows, err := runArrayQuery(ctx, conn, query, *paramsPtr, op, len(conds) > 0)
 	if err != nil {
 		return adapters.CountResult{}, err
 	}

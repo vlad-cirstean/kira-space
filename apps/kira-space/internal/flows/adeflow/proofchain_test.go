@@ -147,6 +147,15 @@ func TestProofChain(t *testing.T) {
 		t.Fatalf("steps = %+v", p.Steps)
 	}
 
+	// The proof window's history names the task holding a session, and none for an unattached one.
+	titles := map[string]string{}
+	for _, sum := range mustSessions(t, svc) {
+		titles[sum.Name] = sum.TaskTitle
+	}
+	if titles["Login checks"] != "Login form" || titles["Legacy"] != "" {
+		t.Fatalf("task titles = %+v, want Login checks on %q and Legacy on none", titles, "Login form")
+	}
+
 	// Refusals through the engine, as the agent sees them.
 	call := agentmcp.SpaceCall{TaskID: other.ID}
 	for name, want := range map[string]string{

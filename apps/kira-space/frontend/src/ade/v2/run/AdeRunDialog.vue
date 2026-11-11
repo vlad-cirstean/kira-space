@@ -29,6 +29,7 @@ import {
   previewPlain,
   runMessageVars,
 } from '../board/runMessage';
+import AdeLinkStrip from '../links/AdeLinkStrip.vue';
 import AdeSetupProgress from '../panel/AdeSetupProgress.vue';
 import { usePlanModel } from '../plan/usePlanModel';
 import { useAdePromptPreview, useStartRun } from '../queries';
@@ -184,7 +185,7 @@ const send = sending.run;
       </DialogHeader>
       <DialogBody>
         <div v-if="named.length" class="flex flex-col gap-1.5" data-testid="ade-run-branches">
-          <div v-for="r in named" :key="r.id" class="flex items-center gap-3">
+          <div v-for="(r, i) in named" :key="r.id" class="flex items-center gap-3">
             <AdeRepoTag :code-repo-id="r.branch.codeRepoId" :label="r.repo" />
             <Label
               :for="`ade-run-branch-${r.id}`"
@@ -198,6 +199,7 @@ const send = sending.run;
               v-model="names[r.id]"
               class="flex-1 font-data"
               :placeholder="placeholder"
+              :data-dialog-initial="i === 0 || undefined"
               data-testid="ade-run-branch"
             />
           </div>
@@ -209,6 +211,9 @@ const send = sending.run;
           :repo="r.repo"
           data-testid="ade-run-setup"
         />
+        <div v-if="card" data-testid="ade-run-links">
+          <AdeLinkStrip :task="card.task" mode="view" />
+        </div>
         <div
           v-if="handoverIn || taskNotes"
           class="flex flex-col gap-1.5"
@@ -268,6 +273,7 @@ const send = sending.run;
               id="ade-run-message"
               v-model="message"
               class="max-h-90 resize-y"
+              :data-dialog-initial="named.length === 0 || undefined"
               data-testid="ade-run-message"
             />
             <FieldDescription data-testid="ade-run-suffix">
@@ -288,6 +294,7 @@ const send = sending.run;
           size="kira-lg"
           :class="ACTION_CLASS.agent"
           :pending="busy"
+          :data-dialog-initial="(smartStep && named.length === 0) || undefined"
           data-testid="ade-run-send"
           @click="send"
         >

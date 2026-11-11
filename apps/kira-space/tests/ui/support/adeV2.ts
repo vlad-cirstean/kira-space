@@ -248,6 +248,7 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskReadLog, response: adeFixture('log-page') },
     { channel: IPC.adeTaskSessions, response: adeFixture('sessions') },
     { channel: IPC.adeTaskStopRun },
+    { channel: IPC.adeTaskMarkSessionSeen, response: false },
     { channel: IPC.adeTaskTakeOver, response: adeFixture('launch') },
     { channel: IPC.adeTaskRestartSession, response: adeFixture('launch') },
     { channel: IPC.adeTaskCloseSession, response: null },
@@ -335,6 +336,7 @@ export async function emitAgentEvent(
   terminalId: string,
   event: string,
   cwd = '',
+  extra: { agentId?: string; background?: number } = {},
 ): Promise<void> {
   await emitWailsEvent(page, IPC.agentEvent, {
     terminalId,
@@ -348,6 +350,8 @@ export async function emitAgentEvent(
     source: '',
     reason: '',
     lastAssistantMessage: '',
+    agentId: extra.agentId ?? '',
+    background: extra.background ?? 0,
   });
 }
 

@@ -56,7 +56,9 @@ type IndexMeta struct {
 	Columns []string `json:"columns"`
 	Unique  bool     `json:"unique"`
 	Primary bool     `json:"primary"`
-	Method  *string  `json:"method"`
+	// Partial marks an index with a WHERE predicate: uniqueness holds only inside it.
+	Partial bool    `json:"partial"`
+	Method  *string `json:"method"`
 }
 
 // ForeignKeyMeta mirrors domain/tree.ts's foreignKeyMetaSchema.

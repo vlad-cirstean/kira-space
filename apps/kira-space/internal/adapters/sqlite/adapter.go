@@ -435,7 +435,16 @@ func (a *Adapter) Count(ctx context.Context, req adapters.CountRequest, op *adap
 	databaseSegment, objectSegment := segs[0], segs[1]
 	return runOnConn(ctx, a, op.OpID, func(driverCtx context.Context, conn *sql.Conn) (adapters.CountResult, error) {
 		target := QualifiedName{Database: databaseSegment.Name, Table: objectSegment.Name}
-		return countRows(driverCtx, conn, op, target, req.Filter)
+		var columns []model.ColumnMeta
+		if len(req.Conditions) > 0 {
+			// Conditions need column metadata (types, binary detection), unlike a bare count.
+			rt, err := getReadTarget(execFor(driverCtx, conn, op), databaseSegment.Name, objectSegment.Name)
+			if err != nil {
+				return adapters.CountResult{}, err
+			}
+			columns = rt.Columns
+		}
+		return countRows(driverCtx, conn, op, target, req.Filter, req.Conditions, columns)
 	})
 }
 

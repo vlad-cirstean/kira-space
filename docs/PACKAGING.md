@@ -361,16 +361,22 @@ the renderer build, typecheck, lint, the Go unit tests, and the static half of `
 jobs, see `docs/ARCHITECTURE.md`).
 
 **`pr.yml`** (trigger: `pull_request` to `main` plus `workflow_dispatch`; no push, so `main` is reached
-only through a PR). No job `needs` another; every job starts at once:
+only through a PR). Only the three aggregates (`ui (Linux)`, `test-matrix (Linux)`, `db-compat (Linux)`) `needs` their matrix jobs; every other job starts at once:
 
 | Job | Runner | What it does |
 |---|---|---|
 | `checks (macOS)` | `macos-26` (pinned, not `macos-latest`) | cgo-aware `go vet`/build (catches darwin build-tag breaks) and the darwin&&cgo-only test packages |
 | `checks (Linux)` | `ubuntu-latest` | lint, typecheck, frontend builds, `lint:dead`, `verify:packaging` and the bun unit tests |
-| `ui (Linux, shard N/4)` | `ubuntu-latest` | Playwright `ui` project in 4 shards, fail-fast off |
-| `ui-extra (Linux)` | `ubuntu-latest` | ipc-frontend (chromium), visual (webkit), then ui-timing alone on an idle machine |
+| `ui (Linux, shard N/8)` | `ubuntu-latest` | Playwright `ui` project in 8 shards, fail-fast off |
+| `ui (Linux)` | `ubuntu-24.04` | Aggregate: fails unless every shard passed. The required-check name for ui |
+| `ui-extra (Linux)` | `ubuntu-latest` | ipc-frontend and ui-clipboard, then ui-timing alone on an idle machine |
+| `visual (Linux)` | `ubuntu-latest` | Playwright `visual` project (webkit) |
 | `go (Linux)` | `ubuntu-latest` | Go packages that start no container, plus every package the container split does not name |
 | `go-containers (Linux)` | `ubuntu-latest` | Go packages that start Testcontainers; no bun, bindings or real frontend build |
+| `test-matrix (Linux, <group>)` | `ubuntu-24.04` | Complete auth/config matrix (P25), one job per group (postgres, mysqlfamily, clickhouse, rest), 12 min. Restore-only per-group image cache keyed on the group's pinned image list; a miss pulls through `mirror.gcr.io` (P614) |
+| `test-matrix (Linux)` | `ubuntu-24.04` | Aggregate: fails unless every group passed. The required-check name for the matrix |
+| `db-compat (Linux, min\|max)` | `ubuntu-24.04` | Conformance against each kind's oldest or newest server (P16), 12 min, images pulled through the mirror (no cache: about 12 GB would pass the 10 GB repo cache limit) |
+| `db-compat (Linux)` | `ubuntu-24.04` | Aggregate: fails unless min and max passed. The required-check name for db-compat |
 
 The bundle assertion lives only in `release.yml`'s own "Assert packaged bundle and disk image" step.
 
@@ -393,7 +399,8 @@ The bundle assertion lives only in `release.yml`'s own "Assert packaged bundle a
 `refs/pull/N/merge` scope, which no other PR or release restores. `cache-warm.yml` runs on `main`
 after each merge and saves what `pr.yml` restores: Go modules, the four Go build kinds
 (`macos`, `checks`, `go-rest`, `go-ct`), bun, the `wails3` CLI, bindings, tsbuildinfo, the
-golangci-lint binary, both Playwright browser sets and the Testcontainers images (on a miss only).
+golangci-lint binary, both Playwright browser sets, the Testcontainers images and the four per-group
+`test-matrix` image caches (`matrix-images-*`; each on a miss only).
 It installs and compiles, no tests: `go test -run '^$' -exec true` builds test binaries and runs
 nothing. Cost: about 30-55 runner-minutes in parallel per merge, free on a public repo. On a private
 repo the macOS job bills at 10x, about 190 billed minutes in total.
@@ -406,15 +413,14 @@ repo the macOS job bills at 10x, about 190 billed minutes in total.
    each reaches its own binary, About dialog and bundle `Info.plist` (see "Where the version comes
    from"); it asserts both writes landed before building.
 2. `tag` resolves the tag to a commit and refuses a tag that already has a published release, and
-   a non-prerelease tag whose commit is not on `main`; then `build (macOS)`, `test-matrix (Linux)` and
-   `db-compat (Linux, min|max)` start together at that commit. `build` restores the setup action's
+   a non-prerelease tag whose commit is not on `main`; then `build (macOS)` starts at that commit. `build` restores the setup action's
    caches from `main` and saves none; `cache-warm.yml` is what fills `main`'s caches. It runs
    `bun run package` and `bun run package`, names each `.dmg`
    (`kira-space-macos-arm64.dmg`), runs `verify:packaging` and the
    bundle and disk image assert, hashes both images and uploads them as artifact `release-dmgs`.
-   `lint` and `typecheck` do not rerun here; `main` takes only PR merges, which the ruleset gates on
-   PR CI, and `tag` refuses any other commit.
-3. `publish` (ubuntu) runs only when every job above passed. It first refuses a tag that moved since
+   PR-only checks (lint, typecheck, the adapter matrix, db-compat) do not rerun here; `main` takes only
+   PR merges, which the ruleset gates on PR CI, and `tag` refuses any other commit.
+3. `publish` (ubuntu) runs only when `build` passed. It first refuses a tag that moved since
    `tag` resolved it, re-checks the artifact hashes, refuses
    a tag that already has a published release, creates a draft with both images, verifies each
    asset (`state`, `size`, `sha256` digest), then publishes with one API call. A failed job leaves
@@ -512,16 +518,14 @@ different, smaller thing than this.
 **Whether the release workflow has actually run:** yes, by tag push since v0.2.x. The dispatch path
 first runs at the v0.2.12 merge.
 
-**The on-demand DB compatibility suite is outside `pr.yml`, but gates `release.yml`.**
+**The DB compatibility suite and the adapter matrix run on every PR (P614), outside `bun run test:go`.**
 `scripts/db-compat.sh` (`bun run test:compat`, P16) runs the same per-engine conformance packages
 against each kind's oldest and newest supported server image, sixteen (kind, min|max) pairs —
-deliberately outside `bun run test:go` and outside `pr.yml`, since it's too expensive to run on
-every push. It used to also have its own standalone `workflow_dispatch`-only workflow,
-`.github/workflows/db-compat.yml`; that file is gone — `release.yml`'s own `db-compat` job now runs
-it directly, as a job (min and max in parallel) every release tag must pass before `publish` creates
-the release, and a one-off single-kind/extreme run during adapter work uses `bun run
-test:compat -- --only <kind> --min|--max` locally instead. `scripts/test-matrix.sh` (P25's complete
-auth/config tier) is the same shape and made the same move, for the same reason — see
+deliberately outside `bun run test:go`. The `db-compat` jobs of `pr.yml` (min and max in parallel)
+run it on every PR; it used to run only at release, and the standalone `db-compat.yml` is long gone.
+A one-off single-kind/extreme run during adapter work uses `bun run
+test:compat -- --only <kind> --min|--max` locally. `scripts/test-matrix.sh` (P25's complete
+auth/config tier) is the same shape and made the same move: the `test-matrix` jobs of `pr.yml` — see
 `docs/ARCHITECTURE.md`'s own note on it.
 
 **P19's `actions/{checkout,setup-go,upload-artifact}` bumps to `@v7` across `pr.yml` and
@@ -532,12 +536,17 @@ push access without the `workflow` OAuth scope, which GitHub requires for any co
 `.github/workflows/*.yml`. A session with that scope applied them; both staging directories are
 gone.
 
+**Pending workflow patch.** `docs/pending-changes/.github__workflows__pr.yml.patch` (aggregates run on
+`always()`, matrix job deadline) must be applied from a session with the `workflow` scope; delete
+the patch in the same commit.
+
 ### Repository settings (user-applied)
 
 1. Ruleset "Protected branches" (`refs/heads/main`): add **Require status checks to pass**, source
-   GitHub Actions. Add these checks: `checks (macOS)`, `checks (Linux)`, `ui (Linux, shard 1/4)`,
-   `ui (Linux, shard 2/4)`, `ui (Linux, shard 3/4)`, `ui (Linux, shard 4/4)`, `ui-extra (Linux)`,
-   `go (Linux)`, `go-containers (Linux)`. Leave "Require branches to be up to date" off: one chapter PR at a time, a stale base is rare, and a forced rebase would rerun full CI. Keep the
+   GitHub Actions. Add these checks: `checks (macOS)`, `checks (Linux)`, `ui (Linux)`,
+   `ui-extra (Linux)`, `visual (Linux)`, `go (Linux)`, `go-containers (Linux)`,
+   `test-matrix (Linux)`, `db-compat (Linux)`. Each matrix job (ui shards, test-matrix groups,
+   db-compat min/max) gates through its aggregate; never list leg names. Leave "Require branches to be up to date" off: one chapter PR at a time, a stale base is rare, and a forced rebase would rerun full CI. Keep the
    squash-only and PR rules. **Do this before step 2.** With no required checks, auto-merge merges
    the moment it is enabled.
 2. Settings, General, Pull Requests: enable **Allow auto-merge**. Squash stays allowed.

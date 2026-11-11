@@ -361,8 +361,29 @@ func (a *Adapter) Count(ctx context.Context, req adapters.CountRequest, op *adap
 		return adapters.CountResult{}, err
 	}
 	defer release()
+	track := a.trackerFor(op.OpID)
 	target := QualifiedName{Schema: schemaSegment.Name, Relation: objectSegment.Name}
-	return countRows(ctx, conn, op, a.trackerFor(op.OpID), target, req.Filter)
+	var columns []model.ColumnMeta
+	if len(req.Conditions) > 0 {
+		// Conditions need column metadata (types, binary detection), unlike a bare count.
+		rt, err := getReadTarget(ctx, execFor(conn, op, track), schemaSegment.Name, objectSegment.Name)
+		if err != nil {
+			return adapters.CountResult{}, err
+		}
+		columns = rt.Columns
+	}
+	if req.StatementTimeout > 0 {
+		restore, err := setSessionTimeout(ctx, conn, op, track, req.StatementTimeout)
+		if err != nil {
+			return adapters.CountResult{}, err
+		}
+		defer restore()
+	}
+	res, err := countRows(ctx, conn, op, track, target, req.Filter, req.Conditions, columns)
+	if err != nil {
+		return adapters.CountResult{}, timeoutError(ctx, req.StatementTimeout, err)
+	}
+	return res, nil
 }
 
 // Preview is index.ts's preview.

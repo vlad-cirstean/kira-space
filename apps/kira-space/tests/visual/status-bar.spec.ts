@@ -20,6 +20,8 @@ const sessions = {
   ).sessions.map((s, i) => ({
     ...s,
     ...PLACES[i],
+    // The contract's finished run is unseen; these shots keep the viewed state.
+    unseen: false,
     stepId: '',
     runId: '',
     cwd: '/tmp/work',

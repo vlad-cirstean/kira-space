@@ -41,6 +41,10 @@ test('contract: pasting a PR link resolves and adds it', async ({ relaunch }) =>
   await page.locator(t('ade-branch-search')).fill(resolveArgs.url);
   await expect(page.locator(t('ade-link-target'))).toContainText(target.branch);
   await expect(page.locator(t('ade-link-target'))).toContainText('#11');
+  // One line: the Add button sits level with the pill.
+  const pillTop = (await page.locator(t('ade-link-target-pill')).boundingBox())?.y ?? -100;
+  const addTop = (await page.locator(t('ade-link-add')).boundingBox())?.y ?? 100;
+  expect(Math.abs(addTop - pillTop)).toBeLessThanOrEqual(4);
   expect(calls(control, IPC.adeTaskResolveHostLink)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskResolveHostLink)[0]?.args).toEqual(resolveArgs);
   await page.locator(t('ade-link-add')).click();

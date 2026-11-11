@@ -135,8 +135,13 @@ func NewParamAccumulator() (addParam func(any) int, params *[]any) {
 // BuildCountSQL is read.ts's countRows SQL assembly: "SELECT count(*) AS n FROM <relation>
 // [WHERE ...]" — every relational adapter's countRows builds this identically.
 func BuildCountSQL(relationSQL string, filter *string) string {
+	return BuildCountSQLWhere(relationSQL, WhereClause(filter))
+}
+
+// BuildCountSQLWhere is BuildCountSQL for a WHERE clause already assembled (filter plus conditions).
+func BuildCountSQLWhere(relationSQL, where string) string {
 	sqlParts := []string{"SELECT count(*) AS n", "FROM " + relationSQL}
-	if where := WhereClause(filter); where != "" {
+	if where != "" {
 		sqlParts = append(sqlParts, where)
 	}
 	return strings.Join(sqlParts, "\n")

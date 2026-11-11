@@ -74,7 +74,7 @@ export function useOpenHostView() {
 }
 
 /**
- * Opens (or focuses) the view window for a change request link. A link the view refuses or fails to open
+ * Opens (or focuses) the view window for a change request or issue link. A link the view refuses or fails to open
  * opens in the browser instead, so a click is never dead. Issue keys keep useOpenHostView: a bare key has
  * no URL to fall back to.
  */

@@ -1,0 +1,14 @@
+{"hook_event_name":"SessionStart","session_id":"s1","source":"startup"}
+{"hook_event_name":"UserPromptSubmit","session_id":"s1"}
+{"hook_event_name":"PreToolUse","session_id":"s1","tool_name":"Bash","tool_use_id":"t1"}
+{"hook_event_name":"PostToolUse","session_id":"s1","tool_name":"Bash","tool_use_id":"t1"}
+{"hook_event_name":"PreToolUse","session_id":"s1","tool_name":"Agent","tool_use_id":"t2"}
+{"hook_event_name":"PostToolUse","session_id":"s1","tool_name":"Agent","tool_use_id":"t2"}
+{"hook_event_name":"Stop","session_id":"s1","stop_hook_active":false,"background_tasks":[{"id":"b1","type":"shell","status":"running"},{"id":"a1","type":"subagent","status":"running"}],"session_crons":[],"last_assistant_message":"started"}
+{"hook_event_name":"PreToolUse","session_id":"s1","tool_name":"Bash","tool_use_id":"t3","agent_id":"a1","agent_type":"general-purpose"}
+{"hook_event_name":"PostToolUse","session_id":"s1","tool_name":"Bash","tool_use_id":"t3","agent_id":"a1","agent_type":"general-purpose"}
+{"hook_event_name":"SubagentStop","session_id":"s1","agent_id":"a1","agent_type":"general-purpose","stop_hook_active":false,"background_tasks":[{"id":"b1","type":"shell","status":"running"},{"id":"a1","type":"subagent","status":"running"}],"session_crons":[],"last_assistant_message":"sub done"}
+{"hook_event_name":"UserPromptSubmit","session_id":"s1"}
+{"hook_event_name":"Stop","session_id":"s1","stop_hook_active":false,"background_tasks":[{"id":"b1","type":"shell","status":"running"}],"session_crons":[],"last_assistant_message":"waiting on shell"}
+{"hook_event_name":"UserPromptSubmit","session_id":"s1"}
+{"hook_event_name":"Stop","session_id":"s1","stop_hook_active":false,"background_tasks":[],"session_crons":[],"last_assistant_message":"all done"}

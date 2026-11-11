@@ -167,6 +167,15 @@ func TestDbMcpEngineTimeoutBrowse(t *testing.T) {
 		if d := time.Since(start); d > 4*time.Second {
 			t.Errorf("browse refusal took %v, want the 1 s limit to cut a 5 s read", d)
 		}
+
+		start = time.Now()
+		res = browse(t, sess, connID, map[string]any{"path": path, "count": true})
+		if !res.IsError || !strings.Contains(text(res), "statement_timeout") {
+			t.Fatalf("browse_table count of a slow view = %q, want a statement_timeout refusal", text(res))
+		}
+		if d := time.Since(start); d > 4*time.Second {
+			t.Errorf("count refusal took %v, want the 1 s limit to cut a 5 s read", d)
+		}
 	})
 }
 

@@ -274,6 +274,7 @@
       {
         "activity": "",
         "agentSessionId": "<masked>",
+        "background": 0,
         "branchId": "<masked>",
         "cwd": "<work>/api",
         "cwdMissing": false,
@@ -289,7 +290,8 @@
         "state": "running",
         "stepId": "work",
         "taskId": "<masked>",
-        "terminalId": "<masked>"
+        "terminalId": "<masked>",
+        "unseen": false
       }
     ]
   },
@@ -298,6 +300,7 @@
       {
         "activity": "",
         "agentSessionId": "<masked>",
+        "background": 0,
         "branchId": "<masked>",
         "cwd": "<home>/kira-space-wts/api/<wt>",
         "cwdMissing": false,
@@ -318,7 +321,8 @@
         "state": "running",
         "stepId": "work",
         "taskId": "<masked>",
-        "terminalId": "<masked>"
+        "terminalId": "<masked>",
+        "unseen": false
       }
     ]
   }

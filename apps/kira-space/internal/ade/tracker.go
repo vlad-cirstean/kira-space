@@ -186,6 +186,10 @@ type Tracker struct {
 	// agentSessionID caches each live record's own current agent session id, so HandleEvent can
 	// detect a SessionStart naming a different one (a /clear) without a DB read on every event.
 	agentSessionID map[string]string
+	// background is each live record's background task count from its last Stop or SubagentStop;
+	// wake marks a record whose turn armed a self-wake. Both are in memory only: PTYs die with the app.
+	background map[string]int
+	wake       map[string]bool
 	// fresh marks records Compose inserted (not resumed), so Abort deletes rather than stops them.
 	fresh map[string]bool
 
@@ -215,6 +219,8 @@ func NewTracker(deps TrackerDeps) *Tracker {
 		spawnedAt:      map[string]time.Time{},
 		lastActive:     map[string]int64{},
 		agentSessionID: map[string]string{},
+		background:     map[string]int{},
+		wake:           map[string]bool{},
 		fresh:          map[string]bool{},
 		graceTimers:    map[string]*time.Timer{},
 	}
@@ -651,6 +657,8 @@ func (t *Tracker) Abort(terminalID string) {
 	delete(t.spawnedAt, recordID)
 	delete(t.lastActive, recordID)
 	delete(t.agentSessionID, recordID)
+	delete(t.background, recordID)
+	delete(t.wake, recordID)
 	delete(t.fresh, recordID)
 	if timer := t.graceTimers[recordID]; timer != nil {
 		timer.Stop()
@@ -841,6 +849,7 @@ func (t *Tracker) HandleEvent(ev harness.AgentEvent) {
 		sessionChanged = true
 	}
 	flushNow := ev.Event == harness.EventTurnEnd || ev.Event == harness.EventSessionEnd
+	backgroundChanged, markUnseen := t.trackStatusLocked(recordID, ev)
 	t.mu.Unlock()
 
 	if sessionChanged {
@@ -853,9 +862,65 @@ func (t *Tracker) HandleEvent(ev harness.AgentEvent) {
 			slog.Warn("ade: handle event: set last active", "scope", "ade", "recordId", recordID, "err", err)
 		}
 	}
-	if sessionChanged && t.deps.OnChange != nil {
+	if markUnseen {
+		if err := t.deps.Store.SetUnseen(recordID, nowMs); err != nil {
+			slog.Warn("ade: handle event: set unseen", "scope", "ade", "recordId", recordID, "err", err)
+		}
+	}
+	if (sessionChanged || backgroundChanged || markUnseen) && t.deps.OnChange != nil {
 		t.deps.OnChange()
 	}
+}
+
+// trackStatusLocked updates the background count and wake flag for ev. backgroundChanged reports a
+// count change; markUnseen is a main Stop that ended the work: no background tasks, no wake armed.
+// Subagent events never arm a wake. mu is held.
+func (t *Tracker) trackStatusLocked(recordID string, ev harness.AgentEvent) (backgroundChanged, markUnseen bool) {
+	switch ev.Event {
+	case harness.EventToolStart:
+		if ev.Wakes && ev.AgentID == "" {
+			t.wake[recordID] = true
+		}
+	case harness.EventPrompt:
+		if ev.AgentID == "" {
+			delete(t.wake, recordID)
+		}
+	case harness.EventSessionEnd, harness.EventSessionStart:
+		if ev.AgentID == "" {
+			delete(t.wake, recordID)
+			backgroundChanged = t.setBackgroundLocked(recordID, 0)
+		}
+	case harness.EventSubagentEnd:
+		backgroundChanged = t.setBackgroundLocked(recordID, ev.Background)
+	case harness.EventTurnEnd:
+		if ev.AgentID != "" {
+			return false, false
+		}
+		armed := t.wake[recordID]
+		delete(t.wake, recordID)
+		backgroundChanged = t.setBackgroundLocked(recordID, ev.Background)
+		markUnseen = ev.Background == 0 && !armed
+	}
+	return backgroundChanged, markUnseen
+}
+
+func (t *Tracker) setBackgroundLocked(recordID string, n int) bool {
+	if t.background[recordID] == n {
+		return false
+	}
+	if n == 0 {
+		delete(t.background, recordID)
+	} else {
+		t.background[recordID] = n
+	}
+	return true
+}
+
+// Background is the live background task count of a running record, 0 when none or unknown.
+func (t *Tracker) Background(recordID string) int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.background[recordID]
 }
 
 // Send forwards message to sessionID's own live terminal as a bracketed paste followed by Enter

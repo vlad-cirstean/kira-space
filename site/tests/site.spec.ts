@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
-import { BUILD_SECTIONS } from '../src/data/build';
+import { BUILD, BUILD_SECTIONS } from '../src/data/build';
 import { HERO, INSTALL } from '../src/data/content';
 import { SHOT_CAPTURE, type ShotId } from '../src/data/shotCapture';
 import { expectShotImage } from './shotImage';
@@ -10,7 +10,7 @@ import { expectShotImage } from './shotImage';
 const BASE = '/kira-space/';
 interface Route {
   readonly path: string;
-  readonly name: string;
+  readonly title: string;
   readonly h1: string;
   readonly hero: ShotId;
   readonly shots: readonly ShotId[];
@@ -21,7 +21,7 @@ interface Route {
 const ROUTES: readonly Route[] = [
   {
     path: '',
-    name: 'Kira Space',
+    title: 'Everything agents need, in one place.',
     h1: 'Everything agents need, in one place.',
     hero: 'space-agents-board',
     shots: [
@@ -41,7 +41,7 @@ const ROUTES: readonly Route[] = [
   },
   {
     path: 'build/',
-    name: 'Build with Kira',
+    title: BUILD.title,
     h1: 'Build with Kira',
     hero: 'build-start-board',
     shots: BUILD_SECTIONS.flatMap((section) => section.shots),
@@ -212,9 +212,10 @@ for (const route of ROUTES) {
     test('head names this tab and carries the share image', async ({ page, baseURL }) => {
       await openPage(page, route);
       await expect(page.locator('h1')).toHaveText(route.h1);
-      await expect(page).toHaveTitle(new RegExp(route.name));
+      await expect(page).toHaveTitle(route.title);
       const meta = (name: string) =>
         page.locator(`meta[property="${name}"], meta[name="${name}"]`).getAttribute('content');
+      expect(await meta('og:title')).toBe(route.title);
       const og = await meta('og:image');
       expect(og).toMatch(
         /^https:\/\/vlad-cirstean\.github\.io\/kira-space\/_astro\/kira-share\.[^/]+\.png$/,

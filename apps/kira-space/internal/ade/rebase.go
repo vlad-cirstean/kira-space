@@ -603,12 +603,7 @@ func (b *TaskBoard) settleRebase(runID, sessionID string, spec model.AdeRebaseSp
 	}
 	now := b.deps.Now().UnixMilli()
 	b.finishRunOp(sessionID, out)
-	if sessionID != "" {
-		if err := b.deps.Sessions.MarkStopped(sessionID, now); err != nil {
-			slog.Warn("ade: stop headless session", "scope", "ade", "session", sessionID, "err", err)
-		}
-		b.notifySessions()
-	}
+	b.stopHeadlessSession(sessionID, now, out)
 	updated, err := b.deps.Tasks.UpdateRun(runID, model.AdeRunPatch{
 		State: &out.state, Note: &out.note, Summary: &out.summary, ExitCode: out.exit, FinishedAt: &now,
 		Outcome: storedOutcome(out.out),

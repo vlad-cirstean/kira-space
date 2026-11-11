@@ -1,0 +1,95 @@
+{
+  "AdeTaskService.Sessions#background": {
+    "sessions": [
+      {
+        "activity": "",
+        "agentSessionId": "<masked>",
+        "background": 2,
+        "branchId": "<masked>",
+        "cwd": "<masked>",
+        "cwdMissing": false,
+        "id": "<masked>",
+        "lastActiveAt": 0,
+        "mode": "tui",
+        "provider": "claude",
+        "purpose": "",
+        "resumes": "<masked>",
+        "runId": "<masked>",
+        "sandbox": null,
+        "startedAt": 0,
+        "state": "running",
+        "stepId": "<masked>",
+        "taskId": "<masked>",
+        "terminalId": "<masked>",
+        "unseen": false
+      }
+    ]
+  },
+  "AdeTaskService.Sessions#seen": {
+    "sessions": [
+      {
+        "activity": "",
+        "agentSessionId": "<masked>",
+        "background": 0,
+        "branchId": "<masked>",
+        "cwd": "<masked>",
+        "cwdMissing": false,
+        "id": "<masked>",
+        "lastActiveAt": 0,
+        "mode": "tui",
+        "provider": "claude",
+        "purpose": "",
+        "resumes": "<masked>",
+        "runId": "<masked>",
+        "sandbox": null,
+        "startedAt": 0,
+        "state": "running",
+        "stepId": "<masked>",
+        "taskId": "<masked>",
+        "terminalId": "<masked>",
+        "unseen": false
+      }
+    ]
+  },
+  "AdeTaskService.Sessions#unseen": {
+    "sessions": [
+      {
+        "activity": "",
+        "agentSessionId": "<masked>",
+        "background": 0,
+        "branchId": "<masked>",
+        "cwd": "<masked>",
+        "cwdMissing": false,
+        "id": "<masked>",
+        "lastActiveAt": 0,
+        "mode": "tui",
+        "provider": "claude",
+        "purpose": "",
+        "resumes": "<masked>",
+        "runId": "<masked>",
+        "sandbox": null,
+        "startedAt": 0,
+        "state": "running",
+        "stepId": "<masked>",
+        "taskId": "<masked>",
+        "terminalId": "<masked>",
+        "unseen": true
+      }
+    ]
+  },
+  "event:kira:agent:event": {
+    "agentId": "",
+    "background": 2,
+    "cwd": "",
+    "event": "Stop",
+    "lastAssistantMessage": "started",
+    "message": "",
+    "notificationType": "",
+    "reason": "",
+    "sessionId": "s1",
+    "source": "",
+    "terminalId": "<masked>",
+    "toolName": "",
+    "toolUseId": ""
+  }
+}

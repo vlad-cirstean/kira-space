@@ -20,6 +20,8 @@ const ASK = {
   source: '',
   reason: '',
   lastAssistantMessage: '',
+  agentId: '',
+  background: 0,
 };
 
 const waitForQuestion = (server: MobileServer, item: Locator) =>
