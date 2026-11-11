@@ -15,6 +15,8 @@ export interface LinkItem {
   /** What the inline edit starts with. */
   editText: string;
   url: string;
+  /** The key the in-app view looks up when there is no url: artifact ref, Jira key, host ref. */
+  ref: string;
   kind: Artifact['kind'];
   /** `jira` and `host` are the task's own link fields; `stored` rows are the user's own. */
   origin: 'jira' | 'host' | 'stored' | 'detected';
@@ -50,6 +52,7 @@ function fromArtifact(a: Artifact): LinkItem {
     source: a.source,
     editText: stored ? storedEditText(a) : a.title,
     url: a.url,
+    ref: a.ref,
     kind: a.kind,
     origin: stored ? 'stored' : 'detected',
     artifactId: stored ? a.id : undefined,
@@ -108,6 +111,7 @@ export function linkGroups(
       source: 'jira',
       editText: jira.url || jira.key,
       url: jira.url,
+      ref: jira.key,
       kind: 'issue',
       origin: 'jira',
       sessionId: '',
@@ -122,6 +126,7 @@ export function linkGroups(
       source: 'host',
       editText: task.hostUrl,
       url: task.hostUrl,
+      ref: task.hostLink?.ref ?? '',
       kind: task.hostLink?.kind ?? 'link',
       origin: 'host',
       sessionId: '',

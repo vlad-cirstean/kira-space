@@ -40,6 +40,7 @@ const item = computed<LinkItem | null>(() => {
     source: 'host',
     editText: cr ? cr.url : tg.branch,
     url: cr ? cr.url : '',
+    ref: '',
     kind: cr ? 'changeRequest' : 'branch',
     origin: 'host',
     sessionId: '',

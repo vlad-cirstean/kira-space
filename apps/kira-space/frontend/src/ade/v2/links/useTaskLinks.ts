@@ -1,8 +1,9 @@
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import { logWarn } from '@workbench/bridge/log';
 import { computed, type MaybeRefOrGetter, ref, toValue } from 'vue';
 import { control } from '../../../bridge/control';
-import { useOpenChangeRequest } from '../../../hostview/queries';
+import { useOpenChangeRequest, useOpenHostView } from '../../../hostview/queries';
 import type { Tone } from '../board/actions';
 import { taskPatch } from '../board/panelFacts';
 import {
@@ -13,6 +14,8 @@ import {
   useTaskIssue,
   useUpdateTask,
 } from '../queries';
+import { useMarkTrackedSeen } from '../updates/queries';
+import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { Artifact, Task } from '../wire';
 import { type LinkCategory, type LinkItem, linkGroups } from './linkGroups';
 
@@ -34,6 +37,9 @@ export function useTaskLinks(
   const editLink = useEditLink();
   const removeArtifact = useRemoveArtifact();
   const openView = useOpenChangeRequest();
+  const openRef = useOpenHostView();
+  const { pending } = useTaskUpdates();
+  const markSeen = useMarkTrackedSeen();
   // Same query key as the Jira pill card's issue line: one call serves both.
   const issue = useTaskIssue(
     () => toValue(task).id,
@@ -116,14 +122,40 @@ export function useTaskLinks(
 
   const add = (line: string) => addLink.mutateAsync({ taskId: toValue(task).id, text: line });
 
-  /** A change request opens in the in-app host view (with its browser fallback); the rest in the browser. */
-  function openLink(item: LinkItem): void {
-    if (!item.url) return;
-    if (item.kind === 'changeRequest') {
-      fireAndForget(openView.mutateAsync(item.url), 'hostView.open');
-    } else {
-      fireAndForget(control.openExternal(item.url), 'ade.details');
+  /**
+   * Opens a link: in the host view where one exists (change request or issue), else in the browser;
+   * `external` always the browser. Returns false when nothing can open (no url, no in-app ref), so the
+   * caller shows the card. `onRefused` runs when the view refuses a urlless ref (no browser fallback).
+   */
+  function openLink(
+    item: LinkItem,
+    opts: { external?: boolean; onRefused?: () => void } = {},
+  ): boolean {
+    if (opts.external) {
+      if (!item.url) return false;
+      fireAndForget(control.openExternal(item.url), 'ade.links');
+      return true;
     }
+    if (item.origin === 'jira') {
+      const taskId = toValue(task).id;
+      if (pending(taskId, 'issue')) markSeen.mutate({ taskId, itemKeys: ['issue'] });
+    }
+    if ((item.kind === 'changeRequest' || item.kind === 'issue') && item.url) {
+      fireAndForget(openView.mutateAsync(item.url), 'hostView.open');
+      return true;
+    }
+    if (item.kind === 'issue' && item.ref) {
+      openRef.mutateAsync(item.ref).catch((err: unknown) => {
+        logWarn('hostView.open', `no view for ${item.ref}`, err);
+        opts.onRefused?.();
+      });
+      return true;
+    }
+    if (item.url) {
+      fireAndForget(control.openExternal(item.url), 'ade.links');
+      return true;
+    }
+    return false;
   }
 
   return { query, groups, gaps, error, add, commit, remove, recategorise, openLink };

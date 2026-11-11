@@ -4,14 +4,15 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Collapsible, CollapsibleTrigger } from '@theme/components/ui/collapsible';
 import { FieldDescription, FieldError } from '@theme/components/ui/field';
-import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
+import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useEventListener } from '@vueuse/core';
 import QueryState from '@workbench/components/QueryState.vue';
+import { isPrimaryModifier, primaryModifierName } from '@workbench/shortcuts/keys';
 import { RovingFocusGroup, RovingFocusItem } from 'reka-ui';
-import { nextTick, ref, useTemplateRef, watch } from 'vue';
+import { nextTick, ref, useId, useTemplateRef, watch } from 'vue';
 import { gapText } from '../artifacts/gapText';
 import type { Task } from '../wire';
 import AdeLinkAdd from './AdeLinkAdd.vue';
@@ -21,7 +22,8 @@ import { CATEGORY_ICON, CATEGORY_LABEL, type LinkItem } from './linkGroups';
 import { useTaskLinks } from './useTaskLinks';
 
 // The task's links as one strip: a line per non-empty category (Issues, Change requests, Misc) of 18px
-// pills. A pill opens a card; the `+` opens the add popover. `edit` changes links (Details), `add` only
+// pills. A pill click opens the link in the app (host view) where it can, else in the browser;
+// the primary modifier plus click opens it in the browser. Right-click, Space or Alt+Down open its card; the `+` opens the add popover. `edit` changes links (Details), `add` only
 // adds (handoff dialogs), `view` is read-only. Pills share one tab stop; arrows move between them.
 const props = defineProps<{
   task: Task;
@@ -42,9 +44,31 @@ const adder = useTemplateRef<{ file: (raw: string) => void }>('adder');
 const openKey = ref<string | null>(null);
 const editingKey = ref<string | null>(null);
 const addOpen = ref(false);
+const hintId = useId();
+const modifier = primaryModifierName();
 
 const canAdd = () => props.mode !== 'view';
 const canEdit = (item: LinkItem) => props.mode === 'edit' && item.origin !== 'detected';
+
+function openCard(item: LinkItem): void {
+  setOpen(item.key, true);
+}
+
+// Opens the link, else its card: nothing is left to do for a link with no target.
+function openItem(e: MouseEvent | KeyboardEvent, item: LinkItem): void {
+  const opened = links.openLink(item, {
+    external: isPrimaryModifier(e),
+    onRefused: () => openCard(item),
+  });
+  if (!opened) openCard(item);
+}
+
+// No trigger returns focus on close: put it back on the pill, unless a pointer outside closed it.
+function onCardClose(e: Event, item: LinkItem): void {
+  if (e.defaultPrevented) return;
+  e.preventDefault();
+  root.value?.querySelector<HTMLElement>(`[data-key="${CSS.escape(item.key)}"]`)?.focus();
+}
 
 function setOpen(key: string, value: boolean): void {
   if (value) {
@@ -100,7 +124,10 @@ function onKeydown(e: KeyboardEvent): void {
   if (!item) return;
   if (e.key === 'Enter') {
     e.preventDefault();
-    links.openLink(item);
+    openItem(e, item);
+  } else if (e.key === ' ') {
+    e.preventDefault();
+    openCard(item);
   } else if (e.key === 'F2' && canEdit(item)) {
     e.preventDefault();
     openKey.value = item.key;
@@ -110,7 +137,7 @@ function onKeydown(e: KeyboardEvent): void {
     void removeFocused(item, el);
   } else if (e.key === 'ArrowDown' && e.altKey) {
     e.preventDefault();
-    openKey.value = item.key;
+    openCard(item);
   } else if (e.key === '+' && canAdd()) {
     e.preventDefault();
     addOpen.value = true;
@@ -188,6 +215,15 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
         {{ t('space.ade.details.empty.body')
         }}<template v-if="canAdd()"> {{ t('space.ade.links.empty.hint') }}</template>
       </FieldDescription>
+      <span
+        v-if="links.groups.value.length"
+        :id="hintId"
+        class="sr-only"
+        data-testid="ade-links-hint"
+        >{{
+          t('space.ade.links.pill.hint', { modifier })
+        }}</span
+      >
       <RovingFocusGroup
         orientation="horizontal"
         loop
@@ -233,11 +269,25 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
                 @update:open="(v: boolean) => setOpen(item.key, v)"
               >
                 <RovingFocusItem as-child>
-                  <PopoverTrigger as-child>
-                    <AdeLinkPill :item="item" :show-kind="g.id === 'misc'" />
-                  </PopoverTrigger>
+                  <PopoverAnchor as-child>
+                    <AdeLinkPill
+                      :item="item"
+                      :show-kind="g.id === 'misc'"
+                      aria-haspopup="dialog"
+                      :aria-expanded="openKey === item.key"
+                      :aria-describedby="hintId"
+                      :data-state="openKey === item.key ? 'open' : 'closed'"
+                      @click="openItem($event, item)"
+                      @contextmenu.prevent.stop="openCard(item)"
+                    />
+                  </PopoverAnchor>
                 </RovingFocusItem>
-                <PopoverContent align="start" class="w-80" data-testid="ade-links-card">
+                <PopoverContent
+                  align="start"
+                  class="w-80"
+                  data-testid="ade-links-card"
+                  @close-auto-focus="onCardClose($event, item)"
+                >
                   <AdeLinkCard
                     :task="task"
                     :item="item"

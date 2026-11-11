@@ -9345,6 +9345,9 @@
         },
         "kind": {
           "aria": "Link kind"
+        },
+        "pill": {
+          "hint": "Enter opens the link. {modifier}+Enter opens it in the browser. Space shows its details."
         }
       },
       "mainTab": {

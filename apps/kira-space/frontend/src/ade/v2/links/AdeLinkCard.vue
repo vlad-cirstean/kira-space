@@ -4,6 +4,7 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { t } from '@theme/i18n';
+import { isPrimaryModifier } from '@workbench/shortcuts/keys';
 import AdeChip from '../AdeChip.vue';
 import {
   artifactKindLabel,
@@ -44,9 +45,10 @@ const kindItems = KINDS.map((k) => ({
 function onKind(value: string): void {
   void props.links.recategorise(props.item, value as Artifact['kind']);
 }
+// The title opens like its pill: primary-modifier click opens the browser.
 function openTitle(e: MouseEvent): void {
   e.preventDefault();
-  props.links.openLink(props.item);
+  props.links.openLink(props.item, { external: isPrimaryModifier(e) });
 }
 </script>
 

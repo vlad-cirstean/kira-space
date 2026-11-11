@@ -9,7 +9,7 @@ import { TONE_TEXT_CLASS } from '../tones';
 import type { LinkItem } from './linkGroups';
 
 // One link as an 18px pill (a Badge): label and a status dot. Detected links draw dashed and unfilled.
-// A popover trigger or roving-focus item merges onto the Badge root.
+// A popover anchor or roving-focus item merges onto the Badge root.
 withDefaults(defineProps<{ item: LinkItem; showKind?: boolean; as?: 'button' | 'span' }>(), {
   as: 'button',
 });
