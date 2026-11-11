@@ -8,9 +8,8 @@ Fixes after the v0.3.7 release failed. Chapter stays open: more phases may be ad
 | P605 | Real `claude` test `TestSmartScriptRun`: user MCP server leaks into the hermetic list | Todo |
 | P606 | UI spec `dbmcp-script-long.spec.ts`: ambiguous `run-stop` locator race | Todo |
 | P607 | Proof explanation text: larger than 13px | Todo |
-| P608 | Real-container sweep: run every container suite P590-P603 added and fix failures | Todo |
 
-Phases run in table order. Batches of 3 consecutive phases run as streams (P608 runs alone, last).
+Phases run in table order. Batches of 3 consecutive phases run as streams.
 
 ## P604 Release container failures: ClickHouse `readonly=1` connect and MySQL 9.7 explain row estimate
 
@@ -46,12 +45,4 @@ Two independent failures from the v0.3.7 release, one phase, one plan.
 - Context: `ProofView` step description and summary use `text-kira-lg`. Planner finds the type-token scale, the font-scale guard (lint) and the visual baselines it touches.
 - Acceptance: the step description and summary render visibly larger than before through a proper token; the guard allows it; the six affected baselines re-recorded on Linux.
 - Tests: UI spec plus visual baselines (Linux, `fc-match sans-serif` = Inter).
-- Result:
-
-## P608 Real-container sweep: run every container suite P590-P603 added and fix failures
-
-- Ask (user): run the real-container tests here to be sure everything is fixed.
-- Context: v0.3.7 landed with container tests that never ran in the sandbox (P590 `Ping` suites, P593 Postgres step, P602 `TestDbMcpEngine*`, adapter scenarios, complete suites, `TestKubeMcp`). Run `bun run test:go:containers`, `bun run test:flows:complete` and `scripts/test-matrix.sh --mirror` / `scripts/db-compat.sh --min --mirror` / `--max --mirror` here (mirror pulls per `docs/DEV_ENVIRONMENT.md`; Docker Hub blob downloads may be blocked). Fix every failure at its root, adapter or test, never weaken a test.
-- Acceptance: every one of those runs passes here; anything that cannot run here (image pull blocked) is listed with the blocking host.
-- Tests: the commands above.
 - Result:
