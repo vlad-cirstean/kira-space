@@ -21,6 +21,17 @@ function emptyActivity(sessionId: string | null, now: number): AgentActivity {
   };
 }
 
+function reduceNotification(base: AgentActivity, event: AgentEvent, now: number): AgentActivity {
+  // idle_prompt/auth_success: an idle session is not "needs input" (design §1) — phase stays
+  // put and message is not overwritten with text that was never a request for input.
+  if (event.notificationType === 'idle_prompt' || event.notificationType === 'auth_success') {
+    return { ...base, at: now };
+  }
+  // Does not clear runningTools — a permission prompt arrives *during* a tool call; losing
+  // the set here would leave the following PostToolUse unmatched too.
+  return { ...base, phase: 'attention', message: event.message || null, at: now };
+}
+
 // The one piece here with real interacting rules, fed by an out-of-order external
 // producer — each hook is its own `curl` process, so a PostToolUse can legitimately arrive before
 // its own PreToolUse. Pure: (prev, event, now) => next — `now` is injected so
@@ -33,9 +44,14 @@ export function reduceAgentActivity(
 ): AgentActivity {
   const base = prev ?? emptyActivity(event.sessionId || null, now);
   if (event.agentId !== '') {
-    // A subagent's own hooks never move the main session's phase. Only SubagentStop refreshes
-    // the background count.
+    // A subagent's own hooks move the main session's phase only for what needs the user: a
+    // non-idle Notification (a permission prompt raised in the subagent) enters 'attention', and
+    // a PostToolUse leaves it. SubagentStop refreshes the background count.
     if (event.event === 'SubagentStop') return { ...base, background: event.background, at: now };
+    if (event.event === 'Notification') return reduceNotification(base, event, now);
+    if (event.event === 'PostToolUse' && base.phase === 'attention') {
+      return { ...base, phase: 'working', at: now };
+    }
     return { ...base, at: now };
   }
   switch (event.event) {
@@ -70,14 +86,7 @@ export function reduceAgentActivity(
       return { ...base, phase, runningTools, at: now };
     }
     case 'Notification':
-      // idle_prompt/auth_success: an idle session is not "needs input" (design §1) — phase stays
-      // put and message is not overwritten with text that was never a request for input.
-      if (event.notificationType === 'idle_prompt' || event.notificationType === 'auth_success') {
-        return { ...base, at: now };
-      }
-      // Does not clear runningTools — a permission prompt arrives *during* a tool call; losing
-      // the set here would leave the following PostToolUse unmatched too.
-      return { ...base, phase: 'attention', message: event.message || null, at: now };
+      return reduceNotification(base, event, now);
     case 'Stop': {
       // wakeArmed carries a session into 'waiting' (waiting on monitor) instead of 'idle' — the
       // one signal this reducer has that the session is expecting an external event, not the user.

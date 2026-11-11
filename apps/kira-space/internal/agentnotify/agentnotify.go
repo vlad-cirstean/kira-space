@@ -145,7 +145,8 @@ func (n *Notifier) ReportFocus(f FocusState) {
 
 // HandleEvent reacts to one hook event.
 func (n *Notifier) HandleEvent(ev harness.AgentEvent) {
-	if ev.AgentID != "" {
+	// A subagent's own hooks never move the main session, but its permission prompt still needs the user.
+	if ev.AgentID != "" && ev.Event != harness.EventNotification {
 		return
 	}
 	n.mu.Lock()

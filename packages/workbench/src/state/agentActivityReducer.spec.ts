@@ -278,4 +278,35 @@ describe('agentActivity — reduceAgentActivity (P86 §13, P129 Part 1 §4.8)', 
     expect(a.phase).toBe('idle');
     expect(a.background).toBe(0);
   });
+
+  test('14. subagent permission prompt enters attention, its PostToolUse leaves it', () => {
+    let a = reduceAgentActivity(undefined, event({ event: 'UserPromptSubmit' }), NOW);
+    a = reduceAgentActivity(
+      a,
+      event({
+        event: 'Notification',
+        agentId: 'a1',
+        notificationType: 'permission_prompt',
+        message: 'ok?',
+      }),
+      NOW + 1,
+    );
+    expect(a.phase).toBe('attention');
+    expect(a.message).toBe('ok?');
+
+    a = reduceAgentActivity(
+      a,
+      event({ event: 'PostToolUse', toolUseId: 'x', agentId: 'a1' }),
+      NOW + 2,
+    );
+    expect(a.phase).toBe('working');
+    expect(a.runningTools).toEqual([]);
+
+    a = reduceAgentActivity(
+      a,
+      event({ event: 'Notification', agentId: 'a1', notificationType: 'idle_prompt' }),
+      NOW + 3,
+    );
+    expect(a.phase).toBe('working');
+  });
 });

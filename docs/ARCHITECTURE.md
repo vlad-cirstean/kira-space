@@ -1546,8 +1546,10 @@ handler decodes `agent_id` and `background_tasks` as `id`, `type` and `status` o
 `description` stay undecoded (P86 rule). `AgentEvent.Background` counts tasks with status `running`
 or `pending`, set on `Stop` and `SubagentStop` only. On `SubagentStop` the stopping subagent's own
 entry is skipped: the payload still lists it as running. An event with `AgentID` set is a subagent
-event: it never moves the reducer phase (it only updates `at`), never arms a wake and never posts a
-finished note. A main `Stop` with `Background > 0` posts no finished note. In the reducer an `idle`
+event: it never arms a wake and never posts a finished note, and moves the reducer phase only for a
+non-idle `Notification` (enters `attention`, and posts a needs-input note) or a `PostToolUse` that
+leaves `attention`. Whether Claude tags a subagent's permission prompt with `agent_id` is unverified
+against real `claude` (`TestHookBackgroundTasks` does not pin it). A main `Stop` with `Background > 0` posts no finished note. In the reducer an `idle`
 phase with `background > 0` shows `working`; `waiting` wins over background work. `SessionStart`
 and `SessionEnd` reset the count. Pinned by `TestHookBackgroundTasks` (real `claude`).
 

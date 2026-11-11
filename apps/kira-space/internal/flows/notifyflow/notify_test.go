@@ -52,6 +52,15 @@ func TestNeedsInputNotifies(t *testing.T) {
 	}
 }
 
+func TestSubagentNeedsInputNotifies(t *testing.T) {
+	app, sink := newApp(t)
+	cwd := agentTab(t, app, "tab-1")
+	hook(t, app, "tab-1", `{"hook_event_name":"Notification","agent_id":"sub-1","notification_type":"permission_prompt","cwd":`+quote(cwd)+`,"message":"Subagent needs permission"}`)
+	if n := sink.only(t); n.Kind != agentnotify.KindNeedsInput {
+		t.Fatalf("note = %+v, want needs-input from a subagent prompt", n)
+	}
+}
+
 func TestIgnoredNotifications(t *testing.T) {
 	app, sink := newApp(t)
 	cwd := agentTab(t, app, "tab-1")
