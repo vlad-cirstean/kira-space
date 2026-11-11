@@ -6,6 +6,8 @@
     "mode": "tui",
     "state": "running",
     "activity": "idle",
+    "background": 0,
+    "unseen": false,
     "terminalId": "term-rv01",
     "taskId": "T_bill",
     "branchId": "",

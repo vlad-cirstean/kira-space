@@ -1,5 +1,5 @@
 import { useDocumentVisibility, useTimeoutFn, useWindowFocus } from '@vueuse/core';
-import { computed, type MaybeRefOrGetter, toValue, watch } from 'vue';
+import { computed, type MaybeRefOrGetter, ref, toValue, watch } from 'vue';
 import { useMarkSessionSeen } from '../queries';
 
 /** Dwell before a session counts as viewed once its pane is shown. */
@@ -20,13 +20,25 @@ export function useMarkSeenOnView(
     () => toValue(active) && visibility.value === 'visible' && focused.value,
   );
 
-  const send = (): void => mark.mutate({ sessionId: toValue(sessionId) });
+  // A failed mark rolls the cached flag back, which would re-trigger the mark at once: stop retrying
+  // until the user leaves the pane and returns.
+  const failed = ref(false);
+  const send = (): void =>
+    mark.mutate(
+      { sessionId: toValue(sessionId) },
+      {
+        onError: () => {
+          failed.value = true;
+        },
+      },
+    );
   const dwell = useTimeoutFn(send, SEEN_DWELL_MS, { immediate: false });
 
   watch(
     [() => toValue(unseen), present],
     ([isUnseen, isPresent], prev) => {
-      if (!(isUnseen && isPresent)) {
+      if (!isPresent) failed.value = false;
+      if (!(isUnseen && isPresent) || failed.value) {
         dwell.stop();
         return;
       }

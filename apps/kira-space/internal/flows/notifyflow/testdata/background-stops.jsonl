@@ -1,0 +1,3 @@
+{"hook_event_name":"Stop","session_id":"s1","stop_hook_active":false,"background_tasks":[{"id":"b1","type":"shell","status":"running"},{"id":"a1","type":"subagent","status":"running"}],"session_crons":[],"last_assistant_message":"started"}
+{"hook_event_name":"Stop","session_id":"s1","stop_hook_active":false,"background_tasks":[{"id":"b1","type":"shell","status":"running"}],"session_crons":[],"last_assistant_message":"waiting on shell"}
+{"hook_event_name":"Stop","session_id":"s1","stop_hook_active":false,"background_tasks":[],"session_crons":[],"last_assistant_message":"all done"}

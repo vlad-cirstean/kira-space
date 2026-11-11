@@ -148,6 +148,67 @@ func TestHookPayloadContract(t *testing.T) {
 	}
 }
 
+// TestHookBackgroundTasks pins the payload facts the background status relies on: a Stop lists
+// running background tasks (id, type, status), a subagent's SubagentStop carries its agent_id, and
+// the last Stop, after the tasks ended, lists none. claude -p stays alive until they end.
+func TestHookBackgroundTasks(t *testing.T) {
+	repo := flowRepo(t)
+	app := newRealApp(t, repo)
+	dir := t.TempDir()
+	capture := filepath.Join(dir, "capture.jsonl")
+	settings := captureSettings(t, dir, capture)
+
+	app.claudeP(t, repo, nil,
+		"Use the Bash tool with run_in_background true to run exactly: sleep 6. "+
+			"Then use the Agent tool once with a general-purpose subagent that only replies with the word hi. "+
+			"Then reply with the word done.",
+		"--settings", settings, "--allowedTools", "Bash(sleep 6),Agent")
+
+	var stops []map[string]any
+	var subagentStops []map[string]any
+	for _, p := range readPayloads(t, capture) {
+		switch p["hook_event_name"] {
+		case "Stop":
+			stops = append(stops, p)
+		case "SubagentStop":
+			subagentStops = append(subagentStops, p)
+		}
+	}
+	if len(stops) < 2 {
+		t.Fatalf("captured %d Stop payloads, want the turn's Stop and the follow-up after the task ended", len(stops))
+	}
+	running := false
+	for _, p := range stops {
+		tasks, ok := p["background_tasks"].([]any)
+		if !ok {
+			t.Fatalf("Stop payload lacks background_tasks: %v", p)
+		}
+		for _, raw := range tasks {
+			task, _ := raw.(map[string]any)
+			for _, f := range []string{"id", "type", "status"} {
+				if s, _ := task[f].(string); s == "" {
+					t.Errorf("background task lacks %q: %v", f, task)
+				}
+			}
+			running = running || task["status"] == "running"
+		}
+	}
+	if !running {
+		t.Errorf("no Stop listed a running background task: %v", stops)
+	}
+	if last, _ := stops[len(stops)-1]["background_tasks"].([]any); len(last) != 0 {
+		t.Errorf("last Stop background_tasks = %v, want none", last)
+	}
+	if len(subagentStops) == 0 {
+		t.Fatalf("no SubagentStop captured; the CLI no longer sends it or the subagent never ran")
+	}
+	for _, p := range subagentStops {
+		if s, _ := p["agent_id"].(string); s == "" {
+			t.Errorf("SubagentStop lacks agent_id: %v", p)
+		}
+	}
+}
+
 func keys[V any](m map[string]V) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {

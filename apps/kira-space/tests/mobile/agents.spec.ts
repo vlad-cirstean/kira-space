@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { Locator } from '@playwright/test';
+import { contract } from '../ui/support/contract';
 import { expect, test } from './fixtures';
 import type { MobileServer } from './support/mockServer';
 
@@ -83,4 +86,37 @@ test('without agent input a waiting agent shows the hint, not Reply', async ({
   );
   await expect(page.locator(t('permission-hint'))).toBeVisible();
   await expect(page.locator(t('needs-reply'))).toHaveCount(0);
+});
+
+// Contract ade-session-status, backend half: adeflow TestSessionStatusBackgroundAndUnseen. The
+// terminal button of a finished session nobody viewed carries the unseen glyph.
+test('contract: a finished session nobody viewed shows the unseen glyph on its terminal button', async ({
+  page,
+  server,
+  app,
+}) => {
+  const [finished] = contract<{ sessions: Record<string, unknown>[] }>(
+    'ade-session-status',
+    'AdeTaskService.Sessions#unseen',
+  ).sessions;
+  const sessions = readFileSync(resolve(__dirname, '../fixtures/ade-v2/sessions.json'), 'utf8');
+  server.state.auth = 'ok';
+  server.state.permissions = { write: true, agentInput: true };
+  server.state.agentInputGlobal = true;
+  server.state.replies.sessions = {
+    sessions: [
+      ...(JSON.parse(sessions) as { sessions: Record<string, unknown>[] }).sessions,
+      { ...finished, id: 'ss01', terminalId: 'term-ss01', taskId: 'T_cart', branchId: 'b_cart' },
+    ],
+  };
+  await app();
+  await page.locator(t('tab-plan')).click();
+  const card = page
+    .locator(t('plan-task'))
+    .filter({ hasText: 'Cart total test fails intermittently' });
+  await card.locator('button').first().click();
+  const terminal = card.locator(t('plan-terminal'));
+  await expect(terminal).toHaveCount(1);
+  await expect(terminal).toHaveAttribute('data-activity', 'unseen');
+  await expect(terminal.locator('[data-activity="unseen"]')).toBeVisible();
 });

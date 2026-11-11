@@ -46,6 +46,7 @@ interface State {
     expired?: unknown;
     board?: unknown;
     laterTask?: unknown;
+    sessions?: unknown;
   };
   pairWaiters: ServerResponse[];
   /** Outcome resolved before the phone's `POST /api/pair` arrived; the request answers on arrival. */
@@ -234,6 +235,8 @@ export async function startMobileServer(): Promise<MobileServer> {
       json(res, 200, AGENT_INFO['AgentService.Info']);
     } else if (path === '/api/agent/sessions' && method === 'GET') {
       json(res, 200, { sessions: state.agentSessions });
+    } else if (path === '/api/ade/sessions' && method === 'GET' && state.replies.sessions) {
+      json(res, 200, state.replies.sessions);
     } else if (path === '/api/ade/board' && method === 'GET' && state.replies.board) {
       json(res, 200, state.replies.board);
     } else if (path in reads && method === 'GET') {

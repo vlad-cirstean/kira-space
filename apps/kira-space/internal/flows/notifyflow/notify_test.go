@@ -75,6 +75,26 @@ func TestWakeArmedStopSilent(t *testing.T) {
 	}
 }
 
+// A Stop that leaves background tasks running is not finished; the last Stop, with none left, is.
+func TestFinishedWaitsForBackground(t *testing.T) {
+	app, sink := newApp(t)
+	setCooldown(t, time.Millisecond)
+	agentTab(t, app, "tab-1")
+	raw, err := os.ReadFile(filepath.Join("testdata", "background-stops.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
+	for _, line := range lines[:len(lines)-1] {
+		hook(t, app, "tab-1", line)
+	}
+	sink.none(t)
+	hook(t, app, "tab-1", lines[len(lines)-1])
+	if n := sink.only(t); n.Kind != agentnotify.KindFinished || n.Body != "all done" {
+		t.Fatalf("note = %+v, want finished with the last reply", n)
+	}
+}
+
 func TestFocusedAppSkipsFinished(t *testing.T) {
 	app, sink := newApp(t)
 	setCooldown(t, time.Millisecond)

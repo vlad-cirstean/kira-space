@@ -20,7 +20,8 @@ const PLACES = [
   { id: 'qa03', terminalId: '', taskId: 'T_cart', branchId: 'b_cart' },
 ];
 
-function sessions(running = true, idle = false): unknown {
+// The contract's finished run is unseen; most cases below look at it after it was viewed.
+function sessions(running = true, idle = false, unseen = false): unknown {
   const fx = contract<{ sessions: Record<string, unknown>[] }>(
     'ade-sessions-running',
     'AdeTaskService.Sessions#mixed',
@@ -30,6 +31,7 @@ function sessions(running = true, idle = false): unknown {
       ...s,
       ...PLACES[i],
       ...(idle && s.activity ? { activity: 'idle' } : {}),
+      ...(unseen ? {} : { unseen: false }),
       stepId: '',
       runId: '',
       cwd: '/tmp/work',
@@ -105,6 +107,23 @@ test('contract: the working dot shows only while an agent works and follows the 
   await emitAgentEvent(page, 'term-qa01', 'Stop');
   await expect(dot(page)).toHaveCount(0);
   await expect(item(page)).toHaveText('2 agents');
+});
+
+test('contract: a finished run nobody viewed adds an unseen count and keeps the item visible', async ({
+  relaunch,
+}) => {
+  const { window: page } = await relaunch({
+    control: control([{ channel: IPC.adeTaskSessions, response: sessions(true, false, true) }]),
+    clockTime: FIXED_NOW,
+  });
+  await expect(item(page)).toHaveText('2 agents · 1 unseen');
+  await expect(item(page)).toHaveAttribute('data-kind', 'unseen');
+  await item(page).click();
+  const rows = page.locator(t('status-agents-row'));
+  await expect(rows).toHaveCount(3);
+  expect(
+    await rows.evaluateAll((els) => els.map((e) => e.getAttribute('data-session-id'))),
+  ).toEqual(['qa03', 'qa02', 'qa01']);
 });
 
 test('contract: reduced motion keeps the working dot but stops its pulse', async ({ relaunch }) => {
