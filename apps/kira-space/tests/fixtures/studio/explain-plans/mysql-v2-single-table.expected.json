@@ -1,0 +1,88 @@
+{
+  "kind": "mysql",
+  "root": {
+    "label": "Query",
+    "cost": {
+      "total": 100.25
+    },
+    "metrics": [],
+    "issues": [],
+    "children": [
+      {
+        "label": "Filter: (b.v = 'n5')",
+        "detail": "(b.v = 'n5')",
+        "estimatedRows": 100.00000149011612,
+        "cost": {
+          "total": 100.25
+        },
+        "metrics": [
+          {
+            "label": "access_type",
+            "value": "filter"
+          },
+          {
+            "label": "filter_columns",
+            "value": "t.b.v"
+          }
+        ],
+        "issues": [],
+        "children": [
+          {
+            "label": "Table scan on b",
+            "relation": "b",
+            "estimatedRows": 1000,
+            "cost": {
+              "total": 100.25
+            },
+            "metrics": [
+              {
+                "label": "access_type",
+                "value": "table"
+              },
+              {
+                "label": "schema_name",
+                "value": "t"
+              },
+              {
+                "label": "used_columns",
+                "value": "id, v, cat"
+              }
+            ],
+            "issues": [
+              {
+                "severity": "warn",
+                "code": "full-scan",
+                "message": "Full table scan on “b”. No index was used."
+              },
+              {
+                "severity": "warn",
+                "code": "wide-scan",
+                "message": "Table scan on b is estimated to read 1,000 rows."
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "estimatedRowsRead": 1000,
+  "nativeCost": {
+    "value": 100.25,
+    "unit": "mysql-cost"
+  },
+  "issues": [
+    {
+      "severity": "warn",
+      "code": "full-scan",
+      "message": "Full table scan on “b”. No index was used."
+    },
+    {
+      "severity": "warn",
+      "code": "wide-scan",
+      "message": "Table scan on b is estimated to read 1,000 rows."
+    }
+  ],
+  "overThreshold": true,
+  "raw": "{\"query\":\"/* select#1 */ select `t`.`b`.`id` AS `id`,`t`.`b`.`v` AS `v`,`t`.`b`.`cat` AS `cat` from `t`.`b` where (`t`.`b`.`v` = 'n5')\",\"query_plan\":{\"inputs\":[{\"operation\":\"Table scan on b\",\"table_name\":\"b\",\"access_type\":\"table\",\"schema_name\":\"t\",\"used_columns\":[\"id\",\"v\",\"cat\"],\"estimated_rows\":1000.0,\"estimated_total_cost\":100.25}],\"condition\":\"(b.v = 'n5')\",\"operation\":\"Filter: (b.v = 'n5')\",\"access_type\":\"filter\",\"estimated_rows\":100.00000149011612,\"filter_columns\":[\"t.b.v\"],\"estimated_total_cost\":100.25},\"query_type\":\"select\",\"json_schema_version\":\"2.0\"}"
+}

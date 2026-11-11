@@ -3,11 +3,14 @@ package queryplan
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
-// mysql.go ports planParsers/mysql.ts verbatim: MySQL's `EXPLAIN FORMAT=JSON` — one row, one
+// mysql.go ports planParsers/mysql.ts verbatim: MySQL's `EXPLAIN FORMAT=JSON`. Two schemas: schema 1
+// (8.0, 8.4 default) roots at query_block, schema 2.0 (9.x default explain_json_format_version=2)
+// at query_plan, an iterator tree of operation nodes under inputs (mysqlV2Node). Schema 1: one row, one
 // column, a query_block whose real content sits under `table` (single-table), `nested_loop` (a
 // join — same key MariaDB's own JSON uses, but a genuinely different schema underneath), or a
 // wrapping grouping_operation/ordering_operation/duplicates_removal block around either.
@@ -187,12 +190,121 @@ func mysqlBlockNodes(raw json.RawMessage, thresholdRows int, scans *[]float64) [
 	return []Node{}
 }
 
+var mysqlV2TypedKeys = map[string]bool{
+	"operation": true, "table_name": true, "condition": true, "lookup_condition": true,
+	"estimated_rows": true, "estimated_total_cost": true, "inputs": true,
+}
+
+type mysqlV2Raw struct {
+	Operation          *string           `json:"operation"`
+	TableName          *string           `json:"table_name"`
+	AccessType         *string           `json:"access_type"`
+	Condition          *string           `json:"condition"`
+	LookupCondition    *string           `json:"lookup_condition"`
+	EstimatedRows      *float64          `json:"estimated_rows"`
+	EstimatedTotalCost *float64          `json:"estimated_total_cost"`
+	Inputs             []json.RawMessage `json:"inputs"`
+}
+
+// mysqlV2Node builds a schema 2.0 node. Every leaf with an estimate is a scan (the access paths);
+// wrappers such as Sort or Filter may carry no estimate.
+func mysqlV2Node(raw json.RawMessage, thresholdRows int, scans *[]float64) Node {
+	var n mysqlV2Raw
+	_ = json.Unmarshal(raw, &n)
+
+	metrics := make([]Metric, 0)
+	for key, value := range decodeRawObject(raw) {
+		if !mysqlV2TypedKeys[key] {
+			metrics = append(metrics, Metric{Label: key, Value: formatMetricValue(value)})
+		}
+	}
+	node := Node{
+		Label: "?", EstimatedRows: n.EstimatedRows, Metrics: sortMetricsByLabel(metrics),
+		Issues: []Issue{}, Children: []Node{},
+	}
+	if n.Operation != nil {
+		node.Label = *n.Operation
+	}
+	if n.TableName != nil {
+		node.Relation = *n.TableName
+	}
+	if n.Condition != nil {
+		node.Detail = *n.Condition
+	} else if n.LookupCondition != nil {
+		node.Detail = *n.LookupCondition
+	}
+	if n.EstimatedTotalCost != nil {
+		node.Cost = &Cost{Total: *n.EstimatedTotalCost}
+	}
+
+	access := ""
+	if n.AccessType != nil {
+		access = *n.AccessType
+	}
+	relation := "?"
+	if n.TableName != nil {
+		relation = *n.TableName
+	}
+	if access == "table" && n.TableName != nil && *n.TableName != "" && !strings.HasPrefix(*n.TableName, "<") {
+		node.Issues = append(node.Issues, Issue{
+			Severity: "warn", Code: "full-scan",
+			Message: fmt.Sprintf("Full table scan on “%s”. No index was used.", relation),
+		})
+	}
+	if access == "sort" {
+		node.Issues = append(node.Issues, Issue{Severity: "warn", Code: "filesort", Message: "A temporary sort file (filesort) was used."})
+	}
+	if access == "temp_table_aggregate" || access == "materialize" {
+		node.Issues = append(node.Issues, Issue{
+			Severity: "warn", Code: "temp-table",
+			Message: fmt.Sprintf("“%s” was materialised into a temporary table.", relation),
+		})
+	}
+
+	for _, input := range n.Inputs {
+		node.Children = append(node.Children, mysqlV2Node(input, thresholdRows, scans))
+	}
+	if len(n.Inputs) == 0 && n.EstimatedRows != nil {
+		*scans = append(*scans, *n.EstimatedRows)
+		pushWideScanIssue(&node, *n.EstimatedRows, thresholdRows)
+	}
+	return node
+}
+
+func parseMysqlV2(rawText string, plan json.RawMessage, thresholdRows int) Plan {
+	var top mysqlV2Raw
+	_ = json.Unmarshal(plan, &top)
+	scans := make([]float64, 0)
+	child := mysqlV2Node(plan, thresholdRows, &scans)
+
+	var rootCost *Cost
+	var nativeCost *NativeCost
+	if top.EstimatedTotalCost != nil {
+		rootCost = &Cost{Total: *top.EstimatedTotalCost}
+		nativeCost = &NativeCost{Value: *top.EstimatedTotalCost, Unit: CostUnitMysqlCost}
+	}
+	root := Node{
+		Label: i18n.T("backend.queryPlan.root.query.label", nil), Cost: rootCost,
+		Metrics: []Metric{}, Issues: []Issue{}, Children: []Node{child},
+	}
+	estimatedRowsRead := maxEstimatedRows(scans)
+	return Plan{
+		Kind: "mysql", Root: root, EstimatedRowsRead: estimatedRowsRead, NativeCost: nativeCost,
+		Issues: rollupIssues(&root), OverThreshold: isOverThreshold(estimatedRowsRead, thresholdRows),
+		Raw: rawText,
+	}
+}
+
 func parseMysqlPlan(rawText string, thresholdRows int) (Plan, error) {
 	var parsed struct {
 		QueryBlock json.RawMessage `json:"query_block"`
+		QueryPlan  json.RawMessage `json:"query_plan"`
 	}
 	if err := json.Unmarshal([]byte(rawText), &parsed); err != nil {
 		return Plan{}, fmt.Errorf("queryplan: parse mysql plan: %w", err)
+	}
+	if len(parsed.QueryPlan) > 0 && parsed.QueryPlan[0] == '{' {
+		return parseMysqlV2(rawText, parsed.QueryPlan, thresholdRows), nil
 	}
 
 	var block mysqlRawBlock

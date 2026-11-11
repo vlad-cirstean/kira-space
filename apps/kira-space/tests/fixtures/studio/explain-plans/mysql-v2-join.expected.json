@@ -1,0 +1,203 @@
+{
+  "kind": "mysql",
+  "root": {
+    "label": "Query",
+    "metrics": [],
+    "issues": [],
+    "children": [
+      {
+        "label": "Sort: n DESC",
+        "metrics": [
+          {
+            "label": "access_type",
+            "value": "sort"
+          },
+          {
+            "label": "sort_fields",
+            "value": "n DESC"
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warn",
+            "code": "filesort",
+            "message": "A temporary sort file (filesort) was used."
+          }
+        ],
+        "children": [
+          {
+            "label": "Table scan on <temporary>",
+            "relation": "<temporary>",
+            "metrics": [
+              {
+                "label": "access_type",
+                "value": "table"
+              }
+            ],
+            "issues": [],
+            "children": [
+              {
+                "label": "Aggregate using temporary table",
+                "metrics": [
+                  {
+                    "label": "access_type",
+                    "value": "temp_table_aggregate"
+                  }
+                ],
+                "issues": [
+                  {
+                    "severity": "warn",
+                    "code": "temp-table",
+                    "message": "“?” was materialised into a temporary table."
+                  }
+                ],
+                "children": [
+                  {
+                    "label": "Nested loop inner join",
+                    "estimatedRows": 111.10000312328339,
+                    "cost": {
+                      "total": 139.88500109314919
+                    },
+                    "metrics": [
+                      {
+                        "label": "access_type",
+                        "value": "join"
+                      },
+                      {
+                        "label": "join_algorithm",
+                        "value": "nested_loop"
+                      },
+                      {
+                        "label": "join_type",
+                        "value": "inner join"
+                      }
+                    ],
+                    "issues": [],
+                    "children": [
+                      {
+                        "label": "Filter: (b.v like '%1')",
+                        "detail": "(b.v like '%1')",
+                        "estimatedRows": 111.10000312328339,
+                        "cost": {
+                          "total": 101
+                        },
+                        "metrics": [
+                          {
+                            "label": "access_type",
+                            "value": "filter"
+                          },
+                          {
+                            "label": "filter_columns",
+                            "value": "t.b.v"
+                          }
+                        ],
+                        "issues": [],
+                        "children": [
+                          {
+                            "label": "Table scan on b",
+                            "relation": "b",
+                            "estimatedRows": 1000,
+                            "cost": {
+                              "total": 101
+                            },
+                            "metrics": [
+                              {
+                                "label": "access_type",
+                                "value": "table"
+                              },
+                              {
+                                "label": "schema_name",
+                                "value": "t"
+                              },
+                              {
+                                "label": "used_columns",
+                                "value": "id, v, cat"
+                              }
+                            ],
+                            "issues": [
+                              {
+                                "severity": "warn",
+                                "code": "full-scan",
+                                "message": "Full table scan on “b”. No index was used."
+                              }
+                            ],
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "label": "Covering index lookup on c using bid (bid = b.id)",
+                        "relation": "c",
+                        "detail": "bid = b.id",
+                        "estimatedRows": 1,
+                        "cost": {
+                          "total": 0.2509000899836973
+                        },
+                        "metrics": [
+                          {
+                            "label": "access_type",
+                            "value": "index"
+                          },
+                          {
+                            "label": "covering",
+                            "value": "true"
+                          },
+                          {
+                            "label": "index_access_type",
+                            "value": "index_lookup"
+                          },
+                          {
+                            "label": "index_name",
+                            "value": "bid"
+                          },
+                          {
+                            "label": "key_columns",
+                            "value": "bid"
+                          },
+                          {
+                            "label": "lookup_references",
+                            "value": "t.b.id"
+                          },
+                          {
+                            "label": "schema_name",
+                            "value": "t"
+                          },
+                          {
+                            "label": "used_columns",
+                            "value": "id, bid"
+                          }
+                        ],
+                        "issues": [],
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "estimatedRowsRead": 1000,
+  "issues": [
+    {
+      "severity": "warn",
+      "code": "filesort",
+      "message": "A temporary sort file (filesort) was used."
+    },
+    {
+      "severity": "warn",
+      "code": "temp-table",
+      "message": "“?” was materialised into a temporary table."
+    },
+    {
+      "severity": "warn",
+      "code": "full-scan",
+      "message": "Full table scan on “b”. No index was used."
+    }
+  ],
+  "overThreshold": false,
+  "raw": "{\"query\":\"/* select#1 */ select `t`.`b`.`cat` AS `cat`,count(0) AS `n` from `t`.`b` straight_join `t`.`c` where ((`t`.`c`.`bid` = `t`.`b`.`id`) and (`t`.`b`.`v` like '%1')) group by `t`.`b`.`cat` order by `n` desc\",\"query_plan\":{\"inputs\":[{\"inputs\":[{\"inputs\":[{\"inputs\":[{\"inputs\":[{\"operation\":\"Table scan on b\",\"table_name\":\"b\",\"access_type\":\"table\",\"schema_name\":\"t\",\"used_columns\":[\"id\",\"v\",\"cat\"],\"estimated_rows\":1000.0,\"estimated_total_cost\":101.0}],\"condition\":\"(b.v like '%1')\",\"operation\":\"Filter: (b.v like '%1')\",\"access_type\":\"filter\",\"estimated_rows\":111.10000312328339,\"filter_columns\":[\"t.b.v\"],\"estimated_total_cost\":101.0},{\"covering\":true,\"operation\":\"Covering index lookup on c using bid (bid = b.id)\",\"index_name\":\"bid\",\"table_name\":\"c\",\"access_type\":\"index\",\"key_columns\":[\"bid\"],\"schema_name\":\"t\",\"used_columns\":[\"id\",\"bid\"],\"estimated_rows\":1.0,\"lookup_condition\":\"bid = b.id\",\"index_access_type\":\"index_lookup\",\"lookup_references\":[\"t.b.id\"],\"estimated_total_cost\":0.2509000899836973}],\"join_type\":\"inner join\",\"operation\":\"Nested loop inner join\",\"access_type\":\"join\",\"estimated_rows\":111.10000312328339,\"join_algorithm\":\"nested_loop\",\"estimated_total_cost\":139.88500109314919}],\"operation\":\"Aggregate using temporary table\",\"access_type\":\"temp_table_aggregate\"}],\"operation\":\"Table scan on <temporary>\",\"table_name\":\"<temporary>\",\"access_type\":\"table\"}],\"operation\":\"Sort: n DESC\",\"access_type\":\"sort\",\"sort_fields\":[\"n DESC\"]},\"query_type\":\"select\",\"json_schema_version\":\"2.0\"}"
+}
