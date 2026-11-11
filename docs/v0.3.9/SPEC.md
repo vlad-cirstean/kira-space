@@ -10,6 +10,8 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 | P610 | Agent status: running while subagents or background jobs run; new unseen-finished status | Todo |
 | P611 | Show proof dialog: Open closes it; shows the task name | Done |
 | P612 | Presentation site: review-window images use the inline diff; site title matches the first-page headline | Todo |
+| P613 | Link strip: one compact links component for Details tab and handoff dialogs | Todo |
+| P614 | Move test-matrix and db-compat from release to every PR; required checks | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -70,4 +72,20 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: find how the site images are produced (screenshot specs or scripts under the site package, tests/ui screenshots, any asset pipeline) and where the review window picks side-by-side vs inline.
 - Acceptance: every site image of a review window shows the inline diff; regenerated through the existing pipeline, assets updated; the diff mode is set by the screenshot setup (not by changing the app default).
 - Tests: regenerate the affected images for real and view them; the site build passes.
+- Result:
+
+## P613 Link strip: one compact links component for Details tab and handoff dialogs
+
+- Ask (user): the v0.3.7 P600 links-by-category redesign takes as much space as before. Use one compact component and design everywhere else too, handoff dialogs included. Design shown first (done): `AdeLinkStrip` with category lines of pills and a click-open card; mock and text in the session scratchpad, planner copies the final design text into the plan.
+- Decisions (user did not object, taken from the recommendation): links show on every stage move, not only Done; the Run dialog (incoming handover) gets a read-only strip.
+- Acceptance: Details tab links, archived-task Details, `AdeLinkKindMenu` (becomes a toggle group in the card), stage dialog (`AdeArtifactList` deleted, `mode="add"` with detected branches), orchestrator pass and `AdeStepMover` dialogs, Run dialog strip and the pasted-link preview in `AdeAddPopover`/`AdeLinkTarget` use it. Eight links take about 96px, not about 308px. Paste-to-add, recategorise, edit, remove, open and open-session keep working. Proof attach menu and mobile unchanged.
+- Tests: flow tests unchanged; UI specs updated for the new testids and extended for the strip, card, keyboard and handoff dialog; visual snapshots regenerated where affected. Run for real.
+- Result:
+
+## P614 Move test-matrix and db-compat from release to every PR; required checks
+
+- Ask (user): the adapter matrix and db-compat run only at release, so failures show after the merge. Run them on every PR, always (no path filters: brittle), and not in both places: remove them from the release.
+- Context: `pr.yml` has `go-containers` (general suite only). `release.yml` has `test-matrix-group` (4 groups), `test-matrix (Linux)` aggregate and `db-compat` min/max; `publish` needs them. `docs/PACKAGING.md` section 7 lists the ruleset required checks. Workflow files cannot be pushed from this session: pending patches per `docs/DEV_ENVIRONMENT.md`.
+- Acceptance: `pr.yml` gets the four group jobs, the `test-matrix (Linux)` aggregate and db-compat min/max, same timeouts (12 min), image cache keyed on the pinned image tags covering the matrix images, Ryuk disabled; `release.yml` drops them and `publish` needs only tag and build; PACKAGING section 7 and ARCHITECTURE updated with the new required-check names and the user action to add them to the branch ruleset. Delivered as pending patches for both workflow files; the aggregate keeps one stable check name.
+- Tests: `git apply --check` for both patches, YAML parse, actionlint if obtainable; the group commands run locally as in P608. Real CI proves the rest after the user applies them.
 - Result:
