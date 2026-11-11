@@ -7,9 +7,11 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/testsupport"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
@@ -122,9 +124,8 @@ func TestClickHouse_AuthMatrix(t *testing.T) {
 			},
 		},
 		{
-			// P602 hypothesis H1: the lane sends readonly=2 per request. A profile that pins readonly=1
-			// refuses any settings change, so every lane read may fail for such a user. The case asserts
-			// the lane reads and still refuses a write; a failure here confirms H1 (docs/HISTORY.md (v0.3.7 P602)).
+			// P604: a readonly=1 profile refuses every settings change. Connect reads the profile's
+			// readonly and the adapter sends no settings for it (docs/ARCHITECTURE.md ClickHouse).
 			Name: "kira_ro1 (profile readonly=1), database=kira_test",
 			Principal: &testsupport.Principal{Name: "readonly=1 profile user", Setup: func(t *testing.T, fx any) {
 				t.Helper()
@@ -141,7 +142,120 @@ func TestClickHouse_AuthMatrix(t *testing.T) {
 			},
 			Expect: testsupport.Outcome{Succeed: true},
 			Then: []testsupport.Scenario{
+				testsupport.ReadFirstPage(testsupport.NodePath(f.Config.ID, testsupport.Seg("database", "kira_test"), testsupport.Seg("table", "customers"))),
+				testsupport.CountMatchesRead(testsupport.NodePath(f.Config.ID, testsupport.Seg("database", "kira_test"), testsupport.Seg("table", "customers"))),
+				{
+					Name: "Children contains kira_test",
+					Run: func(t *testing.T, a adapters.Adapter, cfg model.ResolvedConnectionConfig) {
+						children, err := a.Children(context.Background(), testsupport.NodePath(cfg.ID), opCtx(t, "matrix-ro1-children"))
+						if err != nil {
+							t.Fatalf("Children: %v", err)
+						}
+						if names := testsupport.ChildNames(t, children); !testsupport.ContainsName(names, "kira_test") {
+							t.Errorf("names = %v, want to contain %q", names, "kira_test")
+						}
+					},
+				},
 				testsupport.ReadLaneReads(testsupport.NodePath(f.Config.ID), "SELECT count() FROM kira_test.regions WHERE id > 0", "2"),
+				testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+					Path: testsupport.NodePath(f.Config.ID),
+					Admin: chAdmin(f,
+						"CREATE TABLE kira_test.p604_ro1_log (id UInt8) ENGINE = Memory; GRANT INSERT ON kira_test.p604_ro1_log TO kira_ro1",
+						"DROP TABLE IF EXISTS kira_test.p604_ro1_log"),
+					Write: "INSERT INTO kira_test.p604_ro1_log VALUES (1)", WantErr: "readonly mode",
+					Unchanged: func(t *testing.T, main adapters.Adapter) {
+						t.Helper()
+						if got := testsupport.FirstCell(t, main, testsupport.NodePath(f.Config.ID), "SELECT count() FROM kira_test.p604_ro1_log"); got != "0" {
+							t.Errorf("p604_ro1_log rows = %s, want 0", got)
+						}
+					},
+				}),
+				// KILL QUERY works for the locked profile.
+				testsupport.LaneCancel(testsupport.NodePath(f.Config.ID), "SELECT sum(cityHash64(number)) FROM numbers(1000000000000)"),
+				chExplainPlan(f),
+				{
+					Name: "statement timeout degrades to the app timer",
+					Run: func(t *testing.T, a adapters.Adapter, cfg model.ResolvedConnectionConfig) {
+						path := testsupport.NodePath(cfg.ID)
+						pages, err := a.Execute(context.Background(), model.ConsoleRequest{
+							Path: path, Statements: []string{"SELECT count() FROM kira_test.regions"}, StatementTimeout: 5 * time.Second,
+						}, opCtx(t, "matrix-ro1-timeout-exec"))
+						if err != nil {
+							t.Fatalf("Execute with a statement timeout: %v", err)
+						}
+						p, ok := pages[0].(page.TabularPage)
+						if !ok || p.RowCount == 0 || page.CellText(p.Chunks[0], 0) != "2" {
+							t.Errorf("Execute result = %#v, want one row with 2", pages[0])
+						}
+						if _, err := a.Read(context.Background(), adapters.ReadRequest{
+							Path:     testsupport.NodePath(cfg.ID, testsupport.Seg("database", "kira_test"), testsupport.Seg("table", "customers")),
+							PageSize: 10, Cursor: model.PageCursor{Mode: "offset"}, StatementTimeout: 5 * time.Second,
+						}, opCtx(t, "matrix-ro1-timeout-read")); err != nil {
+							t.Fatalf("Read with a statement timeout: %v", err)
+						}
+					},
+				},
+				{
+					Name: "UInt64 max decodes exactly",
+					Run: func(t *testing.T, a adapters.Adapter, cfg model.ResolvedConnectionConfig) {
+						testsupport.AdminStatements(t, f, `
+							CREATE TABLE kira_test.p604_u64 (id UInt64) ENGINE = MergeTree ORDER BY id;
+							INSERT INTO kira_test.p604_u64 VALUES (18446744073709551615)`)
+						t.Cleanup(func() { testsupport.AdminStatements(t, f, "DROP TABLE IF EXISTS kira_test.p604_u64") })
+						path := testsupport.NodePath(cfg.ID, testsupport.Seg("database", "kira_test"), testsupport.Seg("table", "p604_u64"))
+						if _, err := a.Describe(context.Background(), path, opCtx(t, "matrix-ro1-u64-describe")); err != nil {
+							t.Fatalf("Describe: %v", err)
+						}
+						result, err := a.Count(context.Background(), adapters.CountRequest{Path: path}, opCtx(t, "matrix-ro1-u64-count"))
+						if err != nil {
+							t.Fatalf("Count: %v", err)
+						}
+						if result.Value != 1 {
+							t.Errorf("Count = %d, want 1", result.Value)
+						}
+					},
+				},
+			},
+		},
+		{
+			// P604: readonly=2 profile: settings travel, the per-request readonly never does.
+			Name: "kira_ro2 (profile readonly=2), database=kira_test",
+			Principal: &testsupport.Principal{Name: "readonly=2 profile user", Setup: func(t *testing.T, fx any) {
+				t.Helper()
+				f := fx.(*testsupport.ClickHouseFixture)
+				testsupport.AdminStatements(t, f, `
+					CREATE USER IF NOT EXISTS kira_ro2 IDENTIFIED WITH plaintext_password BY 'kira_ro2_pw' SETTINGS readonly = 2;
+					GRANT SELECT ON kira_test.* TO kira_ro2;
+					GRANT SELECT ON system.* TO kira_ro2;`)
+				t.Cleanup(func() { testsupport.AdminStatements(t, f, "DROP USER IF EXISTS kira_ro2") })
+			}},
+			Config: func(c model.ResolvedConnectionConfig) model.ResolvedConnectionConfig {
+				c.Username, c.Password = testsupport.Strp("kira_ro2"), testsupport.Strp("kira_ro2_pw")
+				return c
+			},
+			Expect: testsupport.Outcome{Succeed: true},
+			Then: []testsupport.Scenario{
+				testsupport.ReadFirstPage(testsupport.NodePath(f.Config.ID, testsupport.Seg("database", "kira_test"), testsupport.Seg("table", "customers"))),
+				testsupport.ReadLaneReads(testsupport.NodePath(f.Config.ID), "SELECT count() FROM kira_test.regions WHERE id > 0", "2"),
+				testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+					Path: testsupport.NodePath(f.Config.ID),
+					Admin: chAdmin(f,
+						"CREATE TABLE kira_test.p604_ro2_log (id UInt8) ENGINE = Memory; GRANT INSERT ON kira_test.p604_ro2_log TO kira_ro2",
+						"DROP TABLE IF EXISTS kira_test.p604_ro2_log"),
+					Write: "INSERT INTO kira_test.p604_ro2_log VALUES (1)", WantErr: "readonly mode",
+					Unchanged: func(t *testing.T, main adapters.Adapter) {
+						t.Helper()
+						if got := testsupport.FirstCell(t, main, testsupport.NodePath(f.Config.ID), "SELECT count() FROM kira_test.p604_ro2_log"); got != "0" {
+							t.Errorf("p604_ro2_log rows = %s, want 0", got)
+						}
+					},
+				}),
+				testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
+					Name: "read lane", Path: testsupport.NodePath(f.Config.ID), Lane: true,
+					Slow: "SELECT sum(cityHash64(number)) FROM numbers(1000000000000)", WantCode: "TIMEOUT_EXCEEDED",
+					Baseline: "SELECT getSetting('max_execution_time')", BaselineWant: "0",
+					Lifted: "SELECT sleepEachRow(1) FROM numbers(2) SETTINGS max_block_size = 1",
+				}),
 			},
 		},
 		{
