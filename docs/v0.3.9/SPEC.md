@@ -7,6 +7,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 | P607 | ClickHouse `readonly=1`: `Execute` ignores the app statement timeout | Todo |
 | P608 | Release `test-matrix (Linux)`: split into parallel jobs with tight timeouts | Todo |
 | P609 | DB MCP: `browse_table` gets `in`, count and paging; descriptions steer reads to it | Todo |
+| P610 | Agent status: running while subagents or background jobs run; new unseen-finished status | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -33,4 +34,12 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: `browse_table` (`apps/kira-space/internal/dbmcp/browse.go`, schema in `server.go`, text in `internal/llmprompts/registry.go` `DbmcpToolBrowseTable`/`DbmcpToolRunQuery`) reads at most 100 rows with ANDed filters and order, so agents fall back to `run_query`. Masked columns, column review, expensiveQuery plan check and statement timeout must keep applying to every new feature. No `run_query` refusal in this phase (user chose descriptions plus capability only).
 - Acceptance: filter operator `in` (list of values); count mode returning the matching row count; paging (offset or cursor, planner decides per engine) with a stable order and a next-page marker. `run_query` description leads with "not for plain row reads: use browse_table"; `browse_table` description leads with a one-line example and lists the new options. Adapter kinds without structured browse keep refusing as before. Arg descriptions, Settings prompt catalog, ARCHITECTURE and any MCP docs updated.
 - Tests: flow test (backend, real DB where the browse suite already runs) and matching UI spec only if a UI surface changes; masking and limit interactions covered. Run for real.
+- Result:
+
+## P610 Agent status: running while subagents or background jobs run; new unseen-finished status
+
+- Ask (user): agent status detection is good but misses cases. (1) A session whose main turn stopped while its subagents still work, or while background jobs run, shows as "no agent running". It must show running. (2) New status: finished but not yet seen. An agent that just finished, whose result the user has not opened, must look different from one that finished hours ago.
+- Context: find where the app derives agent/session status (ADE sessions, session list, badges, any status enum shared with the frontend) and where it detects subagents and background jobs from the Claude harness stream. Seen state needs a defined moment (user opens the session or its result) and persistence across restarts.
+- Acceptance: planner decides exact signals. Status is running while the main turn runs, or any subagent or background job of that session is live; never idle-looking while work continues. New `unseen` status (finished, not yet viewed) with its own visual, cleared when the user views the session, persisted, shown wherever status shows (lists, badges, tabs, notifications if any). Catalog copy, ARCHITECTURE and any status docs updated.
+- Tests: flow test (backend derives status from a recorded stream with a live subagent and background job after the main turn ends, plus unseen set and cleared) and matching UI spec (same scenario shows the statuses). Run for real.
 - Result:
