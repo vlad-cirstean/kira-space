@@ -83,7 +83,7 @@ func TestDbMcpEngineTimeout(t *testing.T) {
 			ddlRes := e.run(t, sess, connID, e.sql(e.slowDDL, ddlTable), "ddl")
 			wantTimeoutRefusal(t, ddlRes, time.Since(start))
 			if e.kind == "postgres" {
-				if r := e.run(t, sess, connID, "select to_regclass('"+ddlTable+"') is null as gone", "read"); r.IsError || !strings.Contains(text(r), "true") {
+				if r := e.run(t, sess, connID, "select to_regclass('"+ddlTable+"') is null as gone", "read"); r.IsError || !strings.Contains(text(r), `["t"]`) {
 					t.Errorf("table after a timed-out CREATE TABLE AS = %q, want it absent", text(r))
 				}
 			}
