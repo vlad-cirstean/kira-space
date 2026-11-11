@@ -32,6 +32,7 @@ import type {
   ImportWorkflowArgs,
   LaunchStepArgs,
   LinkProofArgs,
+  MarkSessionSeenArgs,
   NewStepArgs,
   NewWorkflowArgs,
   NextPassArgs,
@@ -59,6 +60,7 @@ import type {
   SaveWorkflowYamlArgs,
   SendArgs,
   SendReviewArgs,
+  SessionsResult,
   SetBranchBaseArgs,
   SetPlanArgs,
   SetTaskBranchArgs,
@@ -512,6 +514,21 @@ export function useRestoreTask() {
         queryClient.invalidateQueries({ queryKey: sessionsKey, exact: true }),
       ]);
     },
+  });
+}
+
+function withSeen(prev: SessionsResult, args: MarkSessionSeenArgs): SessionsResult {
+  return {
+    ...prev,
+    sessions: prev.sessions.map((s) => (s.id === args.sessionId ? { ...s, unseen: false } : s)),
+  };
+}
+
+/** Marks a finished session viewed; the cached list drops its unseen flag at once. */
+export function useMarkSessionSeen() {
+  return useMutation({
+    mutationFn: (args: MarkSessionSeenArgs) => control.adeTaskMarkSessionSeen(args),
+    ...optimisticUpdate<SessionsResult, MarkSessionSeenArgs>(queryClient, sessionsKey, withSeen),
   });
 }
 

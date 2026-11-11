@@ -17,6 +17,7 @@ import { runStateLabel } from '../runState';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import AdeSessionBadge from './AdeSessionBadge.vue';
 import type { SessionView } from './sessionView';
+import { useMarkSeenOnView } from './useMarkSessionSeen';
 import { useSessionMenu } from './useSessionMenu';
 
 // One session of the dropdown (two lines): glyph, badge, name, age; state, where, short id. Enter or
@@ -35,6 +36,12 @@ const takeOver = useAdeTakeOverStore();
 const menu = useSessionMenu();
 const ago = useRelativeTime(() => props.view.session.lastActiveAt);
 const logOpen = ref(false);
+// Opening a finished run's log is the view of a stopped headless session.
+useMarkSeenOnView(
+  () => props.view.session.id,
+  () => props.view.session.unseen,
+  logOpen,
+);
 const moreBtn = useTemplateRef<{ $el: HTMLElement }>('moreBtn');
 
 const id = computed(() => props.view.session.id);

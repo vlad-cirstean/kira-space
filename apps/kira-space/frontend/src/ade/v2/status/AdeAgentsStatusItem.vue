@@ -11,7 +11,8 @@ import { useSessions } from '../readQueries';
 import AdeAgentsStatusList from './AdeAgentsStatusList.vue';
 import { agentsSummary } from './agentsSummary';
 
-// Status bar count of running ADE agents (every mode and purpose), hidden at zero. A click opens a
+// Status bar count of running ADE agents (every mode and purpose) and of finished-not-viewed
+// sessions, hidden when both are zero. A click opens a
 // popover listing them; the list and its plan model load only while it is open. A pulsing dot marks
 // agents mid-turn (working).
 const sessionsQuery = useSessions();
@@ -19,20 +20,17 @@ const agents = useAgentSessionsStore();
 const open = ref(false);
 
 const summary = computed(() =>
-  agentsSummary(
-    withTuiActivity(
-      (sessionsQuery.data.value?.sessions ?? []).filter((s) => s.state === 'running'),
-      agents.activity,
-    ),
-  ),
+  agentsSummary(withTuiActivity(sessionsQuery.data.value?.sessions ?? [], agents.activity)),
 );
 
 const label = computed(() => {
   const { total, byKind } = summary.value;
-  const text = t('space.statusBar.agents.label', { count: total });
-  return byKind.input > 0
-    ? `${text} · ${t('space.ade.allSessions.summaryInput.label', { count: byKind.input })}`
-    : text;
+  const parts = [t('space.statusBar.agents.label', { count: total })];
+  if (byKind.input > 0)
+    parts.push(t('space.ade.allSessions.summaryInput.label', { count: byKind.input }));
+  if (byKind.unseen > 0)
+    parts.push(t('space.ade.allSessions.summaryUnseen.label', { count: byKind.unseen }));
+  return parts.join(' · ');
 });
 
 const rows = computed(() =>
@@ -44,7 +42,7 @@ const rows = computed(() =>
 </script>
 
 <template>
-  <Popover v-if="summary.total > 0" v-model:open="open">
+  <Popover v-if="summary.total > 0 || summary.byKind.unseen > 0" v-model:open="open">
     <PopoverTrigger as-child>
       <StatusBarItem
         icon="robot"

@@ -27,6 +27,7 @@ const state = computed(() => {
   return activityLabel(props.view.kind);
 });
 const stateClass = computed(() => {
+  if (props.view.kind === 'unseen') return 'text-tone-blue';
   if (!running.value) return 'text-muted-foreground';
   if (props.view.kind === 'input') return 'text-tone-amber';
   if (props.view.kind === 'working') return 'text-tone-green';

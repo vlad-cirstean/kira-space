@@ -1,7 +1,7 @@
 import { activityKind } from '../activity';
 import type { Session } from '../wire';
 
-type TaskSessionState = 'input' | 'running' | 'finished';
+type TaskSessionState = 'input' | 'running' | 'unseen' | 'finished';
 
 export interface TaskSessions {
   state: TaskSessionState;
@@ -24,5 +24,6 @@ export function taskSessionsOf(sessions: readonly Session[]): TaskSessions | nul
     })
   )
     state = 'running';
+  else if (own.some((s) => activityKind(s) === 'unseen')) state = 'unseen';
   return { state, running: live.length };
 }

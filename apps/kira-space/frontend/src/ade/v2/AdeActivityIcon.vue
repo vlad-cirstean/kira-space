@@ -3,8 +3,8 @@ import { computed } from 'vue';
 import AdeTip from './AdeTip.vue';
 import { type ActivityKind, activityLabel } from './activity';
 
-// Activity glyph of a session: `!` needs input, a green dot working, `z` waiting on a monitor, an
-// open dot idle, a square stopped (mockup `act`). `bare` drops the tooltip when a parent has one.
+// Activity glyph of a session: `!` needs input, a green dot working, `z` waiting on a monitor, a
+// ringed blue dot finished and not viewed, an open dot idle, a square stopped (mockup `act`). `bare` drops the tooltip when a parent has one.
 const props = defineProps<{ kind: ActivityKind; size?: 12 | 14; bare?: boolean }>();
 
 const big = computed(() => props.size === 14);
@@ -25,6 +25,11 @@ const dot = computed(() => (big.value ? 'size-2.5' : 'size-2'));
         v-else-if="kind === 'working'"
         :class="dot"
         class="m-0.5 inline-block rounded-full bg-tone-green-solid"
+      />
+      <span
+        v-else-if="kind === 'unseen'"
+        :class="dot"
+        class="m-0.5 inline-block rounded-full bg-tone-blue-solid ring-2 ring-tone-blue-solid/30"
       />
       <span
         v-else-if="kind === 'waiting'"

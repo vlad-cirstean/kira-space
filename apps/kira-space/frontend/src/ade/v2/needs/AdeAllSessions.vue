@@ -17,6 +17,7 @@ const { sessions, view } = useSessionViews();
 
 const SUMMARY = {
   input: 'space.ade.allSessions.summaryInput.label',
+  unseen: 'space.ade.allSessions.summaryUnseen.label',
   working: 'space.ade.allSessions.summaryWorking.label',
   waiting: 'space.ade.allSessions.summaryWaiting.label',
 } as const satisfies Partial<Record<ActivityKind, MessageKey>>;
@@ -84,14 +85,14 @@ const groups = computed((): Group[] => {
 });
 
 const summary = computed(() => {
-  if (filter.value !== 'running') return [];
+  const want = filter.value === 'running';
   const counts = new Map<ActivityKind, number>();
   for (const s of sessions.value) {
-    if (s.state !== 'running') continue;
+    if ((s.state === 'running') !== want) continue;
     const k = view(s).kind;
     counts.set(k, (counts.get(k) ?? 0) + 1);
   }
-  return (['input', 'working', 'waiting'] as const)
+  return (['input', 'unseen', 'working', 'waiting'] as const)
     .filter((k) => counts.has(k))
     .map((k) => ({ kind: k, text: t(SUMMARY[k], { count: counts.get(k) ?? 0 }) }));
 });

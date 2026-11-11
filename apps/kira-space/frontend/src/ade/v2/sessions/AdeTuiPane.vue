@@ -11,6 +11,7 @@ import AdeRunSandboxBadge from '../panel/AdeRunSandboxBadge.vue';
 import { useFocusSession } from '../queries';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { SessionView } from './sessionView';
+import { useMarkSeenOnView } from './useMarkSessionSeen';
 
 // An interactive session: the terminal when this window holds it, else a Show button that raises
 // the window that does.
@@ -35,6 +36,12 @@ const tab = computed(() => ({
     launchKind: 'agent' as const,
   },
 }));
+
+useMarkSeenOnView(
+  () => props.view.session.id,
+  () => props.view.session.unseen,
+  held,
+);
 
 async function show(): Promise<void> {
   missing.value = false;

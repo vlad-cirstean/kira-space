@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import AdeActivityIcon from '@ade/AdeActivityIcon.vue';
 import AdeChip from '@ade/AdeChip.vue';
+import { activityKind } from '@ade/activity';
 import StatusDot from '@theme/components/StatusDot.vue';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
@@ -135,10 +137,12 @@ const stopFirst = computed(() => props.card.moves.live);
       >
         <RouterLink
           :to="{ name: 'terminal', params: { sessionId: session.id } }"
+          class="inline-flex items-center gap-2"
           data-testid="plan-terminal"
-          >{{
-            t('common.module.terminal.label')
-          }}</RouterLink
+          :data-activity="activityKind(session)"
+        >
+          <AdeActivityIcon :kind="activityKind(session)" bare />
+          {{ t('common.module.terminal.label') }}</RouterLink
         >
       </Button>
     </div>

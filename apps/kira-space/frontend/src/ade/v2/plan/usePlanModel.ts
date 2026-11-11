@@ -341,19 +341,27 @@ function buildPlanModel() {
   );
   const today = computed(() => localIso(now.value));
   /** Sessions with the TUI activity the server does not report, merged in from the agent hooks. */
-  // Only the phase is read, but the agent store writes a new activity on every hook event. A key
-  // string compares by value, so `sessions` (and the model behind it) rebuilds on a phase change only.
+  // Only phase and background are read, but the agent store writes a new activity on every hook
+  // event. A key string compares by value, so `sessions` (and the model behind it) rebuilds on a
+  // phase or background change only. A terminal with no entry yet has an empty phase.
   const phaseKey = computed(() =>
     (sessionsQuery.data.value?.sessions ?? [])
       .filter((s) => s.mode === 'tui' && s.state === 'running')
-      .map((s) => `${s.terminalId}\t${agentStore.activity.get(s.terminalId)?.phase ?? ''}`)
+      .map((s) => {
+        const a = agentStore.activity.get(s.terminalId);
+        return `${s.terminalId}\t${a?.phase ?? ''}\t${a?.background ?? 0}`;
+      })
       .join('\n'),
   );
   const sessions = computed(() => {
-    const phases = new Map<string, Pick<AgentActivity, 'phase'>>();
+    const phases = new Map<string, Pick<AgentActivity, 'phase' | 'background'>>();
     for (const line of phaseKey.value.split('\n')) {
-      const [terminalId, phase] = line.split('\t');
-      if (terminalId && phase) phases.set(terminalId, { phase: phase as AgentActivity['phase'] });
+      const [terminalId, phase, background] = line.split('\t');
+      if (terminalId && phase)
+        phases.set(terminalId, {
+          phase: phase as AgentActivity['phase'],
+          background: Number(background),
+        });
     }
     return withTuiActivity(sessionsQuery.data.value?.sessions ?? [], phases);
   });

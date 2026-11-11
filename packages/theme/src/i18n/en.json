@@ -8370,6 +8370,9 @@
         "stopped": {
           "status": "Stopped"
         },
+        "unseen": {
+          "status": "Finished, not viewed"
+        },
         "waiting": {
           "status": "Waiting on monitor"
         },
@@ -8536,6 +8539,9 @@
         },
         "summaryInput": {
           "label": "{count} needs input | {count} need input"
+        },
+        "summaryUnseen": {
+          "label": "{count} unseen"
         },
         "summaryWaiting": {
           "label": "{count} waiting on monitor"
@@ -9758,6 +9764,9 @@
           },
           "sessionsRunning": {
             "tooltip": "{count} agent session running | {count} agent sessions running"
+          },
+          "sessionsUnseen": {
+            "tooltip": "Agent finished. Open the session to see its result"
           },
           "status": {
             "aria": "Status: {status}. Change status"

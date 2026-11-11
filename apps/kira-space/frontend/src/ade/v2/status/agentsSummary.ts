@@ -8,21 +8,29 @@ export interface AgentsSummary {
   top: ActivityKind;
 }
 
-/** Counts the running sessions by activity. Sessions already carry their TUI activity. */
+/** Counts the running sessions by activity, plus finished-not-viewed ones under `unseen`; `total`
+ *  is the running count. Sessions already carry their TUI activity. */
 export function agentsSummary(sessions: readonly Session[]): AgentsSummary {
   const byKind: Record<ActivityKind, number> = {
     input: 0,
+    unseen: 0,
     working: 0,
     waiting: 0,
     idle: 0,
     stopped: 0,
   };
-  for (const s of sessions) if (s.state === 'running') byKind[activityKind(s)]++;
+  let total = 0;
+  for (const s of sessions) {
+    const kind = activityKind(s);
+    // A stopped row counts only as unseen; running rows count as before.
+    if (s.state === 'running') total++;
+    if (s.state === 'running' || kind === 'unseen') byKind[kind]++;
+  }
   const kinds = (Object.keys(byKind) as ActivityKind[])
     .filter((k) => byKind[k] > 0)
     .sort((a, b) => ACTIVITY_RANK[a] - ACTIVITY_RANK[b]);
   return {
-    total: kinds.reduce((n, k) => n + byKind[k], 0),
+    total,
     byKind,
     top: kinds[0] ?? 'idle',
   };
