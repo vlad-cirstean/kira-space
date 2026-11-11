@@ -9,7 +9,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 | P609 | DB MCP: `browse_table` gets `in`, count and paging; descriptions steer reads to it | Done |
 | P610 | Agent status: running while subagents or background jobs run; new unseen-finished status | Done |
 | P611 | Show proof dialog: Open closes it; shows the task name | Done |
-| P612 | Presentation site: review-window images use the inline diff; site title matches the first-page headline | Todo |
+| P612 | Presentation site: review-window images use the inline diff; site title matches the first-page headline | Done |
 | P613 | Link strip: one compact links component for Details tab and handoff dialogs | Done |
 | P614 | Move test-matrix and db-compat from release to every PR; required checks | Done |
 | P615 | Link strip: click opens in app, Cmd-click opens externally | Todo |
@@ -80,7 +80,8 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: find how the site images are produced (screenshot specs or scripts under the site package, tests/ui screenshots, any asset pipeline) and where the review window picks side-by-side vs inline.
 - Acceptance: every site image of a review window shows the inline diff; regenerated through the existing pipeline, assets updated; the diff mode is set by the screenshot setup (not by changing the app default).
 - Tests: regenerate the affected images for real and view them; the site build passes.
-- Result:
+- Result: Done. `review.shot.ts` relaunches with a `prepare` that runs `STORY_LAUNCH.prepare` then seeds `localStorage['kira.repo.diffLayout']='inline'`; guard asserts the diff editor lacks `side-by-side` and `repo-diff-layout-inline` is `data-state=on`. App default unchanged. `APP.pageTitle` is now `${HERO.line1} ${HERO.line2}` (`Everything agents need, in one place.`); `<title>` and `og:title` of `/` confirmed in built `site/dist/index.html`; `/build/`, 404 and docs titles unchanged. `site.spec.ts` asserts exact title and `og:title`. Copy: `build-review-window` alt and build.ts review body say inline diff. ARCHITECTURE notes added.
+  Ran here: `bun run setup` (bindings were missing in the worktree); `bun run screenshots --trace off`: 25 passed (guard included); viewed `framed/build-review-window.webp` and `crop/build-review-thread.webp`: one code column, two line-number gutters, removed `return [header...` (red) and added `return \`${[header...` (green) interleaved at line 100, 84 and 37 hidden-line folds, comment marks (circle at line 100, line 12 highlighted) and in the thread crop the open comment card "Name the columns once, not per row." with Mark addressed, Edit, Close, Delete; no second pane. `site:shots:fill` 38 files, exit 0; `site:build` (astro check, icons, share-image hash) passed; site Playwright `--trace off`: 237 passed, 1 skipped, 2 failed: `visual` build page desktop and phone (page height 13591 to 13607 px, shorter review copy and new image heights). Build baselines NOT refreshed: re-record after P613 merges. `typecheck:tests`, `typecheck:site`, `bun run lint` clean. Not run: UI suites, Go, docker, `build-review-agent/-forward/-actions` not viewed.
 
 ## P613 Link strip: one compact links component for Details tab and handoff dialogs
 
