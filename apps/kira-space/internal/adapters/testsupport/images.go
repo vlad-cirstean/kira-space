@@ -76,19 +76,36 @@ func ClickHouseServerMajor() string { return ServerMajor("clickhouse", clickhous
 func MongoServerMajor() string      { return ServerMajor("mongo", MongoImage) }
 func RedisServerMajor() string      { return ServerMajor("redis", RedisImage) }
 
+// pinned is the ordered kind-to-image table behind Images and ImageOf.
+var pinned = []struct{ kind, image string }{
+	{"postgres", defaultPostgresImage},
+	{"mysql", mysqlImage},
+	{"mariadb", mariaImage},
+	{"clickhouse", clickhouseImage},
+	{"redis", RedisImage},
+	{"mongo", MongoImage},
+	{"kafka", kafkaImage},
+	{"localstack", LocalStackImage},
+	{"elasticsearch", elasticsearchImage},
+	{"kibana", kibanaImage},
+}
+
 // Images lists every image the fixtures start, resolved through ImageFor. One source for
 // scripts/pull-test-images.sh.
 func Images() []string {
-	return []string{
-		ImageFor("postgres", defaultPostgresImage),
-		ImageFor("mysql", mysqlImage),
-		ImageFor("mariadb", mariaImage),
-		ImageFor("clickhouse", clickhouseImage),
-		ImageFor("redis", RedisImage),
-		ImageFor("mongo", MongoImage),
-		ImageFor("kafka", kafkaImage),
-		ImageFor("localstack", LocalStackImage),
-		ImageFor("elasticsearch", elasticsearchImage),
-		ImageFor("kibana", kibanaImage),
+	out := make([]string, 0, len(pinned))
+	for _, p := range pinned {
+		out = append(out, ImageFor(p.kind, p.image))
 	}
+	return out
+}
+
+// ImageOf returns the image for one kind, resolved through ImageFor. False for an unknown kind.
+func ImageOf(kind string) (string, bool) {
+	for _, p := range pinned {
+		if p.kind == kind {
+			return ImageFor(p.kind, p.image), true
+		}
+	}
+	return "", false
 }
