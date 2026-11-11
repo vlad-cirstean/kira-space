@@ -111,7 +111,11 @@ test('nine misc links show seven and a more pill that expands the line', async (
 test('pills are one tab stop; arrows, Home, End and Up/Down move focus', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, base());
   await openDetails(page);
-  await expect(page.locator(`${t('ade-links-pill')}[tabindex="0"]`)).toHaveCount(1);
+  await page.locator(t('ade-links-add')).focus();
+  await page.keyboard.press('Tab');
+  await expect(pill(page, 'PAY-130')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator(`${t('ade-links-pill')}:focus`)).toHaveCount(0);
   await pill(page, 'PAY-130').focus();
   await page.keyboard.press('ArrowRight');
   await expect(pill(page, 'PAY-10')).toBeFocused();

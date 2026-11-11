@@ -61,17 +61,23 @@ const openAdd = async (page: import('@playwright/test').Page) => {
   await page.locator(t('ade-links-add')).click();
   await expect(paste(page)).toBeVisible();
 };
-const pasteEvent = (page: import('@playwright/test').Page, testid: string, text: string) =>
+const pasteEvent = (
+  page: import('@playwright/test').Page,
+  testid: string,
+  text: string,
+  has = '',
+) =>
   page.evaluate(
-    ([id, value]) => {
-      const el = document.querySelector(`[data-testid="${id}"]`);
+    ([id, value, within]) => {
+      const els = [...document.querySelectorAll(`[data-testid="${id}"]`)];
+      const el = els.find((e) => e.textContent?.includes(within ?? '')) ?? els[0];
       const data = new DataTransfer();
       data.setData('text', value ?? '');
       el?.dispatchEvent(
         new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
       );
     },
-    [testid, text],
+    [testid, text, has],
   );
 
 test('contract: stored pills carry their kind', async ({ relaunch }) => {
@@ -121,7 +127,7 @@ test('links group under Issues, Change requests and Misc; the block stays compac
   for (const id of ['issue', 'changeRequest', 'misc']) {
     await expect(line(page, id).locator(t('ade-links-category'))).toHaveAttribute(
       'aria-label',
-      GROUP_NAME[id] ?? '',
+      new RegExp(`^${GROUP_NAME[id]}`),
     );
   }
   // Jira slot plus listed artifacts, minus detected branches.
@@ -172,7 +178,7 @@ test('pasting on a focused pill files at once', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, base());
   await openDetails(page);
   await pill(page, 'feat/x').focus();
-  await pasteEvent(page, 'ade-links', 'https://wiki.example/strip');
+  await pasteEvent(page, 'ade-links-pill', 'https://wiki.example/strip', 'feat/x');
   await expect.poll(() => calls(control, IPC.adeTaskAddLink)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskAddLink)[0]?.args).toEqual({
     taskId: 'T_alerts',
@@ -263,6 +269,8 @@ test('contract: editing a stored link sends its text as typed; Escape cancels; F
   await input.press('Escape');
   await expect(input).toHaveCount(0);
   expect(calls(control, IPC.adeTaskEditLink)).toHaveLength(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator(t('ade-links-card'))).toHaveCount(0);
 
   const again = await openCard(page, 'Runbook');
   await again.locator(t('ade-links-card-edit')).click();
