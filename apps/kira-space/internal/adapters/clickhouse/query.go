@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
@@ -60,20 +61,24 @@ func decodeRow(values []string, nullable []bool) []*string {
 // interpolated into the SQL text.
 func buildURL(h *Handle, queryID string, settings, extraParams map[string]string, readOnly bool) string {
 	q := url.Values{}
-	for k, v := range fixedSettings {
-		q.Set(k, v)
-	}
+	q.Set("default_format", defaultFormat)
 	q.Set("database", h.DefaultDatabase)
 	if queryID != "" {
 		q.Set("query_id", queryID)
 	}
-	// D7: sent per request, never baked into the client — every data/console/mutation request gets
-	// it; Cancel's own KILL QUERY never does (readOnly is always false there).
-	if readOnly {
-		q.Set("readonly", "2")
-	}
-	for k, v := range settings {
-		q.Set(k, v)
+	if h.settingsAllowed() {
+		for k, v := range fixedSettings {
+			q.Set(k, v)
+		}
+		// D7: sent per request, never baked into the client — every data/console/mutation request
+		// gets it; Cancel's own KILL QUERY never does (readOnly is always false there). A
+		// readonly=1/2 profile already refuses writes, so it is skipped there.
+		if readOnly && h.sendReadonly() {
+			q.Set("readonly", "2")
+		}
+		for k, v := range settings {
+			q.Set(k, v)
+		}
 	}
 	for k, v := range extraParams {
 		q.Set("param_"+k, escapeParamValue(v))
@@ -259,12 +264,34 @@ func RunCatalogQuery[T any](ctx context.Context, h *Handle, queryID string, sql 
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return nil, mapHTTPError(resp.Header.Get("X-ClickHouse-Exception-Code"), string(body))
 		}
-		var parsed struct {
-			Data []T `json:"data"`
-		}
-		if err := json.Unmarshal(body, &parsed); err != nil {
-			return nil, adapters.New(adapters.CodeQuery, err.Error(), err)
-		}
-		return parsed.Data, nil
+		return decodeCatalogRows[T](body)
 	})
+}
+
+// decodeCatalogRows decodes a `FORMAT JSON` body. Catalog row fields are string/*string by
+// convention; 64-bit ints arrive as bare numbers since output_format_json_quote_64bit_integers is
+// not sent, so a numeric value is re-quoted from its exact digits. null stays null.
+func decodeCatalogRows[T any](body []byte) ([]T, error) {
+	var parsed struct {
+		Data []map[string]json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return nil, adapters.New(adapters.CodeQuery, err.Error(), err)
+	}
+	for _, row := range parsed.Data {
+		for k, v := range row {
+			if len(v) > 0 && (v[0] == '-' || (v[0] >= '0' && v[0] <= '9')) {
+				row[k] = json.RawMessage(strconv.Quote(string(v)))
+			}
+		}
+	}
+	raw, err := json.Marshal(parsed.Data)
+	if err != nil {
+		return nil, adapters.New(adapters.CodeQuery, err.Error(), err)
+	}
+	var out []T
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, adapters.New(adapters.CodeQuery, err.Error(), err)
+	}
+	return out, nil
 }

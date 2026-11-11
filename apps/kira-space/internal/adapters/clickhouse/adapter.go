@@ -68,7 +68,8 @@ func (a *Adapter) Connect(ctx context.Context, cfg model.ResolvedConnectionConfi
 		Version  string `json:"version"`
 		Database string `json:"database"`
 		Timezone string `json:"timezone"`
-	}](ctx, handle, a.nextQueryID(op.OpID, 0), "SELECT version() AS version, currentDatabase() AS database, timezone() AS timezone", op, a.trackerFor(op.OpID), nil)
+		Readonly string `json:"readonly"`
+	}](ctx, handle, a.nextQueryID(op.OpID, 0), "SELECT version() AS version, currentDatabase() AS database, timezone() AS timezone, toString(getSetting('readonly')) AS readonly", op, a.trackerFor(op.OpID), nil)
 	if err != nil {
 		_ = a.Disconnect(context.Background())
 		return adapters.ConnectInfo{}, err
@@ -78,6 +79,19 @@ func (a *Adapter) Connect(ctx context.Context, cfg model.ResolvedConnectionConfi
 		return adapters.ConnectInfo{}, adapters.Contract("connect probe returned no rows", nil)
 	}
 	row := rows[0]
+	profile, perr := strconv.Atoi(row.Readonly)
+	if perr != nil || profile < 0 || profile > 2 {
+		_ = a.Disconnect(context.Background())
+		return adapters.ConnectInfo{}, adapters.Contract("connect probe returned an invalid readonly setting: "+row.Readonly, nil)
+	}
+	handle.profileReadonly.Store(int32(profile))
+	handle.probed.Store(true)
+	if profile == 1 {
+		handle.noEngineTimeout.Store(true)
+		if a.deps.Log != nil {
+			a.deps.Log("warn", "clickhouse: profile is readonly=1; engine timeout and per-request settings disabled, app timer enforces limits")
+		}
+	}
 	return adapters.ConnectInfo{
 		ServerVersion: "ClickHouse " + row.Version,
 		Details:       map[string]string{"url": handle.URL, "database": row.Database, "timezone": row.Timezone},

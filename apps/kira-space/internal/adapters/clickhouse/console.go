@@ -100,7 +100,8 @@ func isRowReturning(sql string) bool {
 }
 
 // cancelOnCloseSettings makes the server cancel a read when the client closes the connection at the
-// cap; allowed alongside the console's readonly=2.
+// cap; allowed alongside readonly=2, dropped for a readonly=1 profile (buildURL), where a hung-up
+// streaming read stops on its own.
 var cancelOnCloseSettings = map[string]string{"cancel_http_readonly_queries_on_client_close": "1"}
 
 func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, sql string, limit page.ResultCap, extra map[string]string) (page.TabularPage, error) {

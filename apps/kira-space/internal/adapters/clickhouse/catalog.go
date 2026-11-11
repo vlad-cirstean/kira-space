@@ -149,9 +149,8 @@ func lessTableIdx(tables []systemTableRow, lowerNames []string, i, j int) bool {
 type systemColumnRow struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
-	// Position is UInt64 in system.columns — like total_rows/count(), FORMAT JSON renders it as a
-	// quoted string once output_format_json_quote_64bit_integers is on (client.go's own comment),
-	// so this is string, not int, and toColumnMeta parses it.
+	// Position is UInt64 in system.columns — FORMAT JSON renders it as a bare number, which
+	// RunCatalogQuery re-quotes, so this is string, not int, and toColumnMeta parses it.
 	Position          string `json:"position"`
 	DefaultKind       string `json:"default_kind"`
 	DefaultExpression string `json:"default_expression"`
