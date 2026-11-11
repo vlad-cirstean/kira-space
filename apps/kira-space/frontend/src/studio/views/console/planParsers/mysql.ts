@@ -195,7 +195,13 @@ function v2Node(raw: RawV2Node, thresholdRows: number, scans: ScanEstimate[]): P
     issues: [],
     children: [],
   };
-  if (raw.access_type === 'table' && raw.table_name && !raw.table_name.startsWith('<')) {
+  // A base-table scan is a leaf; a scan with inputs reads a materialised derived table or CTE.
+  if (
+    raw.access_type === 'table' &&
+    inputs.length === 0 &&
+    raw.table_name &&
+    !raw.table_name.startsWith('<')
+  ) {
     node.issues.push({
       severity: 'warn',
       code: 'full-scan',
@@ -225,11 +231,22 @@ function v2Node(raw: RawV2Node, thresholdRows: number, scans: ScanEstimate[]): P
   return node;
 }
 
+/** Cost of the topmost node carrying one, breadth-first: MySQL 9 omits estimated_total_cost on
+ *  Sort and temp-table aggregate nodes. */
+function topCost(top: PlanNode): number | undefined {
+  const queue = [top];
+  for (let i = 0; i < queue.length; i++) {
+    const node = queue[i] as PlanNode;
+    if (node.cost) return node.cost.total;
+    queue.push(...node.children);
+  }
+  return undefined;
+}
+
 function parseMysqlV2(rawText: string, plan: RawV2Node, thresholdRows: number): QueryPlan {
   const scans: ScanEstimate[] = [];
   const top = v2Node(plan, thresholdRows, scans);
-  const queryCost =
-    typeof plan.estimated_total_cost === 'number' ? plan.estimated_total_cost : undefined;
+  const queryCost = topCost(top);
   const root: PlanNode = {
     label: t('studio.console.plan.root.query.label'),
     cost: queryCost !== undefined ? { total: queryCost } : undefined,

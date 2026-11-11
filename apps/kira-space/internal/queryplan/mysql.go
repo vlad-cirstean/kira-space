@@ -245,7 +245,8 @@ func mysqlV2Node(raw json.RawMessage, thresholdRows int, scans *[]float64) Node 
 	if n.TableName != nil {
 		relation = *n.TableName
 	}
-	if access == "table" && n.TableName != nil && *n.TableName != "" && !strings.HasPrefix(*n.TableName, "<") {
+	// A base-table scan is a leaf; a scan with inputs reads a materialised derived table or CTE.
+	if access == "table" && len(n.Inputs) == 0 && n.TableName != nil && *n.TableName != "" && !strings.HasPrefix(*n.TableName, "<") {
 		node.Issues = append(node.Issues, Issue{
 			Severity: "warn", Code: "full-scan",
 			Message: fmt.Sprintf("Full table scan on “%s”. No index was used.", relation),
@@ -271,17 +272,32 @@ func mysqlV2Node(raw json.RawMessage, thresholdRows int, scans *[]float64) Node 
 	return node
 }
 
+// mysqlV2TopCost returns the cost of the topmost node carrying one, breadth-first: MySQL 9 omits
+// estimated_total_cost on Sort and temp-table aggregate nodes.
+func mysqlV2TopCost(top *Node) *float64 {
+	queue := []*Node{top}
+	for len(queue) > 0 {
+		n := queue[0]
+		queue = queue[1:]
+		if n.Cost != nil {
+			return &n.Cost.Total
+		}
+		for i := range n.Children {
+			queue = append(queue, &n.Children[i])
+		}
+	}
+	return nil
+}
+
 func parseMysqlV2(rawText string, plan json.RawMessage, thresholdRows int) Plan {
-	var top mysqlV2Raw
-	_ = json.Unmarshal(plan, &top)
 	scans := make([]float64, 0)
 	child := mysqlV2Node(plan, thresholdRows, &scans)
 
 	var rootCost *Cost
 	var nativeCost *NativeCost
-	if top.EstimatedTotalCost != nil {
-		rootCost = &Cost{Total: *top.EstimatedTotalCost}
-		nativeCost = &NativeCost{Value: *top.EstimatedTotalCost, Unit: CostUnitMysqlCost}
+	if cost := mysqlV2TopCost(&child); cost != nil {
+		rootCost = &Cost{Total: *cost}
+		nativeCost = &NativeCost{Value: *cost, Unit: CostUnitMysqlCost}
 	}
 	root := Node{
 		Label: i18n.T("backend.queryPlan.root.query.label", nil), Cost: rootCost,

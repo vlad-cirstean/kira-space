@@ -2,6 +2,9 @@
   "kind": "mysql",
   "root": {
     "label": "Query",
+    "cost": {
+      "total": 139.88500109314919
+    },
     "metrics": [],
     "issues": [],
     "children": [
@@ -181,6 +184,10 @@
     ]
   },
   "estimatedRowsRead": 1000,
+  "nativeCost": {
+    "value": 139.88500109314919,
+    "unit": "mysql-cost"
+  },
   "issues": [
     {
       "severity": "warn",
