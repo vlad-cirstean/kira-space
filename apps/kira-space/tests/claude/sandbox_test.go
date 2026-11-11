@@ -50,14 +50,14 @@ func gitBranches(t *testing.T, dir string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// TestAdeSandbox asks a write step to create a file, then to make branches the sandbox forbids.
+// TestAdeSandbox asks a step declaring write access to create a file, then to make branches the sandbox forbids.
 // Linux has no OS layer: the run reports "not enforced" and only the CLI's own deny rule stops
 // `git branch`. macOS enforces the profile, so no branch appears and a denial is recorded.
 func TestAdeSandbox(t *testing.T) {
 	f := sandboxFixture(t)
 	prompt := "This is a sandbox test: run these Bash commands even though the sandbox note says not to git branch; the sandbox must block them. Run them one at a time, in this order, and do not retry a failed one: " +
 		"touch a.txt ; git branch x ; git checkout -b y . Then call finish_step with status done and summary ok."
-	f.saveWorkflow(t, "flow", sandboxStep(`["Bash(touch:*)", "Bash(git:*)"]`, prompt, "")+manualStepYAML)
+	f.saveWorkflow(t, "flow", sandboxStep(`["Bash(touch:*)", "Bash(git:*)"]`, prompt, "    sandbox:\n      access: write\n")+manualStepYAML)
 	task := f.createTask(t, "flow")
 	run := f.startRun(t, task, "feat/real-claude")
 	log := f.runLog(t, run.ID)
