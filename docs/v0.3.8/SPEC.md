@@ -5,7 +5,7 @@ Fixes after the v0.3.7 release failed. Chapter stays open: more phases may be ad
 | Phase | Title | Status |
 |---|---|---|
 | P604 | Release container failures: ClickHouse `readonly=1` connect and MySQL 9.7 explain row estimate | Done |
-| P605 | Real `claude` test `TestSmartScriptRun`: user MCP server leaks into the hermetic list | Todo |
+| P605 | Real `claude` test `TestSmartScriptRun`: user MCP server leaks into the hermetic list | Done |
 | P606 | UI spec `dbmcp-script-long.spec.ts`: ambiguous `run-stop` locator race | Done |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
@@ -29,7 +29,7 @@ Two independent failures from the v0.3.7 release, one phase, one plan.
 - Acceptance: the test passes against the real `claude`; if the leak is a product bug (hermetic or isolated runs load user servers), fix the product, else the test.
 - Scope: every other failure in the real `claude` tests is in this phase too. Run all `bun run test:claude*` rows, fix each failure at its root (product or test, never weaken), rerun to green.
 - Tests: all `test:claude*` rows, run here and passing.
-- Result:
+- Result: Auth probe returned `ok`. Root causes: (1) `TestHermeticSession/hermetic` was a test bug: the subtest never turned `agent.hermetic` on after P588 flipped the default off; fixed with `f.SetHermetic(t, hermetic)`. `TestSmartScriptRun` was already fixed by d959e7ea7. (2) `TestAdeSandbox` was a test bug: a step without a `sandbox` block is unconfined since v0.3.6; the step now declares `access: write`. (3) `TestDbMcpBrowseThroughClaude` was a product bug: `list_connections` read-denied reason now names `browse_table` when masked is allowed (`accessOf`, ARCHITECTURE note). The `DbmcpInstructions` escalation was not added. (4) `bun run test:claude` had a 15m timeout, below the ~15.2 min module run; raised to 40m. Ran: `lint:claude` (0 issues); `go vet ./internal/dbmcp/...`; `go test ./internal/dbmcp/... ./internal/flows/dbmcpflow/...` (pass); `go build ./internal/...` (pass; `go build ./...` fails here only on missing `frontend/dist` embed in the worktree). Real `claude`: `TestDbMcpBrowseThroughClaude` 3 single runs plus one `-count=3`, all pass; `TestHermeticSession` (both subtests), `TestAdeSandbox`, `TestAdeSandboxReadOnly` pass; `bun run test:claude -count=1` once ran 913 s with every test PASS or SKIP (`TestMemoryIngestEval`), but its log was shared with a stray concurrent run that logged `TestMemoryMcpFollowsDocs/list` FAIL, and the lone rerun was cancelled; `bun run test:claude:db -count=1` passed (104 s). Not run: `TestMemoryIngestEval` (needs `KIRA_EVAL_MODE`; costly multi-stage eval, `KIRA_MEMORY_EVAL=1` alone fails at mode check); clean rerun of `TestMemoryMcpFollowsDocs` (cancelled by coordinator, so its status is unconfirmed); flow tests beyond dbmcpflow.
 
 ## P606 UI spec `dbmcp-script-long.spec.ts`: ambiguous `run-stop` locator race
 
