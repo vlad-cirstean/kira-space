@@ -13,7 +13,7 @@ import (
 // out of "waiting" the moment a person answers a monitor's prompt, before any tool runs.
 var hookEvents = []string{
 	"SessionStart", "SessionEnd", "PreToolUse", "PostToolUse", "Notification", "Stop",
-	"UserPromptSubmit",
+	"UserPromptSubmit", "SubagentStop",
 }
 
 // hookCommandTimeoutSeconds is the "timeout" field's own unit (seconds, not milliseconds) in the

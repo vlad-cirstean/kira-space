@@ -17,6 +17,7 @@ function emptyActivity(sessionId: string | null, now: number): AgentActivity {
     sessionId,
     wakeArmed: false,
     at: now,
+    background: 0,
   };
 }
 
@@ -31,6 +32,12 @@ export function reduceAgentActivity(
   now: number,
 ): AgentActivity {
   const base = prev ?? emptyActivity(event.sessionId || null, now);
+  if (event.agentId !== '') {
+    // A subagent's own hooks never move the main session's phase. Only SubagentStop refreshes
+    // the background count.
+    if (event.event === 'SubagentStop') return { ...base, background: event.background, at: now };
+    return { ...base, at: now };
+  }
   switch (event.event) {
     case 'SessionStart':
       // Resets rather than merges — a user who exits `claude` and reruns it in the same tab
@@ -84,9 +91,12 @@ export function reduceAgentActivity(
         toolName: null,
         message: null,
         wakeArmed: false,
+        background: event.background,
         at: now,
       };
     }
+    case 'SessionEnd':
+      return { ...base, background: 0, at: now };
     default:
       return { ...base, at: now };
   }

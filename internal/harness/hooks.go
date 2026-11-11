@@ -59,6 +59,7 @@ const (
 	EventToolEnd      EventKind = "PostToolUse"
 	EventNotification EventKind = "Notification"
 	EventTurnEnd      EventKind = "Stop"
+	EventSubagentEnd  EventKind = "SubagentStop"
 )
 
 // AgentEvent is one session event. TerminalID comes from the launch, the rest from the agent's
@@ -76,6 +77,10 @@ type AgentEvent struct {
 	Reason           string    `json:"reason"`
 	// LastAssistantMessage is Stop's reply text, bounded like Message.
 	LastAssistantMessage string `json:"lastAssistantMessage"`
+	// AgentID is set when a subagent fired the event; "" for the main session.
+	AgentID string `json:"agentId"`
+	// Background is the live background task count after a Stop or SubagentStop, else 0.
+	Background int `json:"background"`
 	// Wakes: a tool start that arms a self-wake, so the turn end that follows is not "finished".
 	Wakes bool `json:"-"`
 	// NeedsInput: a notification that asks the user to act.

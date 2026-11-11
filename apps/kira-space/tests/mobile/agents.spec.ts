@@ -19,6 +19,8 @@ const ASK = {
   source: '',
   reason: '',
   lastAssistantMessage: '',
+  agentId: '',
+  background: 0,
 };
 
 // Hook events sent before the app subscribed are lost, so send again until the question shows.

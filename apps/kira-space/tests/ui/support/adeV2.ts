@@ -335,6 +335,7 @@ export async function emitAgentEvent(
   terminalId: string,
   event: string,
   cwd = '',
+  extra: { agentId?: string; background?: number } = {},
 ): Promise<void> {
   await emitWailsEvent(page, IPC.agentEvent, {
     terminalId,
@@ -348,6 +349,8 @@ export async function emitAgentEvent(
     source: '',
     reason: '',
     lastAssistantMessage: '',
+    agentId: extra.agentId ?? '',
+    background: extra.background ?? 0,
   });
 }
 

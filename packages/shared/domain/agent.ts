@@ -36,6 +36,8 @@ export interface AgentEvent {
   source: string; // SessionStart
   reason: string; // SessionEnd
   lastAssistantMessage: string; // Stop, bounded server-side
+  agentId: string; // set when a subagent fired the event; '' for the main session
+  background: number; // live background task count, set on Stop and SubagentStop, else 0
 }
 
 // Reducer output — one Claude Code tab's current activity, derived from the AgentEvent
@@ -57,6 +59,8 @@ export interface AgentActivity {
   // at is P129 Part 1's own addition: receipt time (ms) of the event that produced this activity —
   // every event updates it, including one that leaves phase unchanged.
   at: number;
+  // Live background task count from the last Stop (or SubagentStop).
+  background: number;
 }
 
 // agentsvc.Info: what the UI needs to name and configure one agent provider.

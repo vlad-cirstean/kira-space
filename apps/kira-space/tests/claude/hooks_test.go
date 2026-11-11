@@ -52,7 +52,7 @@ func TestTerminalAgentHooks(t *testing.T) {
 }
 
 // hookEvents copies internal/harness/claude/hooks/config.go's hookEvents for the same reason.
-var hookEvents = []string{"SessionStart", "SessionEnd", "PreToolUse", "PostToolUse", "Notification", "Stop", "UserPromptSubmit"}
+var hookEvents = []string{"SessionStart", "SessionEnd", "PreToolUse", "PostToolUse", "Notification", "Stop", "UserPromptSubmit", "SubagentStop"}
 
 // captureSettings writes a hooks file whose every event appends its raw stdin payload as one
 // line to capture.
