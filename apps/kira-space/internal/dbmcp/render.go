@@ -1071,7 +1071,11 @@ func renderBrowsePage(pg page.TabularPage, p browsePlan, mk *maskset, plan *plan
 	if res.HasMore {
 		next := p.offset + pg.RowCount
 		if next > browseMaxOffset {
-			note := fmt.Sprintf("next offset passes %d: continue with a gt or lt filter on the last row's order value and offset 0", browseMaxOffset)
+			note := fmt.Sprintf("next offset passes %d: narrow the read with a filter on the key column, or use run_query where reads are allowed", browseMaxOffset)
+			if p.stable && len(res.Order) == 1 {
+				// One key column as the whole order: gt or lt on it is an exact keyset step.
+				note = fmt.Sprintf("next offset passes %d: continue with a gt or lt filter on the last row's %s and offset 0", browseMaxOffset, res.Order[0].Column)
+			}
 			res.PagingNote = strings.TrimSpace(res.PagingNote + " " + note)
 		} else {
 			res.NextOffset = &next

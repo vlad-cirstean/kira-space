@@ -91,6 +91,40 @@ func TestPlanBrowseMaskingRules(t *testing.T) {
 	}
 }
 
+// A unique index only keys the order when it is full and every column is a NOT NULL catalog column.
+func TestBrowseKeyColumnsIndexes(t *testing.T) {
+	summary := model.ConnectionSummary{Kind: "postgres"}
+	sh := browseShape{limit: 50, relation: `"app"."customers"`}
+	cases := []struct {
+		name    string
+		index   model.IndexMeta
+		stable  bool
+		sortLen int
+	}{
+		{name: "expression index", index: model.IndexMeta{Name: "ix", Columns: []string{"lower(email)"}, Unique: true}},
+		{name: "quoted identifier", index: model.IndexMeta{Name: "ix", Columns: []string{`"Email"`}, Unique: true}},
+		{name: "partial index", index: model.IndexMeta{Name: "ix", Columns: []string{"email"}, Unique: true, Partial: true}},
+		{name: "full index on catalog column", index: model.IndexMeta{Name: "ix", Columns: []string{"email"}, Unique: true}, stable: true, sortLen: 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			meta := browseMeta("table", "id", "email")
+			meta.Indexes = []model.IndexMeta{tc.index}
+			p, refusal := planBrowse(summary, sh, meta, browseTableArgs{}, maskset{})
+			if refusal != "" {
+				t.Fatalf("refusal %q", refusal)
+			}
+			got := 0
+			if p.sort != nil {
+				got = len(p.sort.Terms)
+			}
+			if p.stable != tc.stable || got != tc.sortLen {
+				t.Fatalf("stable %v sort terms %d, want %v and %d", p.stable, got, tc.stable, tc.sortLen)
+			}
+		})
+	}
+}
+
 // A string value cannot end its quotes early under any engine's escape rule.
 func TestBrowsePreviewLiterals(t *testing.T) {
 	var num json.Number = "12"

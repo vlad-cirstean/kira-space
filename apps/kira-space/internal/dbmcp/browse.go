@@ -329,7 +329,7 @@ const (
 	maskedKeyPagingNote = "the key column is masked, so it is not added to the order: rows can repeat or be skipped across pages"
 )
 
-// keyColumns is the table's primary key, else its first unique index whose columns are all NOT NULL.
+// keyColumns is the table's primary key, else its first full unique index over NOT NULL catalog columns.
 func (r browseRules) keyColumns() []string {
 	if len(r.meta.PrimaryKey) > 0 {
 		return r.meta.PrimaryKey
@@ -339,12 +339,14 @@ func (r browseRules) keyColumns() []string {
 		nullable[c.Name] = c.Nullable
 	}
 	for _, ix := range r.meta.Indexes {
-		if !ix.Unique || len(ix.Columns) == 0 {
+		// A partial index is unique only inside its predicate. An index column that is not a catalog
+		// column is an expression or a quoted identifier (postgres), unusable as a sort term.
+		if !ix.Unique || ix.Partial || len(ix.Columns) == 0 {
 			continue
 		}
 		notNull := true
 		for _, c := range ix.Columns {
-			if nullable[c] {
+			if nullable[c] || !r.known[c] {
 				notNull = false
 				break
 			}

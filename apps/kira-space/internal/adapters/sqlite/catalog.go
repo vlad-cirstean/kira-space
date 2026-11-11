@@ -402,9 +402,10 @@ func pkIsKeysetEligible(primaryKey []string, columns []model.ColumnMeta, without
 // F9) — see listColumns' identical reasoning.
 func listIndexes(exec QueryExecutor, schema, table string) ([]model.IndexMeta, error) {
 	type idxRow struct {
-		name   string
-		unique bool
-		origin string
+		name    string
+		unique  bool
+		origin  string
+		partial bool
 	}
 	var indexes []idxRow
 	err := exec("SELECT * FROM pragma_index_list(?, ?)", []any{table, schema}, func(r *sql.Rows) error {
@@ -415,7 +416,7 @@ func listIndexes(exec QueryExecutor, schema, table string) ([]model.IndexMeta, e
 		if err := r.Scan(&seq, &name, &unique, &origin, &partial); err != nil {
 			return err
 		}
-		indexes = append(indexes, idxRow{name: name, unique: unique == 1, origin: origin})
+		indexes = append(indexes, idxRow{name: name, unique: unique == 1, origin: origin, partial: partial == 1})
 		return nil
 	})
 	if err != nil {
@@ -440,7 +441,7 @@ func listIndexes(exec QueryExecutor, schema, table string) ([]model.IndexMeta, e
 			return nil, err
 		}
 		result[i] = model.IndexMeta{
-			Name: idx.name, Columns: columns, Unique: idx.unique, Primary: idx.origin == "pk",
+			Name: idx.name, Columns: columns, Unique: idx.unique, Primary: idx.origin == "pk", Partial: idx.partial,
 			// SQLite reports no index method via any pragma — always a B-tree internally, but
 			// there is nothing honest to put here beyond nil (unlike MariaDB's INDEX_TYPE).
 			Method: nil,
