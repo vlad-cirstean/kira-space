@@ -1,0 +1,109 @@
+P614: run the adapter matrix (four groups, test-matrix (Linux) aggregate) and db-compat min/max on every PR, 12 min caps, per-group image cache.
+
+diff --git a/.github/workflows/pr.yml b/.github/workflows/pr.yml
+index c82cd0bc0..2a21781ec 100644
+--- a/.github/workflows/pr.yml
++++ b/.github/workflows/pr.yml
+@@ -12,7 +12,7 @@ concurrency:
+   group: pr-${{ github.ref }}
+   cancel-in-progress: true
+ 
+-# No job `needs` another: nothing consumes another job's output, so every job starts at once.
++# Only the test-matrix aggregate `needs` (its groups); every other job starts at once.
+ # Shared setup lives in .github/actions/setup.
+ jobs:
+   # Only the work that genuinely needs macOS: cgo-aware go vet/build (catches darwin build-tag
+@@ -254,3 +254,93 @@ jobs:
+         with:
+           path: ~/docker-images.tar
+           key: docker-${{ runner.os }}-${{ hashFiles('apps/kira-space/internal/adapters/testsupport/*.go') }}
++
++  # Complete auth/config permutation matrix (P25/P26) on every PR (P614), one job per weight group
++  # (P608). `rest` is every kind the three heavy groups do not name, so a new adapter lands there
++  # without a workflow edit. test-matrix.sh sets KIRA_TEST_MATRIX itself.
++  test-matrix-group:
++    name: test-matrix (Linux, ${{ matrix.group }})
++    runs-on: ubuntu-24.04
++    timeout-minutes: 12
++    strategy:
++      fail-fast: false
++      matrix:
++        include:
++          - group: postgres
++            args: --only postgres
++          - group: mysqlfamily
++            args: --only mysqlfamily
++          - group: clickhouse
++            args: --only clickhouse
++          - group: rest
++            args: --except postgres,mysqlfamily,clickhouse
++    steps:
++      - uses: actions/checkout@v7
++      - uses: ./.github/actions/setup
++        timeout-minutes: 10
++        with:
++          bun: "false"
++          bindings: "false"
++          go-cache: go-ct
++          gtk: "true"
++          cache-save: "false"
++      - name: Resolve this group's images (the cache key is their exact pinned tags)
++        id: images
++        run: |
++          set -eu
++          LIST="$(sh scripts/test-matrix.sh ${{ matrix.args }} --print-images)"
++          printf '%s\n' "$LIST"
++          echo "key=matrix-images-${{ runner.os }}-${{ matrix.group }}-$(printf '%s\n' "$LIST" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
++      - name: Restore this group's images (saved in main's scope by cache-warm.yml)
++        id: image-cache
++        uses: actions/cache/restore@v6
++        with:
++          path: ~/matrix-images.tar
++          key: ${{ steps.images.outputs.key }}
++      - name: Load the cached images
++        if: steps.image-cache.outputs.cache-hit == 'true'
++        run: docker load -i ~/matrix-images.tar
++      - name: Complete matrix for this group (a cache miss pulls through mirror.gcr.io)
++        env:
++          # The runner is discarded: no reaper, no Docker Hub pull for it.
++          TESTCONTAINERS_RYUK_DISABLED: "true"
++          PULL: ${{ steps.image-cache.outputs.cache-hit == 'true' && '--no-pull' || '--mirror' }}
++        run: sh scripts/test-matrix.sh ${{ matrix.args }} $PULL
++
++  # One stable required-check name over the groups. Fails unless every group passed.
++  test-matrix:
++    name: test-matrix (Linux)
++    needs: test-matrix-group
++    if: ${{ !cancelled() }}
++    runs-on: ubuntu-24.04
++    timeout-minutes: 5
++    steps:
++      - env:
++          RESULT: ${{ needs.test-matrix-group.result }}
++        run: |
++          echo "test-matrix groups: $RESULT"
++          test "$RESULT" = success
++
++  # Conformance against each kind's oldest and newest supported server (P16) on every PR (P614).
++  # No image cache: the compat images (about 12 GB) would push the repo past its 10 GB cache limit.
++  db-compat:
++    name: db-compat (Linux, ${{ matrix.extreme }})
++    runs-on: ubuntu-24.04
++    timeout-minutes: 12
++    strategy:
++      fail-fast: false
++      matrix:
++        extreme: [min, max]
++    steps:
++      - uses: actions/checkout@v7
++      - uses: ./.github/actions/setup
++        timeout-minutes: 10
++        with:
++          bun: "false"
++          bindings: "false"
++          go-cache: go-ct
++          gtk: "true"
++          cache-save: "false"
++      - env:
++          TESTCONTAINERS_RYUK_DISABLED: "true"
++        run: sh scripts/db-compat.sh --${{ matrix.extreme }} --mirror
