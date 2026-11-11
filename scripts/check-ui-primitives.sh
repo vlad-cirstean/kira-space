@@ -123,6 +123,8 @@ U62 apps/kira-space/frontend/src/views/repo/RepoDiffView.vue # Monaco editor.foc
 U62 apps/kira-space/frontend/src/views/repo/useFileEdit.ts # Monaco editor.focus(), not DOM focus
 U60 apps/kira-space/frontend/src/ade/v2/plan/AdeDayBand.vue # drags cards between day lists with sort off; useSortableReorder only reorders within one list
 U62 apps/kira-space/frontend/src/ade/v2/notes/AdeNotesEditor.vue # TipTap chain().focus() commands, not DOM focus
+U47 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # Up/Down jump between the wrapping pill lines of a roving-focus strip; useListNavigation is one vertical list
+U62 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # focus moves between pills and to the + after a removal; reka's roving group owns Left/Right only
 # C (rest)
 U91 packages/git-ui/src/components/UncommittedChangesStrip.vue # tooltip text differs from the visible label
 U11 packages/docker-ui/src/components/LogsView.vue # ANSI bold is log data, not UI chrome

@@ -9345,6 +9345,17 @@
           "tooltip": "View {label} in Kira"
         }
       },
+      "links": {
+        "category": {
+          "tooltip": "{category}: {count} link | {category}: {count} links"
+        },
+        "empty": {
+          "hint": "Paste a link or press +."
+        },
+        "kind": {
+          "aria": "Link kind"
+        }
+      },
       "mainTab": {
         "checksFailure": {
           "tooltip": "Checks failed"

@@ -635,7 +635,8 @@ export function useTaskIssue(
   watch(
     () => query.data.value,
     (issue) => {
-      if (!issue?.stale || lastFresh) return;
+      // A refresh another reader of this key already started is not restarted.
+      if (!issue?.stale || lastFresh || query.isFetching.value) return;
       nextFresh = true;
       void query.refetch();
     },
