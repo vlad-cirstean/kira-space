@@ -6,7 +6,6 @@ import { useAdeReader } from '../reader';
 import { useLog } from '../readQueries';
 import type { LogChunk } from '../wire';
 import type { SessionView } from './sessionView';
-import { useMarkSeenOnView } from './useMarkSessionSeen';
 
 // A running background run: its read-only log; Take over and Stop sit in the tab row.
 const props = defineProps<{ view: SessionView }>();
@@ -15,11 +14,6 @@ const props = defineProps<{ view: SessionView }>();
 const log = useLog(
   () => 'run',
   () => props.view.session.runId ?? '',
-);
-
-useMarkSeenOnView(
-  () => props.view.session.id,
-  () => props.view.session.unseen,
 );
 
 const reader = useAdeReader();

@@ -36,16 +36,17 @@ const takeOver = useAdeTakeOverStore();
 const menu = useSessionMenu();
 const ago = useRelativeTime(() => props.view.session.lastActiveAt);
 const logOpen = ref(false);
-// Opening a finished run's log is the view of a stopped headless session.
-useMarkSeenOnView(
-  () => props.view.session.id,
-  () => props.view.session.unseen,
-  logOpen,
-);
 const moreBtn = useTemplateRef<{ $el: HTMLElement }>('moreBtn');
 
 const id = computed(() => props.view.session.id);
 const running = computed(() => props.view.session.state === 'running');
+// A stopped session is viewed once its row is revealed (an open from the status bar or Needs page)
+// or its finished run's log is open.
+useMarkSeenOnView(
+  () => props.view.session.id,
+  () => props.view.session.unseen,
+  () => logOpen.value || (!!props.selected && !running.value),
+);
 const hasLog = computed(() => props.view.headless && !!props.view.session.runId);
 const pending = computed(() => takeOver.pending.has(id.value));
 const runState = computed(() => props.view.run?.state ?? '');
