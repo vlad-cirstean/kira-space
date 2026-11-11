@@ -100,7 +100,8 @@ func isRowReturning(sql string) bool {
 }
 
 // cancelOnCloseSettings makes the server cancel a read when the client closes the connection at the
-// cap; allowed alongside the console's readonly=2.
+// cap; allowed alongside readonly=2, dropped for a readonly=1 profile (buildURL). There a hung-up
+// read can keep running (sparse output, late-emitting aggregate), so runRowReturning kills it.
 var cancelOnCloseSettings = map[string]string{"cancel_http_readonly_queries_on_client_close": "1"}
 
 func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, sql string, limit page.ResultCap, extra map[string]string) (page.TabularPage, error) {
@@ -134,10 +135,25 @@ func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapter
 	if err != nil {
 		return page.TabularPage{}, err
 	}
+	if truncated && !h.settingsAllowed() {
+		killQueryBestEffort(h, queryID)
+	}
 	if builder == nil {
 		builder = page.NewTabularPageBuilder(columns)
 	}
 	return builder.Finish(page.CappedPosition(builder.RowCount(), truncated)), nil
+}
+
+// killQueryBestEffort stops a read the cap abandoned on a profile that cannot carry the cancel-on-
+// close setting. The result is ignored: the read may already have finished.
+func killQueryBestEffort(h *Handle, queryID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	resp, err := doRequest(ctx, h, "KILL QUERY WHERE query_id = {qid:String}", "", nil, map[string]string{"qid": queryID}, false)
+	if err != nil {
+		return
+	}
+	_ = resp.Body.Close()
 }
 
 func mergeSettings(base, extra map[string]string) map[string]string {

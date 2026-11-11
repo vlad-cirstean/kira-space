@@ -234,6 +234,10 @@ func accessOf(c model.ConnectionSummary) connectionAccess {
 	} else {
 		a.Masked = modeAccess{Reason: "no structured browse"}
 	}
+	// The agent reads this payload before any tool schema, so a bare denial reads as "no reads at all".
+	if !a.Read.Allowed && a.Read.Reason == "permission denied" && a.Masked.Allowed {
+		a.Read.Reason = "permission denied; read rows with browse_table (access.masked)"
+	}
 	var parts []string
 	for _, mode := range queryModes {
 		ma := a.of(mode)

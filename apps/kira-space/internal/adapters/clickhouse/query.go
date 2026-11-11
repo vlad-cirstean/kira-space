@@ -60,20 +60,24 @@ func decodeRow(values []string, nullable []bool) []*string {
 // interpolated into the SQL text.
 func buildURL(h *Handle, queryID string, settings, extraParams map[string]string, readOnly bool) string {
 	q := url.Values{}
-	for k, v := range fixedSettings {
-		q.Set(k, v)
-	}
+	q.Set("default_format", defaultFormat)
 	q.Set("database", h.DefaultDatabase)
 	if queryID != "" {
 		q.Set("query_id", queryID)
 	}
-	// D7: sent per request, never baked into the client — every data/console/mutation request gets
-	// it; Cancel's own KILL QUERY never does (readOnly is always false there).
-	if readOnly {
-		q.Set("readonly", "2")
-	}
-	for k, v := range settings {
-		q.Set(k, v)
+	if h.settingsAllowed() {
+		for k, v := range fixedSettings {
+			q.Set(k, v)
+		}
+		// D7: sent per request, never baked into the client — every data/console/mutation request
+		// gets it; Cancel's own KILL QUERY never does (readOnly is always false there). A
+		// readonly=1/2 profile already refuses writes, so it is skipped there.
+		if readOnly && h.sendReadonly() {
+			q.Set("readonly", "2")
+		}
+		for k, v := range settings {
+			q.Set(k, v)
+		}
 	}
 	for k, v := range extraParams {
 		q.Set("param_"+k, escapeParamValue(v))
@@ -240,6 +244,8 @@ func writtenRowsFromSummary(header string) int64 {
 // (`{name:Type}` placeholders — never interpolated), and parses the response as `FORMAT JSON`
 // (appended to the adapter-composed SQL text here, never to a user's own console statement) —
 // catalog rows are small metadata, not data the page builder needs to see as pre-stringified text.
+// Row fields are string/*string by convention: 64-bit integers arrive as bare numbers (no
+// output_format_json_quote_64bit_integers), so the catalog SQL casts them with toString.
 func RunCatalogQuery[T any](ctx context.Context, h *Handle, queryID string, sql string, op *adapters.OpCtx, track TrackQuery, params map[string]string) ([]T, error) {
 	op.SetCommand(sql)
 	if err := adapters.CheckNotStarted(ctx); err != nil {

@@ -1,0 +1,14 @@
+{
+  "kind": "mysql",
+  "thresholdRows": 100000,
+  "pages": [
+    {
+      "columns": ["QUERY PLAN"],
+      "rows": [
+        [
+          "{\"query\":\"/* select#1 */ select '7' AS `id`,'n7' AS `v`,'7' AS `cat` from `t`.`b` where true\",\"query_plan\":{\"operation\":\"Rows fetched before execution\",\"access_type\":\"rows_fetched_before_execution\",\"estimated_rows\":1.0,\"estimated_total_cost\":0.0,\"estimated_first_row_cost\":0.0},\"query_type\":\"select\",\"json_schema_version\":\"2.0\"}"
+        ]
+      ]
+    }
+  ]
+}

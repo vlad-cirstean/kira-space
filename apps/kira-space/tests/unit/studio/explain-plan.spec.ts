@@ -231,6 +231,31 @@ describe('parseClickhousePlan — F15', () => {
   });
 });
 
+describe('parseMysqlPlan, schema 2.0 (MySQL 9.x)', () => {
+  const planOf = (caseName: string) =>
+    parseMysqlPlan(loadInput(caseName).pages?.[0]?.rows[0]?.[0] ?? '', 100_000);
+
+  test('full scan estimate is the leaf estimated_rows, not the filter wrapper', () => {
+    const plan = planOf('mysql-v2-single-table');
+    expect(plan.estimatedRowsRead).toBe(1000);
+    expect(plan.issues.map((i) => i.code)).toContain('full-scan');
+  });
+
+  test('point read estimates one row and raises no issue', () => {
+    const plan = planOf('mysql-v2-point');
+    expect(plan.estimatedRowsRead).toBe(1);
+    expect(plan.issues).toEqual([]);
+  });
+
+  test('join estimate is the widest leaf; a <temporary> scan is not a full scan', () => {
+    const plan = planOf('mysql-v2-join');
+    expect(plan.estimatedRowsRead).toBe(1000);
+    const fullScans = plan.issues.filter((i) => i.code === 'full-scan');
+    expect(fullScans).toHaveLength(1);
+    expect(fullScans[0]?.message).toContain('“b”');
+  });
+});
+
 // M3 §2.4/§10: the second implementation of these same rules lives in Go
 // (internal/queryplan/parse_test.go), reading these exact files. A drift in either language fails
 // a test in that language, on the same bytes — this block is the TypeScript side of that check.

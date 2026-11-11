@@ -4,12 +4,15 @@ import {
   maxEstimatedRows,
   pushIndexIssues,
   pushWideScanIssue,
+  rawFieldMetrics,
   rollupIssues,
   tableLabel,
 } from '../planIssues';
 import type { PlanNode, QueryPlan, ScanEstimate } from '../planModel';
 
-// MySQL 8.4's `EXPLAIN FORMAT=JSON`. One row, one column, a
+// MySQL's `EXPLAIN FORMAT=JSON`, two schemas: schema 1 (8.0 and 8.4's default) roots at
+// `query_block`; schema 2.0 (9.x default, `explain_json_format_version=2`) roots at `query_plan`,
+// an iterator tree of `operation` nodes nested under `inputs` (see v2Node). Schema 1: one row, one column, a
 // `query_block` whose real content sits under `table` (single-table), `nested_loop` (a join —
 // same key MariaDB's own JSON uses, but a genuinely different schema underneath it), or a
 // wrapping `grouping_operation`/`ordering_operation`/`duplicates_removal` block around either.
@@ -154,8 +157,121 @@ function blockNodes(block: RawBlock, thresholdRows: number, scans: ScanEstimate[
   return [];
 }
 
+interface RawV2Node {
+  operation?: string;
+  table_name?: string;
+  access_type?: string;
+  condition?: string;
+  lookup_condition?: string;
+  estimated_rows?: number;
+  estimated_total_cost?: number;
+  inputs?: RawV2Node[];
+}
+
+const V2_TYPED_KEYS = new Set([
+  'operation',
+  'table_name',
+  'condition',
+  'lookup_condition',
+  'estimated_rows',
+  'estimated_total_cost',
+  'inputs',
+]);
+
+/** Schema 2.0 node. Every leaf with an estimate is a scan (the access paths); wrappers such as
+ *  Sort or Filter may carry no estimate. */
+function v2Node(raw: RawV2Node, thresholdRows: number, scans: ScanEstimate[]): PlanNode {
+  const inputs = Array.isArray(raw.inputs) ? raw.inputs : [];
+  const node: PlanNode = {
+    label: raw.operation ?? '?',
+    relation: raw.table_name,
+    detail: raw.condition ?? raw.lookup_condition,
+    estimatedRows: typeof raw.estimated_rows === 'number' ? raw.estimated_rows : undefined,
+    cost:
+      typeof raw.estimated_total_cost === 'number'
+        ? { total: raw.estimated_total_cost }
+        : undefined,
+    metrics: rawFieldMetrics(raw, V2_TYPED_KEYS),
+    issues: [],
+    children: [],
+  };
+  // A base-table scan is a leaf; a scan with inputs reads a materialised derived table or CTE.
+  if (
+    raw.access_type === 'table' &&
+    inputs.length === 0 &&
+    raw.table_name &&
+    !raw.table_name.startsWith('<')
+  ) {
+    node.issues.push({
+      severity: 'warn',
+      code: 'full-scan',
+      message: t('studio.console.plan.issue.fullScan.description', { relation: raw.table_name }),
+    });
+  }
+  if (raw.access_type === 'sort') {
+    node.issues.push({
+      severity: 'warn',
+      code: 'filesort',
+      message: t('studio.console.plan.issue.filesort.description'),
+    });
+  }
+  if (raw.access_type === 'temp_table_aggregate' || raw.access_type === 'materialize') {
+    node.issues.push({
+      severity: 'warn',
+      code: 'temp-table',
+      message: t('studio.console.plan.issue.tempTable.description', {
+        relation: node.relation ?? '?',
+      }),
+    });
+  }
+  node.children = inputs.map((input) => v2Node(input, thresholdRows, scans));
+  if (inputs.length === 0 && node.estimatedRows !== undefined) {
+    scans.push({ node, rows: node.estimatedRows });
+  }
+  return node;
+}
+
+/** Cost of the topmost node carrying one, breadth-first: MySQL 9 omits estimated_total_cost on
+ *  Sort and temp-table aggregate nodes. */
+function topCost(top: PlanNode): number | undefined {
+  const queue = [top];
+  for (let i = 0; i < queue.length; i++) {
+    const node = queue[i] as PlanNode;
+    if (node.cost) return node.cost.total;
+    queue.push(...node.children);
+  }
+  return undefined;
+}
+
+function parseMysqlV2(rawText: string, plan: RawV2Node, thresholdRows: number): QueryPlan {
+  const scans: ScanEstimate[] = [];
+  const top = v2Node(plan, thresholdRows, scans);
+  const queryCost = topCost(top);
+  const root: PlanNode = {
+    label: t('studio.console.plan.root.query.label'),
+    cost: queryCost !== undefined ? { total: queryCost } : undefined,
+    metrics: [],
+    issues: [],
+    children: [top],
+  };
+  for (const scan of scans) pushWideScanIssue(scan.node, scan.rows, thresholdRows);
+  const estimatedRowsRead = maxEstimatedRows(scans);
+  return {
+    kind: 'mysql',
+    root,
+    estimatedRowsRead,
+    nativeCost: queryCost !== undefined ? { value: queryCost, unit: 'mysql-cost' } : undefined,
+    issues: rollupIssues(root),
+    overThreshold: isOverThreshold(estimatedRowsRead, thresholdRows),
+    raw: rawText,
+  };
+}
+
 export function parseMysqlPlan(rawText: string, thresholdRows: number): QueryPlan {
-  const parsed = JSON.parse(rawText) as { query_block?: RawBlock };
+  const parsed = JSON.parse(rawText) as { query_block?: RawBlock; query_plan?: RawV2Node };
+  if (parsed.query_plan && typeof parsed.query_plan === 'object') {
+    return parseMysqlV2(rawText, parsed.query_plan, thresholdRows);
+  }
   const block = parsed.query_block ?? {};
   const scans: ScanEstimate[] = [];
   const children = blockNodes(block, thresholdRows, scans);

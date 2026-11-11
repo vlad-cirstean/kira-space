@@ -1,0 +1,14 @@
+{
+  "kind": "mysql",
+  "thresholdRows": 100000,
+  "pages": [
+    {
+      "columns": ["QUERY PLAN"],
+      "rows": [
+        [
+          "{\"query\":\"/* select#1 */ select `t`.`b`.`cat` AS `cat`,count(0) AS `n` from `t`.`b` straight_join `t`.`c` where ((`t`.`c`.`bid` = `t`.`b`.`id`) and (`t`.`b`.`v` like '%1')) group by `t`.`b`.`cat` order by `n` desc\",\"query_plan\":{\"inputs\":[{\"inputs\":[{\"inputs\":[{\"inputs\":[{\"inputs\":[{\"operation\":\"Table scan on b\",\"table_name\":\"b\",\"access_type\":\"table\",\"schema_name\":\"t\",\"used_columns\":[\"id\",\"v\",\"cat\"],\"estimated_rows\":1000.0,\"estimated_total_cost\":101.0}],\"condition\":\"(b.v like '%1')\",\"operation\":\"Filter: (b.v like '%1')\",\"access_type\":\"filter\",\"estimated_rows\":111.10000312328339,\"filter_columns\":[\"t.b.v\"],\"estimated_total_cost\":101.0},{\"covering\":true,\"operation\":\"Covering index lookup on c using bid (bid = b.id)\",\"index_name\":\"bid\",\"table_name\":\"c\",\"access_type\":\"index\",\"key_columns\":[\"bid\"],\"schema_name\":\"t\",\"used_columns\":[\"id\",\"bid\"],\"estimated_rows\":1.0,\"lookup_condition\":\"bid = b.id\",\"index_access_type\":\"index_lookup\",\"lookup_references\":[\"t.b.id\"],\"estimated_total_cost\":0.2509000899836973}],\"join_type\":\"inner join\",\"operation\":\"Nested loop inner join\",\"access_type\":\"join\",\"estimated_rows\":111.10000312328339,\"join_algorithm\":\"nested_loop\",\"estimated_total_cost\":139.88500109314919}],\"operation\":\"Aggregate using temporary table\",\"access_type\":\"temp_table_aggregate\"}],\"operation\":\"Table scan on <temporary>\",\"table_name\":\"<temporary>\",\"access_type\":\"table\"}],\"operation\":\"Sort: n DESC\",\"access_type\":\"sort\",\"sort_fields\":[\"n DESC\"]},\"query_type\":\"select\",\"json_schema_version\":\"2.0\"}"
+        ]
+      ]
+    }
+  ]
+}

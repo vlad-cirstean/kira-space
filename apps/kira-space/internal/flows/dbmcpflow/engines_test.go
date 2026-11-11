@@ -63,6 +63,9 @@ const (
 	slowSQLiteBody = "with recursive c(x) as (select 1 union all select x+1 from c) select x from c limit 400000000"
 	// slowTwoRows is a MySQL or MariaDB read the engine interrupts: SLEEP in a WHERE over two rows.
 	slowTwoRows = "(select 1 as n union all select 2) d where sleep(5)"
+	// mediumTwoRows runs about 2.4 s over the same two rows. A bare `select sleep(2)` is not usable:
+	// an interrupted SLEEP returns 1 instead of failing, so MySQL's max_execution_time raises no error.
+	mediumTwoRows = "select 1 from (select 1 as n union all select 2) d where sleep(1.2)"
 )
 
 // all lists every engine the container tests iterate. SQLite reuses the flow fixture's file.
@@ -77,7 +80,7 @@ func allEngines() []engine {
 			read: "select v from {t}", drop: "drop table if exists {t}",
 			slowRead:  "select pg_sleep(5)",
 			slowWrite: "update {t} set v = 'z' where pg_sleep(5) is not null",
-			slowDDL:   "create table {t} as select pg_sleep(5)",
+			slowDDL:   "create table {t} as select pg_sleep(5)::text as s",
 			medium:    "select pg_sleep(2)",
 			big:       "app.big_rows", bigPath: tablePath("kira_test", "app", "big_rows"),
 			customers: "app.customers", customersPath: tablePath("kira_test", "app", "customers"),
@@ -158,10 +161,10 @@ func mysqlEngine(kind string, config func(*testing.T) model.ResolvedConnectionCo
 		slowRead:  "select 1 from " + slowTwoRows,
 		slowWrite: "update {t} set v = 'z' where sleep(5) = 0",
 		slowDDL:   "create table {t} as select sleep(5) as s",
-		medium:    "select sleep(2)",
+		medium:    mediumTwoRows,
 		big:       "big_rows", bigPath: tablePath("kira_test", "big_rows"),
 		customers: "customers", customersPath: tablePath("kira_test", "customers"),
-		castErr:     "select * from no_such_table_p602",
+		castErr:     "select (select name from customers) from customers",
 		enforcement: enforcement, rowEstimate: true, structured: true,
 		hiddenSetup: []string{
 			"create table {t}_log (id int)",

@@ -1,0 +1,144 @@
+{
+  "kind": "mysql",
+  "root": {
+    "label": "Query",
+    "cost": {
+      "total": 2.5
+    },
+    "metrics": [],
+    "issues": [],
+    "children": [
+      {
+        "label": "Table scan on dt",
+        "relation": "dt",
+        "estimatedRows": 0,
+        "cost": {
+          "total": 2.5
+        },
+        "metrics": [
+          {
+            "label": "access_type",
+            "value": "table"
+          },
+          {
+            "label": "estimated_first_row_cost",
+            "value": "2.5"
+          },
+          {
+            "label": "used_columns",
+            "value": "cat, count(*)"
+          }
+        ],
+        "issues": [],
+        "children": [
+          {
+            "label": "Materialize",
+            "estimatedRows": 0,
+            "cost": {
+              "total": 0
+            },
+            "metrics": [
+              {
+                "label": "access_type",
+                "value": "materialize"
+              },
+              {
+                "label": "estimated_first_row_cost",
+                "value": "0"
+              }
+            ],
+            "issues": [
+              {
+                "severity": "warn",
+                "code": "temp-table",
+                "message": "“?” was materialised into a temporary table."
+              }
+            ],
+            "children": [
+              {
+                "label": "Table scan on <temporary>",
+                "relation": "<temporary>",
+                "metrics": [
+                  {
+                    "label": "access_type",
+                    "value": "table"
+                  }
+                ],
+                "issues": [],
+                "children": [
+                  {
+                    "label": "Aggregate using temporary table",
+                    "metrics": [
+                      {
+                        "label": "access_type",
+                        "value": "temp_table_aggregate"
+                      }
+                    ],
+                    "issues": [
+                      {
+                        "severity": "warn",
+                        "code": "temp-table",
+                        "message": "“?” was materialised into a temporary table."
+                      }
+                    ],
+                    "children": [
+                      {
+                        "label": "Table scan on b",
+                        "relation": "b",
+                        "estimatedRows": 1000,
+                        "cost": {
+                          "total": 101
+                        },
+                        "metrics": [
+                          {
+                            "label": "access_type",
+                            "value": "table"
+                          },
+                          {
+                            "label": "schema_name",
+                            "value": "t"
+                          },
+                          {
+                            "label": "used_columns",
+                            "value": "id, cat"
+                          }
+                        ],
+                        "issues": [
+                          {
+                            "severity": "warn",
+                            "code": "full-scan",
+                            "message": "Full table scan on “b”. No index was used."
+                          }
+                        ],
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "estimatedRowsRead": 1000,
+  "nativeCost": {
+    "value": 2.5,
+    "unit": "mysql-cost"
+  },
+  "issues": [
+    {
+      "severity": "warn",
+      "code": "temp-table",
+      "message": "“?” was materialised into a temporary table."
+    },
+    {
+      "severity": "warn",
+      "code": "full-scan",
+      "message": "Full table scan on “b”. No index was used."
+    }
+  ],
+  "overThreshold": false,
+  "raw": "{\"query\":\"/* select#1 */ select `dt`.`cat` AS `cat`,`dt`.`count(*)` AS `count(*)` from (/* select#2 */ select `t`.`b`.`cat` AS `cat`,count(0) AS `count(*)` from `t`.`b` group by `t`.`b`.`cat`) `dt`\",\"query_plan\":{\"inputs\":[{\"inputs\":[{\"inputs\":[{\"inputs\":[{\"operation\":\"Table scan on b\",\"table_name\":\"b\",\"access_type\":\"table\",\"schema_name\":\"t\",\"used_columns\":[\"id\",\"cat\"],\"estimated_rows\":1000.0,\"estimated_total_cost\":101.0}],\"operation\":\"Aggregate using temporary table\",\"access_type\":\"temp_table_aggregate\"}],\"operation\":\"Table scan on <temporary>\",\"table_name\":\"<temporary>\",\"access_type\":\"table\"}],\"operation\":\"Materialize\",\"access_type\":\"materialize\",\"estimated_rows\":0.0,\"estimated_total_cost\":0.0,\"estimated_first_row_cost\":0.0}],\"operation\":\"Table scan on dt\",\"table_name\":\"dt\",\"access_type\":\"table\",\"used_columns\":[\"cat\",\"count(*)\"],\"estimated_rows\":0.0,\"estimated_total_cost\":2.5,\"estimated_first_row_cost\":2.5},\"query_type\":\"select\",\"json_schema_version\":\"2.0\"}"
+}

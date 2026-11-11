@@ -1,0 +1,14 @@
+{
+  "kind": "mysql",
+  "thresholdRows": 100000,
+  "pages": [
+    {
+      "columns": ["QUERY PLAN"],
+      "rows": [
+        [
+          "{\"query\":\"/* select#1 */ select `dt`.`cat` AS `cat`,`dt`.`count(*)` AS `count(*)` from (/* select#2 */ select `t`.`b`.`cat` AS `cat`,count(0) AS `count(*)` from `t`.`b` group by `t`.`b`.`cat`) `dt`\",\"query_plan\":{\"inputs\":[{\"inputs\":[{\"inputs\":[{\"inputs\":[{\"operation\":\"Table scan on b\",\"table_name\":\"b\",\"access_type\":\"table\",\"schema_name\":\"t\",\"used_columns\":[\"id\",\"cat\"],\"estimated_rows\":1000.0,\"estimated_total_cost\":101.0}],\"operation\":\"Aggregate using temporary table\",\"access_type\":\"temp_table_aggregate\"}],\"operation\":\"Table scan on <temporary>\",\"table_name\":\"<temporary>\",\"access_type\":\"table\"}],\"operation\":\"Materialize\",\"access_type\":\"materialize\",\"estimated_rows\":0.0,\"estimated_total_cost\":0.0,\"estimated_first_row_cost\":0.0}],\"operation\":\"Table scan on dt\",\"table_name\":\"dt\",\"access_type\":\"table\",\"used_columns\":[\"cat\",\"count(*)\"],\"estimated_rows\":0.0,\"estimated_total_cost\":2.5,\"estimated_first_row_cost\":2.5},\"query_type\":\"select\",\"json_schema_version\":\"2.0\"}"
+        ]
+      ]
+    }
+  ]
+}

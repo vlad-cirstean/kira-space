@@ -12,30 +12,19 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
-// fixedSettings is client.ts's own FIXED_SETTINGS, plus one setting client.ts never had to state:
-// with no persistent client-level session the way @clickhouse/client had, these travel as URL
-// query parameters on every single request instead of being set once at connect time.
-// Deliberately does NOT include `readonly` — query.go sends that per request instead, because it
-// must apply to every data/console/mutation request but never to Cancel's own KILL QUERY.
-//
-// output_format_json_quote_64bit_integers is the one addition beyond client.ts's own list, and a
-// real finding: this server's own default for plain `FORMAT JSON` (catalog.go's/read.go's
-// RunCatalogQuery, used for total_rows/count()/etc.) is to emit a UInt64/Int64 as a bare JSON
-// number, not a quoted string — verified directly against clickhouse-server:26.3, not assumed —
-// and every catalog struct in this package is typed `string`/`*string` for exactly such columns
-// (matching @shared's own catalog.ts, which types total_rows as `string | null`). @clickhouse/
-// client's own `.json()` evidently sets this itself; a hand-rolled net/http client has no such
-// hidden default and must ask for it explicitly, or every UInt64/Int64-typed catalog column fails
-// to unmarshal outright. JSONCompactStringsEachRowWithNamesAndTypes (the read/console/streamed
-// path) is unaffected either way — every one of its own cells is already a JSON string by format
-// name, never a bare number.
+// fixedSettings travel as URL query parameters on every request (no persistent client-level
+// session). `readonly` is not here: query.go sends it per request, never on Cancel's KILL QUERY.
+// output_format_json_quote_64bit_integers and output_format_json_validate_utf8 are gone: a
+// readonly=1 profile refuses to change either (measured), catalog SQL casts 64-bit columns with
+// toString and Go's JSON decode already replaces invalid UTF-8. A readonly=1 profile gets
+// no settings at all (query.go buildURL).
 var fixedSettings = map[string]string{
-	"default_format":                                   "JSONCompactStringsEachRowWithNamesAndTypes",
-	"output_format_json_validate_utf8":                 "1",
 	"show_table_uuid_in_table_create_query_if_not_nil": "0",
 	"date_time_output_format":                          "simple",
-	"output_format_json_quote_64bit_integers":          "1",
 }
+
+// defaultFormat is an HTTP parameter, not a setting: allowed under every profile.
+const defaultFormat = "JSONCompactStringsEachRowWithNamesAndTypes"
 
 // Handle is client.ts's ClickHouseHandle — B11: a plain *http.Client, no ClickHouse driver at all.
 type Handle struct {
@@ -48,7 +37,19 @@ type Handle struct {
 	// noEngineTimeout is set once the server refused the timeout settings (a readonly=1 profile):
 	// later requests skip them and the host backstop alone enforces the limit.
 	noEngineTimeout atomic.Bool
+	// profileReadonly is the profile's `readonly` setting (0, 1 or 2) read at Connect.
+	profileReadonly atomic.Int32
+	// probed is set once profileReadonly is known; until then no settings are sent.
+	probed atomic.Bool
 }
+
+// settingsAllowed reports whether per-request settings may be sent: probed, and not a readonly=1
+// profile (which refuses any settings change).
+func (h *Handle) settingsAllowed() bool { return h.probed.Load() && h.profileReadonly.Load() != 1 }
+
+// sendReadonly reports whether the per-request readonly=2 may be sent: only a readonly=0 profile
+// can raise it (readonly=2 is sticky, readonly=1 refuses the change).
+func (h *Handle) sendReadonly() bool { return h.probed.Load() && h.profileReadonly.Load() == 0 }
 
 type resolvedTarget struct {
 	scheme   string

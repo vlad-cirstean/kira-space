@@ -1,0 +1,14 @@
+{
+  "kind": "mysql",
+  "thresholdRows": 500,
+  "pages": [
+    {
+      "columns": ["QUERY PLAN"],
+      "rows": [
+        [
+          "{\"query\":\"/* select#1 */ select `t`.`b`.`id` AS `id`,`t`.`b`.`v` AS `v`,`t`.`b`.`cat` AS `cat` from `t`.`b` where (`t`.`b`.`v` = 'n5')\",\"query_plan\":{\"inputs\":[{\"operation\":\"Table scan on b\",\"table_name\":\"b\",\"access_type\":\"table\",\"schema_name\":\"t\",\"used_columns\":[\"id\",\"v\",\"cat\"],\"estimated_rows\":1000.0,\"estimated_total_cost\":100.25}],\"condition\":\"(b.v = 'n5')\",\"operation\":\"Filter: (b.v = 'n5')\",\"access_type\":\"filter\",\"estimated_rows\":100.00000149011612,\"filter_columns\":[\"t.b.v\"],\"estimated_total_cost\":100.25},\"query_type\":\"select\",\"json_schema_version\":\"2.0\"}"
+        ]
+      ]
+    }
+  ]
+}

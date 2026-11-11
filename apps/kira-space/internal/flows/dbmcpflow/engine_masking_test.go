@@ -41,8 +41,15 @@ func firstCell(t *testing.T, r *mcp.CallToolResult) string {
 // have no table columns to mask and stay on the SQLite-free adapter and render tests.
 func TestDbMcpEngineMasking(t *testing.T) {
 	engineTest(t, []string{"postgres", "mysql", "mariadb", "clickhouse", "sqlite"}, func(t *testing.T, e engine, f *fixture, sess *mcp.ClientSession) {
-		f.engineConn(t, e, nil)
 		table, column, prefix, all := maskTarget(e)
+		// Column review drops a result column by name on every table the connection lists, so scope
+		// it to the table under test: the fixture schema reuses names like id across many tables.
+		// SQLite's database holds only that table.
+		f.engineConn(t, e, func(c *model.ConnectionFields) {
+			if e.kind != "sqlite" {
+				c.McpTables = []string{strings.TrimSuffix(prefix, ".")}
+			}
+		})
 		qualified := e.customers
 		sel := "select " + column + " from " + qualified + " order by id limit 1"
 
