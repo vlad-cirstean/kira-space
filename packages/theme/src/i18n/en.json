@@ -16940,6 +16940,11 @@
       "pending": {
         "label": "Edit pending"
       },
+      "ready": {
+        "task": {
+          "label": "For task “{taskTitle}”"
+        }
+      },
       "resize": {
         "label": "Resize sessions list"
       },

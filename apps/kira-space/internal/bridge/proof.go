@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"errors"
+	"log/slog"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -277,6 +278,7 @@ func (s *ProofService) OpenWindow(args ProofOpenArgs) (ProofOpenResult, error) {
 			s.Targets.Set(key, args.SessionID)
 			s.Events.EmitTo(key, ChannelProofSelect, ProofSelect{SessionID: args.SessionID})
 		}
+		s.markOpened(args.SessionID)
 		return ProofOpenResult{Key: key}, nil
 	}
 	records, err := s.Windows.List()
@@ -298,7 +300,19 @@ func (s *ProofService) OpenWindow(args ProofOpenArgs) (ProofOpenResult, error) {
 	}
 	s.Shell.Open(shell.WindowRecord{Key: key, Order: order})
 	s.Shell.SetTitle(key, i18n.T("backend.studio.proof.window.title", nil))
+	s.markOpened(args.SessionID)
 	return ProofOpenResult{Key: key, Opened: true}, nil
+}
+
+// markOpened records that the user opened sessionID, which withdraws its ready popup. The window
+// open already succeeded, so a failure here only logs.
+func (s *ProofService) markOpened(sessionID string) {
+	if sessionID == "" {
+		return
+	}
+	if err := s.Svc.MarkSeen(sessionID); err != nil {
+		slog.Warn("proof: mark opened session seen", "scope", "proof", "session", sessionID, "err", err)
+	}
 }
 
 // WindowTarget returns the session a proof window was opened for, read once at boot.

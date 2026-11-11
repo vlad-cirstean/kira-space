@@ -235,7 +235,13 @@ func TestProofWindow(t *testing.T) {
 	f.save(t, "Window", keyValueStep("x"))
 	id := sessionID(t, f.app, "Window")
 
+	if ps := proofPrompts(t, f.app); len(ps) != 1 {
+		t.Fatalf("prompts before open = %+v, want one", ps)
+	}
 	res, err := f.app.W.Proof.OpenWindow(bridge.ProofOpenArgs{SessionID: id})
+	if ps := proofPrompts(t, f.app); err == nil && len(ps) != 0 {
+		t.Fatalf("prompts after open = %+v, want the ready popup withdrawn", ps)
+	}
 	if err != nil || !res.Opened || !strings.HasPrefix(res.Key, proof.WindowKeyPrefix) {
 		t.Fatalf("OpenWindow = %+v, %v", res, err)
 	}

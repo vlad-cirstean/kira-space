@@ -11,13 +11,25 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { t } from '@theme/i18n';
+import { computed, onUnmounted } from 'vue';
 import { control } from '../bridge/control';
+import { useProofSessions } from './queries';
 
 // The routed `proof` popup: a validation session is ready, or has an edit waiting. Open raises the
-// proof window on it (the backend withdraws the popup); Later hides it here and keeps it routed.
+// proof window on it and closes the popup; the backend then withdraws the entry. Later hides it here
+// and keeps it routed. A session belongs to at most one task; no task, no task line.
 const props = defineProps<{ entry: RoutedPrompt; more: number }>();
 const emit = defineEmits<{ hide: [] }>();
-const open = useMutation({ mutationFn: () => control.proofOpenWindow(props.entry.ref) });
+const open = useMutation({
+  mutationFn: () => control.proofOpenWindow(props.entry.ref),
+  onSuccess: () => emit('hide'),
+});
+const sessions = useProofSessions();
+// The agent can attach the session to a task after the popup is up.
+onUnmounted(control.onProofChanged(() => void sessions.refetch()));
+const taskTitle = computed(
+  () => sessions.data.value?.find((s) => s.id === props.entry.ref)?.taskTitle ?? '',
+);
 </script>
 
 <template>
@@ -26,8 +38,11 @@ const open = useMutation({ mutationFn: () => control.proofOpenWindow(props.entry
       <DialogHeader>
         <DialogTitle>{{ entry.title }}</DialogTitle>
       </DialogHeader>
-      <DialogBody v-if="more > 0">
-        <p class="m-0 text-muted-foreground" data-testid="proof-ready-more">
+      <DialogBody v-if="taskTitle || more > 0">
+        <p v-if="taskTitle" class="m-0" data-testid="proof-ready-task">
+          {{ t('studio.proof.ready.task.label', { taskTitle }) }}
+        </p>
+        <p v-if="more > 0" class="m-0 text-muted-foreground" data-testid="proof-ready-more">
           {{ t('common.moreWaiting.status', { count: more }) }}
         </p>
       </DialogBody>

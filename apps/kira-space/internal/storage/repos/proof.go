@@ -566,17 +566,22 @@ type ProofSummary struct {
 	ClosedAt      int64
 	Steps         int
 	Pending, Seen bool
+	// TaskTitle is the title of the task holding the session; "" when none does.
+	TaskTitle string
 }
 
 // Sessions lists closed sessions, newest first.
 func (r *ProofRepo) Sessions() ([]ProofSummary, error) {
 	ps := kiraschema.ProofSessions
-	sb := r.proofSummarySelect()
+	tl, tk := kiraschema.ProofTaskLinks, kiraschema.AdeTasks
+	sb := r.proofSummarySelect().SelectMore(
+		"COALESCE((SELECT k." + tk.Title + " FROM " + tl.Table + " l JOIN " + tk.Table + " k ON k." + tk.ID + " = l." + tl.TaskID +
+			" WHERE l." + tl.SessionID + " = s." + ps.ID + "), '')")
 	sb.Where(sb.Equal("s."+ps.State, "closed")).OrderBy("s."+ps.ClosedAt+" DESC", "s."+sqlb.RowID+" DESC")
 	rows, err := sqlb.Query(r.DB, sb)
 	return queryAll(rows, err, func(rows *sql.Rows) (ProofSummary, error) {
 		var p ProofSummary
-		return p, rows.Scan(&p.ID, &p.Name, &p.ClosedAt, &p.Pending, &p.Seen, &p.Steps)
+		return p, rows.Scan(&p.ID, &p.Name, &p.ClosedAt, &p.Pending, &p.Seen, &p.Steps, &p.TaskTitle)
 	})
 }
 

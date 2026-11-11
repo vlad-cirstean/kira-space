@@ -8,6 +8,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 | P608 | Release `test-matrix (Linux)`: split into parallel jobs with tight timeouts | Done |
 | P609 | DB MCP: `browse_table` gets `in`, count and paging; descriptions steer reads to it | Todo |
 | P610 | Agent status: running while subagents or background jobs run; new unseen-finished status | Todo |
+| P611 | Show proof dialog: Open closes it; shows the task name | Done |
 | P612 | Presentation site: review-window images use the inline diff; tile reuses the first-page hero visual | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
@@ -53,6 +54,14 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Acceptance: planner decides exact signals. Status is running while the main turn runs, or any subagent or background job of that session is live; never idle-looking while work continues. New `unseen` status (finished, not yet viewed) with its own visual, cleared when the user views the session, persisted, shown wherever status shows (lists, badges, tabs, notifications if any). Catalog copy, ARCHITECTURE and any status docs updated.
 - Tests: flow test (backend derives status from a recorded stream with a live subagent and background job after the main turn ends, plus unseen set and cleared) and matching UI spec (same scenario shows the statuses). Run for real.
 - Result:
+
+## P611 Show proof dialog: Open closes it; shows the task name
+
+- Ask (user): the "proof ready" dialog (Open and Later buttons) stays up after Open raises the proof window; Open must close it. Same dialog must also name the task the proof belongs to, not only the proof.
+- Context: `ProofReadyPrompt.vue` ran `proofOpenWindow` and never closed. Its comment said the backend withdraws the popup, but `ProofService.OpenWindow` (`internal/bridge/proof.go`) never did; the entry went away only if the proof window later called `MarkSeen`. The routed prompt carries only a title and ref, so no task. A proof session links to at most one task (`LinkTask` refuses a second), so the dialog shows one task or none. The task title now rides on `proof.Summary.taskTitle` (`ProofRepo.Sessions` subselect over `proof_task_links` and `ade_tasks`), read by the dialog through the existing `useProofSessions` query, refetched on `kira:proof:changed` because an agent can attach after the popup is up.
+- Acceptance: Open closes the dialog at once; `OpenWindow` with a session id withdraws its ready popup (unless an edit still waits, as `MarkSeen` already decides). Dialog shows “For task “<title>”” (catalog key `studio.proof.ready.task.label`) when the session has a task, no line when it has none. Other sibling dialogs for the flow: `ProofOpenWindow.vue` (approval review Open button) is an inline button on a review item, not a dialog, left alone.
+- Tests: backend flow tests `TestProofWindow` (ready popup present before `OpenWindow`, gone after) and `TestProofChain` (`Sessions` names the task for an attached session, none for an unattached one); UI spec `tests/ui/studio/proof-window.spec.ts` (task line shows, Open closes the dialog; no-task prompt shows no task line).
+- Result: Done. Root cause: no close path on Open (frontend) and no popup withdrawal in `OpenWindow` (backend). Fix: `ProofReadyPrompt.vue` hides on Open success; `OpenWindow` calls `MarkSeen` for the opened session; `Summary.taskTitle` added end to end (Go repo, `proof.Summary`, zod `proofSummarySchema`, contract fixtures regenerated with `KIRA_CONTRACT=write`). Ran here: `go test ./internal/flows/proofflow/` (all, after regenerating fixtures) PASS; `go test ./internal/flows/adeflow/ -run TestProofChain` PASS; `go vet` on bridge, proof, repos clean; UI spec `proof-window.spec.ts` project `ui`, `--trace off`: 15 passed; the Open-closes assertion failed (dialog count 1) with the frontend fix removed, passed with it; `typecheck:web`, `typecheck:tests`, `bun run lint` (biome, copy and catalog checks, docs check) clean. Not run: other UI suites, full Go suite, Docker (not started), `e2e-real`.
 
 ## P612 Presentation site: review-window images use the inline diff; tile reuses the first-page hero visual
 

@@ -420,6 +420,8 @@ type Summary struct {
 	Steps    int    `json:"steps"`
 	Pending  bool   `json:"pending"`
 	Seen     bool   `json:"seen"`
+	// TaskTitle is the title of the task the session is attached to; "" when none.
+	TaskTitle string `json:"taskTitle"`
 }
 
 // Sessions lists closed sessions, newest first.
@@ -430,7 +432,7 @@ func (s *Service) Sessions() ([]Summary, error) {
 	}
 	out := make([]Summary, len(list))
 	for i, p := range list {
-		out[i] = Summary{ID: p.ID, Name: p.Name, ClosedAt: p.ClosedAt, Steps: p.Steps, Pending: p.Pending, Seen: p.Seen}
+		out[i] = Summary{ID: p.ID, Name: p.Name, ClosedAt: p.ClosedAt, Steps: p.Steps, Pending: p.Pending, Seen: p.Seen, TaskTitle: p.TaskTitle}
 	}
 	return out, nil
 }

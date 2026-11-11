@@ -604,7 +604,10 @@ test('a ready prompt opens the proof window, and a pushed select switches sessio
   const { window: page, control } = await relaunch({
     control: [
       { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
-      { channel: IPC.proofSessions, response: [...sessions(), other] },
+      {
+        channel: IPC.proofSessions,
+        response: [{ ...sessions()[0], taskTitle: 'Fix checkout' }, other],
+      },
       { channel: IPC.proofSession, args: { sessionId: SESSION_ID }, response: session() },
       {
         channel: IPC.proofSession,
@@ -619,6 +622,9 @@ test('a ready prompt opens the proof window, and a pushed select switches sessio
   await expect(page.locator('[data-testid="proof-ready-dialog"]')).toContainText(
     'Proof ready: Checkout fix',
   );
+  await expect(page.locator('[data-testid="proof-ready-task"]')).toHaveText(
+    'For task “Fix checkout”',
+  );
   await page.locator('[data-testid="proof-ready-open"]').click();
   await expect
     .poll(() =>
@@ -628,9 +634,19 @@ test('a ready prompt opens the proof window, and a pushed select switches sessio
         .map((c) => c.args),
     )
     .toEqual([{ sessionId: SESSION_ID }]);
+  await expect(page.locator('[data-testid="proof-ready-dialog"]')).toHaveCount(0);
 
   await openProofWindow(page, uiServer.url);
   await expect(page.locator('[data-testid="proof-title"]')).toHaveText('Checkout fix');
   await emitWailsEvent(page, CHANNEL.proofSelect, { sessionId: other.id });
   await expect(page.locator('[data-testid="proof-title"]')).toHaveText('Second run');
+});
+
+test('a ready prompt for a session with no task shows no task line', async ({ relaunch }) => {
+  const { window: page } = await relaunch({
+    control: [{ channel: IPC.proofSessions, response: sessions() }],
+  });
+  await emitPrompts(page, [routed('proof', SESSION_ID, { title: 'Proof ready: Checkout fix' })]);
+  await expect(page.locator('[data-testid="proof-ready-dialog"]')).toBeVisible();
+  await expect(page.locator('[data-testid="proof-ready-task"]')).toHaveCount(0);
 });
