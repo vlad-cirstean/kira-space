@@ -12,7 +12,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 | P612 | Presentation site: review-window images use the inline diff; site title matches the first-page headline | Done |
 | P613 | Link strip: one compact links component for Details tab and handoff dialogs | Done |
 | P614 | Move test-matrix and db-compat from release to every PR; required checks | Done |
-| P615 | Link strip: click opens in app, Cmd-click opens externally | Todo |
+| P615 | Link strip: click opens in app, Cmd-click opens externally | Done |
 | P616 | PR CI: `ui (Linux)` aggregate check over the 8 shards; required check | Done |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
@@ -107,7 +107,8 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: P613's strip: click or Space opens the card, Enter opens (change request in-app host view, else browser), card has an external-open button. Find what "in app" exists per link kind (host view for change requests, issue tracker view, any in-app web view for docs/deployments/links, branch). Where a kind has no in-app target, the plan states the fallback and reports it to the orchestrator.
 - Acceptance: plain click on a pill opens it in app; Cmd-click opens it externally; the details card stays reachable (plan picks the gesture, keeps keyboard access) and remove/edit/kind keep working; strip height unchanged; same behavior in Details, stage dialog and Run dialog.
 - Tests: flow tests unchanged unless the wire changes; UI spec extended for click vs Cmd-click per kind; keyboard spec updated; visual snapshots only if affected. Run for real.
-- Result:
+- Result: Done. Click opens the host view for change request and issue links (browser on refusal; urlless ref refused opens the card), else the browser; Cmd-click (Ctrl off mac, `isPrimaryModifier`) always the browser; branch, deployment, doc and link have no in-app view (branch pills go to the browser, plan open question stays open). Card opens on right-click, Space, Alt+Down, or a click on a pill with nothing to open (`PopoverAnchor`, focus returned to the pill on close). `openLink(item, { external, onRefused })` returns whether it opened; Jira pill click marks the `issue` update seen. `LinkItem.ref` added. Sr-only hint `ade-links-hint`, key `space.ade.links.pill.hint`. Card title: Cmd-click opens the browser. Frontend only; flow tests unchanged, not run.
+  Ran here: `bun run typecheck`, `bun run lint` (incl. lint:rules), `lint:dead` pass; `bun run setup` for bindings; `build:test` once; UI project, `--trace off`: the plan's 15 spec files, 154 tests pass (new: per-kind click and Cmd-click, nothing-to-open card, refused fallback, right-click, hint, Jira pill click and mark seen, card title Cmd-click; keyboard and dialog tests extended); `copy-coverage` "task panel, every tab" and "run dialog" pass; visual `ade-links` 2 pass with no snapshot change (nothing updated). Not run: Go flow tests, full UI suite, screenshots.
 
 ## P616 PR CI: `ui (Linux)` aggregate check over the 8 shards; required check
 
