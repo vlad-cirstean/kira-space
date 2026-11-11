@@ -13,6 +13,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 | P613 | Link strip: one compact links component for Details tab and handoff dialogs | Done |
 | P614 | Move test-matrix and db-compat from release to every PR; required checks | Done |
 | P615 | Link strip: click opens in app, Cmd-click opens externally | Todo |
+| P616 | PR CI: `ui (Linux)` aggregate check over the 8 shards; required check | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -104,4 +105,12 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: P613's strip: click or Space opens the card, Enter opens (change request in-app host view, else browser), card has an external-open button. Find what "in app" exists per link kind (host view for change requests, issue tracker view, any in-app web view for docs/deployments/links, branch). Where a kind has no in-app target, the plan states the fallback and reports it to the orchestrator.
 - Acceptance: plain click on a pill opens it in app; Cmd-click opens it externally; the details card stays reachable (plan picks the gesture, keeps keyboard access) and remove/edit/kind keep working; strip height unchanged; same behavior in Details, stage dialog and Run dialog.
 - Tests: flow tests unchanged unless the wire changes; UI spec extended for click vs Cmd-click per kind; keyboard spec updated; visual snapshots only if affected. Run for real.
+- Result:
+
+## P616 PR CI: `ui (Linux)` aggregate check over the 8 shards; required check
+
+- Ask (user): the ruleset needs all 8 `ui (Linux, shard N/8)` names because no aggregate exists. Add an aggregate like `test-matrix (Linux)`, so one stable name gates.
+- Context: `pr.yml` job `ui` has `matrix.shard` 1..8, fail-fast off. `test-matrix` aggregate (P614) is the pattern: `needs` the matrix job, `if: !cancelled()`, asserts success. Check every other matrix job in `pr.yml` and `release.yml` for the same gap. `docs/PACKAGING.md` section 7 holds the required-check list and the apply order. Workflow files cannot be pushed from this sandbox: deliver as `docs/pending-changes/.github__workflows__pr.yml.patch`.
+- Acceptance: `pr.yml` gets `ui (Linux)` aggregate (name chosen so it does not collide with shard names); PACKAGING section 7 lists it as the required check in place of the 8 shard names, with the user apply order (patch, then ruleset swap, never leave a window where the aggregate is required but missing); any other matrix gap found is fixed the same way or reported.
+- Tests: `git apply --check`, YAML parse, actionlint if obtainable. Real CI proves the rest after the user applies the patch.
 - Result:
