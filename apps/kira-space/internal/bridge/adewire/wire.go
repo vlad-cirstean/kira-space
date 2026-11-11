@@ -1404,6 +1404,10 @@ type CloseSessionArgs struct {
 	SessionID string `json:"sessionId"`
 }
 
+type MarkSessionSeenArgs struct {
+	SessionID string `json:"sessionId"`
+}
+
 type SessionSandboxArgs struct {
 	SessionID string `json:"sessionId"`
 }

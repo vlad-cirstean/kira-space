@@ -301,6 +301,7 @@ export const IPC = {
   adeTaskRunSandbox: 'kira:adetask:runSandbox',
   adeTaskSessionSandbox: 'kira:adetask:sessionSandbox',
   adeTaskSessions: 'kira:adetask:sessions:call',
+  adeTaskMarkSessionSeen: 'kira:adetask:markSessionSeen',
   adeTaskStopRun: 'kira:adetask:stopRun',
   adeTaskReviewStep: 'kira:adetask:reviewStep',
   adeTaskSendReview: 'kira:adetask:sendReview',

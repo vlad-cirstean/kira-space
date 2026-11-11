@@ -141,6 +141,10 @@ func (f *fakeWriter) record(name string, a any) error {
 	return f.err
 }
 
+func (f *fakeWriter) MarkSessionSeen(context.Context, adewire.MarkSessionSeenArgs) (bool, error) {
+	return false, nil
+}
+
 func (f *fakeWriter) count() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -1873,6 +1873,18 @@ func (b *TaskBoard) Sessions(_ context.Context) (adewire.SessionsResult, error) 
 	return out, nil
 }
 
+// MarkSessionSeen clears a session's unseen marker and tells the windows when it changed.
+func (b *TaskBoard) MarkSessionSeen(_ context.Context, sessionID string) (bool, error) {
+	changed, err := b.deps.Sessions.ClearUnseen(sessionID)
+	if err != nil {
+		return false, err
+	}
+	if changed {
+		b.notifySessions()
+	}
+	return changed, nil
+}
+
 func toWireSession(s model.AdeSession) adewire.Session {
 	w := adewire.Session{
 		ID: s.ID, AgentSessionID: s.AgentSessionID, Provider: s.Provider, Mode: s.Mode, State: s.State, TerminalID: s.TerminalID,

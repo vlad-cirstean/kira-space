@@ -1217,6 +1217,17 @@ func (s *AdeTaskService) Sessions(ctx context.Context) (adewire.SessionsResult, 
 	return r, adeTaskError(err)
 }
 
+// MarkSessionSeen clears a finished session's unseen marker: the user viewed it. Idempotent; true
+// when the marker was set.
+func (s *AdeTaskService) MarkSessionSeen(ctx context.Context, args adewire.MarkSessionSeenArgs) (bool, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeItemID(args.SessionID, "sessionId"); err != nil {
+		return false, err
+	}
+	changed, err := s.Engine.MarkSessionSeen(ctx, args.SessionID)
+	return changed, adeTaskError(err)
+}
+
 func (s *AdeTaskService) StopRun(ctx context.Context, args adewire.RunArgs) error {
 	ctx = adeUserCtx(ctx)
 	if err := validateAdeItemID(args.RunID, "runId"); err != nil {

@@ -1318,6 +1318,9 @@ export interface StepArgs {
 export interface RunArgs {
   runId: string;
 }
+export interface MarkSessionSeenArgs {
+  sessionId: string;
+}
 export interface SessionSandboxArgs {
   sessionId: string;
 }

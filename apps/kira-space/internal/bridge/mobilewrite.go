@@ -33,6 +33,10 @@ func (w *MobileWriter) StartRun(ctx context.Context, args adewire.StartRunArgs) 
 	return w.Svc.StartRun(ctx, args)
 }
 
+func (w *MobileWriter) MarkSessionSeen(ctx context.Context, args adewire.MarkSessionSeenArgs) (bool, error) {
+	return w.Svc.MarkSessionSeen(ctx, args)
+}
+
 func (w *MobileWriter) Send(ctx context.Context, args adewire.SendArgs) error {
 	return w.Svc.Send(ctx, args)
 }

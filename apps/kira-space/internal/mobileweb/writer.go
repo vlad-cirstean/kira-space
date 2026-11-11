@@ -25,6 +25,8 @@ type Writer interface {
 	LaunchStep(ctx context.Context, args adewire.LaunchStepArgs) (LaunchResult, error)
 	Send(ctx context.Context, args adewire.SendArgs) error
 	TakeOver(ctx context.Context, args adewire.TakeOverArgs) (LaunchResult, error)
+	// MarkSessionSeen clears the finished-not-viewed marker; attaching a terminal is the phone's view.
+	MarkSessionSeen(ctx context.Context, args adewire.MarkSessionSeenArgs) (bool, error)
 }
 
 // TerminalBroker owns phone-attached agent terminals (internal/mobileterm). Serve upgrades the
