@@ -367,8 +367,9 @@ only through a PR). No job `needs` another; every job starts at once:
 |---|---|---|
 | `checks (macOS)` | `macos-26` (pinned, not `macos-latest`) | cgo-aware `go vet`/build (catches darwin build-tag breaks) and the darwin&&cgo-only test packages |
 | `checks (Linux)` | `ubuntu-latest` | lint, typecheck, frontend builds, `lint:dead`, `verify:packaging` and the bun unit tests |
-| `ui (Linux, shard N/4)` | `ubuntu-latest` | Playwright `ui` project in 4 shards, fail-fast off |
-| `ui-extra (Linux)` | `ubuntu-latest` | ipc-frontend (chromium), visual (webkit), then ui-timing alone on an idle machine |
+| `ui (Linux, shard N/8)` | `ubuntu-latest` | Playwright `ui` project in 8 shards, fail-fast off |
+| `ui-extra (Linux)` | `ubuntu-latest` | ipc-frontend and ui-clipboard, then ui-timing alone on an idle machine |
+| `visual (Linux)` | `ubuntu-latest` | Playwright `visual` project (webkit) |
 | `go (Linux)` | `ubuntu-latest` | Go packages that start no container, plus every package the container split does not name |
 | `go-containers (Linux)` | `ubuntu-latest` | Go packages that start Testcontainers; no bun, bindings or real frontend build |
 
@@ -406,8 +407,11 @@ repo the macOS job bills at 10x, about 190 billed minutes in total.
    each reaches its own binary, About dialog and bundle `Info.plist` (see "Where the version comes
    from"); it asserts both writes landed before building.
 2. `tag` resolves the tag to a commit and refuses a tag that already has a published release, and
-   a non-prerelease tag whose commit is not on `main`; then `build (macOS)`, `test-matrix (Linux)` and
-   `db-compat (Linux, min|max)` start together at that commit. `build` restores the setup action's
+   a non-prerelease tag whose commit is not on `main`; then `build (macOS)`, the `test-matrix (Linux, <group>)`
+   jobs and `db-compat (Linux, min|max)` start together at that commit. Groups are postgres,
+   mysqlfamily, clickhouse and rest (`scripts/test-matrix.sh --only`/`--except`, each pulling only its
+   own images, 8 min per package); aggregate job `test-matrix (Linux)` is what `publish` needs. Needs
+   `docs/pending-changes/.github__workflows__release.yml.patch` applied. `build` restores the setup action's
    caches from `main` and saves none; `cache-warm.yml` is what fills `main`'s caches. It runs
    `bun run package` and `bun run package`, names each `.dmg`
    (`kira-space-macos-arm64.dmg`), runs `verify:packaging` and the
@@ -535,8 +539,8 @@ gone.
 ### Repository settings (user-applied)
 
 1. Ruleset "Protected branches" (`refs/heads/main`): add **Require status checks to pass**, source
-   GitHub Actions. Add these checks: `checks (macOS)`, `checks (Linux)`, `ui (Linux, shard 1/4)`,
-   `ui (Linux, shard 2/4)`, `ui (Linux, shard 3/4)`, `ui (Linux, shard 4/4)`, `ui-extra (Linux)`,
+   GitHub Actions. Add these checks: `checks (macOS)`, `checks (Linux)`, `ui (Linux, shard 1/8)`
+   through `ui (Linux, shard 8/8)`, `ui-extra (Linux)`, `visual (Linux)`,
    `go (Linux)`, `go-containers (Linux)`. Leave "Require branches to be up to date" off: one chapter PR at a time, a stale base is rare, and a forced rebase would rerun full CI. Keep the
    squash-only and PR rules. **Do this before step 2.** With no required checks, auto-merge merges
    the moment it is enabled.
