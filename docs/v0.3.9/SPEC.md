@@ -9,7 +9,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 | P609 | DB MCP: `browse_table` gets `in`, count and paging; descriptions steer reads to it | Todo |
 | P610 | Agent status: running while subagents or background jobs run; new unseen-finished status | Todo |
 | P611 | Show proof dialog: Open closes it; shows the task name | Done |
-| P612 | Presentation site: review-window images use the inline diff; tile reuses the first-page hero visual | Todo |
+| P612 | Presentation site: review-window images use the inline diff; site title matches the first-page headline | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -63,10 +63,10 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Tests: backend flow tests `TestProofWindow` (ready popup present before `OpenWindow`, gone after) and `TestProofChain` (`Sessions` names the task for an attached session, none for an unattached one); UI spec `tests/ui/studio/proof-window.spec.ts` (task line shows, Open closes the dialog; no-task prompt shows no task line).
 - Result: Done. Root cause: no close path on Open (frontend) and no popup withdrawal in `OpenWindow` (backend). Fix: `ProofReadyPrompt.vue` hides on Open success; `OpenWindow` calls `MarkSeen` for the opened session; `Summary.taskTitle` added end to end (Go repo, `proof.Summary`, zod `proofSummarySchema`, contract fixtures regenerated with `KIRA_CONTRACT=write`). Ran here: `go test ./internal/flows/proofflow/` (all, after regenerating fixtures) PASS; `go test ./internal/flows/adeflow/ -run TestProofChain` PASS; `go vet` on bridge, proof, repos clean; UI spec `proof-window.spec.ts` project `ui`, `--trace off`: 15 passed; the Open-closes assertion failed (dialog count 1) with the frontend fix removed, passed with it; `typecheck:web`, `typecheck:tests`, `bun run lint` (biome, copy and catalog checks, docs check) clean. Not run: other UI suites, full Go suite, Docker (not started), `e2e-real`.
 
-## P612 Presentation site: review-window images use the inline diff; tile reuses the first-page hero visual
+## P612 Presentation site: review-window images use the inline diff; site title matches the first-page headline
 
 - Ask (user): in the presentation site images, the review window images must show the inline diff, not the side-by-side one.
-- Ask (user, second part): for the same site change, update the tile to use the same thing as the first page, headed "Everything agents need, in one place" (`site/src/data/content.ts` hero, `site/tests/site.spec.ts`). Planner identifies which tile (the one showing the review-window change) and which hero element (image, component, frame) to reuse, and states the reading in the plan.
+- Ask (user, second part): the site title (the page `<title>`, and its Open Graph and social title if separate) must say what the first page headline says: "Everything agents need, in one place" (`site/src/data/content.ts`, `site/tests/site.spec.ts` asserts the h1). Planner finds every place the site title is set (index and subpages, meta, og, tests that assert it) and states the final strings in the plan.
 - Context: find how the site images are produced (screenshot specs or scripts under the site package, tests/ui screenshots, any asset pipeline) and where the review window picks side-by-side vs inline.
 - Acceptance: every site image of a review window shows the inline diff; regenerated through the existing pipeline, assets updated; the diff mode is set by the screenshot setup (not by changing the app default).
 - Tests: regenerate the affected images for real and view them; the site build passes.
