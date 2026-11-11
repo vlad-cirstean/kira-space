@@ -15,8 +15,8 @@ import (
 // fixedSettings travel as URL query parameters on every request (no persistent client-level
 // session). `readonly` is not here: query.go sends it per request, never on Cancel's KILL QUERY.
 // output_format_json_quote_64bit_integers and output_format_json_validate_utf8 are gone: a
-// readonly=1 profile refuses to change either (measured), catalog decode accepts bare numbers
-// (RunCatalogQuery) and Go's JSON decode already replaces invalid UTF-8. A readonly=1 profile gets
+// readonly=1 profile refuses to change either (measured), catalog SQL casts 64-bit columns with
+// toString and Go's JSON decode already replaces invalid UTF-8. A readonly=1 profile gets
 // no settings at all (query.go buildURL).
 var fixedSettings = map[string]string{
 	"show_table_uuid_in_table_create_query_if_not_nil": "0",

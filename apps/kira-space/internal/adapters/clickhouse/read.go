@@ -288,7 +288,7 @@ func paramType(declared string) string {
 // countRows is read.ts's own.
 func countRows(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, target QualifiedName, filter *string) (adapters.CountResult, error) {
 	relationSQL := quoteIdent(target.Database) + "." + quoteIdent(target.Table)
-	sqlParts := []string{"SELECT count() AS n", "FROM " + relationSQL}
+	sqlParts := []string{"SELECT toString(count()) AS n", "FROM " + relationSQL}
 	if where := adapters.WhereClause(filter); where != "" {
 		sqlParts = append(sqlParts, where)
 	}

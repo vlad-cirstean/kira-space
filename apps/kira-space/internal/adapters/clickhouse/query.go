@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
@@ -245,6 +244,8 @@ func writtenRowsFromSummary(header string) int64 {
 // (`{name:Type}` placeholders — never interpolated), and parses the response as `FORMAT JSON`
 // (appended to the adapter-composed SQL text here, never to a user's own console statement) —
 // catalog rows are small metadata, not data the page builder needs to see as pre-stringified text.
+// Row fields are string/*string by convention: 64-bit integers arrive as bare numbers (no
+// output_format_json_quote_64bit_integers), so the catalog SQL casts them with toString.
 func RunCatalogQuery[T any](ctx context.Context, h *Handle, queryID string, sql string, op *adapters.OpCtx, track TrackQuery, params map[string]string) ([]T, error) {
 	op.SetCommand(sql)
 	if err := adapters.CheckNotStarted(ctx); err != nil {
@@ -264,34 +265,12 @@ func RunCatalogQuery[T any](ctx context.Context, h *Handle, queryID string, sql 
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return nil, mapHTTPError(resp.Header.Get("X-ClickHouse-Exception-Code"), string(body))
 		}
-		return decodeCatalogRows[T](body)
-	})
-}
-
-// decodeCatalogRows decodes a `FORMAT JSON` body. Catalog row fields are string/*string by
-// convention; 64-bit ints arrive as bare numbers since output_format_json_quote_64bit_integers is
-// not sent, so a numeric value is re-quoted from its exact digits. null stays null.
-func decodeCatalogRows[T any](body []byte) ([]T, error) {
-	var parsed struct {
-		Data []map[string]json.RawMessage `json:"data"`
-	}
-	if err := json.Unmarshal(body, &parsed); err != nil {
-		return nil, adapters.New(adapters.CodeQuery, err.Error(), err)
-	}
-	for _, row := range parsed.Data {
-		for k, v := range row {
-			if len(v) > 0 && (v[0] == '-' || (v[0] >= '0' && v[0] <= '9')) {
-				row[k] = json.RawMessage(strconv.Quote(string(v)))
-			}
+		var parsed struct {
+			Data []T `json:"data"`
 		}
-	}
-	raw, err := json.Marshal(parsed.Data)
-	if err != nil {
-		return nil, adapters.New(adapters.CodeQuery, err.Error(), err)
-	}
-	var out []T
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, adapters.New(adapters.CodeQuery, err.Error(), err)
-	}
-	return out, nil
+		if err := json.Unmarshal(body, &parsed); err != nil {
+			return nil, adapters.New(adapters.CodeQuery, err.Error(), err)
+		}
+		return parsed.Data, nil
+	})
 }

@@ -52,7 +52,8 @@ type systemTableRow struct {
 	CreateTableQuery string  `json:"create_table_query"`
 }
 
-const tableColumns = "database, name, engine, comment, total_rows, sorting_key, primary_key, partition_key, create_table_query"
+// 64-bit counts are cast to strings server-side so the catalog decode needs no number handling.
+const tableColumns = "database, name, engine, comment, toString(total_rows) AS total_rows, sorting_key, primary_key, partition_key, create_table_query"
 
 func relevantTables(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, schema string) ([]systemTableRow, error) {
 	return RunCatalogQuery[systemTableRow](ctx, h, queryID, "SELECT "+tableColumns+` FROM system.tables
@@ -149,16 +150,16 @@ func lessTableIdx(tables []systemTableRow, lowerNames []string, i, j int) bool {
 type systemColumnRow struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
-	// Position is UInt64 in system.columns — FORMAT JSON renders it as a bare number, which
-	// RunCatalogQuery re-quotes, so this is string, not int, and toColumnMeta parses it.
-	Position          string `json:"position"`
+	// Position is UInt64 in system.columns; the SQL casts it to a string (aliased apart from the
+	// column so ORDER BY position stays numeric) and toColumnMeta parses it.
+	Position          string `json:"position_text"`
 	DefaultKind       string `json:"default_kind"`
 	DefaultExpression string `json:"default_expression"`
 	Comment           string `json:"comment"`
 }
 
 func listColumnsRaw(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, schema, table string) ([]systemColumnRow, error) {
-	return RunCatalogQuery[systemColumnRow](ctx, h, queryID, `SELECT name, type, position, default_kind, default_expression, comment
+	return RunCatalogQuery[systemColumnRow](ctx, h, queryID, `SELECT name, type, toString(position) AS position_text, default_kind, default_expression, comment
 	 FROM system.columns
 	 WHERE database = {db:String} AND table = {tbl:String}
 	 ORDER BY position`, op, track, map[string]string{"db": schema, "tbl": table})
@@ -207,7 +208,7 @@ func listSchemaColumns(ctx context.Context, h *Handle, tablesQueryID, columnsQue
 		systemColumnRow
 	}
 	rows, err := RunCatalogQuery[schemaColumnRow](ctx, h, columnsQueryID,
-		`SELECT table, name, type, position, default_kind, default_expression, comment
+		`SELECT table, name, type, toString(position) AS position_text, default_kind, default_expression, comment
 	 FROM system.columns
 	 WHERE database = {db:String}
 	 ORDER BY table, position`, op, track, map[string]string{"db": schema})
