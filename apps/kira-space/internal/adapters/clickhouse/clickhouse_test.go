@@ -378,6 +378,7 @@ func TestClickHouse(t *testing.T) {
 		testsupport.ConsoleResultCap(nodePath(cfg.ID, seg("database", "kira_test")), func(n int) string {
 			return fmt.Sprintf("SELECT number FROM numbers(%d)", n)
 		}),
+		chCapKill(fixture),
 	)
 
 	// P26 §3.1(3), the phase's flagship test for this adapter: catalog.go's own parser is exercised
@@ -795,7 +796,7 @@ func waitForProcessesClean(t *testing.T, side adapters.Adapter, queryID string, 
 			return
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("sleep(3) still present in system.processes after %s", timeout)
+			t.Fatalf("query %s still present in system.processes after %s", queryID, timeout)
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -907,6 +908,40 @@ func chReadTimeoutCase(fixture *testsupport.ClickHouseFixture, lane bool) testsu
 		Admin: chAdmin(fixture,
 			"CREATE VIEW kira_test.p602_slow AS SELECT sum(cityHash64(number)) AS s FROM numbers(1000000000000)",
 			"DROP VIEW IF EXISTS kira_test.p602_slow"),
+	}
+}
+
+// chCapKill: a console read that stops at the row cap must also stop on the server, even when the
+// query emits its next block only after a very long computation (the late row never arrives).
+func chCapKill(fixture *testsupport.ClickHouseFixture) testsupport.Scenario {
+	return testsupport.Scenario{
+		Name: "execute: row cap kills the late-emitting query",
+		Run: func(t *testing.T, a adapters.Adapter, cfg model.ResolvedConnectionConfig) {
+			op := opCtx(t, "cap-kill")
+			qid := "kira-" + op.OpID + "-0"
+			t.Cleanup(func() {
+				testsupport.AdminStatements(t, fixture, "KILL QUERY WHERE query_id = '"+qid+"' SYNC")
+			})
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			start := time.Now()
+			pages, err := a.Execute(ctx, model.ConsoleRequest{
+				Path:       testsupport.NodePath(cfg.ID),
+				Statements: []string{"SELECT number FROM numbers(10) UNION ALL SELECT sum(cityHash64(number)) FROM numbers(1000000000000)"},
+				Cap:        page.ResultCap{Rows: 5},
+			}, op)
+			if err != nil {
+				t.Fatalf("Execute: %v", err)
+			}
+			p, ok := pages[0].(page.TabularPage)
+			if !ok || p.RowCount != 5 || !p.Position.Truncated {
+				t.Fatalf("result = %#v, want 5 rows, truncated", pages[0])
+			}
+			if took := time.Since(start); took > 5*time.Second {
+				t.Errorf("capped Execute took %s, want under 5s", took)
+			}
+			waitForProcessesClean(t, connectedAdapter(t, fixture.Config), qid, 5*time.Second)
+		},
 	}
 }
 
