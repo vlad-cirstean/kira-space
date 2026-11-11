@@ -153,7 +153,7 @@ CREATE TABLE "ade_sessions" (
   run_id TEXT NOT NULL DEFAULT '',
   resumes TEXT NOT NULL DEFAULT '',
   agent_session_id TEXT NOT NULL,
-  cwd TEXT NOT NULL,
+  cwd TEXT NOT NULL, unseen_at INTEGER NOT NULL DEFAULT 0 CHECK (unseen_at >= 0),
   CHECK (task_id <> '' AND (mode = 'tui' OR run_id <> ''))
 ) STRICT;
 

@@ -302,6 +302,7 @@ var AdeSessions = struct {
 	Resumes        string
 	AgentSessionID string
 	Cwd            string
+	UnseenAt       string
 }{
 	Table:          "ade_sessions",
 	ID:             "id",
@@ -319,6 +320,7 @@ var AdeSessions = struct {
 	Resumes:        "resumes",
 	AgentSessionID: "agent_session_id",
 	Cwd:            "cwd",
+	UnseenAt:       "unseen_at",
 }
 
 // AdeTaskArtifacts names table ade_task_artifacts.

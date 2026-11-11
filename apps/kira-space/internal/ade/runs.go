@@ -1265,6 +1265,23 @@ func (b *TaskBoard) superviseScript(ctx context.Context, run model.AdeRun, def s
 	b.completeRun(run, "", sbx.sandboxOutcome(fromOutcome(state, o)))
 }
 
+// stopHeadlessSession marks a headless session stopped and, unless the user stopped it, finished
+// and not yet viewed. An empty id is a run with no session row.
+func (b *TaskBoard) stopHeadlessSession(sessionID string, now int64, out outcome) {
+	if sessionID == "" {
+		return
+	}
+	if err := b.deps.Sessions.MarkStopped(sessionID, now); err != nil {
+		slog.Warn("ade: stop headless session", "scope", "ade", "session", sessionID, "err", err)
+	}
+	if !out.noAdvance {
+		if err := b.deps.Sessions.SetUnseen(sessionID, now); err != nil {
+			slog.Warn("ade: mark headless session unseen", "scope", "ade", "session", sessionID, "err", err)
+		}
+	}
+	b.notifySessions()
+}
+
 // completeRun records how a process ended, then moves the task on.
 func (b *TaskBoard) completeRun(run model.AdeRun, sessionID string, out outcome) {
 	mu := b.taskMu(run.TaskID)
@@ -1278,12 +1295,7 @@ func (b *TaskBoard) completeRun(run model.AdeRun, sessionID string, out outcome)
 func (b *TaskBoard) recordOutcomeLocked(run model.AdeRun, sessionID string, out outcome) {
 	now := b.deps.Now().UnixMilli()
 	b.finishRunOp(sessionID, out)
-	if sessionID != "" {
-		if err := b.deps.Sessions.MarkStopped(sessionID, now); err != nil {
-			slog.Warn("ade: stop headless session", "scope", "ade", "session", sessionID, "err", err)
-		}
-		b.notifySessions()
-	}
+	b.stopHeadlessSession(sessionID, now, out)
 	var loop *pendingLoop
 	if (out.state == model.AdeRunFailed || out.state == model.AdeRunDone) && !out.noAdvance {
 		loop, out = b.decideRoute(run, out)
@@ -1853,6 +1865,9 @@ func (b *TaskBoard) Sessions(_ context.Context) (adewire.SessionsResult, error) 
 	out := adewire.SessionsResult{Sessions: make([]adewire.Session, len(rows))}
 	for i, s := range rows {
 		out.Sessions[i] = toWireSession(s)
+		if s.Mode == model.AdeSessionModeTUI && s.State == model.AdeSessionStateRunning && b.deps.Tracker != nil {
+			out.Sessions[i].Background = b.deps.Tracker.Background(s.ID)
+		}
 	}
 	b.badgeSessions(out.Sessions)
 	return out, nil
@@ -1862,7 +1877,7 @@ func toWireSession(s model.AdeSession) adewire.Session {
 	w := adewire.Session{
 		ID: s.ID, AgentSessionID: s.AgentSessionID, Provider: s.Provider, Mode: s.Mode, State: s.State, TerminalID: s.TerminalID,
 		TaskID: s.TaskID, BranchID: s.BranchID, StepID: s.StepID, RunID: s.RunID, Resumes: s.Resumes, Purpose: s.Purpose,
-		Cwd: s.Cwd, StartedAt: s.StartedAt, LastActiveAt: s.LastActiveAt,
+		Cwd: s.Cwd, StartedAt: s.StartedAt, LastActiveAt: s.LastActiveAt, Unseen: s.UnseenAt > 0,
 	}
 	if s.Mode == model.AdeSessionModeHeadless {
 		w.Activity = "idle"

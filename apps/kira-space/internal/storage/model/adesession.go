@@ -37,6 +37,8 @@ type AdeSession struct {
 	Resumes      string `json:"resumes"`
 	// Purpose is "" for a step or branch session, "review" for the task's one review agent.
 	Purpose string `json:"purpose"`
+	// UnseenAt is the ms time the session finished unviewed; 0 = seen.
+	UnseenAt int64 `json:"unseenAt"`
 }
 
 // AdeSessionPurposeReview marks the task's review agent row (ade_sessions.purpose).

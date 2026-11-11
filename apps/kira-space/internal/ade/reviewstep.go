@@ -708,12 +708,7 @@ func (b *TaskBoard) completeReviewRound(run model.AdeRun, sessionID string, out 
 	defer mu.Unlock()
 	now := b.deps.Now().UnixMilli()
 	b.finishRunOp(sessionID, out)
-	if sessionID != "" {
-		if err := b.deps.Sessions.MarkStopped(sessionID, now); err != nil {
-			slog.Warn("ade: stop headless session", "scope", "ade", "session", sessionID, "err", err)
-		}
-		b.notifySessions()
-	}
+	b.stopHeadlessSession(sessionID, now, out)
 	spec, err := roundSpec(run)
 	if err != nil {
 		slog.Warn("ade: review round", "scope", "ade", "run", run.ID, "err", err)

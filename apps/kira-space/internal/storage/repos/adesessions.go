@@ -19,6 +19,7 @@ var adeSessionsSelectColumns = []string{
 	kiraschema.AdeSessions.TerminalID, kiraschema.AdeSessions.StartedAt, kiraschema.AdeSessions.LastActiveAt,
 	kiraschema.AdeSessions.Mode, kiraschema.AdeSessions.TaskID, kiraschema.AdeSessions.BranchID, kiraschema.AdeSessions.StepID,
 	kiraschema.AdeSessions.RunID, kiraschema.AdeSessions.Resumes, kiraschema.AdeSessions.Purpose, kiraschema.AdeSessions.Provider,
+	kiraschema.AdeSessions.UnseenAt,
 }
 
 func (r *AdeSessionsRepo) selectSessions() *sqlbuilder.SelectBuilder {
@@ -38,7 +39,7 @@ func scanAdeSessionRow(row rowScanner) (model.AdeSession, error) {
 	if err := row.Scan(
 		&rec.ID, &rec.AgentSessionID, &rec.Cwd,
 		&rec.State, &terminalID, &rec.StartedAt, &rec.LastActiveAt,
-		&rec.Mode, &rec.TaskID, &rec.BranchID, &rec.StepID, &rec.RunID, &rec.Resumes, &rec.Purpose, &rec.Provider,
+		&rec.Mode, &rec.TaskID, &rec.BranchID, &rec.StepID, &rec.RunID, &rec.Resumes, &rec.Purpose, &rec.Provider, &rec.UnseenAt,
 	); err != nil {
 		return model.AdeSession{}, err
 	}
@@ -218,6 +219,45 @@ func (r *AdeSessionsRepo) MarkStopped(id string, lastActiveAt int64) error {
 		return fmt.Errorf("repos: mark ade session stopped %s: %w", id, err)
 	}
 	return sqlitex.RequireOneRow(res, "ade session "+id)
+}
+
+// SetUnseen marks the session finished and not yet viewed at the given ms time.
+func (r *AdeSessionsRepo) SetUnseen(id string, at int64) error {
+	c := kiraschema.AdeSessions
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.UnseenAt, at)).Where(ub.Equal(c.ID, id))
+	res, err := sqlb.Exec(r.DB, ub)
+	if err != nil {
+		return fmt.Errorf("repos: set ade session unseen %s: %w", id, err)
+	}
+	return sqlitex.RequireOneRow(res, "ade session "+id)
+}
+
+// ClearUnseen marks the session viewed; true when a row changed.
+func (r *AdeSessionsRepo) ClearUnseen(id string) (bool, error) {
+	c := kiraschema.AdeSessions
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.UnseenAt, 0)).Where(ub.Equal(c.ID, id), ub.GreaterThan(c.UnseenAt, 0))
+	res, err := sqlb.Exec(r.DB, ub)
+	if err != nil {
+		return false, fmt.Errorf("repos: clear ade session unseen %s: %w", id, err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("repos: clear ade session unseen %s: %w", id, err)
+	}
+	return n > 0, nil
+}
+
+// ClearUnseenOfTask marks every session of the task viewed (archiving dismisses the task).
+func (r *AdeSessionsRepo) ClearUnseenOfTask(taskID string) error {
+	c := kiraschema.AdeSessions
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.UnseenAt, 0)).Where(ub.Equal(c.TaskID, taskID), ub.GreaterThan(c.UnseenAt, 0))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
+		return fmt.Errorf("repos: clear unseen of task %s: %w", taskID, err)
+	}
+	return nil
 }
 
 // Delete removes a row — Tracker.Abort's own path for a fresh session whose terminal never opened.
