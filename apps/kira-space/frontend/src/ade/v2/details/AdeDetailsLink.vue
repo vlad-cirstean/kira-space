@@ -15,12 +15,12 @@ import {
   artifactStatusTone,
   kindIcon,
 } from '../artifacts/status';
+import AdeLinkEdit from '../links/AdeLinkEdit.vue';
+import type { LinkItem } from '../links/linkGroups';
 import AdeRow from '../panel/AdeRow.vue';
 import type { Artifact } from '../wire';
-import AdeDetailsLinkEdit from './AdeDetailsLinkEdit.vue';
 import AdeLinkKindMenu from './AdeLinkKindMenu.vue';
 import AdeLinkOpenExternal from './AdeLinkOpenExternal.vue';
-import type { LinkItem } from './linkGroups';
 
 // One link row: group name (first row of a group), kind icon, title as a link, status, then open in browser, edit and
 // remove on hover. Detected rows are read-only; a stored row's kind icon is a menu.
@@ -56,7 +56,7 @@ function open(e: MouseEvent): void {
     @dblclick="canEdit() && !editing && emit('edit')"
     @keydown.f2.prevent="canEdit() && !editing && emit('edit')"
   >
-    <AdeDetailsLinkEdit
+    <AdeLinkEdit
       v-if="editing"
       :text="item.editText"
       :commit="(text) => commit(item, text)"

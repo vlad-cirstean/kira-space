@@ -13,8 +13,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/to
 import { t } from '@theme/i18n';
 import type { MessageKey } from '@theme/i18n/types';
 import { artifactKindLabel, kindIcon } from '../artifacts/status';
+import { LINK_CATEGORIES, type LinkCategory, linkCategory } from '../links/linkGroups';
 import type { Artifact } from '../wire';
-import { LINK_CATEGORIES, type LinkCategory, linkCategory } from './linkGroups';
 
 // The kind icon of a stored row, as a menu; picking another kind re-files the row.
 defineProps<{ kind: Artifact['kind'] }>();

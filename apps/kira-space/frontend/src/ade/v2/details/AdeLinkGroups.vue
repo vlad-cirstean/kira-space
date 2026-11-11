@@ -8,6 +8,7 @@ import QueryState from '@workbench/components/QueryState.vue';
 import { computed, ref } from 'vue';
 import { gapText } from '../artifacts/gapText';
 import { taskPatch } from '../board/panelFacts';
+import { type LinkCategory, type LinkItem, linkGroups } from '../links/linkGroups';
 import AdeRow from '../panel/AdeRow.vue';
 import AdeTaskIssueLine from '../panel/AdeTaskIssueLine.vue';
 import {
@@ -21,7 +22,6 @@ import type { Artifact, Task } from '../wire';
 import AdeDetailsLink from './AdeDetailsLink.vue';
 import AdeLinkAddLine from './AdeLinkAddLine.vue';
 import AdeOriginSession from './AdeOriginSession.vue';
-import { type LinkCategory, type LinkItem, linkGroups } from './linkGroups';
 
 // The task's links grouped by kind: Issues, Change requests, Misc (empty groups hidden). One row
 // edits at a time; the add line files typed or pasted text, the backend picks the kind.

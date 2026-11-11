@@ -613,7 +613,11 @@ export function useTaskArtifacts(taskId: MaybeRefOrGetter<string>) {
  * the line keeps showing the copy meanwhile. A fresh answer that is still stale (the refresh failed)
  * starts nothing, so the pair never loops. A board push refetches it.
  */
-export function useTaskIssue(taskId: MaybeRefOrGetter<string>, link: MaybeRefOrGetter<string>) {
+export function useTaskIssue(
+  taskId: MaybeRefOrGetter<string>,
+  link: MaybeRefOrGetter<string>,
+  enabled: MaybeRefOrGetter<boolean> = true,
+) {
   let nextFresh = false;
   let lastFresh = false;
   const query = useQuery(() => ({
@@ -626,6 +630,7 @@ export function useTaskIssue(taskId: MaybeRefOrGetter<string>, link: MaybeRefOrG
       );
     },
     staleTime: 60_000,
+    enabled: toValue(enabled),
   }));
   watch(
     () => query.data.value,

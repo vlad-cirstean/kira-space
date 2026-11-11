@@ -43,12 +43,12 @@ useFocus(
       :aria-label="t('space.ade.details.link.aria')"
       :placeholder="t('space.ade.details.link.placeholder')"
       size="kira"
-      data-testid="ade-details-link-input"
+      data-testid="ade-links-edit-input"
       @update:model-value="edit.onInput"
       @blur="edit.onCommit"
       @keydown="edit.onKeydown"
     />
-    <Alert v-if="edit.error.value" variant="error" data-testid="ade-details-link-error"
+    <Alert v-if="edit.error.value" variant="error" data-testid="ade-links-edit-error"
       ><AlertDescription>{{ edit.error.value }}</AlertDescription></Alert
     >
   </div>
