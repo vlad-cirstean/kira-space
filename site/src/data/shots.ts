@@ -239,7 +239,7 @@ export const SHOTS: readonly ShotDef[] = [
   {
     id: 'build-review-window',
     title: 'Review window',
-    alt: 'Kira Space review window with the changed files, a side by side diff of the CSV export and the review agent panel.',
+    alt: 'Kira Space review window with the changed files, an inline diff of the CSV export and the review agent panel.',
     caption: 'Review window. Files, diff and review agent side by side.',
     icon: 'git-commit',
     label: 'Review window',
