@@ -128,6 +128,10 @@ type ReadRequest struct {
 type CountRequest struct {
 	Path   model.NodePath
 	Filter *string
+	// Conditions are ANDed after Filter, bound as parameters (P609).
+	Conditions []model.Condition
+	// StatementTimeout bounds the count on engines with a session mechanism; zero means none.
+	StatementTimeout time.Duration
 }
 
 // CountResult is the Go analogue of adapter.ts's count() return shape.

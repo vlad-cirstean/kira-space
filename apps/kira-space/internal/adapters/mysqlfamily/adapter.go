@@ -354,8 +354,29 @@ func (a *Adapter) Count(ctx context.Context, req adapters.CountRequest, op *adap
 		return adapters.CountResult{}, err
 	}
 	defer release()
+	track := a.trackerFor(op.OpID)
 	target := QualifiedName{Database: databaseSegment.Name, Table: objectSegment.Name}
-	return countRows(ctx, entry, op, a.trackerFor(op.OpID), target, req.Filter)
+	var columns []model.ColumnMeta
+	if len(req.Conditions) > 0 {
+		// Conditions need column metadata (types, binary detection), unlike a bare count.
+		rt, err := getReadTarget(ctx, execFor(entry, op, track), databaseSegment.Name, objectSegment.Name)
+		if err != nil {
+			return adapters.CountResult{}, err
+		}
+		columns = rt.Columns
+	}
+	if req.StatementTimeout > 0 {
+		restore, err := setSessionTimeout(ctx, entry, req.StatementTimeout, a.mariadbServer.Load())
+		if err != nil {
+			return adapters.CountResult{}, err
+		}
+		defer restore()
+	}
+	res, err := countRows(ctx, entry, op, track, target, req.Filter, req.Conditions, columns)
+	if err != nil {
+		return adapters.CountResult{}, timeoutError(ctx, req.StatementTimeout, err)
+	}
+	return res, nil
 }
 
 // Preview is index.ts's preview.

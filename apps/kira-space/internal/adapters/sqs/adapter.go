@@ -201,6 +201,9 @@ func (a *Adapter) Read(ctx context.Context, req adapters.ReadRequest, op *adapte
 
 // Count is index.ts's count.
 func (a *Adapter) Count(ctx context.Context, req adapters.CountRequest, op *adapters.OpCtx) (adapters.CountResult, error) {
+	if err := adapters.RejectConditions("sqs", req.Conditions); err != nil {
+		return adapters.CountResult{}, err
+	}
 	client, err := a.requireClient()
 	if err != nil {
 		return adapters.CountResult{}, err

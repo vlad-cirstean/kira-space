@@ -38,7 +38,8 @@ func cond(column, op string, values ...any) model.Condition {
 
 // ReadConditions asserts structured conditions bind their values as data on a real engine: every
 // comparison op, in, like, null tests, an apostrophe and an injection-shaped value, a binary value, and
-// an order term. It also asserts a read with a statement timeout set succeeds; the timeout trip itself and
+// an order term. Each check also runs Count with the same conditions and expects the row total (P609).
+// It also asserts a read and a count with a statement timeout set succeed; the timeout trip itself and
 // its reset belong to the StatementTimeout scenario, which runs the same session helper.
 func ReadConditions(c ConditionsCase) Scenario {
 	checks := []conditionCheck{
@@ -81,6 +82,7 @@ func ReadConditions(c ConditionsCase) Scenario {
 				if strings.Join(got, ",") != strings.Join(k.want, ",") {
 					t.Errorf("%s: ids = %v, want %v", k.name, got, k.want)
 				}
+				countRows(t, a, adapters.CountRequest{Path: c.Table, Conditions: k.conds}, int64(len(k.want)), k.name)
 			}
 			req := adapters.ReadRequest{
 				Path: c.Table, PageSize: bigPageSize, Cursor: model.PageCursor{Mode: "offset"},
@@ -89,7 +91,19 @@ func ReadConditions(c ConditionsCase) Scenario {
 			if got := readIDs(t, a, req, "with statement timeout"); fmt.Sprint(got) != "[1]" {
 				t.Errorf("with statement timeout: ids = %v, want [1]", got)
 			}
+			countRows(t, a, adapters.CountRequest{Path: c.Table, Conditions: req.Conditions, StatementTimeout: 30 * time.Second}, 1, "count with statement timeout")
 		},
+	}
+}
+
+func countRows(t *testing.T, a adapters.Adapter, req adapters.CountRequest, want int64, name string) {
+	t.Helper()
+	res, err := a.Count(context.Background(), req, adapters.NewOpCtx("scenario-count-conditions"))
+	if err != nil {
+		t.Fatalf("%s: Count: %v", name, err)
+	}
+	if res.Value != want || !res.Exact {
+		t.Errorf("%s: count = %d exact=%v, want %d exact", name, res.Value, res.Exact, want)
 	}
 }
 

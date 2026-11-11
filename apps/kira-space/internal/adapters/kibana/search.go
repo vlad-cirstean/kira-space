@@ -433,6 +433,9 @@ func (a *Adapter) Read(ctx context.Context, req adapters.ReadRequest, op *adapte
 }
 
 func (a *Adapter) Count(ctx context.Context, req adapters.CountRequest, op *adapters.OpCtx) (adapters.CountResult, error) {
+	if err := adapters.RejectConditions("kibana", req.Conditions); err != nil {
+		return adapters.CountResult{}, err
+	}
 	h, err := a.requireHandle()
 	if err != nil {
 		return adapters.CountResult{}, err
