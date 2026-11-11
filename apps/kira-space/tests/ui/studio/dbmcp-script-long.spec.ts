@@ -52,11 +52,10 @@ test('contract: the settings row marks a long-running script', async ({ relaunch
 
 test('contract: a long script run shows its output while it runs', async ({ relaunch }) => {
   const page = await openRun(relaunch, running());
-  await expect(
-    page.locator('[data-testid="script-run-view"] [data-testid="run-log"]'),
-  ).toContainText('started');
-  await expect(page.locator('[data-testid="run-stop"]')).toBeVisible();
-  await expect(page.locator('[data-testid="script-run-result"]')).toHaveCount(0);
+  const view = page.locator('[data-testid="script-run-view"]');
+  await expect(view.locator('[data-testid="run-log"]')).toContainText('started');
+  await expect(view.locator('[data-testid="run-stop"]')).toBeVisible();
+  await expect(view.locator('[data-testid="script-run-result"]')).toHaveCount(0);
 });
 
 test('contract: after the process exits the run shows its failed exit state', async ({
@@ -64,6 +63,7 @@ test('contract: after the process exits the run shows its failed exit state', as
 }) => {
   const run = ended();
   const page = await openRun(relaunch, [{ ...run, id: 'run-long' }]);
-  await expect(page.locator('[data-testid="run-outcome-exit"]')).toContainText('4');
-  await expect(page.locator('[data-testid="run-stop"]')).toHaveCount(0);
+  const view = page.locator('[data-testid="script-run-view"]');
+  await expect(view.locator('[data-testid="run-outcome-exit"]')).toContainText('4');
+  await expect(view.locator('[data-testid="run-stop"]')).toHaveCount(0);
 });
