@@ -193,6 +193,8 @@ func OpenClient(cfg model.ResolvedConnectionConfig, log func(level, message stri
 		MaxIdleConnsPerHost: 4,
 		DialContext:         (&net.Dialer{Timeout: dialTimeout}).DialContext,
 		TLSHandshakeTimeout: tlsHandshakeTimeout,
+		// Server buffers a gzip body, so a late-emitting read sends nothing and the row cap never fires.
+		DisableCompression: true,
 	}
 	client := &http.Client{Transport: transport}
 	u := target.scheme + "://" + target.host + ":" + strconv.Itoa(target.port)
