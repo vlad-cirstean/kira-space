@@ -110,7 +110,7 @@ jobs:
   ui:
     name: ui (Linux)
     needs: ui-shard
-    if: ${{ !cancelled() }}
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -289,6 +289,9 @@ jobs:
           - group: rest
             args: --except postgres,mysqlfamily,clickhouse
     steps:
+      # test-matrix.sh gives each package min(8m, time left - 1m) of this deadline.
+      - name: Job deadline for the matrix script
+        run: echo "MATRIX_DEADLINE=$(( $(date +%s) + 12 * 60 ))" >> "$GITHUB_ENV"
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
         timeout-minutes: 10
@@ -325,7 +328,7 @@ jobs:
   test-matrix:
     name: test-matrix (Linux)
     needs: test-matrix-group
-    if: ${{ !cancelled() }}
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -363,7 +366,7 @@ jobs:
   db-compat:
     name: db-compat (Linux)
     needs: db-compat-extreme
-    if: ${{ !cancelled() }}
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
