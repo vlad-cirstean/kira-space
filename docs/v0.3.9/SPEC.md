@@ -4,7 +4,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 
 | Phase | Title | Status |
 |---|---|---|
-| P607 | ClickHouse `readonly=1`: `Execute` ignores the app statement timeout | Todo |
+| P607 | ClickHouse `readonly=1`: `Execute` ignores the app statement timeout | Done |
 | P608 | Release `test-matrix (Linux)`: split into parallel jobs with tight timeouts | Done |
 | P609 | DB MCP: `browse_table` gets `in`, count and paging; descriptions steer reads to it | Todo |
 | P610 | Agent status: running while subagents or background jobs run; new unseen-finished status | Todo |
@@ -19,7 +19,11 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Acceptance: on `readonly=1`, `Execute` and `Read` stop at the app timeout and report a statement-timeout error; the matrix test fails within seconds when it regresses.
 - Scope: run `scripts/test-matrix.sh` end to end here, plus `scripts/db-compat.sh --only clickhouse --min` and `--max` with `KIRA_TEST_MATRIX=1`, and the other scenarios v0.3.8 R3/R4/R5 added that never ran (UInt64 max read-back, `KILL QUERY` at the row cap, `toString` catalog SQL). Fix every other failure found at its root, never weaken a test.
 - Tests: the commands above, run here and passing.
-- Result:
+- Result: root cause was a missing adapter app timer: `readonly=1` refuses the timeout settings, `withEngineTimeout` then ran with no limit, and the matrix test called `Execute` directly so no host backstop existed (the 976s was the query finishing). Also found: the row-cap kill never fired for a late-emitting read, because the server buffers a gzip body and Go sends `Accept-Encoding: gzip`; and on the default profile cancel-on-close left that query running after the cap.
+  - Fixes: `withStatementTimeout` (ctx deadline plus `KILL QUERY ... SYNC`, used by `Execute` and `Read`, error cause `app timer`); transport `DisableCompression`; row cap sends `KILL QUERY ... SYNC` on every profile; `docs/ARCHITECTURE.md` updated.
+  - Tests: slow-query scenarios in `testsupport/timeout.go` and the matrix now carry a `limit+10s` ctx bound and assert the `app timer` cause and server-side stop (`system.processes`); new `Read` half on `readonly=1` (`p607_ro1_slow` view); new `chCapKill` scenario (5 rows, truncated, under 5s, query gone from `system.processes`) on `kira_ro1` and the main `kira` user.
+  - Ran here, all passed (ClickHouse 26.3.58 unless noted): `-run TestClickHouse_AuthMatrix/kira_ro1` 11.9s total (timeout subtest 1.15s, read half 1.13s, cap kill 0.18s). Bound proof: with the app-timer deadline stubbed out (`WithCancel`), the same run FAILED in 33s total, each timeout scenario at 11s with `The operation was cancelled`, instead of hanging; stub reverted, not committed. `go test ./internal/adapters/clickhouse/...` with `KIRA_TEST_MATRIX=1` ok (first run caught the default-profile cap-kill failure, fixed, rerun ok 38.9s). `sh scripts/test-matrix.sh --mirror`: all 9 kinds PASS (postgres, mysqlfamily, clickhouse, mongo, redis, kafka, sqs, s3, sqlite), 7m22s. `KIRA_TEST_MATRIX=1 scripts/db-compat.sh --only clickhouse --min --mirror` (25.3.14) PASS, `--max --mirror` (26.8.33) PASS. `go test ./internal/adapterhost/... ./internal/flows/dbmcpflow/... -count=1` ok (before the cap-kill commit, which touches neither). UInt64 max read-back and `toString` catalog SQL scenarios ran inside the ClickHouse suites above and passed.
+  - Not run: none of the required runs. Disk was tight; unused compat images were removed and re-pulled as needed.
 
 ## P608 Release `test-matrix (Linux)`: split into parallel jobs with tight timeouts
 
