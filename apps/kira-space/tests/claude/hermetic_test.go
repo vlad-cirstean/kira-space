@@ -77,9 +77,7 @@ func TestHermeticSession(t *testing.T) {
 			cfg["mcpServers"] = map[string]any{"user-probe": map[string]any{"command": "sh", "args": []string{"-c", "sleep 30"}}}
 			out, _ := json.Marshal(cfg)
 			writeFile(t, filepath.Join(f.Home, ".claude.json"), string(out))
-			if !hermetic {
-				f.SetHermetic(t, false)
-			}
+			f.SetHermetic(t, hermetic) // off by default since P588
 			step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 2m\n    prompt: " + prompt + " Then call finish_step with status done and summary ok.\n"
 			f.saveWorkflow(t, "flow", step+manualStepYAML)
 			run := f.startRun(t, f.createTask(t, "flow"), "feat/hermetic")
