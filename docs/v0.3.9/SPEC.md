@@ -12,6 +12,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 | P612 | Presentation site: review-window images use the inline diff; site title matches the first-page headline | Todo |
 | P613 | Link strip: one compact links component for Details tab and handoff dialogs | Done |
 | P614 | Move test-matrix and db-compat from release to every PR; required checks | Done |
+| P615 | Link strip: click opens in app, Cmd-click opens externally | Todo |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -96,3 +97,11 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Tests: `git apply --check` for both patches, YAML parse, actionlint if obtainable; the group commands run locally as in P608. Real CI proves the rest after the user applies them.
 - Result: Done. Flat design, no gating (plan section 3). `scripts/test-matrix.sh` gains `--print-images` (stdout is the selected kinds' images only; empty for `--only sqlite`) and `--pull-only`; any two of `--no-pull`/`--pull-only`/`--print-images` exit 2. `db-compat.sh` header only. Three patches in `docs/pending-changes/` (`pr.yml`: four group jobs with per-group image cache, `test-matrix (Linux)` aggregate, `db-compat (Linux, min|max)`, all 12 min, Ryuk off; `release.yml`: jobs removed, `publish` needs `[tag, build]`; `cache-warm.yml`: `matrix-images` job). Docs: PACKAGING section 7 (table, cache warming, release steps, db-compat paragraph, ruleset list, P614 apply order), ARCHITECTURE db-compat and test-matrix CI entry lines. User apply order: patches on `chapter/v0.3.9` with the three patch files deleted in the same commit, then add `test-matrix (Linux)`, `db-compat (Linux, min)`, `db-compat (Linux, max)` to the ruleset, then open the PR.
   Ran here: `git apply --check` for all three patches pass (against a tree without other pending patches; none else existed); YAML parse of the patched files OK; actionlint 1.7.7 on the patched files: only `macos-26` unknown-label notes (pre-existing, tool predates the label); `sh -n`; `--print-images` for postgres, `rest` (except-list) and sqlite; exclusivity exits 2; `--only postgres --mirror --pull-only` (images already local) pass; `--only postgres --no-pull` with Ryuk off (the cache-hit path) PASS in 34s; pre-commit hooks pass. Not run: cache miss pull from the mirror and the other three groups, `db-compat` (disk, shared Docker), `docker save`/`load` round trip, the aggregate. Only real CI proves: the new jobs' wall time and 12-min caps, cache key hit/miss behaviour and `cache-warm` saves, cache budget against the 10 GB limit, check names appearing on the PR, runner concurrency.
+
+## P615 Link strip: click opens in app, Cmd-click opens externally
+
+- Ask (user): simpler open behavior for the link strip pills. Default: open in the app. Cmd-click (Ctrl-click off macOS): open externally in the browser.
+- Context: P613's strip: click or Space opens the card, Enter opens (change request in-app host view, else browser), card has an external-open button. Find what "in app" exists per link kind (host view for change requests, issue tracker view, any in-app web view for docs/deployments/links, branch). Where a kind has no in-app target, the plan states the fallback and reports it to the orchestrator.
+- Acceptance: plain click on a pill opens it in app; Cmd-click opens it externally; the details card stays reachable (plan picks the gesture, keeps keyboard access) and remove/edit/kind keep working; strip height unchanged; same behavior in Details, stage dialog and Run dialog.
+- Tests: flow tests unchanged unless the wire changes; UI spec extended for click vs Cmd-click per kind; keyboard spec updated; visual snapshots only if affected. Run for real.
+- Result:
