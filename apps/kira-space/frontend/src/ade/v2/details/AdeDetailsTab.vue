@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import AdeLinkStrip from '../links/AdeLinkStrip.vue';
 import type { Task } from '../wire';
-import AdeLinkGroups from './AdeLinkGroups.vue';
 import AdeTaskChain from './AdeTaskChain.vue';
 import type { TimelineBranch } from './taskTimeline';
 
@@ -16,9 +16,10 @@ const emit = defineEmits<{ openSession: [sessionId: string] }>();
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3" data-testid="ade-details-tab">
-    <AdeLinkGroups
+    <AdeLinkStrip
       :task="props.task"
-      :readonly="readonly"
+      :mode="readonly ? 'view' : 'edit'"
+      :archived="readonly"
       @open-session="emit('openSession', $event)"
     />
     <AdeTaskChain

@@ -15,7 +15,7 @@ import { NativeSelect } from '@theme/components/ui/native-select';
 import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
-import AdeArtifactList from '../artifacts/AdeArtifactList.vue';
+import AdeLinkStrip from '../links/AdeLinkStrip.vue';
 import AdeNotesEditor from '../notes/AdeNotesEditor.vue';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 
@@ -118,6 +118,13 @@ async function move(): Promise<void> {
             t(pass ? 'space.ade.stageDialog.passMessage.hint' : 'space.ade.stageDialog.notes.hint')
           }}</FieldDescription>
         </div>
+        <div v-if="store.card" data-testid="ade-stage-links">
+          <AdeLinkStrip
+            :task="store.card.task"
+            mode="add"
+            :branches="!pass && store.toStepId === 'done'"
+          />
+        </div>
         <div
           v-if="store.closable.length"
           class="flex flex-col gap-1.5"
@@ -142,14 +149,6 @@ async function move(): Promise<void> {
             </div>
           </RadioGroup>
           <FieldDescription>{{ t('space.ade.stageDialog.sessions.hint') }}</FieldDescription>
-        </div>
-        <div
-          v-if="!pass && store.taskId && store.toStepId === 'done'"
-          class="flex flex-col gap-1"
-          data-testid="ade-stage-artifacts"
-        >
-          <div class="text-muted-foreground">{{ t('space.ade.artifacts.stageDone.label') }}</div>
-          <AdeArtifactList :task-id="store.taskId" />
         </div>
         <Alert v-if="live" variant="error" data-testid="ade-stage-live">
           <AlertDescription>{{

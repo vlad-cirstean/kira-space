@@ -61,7 +61,7 @@ function fromArtifact(a: Artifact): LinkItem {
 
 export type LinkCategory = 'issue' | 'changeRequest' | 'misc';
 
-export const LINK_CATEGORIES: readonly LinkCategory[] = ['issue', 'changeRequest', 'misc'];
+const LINK_CATEGORIES: readonly LinkCategory[] = ['issue', 'changeRequest', 'misc'];
 
 export const CATEGORY_LABEL = {
   issue: 'space.settings.updates.issue.title',
@@ -84,7 +84,7 @@ export const KINDS: readonly Artifact['kind'][] = [
   'link',
 ];
 
-export function linkCategory(kind: Artifact['kind']): LinkCategory {
+function linkCategory(kind: Artifact['kind']): LinkCategory {
   if (kind === 'issue' || kind === 'changeRequest') return kind;
   return 'misc';
 }

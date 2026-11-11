@@ -15,7 +15,7 @@ import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { ArtifactGap } from '../wire';
 import { rowMeta } from './adeRow';
 
-// The linked issue as its tracker reports it, inline in the Jira link row: title, status, Jira's PR count and a view
+// The linked issue as its tracker reports it, inline in the Jira link card: title, status, Jira's PR count and a view
 // button.
 // The tracker CLI owns the credentials; a failure reads as a line of text, never an error toast.
 const props = defineProps<{ taskId: string; link: string }>();

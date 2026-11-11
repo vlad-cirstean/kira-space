@@ -8566,9 +8566,6 @@
         }
       },
       "artifacts": {
-        "empty": {
-          "body": "No artifacts yet. Branches, pull requests and deployments show up as the task produces them."
-        },
         "gap": {
           "body": "Couldn’t read {source} for {repo}. The list may be incomplete.",
           "notFound": {
@@ -8600,9 +8597,6 @@
           "link": {
             "label": "Web link"
           }
-        },
-        "stageDone": {
-          "label": "Produced by this task"
         },
         "status": {
           "local": {
@@ -9198,9 +9192,6 @@
           "misc": {
             "label": "Misc"
           }
-        },
-        "kindMenu": {
-          "tooltip": "Change kind ({kind})"
         },
         "link": {
           "aria": "Link title",
