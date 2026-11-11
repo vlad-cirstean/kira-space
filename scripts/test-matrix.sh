@@ -1,8 +1,7 @@
 #!/bin/sh
-# test-matrix.sh — the on-demand complete auth/config permutation matrix runner (P25 §2.10,
-# git show bd0c224688d9:docs/v1.1/plans/P25-connection-auth-test-matrix.md). Not run as part of `bun run test:go` or
-# ci.yml — the same "not run as part of the regular CI/test run" posture db-compat.sh already
-# established for exactly this kind of real-container matrix (P16 D6).
+# test-matrix.sh — the complete auth/config permutation matrix runner (P25 §2.10,
+# git show bd0c224688d9:docs/v1.1/plans/P25-connection-auth-test-matrix.md). Runs on every PR in
+# pr.yml (one job per group, P614), not in `bun run test:go`.
 #
 # Modelled directly on db-compat.sh, which is this repo's own precedent for this problem: for
 # each adapter, this runs its package's own KIRA_TEST_MATRIX-gated authmatrix_test.go (§3's
@@ -14,6 +13,8 @@
 # P608: --only/--except take comma lists of matrix kinds, so the release workflow runs one job per
 # weight group (postgres, mysqlfamily, clickhouse, rest). Each run pulls only the images its
 # selected kinds start (third MATRIX field), never every pinned image.
+# P614: --print-images lists those images (the PR image-cache key); --pull-only pulls them and
+# exits (cache-warm.yml).
 set -eu
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
@@ -25,9 +26,11 @@ ONLY=""
 EXCEPT=""
 MIRROR=0
 NO_PULL=0
+PULL_ONLY=0
+PRINT=0
 
 usage() {
-  echo "usage: $0 [--only <kind[,kind...]> | --except <kind[,kind...]>] [--mirror] [--no-pull]" >&2
+  echo "usage: $0 [--only <kind[,kind...]> | --except <kind[,kind...]>] [--mirror] [--no-pull | --pull-only | --print-images]" >&2
   exit 2
 }
 
@@ -37,6 +40,8 @@ while [ $# -gt 0 ]; do
     --except) EXCEPT="${2:-}"; shift 2 || usage ;;
     --mirror) MIRROR=1; shift ;;
     --no-pull) NO_PULL=1; shift ;;
+    --pull-only) PULL_ONLY=1; shift ;;
+    --print-images) PRINT=1; shift ;;
     -h|--help) usage ;;
     *) echo "test-matrix: unrecognized argument '$1'" >&2; usage ;;
   esac
@@ -47,7 +52,10 @@ if [ -n "$ONLY" ] && [ -n "$EXCEPT" ]; then
   usage
 fi
 
-echo "test-matrix: docker kernel $(docker info --format '{{.KernelVersion}}' 2>/dev/null || echo unknown)"
+if [ $((NO_PULL + PULL_ONLY + PRINT)) -gt 1 ]; then
+  echo "test-matrix: --no-pull, --pull-only and --print-images are mutually exclusive" >&2
+  exit 2
+fi
 
 # --- the matrix (P25 §2.4-§2.9): kind|go package|testimages kinds the package starts ------------------------------------------------
 # One row per adapter package's own authmatrix_test.go. Images come from testsupport's own constants
@@ -98,17 +106,30 @@ if [ -z "$FILTERED" ]; then
   exit 2
 fi
 
+KINDS="$(printf '%s' "$FILTERED" | cut -d'|' -f3 | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')"
+
+if [ "$PRINT" = "1" ]; then
+  # Never call testimages with no kinds: that prints every image.
+  if [ -n "$KINDS" ]; then
+    # shellcheck disable=SC2086
+    go run ./apps/kira-space/internal/adapters/testsupport/cmd/testimages $KINDS
+  fi
+  exit 0
+fi
+
+echo "test-matrix: docker kernel $(docker info --format '{{.KernelVersion}}' 2>/dev/null || echo unknown)"
 echo "test-matrix: kinds: $(printf '%s' "$FILTERED" | cut -d'|' -f1 | tr '\n' ' ' | sed 's/ $//')"
 
-if [ "$NO_PULL" != "1" ]; then
-  KINDS="$(printf '%s' "$FILTERED" | cut -d'|' -f3 | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')"
-  if [ -n "$KINDS" ]; then
-    # Never call testimages with no kinds: that prints every image.
-    # shellcheck disable=SC2086
-    IMAGES="$(go run ./apps/kira-space/internal/adapters/testsupport/cmd/testimages $KINDS)"
-    # shellcheck disable=SC2086
-    pull_images test-matrix "$MIRROR" $IMAGES || exit 1
-  fi
+if [ "$NO_PULL" != "1" ] && [ -n "$KINDS" ]; then
+  # shellcheck disable=SC2086
+  IMAGES="$(go run ./apps/kira-space/internal/adapters/testsupport/cmd/testimages $KINDS)"
+  # shellcheck disable=SC2086
+  pull_images test-matrix "$MIRROR" $IMAGES || exit 1
+fi
+
+if [ "$PULL_ONLY" = "1" ]; then
+  echo "test-matrix: pulled"
+  exit 0
 fi
 
 # --- run every adapter's matrix, recording pass/fail without letting one abort the rest --------

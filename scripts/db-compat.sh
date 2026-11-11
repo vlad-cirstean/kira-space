@@ -1,7 +1,7 @@
 #!/bin/sh
 # db-compat.sh — the on-demand DB adapter min/max version compatibility runner (P16 D5,
-# git show bd0c224688d9:docs/v1.1/plans/P16-db-compat-suite.md §5 C3). Not run as part of `bun run test:go` or
-# ci.yml — SPEC.md's own words for this phase are "not run as part of the regular CI/test run".
+# git show bd0c224688d9:docs/v1.1/plans/P16-db-compat-suite.md §5 C3). Not run by `bun run test:go`; CI runs it
+# on every PR (`pr.yml` `db-compat`, min and max jobs, P614).
 #
 # For each (kind, min|max) pair below, this pulls that pair's image(s), retags them, exports the
 # testsupport.ImageFor override(s) (P16 D2), and runs the adapter's existing conformance package
