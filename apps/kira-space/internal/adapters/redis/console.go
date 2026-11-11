@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -429,6 +430,10 @@ func runConsoleCommand(ctx context.Context, conn *goredis.Client, argv []any, ti
 	cc.Options().MaxRetries = 0
 	return adapters.RunWithAbortRace(ctx, func() {}, func(qctx context.Context) (any, error) {
 		reply, err := cc.Do(qctx, argv...).Result()
+		// A nil reply (GET of a missing key, XREAD BLOCK that timed out) is a valid answer, shown as (nil).
+		if errors.Is(err, goredis.Nil) {
+			return nil, nil
+		}
 		if err != nil {
 			return nil, mapError(err)
 		}
