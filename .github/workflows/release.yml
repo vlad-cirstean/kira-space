@@ -19,8 +19,9 @@ concurrency:
   group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
-# P330 graph: `tag` resolves the tag to a commit (seconds); build (macOS), test-matrix and both
-# db-compat halves then start together at that commit; only publish waits for all of them. After
+# P330 graph: `tag` resolves the tag to a commit (seconds); build (macOS), the four test-matrix
+# groups and both db-compat halves then start together at that commit; `test-matrix` aggregates the
+# groups (P608); only publish waits for all of them. After
 # publish, install-smoke runs the published installer on a clean macOS runner. publish
 # creates a draft, verifies both assets, then publishes in one API call, so a failed job leaves no
 # release and no half-uploaded one is ever visible. No job here saves a cache: cache-warm.yml owns
@@ -150,11 +151,25 @@ jobs:
 
   # Full adapter auth/config permutation matrix (P25/P26). pr.yml never sets KIRA_TEST_MATRIX, so a
   # release is the only CI entry point for it. Restores main's go-ct build cache, saves nothing.
-  test-matrix:
-    name: test-matrix (Linux)
+  # P608: one job per weight group, each pulling only its own images. `rest` is every kind the
+  # three heavy groups do not name, so a new adapter lands there without a workflow edit.
+  test-matrix-group:
+    name: test-matrix (Linux, ${{ matrix.group }})
     needs: tag
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: postgres
+            args: --only postgres
+          - group: mysqlfamily
+            args: --only mysqlfamily
+          - group: clickhouse
+            args: --only clickhouse
+          - group: rest
+            args: --except postgres,mysqlfamily,clickhouse
     steps:
       - uses: actions/checkout@v7
         with:
@@ -166,7 +181,24 @@ jobs:
           go-cache: go-ct
           gtk: "true"
           cache-save: "false"
-      - run: sh scripts/test-matrix.sh --mirror
+      - env:
+          # As pr.yml go-containers: the runner is discarded, so no reaper and no Docker Hub pull for it.
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+        run: sh scripts/test-matrix.sh ${{ matrix.args }} --mirror
+
+  # Keeps the one name and job id publish needs. Fails unless every group passed.
+  test-matrix:
+    name: test-matrix (Linux)
+    needs: test-matrix-group
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - env:
+          RESULT: ${{ needs.test-matrix-group.result }}
+        run: |
+          echo "test-matrix groups: $RESULT"
+          test "$RESULT" = success
 
   # Per-adapter conformance against each kind's oldest and newest supported server (P16). pr.yml
   # never sets KIRA_COMPAT_IMAGE_*. min and max run as two parallel jobs.
@@ -174,7 +206,7 @@ jobs:
     name: db-compat (Linux, ${{ matrix.extreme }})
     needs: tag
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 12
     strategy:
       fail-fast: false
       matrix:
