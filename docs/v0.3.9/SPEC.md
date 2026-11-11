@@ -13,7 +13,7 @@ Fixes after the v0.3.8 release failed. Chapter stays open: more phases may be ad
 | P613 | Link strip: one compact links component for Details tab and handoff dialogs | Done |
 | P614 | Move test-matrix and db-compat from release to every PR; required checks | Done |
 | P615 | Link strip: click opens in app, Cmd-click opens externally | Todo |
-| P616 | PR CI: `ui (Linux)` aggregate check over the 8 shards; required check | Todo |
+| P616 | PR CI: `ui (Linux)` aggregate check over the 8 shards; required check | Done |
 
 Phases run in table order. Batches of 3 consecutive phases run as streams.
 
@@ -113,4 +113,4 @@ Phases run in table order. Batches of 3 consecutive phases run as streams.
 - Context: `pr.yml` job `ui` has `matrix.shard` 1..8, fail-fast off. `test-matrix` aggregate (P614) is the pattern: `needs` the matrix job, `if: !cancelled()`, asserts success. Check every other matrix job in `pr.yml` and `release.yml` for the same gap. `docs/PACKAGING.md` section 7 holds the required-check list and the apply order. Workflow files cannot be pushed from this sandbox: deliver as `docs/pending-changes/.github__workflows__pr.yml.patch`.
 - Acceptance: `pr.yml` gets `ui (Linux)` aggregate (name chosen so it does not collide with shard names); PACKAGING section 7 lists it as the required check in place of the 8 shard names, with the user apply order (patch, then ruleset swap, never leave a window where the aggregate is required but missing); any other matrix gap found is fixed the same way or reported.
 - Tests: `git apply --check`, YAML parse, actionlint if obtainable. Real CI proves the rest after the user applies the patch.
-- Result:
+- Result: patch `docs/pending-changes/.github__workflows__pr.yml.patch` (not applied; workflows unpushable here). Adds aggregates `ui (Linux)` (`needs: ui-shard`) and `db-compat (Linux)` (`needs: db-compat-extreme`); matrix job ids renamed `ui-shard`, `db-compat-extreme`, leg check names unchanged. Both `if: !cancelled()`, assert `needs.<id>.result = success`. Audit: `test-matrix` already aggregated (P614); `db-compat` had the same gap, fixed in same patch; `cache-warm.yml` matrix is dispatch-only, no change; no other matrix jobs. Ran: `git apply --check` pass, patched `pr.yml` YAML parse pass (12 jobs, 12 distinct names, `needs` asserted), `.github/workflows/` clean in `git status`. actionlint not on PATH, not run. Only real CI proves the aggregates. Docs: PACKAGING section 7 (job table, P616 apply order replaces P614's, required-check list), ARCHITECTURE db-compat and test-matrix lines. User applies per PACKAGING section 7 "P616 apply order": apply patch and push, see both checks report, add aggregates to ruleset, then remove leg names.

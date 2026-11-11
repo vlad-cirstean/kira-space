@@ -361,13 +361,14 @@ the renderer build, typecheck, lint, the Go unit tests, and the static half of `
 jobs, see `docs/ARCHITECTURE.md`).
 
 **`pr.yml`** (trigger: `pull_request` to `main` plus `workflow_dispatch`; no push, so `main` is reached
-only through a PR). Only the `test-matrix (Linux)` aggregate `needs` its groups; every other job starts at once:
+only through a PR). Only the three aggregates (`ui (Linux)`, `test-matrix (Linux)`, `db-compat (Linux)`) `needs` their matrix jobs; every other job starts at once:
 
 | Job | Runner | What it does |
 |---|---|---|
 | `checks (macOS)` | `macos-26` (pinned, not `macos-latest`) | cgo-aware `go vet`/build (catches darwin build-tag breaks) and the darwin&&cgo-only test packages |
 | `checks (Linux)` | `ubuntu-latest` | lint, typecheck, frontend builds, `lint:dead`, `verify:packaging` and the bun unit tests |
 | `ui (Linux, shard N/8)` | `ubuntu-latest` | Playwright `ui` project in 8 shards, fail-fast off |
+| `ui (Linux)` | `ubuntu-24.04` | Aggregate: fails unless every shard passed. The required-check name for ui |
 | `ui-extra (Linux)` | `ubuntu-latest` | ipc-frontend and ui-clipboard, then ui-timing alone on an idle machine |
 | `visual (Linux)` | `ubuntu-latest` | Playwright `visual` project (webkit) |
 | `go (Linux)` | `ubuntu-latest` | Go packages that start no container, plus every package the container split does not name |
@@ -375,6 +376,7 @@ only through a PR). Only the `test-matrix (Linux)` aggregate `needs` its groups;
 | `test-matrix (Linux, <group>)` | `ubuntu-24.04` | Complete auth/config matrix (P25), one job per group (postgres, mysqlfamily, clickhouse, rest), 12 min. Restore-only per-group image cache keyed on the group's pinned image list; a miss pulls through `mirror.gcr.io` (P614) |
 | `test-matrix (Linux)` | `ubuntu-24.04` | Aggregate: fails unless every group passed. The required-check name for the matrix |
 | `db-compat (Linux, min\|max)` | `ubuntu-24.04` | Conformance against each kind's oldest or newest server (P16), 12 min, images pulled through the mirror (no cache: about 12 GB would pass the 10 GB repo cache limit) |
+| `db-compat (Linux)` | `ubuntu-24.04` | Aggregate: fails unless min and max passed. The required-check name for db-compat |
 
 The bundle assertion lives only in `release.yml`'s own "Assert packaged bundle and disk image" step.
 
@@ -534,21 +536,29 @@ push access without the `workflow` OAuth scope, which GitHub requires for any co
 `.github/workflows/*.yml`. A session with that scope applied them; both staging directories are
 gone.
 
-**P614 apply order.** Three patches in `docs/pending-changes/` (`pr.yml`, `release.yml`,
-`cache-warm.yml`) move the matrix and db-compat from release to every PR. (1) On `chapter/v0.3.9`, from
-a session with the `workflow` scope: `git apply` all three and delete the three patch files in the same
-commit; push. (2) Add the three new names to the ruleset (type them; the picker may not list a check
-that has not run). (3) Open the chapter PR. Ruleset first blocks every PR on "Expected"; the
-`release.yml` patch without the `pr.yml` patch leaves the checks nowhere. After the first merge,
-`cache-warm.yml` saves the `matrix-images-*` entries.
+**P616 apply order.** One patch, `docs/pending-changes/.github__workflows__pr.yml.patch`, adds the
+`ui (Linux)` and `db-compat (Linux)` aggregates. Never require a name before a run on the PR's
+head reports it: the PR then waits on "Expected" forever.
+
+1. On `chapter/v0.3.9`, from a session with the `workflow` scope: `git apply` the patch and
+   `git rm` the patch file in the same commit; push.
+2. See one run of the patched `pr.yml` report both new checks: the chapter PR's run, or
+   `gh workflow run pr.yml --ref chapter/v0.3.9` before the PR opens.
+3. Ruleset, step A: add `ui (Linux)` and `db-compat (Linux)` (type them if the picker does not
+   list them). Save.
+4. Ruleset, step B: remove `ui (Linux, shard 1/8)` through `ui (Linux, shard 8/8)`,
+   `db-compat (Linux, min)` and `db-compat (Linux, max)`. Save.
+
+Add before remove, so the legs never go ungated. If the chapter PR merges before step 3, `main`
+already carries the aggregates and the swap stays safe.
 
 ### Repository settings (user-applied)
 
 1. Ruleset "Protected branches" (`refs/heads/main`): add **Require status checks to pass**, source
-   GitHub Actions. Add these checks: `checks (macOS)`, `checks (Linux)`, `ui (Linux, shard 1/8)`
-   through `ui (Linux, shard 8/8)`, `ui-extra (Linux)`, `visual (Linux)`,
-   `go (Linux)`, `go-containers (Linux)`, `test-matrix (Linux)`, `db-compat (Linux, min)`,
-   `db-compat (Linux, max)`. Leave "Require branches to be up to date" off: one chapter PR at a time, a stale base is rare, and a forced rebase would rerun full CI. Keep the
+   GitHub Actions. Add these checks: `checks (macOS)`, `checks (Linux)`, `ui (Linux)`,
+   `ui-extra (Linux)`, `visual (Linux)`, `go (Linux)`, `go-containers (Linux)`,
+   `test-matrix (Linux)`, `db-compat (Linux)`. Each matrix job (ui shards, test-matrix groups,
+   db-compat min/max) gates through its aggregate; never list leg names. Leave "Require branches to be up to date" off: one chapter PR at a time, a stale base is rare, and a forced rebase would rerun full CI. Keep the
    squash-only and PR rules. **Do this before step 2.** With no required checks, auto-merge merges
    the moment it is enabled.
 2. Settings, General, Pull Requests: enable **Allow auto-merge**. Squash stays allowed.
