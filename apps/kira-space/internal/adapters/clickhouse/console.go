@@ -136,7 +136,9 @@ func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapter
 	if err != nil {
 		return page.TabularPage{}, err
 	}
-	if truncated && !h.settingsAllowed() {
+	// Cancel-on-close alone leaves a late-emitting query computing: the server notices the closed
+	// socket only when it next writes.
+	if truncated {
 		killQueryBestEffort(h, queryID)
 	}
 	if builder == nil {
@@ -145,8 +147,8 @@ func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapter
 	return builder.Finish(page.CappedPosition(builder.RowCount(), truncated)), nil
 }
 
-// killQueryBestEffort stops a query the cap or the app timer abandoned on a profile that cannot
-// carry the cancel-on-close setting. SYNC returns once the server stopped it (5s bound). The result
+// killQueryBestEffort stops a query the cap or the app timer abandoned (cancel-on-close
+// is unavailable on readonly=1 and too slow for a late-emitting query). SYNC returns once the server stopped it (5s bound). The result
 // is ignored: the query may already have finished.
 func killQueryBestEffort(h *Handle, queryID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
