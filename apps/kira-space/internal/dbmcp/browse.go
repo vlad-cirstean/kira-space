@@ -189,6 +189,9 @@ type browsePlan struct {
 	limit      int
 	offset     int
 	count      bool
+	// stable is true when the order ends in the table's key, so pages do not overlap.
+	stable     bool
+	pagingNote string
 }
 
 const maxListedColumns = 100
@@ -230,6 +233,7 @@ func planBrowse(summary model.ConnectionSummary, sh browseShape, meta model.Obje
 	if msg := r.order(&p, args.Order); msg != "" {
 		return p, msg
 	}
+	r.stabilize(&p)
 	return p, ""
 }
 
@@ -318,6 +322,72 @@ func (r browseRules) order(p *browsePlan, order []browseOrder) string {
 	}
 	p.sort = &model.SortSpec{Kind: "structured", Terms: terms}
 	return ""
+}
+
+const (
+	noKeyPagingNote     = "no primary or unique NOT NULL key: rows with equal order values can repeat or be skipped across pages; filter on a unique column to page instead"
+	maskedKeyPagingNote = "the key column is masked, so it is not added to the order: rows can repeat or be skipped across pages"
+)
+
+// keyColumns is the table's primary key, else its first unique index whose columns are all NOT NULL.
+func (r browseRules) keyColumns() []string {
+	if len(r.meta.PrimaryKey) > 0 {
+		return r.meta.PrimaryKey
+	}
+	nullable := make(map[string]bool, len(r.meta.Columns))
+	for _, c := range r.meta.Columns {
+		nullable[c.Name] = c.Nullable
+	}
+	for _, ix := range r.meta.Indexes {
+		if !ix.Unique || len(ix.Columns) == 0 {
+			continue
+		}
+		notNull := true
+		for _, c := range ix.Columns {
+			if nullable[c] {
+				notNull = false
+				break
+			}
+		}
+		if notNull {
+			return ix.Columns
+		}
+	}
+	return nil
+}
+
+// stabilize appends the table's key to the order of a row read so offset pages do not overlap. Without a
+// usable key, or with one masked or withheld (sorting by it would reveal its order), it appends nothing and
+// says so in pagingNote.
+func (r browseRules) stabilize(p *browsePlan) {
+	key := r.keyColumns()
+	if len(key) == 0 {
+		p.pagingNote = noKeyPagingNote
+		return
+	}
+	for _, c := range key {
+		if r.masked(c) || r.withheld(c) {
+			p.pagingNote = maskedKeyPagingNote
+			return
+		}
+	}
+	dir := "asc"
+	var terms []model.SortTerm
+	if p.sort != nil {
+		terms = p.sort.Terms
+		dir = terms[len(terms)-1].Direction
+	}
+	have := make(map[string]bool, len(terms))
+	for _, t := range terms {
+		have[t.Column] = true
+	}
+	for _, c := range key {
+		if !have[c] {
+			terms = append(terms, model.SortTerm{Column: c, Direction: dir})
+		}
+	}
+	p.sort = &model.SortSpec{Kind: "structured", Terms: terms}
+	p.stable = true
 }
 
 // preview is the SELECT the approval dialog shows and the EXPLAIN check plans: display only, never run.
