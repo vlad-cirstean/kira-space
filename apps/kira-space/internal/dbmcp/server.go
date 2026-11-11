@@ -77,6 +77,7 @@ type QueryRunner interface {
 	ExecuteRead(ctx context.Context, req adapterhost.ExecuteRequestWire) (adapterhost.ExecuteResponse, error)
 	// Browse reads one structured page on the read lane (browse_table); it never writes.
 	Browse(ctx context.Context, req adapterhost.BrowseRequest) (page.Page, error)
+	BrowseCount(ctx context.Context, req adapterhost.BrowseCountRequest) (adapters.CountResult, error)
 	// ClassifyStatement answers what one statement would do (M2's permission gate) — an adapter
 	// error (or one that does not implement adapters.StatementClassifier) yields ClassUnknown, never
 	// a fatal error the caller must special-case.

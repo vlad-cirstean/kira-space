@@ -1041,6 +1041,13 @@ type browseResult struct {
 	NextOffset *int `json:"nextOffset,omitempty"`
 }
 
+// browseCountResult is browse_table's answer to count: true.
+type browseCountResult struct {
+	Count int64        `json:"count"`
+	Exact bool         `json:"exact"`
+	Plan  *planSummary `json:"plan,omitempty"`
+}
+
 // renderBrowsePage renders one browse page. No statement-text guard runs: the statement is app-built from
 // exact catalog names, so a masked column cannot be renamed or wrapped, and a JSON column is a stored one.
 // Columns left out of the projection as withheld are named from the plan.

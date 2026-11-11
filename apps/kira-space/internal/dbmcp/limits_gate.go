@@ -55,7 +55,7 @@ func (s *Server) claimExemption(args runQueryArgs, rv queryResolution) (ex *clai
 	}
 	if rec.connectionID != args.ConnectionID || rec.mode != rv.mode || rec.path != args.Path || rec.sql != args.SQL {
 		if args.Mode == modeMasked {
-			return refuse(fmt.Sprintf("exemption %s was issued for a different call. Repeat the refused call exactly: same connectionId, path, columns, filters, order, limit and offset.", id))
+			return refuse(fmt.Sprintf("exemption %s was issued for a different call. Repeat the refused call exactly: same connectionId, path, columns, filters, order, limit, offset and count.", id))
 		}
 		return refuse(fmt.Sprintf("exemption %s was issued for a different call. Repeat the refused call exactly: same connectionId, sql, path and mode.", id))
 	}

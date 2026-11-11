@@ -79,3 +79,58 @@ func (r *Router) Browse(ctx context.Context, req BrowseRequest) (page.Page, erro
 	}
 	return value.(page.Page), nil
 }
+
+// BrowseCountRequest is browse_table's count: one adapter.Count on the read lane, never cached.
+type BrowseCountRequest struct {
+	OpID             string
+	ConnectionID     string
+	Path             string
+	Conditions       []model.Condition
+	StatementTimeout time.Duration
+	TimeoutByEngine  bool
+}
+
+// BrowseCount counts the rows a relation's conditions match on connectionID's read lane.
+func (r *Router) BrowseCount(ctx context.Context, req BrowseCountRequest) (adapters.CountResult, error) {
+	primary, err := requireLiveAdapter(req.ConnectionID)
+	if err != nil {
+		return adapters.CountResult{}, err
+	}
+	path, err := decodePath(req.ConnectionID, req.Path)
+	if err != nil {
+		return adapters.CountResult{}, err
+	}
+	cfg, ok := r.lanes.config(req.ConnectionID)
+	if !ok {
+		return adapters.CountResult{}, adapters.New(adapters.CodeEngineDown, "connection "+req.ConnectionID+" is not connected", nil)
+	}
+	if !laneKinds[cfg.Kind] {
+		return adapters.CountResult{}, adapters.Contract("browse needs a read lane; "+cfg.Kind+" has none", nil)
+	}
+	lane, err := r.acquireLane(ctx, req.ConnectionID, primary, cfg)
+	if err != nil {
+		return adapters.CountResult{}, err
+	}
+	defer r.lanes.release(req.ConnectionID, lane, r.closeIdleLane)
+
+	id := req.ConnectionID
+	spec := OpSpec{ConnectionID: &id, Kind: "count", OpID: req.OpID, Adapter: lane.adapter, Timeout: req.StatementTimeout}
+	if req.TimeoutByEngine {
+		spec.TimeoutGrace = statementTimeoutGrace
+	}
+	_, value, err := r.host.RunOp(ctx, spec, func(ctx context.Context, op *adapters.OpCtx) (any, error) {
+		op.SetPath(req.Path)
+		res, err := lane.adapter.Count(ctx, adapters.CountRequest{
+			Path: path, Conditions: req.Conditions, StatementTimeout: req.StatementTimeout,
+		}, op)
+		if err != nil {
+			return nil, err
+		}
+		op.SetRows(int(res.Value))
+		return res, nil
+	})
+	if err != nil {
+		return adapters.CountResult{}, err
+	}
+	return value.(adapters.CountResult), nil
+}

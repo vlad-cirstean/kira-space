@@ -71,6 +71,8 @@ type browseTableArgs struct {
 	Order        []browseOrder  `json:"order,omitempty"`
 	Limit        int            `json:"limit,omitempty"`
 	Offset       int            `json:"offset,omitempty"`
+	// Count returns the matching row count instead of rows; it takes filters only.
+	Count bool `json:"count,omitempty"`
 	// Exemption asks the user to lift the limits of an earlier refusal for this exact call.
 	Exemption *exemptionArgs `json:"exemption,omitempty"`
 }
@@ -84,13 +86,17 @@ var browseOps = map[string]int{
 // browseShape is the spec checked without the table's columns.
 type browseShape struct {
 	limit, offset int
+	count         bool
 	relation      string
 }
 
 // checkBrowseShape validates counts, ops, value shapes and that path is one relation. A non-empty msg
 // refuses. No message carries a filter value.
 func checkBrowseShape(summary model.ConnectionSummary, args browseTableArgs) (browseShape, string) {
-	sh := browseShape{limit: args.Limit, offset: args.Offset}
+	sh := browseShape{limit: args.Limit, offset: args.Offset, count: args.Count}
+	if args.Count && (len(args.Columns) > 0 || len(args.Order) > 0 || args.Limit != 0 || args.Offset != 0) {
+		return sh, "count takes filters only; drop columns, order, limit and offset"
+	}
 	if sh.limit == 0 {
 		sh.limit = browseDefaultRows
 	}
@@ -182,6 +188,7 @@ type browsePlan struct {
 	sort       *model.SortSpec
 	limit      int
 	offset     int
+	count      bool
 }
 
 const maxListedColumns = 100
@@ -202,13 +209,17 @@ func unknownColumnMessage(relation, column string, meta model.ObjectMeta) string
 // planBrowse applies the masking rules to a shape-checked spec. A non-empty refusal refuses the call.
 // Names are matched exactly against the catalog; masked and withheld names fold to lower case like render.
 func planBrowse(summary model.ConnectionSummary, sh browseShape, meta model.ObjectMeta, args browseTableArgs, mk maskset) (browsePlan, string) {
-	p := browsePlan{relation: sh.relation, limit: sh.limit, offset: sh.offset}
+	p := browsePlan{relation: sh.relation, limit: sh.limit, offset: sh.offset, count: sh.count}
 	if (meta.Kind == "view" || meta.Kind == "matview") && !mk.Empty() {
 		return p, "browse_table reads base tables only on a connection with masking: a view can rename a masked column. Use run_query where read is allowed."
 	}
 	r := browseRules{relation: sh.relation, meta: meta, mk: mk, known: make(map[string]bool, len(meta.Columns))}
 	for _, c := range meta.Columns {
 		r.known[c.Name] = true
+	}
+	if sh.count {
+		// A count returns no column: nothing to project, order or page.
+		return p, r.filter(&p, args.Filters)
 	}
 	if msg := r.project(&p, args.Columns); msg != "" {
 		return p, msg
@@ -312,12 +323,16 @@ func (r browseRules) order(p *browsePlan, order []browseOrder) string {
 // preview is the SELECT the approval dialog shows and the EXPLAIN check plans: display only, never run.
 // Literals are spelled so no string can end its quotes early under the dialect's escape rules.
 func (p browsePlan) preview(kind string) string {
-	cols := make([]string, len(p.projection))
-	for i, c := range p.projection {
-		cols[i] = quoteIdent(kind, c)
-	}
 	var b strings.Builder
-	b.WriteString("SELECT " + strings.Join(cols, ", ") + " FROM " + p.relation)
+	if p.count {
+		b.WriteString("SELECT count(*) FROM " + p.relation)
+	} else {
+		cols := make([]string, len(p.projection))
+		for i, c := range p.projection {
+			cols[i] = quoteIdent(kind, c)
+		}
+		b.WriteString("SELECT " + strings.Join(cols, ", ") + " FROM " + p.relation)
+	}
 	for i, c := range p.conditions {
 		if i == 0 {
 			b.WriteString(" WHERE ")
@@ -325,6 +340,9 @@ func (p browsePlan) preview(kind string) string {
 			b.WriteString(" AND ")
 		}
 		b.WriteString(conditionPreview(kind, c))
+	}
+	if p.count {
+		return b.String()
 	}
 	if p.sort != nil {
 		terms := make([]string, len(p.sort.Terms))
@@ -422,6 +440,9 @@ func (s *Server) browseTable(ctx context.Context, _ *mcp.CallToolRequest, args b
 	preview := plan.preview(rv.summary.Kind)
 	call := browseCall(args, preview)
 	rv.maxRows = plan.limit
+	if plan.count {
+		rv.maxRows = 1
+	}
 
 	ex, res, out, err, done := s.claimExemption(call, rv)
 	if done {
@@ -562,6 +583,19 @@ func (s *Server) executeBrowse(ctx context.Context, call runQueryArgs, args brow
 		defer done()
 	}
 	started := time.Now()
+	if plan.count {
+		cr, rerr := s.cfg.Query.BrowseCount(ctx, adapterhost.BrowseCountRequest{
+			OpID: ids.NewID(), ConnectionID: args.ConnectionID, Path: args.Path, Conditions: plan.conditions,
+			StatementTimeout: req.StatementTimeout, TimeoutByEngine: req.TimeoutByEngine,
+		})
+		if rerr != nil {
+			res, out, err, executed = s.browseFailure(call, rv, ex, rerr, started, mk != nil)
+			return res, out, err, set, executed
+		}
+		// No cell reaches the agent, so no mask applies to what is returned.
+		res, out, err = jsonResult(browseCountResult{Count: cr.Value, Exact: cr.Exact, Plan: summaryOf(rv.plan, rv.threshold)})
+		return res, out, err, maskset{}, true
+	}
 	pg, rerr := s.cfg.Query.Browse(ctx, adapterhost.BrowseRequest{
 		OpID: ids.NewID(), ConnectionID: args.ConnectionID, Path: args.Path,
 		Projection: plan.projection, Conditions: plan.conditions, Sort: plan.sort,
@@ -569,16 +603,8 @@ func (s *Server) executeBrowse(ctx context.Context, call runQueryArgs, args brow
 		StatementTimeout: req.StatementTimeout, TimeoutByEngine: req.TimeoutByEngine,
 	})
 	if rerr != nil {
-		if hits := s.execHits(call, rv, ex, rerr, time.Since(started)); len(hits) > 0 {
-			res, out, err = s.refuseByLimits(rv.summary, ex, hits, call)
-			return res, out, err, set, false
-		}
-		if mk != nil {
-			res, out, err = maskedToolError(rerr)
-			return res, out, err, set, true
-		}
-		res, out, err = toolError(rerr)
-		return res, out, err, set, true
+		res, out, err, executed = s.browseFailure(call, rv, ex, rerr, started, mk != nil)
+		return res, out, err, set, executed
 	}
 	tp, ok := pg.(page.TabularPage)
 	if !ok {
@@ -586,4 +612,19 @@ func (s *Server) executeBrowse(ctx context.Context, call runQueryArgs, args brow
 	}
 	res, out, err = jsonResult(renderBrowsePage(tp, plan, mk, summaryOf(rv.plan, rv.threshold)))
 	return res, out, err, set, true
+}
+
+// browseFailure turns an engine error into the tool result: a limit hit refuses (executed false), anything
+// else is a tool error, masked-safe when a mask applies.
+func (s *Server) browseFailure(call runQueryArgs, rv queryResolution, ex *claimedExemption, rerr error, started time.Time, masked bool) (res *mcp.CallToolResult, out any, err error, executed bool) {
+	if hits := s.execHits(call, rv, ex, rerr, time.Since(started)); len(hits) > 0 {
+		res, out, err = s.refuseByLimits(rv.summary, ex, hits, call)
+		return res, out, err, false
+	}
+	if masked {
+		res, out, err = maskedToolError(rerr)
+		return res, out, err, true
+	}
+	res, out, err = toolError(rerr)
+	return res, out, err, true
 }
