@@ -78,7 +78,7 @@ test('a repo without a branch gets a new branch name', async ({ relaunch }) => {
   });
 });
 
-test('a refused name stays in the form', async ({ relaunch }) => {
+test('a refused name closes the form and lands in an error toast', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     {
       channel: IPC.adeTaskSetTaskBranch,
@@ -89,8 +89,8 @@ test('a refused name stays in the form', async ({ relaunch }) => {
   await pick(page, 'd_alerts_api', 'ade-task-branch-add');
   await page.locator(t('ade-branch-form-search')).fill('feat/x');
   await page.locator(t('ade-branch-form-custom')).click();
-  await expect(page.locator(t('ade-branch-form-error'))).toContainText('already exists');
-  await expect(page.locator(t('ade-branch-form'))).toBeVisible();
+  await expect(page.locator(t('ade-branch-form'))).toHaveCount(0);
+  await expect(page.locator('[data-sonner-toast]')).toContainText('already exists');
 });
 
 test('Change repo swaps the repo of a row without a branch', async ({ relaunch }) => {

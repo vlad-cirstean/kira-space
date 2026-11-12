@@ -1,26 +1,33 @@
 <script setup lang="ts">
 import { t } from '@theme/i18n';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
-import { remoteErrorText } from './board/panelFacts';
+import { type ForcePushTarget, throwOnRemoteError } from './board/panelFacts';
 import { useForcePush } from './queries';
-import { useConfirmRun } from './useConfirmRun';
+import { useAdeOpsStore } from './state/adeOps';
 
-// Force push with lease for one branch; the backend refuses a stale lease and the message shows here.
-const props = defineProps<{
-  target: { branchId: string; branchName: string; repo: string } | null;
-}>();
+// Force push with lease for one branch. Confirm closes the dialog; the push runs as the branch's op
+// (chip, toast past 2 s, error toast with the backend's refusal such as a stale lease).
+const props = defineProps<{ target: ForcePushTarget | null }>();
 const emit = defineEmits<{ close: [] }>();
 
 const forcePush = useForcePush();
-const { busy, error, confirm } = useConfirmRun(
-  () => props.target !== null,
-  async () => {
-    if (!props.target) return null;
-    const res = await forcePush.mutateAsync({ branchId: props.target.branchId });
-    return res.error ? remoteErrorText(res.error) : null;
-  },
-  () => emit('close'),
-);
+const ops = useAdeOpsStore();
+
+function confirm(): void {
+  const target = props.target;
+  if (!target) return;
+  emit('close');
+  void ops.run(
+    {
+      id: `forcePush:${target.branchId}`,
+      kind: 'forcePush',
+      taskId: target.taskId || undefined,
+      branchId: target.branchId,
+      name: target.branchName,
+    },
+    async () => throwOnRemoteError(await forcePush.mutateAsync({ branchId: target.branchId })),
+  );
+}
 </script>
 
 <template>
@@ -35,8 +42,6 @@ const { busy, error, confirm } = useConfirmRun(
     "
     :confirm-label="t('common.forcePush.label')"
     tone="danger"
-    :pending="busy"
-    :error="error ?? ''"
     :testids="{
       root: 'ade-confirm-dialog',
       cancel: 'ade-confirm-no',

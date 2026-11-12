@@ -6,7 +6,6 @@ import type {
   Launch,
   OpenSessionEvent,
   RebaseArgs,
-  RebaseStart,
   RecordMergeArgs,
   SetBranchBaseArgs,
   TaskArgs,
@@ -30,7 +29,8 @@ export interface FlowDeps {
   ctx: DialogCtx;
   launch: LaunchDeps;
   turns: { watch: (terminalId: string, opts: { requireSubmit: boolean }) => TurnWatch };
-  rebase: (args: RebaseArgs) => Promise<RebaseStart>;
+  /** Starts the rebase in the background: the op's chip and toast report it. */
+  rebase: (args: RebaseArgs) => void;
   setBranchBase: (args: SetBranchBaseArgs) => Promise<void>;
   recordMerge: (args: RecordMergeArgs) => Promise<void>;
   archiveTask: (args: TaskArgs) => Promise<void>;
@@ -129,7 +129,7 @@ async function sendRebase(deps: FlowDeps, spec: DialogSpec, state: DialogState):
     if (spec.draft) {
       await deps.setBranchBase({ branchId, base: spec.onto ?? { ref: '', branchId: '' } });
     } else {
-      await deps.rebase({
+      deps.rebase({
         branchId,
         onto: spec.onto ?? null,
         queueWith: spec.queueWith ?? '',

@@ -11,6 +11,7 @@ import { useOpenChangeRequest } from '../../../hostview/queries';
 import { useProjectOptions } from '../../../repo/state/projectOptions';
 import AdeForcePushDialog from '../AdeForcePushDialog.vue';
 import AdeTip from '../AdeTip.vue';
+import type { ForcePushTarget } from '../board/panelFacts';
 import AdeBranchRow from '../plan/AdeBranchRow.vue';
 import { CHECKS_GLYPH, PR_GLYPH } from '../plan/glyphs';
 import type { CardModel } from '../plan/usePlanModel';
@@ -52,7 +53,7 @@ function openPr(branchId: string, url: string): void {
   if (pending(taskId, itemKey)) markSeen.mutate({ taskId, itemKeys: [itemKey] });
   fireAndForget(openView.mutateAsync(url), 'hostView.open');
 }
-const forcePushTarget = ref<{ branchId: string; branchName: string; repo: string } | null>(null);
+const forcePushTarget = ref<ForcePushTarget | null>(null);
 
 const task = computed(() => props.card.task);
 const review = computed(() => props.card.review);
@@ -111,7 +112,9 @@ async function onAddRepo(id: string): Promise<void> {
         :color="card.color"
         layout="panel"
         testid="ade-task-branch"
-        @force-push="forcePushTarget = { branchId: row.id, branchName: row.name, repo: row.repo }"
+        @force-push="
+          forcePushTarget = { branchId: row.id, branchName: row.name, repo: row.repo, taskId: '' }
+        "
       >
         <AdeUpdatesDot
           v-if="byBranch.has(row.id)"

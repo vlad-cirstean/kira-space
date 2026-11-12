@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { adeFixture, openPlan } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
@@ -49,22 +50,54 @@ test('the danger dialog opens with Cancel focused and Escape closes it unsent', 
   expect(control.log().filter((e) => e.channel === IPC.adeTaskForcePush)).toHaveLength(0);
 });
 
-test('shows the backend error and keeps the dialog open', async ({ relaunch }) => {
+const toast = (page: Page) => page.locator('[data-sonner-toast]');
+const forcePushSnapshot = (response: unknown, hold = false) => ({
+  channel: IPC.adeTaskForcePush,
+  response,
+  hold,
+});
+
+test('the backend error closes the dialog and lands in an error toast', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     { channel: IPC.adeTaskBoard, response: unpushedBoard() },
-    {
-      channel: IPC.adeTaskForcePush,
-      response: {
-        branchId: 'b_deps',
-        error: { kind: 'stale-lease', message: 'remote has newer commits', remoteMessage: null },
-      },
-    },
+    forcePushSnapshot({
+      branchId: 'b_deps',
+      error: { kind: 'stale-lease', message: 'remote has newer commits', remoteMessage: null },
+    }),
   ]);
   await page.locator('[data-testid="ade-force-push"]').click();
   const dialog = page.locator('[data-testid="ade-confirm-dialog"]');
   await dialog.locator('[data-testid="ade-confirm-yes"]').click();
-  await expect(dialog.locator('[data-testid="ade-confirm-error"]')).toContainText(
-    'remote has newer commits',
-  );
-  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveCount(0);
+  await expect(toast(page)).toContainText('remote has newer commits');
+});
+
+test('a push in flight shows the chip, and past 2 s a loading then a success toast', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskBoard, response: unpushedBoard() },
+    forcePushSnapshot(adeFixture('force-push'), true),
+  ]);
+  await page.locator('[data-testid="ade-force-push"]').click();
+  await page.locator('[data-testid="ade-confirm-yes"]').click();
+  await expect(page.locator('[data-testid="ade-confirm-dialog"]')).toHaveCount(0);
+  const chip = page.locator('[data-testid="ade-op-status"][data-op="forcePush"]');
+  await expect(chip.first()).toBeVisible();
+  await expect(toast(page)).toContainText('Force pushing', { timeout: 5000 });
+  control.release(IPC.adeTaskForcePush);
+  await expect(toast(page)).toContainText('Force pushed chore/deps-bump');
+  await expect(chip).toHaveCount(0);
+});
+
+test('a push that finishes within 2 s shows no toast', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskBoard, response: unpushedBoard() },
+    forcePushSnapshot(adeFixture('force-push')),
+  ]);
+  await page.locator('[data-testid="ade-force-push"]').click();
+  await page.locator('[data-testid="ade-confirm-yes"]').click();
+  await expect(page.locator('[data-testid="ade-confirm-dialog"]')).toHaveCount(0);
+  await page.waitForTimeout(2600);
+  await expect(toast(page)).toHaveCount(0);
 });

@@ -549,7 +549,11 @@ function deployNote(d: Deployment): string {
     <AdeSessionsTab v-else :task-id="card.task.id" :branch-id="branch.id" />
 
     <AdeForcePushDialog
-      :target="forcePush ? { branchId: branch.id, branchName: branch.name, repo: row.repo } : null"
+      :target="
+        forcePush
+          ? { branchId: branch.id, branchName: branch.name, repo: row.repo, taskId: card.task.id }
+          : null
+      "
       @close="forcePush = false"
     />
   </AdePanelFrame>

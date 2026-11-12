@@ -2,6 +2,7 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
+import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
 import { paneFrame } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
@@ -17,7 +18,7 @@ import { dayLabel, firstWork, isoToOffset, LATER, nextWork } from '../board/cale
 import { dropVerdict, shiftPlanArgs } from '../board/dropPlan';
 import { isWorkKind } from '../board/kind';
 import { dayMenuFor } from '../board/menu';
-import { refreshNote, remoteErrorText } from '../board/panelFacts';
+import { type ForcePushTarget, refreshNote, remoteErrorText } from '../board/panelFacts';
 import { ITEM_LIMIT, type TimelineBand, WINDOW_DAYS } from '../board/timeline';
 import { useRefresh, useSetPlan } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
@@ -47,6 +48,12 @@ const refreshingIds = ref<string[]>([]);
 const refreshingAll = ref(false);
 const refreshErrors = ref<Record<string, string>>({});
 
+/** A failed fetch shows on the repo chip and as a toast, since the chip may be scrolled away. */
+function failRefresh(errs: Record<string, string>, codeRepoId: string, message: string): void {
+  errs[codeRepoId] = message;
+  toast.error(t('common.dashPair.label', { first: repoLabel(codeRepoId), second: message }));
+}
+
 async function runRefresh(codeRepoIds: string[], all: boolean): Promise<void> {
   const ids = all ? (model.value?.board.repos.map((r) => r.codeRepoId) ?? []) : codeRepoIds;
   refreshingIds.value = [...refreshingIds.value, ...ids];
@@ -57,13 +64,13 @@ async function runRefresh(codeRepoIds: string[], all: boolean): Promise<void> {
     const res = await refresh.mutateAsync({ codeRepoIds: ids });
     const summaries = { ...ui.refreshSummary };
     for (const r of res.repos) {
-      if (r.error) errs[r.codeRepoId] = remoteErrorText(r.error);
+      if (r.error) failRefresh(errs, r.codeRepoId, remoteErrorText(r.error));
       else summaries[r.codeRepoId] = refreshNote(r);
     }
     ui.refreshSummary = summaries;
   } catch (err) {
     const msg = errorText(err);
-    for (const id of ids) errs[id] = msg;
+    for (const id of ids) failRefresh(errs, id, msg);
   } finally {
     refreshErrors.value = errs;
     refreshingIds.value = refreshingIds.value.filter((id) => !ids.includes(id));
@@ -304,10 +311,15 @@ async function onFindArchived(taskId: string): Promise<void> {
   await revealDay(item.day);
 }
 
-const forcePushTarget = ref<{ branchId: string; branchName: string; repo: string } | null>(null);
+const forcePushTarget = ref<ForcePushTarget | null>(null);
 
 function onForcePush(row: BranchRowModel): void {
-  forcePushTarget.value = { branchId: row.id, branchName: row.name, repo: row.repo };
+  forcePushTarget.value = {
+    branchId: row.id,
+    branchName: row.name,
+    repo: row.repo,
+    taskId: row.branch.taskId,
+  };
 }
 </script>
 
