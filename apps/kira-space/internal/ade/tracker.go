@@ -1066,29 +1066,37 @@ func (t *Tracker) Working(recordID string, ceiling time.Duration) bool {
 	return ok && t.deps.Now().Sub(time.UnixMilli(last)) < ceiling
 }
 
-// SendIfIdle pastes message into recordID's terminal only while its turn state is idle, checked in
-// the same critical section as the write. It never types into a busy agent, over a permission prompt
-// or over text the user left in the prompt box. The record turns busy before the lock drops, so
-// two sends cannot both pass.
+// SendIfIdle pastes message into recordID's terminal only while its turn state is idle. It never
+// types into a busy agent, over a permission prompt or over text the user left in the prompt box.
+// The record turns busy before the lock drops, so two sends cannot both pass; the PTY write runs
+// outside the lock. A failed write turns the record idle again.
 func (t *Tracker) SendIfIdle(recordID, message string) (bool, error) {
 	t.mu.Lock()
-	defer t.mu.Unlock()
 	terminalID, ok := t.byRecord[recordID]
 	if !ok || t.turn[recordID] != turnIdle {
+		t.mu.Unlock()
 		return false, nil
 	}
 	// A draft in the prompt box would be submitted with the message: leave it to the hook reply.
 	if t.deps.HasDraft != nil && t.deps.HasDraft(terminalID) {
+		t.mu.Unlock()
 		return false, nil
 	}
-	paste, enter := pasteBytes(message)
-	if err := t.deps.WriteTerminal(terminalID, paste); err != nil {
-		return false, fmt.Errorf("ade: send if idle: %w", err)
-	}
-	if err := t.deps.WriteTerminal(terminalID, enter); err != nil {
-		return false, fmt.Errorf("ade: send if idle: %w", err)
-	}
 	t.turn[recordID] = turnBusy
+	t.mu.Unlock()
+	paste, enter := pasteBytes(message)
+	err := t.deps.WriteTerminal(terminalID, paste)
+	if err == nil {
+		err = t.deps.WriteTerminal(terminalID, enter)
+	}
+	if err != nil {
+		t.mu.Lock()
+		if t.byRecord[recordID] == terminalID && t.turn[recordID] == turnBusy {
+			t.turn[recordID] = turnIdle
+		}
+		t.mu.Unlock()
+		return false, fmt.Errorf("ade: send if idle: %w", err)
+	}
 	return true, nil
 }
 

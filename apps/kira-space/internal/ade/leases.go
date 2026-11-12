@@ -194,15 +194,18 @@ func (b *TaskBoard) flushLease(recordID string) {
 	key := leases.Key(recordID)
 	b.lease.mu.Lock()
 	msgs := b.lease.pending[key]
+	delete(b.lease.pending, key)
+	b.lease.mu.Unlock()
 	if len(msgs) == 0 {
-		b.lease.mu.Unlock()
 		return
 	}
 	sent, err := b.deps.Tracker.SendIfIdle(recordID, strings.Join(msgs, "\n"))
-	if sent {
-		delete(b.lease.pending, key)
+	if !sent {
+		// Back first in line: messages queued meanwhile stay behind them.
+		b.lease.mu.Lock()
+		b.lease.pending[key] = append(msgs, b.lease.pending[key]...)
+		b.lease.mu.Unlock()
 	}
-	b.lease.mu.Unlock()
 	if err != nil {
 		slog.Warn("ade: lease message", "scope", "ade", "recordId", recordID, "err", err)
 	}
