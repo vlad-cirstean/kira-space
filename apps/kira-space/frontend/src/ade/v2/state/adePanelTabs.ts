@@ -10,6 +10,8 @@ export const useAdePanelTabsStore = defineStore('adePanelTabs', () => {
   const branchTabs = ref<Record<string, string>>({});
   /** Per task: the session last picked in its task or branch Sessions tab. */
   const sessionIds = ref<Record<string, string>>({});
+  /** Scope (branch id, else task id) whose Sessions tab should take the keyboard once it shows. */
+  const agentFocus = ref<string | null>(null);
 
   const taskTab = (taskId: string): TaskPanelTab => taskTabs.value[taskId] ?? 'main';
   const branchTab = (branchId: string): string => branchTabs.value[branchId] ?? 'details';
@@ -23,6 +25,16 @@ export const useAdePanelTabsStore = defineStore('adePanelTabs', () => {
   }
   function selectSession(taskId: string, sessionId: string): void {
     sessionIds.value[taskId] = sessionId;
+  }
+
+  function requestAgentFocus(scope: string): void {
+    agentFocus.value = scope;
+  }
+  /** True, and clears the request, when it was for scope. */
+  function takeAgentFocus(scope: string): boolean {
+    if (agentFocus.value !== scope) return false;
+    agentFocus.value = null;
+    return true;
   }
 
   function dropMissing(rec: Record<string, unknown>, keep: ReadonlySet<string>): void {
@@ -40,12 +52,15 @@ export const useAdePanelTabsStore = defineStore('adePanelTabs', () => {
     taskTabs,
     branchTabs,
     sessionIds,
+    agentFocus,
     taskTab,
     branchTab,
     sessionOf,
     setTaskTab,
     setBranchTab,
     selectSession,
+    requestAgentFocus,
+    takeAgentFocus,
     prune,
   };
 });

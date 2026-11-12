@@ -64,6 +64,7 @@ export function useTerminalMount(options: UseTerminalMountOptions) {
 
   let resizeObserver: ResizeObserver | null = null;
   let renderer: typeof import('./terminalRenderer') | null = null;
+  let pendingFocus = false;
 
   const session = computed(() => terminalSession(tabId));
   const footerText = computed(() => {
@@ -88,6 +89,10 @@ export function useTerminalMount(options: UseTerminalMountOptions) {
     // back to an already-open terminal) reattaches the same live session, never spawns a second one.
     const isFirstOpen = !terminalSession(tabId);
     const dims = mod.fitTerminal(tabId) ?? { cols: 80, rows: 24 };
+    if (pendingFocus) {
+      pendingFocus = false;
+      mod.focusTerminal(tabId);
+    }
     if (isFirstOpen) {
       void openTerminalSession(
         tabId,
@@ -139,5 +144,11 @@ export function useTerminalMount(options: UseTerminalMountOptions) {
     },
   );
 
-  return { session, footerText };
+  /** Gives the terminal the keyboard; a call before the renderer is ready applies once it is. */
+  function focusTerminal(): void {
+    if (renderer) renderer.focusTerminal(tabId);
+    else pendingFocus = true;
+  }
+
+  return { session, footerText, focusTerminal };
 }

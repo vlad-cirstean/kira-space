@@ -57,6 +57,7 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
     view.value = 'plan';
     if (e.branchId) selectBranch(e.taskId, e.branchId);
     else select(e.taskId);
+    tabs.requestAgentFocus(e.branchId ?? e.taskId);
     if (e.branchId) tabs.setBranchTab(e.branchId, 'sessions');
     else tabs.setTaskTab(e.taskId, 'sessions');
     tabs.selectSession(e.taskId, e.sessionId);
@@ -67,6 +68,7 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
   function openSessions(taskId: string): void {
     if (view.value !== 'later') view.value = 'plan';
     select(taskId);
+    tabs.requestAgentFocus(taskId);
     tabs.setTaskTab(taskId, 'sessions');
   }
 

@@ -36,7 +36,10 @@ const ui = useAdeBoardUiStore();
 const tabs = useAdePanelTabsStore();
 const tab = computed({
   get: () => tabs.taskTab(props.card.task.id),
-  set: (v) => tabs.setTaskTab(props.card.task.id, v),
+  set: (v) => {
+    if (v === 'sessions') tabs.requestAgentFocus(props.card.task.id);
+    tabs.setTaskTab(props.card.task.id, v);
+  },
 });
 const { sessions } = useSessionViews();
 const sessionCount = computed(
