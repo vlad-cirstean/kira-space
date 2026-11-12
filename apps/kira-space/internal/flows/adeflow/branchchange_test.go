@@ -77,10 +77,12 @@ func TestBranchChange(t *testing.T) {
 		f, repo, own := newChangeFixture(t, "feat/old", "feat/other")
 		repo.Git("branch", "feat/other")
 		gitIn(t, own, "switch", "-q", "feat/other")
-		before := branchOf(t, board(t, f.app), f.task.ID, f.api)
-		if before.Worktree != "" || before.Detached == nil || before.Detached.Head != "feat/other" {
-			t.Fatalf("row = worktree %q detached %+v, want no attach and head feat/other", before.Worktree, before.Detached)
-		}
+		// The out-of-band switch reaches the board through the repo watcher, not a board write.
+		var before adewire.Branch
+		testx.WaitUntil(t, waitFor, func() bool {
+			before = branchOf(t, board(t, f.app), f.task.ID, f.api)
+			return before.Worktree == "" && before.Detached != nil && before.Detached.Head == "feat/other"
+		})
 		f.app.Contract(t, changeScenario, "AdeTaskService.Board#mismatch", []adewire.Branch{before}, adoptMask)
 		info, err := f.app.W.AdeBoard.BranchStatus(ctx, f.task.ID, "api", "feat/old", 0)
 		if err != nil || !strings.Contains(info.Next, "change_branch") || !strings.Contains(info.Next, "feat/other") {

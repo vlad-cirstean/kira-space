@@ -148,7 +148,8 @@ type TaskBoardDeps struct {
 	RebaseTimeout time.Duration
 	// RepoFile names the repo file that applies to a repo (its stem, "" for none) and its error, if any.
 	RepoFile func(repoID string) (stem string, problem *adewire.RepoProblem)
-	OnBoard  func()
+	// OnBoard pushes the coalesced change on kira:adetask:board.
+	OnBoard func(adewire.BoardChangedEvent)
 	// OnUpdates pushes a change of the tracked item updates on kira:adetask:updates.
 	OnUpdates func()
 	// TrackedItems stores the tracked item snapshots; nil turns the update watcher off.
@@ -204,6 +205,8 @@ type TaskBoard struct {
 	caches         map[string]*repoCaches
 	rebase         map[string]*rebaseCache
 	boardTimer     *time.Timer
+	boardSched     boardChanges // changes the debounced scheduleBoard timer will announce
+	bcache         boardCache
 	updates        *updateWatcher
 
 	panelEdits panelEdits // pending task panel edits per task (panelforward.go)
@@ -320,6 +323,7 @@ func (b *TaskBoard) Close() {
 		b.wfTimer.Stop()
 	}
 	b.mu.Unlock()
+	b.stopBoardPush()
 	b.stopWatchers()
 	b.updates.close()
 	b.checker.close()
@@ -337,21 +341,25 @@ func (b *TaskBoard) handleEmit(method string, payload any) {
 }
 
 // scheduleBoard debounces a board invalidation (a burst of ref moves or check completions).
-func (b *TaskBoard) scheduleBoard() {
+func (b *TaskBoard) scheduleBoard() { b.scheduleBoardWith(allChanged) }
+
+// scheduleBoardWith is scheduleBoard for a change of known scope; merged scopes announce together.
+// The snapshot is dropped at once so a Board inside the debounce window recomputes.
+func (b *TaskBoard) scheduleBoardWith(ch adewire.BoardChangedEvent) {
+	b.invalidateBoard()
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	b.boardSched.merge(ch)
 	if b.boardTimer != nil {
 		b.boardTimer.Stop()
 	}
-	b.boardTimer = time.AfterFunc(adeRepoChangedDebounce, func() { b.runTracked(b.notifyBoard) })
-}
-
-func (b *TaskBoard) notifyBoard() {
-	b.dropLeaseOrder()
-	if b.deps.OnBoard != nil {
-		b.deps.OnBoard()
-	}
-	b.updates.boardChanged()
+	b.boardTimer = time.AfterFunc(adeRepoChangedDebounce, func() {
+		b.mu.Lock()
+		ev := b.boardSched.event()
+		b.boardSched = boardChanges{}
+		b.mu.Unlock()
+		b.runTracked(func() { b.notifyBoardWith(ev) })
+	})
 }
 
 func (b *TaskBoard) repoMutex(codeRepoID string) *sync.Mutex {
@@ -488,12 +496,15 @@ func branchesByRepo(branches []model.AdeTaskBranch) (ids []string, by map[string
 	return ids, by
 }
 
-// Board assembles the snapshot. It never blocks on a rebase-conflict check: a miss reports
-// `checking` and queues the check.
-func (b *TaskBoard) Board(ctx context.Context) (adewire.Board, error) {
+// buildBoard assembles the snapshot Board shares. It never blocks on a rebase-conflict check: a miss
+// reports `checking` and queues the check.
+func (b *TaskBoard) buildBoard(ctx context.Context) (adewire.Board, error) {
 	d, err := b.load()
 	if err != nil {
 		return adewire.Board{}, err
+	}
+	if b.bcache.afterLoad != nil {
+		b.bcache.afterLoad()
 	}
 	repoIDs, byRepo := branchesByRepo(d.branches)
 	results := make(map[string]*repoResult, len(repoIDs))

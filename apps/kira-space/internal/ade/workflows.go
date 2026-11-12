@@ -56,6 +56,7 @@ func (b *TaskBoard) withUsage(e adewire.WorkflowEntry) adewire.WorkflowEntry {
 
 // scheduleWorkflows emits the workflows channel once per burst of app writes and file events.
 func (b *TaskBoard) scheduleWorkflows() {
+	b.invalidateBoard() // the board shows each task's live workflow
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.wfTimer != nil {

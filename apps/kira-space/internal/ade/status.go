@@ -106,7 +106,7 @@ func (b *TaskBoard) syncStatus(taskID string) {
 		slog.Warn("ade: sync task status", "scope", "ade", "task", taskID, "err", err)
 		return
 	}
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(taskID))
 }
 
 // OnTUIStarted is Tracker.OnStarted's target: a first session of a task counts as started.

@@ -6,6 +6,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"path/filepath"
 	"slices"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -26,6 +27,8 @@ type boardHarness struct {
 	board   *TaskBoard
 	files   *repocfg.Store
 	emitted atomic.Int32
+	evMu    sync.Mutex
+	events  []adewire.BoardChangedEvent
 	status  atomic.Value // gitclient.GitStatus
 	mid     string
 }
@@ -63,12 +66,25 @@ func newBoardHarnessWith(t testing.TB, wrap func(gitclient.Runner) gitclient.Run
 		Registry:        registry,
 		GitStatus:       func(context.Context) gitclient.GitStatus { return h.status.Load().(gitclient.GitStatus) },
 		Workflows:       &adeflow.Reader{Dir: t.TempDir(), Store: configfs.TableProjection{DB: db.DB, Folder: adeflow.WorkflowsFolder}},
-		OnBoard:         func() { h.emitted.Add(1) }, HomeDir: "/home/u",
+		OnBoard:         h.onBoard, HomeDir: "/home/u",
 		AutofetchMinutes: func() int { return 5 },
 	})
 	t.Cleanup(h.board.Close)
 	h.files.OnChange = h.board.RepoConfigChanged
 	return h
+}
+
+func (h *boardHarness) onBoard(ev adewire.BoardChangedEvent) {
+	h.evMu.Lock()
+	h.events = append(h.events, ev)
+	h.evMu.Unlock()
+	h.emitted.Add(1)
+}
+
+func (h *boardHarness) pushed() []adewire.BoardChangedEvent {
+	h.evMu.Lock()
+	defer h.evMu.Unlock()
+	return slices.Clone(h.events)
 }
 
 // setRepoFile edits the repo file of a code repo added with addRepoFromPath.
@@ -228,9 +244,7 @@ func TestTaskBoard_snapshotAssembly(t *testing.T) {
 	if b2.ConflictCheck != conflictDone || len(b2.ConflictsIfRebased) != 0 {
 		t.Fatalf("b2 after refresh: %q %v (%s)", b2.ConflictCheck, b2.ConflictsIfRebased, b2.ConflictCheckReason)
 	}
-	if h.emitted.Load() == 0 {
-		t.Fatal("Refresh did not emit a board change")
-	}
+	waitUntil(t, "board change after Refresh", func() bool { return h.emitted.Load() > 0 })
 }
 
 func TestTaskBoard_notCreatedAndTooOldGit(t *testing.T) {

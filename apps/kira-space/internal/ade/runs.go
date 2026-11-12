@@ -305,7 +305,13 @@ func (b *TaskBoard) emitRuns(runs ...model.AdeRun) {
 	if b.deps.OnRuns != nil && len(ev.Runs) > 0 {
 		b.deps.OnRuns(ev)
 	}
-	b.scheduleBoard()
+	taskIDs := make([]string, 0, 1)
+	for _, r := range runs {
+		if !slices.Contains(taskIDs, r.TaskID) {
+			taskIDs = append(taskIDs, r.TaskID)
+		}
+	}
+	b.scheduleBoardWith(taskChanged(taskIDs...))
 }
 
 func (b *TaskBoard) notifySessions() {

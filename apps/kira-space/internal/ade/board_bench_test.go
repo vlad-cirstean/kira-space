@@ -26,7 +26,12 @@ func (c spawnCounter) Start(ctx context.Context, gitPath string, spec gitclient.
 // BenchmarkBoardWarm builds the board after an invalidation: one repo, 10 branches over 3 tasks,
 // 5 attached worktrees, one conflicting pair. Spawns only: the harness hides its *sql.DB, so no
 // query count.
-func BenchmarkBoardWarm(b *testing.B) {
+func BenchmarkBoardWarm(b *testing.B) { benchBoard(b, true) }
+
+// BenchmarkBoardHit reads the same board with no invalidation: the snapshot serves it.
+func BenchmarkBoardHit(b *testing.B) { benchBoard(b, false) }
+
+func benchBoard(b *testing.B, invalidate bool) {
 	if _, err := exec.LookPath("git"); err != nil {
 		b.Skip("git not on PATH")
 	}
@@ -74,7 +79,9 @@ func BenchmarkBoardWarm(b *testing.B) {
 	spawns.Store(0)
 	b.ResetTimer()
 	for range b.N {
-		h.board.notifyBoard()
+		if invalidate {
+			h.board.invalidateBoard()
+		}
 		if _, err := h.board.Board(ctx); err != nil {
 			b.Fatal(err)
 		}

@@ -2,7 +2,7 @@ package adewire
 
 // Push channels of AdeTaskService. Payload-free channels invalidate the matching queries.
 const (
-	ChannelBoard       = "kira:adetask:board"
+	ChannelBoard       = "kira:adetask:board" // BoardChangedEvent
 	ChannelWorkflows   = "kira:adetask:workflows"
 	ChannelRepos       = "kira:adetask:repos"
 	ChannelRuns        = "kira:adetask:runs" // RunsChangedEvent

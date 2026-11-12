@@ -218,7 +218,7 @@ func wireAdeTask(
 		NamesMarker: filepath.Join(config.KiraSpaceHome(), "ade", "names-v1.done"),
 		BackupDir:   filepath.Join(config.KiraSpaceHome(), "backups", "readable-names"),
 		KeepStem:    func(module, file string) bool { return configsync.HasBase(config.KiraSpaceHome(), module, file) },
-		OnBoard:     func() { bridge.AdeTaskBoardChanged(events) },
+		OnBoard:     func(ch adewire.BoardChangedEvent) { bridge.AdeTaskBoardChanged(events, ch) },
 		OnLeases:    func() { bridge.AdeLeasesChanged(events) },
 		LeaseQueues: repositories.AdeLeaseQueues,
 		AdeSettings: func() model.AdeSettings {

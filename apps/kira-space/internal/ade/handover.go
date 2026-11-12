@@ -90,7 +90,7 @@ func (b *TaskBoard) RecordHandover(_ context.Context, taskID, stepID, sessionID,
 		return err
 	}
 	// Board first: the prompt's dialog reads the draft from the board snapshot.
-	b.notifyBoard()
+	b.notifyBoardNow(taskChanged(taskID))
 	if finished && cur != "" && cur != entryDone {
 		b.openHandoverPrompt(tc)
 	} else {
@@ -246,7 +246,7 @@ func (b *TaskBoard) DismissHandover(_ context.Context, taskID string) error {
 		return err
 	}
 	b.closeHandoverPrompt(taskID)
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(taskID))
 	return nil
 }
 

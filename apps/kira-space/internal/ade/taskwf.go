@@ -55,6 +55,7 @@ func (b *TaskBoard) snapshotWorkflow(t *model.AdeTask) error {
 		return err
 	}
 	t.WorkflowJSON, t.WorkflowHash = string(js), hash
+	b.notifyBoardWith(taskChanged(t.ID))
 	return nil
 }
 

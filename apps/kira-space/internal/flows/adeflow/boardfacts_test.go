@@ -10,6 +10,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 func TestFolderImportAndFacts(t *testing.T) {
@@ -58,9 +59,11 @@ func TestFolderImportAndFacts(t *testing.T) {
 		t.Fatalf("lastFetchAt = %d before any fetch", *with.LastFetchAt)
 	}
 	remote.Git("fetch", "-q")
-	if with, _ = repoState(board(t, app), ids["withremote"]); with.LastFetchAt == nil {
-		t.Fatal("lastFetchAt still empty after a plain git fetch")
-	}
+	// An out-of-band fetch reaches the board through the repo watcher, not a board write.
+	testx.WaitUntil(t, waitFor, func() bool {
+		with, _ = repoState(board(t, app), ids["withremote"])
+		return with.LastFetchAt != nil
+	})
 
 	if _, err := app.W.AdeTask.SetFolderWatch(ctx, adewire.FolderArgs{Path: folder, Watch: true}); err != nil {
 		t.Fatal(err)

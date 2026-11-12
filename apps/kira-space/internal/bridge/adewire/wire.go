@@ -962,6 +962,12 @@ type Launch struct {
 	Cwd        string `json:"cwd"`
 }
 
+// BoardChangedEvent is ChannelBoard's payload. TaskIDs empty means any task may have changed.
+type BoardChangedEvent struct {
+	Refs    bool     `json:"refs"`    // git refs, branch facts or change requests may have changed
+	TaskIDs []string `json:"taskIds"` // changed tasks; null means unknown, treat as all
+}
+
 type RunsChangedEvent struct {
 	Runs []Run `json:"runs"`
 }
