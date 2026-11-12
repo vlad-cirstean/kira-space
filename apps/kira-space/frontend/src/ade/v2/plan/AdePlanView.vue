@@ -6,7 +6,7 @@ import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
 import { paneFrame } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
-import { useElementSize, useScroll } from '@vueuse/core';
+import { useElementSize, useIntersectionObserver, useScroll } from '@vueuse/core';
 import { errorText } from '@workbench/bridge/codedError';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
 import QueryState from '@workbench/components/QueryState.vue';
@@ -28,8 +28,7 @@ import AdeHistoryBar from './AdeHistoryBar.vue';
 import AdeHistoryControl from './AdeHistoryControl.vue';
 import AdePlanRepos, { type RepoChipModel } from './AdePlanRepos.vue';
 import { usePlanDrag } from './usePlanDrag';
-import type { BranchRowModel } from './usePlanModel';
-import { usePlanModel } from './usePlanModel';
+import { type BranchRowModel, type CardModel, type PlanModel, usePlanModel } from './usePlanModel';
 
 const ui = useAdeBoardUiStore();
 const settingsStore = useSettingsStore();
@@ -93,14 +92,29 @@ const chips = computed<RepoChipModel[]>(() =>
 );
 
 // ---- bands
-function bandCards(band: TimelineBand) {
-  const cards = model.value?.cards;
-  return band.taskIds.flatMap((id) => cards?.get(id) ?? []);
+const NO_CARDS: CardModel[] = [];
+const NO_SPANS: BandProps['spans'] = [];
+const NO_HISTORY: BandProps['history'] = [];
+
+interface BandProps {
+  cards: CardModel[];
+  spans: {
+    taskId: string;
+    title: string;
+    color: string;
+    note: string;
+    merges: boolean;
+    tip: string;
+  }[];
+  history: {
+    key: string;
+    merged: boolean;
+    meta: string;
+    title: string;
+  }[];
 }
 
-function bandSpans(band: TimelineBand) {
-  const m = model.value;
-  if (!m) return [];
+function spansOf(m: PlanModel, band: TimelineBand): BandProps['spans'] {
   return band.spans.flatMap((s) => {
     const card = m.cards.get(s.taskId);
     if (!card) return [];
@@ -123,7 +137,7 @@ function bandSpans(band: TimelineBand) {
   });
 }
 
-function bandHistory(band: TimelineBand) {
+function historyOf(band: TimelineBand): BandProps['history'] {
   return band.history.map((h) => ({
     key: h.taskId,
     merged: !!h.mergedAt,
@@ -138,6 +152,22 @@ function bandHistory(band: TimelineBand) {
     title: h.title,
   }));
 }
+
+// One pass per model change, not per render: a selection or hover re-renders the view and reuses
+// every band's arrays, so unchanged bands skip their patch.
+const bandProps = computed(() => {
+  const m = model.value;
+  const out = new Map<number, BandProps>();
+  if (!m) return out;
+  for (const band of m.view.bands) {
+    out.set(band.key, {
+      cards: band.taskIds.flatMap((id) => m.cards.get(id) ?? []),
+      spans: spansOf(m, band),
+      history: historyOf(band),
+    });
+  }
+  return out;
+});
 
 function overdueNote(band: TimelineBand): string {
   return t('space.ade.plan.view.overdue.status', { count: band.overdueTaskIds.length });
@@ -278,15 +308,22 @@ function hideHistory(): void {
   scrollY.value = 0;
 }
 
-const inHistory = computed(() => {
-  if (!ui.showHistory) return false;
-  const el = scrollEl.value;
-  const todayBand = el?.querySelector<HTMLElement>('[data-ade-day="0"]');
-  if (!el || !todayBand) return false;
-  const todayTop =
-    todayBand.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
-  return scrollY.value + headerHeight.value < todayTop - 30;
-});
+// Past the point where today's band top sits 30px under the sticky header: the history is on
+// screen. The observer fires when that edge crosses the line; no layout read per scroll frame.
+const todayTop = ref<HTMLElement | null>(null);
+const todayBelowLine = ref(false);
+useIntersectionObserver(
+  todayTop,
+  ([entry]) => {
+    const root = entry?.rootBounds;
+    if (entry && root) todayBelowLine.value = entry.boundingClientRect.top > root.top;
+  },
+  {
+    root: scrollEl,
+    rootMargin: computed(() => `-${Math.round(headerHeight.value + 30)}px 0px 0px 0px`),
+  },
+);
+const inHistory = computed(() => ui.showHistory && todayBelowLine.value);
 
 async function revealDay(k: number): Promise<void> {
   if (k < 0) {
@@ -371,11 +408,17 @@ function onForcePush(row: BranchRowModel): void {
             @pick="onFindArchived"
           />
           <template v-for="band in model.view.bands" :key="band.key">
+            <span
+              v-if="band.key === 0"
+              :ref="(el) => (todayTop = el as HTMLElement | null)"
+              class="block h-0"
+              aria-hidden="true"
+            />
             <AdeDayBand
               :band="band"
-              :cards="bandCards(band)"
-              :spans="bandSpans(band)"
-              :history="bandHistory(band)"
+              :cards="bandProps.get(band.key)?.cards ?? NO_CARDS"
+              :spans="bandProps.get(band.key)?.spans ?? NO_SPANS"
+              :history="bandProps.get(band.key)?.history ?? NO_HISTORY"
               :overdue-note="overdueNote(band)"
               :overflow-note="overflowNote(band)"
               :overflow-label="overflowLabel(band)"
