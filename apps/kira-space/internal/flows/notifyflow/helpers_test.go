@@ -113,7 +113,7 @@ func openAgent(t *testing.T, app *flowharness.App, id, cwd string) {
 }
 
 // hook pipes one hook payload through the real shim with the terminal's launch env, the way a
-// running claude does. curl returns after the listener answered, so the event is handled on return.
+// running claude does. curl returns after the listener answered; Flush waits for the hub worker to handle the event.
 func hook(t *testing.T, app *flowharness.App, terminalID, payload string) {
 	t.Helper()
 	_, env, _ := app.W.AgentHooks.Compose("claude", terminalID, "", "claude", "")
@@ -127,6 +127,7 @@ func hook(t *testing.T, app *flowharness.App, terminalID, payload string) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("hook shim: %v\n%s", err, out)
 	}
+	app.W.AgentHooks.Flush()
 }
 
 func stop(t *testing.T, app *flowharness.App, id, cwd, reply string) {

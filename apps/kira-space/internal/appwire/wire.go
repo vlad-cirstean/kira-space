@@ -331,14 +331,14 @@ func adeCloseTerminal(registry *terminal.Registry) func(id string) error {
 	}
 }
 
-// shutdownTracker is wireTracker's teardown half: flushes the tracker's still-in-memory lastActive
-// values, then stops the hooks listener.
+// shutdownTracker is wireTracker's teardown half: stops the hooks listener and drains its event
+// worker, then flushes the tracker's still-in-memory lastActive values, so drained events count.
 func shutdownTracker(tracker *ade.Tracker, hooks *harness.Hooks) {
-	if err := tracker.Close(); err != nil {
-		slog.Warn("ade: close", "scope", "ade", "err", err)
-	}
 	if err := hooks.Stop(); err != nil {
 		slog.Warn("agent hooks: stop", "scope", "ade", "err", err)
+	}
+	if err := tracker.Close(); err != nil {
+		slog.Warn("ade: close", "scope", "ade", "err", err)
 	}
 }
 

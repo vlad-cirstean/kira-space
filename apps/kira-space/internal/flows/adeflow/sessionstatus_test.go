@@ -16,7 +16,7 @@ import (
 )
 
 // hook pipes one hook payload through the real shim with the terminal's launch env, as a running
-// claude does. curl returns after the listener answered, so the event is handled on return. It
+// claude does. curl returns after the listener answered; Flush waits for the hub worker to handle the event. It
 // returns what the shim printed: the hook reply body, empty when the app has nothing to say.
 func hook(t *testing.T, app *flowharness.App, terminalID, payload string) string {
 	t.Helper()
@@ -34,6 +34,7 @@ func hook(t *testing.T, app *flowharness.App, terminalID, payload string) string
 	if err != nil {
 		t.Fatalf("hook shim: %v\n%s%s", err, out, stderr.String())
 	}
+	app.W.AgentHooks.Flush()
 	return string(out)
 }
 
