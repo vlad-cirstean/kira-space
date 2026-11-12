@@ -44,11 +44,8 @@ type leaseState struct {
 	// saveMu serializes SaveLeaseQueues so the stored names and the book end in the same order.
 	saveMu sync.Mutex
 	// order caches the task order a waiter is ranked by: building it takes a full board, so waiters
-	// polling their queue would each pay for one. orderMu guards it; a board change clears it.
-	orderMu  sync.Mutex
-	order    []string
-	orderAt  time.Time
-	orderDay string
+	// polling their queue would each pay for one. A board change drops it without waiting.
+	order orderCache
 	// runs holds the owners of live headless runs, which emit no hook events: a live run is alive.
 	runs map[leases.Key]struct{}
 }
@@ -96,30 +93,22 @@ func (b *TaskBoard) taskListOrder() []string {
 	now := b.deps.Now()
 	// The UI reads the machine's local date, so the order does too.
 	day := now.Local().Format("2006-01-02")
-	b.lease.orderMu.Lock()
-	defer b.lease.orderMu.Unlock()
-	if b.lease.orderDay == day && !b.lease.orderAt.IsZero() && now.Sub(b.lease.orderAt) < leaseOrderFresh {
-		return b.lease.order
-	}
-	board, err := b.Board(b.ctx)
-	if err != nil {
-		slog.Warn("ade: lease task order", "scope", "ade", "err", err)
-		return nil
-	}
-	s := model.DefaultAdeSettings()
-	if b.deps.AdeSettings != nil {
-		s = b.deps.AdeSettings()
-	}
-	b.lease.order, b.lease.orderAt, b.lease.orderDay = TaskListOrder(board, s, day), now, day
-	return b.lease.order
+	return b.lease.order.get(now, day, func() ([]string, bool) {
+		board, err := b.Board(b.ctx)
+		if err != nil {
+			slog.Warn("ade: lease task order", "scope", "ade", "err", err)
+			return nil, false
+		}
+		s := model.DefaultAdeSettings()
+		if b.deps.AdeSettings != nil {
+			s = b.deps.AdeSettings()
+		}
+		return TaskListOrder(board, s, day), true
+	})
 }
 
-// dropLeaseOrder forgets the cached task order after a board change.
-func (b *TaskBoard) dropLeaseOrder() {
-	b.lease.orderMu.Lock()
-	b.lease.orderAt = time.Time{}
-	b.lease.orderMu.Unlock()
-}
+// dropLeaseOrder forgets the cached task order after a board change. It never waits for a build.
+func (b *TaskBoard) dropLeaseOrder() { b.lease.order.drop() }
 
 // sweepLeases frees holders that went silent; the tracker says who is mid-turn.
 func (b *TaskBoard) sweepLeases() {
