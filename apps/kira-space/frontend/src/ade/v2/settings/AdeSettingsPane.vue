@@ -92,7 +92,7 @@ useShortcut(root, ['form.save'], () => void saveNow());
               }}
             </span>
             <Button
-              variant="dialog"
+              variant="dialog-danger"
               size="kira-lg"
               :disabled="!actionable"
               data-testid="ade-settings-discard"

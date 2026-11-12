@@ -49,7 +49,7 @@ const { remainingSeconds } = usePendingDecision({
       <DialogFooter>
         <Button
           ref="denyButton"
-          variant="dialog"
+          variant="dialog-deny"
           size="kira-lg"
           :data-testid="`${testidPrefix}-deny`"
           @click="emit('deny')"
@@ -57,7 +57,7 @@ const { remainingSeconds } = usePendingDecision({
           {{ t('common.action.deny.label') }}
         </Button>
         <Button
-          variant="dialog-primary"
+          variant="dialog-approve"
           size="kira-lg"
           :data-testid="`${testidPrefix}-approve`"
           @click="emit('approve')"

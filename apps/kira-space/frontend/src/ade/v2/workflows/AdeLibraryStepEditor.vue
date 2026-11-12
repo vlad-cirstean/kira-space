@@ -100,9 +100,8 @@ async function remove(): Promise<void> {
         }}
       </Button>
       <Button
-        variant="dialog"
+        variant="dialog-danger"
         size="kira-lg"
-        class="text-error"
         :disabled="users.length > 0"
         :pending="del.isPending.value"
         data-testid="ade-step-delete"

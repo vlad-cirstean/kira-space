@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Code convention guard N1-N7 and N8-N16.
+ * Code convention guard N1-N7 and N8-N17.
  *
  * N1 file names (.ts camelCase, .vue PascalCase), N2 no `.test.ts`, N3 no util/utils/helpers
  * folder, N4 Pinia id = export name without `use`/`create` and `Store`, N5 event names
@@ -22,6 +22,11 @@
  * N16 no string-literal SQL passed to `Exec`/`Query`/`QueryRow`/`Prepare` (or their `Context`
  * forms) and no `Interpolate(` in the Go files that run SQL on `kira.db` (P553): statements come
  * from `internal/sqlb` builders. Two raw spots stay, allowlisted in `RAW_SQL_ALLOW`.
+ *
+ * N17 a dialog `<Button>` carries the variant its label means: approve/accept/allow/send need
+ * `dialog-approve`, deny/reject/withhold/dontSend need `dialog-deny`, delete/remove/archive/
+ * discard/force need `dialog-danger`; no `dialog*` variant takes a `text|bg|border-error|ok|warn`
+ * class. A justified exception is marked `<!-- conventions-allow N17: reason -->` before the element.
  *
  * No pending list: every hit fails. N6 also fails on any retired-code registry (`Legacy` in Go,
  * `LEGACY_ERROR_CODES` in TS).
@@ -45,7 +50,8 @@ export type Rule =
   | 'N13'
   | 'N14'
   | 'N15'
-  | 'N16';
+  | 'N16'
+  | 'N17';
 export interface Hit {
   rule: Rule;
   path: string;
@@ -491,6 +497,7 @@ function fileHits(path: string, dirs: Set<string>): Hit[] {
   if (componentsHit) hits.push(componentsHit);
   const big = path.endsWith('.vue') ? oversizeVueHit(path, read()) : undefined;
   if (big) hits.push(big);
+  if (path.endsWith('.vue')) hits.push(...buttonVariantHits(path, read()));
   const nameHit = fileNameHit(path);
   if (nameHit) hits.push(nameHit);
   const suffixHit = testSuffixHit(path);
@@ -541,6 +548,73 @@ const SQL_FILES = [
   'apps/kira-space/internal/bridge/collections.go',
   'apps/kira-space/internal/appwire/memoryops.go',
 ];
+const BUTTON_VARIANT_SETS: ReadonlyArray<{ words: readonly string[]; variant: string }> = [
+  { words: ['approve', 'accept', 'allow', 'send', 'approveAll'], variant: 'dialog-approve' },
+  { words: ['deny', 'reject', 'withhold', 'dontSend', 'denyAll'], variant: 'dialog-deny' },
+  { words: ['delete', 'remove', 'archive', 'discard', 'force'], variant: 'dialog-danger' },
+];
+const N17_ALLOW = /<!--\s*conventions-allow N17:[^>]*-->\s*$/;
+const TONE_CLASS = /(?:^|[\s:])(?:text|bg|border)-(?:error|ok|warn)(?:[/\s]|$)/;
+
+/** End index (exclusive) of the tag that opens at `from`; quotes may hold `>`. */
+function tagEnd(source: string, from: number): number {
+  let quote = '';
+  for (let i = from; i < source.length; i++) {
+    const c = source[i];
+    if (quote) {
+      if (c === quote) quote = '';
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === '>') return i + 1;
+  }
+  return -1;
+}
+
+/** The label's name: the key segment before its role (`a.b.approve.label` gives `approve`). */
+function labelName(body: string): string {
+  const key = /\bt\(\s*['"]([^'"]+)['"]/.exec(body)?.[1];
+  if (key) return key.split('.').slice(-2, -1)[0] ?? '';
+  return /\blabels\??\.(\w+)/.exec(body)?.[1] ?? '';
+}
+
+function meansWord(name: string, word: string): boolean {
+  return name === word || (name.startsWith(word) && /[A-Z]/.test(name[word.length] ?? ''));
+}
+
+/** N17: a dialog `<Button>` variant matches what its label means; no ad-hoc tone classes. */
+export function buttonVariantHits(path: string, source: string): Hit[] {
+  if (!path.endsWith('.vue')) return [];
+  const hits: Hit[] = [];
+  for (let at = source.indexOf('<Button'); at !== -1; at = source.indexOf('<Button', at + 1)) {
+    if (!/[\s>/]/.test(source[at + 7] ?? '')) continue;
+    const end = tagEnd(source, at);
+    if (end === -1) continue;
+    const tag = source.slice(at, end);
+    const variant = /(?:^|\s)variant="(dialog[^"]*)"/.exec(tag)?.[1];
+    if (!variant || N17_ALLOW.test(source.slice(0, at))) continue;
+    const close = tag.endsWith('/>') ? -1 : source.indexOf('</Button>', end);
+    const name = labelName(close === -1 ? '' : source.slice(end, close));
+    const line = source.slice(0, at).split('\n').length;
+    for (const { words, variant: want } of BUTTON_VARIANT_SETS) {
+      if (words.some((w) => meansWord(name, w)) && variant !== want) {
+        hits.push({
+          rule: 'N17',
+          path,
+          message: `line ${line}: '${name}' button uses ${variant}, needs ${want}`,
+        });
+      }
+    }
+    const klass = /(?:^|\s)class="([^"]*)"/.exec(tag)?.[1] ?? '';
+    if (TONE_CLASS.test(klass)) {
+      hits.push({
+        rule: 'N17',
+        path,
+        message: `line ${line}: ${variant} button carries a tone class; use a semantic variant`,
+      });
+    }
+  }
+  return hits;
+}
+
 /** The only raw SQL left in N16's files: SQLite maintenance PRAGMAs with no Postgres analogue (P553 plan 2.4). */
 const RAW_SQL_ALLOW: ReadonlyArray<{ path: string; contains?: string }> = [
   { path: 'apps/kira-space/internal/storage/repos/maintenance.go' },
@@ -690,7 +764,7 @@ function main(): number {
     );
     return 1;
   }
-  console.log('check-conventions: every convention holds (N1-N16).');
+  console.log('check-conventions: every convention holds (N1-N17).');
   return 0;
 }
 

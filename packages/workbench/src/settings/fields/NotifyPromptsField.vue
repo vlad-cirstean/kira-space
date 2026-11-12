@@ -47,6 +47,7 @@ function onSendTest(): void {
     <FieldDescription>
       {{ t('workbench.settings.notifyPrompts.description') }}
     </FieldDescription>
+    <!-- conventions-allow N17: sends a test notification, not an approval -->
     <Button
       variant="dialog"
       size="kira-lg"

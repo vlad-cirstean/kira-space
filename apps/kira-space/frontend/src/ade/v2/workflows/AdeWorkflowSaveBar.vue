@@ -15,7 +15,7 @@ const emit = defineEmits<{ save: []; discard: [] }>();
       t('space.ade.workflows.saveBar.applies.hint')
     }}</span>
     <Button
-      variant="dialog"
+      variant="dialog-danger"
       size="kira-lg"
       :disabled="!actionable"
       data-testid="ade-wf-discard"

@@ -358,7 +358,7 @@ function deployNote(d: Deployment): string {
         </Button>
         <AdeTip v-if="canForcePush" :text="FORCE_PUSH_CMD">
           <Button
-            variant="dialog"
+            variant="dialog-danger"
             size="kira-lg"
             :class="ACTION_CLASS.amber"
             data-testid="ade-panel-force-push"

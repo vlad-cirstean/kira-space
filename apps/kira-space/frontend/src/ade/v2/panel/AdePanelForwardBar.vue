@@ -74,7 +74,7 @@ async function dismiss(): Promise<void> {
             <AdeTip :text="noTarget ? t('space.ade.panelForward.unreachable.tooltip') : ''">
               <TooltipDisabledTrigger :disabled="off">
                 <Button
-                  variant="dialog"
+                  variant="dialog-approve"
                   size="kira"
                   :pending="forwardM.isPending.value"
                   :disabled="off"

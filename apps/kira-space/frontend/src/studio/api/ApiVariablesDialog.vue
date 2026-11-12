@@ -320,7 +320,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
 
       <DialogFooter>
         <Button
-          variant="dialog"
+          variant="dialog-danger"
           size="kira-lg"
           :disabled="!draft.dirty.value"
           data-testid="api-variables-discard"

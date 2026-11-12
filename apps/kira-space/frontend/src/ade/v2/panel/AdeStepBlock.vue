@@ -259,7 +259,7 @@ function logToggleLabel(runId: string): string {
         </AdeTip>
         <template v-if="block.step.approval" #actions>
           <Button
-            variant="dialog"
+            variant="dialog-approve"
             size="kira"
             class="shrink-0"
             :class="ACTION_CLASS.amber"

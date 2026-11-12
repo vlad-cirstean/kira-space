@@ -294,7 +294,7 @@ const stateLabel = (c: ReviewComment): string =>
       <AdeTip :text="sendTip">
         <span class="inline-flex">
           <Button
-            variant="dialog"
+            variant="dialog-approve"
             size="kira"
             :class="ACTION_CLASS.agent"
             :disabled="sendTip !== ''"

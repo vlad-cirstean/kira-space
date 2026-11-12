@@ -199,6 +199,7 @@ function setKeepAwake(on: boolean): void {
       </FieldDescription>
     </Field>
     <Field>
+      <!-- conventions-allow N17: sends a test notification, not an approval -->
       <Button
         variant="dialog"
         size="kira-lg"

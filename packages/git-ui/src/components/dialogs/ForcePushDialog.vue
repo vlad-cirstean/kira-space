@@ -181,7 +181,7 @@ function confirmPlain(): void {
           t('common.action.cancel.label')
         }}</Button>
         <Button
-          variant="dialog-primary"
+          variant="dialog-danger"
           size="kira-lg"
           :disabled="!canConfirmLease"
           data-testid="force-push-confirm-lease"

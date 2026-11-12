@@ -160,7 +160,7 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
           {{ t('space.repo.settingsFile.copyShared.label') }}
         </Button>
         <Button
-          variant="dialog"
+          variant="dialog-danger"
           size="kira-lg"
           :disabled="!draft.dirty.value"
           data-testid="repo-file-discard"
