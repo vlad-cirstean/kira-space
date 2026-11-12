@@ -110,6 +110,17 @@ var AdeFolders = struct {
 	Hidden: "hidden",
 }
 
+// AdeLeaseQueues names table ade_lease_queues.
+var AdeLeaseQueues = struct {
+	Table    string
+	Name     string
+	Position string
+}{
+	Table:    "ade_lease_queues",
+	Name:     "name",
+	Position: "position",
+}
+
 // AdeLogChunks names table ade_log_chunks.
 var AdeLogChunks = struct {
 	Table  string
