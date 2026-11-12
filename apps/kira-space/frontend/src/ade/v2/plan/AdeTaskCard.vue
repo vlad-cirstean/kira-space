@@ -271,7 +271,8 @@ const boxClass = computed(() => {
             :label="t('space.ade.board.taskMenu.reviewCode.label')"
             class="size-4.5 shrink-0"
             disabled-trigger
-            :disabled="reviewCode.pending.value || choices.every((c) => c.disabled)"
+            :pending="reviewCode.pendingFor(choices.map((c) => c.branchId))"
+            :disabled="choices.every((c) => c.disabled)"
             data-testid="ade-card-review"
             @click.stop="
               (ev: MouseEvent) => reviewCode.openTask(card, ev.currentTarget as HTMLElement)

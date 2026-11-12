@@ -15,9 +15,10 @@ import type { StepRun } from '../board/progress';
 import { WAITING_SETUP_NOTES } from '../board/setupGate';
 import { nextStepId, type StepBlock } from '../board/stepBlocks';
 import type { CardModel } from '../plan/usePlanModel';
-import { useApprove, useResumeRun, useRetryRun } from '../queries';
+import { useTaskWrites } from '../plan/useTaskWrites';
 import { useReviewCode } from '../review/useReviewCode';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdeOpsStore } from '../state/adeOps';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import { ACTION_CLASS, TONE_TEXT_CLASS } from '../tones';
@@ -34,9 +35,8 @@ import { ADE_ROW_GLYPH, ADE_ROW_STATUS, rowMeta } from './adeRow';
 const props = defineProps<{ block: StepBlock; card: CardModel }>();
 const ui = useAdeBoardUiStore();
 const takeOver = useAdeTakeOverStore();
-const approve = useApprove();
-const retry = useRetryRun();
-const resume = useResumeRun();
+const { approve, retry, resume } = useTaskWrites();
+const ops = useAdeOpsStore();
 const stage = useAdeStageDialogStore();
 const contextMenu = useContextMenuStore();
 const reviewCode = useReviewCode();
@@ -163,18 +163,27 @@ const TEXT_TONE: Record<string, string> = {
 };
 const statusClass = (state: string): string => TEXT_TONE[state] ?? 'text-muted-foreground';
 
-async function run(fn: () => Promise<unknown>): Promise<void> {
+// The write runs as the task's op (chip, toast on failure); the failure also shows inline here.
+async function run(
+  kind: 'approve' | 'retry' | 'resume',
+  fn: () => Promise<unknown>,
+): Promise<void> {
   error.value = '';
-  try {
-    await fn();
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  const taskId = props.card.task.id;
+  await ops.run({ id: `${kind}:${taskId}`, kind, taskId, name: props.card.title }, async () => {
+    try {
+      await fn();
+    } catch (err) {
+      error.value = errorText(err);
+      throw err;
+    }
+  });
 }
 const onApprove = (stepId: string): Promise<void> =>
-  run(() => approve.mutateAsync({ taskId: props.card.task.id, stepId }));
-const onRetry = (runId: string): Promise<void> => run(() => retry.mutateAsync({ runId }));
-const onResume = (runId: string): Promise<void> => run(() => resume.mutateAsync({ runId }));
+  run('approve', () => approve.mutateAsync({ taskId: props.card.task.id, stepId }));
+const onRetry = (runId: string): Promise<void> => run('retry', () => retry.mutateAsync({ runId }));
+const onResume = (runId: string): Promise<void> =>
+  run('resume', () => resume.mutateAsync({ runId }));
 
 const canTakeOver = (r: StepRun): boolean =>
   props.block.step.kind === 'agent' &&

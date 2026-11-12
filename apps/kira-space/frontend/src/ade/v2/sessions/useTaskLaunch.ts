@@ -1,6 +1,5 @@
 import { t } from '@theme/i18n';
 import { useAgentInfo, useAgentList } from '@workbench/agent/agentInfo';
-import { errorText } from '@workbench/bridge/codedError';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, type MaybeRefOrGetter, toValue } from 'vue';
 import { openRepoTerminalTab } from '../../../state/repoTabs';
@@ -9,6 +8,7 @@ import { useLaunchOpener } from '../dialog/useLaunchOpener';
 import { usePlanModel } from '../plan/usePlanModel';
 import { useStartAdHoc } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdeOpsStore } from '../state/adeOps';
 
 /** The task plus menu: a terminal in the Git module, or an agent session with no first message,
  *  in a named branch's worktree. `branchId` narrows it to one branch. */
@@ -17,6 +17,7 @@ export function useTaskLaunch(
   branchId?: MaybeRefOrGetter<string | undefined>,
 ) {
   const ui = useAdeBoardUiStore();
+  const ops = useAdeOpsStore();
   const { model, sessions } = usePlanModel();
   const opener = useLaunchOpener();
   const start = useStartAdHoc();
@@ -42,15 +43,21 @@ export function useTaskLaunch(
   /** `provider` "" runs the Agent setting's provider. */
   async function startAgent(target: LaunchTarget, provider = ''): Promise<void> {
     const id = toValue(taskId);
-    delete ui.actionError[id];
-    try {
-      const launch = await start.mutateAsync({ branchId: target.branchId, provider });
-      await opener.open(launch);
-      ui.openSession({ taskId: id, branchId: target.branchId, sessionId: launch.sessionId });
-    } catch (err) {
-      ui.select(id);
-      ui.actionError[id] = errorText(err);
-    }
+    const ok = await ops.run(
+      {
+        id: `launch:${target.branchId}`,
+        kind: 'launch',
+        taskId: id,
+        branchId: target.branchId,
+        name: card.value?.title ?? '',
+      },
+      async () => {
+        const launch = await start.mutateAsync({ branchId: target.branchId, provider });
+        await opener.open(launch);
+        ui.openSession({ taskId: id, branchId: target.branchId, sessionId: launch.sessionId });
+      },
+    );
+    if (!ok) ui.select(id);
   }
 
   const usable = computed(() => targets.value.some((x) => x.worktree !== ''));
@@ -125,5 +132,5 @@ export function useTaskLaunch(
       : [terminal, agentItem(first, agentLabelOf(info.value.productLabel))];
   }
 
-  return { usable, pending: start.isPending, items };
+  return { usable, items };
 }

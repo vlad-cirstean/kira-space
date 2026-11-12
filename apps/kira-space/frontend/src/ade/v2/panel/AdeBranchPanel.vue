@@ -94,7 +94,7 @@ const checkout = computed(() => {
 const baseName = computed(() => baseNameOf(props.row, graph.value));
 const reviewChoice = computed(() => reviewCode.choiceOf(props.row));
 const reviewOff = computed(
-  () => reviewCode.pending.value || !reviewChoice.value || reviewChoice.value.disabled,
+  () => reviewCode.pendingFor([props.row.id]) || !reviewChoice.value || reviewChoice.value.disabled,
 );
 const facts = computed(() =>
   t('space.ade.branchPanel.facts.label', {
@@ -351,6 +351,7 @@ function deployNote(d: Deployment): string {
           v-if="setupFailed"
           size="kira-lg"
           :class="ACTION_CLASS.amber"
+          :pending="retrySetup.isPending.value"
           data-testid="ade-panel-retry-setup"
           @click="onRetrySetup"
         >

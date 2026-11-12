@@ -1,10 +1,10 @@
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
-import { computed, nextTick, watch } from 'vue';
+import { nextTick, watch } from 'vue';
 import { type ReviewChoice, reviewChoice, reviewChoices } from '../board/reviewCode';
 import { type BranchRowModel, type CardModel, usePlanModel } from '../plan/usePlanModel';
-import { useOpenReviewWindow } from '../queries';
+import { useTaskWrites } from '../plan/useTaskWrites';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 
 interface OpenOpts {
@@ -21,7 +21,7 @@ export function useReviewCode() {
   const ui = useAdeBoardUiStore();
   const contextMenu = useContextMenuStore();
   const { view } = usePlanModel();
-  const mutation = useOpenReviewWindow();
+  const { openReview: mutation, reviewPending } = useTaskWrites();
 
   function open(
     taskId: string,
@@ -90,6 +90,8 @@ export function useReviewCode() {
     return graph && task ? reviewChoice(row, task, graph) : null;
   };
 
-  const pending = computed(() => mutation.isPending.value);
-  return { open, openTask, choicesOf, choiceOf, pending };
+  /** Whether the review window of any of these branches is opening. */
+  const pendingFor = (branchIds: readonly string[]): boolean =>
+    branchIds.some((id) => reviewPending.value.has(id));
+  return { open, openTask, choicesOf, choiceOf, pendingFor };
 }

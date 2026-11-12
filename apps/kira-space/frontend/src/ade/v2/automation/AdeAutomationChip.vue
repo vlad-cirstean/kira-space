@@ -2,22 +2,21 @@
 import { t } from '@theme/i18n';
 import { useAutomationsModule } from '@workbench/automations/module';
 import RunElapsed from '@workbench/automations/runs/RunElapsed.vue';
-import { useScriptRuns, useSeenRuns } from '@workbench/automations/runs/runsQueries';
 import { keyOf, useScriptTabs } from '@workbench/automations/scriptTabs';
 import SmartBadge from '@workbench/automations/smart/SmartBadge.vue';
 import { computed } from 'vue';
 import { useTabsStore } from '../../../state/tabs';
 import AdeChip from '../AdeChip.vue';
 import AdeTip from '../AdeTip.vue';
-import { chipRun, runReason } from './automationRuns';
+import { runReason } from './automationRuns';
+import { useChipRuns } from './useChipRuns';
 
 const props = defineProps<{ taskId: string }>();
 const ctx = useAutomationsModule();
 const tabs = useTabsStore();
 const scriptTabs = useScriptTabs();
-const { data } = useScriptRuns();
-const { seen, markSeen } = useSeenRuns();
-const run = computed(() => chipRun(data.value ?? [], props.taskId, seen.value));
+const { byTask, markSeen } = useChipRuns();
+const run = computed(() => byTask.value.get(props.taskId) ?? null);
 
 const tone = computed(() => {
   const state = run.value?.state;

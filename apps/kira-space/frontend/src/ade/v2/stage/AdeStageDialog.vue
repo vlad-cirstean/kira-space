@@ -176,7 +176,6 @@ async function move(): Promise<void> {
         <Button
           variant="dialog-primary"
           size="kira-lg"
-          :pending="store.pending"
           :disabled="live || !store.toStepId"
           data-testid="ade-stage-move"
           @click="move"

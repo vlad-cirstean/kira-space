@@ -7,6 +7,8 @@ import { usePlanModel } from '../plan/usePlanModel';
 import { useDismissHandover, useNextPass, useSetTaskStep, useStepDone } from '../queries';
 import { useSessions } from '../readQueries';
 import type { Handover } from '../wire';
+import { useAdeBoardUiStore } from './adeBoardUi';
+import { useAdeOpsStore } from './adeOps';
 
 // The stage-change dialog: which task it is open for, the target stage and the handover notes typed
 // for it. One concern: the stage move with notes. Every opener (step mover, task menu, Next stage action,
@@ -19,6 +21,8 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
   const nextPass = useNextPass();
   const dismissM = useDismissHandover();
   const sessions = useSessions();
+  const ops = useAdeOpsStore();
+  const ui = useAdeBoardUiStore();
 
   const taskId = ref<string | null>(null);
   /** Opened by the routed `handover` prompt rather than by a board action. */
@@ -112,45 +116,49 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     seeded.value = null;
   }
 
-  /** Sends the move; notes go along only when they differ from the draft. */
-  const move = useAsyncAction(async () => {
+  /** Closes at once; the move runs as the task's op (chip, toast past 2 s or on failure). */
+  async function submit(): Promise<boolean> {
     const c = card.value;
     const m = moves.value;
-    if (!c || !m || !toStepId.value) return;
+    if (!c || !m || !toStepId.value) return false;
+    const id = c.task.id;
+    const name = c.title;
     const sendNotes = notes.value !== prefill.value ? { notes: notes.value } : {};
     const closing =
       closable.value.length > 0 && closeChoice.value === 'close' ? { closeSessions: true } : {};
-    if (mode.value === 'pass') {
-      await nextPass.mutateAsync({
-        taskId: c.task.id,
-        fromStepId: fromStepId.value,
-        ...(notes.value.trim() === '' ? {} : { notes: notes.value }),
-        ...closing,
-      });
-      close();
-      return;
-    }
+    const from = fromStepId.value;
+    const to = toStepId.value;
     const manual = c.progress.step?.kind === 'manual' && !c.progress.finished;
-    if (manual && toStepId.value === m.next?.id) {
-      await stepDone.mutateAsync({ taskId: c.task.id, ...sendNotes, ...closing });
-    } else {
-      await setStep.mutateAsync({
-        taskId: c.task.id,
-        stepId: toStepId.value,
-        fromStepId: fromStepId.value,
-        ...sendNotes,
-        ...closing,
-      });
-    }
+    const isPass = mode.value === 'pass';
+    const passNotes = notes.value.trim() === '' ? {} : { notes: notes.value };
+    const advance = manual && to === m.next?.id;
     close();
-  });
+    const kind = isPass ? 'nextPass' : 'setStep';
+    const ok = await ops.run({ id: `${kind}:${id}`, kind, taskId: id, name }, async () => {
+      if (isPass) {
+        await nextPass.mutateAsync({ taskId: id, fromStepId: from, ...passNotes, ...closing });
+      } else if (advance) {
+        await stepDone.mutateAsync({ taskId: id, ...sendNotes, ...closing });
+      } else {
+        await setStep.mutateAsync({
+          taskId: id,
+          stepId: to,
+          fromStepId: from,
+          ...sendNotes,
+          ...closing,
+        });
+      }
+    });
+    if (!ok) ui.select(id);
+    return true;
+  }
 
   /** Not now on the routed prompt: keeps the draft and withdraws the popup. */
   const dismissal = useAsyncAction(async () => {
     if (taskId.value) await dismissM.mutateAsync({ taskId: taskId.value });
   });
 
-  const error = computed(() => move.error.value ?? dismissal.error.value ?? '');
+  const error = computed(() => dismissal.error.value ?? '');
   /** Edits the draft would lose on close. */
   const dirty = computed(() => notes.value !== prefill.value);
 
@@ -161,7 +169,6 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     toStepId,
     notes,
     error,
-    pending: move.pending,
     dirty,
     card,
     moves,
@@ -174,7 +181,7 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     open,
     openPass,
     close,
-    submit: move.run,
+    submit,
     dismiss: dismissal.run,
   };
 });
