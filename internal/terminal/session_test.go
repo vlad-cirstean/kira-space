@@ -400,3 +400,47 @@ func TestSessionDraftFollowsKeystrokes(t *testing.T) {
 	check("end of paste keeps the draft", true, func() error { return reg.Write("draft", []byte("b\x1b[201~")) })
 	check("typed then enter in one write", false, func() error { return reg.Write("draft", []byte("go\r")) })
 }
+
+func TestRegistryOnChangeCoalesces(t *testing.T) {
+	reg := NewRegistry()
+	block, entered := make(chan struct{}), make(chan struct{}, 100)
+	var inflight, maxInflight, calls atomic.Int32
+	reg.OnChange = func() {
+		n := inflight.Add(1)
+		for {
+			m := maxInflight.Load()
+			if n <= m || maxInflight.CompareAndSwap(m, n) {
+				break
+			}
+		}
+		calls.Add(1)
+		entered <- struct{}{}
+		<-block
+		inflight.Add(-1)
+	}
+	dir := t.TempDir()
+	opened := make(chan struct{})
+	go func() {
+		defer close(opened)
+		for i := range 10 {
+			col := &collector{}
+			sess, err := reg.Open(OpenParams{ID: "s" + strconv.Itoa(i), WindowKey: "w", Cwd: dir, Cols: 80, Rows: 24, Agent: true, OnData: col.onData, OnExit: col.onExit})
+			if err != nil {
+				t.Errorf("Open %d: %v", i, err)
+				return
+			}
+			t.Cleanup(sess.Close)
+		}
+	}()
+	select {
+	case <-opened:
+	case <-time.After(20 * time.Second):
+		t.Fatal("Open blocked while OnChange was blocked")
+	}
+	close(block)
+	waitFor(t, 5*time.Second, func() bool { return calls.Load() >= 2 })
+	reg.changeWG.Wait()
+	if got := maxInflight.Load(); got != 1 {
+		t.Fatalf("OnChange ran %d at once, want 1", got)
+	}
+}
