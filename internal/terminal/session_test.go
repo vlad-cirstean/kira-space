@@ -376,20 +376,27 @@ func TestRegistryOpenRacingCloseWindowRegistersNothing(t *testing.T) {
 	}
 }
 
-func TestSessionTypedIgnoresReportsAndInjection(t *testing.T) {
-	reg, sess, _ := openTestSession(t, "typed", t.TempDir(), 80, 24)
+func TestSessionDraftFollowsKeystrokes(t *testing.T) {
+	reg, sess, _ := openTestSession(t, "draft", t.TempDir(), 80, 24)
 	check := func(label string, want bool, write func() error) {
 		t.Helper()
 		if err := write(); err != nil {
 			t.Fatalf("%s: %v", label, err)
 		}
-		if got := !reg.Typed("typed").IsZero(); got != want {
-			t.Fatalf("%s: typed = %v, want %v", label, got, want)
+		if got := reg.Draft("draft"); got != want {
+			t.Fatalf("%s: draft = %v, want %v", label, got, want)
 		}
 	}
-	check("inject", false, func() error { return reg.Inject("typed", []byte("pasted\r")) })
-	check("focus and mouse reports", false, func() error {
-		return sess.Write([]byte("\x1b[I\x1b[<0;10;5M\x1b[<0;10;5m\x1b[O"))
+	check("inject", false, func() error { return reg.Inject("draft", []byte("pasted\r")) })
+	check("reports and arrows", false, func() error {
+		return sess.Write([]byte("\x1b[I\x1b[<0;10;5M\x1b[<0;10;5m\x1b[O\x1b[A"))
 	})
-	check("a key press", true, func() error { return reg.Write("typed", []byte("a")) })
+	check("a key press", true, func() error { return reg.Write("draft", []byte("a")) })
+	check("inject keeps the draft", true, func() error { return reg.Inject("draft", []byte("x\r")) })
+	check("enter submits", false, func() error { return reg.Write("draft", []byte("\r")) })
+	check("paste with a newline", true, func() error { return reg.Write("draft", []byte("\x1b[200~a\rb\x1b[201~")) })
+	check("ctrl-u clears", false, func() error { return reg.Write("draft", []byte{0x15}) })
+	check("paste split across writes", true, func() error { return reg.Write("draft", []byte("\x1b[200~a\r")) })
+	check("end of paste keeps the draft", true, func() error { return reg.Write("draft", []byte("b\x1b[201~")) })
+	check("typed then enter in one write", false, func() error { return reg.Write("draft", []byte("go\r")) })
 }

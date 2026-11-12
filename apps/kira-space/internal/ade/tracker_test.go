@@ -631,31 +631,82 @@ func TestTracker_WorkingNeedsAnOpenToolCall(t *testing.T) {
 	}
 }
 
-func TestTracker_SendIfIdleHoldsBackAfterUserTyping(t *testing.T) {
+func TestTracker_SendIfIdleHoldsBackOverADraft(t *testing.T) {
 	tr, _, live, clock := newTestTracker(t)
 	res := composeAndSpawn(t, tr, live, PrepareArgs{TaskID: "t1", Cwd: "/repo"})
 	sessions, _ := listSessions(tr)
 	recordID := sessions[0].ID
-	var typed time.Time
-	tr.deps.LastInput = func(string) time.Time { return typed }
+	draft := false
+	tr.deps.HasDraft = func(string) bool { return draft }
 
 	stop := func() {
 		clock.advance(time.Second)
 		tr.HandleEvent(harness.AgentEvent{TerminalID: res.TerminalID, Event: harness.EventTurnEnd})
 	}
+	// Text typed while the turn ran and left unsent still waits when the turn ends.
+	draft = true
 	stop()
-	clock.advance(time.Second)
-	typed = clock.Now()
 	if sent, err := tr.SendIfIdle(recordID, "hi"); sent || err != nil {
 		t.Fatalf("SendIfIdle over a draft = %v, %v; want held back", sent, err)
 	}
 	if len(live.logs) != 0 {
 		t.Fatalf("terminal written despite a draft: %v", live.logs)
 	}
-	// Typing before the turn went idle (the prompt that started it) does not block.
-	stop()
+	// Once the draft was submitted or cleared the idle turn takes the message.
+	draft = false
 	if sent, err := tr.SendIfIdle(recordID, "hi"); !sent || err != nil {
-		t.Fatalf("SendIfIdle after a fresh Stop = %v, %v; want sent", sent, err)
+		t.Fatalf("SendIfIdle without a draft = %v, %v; want sent", sent, err)
+	}
+}
+
+func TestTracker_WorkingAtAPermissionPrompt(t *testing.T) {
+	tr, _, live, clock := newTestTracker(t)
+	res := composeAndSpawn(t, tr, live, PrepareArgs{TaskID: "t1", Cwd: "/repo"})
+	sessions, _ := listSessions(tr)
+	recordID := sessions[0].ID
+	ev := func(kind harness.EventKind, id string, needsInput bool) {
+		tr.HandleEvent(harness.AgentEvent{TerminalID: res.TerminalID, Event: kind, ToolName: "Bash", ToolUseID: id, NeedsInput: needsInput})
+	}
+	const ceiling = 30 * time.Minute
+
+	ev(harness.EventToolStart, "a", false)
+	ev(harness.EventNotification, "", true)
+	clock.advance(12 * time.Minute)
+	if !tr.Working(recordID, ceiling) {
+		t.Fatal("a holder waiting at a permission prompt does not count as working")
+	}
+	clock.advance(19 * time.Minute)
+	if tr.Working(recordID, ceiling) {
+		t.Fatal("an abandoned permission prompt still counts as working past the ceiling")
+	}
+	// A question prompt with no open tool call is not a tool run.
+	ev(harness.EventPrompt, "", false)
+	ev(harness.EventNotification, "", true)
+	if tr.Working(recordID, ceiling) {
+		t.Fatal("a prompt with no open tool call counts as working")
+	}
+}
+
+func TestTracker_WorkingPairsToolCallsByID(t *testing.T) {
+	tr, _, live, _ := newTestTracker(t)
+	res := composeAndSpawn(t, tr, live, PrepareArgs{TaskID: "t1", Cwd: "/repo"})
+	sessions, _ := listSessions(tr)
+	recordID := sessions[0].ID
+	ev := func(kind harness.EventKind, id string) {
+		tr.HandleEvent(harness.AgentEvent{TerminalID: res.TerminalID, Event: kind, ToolName: "Bash", ToolUseID: id})
+	}
+	const ceiling = 30 * time.Minute
+
+	ev(harness.EventToolStart, "a")
+	ev(harness.EventToolStart, "b")
+	ev(harness.EventToolEnd, "b")
+	ev(harness.EventToolEnd, "b") // a repeated end must not close "a"
+	if !tr.Working(recordID, ceiling) {
+		t.Fatal("call a is open, but the record is not working")
+	}
+	ev(harness.EventToolEnd, "a")
+	if tr.Working(recordID, ceiling) {
+		t.Fatal("working after every id'd call ended")
 	}
 }
 

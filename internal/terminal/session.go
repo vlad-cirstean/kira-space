@@ -12,10 +12,8 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"regexp"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -76,8 +74,9 @@ type Session struct {
 	// own, e.g. `exit`/Ctrl-D).
 	unregister func()
 
-	// typedAt is the unix-nano time of the last write that carried a key press (see Typed); 0 for none.
-	typedAt atomic.Int64
+	// input tracks whether the user left text in the agent's prompt box (see Draft).
+	inputMu sync.Mutex
+	input   inputState
 
 	mu     sync.Mutex
 	closed bool // true once Close has begun, or the reader goroutine has observed the process exit
@@ -240,26 +239,21 @@ func waitExitCode(cmd *exec.Cmd) (int, error) {
 	return -1, err
 }
 
-// reports matches the reports a terminal sends on its own: focus in/out and SGR mouse.
-var reports = regexp.MustCompile(`\x1b\[[IO]|\x1b\[<[0-9;]*[Mm]`)
-
-// Typed is when the user last pressed a key here, from writes made through Write; the zero time for
-// none. Focus and mouse reports do not count.
-func (s *Session) Typed() time.Time {
-	n := s.typedAt.Load()
-	if n == 0 {
-		return time.Time{}
-	}
-	return time.Unix(0, n)
+// Draft reports whether the user typed or pasted into the terminal since the last Enter, Ctrl-C or
+// Ctrl-U: text a full-screen agent keeps in its prompt box. Writes through Inject do not count.
+func (s *Session) Draft() bool {
+	s.inputMu.Lock()
+	defer s.inputMu.Unlock()
+	return s.input.draft
 }
 
 // Write sends b to the pty's master fd — a keystroke, a paste, a mouse report. A no-op, not an
 // error, once the session is closed (§4 rule 3): the renderer can have a keystroke in flight when
 // a shell exits, and turning that into a visible error would be noise.
 func (s *Session) Write(b []byte) error {
-	if len(reports.ReplaceAll(b, nil)) > 0 {
-		s.typedAt.Store(time.Now().UnixNano())
-	}
+	s.inputMu.Lock()
+	s.input.feed(b)
+	s.inputMu.Unlock()
 	return s.Inject(b)
 }
 
@@ -514,12 +508,12 @@ func (r *Registry) Inject(id string, b []byte) error {
 	return nil
 }
 
-// Typed is when the user last pressed a key in id's session; the zero time for none or no session.
-func (r *Registry) Typed(id string) time.Time {
+// Draft reports whether id's session holds typed text no Enter submitted; false for no session.
+func (r *Registry) Draft(id string) bool {
 	if sess := r.get(id); sess != nil {
-		return sess.Typed()
+		return sess.Draft()
 	}
-	return time.Time{}
+	return false
 }
 
 // Resize is a no-op for an id with no live session, for the same reason Write is.

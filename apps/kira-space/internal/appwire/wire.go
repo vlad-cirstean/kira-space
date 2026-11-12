@@ -108,7 +108,7 @@ func wireTracker(
 ) (*ade.Tracker, *harness.Hooks) {
 	tracker := ade.NewTracker(ade.TrackerDeps{
 		Agent: agents, ContextFile: contextFile, Store: repositories.AdeSessions, LiveAgents: registry.AgentSessions,
-		WriteTerminal: registry.Inject, LastInput: registry.Typed, Now: time.Now, Grace: grace,
+		WriteTerminal: registry.Inject, HasDraft: registry.Draft, Now: time.Now, Grace: grace,
 		OnChange: func() { bridge.AdeTaskSessionsChanged(events) },
 	})
 

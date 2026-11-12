@@ -53,9 +53,9 @@ type TrackerDeps struct {
 	Store         *repos.AdeSessionsRepo
 	LiveAgents    func() []terminal.AgentSession
 	WriteTerminal func(terminalID string, data []byte) error
-	// LastInput is when the user last typed into a terminal (zero when never or unknown). SendIfIdle
-	// holds back while the user typed since the turn went idle.
-	LastInput func(terminalID string) time.Time
+	// HasDraft reports whether the user left text in a terminal's prompt box, typed while the agent
+	// worked or after. SendIfIdle holds back while one waits: Enter would submit it with the message.
+	HasDraft func(terminalID string) bool
 	Now       func() time.Time
 	// OnChange is called whenever a persisted record's own state changes (a new or revived
 	// session, a stop, a agent_session_id update after /clear) — main.go wires it to
@@ -200,10 +200,9 @@ type Tracker struct {
 	// on, so that Stop must not read as idle.
 	turn         map[string]turnState
 	suppressIdle map[string]bool
-	// tools counts tool calls started and not yet ended per record: a long tool run is silent, so only
-	// it keeps a lease holder alive past the TTL. idleAt is when the turn last went idle.
-	tools  map[string]int
-	idleAt map[string]time.Time
+	// tools holds the tool calls started and not yet ended per record: a long tool run is silent, so
+	// only it keeps a lease holder alive past the TTL.
+	tools map[string]openTools
 	// onIdle fires when a record moves into turnIdle, onActivity on every event of a live record,
 	// replyFn answers Stop and UserPromptSubmit. All run with mu released.
 	onIdle     func(recordID string)
@@ -243,8 +242,7 @@ func NewTracker(deps TrackerDeps) *Tracker {
 		fresh:          map[string]bool{},
 		turn:           map[string]turnState{},
 		suppressIdle:   map[string]bool{},
-		tools:          map[string]int{},
-		idleAt:         map[string]time.Time{},
+		tools:          map[string]openTools{},
 		graceTimers:    map[string]*time.Timer{},
 	}
 }
@@ -739,7 +737,6 @@ func (t *Tracker) clearTurnLocked(recordID string) {
 	delete(t.turn, recordID)
 	delete(t.suppressIdle, recordID)
 	delete(t.tools, recordID)
-	delete(t.idleAt, recordID)
 }
 
 // forgetLocked drops every in-memory trace of a live record and returns its activity clock (now
@@ -924,14 +921,14 @@ func (t *Tracker) trackStatusLocked(recordID string, ev harness.AgentEvent) (bac
 	switch ev.Event {
 	case harness.EventToolStart:
 		t.turn[recordID] = turnBusy
-		t.tools[recordID]++
+		t.tools[recordID] = t.tools[recordID].start(ev.ToolUseID)
 		if ev.Wakes && ev.AgentID == "" {
 			t.wake[recordID] = true
 		}
 	case harness.EventToolEnd:
 		t.turn[recordID] = turnBusy
-		if t.tools[recordID] > 0 {
-			t.tools[recordID]--
+		if open, ok := t.tools[recordID]; ok {
+			t.tools[recordID] = open.end(ev.ToolUseID)
 		}
 	case harness.EventPrompt:
 		t.turn[recordID] = turnBusy
@@ -967,7 +964,6 @@ func (t *Tracker) trackStatusLocked(recordID string, ev harness.AgentEvent) (bac
 		}
 		if markUnseen {
 			t.turn[recordID] = turnIdle
-			t.idleAt[recordID] = t.deps.Now()
 		}
 	}
 	return backgroundChanged, markUnseen
@@ -1024,13 +1020,46 @@ const (
 	turnInput                    // a permission or question prompt waits for the user
 )
 
-// Working reports whether recordID is inside a tool call that began less than ceiling ago. A tool
-// run is silent for as long as it takes, so it keeps a lease alive. A turn that went quiet after a
-// prompt or a finished tool call (the user pressed Esc: no Stop hook runs) does not.
+// openTools is a record's tool calls without an end event. A call with an id pairs by it, so a
+// dropped end event for one call never hides the end of another; a call without one is only counted.
+type openTools struct {
+	ids  map[string]struct{}
+	anon int
+}
+
+func (o openTools) count() int { return len(o.ids) + o.anon }
+
+func (o openTools) start(id string) openTools {
+	if id == "" {
+		o.anon++
+		return o
+	}
+	if o.ids == nil {
+		o.ids = map[string]struct{}{}
+	}
+	o.ids[id] = struct{}{}
+	return o
+}
+
+func (o openTools) end(id string) openTools {
+	if id == "" {
+		if o.anon > 0 {
+			o.anon--
+		}
+		return o
+	}
+	delete(o.ids, id)
+	return o
+}
+
+// Working reports whether recordID is inside a tool call whose last event came less than ceiling
+// ago. A tool run is silent for as long as it takes, so it keeps a lease alive; so does a call
+// waiting at a permission prompt, since PreToolUse runs before the prompt. A turn that went quiet
+// after a prompt or a finished tool call (the user pressed Esc: no Stop hook runs) does not.
 func (t *Tracker) Working(recordID string, ceiling time.Duration) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.turn[recordID] != turnBusy || t.tools[recordID] == 0 {
+	if state := t.turn[recordID]; (state != turnBusy && state != turnInput) || t.tools[recordID].count() == 0 {
 		return false
 	}
 	last, ok := t.lastActive[recordID]
@@ -1039,7 +1068,7 @@ func (t *Tracker) Working(recordID string, ceiling time.Duration) bool {
 
 // SendIfIdle pastes message into recordID's terminal only while its turn state is idle, checked in
 // the same critical section as the write. It never types into a busy agent, over a permission prompt
-// or after the user typed since the turn went idle. The record turns busy before the lock drops, so
+// or over text the user left in the prompt box. The record turns busy before the lock drops, so
 // two sends cannot both pass.
 func (t *Tracker) SendIfIdle(recordID, message string) (bool, error) {
 	t.mu.Lock()
@@ -1049,7 +1078,7 @@ func (t *Tracker) SendIfIdle(recordID, message string) (bool, error) {
 		return false, nil
 	}
 	// A draft in the prompt box would be submitted with the message: leave it to the hook reply.
-	if t.deps.LastInput != nil && t.deps.LastInput(terminalID).After(t.idleAt[recordID]) {
+	if t.deps.HasDraft != nil && t.deps.HasDraft(terminalID) {
 		return false, nil
 	}
 	paste, enter := pasteBytes(message)
