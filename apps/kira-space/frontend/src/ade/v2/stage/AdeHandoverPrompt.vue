@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RoutedPrompt } from '@shared/domain/prompts';
 import { useTimeout } from '@vueuse/core';
-import { computed, onBeforeUnmount, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useHandovers, useTaskArtifacts } from '../queries';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import AdeStageDialog from './AdeStageDialog.vue';
@@ -14,7 +14,9 @@ const store = useAdeStageDialogStore();
 
 // The dialog opens once, with the text and link strip in its first frame. The board snapshot can
 // trail the prompt, so the draft comes from the DB-only handovers read. Artifacts can be slow
-// (issue tracker): wait for them only briefly, never fail on them.
+// (issue tracker): wait for them only briefly, never fail on them. Only that first open waits for
+// fresh data: a later board push refetches the reads and must not close and reseed the dialog
+// under the user's typed notes.
 const handovers = useHandovers(() => props.entry.ref);
 const artifacts = useTaskArtifacts(() => props.entry.ref);
 const ARTIFACTS_GRACE_MS = 400;
@@ -26,10 +28,12 @@ const ready = computed(
     (artifacts.isFetched.value || graceOver.value),
 );
 
+const opened = ref(false);
 watch(
   ready,
   (r) => {
-    if (!r) return;
+    if (!r || opened.value) return;
+    opened.value = true;
     const seed = handovers.data.value?.handovers.find((h) => h.state === 'draft' && !h.dismissed);
     store.open({ taskId: props.entry.ref, routed: true, seed });
   },
@@ -46,5 +50,5 @@ async function notNow(): Promise<void> {
 </script>
 
 <template>
-  <AdeStageDialog v-if="ready" routed @close="emit('hide')" @not-now="notNow" />
+  <AdeStageDialog v-if="opened" routed @close="emit('hide')" @not-now="notNow" />
 </template>

@@ -7,6 +7,7 @@ import { armFirstFrame, firstFrame, framesLate } from './support/firstFrame';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 import { stubClipboard } from './support/logSpecs';
+import { emitWailsEvent } from './support/mockRuntime';
 import { dragAcross } from './support/selection';
 import type { ControlSnapshot } from './support/types';
 
@@ -126,6 +127,18 @@ test('a stale board still shows the draft text in the dialog first frame', async
   expect(framesLate(frame)).toBe(0);
   expect(frame.textAtDialogFrame).toContain(BODY);
   await expect(page.locator(t('ade-stage-notes')).locator('.ProseMirror')).toHaveText(BODY);
+});
+
+test('a board push while the dialog is open keeps the typed notes', async ({ relaunch }) => {
+  const { page, control } = await openRouted(relaunch);
+  const notes = page.locator(t('ade-stage-notes')).locator('.ProseMirror');
+  await notes.fill(`${BODY} Typed.`);
+  const before = calls(control, IPC.adeTaskHandovers).length;
+  await emitWailsEvent(page, IPC.adeTaskBoardChanged, null);
+  // The push refetches the handovers read; the dialog must not close and reseed meanwhile.
+  await expect.poll(() => calls(control, IPC.adeTaskHandovers).length).toBeGreaterThan(before);
+  await expect(page.locator(t('ade-stage-dialog'))).toBeVisible();
+  await expect(notes).toHaveText(`${BODY} Typed.`);
 });
 
 test('Move with the draft untouched sends no notes', async ({ relaunch }) => {
