@@ -36,6 +36,15 @@ type TaskRepo struct {
 	Branch     *string   `json:"branch"`
 	Worktree   string    `json:"worktree"`
 	Setup      SetupInfo `json:"setup"`
+	// Mismatch is set when the branch is not checked out in the row's own worktree folder.
+	Mismatch *WorktreeMismatch `json:"mismatch,omitempty"`
+}
+
+// WorktreeMismatch says what the row's own folder holds instead of the task branch. CheckedOut is
+// "HEAD" for a detached commit.
+type WorktreeMismatch struct {
+	Folder     string `json:"folder"`
+	CheckedOut string `json:"checkedOut"`
 }
 
 // RegisteredRepo is a repo imported into Kira Space; only these can be declared.
@@ -122,6 +131,26 @@ type RenameBranchResult struct {
 	Next     string `json:"next"`
 }
 
+// BranchChanged is change_branch's success outcome; denied, failed and timeout reuse the request_branches words.
+const BranchChanged = "changed"
+
+// ChangeBranchArgs asks to re-point the task's branch From at the existing local branch To.
+type ChangeBranchArgs struct {
+	Repo string `json:"repo"`
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+// ChangeBranchResult is change_branch's answer.
+type ChangeBranchResult struct {
+	Repo     string `json:"repo"`
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Outcome  string `json:"outcome"`
+	Worktree string `json:"worktree"`
+	Next     string `json:"next"`
+}
+
 // AttachProofResult is one proof attached through a report_artifacts item of kind proof; Status is "attached".
 type AttachProofResult struct {
 	Name   string `json:"name"`
@@ -178,6 +207,7 @@ type SpaceTools interface {
 	RequestBranches(ctx context.Context, call SpaceCall, branches []BranchSpec) (RequestBranchesResult, error)
 	BranchStatus(ctx context.Context, taskID, repo, branch string, wait time.Duration) (BranchInfo, error)
 	RenameBranch(ctx context.Context, call SpaceCall, args RenameBranchArgs) (RenameBranchResult, error)
+	ChangeBranch(ctx context.Context, call SpaceCall, args ChangeBranchArgs) (ChangeBranchResult, error)
 	ReportArtifacts(ctx context.Context, call SpaceCall, in []ArtifactInput) (ReportArtifactsResult, error)
 	// AttachProof shows a closed proof session, by name, in the task's notes chain; report_artifacts
 	// kind proof calls it.
@@ -267,6 +297,7 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 	s.addDeclareReposTool(srv)
 	s.addRequestBranchesTool(srv)
 	s.addRenameBranchTool(srv)
+	s.addChangeBranchTool(srv)
 	s.addReportArtifactsTool(srv)
 	s.addOperationsTool(srv)
 }
@@ -410,6 +441,30 @@ func (s *Server) addRenameBranchTool(srv *mcp.Server) {
 		res, err := s.space.RenameBranch(ctx, call, args)
 		if err != nil {
 			return fail("rename_branch", err), RenameBranchResult{}, nil
+		}
+		return nil, res, nil
+	})
+}
+
+func (s *Server) addChangeBranchTool(srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "change_branch",
+		Description: llmprompts.HeadlessToolChangeBranch.Text(s.prompts, llmprompts.NoVars{}),
+		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[ChangeBranchArgs](s.prompts, llmprompts.HeadlessToolChangeBranch.ID(), nil), "repo", "from", "to"),
+	}, func(ctx context.Context, req *mcp.CallToolRequest, args ChangeBranchArgs) (*mcp.CallToolResult, ChangeBranchResult, error) {
+		call, bad := s.spaceTask(req)
+		if bad != nil {
+			return bad, ChangeBranchResult{}, nil
+		}
+		args.From, args.To = strings.TrimSpace(args.From), strings.TrimSpace(args.To)
+		if args.From == "" || args.To == "" || args.From == args.To {
+			return toolError("from and to must be two different branch names."), ChangeBranchResult{}, nil
+		}
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
+		res, err := s.space.ChangeBranch(ctx, call, args)
+		if err != nil {
+			return fail("change_branch", err), ChangeBranchResult{}, nil
 		}
 		return nil, res, nil
 	})

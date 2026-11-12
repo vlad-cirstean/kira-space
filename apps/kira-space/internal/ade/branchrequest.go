@@ -30,6 +30,7 @@ const (
 
 	branchKindBranch   = "branch"
 	branchKindWorktree = "worktree"
+	branchKindSwitch   = "switch"
 
 	sourceRun        = "run"
 	sourceSession    = "session"
@@ -103,6 +104,8 @@ func itemOfBranchRequest(v adewire.BranchRequest) approvals.Item {
 	switch {
 	case len(kinds) == 1 && kinds[branchKindRename]:
 		class = branchKindRename
+	case len(kinds) == 1 && kinds[branchKindSwitch]:
+		class = "change"
 	case len(kinds) > 0 && !kinds[branchKindRename]:
 		class = "create"
 	}

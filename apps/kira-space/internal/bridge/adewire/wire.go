@@ -537,6 +537,8 @@ type BranchHolder struct {
 type BranchDetached struct {
 	Worktree string       `json:"worktree"`
 	Holder   BranchHolder `json:"holder"`
+	// Head is the local branch checked out in Worktree now; "" = a detached commit or nothing.
+	Head string `json:"head"`
 }
 
 // BranchPeer is another live row of the same repo and branch name.

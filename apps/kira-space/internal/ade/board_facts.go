@@ -491,7 +491,7 @@ func (b *TaskBoard) fillAttach(sc *boardCtx, wb *adewire.Branch, sb model.AdeTas
 		case at.holder != "":
 			h = adewire.BranchHolder{Kind: holderOther, Worktree: at.holder}
 		}
-		wb.Detached = &adewire.BranchDetached{Worktree: own, Holder: h}
+		wb.Detached = &adewire.BranchDetached{Worktree: own, Holder: h, Head: headIn(sc.inv, own)}
 	}
 	for _, peer := range sc.live {
 		if peer.ID == sb.ID || peer.Name == "" || peer.Name != sb.Name {

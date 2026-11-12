@@ -89,6 +89,22 @@ type attachment struct {
 	detached bool
 	// owner is the other live row whose own folder holds the branch; nil when none.
 	owner *model.AdeTaskBranch
+	// head is the local branch checked out in the own folder; "" = none or a detached commit.
+	head string
+}
+
+// headIn is the local branch git has checked out in own; "" when none.
+func headIn(inv []porcelain.InventoryRef, own string) string {
+	if own == "" {
+		return ""
+	}
+	own = filepath.Clean(own)
+	for _, r := range inv {
+		if r.Remote == "" && r.WorktreePath != "" && filepath.Clean(r.WorktreePath) == own {
+			return r.Short
+		}
+	}
+	return ""
 }
 
 // resolveAttachment derives the attach state of sb from git's holder path, the live rows' own
@@ -184,7 +200,9 @@ func (c *attachCache) worktree(ctx context.Context, sb model.AdeTaskBranch) (att
 		_, statErr := os.Lstat(own)
 		ownExists = statErr == nil
 	}
-	return resolveAttachment(sb, own, holder, f.owners, ownExists), nil
+	at := resolveAttachment(sb, own, holder, f.owners, ownExists)
+	at.head = headIn(f.inv, own)
+	return at, nil
 }
 
 // rowWorktree reads the row's attach state: its repo's inventory, registered name and live rows.

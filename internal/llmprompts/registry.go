@@ -974,6 +974,18 @@ var (
 	_ = arg(HeadlessToolRenameBranch.id, "renameRemote", spaceApp, NextCall, `true proposes renaming the remote branch too. The user decides. Default false.`, NoVars{})
 )
 
+// HeadlessToolChangeBranch describes the change_branch tool.
+var HeadlessToolChangeBranch = define(Entry{
+	ID: "headless.tool.change_branch", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "change_branch",
+	Default: `Ask the user to approve pointing your task's branch at another existing local branch; waits for the answer. Use when the task folder holds a different branch than the task shows, or you must work on another existing branch. The folder and sessions stay; git switch runs there if needed. Never creates a branch: use request_branches. Outcome: changed, denied, failed or timeout. Refused for main, integration and checked-out-elsewhere branches, and a dirty folder that needs a switch.`,
+}, NoVars{})
+
+var (
+	_ = arg(HeadlessToolChangeBranch.id, "repo", spaceApp, NextCall, `Task repo: nickname, name or code repo id.`, NoVars{})
+	_ = arg(HeadlessToolChangeBranch.id, "from", spaceApp, NextCall, `Task branch to re-point.`, NoVars{})
+	_ = arg(HeadlessToolChangeBranch.id, "to", spaceApp, NextCall, `Existing local branch to work on instead.`, NoVars{})
+)
+
 // HeadlessToolFetchRemote describes the fetch_remote tool.
 var HeadlessToolFetchRemote = define(Entry{
 	ID: "headless.tool.fetch_remote", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "fetch_remote",

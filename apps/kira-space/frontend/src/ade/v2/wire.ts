@@ -249,6 +249,8 @@ interface BranchHolder {
 interface BranchDetached {
   worktree: string;
   holder: BranchHolder;
+  /** Local branch checked out in the folder now; '' = detached commit or nothing. */
+  head: string;
 }
 /** Another live row of the same repo and branch name. */
 interface BranchPeer {

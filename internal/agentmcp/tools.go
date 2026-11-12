@@ -20,6 +20,7 @@ var (
 		{Server: ServerName, Tool: "declare_repos"},
 		{Server: ServerName, Tool: "request_branches"},
 		{Server: ServerName, Tool: "rename_branch"},
+		{Server: ServerName, Tool: "change_branch"},
 		{Server: ServerName, Tool: "report_artifacts"},
 		{Server: ServerName, Tool: "operations"},
 	}

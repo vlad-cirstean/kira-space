@@ -94,6 +94,7 @@
         "mcp__kira-space__declare_repos",
         "mcp__kira-space__request_branches",
         "mcp__kira-space__rename_branch",
+        "mcp__kira-space__change_branch",
         "mcp__kira-space__report_artifacts",
         "mcp__kira-space__operations"
       ],
@@ -142,6 +143,7 @@
         "mcp__kira-space__declare_repos",
         "mcp__kira-space__request_branches",
         "mcp__kira-space__rename_branch",
+        "mcp__kira-space__change_branch",
         "mcp__kira-space__report_artifacts",
         "mcp__kira-space__operations"
       ],
@@ -171,6 +173,7 @@
       "mcp__kira-space__declare_repos",
       "mcp__kira-space__request_branches",
       "mcp__kira-space__rename_branch",
+      "mcp__kira-space__change_branch",
       "mcp__kira-space__report_artifacts",
       "mcp__kira-space__operations"
     ],

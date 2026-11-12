@@ -15,6 +15,7 @@
       "conflictsIfRebased": [],
       "deployments": [],
       "detached": {
+        "head": "",
         "holder": {
           "branchId": "<masked>",
           "kind": "task",
