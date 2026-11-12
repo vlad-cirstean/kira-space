@@ -26,6 +26,9 @@ Result: _pending_
 - Delete branch and close task: dialog dismisses once confirmed; progress shows as status in relevant places (task row, branch row, toast) until done.
 - Proof-ready dialog: closes after open or close. Title order: task title first, proof title second.
 - Studio MCP dialogs: text selectable and copyable (API host and all other fields).
+- MCP prompt dialogs (approval, query, request) use the full dialog space with a fixed layout: approve/deny stay at the same screen position whatever the query or request length (fixed footer, content fills the rest).
+- Query/request text gets maximum room: larger dialog, content area flex-1, scroll only on real overflow.
+- Exactly one prompt per dialog: others queue and the next shows once the current one is resolved. Root-cause the stacking; UI spec, plus flow test if backend-involved.
 
 Result: _pending_
 
