@@ -138,7 +138,7 @@ test('contract: a browse item names the masked read and offers the review checkb
   const card = page.locator(`[data-testid="approval-item-${it.id}"]`);
   await expect(card.locator('[data-testid="approval-operation"]')).toHaveText('Masked read');
   await expect(card).toContainText('SELECT');
-  const box = card.locator('[data-testid="db-mcp-approval-review-result"]');
+  const box = page.locator('[data-testid="db-mcp-approval-review-result"]');
   await expect(box).toBeVisible();
   await box.click();
   await page.click(`[data-testid="approval-approve-${it.id}"]`);

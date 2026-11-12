@@ -1,4 +1,5 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
+import { CHANNEL } from '@shared/protocol/events';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, studioTest, test } from './fixtures';
 import { FIXED_NOW, openPlan } from './support/adeV2';
@@ -6,6 +7,7 @@ import { seedApprovals } from './support/approvals';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
+import { emitWailsEvent } from './support/mockRuntime';
 
 // Contract approvals-space. Backend half: flows/adeflow TestBranchRequestMerge. Concurrent branch calls
 // of one task arrive as one approvals item with a group per call; the person picks per item.
@@ -161,6 +163,8 @@ studioTest.describe('databases module', () => {
     });
 
     await pushApprovals(page, items);
+    // One item shows at a time: reveal the one the contract denies.
+    await emitWailsEvent(page, CHANNEL.promptsReveal, { id: `approval:${answer.ids[0]}` });
     await page.click(`[data-testid="approval-deny-${answer.ids[0]}"]`);
     await expect
       .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)

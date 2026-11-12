@@ -28,7 +28,7 @@ test('contract: a pending write shows connection, operation and statement; Appro
   await expect(card.locator('[data-testid="approval-operation"]')).toHaveText(
     new RegExp(`^${item.operation.class}$`, 'i'),
   );
-  await expect(card.locator('[data-testid="approval-origin"]')).toContainText(item.origin.client);
+  await expect(page.locator('[data-testid="approval-origin"]')).toContainText(item.origin.client);
   await expect(card).toContainText(item.target.location);
   await expect(card.locator('[data-testid="approval-countdown"]')).toContainText('left');
   const nameBox = await name.boundingBox();

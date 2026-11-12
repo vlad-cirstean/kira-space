@@ -5,7 +5,7 @@ UI polish, dialog speed and MCP dialog fixes. Phases P617 to P619 run as paralle
 | Phase | Title | Status |
 |-------|-------|--------|
 | P617 | Task list and detail UI | Done |
-| P618 | Dialogs: speed, colors, background ops, proof, copy | Todo |
+| P618 | Dialogs: speed, colors, background ops, proof, copy | Done |
 | P619 | Settings MCP split and GitHub PR open | Done |
 | P620 | Resource leases: named queues, push wake-up | Todo |
 
@@ -31,7 +31,7 @@ Result: Done. Backend: `BranchDetached.head`, worktree mismatch in `task_info` a
 - Query/request text gets maximum room: larger dialog, content area flex-1, scroll only on real overflow.
 - Exactly one prompt per dialog: others queue and the next shows once the current one is resolved. Root-cause the stacking; UI spec, plus flow test if backend-involved.
 
-Result: _pending_
+Result: Done. Handover: backend emits the board event before the prompt event (flow test asserts order); dialog seeds its draft from the handovers query and gates on it; `AdeNotesEditor` builds its `Editor` synchronously and applies outside changes while empty. `FlushEditor` cap removed, height follows Monaco. Approvals: one item at a time with position badge, fixed footer in `ApprovalItemActions`, full-size dialog, bulk row invisible for one item; the stacking root cause was `v-for` over all items. Buttons: `dialog-approve` and `dialog-deny` variants, `dialog-primary` and `dialog-danger` retuned, all callers remapped, guard N17 (not N15, taken). Background ops: vue-sonner `Toaster`, `adeOps` store, `AdeOpStatus` chip on task and branch rows; dialog closes on confirm. Proof ready: title is the task, proof title below, Open hides first, `MarkSeen` withdraws only the ready popup. Copy: `select-text` on dialog content and tag text. First-frame measurement in `plans/P618.md`: every dialog 0 frames late (baseline from code analysis). Specs: ade-v2-background-ops, approvals-first-frame, approvals-one-at-a-time, studio/proof-ready, studio/studio-mcp-copy; alignment and dbmcp/approvals specs adapted to one item at a time.
 
 ## P619 Settings MCP split and GitHub PR open (Stream C)
 

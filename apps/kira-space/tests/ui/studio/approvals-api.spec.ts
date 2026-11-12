@@ -30,7 +30,7 @@ test('contract: a request shows the target, the credential and the masked variab
   const c = card(page, it);
   await expect(c.locator('[data-testid="approval-target-name"]')).toHaveText('127.0.0.1');
   await expect(c.locator('[data-testid="approval-operation"]')).toHaveText('GET');
-  await expect(c.locator('[data-testid="approval-origin"]')).toContainText(it.origin.client);
+  await expect(page.locator('[data-testid="approval-origin"]')).toContainText(it.origin.client);
   await expect(c.locator('[data-testid="api-approval-url"]')).toContainText('/echo');
   await expect(c.locator('[data-testid="approval-target-kind"]')).toHaveText('Dev');
   // A read sends its credential without a warning.
