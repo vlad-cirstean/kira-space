@@ -549,7 +549,7 @@ const SQL_FILES = [
   'apps/kira-space/internal/appwire/memoryops.go',
 ];
 const BUTTON_VARIANT_SETS: ReadonlyArray<{ words: readonly string[]; variant: string }> = [
-  { words: ['approve', 'accept', 'allow', 'send', 'approveAll'], variant: 'dialog-approve' },
+  { words: ['approve', 'accept', 'allow', 'send'], variant: 'dialog-approve' },
   { words: ['deny', 'reject', 'withhold', 'dontSend', 'denyAll'], variant: 'dialog-deny' },
   { words: ['delete', 'remove', 'archive', 'discard', 'force'], variant: 'dialog-danger' },
 ];

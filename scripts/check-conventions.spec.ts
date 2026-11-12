@@ -272,7 +272,9 @@ describe('N17 semantic button variant', () => {
     expect(hits(btn('dialog-approve', 'common.action.approve.label'))).toEqual([]);
     expect(hits(btn('dialog-primary', 'common.action.approve.label'))[0]?.rule).toBe('N17');
     expect(hits(btn('dialog', 'studio.x.allow.label'))).toHaveLength(1);
-    expect(hits(btn('dialog-primary', 'workbench.approvals.approveAll.label'))).toHaveLength(1);
+    expect(
+      hits(btn('dialog-primary', 'studio.dbMcp.approval.exemption.approve.label')),
+    ).toHaveLength(1);
     expect(hits(btn('dialog-primary', 'common.action.send.label'))).toHaveLength(1);
   });
   test('deny labels need dialog-deny', () => {
