@@ -35,6 +35,7 @@ import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import AdeAttention from './AdeAttention.vue';
 import AdeBranchTip from './AdeBranchTip.vue';
+import AdeOpStatus from './AdeOpStatus.vue';
 import AdeTagIcon from './AdeTagIcon.vue';
 import { ATTACH_GLYPH, BRANCH_ACTION_ICON, BRANCH_TAG_GLYPH, rowActionSplit } from './glyphs';
 import { type BranchRowModel, usePlanModel } from './usePlanModel';
@@ -304,6 +305,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
             row.repo
           }}</Badge
         >
+        <AdeOpStatus :task-id="row.branch.taskId" :branch-id="row.id" />
         <BranchChip
           v-if="row.base"
           :name="baseName"

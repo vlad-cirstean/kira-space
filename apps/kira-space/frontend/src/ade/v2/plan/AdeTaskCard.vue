@@ -29,6 +29,7 @@ import AdeUpdatesDot from '../updates/AdeUpdatesDot.vue';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
 import AdeAttention from './AdeAttention.vue';
 import AdeBranchRow from './AdeBranchRow.vue';
+import AdeOpStatus from './AdeOpStatus.vue';
 import AdeTagIcon from './AdeTagIcon.vue';
 import AdeTaskChildren from './AdeTaskChildren.vue';
 import AdeTaskSessions from './AdeTaskSessions.vue';
@@ -166,6 +167,7 @@ const boxClass = computed(() => {
             />
             <AdeOrchestratorBadge v-if="card.orchestrator" icon-only />
           </span>
+          <AdeOpStatus :task-id="card.task.id" />
           <template v-if="!card.parked">
             <AdeTip v-if="p.hasWorkflow" :text="p.workflowTip">
               <span :class="CARD_STEP_SEGS" data-testid="ade-step-segs">

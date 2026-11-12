@@ -38,15 +38,15 @@ export interface DiscardGuardOptions {
 
 /**
  * Edits that drop a row's worktree read its risk first: a blocked worktree throws, a risky one asks
- * for confirm, and `run` gets `discard` true only after that confirm.
+ * for confirm. `discard` is true only after that confirm; `proceed` is false when it was declined.
+ * The confirm closes on answer: the caller runs the work.
  */
 export function useDiscardGuard(): (
   opts: DiscardGuardOptions,
-  run: (discard: boolean) => Promise<void>,
-) => Promise<void> {
+) => Promise<{ proceed: boolean; discard: boolean }> {
   const confirm = useConfirmDialogStore();
   const riskM = useTaskBranchRisk();
-  return async (opts, run) => {
+  return async (opts) => {
     const risk = await riskM.mutateAsync({ branchId: opts.branchId });
     if (risk.blocked !== '') {
       throw new Error(
@@ -56,16 +56,13 @@ export function useDiscardGuard(): (
         }),
       );
     }
-    if (!atRisk(risk)) {
-      await run(false);
-      return;
-    }
-    await confirm.confirm({
+    if (!atRisk(risk)) return { proceed: true, discard: false };
+    const confirmed = await confirm.confirm({
       tone: 'danger',
       title: opts.title,
       message: opts.body(lostText(risk)),
       confirmLabel: opts.confirmLabel,
-      run: () => run(true),
     });
+    return { proceed: confirmed, discard: confirmed };
   };
 }

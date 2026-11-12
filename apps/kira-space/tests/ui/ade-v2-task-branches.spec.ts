@@ -1,6 +1,6 @@
-import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { adeFixture, openPlan, openTask } from './support/adeV2';
+import { pick } from './support/branchMenu';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 
@@ -9,12 +9,6 @@ import { IPC } from './support/ipcChannels';
 
 const t = (id: string) => `[data-testid="${id}"]`;
 const card = (id: string) => `[data-testid="ade-card"][data-task-id="${id}"]`;
-const menu = (branchId: string) => `${t('ade-task-branch-menu')}[data-branch-id="${branchId}"]`;
-
-async function pick(page: Page, branchId: string, item: string): Promise<void> {
-  await page.locator(menu(branchId)).click();
-  await page.locator(t(item)).click();
-}
 
 const candidates = { channel: IPC.adeTaskCandidateBranches, response: adeFixture('candidates') };
 

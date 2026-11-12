@@ -29,6 +29,7 @@ import {
 } from '../queries';
 import type { BaseChoice } from '../wire';
 import { useAdeBoardUiStore } from './adeBoardUi';
+import { useAdeOpsStore } from './adeOps';
 import { useRepoGate } from './useRepoGate';
 import { useSetupWait } from './useSetupWait';
 
@@ -37,6 +38,7 @@ import { useSetupWait } from './useSetupWait';
 // through here, so the delivery rules live once.
 export const useAdeDialogsStore = defineStore('adeDialogs', () => {
   const ui = useAdeBoardUiStore();
+  const ops = useAdeOpsStore();
   const ctx = useDialogCtx();
   const launchOpener = useLaunchOpener();
   const confirmDialog = useConfirmDialogStore();
@@ -98,7 +100,19 @@ export const useAdeDialogsStore = defineStore('adeDialogs', () => {
       rebase: (a) => rebaseM.mutateAsync(a),
       setBranchBase: (a) => baseM.mutateAsync(a),
       recordMerge: (a) => mergeM.mutateAsync(a),
-      archiveTask: (a) => archiveM.mutateAsync(a),
+      // Runs in the background: the dialog is gone at once, the op's chip and toast report it.
+      archiveTask: (a) => {
+        ops.run(
+          {
+            id: `archive:${a.taskId}`,
+            kind: 'archive',
+            taskId: a.taskId,
+            name: c.taskTitle(a.taskId),
+          },
+          () => archiveM.mutateAsync(a),
+        );
+        return Promise.resolve();
+      },
       archiveRisk: (a) => riskM.mutateAsync(a),
       confirmArchive: (taskId) =>
         confirmDialog.confirm({

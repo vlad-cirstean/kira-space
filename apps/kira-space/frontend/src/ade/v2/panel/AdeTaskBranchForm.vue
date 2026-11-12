@@ -42,25 +42,25 @@ const setRepo = useUpdateTaskRepo();
 async function submitBranch(name: string, existing: boolean): Promise<void> {
   error.value = '';
   const branchId = props.branch.id;
-  const run = async (discardChanges: boolean): Promise<void> => {
-    await setBranch.mutateAsync({ branchId, name, existing, discardChanges });
-    open.value = false;
-  };
   try {
     // A not-created row has no worktree to lose.
-    if (props.branch.name === '') await run(false);
-    else
-      await guard(
-        {
-          branchId,
-          name: props.branch.name,
-          title: t('space.ade.taskTab.branchMenu.changeBranchConfirm.title'),
-          body: (risk) =>
-            t('space.ade.taskTab.branchMenu.leaveConfirm.body', { name: props.branch.name, risk }),
-          confirmLabel: t('space.ade.taskTab.branchMenu.changeBranchConfirm.confirm'),
-        },
-        run,
-      );
+    const { proceed, discard } =
+      props.branch.name === ''
+        ? { proceed: true, discard: false }
+        : await guard({
+            branchId,
+            name: props.branch.name,
+            title: t('space.ade.taskTab.branchMenu.changeBranchConfirm.title'),
+            body: (risk) =>
+              t('space.ade.taskTab.branchMenu.leaveConfirm.body', {
+                name: props.branch.name,
+                risk,
+              }),
+            confirmLabel: t('space.ade.taskTab.branchMenu.changeBranchConfirm.confirm'),
+          });
+    if (!proceed) return;
+    await setBranch.mutateAsync({ branchId, name, existing, discardChanges: discard });
+    open.value = false;
   } catch (err) {
     error.value = errorText(err);
   }

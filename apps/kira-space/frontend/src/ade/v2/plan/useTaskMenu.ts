@@ -22,6 +22,7 @@ import { useTaskAction } from '../run/useTaskAction';
 import { useSessionViews } from '../sessions/useSessionViews';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
+import { useAdeOpsStore } from '../state/adeOps';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import { type CardModel, usePlanModel } from './usePlanModel';
 
@@ -35,6 +36,7 @@ function focusable(el: Element): HTMLElement | null {
 export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
   const ui = useAdeBoardUiStore();
   const dialogs = useAdeDialogsStore();
+  const ops = useAdeOpsStore();
   const contextMenu = useContextMenuStore();
   const { model, today, sessions } = usePlanModel();
   const { view } = useSessionViews();
@@ -169,7 +171,9 @@ export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
       plan: m.board.plan,
       statuses: m.board.statuses,
       cal: m.cal,
-      archivePending: dialogs.pending.has(`archive:${c.task.id}`),
+      archivePending:
+        dialogs.pending.has(`archive:${c.task.id}`) ||
+        ops.forTask(c.task.id).some((o) => o.kind === 'archive'),
       automations: automation.items(),
       hostLabel:
         hostLabels.infoOf(c.task.hostLink?.provider ?? '')?.label ?? hostLabels.labels.value,

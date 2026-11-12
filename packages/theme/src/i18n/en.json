@@ -9539,6 +9539,20 @@
           "aria": "Empty checklist item"
         }
       },
+      "ops": {
+        "archive": {
+          "loading": "Closing task…",
+          "status": "Closed {name}"
+        },
+        "removeBranch": {
+          "loading": "Removing branch…",
+          "status": "Removed branch {name}"
+        },
+        "removeRepo": {
+          "loading": "Removing repository…",
+          "status": "Removed repository {name}"
+        }
+      },
       "orchestrator": {
         "archivedChildren": {
           "label": "{count} archived child | {count} archived children"
