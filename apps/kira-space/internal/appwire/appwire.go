@@ -406,7 +406,13 @@ func Build(opts Options) (*Wired, error) {
 
 	w.CodeWorkspace = &bridge.CodeWorkspaceService{
 		Deps: deps, Discovery: git.discovery, Runner: git.runner, Registry: codeworkspace.NewRegistry(),
-		OnReposChanged: func() { bridge.AdeTaskReposChanged(events); w.ConfigSync.RefreshAsync() },
+		OnReposChanged: func() {
+			if w.AdeBoard != nil {
+				w.AdeBoard.ReposChanged()
+			}
+			bridge.AdeTaskReposChanged(events)
+			w.ConfigSync.RefreshAsync()
+		},
 	}
 	w.OpenedFiles = openedfiles.New(repositories.CodeRepos)
 	w.OpenedFiles.Events = emitter

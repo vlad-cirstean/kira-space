@@ -207,6 +207,7 @@ type TaskBoard struct {
 	boardTimer     *time.Timer
 	boardSched     boardChanges // changes the debounced scheduleBoard timer will announce
 	bcache         boardCache
+	repoCfg        repoConfigCache
 	updates        *updateWatcher
 
 	panelEdits panelEdits // pending task panel edits per task (panelforward.go)
@@ -507,13 +508,17 @@ func (b *TaskBoard) buildBoard(ctx context.Context) (adewire.Board, error) {
 		b.bcache.afterLoad()
 	}
 	repoIDs, byRepo := branchesByRepo(d.branches)
+	shared, err := b.loadBoardShared(d.branches)
+	if err != nil {
+		return adewire.Board{}, err
+	}
 	results := make(map[string]*repoResult, len(repoIDs))
 	var mu sync.Mutex
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(boardFanOut)
 	for _, id := range repoIDs {
 		g.Go(func() error {
-			res := b.repoFacts(gctx, id, byRepo[id], d.setups)
+			res := b.repoFactsWith(gctx, id, byRepo[id], d.setups, shared)
 			mu.Lock()
 			results[id] = res
 			mu.Unlock()

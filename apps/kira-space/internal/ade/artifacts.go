@@ -259,7 +259,7 @@ func (s repoSource) Artifacts(ctx context.Context, sc ArtifactScope) ([]adewire.
 
 // repoNicks maps a code repo id to the name the task shows for it.
 func (b *TaskBoard) repoNicks() (map[string]string, error) {
-	cfgs, err := b.deps.RepoConfig.List()
+	cfgs, err := b.repoConfigs()
 	if err != nil {
 		return nil, err
 	}

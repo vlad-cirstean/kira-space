@@ -121,11 +121,17 @@ func (b *TaskBoard) loadTaskCtx(taskID string) (*taskCtx, error) {
 	if task.ArchivedAt != nil {
 		return nil, invalid("task %s is archived", taskID)
 	}
-	shared, err := b.loadSpaceFacts()
+	// Only this task's rows: no space-wide branch scan per context.
+	branches, err := b.deps.Tasks.BranchesOfTask(taskID)
 	if err != nil {
 		return nil, err
 	}
-	return b.buildTaskCtx(task, shared)
+	branches = slices.DeleteFunc(branches, func(br model.AdeTaskBranch) bool { return br.ArchivedAt != nil }) // detached rows
+	nick, err := b.repoNicks()
+	if err != nil {
+		return nil, err
+	}
+	return b.buildTaskCtx(task, spaceFacts{branches: map[string][]model.AdeTaskBranch{taskID: branches}, nick: nick})
 }
 
 // spaceFacts is what every task context reads from the whole space: live branches by task and repo nicknames.
@@ -140,7 +146,7 @@ func (b *TaskBoard) loadSpaceFacts() (spaceFacts, error) {
 	if err != nil {
 		return spaceFacts{}, err
 	}
-	cfgs, err := b.deps.RepoConfig.List()
+	cfgs, err := b.repoConfigs()
 	if err != nil {
 		return spaceFacts{}, err
 	}

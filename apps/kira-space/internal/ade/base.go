@@ -131,7 +131,7 @@ func (b *TaskBoard) storedBase(ctx context.Context, codeRepoID, nick string, c a
 }
 
 func (b *TaskBoard) repoNickOf(codeRepoID string) string {
-	cfgs, err := b.deps.RepoConfig.List()
+	cfgs, err := b.repoConfigs()
 	if err != nil {
 		return codeRepoID
 	}

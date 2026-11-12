@@ -151,9 +151,40 @@ type branchOut struct {
 	job       *rebaseJob
 }
 
+// boardShared is what every repo of one board build reads from the store: loaded once, read-only.
+type boardShared struct {
+	configs   map[string]model.AdeRepoConfig // by code repo id
+	codeRepos map[string]model.CodeRepo
+	live      []model.AdeTaskBranch // every live branch row, all repos
+}
+
+func (b *TaskBoard) loadBoardShared(live []model.AdeTaskBranch) (*boardShared, error) {
+	cfgs, err := b.repoConfigs()
+	if err != nil {
+		return nil, err
+	}
+	recs, err := b.deps.CodeRepos.List()
+	if err != nil {
+		return nil, err
+	}
+	s := &boardShared{configs: make(map[string]model.AdeRepoConfig, len(cfgs)), codeRepos: make(map[string]model.CodeRepo, len(recs)), live: live}
+	for _, c := range cfgs {
+		s.configs[c.CodeRepoID] = c
+	}
+	for _, r := range recs {
+		s.codeRepos[r.ID] = r
+	}
+	return s, nil
+}
+
 // repoFacts computes one repo's branch facts. A repo that cannot be read degrades to stored-meta
 // branches (logged), never failing the whole board.
 func (b *TaskBoard) repoFacts(ctx context.Context, codeRepoID string, branches []model.AdeTaskBranch, setups map[string]model.AdeWorktreeSetup) *repoResult {
+	return b.repoFactsWith(ctx, codeRepoID, branches, setups, nil)
+}
+
+// repoFactsWith is repoFacts reading the store-wide inputs from shared (nil loads them per repo).
+func (b *TaskBoard) repoFactsWith(ctx context.Context, codeRepoID string, branches []model.AdeTaskBranch, setups map[string]model.AdeWorktreeSetup, shared *boardShared) *repoResult {
 	res := &repoResult{
 		state:    adewire.RepoState{CodeRepoID: codeRepoID},
 		branches: make(map[string]adewire.Branch, len(branches)), pairs: []adewire.Pair{},
@@ -178,7 +209,7 @@ func (b *TaskBoard) repoFacts(ctx context.Context, codeRepoID string, branches [
 	}
 	remote, _ := entry.DefaultRemote(ctx)
 	res.state.Remote, res.state.LastFetchAt = remote, lastFetchAt(entry)
-	if err := b.collectRepo(ctx, entry, codeRepoID, branches, setupOf, res); err != nil {
+	if err := b.collectRepo(ctx, entry, codeRepoID, branches, setupOf, shared, res); err != nil {
 		slog.Warn("ade board: repo facts", "scope", "ade", "repo", codeRepoID, "err", err)
 		res.hadCommits, res.merged, res.jobs, res.pairs = nil, map[string]int64{}, map[string]rebaseJob{}, []adewire.Pair{}
 		fallback()
@@ -186,7 +217,7 @@ func (b *TaskBoard) repoFacts(ctx context.Context, codeRepoID string, branches [
 	return res
 }
 
-func (b *TaskBoard) collectRepo(ctx context.Context, entry *gitsession.RepoEntry, codeRepoID string, branches []model.AdeTaskBranch, setupOf func(string) *adewire.WorktreeSetup, res *repoResult) error {
+func (b *TaskBoard) collectRepo(ctx context.Context, entry *gitsession.RepoEntry, codeRepoID string, branches []model.AdeTaskBranch, setupOf func(string) *adewire.WorktreeSetup, shared *boardShared, res *repoResult) error {
 	inv, err := entry.BranchInventory(ctx)
 	if err != nil {
 		return err
@@ -211,10 +242,10 @@ func (b *TaskBoard) collectRepo(ctx context.Context, entry *gitsession.RepoEntry
 		sc.mainFull = mainRefName
 	}
 	res.state.MainName = sc.mainName
-	if err := b.loadFacts(sc, branches); err != nil {
+	if err := b.loadFacts(sc, branches, shared); err != nil {
 		return err
 	}
-	if err := b.loadOwners(sc); err != nil {
+	if err := b.loadOwners(sc, shared); err != nil {
 		return err
 	}
 	for _, sb := range branches {
@@ -408,16 +439,23 @@ func (sc *boardCtx) mainDepth(ctx context.Context, sb model.AdeTaskBranch, row p
 
 // loadFacts reads the configured integration targets, environments, stored marks and env states of
 // one repo into sc.
-func (b *TaskBoard) loadFacts(sc *boardCtx, branches []model.AdeTaskBranch) error {
-	configs, err := b.deps.RepoConfig.List()
-	if err != nil {
-		return err
-	}
-	for _, c := range configs {
-		if c.CodeRepoID == sc.repoID {
+func (b *TaskBoard) loadFacts(sc *boardCtx, branches []model.AdeTaskBranch, shared *boardShared) error {
+	if shared != nil {
+		if c, ok := shared.configs[sc.repoID]; ok {
 			sc.targets, sc.envs = withoutMain(c.IntegrationBranches, sc.mainName), c.Environments
 		}
+	} else {
+		configs, err := b.repoConfigs()
+		if err != nil {
+			return err
+		}
+		for _, c := range configs {
+			if c.CodeRepoID == sc.repoID {
+				sc.targets, sc.envs = withoutMain(c.IntegrationBranches, sc.mainName), c.Environments
+			}
+		}
 	}
+	var err error
 	if b.deps.Facts == nil {
 		return nil
 	}
@@ -435,17 +473,27 @@ func (b *TaskBoard) loadFacts(sc *boardCtx, branches []model.AdeTaskBranch) erro
 }
 
 // loadOwners reads the repo's live rows and the folder each one owns.
-func (b *TaskBoard) loadOwners(sc *boardCtx) error {
-	rec, err := b.deps.CodeRepos.Get(sc.repoID)
-	if err != nil {
-		return err
+func (b *TaskBoard) loadOwners(sc *boardCtx, shared *boardShared) error {
+	var rec *model.CodeRepo
+	var live []model.AdeTaskBranch
+	if shared != nil {
+		if r, ok := shared.codeRepos[sc.repoID]; ok {
+			rec = &r
+		}
+		live = shared.live
+	} else {
+		var err error
+		if rec, err = b.deps.CodeRepos.Get(sc.repoID); err != nil {
+			return err
+		}
+		if rec != nil {
+			if live, err = b.deps.Tasks.BranchesLive(); err != nil {
+				return err
+			}
+		}
 	}
 	if rec == nil {
 		return nil
-	}
-	live, err := b.deps.Tasks.BranchesLive()
-	if err != nil {
-		return err
 	}
 	sc.repoName = rec.Name
 	for _, row := range live {
