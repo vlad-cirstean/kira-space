@@ -450,8 +450,13 @@ export function useRetrySetup() {
   return useMutation({ mutationFn: (args: BranchArgs) => control.adeTaskRetrySetup(args) });
 }
 
+export const openReviewWindowKey = ['adetask', 'openReviewWindow'] as const;
+
 export function useOpenReviewWindow() {
-  return useMutation({ mutationFn: (args: BranchArgs) => control.adeTaskOpenReviewWindow(args) });
+  return useMutation({
+    mutationKey: openReviewWindowKey,
+    mutationFn: (args: BranchArgs) => control.adeTaskOpenReviewWindow(args),
+  });
 }
 
 export function useTakeOver() {

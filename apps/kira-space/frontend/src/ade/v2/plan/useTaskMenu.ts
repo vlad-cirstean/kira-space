@@ -16,7 +16,6 @@ import { taskPatch } from '../board/panelFacts';
 import { reviewChoices } from '../board/reviewCode';
 import { shelfIds } from '../board/shelf';
 import { useHostLabels } from '../hostLabels';
-import { useSetPlan, useShelveTask, useStopRun, useUpdateTask } from '../queries';
 import { useReviewCode } from '../review/useReviewCode';
 import { useTaskAction } from '../run/useTaskAction';
 import { useSessionViews } from '../sessions/useSessionViews';
@@ -25,6 +24,7 @@ import { useAdeDialogsStore } from '../state/adeDialogs';
 import { useAdeOpsStore } from '../state/adeOps';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import { type CardModel, usePlanModel } from './usePlanModel';
+import { useTaskWrites } from './useTaskWrites';
 
 /** The card box is not focusable; its header is. */
 function focusable(el: Element): HTMLElement | null {
@@ -42,10 +42,7 @@ export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
   const { view } = useSessionViews();
   const { perform, startNew } = useTaskAction(card);
   const stage = useAdeStageDialogStore();
-  const setPlan = useSetPlan();
-  const shelve = useShelveTask();
-  const stopRun = useStopRun();
-  const update = useUpdateTask();
+  const { setPlan, shelve, stopRun, update } = useTaskWrites();
   const { copy } = useCopy();
   const reviewCode = useReviewCode();
   const automation = useRunAutomation();
@@ -72,13 +69,19 @@ export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
         case 'setStatus':
           await update.mutateAsync({ taskId, patch: taskPatch({ statusId: cmd.statusId }) });
           return;
-        case 'stopRuns':
-          await Promise.all(
-            c.task.runs
-              .filter((r) => r.state === 'running' || r.state === 'pending')
-              .map((r) => stopRun.mutateAsync({ runId: r.id })),
+        case 'stopRuns': {
+          const ok = await ops.run(
+            { id: `stopRuns:${taskId}`, kind: 'stopRuns', taskId, name: c.title },
+            () =>
+              Promise.all(
+                c.task.runs
+                  .filter((r) => r.state === 'running' || r.state === 'pending')
+                  .map((r) => stopRun.mutateAsync({ runId: r.id })),
+              ),
           );
+          if (!ok) ui.select(taskId);
           return;
+        }
         case 'openSession':
           return ui.openSession({
             taskId,

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import {
@@ -17,7 +16,6 @@ import { Textarea } from '@theme/components/ui/textarea';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import SmartBadge from '@workbench/automations/smart/SmartBadge.vue';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { computed, ref, watch } from 'vue';
 import { useCustomScriptsStore } from '../../../state/customScripts';
 import AdeRepoTag from '../AdeRepoTag.vue';
@@ -32,8 +30,10 @@ import {
 import AdeLinkStrip from '../links/AdeLinkStrip.vue';
 import AdeSetupProgress from '../panel/AdeSetupProgress.vue';
 import { usePlanModel } from '../plan/usePlanModel';
-import { useAdePromptPreview, useStartRun } from '../queries';
+import { useTaskWrites } from '../plan/useTaskWrites';
+import { useAdePromptPreview } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdeOpsStore } from '../state/adeOps';
 import { useRepoGate } from '../state/useRepoGate';
 import { ACTION_CLASS } from '../tones';
 
@@ -41,7 +41,8 @@ import { ACTION_CLASS } from '../tones';
 // editable message and the read-only finish_step suffix the server always appends.
 const ui = useAdeBoardUiStore();
 const { model } = usePlanModel();
-const start = useStartRun();
+const { start } = useTaskWrites();
+const ops = useAdeOpsStore();
 const { retryAfterRepo } = useRepoGate();
 const card = computed(() => (ui.runTaskId ? (model.value?.cardFor(ui.runTaskId) ?? null) : null));
 const open = computed(() => card.value !== null);
@@ -148,7 +149,6 @@ watch(open, (o) => {
   opening.value = initial.value;
   message.value = initial.value;
   names.value = {};
-  sending.error.value = null;
 });
 // The preview lands after the dialog opens: an untouched message takes it over.
 watch(initial, (next) => {
@@ -157,22 +157,21 @@ watch(initial, (next) => {
   message.value = next;
 });
 
-const sending = useAsyncAction(async () => {
-  if (!card.value) return;
+// Closes at once; the start runs as the task's op (chip on the card, toast past 2 s or on failure).
+async function send(): Promise<void> {
+  const c = card.value;
+  if (!c) return;
   const branchNames: Record<string, string> = {};
   for (const r of named.value) branchNames[r.id] = (names.value[r.id] ?? '').trim();
-  const taskId = card.value.task.id;
-  await retryAfterRepo(taskId, () =>
-    start.mutateAsync({
-      taskId,
-      branchNames,
-      message: edited.value && !smartStep.value ? message.value : '',
-    }),
-  );
+  const taskId = c.task.id;
+  const body = edited.value && !smartStep.value ? message.value : '';
   close();
-});
-const { pending: busy, error } = sending;
-const send = sending.run;
+  const ok = await ops.run(
+    { id: `startRun:${taskId}`, kind: 'startRun', taskId, name: c.title },
+    () => retryAfterRepo(taskId, () => start.mutateAsync({ taskId, branchNames, message: body })),
+  );
+  if (!ok) ui.select(taskId);
+}
 </script>
 
 <template>
@@ -281,9 +280,6 @@ const send = sending.run;
             </FieldDescription>
           </div>
         </div>
-        <Alert v-if="error" variant="error" data-testid="ade-run-error">
-          <AlertDescription>{{ error }}</AlertDescription>
-        </Alert>
       </DialogBody>
       <DialogFooter>
         <Button variant="dialog" size="kira-lg" data-testid="ade-run-cancel" @click="close">{{
@@ -293,7 +289,6 @@ const send = sending.run;
           variant="dialog-primary"
           size="kira-lg"
           :class="ACTION_CLASS.agent"
-          :pending="busy"
           :data-dialog-initial="(smartStep && named.length === 0) || undefined"
           data-testid="ade-run-send"
           @click="send"

@@ -18,15 +18,20 @@ export function useRepoGate() {
     }
   }
 
+  /** With `needsRepo` asks for a repo first; false when the user cancels. */
+  async function ensureRepo(taskId: string, needsRepo: boolean): Promise<boolean> {
+    return !needsRepo || (await gate.ask(taskId));
+  }
+
   /** Runs `start`; with `needsRepo` asks for a repo first and stops on Cancel. */
   async function gated(
     taskId: string,
     needsRepo: boolean,
     start: () => Promise<void>,
   ): Promise<void> {
-    if (needsRepo && !(await gate.ask(taskId))) return;
+    if (!(await ensureRepo(taskId, needsRepo))) return;
     await retryAfterRepo(taskId, start);
   }
 
-  return { gated, retryAfterRepo };
+  return { gated, ensureRepo, retryAfterRepo };
 }
