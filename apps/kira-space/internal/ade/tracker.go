@@ -218,6 +218,9 @@ type Tracker struct {
 	graceTimers map[string]*time.Timer
 	graceWG     sync.WaitGroup
 	closed      bool
+	// learning marks records with a background learnSessionID in flight; learnWG lets Close wait.
+	learning map[string]bool
+	learnWG  sync.WaitGroup
 }
 
 // NewTracker applies TrackerDeps' own defaults and constructs a Tracker with empty state.
@@ -244,6 +247,7 @@ func NewTracker(deps TrackerDeps) *Tracker {
 		suppressIdle:   map[string]bool{},
 		tools:          map[string]openTools{},
 		graceTimers:    map[string]*time.Timer{},
+		learning:       map[string]bool{},
 	}
 }
 
@@ -503,12 +507,41 @@ func (t *Tracker) learnSessionID(recordID string) (string, error) {
 	return id, nil
 }
 
-// learnStopped runs learnSessionID for records that just stopped, best effort.
-func (t *Tracker) learnStopped(recordIDs ...string) {
+// learnAsync runs learnSessionID in the background for records that just stopped, best effort. A
+// provider's FindSession can take seconds, so Stop and Reconcile never wait for it. One run per
+// record at a time; none starts once Close began. A newly learned id notifies OnChange.
+func (t *Tracker) learnAsync(recordIDs ...string) {
 	for _, id := range recordIDs {
-		if _, err := t.learnSessionID(id); err != nil {
-			slog.Warn("ade: learn session id", "scope", "ade", "recordId", id, "err", err)
+		t.mu.Lock()
+		if t.closed || t.learning[id] {
+			t.mu.Unlock()
+			continue
 		}
+		t.learning[id] = true
+		t.learnWG.Add(1)
+		t.mu.Unlock()
+		go t.learnOne(id)
+	}
+}
+
+func (t *Tracker) learnOne(id string) {
+	defer t.learnWG.Done()
+	defer func() {
+		t.mu.Lock()
+		delete(t.learning, id)
+		t.mu.Unlock()
+	}()
+	before := ""
+	if rec, err := t.deps.Store.Get(id); err == nil && rec != nil {
+		before = rec.AgentSessionID
+	}
+	learned, err := t.learnSessionID(id)
+	if err != nil {
+		slog.Warn("ade: learn session id", "scope", "ade", "recordId", id, "err", err)
+		return
+	}
+	if before == "" && learned != "" && t.deps.OnChange != nil {
+		t.deps.OnChange()
 	}
 }
 
@@ -787,7 +820,7 @@ func (t *Tracker) Stop(recordID string) error {
 	t.mu.Lock()
 	t.forgetLocked(recordID, t.deps.Now())
 	t.mu.Unlock()
-	t.learnStopped(recordID)
+	t.learnAsync(recordID)
 	t.recordSessionEnd(recordID, oplog.TriggerUser, oplog.StatusOK, "")
 	if t.deps.OnChange != nil {
 		t.deps.OnChange()
@@ -843,7 +876,7 @@ func (t *Tracker) Reconcile() {
 		}
 		stopped = append(stopped, recordID)
 	}
-	t.learnStopped(stopped...)
+	t.learnAsync(stopped...)
 	for _, recordID := range stopped {
 		t.recordSessionEnd(recordID, oplog.TriggerAuto, oplog.StatusOK, "")
 	}
@@ -1199,6 +1232,7 @@ func (t *Tracker) Close() error {
 	t.graceTimers = map[string]*time.Timer{}
 	t.mu.Unlock()
 	t.graceWG.Wait()
+	t.learnWG.Wait()
 
 	t.mu.Lock()
 	toFlush := make(map[string]int64, len(t.lastActive))
