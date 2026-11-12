@@ -98,7 +98,7 @@ func (c *Clipboard) writeImagesTo(name string, paths []string) error {
 	}
 	var rc C.int
 	c.invoke(func() {
-		rc = C.kira_write_images(cname, (**C.char)(unsafe.Pointer(&cpaths[0])), (*unsafe.Pointer)(&datas[0]), &lens[0], C.int(len(paths)))
+		rc = C.kira_write_images(cname, (**C.char)(unsafe.Pointer(&cpaths[0])), &datas[0], &lens[0], C.int(len(paths)))
 	})
 	switch rc {
 	case 0:
