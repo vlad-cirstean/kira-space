@@ -202,6 +202,7 @@ type SpaceCall struct {
 // SpaceTools is what the Kira Space tools call; *ade.TaskBoard implements it. Every method acts on
 // one task only. RequestBranches blocks until the user answers; ctx ends when the caller is gone.
 type SpaceTools interface {
+	LeaseTools
 	TaskInfo(ctx context.Context, taskID string) (TaskInfo, error)
 	DeclareRepos(ctx context.Context, taskID string, repos []string) (TaskInfo, error)
 	RequestBranches(ctx context.Context, call SpaceCall, branches []BranchSpec) (RequestBranchesResult, error)
@@ -300,6 +301,7 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 	s.addChangeBranchTool(srv)
 	s.addReportArtifactsTool(srv)
 	s.addOperationsTool(srv)
+	s.addLeaseTools(srv)
 }
 
 func (s *Server) addOperationsTool(srv *mcp.Server) {

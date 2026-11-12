@@ -214,10 +214,19 @@ func wireAdeTask(
 		Workflows: &adeflow.Reader{Dir: configfs.ModuleDir(config.KiraSpaceHome(), adeflow.WorkflowsFolder), Store: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: adeflow.WorkflowsFolder},
 			Journal: filepath.Join(config.KiraSpaceHome(), "ade", "rename.json"),
 			Steps:   &adeflow.StepLibrary{Dir: configfs.ModuleDir(config.KiraSpaceHome(), adeflow.StepsFolder), DB: repositories.CustomScripts.DB}},
-		NamesMarker:  filepath.Join(config.KiraSpaceHome(), "ade", "names-v1.done"),
-		BackupDir:    filepath.Join(config.KiraSpaceHome(), "backups", "readable-names"),
-		KeepStem:     func(module, file string) bool { return configsync.HasBase(config.KiraSpaceHome(), module, file) },
-		OnBoard:      func() { bridge.AdeTaskBoardChanged(events) },
+		NamesMarker: filepath.Join(config.KiraSpaceHome(), "ade", "names-v1.done"),
+		BackupDir:   filepath.Join(config.KiraSpaceHome(), "backups", "readable-names"),
+		KeepStem:    func(module, file string) bool { return configsync.HasBase(config.KiraSpaceHome(), module, file) },
+		OnBoard:     func() { bridge.AdeTaskBoardChanged(events) },
+		OnLeases:    func() { bridge.AdeLeasesChanged(events) },
+		LeaseQueues: repositories.AdeLeaseQueues,
+		AdeSettings: func() model.AdeSettings {
+			settings, err := repositories.Settings.GetAll()
+			if err != nil {
+				return model.DefaultAdeSettings()
+			}
+			return settings.Ade
+		},
 		OnUpdates:    func() { bridge.AdeTaskUpdatesChanged(events) },
 		TrackedItems: repositories.AdeTrackedItems, Updates: updates,
 		OnWorkflows: func() { bridge.AdeTaskWorkflowsChanged(events) },

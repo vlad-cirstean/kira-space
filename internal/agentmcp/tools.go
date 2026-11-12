@@ -23,6 +23,9 @@ var (
 		{Server: ServerName, Tool: "change_branch"},
 		{Server: ServerName, Tool: "report_artifacts"},
 		{Server: ServerName, Tool: "operations"},
+		{Server: ServerName, Tool: "acquire_lease"},
+		{Server: ServerName, Tool: "release_lease"},
+		{Server: ServerName, Tool: "lease_status"},
 	}
 
 	// OrchestratorToolIDs are the tools only an orchestrator task carries, next to SpaceToolIDs.

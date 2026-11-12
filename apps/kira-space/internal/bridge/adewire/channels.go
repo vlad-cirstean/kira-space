@@ -12,4 +12,5 @@ const (
 	ChannelReview      = "kira:adetask:review"      // ReviewEvent
 	ChannelUpdates     = "kira:adetask:updates"     // payload-free: tracked item updates changed
 	ChannelDbAudit     = "kira:adetask:dbAudit"     // DbAuditEvent
+	ChannelLeases      = "kira:ade:leases"          // payload-free: lease queues, holders or waiters changed
 )

@@ -941,7 +941,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		fail(err)
 		return
 	}
-	release = joinRelease(release, releaseDb)
+	release = joinRelease(joinRelease(release, releaseDb), func() { b.endLeases(leaseKeyOf(l.sessionID, run.ID)) })
 	prep, err := b.headlessApp(ctx, l, run.ID)
 	if err != nil {
 		release()

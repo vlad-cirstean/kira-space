@@ -95,6 +95,12 @@ headless.tool.change_branch	483
 headless.tool.change_branch.arg.repo	42
 headless.tool.change_branch.arg.from	24
 headless.tool.change_branch.arg.to	41
+headless.tool.acquire_lease	444
+headless.tool.acquire_lease.arg.queue	42
+headless.tool.release_lease	143
+headless.tool.release_lease.arg.queue	31
+headless.tool.lease_status	143
+headless.tool.lease_status.arg.queue	31
 headless.tool.fetch_remote	63
 headless.tool.fetch_remote.arg.remote	28
 headless.tool.push_branch	60
