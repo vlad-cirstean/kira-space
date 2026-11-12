@@ -162,7 +162,7 @@ func TestSpaceTools_archivedAndBranchStatus(t *testing.T) {
 	if err := e.board.ArchiveTask(ctx, id); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.board.TaskInfo(ctx, id); err == nil || !strings.Contains(toolErrText(t, err), "archived") {
+	if _, err := e.board.TaskInfo(ctx, id, true); err == nil || !strings.Contains(toolErrText(t, err), "archived") {
 		t.Fatalf("TaskInfo of an archived task: %v", err)
 	}
 	if _, err := requestBranch(ctx, e.board, id, "api", "feat/api-two"); err == nil {

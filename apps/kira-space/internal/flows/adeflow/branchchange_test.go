@@ -88,7 +88,7 @@ func TestBranchChange(t *testing.T) {
 		if err != nil || !strings.Contains(info.Next, "change_branch") || !strings.Contains(info.Next, "feat/other") {
 			t.Fatalf("branch status next = %q, %v; want a change_branch hint naming feat/other", info.Next, err)
 		}
-		task, err := f.app.W.AdeBoard.TaskInfo(ctx, f.task.ID)
+		task, err := f.app.W.AdeBoard.TaskInfo(ctx, f.task.ID, true)
 		if err != nil || len(task.Repos) != 1 || task.Repos[0].Mismatch == nil || task.Repos[0].Mismatch.CheckedOut != "feat/other" {
 			t.Fatalf("task info = %+v, %v; want a mismatch on feat/other", task, err)
 		}

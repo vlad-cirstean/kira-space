@@ -137,7 +137,7 @@ func (f *fakeSpace) rec(s string) {
 	f.mu.Unlock()
 }
 
-func (f *fakeSpace) TaskInfo(_ context.Context, task string) (TaskInfo, error) {
+func (f *fakeSpace) TaskInfo(_ context.Context, task string, _ bool) (TaskInfo, error) {
 	f.rec("info|" + task)
 	return TaskInfo{Title: "t-" + task, Repos: []TaskRepo{}, Registered: []RegisteredRepo{}}, nil
 }
