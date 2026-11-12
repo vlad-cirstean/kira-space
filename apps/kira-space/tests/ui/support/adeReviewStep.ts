@@ -3,6 +3,7 @@ import { AGENT_PANEL_ON, type reviewTest } from '../fixtures';
 import { adeFixture, adeV2Control } from './adeV2';
 import { contract } from './contract';
 import { IPC } from './ipcChannels';
+import type { ControlSnapshot } from './types';
 
 // Shared by the review step UI and visual specs: the backend's ReviewStep answers (contract
 // ade-review-step) mapped onto the fixture board, and the review window boot.
@@ -90,6 +91,7 @@ export async function openWindow(
   relaunch: Parameters<Parameters<typeof reviewTest>[2]>[0]['relaunch'],
   key: string,
   comments: Wire[] = ANSWERED,
+  extra: readonly ControlSnapshot[] = [],
 ): Promise<{ page: Page; control: Awaited<ReturnType<typeof relaunch>>['control'] }> {
   const { window: page, control } = await relaunch({
     storage: AGENT_PANEL_ON,
@@ -97,6 +99,7 @@ export async function openWindow(
       { channel: IPC.adeTaskReviewWindowTarget, response: target },
       { channel: IPC.adeTaskReviewAgent, response: { session: null, hostWindowKey: '' } },
       { channel: IPC.adeTaskReviewStep, response: reviewStep(key) },
+      ...extra,
     ]),
     gitStream: GIT(comments),
   });
