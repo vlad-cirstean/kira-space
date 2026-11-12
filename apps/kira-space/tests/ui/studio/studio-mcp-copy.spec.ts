@@ -25,7 +25,7 @@ test('a host tag in the rule dialog can be selected', async ({ relaunch }) => {
     control: [{ channel: IPC.settingsGetAll, response: { ...defaultSettings, dbMcp } }],
   });
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP API"]');
   await page.click('[data-testid="settings-db-mcp-api-rules-add"]');
   const input = page.locator('[data-testid="api-rule-hosts"] input');
   await input.fill('api.example.com');
@@ -53,7 +53,7 @@ test('the MCP command in Settings can be selected', async ({ relaunch }) => {
     ],
   });
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP"]');
   const box = page.locator('[data-testid="db-mcp-command"]');
   expect(await dragAcross(page, box)).toContain('claude mcp add');
 });
