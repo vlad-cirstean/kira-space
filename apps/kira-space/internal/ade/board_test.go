@@ -4,11 +4,13 @@ import (
 	"context"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/testx"
 	"path/filepath"
 	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
@@ -222,12 +224,15 @@ func TestTaskBoard_snapshotAssembly(t *testing.T) {
 	if !found {
 		t.Fatalf("pair b1/b3 with conflict missing: %+v", board.Pairs)
 	}
-	stored, _ := h.repos.AdeTasks.BranchesLive()
-	for _, s := range stored {
-		if s.ID == "b6" && s.MergedAt == nil {
-			t.Fatalf("merged write-back missing: %+v", s)
+	testx.WaitUntil(t, 5*time.Second, func() bool {
+		stored, _ := h.repos.AdeTasks.BranchesLive()
+		for _, s := range stored {
+			if s.ID == "b6" {
+				return s.MergedAt != nil
+			}
 		}
-	}
+		return false
+	})
 
 	// main moves with a conflicting edit; Refresh settles the checks before returning.
 	commitFile(t, dir, "shared.txt", "main moved\n", "main moves")

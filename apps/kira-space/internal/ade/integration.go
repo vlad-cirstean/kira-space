@@ -241,10 +241,14 @@ func (b *TaskBoard) saveMark(sc *boardCtx, branchID, kind, name, tip string) {
 	if b.deps.Facts == nil {
 		return
 	}
-	err := b.deps.Facts.UpsertMark(model.AdeBranchMark{
-		BranchID: branchID, Kind: kind, Name: name, MergedTip: tip, UpdatedAt: sc.nowMs,
-	})
-	if err != nil {
+	m := model.AdeBranchMark{BranchID: branchID, Kind: kind, Name: name, MergedTip: tip, UpdatedAt: sc.nowMs}
+	if sc.deferMarks {
+		sc.markMu.Lock()
+		sc.pending = append(sc.pending, m)
+		sc.markMu.Unlock()
+		return
+	}
+	if err := b.deps.Facts.UpsertMark(m); err != nil {
 		slog.Warn("ade board: save mark", "scope", "ade", "repo", sc.repoID, "branch", branchID, "err", err)
 	}
 }

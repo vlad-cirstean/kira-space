@@ -539,10 +539,42 @@ func (b *TaskBoard) buildBoard(ctx context.Context) (adewire.Board, error) {
 		}
 		b.applyChecks(id, res)
 	}
-	if err := b.deps.Tasks.MarkBranchFacts(hadCommits, merged); err != nil {
-		return adewire.Board{}, err
+	board := b.assemble(d, repoIDs, results)
+	var marks []model.AdeBranchMark
+	for _, id := range repoIDs {
+		marks = append(marks, results[id].marks...)
 	}
-	return b.assemble(d, repoIDs, results), nil
+	b.writeBoardMarks(hadCommits, merged, marks)
+	return board, nil
+}
+
+// writeBoardMarks persists what a build computed, off the build's path. The board already shows
+// the computed values; the writes only spare the next build. Every write is idempotent, so two
+// builds writing the same mark is harmless. A written row makes the next build reread it, so the
+// snapshot is dropped without a push: the wire content does not change.
+func (b *TaskBoard) writeBoardMarks(hadCommits []string, merged map[string]int64, marks []model.AdeBranchMark) {
+	if len(hadCommits) == 0 && len(merged) == 0 && len(marks) == 0 {
+		return
+	}
+	b.goTracked(func() {
+		ok := true
+		if err := b.deps.Tasks.MarkBranchFacts(hadCommits, merged); err != nil {
+			slog.Warn("ade board: mark branch facts", "scope", "ade", "err", err)
+			ok = false
+		}
+		for _, m := range marks {
+			if b.deps.Facts == nil {
+				break
+			}
+			if err := b.deps.Facts.UpsertMark(m); err != nil {
+				slog.Warn("ade board: save mark", "scope", "ade", "branch", m.BranchID, "err", err)
+				ok = false
+			}
+		}
+		if ok {
+			b.invalidateBoard()
+		}
+	})
 }
 
 // applyChecks fills each visible branch's conflict state from the checker, queueing a miss.

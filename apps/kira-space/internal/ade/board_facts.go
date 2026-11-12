@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"golang.org/x/sync/errgroup"
 
@@ -26,6 +27,7 @@ type repoResult struct {
 	hadCommits []string
 	merged     map[string]int64
 	jobs       map[string]rebaseJob
+	marks      []model.AdeBranchMark // integration and deploy marks a board build defers
 }
 
 // zeroBranch is a branch with only its stored meta: not created, or no git facts available.
@@ -44,21 +46,26 @@ func toWireSetup(s model.AdeWorktreeSetup) *adewire.WorktreeSetup {
 
 // boardCtx holds one repo's git inputs shared by every branch computation.
 type boardCtx struct {
-	entry     *gitsession.RepoEntry
-	repoID    string
-	inv       []porcelain.InventoryRef
-	userEmail string
-	remote    string
-	mainName  string
-	mainRef   string
-	mainFull  string
-	mainTip   string
-	hasMain   bool
-	caches    *repoCaches
-	nowMs     int64
-	resolved  map[string]resolvedRef // branch id -> resolved ref
-	byName    map[string]model.AdeTaskBranch
-	byID      map[string]model.AdeTaskBranch
+	// deferMarks makes saveMark collect into pending instead of writing: a board build writes them
+	// after the snapshot. Refresh and wireRow keep synchronous writes.
+	deferMarks bool
+	markMu     sync.Mutex
+	pending    []model.AdeBranchMark
+	entry      *gitsession.RepoEntry
+	repoID     string
+	inv        []porcelain.InventoryRef
+	userEmail  string
+	remote     string
+	mainName   string
+	mainRef    string
+	mainFull   string
+	mainTip    string
+	hasMain    bool
+	caches     *repoCaches
+	nowMs      int64
+	resolved   map[string]resolvedRef // branch id -> resolved ref
+	byName     map[string]model.AdeTaskBranch
+	byID       map[string]model.AdeTaskBranch
 	// P583: the repo's registered name and live rows, to tell which worktree folder belongs to which row.
 	repoName string
 	live     []model.AdeTaskBranch
@@ -236,6 +243,7 @@ func (b *TaskBoard) collectRepo(ctx context.Context, entry *gitsession.RepoEntry
 		entry: entry, repoID: codeRepoID, inv: inv, userEmail: userEmail, remote: remote, mainTip: mainTip,
 		hasMain: hasMain, caches: caches, nowMs: b.deps.Now().UnixMilli(),
 		resolved: map[string]resolvedRef{}, byName: map[string]model.AdeTaskBranch{}, byID: map[string]model.AdeTaskBranch{},
+		deferMarks: shared != nil,
 	}
 	if hasMain {
 		sc.mainName, sc.mainRef = mainDisplay(mainRefName)
@@ -271,6 +279,7 @@ func (b *TaskBoard) collectRepo(ctx context.Context, entry *gitsession.RepoEntry
 	if err := g.Wait(); err != nil {
 		return err
 	}
+	res.marks = sc.pending
 
 	var items []pairItem
 	tips, refs := map[string]string{}, map[string]string{}
