@@ -48,7 +48,10 @@ const ui = useAdeBoardUiStore();
 const tabs = useAdePanelTabsStore();
 const tab = computed({
   get: () => tabs.branchTab(props.row.id),
-  set: (v) => tabs.setBranchTab(props.row.id, v),
+  set: (v) => {
+    if (v === 'sessions') tabs.requestAgentFocus(props.row.id);
+    tabs.setBranchTab(props.row.id, v);
+  },
 });
 const dialogs = useAdeDialogsStore();
 const { sessions } = usePlanModel();
@@ -69,6 +72,25 @@ const copiedKey = ref('');
 
 const branch = computed(() => props.row.branch);
 const graph = computed(() => props.model.view.graph);
+// What the worktree folder holds against the assigned branch; null while the row has no worktree.
+const checkout = computed(() => {
+  const held = props.row.checkedOut;
+  if (held === 'HEAD')
+    return { mismatch: true, text: t('space.ade.panel.checkout.detachedCommit.label') };
+  if (held)
+    return {
+      mismatch: true,
+      text: t('space.ade.panel.checkout.mismatch.label', {
+        assigned: branch.value.name,
+        checkedOut: held,
+      }),
+    };
+  if (branch.value.worktree === '') return null;
+  return {
+    mismatch: false,
+    text: t('space.ade.panel.checkout.match.label', { branch: branch.value.name }),
+  };
+});
 const baseName = computed(() => baseNameOf(props.row, graph.value));
 const reviewChoice = computed(() => reviewCode.choiceOf(props.row));
 const reviewOff = computed(
@@ -301,6 +323,16 @@ function deployNote(d: Deployment): string {
           }}
         </h3>
       </div>
+      <div
+        v-if="checkout"
+        class="truncate text-kira-sm"
+        :class="checkout.mismatch ? 'text-tone-amber' : 'text-muted-foreground'"
+        :data-mismatch="checkout.mismatch || undefined"
+        data-testid="ade-panel-checkout"
+        >{{
+          checkout.text
+        }}</div
+      >
       <div class="truncate text-kira-sm text-muted-foreground" data-testid="ade-panel-facts">{{
         facts
       }}</div>

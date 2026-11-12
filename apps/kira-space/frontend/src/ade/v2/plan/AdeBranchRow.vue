@@ -277,7 +277,14 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
       />
       <AdeTagIcon v-bind="tagProps" />
     </span>
-    <span v-else class="relative shrink-0 self-stretch" :style="{ width: `${row.depth * 16}px` }">
+    <span v-else class="inline-flex w-5 shrink-0 justify-center" data-testid="ade-branch-lead">
+      <AdeAttention v-if="row.attention" :tip="row.attention" :item="row.attentionItem" />
+    </span>
+    <span
+      v-if="!panel"
+      class="relative shrink-0 self-stretch"
+      :style="{ width: `${row.depth * 16}px` }"
+    >
       <span
         v-if="row.depth"
         class="absolute -top-1 right-0.5 box-border h-4.5 w-2 rounded-bl-kira-sm border-b-2 border-l-2 border-border"
@@ -338,6 +345,14 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               >
                 <CodiconIcon :name="ATTACH_GLYPH[row.attach.state].icon" :size="13" />
               </span>
+            </AdeTip>
+            <AdeTip v-if="row.checkedOut" :text="row.attach?.tip ?? ''">
+              <BranchChip
+                :name="t('space.ade.plan.branchRow.checkedOut.label', { branch: row.checkedOut })"
+                variant="warn"
+                class="max-w-32 shrink-0"
+                data-testid="ade-branch-checked-out"
+              />
             </AdeTip>
           </span>
           <span
@@ -400,7 +415,6 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
       </div>
     </AdeBranchTip>
     <template v-if="!panel">
-      <AdeAttention v-if="row.attention" :tip="row.attention" :item="row.attentionItem" />
       <AdeTagIcon v-bind="tagProps" />
     </template>
     <div

@@ -81,6 +81,8 @@ export interface BranchRowModel {
   attentionItem: NeedsItem | null;
   /** Detached or shared glyph and its tooltip; `null` for a row that is neither. */
   attach: AttachFact | null;
+  /** Branch the row's own worktree holds instead of its own ('HEAD' = detached commit); null when it matches. */
+  checkedOut: string | null;
 }
 
 /** A live child of an orchestrator, one row of its card. */
@@ -203,6 +205,7 @@ function buildRow(c: Ctx, task: Task, bid: string, depth: number): BranchRowMode
       const other = graph.byTask.get(id);
       return other ? titleOfTask(c, other) : t('space.ade.board.newTask.label');
     }),
+    checkedOut: br.detached && br.detached.head !== br.name ? br.detached.head || 'HEAD' : null,
   };
 }
 

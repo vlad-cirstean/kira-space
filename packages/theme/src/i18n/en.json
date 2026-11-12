@@ -9065,6 +9065,9 @@
           }
         },
         "tag": {
+          "change": {
+            "label": "Change from {from}"
+          },
           "heldBy": {
             "label": "Held by {task}"
           },
@@ -9662,6 +9665,17 @@
         "archived": {
           "label": "Archived"
         },
+        "checkout": {
+          "detachedCommit": {
+            "label": "Worktree is on a detached commit"
+          },
+          "match": {
+            "label": "Checked out: {branch}"
+          },
+          "mismatch": {
+            "label": "Assigned {assigned}, worktree has {checkedOut}"
+          }
+        },
         "empty": {
           "emptyHint": "Select a task to see its details."
         },
@@ -9727,6 +9741,9 @@
           }
         },
         "branchRow": {
+          "checkedOut": {
+            "label": "On {branch}"
+          },
           "detachedMain": {
             "tooltip": "Detached. {branch} is checked out in the main checkout, {worktree}"
           },
@@ -9735,6 +9752,9 @@
           },
           "detachedOther": {
             "tooltip": "Detached. {branch} is checked out in {worktree}"
+          },
+          "detachedSwitched": {
+            "tooltip": "Worktree folder now has {head} checked out, not {branch}"
           },
           "detachedTask": {
             "tooltip": "Detached. {branch} is checked out in {task}, worktree {worktree}"
