@@ -13,12 +13,14 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
+	"golang.org/x/sync/errgroup"
 )
 
 // branchrequest.go: an agent asks the user to approve branches and worktrees (P408). The call blocks
@@ -777,40 +779,99 @@ func (b *TaskBoard) finishBranchRequest(ctx context.Context, call agentmcp.Space
 	if dec.kind == decisionAbandoned {
 		return agentmcp.RequestBranchesResult{}, agentmcp.ToolError("The branch request was cancelled.")
 	}
-	var apply func(*requestSlot)
 	switch dec.kind {
 	case decisionTimeout:
 		next := fmt.Sprintf("No answer from the user in %s; nothing was created. Call request_branches again later or ask the user.", waitText(b.branchRequestWait()))
-		apply = func(s *requestSlot) { s.result = outcomeBranch(s, agentmcp.BranchTimeout, next) }
+		for i := range slots {
+			if slots[i].item != nil {
+				slots[i].result = outcomeBranch(&slots[i], agentmcp.BranchTimeout, next)
+			}
+		}
 	case decisionDenied:
-		apply = func(s *requestSlot) { s.result = outcomeBranch(s, agentmcp.BranchDenied, deniedText) }
+		for i := range slots {
+			if slots[i].item != nil {
+				slots[i].result = outcomeBranch(&slots[i], agentmcp.BranchDenied, deniedText)
+			}
+		}
 	default:
 		mu := b.taskMu(call.TaskID)
 		mu.Lock()
 		defer mu.Unlock()
-		tc, err := b.spaceCtx(call.TaskID)
-		apply = func(s *requestSlot) {
-			if !dec.approved[s.id] {
-				s.result = outcomeBranch(s, agentmcp.BranchDenied, deniedText)
-				return
-			}
-			if err != nil {
-				s.result = failedBranch(s.nick, s.branch, s.item.Base, toolMessage(err))
-				return
-			}
-			s.result = b.createApproved(ctx, tc, s)
-			if s.result.Outcome == agentmcp.BranchCreated || s.result.Outcome == agentmcp.BranchExisting || s.result.Outcome == agentmcp.BranchCheckedOut {
-				s.result.Next = s.note + s.result.Next
-			}
-		}
-	}
-	for i := range slots {
-		if slots[i].item != nil {
-			apply(&slots[i])
-		}
+		b.createApprovedSlots(ctx, call, slots, dec)
 	}
 	b.notifyBoard()
 	return b.branchResults(slots), nil
+}
+
+// createApprovedSlots answers every slot that awaited the user, under the task lock the caller holds.
+// Approved slots of different repos are created in parallel: each repo's worktree add is git work on
+// its own repo, serialised per repo by repoMutex. Slots of one repo stay in order, since
+// createApproved may name the repo's draft row. The caller's goroutine keeps the task lock until all
+// workers return; no worker takes it.
+func (b *TaskBoard) createApprovedSlots(ctx context.Context, call agentmcp.SpaceCall, slots []requestSlot, dec branchDecision) {
+	tc, err := b.spaceCtx(call.TaskID)
+	var order []string
+	groups := map[string][]*requestSlot{}
+	for i := range slots {
+		s := &slots[i]
+		switch {
+		case s.item == nil:
+		case !dec.approved[s.id]:
+			s.result = outcomeBranch(s, agentmcp.BranchDenied, deniedText)
+		case err != nil:
+			s.result = failedBranch(s.nick, s.branch, s.item.Base, toolMessage(err))
+		default:
+			if groups[s.codeRepoID] == nil {
+				order = append(order, s.codeRepoID)
+			}
+			groups[s.codeRepoID] = append(groups[s.codeRepoID], s)
+		}
+	}
+	if len(order) == 0 {
+		return
+	}
+	var nicks []string
+	for i := range slots {
+		if s := &slots[i]; groups[s.codeRepoID] != nil && !slices.Contains(nicks, s.nick) && slices.Contains(groups[s.codeRepoID], s) {
+			nicks = append(nicks, s.nick)
+		}
+	}
+	op := b.startAgentOp(ctx, opAgentBranches, call.TaskID, strings.Join(nicks, ", "))
+	var g errgroup.Group
+	g.SetLimit(boardFanOut)
+	for _, id := range order {
+		g.Go(func() error {
+			// createApproved writes a repo's draft row in tc.branches; a clone keeps that off the other
+			// workers' reads of the slice.
+			own := *tc
+			own.branches = slices.Clone(tc.branches)
+			for _, s := range groups[id] {
+				s.result = b.createApproved(ctx, &own, s)
+				if s.result.Outcome == agentmcp.BranchCreated || s.result.Outcome == agentmcp.BranchExisting || s.result.Outcome == agentmcp.BranchCheckedOut {
+					s.result.Next = s.note + s.result.Next
+				}
+			}
+			return nil
+		})
+	}
+	_ = g.Wait() // results land in the slots
+	var failed []string
+	for _, id := range order {
+		for _, s := range groups[id] {
+			switch s.result.Outcome {
+			case agentmcp.BranchCreated, agentmcp.BranchExisting, agentmcp.BranchCheckedOut:
+			case agentmcp.BranchFailed:
+				if !slices.Contains(failed, s.nick) {
+					failed = append(failed, s.nick)
+				}
+			}
+		}
+	}
+	if len(failed) > 0 {
+		op.Finish(oplog.StatusError, "failed: "+strings.Join(failed, ", "))
+		return
+	}
+	op.Finish(oplog.StatusOK, "")
 }
 
 const deniedText = "The user declined this branch. Do not create it with git; continue without it or ask the user."

@@ -251,6 +251,54 @@ func TestBranchRequest(t *testing.T) {
 		}
 	})
 
+	t.Run("approved branches of two repos are created together", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"})}, Name: "done"}}, onceStepYML, true)
+		f.startRun(t)
+		req := f.waitRequest(t)
+		mustApprove(t, f.app, req.ID, []string{req.Items[0].ID, req.Items[1].ID}, nil)
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		if got := f.result(t, 1); strings.Count(got, "created") != 2 {
+			t.Fatalf("agent result = %s, want both branches created", got)
+		}
+		if name := f.branchName(t, f.api); name != "feat/login" {
+			t.Fatalf("api branch = %q, want the asked name", name)
+		}
+		if name := f.branchName(t, f.web); name != "feat/login-web" {
+			t.Fatalf("web branch = %q, want the asked name", name)
+		}
+		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusOK {
+			t.Fatalf("approval op = %+v, want ok", op)
+		}
+		if op := f.agentOp(t, "agentBranches", "request_branches"); op.Status != oplog.StatusOK || op.Command == nil || *op.Command != "api, web" {
+			t.Fatalf("branches op = %+v, want ok for %q", op, "api, web")
+		}
+	})
+
+	t.Run("one repo's failure leaves the other created and fails the op", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"})}, Name: "done"}}, onceStepYML, true)
+		f.pushBase(t, "feat/api-base")
+		draft := branchOf(t, board(t, f.app), f.task.ID, f.api)
+		if err := f.app.W.AdeTask.SetBranchBase(ctx, adewire.SetBranchBaseArgs{BranchID: draft.ID, Base: adewire.BaseChoice{Ref: "feat/api-base"}}); err != nil {
+			t.Fatal(err)
+		}
+		f.startRun(t)
+		req := f.waitRequest(t)
+		f.repo.Git("push", "-q", "origin", "--delete", "feat/api-base")
+		f.repo.Git("branch", "-D", "feat/api-base")
+		mustApprove(t, f.app, req.ID, []string{req.Items[0].ID, req.Items[1].ID}, nil)
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		got := f.result(t, 1)
+		if !strings.Contains(got, "failed") || !strings.Contains(got, "created") {
+			t.Fatalf("agent result = %s, want api failed and web created", got)
+		}
+		if name := f.branchName(t, f.web); name != "feat/login-web" {
+			t.Fatalf("web branch = %q, want it created despite api failing", name)
+		}
+		if op := f.agentOp(t, "agentBranches", "request_branches"); op.Status != oplog.StatusError || opError(op) != "failed: api" {
+			t.Fatalf("branches op = %+v, want error %q", op, "failed: api")
+		}
+	})
+
 	t.Run("unregistered repo is refused before any prompt", func(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"nope", "feat/x"})}, Name: "done"}}, onceStepYML, false)
 		f.startRun(t)
