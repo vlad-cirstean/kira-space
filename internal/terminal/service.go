@@ -132,7 +132,7 @@ func (s *Service) OpenWithCoalescedOutput(p OpenParams, windowKey, terminalID st
 
 const (
 	coalesceInterval = 16 * time.Millisecond
-	coalesceMaxBytes = 16 * 1024
+	coalesceMaxBytes = 64 * 1024
 )
 
 // Event is ChannelTerminal's own payload (packages/shared/protocol/events.ts's terminalEventSchema,
