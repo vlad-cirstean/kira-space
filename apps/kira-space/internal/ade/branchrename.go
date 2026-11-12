@@ -10,6 +10,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
@@ -300,7 +301,20 @@ func (b *TaskBoard) remoteRefusal(ctx context.Context, entry *gitsession.RepoEnt
 }
 
 // applyRename renames after approval, under the task lock, with every refusal checked again since the wait.
-func (b *TaskBoard) applyRename(ctx context.Context, call agentmcp.SpaceCall, args agentmcp.RenameBranchArgs, renameRemote bool) (agentmcp.RenameBranchResult, error) {
+func (b *TaskBoard) applyRename(ctx context.Context, call agentmcp.SpaceCall, args agentmcp.RenameBranchArgs, renameRemote bool) (res agentmcp.RenameBranchResult, err error) {
+	op := b.startAgentOp(ctx, opAgentRename, call.TaskID, args.From+" to "+args.To)
+	defer func() {
+		switch {
+		case err != nil:
+			op.Finish(oplog.StatusError, err.Error())
+		case res.Outcome == agentmcp.BranchFailed:
+			op.Finish(oplog.StatusError, res.Next)
+		case res.Remote == agentmcp.RemoteFailed:
+			op.Finish(oplog.StatusOK, "remote not renamed")
+		default:
+			op.Finish(oplog.StatusOK, "")
+		}
+	}()
 	mu := b.taskMu(call.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
@@ -322,7 +336,7 @@ func (b *TaskBoard) applyRename(ctx context.Context, call agentmcp.SpaceCall, ar
 	if msg := b.renameLocal(ctx, entry, plan, args); msg != "" {
 		return renameResult(args, plan.nick, agentmcp.BranchFailed, msg), nil
 	}
-	res := renameResult(args, plan.nick, agentmcp.BranchRenamed, "")
+	res = renameResult(args, plan.nick, agentmcp.BranchRenamed, "")
 	if row, err := b.deps.Tasks.GetBranch(plan.sb.ID); err == nil {
 		res.Worktree = b.worktreePath(ctx, row)
 	}

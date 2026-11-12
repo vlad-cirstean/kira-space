@@ -202,6 +202,7 @@ func (b *TaskBoard) SpawnTask(ctx context.Context, call agentmcp.SpaceCall, args
 	}
 	wait := b.taskRequestWait()
 	req := b.openTaskRequest(call.TaskID, plan, b.deps.Now().Add(wait))
+	op := b.startAgentOp(ctx, opAgentApproval, call.TaskID, plan.title)
 	noted := b.holdRunNote(call.RunID, noteTaskApproval)
 	b.notifyBoard()
 
@@ -215,6 +216,7 @@ func (b *TaskBoard) SpawnTask(ctx context.Context, call agentmcp.SpaceCall, args
 	case <-ctx.Done():
 		verdict = b.finishWait(req, taskAbandoned)
 	}
+	finishApprovalOp(op, verdictDecision(verdict))
 	if noted {
 		b.releaseRunNote(call.TaskID, call.RunID)
 	}

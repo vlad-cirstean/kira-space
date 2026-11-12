@@ -13,6 +13,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
@@ -166,6 +167,37 @@ func (f *brFixture) branchName(t *testing.T, repoID string) string {
 	return branchOf(t, board(t, f.app), f.task.ID, repoID).Name
 }
 
+// agentOp waits for the one finished agent op of kind under the tool's mcp op and checks its task.
+func (f *brFixture) agentOp(t *testing.T, kind, tool string) oplog.Record {
+	t.Helper()
+	var got []oplog.Record
+	testx.WaitUntil(t, waitFor, func() bool {
+		got = got[:0]
+		rows := opsNow(t, f.app)
+		call, ok := findOp(rows, oplog.CategoryMCP, tool)
+		if !ok {
+			return false
+		}
+		for _, r := range rows {
+			if r.Category == oplog.CategoryAgent && r.Kind == kind && r.ParentID == call.ID && r.Status != oplog.StatusRunning {
+				got = append(got, r)
+			}
+		}
+		return len(got) > 0
+	})
+	if len(got) != 1 || got[0].TaskID != f.task.ID {
+		t.Fatalf("%s ops under %s = %+v, want one for task %s", kind, tool, got, f.task.ID)
+	}
+	return got[0]
+}
+
+func opError(r oplog.Record) string {
+	if r.Error == nil {
+		return ""
+	}
+	return *r.Error
+}
+
 func TestBranchRequest(t *testing.T) {
 	t.Run("approve one repo, deny the other", func(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"})}, Name: "done"}}, onceStepYML, true)
@@ -210,6 +242,9 @@ func TestBranchRequest(t *testing.T) {
 		}
 		if _, err := branchRequest(f.app, req.ID); errCode(err) != "E_NOT_FOUND" {
 			t.Fatalf("BranchRequest after answer: %v, want E_NOT_FOUND", err)
+		}
+		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusOK || op.Command == nil || *op.Command != "Fix login, 2 branches" {
+			t.Fatalf("approval op = %+v, want ok for %q", op, "Fix login, 2 branches")
 		}
 		if ans, err := denyBR(f.app, req.ID); err != nil || ans.Resolved {
 			t.Fatalf("Deny after answer = %+v, %v, want resolved=false", ans, err)
@@ -263,6 +298,9 @@ func TestBranchRequest(t *testing.T) {
 		waitRun(t, f.app, f.task.ID, "one", "done")
 		if n := len(taskOf(t, board(t, f.app), f.task.ID).BranchIDs); n != 1 {
 			t.Fatalf("branch rows after deny = %d, want 1", n)
+		}
+		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusCancelled || opError(op) != "denied" {
+			t.Fatalf("approval op = %+v, want cancelled: denied", op)
 		}
 	})
 
@@ -437,6 +475,9 @@ func TestBranchRequest(t *testing.T) {
 		if name := f.branchName(t, f.api); name != "" {
 			t.Fatalf("branch = %q, want none after a timeout", name)
 		}
+		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusCancelled || opError(op) != "timeout" {
+			t.Fatalf("approval op = %+v, want cancelled: timeout", op)
+		}
 	})
 
 	t.Run("a second call joins the open request and leaves alone", func(t *testing.T) {
@@ -592,6 +633,10 @@ func TestBranchRequest(t *testing.T) {
 		}
 		if name := f.branchName(t, f.api); name != "" {
 			t.Fatalf("branch = %q, want none", name)
+		}
+		// An interactive session gets the same op as a run.
+		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusCancelled || opError(op) != "abandoned" {
+			t.Fatalf("approval op = %+v, want cancelled: abandoned", op)
 		}
 	})
 

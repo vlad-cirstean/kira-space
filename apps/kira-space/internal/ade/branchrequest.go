@@ -458,6 +458,7 @@ func (b *TaskBoard) RequestBranches(ctx context.Context, call agentmcp.SpaceCall
 // until the user decides, the wait runs out or the caller is gone. prefix is the call's item id prefix.
 func (b *TaskBoard) awaitBranchRequest(ctx context.Context, call agentmcp.SpaceCall, d *requestDraft) (dec branchDecision, prefix string) {
 	reqID, bc := b.joinBranchRequest(call.TaskID, d)
+	op := b.startAgentOp(ctx, opAgentApproval, call.TaskID, approvalCommand(d.title, len(d.items)))
 	noted := b.holdRunNote(call.RunID, noteBranchApproval)
 	b.notifyBoard()
 
@@ -478,6 +479,7 @@ wait:
 			break wait
 		}
 	}
+	finishApprovalOp(op, dec.kind)
 	if noted {
 		b.releaseRunNote(call.TaskID, call.RunID)
 	}

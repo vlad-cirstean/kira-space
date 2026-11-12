@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
@@ -228,7 +229,18 @@ func (b *TaskBoard) otherWorkOn(call agentmcp.SpaceCall, sb model.AdeTaskBranch)
 
 // applyChange switches the folder and re-points the row after approval, under the task lock, with every
 // refusal checked again since the wait.
-func (b *TaskBoard) applyChange(ctx context.Context, call agentmcp.SpaceCall, args agentmcp.ChangeBranchArgs) (agentmcp.ChangeBranchResult, error) {
+func (b *TaskBoard) applyChange(ctx context.Context, call agentmcp.SpaceCall, args agentmcp.ChangeBranchArgs) (res agentmcp.ChangeBranchResult, err error) {
+	op := b.startAgentOp(ctx, opAgentChange, call.TaskID, args.From+" to "+args.To)
+	defer func() {
+		switch {
+		case err != nil:
+			op.Finish(oplog.StatusError, err.Error())
+		case res.Outcome == agentmcp.BranchFailed:
+			op.Finish(oplog.StatusError, res.Next)
+		default:
+			op.Finish(oplog.StatusOK, "")
+		}
+	}()
 	mu := b.taskMu(call.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
@@ -268,7 +280,7 @@ func (b *TaskBoard) applyChange(ctx context.Context, call agentmcp.SpaceCall, ar
 	if err := b.deps.Tasks.SetBranchChangeRequests([]string{plan.sb.ID}, nil); err != nil {
 		slog.Warn("ade: change branch clear change request", "scope", "ade", "branch", plan.sb.ID, "err", err)
 	}
-	res := changeResult(args, plan.nick, agentmcp.BranchChanged, "")
+	res = changeResult(args, plan.nick, agentmcp.BranchChanged, "")
 	res.Worktree = plan.own
 	res.Next = fmt.Sprintf("The task branch is now %s in %s. Work there.", args.To, plan.own)
 	b.notifyBoard()

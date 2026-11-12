@@ -8,6 +8,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
@@ -104,6 +105,12 @@ func TestBranchRename(t *testing.T) {
 			t.Fatalf("remote branches = %q, want only feat/new", heads)
 		}
 		f.app.Contract(t, renameScenario, "AdeTaskBoard.Board.renamedBranch", row, brMask, flowharness.Mask("worktree", "addedAt", "tip", "base", "setup"))
+		if op := f.agentOp(t, "agentApproval", "rename_branch"); op.Status != oplog.StatusOK {
+			t.Fatalf("approval op = %+v, want ok", op)
+		}
+		if op := f.agentOp(t, "agentRename", "rename_branch"); op.Status != oplog.StatusOK || op.Command == nil || *op.Command != "feat/old to feat/new" {
+			t.Fatalf("rename op = %+v, want ok for feat/old to feat/new", op)
+		}
 	})
 
 	t.Run("local rename leaves the remote branch and drops tracking", func(t *testing.T) {

@@ -7,6 +7,7 @@ const (
 	CategoryMCP     = "mcp"
 	CategoryTracker = "tracker"
 	CategoryDB      = "db"
+	CategoryAgent   = "agent"
 )
 
 // Modules that originate an operation.
