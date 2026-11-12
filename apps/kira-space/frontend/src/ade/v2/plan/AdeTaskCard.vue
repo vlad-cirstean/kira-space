@@ -55,7 +55,7 @@ const emit = defineEmits<{ select: []; forcePush: [row: BranchRowModel] }>();
 
 const ui = useAdeBoardUiStore();
 const dialogs = useAdeDialogsStore();
-const { model, rippleIds } = usePlanModel();
+const { view, boardQuery, rippleIds } = usePlanModel();
 const { byTask, describe } = useTaskUpdates();
 const taskUpdates = computed(() => byTask.value.get(props.card.task.id) ?? []);
 const taskMenu = useTaskMenu(() => props.card);
@@ -77,10 +77,9 @@ useShortcut(head, ['menu.open'], () => {
 
 // One branch opens Change base at once; several ask which.
 const baseChoices = computed(() => {
-  const m = model.value;
-  return m
-    ? changeBaseChoices(props.card, { graph: m.view.graph, after: m.view.after, board: m.board })
-    : [];
+  const v = view.value;
+  const board = boardQuery.data.value;
+  return v && board ? changeBaseChoices(props.card, { graph: v.graph, after: v.after, board }) : [];
 });
 
 const selected = computed(() => ui.selectedTaskId === props.card.task.id);

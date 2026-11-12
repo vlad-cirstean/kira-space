@@ -7,6 +7,7 @@ import { control } from '../../../bridge/control';
 import AdeAbortRebaseDialog from '../AdeAbortRebaseDialog.vue';
 import AdeAddPopover from '../AdeAddPopover.vue';
 import AdeAgentsPage from '../agents/AdeAgentsPage.vue';
+import { shelfOf } from '../board/shelf';
 import AdeAgentDialog from '../dialog/AdeAgentDialog.vue';
 import AdeLaterPage from '../later/AdeLaterPage.vue';
 import AdeNeedsPage from '../needs/AdeNeedsPage.vue';
@@ -30,13 +31,15 @@ const ui = useAdeBoardUiStore();
 function onView(view: unknown): void {
   void switchAdeView(view as AdeView);
 }
-const { model } = usePlanModel();
+// Reads the needs and the board, not the cards: the full model never builds on a hidden Plan.
+const { model, needs, boardQuery } = usePlanModel();
 /** The panel on the Later tab opens only for a task that sits on a shelf. */
 const shelfSelected = computed(() => {
   const id = ui.selectedTaskId;
-  return id !== null && (model.value?.cardFor(id)?.shelf ?? 'plan') !== 'plan';
+  const board = boardQuery.data.value;
+  return id !== null && board !== undefined && shelfOf(board, id) !== 'plan';
 });
-const needsCount = computed(() => model.value?.needs.badge ?? 0);
+const needsCount = computed(() => needs.value?.badge ?? 0);
 
 // Review code on the focused branch or card, else the selected one.
 const reviewCode = useReviewCode();

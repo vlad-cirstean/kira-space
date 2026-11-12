@@ -20,7 +20,7 @@ function refocus(el: HTMLElement | null): void {
 export function useReviewCode() {
   const ui = useAdeBoardUiStore();
   const contextMenu = useContextMenuStore();
-  const { model } = usePlanModel();
+  const { view } = usePlanModel();
   const mutation = useOpenReviewWindow();
 
   function open(
@@ -46,7 +46,7 @@ export function useReviewCode() {
 
   /** One branch opens it; several show a picker under `anchor`. */
   function openTask(card: CardModel, anchor: HTMLElement | null): void {
-    const graph = model.value?.view.graph;
+    const graph = view.value?.graph;
     if (!graph) return;
     const choices = reviewChoices(card, graph);
     const taskId = card.task.id;
@@ -81,11 +81,11 @@ export function useReviewCode() {
   }
 
   const choicesOf = (card: CardModel): ReviewChoice[] => {
-    const graph = model.value?.view.graph;
+    const graph = view.value?.graph;
     return graph ? reviewChoices(card, graph) : [];
   };
   const choiceOf = (row: BranchRowModel): ReviewChoice | null => {
-    const graph = model.value?.view.graph;
+    const graph = view.value?.graph;
     const task = graph?.byTask.get(row.branch.taskId);
     return graph && task ? reviewChoice(row, task, graph) : null;
   };

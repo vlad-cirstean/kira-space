@@ -1,4 +1,5 @@
 import type { AgentActivity } from '@shared/domain/agent';
+import { replaceEqualDeep } from '@tanstack/vue-query';
 import { t } from '@theme/i18n';
 import { createSharedComposable, useIntervalFn } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
@@ -54,6 +55,7 @@ import { useBoardHistory } from '../readQueries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import type { Board, Branch, HistoryEntry, Session, Task, TaskStatusDef, Workflow } from '../wire';
 import { type AttachFact, attachOf } from './attach';
+import { cachedProgress, type ProgressCache, reuseModels } from './planModelMemo';
 
 /** Needs-you kinds that put a `!` on a card and row: a waiting question, a stuck run. */
 const ASKS: ReadonlySet<NeedsKind> = new Set(['question', 'stuck run']);
@@ -405,59 +407,98 @@ function buildPlanModel() {
     branches: new Set(ripple.value?.branchIds),
   }));
 
+  const workflowMap = computed(() => {
+    const out = new Map<string, Workflow>();
+    for (const e of workflows.data.value?.workflows ?? []) {
+      if (e.workflow) out.set(e.workflow.id, e.workflow);
+    }
+    return out;
+  });
+
+  const progressCache: ProgressCache = new WeakMap();
+  /** Progress of every task. An unchanged task and workflow keep the same progress object. */
+  const progress = computed(() => {
+    const b = board.data.value;
+    const out = new Map<string, TaskProgress>();
+    if (!b) return out;
+    const branches = new Map(b.branches.map((x) => [x.id, x]));
+    for (const task of b.tasks) {
+      const workflow = task.workflow ?? workflowMap.value.get(task.workflowId) ?? null;
+      // Progress reads a branch's kind and repo, and the repo's name: those, as one string.
+      const facts = task.branchIds
+        .map((id) => {
+          const br = branches.get(id);
+          return `${id}\t${br?.kind}\t${br?.codeRepoId}\t${repoLabel(br?.codeRepoId ?? '')}`;
+        })
+        .join('\n');
+      out.set(
+        task.id,
+        cachedProgress(progressCache, task, workflow, facts, () =>
+          buildTaskProgress({
+            task,
+            workflow,
+            branch: (id) => branches.get(id),
+            repoNick: repoLabel,
+          }),
+        ),
+      );
+    }
+    return out;
+  });
+
+  /** Needs-you: reads the board, sessions and progress, never the timeline or cards. */
+  const needs = computed(() => {
+    const b = board.data.value;
+    if (!b) return null;
+    return buildNeedsYou({
+      board: b,
+      sessions: sessions.value,
+      progress: progress.value,
+      repoNick: repoLabel,
+      nowMs: now.value.getTime(),
+    });
+  });
+
+  const cal = computed(() => buildCalendar(today.value, planSettings.value));
+
+  /** Cards of the previous run, kept so equal cards keep their identity (`reuseModels`). */
+  let shownBefore: ReadonlyMap<string, CardModel> = new Map();
+  const extraBefore = new Map<string, CardModel>();
+
   const model = computed(() => {
     const b = board.data.value;
     const view = timeline.value;
-    if (!b || !view) return null;
-    const graph = view.graph;
-    const wf = new Map<string, Workflow>();
-    for (const e of workflows.data.value?.workflows ?? []) {
-      if (e.workflow) wf.set(e.workflow.id, e.workflow);
-    }
-    const progress = new Map<string, TaskProgress>();
-    for (const t of b.tasks) {
-      progress.set(
-        t.id,
-        buildTaskProgress({
-          task: t,
-          workflow: t.workflow ?? wf.get(t.workflowId) ?? null,
-          branch: (id) => graph.byBranch.get(id),
-          repoNick: repoLabel,
-        }),
-      );
-    }
-    const nowMs = now.value.getTime();
+    const needsYou = needs.value;
+    if (!b || !view || !needsYou) return null;
     const ctx: Ctx = {
       board: b,
       history: history.value,
       view,
-      cal: buildCalendar(today.value, planSettings.value),
-      progress,
+      cal: cal.value,
+      progress: progress.value,
       sessions: sessions.value,
-      workflows: wf,
-      needs: buildNeedsYou({
-        board: b,
-        sessions: sessions.value,
-        progress,
-        repoNick: repoLabel,
-        nowMs,
-      }),
+      workflows: workflowMap.value,
+      needs: needsYou,
       mainName: new Map(b.repos.map((r) => [r.codeRepoId, r.mainName])),
       prTitle: (id) => changeRequests.data.value?.branches[id]?.title ?? '',
       repoLabel,
-      nowMs,
+      nowMs: now.value.getTime(),
     };
-    const cards = new Map<string, CardModel>();
-    for (const id of view.shownTaskIds) {
-      const card = buildCard(ctx, id);
-      if (card) cards.set(id, card);
-    }
+    const cards = reuseModels(shownBefore, view.shownTaskIds, (id) => buildCard(ctx, id));
+    shownBefore = cards;
+    for (const id of extraBefore.keys()) if (!view.graph.byTask.has(id)) extraBefore.delete(id);
     // The panel opens tasks the Plan hides (first-10 cap, repo filter), so it builds them on demand.
     const extra = new Map<string, CardModel | null>();
     const cardFor = (id: string): CardModel | null => {
       const shown = cards.get(id);
       if (shown) return shown;
-      if (!extra.has(id)) extra.set(id, buildCard(ctx, id));
+      if (!extra.has(id)) {
+        const built = buildCard(ctx, id);
+        const before = extraBefore.get(id);
+        const card = built && before ? replaceEqualDeep(before, built) : built;
+        if (card) extraBefore.set(id, card);
+        extra.set(id, card);
+      }
       return extra.get(id) ?? null;
     };
     return {
@@ -466,13 +507,14 @@ function buildPlanModel() {
       cards,
       cardFor,
       cal: ctx.cal,
-      needs: ctx.needs,
-      workflows: wf,
+      needs: needsYou,
+      workflows: workflowMap.value,
     };
   });
 
   return {
     model,
+    needs,
     history,
     view: timeline,
     ripple,
