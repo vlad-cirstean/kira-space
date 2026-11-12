@@ -9374,6 +9374,10 @@
         "holder": {
           "label": "Holder"
         },
+        "removeConfirm": {
+          "body": "{task} holds it. Removing the queue revokes the lease. Its agent keeps running and is told the lease is gone.",
+          "title": "Remove queue {queue}?"
+        },
         "removeQueue": {
           "label": "Remove queue"
         },
@@ -16103,7 +16107,7 @@
             "body": "Kira classifies statements by their text. Text it can’t classify needs DDL, so set DDL to deny to block it."
           },
           "enforceExemption": {
-            "body": "When a limit refuses a statement, the agent may ask you to lift it for that one statement. A dialog always appears, even when the mode is allow. Approve all does not cover it."
+            "body": "When a limit refuses a statement, the agent may ask you to lift it for that one statement. A dialog always appears, even when the mode is allow. Only a click on that statement approves it."
           },
           "enforceModes": {
             "body": "Kira checks the mode before any query runs. Ask me waits for your approval; no answer in 10 minutes refuses it."
@@ -18044,9 +18048,6 @@
       }
     },
     "approvals": {
-      "approveAll": {
-        "label": "Approve all ({count})"
-      },
       "denyAll": {
         "label": "Deny all ({count})"
       },

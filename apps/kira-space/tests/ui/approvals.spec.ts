@@ -105,7 +105,7 @@ studioTest.describe('databases module', () => {
     },
   );
 
-  studioTest('contract: Deny all and Approve all answer every visible id', async ({ relaunch }) => {
+  studioTest('contract: Deny all answers every visible id', async ({ relaunch }) => {
     const items = queue(2);
     const ids = items.map((i) => i.id);
     const { window: page, control } = await relaunch({

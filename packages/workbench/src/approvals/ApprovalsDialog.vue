@@ -16,27 +16,23 @@ import { computed } from 'vue';
 import ApprovalItemActions from './ApprovalItemActions.vue';
 import ApprovalItemCard from './ApprovalItemCard.vue';
 import { useApprovalActions } from './approvalsQueries';
-import { useApprovalKinds } from './registry';
 
 const props = defineProps<{ items: ApprovalItem[] }>();
 
 const store = useApprovalsStore();
 const { answer } = useApprovalActions();
 
-const kinds = useApprovalKinds();
 // One prompt at a time; answering it moves `current` to the next oldest.
 const current = computed(
   () => props.items.find((i) => i.id === store.focusId) ?? (props.items[0] as ApprovalItem),
 );
 const position = computed(() => props.items.findIndex((i) => i.id === current.value.id) + 1);
-// Approve all leaves out kinds that need an explicit click on the item (limit exemptions).
-const approvable = computed(() => props.items.filter((i) => !kinds[i.kind]?.individualOnly));
-
-// Ids are captured at click time: an item that joins mid-click stays pending.
-function answerAll(approve: boolean): void {
+// Only the shown item can be approved, by its own click. Deny is safe in bulk. Ids are captured at
+// click time: an item that joins mid-click stays pending.
+function denyAll(): void {
   void answer(
-    (approve ? approvable.value : props.items).map((i) => i.id),
-    approve,
+    props.items.map((i) => i.id),
+    false,
   );
 }
 </script>
@@ -66,18 +62,9 @@ function answerAll(approve: boolean): void {
             variant="dialog-deny"
             size="kira"
             data-testid="approvals-deny-all"
-            @click="answerAll(false)"
+            @click="denyAll"
           >
             {{ t('workbench.approvals.denyAll.label', { count: items.length }) }}
-          </Button>
-          <Button
-            v-if="approvable.length > 0"
-            variant="dialog-approve"
-            size="kira"
-            data-testid="approvals-approve-all"
-            @click="answerAll(true)"
-          >
-            {{ t('workbench.approvals.approveAll.label', { count: approvable.length }) }}
           </Button>
         </div>
         <ApprovalItemActions :key="current.id" :item="current" />

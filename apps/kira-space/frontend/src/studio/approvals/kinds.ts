@@ -178,7 +178,6 @@ export function studioApprovalKinds(): ApprovalKinds {
       operation: () => t('studio.dbMcp.approval.op.liftLimit.label'),
       where: connectionWhere,
       risks: exemptionRisks,
-      individualOnly: true,
       labels: () => ({
         approve: t('studio.dbMcp.approval.exemption.approve.label'),
         deny: t('studio.dbMcp.approval.exemption.deny.label'),
@@ -199,7 +198,6 @@ export function studioApprovalKinds(): ApprovalKinds {
               },
             ]
           : [],
-      individualOnly: true,
       labels: () => ({
         approve: t('studio.dbMcp.preview.send.label'),
         deny: t('studio.dbMcp.preview.withhold.label'),

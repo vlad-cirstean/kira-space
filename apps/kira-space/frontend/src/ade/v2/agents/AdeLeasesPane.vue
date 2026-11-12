@@ -55,6 +55,7 @@ const { data } = useLeases();
             variant="toolbar"
             size="kira"
             :aria-label="t('space.ade.leases.removeQueue.label')"
+            :pending="store.saving()"
             :data-testid="`ade-lease-remove-${q.name}`"
             @click="store.removeQueue(q.name)"
           >

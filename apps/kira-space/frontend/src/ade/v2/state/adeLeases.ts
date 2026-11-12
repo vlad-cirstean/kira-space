@@ -24,9 +24,12 @@ export const useAdeLeasesStore = defineStore('adeLeases', () => {
   const names = (): string[] => (leases.data.value?.queues ?? []).map((q) => q.name);
   const fail = (err: unknown): void => void toast.error(errorText(err));
 
+  // Saves send the whole list: a second one before the first settles would build on stale data.
+  const saving = (): boolean => save.isPending.value;
+
   function canAdd(): boolean {
     const name = draft.value.trim();
-    return name !== '' && !names().includes(name);
+    return name !== '' && !names().includes(name) && !saving();
   }
 
   async function addQueue(): Promise<void> {
@@ -40,6 +43,17 @@ export const useAdeLeasesStore = defineStore('adeLeases', () => {
   }
 
   async function removeQueue(name: string): Promise<void> {
+    if (saving()) return;
+    const holder = leases.data.value?.queues.find((q) => q.name === name)?.holder;
+    if (holder) {
+      const ok = await useConfirmDialogStore().confirm({
+        title: t('space.ade.leases.removeConfirm.title', { queue: name }),
+        message: t('space.ade.leases.removeConfirm.body', { task: holder.taskTitle }),
+        confirmLabel: t('space.ade.leases.removeQueue.label'),
+        tone: 'danger',
+      });
+      if (!ok) return;
+    }
     try {
       await save.mutateAsync({ names: names().filter((n) => n !== name) });
     } catch (err) {
@@ -70,5 +84,5 @@ export const useAdeLeasesStore = defineStore('adeLeases', () => {
     }
   }
 
-  return { draft, canAdd, addQueue, removeQueue, requestRelease, forceRelease };
+  return { draft, saving, canAdd, addQueue, removeQueue, requestRelease, forceRelease };
 });

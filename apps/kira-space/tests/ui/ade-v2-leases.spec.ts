@@ -127,7 +127,24 @@ test('the queue editor adds a name and refuses an empty or duplicate one', async
   await expect.poll(() => calls(control, IPC.leasesSaveQueues)).toHaveLength(1);
   expect(calls(control, IPC.leasesSaveQueues)[0]?.args).toEqual({ names: ['push', 'port-3000'] });
 
+  // push has a holder: removing it revokes the lease, so it asks first.
   await page.locator(t('ade-lease-remove-push')).click();
+  await expect(page.locator(t('confirm-dialog-message'))).toContainText('Task C');
+  await page.locator(t('confirm-dialog-cancel')).click();
+  expect(calls(control, IPC.leasesSaveQueues)).toHaveLength(1);
+  await page.locator(t('ade-lease-remove-push')).click();
+  await page.locator(t('confirm-dialog-confirm')).click();
   await expect.poll(() => calls(control, IPC.leasesSaveQueues)).toHaveLength(2);
   expect(calls(control, IPC.leasesSaveQueues)[1]?.args).toEqual({ names: [] });
+});
+
+test('a free queue is removed without a confirm', async ({ relaunch }) => {
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.leasesSnapshot, response: snapshot('ended') },
+    { channel: IPC.leasesSaveQueues },
+  ]);
+  await openLeases(page);
+  await page.locator(t('ade-lease-remove-push')).click();
+  await expect.poll(() => calls(control, IPC.leasesSaveQueues)).toHaveLength(1);
+  expect(calls(control, IPC.leasesSaveQueues)[0]?.args).toEqual({ names: [] });
 });

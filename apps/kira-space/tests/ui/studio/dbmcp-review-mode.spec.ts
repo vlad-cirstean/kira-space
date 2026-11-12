@@ -109,7 +109,6 @@ test('contract: a query item offers the checkbox, a tick rides the approval', as
     control: [{ channel: IPC.approvalsAnswer, response: answeredOk([it.id]) }],
   });
   await pushApprovals(page, [liveItem(it)]);
-  const c = card(page, it);
   await expect(page.locator(box)).toBeVisible();
   await expect(page.locator(box)).toHaveAttribute('aria-checked', 'false');
   await page.locator(box).click();
@@ -126,7 +125,6 @@ test('contract: a call the settings already review shows the box on and locked',
   if (!it) throw new Error('contract has no on item');
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
-  const c = card(page, it);
   await expect(page.locator(box)).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator(box)).toBeDisabled();
   await page.getByText('Review result').hover();
@@ -142,7 +140,6 @@ test('contract: an exemption item offers the same checkbox', async ({ relaunch }
     control: [{ channel: IPC.approvalsAnswer, response: answeredOk([it.id]) }],
   });
   await pushApprovals(page, [liveItem(it)]);
-  const c = card(page, it);
   await expect(page.locator(box)).toBeVisible();
   await page.locator(box).click();
   await page.click(`[data-testid="approval-approve-${it.id}"]`);
@@ -151,7 +148,7 @@ test('contract: an exemption item offers the same checkbox', async ({ relaunch }
     .toEqual({ ids: [it.id], approve: true, options: { [it.id]: { reviewResult: true } } });
 });
 
-test('contract: a requested result leaves Approve all', async ({ relaunch }) => {
+test('contract: a requested result shows no bulk approve', async ({ relaunch }) => {
   const [it] = items('requested');
   if (!it) throw new Error('contract has no requested item');
   const [other] = items('query');
@@ -166,7 +163,7 @@ test('contract: a requested result leaves Approve all', async ({ relaunch }) => 
   await pushApprovals(page, [liveItem(it), liveItem(other)]);
   await emitWailsEvent(page, CHANNEL.promptsReveal, { id: `approval:${it.id}` });
   await expect(card(page, it).locator('[data-testid="db-mcp-preview-body"]')).toBeVisible();
-  await expect(page.locator('[data-testid="approvals-approve-all"]')).toHaveText('Approve all (1)');
+  await expect(page.locator('[data-testid="approvals-approve-all"]')).toHaveCount(0);
   await page.click('[data-testid="approvals-deny-all"]');
   await expect
     .poll(() => {
