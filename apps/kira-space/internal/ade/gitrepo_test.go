@@ -19,12 +19,12 @@ const queueOtherName, queueOtherEmail = "Other Author", "other@example.com"
 
 // runGitQueue runs a git command with the "mine" identity as both author and committer — every
 // queue_test.go call not explicitly authored otherwise.
-func runGitQueue(t *testing.T, dir string, args ...string) string {
+func runGitQueue(t testing.TB, dir string, args ...string) string {
 	t.Helper()
 	return runGitQueueAs(t, dir, queueMineName, queueMineEmail, args...)
 }
 
-func runGitQueueAs(t *testing.T, dir, name, email string, args ...string) string {
+func runGitQueueAs(t testing.TB, dir, name, email string, args ...string) string {
 	t.Helper()
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
@@ -39,7 +39,7 @@ func runGitQueueAs(t *testing.T, dir, name, email string, args ...string) string
 	return strings.TrimRight(string(out), "\n")
 }
 
-func writeQueueFile(t *testing.T, dir, name, content string) {
+func writeQueueFile(t testing.TB, dir, name, content string) {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 		t.Fatalf("write %s: %v", name, err)
@@ -48,7 +48,7 @@ func writeQueueFile(t *testing.T, dir, name, content string) {
 
 // initQueueRepo builds a bare "origin" plus a clone checked out on "main" with one commit, the
 // "mine" identity configured (the board's user.email read).
-func initQueueRepo(t *testing.T) (origin, dir string) {
+func initQueueRepo(t testing.TB) (origin, dir string) {
 	t.Helper()
 	origin = t.TempDir()
 	runGitQueue(t, origin, "init", "-q", "--bare", "-b", "main")

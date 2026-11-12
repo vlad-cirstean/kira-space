@@ -21,7 +21,7 @@ import (
 )
 
 type boardHarness struct {
-	t       *testing.T
+	t       testing.TB
 	repos   *repos.Repos
 	board   *TaskBoard
 	files   *repocfg.Store
@@ -30,8 +30,15 @@ type boardHarness struct {
 	mid     string
 }
 
-func newBoardHarness(t *testing.T) *boardHarness {
+func newBoardHarness(t testing.TB) *boardHarness { return newBoardHarnessWith(t, nil) }
+
+// newBoardHarnessWith wraps the spawn seam of both git runners (nil keeps the exec runner).
+func newBoardHarnessWith(t testing.TB, wrap func(gitclient.Runner) gitclient.Runner) *boardHarness {
 	t.Helper()
+	runner := gitclient.NewExecRunner()
+	if wrap != nil {
+		runner = wrap(runner)
+	}
 	db, err := storage.OpenAt(t.TempDir())
 	if err != nil {
 		t.Fatalf("storage.OpenAt: %v", err)
@@ -41,7 +48,7 @@ func newBoardHarness(t *testing.T) *boardHarness {
 	if err != nil {
 		t.Fatalf("repos.New: %v", err)
 	}
-	registry := gitsession.NewRegistry(gitclient.NewExecRunner())
+	registry := gitsession.NewRegistry(runner)
 	t.Cleanup(registry.Close)
 	h := &boardHarness{t: t, repos: r}
 	h.files = repocfgtest.New(t, db.DB, filepath.Join(t.TempDir(), "repos"))
@@ -51,7 +58,7 @@ func newBoardHarness(t *testing.T) *boardHarness {
 		Agent:       testAgents,
 		DbMcp:       fakeDbMcp{},
 		Credentials: gitcred.New(),
-		Tasks:       r.AdeTasks, Statuses: r.AdeStatuses, RepoConfig: r.AdeRepoConfig, Facts: r.AdeFacts, CodeRepos: r.CodeRepos, Runner: gitclient.NewExecRunner(),
+		Tasks:       r.AdeTasks, Statuses: r.AdeStatuses, RepoConfig: r.AdeRepoConfig, Facts: r.AdeFacts, CodeRepos: r.CodeRepos, Runner: runner,
 		GitRepoSettings: h.files.Settings,
 		Registry:        registry,
 		GitStatus:       func(context.Context) gitclient.GitStatus { return h.status.Load().(gitclient.GitStatus) },
@@ -101,7 +108,7 @@ func (h *boardHarness) addTask(id, kind string, specs ...branchSpec) {
 	}
 }
 
-func boardBranch(t *testing.T, b adewire.Board, id string) adewire.Branch {
+func boardBranch(t testing.TB, b adewire.Board, id string) adewire.Branch {
 	t.Helper()
 	for _, br := range b.Branches {
 		if br.ID == id {
@@ -112,7 +119,7 @@ func boardBranch(t *testing.T, b adewire.Board, id string) adewire.Branch {
 	return adewire.Branch{}
 }
 
-func commitFile(t *testing.T, dir, name, content, msg string) {
+func commitFile(t testing.TB, dir, name, content, msg string) {
 	t.Helper()
 	writeQueueFile(t, dir, name, content)
 	runGitQueue(t, dir, "add", name)
