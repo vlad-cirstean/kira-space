@@ -124,6 +124,7 @@ export const CHANNEL = {
   adeTaskUpdates: 'kira:adetask:updates',
   // P547: the Kira Studio audit trail of one task changed, {taskId}.
   adeTaskDbAudit: 'kira:adetask:dbAudit',
+  // P620: resource lease queues, holders or waiters changed (Emit, app-wide, payload-free).
   adeLeases: 'kira:ade:leases',
   // P420: validation-proof sessions changed (Emit, app-wide), {sessionId}; a request for the proof
   // window to show one session (EmitTo), {sessionId}.

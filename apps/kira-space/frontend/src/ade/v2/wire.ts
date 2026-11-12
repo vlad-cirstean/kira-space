@@ -1414,3 +1414,32 @@ export interface MarkTrackedSeenArgs {
   /** Empty = every item of the task. */
   itemKeys: string[];
 }
+
+// ---- resource leases (P620)
+export interface LeaseEntry {
+  sessionId: string;
+  taskId: string;
+  taskTitle: string;
+  /** 0 for the holder. */
+  position: number;
+  /** Epoch ms. */
+  since: number;
+  /** Epoch ms; holder only. */
+  expiresAt: number;
+  releaseAsked: boolean;
+  noticePending: boolean;
+}
+export interface LeaseQueue {
+  name: string;
+  holder: LeaseEntry | null;
+  waiters: LeaseEntry[];
+}
+export interface LeaseSnapshot {
+  queues: LeaseQueue[];
+}
+export interface LeaseQueuesArgs {
+  names: string[];
+}
+export interface LeaseQueueArgs {
+  queue: string;
+}

@@ -209,6 +209,10 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   terminalAgentSessions: 'TerminalService.AgentSessions',
 
   // P145: the ade v2 board surface (AdeTaskService, bridge/index.ts `adeTask*`).
+  leasesSnapshot: 'LeasesService.Snapshot',
+  leasesSaveQueues: 'LeasesService.SaveQueues',
+  leasesRequestRelease: 'LeasesService.RequestRelease',
+  leasesForceRelease: 'LeasesService.ForceRelease',
   adeTaskBoard: 'AdeTaskService.Board',
   adeTaskChangeRequests: 'AdeTaskService.ChangeRequests',
   adeTaskRefresh: 'AdeTaskService.Refresh',
@@ -795,6 +799,7 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   // Boot queries of the code-repo stores, issued in every mode.
   [IPC.adeTaskRepos]: '{"repos":[],"folders":[]}',
   [IPC.adeTaskSessions]: '{"sessions":[]}',
+  [IPC.leasesSnapshot]: '{"queues":[]}',
   [IPC.repoConfigList]: '{"dir":"","files":[]}',
   [IPC.queriesHistoryRecord]: 'null',
   [IPC.treeInvalidate]: 'null',
@@ -937,6 +942,9 @@ const ADE_TASK_PUSHES: Readonly<Record<string, readonly string[]>> = {
   [IPC.adeTaskCreateTask]: [IPC.adeTaskBoardChanged],
   [IPC.adeTaskAddExistingBranch]: [IPC.adeTaskBoardChanged],
   [IPC.adeTaskAddHostLink]: [IPC.adeTaskBoardChanged],
+  [IPC.leasesSaveQueues]: [IPC.adeLeasesChanged],
+  [IPC.leasesRequestRelease]: [IPC.adeLeasesChanged],
+  [IPC.leasesForceRelease]: [IPC.adeLeasesChanged],
   [IPC.adeTaskForcePush]: [IPC.adeTaskBoardChanged],
   [IPC.adeTaskRefresh]: [IPC.adeTaskBoardChanged],
   [IPC.adeTaskUpdateTask]: [IPC.adeTaskBoardChanged],

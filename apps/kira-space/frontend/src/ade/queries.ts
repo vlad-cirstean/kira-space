@@ -10,6 +10,7 @@ import type { useAgentSessionsStore } from './state';
 import { agentContextKey } from './v2/context/queries';
 import { installMobileLaunch } from './v2/dialog/mobileLaunch';
 import { adeTurns } from './v2/dialog/turnWatch';
+import { leasesKey } from './v2/leases/queries';
 import {
   artifactsPrefix,
   dbAuditPrefix,
@@ -98,6 +99,9 @@ export function installAdeSignals(
   control.onAdeTaskRuns(refreshReviewStep);
   control.onAdeTaskUpdates(() => {
     void queryClient.invalidateQueries({ queryKey: trackedUpdatesKey, exact: true });
+  });
+  control.onAdeLeases(() => {
+    void queryClient.invalidateQueries({ queryKey: leasesKey, exact: true });
   });
   control.onAdeTaskOpenSession((event) => {
     useAdeBoardUiStore().openSession(event);

@@ -9331,6 +9331,56 @@
           "empty": "Nothing in later yet. Drag tasks here"
         }
       },
+      "leases": {
+        "add": {
+          "label": "Add queue",
+          "placeholder": "Queue name"
+        },
+        "asked": {
+          "label": "Release requested"
+        },
+        "chip": {
+          "holds": {
+            "label": "Holds {queue}",
+            "tooltip": "Holds the {queue} lease"
+          },
+          "waits": {
+            "label": "#{position} in {queue}",
+            "tooltip": "Waits for the {queue} lease, position {position}"
+          }
+        },
+        "empty": {
+          "hint": "No lease queues yet. Name one so agents can wait in line for a shared resource."
+        },
+        "forceConfirm": {
+          "body": "Revokes the lease from {task}. Its agent keeps running and is told the lease is gone.",
+          "title": "Force release {queue}?"
+        },
+        "forceRelease": {
+          "label": "Force release"
+        },
+        "free": {
+          "label": "Free"
+        },
+        "holder": {
+          "label": "Holder"
+        },
+        "removeQueue": {
+          "label": "Remove queue"
+        },
+        "requestRelease": {
+          "label": "Request release"
+        },
+        "tab": {
+          "label": "Leases"
+        },
+        "waiters": {
+          "empty": {
+            "hint": "Nobody is waiting."
+          },
+          "label": "Waiting"
+        }
+      },
       "link": {
         "copy": {
           "tooltip": "Copy {label} link"

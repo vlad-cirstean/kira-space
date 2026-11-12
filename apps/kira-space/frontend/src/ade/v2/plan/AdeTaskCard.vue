@@ -29,6 +29,7 @@ import AdeUpdatesDot from '../updates/AdeUpdatesDot.vue';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
 import AdeAttention from './AdeAttention.vue';
 import AdeBranchRow from './AdeBranchRow.vue';
+import AdeLeaseChip from './AdeLeaseChip.vue';
 import AdeOpStatus from './AdeOpStatus.vue';
 import AdeTagIcon from './AdeTagIcon.vue';
 import AdeTaskChildren from './AdeTaskChildren.vue';
@@ -208,6 +209,7 @@ const boxClass = computed(() => {
             <span v-else :class="CARD_BAR" />
           </template>
           <AdeAutomationChip :task-id="card.task.id" />
+          <AdeLeaseChip :task-id="card.task.id" />
           <AdeUpdatesDot
             v-if="taskUpdates.length"
             :tip="taskUpdates.map(describe).join('; ')"

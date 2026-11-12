@@ -3,7 +3,7 @@ import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
-export type AgentsTab = 'context' | 'settings';
+export type AgentsTab = 'context' | 'settings' | 'leases';
 
 // Agent config page state and its leave guard, in memory only.
 export const useAdeAgentsUiStore = defineStore('adeAgentsUi', () => {
