@@ -619,3 +619,19 @@ test('contract: Refresh all fetches a repo with a remote and rescans one without
   await expect(repoNote(page, 'repo-mobile')).toHaveText('No remote · No changes');
   await expect(page.locator('[data-testid="ade-repo-note"].text-tone-red')).toHaveCount(0);
 });
+
+test('today is an inverted label and its ruler matches the other days', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch);
+  const today = page.locator('[data-testid="ade-band-label"][data-today="true"]');
+  await expect(today).toHaveCount(1);
+  const rulerColor = (label: import('@playwright/test').Locator) =>
+    label.evaluate((el) => getComputedStyle(el.parentElement as HTMLElement).borderRightColor);
+  const other = page.locator('[data-testid="ade-band-label"]:not([data-today])').first();
+  expect(await rulerColor(today)).toBe(await rulerColor(other));
+  const colors = await today.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { bg: cs.backgroundColor, fg: cs.color };
+  });
+  expect(colors.bg).not.toBe('rgba(0, 0, 0, 0)');
+  expect(colors.bg).not.toBe(colors.fg);
+});

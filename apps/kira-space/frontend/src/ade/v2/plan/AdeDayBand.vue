@@ -8,6 +8,7 @@ import { useDraggable } from 'vue-draggable-plus';
 import type { TimelineBand } from '../board/timeline';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import AdeTaskCard from './AdeTaskCard.vue';
+import { taskTint } from './taskTint';
 import type { BranchRowModel, CardModel } from './usePlanModel';
 
 // One day of the timeline: ruler, history rows, overdue and overflow strips, the day's cards and
@@ -67,15 +68,12 @@ const over = computed(() => props.band.overflowTaskIds.length > 0 && !greyed.val
 const accepts = computed(() => !props.band.isPast && !props.band.dayOff);
 const highlight = computed(() => props.dragOver && accepts.value);
 
-const rulerBorderClass = computed(() => {
-  if (props.band.isToday) return 'border-r-tone-amber-solid';
-  return 'border-r-border';
-});
 const dotClass = computed(() => {
-  if (props.band.isToday) return 'border-tone-amber-solid bg-tone-amber-solid';
+  if (props.band.isToday) return 'border-fg bg-fg';
   return props.band.isPast || greyed.value ? 'border-border bg-chrome' : 'border-subtle bg-chrome';
 });
 const labelClass = computed(() => {
+  if (props.band.isToday) return '';
   if (greyed.value) return 'text-subtle';
   if (overdue.value) return 'text-tone-amber';
   return empty.value || props.band.isPast ? 'text-subtle' : 'text-fg';
@@ -106,7 +104,7 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
   >
     <div
       class="relative box-border w-15 shrink-0 border-r-2 text-right"
-      :class="['py-1.5 pl-0 pr-2', rulerBorderClass]"
+      :class="['py-1.5 pl-0 pr-2', 'border-r-border']"
     >
       <span
         class="absolute box-border rounded-full border-2"
@@ -114,7 +112,13 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
       />
       <div
         class="whitespace-nowrap"
-        :class="['text-kira-md font-medium', band.dayOff ? 'line-through' : '', labelClass]"
+        :class="[
+          'text-kira-md font-medium',
+          band.dayOff ? 'line-through' : '',
+          labelClass,
+          band.isToday ? 'inline-block rounded-kira-sm bg-fg px-1 text-bg' : '',
+        ]"
+        :data-today="band.isToday || undefined"
         data-testid="ade-band-label"
       >
         {{ band.label }}
@@ -190,8 +194,8 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
         v-for="s in spans"
         :key="s.taskId"
         variant="toolbar"
-        class="h-row w-auto justify-start gap-2 border border-l-3 border-border px-2 font-normal data-[selected]:bg-select"
-        :style="{ borderLeftColor: s.color }"
+        class="h-row w-auto justify-start gap-2 border border-border px-2 font-normal data-[selected]:bg-select"
+        :style="taskTint(s.color, false)"
         :data-task-id="s.taskId"
         :data-selected="ui.selectedTaskId === s.taskId || undefined"
         data-testid="ade-span-row"
