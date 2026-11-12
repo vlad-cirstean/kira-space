@@ -9603,9 +9603,71 @@
         }
       },
       "ops": {
+        "agentApproval": {
+          "loading": "Waiting for your approval…"
+        },
+        "agentBranches": {
+          "loading": "Creating branches…",
+          "status": "Created branches for {name}"
+        },
+        "agentChange": {
+          "loading": "Applying branch change…",
+          "status": "Changed branch for {name}"
+        },
+        "agentFetch": {
+          "loading": "Fetching remote…",
+          "status": "Fetched remote for {name}"
+        },
+        "agentPush": {
+          "loading": "Pushing branch…",
+          "status": "Pushed branch for {name}"
+        },
+        "agentRename": {
+          "loading": "Renaming branch…",
+          "status": "Renamed branch for {name}"
+        },
+        "approve": {
+          "loading": "Approving…",
+          "status": "Approved {name}"
+        },
         "archive": {
           "loading": "Closing task…",
           "status": "Closed {name}"
+        },
+        "attachBranch": {
+          "loading": "Adding branch…",
+          "status": "Branch {name} attached"
+        },
+        "closeSession": {
+          "loading": "Closing session…",
+          "status": "Closed session {name}"
+        },
+        "finishReview": {
+          "loading": "Finishing review…",
+          "status": "Finished review of {name}"
+        },
+        "forcePush": {
+          "status": "Force pushed {name}"
+        },
+        "launch": {
+          "loading": "Starting agent…",
+          "status": "Started agent for {name}"
+        },
+        "leaseRelease": {
+          "loading": "Releasing lease…",
+          "status": "Released {name}"
+        },
+        "leaseRequest": {
+          "loading": "Requesting release…",
+          "status": "Requested release of {name}"
+        },
+        "nextPass": {
+          "loading": "Starting next pass…",
+          "status": "Started next pass for {name}"
+        },
+        "rebase": {
+          "loading": "Rebasing…",
+          "status": "Rebased {name}"
         },
         "removeBranch": {
           "loading": "Removing branch…",
@@ -9614,6 +9676,38 @@
         "removeRepo": {
           "loading": "Removing repository…",
           "status": "Removed repository {name}"
+        },
+        "restartSession": {
+          "loading": "Restarting session…",
+          "status": "Restarted session {name}"
+        },
+        "resume": {
+          "loading": "Resuming…",
+          "status": "Resumed {name}"
+        },
+        "retry": {
+          "loading": "Retrying…",
+          "status": "Retried {name}"
+        },
+        "sendReview": {
+          "loading": "Sending review…",
+          "status": "Sent review for {name}"
+        },
+        "setBranch": {
+          "loading": "Changing branch…",
+          "status": "Changed branch to {name}"
+        },
+        "setStep": {
+          "loading": "Changing step…",
+          "status": "Changed step of {name}"
+        },
+        "startRun": {
+          "loading": "Starting run…",
+          "status": "Started run for {name}"
+        },
+        "stopRuns": {
+          "loading": "Stopping runs…",
+          "status": "Stopped runs of {name}"
         }
       },
       "orchestrator": {
