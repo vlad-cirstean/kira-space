@@ -29,13 +29,17 @@ export const dialogContentSizeVariants = cva(
         lg: 'w-150',
         xl: 'w-180',
         '2xl': 'w-225',
+        full: 'w-[min(80rem,calc(100vw-4rem))]',
       },
       fixedHeight: {
         true: 'h-140 max-h-[85vh]',
         false: '',
       },
     },
-    compoundVariants: [{ size: '2xl', fixedHeight: true, class: 'h-160' }],
+    compoundVariants: [
+      { size: '2xl', fixedHeight: true, class: 'h-160' },
+      { size: 'full', fixedHeight: true, class: 'h-[calc(100vh-6rem)] max-h-[calc(100vh-6rem)]' },
+    ],
     defaultVariants: {
       fixedHeight: false,
     },

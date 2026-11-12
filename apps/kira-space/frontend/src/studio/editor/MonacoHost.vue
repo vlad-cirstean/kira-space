@@ -868,6 +868,7 @@ watch(
         flush ? 'bg-transparent' : 'bg-bg',
         singleLine || flush ? 'p-0' : 'py-2 px-0',
         singleLine ? 'whitespace-pre' : 'whitespace-pre-wrap',
+        forceWrap && 'break-words',
       ]"
       v-text="previewDoc"
     ></pre>

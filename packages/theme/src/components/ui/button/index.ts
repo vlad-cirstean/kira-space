@@ -16,9 +16,13 @@ export const buttonVariants = cva(
         // runtime-adjustable via @theme's --spacing-control* -- see base.css).
         toolbar:
           'text-muted-foreground hover:bg-field hover:text-fg aria-pressed:bg-field aria-pressed:text-fg aria-expanded:bg-field aria-expanded:text-fg data-[tone=error]:text-error data-[tone=error]:hover:text-error data-[tone=ok]:text-ok data-[tone=ok]:hover:text-ok',
+        // Dialog buttons by meaning: neutral, confirm, approve, deny, destructive. Alphas keep
+        // text at 4.5:1 or more on the tinted fill against `--kira-bg`.
         dialog: 'justify-center border-border bg-transparent text-fg hover:bg-field',
-        'dialog-primary': 'justify-center border-primary bg-transparent text-fg hover:bg-field',
-        'dialog-danger': 'justify-center border-error bg-transparent text-error hover:bg-field',
+        'dialog-primary': 'justify-center border-primary bg-primary/15 text-fg hover:bg-primary/25',
+        'dialog-approve': 'justify-center border-ok bg-ok/15 text-ok hover:bg-ok/25',
+        'dialog-deny': 'justify-center border-error bg-transparent text-error hover:bg-error/10',
+        'dialog-danger': 'justify-center border-error bg-error/12 text-error hover:bg-error/15',
         // P110 B13: TitleBar.vue's own action row -- `aria-pressed` replaces `.is-on`'s own class
         // toggle, fixing the state's previously unexposed accessibility gap.
         title:

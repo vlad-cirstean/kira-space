@@ -5,19 +5,19 @@ import MonacoHost from '../editor/MonacoHost.vue';
 import type { SqlDialect } from '../views/shared/sqlIdent';
 import { useCodeLineHeight } from './codeLine';
 
-// A read-only, wrapped, unboxed editor that is as tall as its text, up to 12 lines.
+// A read-only, wrapped, unboxed editor that is as tall as its text; the dialog body scrolls.
 defineProps<{ doc: string; language: EditorLanguageId; sqlDialect?: SqlDialect }>();
 
-const MAX_LINES = 12;
 const lineHeight = useCodeLineHeight();
-const contentHeight = ref(0);
+// Null until Monaco lays out: the host's pending preview then shows at its natural height.
+const contentHeight = ref<number | null>(null);
 const height = computed(() =>
-  Math.min(Math.max(contentHeight.value, lineHeight.value), MAX_LINES * lineHeight.value),
+  contentHeight.value === null ? undefined : `${Math.max(contentHeight.value, lineHeight.value)}px`,
 );
 </script>
 
 <template>
-  <div class="overflow-hidden" :style="{ height: `${height}px` }">
+  <div class="overflow-hidden" :style="{ height }">
     <MonacoHost
       :doc="doc"
       :language="language"
