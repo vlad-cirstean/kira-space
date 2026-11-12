@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"unicode/utf8"
 
 	"github.com/kirathecat/kira-studio/internal/kiraschema"
@@ -103,23 +104,12 @@ func (r *AdeLogsRepo) Append(kind, id string, chunks []AdeLogChunk) ([]AdeLogChu
 		}
 		out = append(out, c)
 	}
-	for bytes > AdeLogTailBytes {
-		var seq, size int64
-		oldest := r.Dialect.Select(ch.Seq, "length(CAST("+ch.Text+" AS BLOB))").From(ch.Table)
-		oldest.Where(oldest.Equal(ch.Kind, kind), oldest.Equal(ch.ID, id)).OrderBy(ch.Seq).Limit(1)
-		err := sqlb.QueryRow(tx, oldest).Scan(&seq, &size)
-		if errors.Is(err, sql.ErrNoRows) {
-			break
-		}
+	if bytes > AdeLogTailBytes {
+		dropped, err := r.trimLogTail(tx, kind, id, bytes-AdeLogTailBytes)
 		if err != nil {
-			return nil, fmt.Errorf("repos: read oldest ade log chunk %s/%s: %w", kind, id, err)
+			return nil, err
 		}
-		drop := r.Dialect.DeleteFrom(ch.Table)
-		drop.Where(drop.Equal(ch.Kind, kind), drop.Equal(ch.ID, id), drop.Equal(ch.Seq, seq))
-		if _, err := sqlb.Exec(tx, drop); err != nil {
-			return nil, fmt.Errorf("repos: drop ade log chunk %s/%s: %w", kind, id, err)
-		}
-		bytes -= size
+		bytes -= dropped
 		truncated = 1
 	}
 	ub := r.Dialect.Update(l.Table)
@@ -132,6 +122,35 @@ func (r *AdeLogsRepo) Append(kind, id string, chunks []AdeLogChunk) ([]AdeLogChu
 		return nil, fmt.Errorf("repos: commit append ade log: %w", err)
 	}
 	return out, nil
+}
+
+// trimLogTail deletes the shortest oldest prefix of a log's chunks whose bytes reach excess and
+// returns the bytes dropped: one cutoff query, one delete. Every chunk goes when none reaches it.
+func (r *AdeLogsRepo) trimLogTail(tx *sql.Tx, kind, id string, excess int64) (int64, error) {
+	ch := kiraschema.AdeLogChunks
+	size := "length(CAST(" + ch.Text + " AS BLOB))"
+	window := r.Dialect.Select(ch.Seq+" AS seq", "SUM("+size+") OVER (ORDER BY "+ch.Seq+") AS run").From(ch.Table)
+	window.Where(window.Equal(ch.Kind, kind), window.Equal(ch.ID, id))
+	cutoff := r.Dialect.Select("seq", "run")
+	cutoff.From(cutoff.BuilderAs(window, "w")).Where(cutoff.GreaterEqualThan("run", excess)).OrderBy("seq").Limit(1)
+	var seq, dropped int64
+	err := sqlb.QueryRow(tx, cutoff).Scan(&seq, &dropped)
+	if errors.Is(err, sql.ErrNoRows) {
+		total := r.Dialect.Select("COALESCE(SUM(" + size + "), 0)").From(ch.Table)
+		total.Where(total.Equal(ch.Kind, kind), total.Equal(ch.ID, id))
+		seq = math.MaxInt64
+		if err := sqlb.QueryRow(tx, total).Scan(&dropped); err != nil {
+			return 0, fmt.Errorf("repos: size ade log %s/%s: %w", kind, id, err)
+		}
+	} else if err != nil {
+		return 0, fmt.Errorf("repos: find ade log cutoff %s/%s: %w", kind, id, err)
+	}
+	drop := r.Dialect.DeleteFrom(ch.Table)
+	drop.Where(drop.Equal(ch.Kind, kind), drop.Equal(ch.ID, id), drop.LessEqualThan(ch.Seq, seq))
+	if _, err := sqlb.Exec(tx, drop); err != nil {
+		return 0, fmt.Errorf("repos: drop ade log chunks %s/%s: %w", kind, id, err)
+	}
+	return dropped, nil
 }
 
 // clipChunk cuts text over AdeLogChunkBytes at a rune boundary and marks the cut.

@@ -802,6 +802,8 @@ CREATE INDEX ade_review_windows_task ON ade_review_windows (task_id);
 
 CREATE INDEX ade_runs_branch ON ade_runs (branch_id, state, purpose);
 
+CREATE INDEX ade_runs_latest ON ade_runs (task_id, step_id, branch_id, purpose, attempt);
+
 CREATE INDEX ade_runs_state ON ade_runs (state);
 
 CREATE INDEX ade_runs_task ON ade_runs (task_id, purpose, attempt);

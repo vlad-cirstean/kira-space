@@ -198,11 +198,7 @@ func (b *TaskBoard) nextLoops(plan []stepView, branch string) int {
 // returnsSpent counts the earlier returns of the run's step and branch: its `back` step runs, whatever
 // result sent them back.
 func (b *TaskBoard) returnsSpent(run model.AdeRun) (int, error) {
-	runs, err := b.deps.Tasks.RunsOfTask(run.TaskID)
-	if err != nil {
-		return 0, err
-	}
-	return countReturns(runs, run.StepID, run.BranchID, math.MaxInt), nil
+	return b.deps.Tasks.CountReturns(run.TaskID, run.StepID, run.BranchID, math.MaxInt)
 }
 
 // countReturns counts the `back` step runs (no review round, no rebase) of one step on one branch up to

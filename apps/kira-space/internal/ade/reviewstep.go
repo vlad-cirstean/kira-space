@@ -99,12 +99,13 @@ func reviewWire(run model.AdeRun, rev model.AdeReview, round *model.AdeRun) *ade
 type wireBatch struct {
 	b      *TaskBoard
 	badges map[string]repos.AdeRunSandbox
-	runs   map[string][]model.AdeRun
 	rounds map[string][]model.AdeRun
+	// reviews memoizes GetReview per run id (nil = no review).
+	reviews map[string]*model.AdeReview
 }
 
 func (b *TaskBoard) newWireBatch(runs []model.AdeRun) *wireBatch {
-	w := &wireBatch{b: b, runs: map[string][]model.AdeRun{}, rounds: map[string][]model.AdeRun{}}
+	w := &wireBatch{b: b, rounds: map[string][]model.AdeRun{}, reviews: map[string]*model.AdeReview{}}
 	if b.deps.RunSandbox == nil {
 		return w
 	}
@@ -121,16 +122,16 @@ func (b *TaskBoard) newWireBatch(runs []model.AdeRun) *wireBatch {
 	return w
 }
 
-func (w *wireBatch) taskRuns(taskID string) ([]model.AdeRun, bool) {
-	if runs, ok := w.runs[taskID]; ok {
-		return runs, true
+func (w *wireBatch) review(runID string) *model.AdeReview {
+	if rev, ok := w.reviews[runID]; ok {
+		return rev
 	}
-	runs, err := w.b.deps.Tasks.RunsOfTask(taskID)
+	rev, err := w.b.deps.Tasks.GetReview(runID)
 	if err != nil {
-		return nil, false
+		rev = nil
 	}
-	w.runs[taskID] = runs
-	return runs, true
+	w.reviews[runID] = rev
+	return rev
 }
 
 func (w *wireBatch) taskRounds(taskID string) ([]model.AdeRun, bool) {
@@ -154,11 +155,11 @@ func (w *wireBatch) wireRun(r model.AdeRun) adewire.Run {
 	if r.Purpose != "" {
 		return out
 	}
-	if runs, ok := w.taskRuns(r.TaskID); ok {
-		out.Returns = countReturns(runs, r.StepID, r.BranchID, r.Attempt)
+	if n, err := w.b.deps.Tasks.CountReturns(r.TaskID, r.StepID, r.BranchID, r.Attempt); err == nil {
+		out.Returns = n
 	}
-	rev, err := w.b.deps.Tasks.GetReview(r.ID)
-	if err != nil || rev == nil {
+	rev := w.review(r.ID)
+	if rev == nil {
 		return out
 	}
 	rounds, ok := w.taskRounds(r.TaskID)
