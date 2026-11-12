@@ -175,6 +175,41 @@ test('head-line columns share one x and width across cards, status text length a
   expect(new Set(labels.map((b) => b.width)).size).toBe(1);
 });
 
+test('a Later shelf row puts lead, status and flags at the same offsets as a task card head', async ({
+  relaunch,
+}) => {
+  const board = contract<{ tasks: { id: string; title: string }[] }>(
+    'ade-shelf',
+    'AdeTaskService.Board#shelves',
+  );
+  const offsets = (page: Page, root: string) =>
+    page
+      .locator(root)
+      .first()
+      .evaluate((el) => {
+        const left = el.getBoundingClientRect().x;
+        const at = (id: string) => {
+          const r = el.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect();
+          return r ? { x: Math.round(r.x - left), width: Math.round(r.width) } : null;
+        };
+        return {
+          lead: at('ade-row-lead'),
+          status: at('ade-row-status'),
+          flags: at('ade-row-flags'),
+        };
+      });
+  const { window: plan } = await openPlan(relaunch);
+  const inCard = await offsets(plan, t('ade-card'));
+  const { window: later } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskBoard, response: board },
+  ]);
+  await later.locator(t('ade-tab-later')).click();
+  await later.locator(t('ade-later')).waitFor();
+  const inShelf = await offsets(later, t('ade-shelf-row'));
+  expect(inCard.status).not.toBeNull();
+  expect(inShelf).toEqual(inCard);
+});
+
 test('a needs-you indicator sits in the lead slot, nowhere else on the head line', async ({
   relaunch,
 }) => {

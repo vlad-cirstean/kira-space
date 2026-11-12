@@ -7,7 +7,13 @@ import { useRelativeTime } from '@workbench/behaviour/format';
 import { computed } from 'vue';
 import AdeTaskSessions from '../plan/AdeTaskSessions.vue';
 import AdeTaskStatusMenu from '../plan/AdeTaskStatusMenu.vue';
-import { CARD_LEAD, CARD_LEAD_AGENTS, CARD_LEAD_ATTENTION, CARD_STATUS } from '../plan/cardColumns';
+import {
+  CARD_FLAGS,
+  CARD_LEAD,
+  CARD_LEAD_AGENTS,
+  CARD_LEAD_ATTENTION,
+  CARD_STATUS,
+} from '../plan/cardColumns';
 import type { CardModel } from '../plan/usePlanModel';
 import { useTaskMenu } from '../plan/useTaskMenu';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
@@ -35,7 +41,7 @@ const facts = computed(() =>
     :class="
       cn(
         rowVariants({ layout: 'tree', selected: card.selected }),
-        'box-border cursor-grab gap-2 border-l-3 py-1',
+        'box-border cursor-grab gap-1.5 border-l-3 py-1',
       )
     "
     :style="{ ...rowIndent(0), borderLeftColor: card.color }"
@@ -66,6 +72,8 @@ const facts = computed(() =>
         />
       </span>
     </span>
+    <span :class="CARD_STATUS"><AdeTaskStatusMenu :card="card" /></span>
+    <span :class="CARD_FLAGS" data-testid="ade-row-flags" />
     <span
       class="min-w-0 flex-1 truncate"
       :class="card.parked ? 'text-muted-foreground' : ''"
@@ -74,7 +82,6 @@ const facts = computed(() =>
         card.title
       }}</span
     >
-    <span :class="CARD_STATUS"><AdeTaskStatusMenu :card="card" /></span>
     <span
       v-if="facts"
       class="max-w-2/5 shrink-0 truncate text-kira-sm text-subtle"
