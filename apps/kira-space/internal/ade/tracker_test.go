@@ -595,3 +595,85 @@ func TestTracker_ExpiredPendingIntentReleasesItsRecord(t *testing.T) {
 		t.Fatalf("OnStopped calls = %v, want only %s", stopped, abandoned.RecordID)
 	}
 }
+
+func TestTracker_WorkingNeedsAnOpenToolCall(t *testing.T) {
+	tr, _, live, clock := newTestTracker(t)
+	res := composeAndSpawn(t, tr, live, PrepareArgs{TaskID: "t1", Cwd: "/repo"})
+	sessions, _ := listSessions(tr)
+	recordID := sessions[0].ID
+	ev := func(kind harness.EventKind) {
+		tr.HandleEvent(harness.AgentEvent{TerminalID: res.TerminalID, Event: kind, ToolName: "Bash"})
+	}
+	const ceiling = 30 * time.Minute
+
+	// Esc after a prompt runs no Stop hook: the turn stays busy but silent, so it is not working.
+	ev(harness.EventPrompt)
+	if tr.Working(recordID, ceiling) {
+		t.Fatal("a prompt with no tool call counts as working")
+	}
+	ev(harness.EventToolStart)
+	clock.advance(20 * time.Minute)
+	if !tr.Working(recordID, ceiling) {
+		t.Fatal("a long tool call does not count as working")
+	}
+	clock.advance(11 * time.Minute)
+	if tr.Working(recordID, ceiling) {
+		t.Fatal("a tool call silent past the ceiling still counts as working")
+	}
+	ev(harness.EventToolStart)
+	ev(harness.EventToolEnd)
+	if !tr.Working(recordID, ceiling) {
+		t.Fatal("one of two parallel tool calls ended and the other is not working")
+	}
+	ev(harness.EventToolEnd)
+	if tr.Working(recordID, ceiling) {
+		t.Fatal("working after every tool call ended")
+	}
+}
+
+func TestTracker_SendIfIdleHoldsBackAfterUserTyping(t *testing.T) {
+	tr, _, live, clock := newTestTracker(t)
+	res := composeAndSpawn(t, tr, live, PrepareArgs{TaskID: "t1", Cwd: "/repo"})
+	sessions, _ := listSessions(tr)
+	recordID := sessions[0].ID
+	var typed time.Time
+	tr.deps.LastInput = func(string) time.Time { return typed }
+
+	stop := func() {
+		clock.advance(time.Second)
+		tr.HandleEvent(harness.AgentEvent{TerminalID: res.TerminalID, Event: harness.EventTurnEnd})
+	}
+	stop()
+	clock.advance(time.Second)
+	typed = clock.Now()
+	if sent, err := tr.SendIfIdle(recordID, "hi"); sent || err != nil {
+		t.Fatalf("SendIfIdle over a draft = %v, %v; want held back", sent, err)
+	}
+	if len(live.logs) != 0 {
+		t.Fatalf("terminal written despite a draft: %v", live.logs)
+	}
+	// Typing before the turn went idle (the prompt that started it) does not block.
+	stop()
+	if sent, err := tr.SendIfIdle(recordID, "hi"); !sent || err != nil {
+		t.Fatalf("SendIfIdle after a fresh Stop = %v, %v; want sent", sent, err)
+	}
+}
+
+func TestTracker_StopClearsTurnState(t *testing.T) {
+	tr, _, live, _ := newTestTracker(t)
+	res := composeAndSpawn(t, tr, live, PrepareArgs{TaskID: "t1", Cwd: "/repo"})
+	sessions, _ := listSessions(tr)
+	recordID := sessions[0].ID
+	tr.SetHookReplyHandler(func(string, harness.AgentEvent) harness.HookReply { return harness.HookReply{Block: "x"} })
+	stop := harness.AgentEvent{TerminalID: res.TerminalID, Event: harness.EventTurnEnd}
+	tr.HookReply(stop)
+	tr.HandleEvent(harness.AgentEvent{TerminalID: res.TerminalID, Event: harness.EventToolStart, ToolName: "Bash"})
+	if err := tr.Stop(recordID); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+	if tr.suppressIdle[recordID] || len(tr.turn) != 0 || len(tr.tools) != 0 {
+		t.Fatalf("turn state survived Stop: suppress=%v turn=%v tools=%v", tr.suppressIdle, tr.turn, tr.tools)
+	}
+}

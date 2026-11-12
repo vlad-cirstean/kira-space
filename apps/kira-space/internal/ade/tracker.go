@@ -53,7 +53,10 @@ type TrackerDeps struct {
 	Store         *repos.AdeSessionsRepo
 	LiveAgents    func() []terminal.AgentSession
 	WriteTerminal func(terminalID string, data []byte) error
-	Now           func() time.Time
+	// LastInput is when the user last typed into a terminal (zero when never or unknown). SendIfIdle
+	// holds back while the user typed since the turn went idle.
+	LastInput func(terminalID string) time.Time
+	Now       func() time.Time
 	// OnChange is called whenever a persisted record's own state changes (a new or revived
 	// session, a stop, a agent_session_id update after /clear) — main.go wires it to
 	// bridge.AdeTaskSessionsChanged, never called with the lock held.
@@ -197,11 +200,17 @@ type Tracker struct {
 	// on, so that Stop must not read as idle.
 	turn         map[string]turnState
 	suppressIdle map[string]bool
+	// tools counts tool calls started and not yet ended per record: a long tool run is silent, so only
+	// it keeps a lease holder alive past the TTL. idleAt is when the turn last went idle.
+	tools  map[string]int
+	idleAt map[string]time.Time
 	// onIdle fires when a record moves into turnIdle, onActivity on every event of a live record,
 	// replyFn answers Stop and UserPromptSubmit. All run with mu released.
 	onIdle     func(recordID string)
 	onActivity func(recordID string)
 	replyFn    func(recordID string, ev harness.AgentEvent) harness.HookReply
+	// replyFailedFn takes back a reply the hook listener could not deliver.
+	replyFailedFn func(recordID string, reply harness.HookReply)
 
 	hooks func(provider, terminalID, cwd, command, configFile string) (string, []string, error)
 
@@ -234,6 +243,8 @@ func NewTracker(deps TrackerDeps) *Tracker {
 		fresh:          map[string]bool{},
 		turn:           map[string]turnState{},
 		suppressIdle:   map[string]bool{},
+		tools:          map[string]int{},
+		idleAt:         map[string]time.Time{},
 		graceTimers:    map[string]*time.Timer{},
 	}
 }
@@ -672,8 +683,7 @@ func (t *Tracker) Abort(terminalID string) {
 	delete(t.background, recordID)
 	delete(t.wake, recordID)
 	delete(t.fresh, recordID)
-	delete(t.turn, recordID)
-	delete(t.suppressIdle, recordID)
+	t.clearTurnLocked(recordID)
 	if timer := t.graceTimers[recordID]; timer != nil {
 		timer.Stop()
 		delete(t.graceTimers, recordID)
@@ -724,6 +734,14 @@ func (t *Tracker) armGraceLocked(recordID string) {
 	})
 }
 
+// clearTurnLocked drops a record's turn state. mu is held.
+func (t *Tracker) clearTurnLocked(recordID string) {
+	delete(t.turn, recordID)
+	delete(t.suppressIdle, recordID)
+	delete(t.tools, recordID)
+	delete(t.idleAt, recordID)
+}
+
 // forgetLocked drops every in-memory trace of a live record and returns its activity clock (now
 // when none was kept); ok is false when no terminal is tracked for it. mu is held.
 func (t *Tracker) forgetLocked(recordID string, now time.Time) (lastActive int64, ok bool) {
@@ -742,6 +760,9 @@ func (t *Tracker) forgetLocked(recordID string, now time.Time) (lastActive int64
 	}
 	delete(t.agentSessionID, recordID)
 	delete(t.fresh, recordID)
+	t.clearTurnLocked(recordID)
+	delete(t.wake, recordID)
+	delete(t.background, recordID)
 	if timer := t.graceTimers[recordID]; timer != nil {
 		timer.Stop()
 		delete(t.graceTimers, recordID)
@@ -903,22 +924,27 @@ func (t *Tracker) trackStatusLocked(recordID string, ev harness.AgentEvent) (bac
 	switch ev.Event {
 	case harness.EventToolStart:
 		t.turn[recordID] = turnBusy
+		t.tools[recordID]++
 		if ev.Wakes && ev.AgentID == "" {
 			t.wake[recordID] = true
 		}
 	case harness.EventToolEnd:
 		t.turn[recordID] = turnBusy
+		if t.tools[recordID] > 0 {
+			t.tools[recordID]--
+		}
 	case harness.EventPrompt:
 		t.turn[recordID] = turnBusy
 		if ev.AgentID == "" {
 			delete(t.wake, recordID)
+			delete(t.tools, recordID)
 		}
 	case harness.EventNotification:
 		if ev.NeedsInput {
 			t.turn[recordID] = turnInput
 		}
 	case harness.EventSessionEnd, harness.EventSessionStart:
-		delete(t.turn, recordID)
+		t.clearTurnLocked(recordID)
 		if ev.AgentID == "" {
 			delete(t.wake, recordID)
 			backgroundChanged = t.setBackgroundLocked(recordID, 0)
@@ -931,6 +957,7 @@ func (t *Tracker) trackStatusLocked(recordID string, ev harness.AgentEvent) (bac
 		}
 		armed := t.wake[recordID]
 		delete(t.wake, recordID)
+		delete(t.tools, recordID)
 		backgroundChanged = t.setBackgroundLocked(recordID, ev.Background)
 		markUnseen = ev.Background == 0 && !armed
 		t.turn[recordID] = turnBusy
@@ -940,6 +967,7 @@ func (t *Tracker) trackStatusLocked(recordID string, ev harness.AgentEvent) (bac
 		}
 		if markUnseen {
 			t.turn[recordID] = turnIdle
+			t.idleAt[recordID] = t.deps.Now()
 		}
 	}
 	return backgroundChanged, markUnseen
@@ -996,21 +1024,32 @@ const (
 	turnInput                    // a permission or question prompt waits for the user
 )
 
-// Busy reports whether recordID is mid-turn: a long tool run must not expire a lease.
-func (t *Tracker) Busy(recordID string) bool {
+// Working reports whether recordID is inside a tool call that began less than ceiling ago. A tool
+// run is silent for as long as it takes, so it keeps a lease alive. A turn that went quiet after a
+// prompt or a finished tool call (the user pressed Esc: no Stop hook runs) does not.
+func (t *Tracker) Working(recordID string, ceiling time.Duration) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	return t.turn[recordID] == turnBusy
+	if t.turn[recordID] != turnBusy || t.tools[recordID] == 0 {
+		return false
+	}
+	last, ok := t.lastActive[recordID]
+	return ok && t.deps.Now().Sub(time.UnixMilli(last)) < ceiling
 }
 
 // SendIfIdle pastes message into recordID's terminal only while its turn state is idle, checked in
-// the same critical section as the write. It never types into a busy agent or over a prompt. The
-// record turns busy before the lock drops, so two sends cannot both pass.
+// the same critical section as the write. It never types into a busy agent, over a permission prompt
+// or after the user typed since the turn went idle. The record turns busy before the lock drops, so
+// two sends cannot both pass.
 func (t *Tracker) SendIfIdle(recordID, message string) (bool, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	terminalID, ok := t.byRecord[recordID]
 	if !ok || t.turn[recordID] != turnIdle {
+		return false, nil
+	}
+	// A draft in the prompt box would be submitted with the message: leave it to the hook reply.
+	if t.deps.LastInput != nil && t.deps.LastInput(terminalID).After(t.idleAt[recordID]) {
 		return false, nil
 	}
 	paste, enter := pasteBytes(message)
@@ -1043,6 +1082,28 @@ func (t *Tracker) SetHookReplyHandler(fn func(recordID string, ev harness.AgentE
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.replyFn = fn
+}
+
+// SetHookReplyFailedHandler installs what happens to a reply the listener could not deliver.
+func (t *Tracker) SetHookReplyFailedHandler(fn func(recordID string, reply harness.HookReply)) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.replyFailedFn = fn
+}
+
+// HookReplyFailed is harness.HookOptions.ReplyFailed's target: the agent never got the reply, so a
+// blocked Stop did not keep it working and its content goes back to the handler.
+func (t *Tracker) HookReplyFailed(ev harness.AgentEvent, reply harness.HookReply) {
+	t.mu.Lock()
+	recordID, ok := t.live[ev.TerminalID]
+	fn := t.replyFailedFn
+	if ok && ev.Event == harness.EventTurnEnd {
+		delete(t.suppressIdle, recordID)
+	}
+	t.mu.Unlock()
+	if ok && fn != nil {
+		fn(recordID, reply)
+	}
 }
 
 // HookReply is harness.HookOptions.Reply's target. Only a main-agent Stop and UserPromptSubmit are

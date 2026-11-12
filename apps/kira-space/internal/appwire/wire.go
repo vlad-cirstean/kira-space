@@ -108,14 +108,15 @@ func wireTracker(
 ) (*ade.Tracker, *harness.Hooks) {
 	tracker := ade.NewTracker(ade.TrackerDeps{
 		Agent: agents, ContextFile: contextFile, Store: repositories.AdeSessions, LiveAgents: registry.AgentSessions,
-		WriteTerminal: registry.Write, Now: time.Now, Grace: grace,
+		WriteTerminal: registry.Inject, LastInput: registry.Typed, Now: time.Now, Grace: grace,
 		OnChange: func() { bridge.AdeTaskSessionsChanged(events) },
 	})
 
 	// Hooks are always on: a start failure (curl missing, a bind conflict) is logged, never fatal —
 	// sessions still spawn and track, activity icons stay absent.
 	hooks := harness.NewHooks(agents.Registry, harness.HookOptions{
-		Reply: tracker.HookReply,
+		Reply:       tracker.HookReply,
+		ReplyFailed: tracker.HookReplyFailed,
 		OnEvent: func(ev harness.AgentEvent) {
 			tracker.HandleEvent(ev)
 			bridge.EmitAgentEvent(emitter, ev)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -138,39 +139,53 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	kind, known := eventKinds[req.HookEventName]
+	if !known || (s.onEvent == nil && s.reply == nil) {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	ev := harness.AgentEvent{
+		TerminalID:           terminalID,
+		Event:                kind,
+		SessionID:            req.SessionID,
+		Cwd:                  req.Cwd,
+		ToolName:             req.ToolName,
+		ToolUseID:            req.ToolUseID,
+		NotificationType:     req.NotificationType,
+		Message:              truncateMessage(req.Message),
+		Source:               req.Source,
+		Reason:               req.Reason,
+		LastAssistantMessage: truncateMessage(req.LastAssistantMessage),
+		AgentID:              req.AgentID,
+		Background:           liveBackground(req, kind),
+		Wakes:                req.AgentID == "" && kind == harness.EventToolStart && wakeTools[req.ToolName],
+		NeedsInput:           kind == harness.EventNotification && needsInput(req),
+	}
+	// The agent's hook has a short timeout. A reply that carries a message goes out before OnEvent
+	// runs (DB writes, PTY, emits), so slow work cannot make the agent miss it. The reply runs before
+	// OnEvent so a Stop that carries a message does not also count as idle there.
 	var reply harness.HookReply
-	if known && (s.onEvent != nil || s.reply != nil) {
-		ev := harness.AgentEvent{
-			TerminalID:           terminalID,
-			Event:                kind,
-			SessionID:            req.SessionID,
-			Cwd:                  req.Cwd,
-			ToolName:             req.ToolName,
-			ToolUseID:            req.ToolUseID,
-			NotificationType:     req.NotificationType,
-			Message:              truncateMessage(req.Message),
-			Source:               req.Source,
-			Reason:               req.Reason,
-			LastAssistantMessage: truncateMessage(req.LastAssistantMessage),
-			AgentID:              req.AgentID,
-			Background:           liveBackground(req, kind),
-			Wakes:                req.AgentID == "" && kind == harness.EventToolStart && wakeTools[req.ToolName],
-			NeedsInput:           kind == harness.EventNotification && needsInput(req),
-		}
-		// Reply first: a Stop that carries a message must not also count as idle in OnEvent.
-		if s.reply != nil {
-			reply = s.reply(ev)
-		}
+	if s.reply != nil {
+		reply = s.reply(ev)
+	}
+	if reply == (harness.HookReply{}) {
 		if s.onEvent != nil {
 			s.onEvent(ev)
 		}
+		w.WriteHeader(http.StatusOK)
+		return
 	}
-	writeReply(w, kind, reply)
+	if !writeReply(w, r, kind, reply) && s.replyFailed != nil {
+		s.replyFailed(ev, reply)
+	}
+	if s.onEvent != nil {
+		s.onEvent(ev)
+	}
 }
 
 // writeReply answers 200, with a JSON body only for a Stop block or a prompt context, the two
-// outputs Claude Code reads from a hook's stdout.
-func writeReply(w http.ResponseWriter, kind harness.EventKind, reply harness.HookReply) {
+// outputs Claude Code reads from a hook's stdout. The body is flushed with its length set, so the
+// caller's response completes before the handler returns. It reports whether the answer went out.
+func writeReply(w http.ResponseWriter, r *http.Request, kind harness.EventKind, reply harness.HookReply) bool {
 	var out any
 	switch {
 	case kind == harness.EventTurnEnd && reply.Block != "":
@@ -181,13 +196,20 @@ func writeReply(w http.ResponseWriter, kind harness.EventKind, reply harness.Hoo
 			"additionalContext": reply.Context,
 		}}
 	}
-	if out == nil {
-		w.WriteHeader(http.StatusOK)
-		return
+	if r.Context().Err() != nil {
+		return false
 	}
-	w.Header().Set("Content-Type", "application/json")
+	var body []byte
+	if out != nil {
+		body, _ = json.Marshal(out)
+		w.Header().Set("Content-Type", "application/json")
+	}
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(out)
+	if _, err := w.Write(body); err != nil {
+		return false
+	}
+	return http.NewResponseController(w).Flush() == nil
 }
 
 // bearerToken extracts the token from "Authorization: Bearer <token>" — "" for any other shape,

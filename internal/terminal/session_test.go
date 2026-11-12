@@ -375,3 +375,21 @@ func TestRegistryOpenRacingCloseWindowRegistersNothing(t *testing.T) {
 		t.Fatalf("Open after CloseAll = %v, want ErrRegistryClosed", err)
 	}
 }
+
+func TestSessionTypedIgnoresReportsAndInjection(t *testing.T) {
+	reg, sess, _ := openTestSession(t, "typed", t.TempDir(), 80, 24)
+	check := func(label string, want bool, write func() error) {
+		t.Helper()
+		if err := write(); err != nil {
+			t.Fatalf("%s: %v", label, err)
+		}
+		if got := !reg.Typed("typed").IsZero(); got != want {
+			t.Fatalf("%s: typed = %v, want %v", label, got, want)
+		}
+	}
+	check("inject", false, func() error { return reg.Inject("typed", []byte("pasted\r")) })
+	check("focus and mouse reports", false, func() error {
+		return sess.Write([]byte("\x1b[I\x1b[<0;10;5M\x1b[<0;10;5m\x1b[O"))
+	})
+	check("a key press", true, func() error { return reg.Write("typed", []byte("a")) })
+}

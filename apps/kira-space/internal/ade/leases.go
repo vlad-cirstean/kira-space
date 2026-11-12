@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,6 +27,9 @@ type LeaseQueueStore interface {
 const (
 	leaseSweepEvery = 30 * time.Second
 	runKeyPrefix    = "run:"
+	// leaseToolCeiling x the TTL bounds how long one silent tool call keeps a holder alive, so an
+	// interrupted tool (no end event) cannot hold a lease for good.
+	leaseToolCeiling = 3
 )
 
 // leaseState is the board's lease bookkeeping around the leases.Book.
@@ -35,10 +39,12 @@ type leaseState struct {
 	// tracker's lock, never after.
 	mu      sync.Mutex
 	pending map[leases.Key][]string
+	// runs holds the owners of live headless runs, which emit no hook events: a live run is alive.
+	runs map[leases.Key]struct{}
 }
 
 func (b *TaskBoard) initLeases() {
-	b.lease = &leaseState{pending: map[leases.Key][]string{}}
+	b.lease = &leaseState{pending: map[leases.Key][]string{}, runs: map[leases.Key]struct{}{}}
 	b.lease.book = leases.New(leases.Options{
 		Now: b.deps.Now, TTL: b.deps.LeaseTTL, Order: b.taskListOrder,
 		OnGrant: b.onLeaseGrant, OnChange: b.leasesChanged,
@@ -54,6 +60,7 @@ func (b *TaskBoard) initLeases() {
 	}
 	if tr := b.deps.Tracker; tr != nil {
 		tr.SetHookReplyHandler(b.leaseHookReply)
+		tr.SetHookReplyFailedHandler(b.requeueLeaseReply)
 		tr.SetIdleHandler(b.flushLease)
 		tr.SetActivityHandler(func(recordID string) { b.lease.book.Touch(leases.Key(recordID)) })
 	}
@@ -104,23 +111,52 @@ func (b *TaskBoard) sweepLeases() {
 	}
 }
 
+// leaseAlive is true for a live headless run and for a session inside a tool call; a session that
+// went quiet between tool calls expires like any other silent holder.
 func (b *TaskBoard) leaseAlive(k leases.Key) bool {
-	return b.deps.Tracker != nil && !strings.HasPrefix(string(k), runKeyPrefix) && b.deps.Tracker.Busy(string(k))
+	b.lease.mu.Lock()
+	_, run := b.lease.runs[k]
+	b.lease.mu.Unlock()
+	if run {
+		return true
+	}
+	return b.deps.Tracker != nil && !strings.HasPrefix(string(k), runKeyPrefix) &&
+		b.deps.Tracker.Working(string(k), leaseToolCeiling*b.lease.book.TTL())
+}
+
+// beginLeaseRun marks key as a live headless run until endLeases(key).
+func (b *TaskBoard) beginLeaseRun(key leases.Key) {
+	b.lease.mu.Lock()
+	b.lease.runs[key] = struct{}{}
+	b.lease.mu.Unlock()
 }
 
 // --- delivery ------------------------------------------------------------------------------------
 
-func leaseMessage(g leases.Grant) string {
+// ttlText words a TTL for an agent: whole minutes when it is, else seconds.
+func ttlText(d time.Duration) string {
+	if d >= time.Minute && d%time.Minute == 0 {
+		if n := int(d / time.Minute); n > 1 {
+			return strconv.Itoa(n) + " minutes"
+		}
+		return "1 minute"
+	}
+	return strconv.Itoa(int(d.Round(time.Second)/time.Second)) + " seconds"
+}
+
+func leaseMessage(g leases.Grant, ttl time.Duration) string {
 	switch g.Reason {
 	case leases.ReasonRevoked:
 		return "Kira: the user revoked your lease `" + g.Queue + "`. Stop using the resource; call acquire_lease to queue again."
 	case leases.ReasonExpired:
-		return "Kira: your lease `" + g.Queue + "` expired after 10 minutes of silence. Stop using the resource; call acquire_lease to queue again."
+		return "Kira: your lease `" + g.Queue + "` expired after " + ttlText(ttl) + " of silence. Stop using the resource; call acquire_lease to queue again."
 	}
 	return "Kira: you now hold lease `" + g.Queue + "`. Continue the work that waited for it. Call release_lease when done."
 }
 
-func (b *TaskBoard) onLeaseGrant(g leases.Grant) { b.deliverLease(g.Key, leaseMessage(g)) }
+func (b *TaskBoard) onLeaseGrant(g leases.Grant) {
+	b.deliverLease(g.Key, leaseMessage(g, b.lease.book.TTL()))
+}
 
 // deliverLease queues msg for key, then sends what waits if the session is idle now. Otherwise the
 // next Stop or UserPromptSubmit hook reply, the idle handler or the owner's next lease tool call
@@ -184,10 +220,24 @@ func (b *TaskBoard) leaseHookReply(recordID string, ev harness.AgentEvent) harne
 	return harness.HookReply{Context: text}
 }
 
+// requeueLeaseReply puts the messages of a hook reply that never arrived back first in line.
+func (b *TaskBoard) requeueLeaseReply(recordID string, reply harness.HookReply) {
+	text := reply.Block + reply.Context
+	if text == "" {
+		return
+	}
+	key := leases.Key(recordID)
+	b.lease.mu.Lock()
+	b.lease.pending[key] = append([]string{text}, b.lease.pending[key]...)
+	b.lease.mu.Unlock()
+	b.leasesChanged()
+}
+
 // endLeases frees everything a finished session or run holds or waits for.
 func (b *TaskBoard) endLeases(key leases.Key) {
 	b.lease.mu.Lock()
 	delete(b.lease.pending, key)
+	delete(b.lease.runs, key)
 	b.lease.mu.Unlock()
 	b.lease.book.ReleaseSession(key)
 }

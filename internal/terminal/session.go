@@ -12,8 +12,10 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"regexp"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -73,6 +75,9 @@ type Session struct {
 	// goroutine, whether the exit was requested (Close) or spontaneous (the shell exiting on its
 	// own, e.g. `exit`/Ctrl-D).
 	unregister func()
+
+	// typedAt is the unix-nano time of the last write that carried a key press (see Typed); 0 for none.
+	typedAt atomic.Int64
 
 	mu     sync.Mutex
 	closed bool // true once Close has begun, or the reader goroutine has observed the process exit
@@ -235,10 +240,31 @@ func waitExitCode(cmd *exec.Cmd) (int, error) {
 	return -1, err
 }
 
+// reports matches the reports a terminal sends on its own: focus in/out and SGR mouse.
+var reports = regexp.MustCompile(`\x1b\[[IO]|\x1b\[<[0-9;]*[Mm]`)
+
+// Typed is when the user last pressed a key here, from writes made through Write; the zero time for
+// none. Focus and mouse reports do not count.
+func (s *Session) Typed() time.Time {
+	n := s.typedAt.Load()
+	if n == 0 {
+		return time.Time{}
+	}
+	return time.Unix(0, n)
+}
+
 // Write sends b to the pty's master fd — a keystroke, a paste, a mouse report. A no-op, not an
 // error, once the session is closed (§4 rule 3): the renderer can have a keystroke in flight when
 // a shell exits, and turning that into a visible error would be noise.
 func (s *Session) Write(b []byte) error {
+	if len(reports.ReplaceAll(b, nil)) > 0 {
+		s.typedAt.Store(time.Now().UnixNano())
+	}
+	return s.Inject(b)
+}
+
+// Inject is Write for input the app made up (a pasted message): it is not the user typing.
+func (s *Session) Inject(b []byte) error {
 	s.mu.Lock()
 	closed := s.closed
 	s.mu.Unlock()
@@ -477,6 +503,23 @@ func (r *Registry) Write(id string, b []byte) error {
 		return sess.Write(b)
 	}
 	return nil
+}
+
+// Inject is Write for input the app made up, which never counts as the user typing. A no-op for an id
+// with no live session.
+func (r *Registry) Inject(id string, b []byte) error {
+	if sess := r.get(id); sess != nil {
+		return sess.Inject(b)
+	}
+	return nil
+}
+
+// Typed is when the user last pressed a key in id's session; the zero time for none or no session.
+func (r *Registry) Typed(id string) time.Time {
+	if sess := r.get(id); sess != nil {
+		return sess.Typed()
+	}
+	return time.Time{}
 }
 
 // Resize is a no-op for an id with no live session, for the same reason Write is.
