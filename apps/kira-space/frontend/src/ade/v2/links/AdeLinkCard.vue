@@ -4,6 +4,7 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { t } from '@theme/i18n';
+import { useCopy } from '@workbench/behaviour/clipboard';
 import { isPrimaryModifier } from '@workbench/shortcuts/keys';
 import AdeChip from '../AdeChip.vue';
 import {
@@ -32,6 +33,8 @@ const props = defineProps<{
   links: TaskLinks;
 }>();
 const emit = defineEmits<{ edit: []; done: []; openSession: [sessionId: string] }>();
+
+const { copy, copied, error: copyError } = useCopy();
 
 const canEdit = () => props.mode === 'edit' && props.item.origin !== 'detected';
 const kindItems = KINDS.map((k) => ({
@@ -131,6 +134,15 @@ function openTitle(e: MouseEvent): void {
     </SecondaryTabs>
     <div v-if="!editing" class="flex gap-1 border-t border-border pt-1.5">
       <AdeLinkOpenExternal :url="item.url" />
+      <TooltipIconButton
+        v-if="item.url"
+        :icon="copied ? 'check' : 'copy'"
+        :tone="copyError ? 'error' : undefined"
+        :label="t('space.ade.link.copy.tooltip', { label: item.label })"
+        class="shrink-0"
+        data-testid="ade-links-card-copy"
+        @click.stop="copy(item.url)"
+      />
       <template v-if="canEdit()">
         <TooltipIconButton
           icon="edit"
