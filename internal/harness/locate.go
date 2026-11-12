@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -57,17 +58,52 @@ func (d CLIDeps) withDefaults() CLIDeps {
 	return d
 }
 
+// resolved caches successful real-environment resolves, keyed by everything the result depends on.
+// Only hits are stored, so installing a missing CLI and retrying works. The login-shell probe can
+// cost seconds, and every launch resolves twice.
+var resolved sync.Map // string -> resolvedCLI
+
+type resolvedCLI struct {
+	path   string
+	probed []string
+}
+
+func resolveKey(spec CLISpec) string {
+	return strings.Join([]string{spec.Name, os.Getenv("PATH"), os.Getenv("SHELL"), strings.Join(spec.Candidates, "\x00")}, "\x01")
+}
+
 // ResolveCLI finds spec's CLI: PATH and the candidate install paths first, then the user's login
 // shell, because a launch runs through that shell and a GUI app's own PATH can differ from it.
 // probed lists every place considered. A miss returns ErrCLIMissing.
 func ResolveCLI(ctx context.Context, spec CLISpec, deps CLIDeps) (path string, probed []string, err error) {
-	deps = deps.withDefaults()
 	if filepath.IsAbs(deps.Bin) {
+		deps = deps.withDefaults()
 		if toolexec.IsExecutable(deps.Stat, deps.Bin) {
 			return deps.Bin, []string{deps.Bin}, nil
 		}
 		return "", []string{deps.Bin}, ErrCLIMissing
 	}
+	cacheable := deps.LookPath == nil && deps.Stat == nil && deps.Getenv == nil && deps.RunShell == nil
+	var key string
+	if cacheable {
+		key = resolveKey(spec)
+		if v, ok := resolved.Load(key); ok {
+			hit := v.(resolvedCLI)
+			if toolexec.IsExecutable(os.Stat, hit.path) {
+				return hit.path, append([]string(nil), hit.probed...), nil
+			}
+			resolved.Delete(key)
+		}
+	}
+	path, probed, err = resolveFresh(ctx, spec, deps)
+	if err == nil && cacheable {
+		resolved.Store(key, resolvedCLI{path: path, probed: append([]string(nil), probed...)})
+	}
+	return path, probed, err
+}
+
+func resolveFresh(ctx context.Context, spec CLISpec, deps CLIDeps) (path string, probed []string, err error) {
+	deps = deps.withDefaults()
 	path, probed, found := toolexec.Locate(deps.LookPath, deps.Stat, spec.Name, spec.Candidates)
 	if found {
 		return path, probed, nil
