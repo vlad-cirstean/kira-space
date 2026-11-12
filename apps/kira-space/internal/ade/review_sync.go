@@ -53,7 +53,7 @@ func (b *TaskBoard) syncSideFor(ctx context.Context, entry *gitsession.RepoEntry
 	if row.Remote != "" {
 		return out, nil
 	}
-	twin, ahead, behind, ok, err := remoteTwin(ctx, entry, refs.inv, row, refs.remote)
+	twin, ahead, behind, ok, err := remoteTwin(ctx, entry, nil, refs.inv, row, refs.remote)
 	if err != nil {
 		return syncSide{}, err
 	}

@@ -87,6 +87,8 @@ type RepoEntry struct {
 	// merge-base uncached on every request; dropped on refsChanged and by invalidateAfterWrite
 	// exactly like refs/stack (cache.go's own doc comment on mergeBaseCache).
 	mergeBases *mergeBaseCache
+	// meta caches remotes, origin HEAD and config reads for entryMetaTTL; invalidateAfterWrite drops it.
+	meta *entryMeta
 
 	// cacheGen is F10's own generation counter (P108 Part 16 review): bumped by invalidateAfterWrite
 	// and note's own refsChanged branch, alongside (and for the same reason as) every cache drop
@@ -188,6 +190,7 @@ func newRepoEntry(
 		refs:            newRefsCache(),
 		stack:           newStackCache(),
 		mergeBases:      newMergeBaseCache(),
+		meta:            newEntryMeta(),
 		head:            summary.Head,
 		undo:            &gitpreflight.UndoSlot{},
 		settings:        settings,
@@ -382,6 +385,7 @@ func (e *RepoEntry) invalidateAfterWrite() {
 	e.stack.drop()
 	e.mergeBases.dropAll()
 	e.rangeCount.drop()
+	e.meta.drop()
 	e.headMu.Lock()
 	e.headStale = true
 	e.headMu.Unlock()

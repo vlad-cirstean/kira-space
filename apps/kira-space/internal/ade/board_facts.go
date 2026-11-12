@@ -307,7 +307,7 @@ func (b *TaskBoard) collectRepo(ctx context.Context, entry *gitsession.RepoEntry
 	if len(items) < 2 {
 		return nil
 	}
-	ancestry, err := computeAncestry(ctx, entry, existing, tips, refs)
+	ancestry, err := computeAncestry(ctx, entry, caches, existing, tips, refs)
 	if err != nil {
 		return err
 	}
@@ -426,7 +426,7 @@ func (sc *boardCtx) fillUpstream(ctx context.Context, wb *adewire.Branch, sb mod
 	if row.Upstream != "" {
 		return nil
 	}
-	twin, ahead, behind, ok, err := remoteTwin(ctx, sc.entry, sc.inv, row, sc.remote)
+	twin, ahead, behind, ok, err := remoteTwin(ctx, sc.entry, sc.caches, sc.inv, row, sc.remote)
 	if err != nil || !ok {
 		return err
 	}
@@ -442,7 +442,7 @@ func (sc *boardCtx) mainDepth(ctx context.Context, sb model.AdeTaskBranch, row p
 	if sb.BaseBranchID == "" && (sb.Base == "" || sb.Base == sc.mainName) {
 		return baseAhead, nil
 	}
-	ahead, _, err := sc.entry.AheadBehind(ctx, row.Tip, sc.mainTip)
+	ahead, _, err := aheadBehind(ctx, sc.entry, sc.caches, row.Tip, sc.mainTip)
 	return ahead, err
 }
 

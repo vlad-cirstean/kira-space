@@ -2,7 +2,9 @@ package ade
 
 import (
 	"context"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -55,6 +57,12 @@ type repoCaches struct {
 	commits   *lru.Cache[string, string]              // printed sha -> full commit id (found shas only)
 	ancestor  *lru.Cache[tipPair, bool]               // (older, newer) -> older is an ancestor of newer
 	since     *lru.Cache[tipPair, int]                // (older, newer) -> commits in older..newer
+	counts    *lru.Cache[tipPair, [2]int]             // (left, right) -> ahead, behind of left...right
+
+	// ancestry holds the last computeAncestry answer: one slot, keyed by a signature over its input.
+	ancestryMu  sync.Mutex
+	ancestrySig string
+	ancestry    map[string][]string
 }
 
 // tipPair keys a git fact on two immutable commit ids.
@@ -68,7 +76,8 @@ func newRepoCaches() *repoCaches {
 	r, _ := lru.New[string, string](patchIDCacheCap)
 	a, _ := lru.New[tipPair, bool](branchFactsCacheCap)
 	n, _ := lru.New[tipPair, int](branchFactsCacheCap)
-	return &repoCaches{branch: b, mergeTree: m, contain: c, patchIDs: p, commits: r, ancestor: a, since: n}
+	k, _ := lru.New[tipPair, [2]int](branchFactsCacheCap)
+	return &repoCaches{branch: b, mergeTree: m, contain: c, patchIDs: p, commits: r, ancestor: a, since: n, counts: k}
 }
 
 // resolveQueuedRef is §0.14's own identity rule: refs/heads/<b> when present, else
@@ -161,9 +170,66 @@ func mainDisplay(full string) (name, ref string) {
 	return full, full
 }
 
+// aheadBehind is entry.AheadBehind read through the per-repo cache. Both ids are immutable commits,
+// so an entry never goes stale. caches may be nil (no caching).
+func aheadBehind(ctx context.Context, entry *gitsession.RepoEntry, caches *repoCaches, left, right string) (int, int, error) {
+	key := tipPair{from: left, to: right}
+	if caches != nil {
+		if v, ok := caches.counts.Get(key); ok {
+			return v[0], v[1], nil
+		}
+	}
+	ahead, behind, err := entry.AheadBehind(ctx, left, right)
+	if err != nil {
+		return 0, 0, err
+	}
+	if caches != nil {
+		caches.counts.Add(key, [2]int{ahead, behind})
+	}
+	return ahead, behind, nil
+}
+
+// ancestrySignature keys computeAncestry on its whole input: the sorted (item, ref, tip) triples.
+func ancestrySignature(existing []string, tips, refs map[string]string) string {
+	items := slices.Clone(existing)
+	slices.Sort(items)
+	var sb strings.Builder
+	for _, it := range items {
+		sb.WriteString(it + "\x00" + refs[it] + "\x00" + tips[it] + "\x01")
+	}
+	return sb.String()
+}
+
+func cloneAncestry(m map[string][]string) map[string][]string {
+	out := make(map[string][]string, len(m))
+	for k, v := range m {
+		out[k] = slices.Clone(v)
+	}
+	return out
+}
+
 // computeAncestry is §0.5's own Ancestors input: for each existing item, which OTHER existing
 // items are strict (non-equal-tip) ancestors of it — also pairFacts' own isAncestor callback data.
-func computeAncestry(ctx context.Context, entry *gitsession.RepoEntry, existing []string, tips, refs map[string]string) (map[string][]string, error) {
+func computeAncestry(ctx context.Context, entry *gitsession.RepoEntry, caches *repoCaches, existing []string, tips, refs map[string]string) (map[string][]string, error) {
+	sig := ancestrySignature(existing, tips, refs)
+	caches.ancestryMu.Lock()
+	if caches.ancestry != nil && caches.ancestrySig == sig {
+		out := cloneAncestry(caches.ancestry)
+		caches.ancestryMu.Unlock()
+		return out, nil
+	}
+	caches.ancestryMu.Unlock()
+	ancestryOf, err := queryAncestry(ctx, entry, existing, tips, refs)
+	if err != nil {
+		return nil, err
+	}
+	caches.ancestryMu.Lock()
+	caches.ancestrySig, caches.ancestry = sig, cloneAncestry(ancestryOf)
+	caches.ancestryMu.Unlock()
+	return ancestryOf, nil
+}
+
+func queryAncestry(ctx context.Context, entry *gitsession.RepoEntry, existing []string, tips, refs map[string]string) (map[string][]string, error) {
 	ancestryOf := make(map[string][]string, len(existing))
 	refToItem := make(map[string]string, len(existing))
 	for _, item := range existing {
@@ -206,7 +272,7 @@ func findRemoteRow(inventory []porcelain.InventoryRef, remote, short string) (po
 // remoteTwin is a local row's remote counterpart and the commit counts against it: the tracked
 // upstream row with git's own counts, else the default remote's branch of the same short name with
 // counts from AheadBehind. ok is false when there is none, or the tracked upstream is gone.
-func remoteTwin(ctx context.Context, entry *gitsession.RepoEntry, inv []porcelain.InventoryRef, row porcelain.InventoryRef, defaultRemote string) (twin porcelain.InventoryRef, ahead, behind int, ok bool, err error) {
+func remoteTwin(ctx context.Context, entry *gitsession.RepoEntry, caches *repoCaches, inv []porcelain.InventoryRef, row porcelain.InventoryRef, defaultRemote string) (twin porcelain.InventoryRef, ahead, behind int, ok bool, err error) {
 	if row.Upstream != "" {
 		if row.UpstreamGone {
 			return porcelain.InventoryRef{}, 0, 0, false, nil
@@ -225,7 +291,7 @@ func remoteTwin(ctx context.Context, entry *gitsession.RepoEntry, inv []porcelai
 	if !found {
 		return porcelain.InventoryRef{}, 0, 0, false, nil
 	}
-	ahead, behind, err = entry.AheadBehind(ctx, row.Tip, twin.Tip)
+	ahead, behind, err = aheadBehind(ctx, entry, caches, row.Tip, twin.Tip)
 	if err != nil {
 		return porcelain.InventoryRef{}, 0, 0, false, err
 	}

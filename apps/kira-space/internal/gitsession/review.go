@@ -69,6 +69,10 @@ func (e *RepoEntry) TakeRangeCount(base, branch string) *int {
 // match happens after Classify would have already caught an in-flight cancellation, not a
 // same-instant race against a process that happened to exit 128 on its own).
 func (e *RepoEntry) originHead(ctx context.Context) (string, error) {
+	return metaGet(e.meta, "originHead", func() (string, error) { return e.readOriginHead(ctx) })
+}
+
+func (e *RepoEntry) readOriginHead(ctx context.Context) (string, error) {
 	res, err := e.runAllowingExit(ctx, porcelain.OriginHeadArgs(), 0, 128)
 	if err != nil {
 		return "", err
