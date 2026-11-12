@@ -237,6 +237,18 @@ func mkFreshDir(parent, name string) (string, error) {
 	return "", ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotFolderTaken.body", map[string]string{"name": name, "path": parent})
 }
 
+// decodeShot decodes a base64 screenshot, capped in encoded and decoded size, and checks its magic bytes.
+func decodeShot(b64 string, magic []byte, notKey string) ([]byte, error) {
+	if len(b64) > maxShotBase64 {
+		return nil, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.tooLarge.body", nil)
+	}
+	data, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil || len(data) > maxShotBytes || !bytes.HasPrefix(data, magic) {
+		return nil, ipcerr.T(ipcerr.CodeBadRequest, notKey, nil)
+	}
+	return data, nil
+}
+
 // SaveJpegTo writes one screenshot into a folder from OpenShotFolder, never over an existing file.
 func (s *ProofService) SaveJpegTo(args ProofSaveJpegToArgs) (ProofSaveJpegToResult, error) {
 	folder, ok := s.shots.get(args.FolderID)
@@ -244,12 +256,9 @@ func (s *ProofService) SaveJpegTo(args ProofSaveJpegToArgs) (ProofSaveJpegToResu
 		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotFolderGone.body", nil)
 	}
 	dir := folder.path
-	if len(args.JpegBase64) > maxShotBase64 {
-		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.tooLarge.body", nil)
-	}
-	data, err := base64.StdEncoding.DecodeString(args.JpegBase64)
-	if err != nil || len(data) > maxShotBytes || !bytes.HasPrefix(data, jpegMagic) {
-		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.notJpeg.body", nil)
+	data, err := decodeShot(args.JpegBase64, jpegMagic, "backend.studio.proof.notJpeg.body")
+	if err != nil {
+		return ProofSaveJpegToResult{}, err
 	}
 	path := filepath.Join(dir, safeJpegName(args.Filename))
 	if _, err := os.Lstat(path); err == nil {

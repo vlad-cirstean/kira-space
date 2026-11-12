@@ -302,6 +302,7 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 	w.Proof = &bridge.ProofService{
 		Svc: proofSvc, Dialogs: opts.Dialogs, Windows: repositories.Windows, Events: emitter, Targets: proofTargets,
 		Shell: shellForProof, Locations: repositories.Settings, Opener: opts.FileOpener,
+		Clipboard: opts.ImageClipboard,
 	}
 	w.proofShell = shellForProof
 	w.OnWindowClosing = []func(string){func(key string) {

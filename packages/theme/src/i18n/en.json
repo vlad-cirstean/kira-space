@@ -2914,8 +2914,17 @@
         }
       },
       "proof": {
+        "clipboardUnavailable": {
+          "body": "This system can’t copy several images to the clipboard. Save the screenshots instead."
+        },
+        "clipEmpty": {
+          "body": "There are no screenshots to copy."
+        },
         "notJpeg": {
           "body": "The screenshot is not a JPEG image."
+        },
+        "notPng": {
+          "body": "The screenshot is not a PNG image."
         },
         "shotExists": {
           "body": "A screenshot with that name is already in the folder."

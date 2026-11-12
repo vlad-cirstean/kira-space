@@ -92,7 +92,9 @@ type Options struct {
 	Browser bridge.Browser
 	// FileOpener opens or reveals a config file; main passes the Wails adapter.
 	FileOpener configsvc.FileOpener
-	Dialogs    bridge.Dialogs
+	// ImageClipboard writes several images to the system clipboard; main passes imageclip, nil means none.
+	ImageClipboard bridge.ProofClipboard
+	Dialogs        bridge.Dialogs
 	// Locator resolves git.gitPath; main passes the platform locator.
 	Locator         gitclient.Locator
 	KeepAwakeDriver keepawake.Driver

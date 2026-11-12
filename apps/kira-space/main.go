@@ -17,6 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configsync"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/imageclip"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
@@ -110,7 +111,8 @@ func main() {
 	wired, err := appwire.Build(appwire.Options{
 		Repos: repositories, DB: db,
 		Cipher: cipher, Authorizer: localauth.New(time.Now, localauth.Evaluate, localauth.Available), Emitter: rawEmitter, Browser: browserOpener, FileOpener: fileOpener,
-		Dialogs: appshell.NewDialogs(rawDialogs), Locator: platformLocator(),
+		ImageClipboard: imageclip.New(application.InvokeSync),
+		Dialogs:        appshell.NewDialogs(rawDialogs), Locator: platformLocator(),
 		KeepAwakeDriver: keepawake.NewPlatformDriver(), MobileAssets: mobileAssetsFS,
 		FileHandlers: filehandlers.NewRegistry(),
 	})

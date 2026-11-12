@@ -2,6 +2,8 @@ package flowharness
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
@@ -65,6 +67,66 @@ func (f *FileOpener) RevealedFiles() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]string(nil), f.revealed...)
+}
+
+// ClipImage is one image the fake clipboard received.
+type ClipImage struct {
+	Name string
+	Data []byte
+}
+
+// ImageClipboard records multi-image writes. Multi is off by default.
+type ImageClipboard struct {
+	mu     sync.Mutex
+	multi  bool
+	fail   error
+	writes [][]ClipImage
+}
+
+// SetMulti turns multi-image support on or off.
+func (c *ImageClipboard) SetMulti(v bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.multi = v
+}
+
+// SetFail makes the next writes return err; nil clears it.
+func (c *ImageClipboard) SetFail(err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.fail = err
+}
+
+func (c *ImageClipboard) MultiImage() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.multi
+}
+
+// WriteImages reads each file now, as the real clipboard does, and records one batch.
+func (c *ImageClipboard) WriteImages(paths []string) error {
+	batch := make([]ClipImage, 0, len(paths))
+	for _, p := range paths {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		batch = append(batch, ClipImage{Name: filepath.Base(p), Data: data})
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.fail != nil {
+		return c.fail
+	}
+	c.writes = append(c.writes, batch)
+	return nil
+}
+
+// Writes returns a copy of the recorded batches.
+func (c *ImageClipboard) Writes() [][]ClipImage {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([][]ClipImage(nil), c.writes...)
 }
 
 // Dialogs answers the native pickers from queues; an empty queue answers like a cancel.
