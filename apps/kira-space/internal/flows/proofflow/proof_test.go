@@ -109,6 +109,19 @@ func TestProofEditFlow(t *testing.T) {
 	if len(review) != 1 || review[0].ID != "proof.review:"+id || review[0].Target.Name != "Edit me" {
 		t.Fatalf("review items = %+v, want the pending edit", review)
 	}
+	// Opening the session withdraws the ready popup, never the review of the pending edit.
+	if ps := proofPrompts(t, f.app); len(ps) != 1 {
+		t.Fatalf("prompts before open = %+v, want the ready popup", ps)
+	}
+	if _, err := f.app.W.Proof.OpenWindow(bridge.ProofOpenArgs{SessionID: id}); err != nil {
+		t.Fatal(err)
+	}
+	if ps := proofPrompts(t, f.app); len(ps) != 0 {
+		t.Fatalf("prompts after open = %+v, want none", ps)
+	}
+	if left := reviewItems(t, f.app); len(left) != 1 || left[0].ID != "proof.review:"+id {
+		t.Fatalf("review items after open = %+v, want the pending edit kept", left)
+	}
 	if res, err := f.app.W.ApprovalsSvc.Answer(approvals.AnswerArgs{IDs: []string{review[0].ID}, Approve: true}); err != nil || len(res) != 1 || res[0].Error != "" {
 		t.Fatalf("approve edit = %+v (%v)", res, err)
 	}
@@ -245,6 +258,7 @@ func TestProofWindow(t *testing.T) {
 	if err != nil || !res.Opened || !strings.HasPrefix(res.Key, proof.WindowKeyPrefix) {
 		t.Fatalf("OpenWindow = %+v, %v", res, err)
 	}
+	f.app.Contract(t, "proof-window", "ProofService.OpenWindow", res, maskIDs)
 	tg, err := f.app.W.Proof.WindowTarget(bridge.ProofWindowKeyArgs{Key: res.Key})
 	if err != nil || tg.SessionID == nil || *tg.SessionID != id {
 		t.Fatalf("WindowTarget = %+v, %v", tg, err)

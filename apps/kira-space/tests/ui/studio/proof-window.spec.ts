@@ -619,12 +619,10 @@ test('a ready prompt opens the proof window, and a pushed select switches sessio
     ],
   });
   await emitPrompts(page, [routed('proof', SESSION_ID, { title: 'Proof ready: Checkout fix' })]);
-  await expect(page.locator('[data-testid="proof-ready-dialog"]')).toContainText(
-    'Proof ready: Checkout fix',
-  );
-  await expect(page.locator('[data-testid="proof-ready-task"]')).toHaveText(
-    'For task “Fix checkout”',
-  );
+  await expect(
+    page.locator('[data-testid="proof-ready-dialog"] [data-slot="dialog-title"]'),
+  ).toHaveText('Fix checkout');
+  await expect(page.locator('[data-testid="proof-ready-proof"]')).toHaveText('Checkout fix');
   await page.locator('[data-testid="proof-ready-open"]').click();
   await expect
     .poll(() =>
@@ -642,11 +640,13 @@ test('a ready prompt opens the proof window, and a pushed select switches sessio
   await expect(page.locator('[data-testid="proof-title"]')).toHaveText('Second run');
 });
 
-test('a ready prompt for a session with no task shows no task line', async ({ relaunch }) => {
+test('a ready prompt for a session with no task is titled by the entry', async ({ relaunch }) => {
   const { window: page } = await relaunch({
     control: [{ channel: IPC.proofSessions, response: sessions() }],
   });
   await emitPrompts(page, [routed('proof', SESSION_ID, { title: 'Proof ready: Checkout fix' })]);
-  await expect(page.locator('[data-testid="proof-ready-dialog"]')).toBeVisible();
-  await expect(page.locator('[data-testid="proof-ready-task"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="proof-ready-dialog"]')).toContainText(
+    'Proof ready: Checkout fix',
+  );
+  await expect(page.locator('[data-testid="proof-ready-proof"]')).toHaveCount(0);
 });

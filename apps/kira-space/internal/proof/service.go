@@ -79,11 +79,16 @@ func promptID(sessionID string) string { return prompts.ID(prompts.KindProof, se
 
 func reviewID(sessionID string) string { return approvals.KindProofReview + ":" + sessionID }
 
-// closePrompt withdraws the session's ready popup and any pending edit review.
-func (s *Service) closePrompt(sessionID string) {
+// closeReadyPrompt withdraws the session's ready popup.
+func (s *Service) closeReadyPrompt(sessionID string) {
 	if s.d.Prompts != nil {
 		s.d.Prompts.Close(promptID(sessionID))
 	}
+}
+
+// closePrompt withdraws the session's ready popup and any pending edit review.
+func (s *Service) closePrompt(sessionID string) {
+	s.closeReadyPrompt(sessionID)
 	if s.d.Approvals != nil {
 		s.d.Approvals.Remove(reviewID(sessionID))
 	}
@@ -626,12 +631,13 @@ func (s *Service) Delete(id string) error {
 	return nil
 }
 
-// MarkSeen records that the user opened the session and withdraws its popup, unless an edit still
-// waits for review.
+// MarkSeen records that the user opened the session and withdraws its popup. The edit review stays
+// while an edit still waits.
 func (s *Service) MarkSeen(id string) error {
 	if err := s.d.Repo.MarkSeen(id, s.d.Now()); err != nil {
 		return err
 	}
+	s.closeReadyPrompt(id)
 	if row, ok, err := s.d.Repo.Session(id); err == nil && ok && row.PendingRev == nil {
 		s.closePrompt(id)
 	}
