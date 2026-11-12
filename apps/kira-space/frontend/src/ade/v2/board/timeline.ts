@@ -34,6 +34,8 @@ type TimelineBoard = Pick<Board, 'tasks' | 'branches' | 'plan' | 'pairs' | 'hist
 
 export interface TimelineInput {
   board: TimelineBoard;
+  /** Archived tasks; defaults to `board.history`. The app passes the history selector's value. */
+  history?: Board['history'];
   settings: Settings['ade'];
   /** Local `YYYY-MM-DD`. */
   today: string;
@@ -342,7 +344,7 @@ export function buildTimeline(input: TimelineInput): TimelineView {
   );
 
   const dayKeys = collectDayKeys(input, seq, shown, hiddenCount, lastShownDay);
-  const history = historyItems(board.history, today, input.localDayOf);
+  const history = historyItems(input.history ?? board.history, today, input.localDayOf);
   const ctx: BandCtx = {
     cal,
     cap: settings.workdayHours,

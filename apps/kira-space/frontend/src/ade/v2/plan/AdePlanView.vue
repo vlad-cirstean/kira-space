@@ -33,7 +33,7 @@ import { usePlanModel } from './usePlanModel';
 const ui = useAdeBoardUiStore();
 const settingsStore = useSettingsStore();
 const contextMenu = useContextMenuStore();
-const { model, today, repoLabel, settings, boardQuery } = usePlanModel();
+const { model, today, repoLabel, settings, boardQuery, ripple } = usePlanModel();
 const setPlan = useSetPlan();
 const refresh = useRefresh();
 
@@ -326,7 +326,7 @@ function onForcePush(row: BranchRowModel): void {
           <AdePlanRepos
             :repos="chips"
             :all-pending="refreshingAll"
-            :ripple="model.ripple"
+            :ripple="ripple"
             @refresh-all="runRefresh([], true)"
             @refresh-one="(id) => runRefresh([id], false)"
             @toggle="(id) => ui.toggleRepo(id)"

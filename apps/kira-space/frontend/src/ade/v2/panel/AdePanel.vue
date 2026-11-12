@@ -15,7 +15,7 @@ import AdeTaskPanel from './AdeTaskPanel.vue';
 const ui = useAdeBoardUiStore();
 const tabs = useAdePanelTabsStore();
 const composer = useAdeNoteComposerStore();
-const { model } = usePlanModel();
+const { model, history } = usePlanModel();
 
 watch(
   () => model.value?.board,
@@ -32,7 +32,7 @@ const card = computed(() =>
 );
 /** The selected task when it is archived: it left the board and survives in History. */
 const archivedId = computed(() =>
-  !card.value && model.value?.board.history.some((h) => h.taskId === ui.selectedTaskId)
+  !card.value && history.value.some((h) => h.taskId === ui.selectedTaskId)
     ? ui.selectedTaskId
     : null,
 );

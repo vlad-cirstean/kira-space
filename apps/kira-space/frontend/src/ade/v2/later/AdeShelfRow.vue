@@ -23,6 +23,7 @@ import { useAdeBoardUiStore } from '../state/adeBoardUi';
 const props = defineProps<{ card: CardModel }>();
 
 const ui = useAdeBoardUiStore();
+const selected = computed(() => ui.selectedTaskId === props.card.task.id);
 const menu = useTaskMenu(() => props.card);
 const ago = useRelativeTime(() => props.card.task.createdAt);
 function openMore(ev: MouseEvent): void {
@@ -40,14 +41,14 @@ const facts = computed(() =>
   <div
     :class="
       cn(
-        rowVariants({ layout: 'tree', selected: card.selected }),
+        rowVariants({ layout: 'tree', selected }),
         'box-border cursor-grab gap-1.5 border-l-3 py-1',
       )
     "
     :style="{ ...rowIndent(0), borderLeftColor: card.color }"
     role="button"
     tabindex="0"
-    :data-selected="card.selected || undefined"
+    :data-selected="selected || undefined"
     data-shelf-row=""
     data-testid="ade-shelf-row"
     :data-task-id="card.task.id"

@@ -14,12 +14,12 @@ const props = withDefaults(defineProps<{ card: CardModel; testid?: string }>(), 
   testid: 'ade-card-children',
 });
 const ui = useAdeBoardUiStore();
-const { model } = usePlanModel();
+const { history } = usePlanModel();
 
 const archived = computed(() =>
   props.card.archivedChildren.map((id) => ({
     id,
-    title: model.value?.board.history.find((h) => h.taskId === id)?.title ?? id,
+    title: history.value.find((h) => h.taskId === id)?.title ?? id,
   })),
 );
 </script>

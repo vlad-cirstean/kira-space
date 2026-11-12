@@ -12,7 +12,7 @@ import { useSessionViews } from '../sessions/useSessionViews';
 import AdeAllSessionRow from './AdeAllSessionRow.vue';
 
 // Every session, grouped by task: Running or Stopped, most urgent group first (SPEC2 section 11).
-const { model } = usePlanModel();
+const { model, history } = usePlanModel();
 const { sessions, view } = useSessionViews();
 
 const SUMMARY = {
@@ -52,7 +52,7 @@ function describe(taskId: string): Pick<Group, 'title' | 'color' | 'archived'> {
   const m = model.value;
   const card = m?.cardFor(taskId);
   if (card) return { title: card.title, color: card.color, archived: false };
-  const entry = m?.board.history.find((h) => h.taskId === taskId);
+  const entry = history.value.find((h) => h.taskId === taskId);
   return { title: entry?.title || taskId, color: 'var(--kira-fg-subtle)', archived: true };
 }
 

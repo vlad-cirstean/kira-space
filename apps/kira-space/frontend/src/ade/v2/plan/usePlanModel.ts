@@ -50,8 +50,9 @@ import {
 import { localIso, localIsoOfMs } from '../localDay';
 import { taskColor } from '../palette';
 import { useBoard, useChangeRequests, useSessions, useWorkflows } from '../queries';
+import { useBoardHistory } from '../readQueries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
-import type { Board, Branch, Session, Task, TaskStatusDef, Workflow } from '../wire';
+import type { Board, Branch, HistoryEntry, Session, Task, TaskStatusDef, Workflow } from '../wire';
 import { type AttachFact, attachOf } from './attach';
 
 /** Needs-you kinds that put a `!` on a card and row: a waiting question, a stuck run. */
@@ -72,7 +73,6 @@ export interface BranchRowModel {
   tag: BranchTag;
   /** Own progress line while the task is in an agent or script step. */
   prog: { segs: BranchSegState[]; label: string; tone: BranchProgress['tone']; tip: string } | null;
-  ripple: boolean;
   /** Merged-into and deployed chips of the second line, nothing for a branch not in any target. */
   chips: Pick<BranchLine2, 'merged' | 'deployed' | 'divider'>;
   /** Tooltip of the `!` circle; `''` when the branch needs nothing from the user. */
@@ -139,22 +139,19 @@ export interface CardModel {
   /** Plan timeline, or the Later or Backlog shelf. */
   shelf: TaskShelf;
   allMerged: boolean;
-  selected: boolean;
-  ripple: boolean;
 }
 
 type NeedsYou = ReturnType<typeof buildNeedsYou>;
 
 interface Ctx {
   board: Board;
+  history: readonly HistoryEntry[];
   view: TimelineView;
   cal: Calendar;
   progress: ReadonlyMap<string, TaskProgress>;
   sessions: readonly Session[];
   workflows: ReadonlyMap<string, Workflow>;
   needs: NeedsYou;
-  ripple: Ripple | null;
-  selectedId: string | null;
   mainName: ReadonlyMap<string, string>;
   prTitle: (branchId: string) => string;
   repoLabel: (codeRepoId: string) => string;
@@ -197,7 +194,6 @@ function buildRow(c: Ctx, task: Task, bid: string, depth: number): BranchRowMode
       runs: task.runs,
     }),
     prog: prog ? { segs: prog.segments, label: prog.label, tone: prog.tone, tip: prog.tip } : null,
-    ripple: c.ripple?.branchIds.includes(bid) ?? false,
     chips: { merged: line2.merged, deployed: line2.deployed, divider: line2.divider },
     attention: attn?.what ?? '',
     attentionItem: attn ?? null,
@@ -297,11 +293,9 @@ function buildCard(c: Ctx, id: string): CardModel | null {
     orchestrator: task.kind === 'orchestrator',
     parent: parentOf(c, task),
     children: childrenOf(c, id),
-    archivedChildren: c.board.history.filter((h) => h.parentId === id).map((h) => h.taskId),
+    archivedChildren: c.history.filter((h) => h.parentId === id).map((h) => h.taskId),
     shelf: shelfOf(c.board, id),
     allMerged: mine.length > 0 && mine.every((br) => br.mergedIntoMain),
-    selected: c.selectedId === id,
-    ripple: c.ripple?.taskIds.includes(id) ?? false,
   };
 }
 
@@ -381,11 +375,15 @@ function buildPlanModel() {
     historyDays: ui.historyReach ?? settingsStore.ade.historyDays,
   }));
 
-  const model = computed(() => {
+  const history = useBoardHistory();
+
+  /** The Plan's timeline: reads the board, settings and plan filters, never sessions or selection. */
+  const timeline = computed(() => {
     const b = board.data.value;
     if (!b) return null;
-    const view = buildTimeline({
+    return buildTimeline({
       board: b,
+      history: history.value,
       settings: planSettings.value,
       today: today.value,
       localDayOf: localIsoOfMs,
@@ -394,6 +392,23 @@ function buildPlanModel() {
       showHistory: ui.showHistory,
       hiddenRepoIds: new Set(ui.hiddenRepoIds),
     });
+  });
+
+  /** Selection ripple, apart from the model: selecting a task never rebuilds the cards. */
+  const ripple = computed<Ripple | null>(() => {
+    const v = timeline.value;
+    const id = ui.selectedTaskId;
+    return v && id ? rippleOf(v, { kind: 'task', id }) : null;
+  });
+  const rippleIds = computed(() => ({
+    tasks: new Set(ripple.value?.taskIds),
+    branches: new Set(ripple.value?.branchIds),
+  }));
+
+  const model = computed(() => {
+    const b = board.data.value;
+    const view = timeline.value;
+    if (!b || !view) return null;
     const graph = view.graph;
     const wf = new Map<string, Workflow>();
     for (const e of workflows.data.value?.workflows ?? []) {
@@ -412,9 +427,9 @@ function buildPlanModel() {
       );
     }
     const nowMs = now.value.getTime();
-    const selectedId = ui.selectedTaskId;
     const ctx: Ctx = {
       board: b,
+      history: history.value,
       view,
       cal: buildCalendar(today.value, planSettings.value),
       progress,
@@ -427,8 +442,6 @@ function buildPlanModel() {
         repoNick: repoLabel,
         nowMs,
       }),
-      ripple: selectedId ? rippleOf(view, { kind: 'task', id: selectedId }) : null,
-      selectedId,
       mainName: new Map(b.repos.map((r) => [r.codeRepoId, r.mainName])),
       prTitle: (id) => changeRequests.data.value?.branches[id]?.title ?? '',
       repoLabel,
@@ -452,7 +465,6 @@ function buildPlanModel() {
       view,
       cards,
       cardFor,
-      ripple: ctx.ripple,
       cal: ctx.cal,
       needs: ctx.needs,
       workflows: wf,
@@ -461,6 +473,10 @@ function buildPlanModel() {
 
   return {
     model,
+    history,
+    view: timeline,
+    ripple,
+    rippleIds,
     sessions,
     today,
     now,

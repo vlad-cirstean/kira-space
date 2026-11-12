@@ -58,7 +58,7 @@ const dialogs = useAdeDialogsStore();
 const contextMenu = useContextMenuStore();
 const tabs = useAdePanelTabsStore();
 const takeOver = useAdeTakeOverStore();
-const { model, liveNow } = usePlanModel();
+const { model, liveNow, rippleIds } = usePlanModel();
 const repos = useRepos();
 const repoLinks = useRepoLinksStore();
 const repoTintOf = computed(() => repoTint(repoLinks.repoColorOf(props.row.branch.codeRepoId)));
@@ -262,7 +262,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
     role="button"
     tabindex="0"
     :data-selected="selected || undefined"
-    :data-ripple="row.ripple || undefined"
+    :data-ripple="rippleIds.branches.has(row.id) || undefined"
     :data-testid="testid"
     :data-branch-id="row.id"
     :data-depth="row.depth"
