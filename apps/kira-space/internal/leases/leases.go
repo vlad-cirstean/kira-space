@@ -40,6 +40,7 @@ const (
 	ReasonGranted Reason = "granted" // a waiter became holder
 	ReasonRevoked Reason = "revoked" // the user took the lease away
 	ReasonExpired Reason = "expired" // the holder went silent past the TTL
+	ReasonRemoved Reason = "removed" // the user deleted the queue a waiter was waiting in
 )
 
 // Grant is a lease change a key must hear about.
@@ -135,6 +136,32 @@ func (b *Book) ranker() ranker {
 	return r
 }
 
+// lockRanked locks b.mu and returns a ranker for the queues as they stand. Ranking asks the board
+// for its task order, which is costly and must run outside the lock, so it is read only when some
+// queue holds at least minWaiters waiters (fewer cannot be out of order) and is re-checked once the
+// lock is back.
+func (b *Book) lockRanked(minWaiters int) ranker {
+	var rk ranker
+	loaded := false
+	for {
+		b.mu.Lock()
+		if loaded || b.maxWaiters() < minWaiters {
+			return rk
+		}
+		b.mu.Unlock()
+		rk, loaded = b.ranker(), true
+	}
+}
+
+// maxWaiters is the longest wait line. b.mu is held.
+func (b *Book) maxWaiters() int {
+	most := 0
+	for _, q := range b.queues {
+		most = max(most, len(q.waiters))
+	}
+	return most
+}
+
 func (r ranker) of(taskID string) int {
 	if i, ok := r[taskID]; ok {
 		return i
@@ -227,7 +254,7 @@ func ValidateNames(names []string) ([]string, error) {
 }
 
 // SetQueues replaces the queue names in the given order. A removed queue drops its holder and
-// waiters; each dropped holder hears a revoked grant.
+// waiters; the holder hears a revoked grant, each waiter a removed one.
 func (b *Book) SetQueues(names []string) error {
 	names, err := ValidateNames(names)
 	if err != nil {
@@ -249,6 +276,9 @@ func (b *Book) SetQueues(names []string) error {
 		if q.holder != nil {
 			e.grants = append(e.grants, Grant{Queue: n, Key: q.holder.Key, TaskID: q.holder.TaskID, Reason: ReasonRevoked})
 		}
+		for _, w := range q.waiters {
+			e.grants = append(e.grants, Grant{Queue: n, Key: w.Key, TaskID: w.TaskID, Reason: ReasonRemoved})
+		}
 		delete(b.queues, n)
 	}
 	changed := !slices.Equal(b.names, names)
@@ -268,9 +298,9 @@ func (b *Book) Names() []string {
 
 // Acquire takes the lease or queues for it, never blocking. A repeat call keeps the place.
 func (b *Book) Acquire(key Key, taskID, name string) (Status, error) {
-	rk := b.ranker()
+	// One more waiter may join, so a line of one is the first that needs ordering.
+	rk := b.lockRanked(1)
 	var e effects
-	b.mu.Lock()
 	q := b.queues[name]
 	if q == nil {
 		names := slices.Clone(b.names)
@@ -308,10 +338,9 @@ func listNames(names []string) string {
 // Release frees key's holds and waits in one queue, or in every queue when queue is empty. It
 // returns the queue names touched and grants each freed queue's next waiter.
 func (b *Book) Release(key Key, name string) []string {
-	rk := b.ranker()
+	rk := b.lockRanked(2)
 	var e effects
 	var released []string
-	b.mu.Lock()
 	for _, n := range b.names {
 		if name != "" && n != name {
 			continue
@@ -342,9 +371,8 @@ func (b *Book) ReleaseSession(key Key) { b.Release(key, "") }
 
 // ForceRelease drops the holder, grants the next waiter and tells the old holder it was revoked.
 func (b *Book) ForceRelease(name string) (Key, error) {
-	rk := b.ranker()
+	rk := b.lockRanked(2)
 	var e effects
-	b.mu.Lock()
 	q := b.queues[name]
 	if q == nil || q.holder == nil {
 		b.mu.Unlock()
@@ -416,9 +444,8 @@ func (b *Book) Sweep(alive func(Key) bool) {
 	if len(dead) == 0 {
 		return
 	}
-	rk := b.ranker()
+	rk := b.lockRanked(2)
 	var e effects
-	b.mu.Lock()
 	now = b.now()
 	for _, n := range b.names {
 		q := b.queues[n]
@@ -436,8 +463,7 @@ func (b *Book) Sweep(alive func(Key) bool) {
 
 // Snapshot lists the queues in name order with waiters in grant order.
 func (b *Book) Snapshot() []Queue {
-	rk := b.ranker()
-	b.mu.Lock()
+	rk := b.lockRanked(2)
 	defer b.mu.Unlock()
 	out := make([]Queue, 0, len(b.names))
 	for _, n := range b.names {

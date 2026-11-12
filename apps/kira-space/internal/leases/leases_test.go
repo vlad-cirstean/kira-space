@@ -199,18 +199,45 @@ func TestForceReleaseRevokesAndPromotes(t *testing.T) {
 	}
 }
 
+// The task order costs a board build, so it is read only when a queue has waiters to put in order.
+func TestOrderReadOnlyWhenWaitersNeedRanking(t *testing.T) {
+	var reads atomic.Int64
+	b := New(Options{Order: func() []string { reads.Add(1); return []string{"A", "B", "C"} }})
+	if err := b.SetQueues([]string{"push"}); err != nil {
+		t.Fatal(err)
+	}
+	mustAcquire(t, b, "s1", "A", "push") // holds
+	b.Touch("s1")
+	b.Snapshot()
+	mustAcquire(t, b, "s2", "B", "push") // first waiter
+	b.Snapshot()
+	b.Release("s2", "push")
+	if n := reads.Load(); n != 0 {
+		t.Fatalf("order read %d times with at most one waiter, want 0", n)
+	}
+	mustAcquire(t, b, "s2", "B", "push")
+	mustAcquire(t, b, "s3", "C", "push") // second waiter: now they need ranking
+	if n := reads.Load(); n == 0 {
+		t.Fatal("order never read with two waiters")
+	}
+	if got := waiterKeys(b, "push"); !slices.Equal(got, []Key{"s2", "s3"}) {
+		t.Fatalf("waiters = %v", got)
+	}
+}
+
 func TestSetQueuesDropsRemovedQueue(t *testing.T) {
 	order := []string{"A"}
 	r := &rec{}
 	b := newBook(t, &order, &clock{}, r)
 	mustAcquire(t, b, "s1", "A", "port")
+	mustAcquire(t, b, "s2", "A", "port")
 	r.take()
 	if err := b.SetQueues([]string{"push"}); err != nil {
 		t.Fatal(err)
 	}
 	gs := r.take()
-	if len(gs) != 1 || gs[0].Reason != ReasonRevoked || gs[0].Queue != "port" {
-		t.Fatalf("grants = %+v", gs)
+	if len(gs) != 2 || gs[0].Reason != ReasonRevoked || gs[0].Key != "s1" || gs[1].Reason != ReasonRemoved || gs[1].Key != "s2" || gs[1].Queue != "port" {
+		t.Fatalf("grants = %+v, want a revoked holder and a removed waiter", gs)
 	}
 	if _, err := b.Acquire("s1", "A", "port"); err == nil {
 		t.Fatal("acquire on a removed queue succeeded")

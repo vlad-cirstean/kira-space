@@ -30,6 +30,8 @@ const (
 	// leaseToolCeiling x the TTL bounds how long one silent tool call keeps a holder alive, so an
 	// interrupted tool (no end event) cannot hold a lease for good.
 	leaseToolCeiling = 3
+	// leaseOrderFresh is how long a computed task order ranks waiters before it is built again.
+	leaseOrderFresh = 5 * time.Second
 )
 
 // leaseState is the board's lease bookkeeping around the leases.Book.
@@ -39,6 +41,14 @@ type leaseState struct {
 	// tracker's lock, never after.
 	mu      sync.Mutex
 	pending map[leases.Key][]string
+	// saveMu serializes SaveLeaseQueues so the stored names and the book end in the same order.
+	saveMu sync.Mutex
+	// order caches the task order a waiter is ranked by: building it takes a full board, so waiters
+	// polling their queue would each pay for one. orderMu guards it; a board change clears it.
+	orderMu  sync.Mutex
+	order    []string
+	orderAt  time.Time
+	orderDay string
 	// runs holds the owners of live headless runs, which emit no hook events: a live run is alive.
 	runs map[leases.Key]struct{}
 }
@@ -80,9 +90,17 @@ func leaseKeyOf(sessionID, runID string) leases.Key {
 	return leases.Key(runKeyPrefix + runID)
 }
 
-// taskListOrder is the order the Tasks UI shows, from a fresh board snapshot: the rank of a lease
-// waiter. A failed read ranks everyone by arrival.
+// taskListOrder is the order the Tasks UI shows, from a board snapshot at most leaseOrderFresh old:
+// the rank of a lease waiter. A failed read ranks everyone by arrival.
 func (b *TaskBoard) taskListOrder() []string {
+	now := b.deps.Now()
+	// The UI reads the machine's local date, so the order does too.
+	day := now.Local().Format("2006-01-02")
+	b.lease.orderMu.Lock()
+	defer b.lease.orderMu.Unlock()
+	if b.lease.orderDay == day && !b.lease.orderAt.IsZero() && now.Sub(b.lease.orderAt) < leaseOrderFresh {
+		return b.lease.order
+	}
 	board, err := b.Board(b.ctx)
 	if err != nil {
 		slog.Warn("ade: lease task order", "scope", "ade", "err", err)
@@ -92,8 +110,15 @@ func (b *TaskBoard) taskListOrder() []string {
 	if b.deps.AdeSettings != nil {
 		s = b.deps.AdeSettings()
 	}
-	// The UI reads the machine's local date, so the order does too.
-	return TaskListOrder(board, s, b.deps.Now().Local().Format("2006-01-02"))
+	b.lease.order, b.lease.orderAt, b.lease.orderDay = TaskListOrder(board, s, day), now, day
+	return b.lease.order
+}
+
+// dropLeaseOrder forgets the cached task order after a board change.
+func (b *TaskBoard) dropLeaseOrder() {
+	b.lease.orderMu.Lock()
+	b.lease.orderAt = time.Time{}
+	b.lease.orderMu.Unlock()
 }
 
 // sweepLeases frees holders that went silent; the tracker says who is mid-turn.
@@ -148,6 +173,8 @@ func leaseMessage(g leases.Grant, ttl time.Duration) string {
 	switch g.Reason {
 	case leases.ReasonRevoked:
 		return "Kira: the user revoked your lease `" + g.Queue + "`. Stop using the resource; call acquire_lease to queue again."
+	case leases.ReasonRemoved:
+		return "Kira: the user removed lease queue `" + g.Queue + "`; you no longer wait for it. Call acquire_lease again if you still need a lease."
 	case leases.ReasonExpired:
 		return "Kira: your lease `" + g.Queue + "` expired after " + ttlText(ttl) + " of silence. Stop using the resource; call acquire_lease to queue again."
 	}
@@ -336,6 +363,8 @@ func (b *TaskBoard) SaveLeaseQueues(names []string) error {
 	if err != nil {
 		return invalid("%v", err)
 	}
+	b.lease.saveMu.Lock()
+	defer b.lease.saveMu.Unlock()
 	if b.deps.LeaseQueues != nil {
 		if err := b.deps.LeaseQueues.Save(names); err != nil {
 			return err

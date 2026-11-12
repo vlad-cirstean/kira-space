@@ -347,6 +347,7 @@ func (b *TaskBoard) scheduleBoard() {
 }
 
 func (b *TaskBoard) notifyBoard() {
+	b.dropLeaseOrder()
 	if b.deps.OnBoard != nil {
 		b.deps.OnBoard()
 	}
