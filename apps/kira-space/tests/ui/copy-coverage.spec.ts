@@ -388,7 +388,18 @@ studioTest.describe('databases module', () => {
     });
     await setPseudoLocale(page);
     await openSettings(page);
-    for (const section of ['Appearance', 'Data', 'Cache', 'Api', 'Database MCP', 'Advanced']) {
+    for (const section of [
+      'Appearance',
+      'Data',
+      'Cache',
+      'Api',
+      'Studio MCP',
+      'Studio MCP connections',
+      'Studio MCP clusters',
+      'Studio MCP scripts',
+      'Studio MCP API',
+      'Advanced',
+    ]) {
       await loc(page, `settings-section-${section}`).click();
       await expectCatalogText(loc(page, 'settings-dialog'), {
         allow: [...ALLOW, SCHEMA, ...providerNames],

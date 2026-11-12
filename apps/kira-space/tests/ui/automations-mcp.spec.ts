@@ -148,7 +148,7 @@ test('contract: the settings switch reads the file, applies the edit and saves o
     control: base(form('mcp'), [{ channel: IPC.customScriptsSaveFile, response: file('saved') }]),
   });
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP scripts"]');
   const toggle = page.locator('[data-testid="db-mcp-script-toggle-ship"]');
   await expect(toggle).not.toBeChecked();
   await toggle.click();

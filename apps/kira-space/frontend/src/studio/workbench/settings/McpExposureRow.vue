@@ -5,7 +5,7 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 
-// One Database MCP settings row: what an agent may see (name, status line, Exposed/Off badge) and the
+// One Studio MCP settings row: what an agent may see (name, status line, Exposed/Off badge) and the
 // switch that flips it. Testids derive from `testid`: `-row-`, `-` and `-toggle-` plus the id.
 defineProps<{
   id: string;

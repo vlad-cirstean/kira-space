@@ -75,7 +75,7 @@ type Preconnect struct {
 	DelaySec int    `json:"delay_sec,omitempty"`
 }
 
-// MCP is what an AI client may do through the DB MCP server.
+// MCP is what an AI client may do through the Studio MCP server.
 type MCP struct {
 	Enabled     bool   `json:"enabled,omitempty"`
 	Description string `json:"description,omitempty"`
@@ -108,7 +108,7 @@ type McpReviewFile struct {
 	Masked string `json:"masked,omitempty"`
 }
 
-// Mask hides one column's values from the DB MCP server. KeepHint and Correlate default to true.
+// Mask hides one column's values from the Studio MCP server. KeepHint and Correlate default to true.
 type Mask struct {
 	Table     string `json:"table,omitempty"`
 	Column    string `json:"column"`

@@ -124,7 +124,7 @@ test('contract: the preview switch sends the settings patch', async ({ relaunch 
     ],
   });
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP"]');
   await page.click('[data-testid="settings-db-mcp-preview"]');
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)

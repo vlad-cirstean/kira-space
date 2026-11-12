@@ -10,7 +10,7 @@ import { computed } from 'vue';
 import { useCustomScriptsStore } from '../../../state/customScripts';
 import McpExposureRow from './McpExposureRow.vue';
 
-// Which normal scripts an agent on the Database MCP server may list and run. The switch edits the
+// Which normal scripts an agent on the Studio MCP server may list and run. The switch edits the
 // script's run file (the mcp block); description and approval mode are edited in its MCP tab.
 const store = useCustomScriptsStore();
 const normal = computed(() => store.records.filter((s) => s.kind !== 'smart'));

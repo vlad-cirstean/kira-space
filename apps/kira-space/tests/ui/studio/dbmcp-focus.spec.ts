@@ -22,7 +22,7 @@ test('contract: the focus switch is on by default and sends the settings patch',
     ],
   });
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP"]');
   await expect(page.locator('[data-testid="settings-db-mcp-focus"]')).toBeChecked();
   await page.click('[data-testid="settings-db-mcp-focus"]');
   await expect

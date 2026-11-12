@@ -12,8 +12,12 @@ import { type Section, sections, useSettingsStore } from '../state/settings';
 import { defaultSettings, type SettingsPatch } from '../state/settingsDomain';
 import ApiPane from '../studio/workbench/settings/ApiPane.vue';
 import CachePane from '../studio/workbench/settings/CachePane.vue';
-import DatabaseMcpPane from '../studio/workbench/settings/DatabaseMcpPane.vue';
 import DataPane from '../studio/workbench/settings/DataPane.vue';
+import KubeMcpSection from '../studio/workbench/settings/KubeMcpSection.vue';
+import ScriptsMcpSection from '../studio/workbench/settings/ScriptsMcpSection.vue';
+import StudioMcpApiPane from '../studio/workbench/settings/StudioMcpApiPane.vue';
+import StudioMcpConnectionsPane from '../studio/workbench/settings/StudioMcpConnectionsPane.vue';
+import StudioMcpServerPane from '../studio/workbench/settings/StudioMcpServerPane.vue';
 import { useMemoryEnabled } from './experimental';
 import AboutPane from './settings/AboutPane.vue';
 import AdvancedPane from './settings/AdvancedPane.vue';
@@ -35,6 +39,14 @@ const settingsStore = useSettingsStore();
 const promptsExtra = useLlmPromptsShellExtra();
 const { info: agentInfo } = useAgentInfo();
 
+// Studio MCP's sub-sections render indented under it.
+const indentedSections: readonly Section[] = [
+  'Studio MCP connections',
+  'Studio MCP clusters',
+  'Studio MCP scripts',
+  'Studio MCP API',
+];
+
 const sectionLabels = computed<Record<Section, string>>(() => ({
   Appearance: t('common.appearance.label'),
   Git: t('common.module.git.label'),
@@ -49,7 +61,11 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
   Data: t('studio.settings.nav.data.label'),
   Cache: t('studio.settings.nav.cache.label'),
   Api: t('studio.mode.api.label'),
-  'Database MCP': t('studio.settings.nav.databaseMcp.label'),
+  'Studio MCP': t('studio.settings.nav.studioMcp.label'),
+  'Studio MCP connections': t('common.module.connections.label'),
+  'Studio MCP clusters': t('common.product.kubernetes.label'),
+  'Studio MCP scripts': t('studio.settings.dbMcp.scripts.legend.label'),
+  'Studio MCP API': t('studio.settings.nav.studioMcpApi.label'),
   Prompts: t('llmPrompts.nav.label'),
   Advanced: t('common.advanced.label'),
   Experimental: t('space.settings.nav.experimental.label'),
@@ -75,6 +91,7 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
 <template>
   <SettingsShell
     :section-labels="sectionLabels"
+    :indented-sections="indentedSections"
     :sections="shownSections"
     :initial-section="initialSection"
     :defaults="{
@@ -206,8 +223,28 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
         :reset-leaf="s.resetLeaf"
         :register-field-error="s.registerFieldError"
       />
-      <DatabaseMcpPane
-        :active="s.activeSection === 'Database MCP'"
+      <StudioMcpServerPane
+        :active="s.activeSection === 'Studio MCP'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <StudioMcpConnectionsPane
+        :active="s.activeSection === 'Studio MCP connections'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <div v-show="s.activeSection === 'Studio MCP clusters'" class="contents">
+        <KubeMcpSection />
+      </div>
+      <div v-show="s.activeSection === 'Studio MCP scripts'" class="contents">
+        <ScriptsMcpSection />
+      </div>
+      <StudioMcpApiPane
+        :active="s.activeSection === 'Studio MCP API'"
         :draft="s.draft"
         :is-at-default="s.isAtDefault"
         :reset-leaf="s.resetLeaf"

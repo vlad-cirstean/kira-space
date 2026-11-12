@@ -126,7 +126,7 @@
           "placeholder": "What this script does and when to run it"
         },
         "enable": {
-          "hint": "An agent on the database MCP server can list this script and start it. It gets the run result, never the output; logs come from a separate, size-capped read.",
+          "hint": "An agent on the Studio MCP server can list this script and start it. It gets the run result, never the output; logs come from a separate, size-capped read.",
           "label": "Let agents run this script"
         },
         "long": {
@@ -6819,14 +6819,14 @@
         "label": "What this cluster is for, read verbatim by MCP clients"
       },
       "dialog": {
-        "description": "Choose whether AI clients on the database MCP server may read this cluster, and whether each read asks you first.",
+        "description": "Choose whether AI clients on the Studio MCP server may read this cluster, and whether each read asks you first.",
         "title": "MCP access · {cluster}"
       },
       "discover": {
         "label": "Discovery"
       },
       "enable": {
-        "hint": "An agent on the database MCP server can list this cluster and read its namespaces, kinds, objects and pod logs. Reads only; Kira never changes the cluster.",
+        "hint": "An agent on the Studio MCP server can list this cluster and read its namespaces, kinds, objects and pod logs. Reads only; Kira never changes the cluster.",
         "label": "Let agents read this cluster"
       },
       "list": {
@@ -7067,10 +7067,10 @@
         }
       },
       "dbmcpInstructions": {
-        "description": "Explains how an agent should explore connections and run queries through the database MCP server.",
-        "title": "Database MCP instructions",
+        "description": "Explains how an agent should explore connections and run queries through the Studio MCP server.",
+        "title": "Studio MCP instructions",
         "usedBy": {
-          "body": "Sent to {agent} when it connects to the database MCP server."
+          "body": "Sent to {agent} when it connects to the Studio MCP server."
         }
       },
       "headlessArtifactsHeader": {
@@ -11331,7 +11331,7 @@
             "hint": "Runs in the task folder. A non-zero exit fails the step. {tokens} are shell-quoted when needed."
           },
           "dbMcp": {
-            "hint": "This step’s sessions get the database MCP tools. The app handles access, and it works with the server off.",
+            "hint": "This step’s sessions get the Studio MCP tools. The app handles access, and it works with the server off.",
             "label": "Kira database tools"
           },
           "editStatuses": {
@@ -12914,7 +12914,7 @@
           "hint": "No variables are available to agents."
         },
         "overview": {
-          "body": "Variables that AI agents can use in API requests through the database MCP server. Agents see names, never values."
+          "body": "Variables that AI agents can use in API requests through the Studio MCP server. Agents see names, never values."
         },
         "tab": {}
       },
@@ -16042,8 +16042,8 @@
             "body": "An exemption does not lift it."
           },
           "expose": {
-            "description": "Off by default. Mirrors the switch in the database MCP settings.",
-            "label": "Expose to the database MCP server"
+            "description": "Off by default. Mirrors the switch in the Studio MCP settings.",
+            "label": "Expose to the Studio MCP server"
           },
           "limitApp": {
             "body": "For a hard guarantee, use a database user with read-only rights."
@@ -16091,7 +16091,7 @@
             "label": "SELECT and equivalents"
           },
           "review": {
-            "description": "The app setting is in the database MCP settings.",
+            "description": "The app setting is in the Studio MCP settings.",
             "label": "Review results"
           },
           "reviewAlways": {
@@ -16289,7 +16289,7 @@
             "body": "Rules match by column name, ignoring case; the table is ignored. A result that renames or computes a masked column is refused."
           },
           "limitsScope": {
-            "body": "Masking covers what the agent reads through Kira’s database MCP tools. Scripts are not checked. No exemption lifts it."
+            "body": "Masking covers what the agent reads through Kira’s Studio MCP tools. Scripts are not checked. No exemption lifts it."
           },
           "maskAs": {
             "label": "Mask as"
@@ -16301,7 +16301,7 @@
             "status": "New columns stay hidden from the agent until you decide"
           },
           "overviewMcpOff": {
-            "hint": "Database MCP is off for this connection, so no agent reads it. These settings apply once it is on."
+            "hint": "Studio MCP is off for this connection, so no agent reads it. These settings apply once it is on."
           },
           "overviewNone": {
             "status": "No masked columns, so the agent sees every value as stored"
@@ -16364,7 +16364,7 @@
             "label": "Hide new columns until you decide"
           },
           "reviewTruncated": {
-            "body": "The column list is cut short ({limit}). Database MCP refuses every call until the check fits."
+            "body": "The column list is cut short ({limit}). Studio MCP refuses every call until the check fits."
           },
           "reviewUndo": {
             "label": "Undo"
@@ -17085,7 +17085,7 @@
     "settings": {
       "advanced": {
         "expensiveRows": {
-          "description": "The estimated rows a query’s plan reads, not the rows it returns. At or above it, the console’s explain and auto-explain warn you, and the database MCP server refuses an agent’s query before it runs where the connection’s MCP tab has the check on. Not comparable to the engines’ own cost figures. A connection can set its own on its advanced tab.",
+          "description": "The estimated rows a query’s plan reads, not the rows it returns. At or above it, the console’s explain and auto-explain warn you, and the Studio MCP server refuses an agent’s query before it runs where the connection’s MCP tab has the check on. Not comparable to the engines’ own cost figures. A connection can set its own on its advanced tab.",
           "label": "Expensive query threshold (rows)"
         },
         "opLogRetention": {
@@ -17138,7 +17138,7 @@
           "count": {
             "status": "{count} variables shared from {environments} environments"
           },
-          "description": "Adds the api_request tool to the database MCP server. Agents can use only the variables you share per environment.",
+          "description": "Adds the api_request tool to the Studio MCP server. Agents can use only the variables you share per environment.",
           "label": "Let agents send API requests"
         },
         "apiApproval": {
@@ -17225,7 +17225,7 @@
         },
         "enable": {
           "description": "Lets an MCP client list, browse and query the connections exposed below, through the same path this app’s own SQL console uses. Starts and stops with this toggle.",
-          "label": "Enable the database MCP server"
+          "label": "Enable the Studio MCP server"
         },
         "exposed": {
           "description": "Deny by default. Only connections whose file turns MCP on are visible to an MCP client through this server.",
@@ -17321,8 +17321,11 @@
         "data": {
           "label": "Data"
         },
-        "databaseMcp": {
-          "label": "Database MCP"
+        "studioMcp": {
+          "label": "Studio MCP"
+        },
+        "studioMcpApi": {
+          "label": "API tools"
         }
       },
       "range": {

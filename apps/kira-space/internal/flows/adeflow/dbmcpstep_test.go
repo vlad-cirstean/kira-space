@@ -175,9 +175,9 @@ func TestDbMcpStep(t *testing.T) {
 		t.Fatalf("script db_mcp = %+v / %v, want a refusal", refused.Workflow, refused.Error)
 	}
 
-	// 2. The Database MCP switch is off; the step still gets the tools, and the one with db_mcp: false does not.
+	// 2. The Studio MCP switch is off; the step still gets the tools, and the one with db_mcp: false does not.
 	if app.W.DbMcp.Status().Running {
-		t.Fatal("Database MCP server runs without the switch")
+		t.Fatal("Studio MCP server runs without the switch")
 	}
 	task := createTask(t, app, "Fix login", "flow", rec.ID)
 	br := branchOf(t, board(t, app), task.ID, rec.ID)
