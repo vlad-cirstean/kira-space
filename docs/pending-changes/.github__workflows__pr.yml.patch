@@ -1,4 +1,4 @@
-Why: P621 adds `internal/imageclip` (darwin&&cgo NSPasteboard shim); its darwin test runs only if the macOS job lists it.
+Why: P621 adds `internal/imageclip` (darwin&&cgo NSPasteboard shim); its darwin test needs `-tags imagecliptest` (the readback helpers stay out of the app binary) and runs only if the macOS job lists it.
 
 diff --git a/.github/workflows/pr.yml b/.github/workflows/pr.yml
 --- a/.github/workflows/pr.yml
@@ -14,7 +14,7 @@ diff --git a/.github/workflows/pr.yml b/.github/workflows/pr.yml
              ./internal/secrets/... \
              ./internal/metrics/... \
              ./apps/kira-space/internal/localauth/... \
-+            ./apps/kira-space/internal/imageclip/... \
              ./apps/kira-space/internal/gitclient \
              ./apps/kira-space/internal/datagrip/...
++          go test -tags imagecliptest ./apps/kira-space/internal/imageclip/...
  

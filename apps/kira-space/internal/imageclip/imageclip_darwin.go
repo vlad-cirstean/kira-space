@@ -15,11 +15,11 @@ static int kira_can_write_images(void) {
 	}
 }
 
-// kira_write_images writes one pasteboard item per path: public.png data plus a public.file-url
-// pointing at the file. name NULL means the general pasteboard. All items are built before the
-// pasteboard is cleared, so a failed read leaves it untouched.
-// Returns 0 ok, 1 file unreadable, 2 pasteboard refused the write.
-static int kira_write_images(const char *name, const char **paths, int n) {
+// kira_write_images writes one pasteboard item per path: public.png data (already read, so the main
+// thread does no file I/O) plus a public.file-url pointing at the file. name NULL means the general
+// pasteboard. All items are built before the pasteboard is cleared.
+// Returns 0 ok, 2 pasteboard refused the write.
+static int kira_write_images(const char *name, const char **paths, const void **datas, const long *lens, int n) {
 	@autoreleasepool {
 		NSPasteboard *pb = name == NULL
 			? [NSPasteboard generalPasteboard]
@@ -27,10 +27,7 @@ static int kira_write_images(const char *name, const char **paths, int n) {
 		NSMutableArray<NSPasteboardItem *> *items = [NSMutableArray arrayWithCapacity:n];
 		for (int i = 0; i < n; i++) {
 			NSString *p = [NSString stringWithUTF8String:paths[i]];
-			NSData *data = [NSData dataWithContentsOfFile:p];
-			if (data == nil) {
-				return 1;
-			}
+			NSData *data = [NSData dataWithBytes:datas[i] length:(NSUInteger)lens[i]];
 			NSPasteboardItem *item = [[NSPasteboardItem alloc] init];
 			[item setData:data forType:NSPasteboardTypePNG];
 			[item setString:[[NSURL fileURLWithPath:p] absoluteString] forType:NSPasteboardTypeFileURL];
@@ -46,6 +43,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"unsafe"
 )
@@ -78,10 +76,20 @@ func (c *Clipboard) writeImagesTo(name string, paths []string) error {
 	if len(paths) == 0 {
 		return errors.New("imageclip: no images")
 	}
+	// Read here, off the main thread: a batch of full-resolution tabs is several MB per file.
 	cpaths := make([]*C.char, len(paths))
+	datas := make([]unsafe.Pointer, len(paths))
+	lens := make([]C.long, len(paths))
 	for i, p := range paths {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return errUnreadable
+		}
 		cpaths[i] = C.CString(p)
 		defer C.free(unsafe.Pointer(cpaths[i]))
+		datas[i] = C.CBytes(data)
+		defer C.free(datas[i])
+		lens[i] = C.long(len(data))
 	}
 	var cname *C.char
 	if name != "" {
@@ -90,13 +98,11 @@ func (c *Clipboard) writeImagesTo(name string, paths []string) error {
 	}
 	var rc C.int
 	c.invoke(func() {
-		rc = C.kira_write_images(cname, (**C.char)(unsafe.Pointer(&cpaths[0])), C.int(len(paths)))
+		rc = C.kira_write_images(cname, (**C.char)(unsafe.Pointer(&cpaths[0])), (*unsafe.Pointer)(&datas[0]), &lens[0], C.int(len(paths)))
 	})
 	switch rc {
 	case 0:
 		return nil
-	case 1:
-		return errUnreadable
 	default:
 		return fmt.Errorf("%w (code %d)", errRefused, int(rc))
 	}

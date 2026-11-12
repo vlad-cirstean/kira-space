@@ -183,3 +183,44 @@ func onlyDir(t *testing.T, dirs map[string]bool) string {
 	}
 	return ""
 }
+
+// Eviction past the batch cap removes an abandoned batch; quitting removes the committed one and any
+// open one. Screenshots must not outlive the app in TMPDIR.
+func TestProofShotClipLeavesNoFiles(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("TMPDIR", tmp)
+	f := newFixture(t)
+	p := f.app.W.Proof
+	f.app.ImageClipboard.SetMulti(true)
+
+	// 9 batches opened and never closed: the first falls out of the 8-batch registry.
+	var firstDir string
+	for i := 0; i < 9; i++ {
+		if _, err := p.OpenShotClip(); err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 {
+			firstDir = onlyDir(t, clipDirs(t, tmp))
+		}
+	}
+	if _, err := os.Stat(firstDir); !os.IsNotExist(err) {
+		t.Fatalf("evicted batch kept: %v", err)
+	}
+	if got := len(clipDirs(t, tmp)); got != 8 {
+		t.Fatalf("batch dirs = %d, want 8", got)
+	}
+	committed, err := p.OpenShotClip()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.AddShotClip(bridge.ProofAddShotClipArgs{ClipID: committed.ID, Filename: "01-a.png", PngBase64: pngB64("a")}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.CommitShotClip(bridge.ProofShotClipArgs{ClipID: committed.ID}); err != nil {
+		t.Fatal(err)
+	}
+	f.app.Quit(t)
+	if dirs := clipDirs(t, tmp); len(dirs) != 0 {
+		t.Fatalf("batch dirs after quit = %v, want none", dirs)
+	}
+}

@@ -64,7 +64,33 @@ func (s *ProofService) OpenShotClip() (ProofShotClipResult, error) {
 	if err != nil {
 		return ProofShotClipResult{}, ipcerr.InternalErr(err)
 	}
-	return ProofShotClipResult{ID: s.clips.add(dir)}, nil
+	id, evicted := s.clips.add(dir)
+	if evicted != nil && !evicted.closed {
+		// An abandoned batch (its window closed mid-walk) would keep its files in TMPDIR.
+		removeClipDir(evicted.path)
+	}
+	return ProofShotClipResult{ID: id}, nil
+}
+
+func removeClipDir(path string) {
+	if err := os.RemoveAll(path); err != nil {
+		slog.Debug("proof: remove clip batch", "scope", "proof", "path", path, "err", err)
+	}
+}
+
+// ServiceShutdown removes every batch's files at app quit: they are screenshots and must not outlive it.
+// Wails calls it and leaves it out of the bindings.
+func (s *ProofService) ServiceShutdown() error {
+	for _, path := range s.clips.unclosed() {
+		removeClipDir(path)
+	}
+	s.clipMu.Lock()
+	defer s.clipMu.Unlock()
+	if s.lastClip != "" {
+		removeClipDir(s.lastClip)
+		s.lastClip = ""
+	}
+	return nil
 }
 
 // AddShotClip writes one PNG into an open batch, never over an existing file.
@@ -112,16 +138,15 @@ func (s *ProofService) CommitShotClip(args ProofShotClipArgs) (ProofCommitShotCl
 	if len(paths) == 0 {
 		return ProofCommitShotClipResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.clipEmpty.body", nil)
 	}
+	// One lock spans the write and the swap: two commits cannot each remove the other's live batch.
+	s.clipMu.Lock()
+	defer s.clipMu.Unlock()
 	if err := s.Clipboard.WriteImages(paths); err != nil {
 		return ProofCommitShotClipResult{}, ipcerr.InternalErr(err)
 	}
 	s.clips.close(args.ClipID)
-	s.clipMu.Lock()
-	defer s.clipMu.Unlock()
 	if s.lastClip != "" && s.lastClip != clip.path {
-		if err := os.RemoveAll(s.lastClip); err != nil {
-			slog.Debug("proof: remove old clip batch", "scope", "proof", "path", s.lastClip, "err", err)
-		}
+		removeClipDir(s.lastClip)
 	}
 	s.lastClip = clip.path
 	return ProofCommitShotClipResult{Count: len(paths)}, nil
@@ -135,8 +160,6 @@ func (s *ProofService) CloseShotClip(args ProofShotClipArgs) error {
 		return nil
 	}
 	s.clips.close(args.ClipID)
-	if err := os.RemoveAll(clip.path); err != nil {
-		slog.Debug("proof: remove clip batch", "scope", "proof", "path", clip.path, "err", err)
-	}
+	removeClipDir(clip.path)
 	return nil
 }
