@@ -8,7 +8,7 @@ UI polish, dialog speed and MCP dialog fixes. Phases P617 to P619 run as paralle
 | P618 | Dialogs: speed, colors, background ops, proof, copy | Done |
 | P619 | Settings MCP split and GitHub PR open | Done |
 | P620 | Resource leases: named queues, push wake-up | Done |
-| P621 | Proof window: screenshots dropdown and copy-all | Todo |
+| P621 | Proof window: screenshots dropdown and copy-all | Done |
 
 ## P617 Task list and detail UI (Stream A)
 
@@ -80,4 +80,4 @@ Brief: `plans/P621-brief.md`.
 - Where it cannot (e.g. macOS if multi-image clipboard is impossible): default stays the existing save-to-folder action.
 - Backend flow test and UI spec for the same scenario.
 
-Result: _pending_
+Result: Done. Dropdown bug: `ProofScreenshotMenu` reused `DropdownMenuLabel` (one-line header: fixed `h-control-sm`, uppercase, centred) for the 3-line location block, so it clipped and the path overprinted "Change location…"; the caller now overrides those classes (primitive untouched), and `proof-window.spec.ts` asserts no clipping, no uppercase, no overlap. Copy-all: macOS can hold several images (`NSPasteboard` items), so `internal/imageclip` (darwin cgo) writes one item per tab, `public.png` plus `public.file-url`; Windows and Linux report `multiImage` false (one image per clipboard format, several only as file lists), so save stays primary there. No stitched image. Backend: `ProofService.ShotClipboard`, `OpenShotClip`, `AddShotClip`, `CommitShotClip`, `CloseShotClip` (temp dir per batch, previous batch removed after the next commit; `decodeShot` shared with `SaveJpegTo`), `appwire.Options.ImageClipboard`, flow fake `ImageClipboard`. UI: `useShotClipboard` query picks the primary action (`data-mode` copyAll or saveAll), `walkTabs` shared by `saveAll` and `copyAll`, status strip handles `copied`, menu gains "Save screenshots" when copy is primary. Deviations: fake clipboard has `SetFail` instead of a `Fail` field (lock-safe); darwin readback helpers live in `readback_darwin.go` because cgo is not allowed in `_test.go`; `staleTime` option dropped from the query (default is already Infinity, lint U53); `threeSteps` moved to `support/proof.ts` (lint N8); `TestProofShotCopyAll` redirects `TMPDIR` to find batch dirs. Not run here: the darwin cgo file and `TestWriteImagesPrivatePasteboard` (no Mac); checked with gofmt, `CGO_ENABLED=0` darwin vet of the fallback file, Linux vet and build. Workflow patch `docs/pending-changes/.github__workflows__pr.yml.patch` adds the package to the macOS `go test` list. Mac checklist steps 11 and 12 and a Known open item cover the real pasteboard. Tests: `TestProofShotCopyAll`, proofflow, `internal/proof`, bridge, 4 `proof-copy-all` specs and the proof-window, image, chart, diagram specs, typecheck, lint, lint:go, lint:dead clean; real claude DB row (`bun run test:claude:db`, auth probe ok) pass.
