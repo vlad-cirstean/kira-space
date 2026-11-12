@@ -3,9 +3,11 @@ import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
 import { expect, test } from './fixtures';
 import { type AdeBoardFx, adeBoard, openPlan, openTask } from './support/adeV2';
 import { contract } from './support/contract';
+import { armFirstFrame, firstFrame, framesLate } from './support/firstFrame';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 import { stubClipboard } from './support/logSpecs';
+import { dragAcross } from './support/selection';
 import type { ControlSnapshot } from './support/types';
 
 // Stage handover: the routed prompt, the stage dialog, the Details notes chain and the Run dialog block.
@@ -28,17 +30,6 @@ interface HandoverFx {
   edited: boolean;
   createdAt: number;
   updatedAt: number;
-}
-
-/** Drags from the box's top-left to its bottom-right and returns the page selection. */
-async function dragAcross(page: Page, target: ReturnType<Page['locator']>): Promise<string> {
-  const box = await target.boundingBox();
-  if (!box) throw new Error('drag target has no box');
-  await page.mouse.move(box.x + 1, box.y + 1);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width - 1, box.y + box.height - 1, { steps: 5 });
-  await page.mouse.up();
-  return page.evaluate(() => window.getSelection()?.toString() ?? '');
 }
 
 const BODY = 'Form wired; validation missing.';
@@ -120,6 +111,21 @@ test('contract: the routed handover prompt shows the draft and Move sends StepDo
     taskId: 'T_alerts',
     notes: `${BODY} Check C.`,
   });
+});
+
+test('a stale board still shows the draft text in the dialog first frame', async ({ relaunch }) => {
+  // The board snapshot lacks the draft; only the handovers read has it.
+  const entry = routed('handover', 'T_alerts');
+  const { window: page } = await openPlan(relaunch, [
+    ...snapshots(() => {}),
+    { channel: IPC.promptsList, response: [entry] },
+  ]);
+  await armFirstFrame(page, 'ade-stage-dialog', 'ade-stage-notes');
+  await emitPrompts(page, [entry]);
+  const frame = await firstFrame(page);
+  expect(framesLate(frame)).toBe(0);
+  expect(frame.textAtDialogFrame).toContain(BODY);
+  await expect(page.locator(t('ade-stage-notes')).locator('.ProseMirror')).toHaveText(BODY);
 });
 
 test('Move with the draft untouched sends no notes', async ({ relaunch }) => {

@@ -1,11 +1,12 @@
 import type { Page } from '@playwright/test';
 import type { ApprovalItem } from '@shared/domain/approvals';
-import { answeredOk, liveItem } from '@workbench/testing/ui/approvals';
+import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import type { ContractJson } from '@workbench/testing/ui/contract';
 import { expect, test } from './fixtures';
 import { adeBoard, adeFixture, FIXED_NOW, openPlan, openTask } from './support/adeV2';
 import { seedApprovals } from './support/approvals';
 import { contract } from './support/contract';
+import { armFirstFrame, firstFrame, framesLate } from './support/firstFrame';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 import type { ControlSnapshot } from './support/types';
@@ -108,6 +109,16 @@ test('task.create approval shows title, parent, workflow, repos and brief', asyn
     ids: [it.id],
     approve: true,
   });
+});
+
+test('task.create brief is in the dialog first frame', async ({ relaunch }) => {
+  const it = taskCreateItem();
+  const { window: page } = await openPlan(relaunch, []);
+  await armFirstFrame(page, 'approvals-dialog', 'ade-task-create-brief');
+  await pushApprovals(page, [it]);
+  const frame = await firstFrame(page);
+  expect(framesLate(frame)).toBe(0);
+  expect(frame.textAtDialogFrame).toContain('Wire the login form to the API.');
 });
 
 test('orchestrator card groups children and child links to parent', async ({ relaunch }) => {
