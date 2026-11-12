@@ -96,7 +96,10 @@
         "mcp__kira-space__rename_branch",
         "mcp__kira-space__change_branch",
         "mcp__kira-space__report_artifacts",
-        "mcp__kira-space__operations"
+        "mcp__kira-space__operations",
+        "mcp__kira-space__acquire_lease",
+        "mcp__kira-space__release_lease",
+        "mcp__kira-space__lease_status"
       ],
       "mcpServers": [],
       "tools": [
@@ -145,7 +148,10 @@
         "mcp__kira-space__rename_branch",
         "mcp__kira-space__change_branch",
         "mcp__kira-space__report_artifacts",
-        "mcp__kira-space__operations"
+        "mcp__kira-space__operations",
+        "mcp__kira-space__acquire_lease",
+        "mcp__kira-space__release_lease",
+        "mcp__kira-space__lease_status"
       ],
       "mcpServers": [],
       "tools": [
@@ -175,7 +181,10 @@
       "mcp__kira-space__rename_branch",
       "mcp__kira-space__change_branch",
       "mcp__kira-space__report_artifacts",
-      "mcp__kira-space__operations"
+      "mcp__kira-space__operations",
+      "mcp__kira-space__acquire_lease",
+      "mcp__kira-space__release_lease",
+      "mcp__kira-space__lease_status"
     ],
     "blocker": "",
     "body": "Audit {branch} on {base} in {worktree} for {task}",
