@@ -7,7 +7,7 @@ UI polish, dialog speed and MCP dialog fixes. Phases P617 to P619 run as paralle
 | P617 | Task list and detail UI | Done |
 | P618 | Dialogs: speed, colors, background ops, proof, copy | Done |
 | P619 | Settings MCP split and GitHub PR open | Done |
-| P620 | Resource leases: named queues, push wake-up | Todo |
+| P620 | Resource leases: named queues, push wake-up | Done |
 
 ## P617 Task list and detail UI (Stream A)
 
@@ -68,4 +68,4 @@ Agents sharing an unsharable resource (port, full-suite run, push, merge) wait i
 - Verify first: how session end and idle detection behave on a hard kill; drop injection to hooks-only if idle cannot be detected safely.
 - Tests: backend flow test and UI spec for same scenario (queue, grant, release, force release).
 
-Result: _pending_
+Result: Done. Backend: `internal/leases` (in-memory Book: ranked waiters, no preemption, 10 min TTL with heartbeat, alive while the tracker says busy), board glue in `ade/leases.go`, tools `acquire_lease`, `release_lease`, `lease_status` (prompt registry, budget), `LeasesService` plus push `kira:ade:leases`, queue names in `ade_lease_queues` (migration 0099). Rank uses the task list order: `ade/taskorder.go` is a Go port of the TS `taskListOrder` (extracted to `board/taskOrder.ts`), pinned by one golden file (227 cases) read by a bun spec and a Go test; today is the machine's local date on both sides. Idle kept: tracker turn state (busy, idle, input, unknown) from hook events, `SendIfIdle` at grant; fallback is the hook reply (Stop block, UserPromptSubmit context), then the idle handler, then lease tool results for headless. Hook replies are new plumbing (`HookReply`, shim `--output -`); OpenCode gets injection only. Session end releases through `Reconcile` (works on SIGKILL, where `SessionEnd` never fires). UI: Leases sub-tab in Agent config (queue editor, holder menu with Request release and confirmed Force release), `adeLeases` store, lease chip on task cards. Deviations: plan commits 6 and 7 merged (interface change breaks the build alone); queue editor saves on add and remove, no draft; duplicate or empty name disables Add instead of showing an error; fakeagent gained `MCPAfter` and a `.pid` record; no TTL flow step (unit test covers it). Tests: leases -race, `TestTaskListOrder`, ade tracker tests, agentmcp, llmprompts, harness, `TestLeases` flow (hard kill included) and session-status, panel-forward, branch-change, automation flows, bun parity, timeline and board-parity specs, 13 ui specs (leases, session-status, card-icons, agents-tab, task-row, plan), typecheck, lint, lint:go, lint:dead clean; real claude: hook row incl. new `TestHookStopBlock` and the whole ADE row pass (auth probe ok).

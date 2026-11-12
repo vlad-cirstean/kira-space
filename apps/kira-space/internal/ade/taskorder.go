@@ -192,17 +192,27 @@ func newOrderGraph(b adewire.Board) orderGraph {
 			}
 		}
 	}
+	g.setParents(b, planBranches)
+	g.setConflicts(b, planBranches)
+	return g
+}
+
+// setParents gives each plan branch its queued-after branch, else its base when that is on the board.
+func (g *orderGraph) setParents(b adewire.Board, planBranches []adewire.Branch) {
 	for _, br := range planBranches {
 		p := b.Plan.QueuedAfter[br.ID]
-		if p == "" && br.BaseBranchID != "" {
-			if _, ok := g.byBranch[br.BaseBranchID]; ok {
-				p = br.BaseBranchID
-			}
+		if _, onBoard := g.byBranch[br.BaseBranchID]; p == "" && onBoard {
+			p = br.BaseBranchID
 		}
 		if p != "" {
 			g.parentOf[br.ID] = p
 		}
 	}
+}
+
+// setConflicts marks each own live branch and each review branch of its repo that conflict with it,
+// unless the review is one of its ancestors.
+func (g *orderGraph) setConflicts(b adewire.Board, planBranches []adewire.Branch) {
 	pairs := make(map[string][]string, 2*len(b.Pairs))
 	for _, p := range b.Pairs {
 		pairs[pairKey(p.A, p.B)] = p.Conflicts
@@ -223,14 +233,12 @@ func newOrderGraph(b adewire.Board) orderGraph {
 			if r.Kind != "review" || r.CodeRepoID != br.CodeRepoID || slices.Contains(anc, r.ID) {
 				continue
 			}
-			if len(pairs[pairKey(br.ID, r.ID)]) == 0 {
-				continue
+			if len(pairs[pairKey(br.ID, r.ID)]) > 0 {
+				add(br.ID, r.ID)
+				add(r.ID, br.ID)
 			}
-			add(br.ID, r.ID)
-			add(r.ID, br.ID)
 		}
 	}
-	return g
 }
 
 // --- shelf.ts ------------------------------------------------------------------------------------
