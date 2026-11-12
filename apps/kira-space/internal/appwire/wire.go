@@ -115,6 +115,7 @@ func wireTracker(
 	// Hooks are always on: a start failure (curl missing, a bind conflict) is logged, never fatal —
 	// sessions still spawn and track, activity icons stay absent.
 	hooks := harness.NewHooks(agents.Registry, harness.HookOptions{
+		Reply: tracker.HookReply,
 		OnEvent: func(ev harness.AgentEvent) {
 			tracker.HandleEvent(ev)
 			bridge.EmitAgentEvent(emitter, ev)

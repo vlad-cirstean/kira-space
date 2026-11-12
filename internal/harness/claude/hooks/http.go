@@ -138,8 +138,9 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	kind, known := eventKinds[req.HookEventName]
-	if s.onEvent != nil && known {
-		s.onEvent(harness.AgentEvent{
+	var reply harness.HookReply
+	if known && (s.onEvent != nil || s.reply != nil) {
+		ev := harness.AgentEvent{
 			TerminalID:           terminalID,
 			Event:                kind,
 			SessionID:            req.SessionID,
@@ -155,9 +156,38 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 			Background:           liveBackground(req, kind),
 			Wakes:                req.AgentID == "" && kind == harness.EventToolStart && wakeTools[req.ToolName],
 			NeedsInput:           kind == harness.EventNotification && needsInput(req),
-		})
+		}
+		// Reply first: a Stop that carries a message must not also count as idle in OnEvent.
+		if s.reply != nil {
+			reply = s.reply(ev)
+		}
+		if s.onEvent != nil {
+			s.onEvent(ev)
+		}
 	}
+	writeReply(w, kind, reply)
+}
+
+// writeReply answers 200, with a JSON body only for a Stop block or a prompt context, the two
+// outputs Claude Code reads from a hook's stdout.
+func writeReply(w http.ResponseWriter, kind harness.EventKind, reply harness.HookReply) {
+	var out any
+	switch {
+	case kind == harness.EventTurnEnd && reply.Block != "":
+		out = map[string]string{"decision": "block", "reason": reply.Block}
+	case kind == harness.EventPrompt && reply.Context != "":
+		out = map[string]any{"hookSpecificOutput": map[string]string{
+			"hookEventName":     "UserPromptSubmit",
+			"additionalContext": reply.Context,
+		}}
+	}
+	if out == nil {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 // bearerToken extracts the token from "Authorization: Bearer <token>" — "" for any other shape,

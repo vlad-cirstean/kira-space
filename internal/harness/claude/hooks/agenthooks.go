@@ -45,6 +45,7 @@ type Server struct {
 	shimPath        string
 	quotedShim      string
 	onEvent         func(harness.AgentEvent)
+	reply           func(harness.AgentEvent) harness.HookReply
 	onStatusLine    func(string, harness.RateLimits)
 	statusLine      func() bool
 
@@ -103,7 +104,7 @@ func New(opts harness.HookOptions) (*Server, error) {
 
 	s := &Server{
 		hooksPath: hooksPath, quotedHooksPath: quotedHooksPath, shimPath: shimPath,
-		quotedShim: quotedShim, onEvent: opts.OnEvent, onStatusLine: opts.OnStatusLine, statusLine: opts.StatusLine,
+		quotedShim: quotedShim, onEvent: opts.OnEvent, reply: opts.Reply, onStatusLine: opts.OnStatusLine, statusLine: opts.StatusLine,
 		ln: ln,
 	}
 	s.http = &http.Server{

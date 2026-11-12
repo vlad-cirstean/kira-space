@@ -31,7 +31,7 @@ func buildShim(curlPath, sockPath string) (string, error) {
 	}
 	return fmt.Sprintf(`#!/bin/sh
 # Kira agent hook. Always exits 0: a non-zero exit from a PreToolUse hook blocks the agent's own
-# tool call, and this shim only reports. stderr is discarded for the same reason — a stale socket
+# tool call. It reports, and prints the server's reply (empty except a Stop block or prompt context). stderr is discarded for the same reason — a stale socket
 # must not print into the agent's transcript on every tool call.
 exec 2>/dev/null
 if [ "$1" = statusline ]; then
@@ -65,7 +65,7 @@ if [ "$1" = statusline ]; then
   exit 0
 fi
 [ -n "$KIRA_AGENT_HOOK_TOKEN" ] && [ -n "$KIRA_TERMINAL_ID" ] || exit 0
-"%[1]s" --silent --max-time 2 --output /dev/null \
+"%[1]s" --silent --max-time 2 --output - \
   --unix-socket "%[2]s" \
   --header "Authorization: Bearer $KIRA_AGENT_HOOK_TOKEN" \
   --header "X-Kira-Terminal: $KIRA_TERMINAL_ID" \
