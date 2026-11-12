@@ -1,6 +1,6 @@
 # v0.3.10
 
-UI polish, dialog speed and MCP dialog fixes. Phases P617 to P619 run as parallel streams A, B, C (batch requested by user); P620 runs after they land. Highest prior phase: P616.
+UI polish, dialog speed and MCP dialog fixes. Phases P617 to P619 run as parallel streams A, B, C (batch requested by user); P620 and P621 run after they land, in order. Highest prior phase: P616.
 
 | Phase | Title | Status |
 |-------|-------|--------|
@@ -8,6 +8,7 @@ UI polish, dialog speed and MCP dialog fixes. Phases P617 to P619 run as paralle
 | P618 | Dialogs: speed, colors, background ops, proof, copy | Done |
 | P619 | Settings MCP split and GitHub PR open | Done |
 | P620 | Resource leases: named queues, push wake-up | Done |
+| P621 | Proof window: screenshots dropdown and copy-all | Todo |
 
 ## P617 Task list and detail UI (Stream A)
 
@@ -69,3 +70,14 @@ Agents sharing an unsharable resource (port, full-suite run, push, merge) wait i
 - Tests: backend flow test and UI spec for same scenario (queue, grant, release, force release).
 
 Result: Done. Backend: `internal/leases` (in-memory Book: ranked waiters, no preemption, 10 min TTL with heartbeat, alive while the tracker says busy), board glue in `ade/leases.go`, tools `acquire_lease`, `release_lease`, `lease_status` (prompt registry, budget), `LeasesService` plus push `kira:ade:leases`, queue names in `ade_lease_queues` (migration 0099). Rank uses the task list order: `ade/taskorder.go` is a Go port of the TS `taskListOrder` (extracted to `board/taskOrder.ts`), pinned by one golden file (227 cases) read by a bun spec and a Go test; today is the machine's local date on both sides. Idle kept: tracker turn state (busy, idle, input, unknown) from hook events, `SendIfIdle` at grant; fallback is the hook reply (Stop block, UserPromptSubmit context), then the idle handler, then lease tool results for headless. Hook replies are new plumbing (`HookReply`, shim `--output -`); OpenCode gets injection only. Session end releases through `Reconcile` (works on SIGKILL, where `SessionEnd` never fires). UI: Leases sub-tab in Agent config (queue editor, holder menu with Request release and confirmed Force release), `adeLeases` store, lease chip on task cards. Deviations: plan commits 6 and 7 merged (interface change breaks the build alone); queue editor saves on add and remove, no draft; duplicate or empty name disables Add instead of showing an error; fakeagent gained `MCPAfter` and a `.pid` record; no TTL flow step (unit test covers it). Tests: leases -race, `TestTaskListOrder`, ade tracker tests, agentmcp, llmprompts, harness, `TestLeases` flow (hard kill included) and session-status, panel-forward, branch-change, automation flows, bun parity, timeline and board-parity specs, 13 ui specs (leases, session-status, card-icons, agents-tab, task-row, plan), typecheck, lint, lint:go, lint:dead clean; real claude: hook row incl. new `TestHookStopBlock` and the whole ADE row pass (auth probe ok).
+
+## P621 Proof window: screenshots dropdown and copy-all
+
+Brief: `plans/P621-brief.md`.
+
+- Fix the broken "save screenshots" dropdown in the proof window (reproduce, root-cause).
+- Default action becomes "copy all screenshots to clipboard" only where the platform can put several images on the clipboard natively (Go side). No stitched single image, ever.
+- Where it cannot (e.g. macOS if multi-image clipboard is impossible): default stays the existing save-to-folder action.
+- Backend flow test and UI spec for the same scenario.
+
+Result: _pending_
