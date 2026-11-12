@@ -683,6 +683,14 @@ The sandbox (P287) enforces on macOS only. The sandbox session cannot run Seatbe
 9. Token refresh (P341): run an ADE step after the OAuth token expires. It must still sign in; the refresh
    happens under the sandbox, where keychain file writes stay denied. Record a failure as a Known open item.
 10. If everything passes, delete the "unverified on a real Mac (P287)" item from `docs/ARCHITECTURE.md`.
+11. Multi-image clipboard (P621): `go test ./apps/kira-space/internal/imageclip -count=1 -v`. Expect
+    `TestWriteImagesPrivatePasteboard` to pass: 3 items on a private pasteboard, each with `public.png`
+    equal to its file and `public.file-url`, in order, and a missing file leaves the content unchanged.
+    Apply `docs/pending-changes/.github__workflows__pr.yml.patch` so PR CI runs it too.
+12. In the app, open a proof with 3 steps and click Copy screenshots. Paste into Notes (3 images), Finder
+    (3 PNG files) and Mail (3 attachments). The status strip says "Copied 3 screenshots". Record a failure
+    as a Known open item; if all pass, delete "Multi-image clipboard is unverified (P621)" from
+    `docs/ARCHITECTURE.md`.
 
 ## Load, disk and test scope (P236-P251)
 
