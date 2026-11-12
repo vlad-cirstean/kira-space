@@ -55,6 +55,9 @@ type ArtifactScope struct {
 	Task     model.AdeTask
 	Rows     []model.AdeTaskBranch
 	Archived bool
+	// Quick asks for local data only: no host, git or tracker call, so the list is fast and has no
+	// gaps. The agent's finish reply uses it; the UI panel does not.
+	Quick bool
 }
 
 var artifactKindOrder = map[string]int{
@@ -74,6 +77,10 @@ func (b *TaskBoard) builtinArtifactSources() []ArtifactSource {
 // TaskArtifacts lists the task's artifacts (archived tasks included), merged, deduped and sorted. A
 // source that fails or times out adds a gap; the call itself fails only when the task is unreadable.
 func (b *TaskBoard) TaskArtifacts(ctx context.Context, taskID string) (adewire.ArtifactsResult, error) {
+	return b.taskArtifacts(ctx, taskID, false)
+}
+
+func (b *TaskBoard) taskArtifacts(ctx context.Context, taskID string, quick bool) (adewire.ArtifactsResult, error) {
 	task, err := b.deps.Tasks.GetTask(taskID)
 	if err != nil {
 		return adewire.ArtifactsResult{}, err
@@ -82,7 +89,7 @@ func (b *TaskBoard) TaskArtifacts(ctx context.Context, taskID string) (adewire.A
 	if err != nil {
 		return adewire.ArtifactsResult{}, err
 	}
-	scope := ArtifactScope{Task: task, Rows: rows, Archived: task.ArchivedAt != nil}
+	scope := ArtifactScope{Task: task, Rows: rows, Archived: task.ArchivedAt != nil, Quick: quick}
 	sources := append(b.builtinArtifactSources(), b.deps.ArtifactSources...)
 	type result struct {
 		arts []adewire.Artifact
@@ -219,6 +226,13 @@ func (s repoSource) Artifacts(ctx context.Context, sc ArtifactScope) ([]adewire.
 	if err != nil {
 		return nil, nil, err
 	}
+	if sc.Quick {
+		var arts []adewire.Artifact
+		for _, id := range repoIDs {
+			arts = append(arts, b.quickRepoArtifacts(ctx, sc, id, nicks[id], byRepo[id])...)
+		}
+		return arts, nil, nil
+	}
 	var liveBy map[string][]model.AdeTaskBranch
 	var setups map[string]model.AdeWorktreeSetup
 	if !sc.Archived {
@@ -255,6 +269,48 @@ func (s repoSource) Artifacts(ctx context.Context, sc ArtifactScope) ([]adewire.
 		return gaps[i].Source < gaps[j].Source
 	})
 	return arts, gaps, nil
+}
+
+// quickRepoArtifacts is one repo's share from local data alone: each row's branch and its change
+// request, no deployments. The change request is the one the repo entry already caches, else the
+// stored row's (set when the task is archived). A branch is merged when its row says so, else local.
+func (b *TaskBoard) quickRepoArtifacts(ctx context.Context, sc ArtifactScope, repoID, nick string, rows []model.AdeTaskBranch) []adewire.Artifact {
+	named := namedBranches(rows)
+	if len(named) == 0 {
+		return nil
+	}
+	entry, err := b.openRepo(ctx, repoID)
+	if err != nil {
+		slog.Warn("ade artifacts: open repo", "scope", "ade", "repo", repoID, "err", err)
+		entry = nil
+	}
+	var arts []adewire.Artifact
+	for _, r := range named {
+		var cr *adewire.ChangeRequest
+		if entry != nil {
+			if c, ok := entry.CachedBranchChangeRequest(ctx, r.Name); ok {
+				cr = &adewire.ChangeRequest{Number: c.Number, Title: c.Title, State: c.State, URL: c.URL}
+			}
+		}
+		if cr == nil && r.ChangeRequest != nil {
+			cr = &adewire.ChangeRequest{Number: r.ChangeRequest.Number, Title: r.ChangeRequest.Title, State: r.ChangeRequest.State, URL: r.ChangeRequest.URL}
+		}
+		if cr != nil {
+			arts = append(arts, adewire.Artifact{
+				Kind: model.AdeArtifactChangeRequest, Title: cr.Title, URL: cr.URL, Ref: fmt.Sprintf("#%d", cr.Number),
+				Status: cr.State, Repo: nick, Source: artifactSrcHost,
+			})
+		}
+		if !artifactBranchVisible(sc, r) {
+			continue
+		}
+		br := adewire.Artifact{Kind: artifactBranch, Title: r.Name, Repo: nick, Source: artifactSrcGit, CreatedAt: r.AddedAt, Status: "local"}
+		if r.MergedAt != nil {
+			br.Status = "merged"
+		}
+		arts = append(arts, br)
+	}
+	return arts
 }
 
 // repoNicks maps a code repo id to the name the task shows for it.
@@ -479,9 +535,10 @@ func (b *TaskBoard) ReportArtifacts(_ context.Context, call agentmcp.SpaceCall, 
 	return agentmcp.ReportArtifactsResult{Recorded: len(rows)}, nil
 }
 
-// ListArtifacts is the task's artifacts as an agent reads them.
+// ListArtifacts is the task's artifacts as an agent reads them, from local data only (Quick): its
+// one caller is the finish reply, which must not wait on a host, git or tracker call.
 func (b *TaskBoard) ListArtifacts(ctx context.Context, taskID string) (agentmcp.TaskArtifacts, error) {
-	res, err := b.TaskArtifacts(ctx, taskID)
+	res, err := b.taskArtifacts(ctx, taskID, true)
 	if err != nil {
 		return agentmcp.TaskArtifacts{}, err
 	}

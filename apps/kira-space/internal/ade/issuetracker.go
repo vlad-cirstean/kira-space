@@ -51,6 +51,9 @@ func (s trackerSource) Artifacts(ctx context.Context, sc ArtifactScope) ([]adewi
 	if !ok {
 		return nil, nil, nil
 	}
+	if sc.Quick {
+		return []adewire.Artifact{staticIssueArtifact(s.p, sc.Task, ref)}, nil, nil
+	}
 	iss, err := s.p.Issue(ctx, ref, false)
 	if err != nil {
 		return []adewire.Artifact{staticIssueArtifact(s.p, sc.Task, ref)},

@@ -144,22 +144,27 @@ func TestTaskArtifacts(t *testing.T) {
 		br := branchOf(t, board(t, app), f.taskID, f.repoID)
 		return len(br.Deployments) == 1 && br.Deployments[0].Status == "deployed"
 	})
+	// The panel's full gather warms the repo's change-request cache, which the quick finish reply reads.
+	if _, ok := findArtifact(artifactsOf(t, app, f.taskID), "changeRequest", "Fix login"); !ok {
+		t.Fatal("panel gather lacks the change request")
+	}
 	if err := os.WriteFile(ready, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	waitRun(t, app, f.taskID, "one", "done")
 
-	// 1. The finishing reply lists everything; the reported PR folds into the detected one.
+	// 1. The finishing reply is built from local data: the cached PR, the branch, the stored rows, the
+	// stored issue link; no deployment detected from git and no gap. The reported PR folds into the PR.
 	_, list := mcpReply(t, app, "mcp-finish_step-1.json")
 	kinds := map[string]int{}
 	for _, a := range list.Artifacts {
 		kinds[a.Kind]++
 	}
-	if kinds["changeRequest"] != 1 || kinds["issue"] != 2 || kinds["branch"] != 1 || kinds["deployment"] != 2 || kinds["doc"] != 1 || kinds["link"] != 0 || len(list.Artifacts) != 7 {
+	if kinds["changeRequest"] != 1 || kinds["issue"] != 2 || kinds["branch"] != 1 || kinds["deployment"] != 1 || kinds["doc"] != 1 || kinds["link"] != 0 || len(list.Artifacts) != 6 {
 		t.Fatalf("finish_step artifacts = %+v", list.Artifacts)
 	}
-	if len(list.Gaps) != 1 || list.Gaps[0].Source != "jira" || list.Gaps[0].Reason != "unavailable" {
-		t.Fatalf("gaps = %+v, want the jira gap only (the harness has no acli)", list.Gaps)
+	if len(list.Gaps) != 0 {
+		t.Fatalf("gaps = %+v, want none: the finish reply makes no host, git or tracker call", list.Gaps)
 	}
 	res := artifactsOf(t, app, f.taskID)
 	pr, ok := findArtifact(res, "changeRequest", "Fix login")
@@ -256,7 +261,7 @@ func TestTaskArtifacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	openLaunch(t, app, launch)
-	if text, list := mcpReply(t, app, "mcp-handover-1.json"); len(list.Artifacts) != 7 || !strings.Contains(text, "Runbook") {
+	if text, list := mcpReply(t, app, "mcp-handover-1.json"); len(list.Artifacts) != 6 || !strings.Contains(text, "Runbook") {
 		t.Fatalf("handover reply = %q, %+v", text, list)
 	}
 	if err := os.WriteFile(hold1, nil, 0o644); err != nil {
@@ -264,7 +269,7 @@ func TestTaskArtifacts(t *testing.T) {
 	}
 	waitSession(t, app, launch.SessionID, "stopped")
 
-	// 6. A host that fails leaves a gap; the call still succeeds.
+	// 6. A host that fails leaves no gap in the agent's reply (it never asks); the panel still shows one.
 	app.Restart()
 	forge.SetOffline(true)
 	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
@@ -274,8 +279,11 @@ func TestTaskArtifacts(t *testing.T) {
 	}
 	openLaunch(t, app, second)
 	_, list = mcpReply(t, app, "mcp-handover-2.json")
-	if len(list.Gaps) != 2 || list.Gaps[0].Source != "host" || list.Gaps[0].Repo != "api" || list.Gaps[1].Source != "jira" {
-		t.Fatalf("gaps = %+v, want a host gap for api and the jira gap", list.Gaps)
+	if len(list.Gaps) != 0 {
+		t.Fatalf("gaps = %+v, want none with the host offline", list.Gaps)
+	}
+	if gaps := artifactsOf(t, app, f.taskID).Gaps; len(gaps) != 2 || gaps[0].Source != "host" || gaps[0].Repo != "api" || gaps[1].Source != "jira" {
+		t.Fatalf("panel gaps = %+v, want a host gap for api and the jira gap", gaps)
 	}
 	if err := os.WriteFile(hold2, nil, 0o644); err != nil {
 		t.Fatal(err)
