@@ -13,8 +13,20 @@
         "headRefName": "feature/login",
         "headRefOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "baseRefName": "main",
-        "headRepositoryOwner": { "login": "acme" },
-        "commits": { "nodes": [{ "commit": { "statusCheckRollup": { "state": "FAILURE" } } }] },
+        "headRepositoryOwner": {
+          "login": "acme"
+        },
+        "commits": {
+          "nodes": [
+            {
+              "commit": {
+                "statusCheckRollup": {
+                  "state": "FAILURE"
+                }
+              }
+            }
+          ]
+        },
         "body": "# Summary\n\nLimits logins.\n\n<!-- template comment -->\n![diagram](https://example.com/d.png)\n\n<script>alert(1)</script>",
         "createdAt": "2026-10-18T08:00:00Z",
         "mergedAt": null,
@@ -23,8 +35,13 @@
         "additions": 120,
         "deletions": 14,
         "changedFiles": 6,
-        "author": { "login": "alice", "name": "Alice A" },
-        "commitCount": { "totalCount": 3 },
+        "author": {
+          "login": "alice",
+          "name": "Alice A"
+        },
+        "commitCount": {
+          "totalCount": 3
+        },
         "last": {
           "nodes": [
             {
@@ -120,28 +137,85 @@
         },
         "labels": {
           "nodes": [
-            { "name": "bug", "color": "d73a4a" },
-            { "name": "odd", "color": "not-a-colour" }
+            {
+              "name": "bug",
+              "color": "d73a4a"
+            },
+            {
+              "name": "odd",
+              "color": "not-a-colour"
+            }
           ]
         },
-        "assignees": { "nodes": [{ "login": "bob", "name": "Bob B" }] },
+        "assignees": {
+          "nodes": [
+            {
+              "login": "bob"
+            }
+          ]
+        },
+        "detailAssignees": {
+          "nodes": [
+            {
+              "login": "bob",
+              "name": "Bob B"
+            }
+          ]
+        },
         "reviewRequests": {
           "nodes": [
             {
-              "requestedReviewer": { "__typename": "Team", "slug": "platform", "name": "Platform" }
+              "requestedReviewer": {
+                "__typename": "Team",
+                "slug": "platform",
+                "teamName": "Platform"
+              }
             },
-            { "requestedReviewer": { "__typename": "User", "login": "carol", "name": "Carol C" } },
-            { "requestedReviewer": { "__typename": "User", "login": "dave", "name": "" } }
+            {
+              "requestedReviewer": {
+                "__typename": "User",
+                "login": "carol",
+                "name": "Carol C"
+              }
+            },
+            {
+              "requestedReviewer": {
+                "__typename": "User",
+                "login": "dave",
+                "name": ""
+              }
+            }
           ]
         },
         "latestOpinionatedReviews": {
           "nodes": [
-            { "state": "CHANGES_REQUESTED", "author": { "login": "carol", "name": "Carol C" } },
-            { "state": "APPROVED", "author": { "login": "erin", "name": "" } },
-            { "state": "DISMISSED", "author": { "login": "frank", "name": "" } }
+            {
+              "state": "CHANGES_REQUESTED",
+              "author": {
+                "login": "carol",
+                "name": "Carol C"
+              }
+            },
+            {
+              "state": "APPROVED",
+              "author": {
+                "login": "erin",
+                "name": ""
+              }
+            },
+            {
+              "state": "DISMISSED",
+              "author": {
+                "login": "frank",
+                "name": ""
+              }
+            }
           ]
         },
         "comments": {
+          "totalCount": 3
+        },
+        "detailComments": {
           "totalCount": 3,
           "nodes": [
             {
@@ -150,7 +224,10 @@
               "body": "Looks **good**.",
               "createdAt": "2026-10-18T09:00:00Z",
               "lastEditedAt": "2026-10-18T09:05:00Z",
-              "author": { "login": "bob", "name": "Bob B" }
+              "author": {
+                "login": "bob",
+                "name": "Bob B"
+              }
             },
             {
               "id": "IC_2",
@@ -163,6 +240,9 @@
           ]
         },
         "reviews": {
+          "totalCount": 3
+        },
+        "detailReviews": {
           "totalCount": 3,
           "nodes": [
             {
@@ -172,7 +252,10 @@
               "body": "Please fix lint.",
               "createdAt": "2026-10-18T12:00:00Z",
               "lastEditedAt": null,
-              "author": { "login": "carol", "name": "Carol C" }
+              "author": {
+                "login": "carol",
+                "name": "Carol C"
+              }
             },
             {
               "id": "R_2",
@@ -181,7 +264,10 @@
               "body": "",
               "createdAt": "2026-10-18T12:01:00Z",
               "lastEditedAt": null,
-              "author": { "login": "carol", "name": "Carol C" }
+              "author": {
+                "login": "carol",
+                "name": "Carol C"
+              }
             },
             {
               "id": "R_3",
@@ -190,7 +276,10 @@
               "body": "",
               "createdAt": "2026-10-19T12:00:00Z",
               "lastEditedAt": null,
-              "author": { "login": "erin", "name": "" }
+              "author": {
+                "login": "erin",
+                "name": ""
+              }
             }
           ]
         },
@@ -213,7 +302,10 @@
                     "body": "Use a constant.",
                     "createdAt": "2026-10-18T12:00:30Z",
                     "lastEditedAt": null,
-                    "author": { "login": "carol", "name": "Carol C" }
+                    "author": {
+                      "login": "carol",
+                      "name": "Carol C"
+                    }
                   }
                 ]
               }
@@ -234,7 +326,10 @@
                     "body": "Nit.",
                     "createdAt": "2026-10-18T13:00:00Z",
                     "lastEditedAt": null,
-                    "author": { "login": "bob", "name": "Bob B" }
+                    "author": {
+                      "login": "bob",
+                      "name": "Bob B"
+                    }
                   }
                 ]
               }
@@ -243,6 +338,10 @@
         }
       }
     },
-    "rateLimit": { "remaining": 4990, "resetAt": "2026-10-20T11:00:00Z", "cost": 1 }
+    "rateLimit": {
+      "remaining": 4990,
+      "resetAt": "2026-10-20T11:00:00Z",
+      "cost": 1
+    }
   }
 }

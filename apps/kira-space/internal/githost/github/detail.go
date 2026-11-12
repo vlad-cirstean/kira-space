@@ -15,8 +15,10 @@ const (
 	detailComment = `id url body createdAt lastEditedAt author{` + detailActor + `}`
 )
 
-// detailQuery reads one pull request for the PR view. `last` and `commitCount` are aliases: the
-// shared sync fields already select commits(last:1) for the rollup state.
+// detailQuery reads one pull request for the PR view. `last`, `commitCount` and the `detail*` fields
+// are aliases: the shared sync fields already select commits(last:1), comments, reviews and
+// assignees with other arguments, and GitHub rejects two same-name fields with differing arguments
+// (`teamName` likewise: Team.name is String!, User.name is String).
 const detailQuery = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){` +
 	syncPRFields + ` body createdAt mergedAt closedAt mergeable additions deletions changedFiles author{` + detailActor + `}
 commitCount: commits{totalCount}
@@ -24,11 +26,11 @@ last: commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){totalCo
 ... on CheckRun{name status conclusion detailsUrl isRequired(pullRequestNumber:$number) title}
 ... on StatusContext{context state targetUrl description isRequired(pullRequestNumber:$number)}}}}}}}
 labels(first:50){nodes{name color}}
-assignees(first:50){nodes{login name}}
-reviewRequests(first:50){nodes{requestedReviewer{__typename ... on User{login name} ... on Team{slug name} ... on Bot{login} ... on Mannequin{login}}}}
+detailAssignees: assignees(first:50){nodes{login name}}
+reviewRequests(first:50){nodes{requestedReviewer{__typename ... on User{login name} ... on Team{slug teamName: name} ... on Bot{login} ... on Mannequin{login}}}}
 latestOpinionatedReviews(first:50){nodes{state author{` + detailActor + `}}}
-comments(last:100){totalCount nodes{` + detailComment + `}}
-reviews(last:50){totalCount nodes{` + detailComment + ` state}}
+detailComments: comments(last:100){totalCount nodes{` + detailComment + `}}
+detailReviews: reviews(last:50){totalCount nodes{` + detailComment + ` state}}
 reviewThreads(last:50){totalCount nodes{id path line originalLine isResolved isOutdated comments(first:30){totalCount nodes{` + detailComment + `}}}}
 }} rateLimit{remaining resetAt cost}}`
 
@@ -93,9 +95,9 @@ type gqlDetailPR struct {
 			Color string `json:"color"`
 		} `json:"nodes"`
 	} `json:"labels"`
-	Assignees struct {
+	DetailAssignees struct {
 		Nodes []gqlActor `json:"nodes"`
-	} `json:"assignees"`
+	} `json:"detailAssignees"`
 	ReviewRequests struct {
 		Nodes []struct {
 			Reviewer *struct {
@@ -103,6 +105,7 @@ type gqlDetailPR struct {
 				Login    string `json:"login"`
 				Slug     string `json:"slug"`
 				Name     string `json:"name"`
+				TeamName string `json:"teamName"`
 			} `json:"requestedReviewer"`
 		} `json:"nodes"`
 	} `json:"reviewRequests"`
@@ -112,14 +115,14 @@ type gqlDetailPR struct {
 			Author *gqlActor `json:"author"`
 		} `json:"nodes"`
 	} `json:"latestOpinionatedReviews"`
-	Comments struct {
+	DetailComments struct {
 		TotalCount int                `json:"totalCount"`
 		Nodes      []gqlDetailComment `json:"nodes"`
-	} `json:"comments"`
-	Reviews struct {
+	} `json:"detailComments"`
+	DetailReviews struct {
 		TotalCount int                `json:"totalCount"`
 		Nodes      []gqlDetailComment `json:"nodes"`
-	} `json:"reviews"`
+	} `json:"detailReviews"`
 	ReviewThreads struct {
 		TotalCount int `json:"totalCount"`
 		Nodes      []struct {
@@ -257,7 +260,7 @@ func mapDetail(g *gqlDetailPR) githost.ChangeRequestDetail {
 	for _, l := range g.Labels.Nodes {
 		d.Labels = append(d.Labels, githost.Label{Name: l.Name, Color: l.Color})
 	}
-	for _, a := range g.Assignees.Nodes {
+	for _, a := range g.DetailAssignees.Nodes {
 		d.Assignees = append(d.Assignees, githost.Person{Login: a.Login, Name: a.Name})
 	}
 
@@ -277,12 +280,12 @@ func mapDetail(g *gqlDetailPR) githost.ChangeRequestDetail {
 
 	d.Reviewers = mapReviewers(g)
 
-	truncated := g.Comments.TotalCount > len(g.Comments.Nodes) ||
-		g.Reviews.TotalCount > len(g.Reviews.Nodes) || g.ReviewThreads.TotalCount > len(g.ReviewThreads.Nodes)
-	for _, c := range g.Comments.Nodes {
+	truncated := g.DetailComments.TotalCount > len(g.DetailComments.Nodes) ||
+		g.DetailReviews.TotalCount > len(g.DetailReviews.Nodes) || g.ReviewThreads.TotalCount > len(g.ReviewThreads.Nodes)
+	for _, c := range g.DetailComments.Nodes {
 		d.Threads = append(d.Threads, githost.Thread{ID: c.ID, Kind: githost.ThreadComment, Comments: []githost.Comment{mapComment(c)}})
 	}
-	for _, rv := range g.Reviews.Nodes {
+	for _, rv := range g.DetailReviews.Nodes {
 		st := rv.State
 		if st == "PENDING" || (strings.TrimSpace(rv.Body) == "" && st != "APPROVED" && st != "CHANGES_REQUESTED") {
 			continue
@@ -330,7 +333,7 @@ func mapReviewers(g *gqlDetailPR) []githost.Reviewer {
 		rv := githost.Reviewer{State: githost.ReviewerPending}
 		if rr.Typename == "Team" {
 			rv.Team = true
-			rv.Person = githost.Person{Login: rr.Slug, Name: rr.Name}
+			rv.Person = githost.Person{Login: rr.Slug, Name: rr.TeamName}
 		} else {
 			rv.Person = githost.Person{Login: rr.Login, Name: rr.Name}
 		}
