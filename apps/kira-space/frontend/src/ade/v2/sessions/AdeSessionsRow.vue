@@ -13,6 +13,7 @@ import { computed, ref, useTemplateRef } from 'vue';
 import AdeActivityIcon from '../AdeActivityIcon.vue';
 import { activityLabel } from '../activity';
 import AdeRunLog from '../panel/AdeRunLog.vue';
+import AdeOpStatus from '../plan/AdeOpStatus.vue';
 import { runStateLabel } from '../runState';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import AdeSessionBadge from './AdeSessionBadge.vue';
@@ -137,6 +138,7 @@ defineExpose({ openMenu });
             ><HighlightedText :parts="marks(where)" />
             · <HighlightedText :parts="marks(view.shortId)" /></span
           >
+          <AdeOpStatus :session-id="id" />
           <Spinner v-if="pending" :size="12" label="" />
           <Kbd
             v-else-if="hint"

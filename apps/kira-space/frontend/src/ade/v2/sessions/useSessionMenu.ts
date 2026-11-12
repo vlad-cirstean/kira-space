@@ -1,11 +1,9 @@
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
-import { errorText } from '@workbench/bridge/codedError';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
-import { reactive } from 'vue';
 import { useLaunchOpener } from '../dialog/useLaunchOpener';
 import { useCloseSession, useRestartSession } from '../queries';
-import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdeOpsStore } from '../state/adeOps';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import type { SessionView } from './sessionView';
@@ -22,9 +20,7 @@ export interface SessionMenuOptions {
 export function useSessionMenu(): {
   open: (ev: MouseEvent, view: SessionView, opts?: SessionMenuOptions) => void;
   openFor: (el: Element, view: SessionView, opts?: SessionMenuOptions) => void;
-  busy: Set<string>;
 } {
-  const ui = useAdeBoardUiStore();
   const tabs = useAdePanelTabsStore();
   const contextMenu = useContextMenuStore();
   const launchOpener = useLaunchOpener();
@@ -32,34 +28,29 @@ export function useSessionMenu(): {
   const closeM = useCloseSession();
   const takeOver = useAdeTakeOverStore();
   const { copy } = useCopy();
-  const busy = reactive(new Set<string>());
+  const ops = useAdeOpsStore();
+
+  const opOf = (kind: 'restartSession' | 'closeSession', view: SessionView) => ({
+    id: `${kind}:${view.session.id}`,
+    kind,
+    sessionId: view.session.id,
+    taskId: view.session.taskId || undefined,
+    name: view.tabName,
+  });
 
   async function restart(view: SessionView): Promise<void> {
     const { id, taskId } = view.session;
-    delete ui.actionError[taskId];
-    busy.add(id);
-    try {
+    await ops.run(opOf('restartSession', view), async () => {
       const launch = await restartM.mutateAsync({ sessionId: id });
       if (launch.terminalId) await launchOpener.open(launch);
       if (launch.sessionId) tabs.selectSession(taskId, launch.sessionId);
-    } catch (err) {
-      ui.actionError[taskId] = errorText(err);
-    } finally {
-      busy.delete(id);
-    }
+    });
   }
 
   async function close(view: SessionView): Promise<void> {
-    const { id, taskId } = view.session;
-    delete ui.actionError[taskId];
-    busy.add(id);
-    try {
-      await closeM.mutateAsync({ sessionId: id });
-    } catch (err) {
-      ui.actionError[taskId] = errorText(err);
-    } finally {
-      busy.delete(id);
-    }
+    await ops.run(opOf('closeSession', view), () =>
+      closeM.mutateAsync({ sessionId: view.session.id }),
+    );
   }
 
   function items(view: SessionView, opts: SessionMenuOptions = {}): MenuItem[] {
@@ -73,7 +64,7 @@ export function useSessionMenu(): {
           id: 'ade-session-restart',
           label: t('space.ade.sessionTab.restart.label'),
           icon: 'debug-restart',
-          disabled: busy.has(id) || noConversation,
+          disabled: ops.isRunning(`restartSession:${id}`) || noConversation,
           hint: noConversation ? t('space.ade.sessionList.waitingId.status') : undefined,
           run: () => restart(view),
         },
@@ -82,7 +73,7 @@ export function useSessionMenu(): {
           id: 'ade-session-close',
           label: t('space.ade.sessionTab.close.label'),
           icon: 'close',
-          disabled: busy.has(id),
+          disabled: ops.isRunning(`closeSession:${id}`),
           run: () => close(view),
         },
       );
@@ -132,5 +123,5 @@ export function useSessionMenu(): {
     contextMenu.openContextMenuFor(el, items(view, opts));
   }
 
-  return { open, openFor, busy };
+  return { open, openFor };
 }

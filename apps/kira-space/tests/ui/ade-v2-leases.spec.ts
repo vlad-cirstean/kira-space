@@ -148,3 +148,29 @@ test('a free queue is removed without a confirm', async ({ relaunch }) => {
   await expect.poll(() => calls(control, IPC.leasesSaveQueues)).toHaveLength(1);
   expect(calls(control, IPC.leasesSaveQueues)[0]?.args).toEqual({ names: [] });
 });
+
+test('Request release pends while it runs and a refusal toasts the error', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, [
+    ...open,
+    { channel: IPC.leasesRequestRelease, error: { code: 'E_INTERNAL', message: 'holder is gone' } },
+  ]);
+  await openLeases(page);
+  await page.locator(t('ade-lease-holder-push')).click();
+  await page.locator(t('ade-lease-request')).click();
+  await expect(page.locator('[data-sonner-toast]')).toContainText('holder is gone');
+});
+
+test('Request release holds the holder button pending until the call returns', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openPlan(relaunch, [
+    ...open,
+    { channel: IPC.leasesRequestRelease, response: undefined, hold: true },
+  ]);
+  await openLeases(page);
+  await page.locator(t('ade-lease-holder-push')).click();
+  await page.locator(t('ade-lease-request')).click();
+  await expect(page.locator(t('ade-lease-holder-push'))).toHaveAttribute('aria-busy', 'true');
+  control.release(IPC.leasesRequestRelease);
+  await expect(page.locator(t('ade-lease-holder-push'))).not.toHaveAttribute('aria-busy', 'true');
+});

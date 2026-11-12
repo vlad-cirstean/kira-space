@@ -163,3 +163,34 @@ test('a running session that needs input flags the trigger until its tab is open
   await page.locator(t('ade-session-tab-9d10')).click();
   await expect(page.locator(t('ade-sessions-menu-attention'))).toHaveCount(0);
 });
+
+const toast = (page: Page) => page.locator('[data-sonner-toast]');
+const closeChip = `${t('ade-op-status')}[data-op="closeSession"]`;
+
+test('Close shows a chip on the strip tab, and past 2 s a loading then a success toast', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskCloseSession, response: undefined, hold: true },
+  ]);
+  await openSessions(page, 'T_bill');
+  await page.locator(t('ade-session-tab-tk01')).click({ button: 'right' });
+  await page.locator(t('menu-item-ade-session-close')).click();
+  await expect(page.locator(`${t('ade-session-tab-tk01')} ${closeChip}`)).toBeVisible();
+  await page.locator(t('ade-sessions-menu-trigger')).click();
+  await expect(page.locator(`${rowOf('tk01')} ${closeChip}`)).toBeVisible();
+  await expect(toast(page)).toContainText('Closing session', { timeout: 5000 });
+  control.release(IPC.adeTaskCloseSession);
+  await expect(toast(page)).toContainText('Closed session');
+  await expect(page.locator(closeChip)).toHaveCount(0);
+});
+
+test('a refused Close toasts the error', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskCloseSession, error: { code: 'E_INTERNAL', message: 'session is busy' } },
+  ]);
+  await openSessions(page, 'T_bill');
+  await page.locator(t('ade-session-tab-tk01')).click({ button: 'right' });
+  await page.locator(t('menu-item-ade-session-close')).click();
+  await expect(toast(page)).toContainText('session is busy');
+});

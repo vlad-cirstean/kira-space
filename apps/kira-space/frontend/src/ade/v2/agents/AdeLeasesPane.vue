@@ -72,6 +72,7 @@ const { data } = useLeases();
                 variant="toolbar"
                 size="kira"
                 class="min-w-0 truncate"
+                :pending="store.leaseBusy(q.name)"
                 :data-testid="`ade-lease-holder-${q.name}`"
               >
                 {{ q.holder.taskTitle }}
@@ -79,13 +80,17 @@ const { data } = useLeases();
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
               <DropdownMenuItem
-                :disabled="q.holder.releaseAsked"
+                :disabled="q.holder.releaseAsked || store.leaseBusy(q.name)"
                 data-testid="ade-lease-request"
                 @select="store.requestRelease(q.name)"
               >
                 {{ t('space.ade.leases.requestRelease.label') }}
               </DropdownMenuItem>
-              <DropdownMenuItem data-testid="ade-lease-force" @select="store.forceRelease(q)">
+              <DropdownMenuItem
+                :disabled="store.leaseBusy(q.name)"
+                data-testid="ade-lease-force"
+                @select="store.forceRelease(q)"
+              >
                 {{ t('space.ade.leases.forceRelease.label') }}
               </DropdownMenuItem>
             </DropdownMenuContent>

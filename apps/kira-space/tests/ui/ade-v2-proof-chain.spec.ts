@@ -166,6 +166,17 @@ test('the proof name opens the proof window on that session', async ({ relaunch 
   expect(calls(control, IPC.proofOpenWindow)[0]?.args).toEqual({ sessionId: 'P_login' });
 });
 
+test('a refused proof window toasts the error', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, [
+    proofsSnapshot(proofs()),
+    diagramStep,
+    { channel: IPC.proofOpenWindow, error: { code: 'E_INTERNAL', message: 'proof is gone' } },
+  ]);
+  await openChain(page);
+  await page.locator(t('ade-proof-open')).click();
+  await expect(page.locator('[data-sonner-toast]')).toContainText('proof is gone');
+});
+
 test('Attach proof lists unattached sessions; choosing one and removing one send the calls', async ({
   relaunch,
 }) => {

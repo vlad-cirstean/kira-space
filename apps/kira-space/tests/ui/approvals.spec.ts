@@ -123,6 +123,25 @@ studioTest.describe('databases module', () => {
     await expect(page.locator('[data-testid="approvals-toast"]')).toHaveCount(0);
   });
 
+  studioTest('Deny all is pending while the answer is in flight', async ({ relaunch }) => {
+    const items = queue(2);
+    const ids = items.map((i) => i.id);
+    const { window: page, control } = await relaunch({
+      control: [{ channel: IPC.approvalsAnswer, response: answeredOk(ids), hold: true }],
+    });
+    await pushApprovals(page, items);
+    await page.click('[data-testid="approvals-deny-all"]');
+    await expect(page.locator('[data-testid="approvals-deny-all"]')).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+    control.release(IPC.approvalsAnswer);
+    await expect(page.locator('[data-testid="approvals-deny-all"]')).not.toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+  });
+
   studioTest(
     'contract: an item answered by Approve shows a refusal inline',
     async ({ relaunch }) => {
