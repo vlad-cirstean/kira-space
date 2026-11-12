@@ -591,6 +591,11 @@ export const IPC = {
   proofSaveJpegTo: 'kira:proof:saveJpegTo',
   proofCloseShotFolder: 'kira:proof:closeShotFolder',
   proofRevealShotFolder: 'kira:proof:revealShotFolder',
+  proofShotClipboard: 'kira:proof:shotClipboard',
+  proofOpenShotClip: 'kira:proof:openShotClip',
+  proofAddShotClip: 'kira:proof:addShotClip',
+  proofCommitShotClip: 'kira:proof:commitShotClip',
+  proofCloseShotClip: 'kira:proof:closeShotClip',
   proofChanged: 'kira:proof:changed',
   proofSelect: 'kira:proof:select',
   // P112: every API-client mutation broadcasts the scopes it touched, Emit'd (not EmitTo) —

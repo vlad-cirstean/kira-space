@@ -17063,8 +17063,15 @@
         "copied": {
           "announce": "Screenshot copied"
         },
+        "copiedAll": {
+          "status": "Copied {count} screenshots to the clipboard"
+        },
         "copy": {
           "label": "Copy current tab"
+        },
+        "copyAll": {
+          "label": "Copy screenshots",
+          "tooltip": "Copy every tab to the clipboard as separate images"
         },
         "failed": {
           "error": "Couldn’t take the screenshot: {error}"

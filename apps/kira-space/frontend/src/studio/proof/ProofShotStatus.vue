@@ -9,8 +9,8 @@ import { watch } from 'vue';
 import { control } from '../bridge/control';
 import { useProofWindowStore } from './state';
 
-// Visible outcome of a screenshot save: where it went, with Reveal, or why it failed. A success
-// hides itself; an error stays until dismissed or replaced by the next save.
+// Visible outcome of a screenshot save or copy: where it went, with Reveal for a save, or why it
+// failed. A success hides itself; an error stays until dismissed or replaced by the next save.
 const store = useProofWindowStore();
 
 const hide = useTimeoutFn(() => store.clearShotResult(), TIMING.shotSavedStatus, {
@@ -20,7 +20,7 @@ watch(
   () => store.shotResult,
   (result) => {
     hide.stop();
-    if (result?.kind === 'saved') hide.start();
+    if (result && result.kind !== 'error') hide.start();
   },
   { immediate: true },
 );
@@ -40,7 +40,7 @@ async function reveal(): Promise<void> {
   <div v-if="store.shotResult" class="shrink-0">
     <Alert
       strip
-      :variant="store.shotResult.kind === 'saved' ? 'info' : 'error'"
+      :variant="store.shotResult.kind === 'error' ? 'error' : 'info'"
       role="status"
       :data-tone="store.shotResult.kind"
       data-testid="proof-shot-status"
@@ -52,7 +52,9 @@ async function reveal(): Promise<void> {
                 count: store.shotResult.count,
                 path: store.shotResult.path,
               })
-            : store.shotResult.message
+            : store.shotResult.kind === 'copied'
+              ? t('studio.proof.shot.copiedAll.status', { count: store.shotResult.count })
+              : store.shotResult.message
         }}
       </AlertDescription>
       <AlertAction class="top-1/2 flex -translate-y-1/2 gap-2">

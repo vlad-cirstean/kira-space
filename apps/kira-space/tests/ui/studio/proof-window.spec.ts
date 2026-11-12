@@ -24,6 +24,7 @@ import {
   shotFolder,
   shotLocation,
   stepSnapshot,
+  threeSteps,
   viewState,
 } from './support/proof';
 
@@ -51,12 +52,6 @@ const setViewStates = (log: { channel: string; args: unknown }[]) =>
 
 // biome-ignore lint/suspicious/noExplicitAny: logged bridge args
 type Json = Record<string, any>;
-
-const threeSteps = () => [
-  stepSnapshot(SESSION_ID, 1, 1, 'table'),
-  stepSnapshot(SESSION_ID, 1, 2, 'document'),
-  stepSnapshot(SESSION_ID, 1, 3, 'keyvalue'),
-];
 
 test('the explanation and summary show in full at the larger size', async ({
   relaunch,
