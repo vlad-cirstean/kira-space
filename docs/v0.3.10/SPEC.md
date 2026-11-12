@@ -4,7 +4,7 @@ UI polish, dialog speed and MCP dialog fixes. Phases P617 to P619 run as paralle
 
 | Phase | Title | Status |
 |-------|-------|--------|
-| P617 | Task list and detail UI | Todo |
+| P617 | Task list and detail UI | Done |
 | P618 | Dialogs: speed, colors, background ops, proof, copy | Todo |
 | P619 | Settings MCP split and GitHub PR open | Todo |
 | P620 | Resource leases: named queues, push wake-up | Todo |
@@ -18,7 +18,7 @@ UI polish, dialog speed and MCP dialog fixes. Phases P617 to P619 run as paralle
 - Task list "today" left bar: clearly marks today without a bright yellow clashing with the task color. Task color gets a presentation other than, or in addition to, a colored left border.
 - Opening Sessions tab in task detail focuses the keyboard into the open agent terminal.
 
-Result: _pending_
+Result: Done. Backend: `BranchDetached.head`, worktree mismatch in `task_info` and `branch_status`, new approval-gated `change_branch` MCP tool (`TaskBoard.ChangeBranch`, switch item, approvals class "change"; adeflow `TestBranchChange`, contract `ade-branch-change`). UI: mismatch chip and panel checkout line, change request body, link card copy, card head columns, lead attention slot, 16px activity icons, today marker, task tint, terminal focus on Sessions open. Deviations: plan commits 1 and 2 merged (interface change breaks build alone); contracts hold branch rows, not boards; refusals use outcome `failed`; rename path has no `snapshotChangeRequests`, so change clears the row's stored change request directly; permanent U62 exemption for `terminalRenderer.ts`; check icon 16px and `min-h-5` forced by lint guards; Later shelf row alignment partial (status follows the title). Tests: Go vet and lint clean; agentmcp, llmprompts, ade, adeflow branch tests, llmpromptsflow pass; typecheck passes; 12 targeted ui specs pass after fixing plan, task-row and adopt specs for tinted cards and `head` fallback.
 
 ## P618 Dialogs: speed, colors, background ops, proof, copy (Stream B)
 

@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { openPlan } from './support/adeV2';
+import { adeBoard, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -178,7 +178,14 @@ test('head-line columns share one x and width across cards, status text length a
 test('a needs-you indicator sits in the lead slot, nowhere else on the head line', async ({
   relaunch,
 }) => {
-  const { window: page } = await openPlan(relaunch);
+  const stuck = adeBoard((b) => {
+    for (const task of b.tasks)
+      for (const run of task.runs)
+        if (String(run.id).startsWith('r_T_bill_impl_')) run.state = 'stuck';
+  });
+  const { window: page } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskBoard, response: stuck },
+  ]);
   await page.locator(t('ade-load-all')).click();
   const lead = heads(page).locator(`${t('ade-row-lead')} ${t('ade-attention')}`);
   expect(await lead.count()).toBeGreaterThan(0);

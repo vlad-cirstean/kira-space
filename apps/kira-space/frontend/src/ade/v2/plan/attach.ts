@@ -15,7 +15,7 @@ export interface AttachFact {
 export function attachOf(br: Branch, titleOf: (taskId: string) => string): AttachFact | null {
   const d = br.detached;
   if (d) {
-    if (d.head !== '')
+    if (d.head)
       return {
         state: 'detached',
         tip: t('space.ade.plan.branchRow.detachedSwitched.tooltip', {

@@ -327,7 +327,7 @@ test('the day-off confirm says what moves, offers Cancel and Escape leaves the p
   expect(control.log().filter((e) => e.channel === IPC.adeTaskSetPlan)).toHaveLength(0);
 });
 
-test('a card is a 6px rounded box with a task-colour left edge on the terminal ground, 16px from its same-day neighbour', async ({
+test('a card is a 6px rounded box with a task-colour border on the terminal ground, 16px from its same-day neighbour', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);
@@ -345,7 +345,7 @@ test('a card is a 6px rounded box with a task-colour left edge on the terminal g
   expect({ radius: style.radius, top: style.top, left: style.left }).toEqual({
     radius: '6px',
     top: '1px',
-    left: '3px',
+    left: '1px',
   });
   expect(style.leftColor).not.toBe('rgba(0, 0, 0, 0)');
   const [chrome, plan] = await Promise.all([
@@ -398,9 +398,9 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
 
   await card(page, 'T_push').locator('[data-testid="ade-card-head"]').click();
   await expect(card(page, 'T_push')).toHaveAttribute('aria-current', 'true');
-  expect(await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(
-    'rgba(0, 0, 0, 0)',
-  );
+  expect(
+    await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderTopColor),
+  ).not.toBe(focusColor);
   await expect(card(page, 'T_search')).not.toHaveAttribute('aria-current', 'true');
 
   const row = card(page, 'T_push').locator('[data-testid="ade-branch-row"]').first();
