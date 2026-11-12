@@ -10,6 +10,7 @@ import { installAdeSignals } from './ade/queries';
 import { useAgentSessionsStore } from './ade/state';
 import { reviewTargetKey } from './ade/v2/queries';
 import { adeReaderKey } from './ade/v2/reader';
+import { installAdeOpMirror } from './ade/v2/state/adeOpMirror';
 import { useAdeReviewWindowStore } from './ade/v2/state/adeReviewWindow';
 import { controlAdeReader } from './bridge/adeReader';
 import { control } from './bridge/control';
@@ -166,6 +167,8 @@ async function mountShell(): Promise<void> {
       logError('bootstrap', 'optional store hydrate failed', result.reason);
     }
   }
+
+  installAdeOpMirror();
 
   // A capture popup (ephemeral, one clipboard item) answers with its item; any other gets null.
   const captureItem = await queryClient.query({
