@@ -1,12 +1,13 @@
 # v0.3.10
 
-UI polish, dialog speed and MCP dialog fixes. Three phases, run as parallel streams A, B, C (batch requested by user). Highest prior phase: P616.
+UI polish, dialog speed and MCP dialog fixes. Phases P617 to P619 run as parallel streams A, B, C (batch requested by user); P620 runs after they land. Highest prior phase: P616.
 
 | Phase | Title | Status |
 |-------|-------|--------|
 | P617 | Task list and detail UI | Todo |
 | P618 | Dialogs: speed, colors, background ops, proof, copy | Todo |
 | P619 | Settings MCP split and GitHub PR open | Todo |
+| P620 | Resource leases: named queues, push wake-up | Todo |
 
 ## P617 Task list and detail UI (Stream A)
 
@@ -36,5 +37,20 @@ Result: _pending_
 
 - Settings "database MCP" section is too long: split into several sections. Rename user-facing label to "Studio MCP".
 - Opening a GitHub PR from the app does not work: reproduce, root-cause, fix.
+
+Result: _pending_
+
+## P620 Resource leases: named queues, push wake-up
+
+Agents sharing an unsharable resource (port, full-suite run, push, merge) wait in order instead of colliding.
+
+- Multiple named queues, each its own resource: one holder, FIFO-by-priority waiters. User names queues. Backend in Go, frontend state in a Pinia store.
+- MCP tools: acquire, release, status. No blocking: acquire returns at once, granted or queued with position. Queue entry keyed by session id, so position survives agent re-calls.
+- Wake-up: when a lease frees, app injects a short message into the next agent's session once that agent is idle (never types into a busy agent). Fallback: hook on the agent's next turn start or stop reports the grant.
+- Release guarantees: all leases of a session release when the session ends (crash, kill, exit); TTL with heartbeat (any holder tool call extends); explicit release as courtesy.
+- Priority: next holder is the waiter whose task sits highest in the task list; re-evaluated on each grant. Never preempts a current holder.
+- UI: panel lists every queue with holder and waiters. Click holder: "Request release" (injects finish-up message) or separate "Force release" (revokes). Queue state shown on task rows.
+- Verify first: how session end and idle detection behave on a hard kill; drop injection to hooks-only if idle cannot be detected safely.
+- Tests: backend flow test and UI spec for same scenario (queue, grant, release, force release).
 
 Result: _pending_
