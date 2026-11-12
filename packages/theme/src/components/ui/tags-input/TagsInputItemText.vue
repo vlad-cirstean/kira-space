@@ -15,6 +15,6 @@ const forwarded = useForwardProps(delegatedProps);
   <TagsInputItemText
     data-slot="tags-input-item-text"
     v-bind="forwarded"
-    :class="cn('py-0.5', props.class)"
+    :class="cn('py-0.5 select-text', props.class)"
   />
 </template>

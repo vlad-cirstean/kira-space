@@ -2,6 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 
 /** Drags from the box's top-left to its bottom-right and returns the page selection. */
 export async function dragAcross(page: Page, target: Locator): Promise<string> {
+  await target.scrollIntoViewIfNeeded();
   const box = await target.boundingBox();
   if (!box) throw new Error('drag target has no box');
   await page.mouse.move(box.x + 1, box.y + 1);
