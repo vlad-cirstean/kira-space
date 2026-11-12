@@ -64,11 +64,13 @@ function fail(e: unknown): void {
         <DropdownMenuSeparator />
         <DropdownMenuLabel
           v-if="location.data.value"
-          class="flex max-w-80 flex-col gap-0.5 font-normal"
+          class="flex h-auto max-w-80 flex-col items-stretch justify-start gap-0.5 py-1 font-normal normal-case tracking-normal"
           data-testid="proof-shot-location"
         >
           <span class="text-muted-foreground">{{ t('studio.api.saveRequest.target.label') }}</span>
-          <TruncatedText :text="location.data.value.path" split="path" />
+          <span class="text-fg"
+            ><TruncatedText :text="location.data.value.path" split="path" /></span
+          >
           <span v-if="!location.data.value.custom" class="text-muted-foreground">{{
             t('common.state.default.option')
           }}</span>

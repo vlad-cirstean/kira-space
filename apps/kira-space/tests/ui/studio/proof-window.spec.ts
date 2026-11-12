@@ -370,8 +370,24 @@ test('the menu shows and changes the save location', async ({ relaunch, uiServer
 
   const more = page.locator('[data-testid="proof-shot-more"]');
   const location = page.locator('[data-testid="proof-shot-location"]');
+  // Block must not clip, uppercase, or overprint the item below it.
+  const expectLocationLayout = async (): Promise<void> => {
+    const layout = await location.evaluate((el) => {
+      const choose = document.querySelector('[data-testid="proof-shot-location-choose"]');
+      return {
+        clipped: el.scrollHeight > el.clientHeight + 1,
+        transform: getComputedStyle(el).textTransform,
+        bottom: el.getBoundingClientRect().bottom,
+        chooseTop: choose?.getBoundingClientRect().top ?? 0,
+      };
+    });
+    expect(layout.clipped).toBe(false);
+    expect(layout.transform).toBe('none');
+    expect(layout.bottom).toBeLessThanOrEqual(layout.chooseTop);
+  };
   await more.click();
   await expect(location).toContainText(String(shotLocation().path));
+  await expectLocationLayout();
   await expect(location).toContainText('Default');
   await expect(page.locator('[data-testid="proof-shot-location-reset"]')).toHaveCount(0);
 
@@ -381,6 +397,7 @@ test('the menu shows and changes the save location', async ({ relaunch, uiServer
     .toHaveLength(1);
   await more.click();
   await expect(location).toContainText(String(shotLocation(true).path));
+  await expectLocationLayout();
   await page.locator('[data-testid="proof-shot-location-reset"]').click();
   await expect
     .poll(() => control.log().filter((c) => c.channel === IPC.proofResetShotLocation))
