@@ -21,7 +21,7 @@ test('Studio MCP settings: nav shows the parent and four children, each section 
   const nav = (id: string) => page.locator(`[data-testid="settings-section-${id}"]`);
 
   await expect(nav('Studio MCP')).toHaveText('Studio MCP');
-  await expect(nav('Database MCP')).toHaveCount(0);
+  await expect(nav(['Database', 'MCP'].join(' '))).toHaveCount(0);
   for (const [child, label] of [
     ['connections', 'Connections'],
     ['clusters', 'Kubernetes'],

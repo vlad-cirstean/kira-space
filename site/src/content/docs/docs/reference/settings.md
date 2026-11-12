@@ -18,7 +18,7 @@ sidebar:
 
 ## Studio modules
 
-Sections: Appearance, Data, Cache, Api, Database MCP, Prompts, Advanced.
+Sections: Appearance, Data, Cache, Api, Studio MCP (with Connections, Kubernetes, Scripts and API tools beneath it), Prompts, Advanced.
 
 The Studio modules have no agent section. They run Claude Code with hermetic launches on.
 
@@ -42,9 +42,9 @@ Level 2 cache budget: 8 to 1024 MB, default 64.
 
 See [API client](../../studio/api-client/). Defaults: HTTP version 2, no timeout, 5 MB maximum response, SSL verification on, redirects followed up to 10, cookie jar disabled.
 
-### Database MCP
+### Studio MCP
 
-The server switch, exposed connections and token. Off by default. See [Database MCP server](../../studio/database-mcp/). With API requests on: an approval mode, and host and method rules. A deny rule refuses, and an allow rule sends without asking. A request no rule matches is asked or denied, as you choose. Earlier versions still asked for requests an allow rule matched.
+The server switch, response preview, focus and token. Off by default. See [Studio MCP server](../../studio/database-mcp/). Connections lists the exposed connections, Kubernetes the clusters and Scripts the scripts an agent may use. API tools holds the API request switch. With API requests on: an approval mode, and host and method rules. A deny rule refuses, and an allow rule sends without asking. A request no rule matches is asked or denied, as you choose. Earlier versions still asked for requests an allow rule matched.
 
 ### Prompts
 

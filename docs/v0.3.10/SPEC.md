@@ -6,7 +6,7 @@ UI polish, dialog speed and MCP dialog fixes. Phases P617 to P619 run as paralle
 |-------|-------|--------|
 | P617 | Task list and detail UI | Done |
 | P618 | Dialogs: speed, colors, background ops, proof, copy | Todo |
-| P619 | Settings MCP split and GitHub PR open | Todo |
+| P619 | Settings MCP split and GitHub PR open | Done |
 | P620 | Resource leases: named queues, push wake-up | Todo |
 
 ## P617 Task list and detail UI (Stream A)
@@ -38,7 +38,22 @@ Result: _pending_
 - Settings "database MCP" section is too long: split into several sections. Rename user-facing label to "Studio MCP".
 - Opening a GitHub PR from the app does not work: reproduce, root-cause, fix.
 
-Result: _pending_
+Result: Settings "Database MCP" is now "Studio MCP", split into five nav sections: Studio MCP
+(server, preview, focus, token), Connections, Kubernetes, Scripts, API tools. Children indent via
+`SettingsShell` `indentedSections`; nav scrolls. Panes: `StudioMcpServerPane` (renamed from
+`DatabaseMcpPane`), `StudioMcpConnectionsPane`, `StudioMcpApiPane`; Kubernetes and Scripts reuse
+their sections. User-facing "database MCP" copy renamed across en.json, Go strings, READMEs, site and
+ARCHITECTURE. Specs updated; new `studio-mcp-settings.spec.ts`; five settings visual baselines
+re-recorded. The API pane label is "API tools", not "API requests": the copy lint rejects a
+near-duplicate of the configSync label. 'Studio MCP' joins the copy lint's proper nouns.
+GitHub PR open: root cause was an invalid `detailQuery` (differing-argument field merges on
+`comments`, `reviews`, `assignees`; `Team.name` String! vs `User.name` String), which GitHub rejects
+whole, so the PR view showed a failure. Fixed with `detail*` and `teamName` aliases. New
+`TestGraphQLDocumentsValidate` checks every GitHub document against a vendored schema (CC-BY-4.0,
+NOTICES.md; gqlparser MIT, test-only) and fails on the old query with four errors. Flow
+`TestOpenGitHubPullRequest` and `github-pr-open.spec.ts` share contract `github-pr-open`. Targeted
+runs: githost, githostflow, dbmcpflow (count 2), adeflow `TestDbMcpStep`, 55 UI specs, copy-coverage
+settings test, settings visual; typecheck, lint, lint:go, lint:dead clean.
 
 ## P620 Resource leases: named queues, push wake-up
 

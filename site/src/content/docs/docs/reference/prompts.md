@@ -18,7 +18,7 @@ sidebar:
 - Memory (Kira Space).
 - Agent runs.
 - Rebase and review (Kira Space).
-- Database MCP (Studio modules).
+- Studio MCP (Studio modules).
 
 Text you write yourself stays outside this list. That covers smart script bodies and workflow step prompts.
 
@@ -29,7 +29,7 @@ Text you write yourself stays outside this list. That covers smart script bodies
 | System | A system prompt with a fixed reply schema | Memory checks |
 | Message | A message sent to an agent, with variables filled in | Rebase prompt |
 | Suffix | A closing instruction added to a prompt | `finish_step` report |
-| Instructions | Server instructions an MCP client reads on connect | Database MCP |
+| Instructions | Server instructions an MCP client reads on connect | Studio MCP |
 | Tool | The description an agent reads for an MCP tool | `run_query` |
 | Tool result | Text a tool returns to steer the next step | Challenged store |
 

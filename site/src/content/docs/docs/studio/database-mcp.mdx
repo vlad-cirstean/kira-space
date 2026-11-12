@@ -1,5 +1,5 @@
 ---
-title: Database MCP server
+title: Studio MCP server
 description: Let an AI client read your databases under rules you set.
 sources:
   - README.md
@@ -18,7 +18,7 @@ import DocShot from '../../../../components/DocShot.astro';
 
 An optional local [MCP](https://modelcontextprotocol.io) server. An AI client lists, browses and queries your connections through the same path the SQL console uses.
 
-The server is off by default. Turn it on with **Enable the database MCP server** in `Settings > Database MCP`.
+The server is off by default. Turn it on with **Enable the Studio MCP server** in `Settings > Studio MCP`.
 
 ## Access
 
@@ -128,7 +128,7 @@ A prompt waits for you to approve the exact statement. The dialog names the conn
 
 When a limit rejects a statement, the AI client can ask you to lift that limit for that one statement. You always get a dialog, even for modes that need no approval. It shows the limit, the measured value, the limit value, the client's reason and the statement. Approving covers that one run; the limit stays for every other call. With several requests waiting, "Approve all" skips these. Approve each one on its own.
 
-You can review each query result before the AI client gets it. The app-wide switch is in Settings, under Database MCP. A connection's MCP tab sets Read, Write and DDL results on their own: inherit the app setting, always review, or always send. The tab explains which setting applies.
+You can review each query result before the AI client gets it. The app-wide switch is in Settings, under Studio MCP. A connection's MCP tab sets Read, Write and DDL results on their own: inherit the app setting, always review, or always send. The tab explains which setting applies.
 
 A permission prompt also has a checkbox, "Review the result before the AI gets it". Check it to review the result of that one call, even when review is off. Limit exemption prompts have it too.
 

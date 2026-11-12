@@ -208,10 +208,10 @@ networks, live container logs and stats, and exec terminals into a running conta
   first-byte/download timing breakdown.
 - **Incognito tabs** — a per-tab toggle; nothing from that tab is saved.
 
-### Database MCP server
+### Studio MCP server
 
 An optional local [MCP](https://modelcontextprotocol.io) server lets an AI client read your
-databases under rules you set. It is off by default and enabled from Settings → Database MCP.
+databases under rules you set. It is off by default and enabled from Settings → Studio MCP.
 
 - Loopback only, on port 8766, with its own bearer token.
 - Core tools: `list_connections`, `list_children`, `describe`, `browse_table` and `run_query`

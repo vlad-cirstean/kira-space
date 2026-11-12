@@ -18,14 +18,14 @@ Kira Space runs several local [MCP](https://modelcontextprotocol.io) servers. Ea
 |---|---|---|
 | `kira-space` | A task agent: task info, branches, artifacts and proof. | Always on in a task run. |
 | `kira-memory` | Claude Code sessions: store and recall facts. | `Settings > Memory`. |
-| `kira-studio` | An external AI client reading your databases. | Off by default. `Settings > Database MCP`. |
+| `kira-studio` | An external AI client reading your databases. | Off by default. `Settings > Studio MCP`. |
 | `kira-studio-session` | A workflow step with **Kira database tools**. | Per step. |
 
 ## What an agent session gets
 
 A task run gets `kira-space`. It reports how a step ended, replies to review comments, records artifacts and attaches proof. A sandboxed run also gets `fetch_remote` and `push_branch`.
 
-A step that ticks **Kira database tools** also gets `kira-studio-session`. It shares your exposed connections, limits and approvals. See [Database MCP server](../../studio/database-mcp/).
+A step that ticks **Kira database tools** also gets `kira-studio-session`. It shares your exposed connections, limits and approvals. See [Studio MCP server](../../studio/database-mcp/).
 
 ## Reference
 
