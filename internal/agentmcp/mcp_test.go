@@ -15,6 +15,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 type bearerTransport struct{ token string }
@@ -26,6 +27,11 @@ func (b bearerTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 }
 
 func connect(t *testing.T, cfgPath, tokenOverride string) (*mcp.ClientSession, error) {
+	t.Helper()
+	return connectWith(t, cfgPath, tokenOverride, nil)
+}
+
+func connectWith(t *testing.T, cfgPath, tokenOverride string, opts *mcp.ClientOptions) (*mcp.ClientSession, error) {
 	t.Helper()
 	raw, err := os.ReadFile(cfgPath)
 	if err != nil {
@@ -47,7 +53,7 @@ func connect(t *testing.T, cfgPath, tokenOverride string) (*mcp.ClientSession, e
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	t.Cleanup(cancel)
-	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil)
+	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, opts)
 	return client.Connect(ctx, &mcp.StreamableClientTransport{
 		Endpoint: entry.URL, HTTPClient: &http.Client{Transport: bearerTransport{token}}, DisableStandaloneSSE: true, MaxRetries: -1,
 	}, nil)
@@ -157,8 +163,12 @@ func (f *fakeSpace) RequestBranches(ctx context.Context, call SpaceCall, specs [
 	return out, nil
 }
 
-func (f *fakeSpace) BranchStatus(_ context.Context, task, repo, _ string, _ time.Duration) (BranchInfo, error) {
+func (f *fakeSpace) BranchStatus(ctx context.Context, task, repo, _ string, _ time.Duration) (BranchInfo, error) {
 	f.rec("status|" + task + "|" + repo)
+	if repo == "progress" {
+		ReportProgress(ctx, "preparing one")
+		ReportProgress(ctx, "preparing two")
+	}
 	return BranchInfo{Repo: repo}, nil
 }
 
@@ -453,5 +463,44 @@ func TestOnToolCallReportsEveryCall(t *testing.T) {
 	defer mu.Unlock()
 	if len(got) != 1 || got[0].call.Tool != "finish_step" || got[0].call.RunID != "run-1" || got[0].call.TaskID != "task-1" || got[0].isErr {
 		t.Fatalf("calls = %+v", got)
+	}
+}
+
+// task_info reports progress to a client that sent a progress token, in order, before its result.
+func TestTaskInfoReportsProgress(t *testing.T) {
+	srv := NewServer(Options{Dir: t.TempDir(), Space: &fakeSpace{}})
+	t.Cleanup(func() { _ = srv.Close() })
+	cfg, rel, err := srv.Register(Grant{Agent: claude.New(), TaskID: "task-1", Space: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rel()
+	var mu sync.Mutex
+	got := map[float64]string{}
+	cs, err := connectWith(t, cfg, "", &mcp.ClientOptions{ProgressNotificationHandler: func(_ context.Context, req *mcp.ProgressNotificationClientRequest) {
+		mu.Lock()
+		got[req.Params.Progress] = req.Params.Message
+		mu.Unlock()
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	params := &mcp.CallToolParams{Name: "task_info", Arguments: map[string]any{"repo": "progress", "branch": "feat/x", "waitSeconds": 1}}
+	params.SetProgressToken("tok")
+	res, err := cs.CallTool(context.Background(), params)
+	if err != nil || res.IsError {
+		t.Fatalf("task_info: %v %v", err, res)
+	}
+	// The client runs notification handlers on their own goroutines: wait, then compare by the
+	// increasing progress value the server stamped.
+	testx.WaitUntil(t, 5*time.Second, func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(got) == 2
+	})
+	mu.Lock()
+	defer mu.Unlock()
+	if got[1] != "preparing one" || got[2] != "preparing two" {
+		t.Fatalf("progress = %v, want 1 then 2 with the two messages", got)
 	}
 }

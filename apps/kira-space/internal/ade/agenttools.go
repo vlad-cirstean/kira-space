@@ -388,11 +388,22 @@ func (b *TaskBoard) BranchStatus(ctx context.Context, taskID, repo, branch strin
 		return agentmcp.BranchInfo{}, err
 	}
 	deadline := time.Now().Add(wait)
-	for b.setupRunning(br) && time.Now().Before(deadline) {
+	lastNote := ""
+	reported := false
+	for time.Now().Before(deadline) {
+		row, err := b.deps.Tasks.GetSetup(br.ID)
+		if err != nil || row == nil || row.State != model.AdeSetupRunning {
+			break
+		}
+		if !reported || row.Note != lastNote {
+			reported, lastNote = true, row.Note
+			agentmcp.ReportProgress(ctx, "preparing "+br.Name+": "+row.Note)
+		}
 		select {
 		case <-ctx.Done():
 			return b.branchInfo(br, nick, b.worktreePath(ctx, br)), ctx.Err()
-		case <-time.After(time.Second):
+		case <-b.setupDone(br.ID):
+		case <-time.After(min(5*time.Second, time.Until(deadline))):
 		}
 	}
 	at, _ := b.rowWorktree(ctx, br)
@@ -403,9 +414,15 @@ func (b *TaskBoard) BranchStatus(ctx context.Context, taskID, repo, branch strin
 	return info, nil
 }
 
-func (b *TaskBoard) setupRunning(sb model.AdeTaskBranch) bool {
-	row, err := b.deps.Tasks.GetSetup(sb.ID)
-	return err == nil && row != nil && row.State == model.AdeSetupRunning
+// setupDone returns the channel that closes when the branch's live setup run has recorded its
+// outcome; nil, which blocks forever, when none runs.
+func (b *TaskBoard) setupDone(branchID string) <-chan struct{} {
+	b.runMu.Lock()
+	defer b.runMu.Unlock()
+	if lr := b.setupLive[branchID]; lr != nil {
+		return lr.done
+	}
+	return nil
 }
 
 // taskBranch resolves repo and branch to the task's live branch row.

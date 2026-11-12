@@ -358,17 +358,21 @@ func (s *Server) addTaskInfoTool(srv *mcp.Server) {
 		}
 		ctx, done := s.callCtx(ctx, req)
 		defer done()
+		ctx = withProgress(ctx, req)
+		// Wait first: the task's repos then agree with the branch's setup state.
+		var br *BranchInfo
+		if args.Repo != "" {
+			st, err := s.space.BranchStatus(ctx, call.TaskID, args.Repo, args.Branch, time.Duration(args.WaitSeconds)*time.Second)
+			if err != nil {
+				return fail("task_info", err), TaskInfo{}, nil
+			}
+			br = &st
+		}
 		info, err := s.space.TaskInfo(ctx, call.TaskID)
 		if err != nil {
 			return fail("task_info", err), TaskInfo{}, nil
 		}
-		if args.Repo != "" {
-			br, err := s.space.BranchStatus(ctx, call.TaskID, args.Repo, args.Branch, time.Duration(args.WaitSeconds)*time.Second)
-			if err != nil {
-				return fail("task_info", err), TaskInfo{}, nil
-			}
-			info.Branch = &br
-		}
+		info.Branch = br
 		return nil, info, nil
 	})
 }
