@@ -87,6 +87,7 @@ function tagText(it: BranchRequestItem): string {
     return [t('common.action.checkOut.label'), holderTag(it)].filter(Boolean).join(' · ');
   }
   if (it.kind === 'rename') return t('space.ade.branchRequest.tag.rename.label', { from: it.from });
+  if (it.kind === 'switch') return t('space.ade.branchRequest.tag.change.label', { from: it.from });
   if (it.kind === 'worktree') return t('common.worktree.label');
   return it.base
     ? t('space.ade.branchRequest.tag.new.label', { base: it.base })

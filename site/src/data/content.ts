@@ -129,7 +129,7 @@ export const APP: AppContent = {
       href: 'docs/space/phone/',
     },
     {
-      title: 'Database MCP server',
+      title: 'Studio MCP server',
       icon: 'plug',
       color: 'violet',
       line: 'Agent access to data: off until you say so.',

@@ -52,6 +52,11 @@ CREATE TABLE "ade_folders" (
   hidden INTEGER NOT NULL DEFAULT 0 CHECK (hidden IN (0, 1))
 ) STRICT;
 
+CREATE TABLE ade_lease_queues (
+  name TEXT PRIMARY KEY,
+  position INTEGER NOT NULL
+) STRICT;
+
 CREATE TABLE "ade_log_chunks" (
   kind TEXT NOT NULL,
   id TEXT NOT NULL,

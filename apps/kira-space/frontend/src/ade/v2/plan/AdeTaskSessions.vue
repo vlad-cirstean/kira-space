@@ -30,20 +30,20 @@ function tip(): string {
       type="button"
       variant="toolbar"
       :aria-label="tip()"
-      class="h-4.5 min-w-4.5 shrink-0 gap-0.5 rounded-full border-0 px-0.5"
+      class="min-h-5 min-w-5 shrink-0 gap-0.5 rounded-full border-0 px-0.5"
       :data-state="sessions.state"
       data-testid="ade-card-sessions"
       @click.stop="ui.openSessions(taskId)"
     >
-      <AdeActivityIcon v-if="sessions.state === 'input'" kind="input" bare />
-      <AdeActivityIcon v-else-if="sessions.state === 'unseen'" kind="unseen" bare />
+      <AdeActivityIcon v-if="sessions.state === 'input'" kind="input" :size="16" bare />
+      <AdeActivityIcon v-else-if="sessions.state === 'unseen'" kind="unseen" :size="16" bare />
       <template v-else-if="sessions.state === 'running'">
-        <AdeActivityIcon kind="working" bare />
+        <AdeActivityIcon kind="working" :size="16" bare />
         <span v-if="sessions.running > 1" class="text-kira-sm tabular-nums">{{
           sessions.running
         }}</span>
       </template>
-      <CodiconIcon v-else name="check" :size="12" class="text-tone-green" />
+      <CodiconIcon v-else name="check" :size="16" class="text-tone-green" />
     </Button>
   </AdeTip>
 </template>

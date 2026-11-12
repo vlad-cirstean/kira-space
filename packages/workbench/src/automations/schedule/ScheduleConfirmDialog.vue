@@ -224,7 +224,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
           {{ t('git.dialog.postCheckoutPullConfirm.notNow.label') }}
         </Button>
         <Button
-          variant="dialog-primary"
+          variant="dialog-approve"
           size="kira-lg"
           :disabled="!canRun"
           :pending="accept.isPending.value"

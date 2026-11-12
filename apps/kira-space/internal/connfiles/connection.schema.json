@@ -108,12 +108,12 @@
     "mcp": {
       "type": "object",
       "additionalProperties": false,
-      "description": "What an AI client may do through the DB MCP server.",
+      "description": "What an AI client may do through the Studio MCP server.",
       "properties": {
         "enabled": {
           "type": "boolean",
           "default": false,
-          "description": "Expose the connection to the DB MCP server."
+          "description": "Expose the connection to the Studio MCP server."
         },
         "description": {
           "type": "string",
@@ -197,7 +197,7 @@
     },
     "masks": {
       "type": "array",
-      "description": "Columns whose values the DB MCP server hides.",
+      "description": "Columns whose values the Studio MCP server hides.",
       "items": {
         "type": "object",
         "additionalProperties": false,

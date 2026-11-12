@@ -115,7 +115,7 @@ const locked = computed(() => accept.isPending.value || reject.isPending.value);
     </ul>
     <div class="flex shrink-0 justify-end gap-2 p-2">
       <Button
-        variant="dialog"
+        variant="dialog-deny"
         size="kira-lg"
         :pending="reject.isPending.value"
         :disabled="locked"
@@ -126,7 +126,7 @@ const locked = computed(() => accept.isPending.value || reject.isPending.value);
         {{ t('studio.proof.change.reject.label') }}
       </Button>
       <Button
-        variant="dialog-primary"
+        variant="dialog-approve"
         size="kira-lg"
         :pending="accept.isPending.value"
         :disabled="locked"

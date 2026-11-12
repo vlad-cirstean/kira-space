@@ -134,7 +134,7 @@ test('modes, DDL, exemption, throttle and rows lines render for a SQL engine, ma
   await expect(line(page, 'exemption')).toContainText(
     'A dialog always appears, even when the mode is allow',
   );
-  await expect(line(page, 'exemption')).toContainText('Approve all does not cover it');
+  await expect(line(page, 'exemption')).toContainText('Only a click on that statement approves it');
   await expect(line(page, 'throttle')).toContainText('An exemption does not lift it');
   await expect(line(page, 'rows')).toContainText('200 rows');
   await expect(line(page, 'rows')).toContainText('up to 2000');

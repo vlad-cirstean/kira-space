@@ -2,6 +2,7 @@
 import type { AppMode } from '@shared/domain/mode';
 // P104 §6.1: every converted call site reaches timing (delayDuration/skipDelayDuration) through
 // this one provider.
+import { Toaster } from '@theme/components/ui/sonner';
 import { TooltipProvider } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { agentControlKey, useAgentMessageDefaults } from '@workbench/agent/agentInfo';
@@ -251,6 +252,7 @@ function onToggleKeepAwake(): void {
     <GenerateDataDialog v-if="fakeDataStore.open" />
     <PromptHost :kinds="promptKinds" />
     <ApprovalsSurface />
+    <Toaster position="bottom-right" />
     <ConfigSyncToast v-if="mainWindow()" />
     <ConfirmDialog />
     <AppLiveRegion />

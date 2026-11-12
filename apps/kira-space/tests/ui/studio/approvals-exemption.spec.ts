@@ -68,9 +68,7 @@ test('contract: Lift for this query answers the item id, Keep the limit denies i
     .toEqual({ ids: [it.id], approve: true, options: null });
 });
 
-test('contract: Approve all leaves an exemption for its own click; Deny all covers it', async ({
-  relaunch,
-}) => {
+test('contract: there is no bulk approve; Deny all covers an exemption', async ({ relaunch }) => {
   const exemption = liveItem(item());
   const [other] = contract<ApprovalItem[]>('approvals-studio', 'ApprovalsService.List');
   if (!other) throw new Error('approvals-studio contract has no item');
@@ -80,19 +78,7 @@ test('contract: Approve all leaves an exemption for its own click; Deny all cove
   });
   await pushApprovals(page, [query, exemption]);
 
-  const approveAll = page.locator('[data-testid="approvals-approve-all"]');
-  await expect(approveAll).toHaveText('Approve all (1)');
-  await approveAll.click();
-  await expect
-    .poll(
-      () =>
-        control
-          .log()
-          .filter((e) => e.channel === IPC.approvalsAnswer)
-          .at(-1)?.args,
-    )
-    .toEqual({ ids: [query.id], approve: true, options: null });
-
+  await expect(page.locator('[data-testid="approvals-approve-all"]')).toHaveCount(0);
   await page.click('[data-testid="approvals-deny-all"]');
   await expect
     .poll(() => {
@@ -103,13 +89,4 @@ test('contract: Approve all leaves an exemption for its own click; Deny all cove
       return args && { ...args, ids: [...args.ids].sort() };
     })
     .toMatchObject({ ids: [exemption.id, query.id].sort(), approve: false });
-});
-
-test('contract: Approve all is absent when only exemptions are pending', async ({ relaunch }) => {
-  const a = liveItem(item());
-  const b = liveItem(item('item#union'));
-  const { window: page } = await relaunch({});
-  await pushApprovals(page, [a, b]);
-  await expect(page.locator('[data-testid="approvals-deny-all"]')).toBeVisible();
-  await expect(page.locator('[data-testid="approvals-approve-all"]')).toHaveCount(0);
 });

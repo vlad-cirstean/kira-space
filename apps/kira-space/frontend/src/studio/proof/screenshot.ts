@@ -84,7 +84,12 @@ function fileSlug(name: string): string {
 }
 
 /** `NN-step-name.jpg` for the tab at 1-based `pos`, zero-padded to the tab count's width. */
-export function shotFileName(pos: number, total: number, description: string): string {
+export function shotFileName(
+  pos: number,
+  total: number,
+  description: string,
+  ext: 'jpg' | 'png' = 'jpg',
+): string {
   const width = Math.max(2, String(total).length);
-  return `${String(pos).padStart(width, '0')}-${fileSlug(description)}.jpg`;
+  return `${String(pos).padStart(width, '0')}-${fileSlug(description)}.${ext}`;
 }

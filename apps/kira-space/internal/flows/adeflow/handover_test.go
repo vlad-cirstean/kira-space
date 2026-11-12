@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
@@ -22,6 +23,28 @@ const hoScenario = "ade-handover"
 
 var hoMask = flowharness.Mask("id", "taskId", "runId", "branchId", "sessionId", "startedAt", "finishedAt", "exitCode",
 	"createdAt", "updatedAt", "addedAt", "repliedAt", "sentAt", "attempt")
+
+// assertBoardBeforePrompt: the dialog reads its draft from the board, so the board event must land
+// right before the event that opens the handover prompt.
+func assertBoardBeforePrompt(t *testing.T, app *flowharness.App, taskID string) {
+	t.Helper()
+	all := app.Events.Since(0, "")
+	for i, ev := range all {
+		if ev.Channel != bridge.ChannelPromptsChanged {
+			continue
+		}
+		list, _ := ev.Data.([]prompts.Routed)
+		for _, p := range list {
+			if p.Kind == prompts.KindHandover && p.Ref == taskID {
+				if i == 0 || all[i-1].Channel != adewire.ChannelBoard {
+					t.Fatalf("event before the handover prompt = %q, want %q", all[max(i-1, 0)].Channel, adewire.ChannelBoard)
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("no prompts event opened the handover prompt")
+}
 
 func handoverPrompts(t *testing.T, app *flowharness.App) []prompts.Routed {
 	t.Helper()
@@ -106,6 +129,7 @@ func TestStageHandover(t *testing.T) {
 	if ps := handoverPrompts(t, app); len(ps) != 1 || ps[0].Ref != task.ID {
 		t.Fatalf("prompts = %+v, want one handover prompt for the task", ps)
 	}
+	assertBoardBeforePrompt(t, app, task.ID)
 	app.Contract(t, hoScenario, "AdeTaskService.Board#draft", board(t, app), hoMask)
 
 	// Dismissing closes the prompt but keeps the draft.

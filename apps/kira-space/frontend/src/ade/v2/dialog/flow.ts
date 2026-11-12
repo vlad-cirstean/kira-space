@@ -307,8 +307,8 @@ export async function requestArchive(deps: FlowDeps, taskId: string): Promise<vo
 /** The archive dialog's `Delete anyway`: no discard flag exists, the dialog is the confirmation. */
 export async function deleteAnyway(deps: FlowDeps, spec: DialogSpec): Promise<void> {
   try {
-    await deps.archiveTask({ taskId: spec.taskId ?? '' });
     deps.closeDialog();
+    await deps.archiveTask({ taskId: spec.taskId ?? '' });
   } catch (err) {
     deps.setError(errMessage(err));
   }

@@ -179,7 +179,7 @@ func (p Policy) Decide(method string, u *url.URL) (Verdict, error) {
 	if !p.denyUnmatched {
 		return VerdictUnmatched, nil
 	}
-	return VerdictUnmatched, errors.New(target + " is not allowed by the API access rules in Kira Space's database MCP settings: " +
+	return VerdictUnmatched, errors.New(target + " is not allowed by the API access rules in Kira Space's Studio MCP settings: " +
 		"no rule matches it, and requests no rule matches are denied. " + p.allowedText() + ". Ask the user to add an allow rule")
 }
 
@@ -209,10 +209,10 @@ func (p Policy) CheckHop(method string, u, origin *url.URL, approved bool) error
 		if origin != nil && strings.EqualFold(u.Host, origin.Host) {
 			return nil
 		}
-		return errors.New(target + " matches no allow rule in Kira Space's database MCP settings, " +
+		return errors.New(target + " matches no allow rule in Kira Space's Studio MCP settings, " +
 			"and a redirect must stay on the approved host or go to a host an allow rule matches")
 	}
-	return errors.New(target + " matches no allow rule in Kira Space's database MCP settings, " +
+	return errors.New(target + " matches no allow rule in Kira Space's Studio MCP settings, " +
 		"and a redirect must go to a host an allow rule matches")
 }
 

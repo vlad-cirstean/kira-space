@@ -1,5 +1,6 @@
 import type {
   ProofDetail,
+  ProofShotClipboard,
   ProofShotLocation,
   ProofStepDetail,
   ProofSummary,
@@ -22,6 +23,7 @@ const proofKey = {
   session: (id: string) => ['proof', 'session', id] as const,
   step: (id: string, rev: number, ordinal: number) => ['proof', 'step', id, rev, ordinal] as const,
   shotLocation: ['proof', 'shotLocation'] as const,
+  shotClipboard: ['proof', 'shotClipboard'] as const,
   viewState: (id: string, rev: number) => ['proof', 'viewState', id, rev] as const,
 };
 
@@ -79,6 +81,14 @@ export function useShotLocation() {
   });
 }
 
+/** Whether the system clipboard takes several images; fixed for the life of the app (default staleTime is Infinity). */
+export function useShotClipboard() {
+  return useQuery<ProofShotClipboard>({
+    queryKey: proofKey.shotClipboard,
+    queryFn: () => control.proofShotClipboard(),
+  });
+}
+
 /** Opens the folder picker; a cancel leaves the cached location as is. */
 export function useChooseShotLocation() {
   return useMutation({
@@ -99,7 +109,7 @@ export function useResetShotLocation() {
 function refreshProof(): Promise<void> {
   return queryClient.invalidateQueries({
     queryKey: proofKey.all,
-    predicate: (q) => q.queryKey[1] !== 'viewState',
+    predicate: (q) => q.queryKey[1] !== 'viewState' && q.queryKey[1] !== 'shotClipboard',
   });
 }
 

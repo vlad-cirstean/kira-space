@@ -25,7 +25,7 @@ test('contract: the switch lists the tools, "never" shows its warning', async ({
     ],
   });
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP API"]');
   await expect(page.locator('[data-testid="settings-db-mcp-api"]')).not.toBeChecked();
   await expect(page.locator('[data-testid="settings-db-mcp-api-approval"]')).toHaveCount(0);
 

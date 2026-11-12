@@ -420,7 +420,7 @@ onUnmounted(() => {
         <TooltipTrigger as-child>
           <TooltipDisabledTrigger>
             <Button
-              variant="dialog-primary"
+              variant="dialog-approve"
               size="kira"
               data-testid="http-send"
               :pending="running"

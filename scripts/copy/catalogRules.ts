@@ -21,6 +21,7 @@ export interface DuplicateExemption {
 /** Proper nouns, product names, acronyms and key names that keep their capitals mid-sentence. */
 export const PROPER_NOUNS: readonly string[] = [
   'Kira Studio',
+  'Studio MCP',
   'Kira Space',
   'Kira',
   'Finder',

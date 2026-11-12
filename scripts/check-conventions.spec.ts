@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  buttonVariantHits,
   codeParityHits,
   componentsTsHit,
   eventHits,
@@ -259,5 +260,69 @@ describe('N12 state and menu names', () => {
       'c/menu.ts',
     ]);
     expect(hits.map((h) => h.path)).toEqual(['c/menus.ts', 'c/rowMenu.ts', 'a/state']);
+  });
+});
+
+describe('N17 semantic button variant', () => {
+  const btn = (variant: string, label: string, extra = '') =>
+    `<Button variant="${variant}" ${extra}@click="go(a => b)">{{ t('${label}') }}</Button>`;
+  const hits = (src: string) => buttonVariantHits('p/w/X.vue', src);
+
+  test('approve labels need dialog-approve', () => {
+    expect(hits(btn('dialog-approve', 'common.action.approve.label'))).toEqual([]);
+    expect(hits(btn('dialog-primary', 'common.action.approve.label'))[0]?.rule).toBe('N17');
+    expect(hits(btn('dialog', 'studio.x.allow.label'))).toHaveLength(1);
+    expect(
+      hits(btn('dialog-primary', 'studio.dbMcp.approval.exemption.approve.label')),
+    ).toHaveLength(1);
+    expect(hits(btn('dialog-primary', 'common.action.send.label'))).toHaveLength(1);
+  });
+  test('deny labels need dialog-deny', () => {
+    expect(hits(btn('dialog-deny', 'common.action.deny.label'))).toEqual([]);
+    expect(hits(btn('dialog-danger', 'common.action.deny.label'))).toHaveLength(1);
+    expect(hits(btn('dialog', 'x.proof.reject.label'))).toHaveLength(1);
+    expect(hits(btn('dialog-danger', 'workbench.approvals.denyAll.label'))).toHaveLength(1);
+  });
+  test('destructive labels need dialog-danger', () => {
+    expect(hits(btn('dialog-danger', 'common.action.delete.label'))).toEqual([]);
+    expect(hits(btn('dialog-primary', 'common.action.remove.label'))).toHaveLength(1);
+    expect(hits(btn('dialog', 'common.action.discard.label'))).toHaveLength(1);
+    expect(hits(btn('dialog', 'git.common.forceDelete.confirm'))).toHaveLength(1);
+  });
+  test('other labels and non-dialog variants pass', () => {
+    expect(hits(btn('dialog', 'common.action.cancel.label'))).toEqual([]);
+    expect(hits(btn('dialog-primary', 'common.action.save.label'))).toEqual([]);
+    expect(hits(btn('toolbar', 'common.action.delete.label'))).toEqual([]);
+    expect(hits(btn('dialog', 'x.reviewAllowAll.label'))).toEqual([]);
+  });
+  test('labels resolve from def.labels too', () => {
+    const src = `<Button variant="dialog-danger">{{ labels?.deny ?? t('common.action.deny.label') }}</Button>`;
+    expect(hits(src)).toHaveLength(1);
+    expect(hits(`<Button variant="dialog-primary">{{ labels?.approve }}</Button>`)).toHaveLength(1);
+  });
+  test('tone classes on a dialog variant are banned', () => {
+    expect(hits(btn('dialog', 'common.action.edit.label', 'class="text-error" '))).toHaveLength(1);
+    expect(
+      hits(btn('dialog', 'common.action.edit.label', 'class="w-full border-ok/50" ')),
+    ).toHaveLength(1);
+    expect(hits(btn('dialog', 'common.action.edit.label', 'class="w-full text-errors" '))).toEqual(
+      [],
+    );
+    expect(hits(btn('toolbar', 'common.action.edit.label', 'class="text-error" '))).toEqual([]);
+  });
+  test('an allow comment before the element exempts it', () => {
+    const src = `<!-- conventions-allow N17: sends a test mail, not an approval -->\n${btn('dialog', 'common.sendTest.label')}`;
+    expect(hits(src)).toEqual([]);
+    expect(
+      hits(`<!-- conventions-allow N17: x -->\n<p/>\n${btn('dialog', 'a.send.label')}`),
+    ).toHaveLength(1);
+  });
+  test('self-closing and multiline tags parse', () => {
+    expect(hits('<Button variant="dialog-primary" :x="a > b" />')).toEqual([]);
+    expect(
+      hits(
+        `<Button\n  variant="dialog-primary"\n  :pending="a > b"\n>\n  {{ t('x.approve.label') }}\n</Button>`,
+      ),
+    ).toHaveLength(1);
   });
 });

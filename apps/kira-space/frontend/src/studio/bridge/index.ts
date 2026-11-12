@@ -48,10 +48,13 @@ import type { MaskReviewListing, MaskReviewPending } from '@shared/domain/maskRe
 import type {
   ProofChanged,
   ProofChooseShotLocationResult,
+  ProofCommitShotClipResult,
   ProofDetail,
   ProofOpenResult,
   ProofSaveJpegToResult,
   ProofSelect,
+  ProofShotClipboard,
+  ProofShotClipResult,
   ProofShotFolderResult,
   ProofShotLocation,
   ProofStepDetail,
@@ -425,6 +428,18 @@ const studioControl = {
     unwrap(ProofService.CloseShotFolder({ folderId })),
   proofRevealShotFolder: (folderId: string): Promise<void> =>
     unwrap(ProofService.RevealShotFolder({ folderId })),
+  proofShotClipboard: (): Promise<ProofShotClipboard> =>
+    unwrap(ProofService.ShotClipboard()).then((r) => trust<ProofShotClipboard>(r)),
+  proofOpenShotClip: (): Promise<ProofShotClipResult> =>
+    unwrap(ProofService.OpenShotClip()).then((r) => trust<ProofShotClipResult>(r)),
+  proofAddShotClip: (clipId: string, filename: string, pngBase64: string): Promise<void> =>
+    unwrap(ProofService.AddShotClip({ clipId, filename, pngBase64 })),
+  proofCommitShotClip: (clipId: string): Promise<ProofCommitShotClipResult> =>
+    unwrap(ProofService.CommitShotClip({ clipId })).then((r) =>
+      trust<ProofCommitShotClipResult>(r),
+    ),
+  proofCloseShotClip: (clipId: string): Promise<void> =>
+    unwrap(ProofService.CloseShotClip({ clipId })),
   onProofChanged: (cb: (event: ProofChanged) => void): (() => void) => on(CHANNEL.proofChanged, cb),
   onProofSelect: (cb: (event: ProofSelect) => void): (() => void) => on(CHANNEL.proofSelect, cb),
 

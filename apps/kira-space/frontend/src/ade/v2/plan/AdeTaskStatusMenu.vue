@@ -19,7 +19,7 @@ import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { STATUS_TEXT_CLASS } from '../statusColors';
 import { type CardModel, usePlanModel } from './usePlanModel';
 
-// The task's manual status as small text on its row; click opens the status set. No tooltip: a
+// The task's manual status as small text on its row, in a fixed-width column; click opens the status set. No tooltip: a
 // Tooltip between DropdownMenu and its trigger steals the popper anchor; aria-label names it.
 const props = defineProps<{ card: CardModel }>();
 
@@ -49,7 +49,7 @@ async function pick(value: unknown): Promise<void> {
         type="button"
         variant="toolbar"
         size="inline"
-        class="h-4.5 max-w-24 shrink-0 justify-start truncate rounded-kira-sm border-0 px-1 text-kira-sm font-normal"
+        class="h-4.5 w-full justify-start truncate rounded-kira-sm border-0 px-1 text-kira-sm font-normal"
         :class="STATUS_TEXT_CLASS[card.status.color]"
         :aria-label="t('space.ade.plan.card.status.aria', { status: card.status.name })"
         :data-status-id="card.status.id"

@@ -39,14 +39,14 @@ test('no rules: the overview says the agent sees everything and the list is empt
   const overview = page.locator('[data-testid="connection-privacy-overview"]');
   await expect(overview).toContainText('No masked columns');
   await expect(overview).toContainText('reach the agent unmasked');
-  await expect(overview).not.toContainText('Database MCP is off');
+  await expect(overview).not.toContainText('Studio MCP is off');
   await expect(page.locator('[data-testid="mask-key-section"]')).toHaveCount(0);
 });
 
 test('with MCP off the overview says no agent reads the connection', async ({ relaunch }) => {
   const page = await openPrivacyTab(relaunch, { mcp: false });
   await expect(page.locator('[data-testid="connection-privacy-overview-mcp-off"]')).toContainText(
-    'Database MCP is off',
+    'Studio MCP is off',
   );
 });
 

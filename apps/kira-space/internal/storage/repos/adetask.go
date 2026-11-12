@@ -1234,6 +1234,17 @@ func (r *AdeTaskRepo) DeleteFreshBranch(id string) error {
 // RenameBranch renames a created branch row and repoints the rows of its repository that stack on it
 // (by planner link or by base name), base and pending-from alike, in one transaction. Returns those rows' ids.
 func (r *AdeTaskRepo) RenameBranch(id, from, to string) ([]string, error) {
+	return r.renameBranch(id, from, to, false)
+}
+
+// ChangeBranch re-points a created branch row at another existing branch: the row keeps its id and
+// worktree folder, the commit facts of the old branch reset, stacked rows follow as in RenameBranch.
+func (r *AdeTaskRepo) ChangeBranch(id, from, to string) error {
+	_, err := r.renameBranch(id, from, to, true)
+	return err
+}
+
+func (r *AdeTaskRepo) renameBranch(id, from, to string, resetFacts bool) ([]string, error) {
 	tx, err := r.DB.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("repos: begin rename ade branch %s: %w", id, err)
@@ -1250,7 +1261,11 @@ func (r *AdeTaskRepo) RenameBranch(id, from, to string) ([]string, error) {
 		return nil, fmt.Errorf("repos: rename ade branch %s: %w", id, err)
 	}
 	nameUp := r.Dialect.Update(bc.Table)
-	nameUp.Set(nameUp.Assign(bc.Name, to)).Where(nameUp.Equal(bc.ID, id))
+	assigns := []string{nameUp.Assign(bc.Name, to)}
+	if resetFacts {
+		assigns = append(assigns, nameUp.Assign(bc.MergedAt, nil), nameUp.Assign(bc.HadCommits, 0))
+	}
+	nameUp.Set(assigns...).Where(nameUp.Equal(bc.ID, id))
 	if _, err := sqlb.Exec(tx, nameUp); err != nil {
 		if isUniqueViolation(err) {
 			return nil, ErrBranchNameTaken

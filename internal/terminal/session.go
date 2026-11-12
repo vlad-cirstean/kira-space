@@ -74,6 +74,10 @@ type Session struct {
 	// own, e.g. `exit`/Ctrl-D).
 	unregister func()
 
+	// input tracks whether the user left text in the agent's prompt box (see Draft).
+	inputMu sync.Mutex
+	input   inputState
+
 	mu     sync.Mutex
 	closed bool // true once Close has begun, or the reader goroutine has observed the process exit
 	// done closes once the reader goroutine has called onExit — Close's own "wait up to 2s for
@@ -235,10 +239,26 @@ func waitExitCode(cmd *exec.Cmd) (int, error) {
 	return -1, err
 }
 
+// Draft reports whether the user typed or pasted into the terminal since the last Enter, Ctrl-C or
+// Ctrl-U: text a full-screen agent keeps in its prompt box. Writes through Inject do not count.
+func (s *Session) Draft() bool {
+	s.inputMu.Lock()
+	defer s.inputMu.Unlock()
+	return s.input.draft
+}
+
 // Write sends b to the pty's master fd — a keystroke, a paste, a mouse report. A no-op, not an
 // error, once the session is closed (§4 rule 3): the renderer can have a keystroke in flight when
 // a shell exits, and turning that into a visible error would be noise.
 func (s *Session) Write(b []byte) error {
+	s.inputMu.Lock()
+	s.input.feed(b)
+	s.inputMu.Unlock()
+	return s.Inject(b)
+}
+
+// Inject is Write for input the app made up (a pasted message): it is not the user typing.
+func (s *Session) Inject(b []byte) error {
 	s.mu.Lock()
 	closed := s.closed
 	s.mu.Unlock()
@@ -477,6 +497,23 @@ func (r *Registry) Write(id string, b []byte) error {
 		return sess.Write(b)
 	}
 	return nil
+}
+
+// Inject is Write for input the app made up, which never counts as the user typing. A no-op for an id
+// with no live session.
+func (r *Registry) Inject(id string, b []byte) error {
+	if sess := r.get(id); sess != nil {
+		return sess.Inject(b)
+	}
+	return nil
+}
+
+// Draft reports whether id's session holds typed text no Enter submitted; false for no session.
+func (r *Registry) Draft(id string) bool {
+	if sess := r.get(id); sess != nil {
+		return sess.Draft()
+	}
+	return false
 }
 
 // Resize is a no-op for an id with no live session, for the same reason Write is.

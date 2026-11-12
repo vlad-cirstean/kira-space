@@ -120,6 +120,7 @@ func (b *TaskBoard) cancelRunOp(op *oplog.Op, runID string) {
 // mcpRecorder is agentmcp.Options.OnToolCall: it records each tools/call as an mcp op and hands the
 // handler a ctx carrying it, so nested git work lands under it.
 func (b *TaskBoard) mcpRecorder(ctx context.Context, c agentmcp.ToolCall) (context.Context, func(isError bool, text string, err error)) {
+	b.lease.book.Touch(leaseKeyOf(c.SessionID, c.RunID)) // any tool call is a lease heartbeat
 	o := oplog.Origin{Module: oplog.ModuleADE, Trigger: oplog.TriggerMCP, Label: "MCP " + c.Tool, TaskID: c.TaskID}
 	ctx = oplog.WithOrigin(ctx, o)
 	op := b.deps.Ops.Start(ctx, oplog.Meta{

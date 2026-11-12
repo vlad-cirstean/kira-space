@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { RoutedPrompt } from '@shared/domain/prompts';
-import { onBeforeUnmount, onMounted } from 'vue';
+import { useTimeout } from '@vueuse/core';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { useHandovers, useTaskArtifacts } from '../queries';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import AdeStageDialog from './AdeStageDialog.vue';
 
@@ -10,7 +12,33 @@ const props = defineProps<{ entry: RoutedPrompt; more: number }>();
 const emit = defineEmits<{ hide: [] }>();
 const store = useAdeStageDialogStore();
 
-onMounted(() => store.open({ taskId: props.entry.ref, routed: true }));
+// The dialog opens once, with the text and link strip in its first frame. The board snapshot can
+// trail the prompt, so the draft comes from the DB-only handovers read. Artifacts can be slow
+// (issue tracker): wait for them only briefly, never fail on them. Only that first open waits for
+// fresh data: a later board push refetches the reads and must not close and reseed the dialog
+// under the user's typed notes.
+const handovers = useHandovers(() => props.entry.ref);
+const artifacts = useTaskArtifacts(() => props.entry.ref);
+const ARTIFACTS_GRACE_MS = 400;
+const { ready: graceOver } = useTimeout(ARTIFACTS_GRACE_MS, { controls: true });
+const ready = computed(
+  () =>
+    handovers.isSuccess.value &&
+    !handovers.isFetching.value &&
+    (artifacts.isFetched.value || graceOver.value),
+);
+
+const opened = ref(false);
+watch(
+  ready,
+  (r) => {
+    if (!r || opened.value) return;
+    opened.value = true;
+    const seed = handovers.data.value?.handovers.find((h) => h.state === 'draft' && !h.dismissed);
+    store.open({ taskId: props.entry.ref, routed: true, seed });
+  },
+  { immediate: true },
+);
 onBeforeUnmount(() => {
   if (store.routed && store.taskId === props.entry.ref) store.close();
 });
@@ -22,5 +50,5 @@ async function notNow(): Promise<void> {
 </script>
 
 <template>
-  <AdeStageDialog routed @close="emit('hide')" @not-now="notNow" />
+  <AdeStageDialog v-if="opened" routed @close="emit('hide')" @not-now="notNow" />
 </template>

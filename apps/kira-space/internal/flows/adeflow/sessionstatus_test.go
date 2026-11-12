@@ -16,8 +16,9 @@ import (
 )
 
 // hook pipes one hook payload through the real shim with the terminal's launch env, as a running
-// claude does. curl returns after the listener answered, so the event is handled on return.
-func hook(t *testing.T, app *flowharness.App, terminalID, payload string) {
+// claude does. curl returns after the listener answered, so the event is handled on return. It
+// returns what the shim printed: the hook reply body, empty when the app has nothing to say.
+func hook(t *testing.T, app *flowharness.App, terminalID, payload string) string {
 	t.Helper()
 	_, env, _ := app.W.AgentHooks.Compose("claude", terminalID, "", "claude", "")
 	st := app.W.AgentHooks.Status("claude")
@@ -27,9 +28,13 @@ func hook(t *testing.T, app *flowharness.App, terminalID, payload string) {
 	cmd := exec.Command(filepath.Join(filepath.Dir(st.SettingsPath), "hook"))
 	cmd.Env = append(os.Environ(), env...)
 	cmd.Stdin = strings.NewReader(payload)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("hook shim: %v\n%s", err, out)
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("hook shim: %v\n%s%s", err, out, stderr.String())
 	}
+	return string(out)
 }
 
 func unseenAt(t *testing.T, app *flowharness.App, id string) int64 {

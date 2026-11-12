@@ -103,6 +103,26 @@ test('contract: stored pills carry their kind', async ({ relaunch }) => {
   await expect(detected.locator(t('ade-links-card-kind'))).toHaveCount(0);
 });
 
+test('the card copies the link and shows it copied', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, base());
+  await openDetails(page);
+  const feat = stored('feat/x');
+  const card = await openCard(page, 'feat/x');
+  await page.evaluate(() => {
+    const w = window as unknown as { __clipboard: string[] };
+    w.__clipboard = [];
+    navigator.clipboard.writeText = async (text: string) => {
+      w.__clipboard.push(text);
+    };
+  });
+  const copy = card.locator(t('ade-links-card-copy'));
+  await copy.click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { __clipboard: string[] }).__clipboard))
+    .toEqual([feat.url]);
+  await expect(copy.locator('.codicon-check')).toBeVisible();
+});
+
 const GROUP_NAME: Record<string, string> = {
   issue: 'Issues',
   changeRequest: 'Change requests',

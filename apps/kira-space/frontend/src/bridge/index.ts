@@ -20,6 +20,7 @@ import * as HostViewService from '@bindings/hostviewservice.js';
 import * as IssueTrackerService from '@bindings/issuetrackerservice.js';
 import * as KeepAwakeService from '@bindings/keepawakeservice.js';
 import * as LayoutService from '@bindings/layoutservice.js';
+import * as LeasesService from '@bindings/leasesservice.js';
 import * as LifecycleService from '@bindings/lifecycleservice.js';
 import * as LinkService from '@bindings/linkservice.js';
 import * as LlmPromptsService from '@bindings/llmpromptsservice.js';
@@ -609,6 +610,15 @@ const spaceControl = {
   agentPortCancel: (args: { token: string }): Promise<void> =>
     unwrap(AgentPortService.Cancel(args)).then(() => undefined),
   onAgentSettingsChanged: (cb: () => void): (() => void) => on(CHANNEL.agentSettingsChanged, cb),
+  leasesSnapshot: (): Promise<V2.LeaseSnapshot> =>
+    unwrap(LeasesService.Snapshot()).then((r) => trust<V2.LeaseSnapshot>(r)),
+  leasesSaveQueues: (args: V2.LeaseQueuesArgs): Promise<void> =>
+    unwrap(LeasesService.SaveQueues(args)),
+  leasesRequestRelease: (args: V2.LeaseQueueArgs): Promise<void> =>
+    unwrap(LeasesService.RequestRelease(args)),
+  leasesForceRelease: (args: V2.LeaseQueueArgs): Promise<void> =>
+    unwrap(LeasesService.ForceRelease(args)),
+  onAdeLeases: (cb: () => void): (() => void) => on(CHANNEL.adeLeases, cb),
   adeTaskWorkflows: (): Promise<V2.WorkflowsResult> =>
     unwrap(AdeTaskService.Workflows()).then((r) => trust<V2.WorkflowsResult>(r)),
   adeTaskRepos: (): Promise<V2.ReposResult> =>

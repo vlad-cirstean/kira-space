@@ -4,7 +4,7 @@ import { t } from '@theme/i18n';
 import { useDateFormat } from '@vueuse/core';
 import { useAutomationsModule } from '@workbench/automations/module';
 import TerminalHostView from '@workbench/terminal/TerminalHostView.vue';
-import { computed, ref } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { useMobileTerminalsStore } from '../../../state/mobileTerminals';
 import { useTerminalsStore } from '../../../state/terminals';
 import AdeRunSandboxBadge from '../panel/AdeRunSandboxBadge.vue';
@@ -23,6 +23,7 @@ const terminal = useAutomationsModule();
 const focus = useFocusSession();
 const tabs = useAdePanelTabsStore();
 const missing = ref(false);
+const host = useTemplateRef<InstanceType<typeof TerminalHostView>>('host');
 
 const held = computed(() => terminals.terminalSession(props.view.session.terminalId) !== undefined);
 const hold = computed(() => phones.holdOf(props.view.session.terminalId));
@@ -43,6 +44,13 @@ useMarkSeenOnView(
   held,
 );
 
+// Gives the keyboard to the terminal; nothing to focus while a phone holds it or another window does.
+function focusTerminal(): void {
+  if (!held.value || hold.value) return;
+  host.value?.focusTerminal();
+}
+defineExpose({ focusTerminal });
+
 async function show(): Promise<void> {
   missing.value = false;
   const shown = await focus
@@ -60,6 +68,7 @@ async function show(): Promise<void> {
     </div>
     <div v-if="held" class="relative flex min-h-0 flex-1 flex-col">
       <TerminalHostView
+        ref="host"
         :key="view.session.terminalId"
         class="min-h-0 flex-1"
         :tab="tab"

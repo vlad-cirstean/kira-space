@@ -14,7 +14,7 @@ const id = (name: string) => `[data-testid="${name}"]`;
 
 async function openPane(page: Page) {
   await openSettings(page);
-  await page.click(id('settings-section-Database MCP'));
+  await page.click(id('settings-section-Studio MCP API'));
 }
 
 // Contract dbmcp-api-default. Backend half: dbmcpflow TestApiAccessDefault, which sets the same rules and

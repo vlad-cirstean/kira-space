@@ -9,7 +9,9 @@ import (
 // ToolCall identifies one tools/call for Options.OnToolCall. Args is the raw arguments JSON.
 type ToolCall struct {
 	Tool, RunID, TaskID string
-	Args                []byte
+	// SessionID is the Kira session record behind the call, "" for a headless run.
+	SessionID string
+	Args      []byte
 }
 
 // recordCalls reports every tools/call to Options.OnToolCall with its grant's run and task.
@@ -22,6 +24,6 @@ func (s *Server) recordCalls(srv *mcp.Server) {
 		if c.Extra != nil {
 			g, _ = s.grant(c.Extra.TokenInfo)
 		}
-		return s.onCall(ctx, ToolCall{Tool: c.Tool, RunID: g.RunID, TaskID: g.TaskID, Args: c.Args})
+		return s.onCall(ctx, ToolCall{Tool: c.Tool, RunID: g.RunID, TaskID: g.TaskID, SessionID: g.SessionID, Args: c.Args})
 	})
 }

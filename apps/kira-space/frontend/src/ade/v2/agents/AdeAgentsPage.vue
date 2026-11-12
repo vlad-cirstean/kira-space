@@ -8,6 +8,7 @@ import { computed } from 'vue';
 import AdeContextPane from '../context/AdeContextPane.vue';
 import AdeSettingsPane from '../settings/AdeSettingsPane.vue';
 import { type AgentsTab, useAdeAgentsUiStore } from '../state/adeAgentsUi';
+import AdeLeasesPane from './AdeLeasesPane.vue';
 
 // Agent config: the Context and Settings editors as sub-tabs of one page.
 const agentsUi = useAdeAgentsUiStore();
@@ -22,6 +23,11 @@ const items = computed(() => [
     value: 'settings',
     label: t('common.module.settings.label'),
     testid: 'ade-agents-tab-settings',
+  },
+  {
+    value: 'leases',
+    label: t('space.ade.leases.tab.label'),
+    testid: 'ade-leases-tab',
   },
 ]);
 </script>
@@ -40,7 +46,8 @@ const items = computed(() => [
         </template>
       </PanelHeader>
       <AdeContextPane v-if="agentsUi.tab === 'context'" />
-      <AdeSettingsPane v-else />
+      <AdeSettingsPane v-else-if="agentsUi.tab === 'settings'" />
+      <AdeLeasesPane v-else />
     </div>
   </div>
 </template>

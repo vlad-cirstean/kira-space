@@ -21,7 +21,7 @@ Kira Space keeps its data in `~/.kira-space` on your machine. Agents run your ow
 
 ## MCP servers
 
-The database MCP server is off by default. It listens on loopback only and has its own bearer token. Each connection sets its access per mode. A write or an expensive query waits for your approval. Column masking and a table allow list limit what a client sees. See [Database MCP server](../../studio/database-mcp/).
+The Studio MCP server is off by default. It listens on loopback only and has its own bearer token. Each connection sets its access per mode. A write or an expensive query waits for your approval. Column masking and a table allow list limit what a client sees. See [Studio MCP server](../../studio/database-mcp/).
 
 ## Kubernetes
 

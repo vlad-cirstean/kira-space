@@ -1,9 +1,17 @@
 import { expect, test } from './fixtures';
-import { adeBoard, emitOpenSession, openPlan, openSessions } from './support/adeV2';
+import {
+  adeBoard,
+  adeFixture,
+  emitOpenSession,
+  openPlan,
+  openSessions,
+  openTask,
+} from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 import { dragSelect, longLog, longLogText, stubClipboard } from './support/logSpecs';
+import { emitWailsEvent } from './support/mockRuntime';
 
 // The Sessions tab of a task and of a branch, Take over and the terminal pane.
 
@@ -328,4 +336,34 @@ test('Show focuses the window holding the terminal, or says none does', async ({
   await expect(page.locator(t('ade-tui-missing'))).toHaveText(
     'This session’s terminal is not open in any window.',
   );
+});
+
+// A phone-style launch holds the TUI terminal in this window, so the Sessions tab shows it.
+test('opening the Sessions tab gives the keyboard to the agent terminal; reselecting does not', async ({
+  relaunch,
+}) => {
+  const { window: page } = await openPlan(relaunch);
+  await emitWailsEvent(page, IPC.mobileOpenLaunch, {
+    launch: adeFixture('launch'),
+    taskId: 'T_bill',
+    branchId: 'b_billdash',
+  });
+  const input = page.locator(`${t('repo-terminal-host')} textarea`);
+  await expect(input).toBeFocused();
+
+  // Away and back: the task's Sessions tab opens by click and the terminal takes the keys.
+  await openTask(page, 'T_cart');
+  await openTask(page, 'T_bill');
+  await expect(page.locator(t('repo-terminal-host'))).toHaveCount(0);
+  await page.locator(t('ade-panel-tab-sessions')).click();
+  await expect(page.locator(t('repo-terminal-host'))).toBeVisible();
+  await expect(input).toBeFocused();
+
+  // The tab is remembered now: selecting the task again shows the terminal without taking the keys.
+  const head = (id: string) =>
+    page.locator(`${t('ade-card')}[data-task-id="${id}"] ${t('ade-card-head')}`);
+  await head('T_cart').click();
+  await head('T_bill').click();
+  await expect(page.locator(t('repo-terminal-host'))).toBeVisible();
+  await expect(input).not.toBeFocused();
 });

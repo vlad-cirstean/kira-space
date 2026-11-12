@@ -24,6 +24,7 @@ import {
   shotFolder,
   shotLocation,
   stepSnapshot,
+  threeSteps,
   viewState,
 } from './support/proof';
 
@@ -51,12 +52,6 @@ const setViewStates = (log: { channel: string; args: unknown }[]) =>
 
 // biome-ignore lint/suspicious/noExplicitAny: logged bridge args
 type Json = Record<string, any>;
-
-const threeSteps = () => [
-  stepSnapshot(SESSION_ID, 1, 1, 'table'),
-  stepSnapshot(SESSION_ID, 1, 2, 'document'),
-  stepSnapshot(SESSION_ID, 1, 3, 'keyvalue'),
-];
 
 test('the explanation and summary show in full at the larger size', async ({
   relaunch,
@@ -370,8 +365,24 @@ test('the menu shows and changes the save location', async ({ relaunch, uiServer
 
   const more = page.locator('[data-testid="proof-shot-more"]');
   const location = page.locator('[data-testid="proof-shot-location"]');
+  // Block must not clip, uppercase, or overprint the item below it.
+  const expectLocationLayout = async (): Promise<void> => {
+    const layout = await location.evaluate((el) => {
+      const choose = document.querySelector('[data-testid="proof-shot-location-choose"]');
+      return {
+        clipped: el.scrollHeight > el.clientHeight + 1,
+        transform: getComputedStyle(el).textTransform,
+        bottom: el.getBoundingClientRect().bottom,
+        chooseTop: choose?.getBoundingClientRect().top ?? 0,
+      };
+    });
+    expect(layout.clipped).toBe(false);
+    expect(layout.transform).toBe('none');
+    expect(layout.bottom).toBeLessThanOrEqual(layout.chooseTop);
+  };
   await more.click();
   await expect(location).toContainText(String(shotLocation().path));
+  await expectLocationLayout();
   await expect(location).toContainText('Default');
   await expect(page.locator('[data-testid="proof-shot-location-reset"]')).toHaveCount(0);
 
@@ -381,6 +392,7 @@ test('the menu shows and changes the save location', async ({ relaunch, uiServer
     .toHaveLength(1);
   await more.click();
   await expect(location).toContainText(String(shotLocation(true).path));
+  await expectLocationLayout();
   await page.locator('[data-testid="proof-shot-location-reset"]').click();
   await expect
     .poll(() => control.log().filter((c) => c.channel === IPC.proofResetShotLocation))
@@ -619,12 +631,10 @@ test('a ready prompt opens the proof window, and a pushed select switches sessio
     ],
   });
   await emitPrompts(page, [routed('proof', SESSION_ID, { title: 'Proof ready: Checkout fix' })]);
-  await expect(page.locator('[data-testid="proof-ready-dialog"]')).toContainText(
-    'Proof ready: Checkout fix',
-  );
-  await expect(page.locator('[data-testid="proof-ready-task"]')).toHaveText(
-    'For task “Fix checkout”',
-  );
+  await expect(
+    page.locator('[data-testid="proof-ready-dialog"] [data-slot="dialog-title"]'),
+  ).toHaveText('Fix checkout');
+  await expect(page.locator('[data-testid="proof-ready-proof"]')).toHaveText('Checkout fix');
   await page.locator('[data-testid="proof-ready-open"]').click();
   await expect
     .poll(() =>
@@ -642,11 +652,13 @@ test('a ready prompt opens the proof window, and a pushed select switches sessio
   await expect(page.locator('[data-testid="proof-title"]')).toHaveText('Second run');
 });
 
-test('a ready prompt for a session with no task shows no task line', async ({ relaunch }) => {
+test('a ready prompt for a session with no task is titled by the entry', async ({ relaunch }) => {
   const { window: page } = await relaunch({
     control: [{ channel: IPC.proofSessions, response: sessions() }],
   });
   await emitPrompts(page, [routed('proof', SESSION_ID, { title: 'Proof ready: Checkout fix' })]);
-  await expect(page.locator('[data-testid="proof-ready-dialog"]')).toBeVisible();
-  await expect(page.locator('[data-testid="proof-ready-task"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="proof-ready-dialog"]')).toContainText(
+    'Proof ready: Checkout fix',
+  );
+  await expect(page.locator('[data-testid="proof-ready-proof"]')).toHaveCount(0);
 });

@@ -109,7 +109,7 @@ const refExample = '$' + '{secret:name}';
         </Button>
         <Button
           v-if="row.set"
-          variant="dialog"
+          variant="dialog-danger"
           size="kira-lg"
           data-testid="ade-settings-secret-delete"
           @click="remove(row)"

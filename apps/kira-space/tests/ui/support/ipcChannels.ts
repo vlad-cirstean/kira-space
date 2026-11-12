@@ -360,6 +360,12 @@ export const IPC = {
   adeTaskUpdatesChanged: 'kira:adetask:updates',
   adeTaskDbAuditChanged: 'kira:adetask:dbAudit',
   adeTaskOpenSession: 'kira:adetask:openSession',
+  // P620: resource leases; the snapshot is the panel's read, the Changed push is payload-free.
+  leasesSnapshot: 'kira:ade:leases:snapshot',
+  leasesSaveQueues: 'kira:ade:leases:saveQueues',
+  leasesRequestRelease: 'kira:ade:leases:requestRelease',
+  leasesForceRelease: 'kira:ade:leases:forceRelease',
+  adeLeasesChanged: 'kira:ade:leases',
 
   // P201 Part 2: the Memory module's bound surface; memoryChanged is a push channel, no FQN entry.
   memorySearch: 'kira:memory:search',
@@ -585,6 +591,11 @@ export const IPC = {
   proofSaveJpegTo: 'kira:proof:saveJpegTo',
   proofCloseShotFolder: 'kira:proof:closeShotFolder',
   proofRevealShotFolder: 'kira:proof:revealShotFolder',
+  proofShotClipboard: 'kira:proof:shotClipboard',
+  proofOpenShotClip: 'kira:proof:openShotClip',
+  proofAddShotClip: 'kira:proof:addShotClip',
+  proofCommitShotClip: 'kira:proof:commitShotClip',
+  proofCloseShotClip: 'kira:proof:closeShotClip',
   proofChanged: 'kira:proof:changed',
   proofSelect: 'kira:proof:select',
   // P112: every API-client mutation broadcasts the scopes it touched, Emit'd (not EmitTo) —

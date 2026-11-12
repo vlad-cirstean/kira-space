@@ -1,0 +1,256 @@
+{
+  "HostViewService.ChangeRequest": {
+    "compose": {
+      "maxBodyBytes": 65536,
+      "replyKinds": [
+        "code"
+      ]
+    },
+    "detail": {
+      "assignees": [
+        {
+          "login": "bob",
+          "name": "Bob B"
+        }
+      ],
+      "author": {
+        "login": "alice",
+        "name": "Alice A"
+      },
+      "baseRef": "main",
+      "body": "# Summary\n\nLimits logins.\n\n<!-- template comment -->\n![diagram](https://example.com/d.png)\n\n<script>alert(1)</script>",
+      "checks": [
+        {
+          "detail": "Build ok",
+          "name": "build",
+          "required": true,
+          "state": "success",
+          "url": "https://ci.example/build/1"
+        },
+        {
+          "detail": "3 errors",
+          "name": "lint",
+          "state": "failure"
+        },
+        {
+          "name": "e2e",
+          "required": true,
+          "state": "pending"
+        },
+        {
+          "name": "deploy",
+          "state": "skipped"
+        },
+        {
+          "name": "docs",
+          "state": "neutral"
+        },
+        {
+          "name": "action",
+          "state": "failure"
+        },
+        {
+          "detail": "boom",
+          "name": "ci/legacy",
+          "required": true,
+          "state": "error",
+          "url": "https://legacy.example/1"
+        },
+        {
+          "name": "ci/ok",
+          "state": "success"
+        },
+        {
+          "name": "ci/wait",
+          "state": "pending"
+        }
+      ],
+      "checksState": "FAILURE",
+      "checksTruncated": true,
+      "createdAt": 1792310400000,
+      "headOwner": "acme",
+      "headRef": "feature/login",
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "labels": [
+        {
+          "color": "d73a4a",
+          "name": "bug"
+        },
+        {
+          "name": "odd"
+        }
+      ],
+      "mergeable": "conflicting",
+      "nodeId": "PR_kwDOAAA",
+      "number": 7,
+      "reviewDecision": "CHANGES_REQUESTED",
+      "reviewers": [
+        {
+          "person": {
+            "login": "carol",
+            "name": "Carol C"
+          },
+          "state": "changesRequested"
+        },
+        {
+          "person": {
+            "login": "erin"
+          },
+          "state": "approved"
+        },
+        {
+          "person": {
+            "login": "platform",
+            "name": "Platform"
+          },
+          "state": "pending",
+          "team": true
+        },
+        {
+          "person": {
+            "login": "dave"
+          },
+          "state": "pending"
+        }
+      ],
+      "state": "open",
+      "stats": {
+        "additions": 120,
+        "commits": 3,
+        "deletions": 14,
+        "files": 6
+      },
+      "threads": [
+        {
+          "comments": [
+            {
+              "author": {
+                "login": "bob",
+                "name": "Bob B"
+              },
+              "body": "Looks **good**.",
+              "createdAt": 1792314000000,
+              "id": "IC_1",
+              "updatedAt": 1792314300000,
+              "url": "https://github.com/acme/api/pull/7#issuecomment-1"
+            }
+          ],
+          "id": "IC_1",
+          "kind": "comment"
+        },
+        {
+          "comments": [
+            {
+              "author": {
+                "login": "carol",
+                "name": "Carol C"
+              },
+              "body": "Please fix lint.",
+              "createdAt": 1792324800000,
+              "id": "R_1",
+              "url": "https://github.com/acme/api/pull/7#pullrequestreview-1"
+            }
+          ],
+          "id": "R_1",
+          "kind": "review",
+          "reviewState": "changesRequested"
+        },
+        {
+          "comments": [
+            {
+              "author": {
+                "login": "carol",
+                "name": "Carol C"
+              },
+              "body": "Use a constant.",
+              "createdAt": 1792324830000,
+              "id": "RC_1",
+              "url": "https://github.com/acme/api/pull/7#discussion_r1"
+            }
+          ],
+          "commentsTruncated": true,
+          "id": "RT_1",
+          "kind": "code",
+          "line": 42,
+          "path": "auth/login.go"
+        },
+        {
+          "comments": [
+            {
+              "author": {
+                "login": "bob",
+                "name": "Bob B"
+              },
+              "body": "Nit.",
+              "createdAt": 1792328400000,
+              "id": "RC_2"
+            }
+          ],
+          "id": "RT_2",
+          "kind": "code",
+          "line": 10,
+          "outdated": true,
+          "path": "auth/limit.go",
+          "resolved": true
+        },
+        {
+          "comments": [
+            {
+              "author": {
+                "login": "ghost"
+              },
+              "body": "Thanks",
+              "createdAt": 1792400400000,
+              "id": "IC_2",
+              "url": "https://github.com/acme/api/pull/7#issuecomment-2"
+            }
+          ],
+          "id": "IC_2",
+          "kind": "comment"
+        },
+        {
+          "comments": [
+            {
+              "author": {
+                "login": "erin"
+              },
+              "body": "",
+              "createdAt": 1792411200000,
+              "id": "R_3"
+            }
+          ],
+          "id": "R_3",
+          "kind": "review",
+          "reviewState": "approved"
+        }
+      ],
+      "threadsTruncated": true,
+      "title": "Add login rate limit",
+      "updatedAt": 1792490400000,
+      "url": "https://github.com/acme/api/pull/7"
+    },
+    "kind": "ok",
+    "status": {
+      "host": "github.com",
+      "kind": "ok"
+    }
+  },
+  "HostViewService.WindowTarget": {
+    "host": {
+      "changeRequest": "Pull request",
+      "changeRequestNoun": "pull request",
+      "changeRequestShort": "PR",
+      "cli": "GitHub CLI (gh)",
+      "id": "github",
+      "label": "GitHub"
+    },
+    "kind": "changeRequest",
+    "number": 7,
+    "provider": "github",
+    "repo": "acme/api",
+    "url": "https://github.com/acme/api/pull/7"
+  },
+  "args:GitHostService.OpenChangeRequestURL": {
+    "url": "https://github.com/acme/api/pull/7"
+  }
+}

@@ -3,6 +3,7 @@ package hooks
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net"
 	"net/http"
 	"os"
@@ -87,6 +88,16 @@ func (r *recordingEvents) all() []harness.AgentEvent {
 	return out
 }
 
+// wait polls until n events arrived: OnEvent runs after the reply, so it can trail the response.
+func (r *recordingEvents) wait(t *testing.T, n int) []harness.AgentEvent {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for len(r.all()) < n && time.Now().Before(deadline) {
+		time.Sleep(2 * time.Millisecond)
+	}
+	return r.all()
+}
+
 // TestValidRequestDeliversEvent is §19.2 case 1: a valid POST with a token and X-Kira-Terminal
 // delivers an Event carrying the header's terminal id and the body's hook_event_name/tool_name.
 func TestValidRequestDeliversEvent(t *testing.T) {
@@ -101,7 +112,7 @@ func TestValidRequestDeliversEvent(t *testing.T) {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
 
-	events := rec.all()
+	events := rec.wait(t, 1)
 	if len(events) != 1 {
 		t.Fatalf("len(events) = %d, want 1", len(events))
 	}
@@ -196,7 +207,7 @@ func TestDroppedFieldsNeverReachEvent(t *testing.T) {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
 
-	events := rec.all()
+	events := rec.wait(t, 1)
 	if len(events) != 1 {
 		t.Fatalf("len(events) = %d, want 1", len(events))
 	}
@@ -264,7 +275,7 @@ func TestMessageTruncatedOnRuneBoundary(t *testing.T) {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
 
-	events := rec.all()
+	events := rec.wait(t, 1)
 	if len(events) != 1 {
 		t.Fatalf("len(events) = %d, want 1", len(events))
 	}
@@ -350,4 +361,42 @@ func TestShimInertWithoutSessionEnv(t *testing.T) {
 	if n := hits.Load(); n != 1 {
 		t.Fatalf("shim with session env reached the server %d time(s), want 1", n)
 	}
+}
+
+// TestReplyIsSentBeforeOnEventRuns: a slow OnEvent must not delay the answer the agent's hook waits
+// for, and a Stop block still reaches the agent.
+func TestReplyIsSentBeforeOnEventRuns(t *testing.T) {
+	release := make(chan struct{})
+	entered := make(chan struct{})
+	s, err := New(harness.HookOptions{
+		Reply:   func(harness.AgentEvent) harness.HookReply { return harness.HookReply{Block: "lease granted"} },
+		OnEvent: func(harness.AgentEvent) { close(entered); <-release },
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	t.Cleanup(func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	})
+
+	resp := postHook(t, clientFor(s), s.ln.Token, "term-1", `{"hook_event_name":"Stop"}`)
+	defer resp.Body.Close()
+	var body struct{ Decision, Reason string }
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode reply: %v", err)
+	}
+	if body.Decision != "block" || body.Reason != "lease granted" {
+		t.Fatalf("reply = %+v, want the block", body)
+	}
+	select {
+	case <-entered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("OnEvent never ran")
+	}
+	close(release)
 }

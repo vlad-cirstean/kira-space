@@ -23,7 +23,7 @@ const props = defineProps<{
 }>();
 
 const container = ref<HTMLElement | null>(null);
-const { session, footerText } = useTerminalMount({
+const { session, footerText, focusTerminal } = useTerminalMount({
   tabId: props.tab.id,
   tabState: props.tab.state,
   container,
@@ -32,6 +32,7 @@ const { session, footerText } = useTerminalMount({
   openTerminalSession: props.deps.openTerminalSession,
   resizeTerminal: props.deps.resizeTerminal,
 });
+defineExpose({ focusTerminal });
 </script>
 
 <template>

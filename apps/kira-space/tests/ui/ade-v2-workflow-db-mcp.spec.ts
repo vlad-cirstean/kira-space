@@ -78,10 +78,10 @@ test('a manual step shows the option only with a session; a new session starts w
   expect(stepOf(out, 'spec')).toMatchObject({ session: true, dbMcp: true });
 });
 
-test('the Database MCP settings say step sessions get their own access', async ({ relaunch }) => {
+test('the Studio MCP settings say step sessions get their own access', async ({ relaunch }) => {
   const { window: page } = await relaunch();
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP"]');
   await expect(page.locator(t('dbmcp-sessions-hint'))).toHaveText(
     'Workflow steps with Kira database tools on get their own access, even with this off.',
   );

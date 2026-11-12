@@ -90,6 +90,8 @@ type Action struct {
 	Emit string `json:"emit,omitempty"`
 	// WaitFile blocks until the path exists.
 	WaitFile string `json:"waitFile,omitempty"`
+	// MCPAfter calls tools once WaitFile exists, as a session that acts again later in its life.
+	MCPAfter []MCPCall `json:"mcpAfter,omitempty"`
 	// WaitBefore blocks until the path exists, before the shell and MCP calls run.
 	WaitBefore string `json:"waitBefore,omitempty"`
 	// Stderr replaces the "fail" behaviour's message (a CLI error line such as a sign-in failure).
@@ -294,6 +296,7 @@ func pickAction(scen Scenario, dir, repo, cwd string, args []string) pickedActio
 	}
 	stem := filepath.Join(dir, fmt.Sprintf("%s-%d", repo, n))
 	writeFile(stem+".cwd", []byte(cwd))
+	writeFile(stem+".pid", []byte(strconv.Itoa(os.Getpid())))
 	recordEnv(stem)
 	for i, cfg := range argsAfter(args, "--mcp-config") {
 		if raw, err := os.ReadFile(cfg); err == nil {
@@ -343,6 +346,9 @@ func runSideEffects(action Action, dir, cwd string, args []string) (code int, do
 			}
 			time.Sleep(50 * time.Millisecond)
 		}
+	}
+	if code, done := runMCPCalls(Action{MCP: action.MCPAfter}, dir, args); done {
+		return code, true
 	}
 	if action.Exit != nil {
 		return *action.Exit, true

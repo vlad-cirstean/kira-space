@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import InlineState from '@theme/components/InlineState.vue';
 import { t } from '@theme/i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useArchivedTask } from '../readQueries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
@@ -46,6 +46,24 @@ const current = computed(
   () =>
     running.value.find((v) => v.session.id === tabs.sessionOf(props.taskId)) ?? running.value[0],
 );
+const pane = useTemplateRef<InstanceType<typeof AdeTuiPane>>('pane');
+const scope = computed(() => props.branchId ?? props.taskId);
+
+// A request made when the Sessions tab opens or a session is picked gives the keyboard to the
+// running terminal. Only requests move focus: reselecting a task with the tab already open leaves it.
+watch(
+  [current, () => tabs.agentFocus],
+  async ([cur]) => {
+    if (!cur || cur.headless || props.archived || !tabs.takeAgentFocus(scope.value)) return;
+    await nextTick();
+    pane.value?.focusTerminal();
+  },
+  { flush: 'post', immediate: true },
+);
+function pick(id: string): void {
+  tabs.selectSession(props.taskId, id);
+  tabs.requestAgentFocus(scope.value);
+}
 const menuOpen = ref(false);
 const revealed = ref<string | null>(null);
 
@@ -82,7 +100,7 @@ watch(menuOpen, (open) => {
         v-if="running.length"
         :views="running"
         :selected-id="current?.session.id ?? null"
-        @select="(id) => tabs.selectSession(props.taskId, id)"
+        @select="pick"
       />
       <AdeSessionsMenu
         v-model:open="menuOpen"
@@ -98,7 +116,7 @@ watch(menuOpen, (open) => {
     </div>
     <template v-if="current">
       <AdeHeadlessPane v-if="current.headless" :key="current.session.id" :view="current" />
-      <AdeTuiPane v-else :key="current.session.id" :view="current" />
+      <AdeTuiPane v-else ref="pane" :key="current.session.id" :view="current" />
     </template>
     <AdeSessionsList v-else-if="archived && stopped.length" inline archived :stopped="stopped" />
     <InlineState v-else kind="empty" class="flex-1 p-3" data-testid="ade-sessions-empty">{{

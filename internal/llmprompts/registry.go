@@ -974,6 +974,42 @@ var (
 	_ = arg(HeadlessToolRenameBranch.id, "renameRemote", spaceApp, NextCall, `true proposes renaming the remote branch too. The user decides. Default false.`, NoVars{})
 )
 
+// HeadlessToolChangeBranch describes the change_branch tool.
+var HeadlessToolChangeBranch = define(Entry{
+	ID: "headless.tool.change_branch", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "change_branch",
+	Default: `Ask the user to approve pointing your task's branch at another existing local branch; waits for the answer. Use when the task folder holds a different branch than the task shows, or you must work on another existing branch. The folder and sessions stay; git switch runs there if needed. Never creates a branch: use request_branches. Outcome: changed, denied, failed or timeout. Refused for main, integration and checked-out-elsewhere branches, and a dirty folder that needs a switch.`,
+}, NoVars{})
+
+var (
+	_ = arg(HeadlessToolChangeBranch.id, "repo", spaceApp, NextCall, `Task repo: nickname, name or code repo id.`, NoVars{})
+	_ = arg(HeadlessToolChangeBranch.id, "from", spaceApp, NextCall, `Task branch to re-point.`, NoVars{})
+	_ = arg(HeadlessToolChangeBranch.id, "to", spaceApp, NextCall, `Existing local branch to work on instead.`, NoVars{})
+)
+
+// HeadlessToolAcquireLease describes the acquire_lease tool.
+var HeadlessToolAcquireLease = define(Entry{
+	ID: "headless.tool.acquire_lease", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "acquire_lease",
+	Default: `Take a named lease on a shared resource the user configured, such as a port, the full test suite, push or merge. Never blocks: returns held, or queued with your position. The lease is keyed to your session, so calling again keeps your place. When it frees, Kira messages your session; a headless run calls acquire_lease or lease_status again to check. Call release_lease when done. A lease ends with the session, or after 10 minutes of silence.`,
+}, NoVars{})
+
+var _ = arg(HeadlessToolAcquireLease.id, "queue", spaceApp, NextCall, `Lease queue name. lease_status lists them.`, NoVars{})
+
+// HeadlessToolReleaseLease describes the release_lease tool.
+var HeadlessToolReleaseLease = define(Entry{
+	ID: "headless.tool.release_lease", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "release_lease",
+	Default: `Release a lease you hold, or leave its queue. Call it as soon as you finish with the resource. Without queue: every lease you hold or wait for.`,
+}, NoVars{})
+
+var _ = arg(HeadlessToolReleaseLease.id, "queue", spaceApp, NextCall, `Lease queue name. Omit for all.`, NoVars{})
+
+// HeadlessToolLeaseStatus describes the lease_status tool.
+var HeadlessToolLeaseStatus = define(Entry{
+	ID: "headless.tool.lease_status", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "lease_status",
+	Default: `Show lease queues with their holder and waiters in grant order, and which are yours. Read only. Also delivers any lease notice waiting for you.`,
+}, NoVars{})
+
+var _ = arg(HeadlessToolLeaseStatus.id, "queue", spaceApp, NextCall, `Lease queue name. Omit for all.`, NoVars{})
+
 // HeadlessToolFetchRemote describes the fetch_remote tool.
 var HeadlessToolFetchRemote = define(Entry{
 	ID: "headless.tool.fetch_remote", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "fetch_remote",

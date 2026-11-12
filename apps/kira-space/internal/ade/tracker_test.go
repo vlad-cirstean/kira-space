@@ -595,3 +595,136 @@ func TestTracker_ExpiredPendingIntentReleasesItsRecord(t *testing.T) {
 		t.Fatalf("OnStopped calls = %v, want only %s", stopped, abandoned.RecordID)
 	}
 }
+
+func TestTracker_WorkingNeedsAnOpenToolCall(t *testing.T) {
+	tr, _, live, clock := newTestTracker(t)
+	res := composeAndSpawn(t, tr, live, PrepareArgs{TaskID: "t1", Cwd: "/repo"})
+	sessions, _ := listSessions(tr)
+	recordID := sessions[0].ID
+	ev := func(kind harness.EventKind) {
+		tr.HandleEvent(harness.AgentEvent{TerminalID: res.TerminalID, Event: kind, ToolName: "Bash"})
+	}
+	const ceiling = 30 * time.Minute
+
+	// Esc after a prompt runs no Stop hook: the turn stays busy but silent, so it is not working.
+	ev(harness.EventPrompt)
+	if tr.Working(recordID, ceiling) {
+		t.Fatal("a prompt with no tool call counts as working")
+	}
+	ev(harness.EventToolStart)
+	clock.advance(20 * time.Minute)
+	if !tr.Working(recordID, ceiling) {
+		t.Fatal("a long tool call does not count as working")
+	}
+	clock.advance(11 * time.Minute)
+	if tr.Working(recordID, ceiling) {
+		t.Fatal("a tool call silent past the ceiling still counts as working")
+	}
+	ev(harness.EventToolStart)
+	ev(harness.EventToolEnd)
+	if !tr.Working(recordID, ceiling) {
+		t.Fatal("one of two parallel tool calls ended and the other is not working")
+	}
+	ev(harness.EventToolEnd)
+	if tr.Working(recordID, ceiling) {
+		t.Fatal("working after every tool call ended")
+	}
+}
+
+func TestTracker_SendIfIdleHoldsBackOverADraft(t *testing.T) {
+	tr, _, live, clock := newTestTracker(t)
+	res := composeAndSpawn(t, tr, live, PrepareArgs{TaskID: "t1", Cwd: "/repo"})
+	sessions, _ := listSessions(tr)
+	recordID := sessions[0].ID
+	draft := false
+	tr.deps.HasDraft = func(string) bool { return draft }
+
+	stop := func() {
+		clock.advance(time.Second)
+		tr.HandleEvent(harness.AgentEvent{TerminalID: res.TerminalID, Event: harness.EventTurnEnd})
+	}
+	// Text typed while the turn ran and left unsent still waits when the turn ends.
+	draft = true
+	stop()
+	if sent, err := tr.SendIfIdle(recordID, "hi"); sent || err != nil {
+		t.Fatalf("SendIfIdle over a draft = %v, %v; want held back", sent, err)
+	}
+	if len(live.logs) != 0 {
+		t.Fatalf("terminal written despite a draft: %v", live.logs)
+	}
+	// Once the draft was submitted or cleared the idle turn takes the message.
+	draft = false
+	if sent, err := tr.SendIfIdle(recordID, "hi"); !sent || err != nil {
+		t.Fatalf("SendIfIdle without a draft = %v, %v; want sent", sent, err)
+	}
+}
+
+func TestTracker_WorkingAtAPermissionPrompt(t *testing.T) {
+	tr, _, live, clock := newTestTracker(t)
+	res := composeAndSpawn(t, tr, live, PrepareArgs{TaskID: "t1", Cwd: "/repo"})
+	sessions, _ := listSessions(tr)
+	recordID := sessions[0].ID
+	ev := func(kind harness.EventKind, id string, needsInput bool) {
+		tr.HandleEvent(harness.AgentEvent{TerminalID: res.TerminalID, Event: kind, ToolName: "Bash", ToolUseID: id, NeedsInput: needsInput})
+	}
+	const ceiling = 30 * time.Minute
+
+	ev(harness.EventToolStart, "a", false)
+	ev(harness.EventNotification, "", true)
+	clock.advance(12 * time.Minute)
+	if !tr.Working(recordID, ceiling) {
+		t.Fatal("a holder waiting at a permission prompt does not count as working")
+	}
+	clock.advance(19 * time.Minute)
+	if tr.Working(recordID, ceiling) {
+		t.Fatal("an abandoned permission prompt still counts as working past the ceiling")
+	}
+	// A question prompt with no open tool call is not a tool run.
+	ev(harness.EventPrompt, "", false)
+	ev(harness.EventNotification, "", true)
+	if tr.Working(recordID, ceiling) {
+		t.Fatal("a prompt with no open tool call counts as working")
+	}
+}
+
+func TestTracker_WorkingPairsToolCallsByID(t *testing.T) {
+	tr, _, live, _ := newTestTracker(t)
+	res := composeAndSpawn(t, tr, live, PrepareArgs{TaskID: "t1", Cwd: "/repo"})
+	sessions, _ := listSessions(tr)
+	recordID := sessions[0].ID
+	ev := func(kind harness.EventKind, id string) {
+		tr.HandleEvent(harness.AgentEvent{TerminalID: res.TerminalID, Event: kind, ToolName: "Bash", ToolUseID: id})
+	}
+	const ceiling = 30 * time.Minute
+
+	ev(harness.EventToolStart, "a")
+	ev(harness.EventToolStart, "b")
+	ev(harness.EventToolEnd, "b")
+	ev(harness.EventToolEnd, "b") // a repeated end must not close "a"
+	if !tr.Working(recordID, ceiling) {
+		t.Fatal("call a is open, but the record is not working")
+	}
+	ev(harness.EventToolEnd, "a")
+	if tr.Working(recordID, ceiling) {
+		t.Fatal("working after every id'd call ended")
+	}
+}
+
+func TestTracker_StopClearsTurnState(t *testing.T) {
+	tr, _, live, _ := newTestTracker(t)
+	res := composeAndSpawn(t, tr, live, PrepareArgs{TaskID: "t1", Cwd: "/repo"})
+	sessions, _ := listSessions(tr)
+	recordID := sessions[0].ID
+	tr.SetHookReplyHandler(func(string, harness.AgentEvent) harness.HookReply { return harness.HookReply{Block: "x"} })
+	stop := harness.AgentEvent{TerminalID: res.TerminalID, Event: harness.EventTurnEnd}
+	tr.HookReply(stop)
+	tr.HandleEvent(harness.AgentEvent{TerminalID: res.TerminalID, Event: harness.EventToolStart, ToolName: "Bash"})
+	if err := tr.Stop(recordID); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+	if tr.suppressIdle[recordID] || len(tr.turn) != 0 || len(tr.tools) != 0 {
+		t.Fatalf("turn state survived Stop: suppress=%v turn=%v tools=%v", tr.suppressIdle, tr.turn, tr.tools)
+	}
+}

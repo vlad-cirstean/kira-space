@@ -10,7 +10,7 @@ import { useClusters, useSetClusterMcp } from '../../kubernetes/queries';
 import type { KubeCluster } from '../../kubernetes/wire';
 import McpExposureRow from './McpExposureRow.vue';
 
-// Which kubeconfig clusters an agent on the Database MCP server may list and read. The switch flips
+// Which kubeconfig clusters an agent on the Studio MCP server may list and read. The switch flips
 // the cluster's `enabled`; description and approval mode are edited in the dialog (Edit).
 const clusters = useClusters();
 const list = computed(() => clusters.data.value?.clusters ?? []);

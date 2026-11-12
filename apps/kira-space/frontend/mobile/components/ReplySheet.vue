@@ -81,7 +81,7 @@ async function send(): Promise<void> {
         >
         <Button
           size="touch"
-          variant="dialog-primary"
+          variant="dialog-approve"
           class="flex-1"
           :pending="writes.sendReply.isPending.value"
           :disabled="!message.trim()"

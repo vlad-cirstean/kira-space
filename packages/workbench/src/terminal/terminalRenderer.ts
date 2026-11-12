@@ -231,6 +231,14 @@ export function fitTerminal(tabId: string): { cols: number; rows: number } | nul
   return { cols: attached.term.cols, rows: attached.term.rows };
 }
 
+/** Gives tabId's terminal the keyboard; false when no terminal is attached for it. */
+export function focusTerminal(tabId: string): boolean {
+  const attached = byTabId.get(tabId);
+  if (!attached) return false;
+  attached.term.focus();
+  return true;
+}
+
 /** The last `lines` non-empty-trailing rows of tabId's terminal, '' when it has none. */
 export function tailTerminal(tabId: string, lines: number): string {
   const attached = byTabId.get(tabId);

@@ -29,11 +29,22 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// blameLine.ts's own DEBOUNCE_MS (150) is private — wait comfortably past it rather than importing
-// or duplicating the literal.
-async function pastDebounce(): Promise<void> {
-  await sleep(180);
+// Retries an assertion until it holds. Fixed sleeps raced the controller's 150 ms debounce on a
+// loaded CI runner; waiting on the observable outcome has no timing margin to lose.
+async function eventually(assertion: () => void, timeoutMs = 3000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      assertion();
+      return;
+    } catch (err) {
+      if (Date.now() >= deadline) throw err;
+      await sleep(5);
+    }
+  }
 }
+
+const callCount = (calls: readonly unknown[], n: number) => () => expect(calls).toHaveLength(n);
 
 function fakeCursor() {
   let position: { lineNumber: number } | null = null;
@@ -86,6 +97,10 @@ function fakeTransport(): {
     } else if (method === 'RepoOpen') {
       const { path } = (arg as { params: { path: string } }).params;
       promise = Promise.resolve({ kind: 'ok', repo: { repoId: path } }) as typeof promise;
+    } else if (method === 'ResetWindow') {
+      // The window reset is memoized per module graph; whether it already ran depends on which
+      // specs ran earlier, so the fake must answer it rather than rely on that order.
+      promise = Promise.resolve({}) as typeof promise;
     } else if (method === 'RepoClose') {
       promise = Promise.resolve({}) as typeof promise;
     } else {
@@ -119,15 +134,15 @@ describe('blameLine.ts createBlameLineController', () => {
     });
 
     cursor.moveTo(5);
-    await pastDebounce();
+    await eventually(callCount(calls, 1));
     expect(calls).toHaveLength(1);
     cursor.moveTo(5); // same line, request already in flight — must not cancel it (5a)
 
     calls[0]?.resolve(result('aaa'));
-    await sleep(10);
-
+    await eventually(() =>
+      expect(controller.state.value).toEqual({ kind: 'resolved', line: 5, ...result('aaa') }),
+    );
     expect(calls).toHaveLength(1);
-    expect(controller.state.value).toEqual({ kind: 'resolved', line: 5, ...result('aaa') });
     controller.dispose();
   });
 
@@ -142,16 +157,18 @@ describe('blameLine.ts createBlameLineController', () => {
     });
 
     cursor.moveTo(1);
-    await pastDebounce();
+    await eventually(callCount(calls, 1));
     expect(calls).toHaveLength(1);
     cursor.moveTo(2); // cancels line 1's in-flight request
-    await pastDebounce();
+    await eventually(callCount(calls, 2));
     expect(calls).toHaveLength(2);
 
     calls[1]?.resolve(result('bbb')); // line 2 resolves first
-    await sleep(10);
+    await eventually(() =>
+      expect(controller.state.value).toEqual({ kind: 'resolved', line: 2, ...result('bbb') }),
+    );
     calls[0]?.resolve(result('aaa')); // line 1's late response arrives after
-    await sleep(10);
+    await sleep(20); // absence check: the stale response must change nothing
 
     expect(controller.state.value).toEqual({ kind: 'resolved', line: 2, ...result('bbb') });
     controller.dispose();
@@ -168,24 +185,27 @@ describe('blameLine.ts createBlameLineController', () => {
     });
 
     cursor.moveTo(3);
-    await pastDebounce();
+    await eventually(callCount(calls, 1));
     expect(calls).toHaveLength(1);
     cursor.moveTo(4); // aborts line 3's request (its AbortController.signal.aborted is now true)
     // The transport eventually reports the cancellation as a rejection — 5b: since the request
     // was aborted, this must NOT be cached as a resolved miss.
     calls[0]?.reject(new DOMException('aborted', 'AbortError'));
-    await pastDebounce();
+    await eventually(callCount(calls, 2));
     calls[1]?.resolve(result('ddd'));
-    await sleep(10);
+    await eventually(() =>
+      expect(controller.state.value).toEqual({ kind: 'resolved', line: 4, ...result('ddd') }),
+    );
 
     cursor.moveTo(3); // revisit — a cached null would skip this silently
-    await pastDebounce();
+    await eventually(callCount(calls, 3));
 
     expect(calls).toHaveLength(3);
     expect(calls[2]?.line).toBe(3);
     calls[2]?.resolve(result('ccc'));
-    await sleep(10);
-    expect(controller.state.value).toEqual({ kind: 'resolved', line: 3, ...result('ccc') });
+    await eventually(() =>
+      expect(controller.state.value).toEqual({ kind: 'resolved', line: 3, ...result('ccc') }),
+    );
     controller.dispose();
   });
 
@@ -200,14 +220,14 @@ describe('blameLine.ts createBlameLineController', () => {
     });
 
     cursor.moveTo(6);
-    await pastDebounce();
+    await eventually(callCount(calls, 1));
     expect(calls).toHaveLength(1);
     calls[0]?.reject(new Error('boom')); // a real failure, not an abort
-    await sleep(10);
+    await sleep(20); // state is 'none' before and after: only the cache effect below is observable
     expect(controller.state.value).toEqual({ kind: 'none' });
 
     cursor.moveTo(7);
-    await pastDebounce();
+    await eventually(callCount(calls, 2));
     cursor.moveTo(6); // revisit — cached miss, no new request
     await sleep(10);
 
@@ -227,21 +247,23 @@ describe('blameLine.ts createBlameLineController', () => {
     });
 
     cursor.moveTo(9);
-    await pastDebounce();
+    await eventually(callCount(calls, 1));
     calls[0]?.resolve(result('eee1'));
-    await sleep(10);
-    expect(controller.state.value).toEqual({ kind: 'resolved', line: 9, ...result('eee1') });
+    await eventually(() =>
+      expect(controller.state.value).toEqual({ kind: 'resolved', line: 9, ...result('eee1') }),
+    );
 
     emitRepoChanged('some-other-repo');
     await sleep(10);
     expect(calls).toHaveLength(1); // untouched — a different repo's event is a no-op
 
     emitRepoChanged('repo-e');
-    await pastDebounce();
+    await eventually(callCount(calls, 2));
     expect(calls).toHaveLength(2); // cache cleared, cursor's own line re-resolved
     calls[1]?.resolve(result('eee2'));
-    await sleep(10);
-    expect(controller.state.value).toEqual({ kind: 'resolved', line: 9, ...result('eee2') });
+    await eventually(() =>
+      expect(controller.state.value).toEqual({ kind: 'resolved', line: 9, ...result('eee2') }),
+    );
     controller.dispose();
   });
 
@@ -256,11 +278,11 @@ describe('blameLine.ts createBlameLineController', () => {
     });
 
     cursor.moveTo(8);
-    await pastDebounce();
+    await eventually(callCount(calls, 1));
     calls[0]?.resolve(result(UNCOMMITTED_SHA));
-    await sleep(10);
-
-    expect(controller.state.value).toEqual({ kind: 'uncommitted', line: 8 });
+    await eventually(() =>
+      expect(controller.state.value).toEqual({ kind: 'uncommitted', line: 8 }),
+    );
     controller.dispose();
   });
 });

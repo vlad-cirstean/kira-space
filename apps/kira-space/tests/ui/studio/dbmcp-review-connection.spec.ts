@@ -41,7 +41,7 @@ test('contract: a file edit that sets the review override reaches the settings g
     control: [{ channel: IPC.connectionsList, response: [inheriting()] }],
   });
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP connections"]');
   await expect(page.locator(`[data-testid="db-mcp-connection-review-${ID}"]`)).toHaveCount(0);
 
   await emitWailsEvent(page, IPC.connectionsChanged, [{ ...reviewed(), id: ID }]);
@@ -55,7 +55,7 @@ test('the settings glance opens the connection file', async ({ relaunch }) => {
     control: [{ channel: IPC.connectionsList, response: [inheriting()] }],
   });
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP connections"]');
   await page.click(`[data-testid="db-mcp-connection-edit-${ID}"]`);
   await expect(page.locator('[data-testid="connection-file-dialog"]')).toBeVisible();
 });
@@ -75,7 +75,7 @@ test('the settings glance flags a connection with an override and skips one that
     ],
   });
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP connections"]');
   await expect(page.locator(`[data-testid="db-mcp-connection-review-${ID}"]`)).toHaveText(
     'Results always reviewed',
   );

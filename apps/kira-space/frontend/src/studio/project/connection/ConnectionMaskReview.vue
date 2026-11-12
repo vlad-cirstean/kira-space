@@ -270,7 +270,7 @@ const STATE_VARIANT = { masked: 'ok', reviewed: 'default', pending: 'warn' } as 
                   <Button
                     v-if="rows[item.index]?.state === 'pending' && on"
                     size="kira"
-                    variant="dialog"
+                    variant="dialog-approve"
                     data-testid="connection-privacy-review-allow"
                     @click="toggle(rows[item.index]?.column.ref ?? '', true)"
                   >

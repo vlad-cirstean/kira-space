@@ -366,3 +366,10 @@ export function imageControl(
 
 /** What a proof window opened from the Window menu (no task) boots with: a null session. */
 export const menuTarget = (): Json => fixture('proof-image', 'ProofService.WindowTarget#menu');
+
+/** The default proof: a table, a document and a key-value step. */
+export const threeSteps = () => [
+  stepSnapshot(SESSION_ID, 1, 1, 'table'),
+  stepSnapshot(SESSION_ID, 1, 2, 'document'),
+  stepSnapshot(SESSION_ID, 1, 3, 'keyvalue'),
+];

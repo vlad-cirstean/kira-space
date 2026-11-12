@@ -7,6 +7,12 @@
       "path": "<pick>"
     }
   },
+  "ProofService.CommitShotClip": {
+    "count": 3
+  },
+  "ProofService.OpenShotClip": {
+    "id": "<masked>"
+  },
   "ProofService.OpenShotFolder": {
     "id": "<masked>",
     "path": "<home>/Desktop/Checkout fix"
@@ -67,6 +73,9 @@
       "taskTitle": ""
     }
   ],
+  "ProofService.ShotClipboard": {
+    "multiImage": true
+  },
   "ProofService.ShotLocation": {
     "custom": false,
     "exists": true,

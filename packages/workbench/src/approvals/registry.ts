@@ -33,8 +33,6 @@ export interface ApprovalKindDef {
   whereData?: boolean;
   /** Button words when Approve/Deny do not fit (Send/Withhold, Accept/Reject). */
   labels?: (item: ApprovalItem) => { approve: string; deny: string };
-  /** Approve all skips this kind: only a click on the item itself approves it. Deny all still covers it. */
-  individualOnly?: boolean;
 }
 
 export type ApprovalKinds = Record<string, ApprovalKindDef>;

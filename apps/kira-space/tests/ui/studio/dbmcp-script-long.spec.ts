@@ -45,7 +45,7 @@ test('contract: the settings row marks a long-running script', async ({ relaunch
     control: [{ channel: IPC.customScriptsList, response: snapshot() }],
   });
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP scripts"]');
   await expect(page.locator('[data-testid="db-mcp-script-long-serve"]')).toHaveText('Long running');
   await expect(page.locator('[data-testid="db-mcp-script-long-quick"]')).toHaveCount(0);
 });

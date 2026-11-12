@@ -222,7 +222,7 @@ async function confirmRemove(): Promise<void> {
           }}</Button>
           <Button
             v-if="pendingRemove?.preflight.verdict === 'dirty'"
-            variant="dialog-primary"
+            variant="dialog-danger"
             size="kira-lg"
             :disabled="!canConfirmRemove"
             @click="confirmRemove"

@@ -54,6 +54,7 @@ require (
 	github.com/twmb/franz-go v1.22.2
 	github.com/twmb/franz-go/pkg/kadm v1.19.0
 	github.com/twmb/franz-go/pkg/kmsg v1.15.0
+	github.com/vektah/gqlparser/v2 v2.5.64
 	github.com/wailsapp/wails/v3 v3.1.0
 	github.com/wasilibs/go-pgquery v0.0.0-20261027025405-3048dd293555
 	github.com/yalue/onnxruntime_go v1.38.0
@@ -82,6 +83,7 @@ require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20261013165250-51075c6ea6bc // indirect
 	github.com/Microsoft/go-winio v0.6.4 // indirect
+	github.com/agnivade/levenshtein v1.2.2 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.25 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.20.5 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.8 // indirect

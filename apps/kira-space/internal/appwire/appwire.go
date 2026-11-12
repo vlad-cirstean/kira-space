@@ -92,7 +92,9 @@ type Options struct {
 	Browser bridge.Browser
 	// FileOpener opens or reveals a config file; main passes the Wails adapter.
 	FileOpener configsvc.FileOpener
-	Dialogs    bridge.Dialogs
+	// ImageClipboard writes several images to the system clipboard; main passes imageclip, nil means none.
+	ImageClipboard bridge.ProofClipboard
+	Dialogs        bridge.Dialogs
 	// Locator resolves git.gitPath; main passes the platform locator.
 	Locator         gitclient.Locator
 	KeepAwakeDriver keepawake.Driver
@@ -229,6 +231,7 @@ type Wired struct {
 	runLoader       *scripts.Loader
 	Terminal        *bridge.TerminalService
 	AdeTask         *bridge.AdeTaskService
+	Leases          *bridge.LeasesService
 	Ops             *bridge.OpsService
 	Lifecycle       *bridge.LifecycleService
 	KeepAwake       *bridge.KeepAwakeService
@@ -550,6 +553,7 @@ func Build(opts Options) (*Wired, error) {
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
 	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry}
 	w.Capture.Tasks = w.AdeTask
+	w.Leases = &bridge.LeasesService{Board: w.AdeBoard}
 	// Registry.OnChange fires after every agent session registers or is removed (spawn and exit) —
 	// Reconcile picks up both, and AgentSessionsChanged refreshes the P127 store's own live count
 	// (P129 Part 1 §4.2 step 4).
@@ -684,7 +688,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.CodeWorkspace), application.NewService(w.GitHost), application.NewService(w.HostView), application.NewService(w.IssueTracker), application.NewService(w.Link),
 		application.NewService(w.Files), application.NewService(w.Settings), application.NewService(w.Layout),
 		application.NewService(w.Tabs), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.Terminal),
-		application.NewService(w.AdeTask), application.NewService(w.Ops), application.NewService(w.Lifecycle),
+		application.NewService(w.AdeTask), application.NewService(w.Leases), application.NewService(w.Ops), application.NewService(w.Lifecycle),
 		application.NewService(w.KeepAwake), application.NewService(w.Mobile), application.NewService(w.Memory),
 		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),

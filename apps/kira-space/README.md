@@ -9,7 +9,7 @@ app.
 
 [Presentation page](https://vlad-cirstean.github.io/kira-space/) and
 [screenshots](../../README.md#screenshots). Root [`README.md`](../../README.md) covers the Studio,
-Api, Docker and Database MCP features.
+Api, Docker and Studio MCP features.
 
 ## Status
 
@@ -195,7 +195,7 @@ Run from the repo root. Shared scripts (`setup`, `lint`, `typecheck`, `test:go`)
 | `bun run test:e2e-real` | Playwright against a real `-tags server` build |
 | `bun run test:flows` | Go flow tests on a temp home (`test:flows:complete` adds slow permutations) |
 | `bun run test:claude` | Opt-in: real `claude` CLI, spends tokens |
-| `bun run test:claude:db` | Opt-in: DB MCP, Kubernetes, proof and smart-script rows |
+| `bun run test:claude:db` | Opt-in: Studio MCP, Kubernetes, proof and smart-script rows |
 | `bun run test:visual` | Pixel-diff baselines |
 | `bun run package` | Native Wails bundle and `.dmg`, ad-hoc signed: `apps/kira-space/bin/Kira Space.{app,dmg}` |
 

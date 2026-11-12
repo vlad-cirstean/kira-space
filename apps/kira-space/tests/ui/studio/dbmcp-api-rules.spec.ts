@@ -62,7 +62,7 @@ test('contract: add, edit and remove rules send the same lists the backend enfor
   const [allow, wildcard, deny, remove, removeWildcard, clear] = patches.map((p) => p.args);
 
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP API"]');
   await expect(empty(page)).toBeVisible();
   await expect(page.locator('[data-testid="settings-db-mcp-api-rules-no-allow"]')).toBeVisible();
 
@@ -112,6 +112,6 @@ test('unreadable stored rules show an error', async ({ relaunch }) => {
     ],
   });
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP API"]');
   await expect(page.locator('[data-testid="settings-db-mcp-api-rules-invalid"]')).toBeVisible();
 });

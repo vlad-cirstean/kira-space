@@ -1,0 +1,129 @@
+{
+  "AdeTaskService.Board#changed": [
+    {
+      "addedAt": 0,
+      "ahead": 0,
+      "base": "<masked>",
+      "baseBranchId": "",
+      "baseMissing": false,
+      "baseOwner": "",
+      "basePendingFrom": "",
+      "behind": 0,
+      "codeRepoId": "<masked>",
+      "conflictCheck": "done",
+      "conflictCheckReason": "",
+      "conflictsIfRebased": [],
+      "deployments": [],
+      "dirty": [],
+      "id": "<masked>",
+      "integration": [],
+      "kind": "mine",
+      "lastCommitAt": 1700000060000,
+      "mergedAt": null,
+      "mergedIntoMain": false,
+      "name": "feat/other",
+      "origin": "agent",
+      "owner": "",
+      "rebaseInProgress": false,
+      "setup": {},
+      "taskId": "<masked>",
+      "tip": "<masked>",
+      "upstream": "",
+      "upstreamAhead": 0,
+      "upstreamBehind": 0,
+      "worktree": "<masked>"
+    }
+  ],
+  "AdeTaskService.Board#mismatch": [
+    {
+      "addedAt": 0,
+      "ahead": 0,
+      "base": "<masked>",
+      "baseBranchId": "",
+      "baseMissing": false,
+      "baseOwner": "",
+      "basePendingFrom": "",
+      "behind": 0,
+      "codeRepoId": "<masked>",
+      "conflictCheck": "done",
+      "conflictCheckReason": "",
+      "conflictsIfRebased": [],
+      "deployments": [],
+      "detached": {
+        "head": "feat/other",
+        "holder": {
+          "branchId": "<masked>",
+          "kind": "none",
+          "taskId": "<masked>",
+          "worktree": "<masked>"
+        },
+        "worktree": "<masked>"
+      },
+      "dirty": [],
+      "id": "<masked>",
+      "integration": [],
+      "kind": "mine",
+      "lastCommitAt": 1700000060000,
+      "mergedAt": null,
+      "mergedIntoMain": false,
+      "name": "feat/old",
+      "origin": "agent",
+      "owner": "",
+      "rebaseInProgress": false,
+      "setup": null,
+      "taskId": "<masked>",
+      "tip": "<masked>",
+      "upstream": "refs/remotes/origin/main",
+      "upstreamAhead": 0,
+      "upstreamBehind": 0,
+      "worktree": "<masked>"
+    }
+  ],
+  "ApprovalsService.List#branch": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "branch.request:<id:1>",
+      "kind": "branch.request",
+      "operation": {
+        "class": "change",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "run",
+        "step": "two",
+        "task": "Fix login"
+      },
+      "payload": {
+        "items": [
+          {
+            "base": "",
+            "branch": "feat/other",
+            "codeRepoId": "<masked>",
+            "from": "feat/old",
+            "id": "c0i0",
+            "kind": "switch",
+            "repo": "api",
+            "session": "<id:2>",
+            "source": "run",
+            "stacked": [],
+            "stepName": "two",
+            "upstream": ""
+          }
+        ],
+        "taskId": "<masked>",
+        "taskTitle": "Fix login"
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Fix login",
+        "readOnly": false
+      }
+    }
+  ]
+}

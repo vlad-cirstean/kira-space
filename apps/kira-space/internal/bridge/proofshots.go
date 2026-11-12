@@ -36,8 +36,10 @@ type proofShotFolders struct {
 	order   []string
 }
 
-func (p *proofShotFolders) add(path string) string {
-	id := ids.New(ids.Shot)
+// add registers path under a fresh id. Past maxShotFolders the oldest id is forgotten and returned,
+// so the caller can clean up what it held.
+func (p *proofShotFolders) add(path string) (id string, evicted *shotFolder) {
+	id = ids.New(ids.Shot)
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.folders == nil {
@@ -46,10 +48,25 @@ func (p *proofShotFolders) add(path string) string {
 	p.folders[id] = &shotFolder{path: path}
 	p.order = append(p.order, id)
 	if len(p.order) > maxShotFolders {
+		old := *p.folders[p.order[0]]
+		evicted = &old
 		delete(p.folders, p.order[0])
 		p.order = p.order[1:]
 	}
-	return id
+	return id, evicted
+}
+
+// unclosed lists the folders no save walk or commit has ended.
+func (p *proofShotFolders) unclosed() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	var out []string
+	for _, f := range p.folders {
+		if !f.closed {
+			out = append(out, f.path)
+		}
+	}
+	return out
 }
 
 func (p *proofShotFolders) get(id string) (shotFolder, bool) {
@@ -206,7 +223,8 @@ func (s *ProofService) OpenShotFolder(args ProofOpenShotFolderArgs) (ProofShotFo
 	if err != nil {
 		return ProofShotFolderResult{}, err
 	}
-	return ProofShotFolderResult{ID: s.shots.add(path), Path: path}, nil
+	id, _ := s.shots.add(path)
+	return ProofShotFolderResult{ID: id, Path: path}, nil
 }
 
 func missingLocationErr(path string) error {
@@ -237,6 +255,18 @@ func mkFreshDir(parent, name string) (string, error) {
 	return "", ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotFolderTaken.body", map[string]string{"name": name, "path": parent})
 }
 
+// decodeShot decodes a base64 screenshot, capped in encoded and decoded size, and checks its magic bytes.
+func decodeShot(b64 string, magic []byte, notKey string) ([]byte, error) {
+	if len(b64) > maxShotBase64 {
+		return nil, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.tooLarge.body", nil)
+	}
+	data, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil || len(data) > maxShotBytes || !bytes.HasPrefix(data, magic) {
+		return nil, ipcerr.T(ipcerr.CodeBadRequest, notKey, nil)
+	}
+	return data, nil
+}
+
 // SaveJpegTo writes one screenshot into a folder from OpenShotFolder, never over an existing file.
 func (s *ProofService) SaveJpegTo(args ProofSaveJpegToArgs) (ProofSaveJpegToResult, error) {
 	folder, ok := s.shots.get(args.FolderID)
@@ -244,12 +274,9 @@ func (s *ProofService) SaveJpegTo(args ProofSaveJpegToArgs) (ProofSaveJpegToResu
 		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotFolderGone.body", nil)
 	}
 	dir := folder.path
-	if len(args.JpegBase64) > maxShotBase64 {
-		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.tooLarge.body", nil)
-	}
-	data, err := base64.StdEncoding.DecodeString(args.JpegBase64)
-	if err != nil || len(data) > maxShotBytes || !bytes.HasPrefix(data, jpegMagic) {
-		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.notJpeg.body", nil)
+	data, err := decodeShot(args.JpegBase64, jpegMagic, "backend.studio.proof.notJpeg.body")
+	if err != nil {
+		return ProofSaveJpegToResult{}, err
 	}
 	path := filepath.Join(dir, safeJpegName(args.Filename))
 	if _, err := os.Lstat(path); err == nil {

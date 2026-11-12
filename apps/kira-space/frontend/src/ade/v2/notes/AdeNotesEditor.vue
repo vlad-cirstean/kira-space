@@ -4,12 +4,12 @@ import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
-import { EditorContent, useEditor } from '@tiptap/vue-3';
+import { Editor, EditorContent } from '@tiptap/vue-3';
 import { useDebounceFn } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { isPrimaryModifier } from '@workbench/shortcuts/keys';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
 import { parseWithLineBreaks } from './notesDoc';
 import { notesExtensions } from './notesExtensions';
@@ -42,7 +42,7 @@ let dirty = false;
 
 function emitPending(): void {
   const ed = editor.value;
-  if (!ed || props.readonly || !dirty) return;
+  if (props.readonly || !dirty) return;
   dirty = false;
   const md = ed.getMarkdown();
   if (md !== lastEmitted) {
@@ -63,45 +63,49 @@ const PROSE = [
   '[&_p.is-editor-empty:first-child]:before:pointer-events-none [&_p.is-editor-empty:first-child]:before:float-left [&_p.is-editor-empty:first-child]:before:h-0 [&_p.is-editor-empty:first-child]:before:text-subtle [&_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]',
 ].join(' ');
 
-const editor = useEditor({
-  ...(props.hardBreaks
-    ? { content: parseWithLineBreaks(model.value) }
-    : { content: model.value, contentType: 'markdown' as const }),
-  extensions: notesExtensions({ placeholder: props.placeholder }),
-  editable: !props.readonly,
-  autofocus: props.focusOnMount ? 'end' : false,
-  editorProps: {
-    attributes: { class: PROSE, 'aria-label': caption.value },
-    handleClick(_view, _pos, event) {
-      const target = event.target as HTMLElement | null;
-      const link = target?.closest('a');
-      if (link && isPrimaryModifier(event)) {
+// Built in setup, not on mount: the text is in the first frame.
+const editor = shallowRef(
+  new Editor({
+    ...(props.hardBreaks
+      ? { content: parseWithLineBreaks(model.value) }
+      : { content: model.value, contentType: 'markdown' as const }),
+    extensions: notesExtensions({ placeholder: props.placeholder }),
+    editable: !props.readonly,
+    autofocus: props.focusOnMount ? 'end' : false,
+    editorProps: {
+      attributes: { class: PROSE, 'aria-label': caption.value },
+      handleClick(_view, _pos, event) {
+        const target = event.target as HTMLElement | null;
+        const link = target?.closest('a');
+        if (link && isPrimaryModifier(event)) {
+          event.preventDefault();
+          fireAndForget(control.openExternal(link.href), 'ade.notes');
+          return true;
+        }
+        return false;
+      },
+      handleKeyDown(_view, event) {
+        if (props.readonly || event.key !== 'Enter' || !isPrimaryModifier(event)) return false;
         event.preventDefault();
-        fireAndForget(control.openExternal(link.href), 'ade.notes');
+        emitPending();
+        emit('submit');
         return true;
-      }
-      return false;
+      },
     },
-    handleKeyDown(_view, event) {
-      if (props.readonly || event.key !== 'Enter' || !isPrimaryModifier(event)) return false;
-      event.preventDefault();
-      emitPending();
-      emit('submit');
-      return true;
+    onUpdate: () => {
+      if (props.readonly) return;
+      dirty = true;
+      debouncedFlush();
     },
-  },
-  onUpdate: () => {
-    if (props.readonly) return;
-    dirty = true;
-    debouncedFlush();
-  },
-  onBlur: () => emitPending(),
-});
+    onBlur: () => emitPending(),
+  }),
+);
 
-// Outside changes (a prefill that loads late, a saved body) replace the text, never mid-edit.
+// Outside changes (a prefill that loads late, a saved body) replace the text, never mid-edit: a
+// focused editor keeps its text unless it is still empty.
 watch(model, (next) => {
   const ed = editor.value;
-  if (!ed || next === lastEmitted || (ed.isFocused && !props.readonly)) return;
+  if (next === lastEmitted || (ed.isFocused && !props.readonly && !ed.isEmpty)) return;
   lastEmitted = next;
   dirty = false;
   ed.commands.setContent(next, { contentType: 'markdown', emitUpdate: false });
@@ -109,7 +113,7 @@ watch(model, (next) => {
 
 onBeforeUnmount(() => {
   emitPending();
-  editor.value?.destroy();
+  editor.value.destroy();
 });
 
 // Toolbar: codicon where the theme has one, else the glyph text.
@@ -123,7 +127,6 @@ interface ToolbarButton {
 
 const toolbar = computed<ToolbarButton[]>(() => {
   const ed = editor.value;
-  if (!ed) return [];
   const chain = () => ed.chain().focus();
   return [
     {
@@ -189,7 +192,7 @@ const linkOpen = ref(false);
 const linkUrl = ref('');
 
 function openLink(): void {
-  linkUrl.value = (editor.value?.getAttributes('link').href as string | undefined) ?? '';
+  linkUrl.value = (editor.value.getAttributes('link').href as string | undefined) ?? '';
   linkOpen.value = true;
 }
 
@@ -198,7 +201,6 @@ function applyLink(): void {
   linkOpen.value = false;
   if (!/^https?:\/\//.test(url)) return;
   const ed = editor.value;
-  if (!ed) return;
   if (ed.state.selection.empty) {
     ed.chain()
       .focus()

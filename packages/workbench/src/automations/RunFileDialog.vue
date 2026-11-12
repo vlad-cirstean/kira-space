@@ -430,7 +430,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
       </DialogBody>
       <DialogFooter>
         <DialogClose as-child>
-          <Button variant="dialog" size="kira-lg" data-testid="run-file-cancel">{{
+          <Button variant="dialog-danger" size="kira-lg" data-testid="run-file-cancel">{{
             draft.dirty.value ? t('common.action.discard.label') : t('common.action.close.label')
           }}</Button>
         </DialogClose>

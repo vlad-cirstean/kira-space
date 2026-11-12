@@ -249,6 +249,8 @@ interface BranchHolder {
 interface BranchDetached {
   worktree: string;
   holder: BranchHolder;
+  /** Local branch checked out in the folder now; '' = detached commit or nothing. */
+  head: string;
 }
 /** Another live row of the same repo and branch name. */
 interface BranchPeer {
@@ -1411,4 +1413,33 @@ export interface MarkTrackedSeenArgs {
   taskId: string;
   /** Empty = every item of the task. */
   itemKeys: string[];
+}
+
+// ---- resource leases (P620)
+export interface LeaseEntry {
+  sessionId: string;
+  taskId: string;
+  taskTitle: string;
+  /** 0 for the holder. */
+  position: number;
+  /** Epoch ms. */
+  since: number;
+  /** Epoch ms; holder only. */
+  expiresAt: number;
+  releaseAsked: boolean;
+  noticePending: boolean;
+}
+export interface LeaseQueue {
+  name: string;
+  holder: LeaseEntry | null;
+  waiters: LeaseEntry[];
+}
+export interface LeaseSnapshot {
+  queues: LeaseQueue[];
+}
+export interface LeaseQueuesArgs {
+  names: string[];
+}
+export interface LeaseQueueArgs {
+  queue: string;
 }

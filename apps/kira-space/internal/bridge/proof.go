@@ -30,7 +30,10 @@ const (
 	maxFilenameLen = 120
 )
 
-var jpegMagic = []byte{0xFF, 0xD8, 0xFF}
+var (
+	jpegMagic = []byte{0xFF, 0xD8, 0xFF}
+	pngMagic  = []byte("\x89PNG\r\n\x1a\n")
+)
 
 var unsafeFilenameChars = regexp.MustCompile(`[^\p{L}\p{N}._ -]+`)
 
@@ -85,6 +88,12 @@ type ProofRevealer interface {
 	RevealFile(path string) error
 }
 
+// ProofClipboard puts several images on the system clipboard as separate items.
+type ProofClipboard interface {
+	MultiImage() bool
+	WriteImages(paths []string) error
+}
+
 // ProofService is the validation-proof window's surface: history, sessions, steps, view state,
 // accepting an agent's edit, the window itself and saving screenshots.
 type ProofService struct {
@@ -98,9 +107,15 @@ type ProofService struct {
 	// Locations stores the custom screenshot folder; Opener reveals a saved folder (nil: reveal unavailable).
 	Locations ProofShotLocations
 	Opener    ProofRevealer
+	// Clipboard writes image batches; nil means no multi-image clipboard.
+	Clipboard ProofClipboard
 
 	openMu sync.Mutex
 	shots  proofShotFolders
+	// clips holds copy batches; lastClip is the dir of the batch now on the clipboard.
+	clips    proofShotFolders
+	clipMu   sync.Mutex
+	lastClip string
 }
 
 // ProofSessionArgs names one session.
@@ -345,3 +360,6 @@ func safeBaseName(name string) string {
 
 // safeJpegName is safeBaseName with the .jpg suffix.
 func safeJpegName(name string) string { return safeBaseName(name) + ".jpg" }
+
+// safePngName is safeBaseName with the .png suffix.
+func safePngName(name string) string { return safeBaseName(name) + ".png" }

@@ -3,9 +3,10 @@ import { ref } from 'vue';
 
 export type ProofSide = 'current' | 'pending';
 
-/** Outcome of the last screenshot save (or location change), shown in the status strip. */
+/** Outcome of the last screenshot save, copy (or location change), shown in the status strip. */
 export type ShotResult =
   | { kind: 'saved'; count: number; path: string; folderId: string }
+  | { kind: 'copied'; count: number }
   | { kind: 'error'; message: string };
 
 /** The proof window's own selection: which session, which revision, which step tab. */

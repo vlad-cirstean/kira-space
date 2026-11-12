@@ -26,4 +26,4 @@ Example: newest file `06-v2.8.md` has 1,450 lines, new block has 100. Total 1,55
 - [`history/03-v1.9.md`](history/03-v1.9.md): v1.9
 - [`history/04-v2.0.md`](history/04-v2.0.md): v2.0
 - [`history/05-v2.1.md`](history/05-v2.1.md): v2.1 to v2.6
-- [`history/06-v2.8.md`](history/06-v2.8.md): v2.8 to v0.3.9, plus "Fixes outside chapters" after v0.2.12. Newest file: a close appends here or opens the next.
+- [`history/06-v2.8.md`](history/06-v2.8.md): v2.8 to v0.3.10, plus "Fixes outside chapters" after v0.2.12. Newest file: a close appends here or opens the next.

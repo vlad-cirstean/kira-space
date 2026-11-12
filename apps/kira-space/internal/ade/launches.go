@@ -10,6 +10,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/leases"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
@@ -545,6 +546,7 @@ func (b *TaskBoard) OnTUIStopped(recordID string) {
 	if ok {
 		bind.release()
 	}
+	b.endLeases(leases.Key(recordID))
 }
 
 func (b *TaskBoard) tuiBound(runID string) bool {

@@ -9,6 +9,7 @@ import {
 } from '@theme/components/ui/dialog';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
+import { cn } from '@theme/lib/utils';
 import type { ComputedRef, Ref } from 'vue';
 import { computed, onUnmounted, reactive, ref } from 'vue';
 import { errorText } from '../bridge/codedError';
@@ -60,7 +61,7 @@ import { errorText } from '../bridge/codedError';
 // with `display: contents` on each pane's own root, so it doesn't add a flex item to
 // `.section-pane`'s own layout) keeps every pane's script — and by extension every registered field
 // error and every already-instantiated Pinia store/`useQuery` — alive for as long as the dialog is
-// open, exactly matching the original file's own posture where the "Database MCP" mask-rule count
+// open, exactly matching the original file's own posture where the "Studio MCP" mask-rule count
 // query doesn't care which section is on screen.
 // The patch shape `save` receives, section by section — each present section only its own changed
 // leaves (`SettingsPatch`'s own shape, generalised: every field of `settingsPatchSchema` is
@@ -71,6 +72,8 @@ const props = defineProps<{
   sections: readonly string[];
   /** Display label per section id; the id stays the test hook and deep-link key. */
   sectionLabels: Readonly<Record<string, string>>;
+  /** Sections drawn as children: nav button indented. */
+  indentedSections?: readonly string[];
   initialSection?: string;
   defaults: T;
   current: T;
@@ -210,13 +213,18 @@ async function onSave(): Promise<void> {
       </DialogHeader>
 
       <DialogBody flush class="flex-row">
-        <nav class="w-44 shrink-0 flex flex-col gap-px py-1.5 px-1">
+        <nav class="w-44 shrink-0 min-h-0 overflow-y-auto flex flex-col gap-px py-1.5 px-1">
           <button
             v-for="section in sections"
             :key="section"
             type="button"
-            class="text-left border-none"
-            :class="rowVariants({ layout: 'nav', selected: activeSection === section })"
+            :class="
+              cn(
+                'text-left border-none',
+                rowVariants({ layout: 'nav', selected: activeSection === section }),
+                indentedSections?.includes(section) && 'pl-4',
+              )
+            "
             :aria-current="activeSection === section ? 'page' : undefined"
             :data-testid="`settings-section-${section}`"
             @click="activeSection = section"

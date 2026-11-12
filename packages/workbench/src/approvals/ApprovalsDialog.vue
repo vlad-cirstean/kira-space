@@ -11,72 +11,63 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { t } from '@theme/i18n';
-import { revealElement } from '@workbench/behaviour/focus';
 import { useApprovalsStore } from '@workbench/state/approvals';
-import { computed, nextTick, watch } from 'vue';
+import { computed } from 'vue';
+import ApprovalItemActions from './ApprovalItemActions.vue';
 import ApprovalItemCard from './ApprovalItemCard.vue';
 import { useApprovalActions } from './approvalsQueries';
-import { useApprovalKinds } from './registry';
 
 const props = defineProps<{ items: ApprovalItem[] }>();
 
 const store = useApprovalsStore();
 const { answer } = useApprovalActions();
 
-const kinds = useApprovalKinds();
-// Approve all leaves out kinds that need an explicit click on the item (limit exemptions).
-const approvable = computed(() => props.items.filter((i) => !kinds[i.kind]?.individualOnly));
-
-// Ids are captured at click time: an item that joins mid-click stays pending.
-function answerAll(approve: boolean): void {
+// One prompt at a time; answering it moves `current` to the next oldest.
+const current = computed(
+  () => props.items.find((i) => i.id === store.focusId) ?? (props.items[0] as ApprovalItem),
+);
+const position = computed(() => props.items.findIndex((i) => i.id === current.value.id) + 1);
+// Only the shown item can be approved, by its own click. Deny is safe in bulk. Ids are captured at
+// click time: an item that joins mid-click stays pending.
+function denyAll(): void {
   void answer(
-    (approve ? approvable.value : props.items).map((i) => i.id),
-    approve,
+    props.items.map((i) => i.id),
+    false,
   );
 }
-
-watch(
-  () => store.focusId,
-  async (id) => {
-    if (!id) return;
-    await nextTick();
-    const el = document.querySelector(`[data-testid="approval-item-${CSS.escape(id)}"]`);
-    if (el) revealElement(el, { block: 'start' });
-  },
-  { immediate: true },
-);
 </script>
 
 <template>
   <Dialog :open="true" @update:open="(v) => !v && store.minimise()">
-    <DialogContent size="2xl" fixed-height data-testid="approvals-dialog">
+    <DialogContent size="full" fixed-height data-testid="approvals-dialog">
       <DialogHeader>
         <DialogTitle>{{ t('workbench.approvals.dialog.title') }}</DialogTitle>
         <Badge variant="count" data-testid="approvals-count">{{ items.length }}</Badge>
+        <Badge v-if="items.length > 1" variant="count" data-testid="approvals-position">
+          {{ t('common.ofTotal.label', { value: position, total: items.length }) }}
+        </Badge>
       </DialogHeader>
 
-      <DialogBody class="gap-0 py-0 divide-y divide-border">
-        <ApprovalItemCard v-for="(item, i) in items" :key="item.id" :item="item" :first="i === 0" />
+      <DialogBody class="gap-0 py-0">
+        <ApprovalItemCard :key="current.id" :item="current" />
       </DialogBody>
 
-      <DialogFooter v-if="items.length > 1">
-        <Button
-          variant="dialog-danger"
-          size="kira-lg"
-          data-testid="approvals-deny-all"
-          @click="answerAll(false)"
+      <DialogFooter class="flex-col items-stretch gap-2">
+        <div
+          class="flex items-center gap-1.5"
+          :class="items.length === 1 && 'invisible'"
+          data-testid="approvals-bulk"
         >
-          {{ t('workbench.approvals.denyAll.label', { count: items.length }) }}
-        </Button>
-        <Button
-          v-if="approvable.length > 0"
-          variant="dialog-primary"
-          size="kira-lg"
-          data-testid="approvals-approve-all"
-          @click="answerAll(true)"
-        >
-          {{ t('workbench.approvals.approveAll.label', { count: approvable.length }) }}
-        </Button>
+          <Button
+            variant="dialog-deny"
+            size="kira"
+            data-testid="approvals-deny-all"
+            @click="denyAll"
+          >
+            {{ t('workbench.approvals.denyAll.label', { count: items.length }) }}
+          </Button>
+        </div>
+        <ApprovalItemActions :key="current.id" :item="current" />
       </DialogFooter>
     </DialogContent>
   </Dialog>

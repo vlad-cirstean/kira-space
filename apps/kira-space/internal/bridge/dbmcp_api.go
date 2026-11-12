@@ -42,7 +42,7 @@ func AgentAPIAccess(settings *repos.SettingsRepo) func() (apiaccess.Policy, erro
 			return apiaccess.Policy{}, errors.New("the API settings could not be read")
 		}
 		if all.DbMcp.APIRulesInvalid {
-			return apiaccess.Policy{}, errors.New("the API access rules in Kira Space's database MCP settings could not be read; ask the user to replace them")
+			return apiaccess.Policy{}, errors.New("the API access rules in Kira Space's Studio MCP settings could not be read; ask the user to replace them")
 		}
 		policy, err := apiaccess.Compile(all.DbMcp.APIRules)
 		if err != nil {

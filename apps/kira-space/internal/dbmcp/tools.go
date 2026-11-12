@@ -453,7 +453,7 @@ func heldRefusal(outcome ApprovalOutcome, rv queryResolution, size int) string {
 	case ApprovalTimedOut:
 		return ranSuffix(fmt.Sprintf("query against %q ran, but its result got no review within %s and was withheld.", name, approvalWindow()), rv)
 	case ApprovalAbandoned:
-		return ranSuffix(fmt.Sprintf("the database MCP server stopped before the result of the query against %q was reviewed; the query ran and its result was withheld.", name), rv)
+		return ranSuffix(fmt.Sprintf("the Studio MCP server stopped before the result of the query against %q was reviewed; the query ran and its result was withheld.", name), rv)
 	case ApprovalQueueFull:
 		return ranSuffix(fmt.Sprintf("query against %q ran, but too many queries are waiting for approval, so its result was withheld. Do not rerun it.", name), rv)
 	default:
@@ -713,7 +713,7 @@ func approvalOutcomeError(outcome ApprovalOutcome, subject string) (*mcp.CallToo
 	case ApprovalTimedOut:
 		return errResult(subject + " got no answer within " + approvalWindow())
 	case ApprovalAbandoned:
-		return errResult("the database MCP server stopped before the " + subject + " was answered")
+		return errResult("the Studio MCP server stopped before the " + subject + " was answered")
 	case ApprovalQueueFull:
 		return errResult(queueFullMessage)
 	default:

@@ -340,20 +340,16 @@ func hasAdjacent(c *ast.CompositeLit, first, second string) bool {
 	return false
 }
 
-// isHeaderWrite reports <x>.Header.Set/Add(...) and <x>.Header().Set/Add(...); Get stays allowed.
+// isHeaderWrite reports <x>.Header.Set/Add(...), the request-header form; Get stays allowed. A
+// <w>.Header().Set(...) call writes a response header (http.ResponseWriter), which carries no
+// credential to a CLI or provider, so it stays allowed.
 func isHeaderWrite(x *ast.CallExpr) bool {
 	sel, ok := x.Fun.(*ast.SelectorExpr)
 	if !ok || (sel.Sel.Name != "Set" && sel.Sel.Name != "Add") {
 		return false
 	}
-	switch h := sel.X.(type) {
-	case *ast.SelectorExpr:
-		return h.Sel.Name == "Header"
-	case *ast.CallExpr:
-		inner, ok := h.Fun.(*ast.SelectorExpr)
-		return ok && inner.Sel.Name == "Header"
-	}
-	return false
+	h, ok := sel.X.(*ast.SelectorExpr)
+	return ok && h.Sel.Name == "Header"
 }
 
 // credentialCall flags env and home-dir reads; os.Environ passthrough stays allowed.

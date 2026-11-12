@@ -17,10 +17,25 @@ type HookOptions struct {
 	// OnEvent is called once per accepted event, from the listener's own goroutine, never after
 	// Close returns.
 	OnEvent func(AgentEvent)
+	// Reply, when set, is asked for each event before OnEvent, in the listener's own goroutine. A
+	// provider whose hook channel can answer (Claude) sends the reply back to the agent first, then
+	// runs OnEvent: the agent's hook has a short timeout that OnEvent's work must not eat.
+	Reply func(AgentEvent) HookReply
+	// ReplyFailed is called, before OnEvent, with a non-empty reply the listener could not deliver
+	// (the agent's hook timed out or hung up), so the reply's content is not lost.
+	ReplyFailed func(AgentEvent, HookReply)
 	// OnStatusLine receives rate limits a TUI session reports.
 	OnStatusLine func(terminalID string, rl RateLimits)
 	// StatusLine reports whether a new launch gets the usage feed; read per launch.
 	StatusLine func() bool
+}
+
+// HookReply is what a listener tells the agent in answer to one event. The zero value says nothing.
+type HookReply struct {
+	// Block, on a Stop, keeps the agent working: it is the reason shown to it.
+	Block string
+	// Context, on a UserPromptSubmit, is added to the prompt.
+	Context string
 }
 
 // HookListener is one running listener.

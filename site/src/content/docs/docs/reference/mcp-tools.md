@@ -78,9 +78,9 @@ State of an ingest job. Argument: `id`, the job id from `ingest_files`.
 
 Run `/mcp__kira-memory__remember` to store durable facts from given text or the recent conversation. Argument: `text`.
 
-## Database MCP server (Studio modules)
+## Studio MCP server (Studio modules)
 
-Server name `kira-studio`. Workflow steps with `db_mcp` reach the same tools as `kira-studio-session`. See [Database MCP server](../../studio/database-mcp/).
+Server name `kira-studio`. Workflow steps with `db_mcp` reach the same tools as `kira-studio-session`. See [Studio MCP server](../../studio/database-mcp/).
 
 - `list_connections`: every exposed connection with its kind, read-only flag, status, `access` per mode, `enforcement`, `tables` and masked columns. `statementTimeout` gives the seconds (0 for off) and who enforces it per mode. `tables` is all, or the only tables MCP may touch. `columnReview` shows whether column review is on and `withheld` lists the columns results drop until you review masking. `expensiveQuery` gives `rowsThreshold` and `check`: `plan` (`run_query` refuses a SELECT or WITH at or above it), `off` or `none` (the engine gives no row estimate). `rowsThreshold` is the connection's own threshold when set, else the app default. `reviewResults` lists the modes whose results the user reviews first, `masked` included. `access.masked` and `permissions.masked` are `browse_table`'s permission; `browse` says whether the connection's kind supports it.
 - `list_children`: the children of one container; tables outside the connection's allow list are hidden. Arguments: `connectionId`, `path`, `refresh`.
@@ -110,6 +110,10 @@ Server name `kira-space`. `finish_step` is available to every agent run. `fetch_
 - `declare_repos`: add registered repositories to the task. Argument: `repos`, 1 to 20.
 - `request_branches`: ask the user to approve branches and worktrees, one call for all. You name each branch. A repository may get several branches. The call waits for the answer, up to 30 minutes. Per branch the result is `created`, `existing`, `denied`, `timeout` or `failed`. Argument: `branches`, 1 to 20 items of `repo`, `branch` and an optional `base`, an existing branch to start from (main when omitted). The result names the base.
 - `rename_branch`: ask the user to approve renaming one of the task's branches. The worktree folder stays. The remote branch is renamed only if the user agrees. The result is `renamed`, `denied`, `timeout` or `failed`, with the remote state `renamed`, `kept`, `untracked` or `failed`. Refused for main, integration and protected branches, open change requests and sandboxed branches. Arguments: `repo`, `from`, `to`, `renameRemote`.
+- `change_branch`: ask the user to approve pointing one of the task's branches at another existing local branch. Use it when the worktree folder holds a different branch than the task shows. The task, folder and sessions stay. `git switch` runs in the folder when needed. Never creates a branch. The result is `changed`, `denied`, `timeout` or `failed`. Refused for main and integration branches, a branch checked out elsewhere, a dirty folder that needs a switch and sandboxed branches. Arguments: `repo`, `from`, `to`.
+- `acquire_lease`: take a named lease on a shared resource the user set up, such as a port, the full test suite, push or merge. Never blocks. The result is `held`, or `queued` with your position; calling again keeps your place. When the lease frees, Kira types a short message into your session once you are idle, or hands it to you on your next turn. A lease ends with the session, or after 10 minutes without any tool call. Argument: `queue`.
+- `release_lease`: give a lease back, or leave its line. Without `queue` it leaves every queue. Call it when done. Argument: `queue`.
+- `lease_status`: the queues, their holders and your place. Any lease tool call keeps your lease alive. Argument: `queue` (empty shows all).
 - `operations`: the task's running git operations that can be stopped, such as a slow fetch or push. Returns `opId`, `kind`, `subject` and `elapsedMs` per operation. Argument `cancel` (an `opId` from the list) stops one; another task's operation reads as unknown.
 - `run_outcome`: how the latest runs of the task ended. Arguments: `runId`, `branch`, `kind`, `limit` (default 3, maximum 10).
 - `fetch_remote`: fetch one remote of the repository, in the app. Sandboxed runs only. Argument: `remote` (default `origin`).

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { compareNatural } from '@workbench/behaviour/match';
+import { loadMonaco } from '@workbench/editor/monaco';
 import { windowKey } from '@workbench/lib/window';
 import {
   usePrompts,
@@ -37,6 +38,13 @@ const mine = computed(() => {
     .filter((i) => ids.has(i.id))
     .sort((a, b) => a.createdAt - b.createdAt || compareNatural(a.id, b.id));
 });
+
+// Statements and bodies render in Monaco: load it while the dialog opens, not after.
+watch(
+  () => mine.value.length,
+  (n) => n > 0 && void loadMonaco(),
+  { immediate: true },
+);
 
 watch(
   () => (items.value ?? []).map((i) => i.id),

@@ -440,7 +440,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
           </Badge>
         </template>
         <Button
-          variant="dialog"
+          variant="dialog-danger"
           size="kira-lg"
           :disabled="!draft.dirty.value"
           data-testid="connection-file-discard"

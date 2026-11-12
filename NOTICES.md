@@ -316,3 +316,17 @@ FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS ON AN
 "AS IS" BASIS, AND THE UNIVERSITY OF CALIFORNIA HAS NO OBLIGATIONS TO
 PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 ```
+
+## GitHub GraphQL schema (test fixture)
+
+`apps/kira-space/internal/githost/github/testdata/github-schema.docs.graphql` is a copy of GitHub's
+published public GraphQL schema, fetched from
+<https://docs.github.com/public/fpt/schema.docs.graphql> (source: the `github/docs` repository).
+Content in `github/docs` is licensed CC-BY-4.0 (<https://creativecommons.org/licenses/by/4.0/>);
+the copy is unmodified and used only by `schema_test.go` to validate Kira's GraphQL documents.
+Refresh it by downloading the same URL again.
+
+## gqlparser
+
+`github.com/vektah/gqlparser/v2` (MIT, with its dependency `github.com/agnivade/levenshtein`, MIT)
+validates GraphQL documents in `schema_test.go`. Test-only; not shipped in the app binary.

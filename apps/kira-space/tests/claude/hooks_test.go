@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/internal/terminal"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 // TestTerminalAgentHooks launches the real TUI through Terminal.Open and expects the injected
@@ -236,5 +238,73 @@ func TestShimInertForPlainClaude(t *testing.T) {
 	time.Sleep(time.Second)
 	if got := app.Events.Since(mark, "kira:agent:event"); len(got) != 0 {
 		t.Fatalf("listener received %d hook events from a plain claude, want 0", len(got))
+	}
+}
+
+// TestHookStopBlock proves Claude honors the body the hook shim prints for a Stop: the app blocks the
+// Stop of a busy lease holder with the user's release request, and the real agent carries on and calls
+// release_lease. Only the Stop reply can deliver it: the agent is mid-turn on task_info calls, which
+// carry no lease notice.
+func TestHookStopBlock(t *testing.T) {
+	f := newAdeFixture(t, nil)
+	f.saveWorkflow(t, "flow", manualStepYAML)
+	task := f.createTask(t, "flow")
+	b, err := f.W.AdeTask.Board(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var row adewire.Branch
+	for _, br := range b.Branches {
+		if br.TaskID == task.ID && br.CodeRepoID == f.repoID {
+			row = br
+		}
+	}
+	br, err := f.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: row.ID, Name: "feat/lease"})
+	if err != nil || br.Worktree == "" {
+		t.Fatalf("SetTaskBranch = %+v, %v", br, err)
+	}
+	if err := f.W.Leases.SaveQueues(ctx, adewire.LeaseQueuesArgs{Names: []string{"push"}}); err != nil {
+		t.Fatal(err)
+	}
+	launch, err := f.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.seedClaudeJSON(t, f.repo.Dir, launch.Cwd)
+	mark := f.Events.Mark()
+	if _, err := f.W.Terminal.Open(terminal.OpenArgs{
+		TerminalID: launch.TerminalID, WindowKey: window, Cwd: launch.Cwd, Cols: 120, Rows: 40,
+		Command: launch.Command, LaunchKind: terminal.LaunchKindAgent,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = f.W.Terminal.Close(terminal.CloseArgs{TerminalID: launch.TerminalID}) })
+	f.waitAgentEvent(t, mark, launch.TerminalID, "SessionStart", 60*time.Second)
+	time.Sleep(2 * time.Second)
+
+	if err := f.W.AdeTask.Send(ctx, adewire.SendArgs{
+		SessionID: launch.SessionID,
+		Message:   "Call acquire_lease with queue push. Then call task_info six times, one after another. Then reply done.",
+	}); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	holder := func() bool {
+		snap, err := f.W.Leases.Snapshot(ctx)
+		return err == nil && len(snap.Queues) == 1 && snap.Queues[0].Holder != nil
+	}
+	testx.WaitUntil(t, 90*time.Second, holder)
+	// The agent is mid-turn: nothing is typed, the message waits for the Stop.
+	if err := f.W.Leases.RequestRelease(ctx, adewire.LeaseQueueArgs{Queue: "push"}); err != nil {
+		t.Fatal(err)
+	}
+	testx.WaitUntil(t, 120*time.Second, func() bool { return !holder() })
+	stops := 0
+	for _, e := range f.agentEvents(t, mark, launch.TerminalID) {
+		if e.Event == "Stop" {
+			stops++
+		}
+	}
+	if stops == 0 {
+		t.Fatal("lease released without a Stop")
 	}
 }

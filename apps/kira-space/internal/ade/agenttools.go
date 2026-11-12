@@ -166,12 +166,17 @@ func (b *TaskBoard) spaceInfo(ctx context.Context, tc *taskCtx) (agentmcp.TaskIn
 			}
 		}
 	}
+	cache := b.newAttachCache()
 	for _, br := range tc.branches {
 		r := agentmcp.TaskRepo{Repo: tc.nick[br.CodeRepoID], CodeRepoID: br.CodeRepoID}
 		if br.Name != "" {
 			name := br.Name
 			r.Branch = &name
-			r.Worktree = b.worktreePath(ctx, br)
+			at, _ := cache.worktree(ctx, br)
+			r.Worktree = at.attached
+			if at.detached {
+				r.Mismatch = &agentmcp.WorktreeMismatch{Folder: at.own, CheckedOut: checkedOutName(at.head)}
+			}
 		}
 		r.Setup = b.setupInfo(br, r.Worktree)
 		info.Repos = append(info.Repos, r)
@@ -335,6 +340,26 @@ func (b *TaskBoard) createBranch(ctx context.Context, sb model.AdeTaskBranch, ni
 	return agentmcp.RequestedBranch{BranchInfo: b.branchInfo(sb, nick, res.Path), Outcome: outcome}, nil
 }
 
+// checkedOutName names what a row's own folder holds: its branch, or "HEAD" for a detached commit.
+func checkedOutName(head string) string {
+	if head == "" {
+		return "HEAD"
+	}
+	return head
+}
+
+// switchedNext is the next-step hint for a row whose own folder holds another branch or a detached
+// commit. "" when the folder is attached or missing.
+func switchedNext(sb model.AdeTaskBranch, at attachment) string {
+	if !at.detached {
+		return ""
+	}
+	if at.head == "" {
+		return "The task folder " + at.own + " is on a detached commit, not " + sb.Name + ". Run git switch " + sb.Name + " there, or call change_branch with from=" + sb.Name + " and a local branch name in to."
+	}
+	return "The task folder " + at.own + " holds " + at.head + ", not " + sb.Name + ". Call change_branch with from=" + sb.Name + " and to=" + at.head + " to make it the task branch, or run git switch " + sb.Name + " there to go back."
+}
+
 func (b *TaskBoard) branchInfo(sb model.AdeTaskBranch, nick, worktree string) agentmcp.BranchInfo {
 	info := agentmcp.BranchInfo{Repo: nick, Branch: sb.Name, Base: sb.Base, Worktree: worktree, Setup: b.setupInfo(sb, worktree)}
 	switch info.Setup.State {
@@ -370,7 +395,12 @@ func (b *TaskBoard) BranchStatus(ctx context.Context, taskID, repo, branch strin
 		case <-time.After(time.Second):
 		}
 	}
-	return b.branchInfo(br, nick, b.worktreePath(ctx, br)), nil
+	at, _ := b.rowWorktree(ctx, br)
+	info := b.branchInfo(br, nick, at.attached)
+	if next := switchedNext(br, at); next != "" && info.Setup.State != model.AdeSetupFailed {
+		info.Next = next
+	}
+	return info, nil
 }
 
 func (b *TaskBoard) setupRunning(sb model.AdeTaskBranch) bool {

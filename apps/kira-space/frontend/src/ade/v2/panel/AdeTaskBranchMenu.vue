@@ -15,6 +15,7 @@ import { computed, ref } from 'vue';
 import type { BranchRowModel } from '../plan/usePlanModel';
 import { useRemoveTaskBranch, useRemoveTaskRepo } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdeOpsStore } from '../state/adeOps';
 import AdeTaskBranchForm from './AdeTaskBranchForm.vue';
 import { useDiscardGuard } from './useDiscardGuard';
 
@@ -28,6 +29,7 @@ const emit = defineEmits<{ error: [message: string] }>();
 
 const ui = useAdeBoardUiStore();
 const guard = useDiscardGuard();
+const ops = useAdeOpsStore();
 const removeBranch = useRemoveTaskBranch();
 const removeRepo = useRemoveTaskRepo();
 
@@ -43,25 +45,32 @@ function openForm(next: 'branch' | 'repo'): void {
 async function remove(what: 'branch' | 'repo'): Promise<void> {
   emit('error', '');
   const branchId = props.row.id;
+  const taskId = props.row.branch.taskId;
   try {
-    await guard(
+    const { proceed, discard } = await guard({
+      branchId,
+      name: label.value,
+      title:
+        what === 'branch'
+          ? t('space.ade.taskTab.branchMenu.removeBranchConfirm.title')
+          : t('space.ade.taskTab.branchMenu.removeRepoConfirm.title'),
+      body: (risk) =>
+        t('space.ade.taskTab.branchMenu.leaveConfirm.body', { name: label.value, risk }),
+      confirmLabel: t('common.action.remove.label'),
+    });
+    if (!proceed) return;
+    const mutation = what === 'branch' ? removeBranch : removeRepo;
+    ops.run(
       {
+        id: `${what === 'branch' ? 'removeBranch' : 'removeRepo'}:${branchId}`,
+        kind: what === 'branch' ? 'removeBranch' : 'removeRepo',
+        taskId,
         branchId,
         name: label.value,
-        title:
-          what === 'branch'
-            ? t('space.ade.taskTab.branchMenu.removeBranchConfirm.title')
-            : t('space.ade.taskTab.branchMenu.removeRepoConfirm.title'),
-        body: (risk) =>
-          t('space.ade.taskTab.branchMenu.leaveConfirm.body', { name: label.value, risk }),
-        confirmLabel: t('common.action.remove.label'),
       },
-      async (discardChanges) => {
-        await (what === 'branch' ? removeBranch : removeRepo).mutateAsync({
-          branchId,
-          discardChanges,
-        });
-        if (ui.selectedBranchId === branchId) ui.select(props.row.branch.taskId);
+      async () => {
+        await mutation.mutateAsync({ branchId, discardChanges: discard });
+        if (ui.selectedBranchId === branchId) ui.select(taskId);
       },
     );
   } catch (err) {

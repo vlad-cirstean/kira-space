@@ -88,6 +88,7 @@ cat >"$TMP/perm" <<'PERMANENT'
 # foundation
 U41 packages/theme/src/wrapSelection.ts # modifier-free typing guard on beforeinput, not a shortcut chord
 U41 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host maps Shift+Enter to meta-Enter bytes, not an app shortcut
+U62 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host owns terminal focus: Terminal.focus(), not DOM focus
 U11 packages/workbench/src/components/LogLines.vue # ANSI bold is log data
 U62 packages/workbench/src/components/AutocompleteField.vue # accepting a suggestion restores focus and the caret on the real input
 U26 packages/workbench/src/components/OpLogPanel.vue # error log row wash at the shared /15 tint, with the inset rail

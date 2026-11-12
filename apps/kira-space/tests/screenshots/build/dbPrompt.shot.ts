@@ -70,7 +70,7 @@ test('build db prompt: settings', async ({ relaunch, consoleErrors }) => {
   });
   await win.locator(t('ade-plan')).waitFor();
   await win.click(t('open-settings'));
-  await win.click(t('settings-section-Database MCP'));
+  await win.click(t('settings-section-Studio MCP'));
   await expect(win.locator(t('settings-db-mcp-focus'))).toBeVisible();
   await shoot(win, 'build-db-settings', consoleErrors);
 });

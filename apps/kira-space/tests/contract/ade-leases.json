@@ -1,0 +1,97 @@
+{
+  "LeasesService.Snapshot#ended": {
+    "queues": [
+      {
+        "holder": null,
+        "name": "push",
+        "waiters": []
+      }
+    ]
+  },
+  "LeasesService.Snapshot#forced": {
+    "queues": [
+      {
+        "holder": {
+          "expiresAt": 0,
+          "noticePending": true,
+          "position": 0,
+          "releaseAsked": false,
+          "sessionId": "<masked>",
+          "since": 0,
+          "taskId": "<masked>",
+          "taskTitle": "Task B"
+        },
+        "name": "push",
+        "waiters": []
+      }
+    ]
+  },
+  "LeasesService.Snapshot#granted": {
+    "queues": [
+      {
+        "holder": {
+          "expiresAt": 0,
+          "noticePending": false,
+          "position": 0,
+          "releaseAsked": false,
+          "sessionId": "<masked>",
+          "since": 0,
+          "taskId": "<masked>",
+          "taskTitle": "Task A"
+        },
+        "name": "push",
+        "waiters": [
+          {
+            "expiresAt": 0,
+            "noticePending": false,
+            "position": 1,
+            "releaseAsked": false,
+            "sessionId": "<masked>",
+            "since": 0,
+            "taskId": "<masked>",
+            "taskTitle": "Task B"
+          }
+        ]
+      }
+    ]
+  },
+  "LeasesService.Snapshot#queued": {
+    "queues": [
+      {
+        "holder": {
+          "expiresAt": 0,
+          "noticePending": false,
+          "position": 0,
+          "releaseAsked": false,
+          "sessionId": "<masked>",
+          "since": 0,
+          "taskId": "<masked>",
+          "taskTitle": "Task C"
+        },
+        "name": "push",
+        "waiters": [
+          {
+            "expiresAt": 0,
+            "noticePending": false,
+            "position": 1,
+            "releaseAsked": false,
+            "sessionId": "<masked>",
+            "since": 0,
+            "taskId": "<masked>",
+            "taskTitle": "Task A"
+          },
+          {
+            "expiresAt": 0,
+            "noticePending": false,
+            "position": 2,
+            "releaseAsked": false,
+            "sessionId": "<masked>",
+            "since": 0,
+            "taskId": "<masked>",
+            "taskTitle": "Task B"
+          }
+        ]
+      }
+    ]
+  }
+}

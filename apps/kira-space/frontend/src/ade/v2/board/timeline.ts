@@ -1,9 +1,8 @@
 import { t } from '@theme/i18n';
 import type { Settings } from '../../../state/settingsDomain';
 import type { Board, Branch, HistoryEntry, Task } from '../wire';
-import { type BranchGraph, buildBranchGraph, isDraft, shortBranchName } from './branchGraph';
+import { type BranchGraph, isDraft, shortBranchName } from './branchGraph';
 import {
-  buildCalendar,
   type Calendar,
   dateParts,
   dayLabel,
@@ -14,11 +13,11 @@ import {
   LATER,
   monthLabel,
   nextWork,
-  parseEst,
-  spanDays,
 } from './calendar';
 import { isWorkKind } from './kind';
-import { shelfOf } from './shelf';
+import { planSequence, type TimelineEntry } from './taskOrder';
+
+export type { TimelineEntry };
 
 // Pure port of mockup v2 `renderVals()` lines 1527-1572 (task order) and 1864-1985 (first-10 cap,
 // hours, bands) on the wire types. No clock read: `today` and `localDayOf` are inputs.
@@ -46,24 +45,6 @@ export interface TimelineInput {
   showHistory: boolean;
   /** Repos hidden by the repo filter; a task is visible when it has no branch or one in a shown repo. */
   hiddenRepoIds?: ReadonlySet<string>;
-}
-
-export interface TimelineEntry {
-  taskId: string;
-  kind: Task['kind'];
-  /** Start day offset from today, `LATER` when undated (shelved, or an unplaced review item). A review item with no plan day takes its placer's day. */
-  day: number;
-  /** Merge day (last working day of the span). */
-  end: number;
-  days: number[];
-  span: number;
-  /** Position in `plan.order`, 999 when absent. */
-  pos: number;
-  est: { hours: number; days: number } | null;
-  /** Every `mine` branch merged. */
-  done: boolean;
-  /** A review item placed by the merge-order rule: it has no plan day. */
-  auto: boolean;
 }
 
 interface TimelineSpan {
@@ -126,94 +107,6 @@ export interface TimelineView {
   historyTip: string;
   moreButtonLabel: string;
   graph: BranchGraph;
-}
-
-/** Done when every branch of the task's own kind (`mine`, or `review` for a review item) merged into main. */
-function isDoneTask(t: Task, graph: BranchGraph, kind: 'mine' | 'review' = 'mine'): boolean {
-  const own = t.branchIds.filter((id) => graph.byBranch.get(id)?.kind === kind);
-  return own.length > 0 && own.every((id) => graph.byBranch.get(id)?.mergedIntoMain === true);
-}
-
-function reviewEntry(taskId: string, day: number, end: number): TimelineEntry {
-  return {
-    taskId,
-    kind: 'review',
-    day,
-    end,
-    days: [day],
-    span: 1,
-    pos: 999,
-    est: null,
-    done: false,
-    auto: true,
-  };
-}
-
-/** Planned tasks and pinned review items (a review with a plan day) sorted by (merge day, start day, plan position). */
-function buildMineEntries(
-  input: TimelineInput,
-  graph: BranchGraph,
-  cal: Calendar,
-): TimelineEntry[] {
-  const { board, settings, today } = input;
-  const out: TimelineEntry[] = [];
-  for (const t of board.tasks) {
-    const iso = board.plan.day[t.id];
-    const review = t.kind === 'review';
-    if (review && iso === undefined) continue;
-    const day = iso === undefined ? LATER : isoToOffset(today, iso);
-    const p = board.plan.order.indexOf(t.id);
-    const est = review ? null : parseEst(t.est, settings.workdayHours, settings.spanDayShare);
-    const span = day === LATER ? 1 : (est?.days ?? 1);
-    const days = day === LATER ? [LATER] : spanDays(cal, day, span);
-    out.push({
-      taskId: t.id,
-      kind: t.kind,
-      day,
-      end: days.at(-1) as number,
-      days,
-      span,
-      pos: p < 0 ? 999 : p,
-      est,
-      done: isDoneTask(t, graph, review ? 'review' : 'mine'),
-      auto: false,
-    });
-  }
-  return out.sort((a, b) => a.end - b.end || a.day - b.day || a.pos - b.pos);
-}
-
-function buildsOnOrConflicts(t: Task, rb: string, graph: BranchGraph): boolean {
-  return t.branchIds.some(
-    (bid) =>
-      graph.ancestors(bid).includes(rb) ||
-      (graph.conflicts.get(bid) ?? []).some((c) => c.with === rb),
-  );
-}
-
-/** Merge order: a review item sits right above the first task that builds on it or conflicts with it. */
-function placeReviews(
-  mine: TimelineEntry[],
-  reviews: readonly Task[],
-  graph: BranchGraph,
-): TimelineEntry[] {
-  const seq: TimelineEntry[] = [];
-  const placed = new Set<string>();
-  for (const me of mine) {
-    if (me.kind === 'review') {
-      seq.push(me);
-      continue;
-    }
-    const t = graph.byTask.get(me.taskId) as Task;
-    for (const r of reviews) {
-      const rb = r.branchIds[0];
-      if (placed.has(r.id) || rb === undefined || !buildsOnOrConflicts(t, rb, graph)) continue;
-      placed.add(r.id);
-      seq.push(reviewEntry(r.id, me.day, me.end));
-    }
-    seq.push(me);
-  }
-  for (const r of reviews) if (!placed.has(r.id)) seq.push(reviewEntry(r.id, LATER, LATER));
-  return seq;
 }
 
 function makeBranchRows(
@@ -420,17 +313,7 @@ function collectDayKeys(
 
 export function buildTimeline(input: TimelineInput): TimelineView {
   const { board, settings, today } = input;
-  const graph = buildBranchGraph(board);
-  const cal = buildCalendar(today, settings);
-
-  const mineAll = buildMineEntries(input, graph, cal);
-  // Shelved tasks (Later, Backlog) leave the Plan sequence but keep an entry for the panel and menu.
-  const onPlan = (e: TimelineEntry): boolean => shelfOf(board, e.taskId) === 'plan';
-  const mine = mineAll.filter(onPlan);
-  const reviews = board.tasks.filter(
-    (t) => t.kind === 'review' && board.plan.day[t.id] === undefined,
-  );
-  const seq = placeReviews(mine, reviews, graph);
+  const { seq, mineAll, graph, cal } = planSequence(board, settings, today);
   const entries = new Map<string, TimelineEntry>();
   for (const e of mineAll) entries.set(e.taskId, e);
   for (const e of seq) entries.set(e.taskId, e);

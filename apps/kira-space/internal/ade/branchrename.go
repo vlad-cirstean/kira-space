@@ -154,7 +154,7 @@ func (b *TaskBoard) renameRefusal(ctx context.Context, sb model.AdeTaskBranch, t
 	if text, err := b.sharedRefusal(sb); text != "" || err != nil {
 		return text, renameFacts{}, err
 	}
-	if text := b.busyRefusal(ctx, sb); text != "" {
+	if text := b.rowBusyRefusal(ctx, sb, "its name is fixed"); text != "" {
 		return text, renameFacts{}, nil
 	}
 	entry, err := b.openRepo(ctx, sb.CodeRepoID)
@@ -207,10 +207,11 @@ func (b *TaskBoard) sharedRefusal(sb model.AdeTaskBranch) (string, error) {
 	return "", nil
 }
 
-// busyRefusal refuses while Kira Space itself works on the branch: a sandbox, a rebase or a prepare script.
-func (b *TaskBoard) busyRefusal(ctx context.Context, sb model.AdeTaskBranch) string {
+// rowBusyRefusal refuses while Kira Space itself works on the branch: a sandbox, a rebase or a prepare
+// script. fixed says what stays fixed meanwhile ("its name is fixed").
+func (b *TaskBoard) rowBusyRefusal(ctx context.Context, sb model.AdeTaskBranch, fixed string) string {
 	if b.branchSandboxed(ctx, sb) {
-		return fmt.Sprintf("Branch %s runs in a sandbox; its name is fixed until that ends.", sb.Name)
+		return fmt.Sprintf("Branch %s runs in a sandbox; %s until that ends.", sb.Name, fixed)
 	}
 	if r, err := b.deps.Tasks.RunningRebaseOn(sb.ID); err != nil || r != nil {
 		return fmt.Sprintf("A rebase runs on %s. Try again when it ends.", sb.Name)

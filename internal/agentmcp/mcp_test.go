@@ -162,6 +162,26 @@ func (f *fakeSpace) BranchStatus(_ context.Context, task, repo, _ string, _ time
 	return BranchInfo{Repo: repo}, nil
 }
 
+func (f *fakeSpace) ChangeBranch(_ context.Context, call SpaceCall, args ChangeBranchArgs) (ChangeBranchResult, error) {
+	f.rec("change|" + call.TaskID + "|" + args.From + ">" + args.To)
+	return ChangeBranchResult{Repo: args.Repo, From: args.From, To: args.To, Outcome: BranchChanged}, nil
+}
+
+func (f *fakeSpace) AcquireLease(_ context.Context, call SpaceCall, args AcquireLeaseArgs) (AcquireLeaseResult, error) {
+	f.rec("acquire|" + call.TaskID + "|" + call.SessionID + "|" + args.Queue)
+	return AcquireLeaseResult{Queue: args.Queue, State: LeaseHeld}, nil
+}
+
+func (f *fakeSpace) ReleaseLease(_ context.Context, call SpaceCall, args ReleaseLeaseArgs) (ReleaseLeaseResult, error) {
+	f.rec("release|" + call.TaskID + "|" + args.Queue)
+	return ReleaseLeaseResult{}, nil
+}
+
+func (f *fakeSpace) LeaseStatus(_ context.Context, call SpaceCall, args LeaseStatusArgs) (LeaseStatusResult, error) {
+	f.rec("leases|" + call.TaskID + "|" + args.Queue)
+	return LeaseStatusResult{}, nil
+}
+
 func (f *fakeSpace) RenameBranch(_ context.Context, call SpaceCall, args RenameBranchArgs) (RenameBranchResult, error) {
 	f.rec("rename|" + call.TaskID + "|" + args.From + ">" + args.To)
 	return RenameBranchResult{Repo: args.Repo, From: args.From, To: args.To, Outcome: BranchRenamed, Remote: RemoteKept}, nil
@@ -242,7 +262,7 @@ func TestGrantScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if names := toolNames(t, sp); names["finish_step"] || !names["request_branches"] || !names["declare_repos"] || !names["task_info"] || !names["operations"] || !names["rename_branch"] || !names["report_artifacts"] || names["branch_status"] || names["attach_proof"] || names["list_operations"] || names["cancel_operation"] {
+	if names := toolNames(t, sp); names["finish_step"] || !names["request_branches"] || !names["declare_repos"] || !names["task_info"] || !names["operations"] || !names["rename_branch"] || !names["change_branch"] || !names["acquire_lease"] || !names["release_lease"] || !names["lease_status"] || !names["report_artifacts"] || names["branch_status"] || names["attach_proof"] || names["list_operations"] || names["cancel_operation"] {
 		t.Fatalf("space-only grant tools = %v", names)
 	}
 	if res, err := sp.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done", "summary": "x"}}); err == nil && !res.IsError {
@@ -256,8 +276,8 @@ func TestGrantScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if names := toolNames(t, both); len(names) != 7 {
-		t.Fatalf("full grant lists %d tools, want 7 (finish_step plus the six Space tools): %v", len(names), names)
+	if names := toolNames(t, both); len(names) != 11 {
+		t.Fatalf("full grant lists %d tools, want 11 (finish_step plus the ten Space tools): %v", len(names), names)
 	}
 	res, err := both.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"branches": []map[string]string{{"repo": "api", "branch": "feat/x"}}}})
 	if err != nil || res.IsError {

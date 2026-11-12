@@ -537,6 +537,8 @@ type BranchHolder struct {
 type BranchDetached struct {
 	Worktree string       `json:"worktree"`
 	Holder   BranchHolder `json:"holder"`
+	// Head is the local branch checked out in Worktree now; "" = a detached commit or nothing.
+	Head string `json:"head"`
 }
 
 // BranchPeer is another live row of the same repo and branch name.
@@ -1662,4 +1664,40 @@ type TrackedUpdatesResult struct {
 type MarkTrackedSeenArgs struct {
 	TaskID   string   `json:"taskId"`
 	ItemKeys []string `json:"itemKeys"` // empty = every item of the task
+}
+
+// LeaseEntry is one holder or waiter of a lease queue. Position is 0 for the holder. Since and
+// ExpiresAt are epoch ms (holder only; ExpiresAt moves with each heartbeat). NoticePending: a message
+// for this session waits for its next turn or tool call.
+type LeaseEntry struct {
+	SessionID     string `json:"sessionId"`
+	TaskID        string `json:"taskId"`
+	TaskTitle     string `json:"taskTitle"`
+	Position      int    `json:"position"`
+	Since         int64  `json:"since"`
+	ExpiresAt     int64  `json:"expiresAt"`
+	ReleaseAsked  bool   `json:"releaseAsked"`
+	NoticePending bool   `json:"noticePending"`
+}
+
+// LeaseQueue is one named resource: its holder and waiters in grant order.
+type LeaseQueue struct {
+	Name    string       `json:"name"`
+	Holder  *LeaseEntry  `json:"holder"`
+	Waiters []LeaseEntry `json:"waiters"`
+}
+
+// LeaseSnapshot is every lease queue in the user's order.
+type LeaseSnapshot struct {
+	Queues []LeaseQueue `json:"queues"`
+}
+
+// LeaseQueuesArgs replaces the lease queue names.
+type LeaseQueuesArgs struct {
+	Names []string `json:"names"`
+}
+
+// LeaseQueueArgs names one lease queue.
+type LeaseQueueArgs struct {
+	Queue string `json:"queue"`
 }

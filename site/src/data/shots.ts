@@ -182,11 +182,11 @@ export const SHOTS: readonly ShotDef[] = [
   },
   {
     id: 'build-db-settings',
-    title: 'Database MCP settings',
-    alt: 'Kira Space Database MCP settings with switches for response preview, focus on approval and API requests.',
+    title: 'Studio MCP settings',
+    alt: 'Kira Space Studio MCP settings with switches for response preview, focus on approval and API requests.',
     caption: 'Settings. Preview responses, focus on approval, API requests.',
     icon: 'database',
-    label: 'Database MCP settings',
+    label: 'Studio MCP settings',
   },
   {
     id: 'build-branches-panel',

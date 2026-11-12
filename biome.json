@@ -13,6 +13,7 @@
       "!node_modules",
       "!apps/kira-space/tests/contract",
       "!docs/design",
+      "!apps/kira-space/internal/githost/github/testdata/github-schema.docs.graphql",
       "!apps/kira-space/tests/claude/testdata/memory-eval",
       "!docs/history-runs",
       "!apps/kira-space/tests/unit/support/fixtures/ade-v2-mockup-logic.js",

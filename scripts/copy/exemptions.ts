@@ -27,4 +27,10 @@ export const EXEMPTIONS: readonly Exemption[] = [
     path: 'packages/workbench/src/automations/run/RunPreview.vue',
     reason: '`--tools` and `--allowedTools` are claude CLI flag names, shown as the command line',
   },
+  {
+    rule: 'U67',
+    path: 'packages/theme/src/components/ui/sonner/Sonner.vue',
+    reason:
+      '`title` and `description` are vue-sonner class slots holding Tailwind classes, not text',
+  },
 ];

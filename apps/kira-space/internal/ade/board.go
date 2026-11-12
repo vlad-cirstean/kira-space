@@ -163,6 +163,15 @@ type TaskBoardDeps struct {
 	// HomeDir is the user home; worktrees go under WorktreesBase(HomeDir).
 	HomeDir string
 	Now     func() time.Time
+	// LeaseQueues stores the lease queue names; nil keeps them in memory only.
+	LeaseQueues LeaseQueueStore
+	// OnLeases pushes a change of the lease queues, holders or waiters on kira:ade:leases.
+	OnLeases func()
+	// AdeSettings reads the ade settings the task list order depends on (workday hours, off days);
+	// nil means the defaults.
+	AdeSettings func() model.AdeSettings
+	// LeaseTTL is how long a holder may stay silent; 0 = leases.DefaultTTL.
+	LeaseTTL time.Duration
 }
 
 // TaskBoard is the v2 engine: one gitsession.Conn holding every repo a live task touches, a per-repo
@@ -212,6 +221,7 @@ type TaskBoard struct {
 	recoveredRebases []model.AdeRun             // rebase runs Recover interrupted; Start re-reads git for them
 	stepMsgs         map[string]string          // task|step -> the Run dialog's edited message
 	agent            *agentmcp.Server
+	lease            *leaseState    // resource leases (leases.go)
 	branchReqs       branchRequests // open agent branch requests (P408)
 	taskReqs         taskRequests   // open orchestrator create_task requests (P571)
 	runNotes         runNotes       // run notes held while an MCP call waits on the user
@@ -255,6 +265,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	})
 	b.checker = newRebaseChecker(ctx, deps.GitStatus, b.scheduleBoard)
 	b.updates = newUpdateWatcher(b, deps.Updates)
+	b.initLeases()
 	return b
 }
 
@@ -336,6 +347,7 @@ func (b *TaskBoard) scheduleBoard() {
 }
 
 func (b *TaskBoard) notifyBoard() {
+	b.dropLeaseOrder()
 	if b.deps.OnBoard != nil {
 		b.deps.OnBoard()
 	}

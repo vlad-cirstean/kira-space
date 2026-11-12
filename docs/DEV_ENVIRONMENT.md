@@ -575,7 +575,7 @@ Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-c
 
 | Changed area (paths) | Command |
 |---|---|
-| Hook injection, shim, listener: `internal/harness/claude/hooks/**`, `internal/harness/settings.go`, `apps/kira-space/internal/ade/tracker.go`, `internal/terminal/bound.go` | `bun run test:claude -run 'TestTerminalAgentHooks\|TestHookPayloadContract\|TestShimInertForPlainClaude\|TestHookBackgroundTasks'` |
+| Hook injection, shim, listener: `internal/harness/claude/hooks/**`, `internal/harness/settings.go`, `apps/kira-space/internal/ade/tracker.go`, `internal/terminal/bound.go` | `bun run test:claude -run 'TestTerminalAgentHooks\|TestHookPayloadContract\|TestShimInertForPlainClaude\|TestHookBackgroundTasks\|TestHookStopBlock'` (`TestHookStopBlock`, P620: a real haiku TUI holder gets the user's release request as a Stop block reply and releases; about 20 s, a cent) |
 | Claude config isolation and agent settings: anything that composes a `claude` argv or env (`internal/harness/claude/**`), `internal/agentcfg/**`, `apps/kira-space/internal/appwire/wire.go` | `bun run test:claude -run 'TestHermeticSession\|TestAgentSettingsClaude\|TestRealClaudeSettingsUntouched' -count=1` (about 100 s, under a cent of `claude -p`) |
 | ADE runs and sessions: `apps/kira-space/internal/{ade,adeflow}/**, internal/agentmcp/**, internal/mcpcall/**, internal/harness/claude/headless.go` | `bun run test:claude -run 'TestAdeHeadlessRun\|TestAdeStepResults\|TestAdeManualSession\|TestAdeAdHocSession\|TestAdeRebaseRun\|TestAdeResumeRun\|TestAdeResumeLost\|TestAdeReviewStep\|TestAdeReviewLost\|TestAdeSandbox\|TestAdeSandboxReadOnly\|TestAdeBranchRequest\|TestAdeOrchestrator\|TestAdeReportArtifacts'` (`TestAdeBranchRequest` holds the request 65 s, about 90 s, 0.009 USD: the CLI cuts an MCP call at 60 s unless `MCP_TOOL_TIMEOUT` is set, which Kira does for every launch) |
 | Agent sandbox: `internal/agentsandbox/**`, `apps/kira-space/internal/ade/sandbox.go` | `bun run test:claude -run 'TestAdeSandbox\|TestAdeSandboxReadOnly' -count=1`. Linux checks the second layer (flags, note, `enforced 0`); the macOS half is in the Mac checklist below. |
@@ -683,6 +683,14 @@ The sandbox (P287) enforces on macOS only. The sandbox session cannot run Seatbe
 9. Token refresh (P341): run an ADE step after the OAuth token expires. It must still sign in; the refresh
    happens under the sandbox, where keychain file writes stay denied. Record a failure as a Known open item.
 10. If everything passes, delete the "unverified on a real Mac (P287)" item from `docs/ARCHITECTURE.md`.
+11. Multi-image clipboard (P621): `go test -tags imagecliptest ./apps/kira-space/internal/imageclip -count=1 -v` (the tag compiles the test's readback helpers, kept out of the app binary). Expect
+    `TestWriteImagesPrivatePasteboard` to pass: 3 items on a private pasteboard, each with `public.png`
+    equal to its file and `public.file-url`, in order, and a missing file leaves the content unchanged.
+    Apply `docs/pending-changes/.github__workflows__pr.yml.patch` so PR CI runs it too.
+12. In the app, open a proof with 3 steps and click Copy screenshots. Paste into Notes (3 images), Finder
+    (3 PNG files) and Mail (3 attachments). The status strip says "Copied 3 screenshots". Record a failure
+    as a Known open item; if all pass, delete "Multi-image clipboard is unverified (P621)" from
+    `docs/ARCHITECTURE.md`.
 
 ## Load, disk and test scope (P236-P251)
 

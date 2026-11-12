@@ -213,6 +213,12 @@ export const proofShotFolderResultSchema = /*#__PURE__*/ z.object({
   path: z.string(),
 });
 export const proofSaveJpegToResultSchema = /*#__PURE__*/ z.object({ path: z.string() });
+export const proofShotClipboardSchema = /*#__PURE__*/ z.object({ multiImage: z.boolean() });
+export const proofShotClipResultSchema = /*#__PURE__*/ z.object({ id: z.string() });
+export const proofCommitShotClipResultSchema = /*#__PURE__*/ z.object({ count: z.number().int() });
+export type ProofShotClipboard = z.infer<typeof proofShotClipboardSchema>;
+export type ProofShotClipResult = z.infer<typeof proofShotClipResultSchema>;
+export type ProofCommitShotClipResult = z.infer<typeof proofCommitShotClipResultSchema>;
 export type ProofShotLocation = z.infer<typeof proofShotLocationSchema>;
 export type ProofChooseShotLocationResult = z.infer<typeof proofChooseShotLocationResultSchema>;
 export type ProofShotFolderResult = z.infer<typeof proofShotFolderResultSchema>;

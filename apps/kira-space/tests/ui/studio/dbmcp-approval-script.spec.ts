@@ -30,7 +30,7 @@ test('contract: a script request shows the script, who asked and the masked secr
   const card = page.locator(`[data-testid="approval-item-${item.id}"]`);
   await expect(card.locator('[data-testid="approval-target-name"]')).toHaveText(item.target.name);
   await expect(card.locator('[data-testid="approval-operation"]')).toBeVisible();
-  await expect(card.locator('[data-testid="approval-origin"]')).toContainText(item.origin.client);
+  await expect(page.locator('[data-testid="approval-origin"]')).toContainText(item.origin.client);
   await expect(card.locator('[data-testid="db-mcp-approval-script-description"]')).toHaveText(
     payload.description,
   );

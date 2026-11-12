@@ -67,11 +67,11 @@ test('contract: a rejected Save keeps the dialog open with the error', async ({ 
 
 async function openDbMcpSettings(page: Parameters<typeof loc>[0]): Promise<void> {
   await openSettings(page);
-  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click('[data-testid="settings-section-Studio MCP clusters"]');
   await expect(loc(page, 'db-mcp-kube-list')).toBeVisible();
 }
 
-test('contract: the Database MCP switch turns a cluster on with one SetMcp call', async ({
+test('contract: the Studio MCP switch turns a cluster on with one SetMcp call', async ({
   relaunch,
 }) => {
   const args = setMcpArgs('args:KubernetesService.SetMcp:enable');
@@ -87,7 +87,7 @@ test('contract: the Database MCP switch turns a cluster on with one SetMcp call'
     .toEqual([{ ...args, clusterId: dev }]);
 });
 
-test('contract: an enabled cluster shows its approval in Database MCP settings', async ({
+test('contract: an enabled cluster shows its approval in Studio MCP settings', async ({
   relaunch,
 }) => {
   const { page } = await setupKubernetes(relaunch, {

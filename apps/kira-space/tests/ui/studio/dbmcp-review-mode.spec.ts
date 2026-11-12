@@ -1,10 +1,12 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ConnectionConfigView, ConnectionFileDetail } from '@shared/domain/connectionConfig';
+import { CHANNEL } from '@shared/protocol/events';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { connectionRow } from './support/tree';
 
 // Contract dbmcp-review-mode. Backend half: dbmcpflow TestDbMcpReviewPerMode, TestDbMcpReviewOnRequest,
@@ -107,10 +109,9 @@ test('contract: a query item offers the checkbox, a tick rides the approval', as
     control: [{ channel: IPC.approvalsAnswer, response: answeredOk([it.id]) }],
   });
   await pushApprovals(page, [liveItem(it)]);
-  const c = card(page, it);
-  await expect(c.locator(box)).toBeVisible();
-  await expect(c.locator(box)).toHaveAttribute('aria-checked', 'false');
-  await c.locator(box).click();
+  await expect(page.locator(box)).toBeVisible();
+  await expect(page.locator(box)).toHaveAttribute('aria-checked', 'false');
+  await page.locator(box).click();
   await page.click(`[data-testid="approval-approve-${it.id}"]`);
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
@@ -124,10 +125,9 @@ test('contract: a call the settings already review shows the box on and locked',
   if (!it) throw new Error('contract has no on item');
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
-  const c = card(page, it);
-  await expect(c.locator(box)).toHaveAttribute('aria-checked', 'true');
-  await expect(c.locator(box)).toBeDisabled();
-  await c.getByText('Review result').hover();
+  await expect(page.locator(box)).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator(box)).toBeDisabled();
+  await page.getByText('Review result').hover();
   await expect(page.getByRole('tooltip').first()).toContainText(
     'This connection reviews read results.',
   );
@@ -140,16 +140,15 @@ test('contract: an exemption item offers the same checkbox', async ({ relaunch }
     control: [{ channel: IPC.approvalsAnswer, response: answeredOk([it.id]) }],
   });
   await pushApprovals(page, [liveItem(it)]);
-  const c = card(page, it);
-  await expect(c.locator(box)).toBeVisible();
-  await c.locator(box).click();
+  await expect(page.locator(box)).toBeVisible();
+  await page.locator(box).click();
   await page.click(`[data-testid="approval-approve-${it.id}"]`);
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
     .toEqual({ ids: [it.id], approve: true, options: { [it.id]: { reviewResult: true } } });
 });
 
-test('contract: a requested result leaves Approve all', async ({ relaunch }) => {
+test('contract: a requested result shows no bulk approve', async ({ relaunch }) => {
   const [it] = items('requested');
   if (!it) throw new Error('contract has no requested item');
   const [other] = items('query');
@@ -162,8 +161,9 @@ test('contract: a requested result leaves Approve all', async ({ relaunch }) => 
     ],
   });
   await pushApprovals(page, [liveItem(it), liveItem(other)]);
+  await emitWailsEvent(page, CHANNEL.promptsReveal, { id: `approval:${it.id}` });
   await expect(card(page, it).locator('[data-testid="db-mcp-preview-body"]')).toBeVisible();
-  await expect(page.locator('[data-testid="approvals-approve-all"]')).toHaveText('Approve all (1)');
+  await expect(page.locator('[data-testid="approvals-approve-all"]')).toHaveCount(0);
   await page.click('[data-testid="approvals-deny-all"]');
   await expect
     .poll(() => {

@@ -6,6 +6,7 @@ import { stepMoves } from '../board/stepMoves';
 import { usePlanModel } from '../plan/usePlanModel';
 import { useDismissHandover, useNextPass, useSetTaskStep, useStepDone } from '../queries';
 import { useSessions } from '../readQueries';
+import type { Handover } from '../wire';
 
 // The stage-change dialog: which task it is open for, the target stage and the handover notes typed
 // for it. One concern: the stage move with notes. Every opener (step mover, task menu, Next stage action,
@@ -31,6 +32,8 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
   const typed = ref<string | null>(null);
   /** Whether the move closes the sessions of the stage left. */
   const closeChoice = ref<'close' | 'keep'>('close');
+  /** A draft the opener already holds: the board snapshot may not list it yet. */
+  const seeded = ref<Handover | null>(null);
 
   const card = computed(() => (taskId.value ? (model.value?.cardFor(taskId.value) ?? null) : null));
   const fromStepId = computed(() => {
@@ -42,11 +45,15 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     card.value ? stepMoves(card.value.blocks, fromStepId.value, card.value.task.runs) : null,
   );
   /** The open draft of the stage being left, the notes' starting text; a pass has none. */
-  const draft = computed(() =>
-    mode.value === 'pass'
-      ? null
-      : (card.value?.task.handoverDrafts.find((d) => d.fromStepId === fromStepId.value) ?? null),
-  );
+  const draft = computed(() => {
+    if (mode.value === 'pass') return null;
+    const board = card.value?.task.handoverDrafts.find((d) => d.fromStepId === fromStepId.value);
+    if (board) return board;
+    const seed = seeded.value;
+    return seed && seed.taskId === taskId.value && seed.fromStepId === fromStepId.value
+      ? seed
+      : null;
+  });
   /** The first step a pass enters. */
   const passStep = computed(
     () => moves.value?.options.find((o) => o.id !== 'done' && !o.skipped) ?? null,
@@ -78,7 +85,12 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
   );
   const isOpen = computed(() => taskId.value !== null && card.value !== null);
 
-  function open(args: { taskId: string; toStepId?: string; routed?: boolean }): void {
+  function open(args: {
+    taskId: string;
+    toStepId?: string;
+    routed?: boolean;
+    seed?: Handover | null;
+  }): void {
     taskId.value = args.taskId;
     mode.value = 'move';
     routed.value = args.routed ?? false;
@@ -86,6 +98,7 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     picked.value = null;
     typed.value = null;
     closeChoice.value = 'close';
+    seeded.value = args.seed ?? null;
   }
 
   /** Opens the dialog for the next pass of a finished orchestrator. */
@@ -96,6 +109,7 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
 
   function close(): void {
     taskId.value = null;
+    seeded.value = null;
   }
 
   /** Sends the move; notes go along only when they differ from the draft. */
