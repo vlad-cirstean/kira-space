@@ -209,7 +209,10 @@ func (b *TaskBoard) otherWorkOn(call agentmcp.SpaceCall, sb model.AdeTaskBranch)
 		}
 	}
 	if why == "" {
-		other, err := b.runningTUI(func(s model.AdeSession) bool { return s.BranchID == sb.ID && s.ID != call.SessionID })
+		// A task-level session (step, review agent) has no BranchID and works in every own worktree.
+		other, err := b.runningTUI(func(s model.AdeSession) bool {
+			return s.ID != call.SessionID && (s.BranchID == sb.ID || (s.BranchID == "" && s.TaskID == sb.TaskID))
+		})
 		if err != nil {
 			return "", err
 		}

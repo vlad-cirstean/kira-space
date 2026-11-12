@@ -56,7 +56,7 @@ type TrackerDeps struct {
 	// HasDraft reports whether the user left text in a terminal's prompt box, typed while the agent
 	// worked or after. SendIfIdle holds back while one waits: Enter would submit it with the message.
 	HasDraft func(terminalID string) bool
-	Now       func() time.Time
+	Now      func() time.Time
 	// OnChange is called whenever a persisted record's own state changes (a new or revived
 	// session, a stop, a agent_session_id update after /clear) — main.go wires it to
 	// bridge.AdeTaskSessionsChanged, never called with the lock held.

@@ -177,23 +177,32 @@ func TestBranchChange(t *testing.T) {
 		})
 	}
 
-	t.Run("refused while another agent session is open on the row", func(t *testing.T) {
-		f, repo, _ := newChangeFixture(t, "feat/old", "feat/b")
-		repo.Git("branch", "feat/b")
-		row := branchOf(t, board(t, f.app), f.task.ID, f.api)
-		if _, err := f.app.DB().Exec(`INSERT INTO ade_sessions (id, task_id, mode, state, started_at, last_active_at, terminal_id, branch_id, agent_session_id, cwd)
-			VALUES ('other-tui', ?, 'tui', 'running', 1, 1, 'other-term', ?, 'agent-1', ?)`, f.task.ID, row.ID, row.Worktree); err != nil {
-			t.Fatal(err)
-		}
-		f.release(t)
-		if got := f.changeResult(t); !strings.Contains(got, `"outcome":"failed"`) || !strings.Contains(got, "another agent session is open") {
-			t.Fatalf("agent result = %s, want a refusal naming the other session", got)
-		}
-		if ps := f.requestPrompts(t); len(ps) != 0 {
-			t.Fatalf("prompts = %+v, want none", ps)
-		}
-		if name := f.branchName(t, f.api); name != "feat/old" {
-			t.Fatalf("branch = %q, want feat/old", name)
-		}
-	})
+	for _, tc := range []struct {
+		name string
+		bind bool // the session row carries the branch id; otherwise it is task-level (step, review agent)
+	}{{"branch session", true}, {"task-level session", false}} {
+		t.Run("refused while another agent session is open: "+tc.name, func(t *testing.T) {
+			f, repo, _ := newChangeFixture(t, "feat/old", "feat/b")
+			repo.Git("branch", "feat/b")
+			row := branchOf(t, board(t, f.app), f.task.ID, f.api)
+			branchID := ""
+			if tc.bind {
+				branchID = row.ID
+			}
+			if _, err := f.app.DB().Exec(`INSERT INTO ade_sessions (id, task_id, mode, state, started_at, last_active_at, terminal_id, branch_id, agent_session_id, cwd)
+				VALUES ('other-tui', ?, 'tui', 'running', 1, 1, 'other-term', ?, 'agent-1', ?)`, f.task.ID, branchID, row.Worktree); err != nil {
+				t.Fatal(err)
+			}
+			f.release(t)
+			if got := f.changeResult(t); !strings.Contains(got, `"outcome":"failed"`) || !strings.Contains(got, "another agent session is open") {
+				t.Fatalf("agent result = %s, want a refusal naming the other session", got)
+			}
+			if ps := f.requestPrompts(t); len(ps) != 0 {
+				t.Fatalf("prompts = %+v, want none", ps)
+			}
+			if name := f.branchName(t, f.api); name != "feat/old" {
+				t.Fatalf("branch = %q, want feat/old", name)
+			}
+		})
+	}
 }
