@@ -63,7 +63,7 @@ func (b *TaskBoard) planChange(ctx context.Context, call agentmcp.SpaceCall, arg
 	mu := b.taskMu(call.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
-	plan, tc, err := b.changeTarget(ctx, call.TaskID, args)
+	plan, tc, err := b.changeTarget(ctx, call, args)
 	if err != nil || plan.refusal != "" {
 		return plan, err
 	}
@@ -77,8 +77,8 @@ func (b *TaskBoard) planChange(ctx context.Context, call agentmcp.SpaceCall, arg
 
 // changeTarget finds the task's row for args and runs every refusal; plan.refusal holds the agent-facing
 // text of the first that applies. The caller holds the task lock.
-func (b *TaskBoard) changeTarget(ctx context.Context, taskID string, args agentmcp.ChangeBranchArgs) (changePlan, *taskCtx, error) {
-	tc, err := b.spaceCtx(taskID)
+func (b *TaskBoard) changeTarget(ctx context.Context, call agentmcp.SpaceCall, args agentmcp.ChangeBranchArgs) (changePlan, *taskCtx, error) {
+	tc, err := b.spaceCtx(call.TaskID)
 	if err != nil {
 		return changePlan{}, nil, err
 	}
@@ -103,13 +103,13 @@ func (b *TaskBoard) changeTarget(ctx context.Context, taskID string, args agentm
 		plan.refusal = fmt.Sprintf("The branch %s of %s on this task is not yours to change.", args.From, plan.nick)
 		return plan, tc, nil
 	}
-	err = b.changeRefusal(ctx, &plan, args.To)
+	err = b.changeRefusal(ctx, call, &plan, args.To)
 	return plan, tc, err
 }
 
 // changeRefusal sets plan.refusal to the first reason the row cannot take branch to, and fills the
 // folder facts when it can.
-func (b *TaskBoard) changeRefusal(ctx context.Context, plan *changePlan, to string) error {
+func (b *TaskBoard) changeRefusal(ctx context.Context, call agentmcp.SpaceCall, plan *changePlan, to string) error {
 	sb := plan.sb
 	rec, err := b.deps.CodeRepos.Get(sb.CodeRepoID)
 	if err != nil {
@@ -132,6 +132,12 @@ func (b *TaskBoard) changeRefusal(ctx context.Context, plan *changePlan, to stri
 		return nil
 	}
 	if text := b.rowBusyRefusal(ctx, sb, "its branch is fixed"); text != "" {
+		plan.refusal = text
+		return nil
+	}
+	if text, err := b.otherWorkOn(call, sb); err != nil {
+		return err
+	} else if text != "" {
 		plan.refusal = text
 		return nil
 	}
@@ -188,13 +194,42 @@ func (b *TaskBoard) changeRefusal(ctx context.Context, plan *changePlan, to stri
 	return nil
 }
 
+// otherWorkOn says why the row's folder is in use by someone other than the caller, "" when it is
+// not: a switch would swap files under that work. A headless caller is itself the row's step run.
+func (b *TaskBoard) otherWorkOn(call agentmcp.SpaceCall, sb model.AdeTaskBranch) (string, error) {
+	why := ""
+	if name := b.claimOn(sb.ID); name != "" {
+		why = fmt.Sprintf("script run %s is running in its worktree", name)
+	}
+	if why == "" && call.RunID == "" {
+		if busy, err := b.deps.Tasks.HasActiveStepRunOn(sb.ID); err != nil {
+			return "", err
+		} else if busy {
+			why = "a run is working on it"
+		}
+	}
+	if why == "" {
+		other, err := b.runningTUI(func(s model.AdeSession) bool { return s.BranchID == sb.ID && s.ID != call.SessionID })
+		if err != nil {
+			return "", err
+		}
+		if other != nil {
+			why = "another agent session is open on it"
+		}
+	}
+	if why == "" {
+		return "", nil
+	}
+	return fmt.Sprintf("Branch %s cannot change now: %s. Try again when that ends.", sb.Name, why), nil
+}
+
 // applyChange switches the folder and re-points the row after approval, under the task lock, with every
 // refusal checked again since the wait.
 func (b *TaskBoard) applyChange(ctx context.Context, call agentmcp.SpaceCall, args agentmcp.ChangeBranchArgs) (agentmcp.ChangeBranchResult, error) {
 	mu := b.taskMu(call.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
-	plan, _, err := b.changeTarget(ctx, call.TaskID, args)
+	plan, _, err := b.changeTarget(ctx, call, args)
 	if err != nil {
 		return agentmcp.ChangeBranchResult{}, err
 	}
