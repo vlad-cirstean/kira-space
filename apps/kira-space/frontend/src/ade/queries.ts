@@ -7,6 +7,7 @@ import { repoConfigKey } from '../repo/state/repoConfigQueries';
 import { reposKey } from '../repo/state/reposQueries';
 import { control as studioControl } from '../studio/bridge/control';
 import type { useAgentSessionsStore } from './state';
+import { invalidateTaskFamily } from './v2/boardEvent';
 import { agentContextKey } from './v2/context/queries';
 import { installMobileLaunch } from './v2/dialog/mobileLaunch';
 import { adeTurns } from './v2/dialog/turnWatch';
@@ -74,15 +75,16 @@ export function installAdeSignals(
     void queryClient.invalidateQueries({ queryKey: agentSettingsKey });
   });
   // A review step moves with the board, its runs and its own pushes.
+  // Review steps are keyed by branch, so a board push cannot narrow them to its task ids.
   const refreshReviewStep = (): void => {
     void queryClient.invalidateQueries({ queryKey: reviewStepPrefix });
   };
   control.onAdeTaskReview(refreshReviewStep);
   control.onAdeTaskBoard(refreshReviewStep);
-  control.onAdeTaskBoard(() => {
-    void queryClient.invalidateQueries({ queryKey: handoversPrefix });
-    void queryClient.invalidateQueries({ queryKey: artifactsPrefix });
-    void queryClient.invalidateQueries({ queryKey: issuePrefix });
+  control.onAdeTaskBoard((change) => {
+    invalidateTaskFamily(queryClient, handoversPrefix, change);
+    invalidateTaskFamily(queryClient, artifactsPrefix, change);
+    invalidateTaskFamily(queryClient, issuePrefix, change);
   });
   // A proof session closing, attaching or deleting changes a task's chain.
   studioControl.onProofChanged(() => {

@@ -1050,6 +1050,14 @@ export interface PanelForwardResult {
 export interface RunsChangedEvent {
   runs: Run[];
 }
+/** What a board push changed. Optional on the wire: an older backend sends no payload, read as
+ *  everything changed (`normalizeBoardEvent`). */
+export interface BoardChangedEvent {
+  /** False: no ref, branch fact or change request changed. */
+  refs?: boolean;
+  /** Tasks the push touches; null or absent means all. */
+  taskIds?: string[] | null;
+}
 export interface LogEvent {
   kind: LogKind;
   id: string;
