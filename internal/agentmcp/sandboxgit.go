@@ -71,6 +71,8 @@ func (s *Server) addSandboxGitTools(srv *mcp.Server) {
 		if len(remote) > 255 || strings.HasPrefix(remote, "-") {
 			return toolError("remote must be a remote name of your repo."), RemoteResult{}, nil
 		}
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
 		res, err := s.sandbox.FetchRemote(ctx, g.RunID, remote)
 		if err != nil {
 			return fail("fetch_remote", err), RemoteResult{}, nil
@@ -90,6 +92,8 @@ func (s *Server) addSandboxGitTools(srv *mcp.Server) {
 		if !g.Sandbox.Push {
 			return toolError("push is not allowed in a read-only step"), RemoteResult{}, nil
 		}
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
 		res, err := s.sandbox.PushBranch(ctx, g.RunID, args.Force)
 		if err != nil {
 			return fail("push_branch", err), RemoteResult{}, nil

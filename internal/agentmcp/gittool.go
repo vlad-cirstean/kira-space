@@ -319,6 +319,8 @@ func (s *Server) addGitTool(srv *mcp.Server) {
 		if err := CheckGitArgs(a.Args, g.Git.Push); err != nil {
 			return toolError(err.Error()), nil, nil
 		}
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
 		runCtx, cancel := context.WithTimeout(ctx, gitTimeout)
 		defer cancel()
 		out, code, err := s.git.RunGit(runCtx, wt, gitArgv(a.Args))
