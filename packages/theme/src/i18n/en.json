@@ -10005,6 +10005,9 @@
           },
           "toggle": {
             "tooltip": "Show or hide this repository"
+          },
+          "updating": {
+            "loading": "Updating…"
           }
         },
         "view": {

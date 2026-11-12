@@ -13,6 +13,7 @@ export interface RepoChipModel {
   lastFetchAt: number | null;
   shown: boolean;
   pending: boolean;
+  updating?: boolean;
   error: string;
   summary: string;
 }

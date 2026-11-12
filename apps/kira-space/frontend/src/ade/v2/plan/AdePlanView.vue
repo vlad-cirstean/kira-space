@@ -79,6 +79,7 @@ const chips = computed<RepoChipModel[]>(() =>
     lastFetchAt: r.lastFetchAt,
     shown: !ui.hiddenRepoIds.includes(r.codeRepoId),
     pending: refreshingIds.value.includes(r.codeRepoId),
+    updating: r.updating ?? false,
     error: refreshErrors.value[r.codeRepoId] ?? '',
     summary: ui.refreshSummary[r.codeRepoId] ?? '',
   })),

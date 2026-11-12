@@ -731,7 +731,7 @@ const baseNeedsAttention: Rule = (i) => {
 };
 
 const checking: Rule = (i) =>
-  i.branch.conflictCheck === 'checking'
+  i.branch.conflictCheck === 'checking' || i.graph.pairChecking.has(i.branch.id)
     ? tag(
         'checking',
         t('space.ade.board.branchTag.checking.loading'),

@@ -19,6 +19,8 @@ const props = defineProps<{
   shown: boolean;
   pending: boolean;
   error: string;
+  /** Facts are past the deadline and shown from the last good; a push follows. */
+  updating?: boolean;
   /** What the last fetch changed, e.g. `3 refs changed`; `''` before any fetch. */
   summary: string;
 }>();
@@ -27,6 +29,7 @@ const emit = defineEmits<{ toggle: []; refresh: [] }>();
 const ago = useRelativeTime(() => props.lastFetchAt ?? 0);
 const note = computed(() => {
   if (props.pending) return t('common.fetching.loading');
+  if (props.updating) return t('space.ade.plan.repoChip.updating.loading');
   if (props.error) return props.error;
   if (props.remote === '') {
     const none = t('space.ade.plan.repoChip.noRemote.status');
@@ -48,6 +51,7 @@ const tint = computed(() => repoTint(repoLinks.repoColorOf(props.codeRepoId)));
     :class="shown ? 'bg-elevated' : 'bg-transparent'"
     data-testid="ade-repo-chip"
     :data-repo-id="codeRepoId"
+    :data-updating="updating || undefined"
   >
     <AdeTip :text="t('space.ade.plan.repoChip.toggle.tooltip')">
       <Toggle
