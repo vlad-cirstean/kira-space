@@ -7,6 +7,7 @@ import { useRelativeTime } from '@workbench/behaviour/format';
 import { computed } from 'vue';
 import AdeTaskSessions from '../plan/AdeTaskSessions.vue';
 import AdeTaskStatusMenu from '../plan/AdeTaskStatusMenu.vue';
+import { CARD_LEAD, CARD_LEAD_AGENTS, CARD_LEAD_ATTENTION, CARD_STATUS } from '../plan/cardColumns';
 import type { CardModel } from '../plan/usePlanModel';
 import { useTaskMenu } from '../plan/useTaskMenu';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
@@ -49,8 +50,21 @@ const facts = computed(() =>
     @keydown.self.space.prevent="ui.select(card.task.id)"
     @contextmenu="menu.open"
   >
-    <span class="inline-flex min-w-4.5 shrink-0 justify-center" data-testid="ade-row-lead">
-      <AdeTaskSessions v-if="card.sessions" :task-id="card.task.id" :sessions="card.sessions" />
+    <span :class="CARD_LEAD" data-testid="ade-row-lead">
+      <span :class="CARD_LEAD_ATTENTION">
+        <AdeTaskSessions
+          v-if="card.sessions?.state === 'input'"
+          :task-id="card.task.id"
+          :sessions="card.sessions"
+        />
+      </span>
+      <span :class="CARD_LEAD_AGENTS">
+        <AdeTaskSessions
+          v-if="card.sessions && card.sessions.state !== 'input'"
+          :task-id="card.task.id"
+          :sessions="card.sessions"
+        />
+      </span>
     </span>
     <span
       class="min-w-0 flex-1 truncate"
@@ -60,7 +74,7 @@ const facts = computed(() =>
         card.title
       }}</span
     >
-    <AdeTaskStatusMenu :card="card" />
+    <span :class="CARD_STATUS"><AdeTaskStatusMenu :card="card" /></span>
     <span
       v-if="facts"
       class="max-w-2/5 shrink-0 truncate text-kira-sm text-subtle"

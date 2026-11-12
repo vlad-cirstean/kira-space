@@ -23,7 +23,7 @@ function onClick(): void {
       type="button"
       variant="toolbar"
       :aria-label="t('common.needsYou.status')"
-      class="size-4.5 rounded-full border-0 p-0 text-kira-sm font-medium"
+      class="size-5 rounded-full border-0 p-0 text-kira-sm font-medium"
       :class="SOLID_CLASS.amber"
       :pending="busy"
       data-testid="ade-attention"
