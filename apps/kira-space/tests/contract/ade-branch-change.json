@@ -1,608 +1,89 @@
 {
-  "AdeTaskService.Board#changed": {
-    "autofetchMinutes": 0,
-    "branches": [
-      {
-        "addedAt": 0,
-        "ahead": 0,
-        "base": "main",
-        "baseBranchId": "",
-        "baseMissing": false,
-        "baseOwner": "",
-        "basePendingFrom": "",
-        "behind": 0,
-        "codeRepoId": "<id:1>",
-        "conflictCheck": "done",
-        "conflictCheckReason": "",
-        "conflictsIfRebased": [],
-        "deployments": [],
-        "dirty": [],
-        "id": "<id:2>",
-        "integration": [],
-        "kind": "mine",
-        "lastCommitAt": 0,
-        "mergedAt": null,
-        "mergedIntoMain": false,
-        "name": "feat/other",
-        "origin": "agent",
-        "owner": "",
-        "rebaseInProgress": false,
-        "setup": {
-          "exitCode": 0,
-          "finishedAt": 0,
-          "note": "",
-          "startedAt": 0,
-          "state": "ready"
+  "AdeTaskService.Board#changed": [
+    {
+      "addedAt": 0,
+      "ahead": 0,
+      "base": "<masked>",
+      "baseBranchId": "",
+      "baseMissing": false,
+      "baseOwner": "",
+      "basePendingFrom": "",
+      "behind": 0,
+      "codeRepoId": "<masked>",
+      "conflictCheck": "done",
+      "conflictCheckReason": "",
+      "conflictsIfRebased": [],
+      "deployments": [],
+      "dirty": [],
+      "id": "<masked>",
+      "integration": [],
+      "kind": "mine",
+      "lastCommitAt": 1700000060000,
+      "mergedAt": null,
+      "mergedIntoMain": false,
+      "name": "feat/other",
+      "origin": "agent",
+      "owner": "",
+      "rebaseInProgress": false,
+      "setup": {},
+      "taskId": "<masked>",
+      "tip": "<masked>",
+      "upstream": "",
+      "upstreamAhead": 0,
+      "upstreamBehind": 0,
+      "worktree": "<masked>"
+    }
+  ],
+  "AdeTaskService.Board#mismatch": [
+    {
+      "addedAt": 0,
+      "ahead": 0,
+      "base": "<masked>",
+      "baseBranchId": "",
+      "baseMissing": false,
+      "baseOwner": "",
+      "basePendingFrom": "",
+      "behind": 0,
+      "codeRepoId": "<masked>",
+      "conflictCheck": "done",
+      "conflictCheckReason": "",
+      "conflictsIfRebased": [],
+      "deployments": [],
+      "detached": {
+        "head": "feat/other",
+        "holder": {
+          "branchId": "<masked>",
+          "kind": "none",
+          "taskId": "<masked>",
+          "worktree": "<masked>"
         },
-        "taskId": "<id:3>",
-        "tip": "<masked>",
-        "upstream": "",
-        "upstreamAhead": 0,
-        "upstreamBehind": 0,
-        "worktree": "<home>/kira-space-wts/api/<wt>"
-      }
-    ],
-    "history": [],
-    "pairs": [],
-    "plan": {
-      "backlog": [],
-      "day": {},
-      "order": [
-        "<id:3>"
-      ],
-      "queuedAfter": {},
-      "unpushed": {}
-    },
-    "repos": [
-      {
-        "codeRepoId": "<id:1>",
-        "lastFetchAt": null,
-        "mainName": "main",
-        "remote": "origin"
-      }
-    ],
-    "statusDefaults": {
-      "finished": "done",
-      "new": "todo",
-      "review": "in-review",
-      "step": "in-progress"
-    },
-    "statuses": [
-      {
-        "color": "<masked>",
-        "id": "todo",
-        "name": "To do"
+        "worktree": "<masked>"
       },
-      {
-        "color": "<masked>",
-        "id": "in-progress",
-        "name": "In progress"
-      },
-      {
-        "color": "<masked>",
-        "id": "in-review",
-        "name": "In review"
-      },
-      {
-        "color": "<masked>",
-        "id": "done",
-        "name": "Done"
-      }
-    ],
-    "tasks": [
-      {
-        "branchIds": [
-          "<id:2>"
-        ],
-        "branchRequestId": "",
-        "color": 0,
-        "createdAt": 0,
-        "entryStepId": "one",
-        "est": "",
-        "handoverDrafts": [],
-        "handoverIn": {
-          "body": "summary-done",
-          "createdAt": 0,
-          "dismissed": false,
-          "edited": false,
-          "finished": false,
-          "fromStepId": "two",
-          "fromStepName": "two",
-          "id": "<id:10>",
-          "sessionId": "<id:8>",
-          "source": "run",
-          "state": "handed",
-          "taskId": "<id:3>",
-          "toStepId": "done",
-          "toStepName": "",
-          "updatedAt": 0
-        },
-        "hostLink": null,
-        "hostUrl": "",
-        "id": "<id:3>",
-        "jira": null,
-        "kind": "task",
-        "notes": "",
-        "owner": "",
-        "runs": [
-          {
-            "attempt": 1,
-            "branchId": "<id:2>",
-            "exitCode": 0,
-            "finishedAt": 0,
-            "id": "<id:6>",
-            "loops": 0,
-            "note": "",
-            "outcome": {
-              "exitCode": 0,
-              "reason": "",
-              "reported": true,
-              "result": "done",
-              "route": "next",
-              "source": "agent",
-              "status": "done",
-              "summary": "summary-done"
-            },
-            "purpose": "",
-            "resumable": false,
-            "returns": 0,
-            "review": null,
-            "sandbox": {
-              "access": "off",
-              "denials": 0,
-              "enforced": false,
-              "last": ""
-            },
-            "sessionId": "<id:5>",
-            "startedAt": 0,
-            "state": "done",
-            "stepId": "one",
-            "summary": "summary-done",
-            "taskId": "<id:3>"
-          },
-          {
-            "attempt": 1,
-            "branchId": "<id:2>",
-            "exitCode": 0,
-            "finishedAt": 0,
-            "id": "<id:7>",
-            "loops": 0,
-            "note": "",
-            "outcome": {
-              "exitCode": 0,
-              "reason": "",
-              "reported": true,
-              "result": "done",
-              "route": "next",
-              "source": "agent",
-              "status": "done",
-              "summary": "summary-done"
-            },
-            "purpose": "",
-            "resumable": false,
-            "returns": 0,
-            "review": null,
-            "sandbox": {
-              "access": "off",
-              "denials": 0,
-              "enforced": false,
-              "last": ""
-            },
-            "sessionId": "<id:8>",
-            "startedAt": 0,
-            "state": "done",
-            "stepId": "two",
-            "summary": "summary-done",
-            "taskId": "<id:3>"
-          }
-        ],
-        "since": {},
-        "statusBy": "auto",
-        "statusId": "in-progress",
-        "statusStep": "two",
-        "title": "Fix login",
-        "workflow": {
-          "id": "flow",
-          "name": "Flow",
-          "steps": [
-            {
-              "agent": "",
-              "allowedTools": [],
-              "before": "auto",
-              "command": "",
-              "dbMcp": true,
-              "id": "one",
-              "kind": "agent",
-              "maxReturns": 3,
-              "name": "one",
-              "outsideRepo": false,
-              "params": {},
-              "prompt": "ask for branches",
-              "results": [
-                {
-                  "description": "",
-                  "id": "done",
-                  "loop": false,
-                  "next": "next",
-                  "ok": true
-                },
-                {
-                  "description": "",
-                  "id": "failed",
-                  "loop": false,
-                  "next": "stop",
-                  "ok": false
-                }
-              ],
-              "review": null,
-              "runsOn": "once",
-              "sandbox": {
-                "access": "off",
-                "allow": [],
-                "network": true,
-                "read": []
-              },
-              "session": false,
-              "settings": {},
-              "skip": false,
-              "smartScript": "",
-              "status": "",
-              "timeout": "1m"
-            },
-            {
-              "agent": "",
-              "allowedTools": [],
-              "before": "auto",
-              "command": "",
-              "dbMcp": true,
-              "id": "two",
-              "kind": "agent",
-              "maxReturns": 3,
-              "name": "two",
-              "outsideRepo": false,
-              "params": {},
-              "prompt": "ask for branches",
-              "results": [
-                {
-                  "description": "",
-                  "id": "done",
-                  "loop": false,
-                  "next": "next",
-                  "ok": true
-                },
-                {
-                  "description": "",
-                  "id": "failed",
-                  "loop": false,
-                  "next": "stop",
-                  "ok": false
-                }
-              ],
-              "review": null,
-              "runsOn": "once",
-              "sandbox": {
-                "access": "off",
-                "allow": [],
-                "network": true,
-                "read": []
-              },
-              "session": false,
-              "settings": {},
-              "skip": false,
-              "smartScript": "",
-              "status": "",
-              "timeout": "1m"
-            }
-          ]
-        },
-        "workflowId": "flow",
-        "workflowOutdated": false
-      }
-    ],
-    "worktreeBasePath": "<home>/kira-space-wts"
-  },
-  "AdeTaskService.Board#mismatch": {
-    "autofetchMinutes": 0,
-    "branches": [
-      {
-        "addedAt": 0,
-        "ahead": 0,
-        "base": "main",
-        "baseBranchId": "",
-        "baseMissing": false,
-        "baseOwner": "",
-        "basePendingFrom": "",
-        "behind": 0,
-        "codeRepoId": "<id:1>",
-        "conflictCheck": "done",
-        "conflictCheckReason": "",
-        "conflictsIfRebased": [],
-        "deployments": [],
-        "detached": {
-          "head": "feat/other",
-          "holder": {
-            "branchId": "",
-            "kind": "none",
-            "taskId": "",
-            "worktree": ""
-          },
-          "worktree": "<home>/kira-space-wts/api/<wt>"
-        },
-        "dirty": [],
-        "id": "<id:2>",
-        "integration": [],
-        "kind": "mine",
-        "lastCommitAt": 0,
-        "mergedAt": null,
-        "mergedIntoMain": false,
-        "name": "feat/old",
-        "origin": "agent",
-        "owner": "",
-        "rebaseInProgress": false,
-        "setup": null,
-        "taskId": "<id:3>",
-        "tip": "<masked>",
-        "upstream": "refs/remotes/origin/main",
-        "upstreamAhead": 0,
-        "upstreamBehind": 0,
-        "worktree": ""
-      }
-    ],
-    "history": [],
-    "pairs": [],
-    "plan": {
-      "backlog": [],
-      "day": {},
-      "order": [
-        "<id:3>"
-      ],
-      "queuedAfter": {},
-      "unpushed": {}
-    },
-    "repos": [
-      {
-        "codeRepoId": "<id:1>",
-        "lastFetchAt": null,
-        "mainName": "main",
-        "remote": "origin"
-      }
-    ],
-    "statusDefaults": {
-      "finished": "done",
-      "new": "todo",
-      "review": "in-review",
-      "step": "in-progress"
-    },
-    "statuses": [
-      {
-        "color": "<masked>",
-        "id": "todo",
-        "name": "To do"
-      },
-      {
-        "color": "<masked>",
-        "id": "in-progress",
-        "name": "In progress"
-      },
-      {
-        "color": "<masked>",
-        "id": "in-review",
-        "name": "In review"
-      },
-      {
-        "color": "<masked>",
-        "id": "done",
-        "name": "Done"
-      }
-    ],
-    "tasks": [
-      {
-        "branchIds": [
-          "<id:2>"
-        ],
-        "branchRequestId": "",
-        "color": 0,
-        "createdAt": 0,
-        "entryStepId": "one",
-        "est": "",
-        "handoverDrafts": [],
-        "handoverIn": {
-          "body": "summary-done",
-          "createdAt": 0,
-          "dismissed": false,
-          "edited": false,
-          "finished": false,
-          "fromStepId": "one",
-          "fromStepName": "one",
-          "id": "<id:4>",
-          "sessionId": "<id:5>",
-          "source": "run",
-          "state": "handed",
-          "taskId": "<id:3>",
-          "toStepId": "two",
-          "toStepName": "two",
-          "updatedAt": 0
-        },
-        "hostLink": null,
-        "hostUrl": "",
-        "id": "<id:3>",
-        "jira": null,
-        "kind": "task",
-        "notes": "",
-        "owner": "",
-        "runs": [
-          {
-            "attempt": 1,
-            "branchId": "<id:2>",
-            "exitCode": 0,
-            "finishedAt": 0,
-            "id": "<id:6>",
-            "loops": 0,
-            "note": "",
-            "outcome": {
-              "exitCode": 0,
-              "reason": "",
-              "reported": true,
-              "result": "done",
-              "route": "next",
-              "source": "agent",
-              "status": "done",
-              "summary": "summary-done"
-            },
-            "purpose": "",
-            "resumable": false,
-            "returns": 0,
-            "review": null,
-            "sandbox": {
-              "access": "off",
-              "denials": 0,
-              "enforced": false,
-              "last": ""
-            },
-            "sessionId": "<id:5>",
-            "startedAt": 0,
-            "state": "done",
-            "stepId": "one",
-            "summary": "summary-done",
-            "taskId": "<id:3>"
-          },
-          {
-            "attempt": 1,
-            "branchId": "<id:2>",
-            "exitCode": null,
-            "finishedAt": null,
-            "id": "<id:7>",
-            "loops": 0,
-            "note": "",
-            "outcome": null,
-            "purpose": "",
-            "resumable": false,
-            "returns": 0,
-            "review": null,
-            "sandbox": {
-              "access": "off",
-              "denials": 0,
-              "enforced": false,
-              "last": ""
-            },
-            "sessionId": "<id:8>",
-            "startedAt": 0,
-            "state": "running",
-            "stepId": "two",
-            "summary": "",
-            "taskId": "<id:3>"
-          }
-        ],
-        "since": {},
-        "statusBy": "auto",
-        "statusId": "in-progress",
-        "statusStep": "two",
-        "title": "Fix login",
-        "workflow": {
-          "id": "flow",
-          "name": "Flow",
-          "steps": [
-            {
-              "agent": "",
-              "allowedTools": [],
-              "before": "auto",
-              "command": "",
-              "dbMcp": true,
-              "id": "one",
-              "kind": "agent",
-              "maxReturns": 3,
-              "name": "one",
-              "outsideRepo": false,
-              "params": {},
-              "prompt": "ask for branches",
-              "results": [
-                {
-                  "description": "",
-                  "id": "done",
-                  "loop": false,
-                  "next": "next",
-                  "ok": true
-                },
-                {
-                  "description": "",
-                  "id": "failed",
-                  "loop": false,
-                  "next": "stop",
-                  "ok": false
-                }
-              ],
-              "review": null,
-              "runsOn": "once",
-              "sandbox": {
-                "access": "off",
-                "allow": [],
-                "network": true,
-                "read": []
-              },
-              "session": false,
-              "settings": {},
-              "skip": false,
-              "smartScript": "",
-              "status": "",
-              "timeout": "1m"
-            },
-            {
-              "agent": "",
-              "allowedTools": [],
-              "before": "auto",
-              "command": "",
-              "dbMcp": true,
-              "id": "two",
-              "kind": "agent",
-              "maxReturns": 3,
-              "name": "two",
-              "outsideRepo": false,
-              "params": {},
-              "prompt": "ask for branches",
-              "results": [
-                {
-                  "description": "",
-                  "id": "done",
-                  "loop": false,
-                  "next": "next",
-                  "ok": true
-                },
-                {
-                  "description": "",
-                  "id": "failed",
-                  "loop": false,
-                  "next": "stop",
-                  "ok": false
-                }
-              ],
-              "review": null,
-              "runsOn": "once",
-              "sandbox": {
-                "access": "off",
-                "allow": [],
-                "network": true,
-                "read": []
-              },
-              "session": false,
-              "settings": {},
-              "skip": false,
-              "smartScript": "",
-              "status": "",
-              "timeout": "1m"
-            }
-          ]
-        },
-        "workflowId": "flow",
-        "workflowOutdated": false
-      }
-    ],
-    "worktreeBasePath": "<home>/kira-space-wts"
-  },
+      "dirty": [],
+      "id": "<masked>",
+      "integration": [],
+      "kind": "mine",
+      "lastCommitAt": 1700000060000,
+      "mergedAt": null,
+      "mergedIntoMain": false,
+      "name": "feat/old",
+      "origin": "agent",
+      "owner": "",
+      "rebaseInProgress": false,
+      "setup": null,
+      "taskId": "<masked>",
+      "tip": "<masked>",
+      "upstream": "refs/remotes/origin/main",
+      "upstreamAhead": 0,
+      "upstreamBehind": 0,
+      "worktree": "<masked>"
+    }
+  ],
   "ApprovalsService.List#branch": [
     {
       "createdAt": 0,
       "expiresAt": 0,
-      "id": "branch.request:<id:9>",
+      "id": "branch.request:<id:1>",
       "kind": "branch.request",
       "operation": {
         "class": "change",
@@ -625,7 +106,7 @@
             "id": "c0i0",
             "kind": "switch",
             "repo": "api",
-            "session": "<id:8>",
+            "session": "<id:2>",
             "source": "run",
             "stacked": [],
             "stepName": "two",
