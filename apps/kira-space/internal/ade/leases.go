@@ -30,7 +30,8 @@ const (
 	// leaseToolCeiling x the TTL bounds how long one silent tool call keeps a holder alive, so an
 	// interrupted tool (no end event) cannot hold a lease for good.
 	leaseToolCeiling = 3
-	// leaseOrderFresh is how long a computed task order ranks waiters before it is built again.
+	// leaseOrderFresh is how long a computed task order stays current with no board change, for the
+	// settings it reads that never announce one.
 	leaseOrderFresh = 5 * time.Second
 )
 
@@ -43,8 +44,7 @@ type leaseState struct {
 	pending map[leases.Key][]string
 	// saveMu serializes SaveLeaseQueues so the stored names and the book end in the same order.
 	saveMu sync.Mutex
-	// order caches the task order a waiter is ranked by: building it takes a full board, so waiters
-	// polling their queue would each pay for one. A board change drops it without waiting.
+	// order caches the task order a waiter is ranked by. A board change marks it stale without waiting.
 	order orderCache
 	// runs holds the owners of live headless runs, which emit no hook events: a live run is alive.
 	runs map[leases.Key]struct{}
@@ -87,8 +87,9 @@ func leaseKeyOf(sessionID, runID string) leases.Key {
 	return leases.Key(runKeyPrefix + runID)
 }
 
-// taskListOrder is the order the Tasks UI shows, from a board snapshot at most leaseOrderFresh old:
-// the rank of a lease waiter. A failed read ranks everyone by arrival.
+// taskListOrder is the order the Tasks UI shows: the rank of a lease waiter. Once built it never
+// runs Board on the caller: a stale order is returned while one background build refreshes it.
+// A failed first read ranks everyone by arrival.
 func (b *TaskBoard) taskListOrder() []string {
 	now := b.deps.Now()
 	// The UI reads the machine's local date, so the order does too.
@@ -104,7 +105,7 @@ func (b *TaskBoard) taskListOrder() []string {
 			s = b.deps.AdeSettings()
 		}
 		return TaskListOrder(board, s, day), true
-	})
+	}, func(fn func()) { b.goTracked(fn) })
 }
 
 // dropLeaseOrder forgets the cached task order after a board change. It never waits for a build.
