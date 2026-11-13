@@ -9,7 +9,7 @@ Restore Plan/task list UI to its look before v0.3.9. Reference: tag `v0.3.8`. Hi
 
 | Phase | Title | Status |
 |-------|-------|--------|
-| P625 | Restore task list look to pre-v0.3.9 and subtle Today marker | Todo |
+| P625 | Restore task list look to pre-v0.3.9 and subtle Today marker | Done |
 
 ## P625 Restore task list look to pre-v0.3.9 and subtle Today marker
 
@@ -21,3 +21,5 @@ Restore Plan/task list UI to its look before v0.3.9. Reference: tag `v0.3.8`. Hi
 - Timeline: drop the date gutter beside the cards. Each date shows once as a heading row above its day's cards, trading a little vertical space for horizontal space. Today's heading and group carry the brighter-grey treatment.
 - Shell top bar (tabs, capture box, Add): fits narrow windows; every control stays reachable (shrink or wrap, never cut off).
 - Keep unrelated v0.3.9 to v0.3.11 changes (performance, feedback) unless they cause a complaint above.
+
+Result: cards back to the `v0.3.8` look (3px task-colour left edge, no fill; `taskTint.ts` and `cardColumns.ts` deleted), branch row lead cell removed, timeline gutter replaced by one `ade-band-head` heading row per day, Today a neutral grey (`--color-today`, `--color-today-tint`), shell bar wraps below the `@5xl` container width. Specs: task-row, plan and new shell-bar specs updated; `typecheck:web`, `typecheck:tests`, `lint` pass. Visual baselines left for CI.
