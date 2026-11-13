@@ -291,6 +291,7 @@ function scrollToDay(k: number): void {
     el.getBoundingClientRect().top -
     headerHeight.value -
     2;
+  syncTodayBelowLine();
 }
 
 async function openHistory(): Promise<void> {
@@ -300,12 +301,14 @@ async function openHistory(): Promise<void> {
   ui.showHistory = true;
   await nextTick();
   scrollY.value = el.scrollHeight - before - 60;
+  syncTodayBelowLine();
 }
 
 function hideHistory(): void {
   ui.showHistory = false;
   ui.historyReach = null;
   scrollY.value = 0;
+  void nextTick(syncTodayBelowLine);
 }
 
 // Past the point where today's band top sits 30px under the sticky header: the history is on
@@ -323,6 +326,15 @@ useIntersectionObserver(
     rootMargin: computed(() => `-${Math.round(headerHeight.value + 30)}px 0px 0px 0px`),
   },
 );
+// The observer only reports a change of intersection: a programmatic jump that carries today's band
+// from above the viewport to below it (or back) changes none, so those scrolls re-read the edge once.
+function syncTodayBelowLine(): void {
+  const el = scrollEl.value;
+  const band = todayTop.value;
+  if (!el || !band) return;
+  todayBelowLine.value =
+    band.getBoundingClientRect().top > el.getBoundingClientRect().top + headerHeight.value + 30;
+}
 const inHistory = computed(() => ui.showHistory && todayBelowLine.value);
 
 async function revealDay(k: number): Promise<void> {
