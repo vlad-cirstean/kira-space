@@ -1538,8 +1538,9 @@ the listeners, then drains the queue; `appwire` stops it before `Tracker.Close`.
 `AgentHooks.Flush()` to wait for every lane. The Tracker writes lease and queued messages to the PTY
 outside `t.mu` and the lease lock, and learns a stopped session's id in the background
 (`learnAsync`, awaited by `Close`).
-Agent CLI paths (`harness.locate`) are cached per name, PATH, SHELL and candidates when no `CLIDeps`
-seam is set. A hit is stat-checked; a miss is never cached.
+Agent CLI resolution (`harness.locate`) runs the PATH and candidate lookup fresh on every launch; only the
+login-shell probe result is cached, per name, PATH, SHELL and candidates when no `CLIDeps` seam is set. A hit is
+stat-checked; a miss is never cached.
 
 **`reduceAgentActivity`'s own phase lattice gained a fourth value, `waiting` (P129 Part 1 §4.8).**
 `AgentActivity` gained `wakeArmed` (sticky across a turn, set when a `PreToolUse` names `Monitor` or
