@@ -10,6 +10,7 @@ import (
 	"os"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -440,13 +441,20 @@ func (b *TaskBoard) prepareWorktrees(ctx context.Context, tc *taskCtx, names map
 		}
 		byRepo[sb.CodeRepoID] = append(byRepo[sb.CodeRepoID], sb)
 	}
-	g, gctx := errgroup.WithContext(ctx)
+	// No errgroup context: a failure must not kill another repo's running `git worktree add`, which
+	// would leave a half-populated registered worktree. A failure only stops branches not yet begun.
+	var g errgroup.Group
 	g.SetLimit(boardFanOut)
+	var failed atomic.Bool
 	for _, repoID := range order {
 		g.Go(func() error {
 			for _, sb := range byRepo[repoID] {
-				path, err := b.prepareWorktree(gctx, sb, title, names, agentStep)
+				if failed.Load() {
+					return nil
+				}
+				path, err := b.prepareWorktree(ctx, sb, title, names, agentStep)
 				if err != nil {
+					failed.Store(true)
 					return err
 				}
 				pathMu.Lock()
