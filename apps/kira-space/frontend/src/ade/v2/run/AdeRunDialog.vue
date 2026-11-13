@@ -17,7 +17,7 @@ import { Textarea } from '@theme/components/ui/textarea';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import SmartBadge from '@workbench/automations/smart/SmartBadge.vue';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useCustomScriptsStore } from '../../../state/customScripts';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import { smartBodyParts } from '../automation/smartStepBody';
@@ -28,7 +28,10 @@ import { usePlanModel } from '../plan/usePlanModel';
 import { useTaskWrites } from '../plan/useTaskWrites';
 import { useAdePromptPreview } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdeDialogsStore } from '../state/adeDialogs';
 import { useAdeOpsStore } from '../state/adeOps';
+import { useAdeStageDialogStore } from '../state/adeStageDialog';
+import { timedCall } from '../state/refusalTiming';
 import { useRepoGate } from '../state/useRepoGate';
 import { ACTION_CLASS } from '../tones';
 import { RUN_PREVIEW_IDS, runPreviewVars } from './runPreview';
@@ -39,6 +42,8 @@ const ui = useAdeBoardUiStore();
 const { model } = usePlanModel();
 const { start } = useTaskWrites();
 const ops = useAdeOpsStore();
+const stage = useAdeStageDialogStore();
+const dialogs = useAdeDialogsStore();
 const { opAfterRepo } = useRepoGate();
 const card = computed(() => (ui.runTaskId ? (model.value?.cardFor(ui.runTaskId) ?? null) : null));
 const open = computed(() => card.value !== null);
@@ -117,15 +122,21 @@ const dirty = computed(
   () => edited.value || Object.values(names.value).some((n) => n.trim() !== ''),
 );
 
-// Inputs of a start the bridge refused (or the user cancelled at the repo prompt): the dialog reopens with them.
-let kept: { message: string; names: Record<string, string> } | null = null;
+// Inputs of a start the bridge refused (or the user cancelled at the repo prompt) live in `ui.runDrafts`:
+// the dialog reopens with them at once when the refusal is prompt, else on the task's next open.
+let alive = true;
+onBeforeUnmount(() => {
+  alive = false;
+});
 
 watch(open, (o) => {
   if (!o) return;
+  const id = ui.runTaskId ?? '';
+  const kept = ui.runDrafts[id];
+  delete ui.runDrafts[id];
   opening.value = initial.value;
   message.value = kept?.message ?? initial.value;
   names.value = kept?.names ?? {};
-  kept = null;
 });
 // The preview lands after the dialog opens: an untouched message takes it over.
 watch(initial, (next) => {
@@ -135,7 +146,8 @@ watch(initial, (next) => {
 });
 
 // Closes at once; the start runs as the task's op (chip on the card, toast past 2 s or on failure).
-// A refused start reopens the dialog with the typed names and message, so nothing is retyped.
+// A start refused promptly reopens the dialog with the typed names and message, unless another dialog or
+// mode took over; a late refusal keeps them for the task's next open (the error toast reports it).
 async function send(): Promise<void> {
   const c = card.value;
   if (!c) return;
@@ -145,15 +157,21 @@ async function send(): Promise<void> {
   const body = edited.value && !smartStep.value ? message.value : '';
   const typed = { message: message.value, names: { ...names.value } };
   close();
-  const ok = await opAfterRepo(
-    taskId,
-    () => start.mutateAsync({ taskId, branchNames, message: body }),
-    (fn) => ops.run({ id: `startRun:${taskId}`, kind: 'startRun', taskId, name: c.title }, fn),
+  const id = `startRun:${taskId}`;
+  const timed = timedCall(() => start.mutateAsync({ taskId, branchNames, message: body }));
+  const ok = await opAfterRepo(taskId, timed.call, (fn) =>
+    ops.run({ id, kind: 'startRun', taskId, name: c.title }, fn),
   );
-  if (ok) return;
+  if (ok) {
+    delete ui.runDrafts[taskId];
+    return;
+  }
+  // A live op of the same id means the submit was a duplicate, not a failure.
+  if (ops.isRunning(id)) return;
+  ui.runDrafts[taskId] = typed;
+  const free = ui.runTaskId === null && !stage.isOpen && dialogs.spec === null;
+  if (!timed.prompt() || !free || !alive) return;
   ui.select(taskId);
-  if (ui.runTaskId !== null) return;
-  kept = typed;
   ui.runTaskId = taskId;
 }
 </script>

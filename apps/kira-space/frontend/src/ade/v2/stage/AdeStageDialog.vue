@@ -14,7 +14,7 @@ import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 import AdeLinkStrip from '../links/AdeLinkStrip.vue';
 import { AdeNotesEditor } from '../notes/asyncEditor';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
@@ -48,9 +48,16 @@ function close(): void {
   store.close();
   emit('close');
 }
-async function move(): Promise<void> {
-  if (await store.submit()) emit('close');
+function move(): void {
+  if (store.submit()) emit('close');
 }
+// The non-routed mount is the only one that can show a reopened (refused) move.
+onMounted(() => {
+  if (!props.routed) store.boardMounted = true;
+});
+onBeforeUnmount(() => {
+  if (!props.routed) store.boardMounted = false;
+});
 </script>
 
 <template>

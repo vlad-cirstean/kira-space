@@ -26,6 +26,8 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
   const focusRebaseLog = ref(false);
   /** Task whose agent Run dialog is open. */
   const runTaskId = ref<string | null>(null);
+  /** Inputs of a Run start that failed with the dialog no longer showable: offered on the task's next open. */
+  const runDrafts = ref<Record<string, { message: string; names: Record<string, string> }>>({});
   /** Last failed step action per task, shown in the panel header until the next attempt. */
   const actionError = ref<Record<string, string>>({});
   /** Per repo: what the last fetch changed, shown on its chip until the next fetch. */
@@ -85,6 +87,7 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
     revealSessionId,
     historyReach,
     runTaskId,
+    runDrafts,
     focusSetup,
     focusRebaseLog,
     actionError,
