@@ -239,8 +239,13 @@ test('a repo without a remote reads no remote, never an error', async ({ relaunc
 });
 
 /** Drags a card onto a day band. Waits for the layout to settle first, else the band moves under the pointer. */
-async function dragCardToBand(page: Page, taskId: string, day: number): Promise<void> {
-  const drop = bandOf(page, day).locator('[data-testid="ade-band-drop"]');
+async function dragCardToBand(
+  page: Page,
+  taskId: string,
+  day: number,
+  target: 'ade-band-drop' | 'ade-band-head' = 'ade-band-drop',
+): Promise<void> {
+  const drop = bandOf(page, day).locator(`[data-testid="${target}"]`);
   await card(page, taskId).scrollIntoViewIfNeeded();
   const geometry = async () =>
     JSON.stringify([await card(page, taskId).boundingBox(), await drop.boundingBox()]);
@@ -258,7 +263,9 @@ async function dragCardToBand(page: Page, taskId: string, day: number): Promise<
   await page.mouse.move(from.x + 40, from.y + 30);
   await page.mouse.down();
   await page.mouse.move(from.x + 60, from.y + 50, { steps: 4 });
-  await page.mouse.move(to.x + 4, to.y + to.height / 2, { steps: 12 });
+  // The drop area has no side padding now: aim at its 4px top padding, clear of the cards.
+  const aimY = target === 'ade-band-head' ? to.y + to.height / 2 : to.y + 2;
+  await page.mouse.move(to.x + 4, aimY, { steps: 12 });
   // The drop target is hit-tested per animation frame: let it catch up with the pointer.
   await page.evaluate(
     () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
@@ -327,7 +334,7 @@ test('the day-off confirm says what moves, offers Cancel and Escape leaves the p
   expect(control.log().filter((e) => e.channel === IPC.adeTaskSetPlan)).toHaveLength(0);
 });
 
-test('a card is a 6px rounded box with a task-colour border on the terminal ground, 16px from its same-day neighbour', async ({
+test('a card is a 6px rounded box with a task-colour left edge on the terminal ground, 16px from its same-day neighbour', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);
@@ -345,7 +352,7 @@ test('a card is a 6px rounded box with a task-colour border on the terminal grou
   expect({ radius: style.radius, top: style.top, left: style.left }).toEqual({
     radius: '6px',
     top: '1px',
-    left: '1px',
+    left: '3px',
   });
   expect(style.leftColor).not.toBe('rgba(0, 0, 0, 0)');
   const [chrome, plan] = await Promise.all([
@@ -398,9 +405,9 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
 
   await card(page, 'T_push').locator('[data-testid="ade-card-head"]').click();
   await expect(card(page, 'T_push')).toHaveAttribute('aria-current', 'true');
-  expect(
-    await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderTopColor),
-  ).not.toBe(focusColor);
+  expect(await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(
+    'rgba(0, 0, 0, 0)',
+  );
   await expect(card(page, 'T_search')).not.toHaveAttribute('aria-current', 'true');
 
   const row = card(page, 'T_push').locator('[data-testid="ade-branch-row"]').first();
@@ -620,18 +627,79 @@ test('contract: Refresh all fetches a repo with a remote and rescans one without
   await expect(page.locator('[data-testid="ade-repo-note"].text-tone-red')).toHaveCount(0);
 });
 
-test('today is an inverted label and its ruler matches the other days', async ({ relaunch }) => {
+test('today is a subtle grey, not yellow, not like other days', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
-  const today = page.locator('[data-testid="ade-band-label"][data-today="true"]');
+  const today = page.locator('[data-testid="ade-day-band"][data-today="true"]');
   await expect(today).toHaveCount(1);
-  const rulerColor = (label: import('@playwright/test').Locator) =>
-    label.evaluate((el) => getComputedStyle(el.parentElement as HTMLElement).borderRightColor);
-  const other = page.locator('[data-testid="ade-band-label"]:not([data-today])').first();
-  expect(await rulerColor(today)).toBe(await rulerColor(other));
-  const colors = await today.evaluate((el) => {
-    const cs = getComputedStyle(el);
-    return { bg: cs.backgroundColor, fg: cs.color };
+  const ruleColor = (band: import('@playwright/test').Locator) =>
+    band
+      .locator('[data-testid="ade-band-head"] > span[aria-hidden="true"]')
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+  const other = page.locator('[data-testid="ade-day-band"]:not([data-today])').first();
+  const todayRule = await ruleColor(today);
+  const otherRule = await ruleColor(other);
+  expect(todayRule).not.toBe(otherRule);
+  const bg = (band: import('@playwright/test').Locator) =>
+    band.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(await bg(today)).not.toBe('rgba(0, 0, 0, 0)');
+  expect(await bg(other)).toBe('rgba(0, 0, 0, 0)');
+  expect(
+    await today
+      .locator('[data-testid="ade-band-label"]')
+      .evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).toBe('rgba(0, 0, 0, 0)');
+  // color-mix computes to `color(srgb r g b)` in 0..1, plain colours to `rgb(r, g, b)` in 0..255.
+  const rgb = (c: string) => {
+    const n = (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    return c.startsWith('color(') ? n.map((v) => v * 255) : n;
+  };
+  const [r = 0, g = 0, b = 0] = rgb(todayRule);
+  expect(Math.max(r, g, b) - Math.min(r, g, b)).toBeLessThanOrEqual(12);
+  const lum = (c: string) => {
+    const [x = 0, y = 0, z = 0] = rgb(c);
+    return 0.2126 * x + 0.7152 * y + 0.0722 * z;
+  };
+  expect(lum(todayRule)).toBeGreaterThan(lum(otherRule));
+});
+
+test('the timeline has no date gutter and each date shows once', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch);
+  const gutters = await page.locator('[data-testid="ade-plan"] *').evaluateAll(
+    (els) =>
+      els.filter((e) => {
+        const cs = getComputedStyle(e);
+        return cs.width === '60px' && cs.borderRightWidth === '2px';
+      }).length,
+  );
+  expect(gutters).toBe(0);
+  const band = bandOf(page, 0);
+  const inset = await band.evaluate((el) => {
+    const c = el.querySelector('[data-testid="ade-card"]');
+    return c ? c.getBoundingClientRect().x - el.getBoundingClientRect().x : null;
   });
-  expect(colors.bg).not.toBe('rgba(0, 0, 0, 0)');
-  expect(colors.bg).not.toBe(colors.fg);
+  expect(inset).not.toBeNull();
+  expect(inset ?? 99).toBeLessThanOrEqual(8);
+  const bands = page.locator('[data-testid="ade-day-band"]');
+  const count = await bands.count();
+  expect(count).toBeGreaterThan(1);
+  for (let i = 0; i < count; i++)
+    await expect(bands.nth(i).locator('[data-testid="ade-band-label"]')).toHaveCount(1);
+  const labels = await page.locator('[data-testid="ade-band-label"]').allInnerTexts();
+  expect(labels).toHaveLength(count);
+  expect(new Set(labels).size).toBe(labels.length);
+});
+
+test("dropping on an empty day's heading moves the task there", async ({ relaunch }) => {
+  const board = adeFixture<BoardFx>('board');
+  const { window: page, control } = await openPlan(relaunch);
+  await page.setViewportSize({ width: 1440, height: 2400 });
+  await expect(bandOf(page, 4).locator('[data-testid="ade-card"]')).toHaveCount(0);
+  await dragCardToBand(page, 'T_deps', 4, 'ade-band-head');
+
+  const calls = () => control.log().filter((e) => e.channel === IPC.adeTaskSetPlan);
+  await expect.poll(() => calls().length).toBe(1);
+  expect(calls()[0]?.args).toEqual({
+    order: [...board.plan.order.filter((id) => id !== 'T_deps'), 'T_deps'],
+    days: { T_deps: '2026-09-26' },
+  });
 });
