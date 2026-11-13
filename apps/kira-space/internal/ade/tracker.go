@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"os"
 	"slices"
@@ -221,8 +222,18 @@ type Tracker struct {
 	// learning marks records with a background learnSessionID in flight; learnWG lets Close wait.
 	learning map[string]bool
 	learnWG  sync.WaitGroup
-	// learnCwd holds one mutex per cwd (*sync.Mutex): learnSessionID runs one at a time per cwd.
-	learnCwd sync.Map
+	// learnCwd stripes learnSessionID by a hash of the cwd: one at a time per cwd, with no
+	// per-worktree growth. Two cwds on one stripe only wait for each other.
+	learnCwd [learnStripes]sync.Mutex
+}
+
+const learnStripes = 64
+
+// learnLock returns the stripe mutex of a cwd.
+func (t *Tracker) learnLock(cwd string) *sync.Mutex {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(cwd))
+	return &t.learnCwd[h.Sum32()%learnStripes]
 }
 
 // NewTracker applies TrackerDeps' own defaults and constructs a Tracker with empty state.
@@ -491,9 +502,9 @@ func (t *Tracker) learnSessionID(recordID string) (string, error) {
 	}
 	// One learner per cwd at a time: two records of one cwd that read the taken ids before either
 	// stored its own could both pick the same single candidate.
-	mu, _ := t.learnCwd.LoadOrStore(rec.Cwd, &sync.Mutex{})
-	mu.(*sync.Mutex).Lock()
-	defer mu.(*sync.Mutex).Unlock()
+	mu := t.learnLock(rec.Cwd)
+	mu.Lock()
+	defer mu.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), locateTimeout)
 	defer cancel()
 	taken, err := t.deps.Store.AgentSessionIDsExcept(recordID)

@@ -79,3 +79,17 @@ func TestFlushLease_noRequeueAfterEnd(t *testing.T) {
 		t.Fatalf("messages re-queued for an ended key: %d", n)
 	}
 }
+
+// A re-queued hook reply or a delivery for an owner that already ended is dropped, not kept.
+func TestLeases_endedOwnerDropsRequeueAndDelivery(t *testing.T) {
+	b := &TaskBoard{}
+	b.lease = &leaseState{pending: map[leases.Key][]string{}, runs: map[leases.Key]struct{}{}, flush: map[leases.Key]*leaseFlush{}}
+	b.lease.book = leases.New(leases.Options{})
+	key := leases.Key("rec")
+	b.endLeases(key)
+	b.requeueLeaseReply("rec", harness.HookReply{Block: "x"})
+	b.deliverLease(key, "y")
+	if n := len(b.lease.pending[key]) + len(b.lease.flush); n != 0 {
+		t.Fatalf("ended owner kept %d pending or flush entries", n)
+	}
+}
