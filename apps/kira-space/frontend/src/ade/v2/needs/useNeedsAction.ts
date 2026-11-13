@@ -10,6 +10,7 @@ import { useAdeDialogsStore } from '../state/adeDialogs';
 import { useAdeOpsStore } from '../state/adeOps';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
+import { runsTarget } from '../state/opTarget';
 import { useRepoGate } from '../state/useRepoGate';
 
 const errMessage = (err: unknown): string => errorText(err);
@@ -50,11 +51,11 @@ export function useNeedsAction() {
         tabs.setBranchTab(n.branchId, 'details');
       } else if (n.action === 'Take over') await takeOver.request(n.sessionId);
       else if (n.action === 'Retry') {
-        await op('retry', n.runIds.join('+'), n, () =>
+        await op('retry', runsTarget(n.runIds, n.taskId, n.stepId), n, () =>
           Promise.all(n.runIds.map((runId) => retry.mutateAsync({ runId }))),
         );
       } else if (n.action === 'Resume') {
-        await op('resume', n.runIds.join('+'), n, () =>
+        await op('resume', runsTarget(n.runIds, n.taskId, n.stepId), n, () =>
           Promise.all(n.runIds.map((runId) => resume.mutateAsync({ runId }))),
         );
       } else if (n.action === 'Open') await openSession(n.sessionId, n.taskId, n.branchId);

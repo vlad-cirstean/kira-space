@@ -21,6 +21,7 @@ import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeOpsStore } from '../state/adeOps';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
+import { runsTarget } from '../state/opTarget';
 import { ACTION_CLASS, TONE_TEXT_CLASS } from '../tones';
 import AdeRow from './AdeRow.vue';
 import AdeRowDetail from './AdeRowDetail.vue';
@@ -185,9 +186,13 @@ const onApprove = (stepId: string): Promise<void> =>
     approve.mutateAsync({ taskId: props.card.task.id, stepId }),
   );
 const onRetry = (runId: string): Promise<void> =>
-  run('retry', runId, () => retry.mutateAsync({ runId }));
+  run('retry', runsTarget([runId], props.card.task.id, props.block.step.id), () =>
+    retry.mutateAsync({ runId }),
+  );
 const onResume = (runId: string): Promise<void> =>
-  run('resume', runId, () => resume.mutateAsync({ runId }));
+  run('resume', runsTarget([runId], props.card.task.id, props.block.step.id), () =>
+    resume.mutateAsync({ runId }),
+  );
 
 const canTakeOver = (r: StepRun): boolean =>
   props.block.step.kind === 'agent' &&

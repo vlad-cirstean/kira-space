@@ -8,6 +8,7 @@ import { useAdeDialogsStore } from '../state/adeDialogs';
 import { type AdeOpKind, useAdeOpsStore } from '../state/adeOps';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
+import { runsTarget } from '../state/opTarget';
 import { useRepoGate } from '../state/useRepoGate';
 
 /** Ops that start or move a task's work: while one runs the task's action buttons are busy. */
@@ -67,8 +68,15 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
       const runs = c.progress.steps
         .find((s) => s.id === a.stepId)
         ?.runs.filter((r) => r.state === 'failed' || r.state === 'stuck');
-      await runOp('retry', `${taskId}:${a.stepId ?? ''}`, c, () =>
-        Promise.all((runs ?? []).map((r) => writes.retry.mutateAsync({ runId: r.runId }))),
+      await runOp(
+        'retry',
+        runsTarget(
+          (runs ?? []).map((r) => r.runId),
+          taskId,
+          a.stepId ?? '',
+        ),
+        c,
+        () => Promise.all((runs ?? []).map((r) => writes.retry.mutateAsync({ runId: r.runId }))),
       );
     } else if (a.kind === 'advance' || a.kind === 'finish') {
       stage.open({ taskId });
