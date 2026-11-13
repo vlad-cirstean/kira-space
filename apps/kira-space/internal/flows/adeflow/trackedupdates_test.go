@@ -48,6 +48,7 @@ func refresh(t *testing.T, app *flowharness.App) {
 	if _, err := app.W.AdeTask.Refresh(ctx, adewire.RefreshArgs{}); err != nil {
 		t.Fatalf("Refresh: %v", err)
 	}
+	app.W.AdeBoard.WaitRefreshTails() // the tracked-updates pass runs after Refresh returns
 }
 
 func TestTrackedUpdates(t *testing.T) {

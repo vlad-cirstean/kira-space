@@ -211,6 +211,7 @@ type TaskBoard struct {
 	repoCfg        repoConfigCache
 	facts          boardFacts
 	wfMemo         *lru.Cache[string, wfMemoEntry]
+	refreshTails   sync.WaitGroup // background tails of Refresh calls
 	history        historyMemo
 	updates        *updateWatcher
 
@@ -851,8 +852,9 @@ func resolveRepoHost(ctx context.Context, entry *gitsession.RepoEntry, branches 
 	return kind, host, found, urls
 }
 
-// Refresh fetches the given repos (none = every repo a live task uses; the UI sends the ids it shows), marks PR-merged branches,
-// then runs and awaits the rebase-conflict checks so the board it emits is settled.
+// Refresh fetches the given repos (none = every repo a live task uses; the UI sends the ids it shows)
+// and returns once branch facts are computed; PR merge marks, conflict checks and the tracked-updates
+// pass finish in the background and push the board.
 func (b *TaskBoard) Refresh(ctx context.Context, codeRepoIDs []string) (adewire.RefreshResult, error) {
 	if len(codeRepoIDs) == 0 {
 		branches, err := b.deps.Tasks.BranchesLive()
@@ -862,18 +864,45 @@ func (b *TaskBoard) Refresh(ctx context.Context, codeRepoIDs []string) (adewire.
 		codeRepoIDs, _ = branchesByRepo(branches)
 	}
 	rows := make([]adewire.RepoRefresh, len(codeRepoIDs))
+	tails := make([]func(context.Context), len(codeRepoIDs))
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(boardFanOut)
 	for i, id := range codeRepoIDs {
 		g.Go(func() error {
-			rows[i] = b.refreshRepo(gctx, id)
+			rows[i], tails[i] = b.refreshRepo(gctx, id)
 			return nil
 		})
 	}
 	_ = g.Wait() // refreshRepo reports failures per repo
 	b.notifyBoard()
-	b.updates.run(ctx, true)
+	// PR merge checks, queued conflict checks and the tracked-updates pass finish after the call
+	// returns; the board push at the end carries them.
+	if b.track() {
+		b.refreshTails.Add(1)
+		go func() {
+			defer b.wg.Done()
+			defer b.refreshTails.Done()
+			b.runRefreshTails(tails)
+		}()
+	}
 	return adewire.RefreshResult{Repos: rows}, nil
+}
+
+// WaitRefreshTails blocks until the background tails of every Refresh so far have finished and
+// pushed the board. Flow tests use it to read a settled board; the UI relies on the push.
+func (b *TaskBoard) WaitRefreshTails() { b.refreshTails.Wait() }
+
+func (b *TaskBoard) runRefreshTails(tails []func(context.Context)) {
+	var tg errgroup.Group
+	tg.SetLimit(boardFanOut)
+	for _, tail := range tails {
+		if tail != nil {
+			tg.Go(func() error { tail(b.ctx); return nil })
+		}
+	}
+	_ = tg.Wait()
+	b.notifyBoard()
+	b.updates.run(b.ctx, true)
 }
 
 func refreshFailure(id string, err error) adewire.RepoRefresh {
@@ -881,7 +910,20 @@ func refreshFailure(id string, err error) adewire.RepoRefresh {
 		Error: &adewire.RemoteOpError{Kind: "Unknown", Message: err.Error()}}
 }
 
-func (b *TaskBoard) refreshRepo(ctx context.Context, id string) adewire.RepoRefresh {
+// refreshFetched is what refreshRepo's locked section hands the rest of the refresh.
+type refreshFetched struct {
+	entry       *gitsession.RepoEntry
+	remote      string
+	hasRemote   bool
+	beforeTips  map[string]string
+	marksBefore map[string]model.AdeBranchMark
+}
+
+// refreshRepo fetches one repo and returns its result. The repo mutex is held for the before-state
+// and the fetch only; facts and marks follow outside it. tail is the rest of the refresh (PR merge
+// checks, conflict-check requests): Refresh runs it in the background and pushes the board when done.
+// tail is nil when the refresh failed.
+func (b *TaskBoard) refreshRepo(ctx context.Context, id string) (out adewire.RepoRefresh, tail func(context.Context)) {
 	// Scripts run beside the fetch, outside the repo mutex: they can be slow and need nothing the
 	// fetch brings, so a slow deploy check must not hold the fetch back.
 	scriptsDone := make(chan struct{})
@@ -892,23 +934,62 @@ func (b *TaskBoard) refreshRepo(ctx context.Context, id string) adewire.RepoRefr
 		}
 	}()
 	defer func() { <-scriptsDone }()
+
+	out = adewire.RepoRefresh{CodeRepoID: id, MergedInto: []adewire.MergedInto{}}
+	f, fail := b.refreshFetch(ctx, id, &out)
+	if fail != nil {
+		return *fail, nil
+	}
+	if f == nil { // the fetch itself reported an error
+		return out, nil
+	}
+
+	live, err := b.deps.Tasks.BranchesLive()
+	if err != nil {
+		return refreshFailure(id, err), nil
+	}
+	var mine []model.AdeTaskBranch
+	for _, br := range live {
+		if br.CodeRepoID == id {
+			mine = append(mine, br)
+		}
+	}
+	if f.hasRemote {
+		if out.RefsChanged, err = countBranchRefsChanged(ctx, f.entry, mine, f.beforeTips, f.remote); err != nil {
+			return refreshFailure(id, err), nil
+		}
+	}
+
+	facts := b.repoFacts(ctx, id, mine, nil)
+	out.MergedInto = newlyMerged(mine, facts, f.marksBefore)
+	if err := b.deps.Tasks.MarkBranchFacts(facts.hadCommits, facts.merged); err != nil {
+		return refreshFailure(id, err), nil
+	}
+	return out, func(tctx context.Context) { b.refreshTail(tctx, id, f.entry, mine, facts) }
+}
+
+// refreshFetch is refreshRepo's locked section. It returns nil, nil after the fetch reported an
+// error into out, and nil, failure when a step failed.
+func (b *TaskBoard) refreshFetch(ctx context.Context, id string, out *adewire.RepoRefresh) (*refreshFetched, *adewire.RepoRefresh) {
 	mu := b.repoMutex(id)
 	mu.Lock()
 	defer mu.Unlock()
-
-	out := adewire.RepoRefresh{CodeRepoID: id, MergedInto: []adewire.MergedInto{}}
+	fail := func(err error) (*refreshFetched, *adewire.RepoRefresh) {
+		r := refreshFailure(id, err)
+		return nil, &r
+	}
 	entry, err := b.openRepo(ctx, id)
 	if err != nil {
-		return refreshFailure(id, err)
+		return fail(err)
 	}
 	remote, hasRemote := entry.DefaultRemote(ctx)
 	before, err := entry.BranchInventory(ctx)
 	if err != nil {
-		return refreshFailure(id, err)
+		return fail(err)
 	}
 	marksBefore, err := b.marksOfRepo(id)
 	if err != nil {
-		return refreshFailure(id, err)
+		return fail(err)
 	}
 	beforeTips := make(map[string]string, len(before))
 	for _, r := range before {
@@ -917,59 +998,33 @@ func (b *TaskBoard) refreshRepo(ctx context.Context, id string) adewire.RepoRefr
 	if hasRemote {
 		res, err := entry.RunRemote(ctx, b.conn, gitsession.RemoteOpParams{Kind: "fetch", Remote: remote, Prune: true}, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
 		if err != nil {
-			return refreshFailure(id, err)
+			return fail(err)
 		}
 		if !res.OK {
 			out.Error = remoteOpError(res.Error)
-			return out
+			return nil, nil
 		}
 	}
+	return &refreshFetched{entry: entry, remote: remote, hasRemote: hasRemote, beforeTips: beforeTips, marksBefore: marksBefore}, nil
+}
 
-	live, err := b.deps.Tasks.BranchesLive()
-	if err != nil {
-		return refreshFailure(id, err)
-	}
-	var mine []model.AdeTaskBranch
-	for _, br := range live {
-		if br.CodeRepoID == id {
-			mine = append(mine, br)
-		}
-	}
-	if hasRemote {
-		if out.RefsChanged, err = countBranchRefsChanged(ctx, entry, mine, beforeTips, remote); err != nil {
-			return refreshFailure(id, err)
-		}
-	}
-
-	facts := b.repoFacts(ctx, id, mine, nil)
-	out.MergedInto = newlyMerged(mine, facts, marksBefore)
-	if err := b.deps.Tasks.MarkBranchFacts(facts.hadCommits, facts.merged); err != nil {
-		return refreshFailure(id, err)
-	}
+// refreshTail marks PR-merged branches and queues the conflict checks of the branches left. It does
+// not wait for the checks: each pushes the board when it lands.
+func (b *TaskBoard) refreshTail(ctx context.Context, id string, entry *gitsession.RepoEntry, mine []model.AdeTaskBranch, facts *repoResult) {
 	prMerged := b.checkPrMerges(ctx, entry, mine, facts)
 	if len(prMerged) > 0 {
 		if err := b.deps.Tasks.MarkBranchFacts(nil, prMerged); err != nil {
-			return refreshFailure(id, err)
+			slog.Warn("ade refresh: mark pr merged", "scope", "ade", "repo", id, "err", err)
 		}
 	}
-
 	b.checker.forgetFailures(id)
 	b.checker.forgetFailures(pairRepoID(id))
-	waits := make([]<-chan struct{}, 0, len(facts.jobs))
 	for branchID, job := range facts.jobs {
 		if _, gone := prMerged[branchID]; gone {
 			continue
 		}
-		waits = append(waits, b.checker.request(job))
+		b.checker.request(job)
 	}
-	for _, w := range waits {
-		select {
-		case <-w:
-		case <-ctx.Done():
-			return out
-		}
-	}
-	return out
 }
 
 func remoteOpError(e *gitsession.RemoteOpError) *adewire.RemoteOpError {
