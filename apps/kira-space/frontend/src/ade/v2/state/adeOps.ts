@@ -26,7 +26,6 @@ export type AdeOpKind =
   | 'launch'
   | 'sendReview'
   | 'finishReview'
-  | 'rebase'
   | 'restartSession'
   | 'closeSession'
   | 'leaseRequest'
@@ -40,7 +39,8 @@ export type AdeOpKind =
   | 'agentPush';
 
 export interface AdeOp {
-  /** One op per id at a time: `<kind>:<branch, task or session>`; backend ops `be:<record id>`. */
+  /** One op per id at a time: `<kind>:<target>`, the target being what the op acts on (branch, session,
+   *  task, or the run or step of a task, so two runs of one task do not collide); backend ops `be:<record id>`. */
   id: string;
   kind: AdeOpKind;
   /** What the op acts on, named in the toast. */
@@ -75,7 +75,6 @@ const TOAST_POLICY: Record<AdeOpKind, ToastPolicy> = {
   launch: 'slow',
   sendReview: 'slow',
   finishReview: 'slow',
-  rebase: 'slow',
   restartSession: 'slow',
   closeSession: 'slow',
   leaseRequest: 'slow',
@@ -122,8 +121,6 @@ export function opLoadingText(kind: AdeOpKind): string {
       return t('space.ade.ops.sendReview.loading');
     case 'finishReview':
       return t('space.ade.ops.finishReview.loading');
-    case 'rebase':
-      return t('space.ade.ops.rebase.loading');
     case 'restartSession':
       return t('space.ade.ops.restartSession.loading');
     case 'closeSession':
@@ -181,8 +178,6 @@ function opDoneText(op: AdeOp): string {
       return t('space.ade.ops.sendReview.status', { name: op.name });
     case 'finishReview':
       return t('space.ade.ops.finishReview.status', { name: op.name });
-    case 'rebase':
-      return t('space.ade.ops.rebase.status', { name: op.name });
     case 'restartSession':
       return t('space.ade.ops.restartSession.status', { name: op.name });
     case 'closeSession':
@@ -205,6 +200,9 @@ function opDoneText(op: AdeOp): string {
       return '';
   }
 }
+
+/** Thrown inside an op's `fn` to end it at once with no toast and no error: the caller hands the work on (a repo prompt, then a fresh op). */
+export class OpAborted extends Error {}
 
 export type AdeOpInput = Omit<AdeOp, 'source'>;
 
@@ -237,13 +235,14 @@ export const useAdeOpsStore = defineStore('adeOps', () => {
     return message;
   }
 
-  /** Starts `fn`; resolves true on success. A second run of a live id is ignored (resolves false). */
+  /** Starts `fn`; resolves true on success. A second run of a live id is ignored (resolves false); `OpAborted` ends it silently (false). */
   async function run(input: AdeOpInput, fn: () => Promise<unknown>): Promise<boolean> {
     if (ops.has(input.id)) return false;
     const op: AdeOp = { ...input, source: 'client' };
     ops.set(op.id, op);
     if (op.taskId) delete ui.actionError[op.taskId];
     const policy = TOAST_POLICY[op.kind];
+    let aborted = false;
     const showLoading = () => toast.loading(opLoadingText(op.kind), { id: op.id });
     const notice =
       policy === 'slow'
@@ -251,7 +250,9 @@ export const useAdeOpsStore = defineStore('adeOps', () => {
             delayMs: TIMING.slowOp,
             show: showLoading,
             onSettle: ({ ok, error, shown }) => {
-              if (!ok) toast.error(error ?? '', { id: op.id });
+              if (aborted) {
+                if (shown) toast.dismiss(op.id);
+              } else if (!ok) toast.error(error ?? '', { id: op.id });
               else if (shown) toast.success(opDoneText(op), { id: op.id });
             },
           })
@@ -261,6 +262,12 @@ export const useAdeOpsStore = defineStore('adeOps', () => {
       await fn();
     } catch (err) {
       ops.delete(op.id);
+      if (err instanceof OpAborted) {
+        aborted = true;
+        if (notice) notice.settle(false);
+        else toast.dismiss(op.id);
+        return false;
+      }
       const message = fail(op, err);
       if (notice) notice.settle(false, message);
       else toast.error(message, { id: op.id });

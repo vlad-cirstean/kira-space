@@ -1,3 +1,4 @@
+import { OpAborted } from './adeOps';
 import { useAdeRepoGateStore } from './adeRepoGate';
 
 /** The bridge refuses a work start on a task with no repo with this code. */
@@ -23,15 +24,30 @@ export function useRepoGate() {
     return !needsRepo || (await gate.ask(taskId));
   }
 
-  /** Runs `start`; with `needsRepo` asks for a repo first and stops on Cancel. */
-  async function gated(
+  /**
+   * Runs `call` as an op (`startOp` is `ops.run` with its id). A stale board that lets the bridge refuse
+   * with E_TASK_NO_REPO ends that op silently, then asks for a repo outside any op (no chip or loading
+   * toast while the user picks) and starts a fresh op. False on failure, or when the user cancels the pick.
+   */
+  async function opAfterRepo(
     taskId: string,
-    needsRepo: boolean,
-    start: () => Promise<void>,
-  ): Promise<void> {
-    if (!(await ensureRepo(taskId, needsRepo))) return;
-    await retryAfterRepo(taskId, start);
+    call: () => Promise<unknown>,
+    startOp: (fn: () => Promise<unknown>) => Promise<boolean>,
+  ): Promise<boolean> {
+    let refused = false;
+    const ok = await startOp(async () => {
+      try {
+        await call();
+      } catch (err) {
+        if (!isTaskNoRepo(err)) throw err;
+        refused = true;
+        throw new OpAborted();
+      }
+    });
+    if (!refused) return ok;
+    if (!(await gate.ask(taskId))) return false;
+    return startOp(call);
   }
 
-  return { gated, ensureRepo, retryAfterRepo };
+  return { ensureRepo, retryAfterRepo, opAfterRepo };
 }

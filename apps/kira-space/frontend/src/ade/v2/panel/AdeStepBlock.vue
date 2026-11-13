@@ -166,11 +166,12 @@ const statusClass = (state: string): string => TEXT_TONE[state] ?? 'text-muted-f
 // The write runs as the task's op (chip, toast on failure); the failure also shows inline here.
 async function run(
   kind: 'approve' | 'retry' | 'resume',
+  target: string,
   fn: () => Promise<unknown>,
 ): Promise<void> {
   error.value = '';
   const taskId = props.card.task.id;
-  await ops.run({ id: `${kind}:${taskId}`, kind, taskId, name: props.card.title }, async () => {
+  await ops.run({ id: `${kind}:${target}`, kind, taskId, name: props.card.title }, async () => {
     try {
       await fn();
     } catch (err) {
@@ -180,10 +181,13 @@ async function run(
   });
 }
 const onApprove = (stepId: string): Promise<void> =>
-  run('approve', () => approve.mutateAsync({ taskId: props.card.task.id, stepId }));
-const onRetry = (runId: string): Promise<void> => run('retry', () => retry.mutateAsync({ runId }));
+  run('approve', `${props.card.task.id}:${stepId}`, () =>
+    approve.mutateAsync({ taskId: props.card.task.id, stepId }),
+  );
+const onRetry = (runId: string): Promise<void> =>
+  run('retry', runId, () => retry.mutateAsync({ runId }));
 const onResume = (runId: string): Promise<void> =>
-  run('resume', () => resume.mutateAsync({ runId }));
+  run('resume', runId, () => resume.mutateAsync({ runId }));
 
 const canTakeOver = (r: StepRun): boolean =>
   props.block.step.kind === 'agent' &&

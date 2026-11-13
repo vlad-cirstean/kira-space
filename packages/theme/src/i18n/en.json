@@ -9665,10 +9665,6 @@
           "loading": "Starting next pass…",
           "status": "Started next pass for {name}"
         },
-        "rebase": {
-          "loading": "Rebasing…",
-          "status": "Rebased {name}"
-        },
         "removeBranch": {
           "loading": "Removing branch…",
           "status": "Removed branch {name}"

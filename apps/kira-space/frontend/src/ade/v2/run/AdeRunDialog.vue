@@ -39,7 +39,7 @@ const ui = useAdeBoardUiStore();
 const { model } = usePlanModel();
 const { start } = useTaskWrites();
 const ops = useAdeOpsStore();
-const { retryAfterRepo } = useRepoGate();
+const { opAfterRepo } = useRepoGate();
 const card = computed(() => (ui.runTaskId ? (model.value?.cardFor(ui.runTaskId) ?? null) : null));
 const open = computed(() => card.value !== null);
 // What the server adds to the prompt besides the editable message: the previous stage's handover and the task notes.
@@ -117,11 +117,15 @@ const dirty = computed(
   () => edited.value || Object.values(names.value).some((n) => n.trim() !== ''),
 );
 
+// Inputs of a start the bridge refused (or the user cancelled at the repo prompt): the dialog reopens with them.
+let kept: { message: string; names: Record<string, string> } | null = null;
+
 watch(open, (o) => {
   if (!o) return;
   opening.value = initial.value;
-  message.value = initial.value;
-  names.value = {};
+  message.value = kept?.message ?? initial.value;
+  names.value = kept?.names ?? {};
+  kept = null;
 });
 // The preview lands after the dialog opens: an untouched message takes it over.
 watch(initial, (next) => {
@@ -131,6 +135,7 @@ watch(initial, (next) => {
 });
 
 // Closes at once; the start runs as the task's op (chip on the card, toast past 2 s or on failure).
+// A refused start reopens the dialog with the typed names and message, so nothing is retyped.
 async function send(): Promise<void> {
   const c = card.value;
   if (!c) return;
@@ -138,12 +143,18 @@ async function send(): Promise<void> {
   for (const r of named.value) branchNames[r.id] = (names.value[r.id] ?? '').trim();
   const taskId = c.task.id;
   const body = edited.value && !smartStep.value ? message.value : '';
+  const typed = { message: message.value, names: { ...names.value } };
   close();
-  const ok = await ops.run(
-    { id: `startRun:${taskId}`, kind: 'startRun', taskId, name: c.title },
-    () => retryAfterRepo(taskId, () => start.mutateAsync({ taskId, branchNames, message: body })),
+  const ok = await opAfterRepo(
+    taskId,
+    () => start.mutateAsync({ taskId, branchNames, message: body }),
+    (fn) => ops.run({ id: `startRun:${taskId}`, kind: 'startRun', taskId, name: c.title }, fn),
   );
-  if (!ok) ui.select(taskId);
+  if (ok) return;
+  ui.select(taskId);
+  if (ui.runTaskId !== null) return;
+  kept = typed;
+  ui.runTaskId = taskId;
 }
 </script>
 

@@ -116,7 +116,11 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     seeded.value = null;
   }
 
-  /** Closes at once; the move runs as the task's op (chip, toast past 2 s or on failure). */
+  /**
+   * Closes at once; the move runs as the task's op (chip, toast past 2 s or on failure). A refused move
+   * reopens the dialog on the board mount (the routed popup is gone by then) with the typed notes and
+   * choices kept, unless another dialog took the slot meanwhile.
+   */
   async function submit(): Promise<boolean> {
     const c = card.value;
     const m = moves.value;
@@ -132,6 +136,14 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     const isPass = mode.value === 'pass';
     const passNotes = notes.value.trim() === '' ? {} : { notes: notes.value };
     const advance = manual && to === m.next?.id;
+    const kept = {
+      mode: mode.value,
+      asked: asked.value,
+      picked: picked.value,
+      typed: typed.value,
+      closeChoice: closeChoice.value,
+      seeded: seeded.value,
+    };
     close();
     const kind = isPass ? 'nextPass' : 'setStep';
     const ok = await ops.run({ id: `${kind}:${id}`, kind, taskId: id, name }, async () => {
@@ -149,7 +161,19 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
         });
       }
     });
-    if (!ok) ui.select(id);
+    if (!ok) {
+      ui.select(id);
+      if (taskId.value === null) {
+        taskId.value = id;
+        routed.value = false;
+        mode.value = kept.mode;
+        asked.value = kept.asked;
+        picked.value = kept.picked;
+        typed.value = kept.typed;
+        closeChoice.value = kept.closeChoice;
+        seeded.value = kept.seeded;
+      }
+    }
     return true;
   }
 

@@ -97,19 +97,7 @@ export const useAdeDialogsStore = defineStore('adeDialogs', () => {
         ...launchOpener.deps,
       },
       turns: { watch: adeTurns.watch },
-      rebase: (a) => {
-        const b = c.graph.byBranch.get(a.branchId);
-        void ops.run(
-          {
-            id: `rebase:${a.branchId}`,
-            kind: 'rebase',
-            taskId: b?.taskId || undefined,
-            branchId: a.branchId,
-            name: b?.name ?? '',
-          },
-          () => rebaseM.mutateAsync(a),
-        );
-      },
+      rebase: (a) => rebaseM.mutateAsync(a),
       setBranchBase: (a) => baseM.mutateAsync(a),
       recordMerge: (a) => mergeM.mutateAsync(a),
       // Runs in the background: the dialog is gone at once, the op's chip and toast report it.

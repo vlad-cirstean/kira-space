@@ -21,7 +21,7 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
   const ops = useAdeOpsStore();
   const writes = useTaskWrites();
   const stage = useAdeStageDialogStore();
-  const { ensureRepo, retryAfterRepo } = useRepoGate();
+  const { ensureRepo, opAfterRepo } = useRepoGate();
 
   const action = computed<TaskAction | null>(() => toValue(card).action);
 
@@ -30,11 +30,16 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
     ops.forTask(toValue(card).task.id).some((o) => BUSY_KINDS.has(o.kind)),
   );
 
-  /** Runs `call` as the task's op; a repeat click of a live one is ignored. */
-  async function runOp(kind: AdeOpKind, c: CardModel, call: () => Promise<unknown>): Promise<void> {
+  /** Runs `call` as the task's op on `target` (the task, or its step); a repeat click of a live one is ignored. */
+  async function runOp(
+    kind: AdeOpKind,
+    target: string,
+    c: CardModel,
+    call: () => Promise<unknown>,
+  ): Promise<void> {
     const taskId = c.task.id;
-    const ok = await ops.run({ id: `${kind}:${taskId}`, kind, taskId, name: c.title }, () =>
-      retryAfterRepo(taskId, call),
+    const ok = await opAfterRepo(taskId, call, (fn) =>
+      ops.run({ id: `${kind}:${target}`, kind, taskId, name: c.title }, fn),
     );
     if (!ok) ui.select(taskId);
   }
@@ -50,19 +55,19 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
       if (!(await ensureRepo(taskId, step.needsRepo))) return;
       if (step.kind === 'agent') ui.runTaskId = taskId;
       else
-        await runOp('startRun', c, () =>
+        await runOp('startRun', taskId, c, () =>
           writes.start.mutateAsync({ taskId, branchNames: {}, message: '' }),
         );
     } else if (a.kind === 'approve') {
       if (!(await ensureRepo(taskId, step.needsRepo))) return;
-      await runOp('approve', c, () =>
+      await runOp('approve', `${taskId}:${a.stepId ?? ''}`, c, () =>
         writes.approve.mutateAsync({ taskId, stepId: a.stepId ?? '' }),
       );
     } else if (a.kind === 'retry') {
       const runs = c.progress.steps
         .find((s) => s.id === a.stepId)
         ?.runs.filter((r) => r.state === 'failed' || r.state === 'stuck');
-      await runOp('retry', c, () =>
+      await runOp('retry', `${taskId}:${a.stepId ?? ''}`, c, () =>
         Promise.all((runs ?? []).map((r) => writes.retry.mutateAsync({ runId: r.runId }))),
       );
     } else if (a.kind === 'advance' || a.kind === 'finish') {
