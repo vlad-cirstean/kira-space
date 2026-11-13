@@ -37,7 +37,7 @@ jobs:
       - run: bun run lint:go
       - name: Go compile check, every package (darwin build-tag breaks caught here even though the test run below is scoped)
         run: go build ./...
-      - name: Go unit tests, darwin-relevant packages only (secrets, metrics, localauth, gitclient, datagrip have darwin&&cgo files; the Linux jobs run every other package)
+      - name: Go unit tests, darwin-relevant packages only (secrets, metrics, localauth, imageclip, gitclient, datagrip have darwin&&cgo files; the Linux jobs run every other package)
         run: |
           go test \
             ./internal/secrets/... \
@@ -45,6 +45,7 @@ jobs:
             ./apps/kira-space/internal/localauth/... \
             ./apps/kira-space/internal/gitclient \
             ./apps/kira-space/internal/datagrip/...
+          go test -tags imagecliptest ./apps/kira-space/internal/imageclip/...
 
   # Lint, typecheck, frontend builds, lint:dead, verify:packaging and the bun unit tests: nothing
   # here touches cgo or darwin build tags.
