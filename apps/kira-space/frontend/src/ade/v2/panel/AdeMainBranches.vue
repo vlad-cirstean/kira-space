@@ -113,7 +113,12 @@ async function onAddRepo(id: string): Promise<void> {
         layout="panel"
         testid="ade-task-branch"
         @force-push="
-          forcePushTarget = { branchId: row.id, branchName: row.name, repo: row.repo, taskId: '' }
+          forcePushTarget = {
+            branchId: row.id,
+            branchName: row.name,
+            repo: row.repo,
+            taskId: row.branch.taskId,
+          }
         "
       >
         <AdeUpdatesDot

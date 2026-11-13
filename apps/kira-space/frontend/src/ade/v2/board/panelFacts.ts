@@ -39,7 +39,7 @@ export function remoteErrorText(e: RemoteOpError): string {
     : e.message;
 }
 
-/** The branch a force push dialog is open for; `taskId` is empty for a main branch. */
+/** The branch a force push dialog is open for; `taskId` is the owning task, which the op's chip and status match on. */
 export interface ForcePushTarget {
   branchId: string;
   branchName: string;
