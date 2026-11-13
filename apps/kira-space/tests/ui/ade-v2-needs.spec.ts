@@ -12,6 +12,8 @@ test('lists the items most urgent first, with the badge and the footer', async (
   const { window: page } = await openPlan(relaunch);
   await expect(page.locator(t('ade-needs-count'))).toHaveText('4');
   await page.locator(t('ade-tab-needs')).click();
+  // The page is a lazy chunk: wait for the list before reading it once.
+  await expect(page.locator(t('ade-needs-item'))).toHaveCount(4);
   const kinds = await page
     .locator(t('ade-needs-item'))
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-kind')));
