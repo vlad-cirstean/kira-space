@@ -14,6 +14,7 @@ import (
 
 	lru "github.com/hashicorp/golang-lru/v2"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
@@ -211,7 +212,8 @@ type TaskBoard struct {
 	repoCfg        repoConfigCache
 	facts          boardFacts
 	wfMemo         *lru.Cache[string, wfMemoEntry]
-	refreshTails   sync.WaitGroup // background tails of Refresh calls
+	ops            singleflight.Group // identical in-flight user operations join (opdedupe.go)
+	refreshTails   sync.WaitGroup     // background tails of Refresh calls
 	history        historyMemo
 	updates        *updateWatcher
 
@@ -1093,6 +1095,10 @@ func countBranchRefsChanged(ctx context.Context, entry *gitsession.RepoEntry, br
 // ForcePush pushes one created branch with lease. A refusal (protected branch, no remote tip)
 // returns as the result's error.
 func (b *TaskBoard) ForcePush(ctx context.Context, branchID string) (adewire.ForcePushResult, error) {
+	return joinOp(ctx, &b.ops, opKey("forcePush", branchID), func() (adewire.ForcePushResult, error) { return b.forcePush(ctx, branchID) })
+}
+
+func (b *TaskBoard) forcePush(ctx context.Context, branchID string) (adewire.ForcePushResult, error) {
 	br, err := b.deps.Tasks.GetBranch(branchID)
 	if err != nil {
 		return adewire.ForcePushResult{}, err

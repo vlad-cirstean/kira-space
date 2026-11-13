@@ -152,7 +152,9 @@ func (b *TaskBoard) newAttachCache() *attachCache {
 }
 
 // seed hands the cache an inventory the caller just read so load does not read it again.
-func (c *attachCache) seed(codeRepoID string, inv []porcelain.InventoryRef) { c.seeded[codeRepoID] = inv }
+func (c *attachCache) seed(codeRepoID string, inv []porcelain.InventoryRef) {
+	c.seeded[codeRepoID] = inv
+}
 
 func (c *attachCache) load(ctx context.Context, codeRepoID string) (*attachFacts, error) {
 	if f, ok := c.facts[codeRepoID]; ok {

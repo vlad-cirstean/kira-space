@@ -109,6 +109,7 @@ func (f *integFixture) onDevelop(args ...string) {
 
 func (f *integFixture) integration(name string) adewire.Integration {
 	f.t.Helper()
+	f.board.invalidateBoard() // git moved out of band; the app's repo watcher does this
 	b, err := f.board.Board(context.Background())
 	if err != nil {
 		f.t.Fatalf("Board: %v", err)

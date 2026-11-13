@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitprepare"
@@ -332,6 +334,10 @@ func (b *TaskBoard) notifySessions() {
 // starts the current step, which must be an automatic one waiting for Run. Later steps follow by
 // themselves or wait for Approve.
 func (b *TaskBoard) StartRun(ctx context.Context, args adewire.StartRunArgs) (adewire.StartRunResult, error) {
+	return joinOp(ctx, &b.ops, opKey("startRun", args), func() (adewire.StartRunResult, error) { return b.doStartRun(ctx, args) })
+}
+
+func (b *TaskBoard) doStartRun(ctx context.Context, args adewire.StartRunArgs) (adewire.StartRunResult, error) {
 	mu := b.taskMu(args.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
@@ -417,35 +423,67 @@ func (b *TaskBoard) prepareStepWorktrees(ctx context.Context, tc *taskCtx, def s
 // root and the agent asks for the branch through request_branches; Kira Space names it. Any other step
 // cannot ask, so its unnamed branch takes a name derived from the task title.
 func (b *TaskBoard) prepareWorktrees(ctx context.Context, tc *taskCtx, names map[string]string, agentStep bool) (map[string]string, error) {
-	paths := map[string]string{}
+	var (
+		pathMu sync.Mutex
+		paths  = map[string]string{}
+	)
 	title := taskTitle(tc.task, tc.branches)
+	// Repos prepare in parallel; one repo's branches stay serial because its repo mutex serializes them.
+	var order []string
+	byRepo := map[string][]model.AdeTaskBranch{}
 	for _, sb := range tc.branches {
 		if sb.Kind != model.AdeBranchKindMine {
 			continue
 		}
-		rec, err := b.deps.CodeRepos.Get(sb.CodeRepoID)
-		if err != nil {
-			return nil, err
+		if _, seen := byRepo[sb.CodeRepoID]; !seen {
+			order = append(order, sb.CodeRepoID)
 		}
-		if rec == nil {
-			return nil, invalid("code repo %s not found", sb.CodeRepoID)
-		}
-		if agentStep && sb.Name == "" && names[sb.ID] == "" {
-			paths[sb.ID] = rec.Root // the agent creates the branch via request_branches
-			continue
-		}
-		res, err := b.ensureWorktree(ctx, *rec, sb, newBranchName{title: title, wanted: names[sb.ID]})
-		if err != nil {
-			return nil, err
-		}
-		paths[sb.ID] = res.Path
-		if res.Fresh {
-			if err := b.startSetup(*rec, sb, res.Name, res.Path, b.onSetupReady); err != nil {
-				return nil, err
+		byRepo[sb.CodeRepoID] = append(byRepo[sb.CodeRepoID], sb)
+	}
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(boardFanOut)
+	for _, repoID := range order {
+		g.Go(func() error {
+			for _, sb := range byRepo[repoID] {
+				path, err := b.prepareWorktree(gctx, sb, title, names, agentStep)
+				if err != nil {
+					return err
+				}
+				pathMu.Lock()
+				paths[sb.ID] = path
+				pathMu.Unlock()
 			}
-		}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	return paths, nil
+}
+
+// prepareWorktree makes one mine branch's worktree and starts its setup when the worktree is new.
+func (b *TaskBoard) prepareWorktree(ctx context.Context, sb model.AdeTaskBranch, title string, names map[string]string, agentStep bool) (string, error) {
+	rec, err := b.deps.CodeRepos.Get(sb.CodeRepoID)
+	if err != nil {
+		return "", err
+	}
+	if rec == nil {
+		return "", invalid("code repo %s not found", sb.CodeRepoID)
+	}
+	if agentStep && sb.Name == "" && names[sb.ID] == "" {
+		return rec.Root, nil // the agent creates the branch via request_branches
+	}
+	res, err := b.ensureWorktree(ctx, *rec, sb, newBranchName{title: title, wanted: names[sb.ID]})
+	if err != nil {
+		return "", err
+	}
+	if res.Fresh {
+		if err := b.startSetup(*rec, sb, res.Name, res.Path, b.onSetupReady); err != nil {
+			return "", err
+		}
+	}
+	return res.Path, nil
 }
 
 func stepMessageKey(taskID, stepID string) string {
@@ -1430,6 +1468,11 @@ func (b *TaskBoard) launchHeldLocked(sb model.AdeTaskBranch) {
 
 // Approve starts a step that waits for approval.
 func (b *TaskBoard) Approve(ctx context.Context, args adewire.StepArgs) error {
+	_, err := joinOp(ctx, &b.ops, opKey("approve", args), func() (struct{}, error) { return struct{}{}, b.approve(ctx, args) })
+	return err
+}
+
+func (b *TaskBoard) approve(ctx context.Context, args adewire.StepArgs) error {
 	mu := b.taskMu(args.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
@@ -1458,6 +1501,11 @@ func (b *TaskBoard) Approve(ctx context.Context, args adewire.StepArgs) error {
 
 // RetryRun starts a new attempt of a failed or stuck run.
 func (b *TaskBoard) RetryRun(ctx context.Context, runID string) error {
+	_, err := joinOp(ctx, &b.ops, opKey("retry", runID), func() (struct{}, error) { return struct{}{}, b.retryRun(ctx, runID) })
+	return err
+}
+
+func (b *TaskBoard) retryRun(ctx context.Context, runID string) error {
 	run, err := b.deps.Tasks.GetRun(runID)
 	if err != nil {
 		return err
@@ -1508,6 +1556,11 @@ func runResumable(run model.AdeRun) bool {
 
 // ResumeRun continues the agent session of a run a restart stopped, as a new attempt.
 func (b *TaskBoard) ResumeRun(ctx context.Context, runID string) error {
+	_, err := joinOp(ctx, &b.ops, opKey("resume", runID), func() (struct{}, error) { return struct{}{}, b.resumeRun(ctx, runID) })
+	return err
+}
+
+func (b *TaskBoard) resumeRun(ctx context.Context, runID string) error {
 	run, err := b.deps.Tasks.GetRun(runID)
 	if err != nil {
 		return err
