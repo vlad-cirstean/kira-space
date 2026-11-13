@@ -812,14 +812,35 @@ func resolveRepoHost(ctx context.Context, entry *gitsession.RepoEntry, branches 
 		host = &info
 	}
 	found, urls = map[string]adewire.ChangeRequest{}, map[string]string{}
-	for _, br := range branches {
+	type lookup struct {
+		url string
+		res gitsession.ChangeRequestLookup
+	}
+	rows := make([]lookup, len(branches))
+	var g errgroup.Group
+	g.SetLimit(boardFanOut)
+	for i, br := range branches {
 		if br.Name == "" {
 			continue
 		}
-		if u, ok := entry.BranchURL(ctx, br.Name); ok {
-			urls[br.ID] = u
+		g.Go(func() error {
+			if u, ok := entry.BranchURL(ctx, br.Name); ok {
+				rows[i].url = u
+			}
+			rows[i].res = entry.ResolveBranchChangeRequest(ctx, br.Name)
+			return nil
+		})
+	}
+	_ = g.Wait()
+	// Merged in branch order, so the reported kind is the last failing branch's, as when serial.
+	for i, br := range branches {
+		if br.Name == "" {
+			continue
 		}
-		res := entry.ResolveBranchChangeRequest(ctx, br.Name)
+		if rows[i].url != "" {
+			urls[br.ID] = rows[i].url
+		}
+		res := rows[i].res
 		if res.Kind != "ok" {
 			kind = res.Kind
 		} else if len(res.ChangeRequests) > 0 {
