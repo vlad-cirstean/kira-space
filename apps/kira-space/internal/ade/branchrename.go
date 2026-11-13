@@ -347,7 +347,7 @@ func (b *TaskBoard) applyRename(ctx context.Context, call agentmcp.SpaceCall, ar
 			res.Remote = agentmcp.RemoteKept
 		}
 	case renameRemote:
-		res.Remote = b.renameRemoteBranch(ctx, entry, plan.facts.remote, args)
+		res.Remote = b.renameRemoteBranch(ctx, plan.sb.CodeRepoID, entry, plan.facts.remote, args)
 	}
 	if res.Remote == agentmcp.RemoteRenamed {
 		b.followTaskLink(ctx, tc, entry, oldURL, args.To)
@@ -401,12 +401,11 @@ func (b *TaskBoard) runBranchOp(ctx context.Context, entry *gitsession.RepoEntry
 
 // renameRemoteBranch pushes the new name, tracking it, then deletes the old remote branch. A failure of
 // either leaves the local rename standing and is reported as failed.
-func (b *TaskBoard) renameRemoteBranch(ctx context.Context, entry *gitsession.RepoEntry, remote string, args agentmcp.RenameBranchArgs) string {
-	deps := gitsession.RemoteDeps{Askpass: b.deps.Askpass}
+func (b *TaskBoard) renameRemoteBranch(ctx context.Context, codeRepoID string, entry *gitsession.RepoEntry, remote string, args agentmcp.RenameBranchArgs) string {
 	push := gitsession.RemoteOpParams{Kind: "push", Remote: remote, Branch: args.To, RemoteBranch: args.To, SetUpstream: true}
 	del := gitsession.RemoteOpParams{Kind: "deleteRemoteBranch", Remote: remote, Branch: args.From}
 	for _, params := range []gitsession.RemoteOpParams{push, del} {
-		res, err := entry.RunRemote(ctx, b.conn, params, deps)
+		res, err := b.runRemote(ctx, codeRepoID, entry, params)
 		if err != nil || !res.OK {
 			slog.Warn("ade: rename remote branch", "scope", "ade", "kind", params.Kind, "remote", remote, "err", err, "result", res.Error)
 			return agentmcp.RemoteFailed

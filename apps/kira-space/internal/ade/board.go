@@ -200,6 +200,8 @@ type TaskBoard struct {
 
 	mu      sync.Mutex
 	repoMus map[string]*sync.Mutex
+	// remoteSlots queues ADE remote ops per repo (remoteop.go).
+	remoteSlots map[string]chan struct{}
 	// sandboxTargets maps a live sandboxed run id to its sandboxTarget.
 	sandboxTargets sync.Map
 	byGitRepoID    map[string]string // gitclient RepoID -> codeRepoID, populated on open
@@ -257,7 +259,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	ctx, cancel := context.WithCancel(oplog.WithOrigin(context.Background(), oplog.Origin{Module: oplog.ModuleADE, Trigger: oplog.TriggerAuto}))
 	b := &TaskBoard{
 		deps: deps, ctx: ctx, cancel: cancel, wfMemo: newWorkflowMemo(), folderW: map[string]*folderWatcher{},
-		repoMus: map[string]*sync.Mutex{}, facts: boardFacts{last: map[string]*repoLast{}, flight: map[string]*repoFlight{}}, byGitRepoID: map[string]string{}, gitRepoIDOf: map[string]string{},
+		repoMus: map[string]*sync.Mutex{}, remoteSlots: map[string]chan struct{}{}, facts: boardFacts{last: map[string]*repoLast{}, flight: map[string]*repoFlight{}}, byGitRepoID: map[string]string{}, gitRepoIDOf: map[string]string{},
 		caches: map[string]*repoCaches{}, rebase: map[string]*rebaseCache{}, live: map[string]*liveRun{}, tuiGrants: map[string]tuiBinding{}, tuiSandbox: map[string]*liveTUISandbox{}, setupLive: map[string]*liveRun{},
 		taskMus: map[string]*sync.Mutex{}, archiving: map[string]int{}, finishes: map[string]agentmcp.Finish{}, claims: map[string]string{}, stepMsgs: map[string]string{},
 	}
@@ -1009,7 +1011,7 @@ func (b *TaskBoard) refreshFetch(ctx context.Context, id string, out *adewire.Re
 		beforeTips[r.Ref] = r.Tip
 	}
 	if hasRemote {
-		res, err := entry.RunRemote(ctx, b.conn, gitsession.RemoteOpParams{Kind: "fetch", Remote: remote, Prune: true}, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
+		res, err := b.runRemote(ctx, id, entry, gitsession.RemoteOpParams{Kind: "fetch", Remote: remote, Prune: true})
 		if err != nil {
 			return fail(err)
 		}
@@ -1132,9 +1134,9 @@ func (b *TaskBoard) forcePush(ctx context.Context, branchID string) (adewire.For
 		out.Error = &adewire.RemoteOpError{Kind: "Unknown", Message: err.Error()}
 		return out, nil
 	}
-	res, err := entry.RunRemote(ctx, b.conn, gitsession.RemoteOpParams{
+	res, err := b.runRemote(ctx, br.CodeRepoID, entry, gitsession.RemoteOpParams{
 		Kind: "forcePush", Remote: remote, Branch: br.Name, ExpectedRemoteTip: pf.RemoteTip,
-	}, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
+	})
 	if err != nil {
 		out.Error = &adewire.RemoteOpError{Kind: "Unknown", Message: err.Error()}
 		return out, nil

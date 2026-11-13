@@ -397,8 +397,9 @@ func (b *TaskBoard) FetchRemote(ctx context.Context, runID, remote string) (agen
 	if err != nil {
 		return agentmcp.RemoteResult{}, err
 	}
-	// The network step runs outside repoMutex: it takes no repo state the lock guards.
-	res, err := entry.RunRemote(ctx, b.conn, gitsession.RemoteOpParams{Kind: "fetch", Remote: remote}, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
+	// The network step runs outside repoMutex (it takes no repo state the lock guards) but queues
+	// behind other ADE remote ops on the repo.
+	res, err := b.runRemote(ctx, t.codeRepoID, entry, gitsession.RemoteOpParams{Kind: "fetch", Remote: remote})
 	if err != nil {
 		return agentmcp.RemoteResult{}, err
 	}
@@ -434,7 +435,7 @@ func (b *TaskBoard) PushBranch(ctx context.Context, runID string, force bool) (a
 	if err != nil {
 		return agentmcp.RemoteResult{}, err
 	}
-	res, err := entry.RunRemote(ctx, b.conn, params, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
+	res, err := b.runRemote(ctx, t.codeRepoID, entry, params)
 	if err != nil {
 		return agentmcp.RemoteResult{}, err
 	}

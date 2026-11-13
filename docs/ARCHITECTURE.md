@@ -2626,7 +2626,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - The config-file read allow (P453) is `<ConfigDir>/<run>-<n>.mcp.json` or `<run>-app.<role>.json`: the grant's MCP file and the app settings files of a headless run.
 - The engine side of the sandbox is in ade.sandbox.go (prepareSandbox, watchSandbox, sandboxOutcome).
 - The sandbox profile starts with (allow default) then denies and re-allows; the last matching rule wins.
-- Sandbox `fetch_remote` and `push_branch` hold `repoMutex` only for the repo open, worktree and preflight checks; the network step runs after the lock drops.
+- Sandbox `fetch_remote` and `push_branch` hold `repoMutex` only for the repo open, worktree and preflight checks; the network step runs after the lock drops and queues on a per-repo ADE remote slot (`TaskBoard.runRemote`, also used by Refresh's fetch, `ForcePush`, `ReviewFetch`, host-link fetch and the rename push), because `gitsession` refuses a second remote op with `OperationInProgress` rather than waiting. A holder outside ADE (Git panel, auto-fetch) still gets the refusal. Lock order: `repoMutex` before the slot; nothing takes `repoMutex` while holding the slot.
 - Profile reads are restricted through file-read-data, never file-read-metadata, because realpath of ancestors must work.
 - The profile denies file writes outside the policy, keychain writes, AppleEvents, LaunchServices, the SSH agent socket, signals to other processes, and ~/.claude config and extension writes.
 - The profile allows read and write on the memory subtree (Runtime.MemoryHome, <Space home>/memory) so a user-registered kira-memory server in a sandboxed run can open memory.db. It never allows the Space home itself: kira.db and the tokens stay denied.

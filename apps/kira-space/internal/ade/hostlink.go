@@ -93,7 +93,7 @@ func (b *TaskBoard) fetchHostLink(ctx context.Context, raw string, plan linkPlan
 		return plan, err
 	}
 	run := func(p gitsession.RemoteOpParams) error {
-		res, err := entry.RunRemote(ctx, b.conn, p, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
+		res, err := b.runRemote(ctx, t.CodeRepoID, entry, p)
 		if err != nil {
 			return err
 		}
