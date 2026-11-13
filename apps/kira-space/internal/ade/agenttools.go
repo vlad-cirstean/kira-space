@@ -413,6 +413,9 @@ func (b *TaskBoard) BranchStatus(ctx context.Context, taskID, repo, branch strin
 	lastNote := ""
 	reported := false
 	for time.Now().Before(deadline) {
+		// Take the channel before reading the row: a setup that ends between the two still closes
+		// the channel taken here, so the wait wakes at once instead of at the fallback tick.
+		done := b.setupDone(br.ID)
 		row, err := b.deps.Tasks.GetSetup(br.ID)
 		if err != nil || row == nil || row.State != model.AdeSetupRunning {
 			break
@@ -424,7 +427,7 @@ func (b *TaskBoard) BranchStatus(ctx context.Context, taskID, repo, branch strin
 		select {
 		case <-ctx.Done():
 			return b.branchInfo(br, nick, b.worktreePath(ctx, br)), ctx.Err()
-		case <-b.setupDone(br.ID):
+		case <-done:
 		case <-time.After(min(5*time.Second, time.Until(deadline))):
 		}
 	}
