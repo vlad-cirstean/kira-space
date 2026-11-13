@@ -15,7 +15,7 @@ import {
   setRoute,
   setStart,
 } from '../../frontend/src/ade/v2/board/workflowGraph';
-import { layoutWorkflow } from '../../frontend/src/ade/v2/board/workflowLayout';
+import { layoutWorkflow, topologyKey } from '../../frontend/src/ade/v2/board/workflowLayout';
 import type { StepResult, Workflow, WorkflowStep } from '../../frontend/src/ade/v2/wire';
 import { mkManual, mkStep } from './support/adeV2Fixtures';
 
@@ -238,5 +238,40 @@ describe('layoutWorkflow', () => {
     expect(loops.every((e) => e.points === undefined && e.laneX !== undefined)).toBe(true);
     const left = Math.min(...g.nodes.filter((n) => n.kind === 'step').map((n) => n.x));
     expect(loops.every((e) => (e.laneX ?? left) < left)).toBe(true);
+  });
+});
+
+describe('topologyKey', () => {
+  const base = (): Workflow =>
+    wfOf([
+      step('a', [res('done', true, 'b'), res('failed', false)]),
+      step('b'),
+      mkManual({ id: 'c' }),
+    ]);
+
+  test('stays equal for edits the layout never reads', () => {
+    const wf = base();
+    const edited = wfOf(
+      wf.steps.map((s) => ({ ...s, name: 'renamed', prompt: 'long new prompt', command: 'x' })),
+    );
+    expect(topologyKey(edited)).toBe(topologyKey(wf));
+  });
+
+  test('changes on an added step, a new route, a flipped result and a kind change', () => {
+    const key = topologyKey(base());
+    expect(topologyKey(addStep(base(), 'agent').wf)).not.toBe(key);
+    expect(topologyKey(setRoute(base(), 'a', 'failed', 'c'))).not.toBe(key);
+    const flipped = base();
+    (flipped.steps[0] as WorkflowStep).results[1] = res('failed', true);
+    expect(topologyKey(flipped)).not.toBe(key);
+    const manual = base();
+    manual.steps[1] = mkManual({ id: 'b' });
+    expect(topologyKey(manual)).not.toBe(key);
+  });
+
+  test('equal keys lay out identically', () => {
+    const wf = base();
+    const edited = wfOf(wf.steps.map((s) => ({ ...s, prompt: 'changed' })));
+    expect(layoutWorkflow(edited)).toEqual(layoutWorkflow(wf));
   });
 });

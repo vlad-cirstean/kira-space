@@ -23,16 +23,17 @@ import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
 import { type Connection, type Edge, type Node, useVueFlow, VueFlow } from '@vue-flow/core';
 import { useElementSize } from '@vueuse/core';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
-import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { kindLabel, PLACEHOLDER_TOKENS, STEP_KINDS } from '../board/workflowForm';
 import {
   canMove,
   type EdgeData,
+  type Graph,
   type GraphEdge,
   type GraphNode,
   type StepNodeData,
 } from '../board/workflowGraph';
-import { layoutWorkflow } from '../board/workflowLayout';
+import { layoutWorkflow, topologyKey } from '../board/workflowLayout';
 import { useSaveWorkflow } from '../queries';
 import { useWorkflows } from '../readQueries';
 import { useAdeWorkflowDraftStore } from '../state/adeWorkflowDraft';
@@ -94,8 +95,17 @@ function overwrite(): void {
   void saveNow();
 }
 
-const layout = computed(() =>
-  draft.draft ? layoutWorkflow(draft.draft) : { nodes: [], edges: [], width: 0, height: 0 },
+// Layout runs only when the topology changes: typing in a step's prompt must not re-run dagre or move
+// a node. The watcher reads the draft untracked, so only the key triggers it.
+const EMPTY_GRAPH: Graph = { nodes: [], edges: [], width: 0, height: 0 };
+const topology = computed(() => (draft.draft ? topologyKey(draft.draft) : ''));
+const layout = shallowRef<Graph>(EMPTY_GRAPH);
+watch(
+  topology,
+  () => {
+    layout.value = draft.draft ? layoutWorkflow(draft.draft) : EMPTY_GRAPH;
+  },
+  { immediate: true, flush: 'sync' },
 );
 const edgeSel = ref('');
 
@@ -117,16 +127,31 @@ function nodeData(n: GraphNode, wf: Workflow): StepNodeData | { w: number; h: nu
   };
 }
 
+// A node object is reused while its step and flags are unchanged, so a one-step edit patches one node.
+const nodeCache = new Map<string, { sig: string; step: unknown; node: Node }>();
 const flowNodes = computed<Node[]>(() => {
   const wf = draft.draft;
   if (!wf) return [];
-  return layout.value.nodes.map((n) => ({
-    id: n.id,
-    type: n.kind,
-    position: { x: n.x, y: n.y },
-    draggable: false,
-    data: nodeData(n, wf),
-  }));
+  const seen = new Set<string>();
+  const out = layout.value.nodes.map((n) => {
+    const data = nodeData(n, wf);
+    const step = 'step' in data ? data.step : undefined;
+    const sig = JSON.stringify([n.x, n.y, n.w, n.h, { ...data, step: undefined }]);
+    const hit = nodeCache.get(n.id);
+    seen.add(n.id);
+    if (hit && hit.sig === sig && hit.step === step) return hit.node;
+    const node: Node = {
+      id: n.id,
+      type: n.kind,
+      position: { x: n.x, y: n.y },
+      draggable: false,
+      data,
+    };
+    nodeCache.set(n.id, { sig, step, node });
+    return node;
+  });
+  for (const id of nodeCache.keys()) if (!seen.has(id)) nodeCache.delete(id);
+  return out;
 });
 const flowEdges = computed<Edge[]>(() =>
   layout.value.edges.map((e) => {

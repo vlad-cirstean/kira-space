@@ -208,3 +208,18 @@ export function layoutWorkflow(wf: Workflow): Graph {
     height: PAD * 2 + maxY,
   };
 }
+
+/**
+ * Every workflow field `layoutWorkflow` reads, as one string: the step order and ids, whether a step
+ * is manual (its one implicit result), and each result's id, success flag and route. Two workflows
+ * with equal keys lay out identically, so prompt, name and setting edits skip the layout.
+ */
+export function topologyKey(wf: Workflow): string {
+  return JSON.stringify(
+    wf.steps.map((s) => [
+      s.id,
+      s.kind === 'manual' ? 1 : 0,
+      s.kind === 'manual' ? [] : s.results.map((r) => [r.id, r.ok ? 1 : 0, r.next]),
+    ]),
+  );
+}
