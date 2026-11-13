@@ -20,9 +20,12 @@ export const buttonVariants = cva(
         // text at 4.5:1 or more on the tinted fill against `--kira-bg`.
         dialog: 'justify-center border-border bg-transparent text-fg hover:bg-field',
         'dialog-primary': 'justify-center border-primary bg-primary/15 text-fg hover:bg-primary/25',
-        'dialog-approve': 'justify-center border-ok bg-ok/15 text-ok hover:bg-ok/25',
-        'dialog-deny': 'justify-center border-error bg-transparent text-error hover:bg-error/10',
-        'dialog-danger': 'justify-center border-error bg-error/12 text-error hover:bg-error/15',
+        'dialog-approve':
+          'justify-center border-ok bg-ok/15 text-ok hover:bg-ok/25 focus-visible:outline-ok',
+        'dialog-deny':
+          'justify-center border-error bg-transparent text-error hover:bg-error/10 focus-visible:outline-error',
+        'dialog-danger':
+          'justify-center border-error bg-error/12 text-error hover:bg-error/15 focus-visible:outline-error',
         // P110 B13: TitleBar.vue's own action row -- `aria-pressed` replaces `.is-on`'s own class
         // toggle, fixing the state's previously unexposed accessibility gap.
         title:

@@ -33,11 +33,11 @@ export const SOLID_CLASS: Record<Tone | 'agent', string> = {
 
 /** Outline of a task action: its tone, or the agent colour for a launch (`▶ Run`). */
 export const ACTION_CLASS: Record<TaskAction['tone'] | Tone, string> = {
-  amber: 'border-tone-amber text-tone-amber',
-  red: 'border-error text-error',
-  green: 'border-tone-green text-tone-green',
-  blue: 'border-tone-blue text-tone-blue',
-  purple: 'border-tone-purple text-tone-purple',
-  grey: 'border-tone-grey text-tone-grey',
-  agent: 'border-agent text-agent',
+  amber: 'border-tone-amber text-tone-amber focus-visible:outline-tone-amber',
+  red: 'border-error text-error focus-visible:outline-error',
+  green: 'border-tone-green text-tone-green focus-visible:outline-tone-green',
+  blue: 'border-tone-blue text-tone-blue focus-visible:outline-tone-blue',
+  purple: 'border-tone-purple text-tone-purple focus-visible:outline-tone-purple',
+  grey: 'border-tone-grey text-tone-grey focus-visible:outline-tone-grey',
+  agent: 'border-agent text-agent focus-visible:outline-agent',
 };
