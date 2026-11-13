@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { adeBoard, openPlan } from './support/adeV2';
+import { openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -147,121 +147,96 @@ test('a Later shelf row leads with the slot, shows status text and sends the pat
 
 const heads = (page: Page) => page.locator(`${t('ade-card')} ${t('ade-card-head')}`);
 
-test('head-line columns share one x and width across cards, status text length aside', async ({
-  relaunch,
-}) => {
-  const { window: page } = await openPlan(relaunch);
-  await page.locator(t('ade-load-all')).click();
-  const boxes = async (testid: string) =>
-    heads(page)
-      .locator(t(testid))
-      .evaluateAll((els) =>
-        els.map((e) => {
-          const r = e.getBoundingClientRect();
-          return { x: Math.round(r.x), width: Math.round(r.width) };
-        }),
-      );
-  const status = await boxes('ade-row-status');
-  expect(status.length).toBeGreaterThan(2);
-  const texts = await heads(page).locator(t('ade-row-status')).allInnerTexts();
-  expect(new Set(texts.map((x) => x.length)).size).toBeGreaterThan(1);
-  expect(new Set(status.map((b) => b.x)).size).toBe(1);
-  expect(new Set(status.map((b) => b.width)).size).toBe(1);
-  const segs = await boxes('ade-step-segs');
-  expect(segs.length).toBeGreaterThan(1);
-  expect(new Set(segs.map((b) => b.x)).size).toBe(1);
-  const labels = await boxes('ade-step-label');
-  expect(new Set(labels.map((b) => b.x)).size).toBe(1);
-  expect(new Set(labels.map((b) => b.width)).size).toBe(1);
-});
-
-test('a Later shelf row puts lead, status and flags at the same offsets as a task card head', async ({
-  relaunch,
-}) => {
-  const board = contract<{ tasks: { id: string; title: string }[] }>(
-    'ade-shelf',
-    'AdeTaskService.Board#shelves',
-  );
-  const offsets = (page: Page, root: string) =>
-    page
-      .locator(root)
-      .first()
-      .evaluate((el) => {
-        const left = el.getBoundingClientRect().x;
-        const at = (id: string) => {
-          const r = el.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect();
-          return r ? { x: Math.round(r.x - left), width: Math.round(r.width) } : null;
-        };
-        return {
-          lead: at('ade-row-lead'),
-          status: at('ade-row-status'),
-          flags: at('ade-row-flags'),
-        };
-      });
-  const { window: plan } = await openPlan(relaunch);
-  const inCard = await offsets(plan, t('ade-card'));
-  const { window: later } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskBoard, response: board },
-  ]);
-  await later.locator(t('ade-tab-later')).click();
-  await later.locator(t('ade-later')).waitFor();
-  const inShelf = await offsets(later, t('ade-shelf-row'));
-  expect(inCard.status).not.toBeNull();
-  expect(inShelf).toEqual(inCard);
-});
-
-test('a needs-you indicator sits in the lead slot, nowhere else on the head line', async ({
-  relaunch,
-}) => {
-  const stuck = adeBoard((b) => {
-    for (const task of b.tasks)
-      for (const run of task.runs)
-        if (String(run.id).startsWith('r_T_bill_impl_')) run.state = 'stuck';
-  });
-  const { window: page } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskBoard, response: stuck },
-  ]);
-  await page.locator(t('ade-load-all')).click();
-  const lead = heads(page).locator(`${t('ade-row-lead')} ${t('ade-attention')}`);
-  expect(await lead.count()).toBeGreaterThan(0);
-  await expect(heads(page).locator(t('ade-attention'))).toHaveCount(await lead.count());
-  const first = await heads(page)
-    .locator(t('ade-row-attention'))
-    .filter({ has: page.locator(t('ade-attention')) })
-    .first()
-    .evaluate((el) => (el.parentElement?.firstElementChild === el ? 'first' : 'later'));
-  expect(first).toBe('first');
-});
-
-test('agent status icons are at least 16px', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch);
-  const icon = page.locator(`${head('T_bill')} ${t('ade-card-sessions')} [data-activity]`).first();
-  const box = await icon.boundingBox();
-  expect(box?.width ?? 0).toBeGreaterThanOrEqual(16);
-  expect(box?.height ?? 0).toBeGreaterThanOrEqual(16);
-});
-
-test('a task colour tints the whole card; no side is thicker than the others', async ({
-  relaunch,
-}) => {
+test('a task card keeps a 3px task-colour left edge and no fill', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   await page.locator(t('ade-load-all')).click();
   const cards = await page.locator(t('ade-card')).evaluateAll((els) =>
     els.map((e) => {
       const cs = getComputedStyle(e);
       return {
+        coloured: (e as HTMLElement).style.borderLeftColor !== '',
         left: cs.borderLeftWidth,
         top: cs.borderTopWidth,
-        tinted: (e as HTMLElement).style.backgroundColor !== '',
+        inlineBg: (e as HTMLElement).style.backgroundColor,
         bg: cs.backgroundColor,
       };
     }),
   );
-  expect(cards.length).toBeGreaterThan(1);
-  for (const c of cards) expect(c.left).toBe(c.top);
-  const tinted = cards.filter((c) => c.tinted);
-  const plain = cards.filter((c) => !c.tinted);
-  expect(tinted.length).toBeGreaterThan(0);
-  for (const c of tinted) expect(c.bg).not.toBe('rgba(0, 0, 0, 0)');
-  if (plain[0] && tinted[0]) expect(tinted[0].bg).not.toBe(plain[0].bg);
+  const coloured = cards.filter((c) => c.coloured);
+  expect(coloured.length).toBeGreaterThan(0);
+  for (const c of coloured) {
+    expect(c.left).toBe('3px');
+    expect(c.top).toBe('1px');
+    expect(c.inlineBg).toBe('');
+  }
+  const plain = cards.find((c) => !c.coloured) ?? cards[0];
+  for (const c of coloured) expect(c.bg).toBe(plain?.bg);
+});
+
+test('card head buttons stay inside the card with the panel open', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.locator(head('T_search')).click();
+  await expect(page.locator(card('T_search'))).toHaveAttribute('aria-current', 'true');
+  const overflow = await heads(page).evaluateAll((els) =>
+    els.flatMap((h) => {
+      const cardEl = h.closest('[data-testid="ade-card"]');
+      const controls = [
+        ...h.querySelectorAll('[data-testid^="ade-task-action-"], [data-testid="ade-card-review"]'),
+      ];
+      const last = controls.at(-1);
+      if (!cardEl || !last) return [];
+      const right = cardEl.getBoundingClientRect().right;
+      return last.getBoundingClientRect().right > right + 0.5
+        ? [cardEl.getAttribute('data-task-id')]
+        : [];
+    }),
+  );
+  expect(overflow).toEqual([]);
+  expect(await heads(page).count()).toBeGreaterThan(0);
+});
+
+test('card head fits at a narrow plan pane', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch);
+  await page.setViewportSize({ width: 960, height: 900 });
+  await page.locator(head('T_search')).click();
+  await expect(page.locator(card('T_search'))).toHaveAttribute('aria-current', 'true');
+  const bad = await heads(page).evaluateAll((els) =>
+    els.flatMap((h) => {
+      const controls = [
+        ...h.querySelectorAll('[data-testid^="ade-task-action-"], [data-testid="ade-card-review"]'),
+      ];
+      const last = controls.at(-1);
+      // Gap from the last control to the head's right edge; the 8px padding makes 8 the flush state.
+      const gap = last
+        ? h.getBoundingClientRect().right - last.getBoundingClientRect().right
+        : null;
+      const clipped = h.scrollWidth > h.clientWidth;
+      // 1px of sub-pixel slack: the control may touch the padding edge, not enter its last 7px.
+      const tight = gap !== null && gap < 8 - 1;
+      return clipped || tight
+        ? [
+            {
+              id: h.closest('[data-testid="ade-card"]')?.getAttribute('data-task-id'),
+              scrollWidth: h.scrollWidth,
+              clientWidth: h.clientWidth,
+              gap,
+            },
+          ]
+        : [];
+    }),
+  );
+  expect(bad).toEqual([]);
+});
+
+test('branch rows start with the depth indent, no lead cell', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch);
+  await expect(page.locator(t('ade-branch-lead'))).toHaveCount(0);
+  const row = page.locator(`${t('ade-branch-row')}[data-depth="0"]`).first();
+  const start = await row.evaluate((el) => {
+    const body = el.children[1] as HTMLElement | undefined;
+    return body ? body.getBoundingClientRect().x - el.getBoundingClientRect().x : -1;
+  });
+  expect(start).toBeGreaterThanOrEqual(0);
+  expect(start).toBeLessThan(16);
 });

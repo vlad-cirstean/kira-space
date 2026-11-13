@@ -35,14 +35,14 @@ async function onEnter(): Promise<void> {
 </script>
 
 <template>
-  <div class="relative flex items-center gap-2">
+  <div class="relative flex min-w-0 flex-1 items-center gap-2 @5xl:flex-none">
     <Label for="ade-capture" class="sr-only">{{ t('space.ade.later.add.label') }}</Label>
     <Input
       id="ade-capture"
       v-model="text"
       :placeholder="t('space.ade.later.add.placeholder')"
       size="kira-lg"
-      class="w-72"
+      class="w-full min-w-32 max-w-72 @5xl:w-72"
       data-testid="ade-capture"
       @keydown.enter="onEnter"
     />

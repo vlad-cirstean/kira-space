@@ -5,10 +5,10 @@ import { type ActivityKind, activityLabel } from './activity';
 
 // Activity glyph of a session: `!` needs input, a green dot working, `z` waiting on a monitor, a
 // ringed blue dot finished and not viewed, an open dot idle, a square stopped (mockup `act`). `bare` drops the tooltip when a parent has one.
-const props = defineProps<{ kind: ActivityKind; size?: 12 | 14 | 16; bare?: boolean }>();
+const props = defineProps<{ kind: ActivityKind; size?: 12 | 14; bare?: boolean }>();
 
-const BADGE = { 12: 'size-3', 14: 'size-3.5', 16: 'size-4' } as const;
-const DOT = { 12: 'size-2', 14: 'size-2.5', 16: 'size-3' } as const;
+const BADGE = { 12: 'size-3', 14: 'size-3.5' } as const;
+const DOT = { 12: 'size-2', 14: 'size-2.5' } as const;
 const badge = computed(() => BADGE[props.size ?? 12]);
 const dot = computed(() => DOT[props.size ?? 12]);
 </script>
