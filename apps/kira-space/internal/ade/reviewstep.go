@@ -495,6 +495,18 @@ func (b *TaskBoard) gatherReviewSend(ctx context.Context, args adewire.SendRevie
 	return g, nil
 }
 
+// reviewMoved reports whether the run, its round count, branch, base, worktree folder or the task
+// link differ between SendReview's gather (was) and its locked phase (rc).
+func reviewMoved(args adewire.SendReviewArgs, rc, was *reviewCtx) bool {
+	return rc.rev.Rounds != was.rev.Rounds || rc.sb.Name != was.sb.Name || rc.sb.ID != was.sb.ID || rc.run.ID != was.run.ID ||
+		cmpNonEmpty(args.Route, rc.rev.Route) != cmpNonEmpty(args.Route, was.rev.Route) ||
+		rc.rev.DedicatedClaudeID != was.rev.DedicatedClaudeID ||
+		// Inputs of g.tgt and the change request link, read outside the lock: worktree (worktreeOf),
+		// base (reviewSpellings), task link (linkedChangeRequest, changeRequestURL).
+		rc.sb.WorktreeDir != was.sb.WorktreeDir || rc.sb.Base != was.sb.Base || rc.sb.BaseBranchID != was.sb.BaseBranchID ||
+		rc.tc.task.HostURL != was.tc.task.HostURL
+}
+
 // applyReviewSend is SendReview's locked phase. It returns errReviewMoved when the run, its round
 // count, its branch, base, worktree folder or the task link changed since the gather.
 func (b *TaskBoard) applyReviewSend(ctx context.Context, args adewire.SendReviewArgs, g *reviewSendGather) error {
@@ -513,13 +525,7 @@ func (b *TaskBoard) applyReviewSend(ctx context.Context, args adewire.SendReview
 	} else if live != nil {
 		return invalid("%s", i18n.T("backend.space.ade.reviewStep.roundLive.body", nil))
 	}
-	if rc.rev.Rounds != g.rc.rev.Rounds || rc.sb.Name != g.rc.sb.Name || rc.sb.ID != g.rc.sb.ID || rc.run.ID != g.rc.run.ID ||
-		cmpNonEmpty(args.Route, rc.rev.Route) != cmpNonEmpty(args.Route, g.rc.rev.Route) ||
-		rc.rev.DedicatedClaudeID != g.rc.rev.DedicatedClaudeID ||
-		// Inputs of g.tgt and the change request link, read outside the lock: worktree (worktreeOf),
-		// base (reviewSpellings), task link (linkedChangeRequest, changeRequestURL).
-		rc.sb.WorktreeDir != g.rc.sb.WorktreeDir || rc.sb.Base != g.rc.sb.Base || rc.sb.BaseBranchID != g.rc.sb.BaseBranchID ||
-		rc.tc.task.HostURL != g.rc.tc.task.HostURL {
+	if reviewMoved(args, rc, g.rc) {
 		return errReviewMoved
 	}
 	tgt := g.tgt
