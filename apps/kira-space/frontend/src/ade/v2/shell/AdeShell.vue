@@ -103,12 +103,12 @@ onScopeDispose(() => offReviewCode?.());
 <template>
   <Tabs
     :model-value="ui.view"
-    class="flex min-h-0 flex-1 flex-col gap-0"
+    class="@container flex min-h-0 min-w-0 flex-1 flex-col gap-0"
     data-testid="ade-shell"
     @update:model-value="onView"
   >
     <nav
-      class="grid h-tabbar shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-0.5 bg-chrome px-1"
+      class="flex min-h-tabbar shrink-0 flex-wrap items-center justify-between gap-0.5 bg-chrome px-1 py-0.5 @5xl:grid @5xl:h-tabbar @5xl:grid-cols-[1fr_auto_1fr] @5xl:flex-nowrap @5xl:py-0"
       data-testid="ade-shell-bar"
     >
       <TabsList class="justify-self-start">
@@ -137,7 +137,9 @@ onScopeDispose(() => offReviewCode?.());
           {{ t('space.common.plan.label') }}
         </TabsTrigger>
       </TabsList>
-      <div class="mx-2 flex items-center gap-2">
+      <div
+        class="mx-2 flex min-w-0 flex-1 basis-56 items-center justify-center gap-2 @5xl:flex-none"
+      >
         <AdeCaptureBox />
         <AdeAddPopover />
       </div>
