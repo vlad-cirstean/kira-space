@@ -536,10 +536,6 @@ push access without the `workflow` OAuth scope, which GitHub requires for any co
 `.github/workflows/*.yml`. A session with that scope applied them; both staging directories are
 gone.
 
-**Pending workflow patch.** `docs/pending-changes/.github__workflows__pr.yml.patch` (aggregates run on
-`always()`, matrix job deadline) must be applied from a session with the `workflow` scope; delete
-the patch in the same commit.
-
 ### Repository settings (user-applied)
 
 1. Ruleset "Protected branches" (`refs/heads/main`): add **Require status checks to pass**, source

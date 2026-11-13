@@ -4362,13 +4362,6 @@ Performance:
   `review.comment.list` re-anchoring passes** (a server-side cost) — C13-12 fixed the diff-reload
   fan-out (C14-2 fixed a regression in that same split) but not the comment-reload fan-out.
 
-- **`.github/workflows/pr.yml` has no `test:ui` step.**
-  `typecheck`/`lint` cover Kira Space (whole-repo scripts), `build` and the Space `gitclient`
-  tests run. `verify:packaging` in `pr.yml` finds no packaged bundle, so its artifact checks skip;
-  `release.yml` runs them. Closing this needs its own follow-up. This session cannot push a
-  `.github/workflows/*.yml` change (`docs/DEV_ENVIRONMENT.md`); stage it under
-  `docs/pending-changes/`.
-
 - **No light theme; `ade`'s kept tone and palette values are dark-only (P138)**. Kira Space has
   one dark `:root`; design §7 has no light palette. Kept tone text measures 1.6-2.4:1 on white
   (amber 1.79, red 2.40, green 1.78, blue 2.02, purple 2.11, grey 2.03) and work palette slots

@@ -7,8 +7,7 @@ facts: those live in `docs/ARCHITECTURE.md`. Not team process: that lives in `CL
 
 ## Check the OS at session start
 
-`uname -s`. A real Mac session carries full capabilities and permissions — a push credential with
-the `workflow` scope (the `.github/workflows/` restriction below doesn't apply), the real macOS
+`uname -s`. A real Mac session carries full capabilities and permissions — the real macOS
 Keychain, Colima for containers. A Linux sandbox/container session is the constrained case: every
 restriction in this file assumes Linux unless its own section says otherwise. Check once, before
 assuming a constraint below applies to the current session.
@@ -20,32 +19,7 @@ Container sessions have a Claude login via env. Never assume none: verify with t
 No shell, commands, kill, manual cleanup, tests or scripts in this container. An agent runs it, or
 hands it off to the user's own machine/VM. Never ask the user to run a command in the sandbox.
 
-## Git push: `.github/workflows/` changes can't be pushed from a Linux sandbox
-
-On a Linux sandbox session, the git push credential is an OAuth App token without the `workflow`
-scope, so GitHub rejects *any* push — including unrelated commits stacked on top — once a commit
-touches a file under `.github/workflows/`. GitHub enforces this regardless of what the diff does;
-no way to grant the scope from inside such a session. Confirmed not to apply on a real Mac session
-(2026-09-12): a Mac session's push credential carries the `workflow` scope, so a commit touching
-`.github/workflows/*` pushes normally there — skip the workaround below entirely.
-
-On a Linux sandbox: never commit a change to `.github/workflows/*` directly. Instead:
-
-- **Modifying an existing workflow file**: write the intended diff as a new file under
-  `docs/pending-changes/` (create the directory if it doesn't exist) — the target workflow file's
-  path as the filename with `.patch` appended (e.g.
-  `docs/pending-changes/.github__workflows__release.yml.patch`), containing a normal `git
-  diff`-style patch plus a one-line note of why.
-- **Adding a whole new workflow file**: write it complete and ready-to-use under
-  `docs/pending-workflows/` (create the directory if it doesn't exist).
-
-Commit and push either like anything else (neither path is under `.github/workflows/`, so neither
-trips the scope check). The user applies it to the real workflow file from an environment with
-proper push credentials, and pushes it — then whoever applies it deletes the corresponding
-`docs/pending-changes/`/`docs/pending-workflows/` file, in the same commit. An entry still there
-means it hasn't been applied yet; don't recreate one that already exists for the same target file,
-and don't let this workaround become an excuse to touch workflow files more often than the task
-needs.
+## GitHub Pages
 
 `.github/workflows/pages.yml` (P280, GitHub Pages deploy) is live. Remaining steps to go live:
 
@@ -686,7 +660,7 @@ The sandbox (P287) enforces on macOS only. The sandbox session cannot run Seatbe
 11. Multi-image clipboard (P621): `go test -tags imagecliptest ./apps/kira-space/internal/imageclip -count=1 -v` (the tag compiles the test's readback helpers, kept out of the app binary). Expect
     `TestWriteImagesPrivatePasteboard` to pass: 3 items on a private pasteboard, each with `public.png`
     equal to its file and `public.file-url`, in order, and a missing file leaves the content unchanged.
-    Apply `docs/pending-changes/.github__workflows__pr.yml.patch` so PR CI runs it too.
+    PR CI runs it too (`checks (macOS)`).
 12. In the app, open a proof with 3 steps and click Copy screenshots. Paste into Notes (3 images), Finder
     (3 PNG files) and Mail (3 attachments). The status strip says "Copied 3 screenshots". Record a failure
     as a Known open item; if all pass, delete "Multi-image clipboard is unverified (P621)" from
