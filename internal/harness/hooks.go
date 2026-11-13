@@ -14,8 +14,8 @@ type HookHost interface {
 
 // HookOptions configures a listener.
 type HookOptions struct {
-	// OnEvent is called once per accepted event. Through Hooks it runs on the hub's single worker
-	// in arrival order and never after Hooks.Stop returns; the listener's own Close does not imply
+	// OnEvent is called once per accepted event. Through Hooks it runs on a per-terminal lane, in
+	// arrival order per terminal only, and never after Hooks.Stop returns; the listener's own Close does not imply
 	// that, the hub does.
 	OnEvent func(AgentEvent)
 	// Reply, when set, is asked for each event before OnEvent, in the listener's own goroutine. A
@@ -179,7 +179,7 @@ func (h *Hooks) Flush() {
 	}
 }
 
-// Stop closes every running listener, then drains the event worker. Listeners close first: their
+// Stop closes every running listener, then drains every terminal lane. Listeners close first: their
 // shutdown waits for in-flight handlers that may still enqueue.
 func (h *Hooks) Stop() error {
 	h.mu.Lock()
