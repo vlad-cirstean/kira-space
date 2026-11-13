@@ -444,7 +444,7 @@ function onForcePush(row: BranchRowModel): void {
               @drag-end="drag.end"
             />
           </template>
-          <div v-if="model.view.hiddenCount > 0" class="ml-15 mt-2">
+          <div v-if="model.view.hiddenCount > 0" class="mt-2">
             <Button
               variant="toolbar"
               size="kira-lg"
@@ -456,7 +456,7 @@ function onForcePush(row: BranchRowModel): void {
               <span>{{ model.view.moreButtonLabel }}</span>
             </Button>
           </div>
-          <div v-if="model.view.canCollapse" class="ml-15 mt-2">
+          <div v-if="model.view.canCollapse" class="mt-2">
             <Button
               variant="toolbar"
               size="kira-lg"

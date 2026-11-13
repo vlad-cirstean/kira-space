@@ -1,5 +1,7 @@
 /* Tone tokens: queue state, built on theme tokens. Classes come from the maps in tones.ts. */
 @theme {
+  --color-today: color-mix(in srgb, var(--kira-fg) 35%, var(--kira-border));
+  --color-today-tint: color-mix(in srgb, var(--kira-fg) 5%, transparent);
   --color-tone-amber-tint: color-mix(in srgb, var(--kira-status-amber) 15%, transparent);
   --color-tone-amber: var(--kira-status-amber);
   --color-tone-amber-solid: var(--kira-warn);

@@ -11,7 +11,7 @@ const emit = defineEmits<{ load: []; hide: []; pick: [taskId: string] }>();
 </script>
 
 <template>
-  <div class="mb-1 ml-15 flex h-row items-center gap-1">
+  <div class="mb-1 flex h-row items-center gap-1">
     <AdeTip :text="tip">
       <Button
         variant="toolbar"
