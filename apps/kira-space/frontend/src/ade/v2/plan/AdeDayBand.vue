@@ -93,7 +93,10 @@ const ruleClass = computed(() => {
   <!-- biome-ignore lint/a11y/noStaticElementInteractions: right-click only; the band holds nested interactive rows. -->
   <div
     class="flex flex-col rounded-kira"
-    :class="band.isToday ? 'bg-today-tint' : ''"
+    :class="[
+      band.isToday ? 'bg-today-tint' : '',
+      highlight ? 'outline outline-1 outline-focus' : '',
+    ]"
     data-testid="ade-day-band"
     data-ade-band
     :data-weekend="band.weekend || undefined"
@@ -105,7 +108,6 @@ const ruleClass = computed(() => {
       <div
         class="whitespace-nowrap text-kira-md font-medium"
         :class="[band.dayOff ? 'line-through' : '', labelClass]"
-        :data-today="band.isToday || undefined"
         data-testid="ade-band-label"
       >
         {{ band.label }}
@@ -117,7 +119,6 @@ const ruleClass = computed(() => {
       class="box-border flex min-w-0 flex-1 flex-col gap-2 rounded-kira"
       :class="[
         empty ? 'min-h-1' : 'pb-2 pt-1',
-        highlight ? 'outline outline-1 outline-focus' : '',
         band.weekend
           ? 'bg-[repeating-linear-gradient(135deg,var(--color-elevated)_0_1px,transparent_1px_8px)]'
           : '',
