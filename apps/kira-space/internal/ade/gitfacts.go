@@ -2,6 +2,7 @@ package ade
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 	"sync"
@@ -38,6 +39,7 @@ type PairFact struct {
 	A, B      string
 	Shared    []string
 	Conflicts []string
+	Checking  bool
 }
 
 type branchFactsKey struct{ TipParent, TipBranch string }
@@ -47,17 +49,15 @@ type branchFactsValue struct {
 	Files         []porcelain.FileChange
 }
 
-type mergeTreeKey struct{ TipA, TipB string }
-
 type repoCaches struct {
-	branch    *lru.Cache[branchFactsKey, branchFactsValue]
-	mergeTree *lru.Cache[mergeTreeKey, []string]
-	contain   *lru.Cache[containKey, containment]
-	patchIDs  *lru.Cache[string, map[string]struct{}] // target tip -> patch ids of its recent commits
-	commits   *lru.Cache[string, string]              // printed sha -> full commit id (found shas only)
-	ancestor  *lru.Cache[tipPair, bool]               // (older, newer) -> older is an ancestor of newer
-	since     *lru.Cache[tipPair, int]                // (older, newer) -> commits in older..newer
-	counts    *lru.Cache[tipPair, [2]int]             // (left, right) -> ahead, behind of left...right
+	branch   *lru.Cache[branchFactsKey, branchFactsValue]
+	pairs    *rebaseCache // (tipA, tipB) -> conflicted paths of the pair's merge-tree
+	contain  *lru.Cache[containKey, containment]
+	patchIDs *lru.Cache[string, map[string]struct{}] // target tip -> patch ids of its recent commits
+	commits  *lru.Cache[string, string]              // printed sha -> full commit id (found shas only)
+	ancestor *lru.Cache[tipPair, bool]               // (older, newer) -> older is an ancestor of newer
+	since    *lru.Cache[tipPair, int]                // (older, newer) -> commits in older..newer
+	counts   *lru.Cache[tipPair, [2]int]             // (left, right) -> ahead, behind of left...right
 
 	// ancestry holds the last computeAncestry answer: one slot, keyed by a signature over its input.
 	ancestryMu  sync.Mutex
@@ -70,14 +70,14 @@ type tipPair struct{ from, to string }
 
 func newRepoCaches() *repoCaches {
 	b, _ := lru.New[branchFactsKey, branchFactsValue](branchFactsCacheCap)
-	m, _ := lru.New[mergeTreeKey, []string](mergeTreeCacheCap)
+	m, _ := lru.New[rebaseKey, []string](mergeTreeCacheCap)
 	c, _ := lru.New[containKey, containment](branchFactsCacheCap)
 	p, _ := lru.New[string, map[string]struct{}](patchIDCacheCap)
 	r, _ := lru.New[string, string](patchIDCacheCap)
 	a, _ := lru.New[tipPair, bool](branchFactsCacheCap)
 	n, _ := lru.New[tipPair, int](branchFactsCacheCap)
 	k, _ := lru.New[tipPair, [2]int](branchFactsCacheCap)
-	return &repoCaches{branch: b, mergeTree: m, contain: c, patchIDs: p, commits: r, ancestor: a, since: n, counts: k}
+	return &repoCaches{branch: b, pairs: m, contain: c, patchIDs: p, commits: r, ancestor: a, since: n, counts: k}
 }
 
 // resolveQueuedRef is §0.14's own identity rule: refs/heads/<b> when present, else
@@ -319,10 +319,11 @@ func rangeFacts(ctx context.Context, entry *gitsession.RepoEntry, caches *repoCa
 	return v, nil
 }
 
-// computePairFacts wraps pairFacts (§0.7) with its own isAncestor/mergeTree callbacks — the
-// mergeTree side is the (tipA, tipB)-keyed LRU cache (§4.2), so a repeat pair whose tips are
-// unchanged since the last board build or refresh never re-spawns merge-tree.
-func computePairFacts(ctx context.Context, entry *gitsession.RepoEntry, caches *repoCaches, ancestryOf map[string][]string, pairItems []pairItem) ([]PairFact, error) {
+// computePairFacts wraps pairFacts (§0.7) with its own isAncestor/mergeTree callbacks. A pair whose
+// tips are not in the pair cache queues its merge-tree on the rebase checker and shows Checking; the
+// checker's completion pushes the board. The checker keys pair jobs under their own repo id so they
+// never join a branch check that holds the same two tips in another cache.
+func computePairFacts(entry *gitsession.RepoEntry, caches *repoCaches, checker *rebaseChecker, repoID string, ancestryOf map[string][]string, pairItems []pairItem) []PairFact {
 	isAncestorFn := func(x, y string) bool {
 		for _, a := range ancestryOf[y] {
 			if a == x {
@@ -336,32 +337,32 @@ func computePairFacts(ctx context.Context, entry *gitsession.RepoEntry, caches *
 		}
 		return false
 	}
-	mergeTreeFn := func(tipA, tipB string) ([]string, error) {
-		key := mergeTreeKey{TipA: tipA, TipB: tipB}
-		if v, ok := caches.mergeTree.Get(key); ok {
-			return v, nil
+	run := mergeTreeRun(entry)
+	mergeTreeFn := func(tipA, tipB string) ([]string, bool, error) {
+		key := rebaseKey{BaseTip: tipA, Tip: tipB}
+		st, known := checker.peek(pairRepoID(repoID), caches.pairs, key)
+		if !known {
+			checker.request(rebaseJob{repoID: pairRepoID(repoID), key: key, cache: caches.pairs, run: run, branch: "pair"})
+			return nil, true, nil
 		}
-		pred, err := entry.MergeTreeConflicts(ctx, tipA, tipB)
-		if err != nil {
-			return nil, err
+		switch st.Check {
+		case conflictChecking:
+			return nil, true, nil
+		case conflictFailed:
+			return nil, false, errors.New(st.Reason)
 		}
-		paths := pred.Paths
-		if paths == nil {
-			paths = []string{}
-		}
-		caches.mergeTree.Add(key, paths)
-		return paths, nil
+		return st.Paths, false, nil
 	}
-	pairs, err := pairFacts(pairItems, isAncestorFn, mergeTreeFn)
-	if err != nil {
-		return nil, err
-	}
+	pairs := pairFacts(pairItems, isAncestorFn, mergeTreeFn)
 	out := make([]PairFact, len(pairs))
 	for i, p := range pairs {
-		out[i] = PairFact{A: p.A, B: p.B, Shared: p.Shared, Conflicts: p.Conflicts}
+		out[i] = PairFact{A: p.A, B: p.B, Shared: p.Shared, Conflicts: p.Conflicts, Checking: p.Checking}
 	}
-	return out, nil
+	return out
 }
+
+// pairRepoID is the checker's repo id for a repo's pair checks.
+func pairRepoID(repoID string) string { return "pair:" + repoID }
 
 func filesSet(changes []porcelain.FileChange) map[string]bool {
 	out := make(map[string]bool, len(changes))

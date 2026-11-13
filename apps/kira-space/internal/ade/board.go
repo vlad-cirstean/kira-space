@@ -911,6 +911,7 @@ func (b *TaskBoard) refreshRepo(ctx context.Context, id string) adewire.RepoRefr
 	}
 
 	b.checker.forgetFailures(id)
+	b.checker.forgetFailures(pairRepoID(id))
 	waits := make([]<-chan struct{}, 0, len(facts.jobs))
 	for branchID, job := range facts.jobs {
 		if _, gone := prMerged[branchID]; gone {

@@ -13,8 +13,8 @@ import (
 
 func noAncestor(x, y string) bool { return false }
 
-func mergeTreeReturning(paths ...string) func(string, string) ([]string, error) {
-	return func(string, string) ([]string, error) { return paths, nil }
+func mergeTreeReturning(paths ...string) func(string, string) ([]string, bool, error) {
+	return func(string, string) ([]string, bool, error) { return paths, false, nil }
 }
 
 func TestPairFacts_MineReviewConflict(t *testing.T) {
@@ -23,10 +23,7 @@ func TestPairFacts_MineReviewConflict(t *testing.T) {
 		{Item: "mine1", Tip: "t1", Kind: "mine", Files: map[string]bool{"a.go": true}},
 		{Item: "rev1", Tip: "t2", Kind: "review", Files: map[string]bool{"a.go": true}},
 	}
-	pairs, err := pairFacts(items, noAncestor, mergeTreeReturning("a.go"))
-	if err != nil {
-		t.Fatalf("pairFacts: %v", err)
-	}
+	pairs := pairFacts(items, noAncestor, mergeTreeReturning("a.go"))
 	if len(pairs) != 1 {
 		t.Fatalf("got %d pairs, want 1: %+v", len(pairs), pairs)
 	}
@@ -44,10 +41,7 @@ func TestPairFacts_MineMineShare(t *testing.T) {
 		{Item: "b", Tip: "t1", Kind: "mine", Files: map[string]bool{"a.go": true}},
 		{Item: "a", Tip: "t2", Kind: "mine", Files: map[string]bool{"a.go": true}},
 	}
-	pairs, err := pairFacts(items, noAncestor, mergeTreeReturning())
-	if err != nil {
-		t.Fatalf("pairFacts: %v", err)
-	}
+	pairs := pairFacts(items, noAncestor, mergeTreeReturning())
 	if len(pairs) != 1 {
 		t.Fatalf("got %d pairs, want 1: %+v", len(pairs), pairs)
 	}
@@ -68,10 +62,7 @@ func TestPairFacts_ParkedExcluded(t *testing.T) {
 		{Item: "mine1", Tip: "t1", Kind: "mine", Files: map[string]bool{"a.go": true}},
 		{Item: "parked1", Tip: "t2", Kind: "parked", Files: map[string]bool{"a.go": true}},
 	}
-	pairs, err := pairFacts(items, noAncestor, mergeTreeReturning("a.go"))
-	if err != nil {
-		t.Fatalf("pairFacts: %v", err)
-	}
+	pairs := pairFacts(items, noAncestor, mergeTreeReturning("a.go"))
 	if len(pairs) != 0 {
 		t.Fatalf("got %d pairs, want 0 (parked excluded)", len(pairs))
 	}
@@ -83,10 +74,7 @@ func TestPairFacts_MergedExcluded(t *testing.T) {
 		{Item: "mine1", Tip: "t1", Kind: "mine", Files: map[string]bool{"a.go": true}},
 		{Item: "mine2", Tip: "t2", Kind: "mine", Merged: true, Files: map[string]bool{"a.go": true}},
 	}
-	pairs, err := pairFacts(items, noAncestor, mergeTreeReturning("a.go"))
-	if err != nil {
-		t.Fatalf("pairFacts: %v", err)
-	}
+	pairs := pairFacts(items, noAncestor, mergeTreeReturning("a.go"))
 	if len(pairs) != 0 {
 		t.Fatalf("got %d pairs, want 0 (merged excluded)", len(pairs))
 	}
@@ -99,10 +87,7 @@ func TestPairFacts_AncestorPairExcluded(t *testing.T) {
 		{Item: "mine2", Tip: "t2", Kind: "mine", Files: map[string]bool{"a.go": true}},
 	}
 	isAncestor := func(x, y string) bool { return true }
-	pairs, err := pairFacts(items, isAncestor, mergeTreeReturning("a.go"))
-	if err != nil {
-		t.Fatalf("pairFacts: %v", err)
-	}
+	pairs := pairFacts(items, isAncestor, mergeTreeReturning("a.go"))
 	if len(pairs) != 0 {
 		t.Fatalf("got %d pairs, want 0 (ancestor pair excluded)", len(pairs))
 	}
@@ -114,10 +99,7 @@ func TestPairFacts_ReviewReviewExcluded(t *testing.T) {
 		{Item: "rev1", Tip: "t1", Kind: "review", Files: map[string]bool{"a.go": true}},
 		{Item: "rev2", Tip: "t2", Kind: "review", Files: map[string]bool{"a.go": true}},
 	}
-	pairs, err := pairFacts(items, noAncestor, mergeTreeReturning("a.go"))
-	if err != nil {
-		t.Fatalf("pairFacts: %v", err)
-	}
+	pairs := pairFacts(items, noAncestor, mergeTreeReturning("a.go"))
 	if len(pairs) != 0 {
 		t.Fatalf("got %d pairs, want 0 (review x review is never a pair)", len(pairs))
 	}
@@ -130,14 +112,11 @@ func TestPairFacts_NoSharedPathsNoMergeTreeCall(t *testing.T) {
 		{Item: "mine2", Tip: "t2", Kind: "mine", Files: map[string]bool{"b.go": true}},
 	}
 	calls := 0
-	mergeTree := func(a, b string) ([]string, error) {
+	mergeTree := func(a, b string) ([]string, bool, error) {
 		calls++
-		return nil, nil
+		return nil, false, nil
 	}
-	pairs, err := pairFacts(items, noAncestor, mergeTree)
-	if err != nil {
-		t.Fatalf("pairFacts: %v", err)
-	}
+	pairs := pairFacts(items, noAncestor, mergeTree)
 	if len(pairs) != 0 {
 		t.Fatalf("got %d pairs, want 0 (no shared paths)", len(pairs))
 	}
@@ -155,10 +134,7 @@ func TestPairFacts_ConflictedPathOutsideSharedDropped(t *testing.T) {
 	// merge-tree reports a conflict in c.go too, but c.go is not one of the two items' own shared
 	// changed files (e.g. it's a file only one of them ever touched, base picked up elsewhere) —
 	// Conflicts must stay confined to shared.
-	pairs, err := pairFacts(items, noAncestor, mergeTreeReturning("a.go", "c.go"))
-	if err != nil {
-		t.Fatalf("pairFacts: %v", err)
-	}
+	pairs := pairFacts(items, noAncestor, mergeTreeReturning("a.go", "c.go"))
 	if len(pairs) != 1 {
 		t.Fatalf("got %d pairs, want 1", len(pairs))
 	}
@@ -167,55 +143,21 @@ func TestPairFacts_ConflictedPathOutsideSharedDropped(t *testing.T) {
 	}
 }
 
-func TestPairFacts_CacheHitOnUnchangedTips(t *testing.T) {
-	t.Parallel()
-	items := []pairItem{
-		{Item: "mine1", Tip: "tip-a", Kind: "mine", Files: map[string]bool{"a.go": true}},
-		{Item: "mine2", Tip: "tip-b", Kind: "mine", Files: map[string]bool{"a.go": true}},
-	}
-	realCalls := 0
-	real := func(a, b string) ([]string, error) {
-		realCalls++
-		return []string{"a.go"}, nil
-	}
-	// A tip-keyed cache wrapping mergeTree — the property under test is that pairFacts' own
-	// tip-based callback signature (not item ids) lets the CALLER cache across repeat calls with
-	// unchanged tips, exactly as the golang-lru wrapper in gitfacts.go does.
-	cache := map[[2]string][]string{}
-	cached := func(a, b string) ([]string, error) {
-		key := [2]string{a, b}
-		if v, ok := cache[key]; ok {
-			return v, nil
-		}
-		v, err := real(a, b)
-		if err != nil {
-			return nil, err
-		}
-		cache[key] = v
-		return v, nil
-	}
-
-	if _, err := pairFacts(items, noAncestor, cached); err != nil {
-		t.Fatalf("pairFacts (1st call): %v", err)
-	}
-	if _, err := pairFacts(items, noAncestor, cached); err != nil {
-		t.Fatalf("pairFacts (2nd call): %v", err)
-	}
-	if realCalls != 1 {
-		t.Fatalf("real mergeTree called %d times across two pairFacts calls with unchanged tips, want 1 (cache hit)", realCalls)
-	}
-}
-
-func TestPairFacts_MergeTreeError(t *testing.T) {
+func TestPairFacts_PendingAndFailedChecks(t *testing.T) {
 	t.Parallel()
 	items := []pairItem{
 		{Item: "mine1", Tip: "t1", Kind: "mine", Files: map[string]bool{"a.go": true}},
 		{Item: "mine2", Tip: "t2", Kind: "mine", Files: map[string]bool{"a.go": true}},
 	}
-	wantErr := errors.New("boom")
-	mergeTree := func(a, b string) ([]string, error) { return nil, wantErr }
-	if _, err := pairFacts(items, noAncestor, mergeTree); !errors.Is(err, wantErr) {
-		t.Fatalf("pairFacts error = %v, want %v propagated", err, wantErr)
+	pending := pairFacts(items, noAncestor, func(a, b string) ([]string, bool, error) { return nil, true, nil })
+	if len(pending) != 1 || !pending[0].Checking || len(pending[0].Conflicts) != 0 {
+		t.Fatalf("pending pair = %+v, want Checking with no conflicts", pending)
+	}
+	failed := pairFacts(items, noAncestor, func(a, b string) ([]string, bool, error) {
+		return []string{"a.go"}, true, errors.New("boom")
+	})
+	if len(failed) != 1 || failed[0].Checking || len(failed[0].Conflicts) != 0 {
+		t.Fatalf("failed pair = %+v, want no conflicts and not Checking", failed)
 	}
 }
 

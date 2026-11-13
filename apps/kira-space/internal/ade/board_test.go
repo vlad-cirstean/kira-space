@@ -215,14 +215,29 @@ func TestTaskBoard_snapshotAssembly(t *testing.T) {
 	}
 
 	// pairs are keyed by branch id: b1 (feat-a) and b3 (feat-p) both edit shared.txt.
+	// The pair check runs in the background: first read shows checking, then the conflict lands.
+	var pairs []adewire.Pair
+	testx.WaitUntil(t, 10*time.Second, func() bool {
+		b, err := h.board.Board(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		pairs = b.Pairs
+		for _, p := range b.Pairs {
+			if p.A == "b1" && p.B == "b3" {
+				return !p.Checking
+			}
+		}
+		return false
+	})
 	var found bool
-	for _, p := range board.Pairs {
+	for _, p := range pairs {
 		if p.A == "b1" && p.B == "b3" {
 			found = slices.Equal(p.Conflicts, []string{"shared.txt"})
 		}
 	}
 	if !found {
-		t.Fatalf("pair b1/b3 with conflict missing: %+v", board.Pairs)
+		t.Fatalf("pair b1/b3 with conflict missing: %+v", pairs)
 	}
 	testx.WaitUntil(t, 5*time.Second, func() bool {
 		stored, _ := h.repos.AdeTasks.BranchesLive()

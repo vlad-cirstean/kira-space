@@ -348,6 +348,8 @@ type Pair struct {
 	B         string   `json:"b"`
 	Shared    []string `json:"shared"`
 	Conflicts []string `json:"conflicts"`
+	// Checking is set while the pair's merge-tree check runs: conflicts is empty until it lands.
+	Checking bool `json:"checking,omitempty"`
 }
 
 type Run struct {
