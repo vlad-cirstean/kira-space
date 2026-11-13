@@ -196,6 +196,29 @@ test('card head buttons stay inside the card with the panel open', async ({ rela
   expect(await heads(page).count()).toBeGreaterThan(0);
 });
 
+test('card head fits at a narrow plan pane', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch);
+  await page.setViewportSize({ width: 960, height: 900 });
+  await page.locator(head('T_search')).click();
+  await expect(page.locator(card('T_search'))).toHaveAttribute('aria-current', 'true');
+  const bad = await heads(page).evaluateAll((els) =>
+    els.flatMap((h) => {
+      const controls = [
+        ...h.querySelectorAll('[data-testid^="ade-task-action-"], [data-testid="ade-card-review"]'),
+      ];
+      const last = controls.at(-1);
+      const clipped = h.scrollWidth > h.clientWidth;
+      const tight = last
+        ? last.getBoundingClientRect().right > h.getBoundingClientRect().right - 8
+        : false;
+      return clipped || tight
+        ? [h.closest('[data-testid="ade-card"]')?.getAttribute('data-task-id')]
+        : [];
+    }),
+  );
+  expect(bad).toEqual([]);
+});
+
 test('branch rows start with the depth indent, no lead cell', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   await expect(page.locator(t('ade-branch-lead'))).toHaveCount(0);

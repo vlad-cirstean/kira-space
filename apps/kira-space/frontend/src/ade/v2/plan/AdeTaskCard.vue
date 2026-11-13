@@ -158,7 +158,7 @@ const boxClass = computed(() => {
               </span>
             </AdeTip>
             <span
-              class="max-w-36 shrink-0 truncate text-kira-sm"
+              class="min-w-0 max-w-36 shrink truncate text-kira-sm"
               :class="p.bad ? 'text-tone-red' : 'text-muted-foreground'"
               data-testid="ade-step-label"
               >{{
@@ -195,7 +195,7 @@ const boxClass = computed(() => {
           />
           <AdeTip :text="card.meta">
             <span
-              class="min-w-0 flex-1 truncate text-kira-sm leading-3.5 text-subtle"
+              class="min-w-0 flex-[1_1_4rem] truncate text-kira-sm leading-3.5 text-subtle"
               data-testid="ade-card-meta"
               >{{
                 card.meta

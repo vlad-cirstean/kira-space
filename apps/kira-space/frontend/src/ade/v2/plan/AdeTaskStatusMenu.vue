@@ -49,7 +49,7 @@ async function pick(value: unknown): Promise<void> {
         type="button"
         variant="toolbar"
         size="inline"
-        class="h-4.5 max-w-24 shrink-0 justify-start truncate rounded-kira-sm border-0 px-1 text-kira-sm font-normal"
+        class="h-4.5 min-w-8 max-w-24 shrink justify-start truncate rounded-kira-sm border-0 px-1 text-kira-sm font-normal"
         :class="STATUS_TEXT_CLASS[card.status.color]"
         :aria-label="t('space.ade.plan.card.status.aria', { status: card.status.name })"
         :data-status-id="card.status.id"
