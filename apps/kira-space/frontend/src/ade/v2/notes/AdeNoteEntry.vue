@@ -15,7 +15,7 @@ import { useUpdateHandover } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import type { Handover } from '../wire';
-import AdeNotesEditor from './AdeNotesEditor.vue';
+import { AdeNotesEditor, prefetchNotesEditor } from './asyncEditor';
 import {
   AUTHOR_ICON,
   authorAria,
@@ -138,6 +138,7 @@ function time(h: Handover): string {
         icon="edit"
         :label="t('space.ade.handover.edit.tooltip')"
         data-testid="ade-handover-edit"
+        @pointerenter="prefetchNotesEditor"
         @click="emit('edit')"
       />
     </div>

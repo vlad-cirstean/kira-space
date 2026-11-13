@@ -2,7 +2,7 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
-import AdeNotesEditor from '../notes/AdeNotesEditor.vue';
+import { AdeNotesEditor } from '../notes/asyncEditor';
 import { taskCreatePayloadSchema } from './payload';
 
 // One orchestrator's request for a child task: the brief it starts from. Title, workflow and

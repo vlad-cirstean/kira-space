@@ -16,7 +16,7 @@ import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import AdeLinkStrip from '../links/AdeLinkStrip.vue';
-import AdeNotesEditor from '../notes/AdeNotesEditor.vue';
+import { AdeNotesEditor } from '../notes/asyncEditor';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 
 // Moves a task to another stage with handover notes for it. `routed` picks which mount shows it: the

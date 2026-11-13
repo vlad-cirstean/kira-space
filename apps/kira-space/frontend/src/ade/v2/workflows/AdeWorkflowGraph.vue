@@ -30,9 +30,9 @@ import {
   type EdgeData,
   type GraphEdge,
   type GraphNode,
-  layoutWorkflow,
   type StepNodeData,
 } from '../board/workflowGraph';
+import { layoutWorkflow } from '../board/workflowLayout';
 import { useSaveWorkflow } from '../queries';
 import { useWorkflows } from '../readQueries';
 import { useAdeWorkflowDraftStore } from '../state/adeWorkflowDraft';

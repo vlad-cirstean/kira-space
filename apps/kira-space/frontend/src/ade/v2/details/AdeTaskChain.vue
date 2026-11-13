@@ -10,7 +10,7 @@ import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { computed, ref } from 'vue';
 import AdeNoteEntry from '../notes/AdeNoteEntry.vue';
-import AdeNotesEditor from '../notes/AdeNotesEditor.vue';
+import { AdeNotesEditor, prefetchNotesEditor } from '../notes/asyncEditor';
 import {
   useAddNote,
   useHandovers,
@@ -112,6 +112,7 @@ const editing = ref<string | null>(null);
           icon="add"
           :label="t('space.ade.notes.add.tooltip')"
           data-testid="ade-note-add"
+          @pointerenter="prefetchNotesEditor"
           @click="composer.show(task.id)"
         />
         <AdeProofAttachMenu :task-id="task.id" />

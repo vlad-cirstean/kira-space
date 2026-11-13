@@ -7,7 +7,6 @@ import {
   clearRoute,
   type Graph,
   type GraphNode,
-  layoutWorkflow,
   moveStep,
   NODE_H,
   NODE_W,
@@ -16,6 +15,7 @@ import {
   setRoute,
   setStart,
 } from '../../frontend/src/ade/v2/board/workflowGraph';
+import { layoutWorkflow } from '../../frontend/src/ade/v2/board/workflowLayout';
 import type { StepResult, Workflow, WorkflowStep } from '../../frontend/src/ade/v2/wire';
 import { mkManual, mkStep } from './support/adeV2Fixtures';
 

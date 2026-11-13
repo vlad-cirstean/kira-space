@@ -19,7 +19,7 @@ import AdeLinkTarget from './AdeLinkTarget.vue';
 import { firstWork, offsetToIso } from './board/calendar';
 import { candidateOf, candidateOptions } from './branchOptions';
 import { parseJira } from './jira';
-import AdeNotesEditor from './notes/AdeNotesEditor.vue';
+import { AdeNotesEditor, prefetchNotesEditor } from './notes/asyncEditor';
 import { usePlanModel } from './plan/usePlanModel';
 import {
   useAddExistingBranch,
@@ -162,7 +162,12 @@ async function pick(value: string): Promise<void> {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <Button variant="dialog" size="kira-lg" data-testid="ade-add">
+      <Button
+        variant="dialog"
+        size="kira-lg"
+        data-testid="ade-add"
+        @pointerenter="prefetchNotesEditor"
+      >
         <CodiconIcon name="add" :size="12" />
         {{ t('space.ade.add.trigger.label') }}
       </Button>

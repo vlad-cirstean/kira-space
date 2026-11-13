@@ -2,28 +2,31 @@
 import { Badge } from '@theme/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, tabChipVariants } from '@theme/components/ui/tabs';
 import { t } from '@theme/i18n';
-import { computed, onMounted, onScopeDispose } from 'vue';
+import { computed, defineAsyncComponent, onMounted, onScopeDispose } from 'vue';
 import { control } from '../../../bridge/control';
-import AdeAbortRebaseDialog from '../AdeAbortRebaseDialog.vue';
 import AdeAddPopover from '../AdeAddPopover.vue';
-import AdeAgentsPage from '../agents/AdeAgentsPage.vue';
 import { shelfOf } from '../board/shelf';
-import AdeAgentDialog from '../dialog/AdeAgentDialog.vue';
-import AdeLaterPage from '../later/AdeLaterPage.vue';
-import AdeNeedsPage from '../needs/AdeNeedsPage.vue';
 import AdePanel from '../panel/AdePanel.vue';
 import AdePlanView from '../plan/AdePlanView.vue';
 import { usePlanModel } from '../plan/usePlanModel';
-import AdeReposPage from '../repos/AdeReposPage.vue';
 import { useReviewCode } from '../review/useReviewCode';
-import AdeRepoGateDialog from '../run/AdeRepoGateDialog.vue';
-import AdeRunDialog from '../run/AdeRunDialog.vue';
-import AdeTakeOverDialog from '../sessions/AdeTakeOverDialog.vue';
-import AdeStageDialog from '../stage/AdeStageDialog.vue';
 import { type AdeView, useAdeBoardUiStore } from '../state/adeBoardUi';
 import { switchAdeView } from '../state/adeView';
-import AdeWorkflowsPage from '../workflows/AdeWorkflowsPage.vue';
 import AdeCaptureBox from './AdeCaptureBox.vue';
+
+// Every page but the Plan and every dialog loads as its own chunk: the entry bundle skips them. Dialog
+// state lives in stores, so one mounted before its chunk lands opens as soon as it arrives.
+const AdeAbortRebaseDialog = defineAsyncComponent(() => import('../AdeAbortRebaseDialog.vue'));
+const AdeAgentsPage = defineAsyncComponent(() => import('../agents/AdeAgentsPage.vue'));
+const AdeAgentDialog = defineAsyncComponent(() => import('../dialog/AdeAgentDialog.vue'));
+const AdeLaterPage = defineAsyncComponent(() => import('../later/AdeLaterPage.vue'));
+const AdeNeedsPage = defineAsyncComponent(() => import('../needs/AdeNeedsPage.vue'));
+const AdeReposPage = defineAsyncComponent(() => import('../repos/AdeReposPage.vue'));
+const AdeRepoGateDialog = defineAsyncComponent(() => import('../run/AdeRepoGateDialog.vue'));
+const AdeRunDialog = defineAsyncComponent(() => import('../run/AdeRunDialog.vue'));
+const AdeTakeOverDialog = defineAsyncComponent(() => import('../sessions/AdeTakeOverDialog.vue'));
+const AdeStageDialog = defineAsyncComponent(() => import('../stage/AdeStageDialog.vue'));
+const AdeWorkflowsPage = defineAsyncComponent(() => import('../workflows/AdeWorkflowsPage.vue'));
 
 // Top bar (tabs, capture box, Add) over the active tab; the Plan opens the panel beside it.
 const ui = useAdeBoardUiStore();
