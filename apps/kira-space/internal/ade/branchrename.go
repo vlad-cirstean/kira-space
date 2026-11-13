@@ -325,6 +325,15 @@ func (b *TaskBoard) applyRename(ctx context.Context, call agentmcp.SpaceCall, ar
 	if plan.refusal != "" {
 		return renameResult(args, plan.nick, agentmcp.BranchFailed, plan.refusal), nil
 	}
+	if renameRemote && plan.facts.remote != "" {
+		// Slot before repoMutex: the remote push waits without the repo lock.
+		slotCtx, release, err := b.holdRemoteSlot(ctx, plan.sb.CodeRepoID)
+		if err != nil {
+			return agentmcp.RenameBranchResult{}, err
+		}
+		defer release()
+		ctx = slotCtx
+	}
 	rmu := b.repoMutex(plan.sb.CodeRepoID)
 	rmu.Lock()
 	defer rmu.Unlock()

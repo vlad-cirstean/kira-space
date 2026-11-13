@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 // A remote op waits for the repo's slot instead of failing with OperationInProgress, and its ctx
@@ -53,4 +54,41 @@ func TestRunRemote_queuesBehindHolder(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("queued op never ran")
 	}
+}
+
+// A Refresh queued behind a held remote slot waits without repoMutex, so other repo work proceeds.
+func TestRefreshFetch_queuedBehindSlotLeavesRepoMutexFree(t *testing.T) {
+	skipWithoutGitQueue(t)
+	h := newBoardHarness(t)
+	_, dir := initQueueRepo(t)
+	h.addRepoFromPath("r", dir)
+	_, release, err := h.board.holdRemoteSlot(context.Background(), "r") // a blocked sandbox push
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = h.board.Refresh(context.Background(), []string{"r"})
+	}()
+	time.Sleep(200 * time.Millisecond) // let Refresh reach the slot wait
+	mu := h.board.repoMutex("r")
+	if !mu.TryLock() {
+		t.Fatal("queued Refresh holds repoMutex")
+	}
+	mu.Unlock()
+	select {
+	case <-done:
+		t.Fatal("Refresh did not wait for the slot")
+	default:
+	}
+	release()
+	testx.WaitUntil(t, 10*time.Second, func() bool {
+		select {
+		case <-done:
+			return true
+		default:
+			return false
+		}
+	})
 }
