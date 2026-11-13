@@ -90,6 +90,19 @@ test('the Run dialog shows the default message and the read-only suffix', async 
   await expect(dialog).toBeHidden();
 });
 
+test('the Run dialog shows a skeleton until the message preview lands', async ({ relaunch }) => {
+  // The first preview snapshot is the message (`ade.step.prompt`), held until released.
+  const held = boardWith(alertsInPlan).map((s, i) => (i === 1 ? { ...s, hold: true } : s));
+  const { window: page, control } = await openPlan(relaunch, held);
+  await page.locator(cellAction('T_alerts', 'run')).click();
+  const dialog = page.locator(t('ade-run-dialog'));
+  await expect(dialog.locator(t('ade-run-message-skeleton'))).toBeVisible();
+  await expect(dialog.locator(t('ade-run-message'))).toHaveCount(0);
+  control.release(IPC.llmPromptsPreview);
+  await expect(dialog.locator(t('ade-run-message'))).toHaveValue(/Plan from spec/);
+  await expect(dialog.locator(t('ade-run-message-skeleton'))).toHaveCount(0);
+});
+
 test('an agent step leaves the branch name to the agent', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, boardWith(alertsInPlan));
   await page.locator(cellAction('T_alerts', 'run')).click();
@@ -135,6 +148,28 @@ test('Cancel closes the Run dialog without a call', async ({ relaunch }) => {
   await page.locator(t('ade-run-cancel')).click();
   await expect(page.locator(t('ade-run-dialog'))).toBeHidden();
   expect(calls(control, IPC.adeTaskStartRun)).toHaveLength(0);
+});
+
+test('a refused start reopens the Run dialog with the typed names and message', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openPlan(relaunch, [
+    ...boardWith(alertsInPlan),
+    { channel: IPC.adeTaskStartRun, error: { code: 'invalid', message: 'branch name taken' } },
+  ]);
+  await page.locator(cellAction('T_alerts', 'run')).click();
+  const dialog = page.locator(t('ade-run-dialog'));
+  const names = dialog.locator(t('ade-run-branch'));
+  await names.nth(0).fill('feat/first');
+  await names.nth(1).fill('feat/second');
+  await dialog.locator(t('ade-run-message')).fill('Plan it my way.');
+  await dialog.locator(t('ade-run-send')).click();
+  await expect.poll(() => calls(control, IPC.adeTaskStartRun)).toHaveLength(1);
+  await expect(page.locator('[data-sonner-toast]')).toContainText('branch name taken');
+  await expect(dialog).toBeVisible();
+  await expect(names.nth(0)).toHaveValue('feat/first');
+  await expect(names.nth(1)).toHaveValue('feat/second');
+  await expect(dialog.locator(t('ade-run-message'))).toHaveValue('Plan it my way.');
 });
 
 test('a pushed runs event updates the step line', async ({ relaunch }) => {
@@ -393,6 +428,43 @@ test('Log opens the run log and appends pushed chunks', async ({ relaunch }) => 
     { seq: lastSeq, at: 1790067600000, stream: 'event', text: 'Edit src/appended.ts' },
   ]);
   await expect(log).toContainText('Edit src/appended.ts');
+});
+
+test('pushed log chunks keep their order, an exit-code line reads as an error, and an over-long log says truncated', async ({
+  relaunch,
+}) => {
+  const { window: page } = await openPlan(relaunch);
+  await open(page, 'T_bill');
+  const line = step(page, 'impl').locator('[data-testid="ade-run-line"][data-branch-id="b_bill"]');
+  await line.locator(t('ade-run-log-toggle')).click();
+  const log = page.locator(t('ade-run-log'));
+  await expect(log).toBeVisible();
+  const rows = log.locator(t('ade-run-log-line'));
+  await expect(rows.first()).toBeVisible();
+  const at = 1790067600000;
+  await emitLog(page, 'run', 'r_T_bill_impl_b_bill', [
+    { seq: 100, at, stream: 'stdout', text: 'ordered-one' },
+    { seq: 101, at, stream: 'stdout', text: 'ordered-two' },
+    { seq: 102, at, stream: 'stdout', text: 'process finished with exit code 2' },
+  ]);
+  await expect(log).toContainText('ordered-two');
+  const texts = await rows.allTextContents();
+  expect(texts.findIndex((x) => x.includes('ordered-one'))).toBeLessThan(
+    texts.findIndex((x) => x.includes('ordered-two')),
+  );
+  await expect(rows.filter({ hasText: 'exit code 2' })).toHaveAttribute('data-stream', 'stderr');
+  await expect(rows.filter({ hasText: 'ordered-one' })).toHaveAttribute('data-stream', 'stdout');
+
+  await expect(log).not.toContainText('Earlier output dropped');
+  const big = 'x'.repeat(600_000);
+  await emitLog(
+    page,
+    'run',
+    'r_T_bill_impl_b_bill',
+    [103, 104, 105, 106].map((seq) => ({ seq, at, stream: 'stdout', text: `${big}${seq}` })),
+  );
+  await expect(log).toContainText('Earlier output dropped');
+  await expect(log).toContainText('106');
 });
 
 test('a script run offers Output', async ({ relaunch }) => {

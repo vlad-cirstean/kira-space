@@ -185,3 +185,32 @@ reviewTest('contract: a stopped round offers Resume', async ({ relaunch }) => {
   await expect.poll(() => calls(control, IPC.adeTaskResumeRun)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskResumeRun)[0]?.args).toEqual({ runId: ROUND_ID });
 });
+
+reviewTest(
+  'Send in flight shows the chip, then a loading and a success toast',
+  async ({ relaunch }) => {
+    const { page, control } = await openWindow(relaunch, 'waiting', undefined, [
+      { channel: IPC.adeTaskSendReview, response: undefined, hold: true },
+    ]);
+    await page.locator(t('ade-review-send-agent')).click();
+    await expect(page.locator('[data-testid="ade-op-status"][data-op="sendReview"]')).toBeVisible();
+    await expect(page.locator('[data-sonner-toast]')).toContainText('Sending review', {
+      timeout: 5000,
+    });
+    control.release(IPC.adeTaskSendReview);
+    await expect(page.locator('[data-sonner-toast]')).toContainText('Sent review');
+    await expect(page.locator('[data-testid="ade-op-status"]')).toHaveCount(0);
+  },
+);
+
+reviewTest('a refused Send shows inline and as an error toast', async ({ relaunch }) => {
+  const { page } = await openWindow(relaunch, 'waiting', undefined, [
+    {
+      channel: IPC.adeTaskSendReview,
+      error: { code: 'E_BAD_REQUEST', message: 'round already live' },
+    },
+  ]);
+  await page.locator(t('ade-review-send-agent')).click();
+  await expect(page.locator(t('ade-review-error'))).toHaveText('round already live');
+  await expect(page.locator('[data-sonner-toast]')).toContainText('round already live');
+});

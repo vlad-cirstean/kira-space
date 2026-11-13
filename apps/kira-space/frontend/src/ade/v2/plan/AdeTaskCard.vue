@@ -55,7 +55,7 @@ const emit = defineEmits<{ select: []; forcePush: [row: BranchRowModel] }>();
 
 const ui = useAdeBoardUiStore();
 const dialogs = useAdeDialogsStore();
-const { model } = usePlanModel();
+const { view, boardQuery, rippleIds } = usePlanModel();
 const { byTask, describe } = useTaskUpdates();
 const taskUpdates = computed(() => byTask.value.get(props.card.task.id) ?? []);
 const taskMenu = useTaskMenu(() => props.card);
@@ -77,13 +77,14 @@ useShortcut(head, ['menu.open'], () => {
 
 // One branch opens Change base at once; several ask which.
 const baseChoices = computed(() => {
-  const m = model.value;
-  return m
-    ? changeBaseChoices(props.card, { graph: m.view.graph, after: m.view.after, board: m.board })
-    : [];
+  const v = view.value;
+  const board = boardQuery.data.value;
+  return v && board ? changeBaseChoices(props.card, { graph: v.graph, after: v.after, board }) : [];
 });
 
-const headSelected = computed(() => props.card.selected && ui.selectedBranchId === null);
+const selected = computed(() => ui.selectedTaskId === props.card.task.id);
+const inRipple = computed(() => rippleIds.value.tasks.has(props.card.task.id));
+const headSelected = computed(() => selected.value && ui.selectedBranchId === null);
 const p = computed(() => props.card.progress);
 const segClass = (state: string): string => {
   if (state === 'done') return 'bg-muted-foreground';
@@ -96,8 +97,8 @@ const boxClass = computed(() => {
   return [
     c.parked ? 'bg-chrome' : '',
     'cursor-grab border',
-    c.selected ? 'border-focus' : 'border-border',
-    c.ripple && !c.selected ? 'outline-1 outline-border' : '',
+    selected.value ? 'border-focus' : 'border-border',
+    inRipple.value && !selected.value ? 'outline-1 outline-border' : '',
   ];
 });
 </script>
@@ -108,15 +109,15 @@ const boxClass = computed(() => {
     data-ade-task=""
     data-testid="ade-task"
     :data-task-id="card.task.id"
-    :data-selected="card.selected || undefined"
+    :data-selected="selected || undefined"
   >
     <Card
       variant="section"
       :data-task-id="card.task.id"
       class="box-border flex min-w-0 flex-1 flex-col overflow-hidden"
       :class="boxClass"
-      :style="card.parked ? undefined : taskTint(card.color, card.selected)"
-      :aria-current="card.selected || undefined"
+      :style="card.parked ? undefined : taskTint(card.color, selected)"
+      :aria-current="selected || undefined"
       data-testid="ade-card"
       @contextmenu="taskMenu.open"
     >
@@ -270,7 +271,8 @@ const boxClass = computed(() => {
             :label="t('space.ade.board.taskMenu.reviewCode.label')"
             class="size-4.5 shrink-0"
             disabled-trigger
-            :disabled="reviewCode.pending.value || choices.every((c) => c.disabled)"
+            :pending="reviewCode.pendingFor(choices.map((c) => c.branchId))"
+            :disabled="choices.every((c) => c.disabled)"
             data-testid="ade-card-review"
             @click.stop="
               (ev: MouseEvent) => reviewCode.openTask(card, ev.currentTarget as HTMLElement)

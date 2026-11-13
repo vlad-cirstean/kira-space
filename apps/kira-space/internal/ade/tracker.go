@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"os"
 	"slices"
@@ -218,6 +219,21 @@ type Tracker struct {
 	graceTimers map[string]*time.Timer
 	graceWG     sync.WaitGroup
 	closed      bool
+	// learning marks records with a background learnSessionID in flight; learnWG lets Close wait.
+	learning map[string]bool
+	learnWG  sync.WaitGroup
+	// learnCwd stripes learnSessionID by a hash of the cwd: one at a time per cwd, with no
+	// per-worktree growth. Two cwds on one stripe only wait for each other.
+	learnCwd [learnStripes]sync.Mutex
+}
+
+const learnStripes = 64
+
+// learnLock returns the stripe mutex of a cwd.
+func (t *Tracker) learnLock(cwd string) *sync.Mutex {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(cwd))
+	return &t.learnCwd[h.Sum32()%learnStripes]
 }
 
 // NewTracker applies TrackerDeps' own defaults and constructs a Tracker with empty state.
@@ -244,6 +260,7 @@ func NewTracker(deps TrackerDeps) *Tracker {
 		suppressIdle:   map[string]bool{},
 		tools:          map[string]openTools{},
 		graceTimers:    map[string]*time.Timer{},
+		learning:       map[string]bool{},
 	}
 }
 
@@ -483,6 +500,11 @@ func (t *Tracker) learnSessionID(recordID string) (string, error) {
 	if !ok {
 		return "", nil
 	}
+	// One learner per cwd at a time: two records of one cwd that read the taken ids before either
+	// stored its own could both pick the same single candidate.
+	mu := t.learnLock(rec.Cwd)
+	mu.Lock()
+	defer mu.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), locateTimeout)
 	defer cancel()
 	taken, err := t.deps.Store.AgentSessionIDsExcept(recordID)
@@ -503,12 +525,41 @@ func (t *Tracker) learnSessionID(recordID string) (string, error) {
 	return id, nil
 }
 
-// learnStopped runs learnSessionID for records that just stopped, best effort.
-func (t *Tracker) learnStopped(recordIDs ...string) {
+// learnAsync runs learnSessionID in the background for records that just stopped, best effort. A
+// provider's FindSession can take seconds, so Stop and Reconcile never wait for it. One run per
+// record at a time; none starts once Close began. A newly learned id notifies OnChange.
+func (t *Tracker) learnAsync(recordIDs ...string) {
 	for _, id := range recordIDs {
-		if _, err := t.learnSessionID(id); err != nil {
-			slog.Warn("ade: learn session id", "scope", "ade", "recordId", id, "err", err)
+		t.mu.Lock()
+		if t.closed || t.learning[id] {
+			t.mu.Unlock()
+			continue
 		}
+		t.learning[id] = true
+		t.learnWG.Add(1)
+		t.mu.Unlock()
+		go t.learnOne(id)
+	}
+}
+
+func (t *Tracker) learnOne(id string) {
+	defer t.learnWG.Done()
+	defer func() {
+		t.mu.Lock()
+		delete(t.learning, id)
+		t.mu.Unlock()
+	}()
+	before := ""
+	if rec, err := t.deps.Store.Get(id); err == nil && rec != nil {
+		before = rec.AgentSessionID
+	}
+	learned, err := t.learnSessionID(id)
+	if err != nil {
+		slog.Warn("ade: learn session id", "scope", "ade", "recordId", id, "err", err)
+		return
+	}
+	if before == "" && learned != "" && t.deps.OnChange != nil {
+		t.deps.OnChange()
 	}
 }
 
@@ -787,7 +838,7 @@ func (t *Tracker) Stop(recordID string) error {
 	t.mu.Lock()
 	t.forgetLocked(recordID, t.deps.Now())
 	t.mu.Unlock()
-	t.learnStopped(recordID)
+	t.learnAsync(recordID)
 	t.recordSessionEnd(recordID, oplog.TriggerUser, oplog.StatusOK, "")
 	if t.deps.OnChange != nil {
 		t.deps.OnChange()
@@ -843,7 +894,7 @@ func (t *Tracker) Reconcile() {
 		}
 		stopped = append(stopped, recordID)
 	}
-	t.learnStopped(stopped...)
+	t.learnAsync(stopped...)
 	for _, recordID := range stopped {
 		t.recordSessionEnd(recordID, oplog.TriggerAuto, oplog.StatusOK, "")
 	}
@@ -1066,29 +1117,37 @@ func (t *Tracker) Working(recordID string, ceiling time.Duration) bool {
 	return ok && t.deps.Now().Sub(time.UnixMilli(last)) < ceiling
 }
 
-// SendIfIdle pastes message into recordID's terminal only while its turn state is idle, checked in
-// the same critical section as the write. It never types into a busy agent, over a permission prompt
-// or over text the user left in the prompt box. The record turns busy before the lock drops, so
-// two sends cannot both pass.
+// SendIfIdle pastes message into recordID's terminal only while its turn state is idle. It never
+// types into a busy agent, over a permission prompt or over text the user left in the prompt box.
+// The record turns busy before the lock drops, so two sends cannot both pass; the PTY write runs
+// outside the lock. A failed write turns the record idle again.
 func (t *Tracker) SendIfIdle(recordID, message string) (bool, error) {
 	t.mu.Lock()
-	defer t.mu.Unlock()
 	terminalID, ok := t.byRecord[recordID]
 	if !ok || t.turn[recordID] != turnIdle {
+		t.mu.Unlock()
 		return false, nil
 	}
 	// A draft in the prompt box would be submitted with the message: leave it to the hook reply.
 	if t.deps.HasDraft != nil && t.deps.HasDraft(terminalID) {
+		t.mu.Unlock()
 		return false, nil
 	}
-	paste, enter := pasteBytes(message)
-	if err := t.deps.WriteTerminal(terminalID, paste); err != nil {
-		return false, fmt.Errorf("ade: send if idle: %w", err)
-	}
-	if err := t.deps.WriteTerminal(terminalID, enter); err != nil {
-		return false, fmt.Errorf("ade: send if idle: %w", err)
-	}
 	t.turn[recordID] = turnBusy
+	t.mu.Unlock()
+	paste, enter := pasteBytes(message)
+	err := t.deps.WriteTerminal(terminalID, paste)
+	if err == nil {
+		err = t.deps.WriteTerminal(terminalID, enter)
+	}
+	if err != nil {
+		t.mu.Lock()
+		if t.byRecord[recordID] == terminalID && t.turn[recordID] == turnBusy {
+			t.turn[recordID] = turnIdle
+		}
+		t.mu.Unlock()
+		return false, fmt.Errorf("ade: send if idle: %w", err)
+	}
 	return true, nil
 }
 
@@ -1191,6 +1250,7 @@ func (t *Tracker) Close() error {
 	t.graceTimers = map[string]*time.Timer{}
 	t.mu.Unlock()
 	t.graceWG.Wait()
+	t.learnWG.Wait()
 
 	t.mu.Lock()
 	toFlush := make(map[string]int64, len(t.lastActive))

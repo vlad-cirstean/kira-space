@@ -67,10 +67,15 @@ func (b *TaskBoard) syncLiveStatuses() {
 		slog.Warn("ade: recover: list tasks", "scope", "ade", "err", err)
 		return
 	}
+	cfg, err := b.loadStatusConfig()
+	if err != nil {
+		slog.Warn("ade: recover: sync statuses", "scope", "ade", "err", err)
+		return
+	}
 	for _, t := range tasks {
 		mu := b.taskMu(t.ID)
 		mu.Lock()
-		b.syncStatus(t.ID)
+		b.syncStatusWith(t.ID, &cfg)
 		mu.Unlock()
 	}
 }

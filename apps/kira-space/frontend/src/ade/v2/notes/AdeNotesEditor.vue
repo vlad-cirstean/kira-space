@@ -13,6 +13,7 @@ import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
 import { parseWithLineBreaks } from './notesDoc';
 import { notesExtensions } from './notesExtensions';
+import { noteProse } from './prose';
 
 // Notes editor: TipTap + `@tiptap/markdown`. Takes and emits Markdown only; ProseMirror JSON never
 // reaches the wire. It emits only after a user edit: Markdown parse and serialize normalizes text,
@@ -53,15 +54,7 @@ function emitPending(): void {
 
 const debouncedFlush = useDebounceFn(emitPending, TIMING.autosave);
 
-const PROSE = [
-  `ade-notes-prose kira-prose min-h-full ${props.flush ? 'p-0' : 'px-3 py-2'} outline-none`,
-  '[&_p:last-child]:mb-0',
-  "[&_ul[data-type='taskList']]:list-none [&_ul[data-type='taskList']]:pl-[0.2em]",
-  "[&_ul[data-type='taskList']_li]:flex [&_ul[data-type='taskList']_li]:items-start [&_ul[data-type='taskList']_li]:gap-[0.4em]",
-  "[&_input[type='checkbox']]:accent-ok",
-  "[&_li[data-checked='true']>div]:text-subtle [&_li[data-checked='true']>div]:line-through",
-  '[&_p.is-editor-empty:first-child]:before:pointer-events-none [&_p.is-editor-empty:first-child]:before:float-left [&_p.is-editor-empty:first-child]:before:h-0 [&_p.is-editor-empty:first-child]:before:text-subtle [&_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]',
-].join(' ');
+const PROSE = noteProse(props.flush);
 
 // Built in setup, not on mount: the text is in the first frame.
 const editor = shallowRef(

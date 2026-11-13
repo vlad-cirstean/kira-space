@@ -75,6 +75,8 @@ func (s *Server) addOutcomeTool(srv *mcp.Server) {
 		if args.Limit == 0 {
 			args.Limit = 3
 		}
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
 		runs, err := s.outcomes.RunOutcomes(ctx, g.TaskID, OutcomeQuery{RunID: args.RunID, Branch: args.Branch, Kind: args.Kind, Limit: args.Limit})
 		if err != nil {
 			return fail("run_outcome", err), runOutcomeResult{}, nil

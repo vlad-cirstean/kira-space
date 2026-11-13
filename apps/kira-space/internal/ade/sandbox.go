@@ -393,25 +393,36 @@ func (b *TaskBoard) FetchRemote(ctx context.Context, runID, remote string) (agen
 	if err != nil {
 		return agentmcp.RemoteResult{}, err
 	}
+	entry, err := b.fetchTarget(ctx, t, remote)
+	if err != nil {
+		return agentmcp.RemoteResult{}, err
+	}
+	// The network step runs outside repoMutex (it takes no repo state the lock guards) but queues
+	// behind other ADE remote ops on the repo.
+	res, err := b.runRemote(ctx, t.codeRepoID, entry, gitsession.RemoteOpParams{Kind: "fetch", Remote: remote})
+	if err != nil {
+		return agentmcp.RemoteResult{}, err
+	}
+	return remoteResult(remote, t.branch, res)
+}
+
+// fetchTarget opens the repo and checks the remote name under the repo lock.
+func (b *TaskBoard) fetchTarget(ctx context.Context, t sandboxTarget, remote string) (*gitsession.RepoEntry, error) {
 	mu := b.repoMutex(t.codeRepoID)
 	mu.Lock()
 	defer mu.Unlock()
 	entry, err := b.openRepo(ctx, t.codeRepoID)
 	if err != nil {
-		return agentmcp.RemoteResult{}, err
+		return nil, err
 	}
 	names, err := entry.Remotes(ctx)
 	if err != nil {
-		return agentmcp.RemoteResult{}, err
+		return nil, err
 	}
 	if !slices.Contains(names, remote) {
-		return agentmcp.RemoteResult{}, agentmcp.ToolError("remote must be one of: " + strings.Join(names, ", "))
+		return nil, agentmcp.ToolError("remote must be one of: " + strings.Join(names, ", "))
 	}
-	res, err := entry.RunRemote(ctx, b.conn, gitsession.RemoteOpParams{Kind: "fetch", Remote: remote}, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
-	if err != nil {
-		return agentmcp.RemoteResult{}, err
-	}
-	return remoteResult(remote, t.branch, res)
+	return entry, nil
 }
 
 // PushBranch implements agentmcp.SandboxGit: it pushes the run's own task branch.
@@ -420,42 +431,52 @@ func (b *TaskBoard) PushBranch(ctx context.Context, runID string, force bool) (a
 	if err != nil {
 		return agentmcp.RemoteResult{}, err
 	}
-	mu := b.repoMutex(t.codeRepoID)
-	mu.Lock()
-	defer mu.Unlock()
-	entry, err := b.openRepo(ctx, t.codeRepoID)
+	entry, remote, params, err := b.pushTarget(ctx, t, force)
 	if err != nil {
 		return agentmcp.RemoteResult{}, err
 	}
-	head, err := entry.WorktreeHeadRef(ctx, t.worktree)
-	if err != nil {
-		return agentmcp.RemoteResult{}, err
-	}
-	if head != "refs/heads/"+t.branch {
-		return agentmcp.RemoteResult{}, agentmcp.ToolError("your worktree is not on " + t.branch)
-	}
-	remote := forcePushRemote(ctx, entry, t.branch)
-	if remote == "" {
-		return agentmcp.RemoteResult{}, agentmcp.ToolError("the repo has no remote to push to")
-	}
-	pf, err := entry.PushPreflightTo(ctx, remote, t.branch, t.branch)
-	if err != nil {
-		return agentmcp.RemoteResult{}, err
-	}
-	if pf.ProtectedBy != nil {
-		return agentmcp.RemoteResult{}, agentmcp.ToolError(t.branch + " is a protected branch")
-	}
-	params := gitsession.RemoteOpParams{Kind: "push", Remote: remote, Branch: t.branch, RemoteBranch: t.branch, SetUpstream: pf.Upstream == nil}
-	if force {
-		params = gitsession.RemoteOpParams{Kind: "forcePush", Remote: remote, Branch: t.branch, RemoteBranch: t.branch, ExpectedRemoteTip: pf.RemoteTip}
-	}
-	res, err := entry.RunRemote(ctx, b.conn, params, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
+	res, err := b.runRemote(ctx, t.codeRepoID, entry, params)
 	if err != nil {
 		return agentmcp.RemoteResult{}, err
 	}
 	out, err := remoteResult(remote, t.branch, res)
 	b.notifyBoard()
 	return out, err
+}
+
+// pushTarget checks the worktree and preflights the push under the repo lock; the push itself runs
+// after the caller drops it.
+func (b *TaskBoard) pushTarget(ctx context.Context, t sandboxTarget, force bool) (*gitsession.RepoEntry, string, gitsession.RemoteOpParams, error) {
+	mu := b.repoMutex(t.codeRepoID)
+	mu.Lock()
+	defer mu.Unlock()
+	entry, err := b.openRepo(ctx, t.codeRepoID)
+	if err != nil {
+		return nil, "", gitsession.RemoteOpParams{}, err
+	}
+	head, err := entry.WorktreeHeadRef(ctx, t.worktree)
+	if err != nil {
+		return nil, "", gitsession.RemoteOpParams{}, err
+	}
+	if head != "refs/heads/"+t.branch {
+		return nil, "", gitsession.RemoteOpParams{}, agentmcp.ToolError("your worktree is not on " + t.branch)
+	}
+	remote := forcePushRemote(ctx, entry, t.branch)
+	if remote == "" {
+		return nil, "", gitsession.RemoteOpParams{}, agentmcp.ToolError("the repo has no remote to push to")
+	}
+	pf, err := entry.PushPreflightTo(ctx, remote, t.branch, t.branch)
+	if err != nil {
+		return nil, "", gitsession.RemoteOpParams{}, err
+	}
+	if pf.ProtectedBy != nil {
+		return nil, "", gitsession.RemoteOpParams{}, agentmcp.ToolError(t.branch + " is a protected branch")
+	}
+	params := gitsession.RemoteOpParams{Kind: "push", Remote: remote, Branch: t.branch, RemoteBranch: t.branch, SetUpstream: pf.Upstream == nil}
+	if force {
+		params = gitsession.RemoteOpParams{Kind: "forcePush", Remote: remote, Branch: t.branch, RemoteBranch: t.branch, ExpectedRemoteTip: pf.RemoteTip}
+	}
+	return entry, remote, params, nil
 }
 
 // remoteResult turns a remote op result into the tool result; a failed op is an error with its message.

@@ -12,9 +12,6 @@ General rules live in `docs/WORKING_AGREEMENT.md`, imported above. Rules below a
   highest plus one, branch `chapter/v<new>`) and `plans/`.
 - Data a test or script reads at runtime never lives under `docs/v*/`; it goes in its reader's
   `testdata/`. Move any found first, own phase.
-- `.github/workflows/` can't be pushed from this session (OAuth scope limit, not policy). Before
-  touching a workflow file, read `docs/DEV_ENVIRONMENT.md`'s section on it and the
-  `docs/pending-changes/`/`docs/pending-workflows/` workaround.
 
 ## Chapters, branches, phase numbers
 

@@ -86,7 +86,7 @@ func repointText(path, text string, commits map[string]string) (string, int, []s
 
 func skipRepoint(path string) bool {
 	return strings.HasPrefix(path, "docs/v") || path == "docs/HISTORY.md" || strings.HasPrefix(path, "docs/history/") ||
-		strings.HasPrefix(path, ".github/workflows/") || strings.HasPrefix(path, "docs/pending-changes/") ||
+		strings.HasPrefix(path, ".github/workflows/") ||
 		strings.HasPrefix(path, "scripts/docshistory/") || strings.HasPrefix(path, "apps/kira-space/tests/claude/testdata/") ||
 		strings.HasPrefix(path, "internal/llmprompts/testdata/")
 }

@@ -213,9 +213,9 @@ test('Main tab has no link or notes rows; notes live in the Details tab', async 
   for (const label of ['Issue', 'PR', 'Notes']) expect(labels).not.toContain(label);
   await expect(page.locator('[data-testid="ade-task-notes-row"]')).toHaveCount(0);
   await page.locator('[data-testid="ade-panel-tab-details"]').click();
-  await expect(page.locator('[data-testid="ade-details-tab"] .ProseMirror')).toContainText(
-    'Q4 pricing launch',
-  );
+  await expect(
+    page.locator('[data-testid="ade-details-tab"] [data-testid="ade-handover-body"]'),
+  ).toContainText('Q4 pricing launch');
 });
 
 test('a note typed in the composer is sent once, as AddNote', async ({ relaunch }) => {

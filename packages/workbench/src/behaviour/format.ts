@@ -1,5 +1,5 @@
 import { t } from '@theme/i18n';
-import { type UseTimeAgoOptions, useTimeAgo } from '@vueuse/core';
+import { formatTimeAgo, type UseTimeAgoOptions, useTimeAgo } from '@vueuse/core';
 import type { MaybeRefOrGetter } from 'vue';
 
 // Formatting lives in `@theme/format`; this module re-exports it and keeps the reactive helper.
@@ -42,6 +42,11 @@ function relativeOptions(): UseTimeAgoOptions<false, 'minute' | 'hour' | 'day'> 
       { max: Number.POSITIVE_INFINITY, value: 86_400_000, name: 'day' },
     ],
   };
+}
+
+/** `useRelativeTime`'s words for `at` as of `now`, for rows that share one clock instead of one timer each. */
+export function formatRelativeAt(at: Date | number | string, now: Date | number): string {
+  return formatTimeAgo(new Date(at), relativeOptions(), now);
 }
 
 /** A reactive `formatRelative`: the same words, kept current as time passes. */

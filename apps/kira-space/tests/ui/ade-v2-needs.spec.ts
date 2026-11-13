@@ -1,5 +1,7 @@
+import { TIMING } from '@workbench/behaviour/timing';
 import { expect, test } from './fixtures';
 import { adeBoard, emitAgentEvent, emitAgentSessions, openPlan } from './support/adeV2';
+import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 
@@ -12,6 +14,8 @@ test('lists the items most urgent first, with the badge and the footer', async (
   const { window: page } = await openPlan(relaunch);
   await expect(page.locator(t('ade-needs-count'))).toHaveText('4');
   await page.locator(t('ade-tab-needs')).click();
+  // The page is a lazy chunk: wait for the list before reading it once.
+  await expect(page.locator(t('ade-needs-item'))).toHaveCount(4);
   const kinds = await page
     .locator(t('ade-needs-item'))
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-kind')));
@@ -123,4 +127,42 @@ test('All sessions groups by task and filters running or stopped', async ({ rela
   await expect(page.locator(t('ade-all-session'))).toHaveCount(13);
   await page.locator(t('ade-needs-all')).click();
   await expect(page.locator(t('ade-all-sessions'))).toHaveCount(0);
+});
+
+test('a refused Approve on a stale board asks for a repo and approves again', async ({
+  relaunch,
+}) => {
+  const noRepo = contract<{ code: string; message: string }>(
+    'ade-repo-required',
+    'AdeTaskService.StartRun#noRepo',
+  );
+  const { window: page, control } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskBoard,
+      response: adeBoard((b) => {
+        const hooks = b.tasks.find((x) => x.id === 'T_hooks');
+        if (hooks) hooks.runs = hooks.runs.filter((r) => r.stepId !== 'pr');
+      }),
+    },
+    { channel: IPC.adeTaskApprove, error: noRepo },
+    {
+      channel: IPC.adeTaskAddTaskRepo,
+      response: contract('ade-repo-required', 'AdeTaskService.AddTaskRepo'),
+    },
+  ]);
+  await page.clock.install();
+  await page.locator(t('ade-tab-needs')).click();
+  await page
+    .locator(`${item('approval')} ${t('ade-needs-action')}`)
+    .first()
+    .click();
+  await expect(page.locator(t('ade-repo-gate'))).toBeVisible();
+  expect(calls(control, IPC.adeTaskApprove)).toHaveLength(1);
+  // The gate holds past the slow-op mark: a loading toast would show by now if the op still ran.
+  await page.clock.runFor(TIMING.slowOp + 500);
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+  await page.locator(t('ade-repo-gate-pick')).click();
+  await page.locator(t('ade-repo-gate-pick-option-repo-mobile')).click();
+  await page.locator(t('ade-repo-gate-continue')).click();
+  await expect.poll(() => calls(control, IPC.adeTaskApprove)).toHaveLength(2);
 });

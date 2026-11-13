@@ -202,14 +202,16 @@ func (e *RepoEntry) WorktreeStatus(ctx context.Context, dir string) ([]porcelain
 // tolerated via runAllowingExit(0,1), CoreAskPassArgs' own precedent for "no such config is the
 // common case".
 func (e *RepoEntry) ConfigValue(ctx context.Context, key string) (string, error) {
-	res, err := e.runAllowingExit(ctx, []string{"config", "--get", key}, 0, 1)
-	if err != nil {
-		return "", err
-	}
-	if res.ExitCode != 0 {
-		return "", nil
-	}
-	return strings.TrimSpace(string(res.Stdout)), nil
+	return metaGet(e.meta, "config:"+key, func() (string, error) {
+		res, err := e.runAllowingExit(ctx, []string{"config", "--get", key}, 0, 1)
+		if err != nil {
+			return "", err
+		}
+		if res.ExitCode != 0 {
+			return "", nil
+		}
+		return strings.TrimSpace(string(res.Stdout)), nil
+	})
 }
 
 // IsAncestor reports whether a is reachable from b (`merge-base --is-ancestor`); an unresolvable

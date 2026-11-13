@@ -54,8 +54,11 @@ func AdeTaskOpenSession(e appcore.Emitter, windowKey string, payload adewire.Ope
 	e.EmitTo(windowKey, adewire.ChannelOpenSession, payload)
 }
 
-// AdeTaskBoardChanged is TaskBoard.OnBoard's target: payload-free, every window re-fetches Board.
-func AdeTaskBoardChanged(ev *Events) { ev.Broadcast(adewire.ChannelBoard) }
+// AdeTaskBoardChanged is TaskBoard.OnBoard's target: every window re-fetches Board, and the payload
+// says which part of it may have changed.
+func AdeTaskBoardChanged(ev *Events, payload adewire.BoardChangedEvent) {
+	ev.emit.Emit(adewire.ChannelBoard, payload)
+}
 
 // AdeTaskUpdatesChanged is TaskBoard.OnUpdates' target: payload-free, every window re-fetches TrackedUpdates.
 func AdeTaskUpdatesChanged(ev *Events) { ev.Broadcast(adewire.ChannelUpdates) }

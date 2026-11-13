@@ -91,6 +91,8 @@ func (s *Server) addLeaseTools(srv *mcp.Server) {
 		if args.Queue == "" {
 			return toolError("queue is required."), AcquireLeaseResult{}, nil
 		}
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
 		res, err := s.space.AcquireLease(ctx, call, args)
 		if err != nil {
 			return fail("acquire_lease", err), AcquireLeaseResult{}, nil
@@ -107,6 +109,8 @@ func (s *Server) addLeaseTools(srv *mcp.Server) {
 			return bad, ReleaseLeaseResult{}, nil
 		}
 		args.Queue = strings.TrimSpace(args.Queue)
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
 		res, err := s.space.ReleaseLease(ctx, call, args)
 		if err != nil {
 			return fail("release_lease", err), ReleaseLeaseResult{}, nil
@@ -126,6 +130,8 @@ func (s *Server) addLeaseTools(srv *mcp.Server) {
 			return bad, LeaseStatusResult{}, nil
 		}
 		args.Queue = strings.TrimSpace(args.Queue)
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
 		res, err := s.space.LeaseStatus(ctx, call, args)
 		if err != nil {
 			return fail("lease_status", err), LeaseStatusResult{}, nil

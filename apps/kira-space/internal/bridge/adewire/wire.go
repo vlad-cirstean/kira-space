@@ -348,6 +348,10 @@ type Pair struct {
 	B         string   `json:"b"`
 	Shared    []string `json:"shared"`
 	Conflicts []string `json:"conflicts"`
+	// Checking is set while the pair's merge-tree check runs: conflicts is empty until it lands.
+	Checking bool `json:"checking,omitempty"`
+	// CheckFailed is set when the check failed after its retries: conflicts is empty but unknown.
+	CheckFailed bool `json:"checkFailed,omitempty"`
 }
 
 type Run struct {
@@ -819,6 +823,9 @@ type RepoState struct {
 	MainName    string `json:"mainName"`
 	Remote      string `json:"remote"`
 	LastFetchAt *int64 `json:"lastFetchAt"`
+	// Updating is set while the repo's git facts are recomputing past the board deadline: the facts
+	// shown are the last good ones.
+	Updating bool `json:"updating,omitempty"`
 }
 
 type Board struct {
@@ -960,6 +967,12 @@ type Launch struct {
 	SessionID  string `json:"sessionId"`
 	Command    string `json:"command"`
 	Cwd        string `json:"cwd"`
+}
+
+// BoardChangedEvent is ChannelBoard's payload. TaskIDs empty means any task may have changed.
+type BoardChangedEvent struct {
+	Refs    bool     `json:"refs"`    // git refs, branch facts or change requests may have changed
+	TaskIDs []string `json:"taskIds"` // changed tasks; null means unknown, treat as all
 }
 
 type RunsChangedEvent struct {

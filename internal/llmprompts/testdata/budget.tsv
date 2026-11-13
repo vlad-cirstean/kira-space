@@ -77,7 +77,7 @@ headless.tool.finish_step.arg.conflictedFiles	48
 headless.tool.finish_step.arg.lastGitError	30
 headless.tool.finish_step.arg.tried	32
 headless.finishStep.ack	19
-headless.tool.task_info	134
+headless.tool.task_info	174
 headless.tool.declare_repos	169
 headless.tool.declare_repos.arg.repos	91
 headless.tool.request_branches	497
@@ -246,6 +246,7 @@ dbmcp.tool.kube_pod_logs.arg.tail	40
 headless.tool.operations.arg.cancel	27
 headless.tool.operations	101
 headless.tool.task_info.arg.branch	23
+headless.tool.task_info.arg.includeRegistered	79
 headless.tool.task_info.arg.repo	45
 headless.tool.task_info.arg.waitSeconds	47
 dbmcp.tool.describe.arg.connectionId	36

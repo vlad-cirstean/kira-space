@@ -19,7 +19,7 @@ import AdeLinkTarget from './AdeLinkTarget.vue';
 import { firstWork, offsetToIso } from './board/calendar';
 import { candidateOf, candidateOptions } from './branchOptions';
 import { parseJira } from './jira';
-import AdeNotesEditor from './notes/AdeNotesEditor.vue';
+import { AdeNotesEditor, prefetchNotesEditor } from './notes/asyncEditor';
 import { usePlanModel } from './plan/usePlanModel';
 import {
   useAddExistingBranch,
@@ -30,6 +30,7 @@ import {
 } from './queries';
 import { useAdeAddUiStore } from './state/adeAddUi';
 import { useAdeBoardUiStore } from './state/adeBoardUi';
+import { useAdeOpsStore } from './state/adeOps';
 
 // Add: a new task (lands Today, or the next work day; repos are added later) or an existing branch.
 const ui = useAdeBoardUiStore();
@@ -106,6 +107,7 @@ const candidates = useCandidates(
   () => open.value && tab.value === 'branch',
 );
 const addBranch = useAddExistingBranch();
+const ops = useAdeOpsStore();
 const options = computed(() =>
   candidateOptions(candidates.data.value?.branches ?? [], repoLabel, Date.now()),
 );
@@ -139,24 +141,33 @@ async function pickLink(): Promise<void> {
 async function pick(value: string): Promise<void> {
   error.value = '';
   const b = candidateOf(value);
-  try {
-    const res = await addBranch.mutateAsync({
-      codeRepoId: b.codeRepoId,
+  const taskId = attachTo.value?.taskId ?? '';
+  open.value = false;
+  // Adds in the background: chip on the task when attaching to one, toast past 2 s or on failure.
+  await ops.run(
+    {
+      id: `attachBranch:${b.codeRepoId}:${b.name}`,
+      kind: 'attachBranch',
+      taskId: taskId || undefined,
       name: b.name,
-      taskId: attachTo.value?.taskId ?? '',
-    });
-    ui.select(res.task.id);
-    open.value = false;
-  } catch (err) {
-    error.value = errorText(err);
-  }
+    },
+    async () => {
+      const res = await addBranch.mutateAsync({ codeRepoId: b.codeRepoId, name: b.name, taskId });
+      ui.select(res.task.id);
+    },
+  );
 }
 </script>
 
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <Button variant="dialog" size="kira-lg" data-testid="ade-add">
+      <Button
+        variant="dialog"
+        size="kira-lg"
+        data-testid="ade-add"
+        @pointerenter="prefetchNotesEditor"
+      >
         <CodiconIcon name="add" :size="12" />
         {{ t('space.ade.add.trigger.label') }}
       </Button>

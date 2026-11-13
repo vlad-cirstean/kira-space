@@ -174,6 +174,10 @@ func (b *TaskBoard) checkFreshName(ctx context.Context, repoID, name string) err
 // SetTaskBranch gives a row its branch: it fills a repo that has none or replaces the branch of a
 // created row, with an existing git branch or a new one.
 func (b *TaskBoard) SetTaskBranch(ctx context.Context, args adewire.SetTaskBranchArgs) (adewire.Branch, error) {
+	return joinOp(ctx, b, opKey("setBranch", args), func(ctx context.Context) (adewire.Branch, error) { return b.setTaskBranch(ctx, args) })
+}
+
+func (b *TaskBoard) setTaskBranch(ctx context.Context, args adewire.SetTaskBranchArgs) (adewire.Branch, error) {
 	cur, err := b.deps.Tasks.GetBranch(args.BranchID)
 	if err != nil {
 		return adewire.Branch{}, err

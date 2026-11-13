@@ -81,5 +81,5 @@ export function useApprovalActions() {
     }
   }
 
-  return { answer };
+  return { answer, pending: mutation.isPending };
 }

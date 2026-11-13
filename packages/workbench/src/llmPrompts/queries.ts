@@ -97,7 +97,11 @@ export function useSaveLlmPrompts() {
     {
       mutationKey: [...LIST_KEY, 'save'],
       mutationFn: (changes: LlmPromptChange[]) => control.llmPromptsSave(changes),
-      onSuccess: (list) => queryClient.setQueryData(LIST_KEY, list),
+      onSuccess: (list) => {
+        queryClient.setQueryData(LIST_KEY, list);
+        // Cached renders of a saved prompt (Run dialog previews) are stale now.
+        void queryClient.invalidateQueries({ queryKey: [...LIST_KEY, 'adePreview'] });
+      },
     },
     queryClient,
   );

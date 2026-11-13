@@ -292,15 +292,21 @@ func (e *RepoEntry) autoFetchDisabled() bool {
 // pickAutoFetchRemote is D23's own rule: "origin" if it exists, else the sole remote if there is
 // exactly one, else the tick is skipped (no guessing among several).
 func (e *RepoEntry) pickAutoFetchRemote(ctx context.Context) (string, bool) {
-	raw, err := e.runOne(ctx, gitops.RemotesArgs())
+	remotes, err := metaGet(e.meta, "remotes", func() ([]string, error) {
+		raw, err := e.runOne(ctx, gitops.RemotesArgs())
+		if err != nil {
+			return nil, err
+		}
+		var out []string
+		for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+			if line != "" {
+				out = append(out, line)
+			}
+		}
+		return out, nil
+	})
 	if err != nil {
 		return "", false
-	}
-	var remotes []string
-	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
-		if line != "" {
-			remotes = append(remotes, line)
-		}
 	}
 	for _, r := range remotes {
 		if r == "origin" {

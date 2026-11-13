@@ -124,7 +124,9 @@ test('a refusal lands in the panel action error', async ({ relaunch }) => {
   await openMenu(page, 'T_cart');
   await page.locator(item('agent-b_cart')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
-  await expect(page.getByText('a session is already open on feat/api-adhoc')).toBeVisible();
+  const text = 'a session is already open on feat/api-adhoc';
+  await expect(page.getByTestId('ade-panel-action-error')).toContainText(text);
+  await expect(page.locator('[data-sonner-toast]')).toContainText(text);
   expect(calls(control, IPC.terminalOpen)).toHaveLength(0);
 });
 

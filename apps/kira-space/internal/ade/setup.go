@@ -131,14 +131,16 @@ func (b *TaskBoard) ensureWorktree(ctx context.Context, rec model.CodeRepo, sb m
 		return worktreeResult{}, err
 	}
 	if sb.Name != "" {
-		return b.namedWorktree(ctx, entry, rec, sb, inv)
+		cache := b.newAttachCache()
+		cache.seed(sb.CodeRepoID, inv)
+		return b.namedWorktree(ctx, entry, rec, sb, inv, cache)
 	}
 	return b.newBranchWorktree(ctx, entry, rec, sb, naming, inv)
 }
 
 // namedWorktree makes the worktree of a branch that already has a name.
-func (b *TaskBoard) namedWorktree(ctx context.Context, entry *gitsession.RepoEntry, rec model.CodeRepo, sb model.AdeTaskBranch, inv []porcelain.InventoryRef) (worktreeResult, error) {
-	at, err := b.rowWorktree(ctx, sb)
+func (b *TaskBoard) namedWorktree(ctx context.Context, entry *gitsession.RepoEntry, rec model.CodeRepo, sb model.AdeTaskBranch, inv []porcelain.InventoryRef, cache *attachCache) (worktreeResult, error) {
+	at, err := cache.worktree(ctx, sb)
 	if err != nil {
 		return worktreeResult{}, err
 	}
@@ -310,9 +312,9 @@ func (b *TaskBoard) worktreeOf(ctx context.Context, sb model.AdeTaskBranch) (str
 	return at.attached, err
 }
 
-// setupReady is the gate: the branch's setup row is ready, or it has none and its worktree exists.
-func (b *TaskBoard) setupReady(sb model.AdeTaskBranch, worktree string, setups map[string]model.AdeWorktreeSetup) bool {
-	if s, ok := setups[sb.ID]; ok {
+// setupReadyOf is the gate: the branch's setup row is ready, or it has none and its worktree exists.
+func setupReadyOf(worktree string, s *model.AdeWorktreeSetup) bool {
+	if s != nil {
 		return s.State == model.AdeSetupReady
 	}
 	return worktree != ""

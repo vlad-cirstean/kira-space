@@ -65,7 +65,7 @@ func (b *TaskBoard) wireTask(t model.AdeTask) (adewire.Task, error) {
 		return adewire.Task{}, err
 	}
 	out := b.toWireTask(t, ids, runs, reviews)
-	decorateTask(&out, t, b.liveWorkflows())
+	b.decorateTask(&out, t, b.liveWorkflows())
 	bh, err := b.deps.Tasks.BoardHandovers()
 	if err != nil {
 		return adewire.Task{}, err
@@ -257,6 +257,7 @@ func (b *TaskBoard) UpdateTask(ctx context.Context, args adewire.UpdateTaskArgs)
 		}
 	}
 	task, err := b.deps.Tasks.UpdateTask(args.TaskID, patch)
+	b.touchHistory()
 	if err != nil {
 		return adewire.Task{}, err
 	}
@@ -379,6 +380,12 @@ func (b *TaskBoard) repoCandidates(ctx context.Context, codeRepoID string, taken
 // is not checked out anywhere gets a worktree and its prepare script (R19); a review branch gets
 // none until Start or Take over.
 func (b *TaskBoard) AddExistingBranch(ctx context.Context, args adewire.AddExistingBranchArgs) (adewire.AddExistingBranchResult, error) {
+	return joinOp(ctx, b, opKey("attachBranch", args), func(ctx context.Context) (adewire.AddExistingBranchResult, error) {
+		return b.addExistingBranch(ctx, args)
+	})
+}
+
+func (b *TaskBoard) addExistingBranch(ctx context.Context, args adewire.AddExistingBranchArgs) (adewire.AddExistingBranchResult, error) {
 	var sb model.AdeTaskBranch
 	res, err := b.attachExistingBranch(ctx, args, &sb, newTaskFields{})
 	if err != nil {

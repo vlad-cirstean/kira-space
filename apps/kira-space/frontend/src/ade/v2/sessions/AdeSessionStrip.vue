@@ -7,6 +7,7 @@ import { revealElement } from '@workbench/behaviour/focus';
 import { onMounted, ref, watch } from 'vue';
 import { useMobileTerminalsStore } from '../../../state/mobileTerminals';
 import AdeActivityIcon from '../AdeActivityIcon.vue';
+import AdeOpStatus from '../plan/AdeOpStatus.vue';
 import AdeSessionBadge from './AdeSessionBadge.vue';
 import AdeSessionTabTip from './AdeSessionTabTip.vue';
 import type { SessionView } from './sessionView';
@@ -54,6 +55,7 @@ watch(() => props.selectedId, revealSelected, { flush: 'post' });
           <AdeActivityIcon :kind="v.kind" bare />
           <AdeSessionBadge :view="v" />
           <span class="min-w-0 truncate">{{ v.tabName }}</span>
+          <AdeOpStatus :session-id="v.session.id" />
           <CodiconIcon
             v-if="phones.holdOf(v.session.terminalId)"
             name="device-mobile"

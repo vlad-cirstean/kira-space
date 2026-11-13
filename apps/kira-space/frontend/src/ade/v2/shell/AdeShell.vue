@@ -2,27 +2,32 @@
 import { Badge } from '@theme/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, tabChipVariants } from '@theme/components/ui/tabs';
 import { t } from '@theme/i18n';
-import { computed, onMounted, onScopeDispose } from 'vue';
+import { computed, defineAsyncComponent, onMounted, onScopeDispose } from 'vue';
 import { control } from '../../../bridge/control';
-import AdeAbortRebaseDialog from '../AdeAbortRebaseDialog.vue';
 import AdeAddPopover from '../AdeAddPopover.vue';
-import AdeAgentsPage from '../agents/AdeAgentsPage.vue';
-import AdeAgentDialog from '../dialog/AdeAgentDialog.vue';
-import AdeLaterPage from '../later/AdeLaterPage.vue';
-import AdeNeedsPage from '../needs/AdeNeedsPage.vue';
+import { shelfOf } from '../board/shelf';
+import { prefetchNotesEditor } from '../notes/asyncEditor';
 import AdePanel from '../panel/AdePanel.vue';
 import AdePlanView from '../plan/AdePlanView.vue';
 import { usePlanModel } from '../plan/usePlanModel';
-import AdeReposPage from '../repos/AdeReposPage.vue';
 import { useReviewCode } from '../review/useReviewCode';
-import AdeRepoGateDialog from '../run/AdeRepoGateDialog.vue';
-import AdeRunDialog from '../run/AdeRunDialog.vue';
-import AdeTakeOverDialog from '../sessions/AdeTakeOverDialog.vue';
-import AdeStageDialog from '../stage/AdeStageDialog.vue';
 import { type AdeView, useAdeBoardUiStore } from '../state/adeBoardUi';
 import { switchAdeView } from '../state/adeView';
-import AdeWorkflowsPage from '../workflows/AdeWorkflowsPage.vue';
 import AdeCaptureBox from './AdeCaptureBox.vue';
+
+// Every page but the Plan and every dialog loads as its own chunk: the entry bundle skips them. Dialog
+// state lives in stores, so one mounted before its chunk lands opens as soon as it arrives.
+const AdeAbortRebaseDialog = defineAsyncComponent(() => import('../AdeAbortRebaseDialog.vue'));
+const AdeAgentsPage = defineAsyncComponent(() => import('../agents/AdeAgentsPage.vue'));
+const AdeAgentDialog = defineAsyncComponent(() => import('../dialog/AdeAgentDialog.vue'));
+const AdeLaterPage = defineAsyncComponent(() => import('../later/AdeLaterPage.vue'));
+const AdeNeedsPage = defineAsyncComponent(() => import('../needs/AdeNeedsPage.vue'));
+const AdeReposPage = defineAsyncComponent(() => import('../repos/AdeReposPage.vue'));
+const AdeRepoGateDialog = defineAsyncComponent(() => import('../run/AdeRepoGateDialog.vue'));
+const AdeRunDialog = defineAsyncComponent(() => import('../run/AdeRunDialog.vue'));
+const AdeTakeOverDialog = defineAsyncComponent(() => import('../sessions/AdeTakeOverDialog.vue'));
+const AdeStageDialog = defineAsyncComponent(() => import('../stage/AdeStageDialog.vue'));
+const AdeWorkflowsPage = defineAsyncComponent(() => import('../workflows/AdeWorkflowsPage.vue'));
 
 // Top bar (tabs, capture box, Add) over the active tab; the Plan opens the panel beside it.
 const ui = useAdeBoardUiStore();
@@ -30,13 +35,15 @@ const ui = useAdeBoardUiStore();
 function onView(view: unknown): void {
   void switchAdeView(view as AdeView);
 }
-const { model } = usePlanModel();
+// Reads the needs and the board, not the cards: the full model never builds on a hidden Plan.
+const { model, needs, boardQuery } = usePlanModel();
 /** The panel on the Later tab opens only for a task that sits on a shelf. */
 const shelfSelected = computed(() => {
   const id = ui.selectedTaskId;
-  return id !== null && (model.value?.cardFor(id)?.shelf ?? 'plan') !== 'plan';
+  const board = boardQuery.data.value;
+  return id !== null && board !== undefined && shelfOf(board, id) !== 'plan';
 });
-const needsCount = computed(() => model.value?.needs.badge ?? 0);
+const needsCount = computed(() => needs.value?.badge ?? 0);
 
 // Review code on the focused branch or card, else the selected one.
 const reviewCode = useReviewCode();
@@ -85,6 +92,9 @@ function onReviewCode(): void {
 }
 let offReviewCode: (() => void) | undefined;
 onMounted(() => {
+  // Off the critical path but early: the stage dialog and notes open on events, not on a hover, and
+  // must find the editor chunk loaded for their first frame.
+  prefetchNotesEditor();
   offReviewCode = control.onReviewCode(onReviewCode);
 });
 onScopeDispose(() => offReviewCode?.());

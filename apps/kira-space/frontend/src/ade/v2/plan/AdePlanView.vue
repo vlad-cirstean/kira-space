@@ -2,10 +2,11 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
+import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
 import { paneFrame } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
-import { useElementSize, useScroll } from '@vueuse/core';
+import { useElementSize, useIntersectionObserver, useScroll } from '@vueuse/core';
 import { errorText } from '@workbench/bridge/codedError';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
 import QueryState from '@workbench/components/QueryState.vue';
@@ -17,7 +18,7 @@ import { dayLabel, firstWork, isoToOffset, LATER, nextWork } from '../board/cale
 import { dropVerdict, shiftPlanArgs } from '../board/dropPlan';
 import { isWorkKind } from '../board/kind';
 import { dayMenuFor } from '../board/menu';
-import { refreshNote, remoteErrorText } from '../board/panelFacts';
+import { type ForcePushTarget, refreshNote, remoteErrorText } from '../board/panelFacts';
 import { ITEM_LIMIT, type TimelineBand, WINDOW_DAYS } from '../board/timeline';
 import { useRefresh, useSetPlan } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
@@ -27,13 +28,12 @@ import AdeHistoryBar from './AdeHistoryBar.vue';
 import AdeHistoryControl from './AdeHistoryControl.vue';
 import AdePlanRepos, { type RepoChipModel } from './AdePlanRepos.vue';
 import { usePlanDrag } from './usePlanDrag';
-import type { BranchRowModel } from './usePlanModel';
-import { usePlanModel } from './usePlanModel';
+import { type BranchRowModel, type CardModel, type PlanModel, usePlanModel } from './usePlanModel';
 
 const ui = useAdeBoardUiStore();
 const settingsStore = useSettingsStore();
 const contextMenu = useContextMenuStore();
-const { model, today, repoLabel, settings, boardQuery } = usePlanModel();
+const { model, today, repoLabel, settings, boardQuery, ripple } = usePlanModel();
 const setPlan = useSetPlan();
 const refresh = useRefresh();
 
@@ -47,6 +47,12 @@ const refreshingIds = ref<string[]>([]);
 const refreshingAll = ref(false);
 const refreshErrors = ref<Record<string, string>>({});
 
+/** A failed fetch shows on the repo chip and as a toast, since the chip may be scrolled away. */
+function failRefresh(errs: Record<string, string>, codeRepoId: string, message: string): void {
+  errs[codeRepoId] = message;
+  toast.error(t('common.dashPair.label', { first: repoLabel(codeRepoId), second: message }));
+}
+
 async function runRefresh(codeRepoIds: string[], all: boolean): Promise<void> {
   const ids = all ? (model.value?.board.repos.map((r) => r.codeRepoId) ?? []) : codeRepoIds;
   refreshingIds.value = [...refreshingIds.value, ...ids];
@@ -57,13 +63,13 @@ async function runRefresh(codeRepoIds: string[], all: boolean): Promise<void> {
     const res = await refresh.mutateAsync({ codeRepoIds: ids });
     const summaries = { ...ui.refreshSummary };
     for (const r of res.repos) {
-      if (r.error) errs[r.codeRepoId] = remoteErrorText(r.error);
+      if (r.error) failRefresh(errs, r.codeRepoId, remoteErrorText(r.error));
       else summaries[r.codeRepoId] = refreshNote(r);
     }
     ui.refreshSummary = summaries;
   } catch (err) {
     const msg = errorText(err);
-    for (const id of ids) errs[id] = msg;
+    for (const id of ids) failRefresh(errs, id, msg);
   } finally {
     refreshErrors.value = errs;
     refreshingIds.value = refreshingIds.value.filter((id) => !ids.includes(id));
@@ -79,20 +85,36 @@ const chips = computed<RepoChipModel[]>(() =>
     lastFetchAt: r.lastFetchAt,
     shown: !ui.hiddenRepoIds.includes(r.codeRepoId),
     pending: refreshingIds.value.includes(r.codeRepoId),
+    updating: r.updating ?? false,
     error: refreshErrors.value[r.codeRepoId] ?? '',
     summary: ui.refreshSummary[r.codeRepoId] ?? '',
   })),
 );
 
 // ---- bands
-function bandCards(band: TimelineBand) {
-  const cards = model.value?.cards;
-  return band.taskIds.flatMap((id) => cards?.get(id) ?? []);
+const NO_CARDS: CardModel[] = [];
+const NO_SPANS: BandProps['spans'] = [];
+const NO_HISTORY: BandProps['history'] = [];
+
+interface BandProps {
+  cards: CardModel[];
+  spans: {
+    taskId: string;
+    title: string;
+    color: string;
+    note: string;
+    merges: boolean;
+    tip: string;
+  }[];
+  history: {
+    key: string;
+    merged: boolean;
+    meta: string;
+    title: string;
+  }[];
 }
 
-function bandSpans(band: TimelineBand) {
-  const m = model.value;
-  if (!m) return [];
+function spansOf(m: PlanModel, band: TimelineBand): BandProps['spans'] {
   return band.spans.flatMap((s) => {
     const card = m.cards.get(s.taskId);
     if (!card) return [];
@@ -115,7 +137,7 @@ function bandSpans(band: TimelineBand) {
   });
 }
 
-function bandHistory(band: TimelineBand) {
+function historyOf(band: TimelineBand): BandProps['history'] {
   return band.history.map((h) => ({
     key: h.taskId,
     merged: !!h.mergedAt,
@@ -130,6 +152,22 @@ function bandHistory(band: TimelineBand) {
     title: h.title,
   }));
 }
+
+// One pass per model change, not per render: a selection or hover re-renders the view and reuses
+// every band's arrays, so unchanged bands skip their patch.
+const bandProps = computed(() => {
+  const m = model.value;
+  const out = new Map<number, BandProps>();
+  if (!m) return out;
+  for (const band of m.view.bands) {
+    out.set(band.key, {
+      cards: band.taskIds.flatMap((id) => m.cards.get(id) ?? []),
+      spans: spansOf(m, band),
+      history: historyOf(band),
+    });
+  }
+  return out;
+});
 
 function overdueNote(band: TimelineBand): string {
   return t('space.ade.plan.view.overdue.status', { count: band.overdueTaskIds.length });
@@ -253,6 +291,7 @@ function scrollToDay(k: number): void {
     el.getBoundingClientRect().top -
     headerHeight.value -
     2;
+  syncTodayBelowLine();
 }
 
 async function openHistory(): Promise<void> {
@@ -262,23 +301,41 @@ async function openHistory(): Promise<void> {
   ui.showHistory = true;
   await nextTick();
   scrollY.value = el.scrollHeight - before - 60;
+  syncTodayBelowLine();
 }
 
 function hideHistory(): void {
   ui.showHistory = false;
   ui.historyReach = null;
   scrollY.value = 0;
+  void nextTick(syncTodayBelowLine);
 }
 
-const inHistory = computed(() => {
-  if (!ui.showHistory) return false;
+// Past the point where today's band top sits 30px under the sticky header: the history is on
+// screen. The observer fires when that edge crosses the line; no layout read per scroll frame.
+const todayTop = ref<HTMLElement | null>(null);
+const todayBelowLine = ref(false);
+useIntersectionObserver(
+  todayTop,
+  ([entry]) => {
+    const root = entry?.rootBounds;
+    if (entry && root) todayBelowLine.value = entry.boundingClientRect.top > root.top;
+  },
+  {
+    root: scrollEl,
+    rootMargin: computed(() => `-${Math.round(headerHeight.value + 30)}px 0px 0px 0px`),
+  },
+);
+// The observer only reports a change of intersection: a programmatic jump that carries today's band
+// from above the viewport to below it (or back) changes none, so those scrolls re-read the edge once.
+function syncTodayBelowLine(): void {
   const el = scrollEl.value;
-  const todayBand = el?.querySelector<HTMLElement>('[data-ade-day="0"]');
-  if (!el || !todayBand) return false;
-  const todayTop =
-    todayBand.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
-  return scrollY.value + headerHeight.value < todayTop - 30;
-});
+  const band = todayTop.value;
+  if (!el || !band) return;
+  todayBelowLine.value =
+    band.getBoundingClientRect().top > el.getBoundingClientRect().top + headerHeight.value + 30;
+}
+const inHistory = computed(() => ui.showHistory && todayBelowLine.value);
 
 async function revealDay(k: number): Promise<void> {
   if (k < 0) {
@@ -303,10 +360,15 @@ async function onFindArchived(taskId: string): Promise<void> {
   await revealDay(item.day);
 }
 
-const forcePushTarget = ref<{ branchId: string; branchName: string; repo: string } | null>(null);
+const forcePushTarget = ref<ForcePushTarget | null>(null);
 
 function onForcePush(row: BranchRowModel): void {
-  forcePushTarget.value = { branchId: row.id, branchName: row.name, repo: row.repo };
+  forcePushTarget.value = {
+    branchId: row.id,
+    branchName: row.name,
+    repo: row.repo,
+    taskId: row.branch.taskId,
+  };
 }
 </script>
 
@@ -326,7 +388,7 @@ function onForcePush(row: BranchRowModel): void {
           <AdePlanRepos
             :repos="chips"
             :all-pending="refreshingAll"
-            :ripple="model.ripple"
+            :ripple="ripple"
             @refresh-all="runRefresh([], true)"
             @refresh-one="(id) => runRefresh([id], false)"
             @toggle="(id) => ui.toggleRepo(id)"
@@ -358,11 +420,17 @@ function onForcePush(row: BranchRowModel): void {
             @pick="onFindArchived"
           />
           <template v-for="band in model.view.bands" :key="band.key">
+            <span
+              v-if="band.key === 0"
+              :ref="(el) => (todayTop = el as HTMLElement | null)"
+              class="block h-0"
+              aria-hidden="true"
+            />
             <AdeDayBand
               :band="band"
-              :cards="bandCards(band)"
-              :spans="bandSpans(band)"
-              :history="bandHistory(band)"
+              :cards="bandProps.get(band.key)?.cards ?? NO_CARDS"
+              :spans="bandProps.get(band.key)?.spans ?? NO_SPANS"
+              :history="bandProps.get(band.key)?.history ?? NO_HISTORY"
               :overdue-note="overdueNote(band)"
               :overflow-note="overflowNote(band)"
               :overflow-label="overflowLabel(band)"

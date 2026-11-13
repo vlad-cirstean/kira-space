@@ -5,6 +5,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"log/slog"
+	"slices"
+	"strconv"
+
+	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
@@ -21,15 +25,63 @@ func workflowHash(js []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// wfMemoCap bounds the decoded snapshots kept: one per distinct snapshot a board shows.
+const wfMemoCap = 256
+
+// wfMemoEntry is one decoded task snapshot and the hash of its re-marshalled form.
+type wfMemoEntry struct {
+	wf     adewire.Workflow
+	rehash string
+}
+
+func newWorkflowMemo() *lru.Cache[string, wfMemoEntry] {
+	c, _ := lru.New[string, wfMemoEntry](wfMemoCap)
+	return c
+}
+
+// workflow returns a copy the caller may reorder or replace steps in. Step fields that hold maps or
+// slices stay shared with the memo: callers read them, none writes into them.
+func (e wfMemoEntry) workflow() adewire.Workflow {
+	wf := e.wf
+	wf.Steps = slices.Clone(e.wf.Steps)
+	return wf
+}
+
+// decodedSnapshot decodes a started task's snapshot, memoised by its hash (and length, so a row whose
+// hash disagrees with its JSON never shares an entry). An unreadable snapshot is never memoised.
+func (b *TaskBoard) decodedSnapshot(t model.AdeTask) (wfMemoEntry, bool) {
+	key := ""
+	if t.WorkflowHash != "" {
+		key = t.WorkflowHash + ":" + strconv.Itoa(len(t.WorkflowJSON))
+		if e, ok := b.wfMemo.Get(key); ok {
+			return e, true
+		}
+	}
+	var wf adewire.Workflow
+	if err := json.Unmarshal([]byte(t.WorkflowJSON), &wf); err != nil {
+		slog.Warn("ade: unreadable workflow snapshot", "scope", "ade", "task", t.ID, "err", err)
+		return wfMemoEntry{}, false
+	}
+	e := wfMemoEntry{wf: wf, rehash: t.WorkflowHash}
+	if js, err := adeflow.SnapshotJSON(wf); err == nil {
+		// Compare the re-marshalled snapshot, so a wire field added since the task started does not
+		// read as an edit of the live file.
+		e.rehash = workflowHash(js)
+	}
+	if key != "" {
+		b.wfMemo.Add(key, e)
+	}
+	return e, true
+}
+
 // taskWorkflow returns the workflow a task runs: its snapshot when it has started, else the live file.
 func (b *TaskBoard) taskWorkflow(t model.AdeTask) (adewire.Workflow, bool) {
 	if t.WorkflowJSON != "" {
-		var wf adewire.Workflow
-		if err := json.Unmarshal([]byte(t.WorkflowJSON), &wf); err != nil {
-			slog.Warn("ade: unreadable workflow snapshot", "scope", "ade", "task", t.ID, "err", err)
+		e, ok := b.decodedSnapshot(t)
+		if !ok {
 			return adewire.Workflow{}, false
 		}
-		return wf, true
+		return e.workflow(), true
 	}
 	if t.WorkflowID == "" || b.deps.Workflows == nil {
 		return adewire.Workflow{}, false
@@ -55,6 +107,7 @@ func (b *TaskBoard) snapshotWorkflow(t *model.AdeTask) error {
 		return err
 	}
 	t.WorkflowJSON, t.WorkflowHash = string(js), hash
+	b.notifyBoardWith(taskChanged(t.ID))
 	return nil
 }
 
@@ -68,7 +121,7 @@ type liveInfo struct {
 // decorateTask fills the wire fields that depend on the workflow. live resolves a workflow id to its
 // live file, memoised by the caller. A task that has not started follows that file, so its entry is the
 // file's first step.
-func decorateTask(out *adewire.Task, t model.AdeTask, live func(id string) liveInfo) {
+func (b *TaskBoard) decorateTask(out *adewire.Task, t model.AdeTask, live func(id string) liveInfo) {
 	li := live(t.WorkflowID)
 	if t.WorkflowJSON == "" {
 		if li.ok {
@@ -76,10 +129,11 @@ func decorateTask(out *adewire.Task, t model.AdeTask, live func(id string) liveI
 		}
 		return
 	}
-	var wf adewire.Workflow
-	if err := json.Unmarshal([]byte(t.WorkflowJSON), &wf); err != nil {
+	e, ok := b.decodedSnapshot(t)
+	if !ok {
 		return
 	}
+	wf := e.workflow()
 	for i := range wf.Steps {
 		if wf.Steps[i].Settings == nil {
 			wf.Steps[i].Settings = map[string]map[string]string{}
@@ -87,13 +141,7 @@ func decorateTask(out *adewire.Task, t model.AdeTask, live func(id string) liveI
 	}
 	out.Workflow = &wf
 	if li.ok {
-		// Compare the re-marshalled snapshot, so a wire field added since the task started does not
-		// read as an edit of the live file.
-		hash := t.WorkflowHash
-		if js, err := adeflow.SnapshotJSON(wf); err == nil {
-			hash = workflowHash(js)
-		}
-		out.WorkflowOutdated = li.hash != hash
+		out.WorkflowOutdated = li.hash != e.rehash
 	}
 }
 

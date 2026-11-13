@@ -46,6 +46,10 @@ test('picking an old archived task reveals its day and opens its panel', async (
   await pickArchived(page, 'H_5');
   await expect(page.locator(`${t('ade-history-row')}[data-task-id="H_5"]`)).toBeVisible();
   await expect(page.locator(t('ade-panel-title'))).toBeVisible();
+  // Scrolled above Today, the history bar shows; Current work scrolls back and it goes.
+  await expect(page.locator(t('ade-history-bar'))).toBeVisible();
+  await page.locator(t('ade-current-work')).click();
+  await expect(page.locator(t('ade-history-bar'))).toHaveCount(0);
 });
 
 test('finding a task archived today opens History on Today', async ({ relaunch }) => {
@@ -126,9 +130,9 @@ test('a selected archived task shows all it kept, read-only', async ({ relaunch 
   await expect(page.locator(t('ade-archived-comment'))).toContainText('rename this');
 
   await page.locator(t('ade-panel-tab-details')).click();
-  const editor = page.locator(`${t('ade-details-tab')} .ProseMirror`);
-  await expect(editor).toContainText('remember the cache');
-  await expect(editor).toHaveAttribute('contenteditable', 'false');
+  const body = page.locator(`${t('ade-details-tab')} ${t('ade-handover-body')}`);
+  await expect(body).toContainText('remember the cache');
+  await expect(page.locator(`${t('ade-details-tab')} [contenteditable]`)).toHaveCount(0);
   await expect(page.locator(t('ade-notes-toolbar-btn'))).toHaveCount(0);
 
   await page.locator(t('ade-panel-tab-sessions')).click();

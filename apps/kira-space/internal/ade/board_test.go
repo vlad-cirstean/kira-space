@@ -4,10 +4,13 @@ import (
 	"context"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/testx"
 	"path/filepath"
 	"slices"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
@@ -21,17 +24,26 @@ import (
 )
 
 type boardHarness struct {
-	t       *testing.T
+	t       testing.TB
 	repos   *repos.Repos
 	board   *TaskBoard
 	files   *repocfg.Store
 	emitted atomic.Int32
+	evMu    sync.Mutex
+	events  []adewire.BoardChangedEvent
 	status  atomic.Value // gitclient.GitStatus
 	mid     string
 }
 
-func newBoardHarness(t *testing.T) *boardHarness {
+func newBoardHarness(t testing.TB) *boardHarness { return newBoardHarnessWith(t, nil) }
+
+// newBoardHarnessWith wraps the spawn seam of both git runners (nil keeps the exec runner).
+func newBoardHarnessWith(t testing.TB, wrap func(gitclient.Runner) gitclient.Runner) *boardHarness {
 	t.Helper()
+	runner := gitclient.NewExecRunner()
+	if wrap != nil {
+		runner = wrap(runner)
+	}
 	db, err := storage.OpenAt(t.TempDir())
 	if err != nil {
 		t.Fatalf("storage.OpenAt: %v", err)
@@ -41,7 +53,7 @@ func newBoardHarness(t *testing.T) *boardHarness {
 	if err != nil {
 		t.Fatalf("repos.New: %v", err)
 	}
-	registry := gitsession.NewRegistry(gitclient.NewExecRunner())
+	registry := gitsession.NewRegistry(runner)
 	t.Cleanup(registry.Close)
 	h := &boardHarness{t: t, repos: r}
 	h.files = repocfgtest.New(t, db.DB, filepath.Join(t.TempDir(), "repos"))
@@ -51,17 +63,30 @@ func newBoardHarness(t *testing.T) *boardHarness {
 		Agent:       testAgents,
 		DbMcp:       fakeDbMcp{},
 		Credentials: gitcred.New(),
-		Tasks:       r.AdeTasks, Statuses: r.AdeStatuses, RepoConfig: r.AdeRepoConfig, Facts: r.AdeFacts, CodeRepos: r.CodeRepos, Runner: gitclient.NewExecRunner(),
+		Tasks:       r.AdeTasks, Statuses: r.AdeStatuses, RepoConfig: r.AdeRepoConfig, Facts: r.AdeFacts, CodeRepos: r.CodeRepos, Runner: runner,
 		GitRepoSettings: h.files.Settings,
 		Registry:        registry,
 		GitStatus:       func(context.Context) gitclient.GitStatus { return h.status.Load().(gitclient.GitStatus) },
 		Workflows:       &adeflow.Reader{Dir: t.TempDir(), Store: configfs.TableProjection{DB: db.DB, Folder: adeflow.WorkflowsFolder}},
-		OnBoard:         func() { h.emitted.Add(1) }, HomeDir: "/home/u",
+		OnBoard:         h.onBoard, HomeDir: "/home/u",
 		AutofetchMinutes: func() int { return 5 },
 	})
 	t.Cleanup(h.board.Close)
 	h.files.OnChange = h.board.RepoConfigChanged
 	return h
+}
+
+func (h *boardHarness) onBoard(ev adewire.BoardChangedEvent) {
+	h.evMu.Lock()
+	h.events = append(h.events, ev)
+	h.evMu.Unlock()
+	h.emitted.Add(1)
+}
+
+func (h *boardHarness) pushed() []adewire.BoardChangedEvent {
+	h.evMu.Lock()
+	defer h.evMu.Unlock()
+	return slices.Clone(h.events)
 }
 
 // setRepoFile edits the repo file of a code repo added with addRepoFromPath.
@@ -101,7 +126,7 @@ func (h *boardHarness) addTask(id, kind string, specs ...branchSpec) {
 	}
 }
 
-func boardBranch(t *testing.T, b adewire.Board, id string) adewire.Branch {
+func boardBranch(t testing.TB, b adewire.Board, id string) adewire.Branch {
 	t.Helper()
 	for _, br := range b.Branches {
 		if br.ID == id {
@@ -112,7 +137,7 @@ func boardBranch(t *testing.T, b adewire.Board, id string) adewire.Branch {
 	return adewire.Branch{}
 }
 
-func commitFile(t *testing.T, dir, name, content, msg string) {
+func commitFile(t testing.TB, dir, name, content, msg string) {
 	t.Helper()
 	writeQueueFile(t, dir, name, content)
 	runGitQueue(t, dir, "add", name)
@@ -190,29 +215,51 @@ func TestTaskBoard_snapshotAssembly(t *testing.T) {
 	}
 
 	// pairs are keyed by branch id: b1 (feat-a) and b3 (feat-p) both edit shared.txt.
+	// The pair check runs in the background: first read shows checking, then the conflict lands.
+	var pairs []adewire.Pair
+	testx.WaitUntil(t, 10*time.Second, func() bool {
+		b, err := h.board.Board(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		pairs = b.Pairs
+		for _, p := range b.Pairs {
+			if p.A == "b1" && p.B == "b3" {
+				return !p.Checking
+			}
+		}
+		return false
+	})
 	var found bool
-	for _, p := range board.Pairs {
+	for _, p := range pairs {
 		if p.A == "b1" && p.B == "b3" {
 			found = slices.Equal(p.Conflicts, []string{"shared.txt"})
 		}
 	}
 	if !found {
-		t.Fatalf("pair b1/b3 with conflict missing: %+v", board.Pairs)
+		t.Fatalf("pair b1/b3 with conflict missing: %+v", pairs)
 	}
-	stored, _ := h.repos.AdeTasks.BranchesLive()
-	for _, s := range stored {
-		if s.ID == "b6" && s.MergedAt == nil {
-			t.Fatalf("merged write-back missing: %+v", s)
+	testx.WaitUntil(t, 5*time.Second, func() bool {
+		stored, _ := h.repos.AdeTasks.BranchesLive()
+		for _, s := range stored {
+			if s.ID == "b6" {
+				return s.MergedAt != nil
+			}
 		}
-	}
+		return false
+	})
 
-	// main moves with a conflicting edit; Refresh settles the checks before returning.
+	// main moves with a conflicting edit; the checks settle after Refresh returns.
 	commitFile(t, dir, "shared.txt", "main moved\n", "main moves")
 	runGitQueue(t, dir, "push", "-q", "origin", "main")
 	if _, err := h.board.Refresh(context.Background(), nil); err != nil {
 		t.Fatal(err)
 	}
-	board, _ = h.board.Board(context.Background())
+	h.board.WaitRefreshTails() // checks queued by the refresh tail land after Refresh returns
+	testx.WaitUntil(t, 5*time.Second, func() bool {
+		board, _ = h.board.Board(context.Background())
+		return boardBranch(t, board, "b1").ConflictCheck == conflictDone && boardBranch(t, board, "b2").ConflictCheck == conflictDone
+	})
 	b1, b2 = boardBranch(t, board, "b1"), boardBranch(t, board, "b2")
 	if b1.ConflictCheck != conflictDone || !slices.Equal(b1.ConflictsIfRebased, []string{"shared.txt"}) {
 		t.Fatalf("b1 after refresh: %q %v (%s)", b1.ConflictCheck, b1.ConflictsIfRebased, b1.ConflictCheckReason)
@@ -221,9 +268,7 @@ func TestTaskBoard_snapshotAssembly(t *testing.T) {
 	if b2.ConflictCheck != conflictDone || len(b2.ConflictsIfRebased) != 0 {
 		t.Fatalf("b2 after refresh: %q %v (%s)", b2.ConflictCheck, b2.ConflictsIfRebased, b2.ConflictCheckReason)
 	}
-	if h.emitted.Load() == 0 {
-		t.Fatal("Refresh did not emit a board change")
-	}
+	waitUntil(t, "board change after Refresh", func() bool { return h.emitted.Load() > 0 })
 }
 
 func TestTaskBoard_notCreatedAndTooOldGit(t *testing.T) {

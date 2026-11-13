@@ -145,3 +145,14 @@ test('contract: a backend workflow with a result loop lays out on one spine', as
   expect(edge.x).toBeLessThan(Math.min(impl.x, review.x));
   expect(await scale(page)).toBe(1);
 });
+
+test('editing a step field keeps every node where it was', async ({ relaunch }) => {
+  const page = await open(relaunch);
+  const ids = ['plan', 'impl', 'tests', 'ci', 'pr'];
+  const read = async () => Promise.all(ids.map((id) => box(node(page, id))));
+  const before = await read();
+  await node(page, 'plan').click();
+  await page.locator(t('ade-wf-step-name')).fill('A much longer step name for the layout check');
+  await expect(node(page, 'plan')).toContainText('A much longer step name');
+  expect(await read()).toEqual(before);
+});

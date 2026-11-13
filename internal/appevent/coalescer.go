@@ -23,6 +23,10 @@ type Coalescer[T, F any] struct {
 	sizeOf   func(T) int
 	flush    func(batch []T, done bool, final F)
 
+	// flushMu orders flushes: taken under mu, held across the flush call after mu drops, so a Push
+	// that does not flush never waits on an emit in progress. A flushing Push (size trigger) and the
+	// timer wait on flushMu, the Push while holding mu. Lock order is mu then flushMu.
+	flushMu sync.Mutex
 	mu      sync.Mutex
 	pending []T
 	size    int
@@ -41,30 +45,31 @@ func NewCoalescer[T, F any](interval time.Duration, maxSize int, sizeOf func(T) 
 // no-op after Finish.
 func (c *Coalescer[T, F]) Push(item T) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if c.done {
+		c.mu.Unlock()
 		return
 	}
 	c.pending = append(c.pending, item)
 	c.size += c.sizeOf(item)
 	if c.size >= c.maxSize {
 		var zero F
-		c.flushLocked(false, zero)
+		c.flushAndUnlock(false, zero)
 		return
 	}
 	if c.timer == nil {
 		c.timer = time.AfterFunc(c.interval, c.onTimer)
 	}
+	c.mu.Unlock()
 }
 
 func (c *Coalescer[T, F]) onTimer() {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if c.done || len(c.pending) == 0 {
+		c.mu.Unlock()
 		return
 	}
 	var zero F
-	c.flushLocked(false, zero)
+	c.flushAndUnlock(false, zero)
 }
 
 // Finish is the terminal flush, carrying final — always sent, even with nothing pending, so a
@@ -72,15 +77,17 @@ func (c *Coalescer[T, F]) onTimer() {
 // first call has effect.
 func (c *Coalescer[T, F]) Finish(final F) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if c.done {
+		c.mu.Unlock()
 		return
 	}
-	c.flushLocked(true, final)
 	c.done = true
+	c.flushAndUnlock(true, final)
 }
 
-func (c *Coalescer[T, F]) flushLocked(done bool, final F) {
+// flushAndUnlock takes the batch under mu, queues for flushMu, releases mu, then emits. Flushes
+// therefore start in the order their batches were taken. Caller holds mu.
+func (c *Coalescer[T, F]) flushAndUnlock(done bool, final F) {
 	if c.timer != nil {
 		c.timer.Stop()
 		c.timer = nil
@@ -91,5 +98,8 @@ func (c *Coalescer[T, F]) flushLocked(done bool, final F) {
 	}
 	c.pending = nil
 	c.size = 0
+	c.flushMu.Lock()
+	c.mu.Unlock()
+	defer c.flushMu.Unlock()
 	c.flush(batch, done, final)
 }

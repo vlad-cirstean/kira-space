@@ -2,13 +2,15 @@ import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 import type { NeedsItem } from '../board/needsYou';
 import { usePlanModel } from '../plan/usePlanModel';
-import { useApprove, useResumeRun, useRetryRun } from '../queries';
+import { useTaskWrites } from '../plan/useTaskWrites';
 import { useReviewCode } from '../review/useReviewCode';
 import { useOpenSession } from '../sessions/useOpenSession';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
+import { useAdeOpsStore } from '../state/adeOps';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
+import { runsTarget } from '../state/opTarget';
 import { useRepoGate } from '../state/useRepoGate';
 
 const errMessage = (err: unknown): string => errorText(err);
@@ -20,12 +22,25 @@ export function useNeedsAction() {
   const dialogs = useAdeDialogsStore();
   const takeOver = useAdeTakeOverStore();
   const openSession = useOpenSession();
-  const retry = useRetryRun();
-  const resume = useResumeRun();
-  const approve = useApprove();
+  const { retry, resume, approve } = useTaskWrites();
+  const ops = useAdeOpsStore();
   const reviewCode = useReviewCode();
-  const { gated } = useRepoGate();
+  const { ensureRepo, opAfterRepo } = useRepoGate();
   const { model } = usePlanModel();
+
+  /** The item's task action as an op on `target` (its runs or step): chip on the card, toast on failure, task selected. */
+  async function op(
+    kind: 'retry' | 'resume' | 'approve',
+    target: string,
+    n: NeedsItem,
+    call: () => Promise<unknown>,
+  ): Promise<void> {
+    const name = model.value?.cardFor(n.taskId)?.title ?? '';
+    const ok = await opAfterRepo(n.taskId, call, (fn) =>
+      ops.run({ id: `${kind}:${target}`, kind, taskId: n.taskId, name }, fn),
+    );
+    if (!ok) ui.select(n.taskId);
+  }
 
   async function run(n: NeedsItem): Promise<void> {
     delete ui.actionError[n.taskId];
@@ -36,15 +51,21 @@ export function useNeedsAction() {
         tabs.setBranchTab(n.branchId, 'details');
       } else if (n.action === 'Take over') await takeOver.request(n.sessionId);
       else if (n.action === 'Retry') {
-        await Promise.all(n.runIds.map((runId) => retry.mutateAsync({ runId })));
+        await op('retry', runsTarget(n.runIds, n.taskId, n.stepId), n, () =>
+          Promise.all(n.runIds.map((runId) => retry.mutateAsync({ runId }))),
+        );
       } else if (n.action === 'Resume') {
-        await Promise.all(n.runIds.map((runId) => resume.mutateAsync({ runId })));
+        await op('resume', runsTarget(n.runIds, n.taskId, n.stepId), n, () =>
+          Promise.all(n.runIds.map((runId) => resume.mutateAsync({ runId }))),
+        );
       } else if (n.action === 'Open') await openSession(n.sessionId, n.taskId, n.branchId);
       else if (n.action === 'Approve') {
         const needsRepo = model.value?.cardFor(n.taskId)?.progress.step?.needsRepo ?? false;
-        await gated(n.taskId, needsRepo, async () => {
-          await approve.mutateAsync({ taskId: n.taskId, stepId: n.stepId });
-        });
+        if (await ensureRepo(n.taskId, needsRepo)) {
+          await op('approve', `${n.taskId}:${n.stepId}`, n, () =>
+            approve.mutateAsync({ taskId: n.taskId, stepId: n.stepId }),
+          );
+        }
       } else if (n.action === 'Review') {
         reviewCode.open(n.taskId, n.branchId, null);
       } else if (n.action === 'See error') {

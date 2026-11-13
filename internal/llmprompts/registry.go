@@ -921,13 +921,14 @@ var HeadlessReviewReplyAck = define(Entry{
 // HeadlessToolTaskInfo describes the task_info tool.
 var HeadlessToolTaskInfo = define(Entry{
 	ID: "headless.tool.task_info", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "task_info",
-	Default: `Your Kira Space task: title, Jira key, workflow, step, repos, branches, registered repos. With repo and branch: that worktree's state.`,
+	Default: `Your Kira Space task: title, Jira key, workflow, step, repos, branches; registered repos only with no repos or includeRegistered. With repo and branch: that worktree's state.`,
 }, NoVars{})
 
 var (
 	_ = arg(HeadlessToolTaskInfo.id, "repo", spaceApp, NextCall, `Task repo: nickname, name or id. With branch.`, NoVars{})
 	_ = arg(HeadlessToolTaskInfo.id, "branch", spaceApp, NextCall, `Branch name. With repo.`, NoVars{})
 	_ = arg(HeadlessToolTaskInfo.id, "waitSeconds", spaceApp, NextCall, `Seconds to wait for setup, 0 to {{.Max}}. Default 0.`, MaxVars{Max: 600})
+	_ = arg(HeadlessToolTaskInfo.id, "includeRegistered", spaceApp, NextCall, `true: also list the registered repos. Default: only when the task has no repos.`, NoVars{})
 )
 
 // HeadlessToolDeclareRepos describes the declare_repos tool.

@@ -252,3 +252,71 @@ func equalJSON(a, b adewire.Workflow) bool {
 	y, _ := json.Marshal(b)
 	return bytes.Equal(x, y)
 }
+
+// Get memoises a valid workflow until its file or the step library changes, and never memoises a
+// workflow that fails to parse.
+func TestReaderGet_memoInvalidation(t *testing.T) {
+	r := libReader(t, map[string]string{"implement.yaml": implementLib})
+	if _, err := r.SaveYaml("w.yaml", "", head+"  - step: implement\n"); err != nil {
+		t.Fatal(err)
+	}
+	touch := func(path string, ago time.Duration) { // distinct mtimes whatever the clock granularity
+		t.Helper()
+		at := time.Now().Add(-ago)
+		if err := os.Chtimes(path, at, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	wfPath := filepath.Join(r.Dir, "w.yaml")
+	stepPath := filepath.Join(r.Steps.Dir, "implement.yaml")
+	timeout := func() string {
+		t.Helper()
+		got, ok := r.Get("w")
+		if !ok {
+			t.Fatal("Get w")
+		}
+		return got.Steps[0].Timeout
+	}
+	if timeout() != "30m" || timeout() != "30m" {
+		t.Fatal("first reads")
+	}
+	if len(r.gets) != 1 {
+		t.Fatalf("valid workflow not memoised: %d", len(r.gets))
+	}
+	got, _ := r.Get("w")
+	got.Steps[0].Timeout = "mutated"
+	if timeout() != "30m" {
+		t.Fatal("caller edit reached the memo")
+	}
+
+	if err := os.WriteFile(stepPath, []byte(strings.Replace(implementLib, "30m", "45m", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	touch(stepPath, time.Hour)
+	if timeout() != "45m" {
+		t.Fatal("step file edit not seen")
+	}
+	if err := os.WriteFile(wfPath, []byte(head+"  - step: implement\n    timeout: 10m\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	touch(wfPath, 2*time.Hour)
+	if timeout() != "10m" {
+		t.Fatal("workflow file edit not seen")
+	}
+
+	// A broken workflow answers with its last good version and is not memoised: the fix shows at once.
+	if err := os.WriteFile(wfPath, []byte(head+"  - step: nope\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	touch(wfPath, 3*time.Hour)
+	if timeout() != "10m" {
+		t.Fatal("broken file lost last valid")
+	}
+	if err := os.WriteFile(wfPath, []byte(head+"  - step: implement\n    timeout: 20m\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	touch(wfPath, 4*time.Hour)
+	if timeout() != "20m" {
+		t.Fatal("fix of a broken file not seen")
+	}
+}

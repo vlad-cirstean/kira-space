@@ -4,6 +4,14 @@ import { reactive, watch } from 'vue';
 import { useTerminalsStore } from '../../../state/terminals';
 import { useSessions } from '../queries';
 
+const sameSet = (a: Set<string>, b: Set<string>): boolean =>
+  a.size === b.size && [...a].every((x) => b.has(x));
+const sameIds = (
+  a: { id: string; local?: string }[],
+  b: { id: string; local?: string }[],
+): boolean =>
+  a.length === b.length && a.every((x, i) => x.id === b[i]?.id && x.local === b[i]?.local);
+
 // Reaps the terminals this window opened for ade sessions. Nothing else closes them, so a stopped
 // session would keep its terminal entry, drain queue and xterm instance for the window's life.
 export const useAdeTerminalsStore = defineStore('adeTerminals', () => {
@@ -28,7 +36,9 @@ export const useAdeTerminalsStore = defineStore('adeTerminals', () => {
       // Read here so a local exit after the sessions push re-runs the reap.
       ids: [...tracked].map((id) => ({ id, local: terminalsStore.terminalSession(id)?.status })),
     }),
-    ({ running, ids }) => {
+    ({ running, ids }, prev) => {
+      // A push that changes neither the running set nor a tracked terminal's status has nothing to reap.
+      if (prev && sameSet(running, prev.running) && sameIds(ids, prev.ids)) return;
       for (const { id, local } of ids) {
         if (running.has(id)) continue;
         if (local && local !== 'exited' && local !== 'failed') continue;

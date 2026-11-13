@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/vue-query';
+import { type BoardChange, invalidateTaskFamily } from './boardEvent';
 import { appendChunks, mergeRuns } from './pushMerge';
 import {
   boardKey,
@@ -9,12 +10,14 @@ import {
   sessionsKey,
   workflowsKey,
 } from './readQueries';
+import { createRefetchGate } from './refetchGate';
 import type { Board, LogEvent, LogPage, RunsChangedEvent } from './wire';
 
 /** Where read-side pushes come from: Wails events on the desktop, server-sent events on the
  *  phone. Each `on*` subscribes and returns its unsubscribe. */
 export interface AdeSignalSource {
-  onBoard(cb: () => void): () => void;
+  /** The payload arrives normalized (`normalizeBoardEvent`): a push without one reads as all changed. */
+  onBoard(cb: (change: BoardChange) => void): () => void;
   onWorkflows(cb: () => void): () => void;
   onSessions(cb: () => void): () => void;
   onRuns(cb: (event: RunsChangedEvent) => void): () => void;
@@ -22,13 +25,15 @@ export interface AdeSignalSource {
 }
 
 /** Cache upkeep for the read queries, shared by both apps. Every board push re-reads the board and
- *  PR facts; sessions and workflows pushes re-read their list; a runs push merges into
+ *  PR facts (through a single-flight gate, and the PR facts only when refs changed); sessions and workflows pushes re-read their list; a runs push merges into
  *  the cached board; a log push appends to the cached log. */
 export function installAdeReadSignals(queryClient: QueryClient, source: AdeSignalSource): void {
-  source.onBoard(() => {
-    void queryClient.invalidateQueries({ queryKey: boardKey, exact: true });
-    void queryClient.invalidateQueries({ queryKey: changeRequestsKey, exact: true });
-    void queryClient.invalidateQueries({ queryKey: panelForwardPrefix });
+  const boardGate = createRefetchGate(queryClient, boardKey);
+  const changeRequestsGate = createRefetchGate(queryClient, changeRequestsKey);
+  source.onBoard((change) => {
+    boardGate.signal();
+    if (change.refs) changeRequestsGate.signal();
+    invalidateTaskFamily(queryClient, panelForwardPrefix, change);
   });
   source.onWorkflows(() => {
     void queryClient.invalidateQueries({ queryKey: workflowsKey, exact: true });

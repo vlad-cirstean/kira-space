@@ -36,11 +36,20 @@ func TestQueueMergeTree(t *testing.T) {
 	if _, err := app.W.AdeTask.Refresh(ctx, adewire.RefreshArgs{CodeRepoIDs: []string{rec.ID}}); err != nil {
 		t.Fatal(err)
 	}
-	b := board(t, app)
+	// Pair conflict checks run in the background: poll until none is checking.
+	var b adewire.Board
 	pairs := map[[2]string]adewire.Pair{}
-	for _, p := range b.Pairs {
-		pairs[[2]string{p.A, p.B}] = p
-	}
+	testx.WaitUntil(t, waitFor, func() bool {
+		b = board(t, app)
+		pairs = map[[2]string]adewire.Pair{}
+		for _, p := range b.Pairs {
+			if p.Checking {
+				return false
+			}
+			pairs[[2]string{p.A, p.B}] = p
+		}
+		return len(pairs) > 0
+	})
 	ab, ok := pairs[[2]string{branches["feat-a"].ID, branches["feat-b"].ID}]
 	if !ok {
 		ab, ok = pairs[[2]string{branches["feat-b"].ID, branches["feat-a"].ID}]

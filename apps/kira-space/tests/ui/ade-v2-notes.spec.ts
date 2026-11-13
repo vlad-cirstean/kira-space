@@ -117,10 +117,10 @@ test('an archived task shows the chain read-only: no Add, no editor controls', a
   await expect(page.locator(t('ade-note-add'))).toHaveCount(0);
   await expect(page.locator(t('ade-handover-edit'))).toHaveCount(0);
   await expect(page.locator(t('ade-notes-toolbar-btn'))).toHaveCount(0);
-  await expect(page.locator(`${t('ade-task-chain')} .ProseMirror`).first()).toHaveAttribute(
-    'contenteditable',
-    'false',
-  );
+  await expect(
+    page.locator(`${t('ade-task-chain')} ${t('ade-handover-body')}`).first(),
+  ).toBeVisible();
+  await expect(page.locator(`${t('ade-task-chain')} [contenteditable]`)).toHaveCount(0);
 });
 
 test('the Add popover notes field is the rich editor and CreateTask carries its Markdown', async ({
@@ -142,4 +142,44 @@ test('the Add popover notes field is the rich editor and CreateTask carries its 
     title: 'Export CSV',
     notes: 'Mind the **header** row',
   });
+});
+
+test('a read-only body renders its Markdown statically and links open only with the modifier', async ({
+  relaunch,
+}) => {
+  const body = [
+    '# Plan',
+    '',
+    '- first',
+    '- second',
+    '',
+    '- [ ] open item',
+    '- [x] done item',
+    '',
+    'line one',
+    'line two [site](https://example.com/a) [bad](javascript:alert(1))',
+  ].join('\n');
+  const [first, ...rest] = chain('T_alerts');
+  const { window: page, control } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskHandovers,
+      response: { handovers: [{ ...first, source: 'user', body }, ...rest] },
+    },
+    { channel: IPC.linkOpenExternal, response: null },
+  ]);
+  await openDetails(page);
+  const view = page.locator(`${t('ade-task-chain')} ${t('ade-handover-body')}`).first();
+  await expect(view.locator('h1')).toHaveText('Plan');
+  await expect(view.locator('ul:not([data-type]) li')).toHaveCount(2);
+  await expect(view.locator('input[type="checkbox"]')).toHaveCount(2);
+  await expect(view.locator('input[type="checkbox"]').first()).toBeDisabled();
+  await expect(view.locator('[contenteditable]')).toHaveCount(0);
+  const link = view.locator('a', { hasText: 'site' });
+  await link.click();
+  expect(calls(control, IPC.linkOpenExternal)).toHaveLength(0);
+  await link.click({ modifiers: ['Meta'] });
+  await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(1);
+  expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual({ url: 'https://example.com/a' });
+  const bad = view.locator('a', { hasText: 'bad' });
+  expect(await bad.getAttribute('href')).toBeFalsy();
 });

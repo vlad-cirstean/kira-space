@@ -592,6 +592,30 @@ func (e *RepoEntry) resolveBranchChangeRequest(ctx context.Context, branch strin
 	return e.fetchBranchChangeRequest(ctx, p, repo, branch, gen)
 }
 
+// CachedBranchChangeRequest is the change request this entry already knows for branch, of any age:
+// the persisted index, the repo-wide open snapshot or the per-branch cache. It never calls the host
+// and never refreshes, so a cold cache answers false. A closed or merged one shows only while cached.
+func (e *RepoEntry) CachedBranchChangeRequest(ctx context.Context, branch string) (githost.ChangeRequest, bool) {
+	p, repo, ok := e.hostRepo(ctx)
+	if !ok {
+		return githost.ChangeRequest{}, false
+	}
+	if cr, ok := e.indexedBranch(p, repo, branch); ok {
+		return cr, true
+	}
+	if snapshot, state := e.host.snapshotGet(); state != cacheMiss {
+		for _, cr := range snapshot {
+			if cr.HeadRef == branch && cr.HeadOwner == repo.Owner {
+				return cr, true
+			}
+		}
+	}
+	if cr, state := e.host.branchCacheGet(branch); state != cacheMiss && cr != nil {
+		return *cr, true
+	}
+	return githost.ChangeRequest{}, false
+}
+
 func branchResult(cr *githost.ChangeRequest) ChangeRequestLookup {
 	if cr == nil {
 		return okResult(nil)

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
@@ -15,7 +16,57 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 )
 
+// repoConfigCache holds RepoConfig.List between writes. Reads are read-only; gen stops a read that a
+// drop overtook from being kept.
+type repoConfigCache struct {
+	mu   sync.Mutex
+	gen  uint64
+	list []model.AdeRepoConfig
+	ok   bool
+}
+
+// repoConfigs is RepoConfig.List, kept until dropRepoConfigs. The result is shared: never mutate it.
+func (b *TaskBoard) repoConfigs() ([]model.AdeRepoConfig, error) {
+	c := &b.repoCfg
+	c.mu.Lock()
+	if c.ok {
+		list := c.list
+		c.mu.Unlock()
+		return list, nil
+	}
+	gen := c.gen
+	c.mu.Unlock()
+	list, err := b.deps.RepoConfig.List()
+	if err != nil {
+		return nil, err
+	}
+	c.mu.Lock()
+	if c.gen == gen {
+		c.list, c.ok = list, true
+	}
+	c.mu.Unlock()
+	return list, nil
+}
+
+// dropRepoConfigs forgets the kept list: a repo file, repo row or import source changed.
+func (b *TaskBoard) dropRepoConfigs() {
+	c := &b.repoCfg
+	c.mu.Lock()
+	c.gen++
+	c.list, c.ok = nil, false
+	c.mu.Unlock()
+	b.allReposMoved()
+}
+
+// ReposChanged tells the board a code repo was added, renamed, hidden, reordered or removed outside
+// the engine.
+func (b *TaskBoard) ReposChanged() {
+	b.dropRepoConfigs()
+	b.invalidateBoard()
+}
+
 func (b *TaskBoard) notifyRepos() {
+	b.dropRepoConfigs()
 	if b.deps.OnRepos != nil {
 		b.deps.OnRepos()
 	}
@@ -39,6 +90,7 @@ func (b *TaskBoard) repoConfig(codeRepoID string) (model.AdeRepoConfig, error) {
 // environments are dropped, changed environments rerun their scripts, then the repo list and the
 // board refresh once.
 func (b *TaskBoard) RepoConfigChanged(changes []repocfg.Change) {
+	b.dropRepoConfigs()
 	if b.deps.CodeRepos == nil {
 		return
 	}

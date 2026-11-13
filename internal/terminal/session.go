@@ -397,10 +397,48 @@ type Registry struct {
 
 	// OnChange, when set, is called — outside the mutex, so it may safely call back into
 	// AgentSessions below — after Open registers a new agent session and after remove deletes one.
+	// It runs on its own goroutine, never concurrently with itself; changes during a call coalesce
+	// into one more call, so Open and remove never wait for it.
 	// readLoop calls onExit *before* unregister (remove), so emitting a "what changed"
 	// signal from OnExit would report a dying session as still live; OnChange fires from remove,
 	// after the map entry is already gone, which is the one place that ordering is correct.
 	OnChange func()
+
+	changeRunning, changeAgain bool
+	changeWG                   sync.WaitGroup
+}
+
+// notifyChange raises the OnChange signal off the caller's goroutine. A call arriving while the
+// loop runs sets changeAgain, so the last change is always observed. Caller must not hold r.mu.
+func (r *Registry) notifyChange() {
+	fn := r.OnChange
+	if fn == nil {
+		return
+	}
+	r.mu.Lock()
+	if r.changeRunning {
+		r.changeAgain = true
+		r.mu.Unlock()
+		return
+	}
+	r.changeRunning = true
+	r.changeWG.Add(1)
+	r.mu.Unlock()
+	go func() {
+		defer r.changeWG.Done()
+		for {
+			fn()
+			r.mu.Lock()
+			if r.changeAgain {
+				r.changeAgain = false
+				r.mu.Unlock()
+				continue
+			}
+			r.changeRunning = false
+			r.mu.Unlock()
+			return
+		}
+	}()
 }
 
 func NewRegistry() *Registry {
@@ -465,8 +503,8 @@ func (r *Registry) Open(p OpenParams) (*Session, error) {
 	r.byWindow[p.WindowKey][p.ID] = struct{}{}
 	r.mu.Unlock()
 
-	if p.Agent && r.OnChange != nil {
-		r.OnChange()
+	if p.Agent {
+		r.notifyChange()
 	}
 
 	go sess.readLoop()
@@ -550,8 +588,8 @@ func (r *Registry) remove(windowKey, id string) {
 	}
 	r.mu.Unlock()
 
-	if sess != nil && sess.agent && r.OnChange != nil {
-		r.OnChange()
+	if sess != nil && sess.agent {
+		r.notifyChange()
 	}
 }
 
@@ -601,9 +639,15 @@ func (r *Registry) CloseWindow(key string) {
 	}
 	r.mu.Unlock()
 
+	var wg sync.WaitGroup
+	wg.Add(len(ids))
 	for _, id := range ids {
-		r.closeFor(id, CauseWindow)
+		go func(id string) {
+			defer wg.Done()
+			r.closeFor(id, CauseWindow)
+		}(id)
 	}
+	wg.Wait()
 }
 
 // CloseAll closes every live session — app teardown. Closes them
@@ -630,4 +674,5 @@ func (r *Registry) CloseAll() {
 		}(id)
 	}
 	wg.Wait()
+	r.changeWG.Wait()
 }

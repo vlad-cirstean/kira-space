@@ -11,18 +11,20 @@ import (
 
 // Session op kinds.
 const (
-	opStart        = "start"
-	opAdHoc        = "adHoc"
-	opTakeOver     = "takeOver"
-	opRestart      = "restart"
-	opManual       = "manual"
-	opReviewAgent  = "reviewAgent"
-	opRun          = "run"
-	opResume       = "resume"
-	opRebase       = "rebase"
-	opReview       = "review"
-	opSetup        = "setup"
-	opStop         = "stop"
+	opStart       = "start"
+	opAdHoc       = "adHoc"
+	opTakeOver    = "takeOver"
+	opRestart     = "restart"
+	opManual      = "manual"
+	opReviewAgent = "reviewAgent"
+	opRun         = "run"
+	opResume      = "resume"
+	opRebase      = "rebase"
+	opReview      = "review"
+	opSetup       = "setup"
+	opStop        = "stop"
+	// opRefreshTail is the oplog kind of a failed Refresh tail (category git).
+	opRefreshTail  = "refreshTail"
 	opTerminalLost = "The terminal never started the session."
 )
 

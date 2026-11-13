@@ -2,6 +2,7 @@ package ade
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"slices"
 
@@ -67,7 +68,28 @@ func (b *TaskBoard) statusKey(tc *taskCtx) (key string, ok bool) {
 // syncStatus applies the status of the task's workflow position when that position changed since the
 // last sync; the task mutex is held. A manual move leaves the position alone, so it holds until the
 // task moves on. Only work tasks sync.
-func (b *TaskBoard) syncStatus(taskID string) {
+func (b *TaskBoard) syncStatus(taskID string) { b.syncStatusWith(taskID, nil) }
+
+// statusConfig is the status set and defaults a status sync reads.
+type statusConfig struct {
+	set      []model.AdeTaskStatus
+	defaults model.AdeStatusDefaults
+}
+
+func (b *TaskBoard) loadStatusConfig() (statusConfig, error) {
+	set, err := b.deps.Statuses.List()
+	if err != nil {
+		return statusConfig{}, fmt.Errorf("read task statuses: %w", err)
+	}
+	defaults, err := b.deps.Statuses.Defaults()
+	if err != nil {
+		return statusConfig{}, fmt.Errorf("read task status defaults: %w", err)
+	}
+	return statusConfig{set, defaults}, nil
+}
+
+// syncStatusWith is syncStatus with the status config already loaded; nil loads it when a sync needs it.
+func (b *TaskBoard) syncStatusWith(taskID string, cfg *statusConfig) {
 	tc, err := b.loadTaskCtx(taskID)
 	if err != nil || !model.IsWorkKind(tc.task.Kind) {
 		return
@@ -76,16 +98,15 @@ func (b *TaskBoard) syncStatus(taskID string) {
 	if !ok || key == tc.task.StatusStep {
 		return
 	}
-	set, err := b.deps.Statuses.List()
-	if err != nil {
-		slog.Warn("ade: read task statuses", "scope", "ade", "task", taskID, "err", err)
-		return
+	if cfg == nil {
+		loaded, err := b.loadStatusConfig()
+		if err != nil {
+			slog.Warn("ade: sync task status", "scope", "ade", "task", taskID, "err", err)
+			return
+		}
+		cfg = &loaded
 	}
-	defaults, err := b.deps.Statuses.Defaults()
-	if err != nil {
-		slog.Warn("ade: read task status defaults", "scope", "ade", "task", taskID, "err", err)
-		return
-	}
+	set, defaults := cfg.set, cfg.defaults
 	var target string
 	switch key {
 	case "":
@@ -106,7 +127,7 @@ func (b *TaskBoard) syncStatus(taskID string) {
 		slog.Warn("ade: sync task status", "scope", "ade", "task", taskID, "err", err)
 		return
 	}
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(taskID))
 }
 
 // OnTUIStarted is Tracker.OnStarted's target: a first session of a task counts as started.

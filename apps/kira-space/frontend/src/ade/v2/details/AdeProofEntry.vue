@@ -5,8 +5,10 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
+import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
 import { formatRelative } from '@workbench/behaviour/format';
+import { errorText } from '@workbench/bridge/codedError';
 import { control as studioControl } from '../../../studio/bridge/control';
 import { proofViewIcon } from '../../../studio/proof/viewIcon';
 import AdeChip from '../AdeChip.vue';
@@ -21,6 +23,7 @@ const props = defineProps<{ proof: TaskProof; taskId: string; readonly?: boolean
 const emit = defineEmits<{ openSession: [sessionId: string] }>();
 const open = useMutation({
   mutationFn: () => studioControl.proofOpenWindow(props.proof.proofId),
+  onError: (err) => toast.error(errorText(err)),
 });
 const unlink = useUnlinkProof();
 
@@ -44,6 +47,7 @@ function stage(p: TaskProof): string {
         size="inline"
         class="min-w-0 font-medium"
         :title="t('space.ade.proof.entry.open.tooltip')"
+        :pending="open.isPending.value"
         data-testid="ade-proof-open"
         @click="open.mutate()"
         ><span class="truncate">{{ proof.name }}</span></Button
@@ -114,6 +118,7 @@ function stage(p: TaskProof): string {
           variant="toolbar"
           size="kira"
           class="w-full justify-start font-normal"
+          :pending="open.isPending.value"
           data-testid="ade-proof-step-open"
           @click="open.mutate()"
         >

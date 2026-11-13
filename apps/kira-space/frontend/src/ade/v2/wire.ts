@@ -304,6 +304,10 @@ export interface Pair {
   b: string /* branch ids */;
   shared: string[];
   conflicts: string[];
+  /** True while the pair's merge-tree check runs; absent from an older backend. */
+  checking?: boolean;
+  /** True when the check failed all retries: conflicts are unknown, not none; Refresh retries. */
+  checkFailed?: boolean;
 }
 
 // ---- runs, tasks, plan (§2, §4, §5, §12, D7, D10, D12, D16)
@@ -749,6 +753,8 @@ export interface RepoState {
   mainName: string /* '' unresolved */;
   remote: string;
   lastFetchAt: number | null;
+  /** True while the repo's facts are past the deadline and shown from the last good; a push follows. */
+  updating?: boolean;
 }
 export interface Board {
   tasks: Task[];
@@ -1049,6 +1055,14 @@ export interface PanelForwardResult {
 // ---- push payloads
 export interface RunsChangedEvent {
   runs: Run[];
+}
+/** What a board push changed. Optional on the wire: an older backend sends no payload, read as
+ *  everything changed (`normalizeBoardEvent`). */
+export interface BoardChangedEvent {
+  /** False: no ref, branch fact or change request changed. */
+  refs?: boolean;
+  /** Tasks the push touches; null or absent means all. */
+  taskIds?: string[] | null;
 }
 export interface LogEvent {
   kind: LogKind;

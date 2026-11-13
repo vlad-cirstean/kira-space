@@ -67,7 +67,7 @@ func (f *brFixture) changeResult(t *testing.T) string {
 	testx.WaitUntil(t, waitFor, func() bool {
 		var err error
 		raw, err = os.ReadFile(filepath.Join(f.app.FakeDir, "mcp-change_branch-1.json"))
-		return err == nil
+		return err == nil && len(raw) > 0 // the fake agent writes the file in place; skip a read of the empty file
 	})
 	return string(raw)
 }
@@ -77,16 +77,18 @@ func TestBranchChange(t *testing.T) {
 		f, repo, own := newChangeFixture(t, "feat/old", "feat/other")
 		repo.Git("branch", "feat/other")
 		gitIn(t, own, "switch", "-q", "feat/other")
-		before := branchOf(t, board(t, f.app), f.task.ID, f.api)
-		if before.Worktree != "" || before.Detached == nil || before.Detached.Head != "feat/other" {
-			t.Fatalf("row = worktree %q detached %+v, want no attach and head feat/other", before.Worktree, before.Detached)
-		}
+		// The out-of-band switch reaches the board through the repo watcher, not a board write.
+		var before adewire.Branch
+		testx.WaitUntil(t, waitFor, func() bool {
+			before = branchOf(t, board(t, f.app), f.task.ID, f.api)
+			return before.Worktree == "" && before.Detached != nil && before.Detached.Head == "feat/other"
+		})
 		f.app.Contract(t, changeScenario, "AdeTaskService.Board#mismatch", []adewire.Branch{before}, adoptMask)
 		info, err := f.app.W.AdeBoard.BranchStatus(ctx, f.task.ID, "api", "feat/old", 0)
 		if err != nil || !strings.Contains(info.Next, "change_branch") || !strings.Contains(info.Next, "feat/other") {
 			t.Fatalf("branch status next = %q, %v; want a change_branch hint naming feat/other", info.Next, err)
 		}
-		task, err := f.app.W.AdeBoard.TaskInfo(ctx, f.task.ID)
+		task, err := f.app.W.AdeBoard.TaskInfo(ctx, f.task.ID, true)
 		if err != nil || len(task.Repos) != 1 || task.Repos[0].Mismatch == nil || task.Repos[0].Mismatch.CheckedOut != "feat/other" {
 			t.Fatalf("task info = %+v, %v; want a mismatch on feat/other", task, err)
 		}

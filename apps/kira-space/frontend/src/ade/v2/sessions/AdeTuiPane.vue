@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Button } from '@theme/components/ui/button';
+import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
 import { useDateFormat } from '@vueuse/core';
 import { useAutomationsModule } from '@workbench/automations/module';
+import { errorText } from '@workbench/bridge/codedError';
 import TerminalHostView from '@workbench/terminal/TerminalHostView.vue';
 import { computed, ref, useTemplateRef } from 'vue';
 import { useMobileTerminalsStore } from '../../../state/mobileTerminals';
@@ -53,9 +55,15 @@ defineExpose({ focusTerminal });
 
 async function show(): Promise<void> {
   missing.value = false;
+  let failed = false;
   const shown = await focus
     .mutateAsync({ sessionId: props.view.session.id, taskId: props.view.session.taskId })
-    .catch(() => false);
+    .catch((err) => {
+      failed = true;
+      toast.error(errorText(err));
+      return false;
+    });
+  if (failed) return;
   if (!shown) missing.value = true;
   else tabs.selectSession(props.view.session.taskId, props.view.session.id);
 }
@@ -103,7 +111,14 @@ async function show(): Promise<void> {
       class="flex flex-col items-start gap-2 p-3 text-kira-md"
       data-testid="ade-tui-elsewhere"
     >
-      <Button variant="dialog" size="kira" class="px-2" data-testid="ade-tui-show" @click="show">
+      <Button
+        variant="dialog"
+        size="kira"
+        class="px-2"
+        data-testid="ade-tui-show"
+        :pending="focus.isPending.value"
+        @click="show"
+      >
         {{ t('common.action.show.label') }}
       </Button>
       <p v-if="missing" class="m-0 text-muted-foreground" data-testid="ade-tui-missing">

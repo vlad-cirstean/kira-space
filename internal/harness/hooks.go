@@ -14,8 +14,9 @@ type HookHost interface {
 
 // HookOptions configures a listener.
 type HookOptions struct {
-	// OnEvent is called once per accepted event, from the listener's own goroutine, never after
-	// Close returns.
+	// OnEvent is called once per accepted event. Through Hooks it runs on a per-terminal lane, in
+	// arrival order per terminal only, and never after Hooks.Stop returns; the listener's own Close does not imply
+	// that, the hub does.
 	OnEvent func(AgentEvent)
 	// Reply, when set, is asked for each event before OnEvent, in the listener's own goroutine. A
 	// provider whose hook channel can answer (Claude) sends the reply back to the agent first, then
@@ -110,6 +111,7 @@ type Hooks struct {
 
 	mu        sync.Mutex
 	listeners map[string]HookListener
+	q         *eventQueue
 }
 
 // NewHooks builds a hub; nothing is started yet.
@@ -123,13 +125,16 @@ func (h *Hooks) Start() error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	var errs []error
+	if h.q == nil && h.opts.OnEvent != nil {
+		h.q = newEventQueue(h.opts.OnEvent)
+	}
 	for _, id := range h.reg.IDs() {
 		p, _ := h.reg.Get(id)
 		host, ok := p.(HookHost)
 		if !ok || h.listeners[id] != nil {
 			continue
 		}
-		opts := h.opts
+		opts := h.queued()
 		if !ReportsUsage(p) {
 			opts.OnStatusLine = nil
 		}
@@ -143,7 +148,39 @@ func (h *Hooks) Start() error {
 	return errors.Join(errs...)
 }
 
-// Stop closes every running listener.
+// queued returns the options handed to listeners: OnEvent feeds the per-terminal ordered lanes. A Stop or
+// UserPromptSubmit reply waits for the terminal's earlier events first, so Tracker.HookReply's suppressIdle
+// handshake never meets an earlier queued Stop. Other kinds never wait. Caller holds h.mu.
+func (h *Hooks) queued() HookOptions {
+	opts := h.opts
+	q := h.q
+	if q == nil {
+		return opts
+	}
+	opts.OnEvent = q.enqueue
+	if reply := h.opts.Reply; reply != nil {
+		opts.Reply = func(ev AgentEvent) HookReply {
+			if ev.AgentID == "" && (ev.Event == EventTurnEnd || ev.Event == EventPrompt) {
+				q.barrier(ev.TerminalID)
+			}
+			return reply(ev)
+		}
+	}
+	return opts
+}
+
+// Flush returns once every event accepted so far has been handled. Tests use it as a sync point.
+func (h *Hooks) Flush() {
+	h.mu.Lock()
+	q := h.q
+	h.mu.Unlock()
+	if q != nil {
+		q.barrierAll()
+	}
+}
+
+// Stop closes every running listener, then drains every terminal lane. Listeners close first: their
+// shutdown waits for in-flight handlers that may still enqueue.
 func (h *Hooks) Stop() error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -153,6 +190,10 @@ func (h *Hooks) Stop() error {
 			errs = append(errs, fmt.Errorf("%s: %w", id, err))
 		}
 		delete(h.listeners, id)
+	}
+	if h.q != nil {
+		h.q.close()
+		h.q = nil
 	}
 	return errors.Join(errs...)
 }

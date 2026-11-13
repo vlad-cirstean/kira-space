@@ -52,6 +52,8 @@ func (s *Server) addHandoverTool(srv *mcp.Server) {
 		if len(args.Notes) > MaxHandoverBytes {
 			return toolError(fmt.Sprintf("notes is too long: at most %d bytes.", MaxHandoverBytes)), nil, nil
 		}
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
 		if err := s.handover.RecordHandover(ctx, g.TaskID, g.StepID, g.SessionID, args.Notes, args.Finished); err != nil {
 			return fail("handover", err), nil, nil
 		}

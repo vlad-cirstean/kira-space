@@ -20,7 +20,7 @@ import { useApprovalActions } from './approvalsQueries';
 const props = defineProps<{ items: ApprovalItem[] }>();
 
 const store = useApprovalsStore();
-const { answer } = useApprovalActions();
+const { answer, pending } = useApprovalActions();
 
 // One prompt at a time; answering it moves `current` to the next oldest.
 const current = computed(
@@ -61,6 +61,7 @@ function denyAll(): void {
           <Button
             variant="dialog-deny"
             size="kira"
+            :pending="pending"
             data-testid="approvals-deny-all"
             @click="denyAll"
           >

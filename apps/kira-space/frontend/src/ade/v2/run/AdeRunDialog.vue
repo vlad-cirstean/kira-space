@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import {
@@ -13,36 +12,39 @@ import {
 import { FieldDescription, FieldError } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
+import { Skeleton } from '@theme/components/ui/skeleton';
 import { Textarea } from '@theme/components/ui/textarea';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import SmartBadge from '@workbench/automations/smart/SmartBadge.vue';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useCustomScriptsStore } from '../../../state/customScripts';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import { smartBodyParts } from '../automation/smartStepBody';
-import {
-  branchSlug,
-  editablePart,
-  finishVars,
-  previewPlain,
-  runMessageVars,
-} from '../board/runMessage';
+import { branchSlug, editablePart, previewPlain } from '../board/runMessage';
 import AdeLinkStrip from '../links/AdeLinkStrip.vue';
 import AdeSetupProgress from '../panel/AdeSetupProgress.vue';
 import { usePlanModel } from '../plan/usePlanModel';
-import { useAdePromptPreview, useStartRun } from '../queries';
+import { useTaskWrites } from '../plan/useTaskWrites';
+import { useAdePromptPreview } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdeDialogsStore } from '../state/adeDialogs';
+import { useAdeOpsStore } from '../state/adeOps';
+import { useAdeStageDialogStore } from '../state/adeStageDialog';
+import { timedCall } from '../state/refusalTiming';
 import { useRepoGate } from '../state/useRepoGate';
 import { ACTION_CLASS } from '../tones';
+import { RUN_PREVIEW_IDS, runPreviewVars } from './runPreview';
 
 // Agent step Run dialog (SPEC2 section 5, R24): per-branch names for branches not created yet, the
 // editable message and the read-only finish_step suffix the server always appends.
 const ui = useAdeBoardUiStore();
 const { model } = usePlanModel();
-const start = useStartRun();
-const { retryAfterRepo } = useRepoGate();
+const { start } = useTaskWrites();
+const ops = useAdeOpsStore();
+const stage = useAdeStageDialogStore();
+const dialogs = useAdeDialogsStore();
+const { opAfterRepo } = useRepoGate();
 const card = computed(() => (ui.runTaskId ? (model.value?.cardFor(ui.runTaskId) ?? null) : null));
 const open = computed(() => card.value !== null);
 // What the server adds to the prompt besides the editable message: the previous stage's handover and the task notes.
@@ -55,38 +57,15 @@ const close = (): void => {
   ui.runTaskId = null;
 };
 const step = computed(() => card.value?.progress.step ?? null);
-// No mine branch (an outside-repo step or an orchestrator): the step runs in the task folder.
-const noRepo = computed(() => !card.value?.rows.some((r) => r.branch.kind === 'mine'));
 // The workflow's definition of the step being run: its prompt and smart script params.
 const def = computed(
   () => card.value?.workflow?.steps.find((x) => x.id === step.value?.id) ?? null,
 );
-// Position among the workflow's automatic steps, as `ade.step.prompt` counts them.
-const numbering = computed(() => {
-  const auto = (card.value?.workflow?.steps ?? []).filter((x) => x.kind !== 'manual' && !x.skip);
-  return { n: auto.findIndex((x) => x.id === step.value?.id) + 1, of: auto.length };
-});
 // The texts render in Go (ade.step.prompt, headless.space.suffix, headless.finishStep.suffix), so edits in Settings show here.
-const stepPreview = useAdePromptPreview('ade.step.prompt', () =>
-  card.value && step.value
-    ? runMessageVars({
-        title: card.value.title,
-        jira: card.value.task.jira,
-        step: {
-          name: step.value.name,
-          prompt: def.value?.prompt ?? '',
-          results: step.value.results,
-        },
-        stepNumber: numbering.value.n,
-        stepCount: numbering.value.of,
-        noRepo: noRepo.value,
-      })
-    : null,
-);
-const suffixPreview = useAdePromptPreview('headless.finishStep.suffix', () =>
-  step.value ? finishVars(step.value.results) : null,
-);
-const spacePreview = useAdePromptPreview('headless.space.suffix', () => (step.value ? {} : null));
+const previewVars = computed(() => runPreviewVars(card.value));
+const stepPreview = useAdePromptPreview(RUN_PREVIEW_IDS.step, () => previewVars.value.step);
+const suffixPreview = useAdePromptPreview(RUN_PREVIEW_IDS.finish, () => previewVars.value.finish);
+const spacePreview = useAdePromptPreview(RUN_PREVIEW_IDS.space, () => previewVars.value.space);
 // The Kira Space note and the finish instruction the step ends with, as ade.step.prompt appends them.
 const suffix = computed(() => {
   const finish = previewPlain(suffixPreview.data.value?.parts ?? []);
@@ -143,12 +122,21 @@ const dirty = computed(
   () => edited.value || Object.values(names.value).some((n) => n.trim() !== ''),
 );
 
+// Inputs of a start the bridge refused (or the user cancelled at the repo prompt) live in `ui.runDrafts`:
+// the dialog reopens with them at once when the refusal is prompt, else on the task's next open.
+let alive = true;
+onBeforeUnmount(() => {
+  alive = false;
+});
+
 watch(open, (o) => {
   if (!o) return;
+  const id = ui.runTaskId ?? '';
+  const kept = ui.runDrafts[id];
+  delete ui.runDrafts[id];
   opening.value = initial.value;
-  message.value = initial.value;
-  names.value = {};
-  sending.error.value = null;
+  message.value = kept?.message ?? initial.value;
+  names.value = kept?.names ?? {};
 });
 // The preview lands after the dialog opens: an untouched message takes it over.
 watch(initial, (next) => {
@@ -157,22 +145,35 @@ watch(initial, (next) => {
   message.value = next;
 });
 
-const sending = useAsyncAction(async () => {
-  if (!card.value) return;
+// Closes at once; the start runs as the task's op (chip on the card, toast past 2 s or on failure).
+// A start refused promptly reopens the dialog with the typed names and message, unless another dialog or
+// mode took over; a late refusal keeps them for the task's next open (the error toast reports it).
+async function send(): Promise<void> {
+  const c = card.value;
+  if (!c) return;
   const branchNames: Record<string, string> = {};
   for (const r of named.value) branchNames[r.id] = (names.value[r.id] ?? '').trim();
-  const taskId = card.value.task.id;
-  await retryAfterRepo(taskId, () =>
-    start.mutateAsync({
-      taskId,
-      branchNames,
-      message: edited.value && !smartStep.value ? message.value : '',
-    }),
-  );
+  const taskId = c.task.id;
+  const body = edited.value && !smartStep.value ? message.value : '';
+  const typed = { message: message.value, names: { ...names.value } };
   close();
-});
-const { pending: busy, error } = sending;
-const send = sending.run;
+  const id = `startRun:${taskId}`;
+  const timed = timedCall(() => start.mutateAsync({ taskId, branchNames, message: body }));
+  const ok = await opAfterRepo(taskId, timed.call, (fn) =>
+    ops.run({ id, kind: 'startRun', taskId, name: c.title }, fn),
+  );
+  if (ok) {
+    delete ui.runDrafts[taskId];
+    return;
+  }
+  // A live op of the same id means the submit was a duplicate, not a failure.
+  if (ops.isRunning(id)) return;
+  ui.runDrafts[taskId] = typed;
+  const free = ui.runTaskId === null && !stage.isOpen && dialogs.spec === null;
+  if (!timed.prompt() || !free || !alive) return;
+  ui.select(taskId);
+  ui.runTaskId = taskId;
+}
 </script>
 
 <template>
@@ -269,7 +270,13 @@ const send = sending.run;
             </Button>
           </div>
           <div class="flex flex-col gap-1">
+            <Skeleton
+              v-if="stepPreview.isPending.value"
+              class="h-24 w-full"
+              data-testid="ade-run-message-skeleton"
+            />
             <Textarea
+              v-else
               id="ade-run-message"
               v-model="message"
               class="max-h-90 resize-y"
@@ -281,9 +288,6 @@ const send = sending.run;
             </FieldDescription>
           </div>
         </div>
-        <Alert v-if="error" variant="error" data-testid="ade-run-error">
-          <AlertDescription>{{ error }}</AlertDescription>
-        </Alert>
       </DialogBody>
       <DialogFooter>
         <Button variant="dialog" size="kira-lg" data-testid="ade-run-cancel" @click="close">{{
@@ -293,7 +297,6 @@ const send = sending.run;
           variant="dialog-primary"
           size="kira-lg"
           :class="ACTION_CLASS.agent"
-          :pending="busy"
           :data-dialog-initial="(smartStep && named.length === 0) || undefined"
           data-testid="ade-run-send"
           @click="send"

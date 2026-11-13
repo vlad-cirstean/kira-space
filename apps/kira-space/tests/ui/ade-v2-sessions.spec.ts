@@ -338,6 +338,29 @@ test('Show focuses the window holding the terminal, or says none does', async ({
   );
 });
 
+test('Show is pending while it asks, and a refusal toasts instead of saying missing', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskFocusSession, response: false, hold: true },
+  ]);
+  await openSessions(page, 'T_bill');
+  await page.locator(t('ade-tui-show')).click();
+  await expect(page.locator(t('ade-tui-show'))).toHaveAttribute('aria-busy', 'true');
+  control.release(IPC.adeTaskFocusSession);
+  await expect(page.locator(t('ade-tui-show'))).not.toHaveAttribute('aria-busy', 'true');
+});
+
+test('a refused Show toasts the error', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskFocusSession, error: { code: 'E_INTERNAL', message: 'no such window' } },
+  ]);
+  await openSessions(page, 'T_bill');
+  await page.locator(t('ade-tui-show')).click();
+  await expect(page.locator('[data-sonner-toast]')).toContainText('no such window');
+  await expect(page.locator(t('ade-tui-missing'))).toHaveCount(0);
+});
+
 // A phone-style launch holds the TUI terminal in this window, so the Sessions tab shows it.
 test('opening the Sessions tab gives the keyboard to the agent terminal; reselecting does not', async ({
   relaunch,

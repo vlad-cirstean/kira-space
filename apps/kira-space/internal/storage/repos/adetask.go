@@ -1677,6 +1677,20 @@ func (r *AdeTaskRepo) LatestRunsOf(taskIDs []string) (map[string][]model.AdeRun,
 	return out, nil
 }
 
+// CountReturns counts the `back` step runs (no review round, no rebase) of one step on one branch up to
+// and including attempt upTo.
+func (r *AdeTaskRepo) CountReturns(taskID, stepID, branchID string, upTo int) (int, error) {
+	c := kiraschema.AdeRuns
+	sb := r.Dialect.Select("COUNT(*)").From(c.Table)
+	sb.Where(sb.Equal(c.TaskID, taskID), sb.Equal(c.StepID, stepID), sb.Equal(c.BranchID, branchID),
+		sb.Equal(c.Purpose, ""), sb.Equal(c.State, model.AdeRunBack), sb.LessEqualThan(c.Attempt, upTo))
+	var n int
+	if err := sqlb.QueryRow(r.DB, sb).Scan(&n); err != nil {
+		return 0, fmt.Errorf("repos: count ade returns: %w", err)
+	}
+	return n, nil
+}
+
 // UpsertSetup writes a branch's worktree-setup row.
 func (r *AdeTaskRepo) UpsertSetup(s model.AdeWorktreeSetup) error {
 	c := kiraschema.AdeWorktreeSetup

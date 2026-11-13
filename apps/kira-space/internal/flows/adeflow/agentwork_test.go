@@ -7,6 +7,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 func TestAgentCommitReachesBoard(t *testing.T) {
@@ -28,6 +29,11 @@ func TestAgentCommitReachesBoard(t *testing.T) {
 	other.Git("push", "-q", "origin", "main")
 	gitOut(t, br.Worktree, "fetch", "-q")
 	gitOut(t, br.Worktree, "rebase", "-q", "origin/main")
+	// Plain git moved the refs: the board snapshot serves until the repo watcher reports them.
+	testx.WaitUntil(t, waitFor, func() bool {
+		b := branchOf(t, board(t, app), f.taskID, f.repoID)
+		return b.UpstreamAhead == 2 && b.UpstreamBehind == 1
+	})
 	br = branchOf(t, board(t, app), f.taskID, f.repoID)
 	if br.UpstreamAhead != 2 || br.UpstreamBehind != 1 || br.Behind != 0 {
 		t.Fatalf("diverged branch = upstream %d/%d behind %d, want 2/1 and rebased onto main", br.UpstreamAhead, br.UpstreamBehind, br.Behind)

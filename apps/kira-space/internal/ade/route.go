@@ -198,23 +198,7 @@ func (b *TaskBoard) nextLoops(plan []stepView, branch string) int {
 // returnsSpent counts the earlier returns of the run's step and branch: its `back` step runs, whatever
 // result sent them back.
 func (b *TaskBoard) returnsSpent(run model.AdeRun) (int, error) {
-	runs, err := b.deps.Tasks.RunsOfTask(run.TaskID)
-	if err != nil {
-		return 0, err
-	}
-	return countReturns(runs, run.StepID, run.BranchID, math.MaxInt), nil
-}
-
-// countReturns counts the `back` step runs (no review round, no rebase) of one step on one branch up to
-// and including attempt upTo.
-func countReturns(runs []model.AdeRun, step, branch string, upTo int) int {
-	n := 0
-	for _, r := range runs {
-		if r.Purpose == "" && r.State == model.AdeRunBack && r.StepID == step && r.BranchID == branch && r.Attempt <= upTo {
-			n++
-		}
-	}
-	return n
+	return b.deps.Tasks.CountReturns(run.TaskID, run.StepID, run.BranchID, math.MaxInt)
 }
 
 // agentIDOfSession is the agent session id behind an ade_sessions record id, "" when unknown.

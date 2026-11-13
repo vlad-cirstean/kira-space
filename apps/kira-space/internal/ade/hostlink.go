@@ -85,6 +85,12 @@ func (b *TaskBoard) addHostLink(ctx context.Context, args adewire.HostLinkArgs, 
 // takes it again.
 func (b *TaskBoard) fetchHostLink(ctx context.Context, raw string, plan linkPlan) (linkPlan, error) {
 	t := plan.target
+	// Slot before repoMutex: queued behind another remote op, the fetch waits without the repo lock.
+	ctx, release, err := b.holdRemoteSlot(ctx, t.CodeRepoID)
+	if err != nil {
+		return plan, err
+	}
+	defer release()
 	mu := b.repoMutex(t.CodeRepoID)
 	mu.Lock()
 	defer mu.Unlock()
@@ -93,7 +99,7 @@ func (b *TaskBoard) fetchHostLink(ctx context.Context, raw string, plan linkPlan
 		return plan, err
 	}
 	run := func(p gitsession.RemoteOpParams) error {
-		res, err := entry.RunRemote(ctx, b.conn, p, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
+		res, err := b.runRemote(ctx, t.CodeRepoID, entry, p)
 		if err != nil {
 			return err
 		}

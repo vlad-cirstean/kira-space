@@ -23,15 +23,22 @@ type pair struct {
 	A, B      string
 	Shared    []string
 	Conflicts []string
+	// Checking is set while the pair's merge-tree check runs: Conflicts is empty until it lands.
+	Checking bool
+	// Failed is set when the pair's check failed for good (retries exhausted): Conflicts is empty
+	// but unknown.
+	Failed bool
 }
 
 // pairFacts computes §0.7's own conflict/share table over items: for each unordered pair with `a`
 // mine and `b` mine-or-review, neither parked nor merged, neither an ancestor of the other, and a
 // non-empty own-file intersection, it calls mergeTree(tipA, tipB) — ordered so a repeat call with
 // the same two tips is a cache hit at the CALLER's own layer (§4.2's tip-keyed LRU; this function
-// itself holds no cache, it only ever asks once per passing pair per call). isAncestor(x, y) reports
-// whether x or y is a (queued) ancestor of the other, in either order. Output sorted by (a, b).
-func pairFacts(items []pairItem, isAncestor func(x, y string) bool, mergeTree func(tipA, tipB string) ([]string, error)) ([]pair, error) {
+// itself holds no cache, it only ever asks once per passing pair per call). mergeTree reports
+// pending while the check still runs (the pair shows Checking) and an error when it failed for good
+// (the pair shows Failed; the checker already logged it). isAncestor(x, y) reports whether x or y is a
+// (queued) ancestor of the other, in either order. Output sorted by (a, b).
+func pairFacts(items []pairItem, isAncestor func(x, y string) bool, mergeTree func(tipA, tipB string) (paths []string, pending bool, err error)) []pair {
 	var pairs []pair
 	for i := 0; i < len(items); i++ {
 		for j := i + 1; j < len(items); j++ {
@@ -49,11 +56,11 @@ func pairFacts(items []pairItem, isAncestor func(x, y string) bool, mergeTree fu
 			if len(shared) == 0 {
 				continue
 			}
-			conflictedPaths, err := mergeTree(a.Tip, b.Tip)
+			conflictedPaths, pending, err := mergeTree(a.Tip, b.Tip)
 			if err != nil {
-				return nil, err
+				conflictedPaths = nil
 			}
-			pairs = append(pairs, pair{A: a.Item, B: b.Item, Shared: shared, Conflicts: intersectSorted(conflictedPaths, shared)})
+			pairs = append(pairs, pair{A: a.Item, B: b.Item, Shared: shared, Conflicts: intersectSorted(conflictedPaths, shared), Checking: pending && err == nil, Failed: err != nil})
 		}
 	}
 	sort.Slice(pairs, func(i, j int) bool {
@@ -62,7 +69,7 @@ func pairFacts(items []pairItem, isAncestor func(x, y string) bool, mergeTree fu
 		}
 		return pairs[i].B < pairs[j].B
 	})
-	return pairs, nil
+	return pairs
 }
 
 // orderPair applies §0.7's own kind filter and ordering: `a` mine x `b` mine-or-review only: a

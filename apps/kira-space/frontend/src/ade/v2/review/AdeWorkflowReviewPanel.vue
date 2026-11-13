@@ -16,6 +16,7 @@ import AdeTip from '../AdeTip.vue';
 import type { Tone } from '../board/actions';
 import AdeRunLog from '../panel/AdeRunLog.vue';
 import AdeRunOutcome from '../panel/AdeRunOutcome.vue';
+import AdeOpStatus from '../plan/AdeOpStatus.vue';
 import {
   useFinishReview,
   useResumeRun,
@@ -24,6 +25,7 @@ import {
   useStopRun,
 } from '../queries';
 import { reviewPhaseLabel } from '../runState';
+import { useAdeOpsStore } from '../state/adeOps';
 import { ACTION_CLASS } from '../tones';
 import type { ReviewPhase, ReviewWindowTarget } from '../wire';
 import { useReviewComments } from './useReviewComments';
@@ -66,6 +68,7 @@ const send = useSendReview();
 const finish = useFinishReview();
 const stop = useStopRun();
 const resume = useResumeRun();
+const ops = useAdeOpsStore();
 const error = ref('');
 const note = ref('');
 const confirmResult = ref<string | null>(null);
@@ -81,33 +84,50 @@ const sendTip = computed(() => {
   return '';
 });
 
-async function act(fn: () => Promise<unknown>): Promise<boolean> {
+type ReviewOp = 'sendReview' | 'finishReview' | 'stopRuns' | 'resume';
+
+/** Runs `fn`, showing a failure inline. With `kind` it is also the branch's op: chip, toast. */
+async function act(fn: () => Promise<unknown>, kind?: ReviewOp): Promise<boolean> {
   error.value = '';
-  try {
-    await fn();
-    return true;
-  } catch (err) {
-    error.value = errorText(err);
-    return false;
+  const capture = async (): Promise<void> => {
+    try {
+      await fn();
+    } catch (err) {
+      error.value = errorText(err);
+      throw err;
+    }
+  };
+  if (!kind) {
+    try {
+      await capture();
+      return true;
+    } catch {
+      return false;
+    }
   }
+  const { taskId, branchId, branch } = props.target;
+  return ops.run({ id: `${kind}:${branchId}`, kind, taskId, branchId, name: branch }, capture);
 }
 
 function onSend(): Promise<boolean> {
   const r = run.value;
   if (!r) return Promise.resolve(false);
-  return act(() =>
-    send.mutateAsync({
-      runId: r.id,
-      route: route.value,
-      targetRunId: route.value === 'implementer' ? targetRunId.value : '',
-    }),
+  return act(
+    () =>
+      send.mutateAsync({
+        runId: r.id,
+        route: route.value,
+        targetRunId: route.value === 'implementer' ? targetRunId.value : '',
+      }),
+    'sendReview',
   );
 }
 
 async function doFinish(result: string): Promise<void> {
   const r = run.value;
   if (!r) return;
-  if (await act(() => finish.mutateAsync({ runId: r.id, result, note: note.value.trim() }))) {
+  const call = () => finish.mutateAsync({ runId: r.id, result, note: note.value.trim() });
+  if (await act(call, 'finishReview')) {
     note.value = '';
   }
 }
@@ -159,6 +179,7 @@ const stateLabel = (c: ReviewComment): string =>
         :tone="PHASE_TONE[phase]"
         data-testid="ade-review-phase"
       />
+      <AdeOpStatus :task-id="target.taskId" :branch-id="target.branchId" />
       <span
         v-if="round"
         class="text-kira-sm text-muted-foreground"
@@ -298,7 +319,7 @@ const stateLabel = (c: ReviewComment): string =>
             size="kira"
             :class="ACTION_CLASS.agent"
             :disabled="sendTip !== ''"
-            :pending="send.isPending.value"
+            :pending="ops.isRunning(`sendReview:${target.branchId}`)"
             data-testid="ade-review-send-agent"
             @click="onSend"
           >
@@ -321,7 +342,7 @@ const stateLabel = (c: ReviewComment): string =>
           variant="dialog"
           size="kira"
           data-testid="ade-review-stop"
-          @click="act(() => stop.mutateAsync({ runId: round!.run.id }))"
+          @click="act(() => stop.mutateAsync({ runId: round!.run.id }), 'stopRuns')"
         >
           {{ t('common.action.stop.label') }}
         </Button>
@@ -330,7 +351,7 @@ const stateLabel = (c: ReviewComment): string =>
           variant="dialog"
           size="kira"
           data-testid="ade-review-resume"
-          @click="act(() => resume.mutateAsync({ runId: round!.run.id }))"
+          @click="act(() => resume.mutateAsync({ runId: round!.run.id }), 'resume')"
         >
           {{ t('common.action.resume.label') }}
         </Button>
@@ -369,7 +390,7 @@ const stateLabel = (c: ReviewComment): string =>
           size="kira"
           :class="ACTION_CLASS[r.ok ? 'green' : 'amber']"
           :disabled="live || !waiting"
-          :pending="finish.isPending.value"
+          :pending="ops.isRunning(`finishReview:${target.branchId}`)"
           :data-testid="`ade-review-finish-${r.id}`"
           @click="onFinish(r.id)"
         >

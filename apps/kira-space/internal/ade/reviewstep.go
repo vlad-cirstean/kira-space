@@ -99,12 +99,13 @@ func reviewWire(run model.AdeRun, rev model.AdeReview, round *model.AdeRun) *ade
 type wireBatch struct {
 	b      *TaskBoard
 	badges map[string]repos.AdeRunSandbox
-	runs   map[string][]model.AdeRun
 	rounds map[string][]model.AdeRun
+	// reviews memoizes GetReview per run id (nil = no review).
+	reviews map[string]*model.AdeReview
 }
 
 func (b *TaskBoard) newWireBatch(runs []model.AdeRun) *wireBatch {
-	w := &wireBatch{b: b, runs: map[string][]model.AdeRun{}, rounds: map[string][]model.AdeRun{}}
+	w := &wireBatch{b: b, rounds: map[string][]model.AdeRun{}, reviews: map[string]*model.AdeReview{}}
 	if b.deps.RunSandbox == nil {
 		return w
 	}
@@ -121,16 +122,16 @@ func (b *TaskBoard) newWireBatch(runs []model.AdeRun) *wireBatch {
 	return w
 }
 
-func (w *wireBatch) taskRuns(taskID string) ([]model.AdeRun, bool) {
-	if runs, ok := w.runs[taskID]; ok {
-		return runs, true
+func (w *wireBatch) review(runID string) *model.AdeReview {
+	if rev, ok := w.reviews[runID]; ok {
+		return rev
 	}
-	runs, err := w.b.deps.Tasks.RunsOfTask(taskID)
+	rev, err := w.b.deps.Tasks.GetReview(runID)
 	if err != nil {
-		return nil, false
+		rev = nil
 	}
-	w.runs[taskID] = runs
-	return runs, true
+	w.reviews[runID] = rev
+	return rev
 }
 
 func (w *wireBatch) taskRounds(taskID string) ([]model.AdeRun, bool) {
@@ -154,11 +155,11 @@ func (w *wireBatch) wireRun(r model.AdeRun) adewire.Run {
 	if r.Purpose != "" {
 		return out
 	}
-	if runs, ok := w.taskRuns(r.TaskID); ok {
-		out.Returns = countReturns(runs, r.StepID, r.BranchID, r.Attempt)
+	if n, err := w.b.deps.Tasks.CountReturns(r.TaskID, r.StepID, r.BranchID, r.Attempt); err == nil {
+		out.Returns = n
 	}
-	rev, err := w.b.deps.Tasks.GetReview(r.ID)
-	if err != nil || rev == nil {
+	rev := w.review(r.ID)
+	if rev == nil {
 		return out
 	}
 	rounds, ok := w.taskRounds(r.TaskID)
@@ -424,9 +425,9 @@ func commentVars(comments []gitreview.Comment) []llmprompts.ReviewCommentVar {
 }
 
 // roundMessage is the first message of a dedicated review round, with the branch's change request link.
-func (b *TaskBoard) roundMessage(ctx context.Context, rc *reviewCtx, tgt adewire.ReviewWindowTarget, round int, comments []gitreview.Comment) string {
+func (b *TaskBoard) roundMessage(rc *reviewCtx, tgt adewire.ReviewWindowTarget, round int, comments []gitreview.Comment, changeRequestURL string) string {
 	v := b.roundVars(rc, tgt, round, comments)
-	v.ChangeRequestURL = b.changeRequestURL(ctx, rc.sb, rc.tc.task.HostURL)
+	v.ChangeRequestURL = changeRequestURL
 	return llmprompts.AdeReviewRoundMessage.Text(b.prompts(), v)
 }
 
@@ -440,11 +441,76 @@ func (b *TaskBoard) roundVars(rc *reviewCtx, tgt adewire.ReviewWindowTarget, rou
 
 // SendReview sends the open comments of a waiting review run to an agent as a new round.
 func (b *TaskBoard) SendReview(ctx context.Context, args adewire.SendReviewArgs) error {
-	run, err := b.deps.Tasks.GetRun(args.RunID)
-	if err != nil {
+	_, err := joinOp(ctx, b, opKey("sendReview", args), func(ctx context.Context) (struct{}, error) { return struct{}{}, b.sendReview(ctx, args) })
+	return err
+}
+
+// reviewSendGather is what SendReview reads from git and the host before it takes the task lock.
+type reviewSendGather struct {
+	rc               *reviewCtx
+	tgt              adewire.ReviewWindowTarget
+	changeRequestURL string // only for a new dedicated session's first message
+	headBefore       string
+}
+
+// sendReview gathers outside the task lock (git and host calls can be slow), then takes it, checks
+// nothing moved and applies. A move between the two phases retries the gather once.
+func (b *TaskBoard) sendReview(ctx context.Context, args adewire.SendReviewArgs) error {
+	for attempt := 0; ; attempt++ {
+		g, err := b.gatherReviewSend(ctx, args)
+		if err != nil {
+			return err
+		}
+		err = b.applyReviewSend(ctx, args, g)
+		if errors.Is(err, errReviewMoved) && attempt == 0 {
+			continue
+		}
+		if errors.Is(err, errReviewMoved) {
+			return fmt.Errorf("%w: the review changed while sending", ErrStale)
+		}
 		return err
 	}
-	mu := b.taskMu(run.TaskID)
+}
+
+var errReviewMoved = errors.New("ade: review moved between gather and apply")
+
+func (b *TaskBoard) gatherReviewSend(ctx context.Context, args adewire.SendReviewArgs) (*reviewSendGather, error) {
+	rc, err := b.reviewRun(args.RunID)
+	if err != nil {
+		return nil, err
+	}
+	tgt, err := b.reviewTarget(ctx, rc.tc, rc.sb)
+	if err != nil {
+		return nil, err
+	}
+	g := &reviewSendGather{rc: rc, tgt: tgt}
+	if cmpNonEmpty(args.Route, rc.rev.Route) == adewire.ReviewSendNew && rc.rev.DedicatedClaudeID == "" {
+		g.changeRequestURL = b.changeRequestURL(ctx, rc.sb, rc.tc.task.HostURL)
+	}
+	if entry, err := b.openRepo(ctx, rc.sb.CodeRepoID); err == nil {
+		if _, tip, err := entry.WorktreeHead(ctx, tgt.Worktree); err == nil {
+			g.headBefore = tip
+		}
+	}
+	return g, nil
+}
+
+// reviewMoved reports whether the run, its round count, branch, base, worktree folder or the task
+// link differ between SendReview's gather (was) and its locked phase (rc).
+func reviewMoved(args adewire.SendReviewArgs, rc, was *reviewCtx) bool {
+	return rc.rev.Rounds != was.rev.Rounds || rc.sb.Name != was.sb.Name || rc.sb.ID != was.sb.ID || rc.run.ID != was.run.ID ||
+		cmpNonEmpty(args.Route, rc.rev.Route) != cmpNonEmpty(args.Route, was.rev.Route) ||
+		rc.rev.DedicatedClaudeID != was.rev.DedicatedClaudeID ||
+		// Inputs of g.tgt and the change request link, read outside the lock: worktree (worktreeOf),
+		// base (reviewSpellings), task link (linkedChangeRequest, changeRequestURL).
+		rc.sb.WorktreeDir != was.sb.WorktreeDir || rc.sb.Base != was.sb.Base || rc.sb.BaseBranchID != was.sb.BaseBranchID ||
+		rc.tc.task.HostURL != was.tc.task.HostURL
+}
+
+// applyReviewSend is SendReview's locked phase. It returns errReviewMoved when the run, its round
+// count, its branch, base, worktree folder or the task link changed since the gather.
+func (b *TaskBoard) applyReviewSend(ctx context.Context, args adewire.SendReviewArgs, g *reviewSendGather) error {
+	mu := b.taskMu(g.rc.run.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
 	rc, err := b.reviewRun(args.RunID)
@@ -459,11 +525,11 @@ func (b *TaskBoard) SendReview(ctx context.Context, args adewire.SendReviewArgs)
 	} else if live != nil {
 		return invalid("%s", i18n.T("backend.space.ade.reviewStep.roundLive.body", nil))
 	}
-	store, err := b.reviewStore()
-	if err != nil {
-		return err
+	if reviewMoved(args, rc, g.rc) {
+		return errReviewMoved
 	}
-	tgt, err := b.reviewTarget(ctx, rc.tc, rc.sb)
+	tgt := g.tgt
+	store, err := b.reviewStore()
 	if err != nil {
 		return err
 	}
@@ -520,13 +586,9 @@ func (b *TaskBoard) SendReview(ctx context.Context, args adewire.SendReviewArgs)
 		launch.ResumeID = rc.rev.DedicatedClaudeID
 		launch.Prompt = llmprompts.AdeReviewFollowupMessage.Text(b.prompts(), b.roundVars(rc, tgt, round, open))
 	default:
-		launch.Prompt = b.roundMessage(ctx, rc, tgt, round, open)
+		launch.Prompt = b.roundMessage(rc, tgt, round, open, g.changeRequestURL)
 	}
-	if entry, err := b.openRepo(ctx, rc.sb.CodeRepoID); err == nil {
-		if _, tip, err := entry.WorktreeHead(ctx, tgt.Worktree); err == nil {
-			spec.HeadBefore = tip
-		}
-	}
+	spec.HeadBefore = g.headBefore
 	if err := b.deps.Tasks.UpsertReview(model.AdeReview{RunID: rc.run.ID, Route: route, TargetRunID: targetID}); err != nil {
 		return err
 	}
@@ -805,7 +867,7 @@ func (b *TaskBoard) queueFallback(lost model.AdeRun, spec model.AdeReviewSpec) {
 	next := spec
 	next.Route, next.Fallback, next.HeadAfter, next.AllowedTools = adewire.ReviewSendNew, true, "", nil
 	launch := model.AdeRunLaunch{Note: i18n.T("backend.space.ade.reviewStep.fallback.body", nil)}
-	launch.Prompt = b.roundMessage(b.ctx, &reviewCtx{tc: tc, sb: sb}, tgt, spec.Round, comments)
+	launch.Prompt = b.roundMessage(&reviewCtx{tc: tc, sb: sb}, tgt, spec.Round, comments, b.changeRequestURL(b.ctx, sb, tc.task.HostURL))
 	if _, err := b.queueRound(b.ctx, tc, sb, tgt.Worktree, next, launch); err != nil && !errors.Is(err, errBoardClosed) {
 		slog.Warn("ade: review fallback round", "scope", "ade", "run", rv.ID, "err", err)
 	}
@@ -914,7 +976,12 @@ func (b *TaskBoard) Reply(runID string, id string, reply string, resolved bool) 
 }
 
 // FinishReview ends a waiting review run on a result the user picks; the step then routes on it.
-func (b *TaskBoard) FinishReview(_ context.Context, args adewire.FinishReviewArgs) error {
+func (b *TaskBoard) FinishReview(ctx context.Context, args adewire.FinishReviewArgs) error {
+	_, err := joinOp(ctx, b, opKey("finishReview", args), func(context.Context) (struct{}, error) { return struct{}{}, b.finishReview(args) })
+	return err
+}
+
+func (b *TaskBoard) finishReview(args adewire.FinishReviewArgs) error {
 	run, err := b.deps.Tasks.GetRun(args.RunID)
 	if err != nil {
 		return err

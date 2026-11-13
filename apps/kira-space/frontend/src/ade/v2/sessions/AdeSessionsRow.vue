@@ -6,15 +6,17 @@ import { CommandItem } from '@theme/components/ui/command';
 import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { rowActions, rowMeta } from '@theme/lib/rowVariants';
-import { useRelativeTime } from '@workbench/behaviour/format';
+import { formatRelativeAt } from '@workbench/behaviour/format';
 import { splitMatches } from '@workbench/behaviour/match';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef } from 'vue';
 import AdeActivityIcon from '../AdeActivityIcon.vue';
 import { activityLabel } from '../activity';
 import AdeRunLog from '../panel/AdeRunLog.vue';
+import AdeOpStatus from '../plan/AdeOpStatus.vue';
 import { runStateLabel } from '../runState';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
+import { useSharedNow } from '../useSharedNow';
 import AdeSessionBadge from './AdeSessionBadge.vue';
 import type { SessionView } from './sessionView';
 import { useMarkSeenOnView } from './useMarkSessionSeen';
@@ -34,7 +36,8 @@ const emit = defineEmits<{ primary: [] }>();
 
 const takeOver = useAdeTakeOverStore();
 const menu = useSessionMenu();
-const ago = useRelativeTime(() => props.view.session.lastActiveAt);
+const now = useSharedNow();
+const ago = computed(() => formatRelativeAt(props.view.session.lastActiveAt, now.value));
 const logOpen = ref(false);
 const moreBtn = useTemplateRef<{ $el: HTMLElement }>('moreBtn');
 
@@ -137,6 +140,7 @@ defineExpose({ openMenu });
             ><HighlightedText :parts="marks(where)" />
             · <HighlightedText :parts="marks(view.shortId)" /></span
           >
+          <AdeOpStatus :session-id="id" />
           <Spinner v-if="pending" :size="12" label="" />
           <Kbd
             v-else-if="hint"

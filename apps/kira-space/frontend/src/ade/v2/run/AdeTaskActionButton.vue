@@ -5,6 +5,7 @@ import AdeTip from '../AdeTip.vue';
 import { TASK_ACTION_ICON } from '../plan/glyphs';
 import type { CardModel } from '../plan/usePlanModel';
 import { ACTION_CLASS } from '../tones';
+import { usePrefetchRunPreview } from './runPreview';
 import { useTaskAction } from './useTaskAction';
 
 // The task's step action: `▶ Run`, `▶ <Step>`, `Resume <Step>`, `Take over`, `Approve`, `Retry`,
@@ -12,6 +13,12 @@ import { useTaskAction } from './useTaskAction';
 // button (the Plan card header); the label moves to the tooltip.
 const props = defineProps<{ card: CardModel; icon?: boolean }>();
 const { action, perform, busy } = useTaskAction(() => props.card);
+const prefetch = usePrefetchRunPreview();
+// Hovering an agent step's Run warms the dialog's previews, so its message is there on open.
+function warm(): void {
+  if (action.value?.kind === 'run' && props.card.progress.step?.kind === 'agent')
+    prefetch(props.card);
+}
 </script>
 
 <template>
@@ -25,6 +32,7 @@ const { action, perform, busy } = useTaskAction(() => props.card);
       class="shrink-0"
       :pending="busy"
       :data-testid="`ade-task-action-${action.kind}`"
+      @pointerenter="warm"
       @click.stop="perform"
     >
       <div class="font-medium">{{ action.label }}</div>
@@ -38,6 +46,7 @@ const { action, perform, busy } = useTaskAction(() => props.card);
         :class="ACTION_CLASS[action.tone]"
         :pending="busy"
         :data-testid="`ade-task-action-${action.kind}`"
+        @pointerenter="warm"
         @click.stop="perform"
       >
         {{ action.label }}

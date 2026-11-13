@@ -203,7 +203,8 @@ type SpaceCall struct {
 // one task only. RequestBranches blocks until the user answers; ctx ends when the caller is gone.
 type SpaceTools interface {
 	LeaseTools
-	TaskInfo(ctx context.Context, taskID string) (TaskInfo, error)
+	// TaskInfo lists the registered repos only for a task with no repos, or with includeRegistered.
+	TaskInfo(ctx context.Context, taskID string, includeRegistered bool) (TaskInfo, error)
 	DeclareRepos(ctx context.Context, taskID string, repos []string) (TaskInfo, error)
 	RequestBranches(ctx context.Context, call SpaceCall, branches []BranchSpec) (RequestBranchesResult, error)
 	BranchStatus(ctx context.Context, taskID, repo, branch string, wait time.Duration) (BranchInfo, error)
@@ -243,6 +244,8 @@ type taskInfoArgs struct {
 	Repo        string `json:"repo,omitempty"`
 	Branch      string `json:"branch,omitempty"`
 	WaitSeconds int    `json:"waitSeconds,omitempty"`
+	// IncludeRegistered lists the registered repos even when the task has repos.
+	IncludeRegistered bool `json:"includeRegistered,omitempty"`
 }
 
 type reportArtifactsArgs struct {
@@ -358,17 +361,21 @@ func (s *Server) addTaskInfoTool(srv *mcp.Server) {
 		}
 		ctx, done := s.callCtx(ctx, req)
 		defer done()
-		info, err := s.space.TaskInfo(ctx, call.TaskID)
-		if err != nil {
-			return fail("task_info", err), TaskInfo{}, nil
-		}
+		ctx = withProgress(ctx, req)
+		// Wait first: the task's repos then agree with the branch's setup state.
+		var br *BranchInfo
 		if args.Repo != "" {
-			br, err := s.space.BranchStatus(ctx, call.TaskID, args.Repo, args.Branch, time.Duration(args.WaitSeconds)*time.Second)
+			st, err := s.space.BranchStatus(ctx, call.TaskID, args.Repo, args.Branch, time.Duration(args.WaitSeconds)*time.Second)
 			if err != nil {
 				return fail("task_info", err), TaskInfo{}, nil
 			}
-			info.Branch = &br
+			br = &st
 		}
+		info, err := s.space.TaskInfo(ctx, call.TaskID, args.IncludeRegistered)
+		if err != nil {
+			return fail("task_info", err), TaskInfo{}, nil
+		}
+		info.Branch = br
 		return nil, info, nil
 	})
 }

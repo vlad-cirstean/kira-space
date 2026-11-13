@@ -1,5 +1,6 @@
 import type { TerminalLaunchKind, TerminalTabState } from '@shared/domain/tabs';
 import { t } from '@theme/i18n';
+import { useDebounceFn } from '@vueuse/core';
 import { computed, onMounted, onUnmounted, type Ref, watch } from 'vue';
 import type { TerminalRendererDeps } from './terminalRenderer';
 import { loadTerminalRenderer } from './terminalRendererLoader';
@@ -65,6 +66,27 @@ export function useTerminalMount(options: UseTerminalMountOptions) {
   let resizeObserver: ResizeObserver | null = null;
   let renderer: typeof import('./terminalRenderer') | null = null;
   let pendingFocus = false;
+  let frame = 0;
+  let lastSent: { cols: number; rows: number } | null = null;
+  let pendingSize: { cols: number; rows: number } | null = null;
+
+  // A drag-resize or a layout storm produces many sizes; the pty needs only the one it settles on,
+  // and none when the grid did not change (a SIGWINCH redraws the whole screen).
+  const flushResize = useDebounceFn(() => {
+    const size = pendingSize;
+    pendingSize = null;
+    if (!size || (lastSent && lastSent.cols === size.cols && lastSent.rows === size.rows)) return;
+    lastSent = size;
+    resizeTerminal(tabId, size.cols, size.rows);
+  }, 100);
+  function reportSize(size: { cols: number; rows: number }): void {
+    if (lastSent && lastSent.cols === size.cols && lastSent.rows === size.rows) {
+      pendingSize = null;
+      return;
+    }
+    pendingSize = size;
+    void flushResize();
+  }
 
   const session = computed(() => terminalSession(tabId));
   const footerText = computed(() => {
@@ -94,6 +116,7 @@ export function useTerminalMount(options: UseTerminalMountOptions) {
       mod.focusTerminal(tabId);
     }
     if (isFirstOpen) {
+      lastSent = { cols: dims.cols, rows: dims.rows };
       void openTerminalSession(
         tabId,
         tabState.codeRepoId,
@@ -107,16 +130,20 @@ export function useTerminalMount(options: UseTerminalMountOptions) {
       );
     }
 
-    // No debounce needed — a ResizeObserver callback already coalesces synchronous layout thrash
-    // into one notification per frame (SlickGridHost.vue's own precedent).
+    // A ResizeObserver callback can still fire every frame while a pane animates, so the fit runs at
+    // most once per animation frame and the pty hears only a settled, changed size (`reportSize`).
     // not useResizeObserver — this construction sits after `await loadTerminalRenderer()`
     // above, past the point Vue's synchronous "current instance" tracking a composable's automatic
     // onUnmounted registration relies on; moving it earlier would mean guarding every callback
     // invocation against `renderer` still being null, a real behavior change for a mechanical
     // conversion. Declined, named per CLAUDE.md's library rule.
     resizeObserver = new ResizeObserver(() => {
-      const d = mod.fitTerminal(tabId);
-      if (d) resizeTerminal(tabId, d.cols, d.rows);
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const d = mod.fitTerminal(tabId);
+        if (d) reportSize(d);
+      });
     });
     resizeObserver.observe(container.value);
   }
@@ -129,6 +156,8 @@ export function useTerminalMount(options: UseTerminalMountOptions) {
   onUnmounted(() => {
     resizeObserver?.disconnect();
     resizeObserver = null;
+    if (frame) cancelAnimationFrame(frame);
+    frame = 0;
   });
 
   // §6.3: the Appearance "Data font" setting is read live, not only at mount — a change while this
@@ -140,7 +169,7 @@ export function useTerminalMount(options: UseTerminalMountOptions) {
     },
     () => {
       const d = renderer?.applyTerminalAppearance(tabId, rendererDeps);
-      if (d) resizeTerminal(tabId, d.cols, d.rows);
+      if (d) reportSize(d);
     },
   );
 

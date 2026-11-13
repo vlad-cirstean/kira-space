@@ -129,7 +129,15 @@ func (b *TaskBoard) taskCandidates(tc *taskCtx, cfgs []model.AdeRepoConfig) []re
 
 func (b *TaskBoard) setupInfo(sb model.AdeTaskBranch, worktree string) agentmcp.SetupInfo {
 	row, err := b.deps.Tasks.GetSetup(sb.ID)
-	if err != nil || row == nil {
+	if err != nil {
+		row = nil
+	}
+	return setupInfoFrom(row, worktree)
+}
+
+// setupInfoFrom is setupInfo over a row the caller already read; nil means no setup row.
+func setupInfoFrom(row *model.AdeWorktreeSetup, worktree string) agentmcp.SetupInfo {
+	if row == nil {
 		if worktree != "" {
 			return agentmcp.SetupInfo{State: "ready"}
 		}
@@ -144,8 +152,15 @@ func (b *TaskBoard) worktreePath(ctx context.Context, sb model.AdeTaskBranch) st
 	return path
 }
 
-func (b *TaskBoard) spaceInfo(ctx context.Context, tc *taskCtx) (agentmcp.TaskInfo, error) {
+// spaceInfo builds the task as an agent sees it. The registered repos are listed only for a task
+// with no repos, or when includeRegistered asks: the agent re-reads task_info often and the list
+// rarely changes.
+func (b *TaskBoard) spaceInfo(ctx context.Context, tc *taskCtx, includeRegistered bool) (agentmcp.TaskInfo, error) {
 	_, cfgs, err := b.registeredCandidates()
+	if err != nil {
+		return agentmcp.TaskInfo{}, err
+	}
+	setups, err := b.deps.Tasks.SetupByBranch()
 	if err != nil {
 		return agentmcp.TaskInfo{}, err
 	}
@@ -154,7 +169,7 @@ func (b *TaskBoard) spaceInfo(ctx context.Context, tc *taskCtx) (agentmcp.TaskIn
 		JiraKey:    tc.task.JiraKey,
 		Step:       "",
 		Repos:      []agentmcp.TaskRepo{},
-		Registered: make([]agentmcp.RegisteredRepo, 0, len(cfgs)),
+		Registered: []agentmcp.RegisteredRepo{},
 	}
 	if tc.wf != nil {
 		info.Workflow = tc.wf.Name
@@ -178,22 +193,29 @@ func (b *TaskBoard) spaceInfo(ctx context.Context, tc *taskCtx) (agentmcp.TaskIn
 				r.Mismatch = &agentmcp.WorktreeMismatch{Folder: at.own, CheckedOut: checkedOutName(at.head)}
 			}
 		}
-		r.Setup = b.setupInfo(br, r.Worktree)
+		var row *model.AdeWorktreeSetup
+		if v, ok := setups[br.ID]; ok {
+			row = &v
+		}
+		r.Setup = setupInfoFrom(row, r.Worktree)
 		info.Repos = append(info.Repos, r)
 	}
-	for _, c := range cfgs {
-		info.Registered = append(info.Registered, agentmcp.RegisteredRepo{Name: c.Name, Nickname: c.Nickname, CodeRepoID: c.CodeRepoID, Path: c.Root})
+	if includeRegistered || len(tc.branches) == 0 {
+		info.Registered = make([]agentmcp.RegisteredRepo, 0, len(cfgs))
+		for _, c := range cfgs {
+			info.Registered = append(info.Registered, agentmcp.RegisteredRepo{Name: c.Name, Nickname: c.Nickname, CodeRepoID: c.CodeRepoID, Path: c.Root})
+		}
 	}
 	return info, nil
 }
 
 // TaskInfo implements agentmcp.SpaceTools.
-func (b *TaskBoard) TaskInfo(ctx context.Context, taskID string) (agentmcp.TaskInfo, error) {
+func (b *TaskBoard) TaskInfo(ctx context.Context, taskID string, includeRegistered bool) (agentmcp.TaskInfo, error) {
 	tc, err := b.spaceCtx(taskID)
 	if err != nil {
 		return agentmcp.TaskInfo{}, err
 	}
-	return b.spaceInfo(ctx, tc)
+	return b.spaceInfo(ctx, tc, includeRegistered)
 }
 
 // DeclareRepos implements agentmcp.SpaceTools: it only adds not-created branches in registered
@@ -246,7 +268,7 @@ func (b *TaskBoard) DeclareRepos(ctx context.Context, taskID string, refs []stri
 	if err != nil {
 		return agentmcp.TaskInfo{}, err
 	}
-	return b.spaceInfo(ctx, tc)
+	return b.spaceInfo(ctx, tc, false)
 }
 
 // checkNewBranchName returns the refusal text for a name git rejects or one a new branch must never
@@ -388,11 +410,25 @@ func (b *TaskBoard) BranchStatus(ctx context.Context, taskID, repo, branch strin
 		return agentmcp.BranchInfo{}, err
 	}
 	deadline := time.Now().Add(wait)
-	for b.setupRunning(br) && time.Now().Before(deadline) {
+	lastNote := ""
+	reported := false
+	for time.Now().Before(deadline) {
+		// Take the channel before reading the row: a setup that ends between the two still closes
+		// the channel taken here, so the wait wakes at once instead of at the fallback tick.
+		done := b.setupDone(br.ID)
+		row, err := b.deps.Tasks.GetSetup(br.ID)
+		if err != nil || row == nil || row.State != model.AdeSetupRunning {
+			break
+		}
+		if !reported || row.Note != lastNote {
+			reported, lastNote = true, row.Note
+			agentmcp.ReportProgress(ctx, "preparing "+br.Name+": "+row.Note)
+		}
 		select {
 		case <-ctx.Done():
 			return b.branchInfo(br, nick, b.worktreePath(ctx, br)), ctx.Err()
-		case <-time.After(time.Second):
+		case <-done:
+		case <-time.After(min(5*time.Second, time.Until(deadline))):
 		}
 	}
 	at, _ := b.rowWorktree(ctx, br)
@@ -403,9 +439,15 @@ func (b *TaskBoard) BranchStatus(ctx context.Context, taskID, repo, branch strin
 	return info, nil
 }
 
-func (b *TaskBoard) setupRunning(sb model.AdeTaskBranch) bool {
-	row, err := b.deps.Tasks.GetSetup(sb.ID)
-	return err == nil && row != nil && row.State == model.AdeSetupRunning
+// setupDone returns the channel that closes when the branch's live setup run has recorded its
+// outcome; nil, which blocks forever, when none runs.
+func (b *TaskBoard) setupDone(branchID string) <-chan struct{} {
+	b.runMu.Lock()
+	defer b.runMu.Unlock()
+	if lr := b.setupLive[branchID]; lr != nil {
+		return lr.done
+	}
+	return nil
 }
 
 // taskBranch resolves repo and branch to the task's live branch row.

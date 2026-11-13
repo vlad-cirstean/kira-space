@@ -6,7 +6,6 @@ import type {
   Launch,
   OpenSessionEvent,
   RebaseArgs,
-  RebaseStart,
   RecordMergeArgs,
   SetBranchBaseArgs,
   TaskArgs,
@@ -30,7 +29,8 @@ export interface FlowDeps {
   ctx: DialogCtx;
   launch: LaunchDeps;
   turns: { watch: (terminalId: string, opts: { requireSubmit: boolean }) => TurnWatch };
-  rebase: (args: RebaseArgs) => Promise<RebaseStart>;
+  /** Resolves once the server accepts the rebase (it runs in the background); a refusal rejects. */
+  rebase: (args: RebaseArgs) => Promise<unknown>;
   setBranchBase: (args: SetBranchBaseArgs) => Promise<void>;
   recordMerge: (args: RecordMergeArgs) => Promise<void>;
   archiveTask: (args: TaskArgs) => Promise<void>;
@@ -120,7 +120,8 @@ async function deliverToBranch(
 }
 
 /** Rebase / queue / change base: the server runs the rebase in the background, so the dialog
- *  closes once it accepts; a draft branch only stores its base. */
+ *  closes once it accepts and a refusal (dirty worktree, bad `onto`) stays inline with the typed
+ *  options; a draft branch only stores its base. */
 async function sendRebase(deps: FlowDeps, spec: DialogSpec, state: DialogState): Promise<void> {
   const branchId = spec.branchId ?? '';
   const key = `rebase:${branchId}`;

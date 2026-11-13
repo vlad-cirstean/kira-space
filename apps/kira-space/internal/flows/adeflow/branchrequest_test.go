@@ -13,6 +13,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
@@ -166,6 +167,37 @@ func (f *brFixture) branchName(t *testing.T, repoID string) string {
 	return branchOf(t, board(t, f.app), f.task.ID, repoID).Name
 }
 
+// agentOp waits for the one finished agent op of kind under the tool's mcp op and checks its task.
+func (f *brFixture) agentOp(t *testing.T, kind, tool string) oplog.Record {
+	t.Helper()
+	var got []oplog.Record
+	testx.WaitUntil(t, waitFor, func() bool {
+		got = got[:0]
+		rows := opsNow(t, f.app)
+		call, ok := findOp(rows, oplog.CategoryMCP, tool)
+		if !ok {
+			return false
+		}
+		for _, r := range rows {
+			if r.Category == oplog.CategoryAgent && r.Kind == kind && r.ParentID == call.ID && r.Status != oplog.StatusRunning {
+				got = append(got, r)
+			}
+		}
+		return len(got) > 0
+	})
+	if len(got) != 1 || got[0].TaskID != f.task.ID {
+		t.Fatalf("%s ops under %s = %+v, want one for task %s", kind, tool, got, f.task.ID)
+	}
+	return got[0]
+}
+
+func opError(r oplog.Record) string {
+	if r.Error == nil {
+		return ""
+	}
+	return *r.Error
+}
+
 func TestBranchRequest(t *testing.T) {
 	t.Run("approve one repo, deny the other", func(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"})}, Name: "done"}}, onceStepYML, true)
@@ -211,8 +243,59 @@ func TestBranchRequest(t *testing.T) {
 		if _, err := branchRequest(f.app, req.ID); errCode(err) != "E_NOT_FOUND" {
 			t.Fatalf("BranchRequest after answer: %v, want E_NOT_FOUND", err)
 		}
+		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusOK || op.Command == nil || *op.Command != "Fix login, 2 branches" {
+			t.Fatalf("approval op = %+v, want ok for %q", op, "Fix login, 2 branches")
+		}
 		if ans, err := denyBR(f.app, req.ID); err != nil || ans.Resolved {
 			t.Fatalf("Deny after answer = %+v, %v, want resolved=false", ans, err)
+		}
+	})
+
+	t.Run("approved branches of two repos are created together", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"})}, Name: "done"}}, onceStepYML, true)
+		f.startRun(t)
+		req := f.waitRequest(t)
+		mustApprove(t, f.app, req.ID, []string{req.Items[0].ID, req.Items[1].ID}, nil)
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		if got := f.result(t, 1); strings.Count(got, "created") != 2 {
+			t.Fatalf("agent result = %s, want both branches created", got)
+		}
+		if name := f.branchName(t, f.api); name != "feat/login" {
+			t.Fatalf("api branch = %q, want the asked name", name)
+		}
+		if name := f.branchName(t, f.web); name != "feat/login-web" {
+			t.Fatalf("web branch = %q, want the asked name", name)
+		}
+		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusOK {
+			t.Fatalf("approval op = %+v, want ok", op)
+		}
+		if op := f.agentOp(t, "agentBranches", "request_branches"); op.Status != oplog.StatusOK || op.Command == nil || *op.Command != "api, web" {
+			t.Fatalf("branches op = %+v, want ok for %q", op, "api, web")
+		}
+	})
+
+	t.Run("one repo's failure leaves the other created and fails the op", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"})}, Name: "done"}}, onceStepYML, true)
+		f.pushBase(t, "feat/api-base")
+		draft := branchOf(t, board(t, f.app), f.task.ID, f.api)
+		if err := f.app.W.AdeTask.SetBranchBase(ctx, adewire.SetBranchBaseArgs{BranchID: draft.ID, Base: adewire.BaseChoice{Ref: "feat/api-base"}}); err != nil {
+			t.Fatal(err)
+		}
+		f.startRun(t)
+		req := f.waitRequest(t)
+		f.repo.Git("push", "-q", "origin", "--delete", "feat/api-base")
+		f.repo.Git("branch", "-D", "feat/api-base")
+		mustApprove(t, f.app, req.ID, []string{req.Items[0].ID, req.Items[1].ID}, nil)
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		got := f.result(t, 1)
+		if !strings.Contains(got, "failed") || !strings.Contains(got, "created") {
+			t.Fatalf("agent result = %s, want api failed and web created", got)
+		}
+		if name := f.branchName(t, f.web); name != "feat/login-web" {
+			t.Fatalf("web branch = %q, want it created despite api failing", name)
+		}
+		if op := f.agentOp(t, "agentBranches", "request_branches"); op.Status != oplog.StatusError || opError(op) != "failed: api" {
+			t.Fatalf("branches op = %+v, want error %q", op, "failed: api")
 		}
 	})
 
@@ -263,6 +346,9 @@ func TestBranchRequest(t *testing.T) {
 		waitRun(t, f.app, f.task.ID, "one", "done")
 		if n := len(taskOf(t, board(t, f.app), f.task.ID).BranchIDs); n != 1 {
 			t.Fatalf("branch rows after deny = %d, want 1", n)
+		}
+		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusCancelled || opError(op) != "denied" {
+			t.Fatalf("approval op = %+v, want cancelled: denied", op)
 		}
 	})
 
@@ -437,6 +523,9 @@ func TestBranchRequest(t *testing.T) {
 		if name := f.branchName(t, f.api); name != "" {
 			t.Fatalf("branch = %q, want none after a timeout", name)
 		}
+		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusCancelled || opError(op) != "timeout" {
+			t.Fatalf("approval op = %+v, want cancelled: timeout", op)
+		}
 	})
 
 	t.Run("a second call joins the open request and leaves alone", func(t *testing.T) {
@@ -472,10 +561,10 @@ func TestBranchRequest(t *testing.T) {
 
 	t.Run("each call times out on its own clock", func(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"})}, Name: "done"}}, onceStepYML, true,
-			flowharness.WithBranchRequestWait(2*time.Second))
+			flowharness.WithBranchRequestWait(4*time.Second))
 		f.startRun(t)
 		req := f.waitRequest(t)
-		time.Sleep(1200 * time.Millisecond)
+		time.Sleep(2 * time.Second) // margin for the joined call to outlive the first under -race
 		type answer struct {
 			res agentmcp.RequestBranchesResult
 			err error
@@ -486,7 +575,7 @@ func TestBranchRequest(t *testing.T) {
 			done <- answer{res, err}
 		}()
 		f.waitItems(t, 2)
-		// The first call ends at its own 2 s; the joined call keeps waiting in the same request.
+		// The first call ends at its own 4 s; the joined call keeps waiting in the same request.
 		waitRun(t, f.app, f.task.ID, "one", "done")
 		if got := f.result(t, 1); !strings.Contains(got, "timeout") {
 			t.Fatalf("first call result = %s, want timeout", got)
@@ -592,6 +681,10 @@ func TestBranchRequest(t *testing.T) {
 		}
 		if name := f.branchName(t, f.api); name != "" {
 			t.Fatalf("branch = %q, want none", name)
+		}
+		// An interactive session gets the same op as a run.
+		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusCancelled || opError(op) != "abandoned" {
+			t.Fatalf("approval op = %+v, want cancelled: abandoned", op)
 		}
 	})
 

@@ -1,6 +1,9 @@
 package adeflow
 
 import (
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -30,6 +33,23 @@ type Reader struct {
 	wmu  sync.Mutex // serializes the writer methods
 	once sync.Once
 	f    *configfs.Folder[adewire.Workflow]
+
+	gmu  sync.Mutex // guards gets
+	gets map[string]getMemo
+}
+
+// getMemo is one valid workflow Get resolved, with the files it was resolved from.
+type getMemo struct {
+	tok getToken
+	wf  adewire.Workflow
+}
+
+// getToken identifies the inputs of a Get: the workflow file and the step library its `step:` items
+// resolve against (newest mtime and total size over the library's files).
+type getToken struct {
+	wfMtime, wfSize       int64
+	stepsMtime, stepsSize int64
+	stepsFiles            int
 }
 
 func (r *Reader) folder() *configfs.Folder[adewire.Workflow] {
@@ -98,10 +118,67 @@ func (r *Reader) Get(id string) (adewire.Workflow, bool) {
 	if id == "" {
 		return adewire.Workflow{}, false
 	}
+	tok, tokOK := r.getToken(id)
+	if tokOK {
+		r.gmu.Lock()
+		m, hit := r.gets[id]
+		r.gmu.Unlock()
+		if hit && m.tok == tok {
+			return cloneWorkflow(m.wf), true
+		}
+	}
 	if e, ok := r.folder().Get(id + ".yaml"); ok && e.Value != nil && e.Value.ID == id {
+		// Only a file that parses now is memoised: a broken file answers with its last good version,
+		// which must keep re-reading the file so the fix is seen.
+		if tokOK && e.Problem == nil {
+			r.gmu.Lock()
+			if r.gets == nil {
+				r.gets = map[string]getMemo{}
+			}
+			r.gets[id] = getMemo{tok: tok, wf: *e.Value}
+			r.gmu.Unlock()
+			return cloneWorkflow(*e.Value), true
+		}
 		return *e.Value, true
 	}
 	return adewire.Workflow{}, false
+}
+
+// cloneWorkflow lets a caller reorder or replace steps without touching the memo. Map and slice
+// fields inside a step stay shared; callers read them.
+func cloneWorkflow(wf adewire.Workflow) adewire.Workflow {
+	wf.Steps = slices.Clone(wf.Steps)
+	return wf
+}
+
+// getToken stats the workflow file and lists the step library once. ok is false when the file is
+// missing or unreadable: Get then takes the uncached path.
+func (r *Reader) getToken(id string) (getToken, bool) {
+	fi, err := os.Stat(filepath.Join(r.Dir, id+".yaml"))
+	if err != nil {
+		return getToken{}, false
+	}
+	tok := getToken{wfMtime: fi.ModTime().UnixNano(), wfSize: fi.Size()}
+	if r.Steps == nil || r.Steps.Dir == "" {
+		return tok, true
+	}
+	ents, err := os.ReadDir(r.Steps.Dir)
+	if err != nil {
+		return tok, os.IsNotExist(err)
+	}
+	for _, e := range ents {
+		if e.IsDir() {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			return getToken{}, false
+		}
+		tok.stepsFiles++
+		tok.stepsSize += info.Size()
+		tok.stepsMtime = max(tok.stepsMtime, info.ModTime().UnixNano())
+	}
+	return tok, true
 }
 
 // WriteDocs writes the folder's AGENTS.md, creating the folder when missing.

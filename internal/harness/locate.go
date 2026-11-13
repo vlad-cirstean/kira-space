@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -57,21 +58,59 @@ func (d CLIDeps) withDefaults() CLIDeps {
 	return d
 }
 
+// resolved caches successful login-shell probes, keyed by everything the result depends on. The
+// probe can cost seconds and every launch resolves twice; the PATH and candidate lookup costs
+// microseconds and always runs fresh, so a reinstall that puts a binary earlier on PATH wins at the
+// next launch. Only hits are stored, so installing a missing CLI and retrying works.
+var resolved sync.Map // string -> resolvedCLI
+
+type resolvedCLI struct {
+	path  string
+	probe string // the probed-list entry of the login-shell step
+}
+
+func resolveKey(spec CLISpec) string {
+	return strings.Join([]string{spec.Name, os.Getenv("PATH"), os.Getenv("SHELL"), strings.Join(spec.Candidates, "\x00")}, "\x01")
+}
+
 // ResolveCLI finds spec's CLI: PATH and the candidate install paths first, then the user's login
 // shell, because a launch runs through that shell and a GUI app's own PATH can differ from it.
 // probed lists every place considered. A miss returns ErrCLIMissing.
 func ResolveCLI(ctx context.Context, spec CLISpec, deps CLIDeps) (path string, probed []string, err error) {
-	deps = deps.withDefaults()
 	if filepath.IsAbs(deps.Bin) {
+		deps = deps.withDefaults()
 		if toolexec.IsExecutable(deps.Stat, deps.Bin) {
 			return deps.Bin, []string{deps.Bin}, nil
 		}
 		return "", []string{deps.Bin}, ErrCLIMissing
 	}
+	cacheable := deps.LookPath == nil && deps.Stat == nil && deps.Getenv == nil && deps.RunShell == nil
+	deps = deps.withDefaults()
 	path, probed, found := toolexec.Locate(deps.LookPath, deps.Stat, spec.Name, spec.Candidates)
 	if found {
 		return path, probed, nil
 	}
+	var key string
+	if cacheable {
+		key = resolveKey(spec)
+		if v, ok := resolved.Load(key); ok {
+			hit := v.(resolvedCLI)
+			if toolexec.IsExecutable(os.Stat, hit.path) {
+				return hit.path, append(probed, hit.probe), nil
+			}
+			resolved.Delete(key)
+		}
+	}
+	path, probed, err = probeLoginShell(ctx, spec, deps, probed)
+	if err == nil && cacheable {
+		resolved.Store(key, resolvedCLI{path: path, probe: probed[len(probed)-1]})
+	}
+	return path, probed, err
+}
+
+// probeLoginShell asks the user's login shell where the CLI is. probed already lists the places the
+// PATH and candidate lookup tried.
+func probeLoginShell(ctx context.Context, spec CLISpec, deps CLIDeps, probed []string) (string, []string, error) {
 	shell := deps.Getenv("SHELL")
 	if !filepath.IsAbs(shell) || !toolexec.IsExecutable(deps.Stat, shell) {
 		return "", probed, ErrCLIMissing

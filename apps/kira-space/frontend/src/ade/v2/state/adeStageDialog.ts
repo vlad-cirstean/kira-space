@@ -7,6 +7,19 @@ import { usePlanModel } from '../plan/usePlanModel';
 import { useDismissHandover, useNextPass, useSetTaskStep, useStepDone } from '../queries';
 import { useSessions } from '../readQueries';
 import type { Handover } from '../wire';
+import { useAdeBoardUiStore } from './adeBoardUi';
+import { useAdeDialogsStore } from './adeDialogs';
+import { useAdeOpsStore } from './adeOps';
+import { timedCall } from './refusalTiming';
+
+interface KeptMove {
+  mode: 'move' | 'pass';
+  asked: string;
+  picked: string | null;
+  typed: string | null;
+  closeChoice: 'close' | 'keep';
+  seeded: Handover | null;
+}
 
 // The stage-change dialog: which task it is open for, the target stage and the handover notes typed
 // for it. One concern: the stage move with notes. Every opener (step mover, task menu, Next stage action,
@@ -19,6 +32,9 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
   const nextPass = useNextPass();
   const dismissM = useDismissHandover();
   const sessions = useSessions();
+  const ops = useAdeOpsStore();
+  const ui = useAdeBoardUiStore();
+  const dialogs = useAdeDialogsStore();
 
   const taskId = ref<string | null>(null);
   /** Opened by the routed `handover` prompt rather than by a board action. */
@@ -83,28 +99,49 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
       toStepId.value,
     ),
   );
+  /** Inputs of a move that failed with the dialog no longer showable: restored on the task's next open. */
+  const kept = new Map<string, KeptMove>();
+  /** The ADE shell's mount is alive: only it shows a non-routed dialog. */
+  const boardMounted = ref(false);
   const isOpen = computed(() => taskId.value !== null && card.value !== null);
 
-  function open(args: {
-    taskId: string;
-    toStepId?: string;
-    routed?: boolean;
-    seed?: Handover | null;
-  }): void {
+  function restore(k: KeptMove): void {
+    mode.value = k.mode;
+    asked.value = k.asked;
+    picked.value = k.picked;
+    typed.value = k.typed;
+    closeChoice.value = k.closeChoice;
+    seeded.value = k.seeded;
+  }
+
+  function open(
+    args: {
+      taskId: string;
+      toStepId?: string;
+      routed?: boolean;
+      seed?: Handover | null;
+    },
+    startMode: 'move' | 'pass' = 'move',
+  ): void {
     taskId.value = args.taskId;
-    mode.value = 'move';
+    mode.value = startMode;
     routed.value = args.routed ?? false;
     asked.value = args.toStepId ?? '';
     picked.value = null;
     typed.value = null;
     closeChoice.value = 'close';
     seeded.value = args.seed ?? null;
+    const k = kept.get(args.taskId);
+    kept.delete(args.taskId);
+    if (k && k.mode === startMode) {
+      restore(k);
+      seeded.value = args.seed ?? k.seeded;
+    }
   }
 
   /** Opens the dialog for the next pass of a finished orchestrator. */
   function openPass(id: string): void {
-    open({ taskId: id });
-    mode.value = 'pass';
+    open({ taskId: id }, 'pass');
   }
 
   function close(): void {
@@ -112,45 +149,72 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     seeded.value = null;
   }
 
-  /** Sends the move; notes go along only when they differ from the draft. */
-  const move = useAsyncAction(async () => {
+  /**
+   * Closes at once and runs the move detached as the task's op (chip, toast past 2 s or on failure), so the
+   * routed prompt host is free right away. A move refused promptly reopens the dialog on the board mount
+   * with the typed notes and choices, unless another dialog took the slot or the board is not mounted; a
+   * late refusal keeps them for the task's next open. False when nothing started.
+   */
+  function submit(): boolean {
     const c = card.value;
     const m = moves.value;
-    if (!c || !m || !toStepId.value) return;
+    if (!c || !m || !toStepId.value) return false;
+    const id = c.task.id;
+    const name = c.title;
     const sendNotes = notes.value !== prefill.value ? { notes: notes.value } : {};
     const closing =
       closable.value.length > 0 && closeChoice.value === 'close' ? { closeSessions: true } : {};
-    if (mode.value === 'pass') {
-      await nextPass.mutateAsync({
-        taskId: c.task.id,
-        fromStepId: fromStepId.value,
-        ...(notes.value.trim() === '' ? {} : { notes: notes.value }),
-        ...closing,
-      });
-      close();
-      return;
-    }
+    const from = fromStepId.value;
+    const to = toStepId.value;
     const manual = c.progress.step?.kind === 'manual' && !c.progress.finished;
-    if (manual && toStepId.value === m.next?.id) {
-      await stepDone.mutateAsync({ taskId: c.task.id, ...sendNotes, ...closing });
-    } else {
-      await setStep.mutateAsync({
-        taskId: c.task.id,
-        stepId: toStepId.value,
-        fromStepId: fromStepId.value,
-        ...sendNotes,
-        ...closing,
-      });
-    }
+    const isPass = mode.value === 'pass';
+    const passNotes = notes.value.trim() === '' ? {} : { notes: notes.value };
+    const advance = manual && to === m.next?.id;
+    const snapshot: KeptMove = {
+      mode: mode.value,
+      asked: asked.value,
+      picked: picked.value,
+      typed: typed.value,
+      closeChoice: closeChoice.value,
+      seeded: seeded.value,
+    };
     close();
-  });
+    const kind = isPass ? 'nextPass' : 'setStep';
+    const opId = `${kind}:${id}`;
+    const timed = timedCall(async () => {
+      if (isPass) {
+        await nextPass.mutateAsync({ taskId: id, fromStepId: from, ...passNotes, ...closing });
+      } else if (advance) {
+        await stepDone.mutateAsync({ taskId: id, ...sendNotes, ...closing });
+      } else {
+        await setStep.mutateAsync({
+          taskId: id,
+          stepId: to,
+          fromStepId: from,
+          ...sendNotes,
+          ...closing,
+        });
+      }
+    });
+    void ops.run({ id: opId, kind, taskId: id, name }, timed.call).then((ok) => {
+      if (ok) return;
+      // A live op of the same id means the submit was a duplicate, not a failure.
+      if (ops.isRunning(opId)) return;
+      ui.select(id);
+      kept.set(id, snapshot);
+      const free = taskId.value === null && ui.runTaskId === null && dialogs.spec === null;
+      if (!timed.prompt() || !free || !boardMounted.value) return;
+      open({ taskId: id });
+    });
+    return true;
+  }
 
   /** Not now on the routed prompt: keeps the draft and withdraws the popup. */
   const dismissal = useAsyncAction(async () => {
     if (taskId.value) await dismissM.mutateAsync({ taskId: taskId.value });
   });
 
-  const error = computed(() => move.error.value ?? dismissal.error.value ?? '');
+  const error = computed(() => dismissal.error.value ?? '');
   /** Edits the draft would lose on close. */
   const dirty = computed(() => notes.value !== prefill.value);
 
@@ -161,7 +225,6 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     toStepId,
     notes,
     error,
-    pending: move.pending,
     dirty,
     card,
     moves,
@@ -171,10 +234,11 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     closeChoice,
     routed,
     isOpen,
+    boardMounted,
     open,
     openPass,
     close,
-    submit: move.run,
+    submit,
     dismiss: dismissal.run,
   };
 });

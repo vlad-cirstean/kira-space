@@ -11,6 +11,7 @@ import {
   useSaveLeaseQueues,
 } from '../leases/queries';
 import type { LeaseQueue } from '../wire';
+import { useAdeOpsStore } from './adeOps';
 
 // Lease panel state: the new-queue draft and the actions on queues and holders. The queues
 // themselves are server state (`useLeases`).
@@ -19,6 +20,7 @@ export const useAdeLeasesStore = defineStore('adeLeases', () => {
   const save = useSaveLeaseQueues();
   const request = useRequestLeaseRelease();
   const force = useForceLeaseRelease();
+  const ops = useAdeOpsStore();
   const draft = ref('');
 
   const names = (): string[] => (leases.data.value?.queues ?? []).map((q) => q.name);
@@ -62,11 +64,9 @@ export const useAdeLeasesStore = defineStore('adeLeases', () => {
   }
 
   async function requestRelease(queue: string): Promise<void> {
-    try {
-      await request.mutateAsync({ queue });
-    } catch (err) {
-      fail(err);
-    }
+    await ops.run({ id: `lease:${queue}`, kind: 'leaseRequest', name: queue }, () =>
+      request.mutateAsync({ queue }),
+    );
   }
 
   async function forceRelease(q: LeaseQueue): Promise<void> {
@@ -77,12 +77,22 @@ export const useAdeLeasesStore = defineStore('adeLeases', () => {
       tone: 'danger',
     });
     if (!ok) return;
-    try {
-      await force.mutateAsync({ queue: q.name });
-    } catch (err) {
-      fail(err);
-    }
+    await ops.run({ id: `lease:${q.name}`, kind: 'leaseRelease', name: q.name }, () =>
+      force.mutateAsync({ queue: q.name }),
+    );
   }
 
-  return { draft, saving, canAdd, addQueue, removeQueue, requestRelease, forceRelease };
+  /** Whether a request or force release of this queue is in flight. */
+  const leaseBusy = (queue: string): boolean => ops.isRunning(`lease:${queue}`);
+
+  return {
+    draft,
+    saving,
+    canAdd,
+    addQueue,
+    removeQueue,
+    requestRelease,
+    forceRelease,
+    leaseBusy,
+  };
 });

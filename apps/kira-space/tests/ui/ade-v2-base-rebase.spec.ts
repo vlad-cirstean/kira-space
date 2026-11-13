@@ -172,6 +172,20 @@ test('an edited prompt is what Rebase sends', async ({ relaunch }) => {
   });
 });
 
+test('a refused Rebase keeps the dialog open with its message and the error', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await open(relaunch, onDevelop, [
+    { channel: IPC.adeTaskRebase, error: { code: 'invalid', message: 'worktree has changes' } },
+  ] as never);
+  await authTask(page).locator(t('ade-rebase')).first().click();
+  await page.locator(t('ade-dialog-message')).fill('Rebase, keep merge commits.');
+  await page.locator(t('ade-dialog-send')).click();
+  await expect.poll(() => calls(control, IPC.adeTaskRebase)).toHaveLength(1);
+  await expect(page.locator(t('ade-dialog-error'))).toContainText('worktree has changes');
+  await expect(page.locator(t('ade-dialog-message'))).toHaveValue('Rebase, keep merge commits.');
+});
+
 test('the same act from the panel header, fix menu and task menu has one label and call', async ({
   relaunch,
 }) => {

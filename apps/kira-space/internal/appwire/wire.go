@@ -89,6 +89,9 @@ type gitWired struct {
 	trackers      *issuetracker.Registry
 }
 
+// Registry is the shared git session registry; flow tests acquire repo entries through it.
+func (g gitWired) Registry() *gitsession.Registry { return g.registry }
+
 // wireTrackers builds the issue tracker registry.
 func wireTrackers(opLog *oplog.Log, o jira.Options) *issuetracker.Registry {
 	if o.Runner == nil {
@@ -218,7 +221,7 @@ func wireAdeTask(
 		NamesMarker: filepath.Join(config.KiraSpaceHome(), "ade", "names-v1.done"),
 		BackupDir:   filepath.Join(config.KiraSpaceHome(), "backups", "readable-names"),
 		KeepStem:    func(module, file string) bool { return configsync.HasBase(config.KiraSpaceHome(), module, file) },
-		OnBoard:     func() { bridge.AdeTaskBoardChanged(events) },
+		OnBoard:     func(ch adewire.BoardChangedEvent) { bridge.AdeTaskBoardChanged(events, ch) },
 		OnLeases:    func() { bridge.AdeLeasesChanged(events) },
 		LeaseQueues: repositories.AdeLeaseQueues,
 		AdeSettings: func() model.AdeSettings {
@@ -328,14 +331,14 @@ func adeCloseTerminal(registry *terminal.Registry) func(id string) error {
 	}
 }
 
-// shutdownTracker is wireTracker's teardown half: flushes the tracker's still-in-memory lastActive
-// values, then stops the hooks listener.
+// shutdownTracker is wireTracker's teardown half: stops the hooks listener and drains its event
+// worker, then flushes the tracker's still-in-memory lastActive values, so drained events count.
 func shutdownTracker(tracker *ade.Tracker, hooks *harness.Hooks) {
-	if err := tracker.Close(); err != nil {
-		slog.Warn("ade: close", "scope", "ade", "err", err)
-	}
 	if err := hooks.Stop(); err != nil {
 		slog.Warn("agent hooks: stop", "scope", "ade", "err", err)
+	}
+	if err := tracker.Close(); err != nil {
+		slog.Warn("ade: close", "scope", "ade", "err", err)
 	}
 }
 

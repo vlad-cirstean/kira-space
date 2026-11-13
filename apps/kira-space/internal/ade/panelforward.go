@@ -352,11 +352,11 @@ func (b *TaskBoard) ForwardPanelEdits(_ context.Context, taskID string) (adewire
 	switch {
 	case len(res.Sent) > 0:
 		b.clearPending(taskID)
-		b.notifyBoard()
+		b.notifyBoardWith(taskChanged(taskID))
 		return res, nil
 	case len(errs) == 0:
 		b.clearPending(taskID)
-		b.notifyBoard()
+		b.notifyBoardWith(taskChanged(taskID))
 		return res, invalid("%s", i18n.T("backend.space.ade.panelForward.noAgent.body", nil))
 	}
 	return res, errors.Join(errs...)
@@ -365,7 +365,7 @@ func (b *TaskBoard) ForwardPanelEdits(_ context.Context, taskID string) (adewire
 // DismissPanelEdits drops the task's pending panel edits without sending them.
 func (b *TaskBoard) DismissPanelEdits(_ context.Context, taskID string) error {
 	b.clearPending(taskID)
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(taskID))
 	return nil
 }
 

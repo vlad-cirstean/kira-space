@@ -9,6 +9,8 @@ import { computed, ref, watch } from 'vue';
 import { useProjectOptions } from '../../../repo/state/projectOptions';
 import { candidateOf, candidateOptions, newBranchError } from '../branchOptions';
 import { useCandidates, useSetTaskBranch, useUpdateTaskRepo } from '../queries';
+import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdeOpsStore } from '../state/adeOps';
 import type { Branch } from '../wire';
 import { useDiscardGuard } from './useDiscardGuard';
 
@@ -37,11 +39,14 @@ const projects = useProjectOptions(() => props.draftRepoIds);
 
 const guard = useDiscardGuard();
 const setBranch = useSetTaskBranch();
+const ops = useAdeOpsStore();
+const ui = useAdeBoardUiStore();
 const setRepo = useUpdateTaskRepo();
 
 async function submitBranch(name: string, existing: boolean): Promise<void> {
   error.value = '';
   const branchId = props.branch.id;
+  const taskId = props.branch.taskId;
   try {
     // A not-created row has no worktree to lose.
     const { proceed, discard } =
@@ -59,8 +64,13 @@ async function submitBranch(name: string, existing: boolean): Promise<void> {
             confirmLabel: t('space.ade.taskTab.branchMenu.changeBranchConfirm.confirm'),
           });
     if (!proceed) return;
-    await setBranch.mutateAsync({ branchId, name, existing, discardChanges: discard });
     open.value = false;
+    // The change runs as the branch's op (chip on the row, toast past 2 s or on failure).
+    const ok = await ops.run(
+      { id: `setBranch:${branchId}`, kind: 'setBranch', taskId, branchId, name },
+      () => setBranch.mutateAsync({ branchId, name, existing, discardChanges: discard }),
+    );
+    if (!ok) ui.select(taskId);
   } catch (err) {
     error.value = errorText(err);
   }

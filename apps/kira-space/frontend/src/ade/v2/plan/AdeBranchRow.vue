@@ -14,7 +14,6 @@ import { formatShortcut } from '@workbench/shortcuts/keys';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { useRepoLinksStore } from '../../../repo/state/repoLinks';
-import { useRepos } from '../../../repo/state/reposQueries';
 import { repoTint } from '../../../state/coderepos';
 import AdeTip from '../AdeTip.vue';
 import { useRunAutomation } from '../automation/useRunAutomation';
@@ -39,6 +38,7 @@ import AdeOpStatus from './AdeOpStatus.vue';
 import AdeTagIcon from './AdeTagIcon.vue';
 import { ATTACH_GLYPH, BRANCH_ACTION_ICON, BRANCH_TAG_GLYPH, rowActionSplit } from './glyphs';
 import { type BranchRowModel, usePlanModel } from './usePlanModel';
+import { useSharedRepos } from './useSharedRepos';
 
 const props = withDefaults(
   defineProps<{
@@ -58,8 +58,8 @@ const dialogs = useAdeDialogsStore();
 const contextMenu = useContextMenuStore();
 const tabs = useAdePanelTabsStore();
 const takeOver = useAdeTakeOverStore();
-const { model, liveNow } = usePlanModel();
-const repos = useRepos();
+const { model, liveNow, rippleIds } = usePlanModel();
+const repos = useSharedRepos();
 const repoLinks = useRepoLinksStore();
 const repoTintOf = computed(() => repoTint(repoLinks.repoColorOf(props.row.branch.codeRepoId)));
 const reviewCode = useReviewCode();
@@ -262,7 +262,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
     role="button"
     tabindex="0"
     :data-selected="selected || undefined"
-    :data-ripple="row.ripple || undefined"
+    :data-ripple="rippleIds.branches.has(row.id) || undefined"
     :data-testid="testid"
     :data-branch-id="row.id"
     :data-depth="row.depth"
@@ -454,7 +454,8 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
         :label="t('space.ade.board.taskMenu.reviewCode.label')"
         :class="panel ? 'shrink-0' : 'size-5 shrink-0'"
         disabled-trigger
-        :disabled="reviewCode.pending.value || choice.disabled"
+        :pending="reviewCode.pendingFor([row.id])"
+        :disabled="choice.disabled"
         data-testid="ade-branch-review"
         @click.stop="reviewCode.open(row.branch.taskId, row.id, rowRef)"
       >

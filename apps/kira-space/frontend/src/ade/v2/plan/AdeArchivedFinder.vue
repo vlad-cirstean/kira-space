@@ -16,7 +16,7 @@ import { usePlanModel } from './usePlanModel';
 // Search over every archived task, loaded or not. Picking one only reports it; the parent selects
 // it, so the archived panel opens beside the Plan.
 const emit = defineEmits<{ pick: [taskId: string] }>();
-const { model, repoLabel } = usePlanModel();
+const { history, repoLabel } = usePlanModel();
 const open = ref(false);
 
 function pick(taskId: string): void {
@@ -26,7 +26,7 @@ function pick(taskId: string): void {
 </script>
 
 <template>
-  <Popover v-if="model?.board.history.length" v-model:open="open">
+  <Popover v-if="history.length" v-model:open="open">
     <PopoverTrigger as-child>
       <TooltipIconButton
         icon="search"
@@ -42,7 +42,7 @@ function pick(taskId: string): void {
             t('common.state.noMatches.empty')
           }}</CommandEmpty>
           <CommandItem
-            v-for="e in model.board.history"
+            v-for="e in history"
             :key="e.taskId"
             :value="e.taskId"
             class="flex-col items-start gap-0.5"

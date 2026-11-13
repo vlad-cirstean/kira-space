@@ -14,10 +14,10 @@ import { errorText } from '@workbench/bridge/codedError';
 import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import { taskPatch } from '../board/panelFacts';
-import { useUpdateTask } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { STATUS_TEXT_CLASS } from '../statusColors';
 import { type CardModel, usePlanModel } from './usePlanModel';
+import { useTaskWrites } from './useTaskWrites';
 
 // The task's manual status as small text on its row, in a fixed-width column; click opens the status set. No tooltip: a
 // Tooltip between DropdownMenu and its trigger steals the popper anchor; aria-label names it.
@@ -25,7 +25,7 @@ const props = defineProps<{ card: CardModel }>();
 
 const ui = useAdeBoardUiStore();
 const { model } = usePlanModel();
-const update = useUpdateTask();
+const { update } = useTaskWrites();
 const statuses = computed(() => model.value?.board.statuses ?? []);
 
 async function pick(value: unknown): Promise<void> {

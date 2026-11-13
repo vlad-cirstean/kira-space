@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/vue-query';
 import type { MaybeRefOrGetter } from 'vue';
-import { toValue } from 'vue';
+import { computed, toValue } from 'vue';
 import { useAdeReader } from './reader';
-import type { LogKind } from './wire';
+import type { Board, LogKind } from './wire';
 
+// The board, change request, workflow and session queries are `shallow`: each fetch replaces the whole
+// value, so deep reactive tracking of thousands of read-only fields buys nothing.
 // Read side of the ADE queries, transport-agnostic (`useAdeReader`). Push-driven: the client's default
 // staleTime is Infinity and the signals installed per app (`installAdeReadSignals`) invalidate.
 
@@ -23,14 +25,25 @@ export function useBoard() {
   const reader = useAdeReader();
   return useQuery({
     queryKey: boardKey,
+    shallow: true,
     queryFn: () => reader.board(),
   });
+}
+
+const NO_HISTORY: Board['history'] = [];
+
+/** The archived tasks of the board; the one reader of `board.history`, so history can move to a
+ *  query of its own without touching callers. */
+export function useBoardHistory() {
+  const board = useBoard();
+  return computed(() => board.data.value?.history ?? NO_HISTORY);
 }
 
 export function useChangeRequests() {
   const reader = useAdeReader();
   return useQuery({
     queryKey: changeRequestsKey,
+    shallow: true,
     queryFn: () => reader.changeRequests(),
   });
 }
@@ -39,6 +52,7 @@ export function useWorkflows() {
   const reader = useAdeReader();
   return useQuery({
     queryKey: workflowsKey,
+    shallow: true,
     queryFn: () => reader.workflows(),
   });
 }
@@ -47,6 +61,7 @@ export function useSessions() {
   const reader = useAdeReader();
   return useQuery({
     queryKey: sessionsKey,
+    shallow: true,
     queryFn: () => reader.sessions(),
   });
 }

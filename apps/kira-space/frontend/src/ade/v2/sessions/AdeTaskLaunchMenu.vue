@@ -7,7 +7,7 @@ import { useTaskLaunch } from './useTaskLaunch';
 // The plus on a task's Sessions tab bar: per worktree, a terminal (Git module) or an agent session with no first message.
 const props = defineProps<{ taskId: string; branchId?: string }>();
 
-const { usable, pending, items } = useTaskLaunch(
+const { usable, items } = useTaskLaunch(
   () => props.taskId,
   () => props.branchId,
 );
@@ -18,7 +18,6 @@ const { usable, pending, items } = useTaskLaunch(
     v-if="usable"
     :label="t('space.ade.taskLaunch.trigger.tooltip')"
     :items="items"
-    :pending="pending"
     class="shrink-0"
     data-testid="ade-task-launch"
   />

@@ -30,7 +30,8 @@ const (
 	// leaseToolCeiling x the TTL bounds how long one silent tool call keeps a holder alive, so an
 	// interrupted tool (no end event) cannot hold a lease for good.
 	leaseToolCeiling = 3
-	// leaseOrderFresh is how long a computed task order ranks waiters before it is built again.
+	// leaseOrderFresh is how long a computed task order stays current with no board change, for the
+	// settings it reads that never announce one.
 	leaseOrderFresh = 5 * time.Second
 )
 
@@ -43,15 +44,58 @@ type leaseState struct {
 	pending map[leases.Key][]string
 	// saveMu serializes SaveLeaseQueues so the stored names and the book end in the same order.
 	saveMu sync.Mutex
-	// order caches the task order a waiter is ranked by: building it takes a full board, so waiters
-	// polling their queue would each pay for one. A board change drops it without waiting.
+	// order caches the task order a waiter is ranked by. A board change marks it stale without waiting.
 	order orderCache
 	// runs holds the owners of live headless runs, which emit no hook events: a live run is alive.
 	runs map[leases.Key]struct{}
+	// flush holds the delivery in progress per owner, guarded by mu (the entry is dropped by endLeases).
+	flush map[leases.Key]*leaseFlush
+	// ended remembers the last endedKeep owners endLeases freed, so a late re-queue or delivery for
+	// one is dropped instead of leaking a pending entry. Guarded by mu.
+	ended      map[leases.Key]struct{}
+	endedOrder []leases.Key
+}
+
+// endedKeep bounds the ended-owner memory.
+const endedKeep = 256
+
+// markEnded records an ended owner. The caller holds lease.mu.
+func (s *leaseState) markEnded(key leases.Key) {
+	if s.ended == nil {
+		s.ended = map[leases.Key]struct{}{}
+	}
+	if _, ok := s.ended[key]; ok {
+		return
+	}
+	s.ended[key] = struct{}{}
+	s.endedOrder = append(s.endedOrder, key)
+	if len(s.endedOrder) > endedKeep {
+		delete(s.ended, s.endedOrder[0])
+		s.endedOrder = s.endedOrder[1:]
+	}
+}
+
+// leaseFlush serializes one owner's deliveries. A flush takes the pending messages, writes them to
+// the PTY without holding leaseState.mu, and puts them back when the session was busy. mu spans
+// that whole sequence, so a later flush or notice read waits and then sees the re-queued messages
+// in order. The other fields are guarded by leaseState.mu.
+type leaseFlush struct {
+	mu   sync.Mutex
+	msgs []string // taken and not yet sent or re-queued: still pending for the snapshot
+}
+
+// flushOf returns the owner's flush state, creating it. The caller holds lease.mu.
+func (s *leaseState) flushOf(key leases.Key) *leaseFlush {
+	f := s.flush[key]
+	if f == nil {
+		f = &leaseFlush{}
+		s.flush[key] = f
+	}
+	return f
 }
 
 func (b *TaskBoard) initLeases() {
-	b.lease = &leaseState{pending: map[leases.Key][]string{}, runs: map[leases.Key]struct{}{}}
+	b.lease = &leaseState{pending: map[leases.Key][]string{}, runs: map[leases.Key]struct{}{}, flush: map[leases.Key]*leaseFlush{}}
 	b.lease.book = leases.New(leases.Options{
 		Now: b.deps.Now, TTL: b.deps.LeaseTTL, Order: b.taskListOrder,
 		OnGrant: b.onLeaseGrant, OnChange: b.leasesChanged,
@@ -87,8 +131,9 @@ func leaseKeyOf(sessionID, runID string) leases.Key {
 	return leases.Key(runKeyPrefix + runID)
 }
 
-// taskListOrder is the order the Tasks UI shows, from a board snapshot at most leaseOrderFresh old:
-// the rank of a lease waiter. A failed read ranks everyone by arrival.
+// taskListOrder is the order the Tasks UI shows: the rank of a lease waiter. Once built it never
+// runs Board on the caller: a stale order is returned while one background build refreshes it.
+// A failed first read ranks everyone by arrival.
 func (b *TaskBoard) taskListOrder() []string {
 	now := b.deps.Now()
 	// The UI reads the machine's local date, so the order does too.
@@ -104,7 +149,7 @@ func (b *TaskBoard) taskListOrder() []string {
 			s = b.deps.AdeSettings()
 		}
 		return TaskListOrder(board, s, day), true
-	})
+	}, func(fn func()) { b.goTracked(fn) })
 }
 
 // dropLeaseOrder forgets the cached task order after a board change. It never waits for a build.
@@ -142,6 +187,7 @@ func (b *TaskBoard) leaseAlive(k leases.Key) bool {
 func (b *TaskBoard) beginLeaseRun(key leases.Key) {
 	b.lease.mu.Lock()
 	b.lease.runs[key] = struct{}{}
+	delete(b.lease.ended, key)
 	b.lease.mu.Unlock()
 }
 
@@ -179,6 +225,10 @@ func (b *TaskBoard) onLeaseGrant(g leases.Grant) {
 // carries it.
 func (b *TaskBoard) deliverLease(key leases.Key, msg string) {
 	b.lease.mu.Lock()
+	if _, gone := b.lease.ended[key]; gone {
+		b.lease.mu.Unlock()
+		return
+	}
 	b.lease.pending[key] = append(b.lease.pending[key], msg)
 	b.lease.mu.Unlock()
 	b.flushLease(string(key))
@@ -192,14 +242,33 @@ func (b *TaskBoard) flushLease(recordID string) {
 	}
 	key := leases.Key(recordID)
 	b.lease.mu.Lock()
-	msgs := b.lease.pending[key]
-	if len(msgs) == 0 {
+	if _, gone := b.lease.ended[key]; gone {
 		b.lease.mu.Unlock()
 		return
 	}
+	f := b.lease.flushOf(key)
+	b.lease.mu.Unlock()
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	b.lease.mu.Lock()
+	if b.lease.flush[key] != f { // the owner ended while this flush waited
+		b.lease.mu.Unlock()
+		return
+	}
+	msgs := b.lease.pending[key]
+	delete(b.lease.pending, key)
+	f.msgs = msgs
+	b.lease.mu.Unlock()
+	if len(msgs) == 0 {
+		return
+	}
 	sent, err := b.deps.Tracker.SendIfIdle(recordID, strings.Join(msgs, "\n"))
-	if sent {
-		delete(b.lease.pending, key)
+	b.lease.mu.Lock()
+	f.msgs = nil
+	if _, gone := b.lease.ended[key]; !sent && !gone {
+		// Back first in line: messages queued meanwhile stay behind them. An owner that ended
+		// meanwhile has nobody to deliver to.
+		b.lease.pending[key] = append(msgs, b.lease.pending[key]...)
 	}
 	b.lease.mu.Unlock()
 	if err != nil {
@@ -212,6 +281,14 @@ func (b *TaskBoard) flushLease(recordID string) {
 
 // takeLeaseNotices removes and returns the messages waiting for key.
 func (b *TaskBoard) takeLeaseNotices(key leases.Key) []string {
+	// Wait for a delivery in flight: its messages are neither pending nor sent yet.
+	b.lease.mu.Lock()
+	f := b.lease.flush[key]
+	b.lease.mu.Unlock()
+	if f != nil {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+	}
 	b.lease.mu.Lock()
 	msgs := b.lease.pending[key]
 	delete(b.lease.pending, key)
@@ -244,6 +321,21 @@ func (b *TaskBoard) requeueLeaseReply(recordID string, reply harness.HookReply) 
 	}
 	key := leases.Key(recordID)
 	b.lease.mu.Lock()
+	if _, gone := b.lease.ended[key]; gone {
+		b.lease.mu.Unlock()
+		return
+	}
+	f := b.lease.flushOf(key)
+	b.lease.mu.Unlock()
+	// Under the flush lock like every other pending writer: an in-flight flush re-queues first,
+	// then this reply lands ahead of it.
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	b.lease.mu.Lock()
+	if b.lease.flush[key] != f { // the owner ended meanwhile
+		b.lease.mu.Unlock()
+		return
+	}
 	b.lease.pending[key] = append([]string{text}, b.lease.pending[key]...)
 	b.lease.mu.Unlock()
 	b.leasesChanged()
@@ -254,6 +346,8 @@ func (b *TaskBoard) endLeases(key leases.Key) {
 	b.lease.mu.Lock()
 	delete(b.lease.pending, key)
 	delete(b.lease.runs, key)
+	delete(b.lease.flush, key)
+	b.lease.markEnded(key)
 	b.lease.mu.Unlock()
 	b.lease.book.ReleaseSession(key)
 }
@@ -286,6 +380,9 @@ func (b *TaskBoard) leaseNext(call agentmcp.SpaceCall, state string) string {
 
 func (b *TaskBoard) AcquireLease(_ context.Context, call agentmcp.SpaceCall, args agentmcp.AcquireLeaseArgs) (agentmcp.AcquireLeaseResult, error) {
 	key := leaseKeyOf(call.SessionID, call.RunID)
+	b.lease.mu.Lock()
+	delete(b.lease.ended, key) // a resumed owner is live again
+	b.lease.mu.Unlock()
 	st, err := b.lease.book.Acquire(key, call.TaskID, args.Queue)
 	if err != nil {
 		return agentmcp.AcquireLeaseResult{}, b.leaseToolError(err)
@@ -368,6 +465,9 @@ func (b *TaskBoard) LeaseSnapshot() adewire.LeaseSnapshot {
 	entry := func(e leases.Entry, position int) adewire.LeaseEntry {
 		b.lease.mu.Lock()
 		noticed := len(b.lease.pending[e.Key]) > 0
+		if f := b.lease.flush[e.Key]; f != nil && len(f.msgs) > 0 {
+			noticed = true // taken by a delivery in flight
+		}
 		b.lease.mu.Unlock()
 		out := adewire.LeaseEntry{
 			SessionID: string(e.Key), TaskID: e.TaskID, TaskTitle: b.leaseTaskName(e.TaskID),

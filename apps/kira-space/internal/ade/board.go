@@ -9,10 +9,13 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
@@ -148,7 +151,8 @@ type TaskBoardDeps struct {
 	RebaseTimeout time.Duration
 	// RepoFile names the repo file that applies to a repo (its stem, "" for none) and its error, if any.
 	RepoFile func(repoID string) (stem string, problem *adewire.RepoProblem)
-	OnBoard  func()
+	// OnBoard pushes the coalesced change on kira:adetask:board.
+	OnBoard func(adewire.BoardChangedEvent)
 	// OnUpdates pushes a change of the tracked item updates on kira:adetask:updates.
 	OnUpdates func()
 	// TrackedItems stores the tracked item snapshots; nil turns the update watcher off.
@@ -197,6 +201,10 @@ type TaskBoard struct {
 
 	mu      sync.Mutex
 	repoMus map[string]*sync.Mutex
+	// tailRunning counts the Refresh tails running per repo; the board shows such a repo as updating.
+	tailRunning map[string]int
+	// remoteSlots queues ADE remote ops per repo (remoteop.go).
+	remoteSlots map[string]chan struct{}
 	// sandboxTargets maps a live sandboxed run id to its sandboxTarget.
 	sandboxTargets sync.Map
 	byGitRepoID    map[string]string // gitclient RepoID -> codeRepoID, populated on open
@@ -204,6 +212,14 @@ type TaskBoard struct {
 	caches         map[string]*repoCaches
 	rebase         map[string]*rebaseCache
 	boardTimer     *time.Timer
+	boardSched     boardChanges // changes the debounced scheduleBoard timer will announce
+	bcache         boardCache
+	repoCfg        repoConfigCache
+	facts          boardFacts
+	wfMemo         *lru.Cache[string, wfMemoEntry]
+	ops            singleflight.Group // identical in-flight user operations join (opdedupe.go)
+	refreshTails   sync.WaitGroup     // background tails of Refresh calls
+	history        historyMemo
 	updates        *updateWatcher
 
 	panelEdits panelEdits // pending task panel edits per task (panelforward.go)
@@ -245,8 +261,8 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	}
 	ctx, cancel := context.WithCancel(oplog.WithOrigin(context.Background(), oplog.Origin{Module: oplog.ModuleADE, Trigger: oplog.TriggerAuto}))
 	b := &TaskBoard{
-		deps: deps, ctx: ctx, cancel: cancel, folderW: map[string]*folderWatcher{},
-		repoMus: map[string]*sync.Mutex{}, byGitRepoID: map[string]string{}, gitRepoIDOf: map[string]string{},
+		deps: deps, ctx: ctx, cancel: cancel, wfMemo: newWorkflowMemo(), folderW: map[string]*folderWatcher{},
+		repoMus: map[string]*sync.Mutex{}, remoteSlots: map[string]chan struct{}{}, tailRunning: map[string]int{}, facts: boardFacts{last: map[string]*repoLast{}, flight: map[string]*repoFlight{}}, byGitRepoID: map[string]string{}, gitRepoIDOf: map[string]string{},
 		caches: map[string]*repoCaches{}, rebase: map[string]*rebaseCache{}, live: map[string]*liveRun{}, tuiGrants: map[string]tuiBinding{}, tuiSandbox: map[string]*liveTUISandbox{}, setupLive: map[string]*liveRun{},
 		taskMus: map[string]*sync.Mutex{}, archiving: map[string]int{}, finishes: map[string]agentmcp.Finish{}, claims: map[string]string{}, stepMsgs: map[string]string{},
 	}
@@ -263,7 +279,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	b.conn.RouteCredentials(func(ctx context.Context, req gitaskpass.Request) (string, bool) {
 		return deps.Credentials.Ask(ctx, boardConnLabel, req)
 	})
-	b.checker = newRebaseChecker(ctx, deps.GitStatus, b.scheduleBoard)
+	b.checker = newRebaseChecker(ctx, deps.GitStatus, b.checkDone)
 	b.updates = newUpdateWatcher(b, deps.Updates)
 	b.initLeases()
 	return b
@@ -320,6 +336,7 @@ func (b *TaskBoard) Close() {
 		b.wfTimer.Stop()
 	}
 	b.mu.Unlock()
+	b.stopBoardPush()
 	b.stopWatchers()
 	b.updates.close()
 	b.checker.close()
@@ -331,27 +348,39 @@ func (b *TaskBoard) handleEmit(method string, payload any) {
 	if method != "repo.changed" {
 		return
 	}
-	if _, ok := payload.(gitsession.Event); ok {
+	if ev, ok := payload.(gitsession.Event); ok {
+		b.repoMoved(ev.RepoID)
 		b.scheduleBoard()
 	}
 }
 
+// checkDone is the conflict checker's completion hook: the repo's pair and branch states moved.
+// jobID.repoID is the code repo id or its pairRepoID.
+func (b *TaskBoard) checkDone(repoID string) {
+	b.repoMoved(strings.TrimPrefix(repoID, pairRepoID("")))
+	b.scheduleBoard()
+}
+
 // scheduleBoard debounces a board invalidation (a burst of ref moves or check completions).
-func (b *TaskBoard) scheduleBoard() {
+func (b *TaskBoard) scheduleBoard() { b.scheduleBoardWith(allChanged) }
+
+// scheduleBoardWith is scheduleBoard for a change of known scope; merged scopes announce together.
+// The snapshot is dropped at once so a Board inside the debounce window recomputes.
+func (b *TaskBoard) scheduleBoardWith(ch adewire.BoardChangedEvent) {
+	b.invalidateBoard()
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	b.boardSched.merge(ch)
 	if b.boardTimer != nil {
 		b.boardTimer.Stop()
 	}
-	b.boardTimer = time.AfterFunc(adeRepoChangedDebounce, func() { b.runTracked(b.notifyBoard) })
-}
-
-func (b *TaskBoard) notifyBoard() {
-	b.dropLeaseOrder()
-	if b.deps.OnBoard != nil {
-		b.deps.OnBoard()
-	}
-	b.updates.boardChanged()
+	b.boardTimer = time.AfterFunc(adeRepoChangedDebounce, func() {
+		b.mu.Lock()
+		ev := b.boardSched.event()
+		b.boardSched = boardChanges{}
+		b.mu.Unlock()
+		b.runTracked(func() { b.notifyBoardWith(ev) })
+	})
 }
 
 func (b *TaskBoard) repoMutex(codeRepoID string) *sync.Mutex {
@@ -424,17 +453,16 @@ func (b *TaskBoard) openRepo(ctx context.Context, codeRepoID string) (*gitsessio
 
 // boardData is one consistent read of the task store.
 type boardData struct {
-	tasks      []model.AdeTask
-	statuses   []model.AdeTaskStatus
-	defaults   model.AdeStatusDefaults
-	branches   []model.AdeTaskBranch
-	plan       []model.AdeTaskPlanRow
-	runs       map[string][]model.AdeRun
-	reviews    map[string]model.AdeReview
-	setups     map[string]model.AdeWorktreeSetup
-	archived   []model.AdeTask
-	archBranch []model.AdeTaskBranch
-	handovers  map[string]repos.BoardHandover
+	tasks     []model.AdeTask
+	statuses  []model.AdeTaskStatus
+	defaults  model.AdeStatusDefaults
+	branches  []model.AdeTaskBranch
+	plan      []model.AdeTaskPlanRow
+	runs      map[string][]model.AdeRun
+	reviews   map[string]model.AdeReview
+	setups    map[string]model.AdeWorktreeSetup
+	history   []adewire.HistoryEntry
+	handovers map[string]repos.BoardHandover
 }
 
 func (b *TaskBoard) load() (boardData, error) {
@@ -464,10 +492,7 @@ func (b *TaskBoard) load() (boardData, error) {
 	if d.setups, err = b.deps.Tasks.SetupByBranch(); err != nil {
 		return d, err
 	}
-	if d.archived, err = b.deps.Tasks.ListArchived(); err != nil {
-		return d, err
-	}
-	if d.archBranch, err = b.deps.Tasks.BranchesArchived(); err != nil {
+	if d.history, err = b.historyEntries(); err != nil {
 		return d, err
 	}
 	d.handovers, err = b.deps.Tasks.BoardHandovers()
@@ -488,21 +513,28 @@ func branchesByRepo(branches []model.AdeTaskBranch) (ids []string, by map[string
 	return ids, by
 }
 
-// Board assembles the snapshot. It never blocks on a rebase-conflict check: a miss reports
-// `checking` and queues the check.
-func (b *TaskBoard) Board(ctx context.Context) (adewire.Board, error) {
+// buildBoard assembles the snapshot Board shares. It never blocks on a rebase-conflict check: a miss
+// reports `checking` and queues the check.
+func (b *TaskBoard) buildBoard(ctx context.Context) (adewire.Board, error) {
 	d, err := b.load()
 	if err != nil {
 		return adewire.Board{}, err
 	}
+	if b.bcache.afterLoad != nil {
+		b.bcache.afterLoad()
+	}
 	repoIDs, byRepo := branchesByRepo(d.branches)
+	shared, err := b.loadBoardShared(d.branches)
+	if err != nil {
+		return adewire.Board{}, err
+	}
 	results := make(map[string]*repoResult, len(repoIDs))
 	var mu sync.Mutex
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(boardFanOut)
 	for _, id := range repoIDs {
 		g.Go(func() error {
-			res := b.repoFacts(gctx, id, byRepo[id], d.setups)
+			res := b.repoFactsDeadlined(gctx, id, byRepo[id], d.setups, shared)
 			mu.Lock()
 			results[id] = res
 			mu.Unlock()
@@ -523,10 +555,43 @@ func (b *TaskBoard) Board(ctx context.Context) (adewire.Board, error) {
 		}
 		b.applyChecks(id, res)
 	}
-	if err := b.deps.Tasks.MarkBranchFacts(hadCommits, merged); err != nil {
-		return adewire.Board{}, err
+	board := b.assemble(d, repoIDs, results)
+	var marks []model.AdeBranchMark
+	for _, id := range repoIDs {
+		marks = append(marks, results[id].marks...)
 	}
-	return b.assemble(d, repoIDs, results), nil
+	b.writeBoardMarks(hadCommits, merged, marks)
+	return board, nil
+}
+
+// writeBoardMarks persists what a build computed, off the build's path. The board already shows
+// the computed values; the writes only spare the next build. Every write is idempotent, so two
+// builds writing the same mark is harmless. A written row makes the next build reread it, and a
+// build that ran inside the write window read the old marks (stored target mark, HadCommits, a
+// merge time of its own clock), so the landing pushes the board.
+func (b *TaskBoard) writeBoardMarks(hadCommits []string, merged map[string]int64, marks []model.AdeBranchMark) {
+	if len(hadCommits) == 0 && len(merged) == 0 && len(marks) == 0 {
+		return
+	}
+	b.goTracked(func() {
+		ok := true
+		if err := b.deps.Tasks.MarkBranchFacts(hadCommits, merged); err != nil {
+			slog.Warn("ade board: mark branch facts", "scope", "ade", "err", err)
+			ok = false
+		}
+		for _, m := range marks {
+			if b.deps.Facts == nil {
+				break
+			}
+			if err := b.deps.Facts.UpsertMark(m); err != nil {
+				slog.Warn("ade board: save mark", "scope", "ade", "branch", m.BranchID, "err", err)
+				ok = false
+			}
+		}
+		if ok {
+			b.notifyBoard()
+		}
+	})
 }
 
 // applyChecks fills each visible branch's conflict state from the checker, queueing a miss.
@@ -560,7 +625,7 @@ func (b *TaskBoard) assemble(d boardData, repoIDs []string, results map[string]*
 	liveWf := b.liveWorkflows()
 	for _, t := range d.tasks {
 		wt := b.toWireTask(t, branchByTask[t.ID], d.runs[t.ID], d.reviews)
-		decorateTask(&wt, t, liveWf)
+		b.decorateTask(&wt, t, liveWf)
 		applyHandovers(&wt, d.handovers[t.ID])
 		tasks = append(tasks, wt)
 	}
@@ -597,7 +662,11 @@ func (b *TaskBoard) assemble(d boardData, repoIDs []string, results map[string]*
 	states := make([]adewire.RepoState, 0, len(repoIDs))
 	for _, id := range repoIDs {
 		pairs = append(pairs, results[id].pairs...)
-		states = append(states, results[id].state)
+		st := results[id].state
+		if b.tailRunningFor(id) {
+			st.Updating = true // PR merge checks and conflict-check requests still run
+		}
+		states = append(states, st)
 	}
 
 	autofetch := 0
@@ -605,7 +674,7 @@ func (b *TaskBoard) assemble(d boardData, repoIDs []string, results map[string]*
 		autofetch = b.deps.AutofetchMinutes()
 	}
 	return adewire.Board{
-		Tasks: tasks, Statuses: toWireStatuses(d.statuses), StatusDefaults: toWireDefaults(d.defaults), Branches: branches, Plan: plan, Pairs: pairs, History: toWireHistory(d.archived, d.archBranch),
+		Tasks: tasks, Statuses: toWireStatuses(d.statuses), StatusDefaults: toWireDefaults(d.defaults), Branches: branches, Plan: plan, Pairs: pairs, History: d.history,
 		Repos: states, WorktreeBasePath: WorktreesBase(b.deps.HomeDir), AutofetchMinutes: autofetch,
 	}
 }
@@ -628,10 +697,40 @@ func (b *TaskBoard) toWireTask(t model.AdeTask, branchIDs []string, runs []model
 			slog.Warn("ade board: unreadable pass of task", "scope", "ade", "task", t.ID, "err", err)
 		}
 	}
+	out.Runs = wireTaskRuns(runs, branchIDs, reviews, out.Runs)
+	return out
+}
+
+type stepOnBranch struct{ step, branch string }
+
+// indexRuns builds in one pass what each run in wireTaskRuns would otherwise rescan every run for.
+func indexRuns(runs []model.AdeRun) (map[stepOnBranch][]int, map[string]*model.AdeRun) {
+	backs := map[stepOnBranch][]int{}
+	rounds := map[string]*model.AdeRun{}
+	for i, r := range runs {
+		switch {
+		case r.Purpose == "" && r.State == model.AdeRunBack:
+			k := stepOnBranch{r.StepID, r.BranchID}
+			backs[k] = append(backs[k], r.Attempt)
+		case r.Purpose == model.AdeRunPurposeReview:
+			spec, err := roundSpec(r)
+			if err != nil {
+				continue
+			}
+			if best := rounds[spec.ReviewRunID]; best == nil || r.Attempt > best.Attempt {
+				rounds[spec.ReviewRunID] = &runs[i]
+			}
+		}
+	}
+	return backs, rounds
+}
+
+func wireTaskRuns(runs []model.AdeRun, branchIDs []string, reviews map[string]model.AdeReview, dst []adewire.Run) []adewire.Run {
 	live := make(map[string]bool, len(branchIDs))
 	for _, id := range branchIDs {
 		live[id] = true
 	}
+	backs, rounds := indexRuns(runs)
 	for _, r := range runs {
 		if r.Purpose == model.AdeRunPurposeReview { // a round shows through its review run
 			continue
@@ -641,14 +740,18 @@ func (b *TaskBoard) toWireTask(t model.AdeTask, branchIDs []string, runs []model
 		}
 		w := toWireRun(r)
 		if r.Purpose == "" {
-			w.Returns = countReturns(runs, r.StepID, r.BranchID, r.Attempt)
+			for _, a := range backs[stepOnBranch{r.StepID, r.BranchID}] {
+				if a <= r.Attempt {
+					w.Returns++
+				}
+			}
 		}
 		if rev, ok := reviews[r.ID]; ok {
-			w.Review = reviewWire(r, rev, latestRoundOf(runs, r.ID))
+			w.Review = reviewWire(r, rev, rounds[r.ID])
 		}
-		out.Runs = append(out.Runs, w)
+		dst = append(dst, w)
 	}
-	return out
+	return dst
 }
 
 func toWireRun(r model.AdeRun) adewire.Run {
@@ -741,14 +844,35 @@ func resolveRepoHost(ctx context.Context, entry *gitsession.RepoEntry, branches 
 		host = &info
 	}
 	found, urls = map[string]adewire.ChangeRequest{}, map[string]string{}
-	for _, br := range branches {
+	type lookup struct {
+		url string
+		res gitsession.ChangeRequestLookup
+	}
+	rows := make([]lookup, len(branches))
+	var g errgroup.Group
+	g.SetLimit(boardFanOut)
+	for i, br := range branches {
 		if br.Name == "" {
 			continue
 		}
-		if u, ok := entry.BranchURL(ctx, br.Name); ok {
-			urls[br.ID] = u
+		g.Go(func() error {
+			if u, ok := entry.BranchURL(ctx, br.Name); ok {
+				rows[i].url = u
+			}
+			rows[i].res = entry.ResolveBranchChangeRequest(ctx, br.Name)
+			return nil
+		})
+	}
+	_ = g.Wait()
+	// Merged in branch order, so the reported kind is the last failing branch's, as when serial.
+	for i, br := range branches {
+		if br.Name == "" {
+			continue
 		}
-		res := entry.ResolveBranchChangeRequest(ctx, br.Name)
+		if rows[i].url != "" {
+			urls[br.ID] = rows[i].url
+		}
+		res := rows[i].res
 		if res.Kind != "ok" {
 			kind = res.Kind
 		} else if len(res.ChangeRequests) > 0 {
@@ -759,8 +883,9 @@ func resolveRepoHost(ctx context.Context, entry *gitsession.RepoEntry, branches 
 	return kind, host, found, urls
 }
 
-// Refresh fetches the given repos (none = every repo a live task uses; the UI sends the ids it shows), marks PR-merged branches,
-// then runs and awaits the rebase-conflict checks so the board it emits is settled.
+// Refresh fetches the given repos (none = every repo a live task uses; the UI sends the ids it shows)
+// and returns once branch facts are computed; PR merge marks, conflict checks and the tracked-updates
+// pass finish in the background and push the board.
 func (b *TaskBoard) Refresh(ctx context.Context, codeRepoIDs []string) (adewire.RefreshResult, error) {
 	if len(codeRepoIDs) == 0 {
 		branches, err := b.deps.Tasks.BranchesLive()
@@ -770,18 +895,83 @@ func (b *TaskBoard) Refresh(ctx context.Context, codeRepoIDs []string) (adewire.
 		codeRepoIDs, _ = branchesByRepo(branches)
 	}
 	rows := make([]adewire.RepoRefresh, len(codeRepoIDs))
+	tails := make([]refreshTailJob, len(codeRepoIDs))
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(boardFanOut)
 	for i, id := range codeRepoIDs {
 		g.Go(func() error {
-			rows[i] = b.refreshRepo(gctx, id)
+			var fn func(context.Context)
+			rows[i], fn = b.refreshRepo(gctx, id)
+			tails[i] = refreshTailJob{id: id, fn: fn}
 			return nil
 		})
 	}
 	_ = g.Wait() // refreshRepo reports failures per repo
+	for _, id := range codeRepoIDs {
+		b.repoMoved(id)
+	}
+	// Mark the repos before the push so the board it carries shows them updating.
+	started := b.track()
+	if started {
+		b.markTails(tails, 1)
+	}
 	b.notifyBoard()
-	b.updates.run(ctx, true)
+	// PR merge checks, queued conflict checks and the tracked-updates pass finish after the call
+	// returns; the board push at the end carries them.
+	if started {
+		b.refreshTails.Add(1)
+		go func() {
+			defer b.wg.Done()
+			defer b.refreshTails.Done()
+			b.runRefreshTails(tails)
+		}()
+	}
 	return adewire.RefreshResult{Repos: rows}, nil
+}
+
+// WaitRefreshTails blocks until the background tails of every Refresh so far have finished and
+// pushed the board. Flow tests use it to read a settled board; the UI relies on the push.
+func (b *TaskBoard) WaitRefreshTails() { b.refreshTails.Wait() }
+
+// refreshTailJob is one repo's tail of a Refresh; fn is nil when the repo's refresh failed.
+type refreshTailJob struct {
+	id string
+	fn func(context.Context)
+}
+
+// markTails adds delta to the running-tail count of every repo with a tail.
+func (b *TaskBoard) markTails(tails []refreshTailJob, delta int) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for _, t := range tails {
+		if t.fn == nil {
+			continue
+		}
+		if b.tailRunning[t.id] += delta; b.tailRunning[t.id] <= 0 {
+			delete(b.tailRunning, t.id)
+		}
+	}
+}
+
+func (b *TaskBoard) tailRunningFor(codeRepoID string) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.tailRunning[codeRepoID] > 0
+}
+
+func (b *TaskBoard) runRefreshTails(tails []refreshTailJob) {
+	var tg errgroup.Group
+	tg.SetLimit(boardFanOut)
+	for _, tail := range tails {
+		if tail.fn != nil {
+			tg.Go(func() error { tail.fn(b.ctx); return nil })
+		}
+	}
+	_ = tg.Wait()
+	b.notifyBoard() // the repos stay updating until the tracked-updates pass ends
+	b.updates.run(b.ctx, true)
+	b.markTails(tails, -1)
+	b.notifyBoard()
 }
 
 func refreshFailure(id string, err error) adewire.RepoRefresh {
@@ -789,7 +979,20 @@ func refreshFailure(id string, err error) adewire.RepoRefresh {
 		Error: &adewire.RemoteOpError{Kind: "Unknown", Message: err.Error()}}
 }
 
-func (b *TaskBoard) refreshRepo(ctx context.Context, id string) adewire.RepoRefresh {
+// refreshFetched is what refreshRepo's locked section hands the rest of the refresh.
+type refreshFetched struct {
+	entry       *gitsession.RepoEntry
+	remote      string
+	hasRemote   bool
+	beforeTips  map[string]string
+	marksBefore map[string]model.AdeBranchMark
+}
+
+// refreshRepo fetches one repo and returns its result. The repo mutex is held for the before-state
+// and the fetch only; facts and marks follow outside it. tail is the rest of the refresh (PR merge
+// checks, conflict-check requests): Refresh runs it in the background and pushes the board when done.
+// tail is nil when the refresh failed.
+func (b *TaskBoard) refreshRepo(ctx context.Context, id string) (out adewire.RepoRefresh, tail func(context.Context)) {
 	// Scripts run beside the fetch, outside the repo mutex: they can be slow and need nothing the
 	// fetch brings, so a slow deploy check must not hold the fetch back.
 	scriptsDone := make(chan struct{})
@@ -800,42 +1003,19 @@ func (b *TaskBoard) refreshRepo(ctx context.Context, id string) adewire.RepoRefr
 		}
 	}()
 	defer func() { <-scriptsDone }()
-	mu := b.repoMutex(id)
-	mu.Lock()
-	defer mu.Unlock()
 
-	out := adewire.RepoRefresh{CodeRepoID: id, MergedInto: []adewire.MergedInto{}}
-	entry, err := b.openRepo(ctx, id)
-	if err != nil {
-		return refreshFailure(id, err)
+	out = adewire.RepoRefresh{CodeRepoID: id, MergedInto: []adewire.MergedInto{}}
+	f, fail := b.refreshFetch(ctx, id, &out)
+	if fail != nil {
+		return *fail, nil
 	}
-	remote, hasRemote := entry.DefaultRemote(ctx)
-	before, err := entry.BranchInventory(ctx)
-	if err != nil {
-		return refreshFailure(id, err)
-	}
-	marksBefore, err := b.marksOfRepo(id)
-	if err != nil {
-		return refreshFailure(id, err)
-	}
-	beforeTips := make(map[string]string, len(before))
-	for _, r := range before {
-		beforeTips[r.Ref] = r.Tip
-	}
-	if hasRemote {
-		res, err := entry.RunRemote(ctx, b.conn, gitsession.RemoteOpParams{Kind: "fetch", Remote: remote, Prune: true}, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
-		if err != nil {
-			return refreshFailure(id, err)
-		}
-		if !res.OK {
-			out.Error = remoteOpError(res.Error)
-			return out
-		}
+	if f == nil { // the fetch itself reported an error
+		return out, nil
 	}
 
 	live, err := b.deps.Tasks.BranchesLive()
 	if err != nil {
-		return refreshFailure(id, err)
+		return refreshFailure(id, err), nil
 	}
 	var mine []model.AdeTaskBranch
 	for _, br := range live {
@@ -843,40 +1023,91 @@ func (b *TaskBoard) refreshRepo(ctx context.Context, id string) adewire.RepoRefr
 			mine = append(mine, br)
 		}
 	}
-	if hasRemote {
-		if out.RefsChanged, err = countBranchRefsChanged(ctx, entry, mine, beforeTips, remote); err != nil {
-			return refreshFailure(id, err)
+	if f.hasRemote {
+		if out.RefsChanged, err = countBranchRefsChanged(ctx, f.entry, mine, f.beforeTips, f.remote); err != nil {
+			return refreshFailure(id, err), nil
 		}
 	}
 
 	facts := b.repoFacts(ctx, id, mine, nil)
-	out.MergedInto = newlyMerged(mine, facts, marksBefore)
+	out.MergedInto = newlyMerged(mine, facts, f.marksBefore)
 	if err := b.deps.Tasks.MarkBranchFacts(facts.hadCommits, facts.merged); err != nil {
-		return refreshFailure(id, err)
+		return refreshFailure(id, err), nil
 	}
+	return out, func(tctx context.Context) { b.refreshTail(tctx, id, f.entry, mine, facts) }
+}
+
+// refreshFetch is refreshRepo's locked section. It returns nil, nil after the fetch reported an
+// error into out, and nil, failure when a step failed.
+func (b *TaskBoard) refreshFetch(ctx context.Context, id string, out *adewire.RepoRefresh) (*refreshFetched, *adewire.RepoRefresh) {
+	fail := func(err error) (*refreshFetched, *adewire.RepoRefresh) {
+		r := refreshFailure(id, err)
+		return nil, &r
+	}
+	// Opened once, before the locks: a broken repo logs one failed open per Refresh.
+	entry, err := b.openRepo(ctx, id)
+	if err != nil {
+		return fail(err)
+	}
+	// The remote slot comes before repoMutex: a fetch queued behind a sandbox push waits without
+	// the repo lock.
+	if _, ok := entry.DefaultRemote(ctx); ok {
+		slotCtx, release, err := b.holdRemoteSlot(ctx, id)
+		if err != nil {
+			return fail(err)
+		}
+		defer release()
+		ctx = slotCtx
+	}
+	mu := b.repoMutex(id)
+	mu.Lock()
+	defer mu.Unlock()
+	remote, hasRemote := entry.DefaultRemote(ctx)
+	before, err := entry.BranchInventory(ctx)
+	if err != nil {
+		return fail(err)
+	}
+	marksBefore, err := b.marksOfRepo(id)
+	if err != nil {
+		return fail(err)
+	}
+	beforeTips := make(map[string]string, len(before))
+	for _, r := range before {
+		beforeTips[r.Ref] = r.Tip
+	}
+	if hasRemote {
+		res, err := b.runRemote(ctx, id, entry, gitsession.RemoteOpParams{Kind: "fetch", Remote: remote, Prune: true})
+		if err != nil {
+			return fail(err)
+		}
+		if !res.OK {
+			out.Error = remoteOpError(res.Error)
+			return nil, nil
+		}
+	}
+	return &refreshFetched{entry: entry, remote: remote, hasRemote: hasRemote, beforeTips: beforeTips, marksBefore: marksBefore}, nil
+}
+
+// refreshTail marks PR-merged branches and queues the conflict checks of the branches left. It does
+// not wait for the checks: each pushes the board when it lands.
+func (b *TaskBoard) refreshTail(ctx context.Context, id string, entry *gitsession.RepoEntry, mine []model.AdeTaskBranch, facts *repoResult) {
 	prMerged := b.checkPrMerges(ctx, entry, mine, facts)
 	if len(prMerged) > 0 {
 		if err := b.deps.Tasks.MarkBranchFacts(nil, prMerged); err != nil {
-			return refreshFailure(id, err)
+			slog.Warn("ade refresh: mark pr merged", "scope", "ade", "repo", id, "err", err)
+			root := entry.Summary.Root
+			b.deps.Ops.Record(ctx, oplog.Meta{Category: oplog.CategoryGit, Kind: opRefreshTail, RepoRoot: root, RepoName: filepath.Base(root)},
+				oplog.StatusError, "PR merge marks not saved: "+err.Error())
 		}
 	}
-
 	b.checker.forgetFailures(id)
-	waits := make([]<-chan struct{}, 0, len(facts.jobs))
+	b.checker.forgetFailures(pairRepoID(id))
 	for branchID, job := range facts.jobs {
 		if _, gone := prMerged[branchID]; gone {
 			continue
 		}
-		waits = append(waits, b.checker.request(job))
+		b.checker.request(job)
 	}
-	for _, w := range waits {
-		select {
-		case <-w:
-		case <-ctx.Done():
-			return out
-		}
-	}
-	return out
 }
 
 func remoteOpError(e *gitsession.RemoteOpError) *adewire.RemoteOpError {
@@ -945,6 +1176,10 @@ func countBranchRefsChanged(ctx context.Context, entry *gitsession.RepoEntry, br
 // ForcePush pushes one created branch with lease. A refusal (protected branch, no remote tip)
 // returns as the result's error.
 func (b *TaskBoard) ForcePush(ctx context.Context, branchID string) (adewire.ForcePushResult, error) {
+	return joinOp(ctx, b, opKey("forcePush", branchID), func(ctx context.Context) (adewire.ForcePushResult, error) { return b.forcePush(ctx, branchID) })
+}
+
+func (b *TaskBoard) forcePush(ctx context.Context, branchID string) (adewire.ForcePushResult, error) {
 	br, err := b.deps.Tasks.GetBranch(branchID)
 	if err != nil {
 		return adewire.ForcePushResult{}, err
@@ -954,6 +1189,13 @@ func (b *TaskBoard) ForcePush(ctx context.Context, branchID string) (adewire.For
 		out.Error = &adewire.RemoteOpError{Kind: "Unknown", Message: i18n.T("backend.space.ade.branchNotCreated.body", nil)}
 		return out, nil
 	}
+	// Slot before repoMutex: queued behind another remote op, the push waits without the repo lock.
+	ctx, release, err := b.holdRemoteSlot(ctx, br.CodeRepoID)
+	if err != nil {
+		out.Error = &adewire.RemoteOpError{Kind: "Unknown", Message: err.Error()}
+		return out, nil
+	}
+	defer release()
 	mu := b.repoMutex(br.CodeRepoID)
 	mu.Lock()
 	defer mu.Unlock()
@@ -967,9 +1209,9 @@ func (b *TaskBoard) ForcePush(ctx context.Context, branchID string) (adewire.For
 		out.Error = &adewire.RemoteOpError{Kind: "Unknown", Message: err.Error()}
 		return out, nil
 	}
-	res, err := entry.RunRemote(ctx, b.conn, gitsession.RemoteOpParams{
+	res, err := b.runRemote(ctx, br.CodeRepoID, entry, gitsession.RemoteOpParams{
 		Kind: "forcePush", Remote: remote, Branch: br.Name, ExpectedRemoteTip: pf.RemoteTip,
-	}, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
+	})
 	if err != nil {
 		out.Error = &adewire.RemoteOpError{Kind: "Unknown", Message: err.Error()}
 		return out, nil

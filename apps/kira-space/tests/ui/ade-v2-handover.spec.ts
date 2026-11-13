@@ -175,6 +175,22 @@ test('the step mover opens the dialog and sends SetTaskStep with the typed notes
   });
 });
 
+test('a refused move reopens the stage dialog with the typed notes', async ({ relaunch }) => {
+  const { window: page, control } = await openPlan(relaunch, [
+    ...snapshots(withDraft),
+    { channel: IPC.adeTaskSetTaskStep, error: { code: 'invalid', message: 'step moved on' } },
+  ]);
+  await openTask(page, 'T_auth');
+  await page.locator(t('ade-step-back')).click();
+  const notes = page.locator(t('ade-stage-notes')).locator('.ProseMirror');
+  await notes.fill('Redo the PR text.');
+  await page.locator(t('ade-stage-move')).click();
+  await expect.poll(() => calls(control, IPC.adeTaskSetTaskStep)).toHaveLength(1);
+  await expect(page.locator('[data-sonner-toast]')).toContainText('step moved on');
+  await expect(page.locator(t('ade-stage-dialog'))).toBeVisible();
+  await expect(notes).toHaveText('Redo the PR text.');
+});
+
 test('Task tab shows no handover; Notes lists the draft and moves; an edit sends UpdateHandover', async ({
   relaunch,
 }) => {
@@ -243,7 +259,7 @@ test('handover text selects and copies: Details chain body and Run dialog card',
   const list = page.locator(t('ade-task-chain'));
 
   const row = list.locator(t('ade-handover-row')).first();
-  const prose = row.locator('.ProseMirror');
+  const prose = row.locator(t('ade-handover-body'));
   // `auto` on .ProseMirror resolves to the wrapper's value, so the wrapper carries the opt-in.
   await expect(row.locator(t('ade-notes-editor'))).toHaveCSS('user-select', 'text');
   expect(await dragAcross(page, prose)).toContain(first.split('\n')[0]?.trim() ?? first);

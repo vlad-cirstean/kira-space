@@ -18,11 +18,17 @@ import (
 // only merge engine: gitsession.RepoEntry.MergeTreeConflicts runs `git merge-tree --write-tree`
 // (git >= 2.38), which never touches the worktree, index, HEAD or refs, so it is safe next to
 // running agents. Results are cached per repo by (baseTip, tip) object ids, so a moved base or tip
-// invalidates itself. Failures are never cached as a clean result.
+// invalidates itself. Failures are never cached as a clean result. A pair check (retries > 0)
+// that fails is retried with backoff; meanwhile it reads as checking, and after the last attempt it
+// stays failed until Refresh, so a real conflict never hides behind a transient failure.
 
 const (
 	rebaseCacheCap    = 512
 	rebaseConcurrency = 4
+	// rebaseRetryBase is the first retry delay of a failed pair check; each retry waits 4x longer.
+	rebaseRetryBase = 5 * time.Second
+	// pairCheckRetries is how many times a failed pair check is retried.
+	pairCheckRetries = 3
 
 	conflictChecking = "checking"
 	conflictDone     = "done"
@@ -53,6 +59,17 @@ type rebaseJob struct {
 	run    func(ctx context.Context, baseTip, tip string) ([]string, error)
 	branch string
 	base   string
+	// retries is how many times a failed check is retried automatically; 0 reports at once.
+	retries int
+}
+
+// checkFailure is a recorded failed job. A non-zero retryAt means a retry is pending: the job
+// reads as checking until then and as unknown (so the next request retries) after.
+type checkFailure struct {
+	reason   string
+	at       time.Time
+	attempts int
+	retryAt  time.Time
 }
 
 type jobID struct {
@@ -64,22 +81,24 @@ type jobID struct {
 type rebaseChecker struct {
 	ctx       context.Context
 	gitStatus func(context.Context) gitclient.GitStatus
-	onDone    func()
+	onDone    func(repoID string)
 	sem       chan struct{}
 
 	mu       sync.Mutex
 	inflight map[jobID]chan struct{}
-	failed   map[jobID]string
+	failed   map[jobID]checkFailure
 	closed   bool
-	wg       sync.WaitGroup // running checks; close waits for them
+	// retryBase overrides rebaseRetryBase in tests.
+	retryBase time.Duration
+	wg        sync.WaitGroup // running checks; close waits for them
 }
 
-func newRebaseChecker(ctx context.Context, gitStatus func(context.Context) gitclient.GitStatus, onDone func()) *rebaseChecker {
+func newRebaseChecker(ctx context.Context, gitStatus func(context.Context) gitclient.GitStatus, onDone func(repoID string)) *rebaseChecker {
 	return &rebaseChecker{
 		ctx: ctx, gitStatus: gitStatus, onDone: onDone,
 		sem:      make(chan struct{}, rebaseConcurrency),
 		inflight: map[jobID]chan struct{}{},
-		failed:   map[jobID]string{},
+		failed:   map[jobID]checkFailure{},
 	}
 }
 
@@ -95,8 +114,14 @@ func (c *rebaseChecker) peek(repoID string, cache *rebaseCache, key rebaseKey) (
 	if _, running := c.inflight[id]; running {
 		return rebaseState{Check: conflictChecking, Paths: []string{}}, true
 	}
-	if reason, bad := c.failed[id]; bad {
-		return rebaseState{Check: conflictFailed, Paths: []string{}, Reason: reason}, true
+	if f, bad := c.failed[id]; bad {
+		if !f.retryAt.IsZero() {
+			if time.Now().Before(f.retryAt) {
+				return rebaseState{Check: conflictChecking, Paths: []string{}}, true
+			}
+			return rebaseState{}, false // retry due: the caller requests again
+		}
+		return rebaseState{Check: conflictFailed, Paths: []string{}, Reason: f.reason}, true
 	}
 	return rebaseState{}, false
 }
@@ -135,6 +160,7 @@ func (c *rebaseChecker) request(j rebaseJob) <-chan struct{} {
 		return done
 	}
 	c.inflight[id] = done
+	prior := c.failed[id].attempts
 	delete(c.failed, id)
 	c.wg.Add(1)
 	c.mu.Unlock()
@@ -145,7 +171,7 @@ func (c *rebaseChecker) request(j rebaseJob) <-chan struct{} {
 		c.mu.Lock()
 		delete(c.inflight, id)
 		if err != nil {
-			c.failed[id] = err.Error()
+			c.recordFailure(id, j, err, prior+1)
 		} else {
 			j.cache.Add(j.key, paths)
 		}
@@ -157,10 +183,43 @@ func (c *rebaseChecker) request(j rebaseJob) <-chan struct{} {
 		}
 		close(done)
 		if c.onDone != nil {
-			c.onDone()
+			c.onDone(id.repoID)
 		}
 	}()
 	return done
+}
+
+// recordFailure stores a failed job, schedules its retry when the job allows one, and keeps the
+// map bounded by dropping the oldest entries. The caller holds c.mu.
+func (c *rebaseChecker) recordFailure(id jobID, j rebaseJob, err error, attempts int) {
+	f := checkFailure{reason: err.Error(), at: time.Now(), attempts: attempts}
+	if attempts <= j.retries && !c.closed {
+		base := c.retryBase
+		if base <= 0 {
+			base = rebaseRetryBase
+		}
+		delay := base << (2 * (attempts - 1))
+		f.retryAt = f.at.Add(delay)
+		time.AfterFunc(delay, func() {
+			c.mu.Lock()
+			closed := c.closed
+			c.mu.Unlock()
+			if !closed && c.onDone != nil {
+				c.onDone(id.repoID) // rebuild the board so its next pair pass retries
+			}
+		})
+	}
+	c.failed[id] = f
+	for len(c.failed) > rebaseCacheCap {
+		var oldest jobID
+		var at time.Time
+		for k, v := range c.failed {
+			if at.IsZero() || v.at.Before(at) {
+				oldest, at = k, v.at
+			}
+		}
+		delete(c.failed, oldest)
+	}
 }
 
 // close refuses new checks and waits for the running ones; cancel the checker's ctx first.

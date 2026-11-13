@@ -1,9 +1,11 @@
 package ade
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -727,4 +729,65 @@ func TestTracker_StopClearsTurnState(t *testing.T) {
 	if tr.suppressIdle[recordID] || len(tr.turn) != 0 || len(tr.tools) != 0 {
 		t.Fatalf("turn state survived Stop: suppress=%v turn=%v tools=%v", tr.suppressIdle, tr.turn, tr.tools)
 	}
+}
+
+// locatorAgent is a provider that assigns session ids after launch: it offers one candidate and
+// takes a moment to look, so two parallel lookups overlap.
+type locatorAgent struct {
+	harness.Provider
+	candidate string
+}
+
+func (locatorAgent) ID() string { return "locator" }
+
+func (l locatorAgent) FindSession(_ context.Context, q harness.SessionQuery) (string, error) {
+	time.Sleep(50 * time.Millisecond)
+	if slices.Contains(q.Exclude, l.candidate) {
+		return "", nil
+	}
+	return l.candidate, nil
+}
+
+// Two records of one cwd learn their ids in parallel: the single candidate binds to one record only.
+func TestTracker_learnSessionIDOneIdPerRecord(t *testing.T) {
+	tr, store, _, _ := newTestTracker(t)
+	tr.deps.Agent = harness.Selector{Registry: harness.NewRegistry(locatorAgent{Provider: testProvider(t), candidate: "cand-1"})}
+	for _, id := range []string{"s1", "s2"} {
+		if err := store.InsertTUI(model.AdeSession{ID: id, Provider: "locator", Cwd: "/repo", State: model.AdeSessionStateStopped, Mode: model.AdeSessionModeTUI, TaskID: "t1", StartedAt: 1}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var wg sync.WaitGroup
+	for _, id := range []string{"s1", "s2"} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := tr.learnSessionID(id); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	learned := 0
+	for _, id := range []string{"s1", "s2"} {
+		rec, err := store.Get(id)
+		if err != nil || rec == nil {
+			t.Fatal(err)
+		}
+		if rec.AgentSessionID == "cand-1" {
+			learned++
+		}
+	}
+	if learned != 1 {
+		t.Fatalf("%d records bound the one candidate id, want 1", learned)
+	}
+}
+
+func testProvider(t *testing.T) harness.Provider {
+	t.Helper()
+	p, ok := testAgents.Registry.Get(harness.DefaultProvider)
+	if !ok {
+		t.Fatal("default provider missing")
+	}
+	return p
 }

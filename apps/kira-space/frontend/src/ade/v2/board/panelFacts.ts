@@ -39,6 +39,20 @@ export function remoteErrorText(e: RemoteOpError): string {
     : e.message;
 }
 
+/** The branch a force push dialog is open for; `taskId` is the owning task, which the op's chip and status match on. */
+export interface ForcePushTarget {
+  branchId: string;
+  branchName: string;
+  repo: string;
+  taskId: string;
+}
+
+/** Rejects with the remote's failure line, so an op raises its error toast. */
+export function throwOnRemoteError<T extends { error: RemoteOpError | null }>(res: T): T {
+  if (res.error) throw new Error(remoteErrorText(res.error));
+  return res;
+}
+
 function countByTarget(merged: readonly MergedInto[]): Map<string, number> {
   const byTarget = new Map<string, number>();
   for (const m of merged) byTarget.set(m.target, (byTarget.get(m.target) ?? 0) + 1);

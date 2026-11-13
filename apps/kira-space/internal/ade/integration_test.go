@@ -70,7 +70,7 @@ func newIntegFixture(t *testing.T) *integFixture {
 		Runner:          cr, Registry: registry,
 		GitStatus: func(context.Context) gitclient.GitStatus { return h.status.Load().(gitclient.GitStatus) },
 		Workflows: &adeflow.Reader{Dir: t.TempDir(), Store: configfs.TableProjection{DB: db.DB, Folder: adeflow.WorkflowsFolder}},
-		OnBoard:   func() { h.emitted.Add(1) }, HomeDir: "/home/u",
+		OnBoard:   func(adewire.BoardChangedEvent) { h.emitted.Add(1) }, HomeDir: "/home/u",
 		AutofetchMinutes: func() int { return 5 },
 	})
 	t.Cleanup(h.board.Close)
@@ -109,6 +109,7 @@ func (f *integFixture) onDevelop(args ...string) {
 
 func (f *integFixture) integration(name string) adewire.Integration {
 	f.t.Helper()
+	f.board.invalidateBoard() // git moved out of band; the app's repo watcher does this
 	b, err := f.board.Board(context.Background())
 	if err != nil {
 		f.t.Fatalf("Board: %v", err)

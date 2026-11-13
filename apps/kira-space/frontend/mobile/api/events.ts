@@ -1,5 +1,6 @@
+import { normalizeBoardEvent } from '@ade/boardEvent';
 import type { AdeSignalSource } from '@ade/readSignals';
-import type { LogEvent, RunsChangedEvent } from '@ade/wire';
+import type { BoardChangedEvent, LogEvent, RunsChangedEvent } from '@ade/wire';
 import { CHANNEL } from '@shared/protocol/events';
 import { useEventSource } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
@@ -44,7 +45,8 @@ function dispatch(channel: string, raw: string): void {
 }
 
 export const sseSignalSource: AdeSignalSource = {
-  onBoard: (cb) => onChannel(CHANNEL.adeTaskBoard, () => cb()),
+  onBoard: (cb) =>
+    onChannel(CHANNEL.adeTaskBoard, (d) => cb(normalizeBoardEvent(d as BoardChangedEvent | null))),
   onWorkflows: (cb) => onChannel(CHANNEL.adeTaskWorkflows, () => cb()),
   onSessions: (cb) => onChannel(CHANNEL.adeTaskSessions, () => cb()),
   onRuns: (cb) => onChannel(CHANNEL.adeTaskRuns, (d) => cb(d as RunsChangedEvent)),

@@ -94,6 +94,7 @@ import { createCoreControl } from '@workbench/bridge/createCoreControl';
 import { createOpenExternal } from '@workbench/bridge/openExternal';
 import { on, trust, unwrap, windowKey } from '@workbench/bridge/rpc';
 import type { FormEdit } from '@workbench/config/configForm';
+import { type BoardChange, normalizeBoardEvent } from '../ade/v2/boardEvent';
 import type { AgentContextSaveArgs, AgentContextView } from '../ade/v2/context/types';
 import type {
   ExportApplyArgs,
@@ -811,7 +812,10 @@ const spaceControl = {
     unwrap(AdeTaskService.ArchivedTask(args)).then((r) => trust<V2.ArchivedTask>(r)),
   adeTaskRestoreTask: (args: V2.TaskArgs): Promise<V2.Task> =>
     unwrap(AdeTaskService.RestoreTask(args)).then((r) => trust<V2.Task>(r)),
-  onAdeTaskBoard: (cb: () => void): (() => void) => on(CHANNEL.adeTaskBoard, cb),
+  onAdeTaskBoard: (cb: (change: BoardChange) => void): (() => void) =>
+    on(CHANNEL.adeTaskBoard, (event: V2.BoardChangedEvent | null) =>
+      cb(normalizeBoardEvent(event)),
+    ),
   onAdeTaskWorkflows: (cb: () => void): (() => void) => on(CHANNEL.adeTaskWorkflows, cb),
   onAdeTaskRepos: (cb: () => void): (() => void) => on(CHANNEL.adeTaskRepos, cb),
   onAdeTaskRuns: (cb: (event: V2.RunsChangedEvent) => void): (() => void) =>

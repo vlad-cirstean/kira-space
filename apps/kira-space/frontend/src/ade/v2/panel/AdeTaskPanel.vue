@@ -55,7 +55,9 @@ const reviewCode = useReviewCode();
 const choices = computed(() => reviewCode.choicesOf(props.card));
 const reviewTip = computed(() => taskReviewTip(choices.value));
 const reviewDisabled = computed(
-  () => reviewCode.pending.value || choices.value.every((c) => c.disabled),
+  () =>
+    reviewCode.pendingFor(choices.value.map((c) => c.branchId)) ||
+    choices.value.every((c) => c.disabled),
 );
 
 const titleEdit = useInlineEdit({

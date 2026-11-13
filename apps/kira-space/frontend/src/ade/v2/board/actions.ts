@@ -731,7 +731,7 @@ const baseNeedsAttention: Rule = (i) => {
 };
 
 const checking: Rule = (i) =>
-  i.branch.conflictCheck === 'checking'
+  i.branch.conflictCheck === 'checking' || i.graph.pairChecking.has(i.branch.id)
     ? tag(
         'checking',
         t('space.ade.board.branchTag.checking.loading'),
@@ -747,6 +747,18 @@ const checkFailed: Rule = (i) =>
         t('space.ade.board.branchTag.checkFailed.label'),
         'amber',
         i.branch.conflictCheckReason || t('space.ade.board.branchTag.checkFailed.label'),
+      )
+    : null;
+
+// Above notPushed, behindMain and sharesFiles: the backend fills a pair's shared files independently of its
+// failed check, and "merges after it" would read as resolved while the overlap is unknown.
+const pairCheckFailed: Rule = (i) =>
+  i.graph.pairFailed.has(i.branch.id)
+    ? tag(
+        'checkFailed',
+        t('space.ade.board.branchTag.checkFailed.label'),
+        'amber',
+        t('space.ade.board.branchTag.pairCheckFailed.tooltip'),
       )
     : null;
 
@@ -773,6 +785,7 @@ const BRANCH_RULES: readonly Rule[] = [
   baseMissing,
   conflict,
   rebaseConflicts,
+  pairCheckFailed,
   notPushed,
   behindMain,
   sharesFiles,

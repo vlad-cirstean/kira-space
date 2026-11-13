@@ -158,18 +158,26 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
     // only when the user later opens its pane) gets its xterm created now, so xterm's own parser
     // keeps terminal modes and its scrollback bounds memory, instead of a byte drain losing the
     // session's start-up sequences. The renderer stays a lazy chunk: the store never imports xterm.
+    // Last size the pty was told, so a headless xterm starts at the real grid, not 80x24, and output
+    // that arrives before a view mounts wraps as it will later.
+    const lastSize = new Map<string, { cols: number; rows: number }>();
+
     async function attachHeadlessTerminal(tabId: string): Promise<void> {
       try {
         const renderer = await loadTerminalRenderer();
         if (!byTabId.has(tabId) || sinks.has(tabId)) return;
-        renderer.getOrCreateTerminal(tabId, {
-          appearance: options.appearance,
-          onTerminalOutput,
-          writeTerminal,
-          openLink: (url) => void options.openExternal(url),
-          linkActivation: 'modifier',
-          fileLinks: options.fileLinks,
-        });
+        renderer.getOrCreateTerminal(
+          tabId,
+          {
+            appearance: options.appearance,
+            onTerminalOutput,
+            writeTerminal,
+            openLink: (url) => void options.openExternal(url),
+            linkActivation: 'modifier',
+            fileLinks: options.fileLinks,
+          },
+          lastSize.get(tabId),
+        );
       } catch (err) {
         logError('terminals', `${tabId}: renderer load failed`, err);
       }
@@ -193,6 +201,7 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
       launchToken = '',
     ): Promise<void> {
       ensureSubscribed();
+      lastSize.set(tabId, { cols, rows });
       const cwdCanonical = canonicalPath(cwd);
       byTabId.set(tabId, {
         tabId,
@@ -244,6 +253,7 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
     }
 
     function resizeTerminal(tabId: string, cols: number, rows: number): void {
+      lastSize.set(tabId, { cols, rows });
       fireAndForget(control.terminalResize(tabId, cols, rows), 'terminals');
     }
 
@@ -260,6 +270,7 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
     function closeTerminalSession(tabId: string): void {
       if (!byTabId.has(tabId)) return;
       byTabId.delete(tabId);
+      lastSize.delete(tabId);
       sinks.delete(tabId);
       drainByTabId.delete(tabId);
       writer.drop(tabId);

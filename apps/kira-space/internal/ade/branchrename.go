@@ -10,6 +10,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
@@ -300,7 +301,20 @@ func (b *TaskBoard) remoteRefusal(ctx context.Context, entry *gitsession.RepoEnt
 }
 
 // applyRename renames after approval, under the task lock, with every refusal checked again since the wait.
-func (b *TaskBoard) applyRename(ctx context.Context, call agentmcp.SpaceCall, args agentmcp.RenameBranchArgs, renameRemote bool) (agentmcp.RenameBranchResult, error) {
+func (b *TaskBoard) applyRename(ctx context.Context, call agentmcp.SpaceCall, args agentmcp.RenameBranchArgs, renameRemote bool) (res agentmcp.RenameBranchResult, err error) {
+	op := b.startAgentOp(ctx, opAgentRename, call.TaskID, args.From+" to "+args.To)
+	defer func() {
+		switch {
+		case err != nil:
+			op.Finish(oplog.StatusError, err.Error())
+		case res.Outcome == agentmcp.BranchFailed:
+			op.Finish(oplog.StatusError, res.Next)
+		case res.Remote == agentmcp.RemoteFailed:
+			op.Finish(oplog.StatusOK, "remote not renamed")
+		default:
+			op.Finish(oplog.StatusOK, "")
+		}
+	}()
 	mu := b.taskMu(call.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
@@ -310,6 +324,15 @@ func (b *TaskBoard) applyRename(ctx context.Context, call agentmcp.SpaceCall, ar
 	}
 	if plan.refusal != "" {
 		return renameResult(args, plan.nick, agentmcp.BranchFailed, plan.refusal), nil
+	}
+	if renameRemote && plan.facts.remote != "" {
+		// Slot before repoMutex: the remote push waits without the repo lock.
+		slotCtx, release, err := b.holdRemoteSlot(ctx, plan.sb.CodeRepoID)
+		if err != nil {
+			return agentmcp.RenameBranchResult{}, err
+		}
+		defer release()
+		ctx = slotCtx
 	}
 	rmu := b.repoMutex(plan.sb.CodeRepoID)
 	rmu.Lock()
@@ -322,7 +345,7 @@ func (b *TaskBoard) applyRename(ctx context.Context, call agentmcp.SpaceCall, ar
 	if msg := b.renameLocal(ctx, entry, plan, args); msg != "" {
 		return renameResult(args, plan.nick, agentmcp.BranchFailed, msg), nil
 	}
-	res := renameResult(args, plan.nick, agentmcp.BranchRenamed, "")
+	res = renameResult(args, plan.nick, agentmcp.BranchRenamed, "")
 	if row, err := b.deps.Tasks.GetBranch(plan.sb.ID); err == nil {
 		res.Worktree = b.worktreePath(ctx, row)
 	}
@@ -333,7 +356,7 @@ func (b *TaskBoard) applyRename(ctx context.Context, call agentmcp.SpaceCall, ar
 			res.Remote = agentmcp.RemoteKept
 		}
 	case renameRemote:
-		res.Remote = b.renameRemoteBranch(ctx, entry, plan.facts.remote, args)
+		res.Remote = b.renameRemoteBranch(ctx, plan.sb.CodeRepoID, entry, plan.facts.remote, args)
 	}
 	if res.Remote == agentmcp.RemoteRenamed {
 		b.followTaskLink(ctx, tc, entry, oldURL, args.To)
@@ -387,12 +410,11 @@ func (b *TaskBoard) runBranchOp(ctx context.Context, entry *gitsession.RepoEntry
 
 // renameRemoteBranch pushes the new name, tracking it, then deletes the old remote branch. A failure of
 // either leaves the local rename standing and is reported as failed.
-func (b *TaskBoard) renameRemoteBranch(ctx context.Context, entry *gitsession.RepoEntry, remote string, args agentmcp.RenameBranchArgs) string {
-	deps := gitsession.RemoteDeps{Askpass: b.deps.Askpass}
+func (b *TaskBoard) renameRemoteBranch(ctx context.Context, codeRepoID string, entry *gitsession.RepoEntry, remote string, args agentmcp.RenameBranchArgs) string {
 	push := gitsession.RemoteOpParams{Kind: "push", Remote: remote, Branch: args.To, RemoteBranch: args.To, SetUpstream: true}
 	del := gitsession.RemoteOpParams{Kind: "deleteRemoteBranch", Remote: remote, Branch: args.From}
 	for _, params := range []gitsession.RemoteOpParams{push, del} {
-		res, err := entry.RunRemote(ctx, b.conn, params, deps)
+		res, err := b.runRemote(ctx, codeRepoID, entry, params)
 		if err != nil || !res.OK {
 			slog.Warn("ade: rename remote branch", "scope", "ade", "kind", params.Kind, "remote", remote, "err", err, "result", res.Error)
 			return agentmcp.RemoteFailed

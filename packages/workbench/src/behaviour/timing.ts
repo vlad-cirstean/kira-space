@@ -41,6 +41,8 @@ export const TIMING = {
   runTick: 200,
   /** Wait before a dropped connection retries. */
   reconnect: 3000,
+  /** A background op's loading toast shows only after this wait; faster ops report on failure alone. */
+  slowOp: 2000,
   /** Loading placeholders show only after this wait, so fast loads do not flash. */
   spinnerDelay: SPINNER_DELAY,
   /** Scroll-position persistence. */

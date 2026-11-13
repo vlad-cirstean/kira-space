@@ -17,6 +17,10 @@ export interface BranchGraph {
   parentOf: ReadonlyMap<string, string>;
   kids: ReadonlyMap<string, readonly string[]>;
   conflicts: ReadonlyMap<string, readonly BranchConflict[]>;
+  /** Branches with a pair whose conflict check still runs. */
+  pairChecking: ReadonlySet<string>;
+  /** Branches with a pair whose conflict check failed all retries: status unknown. */
+  pairFailed: ReadonlySet<string>;
   ancestors(id: string): string[];
   rootOf(id: string): string;
   /** Files two branches both change, `[]` when the pair is unknown. */
@@ -32,6 +36,8 @@ function buildConflicts(
   ancestors: (id: string) => string[],
   pairs: ReadonlyMap<string, Pair>,
   pairKey: (a: string, b: string) => string,
+  checking: Set<string>,
+  failed: Set<string>,
 ): Map<string, BranchConflict[]> {
   const conflicts = new Map<string, BranchConflict[]>();
   const push = (id: string, c: BranchConflict): void => {
@@ -44,7 +50,16 @@ function buildConflicts(
     const anc = ancestors(b.id);
     for (const r of planBranches) {
       if (r.kind !== 'review' || r.codeRepoId !== b.codeRepoId || anc.includes(r.id)) continue;
-      const files = pairs.get(pairKey(b.id, r.id))?.conflicts ?? [];
+      const pair = pairs.get(pairKey(b.id, r.id));
+      if (pair?.checking) {
+        checking.add(b.id);
+        checking.add(r.id);
+      }
+      if (pair?.checkFailed) {
+        failed.add(b.id);
+        failed.add(r.id);
+      }
+      const files = pair?.conflicts ?? [];
       if (!files.length) continue;
       push(b.id, { with: r.id, files: [...files] });
       push(r.id, { with: b.id, files: [...files] });
@@ -97,9 +112,29 @@ export function buildBranchGraph(board: GraphInput): BranchGraph {
   const shared = (a: string, b: string): readonly string[] =>
     pairs.get(pairKey(a, b))?.shared ?? [];
 
-  const conflicts = buildConflicts(planBranches, ancestors, pairs, pairKey);
+  const pairChecking = new Set<string>();
+  const pairFailed = new Set<string>();
+  const conflicts = buildConflicts(
+    planBranches,
+    ancestors,
+    pairs,
+    pairKey,
+    pairChecking,
+    pairFailed,
+  );
 
-  return { byBranch, byTask, parentOf, kids, conflicts, ancestors, rootOf, shared };
+  return {
+    byBranch,
+    byTask,
+    parentOf,
+    kids,
+    conflicts,
+    pairChecking,
+    pairFailed,
+    ancestors,
+    rootOf,
+    shared,
+  };
 }
 
 /** `feat/x` -> `x`: the branch name without its first path segment. */

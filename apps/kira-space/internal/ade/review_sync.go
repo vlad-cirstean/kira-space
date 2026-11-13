@@ -53,7 +53,7 @@ func (b *TaskBoard) syncSideFor(ctx context.Context, entry *gitsession.RepoEntry
 	if row.Remote != "" {
 		return out, nil
 	}
-	twin, ahead, behind, ok, err := remoteTwin(ctx, entry, refs.inv, row, refs.remote)
+	twin, ahead, behind, ok, err := remoteTwin(ctx, entry, nil, refs.inv, row, refs.remote)
 	if err != nil {
 		return syncSide{}, err
 	}
@@ -135,7 +135,7 @@ func (b *TaskBoard) ReviewFetch(ctx context.Context, branchID string) (adewire.R
 	defer cancel()
 	defer b.notifyBoard()
 	for _, remote := range remotes {
-		res, err := entry.RunRemote(ctx, b.conn, gitsession.RemoteOpParams{Kind: "fetch", Remote: remote, Prune: true}, gitsession.RemoteDeps{Askpass: b.deps.Askpass})
+		res, err := b.runRemote(ctx, sb.CodeRepoID, entry, gitsession.RemoteOpParams{Kind: "fetch", Remote: remote, Prune: true})
 		if err != nil {
 			return adewire.ReviewFetchResult{Error: &adewire.RemoteOpError{Kind: "Unknown", Message: err.Error()}}, nil
 		}

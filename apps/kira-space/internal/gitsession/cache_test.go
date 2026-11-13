@@ -1,7 +1,9 @@
 package gitsession
 
 import (
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 )
@@ -106,5 +108,45 @@ func TestDiffCache_ClearDropsEverything(t *testing.T) {
 	c.set("base", "sha", "c.txt", diffBody("c"), 10)
 	if _, _, ok := c.get("base", "sha", "c.txt"); !ok {
 		t.Fatal("c.txt: want a hit — the cache must work after clear()")
+	}
+}
+
+// entryMeta: a value lives entryMetaTTL, a write drops it, a failed read is never stored.
+func TestEntryMeta_TTLDropAndErrors(t *testing.T) {
+	t.Parallel()
+	m := newEntryMeta()
+	now := time.Unix(1000, 0)
+	m.now = func() time.Time { return now }
+	loads := 0
+	load := func() (string, error) { loads++; return "v", nil }
+
+	for range 3 {
+		if v, err := metaGet(m, "k", load); err != nil || v != "v" {
+			t.Fatalf("metaGet = %q, %v", v, err)
+		}
+	}
+	if loads != 1 {
+		t.Fatalf("loads within TTL = %d, want 1", loads)
+	}
+	now = now.Add(entryMetaTTL)
+	metaGet(m, "k", load) //nolint:errcheck
+	if loads != 2 {
+		t.Fatalf("loads after TTL = %d, want 2", loads)
+	}
+	m.drop()
+	metaGet(m, "k", load) //nolint:errcheck
+	if loads != 3 {
+		t.Fatalf("loads after drop = %d, want 3", loads)
+	}
+
+	fails := 0
+	failing := func() (string, error) { fails++; return "", errors.New("boom") }
+	for range 2 {
+		if _, err := metaGet(m, "bad", failing); err == nil {
+			t.Fatal("want the load error")
+		}
+	}
+	if fails != 2 {
+		t.Fatalf("failed loads = %d, want 2 (errors never cache)", fails)
 	}
 }
