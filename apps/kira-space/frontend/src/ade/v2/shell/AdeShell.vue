@@ -6,6 +6,7 @@ import { computed, defineAsyncComponent, onMounted, onScopeDispose } from 'vue';
 import { control } from '../../../bridge/control';
 import AdeAddPopover from '../AdeAddPopover.vue';
 import { shelfOf } from '../board/shelf';
+import { prefetchNotesEditor } from '../notes/asyncEditor';
 import AdePanel from '../panel/AdePanel.vue';
 import AdePlanView from '../plan/AdePlanView.vue';
 import { usePlanModel } from '../plan/usePlanModel';
@@ -91,6 +92,9 @@ function onReviewCode(): void {
 }
 let offReviewCode: (() => void) | undefined;
 onMounted(() => {
+  // Off the critical path but early: the stage dialog and notes open on events, not on a hover, and
+  // must find the editor chunk loaded for their first frame.
+  prefetchNotesEditor();
   offReviewCode = control.onReviewCode(onReviewCode);
 });
 onScopeDispose(() => offReviewCode?.());
