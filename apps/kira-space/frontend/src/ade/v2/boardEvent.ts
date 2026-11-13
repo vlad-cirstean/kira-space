@@ -7,11 +7,11 @@ export interface BoardChange {
   taskIds: string[] | null;
 }
 
-/** Reads a board push payload; none, or an unknown shape, means everything changed. */
+/** Reads a board push payload; none, an unknown shape or an empty `taskIds` (the Go doc: any task may have changed) means everything changed. */
 export function normalizeBoardEvent(raw: BoardChangedEvent | null | undefined): BoardChange {
   return {
     refs: raw?.refs !== false,
-    taskIds: Array.isArray(raw?.taskIds) ? raw.taskIds : null,
+    taskIds: Array.isArray(raw?.taskIds) && raw.taskIds.length > 0 ? raw.taskIds : null,
   };
 }
 
