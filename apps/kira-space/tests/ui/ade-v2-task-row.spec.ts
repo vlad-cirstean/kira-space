@@ -207,12 +207,22 @@ test('card head fits at a narrow plan pane', async ({ relaunch }) => {
         ...h.querySelectorAll('[data-testid^="ade-task-action-"], [data-testid="ade-card-review"]'),
       ];
       const last = controls.at(-1);
+      // Gap from the last control to the head's right edge; the 8px padding makes 8 the flush state.
+      const gap = last
+        ? h.getBoundingClientRect().right - last.getBoundingClientRect().right
+        : null;
       const clipped = h.scrollWidth > h.clientWidth;
-      const tight = last
-        ? last.getBoundingClientRect().right > h.getBoundingClientRect().right - 8
-        : false;
+      // 1px of sub-pixel slack: the control may touch the padding edge, not enter its last 7px.
+      const tight = gap !== null && gap < 8 - 1;
       return clipped || tight
-        ? [h.closest('[data-testid="ade-card"]')?.getAttribute('data-task-id')]
+        ? [
+            {
+              id: h.closest('[data-testid="ade-card"]')?.getAttribute('data-task-id'),
+              scrollWidth: h.scrollWidth,
+              clientWidth: h.clientWidth,
+              gap,
+            },
+          ]
         : [];
     }),
   );
