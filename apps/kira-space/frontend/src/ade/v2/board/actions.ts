@@ -748,7 +748,14 @@ const checkFailed: Rule = (i) =>
         'amber',
         i.branch.conflictCheckReason || t('space.ade.board.branchTag.checkFailed.label'),
       )
-    : null;
+    : i.graph.pairFailed.has(i.branch.id)
+      ? tag(
+          'checkFailed',
+          t('space.ade.board.branchTag.checkFailed.label'),
+          'amber',
+          t('space.ade.board.branchTag.pairCheckFailed.tooltip'),
+        )
+      : null;
 
 const clean: Rule = () =>
   tag(

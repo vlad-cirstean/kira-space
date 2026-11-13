@@ -306,6 +306,8 @@ export interface Pair {
   conflicts: string[];
   /** True while the pair's merge-tree check runs; absent from an older backend. */
   checking?: boolean;
+  /** True when the check failed all retries: conflicts are unknown, not none; Refresh retries. */
+  checkFailed?: boolean;
 }
 
 // ---- runs, tasks, plan (§2, §4, §5, §12, D7, D10, D12, D16)

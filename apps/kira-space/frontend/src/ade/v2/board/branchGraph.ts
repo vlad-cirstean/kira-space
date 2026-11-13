@@ -19,6 +19,8 @@ export interface BranchGraph {
   conflicts: ReadonlyMap<string, readonly BranchConflict[]>;
   /** Branches with a pair whose conflict check still runs. */
   pairChecking: ReadonlySet<string>;
+  /** Branches with a pair whose conflict check failed all retries: status unknown. */
+  pairFailed: ReadonlySet<string>;
   ancestors(id: string): string[];
   rootOf(id: string): string;
   /** Files two branches both change, `[]` when the pair is unknown. */
@@ -35,6 +37,7 @@ function buildConflicts(
   pairs: ReadonlyMap<string, Pair>,
   pairKey: (a: string, b: string) => string,
   checking: Set<string>,
+  failed: Set<string>,
 ): Map<string, BranchConflict[]> {
   const conflicts = new Map<string, BranchConflict[]>();
   const push = (id: string, c: BranchConflict): void => {
@@ -51,6 +54,10 @@ function buildConflicts(
       if (pair?.checking) {
         checking.add(b.id);
         checking.add(r.id);
+      }
+      if (pair?.checkFailed) {
+        failed.add(b.id);
+        failed.add(r.id);
       }
       const files = pair?.conflicts ?? [];
       if (!files.length) continue;
@@ -106,9 +113,28 @@ export function buildBranchGraph(board: GraphInput): BranchGraph {
     pairs.get(pairKey(a, b))?.shared ?? [];
 
   const pairChecking = new Set<string>();
-  const conflicts = buildConflicts(planBranches, ancestors, pairs, pairKey, pairChecking);
+  const pairFailed = new Set<string>();
+  const conflicts = buildConflicts(
+    planBranches,
+    ancestors,
+    pairs,
+    pairKey,
+    pairChecking,
+    pairFailed,
+  );
 
-  return { byBranch, byTask, parentOf, kids, conflicts, pairChecking, ancestors, rootOf, shared };
+  return {
+    byBranch,
+    byTask,
+    parentOf,
+    kids,
+    conflicts,
+    pairChecking,
+    pairFailed,
+    ancestors,
+    rootOf,
+    shared,
+  };
 }
 
 /** `feat/x` -> `x`: the branch name without its first path segment. */

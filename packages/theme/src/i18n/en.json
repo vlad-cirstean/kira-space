@@ -8699,6 +8699,9 @@
             "label": "Not pushed",
             "tooltip": "Rebased locally; the remote still has the old commits"
           },
+          "pairCheckFailed": {
+            "tooltip": "Checking for conflicts with other work failed, so the status is unknown; refreshing retries it"
+          },
           "parked": {
             "tooltip": "Kept out of the merge order"
           },
