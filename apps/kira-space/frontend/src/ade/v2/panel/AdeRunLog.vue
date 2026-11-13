@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import LogLines, { type LogLine } from '@workbench/components/LogLines.vue';
 import QueryState from '@workbench/components/QueryState.vue';
+import { computed } from 'vue';
 import { useLog } from '../readQueries';
 import type { LogChunk, LogKind } from '../wire';
 
@@ -13,13 +14,22 @@ const log = useLog(
   () => props.id,
 );
 
-function toLines(chunks: readonly LogChunk[]): LogLine[] {
-  return chunks.map((c) => ({
-    id: c.seq,
-    text: c.text,
-    stream: c.stream === 'stderr' || /exit code [1-9]/i.test(c.text) ? 'stderr' : c.stream,
-  }));
+// One line object per chunk: a push appends chunks and keeps the old ones, so the exit-code regex
+// runs once per chunk and the list keeps the identity of every line it already rendered.
+const lineOf = new WeakMap<LogChunk, LogLine>();
+function toLine(c: LogChunk): LogLine {
+  let line = lineOf.get(c);
+  if (!line) {
+    line = {
+      id: c.seq,
+      text: c.text,
+      stream: c.stream === 'stderr' || /exit code [1-9]/i.test(c.text) ? 'stderr' : c.stream,
+    };
+    lineOf.set(c, line);
+  }
+  return line;
 }
+const lines = computed(() => (log.data.value?.chunks ?? []).map(toLine));
 </script>
 
 <template>
@@ -35,7 +45,7 @@ function toLines(chunks: readonly LogChunk[]): LogLine[] {
     </template>
     <template #default="{ data }">
       <LogLines
-        :lines="toLines(data.chunks)"
+        :lines="lines"
         :truncated="data.truncated"
         testid="ade-run-log"
         :max-height="maxHeight"

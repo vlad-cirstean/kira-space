@@ -53,8 +53,18 @@ function measure(el: unknown): void {
   if (el instanceof Element) virtualizer.value.measureElement(el);
 }
 
+// ANSI parse once per line object: the slot and the default row both ask, and every scroll or push
+// re-renders the visible rows.
+const parsed = new WeakMap<LogLine, AnsiSegment[]>();
 function segmentsOf(index: number): AnsiSegment[] {
-  return parseAnsi((props.lines[index]?.text ?? '').replace(/\n$/, ''));
+  const line = props.lines[index];
+  if (!line) return [];
+  let segments = parsed.get(line);
+  if (!segments) {
+    segments = parseAnsi(line.text.replace(/\n$/, ''));
+    parsed.set(line, segments);
+  }
+  return segments;
 }
 
 function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {

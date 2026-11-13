@@ -395,6 +395,43 @@ test('Log opens the run log and appends pushed chunks', async ({ relaunch }) => 
   await expect(log).toContainText('Edit src/appended.ts');
 });
 
+test('pushed log chunks keep their order, an exit-code line reads as an error, and an over-long log says truncated', async ({
+  relaunch,
+}) => {
+  const { window: page } = await openPlan(relaunch);
+  await open(page, 'T_bill');
+  const line = step(page, 'impl').locator('[data-testid="ade-run-line"][data-branch-id="b_bill"]');
+  await line.locator(t('ade-run-log-toggle')).click();
+  const log = page.locator(t('ade-run-log'));
+  await expect(log).toBeVisible();
+  const rows = log.locator(t('ade-run-log-line'));
+  await expect(rows.first()).toBeVisible();
+  const at = 1790067600000;
+  await emitLog(page, 'run', 'r_T_bill_impl_b_bill', [
+    { seq: 100, at, stream: 'stdout', text: 'ordered-one' },
+    { seq: 101, at, stream: 'stdout', text: 'ordered-two' },
+    { seq: 102, at, stream: 'stdout', text: 'process finished with exit code 2' },
+  ]);
+  await expect(log).toContainText('ordered-two');
+  const texts = await rows.allTextContents();
+  expect(texts.findIndex((x) => x.includes('ordered-one'))).toBeLessThan(
+    texts.findIndex((x) => x.includes('ordered-two')),
+  );
+  await expect(rows.filter({ hasText: 'exit code 2' })).toHaveAttribute('data-stream', 'stderr');
+  await expect(rows.filter({ hasText: 'ordered-one' })).toHaveAttribute('data-stream', 'stdout');
+
+  await expect(log).not.toContainText('Earlier output dropped');
+  const big = 'x'.repeat(600_000);
+  await emitLog(
+    page,
+    'run',
+    'r_T_bill_impl_b_bill',
+    [103, 104, 105, 106].map((seq) => ({ seq, at, stream: 'stdout', text: `${big}${seq}` })),
+  );
+  await expect(log).toContainText('Earlier output dropped');
+  await expect(log).toContainText('106');
+});
+
 test('a script run offers Output', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   await open(page, 'T_cart');
