@@ -496,7 +496,7 @@ func (b *TaskBoard) gatherReviewSend(ctx context.Context, args adewire.SendRevie
 }
 
 // applyReviewSend is SendReview's locked phase. It returns errReviewMoved when the run, its round
-// count or its branch changed since the gather.
+// count, its branch, base, worktree folder or the task link changed since the gather.
 func (b *TaskBoard) applyReviewSend(ctx context.Context, args adewire.SendReviewArgs, g *reviewSendGather) error {
 	mu := b.taskMu(g.rc.run.TaskID)
 	mu.Lock()
@@ -515,7 +515,11 @@ func (b *TaskBoard) applyReviewSend(ctx context.Context, args adewire.SendReview
 	}
 	if rc.rev.Rounds != g.rc.rev.Rounds || rc.sb.Name != g.rc.sb.Name || rc.sb.ID != g.rc.sb.ID || rc.run.ID != g.rc.run.ID ||
 		cmpNonEmpty(args.Route, rc.rev.Route) != cmpNonEmpty(args.Route, g.rc.rev.Route) ||
-		rc.rev.DedicatedClaudeID != g.rc.rev.DedicatedClaudeID {
+		rc.rev.DedicatedClaudeID != g.rc.rev.DedicatedClaudeID ||
+		// Inputs of g.tgt and the change request link, read outside the lock: worktree (worktreeOf),
+		// base (reviewSpellings), task link (linkedChangeRequest, changeRequestURL).
+		rc.sb.WorktreeDir != g.rc.sb.WorktreeDir || rc.sb.Base != g.rc.sb.Base || rc.sb.BaseBranchID != g.rc.sb.BaseBranchID ||
+		rc.tc.task.HostURL != g.rc.tc.task.HostURL {
 		return errReviewMoved
 	}
 	tgt := g.tgt
