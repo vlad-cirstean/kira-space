@@ -1,3 +1,4 @@
+import { TIMING } from '@workbench/behaviour/timing';
 import { expect, test } from './fixtures';
 import { adeBoard, emitAgentEvent, emitAgentSessions, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
@@ -149,6 +150,7 @@ test('a refused Approve on a stale board asks for a repo and approves again', as
       response: contract('ade-repo-required', 'AdeTaskService.AddTaskRepo'),
     },
   ]);
+  await page.clock.install();
   await page.locator(t('ade-tab-needs')).click();
   await page
     .locator(`${item('approval')} ${t('ade-needs-action')}`)
@@ -156,6 +158,8 @@ test('a refused Approve on a stale board asks for a repo and approves again', as
     .click();
   await expect(page.locator(t('ade-repo-gate'))).toBeVisible();
   expect(calls(control, IPC.adeTaskApprove)).toHaveLength(1);
+  // The gate holds past the slow-op mark: a loading toast would show by now if the op still ran.
+  await page.clock.runFor(TIMING.slowOp + 500);
   await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
   await page.locator(t('ade-repo-gate-pick')).click();
   await page.locator(t('ade-repo-gate-pick-option-repo-mobile')).click();

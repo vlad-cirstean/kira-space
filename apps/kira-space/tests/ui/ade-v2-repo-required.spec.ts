@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { TIMING } from '@workbench/behaviour/timing';
 import { expect, test } from './fixtures';
 import { adeBoardSnapshot, adeFixture, alertsWithoutRepo, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
@@ -110,6 +111,7 @@ test('cancelling the repo prompt after a refusal shows no error toast and keeps 
     { channel: IPC.adeTaskStartRun, error: noRepo },
     addRepo,
   ]);
+  await page.clock.install();
   // The board says the task has no repo, so the gate asks first; pick, then the bridge still refuses.
   await page.locator(cellAction('T_alerts', 'run')).click();
   await choose(page);
@@ -118,8 +120,10 @@ test('cancelling the repo prompt after a refusal shows no error toast and keeps 
   await dialog.locator(t('ade-run-message')).fill('Plan it my way.');
   await dialog.locator(t('ade-run-send')).click();
   await expect(page.locator(t('ade-repo-gate'))).toBeVisible();
-  // While the prompt waits no op runs: no chip, no loading toast.
+  // While the prompt waits no op runs: no chip, and no loading toast even past the slow-op mark.
+  await page.clock.runFor(TIMING.slowOp + 500);
   await expect(page.locator('[data-testid="ade-op-status"]')).toHaveCount(0);
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
   await page.locator(t('ade-repo-gate-cancel')).click();
   await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
   expect(calls(control, IPC.adeTaskStartRun)).toHaveLength(1);
