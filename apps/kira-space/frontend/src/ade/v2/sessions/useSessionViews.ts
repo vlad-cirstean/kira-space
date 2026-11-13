@@ -1,8 +1,8 @@
 import { useAgentInfo } from '@workbench/agent/agentInfo';
 import { computed } from 'vue';
 import { usePlanModel } from '../plan/usePlanModel';
-import type { ArchivedTask } from '../wire';
-import { type SessionLookup, type SessionView, sessionView } from './sessionView';
+import type { ArchivedTask, Session } from '../wire';
+import { reuseView, type SessionLookup, type SessionView, sessionView } from './sessionView';
 
 /** `view(session)` for any session, resolved against the live board, workflows and repo names.
  *  `archived` supplies the task and branches the board no longer lists. */
@@ -24,6 +24,7 @@ export function useSessionViews(archived?: () => ArchivedTask | undefined) {
     };
   });
 
-  const view = (s: Parameters<typeof sessionView>[0]): SessionView => sessionView(s, lookup.value);
+  const cache = new WeakMap<Session, SessionView>();
+  const view = (s: Session): SessionView => reuseView(cache, sessionView(s, lookup.value));
   return { sessions, view };
 }

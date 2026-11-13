@@ -1,9 +1,20 @@
-import { useDocumentVisibility, useTimeoutFn, useWindowFocus } from '@vueuse/core';
+import {
+  createSharedComposable,
+  useDocumentVisibility,
+  useTimeoutFn,
+  useWindowFocus,
+} from '@vueuse/core';
 import { computed, type MaybeRefOrGetter, ref, toValue, watch } from 'vue';
 import { useMarkSessionSeen } from '../queries';
 
 /** Dwell before a session counts as viewed once its pane is shown. */
 const SEEN_DWELL_MS = 500;
+
+// One listener pair for every pane and row, not one per mounted session.
+const useWindowPresence = createSharedComposable(() => ({
+  visibility: useDocumentVisibility(),
+  focused: useWindowFocus(),
+}));
 
 /** Marks a finished session viewed. The user views it while `active` (its pane or log is shown) in
  *  a visible, focused window. A pane shown after the finish waits out a short dwell; a pane already
@@ -13,8 +24,7 @@ export function useMarkSeenOnView(
   unseen: MaybeRefOrGetter<boolean>,
   active: MaybeRefOrGetter<boolean> = true,
 ): void {
-  const visibility = useDocumentVisibility();
-  const focused = useWindowFocus();
+  const { visibility, focused } = useWindowPresence();
   const mark = useMarkSessionSeen();
   const present = computed(
     () => toValue(active) && visibility.value === 'visible' && focused.value,

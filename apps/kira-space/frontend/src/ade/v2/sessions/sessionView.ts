@@ -97,3 +97,16 @@ export function byRunningOrder(a: Session, b: Session): number {
 export function byRecent(a: Session, b: Session): number {
   return b.lastActiveAt - a.lastActiveAt || compareNatural(a.id, b.id);
 }
+
+/** `fresh`, or the view cached for the same session object when every derived field is unchanged,
+ *  so list rows keep their props across board pushes that touch other tasks. */
+export function reuseView(cache: WeakMap<Session, SessionView>, fresh: SessionView): SessionView {
+  const prev = cache.get(fresh.session);
+  if (
+    prev &&
+    (Object.keys(fresh) as (keyof SessionView)[]).every((k) => Object.is(prev[k], fresh[k]))
+  )
+    return prev;
+  cache.set(fresh.session, fresh);
+  return fresh;
+}
