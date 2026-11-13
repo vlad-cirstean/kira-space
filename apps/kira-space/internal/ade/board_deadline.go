@@ -38,6 +38,10 @@ type repoFlight struct {
 	res   *repoResult
 	// abandoned is set, under boardFacts.mu, by a build that stopped waiting.
 	abandoned bool
+	// stale is set, under boardFacts.mu, when a build of another gen joined or abandoned the
+	// flight: a change landed after the flight read its tips, so its result is no answer for the
+	// current gen.
+	stale bool
 }
 
 // boardFacts is the per-repo state behind repoFactsDeadlined.
@@ -102,6 +106,8 @@ func (b *TaskBoard) repoFactsDeadlined(ctx context.Context, id string, rows []mo
 		f.flight[id] = fl
 		f.seq++
 		b.startFacts(id, fl, f.seq, per, rows, setups, shared)
+	} else if fl.gen != gen {
+		fl.stale = true
 	}
 	last := f.last[id]
 	f.mu.Unlock()
@@ -131,6 +137,9 @@ func (b *TaskBoard) repoFactsDeadlined(ctx context.Context, id string, rows []mo
 	default:
 	}
 	fl.abandoned = true
+	if fl.gen != gen {
+		fl.stale = true
+	}
 	if l := f.last[id]; l != nil {
 		last = l
 	}
@@ -159,9 +168,12 @@ func (b *TaskBoard) startFacts(id string, fl *repoFlight, seq uint64, per map[st
 		if f.flight[id] == fl {
 			delete(f.flight, id)
 		}
+		// A stale flight's result (an invalidation came after it read its tips) still feeds
+		// overlays but is no answer; its landing schedules a build that starts a fresh flight.
 		late := fl.abandoned
+		fresh := late && !fl.stale && b.bcache.gen.Load() == fl.gen
 		if l := f.last[id]; l == nil || l.seq < seq {
-			f.last[id] = &repoLast{seq: seq, sig: fl.sig, rows: per, res: cloneRepoResult(res), late: late}
+			f.last[id] = &repoLast{seq: seq, sig: fl.sig, rows: per, res: cloneRepoResult(res), late: fresh}
 		}
 		close(fl.done)
 		f.mu.Unlock()
