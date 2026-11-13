@@ -17,5 +17,7 @@ Restore Plan/task list UI to its look before v0.3.9. Reference: tag `v0.3.8`. Hi
 - Cards: drop full-card tone fill, restore `v0.3.8` card look. Keep any tone as small accent only if `v0.3.8` had it.
 - Top bar: restore `v0.3.8` size and header layout so it fits the viewport without making the task list full screen.
 - Branches panel: restore `v0.3.8` initial size (collapsed or narrow as before).
-- Today marker: subtle tint or border distinct from other days. No bright yellow, no strong colour. Works in light and dark.
+- Today marker: brighter grey than other days (subtle lighter neutral grey tint), theme tokens only. No yellow, no strong colour. Works in light and dark.
+- Timeline: drop the date gutter beside the cards. Each date shows once as a heading row above its day's cards, trading a little vertical space for horizontal space. Today's heading and group carry the brighter-grey treatment.
+- Shell top bar (tabs, capture box, Add): fits narrow windows; every control stays reachable (shrink or wrap, never cut off).
 - Keep unrelated v0.3.9 to v0.3.11 changes (performance, feedback) unless they cause a complaint above.
