@@ -146,6 +146,7 @@ jobs:
         with:
           bun: "false"
           bindings: "false"
+          gtk: "true"
       - name: Resolve this group's images (same key as pr.yml)
         id: images
         run: |
