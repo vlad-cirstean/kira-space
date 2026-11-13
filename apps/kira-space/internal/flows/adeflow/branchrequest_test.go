@@ -561,10 +561,10 @@ func TestBranchRequest(t *testing.T) {
 
 	t.Run("each call times out on its own clock", func(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"})}, Name: "done"}}, onceStepYML, true,
-			flowharness.WithBranchRequestWait(2*time.Second))
+			flowharness.WithBranchRequestWait(4*time.Second))
 		f.startRun(t)
 		req := f.waitRequest(t)
-		time.Sleep(1200 * time.Millisecond)
+		time.Sleep(2 * time.Second) // margin for the joined call to outlive the first under -race
 		type answer struct {
 			res agentmcp.RequestBranchesResult
 			err error
@@ -575,7 +575,7 @@ func TestBranchRequest(t *testing.T) {
 			done <- answer{res, err}
 		}()
 		f.waitItems(t, 2)
-		// The first call ends at its own 2 s; the joined call keeps waiting in the same request.
+		// The first call ends at its own 4 s; the joined call keeps waiting in the same request.
 		waitRun(t, f.app, f.task.ID, "one", "done")
 		if got := f.result(t, 1); !strings.Contains(got, "timeout") {
 			t.Fatalf("first call result = %s, want timeout", got)

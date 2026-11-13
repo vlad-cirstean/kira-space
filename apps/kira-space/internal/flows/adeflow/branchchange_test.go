@@ -67,7 +67,7 @@ func (f *brFixture) changeResult(t *testing.T) string {
 	testx.WaitUntil(t, waitFor, func() bool {
 		var err error
 		raw, err = os.ReadFile(filepath.Join(f.app.FakeDir, "mcp-change_branch-1.json"))
-		return err == nil
+		return err == nil && len(raw) > 0 // the fake agent writes the file in place; skip a read of the empty file
 	})
 	return string(raw)
 }

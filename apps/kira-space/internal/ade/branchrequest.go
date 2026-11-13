@@ -810,31 +810,9 @@ func (b *TaskBoard) finishBranchRequest(ctx context.Context, call agentmcp.Space
 // workers return; no worker takes it.
 func (b *TaskBoard) createApprovedSlots(ctx context.Context, call agentmcp.SpaceCall, slots []requestSlot, dec branchDecision) {
 	tc, err := b.spaceCtx(call.TaskID)
-	var order []string
-	groups := map[string][]*requestSlot{}
-	for i := range slots {
-		s := &slots[i]
-		switch {
-		case s.item == nil:
-		case !dec.approved[s.id]:
-			s.result = outcomeBranch(s, agentmcp.BranchDenied, deniedText)
-		case err != nil:
-			s.result = failedBranch(s.nick, s.branch, s.item.Base, toolMessage(err))
-		default:
-			if groups[s.codeRepoID] == nil {
-				order = append(order, s.codeRepoID)
-			}
-			groups[s.codeRepoID] = append(groups[s.codeRepoID], s)
-		}
-	}
+	order, groups, nicks := groupApproved(slots, dec, err)
 	if len(order) == 0 {
 		return
-	}
-	var nicks []string
-	for i := range slots {
-		if s := &slots[i]; groups[s.codeRepoID] != nil && !slices.Contains(nicks, s.nick) && slices.Contains(groups[s.codeRepoID], s) {
-			nicks = append(nicks, s.nick)
-		}
 	}
 	op := b.startAgentOp(ctx, opAgentBranches, call.TaskID, strings.Join(nicks, ", "))
 	var g errgroup.Group
@@ -847,7 +825,7 @@ func (b *TaskBoard) createApprovedSlots(ctx context.Context, call agentmcp.Space
 			own.branches = slices.Clone(tc.branches)
 			for _, s := range groups[id] {
 				s.result = b.createApproved(ctx, &own, s)
-				if s.result.Outcome == agentmcp.BranchCreated || s.result.Outcome == agentmcp.BranchExisting || s.result.Outcome == agentmcp.BranchCheckedOut {
+				if branchMade(s.result) {
 					s.result.Next = s.note + s.result.Next
 				}
 			}
@@ -858,12 +836,8 @@ func (b *TaskBoard) createApprovedSlots(ctx context.Context, call agentmcp.Space
 	var failed []string
 	for _, id := range order {
 		for _, s := range groups[id] {
-			switch s.result.Outcome {
-			case agentmcp.BranchCreated, agentmcp.BranchExisting, agentmcp.BranchCheckedOut:
-			case agentmcp.BranchFailed:
-				if !slices.Contains(failed, s.nick) {
-					failed = append(failed, s.nick)
-				}
+			if s.result.Outcome == agentmcp.BranchFailed && !slices.Contains(failed, s.nick) {
+				failed = append(failed, s.nick)
 			}
 		}
 	}
@@ -872,6 +846,35 @@ func (b *TaskBoard) createApprovedSlots(ctx context.Context, call agentmcp.Space
 		return
 	}
 	op.Finish(oplog.StatusOK, "")
+}
+
+// groupApproved answers the denied slots and, when the task context failed, the approved ones; the rest
+// group by repo in slot order. nicks lists each approved slot's repo once.
+func groupApproved(slots []requestSlot, dec branchDecision, ctxErr error) (order []string, groups map[string][]*requestSlot, nicks []string) {
+	groups = map[string][]*requestSlot{}
+	for i := range slots {
+		s := &slots[i]
+		switch {
+		case s.item == nil:
+		case !dec.approved[s.id]:
+			s.result = outcomeBranch(s, agentmcp.BranchDenied, deniedText)
+		case ctxErr != nil:
+			s.result = failedBranch(s.nick, s.branch, s.item.Base, toolMessage(ctxErr))
+		default:
+			if groups[s.codeRepoID] == nil {
+				order = append(order, s.codeRepoID)
+			}
+			groups[s.codeRepoID] = append(groups[s.codeRepoID], s)
+			if !slices.Contains(nicks, s.nick) {
+				nicks = append(nicks, s.nick)
+			}
+		}
+	}
+	return order, groups, nicks
+}
+
+func branchMade(r *agentmcp.RequestedBranch) bool {
+	return r.Outcome == agentmcp.BranchCreated || r.Outcome == agentmcp.BranchExisting || r.Outcome == agentmcp.BranchCheckedOut
 }
 
 const deniedText = "The user declined this branch. Do not create it with git; continue without it or ask the user."
