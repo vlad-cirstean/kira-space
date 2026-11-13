@@ -35,18 +35,7 @@ import AdeTagIcon from './AdeTagIcon.vue';
 import AdeTaskChildren from './AdeTaskChildren.vue';
 import AdeTaskSessions from './AdeTaskSessions.vue';
 import AdeTaskStatusMenu from './AdeTaskStatusMenu.vue';
-import {
-  CARD_BAR,
-  CARD_FLAGS,
-  CARD_LEAD,
-  CARD_LEAD_AGENTS,
-  CARD_LEAD_ATTENTION,
-  CARD_STATUS,
-  CARD_STEP_LABEL,
-  CARD_STEP_SEGS,
-} from './cardColumns';
 import { TASK_TAG_GLYPH } from './glyphs';
-import { taskTint } from './taskTint';
 import { type BranchRowModel, type CardModel, usePlanModel } from './usePlanModel';
 import { useTaskMenu } from './useTaskMenu';
 
@@ -96,8 +85,8 @@ const boxClass = computed(() => {
   const c = props.card;
   return [
     c.parked ? 'bg-chrome' : '',
-    'cursor-grab border',
-    selected.value ? 'border-focus' : 'border-border',
+    'cursor-grab border border-l-3',
+    selected.value ? 'border-focus' : 'border-transparent',
     inRipple.value && !selected.value ? 'outline-1 outline-border' : '',
   ];
 });
@@ -116,7 +105,7 @@ const boxClass = computed(() => {
       :data-task-id="card.task.id"
       class="box-border flex min-w-0 flex-1 flex-col overflow-hidden"
       :class="boxClass"
-      :style="card.parked ? undefined : taskTint(card.color, selected)"
+      :style="{ borderLeftColor: card.color }"
       :aria-current="selected || undefined"
       data-testid="ade-card"
       @contextmenu="taskMenu.open"
@@ -134,45 +123,32 @@ const boxClass = computed(() => {
         @keydown.enter.self="emit('select')"
         @keydown.space.self.prevent="emit('select')"
       >
-        <div class="flex min-h-5 min-w-0 items-center gap-1.5">
-          <span :class="CARD_LEAD" data-testid="ade-row-lead">
-            <span :class="CARD_LEAD_ATTENTION" data-testid="ade-row-attention">
-              <AdeAttention
-                v-if="card.attention"
-                :tip="card.attention"
-                :item="card.attentionItem"
-              />
-              <AdeTaskSessions
-                v-else-if="card.sessions?.state === 'input'"
-                :task-id="card.task.id"
-                :sessions="card.sessions"
-              />
-            </span>
-            <span :class="CARD_LEAD_AGENTS" data-testid="ade-row-agents">
-              <AdeTaskSessions
-                v-if="card.sessions && (card.attention || card.sessions.state !== 'input')"
-                :task-id="card.task.id"
-                :sessions="card.sessions"
-              />
-            </span>
-          </span>
-          <span :class="CARD_STATUS"><AdeTaskStatusMenu :card="card" /></span>
-          <span :class="CARD_FLAGS" data-testid="ade-row-flags">
-            <AdeTagIcon
-              v-if="tagGlyph"
-              :glyph="TASK_TAG_GLYPH[tagGlyph.kind]"
-              :kind="tagGlyph.kind"
-              :label="tagGlyph.label"
-              :tip="tagGlyph.tip"
-              :tone="tagGlyph.tone"
-              :color="tagGlyph.color"
+        <div class="flex h-4.5 min-w-0 items-center gap-1.5">
+          <span class="inline-flex min-w-4.5 shrink-0 justify-center" data-testid="ade-row-lead">
+            <AdeTaskSessions
+              v-if="card.sessions"
+              :task-id="card.task.id"
+              :sessions="card.sessions"
             />
-            <AdeOrchestratorBadge v-if="card.orchestrator" icon-only />
           </span>
+          <AdeTaskStatusMenu :card="card" />
+          <AdeTagIcon
+            v-if="tagGlyph"
+            :glyph="TASK_TAG_GLYPH[tagGlyph.kind]"
+            :kind="tagGlyph.kind"
+            :label="tagGlyph.label"
+            :tip="tagGlyph.tip"
+            :tone="tagGlyph.tone"
+            :color="tagGlyph.color"
+          />
+          <AdeOrchestratorBadge v-if="card.orchestrator" icon-only />
           <AdeOpStatus :task-id="card.task.id" />
-          <template v-if="!card.parked">
-            <AdeTip v-if="p.hasWorkflow" :text="p.workflowTip">
-              <span :class="CARD_STEP_SEGS" data-testid="ade-step-segs">
+          <template v-if="p.hasWorkflow && !card.parked">
+            <AdeTip :text="p.workflowTip">
+              <span
+                class="inline-flex w-20 shrink-0 items-center gap-0.5"
+                data-testid="ade-step-segs"
+              >
                 <span
                   v-for="seg in p.segments"
                   :key="seg.id"
@@ -181,20 +157,16 @@ const boxClass = computed(() => {
                 />
               </span>
             </AdeTip>
-            <span v-else :class="CARD_STEP_SEGS" />
             <span
-              :class="[
-                CARD_STEP_LABEL,
-                'text-kira-sm',
-                p.bad ? 'text-tone-red' : 'text-muted-foreground',
-              ]"
-              :data-testid="p.hasWorkflow ? 'ade-step-label' : undefined"
+              class="max-w-36 shrink-0 truncate text-kira-sm"
+              :class="p.bad ? 'text-tone-red' : 'text-muted-foreground'"
+              data-testid="ade-step-label"
               >{{
-                p.hasWorkflow ? p.label : ''
+                p.label
               }}</span
             >
-            <AdeTip v-if="p.hasWorkflow && p.showBar" :text="p.barTip">
-              <span :class="CARD_BAR">
+            <AdeTip v-if="p.showBar" :text="p.barTip">
+              <span class="inline-flex shrink-0 items-center gap-1">
                 <span class="inline-block h-1.25 w-11.5 overflow-hidden rounded-kira-sm bg-border">
                   <span
                     class="block h-full"
@@ -207,8 +179,8 @@ const boxClass = computed(() => {
                 }}</span>
               </span>
             </AdeTip>
-            <span v-else :class="CARD_BAR" />
           </template>
+          <AdeAttention v-if="card.attention" :tip="card.attention" :item="card.attentionItem" />
           <AdeAutomationChip :task-id="card.task.id" />
           <AdeLeaseChip :task-id="card.task.id" />
           <AdeUpdatesDot

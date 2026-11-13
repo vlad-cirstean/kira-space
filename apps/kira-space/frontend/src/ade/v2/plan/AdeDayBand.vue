@@ -8,7 +8,6 @@ import { useDraggable } from 'vue-draggable-plus';
 import type { TimelineBand } from '../board/timeline';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import AdeTaskCard from './AdeTaskCard.vue';
-import { taskTint } from './taskTint';
 import type { BranchRowModel, CardModel } from './usePlanModel';
 
 // One day of the timeline: ruler, history rows, overdue and overflow strips, the day's cards and
@@ -194,8 +193,8 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
         v-for="s in spans"
         :key="s.taskId"
         variant="toolbar"
-        class="h-row w-auto justify-start gap-2 border border-border px-2 font-normal data-[selected]:bg-select"
-        :style="taskTint(s.color, false)"
+        class="h-row w-auto justify-start gap-2 border border-l-3 border-border px-2 font-normal data-[selected]:bg-select"
+        :style="{ borderLeftColor: s.color }"
         :data-task-id="s.taskId"
         :data-selected="ui.selectedTaskId === s.taskId || undefined"
         data-testid="ade-span-row"
