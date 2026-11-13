@@ -4042,6 +4042,9 @@ config, project files.
 ## Known open items
 
 - **ADE SQLite reads queue behind writes (P622).** `internal/sqlitex` opens one connection (`SetMaxOpenConns(1)`), shared with Kira Studio, so every read waits for any write in flight. A read pool needs a read-after-write audit of every repo method and a rollback switch. P622 cut the reads and writes that queued most (board snapshot, deferred marks, log trim, runs index). Delete once a read pool ships.
+- **Board history rides the board wire (P622).** `adewire.Board.History` ships every archived task with each board read. The frontend reads it only through `useBoardHistory` (`ade/v2/readQueries.ts`), so a lazy query of its own is a contained follow-up (backend and frontend together). Delete once history has its own query.
+- **`taskMu` is held across git in branch change and rename (P623).** `planChange` and `planRename` validate under the task lock and read git facts there; branch create has the same shape. Dropping the lock needs a re-check design shared by all three. Delete once it ships.
+- **`TestDbMcpBrowsePreferredThroughClaude` is flaky (P623).** Real-claude suite: the model sometimes calls `run_query` instead of `browse_table`; it also fails on the pre-chapter base. Fix is tuning the Studio DB tool descriptions. Delete once the test is stable.
 - **Config sync repos.** Deactivation is per shared unit, not per target repo. A local `environments` list loses its comments on a combined write. An origin change on a registered repo is seen at the next refresh, not live.
 - **Config sync validators.** `connections`, `api`, `runs` and `workflows` get the generic gate (YAML parse, credential scan) on shared files; their decoders are package-private, so a malformed file that parses as YAML reaches disk and the module's loader flags it on reload. Agent, steps and prompts validate with their own decoders.
 
