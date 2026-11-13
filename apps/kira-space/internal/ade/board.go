@@ -679,12 +679,14 @@ func (b *TaskBoard) toWireTask(t model.AdeTask, branchIDs []string, runs []model
 			slog.Warn("ade board: unreadable pass of task", "scope", "ade", "task", t.ID, "err", err)
 		}
 	}
-	live := make(map[string]bool, len(branchIDs))
-	for _, id := range branchIDs {
-		live[id] = true
-	}
-	// One pass builds what each run below would otherwise rescan every run for.
-	type stepOnBranch struct{ step, branch string }
+	out.Runs = wireTaskRuns(runs, branchIDs, reviews, out.Runs)
+	return out
+}
+
+type stepOnBranch struct{ step, branch string }
+
+// indexRuns builds in one pass what each run in wireTaskRuns would otherwise rescan every run for.
+func indexRuns(runs []model.AdeRun) (map[stepOnBranch][]int, map[string]*model.AdeRun) {
 	backs := map[stepOnBranch][]int{}
 	rounds := map[string]*model.AdeRun{}
 	for i, r := range runs {
@@ -702,6 +704,15 @@ func (b *TaskBoard) toWireTask(t model.AdeTask, branchIDs []string, runs []model
 			}
 		}
 	}
+	return backs, rounds
+}
+
+func wireTaskRuns(runs []model.AdeRun, branchIDs []string, reviews map[string]model.AdeReview, dst []adewire.Run) []adewire.Run {
+	live := make(map[string]bool, len(branchIDs))
+	for _, id := range branchIDs {
+		live[id] = true
+	}
+	backs, rounds := indexRuns(runs)
 	for _, r := range runs {
 		if r.Purpose == model.AdeRunPurposeReview { // a round shows through its review run
 			continue
@@ -720,9 +731,9 @@ func (b *TaskBoard) toWireTask(t model.AdeTask, branchIDs []string, runs []model
 		if rev, ok := reviews[r.ID]; ok {
 			w.Review = reviewWire(r, rev, rounds[r.ID])
 		}
-		out.Runs = append(out.Runs, w)
+		dst = append(dst, w)
 	}
-	return out
+	return dst
 }
 
 func toWireRun(r model.AdeRun) adewire.Run {

@@ -554,36 +554,9 @@ func (b *TaskBoard) queueRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	if err := b.checkNotArchiving(tc.task.ID); err != nil {
 		return model.AdeRun{}, err
 	}
-	var sb model.AdeTaskBranch
-	if branchID == taskTarget {
-		if err := folderAllowed(tc, plan[idx].Def); err != nil {
-			return model.AdeRun{}, err
-		}
-		sb.TaskID = tc.task.ID
-		if path == "" {
-			var err error
-			if path, err = b.taskDir(tc.task.ID); err != nil {
-				return model.AdeRun{}, err
-			}
-		}
-	} else {
-		var ok bool
-		if sb, ok = tc.branch(branchID); !ok {
-			return model.AdeRun{}, invalid("branch %s is not on this task", branchID)
-		}
-		if path == "" {
-			var err error
-			if path, err = b.worktreeOf(ctx, sb); err != nil {
-				return model.AdeRun{}, err
-			}
-		}
-	}
-	var setup *model.AdeWorktreeSetup
-	if branchID != taskTarget {
-		var err error
-		if setup, err = b.deps.Tasks.GetSetup(branchID); err != nil {
-			return model.AdeRun{}, err
-		}
+	sb, path, setup, err := b.runTarget(ctx, tc, plan[idx].Def, branchID, path)
+	if err != nil {
+		return model.AdeRun{}, err
 	}
 	if last, ok := b.lastRunOf(tc.task.ID, plan[idx].Def.ID, branchID); ok && attempt <= last.Attempt {
 		attempt = last.Attempt + 1 // a pass after a move starts above its history, which the watermark hides
@@ -594,13 +567,7 @@ func (b *TaskBoard) queueRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	}
 	open := path != "" && (branchID == taskTarget || setupReadyOf(path, setup))
 	if !open {
-		run.Note = noteWaitingSetup
-		switch {
-		case setup != nil && setup.State == model.AdeSetupFailed:
-			run.Note = noteSetupFailed
-		case setup == nil || setup.State == model.AdeSetupReady:
-			run.Note = noteWorktreeGone
-		}
+		run.Note = gateNote(setup)
 	}
 	if err := b.deps.Tasks.InsertRun(run); err != nil {
 		return model.AdeRun{}, err
@@ -611,6 +578,47 @@ func (b *TaskBoard) queueRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 		return run, nil
 	}
 	return b.launch(ctx, tc, plan, idx, run, sb, path)
+}
+
+// runTarget resolves the branch row, worktree path and setup row a run on branchID needs.
+func (b *TaskBoard) runTarget(ctx context.Context, tc *taskCtx, def stepDef, branchID, path string) (model.AdeTaskBranch, string, *model.AdeWorktreeSetup, error) {
+	var sb model.AdeTaskBranch
+	if branchID == taskTarget {
+		if err := folderAllowed(tc, def); err != nil {
+			return sb, "", nil, err
+		}
+		sb.TaskID = tc.task.ID
+		if path == "" {
+			var err error
+			if path, err = b.taskDir(tc.task.ID); err != nil {
+				return sb, "", nil, err
+			}
+		}
+		return sb, path, nil, nil
+	}
+	sb, ok := tc.branch(branchID)
+	if !ok {
+		return sb, "", nil, invalid("branch %s is not on this task", branchID)
+	}
+	if path == "" {
+		var err error
+		if path, err = b.worktreeOf(ctx, sb); err != nil {
+			return sb, "", nil, err
+		}
+	}
+	setup, err := b.deps.Tasks.GetSetup(branchID)
+	return sb, path, setup, err
+}
+
+// gateNote says why a run stays pending behind the worktree gate.
+func gateNote(setup *model.AdeWorktreeSetup) string {
+	switch {
+	case setup != nil && setup.State == model.AdeSetupFailed:
+		return noteSetupFailed
+	case setup == nil || setup.State == model.AdeSetupReady:
+		return noteWorktreeGone
+	}
+	return noteWaitingSetup
 }
 
 func (b *TaskBoard) runVarsFor(tc *taskCtx, sb model.AdeTaskBranch, path string) runVars {

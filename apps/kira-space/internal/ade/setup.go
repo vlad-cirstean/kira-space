@@ -312,16 +312,7 @@ func (b *TaskBoard) worktreeOf(ctx context.Context, sb model.AdeTaskBranch) (str
 	return at.attached, err
 }
 
-// setupReady is the gate: the branch's setup row is ready, or it has none and its worktree exists.
-func (b *TaskBoard) setupReady(sb model.AdeTaskBranch, worktree string, setups map[string]model.AdeWorktreeSetup) bool {
-	var s *model.AdeWorktreeSetup
-	if row, ok := setups[sb.ID]; ok {
-		s = &row
-	}
-	return setupReadyOf(worktree, s)
-}
-
-// setupReadyOf is setupReady for a caller that already read the branch's one setup row.
+// setupReadyOf is the gate: the branch's setup row is ready, or it has none and its worktree exists.
 func setupReadyOf(worktree string, s *model.AdeWorktreeSetup) bool {
 	if s != nil {
 		return s.State == model.AdeSetupReady
