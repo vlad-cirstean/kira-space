@@ -40,6 +40,7 @@ type PairFact struct {
 	Shared    []string
 	Conflicts []string
 	Checking  bool
+	Failed    bool
 }
 
 type branchFactsKey struct{ TipParent, TipBranch string }
@@ -342,7 +343,7 @@ func computePairFacts(entry *gitsession.RepoEntry, caches *repoCaches, checker *
 		key := rebaseKey{BaseTip: tipA, Tip: tipB}
 		st, known := checker.peek(pairRepoID(repoID), caches.pairs, key)
 		if !known {
-			checker.request(rebaseJob{repoID: pairRepoID(repoID), key: key, cache: caches.pairs, run: run, branch: "pair"})
+			checker.request(rebaseJob{repoID: pairRepoID(repoID), key: key, cache: caches.pairs, run: run, branch: "pair", retries: pairCheckRetries})
 			return nil, true, nil
 		}
 		switch st.Check {
@@ -356,7 +357,7 @@ func computePairFacts(entry *gitsession.RepoEntry, caches *repoCaches, checker *
 	pairs := pairFacts(pairItems, isAncestorFn, mergeTreeFn)
 	out := make([]PairFact, len(pairs))
 	for i, p := range pairs {
-		out[i] = PairFact{A: p.A, B: p.B, Shared: p.Shared, Conflicts: p.Conflicts, Checking: p.Checking}
+		out[i] = PairFact{A: p.A, B: p.B, Shared: p.Shared, Conflicts: p.Conflicts, Checking: p.Checking, Failed: p.Failed}
 	}
 	return out
 }

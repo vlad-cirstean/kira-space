@@ -119,3 +119,55 @@ func TestRebaseChecker_realRepos(t *testing.T) {
 		}
 	}
 }
+
+// A failed pair check reads as checking while a retry is pending, retries after the backoff and
+// settles as failed only once the retries ran out.
+func TestRebaseChecker_pairRetryThenFailed(t *testing.T) {
+	var spawns atomic.Int32
+	var fails atomic.Int32 // failures left to hand out
+	fails.Store(2)
+	run := func(context.Context, string, string) ([]string, error) {
+		spawns.Add(1)
+		if fails.Add(-1) >= 0 {
+			return nil, errors.New("timeout")
+		}
+		return []string{"a.txt"}, nil
+	}
+	dones := make(chan struct{}, 16)
+	c := newRebaseChecker(context.Background(), okGit, func() { dones <- struct{}{} })
+	c.retryBase = 5 * time.Millisecond
+	cache := newRebaseCache()
+	key := rebaseKey{"b", "t"}
+	job := rebaseJob{repoID: "pair:r", key: key, cache: cache, run: run, branch: "pair", retries: 2}
+	settle := func() rebaseState {
+		t.Helper()
+		waitFor(t, c.request(job))
+		st, _ := c.peek("pair:r", cache, key)
+		return st
+	}
+	if st := settle(); st.Check != conflictChecking {
+		t.Fatalf("first failure with a retry pending must read checking, got %+v", st)
+	}
+	time.Sleep(60 * time.Millisecond) // retry due: peek reports unknown so the caller requests again
+	if _, known := c.peek("pair:r", cache, key); known {
+		t.Fatal("due retry must read unknown")
+	}
+	if st := settle(); st.Check != conflictChecking {
+		t.Fatalf("second failure: %+v", st)
+	}
+	time.Sleep(120 * time.Millisecond)
+	if st := settle(); st.Check != conflictDone || spawns.Load() != 3 {
+		t.Fatalf("third attempt should succeed: %+v spawns %d", st, spawns.Load())
+	}
+
+	// retries exhausted: failed until forgetFailures
+	fails.Store(100)
+	job.key = rebaseKey{"b", "u"}
+	for i := 0; i < 3; i++ {
+		settle()
+		time.Sleep(200 * time.Millisecond)
+	}
+	if st, _ := c.peek("pair:r", cache, job.key); st.Check != conflictFailed || st.Reason != "timeout" {
+		t.Fatalf("after retries: %+v", st)
+	}
+}

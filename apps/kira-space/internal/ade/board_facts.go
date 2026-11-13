@@ -312,7 +312,7 @@ func (b *TaskBoard) collectRepo(ctx context.Context, entry *gitsession.RepoEntry
 		return err
 	}
 	for _, p := range computePairFacts(entry, caches, b.checker, codeRepoID, ancestry, items) {
-		res.pairs = append(res.pairs, adewire.Pair{A: p.A, B: p.B, Shared: nonNil(p.Shared), Conflicts: nonNil(p.Conflicts), Checking: p.Checking})
+		res.pairs = append(res.pairs, adewire.Pair{A: p.A, B: p.B, Shared: nonNil(p.Shared), Conflicts: nonNil(p.Conflicts), Checking: p.Checking, CheckFailed: p.Failed})
 	}
 	return nil
 }
