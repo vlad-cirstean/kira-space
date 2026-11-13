@@ -148,8 +148,8 @@ func (h *Hooks) Start() error {
 	return errors.Join(errs...)
 }
 
-// queued returns the options handed to listeners: OnEvent feeds the ordered worker. A Stop or
-// UserPromptSubmit reply waits for earlier events first, so Tracker.HookReply's suppressIdle
+// queued returns the options handed to listeners: OnEvent feeds the per-terminal ordered lanes. A Stop or
+// UserPromptSubmit reply waits for the terminal's earlier events first, so Tracker.HookReply's suppressIdle
 // handshake never meets an earlier queued Stop. Other kinds never wait. Caller holds h.mu.
 func (h *Hooks) queued() HookOptions {
 	opts := h.opts
@@ -161,7 +161,7 @@ func (h *Hooks) queued() HookOptions {
 	if reply := h.opts.Reply; reply != nil {
 		opts.Reply = func(ev AgentEvent) HookReply {
 			if ev.AgentID == "" && (ev.Event == EventTurnEnd || ev.Event == EventPrompt) {
-				q.barrier()
+				q.barrier(ev.TerminalID)
 			}
 			return reply(ev)
 		}
@@ -175,7 +175,7 @@ func (h *Hooks) Flush() {
 	q := h.q
 	h.mu.Unlock()
 	if q != nil {
-		q.barrier()
+		q.barrierAll()
 	}
 }
 

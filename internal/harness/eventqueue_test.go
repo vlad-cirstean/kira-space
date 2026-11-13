@@ -112,7 +112,7 @@ func TestEventQueueBarrierWaitsForEarlier(t *testing.T) {
 	for range 20 {
 		q.enqueue(AgentEvent{})
 	}
-	q.barrier()
+	q.barrier("")
 	if n.Load() != 20 {
 		t.Fatalf("barrier returned after %d events, want 20", n.Load())
 	}
@@ -131,5 +131,44 @@ func TestEventQueuePanicKeepsWorker(t *testing.T) {
 	q.close()
 	if n.Load() != 1 {
 		t.Fatalf("handled %d after panic, want 1", n.Load())
+	}
+}
+
+// A handler stuck on one terminal delays that terminal's later events and barrier, not another
+// terminal's.
+func TestEventQueueTerminalsDoNotBlockEachOther(t *testing.T) {
+	release := make(chan struct{})
+	var handled sync.Map
+	q := newEventQueue(func(ev AgentEvent) {
+		if ev.TerminalID == "slow" {
+			<-release
+		}
+		handled.Store(ev.TerminalID+ev.Message, true)
+	})
+	defer q.close()
+	q.enqueue(AgentEvent{TerminalID: "slow", Message: "1"})
+	q.enqueue(AgentEvent{TerminalID: "slow", Message: "2"})
+	q.enqueue(AgentEvent{TerminalID: "fast", Message: "1"})
+	done := make(chan struct{})
+	go func() { q.barrier("fast"); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("fast terminal's barrier waited on the stuck terminal")
+	}
+	if _, ok := handled.Load("fast1"); !ok {
+		t.Fatal("fast event not handled before its barrier returned")
+	}
+	slowDone := make(chan struct{})
+	go func() { q.barrier("slow"); close(slowDone) }()
+	select {
+	case <-slowDone:
+		t.Fatal("slow terminal's barrier returned while its handler was stuck")
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(release)
+	<-slowDone
+	if _, ok := handled.Load("slow2"); !ok {
+		t.Fatal("slow terminal's second event lost")
 	}
 }

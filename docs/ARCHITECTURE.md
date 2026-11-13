@@ -1528,12 +1528,14 @@ exits 0 before any request unless `KIRA_AGENT_HOOK_TOKEN` and `KIRA_TERMINAL_ID`
 `~/.claude.json` through the `claude` CLI and is out of this rule. Real-flow proof:
 `flows/claudeflow` (fake HOME, seeded settings, byte snapshots).
 
-**Hook event order (v0.3.11).** `harness.Hooks` hands every event to one worker (`eventQueue`), so
-`OnEvent` runs in arrival order. A reply waits for the events before it, but only for main-session
-`Stop` and `UserPromptSubmit`, which the Tracker `suppressIdle` handshake needs. The 200 reply goes out
+**Hook event order (v0.3.11).** `harness.Hooks` hands events to `eventQueue`: one lane per terminal, drained by
+a goroutine that exits when the lane is empty (cap 1024 per lane), so `OnEvent` runs in arrival order per
+terminal and a slow handler (notification, main-thread probe) delays only its own terminal. A reply waits
+for the terminal's earlier events, but only for main-session `Stop` and `UserPromptSubmit`, which the
+Tracker `suppressIdle` handshake needs. The 200 reply goes out
 before the event is handled, so an accepted event can be lost if the app crashes. `Hooks.Stop` closes
 the listeners, then drains the queue; `appwire` stops it before `Tracker.Close`. Tests call
-`AgentHooks.Flush()` to wait for the worker. The Tracker writes lease and queued messages to the PTY
+`AgentHooks.Flush()` to wait for every lane. The Tracker writes lease and queued messages to the PTY
 outside `t.mu` and the lease lock, and learns a stopped session's id in the background
 (`learnAsync`, awaited by `Close`).
 Agent CLI paths (`harness.locate`) are cached per name, PATH, SHELL and candidates when no `CLIDeps`
