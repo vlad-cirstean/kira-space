@@ -23,8 +23,9 @@ type Coalescer[T, F any] struct {
 	sizeOf   func(T) int
 	flush    func(batch []T, done bool, final F)
 
-	// flushMu orders flushes: taken under mu, held across the flush call after mu drops, so Push
-	// and the timer never wait on an emit in progress. Lock order is mu then flushMu.
+	// flushMu orders flushes: taken under mu, held across the flush call after mu drops, so a Push
+	// that does not flush never waits on an emit in progress. A flushing Push (size trigger) and the
+	// timer wait on flushMu, the Push while holding mu. Lock order is mu then flushMu.
 	flushMu sync.Mutex
 	mu      sync.Mutex
 	pending []T

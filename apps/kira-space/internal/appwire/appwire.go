@@ -735,8 +735,9 @@ func (w *Wired) teardown(db io.Closer) {
 	// "caffeinate is dead" as short as possible.
 	w.KeepAwakeCtl.Close()
 	// terminal.ShutdownBound first: every PTY dies, and each one's own exit fires Registry.OnChange
-	// (Reconcile marks its row stopped) while the DB is still open. Then shutdownTracker flushes
-	// whatever last-active time is still only in memory and stops the hooks listener.
+	// (Reconcile marks its row stopped) while the DB is still open. Then shutdownTracker stops the
+	// hooks listener (draining queued hook events) and flushes whatever last-active time is still
+	// only in memory.
 	terminal.ShutdownBound(w.Terminal.BoundService)
 	w.sched.Close()
 	w.runLoader.Close()
