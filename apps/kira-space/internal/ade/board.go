@@ -555,8 +555,9 @@ func (b *TaskBoard) buildBoard(ctx context.Context) (adewire.Board, error) {
 
 // writeBoardMarks persists what a build computed, off the build's path. The board already shows
 // the computed values; the writes only spare the next build. Every write is idempotent, so two
-// builds writing the same mark is harmless. A written row makes the next build reread it, so the
-// snapshot is dropped without a push: the wire content does not change.
+// builds writing the same mark is harmless. A written row makes the next build reread it, and a
+// build that ran inside the write window read the old marks (stored target mark, HadCommits, a
+// merge time of its own clock), so the landing pushes the board.
 func (b *TaskBoard) writeBoardMarks(hadCommits []string, merged map[string]int64, marks []model.AdeBranchMark) {
 	if len(hadCommits) == 0 && len(merged) == 0 && len(marks) == 0 {
 		return
@@ -577,7 +578,7 @@ func (b *TaskBoard) writeBoardMarks(hadCommits []string, merged map[string]int64
 			}
 		}
 		if ok {
-			b.invalidateBoard()
+			b.notifyBoard()
 		}
 	})
 }
