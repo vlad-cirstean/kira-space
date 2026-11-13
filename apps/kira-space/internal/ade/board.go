@@ -200,6 +200,8 @@ type TaskBoard struct {
 
 	mu      sync.Mutex
 	repoMus map[string]*sync.Mutex
+	// tailRunning counts the Refresh tails running per repo; the board shows such a repo as updating.
+	tailRunning map[string]int
 	// remoteSlots queues ADE remote ops per repo (remoteop.go).
 	remoteSlots map[string]chan struct{}
 	// sandboxTargets maps a live sandboxed run id to its sandboxTarget.
@@ -259,7 +261,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	ctx, cancel := context.WithCancel(oplog.WithOrigin(context.Background(), oplog.Origin{Module: oplog.ModuleADE, Trigger: oplog.TriggerAuto}))
 	b := &TaskBoard{
 		deps: deps, ctx: ctx, cancel: cancel, wfMemo: newWorkflowMemo(), folderW: map[string]*folderWatcher{},
-		repoMus: map[string]*sync.Mutex{}, remoteSlots: map[string]chan struct{}{}, facts: boardFacts{last: map[string]*repoLast{}, flight: map[string]*repoFlight{}}, byGitRepoID: map[string]string{}, gitRepoIDOf: map[string]string{},
+		repoMus: map[string]*sync.Mutex{}, remoteSlots: map[string]chan struct{}{}, tailRunning: map[string]int{}, facts: boardFacts{last: map[string]*repoLast{}, flight: map[string]*repoFlight{}}, byGitRepoID: map[string]string{}, gitRepoIDOf: map[string]string{},
 		caches: map[string]*repoCaches{}, rebase: map[string]*rebaseCache{}, live: map[string]*liveRun{}, tuiGrants: map[string]tuiBinding{}, tuiSandbox: map[string]*liveTUISandbox{}, setupLive: map[string]*liveRun{},
 		taskMus: map[string]*sync.Mutex{}, archiving: map[string]int{}, finishes: map[string]agentmcp.Finish{}, claims: map[string]string{}, stepMsgs: map[string]string{},
 	}
@@ -651,7 +653,11 @@ func (b *TaskBoard) assemble(d boardData, repoIDs []string, results map[string]*
 	states := make([]adewire.RepoState, 0, len(repoIDs))
 	for _, id := range repoIDs {
 		pairs = append(pairs, results[id].pairs...)
-		states = append(states, results[id].state)
+		st := results[id].state
+		if b.tailRunningFor(id) {
+			st.Updating = true // PR merge checks and conflict-check requests still run
+		}
+		states = append(states, st)
 	}
 
 	autofetch := 0
@@ -880,20 +886,27 @@ func (b *TaskBoard) Refresh(ctx context.Context, codeRepoIDs []string) (adewire.
 		codeRepoIDs, _ = branchesByRepo(branches)
 	}
 	rows := make([]adewire.RepoRefresh, len(codeRepoIDs))
-	tails := make([]func(context.Context), len(codeRepoIDs))
+	tails := make([]refreshTailJob, len(codeRepoIDs))
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(boardFanOut)
 	for i, id := range codeRepoIDs {
 		g.Go(func() error {
-			rows[i], tails[i] = b.refreshRepo(gctx, id)
+			var fn func(context.Context)
+			rows[i], fn = b.refreshRepo(gctx, id)
+			tails[i] = refreshTailJob{id: id, fn: fn}
 			return nil
 		})
 	}
 	_ = g.Wait() // refreshRepo reports failures per repo
+	// Mark the repos before the push so the board it carries shows them updating.
+	started := b.track()
+	if started {
+		b.markTails(tails, 1)
+	}
 	b.notifyBoard()
 	// PR merge checks, queued conflict checks and the tracked-updates pass finish after the call
 	// returns; the board push at the end carries them.
-	if b.track() {
+	if started {
 		b.refreshTails.Add(1)
 		go func() {
 			defer b.wg.Done()
@@ -908,17 +921,45 @@ func (b *TaskBoard) Refresh(ctx context.Context, codeRepoIDs []string) (adewire.
 // pushed the board. Flow tests use it to read a settled board; the UI relies on the push.
 func (b *TaskBoard) WaitRefreshTails() { b.refreshTails.Wait() }
 
-func (b *TaskBoard) runRefreshTails(tails []func(context.Context)) {
+// refreshTailJob is one repo's tail of a Refresh; fn is nil when the repo's refresh failed.
+type refreshTailJob struct {
+	id string
+	fn func(context.Context)
+}
+
+// markTails adds delta to the running-tail count of every repo with a tail.
+func (b *TaskBoard) markTails(tails []refreshTailJob, delta int) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for _, t := range tails {
+		if t.fn == nil {
+			continue
+		}
+		if b.tailRunning[t.id] += delta; b.tailRunning[t.id] <= 0 {
+			delete(b.tailRunning, t.id)
+		}
+	}
+}
+
+func (b *TaskBoard) tailRunningFor(codeRepoID string) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.tailRunning[codeRepoID] > 0
+}
+
+func (b *TaskBoard) runRefreshTails(tails []refreshTailJob) {
 	var tg errgroup.Group
 	tg.SetLimit(boardFanOut)
 	for _, tail := range tails {
-		if tail != nil {
-			tg.Go(func() error { tail(b.ctx); return nil })
+		if tail.fn != nil {
+			tg.Go(func() error { tail.fn(b.ctx); return nil })
 		}
 	}
 	_ = tg.Wait()
-	b.notifyBoard()
+	b.notifyBoard() // the repos stay updating until the tracked-updates pass ends
 	b.updates.run(b.ctx, true)
+	b.markTails(tails, -1)
+	b.notifyBoard()
 }
 
 func refreshFailure(id string, err error) adewire.RepoRefresh {
@@ -1031,6 +1072,9 @@ func (b *TaskBoard) refreshTail(ctx context.Context, id string, entry *gitsessio
 	if len(prMerged) > 0 {
 		if err := b.deps.Tasks.MarkBranchFacts(nil, prMerged); err != nil {
 			slog.Warn("ade refresh: mark pr merged", "scope", "ade", "repo", id, "err", err)
+			root := entry.Summary.Root
+			b.deps.Ops.Record(ctx, oplog.Meta{Category: oplog.CategoryGit, Kind: opRefreshTail, RepoRoot: root, RepoName: filepath.Base(root)},
+				oplog.StatusError, "PR merge marks not saved: "+err.Error())
 		}
 	}
 	b.checker.forgetFailures(id)

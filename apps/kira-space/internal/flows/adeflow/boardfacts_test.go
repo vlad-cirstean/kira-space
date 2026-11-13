@@ -135,6 +135,7 @@ func TestRefreshDefaultSettings(t *testing.T) {
 	for _, r := range res.Repos {
 		rows[r.CodeRepoID] = r
 	}
+	app.W.AdeBoard.WaitRefreshTails() // a repo reads updating while its tail runs; read the settled board
 	for _, name := range []string{"tracked", "noremote"} {
 		app.Contract(t, "ade-board", "AdeTaskService.Refresh#"+name, rows[recs[name]])
 		st, _ := repoState(board(t, app), recs[name])
