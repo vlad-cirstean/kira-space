@@ -11,20 +11,24 @@ const kinds = (page: import('@playwright/test').Page) =>
     .locator('[data-testid="ade-tag"]')
     .evaluateAll((els) => els.map((el) => el.getAttribute('data-kind')));
 
-const PAIR = ['b_bill', 'b_sara'];
+// Pairs are (own branch, review branch); the unknown tag shows on each own branch of the failed pairs.
+const FAILED = ['b_bill', 'b_billdash'];
 
 // The pair shares files (fixture): a failed check must outrank "merges after it", which reads as resolved.
-test('a pair whose check failed shows unknown on both branches, not clean or ordered', async ({
+test('a pair whose check failed shows unknown on every own branch, not clean or ordered', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch, [
     adeBoardSnapshot((b) => {
-      const pair = (b.pairs as (PairFx & { shared: string[] })[])[0];
-      pair.shared = ['src/payments/client.ts'];
-      pair.checkFailed = true;
+      const pairs = b.pairs as (PairFx & { shared: string[] })[];
+      pairs.push({ ...pairs[0], b: 'b_sara', a: 'b_billdash' });
+      for (const pair of pairs) {
+        pair.shared = ['src/payments/client.ts'];
+        pair.checkFailed = true;
+      }
     }),
   ]);
-  for (const id of PAIR) {
+  for (const id of FAILED) {
     const tag = page.locator(
       `[data-branch-id="${id}"] [data-testid="ade-tag"][data-kind="checkFailed"]`,
     );
