@@ -65,7 +65,7 @@ func (b *TaskBoard) wireTask(t model.AdeTask) (adewire.Task, error) {
 		return adewire.Task{}, err
 	}
 	out := b.toWireTask(t, ids, runs, reviews)
-	decorateTask(&out, t, b.liveWorkflows())
+	b.decorateTask(&out, t, b.liveWorkflows())
 	bh, err := b.deps.Tasks.BoardHandovers()
 	if err != nil {
 		return adewire.Task{}, err
@@ -257,6 +257,7 @@ func (b *TaskBoard) UpdateTask(ctx context.Context, args adewire.UpdateTaskArgs)
 		}
 	}
 	task, err := b.deps.Tasks.UpdateTask(args.TaskID, patch)
+	b.touchHistory()
 	if err != nil {
 		return adewire.Task{}, err
 	}

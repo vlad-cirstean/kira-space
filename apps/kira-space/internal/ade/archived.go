@@ -52,7 +52,7 @@ func (b *TaskBoard) ArchivedTask(ctx context.Context, taskID string) (adewire.Ar
 	}
 	wt := b.toWireTask(t, ids, runs, reviews)
 	wt.Notes = b.userNotes(taskID)
-	decorateTask(&wt, t, b.liveWorkflows())
+	b.decorateTask(&wt, t, b.liveWorkflows())
 
 	out := adewire.ArchivedTask{
 		Task: wt, ArchivedAt: *t.ArchivedAt, Statuses: toWireStatuses(statuses),
@@ -180,7 +180,9 @@ func (b *TaskBoard) RestoreTask(ctx context.Context, taskID string) (adewire.Tas
 	mu := b.taskMu(taskID)
 	mu.Lock()
 	defer mu.Unlock()
-	if err := b.deps.Tasks.RestoreTask(taskID); err != nil {
+	err := b.deps.Tasks.RestoreTask(taskID)
+	b.touchHistory()
+	if err != nil {
 		var held *repos.BranchHeldError
 		switch {
 		case errors.As(err, &held):
@@ -211,6 +213,6 @@ func (b *TaskBoard) RestoreTask(ctx context.Context, taskID string) (adewire.Tas
 	}
 	wt := b.toWireTask(tc.task, ids, runs, reviews)
 	wt.Notes = b.userNotes(taskID)
-	decorateTask(&wt, tc.task, b.liveWorkflows())
+	b.decorateTask(&wt, tc.task, b.liveWorkflows())
 	return wt, nil
 }

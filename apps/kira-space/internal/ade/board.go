@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
@@ -209,6 +210,8 @@ type TaskBoard struct {
 	bcache         boardCache
 	repoCfg        repoConfigCache
 	facts          boardFacts
+	wfMemo         *lru.Cache[string, wfMemoEntry]
+	history        historyMemo
 	updates        *updateWatcher
 
 	panelEdits panelEdits // pending task panel edits per task (panelforward.go)
@@ -250,7 +253,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	}
 	ctx, cancel := context.WithCancel(oplog.WithOrigin(context.Background(), oplog.Origin{Module: oplog.ModuleADE, Trigger: oplog.TriggerAuto}))
 	b := &TaskBoard{
-		deps: deps, ctx: ctx, cancel: cancel, folderW: map[string]*folderWatcher{},
+		deps: deps, ctx: ctx, cancel: cancel, wfMemo: newWorkflowMemo(), folderW: map[string]*folderWatcher{},
 		repoMus: map[string]*sync.Mutex{}, facts: boardFacts{last: map[string]*repoLast{}, flight: map[string]*repoFlight{}}, byGitRepoID: map[string]string{}, gitRepoIDOf: map[string]string{},
 		caches: map[string]*repoCaches{}, rebase: map[string]*rebaseCache{}, live: map[string]*liveRun{}, tuiGrants: map[string]tuiBinding{}, tuiSandbox: map[string]*liveTUISandbox{}, setupLive: map[string]*liveRun{},
 		taskMus: map[string]*sync.Mutex{}, archiving: map[string]int{}, finishes: map[string]agentmcp.Finish{}, claims: map[string]string{}, stepMsgs: map[string]string{},
@@ -434,17 +437,16 @@ func (b *TaskBoard) openRepo(ctx context.Context, codeRepoID string) (*gitsessio
 
 // boardData is one consistent read of the task store.
 type boardData struct {
-	tasks      []model.AdeTask
-	statuses   []model.AdeTaskStatus
-	defaults   model.AdeStatusDefaults
-	branches   []model.AdeTaskBranch
-	plan       []model.AdeTaskPlanRow
-	runs       map[string][]model.AdeRun
-	reviews    map[string]model.AdeReview
-	setups     map[string]model.AdeWorktreeSetup
-	archived   []model.AdeTask
-	archBranch []model.AdeTaskBranch
-	handovers  map[string]repos.BoardHandover
+	tasks     []model.AdeTask
+	statuses  []model.AdeTaskStatus
+	defaults  model.AdeStatusDefaults
+	branches  []model.AdeTaskBranch
+	plan      []model.AdeTaskPlanRow
+	runs      map[string][]model.AdeRun
+	reviews   map[string]model.AdeReview
+	setups    map[string]model.AdeWorktreeSetup
+	history   []adewire.HistoryEntry
+	handovers map[string]repos.BoardHandover
 }
 
 func (b *TaskBoard) load() (boardData, error) {
@@ -474,10 +476,7 @@ func (b *TaskBoard) load() (boardData, error) {
 	if d.setups, err = b.deps.Tasks.SetupByBranch(); err != nil {
 		return d, err
 	}
-	if d.archived, err = b.deps.Tasks.ListArchived(); err != nil {
-		return d, err
-	}
-	if d.archBranch, err = b.deps.Tasks.BranchesArchived(); err != nil {
+	if d.history, err = b.historyEntries(); err != nil {
 		return d, err
 	}
 	d.handovers, err = b.deps.Tasks.BoardHandovers()
@@ -609,7 +608,7 @@ func (b *TaskBoard) assemble(d boardData, repoIDs []string, results map[string]*
 	liveWf := b.liveWorkflows()
 	for _, t := range d.tasks {
 		wt := b.toWireTask(t, branchByTask[t.ID], d.runs[t.ID], d.reviews)
-		decorateTask(&wt, t, liveWf)
+		b.decorateTask(&wt, t, liveWf)
 		applyHandovers(&wt, d.handovers[t.ID])
 		tasks = append(tasks, wt)
 	}
@@ -654,7 +653,7 @@ func (b *TaskBoard) assemble(d boardData, repoIDs []string, results map[string]*
 		autofetch = b.deps.AutofetchMinutes()
 	}
 	return adewire.Board{
-		Tasks: tasks, Statuses: toWireStatuses(d.statuses), StatusDefaults: toWireDefaults(d.defaults), Branches: branches, Plan: plan, Pairs: pairs, History: toWireHistory(d.archived, d.archBranch),
+		Tasks: tasks, Statuses: toWireStatuses(d.statuses), StatusDefaults: toWireDefaults(d.defaults), Branches: branches, Plan: plan, Pairs: pairs, History: d.history,
 		Repos: states, WorktreeBasePath: WorktreesBase(b.deps.HomeDir), AutofetchMinutes: autofetch,
 	}
 }
@@ -681,6 +680,25 @@ func (b *TaskBoard) toWireTask(t model.AdeTask, branchIDs []string, runs []model
 	for _, id := range branchIDs {
 		live[id] = true
 	}
+	// One pass builds what each run below would otherwise rescan every run for.
+	type stepOnBranch struct{ step, branch string }
+	backs := map[stepOnBranch][]int{}
+	rounds := map[string]*model.AdeRun{}
+	for i, r := range runs {
+		switch {
+		case r.Purpose == "" && r.State == model.AdeRunBack:
+			k := stepOnBranch{r.StepID, r.BranchID}
+			backs[k] = append(backs[k], r.Attempt)
+		case r.Purpose == model.AdeRunPurposeReview:
+			spec, err := roundSpec(r)
+			if err != nil {
+				continue
+			}
+			if best := rounds[spec.ReviewRunID]; best == nil || r.Attempt > best.Attempt {
+				rounds[spec.ReviewRunID] = &runs[i]
+			}
+		}
+	}
 	for _, r := range runs {
 		if r.Purpose == model.AdeRunPurposeReview { // a round shows through its review run
 			continue
@@ -690,10 +708,14 @@ func (b *TaskBoard) toWireTask(t model.AdeTask, branchIDs []string, runs []model
 		}
 		w := toWireRun(r)
 		if r.Purpose == "" {
-			w.Returns = countReturns(runs, r.StepID, r.BranchID, r.Attempt)
+			for _, a := range backs[stepOnBranch{r.StepID, r.BranchID}] {
+				if a <= r.Attempt {
+					w.Returns++
+				}
+			}
 		}
 		if rev, ok := reviews[r.ID]; ok {
-			w.Review = reviewWire(r, rev, latestRoundOf(runs, r.ID))
+			w.Review = reviewWire(r, rev, rounds[r.ID])
 		}
 		out.Runs = append(out.Runs, w)
 	}

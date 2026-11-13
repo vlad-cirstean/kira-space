@@ -142,7 +142,9 @@ func (b *TaskBoard) setSlotLocked(taskID, slot string, c linkClass) (adewire.Lin
 		patch.HostURL = &c.URL
 	}
 	prev, _ := b.deps.Tasks.GetTask(taskID)
-	if _, err := b.deps.Tasks.UpdateTask(taskID, patch); err != nil {
+	_, err := b.deps.Tasks.UpdateTask(taskID, patch)
+	b.touchHistory()
+	if err != nil {
 		return adewire.LinkResult{}, err
 	}
 	if slot == linkFiledJira {
@@ -162,7 +164,9 @@ func (b *TaskBoard) clearSlotLocked(taskID, slot string) error {
 	} else {
 		patch.HostURL = &empty
 	}
-	if _, err := b.deps.Tasks.UpdateTask(taskID, patch); err != nil {
+	_, err := b.deps.Tasks.UpdateTask(taskID, patch)
+	b.touchHistory()
+	if err != nil {
 		return err
 	}
 	b.notifyBoard()
