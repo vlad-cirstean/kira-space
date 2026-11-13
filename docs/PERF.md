@@ -1021,7 +1021,7 @@ Commands, each from a detached worktree of the commit, `-count 5`, median of 5 [
 |---|---|---|---|---|
 | `c7721e07` baseline | 34.8 [34.1-35.4] | 21 | no snapshot, equals Warm | 21 |
 | `54a6f591` snapshot, coalesced pushes | 34.0 [32.7-36.5] | 21 | 68 [66-74] | 0 |
-| `dae341e6` chapter head (commits 4 to 15) | 9.1 [8.6-9.5] | 7 | 73 [65-92] | 0 |
+| `dae341e6` P622 stream head (commits 4 to 15) | 9.1 [8.6-9.5] | 7 | 73 [65-92] | 0 |
 
 The snapshot (commit 3) makes an unchanged board free: 0 spawns and about 70 ns instead of 21 spawns
 and 35 ms. It does not change an invalidated rebuild. The git facts cache (commit 7: ahead/behind per
@@ -1029,6 +1029,13 @@ tip pair, ancestry slot, `gitsession` entry meta) is expected to cut that rebuil
 shows 21 to 7 spawns and 3.8x in wall time. The head row also includes the other commits of the
 phase (shared board loads, parallel change request resolution); the harness has no remote host, so
 they are not isolated here.
+
+Log trim (`AdeLogsRepo.Append`, review round 1): the first P622 cut computed the trim cutoff with
+`SUM(length(...)) OVER (ORDER BY seq)` over every chunk of the log, reading the whole 2 MiB tail on every
+flush once a log passed `AdeLogTailBytes`. Scratch sqlite, 21k rows of 100 bytes, 20 rows appended then
+trimmed, median of 30: window cutoff plus delete 11.5 ms (old per-chunk select-plus-delete loop: 0.07 ms).
+The shipped fix reads only the oldest chunks until their bytes reach the excess: 0.57 ms for the whole
+append (20 inserts, prefix read, delete). Cost now scales with chunks dropped, not the stored tail.
 
 `EXPLAIN QUERY PLAN` on `LatestRunsOf` after migration 0100: `SEARCH b USING COVERING INDEX
 ade_runs_latest (task_id=? AND step_id=? AND branch_id=? AND purpose=?)`.

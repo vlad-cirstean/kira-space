@@ -24,6 +24,9 @@ const (
 	// AdeLogChunkBytes caps one chunk; a longer line is cut with an ellipsis.
 	AdeLogChunkBytes = 8 << 10
 	adeLogPageLimit  = 500
+	// adeLogTrimScan is the first prefix read size when trimming: one flush appends a handful of
+	// chunks, so a trim usually drops about as many.
+	adeLogTrimScan = 64
 )
 
 // AdeLogChunk is one stored log chunk.
@@ -125,32 +128,56 @@ func (r *AdeLogsRepo) Append(kind, id string, chunks []AdeLogChunk) ([]AdeLogChu
 }
 
 // trimLogTail deletes the shortest oldest prefix of a log's chunks whose bytes reach excess and
-// returns the bytes dropped: one cutoff query, one delete. Every chunk goes when none reaches it.
+// returns the bytes dropped. Only that prefix is read (the first n chunks by seq, n grown until
+// the prefix fits), so the cost scales with chunks dropped, not with the stored tail. Every chunk
+// goes when none reaches excess.
 func (r *AdeLogsRepo) trimLogTail(tx *sql.Tx, kind, id string, excess int64) (int64, error) {
 	ch := kiraschema.AdeLogChunks
 	size := "length(CAST(" + ch.Text + " AS BLOB))"
-	window := r.Dialect.Select(ch.Seq+" AS seq", "SUM("+size+") OVER (ORDER BY "+ch.Seq+") AS run").From(ch.Table)
-	window.Where(window.Equal(ch.Kind, kind), window.Equal(ch.ID, id))
-	cutoff := r.Dialect.Select("seq", "run")
-	cutoff.From(cutoff.BuilderAs(window, "w")).Where(cutoff.GreaterEqualThan("run", excess)).OrderBy("seq").Limit(1)
-	var seq, dropped int64
-	err := sqlb.QueryRow(tx, cutoff).Scan(&seq, &dropped)
-	if errors.Is(err, sql.ErrNoRows) {
-		total := r.Dialect.Select("COALESCE(SUM(" + size + "), 0)").From(ch.Table)
-		total.Where(total.Equal(ch.Kind, kind), total.Equal(ch.ID, id))
-		seq = math.MaxInt64
-		if err := sqlb.QueryRow(tx, total).Scan(&dropped); err != nil {
-			return 0, fmt.Errorf("repos: size ade log %s/%s: %w", kind, id, err)
+	for n := int64(adeLogTrimScan); ; n *= 4 {
+		q := r.Dialect.Select(ch.Seq, size).From(ch.Table)
+		q.Where(q.Equal(ch.Kind, kind), q.Equal(ch.ID, id))
+		q.OrderBy(ch.Seq).Limit(int(n))
+		cutoff, dropped, rows, found, err := scanPrefix(tx, q, excess)
+		if err != nil {
+			return 0, fmt.Errorf("repos: find ade log cutoff %s/%s: %w", kind, id, err)
 		}
-	} else if err != nil {
-		return 0, fmt.Errorf("repos: find ade log cutoff %s/%s: %w", kind, id, err)
+		if !found && rows == n {
+			continue // prefix not reached within n chunks; rescan wider
+		}
+		if !found {
+			cutoff = math.MaxInt64 // fewer than n chunks and none reached excess: drop all
+		}
+		drop := r.Dialect.DeleteFrom(ch.Table)
+		drop.Where(drop.Equal(ch.Kind, kind), drop.Equal(ch.ID, id), drop.LessEqualThan(ch.Seq, cutoff))
+		if _, err := sqlb.Exec(tx, drop); err != nil {
+			return 0, fmt.Errorf("repos: drop ade log chunks %s/%s: %w", kind, id, err)
+		}
+		return dropped, nil
 	}
-	drop := r.Dialect.DeleteFrom(ch.Table)
-	drop.Where(drop.Equal(ch.Kind, kind), drop.Equal(ch.ID, id), drop.LessEqualThan(ch.Seq, seq))
-	if _, err := sqlb.Exec(tx, drop); err != nil {
-		return 0, fmt.Errorf("repos: drop ade log chunks %s/%s: %w", kind, id, err)
+}
+
+// scanPrefix sums chunk sizes in seq order. It returns the seq at which the sum first reaches
+// excess with the bytes up to there (found), or all bytes read when it never does, plus the row
+// count read.
+func scanPrefix(tx *sql.Tx, q sqlb.Builder, excess int64) (cutoff, dropped, rows int64, found bool, err error) {
+	rs, err := sqlb.Query(tx, q)
+	if err != nil {
+		return 0, 0, 0, false, err
 	}
-	return dropped, nil
+	defer rs.Close() //nolint:errcheck
+	for rs.Next() {
+		var seq, n int64
+		if err := rs.Scan(&seq, &n); err != nil {
+			return 0, 0, 0, false, err
+		}
+		rows++
+		dropped += n
+		if dropped >= excess {
+			return seq, dropped, rows, true, rs.Err()
+		}
+	}
+	return 0, dropped, rows, false, rs.Err()
 }
 
 // clipChunk cuts text over AdeLogChunkBytes at a rune boundary and marks the cut.

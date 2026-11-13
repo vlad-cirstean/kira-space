@@ -26,6 +26,9 @@ func TestAdeLogsAppendTrim(t *testing.T) {
 		{"multi-byte text", func() []string {
 			return append(repeatChunks(strings.Repeat("é€", AdeLogChunkBytes/5), cap/AdeLogChunkBytes), "日本語")
 		}},
+		{"prefix wider than the first scan", func() []string {
+			return append(repeatChunks("c", 300), repeatChunks(full, cap/AdeLogChunkBytes+1)...)
+		}},
 		{"one chunk covers the excess", func() []string { return append([]string{full, "tiny"}, repeatChunks("b", 10)...) }},
 	}
 	for _, c := range cases {
