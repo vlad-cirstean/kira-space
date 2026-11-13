@@ -48,10 +48,32 @@ type leaseState struct {
 	order orderCache
 	// runs holds the owners of live headless runs, which emit no hook events: a live run is alive.
 	runs map[leases.Key]struct{}
+	// flush holds the delivery in progress per owner, guarded by mu (the entry is dropped by endLeases).
+	flush map[leases.Key]*leaseFlush
+}
+
+// leaseFlush serializes one owner's deliveries. A flush takes the pending messages, writes them to
+// the PTY without holding leaseState.mu, and puts them back when the session was busy. mu spans
+// that whole sequence, so a later flush or notice read waits and then sees the re-queued messages
+// in order. The other fields are guarded by leaseState.mu.
+type leaseFlush struct {
+	mu    sync.Mutex
+	msgs  []string // taken and not yet sent or re-queued: still pending for the snapshot
+	ended bool     // endLeases ran meanwhile: do not re-queue
+}
+
+// flushOf returns the owner's flush state, creating it. The caller holds lease.mu.
+func (s *leaseState) flushOf(key leases.Key) *leaseFlush {
+	f := s.flush[key]
+	if f == nil {
+		f = &leaseFlush{}
+		s.flush[key] = f
+	}
+	return f
 }
 
 func (b *TaskBoard) initLeases() {
-	b.lease = &leaseState{pending: map[leases.Key][]string{}, runs: map[leases.Key]struct{}{}}
+	b.lease = &leaseState{pending: map[leases.Key][]string{}, runs: map[leases.Key]struct{}{}, flush: map[leases.Key]*leaseFlush{}}
 	b.lease.book = leases.New(leases.Options{
 		Now: b.deps.Now, TTL: b.deps.LeaseTTL, Order: b.taskListOrder,
 		OnGrant: b.onLeaseGrant, OnChange: b.leasesChanged,
@@ -193,19 +215,27 @@ func (b *TaskBoard) flushLease(recordID string) {
 	}
 	key := leases.Key(recordID)
 	b.lease.mu.Lock()
+	f := b.lease.flushOf(key)
+	b.lease.mu.Unlock()
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	b.lease.mu.Lock()
 	msgs := b.lease.pending[key]
 	delete(b.lease.pending, key)
+	f.msgs, f.ended = msgs, false
 	b.lease.mu.Unlock()
 	if len(msgs) == 0 {
 		return
 	}
 	sent, err := b.deps.Tracker.SendIfIdle(recordID, strings.Join(msgs, "\n"))
-	if !sent {
-		// Back first in line: messages queued meanwhile stay behind them.
-		b.lease.mu.Lock()
+	b.lease.mu.Lock()
+	f.msgs = nil
+	if !sent && !f.ended {
+		// Back first in line: messages queued meanwhile stay behind them. An owner that ended
+		// meanwhile has nobody to deliver to.
 		b.lease.pending[key] = append(msgs, b.lease.pending[key]...)
-		b.lease.mu.Unlock()
 	}
+	b.lease.mu.Unlock()
 	if err != nil {
 		slog.Warn("ade: lease message", "scope", "ade", "recordId", recordID, "err", err)
 	}
@@ -216,6 +246,14 @@ func (b *TaskBoard) flushLease(recordID string) {
 
 // takeLeaseNotices removes and returns the messages waiting for key.
 func (b *TaskBoard) takeLeaseNotices(key leases.Key) []string {
+	// Wait for a delivery in flight: its messages are neither pending nor sent yet.
+	b.lease.mu.Lock()
+	f := b.lease.flush[key]
+	b.lease.mu.Unlock()
+	if f != nil {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+	}
 	b.lease.mu.Lock()
 	msgs := b.lease.pending[key]
 	delete(b.lease.pending, key)
@@ -258,6 +296,10 @@ func (b *TaskBoard) endLeases(key leases.Key) {
 	b.lease.mu.Lock()
 	delete(b.lease.pending, key)
 	delete(b.lease.runs, key)
+	if f := b.lease.flush[key]; f != nil {
+		f.ended = true
+		delete(b.lease.flush, key)
+	}
 	b.lease.mu.Unlock()
 	b.lease.book.ReleaseSession(key)
 }
@@ -372,6 +414,9 @@ func (b *TaskBoard) LeaseSnapshot() adewire.LeaseSnapshot {
 	entry := func(e leases.Entry, position int) adewire.LeaseEntry {
 		b.lease.mu.Lock()
 		noticed := len(b.lease.pending[e.Key]) > 0
+		if f := b.lease.flush[e.Key]; f != nil && len(f.msgs) > 0 {
+			noticed = true // taken by a delivery in flight
+		}
 		b.lease.mu.Unlock()
 		out := adewire.LeaseEntry{
 			SessionID: string(e.Key), TaskID: e.TaskID, TaskTitle: b.leaseTaskName(e.TaskID),

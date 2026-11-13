@@ -380,7 +380,9 @@ func (b *TaskBoard) repoCandidates(ctx context.Context, codeRepoID string, taken
 // is not checked out anywhere gets a worktree and its prepare script (R19); a review branch gets
 // none until Start or Take over.
 func (b *TaskBoard) AddExistingBranch(ctx context.Context, args adewire.AddExistingBranchArgs) (adewire.AddExistingBranchResult, error) {
-	return joinOp(ctx, b, opKey("attachBranch", args), func(ctx context.Context) (adewire.AddExistingBranchResult, error) { return b.addExistingBranch(ctx, args) })
+	return joinOp(ctx, b, opKey("attachBranch", args), func(ctx context.Context) (adewire.AddExistingBranchResult, error) {
+		return b.addExistingBranch(ctx, args)
+	})
 }
 
 func (b *TaskBoard) addExistingBranch(ctx context.Context, args adewire.AddExistingBranchArgs) (adewire.AddExistingBranchResult, error) {
