@@ -425,9 +425,9 @@ func commentVars(comments []gitreview.Comment) []llmprompts.ReviewCommentVar {
 }
 
 // roundMessage is the first message of a dedicated review round, with the branch's change request link.
-func (b *TaskBoard) roundMessage(ctx context.Context, rc *reviewCtx, tgt adewire.ReviewWindowTarget, round int, comments []gitreview.Comment) string {
+func (b *TaskBoard) roundMessage(rc *reviewCtx, tgt adewire.ReviewWindowTarget, round int, comments []gitreview.Comment, changeRequestURL string) string {
 	v := b.roundVars(rc, tgt, round, comments)
-	v.ChangeRequestURL = b.changeRequestURL(ctx, rc.sb, rc.tc.task.HostURL)
+	v.ChangeRequestURL = changeRequestURL
 	return llmprompts.AdeReviewRoundMessage.Text(b.prompts(), v)
 }
 
@@ -445,12 +445,60 @@ func (b *TaskBoard) SendReview(ctx context.Context, args adewire.SendReviewArgs)
 	return err
 }
 
+// reviewSendGather is what SendReview reads from git and the host before it takes the task lock.
+type reviewSendGather struct {
+	rc               *reviewCtx
+	tgt              adewire.ReviewWindowTarget
+	changeRequestURL string // only for a new dedicated session's first message
+	headBefore       string
+}
+
+// sendReview gathers outside the task lock (git and host calls can be slow), then takes it, checks
+// nothing moved and applies. A move between the two phases retries the gather once.
 func (b *TaskBoard) sendReview(ctx context.Context, args adewire.SendReviewArgs) error {
-	run, err := b.deps.Tasks.GetRun(args.RunID)
-	if err != nil {
+	for attempt := 0; ; attempt++ {
+		g, err := b.gatherReviewSend(ctx, args)
+		if err != nil {
+			return err
+		}
+		err = b.applyReviewSend(ctx, args, g)
+		if errors.Is(err, errReviewMoved) && attempt == 0 {
+			continue
+		}
+		if errors.Is(err, errReviewMoved) {
+			return fmt.Errorf("%w: the review changed while sending", ErrStale)
+		}
 		return err
 	}
-	mu := b.taskMu(run.TaskID)
+}
+
+var errReviewMoved = errors.New("ade: review moved between gather and apply")
+
+func (b *TaskBoard) gatherReviewSend(ctx context.Context, args adewire.SendReviewArgs) (*reviewSendGather, error) {
+	rc, err := b.reviewRun(args.RunID)
+	if err != nil {
+		return nil, err
+	}
+	tgt, err := b.reviewTarget(ctx, rc.tc, rc.sb)
+	if err != nil {
+		return nil, err
+	}
+	g := &reviewSendGather{rc: rc, tgt: tgt}
+	if cmpNonEmpty(args.Route, rc.rev.Route) == adewire.ReviewSendNew && rc.rev.DedicatedClaudeID == "" {
+		g.changeRequestURL = b.changeRequestURL(ctx, rc.sb, rc.tc.task.HostURL)
+	}
+	if entry, err := b.openRepo(ctx, rc.sb.CodeRepoID); err == nil {
+		if _, tip, err := entry.WorktreeHead(ctx, tgt.Worktree); err == nil {
+			g.headBefore = tip
+		}
+	}
+	return g, nil
+}
+
+// applyReviewSend is SendReview's locked phase. It returns errReviewMoved when the run, its round
+// count or its branch changed since the gather.
+func (b *TaskBoard) applyReviewSend(ctx context.Context, args adewire.SendReviewArgs, g *reviewSendGather) error {
+	mu := b.taskMu(g.rc.run.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
 	rc, err := b.reviewRun(args.RunID)
@@ -465,11 +513,13 @@ func (b *TaskBoard) sendReview(ctx context.Context, args adewire.SendReviewArgs)
 	} else if live != nil {
 		return invalid("%s", i18n.T("backend.space.ade.reviewStep.roundLive.body", nil))
 	}
-	store, err := b.reviewStore()
-	if err != nil {
-		return err
+	if rc.rev.Rounds != g.rc.rev.Rounds || rc.sb.Name != g.rc.sb.Name || rc.sb.ID != g.rc.sb.ID || rc.run.ID != g.rc.run.ID ||
+		cmpNonEmpty(args.Route, rc.rev.Route) != cmpNonEmpty(args.Route, g.rc.rev.Route) ||
+		rc.rev.DedicatedClaudeID != g.rc.rev.DedicatedClaudeID {
+		return errReviewMoved
 	}
-	tgt, err := b.reviewTarget(ctx, rc.tc, rc.sb)
+	tgt := g.tgt
+	store, err := b.reviewStore()
 	if err != nil {
 		return err
 	}
@@ -526,13 +576,9 @@ func (b *TaskBoard) sendReview(ctx context.Context, args adewire.SendReviewArgs)
 		launch.ResumeID = rc.rev.DedicatedClaudeID
 		launch.Prompt = llmprompts.AdeReviewFollowupMessage.Text(b.prompts(), b.roundVars(rc, tgt, round, open))
 	default:
-		launch.Prompt = b.roundMessage(ctx, rc, tgt, round, open)
+		launch.Prompt = b.roundMessage(rc, tgt, round, open, g.changeRequestURL)
 	}
-	if entry, err := b.openRepo(ctx, rc.sb.CodeRepoID); err == nil {
-		if _, tip, err := entry.WorktreeHead(ctx, tgt.Worktree); err == nil {
-			spec.HeadBefore = tip
-		}
-	}
+	spec.HeadBefore = g.headBefore
 	if err := b.deps.Tasks.UpsertReview(model.AdeReview{RunID: rc.run.ID, Route: route, TargetRunID: targetID}); err != nil {
 		return err
 	}
@@ -811,7 +857,7 @@ func (b *TaskBoard) queueFallback(lost model.AdeRun, spec model.AdeReviewSpec) {
 	next := spec
 	next.Route, next.Fallback, next.HeadAfter, next.AllowedTools = adewire.ReviewSendNew, true, "", nil
 	launch := model.AdeRunLaunch{Note: i18n.T("backend.space.ade.reviewStep.fallback.body", nil)}
-	launch.Prompt = b.roundMessage(b.ctx, &reviewCtx{tc: tc, sb: sb}, tgt, spec.Round, comments)
+	launch.Prompt = b.roundMessage(&reviewCtx{tc: tc, sb: sb}, tgt, spec.Round, comments, b.changeRequestURL(b.ctx, sb, tc.task.HostURL))
 	if _, err := b.queueRound(b.ctx, tc, sb, tgt.Worktree, next, launch); err != nil && !errors.Is(err, errBoardClosed) {
 		slog.Warn("ade: review fallback round", "scope", "ade", "run", rv.ID, "err", err)
 	}
