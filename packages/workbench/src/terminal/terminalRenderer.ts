@@ -143,7 +143,11 @@ const encoder = new TextEncoder();
  *  detached `<div>` — RepoTerminalView.vue appends it to its container on mount and never calls
  *  `term.open()` a second time (the one mechanically safe way to reattach an xterm across
  *  unmounts, since whether `open()` itself is re-entrant is never relied on). */
-export function getOrCreateTerminal(tabId: string, deps: TerminalRendererDeps): Attached {
+export function getOrCreateTerminal(
+  tabId: string,
+  deps: TerminalRendererDeps,
+  size?: { cols: number; rows: number },
+): Attached {
   const existing = byTabId.get(tabId);
   if (existing) return existing;
 
@@ -163,6 +167,7 @@ export function getOrCreateTerminal(tabId: string, deps: TerminalRendererDeps): 
     leave: () => hint?.hide(),
   };
   const term = new Terminal({
+    ...(size ?? {}),
     linkHandler: { activate, ...linkHover, allowNonHttpProtocols: false },
     scrollback: 5000,
     cursorBlink: true,
