@@ -55,6 +55,7 @@ func (b *TaskBoard) dropRepoConfigs() {
 	c.gen++
 	c.list, c.ok = nil, false
 	c.mu.Unlock()
+	b.allReposMoved()
 }
 
 // ReposChanged tells the board a code repo was added, renamed, hidden, reordered or removed outside

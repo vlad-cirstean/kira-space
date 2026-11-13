@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -278,7 +279,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	b.conn.RouteCredentials(func(ctx context.Context, req gitaskpass.Request) (string, bool) {
 		return deps.Credentials.Ask(ctx, boardConnLabel, req)
 	})
-	b.checker = newRebaseChecker(ctx, deps.GitStatus, b.scheduleBoard)
+	b.checker = newRebaseChecker(ctx, deps.GitStatus, b.checkDone)
 	b.updates = newUpdateWatcher(b, deps.Updates)
 	b.initLeases()
 	return b
@@ -347,9 +348,17 @@ func (b *TaskBoard) handleEmit(method string, payload any) {
 	if method != "repo.changed" {
 		return
 	}
-	if _, ok := payload.(gitsession.Event); ok {
+	if ev, ok := payload.(gitsession.Event); ok {
+		b.repoMoved(ev.RepoID)
 		b.scheduleBoard()
 	}
+}
+
+// checkDone is the conflict checker's completion hook: the repo's pair and branch states moved.
+// jobID.repoID is the code repo id or its pairRepoID.
+func (b *TaskBoard) checkDone(repoID string) {
+	b.repoMoved(strings.TrimPrefix(repoID, pairRepoID("")))
+	b.scheduleBoard()
 }
 
 // scheduleBoard debounces a board invalidation (a burst of ref moves or check completions).
@@ -898,6 +907,9 @@ func (b *TaskBoard) Refresh(ctx context.Context, codeRepoIDs []string) (adewire.
 		})
 	}
 	_ = g.Wait() // refreshRepo reports failures per repo
+	for _, id := range codeRepoIDs {
+		b.repoMoved(id)
+	}
 	// Mark the repos before the push so the board it carries shows them updating.
 	started := b.track()
 	if started {

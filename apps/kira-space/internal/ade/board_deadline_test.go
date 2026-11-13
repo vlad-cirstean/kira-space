@@ -114,7 +114,7 @@ func TestBoardFacts_deadlineShowsLastGoodThenLands(t *testing.T) {
 	}
 }
 
-// A flight that a build of a newer gen joined predates a change: its late result is overlay-only
+// A flight that a build of a newer change counter joined predates a change: its late result is overlay-only
 // and the next build starts a fresh computation instead of taking it as the answer.
 func TestBoardFacts_staleFlightResultIsNotReused(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
@@ -145,7 +145,8 @@ func TestBoardFacts_staleFlightResultIsNotReused(t *testing.T) {
 		t.Fatal("want updating while the flight is held")
 	}
 	time.Sleep(150 * time.Millisecond) // flight now older than the deadline
-	h.board.invalidateBoard()          // a change after the flight read its tips
+	h.board.repoMoved("r")             // a change after the flight read its tips
+	h.board.invalidateBoard()
 	if u, _ := repoUpdating(t, h, "r"); !u {
 		t.Fatal("newer gen must overlay on the old flight")
 	}
@@ -160,5 +161,66 @@ func TestBoardFacts_staleFlightResultIsNotReused(t *testing.T) {
 	})
 	if n := computations.Load(); n != 2 {
 		t.Fatalf("want one fresh computation after the stale landing, got %d", n)
+	}
+}
+
+// Two repos whose facts both outlast the deadline land close together. Each landing bumps the
+// board gen, but neither repo changed: both late results stay valid, the refetch after every push
+// reuses them, and the computation count settles.
+func TestBoardFacts_twoStalledReposSettle(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	h := newBoardHarness(t)
+	_, dir := initQueueRepo(t)
+	h.addRepo("r", dir)
+	_, dir2 := initQueueRepo(t)
+	h.addRepo("r2", dir2)
+	runGitQueue(t, dir, "branch", "feat-a", "main")
+	runGitQueue(t, dir2, "branch", "feat-b", "main")
+	h.addTask("T1", "task", branchSpec{id: "b1", repo: "r", name: "feat-a", kind: "mine"})
+	h.addTask("T2", "task", branchSpec{id: "b2", repo: "r2", name: "feat-b", kind: "mine"})
+	repoUpdating(t, h, "r")
+	h.board.invalidateBoard()
+	settleBoard(t, h)
+
+	h.board.facts.deadline = 100 * time.Millisecond
+	var computations atomic.Int32
+	h.board.facts.hook = func(string) {
+		computations.Add(1)
+		time.Sleep(300 * time.Millisecond)
+	}
+	// Stand-in UI: refetch the board after every push.
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		seen := len(h.pushed())
+		for {
+			select {
+			case <-stop:
+				return
+			case <-time.After(10 * time.Millisecond):
+				if n := len(h.pushed()); n > seen {
+					seen = n
+					_, _ = h.board.Board(context.Background())
+				}
+			}
+		}
+	}()
+	t.Cleanup(func() { close(stop); wg.Wait() })
+
+	h.board.invalidateBoard()
+	_, _ = h.board.Board(context.Background())
+	last, since := int32(-1), time.Now()
+	testx.WaitUntil(t, 20*time.Second, func() bool {
+		if n := computations.Load(); n != last {
+			last, since = n, time.Now()
+		}
+		return time.Since(since) > 1500*time.Millisecond
+	})
+	if n := computations.Load(); n > 4 {
+		t.Fatalf("two stalled repos recomputed %d times, want at most 4", n)
 	}
 }

@@ -81,7 +81,7 @@ type jobID struct {
 type rebaseChecker struct {
 	ctx       context.Context
 	gitStatus func(context.Context) gitclient.GitStatus
-	onDone    func()
+	onDone    func(repoID string)
 	sem       chan struct{}
 
 	mu       sync.Mutex
@@ -93,7 +93,7 @@ type rebaseChecker struct {
 	wg        sync.WaitGroup // running checks; close waits for them
 }
 
-func newRebaseChecker(ctx context.Context, gitStatus func(context.Context) gitclient.GitStatus, onDone func()) *rebaseChecker {
+func newRebaseChecker(ctx context.Context, gitStatus func(context.Context) gitclient.GitStatus, onDone func(repoID string)) *rebaseChecker {
 	return &rebaseChecker{
 		ctx: ctx, gitStatus: gitStatus, onDone: onDone,
 		sem:      make(chan struct{}, rebaseConcurrency),
@@ -183,7 +183,7 @@ func (c *rebaseChecker) request(j rebaseJob) <-chan struct{} {
 		}
 		close(done)
 		if c.onDone != nil {
-			c.onDone()
+			c.onDone(id.repoID)
 		}
 	}()
 	return done
@@ -205,7 +205,7 @@ func (c *rebaseChecker) recordFailure(id jobID, j rebaseJob, err error, attempts
 			closed := c.closed
 			c.mu.Unlock()
 			if !closed && c.onDone != nil {
-				c.onDone() // rebuild the board so its next pair pass retries
+				c.onDone(id.repoID) // rebuild the board so its next pair pass retries
 			}
 		})
 	}

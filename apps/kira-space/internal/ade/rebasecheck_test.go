@@ -134,7 +134,7 @@ func TestRebaseChecker_pairRetryThenFailed(t *testing.T) {
 		return []string{"a.txt"}, nil
 	}
 	dones := make(chan struct{}, 16)
-	c := newRebaseChecker(context.Background(), okGit, func() { dones <- struct{}{} })
+	c := newRebaseChecker(context.Background(), okGit, func(string) { dones <- struct{}{} })
 	c.retryBase = 5 * time.Millisecond
 	cache := newRebaseCache()
 	key := rebaseKey{"b", "t"}
