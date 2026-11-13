@@ -26,6 +26,37 @@ func repoUpdating(t *testing.T, h *boardHarness, id string) (bool, string) {
 	return false, ""
 }
 
+// boardQuiet reports that no debounced invalidation or push is pending: the repo-changed debounce
+// (adeRepoChangedDebounce) and the push coalescer each bump the gen when they fire.
+func boardQuiet(b *TaskBoard) bool {
+	b.mu.Lock()
+	sched := b.boardSched.any
+	b.mu.Unlock()
+	b.bcache.pushMu.Lock()
+	push := b.bcache.push.any
+	b.bcache.pushMu.Unlock()
+	return !sched && !push
+}
+
+// settleBoard waits until background sources (deferred mark writes, conflict checks and their
+// debounced invalidations) stop moving the board gen, so a later gen bump in the test is its own.
+func settleBoard(t *testing.T, h *boardHarness) {
+	t.Helper()
+	testx.WaitUntil(t, 10*time.Second, func() bool {
+		for stable := 0; stable < 3; {
+			g := h.board.bcache.gen.Load()
+			repoUpdating(t, h, "r")
+			time.Sleep(50 * time.Millisecond)
+			if h.board.bcache.gen.Load() == g && boardQuiet(h.board) {
+				stable++
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+}
+
 // A facts computation held past the deadline shows the last good facts with updating set; its
 // landing pushes once more and clears the flag. A second build of the same gen joins it.
 func TestBoardFacts_deadlineShowsLastGoodThenLands(t *testing.T) {
@@ -44,16 +75,7 @@ func TestBoardFacts_deadlineShowsLastGoodThenLands(t *testing.T) {
 	// Settle the first build's deferred mark writes and conflict checks: they drop the snapshot when
 	// they land. Rebuild once so the checks of the held build are cached.
 	h.board.invalidateBoard()
-	for stable := 0; stable < 3; {
-		g := h.board.bcache.gen.Load()
-		repoUpdating(t, h, "r")
-		time.Sleep(50 * time.Millisecond)
-		if h.board.bcache.gen.Load() == g {
-			stable++
-		} else {
-			stable = 0
-		}
-	}
+	settleBoard(t, h)
 
 	var computations atomic.Int32
 	release := make(chan struct{})
@@ -105,16 +127,7 @@ func TestBoardFacts_staleFlightResultIsNotReused(t *testing.T) {
 	h.addTask("T1", "task", branchSpec{id: "b1", repo: "r", name: "feat-a", kind: "mine"})
 	repoUpdating(t, h, "r")
 	h.board.invalidateBoard()
-	for stable := 0; stable < 3; {
-		g := h.board.bcache.gen.Load()
-		repoUpdating(t, h, "r")
-		time.Sleep(50 * time.Millisecond)
-		if h.board.bcache.gen.Load() == g {
-			stable++
-		} else {
-			stable = 0
-		}
-	}
+	settleBoard(t, h)
 
 	h.board.facts.deadline = 100 * time.Millisecond
 	var computations atomic.Int32
