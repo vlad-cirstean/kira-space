@@ -799,15 +799,18 @@ export function useAdePromptPreview(
   id: string,
   vars: MaybeRefOrGetter<Record<string, unknown> | null>,
 ) {
-  return useQuery(() => {
-    const v = toValue(vars);
-    return {
-      queryKey: ['llmPrompts', 'adePreview', id, v] as const,
-      queryFn: (): Promise<LlmPromptPreview> =>
-        control.llmPromptsPreview({ id, vars: v as Record<string, unknown> }),
-      enabled: v !== null,
-      placeholderData: keepPreviousData,
-      staleTime: 0,
-    };
-  });
+  return useQuery(() => adePromptPreviewOptions(id, toValue(vars)));
+}
+
+/** Query options of one preview, shared with the Run dialog's hover prefetch. A Settings save
+ *  invalidates `['llmPrompts', 'adePreview']`, so a cached text never outlives an edit. */
+export function adePromptPreviewOptions(id: string, v: Record<string, unknown> | null) {
+  return {
+    queryKey: ['llmPrompts', 'adePreview', id, v] as const,
+    queryFn: (): Promise<LlmPromptPreview> =>
+      control.llmPromptsPreview({ id, vars: v as Record<string, unknown> }),
+    enabled: v !== null,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  };
 }

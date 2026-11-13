@@ -12,6 +12,7 @@ import {
 import { FieldDescription, FieldError } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
+import { Skeleton } from '@theme/components/ui/skeleton';
 import { Textarea } from '@theme/components/ui/textarea';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
@@ -20,13 +21,7 @@ import { computed, ref, watch } from 'vue';
 import { useCustomScriptsStore } from '../../../state/customScripts';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import { smartBodyParts } from '../automation/smartStepBody';
-import {
-  branchSlug,
-  editablePart,
-  finishVars,
-  previewPlain,
-  runMessageVars,
-} from '../board/runMessage';
+import { branchSlug, editablePart, previewPlain } from '../board/runMessage';
 import AdeLinkStrip from '../links/AdeLinkStrip.vue';
 import AdeSetupProgress from '../panel/AdeSetupProgress.vue';
 import { usePlanModel } from '../plan/usePlanModel';
@@ -36,6 +31,7 @@ import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeOpsStore } from '../state/adeOps';
 import { useRepoGate } from '../state/useRepoGate';
 import { ACTION_CLASS } from '../tones';
+import { RUN_PREVIEW_IDS, runPreviewVars } from './runPreview';
 
 // Agent step Run dialog (SPEC2 section 5, R24): per-branch names for branches not created yet, the
 // editable message and the read-only finish_step suffix the server always appends.
@@ -56,38 +52,15 @@ const close = (): void => {
   ui.runTaskId = null;
 };
 const step = computed(() => card.value?.progress.step ?? null);
-// No mine branch (an outside-repo step or an orchestrator): the step runs in the task folder.
-const noRepo = computed(() => !card.value?.rows.some((r) => r.branch.kind === 'mine'));
 // The workflow's definition of the step being run: its prompt and smart script params.
 const def = computed(
   () => card.value?.workflow?.steps.find((x) => x.id === step.value?.id) ?? null,
 );
-// Position among the workflow's automatic steps, as `ade.step.prompt` counts them.
-const numbering = computed(() => {
-  const auto = (card.value?.workflow?.steps ?? []).filter((x) => x.kind !== 'manual' && !x.skip);
-  return { n: auto.findIndex((x) => x.id === step.value?.id) + 1, of: auto.length };
-});
 // The texts render in Go (ade.step.prompt, headless.space.suffix, headless.finishStep.suffix), so edits in Settings show here.
-const stepPreview = useAdePromptPreview('ade.step.prompt', () =>
-  card.value && step.value
-    ? runMessageVars({
-        title: card.value.title,
-        jira: card.value.task.jira,
-        step: {
-          name: step.value.name,
-          prompt: def.value?.prompt ?? '',
-          results: step.value.results,
-        },
-        stepNumber: numbering.value.n,
-        stepCount: numbering.value.of,
-        noRepo: noRepo.value,
-      })
-    : null,
-);
-const suffixPreview = useAdePromptPreview('headless.finishStep.suffix', () =>
-  step.value ? finishVars(step.value.results) : null,
-);
-const spacePreview = useAdePromptPreview('headless.space.suffix', () => (step.value ? {} : null));
+const previewVars = computed(() => runPreviewVars(card.value));
+const stepPreview = useAdePromptPreview(RUN_PREVIEW_IDS.step, () => previewVars.value.step);
+const suffixPreview = useAdePromptPreview(RUN_PREVIEW_IDS.finish, () => previewVars.value.finish);
+const spacePreview = useAdePromptPreview(RUN_PREVIEW_IDS.space, () => previewVars.value.space);
 // The Kira Space note and the finish instruction the step ends with, as ade.step.prompt appends them.
 const suffix = computed(() => {
   const finish = previewPlain(suffixPreview.data.value?.parts ?? []);
@@ -268,7 +241,13 @@ async function send(): Promise<void> {
             </Button>
           </div>
           <div class="flex flex-col gap-1">
+            <Skeleton
+              v-if="stepPreview.isPending.value"
+              class="h-24 w-full"
+              data-testid="ade-run-message-skeleton"
+            />
             <Textarea
+              v-else
               id="ade-run-message"
               v-model="message"
               class="max-h-90 resize-y"

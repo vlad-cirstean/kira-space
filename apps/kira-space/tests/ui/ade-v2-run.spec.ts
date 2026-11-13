@@ -90,6 +90,19 @@ test('the Run dialog shows the default message and the read-only suffix', async 
   await expect(dialog).toBeHidden();
 });
 
+test('the Run dialog shows a skeleton until the message preview lands', async ({ relaunch }) => {
+  // The first preview snapshot is the message (`ade.step.prompt`), held until released.
+  const held = boardWith(alertsInPlan).map((s, i) => (i === 1 ? { ...s, hold: true } : s));
+  const { window: page, control } = await openPlan(relaunch, held);
+  await page.locator(cellAction('T_alerts', 'run')).click();
+  const dialog = page.locator(t('ade-run-dialog'));
+  await expect(dialog.locator(t('ade-run-message-skeleton'))).toBeVisible();
+  await expect(dialog.locator(t('ade-run-message'))).toHaveCount(0);
+  control.release(IPC.llmPromptsPreview);
+  await expect(dialog.locator(t('ade-run-message'))).toHaveValue(/Plan from spec/);
+  await expect(dialog.locator(t('ade-run-message-skeleton'))).toHaveCount(0);
+});
+
 test('an agent step leaves the branch name to the agent', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, boardWith(alertsInPlan));
   await page.locator(cellAction('T_alerts', 'run')).click();
