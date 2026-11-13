@@ -1004,6 +1004,35 @@ fake clock is not the cause); (3) `autocomplete="off"` on the capture box, title
 inputs (left 24.9, back 37.9). Inputs present at the `task` checkpoint: `ade-capture`,
 `ade-panel-title`, `ade-task-host-input`, `ade-estimate-num`. Open item in `docs/ARCHITECTURE.md`.
 
+### 2.16 P622 — ADE board: snapshot, git facts cache, deferred marks
+
+Base `c7721e07` (chapter `v0.3.11`, benchmark commit). Host: 4-core Xeon 2.1 GHz container, Linux 6.18,
+Go 1.27.3, git on PATH; other streams of the chapter ran on the same host, so absolute ns/op carry
+noise (the baseline's first run in the commit body read 49-77 ms under load; the rerun below is
+quieter). Benchmarks: `internal/ade/board_bench_test.go`, one repo, 10 branches over 3 tasks, 5
+attached worktrees, 1 conflicting pair. Spawns are counted at the `gitclient.Runner` seam. No query
+count: `boardHarness` hides its `*sql.DB`.
+
+Commands, each from a detached worktree of the commit, `-count 5`, median of 5 [min-max]:
+`go test ./internal/ade -run '^$' -bench BoardWarm -benchtime 50x` (invalidate, then `Board()`) and
+`-bench BoardHit -benchtime 100000x` (no invalidation).
+
+| commit | BoardWarm ms/op | BoardWarm spawns/op | BoardHit ns/op | BoardHit spawns/op |
+|---|---|---|---|---|
+| `c7721e07` baseline | 34.8 [34.1-35.4] | 21 | no snapshot, equals Warm | 21 |
+| `54a6f591` snapshot, coalesced pushes | 34.0 [32.7-36.5] | 21 | 68 [66-74] | 0 |
+| `dae341e6` chapter head (commits 4 to 15) | 9.1 [8.6-9.5] | 7 | 73 [65-92] | 0 |
+
+The snapshot (commit 3) makes an unchanged board free: 0 spawns and about 70 ns instead of 21 spawns
+and 35 ms. It does not change an invalidated rebuild. The git facts cache (commit 7: ahead/behind per
+tip pair, ancestry slot, `gitsession` entry meta) is expected to cut that rebuild, and the head row
+shows 21 to 7 spawns and 3.8x in wall time. The head row also includes the other commits of the
+phase (shared board loads, parallel change request resolution); the harness has no remote host, so
+they are not isolated here.
+
+`EXPLAIN QUERY PLAN` on `LatestRunsOf` after migration 0100: `SEARCH b USING COVERING INDEX
+ade_runs_latest (task_id=? AND step_id=? AND branch_id=? AND purpose=?)`.
+
 ## 3. Manual procedures (macOS, packaged build)
 
 Not yet run — no macOS hardware here. Run these once on macOS 26+ arm64 and record the results
