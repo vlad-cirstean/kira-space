@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { RoutedPrompt } from '@shared/domain/prompts';
 import { useTimeout } from '@vueuse/core';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, ref, watch } from 'vue';
 import { useHandovers, useTaskArtifacts } from '../queries';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
-import AdeStageDialog from './AdeStageDialog.vue';
+
+const AdeStageDialog = defineAsyncComponent(() => import('./AdeStageDialog.vue'));
 
 // The routed `handover` popup: a session finished its stage and offers the move. `entry.ref` is the
 // task id. Not now keeps the draft and withdraws the popup; Escape and Cancel only hide it here.
