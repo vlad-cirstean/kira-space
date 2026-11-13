@@ -249,13 +249,17 @@ func TestTaskBoard_snapshotAssembly(t *testing.T) {
 		return false
 	})
 
-	// main moves with a conflicting edit; Refresh settles the checks before returning.
+	// main moves with a conflicting edit; the checks settle after Refresh returns.
 	commitFile(t, dir, "shared.txt", "main moved\n", "main moves")
 	runGitQueue(t, dir, "push", "-q", "origin", "main")
 	if _, err := h.board.Refresh(context.Background(), nil); err != nil {
 		t.Fatal(err)
 	}
-	board, _ = h.board.Board(context.Background())
+	h.board.WaitRefreshTails() // checks queued by the refresh tail land after Refresh returns
+	testx.WaitUntil(t, 5*time.Second, func() bool {
+		board, _ = h.board.Board(context.Background())
+		return boardBranch(t, board, "b1").ConflictCheck == conflictDone && boardBranch(t, board, "b2").ConflictCheck == conflictDone
+	})
 	b1, b2 = boardBranch(t, board, "b1"), boardBranch(t, board, "b2")
 	if b1.ConflictCheck != conflictDone || !slices.Equal(b1.ConflictsIfRebased, []string{"shared.txt"}) {
 		t.Fatalf("b1 after refresh: %q %v (%s)", b1.ConflictCheck, b1.ConflictsIfRebased, b1.ConflictCheckReason)
