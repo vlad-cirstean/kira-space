@@ -102,6 +102,30 @@ test('a refusal from a stale board asks for a repo and retries the start', async
   expect(calls(control, IPC.adeTaskAddTaskRepo)).toHaveLength(1);
 });
 
+test('cancelling the repo prompt after a refusal shows no error toast and keeps the dialog input', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openPlan(relaunch, [
+    adeBoardSnapshot(alertsWithoutRepo('plan')),
+    { channel: IPC.adeTaskStartRun, error: noRepo },
+    addRepo,
+  ]);
+  // The board says the task has no repo, so the gate asks first; pick, then the bridge still refuses.
+  await page.locator(cellAction('T_alerts', 'run')).click();
+  await choose(page);
+  await page.locator(t('ade-repo-gate-continue')).click();
+  const dialog = page.locator(t('ade-run-dialog'));
+  await dialog.locator(t('ade-run-message')).fill('Plan it my way.');
+  await dialog.locator(t('ade-run-send')).click();
+  await expect(page.locator(t('ade-repo-gate'))).toBeVisible();
+  // While the prompt waits no op runs: no chip, no loading toast.
+  await expect(page.locator('[data-testid="ade-op-status"]')).toHaveCount(0);
+  await page.locator(t('ade-repo-gate-cancel')).click();
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+  expect(calls(control, IPC.adeTaskStartRun)).toHaveLength(1);
+  await expect(dialog.locator(t('ade-run-message'))).toHaveValue('Plan it my way.');
+});
+
 test('a manual session step asks for a repo before the session dialog', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
     adeBoardSnapshot(alertsWithoutRepo('spec')),

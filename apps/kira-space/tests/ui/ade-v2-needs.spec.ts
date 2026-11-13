@@ -1,5 +1,6 @@
 import { expect, test } from './fixtures';
 import { adeBoard, emitAgentEvent, emitAgentSessions, openPlan } from './support/adeV2';
+import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 
@@ -125,4 +126,39 @@ test('All sessions groups by task and filters running or stopped', async ({ rela
   await expect(page.locator(t('ade-all-session'))).toHaveCount(13);
   await page.locator(t('ade-needs-all')).click();
   await expect(page.locator(t('ade-all-sessions'))).toHaveCount(0);
+});
+
+test('a refused Approve on a stale board asks for a repo and approves again', async ({
+  relaunch,
+}) => {
+  const noRepo = contract<{ code: string; message: string }>(
+    'ade-repo-required',
+    'AdeTaskService.StartRun#noRepo',
+  );
+  const { window: page, control } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskBoard,
+      response: adeBoard((b) => {
+        const hooks = b.tasks.find((x) => x.id === 'T_hooks');
+        if (hooks) hooks.runs = hooks.runs.filter((r) => r.stepId !== 'pr');
+      }),
+    },
+    { channel: IPC.adeTaskApprove, error: noRepo },
+    {
+      channel: IPC.adeTaskAddTaskRepo,
+      response: contract('ade-repo-required', 'AdeTaskService.AddTaskRepo'),
+    },
+  ]);
+  await page.locator(t('ade-tab-needs')).click();
+  await page
+    .locator(`${item('approval')} ${t('ade-needs-action')}`)
+    .first()
+    .click();
+  await expect(page.locator(t('ade-repo-gate'))).toBeVisible();
+  expect(calls(control, IPC.adeTaskApprove)).toHaveLength(1);
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+  await page.locator(t('ade-repo-gate-pick')).click();
+  await page.locator(t('ade-repo-gate-pick-option-repo-mobile')).click();
+  await page.locator(t('ade-repo-gate-continue')).click();
+  await expect.poll(() => calls(control, IPC.adeTaskApprove)).toHaveLength(2);
 });

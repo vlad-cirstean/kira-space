@@ -90,6 +90,27 @@ test('a push in flight shows the chip, and past 2 s a loading then a success toa
   await expect(chip).toHaveCount(0);
 });
 
+test('a force push from the panel branch list shows the chip on that row', async ({ relaunch }) => {
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskBoard, response: unpushedBoard() },
+    forcePushSnapshot(adeFixture('force-push'), true),
+  ]);
+  await page
+    .locator('[data-testid="ade-card"][data-task-id="T_deps"] [data-testid="ade-card-head"]')
+    .click();
+  const row = page.locator(
+    '[data-testid="ade-task-branch-item"][data-branch-id="b_deps"] [data-testid="ade-force-push"]',
+  );
+  await row.click();
+  await page.locator('[data-testid="ade-confirm-yes"]').click();
+  const chip = page.locator(
+    '[data-testid="ade-task-branch-item"][data-branch-id="b_deps"] [data-testid="ade-op-status"][data-op="forcePush"]',
+  );
+  await expect(chip.first()).toBeVisible();
+  control.release(IPC.adeTaskForcePush);
+  await expect(chip).toHaveCount(0);
+});
+
 test('a push that finishes within 2 s shows no toast', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     { channel: IPC.adeTaskBoard, response: unpushedBoard() },

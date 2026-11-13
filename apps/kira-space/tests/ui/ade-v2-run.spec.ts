@@ -150,6 +150,28 @@ test('Cancel closes the Run dialog without a call', async ({ relaunch }) => {
   expect(calls(control, IPC.adeTaskStartRun)).toHaveLength(0);
 });
 
+test('a refused start reopens the Run dialog with the typed names and message', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openPlan(relaunch, [
+    ...boardWith(alertsInPlan),
+    { channel: IPC.adeTaskStartRun, error: { code: 'invalid', message: 'branch name taken' } },
+  ]);
+  await page.locator(cellAction('T_alerts', 'run')).click();
+  const dialog = page.locator(t('ade-run-dialog'));
+  const names = dialog.locator(t('ade-run-branch'));
+  await names.nth(0).fill('feat/first');
+  await names.nth(1).fill('feat/second');
+  await dialog.locator(t('ade-run-message')).fill('Plan it my way.');
+  await dialog.locator(t('ade-run-send')).click();
+  await expect.poll(() => calls(control, IPC.adeTaskStartRun)).toHaveLength(1);
+  await expect(page.locator('[data-sonner-toast]')).toContainText('branch name taken');
+  await expect(dialog).toBeVisible();
+  await expect(names.nth(0)).toHaveValue('feat/first');
+  await expect(names.nth(1)).toHaveValue('feat/second');
+  await expect(dialog.locator(t('ade-run-message'))).toHaveValue('Plan it my way.');
+});
+
 test('a pushed runs event updates the step line', async ({ relaunch }) => {
   const ev = adeFixture<{ runs: Record<string, unknown>[] }>('event-runs');
   const { window: page } = await openPlan(relaunch);
