@@ -30,3 +30,8 @@ function keepBreaks(node: JSONContent): JSONContent {
 export function parseWithLineBreaks(md: string): JSONContent {
   return keepBreaks(manager.parse(md));
 }
+
+/** Parses Markdown into a document, newlines folded as Markdown does. */
+export function parseMarkdown(md: string): JSONContent {
+  return manager.parse(md);
+}

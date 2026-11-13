@@ -130,9 +130,9 @@ test('a selected archived task shows all it kept, read-only', async ({ relaunch 
   await expect(page.locator(t('ade-archived-comment'))).toContainText('rename this');
 
   await page.locator(t('ade-panel-tab-details')).click();
-  const editor = page.locator(`${t('ade-details-tab')} .ProseMirror`);
-  await expect(editor).toContainText('remember the cache');
-  await expect(editor).toHaveAttribute('contenteditable', 'false');
+  const body = page.locator(`${t('ade-details-tab')} ${t('ade-handover-body')}`);
+  await expect(body).toContainText('remember the cache');
+  await expect(page.locator(`${t('ade-details-tab')} [contenteditable]`)).toHaveCount(0);
   await expect(page.locator(t('ade-notes-toolbar-btn'))).toHaveCount(0);
 
   await page.locator(t('ade-panel-tab-sessions')).click();

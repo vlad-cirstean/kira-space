@@ -243,7 +243,7 @@ test('handover text selects and copies: Details chain body and Run dialog card',
   const list = page.locator(t('ade-task-chain'));
 
   const row = list.locator(t('ade-handover-row')).first();
-  const prose = row.locator('.ProseMirror');
+  const prose = row.locator(t('ade-handover-body'));
   // `auto` on .ProseMirror resolves to the wrapper's value, so the wrapper carries the opt-in.
   await expect(row.locator(t('ade-notes-editor'))).toHaveCSS('user-select', 'text');
   expect(await dragAcross(page, prose)).toContain(first.split('\n')[0]?.trim() ?? first);

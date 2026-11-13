@@ -15,6 +15,7 @@ import { useUpdateHandover } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import type { Handover } from '../wire';
+import AdeNoteBody from './AdeNoteBody.vue';
 import { AdeNotesEditor, prefetchNotesEditor } from './asyncEditor';
 import {
   AUTHOR_ICON,
@@ -185,11 +186,10 @@ function time(h: Handover): string {
         t('space.ade.notes.childFinishedEmpty.label')
       }}</span
     >
-    <AdeNotesEditor
+    <AdeNoteBody
       v-else
       :key="`view-${handover.id}`"
-      :model-value="handover.body"
-      readonly
+      :body="handover.body"
       :hard-breaks="author !== 'user'"
       data-testid="ade-handover-body"
     />
