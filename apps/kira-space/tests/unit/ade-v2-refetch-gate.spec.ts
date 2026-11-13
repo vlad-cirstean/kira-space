@@ -7,6 +7,7 @@ const key = ['adetask', 'board'] as const;
 
 interface Harness {
   gate: ReturnType<typeof createRefetchGate>;
+  queryClient: QueryClient;
   fetches: () => number;
   /** Finishes the oldest pending fetch; `fail` rejects it. */
   finish: (fail?: boolean) => void;
@@ -29,6 +30,7 @@ function harness(): Harness {
   });
   observer.subscribe(() => {});
   return {
+    queryClient,
     gate: createRefetchGate(queryClient, key),
     fetches: () => count,
     finish: (fail = false) => {
@@ -80,5 +82,21 @@ describe('createRefetchGate', () => {
     expect(h.fetches()).toBe(2);
     h.finish();
     await tick();
+  });
+
+  test('a signal during a fetch the gate did not start waits for it, then fetches again', async () => {
+    const h = harness();
+    void h.queryClient.invalidateQueries({ queryKey: key, exact: true });
+    await tick();
+    expect(h.fetches()).toBe(1);
+    h.gate.signal();
+    await tick();
+    expect(h.fetches()).toBe(1);
+    h.finish();
+    await tick();
+    expect(h.fetches()).toBe(2);
+    h.finish();
+    await tick();
+    expect(h.fetches()).toBe(2);
   });
 });
