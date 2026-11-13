@@ -540,9 +540,12 @@ func (b *TaskBoard) queueRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 			}
 		}
 	}
-	setups, err := b.deps.Tasks.SetupByBranch()
-	if err != nil {
-		return model.AdeRun{}, err
+	var setup *model.AdeWorktreeSetup
+	if branchID != taskTarget {
+		var err error
+		if setup, err = b.deps.Tasks.GetSetup(branchID); err != nil {
+			return model.AdeRun{}, err
+		}
 	}
 	if last, ok := b.lastRunOf(tc.task.ID, plan[idx].Def.ID, branchID); ok && attempt <= last.Attempt {
 		attempt = last.Attempt + 1 // a pass after a move starts above its history, which the watermark hides
@@ -551,13 +554,13 @@ func (b *TaskBoard) queueRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 		ID: ids.NewID(), TaskID: tc.task.ID, StepID: plan[idx].Def.ID, BranchID: branchID,
 		Attempt: attempt, State: model.AdeRunPending, Loops: opts.Loops, Launch: opts.Launch,
 	}
-	open := path != "" && (branchID == taskTarget || b.setupReady(sb, path, setups))
+	open := path != "" && (branchID == taskTarget || setupReadyOf(path, setup))
 	if !open {
 		run.Note = noteWaitingSetup
-		switch s, has := setups[branchID]; {
-		case has && s.State == model.AdeSetupFailed:
+		switch {
+		case setup != nil && setup.State == model.AdeSetupFailed:
 			run.Note = noteSetupFailed
-		case !has || s.State == model.AdeSetupReady:
+		case setup == nil || setup.State == model.AdeSetupReady:
 			run.Note = noteWorktreeGone
 		}
 	}

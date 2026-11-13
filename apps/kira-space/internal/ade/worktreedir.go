@@ -142,13 +142,17 @@ type attachFacts struct {
 // attachCache loads attachFacts once per repo. It is a snapshot for one call: build a new one after
 // anything that can move a worktree.
 type attachCache struct {
-	b     *TaskBoard
-	facts map[string]*attachFacts
+	b      *TaskBoard
+	facts  map[string]*attachFacts
+	seeded map[string][]porcelain.InventoryRef // inventories the caller already loaded
 }
 
 func (b *TaskBoard) newAttachCache() *attachCache {
-	return &attachCache{b: b, facts: map[string]*attachFacts{}}
+	return &attachCache{b: b, facts: map[string]*attachFacts{}, seeded: map[string][]porcelain.InventoryRef{}}
 }
+
+// seed hands the cache an inventory the caller just read so load does not read it again.
+func (c *attachCache) seed(codeRepoID string, inv []porcelain.InventoryRef) { c.seeded[codeRepoID] = inv }
 
 func (c *attachCache) load(ctx context.Context, codeRepoID string) (*attachFacts, error) {
 	if f, ok := c.facts[codeRepoID]; ok {
@@ -158,9 +162,11 @@ func (c *attachCache) load(ctx context.Context, codeRepoID string) (*attachFacts
 	if err != nil {
 		return nil, err
 	}
-	inv, err := entry.BranchInventory(ctx)
-	if err != nil {
-		return nil, err
+	inv, seeded := c.seeded[codeRepoID]
+	if !seeded {
+		if inv, err = entry.BranchInventory(ctx); err != nil {
+			return nil, err
+		}
 	}
 	rec, err := c.b.deps.CodeRepos.Get(codeRepoID)
 	if err != nil {
