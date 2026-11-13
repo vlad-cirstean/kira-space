@@ -2,65 +2,79 @@ package ade
 
 import (
 	"context"
-	"slices"
-	"sync"
+	"strings"
 	"testing"
 	"time"
-
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 )
 
-// Two identical concurrent StartRun calls join: one run per repo, same result, no "already
-// started" error from a second call. A different task's call runs on its own.
-func TestStartRun_identicalCallsJoin(t *testing.T) {
-	e := newEngine(t, map[string][]string{"*": {"done"}})
-	e.repo("api")
-	e.workflow(flowYAML(agentStep("one", "") + manualStep))
-	id, other := e.task("api"), e.task("api")
+func testOpBoard(t *testing.T) *TaskBoard {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	b := &TaskBoard{ctx: ctx, cancel: cancel}
+	t.Cleanup(cancel)
+	return b
+}
 
-	tc, err := e.board.loadTaskCtx(id)
-	if err != nil {
-		t.Fatal(err)
+// The leader closing its window must not cancel the work a joined caller waits for, and a panic in
+// the work comes back as an error instead of crashing the process.
+func TestJoinOp_leaderCancelAndPanic(t *testing.T) {
+	b := testOpBoard(t)
+	release := make(chan struct{})
+	started := make(chan struct{})
+	var workErr error
+	fn := func(ctx context.Context) (int, error) {
+		close(started)
+		<-release
+		workErr = ctx.Err()
+		return 7, nil
 	}
-	names := map[string]string{}
-	for _, br := range tc.branches {
-		names[br.ID] = "feat/joined"
+	leaderCtx, cancelLeader := context.WithCancel(context.Background())
+	leaderDone := make(chan error, 1)
+	go func() { _, err := joinOp(leaderCtx, b, "k", fn); leaderDone <- err }()
+	<-started
+	type out struct {
+		v   int
+		err error
 	}
-	args := adewire.StartRunArgs{TaskID: id, BranchNames: names}
+	joined := make(chan out, 1)
+	go func() {
+		v, err := joinOp(context.Background(), b, "k", func(context.Context) (int, error) { t.Error("joiner ran its own work"); return 0, nil })
+		joined <- out{v, err}
+	}()
+	time.Sleep(50 * time.Millisecond) // joiner attached
+	cancelLeader()
+	if err := <-leaderDone; err != context.Canceled {
+		t.Fatalf("leader: %v", err)
+	}
+	close(release)
+	if o := <-joined; o.err != nil || o.v != 7 || workErr != nil {
+		t.Fatalf("joiner got %+v, work ctx err %v", o, workErr)
+	}
 
-	// Holding the task lock keeps the leader inside the call until every caller has arrived.
-	mu := e.board.taskMu(id)
-	mu.Lock()
-	const callers = 4
-	results := make([]adewire.StartRunResult, callers)
-	errs := make([]error, callers)
-	var started, done sync.WaitGroup
-	started.Add(callers)
-	done.Add(callers)
-	for i := range callers {
-		go func() {
-			defer done.Done()
-			started.Done()
-			results[i], errs[i] = e.board.StartRun(context.Background(), args)
-		}()
+	_, err := joinOp(context.Background(), b, "p", func(context.Context) (int, error) { panic("boom") })
+	if err == nil || !strings.Contains(err.Error(), "p failed unexpectedly") {
+		t.Fatalf("panic must come back as an error, got %v", err)
 	}
-	started.Wait()
-	time.Sleep(100 * time.Millisecond) // let every caller reach the join; they cannot be observed
-	mu.Unlock()
-	done.Wait()
+}
 
-	for i := range callers {
-		if errs[i] != nil {
-			t.Fatalf("caller %d: %v", i, errs[i])
-		}
-		if !slices.Equal(results[i].RunIDs, results[0].RunIDs) {
-			t.Fatalf("caller %d run ids %v, want %v", i, results[i].RunIDs, results[0].RunIDs)
-		}
+// Close waits for work a caller already left.
+func TestJoinOp_closeWaitsForWork(t *testing.T) {
+	b := testOpBoard(t)
+	release := make(chan struct{})
+	started := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		_, _ = joinOp(ctx, b, "k", func(context.Context) (int, error) { close(started); <-release; return 0, nil })
+	}()
+	<-started
+	cancel()
+	waited := make(chan struct{})
+	go func() { b.wg.Wait(); close(waited) }()
+	select {
+	case <-waited:
+		t.Fatal("wait returned while the work ran")
+	case <-time.After(100 * time.Millisecond):
 	}
-	if len(results[0].RunIDs) != 1 || len(e.runs(id)) != 1 {
-		t.Fatalf("run ids %v, runs %v: want exactly one run row", results[0].RunIDs, e.runs(id))
-	}
-	if ids := e.start(other); len(ids) != 1 {
-		t.Fatalf("other task run ids %v, want its own run", ids)
-	}
+	close(release)
+	<-waited
 }

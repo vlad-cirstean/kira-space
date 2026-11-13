@@ -441,7 +441,7 @@ func (b *TaskBoard) roundVars(rc *reviewCtx, tgt adewire.ReviewWindowTarget, rou
 
 // SendReview sends the open comments of a waiting review run to an agent as a new round.
 func (b *TaskBoard) SendReview(ctx context.Context, args adewire.SendReviewArgs) error {
-	_, err := joinOp(ctx, &b.ops, opKey("sendReview", args), func() (struct{}, error) { return struct{}{}, b.sendReview(ctx, args) })
+	_, err := joinOp(ctx, b, opKey("sendReview", args), func(ctx context.Context) (struct{}, error) { return struct{}{}, b.sendReview(ctx, args) })
 	return err
 }
 
@@ -967,7 +967,7 @@ func (b *TaskBoard) Reply(runID string, id string, reply string, resolved bool) 
 
 // FinishReview ends a waiting review run on a result the user picks; the step then routes on it.
 func (b *TaskBoard) FinishReview(ctx context.Context, args adewire.FinishReviewArgs) error {
-	_, err := joinOp(ctx, &b.ops, opKey("finishReview", args), func() (struct{}, error) { return struct{}{}, b.finishReview(args) })
+	_, err := joinOp(ctx, b, opKey("finishReview", args), func(context.Context) (struct{}, error) { return struct{}{}, b.finishReview(args) })
 	return err
 }
 

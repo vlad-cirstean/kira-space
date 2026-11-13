@@ -1109,7 +1109,7 @@ func countBranchRefsChanged(ctx context.Context, entry *gitsession.RepoEntry, br
 // ForcePush pushes one created branch with lease. A refusal (protected branch, no remote tip)
 // returns as the result's error.
 func (b *TaskBoard) ForcePush(ctx context.Context, branchID string) (adewire.ForcePushResult, error) {
-	return joinOp(ctx, &b.ops, opKey("forcePush", branchID), func() (adewire.ForcePushResult, error) { return b.forcePush(ctx, branchID) })
+	return joinOp(ctx, b, opKey("forcePush", branchID), func(ctx context.Context) (adewire.ForcePushResult, error) { return b.forcePush(ctx, branchID) })
 }
 
 func (b *TaskBoard) forcePush(ctx context.Context, branchID string) (adewire.ForcePushResult, error) {

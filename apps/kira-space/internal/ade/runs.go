@@ -335,7 +335,7 @@ func (b *TaskBoard) notifySessions() {
 // starts the current step, which must be an automatic one waiting for Run. Later steps follow by
 // themselves or wait for Approve.
 func (b *TaskBoard) StartRun(ctx context.Context, args adewire.StartRunArgs) (adewire.StartRunResult, error) {
-	return joinOp(ctx, &b.ops, opKey("startRun", args), func() (adewire.StartRunResult, error) { return b.doStartRun(ctx, args) })
+	return joinOp(ctx, b, opKey("startRun", args), func(ctx context.Context) (adewire.StartRunResult, error) { return b.doStartRun(ctx, args) })
 }
 
 func (b *TaskBoard) doStartRun(ctx context.Context, args adewire.StartRunArgs) (adewire.StartRunResult, error) {
@@ -1484,7 +1484,7 @@ func (b *TaskBoard) launchHeldLocked(sb model.AdeTaskBranch) {
 
 // Approve starts a step that waits for approval.
 func (b *TaskBoard) Approve(ctx context.Context, args adewire.StepArgs) error {
-	_, err := joinOp(ctx, &b.ops, opKey("approve", args), func() (struct{}, error) { return struct{}{}, b.approve(ctx, args) })
+	_, err := joinOp(ctx, b, opKey("approve", args), func(ctx context.Context) (struct{}, error) { return struct{}{}, b.approve(ctx, args) })
 	return err
 }
 
@@ -1517,7 +1517,7 @@ func (b *TaskBoard) approve(ctx context.Context, args adewire.StepArgs) error {
 
 // RetryRun starts a new attempt of a failed or stuck run.
 func (b *TaskBoard) RetryRun(ctx context.Context, runID string) error {
-	_, err := joinOp(ctx, &b.ops, opKey("retry", runID), func() (struct{}, error) { return struct{}{}, b.retryRun(ctx, runID) })
+	_, err := joinOp(ctx, b, opKey("retry", runID), func(ctx context.Context) (struct{}, error) { return struct{}{}, b.retryRun(ctx, runID) })
 	return err
 }
 
@@ -1572,7 +1572,7 @@ func runResumable(run model.AdeRun) bool {
 
 // ResumeRun continues the agent session of a run a restart stopped, as a new attempt.
 func (b *TaskBoard) ResumeRun(ctx context.Context, runID string) error {
-	_, err := joinOp(ctx, &b.ops, opKey("resume", runID), func() (struct{}, error) { return struct{}{}, b.resumeRun(ctx, runID) })
+	_, err := joinOp(ctx, b, opKey("resume", runID), func(ctx context.Context) (struct{}, error) { return struct{}{}, b.resumeRun(ctx, runID) })
 	return err
 }
 
