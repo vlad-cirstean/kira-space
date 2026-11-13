@@ -1040,30 +1040,28 @@ func (b *TaskBoard) refreshRepo(ctx context.Context, id string) (out adewire.Rep
 // refreshFetch is refreshRepo's locked section. It returns nil, nil after the fetch reported an
 // error into out, and nil, failure when a step failed.
 func (b *TaskBoard) refreshFetch(ctx context.Context, id string, out *adewire.RepoRefresh) (*refreshFetched, *adewire.RepoRefresh) {
-	// The remote slot comes before repoMutex: a fetch queued behind a sandbox push waits without
-	// the repo lock.
-	if pre, err := b.openRepo(ctx, id); err == nil {
-		if _, ok := pre.DefaultRemote(ctx); ok {
-			slotCtx, release, err := b.holdRemoteSlot(ctx, id)
-			if err != nil {
-				r := refreshFailure(id, err)
-				return nil, &r
-			}
-			defer release()
-			ctx = slotCtx
-		}
-	}
-	mu := b.repoMutex(id)
-	mu.Lock()
-	defer mu.Unlock()
 	fail := func(err error) (*refreshFetched, *adewire.RepoRefresh) {
 		r := refreshFailure(id, err)
 		return nil, &r
 	}
+	// Opened once, before the locks: a broken repo logs one failed open per Refresh.
 	entry, err := b.openRepo(ctx, id)
 	if err != nil {
 		return fail(err)
 	}
+	// The remote slot comes before repoMutex: a fetch queued behind a sandbox push waits without
+	// the repo lock.
+	if _, ok := entry.DefaultRemote(ctx); ok {
+		slotCtx, release, err := b.holdRemoteSlot(ctx, id)
+		if err != nil {
+			return fail(err)
+		}
+		defer release()
+		ctx = slotCtx
+	}
+	mu := b.repoMutex(id)
+	mu.Lock()
+	defer mu.Unlock()
 	remote, hasRemote := entry.DefaultRemote(ctx)
 	before, err := entry.BranchInventory(ctx)
 	if err != nil {
