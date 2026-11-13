@@ -17,7 +17,7 @@ export function mergeRuns(board: Board, event: RunsChangedEvent): Board {
 
 /** Text a cached log page keeps; a longer run drops its oldest chunks, so a chatty run cannot grow
  *  the cache and the rendered list without bound. */
-export const LOG_RETAIN_CHARS = 2_000_000;
+const LOG_RETAIN_CHARS = 2_000_000;
 
 /** Appends pushed chunks to a cached log page, skipping sequence numbers it already holds. */
 export function appendChunks(page: LogPage, chunks: LogPage['chunks']): LogPage {

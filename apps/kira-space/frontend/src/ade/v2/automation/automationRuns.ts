@@ -2,7 +2,7 @@ import type { ScriptRun } from '@shared/domain/scriptRuns';
 
 /** The run a task card's chip shows: the newest running one, else the newest failed or blocked one
  *  the person has not opened yet. */
-export function chipRun(
+function chipRun(
   runs: readonly ScriptRun[],
   taskId: string,
   seen: readonly string[],
