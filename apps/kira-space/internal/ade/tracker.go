@@ -221,6 +221,8 @@ type Tracker struct {
 	// learning marks records with a background learnSessionID in flight; learnWG lets Close wait.
 	learning map[string]bool
 	learnWG  sync.WaitGroup
+	// learnCwd holds one mutex per cwd (*sync.Mutex): learnSessionID runs one at a time per cwd.
+	learnCwd sync.Map
 }
 
 // NewTracker applies TrackerDeps' own defaults and constructs a Tracker with empty state.
@@ -487,6 +489,11 @@ func (t *Tracker) learnSessionID(recordID string) (string, error) {
 	if !ok {
 		return "", nil
 	}
+	// One learner per cwd at a time: two records of one cwd that read the taken ids before either
+	// stored its own could both pick the same single candidate.
+	mu, _ := t.learnCwd.LoadOrStore(rec.Cwd, &sync.Mutex{})
+	mu.(*sync.Mutex).Lock()
+	defer mu.(*sync.Mutex).Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), locateTimeout)
 	defer cancel()
 	taken, err := t.deps.Store.AgentSessionIDsExcept(recordID)
