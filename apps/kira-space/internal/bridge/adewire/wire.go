@@ -819,6 +819,9 @@ type RepoState struct {
 	MainName    string `json:"mainName"`
 	Remote      string `json:"remote"`
 	LastFetchAt *int64 `json:"lastFetchAt"`
+	// Updating is set while the repo's git facts are recomputing past the board deadline: the facts
+	// shown are the last good ones.
+	Updating bool `json:"updating,omitempty"`
 }
 
 type Board struct {

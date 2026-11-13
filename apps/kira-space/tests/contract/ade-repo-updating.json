@@ -1,0 +1,9 @@
+{
+  "AdeTaskService.Board#repo-updating": {
+    "codeRepoId": "<id:1>",
+    "lastFetchAt": null,
+    "mainName": "main",
+    "remote": "",
+    "updating": true
+  }
+}

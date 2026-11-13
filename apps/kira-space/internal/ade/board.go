@@ -208,6 +208,7 @@ type TaskBoard struct {
 	boardSched     boardChanges // changes the debounced scheduleBoard timer will announce
 	bcache         boardCache
 	repoCfg        repoConfigCache
+	facts          boardFacts
 	updates        *updateWatcher
 
 	panelEdits panelEdits // pending task panel edits per task (panelforward.go)
@@ -250,7 +251,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	ctx, cancel := context.WithCancel(oplog.WithOrigin(context.Background(), oplog.Origin{Module: oplog.ModuleADE, Trigger: oplog.TriggerAuto}))
 	b := &TaskBoard{
 		deps: deps, ctx: ctx, cancel: cancel, folderW: map[string]*folderWatcher{},
-		repoMus: map[string]*sync.Mutex{}, byGitRepoID: map[string]string{}, gitRepoIDOf: map[string]string{},
+		repoMus: map[string]*sync.Mutex{}, facts: boardFacts{last: map[string]*repoLast{}, flight: map[string]*repoFlight{}}, byGitRepoID: map[string]string{}, gitRepoIDOf: map[string]string{},
 		caches: map[string]*repoCaches{}, rebase: map[string]*rebaseCache{}, live: map[string]*liveRun{}, tuiGrants: map[string]tuiBinding{}, tuiSandbox: map[string]*liveTUISandbox{}, setupLive: map[string]*liveRun{},
 		taskMus: map[string]*sync.Mutex{}, archiving: map[string]int{}, finishes: map[string]agentmcp.Finish{}, claims: map[string]string{}, stepMsgs: map[string]string{},
 	}
@@ -518,7 +519,7 @@ func (b *TaskBoard) buildBoard(ctx context.Context) (adewire.Board, error) {
 	g.SetLimit(boardFanOut)
 	for _, id := range repoIDs {
 		g.Go(func() error {
-			res := b.repoFactsWith(gctx, id, byRepo[id], d.setups, shared)
+			res := b.repoFactsDeadlined(gctx, id, byRepo[id], d.setups, shared)
 			mu.Lock()
 			results[id] = res
 			mu.Unlock()

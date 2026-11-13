@@ -89,6 +89,9 @@ type gitWired struct {
 	trackers      *issuetracker.Registry
 }
 
+// Registry is the shared git session registry; flow tests acquire repo entries through it.
+func (g gitWired) Registry() *gitsession.Registry { return g.registry }
+
 // wireTrackers builds the issue tracker registry.
 func wireTrackers(opLog *oplog.Log, o jira.Options) *issuetracker.Registry {
 	if o.Runner == nil {

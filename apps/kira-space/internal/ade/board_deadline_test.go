@@ -1,0 +1,91 @@
+package ade
+
+import (
+	"context"
+	"os/exec"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/kirathecat/kira-studio/internal/testx"
+)
+
+func repoUpdating(t *testing.T, h *boardHarness, id string) (bool, string) {
+	t.Helper()
+	board, err := h.board.Board(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range board.Repos {
+		if r.CodeRepoID == id {
+			return r.Updating, boardBranch(t, board, "b1").Name
+		}
+	}
+	t.Fatalf("repo %s missing", id)
+	return false, ""
+}
+
+// A facts computation held past the deadline shows the last good facts with updating set; its
+// landing pushes once more and clears the flag. A second build of the same gen joins it.
+func TestBoardFacts_deadlineShowsLastGoodThenLands(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	h := newBoardHarness(t)
+	_, dir := initQueueRepo(t)
+	h.addRepo("r", dir)
+	runGitQueue(t, dir, "branch", "feat-a", "main")
+	h.addTask("T1", "task", branchSpec{id: "b1", repo: "r", name: "feat-a", kind: "mine"})
+	if updating, _ := repoUpdating(t, h, "r"); updating {
+		t.Fatal("first load must wait, not report updating")
+	}
+
+	// Settle the first build's deferred mark writes: they drop the snapshot when they land.
+	for stable := 0; stable < 3; {
+		g := h.board.bcache.gen.Load()
+		repoUpdating(t, h, "r")
+		time.Sleep(50 * time.Millisecond)
+		if h.board.bcache.gen.Load() == g {
+			stable++
+		} else {
+			stable = 0
+		}
+	}
+
+	var computations atomic.Int32
+	release := make(chan struct{})
+	var once sync.Once
+	unblock := func() { once.Do(func() { close(release) }) }
+	t.Cleanup(unblock)
+	h.board.facts.hook = func(string) {
+		computations.Add(1)
+		<-release
+	}
+	pushes := len(h.pushed())
+	h.board.invalidateBoard()
+	start := time.Now()
+	updating, name := repoUpdating(t, h, "r")
+	if !updating || name != "feat-a" {
+		t.Fatalf("want last-good facts with updating, got updating=%v name=%q", updating, name)
+	}
+	if took := time.Since(start); took > 3*repoFactsDeadline {
+		t.Fatalf("board waited %v past the deadline", took)
+	}
+	if _, err := h.board.buildBoard(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if n := computations.Load(); n != 1 {
+		t.Fatalf("second build of the same gen started a computation: %d", n)
+	}
+
+	unblock()
+	testx.WaitUntil(t, 5*time.Second, func() bool { return len(h.pushed()) > pushes })
+	testx.WaitUntil(t, 5*time.Second, func() bool {
+		u, _ := repoUpdating(t, h, "r")
+		return !u
+	})
+	if n := computations.Load(); n != 1 {
+		t.Fatalf("late result was recomputed: %d computations", n)
+	}
+}
