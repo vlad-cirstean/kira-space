@@ -225,3 +225,51 @@ func TestStageHandover(t *testing.T) {
 		t.Fatalf("handoverIn after move back = %+v", in)
 	}
 }
+
+// J-RUN-025: a chain over four stages. Each move stores the text typed for it, an edit replaces that
+// row's text only, and the chain is the same after a restart.
+func TestHandoverChainFourStagesSurvivesRestart(t *testing.T) {
+	app := flowharness.New(t)
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	rec := importRepo(t, app, repo.Dir)
+	step := func(id string) string { return "  - id: " + id + "\n    name: " + id + "\n    kind: manual\n" }
+	saveWorkflow(t, app, "flow", flowYAML("flow", step("a")+step("b")+step("c")+step("d")))
+	task := createTask(t, app, "Chain", "flow", rec.ID)
+
+	texts := []string{"a to b: schema first", "b to c:\n- tests red\n- 日本語 ✓", "c to d: ship it  "}
+	for i, text := range texts {
+		n := text
+		if _, err := app.W.AdeTask.StepDone(ctx, adewire.StepDoneArgs{TaskID: task.ID, Notes: &n}); err != nil {
+			t.Fatalf("StepDone %d: %v", i, err)
+		}
+	}
+	chain := func() map[string]adewire.Handover {
+		out := map[string]adewire.Handover{}
+		for _, h := range handovers(t, app, task.ID) {
+			out[h.FromStepID+">"+h.ToStepID] = h
+		}
+		return out
+	}
+	want := map[string]string{"a>b": texts[0], "b>c": texts[1], "c>d": texts[2]}
+	check := func(label string) {
+		t.Helper()
+		got := chain()
+		if len(got) != len(want) {
+			t.Fatalf("%s: chain = %d rows, want %d", label, len(got), len(want))
+		}
+		for k, body := range want {
+			if got[k].Body != body || got[k].State != "handed" {
+				t.Fatalf("%s: row %s = %q (%s), want %q handed", label, k, got[k].Body, got[k].State, body)
+			}
+		}
+	}
+	check("after the moves")
+
+	if err := app.W.AdeTask.UpdateHandover(ctx, adewire.UpdateHandoverArgs{ID: chain()["b>c"].ID, Body: "b to c: edited"}); err != nil {
+		t.Fatal(err)
+	}
+	want["b>c"] = "b to c: edited"
+	check("after the edit")
+	app.Restart()
+	check("after restart")
+}
