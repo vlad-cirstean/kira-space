@@ -8,7 +8,7 @@ First `P` is P626.
 | P | Phase | Status |
 |---|---|---|
 | P626 | Inventory of full history and map of existing e2e coverage (Opus) | Done |
-| P627 | Journey imagination: new complex scenarios with definition of correct (Fable, no plan, no implementation) | Todo |
+| P627 | Journey imagination: new complex scenarios with definition of correct (Fable, no plan, no implementation) | Done |
 | P628 | Synthesis: extend/create decisions, 3 streams plan (Opus) | Todo |
 | P629 | Stream A: tests and fixes | Todo |
 | P630 | Stream B: tests and fixes | Todo |
