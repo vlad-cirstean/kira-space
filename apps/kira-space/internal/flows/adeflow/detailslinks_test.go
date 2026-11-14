@@ -1,6 +1,8 @@
 package adeflow_test
 
 import (
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
@@ -142,5 +144,35 @@ func TestDetailsLinks(t *testing.T) {
 	n = storedRows()
 	if res := add("PAY-20"); res.Filed != "known" || storedRows() != n {
 		t.Fatalf("repeat bare key = %+v, rows %d -> %d, want known and no write", res, n, storedRows())
+	}
+}
+
+// J-LINK-010 (OQ-ADE-1): links that differ only by scheme/host case, fragment or a trailing slash are one
+// artifact; a different query is another.
+func TestLinkDedupeNormalisesURLs(t *testing.T) {
+	app := flowharness.New(t)
+	task, err := app.W.AdeTask.CreateTask(ctx, adewire.CreateTaskArgs{Title: "Dedupe"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, u := range []string{
+		"https://wiki.example/x",
+		"HTTPS://Wiki.Example/x/#frag",
+		"https://wiki.example/x#other",
+		"https://wiki.example/x?page=2",
+	} {
+		if _, err := app.W.AdeTask.AddLink(ctx, adewire.AddLinkArgs{TaskID: task.ID, Text: u}); err != nil {
+			t.Fatalf("AddLink(%q): %v", u, err)
+		}
+	}
+	var urls []string
+	for _, a := range artifactsOf(t, app, task.ID).Artifacts {
+		if strings.Contains(a.URL, "wiki.example") {
+			urls = append(urls, a.URL)
+		}
+	}
+	slices.Sort(urls)
+	if want := []string{"https://wiki.example/x", "https://wiki.example/x?page=2"}; !slices.Equal(urls, want) {
+		t.Fatalf("stored links = %v, want %v", urls, want)
 	}
 }
