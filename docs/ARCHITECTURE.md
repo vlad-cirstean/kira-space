@@ -226,6 +226,7 @@ whatever sandbox a session happens to be in),
 - An engine checks the cap after Next() and before appending, so PagePosition.Truncated means at least one more row existed and an exactly-cap result reports false.
 - has_more stays false for console pages because no continuation exists; truncation is signaled by the truncated field on PagePosition (wire and TS).
 - Console transaction state (decision 8): a console batch reports whether the pinned session holds an open transaction, in `ExecuteResponse.transaction` and, for a failed batch, `details.inTransaction` (`OpCtx.SetTransaction`, set after the batch on success and failure). Postgres reads the protocol `TxStatus`, MariaDB `@@in_transaction`, SQLite probes with `BEGIN` (modernc exposes no `sqlite3_get_autocommit`; a probe that starts one is rolled back at once). MySQL 8.4 reports none, so the renderer (`views/console/transaction.ts`) reads the statements: DDL, `CHECK TABLE`, `RESET`, `LOCK` and the like commit implicitly even when they fail later, but not when the parser rejects them (`details.sqlErrno` 1064); `autocommit=0` is modelled and the close restores `autocommit=1`; XA ends with `XA END` and `XA ROLLBACK`; `CALL` counts as open. A run that finishes after its tab closed is tracked and rolled back too.
+- MySQL/MariaDB console `DELIMITER` (P636): the renderer splitter (`sqlSplit.ts`, option `delimiterDirective`) consumes it, as the `mysql` client does; the server never sees it (`DELIMITER //` sent raw is `E_QUERY`). Directive lines yield no statement, so `statementIndex` indexes the split list. Comment-only fragments are not sent (ER_EMPTY_QUERY 1065); executable `/*! */` and `/*M! */` comments are. Format keeps directive lines and each statement's own terminator.
 - Early close at the console cap: SQLite and MongoDB stop for real (rows.Close resets the statement, cursor.Close kills the server cursor); ClickHouse streams uncompressed (`DisableCompression`: the server buffers a gzip body, so a late-emitting read would never reach the cap), closes the HTTP body at the cap, sends cancel_http_readonly_queries_on_client_close where allowed, and always sends `KILL QUERY ... SYNC` (the server notices a closed socket only on its next write, so a late-emitting query keeps running).
 - PostgreSQL and MySQL/MariaDB drain remaining rows off the wire without allocating them after the cap, so memory is bounded but server and network time are not.
 - A CancelRequest after the cap was declined aborts the BEGIN READ ONLY wrap and fails later statements in the batch.
@@ -4314,16 +4315,9 @@ place. `docs/WORKING_AGREEMENT.md` states the process rule; this is the list its
   wrapper narrow who can reach the server further still, but a client that opens a connection and
   simply never finishes its response body can still tie one up indefinitely.
 
-- **The SQL splitter has no notion of a compound statement body** (F4, P108 Part 11). A SQLite
-  `CREATE TRIGGER … BEGIN …; …; END`, a MySQL stored procedure body, or a Postgres `BEGIN ATOMIC …
-  END` all use `;` to separate the *inner* statements of one outer statement — `packages/shared/domain/sqlSplit.ts`'s
-  `scanSqlSpan`-driven scan (`sqlLex.ts`) tracks only quote/comment/dollar-quote lexical state, not `BEGIN`/`END`
-  nesting, so it splits at every inner `;` too. A verified SQLite trigger body splits into four
-  fragments instead of staying one statement. Closing this needs real `BEGIN`/`END` depth tracking
-  per dialect (a fifth `SqlLexOptions`-style flag isn't enough — it's a grammar-level construct, not
-  a lexical span), out of proportion to this finding's own five lexical-form fixes (`#`/`//`
-  comments, `E'…'` strings, nested block comments, `[ident]`, the `$`-in-identifier guard), which
-  this phase did close.
+- **The SQL splitter does not track a Postgres `BEGIN ATOMIC … END` body** (F4, P108 Part 11). `lexOptionsFor` sets `compoundBlocks` only for SQLite and MySQL/MariaDB, so a Postgres `CREATE FUNCTION … BEGIN ATOMIC …; …; END` still splits at every inner `;`.
+
+- **Op-log Re-run mis-splits a MySQL/MariaDB body with inner `;` and no `BEGIN`** (P636). The op log records a batch joined with `;\n` and no `DELIMITER`; Re-run re-splits it with `compoundBlocks`, which only follows `BEGIN`/`CASE` depth. `CREATE TRIGGER … FOR EACH ROW IF x THEN SET a = 1; END IF` splits at the inner `;`. Fix needs the Go op command to carry its own `DELIMITER` wrap.
 
 - **First-launch window-size clamp (P22 D6(a)) still can't apply to the very first window a fresh
   install opens** (round-2 review finding 4). Repo-root `internal/shell/openwindow.go`'s
