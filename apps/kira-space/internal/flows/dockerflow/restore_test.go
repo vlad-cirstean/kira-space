@@ -375,6 +375,11 @@ func TestRestoreRealDaemonRestart(t *testing.T) {
 	solo := sleeper(d, "solo", nil)
 	keeper := keepAlive(d, "keeper", "always")
 	e.waitSnapshot(t, solo, keeper)
+	// J-DKR-024: a live log follow ends once, with the daemon, and does not resume by itself.
+	logMark := app.Events.Mark()
+	if err := app.W.Docker.LogsOpen(docker.LogsOpenArgs{WindowKey: "w1", StreamID: "s1", ContainerID: solo, Tail: 0, Follow: true}); err != nil {
+		t.Fatal(err)
+	}
 
 	if out, err := exec.Command("pkill", "-TERM", "-x", "dockerd").CombinedOutput(); err != nil {
 		t.Fatalf("pkill dockerd: %v %s", err, out)
@@ -391,6 +396,10 @@ func TestRestoreRealDaemonRestart(t *testing.T) {
 		return err == nil
 	})
 
+	waitFor(t, 30*time.Second, "log stream to end with the daemon", func() bool {
+		_, ended, _ := logsOf(app, logMark, "w1", "s1")
+		return ended
+	})
 	var st docker.RestoreState
 	waitFor(t, 60*time.Second, "pending after the daemon restart", func() bool {
 		st = e.state(t)
@@ -402,6 +411,21 @@ func TestRestoreRealDaemonRestart(t *testing.T) {
 		t.Fatalf("restore = %+v, %v", res, err)
 	}
 	waitFor(t, 30*time.Second, "restore to settle", func() bool { return !hasOpenOurs(e, e.state(t)) })
+
+	ends, prompts := 0, 0
+	for _, ev := range app.Events.Since(logMark, docker.ChannelLogs) {
+		if le, ok := ev.Data.(docker.LogsEvent); ok && le.StreamID == "s1" && le.Ended {
+			ends++
+		}
+	}
+	for _, ev := range app.Events.Since(logMark, docker.ChannelRestore) {
+		if s, ok := ev.Data.(docker.RestoreState); ok && s.State == "pending" && e.ours(s)["solo"].Status == "restorable" {
+			prompts++
+		}
+	}
+	if ends != 1 || prompts != 1 {
+		t.Fatalf("log stream ends = %d, restore prompts = %d, want one each", ends, prompts)
+	}
 }
 
 func waitFor(t *testing.T, timeout time.Duration, what string, cond func() bool) {
