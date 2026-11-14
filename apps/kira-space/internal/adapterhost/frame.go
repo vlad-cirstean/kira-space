@@ -57,6 +57,7 @@ func encodePayload(b *flatbuffers.Builder, payload any) (flatbuffers.UOffsetT, w
 		pagesOff := b.CreateVectorOfTables(pageOffs)
 		wire.ExecuteResponseStart(b)
 		wire.ExecuteResponseAddPages(b, pagesOff)
+		wire.ExecuteResponseAddTransaction(b, uint8(v.Transaction))
 		return wire.ExecuteResponseEnd(b), wire.PayloadExecuteResponse, nil
 
 	case ObjectDownloadResponse:

@@ -10,6 +10,7 @@ import (
 
 	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page/wire"
@@ -281,9 +282,17 @@ func (s *DataStream) Invalidate(connID, path, scope string) error {
 // Execute sends data:execute.
 func (s *DataStream) Execute(connID, path string, stmts ...string) ([]DataPage, error) {
 	s.t.Helper()
+	pages, _, err := s.ExecuteTx(connID, path, stmts...)
+	return pages, err
+}
+
+// ExecuteTx sends data:execute and also returns the transaction state the response reported
+// (adapters.TxUnknown for an engine that does not report it).
+func (s *DataStream) ExecuteTx(connID, path string, stmts ...string) ([]DataPage, adapters.TxState, error) {
+	s.t.Helper()
 	f, err := s.send("data:execute", adapterhost.ExecuteRequestWire{OpID: ids.NewID(), ConnectionID: connID, Path: path, Statements: stmts})
 	if err != nil {
-		return nil, err
+		return nil, adapters.TxUnknown, err
 	}
 	var er wire.ExecuteResponse
 	tab := payloadTab(s.t, f)
@@ -294,7 +303,7 @@ func (s *DataStream) Execute(connID, path string, stmts ...string) ([]DataPage, 
 		er.Pages(&p, i)
 		out[i] = decodePage(s.t, &p)
 	}
-	return out, nil
+	return out, adapters.TxState(er.Transaction()), nil
 }
 
 func payloadTab(t testing.TB, f *wire.Frame) flatbuffers.Table {

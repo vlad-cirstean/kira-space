@@ -76,12 +76,29 @@ func New(code ErrorCode, message string, cause error) *Error {
 // `statementIndex` detail: statements before it ran, so the renderer can tell what a transaction
 // the batch opened or closed left behind. Errors that are not an *Error pass through unchanged.
 func AtStatement(err error, index int) error {
+	return MergeDetails(err, map[string]any{"statementIndex": index})
+}
+
+// MergeDetails returns err with fields added to its structured details, keeping what it already
+// carried. Errors that are not an *Error pass through unchanged.
+func MergeDetails(err error, fields map[string]any) error {
 	var ae *Error
 	if !errors.As(err, &ae) || ae != err {
 		return err
 	}
+	merged := map[string]any{}
+	if len(ae.Details) > 0 {
+		_ = json.Unmarshal(ae.Details, &merged)
+	}
+	for k, v := range fields {
+		merged[k] = v
+	}
+	raw, mErr := json.Marshal(merged)
+	if mErr != nil {
+		return err
+	}
 	c := *ae
-	c.Details = json.RawMessage(`{"statementIndex":` + strconv.Itoa(index) + `}`)
+	c.Details = raw
 	return &c
 }
 

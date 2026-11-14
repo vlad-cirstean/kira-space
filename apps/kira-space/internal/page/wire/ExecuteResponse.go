@@ -61,14 +61,29 @@ func (rcv *ExecuteResponse) PagesLength() int {
 	return 0
 }
 
+func (rcv *ExecuteResponse) Transaction() byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		return rcv._tab.GetByte(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ExecuteResponse) MutateTransaction(n byte) bool {
+	return rcv._tab.MutateByteSlot(6, n)
+}
+
 func ExecuteResponseStart(builder *flatbuffers.Builder) {
-	builder.StartObject(1)
+	builder.StartObject(2)
 }
 func ExecuteResponseAddPages(builder *flatbuffers.Builder, pages flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(pages), 0)
 }
 func ExecuteResponseStartPagesVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(4, numElems, 4)
+}
+func ExecuteResponseAddTransaction(builder *flatbuffers.Builder, transaction byte) {
+	builder.PrependByteSlot(1, transaction, 0)
 }
 func ExecuteResponseEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

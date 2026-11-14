@@ -167,6 +167,33 @@ type OpCtx struct {
 	command string
 	rows    *int
 	path    *string
+	tx      TxState
+}
+
+// TxState is what an engine reports about the session's transaction after a console batch.
+type TxState uint8
+
+const (
+	// TxUnknown: the engine does not report it (MySQL has no in_transaction); the renderer reads
+	// the statements instead.
+	TxUnknown TxState = iota
+	TxIdle
+	TxOpen
+)
+
+// SetTransaction records the session's transaction state once a console batch has settled,
+// success or failure.
+func (c *OpCtx) SetTransaction(s TxState) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.tx = s
+}
+
+// Transaction returns the state SetTransaction recorded, TxUnknown if none.
+func (c *OpCtx) Transaction() TxState {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.tx
 }
 
 // NewOpCtx constructs an OpCtx for opID.

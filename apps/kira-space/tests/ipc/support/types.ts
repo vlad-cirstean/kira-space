@@ -62,7 +62,7 @@ export type LogicalPortResponse =
     }
   | { kind: 'mutate'; affectedRows: number }
   | { kind: 'preview'; statements: string[] }
-  | { kind: 'execute'; pages: LogicalPage[] }
+  | { kind: 'execute'; pages: LogicalPage[]; transaction?: 'idle' | 'open' }
   | { kind: 'invalidate' };
 
 interface LogicalPageBase {

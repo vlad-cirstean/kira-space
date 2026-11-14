@@ -155,10 +155,10 @@ func TestConsolePostgresTransactionAndCap(t *testing.T) {
 	if !errors.As(err, &de) {
 		t.Fatalf("migration = %v, want a data error", err)
 	}
-	// The error names the statement it stopped at: those before it ran, so BEGIN left the
-	// transaction open (the aborted state below), which the console reads to prompt on close.
-	if de.Details != `{"statementIndex":2}` {
-		t.Fatalf("migration error details = %q, want the failed statement index 2", de.Details)
+	// The error names the statement it stopped at and says the transaction is still open (the
+	// aborted state below): the console prompts on close from it.
+	if de.Details != `{"inTransaction":true,"statementIndex":2}` {
+		t.Fatalf("migration error details = %q, want the failed statement index 2 and an open transaction", de.Details)
 	}
 	app.Contract(t, consoleScriptScenario, "pg#migrationError", map[string]string{"code": de.Code, "message": de.Message, "details": de.Details})
 	app.Contract(t, consoleScriptScenario, "pg#migration", pgMigration)

@@ -39,7 +39,7 @@ export type FramePayload =
     }
   | { type: 'preview'; statements: string[] }
   | { type: 'mutate'; affectedRows: number }
-  | { type: 'execute'; pages: WirePage[] }
+  | { type: 'execute'; pages: WirePage[]; transaction?: 'idle' | 'open' }
   | { type: 'objectDownload'; bytes: number }
   | { type: 'ping'; enginePid: number; at: number }
   | {
@@ -294,7 +294,12 @@ function encodePayload(
     case 'execute': {
       const offs = payload.pages.map((p) => encodePage(b, p));
       const vec = wire.ExecuteResponse.createPagesVector(b, offs);
-      return [wire.ExecuteResponse.createExecuteResponse(b, vec), wire.Payload.ExecuteResponse];
+      const transaction =
+        payload.transaction === 'open' ? 2 : payload.transaction === 'idle' ? 1 : 0;
+      return [
+        wire.ExecuteResponse.createExecuteResponse(b, vec, transaction),
+        wire.Payload.ExecuteResponse,
+      ];
     }
     case 'objectDownload':
       return [

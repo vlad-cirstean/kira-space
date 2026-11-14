@@ -109,7 +109,8 @@ table ReadResponse           { page:Page (required); source:Source; }
 table CountResponse          { value:double; exact:bool; at:double; stale:bool; source:Source; }
 table PreviewResponse        { statements:[string] (required); }
 table MutateResponse         { affected_rows:int; }
-table ExecuteResponse        { pages:[Page] (required); }
+// transaction: 0 unknown (the engine does not report it), 1 idle, 2 in a transaction.
+table ExecuteResponse        { pages:[Page] (required); transaction:ubyte; }
 table ObjectDownloadResponse { bytes:double; }
 table PingPayload            { pong:bool; engine_pid:int; at:double; }
 table CacheStats {

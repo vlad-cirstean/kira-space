@@ -35,8 +35,13 @@ pagesLength():number {
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
+transaction():number {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.readUint8(this.bb_pos + offset) : 0;
+}
+
 static startExecuteResponse(builder:flatbuffers.Builder) {
-  builder.startObject(1);
+  builder.startObject(2);
 }
 
 static addPages(builder:flatbuffers.Builder, pagesOffset:flatbuffers.Offset) {
@@ -55,15 +60,20 @@ static startPagesVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
 }
 
+static addTransaction(builder:flatbuffers.Builder, transaction:number) {
+  builder.addFieldInt8(1, transaction, 0);
+}
+
 static endExecuteResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 4) // pages
   return offset;
 }
 
-static createExecuteResponse(builder:flatbuffers.Builder, pagesOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createExecuteResponse(builder:flatbuffers.Builder, pagesOffset:flatbuffers.Offset, transaction:number):flatbuffers.Offset {
   ExecuteResponse.startExecuteResponse(builder);
   ExecuteResponse.addPages(builder, pagesOffset);
+  ExecuteResponse.addTransaction(builder, transaction);
   return ExecuteResponse.endExecuteResponse(builder);
 }
 }

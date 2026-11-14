@@ -14,11 +14,31 @@
       "truncated": false
     }
   ],
+  "mysql#autocommitClose": [
+    "ROLLBACK",
+    "SET autocommit=1"
+  ],
+  "mysql#autocommitOff": [
+    "SET autocommit=0",
+    "COMMIT",
+    "INSERT INTO kira_tx VALUES (9)"
+  ],
+  "mysql#call": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (8)",
+    "CALL kira_commit()"
+  ],
   "mysql#chain": [
     "BEGIN",
     "INSERT INTO kira_tx VALUES (2)",
     "COMMIT AND CHAIN",
     "INSERT INTO kira_tx VALUES (3)"
+  ],
+  "mysql#checkTable": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (7)",
+    "CHECK TABLE kira_tx",
+    "ROLLBACK"
   ],
   "mysql#delimiter": {
     "code": "E_QUERY"
@@ -76,10 +96,30 @@
       "truncated": false
     }
   ],
+  "mysql#parseErrorDDL": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (5)",
+    "CREATE TABL kira_tx_x (i INT)"
+  ],
+  "mysql#reset": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (7)",
+    "RESET BINARY LOGS AND GTIDS",
+    "ROLLBACK"
+  ],
+  "mysql#runtimeErrorDDL": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (6)",
+    "CREATE TABLE kira_tx (i INT)"
+  ],
   "mysql#script": [
     "DROP PROCEDURE IF EXISTS kira_script",
     "CREATE PROCEDURE kira_script() BEGIN SELECT 1 AS first_set; SELECT 2 AS second_set, 3 AS other; END",
     "CALL kira_script()"
+  ],
+  "mysql#xa": [
+    "XA START 'kira_xa'",
+    "INSERT INTO kira_tx VALUES (10)"
   ],
   "pg#cap": {
     "hasMore": false,
@@ -95,7 +135,7 @@
   ],
   "pg#migrationError": {
     "code": "E_QUERY",
-    "details": "{\"statementIndex\":2}",
+    "details": "{\"inTransaction\":true,\"statementIndex\":2}",
     "message": "ERROR: invalid input syntax for type integer: \"not a number\" (SQLSTATE 22P02)"
   },
   "sqlite#busy": {

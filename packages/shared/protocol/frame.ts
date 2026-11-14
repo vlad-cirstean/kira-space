@@ -324,6 +324,27 @@ function decodePage(p: wire.Page): Page {
   }
 }
 
+function decodeExecuteResponse(frame: wire.Frame): ExecuteResponse {
+  const r: wire.ExecuteResponse | null = frame.payload(new wire.ExecuteResponse());
+  if (!r) throw new Error('frame: ExecuteResponse payload is missing');
+  // C7/F8: only a multi-page frame can pin a sibling page's bytes by sharing its buffer — a
+  // single-page execute (the common case) stays zero-copy, byte-for-byte what P11 shipped.
+  const copyBuffers = r.pagesLength() > 1;
+  const pages: Page[] = [];
+  for (let i = 0; i < r.pagesLength(); i++) {
+    const p = r.pages(i);
+    if (!p) throw new Error('frame: ExecuteResponse.pages is missing an entry');
+    const page = decodePage(p);
+    pages.push(copyBuffers ? copyPageBuffers(page) : page);
+  }
+  const executeResponse: ExecuteResponse = { pages };
+  // 0 is "the engine does not report it": the field stays absent.
+  const transaction = r.transaction();
+  if (transaction === 1) executeResponse.transaction = 'idle';
+  else if (transaction === 2) executeResponse.transaction = 'open';
+  return executeResponse;
+}
+
 function decodePayload(frame: wire.Frame): unknown {
   const type = frame.payloadType();
   switch (type) {
@@ -371,22 +392,8 @@ function decodePayload(frame: wire.Frame): unknown {
       return mutateResponse;
     }
 
-    case wire.Payload.ExecuteResponse: {
-      const r: wire.ExecuteResponse | null = frame.payload(new wire.ExecuteResponse());
-      if (!r) throw new Error('frame: ExecuteResponse payload is missing');
-      // C7/F8: only a multi-page frame can pin a sibling page's bytes by sharing its buffer — a
-      // single-page execute (the common case) stays zero-copy, byte-for-byte what P11 shipped.
-      const copyBuffers = r.pagesLength() > 1;
-      const pages: Page[] = [];
-      for (let i = 0; i < r.pagesLength(); i++) {
-        const p = r.pages(i);
-        if (!p) throw new Error('frame: ExecuteResponse.pages is missing an entry');
-        const page = decodePage(p);
-        pages.push(copyBuffers ? copyPageBuffers(page) : page);
-      }
-      const executeResponse: ExecuteResponse = { pages };
-      return executeResponse;
-    }
+    case wire.Payload.ExecuteResponse:
+      return decodeExecuteResponse(frame);
 
     case wire.Payload.ObjectDownloadResponse: {
       const r: wire.ObjectDownloadResponse | null = frame.payload(

@@ -286,6 +286,18 @@ func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track T
 	return pages, nil
 }
 
+// reportTransaction records the session's transaction state on op from the protocol's own
+// ReadyForQuery status: 'I' idle, 'T' in a transaction, 'E' in a failed one. A closed connection
+// took its transaction with it.
+func reportTransaction(conn *trackedConn, op *adapters.OpCtx) {
+	conn.waitInFlight()
+	if conn.IsClosed() || conn.PgConn().TxStatus() == 'I' {
+		op.SetTransaction(adapters.TxIdle)
+		return
+	}
+	op.SetTransaction(adapters.TxOpen)
+}
+
 // checkExecutable runs the pre-flight guards before any statement touches conn.
 func checkExecutable(conn *trackedConn, readOnly, connReadOnly bool, statements []string) error {
 	if len(statements) == 0 {

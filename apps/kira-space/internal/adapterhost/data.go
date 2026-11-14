@@ -219,6 +219,7 @@ func (d *Dispatcher) executeOn(ctx context.Context, adapter, lane adapters.Adapt
 	if req.TimeoutByEngine {
 		spec.TimeoutGrace = statementTimeoutGrace
 	}
+	var tx adapters.TxState
 	_, value, err := d.host.RunOp(ctx, spec,
 		func(ctx context.Context, op *adapters.OpCtx) (any, error) {
 			// P108 Part 11 F5: req.Path is already the encoded string tabs.ts's own openConsoleTab
@@ -226,6 +227,7 @@ func (d *Dispatcher) executeOn(ctx context.Context, adapter, lane adapters.Adapt
 			// round-trip needed.
 			op.SetPath(req.Path)
 			pages, err := adapter.Execute(ctx, model.ConsoleRequest{Path: path, Statements: req.Statements, Cap: req.Cap, ReadOnly: req.ReadOnly, StatementTimeout: req.StatementTimeout}, op)
+			tx = op.Transaction()
 			if err != nil {
 				return nil, err
 			}
@@ -237,9 +239,13 @@ func (d *Dispatcher) executeOn(ctx context.Context, adapter, lane adapters.Adapt
 			return pages, nil
 		})
 	if err != nil {
+		// The renderer needs the state after a failure too: an error can leave a transaction open.
+		if tx != adapters.TxUnknown {
+			err = adapters.MergeDetails(err, map[string]any{"inTransaction": tx == adapters.TxOpen})
+		}
 		return ExecuteResponse{}, err
 	}
-	return ExecuteResponse{Pages: value.([]page.Page)}, nil
+	return ExecuteResponse{Pages: value.([]page.Page), Transaction: tx}, nil
 }
 
 // Invalidate is rpc.ts's inline DATA_OP.invalidate handler (P13 D18): 'pages' is the post-mutation

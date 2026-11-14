@@ -406,7 +406,10 @@ func (a *Adapter) Execute(ctx context.Context, req model.ConsoleRequest, op *ada
 		return nil, err
 	}
 	defer release()
-	return execute(ctx, entry, op, a.trackerFor(op.OpID), a.state.Load().ReadOnly || req.ReadOnly, a.state.Load().ReadOnly, req.Statements, adapters.ConsoleCapFor(req), req.StatementTimeout, a.mariadbServer.Load())
+	mariadb := a.mariadbServer.Load()
+	// Reported on failure too: a failed statement can leave the transaction open.
+	defer reportTransaction(ctx, entry, op, mariadb)
+	return execute(ctx, entry, op, a.trackerFor(op.OpID), a.state.Load().ReadOnly || req.ReadOnly, a.state.Load().ReadOnly, req.Statements, adapters.ConsoleCapFor(req), req.StatementTimeout, mariadb)
 }
 
 // DownloadObject is index.ts's downloadObject — caps.FileTransfer is false; never reached.
