@@ -406,3 +406,75 @@ test('an imported curl sends as written, and copy-as-curl yields the contract co
   await page.click('[data-testid="http-copy-as-curl"]');
   await expect(page.locator('[data-testid="copy-as-curl-command"]')).toHaveValue(generated);
 });
+
+// ---- 10. Copy as curl for every body mode (contract: api-curl, curl:generated:<mode>) ----
+
+// Backend half: httpflow.TestCurlCopyEveryBodyMode replays each contract command with real curl and
+// proves the server sees the request the app itself sends. Here the same request is built in a tab and
+// copy-as-curl must give the command back byte for byte. An import of the command rebuilds the tab for
+// the text modes; a file reference is never inlined by an import, so the two file modes restore the tab
+// from state instead.
+const FILE_TABS: Record<string, { bodyMode: string } & Record<string, unknown>> = {
+  formdata: {
+    bodyMode: 'formdata',
+    formData: [
+      { name: 'note', kind: 'text', value: '@hello' },
+      { name: 'meta', kind: 'text', value: '{}', contentType: 'application/json' },
+      { name: 'report', kind: 'file', path: '/tmp/report.csv', contentType: 'text/csv' },
+    ],
+  },
+  file: {
+    bodyMode: 'file',
+    headers: [{ name: 'X-Mode', value: 'file' }],
+    binaryFile: { path: '/tmp/blob.bin', name: 'blob.bin', size: 8 },
+  },
+};
+
+for (const mode of ['none', 'raw', 'code', 'urlencoded', 'formdata', 'file']) {
+  test(`copy as curl yields the contract command for body mode ${mode}`, async ({ relaunch }) => {
+    const origins = { http: 'http://flow.test' };
+    const generated = contract<string>('api-curl', `curl:generated:${mode}`, { origins })
+      .replace('<csv-file>', '/tmp/report.csv')
+      .replace('<blob-file>', '/tmp/blob.bin');
+    const fileTab = FILE_TABS[mode];
+    const CONTROL: ControlSnapshot[] = [
+      { channel: IPC.collectionsList, response: { collections: [], items: [] } },
+    ];
+    if (fileTab) {
+      CONTROL.push({
+        channel: IPC.tabsList,
+        response: [
+          {
+            id: `tab-${mode}`,
+            connectionId: null,
+            path: 'request',
+            kind: 'http-request',
+            order: 0,
+            active: true,
+            state: {
+              method: 'POST',
+              url: `${origins.http}/echo?m=${mode}`,
+              headers: [{ name: 'X-Mode', value: mode }],
+              ...fileTab,
+            },
+          },
+        ],
+      });
+    }
+    const { window: page, control } = await relaunch({ control: CONTROL });
+
+    await modeTab(page, 'api').click();
+    if (fileTab) {
+      await expect(page.locator('[data-testid="http-request-view"]')).toBeVisible();
+    } else {
+      await page.click('[data-testid="import-curl-start"]');
+      await page.fill('[data-testid="import-curl-textarea"]', generated);
+      await page.click('[data-testid="import-curl-submit"]');
+      await expect(page.locator('[data-testid="http-method-chip"]')).toBeVisible();
+    }
+
+    await page.click('[data-testid="http-copy-as-curl"]');
+    await expect(page.locator('[data-testid="copy-as-curl-command"]')).toHaveValue(generated);
+    expect(control.log().filter((e) => e.channel === IPC.httpSend)).toHaveLength(0);
+  });
+}

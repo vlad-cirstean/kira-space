@@ -140,6 +140,7 @@ func (s *HTTPServer) handler() http.Handler {
 	mux.HandleFunc("/bearer", bearerAuth)
 	mux.HandleFunc("/bytes", bytesHandler)
 	mux.HandleFunc("/gzip", gzipHandler)
+	mux.HandleFunc("/raw", rawHandler)
 	mux.HandleFunc("/slow", slow)
 	mux.HandleFunc("/status", statusHandler)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -251,6 +252,20 @@ func bytesHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		n -= k
 	}
+}
+
+// rawHandler answers with the bytes in hex= (hex) under the Content-Type in ct=.
+func rawHandler(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	data, err := hex.DecodeString(q.Get("hex"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if ct := q.Get("ct"); ct != "" {
+		w.Header().Set("Content-Type", ct)
+	}
+	_, _ = w.Write(data)
 }
 
 func gzipHandler(w http.ResponseWriter, _ *http.Request) {

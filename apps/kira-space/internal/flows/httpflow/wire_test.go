@@ -10,6 +10,8 @@ import (
 	"mime/multipart"
 	"net"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 func secretVar(t *testing.T, app *flowharness.App, name, value string) (collectionID, envID string) {
@@ -254,6 +257,179 @@ func TestTransportErrors(t *testing.T) {
 			}
 			if op := waitOp(t, app, tc.args.OpID); op.Status != "error" {
 				t.Errorf("op status = %s, want error", op.Status)
+			}
+		})
+	}
+}
+
+// J-HTTP-049: a form-data file is read at send time, so the second send carries the changed bytes and
+// a path that stopped being a readable file fails before any request leaves.
+func TestFormDataFileChangesBetweenSends(t *testing.T) {
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
+	path := writeFile(t, "report.csv", []byte("id,qty\n1,3\n"))
+
+	partSHA := func(r flowharnessRequest) string {
+		t.Helper()
+		_, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			t.Fatalf("content type %q: %v", r.Header.Get("Content-Type"), err)
+		}
+		mr := multipart.NewReader(bytes.NewReader(r.Body), params["boundary"])
+		for {
+			p, err := mr.NextPart()
+			if err != nil {
+				t.Fatalf("no upload part: %v", err)
+			}
+			if p.FormName() == "upload" {
+				data, _ := io.ReadAll(p)
+				sum := sha256.Sum256(data)
+				return hex.EncodeToString(sum[:])
+			}
+		}
+	}
+	args := func() bridge.HttpSendArgs {
+		a := get(srv.URL + "/echo")
+		a.Method = "POST"
+		a.Body = httpclient.Body{Mode: "formdata", FormData: []httpclient.FormField{{Name: "upload", Kind: "file", Path: path, ContentType: "text/csv"}}}
+		return a
+	}
+	want := func(data []byte) string { s := sha256.Sum256(data); return hex.EncodeToString(s[:]) }
+	last := func() flowharnessRequest { r := srv.Requests(); return r[len(r)-1] }
+
+	send(t, app, args())
+	if got := partSHA(last()); got != want([]byte("id,qty\n1,3\n")) {
+		t.Fatalf("first send part sha = %s", got)
+	}
+	changed := []byte("id,qty\n1,3\n2,9\n")
+	if err := os.WriteFile(path, changed, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	send(t, app, args())
+	if got := partSHA(last()); got != want(changed) {
+		t.Errorf("second send part sha = %s, want the appended file's", got)
+	}
+
+	before := len(srv.Requests())
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if e := sendErr(t, app, args()); !strings.Contains(e.Message, "folder") {
+		t.Errorf("directory error = %q, want it to say the path is a folder", e.Message)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if e := sendErr(t, app, args()); e.Message == "" {
+		t.Error("missing file gave an empty error")
+	}
+	if len(srv.Requests()) != before {
+		t.Errorf("a request left for an unreadable file (%d new)", len(srv.Requests())-before)
+	}
+}
+
+// J-HTTP-045: timeout 0 is no timeout, a per-request value beats the global, and the response cap
+// is exact at its edge (0 = no cap).
+func TestTimeoutAndSizeSettings(t *testing.T) {
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
+
+	t.Run("timeout 0 stays alive until cancel", func(t *testing.T) {
+		a := get(srv.URL + "/slow?ms=90000")
+		a.Options.RequestTimeoutMs = ptr(0)
+		done := make(chan *errBox, 1)
+		go func() { _, err := app.W.Http.Send(ctx, a); done <- &errBox{err} }()
+		waitUntil(t, "the slow request to arrive", func() bool { return len(srv.Requests()) >= 1 })
+		select {
+		case r := <-done:
+			t.Fatalf("send ended before any cancel: %v", r.err)
+		case <-time.After(700 * time.Millisecond):
+		}
+		if err := app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: a.OpID}); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case r := <-done:
+			if code := ipcCode(r.err); code != string(httpclient.CodeCancelled) {
+				t.Errorf("error = %v, want E_CANCELLED", r.err)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("Send did not return after cancel")
+		}
+		waitUntil(t, "the server to see the disconnect", func() bool {
+			r := srv.Requests()
+			return r[len(r)-1].Canceled
+		})
+	})
+
+	t.Run("per-request timeout beats the global and removing it restores the global", func(t *testing.T) {
+		setApi(t, app, model.ApiPatch{RequestTimeoutMs: ptr(200)})
+		if e := sendErr(t, app, get(srv.URL+"/slow?ms=1000")); e.Code != string(httpclient.CodeTimeout) {
+			t.Errorf("global 200 ms: code = %s, want E_TIMEOUT", e.Code)
+		}
+		over := get(srv.URL + "/slow?ms=1000")
+		over.Options.RequestTimeoutMs = ptr(5000)
+		if res := send(t, app, over); res.Status != 200 {
+			t.Errorf("override 5000 ms: status = %d, want 200", res.Status)
+		}
+		if e := sendErr(t, app, get(srv.URL+"/slow?ms=1000")); e.Code != string(httpclient.CodeTimeout) {
+			t.Errorf("after the override: code = %s, want E_TIMEOUT from the global", e.Code)
+		}
+		setApi(t, app, model.ApiPatch{RequestTimeoutMs: ptr(0)})
+	})
+
+	t.Run("response cap edges", func(t *testing.T) {
+		for _, tc := range []struct {
+			name      string
+			n         int
+			capMb     *int
+			wantBytes int
+			wantTrunc bool
+		}{
+			{"1 MB cap, exactly 1 MB", 1 << 20, ptr(1), 1 << 20, false},
+			{"1 MB cap, 1 MB + 1 byte", 1<<20 + 1, ptr(1), 1 << 20, true},
+			{"default 5 MiB cap, exactly 5 MiB", 5 << 20, nil, 5 << 20, false},
+			{"default 5 MiB cap, 5 MiB + 1", 5<<20 + 1, nil, 5 << 20, true},
+			{"cap 0 is no cap", 6 << 20, ptr(0), 6 << 20, false},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				a := get(srv.URL + "/bytes?n=" + strconv.Itoa(tc.n))
+				a.Options.MaxResponseMb = tc.capMb
+				res := send(t, app, a)
+				if res.BodyBytes != tc.wantBytes || res.BodyTruncated != tc.wantTrunc {
+					t.Errorf("bytes = %d truncated = %v, want %d and %v", res.BodyBytes, res.BodyTruncated, tc.wantBytes, tc.wantTrunc)
+				}
+			})
+		}
+	})
+}
+
+// J-HTTP-045: bodies that are not text come back flagged, never as mangled text.
+func TestOddResponseBodies(t *testing.T) {
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
+
+	for _, tc := range []struct {
+		name, hex, ct string
+		wantEncoding  string
+	}{
+		{"valid utf-8", hex.EncodeToString([]byte("héllo")), "text/plain; charset=utf-8", "utf8"},
+		{"invalid utf-8 under a text type", "68690aff fe 21", "text/plain", "base64"},
+		{"binary type", "00010203fffe", "application/octet-stream", "base64"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res := send(t, app, get(srv.URL+"/raw?ct="+url.QueryEscape(tc.ct)+"&hex="+strings.ReplaceAll(tc.hex, " ", "")))
+			if res.BodyEncoding != tc.wantEncoding {
+				t.Errorf("encoding = %q, want %q (body %q)", res.BodyEncoding, tc.wantEncoding, res.Body)
+			}
+			if tc.wantEncoding == "base64" {
+				raw, err := base64.StdEncoding.DecodeString(res.Body)
+				if err != nil || res.BodyBytes != len(raw) {
+					t.Errorf("base64 body = %q (%v), bodyBytes %d", res.Body, err, res.BodyBytes)
+				}
 			}
 		})
 	}

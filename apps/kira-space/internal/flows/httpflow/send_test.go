@@ -240,6 +240,12 @@ func TestCookieJar(t *testing.T) {
 		if err != nil || len(list) != 0 {
 			t.Errorf("jar = %v, err %v; want empty", list, err)
 		}
+		// J-HTTP-040: the recorder confirms no Cookie header left on the request after the login.
+		for _, r := range srv.Requests() {
+			if r.Path != "/cookie/set" && r.Header.Get("Cookie") != "" {
+				t.Errorf("request %s carried Cookie %q with the jar off", r.Path, r.Header.Get("Cookie"))
+			}
+		}
 	})
 
 	setApi(t, app, model.ApiPatch{DisableCookieJar: ptr(false)})
