@@ -41,7 +41,7 @@ func waitBranchRun(t *testing.T, app *flowharness.App, branchID, purpose string,
 		}
 		got = r
 		for _, s := range states {
-			if string(r.State) == s {
+			if r.State == s {
 				return true
 			}
 		}

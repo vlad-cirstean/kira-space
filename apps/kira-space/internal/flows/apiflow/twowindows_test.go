@@ -1,6 +1,7 @@
 package apiflow
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -101,7 +102,7 @@ func TestSavedRequestTwoWindows(t *testing.T) {
 	if ie := testx.AsIpcErr(t, save("https://x.test/d", &seen, "")); ie.Code != "E_CONFLICT" {
 		t.Errorf("save over a hand edit = %v, want E_CONFLICT", ie)
 	}
-	if got, _ := os.ReadFile(file); string(got) != string(edited) {
+	if got, _ := os.ReadFile(file); !bytes.Equal(got, edited) {
 		t.Error("a refused save changed the file")
 	}
 }

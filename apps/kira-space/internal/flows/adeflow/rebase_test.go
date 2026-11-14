@@ -578,12 +578,11 @@ func TestRebaseStackConflictAbortRetry(t *testing.T) {
 func TestRebaseRefusalsLeaveRefs(t *testing.T) {
 	f, task, br := newRbFx(t)
 	f.waitBoardBehind(t, task.ID, 1)
-	refs := gitOut(t, f.repo.Dir, "for-each-ref", "--format=%(refname) %(objectname)")
 	// A dirty worktree blocks the rebase.
 	commitIn(t, br.Worktree, "tracked.txt")
 	gitOut(t, br.Worktree, "reset", "-q", "--soft", "HEAD~1")
 	gitOut(t, br.Worktree, "add", "-A")
-	refs = gitOut(t, f.repo.Dir, "for-each-ref", "--format=%(refname) %(objectname)")
+	refs := gitOut(t, f.repo.Dir, "for-each-ref", "--format=%(refname) %(objectname)")
 	if _, err := f.app.W.AdeTask.Rebase(ctx, adewire.RebaseArgs{BranchID: br.ID}); err == nil {
 		t.Fatal("Rebase of a dirty worktree accepted")
 	}

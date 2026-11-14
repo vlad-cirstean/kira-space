@@ -466,13 +466,7 @@ func (f *KubeFake) events(w http.ResponseWriter, fieldSelector, ns string) {
 }
 
 func (f *KubeFake) log(w http.ResponseWriter, r *http.Request, ns, pod string) {
-	res := f.resources["/v1/pods"]
-	var p *corev1.Pod
-	for _, o := range res.objs {
-		if a := accessor(o.obj); a.GetName() == pod && a.GetNamespace() == ns {
-			p = o.obj.(*corev1.Pod)
-		}
-	}
+	p := f.findPod(ns, pod)
 	if p == nil {
 		f.status(w, http.StatusNotFound, metav1.StatusReasonNotFound, fmt.Sprintf("pods %q not found", pod))
 		return
@@ -482,11 +476,7 @@ func (f *KubeFake) log(w http.ResponseWriter, r *http.Request, ns, pod string) {
 	if container == "" {
 		container = p.Spec.Containers[0].Name
 	}
-	valid := false
-	for _, c := range append(append([]corev1.Container{}, p.Spec.InitContainers...), p.Spec.Containers...) {
-		valid = valid || c.Name == container
-	}
-	if !valid {
+	if !podHasContainer(p, container) {
 		f.status(w, http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("container %s is not valid for pod %s", container, pod))
 		return
 	}
@@ -523,6 +513,30 @@ func (f *KubeFake) log(w http.ResponseWriter, r *http.Request, ns, pod string) {
 	if q.Get("follow") != "true" {
 		return
 	}
+	f.followLog(w, r, pod, len(lines), render)
+}
+
+func (f *KubeFake) findPod(ns, pod string) *corev1.Pod {
+	var p *corev1.Pod
+	for _, o := range f.resources["/v1/pods"].objs {
+		if a := accessor(o.obj); a.GetName() == pod && a.GetNamespace() == ns {
+			p = o.obj.(*corev1.Pod)
+		}
+	}
+	return p
+}
+
+func podHasContainer(p *corev1.Pod, name string) bool {
+	for _, c := range append(append([]corev1.Container{}, p.Spec.InitContainers...), p.Spec.Containers...) {
+		if c.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// followLog streams lines appended to pod until the request ends or the pod's followers close.
+func (f *KubeFake) followLog(w http.ResponseWriter, r *http.Request, pod string, n int, render func(int, string) string) {
 	fl, _ := w.(http.Flusher)
 	fl.Flush()
 	ch := make(chan string, 16)
@@ -541,7 +555,6 @@ func (f *KubeFake) log(w http.ResponseWriter, r *http.Request, ns, pod string) {
 		f.followEnded++
 		f.mu.Unlock()
 	}()
-	n := len(lines)
 	for {
 		select {
 		case l, ok := <-ch:

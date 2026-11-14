@@ -1,6 +1,7 @@
 package apiflow
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -651,7 +652,7 @@ func TestMoveSelectionAcrossCollectionFiles(t *testing.T) {
 		}
 		return m, bigID
 	}
-	rows, bigID := idsByName()
+	rows, _ := idsByName()
 	if len(rows) != 200 {
 		t.Fatalf("rows after seeding = %d, want 200", len(rows))
 	}
@@ -700,7 +701,7 @@ func TestMoveSelectionAcrossCollectionFiles(t *testing.T) {
 			t.Errorf("%q is in %q, want %q", name, seen[name], file)
 		}
 	}
-	rows, bigID = idsByName()
+	rows, bigID := idsByName()
 	if len(rows) != 200 {
 		t.Errorf("rows after the moves = %d, want 200", len(rows))
 	}
@@ -831,7 +832,7 @@ func TestReimportKeepsLocalEdits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(after) != string(before) {
+	if !bytes.Equal(after, before) {
 		t.Error("the second import rewrote the first collection's file")
 	}
 	got, err := app.W.Collections.GetRequest(bridge.CollectionsItemArgs{ItemID: edited.ID})

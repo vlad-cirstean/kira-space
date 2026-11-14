@@ -1,6 +1,7 @@
 package dbflow
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"strings"
@@ -202,7 +203,7 @@ func assertBSONEqual(t *testing.T, label string, got, want bson.D) {
 	t.Helper()
 	gb, _ := bson.Marshal(got)
 	wb, _ := bson.Marshal(want)
-	if string(gb) != string(wb) {
+	if !bytes.Equal(gb, wb) {
 		t.Fatalf("%s differs (types, values or field order):\n got %v\nwant %v", label, got, want)
 	}
 }

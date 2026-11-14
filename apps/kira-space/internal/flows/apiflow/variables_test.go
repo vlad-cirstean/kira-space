@@ -1,6 +1,7 @@
 package apiflow
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -179,7 +180,7 @@ func TestVariableHistoryAndRevert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(after) != string(before) {
+	if !bytes.Equal(after, before) {
 		t.Errorf("file after the revert differs from before the edits\n got: %q\nwant: %q", after, before)
 	}
 	if got := history(); len(got) != 3 || got[0] != "https://three.test" {
