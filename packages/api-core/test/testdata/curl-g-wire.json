@@ -1,0 +1,16 @@
+{
+  "curl": "curl 8.5.0",
+  "source": "curl --trace-ascii against a local listener; request target as received",
+  "cases": [
+    {
+      "name": "journey J-HTTP-062",
+      "command": "curl -G 'https://h/s?a=1' -d 'b=2' --data-urlencode 'q=a b&c'",
+      "requestTarget": "/s?a=1&b=2&q=a+b%26c"
+    },
+    {
+      "name": "unicode, plus, bang and a nameless piece",
+      "command": "curl -G 'https://h/s' --data-urlencode 'u=é+!' --data-urlencode '=lead x' --data-urlencode 'bare value'",
+      "requestTarget": "/s?u=%c3%a9%2b%21&lead+x&bare+value"
+    }
+  ]
+}

@@ -118,6 +118,22 @@ function codeLanguageForContentType(contentType: string): HttpCodeLanguage | nul
   return null;
 }
 
+/** What curl puts on the query for `-G --data-urlencode content`, `=content` or `name=content`: the
+ *  content percent-encoded, the name left as typed. Bytes measured from curl 8.5.0
+ *  (test/testdata/curl-g-wire.json): space is `+`, hex is lowercase, and only `A-Za-z0-9-._~` pass. */
+function encodeDataUrlencodePiece(text: string): string {
+  const eq = text.indexOf('=');
+  const content = eq === -1 ? text : text.slice(eq + 1);
+  let encoded = '';
+  for (const byte of new TextEncoder().encode(content)) {
+    const ch = String.fromCharCode(byte);
+    if (/[A-Za-z0-9\-._~]/.test(ch)) encoded += ch;
+    else if (byte === 0x20) encoded += '+';
+    else encoded += `%${byte.toString(16).padStart(2, '0')}`;
+  }
+  return eq > 0 ? `${text.slice(0, eq)}=${encoded}` : encoded;
+}
+
 /** D8: the three file-referencing --data-urlencode spellings — `@path`, `=@path`, `name@path`. */
 function dataUrlencodeIsFile(value: string): boolean {
   if (value.startsWith('@') || value.startsWith('=@')) return true;
@@ -509,11 +525,15 @@ function resolveUrl(acc: CurlAccumulator): string {
   }
 
   // F13: -G appends the -d-family data verbatim to the query string rather than sending it as a
-  // body — measured: curl never re-encodes it, so neither does this.
+  // body — measured: curl never re-encodes it, so neither does this. A `--data-urlencode` piece is
+  // the exception: curl encodes its content before appending it (OQ-API-3). A piece that would read a
+  // local file is dropped with a warning, as everywhere else.
   if (acc.getFlag && acc.rawDataPieces.length > 0) {
-    const queryText = acc.rawDataPieces.map((p) => p.text).join('&');
-    url += (url.includes('?') ? '&' : '?') + queryText;
+    const queryText = filterLiteralPieces(acc)
+      .map((p) => (p.id === 'data-urlencode' ? encodeDataUrlencodePiece(p.text) : p.text))
+      .join('&');
     acc.rawDataPieces.length = 0;
+    if (queryText !== '') url += (url.includes('?') ? '&' : '?') + queryText;
   }
   return url;
 }
