@@ -6,6 +6,7 @@ import { NativeSelect } from '@theme/components/ui/native-select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
+import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
 import type { CardModel } from '../plan/usePlanModel';
 import { useSetTaskWorkflow, useWorkflows } from '../queries';
@@ -21,7 +22,9 @@ const props = defineProps<{ card: CardModel }>();
 const wfUi = useAdeWorkflowsUiStore();
 const workflows = useWorkflows();
 const setWorkflow = useSetTaskWorkflow();
+const confirm = useConfirmDialogStore();
 const error = ref('');
+const selectKey = ref(0);
 
 const valid = computed(() =>
   (workflows.data.value?.workflows ?? []).flatMap((e) =>
@@ -31,10 +34,23 @@ const valid = computed(() =>
 
 async function pick(value: unknown): Promise<void> {
   error.value = '';
+  const args = { taskId: props.card.task.id, workflowId: String(value ?? '') };
   try {
-    await setWorkflow.mutateAsync({ taskId: props.card.task.id, workflowId: String(value ?? '') });
+    await setWorkflow.mutateAsync(args);
   } catch (err) {
-    error.value = errorText(err);
+    // E_CONFLICT is the unconfirmed switch: its text names the runs and logs the switch deletes.
+    if ((err as { code?: string }).code !== 'E_CONFLICT') {
+      error.value = errorText(err);
+      return;
+    }
+    const ok = await confirm.confirm({
+      title: t('space.ade.workflowBlock.switch.title'),
+      message: errorText(err),
+      confirmLabel: t('space.ade.workflowBlock.switch.confirm.label'),
+      tone: 'danger',
+      run: () => setWorkflow.mutateAsync({ ...args, confirmed: true }),
+    });
+    if (!ok) selectKey.value++; // remount: the native select shows the declined value otherwise
   }
 }
 
@@ -51,6 +67,7 @@ function edit(): void {
         id="ade-workflow-select"
         variant="bordered"
         size="kira"
+        :key="selectKey"
         :model-value="card.task.workflowId"
         data-testid="ade-workflow-select"
         @update:model-value="pick"

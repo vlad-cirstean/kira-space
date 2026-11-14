@@ -1377,6 +1377,8 @@ export interface StartBranchArgs {
 export interface SetTaskWorkflowArgs {
   taskId: string;
   workflowId: string;
+  /* accepts deleting the task's runs and run logs; E_CONFLICT while any exist and false */
+  confirmed?: boolean;
 }
 export interface SetTaskStepArgs {
   taskId: string;

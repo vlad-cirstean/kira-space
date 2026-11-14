@@ -1445,6 +1445,8 @@ type StartBranchArgs struct {
 type SetTaskWorkflowArgs struct {
 	TaskID     string `json:"taskId"`
 	WorkflowID string `json:"workflowId"`
+	// Confirmed accepts the deletion of the task's runs and run logs; false refuses E_CONFLICT while any exist.
+	Confirmed bool `json:"confirmed,omitempty"`
 }
 
 type SetTaskStepArgs struct {

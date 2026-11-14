@@ -708,7 +708,7 @@ func TestRunEngine_setTaskWorkflow(t *testing.T) {
 	if len(e.runs(id)) != 1 {
 		t.Fatal("same id deleted runs")
 	}
-	task, err := e.board.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: id, WorkflowID: "other"})
+	task, err := e.board.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: id, WorkflowID: "other", Confirmed: true})
 	if err != nil {
 		t.Fatal(err)
 	}

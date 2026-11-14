@@ -1881,6 +1881,9 @@
         "workflowIdMismatch": {
           "body": "The ID must equal the file name without its extension."
         },
+        "workflowSwitchLoses": {
+          "body": "Switching the workflow deletes this task’s runs ({runs}) and run logs ({logs})."
+        },
         "workingChanged": {
           "body": "The file changed while you reviewed it. Refresh the diff."
         },
@@ -11234,6 +11237,12 @@
         },
         "outdatedHint": {
           "hint": "This task runs the version of the workflow it started with."
+        },
+        "switch": {
+          "confirm": {
+            "label": "Switch and delete"
+          },
+          "title": "Switch workflow"
         }
       },
       "workflowDiscardConfirm": {

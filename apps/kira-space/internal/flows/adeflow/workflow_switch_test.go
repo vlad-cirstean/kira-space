@@ -3,6 +3,7 @@ package adeflow_test
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -78,8 +79,27 @@ func TestWorkflowSwitchKeepsOtherTasksRuns(t *testing.T) {
 	if _, err := app.W.AdeTask.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: mine.ID, WorkflowID: "nope"}); err == nil {
 		t.Fatal("switch to a missing workflow accepted")
 	}
-	if _, err := app.W.AdeTask.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: mine.ID, WorkflowID: "two"}); err != nil {
+	// OQ-ADE-4: the unconfirmed switch names what it deletes and changes nothing.
+	_, err = app.W.AdeTask.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: mine.ID, WorkflowID: "two"})
+	if errCode(err) != "E_CONFLICT" || !strings.Contains(err.Error(), "runs (1)") || !strings.Contains(err.Error(), "run logs (") {
+		t.Fatalf("unconfirmed switch = %v, want E_CONFLICT naming the run count", err)
+	}
+	if got := taskOf(t, board(t, app), mine.ID); got.WorkflowID != "one" || len(got.Runs) != 1 {
+		t.Fatalf("task after refused switch = %+v, want it untouched", got)
+	}
+	var logs int
+	if err := app.DB().QueryRow(`SELECT COUNT(*) FROM ade_logs WHERE kind = 'run' AND id IN (SELECT id FROM ade_runs WHERE task_id = ?)`, mine.ID).Scan(&logs); err != nil || logs == 0 {
+		t.Fatalf("run logs before the confirmed switch = %d, %v", logs, err)
+	}
+	if !strings.Contains(err.Error(), "run logs ("+strconv.Itoa(logs)+")") {
+		t.Fatalf("confirm text %q does not name %d logs", err, logs)
+	}
+	app.Contract(t, "ade-workflow-switch", "error:AdeTaskService.SetTaskWorkflow#loses-work", err.Error())
+	if _, err := app.W.AdeTask.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: mine.ID, WorkflowID: "two", Confirmed: true}); err != nil {
 		t.Fatalf("switch: %v", err)
+	}
+	if err := app.DB().QueryRow(`SELECT COUNT(*) FROM ade_logs WHERE kind = 'run' AND id IN (SELECT id FROM ade_runs WHERE task_id = ?)`, mine.ID).Scan(&logs); err != nil || logs != 0 {
+		t.Fatalf("run logs after the confirmed switch = %d, %v, want none", logs, err)
 	}
 	got := taskOf(t, board(t, app), mine.ID)
 	if got.WorkflowID != "two" || got.EntryStepID != "b" {
