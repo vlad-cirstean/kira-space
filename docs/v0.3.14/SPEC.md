@@ -6,7 +6,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 
 | P | Phase | Status |
 |---|---|---|
-| P634 | CI job sharding: split `go-containers` (about 24 min) and `go` (about 8 min) into shards behind stable required-check names | Todo |
+| P634 | CI job sharding: split `go-containers` (about 24 min) and `go` (about 8 min) into shards behind stable required-check names | Done |
 | P635 | Agent config import/export journey (J-HAR-002): extend `harnessflow` AgentPort tests and `ade-agent-port` UI spec | Todo |
 | P636 | MySQL console `DELIMITER` directive (F-A12) | Todo |
 | P637 | Mobile approval of agent requests (J-ADE-072, F-B8) | Todo |
@@ -99,3 +99,41 @@ only), MCP tool changes (`handover` removed; `finish_step` keeps its end-of-step
 halves per the split.
 
 ## Results
+
+### P634 Result
+
+Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go (Linux)` is sharded.
+
+- `scripts/go-test-split.sh`: shard table (`rest`: `adeflow1`, `adeflow2`, `other`; `containers`: one
+  remainder shard), `--matrix`, `--list`, `--bundles`, `--kinds`, `--pins-hash`, `--check`. `dbmcpflow` moved into
+  the containers group. `pull-test-images.sh [--print] [kind...]` with `flow` pseudo-kind.
+- `pr.yml`: `go-split`, `go (Linux, <shard>)`, aggregate `go (Linux)`; `go-containers (Linux)` one job, restore-only
+  per-bundle caches `tc-images-<os>-<bundle>-<pins-hash>`, `-timeout 7m`, 15 min job cap, no save steps.
+  `cache-warm.yml`: `tc-images` matrix saves bundles (miss: elastic 117 s, sql 94 s, kv 75 s, stream 124 s, flow 5 s).
+- Local: `--check` ok; 21 containers packages, rest union equals whole (no duplicate); `--matrix rest` is
+  `["adeflow1","adeflow2","other"]`; adeflow slices 95 and 95 tests (190 top-level, plan said 191); slice
+  test time 157 s and 140 s on a loaded 4-CPU box. Docker daemon unavailable here, so `containers/sql` did not
+  run locally; CI ran it. actionlint v1.7.7: only the old-label `macos-26` findings, present before.
+- Two pre-existing flakes fixed on the spot: `adeflow` `TestOrchestratorPass` (handover row lands after run
+  `done`), `termflow` `TestScheduleNoDuplicateFireAfterRestart` (fake clock keeps the quit loop timer; 4 of 40 failed before, 0 of 60 after).
+- Dispatched `pr.yml` on `chapter/v0.3.14`, seconds from run start (queue = `started_at` minus `created_at`):
+
+| job | before (43628609545) | run A 43638705328 (cache miss) | run B 43640692677 (hit, `go other` flaked) | run C 43642452955 (hit) |
+|---|---|---|---|---|
+| `go (Linux)` aggregate end | 472 | 416 | 359 (failed) | 360 |
+| `go adeflow1` wall, test step | | 218, 101 (queue 133) | 209, 114 | 190, 96 (queue 133) |
+| `go adeflow2` wall, test step | | 245, 133 | 237, 117 (queue 103) | 233, 123 (queue 112) |
+| `go other` wall, test step | | 304, 194 (queue 94) | 228, 138 (queue 102), failed | 275, 117 |
+| `go-containers (Linux)` wall, tests | 477 hit, 1424 miss | 326, 169 | 335, 140 | 406, 132 |
+| `go-containers` image wait | | 70 (miss: pulled) | 70 | 64 |
+| `ui (Linux)` end | | 704 | 747 | 708 |
+
+  Run A missed every bundle (mirror pulls, no save, no rerun, 326 s against 1424 s before). Runs B and C
+  restored elastic, sql, stream (B) and elastic, sql, kv, stream (C); flow has no tar in B/C restore
+  step list because pulls it through the mirror as needed. Run C green on every go and go-containers job.
+- Targets: `go` about 360 s in runs B and C (target 390): met on hit, 416 s on run A. `go-containers` miss 326 s
+  (target 450): met. Hit 335 and 406 s (target 390): run C missed it; setup took 117 s and cache restores added 58 s.
+- Queueing: 26 jobs against the concurrency limit delayed `go adeflow1`, `adeflow2`, `other` by 94 to 133 s in
+  several runs; this is the main overshoot on `go`.
+- ui setup (GTK) step takes 94 to 132 s per shard; its apt sub-step time was not measured separately. Candidate: skip the
+  GTK install when `bindings: "true"` only needs the `wails3` version check. Not added as a row; orchestrator asks the user.
