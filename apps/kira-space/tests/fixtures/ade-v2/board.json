@@ -2501,6 +2501,7 @@
     {
       "taskId": "H_2",
       "title": "Fix login redirect loop",
+      "jiraKey": "KIRA-77",
       "codeRepoIds": ["repo-web-app"],
       "mergedAt": 1789722000000,
       "archivedAt": 1789722000000

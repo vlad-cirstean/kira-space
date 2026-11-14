@@ -744,6 +744,8 @@ export interface HistoryEntry {
   /** The orchestrator that spawned the task; '' for none. */
   parentId?: string;
   title: string;
+  /** The task's issue key; '' for none. The archived finder matches on it. */
+  jiraKey?: string;
   codeRepoIds: string[];
   mergedAt: number | null;
   archivedAt: number;

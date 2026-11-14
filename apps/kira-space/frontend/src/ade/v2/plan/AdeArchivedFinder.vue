@@ -52,6 +52,7 @@ function pick(taskId: string): void {
             <span class="w-full truncate">{{ e.title }}</span>
             <span class="w-full truncate text-kira-sm text-muted-foreground">{{
               [
+                e.jiraKey !== e.title ? e.jiraKey : '',
                 e.codeRepoIds.map(repoLabel).join(' · '),
                 formatDateTime(e.archivedAt),
                 e.mergedAt ? t('common.merged.status') : '',
