@@ -364,14 +364,12 @@ Nothing here is optional.
 
 ## Follow-ups (design decisions, not built here)
 
-- F-C1: sent-cookies pane hint "cookie jar off" (OQ-API-1).
-- F-C2: real SIGKILL crash harness (app out of process). C13 ships a byte-snapshot crash instead (`flowharness/crash.go`), deterministic in under a second; a true kill needs the composition root hosted in a subprocess.
+- F-C2: real SIGKILL crash harness (app out of process). C13 ships a byte-snapshot crash instead (`flowharness/crash.go`; models lost post-snapshot writes and WAL recovery, not a torn single-file write or a mid-operation kill), deterministic in under a second; a true kill needs the composition root hosted in a subprocess.
 - F-C3: versioned old-schema DB fixtures for migration and backup journey (J-SEC-002).
 - F-C4 (J-REM-011): a fetched-but-not-integrated remote branch shows no state beyond ahead/behind; a design call on surfacing it.
 - F-C5 (J-HTTP-064): `wget https://h` through the import dialog parses as URL `wget` with a `multiple-urls` warning; only the paste path is guarded by `looksLikeCurlCommand`.
 - F-C6 (J-BC-025): host detail caps keep the newest 100 comments and first 100 checks with a truncation flag; there is no paging to fetch the rest. Paging needs a per-provider fetch design.
 - F-C7 (J-REV-001): review marks stay `full` with `changedSinceReview` after a content change; whether a changed file should reset to unreviewed is a UX decision.
-- F-C8: kube log Copy log copies the whole loaded log (up to 20,000 lines), not the filtered view.
 
 ## Done when
 
@@ -382,9 +380,10 @@ Nothing here is optional.
 
 ## Result
 
-Commits on `stream/v0.3.13-c` (14 since base `6dd1c122c`, plus this Result): C1 `996a5b09d`, C2 `48498fcce`, C3 `3165ad006`, C4
+Commits on `stream/v0.3.13-c` (see `git log 6dd1c122c..`): C1 `996a5b09d`, C2 `48498fcce`, C3 `3165ad006`, C4
 `40959941d`, redirect fix `e9e54e16e`, OQ-API-2 block `f7ae0f3eb`, `-G` encoding `49dc0394e`, C5 `b977589ba`, C8
-`adfd93df1`, C9 `c9e980293`, C11 `169493fea`, C13 `d6459d188`, C15 `2c64118ef` and `28546a073`.
+`adfd93df1`, C9 `c9e980293`, C11 `169493fea`, C13 `d6459d188`, C15 `2c64118ef` and `28546a073`; continuation: J-CFG-002 and
+configsync `c47dba59c`, C9/C13 `9fe89040e`, C15/HTTP/kube `e55b1643c`.
 
 Bugs found and fixed:
 
@@ -400,24 +399,41 @@ Pinned to existing behaviour: J-REM-011, J-REM-012, J-GIT-026, J-WT-013, J-GIT-0
 with last good values in use (not refused); J-REV-001 marks persist with `changedSinceReview`; J-BC-009 context-menu Copy message copies the
 subject only, the full message rebuilds from subject, body and trailers; J-BC-025 caps with truncation flags, no paging.
 
-Deviations and gaps:
+Deviations and decisions (continuation pass closed every earlier gap):
 
-- J-HTTP-063: only unknown flags warn. J-HTTP-045: timeout clamp unobservable. J-HTTP-066 switch-environment-after-copy UI assertion
-  not added. J-HTTP-040 UI half not added.
-- C8: J-CFG-002 (`${NAME}` and `${secret:NAME}` references in agent settings through config sync) not written; no UI half for C8.
-- C9: mobile read of a task is not in the hygiene walk (pairing setup out of reach in the time left); op log masking is covered by
-  `httpflow`. Secret store file is obfuscated, so no file holds a marker, not even the store's own.
+- J-HTTP-063: decided per D6, flags that change nothing on the wire (`-s`, `-S`, `-L`, `--compressed`, `-o`, `--retry N`) stay silent; only
+  unknown flags warn, by raw text, and never eat the URL. Pinned in `curl-cases.json` and `http-curl.spec.ts` (raw text asserted).
+- J-HTTP-045: timeout clamp 99,999,999 to 3,600,000 is unobservable from outside (no test can wait an hour, and no wire field reports
+  the clamped value), so it is dropped; 0 = no timeout, size cap edges and override precedence are tested.
+- J-HTTP-066: UI assertion added in `http-curl.spec.ts` (copy, switch environment, reopen shows new value, clipboard unchanged).
+- J-HTTP-040: UI half added (`http-request.spec.ts`, contract `api-cookie-jar` written by `TestCookieJar`). F-C1 done: the response
+  Cookies pane shows "No cookies were sent. The cookie jar is off for this request." (reflects the current effective setting).
+- C8: J-CFG-002 flow (`TestAgentSettingsReferencesStayText`) and UI row assertion (`config-sync.spec.ts`) added.
+- C9: mobile half added (`mobileflow/secrets_test.go`): phone reads of board, workflows, sessions, repos, run log and agent sessions
+  carry no secret plaintext. Oracle made truthful: the secret store file is obfuscated with a hardcoded key (basic_text fallback), so a
+  byte scan of it proves nothing. `TestSecretsNeverReachDisk` now proves the values are live through the store API
+  (`AgentSecrets.Store.Open`, `Connections.Reveal`) and scans every other file, log and export for markers.
 - C11: exec-plugin failure class stays in `kubeflow/status_test.go`; `kubernetes-logs-copy.spec.ts` became
-  `tests/ui/studio/kubernetes-hardening.spec.ts` (fixtures live under `studio/`).
-- C13: checklist covers windows, tabs, layout (ADE width, cell dock height), settings, saved console query, active API environment,
-  connection state. ADE board order, schedule no-duplicate-fire, Docker restore preference and in-flight HTTP send are not in it
-  (`TestRestartMidRun` covers the run).
-- C15: net-new tests are copy values (flow plus UI), review marks across rebase, host caps. J-REPO-002, J-WS-001, J-BC-023,
-  J-GRAPH-004 and J-HOST-001 were already covered by `repoflow`, `gitflow/graph_test.go`, `graph_plane_test.go`, `githostflow`; no new
-  test added. `git-graph-plane` and `git-review-edit` Go writers pre-exist; the UI readers were not extended.
+  `tests/ui/studio/kubernetes-hardening.spec.ts` (fixtures live under `studio/`). F-C8 done: Copy log writes the filtered view
+  (`LogsView.vue`), asserted in the same spec.
+- C13: checklist now also covers ADE plan order (`TestRestartChecklist`). Schedule no-duplicate-fire is `termflow`
+  `TestScheduleNoDuplicateFireAfterRestart`; Docker restore preference (a dismissed offer stays dismissed) is `dockerflow`
+  `TestRestoreDismissSurvivesRelaunch`; in-flight HTTP send is `httpflow` `TestRestartDropsInFlightSend`. Quit does not cancel HTTP
+  ops (process exit closes the socket); the test stands a cancelled call context in for the exit and asserts no history entry and a
+  working send after relaunch.
+- F-C2 (crash model): `flowharness.Snapshot`/`CrashTo` model writes after the snapshot point lost, SQLite recovery from main file plus
+  WAL and shm without checkpoint, and each config file whole as of that point. Not modeled: a torn write of one file and a mid-operation
+  process kill (children, sockets). Torn config writes are covered where they matter by `configsyncflow` journal tests
+  (`TestRecoverFinishesCommittedJournal`, `TestMidApplyFailureRestoresReplacedFiles`). A true SIGKILL harness stays F-C2.
+- C15: net-new tests are copy values (flow plus UI), review marks across rebase, host caps. UI readers added: `git-graph-plane.spec.ts`
+  reads `git:graph.loadMore#bound`; `ade-v2-review.spec.ts` reads the `git-review-edit` list and edit contract. Already covered, confirmed
+  per item: J-REPO-002 `repoflow/configfile_test.go` (Save writes file, edit on disk reloads, ADE `adewire.Repo` read, invalid kept and
+  flagged); J-WS-001 `repoflow/edit_test.go` ("conflict leaves disk untouched", E_CONFLICT contract); J-BC-023 `gitflow/graph_test.go`
+  (`TestGraphPagesToEnd` at exact multiples 2500/100 and 50000/5000, `TestGraphRefreshAfterExternalCommit`); J-GRAPH-004
+  `githostflow/sync_test.go` (change request index follows host head) plus `repo-graph-change-request-badge.spec.ts`; J-HOST-001
+  `githostflow/comments_test.go` (`Forge.Calls()` exact bodies and anchors).
 - Disk filled mid-run (shared host). Freed Go and node caches; another stream's go-build temp dir may have been removed.
 
-Tests run (targeted only): `go test` for configsyncflow, configsync, journeyflow (hygiene, checklist, crash), kubeflow, dbmcpflow
-(`TestKubeMcp`), gitflow (`TestCopyValues`), reviewflow (`TestReviewMarksAcrossRebase`), githostflow (`TestChangeRequestDetailCaps`),
-httpflow, apiflow, apivars. Playwright `ui`: `kubernetes*` (36 passed), `repo-commit-detail` (5), the C5 studio specs. api-core `bun test`.
-Full flows run once during C5: only `TestBranchRename` flaked under load (lone rerun passed).
+Tests run: full non-UI Go flows once at the end (`bun run test:flows`, 31 packages, exit 0, no flakes), after targeted runs per item.
+Playwright `ui`, targeted only: `config-sync` (6), `git-graph-plane`, `ade-v2-review`, `http-curl`, `http-request`, `kubernetes-hardening`,
+`kubernetes-module`, `repo-commit-detail`, the C5 studio specs. api-core `bun test` (`http-curl.spec.ts` 93 pass).
