@@ -47,7 +47,7 @@
         "source": "user",
         "status": "",
         "title": "api#15",
-        "url": "https://github.com/acme/api/pull/15/"
+        "url": "https://github.com/acme/api/pull/15"
       }
     ],
     "gaps": []
@@ -130,6 +130,6 @@
     "url": "https://github.com/acme/api/pull/14/commits/abc123"
   },
   "args:HostViewService.Open#15": {
-    "url": "https://github.com/acme/api/pull/15/"
+    "url": "https://github.com/acme/api/pull/15"
   }
 }

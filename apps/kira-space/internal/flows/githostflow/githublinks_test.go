@@ -64,9 +64,17 @@ func TestGitHubLinksInApp(t *testing.T) {
 	}
 	app.Contract(t, glScenario, "AdeTaskService.Artifacts", arts, glMask)
 
+	// The card opens the stored URL, which is the normalised form of what was pasted.
+	stored := map[string]string{}
+	for _, a := range arts.Artifacts {
+		stored[a.Ref] = a.URL
+	}
 	var first string
 	for _, l := range links {
-		args := bridge.HostViewOpenArgs{URL: l.url}
+		args := bridge.HostViewOpenArgs{URL: stored["api#"+itoa(l.number)]}
+		if args.URL == "" {
+			t.Fatalf("no stored artifact for api#%d in %+v", l.number, arts.Artifacts)
+		}
 		opened, err := app.W.HostView.Open(ctx, args)
 		if err != nil || !opened.Opened {
 			t.Fatalf("Open(%s) = %+v, %v", l.url, opened, err)

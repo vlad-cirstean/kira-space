@@ -411,16 +411,14 @@ Other packages (termflow, notifyflow, mobileflow, dockerflow, harnessflow) exten
 - `journeyflow` holds B's own new file and needs no edit to C's helpers.
 - Shared-file edits are append-only in separate namespaces.
 
-## Follow-ups (design decisions, not built here)
+## Follow-ups
 
-- F-B1: confirm dialog naming run count before workflow switch (OQ-ADE-4, pending USER §5 Q5).
-- F-B2: stale-file detection on workflow save (OQ-ADE-5, pending USER §5 Q3).
-- F-B3: refuse stage move while headless run live (pending USER §5 Q9).
-- F-B4: monotonic-clock lease TTL (OQ-ADE-3, pending USER §5 Q10).
+Decisions 3, 5, 9, 10 are approved and built (F-B1 to F-B4, F-B7 closed; see Result).
+
 - F-B5: create_task has no duplicate guard (same title under one parent); a second orchestrator pass can duplicate a child if the agent asks (J-RUN-027).
-- F-B6: J-HAR-002 has no product feature: no export or import of agent config exists in any bridge service. Needs a design decision and a build phase before `agent-config-io` can be written.
-- F-B7: lease TTL decisions use a fake clock only for heartbeats (`LeaseNow`); real tracker check still uses real time (decision 10 open).
-- Add each bug found needing design decision here with journey id.
+- F-B6: J-HAR-002 has no product feature: no export or import of agent config exists in any bridge service. Dropped per the synthesis rule; needs a design decision and a build phase before `agent-config-io` can be written.
+- F-B8: J-ADE-072 dropped: no mobile approval route exists.
+- F-B9: in-place container edit is partial by design (stop at first failure, no rollback), unlike the plan's "fully old or fully new". Pinned as is (J-DKR-011); a transactional edit needs a design decision.
 
 ## Done when
 
@@ -432,20 +430,44 @@ Other packages (termflow, notifyflow, mobileflow, dockerflow, harnessflow) exten
 
 ## Result
 
-Landed B1 to B11, each as flow half plus UI half where a UI surface exists, committed per group.
+All items B1 to B16 landed on `stream/v0.3.13-b`, each as flow half plus UI half where a UI surface exists, committed per group (30 commits since the chapter branch).
 
 Product bugs fixed:
 - Archived finder missed Jira keys (B1).
 - Tool calls after finish_step were accepted; a step reached after a loop-back re-ran once more (B3).
 - Stacked rebase abort not recorded on the stack run (B4).
 - Several approved branches of one repo reused one draft row, orphaning worktrees and refs (B5).
-- Resume prompt lacked a lease re-acquire line (B7, OQ-ADE-2); `LeaseNow` seam and `WithLeaseClock` added.
+- Resume prompt lacked a lease re-acquire line (B7, OQ-ADE-2).
 - Artifact URLs not normalised for dedupe (B8, OQ-ADE-1).
+- A second Restart of a container already restarting was accepted (J-DKR-020); now refused with E_CONFLICT "This container is already restarting." (`restartInProgress` key).
+- Copying several log rows lost the line breaks (rows are absolutely positioned); `LogLines` now rebuilds the copy text row by row (found by the J-DKR-015 UI spec).
 
-Pinned by design: YAML editor writes invalid text while last valid version serves; first finish wins (OQ-ADE-6); abort restores only the conflicted branch; force push after fetch alone is refused (`--force-if-includes`); SetTaskStep refuses a stage move while a run is live (F-B3 may already hold).
+Approved decisions built:
+- OQ-ADE-5 / F-B2: stale-base workflow save refused with a conflict (contract `ade-workflow-stale`, UI reads it).
+- OQ-ADE-4 / F-B1: switch confirm dialog names run and log counts.
+- Decision 9 / F-B3: stage move refused while a headless run is live.
+- OQ-ADE-3 / F-B4 / F-B7: lease TTL and silent-tool ceiling count only app-running time (`leases.Options.Elapsed`, `fakeclock.Suspend`); all lease and timeout decisions use it.
 
-B11: two-window convergence and 300-task scale pass with no product change. No bulk-move API exists; the 50-task move is one SetPlan call and is atomic on failure.
+Seams added: `flowharness.WithLeaseClock`, `WithTrackerGrace`, `WithMobileClock` (`bridge.Mobile.Now`, `appwire.Options.MobileNow`) so pairing expiry and the 30-day device TTL run on the fake clock.
 
-NOT done: B12 (no export/import feature, see F-B6; provider/sandbox argv checks not written), B13, B14, B15, B16. Skipped optional B4 sub-items (branchadopt two tasks, stop-run-first abort refusal).
+Dropped or pinned:
+- J-HAR-002 dropped (no export/import feature, F-B6). J-ADE-072 dropped (no mobile approval route).
+- J-DKR-011: in-place edit stops at the first failed step and keeps earlier ones; error carries `step` and `applied`. Pinned (F-B9).
+- J-DKR-015: backend does not cap logs; the 20,000 cap lives in the viewer. Flow test asserts the existing 100,000-line ordered, once-only delivery; the UI spec `tests/ui/docker-logs-copy.spec.ts` asserts the cap and that a selection copy equals the selected rows.
+- Partial rollback failure (a failure inside the rollback itself) cannot be induced without engine fault injection: not tested.
+- `scriptstest.Update` renders YAML and drops the schedule's task and branch ids; schedules under test are set at `Create`.
 
-Tests run: own new specs only, `go test -p 1 ./apps/kira-space/internal/flows/adeflow/ -run <Test>` and targeted Playwright `--project=ui` specs; all passed. No final adeflow-wide rerun after shared product changes.
+Docker: dockerd present, alpine image pulled, no pull or mirror blocker hit. Container tests ran with `KIRA_FLOW_DOCKER=require`; `TestRestoreRealDaemonRestart` ran once with `KIRA_FLOW_DOCKER_RESTART=1` (daemon down and back: log stream ends once, restore prompt once).
+
+Test fixes found by the final run (all failed or flaked, fixed in the verification commit):
+- `TestRepolessWorkflow`: the "started" snapshot raced the sandbox row insert (lands just after the agent launches); the test now waits for the run's sandbox badge.
+- `TestRemoteCancel` (gitflow, failed on the chapter base too): a background remote refresh logs after the cancelled fetch, so the cancelled row is no longer the head; the test now looks for the cancelled fetch row.
+- Stale contracts regenerated, failing on the chapter base too: `memory-import`, `dbmcp-expensive-query` (fields the product added since). Their UI specs pass.
+- `github-links-in-app`: stored artifact URLs are normalised now (OQ-ADE-1), so the contract's `pull/15/` is stored as `pull/15`; the Go test records the open args from the stored URL, the contract is regenerated, the UI spec passes.
+
+Verification (final run, tree at the verification commit):
+- Go, `KIRA_FLOW_DOCKER=require KIRA_FLOW_COMPLETE=1`: ade, appwire, bridge, adewire, flowharness, leases, storage/repos, agentmcp, docker, flowtest, llmprompts, scriptruns, scripts, notify, and flows adeflow, termflow, mobileflow, notifyflow, promptflow, dockerflow, journeyflow, harnessflow, agentflow, appflow, windowflow, reviewflow, repoflow, gitflow, githostflow, llmpromptsflow, memoryflow, usageflow, configflow, coverage all pass. dbmcpflow passes after the contract regen (the five engine and timeout tests re-ran green).
+- `internal/terminal` `TestSessionCloseLeavesUnhungJobs/bash_nohup` failed once at 2.0017s against a 2s bound while three other jobs loaded the machine; three lone reruns pass at 1.37s. No code of mine touches it.
+- `-race` works with `GOTMPDIR` on a stable directory (the earlier `vet.cfg` failure came from the default temp dir). Clean, no DATA RACE report, on leases, adewire, appwire, docker, flowtest, agentmcp, ade, bridge, flowharness, storage/repos, adeflow, mobileflow, notifyflow, promptflow, termflow, journeyflow, dockerflow, gitflow, githostflow, memoryflow. dbmcpflow under `-race` fails five wall-clock tests (engine modes, timeouts, throttle) from the slowdown, with no race reported; the same tests pass without `-race`.
+- Playwright `--project=ui`: docker-logs-copy, docker-module, ade-v2-workflow-switch, ade-v2-workflows, ade-v2-notes, automations-file, automations-mcp (80/80 three times over, `--repeat-each=4`), github-links-in-app, memory-ingest, memory-import, memory-distill, connection-mcp-expensive pass. One run of automations-mcp "Long running" failed on a 5 s poll while Go suites loaded the machine; the test is older than this stream and passes alone and in repeat.
+- `tsc` on `tsconfig.tests.json` clean.
