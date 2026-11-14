@@ -80,6 +80,32 @@ const base = (artifacts: ArtifactFx[] = listed()): ControlSnapshot[] => [
   ...open('hostview-1'),
 ];
 
+const OWN_PR_URL = 'https://github.com/acme/api/pull/77';
+const OWN_PR: ArtifactFx = {
+  ...DETECTED_BRANCH,
+  id: 'a_own',
+  kind: 'changeRequest',
+  title: 'Own PR',
+  ref: '#77',
+  url: OWN_PR_URL,
+  status: '',
+  source: 'agent',
+  createdAt: 5,
+};
+
+// The board reports PR 77 for the task's branch, so the stored agent row is the task's own PR.
+function ownPrControl(): ControlSnapshot[] {
+  const response = adeFixture<{ branches: Record<string, unknown> }>('change-requests');
+  response.branches.d_alerts_api = {
+    ...(response.branches.b_cart as object),
+    number: 77,
+    title: 'Own PR',
+    state: 'Open',
+    url: OWN_PR_URL,
+  };
+  return [{ channel: IPC.adeTaskChangeRequests, response }, ...base([...listed(), OWN_PR])];
+}
+
 const focusedTestid = (page: Page) =>
   page.evaluate(() => document.activeElement?.getAttribute('data-testid') ?? '');
 
@@ -342,6 +368,19 @@ test('loading shows three skeleton pills, then the links', async ({ relaunch }) 
   await expect(page.locator(t('ade-links-skeleton'))).toHaveCount(0);
 });
 
+test('own Jira and PR links lead their lines', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, ownPrControl());
+  await openDetails(page);
+  await expect(pill(line(page, 'changeRequest'), 'Own PR')).toBeVisible();
+  const texts = (category: string) =>
+    line(page, category).locator(t('ade-links-pill')).allTextContents();
+  const [first, second] = await texts('changeRequest');
+  expect(first).toContain('Own PR');
+  expect(second).toContain('api!9');
+  const issues = await texts('issue');
+  expect(issues.map((x) => x.match(/PAY-\d+/)?.[0])).toEqual(['PAY-130', 'PAY-10', 'PAY-12']);
+});
+
 // Handoff dialogs: the strip in add mode, on every move and the pass.
 
 const dialogLinks = (page: Page) =>
@@ -529,4 +568,27 @@ test('the Run dialog shows a read-only strip and keeps its own focus', async ({ 
   await expect(page.locator(t('ade-links-card-remove'))).toHaveCount(0);
   await expect(page.locator(t('ade-links-card-edit'))).toHaveCount(0);
   await expect(page.locator(t('ade-origin-session'))).toHaveCount(0);
+});
+
+test('the Run dialog lists the own PR first', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskBoard,
+      response: adeBoard((b) => {
+        const alerts = b.tasks.find((x) => x.id === 'T_alerts');
+        if (!alerts) throw new Error('T_alerts missing');
+        alerts.entryStepId = 'plan';
+        alerts.workflowId = 'standard';
+        alerts.runs = [];
+      }),
+    },
+    ...ownPrControl(),
+  ]);
+  await page
+    .locator(`${t('ade-task')}[data-task-id="T_alerts"] ${t('ade-task-action-run')}`)
+    .click();
+  const links = page.locator(t('ade-run-dialog')).locator(t('ade-run-links'));
+  const cr = line(links, 'changeRequest').locator(t('ade-links-pill'));
+  await expect(cr).toHaveCount(2);
+  expect((await cr.allTextContents())[0]).toContain('Own PR');
 });
