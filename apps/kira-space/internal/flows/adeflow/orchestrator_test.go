@@ -285,6 +285,8 @@ func TestOrchestratorPass(t *testing.T) {
 	f := newORFixture(t, []fakeagent.Action{{Name: "done"}, {Name: "done"}}, nil)
 	f.startOrchestrator(t)
 	waitRun(t, f.app, f.orch.ID, "plan", "done")
+	// The run row turns done before its handover row lands; wait for it.
+	testx.WaitUntil(t, waitFor, func() bool { return len(handovers(t, f.app, f.orch.ID)) > 0 })
 	if hs := handovers(t, f.app, f.orch.ID); len(hs) != 1 || hs[0].ToStepID != "done" || hs[0].Body != "summary-done" {
 		t.Fatalf("pass 1 handovers = %+v, want the final run row", hs)
 	}
