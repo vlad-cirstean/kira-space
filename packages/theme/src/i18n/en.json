@@ -2356,6 +2356,9 @@
     },
     "studio": {
       "adapter": {
+        "attributeRepeated": {
+          "body": "The attribute name {name} is used more than once. Message attributes must have unique names."
+        },
         "binaryValueInvalid": {
           "body": "Not a valid binary value. Use 0x followed by hexadecimal digits."
         },
@@ -2424,6 +2427,9 @@
         },
         "kafkaPartitionsMissing": {
           "body": "Topic {topic} has no partitions {partitions}."
+        },
+        "kafkaPositionLost": {
+          "body": "The records at this position were removed from the topic. Refresh to start again."
         },
         "kibanaBadRequest": {
           "body": "Invalid Discover request: {detail}."
@@ -17610,11 +17616,17 @@
       "copiedKey": {
         "announce": "Copied key"
       },
+      "copiedRow": {
+        "announce": "Copied row"
+      },
       "copyBody": {
         "label": "Copy body"
       },
       "copyKey": {
         "label": "Copy key"
+      },
+      "copyRow": {
+        "label": "Copy row as JSON"
       },
       "count": {
         "label": "Count"

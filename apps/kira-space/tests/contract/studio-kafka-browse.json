@@ -1,0 +1,36 @@
+{
+  "read:firstRow": [
+    "a-k3",
+    "{}",
+    "{\"offset\":\"0\",\"partition\":0}",
+    "<time>",
+    "a-v3"
+  ],
+  "read:positionLost": {
+    "Code": "E_QUERY",
+    "Message": "The records at this position were removed from the topic. Refresh to start again."
+  },
+  "read:shapes": [
+    [
+      "gone",
+      "{}",
+      "{\"offset\":\"0\",\"partition\":0}",
+      "<time>",
+      null
+    ],
+    [
+      "h",
+      "{\"trace\":[\"a\",\"b\"],\"type\":\"x\"}",
+      "{\"offset\":\"1\",\"partition\":0}",
+      "<time>",
+      "with headers"
+    ],
+    [
+      null,
+      "{}",
+      "{\"offset\":\"2\",\"partition\":0}",
+      "<time>",
+      ""
+    ]
+  ]
+}

@@ -103,8 +103,8 @@ func ParseHeaderPairs(raw *string) ([]HeaderPair, error) {
 	return out, nil
 }
 
-// ParseHeaderJSON is sqs/mutate.go's parseHeaders: ParseHeaderPairs as a map (a repeated name
-// keeps its last value), since SQS message attributes are unordered and unique.
+// ParseHeaderJSON is sqs/mutate.go's parseHeaders: ParseHeaderPairs as a map. SQS message attributes
+// are unordered and unique, so a repeated name is refused rather than silently keeping one value.
 func ParseHeaderJSON(raw *string) (map[string]string, error) {
 	pairs, err := ParseHeaderPairs(raw)
 	if err != nil || pairs == nil {
@@ -112,6 +112,9 @@ func ParseHeaderJSON(raw *string) (map[string]string, error) {
 	}
 	out := make(map[string]string, len(pairs))
 	for _, p := range pairs {
+		if _, dup := out[p.Key]; dup {
+			return nil, T(CodeQuery, "backend.studio.adapter.attributeRepeated.body", map[string]string{"name": p.Key}, nil)
+		}
 		out[p.Key] = p.Value
 	}
 	return out, nil

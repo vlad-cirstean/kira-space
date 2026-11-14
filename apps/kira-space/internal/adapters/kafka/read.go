@@ -335,7 +335,30 @@ func prepareWindows(ctx context.Context, adm *kadm.Client, topic string, req ada
 			remaining = append(remaining, w)
 		}
 	}
+	if req.Cursor.Mode == "after" && len(remaining) > 0 {
+		if err := assertPositionKept(ctx, adm, topic, remaining); err != nil {
+			return nil, nil, err
+		}
+	}
 	return windows, remaining, nil
+}
+
+// assertPositionKept refuses a continued page whose next offset the broker has since trimmed away
+// (retention or DeleteRecords): reading on would silently skip the removed records.
+func assertPositionKept(ctx context.Context, adm *kadm.Client, topic string, remaining []partitionWindow) error {
+	starts, err := adm.ListStartOffsets(ctx, topic)
+	if err != nil {
+		return mapError(err)
+	}
+	if err := starts.Error(); err != nil {
+		return mapError(err)
+	}
+	for _, w := range remaining {
+		if start, ok := starts.Lookup(topic, w.Partition); ok && w.Next < start.Offset {
+			return adapters.T(adapters.CodeQuery, "backend.studio.adapter.kafkaPositionLost.body", nil, nil)
+		}
+	}
+	return nil
 }
 
 // openBrowseClient builds readTopic's own ephemeral browse client: a
