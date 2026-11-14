@@ -1,0 +1,349 @@
+{
+  "AdeTaskService.Board#afterPhoneApprove": {
+    "autofetchMinutes": 0,
+    "branches": [],
+    "history": [],
+    "pairs": [],
+    "plan": {
+      "backlog": [],
+      "day": {},
+      "order": [
+        "<id:2>",
+        "<id:3>"
+      ],
+      "queuedAfter": {},
+      "unpushed": {}
+    },
+    "repos": [],
+    "statusDefaults": {
+      "finished": "done",
+      "new": "todo",
+      "review": "in-review",
+      "step": "in-progress"
+    },
+    "statuses": [
+      {
+        "color": "grey",
+        "id": "<masked>",
+        "name": "To do"
+      },
+      {
+        "color": "amber",
+        "id": "<masked>",
+        "name": "In progress"
+      },
+      {
+        "color": "blue",
+        "id": "<masked>",
+        "name": "In review"
+      },
+      {
+        "color": "green",
+        "id": "<masked>",
+        "name": "Done"
+      }
+    ],
+    "tasks": [
+      {
+        "branchIds": [],
+        "branchRequestId": "",
+        "color": 0,
+        "createdAt": 0,
+        "entryStepId": "plan",
+        "est": "",
+        "handoverDrafts": [],
+        "handoverIn": null,
+        "hostLink": null,
+        "hostUrl": "",
+        "id": "<masked>",
+        "jira": null,
+        "kind": "orchestrator",
+        "notes": "",
+        "owner": "",
+        "runs": [
+          {
+            "attempt": 0,
+            "branchId": "<masked>",
+            "exitCode": null,
+            "finishedAt": null,
+            "id": "<masked>",
+            "loops": 0,
+            "note": "waiting for task approval",
+            "outcome": null,
+            "purpose": "",
+            "resumable": false,
+            "returns": 0,
+            "review": null,
+            "sandbox": {
+              "access": "off",
+              "denials": 0,
+              "enforced": false,
+              "last": ""
+            },
+            "sessionId": "<masked>",
+            "startedAt": 0,
+            "state": "running",
+            "stepId": "plan",
+            "summary": "",
+            "taskId": "<masked>"
+          }
+        ],
+        "since": {},
+        "statusBy": "auto",
+        "statusId": "in-progress",
+        "statusStep": "plan",
+        "title": "Ship login",
+        "workflow": {
+          "id": "<masked>",
+          "name": "Flow",
+          "steps": [
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "auto",
+              "command": "",
+              "dbMcp": true,
+              "id": "<masked>",
+              "kind": "agent",
+              "maxReturns": 3,
+              "name": "Plan",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "plan the next pass",
+              "results": [
+                {
+                  "description": "",
+                  "id": "<masked>",
+                  "loop": false,
+                  "next": "next",
+                  "ok": true
+                },
+                {
+                  "description": "",
+                  "id": "<masked>",
+                  "loop": false,
+                  "next": "stop",
+                  "ok": false
+                }
+              ],
+              "review": null,
+              "runsOn": "once",
+              "sandbox": {
+                "access": "off",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": false,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "",
+              "timeout": "1m"
+            }
+          ]
+        },
+        "workflowId": "orch",
+        "workflowOutdated": false
+      },
+      {
+        "branchIds": [],
+        "branchRequestId": "",
+        "color": 1,
+        "createdAt": 0,
+        "entryStepId": "ship",
+        "est": "",
+        "handoverDrafts": [],
+        "handoverIn": {
+          "body": "Wire the login form to the API.\n\nHand back the endpoint list.",
+          "createdAt": 0,
+          "dismissed": false,
+          "edited": false,
+          "finished": false,
+          "fromStepId": "",
+          "fromStepName": "Ship login",
+          "fromTaskId": "<masked>",
+          "id": "<masked>",
+          "sessionId": "<masked>",
+          "source": "orchestrator",
+          "state": "handed",
+          "taskId": "<masked>",
+          "toStepId": "ship",
+          "toStepName": "Ship",
+          "updatedAt": 0
+        },
+        "hostLink": null,
+        "hostUrl": "",
+        "id": "<masked>",
+        "jira": null,
+        "kind": "task",
+        "notes": "",
+        "owner": "",
+        "parentId": "<masked>",
+        "parentTitle": "Ship login",
+        "runs": [],
+        "since": {},
+        "statusBy": "auto",
+        "statusId": "todo",
+        "statusStep": "",
+        "title": "API login",
+        "workflow": null,
+        "workflowId": "manual",
+        "workflowOutdated": false
+      }
+    ],
+    "worktreeBasePath": "<home>/kira-space-wts"
+  },
+  "event:kira:approvals:changed#afterPhoneApprove": [],
+  "http:GET /api/approvals#pending": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "task.create:<id:1>",
+      "kind": "task.create",
+      "operation": {
+        "class": "create",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "run",
+        "step": "Plan",
+        "task": "Ship login"
+      },
+      "payload": {
+        "brief": "Wire the login form to the API.\n\nHand back the endpoint list.",
+        "parentTaskId": "<masked>",
+        "parentTitle": "Ship login",
+        "repos": [],
+        "title": "API login",
+        "workflow": {
+          "id": "manual",
+          "name": "Flow"
+        }
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "API login",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "branch.request:p637",
+      "kind": "branch.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "items": [
+          {
+            "branch": "feat/x",
+            "holder": {
+              "branchId": "b2",
+              "kind": "other",
+              "taskId": "t2",
+              "worktree": "feat-x"
+            },
+            "id": "i1",
+            "kind": "adopt",
+            "repo": "api"
+          }
+        ],
+        "taskId": "t1",
+        "taskTitle": "Fix login"
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "",
+        "location": "",
+        "name": "Fix login",
+        "readOnly": false
+      }
+    }
+  ],
+  "http:POST /api/approvals/answer#approved": [
+    {
+      "code": "",
+      "error": "",
+      "id": "task.create:<id:1>"
+    }
+  ],
+  "http:POST /api/approvals/answer#denied": [
+    {
+      "code": "",
+      "error": "",
+      "id": "task.create:<id:4>"
+    }
+  ],
+  "http:POST /api/approvals/answer#expired": {
+    "code": "E_EXPIRED",
+    "message": "Access for this phone expired."
+  },
+  "http:POST /api/approvals/answer#notPhoneKind": [
+    {
+      "code": "E_NOT_FOUND",
+      "error": "approval no longer exists.",
+      "id": "db.query:p637"
+    }
+  ],
+  "sse:kira:approvals:changed#afterApprove": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "branch.request:p637",
+      "kind": "branch.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "items": [
+          {
+            "branch": "feat/x",
+            "holder": {
+              "branchId": "b2",
+              "kind": "other",
+              "taskId": "t2",
+              "worktree": "feat-x"
+            },
+            "id": "i1",
+            "kind": "adopt",
+            "repo": "api"
+          }
+        ],
+        "taskId": "t1",
+        "taskTitle": "Fix login"
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "",
+        "location": "",
+        "name": "Fix login",
+        "readOnly": false
+      }
+    }
+  ]
+}

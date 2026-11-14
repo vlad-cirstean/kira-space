@@ -245,6 +245,7 @@ func TestPhonePermissionMatrix(t *testing.T) {
 	}{
 		{"/api/agent/sessions/" + launch.SessionID + "/send", map[string]string{"message": "hi"}},
 		{"/api/agent/sessions/" + launch.SessionID + "/take-over", map[string]string{}},
+		{"/api/approvals/answer", map[string]any{"ids": []string{"task.create:none"}, "approve": true}},
 	}
 
 	// Write flag off: every write row is refused, whatever the agent flags say.
