@@ -52,7 +52,7 @@ func New(o Options) (*Store, error) {
 	}
 	s := &Store{o: o, dec: dec, pend: &Changes{}, problems: map[string]string{}, origins: map[string]string{}}
 	s.collections = &configfs.Folder[CollectionFile]{
-		Dir: o.Dir, Ext: CollectionExt, Name: collectionNameRe, Decode: dec.collection,
+		Dir: o.Dir, Ext: CollectionExt, Name: collectionNameRe, Decode: dec.collectionLoad,
 		Projection: &projection{s: s, folder: folderCollections, ext: CollectionExt, record: s.recordCollection, forget: s.forgetCollection},
 	}
 	s.environments = &configfs.Folder[EnvironmentFile]{
@@ -227,17 +227,42 @@ func environmentFiles(es []configfs.Entry[EnvironmentFile]) []string {
 	return out
 }
 
-// noteProblems records each file's problem and flags a Config change when the set differs.
+// problemSig is a problem's identity for change detection; "" for none.
+func problemSig(p *configfs.Problem) string {
+	if p == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d:%s", p.Line, p.Message)
+}
+
+// collectionSig is problemSig, or the skipped items' lines and messages when the file loaded partly.
+func collectionSig(e configfs.Entry[CollectionFile]) string {
+	if e.Problem != nil || e.Value == nil || len(e.Value.Skipped) == 0 {
+		return problemSig(e.Problem)
+	}
+	parts := make([]string, len(e.Value.Skipped))
+	for i, sk := range e.Value.Skipped {
+		parts[i] = fmt.Sprintf("%d:%s", sk.Line, sk.Message)
+	}
+	return "skip:" + strings.Join(parts, "\n")
+}
+
+// noteProblems records each file's problem and skipped items and flags a Config change when the set differs.
 func (s *Store) noteProblems(ce []configfs.Entry[CollectionFile], ee []configfs.Entry[EnvironmentFile]) {
 	next := map[string]string{}
 	for _, e := range ce {
-		if e.Problem != nil {
-			next[e.File] = fmt.Sprintf("%d:%s", e.Problem.Line, e.Problem.Message)
+		if sig := collectionSig(e); sig != "" {
+			next[e.File] = sig
 		}
 	}
 	for _, e := range ee {
-		if e.Problem != nil {
-			next[e.File] = fmt.Sprintf("%d:%s", e.Problem.Line, e.Problem.Message)
+		if sig := problemSig(e.Problem); sig != "" {
+			next[e.File] = sig
+		}
+	}
+	for _, e := range ce {
+		if sig := next[e.File]; strings.HasPrefix(sig, "skip:") && s.problems[e.File] != sig {
+			s.warnSkipped(e.File, e.Value.Skipped)
 		}
 	}
 	if len(next) != len(s.problems) {
@@ -253,6 +278,11 @@ func (s *Store) noteProblems(ce []configfs.Entry[CollectionFile], ee []configfs.
 	s.problems = next
 }
 
+// warnSkipped logs a file's skipped items by count and first line, never their content.
+func (s *Store) warnSkipped(file string, skipped []SkippedItem) {
+	slog.Warn("api: items skipped", "scope", "config", "file", file, "count", len(skipped), "line", skipped[0].Line)
+}
+
 // FileView is one config file as the Api module shows it.
 type FileView struct {
 	File     string       `json:"file"`
@@ -261,6 +291,17 @@ type FileView struct {
 	Name     string       `json:"name"`
 	Problem  *ProblemView `json:"problem"`
 	LastGood bool         `json:"lastGood"`
+	// Skipped lists the items a partly loaded collection left out; empty with a whole-file problem.
+	Skipped []SkippedView `json:"skipped"`
+}
+
+// SkippedView is one skipped item as the Api panel lists it.
+type SkippedView struct {
+	Line    int    `json:"line"`
+	Index   int    `json:"index"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Message string `json:"message"`
 }
 
 // ProblemView is why a file is invalid.
@@ -295,15 +336,20 @@ func (s *Store) View() (View, error) {
 
 	v := View{Dir: s.o.Dir, Files: []FileView{}, Secrets: []SecretView{}}
 	for _, e := range ce {
-		fv := FileView{File: e.File, Kind: "collection", Path: e.Path, LastGood: e.Problem != nil && e.Value != nil}
+		fv := FileView{File: e.File, Kind: "collection", Path: e.Path, LastGood: e.Problem != nil && e.Value != nil, Skipped: []SkippedView{}}
 		if e.Value != nil {
 			fv.Name = e.Value.Name
+			if e.Problem == nil {
+				for _, sk := range e.Value.Skipped {
+					fv.Skipped = append(fv.Skipped, SkippedView{Line: sk.Line, Index: sk.Index, ID: sk.ID, Name: sk.Name, Message: sk.Message})
+				}
+			}
 		}
 		fv.Problem = problemView(e.Problem)
 		v.Files = append(v.Files, fv)
 	}
 	for _, e := range ee {
-		fv := FileView{File: e.File, Kind: "environment", Path: e.Path, LastGood: e.Problem != nil && e.Value != nil}
+		fv := FileView{File: e.File, Kind: "environment", Path: e.Path, LastGood: e.Problem != nil && e.Value != nil, Skipped: []SkippedView{}}
 		if e.Value != nil {
 			fv.Name = e.Value.Name
 		}
@@ -465,8 +511,11 @@ func (s *Store) editLocked(file string, fn func(src []byte) ([]byte, error)) err
 		if e, ok := s.collections.Get(file); !ok {
 			return fmt.Errorf("%w: %s", ErrNotFound, file)
 		} else if e.Problem != nil {
-			s.noteProblems1(file, e.Problem)
+			s.noteProblems1(file, collectionSig(e))
 			return &BrokenError{File: file, Line: e.Problem.Line}
+		} else if e.Value != nil && len(e.Value.Skipped) > 0 {
+			s.noteProblems1(file, collectionSig(e))
+			return &BrokenError{File: file, Line: e.Value.Skipped[0].Line}
 		}
 		src, hash, err := s.collections.Read(file)
 		if err != nil {
@@ -486,17 +535,13 @@ func (s *Store) editLocked(file string, fn func(src []byte) ([]byte, error)) err
 		if err != nil {
 			return err
 		}
-		s.noteProblems1(file, e.Problem)
+		s.noteProblems1(file, collectionSig(e))
 		return nil
 	}
 }
 
-// noteProblems1 records one file's problem after a write.
-func (s *Store) noteProblems1(file string, p *configfs.Problem) {
-	sig := ""
-	if p != nil {
-		sig = fmt.Sprintf("%d:%s", p.Line, p.Message)
-	}
+// noteProblems1 records one file's problem signature after a write.
+func (s *Store) noteProblems1(file, sig string) {
 	if s.problems[file] != sig {
 		s.pend.Config = true
 	}

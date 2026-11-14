@@ -9,9 +9,10 @@
         "name": "Orders API",
         "path": "<space>/config/api/orders-api.collection.yaml",
         "problem": {
-          "line": 13,
-          "message": "The item ID list is used twice. Each item ID is unique in the file."
-        }
+          "line": 8,
+          "message": "bogus is not a known option."
+        },
+        "skipped": []
       }
     ],
     "secrets": [
