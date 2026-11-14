@@ -1,6 +1,6 @@
 # P627 journeys: Api module (HTTP, gRPC, collections, variables, environments, import)
 
-Imagined usage and definition of correct. No implementation. Conventions: see `journeys-studio-db.md` head. Inputs:
+Imagined usage and definition of correct. Conventions: `journeys-studio-connections.md` head. Inputs:
 `inventory.md` sections 13-15; `coverage-map.md`; source read through CodeGraph (`repos/response_history.go`,
 `ResponseHistoryList.vue`).
 

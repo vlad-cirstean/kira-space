@@ -1,6 +1,6 @@
 # P627 journeys: cross-module working days
 
-Imagined usage and definition of correct. No implementation. Conventions: see `journeys-studio-db.md` head. Inputs:
+Imagined usage and definition of correct. Conventions: `journeys-studio-connections.md` head. Inputs:
 `inventory.md` "Cross-module interactions" and "Bug classes"; `coverage-map.md` section 6 gap 9 (few cross-service
 journeys; none spans Studio modules or ADE plus git host plus remote push).
 

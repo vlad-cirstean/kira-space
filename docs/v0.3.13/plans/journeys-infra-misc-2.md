@@ -1,6 +1,6 @@
 # P627 journeys: infra and misc, second pass
 
-Continues `journeys-infra-misc.md` (ids continue). One scenario per journey. Conventions: `journeys-studio-db.md`
+Continues `journeys-infra-misc.md` (ids continue). Conventions: `journeys-studio-connections.md`
 head. Far end: docker engine state (`docker inspect`, flow fake engine), `KubeFake.Requests()`, `notifysink`
 notes, mobile HTTP responses and `mobile_devices` rows, files under `<home>` (`.sync/apply.json`, `backups/`,
 `agent-usage.json`, `memory/memory.db`), `Browser.Opened()`.

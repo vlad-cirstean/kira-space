@@ -1,6 +1,6 @@
 # P627 journeys: ADE, second pass
 
-Continues `journeys-ade.md` (ids continue). One scenario per journey. Conventions: `journeys-studio-db.md` head.
+Continues `journeys-ade.md` (ids continue). Conventions: `journeys-studio-connections.md` head.
 Far end: `app.DB()` rows (`ade_tasks`, `ade_task_branches`, `ade_runs`, `ade_sessions`, `ade_task_handovers`,
 `ade_task_artifacts`, `ade_lease_queues`), `Repo.Git(...)`, worktree folders under `~/kira-space-wts`, task folder
 `<home>/ade/tasks/<taskId>`, per-run `<home>/ade/runs/<runId>.mcp.json`, fake `claude` transcript, `notifysink`.
@@ -293,7 +293,7 @@ Code and architecture facts used (CodeGraph reads, `docs/ARCHITECTURE.md` 2503-2
 
 ### J-PRF-010 Validation proof lifecycle with rejected and re-submitted proof
 
-- Status: partial (`journeys-studio-views` J-PRF; flows proof).
+- Status: partial (`journeys-studio-mcp-approvals.md` J-PRF; flows proof).
 - Steps: 1. Agent submits proof with screenshots and command output. 2. `proof.review` approval appears; user
   rejects with note. 3. Agent re-submits. 4. Approve. 5. Archive task; open archived proof.
 - Oracle: approval ids distinct per submission; rejection note delivered to agent tool result; files stored

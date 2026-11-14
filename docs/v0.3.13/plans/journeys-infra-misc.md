@@ -1,6 +1,6 @@
 # P627 journeys: shell, settings, Automations, terminal, Operations, notifications, prompts, capture, mobile, memory, config files and sync, secrets, updates, lifecycle
 
-Imagined usage and definition of correct. No implementation. Conventions: see `journeys-studio-db.md` head. Inputs:
+Imagined usage and definition of correct. Conventions: `journeys-studio-connections.md` head. Inputs:
 `inventory.md` sections 1, 2, 16-18, 28-38; `coverage-map.md` (appflow, windowflow, termflow, notifyflow,
 promptflow, captureflow, mobileflow, memoryflow, configflow, configsyncflow, llmpromptsflow).
 

@@ -1,6 +1,6 @@
 # P627 journeys: repositories, Git module, graph, operations, workspace, code hosts, review
 
-Imagined usage and definition of correct. No implementation. Conventions: see `journeys-studio-db.md` head. Inputs:
+Imagined usage and definition of correct. Conventions: `journeys-studio-connections.md` head. Inputs:
 `inventory.md` sections 19-23; `coverage-map.md` (gitflow, repoflow, githostflow, reviewflow, windowflow).
 
 Far ends: `Repo.Git(...)` on local repo, `Bare.Git(...)` on bare remote, files on disk, `fakehost.Forge.Calls()`

@@ -2,7 +2,7 @@
 
 Extra journeys aimed at classes the history shows recurring (`inventory.md` "Bug classes"): clipboard and selection,
 pagination, sort/filter/search, reconnect, large data, undo, persistence, concurrency, special characters. Compact
-form; same fields and conventions as `journeys-studio-db.md`. All `new` unless a test is cited. Persona for all:
+form; conventions: `journeys-studio-connections.md`. All `new` unless a test is cited. Persona for all:
 daily user doing ordinary work quickly, not a tester.
 
 ## A. Clipboard and selection

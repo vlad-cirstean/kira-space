@@ -1,7 +1,7 @@
 # P627 journeys: Kubernetes module
 
-Dedicated Kubernetes file. Earlier entries stay valid: J-K8S-001..002 (`journeys-studio-mcp-approvals.md`),
-J-K8S-010..012 (`journeys-infra-misc-2.md`). Ids here start at J-K8S-020.
+Kubernetes file. J-K8S-001..002 at end of this file;
+J-K8S-010..012 in `journeys-infra-misc-2.md`. Ids here start at J-K8S-020.
 
 Runs in seconds: `flowharness.KubeFake` (in-process HTTPS API server: discovery, Table lists, objects, events,
 logs, exec-plugin cluster); seams `kubernetes.WithEnv`, `WithListLimits(page, max)` (e.g. page 5, cap 12 instead
@@ -166,3 +166,34 @@ Facts read from code (`kubernetes/service.go`, `list.go`, `logs.go`, CodeGraph; 
 - Steps: look for exec, attach, port-forward, edit, delete, scale, restart rollout in menus, shortcuts, MCP.
 - Oracle: none offered; `KubeFake.Requests()` across whole suite contains GET only. If intended, OQ-K8S-1.
 - Risk: write path added without approval surface.
+
+## First-pass journeys (moved from `journeys-studio-views.md`, ids unchanged)
+
+### J-K8S-001 Incident triage across clusters
+
+- Status: partial (`kubeflow` 19 tests; ui `kubernetes-*`).
+- Persona: SRE following a crashlooping pod.
+- Pre: kubeconfig with 3 contexts (one exec plugin non-interactive, one unreachable), namespace list restricted on
+  one.
+- Steps:
+  1. Pick cluster 1, namespace via typed name (list forbidden), kind Pods from kind bar; filter `api-`.
+  2. Click pod (preview tab), double-click (kept). Describe; copy describe text.
+  3. Logs: tail 2,000, follow, previous container, timestamps; select 300 lines, copy; scroll up while following
+     (autoscroll pauses, assumption).
+  4. Open Secret describe: values hidden. Switch kind via categorized picker to CRD; recent kinds updated.
+  5. Second window: reorder clusters with Alt+Up; window 1 list follows. Cancel log stream from Ops row.
+  6. Unreachable cluster: status reason shown, no hang; restart app: tabs, cluster order, recent kinds.
+- Oracle: `KubeFake.Requests()` has no secret value served into DOM/clipboard; copied log text equals appended
+  lines in order, no duplicate lines at follow reconnect; Ops Cancel closes follower (`Followers` 0); every user
+  action one op row, background refetch none; order persisted by stored id after restart.
+- Variations: 5,000 pods (virtual list), pod deleted while tab open, log line 1 MB, ANSI colours in logs, cluster
+  removed from kubeconfig while app runs.
+- Risk: secret leak, log duplication, stream leak on window close.
+
+### J-K8S-002 Keyboard-only resource navigation with search active
+
+- Status: partial (ui `kubernetes-order`).
+- Steps: type in cluster search; try Alt+Down reorder (disabled while searching); clear search; reorder; Enter
+  opens; Cmd+W closes module-local tab; Window menu next/prev tab.
+- Oracle: order unchanged while searching; Window menu keys move Kubernetes tabs (P493).
+- Risk: reorder applied to filtered index.

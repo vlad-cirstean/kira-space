@@ -1,7 +1,7 @@
 # P627 journeys: Api module, second pass
 
 Continues `journeys-http-grpc.md` (ids continue). One scenario per journey; bundled variations of pass 1 split out.
-Conventions: `journeys-studio-db.md` head. "Wire recorder" = `flowharness.HTTP/HTTPS/GRPC`.
+Conventions: `journeys-studio-connections.md` head. "Wire recorder" = `flowharness.HTTP/HTTPS/GRPC`.
 
 Code facts used (CodeGraph reads):
 

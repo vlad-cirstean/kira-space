@@ -1,8 +1,8 @@
 # P627 journeys: Docker module
 
-Dedicated Docker file. Earlier entries stay valid and are not repeated: J-DKR-001..003
-(`journeys-studio-mcp-approvals.md`), J-DKR-010..016 (`journeys-infra-misc-2.md`). Ids here start at J-DKR-020.
-Conventions: `journeys-studio-db` head (now `journeys-studio-connections.md`).
+Docker file. J-DKR-001..003 at end of this file; J-DKR-010..016 in `journeys-infra-misc-2.md`. Ids here
+start at J-DKR-020.
+Conventions: `journeys-studio-connections.md` head.
 
 Runs in seconds: flow half against the fake engine of `dockerflow` (in-process Engine API); UI half against
 mocked bridge. Time seams: `docker.WithRestoreTiming(tick, grace, policyWait)`, `docker.WithBootProbe`,
@@ -185,3 +185,48 @@ registry link lazy, Hub asked only on click.
 - Oracle: none offered; no bound method reachable (contract JSON lists only surface above). If product intends
   them, open question OQ-DKR-1.
 - Risk: half-wired menu item calling missing method.
+
+## First-pass journeys (moved from `journeys-studio-views.md`, ids unchanged)
+
+### J-DKR-001 Day with Compose stack: logs, exec, stats, edit
+
+- Status: partial (`dockerflow`; e2e-real docker-real; ui `docker-*`).
+- Persona: developer running local stack.
+- Pre: Compose project `shop` (web, db, worker), one Testcontainers container, one devcontainer.
+- Steps:
+  1. Docker module: containers grouped by project with origin icons. Stop `worker`, Start, Restart `web`.
+  2. Logs of `web`: follow, filter `ERROR`, timestamps, wrap; select and copy 50 lines; 2000-line cap.
+  3. Exec into `db`: New session; run `psql -c 'select 1'`; close tab; open again (new explicit session).
+  4. Stats tab open in two windows; close window 2.
+  5. Edit `web`: memory limit in place (no recreate); rename; then change env (recreate confirm lists loss); cancel
+     once, then confirm.
+  6. Images/volumes/networks tabs; storage `/system/df` Refresh; registry button opens URL.
+- Oracle: `docker inspect`: state after each action; memory limit applied without new container id; rename
+  applied; recreate yields new id with same name, volumes, networks, labels, ports, and old container gone;
+  cancel changes nothing; exec process in container ends when tab closes (`docker top`); stats stream for window 2
+  ended (`DockerStatsEndWithTheirWindow`); clipboard log lines equal `docker logs` subset; `Browser.Opened` has
+  registry URL.
+- Variations: recreate fails midway (rollback: old container restored and running); container removed by CLI while
+  edit tab dirty; log line with ANSI and 100 KiB; 400 containers (virtualized list heap).
+- Risk: recreate data loss, exec leak, stream leak.
+
+### J-DKR-002 Engine restart and restore
+
+- Status: partial (`dockerflow` restore 8 tests; ui `docker-restore`).
+- Steps:
+  1. Stack running; user stops `worker` by hand. Engine restarts (BootGen).
+  2. Banner in Docker module only; open restore dialog; restore.
+  3. Engine restarts again mid-restore; dismiss; relaunch app (AtLaunch offer).
+- Oracle: `docker ps`: `db` then `web` started in dependency order after health; `worker` (user-stopped) and
+  ephemeral Testcontainers not started; dismiss persists (no re-offer for same boot generation); snapshot survives
+  idle engine.
+- Risk: restoring user-stopped containers, wrong order.
+
+### J-DKR-003 Engine states and context switch
+
+- Status: partial (`dockerflow` StatusClasses, Contexts).
+- Steps: no docker binary (not-installed), daemon down, `DOCKER_HOST` tcp with TLS paths, switch context via CLI
+  while module open, socket permission denied.
+- Oracle: state label per case; after context switch list equals `docker --context X ps`; no credential file read
+  (guard G5; strace-free: `config.json` atime unchanged, assumption test via fake HOME file access log).
+- Risk: stale engine after context switch.

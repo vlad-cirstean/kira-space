@@ -1,6 +1,6 @@
 # P627 journeys: Git and repos, second pass
 
-Continues `journeys-repos-git.md` (ids continue). One scenario per journey. Conventions: `journeys-studio-db.md`
+Continues `journeys-repos-git.md` (ids continue). Conventions: `journeys-studio-connections.md`
 head. Far end: `Repo.Git(...)`, `Bare.Git(...)`, files on disk, `git config --get`, `git reflog`, `git stash list`.
 
 Code facts used (CodeGraph reads):

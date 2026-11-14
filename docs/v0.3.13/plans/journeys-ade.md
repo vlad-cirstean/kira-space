@@ -1,6 +1,6 @@
 # P627 journeys: ADE (board, tasks, branches, workflows, runs, sessions, agents, harness)
 
-Imagined usage and definition of correct. No implementation. Conventions: see `journeys-studio-db.md` head. Inputs:
+Imagined usage and definition of correct. Conventions: `journeys-studio-connections.md` head. Inputs:
 `inventory.md` sections 24-27, 30; `coverage-map.md` (adeflow, harnessflow, claudeflow, usageflow); source read
 through CodeGraph (`ade/branchrequest.go`, `internal/approvals/queue.go`).
 
