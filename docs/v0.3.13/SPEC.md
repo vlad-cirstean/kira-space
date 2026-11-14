@@ -13,8 +13,8 @@ First `P` is P626.
 | P629 | Stream A: tests and fixes | Done |
 | P630 | Stream B: tests and fixes | Done |
 | P631 | Stream C: tests and fixes | Done |
-| P632 | Chapter non-UI full run, 2 code review rounds | Todo |
-| P633 | Close chapter | Todo |
+| P632 | Chapter non-UI full run, 2 code review rounds | Done |
+| P633 | Close chapter | Done |
 
 Deliverables of P626-P628 live in `plans/` (inventory.md, coverage-map.md, journeys-*.md, synthesis.md).
 
@@ -49,3 +49,25 @@ collision, Kubernetes truncation banner and Copy log. Pinned to existing behavio
 J-GIT-020, J-REPO-002, J-REV-001, J-BC-009, J-BC-025. Secret hygiene oracle made truthful (store API plus scan of every
 other file). `flowharness.Snapshot`/`CrashTo` crash model added; SIGKILL harness stays follow-up. `bun run test:flows`
 31 packages pass.
+
+### P632 Chapter non-UI full run, 2 code review rounds
+
+Done. Full run (typecheck, lint, `lint:go`, `test:unit` 2,290 tests, `site:build`, Go non-flow packages, every flow
+package with `KIRA_FLOW_COMPLETE=1 KIRA_FLOW_DOCKER=require`) green on the final tree after fixes: stale generated
+bindings regenerated; `grid-pending-by-primary-key` specs given the `expect` field; F-A11 import cycle (eager
+`useTabsStore` read in `terminalTabs.ts`, now a thunk) and eight specs mocking the wrong `tabsSave` (new
+`support/benignTabsSave.ts`); 11 `lint:go` findings; G2 literal `E_UNKNOWN`; `TestConsoleRedis` map-order race
+(ordered slice, contract regenerated); `TestDbMcpEngineModes` `waitListed` matching the EXPLAIN pre-check op;
+`bash_nohup` bound equal to `closeGracePeriod` (now a var, Close tests widen it). Disk filled twice on the shared host;
+those failures were not code faults. Review round 1: 2 high, 6 medium, 6 low, all fixed (lost-ack reconcile, Postgres
+guard on `xml`/`point`-class types, console transaction on tab close, API request guard, MySQL FLOAT guard, error
+`details` frame, expect-name validation, workflow count recheck, git-ui carry retry). Review round 2 over the full
+diff since round 1's base: 1 high, 4 medium, 5 low, all fixed (console transaction state read from the engine and
+MySQL implicit-commit rules, tab-closed-mid-run path, forced-overwrite resend routed through lost-ack handling,
+reconcile re-bases a guard only when the reloaded text equals the original, `TypeRoundTrip` stale check over every
+guarded column). Follow-ups moved to `docs/v0.3.14/SPEC.md` and ARCHITECTURE.md Known open items.
+
+### P633 Close chapter
+
+Done. Result folded into `docs/history/06-v2.8.md`; `docs/v0.3.13/` removed; ARCHITECTURE.md Known open items updated;
+PR opened from `chapter/v0.3.13` to `main`.
