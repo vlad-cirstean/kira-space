@@ -1,6 +1,7 @@
 import type { Locator } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
 import { expect, apiTest as test } from '../fixtures';
+import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 import { modeTab, openHttpModeAndNewRequest } from './support/apiMode';
 import { editorText } from './support/editorText';
@@ -676,6 +677,45 @@ test('Http request — the request Cookies tab shows the jar-off state by defaul
 
   await expect(page.locator('[data-testid="http-cookies-jar-off"]')).toBeVisible();
   expect(control.log().some((e) => e.channel === IPC.httpCookies)).toBe(false);
+});
+
+// J-HTTP-040, contract api-cookie-jar (backend half: httpflow TestCookieJar): the jar is opt-in. A login
+// response lists its received cookie, the next send shows no sent cookies and says why; with the jar
+// on for the request the sent cookie shows and the hint is gone.
+test('Http request — the cookie jar is opt-in and the empty sent list says why', async ({
+  relaunch,
+}) => {
+  const BASE = { headers: [], body: '', redirects: [], finalUrl: 'https://h/x' };
+  const reply = (key: string) => ({
+    ...BASE,
+    ...contract<object>('api-cookie-jar', key),
+  });
+  const { window: page, control } = await relaunch({
+    control: [{ channel: IPC.httpSend, response: reply('login#jar-off') }],
+  });
+  await openHttpModeAndNewRequest(page);
+  await page.fill('[data-testid="http-url"]', 'https://h/login');
+  await page.click('[data-testid="http-send"]');
+  await expect(page.locator('[data-testid="http-status"]')).toContainText('200');
+  await page.click('[data-testid="http-response-pane-cookies"]');
+  const cookies = page.locator('[data-testid="http-response-cookies"]');
+  await expect(cookies).toContainText('Received');
+  await expect(cookies).toContainText('a');
+  await expect(page.locator('[data-testid="http-response-cookies-jar-off"]')).toBeVisible();
+
+  control.respond(IPC.httpSend, reply('me#jar-off'));
+  await page.fill('[data-testid="http-url"]', 'https://h/me');
+  await page.click('[data-testid="http-send"]');
+  await expect(page.locator('[data-testid="http-response-cookies-empty"]')).toBeVisible();
+  await expect(page.locator('[data-testid="http-response-cookies-jar-off"]')).toBeVisible();
+
+  await page.click('[data-testid="http-request-pane-settings"]');
+  await page.click('[data-testid="http-settings-disableCookieJar-inherit"]');
+  await page.click('[data-testid="http-settings-disableCookieJar"]');
+  control.respond(IPC.httpSend, reply('me#jar-on'));
+  await page.click('[data-testid="http-send"]');
+  await expect(cookies).toContainText('Sent');
+  await expect(page.locator('[data-testid="http-response-cookies-jar-off"]')).toHaveCount(0);
 });
 
 // P175 D2 (P168 F12): Remove deletes by the exact domain and path, so two same-name cookies on one

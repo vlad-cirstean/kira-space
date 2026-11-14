@@ -463,6 +463,8 @@ func (a *Adapter) Mutate(ctx context.Context, plan model.MutationPlan, op *adapt
 // Execute is index.ts's execute.
 func (a *Adapter) Execute(ctx context.Context, req model.ConsoleRequest, op *adapters.OpCtx) ([]page.Page, error) {
 	return runOnConn(ctx, a, op.OpID, func(driverCtx context.Context, conn *sql.Conn) ([]page.Page, error) {
+		// Reported on failure too: an error does not always roll the transaction back.
+		defer reportTransaction(driverCtx, conn, op)
 		return execute(driverCtx, conn, op, req.Statements, adapters.ConsoleCapFor(req))
 	})
 }

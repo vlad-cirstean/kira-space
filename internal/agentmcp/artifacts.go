@@ -118,8 +118,20 @@ func CleanArtifactAs(in ArtifactInput, kindOK func(string) bool) (ArtifactInput,
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			return in, "url must be an absolute http or https address."
 		}
+		in.URL = normalizeArtifactURL(u)
 	}
 	return in, ""
+}
+
+// normalizeArtifactURL is the dedupe form of a link: lower-case scheme and host, no fragment, no trailing
+// slash; the query stays, since it can name another page.
+func normalizeArtifactURL(u *url.URL) string {
+	n := *u
+	n.Scheme, n.Host = strings.ToLower(n.Scheme), strings.ToLower(n.Host)
+	n.Fragment, n.RawFragment = "", ""
+	n.Path = strings.TrimRight(n.Path, "/")
+	n.RawPath = strings.TrimRight(n.RawPath, "/")
+	return n.String()
 }
 
 // artifactsReply is the text block a finishing call appends: the task's artifacts as compact JSON

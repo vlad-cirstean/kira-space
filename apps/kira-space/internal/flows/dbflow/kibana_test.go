@@ -2,6 +2,7 @@ package dbflow
 
 import (
 	"encoding/json"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -158,13 +159,47 @@ func TestKibanaDiscoverJourney(t *testing.T) {
 
 	bad := base
 	bad.Query = "level:"
-	if _, err := app.W.Router.Execute(ctx, executeWire("kb-bad", conn.ID, discoverRequest(t, bad))); err == nil {
+	if _, err := app.W.Router.Execute(ctx, executeWire("8d6f4a3e-3c5b-7a21-9e4d-5b1f0c2a7e90", conn.ID, discoverRequest(t, bad))); err == nil {
 		t.Fatal("a syntax error in the query must fail the run")
 	} else {
 		app.Contract(t, "kibana-discover", "Execute#syntaxError", err.Error())
 	}
 
+	// J-KIB-010: a saved search survives a relaunch as its query body only; results are not stored
+	// and nothing runs on its own afterwards.
+	savedBody := model.DiscoverBody{
+		Query: "level:error", DataViewID: testsupport.KibanaLogsView, Language: "kuery",
+		Time:    model.KibanaTimeSelection{Mode: "preset", Preset: "last15m"},
+		Filters: []model.KibanaFilter{}, Columns: []string{"level", "status"}, Sort: []model.KibanaSort{},
+		SampleSize: 500, Interval: "auto",
+	}
+	savedSearch, err := app.W.Queries.SaveDiscover(bridge.QueriesSaveDiscoverArgs{ConnectionID: conn.ID, Name: "errors", Body: savedBody})
+	if err != nil {
+		t.Fatalf("SaveDiscover: %v", err)
+	}
+	listArgs := bridge.QueriesListDiscoverArgs{ConnectionID: conn.ID}
+	beforeRestart, err := app.W.Queries.ListDiscover(listArgs)
+	if err != nil || len(beforeRestart) != 1 || beforeRestart[0].ID != savedSearch.ID {
+		t.Fatalf("ListDiscover = %+v (%v), want the one saved search", beforeRestart, err)
+	}
 	if st, err := app.W.Connections.Disconnect(bridge.ConnectionsIDArgs{ID: conn.ID}); err != nil || st.Status == "connected" {
 		t.Fatalf("Disconnect = %+v (%v)", st, err)
+	}
+	app.Restart()
+	afterRestart, err := app.W.Queries.ListDiscover(listArgs)
+	if err != nil || !reflect.DeepEqual(beforeRestart, afterRestart) {
+		t.Fatalf("saved searches changed across a relaunch (%v):\nbefore %+v\nafter  %+v", err, beforeRestart, afterRestart)
+	}
+	var stored map[string]any
+	if err := json.Unmarshal(afterRestart[0].Body, &stored); err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range []string{"rows", "results", "hits", "buckets", "page"} {
+		if _, ok := stored[k]; ok {
+			t.Fatalf("saved search body stores %q: %v", k, stored)
+		}
+	}
+	if st := connect(t, app, conn.ID); st.Status != "connected" {
+		t.Fatalf("Connect after relaunch = %+v", st)
 	}
 }

@@ -35,7 +35,8 @@ func (f *fixture) maskingPrompt(t *testing.T) bool {
 
 func (f *fixture) execSQL(t *testing.T, stmts ...string) {
 	t.Helper()
-	db, err := sql.Open("sqlite", f.dbPath)
+	// The background column review reads the file too; wait for its lock instead of failing.
+	db, err := sql.Open("sqlite", f.dbPath+"?_pragma=busy_timeout(5000)")
 	if err != nil {
 		t.Fatal(err)
 	}

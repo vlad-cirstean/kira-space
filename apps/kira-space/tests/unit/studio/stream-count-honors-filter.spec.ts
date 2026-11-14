@@ -12,6 +12,7 @@ import type { ConnectionState } from '@shared/domain/connection';
 import { restoreAfterEach } from '@workbench/testing/unit/restoreAfterEach';
 import { setActivePinia } from 'pinia';
 import { pinia } from '../../../frontend/src/state/pinia';
+import { benignTabsSave } from './support/benignTabsSave.ts';
 import { seedConnectionRecord } from './support/connectionRecord.ts';
 
 setActivePinia(pinia);
@@ -30,6 +31,7 @@ const { control } = await import('../../../frontend/src/studio/bridge/control');
 // permanently for every later spec in the process.
 (control as unknown as { tabsSave: typeof control.tabsSave }).tabsSave = () => Promise.resolve();
 restoreAfterEach(control);
+await benignTabsSave();
 const { useConnectionsStore } = await import('../../../frontend/src/studio/state/connections');
 const connectionsStore = useConnectionsStore();
 const { useTabsStore } = await import('../../../frontend/src/state/tabs');

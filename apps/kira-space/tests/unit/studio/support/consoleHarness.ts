@@ -1,6 +1,7 @@
 import { restoreAfterEach } from '@workbench/testing/unit/restoreAfterEach';
 import { setActivePinia } from 'pinia';
 import { pinia } from '../../../../frontend/src/state/pinia';
+import { benignTabsSave } from './benignTabsSave.ts';
 
 /** Shared pinia/bridge/store bootstrap for the console-*.spec.ts run()/stop() race tests (P12
  *  rounds 1-2) — each spec drives ConsoleViewStore end to end against real store wiring. Pass
@@ -31,6 +32,7 @@ export async function bootstrapConsole(opts: { control?: boolean } = {}) {
   (controlMod.control as unknown as { tabsSave: () => Promise<void> }).tabsSave = () =>
     Promise.resolve();
   restoreAfterEach(controlMod.control);
+  await benignTabsSave();
 
   let control: typeof import('../../../../frontend/src/studio/bridge/control').control | undefined;
   if (opts.control) {

@@ -288,6 +288,22 @@ func nestedDeferredSecretRefs(value string, pipeline []string, secrets map[strin
 	return out
 }
 
+// unresolvedNames lists, in first-seen order, every referenced name in fields that is not a key of secrets.
+func unresolvedNames(fields []string, secrets map[string]string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, f := range fields {
+		for _, n := range Names(f) {
+			if _, ok := secrets[n]; ok || seen[n] {
+				continue
+			}
+			seen[n] = true
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
 // Names returns every distinct {{name}} reference in text, in first-seen order — the same scan
 // with no lookup and no classification. ResolveRequest uses it to decide, before ever querying a
 // secret, whether a field references anything at all. The *bare* name (ParseReference's
@@ -489,8 +505,8 @@ func (r *Resolver) Used() []UsedSecret {
 // It opens every secret a field references, reachable from collectionID/environmentID
 // (repos.VariablesRepo.SecretRefsFor already applies the environment-over-collection precedence),
 // and resolves every remaining {{name}} reference across the same field list as stage 1. A
-// reference that names no secret — a stale id, a typo — is left verbatim; a secret that is unset
-// or unreadable fails the send, naming it.
+// reference that names no secret — a stale id, a typo — fails the send listing the names (OQ-API-2); a
+// secret that is unset or unreadable fails it too, naming the secret.
 //
 // The fourth return, `used`, is every secret span substituted — Resolver.Used()'s own
 // []UsedSecret, one entry per distinct (name, placeholder) pair. bridge/http.go builds a
@@ -514,6 +530,12 @@ func (s *Service) ResolveRequest(
 	resolver, err := s.NewResolver(collectionID, environmentID)
 	if err != nil {
 		return url, headers, body, nil, err
+	}
+	// The renderer resolved every plain and dynamic reference already, so a name that is not one of
+	// this scope's secrets is a variable with no value. Send nothing rather than a literal {{name}}.
+	if names := unresolvedNames(referencedFields(url, headers, body), resolver.refs); len(names) > 0 {
+		return url, headers, body, nil, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.http.unresolvedVariables.body",
+			map[string]string{"names": strings.Join(names, ", ")})
 	}
 	if !resolver.Any() {
 		return url, headers, body, nil, nil

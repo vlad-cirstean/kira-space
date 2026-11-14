@@ -3,6 +3,8 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"strings"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
@@ -105,16 +107,35 @@ func execute(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx, statements
 	pages := make([]page.Page, len(statements))
 	for i, stmt := range statements {
 		if err := adapters.CheckCancelled(ctx); err != nil {
-			return nil, err
+			return nil, adapters.AtStatement(err, i)
 		}
 		p, err := runOneStatement(ctx, conn, stmt, limit)
 		if err != nil {
-			return nil, err
+			return nil, adapters.AtStatement(err, i)
 		}
 		pages[i] = p
 		limit = adapters.RemainingCap(limit, p.Size())
 	}
 	return pages, nil
+}
+
+// reportTransaction records the session's transaction state on op. modernc.org/sqlite does not
+// expose sqlite3_get_autocommit, so it probes: BEGIN fails with "cannot start a transaction within
+// a transaction" exactly when one is open, and a BEGIN that succeeds is rolled back at once (a
+// deferred BEGIN takes no lock). The probe has its own deadline, so a cancelled batch still reports.
+func reportTransaction(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx) {
+	probeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	if _, err := conn.ExecContext(probeCtx, "BEGIN"); err != nil {
+		if strings.Contains(err.Error(), "within a transaction") {
+			op.SetTransaction(adapters.TxOpen)
+		}
+		return
+	}
+	if _, err := conn.ExecContext(probeCtx, "ROLLBACK"); err != nil {
+		return
+	}
+	op.SetTransaction(adapters.TxIdle)
 }
 
 // RedactStatement satisfies adapters.StatementRedactor: string literals masked, comments dropped.

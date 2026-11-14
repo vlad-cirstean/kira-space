@@ -39,7 +39,13 @@ export default defineConfig({
     {
       name: 'ui-clipboard',
       testDir: './tests/ui',
-      testMatch: ['studio/grid-copy-menu.spec.ts'],
+      testMatch: [
+        'studio/grid-copy-menu.spec.ts',
+        'studio/grid-clipboard-roundtrip.spec.ts',
+        'studio/grid-clipboard-bytes.spec.ts',
+        'studio/grid-copy-insert.spec.ts',
+        'studio/native-copy.spec.ts',
+      ],
       use: { browserName: 'chromium' },
       fullyParallel: true,
       workers: '100%',

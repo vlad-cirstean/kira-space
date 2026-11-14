@@ -1,0 +1,32 @@
+{
+  "mongo#console": {
+    "code": "E_UNSUPPORTED",
+    "message": "This connection is read-only."
+  },
+  "mongo#mutate": {
+    "code": "E_UNSUPPORTED",
+    "message": "This connection is read-only."
+  },
+  "redis#console": {
+    "code": "E_UNSUPPORTED",
+    "message": "This connection is read-only."
+  },
+  "redis#mutate": {
+    "code": "E_UNSUPPORTED",
+    "message": "This connection is read-only."
+  },
+  "sqlite#console#drop": {
+    "code": "E_UNSUPPORTED",
+    "message": "attempt to write a readonly database (8)",
+    "statement": "drop table notes"
+  },
+  "sqlite#console#insert": {
+    "code": "E_UNSUPPORTED",
+    "message": "attempt to write a readonly database (8)",
+    "statement": "insert into notes values (9,'x')"
+  },
+  "sqlite#mutate": {
+    "code": "E_UNSUPPORTED",
+    "message": "This connection is read-only."
+  }
+}

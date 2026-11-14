@@ -1,0 +1,62 @@
+{
+  "mutate:acl-confirmed-ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "$value": "new"
+        },
+        "key": {
+          "$aclReset": "1",
+          "$etag": "<masked>",
+          "_key": "flow/acl.txt"
+        },
+        "kind": "update"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
+  "mutate:acl-conflict": {
+    "Code": "E_CONFLICT",
+    "Details": "{\"aclUnreadable\":true}",
+    "Message": "The access control list of this object can’t be read, so saving resets it to the default."
+  },
+  "mutate:acl-guarded-ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "$value": "new"
+        },
+        "key": {
+          "$etag": "<masked>",
+          "_key": "flow/acl.txt"
+        },
+        "kind": "update"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
+  "mutate:ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "$value": "{\"a\":2}"
+        },
+        "key": {
+          "$etag": "<masked>",
+          "_key": "flow/edit.json"
+        },
+        "kind": "update"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  }
+}

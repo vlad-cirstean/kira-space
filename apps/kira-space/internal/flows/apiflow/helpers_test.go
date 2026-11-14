@@ -56,6 +56,8 @@ func newCollection(t *testing.T, app *flowharness.App, name string) model.Collec
 	return c
 }
 
+func ptr[T any](v T) *T { return &v }
+
 func savedGet() model.SavedRequest {
 	return model.SavedRequest{Method: "GET", BodyMode: "none", CodeLanguage: "json"}
 }

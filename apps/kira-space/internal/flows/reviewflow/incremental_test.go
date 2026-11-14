@@ -167,3 +167,45 @@ func TestReviewFilesAfterCommit(t *testing.T) {
 	}
 	fileEntry(t, got.Files, "b.txt")
 }
+
+// J-REV-001: reviewed marks follow the diff, not the commits. A rebase that leaves a file's change as it
+// was keeps the mark; a file whose content changed keeps its mark but reads changed since review.
+func TestReviewMarksAcrossRebase(t *testing.T) {
+	app := flowharness.New(t)
+	gs := app.OpenGitStream()
+	repo, _ := twoFileFeature(app)
+	repo.Commit("feature b", map[string]string{"b.txt": "alpha\nbeta\ngamma\ndelta\n"})
+	id := openRepo(t, gs, repo.Dir)
+	markFile(t, gs, id, "feature", "a.txt", true, nil)
+	markFile(t, gs, id, "feature", "b.txt", true, nil)
+
+	// main moves on in an unrelated file; feature rebases onto it with both changes intact.
+	external(t, gs, func() {
+		repo.Git("checkout", "-q", "main")
+		repo.Commit("main moves", map[string]string{"c.txt": "unrelated\n"})
+		repo.Git("checkout", "-q", "feature")
+		repo.Git("rebase", "main")
+	})
+	files := reviewFiles(t, gs, id, "feature", "main")
+	for _, p := range []string{"a.txt", "b.txt"} {
+		if e := fileEntry(t, files, p); e.Review.Kind != "full" || e.Review.ChangedSinceReview {
+			t.Fatalf("%s after a same-content rebase = %+v, want full and unchanged since review", p, e.Review)
+		}
+	}
+
+	// A rewrite of b.txt's change flags it changed since review (pin: the mark stays, the delta shows);
+	// a.txt stays clean.
+	external(t, gs, func() {
+		repo.Commit("rework b", map[string]string{"b.txt": "alpha\nbeta\ngamma\ndelta\nepsilon\n"})
+	})
+	files = reviewFiles(t, gs, id, "feature", "main")
+	if e := fileEntry(t, files, "a.txt"); e.Review.Kind != "full" || e.Review.ChangedSinceReview {
+		t.Fatalf("a.txt after an unrelated rework = %+v, want full and unchanged", e.Review)
+	}
+	if e := fileEntry(t, files, "b.txt"); !e.Review.ChangedSinceReview {
+		t.Fatalf("b.txt after its content changed = %+v, want changed since review", e.Review)
+	}
+	if d := sinceReview(t, gs, id, "feature", "b.txt"); d.DeltaSource == "unchanged" {
+		t.Fatalf("b.txt since-review delta source = %q after a change", d.DeltaSource)
+	}
+}

@@ -49,6 +49,7 @@ describe('looksLikeCurlCommand', () => {
 
   test('a token that only starts with curl', () => {
     expect(looksLikeCurlCommand('curl-config --version')).toBe(false);
+    expect(looksLikeCurlCommand('wget https://h')).toBe(false);
     expect(looksLikeCurlCommand('curlopts https://x.dev')).toBe(false);
   });
 

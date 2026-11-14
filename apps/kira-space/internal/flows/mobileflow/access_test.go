@@ -3,13 +3,16 @@ package mobileflow_test
 import (
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -267,4 +270,183 @@ func TestPhoneExpiredDevice(t *testing.T) {
 		t.Fatalf("expired GET /api/me = %d %s", r.Status, r.Body)
 	}
 	app.Contract(t, "mobile-pairing", "http:GET /api/me#expired", r.raw(t))
+}
+
+// J-MOB-011: abuse of pairing and device tokens. Each attempt is refused, changes no state, and the
+// rate limits bite. The phone server runs on a manual clock, so no test waits real minutes.
+func TestPairingAbuse(t *testing.T) {
+	clock := fakeclock.New(time.Now())
+	app := flowharness.New(t, flowharness.WithMobileClock(clock.Now))
+	st := serve(t, app)
+	a, b := newPhone(t, st.AppURL), newPhone(t, st.AppURL)
+	deviceCount := func() int {
+		t.Helper()
+		d, err := app.W.Mobile.Devices()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(d)
+	}
+	noPrompt := func(what string) {
+		t.Helper()
+		if p := app.W.Mobile.PendingPairing(); p.Pending != nil || deviceCount() != 0 {
+			t.Fatalf("%s left a prompt %+v or a device", what, p.Pending)
+		}
+	}
+
+	// A code that is not four digits is refused before any prompt; the third refusal drains the
+	// burst and the next request from the address is rate limited, with Retry-After.
+	for i, code := range []string{"", "12345", "abcd", "1234"} {
+		r := b.send(http.MethodPost, "/api/pair", map[string]string{"label": "x", "code": code}, "")
+		if i < 3 && r.Status != http.StatusBadRequest {
+			t.Fatalf("code %q = %d, want 400", code, r.Status)
+		}
+		if i == 3 {
+			if r.Status != http.StatusTooManyRequests || r.Header.Get("Retry-After") == "" || r.code(t) != "E_RATE_LIMITED" {
+				t.Fatalf("fourth pairing attempt = %d %s, want 429 with Retry-After", r.Status, r.Body)
+			}
+		}
+	}
+	noPrompt("malformed and rate limited attempts")
+	clock.Advance(time.Minute)
+
+	// A request nobody answers expires on the pairing clock: the phone is told, a late Approve finds
+	// nothing, and no device or cookie exists.
+	done, pending := b.requestPairing(app, "Late phone", "1234")
+	clock.Advance(121 * time.Second)
+	out := <-done
+	if out.err != nil || out.reply.Status != http.StatusForbidden || out.reply.code(t) != "E_PAIRING_DENIED/timeout" {
+		t.Fatalf("expired pairing = %+v", out.reply)
+	}
+	if res, _ := app.W.Mobile.Approve(bridge.MobileIDArgs{ID: pending.RequestID}); res.Result != "alreadyResolved" {
+		t.Fatalf("Approve after expiry = %+v, want alreadyResolved", res)
+	}
+	noPrompt("an expired request")
+	if r := b.get("/api/me"); r.Status != http.StatusUnauthorized {
+		t.Fatalf("expired phone GET /api/me = %d", r.Status)
+	}
+	clock.Advance(time.Minute)
+
+	// An approved request cannot be approved again: one device row, and a phone that already holds
+	// its cookie gets its own device back instead of a second prompt.
+	doneA, pendA := a.requestPairing(app, "Ana", "4821")
+	if res, err := app.W.Mobile.Approve(bridge.MobileIDArgs{ID: pendA.RequestID}); err != nil || res.Result != "resolved" {
+		t.Fatalf("Approve = %+v, %v", res, err)
+	}
+	if out := <-doneA; out.err != nil || out.reply.Status != http.StatusOK {
+		t.Fatalf("pairing = %+v", out)
+	}
+	if res, _ := app.W.Mobile.Approve(bridge.MobileIDArgs{ID: pendA.RequestID}); res.Result != "alreadyResolved" {
+		t.Fatalf("replayed Approve = %+v, want alreadyResolved", res)
+	}
+	if r := a.send(http.MethodPost, "/api/pair", map[string]string{"label": "again", "code": "9999"}, ""); r.Status != http.StatusOK {
+		t.Fatalf("pairing with a valid cookie = %d %s", r.Status, r.Body)
+	}
+	if p := app.W.Mobile.PendingPairing(); p.Pending != nil || deviceCount() != 1 {
+		t.Fatalf("after a replay: prompt %+v, %d devices, want none and 1", p.Pending, deviceCount())
+	}
+
+	// The first phone's cookie, carried by a second device after the first was revoked, is refused.
+	devices, _ := app.W.Mobile.Devices()
+	u, _ := url.Parse(a.base)
+	b.client.Jar.SetCookies(u, a.client.Jar.Cookies(u))
+	if r := b.get("/api/me"); r.Status != http.StatusOK {
+		t.Fatalf("a cookie is the device: GET /api/me = %d, want 200 until revoked", r.Status)
+	}
+	if err := app.W.Mobile.Revoke(bridge.MobileIDArgs{ID: devices[0].ID}); err != nil {
+		t.Fatal(err)
+	}
+	if r := b.get("/api/me"); r.Status != http.StatusUnauthorized || r.code(t) != "E_REVOKED" {
+		t.Fatalf("revoked cookie on a second device = %d %s", r.Status, r.Body)
+	}
+	if r := b.post("/api/ade/later/items", map[string]string{"title": "sneak"}); r.Status != http.StatusUnauthorized {
+		t.Fatalf("write with a revoked cookie = %d", r.Status)
+	}
+	if got := shelfTitles(t, app, adewire.ShelfLater, "sneak"); len(got) != 0 {
+		t.Fatalf("a revoked cookie changed Later: %v", got)
+	}
+
+	// Guessing tokens locks the address out after ten failures, even for a paired phone, until the
+	// limit refills.
+	clock.Advance(time.Minute)
+	c := newPhone(t, st.AppURL)
+	c.pair(app, "Cy")
+	forged := newPhone(t, st.AppURL)
+	guess := func() reply {
+		// A rejected credential is cleared from the jar, so each guess brings its own.
+		forged.client.Jar.SetCookies(u, []*http.Cookie{{Name: "kira-space-device", Value: devices[0].ID + ".guess", Path: "/"}})
+		return forged.get("/api/me")
+	}
+	for i := range 10 {
+		if r := guess(); r.Status != http.StatusUnauthorized {
+			t.Fatalf("guess %d = %d, want 401", i, r.Status)
+		}
+	}
+	if r := guess(); r.Status != http.StatusTooManyRequests {
+		t.Fatalf("guess 11 = %d, want 429", r.Status)
+	}
+	if r := c.get("/api/me"); r.Status != http.StatusTooManyRequests {
+		t.Fatalf("a paired phone on a locked address = %d, want 429", r.Status)
+	}
+	clock.Advance(2 * time.Minute)
+	if r := c.get("/api/me"); r.Status != http.StatusOK {
+		t.Fatalf("paired phone after the lockout = %d, want 200", r.Status)
+	}
+}
+
+// J-MOB-010: a paired phone loses the server (network gone, app relaunched), comes back and is the
+// same device while its 30 days last. After they pass it is refused and told to pair again.
+func TestPairedPhoneReconnectsThenExpires(t *testing.T) {
+	clock := fakeclock.New(time.Now())
+	app := flowharness.New(t, flowharness.WithMobileClock(clock.Now))
+	st := serve(t, app)
+	a := newPhone(t, st.AppURL)
+	deviceID := a.pair(app, "Ana's phone")
+	stream := a.events()
+
+	if _, err := app.W.Mobile.SetEnabled(bridge.MobileSetEnabledArgs{Enabled: false}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-stream.closed:
+	case <-time.After(waitFor):
+		t.Fatal("event stream still open after the server stopped")
+	}
+	unreachable(t, st.AppURL)
+
+	app.Restart()
+	st2, err := app.W.Mobile.SetEnabled(bridge.MobileSetEnabledArgs{Enabled: true})
+	if err != nil || !st2.Running {
+		t.Fatalf("SetEnabled after relaunch = %+v, %v", st2, err)
+	}
+	a.base = strings.TrimSuffix(st2.AppURL, "/")
+	var me struct {
+		DeviceID string `json:"deviceId"`
+	}
+	r := a.get("/api/me")
+	if r.Status != http.StatusOK {
+		t.Fatalf("reconnect GET /api/me = %d %s", r.Status, r.Body)
+	}
+	r.json(t, &me)
+	if me.DeviceID != deviceID {
+		t.Fatalf("reconnected as %q, want the same device %q", me.DeviceID, deviceID)
+	}
+	resumed := a.events()
+	if _, err := app.W.AdeTask.CaptureTask(ctx, adewire.CaptureTaskArgs{Title: "after reconnect"}); err != nil {
+		t.Fatal(err)
+	}
+	resumed.wait(t, adewire.ChannelBoard, waitFor)
+
+	clock.Advance(30*24*time.Hour - time.Minute)
+	if r := a.get("/api/me"); r.Status != http.StatusOK {
+		t.Fatalf("one minute before expiry = %d %s", r.Status, r.Body)
+	}
+	clock.Advance(2 * time.Minute)
+	r = a.get("/api/me")
+	if r.Status != http.StatusUnauthorized || r.code(t) != "E_EXPIRED" {
+		t.Fatalf("after expiry = %d %s, want E_EXPIRED", r.Status, r.Body)
+	}
+	if r := a.get("/api/ade/board"); r.Status != http.StatusUnauthorized {
+		t.Fatalf("board after expiry = %d, want 401", r.Status)
+	}
 }

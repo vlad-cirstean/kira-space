@@ -9,6 +9,7 @@ import type {
   HttpTimeline,
 } from '@shared/domain/http';
 import { newUuid } from '@shared/ids';
+import { t } from '@theme/i18n';
 import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { variablesForSend } from '../../api/state/variables';
@@ -16,6 +17,7 @@ import { findHttpRequestTab } from '../../api/tabs';
 import { control } from '../../bridge/control';
 import { useTabIncognitoStore } from '../../state/tabIncognito';
 import { createSubstituter, resolvePairs } from '../shared/request/resolve';
+import { unresolvedOf } from '../shared/request/unresolved';
 import { classifyLoadError, createRuntimeStore, stopOp } from '../shared/viewOp';
 import { invalidateJarCookies } from './cookies';
 import { useHttpHistoryStore } from './history';
@@ -188,6 +190,21 @@ export const useHttpRequestViewStore = defineStore('httpRequestView', () => {
       // Tab closed or Stop pressed during pre-flight: Go never saw this op, so never send it.
       if (!findHttpRequestTab(tabId) || rt.opId !== opId) return;
       rt.preflight = false;
+
+      // OQ-API-2: a name no variable defines blocks the send. Same text Go's HttpService.Send gives.
+      const unresolved = unresolvedOf(resolved.refs);
+      if (unresolved.length > 0) {
+        rt.opId = null;
+        rt.status = 'error';
+        rt.response = null;
+        rt.error = {
+          code: 'E_BAD_REQUEST',
+          message: t('backend.studio.http.unresolvedVariables.body', {
+            names: unresolved.map((r) => r.name).join(', '),
+          }),
+        };
+        return;
+      }
 
       const response = await control.httpSend({
         opId,

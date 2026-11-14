@@ -2,6 +2,7 @@ package mysqlfamily
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/go-sql-driver/mysql"
 
@@ -20,13 +21,13 @@ func mapError(err error) *adapters.Error {
 	if errors.As(err, &myErr) {
 		switch myErr.Number {
 		case 1045:
-			return adapters.New(adapters.CodeAuth, message, err)
+			return withErrno(adapters.New(adapters.CodeAuth, message, err), myErr.Number)
 		case 1317:
-			return adapters.New(adapters.CodeCancelled, message, err)
+			return withErrno(adapters.New(adapters.CodeCancelled, message, err), myErr.Number)
 		case 1792, 1290:
-			return adapters.New(adapters.CodeQuery, message, adapters.RefusedWrite(err))
+			return withErrno(adapters.New(adapters.CodeQuery, message, adapters.RefusedWrite(err)), myErr.Number)
 		}
-		return adapters.New(adapters.CodeQuery, message, err)
+		return withErrno(adapters.New(adapters.CodeQuery, message, err), myErr.Number)
 	}
 
 	if ne := adapters.ClassifyNetError(err); ne.DNS || ne.Refused || ne.NetTimeout {
@@ -34,4 +35,10 @@ func mapError(err error) *adapters.Error {
 	}
 
 	return adapters.New(adapters.CodeQuery, message, err)
+}
+
+// withErrno records the server error number as the `sqlErrno` detail. The console reads it to tell
+// a statement the parser rejected (1064: no implicit commit ran) from one that failed later.
+func withErrno(e *adapters.Error, number uint16) *adapters.Error {
+	return e.WithDetails(`{"sqlErrno":` + strconv.Itoa(int(number)) + `}`)
 }

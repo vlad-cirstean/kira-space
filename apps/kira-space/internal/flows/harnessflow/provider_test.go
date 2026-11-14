@@ -559,3 +559,72 @@ func TestLeanProviderSeams(t *testing.T) {
 		t.Fatalf("run = %+v, want a failure naming %q", run, want)
 	}
 }
+
+// J-HAR-001, J-X-015. Toggling hermetic mid-day reaches every launch site at its next launch: the
+// headless smart script, the headless ADE step and the interactive step command. Earlier launches
+// keep what they got. experimental.memory feeds no launch, so it is not part of the argv.
+func TestHermeticToggleReachesEveryLaunch(t *testing.T) {
+	fake := fakeprovider.New(map[string]json.RawMessage{})
+	app := flowharness.New(t, flowharness.WithProvider(fake), flowharness.WithTrackerGrace(time.Second))
+	setProvider(t, app, fakeprovider.ID)
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	repoRec, err := app.W.CodeWorkspace.ImportRepo(ctx, bridge.CodeWorkspaceImportArgs{Path: repo.Dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
+		Name: "ask", Kind: scripts.KindSmart, Command: "Say hi", Color: "blue", Smart: &scripts.Smart{Model: "deep"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for round, on := range []bool{false, true, false} {
+		app.SetHermetic(t, on)
+		args := scriptruns.RunArgs{ScriptID: rec.ID}
+		pv, err := app.W.ScriptRuns.Preview(args)
+		if err != nil {
+			t.Fatalf("round %d Preview: %v", round, err)
+		}
+		started, err := app.W.ScriptRuns.Start(scriptruns.StartArgs{RunArgs: args, Hash: pv.Hash})
+		if err != nil {
+			t.Fatalf("round %d Start: %v", round, err)
+		}
+		testx.WaitUntil(t, waitFor, func() bool {
+			r, _ := app.W.ScriptRuns.Get(scriptruns.IDArgs{ID: started.RunID})
+			return r.State == "done"
+		})
+		flowID := fmt.Sprintf("flow%d", round)
+		tk := task(t, app, repoRec.ID, flowID, "id: "+flowID+"\nname: Flow\nsteps:\n"+
+			"  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 1m\n    prompt: work on {branch} in {repo}\n"+
+			"  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n")
+		br := branchOf(t, app, tk.ID, repoRec.ID)
+		if _, err := app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: tk.ID, BranchNames: map[string]string{br.ID: fmt.Sprintf("feat/h-%d", round)}}); err != nil {
+			t.Fatal(err)
+		}
+		testx.WaitUntil(t, waitFor, func() bool { return latestRun(t, app, tk.ID, "one").State == "done" })
+		step, err := app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: tk.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.HasSuffix(step.Command, " --hermetic"); got != on {
+			t.Fatalf("round %d interactive command %q: hermetic flag = %v, want %v", round, step.Command, got, on)
+		}
+		// Two headless launches per round: the smart script, then the ADE step.
+		head := fake.Headless()
+		if len(head) != 2*(round+1) {
+			t.Fatalf("round %d: fake headless calls = %d, want %d", round, len(head), 2*(round+1))
+		}
+		for _, h := range head[2*round:] {
+			if h.Hermetic != on {
+				t.Fatalf("round %d headless call %+v: hermetic = %v, want %v", round, h, h.Hermetic, on)
+			}
+		}
+	}
+	// Earlier rounds kept what they got.
+	head := fake.Headless()
+	for i, want := range []bool{false, false, true, true, false, false} {
+		if head[i].Hermetic != want {
+			t.Fatalf("headless call %d hermetic = %v, want %v", i, head[i].Hermetic, want)
+		}
+	}
+}

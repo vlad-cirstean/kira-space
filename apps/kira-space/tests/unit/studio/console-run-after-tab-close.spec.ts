@@ -102,3 +102,64 @@ describe('console run() closed mid auto-explain (P108 Part 11 F1)', () => {
     expect(getPage(resultPageKey(tabId, 0))).toBeNull();
   });
 });
+
+// Round-2 M1: the transaction lives on the session, not the tab. Closing mid-run finds nothing open
+// yet; the run's own outcome (a success that opened one, or a failure the engine reports open) is
+// tracked even though the tab is gone, and the rollback goes out then.
+describe('console run() that opens a transaction after its tab closed', () => {
+  async function runClosedMidRun(
+    connectionId: string,
+    settle: (call: ReturnType<typeof deferred<ExecuteResponse>>) => void,
+  ): Promise<string[][]> {
+    connectionsStore.records.push({
+      id: connectionId,
+      // biome-ignore lint/suspicious/noExplicitAny: a minimal fixture, not a real ConnectionSummary
+      ...({ kind: 'postgres', name: 'x', color: 'blue' } as any),
+    } as ConnectionSummary);
+    const tabId = tabsStore.openConsoleTab(connectionId, 'db');
+    const call = deferred<ExecuteResponse>();
+    const sent: string[][] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: a minimal stub, not the real data.execute
+    (data as any).execute = (req: { statements: string[] }): Promise<ExecuteResponse> => {
+      sent.push(req.statements);
+      return sent.length === 1 ? call.promise : Promise.resolve({ pages: [] });
+    };
+    // biome-ignore lint/suspicious/noExplicitAny: a minimal stub, not the real control.opsCancel
+    (control as any).opsCancel = () => Promise.resolve();
+
+    const running = consoleViewStore.run(tabId, ['BEGIN', 'INSERT INTO t VALUES (1)']);
+    await Promise.resolve();
+    cleanupTabRuntime(tabId);
+    expect(sent).toHaveLength(1);
+    settle(call);
+    await running;
+    await sleep(0);
+    return sent;
+  }
+
+  test('a run that finishes with the transaction open is rolled back', async () => {
+    const sent = await runClosedMidRun('conn-tx-after-close-ok', (call) =>
+      call.resolve({ pages: [], transaction: 'open' }),
+    );
+    expect(sent).toEqual([['BEGIN', 'INSERT INTO t VALUES (1)'], ['ROLLBACK']]);
+  });
+
+  test('a run that fails with the transaction open is rolled back', async () => {
+    const sent = await runClosedMidRun('conn-tx-after-close-fail', (call) =>
+      call.reject(
+        Object.assign(new Error('cancelled'), {
+          code: 'E_CANCELLED',
+          details: { statementIndex: 1, inTransaction: true },
+        }),
+      ),
+    );
+    expect(sent).toEqual([['BEGIN', 'INSERT INTO t VALUES (1)'], ['ROLLBACK']]);
+  });
+
+  test('a run that leaves nothing open sends no rollback', async () => {
+    const sent = await runClosedMidRun('conn-tx-after-close-idle', (call) =>
+      call.resolve({ pages: [], transaction: 'idle' }),
+    );
+    expect(sent).toEqual([['BEGIN', 'INSERT INTO t VALUES (1)']]);
+  });
+});

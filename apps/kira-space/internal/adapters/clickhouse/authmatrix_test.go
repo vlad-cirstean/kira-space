@@ -65,6 +65,8 @@ func TestClickHouse_AuthMatrix(t *testing.T) {
 				// The posture half of the cross product: kira_admin reaches what kira_ro's own
 				// system-table SELECT grant cannot (see the pinned read below).
 				testsupport.ReadFirstPage(testsupport.NodePath(f.Config.ID, testsupport.Seg("database", "system"), testsupport.Seg("table", "databases"))),
+				chAnalyticTypes(f.Config),
+				chConsoleFormat(f.Config),
 			},
 		},
 		{

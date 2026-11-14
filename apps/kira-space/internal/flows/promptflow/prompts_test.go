@@ -271,3 +271,84 @@ func TestNotifyPromptsSetting(t *testing.T) {
 		t.Fatalf("%d notes posted with notifyPrompts off, want 0", got-before)
 	}
 }
+
+// J-PROMPT-010: through windows opening and closing, every prompt names exactly one live window,
+// is queued (no target) only while none exists, and a claim falls back to a live window when its
+// window closes. A dismissed prompt stays gone.
+func TestPromptsFollowWindows(t *testing.T) {
+	app, _, _ := newApp(t)
+	live := map[string]bool{}
+	open := func(key string, order int) {
+		addWindow(app, key, order)
+		live[key] = true
+	}
+	closeWin := func(key string) {
+		app.W.Windows.RemoveAndCount(key)
+		delete(live, key)
+	}
+	check := func(step string, want map[string]string) {
+		t.Helper()
+		all, err := app.W.PromptsSvc.List()
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]string{}
+		for _, p := range all {
+			if p.Kind != prompts.KindUpdate {
+				continue
+			}
+			got[p.ID] = p.Target
+			switch {
+			case len(live) == 0 && p.Target != "":
+				t.Fatalf("%s: %s targets %q with no window open, want queued", step, p.ID, p.Target)
+			case len(live) > 0 && !live[p.Target]:
+				t.Fatalf("%s: %s targets %q, not an open window %v", step, p.ID, p.Target, live)
+			}
+		}
+		for id, target := range want {
+			if got[id] != target {
+				t.Fatalf("%s: %s targets %q, want %q (all %v)", step, id, got[id], target, got)
+			}
+		}
+		if len(got) != len(want) {
+			t.Fatalf("%s: prompts %v, want %d of them", step, got, len(want))
+		}
+	}
+	raise := func(ref string) {
+		t.Helper()
+		if err := app.W.PromptsSvc.Raise(prompts.RaiseArgs{Kind: prompts.KindUpdate, Ref: ref}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	open("w1", 0)
+	open("w2", 1)
+	raise("1.0.0")
+	raise("2.0.0")
+	listed(t, app, prompts.KindUpdate, 2)
+	check("two windows", map[string]string{"update:1.0.0": "w1", "update:2.0.0": "w1"})
+
+	closeWin("w1")
+	check("main closed", map[string]string{"update:1.0.0": "w2", "update:2.0.0": "w2"})
+
+	open("w3", 2)
+	if err := app.W.PromptsSvc.Claim(prompts.ClaimArgs{ID: "update:2.0.0", WindowKey: "w3"}); err != nil {
+		t.Fatal(err)
+	}
+	check("one claimed", map[string]string{"update:1.0.0": "w2", "update:2.0.0": "w3"})
+
+	closeWin("w3")
+	check("claimant closed", map[string]string{"update:1.0.0": "w2", "update:2.0.0": "w2"})
+
+	if err := app.W.PromptsSvc.Dismiss(prompts.IDArgs{ID: "update:1.0.0"}); err != nil {
+		t.Fatal(err)
+	}
+	closeWin("w2")
+	check("no window", map[string]string{"update:2.0.0": ""})
+
+	open("w4", 3)
+	check("window back", map[string]string{"update:2.0.0": "w4"})
+	open("w5", 4)
+	closeWin("w4")
+	check("churn", map[string]string{"update:2.0.0": "w5"})
+}

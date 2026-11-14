@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
@@ -198,6 +199,8 @@ func (r ExecuteRequestWire) Validate() error {
 // ExecuteResponse is data-ops.ts's ExecuteResponse.
 type ExecuteResponse struct {
 	Pages []page.Page `json:"pages"`
+	// Transaction is the session's transaction state after the batch, for engines that report it.
+	Transaction adapters.TxState `json:"transaction"`
 }
 
 const maxLocalFilePathChars = 4096

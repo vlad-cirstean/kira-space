@@ -14,6 +14,7 @@ import { queryClient } from '@workbench/state/queryClient';
 import { restoreAfterEach } from '@workbench/testing/unit/restoreAfterEach';
 import { setActivePinia } from 'pinia';
 import { pinia } from '../../../frontend/src/state/pinia';
+import { benignTabsSave } from './support/benignTabsSave.ts';
 
 setActivePinia(pinia);
 
@@ -49,6 +50,7 @@ afterAll(() => {
 // tabs store's saveChain for every later spec.
 (control as unknown as { tabsSave: typeof control.tabsSave }).tabsSave = () => Promise.resolve();
 restoreAfterEach(control);
+await benignTabsSave();
 const { useVariablesStore } = await import('../../../frontend/src/studio/api/state/variables');
 const {
   apiVariablesKey,

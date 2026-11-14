@@ -4,12 +4,8 @@
 package apivars_test
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -159,7 +155,7 @@ func TestResolveRequestReturnsExactlyTheSecretsItSubstituted(t *testing.T) {
 
 	t.Run("empty when the request references no secret", func(t *testing.T) {
 		_, _, _, used, err := svc.ResolveRequest(
-			"https://api.example.com/orders?x={{plain}}",
+			"https://api.example.com/orders?x=plain",
 			nil, httpclient.Body{Mode: "none"}, collectionID, "",
 		)
 		if err != nil {
@@ -170,50 +166,24 @@ func TestResolveRequestReturnsExactlyTheSecretsItSubstituted(t *testing.T) {
 		}
 	})
 
-	// A reference that never resolves — a stale id, a typo, or a secret whose decrypt failed — is
-	// left verbatim in the URL by design. Resolver.Text/URLText always call Resolve with
-	// secretNames nil, so a name that turns out not to be any of this scope's secrets falls into
-	// the exact same branch a decrypt failure would — reproduced here with a plain unresolvable
-	// name, since the fixture already has a space in it (a real Postman variable-name shape,
-	// substitute.ts's own doc). The raw space used to reach net/http's own request line unescaped,
-	// which the *server* rejects with a 400 before ever reading a single header — driven through a
-	// real httpclient.Send against a real httptest server, not just url.Parse (which tolerates
-	// the raw space and never errors, so it alone would not have caught this).
-	t.Run("finding 6: an unresolved reference with a space in its name doesn't break the request line", func(t *testing.T) {
-		var gotRequestURI string
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			gotRequestURI = r.RequestURI
-			w.WriteHeader(http.StatusTeapot)
-		}))
-		defer srv.Close()
-
-		resolvedURL, _, _, _, err := svc.ResolveRequest(
-			srv.URL+"/orders?a={{base url}}&b=2",
-			nil, httpclient.Body{Mode: "none"}, collectionID, "",
+	// OQ-API-2: a reference that names no secret reaches stage 2 only when no variable defines it
+	// (the renderer resolved every plain one). The send fails listing the names, so no request
+	// line is ever built from a literal {{name}}.
+	t.Run("an unresolved reference fails the send and is listed once", func(t *testing.T) {
+		_, _, _, used, err := svc.ResolveRequest(
+			"https://api.example.com/orders?a={{base url}}&b={{missing | upper}}&c={{base url}}",
+			[]httpclient.Header{{Name: "X-A", Value: "{{nope}}"}}, httpclient.Body{Mode: "raw", Raw: "{{gone}}"}, collectionID, "",
 		)
-		if err != nil {
-			t.Fatalf("ResolveRequest: %v", err)
+		if err == nil || used != nil {
+			t.Fatalf("ResolveRequest = %v, used %+v; want an error and nothing used", err, used)
 		}
-		if strings.Contains(resolvedURL, "{{base url}}") {
-			t.Fatalf("resolvedURL = %q still has a raw space inside the unresolved reference", resolvedURL)
+		for _, name := range []string{"base url", "missing", "nope", "gone"} {
+			if !strings.Contains(err.Error(), name) {
+				t.Errorf("error %q does not list %q", err, name)
+			}
 		}
-		if !strings.Contains(resolvedURL, "{{base%20url}}") {
-			t.Fatalf("resolvedURL = %q, want the reference recognisable as {{base%%20url}}", resolvedURL)
-		}
-
-		resp, err := httpclient.Send(context.Background(), httpclient.Request{Method: "GET", URL: resolvedURL}, httpclient.Options{})
-		if err != nil {
-			t.Fatalf("Send: %v", err)
-		}
-		// The server received and parsed a well-formed request line — "the reference
-		// itself isn't found by the server" (it's an unresolved {{...}} token, not this app's
-		// concern) shows up as *this handler's own* status, never a client-side 400 from a
-		// malformed request line the server bounced before routing it anywhere.
-		if resp.Status != http.StatusTeapot {
-			t.Errorf("resp.Status = %d, want %d (the handler's own answer) — the request line reached the server intact", resp.Status, http.StatusTeapot)
-		}
-		if !strings.Contains(gotRequestURI, "b=2") {
-			t.Errorf("server saw RequestURI = %q, lost the second, unrelated query param", gotRequestURI)
+		if strings.Count(err.Error(), "base url") != 1 {
+			t.Errorf("error %q lists base url more than once", err)
 		}
 	})
 
@@ -273,27 +243,6 @@ func TestResolveRequestReturnsExactlyTheSecretsItSubstituted(t *testing.T) {
 		}
 		if len(dualEntries) != 2 {
 			t.Fatalf("dualEntries = %+v, want exactly 2 (one per distinct placeholder)", dualEntries)
-		}
-	})
-
-	// P17 D11: `|` joins the URL-unsafe set — an unresolved piped reference in the URL must not
-	// put a raw `|` into the request line, exactly as finding 6's own space did.
-	t.Run("D11: an unresolved piped reference in the URL is percent-encoded, pipe included", func(t *testing.T) {
-		resolvedURL, _, _, _, err := svc.ResolveRequest(
-			"https://api.example.com/orders?a={{missing | upper}}&b=2",
-			nil, httpclient.Body{Mode: "none"}, collectionID, "",
-		)
-		if err != nil {
-			t.Fatalf("ResolveRequest: %v", err)
-		}
-		if strings.Contains(resolvedURL, "{{missing | upper}}") {
-			t.Fatalf("resolvedURL = %q still has a raw pipe/space inside the unresolved reference", resolvedURL)
-		}
-		if !strings.Contains(resolvedURL, "{{missing%20%7C%20upper}}") {
-			t.Fatalf("resolvedURL = %q, want the reference recognisable as {{missing%%20%%7C%%20upper}}", resolvedURL)
-		}
-		if _, err := url.Parse(resolvedURL); err != nil {
-			t.Fatalf("url.Parse(%q): %v", resolvedURL, err)
 		}
 	})
 }

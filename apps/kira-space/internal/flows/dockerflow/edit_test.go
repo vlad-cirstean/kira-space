@@ -478,6 +478,15 @@ func TestRecreateRollback(t *testing.T) {
 		t.Fatalf("original running=%v name=%s, want restored and running as %s", in.Container.State.Running, in.Container.Name, box.name)
 	}
 	noTempContainers(t, d)
+	// J-DKR-013: neither volume is touched by the failed attempt.
+	for _, v := range []string{box.vol, box.anon} {
+		if _, err := d.Cli.VolumeInspect(context.Background(), v, client.VolumeInspectOptions{}); err != nil {
+			t.Fatalf("volume %s after rollback: %v, want kept", v, err)
+		}
+	}
+	if len(in.Container.Mounts) != 2 {
+		t.Fatalf("mounts after rollback = %+v, want both volumes still mounted", in.Container.Mounts)
+	}
 	app.Contract(t, "docker-edit", "DockerService.RecreateContainer#rollback", ie, editOpts(d, box, flowharness.Mask("message"))...)
 }
 
@@ -533,5 +542,86 @@ func TestRecreateRefusals(t *testing.T) {
 	}
 	if ok != 1 || failed != 1 {
 		t.Fatalf("outcomes ok=%d conflict=%d, want 1 and 1", ok, failed)
+	}
+}
+
+// J-DKR-011: in-place steps stop at the first failure and keep what landed (rename, limits); the
+// error names the failed step and the applied ones, and a corrected retry finishes the rest. This is
+// partial by design, each step being valid alone, so no all-or-nothing rollback exists.
+func TestUpdateContainerStopsMidway(t *testing.T) {
+	app, d := boot(t)
+	box := newEditBox(t, d, true)
+	svc := app.W.Docker
+
+	spec, err := svc.ContainerEditSpec(docker.IDArgs{ID: box.id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := spec.InPlace
+	want.Name = box.name + "-half"
+	want.Resources.Memory, want.Resources.MemorySwap = 96*mib, 192*mib
+	want.Networks = append(slices.Clone(want.Networks), docker.EditNetwork{Name: d.Prefix() + "no-such-net", Aliases: []string{}})
+	_, err = svc.UpdateContainer(docker.UpdateArgs{ID: box.id, BaseHash: spec.BaseHash, Spec: want})
+	ie := ipcCode(t, err)
+	if !strings.Contains(string(ie.Details), `"step":"network:`) || !strings.Contains(string(ie.Details), `"applied":["rename","resources"]`) {
+		t.Fatalf("err = %s %s, want a network step failure after rename and resources", ie.Code, ie.Details)
+	}
+	in, err := d.Cli.ContainerInspect(context.Background(), box.id, client.ContainerInspectOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimPrefix(in.Container.Name, "/") != want.Name || in.Container.HostConfig.Memory != 96*mib || !in.Container.State.Running {
+		t.Fatalf("container name=%s memory=%d running=%v, want the applied steps kept", in.Container.Name, in.Container.HostConfig.Memory, in.Container.State.Running)
+	}
+
+	fresh, err := svc.ContainerEditSpec(docker.IDArgs{ID: box.id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fresh.BaseHash == spec.BaseHash {
+		t.Fatal("base hash unchanged after a partial apply, want a new one")
+	}
+	retry := fresh.InPlace
+	retry.Resources.Memory, retry.Resources.MemorySwap = 80*mib, 160*mib
+	if _, err := svc.UpdateContainer(docker.UpdateArgs{ID: box.id, BaseHash: fresh.BaseHash, Spec: retry}); err != nil {
+		t.Fatalf("corrected retry: %v", err)
+	}
+}
+
+// J-DKR-012: a change made outside the editor after the form loaded makes the save a conflict; a
+// reload carries the outside change and saves.
+func TestUpdateContainerExternalChange(t *testing.T) {
+	app, d := boot(t)
+	box := newEditBox(t, d, true)
+	svc := app.W.Docker
+
+	spec, err := svc.ContainerEditSpec(docker.IDArgs{ID: box.id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := box.name + "-outside"
+	if _, err := d.Cli.ContainerRename(context.Background(), box.id, client.ContainerRenameOptions{NewName: outside}); err != nil {
+		t.Fatal(err)
+	}
+	mine := spec.InPlace
+	mine.Resources.Memory, mine.Resources.MemorySwap = 96*mib, 192*mib
+	_, err = svc.UpdateContainer(docker.UpdateArgs{ID: box.id, BaseHash: spec.BaseHash, Spec: mine})
+	if ie := ipcCode(t, err); ie.Code != "E_CONFLICT" {
+		t.Fatalf("save after outside rename = %s, want E_CONFLICT", ie.Code)
+	}
+	if in, err := d.Cli.ContainerInspect(context.Background(), box.id, client.ContainerInspectOptions{}); err != nil || in.Container.HostConfig.Memory != 64*mib {
+		t.Fatalf("memory after refused save = %v, %v, want untouched 64 MiB", in.Container.HostConfig.Memory, err)
+	}
+	fresh, err := svc.ContainerEditSpec(docker.IDArgs{ID: box.id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fresh.InPlace.Name != outside {
+		t.Fatalf("reloaded name = %q, want the outside rename %q", fresh.InPlace.Name, outside)
+	}
+	mine = fresh.InPlace
+	mine.Resources.Memory, mine.Resources.MemorySwap = 96*mib, 192*mib
+	if _, err := svc.UpdateContainer(docker.UpdateArgs{ID: box.id, BaseHash: fresh.BaseHash, Spec: mine}); err != nil {
+		t.Fatalf("save after reload: %v", err)
 	}
 }

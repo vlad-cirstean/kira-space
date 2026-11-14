@@ -3,6 +3,7 @@ package notifyflow_test
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -559,4 +561,108 @@ func TestRecurringScriptNotifies(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 		sink.none(t)
 	})
+}
+
+// J-NOTE-010: the focus matrix. A finished note is dropped while the app is focused or the window
+// shows that very tab; a needs-input note is dropped only when the window shows that tab. Every
+// other cell posts exactly one note.
+func TestNotifyFocusMatrix(t *testing.T) {
+	type view struct {
+		name string
+		f    *bridge.ReportFocusArgs
+		// watched is true when the window reports it is looking at tab-1.
+		watched bool
+	}
+	views := []view{
+		{"no report", nil, false},
+		{"window on the tab", &bridge.ReportFocusArgs{Focused: true, Module: "terminal", ActiveTerminalID: "tab-1"}, true},
+		{"window on another tab", &bridge.ReportFocusArgs{Focused: true, Module: "terminal", ActiveTerminalID: "tab-2"}, false},
+		{"blurred window on the tab", &bridge.ReportFocusArgs{Focused: false, Module: "terminal", ActiveTerminalID: "tab-1"}, false},
+		{"window in ADE", &bridge.ReportFocusArgs{Focused: true, Module: "ade", AdeTaskID: "some-task"}, false},
+	}
+	for _, kind := range []agentnotify.Kind{agentnotify.KindFinished, agentnotify.KindNeedsInput} {
+		for _, appFocused := range []bool{false, true} {
+			for _, v := range views {
+				t.Run(string(kind)+"/app focused "+strconv.FormatBool(appFocused)+"/"+v.name, func(t *testing.T) {
+					app, sink := newApp(t)
+					cwd := agentTab(t, app, "tab-1")
+					app.WindowMgr.SetAppFocused(appFocused)
+					if v.f != nil {
+						focus(t, app, *v.f)
+					}
+					if kind == agentnotify.KindFinished {
+						stop(t, app, "tab-1", cwd, "done")
+					} else {
+						hook(t, app, "tab-1", `{"hook_event_name":"Notification","notification_type":"permission_prompt","cwd":`+quote(cwd)+`,"message":"allow?"}`)
+					}
+					want := 1
+					if v.watched || (kind == agentnotify.KindFinished && appFocused) {
+						want = 0
+					}
+					if got := sink.all(); len(got) != want || (want == 1 && (got[0].Kind != kind || got[0].TerminalID != "tab-1" || got[0].WindowKey != window)) {
+						t.Fatalf("notes = %+v, want %d of kind %s for tab-1 in %s", got, want, kind, window)
+					}
+				})
+			}
+		}
+	}
+}
+
+// J-NOTE-011: a Monitor wait and background tasks hold back the finished note across many Stops;
+// the note comes once, with the final reply, after the real finish.
+func TestFinishedHeldAcrossMonitorWaits(t *testing.T) {
+	app, sink := newApp(t)
+	setCooldown(t, time.Millisecond)
+	cwd := agentTab(t, app, "tab-1")
+	for i := range 3 {
+		hook(t, app, "tab-1", `{"hook_event_name":"PreToolUse","tool_name":"Monitor","tool_use_id":"u`+strconv.Itoa(i)+`"}`)
+		stop(t, app, "tab-1", cwd, "still waiting")
+		sink.none(t)
+	}
+	// The wake arrives as a prompt; a Stop that still lists a running task is no finish either.
+	event(t, app, "tab-1", "UserPromptSubmit")
+	hook(t, app, "tab-1", `{"hook_event_name":"Stop","session_id":"s","cwd":`+quote(cwd)+`,"background_tasks":[{"id":"b1","type":"shell","status":"running"}],"last_assistant_message":"shell running"}`)
+	sink.none(t)
+	event(t, app, "tab-1", "UserPromptSubmit")
+	stop(t, app, "tab-1", cwd, "really done")
+	if n := sink.only(t); n.Kind != agentnotify.KindFinished || n.Body != "really done" {
+		t.Fatalf("note = %+v, want finished with the final reply", n)
+	}
+}
+
+// J-NOTE-012: a click answers in the window that owns the tab. With two windows each note focuses
+// its own and the reveal event goes only there; a task note goes to the main window.
+func TestClickFocusesOwningWindow(t *testing.T) {
+	app, sink := newApp(t)
+	const other = "w-other"
+	app.WindowMgr.Known[other] = true
+	claude(app, map[string][]fakeagent.Action{"*": {{WaitFile: filepath.Join(app.Root, "never")}}})
+	repo := app.NewRepo("proj")
+	repo.Commit("base", map[string]string{"a.txt": "a\n"})
+	importRepo(t, app, repo.Dir)
+	openAgent(t, app, "tab-main", repo.Dir)
+	if _, err := app.W.Terminal.Open(terminal.OpenArgs{
+		TerminalID: "tab-other", WindowKey: other, Cwd: repo.Dir, Cols: 100, Rows: 30, Command: "claude", LaunchKind: terminal.LaunchKindAgent,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	stop(t, app, "tab-other", repo.Dir, "from the other window")
+	n := sink.only(t)
+	if n.TerminalID != "tab-other" || n.WindowKey != other {
+		t.Fatalf("note = %+v, want tab-other in %s", n, other)
+	}
+	mark := app.Events.Mark()
+	app.W.AgentNotify.Click(map[string]any{"terminalId": n.TerminalID, "windowKey": n.WindowKey, "kind": string(n.Kind)})
+	if got := app.WindowMgr.Focused; len(got) != 1 || got[0] != other {
+		t.Fatalf("focused windows = %v, want [%s]", got, other)
+	}
+	evs := app.Events.Since(mark, bridge.ChannelAgentRevealTerminal)
+	if len(evs) != 1 || evs[0].Window != other {
+		t.Fatalf("reveal events = %+v, want one addressed to %s", evs, other)
+	}
+	var payload struct{ TerminalID string }
+	evs[0].Decode(t, &payload)
+	if payload.TerminalID != "tab-other" {
+		t.Fatalf("reveal payload = %+v", payload)
+	}
 }

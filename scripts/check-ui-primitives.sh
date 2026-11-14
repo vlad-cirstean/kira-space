@@ -102,6 +102,8 @@ U41 apps/kira-space/frontend/src/studio/editor/MonacoHost.vue # Monaco engine ho
 U62 apps/kira-space/frontend/src/studio/editor/MonacoHost.vue # Monaco engine host owns editor focus
 U41 apps/kira-space/frontend/src/studio/views/grid/SlickGridHost.vue # column-header click reads the Ctrl/Cmd mouse modifier, not a key chord
 U62 apps/kira-space/frontend/src/studio/views/grid/slick/editor.ts # SlickGrid cell editor owns its input focus
+U41 apps/kira-space/frontend/src/studio/views/grid/slick/editor.ts # cell editor keeps text-selection chords from reaching SlickGrid's range model, not a shortcut
+U47 apps/kira-space/frontend/src/studio/views/grid/slick/editor.ts # same guard names the arrow and page keys SlickGrid's range model hijacks; no list navigation
 U52 apps/kira-space/frontend/src/studio/views/shared/celleditor/timestamp.ts # spelling-preserving timestamp re-encoding
 U62 apps/kira-space/frontend/src/studio/views/console/ConsoleView.vue # Monaco host exposes focus(); not a DOM element focus
 U47 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # 2D arrow navigation between text inputs; useListNavigation ignores text fields

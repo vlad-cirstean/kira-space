@@ -643,7 +643,10 @@ func listAllTableNames(exec QueryExecutor, schema string) ([]string, error) {
 type ReadTarget struct {
 	QualifiedName QualifiedName
 	Columns       []model.ColumnMeta
-	PrimaryKey    []string
+	// PrimaryKey is the declared key, whatever its nullability: mutation identity and DDL.
+	PrimaryKey []string
+	// KeysetPrimaryKey is PrimaryKey when it is a safe keyset tiebreaker, else nil.
+	KeysetPrimaryKey []string
 	// UniqueKeys are unique indexes whose columns are all NOT NULL — keyset tiebreaker candidates.
 	UniqueKeys [][]string
 	// RowidColumn is 'rowid' (or one of its two aliases, whichever isn't shadowed by a real column)
@@ -741,8 +744,9 @@ func getReadTarget(exec QueryExecutor, schema, table string) (ReadTarget, error)
 	// here (before readPage/relationalpage.go's own selectTiebreaker ever sees it) rather than left
 	// to fall through to a unique key or rowid instead.
 	withoutRowid := hasRow && tableType != "view" && wr == 1
+	keysetPrimaryKey := primaryKey
 	if !pkIsKeysetEligible(primaryKey, columns, withoutRowid) {
-		primaryKey = nil
+		keysetPrimaryKey = nil
 	}
 
 	generated := make(map[string]bool)
@@ -754,7 +758,7 @@ func getReadTarget(exec QueryExecutor, schema, table string) (ReadTarget, error)
 
 	return ReadTarget{
 		QualifiedName: QualifiedName{Database: schema, Table: table},
-		Columns:       columns, PrimaryKey: primaryKey, UniqueKeys: uniqueKeys,
+		Columns:       columns, PrimaryKey: primaryKey, KeysetPrimaryKey: keysetPrimaryKey, UniqueKeys: uniqueKeys,
 		RowidColumn: rowidColumn, GeneratedColumns: generated,
 	}, nil
 }

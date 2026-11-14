@@ -2,6 +2,7 @@ import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ConnectionConfigView, ConnectionFileDetail } from '@shared/domain/connectionConfig';
 import type { ControlSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 import { connectionRow } from './support/tree';
 
@@ -48,17 +49,30 @@ const CONN: ConnectionSummary = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
+// The View answers dbflow TestConnectionSecrets recorded: the secret set, then deleted.
+const VIEW_SET = contract<ConnectionConfigView>(
+  'connection-secrets',
+  'ConnectionConfigService.View',
+);
+const VIEW_UNSET = contract<ConnectionConfigView>(
+  'connection-secrets',
+  'ConnectionConfigService.View#unset',
+);
+
 function view(available: boolean, set: boolean): ConnectionConfigView {
+  const recorded = set ? VIEW_SET : VIEW_UNSET;
   return {
+    ...recorded,
     dir: '/kira/connections',
-    files: [{ file: 'pg.yaml', id: CONN.id, name: 'Pg', problem: null, lastGood: false }],
-    secrets: [{ kind: 'password', name: 'pg.password', set, referenced: true }],
-    storage: {
-      available,
-      backend: available ? 'keychain' : 'unavailable',
-      insecureFallback: false,
-      reason: available ? null : 'the platform keychain could not be reached',
-    },
+    files: recorded.files.map((f) => ({ ...f, id: CONN.id })),
+    storage: available
+      ? recorded.storage
+      : {
+          available: false,
+          backend: 'unavailable',
+          insecureFallback: false,
+          reason: 'the platform keychain could not be reached',
+        },
   };
 }
 
@@ -73,7 +87,7 @@ function detail(set: boolean): ConnectionFileDetail {
     problem: null,
     lastGood: false,
     editable: true,
-    secrets: [{ kind: 'password', name: 'pg.password', set, referenced: true }],
+    secrets: (set ? VIEW_SET : VIEW_UNSET).secrets,
   };
 }
 

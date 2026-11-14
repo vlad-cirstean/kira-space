@@ -2,8 +2,10 @@ package bridge
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -126,6 +128,14 @@ var adeTaskContract = []error{repos.ErrReviewKind, ade.ErrSessionWrongTask, ade.
 func adeTaskError(err error) error {
 	if err == nil {
 		return nil
+	}
+	var loses *ade.SwitchLosesWorkError
+	if errors.As(err, &loses) {
+		e := ipcerr.T(ipcerr.CodeConflict, "backend.space.ade.workflowSwitchLoses.body",
+			map[string]string{"runs": strconv.Itoa(loses.Runs), "logs": strconv.Itoa(loses.Logs)})
+		// The counts the person is asked about travel back with the confirmation.
+		e.Details = json.RawMessage(`{"runs":` + strconv.Itoa(loses.Runs) + `,"logs":` + strconv.Itoa(loses.Logs) + `}`)
+		return e
 	}
 	for _, c := range adeTaskCatalog {
 		if errors.Is(err, c.err) {

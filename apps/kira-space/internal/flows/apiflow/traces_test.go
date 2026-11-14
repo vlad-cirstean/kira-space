@@ -86,23 +86,23 @@ func TestIncognitoLeavesNoTrace(t *testing.T) {
 	}
 }
 
-// Dynamic references ({{$uuid}}, {{$timestamp}}) are resolved by the renderer before a send; the
-// IPC layer carries them through untouched and history keeps the template.
+// The renderer generates dynamic values ({{$uuid}}, {{$timestamp}}) before a send, so the IPC layer
+// only ever carries a secret reference; history keeps the template of what it was given.
 func TestDynamicValues(t *testing.T) {
 	app := flowharness.New(t)
 	srv := flowharness.HTTP(t)
 	col := newCollection(t, app, "dyn")
 	env := app.SeedEnvironment(t, "dev", flowharness.APIVar{Name: "sk", Value: "dyn-secret-77", Secret: true})
 
-	args := get(srv.URL + "/echo?id={{$uuid}}&ts={{$timestamp}}&k={{sk}}")
+	args := get(srv.URL + "/echo?id=gen-1&ts=gen-2&k={{sk}}")
 	args.CollectionID, args.EnvironmentID = col.ID, env.ID
 	send(t, app, args)
 	send(t, app, func() bridge.HttpSendArgs { a := args; a.OpID = newOp(); return a }())
 
 	reqs := srv.Requests()
 	for i, r := range reqs {
-		if r.Query != "id={{$uuid}}&ts={{$timestamp}}&k=dyn-secret-77" {
-			t.Errorf("request %d query = %q, want dynamic references verbatim and the secret resolved", i, r.Query)
+		if r.Query != "id=gen-1&ts=gen-2&k=dyn-secret-77" {
+			t.Errorf("request %d query = %q, want the secret resolved", i, r.Query)
 		}
 	}
 	rows, err := app.W.ResponseHistory.List(bridge.ResponseHistoryScopeArgs{TabID: "tab-1"})
@@ -110,7 +110,7 @@ func TestDynamicValues(t *testing.T) {
 		t.Fatalf("history = %d rows (%v), want 2", len(rows), err)
 	}
 	for _, row := range rows {
-		if !strings.Contains(row.URL, "{{$uuid}}") || !strings.Contains(row.URL, "{{sk}}") {
+		if !strings.Contains(row.URL, "{{sk}}") {
 			t.Errorf("history url = %q, want the template", row.URL)
 		}
 	}

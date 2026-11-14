@@ -33,6 +33,7 @@ type listedOp struct {
 	ConnectionName string `json:"connectionName"`
 	Name           string `json:"name"`
 	State          string `json:"state"`
+	ElapsedMs      int64  `json:"elapsedMs"`
 }
 
 func listOps(t *testing.T, sess *mcp.ClientSession) []listedOp {

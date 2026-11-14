@@ -117,7 +117,7 @@ import {
   selectionCovers,
   selectionFromRanges,
 } from '../shared/slick/selection';
-import { type CopySource, selectionText } from '../shared/slick/selectionCopy';
+import { type CopySource, selectionText, truncatedCellCount } from '../shared/slick/selectionCopy';
 import { getPage, pageVersion, setVisibleWindow } from './page';
 import { parseTextSortTerms } from './sortTerms';
 import { type Selection, useGridViewStore } from './state';
@@ -1798,9 +1798,13 @@ function copySource(): CopySource {
 function onCopy(): void {
   const sel = rt()?.selection;
   if (!sel || !getPage(props.tabId)) return;
+  const source = copySource();
+  const truncated = truncatedCellCount(sel, source);
   void copyAndAnnounce(
-    selectionText(sel, 'tsv', copySource()),
-    t('studio.copy.selection.announce'),
+    selectionText(sel, 'tsv', source),
+    truncated > 0
+      ? t('studio.copy.truncated.announce', { count: truncated })
+      : t('studio.copy.selection.announce'),
   );
 }
 
@@ -1854,6 +1858,38 @@ async function onPaste(): Promise<void> {
 // before SlickGrid's own default key handling and wins by calling it on the branches it
 // owns. `enableCellNavigation: true` (above) is what gives the arrow-key/Enter-to-edit path for
 // free — DataGrid.vue's own onKeydown arrow block (:1762-1779) has no counterpart here.
+function clearSelectedCells(sel: Selection): void {
+  const page = getPage(props.tabId);
+  if (!page || !canEditTable()) return;
+  const order = currentOrder();
+  const cols =
+    sel.kind === 'cell'
+      ? [sel.col]
+      : sel.kind === 'range'
+        ? Array.from({ length: sel.col - sel.anchorCol + 1 }, (_, i) => sel.anchorCol + i)
+        : sel.kind === 'column'
+          ? sel.cols
+          : [];
+  const rows = rowsForSelection(sel, currentDisplayRows(), page.rowCount);
+  const refused = new Set<string>();
+  for (const col of cols) {
+    const name = order[col] ?? '';
+    const descriptor = page.columns[pageColumnIndexFor(page, order, col)];
+    if (!descriptor || descriptor.generated) continue;
+    if (!descriptor.nullable) {
+      refused.add(name);
+      continue;
+    }
+    for (const row of rows) pendingChangesStore.stageNull(props.tabId, row, name);
+  }
+  if (refused.size > 0) {
+    gridViewStore.setActionError(
+      props.tabId,
+      t('studio.grid.setNull.error', { columns: [...refused].join(', ') }),
+    );
+  }
+}
+
 function onKeydown(e: SlickEventData): void {
   const runtimeEntry = rt();
   if (!runtimeEntry) return;
@@ -1929,6 +1965,20 @@ function onKeydown(e: SlickEventData): void {
   // disagree about which rows are acted on.
   const deleteShortcut = shortcutFor(nativeLike, ['grid.deleteRows']);
   const sel = runtimeEntry.selection;
+  // Delete on cells (not on whole rows) clears them to NULL, like Set NULL in the cell menu; a NOT
+  // NULL column is refused with a visible reason instead of staging a value the server rejects.
+  const plainDelete =
+    (native.key === 'Delete' || native.key === 'Backspace') &&
+    !native.ctrlKey &&
+    !native.metaKey &&
+    !native.altKey &&
+    !native.shiftKey;
+  if (plainDelete && sel && sel.kind !== 'row' && !inTextControl) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    clearSelectedCells(sel);
+    return;
+  }
   if (deleteShortcut && sel) {
     const rows = rowsForSelection(sel, currentDisplayRows(), getPage(props.tabId)?.rowCount ?? 0);
     if (rows.length === 0) return;

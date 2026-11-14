@@ -183,6 +183,30 @@ func (j *journey) savedQueries(connID, tablePath string) {
 		t.Fatalf("Queries.SaveConsole: %v", err)
 	}
 	j.wantSavedEvent(mark, connID, console.Kind, "SaveConsole")
+	// J-CONS-027: the formatted text saves as its own entry; both bodies list back byte for byte
+	// and the relaunch snapshot below keeps them.
+	formatted := strings.ReplaceAll(j.readSQL, " from ", "\nfrom ")
+	fmtSaved, err := app.W.Queries.SaveConsole(bridge.QueriesSaveConsoleArgs{
+		ConnectionID: connID, Path: "", Name: "scratch formatted", Body: model.ConsoleBody{Text: formatted},
+	})
+	if err != nil {
+		t.Fatalf("Queries.SaveConsole formatted: %v", err)
+	}
+	listed, err := app.W.Queries.ListConsole(bridge.QueriesListArgs{ConnectionID: connID, Path: ""})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bodies := map[string]string{}
+	for _, q := range listed {
+		var b model.ConsoleBody
+		if err := json.Unmarshal(q.Body, &b); err != nil {
+			t.Fatal(err)
+		}
+		bodies[q.ID] = b.Text
+	}
+	if bodies[console.ID] != j.readSQL || bodies[fmtSaved.ID] != formatted {
+		t.Fatalf("console bodies = %q, want %q and %q", bodies, j.readSQL, formatted)
+	}
 	mark = app.Events.Mark()
 	renamed, err := app.W.Queries.Update(bridge.QueriesUpdateArgs{ID: saved.ID, Name: ptr("recent two"), Pinned: ptr(true)})
 	if err != nil || renamed.Name != "recent two" || !renamed.Pinned {
@@ -199,8 +223,8 @@ func (j *journey) savedQueries(connID, tablePath string) {
 		t.Fatalf("Queries.List = %+v (%v), want the one filter", filters, err)
 	}
 	consoles, err := app.W.Queries.ListConsole(bridge.QueriesListArgs{ConnectionID: connID, Path: ""})
-	if err != nil || len(consoles) != 1 || consoles[0].ID != console.ID {
-		t.Fatalf("Queries.ListConsole = %+v (%v), want the one console", consoles, err)
+	if err != nil || len(consoles) != 2 {
+		t.Fatalf("Queries.ListConsole = %+v (%v), want the two consoles", consoles, err)
 	}
 
 	doomed, err := app.W.Queries.Save(bridge.QueriesSaveArgs{

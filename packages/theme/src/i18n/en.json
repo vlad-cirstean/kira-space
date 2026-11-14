@@ -1023,6 +1023,9 @@
         "notFound": {
           "body": "That Docker item no longer exists."
         },
+        "restartInProgress": {
+          "body": "This container is already restarting."
+        },
         "restore": {
           "notPending": {
             "body": "No restore is pending for this engine."
@@ -1881,6 +1884,9 @@
         "workflowIdMismatch": {
           "body": "The ID must equal the file name without its extension."
         },
+        "workflowSwitchLoses": {
+          "body": "Switching the workflow deletes this task’s runs ({runs}) and run logs ({logs})."
+        },
         "workingChanged": {
           "body": "The file changed while you reviewed it. Refresh the diff."
         },
@@ -2356,6 +2362,9 @@
     },
     "studio": {
       "adapter": {
+        "attributeRepeated": {
+          "body": "The attribute name {name} is used more than once. Message attributes must have unique names."
+        },
         "binaryValueInvalid": {
           "body": "Not a valid binary value. Use 0x followed by hexadecimal digits."
         },
@@ -2371,6 +2380,9 @@
         "closingQuoteFollow": {
           "body": "A closing quote must be followed by a space or the end of the line."
         },
+        "commitOutcomeUnknown": {
+          "body": "The connection dropped while committing, so the change may or may not be saved ({cause}). Refresh the table to see what is stored."
+        },
         "databaseFileMissing": {
           "body": "No database file path was given."
         },
@@ -2383,6 +2395,9 @@
         "expectedToken": {
           "body": "Expected “{token}” at position {position}."
         },
+        "formatClause": {
+          "body": "Remove the {clause} clause. The console sets the result format itself."
+        },
         "headersJsonMalformed": {
           "body": "The headers aren’t valid JSON."
         },
@@ -2391,6 +2406,9 @@
         },
         "hostMissing": {
           "body": "No host was given."
+        },
+        "idEdit": {
+          "body": "The _id of a document can’t be changed. Restore the original _id and save again."
         },
         "identifierUnrecognized": {
           "body": "Unrecognized identifier “{identifier}” at position {position}."
@@ -2415,6 +2433,9 @@
         },
         "kafkaPartitionsMissing": {
           "body": "Topic {topic} has no partitions {partitions}."
+        },
+        "kafkaPositionLost": {
+          "body": "The records at this position were removed from the topic. Refresh to start again."
         },
         "kibanaBadRequest": {
           "body": "Invalid Discover request: {detail}."
@@ -2510,7 +2531,7 @@
           "body": "The connection has an open transaction. Commit or roll it back first."
         },
         "pageTokenMismatch": {
-          "body": "The page token doesn’t match the current filter, sort, projection or page size."
+          "body": "The page token doesn’t match the current filter, sort, projection, page size or table key. Refresh the page."
         },
         "portInvalid": {
           "body": "Invalid port."
@@ -2548,8 +2569,14 @@
         "responseTooLarge": {
           "body": "The response was too large to return."
         },
+        "rowChanged": {
+          "body": "The row {key} changed on the server since it was loaded."
+        },
         "s3AclGrant": {
           "body": "This object has an access control grant this editor can’t preserve across an edit. Edit it outside this app."
+        },
+        "s3AclUnreadable": {
+          "body": "The access control list of this object can’t be read, so saving resets it to the default."
         },
         "s3ObjectChanged": {
           "body": "This object changed since it was loaded. Refresh and retry."
@@ -2697,6 +2724,9 @@
         },
         "invalidOrder": {
           "body": "That order no longer matches the list. Retry."
+        },
+        "requestChanged": {
+          "body": "Another window saved or renamed this request since you opened it."
         },
         "writeFailed": {
           "error": "Couldn’t write {path}: {detail}"
@@ -2862,6 +2892,9 @@
         "requestTimedOut": {
           "body": "Request timed out."
         },
+        "unresolvedVariables": {
+          "body": "Not sent. These variables have no value: {names}. Define them in the active environment or collection."
+        },
         "urlencodedFieldNameMissing": {
           "body": "A field in the form body is missing a name."
         },
@@ -2958,6 +2991,9 @@
         }
       },
       "query": {
+        "changed": {
+          "body": "Another window changed this saved query since you opened it."
+        },
         "invalidBody": {
           "body": "Saved query is invalid: {detail}."
         },
@@ -6021,6 +6057,9 @@
       "stashedNote": {
         "body": "Your changes are stashed. See the stash list."
       },
+      "stashIndexNotRestored": {
+        "body": "Your staged changes came back unstaged. The new commit changed the files they were staged against."
+      },
       "stashKept": {
         "body": "Your stashed changes were kept because popping them back would conflict. Pop {ref} manually when ready."
       },
@@ -6797,7 +6836,7 @@
         "placeholder": "Label selector"
       },
       "truncated": {
-        "status": "Showing the first {count} rows"
+        "status": "Showing the first {count} rows; sort and filter cover loaded rows only"
       }
     },
     "logs": {
@@ -11234,6 +11273,12 @@
         },
         "outdatedHint": {
           "hint": "This task runs the version of the workflow it started with."
+        },
+        "switch": {
+          "confirm": {
+            "label": "Switch and delete"
+          },
+          "title": "Switch workflow"
         }
       },
       "workflowDiscardConfirm": {
@@ -13900,6 +13945,10 @@
       "nullValue": {
         "label": "NULL"
       },
+      "overwriteConfirm": {
+        "body": "Overwrite it with your edits, or cancel and refresh to see the current values.",
+        "title": "Overwrite changes made elsewhere?"
+      },
       "pickDateTime": {
         "tooltip": "Choose a date and time"
       },
@@ -14311,6 +14360,9 @@
       "shellMode": {
         "announce": "Copied in shell mode",
         "label": "Shell mode"
+      },
+      "truncated": {
+        "announce": "Copied, but {count} of these cells hold only their first 64 kilobytes, so the copy is shortened for them"
       },
       "tsv": {
         "announce": "Copied TSV"
@@ -14936,6 +14988,14 @@
       "commitPending": {
         "label": "Commit pending changes"
       },
+      "commitUnknown": {
+        "body": "The table was reloaded, and {count} staged change couldn’t be matched against it. Keep it staged, or discard it if the table already shows it. | The table was reloaded, and {count} staged changes couldn’t be matched against it. Keep them staged, or discard them if the table already shows them.",
+        "confirm": "Discard staged changes",
+        "reloadFailed": {
+          "error": "The table couldn’t be reloaded to check ({error}); refresh it before committing again."
+        },
+        "title": "The last commit may have been saved"
+      },
       "count": {
         "approx": {
           "tooltip": "About {count} row in total | About {count} rows in total"
@@ -15087,6 +15147,9 @@
       },
       "selectRowsFirst": {
         "tooltip": "Select one or more rows first"
+      },
+      "setNull": {
+        "error": "Not cleared: {columns} does not allow NULL."
       },
       "sortBy": {
         "aria": "Sort by {name}"
@@ -15297,6 +15360,9 @@
         },
         "jarOff": {
           "empty": "The cookie jar is off for this request"
+        },
+        "jarOffSent": {
+          "hint": "No cookies were sent. The cookie jar is off for this request."
         },
         "none": {
           "empty": "No cookies for this request’s URL"
@@ -15625,6 +15691,10 @@
       }
     },
     "keyValue": {
+      "aclReset": {
+        "confirm": "Save anyway",
+        "title": "Reset the object’s access list"
+      },
       "add": {
         "namePlaceholder": {
           "placeholder": "Key name"
@@ -17581,11 +17651,17 @@
       "copiedKey": {
         "announce": "Copied key"
       },
+      "copiedRow": {
+        "announce": "Copied row"
+      },
       "copyBody": {
         "label": "Copy body"
       },
       "copyKey": {
         "label": "Copy key"
+      },
+      "copyRow": {
+        "label": "Copy row as JSON"
       },
       "count": {
         "label": "Count"

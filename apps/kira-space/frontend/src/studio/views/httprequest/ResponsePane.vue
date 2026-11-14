@@ -17,6 +17,7 @@ import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import type { RangeHighlight } from '@workbench/editor/ranges';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useSettingsStore } from '../../../state/settings';
 import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import { patchHttpRequestTabState } from '../../api/tabs';
 import { DEFAULT_FIND_OPTIONS, type FindOptions, findRanges } from '../../editor/findRanges';
@@ -35,6 +36,10 @@ import TimelinePane from './TimelinePane.vue';
 import { useResponseBody } from './useResponseBody';
 
 const props = defineProps<{ tab: HttpRequestTabRecord }>();
+const settingsStore = useSettingsStore();
+const effectiveDisableCookieJar = computed(
+  () => props.tab.state.settings.disableCookieJar ?? settingsStore.api.disableCookieJar,
+);
 const httpRequestViewStore = useHttpRequestViewStore();
 const httpHistoryStore = useHttpHistoryStore();
 
@@ -477,6 +482,7 @@ onUnmounted(() => {
       mode="response"
       :tab-id="tab.id"
       :response="response"
+      :disable-cookie-jar="effectiveDisableCookieJar"
     />
     <div v-else class="response-body flex flex-1 min-h-0 flex-col">
       <template v-if="response">

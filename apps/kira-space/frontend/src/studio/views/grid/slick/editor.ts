@@ -40,6 +40,25 @@ function blockModifiedEnter(e: KeyboardEvent): void {
   if (e.key === 'Enter' && (e.shiftKey || e.altKey)) e.preventDefault();
 }
 
+// SlickGrid's CellSelectionModel treats Ctrl/Shift plus A, arrows, Home/End or Page keys as a
+// range extension and ends the edit. Inside the editor those keys select text, so they stay native.
+const TEXT_SELECTION_KEYS = new Set([
+  'a',
+  'A',
+  'ArrowLeft',
+  'ArrowRight',
+  'ArrowUp',
+  'ArrowDown',
+  'Home',
+  'End',
+  'PageUp',
+  'PageDown',
+]);
+
+function keepTextSelection(e: KeyboardEvent): void {
+  if ((e.ctrlKey || e.shiftKey || e.metaKey) && TEXT_SELECTION_KEYS.has(e.key)) e.stopPropagation();
+}
+
 // Matches slick.editors.ts's own stock editors' generic defaults (Column<T>'s `field` can't be
 // widened otherwise — see KiraColumn's own identical comment in SlickGridHost.vue).
 // biome-ignore lint/suspicious/noExplicitAny: see comment above.
@@ -74,6 +93,7 @@ export class KiraCellEditor<
     // listener only needs the wrap-on-type behaviour, not a full onEditKeydown port).
     this.input.addEventListener('keydown', wrapSelectionOnType);
     this.input.addEventListener('keydown', blockModifiedEnter);
+    this.input.addEventListener('keydown', keepTextSelection);
     args.container.appendChild(this.input);
     this.input.focus();
     this.input.select();
@@ -127,6 +147,7 @@ export class KiraCellEditor<
   destroy(): void {
     this.input.removeEventListener('keydown', wrapSelectionOnType);
     this.input.removeEventListener('keydown', blockModifiedEnter);
+    this.input.removeEventListener('keydown', keepTextSelection);
     this.input.remove();
   }
 }

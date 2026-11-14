@@ -375,6 +375,11 @@ func TestRestoreRealDaemonRestart(t *testing.T) {
 	solo := sleeper(d, "solo", nil)
 	keeper := keepAlive(d, "keeper", "always")
 	e.waitSnapshot(t, solo, keeper)
+	// J-DKR-024: a live log follow ends once, with the daemon, and does not resume by itself.
+	logMark := app.Events.Mark()
+	if err := app.W.Docker.LogsOpen(docker.LogsOpenArgs{WindowKey: "w1", StreamID: "s1", ContainerID: solo, Tail: 0, Follow: true}); err != nil {
+		t.Fatal(err)
+	}
 
 	if out, err := exec.Command("pkill", "-TERM", "-x", "dockerd").CombinedOutput(); err != nil {
 		t.Fatalf("pkill dockerd: %v %s", err, out)
@@ -391,6 +396,10 @@ func TestRestoreRealDaemonRestart(t *testing.T) {
 		return err == nil
 	})
 
+	waitFor(t, 30*time.Second, "log stream to end with the daemon", func() bool {
+		_, ended, _ := logsOf(app, logMark, "w1", "s1")
+		return ended
+	})
 	var st docker.RestoreState
 	waitFor(t, 60*time.Second, "pending after the daemon restart", func() bool {
 		st = e.state(t)
@@ -402,6 +411,21 @@ func TestRestoreRealDaemonRestart(t *testing.T) {
 		t.Fatalf("restore = %+v, %v", res, err)
 	}
 	waitFor(t, 30*time.Second, "restore to settle", func() bool { return !hasOpenOurs(e, e.state(t)) })
+
+	ends, prompts := 0, 0
+	for _, ev := range app.Events.Since(logMark, docker.ChannelLogs) {
+		if le, ok := ev.Data.(docker.LogsEvent); ok && le.StreamID == "s1" && le.Ended {
+			ends++
+		}
+	}
+	for _, ev := range app.Events.Since(logMark, docker.ChannelRestore) {
+		if s, ok := ev.Data.(docker.RestoreState); ok && s.State == "pending" && e.ours(s)["solo"].Status == "restorable" {
+			prompts++
+		}
+	}
+	if ends != 1 || prompts != 1 {
+		t.Fatalf("log stream ends = %d, restore prompts = %d, want one each", ends, prompts)
+	}
 }
 
 func waitFor(t *testing.T, timeout time.Duration, what string, cond func() bool) {
@@ -412,5 +436,23 @@ func waitFor(t *testing.T, timeout time.Duration, what string, cond func() bool)
 			t.Fatalf("timed out waiting for %s", what)
 		}
 		time.Sleep(250 * time.Millisecond)
+	}
+}
+
+// J-BC-070: a dismissed restore offer stays dismissed across a Kira relaunch.
+func TestRestoreDismissSurvivesRelaunch(t *testing.T) {
+	e := bootRestore(t)
+	solo := sleeper(e.d, "solo", nil)
+	e.waitSnapshot(t, solo)
+	e.kill(t, solo)
+	e.gen.Bump()
+	st := e.waitState(t, "pending", func(s docker.RestoreState) bool { return s.State == "pending" })
+	if err := e.app.W.Docker.RestoreDismiss(docker.RestoreDismissArgs{EngineID: st.EngineID}); err != nil {
+		t.Fatal(err)
+	}
+	e.app.Quit(t)
+	e.app.Restart()
+	if got := e.ours(e.state(t)); len(got) != 0 {
+		t.Fatalf("items after relaunch = %+v, want none after a dismissal", got)
 	}
 }

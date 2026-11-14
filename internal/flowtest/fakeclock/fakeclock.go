@@ -15,6 +15,7 @@ type timer struct {
 type Clock struct {
 	mu      sync.Mutex
 	now     time.Time
+	ran     time.Duration
 	timers  []timer
 	changed chan struct{}
 }
@@ -51,6 +52,7 @@ func (c *Clock) Advance(d time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.now = c.now.Add(d)
+	c.ran += d
 	kept := c.timers[:0]
 	for _, t := range c.timers {
 		if t.at.After(c.now) {
@@ -60,6 +62,21 @@ func (c *Clock) Advance(d time.Duration) {
 		t.ch <- c.now
 	}
 	c.timers = kept
+}
+
+// Suspend moves the wall time forward the way a sleeping laptop does: no timer fires and no
+// running time passes, so Elapsed stays put.
+func (c *Clock) Suspend(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(d)
+}
+
+// Elapsed is the time the clock has run: every Advance counts, a Suspend does not.
+func (c *Clock) Elapsed() time.Duration {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.ran
 }
 
 // Waiters is how many timers are pending.

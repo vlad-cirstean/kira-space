@@ -1,0 +1,21 @@
+{
+  "git:commit.detail#copy": {
+    "body": "First paragraph of the body.\n\nSecond paragraph.",
+    "parentIndex": 0,
+    "parents": [
+      "928d7085bd29543c5e169427954c38acaf6f8dc9"
+    ],
+    "sha": "614536f72a6f6cabb68e5b187c6e6363e0f8c1f4",
+    "subject": "Fix the parser",
+    "trailers": [
+      {
+        "token": "Signed-off-by",
+        "value": "Dev One <dev@example.com>"
+      },
+      {
+        "token": "Co-authored-by",
+        "value": "Dev Two <two@example.com>"
+      }
+    ]
+  }
+}

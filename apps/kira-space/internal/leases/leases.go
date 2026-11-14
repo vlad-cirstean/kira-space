@@ -53,10 +53,12 @@ type Grant struct {
 
 // Entry is one holder or waiter.
 type Entry struct {
-	Key          Key
-	TaskID       string
-	Seq          uint64
-	Since, Seen  time.Time
+	Key         Key
+	TaskID      string
+	Seq         uint64
+	Since, Seen time.Time
+	// seenAt is the holder's last sign of life on the running clock: expiry reads it, never Seen.
+	seenAt       time.Duration
 	ReleaseAsked bool
 }
 
@@ -90,6 +92,7 @@ type Book struct {
 	names    []string
 	seq      uint64
 	now      func() time.Time
+	elapsed  func() time.Duration
 	ttl      time.Duration
 	order    func() []string
 	onGrant  func(Grant)
@@ -98,7 +101,10 @@ type Book struct {
 
 // Options configures a Book. Zero values give the wall clock, DefaultTTL and no callbacks.
 type Options struct {
-	Now      func() time.Time
+	Now func() time.Time
+	// Elapsed counts only time the app ran (monotonic: a sleeping laptop adds nothing). Expiry
+	// measures silence on it. Nil derives it from Now, which is right for a monotonic Now.
+	Elapsed  func() time.Duration
 	TTL      time.Duration
 	Order    func() []string // task ids, highest priority first
 	OnGrant  func(Grant)
@@ -110,10 +116,20 @@ func New(o Options) *Book {
 	if b.now == nil {
 		b.now = time.Now
 	}
+	if b.elapsed = o.Elapsed; b.elapsed == nil {
+		origin := b.now()
+		b.elapsed = func() time.Duration { return b.now().Sub(origin) }
+	}
 	if b.ttl <= 0 {
 		b.ttl = DefaultTTL
 	}
 	return b
+}
+
+// ExpiresAt is when holder e lapses if it stays silent: the TTL less the running time since its last
+// sign of life, on the wall clock for display.
+func (b *Book) ExpiresAt(e Entry) time.Time {
+	return b.now().Add(b.ttl - (b.elapsed() - e.seenAt))
 }
 
 // TTL is the silence limit Sweep applies.
@@ -207,7 +223,7 @@ func (b *Book) promote(q *queue, rk ranker, e *effects) {
 	next := rk.sorted(q.waiters)[0]
 	q.waiters = slices.DeleteFunc(q.waiters, func(w Entry) bool { return w.Seq == next.Seq })
 	now := b.now()
-	next.Since, next.Seen, next.ReleaseAsked = now, now, false
+	next.Since, next.Seen, next.seenAt, next.ReleaseAsked = now, now, b.elapsed(), false
 	q.holder = &next
 	e.grants = append(e.grants, Grant{Queue: q.name, Key: next.Key, TaskID: next.TaskID, Reason: ReasonGranted})
 	e.changed = true
@@ -309,7 +325,7 @@ func (b *Book) Acquire(key Key, taskID, name string) (Status, error) {
 	}
 	switch {
 	case q.holder != nil && q.holder.Key == key:
-		q.holder.Seen = b.now()
+		q.holder.Seen, q.holder.seenAt = b.now(), b.elapsed()
 	case slices.ContainsFunc(q.waiters, func(w Entry) bool { return w.Key == key }):
 	case q.holder == nil:
 		b.seq++
@@ -413,12 +429,12 @@ func (b *Book) RequestRelease(name string) (Key, error) {
 
 // Touch extends every hold of key: any sign of life counts as a heartbeat.
 func (b *Book) Touch(key Key) {
-	now := b.now()
+	now, ran := b.now(), b.elapsed()
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	for _, q := range b.queues {
 		if q.holder != nil && q.holder.Key == key {
-			q.holder.Seen = now
+			q.holder.Seen, q.holder.seenAt = now, ran
 		}
 	}
 }
@@ -428,10 +444,10 @@ func (b *Book) Touch(key Key) {
 func (b *Book) Sweep(alive func(Key) bool) {
 	dead := map[Key]bool{}
 	b.mu.Lock()
-	now := b.now()
+	ran := b.elapsed()
 	var cands []Key
 	for _, q := range b.queues {
-		if q.holder != nil && now.Sub(q.holder.Seen) > b.ttl {
+		if q.holder != nil && ran-q.holder.seenAt > b.ttl {
 			cands = append(cands, q.holder.Key)
 		}
 	}
@@ -446,10 +462,10 @@ func (b *Book) Sweep(alive func(Key) bool) {
 	}
 	rk := b.lockRanked(2)
 	var e effects
-	now = b.now()
+	ran = b.elapsed()
 	for _, n := range b.names {
 		q := b.queues[n]
-		if q.holder == nil || !dead[q.holder.Key] || now.Sub(q.holder.Seen) <= b.ttl {
+		if q.holder == nil || !dead[q.holder.Key] || ran-q.holder.seenAt <= b.ttl {
 			continue
 		}
 		e.grants = append(e.grants, Grant{Queue: n, Key: q.holder.Key, TaskID: q.holder.TaskID, Reason: ReasonExpired})

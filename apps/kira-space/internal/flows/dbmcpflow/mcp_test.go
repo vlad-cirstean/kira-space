@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -553,4 +554,49 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 	if cur := current(); cur.McpReview != (model.McpReview{Read: "inherit", Write: "inherit", Ddl: "inherit", Masked: "inherit"}) {
 		t.Fatalf("review setting after a refused file edit = %q, want inherit", cur.McpReview.Read)
 	}
+}
+
+// J-BC-044: the MCP server comes back on the same port after a restart, an agent that reconnects
+// reads and writes as before, and stopping it leaves no listener behind.
+func TestDbMcpSurvivesRestart(t *testing.T) {
+	f := newFixture(t)
+	portRe := regexp.MustCompile(`:(\d+)/mcp`)
+	port := portRe.FindStringSubmatch(f.app.W.DbMcp.Status().Command)[1]
+	before := f.session(t)
+	if r := runQuery(t, before, f.connID, "select count(*) from notes"); r.IsError {
+		t.Fatalf("before the restart: %s", text(r))
+	}
+
+	f.app.Restart()
+	st := f.app.W.DbMcp.Status()
+	if !st.Running {
+		t.Fatalf("after the restart Status = %+v, want it running again", st)
+	}
+	m := urlRe.FindStringSubmatch(st.Command)
+	if m == nil || portRe.FindStringSubmatch(m[1])[1] != port {
+		t.Fatalf("server url after the restart = %v, want the old port %s", m, port)
+	}
+	f.url = m[1]
+
+	// The old session died with the old process; a new one with the same helper token works.
+	if r, err := before.CallTool(ctx, &mcp.CallToolParams{Name: "list_connections"}); err == nil && !r.IsError {
+		t.Logf("the pre-restart session still answers; list_connections = %q", text(r))
+	}
+	after := f.session(t)
+	if r := runQuery(t, after, f.connID, "select count(*) from notes"); r.IsError {
+		t.Fatalf("after the restart: %s", text(r))
+	}
+
+	// Stopping frees the port: nothing is left listening.
+	if st, err := f.app.W.DbMcp.SetEnabled(bridge.DbMcpSetEnabledArgs{Enabled: false}); err != nil || st.Running {
+		t.Fatalf("SetEnabled(false) = %+v (%v)", st, err)
+	}
+	testx.WaitUntil(t, 10*time.Second, func() bool {
+		l, err := net.Listen("tcp", "127.0.0.1:"+port)
+		if err != nil {
+			return false
+		}
+		_ = l.Close()
+		return true
+	})
 }

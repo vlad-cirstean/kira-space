@@ -20,6 +20,7 @@ import { queryClient } from '@workbench/state/queryClient';
 import { defineStore } from 'pinia';
 import { computed, reactive, toRef, toRefs, watch } from 'vue';
 import { control } from '../../bridge/control';
+import { guardedSavedWrite } from '../../state/guardedSavedWrite';
 import { type Placement, topmost } from '../collectionDrop';
 import {
   closeVariableSetTabsForOwner,
@@ -716,9 +717,22 @@ export const useCollectionsStore = defineStore('collections', () => {
     itemId: string,
     name: string,
     request: HttpSavedRequest,
+    seen: HttpSavedRequest | null = null,
   ): Promise<void> {
     try {
-      await control.collectionsSaveRequest(itemId, name, request);
+      // Decision 3: `seen` is the request the tab last synced with, `name` the item name it holds
+      // (bound tabs follow a rename, so a name that differs in the file is one this window never
+      // saw); an item another window saved or renamed since asks before it is overwritten, and
+      // declining keeps the edit unsaved.
+      const saved = await guardedSavedWrite((guarded) =>
+        control.collectionsSaveRequest(
+          itemId,
+          name,
+          request,
+          guarded && seen ? { request: seen, name } : undefined,
+        ),
+      );
+      if (saved === undefined) return;
       // The cache is the dirty comparison's saved side, so it must move in step with the write or
       // the mark would stay lit after a successful save.
       queryClient.setQueryData(apiSavedRequestKey(itemId), request);
@@ -734,9 +748,18 @@ export const useCollectionsStore = defineStore('collections', () => {
     itemId: string,
     name: string,
     request: GrpcSavedRequest,
+    seen: GrpcSavedRequest | null = null,
   ): Promise<void> {
     try {
-      await control.collectionsSaveGrpcRequest(itemId, name, request);
+      const saved = await guardedSavedWrite((guarded) =>
+        control.collectionsSaveGrpcRequest(
+          itemId,
+          name,
+          request,
+          guarded && seen ? { request: seen, name } : undefined,
+        ),
+      );
+      if (saved === undefined) return;
       queryClient.setQueryData(apiSavedGrpcRequestKey(itemId), request);
       await afterTreeListChange();
       state.error = null;

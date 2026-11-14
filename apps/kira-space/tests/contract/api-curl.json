@@ -41,5 +41,11 @@
     "url": "<http>/echo?src=curl"
   },
   "curl:generated": "curl -L '<http>/echo?src=curl' \\\n  -H 'Content-Type: application/json' \\\n  -H 'X-Flow-Probe: p249' \\\n  --data-raw '{\"sku\":\"A-1\",\"qty\":3}'",
+  "curl:generated:code": "curl -L -X PUT '<http>/echo?m=code' \\\n  -H 'X-Mode: code' \\\n  -H 'Content-Type: application/json' \\\n  --data-raw '{\"a\":[1,2],\"b\":\"x y\"}'",
+  "curl:generated:file": "curl -L '<http>/echo?m=file' \\\n  -H 'X-Mode: file' \\\n  -H Content-Type: \\\n  --data-binary @<blob-file>",
+  "curl:generated:formdata": "curl -L '<http>/echo?m=formdata' \\\n  -H 'X-Mode: formdata' \\\n  --form-string note=@hello \\\n  -F 'meta={};type=application/json' \\\n  -F 'report=@<csv-file>;type=text/csv'",
+  "curl:generated:none": "curl -L '<http>/echo?m=none' \\\n  -H 'X-Mode: none'",
+  "curl:generated:raw": "curl -L '<http>/echo?m=raw' \\\n  -H 'X-Mode: raw' \\\n  -H 'Content-Type: text/plain' \\\n  --data-raw 'it'\"'\"'s a b&c=\"d\"\nline 2'",
+  "curl:generated:urlencoded": "curl -L '<http>/echo?m=urlencoded' \\\n  -H 'X-Mode: urlencoded' \\\n  -H 'Content-Type: application/x-www-form-urlencoded' \\\n  --data-raw 'a+b=c%26d&k=%C3%A9'",
   "curl:import": "curl -X POST '<http>/echo?src=curl' -H 'Content-Type: application/json' -H 'X-Flow-Probe: p249' -d '{\"sku\":\"A-1\",\"qty\":3}'"
 }

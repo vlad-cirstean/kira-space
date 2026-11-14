@@ -120,6 +120,7 @@ export function lexOptionsFor(dialect: SqlDialect | undefined): SqlLexOptions {
     nestedBlockComments: nestedBlockCommentsFor(dialect),
     bracketIdentifiers: bracketIdentifiersFor(dialect),
     postgresEscapeStrings: postgresEscapeStringsFor(dialect),
+    compoundBlocks: dialect === 'sqlite' || dialect === 'mysql',
   };
 }
 

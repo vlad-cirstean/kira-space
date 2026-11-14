@@ -39,6 +39,14 @@ test('the archived finder lists archived tasks and filters them', async ({ relau
   await expect(page.locator(t('ade-archived-find-empty'))).toBeVisible();
 });
 
+test('the archived finder matches a task by its Jira key', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch);
+  await page.locator(t('ade-archived-find')).click();
+  await page.getByPlaceholder('Find archived task').fill('KIRA-77');
+  await expect(page.locator(t('ade-archived-find-item'))).toHaveCount(1);
+  await expect(page.locator(t('ade-archived-find-item'))).toContainText('Fix login redirect loop');
+});
+
 test('picking an old archived task reveals its day and opens its panel', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     { channel: IPC.adeTaskArchivedTask, response: archivedTaskFx('H_5') },

@@ -28,6 +28,10 @@ func TestFirstTopLevelSemicolon(t *testing.T) {
 		{"real semicolon after a block comment", "SELECT 1 /* note */;", 19},
 		{"unterminated block comment has no top-level semicolon", "SELECT 1 /* ;", -1},
 		{"unterminated string has no top-level semicolon", "SELECT '; ", -1},
+		{"trigger body semicolon is not top-level", "CREATE TRIGGER t AFTER INSERT ON n BEGIN SELECT 1; END", -1},
+		{"semicolon after the trigger END is top-level", "CREATE TRIGGER t AFTER INSERT ON n BEGIN SELECT 1; END; SELECT 2", 54},
+		{"CASE END inside a trigger does not close it", "-- c\nCREATE TEMP TRIGGER t AFTER INSERT ON n BEGIN SELECT CASE WHEN 1 THEN 2 END; END; X", 85},
+		{"BEGIN outside a trigger is an ordinary word", "BEGIN; SELECT 1", 5},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

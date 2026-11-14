@@ -1,11 +1,13 @@
 package httpflow
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
@@ -218,6 +220,11 @@ func mustAtoi(t *testing.T, s string) int {
 func TestCookieJar(t *testing.T) {
 	app := flowharness.New(t)
 	srv := flowharness.HTTP(t)
+	// Contract api-cookie-jar; UI half: tests/ui/studio/http-request.spec.ts "cookie jar is opt-in".
+	cookieContract := func(key string, res httpclient.Response) {
+		app.Contract(t, "api-cookie-jar", key, res, flowharness.Replace(srv.URL, "<http>"), flowharness.Mask("elapsedMs", "bodyBytes", "domain"),
+			flowharness.Omit("body", "headers", "timeline", "wire", "finalUrl", "redirects"))
+	}
 
 	cookieEcho := func(base string) map[string]string {
 		t.Helper()
@@ -232,13 +239,21 @@ func TestCookieJar(t *testing.T) {
 	}
 
 	t.Run("default settings keep no jar", func(t *testing.T) {
-		send(t, app, get(srv.URL+"/cookie/set?name=a&value=1"))
+		cookieContract("login#jar-off", send(t, app, get(srv.URL+"/cookie/set?name=a&value=1")))
+		echo := send(t, app, get(srv.URL+"/cookie/echo"))
+		cookieContract("me#jar-off", echo)
 		if got := cookieEcho(srv.URL); len(got) != 0 {
 			t.Errorf("default send replayed cookies %v, want none (api.disableCookieJar defaults to true)", got)
 		}
 		list, err := app.W.Http.Cookies(bridge.HttpCookiesArgs{URL: srv.URL})
 		if err != nil || len(list) != 0 {
 			t.Errorf("jar = %v, err %v; want empty", list, err)
+		}
+		// J-HTTP-040: the recorder confirms no Cookie header left on the request after the login.
+		for _, r := range srv.Requests() {
+			if r.Path != "/cookie/set" && r.Header.Get("Cookie") != "" {
+				t.Errorf("request %s carried Cookie %q with the jar off", r.Path, r.Header.Get("Cookie"))
+			}
 		}
 	})
 
@@ -248,6 +263,12 @@ func TestCookieJar(t *testing.T) {
 		res := send(t, app, get(srv.URL+"/cookie/set?name=a&value=1"))
 		if len(res.ReceivedCookies) != 1 || res.ReceivedCookies[0].Name != "a" {
 			t.Errorf("received cookies = %+v, want a", res.ReceivedCookies)
+		}
+		cookieContract("login#jar-on", res)
+		echo := send(t, app, get(srv.URL+"/cookie/echo"))
+		cookieContract("me#jar-on", echo)
+		if len(echo.SentCookies) != 1 || echo.SentCookies[0].Name != "a" {
+			t.Errorf("sent cookies = %+v, want a", echo.SentCookies)
 		}
 		if got := cookieEcho(srv.URL); got["a"] != "1" {
 			t.Errorf("replayed cookies = %v, want a=1", got)
@@ -406,5 +427,44 @@ func TestConcurrentSendsSharedJar(t *testing.T) {
 		if !strings.Contains(res.Body, fmt.Sprintf(`"c%d":"v%d"`, i, i)) {
 			t.Fatalf("final echo is missing c%d: %s", i, res.Body)
 		}
+	}
+}
+
+// J-BC-070: a send in flight at quit leaves no history entry, and the relaunched app sends again. Quit
+// does not cancel HTTP ops (process exit closes the socket), so cancelling the old call's context after
+// Restart stands in for that exit.
+func TestRestartDropsInFlightSend(t *testing.T) {
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
+	a := get(srv.URL + "/slow?ms=90000")
+	a.Options.RequestTimeoutMs = ptr(0)
+	sendCtx, exit := context.WithCancel(ctx)
+	defer exit()
+	done := make(chan error, 1)
+	oldHTTP := app.W.Http
+	go func() { _, err := oldHTTP.Send(sendCtx, a); done <- err }()
+	waitUntil(t, "the slow request to arrive", func() bool { return len(srv.Requests()) >= 1 })
+
+	app.Restart()
+	exit()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("the in-flight send succeeded across a quit")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the in-flight send never returned after the process exit")
+	}
+	waitUntil(t, "the server to see the disconnect", func() bool {
+		r := srv.Requests()
+		return r[len(r)-1].Canceled
+	})
+	entries, err := app.W.ResponseHistory.List(bridge.ResponseHistoryScopeArgs{TabID: a.TabID})
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("history after the quit = %+v, %v, want none", entries, err)
+	}
+	if res := send(t, app, get(srv.URL+"/status?code=200")); res.Status != 200 {
+		t.Fatalf("send after relaunch = %d", res.Status)
 	}
 }

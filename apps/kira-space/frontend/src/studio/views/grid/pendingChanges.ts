@@ -2,12 +2,16 @@ import type { MutationRowOp } from '@shared/domain/mutations';
 import { newUuid } from '@shared/ids';
 import type { MutateResponse } from '@shared/protocol/dataOps';
 import { cellText, isNull, type TabularPage } from '@shared/protocol/page';
+import { t } from '@theme/i18n';
 import { compareNatural } from '@workbench/behaviour/match';
+import { errorText, toCodedError } from '@workbench/bridge/codedError';
 import { defineStore } from 'pinia';
 import { reactive, toRaw } from 'vue';
 import { data } from '../../bridge/data';
+import { isChangedConflict } from '../../state/confirmOverwrite';
 import { nullCellText } from '../shared/page/cellText';
 import { cell, getPage, pageVersion } from './page';
+import { dropUnresolved, rowKeyId, settleOnPage, settleUnresolved } from './reconcile';
 
 // Renderer-only, in-memory, per tab — never persisted (not tabs.state_json, not settings,
 // not a new SQLite table). Closing a tab discards uncommitted edits, exactly like closing a
@@ -15,12 +19,13 @@ import { cell, getPage, pageVersion } from './page';
 // page position, so it survives paging, sort, filter, projection and Refresh; a page that no
 // longer holds the row just shows nothing for it until the row comes back on a page.
 
-type RowKey = Record<string, string | null>;
+export type RowKey = Record<string, string | null>;
 
 interface PendingEdit {
   key: RowKey; // the row's primary key when it was staged — a PK-column edit still addresses the original row
   changes: Record<string, string | null>;
   original: Record<string, string | null>; // page value per column when first staged; edits off the current page keep it
+  expect: Record<string, string | null>; // guarded subset of `original`, sent so the server can refuse a changed row
 }
 
 export interface PendingCellDiff {
@@ -33,6 +38,28 @@ export interface PendingCellDiff {
 
 interface PendingDelete {
   key: RowKey;
+  expect: Record<string, string | null>; // guarded columns of the row as loaded
+}
+
+// Columns whose displayed text compares reliably in a WHERE (`col = 'text'`). json, binary and
+// engine-specific types have no portable equality, so they are never guarded.
+const GUARDED_TYPE_CLASSES: ReadonlySet<string> = new Set([
+  'number',
+  'text',
+  'boolean',
+  'temporal',
+]);
+
+/** What commitPending needs to settle the staged set after a commit of unknown outcome. */
+export interface CommitReconcile {
+  reload: () => Promise<void>;
+  /** Asked when `count` staged rows cannot be matched against the reloaded table; true keeps them. */
+  confirmKeep: (count: number) => Promise<boolean>;
+}
+
+function isOutcomeUnknown(err: unknown): boolean {
+  const details = toCodedError(err).details as { outcomeUnknown?: boolean } | undefined;
+  return details?.outcomeUnknown === true;
 }
 
 interface PendingInsert {
@@ -67,6 +94,8 @@ const keyDecoder = new TextDecoder();
 export const usePendingChangesStore = defineStore('pendingChanges', () => {
   const pendingState = reactive({} as Record<string, TabPending>);
   const committingState = reactive({} as Record<string, true>);
+  // Tabs whose last commit may have applied and whose reload has not yet settled the staged set.
+  const unreconciledState = reactive({} as Record<string, true>);
 
   function ensure(tabId: string): TabPending {
     if (!pendingState[tabId]) {
@@ -101,6 +130,7 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
 
   function clearPending(tabId: string): void {
     delete pendingState[tabId];
+    delete unreconciledState[tabId];
   }
 
   // state.ts registers an accessor for a tab's *full* primary-key column list (rt.meta.primaryKey,
@@ -125,11 +155,10 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
       const chunk = page.chunks[col];
       key[descriptor.name] = isNull(chunk, row) ? null : cellText(chunk, row, keyDecoder);
     }
-    const names = Object.keys(key).sort(compareNatural);
-    if (names.length === 0) return null;
+    if (Object.keys(key).length === 0) return null;
     // A partial key (Hide column on part of a composite key) cannot address the row.
     if (full?.some((name) => !(name in key))) return null;
-    return { id: JSON.stringify(names.map((n) => [n, key[n]])), key };
+    return { id: rowKeyId(key), key };
   }
 
   function keysFor(
@@ -263,15 +292,30 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     if (p.deletes.has(entry.id)) return; // a row marked for delete is not independently editable
     const existing = p.edits.get(entry.id);
     const original = { ...(existing?.original ?? {}) };
+    const expect = { ...(existing?.expect ?? {}) };
     if (!(column in original)) {
       const col = getPage(tabId)?.columns.findIndex((c) => c.name === column) ?? -1;
       const view = col >= 0 ? cell(tabId, row, col) : null;
       original[column] = view && !view.isNull ? view.text : null;
+      if (
+        view &&
+        !view.truncated &&
+        GUARDED_TYPE_CLASSES.has(getPage(tabId)?.columns[col]?.typeClass ?? '')
+      ) {
+        expect[column] = original[column];
+      }
+    }
+    // A value equal to what the cell already holds is no change: a pasted block that spans key or
+    // unchanged columns must not rewrite them (a TIMESTAMP rewrite can shift its zone).
+    if (value === original[column]) {
+      if (existing && column in existing.changes) discardCellEdit(tabId, row, column);
+      return;
     }
     p.edits.set(entry.id, {
       key: entry.key,
       changes: { ...(existing?.changes ?? {}), [column]: value },
       original,
+      expect,
     });
   }
 
@@ -322,7 +366,15 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     const { [column]: _discarded, ...rest } = existing.changes;
     const { [column]: _original, ...restOriginal } = existing.original;
     if (Object.keys(rest).length === 0) p?.edits.delete(entry.id);
-    else p?.edits.set(entry.id, { key: existing.key, changes: rest, original: restOriginal });
+    else {
+      const { [column]: _guard, ...restExpect } = existing.expect;
+      p?.edits.set(entry.id, {
+        key: existing.key,
+        changes: rest,
+        original: restOriginal,
+        expect: restExpect,
+      });
+    }
   }
 
   // The row menu's "Revert row(s)" — un-stages a whole row's pending edit and/or pending delete in
@@ -386,13 +438,24 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
   // most recent action instead of being a no-op. Marking for delete is now idempotent, exactly like
   // stageEdit/stageNull above never toggle either: "Revert row(s)" (discardRowChange) is the one and
   // only way to undo a pending delete, for every pending-change kind this module has.
+  function guardedRow(tabId: string, row: number): Record<string, string | null> {
+    const expect: Record<string, string | null> = {};
+    const columns = getPage(tabId)?.columns ?? [];
+    columns.forEach((c, col) => {
+      if (!GUARDED_TYPE_CLASSES.has(c.typeClass)) return;
+      const view = cell(tabId, row, col);
+      if (!view.truncated) expect[c.name] = view.isNull ? null : view.text;
+    });
+    return expect;
+  }
+
   function stageDelete(tabId: string, rows: number[]): void {
     if (committingState[tabId]) return;
     for (const row of rows) {
       const entry = rowKeyOf(tabId, row);
       if (!entry) continue;
       const p = ensure(tabId);
-      p.deletes.set(entry.id, { key: entry.key });
+      p.deletes.set(entry.id, { key: entry.key, expect: guardedRow(tabId, row) });
       p.edits.delete(entry.id); // a row marked for delete is not independently editable (mirrors stageEdit)
     }
   }
@@ -407,7 +470,12 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     return id;
   }
 
-  function stageInsertValue(tabId: string, insertId: string, column: string, value: string): void {
+  function stageInsertValue(
+    tabId: string,
+    insertId: string,
+    column: string,
+    value: string | null,
+  ): void {
     if (committingState[tabId]) return;
     const insert = pendingState[tabId]?.inserts.find((i) => i.id === insertId);
     if (insert) insert.values[column] = value;
@@ -420,13 +488,23 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     p.inserts = p.inserts.filter((i) => i.id !== insertId);
   }
 
-  function buildPlan(tabId: string): MutationRowOp[] | null {
+  // `guard` adds each op's loaded values so the server refuses a row that changed since; the
+  // preview and a confirmed overwrite send the plan without them.
+  function buildPlan(tabId: string, guard = false): MutationRowOp[] | null {
     const p = pendingState[tabId];
     if (!p) return null;
     const ops: MutationRowOp[] = [];
-    for (const del of p.deletes.values()) ops.push({ kind: 'delete', key: del.key });
+    const withExpect = (expect: Record<string, string | null>) =>
+      guard && Object.keys(expect).length > 0 ? { expect } : {};
+    for (const del of p.deletes.values()) {
+      ops.push({ kind: 'delete', key: del.key, ...withExpect(del.expect) });
+    }
     for (const edit of p.edits.values()) {
-      ops.push({ kind: 'update', key: edit.key, changes: edit.changes });
+      const expect: Record<string, string | null> = {};
+      for (const column of Object.keys(edit.changes)) {
+        if (column in edit.expect) expect[column] = edit.expect[column];
+      }
+      ops.push({ kind: 'update', key: edit.key, changes: edit.changes, ...withExpect(expect) });
     }
     for (const insert of p.inserts) {
       ops.push({ kind: 'insert', values: insert.values });
@@ -444,11 +522,65 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     return (await data.preview({ connectionId, path, ops })).statements;
   }
 
+  // Server truth after a lost acknowledgement (decision 2): reload, then settle the staged set
+  // against the reloaded page (reconcile.ts). `reconcile.reload` must throw when the read fails:
+  // the old page predates the commit. A failed reload leaves the tab unreconciled, so the next
+  // Commit reloads and settles first instead of resending a plan that may already have landed.
+  async function reconcileAfterUnknownCommit(
+    tabId: string,
+    reconcile: CommitReconcile,
+  ): Promise<void> {
+    await reconcile.reload();
+    const p = pendingState[tabId];
+    const page = getPage(tabId);
+    if (!page) throw new Error(t('studio.common.connectionLost.error'));
+    if (p) {
+      const colIndex = new Map(page.columns.map((c, i) => [c.name, i]));
+      const rowById = rowsByKey(tabId);
+      const verdict = settleOnPage(p, {
+        rowById,
+        pkNames: page.columns.filter((c) => c.isPrimaryKey).map((c) => c.name),
+        serverText: (row, column) => {
+          const col = colIndex.get(column);
+          if (col === undefined) return undefined;
+          const view = cell(tabId, row, col);
+          if (view.truncated) return undefined;
+          return view.isNull ? null : view.text;
+        },
+      });
+      const keep = await settleUnresolved(verdict, reconcile.confirmKeep);
+      if (!keep) dropUnresolved(p, verdict.unresolved);
+    }
+    if (!hasPending(tabId)) clearPending(tabId);
+    delete unreconciledState[tabId];
+  }
+
+  // The staged set is settled before the error reaches the user; a reload that fails says so.
+  async function failAfterUnknownOutcome(
+    tabId: string,
+    err: unknown,
+    reconcile: CommitReconcile,
+  ): Promise<never> {
+    unreconciledState[tabId] = true;
+    try {
+      await reconcileAfterUnknownCommit(tabId, reconcile);
+    } catch (reloadErr) {
+      throw new Error(
+        `${errorText(err)} ${t('studio.grid.commitUnknown.reloadFailed.error', { error: errorText(reloadErr) })}`,
+      );
+    }
+    throw err;
+  }
+
   async function commitPending(
     connectionId: string,
     path: string,
     tabId: string,
     afterCommit?: () => Promise<void>,
+    // Asked when the server reports a row changed since it was loaded; true overwrites it.
+    confirmOverwrite?: (message: string) => Promise<boolean>,
+    // After a commit whose outcome is unknown: reloads the grid and asks about unmatched rows.
+    reconcile?: CommitReconcile,
   ): Promise<MutateResponse | null> {
     // A second click, or an edit staged mid-flight, would resend or drop ops already on the wire.
     // `afterCommit` runs inside the same window so the reload that replaces the page cannot drop
@@ -456,14 +588,36 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     if (committingState[tabId]) return null;
     committingState[tabId] = true;
     try {
-      const ops = buildPlan(tabId);
+      // A reconcile that failed to reach the server leaves the outcome of the earlier commit
+      // unknown: this click only settles it. What stays staged is sent by the next Commit, which
+      // the user presses knowing what the table holds.
+      if (unreconciledState[tabId] && reconcile) {
+        await reconcileAfterUnknownCommit(tabId, reconcile);
+        return null;
+      }
+      const ops = buildPlan(tabId, true);
       if (!ops) return null;
-      const result = await data.mutate({
-        tabId,
-        connectionId,
-        path,
-        ops,
-      });
+      // A lost acknowledgement settles the staged set first, whether it hits the first send or
+      // the resend after a confirmed overwrite.
+      const send = async (planned: MutationRowOp[]): Promise<MutateResponse> => {
+        try {
+          return await data.mutate({ tabId, connectionId, path, ops: planned });
+        } catch (err) {
+          if (isOutcomeUnknown(err) && reconcile)
+            return failAfterUnknownOutcome(tabId, err, reconcile);
+          throw err;
+        }
+      };
+      let result: MutateResponse;
+      try {
+        result = await send(ops);
+      } catch (err) {
+        if (!isChangedConflict(err) || !confirmOverwrite) throw err;
+        if (!(await confirmOverwrite(errorText(err)))) return null;
+        const forced = buildPlan(tabId);
+        if (!forced) return null;
+        result = await send(forced);
+      }
       clearPending(tabId);
       await afterCommit?.();
       return result;

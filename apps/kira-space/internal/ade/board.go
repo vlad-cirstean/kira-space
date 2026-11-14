@@ -176,6 +176,10 @@ type TaskBoardDeps struct {
 	AdeSettings func() model.AdeSettings
 	// LeaseTTL is how long a holder may stay silent; 0 = leases.DefaultTTL.
 	LeaseTTL time.Duration
+	// LeaseNow replaces Now for lease heartbeats (a flow-test seam); nil = Now.
+	LeaseNow func() time.Time
+	// LeaseElapsed counts only time the app ran (OQ-ADE-3); nil derives it from LeaseNow or Now.
+	LeaseElapsed func() time.Duration
 }
 
 // TaskBoard is the v2 engine: one gitsession.Conn holding every repo a live task touches, a per-repo
@@ -771,7 +775,7 @@ func toWireHistory(tasks []model.AdeTask, branches []model.AdeTaskBranch) []adew
 	}
 	out := make([]adewire.HistoryEntry, 0, len(tasks))
 	for _, t := range tasks {
-		e := adewire.HistoryEntry{TaskID: t.ID, ParentID: t.ParentID, Title: taskTitle(t, byTask[t.ID]), CodeRepoIDs: []string{}, ArchivedAt: *t.ArchivedAt}
+		e := adewire.HistoryEntry{TaskID: t.ID, ParentID: t.ParentID, Title: taskTitle(t, byTask[t.ID]), JiraKey: t.JiraKey, CodeRepoIDs: []string{}, ArchivedAt: *t.ArchivedAt}
 		seen := map[string]bool{}
 		var latest int64
 		allMerged := len(byTask[t.ID]) > 0

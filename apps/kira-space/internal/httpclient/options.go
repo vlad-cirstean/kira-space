@@ -168,7 +168,7 @@ func checkRedirectFor(r resolved) func(*http.Request, []*http.Request) error {
 			// what closes it — closing it here too, via closeHop, would record it twice.
 			return http.ErrUseLastResponse
 		}
-		if len(via) >= r.maxRedirects {
+		if len(via) > r.maxRedirects { // via[0] is the original request, not a redirect
 			return fmt.Errorf("httpclient: stopped after %d redirects", r.maxRedirects)
 		}
 		if r.redirectGuard != nil {

@@ -1,6 +1,7 @@
 package adeflow_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -494,4 +495,197 @@ func derefCmd(r oplog.Record) string {
 		return ""
 	}
 	return *r.Command
+}
+
+// stackChild creates a task stacked on parent, runs a fake agent that commits file there and returns
+// its branch.
+func (f *rbFx) stackChild(t *testing.T, parent adewire.Branch, name, file string) (adewire.Task, adewire.Branch) {
+	t.Helper()
+	task, err := f.app.W.AdeTask.CreateTask(ctx, adewire.CreateTaskArgs{
+		Title: name, CodeRepoIDs: []string{f.repoID}, WorkflowID: "flow",
+		Bases: map[string]adewire.BaseChoice{f.repoID: {BranchID: parent.ID}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := f.branch(t, task.ID)
+	claude(f.app, map[string][]fakeagent.Action{"*": {{Name: "done", Sh: "echo " + name + " > " + file + " && git add -A && git commit -q -m " + name}}})
+	if _, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: task.ID, BranchNames: map[string]string{row.ID: "feat/" + name}}); err != nil {
+		t.Fatal(err)
+	}
+	waitRun(t, f.app, task.ID, "one", "done")
+	return task, f.branch(t, task.ID)
+}
+
+// J-ADE-050. Stack of three, conflict in the middle branch: abort restores the middle branch to its
+// pre-rebase tip with no rebase left in progress, other branches keep their refs, retry gives a
+// linear stack.
+func TestRebaseStackConflictAbortRetry(t *testing.T) {
+	f, task, a := newRbFx(t)
+	_, b := f.stackChild(t, a, "mid", "clash.txt")
+	_, c := f.stackChild(t, b, "top", "top.txt")
+	oldA, oldB, oldC := gitOut(t, a.Worktree, "rev-parse", "HEAD"), gitOut(t, b.Worktree, "rev-parse", "HEAD"), gitOut(t, c.Worktree, "rev-parse", "HEAD")
+	f.advanceMain(t, "clash.txt", "from main\n")
+	f.waitBoardBehind(t, task.ID, 2)
+
+	rebaseA := "git fetch -q origin && git rebase -q origin/main"
+	rebaseB := "git -C " + b.Worktree + " rebase -q --onto feat/a " + oldA
+	f.agent(rebaseA+" && "+rebaseB+" || true", nil)
+	run := f.waitRebase(t, task.ID, f.rebase(t, a, adewire.RebaseArgs{}).RunID)
+	if run.State != "failed" {
+		t.Fatalf("run = %+v, want failed on the conflict", run)
+	}
+	gitDir := func(wt string) string { return gitOut(t, wt, "rev-parse", "--absolute-git-dir") }
+	if _, err := os.Stat(filepath.Join(gitDir(b.Worktree), "rebase-merge")); err != nil {
+		t.Fatalf("middle branch has no rebase in progress: %v", err)
+	}
+	// A retry run live: abort refuses until it stops.
+	if err := f.app.W.AdeTask.AbortRebase(ctx, adewire.BranchArgs{BranchID: b.ID}); err != nil {
+		t.Fatalf("AbortRebase: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(gitDir(b.Worktree), "rebase-merge")); !os.IsNotExist(err) {
+		t.Fatalf("rebase-merge remains after abort: %v", err)
+	}
+	for _, c := range []struct{ name, wt, want string }{{"mid", b.Worktree, oldB}, {"top", c.Worktree, oldC}} {
+		if got := gitOut(t, c.wt, "rev-parse", "HEAD"); got != c.want {
+			t.Errorf("%s tip after abort = %s, want the pre-rebase %s", c.name, got, c.want)
+		}
+	}
+	if got := gitOut(t, f.repo.Dir, "rev-parse", "feat/mid"); got != oldB {
+		t.Errorf("feat/mid ref = %s, want %s", got, oldB)
+	}
+	if text := logText(t, f.app, "run", run.ID); !strings.Contains(text, "aborted by you") {
+		t.Errorf("run log lacks the abort note:\n%s", text)
+	}
+
+	// Retry: resolve the conflict by taking the branch's side, then restack the top.
+	rebaseBOk := "git -C " + b.Worktree + " rebase -q -X theirs --onto feat/a " + oldA
+	rebaseC := "git -C " + c.Worktree + " rebase -q --onto feat/mid " + oldB
+	f.agent(rebaseBOk+" && "+rebaseC, done())
+	retry := f.waitRebase(t, task.ID, f.rebase(t, a, adewire.RebaseArgs{}).RunID)
+	if retry.State != "done" {
+		t.Fatalf("retry = %+v, want done", retry)
+	}
+	tipOf := func(ref string) string { return gitOut(t, f.repo.Dir, "rev-parse", ref) }
+	for _, link := range [][2]string{{"main", "feat/a"}, {"feat/a", "feat/mid"}, {"feat/mid", "feat/top"}} {
+		if base := gitOut(t, f.repo.Dir, "merge-base", link[0], link[1]); base != tipOf(link[0]) {
+			t.Errorf("merge-base(%s, %s) = %s, want %s: the stack is not linear", link[0], link[1], base, tipOf(link[0]))
+		}
+	}
+}
+
+// J-ADE-051. Refusals leave every ref untouched and start no run.
+func TestRebaseRefusalsLeaveRefs(t *testing.T) {
+	f, task, br := newRbFx(t)
+	f.waitBoardBehind(t, task.ID, 1)
+	// A dirty worktree blocks the rebase.
+	commitIn(t, br.Worktree, "tracked.txt")
+	gitOut(t, br.Worktree, "reset", "-q", "--soft", "HEAD~1")
+	gitOut(t, br.Worktree, "add", "-A")
+	refs := gitOut(t, f.repo.Dir, "for-each-ref", "--format=%(refname) %(objectname)")
+	if _, err := f.app.W.AdeTask.Rebase(ctx, adewire.RebaseArgs{BranchID: br.ID}); err == nil {
+		t.Fatal("Rebase of a dirty worktree accepted")
+	}
+	// A branch detached from its row has nothing to rebase.
+	if _, err := f.app.W.AdeTask.Rebase(ctx, adewire.RebaseArgs{BranchID: "no-such-branch"}); err == nil {
+		t.Fatal("Rebase of a missing branch accepted")
+	}
+	if got := gitOut(t, f.repo.Dir, "for-each-ref", "--format=%(refname) %(objectname)"); got != refs {
+		t.Fatalf("refs changed by refused rebases:\n%s\nwas\n%s", got, refs)
+	}
+	if _, ok := latestRebase(t, f.app, task.ID); ok {
+		t.Fatal("a refused rebase left a run row")
+	}
+}
+
+// J-ADE-052. A rebase run's tools cannot leave its stack: another repo's worktree, push, checkout of
+// another branch are refused with a reason and execute nothing; rebase inside the stack runs.
+func TestRebaseRunGitGuard(t *testing.T) {
+	f, task, br := newRbFx(t)
+	other := f.app.NewRepo("elsewhere")
+	other.Commit("other base", map[string]string{"o.txt": "o\n"})
+	otherTip := gitOut(t, other.Dir, "rev-parse", "HEAD")
+	otherLog := gitOut(t, other.Dir, "reflog")
+	f.waitBoardBehind(t, task.ID, 1)
+	remoteBefore := gitOut(t, f.repo.Dir, "ls-remote", "origin")
+	gitCall := func(wt string, args ...string) fakeagent.MCPCall {
+		return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "git", Tolerate: true, Args: map[string]any{"worktree": wt, "args": args}}
+	}
+	claude(f.app, map[string][]fakeagent.Action{"*": {{Name: "nofinish", MCP: []fakeagent.MCPCall{
+		gitCall(other.Dir, "rebase", "-q", "main"),                  // 1 outside the stack
+		gitCall(br.Worktree, "push", "--force", "origin", "feat/a"), // 2 no push grant
+		gitCall(br.Worktree, "checkout", "main"),                    // 3 not a conflict checkout
+		gitCall(br.Worktree, "fetch", "-q", "origin"),               // 4 ok
+		gitCall(br.Worktree, "rebase", "-q", "origin/main"),         // 5 ok
+		{Server: agentmcp.ServerName, Tool: "finish_step", Args: done()},
+	}}}})
+	run := f.waitRebase(t, task.ID, f.rebase(t, br, adewire.RebaseArgs{}).RunID)
+	if run.State != "done" {
+		t.Fatalf("run = %+v, want done after the in-stack rebase", run)
+	}
+	for n, want := range map[int]string{1: "worktree", 2: "push is not allowed", 3: "checkout is allowed only"} {
+		text, _ := mcpReply(t, f.app, fmt.Sprintf("mcp-git-%d.json", n))
+		if !strings.Contains(text, want) {
+			t.Errorf("git call %d reply = %q, want %q", n, text, want)
+		}
+	}
+	for _, n := range []int{4, 5} {
+		if raw := fakeFile(t, f.app, fmt.Sprintf("mcp-git-%d.json", n)); strings.Contains(raw, `"isError":true`) {
+			t.Errorf("git call %d = %s, want success", n, raw)
+		}
+	}
+	if got := gitOut(t, other.Dir, "rev-parse", "HEAD"); got != otherTip || gitOut(t, other.Dir, "reflog") != otherLog {
+		t.Errorf("repo outside the stack moved: %s reflog changed %v", got, gitOut(t, other.Dir, "reflog") != otherLog)
+	}
+	if got := gitOut(t, f.repo.Dir, "ls-remote", "origin"); got != remoteBefore {
+		t.Errorf("remote moved by a refused push:\n%s\nwas\n%s", got, remoteBefore)
+	}
+	args := fakeFile(t, f.app, "api-1.args")
+	granted, _, _ := strings.Cut(args, "--disallowedTools")
+	if strings.Contains(granted, "Bash") {
+		t.Errorf("rebase run argv grants Bash:\n%s", args)
+	}
+}
+
+// J-ADE-050. Abort refuses while a run works on the branch ("stop the run first"), then restores the
+// pre-rebase tip once it ends.
+func TestRebaseAbortRefusedWhileRunLive(t *testing.T) {
+	f, task, br := newRbFx(t)
+	hold := filepath.Join(t.TempDir(), "release")
+	t.Cleanup(func() { _ = os.WriteFile(hold, nil, 0o644) })
+	old := gitOut(t, br.Worktree, "rev-parse", "HEAD")
+	f.advanceMain(t, "a.txt", "from main\n")
+	f.waitBoardBehind(t, task.ID, 2)
+	if _, err := f.app.W.AdeTask.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: task.ID, WorkflowID: "flow"}); err != nil {
+		t.Fatal(err)
+	}
+	claude(f.app, map[string][]fakeagent.Action{"*": {
+		{Name: "nofinish", Sh: rebaseSh + " || true"},
+		{Name: "nofinish", WaitFile: hold},
+	}})
+	first := f.waitRebase(t, task.ID, f.rebase(t, br, adewire.RebaseArgs{}).RunID)
+	if first.State != "failed" {
+		t.Fatalf("first run = %+v, want failed on the conflict", first)
+	}
+	// A step run on the branch is live; a second rebase is refused outright, so the live run is a step.
+	if _, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: task.ID}); err != nil {
+		t.Fatalf("StartRun: %v", err)
+	}
+	live := waitRun(t, f.app, task.ID, "one", "running")
+	err := f.app.W.AdeTask.AbortRebase(ctx, adewire.BranchArgs{BranchID: br.ID})
+	if err == nil || !strings.Contains(err.Error(), "stop the run first") {
+		t.Fatalf("AbortRebase with a live run = %v, want the stop-the-run-first refusal", err)
+	}
+	if _, serr := os.Stat(filepath.Join(gitOut(t, br.Worktree, "rev-parse", "--absolute-git-dir"), "rebase-merge")); serr != nil {
+		t.Fatalf("the refused abort touched the rebase in progress: %v", serr)
+	}
+	if err := f.app.W.AdeTask.StopRun(ctx, adewire.RunArgs{RunID: live.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.app.W.AdeTask.AbortRebase(ctx, adewire.BranchArgs{BranchID: br.ID}); err != nil {
+		t.Fatalf("AbortRebase after the run ended: %v", err)
+	}
+	if got := gitOut(t, br.Worktree, "rev-parse", "HEAD"); got != old {
+		t.Fatalf("tip after abort = %s, want the pre-rebase %s", got, old)
+	}
 }

@@ -29,6 +29,7 @@ test('a saved-queries change refetches the console menu once; reopening reads no
     usedAt: null,
     body: { text: 'SELECT 1;' },
   };
+  const EDITED = { ...SAVED, name: 'Renamed elsewhere', body: { text: 'SELECT\n  1;' } };
   const LIST_ARGS = { connectionId: CONNECTION_ID, path: ORDER_ITEMS_PATH };
   const CONTROL: ControlSnapshot[] = [
     { channel: IPC.connectionsList, response: [] },
@@ -40,6 +41,8 @@ test('a saved-queries change refetches the console menu once; reopening reads no
     ...FIXTURE.control,
     { channel: IPC.queriesListConsole, args: LIST_ARGS, response: [] },
     { channel: IPC.queriesListConsole, args: LIST_ARGS, response: [SAVED] },
+    // The other window then renames the query and edits its text (J-CONS-027).
+    { channel: IPC.queriesListConsole, args: LIST_ARGS, response: [EDITED] },
   ];
   const { window: page, control } = await relaunch({ control: CONTROL, stream: FIXTURE.port });
   await connectAndExpand(page, 'Saved DB', 'green');
@@ -76,4 +79,16 @@ test('a saved-queries change refetches the console menu once; reopening reads no
   await toggle.click();
   await expect(entries).toHaveCount(1);
   expect(reads()).toBe(2);
+  await page.keyboard.press('Escape');
+
+  // A rename and an edit in the other window replace the entry; nothing else is read.
+  await emitWailsEvent(page, IPC.savedQueriesChanged, {
+    connectionId: CONNECTION_ID,
+    kind: 'console',
+  });
+  await toggle.click();
+  await expect(entries).toHaveCount(1);
+  await expect(entries.first()).toContainText(EDITED.name);
+  await expect(entries.first()).not.toContainText(SAVED.name);
+  expect(reads()).toBe(3);
 });

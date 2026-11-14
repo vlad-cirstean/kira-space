@@ -48,13 +48,15 @@ const hasResults = computed(() => (rt.value?.results.length ?? 0) > 0);
 const stale = computed(() => consoleViewStore.isStale(props.tab.id));
 
 const connect = useAsyncAction(async () => {
-  if (!needsReconnect.value) return;
-  if (await onReconnectAndLoad()) return;
-  throw new Error(t('studio.console.connectFailed.error'));
+  if (needsReconnect.value && !(await onReconnectAndLoad())) {
+    throw new Error(t('studio.console.connectFailed.error'));
+  }
+  await d.ensureDataView();
 });
 
 async function onRun(): Promise<void> {
   if (!d.canRun.value || connect.pending.value) return;
+  autoRan = true;
   if (await connect.run()) await d.run();
 }
 

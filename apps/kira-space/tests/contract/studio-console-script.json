@@ -1,0 +1,279 @@
+{
+  "mysql#afterReconnect": [
+    {
+      "columns": [
+        "@kira_probe"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "truncated": false
+    }
+  ],
+  "mysql#autocommitClose": [
+    "ROLLBACK",
+    "SET autocommit=1"
+  ],
+  "mysql#autocommitOff": [
+    "SET autocommit=0",
+    "COMMIT",
+    "INSERT INTO kira_tx VALUES (9)"
+  ],
+  "mysql#call": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (8)",
+    "CALL kira_commit()"
+  ],
+  "mysql#chain": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (2)",
+    "COMMIT AND CHAIN",
+    "INSERT INTO kira_tx VALUES (3)"
+  ],
+  "mysql#checkTable": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (7)",
+    "CHECK TABLE kira_tx",
+    "ROLLBACK"
+  ],
+  "mysql#delimiter": {
+    "code": "E_QUERY"
+  },
+  "mysql#failing": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (4)",
+    "INSERT INTO kira_tx VALUES ('x')",
+    "COMMIT"
+  ],
+  "mysql#implicitCommit": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (1)",
+    "CREATE TABLE kira_tx_ddl (i INT)",
+    "ROLLBACK"
+  ],
+  "mysql#pages": [
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "first_set"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "1"
+        ]
+      ],
+      "truncated": false
+    }
+  ],
+  "mysql#parseErrorDDL": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (5)",
+    "CREATE TABL kira_tx_x (i INT)"
+  ],
+  "mysql#reset": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (7)",
+    "RESET BINARY LOGS AND GTIDS",
+    "ROLLBACK"
+  ],
+  "mysql#runtimeErrorDDL": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (6)",
+    "CREATE TABLE kira_tx (i INT)"
+  ],
+  "mysql#script": [
+    "DROP PROCEDURE IF EXISTS kira_script",
+    "CREATE PROCEDURE kira_script() BEGIN SELECT 1 AS first_set; SELECT 2 AS second_set, 3 AS other; END",
+    "CALL kira_script()"
+  ],
+  "mysql#xa": [
+    "XA START 'kira_xa'",
+    "INSERT INTO kira_tx VALUES (10)"
+  ],
+  "pg#cap": {
+    "hasMore": false,
+    "rows": 10000,
+    "truncated": true
+  },
+  "pg#migration": [
+    "BEGIN",
+    "CREATE TABLE app.mig (id int PRIMARY KEY, label text)",
+    "INSERT INTO app.mig VALUES ('not a number', 'x')",
+    "INSERT INTO app.mig VALUES (2, 'b')",
+    "COMMIT"
+  ],
+  "pg#migrationError": {
+    "code": "E_QUERY",
+    "details": "{\"inTransaction\":true,\"statementIndex\":2}",
+    "message": "ERROR: invalid input syntax for type integer: \"not a number\" (SQLSTATE 22P02)"
+  },
+  "sqlite#busy": {
+    "code": "E_TIMEOUT",
+    "message": "database is locked (5) (SQLITE_BUSY)"
+  },
+  "sqlite#dupColumns": {
+    "page": {
+      "columns": [
+        "x",
+        "x"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "1",
+          "2"
+        ]
+      ],
+      "truncated": false
+    },
+    "statement": "SELECT 1 AS x, 2 AS x"
+  },
+  "sqlite#effects": [
+    [
+      "1",
+      "a;b"
+    ],
+    [
+      "2",
+      "it's; fine"
+    ],
+    [
+      "3",
+      "c"
+    ],
+    [
+      "4",
+      "d!"
+    ]
+  ],
+  "sqlite#pages": [
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "body"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "a;b"
+        ],
+        [
+          "it's; fine"
+        ],
+        [
+          "c"
+        ],
+        [
+          "d!"
+        ]
+      ],
+      "truncated": false
+    }
+  ],
+  "sqlite#script": "-- seed; the notes\nCREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT);\nINSERT INTO notes (body) VALUES ('a;b'), ('it''s; fine');\n;\n/* block; comment */ INSERT INTO notes (body) VALUES ('c');\nCREATE TRIGGER notes_ai AFTER INSERT ON notes BEGIN UPDATE notes SET body = body || '!' WHERE id = new.id; END;\nINSERT INTO notes (body) VALUES ('d');\nSELECT body FROM notes ORDER BY id",
+  "sqlite#statements": [
+    "-- seed; the notes\nCREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT)",
+    "INSERT INTO notes (body) VALUES ('a;b'), ('it''s; fine')",
+    "/* block; comment */ INSERT INTO notes (body) VALUES ('c')",
+    "CREATE TRIGGER notes_ai AFTER INSERT ON notes BEGIN UPDATE notes SET body = body || '!' WHERE id = new.id; END",
+    "INSERT INTO notes (body) VALUES ('d')",
+    "SELECT body FROM notes ORDER BY id"
+  ]
+}

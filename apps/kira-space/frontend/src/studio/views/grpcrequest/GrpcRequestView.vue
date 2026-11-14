@@ -45,6 +45,7 @@ import { beautifyJson } from '../../beautify';
 import MonacoHost from '../../editor/MonacoHost.vue';
 import { INLINE_CHARS } from '../../workers/parse/client';
 import { useParseWorker } from '../../workers/parse/useParseWorker';
+import { useSeenSaved } from '../httprequest/useSeenSaved';
 import { reasonText } from '../shared/reasonText';
 import { unresolvedOf, unresolvedTooltipOf } from '../shared/request/unresolved';
 import { useRequestChrome } from '../shared/request/useRequestChrome';
@@ -126,6 +127,7 @@ const {
 const savedQuery = useSavedGrpcRequest(() => props.tab.state.itemId);
 const saved = computed(() => savedQuery.data.value ?? null);
 const dirty = computed(() => isGrpcDirty(props.tab.state, saved.value));
+const seenSaved = useSeenSaved(saved, (against) => isGrpcDirty(props.tab.state, against));
 const canSave = computed(() => props.tab.state.itemId !== null && saved.value !== null);
 
 const unresolved = computed(
@@ -140,7 +142,8 @@ const { onSave } = useRequestTabSave({
   unresolved: () => unresolved.value,
   name: () => props.tab.state.name || title.value,
   toSaved: () => toSavedGrpcRequest(props.tab.state),
-  save: (itemId, name, body) => collectionsStore.saveGrpcRequest(itemId, name, body),
+  save: (itemId, name, body) =>
+    collectionsStore.saveGrpcRequest(itemId, name, body, seenSaved.value),
   openSaveDialog: (tabId, name, body) =>
     saveRequestDialogStore.openSaveGrpcDialog(tabId, name, body),
 });

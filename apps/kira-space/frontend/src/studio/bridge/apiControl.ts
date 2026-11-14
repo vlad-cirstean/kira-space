@@ -190,12 +190,23 @@ export const apiControl = {
     })),
   collectionsGetRequest: (itemId: string): Promise<WailsStorageModels.SavedRequest> =>
     unwrap(CollectionsService.GetRequest({ itemId })),
+  /** `expect` and `expectName` are the request and item name this window last read: a stored item
+   *  that differs in either answers `E_CONFLICT` with `details.changed`. */
   collectionsSaveRequest: (
     itemId: string,
     name: string,
     request: WailsStorageModels.SavedRequest,
+    expect?: { request: WailsStorageModels.SavedRequest; name: string },
   ): Promise<WailsModels.ItemSummary> =>
-    unwrap(CollectionsService.SaveRequest({ itemId, name, request })),
+    unwrap(
+      CollectionsService.SaveRequest({
+        itemId,
+        name,
+        request,
+        expect: expect?.request ?? null,
+        expectName: expect?.name ?? null,
+      }),
+    ),
   // P11 D12: GetRequest/SaveRequest's own gRPC siblings.
   collectionsGetGrpcRequest: (itemId: string): Promise<WailsStorageModels.SavedGrpcRequest> =>
     unwrap(CollectionsService.GetGrpcRequest({ itemId })),
@@ -203,8 +214,17 @@ export const apiControl = {
     itemId: string,
     name: string,
     request: WailsStorageModels.SavedGrpcRequest,
+    expect?: { request: WailsStorageModels.SavedGrpcRequest; name: string },
   ): Promise<WailsModels.ItemSummary> =>
-    unwrap(CollectionsService.SaveGrpcRequest({ itemId, name, request })),
+    unwrap(
+      CollectionsService.SaveGrpcRequest({
+        itemId,
+        name,
+        request,
+        expect: expect?.request ?? null,
+        expectName: expect?.name ?? null,
+      }),
+    ),
   collectionsCreateCollection: (name: string): Promise<WailsModels.CollectionSummary> =>
     unwrap(CollectionsService.CreateCollection({ name })),
   collectionsCreateItem: (args: {

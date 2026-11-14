@@ -20,7 +20,7 @@ export interface InsertTarget {
 
 export interface CopySource {
   /** Displayed cell (masking-aware in the data grid). */
-  cellAt(row: number, col: number): { text: string; isNull: boolean };
+  cellAt(row: number, col: number): { text: string; isNull: boolean; truncated?: boolean };
   /** Whole row in display column order (masked in the data grid). */
   rowSnapshot(row: number): RowSnapshot;
   /** Display name of a display column, before disambiguation. */
@@ -108,4 +108,37 @@ export function selectionText(sel: Selection, format: CopyFormat, src: CopySourc
       );
     }
   }
+}
+
+/** How many cells `sel` copies that the engine cut at its display cap: the copy holds their shortened
+ *  text, so the caller says so instead of announcing a plain success. */
+export function truncatedCellCount(sel: Selection, src: CopySource): number {
+  const count = (rows: readonly number[], cols: readonly number[]): number =>
+    rows.reduce((n, r) => n + cols.filter((c) => src.cellAt(r, c).truncated).length, 0);
+  switch (sel.kind) {
+    case 'cell':
+      return count([sel.row], [sel.col]);
+    case 'range':
+      return count(
+        src.rowsInSpan(sel.anchorRow, sel.row),
+        Array.from({ length: sel.col - sel.anchorCol + 1 }, (_, i) => sel.anchorCol + i),
+      );
+    case 'column':
+      return count(src.allRows(), sel.cols);
+    case 'row':
+      return [...new Set(sel.rows)].reduce(
+        (n, r) => n + (src.rowSnapshot(r).truncated?.size ?? 0),
+        0,
+      );
+  }
+}
+
+/** Announcement for a copy of `rows`: names the truncated cells when there are any. */
+export function rowsCopiedMessage(
+  rows: readonly RowSnapshot[],
+  plain: string,
+  truncatedMessage: (count: number) => string,
+): string {
+  const count = rows.reduce((n, r) => n + (r.truncated?.size ?? 0), 0);
+  return count > 0 ? truncatedMessage(count) : plain;
 }

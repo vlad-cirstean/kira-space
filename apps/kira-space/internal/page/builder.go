@@ -340,6 +340,13 @@ func (b *KeyValuePageBuilder) Push(field, value string) {
 	b.rowCount++
 }
 
+// PushBinary pushes value as base64 text flagged binary (see BytesCell).
+func (b *KeyValuePageBuilder) PushBinary(field, value string) {
+	row := b.rowCount
+	b.Push(field, value)
+	b.values.markBinary(row)
+}
+
 func (b *KeyValuePageBuilder) Finish(position PagePosition) KeyValuePage {
 	fields := b.fields.finish(b.rowCount, false)
 	values := b.values.finish(b.rowCount, false)

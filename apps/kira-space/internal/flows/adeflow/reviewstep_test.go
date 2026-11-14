@@ -565,3 +565,57 @@ func TestReviewForwardComments(t *testing.T) {
 		t.Fatal("ForwardReviewComments succeeded with no open comment")
 	}
 }
+
+// J-REV-030: a rework round rewrites the file under open comments. The comments survive the send-back,
+// anchors follow their lines through the new commit, a deleted line's comment is marked removed, and the
+// returns counter on the implement step counts the round.
+func TestReviewLoopAnchorsDriftAcrossRework(t *testing.T) {
+	f := newReviewFx(t, "implementer",
+		fakeagent.Action{Name: "done", Sh: rvImplement},
+		fakeagent.Action{Name: "done", Sh: "sed -i '1i zero' r.txt && sed -i '/^three$/d' r.txt && git commit -q -am rework"},
+		fakeagent.Action{Name: "done"})
+	first := f.toReview(t, "feat/api-review-drift")
+	f.window(t)
+	kept := f.comment(t, 2, "this line", "")
+	gone := f.comment(t, 3, "this one goes", "")
+	if err := f.finish("rework", "tidy up"); err != nil {
+		t.Fatal(err)
+	}
+	testx.WaitUntil(t, waitFor, func() bool {
+		r, _ := latestRun(t, f.app, f.taskID, "review")
+		return r.ID != first.ID && r.State == "review"
+	})
+	head := gitOut(t, f.br.Worktree, "rev-parse", "HEAD")
+	var res gitsession.CommentListResult
+	f.gs.MustRequest("review.comment.list", gitrpc.ReviewCommentListParams{RepoID: f.tgt.GitRepoID, Branch: f.tgt.Branch, At: head}, &res)
+	byID := map[string]gitsession.CommentEntry{}
+	for _, c := range res.Comments {
+		byID[c.ID] = c
+	}
+	if c := byID[kept.ID]; c.Anchor != gitreview.AnchorProjected || c.Range != lineRange(3) {
+		t.Fatalf("kept comment = %+v, want projected to line 3", c)
+	}
+	if c := byID[gone.ID]; c.Anchor != gitreview.AnchorRemoved {
+		t.Fatalf("deleted line's comment = %+v, want removed", c)
+	}
+	impl, _ := latestRun(t, f.app, f.taskID, "implement")
+	if impl.Attempt != 2 {
+		t.Fatalf("implement = %+v, want attempt 2 after one send-back", impl)
+	}
+	// A history rewrite (the same tree under a new commit) keeps the comment on its line.
+	gitOut(t, f.br.Worktree, "commit", "-q", "--amend", "-m", "reworded")
+	rewritten := gitOut(t, f.br.Worktree, "rev-parse", "HEAD")
+	if rewritten == head {
+		t.Fatal("amend left the commit unchanged")
+	}
+	f.gs.MustRequest("review.comment.list", gitrpc.ReviewCommentListParams{RepoID: f.tgt.GitRepoID, Branch: f.tgt.Branch, At: rewritten}, &res)
+	for _, c := range res.Comments {
+		if c.ID == kept.ID && (c.Range != lineRange(3) || (c.Anchor != gitreview.AnchorProjected && c.Anchor != gitreview.AnchorExact)) {
+			t.Fatalf("kept comment after the rewrite = %+v, want line 3 still mapped", c)
+		}
+	}
+	var returns int
+	if err := f.app.DB().QueryRow(`SELECT count(*) FROM ade_runs WHERE task_id = ? AND step_id = 'review'`, f.taskID).Scan(&returns); err != nil || returns != 2 {
+		t.Fatalf("review run rows = %d, %v, want 2 (one per round)", returns, err)
+	}
+}

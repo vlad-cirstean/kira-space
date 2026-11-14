@@ -1418,6 +1418,26 @@ func (r *AdeTaskRepo) SetEntryStep(taskID, stepID string, since map[string]int, 
 	return tx.Commit()
 }
 
+// RunsAndLogs counts the task's runs and run logs: what ResetWorkflow would delete.
+func (r *AdeTaskRepo) RunsAndLogs(taskID string) (runs, logs int, err error) {
+	rt, lt := kiraschema.AdeRuns, kiraschema.AdeLogs
+	runs, err = adeCount(r.DB, r.Dialect, rt.Table, func(sb *sqlbuilder.SelectBuilder) []string {
+		return []string{sb.Equal(rt.TaskID, taskID)}
+	})
+	if err != nil {
+		return 0, 0, fmt.Errorf("repos: count ade runs %s: %w", taskID, err)
+	}
+	logs, err = adeCount(r.DB, r.Dialect, lt.Table, func(sb *sqlbuilder.SelectBuilder) []string {
+		ids := r.Dialect.Select(rt.ID).From(rt.Table)
+		ids.Where(ids.Equal(rt.TaskID, taskID))
+		return []string{sb.Equal(lt.Kind, "run"), sb.In(lt.ID, ids)}
+	})
+	if err != nil {
+		return 0, 0, fmt.Errorf("repos: count ade run logs %s: %w", taskID, err)
+	}
+	return runs, logs, nil
+}
+
 // ResetWorkflow switches the task's workflow and restarts it: the task's runs and run logs are
 // deleted and the entry step is set in one transaction.
 func (r *AdeTaskRepo) ResetWorkflow(taskID, workflowID, entryStepID string) error {

@@ -46,7 +46,7 @@ func CAFile(t testing.TB) string {
 type HTTPServer = servers.HTTPServer
 
 // HTTP starts a plain HTTP/1.1 server, closed at cleanup. Routes: /echo, /redirect?n=&code=&to=,
-// /cookie/set, /cookie/echo, /basic (kira:secret), /bearer, /bytes?n=, /gzip, /slow?ms=,
+// /cookie/set, /cookie/echo, /basic (kira:secret), /bearer, /bytes?n=, /gzip, /raw?hex=&ct=, /slow?ms=,
 // /status?code=.
 func HTTP(t testing.TB) *HTTPServer {
 	t.Helper()

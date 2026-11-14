@@ -44,7 +44,7 @@ export interface PortSnapshot {
    *  mutate that violates a constraint) — port.ts's handleMessage rejects with `.message`/`.code`
    *  read straight off this. Mutually exclusive with `response`. No `tests/ipc/**` fixture sets
    *  this. */
-  error?: { code: string; message: string };
+  error?: { code: string; message: string; details?: string };
   /** Frontend-only: delays the mocked reply, so a spec can observe a request as still in flight
    *  (e.g. the stop button's enabled state, P50 §4.2 scenario 7) without a real slow query. Never
    *  read by the backend half. */
@@ -62,7 +62,7 @@ export type LogicalPortResponse =
     }
   | { kind: 'mutate'; affectedRows: number }
   | { kind: 'preview'; statements: string[] }
-  | { kind: 'execute'; pages: LogicalPage[] }
+  | { kind: 'execute'; pages: LogicalPage[]; transaction?: 'idle' | 'open' }
   | { kind: 'invalidate' };
 
 interface LogicalPageBase {

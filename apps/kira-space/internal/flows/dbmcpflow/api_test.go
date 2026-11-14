@@ -246,6 +246,38 @@ func TestApiRequestRedirectNoCredential(t *testing.T) {
 	}
 }
 
+// J-MCP-011: api_request shares the HTTP client's redirect rules; typed and credential headers stop at an
+// origin change even when the policy lets the redirect through.
+func TestApiRequestRedirectStripsHeaders(t *testing.T) {
+	f := newFixture(t)
+	srv, sess, envID := f.apiSetup(t, "127.0.0.1, localhost", false)
+	f.setAPI(t, true, "never")
+
+	to := srv.AltURL + "/echo"
+	res := callTool(t, sess, "api_request", apiArgs(envID, "GET", srv.URL+"/redirect?to="+to,
+		"Authorization", "Bearer {{token}}", "X-Api-Key", "plain-key"))
+	if out := decodeResult[apiResult](t, res); out.Status != 200 {
+		t.Fatalf("result = %s, want 200", text(res))
+	}
+	noSecret(t, "the result", text(res))
+	reqs := srv.Requests()
+	if len(reqs) != 2 {
+		t.Fatalf("server saw %d requests, want 2", len(reqs))
+	}
+	if reqs[0].Header.Get("X-Api-Key") != "plain-key" || reqs[0].Header.Get("Authorization") != "Bearer "+apiSecret {
+		t.Errorf("first hop lost headers: %v", reqs[0].Header)
+	}
+	last := reqs[1]
+	if !strings.HasPrefix(last.Host, "localhost:") {
+		t.Fatalf("last host = %q, want localhost", last.Host)
+	}
+	for _, h := range []string{"Authorization", "X-Api-Key"} {
+		if v := last.Header.Get(h); v != "" {
+			t.Errorf("cross-host hop kept %s = %q", h, v)
+		}
+	}
+}
+
 func TestApiRequestUnavailable(t *testing.T) {
 	f := newFixture(t)
 	srv, sess, envID := f.apiSetup(t, "127.0.0.1", false)

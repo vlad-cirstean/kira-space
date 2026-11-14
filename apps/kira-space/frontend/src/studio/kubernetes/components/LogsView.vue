@@ -8,6 +8,7 @@ import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
 import { matchesQuery, splitMatches } from '@workbench/behaviour/match';
 import { errorText } from '@workbench/bridge/codedError';
+import CopyLogButton from '@workbench/components/CopyLogButton.vue';
 import LogLines from '@workbench/components/LogLines.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { type AnsiSegment, parseAnsi } from '@workbench/lib/ansi';
@@ -60,6 +61,9 @@ const shown = computed(() =>
     ? lines.value
     : lines.value.filter((l) => matchesQuery(l.plain, needle.value)),
 );
+
+// A copy takes what the filter leaves, the same lines the pane shows.
+const loadCopy = async () => ({ chunks: shown.value, truncated: false });
 
 function append(batch: KubeLogLine[]): void {
   const next = lines.value.concat(
@@ -189,6 +193,7 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
       <Toggle v-model="wrap" size="kira" data-testid="kube-logs-wrap">{{
         t('docker.logs.wrap.label')
       }}</Toggle>
+      <CopyLogButton :load="loadCopy" :disabled="shown.length === 0" data-testid="kube-logs-copy" />
       <SearchField
         v-model="filter"
         class="ml-auto w-48"

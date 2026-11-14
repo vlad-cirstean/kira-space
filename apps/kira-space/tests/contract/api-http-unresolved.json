@@ -1,0 +1,29 @@
+{
+  "args:HttpService.Send": {
+    "body": {
+      "code": "",
+      "codeLanguage": "",
+      "file": "",
+      "formData": null,
+      "mode": "raw",
+      "raw": "{\"a\":\"{{gone}}\"}",
+      "urlEncoded": null
+    },
+    "collectionId": "",
+    "environmentId": "",
+    "headers": [
+      {
+        "name": "X-A",
+        "value": "{{nope}}"
+      }
+    ],
+    "incognito": false,
+    "itemId": "",
+    "method": "POST",
+    "opId": "<masked>",
+    "options": {},
+    "tabId": "<masked>",
+    "url": "<http>/echo/{{missing}}"
+  },
+  "error:HttpService.Send": "Not sent. These variables have no value: missing, nope, gone. Define them in the active environment or collection."
+}

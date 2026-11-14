@@ -1,6 +1,7 @@
 package mongo
 
 import (
+	"bytes"
 	"context"
 	"strconv"
 
@@ -90,9 +91,27 @@ func applyUpdate(ctx context.Context, collection *mongodriver.Collection, op *ad
 	if err != nil {
 		return 0, err
 	}
+	// Decision 4: the key addresses the document, so an edited _id would be silently discarded.
+	for _, e := range parsed {
+		if e.Key == "_id" && !bsonValueEqual(e.Value, id) {
+			return 0, adapters.T(adapters.CodeContract, "backend.studio.adapter.idEdit.body", nil, nil)
+		}
+	}
 	replacement := setField(parsed, "_id", id)
+	filter := bson.D{{Key: "_id", Value: id}}
+	guarded := false
+	// Decision 3: the loaded body rides along so a document changed since then is refused, not
+	// overwritten. Matching the replace on the whole loaded body keeps the check atomic.
+	if loaded, ok := rowOp.Expect.Get(documentSentinel); ok && loaded != nil {
+		original, err := ParseDocumentLiteral(*loaded)
+		if err != nil {
+			return 0, err
+		}
+		filter = setField(original, "_id", id)
+		guarded = true
+	}
 	matchedCount, err := runTracked(ctx, track, func(qctx context.Context) (int64, error) {
-		result, err := collection.ReplaceOne(qctx, bson.D{{Key: "_id", Value: id}}, replacement, options.Replace().SetComment(op.OpID))
+		result, err := collection.ReplaceOne(qctx, filter, replacement, options.Replace().SetComment(op.OpID))
 		if err != nil {
 			return 0, mapError(err)
 		}
@@ -102,10 +121,35 @@ func applyUpdate(ctx context.Context, collection *mongodriver.Collection, op *ad
 		return 0, err
 	}
 	if matchedCount != 1 {
+		if guarded {
+			exists, err := runTracked(ctx, track, func(qctx context.Context) (int64, error) {
+				return collection.CountDocuments(qctx, bson.D{{Key: "_id", Value: id}})
+			})
+			if err != nil {
+				return 0, err
+			}
+			if exists > 0 {
+				return 0, adapters.RowChanged("_id = " + keyText(rowOp.Key))
+			}
+		}
 		return 0, adapters.New(adapters.CodeQuery,
 			"expected update to affect exactly one document, matched "+strconv.FormatInt(matchedCount, 10), nil)
 	}
 	return int(matchedCount), nil
+}
+
+// bsonValueEqual compares two decoded values by their BSON encoding.
+func bsonValueEqual(a, b any) bool {
+	ab, errA := bson.Marshal(bson.D{{Key: "v", Value: a}})
+	bb, errB := bson.Marshal(bson.D{{Key: "v", Value: b}})
+	return errA == nil && errB == nil && bytes.Equal(ab, bb)
+}
+
+func keyText(key model.RowValues) string {
+	if len(key) == 1 && key[0].Value != nil {
+		return *key[0].Value
+	}
+	return "null"
 }
 
 // applyDelete is mutateDB's "delete" arm.

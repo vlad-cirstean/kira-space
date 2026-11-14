@@ -94,3 +94,52 @@ func TestPairedDeviceSurvivesRestart(t *testing.T) {
 		t.Fatalf("Devices after restart = %+v, %v, want %+v", after, err, before)
 	}
 }
+
+// J-MOB-012 and J-X-011: the phone and the desktop move the same task to the same stage at once.
+// The task ends on one stage, the database agrees, and both clients are told.
+func TestPhoneAndDesktopMoveSameStage(t *testing.T) {
+	f := newFixture(t)
+	app := f.app
+	p, deviceID := pairedPhone(t, f)
+	if err := app.W.Mobile.SetDevicePermissions(bridge.MobileDevicePermissionsArgs{ID: deviceID, Write: true}); err != nil {
+		t.Fatal(err)
+	}
+	stream := p.events()
+	// The finished run leaves the task at its manual stage.
+	from, to := "review", "one"
+	for round := range 6 {
+		mark := app.Events.Mark()
+		var wg sync.WaitGroup
+		var phone reply
+		var desktopErr error
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			phone = p.post("/api/ade/tasks/step", map[string]string{"taskId": f.task.ID, "stepId": to, "fromStepId": from})
+		}()
+		go func() {
+			defer wg.Done()
+			_, desktopErr = app.W.AdeTask.SetTaskStep(ctx, adewire.SetTaskStepArgs{TaskID: f.task.ID, StepID: to})
+		}()
+		wg.Wait()
+		if phone.Status != http.StatusOK && phone.Status != http.StatusConflict {
+			t.Fatalf("round %d: phone %d %s", round, phone.Status, phone.Body)
+		}
+		if desktopErr != nil {
+			t.Fatalf("round %d: desktop %v", round, desktopErr)
+		}
+		if got := f.taskNow(t).EntryStepID; got != to {
+			t.Fatalf("round %d: task at %q, want %q", round, got, to)
+		}
+		var board adewire.Board
+		p.get("/api/ade/board").json(t, &board)
+		for _, tk := range board.Tasks {
+			if tk.ID == f.task.ID && tk.EntryStepID != to {
+				t.Fatalf("round %d: phone reads stage %q, desktop %q", round, tk.EntryStepID, to)
+			}
+		}
+		app.Events.WaitAfter(t, mark, adewire.ChannelBoard, nil, waitFor)
+		stream.wait(t, adewire.ChannelBoard, waitFor)
+		from, to = to, from
+	}
+}

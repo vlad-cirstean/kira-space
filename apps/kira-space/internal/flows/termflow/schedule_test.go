@@ -395,6 +395,28 @@ func TestScheduleRestart(t *testing.T) {
 	}
 }
 
+// J-BC-070: a fire that already ran is not repeated by a relaunch inside the same minute.
+func TestScheduleNoDuplicateFireAfterRestart(t *testing.T) {
+	app, clock := clockApp(t)
+	rec := recurring(t, app, "0 * * * *", func(f *scripts.CustomScriptFields) { f.Command = "echo hi" })
+	advance(t, clock, 30*time.Second)
+	waitSched(t, app, rec.ID, 0, "done")
+	rearmed(t, clock)
+
+	app.Restart()
+	clock.BlockUntil(1, wait)
+	advance(t, clock, 10*time.Second)
+	rearmed(t, clock)
+	if n := len(scheduledRuns(t, app, rec.ID)); n != 1 {
+		t.Fatalf("scheduled runs after the relaunch = %d, want the one that fired", n)
+	}
+	advance(t, clock, time.Hour)
+	waitSched(t, app, rec.ID, 1, "done")
+	if n := len(scheduledRuns(t, app, rec.ID)); n != 2 {
+		t.Fatalf("scheduled runs at the next hour = %d, want 2", n)
+	}
+}
+
 func TestRunScheduleNow(t *testing.T) {
 	app := flowharness.New(t)
 	rec := recurring(t, app, "0 9 * * *", func(f *scripts.CustomScriptFields) {

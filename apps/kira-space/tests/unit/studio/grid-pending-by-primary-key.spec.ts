@@ -106,7 +106,9 @@ describe('staged changes keyed by primary key', () => {
 
     const sent = captureMutate();
     await store.commitPending('c', 'p', tabId);
-    expect(sent.ops()).toEqual([{ kind: 'update', key: { id: '2' }, changes: { name: 'b2' } }]);
+    expect(sent.ops()).toEqual([
+      { kind: 'update', key: { id: '2' }, changes: { name: 'b2' }, expect: { name: 'b' } },
+    ]);
   });
 
   test('a primary-key edit still addresses the original row', async () => {
@@ -118,7 +120,12 @@ describe('staged changes keyed by primary key', () => {
     const sent = captureMutate();
     await store.commitPending('c', 'p', tabId);
     expect(sent.ops()).toEqual([
-      { kind: 'update', key: { id: '1' }, changes: { id: '7', name: 'x' } },
+      {
+        kind: 'update',
+        key: { id: '1' },
+        changes: { id: '7', name: 'x' },
+        expect: { id: '1', name: 'a' },
+      },
     ]);
   });
 
@@ -146,6 +153,12 @@ describe('staged changes keyed by primary key', () => {
     store.stageDelete(tabId, [0]);
     const sent = captureMutate();
     await store.commitPending('c', 'p', tabId);
-    expect(sent.ops()).toEqual([{ kind: 'delete', key: { tenant: 't', id: 'e' } }]);
+    expect(sent.ops()).toEqual([
+      {
+        kind: 'delete',
+        key: { tenant: 't', id: 'e' },
+        expect: { tenant: 't', id: 'e' },
+      },
+    ]);
   });
 });

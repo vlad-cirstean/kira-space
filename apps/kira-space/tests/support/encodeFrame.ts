@@ -39,7 +39,7 @@ export type FramePayload =
     }
   | { type: 'preview'; statements: string[] }
   | { type: 'mutate'; affectedRows: number }
-  | { type: 'execute'; pages: WirePage[] }
+  | { type: 'execute'; pages: WirePage[]; transaction?: 'idle' | 'open' }
   | { type: 'objectDownload'; bytes: number }
   | { type: 'ping'; enginePid: number; at: number }
   | {
@@ -59,7 +59,7 @@ export type FrameSpec =
       kind: 'res';
       id: number;
       ok: false;
-      error: { message: string; code?: string };
+      error: { message: string; code?: string; details?: string };
       forceDefaults?: boolean;
     }
   | { kind: 'evt'; topic: string; payload: FramePayload; forceDefaults?: boolean };
@@ -294,7 +294,12 @@ function encodePayload(
     case 'execute': {
       const offs = payload.pages.map((p) => encodePage(b, p));
       const vec = wire.ExecuteResponse.createPagesVector(b, offs);
-      return [wire.ExecuteResponse.createExecuteResponse(b, vec), wire.Payload.ExecuteResponse];
+      const transaction =
+        payload.transaction === 'open' ? 2 : payload.transaction === 'idle' ? 1 : 0;
+      return [
+        wire.ExecuteResponse.createExecuteResponse(b, vec, transaction),
+        wire.Payload.ExecuteResponse,
+      ];
     }
     case 'objectDownload':
       return [
@@ -366,9 +371,11 @@ export function encodeFrame(spec: FrameSpec): EncodedFrame {
 
   const messageOff = b.createString(spec.error.message);
   const codeOff = spec.error.code !== undefined ? b.createString(spec.error.code) : 0;
+  const detailsOff = spec.error.details !== undefined ? b.createString(spec.error.details) : 0;
   wire.Error.startError(b);
   wire.Error.addMessage(b, messageOff);
   if (spec.error.code !== undefined) wire.Error.addCode(b, codeOff);
+  if (spec.error.details !== undefined) wire.Error.addDetails(b, detailsOff);
   const errOff = wire.Error.endError(b);
 
   wire.Frame.startFrame(b);

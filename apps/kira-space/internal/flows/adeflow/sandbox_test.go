@@ -551,3 +551,59 @@ func TestSandboxManualSession(t *testing.T) {
 		}
 	})
 }
+
+// J-HAR-004. One workflow, one policy per step: each step's access, extra folders and network reach its own
+// launch, and a later step never inherits an earlier step's policy.
+func TestSandboxPolicyPerStep(t *testing.T) {
+	extra := t.TempDir()
+	steps := sbStep("write", "") +
+		sbStep("read", "    sandbox:\n      access: read\n      read: ["+extra+"]\n") +
+		agentStep("open", "") +
+		sbStep("closed", "    sandbox:\n      access: write\n      network: false\n")
+	fake := &sandboxtest.Fake{}
+	f := newSandboxFx(t, fake, []fakeagent.Action{{Name: "done"}, {Name: "done"}, {Name: "done"}, {Name: "done"}}, steps)
+	f.start(t, "feat/api-sb")
+	runs := map[string]adewire.Run{}
+	for _, id := range []string{"write", "read", "open", "closed"} {
+		runs[id] = waitRun(t, f.app, f.taskID, id, "done")
+	}
+	want := map[string]struct {
+		access  string
+		network bool
+	}{"write": {"write", true}, "read": {"read", true}, "open": {"off", false}, "closed": {"write", false}}
+	for id, w := range want {
+		d := sandboxOf(t, f, runs[id].ID)
+		if d.Access != w.access || d.Network != w.network {
+			t.Fatalf("step %s detail = %+v, want access %s, network %v", id, d, w.access, w.network)
+		}
+	}
+	if d := sandboxOf(t, f, runs["read"].ID); !slices.Contains(d.Read, extra) && !slices.Contains(d.Read, realPath(t, extra)) {
+		t.Fatalf("read step folders = %v, want %s", d.Read, extra)
+	}
+	// The unconfined step never reached Prepare; the others did, in step order, each with its own policy.
+	pol := fake.Policies()
+	if len(pol) != 3 {
+		t.Fatalf("policies = %d, want 3 (the open step is unconfined)", len(pol))
+	}
+	for i, w := range []struct {
+		run     string
+		network bool
+		writes  bool
+	}{{runs["write"].ID, true, true}, {runs["read"].ID, true, false}, {runs["closed"].ID, false, true}} {
+		if pol[i].RunID != w.run || pol[i].Network != w.network || (len(pol[i].Write) > 0) != w.writes {
+			t.Fatalf("policy %d = %+v, want run %s, network %v, writes %v", i, pol[i], w.run, w.network, w.writes)
+		}
+	}
+	mustLack(t, "open step argv", fakeFile(t, f.app, "api-3.args"), "--add-dir")
+	mustContain(t, "write step argv", fakeFile(t, f.app, "api-1.args"), "--add-dir")
+	mustContain(t, "read step argv", fakeFile(t, f.app, "api-2.args"), "Edit", "Write")
+}
+
+func realPath(t *testing.T, p string) string {
+	t.Helper()
+	r, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r
+}

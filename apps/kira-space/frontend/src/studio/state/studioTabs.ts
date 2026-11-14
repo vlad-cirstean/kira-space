@@ -35,6 +35,7 @@ import {
   type StreamTabState,
 } from '../../state/tabDomain';
 import { control } from '../bridge/control';
+import { forgetConnectionTransactions } from '../views/console/transaction';
 import { usePendingChangesStore } from '../views/grid/pendingChanges';
 import { useCellSelectionStore } from './cellSelection';
 import { useConnectionsStore } from './connections';
@@ -158,10 +159,12 @@ export function studioTabsExtension(actions: TabsStoreActions<string, TabRecord>
   // pages and runtime are freed by one code path.
   control.onConnectionsChanged((records) => {
     const liveIds = new Set(records.map((r) => r.id));
-    const stale = actions.tabs.value
-      .filter((t) => t.connectionId && !liveIds.has(t.connectionId))
-      .map((t) => t.id);
-    actions.dropTabs(stale);
+    const staleTabs = actions.tabs.value.filter(
+      (t) => t.connectionId && !liveIds.has(t.connectionId),
+    );
+    // The connection is gone with its session: closing its console tabs has nothing to roll back.
+    for (const t of staleTabs) if (t.connectionId) forgetConnectionTransactions(t.connectionId);
+    actions.dropTabs(staleTabs.map((t) => t.id));
     recentTablesStore.pruneRecent(liveIds);
   });
 
@@ -175,6 +178,7 @@ export function studioTabsExtension(actions: TabsStoreActions<string, TabRecord>
   // stays, so the tab that comes back on reconnect is still the same tab, not a blank one.
   control.onConnectionState((state) => {
     if (state.status !== 'disconnected' && state.status !== 'error') return;
+    forgetConnectionTransactions(state.connectionId);
     for (const t of actions.tabs.value) {
       if (t.connectionId !== state.connectionId) continue;
       unmarkHydrated(t.id);

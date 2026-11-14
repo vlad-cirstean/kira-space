@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
+import { installClipboardSpy, lastClipboardWrite } from './studio/support/clipboard';
 import { adeFixture, archivedTaskFx, openPlan, openTask } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
@@ -182,4 +183,45 @@ test('a read-only body renders its Markdown statically and links open only with 
   expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual({ url: 'https://example.com/a' });
   const bad = view.locator('a', { hasText: 'bad' });
   expect(await bad.getAttribute('href')).toBeFalsy();
+});
+
+test('contract: Copy puts the stored note on the clipboard byte for byte; a selection copies only itself', async ({
+  relaunch,
+}) => {
+  const note = contract<ChainFx & Record<string, unknown>>(
+    'ade-notes',
+    'AdeTaskService.AddNote#large',
+  );
+  expect(note.body.length).toBeGreaterThan(5000);
+  const { window: page } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskHandovers,
+      response: { handovers: [{ ...note, id: 'h_big', taskId: 'T_alerts' }] },
+    },
+  ]);
+  await openDetails(page);
+  await installClipboardSpy(page);
+  await page.locator(t('ade-handover-copy')).click();
+  await expect.poll(() => lastClipboardWrite(page)).toBe(note.body);
+
+  const body = page.locator(`${t('ade-task-chain')} ${t('ade-handover-body')}`).first();
+  await body.evaluate((el) => {
+    const w = window as unknown as { __selectionCopied: string[] };
+    w.__selectionCopied = [];
+    document.addEventListener('copy', () => w.__selectionCopied.push(String(getSelection())));
+    const first = el.querySelector('p, li, h1, h2, div') ?? el;
+    const range = document.createRange();
+    range.selectNodeContents(first);
+    getSelection()?.removeAllRanges();
+    getSelection()?.addRange(range);
+  });
+  const selected = await page.evaluate(() => String(getSelection()));
+  expect(selected.length).toBeGreaterThan(0);
+  expect(selected.length).toBeLessThan(note.body.length);
+  await page.keyboard.press('ControlOrMeta+C');
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { __selectionCopied: string[] }).__selectionCopied),
+    )
+    .toEqual([selected]);
 });

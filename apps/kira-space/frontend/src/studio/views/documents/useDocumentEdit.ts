@@ -32,9 +32,11 @@ export function useDocumentEdit(
 
   // A second Save while the first awaits the server would insert a second document (no `_id` yet).
   const createAction = useAsyncAction(() => saveNewDocument(tabId(), newBuffer.doc.value));
-  const editAction = useAsyncAction((id: string) =>
-    saveDocumentEdit(tabId(), id, editBuffer.doc.value),
-  );
+  // Set when the document changed on the server and the user declined to overwrite it.
+  let declined = false;
+  const editAction = useAsyncAction(async (id: string) => {
+    declined = !(await saveDocumentEdit(tabId(), id, editBuffer.doc.value, editOriginal.value));
+  });
   const saving = computed(() => createAction.pending.value || editAction.pending.value);
 
   usePublishEditDirty(
@@ -90,6 +92,7 @@ export function useDocumentEdit(
     }
     if (await editAction.run(id)) {
       documentViewStore.setActionError(tabId(), null);
+      if (declined) return;
       editingRow.value = null;
       editingId.value = null;
     } else {

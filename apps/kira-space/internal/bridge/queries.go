@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -89,10 +90,19 @@ func (s *QueriesService) SaveConsole(args QueriesSaveConsoleArgs) (model.SavedQu
 	return ipcerr.InternalResult(q, err)
 }
 
-type QueriesUpdateArgs struct {
-	ID     string  `json:"id"`
+// QueriesExpect is the name and pin state the caller last read. Update and UpdateDiscover refuse
+// with a conflict when the stored query no longer matches, so a second window never overwrites
+// the first unseen.
+type QueriesExpect struct {
 	Name   *string `json:"name,omitempty"`
 	Pinned *bool   `json:"pinned,omitempty"`
+}
+
+type QueriesUpdateArgs struct {
+	ID     string         `json:"id"`
+	Name   *string        `json:"name,omitempty"`
+	Pinned *bool          `json:"pinned,omitempty"`
+	Expect *QueriesExpect `json:"expect,omitempty"`
 }
 
 func (s *QueriesService) Update(args QueriesUpdateArgs) (model.SavedQuery, error) {
@@ -103,7 +113,11 @@ func (s *QueriesService) Update(args QueriesUpdateArgs) (model.SavedQuery, error
 	if args.Name != nil {
 		name = strings.TrimSpace(*args.Name)
 	}
-	q, err := s.Deps.Repos.SavedQueries.Update(args.ID, model.SavedQueryPatch{Name: args.Name, Pinned: args.Pinned})
+	var expect *model.SavedQueryPatch
+	if args.Expect != nil {
+		expect = &model.SavedQueryPatch{Name: args.Expect.Name, Pinned: args.Expect.Pinned}
+	}
+	q, err := s.Deps.Repos.SavedQueries.Update(args.ID, model.SavedQueryPatch{Name: args.Name, Pinned: args.Pinned}, expect)
 	s.notifySaved(q, err)
 	return queryResult(q, err, name)
 }
@@ -115,6 +129,10 @@ func queryResult(q model.SavedQuery, err error, name string) (model.SavedQuery, 
 		return q, nil
 	case errors.Is(err, repos.ErrSavedQueryNotFound):
 		return model.SavedQuery{}, ipcerr.T(ipcerr.CodeNotFound, "backend.studio.query.notFound.body", nil)
+	case errors.Is(err, repos.ErrSavedQueryChanged):
+		e := ipcerr.T(ipcerr.CodeConflict, "backend.studio.query.changed.body", nil)
+		e.Details = json.RawMessage(`{"changed":true}`)
+		return model.SavedQuery{}, e
 	case errors.Is(err, repos.ErrSavedQueryNameTaken):
 		return model.SavedQuery{}, ipcerr.T(ipcerr.CodeConflict, "backend.studio.query.nameTaken.body", map[string]string{"name": name})
 	case errors.Is(err, model.ErrInvalidDiscoverBody):
@@ -155,6 +173,8 @@ func (s *QueriesService) SaveDiscover(args QueriesSaveDiscoverArgs) (model.Saved
 type QueriesUpdateDiscoverArgs struct {
 	ID   string             `json:"id"`
 	Body model.DiscoverBody `json:"body"`
+	// Expect is the body the caller last read; a stored body that differs is a conflict.
+	Expect *model.DiscoverBody `json:"expect,omitempty"`
 }
 
 // UpdateDiscover replaces a saved Discover query's body in place.
@@ -162,7 +182,7 @@ func (s *QueriesService) UpdateDiscover(args QueriesUpdateDiscoverArgs) (model.S
 	if args.ID == "" {
 		return model.SavedQuery{}, ipcerr.Required("id")
 	}
-	q, err := s.Deps.Repos.SavedQueries.UpdateDiscover(args.ID, args.Body)
+	q, err := s.Deps.Repos.SavedQueries.UpdateDiscover(args.ID, args.Body, args.Expect)
 	s.notifySaved(q, err)
 	return queryResult(q, err, "")
 }

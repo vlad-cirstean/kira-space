@@ -1,5 +1,6 @@
 import type { KibanaDiscoverRequest } from '@shared/domain/kibana';
 import { savedQuerySchema } from '@shared/domain/queries';
+import { DATA_OP } from '@shared/protocol/dataOps';
 import {
   browserTimeZone,
   resolveTime,
@@ -49,6 +50,8 @@ const updated = savedQuerySchema.parse({
   body: { ...first.body, filters: [EXISTS_STATUS] },
 });
 const listed = savedQuerySchema.parse({ ...updated, connectionId: 'conn-kibana' });
+// Rename and pin send the name and pin state the menu showed, so another window's change is caught.
+const LOADED = { name: listed.name, pinned: false };
 
 function statement(patch: Partial<KibanaDiscoverRequest> = {}): string {
   const { columns, ...rest }: KibanaDiscoverRequest = {
@@ -98,12 +101,12 @@ test('contract: Discover saves, updates and reopens a query, and flags unsaved e
       { channel: IPC.queriesUpdateDiscover, response: updated },
       {
         channel: IPC.queriesUpdate,
-        args: { id: updated.id, name: 'errors last hour', pinned: null },
+        args: { id: updated.id, name: 'errors last hour', pinned: null, expect: LOADED },
         error: { code: renameTaken.code, message: renameTaken.message },
       },
       {
         channel: IPC.queriesUpdate,
-        args: { id: updated.id, name: '5xx', pinned: null },
+        args: { id: updated.id, name: '5xx', pinned: null, expect: LOADED },
         response: { ...updated, name: '5xx' },
       },
       { channel: IPC.queriesDelete, response: null },
@@ -234,6 +237,68 @@ test('contract: a saved Discover query opens in a new tab with its exact state',
   await expect(page.locator('[data-testid="kibana-results"]')).toBeVisible({ timeout: 15_000 });
 });
 
+test('contract: saving over a Discover query another window changed asks, then overwrites', async ({
+  relaunch,
+}) => {
+  const conflict = contract<{ code: string; message: string; details: { changed: boolean } }>(
+    'saved-query-two-windows',
+    'UpdateDiscover#changed',
+  );
+  const edited = { ...listed.body, columns: ['level', 'status'] };
+  const args = { id: listed.id, body: ordered(edited) };
+  const { window: page, control } = await relaunch({
+    control: [
+      ...kibanaControl(),
+      { channel: IPC.queriesListDiscover, response: [listed] },
+      {
+        channel: IPC.queriesUpdateDiscover,
+        args: { ...args, expect: ordered(listed.body) },
+        error: { code: conflict.code, message: conflict.message, details: conflict.details },
+      },
+      {
+        channel: IPC.queriesUpdateDiscover,
+        args: { ...args, expect: null },
+        response: { ...listed, body: edited },
+      },
+    ],
+    stream: [
+      executeHits(statement(), 200),
+      executeHits(statement({ query: QUERY, columns: COLUMNS, filters: [EXISTS_STATUS] }), 30, ''),
+      executeHits(
+        statement({ query: QUERY, columns: ['level', 'status'], filters: [EXISTS_STATUS] }),
+        30,
+        '',
+      ),
+    ],
+  });
+  await page.clock.install({ time: NOW });
+  await page.clock.setFixedTime(NOW);
+
+  const connRow = connectionRow(page);
+  await openRowMenu(page, '');
+  await page.click('[data-testid="menu-item-connect"]');
+  await expect(connRow.locator('.status-dot')).toHaveAttribute('data-status', 'connected', {
+    timeout: 10_000,
+  });
+  await expandRow(page, '');
+  await (await findRow(page, logsNode.path)).dblclick();
+  await expect(page.locator('[data-testid="kibana-results"]')).toBeVisible({ timeout: 15_000 });
+  await page.click('[data-testid="kibana-saved-toggle"]');
+  await page.locator('[data-testid="kibana-saved-entry"]').hover();
+  await page.click('[data-testid="kibana-saved-open-new"]');
+  await expect(page.locator('[data-testid="kibana-saved-name"]')).toContainText(listed.name);
+
+  const dirty = page.locator('[data-testid="kibana-saved-dirty"]');
+  await page.click('[data-testid="kibana-field-column-status"]');
+  await expect(dirty).toBeVisible();
+  await page.locator('[data-testid="kibana-query"]').click();
+  await page.keyboard.press('Meta+s');
+  await expect(page.locator('[data-testid="confirm-dialog"]')).toContainText(conflict.message);
+  await acceptConfirm(page);
+  await expect(dirty).toHaveCount(0);
+  expect(control.log().filter((e) => e.channel === IPC.queriesUpdateDiscover)).toHaveLength(2);
+});
+
 test('contract: pinning a saved Discover query moves it first', async ({ relaunch }) => {
   const unpinned = renamedList.map((row) => ({ ...row, pinned: false })).reverse();
   const listArgs = { connectionId: 'conn-kibana' };
@@ -252,7 +317,12 @@ test('contract: pinning a saved Discover query moves it first', async ({ relaunc
       },
       {
         channel: IPC.queriesUpdate,
-        args: { id: renamed.id, name: null, pinned: true },
+        args: {
+          id: renamed.id,
+          name: null,
+          pinned: true,
+          expect: { name: renamed.name, pinned: false },
+        },
         response: { ...renamed, connectionId: 'conn-kibana' },
       },
     ],
@@ -287,7 +357,9 @@ test('contract: pinning a saved Discover query moves it first', async ({ relaunc
       .log()
       .filter((e) => e.channel === IPC.queriesUpdate)
       .map((e) => e.args),
-  ).toEqual([{ id: renamed.id, name: null, pinned: true }]);
+  ).toEqual([
+    { id: renamed.id, name: null, pinned: true, expect: { name: renamed.name, pinned: false } },
+  ]);
 });
 
 test('contract: closing a Discover tab with unsaved changes asks to discard', async ({
@@ -341,4 +413,72 @@ test('contract: closing a Discover tab with unsaved changes asks to discard', as
   await active.locator('[data-testid="tab-close"]').click();
   await acceptConfirm(page);
   await expect(tabs).toHaveCount(before - 1);
+});
+
+// J-KIB-010 (pin ADOPT): a Discover tab restored after a relaunch carries its saved query state but
+// shows no results and runs nothing until the user presses Run.
+test('contract: a restored Discover tab keeps its query, shows no results and does not auto-run', async ({
+  relaunch,
+}) => {
+  const body = listed.body as Record<string, unknown>;
+  const { window: page, stream } = await relaunch({
+    control: [
+      {
+        channel: IPC.tabsList,
+        response: [
+          {
+            id: 'restored-discover',
+            kind: 'console',
+            connectionId: 'conn-kibana',
+            path: logsNode.path,
+            order: 0,
+            active: true,
+            workspaceId: null,
+            state: {
+              text: body.query,
+              newResultSet: true,
+              kibana: {
+                dataViewId: body.dataViewId,
+                dataViewName: body.dataViewName,
+                language: body.language,
+                time: body.time,
+                filters: body.filters,
+                sort: body.sort,
+                columns: body.columns,
+                sampleSize: body.sampleSize,
+                interval: body.interval,
+                saved: null,
+              },
+            },
+          },
+        ],
+      },
+      ...kibanaControl(),
+    ],
+    stream: [
+      executeHits(statement({ query: QUERY, columns: COLUMNS, filters: [EXISTS_STATUS] }), 30),
+    ],
+  });
+  await page.clock.install({ time: NOW });
+  await page.clock.setFixedTime(NOW);
+
+  const connRow = connectionRow(page);
+  await openRowMenu(page, '');
+  await page.click('[data-testid="menu-item-connect"]');
+  await expect(connRow.locator('.status-dot')).toHaveAttribute('data-status', 'connected', {
+    timeout: 10_000,
+  });
+  await expect(page.locator('[data-testid="kibana-discover"]')).toBeVisible();
+  await expect(page.locator('[data-testid="kibana-query"]')).toContainText(QUERY);
+  await expect(page.getByText('status exists')).toBeVisible();
+  await expect(page.getByText('Run a query to see documents')).toBeVisible();
+  await expect(page.locator('[data-testid="kibana-results"]')).toHaveCount(0);
+  // Advance the installed fake clock past every debounce a restore could arm: an auto-run would
+  // have fired by now, and no wall time is spent waiting for one.
+  await page.clock.runFor(5000);
+  expect((await stream.ops()).filter((o) => o.op === DATA_OP.execute)).toHaveLength(0);
+
+  await page.click('[data-testid="kibana-run"]');
+  await expect(page.locator('[data-testid="kibana-results"]')).toBeVisible({ timeout: 15_000 });
+  expect((await stream.ops()).filter((o) => o.op === DATA_OP.execute)).toHaveLength(1);
 });

@@ -258,13 +258,13 @@ func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track T
 	defer end()
 
 	results := make([]rawResult, 0, len(statements))
-	for _, sql := range statements {
+	for i, sql := range statements {
 		if err := adapters.CheckCancelled(ctx); err != nil {
-			return nil, err
+			return nil, adapters.AtStatement(err, i)
 		}
 		result, err := runRaw(ctx, conn, sql, nil, op, track, limit)
 		if err != nil {
-			return nil, err
+			return nil, adapters.AtStatement(err, i)
 		}
 		results = append(results, result)
 		limit = adapters.RemainingCap(limit, result.bytes)
@@ -284,6 +284,18 @@ func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track T
 		pages[i] = buildPage(r, typeMeta)
 	}
 	return pages, nil
+}
+
+// reportTransaction records the session's transaction state on op from the protocol's own
+// ReadyForQuery status: 'I' idle, 'T' in a transaction, 'E' in a failed one. A closed connection
+// took its transaction with it.
+func reportTransaction(conn *trackedConn, op *adapters.OpCtx) {
+	conn.waitInFlight()
+	if conn.IsClosed() || conn.PgConn().TxStatus() == 'I' {
+		op.SetTransaction(adapters.TxIdle)
+		return
+	}
+	op.SetTransaction(adapters.TxOpen)
 }
 
 // checkExecutable runs the pre-flight guards before any statement touches conn.
@@ -394,7 +406,7 @@ func timeoutError(ctx context.Context, timeout time.Duration, err error) error {
 	}
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "57014" {
-		return adapters.StatementTimeout(timeout, 0, err)
+		return adapters.CarryDetails(adapters.StatementTimeout(timeout, 0, err), err)
 	}
 	return err
 }

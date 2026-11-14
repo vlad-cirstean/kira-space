@@ -21,6 +21,12 @@ import { dropPlan, setPlan } from './explainResults';
 import { ExplainTruncatedError, parseExplainPages } from './plan';
 import type { QueryPlan } from './planModel';
 import { bumpPageVersion, documentRow, drop as dropPage, getPage, setPage } from './resultPages';
+import {
+  failureOutcome,
+  type RunOutcome,
+  takeOpenTransaction,
+  trackTransaction,
+} from './transaction';
 
 /** One result set of a run. `key` is identity and never changes while the result is open — the
  *  "Result N" label the strip prints is its *position*, which renumbers when a sibling
@@ -309,6 +315,22 @@ async function runAutoExplainGate(
   return 'proceed';
 }
 
+/** Ends what closing the tab leaves open on its session, on that session's own connection. */
+function endTabTransaction(tabId: string): void {
+  const end = takeOpenTransaction(tabId);
+  if (!end) return;
+  fireAndForget(
+    data.execute({
+      opId: newUuid(),
+      tabId,
+      connectionId: end.connectionId,
+      path: end.path,
+      statements: end.statements,
+    }),
+    'rollbackClosedConsole',
+  );
+}
+
 export const useConsoleViewStore = defineStore('consoleView', () => {
   const { runtime, ensureRuntime, toggleSearchOpen, setSearchOpen } =
     createRuntimeStore<ConsoleViewRuntime>(defaultRuntime);
@@ -322,6 +344,8 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
   // (rows.ts:25-27's own `rowSources.delete`), leaving every already-parsed document tree for that
   // result retained under a key `nextSeq` guarantees is never reused, for the life of the process.
   registerTabRuntimeCleanup((tabId) => {
+    // The close prompt already warned; confirming rolls the open transaction back.
+    endTabTransaction(tabId);
     const rt = runtime[tabId];
     if (rt) {
       // P12 round 1 finding #10: routed through the one release path every user-driven removal
@@ -481,6 +505,21 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
   // One execute() call per run, covering both "Run statement" (one-element array) and "Run all"
   // (the caller pre-splits via sql-split.ts) — the adapter's own all-or-nothing semantics (P5.5
   // D-plan) mean there is exactly one op-log row and one success/failure outcome per call.
+  /** Applies a run to the session's transaction state. A tab that closed while the run was in flight
+   *  found nothing to end at close, so what the run left open is ended here. */
+  function recordRun(
+    tabId: string,
+    connectionId: string,
+    path: string,
+    statements: string[],
+    outcome: RunOutcome,
+  ): void {
+    const kind = useConnectionsStore().connectionRecord(connectionId)?.kind;
+    if (!kind) return;
+    trackTransaction(tabId, kind, { connectionId, path }, statements, outcome);
+    if (!runtime[tabId]) endTabTransaction(tabId);
+  }
+
   async function run(tabId: string, statements: string[]): Promise<void> {
     if (statements.length === 0) return;
     const tab = useTabsStore().findConsoleTab(tabId);
@@ -513,6 +552,11 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
         path: tab.path,
         statements,
       });
+      // Tracked before the closed-tab guard below: the transaction lives on the session, so a run
+      // that finishes after its tab closed still leaves what it left.
+      recordRun(tabId, tab.connectionId, tab.path, statements, {
+        transaction: response.transaction,
+      });
       // The tab may have closed while this run was in flight — `rt` is still a live reference to
       // the detached runtime object (deleting `runtime[tabId]` doesn't touch it), so
       // `rt.opId !== opId` alone doesn't catch this and every write below would leak a result
@@ -542,6 +586,9 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
       rt.status = 'idle';
       rt.opId = null;
     } catch (err) {
+      // Statements before the one that failed ran: `BEGIN; <bad>` leaves a transaction open. Tracked
+      // even when the tab closed mid-run (the close cancels the run, which then fails here).
+      recordRun(tabId, tab.connectionId, tab.path, statements, failureOutcome(err));
       // Cancelled: same discipline as the data grid's stop button — the previous results stay
       // exactly as they were rather than being blanked. Disconnected: `status` has to drop out of
       // 'running' before unmarkHydrated swaps ViewChrome out for ReconnectGate — ConsoleView's

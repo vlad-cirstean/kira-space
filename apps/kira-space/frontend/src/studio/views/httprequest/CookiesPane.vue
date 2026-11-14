@@ -222,6 +222,14 @@ const showHopIndex = computed(() => (props.response?.timeline?.hops.length ?? 0)
     data-testid="http-response-cookies"
   >
     <template v-if="response">
+      <Alert
+        v-if="disableCookieJar && sentCookies.length === 0"
+        strip
+        variant="info"
+        data-testid="http-response-cookies-jar-off"
+      >
+        <AlertDescription>{{ t('studio.http.cookies.jarOffSent.hint') }}</AlertDescription>
+      </Alert>
       <template v-if="sentCookies.length > 0 || receivedCookies.length > 0">
         <div v-if="sentCookies.length > 0" class="pt-1.5">
           <SectionHeading :label="t('common.sent.status')" />

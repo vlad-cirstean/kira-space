@@ -90,6 +90,9 @@ type MutationRowOp struct {
 	Key     RowValues
 	Changes RowValues
 	Values  RowValues
+	// Expect (update, delete) holds the values the caller loaded for columns it wants guarded. A relational
+	// adapter adds them to the WHERE; a row that no longer matches fails with E_CONFLICT, not silently.
+	Expect RowValues
 }
 
 func (op MutationRowOp) MarshalJSON() ([]byte, error) {
@@ -99,7 +102,8 @@ func (op MutationRowOp) MarshalJSON() ([]byte, error) {
 			Kind    string    `json:"kind"`
 			Key     RowValues `json:"key"`
 			Changes RowValues `json:"changes"`
-		}{Kind: "update", Key: op.Key, Changes: op.Changes})
+			Expect  RowValues `json:"expect,omitempty"`
+		}{Kind: "update", Key: op.Key, Changes: op.Changes, Expect: op.Expect})
 	case "insert":
 		return json.Marshal(struct {
 			Kind   string    `json:"kind"`
@@ -107,9 +111,10 @@ func (op MutationRowOp) MarshalJSON() ([]byte, error) {
 		}{Kind: "insert", Values: op.Values})
 	case "delete":
 		return json.Marshal(struct {
-			Kind string    `json:"kind"`
-			Key  RowValues `json:"key"`
-		}{Kind: "delete", Key: op.Key})
+			Kind   string    `json:"kind"`
+			Key    RowValues `json:"key"`
+			Expect RowValues `json:"expect,omitempty"`
+		}{Kind: "delete", Key: op.Key, Expect: op.Expect})
 	default:
 		return nil, fmt.Errorf("model: MutationRowOp: invalid kind %q", op.Kind)
 	}
@@ -121,6 +126,7 @@ func (op *MutationRowOp) UnmarshalJSON(data []byte) error {
 		Key     json.RawMessage `json:"key"`
 		Changes json.RawMessage `json:"changes"`
 		Values  json.RawMessage `json:"values"`
+		Expect  json.RawMessage `json:"expect"`
 	}
 	if err := json.Unmarshal(data, &probe); err != nil {
 		return err
@@ -134,7 +140,11 @@ func (op *MutationRowOp) UnmarshalJSON(data []byte) error {
 		if err := json.Unmarshal(probe.Changes, &changes); err != nil {
 			return fmt.Errorf("model: MutationRowOp: update: changes: %w", err)
 		}
-		*op = MutationRowOp{Kind: "update", Key: key, Changes: changes}
+		expect, err := unmarshalExpect(probe.Expect)
+		if err != nil {
+			return fmt.Errorf("model: MutationRowOp: update: expect: %w", err)
+		}
+		*op = MutationRowOp{Kind: "update", Key: key, Changes: changes, Expect: expect}
 	case "insert":
 		var values RowValues
 		if err := json.Unmarshal(probe.Values, &values); err != nil {
@@ -146,11 +156,26 @@ func (op *MutationRowOp) UnmarshalJSON(data []byte) error {
 		if err := json.Unmarshal(probe.Key, &key); err != nil {
 			return fmt.Errorf("model: MutationRowOp: delete: key: %w", err)
 		}
-		*op = MutationRowOp{Kind: "delete", Key: key}
+		expect, err := unmarshalExpect(probe.Expect)
+		if err != nil {
+			return fmt.Errorf("model: MutationRowOp: delete: expect: %w", err)
+		}
+		*op = MutationRowOp{Kind: "delete", Key: key, Expect: expect}
 	default:
 		return fmt.Errorf("model: MutationRowOp: unknown kind %q", probe.Kind)
 	}
 	return nil
+}
+
+func unmarshalExpect(raw json.RawMessage) (RowValues, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var expect RowValues
+	if err := json.Unmarshal(raw, &expect); err != nil {
+		return nil, err
+	}
+	return expect, nil
 }
 
 // MutationPlan is domain/mutations.ts's MutationPlan — adapter-side only, always one table.

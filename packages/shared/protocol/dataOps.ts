@@ -110,6 +110,9 @@ export interface ExecuteRequestWire {
 
 export interface ExecuteResponse {
   pages: Page[];
+  /** The session's transaction state after the batch; absent when the engine does not report it
+   *  (MySQL), in which case the console reads it off the statements. */
+  transaction?: 'idle' | 'open';
 }
 
 export interface ObjectDownloadRequestWire {

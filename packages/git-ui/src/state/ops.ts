@@ -953,17 +953,17 @@ export class OpsState {
   }
 
   /** `apply` — the stash survives regardless of outcome (it accepts a raw sha, so this
-   *  needs no `stash@{index}` addressing or position re-verification at all). `restoreIndex` is a
+   *  needs no `stash@{index}` addressing or position re-verification at all). `restoreIndex` defaults to true (`--index`: staged state comes back as stashed); it is a
    *  plain caller preference (`StashList.vue`'s own row-menu choice), never discovered by the
    *  pre-flight — the merge-tree prediction covers the worktree half only. */
-  async runStashApply(entry: StashEntry, restoreIndex = false): Promise<OpResult | undefined> {
+  async runStashApply(entry: StashEntry, restoreIndex = true): Promise<OpResult | undefined> {
     return this.#runStashPopLike('apply', entry, restoreIndex);
   }
 
   /** `pop` — REFUSES a raw sha (probe 8), so the executed op addresses `stash@{index}`; the
    *  service re-verifies that position immediately before writing and the write removes the
    *  entry on success. */
-  async runStashPop(entry: StashEntry, restoreIndex = false): Promise<OpResult | undefined> {
+  async runStashPop(entry: StashEntry, restoreIndex = true): Promise<OpResult | undefined> {
     return this.#runStashPopLike('pop', entry, restoreIndex);
   }
 
@@ -1345,17 +1345,30 @@ export class OpsState {
       return;
     }
 
-    const popResult = await this.#bridge.request('op.run', {
-      repoId,
-      op: { kind: 'stashPop', sha: top.sha, index: top.index, restoreIndex: false },
-    });
+    const popWith = (restoreIndex: boolean) =>
+      this.#bridge.request('op.run', {
+        repoId,
+        op: { kind: 'stashPop', sha: top.sha, index: top.index, restoreIndex },
+      });
+    let popResult = await popWith(true);
+    // The middle step moved HEAD, and the preflight predicts the worktree merge only: staged
+    // changes can no longer apply as staged although the merge is clean. The refused pop leaves
+    // the stash in place, so retry once without the index and say so.
+    let indexDropped = false;
+    if (!popResult.ok && popResult.error?.kind === 'StashIndexConflict') {
+      popResult = await popWith(false);
+      indexDropped = popResult.ok;
+    }
     this.#applyResult(repoId, popResult);
     const mismatch = this.#reconcileStashPop('pop', preflight.prediction, popResult);
     if (mismatch) {
       this.announcement.value = composeStashAnnouncement('pop', top, popResult, mismatch);
       if (!popResult.ok) this.#noteFailure('stashPop', popResult.error, true);
-    } else if (popResult.ok) this.announcement.value = announceMiddleOk();
-    else this.#fail('stashPop', popResult.error, true);
+    } else if (popResult.ok) {
+      this.announcement.value = indexDropped
+        ? `${announceMiddleOk()}. ${t('git.op.stashIndexNotRestored.body')}`
+        : announceMiddleOk();
+    } else this.#fail('stashPop', popResult.error, true);
   }
 
   // -------------------------------------------------------------------------------------

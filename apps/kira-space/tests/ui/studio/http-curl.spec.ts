@@ -4,6 +4,7 @@ import { installFakeTimers } from '../support/clock';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 import { modeTab, openHttpRequestView } from './support/apiMode';
+import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
 import { editorText } from './support/editorText';
 
 // Six scenarios against the real built bundle, none needing a mockRuntime.ts change —
@@ -365,6 +366,69 @@ test('a dynamic value is frozen across the reveal, and stays distinct per occurr
   expect(uuidsAfter).toEqual(uuids);
 });
 
+// J-HTTP-066: a command already copied stays as copied when the environment changes; reopening the
+// dialog shows the new environment's value.
+test('switching environment after a copy leaves the copied command alone', async ({ relaunch }) => {
+  const env = (id: string, name: string, isActive: boolean) => ({
+    id,
+    name,
+    sortOrder: id === 'env-1' ? 0 : 1,
+    isActive,
+    description: '',
+    color: 'none',
+  });
+  const hostVar = (ownerId: string, value: string) => ({
+    id: `var-${ownerId}`,
+    scope: 'environment',
+    ownerId,
+    name: 'host',
+    value,
+    isSecret: false,
+    sortOrder: 0,
+    description: '',
+  });
+  const CONTROL: ControlSnapshot[] = [
+    { channel: IPC.collectionsList, response: { collections: [], items: [] } },
+    {
+      channel: IPC.variablesListEnvironments,
+      response: [env('env-1', 'Prod', true), env('env-2', 'Staging', false)],
+    },
+    {
+      channel: IPC.variablesListEnvironments,
+      response: [env('env-1', 'Prod', false), env('env-2', 'Staging', true)],
+    },
+    { channel: IPC.variablesSetActiveEnvironment, args: { id: 'env-2' }, response: null },
+    {
+      channel: IPC.variablesList,
+      args: { scope: 'environment', ownerId: 'env-1' },
+      response: [hostVar('env-1', 'prod.example.com')],
+    },
+    {
+      channel: IPC.variablesList,
+      args: { scope: 'environment', ownerId: 'env-2' },
+      response: [hostVar('env-2', 'staging.example.com')],
+    },
+  ];
+  const { window: page } = await relaunch({ control: CONTROL });
+  await installClipboardSpy(page);
+  await openHttpRequestView(page);
+  await page.fill('[data-testid="http-url"]', 'https://{{host}}/v1/x');
+
+  await page.click('[data-testid="http-copy-as-curl"]');
+  const command = page.locator('[data-testid="copy-as-curl-command"]');
+  await expect(command).toHaveValue(/prod\.example\.com/);
+  await page.click('[data-testid="copy-as-curl-copy"]');
+  const copied = await lastClipboardWrite(page);
+  expect(copied).toContain('prod.example.com');
+  await page.click('[data-testid="copy-as-curl-close"]');
+
+  await page.click('[data-testid="api-environment-select"]');
+  await page.click('[data-testid="api-environment-option"][data-value="env-2"]');
+  await page.click('[data-testid="http-copy-as-curl"]');
+  await expect(command).toHaveValue(/staging\.example\.com/);
+  expect(await lastClipboardWrite(page)).toBe(copied);
+});
+
 // ---- 9. Import, send, copy as curl (contract: api-curl) ----
 
 // Backend half: httpflow.TestCurlReplayMatchesSend sends the same request, replays the generated
@@ -406,3 +470,75 @@ test('an imported curl sends as written, and copy-as-curl yields the contract co
   await page.click('[data-testid="http-copy-as-curl"]');
   await expect(page.locator('[data-testid="copy-as-curl-command"]')).toHaveValue(generated);
 });
+
+// ---- 10. Copy as curl for every body mode (contract: api-curl, curl:generated:<mode>) ----
+
+// Backend half: httpflow.TestCurlCopyEveryBodyMode replays each contract command with real curl and
+// proves the server sees the request the app itself sends. Here the same request is built in a tab and
+// copy-as-curl must give the command back byte for byte. An import of the command rebuilds the tab for
+// the text modes; a file reference is never inlined by an import, so the two file modes restore the tab
+// from state instead.
+const FILE_TABS: Record<string, { bodyMode: string } & Record<string, unknown>> = {
+  formdata: {
+    bodyMode: 'formdata',
+    formData: [
+      { name: 'note', kind: 'text', value: '@hello' },
+      { name: 'meta', kind: 'text', value: '{}', contentType: 'application/json' },
+      { name: 'report', kind: 'file', path: '/tmp/report.csv', contentType: 'text/csv' },
+    ],
+  },
+  file: {
+    bodyMode: 'file',
+    headers: [{ name: 'X-Mode', value: 'file' }],
+    binaryFile: { path: '/tmp/blob.bin', name: 'blob.bin', size: 8 },
+  },
+};
+
+for (const mode of ['none', 'raw', 'code', 'urlencoded', 'formdata', 'file']) {
+  test(`copy as curl yields the contract command for body mode ${mode}`, async ({ relaunch }) => {
+    const origins = { http: 'http://flow.test' };
+    const generated = contract<string>('api-curl', `curl:generated:${mode}`, { origins })
+      .replace('<csv-file>', '/tmp/report.csv')
+      .replace('<blob-file>', '/tmp/blob.bin');
+    const fileTab = FILE_TABS[mode];
+    const CONTROL: ControlSnapshot[] = [
+      { channel: IPC.collectionsList, response: { collections: [], items: [] } },
+    ];
+    if (fileTab) {
+      CONTROL.push({
+        channel: IPC.tabsList,
+        response: [
+          {
+            id: `tab-${mode}`,
+            connectionId: null,
+            path: 'request',
+            kind: 'http-request',
+            order: 0,
+            active: true,
+            state: {
+              method: 'POST',
+              url: `${origins.http}/echo?m=${mode}`,
+              headers: [{ name: 'X-Mode', value: mode }],
+              ...fileTab,
+            },
+          },
+        ],
+      });
+    }
+    const { window: page, control } = await relaunch({ control: CONTROL });
+
+    await modeTab(page, 'api').click();
+    if (fileTab) {
+      await expect(page.locator('[data-testid="http-request-view"]')).toBeVisible();
+    } else {
+      await page.click('[data-testid="import-curl-start"]');
+      await page.fill('[data-testid="import-curl-textarea"]', generated);
+      await page.click('[data-testid="import-curl-submit"]');
+      await expect(page.locator('[data-testid="http-method-chip"]')).toBeVisible();
+    }
+
+    await page.click('[data-testid="http-copy-as-curl"]');
+    await expect(page.locator('[data-testid="copy-as-curl-command"]')).toHaveValue(generated);
+    expect(control.log().filter((e) => e.channel === IPC.httpSend)).toHaveLength(0);
+  });
+}

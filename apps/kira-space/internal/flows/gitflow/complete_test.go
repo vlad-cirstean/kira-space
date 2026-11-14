@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -79,8 +80,12 @@ func TestRemoteCancel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(recent) == 0 || recent[0].Status != oplog.StatusCancelled {
-		t.Fatalf("ops log head = %+v, want a cancelled row", recent)
+	// The cancelled fetch is the newest user row; a background remote refresh may log after it.
+	cancelled := slices.ContainsFunc(recent, func(e oplog.Record) bool {
+		return e.Kind == "fetch" && e.Status == oplog.StatusCancelled
+	})
+	if !cancelled {
+		t.Fatalf("ops log = %+v, want a cancelled fetch row", recent)
 	}
 }
 

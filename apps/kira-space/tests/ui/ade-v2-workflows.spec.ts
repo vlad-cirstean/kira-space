@@ -405,7 +405,9 @@ test('a YAML save refused for a changed file offers Reload and Overwrite', async
   const { window: page, control } = await openWorkflows(relaunch, [
     {
       channel: IPC.adeTaskSaveWorkflowYaml,
-      error: { code: 'E_CONFLICT', message: 'the workflow changed since it was loaded' },
+      error: JSON.parse(
+        contract<string>('ade-workflow-stale', 'error:AdeTaskService.SaveWorkflowYaml#stale'),
+      ),
     },
   ]);
   await openYaml(page);
@@ -417,8 +419,9 @@ test('a YAML save refused for a changed file offers Reload and Overwrite', async
     fileName: 'standard.yaml',
     baseHash: 'hash-standard.yaml',
   });
-  await expect(page.locator(t('ade-wf-save-error'))).toContainText('changed since it was loaded');
+  await expect(page.locator(t('ade-wf-save-error'))).toContainText('The workflow changed');
 
+  // Last write wins only after the explicit Overwrite.
   await page.locator(t('ade-wf-overwrite')).click();
   await expect.poll(() => calls(control, IPC.adeTaskSaveWorkflowYaml)).toHaveLength(2);
 

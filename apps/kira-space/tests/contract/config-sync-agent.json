@@ -1,0 +1,31 @@
+{
+  "ConfigSyncService.Preview#agent": {
+    "commit": "<masked>",
+    "files": [
+      {
+        "after": "env:\n  PLAIN: ${HOME}\n  TOKEN: ${secret:team-token}\n  OTHER: ${secret:have-it}\n",
+        "afterExists": true,
+        "current": "",
+        "currentExists": false,
+        "file": "settings.yaml",
+        "module": "agent"
+      }
+    ],
+    "rows": [
+      {
+        "deactivated": false,
+        "entry": "",
+        "file": "settings.yaml",
+        "id": "agent/settings.yaml",
+        "kind": "add",
+        "module": "agent",
+        "problem": "",
+        "runsCommands": false,
+        "unsetSecrets": [
+          "team-token"
+        ]
+      }
+    ],
+    "token": "<masked>"
+  }
+}

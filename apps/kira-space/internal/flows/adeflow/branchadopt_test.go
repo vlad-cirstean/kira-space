@@ -406,4 +406,39 @@ func TestBranchAdopt(t *testing.T) {
 			t.Fatalf("RenameBranch = %+v, %v; want the shared refusal", res, err)
 		}
 	})
+	t.Run("two tasks alternate work on one branch: both commits land, neither archive costs the other a folder", func(t *testing.T) {
+		f := newAdoptFixture(t, "")
+		donorRow := f.donorHolds(t, "feat/x")
+		commit := func(dir, file string) {
+			if err := os.WriteFile(filepath.Join(dir, file), []byte(file+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			gitOut(t, dir, "add", "-A")
+			gitOut(t, dir, "commit", "-q", "-m", "add "+file)
+		}
+		commit(donorRow.Worktree, "donor-1.txt")
+		a := f.ask(f.adopter, existing("feat/x"))
+		a.approve(t, a.request(t))
+		got := a.result(t)
+		commit(got.Worktree, "adopter-1.txt")
+		// The adopter leaves; the donor's start reattaches its own folder at the adopter's tip.
+		if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.adopter.ID}); err != nil {
+			t.Fatalf("ArchiveTask adopter: %v", err)
+		}
+		if _, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: f.donor.ID}); err != nil {
+			t.Fatalf("StartRun: %v", err)
+		}
+		waitRun(t, f.app, f.donor.ID, "one", "done")
+		commit(donorRow.Worktree, "donor-2.txt")
+		log := gitOut(t, f.repo.Dir, "log", "--format=%s", "main..feat/x")
+		for _, want := range []string{"add donor-1.txt", "add adopter-1.txt", "add donor-2.txt"} {
+			if !strings.Contains(log, want) {
+				t.Fatalf("feat/x log %q lacks %q", log, want)
+			}
+		}
+		if _, err := os.Stat(donorRow.Worktree); err != nil {
+			t.Fatalf("donor folder lost to the adopter's archive: %v", err)
+		}
+		gone(t, got.Worktree)
+	})
 }

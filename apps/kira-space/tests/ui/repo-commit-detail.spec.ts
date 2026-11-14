@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures';
+import { installClipboardSpy, lastClipboardWrite } from './studio/support/clipboard';
 import { contract } from './support/contract';
 import { gitStreamParams } from './support/gitStreamMock';
 import { openPortGraph, rootRow, SHA_A, SHA_B, singleRowChunks } from './support/gitUiPortFixtures';
@@ -84,3 +85,21 @@ for (const parent of [0, 1] as const) {
       .toMatchObject({ parentIndex: detail.parentIndex });
   });
 }
+
+// Contract git-copy-values. Backend half: gitflow TestCopyValues (sha, subject, body and paths equal git's own).
+test('contract: the commit sha button copies the full 40-character sha', async ({ relaunch }) => {
+  const detail = contract<{ sha: string; subject: string }>(
+    'git-copy-values',
+    'git:commit.detail#copy',
+  );
+  expect(detail.sha).toMatch(/^[0-9a-f]{40}$/);
+  const page = await openPortGraph(relaunch, {
+    chunks: singleRowChunks([rootRow(detail.sha, detail.subject)]),
+    results: { 'commit.detail': { ...detail, files: [], parents: [] } },
+  });
+  await page.locator('[data-testid="commit-grid"] .slick-row[data-row="0"]').click();
+  await expect(page.locator('[data-testid="commit-meta-sha"]')).toBeVisible();
+  await installClipboardSpy(page);
+  await page.locator('[data-testid="commit-meta-sha"]').click();
+  await expect.poll(() => lastClipboardWrite(page)).toBe(detail.sha);
+});

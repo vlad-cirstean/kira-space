@@ -178,9 +178,23 @@ func withMetadata(ctx context.Context, pairs []MetaPair) (context.Context, error
 			return ctx, BadRequest(fmt.Sprintf(
 				"%q is not a valid metadata key — gRPC allows lowercase letters, digits, -, _ and .", p.Name))
 		}
+		if !strings.HasSuffix(key, "-bin") && !printableASCII(p.Value) {
+			return ctx, BadRequest(fmt.Sprintf(
+				"the value of %q has characters gRPC cannot send in a plain key — use printable ASCII, or end the key in -bin to send raw bytes", key))
+		}
 		md.Append(key, p.Value)
 	}
 	return metadata.NewOutgoingContext(ctx, md), nil
+}
+
+// printableASCII is the alphabet gRPC allows in the value of a key that does not end in -bin.
+func printableASCII(v string) bool {
+	for i := 0; i < len(v); i++ {
+		if v[i] < 0x20 || v[i] > 0x7e {
+			return false
+		}
+	}
+	return true
 }
 
 // mdToPairs projects a metadata.MD into the wire shape, sorted for determinism.

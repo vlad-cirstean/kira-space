@@ -27,8 +27,9 @@ const readBufSize = 32 * 1024
 
 // closeGracePeriod is how long Close waits for a SIGHUP'd process group to exit on its own before
 // escalating to SIGKILL — this repo's own existing handshake bound
-// (internal/shell/closeflush.go's closeFlushTimeout).
-const closeGracePeriod = 2 * time.Second
+// (internal/shell/closeflush.go's closeFlushTimeout). A var only so a test can widen it; never
+// written outside tests.
+var closeGracePeriod = 2 * time.Second
 
 // closeKillWait bounds how long Close waits, after SIGKILL, for readLoop's blocked ptmx.Read to
 // return. readLoop closes the master exitDrain after the shell exits

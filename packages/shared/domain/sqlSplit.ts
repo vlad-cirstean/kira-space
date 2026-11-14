@@ -21,9 +21,60 @@ export interface SqlStatement {
  *  copy of them) — kept under this file's historical name for its own callers. */
 export type SplitSqlOptions = SqlScanOptions;
 
+const COMPOUND_CREATE =
+  /^create\s+(?:or\s+replace\s+)?(?:definer\s*=\s*\S+\s+)?(?:temp(?:orary)?\s+)?(?:trigger|procedure|function|event)\b/i;
+// `END IF`/`END LOOP`/`END WHILE`/`END REPEAT` close an opener that is not counted below.
+const END_QUALIFIERS = new Set(['if', 'loop', 'while', 'repeat']);
+
+function isWordChar(c: string | undefined): boolean {
+  return c !== undefined && /[A-Za-z0-9_$@.]/.test(c);
+}
+
+/** The lowercase word starting at `i`, or undefined when `i` is mid-identifier or not a word. */
+function wordAt(source: string, i: number): string | undefined {
+  if (isWordChar(source[i - 1]) || !/[A-Za-z_]/.test(source[i] ?? '')) return undefined;
+  let j = i;
+  while (j < source.length && /[A-Za-z0-9_]/.test(source[j] ?? '')) j++;
+  if (isWordChar(source[j])) return undefined;
+  return source.slice(i, j).toLowerCase();
+}
+
+function nextWord(source: string, from: number): string | undefined {
+  return /^\s+([A-Za-z]+)/.exec(source.slice(from, from + 24))?.[1]?.toLowerCase();
+}
+
+/** Block depth inside `CREATE TRIGGER|PROCEDURE|FUNCTION|EVENT`, where `;` splits only at depth 0. */
+function createBlockTracker(source: string) {
+  let compound: boolean | undefined;
+  let depth = 0;
+  return {
+    get depth(): number {
+      return depth;
+    },
+    reset(): void {
+      compound = undefined;
+      depth = 0;
+    },
+    /** Consumes the word at `i` when inside a compound statement; returns its length, else 0. */
+    step(i: number, c: string): number {
+      if (compound === undefined && c !== ';' && /\S/.test(c)) {
+        compound = COMPOUND_CREATE.test(source.slice(i, i + 200));
+      }
+      if (!compound) return 0;
+      const word = wordAt(source, i);
+      if (word === 'begin' || word === 'case') depth++;
+      else if (word === 'end' && !END_QUALIFIERS.has(nextWord(source, i + 3) ?? '')) {
+        depth = Math.max(0, depth - 1);
+      }
+      return word?.length ?? 0;
+    },
+  };
+}
+
 export function splitSqlStatements(source: string, options?: SplitSqlOptions): SqlStatement[] {
   const lexOptions = resolveLexOptions(options);
   const statements: SqlStatement[] = [];
+  const block = createBlockTracker(source);
   const n = source.length;
   let i = 0;
   let stmtStart = 0;
@@ -39,11 +90,17 @@ export function splitSqlStatements(source: string, options?: SplitSqlOptions): S
       i = span.end;
       continue;
     }
-    const c = source[i];
-    if (c === ';') {
+    const c = source[i] ?? '';
+    const wordLength = lexOptions.compoundBlocks ? block.step(i, c) : 0;
+    if (wordLength > 0) {
+      i += wordLength;
+      continue;
+    }
+    if (c === ';' && block.depth === 0) {
       pushIfNonEmpty(i);
       i++;
       stmtStart = i;
+      block.reset();
       continue;
     }
     i++;

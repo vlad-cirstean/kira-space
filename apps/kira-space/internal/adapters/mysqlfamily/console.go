@@ -285,11 +285,11 @@ func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQue
 	pages = make([]page.Page, len(statements))
 	for i, stmt := range statements {
 		if err := adapters.CheckCancelled(ctx); err != nil {
-			return nil, err
+			return nil, adapters.AtStatement(err, i)
 		}
 		p, err := runRaw(ctx, conn, stmt, op, track, limit)
 		if err != nil {
-			return nil, err
+			return nil, adapters.AtStatement(err, i)
 		}
 		pages[i] = p
 		limit = adapters.RemainingCap(limit, p.Size())
@@ -300,6 +300,28 @@ func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQue
 		}
 	}
 	return pages, nil
+}
+
+// reportTransaction records the session's transaction state on op from MariaDB's @@in_transaction.
+// MySQL 8.4 has no equivalent, so it records nothing and the renderer reads the statements. The
+// read runs on the pinned connection after the batch, with its own deadline, so a cancelled batch
+// still reports.
+func reportTransaction(ctx context.Context, conn Entry, op *adapters.OpCtx, mariadb bool) {
+	if !mariadb {
+		return
+	}
+	conn.waitInFlight()
+	probeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), endTransactionTimeout)
+	defer cancel()
+	var in int
+	if err := conn.QueryRowContext(probeCtx, "SELECT @@in_transaction").Scan(&in); err != nil {
+		return
+	}
+	if in == 1 {
+		op.SetTransaction(adapters.TxOpen)
+	} else {
+		op.SetTransaction(adapters.TxIdle)
+	}
 }
 
 // Server error numbers for a statement stopped by its time limit.
@@ -316,7 +338,7 @@ func timeoutError(ctx context.Context, timeout time.Duration, err error) error {
 	}
 	var myErr *mysql.MySQLError
 	if errors.As(err, &myErr) && (myErr.Number == errQueryTimeout || myErr.Number == errStatementTimeout) {
-		return adapters.StatementTimeout(timeout, 0, err)
+		return adapters.CarryDetails(adapters.StatementTimeout(timeout, 0, err), err)
 	}
 	return err
 }

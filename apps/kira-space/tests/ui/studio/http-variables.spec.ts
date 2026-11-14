@@ -246,17 +246,62 @@ test('substitution reaches the wire, and a secret does not', async ({ relaunch }
   await expect(tip).toContainText(/missing/);
   await expect(tip).not.toContainText(/token/);
 
+  // OQ-API-2: the unresolved name blocks the send; Go is never called.
+  await page.click('[data-testid="http-send"]');
+  await expect(page.locator('[data-testid="http-send-error"]')).toContainText('missing');
+  expect(control.log().filter((e) => e.channel === IPC.httpSend)).toHaveLength(0);
+
+  await page.fill('[data-testid="http-url"]', 'https://{{host}}/v1/x?k=1');
+  await expect(chip).toHaveCount(0);
   await page.click('[data-testid="http-send"]');
   await expect(page.locator('[data-testid="http-status"]')).toContainText('200');
 
   const sendCalls = control.log().filter((e) => e.channel === IPC.httpSend);
   expect(sendCalls).toHaveLength(1);
   expect(sendCalls[0].args).toMatchObject({
-    url: 'https://api.example.com/v1/x?k={{missing}}',
+    url: 'https://api.example.com/v1/x?k=1',
     headers: [{ name: 'Authorization', value: 'Bearer {{token}}' }],
     environmentId: 'env-1',
     collectionId: '',
   });
+});
+
+// ---- 2b. An unresolved variable in URL, header and body blocks the send (contract: api-http-unresolved) ----
+
+// Backend half: httpflow.TestUnresolvedVariableBlocksSend sends the same request to Go, which refuses
+// it with the same text and no request reaches the recorder.
+test('an unresolved variable in URL, header and body blocks the send and lists the names', async ({
+  relaunch,
+}) => {
+  const origins = { http: 'http://flow.test' };
+  const sent = contract<{
+    url: string;
+    headers: { name: string; value: string }[];
+    body: { raw: string };
+  }>('api-http-unresolved', 'args:HttpService.Send', { origins });
+  const message = contract<string>('api-http-unresolved', 'error:HttpService.Send');
+  const CONTROL: ControlSnapshot[] = [
+    { channel: IPC.collectionsList, response: { collections: [], items: [] } },
+    { channel: IPC.httpSend, response: { status: 200 } },
+  ];
+  const { window: page, control } = await relaunch({ control: CONTROL });
+
+  await openHttpMode(page);
+  await page.click('[data-testid="new-request"]');
+  await page.fill('[data-testid="http-url"]', sent.url);
+  await page.click('[data-testid="http-request-pane-headers"]');
+  const row = page.locator('[data-testid="http-header-row"]').first();
+  await row.locator('[data-testid="http-header-name"]').fill(sent.headers[0].name);
+  await row.locator('[data-testid="http-header-value"]').fill(sent.headers[0].value);
+  await page.click('[data-testid="http-request-pane-body"]');
+  await page.click('[data-testid="http-body-mode-raw"]');
+  await page.locator('[data-testid="http-request-pane"]').locator('.view-lines').click();
+  await page.keyboard.insertText(sent.body.raw);
+
+  await expect(page.locator('[data-testid="http-unresolved-chip"]')).toContainText('3 unresolved');
+  await page.click('[data-testid="http-send"]');
+  await expect(page.locator('[data-testid="http-send-error"]')).toHaveText(message);
+  expect(control.log().filter((e) => e.channel === IPC.httpSend)).toHaveLength(0);
 });
 
 // ---- 3. Precedence is environment-over-collection ----

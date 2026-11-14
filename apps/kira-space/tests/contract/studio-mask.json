@@ -1,0 +1,60 @@
+{
+  "copy:tsv": "1\t1\tA•• L•••••••\n1\t2\tP•• O••••••\n1\t3\t\n2\t1\tA•• L•••••••",
+  "mcp:browse": [
+    [
+      "1",
+      "1",
+      "A•• L•••••••"
+    ],
+    [
+      "1",
+      "2",
+      "P•• O••••••"
+    ],
+    [
+      "1",
+      "3",
+      null
+    ],
+    [
+      "2",
+      "1",
+      "A•• L•••••••"
+    ]
+  ],
+  "rows": [
+    [
+      "1",
+      "1",
+      "Ada Lovelace"
+    ],
+    [
+      "1",
+      "2",
+      "Pat O'Brien"
+    ],
+    [
+      "1",
+      "3",
+      null
+    ],
+    [
+      "2",
+      "1",
+      "Ada Lovelace"
+    ]
+  ],
+  "rules": [
+    {
+      "columnName": "name",
+      "connectionId": "<masked>",
+      "correlate": false,
+      "createdAt": "<masked>",
+      "id": "<masked>",
+      "keepHint": true,
+      "kind": "name",
+      "tableName": "*",
+      "updatedAt": "<masked>"
+    }
+  ]
+}

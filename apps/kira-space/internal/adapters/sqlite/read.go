@@ -99,7 +99,7 @@ func readPage(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx, target Re
 	}
 	plan, err := adapters.PlanRelationalPage(adapters.RelationalPageArgs{
 		Columns: target.Columns, Projection: req.Projection,
-		PrimaryKey: target.PrimaryKey, UniqueKeys: target.UniqueKeys,
+		PrimaryKey: target.KeysetPrimaryKey, UniqueKeys: target.UniqueKeys,
 		ExtraTiebreaker: extraTiebreaker,
 		Sort:            req.Sort, CursorMode: req.Cursor.Mode,
 		ResolveHidden: func(name string) (model.ColumnMeta, error) {

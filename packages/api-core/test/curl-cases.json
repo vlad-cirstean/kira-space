@@ -626,6 +626,77 @@
         "url": "https://x.test/a"
       },
       "warnings": []
+    },
+    {
+      "name": "J-HTTP-060: -u keeps the second colon of the password and encodes UTF-8",
+      "command": "curl -u 'jörg:pä55:wörd' https://h/x",
+      "want": {
+        "method": "GET",
+        "url": "https://h/x",
+        "headers": [
+          {
+            "name": "Authorization",
+            "value": "Basic asO2cmc6cMOkNTU6d8O2cmQ=",
+            "enabled": true,
+            "description": ""
+          }
+        ]
+      },
+      "warnings": ["credential-in-command"]
+    },
+    {
+      "name": "J-HTTP-063: known flags with a value never eat the URL, only the unknown one warns",
+      "command": "curl --retry 3 --my-flag https://h/x -sSL --compressed -o out.txt",
+      "want": {
+        "method": "GET",
+        "url": "https://h/x"
+      },
+      "warnings": ["unknown-flag"]
+    },
+    {
+      "name": "J-HTTP-064: a leading word that is not curl becomes the URL and the real URL is the extra",
+      "command": "wget https://h",
+      "want": {
+        "method": "GET",
+        "url": "wget"
+      },
+      "warnings": ["multiple-urls"]
+    },
+    {
+      "name": "J-HTTP-064: bare curl leaves an empty URL and warns",
+      "command": "curl",
+      "want": {
+        "method": "GET",
+        "url": ""
+      },
+      "warnings": ["no-url"]
+    },
+    {
+      "name": "J-HTTP-064: a pipe ends the command and nothing after it is parsed",
+      "command": "curl https://h | jq . && rm -rf x",
+      "want": {
+        "method": "GET",
+        "url": "https://h"
+      },
+      "warnings": ["shell-operator"]
+    },
+    {
+      "name": "J-HTTP-062: -G encodes --data-urlencode content like curl and leaves -d verbatim",
+      "command": "curl -G 'https://h/s?a=1' -d 'b=2' --data-urlencode 'q=a b&c'",
+      "want": {
+        "method": "GET",
+        "url": "https://h/s?a=1&b=2&q=a+b%26c"
+      },
+      "warnings": []
+    },
+    {
+      "name": "J-HTTP-062: -G drops a --data-urlencode file piece with a warning",
+      "command": "curl -G 'https://h/s' --data-urlencode 'f@/etc/passwd' -d 'k=v'",
+      "want": {
+        "method": "GET",
+        "url": "https://h/s?k=v"
+      },
+      "warnings": ["data-file-inline"]
     }
   ]
 }

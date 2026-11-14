@@ -57,6 +57,7 @@ func encodePayload(b *flatbuffers.Builder, payload any) (flatbuffers.UOffsetT, w
 		pagesOff := b.CreateVectorOfTables(pageOffs)
 		wire.ExecuteResponseStart(b)
 		wire.ExecuteResponseAddPages(b, pagesOff)
+		wire.ExecuteResponseAddTransaction(b, uint8(v.Transaction))
 		return wire.ExecuteResponseEnd(b), wire.PayloadExecuteResponse, nil
 
 	case ObjectDownloadResponse:
@@ -141,18 +142,25 @@ func encodeResponse(id int, payload any) ([]byte, error) {
 	return b.FinishedBytes(), nil
 }
 
-// encodeError builds a `res`, !ok frame answering id with message/code. code may be empty.
-func encodeError(id int, message, code string) []byte {
+// encodeError builds a `res`, !ok frame answering id with message/code. code and details may be empty.
+func encodeError(id int, message, code string, details []byte) []byte {
 	b := flatbuffers.NewBuilder(0)
 	messageOff := b.CreateString(message)
 	var codeOff flatbuffers.UOffsetT
 	if code != "" {
 		codeOff = b.CreateString(code)
 	}
+	var detailsOff flatbuffers.UOffsetT
+	if len(details) > 0 {
+		detailsOff = b.CreateByteString(details)
+	}
 	wire.ErrorStart(b)
 	wire.ErrorAddMessage(b, messageOff)
 	if code != "" {
 		wire.ErrorAddCode(b, codeOff)
+	}
+	if len(details) > 0 {
+		wire.ErrorAddDetails(b, detailsOff)
 	}
 	errOff := wire.ErrorEnd(b)
 

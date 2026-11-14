@@ -415,6 +415,8 @@ func (a *Adapter) Execute(ctx context.Context, req model.ConsoleRequest, op *ada
 		return nil, err
 	}
 	defer release()
+	// Reported on failure too: an error inside a transaction leaves it open and aborted.
+	defer reportTransaction(conn, op)
 	return execute(ctx, conn, op, a.trackerFor(op.OpID), a.state.Load().ReadOnly || req.ReadOnly, a.state.Load().ReadOnly, req.Statements, adapters.ConsoleCapFor(req), req.StatementTimeout)
 }
 

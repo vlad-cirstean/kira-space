@@ -54,24 +54,30 @@ export function useDiscover(tab: Ref<ConsoleTabRecord>, connected: Ref<boolean>)
     setKibana(tab.value.id, { ...state.value, ...change });
   }
 
-  const dataViewQuery = useQuery(() => ({
+  const dataViewOptions = () => ({
     queryKey: dataViewQueryKey(connectionId.value, state.value.dataViewId ?? ''),
     queryFn: () => control.kibanaDataView(connectionId.value, state.value.dataViewId ?? ''),
-    enabled: connected.value && !!connectionId.value && !!state.value.dataViewId,
     staleTime: 5 * 60_000,
+  });
+  const dataViewQuery = useQuery(() => ({
+    ...dataViewOptions(),
+    enabled: connected.value && !!connectionId.value && !!state.value.dataViewId,
   }));
   const dataView = computed<KibanaDataView | null>(() => dataViewQuery.data.value ?? null);
   const fields = computed(() => dataView.value?.fields ?? []);
   const timeField = computed(() => dataView.value?.timeFieldName ?? null);
   const timeZone = browserTimeZone();
 
-  function buildRequest(query = tab.value.state.text): KibanaDiscoverRequest {
+  function buildRequest(
+    query = tab.value.state.text,
+    view: KibanaDataView | null = dataView.value,
+  ): KibanaDiscoverRequest {
     const s = state.value;
     return {
       dataView: s.dataViewId ?? '',
       query,
       language: s.language,
-      timeRange: timeField.value ? resolveTime(s.time) : null,
+      timeRange: view?.timeFieldName ? resolveTime(s.time) : null,
       filters: s.filters,
       sort: s.sort,
       size: s.sampleSize,
@@ -86,6 +92,13 @@ export function useDiscover(tab: Ref<ConsoleTabRecord>, connected: Ref<boolean>)
     return rest;
   }
 
+  // A tab restored or reconnected on Run has no data view yet; without its time field the request
+  // would drop the time window and query the whole index. Rejects when the view cannot load.
+  async function ensureDataView(): Promise<KibanaDataView | null> {
+    if (dataView.value || !state.value.dataViewId) return dataView.value;
+    return queryClient.fetchQuery(dataViewOptions());
+  }
+
   // The request of the latest run: hits and histogram both send exactly it, so they never disagree.
   const lastRequest = ref<KibanaDiscoverRequest | null>(null);
   let lastOwn = '';
@@ -95,7 +108,7 @@ export function useDiscover(tab: Ref<ConsoleTabRecord>, connected: Ref<boolean>)
 
   async function run(): Promise<void> {
     if (!canRun.value) return;
-    const request = buildRequest();
+    const request = buildRequest(undefined, await ensureDataView());
     queryClient.removeQueries({ queryKey: histogramKeyFor(tab.value.id) });
     lastRequest.value = request;
     lastOwn = JSON.stringify(request);
@@ -261,6 +274,7 @@ export function useDiscover(tab: Ref<ConsoleTabRecord>, connected: Ref<boolean>)
     buildRequest,
     run,
     stop,
+    ensureDataView,
     canRun,
     running,
     runtime,

@@ -1,6 +1,7 @@
 package kubeflow
 
 import (
+	"fmt"
 	"net/url"
 	"slices"
 	"testing"
@@ -142,4 +143,49 @@ func mustQuery(t *testing.T, raw string) url.Values {
 		t.Fatal(err)
 	}
 	return q
+}
+
+// J-K8S-021 (OQ-K8S-2): more pods than the 5,000-row cap load as pages of 500 chained by continue tokens,
+// stop at the cap with the truncation flag, and return each pod once.
+func TestListCapAndPaging(t *testing.T) {
+	const total = 6000
+	e := boot(t, []flowharness.KubeFakeOption{flowharness.WithBulkPods("bulk", total)})
+	got, err := e.list(t, "v1/pods", "bulk", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Rows) != 5000 || !got.Truncated {
+		t.Fatalf("rows = %d truncated = %v, want 5000 and true", len(got.Rows), got.Truncated)
+	}
+	seen := map[string]bool{}
+	for i, r := range got.Rows {
+		if seen[r.Name] {
+			t.Fatalf("pod %s listed twice", r.Name)
+		}
+		seen[r.Name] = true
+		if want := fmt.Sprintf("bulk-%05d", i); r.Name != want {
+			t.Fatalf("row %d = %s, want %s", i, r.Name, want)
+		}
+	}
+	var conts []string
+	for _, r := range e.fake.Requests("/namespaces/bulk/pods") {
+		q := mustQuery(t, r.Query)
+		if q.Get("limit") != "500" {
+			t.Errorf("page limit = %q, want 500", q.Get("limit"))
+		}
+		conts = append(conts, q.Get("continue"))
+	}
+	if len(conts) != 10 || conts[0] != "" || conts[1] != "500" || conts[9] != "4500" {
+		t.Fatalf("continue chain = %v, want 10 pages from empty", conts)
+	}
+
+	// Exactly at the cap with nothing left is complete, not truncated.
+	e2 := boot(t, []flowharness.KubeFakeOption{flowharness.WithBulkPods("bulk", 5000)})
+	full, err := e2.list(t, "v1/pods", "bulk", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(full.Rows) != 5000 || full.Truncated {
+		t.Fatalf("5000 pods: rows = %d truncated = %v, want 5000 and false", len(full.Rows), full.Truncated)
+	}
 }

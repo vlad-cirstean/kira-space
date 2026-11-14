@@ -2,8 +2,11 @@ package postgres
 
 import (
 	"context"
+	"regexp"
+	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
@@ -12,6 +15,22 @@ import (
 // this closure just ignores it.
 func literalRenderer(name string, value *string, _ *[]any) (string, error) {
 	return adapters.LiteralRenderer(name, value)
+}
+
+// nativeEqualityTypes are text-class types whose `=` accepts the displayed text and whose displayed
+// text is not what `::text` yields (char(n) pads, the cast trims). typeClassFor files every
+// type it does not know as text, and many of those (xml, point, polygon, path, ranges, ...) have no
+// `=` operator, so a guard on them fails with "operator does not exist".
+var nativeEqualityTypes = regexp.MustCompile(`^(text|character|char|varchar|bpchar|name|uuid|citext|inet|cidr|macaddr8?|bit)\b`)
+
+// expectColumn guards a text-class column of an unknown type through its text form, which is the
+// text the grid displays.
+func expectColumn(c model.ColumnMeta, quoted string) (string, bool) {
+	base := strings.ToLower(c.DataType)
+	if typeClassFor(base) == page.TypeClassText && !nativeEqualityTypes.MatchString(base) {
+		return quoted + "::text", true
+	}
+	return quoted, true
 }
 
 // resolveTablePath is mutate.ts's own resolveTablePath — postgres's three-segment
@@ -81,7 +100,7 @@ func mutate(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track Tr
 	// the UI (P5 D11).
 	return adapters.RunRelationalMutate(ctx, op, readOnly, plan, adapters.RelationalMutateDeps{
 		Resolve: resolve, Quote: quoteIdent, Placeholder: dollarPlaceholder,
-		TypeClassFor: typeClassFor, LiteralRenderer: literalRenderer,
+		TypeClassFor: typeClassFor, ExpectColumn: expectColumn, LiteralRenderer: literalRenderer,
 		BeginSQL: "BEGIN", Exec: execCommand, Rollback: rollback,
 	})
 }

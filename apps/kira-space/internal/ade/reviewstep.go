@@ -924,7 +924,7 @@ func (b *TaskBoard) resumeReviewRound(ctx context.Context, run model.AdeRun) err
 			open = append(open, c)
 		}
 	}
-	line := llmprompts.RunResumeLine.Text(b.prompts(), llmprompts.ResumeVars{App: appName})
+	line := llmprompts.RunResumeLine.Text(b.prompts(), llmprompts.ResumeVars{App: appName, Leases: true})
 	if len(open) > 0 {
 		line += "\n\n" + llmprompts.AdeReviewFollowupMessage.Text(b.prompts(), b.roundVars(&reviewCtx{tc: tc, sb: sb}, tgt, spec.Round, open))
 	}

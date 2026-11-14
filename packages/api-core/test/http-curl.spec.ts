@@ -555,3 +555,50 @@ describe('parseCurl(toCurl(x)) round-trips every mode (P7 D17)', () => {
     expect(result.state.binaryFile).toEqual({ path: '', name: 'blob.bin', size: 0 });
   });
 });
+
+// ---- J-HTTP-062 / 064: bytes measured from a real curl, and the errors a broken paste gives ----
+
+describe('http/curl/parse.ts — -G against real curl (OQ-API-3)', () => {
+  const recorded: {
+    curl: string;
+    cases: { name: string; command: string; requestTarget: string }[];
+  } = JSON.parse(readFileSync(resolvePath(import.meta.dir, 'testdata/curl-g-wire.json'), 'utf8'));
+
+  for (const c of recorded.cases) {
+    test(`${c.name}: the query equals the one ${recorded.curl} sent`, () => {
+      const parsed = parseCurl(c.command);
+      expect('error' in parsed).toBe(false);
+      if ('error' in parsed) return;
+      const url = new URL(parsed.state.url);
+      expect(`${url.pathname}${url.search}`).toBe(c.requestTarget);
+    });
+  }
+});
+
+describe('http/curl/parse.ts — broken pastes (J-HTTP-064)', () => {
+  test('an unterminated quote is an error, not a half-parsed request', () => {
+    expect('error' in parseCurl("curl 'https://h")).toBe(true);
+  });
+
+  test('two URLs report how many were dropped', () => {
+    const parsed = parseCurl('curl https://a https://b');
+    if ('error' in parsed) throw new Error(parsed.error);
+    expect(parsed.state.url).toBe('https://a');
+    expect(parsed.warnings.map((w) => [w.kind, w.detail.params?.count])).toEqual([
+      ['multiple-urls', 1],
+    ]);
+  });
+});
+
+describe('http/curl/parse.ts — flags that change nothing (J-HTTP-063)', () => {
+  // D6: -s, -S, -L, --compressed, -o, --retry never reach the server as a different request, so they
+  // stay silent; an unknown flag warns by its raw text and never eats the URL.
+  test('ignored flags are silent, the unknown flag warns by raw text', () => {
+    const parsed = parseCurl('curl --retry 3 --my-flag https://h/x -sSL --compressed -o out.txt');
+    if ('error' in parsed) throw new Error(parsed.error);
+    expect(parsed.state.url).toBe('https://h/x');
+    expect(parsed.warnings.map((w) => [w.kind, w.detail.params?.raw])).toEqual([
+      ['unknown-flag', '--my-flag'],
+    ]);
+  });
+});

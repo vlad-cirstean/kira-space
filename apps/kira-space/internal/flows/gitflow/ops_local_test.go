@@ -400,3 +400,106 @@ func TestStackRestack(t *testing.T) {
 		t.Fatalf("stack still needs restack: %+v", fresh)
 	}
 }
+
+// J-GIT-028 (+ J-GIT-002): a cherry-pick series onto release. A clean pick undoes, a conflicting
+// pick continues, an empty pick surfaces and skips, a no-commit pick leaves the staged diff and no
+// undo, a merge picks against mainline 1. Quitting mid-conflict leaves the operation detectable.
+func TestCherryPickSeries(t *testing.T) {
+	r := newRig(t)
+	repo := r.app.NewRepo("proj")
+	base := repo.Commit("base", map[string]string{"c.txt": "base\n", "z.txt": "z0\n"})
+	repo.Branch("release", "")
+	repo.Git("checkout", "-q", "-b", "dev")
+	x := repo.Commit("add x", map[string]string{"x.txt": "x\n"})
+	y := repo.Commit("edit c on dev", map[string]string{"c.txt": "dev\n"})
+	z := repo.Commit("edit z", map[string]string{"z.txt": "z1\n"})
+	w := repo.Commit("add w", map[string]string{"w.txt": "w\n"})
+	repo.Git("checkout", "-q", "-b", "side", base)
+	repo.Commit("side adds s", map[string]string{"s.txt": "s\n"})
+	repo.Checkout("dev")
+	merge := repo.Merge("side", "merge side")
+	repo.Checkout("release")
+	releaseBase := repo.Commit("release edit c", map[string]string{"c.txt": "release\n"})
+	repo.Commit("release already has z", map[string]string{"z.txt": "z1\n"})
+	id := r.open(repo.Dir).RepoID
+
+	pick := r.mustOp(id, gitsession.OpRequest{Kind: "cherryPick", Sha: x})
+	if pick.Undo == nil {
+		t.Fatal("a clean pick offers no undo")
+	}
+	before := repo.Git("rev-parse", "HEAD~1")
+	if got := undoRun(t, r.gs, id, pick.Undo.ID); !got.OK || repo.Git("rev-parse", "HEAD") != before || repo.Git("status", "--porcelain") != "" {
+		t.Fatalf("undo of the pick = %+v, HEAD %s, status %q", got, repo.Git("rev-parse", "HEAD"), repo.Git("status", "--porcelain"))
+	}
+
+	// Conflict at the second pick, resolve and continue.
+	r.mustOp(id, gitsession.OpRequest{Kind: "cherryPick", Sha: x})
+	res := r.op(id, gitsession.OpRequest{Kind: "cherryPick", Sha: y})
+	if res.OK || res.InProgress == nil || res.InProgress.Kind != gitpreflight.InProgressCherryPick {
+		t.Fatalf("conflicting pick = %+v, want a cherry-pick in progress", res)
+	}
+	if got := r.op(id, gitsession.OpRequest{Kind: "cherryPick", Sha: z}); got.OK || got.Error == nil || got.Error.Kind != "OperationInProgress" {
+		t.Fatalf("a second pick mid-conflict = %+v, want OperationInProgress", got)
+	}
+	repo.Write("c.txt", "resolved\n")
+	repo.Git("add", "c.txt")
+	if done := r.mustOp(id, gitsession.OpRequest{Kind: "opContinue"}); done.InProgress != nil {
+		t.Fatalf("still in progress after continue: %+v", done.InProgress)
+	}
+	if repo.Git("log", "-1", "--format=%s") != "edit c on dev" {
+		t.Fatal("continued pick is not on top")
+	}
+
+	// Empty pick: already applied.
+	empty := r.op(id, gitsession.OpRequest{Kind: "cherryPick", Sha: z})
+	if empty.OK || empty.InProgress == nil {
+		t.Fatalf("empty pick = %+v, want in progress", empty)
+	}
+	if st := r.status(id); st.Counts.Unmerged != 0 {
+		t.Fatalf("empty pick shows %d unmerged files, want none", st.Counts.Unmerged)
+	}
+	r.mustOp(id, gitsession.OpRequest{Kind: "opSkip"})
+	if _, err := os.Stat(filepath.Join(repo.Dir, ".git", "CHERRY_PICK_HEAD")); !os.IsNotExist(err) {
+		t.Fatalf("CHERRY_PICK_HEAD after skip: %v", err)
+	}
+
+	// No-commit pick: staged diff equals the picked commit's diff, no undo.
+	headBefore := repo.Git("rev-parse", "HEAD")
+	nc := r.mustOp(id, gitsession.OpRequest{Kind: "cherryPick", Sha: w, NoCommit: true})
+	if nc.Undo != nil {
+		t.Fatalf("no-commit pick offers an undo: %+v", nc.Undo)
+	}
+	if repo.Git("rev-parse", "HEAD") != headBefore {
+		t.Fatal("no-commit pick moved HEAD")
+	}
+	if got, want := repo.Git("diff", "--cached"), repo.Git("diff", w+"^", w); got != want {
+		t.Fatalf("staged diff:\n%s\nwant W's diff:\n%s", got, want)
+	}
+	repo.Git("reset", "--hard", "-q")
+
+	// Merge commit with mainline 1.
+	mainline := 1
+	r.mustOp(id, gitsession.OpRequest{Kind: "cherryPick", Sha: merge, Mainline: &mainline})
+	if got, want := repo.Git("diff", "HEAD~1", "HEAD"), repo.Git("diff", merge+"^1", merge); got != want {
+		t.Fatalf("mainline pick diff:\n%s\nwant\n%s", got, want)
+	}
+	_ = releaseBase
+
+	// Quit mid-conflict: the operation is still there after a restart.
+	repo.Git("reset", "--hard", "-q", releaseBase)
+	conflict := r.op(id, gitsession.OpRequest{Kind: "cherryPick", Sha: y})
+	if conflict.OK || conflict.InProgress == nil {
+		t.Fatalf("second conflicting pick = %+v", conflict)
+	}
+	r.app.Restart()
+	gs := r.app.OpenGitStream()
+	nid := openOn(t, gs, repo.Dir).RepoID
+	st := call[gitpreflight.StatusSummary](t, gs, "status.get", gitrpc.StatusGetParams{RepoID: nid})
+	if st.InProgress == nil || st.InProgress.Kind != gitpreflight.InProgressCherryPick || st.Counts.Unmerged == 0 {
+		t.Fatalf("status after restart = %+v, want the cherry-pick still in progress with conflicts", st)
+	}
+	abort := call[gitsession.OpResult](t, gs, "op.run", gitrpc.OpRunParams{RepoID: nid, Op: gitsession.OpRequest{Kind: "opAbort"}})
+	if !abort.OK || repo.Git("rev-parse", "HEAD") != releaseBase || repo.Git("status", "--porcelain") != "" {
+		t.Fatalf("abort after restart = %+v, HEAD %s", abort, repo.Git("rev-parse", "HEAD"))
+	}
+}

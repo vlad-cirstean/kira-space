@@ -140,6 +140,27 @@ test('pills are one tab stop; arrows, Home, End and Up/Down move focus', async (
   await expect(pill(line(page, 'changeRequest'), 'api!9')).toBeFocused();
 });
 
+test('contract: opening a pasted link sends the URL the backend opens', async ({ relaunch }) => {
+  const args = contract<{ url: string }>('link-open', 'args:LinkService.OpenExternal');
+  const image: ArtifactFx = {
+    ...DETECTED_BRANCH,
+    id: 'a_img',
+    kind: 'doc',
+    title: 'Base image',
+    ref: '',
+    url: args.url,
+    status: '',
+    repo: '',
+    source: 'user',
+  };
+  const { window: page, control } = await openPlan(relaunch, base([image]));
+  await openDetails(page);
+  await pill(page, 'Base image').focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(1);
+  expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual(args);
+});
+
 test('Enter opens in the app, Cmd+Enter in the browser; Space opens the card, Esc closes it', async ({
   relaunch,
 }) => {

@@ -1,0 +1,21 @@
+{
+  "AdeTaskService.ForcePush#stale-lease": {
+    "branchId": "<id:1>",
+    "error": {
+      "kind": "LeaseViolation",
+      "message": "error: failed to push some refs to '<work>/api-remote.git'",
+      "remoteMessage": null
+    }
+  },
+  "AdeTaskService.ForcePush#unintegrated": {
+    "branchId": "<id:1>",
+    "error": {
+      "kind": "RemoteRefUpdated",
+      "message": "error: failed to push some refs to '<work>/api-remote.git'\nhint: Updates were rejected because the tip of the remote-tracking branch has\nhint: been updated since the last checkout. If you want to integrate the\nhint: remote changes, use 'git pull' before pushing again.\nhint: See the 'Note about fast-forwards' in 'git push --help' for details.",
+      "remoteMessage": null
+    }
+  },
+  "args:AdeTaskService.ForcePush": {
+    "branchId": "<id:1>"
+  }
+}

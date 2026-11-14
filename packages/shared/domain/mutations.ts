@@ -11,9 +11,16 @@ export const mutationRowOpSchema = /*#__PURE__*/ z.discriminatedUnion('kind', [
     kind: z.literal('update'),
     key: rowValuesSchema,
     changes: rowValuesSchema,
+    // Loaded values of guarded columns: a relational adapter fails the op with E_CONFLICT when the
+    // row no longer holds them.
+    expect: rowValuesSchema.optional(),
   }),
   /*#__PURE__*/ z.object({ kind: z.literal('insert'), values: rowValuesSchema }),
-  /*#__PURE__*/ z.object({ kind: z.literal('delete'), key: rowValuesSchema }),
+  /*#__PURE__*/ z.object({
+    kind: z.literal('delete'),
+    key: rowValuesSchema,
+    expect: rowValuesSchema.optional(),
+  }),
 ]);
 export type MutationRowOp = z.infer<typeof mutationRowOpSchema>;
 

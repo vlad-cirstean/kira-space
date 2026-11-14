@@ -584,22 +584,42 @@ func (s *Store) rowID(sel *sqlbuilder.SelectBuilder) (string, error) {
 	return id, nil
 }
 
-// SaveRequest replaces an HTTP item's request and name in its file.
-func (s *Store) SaveRequest(itemID, name string, req HTTP) error {
-	file, key, _, err := s.locate(itemID)
-	if err != nil {
-		return err
-	}
-	return s.editCollection(file, func(src []byte) ([]byte, error) { return replaceRequest(src, key, name, &req, nil) })
+// ErrRequestChanged is SaveRequest's refusal when the file's item is no longer the one the caller
+// read (another window saved or renamed it first).
+var ErrRequestChanged = errors.New("apifiles: the request changed since it was read")
+
+// SaveRequest replaces an HTTP item's request and name in its file. A non-nil expect is the item the
+// caller last read: the write is refused with ErrRequestChanged when the file holds another.
+func (s *Store) SaveRequest(itemID, name string, req HTTP, expect *ItemExpect) error {
+	return s.saveItem(itemID, expect, func(src []byte, key string) ([]byte, error) {
+		return replaceRequest(src, key, name, &req, nil)
+	})
 }
 
-// SaveGrpcRequest replaces a gRPC item's request and name in its file.
-func (s *Store) SaveGrpcRequest(itemID, name string, req GRPC) error {
+// SaveGrpcRequest replaces a gRPC item's request and name in its file, guarded like SaveRequest.
+func (s *Store) SaveGrpcRequest(itemID, name string, req GRPC, expect *ItemExpect) error {
+	return s.saveItem(itemID, expect, func(src []byte, key string) ([]byte, error) {
+		return replaceRequest(src, key, name, nil, &req)
+	})
+}
+
+func (s *Store) saveItem(itemID string, expect *ItemExpect, write func(src []byte, key string) ([]byte, error)) error {
 	file, key, _, err := s.locate(itemID)
 	if err != nil {
 		return err
 	}
-	return s.editCollection(file, func(src []byte) ([]byte, error) { return replaceRequest(src, key, name, nil, &req) })
+	return s.editCollection(file, func(src []byte) ([]byte, error) {
+		if expect != nil {
+			differs, err := itemDiffers(src, key, *expect)
+			if err != nil {
+				return nil, err
+			}
+			if differs {
+				return nil, ErrRequestChanged
+			}
+		}
+		return write(src, key)
+	})
 }
 
 // NewItem is a folder or a request to add to a collection file; exactly one of Folder, HTTP, GRPC.
