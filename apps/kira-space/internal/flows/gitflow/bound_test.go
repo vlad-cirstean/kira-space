@@ -7,8 +7,10 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpreflight"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitrpc"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 const gitEventChanged = bridge.GitEventPrefix + "repo.changed"
@@ -157,4 +159,35 @@ func TestGitServiceBound(t *testing.T) {
 	if _, err := svc.RepoClose(ctx, bridge.GitRepoCloseArgs{WindowKey: "w2", Params: gitrpc.RepoCloseParams{RepoID: id}}); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// J-BC-045: a window closes and the same key reopens. The first window's hold is released, the
+// new connection is served, and no repo stays held after the last close.
+func TestGitWindowCloseAndReopen(t *testing.T) {
+	app := flowharness.New(t)
+	repo := app.NewRepo("proj")
+	repo.Commit("base", map[string]string{"f.txt": "1\n"})
+	reg := app.W.Git.Registry()
+
+	first := app.OpenGitStreamFor("w1")
+	id := openOn(t, first, repo.Dir).RepoID
+	if !reg.IsOpen(id) {
+		t.Fatal("repo not held while the window is open")
+	}
+	app.CloseWindow("w1")
+	first.Close()
+	testx.WaitUntil(t, wait, func() bool { return !reg.IsOpen(id) })
+
+	app.W.GitSvc.ResetWindow(context.Background(), bridge.GitResetWindowArgs{WindowKey: "w1"})
+	second := app.OpenGitStreamFor("w1")
+	id2 := openOn(t, second, repo.Dir).RepoID
+	if id2 != id {
+		t.Fatalf("repo id changed across the reopen: %s vs %s", id2, id)
+	}
+	st := call[gitpreflight.StatusSummary](t, second, "status.get", gitrpc.StatusGetParams{RepoID: id2})
+	if !st.IsClean {
+		t.Fatalf("status after the reopen = %+v, want a served clean tree", st)
+	}
+	second.Close()
+	testx.WaitUntil(t, wait, func() bool { return !reg.IsOpen(id) })
 }
