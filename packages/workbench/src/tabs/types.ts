@@ -33,6 +33,9 @@ export interface TabKindDef<
   /** True while the tab holds unsaved work (pending grid edits, a dirty edit buffer); closing it
    *  asks to discard first. Absent for a kind that never holds any. */
   isDirty?(tabId: string): boolean;
+  /** Asks this kind's own close question for a dirty tab (Save, Discard, Cancel). True closes it.
+   *  Absent: the generic discard confirm asks. Called only when `isDirty` is true. */
+  confirmClose?(tabId: string): Promise<boolean>;
   /** Frees whichever page store this kind populated (a no-op miss for a kind with none). */
   dropResources(tabId: string): void;
   /** Appended to the tab strip's own generic context-menu items. */
