@@ -1,13 +1,16 @@
+import type { GrpcSavedRequest, HttpSavedRequest } from '@shared/domain/collections';
 import { type Ref, shallowRef, watch } from 'vue';
+import { usePublishSeenSaved } from '../../api/state/tabClose';
 
 // Decision 3: the saved request a tab last synced with, sent with Save as its guard. It follows
 // the saved row while the tab holds no unsaved edit (or once a save made them equal); an edit open
 // when another window saves keeps the older value, so Save asks before it overwrites that save.
-export function useSeenSaved<T>(
+export function useSeenSaved<T extends HttpSavedRequest | GrpcSavedRequest>(
+  tabId: string,
   saved: Ref<T | null>,
   edited: (against: T | null) => boolean,
 ): Ref<T | null> {
-  const seen = shallowRef<T | null>(null);
+  const seen = shallowRef(null) as Ref<T | null>;
   watch(
     saved,
     (next, prev) => {
@@ -16,5 +19,6 @@ export function useSeenSaved<T>(
     },
     { immediate: true },
   );
+  usePublishSeenSaved(() => tabId, seen);
   return seen;
 }

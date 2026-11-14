@@ -117,7 +117,7 @@ const savedQuery = useSavedRequest(() => props.tab.state.itemId);
 const saved = computed(() => savedQuery.data.value ?? null);
 const dirty = computed(() => isDirty(props.tab.state, saved.value));
 const canSave = computed(() => props.tab.state.itemId !== null && saved.value !== null);
-const seenSaved = useSeenSaved(saved, (against) => isDirty(props.tab.state, against));
+const seenSaved = useSeenSaved(props.tab.id, saved, (a) => isDirty(props.tab.state, a));
 const unresolved = computed(
   () => props.tab.state.itemId !== null && savedQuery.data.value === undefined,
 );

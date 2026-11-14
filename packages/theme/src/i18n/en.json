@@ -13511,6 +13511,15 @@
         "empty": "No request open",
         "emptyHint": "Send a request and see its response here."
       },
+      "tabClose": {
+        "modified": {
+          "body": "This request has unsaved changes. Closing without saving loses them."
+        },
+        "title": "Save changes to {name}",
+        "unsaved": {
+          "body": "This request was never saved. Closing without saving loses it."
+        }
+      },
       "variableCompletion": {
         "base64": {
           "label": "Base64 encode"

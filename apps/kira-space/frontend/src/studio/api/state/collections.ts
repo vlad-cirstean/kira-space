@@ -674,7 +674,7 @@ export const useCollectionsStore = defineStore('collections', () => {
         patchGrpcRequestTabState(tabId, { itemId: item.id, name });
         await afterTreeListChange();
         revealItem(collectionId, parentId);
-        saveDialogStore.closeSaveDialog();
+        saveDialogStore.closeSaveDialog(true);
         state.error = null;
         return null;
       }
@@ -703,7 +703,7 @@ export const useCollectionsStore = defineStore('collections', () => {
       patchHttpRequestTabState(tabId, { itemId: item.id, name });
       await afterTreeListChange();
       revealItem(collectionId, parentId);
-      saveDialogStore.closeSaveDialog();
+      saveDialogStore.closeSaveDialog(true);
       state.error = null;
       return null;
     } catch (err) {
@@ -718,7 +718,7 @@ export const useCollectionsStore = defineStore('collections', () => {
     name: string,
     request: HttpSavedRequest,
     seen: HttpSavedRequest | null = null,
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       // Decision 3: `seen` is the request the tab last synced with, `name` the item name it holds
       // (bound tabs follow a rename, so a name that differs in the file is one this window never
@@ -732,14 +732,16 @@ export const useCollectionsStore = defineStore('collections', () => {
           guarded && seen ? { request: seen, name } : undefined,
         ),
       );
-      if (saved === undefined) return;
+      if (saved === undefined) return false;
       // The cache is the dirty comparison's saved side, so it must move in step with the write or
       // the mark would stay lit after a successful save.
       queryClient.setQueryData(apiSavedRequestKey(itemId), request);
       await afterTreeListChange();
       state.error = null;
+      return true;
     } catch (err) {
       state.error = errorText(err);
+      return false;
     }
   }
 
@@ -749,7 +751,7 @@ export const useCollectionsStore = defineStore('collections', () => {
     name: string,
     request: GrpcSavedRequest,
     seen: GrpcSavedRequest | null = null,
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       const saved = await guardedSavedWrite((guarded) =>
         control.collectionsSaveGrpcRequest(
@@ -759,12 +761,14 @@ export const useCollectionsStore = defineStore('collections', () => {
           guarded && seen ? { request: seen, name } : undefined,
         ),
       );
-      if (saved === undefined) return;
+      if (saved === undefined) return false;
       queryClient.setQueryData(apiSavedGrpcRequestKey(itemId), request);
       await afterTreeListChange();
       state.error = null;
+      return true;
     } catch (err) {
       state.error = errorText(err);
+      return false;
     }
   }
 

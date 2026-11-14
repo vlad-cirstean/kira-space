@@ -14,7 +14,7 @@ export interface UseRequestTabSaveOptions<T> {
   unresolved?: () => boolean;
   name: () => string;
   toSaved: () => T;
-  save: (itemId: string, name: string, body: T) => void | Promise<void>;
+  save: (itemId: string, name: string, body: T) => unknown;
   openSaveDialog: (tabId: string, name: string, body: T) => void;
 }
 

@@ -6,7 +6,12 @@
 // happens to export internally.
 
 export { metadataValueCompletions, WELL_KNOWN_REQUEST_METADATA } from './grpc/metadata';
-export { fromSavedGrpcRequest, isGrpcDirty, toSavedGrpcRequest } from './grpc/saved';
+export {
+  fromSavedGrpcRequest,
+  isGrpcDirty,
+  sameGrpcRequest,
+  toSavedGrpcRequest,
+} from './grpc/saved';
 export {
   BODY_MODE_OPTIONS,
   CODE_LANGUAGE_OPTIONS,
@@ -58,7 +63,13 @@ export {
 } from './http/raw/generate';
 export { mergeRawHeaders } from './http/raw/mergeHeaders';
 export { type ParsedRawRequest, parseRawRequest, type RawWarning } from './http/raw/parse';
-export { fromSavedRequest, isDirty, toBuilderMethod, toSavedRequest } from './http/saved';
+export {
+  fromSavedRequest,
+  isDirty,
+  sameRequest,
+  toBuilderMethod,
+  toSavedRequest,
+} from './http/saved';
 export {
   classifyReference,
   isDynamicReference,
