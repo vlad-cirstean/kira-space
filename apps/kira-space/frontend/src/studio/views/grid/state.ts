@@ -1,6 +1,7 @@
 import type { SortSpec } from '@shared/domain/queries';
 import type { ObjectMeta } from '@shared/domain/tree';
 import type { PageCursor } from '@shared/protocol/dataOps';
+import { t } from '@theme/i18n';
 import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { pinia } from '../../../state/pinia';
@@ -127,8 +128,17 @@ export const useGridViewStore = defineStore('gridView', () => {
     cursor?: PageCursor,
     revertPageIndexOnFailure?: number,
   ): Promise<void> {
+    await loadPage(tabId, cursor, revertPageIndexOnFailure);
+  }
+
+  /** `load`, reporting whether the read's page was applied. */
+  async function loadPage(
+    tabId: string,
+    cursor?: PageCursor,
+    revertPageIndexOnFailure?: number,
+  ): Promise<boolean> {
     const tab = useTabsStore().findDataTab(tabId);
-    if (!tab?.connectionId) return;
+    if (!tab?.connectionId) return false;
     const rt = ensureRuntime(tabId);
 
     const effectiveCursor: PageCursor = cursor ?? {
@@ -141,7 +151,7 @@ export const useGridViewStore = defineStore('gridView', () => {
     // opens a 'document' tab instead — so expectKind narrows rather than widening
     // setPage/getPage. A stop button that blanks the grid is worse than the query the user
     // stopped — a failure here (below) leaves the previously rendered page exactly as it was.
-    await runPagedLoad({
+    return runPagedLoad({
       rt,
       opId,
       stillMounted: () => Boolean(runtime[tabId]),
@@ -203,11 +213,22 @@ export const useGridViewStore = defineStore('gridView', () => {
   // D18: the post-commit reload. `handleMutate` has already dropped pages and marked the count
   // stale server-side (cache.invalidateAfterMutation) — invalidating with `scope: 'pages'` here
   // reloads the grid without erasing that stale mark a moment after it was set.
-  async function reloadAfterMutation(tabId: string): Promise<void> {
+  //
+  // `strict` makes a read that produced no page throw: `load` reports its failure through the
+  // runtime and keeps the old page, which the lost-ack reconcile must never mistake for the table.
+  async function reloadAfterMutation(tabId: string, opts?: { strict?: boolean }): Promise<void> {
     const tab = useTabsStore().findDataTab(tabId);
     if (!tab?.connectionId) return;
+    const strict = opts?.strict === true;
+    const requireLoaded = (loaded: boolean): void => {
+      if (strict && !loaded) {
+        throw new Error(runtime[tabId]?.error?.message ?? t('studio.common.connectionLost.error'));
+      }
+    };
     await data.invalidate(tab.connectionId, tab.path, 'pages');
-    await load(tabId, { mode: 'offset', offset: tab.state.pageIndex * tab.state.pageSize });
+    requireLoaded(
+      await loadPage(tabId, { mode: 'offset', offset: tab.state.pageIndex * tab.state.pageSize }),
+    );
     // A commit that deletes every row on the current page left this reload
     // showing an empty grid still labelled page N — nothing else corrects it (goLast/the count
     // chip both still read the pre-delete total until a fresh count runs). Step back one page,
@@ -222,7 +243,9 @@ export const useGridViewStore = defineStore('gridView', () => {
     ) {
       const prevIndex = reloadedTab.state.pageIndex - 1;
       useTabsStore().patchDataTabState(tabId, { pageIndex: prevIndex });
-      await load(tabId, { mode: 'offset', offset: prevIndex * tab.state.pageSize });
+      requireLoaded(
+        await loadPage(tabId, { mode: 'offset', offset: prevIndex * tab.state.pageSize }),
+      );
     }
     // The "immediately marked stale" needs the toolbar's own `rt.count` mirror to pick up the
     // server-side mark, which nothing else here does. `rt.count?.stale` is still false at this

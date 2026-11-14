@@ -37,6 +37,15 @@ const INSERT_OPS = wireOps(
   COLUMNS,
 );
 
+const OVERWRITE_OPS = wireOps(
+  contract<{ ops: unknown[] }>('studio-grid-stale', 'mutate:overwrite-ops').ops,
+  COLUMNS,
+);
+const CONFLICT = contract<{ Code: string; Message: string; Details: string }>(
+  'studio-grid-stale',
+  'mutate:conflict',
+);
+
 const FIXTURE = compositePkConnectAndOpen(CONNECTION_ID);
 const CONTROL: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
@@ -77,6 +86,11 @@ const unreachable: PortSnapshot = {
   response: undefined,
   error: { code: 'E_CONNECT', message: 'connection refused' },
 };
+const conflictOn = (ops: unknown[]): PortSnapshot => ({
+  op: DATA_OP.mutate,
+  payload: { connectionId: CONNECTION_ID, path: COMPOSITE_PK_PATH, ops },
+  error: { code: CONFLICT.Code, message: CONFLICT.Message, details: CONFLICT.Details },
+});
 // The second read of the table: what the server holds after the lost acknowledgement.
 const reloaded = (rows: string[][]): PortSnapshot => ({
   op: DATA_OP.read,
@@ -100,6 +114,13 @@ const reloaded = (rows: string[][]): PortSnapshot => ({
     },
     source: 'server',
   },
+});
+
+// The read after a good invalidate fails: the grid still shows the page from before the commit.
+const readFails = (): PortSnapshot => ({
+  ...reloaded(ORIGINAL),
+  response: undefined,
+  error: { code: 'E_QUERY', message: 'read timed out' },
 });
 
 const COMMIT = '[data-testid="toolbar-commit-changes"]';
@@ -239,4 +260,95 @@ test('Commit after a failed reload settles first and never resends the insert', 
   await page.click('[data-testid="confirm-dialog-cancel"]');
   await expect(page.locator('[data-testid="grid-row-insert"]')).toHaveCount(1);
   expect(await sentMutates(stream)).toHaveLength(1);
+});
+
+test('a reload whose read fails never settles against the old page', async ({ relaunch }) => {
+  // An edit still at its loaded values plus an insert the page cannot match: settled against the
+  // page from before the commit the edit reads as "not applied" and the insert would be kept
+  // silently, then resent as a duplicate.
+  const { window: page, stream } = await relaunch({
+    control: CONTROL,
+    stream: [
+      ...FIXTURE.port,
+      lostAck([...EDIT_OPS, ...INSERT_OPS]),
+      invalidated,
+      readFails(),
+      invalidated,
+      reloaded(ORIGINAL),
+    ],
+  });
+  await openGrid(page);
+  await stageEdit(page);
+  await stageInsert(page);
+  await page.click(COMMIT);
+
+  const error = page.locator('[data-testid="data-action-error"]');
+  await expect(error).toContainText('couldn’t be reloaded');
+  await expect(error).toContainText('read timed out');
+  await expect(gridCell(page, 0, 'name')).toHaveClass(/pending-edit/);
+  await expect(page.locator('[data-testid="grid-row-insert"]')).toHaveCount(1);
+  const reads = async () => (await stream.ops()).filter((o) => o.op === DATA_OP.read).length;
+  expect(await reads()).toBe(2);
+
+  // The next Commit reloads first and sends nothing.
+  await page.click(COMMIT);
+  await expect.poll(reads).toBe(3);
+  await expect(page.locator(DIALOG)).toHaveCount(0);
+  await expect(gridCell(page, 0, 'name')).toHaveClass(/pending-edit/);
+  await expect(page.locator('[data-testid="grid-row-insert"]')).toHaveCount(1);
+  expect(await sentMutates(stream)).toHaveLength(1);
+});
+
+test('a lost acknowledgement on the resend after a confirmed overwrite is reconciled', async ({
+  relaunch,
+}) => {
+  const { window: page, stream } = await relaunch({
+    control: CONTROL,
+    stream: [
+      ...FIXTURE.port,
+      conflictOn(EDIT_OPS),
+      lostAck(OVERWRITE_OPS),
+      invalidated,
+      reloaded([['1', '1', 'mine'], ORIGINAL[1], ORIGINAL[2]]),
+    ],
+  });
+  await openGrid(page);
+  await stageEdit(page);
+  await page.click(COMMIT);
+  await expect(page.locator(DIALOG)).toContainText(CONFLICT.Message);
+  await page.click('[data-testid="confirm-dialog-confirm"]');
+
+  await expectUnknownOutcomeShown(page);
+  await expect(gridCell(page, 0, 'name')).toHaveText('mine');
+  await expect(gridCell(page, 0, 'name')).not.toHaveClass(/pending-edit/);
+  await expect(page.locator(COMMIT)).toHaveCount(0);
+  expect(await sentMutates(stream)).toHaveLength(2);
+});
+
+test('a row another client changed during the lost acknowledgement still asks before it is overwritten', async ({
+  relaunch,
+}) => {
+  const { window: page, stream } = await relaunch({
+    control: CONTROL,
+    stream: [
+      ...FIXTURE.port,
+      lostAck(EDIT_OPS),
+      invalidated,
+      reloaded([['1', '1', 'someone else'], ORIGINAL[1], ORIGINAL[2]]),
+      conflictOn(EDIT_OPS),
+    ],
+  });
+  await openGrid(page);
+  await stageEdit(page);
+  await page.click(COMMIT);
+  await expectUnknownOutcomeShown(page);
+  await expect(gridCell(page, 0, 'name')).toHaveClass(/pending-edit/);
+
+  // The staged guard still names the value loaded before the change, so the server refuses and
+  // the grid asks (decision 3).
+  await page.click(COMMIT);
+  await expect(page.locator(DIALOG)).toContainText(CONFLICT.Message);
+  await page.click('[data-testid="confirm-dialog-cancel"]');
+  await expect(gridCell(page, 0, 'name')).toHaveClass(/pending-edit/);
+  expect(await sentMutates(stream)).toHaveLength(2);
 });

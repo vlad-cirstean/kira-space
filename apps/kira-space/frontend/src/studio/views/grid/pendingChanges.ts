@@ -523,8 +523,9 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
   }
 
   // Server truth after a lost acknowledgement (decision 2): reload, then settle the staged set
-  // against the reloaded page (reconcile.ts). A reload that fails leaves the tab unreconciled, so
-  // the next Commit settles first instead of resending a plan that may already have landed.
+  // against the reloaded page (reconcile.ts). `reconcile.reload` must throw when the read fails:
+  // the old page predates the commit. A failed reload leaves the tab unreconciled, so the next
+  // Commit reloads and settles first instead of resending a plan that may already have landed.
   async function reconcileAfterUnknownCommit(
     tabId: string,
     reconcile: CommitReconcile,
@@ -546,7 +547,6 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
           if (view.truncated) return undefined;
           return view.isNull ? null : view.text;
         },
-        guardedRow: (row) => guardedRow(tabId, row),
       });
       const keep = await settleUnresolved(verdict, reconcile.confirmKeep);
       if (!keep) dropUnresolved(p, verdict.unresolved);
@@ -597,17 +597,26 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
       }
       const ops = buildPlan(tabId, true);
       if (!ops) return null;
+      // A lost acknowledgement settles the staged set first, whether it hits the first send or
+      // the resend after a confirmed overwrite.
+      const send = async (planned: MutationRowOp[]): Promise<MutateResponse> => {
+        try {
+          return await data.mutate({ tabId, connectionId, path, ops: planned });
+        } catch (err) {
+          if (isOutcomeUnknown(err) && reconcile)
+            return failAfterUnknownOutcome(tabId, err, reconcile);
+          throw err;
+        }
+      };
       let result: MutateResponse;
       try {
-        result = await data.mutate({ tabId, connectionId, path, ops });
+        result = await send(ops);
       } catch (err) {
-        if (isOutcomeUnknown(err) && reconcile)
-          await failAfterUnknownOutcome(tabId, err, reconcile);
         if (!isChangedConflict(err) || !confirmOverwrite) throw err;
         if (!(await confirmOverwrite(errorText(err)))) return null;
         const forced = buildPlan(tabId);
         if (!forced) return null;
-        result = await data.mutate({ tabId, connectionId, path, ops: forced });
+        result = await send(forced);
       }
       clearPending(tabId);
       await afterCommit?.();

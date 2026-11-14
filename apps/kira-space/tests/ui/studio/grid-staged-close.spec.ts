@@ -35,10 +35,12 @@ const MIGRATION_ERROR = contract<{ code: string; message: string; details: strin
   'pg#migrationError',
 );
 
-const executeAt = (statement: string): PortSnapshot => ({
+// `transaction` is what Postgres reports after the statement (the response carries the engine's
+// own state; the console takes it over reading the statement).
+const executeAt = (statement: string, transaction: 'idle' | 'open'): PortSnapshot => ({
   op: DATA_OP.execute,
   payload: { connectionId: CONNECTION_ID, path: COMPOSITE_PK_PATH, statements: [statement] },
-  response: { kind: 'execute', pages: [] },
+  response: { kind: 'execute', pages: [], transaction },
 });
 
 const tabClose = (page: Page, kind: string) =>
@@ -71,7 +73,7 @@ test('closing a console tab with an open transaction asks, and confirm rolls it 
 }) => {
   const { window: page, stream } = await relaunch({
     control: CONTROL,
-    stream: [...FIXTURE.port, executeAt('BEGIN'), executeAt('ROLLBACK')],
+    stream: [...FIXTURE.port, executeAt('BEGIN', 'open'), executeAt('ROLLBACK', 'idle')],
   });
   await connectAndExpand(page, 'Close DB', 'green');
   await openConsoleFromMenu(page, COMPOSITE_PK_PATH);
@@ -117,7 +119,7 @@ test('closing a console tab after a script that failed past its BEGIN asks, and 
         payload: { connectionId: CONNECTION_ID, path: COMPOSITE_PK_PATH, statements: MIGRATION },
         error: MIGRATION_ERROR,
       },
-      executeAt('ROLLBACK'),
+      executeAt('ROLLBACK', 'idle'),
     ],
   });
   await connectAndExpand(page, 'Close DB', 'green');
@@ -134,6 +136,54 @@ test('closing a console tab after a script that failed past its BEGIN asks, and 
   await expect(page.locator('[data-testid="confirm-dialog"]')).toBeVisible();
   await page.click('[data-testid="confirm-dialog-confirm"]');
   await expect(tabClose(page, 'console')).toHaveCount(0);
+  await expect
+    .poll(
+      async () =>
+        (await stream.ops()).filter(
+          (o) => o.op === DATA_OP.execute && JSON.stringify(o.payload).includes('"ROLLBACK"'),
+        ).length,
+    )
+    .toBe(1);
+});
+
+// Round-2 M1: the tab closes while its run is still in flight. The close cancels the run, which
+// fails after its BEGIN with the engine reporting the transaction still open; the tab is gone by
+// then, so the rollback goes out without a prompt to answer. The first statements of the script
+// ran before the cancel reached the pg_sleep.
+test('closing a console tab mid-run still rolls back the transaction the run opened', async ({
+  relaunch,
+}) => {
+  const script = ['BEGIN', 'INSERT INTO app.t VALUES (1)', 'SELECT pg_sleep(60)'];
+  const { window: page, stream } = await relaunch({
+    control: CONTROL,
+    stream: [
+      ...FIXTURE.port,
+      {
+        op: DATA_OP.execute,
+        payload: { connectionId: CONNECTION_ID, path: COMPOSITE_PK_PATH, statements: script },
+        error: {
+          code: 'E_CANCELLED',
+          message: 'cancelled',
+          details: JSON.stringify({ statementIndex: 2, inTransaction: true }),
+        },
+        untilCancel: true,
+      },
+      executeAt('ROLLBACK', 'idle'),
+    ],
+  });
+  await connectAndExpand(page, 'Close DB', 'green');
+  await openConsoleFromMenu(page, COMPOSITE_PK_PATH);
+  const view = page.locator('[data-testid="console-view"]');
+  await typeInto(view, page, script.join(';\n'), { paste: true });
+  await page.click('[data-testid="console-run-all"]');
+  await expect
+    .poll(async () => (await stream.ops()).filter((o) => o.op === DATA_OP.execute).length)
+    .toBe(1);
+
+  // Nothing is known to be open yet, so the tab closes without asking.
+  await tabClose(page, 'console').click();
+  await expect(tabClose(page, 'console')).toHaveCount(0);
+  await expect(page.locator('[data-testid="confirm-dialog"]')).toHaveCount(0);
   await expect
     .poll(
       async () =>

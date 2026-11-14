@@ -35,18 +35,20 @@ export async function runPagedLoad<K extends Page['kind']>(opts: {
   tabNoun: string;
   apply(page: Extract<Page, { kind: K }>): void;
   onFailure?(superseded: boolean): void;
-}): Promise<void> {
+}): Promise<boolean> {
   try {
     const response = await opts.read();
-    if (!opts.stillMounted()) return;
-    if (opts.rt.opId !== opts.opId) return;
+    if (!opts.stillMounted()) return false;
+    if (opts.rt.opId !== opts.opId) return false;
     if (response.page.kind !== opts.expectKind) {
       throw new Error(`unexpected page kind for a ${opts.tabNoun}: ${response.page.kind}`);
     }
     opts.apply(response.page as Extract<Page, { kind: K }>);
+    return true;
   } catch (err) {
     const superseded = opts.rt.opId !== opts.opId;
     applyLoadFailure(opts.rt, opts.opId, err, opts.id);
     opts.onFailure?.(superseded);
+    return false;
   }
 }

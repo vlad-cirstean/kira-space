@@ -152,7 +152,7 @@ async function onCommit(): Promise<void> {
       },
       confirmOverwrite,
       {
-        reload: () => gridViewStore.reloadAfterMutation(props.tab.id),
+        reload: () => gridViewStore.reloadAfterMutation(props.tab.id, { strict: true }),
         confirmKeep: confirmKeepUnmatched,
       },
     );

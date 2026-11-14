@@ -17,7 +17,6 @@ export interface ReconcilePage {
   pkNames: string[];
   /** The reloaded cell text; undefined when the column is absent or the cell is truncated. */
   serverText(row: number, column: string): string | null | undefined;
-  guardedRow(row: number): Record<string, string | null>;
 }
 
 export interface Unresolved {
@@ -34,8 +33,8 @@ export interface Verdict {
   unresolved: Unresolved;
 }
 
-/** Clears staged edits and inserts the page shows as saved, re-bases the rest on the server's
- *  values (so a later Commit sends no stale guard) and lists what the page cannot show. */
+/** Clears staged edits and inserts the page shows as saved, keeps the rest with their loaded
+ *  guards and lists what the page cannot show. */
 export function settleOnPage(p: TabPending, page: ReconcilePage): Verdict {
   const verdict: Verdict = {
     applied: 0,
@@ -54,25 +53,18 @@ export function settleOnPage(p: TabPending, page: ReconcilePage): Verdict {
       verdict.applied++;
       continue;
     }
+    // Still at its loaded values: the commit did not reach it and the guard stays valid. Any other
+    // text is a concurrent change; the guard stays as loaded so the next Commit hits the conflict
+    // and asks (decision 3) instead of overwriting it.
     if (columns.every((c) => page.serverText(row, c) === edit.original[c])) verdict.notApplied++;
-    const original = { ...edit.original };
-    const expect = { ...edit.expect };
-    for (const c of columns) {
-      const text = page.serverText(row, c);
-      if (text === undefined) continue;
-      original[c] = text;
-      if (c in expect) expect[c] = text;
-    }
-    p.edits.set(id, { ...edit, original, expect });
   }
-  for (const [id, del] of [...p.deletes]) {
+  for (const id of [...p.deletes.keys()]) {
     const row = page.rowById.get(id);
     if (row === undefined) {
       verdict.unresolved.deletes.push(id);
       continue;
     }
-    verdict.notApplied++;
-    p.deletes.set(id, { ...del, expect: page.guardedRow(row) });
+    verdict.notApplied++; // the row is still there; its staged guard stands
   }
   for (const insert of [...p.inserts]) {
     if (insertStored(insert.values, page)) {
