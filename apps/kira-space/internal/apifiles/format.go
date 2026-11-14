@@ -13,6 +13,20 @@ type CollectionFile struct {
 	Name      string     `json:"name"`
 	Variables []Variable `json:"variables,omitempty"`
 	Items     []Item     `json:"items"`
+	// Skipped lists items the load left out; empty for a fully valid file.
+	Skipped []SkippedItem `json:"skipped,omitempty"`
+}
+
+// SkippedItem is one item the load left out, with the first problem found in it.
+type SkippedItem struct {
+	Pointer   string   `json:"pointer"`
+	ParentKey string   `json:"parentKey,omitempty"` // id of the enclosing folder; "" at top level
+	Index     int      `json:"index"`               // position among its siblings in the file
+	ID        string   `json:"id,omitempty"`        // the item's id when it is a string
+	Name      string   `json:"name,omitempty"`      // the item's name when it is a string
+	Keys      []string `json:"keys,omitempty"`      // every string id in the item's subtree, its own first
+	Line      int      `json:"line"`
+	Message   string   `json:"message"`
 }
 
 // EnvironmentFile is <id>.environment.yaml.
