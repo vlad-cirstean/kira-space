@@ -14,7 +14,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P639 | Toasts at top right, placed like prompts | Done |
 | P640 | API module: dialog when closing an unsaved tab, new or modified | Todo |
 | P641 | ADE task: own Jira and PR links first in their group | Done |
-| P642 | ADE task list: today background, day start/end left bar, today bar differs | Todo |
+| P642 | ADE task list: today background, day start/end left bar, today bar differs | Done |
 | P643 | Details tab on disk: notes, handovers, links, PR link and proofs (with images) as files, source of truth; design plan first, user approves it before the build | Todo |
 | P644 | Chapter non-UI full run, 2 code review rounds | Todo |
 | P645 | Close chapter | Todo |
@@ -190,3 +190,10 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
 - Unit: `ade-v2-link-groups.spec.ts`, 4 cases. UI: 2 new tests in `ade-v2-links-strip.spec.ts`. 46 of 46 targeted specs pass.
 - Visual baselines judged unchanged from fixtures. Not run locally, they run in PR CI.
 - No backend change. `docs/ARCHITECTURE.md` ADE links line and Tests line updated.
+
+### P642 Result
+
+- Today tint is now a faint blue, 7% `--kira-info` mix (`--color-today-tint`, `tones.css`). Was a 5% grey mix. Fallback if the blue is disliked: drop the fill.
+- New token `--color-day-bar`. `AdeDayBand.vue` renders one bar span per day (`ade-day-bar`): 2px, today 3px and lighter (`bg-today`), none for Later. The bar spans the heading to the last row.
+- UI: new test in `ade-v2-plan.spec.ts`. Visual: new spec in `ade-plan-days.spec.ts`, new baseline `plan-day-bars-visual-linux.png`.
+- No Go half: presentation only.
