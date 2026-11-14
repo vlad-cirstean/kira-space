@@ -13,6 +13,7 @@ import { deferred, sleep } from '@workbench/testing/unit/async';
 import { restoreAfterEach } from '@workbench/testing/unit/restoreAfterEach';
 import { setActivePinia } from 'pinia';
 import { pinia } from '../../../frontend/src/state/pinia';
+import { benignTabsSave } from './support/benignTabsSave.ts';
 
 setActivePinia(pinia);
 
@@ -30,6 +31,7 @@ const { queryClient } = await import('@workbench/state/queryClient');
 // process.
 (control as unknown as { tabsSave: typeof control.tabsSave }).tabsSave = () => Promise.resolve();
 restoreAfterEach(control);
+await benignTabsSave();
 beforeEach(() => {
   // send()'s pre-flight loads the tree and environments; unstubbed they never settle in this harness.
   void queryClient.invalidateQueries({ refetchType: 'none' });

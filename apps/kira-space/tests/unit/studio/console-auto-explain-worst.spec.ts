@@ -13,6 +13,7 @@ import { createTabularPageBuilder, type Page, unpagedPosition } from '@shared/pr
 import { restoreAfterEach } from '@workbench/testing/unit/restoreAfterEach';
 import { setActivePinia } from 'pinia';
 import { pinia } from '../../../frontend/src/state/pinia';
+import { benignTabsSave } from './support/benignTabsSave.ts';
 
 setActivePinia(pinia);
 
@@ -31,6 +32,7 @@ const { control } = await import('../../../frontend/src/studio/bridge/control');
 // process.
 (control as unknown as { tabsSave: typeof control.tabsSave }).tabsSave = () => Promise.resolve();
 restoreAfterEach(control);
+await benignTabsSave();
 const { useConnectionsStore } = await import('../../../frontend/src/studio/state/connections');
 const connectionsStore = useConnectionsStore();
 const { useTabsStore } = await import('../../../frontend/src/state/tabs');
