@@ -8,7 +8,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 |---|---|---|
 | P634 | CI job sharding: split `go-containers` (about 24 min) and `go` (about 8 min) into shards behind stable required-check names | Done |
 | P635 | Agent config import/export journey (J-HAR-002): extend `harnessflow` AgentPort tests and `ade-agent-port` UI spec | Done |
-| P636 | MySQL console `DELIMITER` directive (F-A12) | Todo |
+| P636 | MySQL console `DELIMITER` directive (F-A12) | Done |
 | P637 | Mobile approval of agent requests (J-ADE-072, F-B8) | Todo |
 | P638 | Collection file with a bad item: valid items load, bad ones reported (F-A15, J-COLL-003) | Todo |
 | P639 | Toasts at top right, placed like prompts | Todo |
@@ -147,3 +147,13 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
 - No bugs found in existing code.
 - Deviations: SessionStart hook keeps the user's form, no timeout added. `.claude.json` literal count can drop after
   export. `envNames` omits `env.JIRA_TOKEN`.
+
+### P636 Result
+
+- Frontend splitter handles `DELIMITER` (`sqlSplit.ts`, option `delimiterDirective`, rules D1 to D10). No Go production change;
+  the server never sees the directive.
+- Comment-only fragments no longer sent on MySQL/MariaDB. Format keeps directives.
+- Tests: 13 splitter unit cases plus 4 Format cases. Flow tests pass on MySQL and MariaDB. UI spec `console-script.spec.ts`
+  passes. Test ID J-CONS-028.
+- Known open items (`docs/ARCHITECTURE.md`): new, op-log Re-run mis-splits a trigger body with inner `;` and no `BEGIN`.
+  Splitter item narrowed to Postgres `BEGIN ATOMIC`.
