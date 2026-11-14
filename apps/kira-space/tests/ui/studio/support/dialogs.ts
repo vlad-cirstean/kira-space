@@ -20,3 +20,11 @@ export async function cancelConfirm(page: Page): Promise<void> {
   await page.click('[data-testid="confirm-dialog-cancel"]');
   await expect(dialog).toHaveCount(0);
 }
+
+/** The middle button of a three-choice confirm (Discard beside Save and Cancel). */
+export async function chooseSecondary(page: Page): Promise<void> {
+  const dialog = page.locator('[data-testid="confirm-dialog"]');
+  await expect(dialog).toBeVisible();
+  await page.click('[data-testid="confirm-dialog-secondary"]');
+  await expect(dialog).toHaveCount(0);
+}
