@@ -3,6 +3,7 @@ import InlineState from '@theme/components/InlineState.vue';
 import { cardVariants } from '@theme/components/ui/card';
 import { t } from '@theme/i18n';
 import { cn } from '@theme/lib/utils';
+import { useEventListener } from '@vueuse/core';
 import { computed, useTemplateRef } from 'vue';
 import { useFollowTail } from '../behaviour/followTail';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '../behaviour/virtualRows';
@@ -39,6 +40,28 @@ const { virtualizer, virtualItems, totalSize, onScroll } = useVirtualRows({
 // back to the bottom resumes it.
 const follow = defineModel<boolean | undefined>('follow', { default: undefined });
 const { atBottom, jumpToLatest } = useFollowTail(scrollEl, () => props.lines.length, { follow });
+
+// Rows are absolutely positioned, so the browser's own copy joins them with no line break. Rebuild
+// the text row by row, clamping the first and last row to the selection's ends.
+useEventListener(document, 'copy', (e: ClipboardEvent) => {
+  const sel = window.getSelection();
+  const root = scrollEl.value;
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed || !root || !e.clipboardData) return;
+  const range = sel.getRangeAt(0);
+  if (!root.contains(range.commonAncestorContainer)) return;
+  const rows = [
+    ...root.querySelectorAll<HTMLElement>(`[data-testid="${props.testid}-line"]`),
+  ].filter((row) => range.intersectsNode(row));
+  if (rows.length < 2) return;
+  const text = rows.map((row) => {
+    const part = range.cloneRange();
+    if (!row.contains(range.startContainer)) part.setStart(row, 0);
+    if (!row.contains(range.endContainer)) part.setEnd(row, row.childNodes.length);
+    return part.toString();
+  });
+  e.clipboardData.setData('text/plain', text.join('\n'));
+  e.preventDefault();
+});
 
 /** Scroll a line into view (the virtual row may not be mounted yet). */
 function scrollToIndex(index: number): void {
