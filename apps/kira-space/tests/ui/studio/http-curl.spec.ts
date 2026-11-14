@@ -4,6 +4,7 @@ import { installFakeTimers } from '../support/clock';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 import { modeTab, openHttpRequestView } from './support/apiMode';
+import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
 import { editorText } from './support/editorText';
 
 // Six scenarios against the real built bundle, none needing a mockRuntime.ts change —
@@ -363,6 +364,69 @@ test('a dynamic value is frozen across the reveal, and stays distinct per occurr
   const after = await command.inputValue();
   const uuidsAfter = [...after.matchAll(new RegExp(UUID_RE, 'gi'))].map((m) => m[0]);
   expect(uuidsAfter).toEqual(uuids);
+});
+
+// J-HTTP-066: a command already copied stays as copied when the environment changes; reopening the
+// dialog shows the new environment's value.
+test('switching environment after a copy leaves the copied command alone', async ({ relaunch }) => {
+  const env = (id: string, name: string, isActive: boolean) => ({
+    id,
+    name,
+    sortOrder: id === 'env-1' ? 0 : 1,
+    isActive,
+    description: '',
+    color: 'none',
+  });
+  const hostVar = (ownerId: string, value: string) => ({
+    id: `var-${ownerId}`,
+    scope: 'environment',
+    ownerId,
+    name: 'host',
+    value,
+    isSecret: false,
+    sortOrder: 0,
+    description: '',
+  });
+  const CONTROL: ControlSnapshot[] = [
+    { channel: IPC.collectionsList, response: { collections: [], items: [] } },
+    {
+      channel: IPC.variablesListEnvironments,
+      response: [env('env-1', 'Prod', true), env('env-2', 'Staging', false)],
+    },
+    {
+      channel: IPC.variablesListEnvironments,
+      response: [env('env-1', 'Prod', false), env('env-2', 'Staging', true)],
+    },
+    { channel: IPC.variablesSetActiveEnvironment, args: { id: 'env-2' }, response: null },
+    {
+      channel: IPC.variablesList,
+      args: { scope: 'environment', ownerId: 'env-1' },
+      response: [hostVar('env-1', 'prod.example.com')],
+    },
+    {
+      channel: IPC.variablesList,
+      args: { scope: 'environment', ownerId: 'env-2' },
+      response: [hostVar('env-2', 'staging.example.com')],
+    },
+  ];
+  const { window: page } = await relaunch({ control: CONTROL });
+  await installClipboardSpy(page);
+  await openHttpRequestView(page);
+  await page.fill('[data-testid="http-url"]', 'https://{{host}}/v1/x');
+
+  await page.click('[data-testid="http-copy-as-curl"]');
+  const command = page.locator('[data-testid="copy-as-curl-command"]');
+  await expect(command).toHaveValue(/prod\.example\.com/);
+  await page.click('[data-testid="copy-as-curl-copy"]');
+  const copied = await lastClipboardWrite(page);
+  expect(copied).toContain('prod.example.com');
+  await page.click('[data-testid="copy-as-curl-close"]');
+
+  await page.click('[data-testid="api-environment-select"]');
+  await page.click('[data-testid="api-environment-option"][data-value="env-2"]');
+  await page.click('[data-testid="http-copy-as-curl"]');
+  await expect(command).toHaveValue(/staging\.example\.com/);
+  expect(await lastClipboardWrite(page)).toBe(copied);
 });
 
 // ---- 9. Import, send, copy as curl (contract: api-curl) ----

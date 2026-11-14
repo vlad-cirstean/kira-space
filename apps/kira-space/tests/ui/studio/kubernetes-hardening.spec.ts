@@ -42,3 +42,27 @@ test('contract: copy log writes the followed lines in order', async ({ relaunch 
   await loc(page, 'kube-logs-copy').click();
   await expect.poll(() => lastClipboardWrite(page)).toBe(ev.lines.map((l) => l.text).join('\n'));
 });
+
+// F-C8: with a filter set, Copy log writes the filtered lines the pane shows, not the whole log.
+test('contract: copy log with a filter writes only the matching lines', async ({ relaunch }) => {
+  const { page, kube } = await setupKubernetes(relaunch);
+  await openKubernetes(page);
+  await openKind(page, 'kind-dev', 'v1/pods');
+  await page.locator('[data-testid="kube-row"][data-name="web-1"]').click();
+  await activePanel(page).locator('[data-testid="kube-detail-tab-logs"]').click();
+  await expect.poll(() => kube.calls('LogsOpen').length).toBe(1);
+  const { streamId } = kube.calls('LogsOpen')[0].args as { streamId: string };
+
+  const ev = k<{ lines: { text: string }[] }>('event:kira:kubernetes:logs:restart');
+  await emitWailsEvent(page, 'kira:kubernetes:logs', { streamId, lines: ev.lines, ended: false });
+  const view = page.locator('[data-testid="kube-logs-view-line"]');
+  await expect(view).not.toHaveCount(0);
+  const word = ev.lines[1].text.split(/\s+/).at(-1) ?? '';
+  const want = ev.lines.map((l) => l.text).filter((text) => text.includes(word));
+  expect(want.length).toBeLessThan(ev.lines.length);
+  await loc(page, 'kube-logs-filter').fill(word);
+  await expect(view).toHaveCount(want.length);
+  await installClipboardSpy(page);
+  await loc(page, 'kube-logs-copy').click();
+  await expect.poll(() => lastClipboardWrite(page)).toBe(want.join('\n'));
+});

@@ -1,0 +1,80 @@
+{
+  "login#jar-off": {
+    "bodyBytes": 0,
+    "bodyEncoding": "utf8",
+    "bodyTruncated": false,
+    "elapsedMs": 0,
+    "proto": "HTTP/1.1",
+    "receivedCookies": [
+      {
+        "domain": "<masked>",
+        "expires": "",
+        "hop": 0,
+        "httpOnly": false,
+        "maxAge": 0,
+        "name": "a",
+        "path": "/",
+        "sameSite": "",
+        "secure": false,
+        "value": "1"
+      }
+    ],
+    "status": 200,
+    "statusText": "OK"
+  },
+  "login#jar-on": {
+    "bodyBytes": 0,
+    "bodyEncoding": "utf8",
+    "bodyTruncated": false,
+    "elapsedMs": 0,
+    "proto": "HTTP/1.1",
+    "receivedCookies": [
+      {
+        "domain": "<masked>",
+        "expires": "",
+        "hop": 0,
+        "httpOnly": false,
+        "maxAge": 0,
+        "name": "a",
+        "path": "/",
+        "sameSite": "",
+        "secure": false,
+        "value": "1"
+      }
+    ],
+    "status": 200,
+    "statusText": "OK"
+  },
+  "me#jar-off": {
+    "bodyBytes": 0,
+    "bodyEncoding": "utf8",
+    "bodyTruncated": false,
+    "elapsedMs": 0,
+    "proto": "HTTP/1.1",
+    "status": 200,
+    "statusText": "OK"
+  },
+  "me#jar-on": {
+    "bodyBytes": 0,
+    "bodyEncoding": "utf8",
+    "bodyTruncated": false,
+    "elapsedMs": 0,
+    "proto": "HTTP/1.1",
+    "sentCookies": [
+      {
+        "domain": "<masked>",
+        "expires": "",
+        "hop": 0,
+        "httpOnly": false,
+        "maxAge": 0,
+        "name": "a",
+        "path": "",
+        "sameSite": "",
+        "secure": false,
+        "value": "1"
+      }
+    ],
+    "status": 200,
+    "statusText": "OK"
+  }
+}

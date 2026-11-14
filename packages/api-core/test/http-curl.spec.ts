@@ -589,3 +589,16 @@ describe('http/curl/parse.ts — broken pastes (J-HTTP-064)', () => {
     ]);
   });
 });
+
+describe('http/curl/parse.ts — flags that change nothing (J-HTTP-063)', () => {
+  // D6: -s, -S, -L, --compressed, -o, --retry never reach the server as a different request, so they
+  // stay silent; an unknown flag warns by its raw text and never eats the URL.
+  test('ignored flags are silent, the unknown flag warns by raw text', () => {
+    const parsed = parseCurl('curl --retry 3 --my-flag https://h/x -sSL --compressed -o out.txt');
+    if ('error' in parsed) throw new Error(parsed.error);
+    expect(parsed.state.url).toBe('https://h/x');
+    expect(parsed.warnings.map((w) => [w.kind, w.detail.params?.raw])).toEqual([
+      ['unknown-flag', '--my-flag'],
+    ]);
+  });
+});

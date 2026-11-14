@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
+import { contract } from './support/contract';
 import {
   gitGraphClose,
   gitGraphDials,
@@ -27,7 +28,7 @@ const SECOND_PAGE = pageChunks(HISTORY, PAGE_SIZE, HISTORY_ROWS, true);
 const RESULTS = {
   ...BASE_RESULTS,
   'refs.list': refsList(historySha(0)),
-  'graph.loadMore': { started: true },
+  'graph.loadMore': contract('git-graph-plane', 'git:graph.loadMore#bound'),
 };
 const ROW = `[data-testid="repo-row"][data-repo-id="${PORT_REPO.id}"]`;
 

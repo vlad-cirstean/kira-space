@@ -15301,6 +15301,9 @@
         "jarOff": {
           "empty": "The cookie jar is off for this request"
         },
+        "jarOffSent": {
+          "hint": "No cookies were sent. The cookie jar is off for this request."
+        },
         "none": {
           "empty": "No cookies for this request’s URL"
         },

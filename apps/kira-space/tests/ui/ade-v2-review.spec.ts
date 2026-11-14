@@ -1274,6 +1274,50 @@ reviewTest('keystrokes in the composer stay in the composer', async ({ relaunch 
   });
 });
 
+// Contract git-review-edit, backend half: reviewflow TestCommentEdit.
+reviewTest(
+  'contract: editing a review comment sends the edit and shows the stored body',
+  async ({ relaunch }) => {
+    type Listed = { at: string; comments: { body: string; kind: string }[] };
+    const before = contract<Listed>('git-review-edit', 'git:review.comment.list#before');
+    const edited = contract<Listed>('git-review-edit', 'git:review.comment.list#edited');
+    const onLine = (c: object) => ({
+      ...c,
+      path: 'src/pending.ts',
+      range: { start: 100, end: 100 },
+    });
+    const { page, modified } = await openHunkDiff(relaunch, {
+      comments: [],
+      extraResults: {
+        'review.comment.list': {
+          __afterCall: {
+            method: 'review.comment.edit',
+            before: { ...before, at: 'a'.repeat(40), comments: before.comments.map(onLine) },
+            after: { ...edited, at: 'a'.repeat(40), comments: edited.comments.map(onLine) },
+          },
+        },
+        'review.comment.edit': contract('git-review-edit', 'git:review.comment.edit#ok'),
+      },
+    });
+    await expect(renderedLine(modified, 'CHANGED 100')).toHaveCount(1, { timeout: 15_000 });
+    await modified.locator('.kira-review-ln-comment').click();
+    const thread = page.locator(t('review-thread'));
+    await expect(thread.getByTestId('review-thread-body')).toHaveText(
+      before.comments[0]?.body ?? '',
+    );
+    await thread.getByTestId('review-thread-edit').click();
+    await thread.getByTestId('review-thread-kind-question').click();
+    await thread.getByTestId('review-thread-input').fill(edited.comments[0]?.body ?? '');
+    await thread.getByTestId('review-thread-save').click();
+    await expect
+      .poll(async () => (await gitStreamParams(page, 'review.comment.edit'))[0])
+      .toMatchObject({ body: edited.comments[0]?.body, kind: 'question' });
+    await expect(thread.getByTestId('review-thread-body')).toHaveText(
+      edited.comments[0]?.body ?? '',
+    );
+  },
+);
+
 reviewTest(
   'the context menu adds a review comment from the keyboard route',
   async ({ relaunch }) => {

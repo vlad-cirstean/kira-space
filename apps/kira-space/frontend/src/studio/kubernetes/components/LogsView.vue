@@ -62,8 +62,8 @@ const shown = computed(() =>
     : lines.value.filter((l) => matchesQuery(l.plain, needle.value)),
 );
 
-// A copy takes the whole loaded log, not the filtered view.
-const loadCopy = async () => ({ chunks: lines.value, truncated: false });
+// A copy takes what the filter leaves, the same lines the pane shows.
+const loadCopy = async () => ({ chunks: shown.value, truncated: false });
 
 function append(batch: KubeLogLine[]): void {
   const next = lines.value.concat(
@@ -193,7 +193,7 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
       <Toggle v-model="wrap" size="kira" data-testid="kube-logs-wrap">{{
         t('docker.logs.wrap.label')
       }}</Toggle>
-      <CopyLogButton :load="loadCopy" :disabled="lines.length === 0" data-testid="kube-logs-copy" />
+      <CopyLogButton :load="loadCopy" :disabled="shown.length === 0" data-testid="kube-logs-copy" />
       <SearchField
         v-model="filter"
         class="ml-auto w-48"

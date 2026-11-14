@@ -220,6 +220,11 @@ func mustAtoi(t *testing.T, s string) int {
 func TestCookieJar(t *testing.T) {
 	app := flowharness.New(t)
 	srv := flowharness.HTTP(t)
+	// Contract api-cookie-jar; UI half: tests/ui/studio/http-request.spec.ts "cookie jar is opt-in".
+	cookieContract := func(key string, res httpclient.Response) {
+		app.Contract(t, "api-cookie-jar", key, res, flowharness.Replace(srv.URL, "<http>"), flowharness.Mask("elapsedMs", "bodyBytes", "domain"),
+			flowharness.Omit("body", "headers", "timeline", "wire", "finalUrl", "redirects"))
+	}
 
 	cookieEcho := func(base string) map[string]string {
 		t.Helper()
@@ -234,7 +239,9 @@ func TestCookieJar(t *testing.T) {
 	}
 
 	t.Run("default settings keep no jar", func(t *testing.T) {
-		send(t, app, get(srv.URL+"/cookie/set?name=a&value=1"))
+		cookieContract("login#jar-off", send(t, app, get(srv.URL+"/cookie/set?name=a&value=1")))
+		echo := send(t, app, get(srv.URL+"/cookie/echo"))
+		cookieContract("me#jar-off", echo)
 		if got := cookieEcho(srv.URL); len(got) != 0 {
 			t.Errorf("default send replayed cookies %v, want none (api.disableCookieJar defaults to true)", got)
 		}
@@ -256,6 +263,12 @@ func TestCookieJar(t *testing.T) {
 		res := send(t, app, get(srv.URL+"/cookie/set?name=a&value=1"))
 		if len(res.ReceivedCookies) != 1 || res.ReceivedCookies[0].Name != "a" {
 			t.Errorf("received cookies = %+v, want a", res.ReceivedCookies)
+		}
+		cookieContract("login#jar-on", res)
+		echo := send(t, app, get(srv.URL+"/cookie/echo"))
+		cookieContract("me#jar-on", echo)
+		if len(echo.SentCookies) != 1 || echo.SentCookies[0].Name != "a" {
+			t.Errorf("sent cookies = %+v, want a", echo.SentCookies)
 		}
 		if got := cookieEcho(srv.URL); got["a"] != "1" {
 			t.Errorf("replayed cookies = %v, want a=1", got)
