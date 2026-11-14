@@ -181,4 +181,4 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
 - Phone UI: `PhoneApprovals.vue` on the Need You tab, shared `ApprovalItemCard`, kind defs split into `kindDefs.ts`, plain-text `TaskCreateBrief.vue`. Desktop follows through the queue push.
 - Flow: `TestPhoneApprovals`, `TestPhonePermissionMatrix`, contract `mobile-approvals.json`. UI: 9 mobile specs in `approvals.spec.ts` plus desktop `ade-mobile-approval.spec.ts` pass.
 - `scripts/check-ui-primitives.sh` allowlists U101 for `PhoneApprovals.vue`.
-- Known flake, not fixed here: `ade-v2-orchestrator.spec.ts` "task.create brief is in the dialog first frame" (framesLate Infinity). Failed 4 of 6 runs before this phase in the sandbox.
+- Fixed flake: `ade-v2-orchestrator.spec.ts` "task.create brief is in the dialog first frame" (framesLate Infinity, 4 of 6 runs). Cause: `usePrompts` push did not cancel the in-flight initial list fetch, which overwrote the routed entry so the dialog never opened (now cancels, like `useApprovals`). Also `TaskCreateBody` renders the readonly brief with sync `AdeNoteBody`, not the lazy editor chunk. 8/8 pass, file 48/48.
