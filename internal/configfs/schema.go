@@ -25,6 +25,21 @@ type Rule[T any] struct {
 // validate against the JSON Schema (draft 2020-12), decode into T (unknown fields refused), run rules.
 // The DocModel carries the options and rule docs for AGENTS.md. Every Problem points at the file line of the offending field and never echoes the offending value.
 func YAMLSchema[T any](schemaJSON []byte, rules ...Rule[T]) (DecodeFunc[T], DocModel, error) {
+	dec, model, err := YAMLSchemaSkip[T](schemaJSON, Skip{}, rules...)
+	if err != nil {
+		return nil, DocModel{}, err
+	}
+	return func(file string, src []byte) (T, *Problem) {
+		out, _, prob := dec(file, src)
+		return out, prob
+	}, model, nil
+}
+
+// YAMLSchemaSkip is YAMLSchema with Skip. The returned T still holds the stand-ins at the skipped
+// pointers; the caller drops them. On a whole-file problem T is zero and skipped keeps what was
+// dropped before it.
+func YAMLSchemaSkip[T any](schemaJSON []byte, skip Skip, rules ...Rule[T]) (
+	func(file string, src []byte) (T, []Skipped, *Problem), DocModel, error) {
 	for _, r := range rules {
 		if r.Doc == "" || r.Check == nil {
 			return nil, DocModel{}, fmt.Errorf("configfs: rule needs Doc and Check")
@@ -46,18 +61,8 @@ func YAMLSchema[T any](schemaJSON []byte, rules ...Rule[T]) (DecodeFunc[T], DocM
 	if err != nil {
 		return nil, DocModel{}, err
 	}
-	return func(_ string, src []byte) (T, *Problem) {
+	check := func(val any, at Locator) (T, *Problem) {
 		var zero T
-		doc, prob := parseNode(src)
-		if prob != nil {
-			return zero, prob
-		}
-		w := &walker{idx: nodeIndex{}}
-		val := w.value(doc, "")
-		if w.prob != nil {
-			return zero, w.prob
-		}
-		at := w.idx.locator()
 		if prob := validate(sch, val, at); prob != nil {
 			return zero, prob
 		}
@@ -83,6 +88,52 @@ func YAMLSchema[T any](schemaJSON []byte, rules ...Rule[T]) (DecodeFunc[T], DocM
 			}
 		}
 		return out, nil
+	}
+	return func(_ string, src []byte) (T, []Skipped, *Problem) {
+		var zero T
+		doc, prob := parseNode(src)
+		if prob != nil {
+			return zero, nil, prob
+		}
+		w := &walker{idx: nodeIndex{}}
+		val := w.value(doc, "")
+		if w.prob != nil {
+			return zero, nil, w.prob
+		}
+		at := w.idx.locator()
+		var skipped []Skipped
+		for {
+			out, p := check(val, at)
+			if p == nil {
+				return out, skipped, nil
+			}
+			if skip.Element == nil {
+				return zero, skipped, p
+			}
+			ptr, ok := skip.Element(p.Path)
+			if !ok || len(skipped) >= skip.Max {
+				return zero, skipped, p
+			}
+			dup := false
+			for _, s := range skipped {
+				if under(ptr, s.Pointer) {
+					dup = true
+					break
+				}
+			}
+			if dup {
+				return zero, skipped, p
+			}
+			v, ok := valueAt(val, ptr)
+			if !ok {
+				return zero, skipped, p
+			}
+			var err error
+			if val, err = setAt(val, ptr, skip.StandIn(val, len(skipped))); err != nil {
+				return zero, skipped, p
+			}
+			skipped = append(skipped, Skipped{Pointer: ptr, Value: v, Problem: *p})
+		}
 	}, model, nil
 }
 
