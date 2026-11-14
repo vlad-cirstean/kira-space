@@ -2242,6 +2242,9 @@
         "agentInputOffGlobal": {
           "body": "Agent input is off. Turn it on in the mobile access settings on the computer."
         },
+        "approvalsUnavailable": {
+          "body": "Approvals are unavailable."
+        },
         "changesUnavailable": {
           "body": "Changes are unavailable."
         },

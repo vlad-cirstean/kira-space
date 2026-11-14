@@ -604,6 +604,7 @@ func Build(opts Options) (*Wired, error) {
 			info, _ := w.AgentSvc.Info()
 			return info
 		},
+		Approvals: w.Approvals,
 		Writer:    &bridge.MobileWriter{Svc: w.AdeTask, Launches: mobileLaunches},
 		Launches:  mobileLaunches,
 		Terminals: termBroker,
