@@ -236,11 +236,22 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, s
 		return err
 	}
 	d := s.o.Dialect
-	c := kiraschema.APIItems
 	existing, unkeyed, err := loadItemRows(tx, d, collectionID, stem)
 	if err != nil {
 		return err
 	}
+	kept, err := s.upsertItems(tx, collectionID, stem, flat, existing, ch)
+	if err != nil {
+		return err
+	}
+	if err := keepSkippedItems(tx, d, skipped, existing, kept, ch); err != nil {
+		return err
+	}
+	return deleteStaleItems(tx, d, existing, unkeyed, kept, ch)
+}
+
+// upsertItems inserts or updates every flat item and returns the ids of the rows it touched.
+func (s *Store) upsertItems(tx *sql.Tx, collectionID, stem string, flat []flatItem, existing map[string]itemRow, ch *Changes) (map[string]bool, error) {
 	kept := map[string]bool{}
 	ids := map[string]string{}
 	now := kiratime.NowMs()
@@ -250,7 +261,7 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, s
 		if !found {
 			id, err := s.insertItem(tx, collectionID, stem, parent, f, now, ch)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			ids[f.key] = id
 			kept[id] = true
@@ -258,11 +269,17 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, s
 		}
 		ids[f.key] = old.id
 		kept[old.id] = true
-		if err := updateItem(tx, d, old, parent, f, now, ch); err != nil {
-			return err
+		if err := updateItem(tx, s.o.Dialect, old, parent, f, now, ch); err != nil {
+			return nil, err
 		}
 	}
-	// A skipped item keeps its last good rows: deleting them would cascade the response history.
+	return kept, nil
+}
+
+// keepSkippedItems marks a skipped item's last good rows kept: deleting them would cascade the
+// response history. The skipped item's own row also takes its file index as order.
+func keepSkippedItems(tx *sql.Tx, d sqlb.Dialect, skipped []SkippedItem, existing map[string]itemRow, kept map[string]bool, ch *Changes) error {
+	c := kiraschema.APIItems
 	for _, sk := range skipped {
 		for _, key := range sk.Keys {
 			r, found := existing[key]
@@ -281,23 +298,32 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, s
 			ch.Tree = true
 		}
 	}
+	return nil
+}
+
+// deleteStaleItems deletes rows no longer in the file and rows with no key.
+func deleteStaleItems(tx *sql.Tx, d sqlb.Dialect, existing map[string]itemRow, unkeyed []string, kept map[string]bool, ch *Changes) error {
+	c := kiraschema.APIItems
+	del := func(id, what string) error {
+		b := d.DeleteFrom(c.Table)
+		b.Where(b.Equal(c.ID, id))
+		if _, err := sqlb.Exec(tx, b); err != nil {
+			return fmt.Errorf("apifiles: delete %s: %w", what, err)
+		}
+		ch.Tree = true
+		return nil
+	}
 	for _, r := range existing {
 		if !kept[r.id] {
-			del := d.DeleteFrom(c.Table)
-			del.Where(del.Equal(c.ID, r.id))
-			if _, err := sqlb.Exec(tx, del); err != nil {
-				return fmt.Errorf("apifiles: delete item: %w", err)
+			if err := del(r.id, "item"); err != nil {
+				return err
 			}
-			ch.Tree = true
 		}
 	}
 	for _, id := range unkeyed {
-		del := d.DeleteFrom(c.Table)
-		del.Where(del.Equal(c.ID, id))
-		if _, err := sqlb.Exec(tx, del); err != nil {
-			return fmt.Errorf("apifiles: delete unkeyed item: %w", err)
+		if err := del(id, "unkeyed item"); err != nil {
+			return err
 		}
-		ch.Tree = true
 	}
 	return nil
 }

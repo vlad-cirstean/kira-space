@@ -61,34 +61,7 @@ func YAMLSchemaSkip[T any](schemaJSON []byte, skip Skip, rules ...Rule[T]) (
 	if err != nil {
 		return nil, DocModel{}, err
 	}
-	check := func(val any, at Locator) (T, *Problem) {
-		var zero T
-		if prob := validate(sch, val, at); prob != nil {
-			return zero, prob
-		}
-		if prob := rc.check(rc.root, val, "", at); prob != nil {
-			return zero, prob
-		}
-		var out T
-		raw, err := json.Marshal(val)
-		if err == nil {
-			dec := json.NewDecoder(bytes.NewReader(raw))
-			dec.DisallowUnknownFields()
-			err = dec.Decode(&out)
-		}
-		if err != nil {
-			return zero, &Problem{Message: i18n.T("backend.core.config.invalid.body", map[string]string{"field": fieldName("")})}
-		}
-		for _, r := range rules {
-			if p := r.Check(out, at); p != nil {
-				if p.Line == 0 {
-					p.Line, p.Col = at(p.Path)
-				}
-				return zero, p
-			}
-		}
-		return out, nil
-	}
+	check := func(val any, at Locator) (T, *Problem) { return checkValue(sch, rc, rules, val, at) }
 	return func(_ string, src []byte) (T, []Skipped, *Problem) {
 		var zero T
 		doc, prob := parseNode(src)
@@ -107,34 +80,70 @@ func YAMLSchemaSkip[T any](schemaJSON []byte, skip Skip, rules ...Rule[T]) (
 			if p == nil {
 				return out, skipped, nil
 			}
-			if skip.Element == nil {
-				return zero, skipped, p
-			}
-			ptr, ok := skip.Element(p.Path)
-			if !ok || len(skipped) >= skip.Max {
-				return zero, skipped, p
-			}
-			dup := false
-			for _, s := range skipped {
-				if under(ptr, s.Pointer) {
-					dup = true
-					break
-				}
-			}
-			if dup {
-				return zero, skipped, p
-			}
-			v, ok := valueAt(val, ptr)
+			next, ns, ok := dropElement(skip, val, skipped, p)
 			if !ok {
 				return zero, skipped, p
 			}
-			var err error
-			if val, err = setAt(val, ptr, skip.StandIn(val, len(skipped))); err != nil {
-				return zero, skipped, p
-			}
-			skipped = append(skipped, Skipped{Pointer: ptr, Value: v, Problem: *p})
+			val, skipped = next, ns
 		}
 	}, model, nil
+}
+
+// checkValue validates val against the schema and id references, decodes it into T, runs rules.
+func checkValue[T any](sch *jsonschema.Schema, rc *refChecker, rules []Rule[T], val any, at Locator) (T, *Problem) {
+	var zero T
+	if prob := validate(sch, val, at); prob != nil {
+		return zero, prob
+	}
+	if prob := rc.check(rc.root, val, "", at); prob != nil {
+		return zero, prob
+	}
+	var out T
+	raw, err := json.Marshal(val)
+	if err == nil {
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.DisallowUnknownFields()
+		err = dec.Decode(&out)
+	}
+	if err != nil {
+		return zero, &Problem{Message: i18n.T("backend.core.config.invalid.body", map[string]string{"field": fieldName("")})}
+	}
+	for _, r := range rules {
+		if p := r.Check(out, at); p != nil {
+			if p.Line == 0 {
+				p.Line, p.Col = at(p.Path)
+			}
+			return zero, p
+		}
+	}
+	return out, nil
+}
+
+// dropElement swaps the element p falls in for a stand-in and records it. ok is false when the
+// problem must fail the file: no droppable element, Max reached, element already dropped or
+// unresolvable.
+func dropElement(skip Skip, val any, skipped []Skipped, p *Problem) (any, []Skipped, bool) {
+	if skip.Element == nil {
+		return val, skipped, false
+	}
+	ptr, ok := skip.Element(p.Path)
+	if !ok || len(skipped) >= skip.Max {
+		return val, skipped, false
+	}
+	for _, s := range skipped {
+		if under(ptr, s.Pointer) {
+			return val, skipped, false
+		}
+	}
+	v, ok := valueAt(val, ptr)
+	if !ok {
+		return val, skipped, false
+	}
+	next, err := setAt(val, ptr, skip.StandIn(val, len(skipped)))
+	if err != nil {
+		return val, skipped, false
+	}
+	return next, append(skipped, Skipped{Pointer: ptr, Value: v, Problem: *p}), true
 }
 
 func compileSchema(schemaJSON []byte) (*jsonschema.Schema, error) {
