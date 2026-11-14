@@ -149,3 +149,17 @@ Real-DB probes: MySQL 8.4.11, MariaDB 11.4.13, Postgres, SQLite (in-process). Co
 
 - No fixed sleeps found in the diff's new tests. No hand-edited contracts; wire code regenerates identically.
 - Weak spots: H1 (no failed-read case), M2 (unit spec pins wrong rule), L5.
+
+## Result
+
+- H1: `runPagedLoad`/`loadPage` report whether the page applied; `reloadAfterMutation(strict)` throws on a failed read, so the staged set stays and the next Commit reloads first without sending. Edit and delete guards are no longer re-based. UI test in `grid-lost-ack.spec.ts` fails the `read`. Verified: targeted Playwright.
+- M1: transaction state lives on a session map keyed by connection and database; `recordRun` tracks before the closed-tab guard and the cleanup hook ends it via `endTabTransaction`. Verified: `console-run-after-tab-close.spec.ts`, UI spec closing a tab mid-run.
+- M2: rule fixed: parse error 1064 never commits, any other failure of a DDL statement already committed. Unit spec corrected; flow case `TestConsoleMySQLTransactionEnds` on real MySQL and MariaDB.
+- M3: `autocommitOff` tracked per session; close prompt and rollback also run `SET autocommit=1`. Verified: unit spec and flow test.
+- M4: `stripLeadingComments` handles MySQL `#` comments and nested Postgres block comments. Verified: unit spec.
+- L1: CHECK TABLE, RESET (needs RELOAD: flow asserts the 1227 failure still committed), XA END/ROLLBACK, CALL (counted open), failed COMMIT, SQLite SAVEPOINT/RELEASE, USE: covered. USE orphaning not reproducible (session key comes from the tab path); unit spec covers it.
+- L2: engines report state: Postgres TxStatus, MariaDB `@@in_transaction`, SQLite BEGIN probe, via `OpCtx.SetTransaction` and new wire field `ExecuteResponse.transaction` plus error details `inTransaction`, `statementIndex`, `sqlErrno`. MySQL 8.4 reports none, so lexing stays. Verified: `console_txstate_test.go` per engine on real servers; wire regenerated; contract regenerated and stable on rerun.
+- L3: forced resend after a confirmed overwrite routes an outcomeUnknown error through the reconcile path. Verified: `grid-lost-ack.spec.ts`.
+- L4: reconcile no longer skips the decision-3 confirm after a concurrent change. Verified: `grid-lost-ack.spec.ts`, `grid-stale-row`.
+- L5: TypeRoundTrip stale-row check covers every column (`Unguarded` opt-out, MySQL `fl`). Verified: MySQL and MariaDB AuthMatrix complete suite and adapter packages pass.
+- Final run: Go adapterhost, adapters, flowharness, dbflow all ok; bun unit specs 37 pass; Playwright grid-lost-ack, grid-staged-close, grid-stale-row pass.
