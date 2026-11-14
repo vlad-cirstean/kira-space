@@ -662,6 +662,89 @@ test('today is a subtle grey, not yellow, not like other days', async ({ relaunc
   expect(lum(todayRule)).toBeGreaterThan(lum(otherRule));
 });
 
+test("each day has a left bar from its heading to its last row; today's is wider and lighter", async ({
+  relaunch,
+}) => {
+  const { window: page } = await openPlan(relaunch);
+  await page.setViewportSize({ width: 1440, height: 2400 });
+  const bands = page.locator('[data-testid="ade-day-band"]');
+  const count = await bands.count();
+  expect(count).toBeGreaterThan(2);
+  const info = await bands.evaluateAll((els) =>
+    els.map((el) => {
+      const b = el.getBoundingClientRect();
+      const bars = el.querySelectorAll(':scope > [data-testid="ade-day-bar"]');
+      const bar = bars[0]?.getBoundingClientRect();
+      const cs = bars[0] ? getComputedStyle(bars[0]) : null;
+      const rows = [
+        ...el.querySelectorAll('[data-testid="ade-card"], [data-testid="ade-span-row"]'),
+      ];
+      const rule = el.querySelector('[data-testid="ade-band-head"] > span[aria-hidden="true"]');
+      return {
+        key: (el as HTMLElement).dataset.adeDay,
+        today: (el as HTMLElement).dataset.today === 'true',
+        band: { x: b.x, y: b.y, bottom: b.bottom },
+        bars: bars.length,
+        bar: bar ? { x: bar.x, y: bar.y, w: bar.width, bottom: bar.bottom } : null,
+        radius: cs ? Number.parseFloat(cs.borderTopLeftRadius) : 0,
+        width: cs?.width,
+        color: cs?.backgroundColor,
+        rule: rule ? getComputedStyle(rule).backgroundColor : '',
+        headMid: (() => {
+          const h = el.querySelector('[data-testid="ade-band-head"]')?.getBoundingClientRect();
+          return h ? h.y + h.height / 2 : 0;
+        })(),
+        lastRow: rows.length ? Math.max(...rows.map((r) => r.getBoundingClientRect().bottom)) : 0,
+        bg: getComputedStyle(el).backgroundColor,
+      };
+    }),
+  );
+  const days = info.filter((i) => i.key !== '9999');
+  for (const i of info.filter((x) => x.key === '9999')) expect(i.bars).toBe(0);
+  for (const [n, d] of days.entries()) {
+    expect(d.bars).toBe(1);
+    const bar = d.bar;
+    if (!bar) throw new Error('bar missing');
+    expect(bar.x + bar.w).toBeLessThanOrEqual(d.band.x);
+    expect(bar.x).toBeGreaterThanOrEqual(d.band.x - 16);
+    expect(Math.abs(bar.y - (d.band.y + 4))).toBeLessThanOrEqual(1);
+    expect(Math.abs(bar.bottom - (d.band.bottom - 4))).toBeLessThanOrEqual(1);
+    expect(d.headMid).toBeGreaterThan(bar.y);
+    if (d.lastRow) expect(d.lastRow).toBeLessThanOrEqual(bar.bottom);
+    expect(d.radius).toBeGreaterThanOrEqual(bar.w / 2);
+    const next = days[n + 1]?.bar;
+    if (next) expect(bar.bottom).toBeLessThan(next.y);
+  }
+  const today = days.find((d) => d.today);
+  const other = days.find((d) => !d.today);
+  if (!today || !other) throw new Error('bands missing');
+  expect(today.width).toBe('3px');
+  expect(other.width).toBe('2px');
+  expect(today.color).not.toBe(other.color);
+  expect(today.color).toBe(today.rule);
+  const rgb = (c: string) => {
+    const n = (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    return c.startsWith('color(') ? n.map((v) => v * 255) : n;
+  };
+  const lum = (c: string) => {
+    const [x = 0, y = 0, z = 0] = rgb(c);
+    return 0.2126 * x + 0.7152 * y + 0.0722 * z;
+  };
+  expect(lum(today.color ?? '')).toBeGreaterThan(lum(other.color ?? ''));
+  const probe = await page.evaluate(() => {
+    const d = document.createElement('div');
+    d.style.background = 'var(--color-today-tint)';
+    document.body.append(d);
+    const c = getComputedStyle(d).backgroundColor;
+    d.remove();
+    return c;
+  });
+  expect(today.bg).toBe(probe);
+  const [r = 0, , b = 0] = rgb(probe);
+  expect(b).toBeGreaterThan(r);
+  for (const d of info.filter((x) => !x.today)) expect(d.bg).toBe('rgba(0, 0, 0, 0)');
+});
+
 test('the timeline has no date gutter and each date shows once', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   const gutters = await page.locator('[data-testid="ade-plan"] *').evaluateAll(
