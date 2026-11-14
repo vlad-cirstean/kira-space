@@ -2525,7 +2525,7 @@
           "body": "The connection has an open transaction. Commit or roll it back first."
         },
         "pageTokenMismatch": {
-          "body": "The page token doesn’t match the current filter, sort, projection or page size."
+          "body": "The page token doesn’t match the current filter, sort, projection, page size or table key. Refresh the page."
         },
         "portInvalid": {
           "body": "Invalid port."

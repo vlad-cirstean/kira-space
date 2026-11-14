@@ -1,0 +1,408 @@
+{
+  "cases": [
+    {
+      "label": "quote",
+      "value": "O'Brien"
+    },
+    {
+      "label": "decoy-quote",
+      "value": "OxBrien"
+    },
+    {
+      "label": "backslash",
+      "value": "back\\slash"
+    },
+    {
+      "label": "trailing-backslash",
+      "value": "ends\\"
+    },
+    {
+      "label": "percent",
+      "value": "100%"
+    },
+    {
+      "label": "decoy-percent",
+      "value": "100 percent"
+    },
+    {
+      "label": "underscore",
+      "value": "a_b"
+    },
+    {
+      "label": "decoy-underscore",
+      "value": "aXb"
+    },
+    {
+      "label": "unicode",
+      "value": "ünï ☃ 日本"
+    },
+    {
+      "label": "hostile",
+      "value": "it's 100% \"x\"\\y"
+    },
+    {
+      "label": "empty",
+      "value": ""
+    },
+    {
+      "label": "null",
+      "value": null
+    }
+  ],
+  "filters": {
+    "clickhouse": {
+      "backslash": "`v` = 'back\\\\slash'",
+      "decoy-percent": "`v` = '100 percent'",
+      "decoy-quote": "`v` = 'OxBrien'",
+      "decoy-underscore": "`v` = 'aXb'",
+      "empty": "`v` = ''",
+      "hostile": "`v` = 'it''s 100% \"x\"\\\\y'",
+      "null": "`v` IS NULL",
+      "percent": "`v` = '100%'",
+      "quote": "`v` = 'O''Brien'",
+      "trailing-backslash": "`v` = 'ends\\\\'",
+      "underscore": "`v` = 'a_b'",
+      "unicode": "`v` = 'ünï ☃ 日本'"
+    },
+    "mariadb": {
+      "backslash": "`v` = 'back\\\\slash'",
+      "decoy-percent": "`v` = '100 percent'",
+      "decoy-quote": "`v` = 'OxBrien'",
+      "decoy-underscore": "`v` = 'aXb'",
+      "empty": "`v` = ''",
+      "hostile": "`v` = 'it''s 100% \"x\"\\\\y'",
+      "null": "`v` IS NULL",
+      "percent": "`v` = '100%'",
+      "quote": "`v` = 'O''Brien'",
+      "trailing-backslash": "`v` = 'ends\\\\'",
+      "underscore": "`v` = 'a_b'",
+      "unicode": "`v` = 'ünï ☃ 日本'"
+    },
+    "postgres": {
+      "backslash": "\"v\" = 'back\\slash'",
+      "decoy-percent": "\"v\" = '100 percent'",
+      "decoy-quote": "\"v\" = 'OxBrien'",
+      "decoy-underscore": "\"v\" = 'aXb'",
+      "empty": "\"v\" = ''",
+      "hostile": "\"v\" = 'it''s 100% \"x\"\\y'",
+      "null": "\"v\" IS NULL",
+      "percent": "\"v\" = '100%'",
+      "quote": "\"v\" = 'O''Brien'",
+      "trailing-backslash": "\"v\" = 'ends\\'",
+      "underscore": "\"v\" = 'a_b'",
+      "unicode": "\"v\" = 'ünï ☃ 日本'"
+    },
+    "sqlite": {
+      "backslash": "\"v\" = 'back\\slash'",
+      "decoy-percent": "\"v\" = '100 percent'",
+      "decoy-quote": "\"v\" = 'OxBrien'",
+      "decoy-underscore": "\"v\" = 'aXb'",
+      "empty": "\"v\" = ''",
+      "hostile": "\"v\" = 'it''s 100% \"x\"\\y'",
+      "null": "\"v\" IS NULL",
+      "percent": "\"v\" = '100%'",
+      "quote": "\"v\" = 'O''Brien'",
+      "trailing-backslash": "\"v\" = 'ends\\'",
+      "underscore": "\"v\" = 'a_b'",
+      "unicode": "\"v\" = 'ünï ☃ 日本'"
+    }
+  },
+  "matches": {
+    "clickhouse": {
+      "backslash": [
+        [
+          "3",
+          "back\\slash"
+        ]
+      ],
+      "decoy-percent": [
+        [
+          "6",
+          "100 percent"
+        ]
+      ],
+      "decoy-quote": [
+        [
+          "2",
+          "OxBrien"
+        ]
+      ],
+      "decoy-underscore": [
+        [
+          "8",
+          "aXb"
+        ]
+      ],
+      "empty": [
+        [
+          "11",
+          ""
+        ]
+      ],
+      "hostile": [
+        [
+          "10",
+          "it's 100% \"x\"\\y"
+        ]
+      ],
+      "null": [
+        [
+          "12",
+          null
+        ]
+      ],
+      "percent": [
+        [
+          "5",
+          "100%"
+        ]
+      ],
+      "quote": [
+        [
+          "1",
+          "O'Brien"
+        ]
+      ],
+      "trailing-backslash": [
+        [
+          "4",
+          "ends\\"
+        ]
+      ],
+      "underscore": [
+        [
+          "7",
+          "a_b"
+        ]
+      ],
+      "unicode": [
+        [
+          "9",
+          "ünï ☃ 日本"
+        ]
+      ]
+    },
+    "mariadb": {
+      "backslash": [
+        [
+          "3",
+          "back\\slash"
+        ]
+      ],
+      "decoy-percent": [
+        [
+          "6",
+          "100 percent"
+        ]
+      ],
+      "decoy-quote": [
+        [
+          "2",
+          "OxBrien"
+        ]
+      ],
+      "decoy-underscore": [
+        [
+          "8",
+          "aXb"
+        ]
+      ],
+      "empty": [
+        [
+          "11",
+          ""
+        ]
+      ],
+      "hostile": [
+        [
+          "10",
+          "it's 100% \"x\"\\y"
+        ]
+      ],
+      "null": [
+        [
+          "12",
+          null
+        ]
+      ],
+      "percent": [
+        [
+          "5",
+          "100%"
+        ]
+      ],
+      "quote": [
+        [
+          "1",
+          "O'Brien"
+        ]
+      ],
+      "trailing-backslash": [
+        [
+          "4",
+          "ends\\"
+        ]
+      ],
+      "underscore": [
+        [
+          "7",
+          "a_b"
+        ]
+      ],
+      "unicode": [
+        [
+          "9",
+          "ünï ☃ 日本"
+        ]
+      ]
+    },
+    "postgres": {
+      "backslash": [
+        [
+          "3",
+          "back\\slash"
+        ]
+      ],
+      "decoy-percent": [
+        [
+          "6",
+          "100 percent"
+        ]
+      ],
+      "decoy-quote": [
+        [
+          "2",
+          "OxBrien"
+        ]
+      ],
+      "decoy-underscore": [
+        [
+          "8",
+          "aXb"
+        ]
+      ],
+      "empty": [
+        [
+          "11",
+          ""
+        ]
+      ],
+      "hostile": [
+        [
+          "10",
+          "it's 100% \"x\"\\y"
+        ]
+      ],
+      "null": [
+        [
+          "12",
+          null
+        ]
+      ],
+      "percent": [
+        [
+          "5",
+          "100%"
+        ]
+      ],
+      "quote": [
+        [
+          "1",
+          "O'Brien"
+        ]
+      ],
+      "trailing-backslash": [
+        [
+          "4",
+          "ends\\"
+        ]
+      ],
+      "underscore": [
+        [
+          "7",
+          "a_b"
+        ]
+      ],
+      "unicode": [
+        [
+          "9",
+          "ünï ☃ 日本"
+        ]
+      ]
+    },
+    "sqlite": {
+      "backslash": [
+        [
+          "3",
+          "back\\slash"
+        ]
+      ],
+      "decoy-percent": [
+        [
+          "6",
+          "100 percent"
+        ]
+      ],
+      "decoy-quote": [
+        [
+          "2",
+          "OxBrien"
+        ]
+      ],
+      "decoy-underscore": [
+        [
+          "8",
+          "aXb"
+        ]
+      ],
+      "empty": [
+        [
+          "11",
+          ""
+        ]
+      ],
+      "hostile": [
+        [
+          "10",
+          "it's 100% \"x\"\\y"
+        ]
+      ],
+      "null": [
+        [
+          "12",
+          null
+        ]
+      ],
+      "percent": [
+        [
+          "5",
+          "100%"
+        ]
+      ],
+      "quote": [
+        [
+          "1",
+          "O'Brien"
+        ]
+      ],
+      "trailing-backslash": [
+        [
+          "4",
+          "ends\\"
+        ]
+      ],
+      "underscore": [
+        [
+          "7",
+          "a_b"
+        ]
+      ],
+      "unicode": [
+        [
+          "9",
+          "ünï ☃ 日本"
+        ]
+      ]
+    }
+  }
+}

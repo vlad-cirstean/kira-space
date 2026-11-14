@@ -88,7 +88,12 @@ func PlanRelationalPage(args RelationalPageArgs) (RelationalPagePlan, error) {
 		}
 	}
 
-	fingerprint := RequestFingerprint(args.Fingerprint)
+	// The key columns belong to the token: a table rebuilt on another key must refuse an old token
+	// instead of comparing its values against the new key.
+	fingerprint := RequestFingerprint(struct {
+		Request any      `json:"request"`
+		Keyset  []string `json:"keyset"`
+	}{args.Fingerprint, order.KeysetColumns})
 
 	// "before" flips every direction in the ORDER BY so the scan grabs the rows immediately
 	// preceding the boundary; the page is reversed back to display order after fetching (D7).
