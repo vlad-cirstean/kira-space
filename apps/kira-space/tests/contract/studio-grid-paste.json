@@ -1,0 +1,28 @@
+{
+  "mutate:ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "name": null
+        },
+        "key": {
+          "entity_id": "1",
+          "tenant_id": "2"
+        },
+        "kind": "update"
+      },
+      {
+        "kind": "insert",
+        "values": {
+          "entity_id": "3",
+          "name": null,
+          "tenant_id": "3"
+        }
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  }
+}

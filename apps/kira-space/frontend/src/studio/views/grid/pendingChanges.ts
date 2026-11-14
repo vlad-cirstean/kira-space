@@ -268,6 +268,12 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
       const view = col >= 0 ? cell(tabId, row, col) : null;
       original[column] = view && !view.isNull ? view.text : null;
     }
+    // A value equal to what the cell already holds is no change: a pasted block that spans key or
+    // unchanged columns must not rewrite them (a TIMESTAMP rewrite can shift its zone).
+    if (value === original[column]) {
+      if (existing && column in existing.changes) discardCellEdit(tabId, row, column);
+      return;
+    }
     p.edits.set(entry.id, {
       key: entry.key,
       changes: { ...(existing?.changes ?? {}), [column]: value },
@@ -407,7 +413,12 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     return id;
   }
 
-  function stageInsertValue(tabId: string, insertId: string, column: string, value: string): void {
+  function stageInsertValue(
+    tabId: string,
+    insertId: string,
+    column: string,
+    value: string | null,
+  ): void {
     if (committingState[tabId]) return;
     const insert = pendingState[tabId]?.inserts.find((i) => i.id === insertId);
     if (insert) insert.values[column] = value;
