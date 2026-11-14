@@ -187,7 +187,11 @@ func vals(kv ...any) model.RowValues {
 
 // startPgInput turns the shared fixture's resolved config into an app connection input.
 func startPgInput(fx *testsupport.PgFixture) connections.Input {
-	c := fx.Config
+	return pgInputFor(fx.Config)
+}
+
+// pgInputFor is startPgInput for any resolved config, such as one re-pointed at a proxy.
+func pgInputFor(c model.ResolvedConnectionConfig) connections.Input {
 	return connections.Input{ConnectionFields: model.ConnectionFields{
 		Name: "flow pg fixture", Kind: "postgres", Color: "indigo", Mode: "fields",
 		Host: c.Host, Port: c.Port, Database: c.Database, Username: c.Username,

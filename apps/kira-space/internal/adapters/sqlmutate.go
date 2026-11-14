@@ -300,7 +300,7 @@ func RunSQLMutation(ctx context.Context, beginSQL string, exec func(sqlText stri
 		affectedRows += n
 	}
 	if _, err := exec("COMMIT", nil); err != nil {
-		return model.MutationResult{}, err
+		return model.MutationResult{}, commitFailure(err)
 	}
 	committed = true
 	return model.MutationResult{AffectedRows: int(affectedRows)}, nil
@@ -362,4 +362,11 @@ func ResolveDatabaseTablePath(path model.NodePath) (database, table string, err 
 		return "", "", err
 	}
 	return segs[0].Name, segs[1].Name, nil
+}
+
+// commitFailure words a failed COMMIT. The client cannot tell a server refusal from a connection
+// lost after the server applied the commit, so the message says the outcome is unknown and carries
+// the cause.
+func commitFailure(err error) error {
+	return T(CodeQuery, "backend.studio.adapter.commitOutcomeUnknown.body", map[string]string{"cause": err.Error()}, err)
 }

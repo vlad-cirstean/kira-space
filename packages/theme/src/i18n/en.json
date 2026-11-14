@@ -2371,6 +2371,9 @@
         "closingQuoteFollow": {
           "body": "A closing quote must be followed by a space or the end of the line."
         },
+        "commitOutcomeUnknown": {
+          "body": "The connection dropped while committing, so the change may or may not be saved ({cause}). Refresh the table to see what is stored."
+        },
         "databaseFileMissing": {
           "body": "No database file path was given."
         },

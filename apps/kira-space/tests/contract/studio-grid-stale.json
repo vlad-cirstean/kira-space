@@ -1,0 +1,29 @@
+{
+  "mutate:error": {
+    "Code": "E_QUERY",
+    "Message": "expected delete to affect exactly one row, affected 0"
+  },
+  "mutate:ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "name": "b2"
+        },
+        "key": {
+          "id": "2"
+        },
+        "kind": "update"
+      },
+      {
+        "key": {
+          "id": "3"
+        },
+        "kind": "delete"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  }
+}
