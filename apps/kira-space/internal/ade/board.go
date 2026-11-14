@@ -176,6 +176,8 @@ type TaskBoardDeps struct {
 	AdeSettings func() model.AdeSettings
 	// LeaseTTL is how long a holder may stay silent; 0 = leases.DefaultTTL.
 	LeaseTTL time.Duration
+	// LeaseNow replaces Now for lease heartbeats (a flow-test seam); nil = Now.
+	LeaseNow func() time.Time
 }
 
 // TaskBoard is the v2 engine: one gitsession.Conn holding every repo a live task touches, a per-repo

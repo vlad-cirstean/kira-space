@@ -121,6 +121,10 @@ type Options struct {
 	// BranchRequestWait is how long an agent's branch request or create_task waits for the user; 0 keeps
 	// the default (30 minutes).
 	BranchRequestWait time.Duration
+	// LeaseTTL and LeaseNow replace the lease silence limit and the clock its heartbeats read (flow-test
+	// seams); zero and nil keep 10 minutes and the wall clock.
+	LeaseTTL time.Duration
+	LeaseNow func() time.Time
 	// Sandbox confines headless agents; nil uses the OS enforcer (a flow-test seam).
 	Sandbox agentsandbox.Enforcer
 	// SmartTimeout replaces every smart script's own timeout (a flow-test seam); 0 keeps each script's.
@@ -538,7 +542,7 @@ func Build(opts Options) (*Wired, error) {
 				return w.AdeTask.CloseWindow(key)
 			}
 			return w.Windows.Close(key)
-		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
+		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.LeaseTTL, opts.LeaseNow, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
 	runs.ADE = w.AdeBoard
 	// proof_save on the session server attaches to the task through the board, which exists only now.
 	w.DbMcp.ProofAttach = w.AdeBoard

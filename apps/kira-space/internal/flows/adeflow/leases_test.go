@@ -17,6 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
+	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -243,4 +244,191 @@ func TestLeases(t *testing.T) {
 	waitSession(t, app, lb.SessionID, "stopped")
 	waitHolder(t, app, "")
 	app.Contract(t, leaseScenario, "LeasesService.Snapshot#ended", leaseSnapshot(t, app), leaseMask)
+}
+
+// J-LEASE-002: a holder inside a tool call never expires; once it is quiet between calls it expires after
+// the TTL, the next waiter is granted and the old holder hears it on its next Stop.
+func TestLeaseExpiryHonoursBusyTurns(t *testing.T) {
+	clock := fakeclock.New(scheduleStart)
+	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second), flowharness.WithLeaseClock(4*time.Second, clock))
+	claude(app, map[string][]fakeagent.Action{"*": {
+		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, Name: "sleep"},
+		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, Name: "sleep"},
+	}})
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	rec := importRepo(t, app, repo.Dir)
+	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("one", "")))
+	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
+	if err := app.W.Leases.SaveQueues(ctx, adewire.LeaseQueuesArgs{Names: []string{"push"}}); err != nil {
+		t.Fatal(err)
+	}
+	launch := func(title, branch string) adewire.Launch {
+		tk := createTask(t, app, title, "flow", rec.ID)
+		row := branchOf(t, board(t, app), tk.ID, rec.ID)
+		br, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: row.ID, Name: branch})
+		if err != nil {
+			t.Fatal(err)
+		}
+		l, err := app.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		openLaunch(t, app, l)
+		waitSession(t, app, l.SessionID, "running")
+		return l
+	}
+	holder := launch("Holder", "feat/h")
+	if r := leaseResult(t, app, "mcp-acquire_lease-1.json"); r.State != "held" {
+		t.Fatalf("holder acquire = %+v, want held", r)
+	}
+	launch("Waiter", "feat/w")
+	if r := leaseResult(t, app, "mcp-acquire_lease-2.json"); r.State != "queued" {
+		t.Fatalf("waiter acquire = %+v, want queued", r)
+	}
+	send := func(l adewire.Launch, payload string) string {
+		return hook(t, app, l.TerminalID, `{"hook_event_name":`+payload+`,"session_id":"s","cwd":"`+l.Cwd+`"}`)
+	}
+
+	// Mid long tool call: 5 s of clock is past the 4 s TTL, yet the holder stays through several sweeps.
+	send(holder, `"UserPromptSubmit","prompt":"go"`)
+	send(holder, `"PreToolUse","tool_name":"Bash","tool_use_id":"u1"`)
+	clock.Advance(5 * time.Second)
+	deadline := time.After(3 * time.Second)
+	for stay := true; stay; {
+		select {
+		case <-deadline:
+			stay = false
+		default:
+			if q := leaseSnapshot(t, app).Queues[0]; q.Holder == nil || q.Holder.TaskTitle != "Holder" {
+				t.Fatalf("holder inside a tool call lost the lease: %+v", q)
+			}
+		}
+	}
+
+	// The call ends and the turn goes quiet; once the TTL passes without a sign of life the lease expires.
+	send(holder, `"PostToolUse","tool_name":"Bash","tool_use_id":"u1"`)
+	send(holder, `"Stop"`)
+	clock.Advance(5 * time.Second)
+	waitHolder(t, app, "Waiter")
+	// The old holder is idle, so the notice is typed into its terminal at once.
+	waitPrompt(t, app, "api-1.prompt", "expired")
+}
+
+// J-LEASE-002 step 4: after the user force-releases, the old holder's release_lease frees nothing and
+// the new holder keeps the lease.
+func TestLeaseForceReleasedHolderCannotFreeNewHolder(t *testing.T) {
+	relA := filepath.Join(t.TempDir(), "relA")
+	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second))
+	claude(app, map[string][]fakeagent.Action{"*": {
+		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, WaitFile: relA, MCPAfter: []fakeagent.MCPCall{leaseCall("release_lease")}, Name: "sleep"},
+		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, Name: "sleep"},
+	}})
+	t.Cleanup(func() { _ = os.WriteFile(relA, nil, 0o644) })
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	rec := importRepo(t, app, repo.Dir)
+	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("one", "")))
+	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
+	if err := app.W.Leases.SaveQueues(ctx, adewire.LeaseQueuesArgs{Names: []string{"push"}}); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range [][2]string{{"Old", "feat/old"}, {"New", "feat/new"}} {
+		tk := createTask(t, app, c[0], "flow", rec.ID)
+		row := branchOf(t, board(t, app), tk.ID, rec.ID)
+		br, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: row.ID, Name: c[1]})
+		if err != nil {
+			t.Fatal(err)
+		}
+		l, err := app.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		openLaunch(t, app, l)
+		waitSession(t, app, l.SessionID, "running")
+		if c[0] == "Old" {
+			if r := leaseResult(t, app, "mcp-acquire_lease-1.json"); r.State != "held" {
+				t.Fatalf("Old acquire = %+v, want held", r)
+			}
+		}
+	}
+	if r := leaseResult(t, app, "mcp-acquire_lease-2.json"); r.State != "queued" {
+		t.Fatalf("New acquire = %+v, want queued", r)
+	}
+	if err := app.W.Leases.ForceRelease(ctx, adewire.LeaseQueueArgs{Queue: "push"}); err != nil {
+		t.Fatal(err)
+	}
+	waitHolder(t, app, "New")
+	if err := os.WriteFile(relA, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	raw := leaseRaw(t, app, "mcp-release_lease-1.json")
+	var rel agentmcp.ReleaseLeaseResult
+	if err := json.Unmarshal([]byte(raw), &rel); err != nil || len(rel.Released) != 0 {
+		t.Fatalf("revoked holder's release = %s, %v, want nothing released", raw, err)
+	}
+	if q := leaseSnapshot(t, app).Queues[0]; q.Holder == nil || q.Holder.TaskTitle != "New" {
+		t.Fatalf("queue after the old holder's release = %+v, want New to keep the lease", q)
+	}
+}
+
+func leaseRaw(t *testing.T, app *flowharness.App, name string) string {
+	t.Helper()
+	var raw []byte
+	testx.WaitUntil(t, waitFor, func() bool {
+		var err error
+		raw, err = os.ReadFile(filepath.Join(app.FakeDir, name))
+		return err == nil && json.Valid(raw)
+	})
+	return string(raw)
+}
+
+// J-LEASE-003 (OQ-ADE-2): queue names survive a restart, holds do not. A resumed run is told to
+// re-acquire, and lease_status shows nothing held until it does.
+func TestLeasesAcrossRestart(t *testing.T) {
+	hold := filepath.Join(t.TempDir(), "hold")
+	f := newRunFixture(t, []fakeagent.Action{
+		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, WaitFile: hold},
+		{MCP: []fakeagent.MCPCall{leaseCall("lease_status")}, Name: "done"},
+	}, agentStep("one", ""))
+	t.Cleanup(func() { _ = os.WriteFile(hold, nil, 0o644) })
+	if err := f.app.W.Leases.SaveQueues(ctx, adewire.LeaseQueuesArgs{Names: []string{"push", "e2e"}}); err != nil {
+		t.Fatal(err)
+	}
+	f.start(t, "feat/api-lease")
+	if r := leaseResult(t, f.app, "mcp-acquire_lease-1.json"); r.State != "held" {
+		t.Fatalf("acquire = %+v, want held", r)
+	}
+	f.app.Restart()
+	stuck := waitRun(t, f.app, f.taskID, "one", "stuck")
+
+	snap := leaseSnapshot(t, f.app)
+	var names []string
+	for _, q := range snap.Queues {
+		names = append(names, q.Name)
+		if q.Holder != nil || len(q.Waiters) != 0 {
+			t.Fatalf("queue %s after restart = %+v, want empty", q.Name, q)
+		}
+	}
+	slices.Sort(names)
+	if !slices.Equal(names, []string{"e2e", "push"}) {
+		t.Fatalf("queues after restart = %v, want the saved names", names)
+	}
+
+	if err := f.app.W.AdeTask.ResumeRun(ctx, adewire.RunArgs{RunID: stuck.ID}); err != nil {
+		t.Fatalf("ResumeRun: %v", err)
+	}
+	waitRun(t, f.app, f.taskID, "one", "done")
+	prompt := fakeFile(t, f.app, "api-2.prompt")
+	if !strings.Contains(prompt, "re-acquire any you held") {
+		t.Fatalf("resume prompt lacks the lease line:\n%s", prompt)
+	}
+	var status agentmcp.LeaseStatusResult
+	raw := leaseRaw(t, f.app, "mcp-lease_status-1.json")
+	if err := json.Unmarshal([]byte(raw), &status); err != nil {
+		t.Fatalf("lease_status result %s: %v", raw, err)
+	}
+	for _, q := range status.Queues {
+		if q.Holder != nil {
+			t.Fatalf("lease_status after resume = %s, want nothing held", raw)
+		}
+	}
 }

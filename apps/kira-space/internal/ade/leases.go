@@ -96,8 +96,12 @@ func (s *leaseState) flushOf(key leases.Key) *leaseFlush {
 
 func (b *TaskBoard) initLeases() {
 	b.lease = &leaseState{pending: map[leases.Key][]string{}, runs: map[leases.Key]struct{}{}, flush: map[leases.Key]*leaseFlush{}}
+	now := b.deps.Now
+	if b.deps.LeaseNow != nil {
+		now = b.deps.LeaseNow
+	}
 	b.lease.book = leases.New(leases.Options{
-		Now: b.deps.Now, TTL: b.deps.LeaseTTL, Order: b.taskListOrder,
+		Now: now, TTL: b.deps.LeaseTTL, Order: b.taskListOrder,
 		OnGrant: b.onLeaseGrant, OnChange: b.leasesChanged,
 	})
 	if b.deps.LeaseQueues != nil {

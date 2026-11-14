@@ -1595,7 +1595,7 @@ func (b *TaskBoard) resumeRun(ctx context.Context, runID string) error {
 	if run.Purpose == model.AdeRunPurposeReview {
 		return b.resumeReviewRound(ctx, run)
 	}
-	line := llmprompts.RunResumeLine.Text(b.prompts(), llmprompts.ResumeVars{App: appName})
+	line := llmprompts.RunResumeLine.Text(b.prompts(), llmprompts.ResumeVars{App: appName, Leases: true})
 	spec := model.AdeRunLaunch{ResumeID: run.Launch.ResumeID, Prompt: line, Note: noteResumed}
 	if _, err := b.queueResumeLocked(ctx, run, spec); err != nil {
 		return err
@@ -1661,7 +1661,7 @@ func (b *TaskBoard) restartHeadless(ctx context.Context, rec *model.AdeSession) 
 	if run.State != model.AdeRunStuck {
 		return adewire.Launch{}, invalid("the run is not running")
 	}
-	line := llmprompts.RunResumeLine.Text(b.prompts(), llmprompts.ResumeVars{App: appName})
+	line := llmprompts.RunResumeLine.Text(b.prompts(), llmprompts.ResumeVars{App: appName, Leases: true})
 	next, err := b.queueResumeLocked(ctx, run, model.AdeRunLaunch{ResumeID: rec.AgentSessionID, Prompt: line, Note: noteRestarted})
 	if err != nil {
 		return adewire.Launch{}, err
