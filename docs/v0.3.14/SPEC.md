@@ -14,8 +14,9 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P639 | API module: dialog when closing an unsaved tab, new or modified | Todo |
 | P640 | ADE task: own Jira and PR links first in their group | Todo |
 | P641 | ADE task list: today background, day start/end left bar, today bar differs | Todo |
-| P642 | Chapter non-UI full run, 1 code review round | Todo |
-| P643 | Close chapter | Todo |
+| P642 | Details tab on disk: notes, handovers, links, PR link and proofs (with images) as files, source of truth; design plan first, user approves it before the build | Todo |
+| P643 | Chapter non-UI full run, 1 code review round | Todo |
+| P644 | Close chapter | Todo |
 
 ## Scope
 
@@ -74,5 +75,16 @@ collected from children or other sources. Update link strip and any sorted list 
 In the ADE task list: replace the today background (current colour is wrong; pick from theme
 tokens, light and dark), add a vertical left bar spanning each day's rows to show where the day
 starts and ends, today's bar differs slightly from other days'. Visual spec and screenshot refresh.
+
+### P642 Details tab on disk
+
+Whole Details tab content moves out of SQLite into files under the home folder: initial notes,
+handovers, links including the PR link, and proofs with their images (image files beside the
+markdown, not base64 rows). Files are the source of truth. Approvals and stages stay in SQLite.
+Opus plan decides, then user approves before any build: format and location, one-time migration of
+existing rows, edit protection (agents read freely; Kira lock versus ask-to-edit), proof revisions,
+pending edit accept/reject, view state and retention of 30 (on disk, or SQLite keeps review state
+only), MCP tool changes, behaviour when a file is edited by hand while the app runs. Flow plus UI
+halves per the split.
 
 ## Results
