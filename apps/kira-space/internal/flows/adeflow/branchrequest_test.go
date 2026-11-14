@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
+	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
@@ -696,4 +698,99 @@ func TestBranchRequest(t *testing.T) {
 			t.Fatalf("branch = %q, want one derived from the task title under feat/", name)
 		}
 	})
+}
+
+// J-ADE-053: twenty branches asked, seven approved. Exactly those seven exist, at the requested bases.
+func TestBranchRequestTwentyAskedSevenApproved(t *testing.T) {
+	const asked, approved = 20, 7
+	var specs [][3]string
+	for i := range asked {
+		base := ""
+		if i%2 == 1 {
+			base = "main"
+		}
+		specs = append(specs, [3]string{"api", "feat/b" + strconv.Itoa(100+i), base})
+	}
+	f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCallBase(specs...)}, Name: "done"}}, onceStepYML, false)
+	f.startRun(t)
+	req := f.waitItems(t, asked)
+	f.app.Contract(t, brScenario, "ApprovalsService.List#twenty", []approvals.Item{*branchItem(f.app, req.ID)}, brListMask)
+	if ps := f.requestPrompts(t); len(ps) != 1 {
+		t.Fatalf("prompts = %+v, want one for the whole request", ps)
+	}
+	var keep []string
+	for i := 0; i < asked; i += 3 {
+		if len(keep) < approved {
+			keep = append(keep, req.Items[i].ID)
+		}
+	}
+	mustApprove(t, f.app, req.ID, keep, nil)
+	waitRun(t, f.app, f.task.ID, "one", "done")
+	got := f.result(t, 1)
+	if n := strings.Count(got, `"created"`); n != approved {
+		t.Fatalf("agent result lists %d created, want %d: %s", n, approved, got)
+	}
+	if n := strings.Count(got, `"denied"`); n != asked-approved {
+		t.Fatalf("agent result lists %d denied, want %d: %s", n, asked-approved, got)
+	}
+	main := gitOut(t, f.repo.Dir, "rev-parse", "main")
+	var made int
+	for i, it := range req.Items {
+		out := gitOut(t, f.repo.Dir, "branch", "--list", specs[i][1])
+		want := slices.Contains(keep, it.ID)
+		if (strings.TrimSpace(out) != "") != want {
+			t.Fatalf("branch %s exists = %q, want exists %v", specs[i][1], out, want)
+		}
+		if want {
+			made++
+			if tip := gitOut(t, f.repo.Dir, "rev-parse", specs[i][1]); tip != main {
+				t.Fatalf("branch %s tip = %s, want the base main %s", specs[i][1], tip, main)
+			}
+		}
+	}
+	if made != approved {
+		t.Fatalf("created %d branches, want %d", made, approved)
+	}
+	var rows int
+	for _, br := range board(t, f.app).Branches {
+		if br.TaskID != f.task.ID {
+			continue
+		}
+		rows++
+		if br.Name == "" || br.Worktree == "" {
+			t.Fatalf("task row %+v, want every row named with a worktree: no orphan", br)
+		}
+	}
+	if rows != approved {
+		t.Fatalf("task branch rows = %d, want %d, one per created branch", rows, approved)
+	}
+	if n := strings.Count(gitOut(t, f.repo.Dir, "worktree", "list"), "feat/b"); n != approved {
+		t.Fatalf("worktrees on feat/b* = %d, want %d", n, approved)
+	}
+}
+
+// J-ADE-054: a request waits for the user, not for a minute of the clock. It stays open past 65 s of
+// clock time; the answer then still reaches the agent.
+func TestBranchRequestSurvivesClockAdvance(t *testing.T) {
+	clock := fakeclock.New(scheduleStart)
+	f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/late"})}, Name: "done"}}, onceStepYML, false,
+		flowharness.WithClock(clock))
+	f.startRun(t)
+	req := f.waitRequest(t)
+	clock.Advance(65 * time.Second)
+	again, err := branchRequest(f.app, req.ID)
+	if err != nil || len(again.Items) != 1 {
+		t.Fatalf("BranchRequest after 65 s = %+v, %v, want it still open", again, err)
+	}
+	if ps := f.requestPrompts(t); len(ps) != 1 {
+		t.Fatalf("prompts after 65 s = %+v, want the approval still queued", ps)
+	}
+	mustApprove(t, f.app, req.ID, itemIDsOf(again), nil)
+	waitRun(t, f.app, f.task.ID, "one", "done")
+	if got := f.result(t, 1); !strings.Contains(got, "created") {
+		t.Fatalf("agent result = %s, want created after the late answer", got)
+	}
+	if name := f.branchName(t, f.api); name != "feat/late" {
+		t.Fatalf("api branch = %q, want feat/late", name)
+	}
 }
