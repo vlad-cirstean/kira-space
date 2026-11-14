@@ -16,7 +16,8 @@ func (e *SwitchLosesWorkError) Error() string {
 }
 
 // SetTaskWorkflow switches the task's workflow and restarts it at the first step: the task's runs
-// and run logs go; without Confirmed a task holding any is refused with SwitchLosesWorkError.
+// and run logs go; a task holding any is refused with SwitchLosesWorkError unless Confirmed covers
+// the counts it holds now.
 // The same id is a no-op; "" clears workflow and position.
 func (b *TaskBoard) SetTaskWorkflow(_ context.Context, args adewire.SetTaskWorkflowArgs) (adewire.Task, error) {
 	mu := b.taskMu(args.TaskID)
@@ -47,14 +48,14 @@ func (b *TaskBoard) SetTaskWorkflow(_ context.Context, args adewire.SetTaskWorkf
 	if running {
 		return adewire.Task{}, invalid("stop its running agents first")
 	}
-	if !args.Confirmed {
-		runs, logs, err := b.deps.Tasks.RunsAndLogs(args.TaskID)
-		if err != nil {
-			return adewire.Task{}, err
-		}
-		if runs > 0 || logs > 0 {
-			return adewire.Task{}, &SwitchLosesWorkError{Runs: runs, Logs: logs}
-		}
+	// The counts are read now, under the task lock: a run that finished since the person confirmed
+	// is not covered by that confirmation.
+	runs, logs, err := b.deps.Tasks.RunsAndLogs(args.TaskID)
+	if err != nil {
+		return adewire.Task{}, err
+	}
+	if (runs > 0 || logs > 0) && !(args.Confirmed && runs <= args.ConfirmedRuns && logs <= args.ConfirmedLogs) {
+		return adewire.Task{}, &SwitchLosesWorkError{Runs: runs, Logs: logs}
 	}
 	if err := b.deps.Tasks.ResetWorkflow(args.TaskID, args.WorkflowID, entry); err != nil {
 		return adewire.Task{}, err

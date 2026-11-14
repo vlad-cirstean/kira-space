@@ -5,7 +5,7 @@ import { Button } from '@theme/components/ui/button';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
-import { errorText } from '@workbench/bridge/codedError';
+import { errorText, toCodedError } from '@workbench/bridge/codedError';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
 import type { CardModel } from '../plan/usePlanModel';
@@ -32,6 +32,11 @@ const valid = computed(() =>
   ),
 );
 
+function lossCounts(err: unknown): { runs: number; logs: number } {
+  const d = toCodedError(err).details as { runs?: number; logs?: number } | undefined;
+  return { runs: d?.runs ?? 0, logs: d?.logs ?? 0 };
+}
+
 async function pick(value: unknown): Promise<void> {
   error.value = '';
   const args = { taskId: props.card.task.id, workflowId: String(value ?? '') };
@@ -43,12 +48,21 @@ async function pick(value: unknown): Promise<void> {
       error.value = errorText(err);
       return;
     }
+    // The confirmation covers the counts the dialog names; the backend refuses again if the task
+    // holds more by the time it arrives (a run finished meanwhile).
+    const { runs, logs } = lossCounts(err);
     const ok = await confirm.confirm({
       title: t('space.ade.workflowBlock.switch.title'),
       message: errorText(err),
       confirmLabel: t('space.ade.workflowBlock.switch.confirm.label'),
       tone: 'danger',
-      run: () => setWorkflow.mutateAsync({ ...args, confirmed: true }),
+      run: () =>
+        setWorkflow.mutateAsync({
+          ...args,
+          confirmed: true,
+          confirmedRuns: runs,
+          confirmedLogs: logs,
+        }),
     });
     if (!ok) selectKey.value++; // remount: the native select shows the declined value otherwise
   }

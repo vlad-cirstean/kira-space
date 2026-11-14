@@ -1445,8 +1445,12 @@ type StartBranchArgs struct {
 type SetTaskWorkflowArgs struct {
 	TaskID     string `json:"taskId"`
 	WorkflowID string `json:"workflowId"`
-	// Confirmed accepts the deletion of the task's runs and run logs; false refuses E_CONFLICT while any exist.
-	Confirmed bool `json:"confirmed,omitempty"`
+	// Confirmed accepts the deletion of the task's runs and run logs, up to ConfirmedRuns and
+	// ConfirmedLogs: the counts the refusal named. Without it, or when the task now holds more (a run
+	// finished since), the switch is refused E_CONFLICT again with the current counts.
+	Confirmed     bool `json:"confirmed,omitempty"`
+	ConfirmedRuns int  `json:"confirmedRuns,omitempty"`
+	ConfirmedLogs int  `json:"confirmedLogs,omitempty"`
 }
 
 type SetTaskStepArgs struct {

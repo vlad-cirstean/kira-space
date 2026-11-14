@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"regexp"
 	"strconv"
@@ -130,8 +131,11 @@ func adeTaskError(err error) error {
 	}
 	var loses *ade.SwitchLosesWorkError
 	if errors.As(err, &loses) {
-		return ipcerr.T(ipcerr.CodeConflict, "backend.space.ade.workflowSwitchLoses.body",
+		e := ipcerr.T(ipcerr.CodeConflict, "backend.space.ade.workflowSwitchLoses.body",
 			map[string]string{"runs": strconv.Itoa(loses.Runs), "logs": strconv.Itoa(loses.Logs)})
+		// The counts the person is asked about travel back with the confirmation.
+		e.Details = json.RawMessage(`{"runs":` + strconv.Itoa(loses.Runs) + `,"logs":` + strconv.Itoa(loses.Logs) + `}`)
+		return e
 	}
 	for _, c := range adeTaskCatalog {
 		if errors.Is(err, c.err) {

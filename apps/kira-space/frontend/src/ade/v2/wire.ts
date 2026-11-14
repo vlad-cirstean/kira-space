@@ -1377,8 +1377,11 @@ export interface StartBranchArgs {
 export interface SetTaskWorkflowArgs {
   taskId: string;
   workflowId: string;
-  /* accepts deleting the task's runs and run logs; E_CONFLICT while any exist and false */
+  /* accepts deleting the task's runs and run logs up to the counts below, the ones the refusal
+   * named; E_CONFLICT again when the task holds more now, or without it */
   confirmed?: boolean;
+  confirmedRuns?: number;
+  confirmedLogs?: number;
 }
 export interface SetTaskStepArgs {
   taskId: string;

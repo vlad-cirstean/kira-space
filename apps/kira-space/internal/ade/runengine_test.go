@@ -3,6 +3,7 @@ package ade
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
 	"github.com/kirathecat/kira-studio/internal/configfs"
@@ -708,7 +709,19 @@ func TestRunEngine_setTaskWorkflow(t *testing.T) {
 	if len(e.runs(id)) != 1 {
 		t.Fatal("same id deleted runs")
 	}
-	task, err := e.board.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: id, WorkflowID: "other", Confirmed: true})
+	_, err := e.board.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: id, WorkflowID: "other"})
+	var loses *SwitchLosesWorkError
+	if !errors.As(err, &loses) {
+		t.Fatalf("unconfirmed switch = %v, want SwitchLosesWorkError", err)
+	}
+	// A confirmation covers only the counts it named: one run more than it counted is refused again.
+	if _, err := e.board.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: id, WorkflowID: "other", Confirmed: true, ConfirmedRuns: loses.Runs - 1, ConfirmedLogs: loses.Logs}); !errors.As(err, &loses) {
+		t.Fatalf("switch confirmed for fewer runs than exist = %v, want it refused again", err)
+	}
+	if len(e.runs(id)) == 0 {
+		t.Fatal("a refused switch deleted runs")
+	}
+	task, err := e.board.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: id, WorkflowID: "other", Confirmed: true, ConfirmedRuns: loses.Runs, ConfirmedLogs: loses.Logs})
 	if err != nil {
 		t.Fatal(err)
 	}

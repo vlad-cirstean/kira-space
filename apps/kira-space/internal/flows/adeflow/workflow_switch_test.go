@@ -95,7 +95,12 @@ func TestWorkflowSwitchKeepsOtherTasksRuns(t *testing.T) {
 		t.Fatalf("confirm text %q does not name %d logs", err, logs)
 	}
 	app.Contract(t, "ade-workflow-switch", "error:AdeTaskService.SetTaskWorkflow#loses-work", err.Error())
-	if _, err := app.W.AdeTask.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: mine.ID, WorkflowID: "two", Confirmed: true}); err != nil {
+	// A confirmation covers the counts it named, not what the task holds by the time it arrives.
+	_, stale := app.W.AdeTask.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: mine.ID, WorkflowID: "two", Confirmed: true, ConfirmedRuns: 0, ConfirmedLogs: logs})
+	if errCode(stale) != "E_CONFLICT" || taskOf(t, board(t, app), mine.ID).WorkflowID != "one" {
+		t.Fatalf("switch confirmed for fewer runs than exist = %v, want it refused and the task untouched", stale)
+	}
+	if _, err := app.W.AdeTask.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: mine.ID, WorkflowID: "two", Confirmed: true, ConfirmedRuns: 1, ConfirmedLogs: logs}); err != nil {
 		t.Fatalf("switch: %v", err)
 	}
 	if err := app.DB().QueryRow(`SELECT COUNT(*) FROM ade_logs WHERE kind = 'run' AND id IN (SELECT id FROM ade_runs WHERE task_id = ?)`, mine.ID).Scan(&logs); err != nil || logs != 0 {
