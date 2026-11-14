@@ -1,0 +1,112 @@
+{
+  "columns": [
+    {
+      "dataType": "integer",
+      "generated": false,
+      "isPrimaryKey": true,
+      "name": "id",
+      "nullable": false,
+      "typeClass": "number"
+    },
+    {
+      "dataType": "numeric(38,10)",
+      "generated": false,
+      "isPrimaryKey": false,
+      "name": "num",
+      "nullable": true,
+      "typeClass": "number"
+    },
+    {
+      "dataType": "bigint",
+      "generated": false,
+      "isPrimaryKey": false,
+      "name": "big",
+      "nullable": true,
+      "typeClass": "number"
+    },
+    {
+      "dataType": "timestamp with time zone",
+      "generated": false,
+      "isPrimaryKey": false,
+      "name": "tstz",
+      "nullable": true,
+      "typeClass": "temporal"
+    },
+    {
+      "dataType": "boolean",
+      "generated": false,
+      "isPrimaryKey": false,
+      "name": "flag",
+      "nullable": true,
+      "typeClass": "boolean"
+    },
+    {
+      "dataType": "jsonb",
+      "generated": false,
+      "isPrimaryKey": false,
+      "name": "js",
+      "nullable": true,
+      "typeClass": "json"
+    },
+    {
+      "dataType": "bytea",
+      "generated": false,
+      "isPrimaryKey": false,
+      "name": "bin",
+      "nullable": true,
+      "typeClass": "binary"
+    },
+    {
+      "dataType": "text",
+      "generated": false,
+      "isPrimaryKey": false,
+      "name": "txt",
+      "nullable": true,
+      "typeClass": "text"
+    },
+    {
+      "dataType": "text",
+      "generated": false,
+      "isPrimaryKey": false,
+      "name": "uni",
+      "nullable": true,
+      "typeClass": "text"
+    }
+  ],
+  "copy:insert": "INSERT INTO app.composite_pk (\"id\", \"num\", \"big\", \"tstz\", \"flag\", \"js\", \"bin\", \"txt\", \"uni\")\nVALUES\n  ('1', '12345678901234567890123456.1234567891', '9223372036854775807', '2024-03-10 07:04:56.789012+00', 't', '{\"a\": [1, 2, {\"b\": null}], \"s\": \"it''s\"}', '\\xdeadbeef', 'it''s a \"quote\" \\ back\\slash', 'héllo 日本語 🙂'),\n  ('2', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),\n  ('3', '0.0000000000', '-9223372036854775808', '1970-01-01 00:00:00+00', 'f', '[]', '\\x', '', 'tab\there\nnewline');",
+  "rows": [
+    [
+      "1",
+      "12345678901234567890123456.1234567891",
+      "9223372036854775807",
+      "2024-03-10 07:04:56.789012+00",
+      "t",
+      "{\"a\": [1, 2, {\"b\": null}], \"s\": \"it's\"}",
+      "0xdeadbeef",
+      "it's a \"quote\" \\ back\\slash",
+      "héllo 日本語 🙂"
+    ],
+    [
+      "2",
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      "3",
+      "0.0000000000",
+      "-9223372036854775808",
+      "1970-01-01 00:00:00+00",
+      "f",
+      "[]",
+      "0x",
+      "",
+      "tab\there\nnewline"
+    ]
+  ]
+}

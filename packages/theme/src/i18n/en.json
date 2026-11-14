@@ -2386,6 +2386,9 @@
         "expectedToken": {
           "body": "Expected “{token}” at position {position}."
         },
+        "formatClause": {
+          "body": "Remove the {clause} clause. The console sets the result format itself."
+        },
         "headersJsonMalformed": {
           "body": "The headers aren’t valid JSON."
         },
