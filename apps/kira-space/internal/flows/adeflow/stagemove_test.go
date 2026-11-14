@@ -10,6 +10,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/shell"
+	"github.com/kirathecat/kira-studio/internal/terminal"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 // P469 stage move sessions. Contract ade-stage-move: tests/ui/ade-v2-stage-move.spec.ts reads these.
@@ -113,5 +115,124 @@ func TestStageMoveSessions(t *testing.T) {
 	sb := launch(bare.ID)
 	if got := stepDone(bare.ID, true); got.EntryStepID != "build" || state(sb) != "stopped" {
 		t.Fatalf("draft-only: entry %q, session %q, want build and stopped", got.EntryStepID, state(sb))
+	}
+}
+
+// J-RUN-031 (agreed part; refusing while a run is live is pending USER Q9, see stream-b follow-ups):
+// a stage move with a TUI session, a session that already ended and a draft handover. Sessions marked
+// closed are closed, no run row stays pending or running, the draft is kept as the handed row.
+func TestStageMoveMixedSessions(t *testing.T) {
+	dir := t.TempDir()
+	flag := func(n string) string { return filepath.Join(dir, n) }
+	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second))
+	// Call 1 is run one, 2 the stage session that drafts, 3 a branch session that ends early, 4 one that keeps running.
+	claude(app, map[string][]fakeagent.Action{"*": {
+		{Name: "done"},
+		{MCP: []fakeagent.MCPCall{handoverCall("Drafted before the move.", false)}, WaitFile: flag("s1")},
+		{WaitFile: flag("gone")},
+		{WaitFile: flag("live")},
+	}})
+	t.Cleanup(func() {
+		for _, n := range []string{"s1", "gone", "live"} {
+			_ = os.WriteFile(flag(n), nil, 0o644)
+		}
+	})
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	rec := importRepo(t, app, repo.Dir)
+	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("one", "")+
+		"  - id: work\n    name: Work\n    kind: manual\n    session: true\n"+
+		"  - id: ship\n    name: Ship\n    kind: manual\n"))
+	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
+	task := createTask(t, app, "Fix login", "flow", rec.ID)
+	br := branchOf(t, board(t, app), task.ID, rec.ID)
+	if _, err := app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: task.ID, BranchNames: map[string]string{br.ID: "feat/api-login"}}); err != nil {
+		t.Fatal(err)
+	}
+	waitRun(t, app, task.ID, "one", "done")
+
+	launch := func() adewire.Launch {
+		l, err := app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: task.ID})
+		if err != nil {
+			t.Fatalf("LaunchStep: %v", err)
+		}
+		openLaunch(t, app, l)
+		waitSession(t, app, l.SessionID, "running")
+		return l
+	}
+	s1 := launch()
+	testx.WaitUntil(t, waitFor, func() bool {
+		return len(taskOf(t, board(t, app), task.ID).HandoverDrafts) == 1
+	})
+	adhoc := func() adewire.Launch {
+		l, err := app.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		openLaunch(t, app, l)
+		waitSession(t, app, l.SessionID, "running")
+		return l
+	}
+	gone := adhoc()
+	if err := app.W.Terminal.Close(terminal.CloseArgs{TerminalID: gone.TerminalID}); err != nil {
+		t.Fatal(err)
+	}
+	waitSession(t, app, gone.SessionID, "stopped")
+	running := adhoc()
+
+	moved, err := app.W.AdeTask.SetTaskStep(ctx, adewire.SetTaskStepArgs{TaskID: task.ID, StepID: "ship", FromStepID: "work", CloseSessions: true})
+	if err != nil || moved.EntryStepID != "ship" {
+		t.Fatalf("SetTaskStep = %+v, %v, want entry ship", moved, err)
+	}
+	for id, want := range map[string]string{s1.SessionID: "stopped", gone.SessionID: "stopped", running.SessionID: "running"} {
+		if got := sessionByID(t, app, id).State; got != want {
+			t.Fatalf("session %s = %q after the move, want %s", id, got, want)
+		}
+	}
+	var live int
+	if err := app.DB().QueryRow(`SELECT count(*) FROM ade_runs WHERE task_id = ? AND state IN ('pending', 'running')`, task.ID).Scan(&live); err != nil || live != 0 {
+		t.Fatalf("pending or running run rows after the move = %d, %v, want 0", live, err)
+	}
+	var handed []adewire.Handover
+	for _, h := range handovers(t, app, task.ID) {
+		if h.Body == "Drafted before the move." {
+			handed = append(handed, h)
+		}
+	}
+	if len(handed) != 1 || handed[0].State == "draft" || handed[0].FromStepID != "work" {
+		t.Fatalf("handovers with the drafted text = %+v, want one handed row from work", handed)
+	}
+}
+
+// A stage move while a headless run is live is refused and leaves the run, the entry step and the
+// sessions as they were. The run then finishes normally.
+func TestStageMoveRefusedWhileRunLive(t *testing.T) {
+	hold := filepath.Join(t.TempDir(), "hold")
+	app := flowharness.New(t)
+	claude(app, map[string][]fakeagent.Action{"*": {{WaitFile: hold, Name: "done"}}})
+	t.Cleanup(func() { _ = os.WriteFile(hold, nil, 0o644) })
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	rec := importRepo(t, app, repo.Dir)
+	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("one", "")+"  - id: ship\n    name: Ship\n    kind: manual\n"))
+	task := createTask(t, app, "Fix login", "flow", rec.ID)
+	if _, err := app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: task.ID}); err != nil {
+		t.Fatal(err)
+	}
+	waitRun(t, app, task.ID, "one", "running")
+	_, err := app.W.AdeTask.SetTaskStep(ctx, adewire.SetTaskStepArgs{TaskID: task.ID, StepID: "ship", CloseSessions: true})
+	if errCode(err) != "E_BAD_REQUEST" {
+		t.Fatalf("SetTaskStep with a live run: %v, want E_BAD_REQUEST", err)
+	}
+	if r, _ := latestRun(t, app, task.ID, "one"); r.State != "running" {
+		t.Fatalf("run after the refused move = %q, want running", r.State)
+	}
+	if got := taskOf(t, board(t, app), task.ID).EntryStepID; got != "one" {
+		t.Fatalf("entry after the refused move = %q, want one", got)
+	}
+	if err := os.WriteFile(hold, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	waitRun(t, app, task.ID, "one", "done")
+	if _, err := app.W.AdeTask.SetTaskStep(ctx, adewire.SetTaskStepArgs{TaskID: task.ID, StepID: "ship"}); err != nil {
+		t.Fatalf("SetTaskStep after the run: %v", err)
 	}
 }
