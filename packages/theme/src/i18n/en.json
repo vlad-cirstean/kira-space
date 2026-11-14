@@ -14985,6 +14985,14 @@
       "commitPending": {
         "label": "Commit pending changes"
       },
+      "commitUnknown": {
+        "body": "The table was reloaded, and {count} staged change couldn’t be matched against it. Keep it staged, or discard it if the table already shows it. | The table was reloaded, and {count} staged changes couldn’t be matched against it. Keep them staged, or discard them if the table already shows them.",
+        "confirm": "Discard staged changes",
+        "reloadFailed": {
+          "error": "The table couldn’t be reloaded to check ({error}); refresh it before committing again."
+        },
+        "title": "The last commit may have been saved"
+      },
       "count": {
         "approx": {
           "tooltip": "About {count} row in total | About {count} rows in total"

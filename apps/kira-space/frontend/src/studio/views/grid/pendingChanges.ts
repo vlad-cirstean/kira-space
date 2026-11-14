@@ -2,13 +2,16 @@ import type { MutationRowOp } from '@shared/domain/mutations';
 import { newUuid } from '@shared/ids';
 import type { MutateResponse } from '@shared/protocol/dataOps';
 import { cellText, isNull, type TabularPage } from '@shared/protocol/page';
+import { t } from '@theme/i18n';
 import { compareNatural } from '@workbench/behaviour/match';
-import { errorText } from '@workbench/bridge/codedError';
+import { errorText, toCodedError } from '@workbench/bridge/codedError';
 import { defineStore } from 'pinia';
 import { reactive, toRaw } from 'vue';
 import { data } from '../../bridge/data';
+import { isChangedConflict } from '../../state/confirmOverwrite';
 import { nullCellText } from '../shared/page/cellText';
 import { cell, getPage, pageVersion } from './page';
+import { dropUnresolved, rowKeyId, settleOnPage, settleUnresolved } from './reconcile';
 
 // Renderer-only, in-memory, per tab — never persisted (not tabs.state_json, not settings,
 // not a new SQLite table). Closing a tab discards uncommitted edits, exactly like closing a
@@ -16,9 +19,9 @@ import { cell, getPage, pageVersion } from './page';
 // page position, so it survives paging, sort, filter, projection and Refresh; a page that no
 // longer holds the row just shows nothing for it until the row comes back on a page.
 
-type RowKey = Record<string, string | null>;
+export type RowKey = Record<string, string | null>;
 
-interface PendingEdit {
+export interface PendingEdit {
   key: RowKey; // the row's primary key when it was staged — a PK-column edit still addresses the original row
   changes: Record<string, string | null>;
   original: Record<string, string | null>; // page value per column when first staged; edits off the current page keep it
@@ -33,7 +36,7 @@ export interface PendingCellDiff {
   after: string | null;
 }
 
-interface PendingDelete {
+export interface PendingDelete {
   key: RowKey;
   expect: Record<string, string | null>; // guarded columns of the row as loaded
 }
@@ -47,7 +50,19 @@ const GUARDED_TYPE_CLASSES: ReadonlySet<string> = new Set([
   'temporal',
 ]);
 
-interface PendingInsert {
+/** What commitPending needs to settle the staged set after a commit of unknown outcome. */
+export interface CommitReconcile {
+  reload: () => Promise<void>;
+  /** Asked when `count` staged rows cannot be matched against the reloaded table; true keeps them. */
+  confirmKeep: (count: number) => Promise<boolean>;
+}
+
+function isOutcomeUnknown(err: unknown): boolean {
+  const details = toCodedError(err).details as { outcomeUnknown?: boolean } | undefined;
+  return details?.outcomeUnknown === true;
+}
+
+export interface PendingInsert {
   id: string; // local identity for Vue :key and discard — never sent to the server
   values: Record<string, string | null>;
 }
@@ -79,6 +94,8 @@ const keyDecoder = new TextDecoder();
 export const usePendingChangesStore = defineStore('pendingChanges', () => {
   const pendingState = reactive({} as Record<string, TabPending>);
   const committingState = reactive({} as Record<string, true>);
+  // Tabs whose last commit may have applied and whose reload has not yet settled the staged set.
+  const unreconciledState = reactive({} as Record<string, true>);
 
   function ensure(tabId: string): TabPending {
     if (!pendingState[tabId]) {
@@ -113,6 +130,7 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
 
   function clearPending(tabId: string): void {
     delete pendingState[tabId];
+    delete unreconciledState[tabId];
   }
 
   // state.ts registers an accessor for a tab's *full* primary-key column list (rt.meta.primaryKey,
@@ -137,11 +155,10 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
       const chunk = page.chunks[col];
       key[descriptor.name] = isNull(chunk, row) ? null : cellText(chunk, row, keyDecoder);
     }
-    const names = Object.keys(key).sort(compareNatural);
-    if (names.length === 0) return null;
+    if (Object.keys(key).length === 0) return null;
     // A partial key (Hide column on part of a composite key) cannot address the row.
     if (full?.some((name) => !(name in key))) return null;
-    return { id: JSON.stringify(names.map((n) => [n, key[n]])), key };
+    return { id: rowKeyId(key), key };
   }
 
   function keysFor(
@@ -505,6 +522,56 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     return (await data.preview({ connectionId, path, ops })).statements;
   }
 
+  // Server truth after a lost acknowledgement (decision 2): reload, then settle the staged set
+  // against the reloaded page (reconcile.ts). A reload that fails leaves the tab unreconciled, so
+  // the next Commit settles first instead of resending a plan that may already have landed.
+  async function reconcileAfterUnknownCommit(
+    tabId: string,
+    reconcile: CommitReconcile,
+  ): Promise<void> {
+    await reconcile.reload();
+    const p = pendingState[tabId];
+    const page = getPage(tabId);
+    if (!page) throw new Error(t('studio.common.connectionLost.error'));
+    if (p) {
+      const colIndex = new Map(page.columns.map((c, i) => [c.name, i]));
+      const rowById = rowsByKey(tabId);
+      const verdict = settleOnPage(p, {
+        rowById,
+        pkNames: page.columns.filter((c) => c.isPrimaryKey).map((c) => c.name),
+        serverText: (row, column) => {
+          const col = colIndex.get(column);
+          if (col === undefined) return undefined;
+          const view = cell(tabId, row, col);
+          if (view.truncated) return undefined;
+          return view.isNull ? null : view.text;
+        },
+        guardedRow: (row) => guardedRow(tabId, row),
+      });
+      const keep = await settleUnresolved(verdict, reconcile.confirmKeep);
+      if (!keep) dropUnresolved(p, verdict.unresolved);
+    }
+    if (!hasPending(tabId)) clearPending(tabId);
+    delete unreconciledState[tabId];
+  }
+
+  // The staged set is settled before the error reaches the user; a reload that fails says so.
+  async function failAfterUnknownOutcome(
+    tabId: string,
+    err: unknown,
+    reconcile: CommitReconcile,
+  ): Promise<never> {
+    unreconciledState[tabId] = true;
+    try {
+      await reconcileAfterUnknownCommit(tabId, reconcile);
+    } catch (reloadErr) {
+      throw new Error(
+        `${errorText(err)} ${t('studio.grid.commitUnknown.reloadFailed.error', { error: errorText(reloadErr) })}`,
+      );
+    }
+    throw err;
+  }
+
   async function commitPending(
     connectionId: string,
     path: string,
@@ -512,6 +579,8 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     afterCommit?: () => Promise<void>,
     // Asked when the server reports a row changed since it was loaded; true overwrites it.
     confirmOverwrite?: (message: string) => Promise<boolean>,
+    // After a commit whose outcome is unknown: reloads the grid and asks about unmatched rows.
+    reconcile?: CommitReconcile,
   ): Promise<MutateResponse | null> {
     // A second click, or an edit staged mid-flight, would resend or drop ops already on the wire.
     // `afterCommit` runs inside the same window so the reload that replaces the page cannot drop
@@ -519,13 +588,22 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     if (committingState[tabId]) return null;
     committingState[tabId] = true;
     try {
+      // A reconcile that failed to reach the server leaves the outcome of the earlier commit
+      // unknown: this click only settles it. What stays staged is sent by the next Commit, which
+      // the user presses knowing what the table holds.
+      if (unreconciledState[tabId] && reconcile) {
+        await reconcileAfterUnknownCommit(tabId, reconcile);
+        return null;
+      }
       const ops = buildPlan(tabId, true);
       if (!ops) return null;
       let result: MutateResponse;
       try {
         result = await data.mutate({ tabId, connectionId, path, ops });
       } catch (err) {
-        if ((err as { code?: string }).code !== 'E_CONFLICT' || !confirmOverwrite) throw err;
+        if (isOutcomeUnknown(err) && reconcile)
+          await failAfterUnknownOutcome(tabId, err, reconcile);
+        if (!isChangedConflict(err) || !confirmOverwrite) throw err;
         if (!(await confirmOverwrite(errorText(err)))) return null;
         const forced = buildPlan(tabId);
         if (!forced) return null;

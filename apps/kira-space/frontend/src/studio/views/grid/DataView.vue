@@ -14,6 +14,7 @@ import RunState from '@theme/RunState.vue';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
+import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { DataTabRecord } from '../../../state/tabDomain';
 import { confirmOverwrite } from '../../state/confirmOverwrite';
@@ -124,6 +125,18 @@ const previewAnchorRef = ref<HTMLElement | null>(null);
 // refusal) used to be an unhandled promise rejection — no try/catch here and no async-aware
 // @click. The staged set already survives a failure (clearPending only runs on success); what was
 // missing was telling the user why.
+// Cancel keeps the staged rows; only the explicit button drops them.
+function confirmKeepUnmatched(count: number): Promise<boolean> {
+  return useConfirmDialogStore()
+    .confirm({
+      title: t('studio.grid.commitUnknown.title'),
+      message: t('studio.grid.commitUnknown.body', { count }),
+      confirmLabel: t('studio.grid.commitUnknown.confirm'),
+      tone: 'danger',
+    })
+    .then((discard) => !discard);
+}
+
 async function onCommit(): Promise<void> {
   if (!props.tab.connectionId || stale.value) return;
   // An open inline edit stages here, before the plan is built and the store starts refusing edits.
@@ -138,6 +151,10 @@ async function onCommit(): Promise<void> {
         await gridViewStore.reloadAfterMutation(props.tab.id);
       },
       confirmOverwrite,
+      {
+        reload: () => gridViewStore.reloadAfterMutation(props.tab.id),
+        confirmKeep: confirmKeepUnmatched,
+      },
     );
   } catch (err) {
     gridViewStore.setActionError(props.tab.id, errorText(err));
