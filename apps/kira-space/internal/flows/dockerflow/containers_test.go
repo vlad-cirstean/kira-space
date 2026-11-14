@@ -1,7 +1,10 @@
 package dockerflow
 
 import (
+	"errors"
+	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/moby/moby/api/types/container"
@@ -170,5 +173,34 @@ func TestImagesVolumesNetworks(t *testing.T) {
 	}
 	if _, err := svc.Inspect(docker.InspectArgs{Kind: "secret", ID: "x"}); err == nil || testx.AsIpcErr(t, err).Code != "E_CONTRACT" {
 		t.Fatalf("unknown kind = %v, want E_CONTRACT", err)
+	}
+}
+
+// J-DKR-020: a second Restart of a container already restarting is refused; the first completes.
+func TestDoubleRestartRefused(t *testing.T) {
+	app, d := boot(t)
+	svc := app.W.Docker
+	id := sleeper(d, "twice", nil) // sleep as PID 1 ignores SIGTERM, so a restart takes seconds
+
+	errs := make(chan error, 2)
+	var start sync.WaitGroup
+	start.Add(1)
+	for range 2 {
+		go func() {
+			start.Wait()
+			errs <- svc.Restart(docker.IDArgs{ID: id})
+		}()
+	}
+	start.Done()
+	a, b := <-errs, <-errs
+	if (a == nil) == (b == nil) {
+		t.Fatalf("restarts = %v, %v, want exactly one success", a, b)
+	}
+	refused := ipcCode(t, errors.Join(a, b))
+	if refused.Code != string(ipcerr.CodeConflict) || refused.Message != "This container is already restarting." {
+		t.Fatalf("refusal = %+v, want conflict, already restarting", refused)
+	}
+	if err := svc.Restart(docker.IDArgs{ID: id}); err != nil {
+		t.Fatalf("Restart after the first finished = %v, want ok", err)
 	}
 }

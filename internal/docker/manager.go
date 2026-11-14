@@ -89,6 +89,8 @@ type Manager struct {
 	flight singleflight.Group
 	// editing holds the container IDs with an edit in flight.
 	editing sync.Map
+	// restarting holds the container IDs with a restart in flight.
+	restarting sync.Map
 }
 
 // NewManager builds a Manager reading the real process environment.
