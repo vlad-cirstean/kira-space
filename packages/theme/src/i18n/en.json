@@ -13318,6 +13318,11 @@
             "status": "Unused"
           }
         },
+        "skipped": {
+          "hint": "The rest of the file is loaded. An item that loaded before keeps its last good version. Fix the file to load the rest.",
+          "label": "Line {line}, {label}: {message}",
+          "title": "{count} item in {file} isn’t loaded | {count} items in {file} aren’t loaded"
+        },
         "variables": {
           "empty": "No variables in this file"
         }
