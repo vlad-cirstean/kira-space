@@ -121,7 +121,15 @@ func NewParamRenderer(placeholder func(int) string, isBinary func(name string) b
 	}
 }
 
-func whereFromKey(key, expect model.RowValues, render ValueRenderer, params *[]any, quote func(string) string) (string, error) {
+// ExpectColumn spells one guarded column in a WHERE: the column text from quote, wrapped as the
+// dialect needs so the comparison matches the text the grid displays. ok false leaves the column
+// unguarded (no reliable equality for its type).
+type ExpectColumn func(c model.ColumnMeta, quoted string) (expr string, ok bool)
+
+// exprFor is whereFromKey's column spelling for an expect entry; nil means the plain quoted name.
+type exprFor func(name, quoted string) string
+
+func whereFromKey(key, expect model.RowValues, render ValueRenderer, params *[]any, quote func(string) string, expr exprFor) (string, error) {
 	parts := make([]string, len(key), len(key)+len(expect))
 	for i, kv := range key {
 		if kv.Value == nil {
@@ -144,14 +152,25 @@ func whereFromKey(key, expect model.RowValues, render ValueRenderer, params *[]a
 		if err != nil {
 			return "", err
 		}
-		parts = append(parts, quote(kv.Name)+" = "+rendered)
+		parts = append(parts, guardExpr(expr, kv.Name, quote)+" = "+rendered)
 	}
 	return strings.Join(parts, " AND "), nil
+}
+
+func guardExpr(expr exprFor, name string, quote func(string) string) string {
+	if expr == nil {
+		return quote(name)
+	}
+	return expr(name, quote(name))
 }
 
 // RenderRowOp ports sql-mutate.ts's renderRowOp: UPDATE/DELETE/INSERT text for one row op, with
 // the WHERE built from the row key. quote is the caller's own quoteIdent.
 func RenderRowOp(relationSQL string, op model.MutationRowOp, render ValueRenderer, params *[]any, quote func(string) string) (string, error) {
+	return renderRowOp(relationSQL, op, render, params, quote, nil)
+}
+
+func renderRowOp(relationSQL string, op model.MutationRowOp, render ValueRenderer, params *[]any, quote func(string) string, expr exprFor) (string, error) {
 	switch op.Kind {
 	case "update":
 		setParts := make([]string, len(op.Changes))
@@ -162,13 +181,13 @@ func RenderRowOp(relationSQL string, op model.MutationRowOp, render ValueRendere
 			}
 			setParts[i] = quote(kv.Name) + " = " + rendered
 		}
-		where, err := whereFromKey(op.Key, op.Expect, render, params, quote)
+		where, err := whereFromKey(op.Key, op.Expect, render, params, quote, expr)
 		if err != nil {
 			return "", err
 		}
 		return "UPDATE " + relationSQL + " SET " + strings.Join(setParts, ", ") + " WHERE " + where, nil
 	case "delete":
-		where, err := whereFromKey(op.Key, op.Expect, render, params, quote)
+		where, err := whereFromKey(op.Key, op.Expect, render, params, quote, expr)
 		if err != nil {
 			return "", err
 		}
@@ -197,14 +216,14 @@ func ValidateMutationOps(ops []model.MutationRowOp, columns []model.ColumnMeta, 
 	for _, rowOp := range ops {
 		switch rowOp.Kind {
 		case "update":
-			if err := AssertColumnsKnown(columns, append(rowOp.Key.Names(), rowOp.Changes.Names()...)); err != nil {
+			if err := AssertColumnsKnown(columns, append(append(rowOp.Key.Names(), rowOp.Changes.Names()...), rowOp.Expect.Names()...)); err != nil {
 				return err
 			}
 			if err := AssertKeyIsPrimaryKey(primaryKey, rowOp.Key, qualifiedName); err != nil {
 				return err
 			}
 		case "delete":
-			if err := AssertColumnsKnown(columns, rowOp.Key.Names()); err != nil {
+			if err := AssertColumnsKnown(columns, append(rowOp.Key.Names(), rowOp.Expect.Names()...)); err != nil {
 				return err
 			}
 			if err := AssertKeyIsPrimaryKey(primaryKey, rowOp.Key, qualifiedName); err != nil {
@@ -246,18 +265,18 @@ func keyLabel(key model.RowValues) string {
 // CompileMutationOps ports the render loop postgres/mysqlfamily/sqlite's mutate() each wrote out
 // verbatim: one executable statement (via paramRenderer) and one literal preview statement (via
 // literalRenderer) per ordered op.
-func CompileMutationOps(relationSQL string, ordered []model.MutationRowOp, paramRenderer, literalRenderer ValueRenderer, quote func(string) string) (compiled []CompiledOp, previewParts []string, err error) {
+func CompileMutationOps(relationSQL string, ordered []model.MutationRowOp, paramRenderer, literalRenderer ValueRenderer, quote func(string) string, expr exprFor) (compiled []CompiledOp, previewParts []string, err error) {
 	compiled = make([]CompiledOp, len(ordered))
 	previewParts = make([]string, len(ordered))
 	for i, rowOp := range ordered {
 		var params []any
-		sql, err := RenderRowOp(relationSQL, rowOp, paramRenderer, &params, quote)
+		sql, err := renderRowOp(relationSQL, rowOp, paramRenderer, &params, quote, expr)
 		if err != nil {
 			return nil, nil, err
 		}
 		compiled[i] = CompiledOp{SQL: sql, Params: params, Kind: rowOp.Kind, Guarded: len(rowOp.Expect) > 0, KeyLabel: keyLabel(rowOp.Key)}
 		var literalParams []any
-		previewPart, err := RenderRowOp(relationSQL, rowOp, literalRenderer, &literalParams, quote)
+		previewPart, err := renderRowOp(relationSQL, rowOp, literalRenderer, &literalParams, quote, expr)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -323,7 +342,7 @@ func RunSQLMutation(ctx context.Context, beginSQL string, exec func(sqlText stri
 			return model.MutationResult{}, err
 		}
 		if c.Guarded && n == 0 {
-			return model.MutationResult{}, T(CodeConflict, "backend.studio.adapter.rowChanged.body", map[string]string{"key": c.KeyLabel}, nil)
+			return model.MutationResult{}, RowChanged(c.KeyLabel)
 		}
 		if err := AssertAffectedExactlyOne(c.Kind, n); err != nil {
 			return model.MutationResult{}, err
@@ -344,14 +363,50 @@ type RelationalMutateDeps struct {
 	// catalog (never trusts a stale value the caller sent — same discipline the read path's
 	// resolveProjection uses), and reports the fully-qualified relation text mutate's SQL is built
 	// against, plus the qualifiedName ValidateMutationOps reports errors against.
-	Resolve         func() (relationSQL, qualifiedName string, columns []model.ColumnMeta, primaryKey []string, err error)
-	Quote           func(string) string
-	Placeholder     func(int) string
-	TypeClassFor    func(dataType string) page.TypeClass
+	Resolve      func() (relationSQL, qualifiedName string, columns []model.ColumnMeta, primaryKey []string, err error)
+	Quote        func(string) string
+	Placeholder  func(int) string
+	TypeClassFor func(dataType string) page.TypeClass
+	// ExpectColumn overrides how a guarded column compares; nil spells every one `col = value`.
+	ExpectColumn    ExpectColumn
 	LiteralRenderer ValueRenderer
 	BeginSQL        string
 	Exec            func(sqlText string, params []any) (int64, error)
 	Rollback        func(context.Context)
+}
+
+// applyExpectColumn drops the expect entries of columns the dialect cannot compare reliably and
+// returns the spelling for the rest. An op left with no expect is unguarded, so a missing row stays
+// the plain "affected 0" failure rather than a conflict.
+func applyExpectColumn(ops []model.MutationRowOp, columns []model.ColumnMeta, rule ExpectColumn) ([]model.MutationRowOp, exprFor) {
+	if rule == nil {
+		return ops, nil
+	}
+	byName := make(map[string]model.ColumnMeta, len(columns))
+	for _, c := range columns {
+		byName[c.Name] = c
+	}
+	expr := func(name, quoted string) string {
+		if e, ok := rule(byName[name], quoted); ok {
+			return e
+		}
+		return quoted
+	}
+	out := make([]model.MutationRowOp, len(ops))
+	for i, op := range ops {
+		out[i] = op
+		if len(op.Expect) == 0 {
+			continue
+		}
+		kept := make(model.RowValues, 0, len(op.Expect))
+		for _, kv := range op.Expect {
+			if _, ok := rule(byName[kv.Name], ""); ok {
+				kept = append(kept, kv)
+			}
+		}
+		out[i].Expect = kept
+	}
+	return out, expr
 }
 
 // RunRelationalMutate is mutate.ts's own mutate, shared verbatim across postgres/mysqlfamily/
@@ -373,8 +428,9 @@ func RunRelationalMutate(ctx context.Context, op *OpCtx, readOnly bool, plan mod
 	}
 
 	paramRenderer := NewParamRenderer(deps.Placeholder, BinaryColumnsOf(columns, deps.TypeClassFor))
-	ordered := OrderedOps(plan.Ops)
-	compiled, previewParts, err := CompileMutationOps(relationSQL, ordered, paramRenderer, deps.LiteralRenderer, deps.Quote)
+	ops, expr := applyExpectColumn(plan.Ops, columns, deps.ExpectColumn)
+	ordered := OrderedOps(ops)
+	compiled, previewParts, err := CompileMutationOps(relationSQL, ordered, paramRenderer, deps.LiteralRenderer, deps.Quote, expr)
 	if err != nil {
 		return model.MutationResult{}, err
 	}
@@ -399,5 +455,6 @@ func ResolveDatabaseTablePath(path model.NodePath) (database, table string, err 
 // lost after the server applied the commit, so the message says the outcome is unknown and carries
 // the cause.
 func commitFailure(err error) error {
-	return T(CodeQuery, "backend.studio.adapter.commitOutcomeUnknown.body", map[string]string{"cause": err.Error()}, err)
+	e := T(CodeQuery, "backend.studio.adapter.commitOutcomeUnknown.body", map[string]string{"cause": err.Error()}, err)
+	return e.WithDetails(`{"outcomeUnknown":true}`)
 }

@@ -20,6 +20,7 @@
   },
   "mutate:acl-conflict": {
     "Code": "E_CONFLICT",
+    "Details": "{\"aclUnreadable\":true}",
     "Message": "The access control list of this object can’t be read, so saving resets it to the default."
   },
   "mutate:acl-guarded-ops": {

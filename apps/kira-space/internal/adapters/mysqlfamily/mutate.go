@@ -2,6 +2,7 @@ package mysqlfamily
 
 import (
 	"context"
+	"regexp"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
@@ -21,6 +22,15 @@ func literalRenderer(name string, value *string, _ *[]any) (string, error) {
 	}
 	escaped := strings.ReplaceAll(*value, `\`, `\\`)
 	return adapters.LiteralRenderer(name, &escaped)
+}
+
+// singlePrecision matches FLOAT: the server prints a single-precision value with fewer digits than
+// it compares, so `WHERE f = '0.1'` matches no row holding 0.1 and the guard would always raise a
+// conflict. Such a column is left out of the guard.
+var singlePrecision = regexp.MustCompile(`^float\b`)
+
+func expectColumn(c model.ColumnMeta, quoted string) (string, bool) {
+	return quoted, !singlePrecision.MatchString(strings.ToLower(c.DataType))
 }
 
 // preview is mutate.ts's preview — synchronous (D6): no catalog lookup, no network.
@@ -70,7 +80,7 @@ func mutate(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQuer
 
 	return adapters.RunRelationalMutate(ctx, op, readOnly, plan, adapters.RelationalMutateDeps{
 		Resolve: resolve, Quote: quoteIdent, Placeholder: questionPlaceholder,
-		TypeClassFor: typeClassFor, LiteralRenderer: literalRenderer,
+		TypeClassFor: typeClassFor, ExpectColumn: expectColumn, LiteralRenderer: literalRenderer,
 		BeginSQL: "START TRANSACTION", Exec: execCommand, Rollback: rollback,
 	})
 }

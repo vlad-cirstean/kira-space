@@ -1,6 +1,7 @@
 {
   "mutate:conflict": {
     "Code": "E_CONFLICT",
+    "Details": "{\"changed\":true}",
     "Message": "The row tenant_id = 1, entity_id = 1 changed on the server since it was loaded."
   },
   "mutate:error": {

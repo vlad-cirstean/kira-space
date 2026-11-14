@@ -125,9 +125,11 @@ func applyUpdate(ctx context.Context, collection *mongodriver.Collection, op *ad
 			exists, err := runTracked(ctx, track, func(qctx context.Context) (int64, error) {
 				return collection.CountDocuments(qctx, bson.D{{Key: "_id", Value: id}})
 			})
-			if err == nil && exists > 0 {
-				return 0, adapters.T(adapters.CodeConflict, "backend.studio.adapter.rowChanged.body",
-					map[string]string{"key": "_id = " + keyText(rowOp.Key)}, nil)
+			if err != nil {
+				return 0, err
+			}
+			if exists > 0 {
+				return 0, adapters.RowChanged("_id = " + keyText(rowOp.Key))
 			}
 		}
 		return 0, adapters.New(adapters.CodeQuery,

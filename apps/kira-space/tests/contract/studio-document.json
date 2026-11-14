@@ -1,6 +1,7 @@
 {
   "mutate:conflict": {
     "Code": "E_CONFLICT",
+    "Details": "{\"changed\":true}",
     "Message": "The row _id = {\"$oid\":\"65f000000000000000000001\"} changed on the server since it was loaded."
   },
   "mutate:guarded-ops": {

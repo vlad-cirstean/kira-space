@@ -274,7 +274,8 @@ func applyUpdate(ctx context.Context, client *s3.Client, bucket string, op model
 	}
 	// Decision 6: PutObject resets an ACL this edit could not read; the save waits for a confirm.
 	if _, confirmed := op.Key.Get(objectACLResetSentinel); !aclReadable && !confirmed {
-		return 0, adapters.T(adapters.CodeConflict, "backend.studio.adapter.s3AclUnreadable.body", nil, nil)
+		return 0, adapters.T(adapters.CodeConflict, "backend.studio.adapter.s3AclUnreadable.body", nil, nil).
+			WithDetails(`{"aclUnreadable":true}`)
 	}
 	in := &s3.PutObjectInput{
 		Bucket: aws.String(bucket), Key: aws.String(key), Body: strings.NewReader(value),

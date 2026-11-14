@@ -30,7 +30,7 @@ const OVERWRITE = wireOps(
   contract<{ ops: unknown[] }>('studio-grid-stale', 'mutate:overwrite-ops').ops,
   COLUMNS,
 );
-const CONFLICT = contract<{ Code: string; Message: string }>(
+const CONFLICT = contract<{ Code: string; Message: string; Details: string }>(
   'studio-grid-stale',
   'mutate:conflict',
 );
@@ -49,7 +49,7 @@ const CONTROL: ControlSnapshot[] = [
 const CONFLICT_MUTATE: PortSnapshot = {
   op: DATA_OP.mutate,
   payload: { connectionId: CONNECTION_ID, path: COMPOSITE_PK_PATH, ops: GUARDED },
-  error: { code: CONFLICT.Code, message: CONFLICT.Message },
+  error: { code: CONFLICT.Code, message: CONFLICT.Message, details: CONFLICT.Details },
 };
 const OVERWRITE_PORT: PortSnapshot[] = [
   {

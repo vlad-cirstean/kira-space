@@ -37,7 +37,10 @@ const SAVE_OPS = opsOf('mutate:ops');
 const GUARDED_OPS = opsOf('mutate:guarded-ops');
 const OVERWRITE_OPS = opsOf('mutate:overwrite-ops');
 const ID_EDIT_OPS = opsOf('mutate:idEdit-ops');
-const CONFLICT = contract<{ Code: string; Message: string }>(SCENARIO, 'mutate:conflict');
+const CONFLICT = contract<{ Code: string; Message: string; Details: string }>(
+  SCENARIO,
+  'mutate:conflict',
+);
 const ID_EDIT_ERROR = contract<{ Code: string; Message: string }>(SCENARIO, 'mutate:idEditError');
 
 const PROJECTED = contract<{ rows: [string, string][] }>(SCENARIO, 'read:projected').rows;
@@ -197,7 +200,9 @@ test('a document changed on the server asks before it is overwritten', async ({ 
     control: CONTROL,
     stream: [
       readOf(ROW.body),
-      mutateOf(GUARDED_OPS, { error: { code: CONFLICT.Code, message: CONFLICT.Message } }),
+      mutateOf(GUARDED_OPS, {
+        error: { code: CONFLICT.Code, message: CONFLICT.Message, details: CONFLICT.Details },
+      }),
       mutateOf(OVERWRITE_OPS, { response: { kind: 'mutate', affectedRows: 1 } }),
       INVALIDATE,
       readOf(ROW.body.replace('"before"', '"mine"')),

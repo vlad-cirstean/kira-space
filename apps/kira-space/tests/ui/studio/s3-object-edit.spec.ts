@@ -28,7 +28,10 @@ const opsOf = (key: string): unknown[] => withKey(contract<{ ops: unknown[] }>(S
 
 const GUARDED_OPS = opsOf('mutate:acl-guarded-ops');
 const CONFIRMED_OPS = opsOf('mutate:acl-confirmed-ops');
-const CONFLICT = contract<{ Code: string; Message: string }>(SCENARIO, 'mutate:acl-conflict');
+const CONFLICT = contract<{ Code: string; Message: string; Details: string }>(
+  SCENARIO,
+  'mutate:acl-conflict',
+);
 const CHANGED_ERROR = { code: 'E_QUERY', message: 'The object was replaced after it was opened.' };
 
 const READ_PAYLOAD = {
@@ -98,7 +101,9 @@ test('an object whose ACL cannot be read asks before the save resets it', async 
     stream: [
       readOf('old'),
       readOf('old'),
-      mutateOf(GUARDED_OPS, { error: { code: CONFLICT.Code, message: CONFLICT.Message } }),
+      mutateOf(GUARDED_OPS, {
+        error: { code: CONFLICT.Code, message: CONFLICT.Message, details: CONFLICT.Details },
+      }),
       mutateOf(CONFIRMED_OPS, { response: { kind: 'mutate', affectedRows: 1 } }),
       INVALIDATE,
       readOf('new'),
