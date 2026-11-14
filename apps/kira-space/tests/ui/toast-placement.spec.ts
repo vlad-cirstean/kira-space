@@ -44,6 +44,20 @@ async function box(page: Page, selector: string): Promise<Box> {
   return b;
 }
 
+// Sonner's enter animation moves the toast; wait until its box stops changing.
+async function settledToast(page: Page): Promise<Box> {
+  let prev = '';
+  await expect
+    .poll(async () => {
+      const cur = JSON.stringify(await box(page, '[data-sonner-toast]'));
+      const same = cur === prev;
+      prev = cur;
+      return same;
+    })
+    .toBe(true);
+  return box(page, '[data-sonner-toast]');
+}
+
 const titlebarBottom = async (page: Page) => {
   const b = await page.locator(t('titlebar-app-title')).locator('..').boundingBox();
   if (!b) throw new Error('no title bar');
@@ -73,7 +87,7 @@ test('a toast anchors top right under the title bar', async ({ relaunch }) => {
   await expect(toaster).toHaveAttribute('data-y-position', 'top');
   await expect(toaster).toHaveAttribute('data-x-position', 'right');
   const vp = page.viewportSize();
-  const b = await box(page, '[data-sonner-toast]');
+  const b = await settledToast(page);
   expect(Math.abs(b.y - ((await titlebarBottom(page)) + GAP))).toBeLessThanOrEqual(1);
   expect(Math.abs(b.x + b.width - ((vp?.width ?? 0) - EDGE))).toBeLessThanOrEqual(1);
 });
@@ -84,6 +98,7 @@ test('chips and toasts stack in one column and follow chip removal', async ({ re
     ...seedApprovals([item()]),
     syncToast,
   ]);
+  await expect(page.locator(t('approvals-dialog'))).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator(t('approvals-toast'))).toBeVisible();
   await expect(page.locator(t('config-sync-toast'))).toBeVisible();
@@ -93,7 +108,7 @@ test('chips and toasts stack in one column and follow chip removal', async ({ re
   const tb = await titlebarBottom(page);
   const approvals = await box(page, t('approvals-toast'));
   const sync = await box(page, t('config-sync-toast'));
-  const sonner = await box(page, '[data-sonner-toast]');
+  const sonner = await settledToast(page);
   expect(Math.abs(approvals.y - (tb + GAP))).toBeLessThanOrEqual(1);
   expect(sync.y).toBeGreaterThanOrEqual(approvals.y + approvals.height + GAP - 1);
   expect(sonner.y).toBeGreaterThanOrEqual(sync.y + sync.height + GAP - 1);
@@ -117,14 +132,19 @@ test('a narrow window keeps the toast under the title bar and inside the viewpor
   const { window: page } = await openPlan(relaunch, holdControl);
   await page.setViewportSize({ width: 520, height: 800 });
   await holdToast(page);
+  const min = (await titlebarBottom(page)) + GAP - 1;
+  // Enter animation settles first.
+  await expect
+    .poll(async () => (await box(page, '[data-sonner-toast]')).y)
+    .toBeGreaterThanOrEqual(min);
   const b = await box(page, '[data-sonner-toast]');
-  expect(b.y).toBeGreaterThanOrEqual((await titlebarBottom(page)) + GAP - 1);
   expect(b.x).toBeGreaterThanOrEqual(0);
   expect(b.x + b.width).toBeLessThanOrEqual(520);
 });
 
 test('clicks pass through the column outside the chips', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [...seedApprovals([item()]), syncToast]);
+  await expect(page.locator(t('approvals-dialog'))).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator(t('approvals-toast'))).toBeVisible();
   await expect(page.locator(t('config-sync-toast'))).toBeVisible();
