@@ -56,6 +56,9 @@ type ClassifyWorktreeAddInput struct {
 	PathExists bool
 	// PathInsideRepo: Path is inside this repository's own working tree (D4's named note).
 	PathInsideRepo bool
+	// PathInsideGitDir: Path is inside the repository's own git directory, where a checkout would
+	// corrupt the repository's metadata; blocks as invalidPath.
+	PathInsideGitDir bool
 	// ParentDirMissing: Path's immediate parent directory does not exist yet — git creates it
 	// automatically, so this is a note, not a blocker.
 	ParentDirMissing bool
@@ -83,7 +86,7 @@ type ClassifyWorktreeAddInput struct {
 func ClassifyWorktreeAdd(in ClassifyWorktreeAddInput) WorktreeAddPreflight {
 	blockers := []WorktreeAddBlocker{}
 
-	if in.Path == "" {
+	if in.Path == "" || in.PathInsideGitDir {
 		blockers = append(blockers, WorktreeAddBlocker{Kind: "invalidPath", Path: in.Path})
 	}
 	if in.PathExists {

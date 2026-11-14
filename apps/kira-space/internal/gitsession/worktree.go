@@ -193,6 +193,7 @@ func (e *RepoEntry) WorktreeAddPreflight(ctx context.Context, p WorktreeAddParam
 	return gitpreflight.ClassifyWorktreeAdd(gitpreflight.ClassifyWorktreeAddInput{
 		Path: p.Path, Mode: p.Mode, Branch: p.Branch, StartPoint: p.StartPoint,
 		PathExists: pathExists, PathInsideRepo: isPathInsideRepo(p.Path, e.Summary.Root), ParentDirMissing: parentDirMissing,
+		PathInsideGitDir: isPathInsideRepo(p.Path, filepath.Join(e.Summary.Root, ".git")) || (e.Summary.GitDir != "" && isPathInsideRepo(p.Path, e.Summary.GitDir)) || (e.Summary.CommonDir != "" && isPathInsideRepo(p.Path, e.Summary.CommonDir)),
 		BranchCheckedOutElsewhere: branchCheckedOutElsewhere, BranchExists: branchExists,
 		StartPointResolves: startPointResolves,
 	}), nil
