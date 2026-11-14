@@ -94,7 +94,7 @@ function insertStored(values: Record<string, string | null>, page: ReconcilePage
   });
 }
 
-export function unresolvedCount(u: Unresolved): number {
+function unresolvedCount(u: Unresolved): number {
   return u.edits.length + u.deletes.length + u.inserts.length;
 }
 

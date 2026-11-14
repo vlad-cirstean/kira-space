@@ -62,7 +62,7 @@ function parseCell(text: string): unknown {
 
 // Headers and attributes cells hold JSON text; parsing keeps their order and repeated names (a
 // repeat arrives as an array).
-export function rowAsJson(row: StreamRow): string {
+function rowAsJson(row: StreamRow): string {
   return JSON.stringify(
     {
       key: cellJson(row.key, row.keyBinary),

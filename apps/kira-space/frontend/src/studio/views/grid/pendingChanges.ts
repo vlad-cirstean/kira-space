@@ -21,7 +21,7 @@ import { dropUnresolved, rowKeyId, settleOnPage, settleUnresolved } from './reco
 
 export type RowKey = Record<string, string | null>;
 
-export interface PendingEdit {
+interface PendingEdit {
   key: RowKey; // the row's primary key when it was staged — a PK-column edit still addresses the original row
   changes: Record<string, string | null>;
   original: Record<string, string | null>; // page value per column when first staged; edits off the current page keep it
@@ -36,7 +36,7 @@ export interface PendingCellDiff {
   after: string | null;
 }
 
-export interface PendingDelete {
+interface PendingDelete {
   key: RowKey;
   expect: Record<string, string | null>; // guarded columns of the row as loaded
 }
@@ -62,7 +62,7 @@ function isOutcomeUnknown(err: unknown): boolean {
   return details?.outcomeUnknown === true;
 }
 
-export interface PendingInsert {
+interface PendingInsert {
   id: string; // local identity for Vue :key and discard — never sent to the server
   values: Record<string, string | null>;
 }
