@@ -73,28 +73,34 @@ func TypeRoundTrip(c TypeRoundTripCase) Scenario {
 				stale := model.RowValues{{Name: c.EditColumn, Value: before[0][editCol]}}
 				assertStaleConflict(t, a, c, &val, stale, c.EditColumn)
 			}
-			// Every guarded column must detect a change, not only the edited one: a guard that always
-			// matches would pass the untouched-row check above. The row's own text is swapped for the
-			// text another row holds, which is valid for the type by construction.
-			for _, g := range c.Guard {
-				gi := columnIndex(c.Columns, g)
-				if g == c.EditColumn || gi < 0 {
-					continue
-				}
-				other, ok := otherRowText(before, c.EditID, gi)
-				if !ok {
-					t.Fatalf("guard %s: no other row holds a different value to test the stale guard with", g)
-				}
-				staleG := model.RowValues{{Name: g, Value: other}}
-				if slices.Contains(c.Unguarded, g) {
-					if _, err := a.Mutate(context.Background(), typeRoundTripEdit(c, &val, staleG), adapters.NewOpCtx("scenario-type-round-trip-unguarded-"+g)); err != nil {
-						t.Fatalf("%s is left out of the guard, so a stale value must not conflict: %v", g, err)
-					}
-					continue
-				}
-				assertStaleConflict(t, a, c, &val, staleG, g)
-			}
+			assertEveryGuard(t, a, c, &val, before)
 		},
+	}
+}
+
+// assertEveryGuard checks each guarded column other than the edited one.
+func assertEveryGuard(t *testing.T, a adapters.Adapter, c TypeRoundTripCase, val *string, before [][]*string) {
+	t.Helper()
+	// Every guarded column must detect a change, not only the edited one: a guard that always
+	// matches would pass the untouched-row check above. The row's own text is swapped for the
+	// text another row holds, which is valid for the type by construction.
+	for _, g := range c.Guard {
+		gi := columnIndex(c.Columns, g)
+		if g == c.EditColumn || gi < 0 {
+			continue
+		}
+		other, ok := otherRowText(before, c.EditID, gi)
+		if !ok {
+			t.Fatalf("guard %s: no other row holds a different value to test the stale guard with", g)
+		}
+		staleG := model.RowValues{{Name: g, Value: other}}
+		if slices.Contains(c.Unguarded, g) {
+			if _, err := a.Mutate(context.Background(), typeRoundTripEdit(c, val, staleG), adapters.NewOpCtx("scenario-type-round-trip-unguarded-"+g)); err != nil {
+				t.Fatalf("%s is left out of the guard, so a stale value must not conflict: %v", g, err)
+			}
+			continue
+		}
+		assertStaleConflict(t, a, c, val, staleG, g)
 	}
 }
 
