@@ -491,6 +491,12 @@ read/count/preview/mutate only exist on frame path (`adapterhost/dataframe.go` `
 - F-A3: console strip note "new session" after automatic reconnect (OQ-CONS-1).
 - F-A4: journalled move of requests between collection files (OQ-API-4 crash safety).
 - F-A5: Copy all label "projected" under projection (OQ-DOC-3 label part).
+- F-A6: concurrent-edit detect, warn, confirm (decision 3) is built for S3 objects only (`$etag`). Grid, Mongo, saved query and API request have none. Large product feature.
+- F-A7: Redis edit is string-only. Hash, list, set, zset edits unsupported (J-KV-010).
+- F-A8: SQLite no-PK rowid tables refuse keyed writes by design (D23).
+- F-A9: mutate errors do not name the failing op index.
+- F-A10: staged edits kept after lost ack (decision 2) and tab-close prompt (decision 8) have no UI spec yet.
+- F-A11: 39 of 759 unit tests in `apps/kira-space/tests/unit/studio` fail in isolation with an import cycle (`useTabsStore` before initialization). Identical with this stream's changes stashed.
 - Add each bug found needing design decision here with journey id; orchestrator turns list into SPEC rows.
 
 ## Done when
@@ -499,3 +505,26 @@ read/count/preview/mutate only exist on frame path (`adapterhost/dataframe.go` `
 - Each `NEW both` UI half and flow half read same contract. Stale contracts above have reader and writer.
 - `grep -rn "time.Sleep\|waitForTimeout" <new files>` is empty.
 - Pre-commit hook green on every commit; worktree rebases cleanly on chapter branch.
+
+## Result
+
+Partial. Stopped after A0, A1, part of A2, A4 and A6. A3, A5 and A7 to A13 not started; the UI half is written only for paste.
+
+Landed (flow half unless noted):
+- A0: `flowharness.DataStream` (read, count, preview, mutate, invalidate, execute, objectDownload) and second-client helpers.
+- A1: `TestGridMutateChangeSet`, `TestGridMutateSQLiteRowid`, `TestGridLostAck` (Postgres, proxy kill at COMMIT), `TestGridCancelCommit`, `TestGridStaleRow`. Contracts `studio-grid-mutate`, `studio-grid-stale`.
+- A2 paste: `TestGridPasteNullAndEmpty` plus UI spec `grid-clipboard-roundtrip.spec.ts` (WebKit `ui`), both on contract `studio-grid-paste`.
+- A4/A6 Redis: `TestRedisEditKeepsTTLAndNeverResurrects`, contract `studio-redis-edit`.
+- A6 S3: `TestS3EditKeepsMetadataAndRefusesChangedObject` (contract `studio-s3-edit`), `TestS3DownloadSafety`, `TestS3UploadKeysAndRefusals`. Download tests call `data:objectDownload` with a chosen path; the save dialog is a shell concern, so `Dialogs.AnswerSave` is not used.
+
+Bugs found and fixed:
+1. SQLite composite or nullable-key tables were not editable and lost their key in DDL (`ReadTarget.KeysetPrimaryKey` split from `PrimaryKey`).
+2. Empty paste staged `''` for nullable columns; now NULL.
+3. Paste staged no-op key-column updates; `stageChange` now skips unchanged values.
+4. Lost COMMIT ack gave an uninformative error; now `commitOutcomeUnknown` message.
+5. Redis update resurrected an expired key and dropped its TTL; now `SET XX KEEPTTL`, `CodeNotFound` when gone.
+6. S3 edit overwrote an object another client replaced; now `$etag` precondition (OQ-KV-1), wired into the key-value editor.
+
+Tests run: new specs above only (Go flow, s3 and redis adapter packages, WebKit paste spec). Docker pulls for kafka and clickhouse images failed through the mirror, so any Kafka, SQS or ClickHouse work is unrun.
+
+Unfinished, in plan order: A2 rest (copy bytes under `studio-grid-clipboard`, native-copy and grid-keyboard-edit specs, truncated-copy fix, inventory.md TSV wording, `ui-clipboard` testMatch), A3, A5, A7, A8, A9, A10, A11 (plus ARCHITECTURE.md Known open items), A12, A13, and the UI halves for A1, A4, A6.
