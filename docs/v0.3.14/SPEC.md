@@ -109,7 +109,7 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
   the containers group. `pull-test-images.sh [--print] [kind...]` with `flow` pseudo-kind.
 - `pr.yml`: `go-split`, `go (Linux, <shard>)`, aggregate `go (Linux)`; `go-containers (Linux)` one job, restore-only
   per-bundle caches `tc-images-<os>-<bundle>-<pins-hash>`, `-timeout 7m`, 15 min job cap, no save steps.
-  `cache-warm.yml`: `tc-images` matrix saves bundles (miss: elastic 117 s, sql 94 s, kv 75 s, stream 124 s, flow 5 s).
+  `cache-warm.yml`: `tc-images` matrix saves bundles (miss: elastic 113 s, sql 94 s, kv 75 s, stream 124 s, flow 5 s).
 - Local: `--check` ok; 21 containers packages, rest union equals whole (no duplicate); `--matrix rest` is
   `["adeflow1","adeflow2","other"]`; adeflow slices 95 and 95 tests (190 top-level, plan said 191); slice
   test time 157 s and 140 s on a loaded 4-CPU box. Docker daemon unavailable here, so `containers/sql` did not
@@ -129,8 +129,7 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
 | `ui (Linux)` end | | 704 | 747 | 708 |
 
   Run A missed every bundle (mirror pulls, no save, no rerun, 326 s against 1424 s before). Runs B and C
-  restored elastic, sql, stream (B) and elastic, sql, kv, stream (C); flow has no tar in B/C restore
-  step list because pulls it through the mirror as needed. Run C green on every go and go-containers job.
+  restored every cache bundle step (elastic, sql, kv, stream; 6 to 22 s each); `flow` has no tar and pulls through the mirror.
 - Targets: `go` about 360 s in runs B and C (target 390): met on hit, 416 s on run A. `go-containers` miss 326 s
   (target 450): met. Hit 335 and 406 s (target 390): run C missed it; setup took 117 s and cache restores added 58 s.
 - Queueing: 26 jobs against the concurrency limit delayed `go adeflow1`, `adeflow2`, `other` by 94 to 133 s in
