@@ -10,7 +10,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P635 | Agent config import/export journey (J-HAR-002): extend `harnessflow` AgentPort tests and `ade-agent-port` UI spec | Done |
 | P636 | MySQL console `DELIMITER` directive (F-A12) | Done |
 | P637 | Mobile approval of agent requests (J-ADE-072, F-B8) | Todo |
-| P638 | Collection file with a bad item: valid items load, bad ones reported (F-A15, J-COLL-003) | Todo |
+| P638 | Collection file with a bad item: valid items load, bad ones reported (F-A15, J-COLL-003) | Done |
 | P639 | Toasts at top right, placed like prompts | Done |
 | P640 | API module: dialog when closing an unsaved tab, new or modified | Todo |
 | P641 | ADE task: own Jira and PR links first in their group | Todo |
@@ -164,3 +164,12 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
 - `Sonner.vue` takes `offset` and `mobileOffset`. `App.vue` mounts `CornerStack` in place of the bottom-right `Toaster`. `ConfigSyncToast` moved from bottom-right to top-right. Still one shadcn-vue toast primitive.
 - UI: new `toast-placement.spec.ts`, 4 cases. 187 of 187 targeted specs pass. Visual baseline `approvals-toast-visual-linux.png` unchanged.
 - No bugs found in existing code.
+
+### P638 Result
+
+- `configfs.YAMLSchemaSkip` drops bad array elements instead of failing the file (`skip.go`, at most 100 per file). Whole-file problems stay whole-file: YAML syntax, anchors, size cap, `/name`, `/variables/...`.
+- apifiles collection load skips per item. Valid items load. A skipped item keeps its last good row. A duplicate id skips the later item. `FileView.skipped` and `CollectionFile.Skipped` carry line, index, id, name, message.
+- Edits to a file with skipped items are refused (`BrokenError`, line of the first skipped item). The file is never rewritten.
+- UI: `ApiConfigProblems.vue` shows a warn Alert per partly loaded file and a Skipped report in FileView, each item with line and reason. i18n keys `studio.api.config.skipped.title`, `label`, `hint`.
+- Flow: `apiflow` `configfiles_test.go` extended, contract `api-collection-skipped.json`; `configfs` `skip_test.go`. UI: `api-collection-skipped.spec.ts`.
+- Known open item "Collection file with one bad item serves no rows on first load" deleted from `docs/ARCHITECTURE.md`.
