@@ -47,6 +47,9 @@ interface State {
     board?: unknown;
     laterTask?: unknown;
     sessions?: unknown;
+    /** What `/api/approvals` lists (default none) and what an answer returns (default: ok per id). */
+    approvals?: unknown;
+    approvalAnswer?: unknown;
   };
   pairWaiters: ServerResponse[];
   /** Outcome resolved before the phone's `POST /api/pair` arrived; the request answers on arrival. */
@@ -217,6 +220,15 @@ export async function startMobileServer(): Promise<MobileServer> {
       res.write(': open\n\n');
       state.streams.add(res);
       res.on('close', () => state.streams.delete(res));
+    } else if (path === '/api/approvals' && method === 'GET') {
+      json(res, 200, state.replies.approvals ?? []);
+    } else if (path === '/api/approvals/answer' && method === 'POST') {
+      const { ids } = JSON.parse(body) as { ids: string[] };
+      json(
+        res,
+        200,
+        state.replies.approvalAnswer ?? ids.map((id) => ({ id, code: '', error: '' })),
+      );
     } else if (method === 'POST' && writeReply(path, body) !== undefined) {
       const fail = state.failNext.get(path);
       if (fail) {

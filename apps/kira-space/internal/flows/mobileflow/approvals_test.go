@@ -160,9 +160,9 @@ func TestPhoneApprovals(t *testing.T) {
 	// A studio item and a branch request that holds an absolute worktree path.
 	const dbID, branchID = "db.query:p637", "branch.request:p637"
 	worktree := filepath.Join(app.Work, "wt", "feat-x")
-	branchPayload, err := json.Marshal(map[string]any{"taskId": "t1", "taskTitle": "Fix login", "items": []any{map[string]any{
-		"id": "i1", "kind": "adopt", "repo": "api", "branch": "feat/x",
-		"holder": map[string]any{"kind": "other", "taskId": "t2", "branchId": "b2", "worktree": worktree},
+	branchPayload, err := json.Marshal(map[string]any{"taskId": "t1", "taskTitle": "Fix login", "items": []adewire.BranchRequestItem{{
+		ID: "c1i1", CodeRepoID: "r1", Repo: "api", Kind: "adopt", Branch: "feat/x", Stacked: []string{}, Source: "session",
+		Holder: &adewire.BranchHolder{Kind: "other", TaskID: "t2", BranchID: "b2", Worktree: worktree},
 	}}})
 	if err != nil {
 		t.Fatal(err)

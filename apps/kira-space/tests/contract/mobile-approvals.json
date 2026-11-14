@@ -251,16 +251,24 @@
       "payload": {
         "items": [
           {
+            "base": "",
             "branch": "feat/x",
+            "codeRepoId": "<masked>",
+            "from": "",
             "holder": {
               "branchId": "b2",
               "kind": "other",
               "taskId": "t2",
               "worktree": "feat-x"
             },
-            "id": "i1",
+            "id": "c1i1",
             "kind": "adopt",
-            "repo": "api"
+            "repo": "api",
+            "session": "",
+            "source": "session",
+            "stacked": [],
+            "stepName": "",
+            "upstream": ""
           }
         ],
         "taskId": "t1",
@@ -321,16 +329,24 @@
       "payload": {
         "items": [
           {
+            "base": "",
             "branch": "feat/x",
+            "codeRepoId": "<masked>",
+            "from": "",
             "holder": {
               "branchId": "b2",
               "kind": "other",
               "taskId": "t2",
               "worktree": "feat-x"
             },
-            "id": "i1",
+            "id": "c1i1",
             "kind": "adopt",
-            "repo": "api"
+            "repo": "api",
+            "session": "",
+            "source": "session",
+            "stacked": [],
+            "stepName": "",
+            "upstream": ""
           }
         ],
         "taskId": "t1",
