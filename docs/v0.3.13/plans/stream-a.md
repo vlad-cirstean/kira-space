@@ -491,6 +491,20 @@ read/count/preview/mutate only exist on frame path (`adapterhost/dataframe.go` `
 - F-A3: console strip note "new session" after automatic reconnect (OQ-CONS-1).
 - F-A4: journalled move of requests between collection files (OQ-API-4 crash safety).
 - F-A5: Copy all label "projected" under projection (OQ-DOC-3 label part).
+- F-A7: Redis edit is string-only. Hash, list, set, zset edits unsupported (J-KV-010).
+- F-A8: SQLite no-PK rowid tables refuse keyed writes by design (D23).
+- F-A9: mutate errors do not name the failing op index.
+- F-A11: 39 of 759 unit tests in `apps/kira-space/tests/unit/studio` fail in isolation with an import cycle (`useTabsStore` before initialization). Identical with this stream's changes stashed.
+- F-A12: MySQL console has no `DELIMITER` directive.
+- F-A13: a `CALL`'s extra result sets are dropped (first set only).
+- F-A14: Mongo console parses numbers as doubles; no cursor chain (`.sort().limit()`).
+- F-A15: a hand-edited collection file with one bad item serves no rows on its first load (validation is whole-file, last-good rows only after a good load). J-COLL-003 "good items load" oracle unmet. Listed in ARCHITECTURE.md Known open items.
+- F-A16: Kafka and SQS composer: body required, no FIFO group/dedup fields, single message only.
+- F-A17: SQLite read-only console refusal shows raw driver text.
+- F-A18: table allow list (J-MCP-002) gates statement text, not triggers.
+- F-A19: Browse offset paging can duplicate or skip rows when rows are inserted or deleted ahead of the cursor.
+- F-A20: guard coverage limits (see A9 notes).
+- No global variable scope exists in the app; J-ENV-011 covers collection and environment variables.
 - Add each bug found needing design decision here with journey id; orchestrator turns list into SPEC rows.
 
 ## Done when
@@ -499,3 +513,36 @@ read/count/preview/mutate only exist on frame path (`adapterhost/dataframe.go` `
 - Each `NEW both` UI half and flow half read same contract. Stale contracts above have reader and writer.
 - `grep -rn "time.Sleep\|waitForTimeout" <new files>` is empty.
 - Pre-commit hook green on every commit; worktree rebases cleanly on chapter branch.
+
+## Result
+
+Done. A0 to A13 landed, each with flow half and UI half where the plan names both. Own specs pass; no full UI suite run.
+
+Decisions built and tested (flow and UI):
+- Decision 2 (lost ack keeps staged edits, "may or may not be saved"): `TestGridLostAck`, contract `studio-grid-lost-ack`, `grid-lost-ack.spec.ts`.
+- Decision 3 (concurrent-edit guard, `E_CONFLICT` with `changed:true`, UI confirm then resend unguarded) in all four places: grid row update and delete, Mongo whole-document replace, saved query (console, Discover), API request (`Expect` on `collections:saveRequest`, `useSeenSaved`; `TestSavedRequestTwoWindows`, `api-request-conflict.spec.ts`). `confirmOverwrite` and `guardedSavedWrite` moved to `studio/state/`.
+- Decision 4 (refuse `_id` edit), 6 (S3 unreadable ACL warning), 7 (SQS repeated attribute name refused), 8 (tab close with open transaction asks, rolls back).
+
+Product bugs fixed:
+1. SQLite composite or nullable-key tables not editable, key lost in DDL.
+2. Empty paste staged `''`; now NULL. Unchanged pasted cells skipped.
+3. Lost COMMIT ack message; now `commitOutcomeUnknown`.
+4. Redis update resurrected expired key and dropped TTL.
+5. S3 edit overwrote a replaced object.
+6. Truncated-copy notice, Delete clears to NULL, Ctrl+A in cell editor, binary INSERT literals.
+7. ClickHouse console accepted a user FORMAT clause.
+8. Grid update and delete overwrote server-changed rows.
+9. Console splitter on trigger and compound bodies; SQLite trigger refusal.
+10. Saved-query concurrent edit; Redis console binary reply flag; Discover Run on a restored tab; Kibana test op id.
+11. Page token fingerprint ignored key columns.
+12. SQLite Definition DDL omitted explicit indexes.
+13. Kafka browse accepted a trimmed position; SQS repeated attribute names.
+14. API request two-window overwrite.
+15. Postman re-import reused the display name; now suffixed (OQ-API-7).
+16. gRPC unary deadline did not cover the dial (300 ms call took 5 s).
+17. gRPC non-ASCII metadata value gave a raw transport error; now `BadRequest` naming the key.
+18. Flaky busy-timeout in a test helper.
+
+New contracts: `studio-grid-lost-ack`, `api-copy-url`, `api-request-two-windows`, plus earlier `studio-*` set.
+Tests run: new and changed Go flow packages (dbflow, apiflow, grpcflow, dbmcpflow, kafka, sqs, adapters touched), grpcclient, and the new UI specs on project `ui`.
+Follow-ups: see list above.

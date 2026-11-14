@@ -1,7 +1,7 @@
 package testsupport
 
 import (
-	"io"
+	"bytes"
 	"net"
 	"strconv"
 	"sync"
@@ -20,6 +20,7 @@ type PausableProxy struct {
 	mu     sync.Mutex
 	cond   *sync.Cond
 	paused bool
+	marker string
 	conns  []net.Conn
 }
 
@@ -59,9 +60,39 @@ func (p *PausableProxy) accept() {
 		p.mu.Lock()
 		p.conns = append(p.conns, client, upstream)
 		p.mu.Unlock()
-		go func() { _, _ = io.Copy(upstream, client); _ = upstream.Close() }()
+		go func() { p.forward(upstream, client); _ = upstream.Close() }()
 		go p.pump(client, upstream)
 	}
+}
+
+// forward copies client bytes upstream; once they contain the PauseWhenSent marker it forwards them
+// and pauses, so the statement runs on the server while its answer is withheld.
+func (p *PausableProxy) forward(upstream, client net.Conn) {
+	buf := make([]byte, 32*1024)
+	for {
+		n, err := client.Read(buf)
+		if n > 0 {
+			if _, werr := upstream.Write(buf[:n]); werr != nil {
+				return
+			}
+			p.mu.Lock()
+			if p.marker != "" && bytes.Contains(buf[:n], []byte(p.marker)) {
+				p.marker = ""
+				p.paused = true
+			}
+			p.mu.Unlock()
+		}
+		if err != nil {
+			return
+		}
+	}
+}
+
+// PauseWhenSent pauses the proxy right after the client sends a packet containing marker.
+func (p *PausableProxy) PauseWhenSent(marker string) {
+	p.mu.Lock()
+	p.marker = marker
+	p.mu.Unlock()
 }
 
 func (p *PausableProxy) pump(client, upstream net.Conn) {
@@ -98,6 +129,17 @@ func (p *PausableProxy) Resume() {
 	p.paused = false
 	p.mu.Unlock()
 	p.cond.Broadcast()
+}
+
+// Kill drops every open connection, as a dying network does, and discards withheld bytes. New
+// connections still work.
+func (p *PausableProxy) Kill() {
+	p.mu.Lock()
+	for _, c := range p.conns {
+		_ = c.Close()
+	}
+	p.conns = nil
+	p.mu.Unlock()
 }
 
 func (p *PausableProxy) close() {

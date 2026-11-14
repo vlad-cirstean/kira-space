@@ -39,11 +39,13 @@ const FIRST_UPDATE = {
   kind: 'update',
   key: { tenant_id: '1', entity_id: '1' },
   changes: { name: 'committed value' },
+  expect: { name: 'tenant 1 / entity 1' },
 } as const;
 const SECOND_UPDATE = {
   kind: 'update',
   key: { tenant_id: '1', entity_id: '2' },
   changes: { name: 'open edit' },
+  expect: { name: 'tenant 1 / entity 2' },
 } as const;
 
 function portFor(ops: readonly unknown[], secondName: string): PortSnapshot[] {

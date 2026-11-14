@@ -25,9 +25,21 @@ export function useKeyValueActions(
   // S3 PutObject is an immediate write with no undo: the cell editor only stages a draft here
   // and the explicit Save is the sole caller of saveValueEdit for the object body.
   const objectDraft = ref<string | null>(null);
-  const objectSave = useAsyncAction((value: string) =>
-    saveValueEdit(viewKey(), gate.keyName.value, value),
-  );
+  let declined = false;
+  const objectSave = useAsyncAction(async (value: string) => {
+    declined = !(await saveValueEdit(viewKey(), gate.keyName.value, value, openedETag()));
+  });
+
+  // The object page lists its ETag as a row; it is the version the draft was edited against.
+  function openedETag(): string | undefined {
+    const p = gate.page.value;
+    if (p?.redisType !== 'object') return undefined;
+    for (let i = 0; i < p.rowCount; i++) {
+      const row = gate.rowAt(i);
+      if (row?.field === 'ETag') return row.value;
+    }
+    return undefined;
+  }
 
   // A reload leaves a staged draft and the published cell stale: a later Save could overwrite newer data.
   let selectedRow: number | null = null;
@@ -44,7 +56,7 @@ export function useKeyValueActions(
       objectSave.error.value = t('studio.common.connectionLost.error');
       return;
     }
-    if (await objectSave.run(objectDraft.value)) objectDraft.value = null;
+    if ((await objectSave.run(objectDraft.value)) && !declined) objectDraft.value = null;
   }
 
   // The cell editor panel previews any clicked row read-only; only the S3 Body row can stage an edit.

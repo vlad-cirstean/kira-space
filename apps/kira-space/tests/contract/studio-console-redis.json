@@ -1,0 +1,115 @@
+{
+  "binary": {
+    "binary": [
+      [
+        false,
+        true
+      ]
+    ],
+    "rows": [
+      [
+        "GET",
+        "YQBi//5j"
+      ]
+    ],
+    "statement": "GET cons:bin"
+  },
+  "refused": {
+    "arity": {
+      "code": "E_QUERY",
+      "message": "ERR wrong number of arguments for 'get' command"
+    },
+    "blpop": {
+      "code": "E_QUERY",
+      "message": "BLPOP needs a finite block timeout of at most 600 seconds."
+    },
+    "multi": {
+      "code": "E_UNSUPPORTED",
+      "message": "MULTI changes state shared by every later command on this connection. It isn’t supported in the console."
+    },
+    "select": {
+      "code": "E_UNSUPPORTED",
+      "message": "SELECT isn’t supported in the console. Use the database selector instead."
+    },
+    "subscribe": {
+      "code": "E_UNSUPPORTED",
+      "message": "SUBSCRIBE changes state shared by every later command on this connection. It isn’t supported in the console."
+    },
+    "unknown": {
+      "code": "E_QUERY",
+      "message": "ERR unknown command 'NOSUCH'"
+    }
+  },
+  "rows": {
+    "eval": [
+      [
+        "0",
+        "1"
+      ],
+      [
+        "1",
+        "[2,\"x\"]"
+      ]
+    ],
+    "get": [
+      [
+        "GET",
+        "v"
+      ]
+    ],
+    "hgetall": [],
+    "hset": [
+      [
+        "HSET",
+        "2"
+      ]
+    ],
+    "lrange": [],
+    "nil": [
+      [
+        "GET",
+        "(nil)"
+      ]
+    ],
+    "quotedGet": [
+      [
+        "GET",
+        "x\ny"
+      ]
+    ],
+    "quotedSet": [
+      [
+        "SET",
+        "OK"
+      ]
+    ],
+    "rpush": [
+      [
+        "RPUSH",
+        "2"
+      ]
+    ],
+    "set": [
+      [
+        "SET",
+        "OK"
+      ]
+    ],
+    "zadd": [
+      [
+        "ZADD",
+        "1"
+      ]
+    ],
+    "zrange": [
+      [
+        "0",
+        "m"
+      ],
+      [
+        "1",
+        "1"
+      ]
+    ]
+  }
+}

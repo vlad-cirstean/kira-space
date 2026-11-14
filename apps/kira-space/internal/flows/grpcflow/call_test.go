@@ -2,6 +2,7 @@ package grpcflow
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -283,6 +284,35 @@ func TestTLSTargets(t *testing.T) {
 		}
 	})
 
+	// J-GRPC-014: a certificate the client has no root for (the test CA's leaf, with no CA given)
+	// is refused and the call never reaches the server.
+	t.Run("an unknown certificate is refused", func(t *testing.T) {
+		before := len(srv.Calls())
+		u := callArgs(srv.Addr, "Unary", `{}`)
+		u.TLS = grpcclient.TLSConfig{Enabled: true}
+		_, err := app.W.Grpc.Call(ctx, u)
+		e := ipcErr(t, err)
+		if e.Code != grpcclient.CodeTransport || !strings.Contains(strings.ToLower(e.Message), "certificate") {
+			t.Errorf("error = %s %q, want %s naming the certificate", e.Code, e.Message, grpcclient.CodeTransport)
+		}
+		if len(srv.Calls()) != before {
+			t.Error("a refused handshake reached the server")
+		}
+	})
+
+	t.Run("TLS against a plaintext server", func(t *testing.T) {
+		plain := flowharness.GRPC(t)
+		u := callArgs(plain.Addr, "Unary", `{}`)
+		u.TLS = grpcclient.TLSConfig{Enabled: true, CAFile: srv.CAFile}
+		_, err := app.W.Grpc.Call(ctx, u)
+		if e := ipcErr(t, err); e.Code != grpcclient.CodeTransport && e.Code != grpcclient.CodeTimeout {
+			t.Errorf("error = %s %q, want %s or %s", e.Code, e.Message, grpcclient.CodeTransport, grpcclient.CodeTimeout)
+		}
+		if len(plain.Calls()) != 0 {
+			t.Errorf("a TLS client reached a plaintext server: %+v", plain.Calls())
+		}
+	})
+
 	t.Run("missing CA file", func(t *testing.T) {
 		u := callArgs(srv.Addr, "Unary", `{}`)
 		u.TLS = grpcclient.TLSConfig{Enabled: true, CAFile: "/nonexistent/ca.pem"}
@@ -416,5 +446,206 @@ func TestLargeMessages(t *testing.T) {
 		if n != 1 {
 			t.Fatalf("seq %d arrived %d times, want once", seq, n)
 		}
+	}
+}
+
+// protoArgs calls from a .proto file, so the schema needs no connection and a test can aim a call at
+// an address that never answers.
+func protoArgs(srv *flowharness.GRPCServer, target, method, msg string) bridge.GrpcCallArgs {
+	a := callArgs(target, method, msg)
+	a.DescriptorMode = "proto"
+	a.ProtoPath = filepath.Join(srv.ProtoDir, "flow.proto")
+	a.ImportPaths = []string{srv.ProtoDir}
+	return a
+}
+
+// J-GRPC-011. A unary call ends by whichever comes first: its own deadline (E_TIMEOUT), Stop
+// (E_CANCELLED) or the connect wait (E_TIMEOUT naming the target). Each one leaves the server with
+// nothing in flight.
+func TestUnaryDeadlineCancelAndConnectWait(t *testing.T) {
+	app := flowharness.New(t)
+	srv := flowharness.GRPC(t)
+
+	cancelAfter := func(args bridge.GrpcCallArgs, wait func()) error {
+		t.Helper()
+		done := make(chan error, 1)
+		go func() {
+			_, err := app.W.Grpc.Call(ctx, args)
+			done <- err
+		}()
+		wait()
+		if err := app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: args.OpID}); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case err := <-done:
+			return err
+		case <-time.After(5 * time.Second):
+			t.Fatal("Call did not return after Ops.Cancel")
+			return nil
+		}
+	}
+	reached := func(n int) func() {
+		return func() {
+			waitUntil(t, "the call to reach the server", func() bool { return len(srv.Calls()) >= n && srv.InFlight() > 0 })
+		}
+	}
+
+	t.Run("cancel before the deadline", func(t *testing.T) {
+		args := callArgs(srv.Addr, "Slow", `{}`)
+		args.TimeoutMs = 30000
+		err := cancelAfter(args, reached(len(srv.Calls())+1))
+		if e := ipcErr(t, err); e.Code != grpcclient.CodeCancelled {
+			t.Errorf("error = %s %q, want %s", e.Code, e.Message, grpcclient.CodeCancelled)
+		}
+		waitUntil(t, "the server to see the call end", func() bool { return srv.InFlight() == 0 })
+		if op := waitOp(t, app, args.OpID); op.Status != "cancelled" {
+			t.Errorf("op status = %s, want cancelled", op.Status)
+		}
+	})
+
+	t.Run("deadline before cancel", func(t *testing.T) {
+		args := callArgs(srv.Addr, "Slow", `{}`)
+		args.TimeoutMs = 250
+		start := time.Now()
+		_, err := app.W.Grpc.Call(ctx, args)
+		e := ipcErr(t, err)
+		if e.Code != grpcclient.CodeTimeout || !strings.Contains(e.Message, "250ms") {
+			t.Errorf("error = %s %q, want %s naming 250ms", e.Code, e.Message, grpcclient.CodeTimeout)
+		}
+		if took := time.Since(start); took < 200*time.Millisecond || took > 3*time.Second {
+			t.Errorf("took %s, want about 250ms", took.Round(time.Millisecond))
+		}
+		waitUntil(t, "the server to see the call end", func() bool { return srv.InFlight() == 0 })
+		// Cancelling after the call is over is quiet.
+		if err := app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: args.OpID}); err != nil {
+			t.Logf("Cancel after the deadline: %v", err)
+		}
+		if op := waitOp(t, app, args.OpID); op.Status != "error" {
+			t.Errorf("op status = %s, want error", op.Status)
+		}
+	})
+
+	t.Run("no deadline waits for Stop", func(t *testing.T) {
+		args := callArgs(srv.Addr, "Slow", `{}`)
+		args.TimeoutMs = 0
+		before := len(srv.Calls())
+		err := cancelAfter(args, func() {
+			waitUntil(t, "the call to reach the server", func() bool { return len(srv.Calls()) > before && srv.InFlight() > 0 })
+		})
+		if e := ipcErr(t, err); e.Code != grpcclient.CodeCancelled {
+			t.Errorf("error = %s %q, want %s", e.Code, e.Message, grpcclient.CodeCancelled)
+		}
+		waitUntil(t, "the server to see the call end", func() bool { return srv.InFlight() == 0 })
+	})
+
+	t.Run("cancel during the connect wait", func(t *testing.T) {
+		addr, accepted := flowharness.SilentAccepting(t)
+		args := protoArgs(srv, addr, "Unary", `{}`)
+		args.TimeoutMs = 30000
+		start := time.Now()
+		err := cancelAfter(args, func() {
+			select {
+			case <-accepted:
+			case <-time.After(5 * time.Second):
+				t.Fatal("the call never connected to the silent server")
+			}
+		})
+		if e := ipcErr(t, err); e.Code != grpcclient.CodeCancelled {
+			t.Errorf("error = %s %q, want %s", e.Code, e.Message, grpcclient.CodeCancelled)
+		}
+		if took := time.Since(start); took > 3*time.Second {
+			t.Errorf("cancel took %s, want it to end the connect wait at once", took.Round(time.Millisecond))
+		}
+	})
+
+	t.Run("connect wait outlasts the call deadline", func(t *testing.T) {
+		addr := flowharness.Silent(t)
+		args := protoArgs(srv, addr, "Unary", `{}`)
+		args.TimeoutMs = 300
+		start := time.Now()
+		_, err := app.W.Grpc.Call(ctx, args)
+		e := ipcErr(t, err)
+		if e.Code != grpcclient.CodeTimeout || !strings.Contains(e.Message, addr) || !strings.Contains(e.Message, "300ms") {
+			t.Errorf("error = %s %q, want %s naming %s and 300ms", e.Code, e.Message, grpcclient.CodeTimeout, addr)
+		}
+		if took := time.Since(start); took > 2*time.Second {
+			t.Errorf("a 300ms deadline ended after %s, want the connect wait cut at the deadline", took.Round(time.Millisecond))
+		}
+	})
+}
+
+// J-GRPC-012. What the server receives is what the metadata table held: repeated keys arrive in
+// order, keys are lowercased and trimmed, an empty key is dropped, a `-bin` key carries any bytes
+// and a plain key carries printable ASCII only.
+func TestMetadataEdgeCases(t *testing.T) {
+	app := flowharness.New(t)
+	srv := flowharness.GRPC(t)
+
+	sent := func(pairs ...grpcclient.MetaPair) (string, error) {
+		t.Helper()
+		args := callArgs(srv.Addr, "Unary", `{"text":"m"}`)
+		args.Metadata = pairs
+		before := len(srv.Calls())
+		_, err := app.W.Grpc.Call(ctx, args)
+		if err != nil {
+			return "", err
+		}
+		calls := srv.Calls()
+		if len(calls) != before+1 {
+			t.Fatalf("server calls = %d, want %d", len(calls), before+1)
+		}
+		return "", nil
+	}
+	lastMD := func() map[string][]string { c := srv.Calls(); return c[len(c)-1].Metadata }
+
+	if _, err := sent(
+		grpcclient.MetaPair{Name: "X-Mixed-Case", Value: "one"},
+		grpcclient.MetaPair{Name: "  x-trim  ", Value: "two"},
+		grpcclient.MetaPair{Name: "x-repeat", Value: "a"},
+		grpcclient.MetaPair{Name: "x-repeat", Value: "b"},
+		grpcclient.MetaPair{Name: "x-repeat", Value: "a"},
+		grpcclient.MetaPair{Name: "", Value: "dropped"},
+		grpcclient.MetaPair{Name: "x-empty", Value: ""},
+	); err != nil {
+		t.Fatal(err)
+	}
+	md := lastMD()
+	if got := md["x-mixed-case"]; len(got) != 1 || got[0] != "one" {
+		t.Errorf("x-mixed-case = %v, want [one]", got)
+	}
+	if got := md["x-trim"]; len(got) != 1 || got[0] != "two" {
+		t.Errorf("x-trim = %v, want [two]", got)
+	}
+	if got := strings.Join(md["x-repeat"], ","); got != "a,b,a" {
+		t.Errorf("x-repeat = %q, want a,b,a in order", got)
+	}
+	if got, ok := md["x-empty"]; !ok || len(got) != 1 || got[0] != "" {
+		t.Errorf("x-empty = %v (present %v), want one empty value", got, ok)
+	}
+	if _, ok := md[""]; ok {
+		t.Error("an empty key reached the server")
+	}
+
+	// A -bin key carries bytes the table showed as text, unicode and NUL included.
+	const binary = "café ☃ \x00\x01 end"
+	if _, err := sent(grpcclient.MetaPair{Name: "x-trace-bin", Value: binary}); err != nil {
+		t.Fatal(err)
+	}
+	if got := lastMD()["x-trace-bin"]; len(got) != 1 || got[0] != binary {
+		t.Errorf("x-trace-bin = %q, want the exact bytes %q", got, binary)
+	}
+
+	// A plain key with a unicode value cannot go on the wire; the app says so and sends nothing.
+	before := len(srv.Calls())
+	args := callArgs(srv.Addr, "Unary", `{}`)
+	args.Metadata = []grpcclient.MetaPair{{Name: "x-name", Value: "café"}}
+	_, err := app.W.Grpc.Call(ctx, args)
+	e := ipcErr(t, err)
+	if e.Code != grpcclient.CodeBadRequest || !strings.Contains(e.Message, "x-name") {
+		t.Errorf("unicode value on a plain key = %s %q, want %s naming x-name", e.Code, e.Message, grpcclient.CodeBadRequest)
+	}
+	if len(srv.Calls()) != before {
+		t.Error("a refused metadata value reached the server")
 	}
 }

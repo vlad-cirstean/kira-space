@@ -95,6 +95,20 @@ var (
 	rowReturningRE   = regexp.MustCompile(`(?i)^\s*(?:\(|(?:SELECT|WITH|SHOW|DESCRIBE|DESC|EXPLAIN|EXISTS|FROM)\b)`)
 )
 
+// outputFormatRE matches a trailing `FORMAT <name>` clause (optionally followed by `;`).
+var outputFormatRE = regexp.MustCompile(`(?is)\bFORMAT\s+[A-Za-z][A-Za-z0-9_]*\s*;?\s*$`)
+
+// outputFormatClause returns the user's own trailing FORMAT clause ("" when none). The console reads
+// every result in its own format, so a different one would arrive as a payload the reader cannot parse.
+func outputFormatClause(sql string) string {
+	masked, ok := adapters.MaskSQLLiterals(sql, adapters.ClickHouseDialect)
+	if !ok {
+		masked = sql
+	}
+	m := outputFormatRE.FindString(masked)
+	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(m), ";"))
+}
+
 func isRowReturning(sql string) bool {
 	stripped := leadingCommentRE.ReplaceAllString(sql, "")
 	return rowReturningRE.MatchString(stripped)
@@ -250,6 +264,9 @@ func execute(ctx context.Context, h *Handle, op *adapters.OpCtx, track TrackQuer
 			return nil, err
 		}
 		if isRowReturning(sql) {
+			if clause := outputFormatClause(sql); clause != "" {
+				return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.formatClause.body", map[string]string{"clause": clause}, nil)
+			}
 			p, err := withStatementTimeout(ctx, h, timeout, nextQueryID, log, func(ctx context.Context, queryID string, extra map[string]string) (page.TabularPage, error) {
 				return runRowReturning(ctx, h, queryID, op, track, sql, limit, extra)
 			})

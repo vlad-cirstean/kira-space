@@ -1,0 +1,27 @@
+{
+  "copy": {
+    "canonical": "[\n  {\n    \"_id\": {\n      \"$oid\": \"65f000000000000000000001\"\n    },\n    \"status\": \"open\",\n    \"big\": {\n      \"$numberLong\": \"9007199254740993\"\n    },\n    \"dec\": {\n      \"$numberDecimal\": \"1.10\"\n    },\n    \"when\": {\n      \"$date\": {\n        \"$numberLong\": \"981173106000\"\n      }\n    },\n    \"bin\": {\n      \"$binary\": {\n        \"base64\": \"MDEyMzQ1Njc4OWFiY2RlZg==\",\n        \"subType\": \"04\"\n      }\n    },\n    \"nested\": [\n      [\n        {\n          \"$numberInt\": \"1\"\n        },\n        [\n          {\n            \"$numberInt\": \"2\"\n          }\n        ]\n      ],\n      []\n    ],\n    \"none\": null\n  },\n  {\n    \"_id\": {\n      \"$oid\": \"65f000000000000000000002\"\n    },\n    \"status\": \"done\",\n    \"a.b\": \"dot\"\n  }\n]",
+    "plain": "[\n  {\n    \"_id\": \"65f000000000000000000001\",\n    \"status\": \"open\",\n    \"big\": 9007199254740992,\n    \"dec\": 1.1,\n    \"when\": \"2001-02-03 04:05:06.000Z\",\n    \"bin\": {\n      \"binary\": {\n        \"base64\": \"MDEyMzQ1Njc4OWFiY2RlZg==\",\n        \"subType\": \"04\"\n      }\n    },\n    \"nested\": [\n      [\n        1,\n        [\n          2\n        ]\n      ],\n      []\n    ],\n    \"none\": null\n  },\n  {\n    \"_id\": \"65f000000000000000000002\",\n    \"status\": \"done\",\n    \"a.b\": \"dot\"\n  }\n]",
+    "relaxed": "[\n  {\n    \"_id\": {\n      \"$oid\": \"65f000000000000000000001\"\n    },\n    \"status\": \"open\",\n    \"big\": {\n      \"$numberLong\": \"9007199254740993\"\n    },\n    \"dec\": {\n      \"$numberDecimal\": \"1.10\"\n    },\n    \"when\": {\n      \"$date\": \"2001-02-03 04:05:06.000Z\"\n    },\n    \"bin\": {\n      \"$binary\": {\n        \"base64\": \"MDEyMzQ1Njc4OWFiY2RlZg==\",\n        \"subType\": \"04\"\n      }\n    },\n    \"nested\": [\n      [\n        1,\n        [\n          2\n        ]\n      ],\n      []\n    ],\n    \"none\": null\n  },\n  {\n    \"_id\": {\n      \"$oid\": \"65f000000000000000000002\"\n    },\n    \"status\": \"done\",\n    \"a.b\": \"dot\"\n  }\n]",
+    "shell": "{\"_id\":ObjectId(\"65f000000000000000000001\"),\"status\":\"open\",\"big\":NumberLong(\"9007199254740993\"),\"dec\":NumberDecimal(\"1.10\"),\"when\":ISODate(\"2001-02-03 04:05:06.000Z\"),\"bin\":{\"$binary\":{\"base64\":\"MDEyMzQ1Njc4OWFiY2RlZg==\",\"subType\":\"04\"}},\"nested\":[[NumberInt(1),[NumberInt(2)]],[]],\"none\":null}\n{\"_id\":ObjectId(\"65f000000000000000000002\"),\"status\":\"done\",\"a.b\":\"dot\"}"
+  },
+  "page": {
+    "bodies": [
+      "{\"_id\":{\"$oid\":\"65f000000000000000000001\"},\"status\":\"open\",\"big\":{\"$numberLong\":\"9007199254740993\"},\"dec\":{\"$numberDecimal\":\"1.10\"},\"when\":{\"$date\":{\"$numberLong\":\"981173106000\"}},\"bin\":{\"$binary\":{\"base64\":\"MDEyMzQ1Njc4OWFiY2RlZg==\",\"subType\":\"04\"}},\"nested\":[[{\"$numberInt\":\"1\"},[{\"$numberInt\":\"2\"}]],[]],\"none\":null}",
+      "{\"_id\":{\"$oid\":\"65f000000000000000000002\"},\"status\":\"done\",\"a.b\":\"dot\"}"
+    ],
+    "ids": [
+      "{\"$oid\":\"65f000000000000000000001\"}",
+      "{\"$oid\":\"65f000000000000000000002\"}"
+    ],
+    "statement": "db.cons_docs.find({})"
+  },
+  "refused#chain": {
+    "code": "E_QUERY",
+    "message": "Unexpected trailing content after the statement."
+  },
+  "refused#unterminated": {
+    "code": "E_QUERY",
+    "message": "Expected “}” at position 33."
+  }
+}

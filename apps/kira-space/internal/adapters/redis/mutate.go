@@ -49,7 +49,7 @@ func renderOpText(op model.MutationRowOp) (string, error) {
 		// KEEPTTL: editing a value must not silently clear whatever expiry the key already had —
 		// a plain SET (this adapter's own prior behaviour) resets TTL to none, which is a real
 		// data-loss surprise on every edit of a key that happens to expire (P2 R1 finding).
-		return "SET " + key + " " + value + " KEEPTTL", nil
+		return "SET " + key + " " + value + " XX KEEPTTL", nil
 	case "delete":
 		key, err := keyNameFrom(op.Key, "delete")
 		if err != nil {
@@ -113,9 +113,14 @@ func applyUpdate(ctx context.Context, conn *goredis.Client, rowOp model.Mutation
 		return 0, err
 	}
 	// goredis.KeepTTL, not 0: a plain SET clears the key's existing expiry, silently
-	// dropping a TTL the user never asked to change (P2 R1 finding).
-	if err := conn.Set(ctx, key, value, goredis.KeepTTL).Err(); err != nil {
+	// dropping a TTL the user never asked to change (P2 R1 finding). XX: a key that expired or was
+	// deleted since the user read it must not be recreated by the save.
+	updated, err := conn.SetXX(ctx, key, value, goredis.KeepTTL).Result()
+	if err != nil {
 		return 0, mapError(err)
+	}
+	if !updated {
+		return 0, adapters.New(adapters.CodeNotFound, "key no longer exists: "+key, nil)
 	}
 	return 1, nil
 }

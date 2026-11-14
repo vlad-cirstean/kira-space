@@ -19,8 +19,11 @@ import (
 // upload ride the existing mutate() path with the same sentinel-through-RowValues technique
 // redis/mutate.go established.
 const (
-	objectKeySentinel         = "_key"
-	objectFileSentinel        = "$file"
+	objectKeySentinel  = "_key"
+	objectFileSentinel = "$file"
+	objectETagSentinel = "$etag"
+	// objectACLResetSentinel is sent once the user confirmed that an unreadable ACL is not kept.
+	objectACLResetSentinel    = "$aclReset"
 	objectContentTypeSentinel = "$contentType"
 )
 
@@ -172,15 +175,16 @@ type grantHeaders struct{ read, readACP, writeACP, fullControl *string }
 // aclGrantHeaders reads the object's ACL so applyUpdate can re-send it: PutObject replaces the ACL
 // with the default (owner only), which would silently make a public-read object private. Where the
 // ACL cannot be read (ACLs disabled, no s3:GetObjectAcl, a store without ACL support) the object
-// is edited as before and the gap is logged; only a cancelled op or an unrepresentable grant fails.
-func aclGrantHeaders(ctx context.Context, client *s3.Client, bucket, key string, log func(level, message string)) (grantHeaders, error) {
+// is edited only after the caller confirmed the loss (readable false); a cancelled op or an
+// unrepresentable grant fails.
+func aclGrantHeaders(ctx context.Context, client *s3.Client, bucket, key string, log func(level, message string)) (grants grantHeaders, readable bool, err error) {
 	acl, err := client.GetObjectAcl(ctx, &s3.GetObjectAclInput{Bucket: aws.String(bucket), Key: aws.String(key)})
 	if err != nil {
 		if cancelled := adapters.CheckCancelled(ctx); cancelled != nil {
-			return grantHeaders{}, cancelled
+			return grantHeaders{}, false, cancelled
 		}
 		log("warn", "s3: could not read the ACL of s3://"+bucket+"/"+key+", it is not preserved across this edit: "+err.Error())
-		return grantHeaders{}, nil
+		return grantHeaders{}, false, nil
 	}
 	byPermission := map[types.Permission][]string{}
 	for _, g := range acl.Grants {
@@ -200,13 +204,13 @@ func aclGrantHeaders(ctx context.Context, client *s3.Client, bucket, key string,
 		case g.Grantee.Type == types.TypeAmazonCustomerByEmail && g.Grantee.EmailAddress != nil:
 			grantee = `emailAddress="` + *g.Grantee.EmailAddress + `"`
 		default:
-			return grantHeaders{}, adapters.T(adapters.CodeUnsupported, "backend.studio.adapter.s3AclGrant.body", nil, nil)
+			return grantHeaders{}, false, adapters.T(adapters.CodeUnsupported, "backend.studio.adapter.s3AclGrant.body", nil, nil)
 		}
 		switch g.Permission {
 		case types.PermissionRead, types.PermissionReadAcp, types.PermissionWriteAcp, types.PermissionFullControl:
 			byPermission[g.Permission] = append(byPermission[g.Permission], grantee)
 		default:
-			return grantHeaders{}, adapters.T(adapters.CodeUnsupported, "backend.studio.adapter.s3AclGrant.body", nil, nil)
+			return grantHeaders{}, false, adapters.T(adapters.CodeUnsupported, "backend.studio.adapter.s3AclGrant.body", nil, nil)
 		}
 	}
 	header := func(p types.Permission) *string {
@@ -218,7 +222,7 @@ func aclGrantHeaders(ctx context.Context, client *s3.Client, bucket, key string,
 	return grantHeaders{
 		read: header(types.PermissionRead), readACP: header(types.PermissionReadAcp),
 		writeACP: header(types.PermissionWriteAcp), fullControl: header(types.PermissionFullControl),
-	}, nil
+	}, true, nil
 }
 
 // isConditionalPutUnsupported reports whether err is an S3-compatible endpoint's own signal that it
@@ -252,6 +256,11 @@ func applyUpdate(ctx context.Context, client *s3.Client, bucket string, op model
 	if err != nil {
 		return 0, mapError(err)
 	}
+	// OQ-KV-1: the editor sends the ETag of the body it opened. A different ETag now means someone
+	// replaced the object since, and the save is refused rather than overwriting their change.
+	if expected, ok := op.Key.Get(objectETagSentinel); ok && expected != nil && (head.ETag == nil || *head.ETag != *expected) {
+		return 0, adapters.T(adapters.CodeQuery, "backend.studio.adapter.s3ObjectChanged.body", nil, nil)
+	}
 	// This editor has no path to carry object tags across a PutObject replace (which drops
 	// them outright) without a second GetObjectTagging/PutObjectTagging round trip — refusing the
 	// edit is the more contained fix (over adding that second call's own surface) and never
@@ -259,9 +268,13 @@ func applyUpdate(ctx context.Context, client *s3.Client, bucket string, op model
 	if head.TagCount != nil && *head.TagCount > 0 {
 		return 0, adapters.T(adapters.CodeUnsupported, "backend.studio.adapter.s3Tags.body", nil, nil)
 	}
-	grants, err := aclGrantHeaders(ctx, client, bucket, key, log)
+	grants, aclReadable, err := aclGrantHeaders(ctx, client, bucket, key, log)
 	if err != nil {
 		return 0, err
+	}
+	// Decision 6: PutObject resets an ACL this edit could not read; the save waits for a confirm.
+	if _, confirmed := op.Key.Get(objectACLResetSentinel); !aclReadable && !confirmed {
+		return 0, adapters.T(adapters.CodeConflict, "backend.studio.adapter.s3AclUnreadable.body", nil, nil)
 	}
 	in := &s3.PutObjectInput{
 		Bucket: aws.String(bucket), Key: aws.String(key), Body: strings.NewReader(value),

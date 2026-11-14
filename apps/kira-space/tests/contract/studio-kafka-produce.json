@@ -1,0 +1,48 @@
+{
+  "mutate:absentBodyError": {
+    "Code": "E_QUERY",
+    "Message": "a new message requires a $body"
+  },
+  "mutate:malformedHeadersError": {
+    "Code": "E_QUERY",
+    "Message": "The headers aren’t valid JSON."
+  },
+  "mutate:ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "kind": "insert",
+        "values": {
+          "$body": "hello",
+          "$headers": "{\"trace\":\"a\",\"trace\":\"b\",\"type\":\"x\"}",
+          "$key": "k1"
+        }
+      },
+      {
+        "kind": "insert",
+        "values": {
+          "$body": "hello",
+          "$key": null
+        }
+      },
+      {
+        "kind": "insert",
+        "values": {
+          "$body": "",
+          "$key": "k1"
+        }
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
+  "mutate:partialError": {
+    "Code": "E_QUERY",
+    "Message": "4 of 5 messages were produced. Messages 3 failed: MESSAGE_TOO_LARGE: The request included a message larger than the max message size the server will accept (uncompressed_bytes=1049602)"
+  },
+  "mutate:readOnlyError": {
+    "Code": "E_UNSUPPORTED",
+    "Message": "This connection is read-only."
+  }
+}

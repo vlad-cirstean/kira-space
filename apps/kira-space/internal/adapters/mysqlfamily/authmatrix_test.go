@@ -100,6 +100,7 @@ func runFamilyAuthMatrix(t *testing.T, kind string, fixture any, cfg model.Resol
 				// The cross-database read the scoped role (SELECT on kira_test only) cannot reach —
 				// Children(root) already asserts visibility (P25); nothing asserted a read.
 				testsupport.ReadFirstPage(testsupport.NodePath(cfg.ID, testsupport.Seg("database", "kira_analytics"), testsupport.Seg("table", "events"))),
+				familyTypeRoundTrip(cfg),
 			},
 		},
 		{

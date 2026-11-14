@@ -121,8 +121,8 @@ func NewParamRenderer(placeholder func(int) string, isBinary func(name string) b
 	}
 }
 
-func whereFromKey(key model.RowValues, render ValueRenderer, params *[]any, quote func(string) string) (string, error) {
-	parts := make([]string, len(key))
+func whereFromKey(key, expect model.RowValues, render ValueRenderer, params *[]any, quote func(string) string) (string, error) {
+	parts := make([]string, len(key), len(key)+len(expect))
 	for i, kv := range key {
 		if kv.Value == nil {
 			parts[i] = quote(kv.Name) + " IS NULL"
@@ -133,6 +133,18 @@ func whereFromKey(key model.RowValues, render ValueRenderer, params *[]any, quot
 			}
 			parts[i] = quote(kv.Name) + " = " + rendered
 		}
+	}
+	// A guarded column must still hold the value the caller loaded, else the row matches nothing.
+	for _, kv := range expect {
+		if kv.Value == nil {
+			parts = append(parts, quote(kv.Name)+" IS NULL")
+			continue
+		}
+		rendered, err := render(kv.Name, kv.Value, params)
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, quote(kv.Name)+" = "+rendered)
 	}
 	return strings.Join(parts, " AND "), nil
 }
@@ -150,13 +162,13 @@ func RenderRowOp(relationSQL string, op model.MutationRowOp, render ValueRendere
 			}
 			setParts[i] = quote(kv.Name) + " = " + rendered
 		}
-		where, err := whereFromKey(op.Key, render, params, quote)
+		where, err := whereFromKey(op.Key, op.Expect, render, params, quote)
 		if err != nil {
 			return "", err
 		}
 		return "UPDATE " + relationSQL + " SET " + strings.Join(setParts, ", ") + " WHERE " + where, nil
 	case "delete":
-		where, err := whereFromKey(op.Key, render, params, quote)
+		where, err := whereFromKey(op.Key, op.Expect, render, params, quote)
 		if err != nil {
 			return "", err
 		}
@@ -213,6 +225,22 @@ type CompiledOp struct {
 	SQL    string
 	Params []any
 	Kind   string
+	// Guarded marks an op whose WHERE carries expected values; zero affected rows then means the row
+	// changed on the server (E_CONFLICT), and KeyLabel names it.
+	Guarded  bool
+	KeyLabel string
+}
+
+func keyLabel(key model.RowValues) string {
+	parts := make([]string, len(key))
+	for i, kv := range key {
+		v := "NULL"
+		if kv.Value != nil {
+			v = *kv.Value
+		}
+		parts[i] = kv.Name + " = " + v
+	}
+	return strings.Join(parts, ", ")
 }
 
 // CompileMutationOps ports the render loop postgres/mysqlfamily/sqlite's mutate() each wrote out
@@ -227,7 +255,7 @@ func CompileMutationOps(relationSQL string, ordered []model.MutationRowOp, param
 		if err != nil {
 			return nil, nil, err
 		}
-		compiled[i] = CompiledOp{SQL: sql, Params: params, Kind: rowOp.Kind}
+		compiled[i] = CompiledOp{SQL: sql, Params: params, Kind: rowOp.Kind, Guarded: len(rowOp.Expect) > 0, KeyLabel: keyLabel(rowOp.Key)}
 		var literalParams []any
 		previewPart, err := RenderRowOp(relationSQL, rowOp, literalRenderer, &literalParams, quote)
 		if err != nil {
@@ -294,13 +322,16 @@ func RunSQLMutation(ctx context.Context, beginSQL string, exec func(sqlText stri
 		if err != nil {
 			return model.MutationResult{}, err
 		}
+		if c.Guarded && n == 0 {
+			return model.MutationResult{}, T(CodeConflict, "backend.studio.adapter.rowChanged.body", map[string]string{"key": c.KeyLabel}, nil)
+		}
 		if err := AssertAffectedExactlyOne(c.Kind, n); err != nil {
 			return model.MutationResult{}, err
 		}
 		affectedRows += n
 	}
 	if _, err := exec("COMMIT", nil); err != nil {
-		return model.MutationResult{}, err
+		return model.MutationResult{}, commitFailure(err)
 	}
 	committed = true
 	return model.MutationResult{AffectedRows: int(affectedRows)}, nil
@@ -362,4 +393,11 @@ func ResolveDatabaseTablePath(path model.NodePath) (database, table string, err 
 		return "", "", err
 	}
 	return segs[0].Name, segs[1].Name, nil
+}
+
+// commitFailure words a failed COMMIT. The client cannot tell a server refusal from a connection
+// lost after the server applied the commit, so the message says the outcome is unknown and carries
+// the cause.
+func commitFailure(err error) error {
+	return T(CodeQuery, "backend.studio.adapter.commitOutcomeUnknown.body", map[string]string{"cause": err.Error()}, err)
 }

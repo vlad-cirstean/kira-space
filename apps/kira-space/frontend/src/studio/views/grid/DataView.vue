@@ -16,6 +16,7 @@ import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { DataTabRecord } from '../../../state/tabDomain';
+import { confirmOverwrite } from '../../state/confirmOverwrite';
 import { useConnectionsStore } from '../../state/connections';
 import { useFakeDataStore } from '../../state/fakeData';
 import { nodeKindLabel } from '../../state/nodeKindLabel';
@@ -136,6 +137,7 @@ async function onCommit(): Promise<void> {
         gridViewStore.setActionError(props.tab.id, null);
         await gridViewStore.reloadAfterMutation(props.tab.id);
       },
+      confirmOverwrite,
     );
   } catch (err) {
     gridViewStore.setActionError(props.tab.id, errorText(err));

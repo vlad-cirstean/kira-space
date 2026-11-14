@@ -1,12 +1,16 @@
 package dbmcpflow
 
 import (
+	"database/sql"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 // Concurrent writes are independent queue items: each answers alone, in any order. Contract
@@ -109,4 +113,72 @@ func TestApprovalsAnswerAllMixed(t *testing.T) {
 	if r := wait(t, write); r.IsError {
 		t.Fatalf("write = %q", text(r))
 	}
+}
+
+// J-MCP-001: an agent's write waits for approval. A rejected write never runs, an approved one
+// lands for every client, and the op log names each statement with its source and outcome.
+func TestMcpWriteJourneyLeavesOpLogTrail(t *testing.T) {
+	f := newFixture(t)
+	sess := f.session(t)
+	const rejected, approved = "insert into notes (body) values ('rejected')", "insert into notes (body) values ('approved')"
+
+	call := callAsync(sess, f.connID, rejected)
+	req := f.pending(t)
+	if req.Statement != rejected {
+		t.Fatalf("pending = %q, want the rejected write", req.Statement)
+	}
+	f.answerItems(t, false, req.Item.ID)
+	if res := wait(t, call); !res.IsError {
+		t.Fatalf("rejected write = %q, want a tool error", text(res))
+	}
+	if n := f.noteCount(t); n != 2 {
+		t.Fatalf("rejected write changed the table: %d rows", n)
+	}
+
+	call = callAsync(sess, f.connID, approved)
+	req = f.pending(t)
+	f.answerItems(t, true, req.Item.ID)
+	if res := wait(t, call); res.IsError {
+		t.Fatalf("approved write = %q", text(res))
+	}
+	db, err := sql.Open("sqlite", f.dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var body string
+	if err := db.QueryRow("select body from notes where body = 'approved'").Scan(&body); err != nil {
+		t.Fatalf("a second client does not see the approved row: %v", err)
+	}
+
+	var trail []oplog.Record
+	testx.WaitUntil(t, 10*time.Second, func() bool {
+		recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
+		if err != nil {
+			t.Fatal(err)
+		}
+		trail = trail[:0]
+		for _, r := range recent {
+			if r.Kind == "execute" && r.Status != "running" && strings.Contains(stmtOf(r), "insert into notes") {
+				trail = append(trail, r)
+			}
+		}
+		return len(trail) > 0
+	})
+	for _, r := range trail {
+		if r.Source != "mcp" || !strings.Contains(stmtOf(r), "'approved'") {
+			t.Fatalf("op log row = %+v, want only the approved statement, from mcp", r)
+		}
+	}
+	if len(trail) != 1 {
+		t.Fatalf("op log holds %d insert rows, want the approved one only (the rejected write never ran)", len(trail))
+	}
+}
+
+// stmtOf is the statement text of a database op row: the command when the log keeps one, else the subject.
+func stmtOf(r oplog.Record) string {
+	if r.Command != nil {
+		return *r.Command
+	}
+	return r.Subject
 }

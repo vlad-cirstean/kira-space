@@ -1,6 +1,8 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
+import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
 import { connectAndExpand, connectionCreateArgs } from './support/connect';
 import { editorText } from './support/editorText';
 import {
@@ -365,4 +367,45 @@ test('Definition tab — tree grouping: folders collapsed by default, zero-IPC e
   expect(await page.locator(`[data-path="${INVOICE_SEQ_PATH}"]`).count()).toBe(0);
   await (await findRow(page, SEQUENCES_FOLDER_PATH)).locator('[data-testid="tree-twisty"]').click();
   await expect(await findRow(page, INVOICE_SEQ_PATH)).toBeVisible();
+});
+
+// J-DEF-010, UI half. The Go half (dbflow TestDefinitionDDLRecreatesTablePostgres) runs the DDL in an
+// empty database and checks it recreates the table; contract studio-definition holds that
+// definition and the text Copy must write. This replays the definition and compares the bytes.
+test('Definition tab — Copy writes the contract DDL bytes', async ({ relaunch }) => {
+  const DEFINITION = {
+    ...contract<Record<string, unknown>>('studio-definition', 'pg#definition'),
+    path: ORDER_ITEMS_PATH,
+    generatedAt: '2026-01-01T00:00:00.000Z',
+  };
+  const COPY = contract<string>('studio-definition', 'pg#copy');
+  const COPY_ID = 'conn-definition-copy';
+  const COPY_FIXTURE = orderItemsFixture(COPY_ID);
+  const { window: page } = await relaunch({
+    control: [
+      { channel: IPC.connectionsList, response: [] },
+      {
+        channel: IPC.connectionsCreate,
+        args: connectionCreateArgs('Definition Copy DB', 'blue'),
+        response: postgresConnectionSummary(COPY_ID, 'Definition Copy DB', 'blue'),
+      },
+      ...COPY_FIXTURE.control,
+      {
+        channel: IPC.treeDefinition,
+        args: { connectionId: COPY_ID, path: ORDER_ITEMS_PATH, refresh: false, tabId: null },
+        response: { definition: DEFINITION, source: 'server' },
+      },
+    ],
+    stream: COPY_FIXTURE.port,
+  });
+  await connectAndExpand(page, 'Definition Copy DB', 'blue');
+  await openRowMenu(page, ORDER_ITEMS_PATH);
+  await page.click('[data-testid="menu-item-open-definition"]');
+  const view = page.locator('[data-testid="definition-view"]');
+  await expect(view).toHaveAttribute('data-origin', 'composed', { timeout: 15_000 });
+
+  await switchToSource(view);
+  await installClipboardSpy(page);
+  await page.click('[data-testid="definition-copy"]');
+  await expect.poll(() => lastClipboardWrite(page)).toBe(COPY);
 });

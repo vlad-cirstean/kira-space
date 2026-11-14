@@ -15,9 +15,8 @@ func TestParseHeaderPairs_KeepsOrderAndRepeats(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("pairs = %v, want %v", got, want)
 	}
-	m, err := ParseHeaderJSON(&raw)
-	if err != nil || m["z"] != "3" || m["a"] != "2" {
-		t.Errorf("ParseHeaderJSON = %v, %v; want the last repeated value", m, err)
+	if m, err := ParseHeaderJSON(&raw); err == nil {
+		t.Errorf("ParseHeaderJSON = %v, want a refusal of the repeated name z", m)
 	}
 }
 

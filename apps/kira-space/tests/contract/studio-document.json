@@ -1,0 +1,103 @@
+{
+  "mutate:conflict": {
+    "Code": "E_CONFLICT",
+    "Message": "The row _id = {\"$oid\":\"65f000000000000000000001\"} changed on the server since it was loaded."
+  },
+  "mutate:guarded-ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "$document": "{\n  \"_id\": ObjectId(\"65f000000000000000000001\"),\n  \"name\": \"mine\",\n  \"big\": NumberLong(\"9007199254740993\"),\n  \"dec\": NumberDecimal(\"1.10\"),\n  \"when\": ISODate(\"1960-05-04 03:02:01.000Z\"),\n  \"bin\": {\"$binary\":{\"base64\":\"MDEyMzQ1Njc4OWFiY2RlZg==\",\"subType\":\"04\"}},\n  \"nested\": [\n    [\n      NumberInt(1),\n      [\n        NumberInt(2),\n        NumberInt(3)\n      ]\n    ],\n    []\n  ],\n  \"tail\": \"t\"\n}"
+        },
+        "expect": {
+          "$document": "{\n  \"_id\": ObjectId(\"65f000000000000000000001\"),\n  \"name\": \"before\",\n  \"big\": NumberLong(\"9007199254740993\"),\n  \"dec\": NumberDecimal(\"1.10\"),\n  \"when\": ISODate(\"1960-05-04 03:02:01.000Z\"),\n  \"bin\": {\"$binary\":{\"base64\":\"MDEyMzQ1Njc4OWFiY2RlZg==\",\"subType\":\"04\"}},\n  \"nested\": [\n    [\n      NumberInt(1),\n      [\n        NumberInt(2),\n        NumberInt(3)\n      ]\n    ],\n    []\n  ],\n  \"tail\": \"t\"\n}"
+        },
+        "key": {
+          "_id": "{\"$oid\":\"65f000000000000000000001\"}"
+        },
+        "kind": "update"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
+  "mutate:idEdit-ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "$document": "{\n  \"_id\": ObjectId(\"000000000000000000000001\"),\n  \"name\": \"after\",\n  \"big\": NumberLong(\"9007199254740993\"),\n  \"dec\": NumberDecimal(\"1.10\"),\n  \"when\": ISODate(\"1960-05-04 03:02:01.000Z\"),\n  \"bin\": {\"$binary\":{\"base64\":\"MDEyMzQ1Njc4OWFiY2RlZg==\",\"subType\":\"04\"}},\n  \"nested\": [\n    [\n      NumberInt(1),\n      [\n        NumberInt(2),\n        NumberInt(3)\n      ]\n    ],\n    []\n  ],\n  \"tail\": \"t\"\n}"
+        },
+        "expect": {
+          "$document": "{\n  \"_id\": ObjectId(\"65f000000000000000000001\"),\n  \"name\": \"before\",\n  \"big\": NumberLong(\"9007199254740993\"),\n  \"dec\": NumberDecimal(\"1.10\"),\n  \"when\": ISODate(\"1960-05-04 03:02:01.000Z\"),\n  \"bin\": {\"$binary\":{\"base64\":\"MDEyMzQ1Njc4OWFiY2RlZg==\",\"subType\":\"04\"}},\n  \"nested\": [\n    [\n      NumberInt(1),\n      [\n        NumberInt(2),\n        NumberInt(3)\n      ]\n    ],\n    []\n  ],\n  \"tail\": \"t\"\n}"
+        },
+        "key": {
+          "_id": "{\"$oid\":\"65f000000000000000000001\"}"
+        },
+        "kind": "update"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
+  "mutate:idEditError": {
+    "Code": "E_CONTRACT",
+    "Message": "The _id of a document can’t be changed. Restore the original _id and save again."
+  },
+  "mutate:ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "$document": "{\n  \"_id\": ObjectId(\"65f000000000000000000001\"),\n  \"name\": \"after\",\n  \"big\": NumberLong(\"9007199254740993\"),\n  \"dec\": NumberDecimal(\"1.10\"),\n  \"when\": ISODate(\"1960-05-04 03:02:01.000Z\"),\n  \"bin\": {\"$binary\":{\"base64\":\"MDEyMzQ1Njc4OWFiY2RlZg==\",\"subType\":\"04\"}},\n  \"nested\": [\n    [\n      NumberInt(1),\n      [\n        NumberInt(2),\n        NumberInt(3)\n      ]\n    ],\n    []\n  ],\n  \"tail\": \"t\"\n}"
+        },
+        "expect": {
+          "$document": "{\n  \"_id\": ObjectId(\"65f000000000000000000001\"),\n  \"name\": \"before\",\n  \"big\": NumberLong(\"9007199254740993\"),\n  \"dec\": NumberDecimal(\"1.10\"),\n  \"when\": ISODate(\"1960-05-04 03:02:01.000Z\"),\n  \"bin\": {\"$binary\":{\"base64\":\"MDEyMzQ1Njc4OWFiY2RlZg==\",\"subType\":\"04\"}},\n  \"nested\": [\n    [\n      NumberInt(1),\n      [\n        NumberInt(2),\n        NumberInt(3)\n      ]\n    ],\n    []\n  ],\n  \"tail\": \"t\"\n}"
+        },
+        "key": {
+          "_id": "{\"$oid\":\"65f000000000000000000001\"}"
+        },
+        "kind": "update"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
+  "mutate:overwrite-ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "$document": "{\n  \"_id\": ObjectId(\"65f000000000000000000001\"),\n  \"name\": \"mine\",\n  \"big\": NumberLong(\"9007199254740993\"),\n  \"dec\": NumberDecimal(\"1.10\"),\n  \"when\": ISODate(\"1960-05-04 03:02:01.000Z\"),\n  \"bin\": {\"$binary\":{\"base64\":\"MDEyMzQ1Njc4OWFiY2RlZg==\",\"subType\":\"04\"}},\n  \"nested\": [\n    [\n      NumberInt(1),\n      [\n        NumberInt(2),\n        NumberInt(3)\n      ]\n    ],\n    []\n  ],\n  \"tail\": \"t\"\n}"
+        },
+        "key": {
+          "_id": "{\"$oid\":\"65f000000000000000000001\"}"
+        },
+        "kind": "update"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
+  "read:projected": {
+    "rows": [
+      [
+        "{\"$numberInt\":\"1\"}",
+        "{\"_id\":{\"$numberInt\":\"1\"},\"a\":\"shown\",\"nested\":{\"k\":\"v\"}}"
+      ],
+      [
+        "{\"$numberInt\":\"2\"}",
+        "{\"_id\":{\"$numberInt\":\"2\"},\"a\":\"big\"}"
+      ]
+    ]
+  },
+  "read:row": {
+    "body": "{\"_id\":{\"$oid\":\"65f000000000000000000001\"},\"name\":\"before\",\"big\":{\"$numberLong\":\"9007199254740993\"},\"dec\":{\"$numberDecimal\":\"1.10\"},\"when\":{\"$date\":{\"$numberLong\":\"-304894679000\"}},\"bin\":{\"$binary\":{\"base64\":\"MDEyMzQ1Njc4OWFiY2RlZg==\",\"subType\":\"04\"}},\"nested\":[[{\"$numberInt\":\"1\"},[{\"$numberInt\":\"2\"},{\"$numberInt\":\"3\"}]],[]],\"tail\":\"t\"}",
+    "id": "{\"$oid\":\"65f000000000000000000001\"}"
+  }
+}

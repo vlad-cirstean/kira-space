@@ -847,6 +847,7 @@ studioTest.describe('databases module', () => {
         id: 'q-1',
         name: null,
         pinned: true,
+        expect: { name: 'Small ids', pinned: false },
       });
       await expect(panel).toBeVisible();
     },

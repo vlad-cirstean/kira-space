@@ -1,5 +1,6 @@
 import { decodePath, encodePath, pathParent } from '@shared/domain/tree';
 import { t } from '@theme/i18n';
+import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { pinia } from '../../../../state/pinia';
 import { useTabsStore } from '../../../../state/tabs';
 import { data } from '../../../bridge/data';
@@ -15,6 +16,10 @@ import { useKeyValueViewStore } from './state';
 // that file's own comment for why `plan.path` alone can't name the target key.
 const KEY_SENTINEL = '_key';
 const VALUE_SENTINEL = '$value';
+// S3 only: the ETag of the body the editor opened, so a save refuses a replaced object.
+const ETAG_SENTINEL = '$etag';
+// S3 only: marks a save the user confirmed although the object's ACL could not be read.
+const ACL_RESET_SENTINEL = '$aclReset';
 
 // P63: findTab reads through the host seam (host.ts) rather than state/tabs.ts's
 // findKeyValueTab directly — createImmediateMutator only needs {connectionId, path}, which
@@ -25,14 +30,30 @@ const mutate = createImmediateMutator({
   isStale: (viewKey: string) => useKeyValueViewStore(pinia).isStale(viewKey),
 });
 
+/** False when the user declined an overwrite prompt: nothing was written. */
 export async function saveValueEdit(
   viewKey: string,
   keyName: string,
   newValue: string,
-): Promise<void> {
-  await mutate(viewKey, [
-    { kind: 'update', key: { [KEY_SENTINEL]: keyName }, changes: { [VALUE_SENTINEL]: newValue } },
-  ]);
+  etag?: string,
+): Promise<boolean> {
+  const key: Record<string, string> = { [KEY_SENTINEL]: keyName };
+  if (etag) key[ETAG_SENTINEL] = etag;
+  const changes = { [VALUE_SENTINEL]: newValue };
+  // Decision 6: an unreadable ACL answers E_CONFLICT; confirming resends with the reset marker.
+  return mutate(viewKey, [{ kind: 'update', key, changes }], undefined, {
+    ops: [{ kind: 'update', key: { ...key, [ACL_RESET_SENTINEL]: '1' }, changes }],
+    confirm: confirmAclReset,
+  });
+}
+
+function confirmAclReset(detail: string): Promise<boolean> {
+  return useConfirmDialogStore().confirm({
+    title: t('studio.keyValue.aclReset.title'),
+    message: detail,
+    confirmLabel: t('studio.keyValue.aclReset.confirm'),
+    tone: 'danger',
+  });
 }
 
 export async function deleteKey(viewKey: string, keyName: string): Promise<void> {

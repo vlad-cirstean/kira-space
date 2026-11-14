@@ -59,6 +59,13 @@ function columnIsGenerated(page: TabularPage, name: string): boolean {
   return page.columns.find((c) => c.name === name)?.generated ?? false;
 }
 
+/** An empty pasted field is NULL in a nullable column (OQ-GRID-1), `''` where NULL is refused.
+ *  A pasted TSV cannot spell NULL, and `''` breaks a nullable int or timestamp at commit. */
+function pastedValue(page: TabularPage, name: string, text: string): string | null {
+  if (text !== '') return text;
+  return page.columns.find((c) => c.name === name)?.nullable ? null : text;
+}
+
 /** One clipboard row's own cells, staged at `startCol..` — an existing page row via `stageEdit`,
  *  a new one (`isNewRow`) via `stageInsertValue`, skipping a generated column either way. */
 function stagePastedRow(
@@ -77,14 +84,21 @@ function stagePastedRow(
     if (!name) continue;
     if (isNewRow) {
       if (insertId && !columnIsGenerated(page, name)) {
-        pendingChangesStore.stageInsertValue(tabId, insertId, name, cols[ci] as string);
+        pendingChangesStore.stageInsertValue(
+          tabId,
+          insertId,
+          name,
+          pastedValue(page, name, cols[ci] as string),
+        );
       }
     } else if (!columnIsGenerated(page, name)) {
       // This branch used to stage unconditionally — the server computes a
       // generated column's value, so an existing-row paste into one staged an UPDATE the engine
       // refuses at commit, the one paste path the doc comment above already (wrongly) claimed
       // skipped it.
-      pendingChangesStore.stageEdit(tabId, row, name, cols[ci] as string);
+      const value = pastedValue(page, name, cols[ci] as string);
+      if (value === null) pendingChangesStore.stageNull(tabId, row, name);
+      else pendingChangesStore.stageEdit(tabId, row, name, value);
     }
   }
 }

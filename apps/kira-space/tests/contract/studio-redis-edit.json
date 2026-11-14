@@ -1,0 +1,47 @@
+{
+  "mutate:expiredError": {
+    "Code": "E_NOT_FOUND",
+    "Message": "key no longer exists: flow:gone"
+  },
+  "mutate:ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "$value": "line1\r\nline2\t\"q\" ünï 😀 "
+        },
+        "key": {
+          "_key": "flow:ttl"
+        },
+        "kind": "update"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
+  "mutate:typeError": {
+    "Code": "E_UNSUPPORTED",
+    "Message": "only string-type keys are editable in this version, kt:hash is hash"
+  },
+  "mutate:ui-ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "$value": "tab\t\"q\" ünï 😀 "
+        },
+        "key": {
+          "_key": "flow:ttl"
+        },
+        "kind": "update"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
+  "preview:statements": [
+    "SET flow:ttl line1\r\nline2\t\"q\" ünï 😀  XX KEEPTTL"
+  ]
+}

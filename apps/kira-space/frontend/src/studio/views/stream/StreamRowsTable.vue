@@ -73,9 +73,7 @@ function onRowClick(i: number): void {
 }
 
 function rowMenuFor(row: number) {
-  return rowMenu(rowAt(row)?.key ?? null, rowAt(row)?.body ?? null, (m) =>
-    streamViewStore.setActionError(props.tab.id, m),
-  );
+  return rowMenu(rowAt(row), (m) => streamViewStore.setActionError(props.tab.id, m));
 }
 
 const nav = useListNavigation<number>({

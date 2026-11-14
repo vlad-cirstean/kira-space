@@ -165,3 +165,65 @@ func TestDbMcpTableAllowList(t *testing.T) {
 	}
 	allowed("select token from secret")
 }
+
+// J-MCP-002: with the allow list on, no spelling of an unlisted table reaches its rows. Each
+// statement is refused before anything runs, nothing queues an approval, and the data stays put.
+func TestDbMcpTableAllowListBypassAttempts(t *testing.T) {
+	f := newFixture(t)
+	sess := f.session(t)
+	f.execSQL(t,
+		"create table secret (id integer primary key, token text)",
+		"insert into secret (token) values ('hush')",
+		"create view secret_view as select * from secret",
+	)
+	if err := f.app.W.ConnectionFiles.Patch(f.connID, configfs.NodeSet{Path: []string{"mcp", "tables"}, Value: []string{"notes"}}); err != nil {
+		t.Fatalf("Patch mcp.tables: %v", err)
+	}
+	attempts := []string{
+		`select token from "secret"`,
+		`select token from [secret]`,
+		"select token from `secret`",
+		`select token from SECRET`,
+		`select token from main."secret"`,
+		`select token from notes, secret`,
+		`select token from notes natural join secret`,
+		`select token from notes cross join secret`,
+		`select body from notes union select token from secret`,
+		`select body from notes union all select token from secret_view`,
+		`select body from notes where exists (select 1 from secret)`,
+		`select token from (select * from secret)`,
+		`select (select token from secret)`,
+		`select /* notes */ token from secret`,
+		"select token from secret -- notes",
+		`with n as (select 1) select token from secret`,
+		`select * from (values ((select token from secret)))`,
+		`select token from json_each('[1]'), secret`,
+		`insert into notes (body) select token from secret`,
+		`update notes set body = (select token from secret)`,
+		`delete from notes where id in (select id from secret)`,
+	}
+	for _, stmt := range attempts {
+		r := runQuery(t, sess, f.connID, stmt)
+		if !r.IsError || strings.Contains(text(r), "hush") {
+			t.Fatalf("%q = %q (error %v), want a refusal without the data", stmt, text(r), r.IsError)
+		}
+		if !strings.Contains(text(r), "not listed") && !strings.Contains(text(r), "could not be parsed") {
+			t.Fatalf("%q refused as %q, want the allow-list or parse refusal", stmt, text(r))
+		}
+		if n := f.queueLen(t); n != 0 {
+			t.Fatalf("%q queued %d approvals before the allow list refused it", stmt, n)
+		}
+	}
+	if n := f.noteCount(t); n != 2 {
+		t.Fatalf("notes has %d rows after the attempts, want 2", n)
+	}
+	var tokens int
+	db, err := sql.Open("sqlite", f.dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := db.QueryRow("select count(*) from secret").Scan(&tokens); err != nil || tokens != 1 {
+		t.Fatalf("secret holds %d rows (%v), want the one seeded", tokens, err)
+	}
+}

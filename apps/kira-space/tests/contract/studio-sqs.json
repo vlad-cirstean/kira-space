@@ -1,0 +1,37 @@
+{
+  "mutate:duplicateAttributeError": {
+    "Code": "E_QUERY",
+    "Message": "The attribute name trace is used more than once. Message attributes must have unique names."
+  },
+  "mutate:duplicateAttributeOps": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "kind": "insert",
+        "values": {
+          "$body": "b",
+          "$headers": "{\"trace\":\"a\",\"trace\":\"b\"}"
+        }
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
+  "mutate:fifoNoDedupError": {
+    "Code": "E_QUERY",
+    "Message": "a FIFO queue without content-based deduplication requires $messageDeduplicationId on every new message"
+  },
+  "mutate:fifoNoGroupError": {
+    "Code": "E_QUERY",
+    "Message": "a FIFO queue requires $messageGroupId on every new message"
+  },
+  "mutate:receiptExpiredError": {
+    "Code": "E_QUERY",
+    "Message": "This message’s receipt handle may have expired (past its visibility timeout). Poll again before deleting."
+  },
+  "mutate:receiptGoneError": {
+    "Code": "E_QUERY",
+    "Message": "This message wasn’t received in the current session, so its receipt handle is gone. Poll again before deleting."
+  }
+}

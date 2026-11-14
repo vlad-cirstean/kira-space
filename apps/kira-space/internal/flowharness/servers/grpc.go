@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/bufbuild/protocompile"
@@ -66,9 +67,10 @@ type Call struct {
 type GRPCServer struct {
 	Addr string
 
-	srv *grpc.Server
-	mu  sync.Mutex
-	rec []Call
+	srv      *grpc.Server
+	mu       sync.Mutex
+	rec      []Call
+	inflight atomic.Int32
 }
 
 // WriteProtoDir writes flow.proto and common/types.proto into dir and returns dir, so a client can
@@ -191,6 +193,9 @@ func register(r *protoregistry.Files, fd protoreflect.FileDescriptor) error {
 // Close stops the server and drops open streams.
 func (s *GRPCServer) Close() { s.srv.Stop() }
 
+// InFlight is how many calls the server is still handling: a client that gave up leaves none.
+func (s *GRPCServer) InFlight() int { return int(s.inflight.Load()) }
+
 // Calls returns a snapshot of the RPCs received, reflection excluded.
 func (s *GRPCServer) Calls() []Call {
 	s.mu.Lock()
@@ -230,6 +235,8 @@ func (s *GRPCServer) unary(o GRPCOptions) grpc.UnaryServerInterceptor {
 			return nil, err
 		}
 		s.note(ctx, info.FullMethod)
+		s.inflight.Add(1)
+		defer s.inflight.Add(-1)
 		return h(ctx, req)
 	}
 }
@@ -240,6 +247,8 @@ func (s *GRPCServer) stream(o GRPCOptions) grpc.StreamServerInterceptor {
 			return err
 		}
 		s.note(ss.Context(), info.FullMethod)
+		s.inflight.Add(1)
+		defer s.inflight.Add(-1)
 		return h(srv, ss)
 	}
 }

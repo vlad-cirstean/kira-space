@@ -488,13 +488,29 @@ const studioControl = {
     pinned: boolean;
   }): Promise<SavedDiscoverQuery> =>
     unwrap(QueriesService.SaveDiscover(args)).then((r) => savedDiscoverQuerySchema.parse(r)),
-  queriesUpdateDiscover: (id: string, body: KibanaDiscoverBody): Promise<SavedDiscoverQuery> =>
-    unwrap(QueriesService.UpdateDiscover({ id, body })).then((r) =>
+  /** `expect` is the body this window last read: a stored body that differs answers `E_CONFLICT`. */
+  queriesUpdateDiscover: (
+    id: string,
+    body: KibanaDiscoverBody,
+    expect?: KibanaDiscoverBody,
+  ): Promise<SavedDiscoverQuery> =>
+    unwrap(QueriesService.UpdateDiscover({ id, body, expect: expect ?? null })).then((r) =>
       savedDiscoverQuerySchema.parse(r),
     ),
-  queriesUpdate: (id: string, patch: { name?: string; pinned?: boolean }): Promise<SavedQuery> =>
+  /** `expect` is the name and pin state this window last read: a stored query that differs
+   *  answers `E_CONFLICT`. */
+  queriesUpdate: (
+    id: string,
+    patch: { name?: string; pinned?: boolean },
+    expect?: { name: string; pinned: boolean },
+  ): Promise<SavedQuery> =>
     unwrap(
-      QueriesService.Update({ id, name: patch.name ?? null, pinned: patch.pinned ?? null }),
+      QueriesService.Update({
+        id,
+        name: patch.name ?? null,
+        pinned: patch.pinned ?? null,
+        expect: expect ?? null,
+      }),
     ).then((r) => trust<SavedQuery>(r)),
   queriesDelete: (id: string): Promise<void> => unwrap(QueriesService.Delete({ id })),
   queriesTouch: (id: string): Promise<void> => unwrap(QueriesService.Touch({ id })),

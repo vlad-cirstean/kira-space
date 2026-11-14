@@ -1,0 +1,94 @@
+{
+  "pg#copy": "CREATE TABLE app.def_child (\n  id integer GENERATED ALWAYS AS IDENTITY NOT NULL,\n  parent_id integer NOT NULL,\n  qty integer DEFAULT 1 NOT NULL,\n  label text DEFAULT 'n/a'::text,\n  price numeric(10,2) DEFAULT 0.00,\n  created timestamp with time zone DEFAULT now(),\n  tags text[] DEFAULT '{}'::text[],\n  slug text GENERATED ALWAYS AS (lower(label)) STORED\n);\n\nALTER TABLE app.def_child ADD CONSTRAINT def_child_pkey PRIMARY KEY (id);\n\nALTER TABLE app.def_child ADD CONSTRAINT def_child_parent_id_label_key UNIQUE (parent_id, label);\n\nALTER TABLE app.def_child ADD CONSTRAINT def_child_qty_check CHECK (qty > 0);\n\nALTER TABLE app.def_child ADD CONSTRAINT qty_cap CHECK (qty < 1000);\n\nALTER TABLE app.def_child ADD CONSTRAINT def_child_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES app.def_parent(id) ON DELETE CASCADE;\n\nCREATE INDEX def_child_expr_idx ON app.def_child USING btree (lower(label));\n\nCREATE INDEX def_child_label_idx ON app.def_child USING btree (label DESC);\n\nCREATE INDEX def_child_part_idx ON app.def_child USING btree (qty) WHERE (qty > 10);\n\nCOMMENT ON TABLE app.def_child IS 'children';\n\nCOMMENT ON COLUMN app.def_child.label IS 'display label';",
+  "pg#definition": {
+    "constraints": [
+      {
+        "definition": "PRIMARY KEY (id)",
+        "name": "def_child_pkey",
+        "type": "primaryKey"
+      },
+      {
+        "definition": "UNIQUE (parent_id, label)",
+        "name": "def_child_parent_id_label_key",
+        "type": "unique"
+      },
+      {
+        "definition": "CHECK (qty > 0)",
+        "name": "def_child_qty_check",
+        "type": "check"
+      },
+      {
+        "definition": "CHECK (qty < 1000)",
+        "name": "qty_cap",
+        "type": "check"
+      },
+      {
+        "definition": "FOREIGN KEY (parent_id) REFERENCES app.def_parent(id) ON DELETE CASCADE",
+        "name": "def_child_parent_id_fkey",
+        "type": "foreignKey"
+      }
+    ],
+    "documentSchema": null,
+    "generatedAt": "",
+    "kind": "table",
+    "language": "sql",
+    "notes": [
+      "Composed from catalog metadata: triggers, row-level security policies, grants, ownership, storage parameters, tablespaces and non-default column collations are not included."
+    ],
+    "origin": "composed",
+    "path": "<path>",
+    "qualifiedName": "app.def_child",
+    "sections": [],
+    "statements": [
+      "CREATE TABLE app.def_child (\n  id integer GENERATED ALWAYS AS IDENTITY NOT NULL,\n  parent_id integer NOT NULL,\n  qty integer DEFAULT 1 NOT NULL,\n  label text DEFAULT 'n/a'::text,\n  price numeric(10,2) DEFAULT 0.00,\n  created timestamp with time zone DEFAULT now(),\n  tags text[] DEFAULT '{}'::text[],\n  slug text GENERATED ALWAYS AS (lower(label)) STORED\n)",
+      "ALTER TABLE app.def_child ADD CONSTRAINT def_child_pkey PRIMARY KEY (id)",
+      "ALTER TABLE app.def_child ADD CONSTRAINT def_child_parent_id_label_key UNIQUE (parent_id, label)",
+      "ALTER TABLE app.def_child ADD CONSTRAINT def_child_qty_check CHECK (qty > 0)",
+      "ALTER TABLE app.def_child ADD CONSTRAINT qty_cap CHECK (qty < 1000)",
+      "ALTER TABLE app.def_child ADD CONSTRAINT def_child_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES app.def_parent(id) ON DELETE CASCADE",
+      "CREATE INDEX def_child_expr_idx ON app.def_child USING btree (lower(label))",
+      "CREATE INDEX def_child_label_idx ON app.def_child USING btree (label DESC)",
+      "CREATE INDEX def_child_part_idx ON app.def_child USING btree (qty) WHERE (qty > 10)",
+      "COMMENT ON TABLE app.def_child IS 'children'",
+      "COMMENT ON COLUMN app.def_child.label IS 'display label'"
+    ]
+  },
+  "sqlite#copy": "CREATE TABLE def_child (\n  id integer primary key autoincrement,\n  parent_id integer not null references def_parent(id) on delete cascade,\n  qty integer not null default 1 check (qty > 0),\n  label text default 'n/a' collate nocase,\n  price real default 0.5,\n  slug text generated always as (lower(label)) stored,\n  unique (parent_id, label),\n  constraint qty_cap check (qty < 1000)\n);\n\nCREATE INDEX def_child_label_idx on def_child (label desc);\n\nCREATE INDEX def_child_part_idx on def_child (qty) where qty > 10;\n\nCREATE INDEX def_child_expr_idx on def_child (lower(label));",
+  "sqlite#definition": {
+    "constraints": [
+      {
+        "definition": "(\"id\")",
+        "name": "def_child_pkey",
+        "type": "primaryKey"
+      },
+      {
+        "definition": "(\"parent_id\", \"label\")",
+        "name": "sqlite_autoindex_def_child_1",
+        "type": "unique"
+      },
+      {
+        "definition": "(\"parent_id\") REFERENCES \"def_parent\" (\"id\")",
+        "name": "def_child_parent_id_fkey",
+        "type": "foreignKey"
+      }
+    ],
+    "documentSchema": null,
+    "generatedAt": "",
+    "kind": "table",
+    "language": "sql",
+    "notes": [
+      "CHECK constraints, if any, appear only in the Source text above — SQLite has no separate catalog for them.",
+      "Triggers are not included."
+    ],
+    "origin": "server",
+    "path": "<path>",
+    "qualifiedName": "main.def_child",
+    "sections": [],
+    "statements": [
+      "CREATE TABLE def_child (\n  id integer primary key autoincrement,\n  parent_id integer not null references def_parent(id) on delete cascade,\n  qty integer not null default 1 check (qty > 0),\n  label text default 'n/a' collate nocase,\n  price real default 0.5,\n  slug text generated always as (lower(label)) stored,\n  unique (parent_id, label),\n  constraint qty_cap check (qty < 1000)\n)",
+      "CREATE INDEX def_child_label_idx on def_child (label desc)",
+      "CREATE INDEX def_child_part_idx on def_child (qty) where qty > 10",
+      "CREATE INDEX def_child_expr_idx on def_child (lower(label))"
+    ]
+  }
+}

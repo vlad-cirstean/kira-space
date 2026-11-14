@@ -1,11 +1,14 @@
 package apiflow
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 )
 
 func TestEnvironmentFiles(t *testing.T) {
@@ -109,5 +112,77 @@ func TestActiveEnvironmentResolvesBase(t *testing.T) {
 	app.Contract(t, sc, "HttpService.Send", res, opts, flowharness.Mask("elapsedMs", "bodyBytes"), flowharness.Omit("body", "headers", "timeline", "wire"))
 	if got := lastRequest(srv); got.Path != "/echo" || got.Query != "from=ui" {
 		t.Errorf("server saw %s?%s, want /echo?from=ui", got.Path, got.Query)
+	}
+}
+
+// J-ENV-010. A plain variable's earlier values are kept as history; reverting is writing the old
+// value back, and the file then holds exactly the bytes it held before the first edit.
+func TestVariableHistoryAndRevert(t *testing.T) {
+	app := flowharness.New(t)
+	env := app.SeedEnvironment(t, "Hist", flowharness.APIVar{Name: "base", Value: "https://one.test"})
+	path := filepath.Join(app.W.ApiFiles.Dir(), env.File)
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	setBase := func(value string) {
+		t.Helper()
+		cur, err := app.W.ApiConfig.File(bridge.ApiFileArgs{File: env.File})
+		if err != nil {
+			t.Fatal(err)
+		}
+		res, err := app.W.ApiConfig.Form(bridge.ApiFormArgs{File: env.File, Text: cur.Text, Edits: []configfs.Edit{
+			{Path: []string{"variables"}, Value: []any{map[string]any{"name": "base", "value": value}}},
+		}})
+		if err != nil || res.Problem != nil {
+			t.Fatalf("Form = %+v (%v)", res, err)
+		}
+		if _, err := app.W.ApiConfig.SaveFile(bridge.ApiSaveFileArgs{File: env.File, Text: res.Text, BaseHash: cur.Hash}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list := func() model.Variable {
+		t.Helper()
+		vars, err := app.W.Variables.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: env.ID})
+		if err != nil || len(vars) != 1 {
+			t.Fatalf("variables = %+v (%v)", vars, err)
+		}
+		return vars[0]
+	}
+	history := func() []string {
+		t.Helper()
+		rows, err := app.W.Variables.History(bridge.VariablesHistoryArgs{VariableID: list().ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, r := range rows {
+			out = append(out, r.Value)
+		}
+		return out
+	}
+
+	setBase("https://two.test")
+	setBase("https://three.test")
+	if got := list().Value; got != "https://three.test" {
+		t.Fatalf("value = %q, want three", got)
+	}
+	if got := history(); len(got) != 2 || got[0] != "https://two.test" || got[1] != "https://one.test" {
+		t.Fatalf("history = %v, want two then one, newest first", got)
+	}
+
+	setBase("https://one.test")
+	if got := list().Value; got != "https://one.test" {
+		t.Fatalf("value after the revert = %q, want one", got)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Errorf("file after the revert differs from before the edits\n got: %q\nwant: %q", after, before)
+	}
+	if got := history(); len(got) != 3 || got[0] != "https://three.test" {
+		t.Errorf("history after the revert = %v, want three on top of two and one", got)
 	}
 }

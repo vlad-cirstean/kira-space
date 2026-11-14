@@ -2,6 +2,7 @@ package apifiles
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -91,6 +92,36 @@ func rootItems(root *yaml.Node) *yaml.Node {
 		return root.Content[i]
 	}
 	return nil
+}
+
+// requestDiffers reports whether the item's http node no longer holds expect. Both sides compare
+// as the JSON of the file model, so the caller's read and the file's own text agree on defaults.
+func requestDiffers(src []byte, id string, expect HTTP) (bool, error) {
+	_, root, err := parseDoc(src)
+	if err != nil {
+		return false, err
+	}
+	item := findItem(rootItems(root), id)
+	if item == nil {
+		return false, ErrItemGone
+	}
+	at := mapIndex(item, "http")
+	if at < 0 {
+		return false, ErrProtocol
+	}
+	var stored HTTP
+	if err := item.Content[at].Decode(&stored); err != nil {
+		return false, err
+	}
+	a, err := json.Marshal(stored)
+	if err != nil {
+		return false, err
+	}
+	b, err := json.Marshal(expect)
+	if err != nil {
+		return false, err
+	}
+	return !bytes.Equal(a, b), nil
 }
 
 // replaceRequest sets the item's name and swaps its http or grpc node. Comments outside that node stay.

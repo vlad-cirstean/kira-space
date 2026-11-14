@@ -11,6 +11,9 @@ export interface RowSnapshot {
   // prefix as the real value, the same reason such a cell is non-editable in the grid itself.
   // Optional: most snapshot builders have no truncation to report.
   truncated?: ReadonlySet<string>;
+  // Columns whose engine type is binary: their text is the `0x<hex>` display form, which no engine
+  // reads back from a quoted string literal as the same bytes, so an INSERT spells them per dialect.
+  binary?: ReadonlySet<string>;
 }
 
 // A cell is untrusted database content — the same reason SlickGridHost.vue explicitly disables
@@ -132,6 +135,14 @@ export function rowsToJson(rows: RowSnapshot[]): string {
 // app. A value the engine truncated is never written as a literal — INSERTing its 64 KiB
 // prefix as if it were the real value would silently corrupt the copy on execution — a comment
 // names the column instead so the omission is visible, not silent.
+// Hex bytes as each dialect's binary literal: Postgres reads '\\x..' as bytea, MySQL and SQLite
+// X'..', ClickHouse unhex('..'). A quoted "0x.." would store the characters, not the bytes.
+function binaryLiteral(dialect: SqlDialect | undefined, hex: string): string {
+  if (dialect === 'postgres') return `'\\x${hex}'`;
+  if (dialect === 'clickhouse') return `unhex('${hex}')`;
+  return `X'${hex}'`;
+}
+
 export function rowsToInsert(
   qualifiedName: string,
   rows: RowSnapshot[],
@@ -148,7 +159,9 @@ export function rowsToInsert(
         return 'NULL';
       }
       const v = r.values[c];
-      return v === null || v === undefined ? 'NULL' : quoteLiteral(dialect, v);
+      if (v === null || v === undefined) return 'NULL';
+      if (r.binary?.has(c) && /^0x[0-9a-fA-F]*$/.test(v)) return binaryLiteral(dialect, v.slice(2));
+      return quoteLiteral(dialect, v);
     });
     return `  (${values.join(', ')})`;
   });

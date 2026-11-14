@@ -1,0 +1,29 @@
+{
+  "CollectionsService.List": {
+    "collections": [
+      {
+        "createdAt": "<masked>",
+        "file": "copy.collection.yaml",
+        "id": "<masked>",
+        "name": "Copy",
+        "sortOrder": 0,
+        "updatedAt": "<masked>"
+      }
+    ],
+    "items": [
+      {
+        "collectionId": "<masked>",
+        "createdAt": "<masked>",
+        "id": "<masked>",
+        "kind": "request",
+        "method": "GET",
+        "name": "templated",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<masked>",
+        "url": "{{base}}/x?key={{key}}"
+      }
+    ]
+  }
+}

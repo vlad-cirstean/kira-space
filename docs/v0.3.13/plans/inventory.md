@@ -156,7 +156,7 @@ Features:
   before/after Monaco diff with Changes and SQL tabs (P326, P367), commit in one transaction, rollback, rails (yellow
   edit, red delete), generated columns gated. ui: `ui:studio/mutations`, `grid-commit-in-flight`.
 - Staged edits survive paging, sort, filter, projection, Refresh, keyed by PK; staging refused without full PK (P174).
-- Copy/paste: TSV with formula-injection neutralization (CWE-1236), multi-line paste splits rows, quoted value one cell,
+- Copy/paste: TSV copy raw (quoted only for tab, quote or line break), CSV copy neutralizes formula starters with a leading ' (CWE-1236), multi-line paste splits rows, quoted value one cell,
   paste into open editor one value, Cmd+C cell/row/column, CSV export, Copy as JSON; shared `selectionCopy` for keyboard
   and menu (P335). ui: `ui:studio/grid-copy-menu` (Chromium, real clipboard).
 - Selection: drag with autoscroll, corner selects all, whole row/column, Shift+arrow extends from active cell, fill-only

@@ -33,6 +33,7 @@ const (
 	CodeEngineDown  = ErrorCode(ipcerr.CodeEngineDown)
 	CodeInternal    = ErrorCode(ipcerr.CodeInternal)
 	CodeContract    = ErrorCode(ipcerr.CodeContract)
+	CodeConflict    = ErrorCode(ipcerr.CodeConflict)
 )
 
 // ErrReadOnlyRefused marks, via the cause chain, an error where the engine (or Kira's own app-lane
