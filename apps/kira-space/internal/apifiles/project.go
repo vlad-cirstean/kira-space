@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/postman"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
@@ -134,7 +135,7 @@ func (s *Store) recordCollection(tx *sql.Tx, stem, valueJSON string, ch *Changes
 		}
 		ch.Tree = true
 	}
-	if err := s.syncItems(tx, id, stem, f.Items, ch); err != nil {
+	if err := s.syncItems(tx, id, stem, f.Items, f.Skipped, ch); err != nil {
 		return err
 	}
 	if err := syncVariables(tx, d, OwnerCollection, id, f.Variables, ch); err != nil {
@@ -176,9 +177,16 @@ type flatItem struct {
 	requestJSON    string
 }
 
-func flatten(items []Item, parentKey string, out *[]flatItem) error {
-	for i, it := range items {
-		f := flatItem{key: it.ID, parentKey: parentKey, name: it.Name, order: i, protocol: model.ItemProtocolHTTP}
+// flatten walks the valid items; an item's order is its index in the file, so it steps over the
+// indices skippedAt lists for the same parent.
+func flatten(items []Item, parentKey string, skippedAt map[string][]int, out *[]flatItem) error {
+	pos := 0
+	for _, it := range items {
+		for slices.Contains(skippedAt[parentKey], pos) {
+			pos++
+		}
+		f := flatItem{key: it.ID, parentKey: parentKey, name: it.Name, order: pos, protocol: model.ItemProtocolHTTP}
+		pos++
 		switch {
 		case it.Items != nil:
 			f.folder = true
@@ -205,7 +213,7 @@ func flatten(items []Item, parentKey string, out *[]flatItem) error {
 		}
 		*out = append(*out, f)
 		if it.Items != nil {
-			if err := flatten(*it.Items, it.ID, out); err != nil {
+			if err := flatten(*it.Items, it.ID, skippedAt, out); err != nil {
 				return err
 			}
 		}
@@ -218,9 +226,13 @@ type itemRow struct {
 	order                                                              int
 }
 
-func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, ch *Changes) error {
+func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, skipped []SkippedItem, ch *Changes) error {
+	skippedAt := map[string][]int{}
+	for _, sk := range skipped {
+		skippedAt[sk.ParentKey] = append(skippedAt[sk.ParentKey], sk.Index)
+	}
 	var flat []flatItem
-	if err := flatten(items, "", &flat); err != nil {
+	if err := flatten(items, "", skippedAt, &flat); err != nil {
 		return err
 	}
 	d := s.o.Dialect
@@ -248,6 +260,25 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, c
 		kept[old.id] = true
 		if err := updateItem(tx, d, old, parent, f, now, ch); err != nil {
 			return err
+		}
+	}
+	// A skipped item keeps its last good rows: deleting them would cascade the response history.
+	for _, sk := range skipped {
+		for _, key := range sk.Keys {
+			r, found := existing[key]
+			if !found || kept[r.id] {
+				continue
+			}
+			kept[r.id] = true
+			if key != sk.ID || r.order == sk.Index {
+				continue
+			}
+			ub := d.Update(c.Table)
+			ub.Set(ub.Assign(c.SortOrder, sk.Index)).Where(ub.Equal(c.ID, r.id))
+			if _, err := sqlb.Exec(tx, ub); err != nil {
+				return fmt.Errorf("apifiles: order kept item %s: %w", key, err)
+			}
+			ch.Tree = true
 		}
 	}
 	for _, r := range existing {
