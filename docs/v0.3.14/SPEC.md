@@ -13,7 +13,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P638 | Collection file with a bad item: valid items load, bad ones reported (F-A15, J-COLL-003) | Done |
 | P639 | Toasts at top right, placed like prompts | Done |
 | P640 | API module: dialog when closing an unsaved tab, new or modified | Todo |
-| P641 | ADE task: own Jira and PR links first in their group | Todo |
+| P641 | ADE task: own Jira and PR links first in their group | Done |
 | P642 | ADE task list: today background, day start/end left bar, today bar differs | Todo |
 | P643 | Details tab on disk: notes, handovers, links, PR link and proofs (with images) as files, source of truth; design plan first, user approves it before the build | Todo |
 | P644 | Chapter non-UI full run, 2 code review rounds | Todo |
@@ -182,3 +182,11 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
 - Flow: `TestPhoneApprovals`, `TestPhonePermissionMatrix`, contract `mobile-approvals.json`. UI: 9 mobile specs in `approvals.spec.ts` plus desktop `ade-mobile-approval.spec.ts` pass.
 - `scripts/check-ui-primitives.sh` allowlists U101 for `PhoneApprovals.vue`.
 - Fixed flake: `ade-v2-orchestrator.spec.ts` "task.create brief is in the dialog first frame" (framesLate Infinity, 4 of 6 runs). Cause: `usePrompts` push did not cancel the in-flight initial list fetch, which overwrote the routed entry so the dialog never opened (now cancels, like `useApprovals`). Also `TaskCreateBody` renders the readonly brief with sync `AdeNoteBody`, not the lazy editor chunk. 8/8 pass, file 48/48.
+
+### P641 Result
+
+- `linkGroups.ts` sorts in one pass with `isOwn`: Jira and host slots, detected change requests and issues, and stored rows whose URL is in `ownUrls`. Order inside a group: own, others, detected branches.
+- `useTaskLinks` builds `ownUrls` from board change requests of the task's branches (`useChangeRequests`). One strip component, so Details, archived Details, run and stage dialogs share the order.
+- Unit: `ade-v2-link-groups.spec.ts`, 4 cases. UI: 2 new tests in `ade-v2-links-strip.spec.ts`. 46 of 46 targeted specs pass.
+- Visual baselines judged unchanged from fixtures. Not run locally, they run in PR CI.
+- No backend change. `docs/ARCHITECTURE.md` ADE links line and Tests line updated.
