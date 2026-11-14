@@ -384,6 +384,7 @@ func decodePage(t testing.TB, p *wire.Page) DataPage {
 		d.Init(body.Bytes, body.Pos)
 		dp.Kind, dp.RowCount = "document", int(d.RowCount())
 		dp.Rows = zipChunks(d.Ids(nil), d.Bodies(nil))
+		_, dp.Truncated, _ = decodeChunk(d.Bodies(nil))
 		decodePosition(&dp, d.Position(nil))
 	case wire.PageBodyKeyValuePage:
 		var k wire.KeyValuePage

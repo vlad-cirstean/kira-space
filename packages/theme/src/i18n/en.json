@@ -2398,6 +2398,9 @@
         "hostMissing": {
           "body": "No host was given."
         },
+        "idEdit": {
+          "body": "The _id of a document can’t be changed. Restore the original _id and save again."
+        },
         "identifierUnrecognized": {
           "body": "Unrecognized identifier “{identifier}” at position {position}."
         },
@@ -2559,6 +2562,9 @@
         },
         "s3AclGrant": {
           "body": "This object has an access control grant this editor can’t preserve across an edit. Edit it outside this app."
+        },
+        "s3AclUnreadable": {
+          "body": "The access control list of this object can’t be read, so saving resets it to the default."
         },
         "s3ObjectChanged": {
           "body": "This object changed since it was loaded. Refresh and retry."
@@ -13909,6 +13915,10 @@
       "nullValue": {
         "label": "NULL"
       },
+      "overwriteConfirm": {
+        "body": "Overwrite it with your edits, or cancel and refresh to see the current values.",
+        "title": "Overwrite changes made elsewhere?"
+      },
       "pickDateTime": {
         "tooltip": "Choose a date and time"
       },
@@ -15061,10 +15071,6 @@
       "noPrimaryKey": {
         "tooltip": "This table has no primary key, so a row can’t be addressed"
       },
-      "overwriteConfirm": {
-        "body": "Overwrite it with your edits, or cancel and refresh to see the current values.",
-        "title": "Overwrite changes made elsewhere?"
-      },
       "pager": {
         "countFirst": {
           "tooltip": "Count rows first"
@@ -15644,6 +15650,10 @@
       }
     },
     "keyValue": {
+      "aclReset": {
+        "confirm": "Save anyway",
+        "title": "Reset the object’s access list"
+      },
       "add": {
         "namePlaceholder": {
           "placeholder": "Key name"

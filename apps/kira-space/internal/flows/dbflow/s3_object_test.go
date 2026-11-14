@@ -1,7 +1,11 @@
 package dbflow
 
 import (
+	"errors"
 	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
 	"net/url"
 	"strings"
 	"testing"
@@ -107,5 +111,67 @@ func TestS3EditKeepsMetadataAndRefusesChangedObject(t *testing.T) {
 		if want := map[bool]string{true: "v2", false: "v1"}[aws.ToBool(v.IsLatest)]; string(b) != want {
 			t.Fatalf("version latest=%v holds %q, want %q", aws.ToBool(v.IsLatest), b, want)
 		}
+	}
+}
+
+// aclDenyingProxy forwards to the S3 endpoint and answers every ACL request with AccessDenied, like
+// credentials that lack s3:GetObjectAcl.
+func aclDenyingProxy(t *testing.T, endpoint string) string {
+	t.Helper()
+	target, err := url.Parse(endpoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rp := httputil.NewSingleHostReverseProxy(target)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, acl := r.URL.Query()["acl"]; acl {
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = io.WriteString(w, `<?xml version="1.0" encoding="UTF-8"?><Error><Code>AccessDenied</Code><Message>Access Denied</Message></Error>`)
+			return
+		}
+		r.Host = target.Host
+		rp.ServeHTTP(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL
+}
+
+// Decision 6, J-KV-012: where the object's ACL cannot be read, an edit would reset it, so the save is
+// refused with E_CONFLICT until the confirm; the confirmed save (same plan plus $aclReset) lands.
+func TestS3EditWarnsWhenACLUnreadable(t *testing.T) {
+	flowharness.RequireDocker(t)
+	fx := testsupport.StartS3(t)
+	app := flowharness.New(t)
+	in := inputFromConfig(fx.Config)
+	in.URI = aws.String(*fx.Config.URI + "?endpoint=" + url.QueryEscape(aclDenyingProxy(t, fx.Endpoint)))
+	conn := createConn(t, app, in)
+	if st := connect(t, app, conn.ID); st.Error != nil {
+		t.Fatalf("connect: %s", *st.Error)
+	}
+	ds := app.DataStream(t)
+	const bucket = testsupport.S3MutableBucket
+	path := "bucket:" + bucket
+	etag := s3Put(t, fx, bucket, "flow/acl.txt", "old", nil)
+
+	guardedOps := []model.MutationRowOp{upd(vals("_key", "flow/acl.txt", "$etag", etag), vals("$value", "new"))}
+	app.Contract(t, "studio-s3-edit", "mutate:acl-guarded-ops", flowharness.MutateWire(conn.ID, path, guardedOps), contractMask, flowharness.Mask("$etag"))
+	_, err := ds.Mutate(conn.ID, path, guardedOps)
+	var derr *flowharness.DataError
+	if !errors.As(err, &derr) || derr.Code != "E_CONFLICT" {
+		t.Fatalf("save with an unreadable ACL = %v, want E_CONFLICT", err)
+	}
+	app.Contract(t, "studio-s3-edit", "mutate:acl-conflict", derr, contractMask)
+	if got := s3Body(t, fx, bucket, "flow/acl.txt"); got != "old" {
+		t.Fatalf("body = %q after the refused save, want it unchanged", got)
+	}
+
+	confirmedOps := []model.MutationRowOp{upd(vals("_key", "flow/acl.txt", "$etag", etag, "$aclReset", "1"), vals("$value", "new"))}
+	app.Contract(t, "studio-s3-edit", "mutate:acl-confirmed-ops", flowharness.MutateWire(conn.ID, path, confirmedOps), contractMask, flowharness.Mask("$etag"))
+	if _, err := ds.Mutate(conn.ID, path, confirmedOps); err != nil {
+		t.Fatalf("confirmed save: %v", err)
+	}
+	if got := s3Body(t, fx, bucket, "flow/acl.txt"); got != "new" {
+		t.Fatalf("body = %q after the confirmed save", got)
 	}
 }

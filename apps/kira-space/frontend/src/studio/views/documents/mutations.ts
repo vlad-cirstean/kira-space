@@ -13,14 +13,24 @@ const mutate = createImmediateMutator({
   isStale: (tabId: string) => useDocumentViewStore(pinia).isStale(tabId),
 });
 
+/** Resolves false when the document changed since it was loaded and the user declined to overwrite. */
 export async function saveDocumentEdit(
   tabId: string,
   id: string,
   newBodyEjson: string,
-): Promise<void> {
+  loadedBody: string,
+): Promise<boolean> {
   // The '$document' sentinel (P8 ground rules): a whole-document replace expressed through the
   // existing relational-shaped MutationRowOp rather than widening the shared mutation schema.
-  await mutate(tabId, [{ kind: 'update', key: { _id: id }, changes: { $document: newBodyEjson } }]);
+  // `expect.$document` is the body as loaded, so the engine refuses a replace over a changed one.
+  const replace = {
+    kind: 'update',
+    key: { _id: id },
+    changes: { $document: newBodyEjson },
+  } as const;
+  return mutate(tabId, [{ ...replace, expect: { $document: loadedBody } }], undefined, {
+    ops: [replace],
+  });
 }
 
 export async function saveNewDocument(tabId: string, bodyEjson: string): Promise<void> {

@@ -14,7 +14,6 @@ import RunState from '@theme/RunState.vue';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
-import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { DataTabRecord } from '../../../state/tabDomain';
 import { useConnectionsStore } from '../../state/connections';
@@ -23,6 +22,7 @@ import { nodeKindLabel } from '../../state/nodeKindLabel';
 import { useRunState } from '../../state/runState';
 import EngineIcon from '../../theme/EngineIcon.vue';
 import CellEditorDock from '../shared/celleditor/CellEditorDock.vue';
+import { confirmOverwrite } from '../shared/confirmOverwrite';
 import SearchToolbar from '../shared/page/SearchToolbar.vue';
 import StaleDataStrip from '../shared/StaleDataStrip.vue';
 import { ancestorPathPrefix } from '../shared/targetPath';
@@ -45,7 +45,6 @@ const fakeDataStore = useFakeDataStore();
 const pendingChangesStore = usePendingChangesStore();
 const connectionsStore = useConnectionsStore();
 const gridViewStore = useGridViewStore();
-const confirmDialogStore = useConfirmDialogStore();
 const props = defineProps<{ tab: DataTabRecord }>();
 
 const { needsReconnect, reconnecting, onReconnectAndLoad } = useConnectionGate(
@@ -138,13 +137,7 @@ async function onCommit(): Promise<void> {
         gridViewStore.setActionError(props.tab.id, null);
         await gridViewStore.reloadAfterMutation(props.tab.id);
       },
-      (detail) =>
-        confirmDialogStore.confirm({
-          title: t('studio.grid.overwriteConfirm.title'),
-          message: `${detail} ${t('studio.grid.overwriteConfirm.body')}`,
-          confirmLabel: t('space.ade.workflows.conflict.overwrite.label'),
-          tone: 'danger',
-        }),
+      confirmOverwrite,
     );
   } catch (err) {
     gridViewStore.setActionError(props.tab.id, errorText(err));

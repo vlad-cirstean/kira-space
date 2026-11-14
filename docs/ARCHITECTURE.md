@@ -4044,6 +4044,7 @@ config, project files.
 
 ## Known open items
 
+- **Concurrent-edit guard is partial (v0.3.13 decision 3).** Mongo whole-document replaces also carry the loaded body (`expect.$document`) and refuse a changed document with `E_CONFLICT`.
 - **Grid concurrent-edit guard is partial (v0.3.13 decision 3).** Update and delete ops carry `expect` (the loaded values of edited columns); the engine adds them to the WHERE clause and answers `E_CONFLICT` when no row matches, and the grid asks before resending without the guard. Only postgres, sqlite and mysqlfamily guard, and only number, text, boolean and temporal columns. json, binary, other types and truncated cells are not compared.
 - **ADE SQLite reads queue behind writes (P622).** `internal/sqlitex` opens one connection (`SetMaxOpenConns(1)`), shared with Kira Studio, so every read waits for any write in flight. A read pool needs a read-after-write audit of every repo method and a rollback switch. P622 cut the reads and writes that queued most (board snapshot, deferred marks, log trim, runs index). Delete once a read pool ships.
 - **Board history rides the board wire (P622).** `adewire.Board.History` ships every archived task with each board read. The frontend reads it only through `useBoardHistory` (`ade/v2/readQueries.ts`), so a lazy query of its own is a contained follow-up (backend and frontend together). Delete once history has its own query.
