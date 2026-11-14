@@ -68,6 +68,8 @@ export const IPC = {
   agentPortImportApply: 'kira:agentport:importapply',
   agentPortExportPreview: 'kira:agentport:exportpreview',
   agentPortExportApply: 'kira:agentport:exportapply',
+  agentPortBackups: 'kira:agentport:backups',
+  agentPortRestore: 'kira:agentport:restore',
   agentPortCancel: 'kira:agentport:cancel',
   agentSettingsChanged: 'kira:agentSettings:changed',
   configFilesOpen: 'kira:configfiles:open',

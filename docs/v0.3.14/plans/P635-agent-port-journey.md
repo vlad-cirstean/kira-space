@@ -322,4 +322,16 @@ Not touched: `docs/v0.3.14/SPEC.md` (Result at landing), `docs/DEV_ENVIRONMENT.m
 
 ## Bugs found
 
-None yet. Implementer appends here.
+None. Every probe asserted as designed:
+
+- Statusline `refresh_interval` to `refreshInterval` and padding 0 round trip (`TestAgentPortExportProbes`).
+- Hook without timeout: export writes 60, re-import is `same`, no duplicate.
+- Edited imported hook: old command stays in the user's file (union rule); round trip lists it as the one leftover (`hook/notification-2`).
+- A hook the file already holds (same matcher and command, e.g. `SessionStart`) is left as the user wrote it, no timeout added; `hasHook` is by design.
+- `X-Team` header literal (location only) masked in import preview and export diff.
+- Same-second backups: distinct names, newest first, older keeps the older bytes.
+- Absent `CLAUDE.md`: export writes it, no backup, no error.
+- Export `Skipped` holds `env.JIRA_TOKEN` (a `${secret:}` env ref has no Claude form); `envNames` omits its variable.
+
+The `.claude.json` literal count in the exported file is at most the seed count, not equal: replacing a
+server through the CLI drops that server's literal.

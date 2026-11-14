@@ -136,6 +136,8 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   agentPortImportApply: 'AgentPortService.ImportApply',
   agentPortExportPreview: 'AgentPortService.ExportPreview',
   agentPortExportApply: 'AgentPortService.ExportApply',
+  agentPortBackups: 'AgentPortService.Backups',
+  agentPortRestore: 'AgentPortService.Restore',
   agentPortCancel: 'AgentPortService.Cancel',
   configFilesOpen: 'ConfigFilesService.Open',
   configFilesReveal: 'ConfigFilesService.Reveal',
