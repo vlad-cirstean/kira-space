@@ -953,17 +953,17 @@ export class OpsState {
   }
 
   /** `apply` — the stash survives regardless of outcome (it accepts a raw sha, so this
-   *  needs no `stash@{index}` addressing or position re-verification at all). `restoreIndex` is a
+   *  needs no `stash@{index}` addressing or position re-verification at all). `restoreIndex` defaults to true (`--index`: staged state comes back as stashed); it is a
    *  plain caller preference (`StashList.vue`'s own row-menu choice), never discovered by the
    *  pre-flight — the merge-tree prediction covers the worktree half only. */
-  async runStashApply(entry: StashEntry, restoreIndex = false): Promise<OpResult | undefined> {
+  async runStashApply(entry: StashEntry, restoreIndex = true): Promise<OpResult | undefined> {
     return this.#runStashPopLike('apply', entry, restoreIndex);
   }
 
   /** `pop` — REFUSES a raw sha (probe 8), so the executed op addresses `stash@{index}`; the
    *  service re-verifies that position immediately before writing and the write removes the
    *  entry on success. */
-  async runStashPop(entry: StashEntry, restoreIndex = false): Promise<OpResult | undefined> {
+  async runStashPop(entry: StashEntry, restoreIndex = true): Promise<OpResult | undefined> {
     return this.#runStashPopLike('pop', entry, restoreIndex);
   }
 
@@ -1347,7 +1347,7 @@ export class OpsState {
 
     const popResult = await this.#bridge.request('op.run', {
       repoId,
-      op: { kind: 'stashPop', sha: top.sha, index: top.index, restoreIndex: false },
+      op: { kind: 'stashPop', sha: top.sha, index: top.index, restoreIndex: true },
     });
     this.#applyResult(repoId, popResult);
     const mismatch = this.#reconcileStashPop('pop', preflight.prediction, popResult);

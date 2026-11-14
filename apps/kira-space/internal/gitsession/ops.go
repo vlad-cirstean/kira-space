@@ -873,6 +873,15 @@ func prepareReset(ctx context.Context, e *RepoEntry, conn ConnID, connLabel stri
 			Replay:      [][]string{gitops.UndoResetArgs(op.Mode, statusResult.Branch.OID)}, // hard replays as --keep.
 			OriginConn:  string(conn), OriginLabel: connLabel,
 		}
+		if op.Mode == "mixed" {
+			// A mixed reset drops the staged state; undo puts HEAD back, then the captured index tree.
+			// write-tree fails with unmerged paths: the replay then stays a plain mixed reset.
+			if raw, err := e.runOne(ctx, gitops.WriteTreeArgs()); err == nil {
+				if tree := strings.TrimSpace(string(raw)); tree != "" {
+					undo.Replay = gitops.UndoMixedResetArgs(statusResult.Branch.OID, tree)
+				}
+			}
+		}
 	}
 
 	// F14: op.Target passed to the write verbatim, never resolved.Sha — classifyReset's own
@@ -1414,6 +1423,11 @@ func (e *RepoEntry) UndoRun(ctx context.Context, connLabel, id string) (result O
 	opErr, _, werr := e.runGuardedWriteArgvList(ctx, record.Replay, guard)
 	if werr != nil {
 		return OpResult{}, werr
+	}
+	// A one-argv replay git refused (reset --keep over a colliding edit) changed nothing: keep the
+	// undo armed so it works again once the user clears the collision.
+	if opErr != nil && len(record.Replay) == 1 && e.undo.Peek() == nil && opErr.Kind != "NotFound" {
+		e.undo.Set(record)
 	}
 	_, inProgress, head, _ := e.readBackAfterWrite(ctx)
 

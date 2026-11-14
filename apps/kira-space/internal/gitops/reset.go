@@ -22,3 +22,12 @@ func UndoResetArgs(mode, target string) []string {
 	}
 	return ResetArgs(mode, target)
 }
+
+// WriteTreeArgs builds `write-tree`: the tree object of the current index.
+func WriteTreeArgs() []string { return []string{"write-tree"} }
+
+// UndoMixedResetArgs replays a mixed reset: HEAD back to target without touching the index, then
+// the index back to the tree it held before the reset. The working tree is never touched.
+func UndoMixedResetArgs(target, indexTree string) [][]string {
+	return [][]string{ResetArgs("soft", target), {"read-tree", indexTree}}
+}
