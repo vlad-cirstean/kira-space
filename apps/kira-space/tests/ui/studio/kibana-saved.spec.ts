@@ -473,7 +473,9 @@ test('contract: a restored Discover tab keeps its query, shows no results and do
   await expect(page.getByText('status exists')).toBeVisible();
   await expect(page.getByText('Run a query to see documents')).toBeVisible();
   await expect(page.locator('[data-testid="kibana-results"]')).toHaveCount(0);
-  await page.waitForTimeout(1000);
+  // Advance the installed fake clock past every debounce a restore could arm: an auto-run would
+  // have fired by now, and no wall time is spent waiting for one.
+  await page.clock.runFor(5000);
   expect((await stream.ops()).filter((o) => o.op === DATA_OP.execute)).toHaveLength(0);
 
   await page.click('[data-testid="kibana-run"]');
