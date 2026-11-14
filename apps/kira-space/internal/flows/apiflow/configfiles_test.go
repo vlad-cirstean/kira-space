@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -316,7 +317,13 @@ func TestHandEditedCollectionWithBadEntry(t *testing.T) {
 		}
 		return v
 	}
-	lineOf := func(src, marker string) int { return 1 + strings.Count(src[:strings.Index(src, marker)], "\n") }
+	lineOf := func(src, marker string) int {
+		i := strings.Index(src, marker)
+		if i < 0 {
+			t.Fatalf("marker %q not in source", marker)
+		}
+		return 1 + strings.Count(src[:i], "\n")
+	}
 	kindMsg := i18n.T("backend.studio.apiFiles.itemKind.body", nil)
 	wantBad := []apifiles.SkippedView{{Line: 9, Index: 1, ID: "bad", Name: "No protocol", Message: kindMsg}}
 
@@ -464,7 +471,7 @@ items:
 	var folderID string
 	byName := map[string]model.CollectionItem{}
 	for _, it := range rows() {
-		if strings.Contains("Folder,Good child,First,Second", it.Name) {
+		if slices.Contains([]string{"Folder", "Good child", "First", "Second"}, it.Name) {
 			byName[it.Name] = it
 		}
 	}
