@@ -647,3 +647,46 @@ func TestRebaseRunGitGuard(t *testing.T) {
 		t.Errorf("rebase run argv grants Bash:\n%s", args)
 	}
 }
+
+// J-ADE-050. Abort refuses while a run works on the branch ("stop the run first"), then restores the
+// pre-rebase tip once it ends.
+func TestRebaseAbortRefusedWhileRunLive(t *testing.T) {
+	f, task, br := newRbFx(t)
+	hold := filepath.Join(t.TempDir(), "release")
+	t.Cleanup(func() { _ = os.WriteFile(hold, nil, 0o644) })
+	old := gitOut(t, br.Worktree, "rev-parse", "HEAD")
+	f.advanceMain(t, "a.txt", "from main\n")
+	f.waitBoardBehind(t, task.ID, 2)
+	if _, err := f.app.W.AdeTask.SetTaskWorkflow(ctx, adewire.SetTaskWorkflowArgs{TaskID: task.ID, WorkflowID: "flow"}); err != nil {
+		t.Fatal(err)
+	}
+	claude(f.app, map[string][]fakeagent.Action{"*": {
+		{Name: "nofinish", Sh: rebaseSh + " || true"},
+		{Name: "nofinish", WaitFile: hold},
+	}})
+	first := f.waitRebase(t, task.ID, f.rebase(t, br, adewire.RebaseArgs{}).RunID)
+	if first.State != "failed" {
+		t.Fatalf("first run = %+v, want failed on the conflict", first)
+	}
+	// A step run on the branch is live; a second rebase is refused outright, so the live run is a step.
+	if _, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: task.ID}); err != nil {
+		t.Fatalf("StartRun: %v", err)
+	}
+	live := waitRun(t, f.app, task.ID, "one", "running")
+	err := f.app.W.AdeTask.AbortRebase(ctx, adewire.BranchArgs{BranchID: br.ID})
+	if err == nil || !strings.Contains(err.Error(), "stop the run first") {
+		t.Fatalf("AbortRebase with a live run = %v, want the stop-the-run-first refusal", err)
+	}
+	if _, serr := os.Stat(filepath.Join(gitOut(t, br.Worktree, "rev-parse", "--absolute-git-dir"), "rebase-merge")); serr != nil {
+		t.Fatalf("the refused abort touched the rebase in progress: %v", serr)
+	}
+	if err := f.app.W.AdeTask.StopRun(ctx, adewire.RunArgs{RunID: live.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.app.W.AdeTask.AbortRebase(ctx, adewire.BranchArgs{BranchID: br.ID}); err != nil {
+		t.Fatalf("AbortRebase after the run ended: %v", err)
+	}
+	if got := gitOut(t, br.Worktree, "rev-parse", "HEAD"); got != old {
+		t.Fatalf("tip after abort = %s, want the pre-rebase %s", got, old)
+	}
+}
