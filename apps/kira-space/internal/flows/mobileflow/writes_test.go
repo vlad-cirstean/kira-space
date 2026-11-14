@@ -2,6 +2,7 @@ package mobileflow_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"slices"
 	"testing"
@@ -189,4 +190,114 @@ func TestPhoneIdempotencyKeys(t *testing.T) {
 			t.Fatalf("%s key ran %d times, want once", name, len(got))
 		}
 	}
+}
+
+// J-MOB-014: every write route refuses a device without its permission, with the right status and
+// code, and the board and sessions stay byte for byte as they were. Write rows need the device's
+// write flag; agent rows need the global switch first, then the device flag.
+func TestPhonePermissionMatrix(t *testing.T) {
+	f := newFixture(t)
+	app := f.app
+	launch := f.startSession(t)
+	p, deviceID := pairedPhone(t, f)
+	setPerms := func(write, agentInput bool) {
+		t.Helper()
+		if err := app.W.Mobile.SetDevicePermissions(bridge.MobileDevicePermissionsArgs{ID: deviceID, Write: write, AgentInput: agentInput}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	setGlobal := func(on bool) {
+		t.Helper()
+		if _, err := app.W.Mobile.SetAgentInputEnabled(bridge.MobileSetAgentInputArgs{Enabled: on}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	state := func() string {
+		t.Helper()
+		board, err := app.W.AdeTask.Board(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sessions, err := app.W.AdeTask.Sessions(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := json.Marshal(map[string]any{"board": board, "sessions": sessions})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(raw)
+	}
+	step := map[string]string{"taskId": f.task.ID, "stepId": "review", "fromStepId": "one"}
+	writes := []struct {
+		path string
+		body any
+	}{
+		{"/api/ade/later/items", map[string]string{"title": "denied"}},
+		{"/api/ade/shelf/move", map[string]string{"taskId": f.task.ID, "shelf": adewire.ShelfBacklog, "beforeId": ""}},
+		{"/api/ade/tasks/step", step},
+		{"/api/ade/tasks/run", step},
+		{"/api/ade/tasks/launch", step},
+	}
+	agent := []struct {
+		path string
+		body any
+	}{
+		{"/api/agent/sessions/" + launch.SessionID + "/send", map[string]string{"message": "hi"}},
+		{"/api/agent/sessions/" + launch.SessionID + "/take-over", map[string]string{}},
+	}
+
+	// Write flag off: every write row is refused, whatever the agent flags say.
+	for _, agentFlags := range []bool{false, true} {
+		setPerms(false, agentFlags)
+		setGlobal(agentFlags)
+		before := state()
+		for _, w := range writes {
+			r := p.post(w.path, w.body)
+			if r.Status != http.StatusForbidden || r.code(t) != "E_WRITE_OFF" {
+				t.Fatalf("%s without write (agent flags %v) = %d %s", w.path, agentFlags, r.Status, r.Body)
+			}
+		}
+		if after := state(); after != before {
+			t.Fatalf("refused writes changed the app (agent flags %v)", agentFlags)
+		}
+	}
+
+	// Agent rows: the global switch is checked first, then the device flag. Write permission does not help.
+	cases := []struct {
+		global, device bool
+		reason         string
+	}{{false, false, "global"}, {false, true, "global"}, {true, false, "device"}}
+	setPerms(true, false)
+	for _, c := range cases {
+		setPerms(true, c.device)
+		setGlobal(c.global)
+		before := state()
+		for _, a := range agent {
+			r := p.post(a.path, a.body)
+			if r.Status != http.StatusForbidden || r.code(t) != "E_AGENT_INPUT_OFF/"+c.reason {
+				t.Fatalf("%s with global %v device %v = %d %s, want E_AGENT_INPUT_OFF/%s", a.path, c.global, c.device, r.Status, r.Body, c.reason)
+			}
+		}
+		terminal := p.get("/api/agent/sessions/" + launch.SessionID + "/terminal")
+		if terminal.Status != http.StatusForbidden {
+			t.Fatalf("terminal attach with global %v device %v = %d", c.global, c.device, terminal.Status)
+		}
+		if after := state(); after != before {
+			t.Fatalf("refused agent writes changed the app (global %v device %v)", c.global, c.device)
+		}
+	}
+
+	// With the write flag on, a write row runs and lands once, however often it is replayed.
+	setPerms(true, false)
+	key := ids.NewID()
+	for range 3 {
+		if r := p.send(http.MethodPost, "/api/ade/later/items", map[string]string{"title": "allowed"}, key); r.Status != http.StatusOK {
+			t.Fatalf("allowed write = %d %s", r.Status, r.Body)
+		}
+	}
+	if got := shelfTitles(t, app, adewire.ShelfLater, "allowed"); len(got) != 1 {
+		t.Fatalf("allowed write landed %d times, want once", len(got))
+	}
+	f.release(t)
 }

@@ -108,6 +108,8 @@ type Options struct {
 	MobileDetect func() (lannet.Network, error)
 	MobileFind   func(lannet.Identity) (lannet.Network, error)
 	MobilePoll   time.Duration
+	// MobileNow is the phone server's clock (pairing windows, device expiry, rate limits); nil is time.Now.
+	MobileNow func() time.Time
 	// GitHosts are the registered code-host providers; nil means GitHub and Azure Repos with their real CLIs.
 	GitHosts *githost.Registry
 	// IssueTracker seams the Jira provider's acli locator, runner and clock; the zero value is production's
@@ -590,9 +592,13 @@ func Build(opts Options) (*Wired, error) {
 	w.AdeTask.FocusWindow = w.Windows.Focus
 	w.CloseFlush = shell.NewCloseFlushCoordinator(events)
 
+	mobileNow := opts.MobileNow
+	if mobileNow == nil {
+		mobileNow = time.Now
+	}
 	mobileLaunches := &bridge.MobileLaunches{Emit: emitter, Window: w.Windows.MainKey}
 	w.Mobile = bridge.NewMobileAccessService(&bridge.MobileAccessService{
-		Deps: deps, Reader: w.AdeTask, Hub: mobileHub, Broker: mobileweb.NewBroker(time.Now, w.Prompts), Assets: opts.MobileAssets,
+		Deps: deps, Reader: w.AdeTask, Hub: mobileHub, Broker: mobileweb.NewBroker(mobileNow, w.Prompts), Assets: opts.MobileAssets,
 		AgentSessions: func() any { return w.Terminal.AgentSessions() },
 		AgentInfo: func() any {
 			info, _ := w.AgentSvc.Info()
@@ -602,7 +608,7 @@ func Build(opts Options) (*Wired, error) {
 		Launches:  mobileLaunches,
 		Terminals: termBroker,
 		Detect:    opts.MobileDetect, Find: opts.MobileFind, Poll: opts.MobilePoll,
-		IsLAN: opts.MobileIsLAN,
+		IsLAN: opts.MobileIsLAN, Now: opts.MobileNow,
 	})
 	w.detachMobile = bridge.AttachMobilePush(w.Mobile)
 
