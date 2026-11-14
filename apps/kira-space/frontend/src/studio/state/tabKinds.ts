@@ -62,6 +62,7 @@ import { useTabsStore } from '../../state/tabs';
 import { useTreeStore } from '../project/state/tree';
 import { discoverDirty } from '../views/console/kibana/savedDiscover';
 import { dropForTab as dropConsoleResultPagesForTab } from '../views/console/resultPages';
+import { hasOpenTransaction } from '../views/console/transaction';
 import { drop as dropDocumentPagesForTab } from '../views/documents/page';
 import { drop as dropGridPagesForTab } from '../views/grid/page';
 import { usePendingChangesStore } from '../views/grid/pendingChanges';
@@ -198,7 +199,8 @@ export const STUDIO_TAB_KINDS: TabKindRegistry<
             kibana: { ...tab.state.kibana, saved: null },
           }
         : defaultConsoleTabState(),
-    isDirty: (tabId) => discoverDirty(useTabsStore().findConsoleTab(tabId)?.state),
+    isDirty: (tabId) =>
+      discoverDirty(useTabsStore().findConsoleTab(tabId)?.state) || hasOpenTransaction(tabId),
     dropResources: dropConsoleResultPagesForTab,
     menuExtras: revealInProjectPanel,
     parseState: parseStateWith(consoleTabStateSchema),

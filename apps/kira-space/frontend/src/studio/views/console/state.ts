@@ -21,6 +21,7 @@ import { dropPlan, setPlan } from './explainResults';
 import { ExplainTruncatedError, parseExplainPages } from './plan';
 import type { QueryPlan } from './planModel';
 import { bumpPageVersion, documentRow, drop as dropPage, getPage, setPage } from './resultPages';
+import { takeOpenTransaction, trackTransaction } from './transaction';
 
 /** One result set of a run. `key` is identity and never changes while the result is open — the
  *  "Result N" label the strip prints is its *position*, which renumbers when a sibling
@@ -322,6 +323,20 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
   // (rows.ts:25-27's own `rowSources.delete`), leaving every already-parsed document tree for that
   // result retained under a key `nextSeq` guarantees is never reused, for the life of the process.
   registerTabRuntimeCleanup((tabId) => {
+    // The close prompt already warned; confirming rolls the open transaction back.
+    const tx = takeOpenTransaction(tabId);
+    if (tx) {
+      fireAndForget(
+        data.execute({
+          opId: newUuid(),
+          tabId,
+          connectionId: tx.connectionId,
+          path: tx.path,
+          statements: ['ROLLBACK'],
+        }),
+        'rollbackClosedConsole',
+      );
+    }
     const rt = runtime[tabId];
     if (rt) {
       // P12 round 1 finding #10: routed through the one release path every user-driven removal
@@ -539,6 +554,14 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
       evictOldestResults(rt, newResults.length);
       rt.activeKey = newResults[0]?.key ?? rt.activeKey;
       useStaleDataStore().stamp(tabId, tab.connectionId);
+      if (connection) {
+        trackTransaction(
+          tabId,
+          connection.kind,
+          { connectionId: tab.connectionId, path: tab.path },
+          statements,
+        );
+      }
       rt.status = 'idle';
       rt.opId = null;
     } catch (err) {

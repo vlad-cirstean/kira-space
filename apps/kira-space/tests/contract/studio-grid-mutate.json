@@ -36,6 +36,37 @@
     "path": "<masked>",
     "tabId": null
   },
+  "mutate:typed-ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "select": "x'y\"z",
+          "ünï": null
+        },
+        "expect": {
+          "select": "again",
+          "ünï": "3"
+        },
+        "key": {
+          "id": "9"
+        },
+        "kind": "update"
+      },
+      {
+        "kind": "insert",
+        "values": {
+          "id": "5",
+          "note": "typed note",
+          "select": "ins",
+          "ünï": "7"
+        }
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
   "preview:statements": [
     "DELETE FROM \"main\".\"we\"\"ird t\" WHERE \"id\" = '2'",
     "UPDATE \"main\".\"we\"\"ird t\" SET \"select\" = 'x''y\"z', \"ünï\" = NULL WHERE \"id\" = '1'",

@@ -12,6 +12,7 @@ import {
   postgresConnectionSummary,
 } from './support/postgresFixture';
 import { findRow } from './support/tree';
+import { wireOps } from './support/wireOps';
 
 // J-GRID-040 + decision 3, UI half. The Go half (dbflow TestGridStaleRow) shows the engine refuses a
 // guarded update of a row another client changed (E_CONFLICT naming the row) and lands the same plan
@@ -20,23 +21,14 @@ import { findRow } from './support/tree';
 // the staged edit on Cancel.
 
 const CONNECTION_ID = 'conn-grid-stale';
-// The mock matches on JSON text, so contract ops (sorted keys) are put in the grid's key order.
-function wireOrder(ops: unknown[]): unknown[] {
-  return (ops as Record<string, unknown>[]).map((o) => ({
-    kind: o.kind,
-    key: {
-      tenant_id: (o.key as Record<string, unknown>).tenant_id,
-      entity_id: (o.key as Record<string, unknown>).entity_id,
-    },
-    changes: o.changes,
-    ...(o.expect ? { expect: o.expect } : {}),
-  }));
-}
-const GUARDED = wireOrder(
+const COLUMNS = ['tenant_id', 'entity_id', 'name'];
+const GUARDED = wireOps(
   contract<{ ops: unknown[] }>('studio-grid-stale', 'mutate:guarded-ops').ops,
+  COLUMNS,
 );
-const OVERWRITE = wireOrder(
+const OVERWRITE = wireOps(
   contract<{ ops: unknown[] }>('studio-grid-stale', 'mutate:overwrite-ops').ops,
+  COLUMNS,
 );
 const CONFLICT = contract<{ Code: string; Message: string }>(
   'studio-grid-stale',

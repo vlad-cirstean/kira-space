@@ -124,10 +124,23 @@ func TestGridMutateChangeSet(t *testing.T) {
 	if rows := readRows(t, ds, conn.ID, tp); len(rows) != 0 {
 		t.Fatalf("read of emptied table = %q", rows)
 	}
-	if _, err := ds.Mutate(conn.ID, tp, []model.MutationRowOp{ins(vals("id", "9", "select", "again"))}); err != nil {
+	if _, err := ds.Mutate(conn.ID, tp, []model.MutationRowOp{ins(vals("id", "9", "select", "again", "ünï", "3"))}); err != nil {
 		t.Fatal(err)
 	}
-	wantRows(t, "insert on empty", readRows(t, ds, conn.ID, tp), [][]any{{"9", "again", nil, nil}})
+	wantRows(t, "insert on empty", readRows(t, ds, conn.ID, tp), [][]any{{"9", "again", "3", nil}})
+
+	// The plan the grid UI types by hand (an insert cell is a single-line input), guarded the way the
+	// grid sends an update: the UI half replays these ops.
+	typed := []model.MutationRowOp{
+		guarded(upd(vals("id", "9"), vals("select", `x'y"z`, "ünï", nil)), vals("select", "again", "ünï", "3")),
+		ins(vals("id", "5", "select", "ins", "ünï", "7", "note", "typed note")),
+	}
+	app.Contract(t, gridMutateScenario, "mutate:typed-ops", flowharness.MutateWire(conn.ID, tp, typed), contractMask)
+	if n, err := ds.Mutate(conn.ID, tp, typed); err != nil || n != 2 {
+		t.Fatalf("typed Mutate = %d, %v", n, err)
+	}
+	wantRows(t, "second client after typed plan", sqliteRows(t, path, `select id, "select", "ünï", note from "we""ird t" order by id`),
+		[][]any{{"5", "ins", "7", "typed note"}, {"9", `x'y"z`, nil, nil}})
 }
 
 // J-GRID-032: SQLite shapes the grid can meet. A rowid table with no primary key refuses a keyed
