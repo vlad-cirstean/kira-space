@@ -25,10 +25,7 @@ function onDismiss(): void {
     v-if="status.data.value?.showToast"
     role="status"
     aria-live="polite"
-    :class="[
-      floatingSurface,
-      'fixed right-4 bottom-10 z-(--kira-z-dialog) flex items-center gap-3 p-3',
-    ]"
+    :class="[floatingSurface, 'flex items-center gap-3 p-3']"
     data-testid="config-sync-toast"
   >
     <div class="flex flex-col">

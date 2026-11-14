@@ -21,10 +21,7 @@ const remaining = useCountdown(() => soonest.value);
   <div
     role="status"
     aria-live="polite"
-    :class="[
-      floatingSurface,
-      'fixed top-[calc(var(--kira-titlebar-h)+8px)] right-4 z-(--kira-z-dialog) flex items-center gap-3 p-3',
-    ]"
+    :class="[floatingSurface, 'flex items-center gap-3 p-3']"
     data-testid="approvals-toast"
   >
     <div class="flex flex-col">
