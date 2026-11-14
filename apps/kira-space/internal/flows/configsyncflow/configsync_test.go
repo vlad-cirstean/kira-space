@@ -14,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configsync"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 )
 
@@ -573,5 +574,43 @@ func TestStalePreviewWritesNothing(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(conn, "four.yaml")); !os.IsNotExist(err) {
 		t.Fatalf("four.yaml written: %v", err)
+	}
+}
+
+// J-CFG-002: a shared agent settings file keeps ${NAME} and ${secret:NAME} as text. Apply writes the
+// reference, never a value, and the preview flags the secret that has no local value.
+func TestAgentSettingsReferencesStayText(t *testing.T) {
+	app := flowharness.New(t)
+	repo := app.NewRepo("shared-agent")
+	const settings = "env:\n  PLAIN: ${HOME}\n  TOKEN: ${secret:team-token}\n  OTHER: ${secret:have-it}\n"
+	repo.Commit("init", map[string]string{"kira-config.yaml": "version: 1\nmodules: [agent]\n", "agent/settings.yaml": settings})
+	svc := app.W.ConfigSyncSvc
+	if _, err := svc.SetRepo(bridge.ConfigSyncSetRepoArgs{URL: "file://" + repo.Dir, Branch: "main", WindowKey: "w1"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.SetMode(bridge.ConfigSyncModeArgs{Module: "agent", Mode: "shared"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.W.AgentSettingsSvc.SetSecret(agentcfg.SetSecretArgs{Name: "have-it", Value: "MARK-local-secret-value"}); err != nil {
+		t.Fatal(err)
+	}
+	pv, err := svc.Preview()
+	if err != nil {
+		t.Fatalf("Preview: %v", err)
+	}
+	app.Contract(t, "config-sync-agent", "ConfigSyncService.Preview#agent", pv, flowharness.Mask("token", "commit"))
+	r := row(t, pv, "agent/settings.yaml")
+	if len(r.UnsetSecrets) != 1 || r.UnsetSecrets[0] != "team-token" {
+		t.Fatalf("UnsetSecrets = %v, want only team-token", r.UnsetSecrets)
+	}
+	if _, err := svc.Apply(bridge.ConfigSyncApplyArgs{Token: pv.Token}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	got := read(t, filepath.Join(app.ConfigDir("agent"), "settings.yaml"))
+	if got != settings {
+		t.Fatalf("applied settings = %q, want the shared text with references intact", got)
+	}
+	if strings.Contains(got, "MARK-local-secret-value") {
+		t.Fatal("applied file holds a secret value")
 	}
 }

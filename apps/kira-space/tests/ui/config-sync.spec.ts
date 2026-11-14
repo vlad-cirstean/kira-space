@@ -123,3 +123,23 @@ configSyncReviewTest(
     await expect.poll(() => calls(control, IPC.configSyncCloseReview)).toHaveLength(1);
   },
 );
+
+// Contract config-sync-agent (configsyncflow TestAgentSettingsReferencesStayText): the row says which
+// ${secret:} reference has no local value.
+configSyncReviewTest(
+  'contract: the review row names the shared secret that has no local value',
+  async ({ relaunch }) => {
+    const agent = contract<Preview>('config-sync-agent', 'ConfigSyncService.Preview#agent');
+    const { window: page } = await relaunch({
+      control: [
+        ...withStatus({ showToast: false }),
+        { channel: IPC.configSyncIsReviewWindow, response: true },
+        { channel: IPC.configSyncPreview, response: { ...agent, token: 'tok-2', commit: SHA } },
+      ],
+    });
+    const row = page.locator(t('config-sync-row-agent/settings.yaml'));
+    await expect(row).toBeVisible();
+    await expect(row).toContainText('team-token');
+    await expect(row).not.toContainText('have-it');
+  },
+);
