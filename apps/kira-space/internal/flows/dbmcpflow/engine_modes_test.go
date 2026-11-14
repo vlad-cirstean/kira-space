@@ -222,7 +222,11 @@ func TestDbMcpEngineModes(t *testing.T) {
 		// 8. Cancel: operations cancel ends a running read quickly and the lane stays usable.
 		other := f.session(t)
 		pending := e.runAsync(sess, connID, sub(e.slowRead), "read", nil)
-		op := waitListed(t, other, func(o listedOp) bool { return o.Type == "op" && o.Kind == "execute" && o.ConnectionID == connID })
+		// A short execute op (the expensive-statement EXPLAIN pre-check) can list first and end before the
+		// cancel lands; the slow read itself is still running after 300 ms.
+		op := waitListed(t, other, func(o listedOp) bool {
+			return o.Type == "op" && o.Kind == "execute" && o.ConnectionID == connID && o.ElapsedMs >= 300
+		})
 		cancelledAt := time.Now()
 		if res := cancelOp(t, other, op.OpID); res.IsError || !strings.Contains(text(res), `"cancelled":true`) {
 			t.Fatalf("operations cancel = %q", text(res))
