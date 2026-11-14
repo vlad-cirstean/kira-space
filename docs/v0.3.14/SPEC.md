@@ -7,7 +7,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P | Phase | Status |
 |---|---|---|
 | P634 | CI job sharding: split `go-containers` (about 24 min) and `go` (about 8 min) into shards behind stable required-check names | Done |
-| P635 | Agent config import/export journey (J-HAR-002): extend `harnessflow` AgentPort tests and `ade-agent-port` UI spec | Todo |
+| P635 | Agent config import/export journey (J-HAR-002): extend `harnessflow` AgentPort tests and `ade-agent-port` UI spec | Done |
 | P636 | MySQL console `DELIMITER` directive (F-A12) | Todo |
 | P637 | Mobile approval of agent requests (J-ADE-072, F-B8) | Todo |
 | P638 | Collection file with a bad item: valid items load, bad ones reported (F-A15, J-COLL-003) | Todo |
@@ -136,3 +136,14 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
   several runs; this is the main overshoot on `go`.
 - ui setup (GTK) step takes 94 to 132 s per shard; its apt sub-step time was not measured separately. Candidate: skip the
   GTK install when `bindings: "true"` only needs the `wails3` version check. Not added as a row; orchestrator asks the user.
+
+### P635 Result
+
+- Flow: `TestAgentPortClaudeJourney` (J-HAR-002) plus OpenCode extension in `harnessflow`. Covers import with hooks,
+  MCP servers with secrets and statusline; masked preview diff; apply; export after edits; backups listed; undo via backup.
+- New `agentport` `Backups`/`Restore`. `Restore` refuses `~/.claude.json`. Bridge binding added.
+- UI: `AdePortBackupsDialog`; `ade-agent-port.spec.ts` extended, 8 UI specs pass.
+- Real `claude` row (DEV_ENVIRONMENT "Agent config import and export") passes.
+- No bugs found in existing code.
+- Deviations: SessionStart hook keeps the user's form, no timeout added. `.claude.json` literal count can drop after
+  export. `envNames` omits `env.JIRA_TOKEN`.
