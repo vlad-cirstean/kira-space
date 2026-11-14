@@ -414,3 +414,21 @@ func waitFor(t *testing.T, timeout time.Duration, what string, cond func() bool)
 		time.Sleep(250 * time.Millisecond)
 	}
 }
+
+// J-BC-070: a dismissed restore offer stays dismissed across a Kira relaunch.
+func TestRestoreDismissSurvivesRelaunch(t *testing.T) {
+	e := bootRestore(t)
+	solo := sleeper(e.d, "solo", nil)
+	e.waitSnapshot(t, solo)
+	e.kill(t, solo)
+	e.gen.Bump()
+	st := e.waitState(t, "pending", func(s docker.RestoreState) bool { return s.State == "pending" })
+	if err := e.app.W.Docker.RestoreDismiss(docker.RestoreDismissArgs{EngineID: st.EngineID}); err != nil {
+		t.Fatal(err)
+	}
+	e.app.Quit(t)
+	e.app.Restart()
+	if got := e.ours(e.state(t)); len(got) != 0 {
+		t.Fatalf("items after relaunch = %+v, want none after a dismissal", got)
+	}
+}

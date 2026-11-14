@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/windowsvc"
@@ -83,7 +84,26 @@ func TestRestartChecklist(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// ADE: the plan (board) order the user set.
+	var taskIDs []string
+	for _, title := range []string{"first", "second", "third"} {
+		task, err := app.W.AdeTask.CaptureTask(ctx, adewire.CaptureTaskArgs{Title: title})
+		if err != nil {
+			t.Fatal(err)
+		}
+		taskIDs = append(taskIDs, task.ID)
+	}
+	wantOrder := []string{taskIDs[2], taskIDs[0], taskIDs[1]}
+	if err := app.W.AdeTask.SetPlan(ctx, adewire.SetPlanArgs{Order: wantOrder}); err != nil {
+		t.Fatal(err)
+	}
+
 	app.Restart()
+
+	board, err := app.W.AdeTask.Board(ctx)
+	if err != nil || !reflect.DeepEqual(board.Plan.Order, wantOrder) {
+		t.Errorf("plan order after restart = %v, %v, want %v", board.Plan.Order, err, wantOrder)
+	}
 
 	for key, want := range tabs {
 		got, err := app.W.Tabs.List(bridge.TabsListArgs{WindowKey: key})

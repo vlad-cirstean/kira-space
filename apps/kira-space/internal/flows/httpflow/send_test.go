@@ -1,11 +1,13 @@
 package httpflow
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
@@ -412,5 +414,44 @@ func TestConcurrentSendsSharedJar(t *testing.T) {
 		if !strings.Contains(res.Body, fmt.Sprintf(`"c%d":"v%d"`, i, i)) {
 			t.Fatalf("final echo is missing c%d: %s", i, res.Body)
 		}
+	}
+}
+
+// J-BC-070: a send in flight at quit leaves no history entry, and the relaunched app sends again. Quit
+// does not cancel HTTP ops (process exit closes the socket), so cancelling the old call's context after
+// Restart stands in for that exit.
+func TestRestartDropsInFlightSend(t *testing.T) {
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
+	a := get(srv.URL + "/slow?ms=90000")
+	a.Options.RequestTimeoutMs = ptr(0)
+	sendCtx, exit := context.WithCancel(ctx)
+	defer exit()
+	done := make(chan error, 1)
+	oldHTTP := app.W.Http
+	go func() { _, err := oldHTTP.Send(sendCtx, a); done <- err }()
+	waitUntil(t, "the slow request to arrive", func() bool { return len(srv.Requests()) >= 1 })
+
+	app.Restart()
+	exit()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("the in-flight send succeeded across a quit")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the in-flight send never returned after the process exit")
+	}
+	waitUntil(t, "the server to see the disconnect", func() bool {
+		r := srv.Requests()
+		return r[len(r)-1].Canceled
+	})
+	entries, err := app.W.ResponseHistory.List(bridge.ResponseHistoryScopeArgs{TabID: a.TabID})
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("history after the quit = %+v, %v, want none", entries, err)
+	}
+	if res := send(t, app, get(srv.URL+"/status?code=200")); res.Status != 200 {
+		t.Fatalf("send after relaunch = %d", res.Status)
 	}
 }

@@ -35,6 +35,12 @@ func (a *App) Snapshot() *Snapshot {
 // CrashTo stops the app, puts the snapshot's files back (every other file under SpaceHome is removed),
 // and rebuilds on them, as a relaunch after a crash at the snapshot's moment does. A real kill is
 // not used: it would need the whole app out of process, and the snapshot is exact and deterministic.
+//
+// Modeled: writes after the snapshot point are lost, SQLite recovers from main file plus WAL without a
+// checkpoint, and each config file is whole as of that point. Not modeled: a torn write of one file
+// (kill between two bytes of a rename or a partial config write) and a process kill mid-operation
+// (child processes, sockets). Atomic config writes (temp file plus rename) and the configsync journal
+// are tested directly in configsyncflow (TestRecoverFinishesCommittedJournal, TestMidApplyFailureRestoresReplacedFiles).
 func (a *App) CrashTo(s *Snapshot) {
 	a.t.Helper()
 	a.Quit(a.t)

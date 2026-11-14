@@ -17,6 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -121,6 +122,11 @@ func TestSecretsNeverReachDisk(t *testing.T) {
 	// The values are live: the store hands them back, so the scan below is not vacuous.
 	if r := app.W.Connections.Reveal(bridge.ConnectionsRevealArgs{ID: conn.ID, Confirmed: true}); r.Password == nil || *r.Password != connPw {
 		t.Fatalf("Reveal = %+v, want the saved password", r)
+	}
+	// The agent store file is obfuscated, so a byte scan proves nothing there: the store API proves the
+	// values are live and the scan below covers every other file, log and export.
+	if vals, _, err := app.W.AgentSecrets.Store.Open(secrets.ScopeAgentCredential, agentcfg.SecretOwner); err != nil || vals["cfg-ref"] != cfgRef || vals["agent-env"] != agentEnv {
+		t.Fatalf("agent store = %v, %v, want both live values", vals, err)
 	}
 	hits := map[string][]string{}
 	scanned := 0
