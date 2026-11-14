@@ -9,7 +9,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P634 | CI job sharding: split `go-containers` (about 24 min) and `go` (about 8 min) into shards behind stable required-check names | Done |
 | P635 | Agent config import/export journey (J-HAR-002): extend `harnessflow` AgentPort tests and `ade-agent-port` UI spec | Done |
 | P636 | MySQL console `DELIMITER` directive (F-A12) | Done |
-| P637 | Mobile approval of agent requests (J-ADE-072, F-B8) | Todo |
+| P637 | Mobile approval of agent requests (J-ADE-072, F-B8) | Done |
 | P638 | Collection file with a bad item: valid items load, bad ones reported (F-A15, J-COLL-003) | Done |
 | P639 | Toasts at top right, placed like prompts | Done |
 | P640 | API module: dialog when closing an unsaved tab, new or modified | Todo |
@@ -173,3 +173,12 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
 - UI: `ApiConfigProblems.vue` shows a warn Alert per partly loaded file and a Skipped report in FileView, each item with line and reason. i18n keys `studio.api.config.skipped.title`, `label`, `hint`.
 - Flow: `apiflow` `configfiles_test.go` extended, contract `api-collection-skipped.json`; `configfs` `skip_test.go`. UI: `api-collection-skipped.spec.ts`.
 - Known open item "Collection file with one bad item serves no rows on first load" deleted from `docs/ARCHITECTURE.md`.
+
+### P637 Result
+
+- Phone routes `GET /api/approvals` and `POST /api/approvals/answer` (`mobileweb/approvals.go`). Answer needs Agent input permission and writes audit `approval.answer`. Only `task.create` and `branch.request` reach the phone. Other kinds stay desktop only, checked on read, push and answer.
+- Phone payload strips paths. The `cwd` key stays an empty string because the shared schema requires it.
+- Phone UI: `PhoneApprovals.vue` on the Need You tab, shared `ApprovalItemCard`, kind defs split into `kindDefs.ts`, plain-text `TaskCreateBrief.vue`. Desktop follows through the queue push.
+- Flow: `TestPhoneApprovals`, `TestPhonePermissionMatrix`, contract `mobile-approvals.json`. UI: 9 mobile specs in `approvals.spec.ts` plus desktop `ade-mobile-approval.spec.ts` pass.
+- `scripts/check-ui-primitives.sh` allowlists U101 for `PhoneApprovals.vue`.
+- Known flake, not fixed here: `ade-v2-orchestrator.spec.ts` "task.create brief is in the dialog first frame" (framesLate Infinity). Failed 4 of 6 runs before this phase in the sandbox.
