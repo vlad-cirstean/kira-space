@@ -318,8 +318,8 @@ func (s *Service) exportContext(ex *exporter, sess *exportSession, files []targe
 }
 
 // ExportApply writes the confirmed files, each after a backup, then registers the MCP servers. A file
-// changed since the preview is a conflict and nothing is written. The first failure stops; the backups
-// are the undo.
+// changed since the preview is a conflict and nothing is written. The first failure stops; Restore
+// puts a backup back.
 func (s *Service) ExportApply(ctx context.Context, args ExportApplyArgs) (PortResult, error) {
 	sess, ok := s.sessions.take(args.Token)
 	if !ok || sess.exp == nil {

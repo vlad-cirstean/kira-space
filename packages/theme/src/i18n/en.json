@@ -680,6 +680,17 @@
         "notJSON": {
           "body": "{file} is not valid JSON. It was not read."
         },
+        "restore": {
+          "claudeJSON": {
+            "body": "Kira never writes Claude’s main config file, because Claude rewrites it while it runs. Restore the backup by hand."
+          },
+          "same": {
+            "body": "{file} already holds the backup’s content. Nothing was written."
+          },
+          "unknown": {
+            "body": "No backup with that name belongs to this agent."
+          }
+        },
         "skip": {
           "badName": {
             "body": "The name is not valid in Kira settings."

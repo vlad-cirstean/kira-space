@@ -37,5 +37,15 @@ func (s *AgentPortService) ExportApply(ctx context.Context, args agentport.Expor
 	return s.Svc.ExportApply(ctx, args)
 }
 
+// Backups lists the export backups of the provider's native files, newest first.
+func (s *AgentPortService) Backups(ctx context.Context, args agentport.BackupsArgs) ([]agentport.Backup, error) {
+	return s.Svc.Backups(ctx, args)
+}
+
+// Restore writes one backup back over its native file, after a backup of the current one.
+func (s *AgentPortService) Restore(ctx context.Context, args agentport.RestoreArgs) (agentport.PortResult, error) {
+	return s.Svc.Restore(ctx, args)
+}
+
 // Cancel drops a preview.
 func (s *AgentPortService) Cancel(args agentport.CancelArgs) { s.Svc.Cancel(args) }
