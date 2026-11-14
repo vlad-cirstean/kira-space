@@ -14315,6 +14315,9 @@
         "announce": "Copied in shell mode",
         "label": "Shell mode"
       },
+      "truncated": {
+        "announce": "Copied, but {count} of these cells hold only their first 64 kilobytes, so the copy is shortened for them"
+      },
       "tsv": {
         "announce": "Copied TSV"
       },
@@ -15090,6 +15093,9 @@
       },
       "selectRowsFirst": {
         "tooltip": "Select one or more rows first"
+      },
+      "setNull": {
+        "error": "Not cleared: {columns} does not allow NULL."
       },
       "sortBy": {
         "aria": "Sort by {name}"

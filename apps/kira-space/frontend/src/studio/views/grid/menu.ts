@@ -1,7 +1,7 @@
 import type { MaskKind, MaskRule } from '@shared/domain/mask';
 import type { ForeignKeyMeta, ObjectMeta } from '@shared/domain/tree';
 import { decodePath } from '@shared/domain/tree';
-import { t } from '@theme/i18n';
+import { type MessageKey, t } from '@theme/i18n';
 import { copyAndAnnounce } from '@workbench/behaviour/clipboard';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { useTabsStore } from '../../../state/tabs';
@@ -9,7 +9,7 @@ import { defaultCorrelateFor, MASK_KIND_OPTIONS } from '../../project/connection
 import { maskRulesFor, removeMaskRule, upsertMaskRule } from '../../state/maskRules';
 import type { RowSnapshot } from '../shared/clipboardFormats';
 import type { Selection } from '../shared/slick/selection';
-import { type CopyFormat, rowsText } from '../shared/slick/selectionCopy';
+import { type CopyFormat, rowsCopiedMessage, rowsText } from '../shared/slick/selectionCopy';
 import { identNeedsQuoting, quoteIdent, quoteLiteral, type SqlDialect } from '../shared/sqlIdent';
 import { requestCellFocus } from './focusRequest';
 import { usePendingChangesStore } from './pendingChanges';
@@ -329,7 +329,13 @@ export function cellMenu(ctx: CellMenuContext): MenuItem[] {
       // behavior branches on selection kind (cell/range/row/column) in a way one menu row can't
       // express, so this is tagged for its printed key without being dispatched through here.
       shortcut: 'grid.copy',
-      run: () => void copyAndAnnounce(ctx.copy('tsv'), t('studio.copy.cell.announce')),
+      run: () =>
+        void copyAndAnnounce(
+          ctx.copy('tsv'),
+          ctx.truncated
+            ? t('studio.copy.truncated.announce', { count: 1 })
+            : t('studio.copy.cell.announce'),
+        ),
     },
     {
       type: 'item',
@@ -347,7 +353,13 @@ export function cellMenu(ctx: CellMenuContext): MenuItem[] {
       id: 'copy-as-json',
       label: t('common.action.copyAsJson.label'),
       icon: 'copy',
-      run: () => void copyAndAnnounce(ctx.copy('json'), t('common.copy.copiedJson.announce')),
+      run: () =>
+        void copyAndAnnounce(
+          ctx.copy('json'),
+          ctx.truncated
+            ? t('studio.copy.truncated.announce', { count: 1 })
+            : t('common.copy.copiedJson.announce'),
+        ),
     },
     {
       type: 'item',
@@ -427,6 +439,12 @@ function snapshotsThunk(ctx: RowMenuContext): () => RowSnapshot[] {
   return () => (cached ??= ctx.rows.map(ctx.snapshot));
 }
 
+function copiedMessage(rows: readonly RowSnapshot[], plainKey: MessageKey): string {
+  return rowsCopiedMessage(rows, t(plainKey), (count) =>
+    t('studio.copy.truncated.announce', { count }),
+  );
+}
+
 function hasPendingChange(ctx: RowMenuContext): boolean {
   const store = usePendingChangesStore();
   if (store.isCommitting(ctx.tabId)) return false;
@@ -458,14 +476,20 @@ export function rowMenu(ctx: RowMenuContext): MenuItem[] {
           // Display-only (P21 D5): ⌘C on a row selection writes this exact text.
           shortcut: ctx.selectionKind === 'row' ? 'grid.copy' : undefined,
           run: () =>
-            void copyAndAnnounce(rowsText(snapshots(), 'tsv'), t('studio.copy.tsv.announce')),
+            void copyAndAnnounce(
+              rowsText(snapshots(), 'tsv'),
+              copiedMessage(snapshots(), 'studio.copy.tsv.announce'),
+            ),
         },
         {
           type: 'item',
           id: 'copy-rows-csv',
           label: t('studio.copy.format.csv.label'),
           run: () =>
-            void copyAndAnnounce(rowsText(snapshots(), 'csv'), t('studio.copy.csv.announce')),
+            void copyAndAnnounce(
+              rowsText(snapshots(), 'csv'),
+              copiedMessage(snapshots(), 'studio.copy.csv.announce'),
+            ),
         },
         {
           type: 'item',
@@ -474,7 +498,7 @@ export function rowMenu(ctx: RowMenuContext): MenuItem[] {
           run: () =>
             void copyAndAnnounce(
               rowsText(snapshots(), 'json'),
-              t('common.copy.copiedJson.announce'),
+              copiedMessage(snapshots(), 'common.copy.copiedJson.announce'),
             ),
         },
         {
@@ -487,7 +511,7 @@ export function rowMenu(ctx: RowMenuContext): MenuItem[] {
                 qualifiedName: ctx.qualifiedName,
                 dialect: ctx.dialect,
               }),
-              t('studio.copy.insert.announce'),
+              copiedMessage(snapshots(), 'studio.copy.insert.announce'),
             ),
         },
       ],

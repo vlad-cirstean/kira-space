@@ -107,3 +107,26 @@ func TestGridClipboardBytesContract(t *testing.T) {
 	app.Contract(t, "studio-grid-clipboard", "copy:csv", strings.Join(csv, "\r\n"))
 	app.Contract(t, "studio-grid-clipboard", "copy:json", "[\n"+strings.Join(objs, ",\n")+"\n]")
 }
+
+// J-GRID-036 (OQ-GRID-2): a cell over the engine's 64 KiB display cap comes back clipped and flagged,
+// so the grid can tell the user a copy holds the shortened text.
+func TestGridReadFlagsClippedCell(t *testing.T) {
+	app := flowharness.New(t)
+	path := filepath.Join(t.TempDir(), "clip.db")
+	sqliteExec(t, path, `create table big (id integer primary key, body text)`)
+	sqliteExecArgs(t, path, `insert into big values (1, ?)`, strings.Repeat("x", 100*1024))
+	sqliteExecArgs(t, path, `insert into big values (2, ?)`, "small")
+	conn := createConn(t, app, sqliteInput("big", path))
+	connect(t, app, conn.ID)
+	ds := app.DataStream(t)
+	page, _, err := ds.Read(flowharness.ReadArgs{ConnectionID: conn.ID, Path: tableNodePath(t, app, conn.ID, "big")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Truncated) != 2 || !page.Truncated[0] || page.Truncated[1] {
+		t.Fatalf("clipped flags = %v, want [true false]", page.Truncated)
+	}
+	if got := len(page.Rows[0][1].(string)); got != 64*1024 {
+		t.Fatalf("clipped cell holds %d bytes, want %d", got, 64*1024)
+	}
+}

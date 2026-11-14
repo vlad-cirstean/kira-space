@@ -54,8 +54,11 @@ export function rowSnapshot(
 ): RowSnapshot {
   const values: Record<string, string | null> = {};
   const truncatedSet = new Set<string>();
+  const binarySet = new Set<string>();
   for (let c = 0; c < order.length; c++) {
     const name = order[c] as string;
+    const colIndex = page ? pageColumnIndexFor(page, order as string[], c) : -1;
+    if (page && page.columns[colIndex]?.typeClass === 'binary') binarySet.add(name);
     const dc = displayCell(tabId, page, order, row, c);
     values[name] = dc.isNull ? null : dc.text;
     // F2/P21 round 1: `.text` is only the 64 KiB prefix the engine sent for a truncated cell —
@@ -67,6 +70,7 @@ export function rowSnapshot(
     columns: [...order],
     values,
     truncated: truncatedSet.size > 0 ? truncatedSet : undefined,
+    binary: binarySet.size > 0 ? binarySet : undefined,
   };
 }
 

@@ -51,8 +51,8 @@ type DataPage struct {
 
 // DataColumn is one tabular column descriptor.
 type DataColumn struct {
-	Name, DataType          string
-	Nullable, PK, Generated bool
+	Name, DataType, TypeClass string
+	Nullable, PK, Generated   bool
 }
 
 // DataError is a failed request as the wire carries it.
@@ -356,7 +356,7 @@ func decodePage(t testing.TB, p *wire.Page) DataPage {
 		for i := 0; i < tp.ColumnsLength(); i++ {
 			var cd wire.ColumnDescriptor
 			tp.Columns(&cd, i)
-			dp.Columns = append(dp.Columns, DataColumn{Name: string(cd.Name()), DataType: string(cd.DataType()),
+			dp.Columns = append(dp.Columns, DataColumn{Name: string(cd.Name()), DataType: string(cd.DataType()), TypeClass: wire.EnumNamesTypeClass[cd.TypeClass()],
 				Nullable: cd.Nullable(), PK: cd.IsPrimaryKey(), Generated: cd.Generated()})
 		}
 		dp.Rows = make([][]any, dp.RowCount)
