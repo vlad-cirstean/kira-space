@@ -15,6 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page/wire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
+	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
 // DataStream is a client of the engine data plane (bridge.ServeEngineStream over an in-memory
@@ -144,7 +145,7 @@ func decodeResponse(id int, raw []byte) (*wire.Frame, error) {
 	if !f.Ok() {
 		e := f.Error(nil)
 		if e == nil {
-			return nil, &DataError{Code: "E_UNKNOWN", Message: fmt.Sprintf("request %d failed without detail", id)}
+			return nil, &DataError{Code: string(ipcerr.CodeInternal), Message: fmt.Sprintf("request %d failed without detail", id)}
 		}
 		return nil, &DataError{Code: string(e.Code()), Message: string(e.Message())}
 	}

@@ -34,21 +34,22 @@ func TestConsoleRedis(t *testing.T) {
 		return pages[0]
 	}
 	rows := map[string][][]any{}
-	for key, st := range map[string]string{
-		"set":       `SET k v`,
-		"get":       `GET k`,
-		"nil":       `GET missing`,
-		"hset":      `HSET h a 1 b 2`,
-		"hgetall":   `HGETALL h`,
-		"rpush":     `RPUSH l x y`,
-		"lrange":    `LRANGE l 0 -1`,
-		"zadd":      `ZADD z 1 m`,
-		"zrange":    `ZRANGE z 0 -1 WITHSCORES`,
-		"quotedSet": `SET "a b" "x\ny"`,
-		"quotedGet": `GET "a b"`,
-		"eval":      `EVAL "return {1,{2,'x'}}" 0`,
+	// Ordered: HGETALL and LRANGE read what HSET and RPUSH wrote.
+	for _, c := range []struct{ key, st string }{
+		{"set", `SET k v`},
+		{"get", `GET k`},
+		{"nil", `GET missing`},
+		{"hset", `HSET h a 1 b 2`},
+		{"hgetall", `HGETALL h`},
+		{"rpush", `RPUSH l x y`},
+		{"lrange", `LRANGE l 0 -1`},
+		{"zadd", `ZADD z 1 m`},
+		{"zrange", `ZRANGE z 0 -1 WITHSCORES`},
+		{"quotedSet", `SET "a b" "x\ny"`},
+		{"quotedGet", `GET "a b"`},
+		{"eval", `EVAL "return {1,{2,'x'}}" 0`},
 	} {
-		rows[key] = run(st).Rows
+		rows[c.key] = run(c.st).Rows
 	}
 	if got := rows["nil"]; len(got) != 1 || got[0][1] != any("(nil)") {
 		t.Fatalf("nil reply: %q", got)
