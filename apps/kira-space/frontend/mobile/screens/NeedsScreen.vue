@@ -7,6 +7,7 @@ import { Alert } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { useApprovals } from '@workbench/approvals/approvalsQueries';
 import { formatRelative } from '@workbench/behaviour/format';
 import { errorText } from '@workbench/bridge/codedError';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
@@ -15,6 +16,7 @@ import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import PermissionHint from '../components/PermissionHint.vue';
+import PhoneApprovals from '../components/PhoneApprovals.vue';
 import ReplySheet from '../components/ReplySheet.vue';
 import { useAuthStore } from '../state/auth';
 import { newIntentKey, useAdeWrites } from '../state/useAdeWrites';
@@ -24,6 +26,7 @@ import { useAgentsModel } from '../state/useAgentsModel';
 // can be answered from here, or taken over when a run is stuck.
 const { model, boardQuery } = useAgentsModel();
 const { permissions } = storeToRefs(useAuthStore());
+const { data: approvals } = useApprovals();
 const writes = useAdeWrites();
 const router = useRouter();
 
@@ -66,6 +69,7 @@ async function confirmTakeOver(): Promise<void> {
 
 <template>
   <section class="flex flex-col" data-testid="needs-screen">
+    <PhoneApprovals />
     <QueryState :query="boardQuery" :is-empty="() => false">
       <template #error>
         <Alert variant="error" strip data-testid="needs-error">{{
@@ -74,13 +78,13 @@ async function confirmTakeOver(): Promise<void> {
       </template>
       <template v-if="model">
         <EmptyState
-          v-if="model.needs.empty"
+          v-if="model.needs.empty && !approvals?.length"
           fill
           data-testid="needs-empty"
           :title="t('mobile.needs.list.empty')"
           :description="model.needs.footer"
         />
-        <template v-else>
+        <template v-else-if="!model.needs.empty">
           <PermissionHint v-if="needsAgentInput" :what="t('mobile.needs.replyOff.hint')" />
           <ul class="m-0 flex list-none flex-col p-0">
             <li

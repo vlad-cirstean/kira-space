@@ -8094,6 +8094,14 @@
     }
   },
   "mobile": {
+    "approvals": {
+      "answerOff": {
+        "hint": "Answering agent requests is off for this phone."
+      },
+      "heading": {
+        "title": "Agent requests"
+      }
+    },
     "backlog": {
       "handle": {
         "aria": "Drag to reorder"

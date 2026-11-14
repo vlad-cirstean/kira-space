@@ -5,12 +5,14 @@ import { agentInfoSchema } from '@shared/domain/agent';
 import { VueQueryPlugin } from '@tanstack/vue-query';
 import { i18n } from '@theme/i18n';
 import { agentControlKey } from '@workbench/agent/agentInfo';
+import { approvalsControlKey } from '@workbench/approvals/approvalsQueries';
 import { provideShellServices } from '@workbench/bootstrapShell';
 import { createQueryClient } from '@workbench/state/queryClient';
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 import App from './App.vue';
 import { httpAdeReader } from './api/adeReader';
+import { httpApprovalsControl } from './api/approvals';
 import { onChannel, sseSignalSource } from './api/events';
 import { getJson, setUnauthorizedHandler } from './api/http';
 import { router } from './router';
@@ -38,6 +40,7 @@ app.provide(agentControlKey, {
   agentInfoFor: agentInfo,
   agentList: () => Promise.resolve([]),
 });
+app.provide(approvalsControlKey, httpApprovalsControl);
 setUnauthorizedHandler((code) => useAuthStore(pinia).onUnauthorized(code));
 app.use(router);
 app.mount('#app');

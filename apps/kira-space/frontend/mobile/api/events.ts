@@ -19,6 +19,7 @@ const CHANNELS = [
   CHANNEL.adeTaskSessions,
   CHANNEL.agentSessions,
   CHANNEL.agentEvent,
+  CHANNEL.approvalsChanged,
 ] as const;
 
 type Listener = (data: unknown) => void;

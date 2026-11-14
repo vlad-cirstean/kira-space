@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { provideApprovalKinds } from '@workbench/approvals/registry';
 import ConfirmDialog from '@workbench/components/ConfirmDialog.vue';
 import { storeToRefs } from 'pinia';
 import { watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { mobileApprovalKinds } from './approvals/kinds';
 import { useAuthStore } from './state/auth';
 
+provideApprovalKinds(mobileApprovalKinds());
 const router = useRouter();
 const { phase } = storeToRefs(useAuthStore());
 
