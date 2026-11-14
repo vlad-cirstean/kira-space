@@ -59,7 +59,7 @@ export type FrameSpec =
       kind: 'res';
       id: number;
       ok: false;
-      error: { message: string; code?: string };
+      error: { message: string; code?: string; details?: string };
       forceDefaults?: boolean;
     }
   | { kind: 'evt'; topic: string; payload: FramePayload; forceDefaults?: boolean };
@@ -366,9 +366,11 @@ export function encodeFrame(spec: FrameSpec): EncodedFrame {
 
   const messageOff = b.createString(spec.error.message);
   const codeOff = spec.error.code !== undefined ? b.createString(spec.error.code) : 0;
+  const detailsOff = spec.error.details !== undefined ? b.createString(spec.error.details) : 0;
   wire.Error.startError(b);
   wire.Error.addMessage(b, messageOff);
   if (spec.error.code !== undefined) wire.Error.addCode(b, codeOff);
+  if (spec.error.details !== undefined) wire.Error.addDetails(b, detailsOff);
   const errOff = wire.Error.endError(b);
 
   wire.Frame.startFrame(b);

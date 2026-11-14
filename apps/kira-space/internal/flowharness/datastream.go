@@ -57,7 +57,11 @@ type DataColumn struct {
 }
 
 // DataError is a failed request as the wire carries it.
-type DataError struct{ Code, Message string }
+type DataError struct {
+	Code, Message string
+	// Details is the error frame's optional JSON ("" when absent, and then left out of contracts).
+	Details string `json:",omitempty"`
+}
 
 func (e *DataError) Error() string { return e.Code + ": " + e.Message }
 
@@ -147,7 +151,7 @@ func decodeResponse(id int, raw []byte) (*wire.Frame, error) {
 		if e == nil {
 			return nil, &DataError{Code: string(ipcerr.CodeInternal), Message: fmt.Sprintf("request %d failed without detail", id)}
 		}
-		return nil, &DataError{Code: string(e.Code()), Message: string(e.Message())}
+		return nil, &DataError{Code: string(e.Code()), Message: string(e.Message()), Details: string(e.Details())}
 	}
 	return f, nil
 }

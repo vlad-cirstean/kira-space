@@ -128,7 +128,7 @@ union Payload {
 
 enum FrameKind : ubyte { res, evt }
 
-table Error { message:string (required); code:string; }
+table Error { message:string (required); code:string; details:string; }
 
 table Frame {
   kind:FrameKind;

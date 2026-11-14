@@ -476,5 +476,15 @@ export function decodeFrame(bytes: Uint8Array): PortResponse | PortEvent {
   const message = err.message();
   if (message === null) throw new Error('frame: error is missing its message');
   const code = err.code();
-  return { kind: 'res', id, ok: false, error: code === null ? { message } : { message, code } };
+  const details = err.details();
+  return {
+    kind: 'res',
+    id,
+    ok: false,
+    error: {
+      message,
+      ...(code === null ? {} : { code }),
+      ...(details === null ? {} : { details }),
+    },
+  };
 }

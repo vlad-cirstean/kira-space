@@ -57,6 +57,16 @@ void ready.catch(() => {
   // Reported by initEngineState's own catch; this only marks the rejection as handled.
 });
 
+// The error frame's details are JSON text ({"changed":true}); unparseable text is dropped.
+function parseDetails(text: string | undefined): unknown {
+  if (text === undefined) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
 function handleMessage(message: PortResponse | PortEvent): void {
   if (message.kind === 'evt') {
     for (const cb of eventListeners.get(message.topic) ?? []) cb(message.payload);
@@ -69,8 +79,9 @@ function handleMessage(message: PortResponse | PortEvent): void {
   if (message.ok) {
     req.resolve(message.payload);
   } else {
-    const err: Error & { code?: string } = new Error(message.error.message);
+    const err: Error & { code?: string; details?: unknown } = new Error(message.error.message);
     err.code = message.error.code;
+    err.details = parseDetails(message.error.details);
     req.reject(err);
   }
 }

@@ -36,8 +36,15 @@ code(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
+details():string|null
+details(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+details(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
 static startError(builder:flatbuffers.Builder) {
-  builder.startObject(2);
+  builder.startObject(3);
 }
 
 static addMessage(builder:flatbuffers.Builder, messageOffset:flatbuffers.Offset) {
@@ -48,16 +55,21 @@ static addCode(builder:flatbuffers.Builder, codeOffset:flatbuffers.Offset) {
   builder.addFieldOffset(1, codeOffset, 0);
 }
 
+static addDetails(builder:flatbuffers.Builder, detailsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, detailsOffset, 0);
+}
+
 static endError(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 4) // message
   return offset;
 }
 
-static createError(builder:flatbuffers.Builder, messageOffset:flatbuffers.Offset, codeOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createError(builder:flatbuffers.Builder, messageOffset:flatbuffers.Offset, codeOffset:flatbuffers.Offset, detailsOffset:flatbuffers.Offset):flatbuffers.Offset {
   Error.startError(builder);
   Error.addMessage(builder, messageOffset);
   Error.addCode(builder, codeOffset);
+  Error.addDetails(builder, detailsOffset);
   return Error.endError(builder);
 }
 }

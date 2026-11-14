@@ -7,7 +7,12 @@ export interface PortRequest {
 
 export type PortResponse =
   | { kind: 'res'; id: number; ok: true; payload: unknown }
-  | { kind: 'res'; id: number; ok: false; error: { message: string; code?: string } };
+  | {
+      kind: 'res';
+      id: number;
+      ok: false;
+      error: { message: string; code?: string; details?: string };
+    };
 
 export interface PortEvent {
   kind: 'evt';

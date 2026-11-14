@@ -2,6 +2,7 @@ package adapters
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -58,6 +59,9 @@ type Error struct {
 	Code    ErrorCode
 	Message string
 	Cause   error
+	// Details is optional JSON the data-plane error frame carries to the renderer: {"changed":true}
+	// on a row changed since load, {"outcomeUnknown":true} on a commit whose acknowledgement was lost.
+	Details json.RawMessage
 }
 
 func (e *Error) Error() string { return e.Message }
@@ -66,6 +70,42 @@ func (e *Error) Unwrap() error { return e.Cause }
 // New constructs an *Error. cause may be nil.
 func New(code ErrorCode, message string, cause error) *Error {
 	return &Error{Code: code, Message: message, Cause: cause}
+}
+
+// AtStatement returns err carrying the 0-based index of the console statement that failed, as the
+// `statementIndex` detail: statements before it ran, so the renderer can tell what a transaction
+// the batch opened or closed left behind. Errors that are not an *Error pass through unchanged.
+func AtStatement(err error, index int) error {
+	var ae *Error
+	if !errors.As(err, &ae) || ae != err {
+		return err
+	}
+	c := *ae
+	c.Details = json.RawMessage(`{"statementIndex":` + strconv.Itoa(index) + `}`)
+	return &c
+}
+
+// CarryDetails copies from's details onto to when from is an *Error, for a rewrite of one error
+// into another that must keep what the first carried.
+func CarryDetails(to *Error, from error) *Error {
+	var fe *Error
+	if errors.As(from, &fe) {
+		to.Details = fe.Details
+	}
+	return to
+}
+
+// WithDetails sets the structured details the error frame carries and returns e.
+func (e *Error) WithDetails(details string) *Error {
+	e.Details = json.RawMessage(details)
+	return e
+}
+
+// RowChanged is the E_CONFLICT a guarded write answers when the row no longer holds the loaded
+// values; details.changed tells the renderer an overwrite confirm is the right answer.
+func RowChanged(key string) *Error {
+	return T(CodeConflict, "backend.studio.adapter.rowChanged.body", map[string]string{"key": key}, nil).
+		WithDetails(`{"changed":true}`)
 }
 
 // T builds an Error whose message is catalog text for key. cause may be nil.

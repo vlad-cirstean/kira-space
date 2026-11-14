@@ -211,18 +211,18 @@ const maxResponsePayloadBytes = maxDataFrameBytes - 4096
 var internalErrorFrame []byte
 
 func init() {
-	internalErrorFrame = encodeError(0, "internal error", "")
+	internalErrorFrame = encodeError(0, "internal error", "", nil)
 }
 
 // safeEncodeError calls encodeError, substituting internalErrorFrame if it panics — still must not
 // leave id's pending request unanswered forever.
-func safeEncodeError(id int, message, code string) (body []byte) {
+func safeEncodeError(id int, message, code string, details []byte) (body []byte) {
 	defer func() {
 		if recover() != nil {
 			body = internalErrorFrame
 		}
 	}()
-	return encodeError(id, message, code)
+	return encodeError(id, message, code, details)
 }
 
 func (r *Router) respond(session *Session, id int, payload any, err error) {
@@ -291,11 +291,13 @@ func capErrorMessage(msg string) string {
 
 func (r *Router) respondError(session *Session, id int, err error) {
 	code := ""
+	var details []byte
 	var ae *adapters.Error
 	if errors.As(err, &ae) {
 		code = string(ae.Code)
+		details = ae.Details
 	}
-	session.enqueueResponse(safeEncodeError(id, capErrorMessage(err.Error()), code))
+	session.enqueueResponse(safeEncodeError(id, capErrorMessage(err.Error()), code, details))
 }
 
 func (r *Router) respondCacheStats(session *Session, id int) {
