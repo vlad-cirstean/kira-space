@@ -12,7 +12,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P637 | Mobile approval of agent requests (J-ADE-072, F-B8) | Done |
 | P638 | Collection file with a bad item: valid items load, bad ones reported (F-A15, J-COLL-003) | Done |
 | P639 | Toasts at top right, placed like prompts | Done |
-| P640 | API module: dialog when closing an unsaved tab, new or modified | Todo |
+| P640 | API module: dialog when closing an unsaved tab, new or modified | Done |
 | P641 | ADE task: own Jira and PR links first in their group | Done |
 | P642 | ADE task list: today background, day start/end left bar, today bar differs | Done |
 | P643 | Details tab on disk: notes, handovers, links, PR link and proofs (with images) as files, source of truth; design plan first, user approves it before the build | Todo |
@@ -197,3 +197,12 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
 - New token `--color-day-bar`. `AdeDayBand.vue` renders one bar span per day (`ade-day-bar`): 2px, today 3px and lighter (`bg-today`), none for Later. The bar spans the heading to the last row.
 - UI: new test in `ade-v2-plan.spec.ts`. Visual: new spec in `ade-plan-days.spec.ts`, new baseline `plan-day-bars-visual-linux.png`.
 - No Go half: presentation only.
+
+### P640 Result
+
+- Shared confirm dialog: store `choose()` returns the picked action, with an optional third button (testid `confirm-dialog-secondary`). `confirm()` signature and testids unchanged.
+- Tab kinds take an optional `confirmClose` hook (`TabKindDef`, `createTabsStore`). `http-request` and `grpc-request` use it through new Pinia store `studio/api/state/tabClose.ts`: Save, Discard, Cancel. Tab closes only after Save or Discard.
+- `saveRequest` and `saveGrpcRequest` return boolean. Save as (new tab) uses `waitForClose` on the save dialog store.
+- Decisions: an untouched blank new tab closes without asking. Incognito tabs never ask. Title copy has no question mark (catalog rule C7). Keys `studio.api.tabClose.*`.
+- Bug found and fixed: Save as cancel passed its click event as `saved`, so cancelling closed the tab. `closeSaveDialog(saved = false)`, template calls it with no argument.
+- Flow: `TestTabCloseSaveOrDiscard` (save then close persists, discard leaves the file unchanged), contract `api-tab-close.json`. UI: `api-tab-close.spec.ts`, 7 cases. 149 of 149 neighbour specs pass.
