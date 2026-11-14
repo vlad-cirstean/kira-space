@@ -15,10 +15,11 @@ const conflict = contract<{ code: string; message: string; details: { changed: b
   scenario,
   'SaveRequest#changed',
 );
-const guarded = contract<{ expect: { url: string }; request: { url: string } }>(
-  scenario,
-  'args:SaveRequest#guarded',
-);
+const guarded = contract<{
+  expect: { url: string };
+  expectName: string;
+  request: { url: string };
+}>(scenario, 'args:SaveRequest#guarded');
 const confirmed = contract<{ name: string; url: string }>(scenario, 'SaveRequest#confirmed');
 
 const NOW = '2026-01-01T00:00:00.000Z';
@@ -74,17 +75,25 @@ const CONTROL: ControlSnapshot[] = [
   // Both guarded saves are refused; the confirmed resend carries no guard and lands.
   {
     channel: IPC.collectionsSaveRequest,
-    args: { ...SAVE_ARGS, expect: { ...READ, paramDescriptions: {} } },
+    args: {
+      ...SAVE_ARGS,
+      expect: { ...READ, paramDescriptions: {} },
+      expectName: guarded.expectName,
+    },
     error,
   },
   {
     channel: IPC.collectionsSaveRequest,
-    args: { ...SAVE_ARGS, expect: { ...READ, paramDescriptions: {} } },
+    args: {
+      ...SAVE_ARGS,
+      expect: { ...READ, paramDescriptions: {} },
+      expectName: guarded.expectName,
+    },
     error,
   },
   {
     channel: IPC.collectionsSaveRequest,
-    args: { ...SAVE_ARGS, expect: null },
+    args: { ...SAVE_ARGS, expect: null, expectName: null },
     response: { ...ITEM, url: guarded.request.url },
   },
 ];
@@ -107,7 +116,10 @@ test('a Save over a request another window saved asks first and writes only afte
   await cancelConfirm(page);
   await expect(page.locator('[data-testid="http-dirty"]')).toBeVisible();
   expect(saves()).toHaveLength(1);
-  expect(saves()[0].args).toMatchObject({ expect: { url: guarded.expect.url } });
+  expect(saves()[0].args).toMatchObject({
+    expect: { url: guarded.expect.url },
+    expectName: guarded.expectName,
+  });
 
   // Saving again asks again; confirming resends the same request without the guard.
   await page.click('[data-testid="http-save"]');

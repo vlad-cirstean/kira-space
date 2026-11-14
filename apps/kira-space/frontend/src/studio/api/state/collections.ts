@@ -720,10 +720,17 @@ export const useCollectionsStore = defineStore('collections', () => {
     seen: HttpSavedRequest | null = null,
   ): Promise<void> {
     try {
-      // Decision 3: `seen` is the request the tab last synced with; one another window saved since
-      // asks before it is overwritten, and declining keeps the edit unsaved.
+      // Decision 3: `seen` is the request the tab last synced with, `name` the item name it holds
+      // (bound tabs follow a rename, so a name that differs in the file is one this window never
+      // saw); an item another window saved or renamed since asks before it is overwritten, and
+      // declining keeps the edit unsaved.
       const saved = await guardedSavedWrite((guarded) =>
-        control.collectionsSaveRequest(itemId, name, request, guarded && seen ? seen : undefined),
+        control.collectionsSaveRequest(
+          itemId,
+          name,
+          request,
+          guarded && seen ? { request: seen, name } : undefined,
+        ),
       );
       if (saved === undefined) return;
       // The cache is the dirty comparison's saved side, so it must move in step with the write or
@@ -741,9 +748,18 @@ export const useCollectionsStore = defineStore('collections', () => {
     itemId: string,
     name: string,
     request: GrpcSavedRequest,
+    seen: GrpcSavedRequest | null = null,
   ): Promise<void> {
     try {
-      await control.collectionsSaveGrpcRequest(itemId, name, request);
+      const saved = await guardedSavedWrite((guarded) =>
+        control.collectionsSaveGrpcRequest(
+          itemId,
+          name,
+          request,
+          guarded && seen ? { request: seen, name } : undefined,
+        ),
+      );
+      if (saved === undefined) return;
       queryClient.setQueryData(apiSavedGrpcRequestKey(itemId), request);
       await afterTreeListChange();
       state.error = null;

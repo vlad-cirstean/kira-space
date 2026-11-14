@@ -2726,7 +2726,7 @@
           "body": "That order no longer matches the list. Retry."
         },
         "requestChanged": {
-          "body": "Another window saved this request since you opened it."
+          "body": "Another window saved or renamed this request since you opened it."
         },
         "writeFailed": {
           "error": "Couldn’t write {path}: {detail}"

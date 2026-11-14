@@ -94,9 +94,17 @@ func rootItems(root *yaml.Node) *yaml.Node {
 	return nil
 }
 
-// requestDiffers reports whether the item's http node no longer holds expect. Both sides compare
-// as the JSON of the file model, so the caller's read and the file's own text agree on defaults.
-func requestDiffers(src []byte, id string, expect HTTP) (bool, error) {
+// ItemExpect is what the caller last read of one saved request. Every non-nil part must still
+// hold in the file: the item's name, its http node, its grpc node.
+type ItemExpect struct {
+	Name *string
+	HTTP *HTTP
+	GRPC *GRPC
+}
+
+// itemDiffers reports whether the item no longer holds expect. Nodes compare as the JSON of the file
+// model, so the caller's read and the file's own text agree on defaults.
+func itemDiffers(src []byte, id string, expect ItemExpect) (bool, error) {
 	_, root, err := parseDoc(src)
 	if err != nil {
 		return false, err
@@ -105,11 +113,29 @@ func requestDiffers(src []byte, id string, expect HTTP) (bool, error) {
 	if item == nil {
 		return false, ErrItemGone
 	}
-	at := mapIndex(item, "http")
+	if expect.Name != nil {
+		n := mapIndex(item, "name")
+		if n < 0 || item.Content[n].Value != *expect.Name {
+			return true, nil
+		}
+	}
+	if expect.HTTP != nil {
+		if differs, err := nodeDiffers(item, "http", *expect.HTTP); differs || err != nil {
+			return differs, err
+		}
+	}
+	if expect.GRPC != nil {
+		return nodeDiffers(item, "grpc", *expect.GRPC)
+	}
+	return false, nil
+}
+
+func nodeDiffers[T any](item *yaml.Node, key string, expect T) (bool, error) {
+	at := mapIndex(item, key)
 	if at < 0 {
 		return false, ErrProtocol
 	}
-	var stored HTTP
+	var stored T
 	if err := item.Content[at].Decode(&stored); err != nil {
 		return false, err
 	}

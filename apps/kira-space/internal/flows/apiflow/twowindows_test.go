@@ -46,6 +46,9 @@ func TestSavedRequestTwoWindows(t *testing.T) {
 		req := read
 		req.URL = url
 		args := bridge.CollectionsSaveRequestArgs{ItemID: item.ID, Name: "shared", Request: req, Expect: expect}
+		if expect != nil {
+			args.ExpectName = ptr("shared")
+		}
 		if tag != "" {
 			app.Contract(t, sc, "args:SaveRequest#"+tag, args, mask)
 		}
@@ -84,6 +87,22 @@ func TestSavedRequestTwoWindows(t *testing.T) {
 	current.URL = "https://x.test/b"
 	if err := save("https://x.test/c", &current, ""); err != nil {
 		t.Fatalf("save from the current read: %v", err)
+	}
+
+	// Another window renames the request. A save from a body read before the rename refuses: it
+	// would write the old name back, a rename lost without a prompt.
+	if err := cs.Rename(bridge.CollectionsTargetArgs{ID: item.ID, Target: "item", Name: "renamed"}); err != nil {
+		t.Fatal(err)
+	}
+	current.URL = "https://x.test/c"
+	if ie := testx.AsIpcErr(t, save("https://x.test/d", &current, "")); ie.Code != "E_CONFLICT" {
+		t.Fatalf("save after a rename = %v, want E_CONFLICT", ie)
+	}
+	if got := itemName(t, cs, item.ID); got != "renamed" {
+		t.Fatalf("name after the refused save = %q, want the other window's rename", got)
+	}
+	if err := cs.Rename(bridge.CollectionsTargetArgs{ID: item.ID, Target: "item", Name: "shared"}); err != nil {
+		t.Fatal(err)
 	}
 
 	// A hand edit of the file is another window.
@@ -231,4 +250,97 @@ func variablesOf(t *testing.T, text string) []any {
 		out[i] = v
 	}
 	return out
+}
+
+func itemName(t *testing.T, cs *bridge.CollectionsService, id string) string {
+	t.Helper()
+	tree, err := cs.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range tree.Items {
+		if it.ID == id {
+			return it.Name
+		}
+	}
+	t.Fatalf("item %s not listed", id)
+	return ""
+}
+
+// Decision 3 for a gRPC saved request (contract api-grpc-two-windows, UI half
+// tests/ui/studio/grpc-request-conflict.spec.ts): the same two-window rules as an HTTP request. A
+// save from what the window read is refused after another window saved or renamed the item, and
+// only a resend without the guard, after the user confirms, overwrites.
+func TestSavedGrpcRequestTwoWindows(t *testing.T) {
+	app := flowharness.New(t)
+	cs := app.W.Collections
+	col := newCollection(t, app, "Two windows")
+	read := model.SavedGrpcRequest{
+		Target: "localhost:50051", TLSMode: "plaintext", DescriptorMode: "reflection",
+		Service: "kira.flow.v1.Flow", Method: "Unary", Message: `{"text":"read"}`,
+	}
+	item, err := cs.CreateGrpcItem(bridge.CollectionsCreateGrpcItemArgs{CollectionID: col.ID, Name: "shared", Request: &read})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored := func() string {
+		t.Helper()
+		r, err := cs.GetGrpcRequest(bridge.CollectionsItemArgs{ItemID: item.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r.Message
+	}
+	const sc = "api-grpc-two-windows"
+	mask := flowharness.Mask("itemId", "id", "collectionId", "createdAt", "updatedAt")
+	save := func(message string, expect *model.SavedGrpcRequest, tag string) error {
+		req := read
+		req.Message = message
+		args := bridge.CollectionsSaveGrpcRequestArgs{ItemID: item.ID, Name: "shared", Request: req, Expect: expect}
+		if expect != nil {
+			args.ExpectName = ptr("shared")
+		}
+		if tag != "" {
+			app.Contract(t, sc, "args:SaveGrpcRequest#"+tag, args, mask)
+		}
+		got, err := cs.SaveGrpcRequest(args)
+		if tag == "confirmed" {
+			app.Contract(t, sc, "SaveGrpcRequest#confirmed", got, mask)
+		}
+		return err
+	}
+
+	if err := save(`{"text":"a"}`, &read, ""); err != nil {
+		t.Fatalf("the first save: %v", err)
+	}
+	err = save(`{"text":"b"}`, &read, "guarded")
+	ie := testx.AsIpcErr(t, err)
+	var details map[string]any
+	if ie.Code != "E_CONFLICT" || json.Unmarshal(ie.Details, &details) != nil || details["changed"] != true {
+		t.Fatalf("the second save = %v (details %s), want E_CONFLICT with changed", err, ie.Details)
+	}
+	app.Contract(t, sc, "SaveGrpcRequest#changed", map[string]any{"code": ie.Code, "message": ie.Message, "details": details})
+	if got := stored(); got != `{"text":"a"}` {
+		t.Fatalf("stored after the refused save = %q, want window A's", got)
+	}
+
+	if err := save(`{"text":"b"}`, nil, "confirmed"); err != nil {
+		t.Fatal(err)
+	}
+	if got := stored(); got != `{"text":"b"}` {
+		t.Fatalf("stored after the confirmed overwrite = %q, want window B's", got)
+	}
+
+	// A rename in another window refuses a save from a body read before it.
+	current := read
+	current.Message = `{"text":"b"}`
+	if err := cs.Rename(bridge.CollectionsTargetArgs{ID: item.ID, Target: "item", Name: "renamed"}); err != nil {
+		t.Fatal(err)
+	}
+	if ie := testx.AsIpcErr(t, save(`{"text":"c"}`, &current, "")); ie.Code != "E_CONFLICT" {
+		t.Fatalf("save after a rename = %v, want E_CONFLICT", ie)
+	}
+	if got := itemName(t, cs, item.ID); got != "renamed" {
+		t.Fatalf("name after the refused save = %q, want the other window's rename", got)
+	}
 }

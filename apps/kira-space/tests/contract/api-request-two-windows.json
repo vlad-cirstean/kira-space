@@ -4,7 +4,7 @@
     "details": {
       "changed": true
     },
-    "message": "Another window saved this request since you opened it."
+    "message": "Another window saved or renamed this request since you opened it."
   },
   "SaveRequest#confirmed": {
     "collectionId": "<masked>",
@@ -50,6 +50,7 @@
       "url": "https://x.test/read",
       "urlEncoded": null
     },
+    "expectName": "shared",
     "itemId": "<masked>",
     "name": "shared",
     "request": {

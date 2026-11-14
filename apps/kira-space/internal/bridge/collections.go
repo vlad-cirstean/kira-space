@@ -102,9 +102,11 @@ type CollectionsSaveRequestArgs struct {
 	ItemID  string             `json:"itemId"`
 	Name    string             `json:"name"`
 	Request model.SavedRequest `json:"request"`
-	// Expect is the request the caller last read (decision 3). A stored request that differs
-	// answers E_CONFLICT with details.changed; omit it to overwrite after the user confirms.
-	Expect *model.SavedRequest `json:"expect,omitempty"`
+	// Expect and ExpectName are the request and item name the caller last read (decision 3). A stored
+	// item that differs in either answers E_CONFLICT with details.changed; omit both to overwrite
+	// after the user confirms.
+	Expect     *model.SavedRequest `json:"expect,omitempty"`
+	ExpectName *string             `json:"expectName,omitempty"`
 }
 
 // SaveRequest replaces the request's node in its collection file and answers with the item row the
@@ -119,18 +121,16 @@ func (s *CollectionsService) SaveRequest(args CollectionsSaveRequestArgs) (ItemS
 	if err := args.Request.Validate(); err != nil {
 		return ItemSummary{}, ipcerr.BadRequest(err.Error())
 	}
-	var expect *apifiles.HTTP
-	if args.Expect != nil {
-		h := apifiles.HTTPOf(*args.Expect)
-		expect = &h
+	var expect *apifiles.ItemExpect
+	if args.Expect != nil || args.ExpectName != nil {
+		expect = &apifiles.ItemExpect{Name: args.ExpectName}
+		if args.Expect != nil {
+			h := apifiles.HTTPOf(*args.Expect)
+			expect.HTTP = &h
+		}
 	}
 	if err := s.Files.SaveRequest(args.ItemID, args.Name, apifiles.HTTPOf(args.Request), expect); err != nil {
-		if errors.Is(err, apifiles.ErrRequestChanged) {
-			e := ipcerr.T(ipcerr.CodeConflict, "backend.studio.collection.requestChanged.body", nil)
-			e.Details = json.RawMessage(`{"changed":true}`)
-			return ItemSummary{}, e
-		}
-		return ItemSummary{}, apiFilesErr(err)
+		return ItemSummary{}, saveItemErr(err)
 	}
 	return readErr(s.Deps.Repos.Collections.GetItem(args.ItemID))
 }
@@ -139,6 +139,19 @@ type CollectionsSaveGrpcRequestArgs struct {
 	ItemID  string                 `json:"itemId"`
 	Name    string                 `json:"name"`
 	Request model.SavedGrpcRequest `json:"request"`
+	// Expect and ExpectName guard the save like CollectionsSaveRequestArgs's own.
+	Expect     *model.SavedGrpcRequest `json:"expect,omitempty"`
+	ExpectName *string                 `json:"expectName,omitempty"`
+}
+
+// saveItemErr is a save's failure: a changed item answers E_CONFLICT with details.changed.
+func saveItemErr(err error) error {
+	if errors.Is(err, apifiles.ErrRequestChanged) {
+		e := ipcerr.T(ipcerr.CodeConflict, "backend.studio.collection.requestChanged.body", nil)
+		e.Details = json.RawMessage(`{"changed":true}`)
+		return e
+	}
+	return apiFilesErr(err)
 }
 
 // SaveGrpcRequest is SaveRequest's own gRPC sibling (P11 D12).
@@ -152,8 +165,16 @@ func (s *CollectionsService) SaveGrpcRequest(args CollectionsSaveGrpcRequestArgs
 	if err := args.Request.Validate(); err != nil {
 		return ItemSummary{}, ipcerr.BadRequest(err.Error())
 	}
-	if err := s.Files.SaveGrpcRequest(args.ItemID, args.Name, apifiles.GRPCOf(args.Request)); err != nil {
-		return ItemSummary{}, apiFilesErr(err)
+	var expect *apifiles.ItemExpect
+	if args.Expect != nil || args.ExpectName != nil {
+		expect = &apifiles.ItemExpect{Name: args.ExpectName}
+		if args.Expect != nil {
+			g := apifiles.GRPCOf(*args.Expect)
+			expect.GRPC = &g
+		}
+	}
+	if err := s.Files.SaveGrpcRequest(args.ItemID, args.Name, apifiles.GRPCOf(args.Request), expect); err != nil {
+		return ItemSummary{}, saveItemErr(err)
 	}
 	return readErr(s.Deps.Repos.Collections.GetItem(args.ItemID))
 }

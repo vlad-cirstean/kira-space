@@ -1,0 +1,70 @@
+{
+  "SaveGrpcRequest#changed": {
+    "code": "E_CONFLICT",
+    "details": {
+      "changed": true
+    },
+    "message": "Another window saved or renamed this request since you opened it."
+  },
+  "SaveGrpcRequest#confirmed": {
+    "collectionId": "<masked>",
+    "createdAt": "<masked>",
+    "id": "<masked>",
+    "kind": "request",
+    "method": "kira.flow.v1.Flow/Unary",
+    "name": "shared",
+    "parentId": null,
+    "protocol": "grpc",
+    "sortOrder": 0,
+    "updatedAt": "<masked>",
+    "url": "localhost:50051"
+  },
+  "args:SaveGrpcRequest#confirmed": {
+    "itemId": "<masked>",
+    "name": "shared",
+    "request": {
+      "caFile": "",
+      "descriptorMode": "reflection",
+      "importPaths": null,
+      "message": "{\"text\":\"b\"}",
+      "metadata": null,
+      "method": "Unary",
+      "protoPath": "",
+      "serverName": "",
+      "service": "kira.flow.v1.Flow",
+      "target": "localhost:50051",
+      "tlsMode": "plaintext"
+    }
+  },
+  "args:SaveGrpcRequest#guarded": {
+    "expect": {
+      "caFile": "",
+      "descriptorMode": "reflection",
+      "importPaths": null,
+      "message": "{\"text\":\"read\"}",
+      "metadata": null,
+      "method": "Unary",
+      "protoPath": "",
+      "serverName": "",
+      "service": "kira.flow.v1.Flow",
+      "target": "localhost:50051",
+      "tlsMode": "plaintext"
+    },
+    "expectName": "shared",
+    "itemId": "<masked>",
+    "name": "shared",
+    "request": {
+      "caFile": "",
+      "descriptorMode": "reflection",
+      "importPaths": null,
+      "message": "{\"text\":\"b\"}",
+      "metadata": null,
+      "method": "Unary",
+      "protoPath": "",
+      "serverName": "",
+      "service": "kira.flow.v1.Flow",
+      "target": "localhost:50051",
+      "tlsMode": "plaintext"
+    }
+  }
+}
