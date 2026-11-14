@@ -669,7 +669,10 @@ The sandbox (P287) enforces on macOS only. The sandbox session cannot run Seatbe
 ## Load, disk and test scope (P236-P251)
 
 - **Test speed on this box (P294).** 4 cores. Go: `bun run test:go:containers` (81s) and `bun run test:go:rest`
-  (134s) split `go test ./...` for CI; leave `-count=1` off to reuse the test cache. `ade` (44s) never caches.
+  (134s) split `go test ./...` for CI; leave `-count=1` off to reuse the test cache. `flows/dbmcpflow` starts
+  containers, so it sits in the containers group. CI shards `rest` further: `sh scripts/go-test-split.sh
+  rest/<adeflow1|adeflow2|other>` (`--matrix rest` lists shards, `--list <group>[/<shard>]` the packages,
+  `--check` validates the table). A slice shard refuses `-run`, `-list` and `-exec`. `ade` (44s) never caches.
   Playwright `ui` costs about 17 min per app on an idle host (P443): Studio 701 tests, 1044 s; Space 953 tests,
   1038 s; 4 workers (`'100%'`), parallelism 3.9. 2 or 3 workers cost more wall (sweep: 3 workers up to +4%, 2 workers
   +13-21%); more than 4 cannot be set from the CLI because each project's `workers` caps the pool. Per-test median
