@@ -1024,6 +1024,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - The substitution engine (find {{, next }}, trim, look up, else pass through literally, one pass, no re-expansion) is deliberately implemented twice, in packages/api-core/src/http/substitute.ts and internal/apivars/resolve.go, rather than via a template library.
 - A template engine like Handlebars or Mustache is not used for substitution because it HTML-escapes by default, corrupting JSON/XML bodies, and its render-or-fail contract cannot produce the per-reference report (resolved | deferred | dynamic | unknown) the unresolved-reference chip needs.
 - The Go and TS substitution implementations are pinned to identical behaviour by one shared JSON corpus, internal/apivars/testdata/substitution.json, read by both a Go test and a TS unit test.
+- A reference no variable defines blocks the send (OQ-API-2). The renderer refuses it before HttpService.Send, and apivars.ResolveRequest refuses the same text defensively, listing the names; no request leaves.
 - {{$name}} dynamic values are P6's own extension of stage 1 substitution; Go is not involved in generating them.
 - substitute.ts's resolve() takes one optional fourth argument, dynamic?: (name: string) => string | null, consulted only inside the existing $-prefixed branch, so no scanning changes.
 - The send path supplies loadDynamicGenerator() from packages/api-core/src/http/dynamic/catalog.ts as the dynamic resolver; the live-preview unresolved-reference chip never does.

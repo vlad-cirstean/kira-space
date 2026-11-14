@@ -296,7 +296,9 @@ func TestPostmanImportSendExport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	args := get(saved.URL)
+	// The renderer resolves plain collection variables before a send; a name still open at the IPC
+	// boundary blocks it (OQ-API-2), so the test stands in for the renderer.
+	args := get(strings.ReplaceAll(saved.URL, "{{apiVersion}}", "2"))
 	args.Method, args.CollectionID, args.ItemID = saved.Method, rep.CollectionID, create.ID
 	args.Body.Mode, args.Body.Code, args.Body.CodeLanguage = "code", saved.Code, saved.CodeLanguage
 	for _, h := range saved.Headers {
@@ -307,8 +309,8 @@ func TestPostmanImportSendExport(t *testing.T) {
 	if got.Method != "POST" || got.Path != "/echo" || got.Header.Get("X-Flow") != "orders" || string(got.Body) != `{"sku":"x"}` {
 		t.Errorf("server saw %s %s X-Flow=%q body %q, want the imported request", got.Method, got.Path, got.Header.Get("X-Flow"), got.Body)
 	}
-	if got.Query != "v={{apiVersion}}" {
-		t.Errorf("query = %q; a plain collection variable is left for the renderer", got.Query)
+	if got.Query != "v=2" {
+		t.Errorf("query = %q, want the resolved plain variable", got.Query)
 	}
 
 	if _, err := app.W.Collections.CreateGrpcItem(bridge.CollectionsCreateGrpcItemArgs{

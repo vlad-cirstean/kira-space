@@ -138,7 +138,26 @@ test('the Raw pane, the timeline hop, and the persisted history entry all show t
     storedBytes: 0,
   };
 
+  // The reference must name a defined secret, or the send is blocked (OQ-API-2).
+  const ENV = { id: 'env-1', name: 'Prod', sortOrder: 0, isActive: true, description: '' };
+  const TOKEN_VAR = {
+    id: 'var-token',
+    scope: 'environment',
+    ownerId: 'env-1',
+    name: 'token',
+    value: '',
+    isSecret: true,
+    sortOrder: 0,
+    description: '',
+  };
   const CONTROL: ControlSnapshot[] = [
+    { channel: IPC.collectionsList, response: { collections: [], items: [] } },
+    { channel: IPC.variablesListEnvironments, response: [ENV] },
+    {
+      channel: IPC.variablesList,
+      args: { scope: 'environment', ownerId: 'env-1' },
+      response: [TOKEN_VAR],
+    },
     { channel: IPC.httpSend, response: RESPONSE },
     { channel: IPC.historyList, response: [HISTORY_ENTRY] },
   ];

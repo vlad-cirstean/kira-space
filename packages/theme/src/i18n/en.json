@@ -2862,6 +2862,9 @@
         "requestTimedOut": {
           "body": "Request timed out."
         },
+        "unresolvedVariables": {
+          "body": "Not sent. These variables have no value: {names}. Define them in the active environment or collection."
+        },
         "urlencodedFieldNameMissing": {
           "body": "A field in the form body is missing a name."
         },
