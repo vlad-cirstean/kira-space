@@ -12,7 +12,7 @@ import TextPromptDialog from '@workbench/prompt/TextPromptDialog.vue';
 import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
 import { computed } from 'vue';
 import { control } from '../../bridge/control';
-import { guardedSavedWrite } from './guardedSavedWrite';
+import { guardedSavedWrite } from '../../state/guardedSavedWrite';
 import SavedListMenu from './SavedListMenu.vue';
 
 // Generic across filter-bearing views (SQL's FilterToolbar, Document's filter row): "where"/"orderBy"

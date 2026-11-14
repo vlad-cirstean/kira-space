@@ -491,12 +491,20 @@ read/count/preview/mutate only exist on frame path (`adapterhost/dataframe.go` `
 - F-A3: console strip note "new session" after automatic reconnect (OQ-CONS-1).
 - F-A4: journalled move of requests between collection files (OQ-API-4 crash safety).
 - F-A5: Copy all label "projected" under projection (OQ-DOC-3 label part).
-- F-A6: concurrent-edit detect, warn, confirm (decision 3) is built for S3 objects only (`$etag`). Grid, Mongo, saved query and API request have none. Large product feature.
 - F-A7: Redis edit is string-only. Hash, list, set, zset edits unsupported (J-KV-010).
 - F-A8: SQLite no-PK rowid tables refuse keyed writes by design (D23).
 - F-A9: mutate errors do not name the failing op index.
-- F-A10: staged edits kept after lost ack (decision 2) and tab-close prompt (decision 8) have no UI spec yet.
 - F-A11: 39 of 759 unit tests in `apps/kira-space/tests/unit/studio` fail in isolation with an import cycle (`useTabsStore` before initialization). Identical with this stream's changes stashed.
+- F-A12: MySQL console has no `DELIMITER` directive.
+- F-A13: a `CALL`'s extra result sets are dropped (first set only).
+- F-A14: Mongo console parses numbers as doubles; no cursor chain (`.sort().limit()`).
+- F-A15: a hand-edited collection file with one bad item serves no rows on its first load (validation is whole-file, last-good rows only after a good load). J-COLL-003 "good items load" oracle unmet. Listed in ARCHITECTURE.md Known open items.
+- F-A16: Kafka and SQS composer: body required, no FIFO group/dedup fields, single message only.
+- F-A17: SQLite read-only console refusal shows raw driver text.
+- F-A18: table allow list (J-MCP-002) gates statement text, not triggers.
+- F-A19: Browse offset paging can duplicate or skip rows when rows are inserted or deleted ahead of the cursor.
+- F-A20: guard coverage limits (see A9 notes).
+- No global variable scope exists in the app; J-ENV-011 covers collection and environment variables.
 - Add each bug found needing design decision here with journey id; orchestrator turns list into SPEC rows.
 
 ## Done when
@@ -508,23 +516,33 @@ read/count/preview/mutate only exist on frame path (`adapterhost/dataframe.go` `
 
 ## Result
 
-Partial. Stopped after A0, A1, part of A2, A4 and A6. A3, A5 and A7 to A13 not started; the UI half is written only for paste.
+Done. A0 to A13 landed, each with flow half and UI half where the plan names both. Own specs pass; no full UI suite run.
 
-Landed (flow half unless noted):
-- A0: `flowharness.DataStream` (read, count, preview, mutate, invalidate, execute, objectDownload) and second-client helpers.
-- A1: `TestGridMutateChangeSet`, `TestGridMutateSQLiteRowid`, `TestGridLostAck` (Postgres, proxy kill at COMMIT), `TestGridCancelCommit`, `TestGridStaleRow`. Contracts `studio-grid-mutate`, `studio-grid-stale`.
-- A2 paste: `TestGridPasteNullAndEmpty` plus UI spec `grid-clipboard-roundtrip.spec.ts` (WebKit `ui`), both on contract `studio-grid-paste`.
-- A4/A6 Redis: `TestRedisEditKeepsTTLAndNeverResurrects`, contract `studio-redis-edit`.
-- A6 S3: `TestS3EditKeepsMetadataAndRefusesChangedObject` (contract `studio-s3-edit`), `TestS3DownloadSafety`, `TestS3UploadKeysAndRefusals`. Download tests call `data:objectDownload` with a chosen path; the save dialog is a shell concern, so `Dialogs.AnswerSave` is not used.
+Decisions built and tested (flow and UI):
+- Decision 2 (lost ack keeps staged edits, "may or may not be saved"): `TestGridLostAck`, contract `studio-grid-lost-ack`, `grid-lost-ack.spec.ts`.
+- Decision 3 (concurrent-edit guard, `E_CONFLICT` with `changed:true`, UI confirm then resend unguarded) in all four places: grid row update and delete, Mongo whole-document replace, saved query (console, Discover), API request (`Expect` on `collections:saveRequest`, `useSeenSaved`; `TestSavedRequestTwoWindows`, `api-request-conflict.spec.ts`). `confirmOverwrite` and `guardedSavedWrite` moved to `studio/state/`.
+- Decision 4 (refuse `_id` edit), 6 (S3 unreadable ACL warning), 7 (SQS repeated attribute name refused), 8 (tab close with open transaction asks, rolls back).
 
-Bugs found and fixed:
-1. SQLite composite or nullable-key tables were not editable and lost their key in DDL (`ReadTarget.KeysetPrimaryKey` split from `PrimaryKey`).
-2. Empty paste staged `''` for nullable columns; now NULL.
-3. Paste staged no-op key-column updates; `stageChange` now skips unchanged values.
-4. Lost COMMIT ack gave an uninformative error; now `commitOutcomeUnknown` message.
-5. Redis update resurrected an expired key and dropped its TTL; now `SET XX KEEPTTL`, `CodeNotFound` when gone.
-6. S3 edit overwrote an object another client replaced; now `$etag` precondition (OQ-KV-1), wired into the key-value editor.
+Product bugs fixed:
+1. SQLite composite or nullable-key tables not editable, key lost in DDL.
+2. Empty paste staged `''`; now NULL. Unchanged pasted cells skipped.
+3. Lost COMMIT ack message; now `commitOutcomeUnknown`.
+4. Redis update resurrected expired key and dropped TTL.
+5. S3 edit overwrote a replaced object.
+6. Truncated-copy notice, Delete clears to NULL, Ctrl+A in cell editor, binary INSERT literals.
+7. ClickHouse console accepted a user FORMAT clause.
+8. Grid update and delete overwrote server-changed rows.
+9. Console splitter on trigger and compound bodies; SQLite trigger refusal.
+10. Saved-query concurrent edit; Redis console binary reply flag; Discover Run on a restored tab; Kibana test op id.
+11. Page token fingerprint ignored key columns.
+12. SQLite Definition DDL omitted explicit indexes.
+13. Kafka browse accepted a trimmed position; SQS repeated attribute names.
+14. API request two-window overwrite.
+15. Postman re-import reused the display name; now suffixed (OQ-API-7).
+16. gRPC unary deadline did not cover the dial (300 ms call took 5 s).
+17. gRPC non-ASCII metadata value gave a raw transport error; now `BadRequest` naming the key.
+18. Flaky busy-timeout in a test helper.
 
-Tests run: new specs above only (Go flow, s3 and redis adapter packages, WebKit paste spec). Docker pulls for kafka and clickhouse images failed through the mirror, so any Kafka, SQS or ClickHouse work is unrun.
-
-Unfinished, in plan order: A2 rest (copy bytes under `studio-grid-clipboard`, native-copy and grid-keyboard-edit specs, truncated-copy fix, inventory.md TSV wording, `ui-clipboard` testMatch), A3, A5, A7, A8, A9, A10, A11 (plus ARCHITECTURE.md Known open items), A12, A13, and the UI halves for A1, A4, A6.
+New contracts: `studio-grid-lost-ack`, `api-copy-url`, `api-request-two-windows`, plus earlier `studio-*` set.
+Tests run: new and changed Go flow packages (dbflow, apiflow, grpcflow, dbmcpflow, kafka, sqs, adapters touched), grpcclient, and the new UI specs on project `ui`.
+Follow-ups: see list above.

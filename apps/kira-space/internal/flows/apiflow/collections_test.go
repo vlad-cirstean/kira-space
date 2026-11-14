@@ -1,6 +1,8 @@
 package apiflow
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -13,7 +15,9 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/postman"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/secrets"
+	"go.yaml.in/yaml/v3"
 )
 
 func TestSavedRequestHistory(t *testing.T) {
@@ -542,6 +546,18 @@ func TestPostmanImportCollectionAndEnvironment(t *testing.T) {
 	for _, e := range envs {
 		envIDs[e.Name] = e.ID
 	}
+	// J-IMP-010: the unnamed entry is kept under a generated name, the empty one stays empty.
+	wrappedVars, err := app.W.Variables.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: envIDs["Wrapped"]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotWrapped := map[string]string{}
+	for _, v := range wrappedVars {
+		gotWrapped[v.Name] = v.Value
+	}
+	if diff := cmp.Diff(map[string]string{"a": "1", "b": "", "unnamed_1": "z"}, gotWrapped); diff != "" {
+		t.Errorf("Wrapped variables (-want +got):\n%s", diff)
+	}
 	vars, err := app.W.Variables.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: envIDs["Staging"]})
 	if err != nil {
 		t.Fatal(err)
@@ -562,4 +578,289 @@ func TestPostmanImportCollectionAndEnvironment(t *testing.T) {
 	if !hasChange(all, bridge.ApiDataChange{Kind: bridge.ApiDataTree}) || !hasChange(all, bridge.ApiDataChange{Kind: bridge.ApiDataEnvironments}) {
 		t.Errorf("change events = %+v, want a tree and an environments change", all)
 	}
+}
+
+// collectionFileIDs reads every collection file in the api folder as plain YAML and answers each
+// file's item names and ids, so a test checks the files, not the rows projected from them.
+func collectionFileItems(t *testing.T, app *flowharness.App) map[string][]string {
+	t.Helper()
+	files, err := filepath.Glob(filepath.Join(app.W.ApiFiles.Dir(), "*.collection.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string][]string{}
+	for _, f := range files {
+		raw, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var doc struct {
+			Items []struct {
+				ID   string `yaml:"id"`
+				Name string `yaml:"name"`
+			} `yaml:"items"`
+		}
+		if err := yaml.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("%s is not valid YAML after the move: %v", filepath.Base(f), err)
+		}
+		ids := map[string]bool{}
+		for _, it := range doc.Items {
+			if ids[it.ID] {
+				t.Errorf("%s holds id %q twice", filepath.Base(f), it.ID)
+			}
+			ids[it.ID] = true
+			out[filepath.Base(f)] = append(out[filepath.Base(f)], it.Name)
+		}
+	}
+	return out
+}
+
+// J-COLL-001 / J-COLL-011. A 200-request collection; three selected requests move to another
+// collection, then three more to a brand-new one. Each request ends in exactly one file, the files
+// stay valid YAML and the rows follow.
+func TestMoveSelectionAcrossCollectionFiles(t *testing.T) {
+	app := flowharness.New(t)
+	cs := app.W.Collections
+	var b strings.Builder
+	b.WriteString("name: Big\nitems:\n")
+	for i := 0; i < 200; i++ {
+		fmt.Fprintf(&b, "  - id: r%03d\n    name: Request %03d\n    http:\n      method: GET\n      url: https://x.test/%03d\n", i, i, i)
+	}
+	app.WriteAPIFile(t, "big.collection.yaml", []byte(b.String()))
+	other := app.SeedCollection(t, "other")
+	idsByName := func() (map[string]model.CollectionItem, string) {
+		t.Helper()
+		all, err := cs.List()
+		if err != nil {
+			t.Fatal(err)
+		}
+		m := map[string]model.CollectionItem{}
+		var bigID string
+		for _, c := range all.Collections {
+			if c.Name == "Big" {
+				bigID = c.ID
+			}
+		}
+		for _, it := range all.Items {
+			if _, dup := m[it.Name]; dup {
+				t.Fatalf("two rows named %q", it.Name)
+			}
+			m[it.Name] = it
+		}
+		return m, bigID
+	}
+	rows, bigID := idsByName()
+	if len(rows) != 200 {
+		t.Fatalf("rows after seeding = %d, want 200", len(rows))
+	}
+
+	selection := func(names ...string) []string {
+		var ids []string
+		for _, n := range names {
+			ids = append(ids, rows[n].ID)
+		}
+		return ids
+	}
+	moved, err := cs.MoveItems(bridge.CollectionsMoveItemsArgs{ItemIDs: selection("Request 010", "Request 020", "Request 030"), CollectionID: other.ID})
+	if err != nil || len(moved) != 3 {
+		t.Fatalf("MoveItems to another collection = %v (%v), want 3 moved rows", moved, err)
+	}
+	fresh, err := cs.CreateCollection(bridge.CollectionsCreateCollectionArgs{Name: "Fresh"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, _ = idsByName()
+	if _, err := cs.MoveItems(bridge.CollectionsMoveItemsArgs{ItemIDs: selection("Request 100", "Request 110", "Request 120"), CollectionID: fresh.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	files := collectionFileItems(t, app)
+	seen := map[string]string{}
+	total := 0
+	for file, names := range files {
+		for _, n := range names {
+			if prev, dup := seen[n]; dup {
+				t.Errorf("%q is in both %s and %s", n, prev, file)
+			}
+			seen[n] = file
+			total++
+		}
+	}
+	if total != 200 {
+		t.Errorf("files hold %d items, want 200", total)
+	}
+	for name, file := range map[string]string{
+		"Request 010": other.File, "Request 020": other.File, "Request 030": other.File,
+		"Request 100": fresh.File, "Request 110": fresh.File, "Request 120": fresh.File,
+		"Request 000": "big.collection.yaml", "Request 199": "big.collection.yaml",
+	} {
+		if seen[name] != file {
+			t.Errorf("%q is in %q, want %q", name, seen[name], file)
+		}
+	}
+	rows, bigID = idsByName()
+	if len(rows) != 200 {
+		t.Errorf("rows after the moves = %d, want 200", len(rows))
+	}
+	for name, want := range map[string]string{"Request 010": other.ID, "Request 100": fresh.ID, "Request 050": bigID} {
+		if rows[name].CollectionID != want {
+			t.Errorf("row %q is in collection %q, want %q", name, rows[name].CollectionID, want)
+		}
+	}
+}
+
+// J-COLL-013. Export asks for a path, writes a file that parses back to the same items, and writes
+// nothing when the dialog is cancelled. Revealing the collection's own file reaches the shell.
+func TestExportCollectionDialogAndReveal(t *testing.T) {
+	app := flowharness.New(t)
+	col := newCollection(t, app, "Exports")
+	for _, name := range []string{"first", "second"} {
+		req := savedGet()
+		req.URL = "https://x.test/" + name
+		if _, err := app.W.Collections.CreateItem(bridge.CollectionsCreateItemArgs{CollectionID: col.ID, Kind: "request", Name: name, Request: &req}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dir := t.TempDir()
+
+	// Cancel: no path, nothing written.
+	cancelled, err := app.W.Files.ChooseSave(bridge.FilesChooseSaveArgs{DefaultName: "Exports.postman_collection.json"})
+	if err != nil || cancelled.FilePath != nil {
+		t.Fatalf("ChooseSave with no answer = %+v (%v), want a nil path", cancelled, err)
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+		t.Fatalf("a cancelled export left %d files", len(entries))
+	}
+
+	dest := filepath.Join(dir, "Exports.postman_collection.json")
+	app.Dialogs.AnswerSave(dest)
+	chosen, err := app.W.Files.ChooseSave(bridge.FilesChooseSaveArgs{DefaultName: "Exports.postman_collection.json"})
+	if err != nil || chosen.FilePath == nil || *chosen.FilePath != dest {
+		t.Fatalf("ChooseSave = %+v (%v), want %s", chosen, err, dest)
+	}
+	if _, err := app.W.Collections.Export(bridge.CollectionsExportArgs{CollectionID: col.ID, Path: *chosen.FilePath}); err != nil {
+		t.Fatal(err)
+	}
+	res, err := app.W.Collections.Import(bridge.CollectionsImportArgs{Paths: []string{dest}})
+	if err != nil || len(res.Files) != 1 || res.Files[0].Collection == nil {
+		t.Fatalf("re-import of the export = %+v (%v)", res, err)
+	}
+	back := tree(t, app, res.Files[0].Collection.CollectionID)
+	want := tree(t, app, col.ID)
+	if strings.Join(back, "\n") != strings.Join(want, "\n") {
+		t.Errorf("export parses back to different items\n got: %q\nwant: %q", back, want)
+	}
+
+	if err := app.W.ConfigFiles.Reveal(configsvc.FileArgs{Folder: "api", File: col.File}); err != nil {
+		t.Fatal(err)
+	}
+	if got := app.FileOpener.RevealedFiles(); len(got) != 1 || got[0] != filepath.Join(app.ConfigDir("api"), col.File) {
+		t.Errorf("revealed = %v, want the collection file", got)
+	}
+}
+
+// J-IMP-011. The same Postman file twice makes a second, suffixed collection and never touches the
+// first one's file, local edits included.
+func TestReimportKeepsLocalEdits(t *testing.T) {
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
+	fixture, err := os.ReadFile(filepath.Join("testdata", "collection.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "collection.json")
+	if err := os.WriteFile(path, []byte(strings.ReplaceAll(string(fixture), "__BASE_URL__", srv.URL)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	importOnce := func() bridge.ImportReport {
+		t.Helper()
+		res, err := app.W.Collections.Import(bridge.CollectionsImportArgs{Paths: []string{path}})
+		if err != nil || len(res.Files) != 1 || res.Files[0].Collection == nil {
+			t.Fatalf("Import = %+v (%v)", res, err)
+		}
+		return *res.Files[0].Collection
+	}
+	first := importOnce()
+	all, _ := app.W.Collections.List()
+	var firstFile string
+	var edited model.CollectionItem
+	for _, c := range all.Collections {
+		if c.ID == first.CollectionID {
+			firstFile = c.File
+		}
+	}
+	for _, it := range all.Items {
+		if it.CollectionID == first.CollectionID && it.Kind == model.CollectionItemRequest {
+			edited = it
+			break
+		}
+	}
+	req, err := app.W.Collections.GetRequest(bridge.CollectionsItemArgs{ItemID: edited.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.URL += "?edited=locally"
+	if _, err := app.W.Collections.SaveRequest(bridge.CollectionsSaveRequestArgs{ItemID: edited.ID, Name: edited.Name, Request: req}); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(app.W.ApiFiles.Dir(), firstFile)
+	before, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	second := importOnce()
+	if second.CollectionID == first.CollectionID {
+		t.Fatal("the second import reused the first collection")
+	}
+	all, _ = app.W.Collections.List()
+	var names []string
+	var secondFile string
+	for _, c := range all.Collections {
+		names = append(names, c.Name)
+		if c.ID == second.CollectionID {
+			secondFile = c.File
+		}
+	}
+	if second.Name == first.Name || !strings.HasPrefix(second.Name, first.Name) || secondFile == firstFile {
+		t.Errorf("second import = %q in %q, first = %q in %q; want a suffixed name and its own file (all: %v)", second.Name, secondFile, first.Name, firstFile, names)
+	}
+	after, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Error("the second import rewrote the first collection's file")
+	}
+	got, err := app.W.Collections.GetRequest(bridge.CollectionsItemArgs{ItemID: edited.ID})
+	if err != nil || !strings.HasSuffix(got.URL, "?edited=locally") {
+		t.Errorf("the local edit is %q (%v), want it kept", got.URL, err)
+	}
+}
+
+// J-COLL-012 (contract api-copy-url, replayed by tests/ui/studio/api-copy-url.spec.ts). The row
+// the tree shows, and so what Copy URL puts on the clipboard, is the template text of the file.
+// Neither the plain variable's value nor the secret's ever replaces its placeholder.
+func TestTreeRowURLStaysATemplate(t *testing.T) {
+	app := flowharness.New(t)
+	const secret = "sk-copy-url-5b19"
+	col := app.SeedCollection(t, "Copy", flowharness.APIVar{Name: "base", Value: "https://real.example.test"},
+		flowharness.APIVar{Name: "key", Value: secret, Secret: true})
+	req := savedGet()
+	req.URL = "{{base}}/x?key={{key}}"
+	if _, err := app.W.Collections.CreateItem(bridge.CollectionsCreateItemArgs{CollectionID: col.ID, Kind: "request", Name: "templated", Request: &req}); err != nil {
+		t.Fatal(err)
+	}
+	tree, err := app.W.Collections.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tree.Items) != 1 || tree.Items[0].URL != "{{base}}/x?key={{key}}" {
+		t.Fatalf("row = %+v, want the template url", tree.Items)
+	}
+	body, _ := json.Marshal(tree)
+	if contains(body, secret) || contains(body, "real.example.test") {
+		t.Errorf("the tree answer resolves a variable: %s", body)
+	}
+	app.Contract(t, "api-copy-url", "CollectionsService.List", tree, flowharness.Mask("id", "collectionId", "createdAt", "updatedAt"))
 }

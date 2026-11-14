@@ -2,8 +2,8 @@ import type { MutationRowOp } from '@shared/domain/mutations';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import { data } from '../../bridge/data';
+import { confirmOverwrite } from '../../state/confirmOverwrite';
 import { reloadTabsForTarget } from '../../state/viewCommands';
-import { confirmOverwrite } from './confirmOverwrite';
 
 // The nine-call-site body behind documents/keyvalue/stream's mutations.ts (the ground rules —
 // mutate immediately, no pendingChanges.ts-style staged plan, no preview step): resolve the tab,

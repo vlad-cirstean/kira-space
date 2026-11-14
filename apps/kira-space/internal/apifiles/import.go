@@ -8,6 +8,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/postman"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // ErrSecretStoreOff marks a secret value that cannot be sealed because the secret store is unavailable.
@@ -111,7 +113,7 @@ func (s *Store) ImportCollection(tree *postman.Tree) (string, error) {
 
 func (s *Store) importCollectionLocked(tree *postman.Tree) (string, error) {
 	stem := s.freeStem(CollectionExt, Slug(tree.Name, "collection"))
-	file := CollectionFile{Name: tree.Name, Variables: importVariables(stem, tree.Variables, nil), Items: itemsOf(tree, stem, s)}
+	file := CollectionFile{Name: s.freeCollectionName(tree.Name), Variables: importVariables(stem, tree.Variables, nil), Items: itemsOf(tree, stem, s)}
 	if js, err := encodeJSON(tree.Origin); err == nil {
 		s.setOrigin(stem, "", js)
 	}
@@ -128,6 +130,27 @@ func (s *Store) importCollectionLocked(tree *postman.Tree) (string, error) {
 		return "", err
 	}
 	return stem, nil
+}
+
+// freeCollectionName is name, or "name 2", "name 3" ... when a collection already carries it, so a
+// second import of one Postman file stays tellable apart from the first and from its local edits.
+func (s *Store) freeCollectionName(name string) string {
+	c := kiraschema.APICollections
+	taken := func(n string) bool {
+		sel := s.o.Dialect.Select(c.ID).From(c.Table)
+		sel.Where(sel.Equal(c.Name, n))
+		sel.Limit(1)
+		var id string
+		return sqlb.QueryRow(s.o.DB, sel).Scan(&id) == nil
+	}
+	if !taken(name) {
+		return name
+	}
+	for n := 2; ; n++ {
+		if cand := fmt.Sprintf("%s %d", name, n); !taken(cand) {
+			return cand
+		}
+	}
 }
 
 func (s *Store) freeStem(ext, base string) string {

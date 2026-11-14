@@ -1,0 +1,6 @@
+{
+  "mutate:lostAck": {
+    "Code": "E_QUERY",
+    "Message": "The connection dropped while committing, so the change may or may not be saved (<cause>). Refresh the table to see what is stored."
+  }
+}

@@ -3,6 +3,7 @@ package dbflow
 import (
 	"errors"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -55,6 +56,12 @@ func TestGridLostAck(t *testing.T) {
 	if !strings.Contains(derr.Message, "may or may not be saved") {
 		t.Fatalf("lost-ack error %q does not name the unknown outcome", derr.Message)
 	}
+
+	// Decision 2, UI half tests/ui/studio/grid-lost-ack.spec.ts: the grid shows this text and keeps
+	// the change set staged. The driver's cause varies by run, so the contract holds a placeholder.
+	app.Contract(t, "studio-grid-lost-ack", "mutate:lostAck", map[string]string{
+		"Code": derr.Code, "Message": regexp.MustCompile(`\([^)]*\)`).ReplaceAllString(derr.Message, "(<cause>)"),
+	})
 
 	// Read after reconnect returns server truth.
 	p, _, err := ds.Read(flowharness.ReadArgs{ConnectionID: conn.ID, Path: tp})

@@ -66,6 +66,7 @@ import RequestSettingsPane from './RequestSettingsPane.vue';
 import ResponsePane from './ResponsePane.vue';
 import { resolveForExport, resolveTabState, useHttpRequestViewStore } from './state';
 import { type FindBarHandle, type RequestBodyHandle, useRequestFind } from './useRequestFind';
+import { useSeenSaved } from './useSeenSaved';
 
 // MainView.vue keys this component by tab.id — same discipline as every other *View.vue.
 const props = defineProps<{ tab: HttpRequestTabRecord }>();
@@ -116,7 +117,7 @@ const savedQuery = useSavedRequest(() => props.tab.state.itemId);
 const saved = computed(() => savedQuery.data.value ?? null);
 const dirty = computed(() => isDirty(props.tab.state, saved.value));
 const canSave = computed(() => props.tab.state.itemId !== null && saved.value !== null);
-
+const seenSaved = useSeenSaved(saved, (against) => isDirty(props.tab.state, against));
 const unresolved = computed(
   () => props.tab.state.itemId !== null && savedQuery.data.value === undefined,
 );
@@ -129,7 +130,7 @@ const { onSave } = useRequestTabSave({
   unresolved: () => unresolved.value,
   name: () => props.tab.state.name || title.value,
   toSaved: () => toSavedRequest(props.tab.state),
-  save: (itemId, name, body) => collectionsStore.saveRequest(itemId, name, body),
+  save: (itemId, name, body) => collectionsStore.saveRequest(itemId, name, body, seenSaved.value),
   openSaveDialog: (tabId, name, body) => saveRequestDialogStore.openSaveDialog(tabId, name, body),
 });
 

@@ -21,7 +21,7 @@ import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { ref, useTemplateRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
-import { guardedSavedWrite } from '../../shared/guardedSavedWrite';
+import { guardedSavedWrite } from '../../../state/guardedSavedWrite';
 import DiscoverSavedMenu from './DiscoverSavedMenu.vue';
 import type { useDiscover } from './useDiscover';
 

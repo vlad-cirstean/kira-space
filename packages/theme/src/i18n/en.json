@@ -2719,6 +2719,9 @@
         "invalidOrder": {
           "body": "That order no longer matches the list. Retry."
         },
+        "requestChanged": {
+          "body": "Another window saved this request since you opened it."
+        },
         "writeFailed": {
           "error": "Couldn’t write {path}: {detail}"
         }

@@ -584,13 +584,29 @@ func (s *Store) rowID(sel *sqlbuilder.SelectBuilder) (string, error) {
 	return id, nil
 }
 
-// SaveRequest replaces an HTTP item's request and name in its file.
-func (s *Store) SaveRequest(itemID, name string, req HTTP) error {
+// ErrRequestChanged is SaveRequest's refusal when the file's request is no longer the one the
+// caller read (another window saved first).
+var ErrRequestChanged = errors.New("apifiles: the request changed since it was read")
+
+// SaveRequest replaces an HTTP item's request and name in its file. A non-nil expect is the request
+// the caller last read: the write is refused with ErrRequestChanged when the file holds another.
+func (s *Store) SaveRequest(itemID, name string, req HTTP, expect *HTTP) error {
 	file, key, _, err := s.locate(itemID)
 	if err != nil {
 		return err
 	}
-	return s.editCollection(file, func(src []byte) ([]byte, error) { return replaceRequest(src, key, name, &req, nil) })
+	return s.editCollection(file, func(src []byte) ([]byte, error) {
+		if expect != nil {
+			differs, err := requestDiffers(src, key, *expect)
+			if err != nil {
+				return nil, err
+			}
+			if differs {
+				return nil, ErrRequestChanged
+			}
+		}
+		return replaceRequest(src, key, name, &req, nil)
+	})
 }
 
 // SaveGrpcRequest replaces a gRPC item's request and name in its file.

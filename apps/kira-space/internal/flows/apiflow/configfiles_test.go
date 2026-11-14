@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -249,5 +250,58 @@ func TestApiAgentsDocCoversSchemas(t *testing.T) {
 				t.Errorf("AGENTS.md lacks the %s option %q", name, prop)
 			}
 		}
+	}
+}
+
+// J-COLL-003. A collection loads, a person then edits it by hand and leaves one request with no
+// protocol node between two good ones. The app reports the bad entry with its line, keeps serving
+// the last good rows, and never rewrites the file: not on the edit, not on a restart. A file that
+// is bad on its very first load serves no rows (follow-up F-A15 in stream-a.md).
+func TestHandEditedCollectionWithBadEntry(t *testing.T) {
+	app := flowharness.New(t)
+	const name = "hand.collection.yaml"
+	item := func(id, title string) string {
+		return "  - id: " + id + "\n    name: " + title + "\n    http:\n      method: GET\n      url: https://x.test/" + id + "\n"
+	}
+	good := "# hand written\nname: Hand\nitems:\n" + item("ok1", "Good one") + item("ok2", "Good two")
+	text := "# hand written\nname: Hand\nitems:\n" + item("ok1", "Good one") +
+		"  - id: bad\n    name: No protocol\n" + item("ok2", "Good two")
+	path := filepath.Join(app.W.ApiFiles.Dir(), name)
+	app.WriteAPIFile(t, name, []byte(good))
+	names := func() string {
+		t.Helper()
+		tree, err := app.W.Collections.List()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, it := range tree.Items {
+			out = append(out, it.Name)
+		}
+		sort.Strings(out)
+		return strings.Join(out, ",")
+	}
+	if got := names(); got != "Good one,Good two" {
+		t.Fatalf("rows = %q, want the two good items", got)
+	}
+
+	app.WriteAPIFile(t, name, []byte(text))
+	view, err := app.W.ApiConfig.View()
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := problemOf(view, name)
+	if p == nil || p.Line == 0 || p.Message == "" {
+		t.Fatalf("problem = %+v, want the bad entry reported with its line", p)
+	}
+	if got := names(); got != "Good one,Good two" {
+		t.Errorf("rows after the bad edit = %q, want the last good rows", got)
+	}
+	app.Restart()
+	if got, _ := os.ReadFile(path); string(got) != text {
+		t.Errorf("the app rewrote the hand-edited file:\n%s", got)
+	}
+	if view, err := app.W.ApiConfig.View(); err != nil || problemOf(view, name) == nil {
+		t.Errorf("problem after restart = %v (%v), want it still reported", problemOf(view, name), err)
 	}
 }

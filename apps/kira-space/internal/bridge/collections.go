@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -101,6 +102,9 @@ type CollectionsSaveRequestArgs struct {
 	ItemID  string             `json:"itemId"`
 	Name    string             `json:"name"`
 	Request model.SavedRequest `json:"request"`
+	// Expect is the request the caller last read (decision 3). A stored request that differs
+	// answers E_CONFLICT with details.changed; omit it to overwrite after the user confirms.
+	Expect *model.SavedRequest `json:"expect,omitempty"`
 }
 
 // SaveRequest replaces the request's node in its collection file and answers with the item row the
@@ -115,7 +119,17 @@ func (s *CollectionsService) SaveRequest(args CollectionsSaveRequestArgs) (ItemS
 	if err := args.Request.Validate(); err != nil {
 		return ItemSummary{}, ipcerr.BadRequest(err.Error())
 	}
-	if err := s.Files.SaveRequest(args.ItemID, args.Name, apifiles.HTTPOf(args.Request)); err != nil {
+	var expect *apifiles.HTTP
+	if args.Expect != nil {
+		h := apifiles.HTTPOf(*args.Expect)
+		expect = &h
+	}
+	if err := s.Files.SaveRequest(args.ItemID, args.Name, apifiles.HTTPOf(args.Request), expect); err != nil {
+		if errors.Is(err, apifiles.ErrRequestChanged) {
+			e := ipcerr.T(ipcerr.CodeConflict, "backend.studio.collection.requestChanged.body", nil)
+			e.Details = json.RawMessage(`{"changed":true}`)
+			return ItemSummary{}, e
+		}
 		return ItemSummary{}, apiFilesErr(err)
 	}
 	return readErr(s.Deps.Repos.Collections.GetItem(args.ItemID))
@@ -550,15 +564,15 @@ func (s *CollectionsService) importCollection(tree *postman.Tree) (importedFile,
 		return importedFile{}, apiFilesErr(err)
 	}
 	out := importedFile{treeCommitted: true}
-	var id string
+	var id, name string
 	c := kiraschema.APICollections
-	sel := sqlb.SQLite.Select(c.ID).From(c.Table)
+	sel := sqlb.SQLite.Select(c.ID, c.Name).From(c.Table)
 	sel.Where(sel.Equal(c.Stem, stem))
-	if err := sqlb.QueryRow(s.Deps.DB, sel).Scan(&id); err != nil {
+	if err := sqlb.QueryRow(s.Deps.DB, sel).Scan(&id, &name); err != nil {
 		return out, ipcerr.InternalErr(err)
 	}
 	report := &ImportReport{
-		CollectionID: id, Name: tree.Name,
+		CollectionID: id, Name: name,
 		Folders: tree.Report.Folders, Requests: tree.Report.Requests,
 		Warnings: []ImportWarning{},
 	}

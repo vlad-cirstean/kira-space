@@ -151,22 +151,27 @@ func Unary(ctx context.Context, req CallRequest) (CallResult, error) {
 		return CallResult{}, BadRequest(req.FullMethod + " is a streaming method, not unary")
 	}
 
-	conn, err := dialConn(ctx, req.Target, req.TLS)
+	// The deadline covers the connect wait too: a call given 300 ms does not sit 5 s in the dial.
+	timeout := req.Timeout
+	deadlineCtx, cancelCall := ctx, context.CancelFunc(func() {})
+	if timeout > 0 {
+		deadlineCtx, cancelCall = context.WithTimeout(ctx, timeout)
+	}
+	defer cancelCall()
+
+	conn, err := dialConn(deadlineCtx, req.Target, req.TLS)
 	if err != nil {
+		if ctx.Err() == nil && callDeadlineExpired(deadlineCtx) {
+			return CallResult{}, Timeout(fmt.Sprintf("no response from %s within %s", req.Target, timeout))
+		}
 		return CallResult{}, err
 	}
 	defer conn.Close()
 
-	callCtx, err := withMetadata(ctx, req.Metadata)
+	callCtx, err := withMetadata(deadlineCtx, req.Metadata)
 	if err != nil {
 		return CallResult{}, err
 	}
-	timeout := req.Timeout
-	cancelCall := context.CancelFunc(func() {})
-	if timeout > 0 {
-		callCtx, cancelCall = context.WithTimeout(callCtx, timeout)
-	}
-	defer cancelCall()
 
 	in := dynamicpb.NewMessage(method.Input())
 	if err := unmarshalRequestJSON(req.MessageJSON, in); err != nil {
