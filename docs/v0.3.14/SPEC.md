@@ -15,7 +15,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P640 | ADE task: own Jira and PR links first in their group | Todo |
 | P641 | ADE task list: today background, day start/end left bar, today bar differs | Todo |
 | P642 | Details tab on disk: notes, handovers, links, PR link and proofs (with images) as files, source of truth; design plan first, user approves it before the build | Todo |
-| P643 | Chapter non-UI full run, 1 code review round | Todo |
+| P643 | Chapter non-UI full run, 2 code review rounds | Todo |
 | P644 | Close chapter | Todo |
 
 ## Scope
