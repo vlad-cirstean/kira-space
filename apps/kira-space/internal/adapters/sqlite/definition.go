@@ -96,9 +96,24 @@ func buildDefinition(exec QueryExecutor, segments []model.PathSegment, schema st
 	}
 	statement := adapters.StripOneTrailingSemicolon(raw.String)
 
+	statements := []string{statement}
 	var constraints []model.ConstraintMeta
 	var notes []string
 	if kind == "table" {
+		// Explicit indexes are separate catalog rows; without them the copied DDL recreates a
+		// table that scans where the source seeks. Autoindexes carry no SQL and come back with the
+		// constraint that made them.
+		err := exec("SELECT sql FROM "+quoteIdent(schema)+".sqlite_master WHERE type = 'index' AND tbl_name = ? AND sql IS NOT NULL ORDER BY rowid", []any{name}, func(r *sql.Rows) error {
+			var idx string
+			if err := r.Scan(&idx); err != nil {
+				return err
+			}
+			statements = append(statements, adapters.StripOneTrailingSemicolon(idx))
+			return nil
+		})
+		if err != nil {
+			return model.ObjectDefinition{}, err
+		}
 		target, err := getReadTarget(exec, schema, name)
 		if err != nil {
 			return model.ObjectDefinition{}, err
@@ -110,12 +125,13 @@ func buildDefinition(exec QueryExecutor, segments []model.PathSegment, schema st
 		notes = []string{
 			"CHECK constraints, if any, appear only in the Source text above — SQLite has no separate " +
 				"catalog for them.",
+			"Triggers are not included.",
 		}
 	}
 
 	return model.ObjectDefinition{
 		Path: model.EncodePath(segments), Kind: kind, QualifiedName: schema + "." + name,
-		Statements: []string{statement}, Language: "sql", Origin: "server", Notes: notes,
+		Statements: statements, Language: "sql", Origin: "server", Notes: notes,
 		Constraints: constraints, DocumentSchema: nil, Sections: []model.DefinitionSection{},
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339Nano),
 	}, nil
