@@ -417,6 +417,9 @@ Other packages (termflow, notifyflow, mobileflow, dockerflow, harnessflow) exten
 - F-B2: stale-file detection on workflow save (OQ-ADE-5, pending USER §5 Q3).
 - F-B3: refuse stage move while headless run live (pending USER §5 Q9).
 - F-B4: monotonic-clock lease TTL (OQ-ADE-3, pending USER §5 Q10).
+- F-B5: create_task has no duplicate guard (same title under one parent); a second orchestrator pass can duplicate a child if the agent asks (J-RUN-027).
+- F-B6: J-HAR-002 has no product feature: no export or import of agent config exists in any bridge service. Needs a design decision and a build phase before `agent-config-io` can be written.
+- F-B7: lease TTL decisions use a fake clock only for heartbeats (`LeaseNow`); real tracker check still uses real time (decision 10 open).
 - Add each bug found needing design decision here with journey id.
 
 ## Done when
@@ -426,3 +429,23 @@ Other packages (termflow, notifyflow, mobileflow, dockerflow, harnessflow) exten
   reader.
 - No `time.Sleep` / `waitForTimeout` in new files.
 - Hook green on every commit; worktree rebases cleanly.
+
+## Result
+
+Landed B1 to B11, each as flow half plus UI half where a UI surface exists, committed per group.
+
+Product bugs fixed:
+- Archived finder missed Jira keys (B1).
+- Tool calls after finish_step were accepted; a step reached after a loop-back re-ran once more (B3).
+- Stacked rebase abort not recorded on the stack run (B4).
+- Several approved branches of one repo reused one draft row, orphaning worktrees and refs (B5).
+- Resume prompt lacked a lease re-acquire line (B7, OQ-ADE-2); `LeaseNow` seam and `WithLeaseClock` added.
+- Artifact URLs not normalised for dedupe (B8, OQ-ADE-1).
+
+Pinned by design: YAML editor writes invalid text while last valid version serves; first finish wins (OQ-ADE-6); abort restores only the conflicted branch; force push after fetch alone is refused (`--force-if-includes`); SetTaskStep refuses a stage move while a run is live (F-B3 may already hold).
+
+B11: two-window convergence and 300-task scale pass with no product change. No bulk-move API exists; the 50-task move is one SetPlan call and is atomic on failure.
+
+NOT done: B12 (no export/import feature, see F-B6; provider/sandbox argv checks not written), B13, B14, B15, B16. Skipped optional B4 sub-items (branchadopt two tasks, stop-run-first abort refusal).
+
+Tests run: own new specs only, `go test -p 1 ./apps/kira-space/internal/flows/adeflow/ -run <Test>` and targeted Playwright `--project=ui` specs; all passed. No final adeflow-wide rerun after shared product changes.
