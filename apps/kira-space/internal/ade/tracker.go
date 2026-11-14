@@ -58,6 +58,9 @@ type TrackerDeps struct {
 	// worked or after. SendIfIdle holds back while one waits: Enter would submit it with the message.
 	HasDraft func(terminalID string) bool
 	Now      func() time.Time
+	// Elapsed counts only time the app ran (OQ-ADE-3); Working measures a silent tool call on it.
+	// Nil derives it from Now.
+	Elapsed func() time.Duration
 	// OnChange is called whenever a persisted record's own state changes (a new or revived
 	// session, a stop, a agent_session_id update after /clear) — main.go wires it to
 	// bridge.AdeTaskSessionsChanged, never called with the lock held.
@@ -187,6 +190,8 @@ type Tracker struct {
 	// Stop/SessionEnd, on the grace-timeout Reconcile that stops a record, and on Close — not on
 	// every event, which would be one DB write per tool call.
 	lastActive map[string]int64
+	// activeAt is lastActive on the running clock: laptop sleep does not age it.
+	activeAt map[string]time.Duration
 	// agentSessionID caches each live record's own current agent session id, so HandleEvent can
 	// detect a SessionStart naming a different one (a /clear) without a DB read on every event.
 	agentSessionID map[string]string
@@ -242,6 +247,13 @@ func NewTracker(deps TrackerDeps) *Tracker {
 	if deps.Grace <= 0 {
 		deps.Grace = defaultGrace
 	}
+	if deps.Now == nil {
+		deps.Now = time.Now
+	}
+	if deps.Elapsed == nil {
+		now, origin := deps.Now, deps.Now()
+		deps.Elapsed = func() time.Duration { return now().Sub(origin) }
+	}
 	if deps.PendingTTL <= 0 {
 		deps.PendingTTL = defaultPendingTTL
 	}
@@ -252,6 +264,7 @@ func NewTracker(deps TrackerDeps) *Tracker {
 		byRecord:       map[string]string{},
 		spawnedAt:      map[string]time.Time{},
 		lastActive:     map[string]int64{},
+		activeAt:       map[string]time.Duration{},
 		agentSessionID: map[string]string{},
 		background:     map[string]int{},
 		wake:           map[string]bool{},
@@ -728,6 +741,7 @@ func (t *Tracker) Abort(terminalID string) {
 	delete(t.byRecord, recordID)
 	delete(t.spawnedAt, recordID)
 	delete(t.lastActive, recordID)
+	delete(t.activeAt, recordID)
 	delete(t.agentSessionID, recordID)
 	delete(t.background, recordID)
 	delete(t.wake, recordID)
@@ -803,6 +817,7 @@ func (t *Tracker) forgetLocked(recordID string, now time.Time) (lastActive int64
 	lastActive, kept := t.lastActive[recordID]
 	if kept {
 		delete(t.lastActive, recordID)
+		delete(t.activeAt, recordID)
 	} else {
 		lastActive = now.UnixMilli()
 	}
@@ -924,6 +939,7 @@ func (t *Tracker) HandleEvent(ev harness.AgentEvent) {
 	now := t.deps.Now()
 	nowMs := now.UnixMilli()
 	t.lastActive[recordID] = nowMs
+	t.activeAt[recordID] = t.deps.Elapsed()
 
 	sessionChanged := false
 	// The id lands in a later shell command line; only a plain token is trusted.
@@ -1113,8 +1129,8 @@ func (t *Tracker) Working(recordID string, ceiling time.Duration) bool {
 	if state := t.turn[recordID]; (state != turnBusy && state != turnInput) || t.tools[recordID].count() == 0 {
 		return false
 	}
-	last, ok := t.lastActive[recordID]
-	return ok && t.deps.Now().Sub(time.UnixMilli(last)) < ceiling
+	last, ok := t.activeAt[recordID]
+	return ok && t.deps.Elapsed()-last < ceiling
 }
 
 // SendIfIdle pastes message into recordID's terminal only while its turn state is idle. It never

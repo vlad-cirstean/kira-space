@@ -432,3 +432,60 @@ func TestLeasesAcrossRestart(t *testing.T) {
 		}
 	}
 }
+
+// OQ-ADE-3: lease silence counts only time the app ran. A laptop asleep for hours (wall time moves, no
+// running time passes) expires nothing; the TTL then runs out on running time alone.
+func TestLeaseSleepDoesNotExpire(t *testing.T) {
+	clock := fakeclock.New(scheduleStart)
+	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second), flowharness.WithLeaseClock(4*time.Second, clock))
+	claude(app, map[string][]fakeagent.Action{"*": {
+		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, Name: "sleep"},
+		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, Name: "sleep"},
+	}})
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	rec := importRepo(t, app, repo.Dir)
+	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("one", "")))
+	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
+	if err := app.W.Leases.SaveQueues(ctx, adewire.LeaseQueuesArgs{Names: []string{"push"}}); err != nil {
+		t.Fatal(err)
+	}
+	for i, branch := range []string{"feat/h", "feat/w"} {
+		tk := createTask(t, app, []string{"Holder", "Waiter"}[i], "flow", rec.ID)
+		row := branchOf(t, board(t, app), tk.ID, rec.ID)
+		br, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: row.ID, Name: branch})
+		if err != nil {
+			t.Fatal(err)
+		}
+		l, err := app.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		openLaunch(t, app, l)
+		waitSession(t, app, l.SessionID, "running")
+	}
+	if r := leaseResult(t, app, "mcp-acquire_lease-1.json"); r.State != "held" {
+		t.Fatalf("holder acquire = %+v, want held", r)
+	}
+	if r := leaseResult(t, app, "mcp-acquire_lease-2.json"); r.State != "queued" {
+		t.Fatalf("waiter acquire = %+v, want queued", r)
+	}
+
+	clock.Suspend(2 * time.Hour)
+	deadline := time.After(3 * time.Second)
+	for stay := true; stay; {
+		select {
+		case <-deadline:
+			stay = false
+		default:
+			if q := leaseSnapshot(t, app).Queues[0]; q.Holder == nil || q.Holder.TaskTitle != "Holder" {
+				t.Fatalf("a 2 h sleep expired the holder: %+v", q)
+			}
+		}
+	}
+	// The shown expiry is still ahead of the shown clock, not hours in the past.
+	if h := leaseSnapshot(t, app).Queues[0].Holder; h.ExpiresAt-clock.Now().UnixMilli() > 4000 || h.ExpiresAt < clock.Now().UnixMilli() {
+		t.Fatalf("expiresAt %d is not within the TTL of now %d", h.ExpiresAt, clock.Now().UnixMilli())
+	}
+	clock.Advance(5 * time.Second)
+	waitHolder(t, app, "Waiter")
+}

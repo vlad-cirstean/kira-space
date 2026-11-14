@@ -125,6 +125,9 @@ type Options struct {
 	// seams); zero and nil keep 10 minutes and the wall clock.
 	LeaseTTL time.Duration
 	LeaseNow func() time.Time
+	// LeaseElapsed counts only time the app ran: lease silence and a silent tool call's ceiling read it,
+	// so a sleeping laptop expires nothing (OQ-ADE-3). Nil derives it from the clock in use.
+	LeaseElapsed func() time.Duration
 	// Sandbox confines headless agents; nil uses the OS enforcer (a flow-test seam).
 	Sandbox agentsandbox.Enforcer
 	// SmartTimeout replaces every smart script's own timeout (a flow-test seam); 0 keeps each script's.
@@ -473,7 +476,7 @@ func Build(opts Options) (*Wired, error) {
 	w.RepoConfigSvc = &bridge.RepoConfigService{Service: &repocfg.Service{Store: w.RepoConfig, CodeRepos: codeRepoIDs(repositories)}}
 	w.AgentPort = agentport.New(agentport.Options{Settings: w.AgentSettings, Context: w.AgentContext, Secrets: w.AgentSecrets, Providers: registry})
 	w.AgentPortSvc = &bridge.AgentPortService{Svc: w.AgentPort}
-	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, w.AgentNotify, w.AgentUsage, w.Agents, w.AgentContext.ContextFile)
+	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, opts.LeaseElapsed, w.AgentNotify, w.AgentUsage, w.Agents, w.AgentContext.ContextFile)
 	w.Tracker, w.AgentHooks = adeTracker, agentHooks
 
 	// P128 §2.1: the bound terminal methods live once in internal/terminal.BoundService; this
@@ -542,7 +545,7 @@ func Build(opts Options) (*Wired, error) {
 				return w.AdeTask.CloseWindow(key)
 			}
 			return w.Windows.Close(key)
-		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.LeaseTTL, opts.LeaseNow, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
+		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.LeaseTTL, opts.LeaseNow, opts.LeaseElapsed, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
 	runs.ADE = w.AdeBoard
 	// proof_save on the session server attaches to the task through the board, which exists only now.
 	w.DbMcp.ProofAttach = w.AdeBoard

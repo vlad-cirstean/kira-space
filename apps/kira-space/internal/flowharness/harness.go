@@ -87,6 +87,7 @@ type options struct {
 	branchWait      time.Duration
 	leaseTTL        time.Duration
 	leaseNow        func() time.Time
+	leaseElapsed    func() time.Duration
 	mobilePoll      time.Duration
 	embedSpec       *embed.Spec
 	providers       []harness.Provider
@@ -168,7 +169,13 @@ func WithMobilePoll(d time.Duration) Opt { return func(o *options) { o.mobilePol
 
 // WithLeaseClock gives resource leases a silence limit of ttl, measured on c; the sweep still ticks in real time.
 func WithLeaseClock(ttl time.Duration, c scriptruns.Clock) Opt {
-	return func(o *options) { o.leaseTTL, o.leaseNow = ttl, c.Now }
+	return func(o *options) {
+		o.leaseTTL, o.leaseNow = ttl, c.Now
+		// A clock that can sleep (fakeclock.Suspend) separates wall time from time the app ran.
+		if e, ok := c.(interface{ Elapsed() time.Duration }); ok {
+			o.leaseElapsed = e.Elapsed
+		}
+	}
 }
 
 // WithBranchRequestWait bounds how long an agent's branch request or create_task waits for the user.
@@ -482,7 +489,7 @@ func (a *App) build() {
 		McpInstaller: a.McpInstaller, WindowFocus: focus, DockerHubAPI: a.opts.dockerHubAPI, DockerExtra: a.opts.dockerExtra,
 		KubernetesExtra: append([]kubernetes.Option{kubernetes.WithEnv(kubeEnv)}, a.opts.kubeExtra...),
 		Providers:       registry, IssueTracker: tracker,
-		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, LeaseTTL: a.opts.leaseTTL, LeaseNow: a.opts.leaseNow, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, EmbedSpec: a.opts.embedSpec, MobilePoll: a.opts.mobilePoll, ChangeRequestSync: a.opts.crSync, TrackedUpdates: *a.opts.updates,
+		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, LeaseTTL: a.opts.leaseTTL, LeaseNow: a.opts.leaseNow, LeaseElapsed: a.opts.leaseElapsed, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, EmbedSpec: a.opts.embedSpec, MobilePoll: a.opts.mobilePoll, ChangeRequestSync: a.opts.crSync, TrackedUpdates: *a.opts.updates,
 		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, FileOpener: a.FileOpener, ImageClipboard: a.ImageClipboard, Dialogs: a.Dialogs,
 		Locator: gitclient.NewHostLocator(), KeepAwakeDriver: a.KeepAwake, FileHandlers: a.opts.fileHandlers,
 		MobileAssets: fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>phone</title>")}},

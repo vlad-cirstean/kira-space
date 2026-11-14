@@ -101,7 +101,7 @@ func (b *TaskBoard) initLeases() {
 		now = b.deps.LeaseNow
 	}
 	b.lease.book = leases.New(leases.Options{
-		Now: now, TTL: b.deps.LeaseTTL, Order: b.taskListOrder,
+		Now: now, Elapsed: b.deps.LeaseElapsed, TTL: b.deps.LeaseTTL, Order: b.taskListOrder,
 		OnGrant: b.onLeaseGrant, OnChange: b.leasesChanged,
 	})
 	if b.deps.LeaseQueues != nil {
@@ -465,7 +465,6 @@ func (b *TaskBoard) SaveLeaseQueues(names []string) error {
 
 // LeaseSnapshot lists every queue with its holder and waiters.
 func (b *TaskBoard) LeaseSnapshot() adewire.LeaseSnapshot {
-	ttl := b.lease.book.TTL()
 	entry := func(e leases.Entry, position int) adewire.LeaseEntry {
 		b.lease.mu.Lock()
 		noticed := len(b.lease.pending[e.Key]) > 0
@@ -478,7 +477,7 @@ func (b *TaskBoard) LeaseSnapshot() adewire.LeaseSnapshot {
 			Position: position, ReleaseAsked: e.ReleaseAsked, NoticePending: noticed,
 		}
 		if position == 0 {
-			out.Since, out.ExpiresAt = e.Since.UnixMilli(), e.Seen.Add(ttl).UnixMilli()
+			out.Since, out.ExpiresAt = e.Since.UnixMilli(), b.lease.book.ExpiresAt(e).UnixMilli()
 		}
 		return out
 	}

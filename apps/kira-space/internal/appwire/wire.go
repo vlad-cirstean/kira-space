@@ -106,12 +106,12 @@ func wireTrackers(opLog *oplog.Log, o jira.Options) *issuetracker.Registry {
 // Rows a previous process life left running are stopped by the task board's Recover.
 func wireTracker(
 	repositories *repos.Repos, registry *terminal.Registry, emitter appevent.Emitter, events *bridge.Events,
-	grace time.Duration, notifier *agentnotify.Notifier, usage *agentusage.Service, agents harness.Selector,
+	grace time.Duration, leaseElapsed func() time.Duration, notifier *agentnotify.Notifier, usage *agentusage.Service, agents harness.Selector,
 	contextFile func() (string, error),
 ) (*ade.Tracker, *harness.Hooks) {
 	tracker := ade.NewTracker(ade.TrackerDeps{
 		Agent: agents, ContextFile: contextFile, Store: repositories.AdeSessions, LiveAgents: registry.AgentSessions,
-		WriteTerminal: registry.Inject, HasDraft: registry.Draft, Now: time.Now, Grace: grace,
+		WriteTerminal: registry.Inject, HasDraft: registry.Draft, Now: time.Now, Elapsed: leaseElapsed, Grace: grace,
 		OnChange: func() { bridge.AdeTaskSessionsChanged(events) },
 	})
 
@@ -193,7 +193,7 @@ func closeTaskReviewWindows(repositories *repos.Repos, closeWindow func(key stri
 func wireAdeTask(
 	repositories *repos.Repos, events *bridge.Events, git gitWired, tracker *ade.Tracker, closeTerminal func(string) error,
 	closeReviewWindows func(taskID string), credentials *gitcred.Relay, keepAwake *bridge.KeepAwakeService,
-	notifier *agentnotify.Notifier, usage *agentusage.Service, rebaseTimeout, branchRequestWait, leaseTTL time.Duration, leaseNow func() time.Time, updates ade.UpdatesConfig, runs *scriptruns.Service,
+	notifier *agentnotify.Notifier, usage *agentusage.Service, rebaseTimeout, branchRequestWait, leaseTTL time.Duration, leaseNow func() time.Time, leaseElapsed func() time.Duration, updates ade.UpdatesConfig, runs *scriptruns.Service,
 	agents harness.Selector, promptSink prompts.Sink, approvalQueue *approvals.Queue, repoFiles *repocfg.Store,
 	proofs ade.ProofLinks, dbMcp ade.DbMcpSessions, onReposChanged func(),
 ) *ade.TaskBoard {
@@ -288,6 +288,7 @@ func wireAdeTask(
 		Now:               time.Now,
 		LeaseTTL:          leaseTTL,
 		LeaseNow:          leaseNow,
+		LeaseElapsed:      leaseElapsed,
 	})
 	tracker.SetStoppedHandler(board.OnTUIStopped)
 	tracker.SetAgentStartedHandler(board.OnTUIAgentStarted)

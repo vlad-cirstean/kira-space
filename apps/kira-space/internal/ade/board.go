@@ -178,6 +178,8 @@ type TaskBoardDeps struct {
 	LeaseTTL time.Duration
 	// LeaseNow replaces Now for lease heartbeats (a flow-test seam); nil = Now.
 	LeaseNow func() time.Time
+	// LeaseElapsed counts only time the app ran (OQ-ADE-3); nil derives it from LeaseNow or Now.
+	LeaseElapsed func() time.Duration
 }
 
 // TaskBoard is the v2 engine: one gitsession.Conn holding every repo a live task touches, a per-repo
