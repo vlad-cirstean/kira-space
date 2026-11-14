@@ -97,12 +97,14 @@ import type { FormEdit } from '@workbench/config/configForm';
 import { type BoardChange, normalizeBoardEvent } from '../ade/v2/boardEvent';
 import type { AgentContextSaveArgs, AgentContextView } from '../ade/v2/context/types';
 import type {
+  Backup,
   ExportApplyArgs,
   ExportPreview,
   ImportApplyArgs,
   ImportPreview,
   PortProvider,
   PortResult,
+  RestoreArgs,
 } from '../ade/v2/port/types';
 import type {
   AgentSetSecretArgs,
@@ -608,6 +610,10 @@ const spaceControl = {
     unwrap(AgentPortService.ExportPreview(args)).then((r) => trust<ExportPreview>(r)),
   agentPortExportApply: (args: ExportApplyArgs): Promise<PortResult> =>
     unwrap(AgentPortService.ExportApply(args)).then((r) => trust<PortResult>(r)),
+  agentPortBackups: (args: { provider: string }): Promise<Backup[]> =>
+    unwrap(AgentPortService.Backups(args)).then((r) => trust<Backup[]>(r ?? [])),
+  agentPortRestore: (args: RestoreArgs): Promise<PortResult> =>
+    unwrap(AgentPortService.Restore(args)).then((r) => trust<PortResult>(r)),
   agentPortCancel: (args: { token: string }): Promise<void> =>
     unwrap(AgentPortService.Cancel(args)).then(() => undefined),
   onAgentSettingsChanged: (cb: () => void): (() => void) => on(CHANNEL.agentSettingsChanged, cb),

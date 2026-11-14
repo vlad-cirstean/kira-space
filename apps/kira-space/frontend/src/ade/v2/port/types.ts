@@ -92,3 +92,16 @@ export interface PortResult {
   secrets: string[] | null;
   notes: string[] | null;
 }
+export interface Backup {
+  role: string;
+  target: string;
+  file: string;
+  taken: string;
+  size: number;
+  restorable: boolean;
+  reason: string;
+}
+export interface RestoreArgs {
+  provider: string;
+  file: string;
+}

@@ -10108,6 +10108,17 @@
         "append": {
           "status": "Append"
         },
+        "backupList": {
+          "confirm": {
+            "body": "Restore {file} over {target}? The current file is backed up first.",
+            "title": "Restore backup"
+          },
+          "empty": {
+            "title": "No backups yet"
+          },
+          "hint": "Backups an export took of the agent’s files. Restore writes one back over its file.",
+          "title": "{agent} backups"
+        },
         "backups": {
           "label": "Backups"
         },
