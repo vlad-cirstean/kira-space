@@ -40,5 +40,6 @@ func familyTypeRoundTrip(cfg model.ResolvedConnectionConfig) testsupport.Scenari
 		EditID:     "1",
 		EditColumn: "note",
 		EditValue:  "edited",
+		Guard:      []string{"dec_", "ubig", "color", "tags", "ts", "dt", "note"},
 	})
 }

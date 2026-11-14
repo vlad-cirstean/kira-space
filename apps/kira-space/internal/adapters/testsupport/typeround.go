@@ -25,6 +25,9 @@ type TypeRoundTripCase struct {
 	EditID     string
 	EditColumn string
 	EditValue  string
+	// Guard names columns whose loaded text rides the edit as op.Expect: the edit must pass on an
+	// untouched row (no false conflict for the type) and a stale guard must fail with E_CONFLICT.
+	Guard []string
 }
 
 // TypeRoundTrip asserts a typed table reads back as exact text, survives an edit of one column with
@@ -89,10 +92,24 @@ func TypeRoundTrip(c TypeRoundTripCase) Scenario {
 			}
 
 			val := c.EditValue
+			var expect model.RowValues
+			for _, g := range c.Guard {
+				for i, n := range c.Columns {
+					if n != g {
+						continue
+					}
+					for _, row := range before {
+						if row[0] != nil && *row[0] == c.EditID {
+							expect = append(expect, model.RowValue{Name: g, Value: row[i]})
+						}
+					}
+				}
+			}
 			if _, err := a.Mutate(context.Background(), model.MutationPlan{Path: c.Table, Ops: []model.MutationRowOp{{
 				Kind:    "update",
 				Key:     model.RowValues{{Name: "id", Value: &c.EditID}},
 				Changes: model.RowValues{{Name: c.EditColumn, Value: &val}},
+				Expect:  expect,
 			}}}, adapters.NewOpCtx("scenario-type-round-trip-edit")); err != nil {
 				t.Fatalf("Mutate %s: %v", c.EditColumn, err)
 			}
@@ -114,6 +131,19 @@ func TypeRoundTrip(c TypeRoundTripCase) Scenario {
 			}
 			if !reflect.DeepEqual(show(after), show(want)) {
 				t.Fatalf("after editing %s:\n got %q\nwant %q", c.EditColumn, show(after), show(want))
+			}
+			if len(expect) > 0 {
+				// The first edit changed `note`; a plan still guarding the old value is stale.
+				stale := model.RowValues{{Name: c.EditColumn, Value: before[0][editCol]}}
+				_, err := a.Mutate(context.Background(), model.MutationPlan{Path: c.Table, Ops: []model.MutationRowOp{{
+					Kind:    "update",
+					Key:     model.RowValues{{Name: "id", Value: &c.EditID}},
+					Changes: model.RowValues{{Name: c.EditColumn, Value: &val}},
+					Expect:  stale,
+				}}}, adapters.NewOpCtx("scenario-type-round-trip-stale"))
+				if code, _ := adapters.CodeOf(err); code != adapters.CodeConflict {
+					t.Fatalf("stale guard: err = %v, want E_CONFLICT", err)
+				}
 			}
 		},
 	}

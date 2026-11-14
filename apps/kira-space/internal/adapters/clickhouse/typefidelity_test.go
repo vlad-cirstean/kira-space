@@ -57,7 +57,9 @@ func chAnalyticTypes(cfg model.ResolvedConnectionConfig) testsupport.Scenario {
 				`CREATE TABLE kira_test.p629_ties (k UInt8, v String) ENGINE = MergeTree ORDER BY k`,
 				`INSERT INTO kira_test.p629_ties VALUES (1,'a'),(1,'b'),(1,'c'),(2,'d'),(2,'e'),(2,'f'),(3,'g')`,
 			)
-			t.Cleanup(func() { chExec(t, a, db, `DROP TABLE IF EXISTS kira_test.p629_types`, `DROP TABLE IF EXISTS kira_test.p629_ties`) })
+			t.Cleanup(func() {
+				chExec(t, a, db, `DROP TABLE IF EXISTS kira_test.p629_types`, `DROP TABLE IF EXISTS kira_test.p629_ties`)
+			})
 
 			p, err := a.Read(context.Background(), adapters.ReadRequest{
 				Path: tbl("p629_types"), PageSize: 100, Cursor: model.PageCursor{Mode: "offset"},

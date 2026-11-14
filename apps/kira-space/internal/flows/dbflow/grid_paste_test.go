@@ -27,7 +27,7 @@ func TestGridPasteNullAndEmpty(t *testing.T) {
 	// The block the UI half pastes: an empty last field on an existing row and on a new row.
 	cp := tableNodePath(t, app, conn.ID, "composite_pk")
 	ops := []model.MutationRowOp{
-		upd(vals("tenant_id", "2", "entity_id", "1"), vals("name", nil)),
+		guarded(upd(vals("tenant_id", "2", "entity_id", "1"), vals("name", nil)), vals("name", "tenant 2 / entity 1")),
 		ins(vals("tenant_id", "3", "entity_id", "3", "name", nil)),
 	}
 	app.Contract(t, "studio-grid-paste", "mutate:ops", flowharness.MutateWire(conn.ID, cp, ops), contractMask)

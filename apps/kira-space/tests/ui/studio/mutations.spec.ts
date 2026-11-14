@@ -72,11 +72,16 @@ const PORT: PortSnapshot[] = [
       connectionId: CONNECTION_ID,
       path: COMPOSITE_PK_PATH,
       ops: [
-        { kind: 'delete', key: { tenant_id: '1', entity_id: '2' } },
+        {
+          kind: 'delete',
+          key: { tenant_id: '1', entity_id: '2' },
+          expect: { tenant_id: '1', entity_id: '2', name: 'tenant 1 / entity 2' },
+        },
         {
           kind: 'update',
           key: { tenant_id: '1', entity_id: '1' },
           changes: { name: 'committed value' },
+          expect: { name: 'tenant 1 / entity 1' },
         },
       ],
     },

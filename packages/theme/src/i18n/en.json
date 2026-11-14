@@ -2554,6 +2554,9 @@
         "responseTooLarge": {
           "body": "The response was too large to return."
         },
+        "rowChanged": {
+          "body": "The row {key} changed on the server since it was loaded."
+        },
         "s3AclGrant": {
           "body": "This object has an access control grant this editor can’t preserve across an edit. Edit it outside this app."
         },
@@ -15057,6 +15060,10 @@
       },
       "noPrimaryKey": {
         "tooltip": "This table has no primary key, so a row can’t be addressed"
+      },
+      "overwriteConfirm": {
+        "body": "Overwrite it with your edits, or cancel and refresh to see the current values.",
+        "title": "Overwrite changes made elsewhere?"
       },
       "pager": {
         "countFirst": {

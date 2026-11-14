@@ -22,6 +22,7 @@ const OPS = [
     kind: 'update',
     key: { entity_id: '1', tenant_id: '1' },
     changes: { name: null },
+    expect: { name: 'tenant 1 / entity 1' },
   },
 ];
 

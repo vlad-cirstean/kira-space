@@ -16,6 +16,12 @@ const gridMutateScenario = "studio-grid-mutate"
 func upd(key, changes model.RowValues) model.MutationRowOp {
 	return model.MutationRowOp{Kind: "update", Key: key, Changes: changes}
 }
+
+// guarded adds the loaded values the grid sends with an update or delete (op.Expect).
+func guarded(op model.MutationRowOp, expect model.RowValues) model.MutationRowOp {
+	op.Expect = expect
+	return op
+}
 func ins(values model.RowValues) model.MutationRowOp {
 	return model.MutationRowOp{Kind: "insert", Values: values}
 }

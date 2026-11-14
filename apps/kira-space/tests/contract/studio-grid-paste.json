@@ -7,6 +7,9 @@
         "changes": {
           "name": null
         },
+        "expect": {
+          "name": "tenant 2 / entity 1"
+        },
         "key": {
           "entity_id": "1",
           "tenant_id": "2"

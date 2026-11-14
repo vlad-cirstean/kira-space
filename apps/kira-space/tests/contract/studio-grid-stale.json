@@ -1,7 +1,32 @@
 {
+  "mutate:conflict": {
+    "Code": "E_CONFLICT",
+    "Message": "The row tenant_id = 1, entity_id = 1 changed on the server since it was loaded."
+  },
   "mutate:error": {
     "Code": "E_QUERY",
     "Message": "expected delete to affect exactly one row, affected 0"
+  },
+  "mutate:guarded-ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "name": "mine"
+        },
+        "expect": {
+          "name": "tenant 1 / entity 1"
+        },
+        "key": {
+          "entity_id": "1",
+          "tenant_id": "1"
+        },
+        "kind": "update"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
   },
   "mutate:ops": {
     "connectionId": "<masked>",
@@ -12,15 +37,35 @@
           "name": "b2"
         },
         "key": {
-          "id": "2"
+          "entity_id": "2",
+          "tenant_id": "1"
         },
         "kind": "update"
       },
       {
         "key": {
-          "id": "3"
+          "entity_id": "1",
+          "tenant_id": "2"
         },
         "kind": "delete"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
+  "mutate:overwrite-ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "name": "mine"
+        },
+        "key": {
+          "entity_id": "1",
+          "tenant_id": "1"
+        },
+        "kind": "update"
       }
     ],
     "path": "<masked>",

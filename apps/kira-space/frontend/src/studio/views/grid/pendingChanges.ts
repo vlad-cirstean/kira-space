@@ -3,6 +3,7 @@ import { newUuid } from '@shared/ids';
 import type { MutateResponse } from '@shared/protocol/dataOps';
 import { cellText, isNull, type TabularPage } from '@shared/protocol/page';
 import { compareNatural } from '@workbench/behaviour/match';
+import { errorText } from '@workbench/bridge/codedError';
 import { defineStore } from 'pinia';
 import { reactive, toRaw } from 'vue';
 import { data } from '../../bridge/data';
@@ -21,6 +22,7 @@ interface PendingEdit {
   key: RowKey; // the row's primary key when it was staged — a PK-column edit still addresses the original row
   changes: Record<string, string | null>;
   original: Record<string, string | null>; // page value per column when first staged; edits off the current page keep it
+  expect: Record<string, string | null>; // guarded subset of `original`, sent so the server can refuse a changed row
 }
 
 export interface PendingCellDiff {
@@ -33,7 +35,17 @@ export interface PendingCellDiff {
 
 interface PendingDelete {
   key: RowKey;
+  expect: Record<string, string | null>; // guarded columns of the row as loaded
 }
+
+// Columns whose displayed text compares reliably in a WHERE (`col = 'text'`). json, binary and
+// engine-specific types have no portable equality, so they are never guarded.
+const GUARDED_TYPE_CLASSES: ReadonlySet<string> = new Set([
+  'number',
+  'text',
+  'boolean',
+  'temporal',
+]);
 
 interface PendingInsert {
   id: string; // local identity for Vue :key and discard — never sent to the server
@@ -263,10 +275,18 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     if (p.deletes.has(entry.id)) return; // a row marked for delete is not independently editable
     const existing = p.edits.get(entry.id);
     const original = { ...(existing?.original ?? {}) };
+    const expect = { ...(existing?.expect ?? {}) };
     if (!(column in original)) {
       const col = getPage(tabId)?.columns.findIndex((c) => c.name === column) ?? -1;
       const view = col >= 0 ? cell(tabId, row, col) : null;
       original[column] = view && !view.isNull ? view.text : null;
+      if (
+        view &&
+        !view.truncated &&
+        GUARDED_TYPE_CLASSES.has(getPage(tabId)?.columns[col]?.typeClass ?? '')
+      ) {
+        expect[column] = original[column];
+      }
     }
     // A value equal to what the cell already holds is no change: a pasted block that spans key or
     // unchanged columns must not rewrite them (a TIMESTAMP rewrite can shift its zone).
@@ -278,6 +298,7 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
       key: entry.key,
       changes: { ...(existing?.changes ?? {}), [column]: value },
       original,
+      expect,
     });
   }
 
@@ -328,7 +349,15 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     const { [column]: _discarded, ...rest } = existing.changes;
     const { [column]: _original, ...restOriginal } = existing.original;
     if (Object.keys(rest).length === 0) p?.edits.delete(entry.id);
-    else p?.edits.set(entry.id, { key: existing.key, changes: rest, original: restOriginal });
+    else {
+      const { [column]: _guard, ...restExpect } = existing.expect;
+      p?.edits.set(entry.id, {
+        key: existing.key,
+        changes: rest,
+        original: restOriginal,
+        expect: restExpect,
+      });
+    }
   }
 
   // The row menu's "Revert row(s)" — un-stages a whole row's pending edit and/or pending delete in
@@ -392,13 +421,24 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
   // most recent action instead of being a no-op. Marking for delete is now idempotent, exactly like
   // stageEdit/stageNull above never toggle either: "Revert row(s)" (discardRowChange) is the one and
   // only way to undo a pending delete, for every pending-change kind this module has.
+  function guardedRow(tabId: string, row: number): Record<string, string | null> {
+    const expect: Record<string, string | null> = {};
+    const columns = getPage(tabId)?.columns ?? [];
+    columns.forEach((c, col) => {
+      if (!GUARDED_TYPE_CLASSES.has(c.typeClass)) return;
+      const view = cell(tabId, row, col);
+      if (!view.truncated) expect[c.name] = view.isNull ? null : view.text;
+    });
+    return expect;
+  }
+
   function stageDelete(tabId: string, rows: number[]): void {
     if (committingState[tabId]) return;
     for (const row of rows) {
       const entry = rowKeyOf(tabId, row);
       if (!entry) continue;
       const p = ensure(tabId);
-      p.deletes.set(entry.id, { key: entry.key });
+      p.deletes.set(entry.id, { key: entry.key, expect: guardedRow(tabId, row) });
       p.edits.delete(entry.id); // a row marked for delete is not independently editable (mirrors stageEdit)
     }
   }
@@ -431,13 +471,23 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     p.inserts = p.inserts.filter((i) => i.id !== insertId);
   }
 
-  function buildPlan(tabId: string): MutationRowOp[] | null {
+  // `guard` adds each op's loaded values so the server refuses a row that changed since; the
+  // preview and a confirmed overwrite send the plan without them.
+  function buildPlan(tabId: string, guard = false): MutationRowOp[] | null {
     const p = pendingState[tabId];
     if (!p) return null;
     const ops: MutationRowOp[] = [];
-    for (const del of p.deletes.values()) ops.push({ kind: 'delete', key: del.key });
+    const withExpect = (expect: Record<string, string | null>) =>
+      guard && Object.keys(expect).length > 0 ? { expect } : {};
+    for (const del of p.deletes.values()) {
+      ops.push({ kind: 'delete', key: del.key, ...withExpect(del.expect) });
+    }
     for (const edit of p.edits.values()) {
-      ops.push({ kind: 'update', key: edit.key, changes: edit.changes });
+      const expect: Record<string, string | null> = {};
+      for (const column of Object.keys(edit.changes)) {
+        if (column in edit.expect) expect[column] = edit.expect[column];
+      }
+      ops.push({ kind: 'update', key: edit.key, changes: edit.changes, ...withExpect(expect) });
     }
     for (const insert of p.inserts) {
       ops.push({ kind: 'insert', values: insert.values });
@@ -460,6 +510,8 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     path: string,
     tabId: string,
     afterCommit?: () => Promise<void>,
+    // Asked when the server reports a row changed since it was loaded; true overwrites it.
+    confirmOverwrite?: (message: string) => Promise<boolean>,
   ): Promise<MutateResponse | null> {
     // A second click, or an edit staged mid-flight, would resend or drop ops already on the wire.
     // `afterCommit` runs inside the same window so the reload that replaces the page cannot drop
@@ -467,14 +519,18 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
     if (committingState[tabId]) return null;
     committingState[tabId] = true;
     try {
-      const ops = buildPlan(tabId);
+      const ops = buildPlan(tabId, true);
       if (!ops) return null;
-      const result = await data.mutate({
-        tabId,
-        connectionId,
-        path,
-        ops,
-      });
+      let result: MutateResponse;
+      try {
+        result = await data.mutate({ tabId, connectionId, path, ops });
+      } catch (err) {
+        if ((err as { code?: string }).code !== 'E_CONFLICT' || !confirmOverwrite) throw err;
+        if (!(await confirmOverwrite(errorText(err)))) return null;
+        const forced = buildPlan(tabId);
+        if (!forced) return null;
+        result = await data.mutate({ tabId, connectionId, path, ops: forced });
+      }
       clearPending(tabId);
       await afterCommit?.();
       return result;
