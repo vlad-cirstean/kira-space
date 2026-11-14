@@ -3,6 +3,7 @@ package testsupport
 import (
 	"context"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
@@ -28,6 +29,10 @@ type TypeRoundTripCase struct {
 	// Guard names columns whose loaded text rides the edit as op.Expect: the edit must pass on an
 	// untouched row (no false conflict for the type) and a stale guard must fail with E_CONFLICT.
 	Guard []string
+	// Unguarded names Guard columns the adapter deliberately leaves out of the comparison (MySQL
+	// single-precision FLOAT, whose `=` is not stable). A stale guard on one must not conflict,
+	// which pins the exclusion instead of leaving it unproven.
+	Unguarded []string
 }
 
 // TypeRoundTrip asserts a typed table reads back as exact text, survives an edit of one column with
@@ -66,13 +71,60 @@ func TypeRoundTrip(c TypeRoundTripCase) Scenario {
 			if len(expect) > 0 {
 				// The first edit changed the column; a plan still guarding the old value is stale.
 				stale := model.RowValues{{Name: c.EditColumn, Value: before[0][editCol]}}
-				_, err := a.Mutate(context.Background(), typeRoundTripEdit(c, &val, stale), adapters.NewOpCtx("scenario-type-round-trip-stale"))
-				if code, _ := adapters.CodeOf(err); code != adapters.CodeConflict {
-					t.Fatalf("stale guard: err = %v, want E_CONFLICT", err)
+				assertStaleConflict(t, a, c, &val, stale, c.EditColumn)
+			}
+			// Every guarded column must detect a change, not only the edited one: a guard that always
+			// matches would pass the untouched-row check above. The row's own text is swapped for the
+			// text another row holds, which is valid for the type by construction.
+			for _, g := range c.Guard {
+				gi := columnIndex(c.Columns, g)
+				if g == c.EditColumn || gi < 0 {
+					continue
 				}
+				other, ok := otherRowText(before, c.EditID, gi)
+				if !ok {
+					t.Fatalf("guard %s: no other row holds a different value to test the stale guard with", g)
+				}
+				staleG := model.RowValues{{Name: g, Value: other}}
+				if slices.Contains(c.Unguarded, g) {
+					if _, err := a.Mutate(context.Background(), typeRoundTripEdit(c, &val, staleG), adapters.NewOpCtx("scenario-type-round-trip-unguarded-"+g)); err != nil {
+						t.Fatalf("%s is left out of the guard, so a stale value must not conflict: %v", g, err)
+					}
+					continue
+				}
+				assertStaleConflict(t, a, c, &val, staleG, g)
 			}
 		},
 	}
+}
+
+// assertStaleConflict applies the edit under a guard the row no longer matches and wants E_CONFLICT.
+func assertStaleConflict(t *testing.T, a adapters.Adapter, c TypeRoundTripCase, val *string, stale model.RowValues, column string) {
+	t.Helper()
+	_, err := a.Mutate(context.Background(), typeRoundTripEdit(c, val, stale), adapters.NewOpCtx("scenario-type-round-trip-stale-"+column))
+	if code, _ := adapters.CodeOf(err); code != adapters.CodeConflict {
+		t.Fatalf("stale guard on %s: err = %v, want E_CONFLICT", column, err)
+	}
+}
+
+// otherRowText is the text of column col in a row other than editID that differs from the edited
+// row's own (NULL counts as a value).
+func otherRowText(rows [][]*string, editID string, col int) (*string, bool) {
+	var own *string
+	for _, row := range rows {
+		if row[0] != nil && *row[0] == editID {
+			own = row[col]
+		}
+	}
+	for _, row := range rows {
+		if row[0] != nil && *row[0] == editID {
+			continue
+		}
+		if (row[col] == nil) != (own == nil) || (row[col] != nil && own != nil && *row[col] != *own) {
+			return row[col], true
+		}
+	}
+	return nil, false
 }
 
 func typeRoundTripEdit(c TypeRoundTripCase, val *string, expect model.RowValues) model.MutationPlan {

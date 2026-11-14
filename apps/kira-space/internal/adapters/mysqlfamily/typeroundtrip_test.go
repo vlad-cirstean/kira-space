@@ -41,5 +41,7 @@ func familyTypeRoundTrip(cfg model.ResolvedConnectionConfig) testsupport.Scenari
 		EditColumn: "note",
 		EditValue:  "edited",
 		Guard:      []string{"dec_", "fl", "dbl", "ubig", "color", "tags", "ts", "dt", "note"},
+		// mutate.go keeps single-precision FLOAT out of the WHERE: its `=` is not stable.
+		Unguarded: []string{"fl"},
 	})
 }
