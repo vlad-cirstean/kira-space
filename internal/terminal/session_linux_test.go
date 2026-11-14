@@ -14,6 +14,16 @@ func killJobOnCleanup(t *testing.T, pid int) {
 	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
 }
 
+// widenCloseGrace makes a stalled Close (one that waits for the slave to close, not the shell to
+// exit) take the whole widened grace, so a bound at half of it tells a stall from a loaded machine.
+func widenCloseGrace(t *testing.T) time.Duration {
+	t.Helper()
+	old := closeGracePeriod
+	closeGracePeriod = 10 * time.Second
+	t.Cleanup(func() { closeGracePeriod = old })
+	return closeGracePeriod / 2
+}
+
 // Jobs the shell does not hang up (dash never forwards; disown; nohup) outlive the tab by design,
 // but must not stall Close: the session ends once the shell exits, not when the slave closes.
 func TestSessionCloseLeavesUnhungJobs(t *testing.T) {
@@ -24,6 +34,7 @@ func TestSessionCloseLeavesUnhungJobs(t *testing.T) {
 		{"zsh disown", "zsh", "sleep 300 & disown"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			bound := widenCloseGrace(t)
 			sess, col := openShellSession(t, tc.shell, "unhung-"+tc.shell)
 			job := startJob(t, sess, col, tc.line)
 			killJobOnCleanup(t, job)
@@ -37,8 +48,8 @@ func TestSessionCloseLeavesUnhungJobs(t *testing.T) {
 			default:
 				t.Fatal("Close returned before the session exited")
 			}
-			if elapsed >= closeGracePeriod {
-				t.Fatalf("Close took %s, want < %s", elapsed, closeGracePeriod)
+			if elapsed >= bound {
+				t.Fatalf("Close took %s, want < %s", elapsed, bound)
 			}
 			time.Sleep(300 * time.Millisecond)
 			if !processAlive(job) {
