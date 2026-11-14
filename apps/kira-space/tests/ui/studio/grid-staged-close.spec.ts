@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 import { connectAndExpand, connectionCreateArgs, openConsoleFromMenu } from './support/connect';
 import { typeInto } from './support/editor';
@@ -27,6 +28,12 @@ const CONTROL: ControlSnapshot[] = [
   },
   ...FIXTURE.control,
 ];
+
+const MIGRATION = contract<string[]>('studio-console-script', 'pg#migration');
+const MIGRATION_ERROR = contract<{ code: string; message: string; details: string }>(
+  'studio-console-script',
+  'pg#migrationError',
+);
 
 const executeAt = (statement: string): PortSnapshot => ({
   op: DATA_OP.execute,
@@ -83,6 +90,48 @@ test('closing a console tab with an open transaction asks, and confirm rolls it 
   await expect(tabClose(page, 'console')).toHaveCount(1);
 
   await tabClose(page, 'console').click();
+  await page.click('[data-testid="confirm-dialog-confirm"]');
+  await expect(tabClose(page, 'console')).toHaveCount(0);
+  await expect
+    .poll(
+      async () =>
+        (await stream.ops()).filter(
+          (o) => o.op === DATA_OP.execute && JSON.stringify(o.payload).includes('"ROLLBACK"'),
+        ).length,
+    )
+    .toBe(1);
+});
+
+// UI half of dbflow.TestConsolePostgresTransactionAndCap: the migration stops at its third
+// statement, and the error names it, so the BEGIN before it is known to have run and the
+// transaction it left open (aborted on the server) is rolled back on close.
+test('closing a console tab after a script that failed past its BEGIN asks, and confirm rolls back', async ({
+  relaunch,
+}) => {
+  const { window: page, stream } = await relaunch({
+    control: CONTROL,
+    stream: [
+      ...FIXTURE.port,
+      {
+        op: DATA_OP.execute,
+        payload: { connectionId: CONNECTION_ID, path: COMPOSITE_PK_PATH, statements: MIGRATION },
+        error: MIGRATION_ERROR,
+      },
+      executeAt('ROLLBACK'),
+    ],
+  });
+  await connectAndExpand(page, 'Close DB', 'green');
+  await openConsoleFromMenu(page, COMPOSITE_PK_PATH);
+  const view = page.locator('[data-testid="console-view"]');
+  await typeInto(view, page, MIGRATION.join(';\n'), { paste: true });
+  await page.click('[data-testid="console-run-all"]');
+  await expect
+    .poll(async () => (await stream.ops()).filter((o) => o.op === DATA_OP.execute).length)
+    .toBe(1);
+  await expect(page.locator('[data-testid="console-stop"]')).toBeDisabled();
+
+  await tabClose(page, 'console').click();
+  await expect(page.locator('[data-testid="confirm-dialog"]')).toBeVisible();
   await page.click('[data-testid="confirm-dialog-confirm"]');
   await expect(tabClose(page, 'console')).toHaveCount(0);
   await expect

@@ -21,7 +21,7 @@ import { dropPlan, setPlan } from './explainResults';
 import { ExplainTruncatedError, parseExplainPages } from './plan';
 import type { QueryPlan } from './planModel';
 import { bumpPageVersion, documentRow, drop as dropPage, getPage, setPage } from './resultPages';
-import { takeOpenTransaction, trackTransaction } from './transaction';
+import { failedStatementIndex, takeOpenTransaction, trackTransaction } from './transaction';
 
 /** One result set of a run. `key` is identity and never changes while the result is open — the
  *  "Result N" label the strip prints is its *position*, which renumbers when a sibling
@@ -565,6 +565,17 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
       rt.status = 'idle';
       rt.opId = null;
     } catch (err) {
+      // Statements before the one that failed ran: `BEGIN; <bad>` leaves a transaction open.
+      const failedAt = failedStatementIndex(err);
+      if (connection && failedAt !== undefined && runtime[tabId]) {
+        trackTransaction(
+          tabId,
+          connection.kind,
+          { connectionId: tab.connectionId, path: tab.path },
+          statements,
+          failedAt,
+        );
+      }
       // Cancelled: same discipline as the data grid's stop button — the previous results stay
       // exactly as they were rather than being blanked. Disconnected: `status` has to drop out of
       // 'running' before unmarkHydrated swaps ViewChrome out for ReconnectGate — ConsoleView's

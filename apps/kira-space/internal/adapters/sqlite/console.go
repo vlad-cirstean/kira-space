@@ -105,11 +105,11 @@ func execute(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx, statements
 	pages := make([]page.Page, len(statements))
 	for i, stmt := range statements {
 		if err := adapters.CheckCancelled(ctx); err != nil {
-			return nil, err
+			return nil, adapters.AtStatement(err, i)
 		}
 		p, err := runOneStatement(ctx, conn, stmt, limit)
 		if err != nil {
-			return nil, err
+			return nil, adapters.AtStatement(err, i)
 		}
 		pages[i] = p
 		limit = adapters.RemainingCap(limit, p.Size())

@@ -285,11 +285,11 @@ func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQue
 	pages = make([]page.Page, len(statements))
 	for i, stmt := range statements {
 		if err := adapters.CheckCancelled(ctx); err != nil {
-			return nil, err
+			return nil, adapters.AtStatement(err, i)
 		}
 		p, err := runRaw(ctx, conn, stmt, op, track, limit)
 		if err != nil {
-			return nil, err
+			return nil, adapters.AtStatement(err, i)
 		}
 		pages[i] = p
 		limit = adapters.RemainingCap(limit, p.Size())
@@ -316,7 +316,7 @@ func timeoutError(ctx context.Context, timeout time.Duration, err error) error {
 	}
 	var myErr *mysql.MySQLError
 	if errors.As(err, &myErr) && (myErr.Number == errQueryTimeout || myErr.Number == errStatementTimeout) {
-		return adapters.StatementTimeout(timeout, 0, err)
+		return adapters.CarryDetails(adapters.StatementTimeout(timeout, 0, err), err)
 	}
 	return err
 }

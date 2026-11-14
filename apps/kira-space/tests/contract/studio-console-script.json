@@ -14,9 +14,27 @@
       "truncated": false
     }
   ],
+  "mysql#chain": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (2)",
+    "COMMIT AND CHAIN",
+    "INSERT INTO kira_tx VALUES (3)"
+  ],
   "mysql#delimiter": {
     "code": "E_QUERY"
   },
+  "mysql#failing": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (4)",
+    "INSERT INTO kira_tx VALUES ('x')",
+    "COMMIT"
+  ],
+  "mysql#implicitCommit": [
+    "BEGIN",
+    "INSERT INTO kira_tx VALUES (1)",
+    "CREATE TABLE kira_tx_ddl (i INT)",
+    "ROLLBACK"
+  ],
   "mysql#pages": [
     {
       "columns": [
@@ -77,6 +95,7 @@
   ],
   "pg#migrationError": {
     "code": "E_QUERY",
+    "details": "{\"statementIndex\":2}",
     "message": "ERROR: invalid input syntax for type integer: \"not a number\" (SQLSTATE 22P02)"
   },
   "sqlite#busy": {

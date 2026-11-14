@@ -85,3 +85,62 @@ func TestConsoleMySQLScript(t *testing.T) {
 		t.Fatalf("@kira_probe after a reconnect = %v, want NULL", again[0].Rows[0][0])
 	}
 }
+
+// Decision 8 (contract studio-console-script): what ends a MySQL transaction, pinned on the real
+// server because the console reads the state off the statements it ran. DDL commits implicitly,
+// COMMIT AND CHAIN keeps the next transaction open, and a statement that fails leaves the
+// transaction open with the statements before it applied and its index in the error details.
+func TestConsoleMySQLTransactionEnds(t *testing.T) {
+	flowharness.RequireDocker(t)
+	fx := testsupport.StartMysql(t)
+	app := flowharness.New(t)
+	conn := createConn(t, app, inputFromConfig(fx.Config))
+	connect(t, app, conn.ID)
+	ds := app.DataStream(t)
+	exec := func(stmts ...string) {
+		t.Helper()
+		if _, err := ds.Execute(conn.ID, "", stmts...); err != nil {
+			t.Fatalf("%v: %v", stmts, err)
+		}
+	}
+	count := func() string {
+		t.Helper()
+		p, err := ds.Execute(conn.ID, "", "SELECT count(*) FROM kira_tx")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return fmt.Sprint(p[0].Rows[0][0])
+	}
+	exec("DROP TABLE IF EXISTS kira_tx", "DROP TABLE IF EXISTS kira_tx_ddl", "CREATE TABLE kira_tx (n INT) ENGINE=InnoDB")
+	t.Cleanup(func() { _, _ = ds.Execute(conn.ID, "", "DROP TABLE IF EXISTS kira_tx", "DROP TABLE IF EXISTS kira_tx_ddl") })
+
+	implicit := []string{"BEGIN", "INSERT INTO kira_tx VALUES (1)", "CREATE TABLE kira_tx_ddl (i INT)", "ROLLBACK"}
+	app.Contract(t, consoleScriptScenario, "mysql#implicitCommit", implicit)
+	exec(implicit...)
+	if got := count(); got != "1" {
+		t.Fatalf("rows after DDL then ROLLBACK = %s, want 1: the DDL committed the insert", got)
+	}
+
+	chain := []string{"BEGIN", "INSERT INTO kira_tx VALUES (2)", "COMMIT AND CHAIN", "INSERT INTO kira_tx VALUES (3)"}
+	app.Contract(t, consoleScriptScenario, "mysql#chain", chain)
+	exec(chain...)
+	exec("ROLLBACK")
+	if got := count(); got != "2" {
+		t.Fatalf("rows after COMMIT AND CHAIN then ROLLBACK = %s, want 2: the chain kept a transaction open", got)
+	}
+
+	failing := []string{"BEGIN", "INSERT INTO kira_tx VALUES (4)", "INSERT INTO kira_tx VALUES ('x')", "COMMIT"}
+	app.Contract(t, consoleScriptScenario, "mysql#failing", failing)
+	_, err := ds.Execute(conn.ID, "", failing...)
+	var de *flowharness.DataError
+	if !errors.As(err, &de) || de.Details != `{"statementIndex":2}` {
+		t.Fatalf("failing script = %v, want a data error at statement 2", err)
+	}
+	if got := count(); got != "3" {
+		t.Fatalf("rows inside the transaction the failed script left open = %s, want 3", got)
+	}
+	exec("ROLLBACK")
+	if got := count(); got != "2" {
+		t.Fatalf("rows after ROLLBACK = %s, want 2", got)
+	}
+}

@@ -258,13 +258,13 @@ func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track T
 	defer end()
 
 	results := make([]rawResult, 0, len(statements))
-	for _, sql := range statements {
+	for i, sql := range statements {
 		if err := adapters.CheckCancelled(ctx); err != nil {
-			return nil, err
+			return nil, adapters.AtStatement(err, i)
 		}
 		result, err := runRaw(ctx, conn, sql, nil, op, track, limit)
 		if err != nil {
-			return nil, err
+			return nil, adapters.AtStatement(err, i)
 		}
 		results = append(results, result)
 		limit = adapters.RemainingCap(limit, result.bytes)
@@ -394,7 +394,7 @@ func timeoutError(ctx context.Context, timeout time.Duration, err error) error {
 	}
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "57014" {
-		return adapters.StatementTimeout(timeout, 0, err)
+		return adapters.CarryDetails(adapters.StatementTimeout(timeout, 0, err), err)
 	}
 	return err
 }
