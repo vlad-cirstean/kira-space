@@ -1,6 +1,8 @@
 package adeflow_test
 
 import (
+	"encoding/json"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,4 +76,80 @@ func TestRunOutcomes(t *testing.T) {
 			t.Fatalf("run after restart = %+v, want failed by restart", r)
 		}
 	})
+}
+
+// J-RUN-021. A run's MCP config file goes and its token stops working once the run ends, whichever
+// way it ends; a hung agent hits the step timeout.
+func TestRunEndRevokesMCPAccess(t *testing.T) {
+	read := func(t *testing.T, f *runFixture) (cfgPath, url, token string) {
+		t.Helper()
+		testx.WaitUntil(t, waitFor, func() bool { _, err := os.Stat(filepath.Join(f.app.FakeDir, "api-1.args")); return err == nil })
+		cfgPath = argAfter(fakeFile(t, f.app, "api-1.args"), "--mcp-config")
+		raw, err := os.ReadFile(cfgPath)
+		if err != nil {
+			t.Fatalf("mcp config %s: %v", cfgPath, err)
+		}
+		var cfg struct {
+			Servers map[string]struct {
+				URL     string            `json:"url"`
+				Headers map[string]string `json:"headers"`
+			} `json:"mcpServers"`
+		}
+		if err := json.Unmarshal(raw, &cfg); err != nil || len(cfg.Servers) == 0 {
+			t.Fatalf("mcp config = %s, %v", raw, err)
+		}
+		for _, s := range cfg.Servers {
+			if auth := s.Headers["Authorization"]; auth != "" {
+				return cfgPath, s.URL, auth
+			}
+		}
+		t.Fatalf("no authorised server in %s", raw)
+		return
+	}
+	probe := func(t *testing.T, url, auth string) int {
+		t.Helper()
+		req, _ := http.NewRequest(http.MethodPost, url, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))
+		req.Header.Set("Authorization", auth)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json, text/event-stream")
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return 0 // listener closed with the last registration: nothing accepts the token
+		}
+		defer res.Body.Close()
+		return res.StatusCode
+	}
+	cases := []struct {
+		name    string
+		actions func(hold string) []fakeagent.Action
+		steps   string
+		state   string
+	}{
+		{"finished", func(h string) []fakeagent.Action { return []fakeagent.Action{{Name: "done", WaitFile: h}} }, agentStep("one", ""), "done"},
+		{"crashed", func(h string) []fakeagent.Action { return []fakeagent.Action{{Name: "fail", WaitFile: h}} }, agentStep("one", ""), "failed"},
+		{"timed out", func(h string) []fakeagent.Action { return []fakeagent.Action{{Name: "sleep"}} },
+			"  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 2s\n    prompt: work\n", "failed"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			hold := filepath.Join(t.TempDir(), "hold")
+			f := newRunFixture(t, c.actions(hold), c.steps)
+			f.start(t, "feat/api-revoke")
+			cfgPath, url, auth := read(t, f)
+			if code := probe(t, url, auth); code != http.StatusOK {
+				t.Fatalf("live token probe = %d, want 200", code)
+			}
+			if err := os.WriteFile(hold, nil, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			r := waitRun(t, f.app, f.taskID, "one", c.state, "stuck")
+			if c.name == "timed out" && (r.Outcome == nil || r.Outcome.Source != "timeout") {
+				t.Fatalf("run = %+v, want a timeout outcome", r)
+			}
+			testx.WaitUntil(t, waitFor, func() bool { _, err := os.Stat(cfgPath); return os.IsNotExist(err) })
+			if code := probe(t, url, auth); code != http.StatusUnauthorized && code != 0 {
+				t.Fatalf("token probe after the run = %d, want 401 or a closed listener", code)
+			}
+		})
+	}
 }

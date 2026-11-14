@@ -548,7 +548,8 @@ func (b *TaskBoard) startStep(ctx context.Context, tc *taskCtx, plan []stepView,
 	}
 	out := make([]model.AdeRun, 0, len(plan[idx].Targets))
 	for _, bid := range plan[idx].Targets {
-		run, err := b.queueRun(ctx, tc, plan, idx, bid, 1, paths[bid], runOpts{})
+		// A step first reached after a loop-back carries the branch's round, else chainRerun takes it for stale.
+		run, err := b.queueRun(ctx, tc, plan, idx, bid, 1, paths[bid], runOpts{Loops: b.nextLoops(plan, bid) - 1})
 		if err != nil {
 			return out, err
 		}
@@ -998,7 +999,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	}
 	// Only an orchestrator's own step runs carry the spawn tools: not rebase or review runs, not smart steps.
 	orchestrator := space && l.smart == nil && b.isOrchestrator(run.TaskID)
-	grant := agentmcp.Grant{RunID: run.ID, TaskID: run.TaskID, SessionID: l.sessionID, Space: space, Orchestrator: orchestrator, Git: l.git, Review: l.review, Sandbox: grantSandbox, Agent: l.agent, Results: grantResults(rebase || round, def)}
+	grant := agentmcp.Grant{RunID: run.ID, TaskID: run.TaskID, SessionID: l.sessionID, Space: space, Orchestrator: orchestrator, Git: l.git, Review: l.review, Sandbox: grantSandbox, Agent: l.agent, Results: grantResults(rebase || round, def), OneShot: true}
 	releaseDb, err := b.grantDbMcp(def, dbmcp.SessionIdentity{SessionID: l.sessionID, TaskID: run.TaskID, RunID: run.ID, Cwd: l.path}, &grant)
 	if err != nil {
 		fail(err)

@@ -1,12 +1,14 @@
 package adeflow_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -143,4 +145,63 @@ func TestResumeRefused(t *testing.T) {
 		f.start(t, "feat/api-refuse-input")
 		refuse(t, f, waitRun(t, f.app, f.taskID, "one", "stuck", "failed"))
 	})
+}
+
+// J-RUN-022. Three runs live at a restart: all three come back interrupted and resumable, none is
+// silently done, nothing starts by itself; resuming one continues it alone and a second resume of the
+// same attempt is refused.
+func TestResumeOneOfThreeInterrupted(t *testing.T) {
+	hold := filepath.Join(t.TempDir(), "hold")
+	app := flowharness.New(t)
+	claude(app, map[string][]fakeagent.Action{"*": {{WaitFile: hold}, {WaitFile: hold}, {WaitFile: hold}, {Name: "done"}}})
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	rec := importRepo(t, app, repo.Dir)
+	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("one", "")))
+	var tasks []adewire.Task
+	for i := 0; i < 3; i++ {
+		task := createTask(t, app, fmt.Sprintf("Task %d", i), "flow", rec.ID)
+		br := branchOf(t, board(t, app), task.ID, rec.ID)
+		if _, err := app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: task.ID, BranchNames: map[string]string{br.ID: fmt.Sprintf("feat/api-par-%d", i)}}); err != nil {
+			t.Fatal(err)
+		}
+		tasks = append(tasks, task)
+		waitRun(t, app, task.ID, "one", "running")
+	}
+	testx.WaitUntil(t, waitFor, func() bool {
+		for i := 1; i <= 3; i++ {
+			if _, err := os.Stat(filepath.Join(app.FakeDir, fmt.Sprintf("api-%d.args", i))); err != nil {
+				return false
+			}
+		}
+		return true
+	})
+	app.Restart()
+	stuck := map[string]adewire.Run{}
+	for _, task := range tasks {
+		r := waitRun(t, app, task.ID, "one", "stuck")
+		if !r.Resumable || r.Outcome == nil || r.Outcome.Source != "restart" {
+			t.Fatalf("run after restart = %+v, want interrupted and resumable", r)
+		}
+		stuck[task.ID] = r
+	}
+	if err := app.W.AdeTask.ResumeRun(ctx, adewire.RunArgs{RunID: stuck[tasks[0].ID].ID}); err != nil {
+		t.Fatalf("ResumeRun: %v", err)
+	}
+	waitRun(t, app, tasks[0].ID, "one", "done")
+	if err := app.W.AdeTask.ResumeRun(ctx, adewire.RunArgs{RunID: stuck[tasks[0].ID].ID}); err == nil {
+		t.Fatal("second ResumeRun of the same attempt accepted")
+	}
+	for _, task := range tasks[1:] {
+		r, _ := latestRun(t, app, task.ID, "one")
+		if r.State != "stuck" || r.ID != stuck[task.ID].ID || !r.Resumable {
+			t.Fatalf("task %s run = %+v, want it still interrupted", task.ID, r)
+		}
+	}
+	for _, task := range tasks {
+		for _, r := range taskOf(t, board(t, app), task.ID).Runs {
+			if r.State == "done" && task.ID != tasks[0].ID {
+				t.Fatalf("task %s has a done run %+v after the restart", task.ID, r)
+			}
+		}
+	}
 }
