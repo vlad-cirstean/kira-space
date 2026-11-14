@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/to
 import { t } from '@theme/i18n';
 import { computed, ref, watch } from 'vue';
 import { taskTitle } from '../board/labels';
-import { useBoard } from '../queries';
+import { useBoard } from '../readQueries';
 import { type BranchRequestItem, branchRequestPayloadSchema } from './payload';
 import { branchSource } from './source';
 
