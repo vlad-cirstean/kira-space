@@ -144,6 +144,22 @@ func TestConnectionConfigFile(t *testing.T) {
 	}
 	testx.WaitUntil(t, waitFor, func() bool { return fileProblem(t, app, conn.File) == nil })
 
+	// A file that is not YAML at all is the same: a problem with a line, the last good row kept.
+	if err := configfs.WriteAtomic(file, []byte("name: [unclosed\nkind: sqlite\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testx.WaitUntil(t, waitFor, func() bool { return fileProblem(t, app, conn.File) != nil })
+	if p := fileProblem(t, app, conn.File); p.Line == 0 || p.Message == "" {
+		t.Errorf("problem for invalid YAML = %+v, want a line and a message", p)
+	}
+	if c, _ := connectionNamed(t, app, conn.ID); c.Name != "Local (edited)" || c.Color != "green" {
+		t.Errorf("row after invalid YAML = %+v, want the last good name and color", c)
+	}
+	if err := configfs.WriteAtomic(file, []byte(edited), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testx.WaitUntil(t, waitFor, func() bool { return fileProblem(t, app, conn.File) == nil })
+
 	// 4. The left panel filters live in the file.
 	vis := model.TreeVisibility{HiddenKinds: []string{"view"}, HiddenPaths: []string{"main"}}
 	got, err := app.W.Filters.Replace(bridge.FiltersReplaceArgs{ConnectionID: conn.ID, Visibility: vis})

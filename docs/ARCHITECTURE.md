@@ -3687,7 +3687,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - Events: `kira:connections:changed` (rows) and `kira:connectionConfig:changed` (problems, secrets).
 - Deviations from the plan: no `yamledit.go` (`configfs.EditYAML` exists); `config_json` is the record source; no `connfilestest` package (tests call `Loader.Patch` directly).
 - UI: `NewConnectionDialog.vue` (name, kind, color), `ConnectionFileDialog.vue` (`ConfigFileBar` on the YAML tab, General, Privacy, Advanced, Pre-connect, MCP and YAML tabs over one draft with base hash, last good hint, Duplicate and Delete footer), `ConnectionSecrets.vue`. Tree rows offer Edit connection file, Open file, Reveal file; no color or read-only item. Rows with a problem show a marker with the line. `DatabaseMcpPane` shows exposed status with an Edit button.
-- Tests: flows `dbflow` and `dbmcpflow` (contract `connection-files.json`, `connection-secrets.json`, `connection-files-migration.json`), `connfiles` unit tests; UI `connection-files.spec.ts` on the same scenario.
+- Tests: flows `dbflow` and `dbmcpflow` (contract `connection-files.json`, `connection-secrets.json`), `connfiles` unit tests; UI `connection-files.spec.ts` and `secrets.spec.ts` read them.
 
 ### Config forms and YAML editor (P514)
 

@@ -163,3 +163,38 @@ test('Update credentials with a password only sends no username', async ({ relau
   const update = control.log().find((e) => e.channel === IPC.connectionsUpdateCredentials);
   expect(update?.args).toEqual({ id: PG.id, username: null, password: PASSWORD });
 });
+
+test('a pasted .env block sends the call the backend flow made (contract)', async ({
+  relaunch,
+}) => {
+  // Backend half: dbflow TestPasteCredentialsSurviveRestart.
+  const pasted = contract<{ env: string; username: string; password: string }>(
+    'paste-credentials',
+    'paste#env',
+  );
+  const recorded = contract<{ username: string; password: string }>(
+    'paste-credentials',
+    'args:ConnectionsService.UpdateCredentials',
+  );
+  const { window: page, control } = await relaunch({
+    control: [
+      { channel: IPC.connectionsList, response: [PG] },
+      { channel: IPC.connectionsUpdateCredentials, response: null },
+    ],
+  });
+  const logged = consoleLog(page);
+
+  await connectionRow(page, PG.name).click({ button: 'right' });
+  await page.click('[data-testid="menu-item-update-credentials"]');
+  await paste(page, pasted.env);
+  await page.click('[data-testid="paste-credentials-apply"]');
+  await expect(page.locator('[data-testid="credentials-update-dialog"]')).toHaveCount(0);
+
+  const update = control.log().find((e) => e.channel === IPC.connectionsUpdateCredentials);
+  expect(update?.args).toEqual({
+    id: PG.id,
+    username: recorded.username,
+    password: recorded.password,
+  });
+  expect(logged.join('\n')).not.toContain(recorded.password);
+});
