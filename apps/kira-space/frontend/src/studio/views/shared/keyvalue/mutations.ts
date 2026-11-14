@@ -4,6 +4,7 @@ import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { pinia } from '../../../../state/pinia';
 import { useTabsStore } from '../../../../state/tabs';
 import { data } from '../../../bridge/data';
+import { isConflictWith } from '../../../state/confirmOverwrite';
 import { browseInvalidate } from '../../../state/viewCommands';
 import { createImmediateMutator } from '../immediateMutation';
 import { keyValueHost } from './host';
@@ -44,6 +45,7 @@ export async function saveValueEdit(
   return mutate(viewKey, [{ kind: 'update', key, changes }], undefined, {
     ops: [{ kind: 'update', key: { ...key, [ACL_RESET_SENTINEL]: '1' }, changes }],
     confirm: confirmAclReset,
+    when: (err) => isConflictWith(err, 'aclUnreadable'),
   });
 }
 

@@ -2,7 +2,7 @@ import type { MutationRowOp } from '@shared/domain/mutations';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import { data } from '../../bridge/data';
-import { confirmOverwrite } from '../../state/confirmOverwrite';
+import { confirmOverwrite, isChangedConflict } from '../../state/confirmOverwrite';
 import { reloadTabsForTarget } from '../../state/viewCommands';
 
 // The nine-call-site body behind documents/keyvalue/stream's mutations.ts (the ground rules —
@@ -22,9 +22,13 @@ export function createImmediateMutator<
   tabId: string,
   ops: MutationRowOp[],
   after?: (tab: T & { connectionId: string }) => void | Promise<void>,
-  /** Sent after the user confirms an `E_CONFLICT`: the same write without its guard. `confirm`
-   *  defaults to the changed-since-loaded question. */
-  overwrite?: { ops: MutationRowOp[]; confirm?: (detail: string) => Promise<boolean> },
+  /** Sent after the user confirms a conflict: the same write without its guard. `confirm` defaults
+   *  to the changed-since-loaded question and `when` to a conflict flagged `details.changed`. */
+  overwrite?: {
+    ops: MutationRowOp[];
+    confirm?: (detail: string) => Promise<boolean>;
+    when?: (err: unknown) => boolean;
+  },
 ) => Promise<boolean> {
   return async (tabId, ops, after, overwrite) => {
     const tab = opts.findTab(tabId);
@@ -34,7 +38,7 @@ export function createImmediateMutator<
     try {
       await data.mutate({ ...request, ops });
     } catch (err) {
-      if ((err as { code?: string }).code !== 'E_CONFLICT' || !overwrite) throw err;
+      if (!overwrite || !(overwrite.when ?? isChangedConflict)(err)) throw err;
       // Declined: nothing was written, so the caller keeps its edit open.
       if (!(await (overwrite.confirm ?? confirmOverwrite)(errorText(err)))) return false;
       await data.mutate({ ...request, ops: overwrite.ops });
