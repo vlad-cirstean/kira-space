@@ -4,6 +4,18 @@ Shard `go (Linux)` and `go-containers (Linux)` into matrix jobs over one split s
 aggregates with the same required-check names. Fix image-cache churn that made `go-containers` hit
 its timeout. Check `ui`, `db-compat`, `checks` for cheap wins.
 
+## Amendment (user decision)
+
+`go-containers` stays ONE job named `go-containers (Linux)`: no shard matrix, no aggregate, no
+`kibana`/`dbflow`/`sql` shards. The containers group in the table is one remainder row (`other`)
+with every bundle; the job runs bare `containers` and `--bundles containers` (bare group lists all
+its bundles). Kept from the design: pins-hash key, per-bundle restore-only caches, `cache-warm.yml`
+`tc-images` saves, only pinned test images in each tar, `-timeout 7m` per package, `dbmcpflow` in the
+containers group, `--check` in the job. Job timeout stays 15 min. `go (Linux)` keeps `adeflow1`,
+`adeflow2`, `other` behind the aggregate; `go-split` prints only the `rest` matrix. Targets:
+cache hit tests about 4-5 min, miss well under 12 min. Table rows and `go-containers-shard` text
+below describe the superseded 4-shard design. adeflow has 190 top-level tests (95/95), not 191.
+
 ## Data (real, from CI)
 
 Source: PR run 43628609545 (v0.3.13, PR #46), job and step timestamps via `actions_list`, per-package
