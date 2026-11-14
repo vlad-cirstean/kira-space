@@ -180,6 +180,7 @@ func TestWorkflowSaveOnStaleBaseRefused(t *testing.T) {
 	if errCode(err) != "E_CONFLICT" {
 		t.Fatalf("stale save = %v, want E_CONFLICT", err)
 	}
+	app.Contract(t, "ade-workflow-stale", "error:AdeTaskService.SaveWorkflowYaml#stale", err.Error())
 	if got := workflowFile(t, app, "wf.yaml"); got != second {
 		t.Fatalf("file after refused stale save = %q, want the other window's save", got)
 	}
