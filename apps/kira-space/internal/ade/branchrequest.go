@@ -927,7 +927,7 @@ func (b *TaskBoard) createApproved(ctx context.Context, tc *taskCtx, s *requestS
 			}
 			draft.Base, draft.BaseBranchID = t.base, t.baseBranchID
 		}
-		return b.createFor(ctx, s, *draft)
+		return b.nameRow(draft, b.createFor(ctx, s, *draft))
 	}
 	sb, err := b.deps.Tasks.AddBranch(model.AdeTaskBranch{
 		ID: ids.NewID(), TaskID: tc.task.ID, CodeRepoID: s.codeRepoID, Kind: model.AdeBranchKindMine,
@@ -938,7 +938,18 @@ func (b *TaskBoard) createApproved(ctx context.Context, tc *taskCtx, s *requestS
 		slog.Warn("ade: add requested branch", "scope", "ade", "repo", s.codeRepoID, "err", err)
 		return failedBranch(s.nick, s.branch, s.item.Base, "Kira Space could not add this branch to the task.")
 	}
-	return b.createFor(ctx, s, sb)
+	rb := b.createFor(ctx, s, sb)
+	tc.branches = append(tc.branches, sb)
+	return b.nameRow(&tc.branches[len(tc.branches)-1], rb)
+}
+
+// nameRow records the branch a slot just made on the snapshot row, so a later slot of the same repo
+// neither reuses it as the waiting row nor adds a second worktree under it.
+func (b *TaskBoard) nameRow(row *model.AdeTaskBranch, rb *agentmcp.RequestedBranch) *agentmcp.RequestedBranch {
+	if branchMade(rb) {
+		row.Name = rb.Branch
+	}
+	return rb
 }
 
 func (b *TaskBoard) createFor(ctx context.Context, s *requestSlot, sb model.AdeTaskBranch) *agentmcp.RequestedBranch {

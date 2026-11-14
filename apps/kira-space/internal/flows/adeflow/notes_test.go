@@ -194,3 +194,71 @@ func TestUnifiedNotes(t *testing.T) {
 		t.Fatalf("archived notes = %q, err %v", arch.Task.Notes, err)
 	}
 }
+
+// noteBody builds a body of exactly n bytes: multi-line, CRLF, trailing spaces and multibyte runes, none of
+// which a save may normalise.
+func noteBody(n int) string {
+	unit := "line  \r\nüñí — 日本語 ✓\n\t- [x] done \n"
+	var sb strings.Builder
+	for sb.Len()+len(unit) <= n {
+		sb.WriteString(unit)
+	}
+	for sb.Len() < n {
+		sb.WriteByte('x')
+	}
+	return sb.String()
+}
+
+// J-RUN-026: a note of the maximum size is stored and served byte for byte, before and after a restart;
+// one byte more is refused and changes nothing.
+func TestNoteOneMiBByteEqualAfterRestart(t *testing.T) {
+	app := flowharness.New(t)
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	rec := importRepo(t, app, repo.Dir)
+	saveWorkflow(t, app, "flow", flowYAML("flow", "  - id: design\n    name: Design\n    kind: manual\n    session: true\n"))
+	task := createTask(t, app, "Big note", "flow", rec.ID)
+
+	big := noteBody(1 << 20)
+	added, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: big})
+	if err != nil {
+		t.Fatalf("AddNote 1 MiB: %v", err)
+	}
+	if added.Body != big {
+		t.Fatalf("AddNote echoed %d bytes, want the %d saved byte for byte", len(added.Body), len(big))
+	}
+	if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: big + "x"}); errCode(err) != "E_BAD_REQUEST" {
+		t.Fatalf("AddNote over 1 MiB: %v, want E_BAD_REQUEST", err)
+	}
+	// The wire fixture for the UI copy spec: a body with every awkward byte, small enough to keep in the repo.
+	small := noteBody(12 << 10)
+	row, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: small})
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.Contract(t, notesScenario, "AdeTaskService.AddNote#large", row, notesMask)
+
+	check := func(label string) {
+		t.Helper()
+		var got string
+		err := app.DB().QueryRow(`SELECT body FROM ade_task_handovers WHERE id = ?`, added.ID).Scan(&got)
+		if err != nil || got != big {
+			t.Fatalf("%s: DB row = %d bytes, %v; want the saved %d byte for byte", label, len(got), err, len(big))
+		}
+		var served string
+		for _, h := range handovers(t, app, task.ID) {
+			if h.ID == added.ID {
+				served = h.Body
+			}
+		}
+		if served != big {
+			t.Fatalf("%s: Handovers serves %d bytes, want %d byte for byte", label, len(served), len(big))
+		}
+	}
+	check("before restart")
+	app.Restart()
+	check("after restart")
+	var rows int
+	if err := app.DB().QueryRow(`SELECT count(*) FROM ade_task_handovers WHERE task_id = ?`, task.ID).Scan(&rows); err != nil || rows != 2 {
+		t.Fatalf("note rows = %d, %v, want 2 (the refused note left nothing)", rows, err)
+	}
+}

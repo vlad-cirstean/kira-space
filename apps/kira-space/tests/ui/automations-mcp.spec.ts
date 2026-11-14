@@ -3,6 +3,7 @@ import {
   customScriptSchema,
   runFormResultSchema,
   scriptFileViewSchema,
+  scriptMcpServerListSchema,
   scriptsSnapshotSchema,
 } from '@shared/domain/scripts';
 import { codeEditorText } from '@workbench/testing/ui/codeEditor';
@@ -81,6 +82,26 @@ test('a smart script has no MCP tab', async ({ relaunch }) => {
   await openDialog(page);
   await expect(dialog(page).locator('[data-testid="run-file-tab-script"]')).toBeVisible();
   await expect(dialog(page).locator('[data-testid="run-file-tab-mcp"]')).toHaveCount(0);
+});
+
+test('contract: a server from Kira settings lists without a health status', async ({
+  relaunch,
+}) => {
+  const servers = contract('automations-mcp-app', 'ScriptRunsService.McpServers', {
+    schema: scriptMcpServerListSchema,
+  });
+  expect(servers.source).toBe('app');
+  const read = form('read');
+  const { window: page } = await relaunch({
+    control: base({ ...read, value: { ...read.value, kind: 'smart', prompt: 'Check the build' } }, [
+      { channel: IPC.scriptRunsMcpServers, response: servers },
+    ]),
+  });
+  await openDialog(page);
+  await dialog(page).locator('[data-testid="run-file-tab-smart"]').click();
+  const row = dialog(page).locator('[data-testid="smart-mcp-server"][data-server="app-srv"]');
+  await expect(row).toBeVisible();
+  await expect(row.locator('[data-testid="smart-mcp-status"]')).toHaveCount(0);
 });
 
 test('contract: a problem on mcp.run badges the MCP tab and shows on the field', async ({

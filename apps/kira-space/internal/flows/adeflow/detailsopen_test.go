@@ -91,4 +91,27 @@ func TestDetailsOpenExternal(t *testing.T) {
 	if got := app.Browser.Opened(); !slices.Equal(got, want) {
 		t.Fatalf("browser opened %v, want %v", got, want)
 	}
+
+	// A pasted image page opens in the browser as typed. Contract link-open: ade-v2-links-strip.spec.ts reads it.
+	const imageURL = "https://hub.docker.com/_/alpine"
+	if res := add("Base image " + imageURL); res.Filed != "stored" {
+		t.Fatalf("image link = %+v, want stored", res)
+	}
+	var stored string
+	for _, a := range artifactsOf(t, app, task.ID).Artifacts {
+		if a.URL == imageURL {
+			stored = a.URL
+		}
+	}
+	if stored != imageURL {
+		t.Fatalf("stored image link = %q, want %q", stored, imageURL)
+	}
+	args := bridge.LinkOpenExternalArgs{URL: stored}
+	app.Contract(t, "link-open", "args:LinkService.OpenExternal", args)
+	if err := app.W.Link.OpenExternal(args); err != nil {
+		t.Fatal(err)
+	}
+	if got := app.Browser.Opened(); len(got) != len(want)+1 || got[len(got)-1] != imageURL {
+		t.Fatalf("browser opened %v, want %s last", got, imageURL)
+	}
 }

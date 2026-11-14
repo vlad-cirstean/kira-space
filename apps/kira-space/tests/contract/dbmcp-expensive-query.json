@@ -42,6 +42,8 @@
         "thresholdRows": 1000
       },
       "reason": "the report needs the whole table",
+      "reviewOffered": true,
+      "reviewResult": false,
       "statement": "select * from app.big"
     },
     "reason": "exemption",

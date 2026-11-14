@@ -273,41 +273,55 @@
         "chunkCount": 1,
         "chunksDone": 1,
         "costUsd": 0,
+        "docError": "",
+        "docPath": "",
         "dropped": [],
         "factCount": 2,
-        "id": "<id:1>",
+        "groupId": "<id:1>",
+        "id": "<id:2>",
         "kind": "markdown",
         "noop": 0,
+        "orphaned": 0,
+        "prov": null,
         "reason": "",
         "relPath": "billing.md",
         "size": 117,
         "state": "done",
         "title": "Billing",
         "unresolved": [],
-        "updated": 0
+        "updated": 0,
+        "verified": 0
       },
       {
         "added": 0,
         "chunkCount": 1,
         "chunksDone": 0,
         "costUsd": 0,
+        "docError": "",
+        "docPath": "",
         "dropped": [],
         "factCount": 0,
-        "id": "<id:2>",
+        "groupId": "",
+        "id": "<id:3>",
         "kind": "markdown",
         "noop": 0,
+        "orphaned": 0,
+        "prov": null,
         "reason": "Chunk 1 of 1: Claude Code call exceeded its cost budget.",
         "relPath": "release.md",
         "size": 102,
         "state": "failed",
         "title": "Release",
         "unresolved": [],
-        "updated": 0
+        "updated": 0,
+        "verified": 0
       }
     ],
     "job": {
+      "autoStart": false,
       "base": "<masked>",
       "calls": 3,
+      "channel": "ui",
       "costUsd": 0,
       "createdAt": "<masked>",
       "estimate": {
@@ -318,27 +332,35 @@
         "tokens": 73
       },
       "finishedAt": "<masked>",
-      "id": "<id:3>",
+      "groups": [],
+      "id": "<id:4>",
       "ignoredCount": 0,
+      "origin": "external",
       "progress": {
         "chunksDone": 1,
         "chunksTotal": 2,
         "filesDone": 2,
         "filesTotal": 2
       },
+      "project": null,
       "reason": "",
       "roots": [],
+      "scope": "personal",
+      "sessionId": null,
+      "sourceTag": "doc",
       "startedAt": "<masked>",
       "state": "done",
       "totals": {
         "added": 2,
+        "dropped": 0,
         "failedFiles": 1,
         "noop": 0,
         "skippedFiles": 0,
         "unresolved": 0,
         "updated": 0
       },
-      "truncated": false
+      "truncated": false,
+      "writeDoc": false
     }
   },
   "MemoryImportService.Job#mcp": {

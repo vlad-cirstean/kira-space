@@ -771,8 +771,10 @@ type Plan struct {
 type HistoryEntry struct {
 	TaskID string `json:"taskId"`
 	// ParentID is the orchestrator that spawned the archived task.
-	ParentID    string   `json:"parentId,omitempty"`
-	Title       string   `json:"title"`
+	ParentID string `json:"parentId,omitempty"`
+	Title    string `json:"title"`
+	// JiraKey lets the archived finder match a task by its issue key.
+	JiraKey     string   `json:"jiraKey,omitempty"`
 	CodeRepoIDs []string `json:"codeRepoIds"`
 	MergedAt    *int64   `json:"mergedAt"`
 	ArchivedAt  int64    `json:"archivedAt"`
@@ -1443,6 +1445,8 @@ type StartBranchArgs struct {
 type SetTaskWorkflowArgs struct {
 	TaskID     string `json:"taskId"`
 	WorkflowID string `json:"workflowId"`
+	// Confirmed accepts the deletion of the task's runs and run logs; false refuses E_CONFLICT while any exist.
+	Confirmed bool `json:"confirmed,omitempty"`
 }
 
 type SetTaskStepArgs struct {

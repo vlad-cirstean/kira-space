@@ -107,7 +107,7 @@ func TestGolden(t *testing.T) {
 		{"ade.review.round.message.full", AdeReviewRoundMessage.id, reviewRoundExample},
 		{"ade.review.followup.message.full", AdeReviewFollowupMessage.id, reviewRoundExample},
 
-		{"run.resume.line.space", RunResumeLine.id, ResumeVars{App: "Space"}},
+		{"run.resume.line.space", RunResumeLine.id, ResumeVars{App: "Space", Leases: true}},
 
 		{"headless.finishStep.suffix.implicit", HeadlessFinishStepSuffix.id, implicit},
 		{"headless.finishStep.suffix.implicit-pair", HeadlessFinishStepSuffix.id, implicit},

@@ -86,6 +86,36 @@ test('contract: an item with an agent base shows where the branch starts', async
   });
 });
 
+test('contract: twenty asked, seven kept checked: Approve sends exactly those seven', async ({
+  relaunch,
+}) => {
+  const { page, control, it } = await openRequest(relaunch, 'twenty');
+  const dialog = page.locator(t('approvals-dialog'));
+  const { items } = it.payload as Pl;
+  expect(items).toHaveLength(20);
+  const kept = items.filter((_, i) => i % 3 === 0).slice(0, 7);
+  for (const row of items) {
+    if (kept.includes(row)) continue;
+    await dialog
+      .locator(t(`ade-branch-request-item-${row.id}`))
+      .getByRole('checkbox')
+      .click();
+  }
+  await dialog.locator(t(`approval-approve-${it.id}`)).click();
+  await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
+  expect(calls(control, IPC.approvalsAnswer)[0]?.args).toEqual({
+    ids: [it.id],
+    approve: true,
+    options: {
+      [it.id]: {
+        itemIds: kept.map((row) => row.id),
+        remoteItemIds: [],
+        shownItemIds: items.map((row) => row.id),
+      },
+    },
+  });
+});
+
 test('an answered item that stays listed (late call) can be approved again', async ({
   relaunch,
 }) => {

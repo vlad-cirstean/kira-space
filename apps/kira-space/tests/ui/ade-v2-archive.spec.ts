@@ -144,3 +144,21 @@ for (const [key, atRisk] of [
     expect(Object.keys(sent).sort()).toEqual(Object.keys(sentArgs).sort());
   });
 }
+
+// Contract ade-archive-safety. Backend half: adeflow TestArchiveSafetyDirtyUnmergedLocked. A mixed
+// task (clean, dirty with unmerged commits, locked) is refused before anything is archived.
+test('contract: archive of a task with a locked worktree is refused and lists the blocker', async ({
+  relaunch,
+}) => {
+  const backend = contract<{ branches: Record<string, unknown>[] }>(
+    'ade-archive-safety',
+    'AdeTaskService.ArchiveRisk#mixed',
+  );
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskArchiveRisk, response: risk(backend.branches.map((b) => branchRisk(b))) },
+  ]);
+  await openArchive(page);
+  await expect(page.locator(t('ade-panel-action-error'))).toContainText('Locked');
+  await expect(page.locator(t('ade-dialog'))).toHaveCount(0);
+  expect(calls(control, IPC.adeTaskArchiveTask)).toHaveLength(0);
+});

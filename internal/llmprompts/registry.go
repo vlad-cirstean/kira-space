@@ -270,6 +270,8 @@ type PanelForwardVars struct {
 // ResumeVars fills the resume-after-restart message.
 type ResumeVars struct {
 	App string `json:"app" prompt:"required"`
+	// Leases adds the line about resource leases, which a restart drops.
+	Leases bool `json:"leases"`
 }
 
 // SendBackVars fills the send-back message.
@@ -1438,8 +1440,8 @@ var RunResumeLine = define(Entry{
 	TitleKey:   "llmPrompts.entry.runResumeLine.title",
 	PurposeKey: "llmPrompts.entry.runResumeLine.description",
 	UsedByKey:  "llmPrompts.entry.runResumeLine.usedBy.body",
-	Default:    `Kira {{.App}} closed while you worked; your last turn was cut off. A tool call marked interrupted has an unknown outcome: it may have run in part. Check that action's current state (files, git, running processes) before you redo or skip it. Then continue the task.`,
-}, ResumeVars{App: "Space"})
+	Default:    `Kira {{.App}} closed while you worked; your last turn was cut off. A tool call marked interrupted has an unknown outcome: it may have run in part. Check that action's current state (files, git, running processes) before you redo or skip it.{{if .Leases}} Leases are lost on restart: re-acquire any you held.{{end}} Then continue the task.`,
+}, ResumeVars{App: "Space", Leases: true})
 
 // Database MCP (Kira Space).
 

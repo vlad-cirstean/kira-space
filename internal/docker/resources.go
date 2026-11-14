@@ -508,6 +508,10 @@ func (m *Manager) stop(ctx context.Context, id string) error {
 }
 
 func (m *Manager) restart(ctx context.Context, id string) error {
+	if _, held := m.restarting.LoadOrStore(id, struct{}{}); held {
+		return ipcerr.T(ipcerr.CodeConflict, "backend.core.docker.restartInProgress.body", nil)
+	}
+	defer m.restarting.Delete(id)
 	return m.call(ctx, actionTimeout, func(ctx context.Context, cli *client.Client) error {
 		_, err := cli.ContainerRestart(ctx, id, client.ContainerRestartOptions{})
 		return err

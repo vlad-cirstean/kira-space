@@ -548,7 +548,8 @@ func (b *TaskBoard) startStep(ctx context.Context, tc *taskCtx, plan []stepView,
 	}
 	out := make([]model.AdeRun, 0, len(plan[idx].Targets))
 	for _, bid := range plan[idx].Targets {
-		run, err := b.queueRun(ctx, tc, plan, idx, bid, 1, paths[bid], runOpts{})
+		// A step first reached after a loop-back carries the branch's round, else chainRerun takes it for stale.
+		run, err := b.queueRun(ctx, tc, plan, idx, bid, 1, paths[bid], runOpts{Loops: b.nextLoops(plan, bid) - 1})
 		if err != nil {
 			return out, err
 		}
@@ -998,7 +999,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	}
 	// Only an orchestrator's own step runs carry the spawn tools: not rebase or review runs, not smart steps.
 	orchestrator := space && l.smart == nil && b.isOrchestrator(run.TaskID)
-	grant := agentmcp.Grant{RunID: run.ID, TaskID: run.TaskID, SessionID: l.sessionID, Space: space, Orchestrator: orchestrator, Git: l.git, Review: l.review, Sandbox: grantSandbox, Agent: l.agent, Results: grantResults(rebase || round, def)}
+	grant := agentmcp.Grant{RunID: run.ID, TaskID: run.TaskID, SessionID: l.sessionID, Space: space, Orchestrator: orchestrator, Git: l.git, Review: l.review, Sandbox: grantSandbox, Agent: l.agent, Results: grantResults(rebase || round, def), OneShot: true}
 	releaseDb, err := b.grantDbMcp(def, dbmcp.SessionIdentity{SessionID: l.sessionID, TaskID: run.TaskID, RunID: run.ID, Cwd: l.path}, &grant)
 	if err != nil {
 		fail(err)
@@ -1594,7 +1595,7 @@ func (b *TaskBoard) resumeRun(ctx context.Context, runID string) error {
 	if run.Purpose == model.AdeRunPurposeReview {
 		return b.resumeReviewRound(ctx, run)
 	}
-	line := llmprompts.RunResumeLine.Text(b.prompts(), llmprompts.ResumeVars{App: appName})
+	line := llmprompts.RunResumeLine.Text(b.prompts(), llmprompts.ResumeVars{App: appName, Leases: true})
 	spec := model.AdeRunLaunch{ResumeID: run.Launch.ResumeID, Prompt: line, Note: noteResumed}
 	if _, err := b.queueResumeLocked(ctx, run, spec); err != nil {
 		return err
@@ -1660,7 +1661,7 @@ func (b *TaskBoard) restartHeadless(ctx context.Context, rec *model.AdeSession) 
 	if run.State != model.AdeRunStuck {
 		return adewire.Launch{}, invalid("the run is not running")
 	}
-	line := llmprompts.RunResumeLine.Text(b.prompts(), llmprompts.ResumeVars{App: appName})
+	line := llmprompts.RunResumeLine.Text(b.prompts(), llmprompts.ResumeVars{App: appName, Leases: true})
 	next, err := b.queueResumeLocked(ctx, run, model.AdeRunLaunch{ResumeID: rec.AgentSessionID, Prompt: line, Note: noteRestarted})
 	if err != nil {
 		return adewire.Launch{}, err

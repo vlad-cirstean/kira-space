@@ -76,6 +76,11 @@ func TestRepolessWorkflow(t *testing.T) {
 			t.Fatalf("task folder: %v", err)
 		}
 		waitFakeText(t, f.app, "tasks-1.prompt", "Outside the repos. Folder: "+f.dir)
+		// The sandbox row lands just after the agent launches; the snapshot waits for the badge.
+		testx.WaitUntil(t, waitFor, func() bool {
+			runs := taskOf(t, board(t, f.app), f.task.ID).Runs
+			return len(runs) == 1 && runs[0].Sandbox != nil
+		})
 		f.app.Contract(t, nrScenario, "AdeTaskService.Board#started", taskOf(t, board(t, f.app), f.task.ID), nrMask)
 		if err := os.WriteFile(hold, nil, 0o644); err != nil {
 			t.Fatal(err)

@@ -77,6 +77,8 @@ type Grant struct {
 	Agent harness.Provider
 	// Extra are further servers written into the same config file, next to ServerName.
 	Extra []harness.MCPServer
+	// OneShot ends the grant's tool access at its first accepted finish_step: a headless run reports once.
+	OneShot bool
 }
 
 // ResultSpec is one result a step may report.
@@ -102,6 +104,7 @@ func resultsOrImplicit(r []ResultSpec) []ResultSpec {
 
 type registration struct {
 	id         uint64 // unique per registration: one run id may register again before the first releases
+	finished   bool   // a OneShot grant's finish_step was accepted
 	grant      Grant
 	hash, salt []byte
 	// server carries this run's own finish_step schema; nil = the shared server for its flags.
@@ -300,8 +303,46 @@ func (s *Server) buildMCPServer(ts toolSet, results []ResultSpec) *mcp.Server {
 	if ts.orchestrator {
 		s.addOrchestratorTools(srv)
 	}
+	s.refuseAfterFinish(srv)
 	s.recordCalls(srv)
 	return srv
+}
+
+// stepFinished is the refusal a OneShot grant gets for any call after its accepted finish_step.
+const stepFinished = "step already finished"
+
+// markFinished flags the registration behind info; false when it was already flagged.
+func (s *Server) markFinished(info *auth.TokenInfo) bool {
+	r, ok := s.registered(info)
+	if !ok {
+		return true
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.tokens {
+		if s.tokens[i].id == r.id {
+			if s.tokens[i].finished {
+				return false
+			}
+			s.tokens[i].finished = true
+		}
+	}
+	return true
+}
+
+// refuseAfterFinish answers every tools/call of a finished OneShot grant with stepFinished, so a late
+// call never changes state after the outcome is reported.
+func (s *Server) refuseAfterFinish(srv *mcp.Server) {
+	srv.AddReceivingMiddleware(func(next mcp.MethodHandler) mcp.MethodHandler {
+		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
+			if cr, ok := req.(*mcp.CallToolRequest); ok && method == "tools/call" && cr.Extra != nil {
+				if r, ok := s.registered(cr.Extra.TokenInfo); ok && r.finished {
+					return toolError(stepFinished), nil
+				}
+			}
+			return next(ctx, method, req)
+		}
+	})
 }
 
 // registered resolves the registration behind a request; a released registration fails at once.
@@ -349,6 +390,9 @@ func (s *Server) finishStep(ctx context.Context, req *mcp.CallToolRequest, args 
 	}
 	if msg := checkFinish(args); msg != "" {
 		return toolError(msg), nil, nil
+	}
+	if g.OneShot && !s.markFinished(info) {
+		return toolError(stepFinished), nil, nil
 	}
 	s.onFinish(g.RunID, Finish{
 		Status: args.Status, Summary: args.Summary, Reason: args.Reason, ConflictedFiles: args.ConflictedFiles,

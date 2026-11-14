@@ -744,6 +744,8 @@ export interface HistoryEntry {
   /** The orchestrator that spawned the task; '' for none. */
   parentId?: string;
   title: string;
+  /** The task's issue key; '' for none. The archived finder matches on it. */
+  jiraKey?: string;
   codeRepoIds: string[];
   mergedAt: number | null;
   archivedAt: number;
@@ -1375,6 +1377,8 @@ export interface StartBranchArgs {
 export interface SetTaskWorkflowArgs {
   taskId: string;
   workflowId: string;
+  /* accepts deleting the task's runs and run logs; E_CONFLICT while any exist and false */
+  confirmed?: boolean;
 }
 export interface SetTaskStepArgs {
   taskId: string;

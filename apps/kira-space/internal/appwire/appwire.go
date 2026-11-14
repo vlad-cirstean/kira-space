@@ -108,6 +108,8 @@ type Options struct {
 	MobileDetect func() (lannet.Network, error)
 	MobileFind   func(lannet.Identity) (lannet.Network, error)
 	MobilePoll   time.Duration
+	// MobileNow is the phone server's clock (pairing windows, device expiry, rate limits); nil is time.Now.
+	MobileNow func() time.Time
 	// GitHosts are the registered code-host providers; nil means GitHub and Azure Repos with their real CLIs.
 	GitHosts *githost.Registry
 	// IssueTracker seams the Jira provider's acli locator, runner and clock; the zero value is production's
@@ -121,6 +123,13 @@ type Options struct {
 	// BranchRequestWait is how long an agent's branch request or create_task waits for the user; 0 keeps
 	// the default (30 minutes).
 	BranchRequestWait time.Duration
+	// LeaseTTL and LeaseNow replace the lease silence limit and the clock its heartbeats read (flow-test
+	// seams); zero and nil keep 10 minutes and the wall clock.
+	LeaseTTL time.Duration
+	LeaseNow func() time.Time
+	// LeaseElapsed counts only time the app ran: lease silence and a silent tool call's ceiling read it,
+	// so a sleeping laptop expires nothing (OQ-ADE-3). Nil derives it from the clock in use.
+	LeaseElapsed func() time.Duration
 	// Sandbox confines headless agents; nil uses the OS enforcer (a flow-test seam).
 	Sandbox agentsandbox.Enforcer
 	// SmartTimeout replaces every smart script's own timeout (a flow-test seam); 0 keeps each script's.
@@ -469,7 +478,7 @@ func Build(opts Options) (*Wired, error) {
 	w.RepoConfigSvc = &bridge.RepoConfigService{Service: &repocfg.Service{Store: w.RepoConfig, CodeRepos: codeRepoIDs(repositories)}}
 	w.AgentPort = agentport.New(agentport.Options{Settings: w.AgentSettings, Context: w.AgentContext, Secrets: w.AgentSecrets, Providers: registry})
 	w.AgentPortSvc = &bridge.AgentPortService{Svc: w.AgentPort}
-	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, w.AgentNotify, w.AgentUsage, w.Agents, w.AgentContext.ContextFile)
+	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, opts.LeaseElapsed, w.AgentNotify, w.AgentUsage, w.Agents, w.AgentContext.ContextFile)
 	w.Tracker, w.AgentHooks = adeTracker, agentHooks
 
 	// P128 §2.1: the bound terminal methods live once in internal/terminal.BoundService; this
@@ -538,7 +547,7 @@ func Build(opts Options) (*Wired, error) {
 				return w.AdeTask.CloseWindow(key)
 			}
 			return w.Windows.Close(key)
-		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
+		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.LeaseTTL, opts.LeaseNow, opts.LeaseElapsed, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
 	runs.ADE = w.AdeBoard
 	// proof_save on the session server attaches to the task through the board, which exists only now.
 	w.DbMcp.ProofAttach = w.AdeBoard
@@ -583,9 +592,13 @@ func Build(opts Options) (*Wired, error) {
 	w.AdeTask.FocusWindow = w.Windows.Focus
 	w.CloseFlush = shell.NewCloseFlushCoordinator(events)
 
+	mobileNow := opts.MobileNow
+	if mobileNow == nil {
+		mobileNow = time.Now
+	}
 	mobileLaunches := &bridge.MobileLaunches{Emit: emitter, Window: w.Windows.MainKey}
 	w.Mobile = bridge.NewMobileAccessService(&bridge.MobileAccessService{
-		Deps: deps, Reader: w.AdeTask, Hub: mobileHub, Broker: mobileweb.NewBroker(time.Now, w.Prompts), Assets: opts.MobileAssets,
+		Deps: deps, Reader: w.AdeTask, Hub: mobileHub, Broker: mobileweb.NewBroker(mobileNow, w.Prompts), Assets: opts.MobileAssets,
 		AgentSessions: func() any { return w.Terminal.AgentSessions() },
 		AgentInfo: func() any {
 			info, _ := w.AgentSvc.Info()
@@ -595,7 +608,7 @@ func Build(opts Options) (*Wired, error) {
 		Launches:  mobileLaunches,
 		Terminals: termBroker,
 		Detect:    opts.MobileDetect, Find: opts.MobileFind, Poll: opts.MobilePoll,
-		IsLAN: opts.MobileIsLAN,
+		IsLAN: opts.MobileIsLAN, Now: opts.MobileNow,
 	})
 	w.detachMobile = bridge.AttachMobilePush(w.Mobile)
 

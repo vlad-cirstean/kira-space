@@ -713,9 +713,35 @@ func (b *TaskBoard) AbortRebase(ctx context.Context, args adewire.BranchArgs) er
 	return nil
 }
 
-// recordAbort notes the abort on the branch's latest rebase run and refreshes its git facts.
+// stackRebaseRun is the latest rebase run that covers sb: one rooted at sb, else at the nearest
+// branch below it in its stack (a child aborted on its own still belongs to its root's run).
+func (b *TaskBoard) stackRebaseRun(sb model.AdeTaskBranch) (*model.AdeRun, error) {
+	seen := map[string]bool{}
+	for cur := sb; !seen[cur.ID]; {
+		seen[cur.ID] = true
+		run, err := b.deps.Tasks.LatestRebaseRun(cur.ID)
+		if err != nil || run != nil {
+			return run, err
+		}
+		parent := cur.BaseBranchID
+		if parent == "" {
+			parent = cur.QueuedAfter
+		}
+		if parent == "" {
+			return nil, nil
+		}
+		next, err := b.deps.Tasks.GetBranch(parent)
+		if err != nil {
+			return nil, nil
+		}
+		cur = next
+	}
+	return nil, nil
+}
+
+// recordAbort notes the abort on the latest rebase run covering the branch and refreshes its git facts.
 func (b *TaskBoard) recordAbort(ctx context.Context, sb model.AdeTaskBranch) {
-	run, err := b.deps.Tasks.LatestRebaseRun(sb.ID)
+	run, err := b.stackRebaseRun(sb)
 	if err != nil || run == nil || run.Outcome == nil {
 		return
 	}

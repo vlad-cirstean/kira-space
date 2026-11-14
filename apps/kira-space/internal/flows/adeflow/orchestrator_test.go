@@ -542,3 +542,43 @@ func TestOrchestratorArchivedChildStepName(t *testing.T) {
 		t.Fatalf("archived child = %+v, %v, want step Ship", archived, err)
 	}
 }
+
+// J-RUN-027: a second pass sees the child the first pass made, through list_tasks, and adds none unless it asks;
+// the child keeps the repo it was created with.
+func TestOrchestratorSecondPassSeesFirstPassChild(t *testing.T) {
+	f := newORFixture(t,
+		[]fakeagent.Action{
+			{MCP: []fakeagent.MCPCall{createTaskCall("API login", "flow", "wire it", map[string]any{"repo": "api"})}, Name: "done"},
+			{MCP: []fakeagent.MCPCall{spaceCall("list_tasks", nil)}, Name: "done"},
+		},
+		[]fakeagent.Action{{Name: "done"}})
+	f.startOrchestrator(t)
+	answerTask(t, f.app, waitTaskItem(t, f.app), true)
+	childID, _ := mcpResult(t, f.app, "create_task", 1)["taskId"].(string)
+	if childID == "" {
+		t.Fatal("pass 1 created no child")
+	}
+	waitRun(t, f.app, f.orch.ID, "plan", "done")
+	if _, err := f.app.W.AdeTask.NextPass(ctx, adewire.NextPassArgs{TaskID: f.orch.ID}); err != nil {
+		t.Fatalf("NextPass: %v", err)
+	}
+	testx.WaitUntil(t, waitFor, func() bool {
+		r, ok := latestRun(t, f.app, f.orch.ID, "plan")
+		return ok && r.Attempt >= 2 && r.State == "done"
+	})
+	listed := fakeFile(t, f.app, "mcp-list_tasks-1.json")
+	if !strings.Contains(listed, childID) || !strings.Contains(listed, "API login") {
+		t.Fatalf("pass 2 list_tasks = %s, want the pass 1 child %s", listed, childID)
+	}
+	kids := childrenOf(t, f.app, f.orch.ID)
+	if len(kids) != 1 || kids[0].ID != childID {
+		t.Fatalf("children after pass 2 = %+v, want only the pass 1 child", kids)
+	}
+	var rows int
+	if err := f.app.DB().QueryRow(`SELECT count(*) FROM ade_tasks WHERE parent_id = ?`, f.orch.ID).Scan(&rows); err != nil || rows != 1 {
+		t.Fatalf("child rows = %d, %v, want 1", rows, err)
+	}
+	if got := branchOf(t, board(t, f.app), childID, f.api); got.CodeRepoID != f.api {
+		t.Fatalf("child branch = %+v, want the api repo it was created with", got)
+	}
+}

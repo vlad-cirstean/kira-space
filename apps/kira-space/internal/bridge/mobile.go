@@ -128,6 +128,8 @@ type MobileAccessService struct {
 	Poll   time.Duration
 	// IsLAN is a test seam passed to the server's Config.IsLAN (loopback in the flow harness); nil in production.
 	IsLAN func(netip.Addr) bool
+	// Now is the phone server's clock for pairing, device expiry and rate limits; nil is time.Now.
+	Now func() time.Time
 
 	embedded embedded.Service[*mobileweb.Server, MobileStatus]
 	sup      mobileSupervisor
@@ -153,7 +155,7 @@ func NewMobileAccessService(s *MobileAccessService) *MobileAccessService {
 				Reader: s.Reader, AgentSessions: s.AgentSessions, AgentInfo: s.AgentInfo, Devices: s.Deps.Repos.MobileDevices,
 				Writer: s.Writer, Terminals: s.Terminals, AgentInputEnabled: s.agentInputEnabled,
 				Hub: s.Hub, Broker: s.Broker, Assets: s.Assets,
-				Port: cfg.Mobile.Port, Network: s.sup.network(), IsLAN: s.IsLAN,
+				Port: cfg.Mobile.Port, Network: s.sup.network(), IsLAN: s.IsLAN, Now: s.Now,
 				OnDevicesChanged: s.emitDevices,
 				OnStatusChanged:  func() { s.emitStatus(s.embedded.Status()) },
 			})

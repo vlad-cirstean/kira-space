@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { adeFixture, openPlan } from './support/adeV2';
+import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 
 // Force push: a branch rebased locally (`plan.unpushed`) offers it; the dialog names the repo.
@@ -71,6 +72,25 @@ test('the backend error closes the dialog and lands in an error toast', async ({
   await expect(dialog).toHaveCount(0);
   await expect(toast(page)).toContainText('remote has newer commits');
 });
+
+for (const key of ['stale-lease', 'unintegrated']) {
+  test(`contract: a ${key} refusal from the backend lands in the toast`, async ({ relaunch }) => {
+    const refused = contract('ade-force-push', `AdeTaskService.ForcePush#${key}`) as {
+      error: { message: string };
+    };
+    const { window: page, control } = await openPlan(relaunch, [
+      { channel: IPC.adeTaskBoard, response: unpushedBoard() },
+      forcePushSnapshot({ ...refused, branchId: 'b_deps' }),
+    ]);
+    await page.locator('[data-testid="ade-force-push"]').click();
+    await page.locator('[data-testid="ade-confirm-yes"]').click();
+    await expect(toast(page)).toContainText('failed to push some refs');
+    expect(control.log().find((e) => e.channel === IPC.adeTaskForcePush)?.args).toEqual({
+      ...(contract('ade-force-push', 'args:AdeTaskService.ForcePush') as object),
+      branchId: 'b_deps',
+    });
+  });
+}
 
 test('a push in flight shows the chip, and past 2 s a loading then a success toast', async ({
   relaunch,

@@ -262,3 +262,44 @@ func TestProofChain(t *testing.T) {
 		t.Fatalf("proofs after delete = %+v, want none", ps)
 	}
 }
+
+// J-PRF-020: a proof linked to a task survives a stage move and an archive/restore: the link row, and the
+// proof session with its steps, stay.
+func TestProofSurvivesStageMoveAndArchive(t *testing.T) {
+	app := flowharness.New(t)
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	rec := importRepo(t, app, repo.Dir)
+	saveWorkflow(t, app, "flow", flowYAML("flow", "  - id: a\n    name: A\n    kind: manual\n"+"  - id: b\n    name: B\n    kind: manual\n"))
+	task, err := app.W.AdeTask.CreateTask(ctx, adewire.CreateTaskArgs{Title: "Proofed", CodeRepoIDs: []string{rec.ID}, WorkflowID: "flow"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	proofID := closedProof(t, app.W.ProofStore, "Checks", "diagram", "table")
+	if err := app.W.AdeTask.LinkProof(ctx, adewire.LinkProofArgs{TaskID: task.ID, ProofID: proofID}); err != nil {
+		t.Fatal(err)
+	}
+	check := func(label string) {
+		t.Helper()
+		ps := taskProofs(t, app, task.ID)
+		if len(ps) != 1 || ps[0].Name != "Checks" {
+			t.Fatalf("%s: task proofs = %+v, want the linked proof", label, ps)
+		}
+		var steps int
+		if err := app.DB().QueryRow(`SELECT count(*) FROM proof_steps WHERE session_id = ?`, proofID).Scan(&steps); err != nil || steps != 2 {
+			t.Fatalf("%s: proof steps = %d, %v, want 2", label, steps, err)
+		}
+	}
+	check("before")
+	if _, err := app.W.AdeTask.StepDone(ctx, adewire.StepDoneArgs{TaskID: task.ID}); err != nil {
+		t.Fatal(err)
+	}
+	check("after the stage move")
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: task.ID}); err != nil {
+		t.Fatal(err)
+	}
+	check("archived")
+	if _, err := app.W.AdeTask.RestoreTask(ctx, adewire.TaskArgs{TaskID: task.ID}); err != nil {
+		t.Fatal(err)
+	}
+	check("restored")
+}

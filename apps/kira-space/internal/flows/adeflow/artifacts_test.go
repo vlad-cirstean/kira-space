@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -312,4 +313,47 @@ func TestTaskArtifacts(t *testing.T) {
 		t.Fatal("AddLink accepted an archived task")
 	}
 	app.Contract(t, "ade-artifacts", "AdeTaskService.Artifacts#archived", arch, artMask)
+}
+
+// J-LINK-011: an agent reports 201 artifacts in 21 calls of at most 20. The task keeps exactly the cap, the
+// refused call says why and stores nothing, and no earlier artifact is dropped.
+func TestTaskArtifactsCapAtTwoHundred(t *testing.T) {
+	const capN = agentmcp.MaxArtifactsPerTask
+	var calls []fakeagent.MCPCall
+	for from := 0; from <= capN; from += agentmcp.MaxArtifactsPerCall {
+		var items []map[string]any
+		for i := from; i < min(from+agentmcp.MaxArtifactsPerCall, capN+1); i++ {
+			items = append(items, artItem("link", "Link "+strconv.Itoa(i), "https://x.example/"+strconv.Itoa(i), ""))
+		}
+		calls = append(calls, reportCall(items...))
+	}
+	// A repeat of a known URL at the cap updates in place and is not refused.
+	calls = append(calls, reportCall(artItem("link", "Link 0 again", "https://x.example/0", "")))
+	f := newRunFixture(t, []fakeagent.Action{{MCP: calls, Name: "done"}}, agentStep("one", ""))
+	f.start(t, "feat/api-cap")
+	waitRun(t, f.app, f.taskID, "one", "done")
+
+	last := len(calls)  // the repeat (replies are numbered from 1)
+	refused := last - 1 // the call holding the 201st
+	if text := leaseRaw(t, f.app, "mcp-report_artifacts-"+strconv.Itoa(refused)+".json"); !strings.Contains(text, "at most 200 artifacts") {
+		t.Fatalf("201st artifact reply = %q, want the cap message", text)
+	}
+	if text := leaseRaw(t, f.app, "mcp-report_artifacts-"+strconv.Itoa(last)+".json"); !strings.Contains(text, `"recorded":1`) {
+		t.Fatalf("repeat of a known URL at the cap = %q, want it recorded", text)
+	}
+	var stored, hasFirst, hasLast int
+	for _, a := range artifactsOf(t, f.app, f.taskID).Artifacts {
+		if a.Source == "agent" && strings.HasPrefix(a.URL, "https://x.example/") {
+			stored++
+			switch a.URL {
+			case "https://x.example/0":
+				hasFirst++
+			case "https://x.example/" + strconv.Itoa(capN):
+				hasLast++
+			}
+		}
+	}
+	if stored != capN || hasFirst != 1 || hasLast != 0 {
+		t.Fatalf("stored %d (first %d, 201st %d), want %d with the first kept and the 201st refused", stored, hasFirst, hasLast, capN)
+	}
 }
