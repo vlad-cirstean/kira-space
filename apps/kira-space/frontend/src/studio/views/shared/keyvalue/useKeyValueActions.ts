@@ -26,8 +26,19 @@ export function useKeyValueActions(
   // and the explicit Save is the sole caller of saveValueEdit for the object body.
   const objectDraft = ref<string | null>(null);
   const objectSave = useAsyncAction((value: string) =>
-    saveValueEdit(viewKey(), gate.keyName.value, value),
+    saveValueEdit(viewKey(), gate.keyName.value, value, openedETag()),
   );
+
+  // The object page lists its ETag as a row; it is the version the draft was edited against.
+  function openedETag(): string | undefined {
+    const p = gate.page.value;
+    if (p?.redisType !== 'object') return undefined;
+    for (let i = 0; i < p.rowCount; i++) {
+      const row = gate.rowAt(i);
+      if (row?.field === 'ETag') return row.value;
+    }
+    return undefined;
+  }
 
   // A reload leaves a staged draft and the published cell stale: a later Save could overwrite newer data.
   let selectedRow: number | null = null;

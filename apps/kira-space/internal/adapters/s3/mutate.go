@@ -21,6 +21,7 @@ import (
 const (
 	objectKeySentinel         = "_key"
 	objectFileSentinel        = "$file"
+	objectETagSentinel        = "$etag"
 	objectContentTypeSentinel = "$contentType"
 )
 
@@ -251,6 +252,11 @@ func applyUpdate(ctx context.Context, client *s3.Client, bucket string, op model
 	head, err := client.HeadObject(ctx, &s3.HeadObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)})
 	if err != nil {
 		return 0, mapError(err)
+	}
+	// OQ-KV-1: the editor sends the ETag of the body it opened. A different ETag now means someone
+	// replaced the object since, and the save is refused rather than overwriting their change.
+	if expected, ok := op.Key.Get(objectETagSentinel); ok && expected != nil && (head.ETag == nil || *head.ETag != *expected) {
+		return 0, adapters.T(adapters.CodeQuery, "backend.studio.adapter.s3ObjectChanged.body", nil, nil)
 	}
 	// This editor has no path to carry object tags across a PutObject replace (which drops
 	// them outright) without a second GetObjectTagging/PutObjectTagging round trip — refusing the

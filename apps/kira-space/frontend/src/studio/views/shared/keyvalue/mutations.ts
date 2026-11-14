@@ -15,6 +15,8 @@ import { useKeyValueViewStore } from './state';
 // that file's own comment for why `plan.path` alone can't name the target key.
 const KEY_SENTINEL = '_key';
 const VALUE_SENTINEL = '$value';
+// S3 only: the ETag of the body the editor opened, so a save refuses a replaced object.
+const ETAG_SENTINEL = '$etag';
 
 // P63: findTab reads through the host seam (host.ts) rather than state/tabs.ts's
 // findKeyValueTab directly — createImmediateMutator only needs {connectionId, path}, which
@@ -29,10 +31,11 @@ export async function saveValueEdit(
   viewKey: string,
   keyName: string,
   newValue: string,
+  etag?: string,
 ): Promise<void> {
-  await mutate(viewKey, [
-    { kind: 'update', key: { [KEY_SENTINEL]: keyName }, changes: { [VALUE_SENTINEL]: newValue } },
-  ]);
+  const key: Record<string, string> = { [KEY_SENTINEL]: keyName };
+  if (etag) key[ETAG_SENTINEL] = etag;
+  await mutate(viewKey, [{ kind: 'update', key, changes: { [VALUE_SENTINEL]: newValue } }]);
 }
 
 export async function deleteKey(viewKey: string, keyName: string): Promise<void> {

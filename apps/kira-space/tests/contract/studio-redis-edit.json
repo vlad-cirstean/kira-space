@@ -1,0 +1,22 @@
+{
+  "mutate:ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "$value": "line1\r\nline2\t\"q\" ünï 😀 "
+        },
+        "key": {
+          "_key": "flow:ttl"
+        },
+        "kind": "update"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  },
+  "preview:statements": [
+    "SET flow:ttl line1\r\nline2\t\"q\" ünï 😀  XX KEEPTTL"
+  ]
+}

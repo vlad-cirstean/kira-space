@@ -421,3 +421,28 @@ func zipChunks(chunks ...*wire.Chunk) [][]any {
 	}
 	return out
 }
+
+// DownloadFire starts data:objectDownload without waiting; Wait returns the byte count. Pair with
+// Router.Cancel(opID).
+func (s *DataStream) DownloadFire(connID, path, dest string) (opID string, wait func() (int64, error)) {
+	s.t.Helper()
+	opID = ids.NewID()
+	reply, id := s.fire("data:objectDownload", adapterhost.ObjectDownloadRequestWire{OpID: opID, ConnectionID: connID, Path: path, DestPath: dest})
+	return opID, func() (int64, error) {
+		f, err := decodeResponse(id, <-reply)
+		if err != nil {
+			return 0, err
+		}
+		var dr wire.ObjectDownloadResponse
+		tab := payloadTab(s.t, f)
+		dr.Init(tab.Bytes, tab.Pos)
+		return int64(dr.Bytes()), nil
+	}
+}
+
+// Download sends data:objectDownload and waits.
+func (s *DataStream) Download(connID, path, dest string) (int64, error) {
+	s.t.Helper()
+	_, wait := s.DownloadFire(connID, path, dest)
+	return wait()
+}

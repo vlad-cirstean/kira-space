@@ -191,11 +191,21 @@ func startPgInput(fx *testsupport.PgFixture) connections.Input {
 }
 
 // pgInputFor is startPgInput for any resolved config, such as one re-pointed at a proxy.
-func pgInputFor(c model.ResolvedConnectionConfig) connections.Input {
+func pgInputFor(c model.ResolvedConnectionConfig) connections.Input { return inputFromConfig(c) }
+
+// inputFromConfig turns a fixture's resolved config into an app connection input.
+func inputFromConfig(c model.ResolvedConnectionConfig) connections.Input {
+	opts := map[string]any{}
+	for k, v := range c.Options {
+		opts[k] = v
+	}
+	if c.Kind == "postgres" {
+		opts["sslmode"] = "disable"
+	}
 	return connections.Input{ConnectionFields: model.ConnectionFields{
-		Name: "flow pg fixture", Kind: "postgres", Color: "indigo", Mode: "fields",
-		Host: c.Host, Port: c.Port, Database: c.Database, Username: c.Username,
-		Options: map[string]any{"sslmode": "disable"}, McpReadMode: "deny", McpWriteMode: "deny", McpDdlMode: "deny",
+		Name: "flow " + c.Kind + " fixture", Kind: c.Kind, Color: "indigo", Mode: c.Mode,
+		Host: c.Host, Port: c.Port, Database: c.Database, Username: c.Username, URI: c.URI,
+		Options: opts, McpReadMode: "deny", McpWriteMode: "deny", McpDdlMode: "deny",
 	}, Password: c.Password}
 }
 

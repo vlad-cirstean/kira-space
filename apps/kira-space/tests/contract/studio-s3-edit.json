@@ -1,0 +1,20 @@
+{
+  "mutate:ops": {
+    "connectionId": "<masked>",
+    "opId": "<masked>",
+    "ops": [
+      {
+        "changes": {
+          "$value": "{\"a\":2}"
+        },
+        "key": {
+          "$etag": "<masked>",
+          "_key": "flow/edit.json"
+        },
+        "kind": "update"
+      }
+    ],
+    "path": "<masked>",
+    "tabId": null
+  }
+}
