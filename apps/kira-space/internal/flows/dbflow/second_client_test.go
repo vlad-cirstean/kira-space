@@ -3,6 +3,7 @@ package dbflow
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -243,3 +244,18 @@ func (l *locker) release() {
 	_ = l.db.Close()
 	l.c = nil
 }
+
+// sqliteExecArgs runs one parameterised statement on a connection of its own.
+func sqliteExecArgs(t *testing.T, path, stmt string, args ...any) {
+	t.Helper()
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(stmt, args...); err != nil {
+		t.Fatalf("%s: %v", stmt, err)
+	}
+}
+
+func itoa(n int) string { return strconv.Itoa(n) }
