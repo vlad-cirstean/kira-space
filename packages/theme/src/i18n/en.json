@@ -2979,6 +2979,9 @@
         }
       },
       "query": {
+        "changed": {
+          "body": "Another window changed this saved query since you opened it."
+        },
         "invalidBody": {
           "body": "Saved query is invalid: {detail}."
         },

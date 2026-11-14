@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { KibanaDiscoverBody } from '@shared/domain/kibana';
 import type { SavedDiscoverQuery } from '@shared/domain/queries';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
@@ -20,6 +21,7 @@ import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { ref, useTemplateRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
+import { guardedSavedWrite } from '../../shared/guardedSavedWrite';
 import DiscoverSavedMenu from './DiscoverSavedMenu.vue';
 import type { useDiscover } from './useDiscover';
 
@@ -54,10 +56,12 @@ const saveMutation = useMutation({
   onSuccess: invalidate,
 });
 const updateMutation = useMutation({
-  mutationFn: (args: { id: string }) => {
+  mutationFn: (args: { id: string; loaded: KibanaDiscoverBody }) => {
     const body = props.d.body.value;
     if (!body) throw new Error(t('studio.kibana.saved.noView.error'));
-    return control.queriesUpdateDiscover(args.id, body);
+    return guardedSavedWrite((guarded) =>
+      control.queriesUpdateDiscover(args.id, body, guarded ? args.loaded : undefined),
+    );
   },
   onSuccess: invalidate,
 });
@@ -92,7 +96,9 @@ function onSave(): Promise<void> {
   if (!link) return onSaveAs();
   return attempt(async () => {
     try {
-      props.d.link(await updateMutation.mutateAsync({ id: link.id }));
+      const saved = await updateMutation.mutateAsync({ id: link.id, loaded: link.body });
+      // Undefined: the user declined to overwrite another window's change.
+      if (saved) props.d.link(saved);
     } catch (err) {
       if (toCodedError(err).code !== 'E_NOT_FOUND') throw err;
       // Deleted elsewhere: the tab keeps its state and offers the old name again.

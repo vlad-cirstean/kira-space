@@ -15,6 +15,7 @@ import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
 import { computed, ref } from 'vue';
 import { useTabsStore } from '../../../state/tabs';
 import { control } from '../../bridge/control';
+import { guardedSavedWrite } from '../shared/guardedSavedWrite';
 import SavedListMenu from '../shared/SavedListMenu.vue';
 import { setText } from './state';
 
@@ -50,8 +51,17 @@ const {
 
 const invalidate = () => queryClient.invalidateQueries({ queryKey: ['consoleSaved'] });
 const updateMutation = useMutation({
-  mutationFn: (args: { id: string; patch: { pinned?: boolean; name?: string } }) =>
-    control.queriesUpdate(args.id, args.patch),
+  mutationFn: (args: {
+    entry: { id: string; name: string; pinned: boolean };
+    patch: { pinned?: boolean; name?: string };
+  }) =>
+    guardedSavedWrite((guarded) =>
+      control.queriesUpdate(
+        args.entry.id,
+        args.patch,
+        guarded ? { name: args.entry.name, pinned: args.entry.pinned } : undefined,
+      ),
+    ),
   onSuccess: invalidate,
 });
 const deleteMutation = useMutation({
@@ -92,12 +102,12 @@ function apply(entry: SavedConsoleQuery): void {
 }
 
 const togglePin = (entry: SavedConsoleQuery): Promise<void> =>
-  attempt(() => updateMutation.mutateAsync({ id: entry.id, patch: { pinned: !entry.pinned } }));
+  attempt(() => updateMutation.mutateAsync({ entry, patch: { pinned: !entry.pinned } }));
 const rename = (entry: SavedConsoleQuery): Promise<void> =>
   attempt(async () => {
     const name = await promptText(t('studio.console.savedMenu.renameTitle.title'), entry.name);
     if (!name || name.trim() === '') return;
-    await updateMutation.mutateAsync({ id: entry.id, patch: { name: name.trim() } });
+    await updateMutation.mutateAsync({ entry, patch: { name: name.trim() } });
   });
 const remove = (entry: SavedConsoleQuery): Promise<void> =>
   attempt(() => deleteMutation.mutateAsync(entry.id));

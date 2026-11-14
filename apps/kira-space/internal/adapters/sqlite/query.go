@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"regexp"
+	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 )
@@ -17,6 +18,36 @@ var (
 	commentBlock          = regexp.MustCompile(`(?s)/\*.*?\*/`)
 	whitespaceOrSemicolon = regexp.MustCompile(`[\s;]`)
 )
+
+// createTrigger matches a statement that opens with CREATE [TEMP] TRIGGER, after any comments.
+var createTrigger = regexp.MustCompile(`(?is)^(?:\s|--[^\n]*\n|/\*.*?\*/)*create\s+(?:temp\s+|temporary\s+)?trigger\b`)
+
+// wordAt returns the lowercase keyword starting at i, or "" when i is mid-identifier or not a letter.
+func wordAt(s string, i int) string {
+	if i > 0 && isWordByte(s[i-1]) || !isWordByte(s[i]) {
+		return ""
+	}
+	j := i
+	for j < len(s) && isWordByte(s[j]) {
+		j++
+	}
+	return strings.ToLower(s[i:j])
+}
+
+func isWordByte(c byte) bool {
+	return c == '_' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+}
+
+// triggerDepth counts BEGIN and CASE blocks inside a trigger body: each END closes one of them.
+func triggerDepth(depth int, word string) int {
+	switch word {
+	case "begin", "case":
+		return depth + 1
+	case "end":
+		return max(depth-1, 0)
+	}
+	return depth
+}
 
 const (
 	scanNormal = iota
@@ -97,12 +128,23 @@ func scanBacktickArm(s string, i int) (nextIndex, nextState int) {
 // interface), so the boundary is found by parsing the SQL text directly instead.
 func firstTopLevelSemicolon(s string) int {
 	state := scanNormal
+	trigger := createTrigger.MatchString(s)
+	depth := 0
 	for i := 0; i < len(s); i++ {
 		var next, nextState int
 		var found bool
 		switch state {
 		case scanNormal:
+			if trigger {
+				if w := wordAt(s, i); w != "" {
+					depth = triggerDepth(depth, w)
+					i += len(w) - 1
+					continue
+				}
+			}
 			next, nextState, found = scanNormalArm(s, i)
+			// A trigger's BEGIN ... END body holds its own ';'; only the one after END ends it.
+			found = found && depth == 0
 		case scanLineComment:
 			next, nextState = scanLineCommentArm(s, i)
 		case scanBlockComment:

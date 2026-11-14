@@ -22,6 +22,10 @@ var ErrSavedQueryNotFound = errors.New("repos/saved_queries: not found")
 // ErrSavedQueryNameTaken is a rename or save into a name another discover query of the connection holds.
 var ErrSavedQueryNameTaken = errors.New("repos/saved_queries: name taken")
 
+// ErrSavedQueryChanged is a guarded write whose expected stored value no longer holds: another
+// window changed the query since the caller read it.
+var ErrSavedQueryChanged = errors.New("repos/saved_queries: changed since read")
+
 var savedQuerySelectColumns = func() []string {
 	c := kiraschema.ConnectionSavedQueries
 	return []string{c.ID, c.ConnectionID, c.Path, c.Name, c.Kind, c.Body, c.Pinned, c.CreatedAt, c.UsedAt}
@@ -233,8 +237,9 @@ func (r *SavedQueriesRepo) SaveDiscover(connectionID, name string, body model.Di
 	return r.save(connectionID, "", name, "discover", body.Normalized(), pinned)
 }
 
-// UpdateDiscover replaces the body of a discover query in place.
-func (r *SavedQueriesRepo) UpdateDiscover(queryID string, body model.DiscoverBody) (model.SavedQuery, error) {
+// UpdateDiscover replaces the body of a discover query in place. A non-nil expect writes only
+// while the stored body still equals it, else ErrSavedQueryChanged.
+func (r *SavedQueriesRepo) UpdateDiscover(queryID string, body model.DiscoverBody, expect *model.DiscoverBody) (model.SavedQuery, error) {
 	if err := body.Validate(); err != nil {
 		return model.SavedQuery{}, err
 	}
@@ -244,16 +249,34 @@ func (r *SavedQueriesRepo) UpdateDiscover(queryID string, body model.DiscoverBod
 	}
 	c := kiraschema.ConnectionSavedQueries
 	ub := r.Dialect.Update(c.Table)
-	ub.Set(ub.Assign(c.Body, string(encoded)), ub.Assign(c.UsedAt, kiratime.NowMs())).
-		Where(ub.Equal(c.ID, queryID), ub.Equal(c.Kind, "discover"))
+	conds := []string{ub.Equal(c.ID, queryID), ub.Equal(c.Kind, "discover")}
+	if expect != nil {
+		want, err := json.Marshal(expect.Normalized())
+		if err != nil {
+			return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: encode expected discover body: %w", err)
+		}
+		conds = append(conds, ub.Equal(c.Body, string(want)))
+	}
+	ub.Set(ub.Assign(c.Body, string(encoded)), ub.Assign(c.UsedAt, kiratime.NowMs())).Where(conds...)
 	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: update body %s: %w", queryID, err)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		return model.SavedQuery{}, fmt.Errorf("%w: %s", ErrSavedQueryNotFound, queryID)
+		return r.missOrChanged(queryID, expect != nil)
 	}
 	return r.mustGet(queryID)
+}
+
+// missOrChanged names why a guarded update touched no row: the row is gone, or the guard failed.
+func (r *SavedQueriesRepo) missOrChanged(queryID string, guarded bool) (model.SavedQuery, error) {
+	if _, err := r.mustGet(queryID); err != nil {
+		return model.SavedQuery{}, err
+	}
+	if guarded {
+		return model.SavedQuery{}, fmt.Errorf("%w: %s", ErrSavedQueryChanged, queryID)
+	}
+	return model.SavedQuery{}, fmt.Errorf("%w: %s", ErrSavedQueryNotFound, queryID)
 }
 
 func (r *SavedQueriesRepo) setPinned(queryID string, pinned bool) error {
@@ -267,26 +290,45 @@ func (r *SavedQueriesRepo) setPinned(queryID string, pinned bool) error {
 }
 
 // Update is kind-agnostic (queries.ts's own updateSavedQuery): id alone identifies the row, and
-// neither field touches body/kind.
-func (r *SavedQueriesRepo) Update(queryID string, patch model.SavedQueryPatch) (model.SavedQuery, error) {
+// neither field touches body/kind. A non-nil expect writes only while each field it names still
+// holds that stored value, else ErrSavedQueryChanged; both fields land in one statement.
+func (r *SavedQueriesRepo) Update(queryID string, patch model.SavedQueryPatch, expect *model.SavedQueryPatch) (model.SavedQuery, error) {
 	if patch.Name != nil {
 		if err := model.ValidSavedQueryName(*patch.Name); err != nil {
 			return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: %w", err)
 		}
-		c := kiraschema.ConnectionSavedQueries
-		ub := r.Dialect.Update(c.Table)
-		ub.Set(ub.Assign(c.Name, strings.TrimSpace(*patch.Name))).Where(ub.Equal(c.ID, queryID))
-		if _, err := sqlb.Exec(r.DB, ub); err != nil {
-			if isUniqueViolation(err) {
-				return model.SavedQuery{}, fmt.Errorf("%w: %s", ErrSavedQueryNameTaken, strings.TrimSpace(*patch.Name))
-			}
-			return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: update name %s: %w", queryID, err)
-		}
+	}
+	c := kiraschema.ConnectionSavedQueries
+	ub := r.Dialect.Update(c.Table)
+	var sets []string
+	if patch.Name != nil {
+		sets = append(sets, ub.Assign(c.Name, strings.TrimSpace(*patch.Name)))
 	}
 	if patch.Pinned != nil {
-		if err := r.setPinned(queryID, *patch.Pinned); err != nil {
-			return model.SavedQuery{}, err
+		sets = append(sets, ub.Assign(c.Pinned, boolToInt(*patch.Pinned)))
+	}
+	if len(sets) == 0 {
+		return r.mustGet(queryID)
+	}
+	conds := []string{ub.Equal(c.ID, queryID)}
+	if expect != nil {
+		if expect.Name != nil {
+			conds = append(conds, ub.Equal(c.Name, *expect.Name))
 		}
+		if expect.Pinned != nil {
+			conds = append(conds, ub.Equal(c.Pinned, boolToInt(*expect.Pinned)))
+		}
+	}
+	ub.Set(sets...).Where(conds...)
+	res, err := sqlb.Exec(r.DB, ub)
+	if err != nil {
+		if isUniqueViolation(err) && patch.Name != nil {
+			return model.SavedQuery{}, fmt.Errorf("%w: %s", ErrSavedQueryNameTaken, strings.TrimSpace(*patch.Name))
+		}
+		return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: update %s: %w", queryID, err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return r.missOrChanged(queryID, expect != nil)
 	}
 	return r.mustGet(queryID)
 }

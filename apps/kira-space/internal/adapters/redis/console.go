@@ -156,6 +156,17 @@ func formatReplyItem(value any) string {
 	}
 }
 
+// pushReplyItem pushes a reply entry; a non-UTF-8 string goes in as flagged base64, never raw.
+func pushReplyItem(builder *page.KeyValuePageBuilder, field string, item any) {
+	if s, ok := item.(string); ok {
+		if text, binary := page.BytesCell([]byte(s)); binary {
+			builder.PushBinary(field, text)
+			return
+		}
+	}
+	builder.Push(field, formatReplyItem(item))
+}
+
 // hashReadCommands is resultToPage's own limited command-aware set: these three
 // reads carry a genuine per-value field name — HGET/HMGET's from the command's own arguments (the
 // caller-supplied field names), HGETALL's from the reply itself (server-returned field/value
@@ -189,10 +200,10 @@ func resultToPage(command string, args []string, reply any, limit page.ResultCap
 				truncated = true
 				break
 			}
-			builder.Push(strconv.Itoa(i), formatReplyItem(item))
+			pushReplyItem(builder, strconv.Itoa(i), item)
 		}
 	} else {
-		builder.Push(strings.ToUpper(command), formatReplyItem(reply))
+		pushReplyItem(builder, strings.ToUpper(command), reply)
 	}
 	pageSize := builder.RowCount()
 	if _, isArray := reply.([]any); !isArray {

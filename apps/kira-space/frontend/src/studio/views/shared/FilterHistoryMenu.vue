@@ -12,6 +12,7 @@ import TextPromptDialog from '@workbench/prompt/TextPromptDialog.vue';
 import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
 import { computed } from 'vue';
 import { control } from '../../bridge/control';
+import { guardedSavedWrite } from './guardedSavedWrite';
 import SavedListMenu from './SavedListMenu.vue';
 
 // Generic across filter-bearing views (SQL's FilterToolbar, Document's filter row): "where"/"orderBy"
@@ -47,8 +48,17 @@ const historyEntries = computed<Entry[]>(() => listQuery.data.value?.history ?? 
 
 const invalidate = () => queryClient.invalidateQueries({ queryKey: ['filterHistory'] });
 const updateMutation = useMutation({
-  mutationFn: (args: { id: string; patch: { pinned?: boolean; name?: string } }) =>
-    control.queriesUpdate(args.id, args.patch),
+  mutationFn: (args: {
+    entry: { id: string; name: string; pinned: boolean };
+    patch: { pinned?: boolean; name?: string };
+  }) =>
+    guardedSavedWrite((guarded) =>
+      control.queriesUpdate(
+        args.entry.id,
+        args.patch,
+        guarded ? { name: args.entry.name, pinned: args.entry.pinned } : undefined,
+      ),
+    ),
   onSuccess: invalidate,
 });
 const deleteMutation = useMutation({
@@ -108,12 +118,12 @@ async function applyEntry(entry: Entry): Promise<void> {
 // Only saved entries have an id valid for these calls; a history entry never reaches the IPC.
 async function togglePin(entry: Entry): Promise<void> {
   if (!isSaved(entry)) return;
-  await updateMutation.mutateAsync({ id: entry.id, patch: { pinned: !entry.pinned } });
+  await updateMutation.mutateAsync({ entry, patch: { pinned: !entry.pinned } });
 }
 async function rename(entry: SavedFilterQuery): Promise<void> {
   const name = await promptText(t('studio.filterHistory.renamePrompt.title'), entry.name);
   if (!name || name.trim() === '') return;
-  await updateMutation.mutateAsync({ id: entry.id, patch: { name: name.trim() } });
+  await updateMutation.mutateAsync({ entry, patch: { name: name.trim() } });
 }
 async function remove(entry: Entry): Promise<void> {
   if (!isSaved(entry)) return;

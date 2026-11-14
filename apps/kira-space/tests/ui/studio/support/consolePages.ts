@@ -45,3 +45,32 @@ export function intColumnPage(column: string, values: string[]): LogicalPage {
 export function numberPage(column: string, value: string): LogicalPage {
   return intColumnPage(column, [value]);
 }
+
+/** A text-typed tabular page, as a flow contract's page summary describes it. */
+export function textPage(
+  columns: readonly string[],
+  rows: readonly (string | null)[][],
+): LogicalPage {
+  const descriptors: ColumnDescriptor[] = columns.map((name) => ({
+    name,
+    dataType: 'text',
+    typeClass: 'text',
+    nullable: true,
+    isPrimaryKey: false,
+    generated: false,
+  }));
+  return {
+    kind: 'tabular',
+    columns: descriptors,
+    rows: rows.map((r) => [...r]),
+    position: {
+      offset: 0,
+      pageSize: rows.length,
+      hasMore: false,
+      nextToken: null,
+      prevToken: null,
+      strategy: 'offset',
+    },
+    truncatedCells: 0,
+  };
+}

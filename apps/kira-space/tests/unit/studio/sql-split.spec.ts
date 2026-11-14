@@ -243,3 +243,30 @@ describe('splitSqlStatements — dialect lexical forms (P108 Part 11 F4)', () =>
     expect(withEscape.map((s) => s.text)).toEqual(withoutEscape.map((s) => s.text));
   });
 });
+
+describe('splitSqlStatements — compound blocks (J-CONS-001)', () => {
+  const opts = { compoundBlocks: true };
+
+  test('a trigger body with inner semicolons stays one statement', () => {
+    const src = `CREATE TRIGGER t AFTER INSERT ON n BEGIN UPDATE n SET b = 1; DELETE FROM x; END; SELECT 1`;
+    expect(splitSqlStatements(src, opts).map((s) => s.text)).toEqual([
+      'CREATE TRIGGER t AFTER INSERT ON n BEGIN UPDATE n SET b = 1; DELETE FROM x; END',
+      'SELECT 1',
+    ]);
+  });
+
+  test('nested IF and CASE inside a routine keep the block whole', () => {
+    const src = `CREATE PROCEDURE p() BEGIN IF 1 THEN SELECT CASE WHEN 1 THEN 2 END; END IF; BEGIN SELECT 3; END; END; CALL p()`;
+    const out = splitSqlStatements(src, opts).map((s) => s.text);
+    expect(out).toHaveLength(2);
+    expect(out[1]).toBe('CALL p()');
+  });
+
+  test('BEGIN TRANSACTION outside a CREATE is an ordinary statement', () => {
+    expect(splitSqlStatements('BEGIN; SELECT 1; COMMIT', opts)).toHaveLength(3);
+  });
+
+  test('without the option a trigger splits at every semicolon', () => {
+    expect(splitSqlStatements('CREATE TRIGGER t BEGIN SELECT 1; END')).toHaveLength(2);
+  });
+});

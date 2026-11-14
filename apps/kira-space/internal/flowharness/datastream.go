@@ -391,6 +391,12 @@ func decodePage(t testing.TB, p *wire.Page) DataPage {
 		k.Init(body.Bytes, body.Pos)
 		dp.Kind, dp.RowCount = "keyvalue", int(k.RowCount())
 		dp.Rows = zipChunks(k.Fields(nil), k.Values(nil))
+		// Binary marks a value the page flagged as not text; the field cell is never binary.
+		_, _, vbin := decodeChunk(k.Values(nil))
+		dp.Binary = make([][]bool, len(vbin))
+		for i, b := range vbin {
+			dp.Binary[i] = []bool{false, b}
+		}
 		decodePosition(&dp, k.Position(nil))
 	case wire.PageBodyStreamPage:
 		var sp wire.StreamPage

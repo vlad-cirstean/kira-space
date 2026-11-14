@@ -16,6 +16,7 @@ import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
 import { useTabsStore } from '../../../../state/tabs';
 import { control } from '../../../bridge/control';
+import { guardedSavedWrite } from '../../shared/guardedSavedWrite';
 import SavedListMenu from '../../shared/SavedListMenu.vue';
 import { setKibana, setText } from '../state';
 import { kibanaStateFromBody, relinkName, unlink } from './savedDiscover';
@@ -47,8 +48,17 @@ const {
 
 const invalidate = () => queryClient.invalidateQueries({ queryKey: ['kibanaSaved'] });
 const updateMutation = useMutation({
-  mutationFn: (args: { id: string; patch: { pinned?: boolean; name?: string } }) =>
-    control.queriesUpdate(args.id, args.patch),
+  mutationFn: (args: {
+    entry: { id: string; name: string; pinned: boolean };
+    patch: { pinned?: boolean; name?: string };
+  }) =>
+    guardedSavedWrite((guarded) =>
+      control.queriesUpdate(
+        args.entry.id,
+        args.patch,
+        guarded ? { name: args.entry.name, pinned: args.entry.pinned } : undefined,
+      ),
+    ),
   onSuccess: invalidate,
 });
 const deleteMutation = useMutation({
@@ -88,13 +98,14 @@ const onApply = (entry: SavedDiscoverQuery): Promise<void> =>
   });
 
 const togglePin = (entry: SavedDiscoverQuery): Promise<void> =>
-  attempt(() => updateMutation.mutateAsync({ id: entry.id, patch: { pinned: !entry.pinned } }));
+  attempt(() => updateMutation.mutateAsync({ entry, patch: { pinned: !entry.pinned } }));
 
 const rename = (entry: SavedDiscoverQuery): Promise<void> =>
   attempt(async () => {
     const name = await promptText(t('studio.console.savedMenu.renameTitle.title'), entry.name);
     if (!name || name.trim() === '') return;
-    await updateMutation.mutateAsync({ id: entry.id, patch: { name: name.trim() } });
+    // Undefined: the user declined to overwrite another window's change; nothing was renamed.
+    if (!(await updateMutation.mutateAsync({ entry, patch: { name: name.trim() } }))) return;
     relinkName(entry.id, name.trim());
   });
 

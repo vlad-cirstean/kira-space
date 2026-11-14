@@ -36,6 +36,9 @@ export interface SqlLexOptions {
    *  in. Only examined for a single-quoted run whose `E`/`e` is itself a standalone token (not the
    *  tail of a longer identifier). */
   postgresEscapeStrings?: boolean;
+  /** SQLite triggers and MySQL/MariaDB routines, triggers and events carry a `BEGIN ... END` body
+   *  whose inner `;` do not end the `CREATE` statement; the splitter keeps the block whole. */
+  compoundBlocks?: boolean;
 }
 
 /** The public, all-optional shape `lintSql`/`splitSqlStatements`/`tokenizeSql`'s own callers pass
@@ -56,6 +59,7 @@ export function resolveLexOptions(options?: SqlScanOptions): SqlLexOptions {
     nestedBlockComments: options?.nestedBlockComments,
     bracketIdentifiers: options?.bracketIdentifiers,
     postgresEscapeStrings: options?.postgresEscapeStrings,
+    compoundBlocks: options?.compoundBlocks,
   };
 }
 
