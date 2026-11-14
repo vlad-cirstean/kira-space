@@ -39,8 +39,9 @@ type Finish struct {
 	LastGitError, Tried     string
 }
 
-// FinishFunc receives a run's finish_step call. The last call of a run wins; the caller applies the
-// outcome when the process exits.
+// FinishFunc receives a run's finish_step call. A OneShot grant accepts one, so its first call is the
+// outcome; any other grant may call again and the last call wins. The caller applies the outcome when
+// the process exits.
 type FinishFunc func(runID string, f Finish)
 
 // Bounds on a finish_step call's text fields.
