@@ -187,3 +187,78 @@ Paths below are under `apps/kira-space/` unless they start with `packages/`.
     guard untouched. OK.
 
 Follow-ups F-A*, F-B*, F-C* are SPEC rows in `docs/v0.3.14/SPEC.md`, as required.
+
+## Result
+
+Fixed on `chapter/v0.3.13`, one commit per group. Every finding fixed in full, none narrowed.
+
+Shared transport: the data-plane error frame (`wire.fbs` `Error`) now carries optional `details` JSON
+(`adapters.Error.Details`, `WithDetails`; decoded to `err.details` in `bridge/port.ts`). Flags in use:
+`{"changed":true}` (row changed), `{"outcomeUnknown":true}` (lost ack), `{"aclUnreadable":true}` (S3),
+`{"statementIndex":n}` (console). The flow harness `DataError.Details` reads it back.
+
+- H1: `commitFailure` marks a lost ack `outcomeUnknown`. `pendingChanges.commitPending` now reloads the
+  table and settles the staged set against it (`views/grid/reconcile.ts`): edits already stored are
+  cleared, edits not stored are re-based on the server value, deletes are re-guarded, inserts are
+  cleared only when the page holds the row by its full key. A keyless or serial-key insert the reload
+  cannot match is put to the user (`confirmKeepUnmatched`; Cancel keeps it) and is never resent blind.
+  A failed reload keeps the staged set, says so, and the next Commit settles first without sending.
+  Verified: `TestGridLostAck` over explicit key, serial key and no key (details flag, one read, a blind
+  resend refused only for the explicit key and a duplicate otherwise); UI half `grid-lost-ack.spec.ts`
+  (5 tests) on contract `studio-grid-lost-ack`.
+- H2: `postgres/mutate.go` `expectColumn` guards types outside the native-equality list through
+  `col::text`, so xml, point, polygon and path no longer compare with `=`. `TestGridGuardTypesPostgres`
+  runs xml, point, polygon, path, char(5), enum, uuid, inet and the earlier types on a real Postgres.
+  Reverting the fix fails it on xml.
+- M1: `mysqlfamily/mutate.go` leaves single-precision FLOAT out of the guard (its `=` is not stable);
+  `typeroundtrip_test.go` gained FLOAT and DOUBLE columns in the guard matrix on a real MySQL. Reverting
+  fails it.
+- M2: transaction state is keyed by the connection session (`console/transaction.ts`), not the tab: the
+  last console tab on a session ends its transaction, an earlier close prompts nothing and rolls
+  nothing back. Failed runs are tracked through the error's `statementIndex` (statements before it ran,
+  `BEGIN; bad` stays open). MySQL implicit commits (DDL, grants, table maintenance, locks, autocommit
+  on) close it, `COMMIT AND CHAIN` keeps it, temporary-table DDL does not close it. Disconnect and
+  connection removal clear it (`forgetConnectionTransactions`). Lexing stays: MySQL 8.4 has no
+  `@@in_transaction`, so a server read would not cover it; the rules are pinned on real servers instead.
+  Verified: `TestConsoleMySQLTransactionEnds` (real MySQL: implicit commit, chain, failing script index)
+  and `TestConsolePostgresTransactionAndCap` (failure index) write contract `studio-console-script`;
+  unit spec `console-transaction.spec.ts` replays those lists plus the per-connection and disconnect
+  rules; UI half in `grid-staged-close.spec.ts` (script failing past its BEGIN, close asks, confirm sends
+  ROLLBACK).
+- M3: `apifiles.ItemExpect{Name, HTTP, GRPC}` compares the name and the whole saved item; the bridge
+  takes `expectName`; the client sends the item name it holds. `TestSavedRequestTwoWindows` gained a
+  concurrent-rename step (conflict, rename kept). UI: `api-request-conflict.spec.ts`.
+- M4: `SaveGrpcRequest` takes `expect` and `expectName` with the same guard and
+  `E_CONFLICT {"changed":true}`; `GrpcRequestView` guards through `useSeenSaved` and
+  `guardedSavedWrite`. Flow `TestSavedGrpcRequestTwoWindows` (contract `api-grpc-two-windows`), UI
+  `grpc-request-conflict.spec.ts`.
+- M5: the carry flow retries once with `restoreIndex: false` on `StashIndexConflict` and announces that
+  the staged changes came back unstaged. Test in `ops.spec.ts` (retry sent, announcement; no retry when
+  the index restores).
+- M6: `TestGridGuardTypesPostgres` rebuilds `expect` from a fresh read per column, changes only that
+  column on the server, asserts E_CONFLICT with `changed`, and a control with that column refreshed
+  must pass. Per type class, so the matrix is real.
+- L1: `isConflictWith(err, flag)` and `isChangedConflict` in `state/confirmOverwrite.ts` are the one
+  check; `guardedSavedWrite`, `immediateMutation` and S3 use them.
+- L2: `ValidateMutationOps` rejects expect column names that are not table columns, for update and
+  delete; covered in `TestGridGuardTypesPostgres`.
+- L3: the Mongo guarded miss returns the `CountDocuments` error instead of reporting a conflict.
+- L4: `agentmcp.FinishFunc` comment says a OneShot grant accepts one call.
+- L5: `SetTaskWorkflowArgs` gained `confirmedRuns` and `confirmedLogs`; the backend recounts under the
+  task lock and refuses again when the task holds more; the refusal carries the counts in `details` and
+  the dialog sends them back. Tests: `runengine_test.go`, `TestWorkflowSwitchKeepsOtherTasksRuns`,
+  `ade-v2-workflow-switch.spec.ts`.
+- L6: `kibana-saved.spec.ts` advances the installed fake clock (`page.clock.runFor`) instead of
+  `waitForTimeout(1000)`.
+
+Contracts regenerated with `KIRA_CONTRACT=write` and stable on rerun: `studio-grid-lost-ack`,
+`api-request-two-windows`, `api-grpc-two-windows`, `studio-console-script`, `studio-document`,
+`studio-grid-stale`, `studio-s3-edit`, `ade-workflow-switch`. `DataError.Details` is `omitempty` so
+contracts without details are unchanged.
+
+Ran after the last change: Go `apifiles`, `bridge`, `adapters/...`, `adapterhost`, `flowharness`,
+`agentmcp`, `ade`, `flows/apiflow`, `flows/adeflow`, `flows/dbflow` (real Postgres, MySQL, Mongo, Redis,
+Kafka, SQS, S3); bun `ops.spec.ts` and `console-transaction.spec.ts`; Playwright `ui` specs
+`grpc-request-conflict`, `api-request-conflict`, `grid-lost-ack`, `grid-staged-close`,
+`grid-staged-survive`, `grid-stale-row`, `document-edit`, `s3-object-edit`, `ade-v2-workflow-switch`,
+`kibana-saved`, `saved-queries-conflict`. Full UI suites are left to PR CI.
