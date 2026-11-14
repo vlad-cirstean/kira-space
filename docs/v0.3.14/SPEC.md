@@ -11,7 +11,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P636 | MySQL console `DELIMITER` directive (F-A12) | Done |
 | P637 | Mobile approval of agent requests (J-ADE-072, F-B8) | Todo |
 | P638 | Collection file with a bad item: valid items load, bad ones reported (F-A15, J-COLL-003) | Todo |
-| P639 | Toasts at top right, placed like prompts | Todo |
+| P639 | Toasts at top right, placed like prompts | Done |
 | P640 | API module: dialog when closing an unsaved tab, new or modified | Todo |
 | P641 | ADE task: own Jira and PR links first in their group | Todo |
 | P642 | ADE task list: today background, day start/end left bar, today bar differs | Todo |
@@ -157,3 +157,10 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
   passes. Test ID J-CONS-028.
 - Known open items (`docs/ARCHITECTURE.md`): new, op-log Re-run mis-splits a trigger body with inner `;` and no `BEGIN`.
   Splitter item narrowed to Postgres `BEGIN ATOMIC`.
+
+### P639 Result
+
+- New `CornerStack.vue` (`packages/workbench`): one top-right column. Chips (`ApprovalsToast`, `ConfigSyncToast`) first, Sonner toasts below. 8px under the title bar, 16px from the right edge. Toast offset follows the chips' measured height.
+- `Sonner.vue` takes `offset` and `mobileOffset`. `App.vue` mounts `CornerStack` in place of the bottom-right `Toaster`. `ConfigSyncToast` moved from bottom-right to top-right. Still one shadcn-vue toast primitive.
+- UI: new `toast-placement.spec.ts`, 4 cases. 187 of 187 targeted specs pass. Visual baseline `approvals-toast-visual-linux.png` unchanged.
+- No bugs found in existing code.
