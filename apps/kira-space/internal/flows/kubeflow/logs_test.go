@@ -146,3 +146,48 @@ func TestLogsQuitEndsStreams(t *testing.T) {
 	e.app.Quit(t)
 	testx.WaitUntil(t, wait, func() bool { return e.fake.FollowEnded() == 1 })
 }
+
+// J-K8S-024: a container restart ends the follow stream cleanly; reopening follows the new container
+// with the tail honoured, and the old stream never delivers another line.
+func TestLogsFollowAcrossRestart(t *testing.T) {
+	e := boot(t, nil)
+	mark := e.app.Events.Mark()
+	follow := func(a *kubernetes.LogsOpenArgs) { a.Follow = true }
+	if err := e.open("w1", "f1", follow); err != nil {
+		t.Fatal(err)
+	}
+	waitLines(t, e.app, mark, "w1", "f1", 3)
+	e.fake.AppendLog("web-1", "live a")
+	e.fake.AppendLog("web-1", "live b")
+	first := waitLines(t, e.app, mark, "w1", "f1", 5)
+	if want := []string{"line one", "line two", "line three", "live a", "live b"}; !slices.Equal(texts(first), want) {
+		t.Fatalf("first run = %v", texts(first))
+	}
+
+	var boot []string
+	for i := 1; i <= 103; i++ {
+		boot = append(boot, fmt.Sprintf("boot %d", i))
+	}
+	e.fake.RestartContainer("web-1", boot...)
+	lines, errMsg := waitEnded(t, e.app, mark, "w1", "f1")
+	if errMsg != "" || !slices.Equal(texts(lines), texts(first)) {
+		t.Fatalf("stream after restart = %v err %q, want it to end cleanly with no new lines", texts(lines), errMsg)
+	}
+
+	// Reconnect with the default tail of 100: the newest 100 lines of the new container, in order.
+	if err := e.open("w1", "f2", follow); err != nil {
+		t.Fatal(err)
+	}
+	if got := waitLines(t, e.app, mark, "w1", "f2", 100); !slices.Equal(texts(got), boot[3:]) {
+		t.Fatalf("reconnect lines = %d from %q, want the last 100 of the new container", len(got), texts(got)[0])
+	}
+	e.fake.AppendLog("web-1", "boot 104")
+	got := waitLines(t, e.app, mark, "w1", "f2", 101)
+	if !slices.Equal(texts(got), append(boot[3:], "boot 104")) {
+		t.Fatalf("followed lines = %v, want each line once and in order", texts(got))
+	}
+	if old, _, _ := logsOf(e.app, mark, "w1", "f1"); len(old) != len(first) {
+		t.Fatalf("the ended stream delivered %d more lines", len(old)-len(first))
+	}
+	e.contract(t, "event:kira:kubernetes:logs:restart", kubernetes.LogsEvent{StreamID: "f2", Lines: got[98:]})
+}

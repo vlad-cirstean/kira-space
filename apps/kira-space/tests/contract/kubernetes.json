@@ -90,6 +90,48 @@
       "state": "missing"
     }
   },
+  "KubernetesService.Clusters:twoFiles": {
+    "clusters": [
+      {
+        "cluster": "c-alpha",
+        "context": "alpha",
+        "current": false,
+        "id": "<id:1>",
+        "mcp": {
+          "approval": "prompt",
+          "description": "",
+          "enabled": false
+        },
+        "namespace": "",
+        "server": "https://alpha.example:6443",
+        "source": "<a>",
+        "user": "u"
+      },
+      {
+        "cluster": "c-beta",
+        "context": "beta",
+        "current": false,
+        "id": "<id:2>",
+        "mcp": {
+          "approval": "prompt",
+          "description": "",
+          "enabled": false
+        },
+        "namespace": "",
+        "server": "https://beta.example:6443",
+        "source": "<b>",
+        "user": "u"
+      }
+    ],
+    "config": {
+      "message": "",
+      "paths": [
+        "<a>",
+        "<b>"
+      ],
+      "state": "ok"
+    }
+  },
   "KubernetesService.Describe": {
     "annotations": {},
     "apiVersion": "v1",
@@ -882,6 +924,21 @@
       }
     ],
     "streamId": "s1"
+  },
+  "event:kira:kubernetes:logs:restart": {
+    "ended": false,
+    "lines": [
+      {
+        "text": "boot 102"
+      },
+      {
+        "text": "boot 103"
+      },
+      {
+        "text": "boot 104"
+      }
+    ],
+    "streamId": "f2"
   },
   "event:kira:kubernetes:logs:timestamps": {
     "ended": true,

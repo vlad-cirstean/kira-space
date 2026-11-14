@@ -338,6 +338,71 @@ func TestKubeMcp(t *testing.T) {
 		}
 	})
 
+	// J-K8S-025: an approval answers one request on one cluster; another cluster asks on its own, and an
+	// "allow" cluster never lends its setting to a "prompt" one.
+	t.Run("approval-per-cluster", func(t *testing.T) {
+		k.setMcp(t, "kind-dev", on("prompt"))
+		k.setMcp(t, "bad-token", on("prompt"))
+		bad := k.ids["bad-token"]
+		a := k.callAsync("kube_list_resources", k.listPods("default", nil))
+		reqA := k.pending(t)
+		k.answerItems(t, true, reqA.Item.ID)
+		if out := <-a; out.err != nil || out.res.IsError {
+			t.Fatalf("approved list on kind-dev = %+v", out)
+		}
+
+		reqs := len(k.fake.Requests(""))
+		bArgs := map[string]any{"clusterId": bad, "kind": "v1/pods", "namespace": "default"}
+		b := k.callAsync("kube_list_resources", bArgs)
+		reqB := k.pending(t)
+		if reqB.Item.ID == reqA.Item.ID || reqB.Cluster == nil || reqB.Cluster.Context != "bad-token" {
+			t.Fatalf("second cluster approval = %+v (cluster %+v), want its own request", reqB.Item, reqB.Cluster)
+		}
+		if n := len(k.fake.Requests("")); n != reqs {
+			t.Fatalf("bad-token reached the API server before approval: %d requests, had %d", n, reqs)
+		}
+		k.answerItems(t, false, reqB.Item.ID)
+		out := <-b
+		if out.err != nil {
+			t.Fatal(out.err)
+		}
+		wantToolError(t, out.res, "denied by the user")
+		if n := len(k.fake.Requests("")); n != reqs {
+			t.Fatalf("a denied list reached the API server: %d requests, had %d", n, reqs)
+		}
+
+		// An allow cluster asks for nothing while the prompt one still does.
+		k.setMcp(t, "kind-dev", on("allow"))
+		if res := k.call(t, "kube_list_resources", k.listPods("default", nil)); res.IsError {
+			t.Fatalf("allow cluster list = %q", text(res))
+		}
+		if n := len(k.list(t)); n != 0 {
+			t.Fatalf("allow parked %d approvals", n)
+		}
+		c := k.callAsync("kube_list_resources", bArgs)
+		reqC := k.pending(t)
+		k.answerItems(t, false, reqC.Item.ID)
+		<-c
+		k.setMcp(t, "bad-token", kubernetes.McpSettings{Enabled: false, Approval: "prompt"})
+	})
+
+	t.Run("secrets-stay-masked-in-lists", func(t *testing.T) {
+		k.setMcp(t, "kind-dev", on("allow"))
+		res := k.call(t, "kube_list_resources", map[string]any{"clusterId": dev, "kind": "v1/secrets", "namespace": "default"})
+		for _, leak := range []string{"hunter2-secret", flowharness.B64("hunter2-secret"), flowharness.B64("admin")} {
+			if strings.Contains(text(res), leak) {
+				t.Fatalf("secret list leaks %q: %s", leak, text(res))
+			}
+		}
+		if res.IsError || !strings.Contains(text(res), "db-creds") {
+			t.Fatalf("secret list = %q", text(res))
+		}
+		log := k.call(t, "kube_describe", map[string]any{"clusterId": dev, "kind": "v1/secrets", "name": "db-creds", "namespace": "default"})
+		if strings.Contains(text(log), "aHVudGVyMi1zZWNyZXQ=") {
+			t.Fatalf("describe leaks the last-applied copy of the secret: %s", text(log))
+		}
+	})
+
 	t.Run("allow", func(t *testing.T) {
 		k.setMcp(t, "kind-dev", on("allow"))
 		defer func() {

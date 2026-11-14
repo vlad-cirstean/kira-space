@@ -6800,7 +6800,7 @@
         "placeholder": "Label selector"
       },
       "truncated": {
-        "status": "Showing the first {count} rows"
+        "status": "Showing the first {count} rows; sort and filter cover loaded rows only"
       }
     },
     "logs": {
