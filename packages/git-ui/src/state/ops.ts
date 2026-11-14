@@ -1345,17 +1345,30 @@ export class OpsState {
       return;
     }
 
-    const popResult = await this.#bridge.request('op.run', {
-      repoId,
-      op: { kind: 'stashPop', sha: top.sha, index: top.index, restoreIndex: true },
-    });
+    const popWith = (restoreIndex: boolean) =>
+      this.#bridge.request('op.run', {
+        repoId,
+        op: { kind: 'stashPop', sha: top.sha, index: top.index, restoreIndex },
+      });
+    let popResult = await popWith(true);
+    // The middle step moved HEAD, and the preflight predicts the worktree merge only: staged
+    // changes can no longer apply as staged although the merge is clean. The refused pop leaves
+    // the stash in place, so retry once without the index and say so.
+    let indexDropped = false;
+    if (!popResult.ok && popResult.error?.kind === 'StashIndexConflict') {
+      popResult = await popWith(false);
+      indexDropped = popResult.ok;
+    }
     this.#applyResult(repoId, popResult);
     const mismatch = this.#reconcileStashPop('pop', preflight.prediction, popResult);
     if (mismatch) {
       this.announcement.value = composeStashAnnouncement('pop', top, popResult, mismatch);
       if (!popResult.ok) this.#noteFailure('stashPop', popResult.error, true);
-    } else if (popResult.ok) this.announcement.value = announceMiddleOk();
-    else this.#fail('stashPop', popResult.error, true);
+    } else if (popResult.ok) {
+      this.announcement.value = indexDropped
+        ? `${announceMiddleOk()}. ${t('git.op.stashIndexNotRestored.body')}`
+        : announceMiddleOk();
+    } else this.#fail('stashPop', popResult.error, true);
   }
 
   // -------------------------------------------------------------------------------------

@@ -520,3 +520,87 @@ describe('OpsState — runPull carries rebaseMerges from the preflight, not a cl
     expect(remoteRunRebaseMerges(transport)).toBe(false);
   });
 });
+
+// Review M5: the carry flow stashes, runs its middle step (which moves HEAD), preflights, then pops.
+// The preflight predicts the worktree merge only, so a clean preflight can still be followed by a
+// refused `--index` restore. That used to abort the carry with the changes left in the stash.
+describe('OpsState — #stashAndCarry when the staged state cannot be restored', () => {
+  const CARRIED: StashEntry = { ...PRE_EXISTING_STASH, sha: 'carried-sha', message: 'carried' };
+  const ok = (): OpResult => ({
+    ok: true,
+    error: undefined,
+    undo: null,
+    head: { kind: 'branch', name: 'main' },
+    inProgress: null,
+  });
+
+  async function carryPull(popOutcomes: OpResult[]) {
+    const transport = new FakeTransport();
+    const bridge = new BridgeClient(transport);
+    const ops = new OpsState(bridge, new RefsState(bridge), new RepoSettingsState(bridge));
+    let listed = 0;
+    const pops: unknown[] = [];
+    transport.onRequest = (method, params) => {
+      switch (method) {
+        case 'status.get':
+          return STATUS;
+        case 'undo.peek':
+          return { slot: null };
+        case 'remote.pullPreflight':
+          return {
+            strategy: 'merge',
+            source: 'default',
+            rebaseMerges: false,
+            upstream: 'origin/main',
+            ahead: 0,
+            behind: 1,
+            dirty: true,
+            routes: [],
+            blockers: ['dirtyNonFastForward'],
+          } satisfies PullPreflight;
+        case 'stash.list':
+          return { entries: listed++ === 0 ? [] : [CARRIED] };
+        case 'preflight.stashPop':
+          return { verdict: 'clean', prediction: { kind: 'clean' } };
+        case 'op.run': {
+          const op = (params as { op: { kind: string } }).op;
+          if (op.kind !== 'stashPop') return ok();
+          pops.push(op);
+          return popOutcomes[pops.length - 1];
+        }
+        case 'remote.run':
+          return { ok: true, error: undefined, updates: [], head: ok().head, inProgress: null };
+        default:
+          throw new Error(`unscripted request: ${method}`);
+      }
+    };
+    ops.setRepoId(REPO);
+    await sleep();
+    const run = ops.runPull('origin', 'main');
+    await sleep();
+    ops.resolvePullDialog(true);
+    await run;
+    return { ops, pops };
+  }
+
+  test('a refused index restore is retried once without the index and says so', async () => {
+    const refused: OpResult = {
+      ...ok(),
+      ok: false,
+      error: { kind: 'StashIndexConflict', message: 'conflicts in index' },
+    };
+    const { ops, pops } = await carryPull([refused, ok()]);
+    expect(pops).toEqual([
+      { kind: 'stashPop', sha: 'carried-sha', index: 0, restoreIndex: true },
+      { kind: 'stashPop', sha: 'carried-sha', index: 0, restoreIndex: false },
+    ]);
+    expect(ops.announcement.value).toContain('Pulled origin/main (merge)');
+    expect(ops.announcement.value).toContain('came back unstaged');
+  });
+
+  test('a pop that restores the index is not retried and says nothing about it', async () => {
+    const { ops, pops } = await carryPull([ok()]);
+    expect(pops).toHaveLength(1);
+    expect(ops.announcement.value).not.toContain('unstaged');
+  });
+});

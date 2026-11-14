@@ -6057,6 +6057,9 @@
       "stashedNote": {
         "body": "Your changes are stashed. See the stash list."
       },
+      "stashIndexNotRestored": {
+        "body": "Your staged changes came back unstaged. The new commit changed the files they were staged against."
+      },
       "stashKept": {
         "body": "Your stashed changes were kept because popping them back would conflict. Pop {ref} manually when ready."
       },
