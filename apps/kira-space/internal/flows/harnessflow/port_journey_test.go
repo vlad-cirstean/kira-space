@@ -71,7 +71,7 @@ func jsonEqual(t *testing.T, what string, got any, want string) {
 		t.Fatal(err)
 	}
 	wb, _ := json.Marshal(w)
-	if string(g) != string(wb) {
+	if !bytes.Equal(g, wb) {
 		t.Errorf("%s = %s, want %s", what, g, wb)
 	}
 }
