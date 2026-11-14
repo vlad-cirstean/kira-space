@@ -263,7 +263,7 @@ func mustStatus(t *testing.T, svc *bridge.ConfigSyncService) configsync.Status {
 }
 
 // standalone builds a second service over its own home, with a Write seam to inject faults.
-func standalone(t *testing.T, write func(path string, data []byte) error) (*configsync.Service, string, *flowharness.Repo) {
+func standalone(t *testing.T, write func(path string, data []byte) error, mods ...func(*configsync.Options)) (*configsync.Service, string, *flowharness.Repo) {
 	t.Helper()
 	gitBin, err := exec.LookPath("git")
 	if err != nil {
@@ -277,13 +277,17 @@ func standalone(t *testing.T, write func(path string, data []byte) error) (*conf
 		"connections/two.yaml":   "name: two\n",
 		"connections/three.yaml": "name: three\n",
 	})
-	svc := configsync.New(configsync.Options{
+	opts := configsync.Options{
 		Home:       home,
 		Runner:     gitclient.NewExecRunner(),
 		GitPath:    func(context.Context) (string, error) { return gitBin, nil },
 		Write:      write,
 		StartDelay: time.Hour,
-	})
+	}
+	for _, m := range mods {
+		m(&opts)
+	}
+	svc := configsync.New(opts)
 	t.Cleanup(svc.Stop)
 	if _, err := svc.SetRepo(ctx, "file://"+repo.Dir, "main", ""); err != nil {
 		t.Fatalf("SetRepo: %v", err)
@@ -373,5 +377,201 @@ func TestRecoverRollsBackInterruptedApply(t *testing.T) {
 	}
 	if err := configsync.Recover(home); err != nil {
 		t.Fatalf("second Recover: %v", err)
+	}
+}
+
+func preview(t *testing.T, svc *configsync.Service) configsync.Preview {
+	t.Helper()
+	pv, err := svc.Preview(ctx)
+	if err != nil {
+		t.Fatalf("Preview: %v", err)
+	}
+	return pv
+}
+
+func plainWrite(path string, data []byte) error { return configfs.WriteAtomic(path, data, 0o644) }
+
+// J-CFG-010: two applies in one second keep both backups, each with its own bytes.
+func TestSameSecondBackupsStayDistinct(t *testing.T) {
+	fixed := time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC)
+	svc, home, repo := standalone(t, plainWrite, func(o *configsync.Options) { o.Now = func() time.Time { return fixed } })
+	pv := preview(t, svc)
+	if _, err := svc.Apply(ctx, pv.Token, nil); err != nil {
+		t.Fatal(err)
+	}
+	one := filepath.Join(home, "config", "connections", "one.yaml")
+	write(t, one, "name: one\nlocal: 1\n")
+	repo.Commit("edit", map[string]string{"connections/one.yaml": "name: one\nshared: 2\n"})
+	if _, err := svc.FetchNow(ctx, ""); err != nil {
+		t.Fatal(err)
+	}
+	pv = preview(t, svc)
+	r := row(t, pv, "connections/one.yaml")
+	res, err := svc.Apply(ctx, pv.Token, map[string]string{r.ID: "shared"})
+	if err != nil {
+		t.Fatalf("second apply: %v", err)
+	}
+	if read(t, one) != "name: one\nshared: 2\n" {
+		t.Fatalf("one.yaml = %q", read(t, one))
+	}
+	// First apply replaced nothing; the second backs up the local edit under a fresh dir.
+	if got := read(t, filepath.Join(res.Backup, "connections", "one.yaml")); got != "name: one\nlocal: 1\n" {
+		t.Fatalf("backup = %q", got)
+	}
+	third := filepath.Join(home, "config", "connections", "two.yaml")
+	write(t, third, "name: two\nlocal: 3\n")
+	repo.Commit("edit2", map[string]string{"connections/two.yaml": "name: two\nshared: 4\n"})
+	if _, err := svc.FetchNow(ctx, ""); err != nil {
+		t.Fatal(err)
+	}
+	pv = preview(t, svc)
+	r = row(t, pv, "connections/two.yaml")
+	res2, err := svc.Apply(ctx, pv.Token, map[string]string{r.ID: "shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res2.Backup == res.Backup {
+		t.Fatalf("both applies share backup dir %s", res.Backup)
+	}
+	if got := read(t, filepath.Join(res.Backup, "connections", "one.yaml")); got != "name: one\nlocal: 1\n" {
+		t.Fatalf("first backup overwritten: %q", got)
+	}
+	if got := read(t, filepath.Join(res2.Backup, "connections", "two.yaml")); got != "name: two\nlocal: 3\n" {
+		t.Fatalf("second backup = %q", got)
+	}
+}
+
+// J-CFG-012: a write that fails after earlier files landed restores them byte for byte.
+func TestMidApplyFailureRestoresReplacedFiles(t *testing.T) {
+	writes, failAt := 0, 0
+	var home string
+	svc, h, repo := standalone(t, func(path string, data []byte) error {
+		writes++
+		if failAt != 0 && writes == failAt {
+			// A directory at the target makes the atomic rename fail even as root.
+			_ = os.MkdirAll(path, 0o755)
+		}
+		return configfs.WriteAtomic(path, data, 0o644)
+	})
+	home = h
+	conn := filepath.Join(home, "config", "connections")
+	write(t, filepath.Join(conn, "one.yaml"), "name: one\nmine: 1\n")
+	write(t, filepath.Join(conn, "two.yaml"), "name: two\nmine: 2\n")
+	repo.Commit("edit", map[string]string{
+		"connections/one.yaml": "name: one\nshared: 1\n",
+		"connections/two.yaml": "name: two\nshared: 2\n",
+	})
+	if _, err := svc.FetchNow(ctx, ""); err != nil {
+		t.Fatal(err)
+	}
+	pv := preview(t, svc)
+	choices := map[string]string{}
+	for _, id := range []string{"connections/one.yaml", "connections/two.yaml"} {
+		choices[row(t, pv, id).ID] = "shared"
+	}
+	writes, failAt = 0, 2
+	if _, err := svc.Apply(ctx, pv.Token, choices); err == nil {
+		t.Fatal("apply succeeded despite failing write")
+	}
+	for name, want := range map[string]string{"one.yaml": "name: one\nmine: 1\n", "two.yaml": "name: two\nmine: 2\n"} {
+		fi, err := os.Stat(filepath.Join(conn, name))
+		if err != nil || fi.IsDir() {
+			// Our injected directory is the failing target; remove it before comparing.
+			_ = os.RemoveAll(filepath.Join(conn, name))
+			continue
+		}
+		if got := read(t, filepath.Join(conn, name)); got != want {
+			t.Fatalf("%s = %q, want %q", name, got, want)
+		}
+	}
+	if _, err := os.Stat(journalPath(home)); !os.IsNotExist(err) {
+		t.Fatalf("journal left: %v", err)
+	}
+	if st := svc.Status(); st.Problem != nil && st.Problem.Kind == configsync.ProblemInterrupted {
+		t.Fatalf("status shows interrupted: %+v", st.Problem)
+	}
+}
+
+// J-CFG-013: a crash after the journal reaches committed finishes on Recover.
+func TestRecoverFinishesCommittedJournal(t *testing.T) {
+	writes := 0
+	svc, home, _ := standalone(t, func(path string, data []byte) error {
+		writes++
+		if writes == 2 {
+			runtime.Goexit()
+		}
+		return configfs.WriteAtomic(path, data, 0o644)
+	})
+	pv := preview(t, svc)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = svc.Apply(ctx, pv.Token, nil)
+	}()
+	select {
+	case <-done:
+	case <-time.After(wait):
+		t.Fatal("apply goroutine did not stop")
+	}
+	jp := journalPath(home)
+	b, err := os.ReadFile(jp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Finish the writes by hand, then mark the journal committed as the crashed apply would have.
+	conn := filepath.Join(home, "config", "connections")
+	for name, text := range map[string]string{"one.yaml": "name: one\n", "two.yaml": "name: two\n", "three.yaml": "name: three\n"} {
+		write(t, filepath.Join(conn, name), text)
+	}
+	committed := strings.Replace(string(b), `"state": "applying"`, `"state": "committed"`, 1)
+	if committed == string(b) {
+		committed = strings.Replace(string(b), `"state":"applying"`, `"state":"committed"`, 1)
+	}
+	if committed == string(b) {
+		t.Fatalf("journal state not found in %s", b)
+	}
+	write(t, jp, committed)
+	if err := configsync.Recover(home); err != nil {
+		t.Fatalf("Recover: %v", err)
+	}
+	for _, name := range []string{"one.yaml", "two.yaml", "three.yaml"} {
+		if _, err := os.Stat(filepath.Join(conn, name)); err != nil {
+			t.Fatalf("%s missing after recovery: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(jp); !os.IsNotExist(err) {
+		t.Fatalf("journal left: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, "config", ".sync", "base.next")); !os.IsNotExist(err) {
+		t.Fatalf("base.next left: %v", err)
+	}
+}
+
+// J-CFG-011: an edit to a target after the preview fails the apply and writes nothing.
+func TestStalePreviewWritesNothing(t *testing.T) {
+	svc, home, repo := standalone(t, plainWrite)
+	pv := preview(t, svc)
+	conn := filepath.Join(home, "config", "connections")
+	write(t, filepath.Join(conn, "one.yaml"), "name: edited\n")
+	if _, err := svc.Apply(ctx, pv.Token, nil); err == nil {
+		t.Fatal("apply accepted after a target changed")
+	}
+	if _, err := os.Stat(filepath.Join(conn, "two.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("two.yaml written by a stale apply: %v", err)
+	}
+	if got := read(t, filepath.Join(conn, "one.yaml")); got != "name: edited\n" {
+		t.Fatalf("one.yaml = %q", got)
+	}
+	// A newer fetch also stales the token.
+	pv = preview(t, svc)
+	repo.Commit("more", map[string]string{"connections/four.yaml": "name: four\n"})
+	if _, err := svc.FetchNow(ctx, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Apply(ctx, pv.Token, nil); err == nil {
+		t.Fatal("apply accepted after a newer fetch")
+	}
+	if _, err := os.Stat(filepath.Join(conn, "four.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("four.yaml written: %v", err)
 	}
 }

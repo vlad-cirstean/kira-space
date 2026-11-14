@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -123,8 +124,8 @@ func (s *Service) Apply(ctx context.Context, token string, choices map[string]st
 	jr := journal{State: journalApplying, Commit: p.commit, AppliedAt: now.UTC().Format(time.RFC3339)}
 	for _, w := range work {
 		jr.Files = append(jr.Files, journalEntry{Module: w.fp.module, File: w.fp.file, Existed: w.fp.oursOK})
-		if w.fp.oursOK {
-			jr.Backup = filepath.Join(s.o.Home, "backups", "configsync-"+now.UTC().Format("20060102T150405Z"))
+		if w.fp.oursOK && jr.Backup == "" {
+			jr.Backup = s.freshBackupDir(now)
 		}
 	}
 	if err := s.commit(p, jr, work, skipBase); err != nil {
@@ -144,6 +145,17 @@ func (s *Service) Apply(ctx context.Context, token string, choices map[string]st
 	s.refreshLocked(ctx)
 	s.emit()
 	return out, nil
+}
+
+// freshBackupDir names a backup dir that does not exist yet, so two applies in one second never
+// share (and overwrite) a backup. The suffix keeps the lexicographic prune order.
+func (s *Service) freshBackupDir(now time.Time) string {
+	base := filepath.Join(s.o.Home, "backups", "configsync-"+now.UTC().Format("20060102T150405Z"))
+	dir := base
+	for i := 2; fsmove.Exists(dir); i++ {
+		dir = base + "-" + strconv.Itoa(i)
+	}
+	return dir
 }
 
 // addSession stores sess, dropping expired sessions and, past maxSessions, the oldest. mu is held.
