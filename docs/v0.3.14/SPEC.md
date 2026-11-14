@@ -80,11 +80,11 @@ starts and ends, today's bar differs slightly from other days'. Visual spec and 
 
 Whole Details tab content moves out of SQLite into files under the home folder: initial notes,
 handovers, links including the PR link, and proofs with their images (image files beside the
-markdown, not base64 rows). Files are the source of truth. Approvals and stages stay in SQLite.
+markdown, not base64 rows). Files are the source of truth for all content. State stays in SQLite and is never driven by a file edit: approvals, stages, branches (git and worktree state), leases, runs, status, workflow, plan placement.
 Opus plan decides, then user approves before any build: format and location, one-time migration of
 existing rows, edit protection (agents read freely; Kira lock versus ask-to-edit), proof revisions,
 pending edit accept/reject, view state and retention of 30 (on disk, or SQLite keeps review state
-only), MCP tool changes, behaviour when a file is edited by hand while the app runs. Flow plus UI
+only), MCP tool changes (`handover` removed; `finish_step` keeps its end-of-step signal, summary text moves to the file; `report_artifacts`, `proof_save`, `proof_list` removed, agent writes the files and Kira validates on read; `task_info` drops notes, links and handovers; branch, lease, operations and orchestrator tools stay), behaviour when a file is edited by hand while the app runs. Flow plus UI
 halves per the split.
 
 ## Results
