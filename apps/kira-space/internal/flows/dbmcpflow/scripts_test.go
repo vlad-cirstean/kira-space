@@ -2,6 +2,7 @@ package dbmcpflow
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -409,4 +410,46 @@ func TestDbMcpScriptLongRunning(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.app.Contract(t, "dbmcp-script-long", "ScriptRunsService.Get#ended", ended, runMasks...)
+}
+
+// J-BC-026: an agent pages a long log with head and tail reads of 500 lines. At 500 and 501 lines
+// the cut falls exactly on a page edge; no line repeats or goes missing.
+func TestDbMcpScriptLogPaging(t *testing.T) {
+	f := newFixture(t)
+	sess, err := f.connect(t, f.token(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sess.Close()
+	for _, n := range []int{500, 501, 1000} {
+		name := fmt.Sprintf("seq%d", n)
+		f.createScript(t, scripts.CustomScriptFields{Name: name, Command: fmt.Sprintf("seq 1 %d", n), MCP: allowMCP("")}, nil)
+		started := decodeResult[scriptRunResult](t, callTool(t, sess, "run_script", map[string]any{"scriptId": name, "waitSeconds": 20}))
+		if started.State != "done" || started.LogLines != n {
+			t.Fatalf("n=%d: run = %+v", n, started)
+		}
+		page := func(from string) scriptRunResult {
+			return decodeResult[scriptRunResult](t, callTool(t, sess, "get_script_run", map[string]any{"runId": started.RunID, "from": from, "lines": 500}))
+		}
+		head, tail := page("head"), page("tail")
+		if len(head.Lines) != 500 || len(tail.Lines) != min(n, 500) || head.Truncated != (n > 500) || tail.Truncated != (n > 500) {
+			t.Fatalf("n=%d: head %d truncated %v, tail %d truncated %v", n, len(head.Lines), head.Truncated, len(tail.Lines), tail.Truncated)
+		}
+		seen := map[int]int{}
+		for _, l := range append(append([]struct {
+			Seq    int    `json:"seq"`
+			Stream string `json:"stream"`
+			Text   string `json:"text"`
+		}{}, head.Lines...), tail.Lines...) {
+			seen[l.Seq]++
+		}
+		for seq := 1; seq <= n; seq++ {
+			if seen[seq] == 0 || (n <= 1000 && n > 500 && seq > n-500 && seq <= 500 && seen[seq] != 2) {
+				t.Fatalf("n=%d: line %d seen %d times", n, seq, seen[seq])
+			}
+		}
+		if head.Lines[0].Text != "1" || tail.Lines[len(tail.Lines)-1].Text != fmt.Sprint(n) {
+			t.Fatalf("n=%d: head starts %q, tail ends %q", n, head.Lines[0].Text, tail.Lines[len(tail.Lines)-1].Text)
+		}
+	}
 }
