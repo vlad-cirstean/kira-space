@@ -78,3 +78,58 @@ finish_step", no draft yet) and `submit`. Two Part 3 prompt candidates fit:
 Neither is confirmed, so no code or prompt change was made (a fix without the transcript would be a guess that burns a
 benchmark round). Next owner: rerun R with `KIRA_SPIKE_DUMP=<dir>`, read run 1, then decide. If candidate 1 holds, render
 `Draft` as `<Folder>/<draft>` in `filesVars`.
+
+# P643 Part 4 benchmark: F2 and F3
+
+Command: `KIRA_SPIKE_DUMP=<dir> KIRA_BENCH_OUT=<file> KIRA_BENCH_FLOWS=F2,F3 KIRA_BENCH_BUDGET=<usd> bun run test:claude:details`.
+Sonnet, 3 reps planned per flow and arm, 0.5 USD per run. Arm T is the frozen baseline (kira-studio `proof_save` and
+`proof_list`). Arm R is the real Part 4 build on a real app: a real task folder, the board as the grant's tools, the real
+`submit` with the proof unit; F3 starts from an accepted proof in the real `proof.md` format. The oracle reads the proof Kira
+stored (the pending revision when an edit waits).
+
+Verdict: **gate not met on F2 and F3** (cost, and context on F2). Recorded, not relaxed, benchmark stopped. F2 and F3 are
+reported, not blocking.
+
+## Spend
+
+Round budget was 0.89 USD; spent 1.04 USD, 0.15 over. Attempt 1 (2 runs, 0.2375 USD) died on two harness faults, not product
+faults: the arm R oracle parsed the spike's `kira: proof/1` fixture format instead of the stored proof, and the F3 seed used
+the spike's `flow.mmd`, which is not a proof file. Both were fixed in the harness (oracle reads the stored proof, F3 seed
+written in the real format) and attempt 2 ran with the remaining budget as its cap (0.65 USD); its guard stopped it after 5
+runs (0.8034 USD).
+
+## Result (attempt 2, 5 of 12 planned runs)
+
+| Flow | Arm | Pass | Cost USD, median | Final context, median | Turns, median | Failed edit-path plus retries, mean |
+|---|---|---|---|---|---|---|
+| F2 | R | 1 of 2 | 0.2788 | 55440 | 37 | 2.00 |
+| F2 | T | 1 of 1 | 0.0631 | 42760 | 3 | 0.00 |
+| F3 | R | 1 of 1 | 0.1064 | 42413 | 13 | 1.00 |
+| F3 | T | 1 of 1 | 0.0763 | 42510 | 4 | 0.00 |
+
+| Flow | Cost R/T | Context R/T | Pass R vs T |
+|---|---|---|---|
+| F2 | 4.42 | 1.30 | 1 of 2 vs 1 of 1 |
+| F3 | 1.40 | 1.00 | 1 of 1 vs 1 of 1 |
+
+Per run: F2 R 0.1964 (30 turns, fail), 0.3612 (44 turns, pass); F2 T 0.0631 (3). F3 R 0.1064 (13); F3 T 0.0763 (4).
+One or two reps per cell: the ratios are indicative, not a measurement.
+
+## Root cause
+
+Not the file mechanism. Both F2 R runs spent most turns guessing the document step's `inline` field names (`text`,
+`explanation`, `markdown`, `body`, `content`, `title`, `sections`, `blocks`, `paragraphs`, `items`); the validator answered
+"unknown field" without the format, and the README example shows only table and image. The first F2 R run gave up and
+reported `needs_input`; the second found `documents: [{body: ...}]` by grepping the Go source. The chart view had the same
+gap (the chart real-`claude` test failed on it). T has the schema in the tool description, so it needs 3 turns.
+
+Fix, after the run, not verified by a benchmark (budget spent): `proof.ValidateStep` appends the view's format to every
+shape rejection (`viewShapes`: table, document, key-value, chart, diagram), with an example for document and chart.
+`TestProofMcpThroughClaude` and `TestProofChartThroughClaude` pass on the chart fix; the document fix came after them.
+
+## What remains
+
+- Rerun F2 and F3 with the shape hints (3 reps per arm, about 0.9 USD) in the final benchmark, Part 5.
+- F3 R used 13 turns and one failed edit-path call against T's 4: ToolSearch, a README read, a proof read, the edit, then
+  `submit` with a reason. The README read could be cut by inlining the proof index (already in the prompt `Proofs:` line).
+- Cost floor: arm R needs a `ToolSearch` turn that T does not (deferred MCP schemas), as Part 3 found.
