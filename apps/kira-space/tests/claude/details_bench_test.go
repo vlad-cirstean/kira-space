@@ -56,7 +56,7 @@ var benchRoles = []struct{ name, flow string }{
 
 func benchRoleOf(flow string) string {
 	switch flow {
-	case "F2", "F3":
+	case "F2", "F3", "F3b":
 		return "run-proof"
 	case "F4", "F6":
 		return "orchestrator"
@@ -144,7 +144,7 @@ func (s *benchSpaceR) SpawnTask(ctx context.Context, c agentmcp.SpaceCall, a age
 // create_task for an orchestrator) and the task folder with its Kira-written files, granted with --add-dir.
 func benchSetupR(*testing.T, benchBaseline) func(*testing.T, *spikeRun, spikeFlow) (string, []string, func()) {
 	return func(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string, func()) {
-		if fl.id == "F2" || fl.id == "F3" {
+		if fl.id == "F2" || fl.id == "F3" || fl.id == "F3b" {
 			return benchSetupRProof(t, r, fl)
 		}
 		orch := fl.id == "F4" || fl.id == "F6"
@@ -161,7 +161,8 @@ func benchSetupR(*testing.T, benchBaseline) func(*testing.T, *spikeRun, spikeFlo
 		writeFile(t, filepath.Join(r.taskDir, "README.md"), taskfiles.Readme(in))
 		seedHistory(t, filepath.Join(benchFixtures, "t1"), r.taskDir, false)
 		writeFile(t, filepath.Join(r.taskDir, "task.yaml"), string(mustRead(t, filepath.Join(benchFixtures, "t1", "task.yaml"))))
-		stateSrc := filepath.Join(benchFixtures, "states-r", fl.id+".yaml")
+		stateID := strings.TrimSuffix(fl.id, "b") // F1b runs on F1's state
+		stateSrc := filepath.Join(benchFixtures, "states-r", stateID+".yaml")
 		stateYAML := func(done bool) string {
 			b := strings.ReplaceAll(string(mustRead(t, stateSrc)), "__WT__", r.wt)
 			if done {
@@ -175,6 +176,9 @@ func benchSetupR(*testing.T, benchBaseline) func(*testing.T, *spikeRun, spikeFlo
 			time.AfterFunc(time.Until(r.ready), func() { _ = os.WriteFile(statePath, []byte(stateYAML(true)), 0o644) })
 		}
 		space := &benchSpaceR{spikeSpace: r.space, draft: filepath.Join(r.taskDir, "handovers", "draft-implement.md")}
+		if fl.id == "F1b" { // the task already holds the handover draft to revise
+			writeFile(t, space.draft, r.lib.latest().body)
+		}
 		srv := agentmcp.NewServer(agentmcp.Options{
 			Dir: filepath.Join(r.root, "mcp"), Space: space, Orchestrator: space,
 			OnFinish: func(_ string, f agentmcp.Finish) { r.finishes = append(r.finishes, f) },
@@ -383,7 +387,7 @@ func TestDetailsBench(t *testing.T) {
 loop:
 	for rep := 1; rep <= reps; rep++ {
 		for _, id := range flows {
-			fl := flowByIDs(spikeFlows1b, id)
+			fl := benchFlow(id)
 			for _, arm := range arms {
 				// The first run may cost the cap; later ones are bounded by the dearest run seen.
 				next := benchRunCap
@@ -398,7 +402,17 @@ loop:
 					break loop
 				}
 				benchSetup = benchArmSetups[arm](t, base)
-				rec := execute(t, home, fl, arm, "sonnet", rep)
+				var rec spikeRec
+				if benchMultiPass(id) {
+					var passes []spikeRec
+					rec, passes = executePasses(t, home, fl, arm, "sonnet", rep)
+					for i, p := range passes { // per-pass records feed the crossover table; their cost is already in rec
+						p.Flow = fmt.Sprintf("%s#%d", id, i+1)
+						recs = append(recs, p)
+					}
+				} else {
+					rec = execute(t, home, fl, arm, "sonnet", rep)
+				}
 				spent += rec.Cost
 				recs = append(recs, rec)
 				t.Logf("%s %s #%d pass=%v cost=%.4f turns=%d spent=%.4f %s", rec.Flow, rec.Arm, rec.Rep, rec.Pass, rec.Cost, rec.Turns, spent, rec.Why)
@@ -419,7 +433,13 @@ loop:
 // retries not higher. A metric whose median gap is below the larger run-to-run range is inconclusive.
 func benchReport(recs []spikeRec, flows, arms []string, spent float64, planned int, note string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "# P643 benchmark\n\nRuns: %d of %d planned, sonnet. Spend: %.4f USD. %s\n\n", len(recs), planned, spent, note)
+	runs := 0
+	for _, r := range recs {
+		if !strings.Contains(r.Flow, "#") { // per-pass records are parts of a run
+			runs++
+		}
+	}
+	fmt.Fprintf(&b, "# P643 benchmark\n\nRuns: %d of %d planned, sonnet. Spend: %.4f USD. %s\n\n", runs, planned, spent, note)
 	b.WriteString("| Flow | Arm | Pass | Cost USD (median) | Final context (median) | Turns (median) | Failed edit-path + retries (mean) |\n|---|---|---|---|---|---|---|\n")
 	agg := map[string]spikeAgg{}
 	for _, f := range flows {
@@ -446,7 +466,9 @@ func benchReport(recs []spikeRec, flows, arms []string, spent float64, planned i
 			cost, ctx := median(r.cost)/median(t.cost), median(r.cf)/median(t.cf)
 			ok := cost <= 1.2 && ctx <= benchCtxBound(f) && r.pass >= t.pass && fails(r) <= fails(t)
 			verdict := "pass"
-			if !ok {
+			if benchMultiPass(f) { // new flows: the existing bounds are shown for information only
+				verdict = "informational, not gated"
+			} else if !ok {
 				verdict = "fail"
 				if inconclusive(t.cost, r.cost) || inconclusive(t.cf, r.cf) {
 					verdict = "fail, inconclusive: Opus review of the raw runs"
@@ -455,6 +477,7 @@ func benchReport(recs []spikeRec, flows, arms []string, spent float64, planned i
 			fmt.Fprintf(&b, "| %s | %.2f (max %.2f) | %.2f (max %.2f) | %d vs %d | %.2f vs %.2f | %s |\n", f, cost, 1.2, ctx, benchCtxBound(f), r.pass, t.pass, fails(r), fails(t), verdict)
 		}
 	}
+	b.WriteString(benchPassTable(recs, flows, arms))
 	b.WriteString("\n### Runs\n\n| Flow | Arm | Rep | Pass | Cost | Turns | Why |\n|---|---|---|---|---|---|---|\n")
 	for _, r := range recs {
 		fmt.Fprintf(&b, "| %s | %s | %d | %s | %.4f | %d | %s |\n", r.Flow, r.Arm, r.Rep, yn(r.Pass), r.Cost, r.Turns, strings.ReplaceAll(r.Why, "|", "/"))
@@ -611,6 +634,13 @@ func (b *benchBoardR) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCa
 	return out, err
 }
 
+// reset forgets what earlier passes saw, so a pass's oracle reads that pass's own submits.
+func (b *benchBoardR) reset() {
+	b.mu.Lock()
+	b.replies, b.reason = nil, ""
+	b.mu.Unlock()
+}
+
 // seen reports whether a submit answered for the proof unit with the wanted line.
 func (b *benchBoardR) seen(want string) (bool, string) {
 	b.mu.Lock()
@@ -636,14 +666,19 @@ func benchSetupRProof(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string
 	r.taskDir = folder
 	board := &benchBoardR{TaskBoard: f.W.AdeBoard}
 	want := "accepted, new proof"
-	if fl.id == "F3" {
-		seedProofR(t, filepath.Join(folder, "proofs", "orders-match-ledger"))
+	if fl.id == "F3" || fl.id == "F3b" {
+		rows := 0 // F3: the fixture's 20 rows
+		if fl.id == "F3b" {
+			rows = f3bRowCount
+		}
+		seedProofR(t, filepath.Join(folder, "proofs", "orders-match-ledger"), rows)
 		out, err := f.W.AdeBoard.Submit(ctx, agentmcp.SpaceCall{TaskID: task.ID, SessionID: "seed"}, agentmcp.SubmitArgs{})
 		if err != nil || !strings.Contains(out, "accepted, new proof") {
 			t.Fatalf("seed submit: %q %v", out, err)
 		}
 		want = "pending user, change to"
 	}
+	r.afterPass = board.reset
 	r.realProof = func() (*spikeProof, bool, string) { return storedProof(f, task.ID, board, want) }
 	srv := agentmcp.NewServer(agentmcp.Options{
 		Dir: filepath.Join(r.root, "mcp"), Space: board, Orchestrator: board,
@@ -702,18 +737,30 @@ func storedProof(f *adeFixture, taskID string, board *benchBoardR, want string) 
 
 // seedProofR writes the F3 starting proof in the real proof.md format from the F3 fixtures: the table and
 // document as data files, the diagram inline.
-func seedProofR(t *testing.T, dir string) {
+// rows trims the table to its first rows (0 keeps the fixture's 20).
+func seedProofR(t *testing.T, dir string, rows int) {
 	t.Helper()
 	src := filepath.Join(benchFixtures, "f3", "proof")
-	for _, n := range []string{"totals.json", "explain.json"} {
-		writeFile(t, filepath.Join(dir, n), string(mustRead(t, filepath.Join(src, n))))
+	writeFile(t, filepath.Join(dir, "explain.json"), string(mustRead(t, filepath.Join(src, "explain.json"))))
+	totals, n := mustRead(t, filepath.Join(src, "totals.json")), 20
+	if rows > 0 {
+		var tbl struct {
+			Columns []any   `json:"columns"`
+			Rows    [][]any `json:"rows"`
+		}
+		if err := json.Unmarshal(totals, &tbl); err != nil {
+			t.Fatal(err)
+		}
+		tbl.Rows, n = tbl.Rows[:rows], rows
+		totals, _ = json.MarshalIndent(tbl, "", "  ")
 	}
+	writeFile(t, filepath.Join(dir, "totals.json"), string(totals))
 	var flow strings.Builder
 	for _, l := range strings.Split(strings.TrimSpace(string(mustRead(t, filepath.Join(src, "flow.mmd")))), "\n") {
 		flow.WriteString("      " + l + "\n")
 	}
-	writeFile(t, filepath.Join(dir, "proof.md"), "---\nname: Orders match ledger\nsummary: All 20 orders of the day match their ledger lines on id and total.\nsteps:\n"+
-		"  - id: totals\n    description: Orders and ledger agree on all 20 rows\n    view: table\n    data: totals.json\n"+
+	writeFile(t, filepath.Join(dir, "proof.md"), "---\nname: Orders match ledger\nsummary: All "+strconv.Itoa(n)+" orders of the day match their ledger lines on id and total.\nsteps:\n"+
+		"  - id: totals\n    description: Orders and ledger agree on all "+strconv.Itoa(n)+" rows\n    view: table\n    data: totals.json\n"+
 		"  - id: flow\n    description: The matching path the reconcile command follows\n    view: diagram\n    inline: |\n"+flow.String()+
 		"  - id: why\n    description: Why the match holds and what a late edit does\n    view: document\n    data: explain.json\n---\n")
 }

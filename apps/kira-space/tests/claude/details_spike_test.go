@@ -72,9 +72,13 @@ type spikeRun struct {
 	lib     *spikeLib // Part 1b fixtures; nil in Part 1
 
 	finishes []agentmcp.Finish
-	studio   *studioStub
-	space    *spikeSpace
-	fa       *filesArm
+	// pass and finishBase serve multi-pass benchmark flows: the pass number (1 for single-pass flows) and
+	// how many finishes earlier passes made.
+	pass, finishBase int
+	afterPass        func() // runs between passes: promotes the pending edit, resets what the oracle reads
+	studio           *studioStub
+	space            *spikeSpace
+	fa               *filesArm
 	// realProof, set by the real-app arm R, reads the proof Kira stored (the pending edit when there is one).
 	realProof func() (*spikeProof, bool, string)
 }
@@ -574,6 +578,13 @@ func execute(t *testing.T, home string, fl spikeFlow, arm, model string, rep int
 	arm = label
 	cfg, addDirs, done := r.setup(t, fl)
 	defer done()
+	return runClaude(t, home, r, fl, cfg, addDirs, arm, model, rep, "")
+}
+
+// runClaude runs one claude -p over an already built run and scores it; tag names the dump file of a
+// later pass of a multi-pass flow.
+func runClaude(t *testing.T, home string, r *spikeRun, fl spikeFlow, cfg string, addDirs []string, arm, model string, rep int, tag string) spikeRec {
+	t.Helper()
 	args := []string{"-p", fl.prompt(r), "--model", model, "--max-budget-usd", fmt.Sprint(max(spikeRunCap, benchRunCapUSD)),
 		"--output-format", "stream-json", "--verbose", "--strict-mcp-config", "--mcp-config", cfg,
 		"--allowedTools", "mcp__kira-space,mcp__kira-studio,Read,Edit,Write,Glob,Grep,Bash"}
@@ -598,7 +609,7 @@ func execute(t *testing.T, home string, fl spikeFlow, arm, model string, rep int
 	timer.Stop()
 	if d := os.Getenv("KIRA_SPIKE_DUMP"); d != "" {
 		_ = os.MkdirAll(d, 0o755)
-		_ = os.WriteFile(filepath.Join(d, fmt.Sprintf("%s-%s-%s-%d.jsonl", fl.id, arm, model, rep)), []byte(so.String()+"\n"+se.String()), 0o644)
+		_ = os.WriteFile(filepath.Join(d, fmt.Sprintf("%s-%s-%s-%d%s.jsonl", fl.id, arm, model, rep, tag)), []byte(so.String()+"\n"+se.String()), 0o644)
 	}
 	rec := spikeRec{Flow: fl.id, Arm: arm, Model: model, Rep: rep, Wall: time.Since(start).Seconds(), Tools: map[string]int{}}
 
