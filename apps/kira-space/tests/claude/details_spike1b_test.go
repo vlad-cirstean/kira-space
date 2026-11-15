@@ -35,8 +35,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
 )
 
 const spikeRunCap1b = 0.5
@@ -122,22 +120,22 @@ func capBytes500(s string) string {
 	return cut
 }
 
-func (l *spikeLib) children() []agentmcp.ChildTaskInfo {
-	mk := func(id, title string) agentmcp.ChildTaskInfo {
+func (l *spikeLib) children() []frozenChildTaskInfo {
+	mk := func(id, title string) frozenChildTaskInfo {
 		hs := l.kids[id]
-		return agentmcp.ChildTaskInfo{ID: id, Title: title, Kind: "task", Workflow: "default", Status: "running", Step: "review", CreatedAt: "2026-11-01T09:00:00Z",
+		return frozenChildTaskInfo{ID: id, Title: title, Kind: "task", Workflow: "default", Status: "running", Step: "review", CreatedAt: "2026-11-01T09:00:00Z",
 			LastHandover: capBytes500(hs[len(hs)-1].body)}
 	}
-	return []agentmcp.ChildTaskInfo{mk("c-billing", "Billing API"), mk("c-settings", "Settings UI")}
+	return []frozenChildTaskInfo{mk("c-billing", "Billing API"), mk("c-settings", "Settings UI")}
 }
 
 // chains lists each child's handovers newest first, like task_chain.
-func (l *spikeLib) chains() map[string][]agentmcp.ChainRow {
-	out := map[string][]agentmcp.ChainRow{}
+func (l *spikeLib) chains() map[string][]frozenChainRow {
+	out := map[string][]frozenChainRow{}
 	for id, hs := range l.kids {
 		for i := len(hs) - 1; i >= 0; i-- {
 			h := hs[i]
-			out[id] = append(out[id], agentmcp.ChainRow{ID: fmt.Sprintf("h-%s-%d", id, i+1), From: h.from, To: h.to, Source: "agent", State: "handed",
+			out[id] = append(out[id], frozenChainRow{ID: fmt.Sprintf("h-%s-%d", id, i+1), From: h.from, To: h.to, Source: "agent", State: "handed",
 				CreatedAt: fmt.Sprintf("2026-11-0%dT10:00:00Z", i+1), Body: h.body})
 		}
 	}

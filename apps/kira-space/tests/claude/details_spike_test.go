@@ -113,7 +113,11 @@ func (r *spikeRun) folderLine() string {
 		v := llmprompts.FilesVars{Folder: r.taskDir, Draft: "handovers/draft-implement.md"}
 		if p, ok := providers.New().Get("claude"); ok {
 			if l, ok := p.(harness.ToolLoader); ok {
-				v.Load = l.LoadHint(agentmcp.FinishStep, agentmcp.Submit)
+				tools := []harness.MCPTool{agentmcp.Submit, agentmcp.State}
+				if r.flow == "F4" || r.flow == "F6" {
+					tools = append(tools, agentmcp.CreateTask)
+				}
+				v.Load = l.LoadHint(tools...)
 			}
 		}
 		return "\n\n" + llmprompts.HeadlessSpaceFiles.Text(llmprompts.Defaults(), v)
@@ -302,7 +306,7 @@ var spikeFlows = []spikeFlow{
 				repos                  []string
 			}
 			var kids []kid
-			if r.arm == "T" {
+			if r.fa == nil { // arms T and R record the calls on the stub space
 				for _, a := range r.space.spawned {
 					k := kid{a.Title, a.Workflow, a.Brief, nil}
 					for _, rp := range a.Repos {
@@ -489,13 +493,13 @@ func (r *spikeRun) setup(t *testing.T, fl spikeFlow) (mcpConfig string, addDirs 
 	if fl.id == "F4" && r.lib != nil {
 		space.children, space.chain = r.lib.children(), r.lib.chains()
 	} else if fl.id == "F4" {
-		space.children = []agentmcp.ChildTaskInfo{
+		space.children = []frozenChildTaskInfo{
 			{ID: "c-billing", Title: "Billing API", Kind: "task", Workflow: "default", Status: "running", Step: "review", CreatedAt: "2026-11-01T09:00:00Z",
 				LastHandover: "Migrated 14 endpoints to v2. Two tests still flaky: test_refund, test_proration."},
 			{ID: "c-settings", Title: "Settings UI", Kind: "task", Workflow: "default", Status: "running", Step: "review", CreatedAt: "2026-11-01T09:05:00Z",
 				LastHandover: "Replaced the nav bar with the new component. Accessibility audit still open."},
 		}
-		space.chain = map[string][]agentmcp.ChainRow{
+		space.chain = map[string][]frozenChainRow{
 			"c-billing": {
 				{ID: "h2", From: "implement", To: "review", Source: "agent", State: "handed", CreatedAt: "2026-11-02T10:00:00Z",
 					Body: "Migrated 14 endpoints to v2. Two tests still flaky: test_refund, test_proration. Review should run the suite three times."},
@@ -513,7 +517,7 @@ func (r *spikeRun) setup(t *testing.T, fl spikeFlow) (mcpConfig string, addDirs 
 		return benchSetup(t, r, fl)
 	}
 	srv := agentmcp.NewServer(agentmcp.Options{
-		Dir: filepath.Join(r.root, "mcp"), Space: space, Orchestrator: space, Outcomes: space,
+		Dir: filepath.Join(r.root, "mcp"), Space: space, Orchestrator: space,
 		OnFinish: func(_ string, f agentmcp.Finish) { r.finishes = append(r.finishes, f) },
 	})
 	claudeProv, ok := providers.New().Get("claude")

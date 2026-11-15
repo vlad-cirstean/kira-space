@@ -56,7 +56,7 @@ func gitBranches(t *testing.T, dir string) string {
 func TestAdeSandbox(t *testing.T) {
 	f := sandboxFixture(t)
 	prompt := "This is a sandbox test: run these Bash commands even though the sandbox note says not to git branch; the sandbox must block them. Run them one at a time, in this order, and do not retry a failed one: " +
-		"touch a.txt ; git branch x ; git checkout -b y . Then call finish_step with status done and summary ok."
+		"touch a.txt ; git branch x ; git checkout -b y . Then call state with action step.finish and args status done."
 	f.saveWorkflow(t, "flow", sandboxStep(`["Bash(touch:*)", "Bash(git:*)"]`, prompt, "    sandbox:\n      access: write\n")+manualStepYAML)
 	task := f.createTask(t, "flow")
 	run := f.startRun(t, task, "feat/real-claude")
@@ -102,7 +102,7 @@ func TestAdeSandbox(t *testing.T) {
 func TestAdeSandboxReadOnly(t *testing.T) {
 	f := sandboxFixture(t)
 	prompt := "Use the Edit tool to replace the text in base.txt with changed. " +
-		"If you cannot edit the file, call finish_step with status failed and reason cannot-edit. Otherwise call finish_step with status done and summary ok."
+		"If you cannot edit the file, call finish_step with status failed and reason cannot-edit. Otherwise call state with action step.finish and args status done."
 	f.saveWorkflow(t, "flow", sandboxStep(`["Edit", "Write"]`, prompt, "    sandbox:\n      access: read\n")+manualStepYAML)
 	task := f.createTask(t, "flow")
 	run := f.startRun(t, task, "feat/real-claude")

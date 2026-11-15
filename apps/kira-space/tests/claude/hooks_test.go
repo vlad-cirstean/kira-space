@@ -243,7 +243,7 @@ func TestShimInertForPlainClaude(t *testing.T) {
 
 // TestHookStopBlock proves Claude honors the body the hook shim prints for a Stop: the app blocks the
 // Stop of a busy lease holder with the user's release request, and the real agent carries on and calls
-// release_lease. Only the Stop reply can deliver it: the agent is mid-turn on task_info calls, which
+// state lease.release. Only the Stop reply can deliver it: the agent is mid-turn on Bash calls, which
 // carry no lease notice.
 func TestHookStopBlock(t *testing.T) {
 	f := newAdeFixture(t, nil)
@@ -284,7 +284,7 @@ func TestHookStopBlock(t *testing.T) {
 
 	if err := f.W.AdeTask.Send(ctx, adewire.SendArgs{
 		SessionID: launch.SessionID,
-		Message:   "Call acquire_lease with queue push. Then call task_info six times, one after another. Then reply done.",
+		Message:   "Call state with action lease.acquire and args queue push. Then run the Bash command sleep 5 six times, one after another. Then reply done.",
 	}); err != nil {
 		t.Fatalf("Send: %v", err)
 	}

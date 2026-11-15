@@ -67,7 +67,7 @@ func (f *adeFixture) createTask(t *testing.T, workflow string) adewire.Task {
 
 const (
 	agentStepYAML = "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 2m\n" +
-		"    prompt: This step has no work. Call finish_step with status done and summary ok.\n"
+		"    prompt: This step has no work. Call state with action step.finish and args status done.\n"
 	manualStepYAML = "  - id: work\n    name: Work\n    kind: manual\n    status: in-progress\n    session: true\n"
 )
 
@@ -130,7 +130,7 @@ func (f *adeFixture) runLog(t *testing.T, runID string) string {
 }
 
 // poison is a project setting that breaks any run that loads it.
-var poison = map[string]string{".claude/settings.json": `{"permissions":{"deny":["mcp__kira-space__finish_step"]}}` + "\n"}
+var poison = map[string]string{".claude/settings.json": `{"permissions":{"deny":["mcp__kira-space__state"]}}` + "\n"}
 
 // TestAdeHeadlessRun runs a one-step workflow through the real claude -p and its kira-space MCP
 // server. The second case poisons the repo's project settings and runs with
@@ -159,15 +159,15 @@ func TestAdeHeadlessRun(t *testing.T) {
 			log := f.runLog(t, run.ID)
 			if !c.wantDone {
 				if run.State == "done" {
-					t.Fatalf("run done despite the project setting denying finish_step; log:\n%s", tail(log, 1500))
+					t.Fatalf("run done despite the project setting denying the state tool; log:\n%s", tail(log, 1500))
 				}
 				return
 			}
 			if run.State != "done" {
 				t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 1500))
 			}
-			if !strings.Contains(log, "mcp__kira-space__finish_step") {
-				t.Fatalf("run log lacks the finish_step tool call:\n%s", tail(log, 1500))
+			if !strings.Contains(log, "mcp__kira-space__state") {
+				t.Fatalf("run log lacks the state tool call:\n%s", tail(log, 1500))
 			}
 			f.requireCostUnder(t)
 		})
@@ -175,11 +175,11 @@ func TestAdeHeadlessRun(t *testing.T) {
 }
 
 // TestAdeStepResults runs a step that declares its own results: the real claude must pick one of them
-// from the finish_step schema, and the run keeps the chosen id.
+// from the state schema, and the run keeps the chosen id.
 func TestAdeStepResults(t *testing.T) {
 	f := newAdeFixture(t, nil)
 	step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 2m\n" +
-		"    prompt: This step has no work. Call finish_step with status pass and summary ok.\n" +
+		"    prompt: This step has no work. Call state with action step.finish and args status pass.\n" +
 		"    results:\n" +
 		"      - id: pass\n        ok: true\n        description: The step has nothing left to do.\n" +
 		"      - id: retry_later\n        ok: false\n        description: Something is missing.\n"
@@ -440,13 +440,13 @@ func TestAdeRebaseRun(t *testing.T) {
 }
 
 // TestAdeDetailsSubmit runs a step that files a link in links.yaml and writes its draft: the real claude
-// must call submit (or finish_step, its implicit submit), the link lands as an agent artifact and the
+// must call submit (or state step.finish, its implicit submit), the link lands as an agent artifact and the
 // draft as the run's handover.
 func TestAdeDetailsSubmit(t *testing.T) {
 	f := newAdeFixture(t, nil)
 	step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 3m\n" +
 		"    prompt: Add one link to links.yaml in the task folder, with kind doc, title Notes and ref notes.md. " +
-		"Write your handover to the draft file, then call finish_step with status pass.\n"
+		"Write your handover to the draft file, then call state with action step.finish and args status pass.\n"
 	f.saveWorkflow(t, "flow", step+manualStepYAML)
 	task := f.createTask(t, "flow")
 	run := f.startRun(t, task, "feat/real-claude")
@@ -454,8 +454,8 @@ func TestAdeDetailsSubmit(t *testing.T) {
 	if run.State != "done" {
 		t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 1500))
 	}
-	if !strings.Contains(log, "mcp__kira-space__submit") && !strings.Contains(log, "mcp__kira-space__finish_step") {
-		t.Fatalf("run log lacks a submit or finish_step call:\n%s", tail(log, 1500))
+	if !strings.Contains(log, "mcp__kira-space__submit") && !strings.Contains(log, "mcp__kira-space__state") {
+		t.Fatalf("run log lacks a submit or state call:\n%s", tail(log, 1500))
 	}
 	res, err := f.W.AdeTask.Artifacts(ctx, adewire.TaskArgs{TaskID: task.ID})
 	if err != nil {

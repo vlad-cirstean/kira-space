@@ -39,7 +39,7 @@ func openBranchRequest(f *adeFixture, id string) (adewire.BranchRequest, error) 
 }
 
 // TestAdeBranchRequest runs a headless step on a task with no branch. The agent must ask for one through
-// request_branches on a chosen base, wait for the approval, then work in the returned worktree.
+// state branch.request on a chosen base, wait for the approval, then work in the returned worktree.
 func TestAdeBranchRequest(t *testing.T) {
 	f := newAdeFixture(t, nil)
 	// feat/base exists only on origin, one commit ahead of main: the agent starts its branch there.
@@ -50,9 +50,9 @@ func TestAdeBranchRequest(t *testing.T) {
 	f.repo.Git("branch", "-D", "feat/base")
 	step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 6m\n" +
 		"    allowed_tools: [\"Write\", \"Bash(git:*)\"]\n" +
-		"    prompt: You have no branch yet. Call request_branches for the repo api with the branch name feat/hello and the base feat/base, and wait for the answer. " +
+		"    prompt: You have no branch yet. Call state with action branch.request and args repo api, branch feat/hello and base feat/base, and wait for the answer. " +
 		"Then, in the worktree it returns, create the file hello.txt containing hi and commit it with git. " +
-		"Then call finish_step with status done and summary ok.\n"
+		"Then call state with action step.finish and args status done.\n"
 	f.saveWorkflow(t, "flow", step+manualStepYAML)
 	task := f.createTask(t, "flow")
 	if _, err := f.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: task.ID}); err != nil {
@@ -108,8 +108,8 @@ func TestAdeBranchRequest(t *testing.T) {
 	if run.State != "done" {
 		t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 2500))
 	}
-	if !strings.Contains(log, "mcp__kira-space__request_branches") {
-		t.Fatalf("run log lacks the request_branches call:\n%s", tail(log, 2500))
+	if !strings.Contains(log, "mcp__kira-space__state") {
+		t.Fatalf("run log lacks the state call:\n%s", tail(log, 2500))
 	}
 
 	b, err := f.W.AdeTask.Board(ctx)

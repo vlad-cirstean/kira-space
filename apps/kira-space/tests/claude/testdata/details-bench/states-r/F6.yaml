@@ -1,0 +1,16 @@
+rev: 7
+task:
+    id: t-1
+    kind: orchestrator
+    status: In progress
+    step: {id: implement, name: Implement, position: 3, of: 4}
+    workflow: default
+repos: []
+registered:
+    - name: app
+      path: /work/app
+leases: []
+operations: []
+runs: []
+pending: []
+answers: []

@@ -297,8 +297,8 @@ type spikeBranch struct {
 type spikeSpace struct {
 	agentmcp.SpaceTools // unused methods panic: the spike flows never call them
 	br                  spikeBranch
-	children            []agentmcp.ChildTaskInfo
-	chain               map[string][]agentmcp.ChainRow
+	children            []frozenChildTaskInfo
+	chain               map[string][]frozenChainRow
 	mu                  sync.Mutex
 	spawned             []agentmcp.CreateTaskArgs
 }
@@ -327,12 +327,12 @@ func (s *spikeSpace) TaskInfo(context.Context, string, bool) (agentmcp.TaskInfo,
 		Repos: []agentmcp.TaskRepo{{Repo: s.br.Repo, CodeRepoID: "r-1", Branch: &b, Worktree: s.br.Worktree, Setup: bi.Setup}}}, nil
 }
 
-func (s *spikeSpace) ListTasks(context.Context, agentmcp.SpaceCall, agentmcp.ListTasksArgs) (agentmcp.ListTasksResult, error) {
-	return agentmcp.ListTasksResult{Tasks: s.children}, nil
+func (s *spikeSpace) ListTasks(context.Context, agentmcp.SpaceCall, frozenListTasksArgs) (frozenListTasksResult, error) {
+	return frozenListTasksResult{Tasks: s.children}, nil
 }
 
-func (s *spikeSpace) TaskChain(_ context.Context, _ agentmcp.SpaceCall, a agentmcp.TaskChainArgs) (agentmcp.TaskChainResult, error) {
-	return agentmcp.TaskChainResult{Rows: s.chain[a.TaskID]}, nil
+func (s *spikeSpace) TaskChain(_ context.Context, _ agentmcp.SpaceCall, a frozenTaskChainArgs) (frozenTaskChainResult, error) {
+	return frozenTaskChainResult{Rows: s.chain[a.TaskID]}, nil
 }
 
 // SpawnTask approves at once and records the call; the reply carries the child id like today's tool.
@@ -344,7 +344,7 @@ func (s *spikeSpace) SpawnTask(_ context.Context, _ agentmcp.SpaceCall, a agentm
 		Next: "The child starts at its first stage with your brief as its first handover. Read its progress with task_chain."}, nil
 }
 
-func (s *spikeSpace) RunOutcomes(context.Context, string, agentmcp.OutcomeQuery) ([]agentmcp.RunOutcomeEntry, error) {
+func (s *spikeSpace) RunOutcomes(context.Context, string, frozenOutcomeQuery) ([]frozenRunOutcomeEntry, error) {
 	return nil, nil
 }
 
@@ -427,24 +427,15 @@ func newFilesArm(root, step, wtPath string, ready time.Time, withCreateTask bool
 		InputSchema: mustSchema[submitArgs]()}, fa.submit)
 	mcp.AddTool(srv, &mcp.Tool{Name: "finish_step", Description: llmprompts.HeadlessToolFinishStep.Text(src, llmprompts.NoVars{}) + " Submits your files first; the step's handover is handovers/draft-<step>.md, write it before this call.",
 		InputSchema: mustSchema[finishArgs]()}, fa.finishStep)
-	// Merged tools carry the registry text of every tool they replace, so schema size is realistic.
-	txt := func(ps ...interface {
-		Text(llmprompts.Source, llmprompts.NoVars) string
-	}) string {
-		var parts []string
-		for _, p := range ps {
-			parts = append(parts, p.Text(src, llmprompts.NoVars{}))
-		}
-		return strings.Join(parts, "\n")
-	}
+	// Merged tools carry the frozen text of every tool they replace, so schema size is realistic.
 	mcp.AddTool(srv, &mcp.Tool{Name: "branches", Description: "Manage the task's branches and worktrees; pick one action. wait blocks until a branch's worktree setup ends, no polling; setup state is also in state.yaml.\ndeclare: " +
-		txt(llmprompts.HeadlessToolDeclareRepos) + "\nrequest: " + txt(llmprompts.HeadlessToolRequestBranches) + "\nrename: " + txt(llmprompts.HeadlessToolRenameBranch) + "\nchange: " + txt(llmprompts.HeadlessToolChangeBranch),
+		frozenToolText("declare_repos") + "\nrequest: " + frozenToolText("request_branches") + "\nrename: " + frozenToolText("rename_branch") + "\nchange: " + frozenToolText("change_branch"),
 		InputSchema: mustSchema[branchesArgs]()}, fa.branches)
-	mcp.AddTool(srv, &mcp.Tool{Name: "lease", Description: "Pick one action. Held leases and queue positions are also in state.yaml.\nacquire: " + txt(llmprompts.HeadlessToolAcquireLease) + "\nrelease: " + txt(llmprompts.HeadlessToolReleaseLease) + "\nstatus: " + txt(llmprompts.HeadlessToolLeaseStatus),
+	mcp.AddTool(srv, &mcp.Tool{Name: "lease", Description: "Pick one action. Held leases and queue positions are also in state.yaml.\nacquire: " + frozenToolText("acquire_lease") + "\nrelease: " + frozenToolText("release_lease") + "\nstatus: " + frozenToolText("lease_status"),
 		InputSchema: mustSchema[leaseArgs]()}, func(context.Context, *mcp.CallToolRequest, leaseArgs) (*mcp.CallToolResult, any, error) {
 		return toolErr("no lease queues in this spike.")
 	})
-	mcp.AddTool(srv, &mcp.Tool{Name: "cancel_operation", Description: "Stop one running operation of this task by id; the list is in state.yaml operations. " + txt(llmprompts.HeadlessToolOperations),
+	mcp.AddTool(srv, &mcp.Tool{Name: "cancel_operation", Description: "Stop one running operation of this task by id; the list is in state.yaml operations. " + frozenToolText("operations"),
 		InputSchema: mustSchema[cancelArgs]()}, func(context.Context, *mcp.CallToolRequest, cancelArgs) (*mcp.CallToolResult, any, error) {
 		return toolErr("no such operation.")
 	})

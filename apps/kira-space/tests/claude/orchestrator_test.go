@@ -12,14 +12,14 @@ import (
 )
 
 // TestAdeOrchestrator runs a headless step of an orchestrator task. The agent must ask for a child task
-// through create_task, wait for the approval, then read its own chain with task_chain.
+// through create_task, wait for the approval, then read state.yaml in its task folder.
 func TestAdeOrchestrator(t *testing.T) {
 	f := newAdeFixture(t, nil)
 	const brief = "Create hello.txt containing hi, commit it and hand back the file name."
 	f.saveWorkflow(t, "flow", agentStepYAML+manualStepYAML)
 	f.saveWorkflow(t, "orch", "  - id: plan\n    name: Plan\n    kind: agent\n    runs_on: once\n    timeout: 6m\n"+
 		"    prompt: \"You orchestrate. Call create_task once with title Hello child, workflow flow, repos [{repo: api, base: main}] and brief: "+brief+" "+
-		"Wait for the answer. Then call task_chain with no arguments; an empty chain is fine, do not wait for the child. Then call finish_step with status done and summary ok.\"\n")
+		"Wait for the answer. Then read state.yaml in the task folder; do not wait for the child. Then call state with action step.finish and args status done.\"\n")
 	orch, err := f.W.AdeTask.CreateTask(ctx, adewire.CreateTaskArgs{Title: "Real orchestrator", WorkflowID: "orch", Kind: "orchestrator"})
 	if err != nil {
 		t.Fatalf("CreateTask: %v", err)
@@ -85,7 +85,7 @@ func TestAdeOrchestrator(t *testing.T) {
 	if run.State != "done" {
 		t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 2500))
 	}
-	for _, tool := range []string{"mcp__kira-space__create_task", "mcp__kira-space__task_chain"} {
+	for _, tool := range []string{"mcp__kira-space__create_task", "state.yaml"} {
 		if !strings.Contains(log, tool) {
 			t.Fatalf("run log lacks %s:\n%s", tool, tail(log, 2500))
 		}

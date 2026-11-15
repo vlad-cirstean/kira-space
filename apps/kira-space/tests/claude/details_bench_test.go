@@ -86,8 +86,9 @@ var benchArmSetups = map[string]func(*testing.T, benchBaseline) func(*testing.T,
 	"R": benchSetupR,
 }
 
-// benchSpaceR backs arm R's server: submit and finish_step read the stage's draft in the task folder as
-// the board does (the ade package is not importable from this module). F1 is the only flow R runs.
+// benchSpaceR backs arm R's server: submit and step.finish read the stage's draft in the task folder as
+// the board does (the ade package is not importable from this module); branch.request answers once the
+// branch's setup is done, as the board does after the user approves.
 type benchSpaceR struct {
 	*spikeSpace
 	draft string
@@ -102,45 +103,90 @@ func (s *benchSpaceR) Submit(_ context.Context, _ agentmcp.SpaceCall, in agentmc
 	if s.body() == "" {
 		return "accepted 0, pending user 0, invalid 0", nil
 	}
-	text := "accepted 1, pending user 0, invalid 0\nhandovers/draft-implement.md: accepted"
-	if in.Finished {
-		text += "\nfinished: the user was asked to move the task on"
-	}
-	return text, nil
+	return "accepted 1, pending user 0, invalid 0\nhandovers/draft-implement.md: accepted", nil
 }
 
 func (s *benchSpaceR) SubmitForFinish(_ context.Context, _ agentmcp.SpaceCall, ok bool) (agentmcp.SubmitFinish, error) {
 	body := s.body()
 	if body == "" && ok {
-		return agentmcp.SubmitFinish{Refuse: "write handovers/draft-implement.md, then call finish_step"}, nil
+		return agentmcp.SubmitFinish{Refuse: "write handovers/draft-implement.md, then call state step.finish"}, nil
 	}
 	return agentmcp.SubmitFinish{Summary: body}, nil
 }
 
-// benchSetupR is the implementation arm: the real tool surface of a run grant and the task folder
-// granted with --add-dir.
+func (s *benchSpaceR) RequestBranches(ctx context.Context, _ agentmcp.SpaceCall, specs []agentmcp.BranchSpec) (agentmcp.RequestBranchesResult, error) {
+	if d := time.Until(s.br.ReadyAt); d > 0 {
+		select {
+		case <-time.After(d):
+		case <-ctx.Done():
+			return agentmcp.RequestBranchesResult{}, ctx.Err()
+		}
+	}
+	var out agentmcp.RequestBranchesResult
+	for _, sp := range specs {
+		out.Branches = append(out.Branches, agentmcp.RequestedBranch{
+			BranchInfo: agentmcp.BranchInfo{Repo: sp.Repo, Branch: sp.Branch, Worktree: s.br.Worktree, Setup: agentmcp.SetupInfo{State: "done", Note: "setup done"},
+				Next: "Ready. Work in " + s.br.Worktree + "."},
+			Outcome: agentmcp.BranchExisting,
+		})
+	}
+	return out, nil
+}
+
+func (s *benchSpaceR) SpawnTask(ctx context.Context, c agentmcp.SpaceCall, a agentmcp.CreateTaskArgs) (agentmcp.CreateTaskResult, error) {
+	res, err := s.spikeSpace.SpawnTask(ctx, c, a)
+	res.Next = "The child starts at its first stage with your brief as its first handover. Read its progress in state.yaml, chain."
+	return res, err
+}
+
+// benchSetupR is the implementation arm: the real tool surface of a Space grant (submit, state, and
+// create_task for an orchestrator) and the task folder with its Kira-written files, granted with --add-dir.
 func benchSetupR(*testing.T, benchBaseline) func(*testing.T, *spikeRun, spikeFlow) (string, []string, func()) {
 	return func(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string, func()) {
 		if fl.id == "F2" || fl.id == "F3" {
 			return benchSetupRProof(t, r, fl)
 		}
-		// The folder Part 3 leaves: the real README, the task's notes and handed handovers.
-		writeFile(t, filepath.Join(r.taskDir, "README.md"), taskfiles.Readme(taskfiles.ReadmeInput{TaskID: "t-1", Title: "Orders ledger", Step: "implement"}))
+		orch := fl.id == "F4" || fl.id == "F6"
+		in := taskfiles.ReadmeInput{TaskID: "t-1", Title: "Orders ledger", Step: "implement"}
+		addDirs := []string{r.taskDir}
+		if fl.id == "F4" {
+			for _, c := range []struct{ id, title string }{{"c-billing", "Billing API"}, {"c-settings", "Settings UI"}} {
+				dir := filepath.Join(r.tasks, c.id)
+				seedHistory(t, filepath.Join(benchFixtures, "children", c.id), dir, false)
+				in.Children = append(in.Children, taskfiles.ReadmeChild{ID: c.id, Title: c.title, LatestHandover: "handovers/0003-review-to-implement.md"})
+				addDirs = append(addDirs, dir)
+			}
+		}
+		writeFile(t, filepath.Join(r.taskDir, "README.md"), taskfiles.Readme(in))
 		seedHistory(t, filepath.Join(benchFixtures, "t1"), r.taskDir, false)
+		writeFile(t, filepath.Join(r.taskDir, "task.yaml"), string(mustRead(t, filepath.Join(benchFixtures, "t1", "task.yaml"))))
+		stateSrc := filepath.Join(benchFixtures, "states-r", fl.id+".yaml")
+		stateYAML := func(done bool) string {
+			b := strings.ReplaceAll(string(mustRead(t, stateSrc)), "__WT__", r.wt)
+			if done {
+				b = strings.Replace(strings.Replace(b, "status: waiting", "status: done", 1), "installing dependencies", "setup done", 1)
+			}
+			return taskfiles.Header(taskfiles.KindState) + b
+		}
+		statePath := filepath.Join(r.taskDir, "state.yaml")
+		writeFile(t, statePath, stateYAML(false))
+		if fl.id == "F5" { // Kira rewrites state.yaml when setup ends
+			time.AfterFunc(time.Until(r.ready), func() { _ = os.WriteFile(statePath, []byte(stateYAML(true)), 0o644) })
+		}
 		space := &benchSpaceR{spikeSpace: r.space, draft: filepath.Join(r.taskDir, "handovers", "draft-implement.md")}
 		srv := agentmcp.NewServer(agentmcp.Options{
-			Dir: filepath.Join(r.root, "mcp"), Space: space, Orchestrator: space, Outcomes: space,
+			Dir: filepath.Join(r.root, "mcp"), Space: space, Orchestrator: space,
 			OnFinish: func(_ string, f agentmcp.Finish) { r.finishes = append(r.finishes, f) },
 		})
 		claudeProv, ok := providers.New().Get("claude")
 		if !ok {
 			t.Fatal("no claude provider")
 		}
-		cfg, release, err := srv.Register(agentmcp.Grant{RunID: "run-1", TaskID: "t-1", Space: true, Agent: claudeProv})
+		cfg, release, err := srv.Register(agentmcp.Grant{RunID: "run-1", TaskID: "t-1", Space: true, Orchestrator: orch, Agent: claudeProv})
 		if err != nil {
 			t.Fatal(err)
 		}
-		return cfg, []string{r.taskDir}, func() { release(); _ = srv.Close() }
+		return cfg, addDirs, func() { release(); _ = srv.Close() }
 	}
 }
 
@@ -200,11 +246,11 @@ func benchSetupT(_ *testing.T, base benchBaseline) func(*testing.T, *spikeRun, s
 				return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: base.FinishAck}}}, nil
 			},
 			"list_tasks": func(ctx context.Context, _ *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				res, _ := r.space.ListTasks(ctx, agentmcp.SpaceCall{}, agentmcp.ListTasksArgs{})
+				res, _ := r.space.ListTasks(ctx, agentmcp.SpaceCall{}, frozenListTasksArgs{})
 				return textResult(res)
 			},
 			"task_chain": func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				var a agentmcp.TaskChainArgs
+				var a frozenTaskChainArgs
 				if err := json.Unmarshal(req.Params.Arguments, &a); err != nil {
 					return errResult(err.Error()), nil
 				}
@@ -389,14 +435,14 @@ func benchReport(recs []spikeRec, flows, arms []string, spent float64, planned i
 		}
 	}
 	if slices.Contains(arms, "T") && slices.Contains(arms, "R") {
-		b.WriteString("\n### Gate, R over T\n\n| Flow | Cost R/T | Context R/T | Pass R vs T | Verdict |\n|---|---|---|---|---|\n")
+		b.WriteString("\n### Gate, R over T\n\n| Flow | Cost R/T | Context R/T | Pass R vs T | Failed + retries R vs T | Verdict |\n|---|---|---|---|---|---|\n")
 		for _, f := range flows {
 			t, r := agg[f+"/T"], agg[f+"/R"]
 			if t.runs == 0 || r.runs == 0 {
 				continue
 			}
 			cost, ctx := median(r.cost)/median(t.cost), median(r.cf)/median(t.cf)
-			ok := cost <= 1.2 && ctx <= 1.0 && r.pass >= t.pass
+			ok := cost <= 1.2 && ctx <= benchCtxBound(f) && r.pass >= t.pass && fails(r) <= fails(t)
 			verdict := "pass"
 			if !ok {
 				verdict = "fail"
@@ -404,7 +450,7 @@ func benchReport(recs []spikeRec, flows, arms []string, spent float64, planned i
 					verdict = "fail, inconclusive: Opus review of the raw runs"
 				}
 			}
-			fmt.Fprintf(&b, "| %s | %.2f | %.2f | %d vs %d | %s |\n", f, cost, ctx, r.pass, t.pass, verdict)
+			fmt.Fprintf(&b, "| %s | %.2f (max %.2f) | %.2f (max %.2f) | %d vs %d | %.2f vs %.2f | %s |\n", f, cost, 1.2, ctx, benchCtxBound(f), r.pass, t.pass, fails(r), fails(t), verdict)
 		}
 	}
 	b.WriteString("\n### Runs\n\n| Flow | Arm | Rep | Pass | Cost | Turns | Why |\n|---|---|---|---|---|---|---|\n")
@@ -412,6 +458,23 @@ func benchReport(recs []spikeRec, flows, arms []string, spent float64, planned i
 		fmt.Fprintf(&b, "| %s | %s | %d | %s | %.4f | %d | %s |\n", r.Flow, r.Arm, r.Rep, yn(r.Pass), r.Cost, r.Turns, strings.ReplaceAll(r.Why, "|", "/"))
 	}
 	return b.String()
+}
+
+// benchCtxBound is the context gate of plan 14.1: 1.05 on the file-read flows F1 to F4, 1.0 on F5 and F6.
+func benchCtxBound(flow string) float64 {
+	if flow == "F5" || flow == "F6" {
+		return 1.0
+	}
+	return 1.05
+}
+
+// fails is the mean of failed edit-path calls plus retries per run.
+func fails(g spikeAgg) float64 {
+	fe := make([]float64, len(g.failed))
+	for i := range fe {
+		fe[i] = g.failed[i] + g.retr[i]
+	}
+	return mean(fe)
 }
 
 // inconclusive is true when the gap between the medians is smaller than the larger run-to-run range.
@@ -557,7 +620,7 @@ func benchSetupRProof(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string
 	}
 	r.realProof = func() (*spikeProof, bool, string) { return storedProof(f, task.ID, board, want) }
 	srv := agentmcp.NewServer(agentmcp.Options{
-		Dir: filepath.Join(r.root, "mcp"), Space: board, Orchestrator: board, Outcomes: board,
+		Dir: filepath.Join(r.root, "mcp"), Space: board, Orchestrator: board,
 		OnFinish: func(_ string, f agentmcp.Finish) { r.finishes = append(r.finishes, f) },
 	})
 	claudeProv, ok := providers.New().Get("claude")
