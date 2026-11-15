@@ -891,6 +891,21 @@ Efficiency is measured for the whole migration, not only the spike.
   Result carries a short summary: per-flow final ratios, gate verdict, D-Q2 verdict, Kira-side
   numbers.
 
+### Spike result (Part 1)
+
+Full tables, per-metric verdicts and every run: `P643-spike-results.md`. Test:
+`apps/kira-space/tests/claude/details_spike_test.go` (opt-in, `KIRA_SPIKE=run`; flows F1 to F6, F6
+added by the user: orchestrator creates 2 child tasks). 48 runs, 0.97 USD. Gate (user re-weighted:
+cost, final context, pass rate, edit ease; turns reported only), haiku medians F over T:
+
+- Cost: F1 1.06, F2 1.38, F3 1.29, F4 1.15, F5 1.30, F6 1.24. Limit 1.2 (F6 1.1): passes F1 and F4 only.
+- Final context: 1.02 to 1.08 in every flow. Limit 1.0: fails all six, by 2 to 8 percent.
+- Pass rate: F3 files 2/3 (one run edited the proof and never submitted) versus 3/3; all else equal.
+- Edit ease: F2 files worse (1.00 versus 0.67 failed or retried per run); others equal or better.
+- Verdict: NO-GO on all six flows. The user picks: (a) files stay source of truth, writes go through
+  tools that write the files, or (b) stop P643 after the spike. Turn-1 context is equal because
+  Claude Code defers MCP tool schemas behind ToolSearch, so fewer tools did not shrink context.
+
 ## 15. Tests per Part (IPC split)
 
 Each feature Part ships one Go flow test and one UI spec on a shared contract.
