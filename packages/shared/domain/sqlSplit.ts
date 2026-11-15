@@ -8,13 +8,22 @@
 // The quote/comment/dollar-quote scanning itself is `sql-lex.ts`'s `scanSqlSpan` —
 // hoisted out of here (and `sql-lint.ts`) into one shared scanner both now call. No behaviour
 // change: this file keeps its own `;`-splitting/backslash-escape/dollar-quoting semantics exactly.
-import { resolveLexOptions, type SqlScanOptions, scanSqlSpan } from './sqlLex';
+import { resolveLexOptions, type SqlLexOptions, type SqlScanOptions, scanSqlSpan } from './sqlLex';
 
 export interface SqlStatement {
   text: string;
   /** Offsets into the original source, not `text` — `text` is trimmed, these are not. */
   start: number;
   end: number;
+  /** Terminator in effect for the statement; set only when not `;` (MySQL `DELIMITER`). */
+  delimiter?: string;
+}
+
+/** A consumed `DELIMITER <token>` line: `[start, end)` is the whole line incl. its newline. */
+export interface DelimiterDirective {
+  start: number;
+  end: number;
+  delimiter: string;
 }
 
 /** See `sql-lex.ts`'s own `SqlLexOptions` field doc comments (P115 H5: this used to carry its own
@@ -71,32 +80,105 @@ function createBlockTracker(source: string) {
   };
 }
 
-export function splitSqlStatements(source: string, options?: SplitSqlOptions): SqlStatement[] {
+/** Parses a `DELIMITER <token>` line starting at line start `i`; null when it is ordinary SQL
+ *  (no argument, unterminated quote, token with a backslash: the `mysql` client refuses those). */
+function readDirective(source: string, i: number): { delimiter: string; end: number } | null {
+  let j = i;
+  while (source[j] === ' ' || source[j] === '\t') j++;
+  if (source.slice(j, j + 9).toLowerCase() !== 'delimiter') return null;
+  j += 9;
+  if (source[j] !== ' ' && source[j] !== '\t') return null;
+  while (source[j] === ' ' || source[j] === '\t') j++;
+  const q = source[j];
+  let delimiter: string;
+  if (q === "'" || q === '"' || q === '`') {
+    const close = source.indexOf(q, j + 1);
+    const eol = source.indexOf('\n', j + 1);
+    if (close === -1 || (eol !== -1 && close > eol)) return null;
+    delimiter = source.slice(j + 1, close);
+    j = close + 1;
+  } else {
+    delimiter = /^\S*/.exec(source.slice(j))?.[0] ?? '';
+    j += delimiter.length;
+  }
+  if (delimiter.length === 0 || delimiter.includes('\\')) return null;
+  const eol = source.indexOf('\n', j);
+  return { delimiter, end: eol === -1 ? source.length : eol + 1 };
+}
+
+/** Only whitespace and non-executable comments; `/*!` and `/*M!` comments run on the server. */
+function isCommentOnly(text: string, lexOptions: SqlLexOptions): boolean {
+  let i = 0;
+  while (i < text.length) {
+    if (/\s/.test(text[i] ?? '')) {
+      i++;
+      continue;
+    }
+    const span = scanSqlSpan(text, i, lexOptions);
+    if (span?.kind === 'lineComment') {
+      i = span.end;
+    } else if (span?.kind === 'blockComment' && !/^\/\*M?!/.test(text.slice(i, i + 4))) {
+      i = span.end;
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function splitSqlScript(
+  source: string,
+  options?: SplitSqlOptions,
+): { statements: SqlStatement[]; directives: DelimiterDirective[] } {
   const lexOptions = resolveLexOptions(options);
   const statements: SqlStatement[] = [];
+  const directives: DelimiterDirective[] = [];
   const block = createBlockTracker(source);
   const n = source.length;
   let i = 0;
   let stmtStart = 0;
+  let delimiter = ';';
 
   const pushIfNonEmpty = (end: number): void => {
     const text = source.slice(stmtStart, end).trim();
-    if (text.length > 0) statements.push({ text, start: stmtStart, end });
+    if (text.length === 0) return;
+    if (lexOptions.delimiterDirective && isCommentOnly(text, lexOptions)) return;
+    const stmt: SqlStatement = { text, start: stmtStart, end };
+    if (delimiter !== ';') stmt.delimiter = delimiter;
+    statements.push(stmt);
   };
 
   while (i < n) {
+    if (lexOptions.delimiterDirective && (i === 0 || source[i - 1] === '\n')) {
+      const directive = readDirective(source, i);
+      if (directive) {
+        pushIfNonEmpty(i);
+        directives.push({ start: i, end: directive.end, delimiter: directive.delimiter });
+        delimiter = directive.delimiter;
+        i = directive.end;
+        stmtStart = i;
+        block.reset();
+        continue;
+      }
+    }
+    if (delimiter !== ';' && source.startsWith(delimiter, i)) {
+      pushIfNonEmpty(i);
+      i += delimiter.length;
+      stmtStart = i;
+      continue;
+    }
     const span = scanSqlSpan(source, i, lexOptions);
     if (span) {
       i = span.end;
       continue;
     }
     const c = source[i] ?? '';
-    const wordLength = lexOptions.compoundBlocks ? block.step(i, c) : 0;
+    const wordLength = lexOptions.compoundBlocks && delimiter === ';' ? block.step(i, c) : 0;
     if (wordLength > 0) {
       i += wordLength;
       continue;
     }
-    if (c === ';' && block.depth === 0) {
+    if (delimiter === ';' && c === ';' && block.depth === 0) {
       pushIfNonEmpty(i);
       i++;
       stmtStart = i;
@@ -106,7 +188,11 @@ export function splitSqlStatements(source: string, options?: SplitSqlOptions): S
     i++;
   }
   pushIfNonEmpty(n);
-  return statements;
+  return { statements, directives };
+}
+
+export function splitSqlStatements(source: string, options?: SplitSqlOptions): SqlStatement[] {
+  return splitSqlScript(source, options).statements;
 }
 
 /** Where `s`'s own trimmed text starts within its raw (untrimmed) `[start, end)` span —

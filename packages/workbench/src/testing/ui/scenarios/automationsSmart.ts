@@ -443,10 +443,10 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
   // Contract smart. Backend half: termflow TestSmartScriptSpace stores the same
   // fixture against the fake claude.
   for (const outcome of [
-    { key: 'done', label: 'Succeeded', summary: 'summary-done' },
-    { key: 'failed', label: 'Failed', summary: 'summary-failed' },
+    { key: 'done', label: 'Succeeded', summary: 'summary-done', reason: null },
+    { key: 'failed', label: 'Failed', summary: null, reason: 'summary-failed' },
   ] as const) {
-    test(`contract: a smart script run ends ${outcome.label} with the agent summary`, async ({
+    test(`contract: a smart script run ends ${outcome.label}${outcome.reason ? ' with the agent reason' : ''}`, async ({
       relaunch,
     }) => {
       const suffix = outcome.key === 'done' ? '' : '#failed';
@@ -489,7 +489,17 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
       });
       const view = page.locator('[data-testid="script-run-view"]');
       await expect(view.locator('[data-testid="run-status"]')).toHaveText(outcome.label);
-      await expect(view.locator('[data-testid="run-outcome-summary"]')).toHaveText(outcome.summary);
+      // finish_step has no summary: a done run's one-line reason is its summary, a failure shows its reason.
+      if (outcome.summary) {
+        await expect(view.locator('[data-testid="run-outcome-summary"]')).toHaveText(
+          outcome.summary,
+        );
+      } else {
+        await expect(view.locator('[data-testid="run-outcome-summary"]')).toHaveCount(0);
+      }
+      if (outcome.reason) {
+        await expect(view.locator('[data-testid="run-outcome-reason"]')).toHaveText(outcome.reason);
+      }
     });
   }
 

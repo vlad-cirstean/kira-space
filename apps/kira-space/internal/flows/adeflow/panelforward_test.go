@@ -72,20 +72,12 @@ func TestPanelForward(t *testing.T) {
 	openLaunch(t, app, launch)
 	waitSession(t, app, launch.SessionID, "running")
 
-	svc := app.W.ProofStore
-	proofID := closedProof(t, svc, "Checks", "table")
 	for _, b := range []string{"alpha\nbravo EDIT\ncharlie\ndelta\necho\nfoxtrot\ngolf\nSENTINEL-FAR\n", "alpha\nbravo final\ncharlie\ndelta\necho\nfoxtrot\ngolf\nSENTINEL-FAR\n"} {
 		if err := app.W.AdeTask.UpdateHandover(ctx, adewire.UpdateHandoverArgs{ID: note.ID, Body: b}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	if _, err := app.W.AdeTask.AddLink(ctx, adewire.AddLinkArgs{TaskID: taskID, Text: "Runbook https://wiki.example/runbook"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := app.W.AdeTask.LinkProof(ctx, adewire.LinkProofArgs{TaskID: taskID, ProofID: proofID}); err != nil {
-		t.Fatal(err)
-	}
-	if err := app.W.AdeTask.UnlinkProof(ctx, adewire.LinkProofArgs{TaskID: taskID, ProofID: proofID}); err != nil {
 		t.Fatal(err)
 	}
 	title := "Fix login form"
@@ -100,7 +92,7 @@ func TestPanelForward(t *testing.T) {
 	}
 	if strings.Join(kinds, ",") != "note,link,field" || len(offer.Targets) != 1 || offer.Targets[0].SessionID != launch.SessionID ||
 		offer.Unreachable != 0 || offer.StepID != "design" {
-		t.Fatalf("offer = %+v, want note, link, field (the proof round trip is net empty) and one target", offer)
+		t.Fatalf("offer = %+v, want note, link, field and one target", offer)
 	}
 	for _, want := range []string{"-bravo", "+bravo final", "+ Fix login form", "- Fix login", "https://wiki.example/runbook"} {
 		if !strings.Contains(offer.Preview, want) {

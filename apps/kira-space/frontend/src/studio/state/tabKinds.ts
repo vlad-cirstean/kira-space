@@ -59,6 +59,7 @@ import {
   variableSetTabStateSchema,
 } from '../../state/tabDomain';
 import { useTabsStore } from '../../state/tabs';
+import { useApiTabCloseStore } from '../api/state/tabClose';
 import { useTreeStore } from '../project/state/tree';
 import { discoverDirty } from '../views/console/kibana/savedDiscover';
 import { dropForTab as dropConsoleResultPagesForTab } from '../views/console/resultPages';
@@ -286,6 +287,8 @@ export const STUDIO_TAB_KINDS: TabKindRegistry<
     }),
     // D2: the response lives in the view's own runtime store (views/httprequest/state.ts),
     // freed by cleanupTabRuntime — there is no page store of this kind's own to drop.
+    isDirty: (id) => useApiTabCloseStore().closeState(id) !== 'clean',
+    confirmClose: (id) => useApiTabCloseStore().confirmClose(id),
     dropResources: noDrop,
     // D2: there is no project panel to reveal an HTTP request into. P71 §5.2: the incognito
     // toggle is the one thing this kind appends instead.
@@ -318,6 +321,8 @@ export const STUDIO_TAB_KINDS: TabKindRegistry<
     }),
     // D2: the runtime (and a still-running call) lives in views/grpcrequest/state.ts, freed —
     // and cancelled — by registerTabRuntimeCleanup, not by this hook.
+    isDirty: (id) => useApiTabCloseStore().closeState(id) !== 'clean',
+    confirmClose: (id) => useApiTabCloseStore().confirmClose(id),
     dropResources: noDrop,
     // D2: there is no project panel to reveal a gRPC request into. P71 §5.2: 'http-request''s own
     // incognitoMenuExtras.

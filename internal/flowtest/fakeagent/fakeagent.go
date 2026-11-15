@@ -123,6 +123,8 @@ type MCPCall struct {
 	Args   map[string]any `json:"args,omitempty"`
 	// Tolerate records a tool error as the result and carries on instead of ending the run.
 	Tolerate bool `json:"tolerate,omitempty"`
+	// Files are written under the task folder the prompt names (path relative to it) before the call.
+	Files map[string]string `json:"files,omitempty"`
 }
 
 // PromptRule answers a headless call whose --system-prompt contains System. Doc narrows it to one
@@ -366,7 +368,8 @@ func runMCPCalls(action Action, dir string, args []string) (code int, done bool)
 	outs := make([]outcome, len(action.MCP))
 	play := func(i int) {
 		c := action.MCP[i]
-		outs[i].res, outs[i].err = callTool(cfg, args, c.Server, c.Tool, c.Args)
+		writeTaskFiles(c.Files)
+		outs[i].res, outs[i].err = callTool(lastPrompt, cfg, args, c.Server, c.Tool, c.Args)
 	}
 	if action.Parallel {
 		var wg sync.WaitGroup
@@ -382,14 +385,14 @@ func runMCPCalls(action Action, dir string, args []string) (code int, done bool)
 		}
 		o := outs[i]
 		if o.err != nil && o.res != nil && c.Tolerate {
-			recordMCPResult(dir, c.Tool, o.res)
+			recordMCPResult(dir, c.Tool, c.Args, o.res)
 			continue
 		}
 		if o.err != nil {
 			fmt.Fprintln(os.Stderr, "mcp:", o.err)
 			return 3, true
 		}
-		recordMCPResult(dir, c.Tool, o.res)
+		recordMCPResult(dir, c.Tool, c.Args, o.res)
 	}
 	return 0, false
 }
@@ -398,7 +401,7 @@ func runMCPCalls(action Action, dir string, args []string) (code int, done bool)
 func finishAction(action Action, args []string, headless bool) int {
 	cfg := argAfter(args, "--mcp-config")
 	finish := func(status string) int {
-		if _, err := callTool([]string{cfg}, nil, agentmcp.ServerName, "finish_step", map[string]any{"status": status, "summary": "summary-" + status, "reason": "summary-" + status}); err != nil {
+		if _, err := callTool(lastPrompt, []string{cfg}, nil, agentmcp.ServerName, "finish_step", map[string]any{"status": status, "reason": "summary-" + status}); err != nil {
 			fmt.Fprintln(os.Stderr, "finish_step:", err)
 			return 3
 		}
@@ -431,6 +434,41 @@ func finishAction(action Action, args []string, headless bool) int {
 		emitJSON(map[string]any{"type": "result", "subtype": "success", "num_turns": 1})
 	}
 	return 0 // "nofinish"
+}
+
+var (
+	lastPrompt  []byte
+	promptFiles = regexp.MustCompile(`Task folder: (.+?)\. See README\.md there\.`)
+	draftAsked  = regexp.MustCompile(`write (handovers/draft-[^ ,]+?\.md), then call state step\.finish`)
+)
+
+// writeTaskFiles writes files under the task folder the files prompt names.
+func writeTaskFiles(files map[string]string) {
+	m := promptFiles.FindSubmatch(lastPrompt)
+	if m == nil {
+		return
+	}
+	for rel, body := range files {
+		path := filepath.Join(string(m[1]), rel)
+		_ = os.MkdirAll(filepath.Dir(path), 0o755)
+		_ = os.WriteFile(path, []byte(body), 0o644)
+	}
+}
+
+// writeDraftAsked writes the draft a refused done finish names, in the task folder the files prompt
+// names, as the agent would on that refusal. It reports whether it wrote one.
+func writeDraftAsked(prompt []byte, refusal, body string) bool {
+	d := draftAsked.FindStringSubmatch(refusal)
+	m := promptFiles.FindSubmatch(prompt)
+	if d == nil || m == nil {
+		return false
+	}
+	path := filepath.Join(string(m[1]), d[1])
+	if _, err := os.Stat(path); err != nil { // a parallel branch's run may have written it since the refusal
+		_ = os.MkdirAll(filepath.Dir(path), 0o755)
+		_ = os.WriteFile(path, []byte(body), 0o644)
+	}
+	return true
 }
 
 var promptPath = regexp.MustCompile(`"path":"([^"]*)"`)
@@ -480,6 +518,7 @@ func answerPrompt(scen Scenario, dir string, args []string) (code int, answered 
 // answered the whole call.
 func startHeadless(scen Scenario, dir, stem string, args []string) (code int, done bool) {
 	prompt, _ := io.ReadAll(os.Stdin)
+	lastPrompt = prompt
 	_ = os.WriteFile(stem+".prompt", prompt, 0o644)
 	if doc := promptDoc(prompt); doc != "" {
 		_ = os.Setenv("KIRA_DOC", doc)
@@ -802,7 +841,25 @@ func listStatus(ok bool) string {
 
 // callTool connects to server from the --mcp-config files (HTTP or stdio entry) or, when argv makes
 // claude load the user's servers, from the user's config, and calls one tool.
-func callTool(cfgPaths, argv []string, server, tool string, args map[string]any) (*mcp.CallToolResult, error) {
+func callTool(prompt []byte, cfgPaths, argv []string, server, tool string, args map[string]any) (*mcp.CallToolResult, error) {
+	res, err := callToolOnce(cfgPaths, argv, server, tool, args)
+	if status, ok := finishStatus(tool, args); ok && writeDraftAsked(prompt, refusalText(res, err), "summary-"+status) {
+		return callToolOnce(cfgPaths, argv, server, tool, args)
+	}
+	return res, err
+}
+
+// refusalText is where a refused finish says what it wants: the error, or the reply of a state call,
+// which reports a refusal as an invalid item.
+func refusalText(res *mcp.CallToolResult, err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	raw, _ := json.Marshal(res)
+	return string(raw)
+}
+
+func callToolOnce(cfgPaths, argv []string, server, tool string, args map[string]any) (*mcp.CallToolResult, error) {
 	var entry serverEntry
 	found := false
 	for _, path := range cfgPaths {
@@ -854,6 +911,12 @@ func callTool(cfgPaths, argv []string, server, tool string, args map[string]any)
 		return nil, err
 	}
 	defer sess.Close()
+	if tool == "finish_step" {
+		// A Space grant ends its step through state step.finish; a plain run still has finish_step.
+		if listed, err := sess.ListTools(ctx, nil); err == nil && !slices.ContainsFunc(listed.Tools, func(t *mcp.Tool) bool { return t.Name == "finish_step" }) {
+			tool, args = "state", map[string]any{"action": "step.finish", "args": args}
+		}
+	}
 	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: tool, Arguments: args})
 	if err != nil {
 		return nil, err
@@ -866,8 +929,9 @@ func callTool(cfgPaths, argv []string, server, tool string, args map[string]any)
 
 // CallTool calls one tool on a server named in the MCP config files (paths or inline JSON), as the
 // fake claude does for finish_step; a test provider's headless role uses it with HeadlessSpec.MCPConfigs.
-func CallTool(cfgPaths []string, server, tool string, args map[string]any) error {
-	_, err := callTool(cfgPaths, nil, server, tool, args)
+// A done finish the server refuses for a missing draft writes the draft it names, as the agent would.
+func CallTool(prompt string, cfgPaths []string, server, tool string, args map[string]any) error {
+	_, err := callTool([]byte(prompt), cfgPaths, nil, server, tool, args)
 	return err
 }
 
@@ -881,13 +945,32 @@ func toolText(res *mcp.CallToolResult) string {
 	return strings.Join(parts, " ")
 }
 
-// recordMCPResult keeps what a scripted tool call returned, as <dir>/mcp-<tool>-<n>.json.
-func recordMCPResult(dir, tool string, res *mcp.CallToolResult) {
+// finishStatus is the status of a finish_step call or a state step.finish call, which end a step.
+func finishStatus(tool string, args map[string]any) (string, bool) {
+	if tool == "state" {
+		if action, _ := args["action"].(string); action != "step.finish" {
+			return "", false
+		}
+		inner, _ := args["args"].(map[string]any)
+		args = inner
+	} else if tool != "finish_step" {
+		return "", false
+	}
+	status, _ := args["status"].(string)
+	return status, true
+}
+
+// recordMCPResult keeps what a scripted tool call returned, as <dir>/mcp-<tool>-<n>.json. A state call
+// is named by its action, mcp-branch.request-<n>.json, so each action counts on its own.
+func recordMCPResult(dir, tool string, args map[string]any, res *mcp.CallToolResult) {
+	if action, _ := args["action"].(string); tool == "state" && action != "" {
+		tool = action
+	}
 	var v any = res.StructuredContent
 	if res.IsError {
 		v = map[string]any{"isError": true, "text": toolText(res)}
-	} else if v == nil {
-		v = res.Content
+	} else if v == nil || len(res.Content) > 1 {
+		v = res.Content // extra blocks (finish artifacts) carry what the structured reply does not
 	}
 	raw, err := json.Marshal(v)
 	if err != nil {

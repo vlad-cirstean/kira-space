@@ -21,13 +21,9 @@ func chartPayload(t *testing.T, f *fixture, id string, rev, ordinal int) proof.S
 func TestProofCharts(t *testing.T) {
 	f := newFixture(t)
 	f.save(t, "Deploy health", lineChartStep(), stackedBarStep(6), histogramStep(), areaStep(), scatterStep(), pieStep())
-	id := sessionID(t, f.app, "Deploy health")
+	id := f.idOf(t, "Deploy health")
 
-	list, err := f.app.W.Proof.Sessions()
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.app.Contract(t, "proof-chart", "ProofService.Sessions", list, maskIDs)
+	f.app.Contract(t, "proof-chart", "AdeTaskService.TaskProofs", f.proofs(t), maskIDs)
 	det := session(t, f.app, id)
 	f.app.Contract(t, "proof-chart", "ProofService.Session", det, maskIDs)
 	rev := det.Current.Rev

@@ -219,7 +219,7 @@ CREATE TABLE "ade_task_handovers" (
   session_id TEXT NOT NULL DEFAULT '',
   body TEXT NOT NULL,
   from_task_id TEXT REFERENCES ade_tasks (id) ON DELETE SET NULL
-) STRICT;
+, rel_path TEXT NOT NULL DEFAULT '') STRICT;
 
 CREATE TABLE "ade_task_plan" (
   task_id TEXT NOT NULL PRIMARY KEY REFERENCES ade_tasks (id) ON DELETE CASCADE,
@@ -633,7 +633,7 @@ CREATE TABLE "proof_revisions" (
   created_at INTEGER NOT NULL CHECK (created_at >= 0),
   closed_at INTEGER CHECK (closed_at IS NULL OR closed_at >= 0),
   draft_id TEXT UNIQUE,
-  reason TEXT NOT NULL DEFAULT '',
+  reason TEXT NOT NULL DEFAULT '', name TEXT NOT NULL DEFAULT '', summary TEXT NOT NULL DEFAULT '',
   PRIMARY KEY (session_id, rev)
 ) STRICT;
 
@@ -663,7 +663,7 @@ CREATE TABLE "proof_steps" (
   query TEXT NOT NULL DEFAULT '',
   language TEXT NOT NULL DEFAULT 'text',
   source TEXT NOT NULL DEFAULT '',
-  payload BLOB NOT NULL,
+  payload BLOB NOT NULL, step_key TEXT NOT NULL DEFAULT '',
   PRIMARY KEY (session_id, rev, ordinal),
   FOREIGN KEY (session_id, rev) REFERENCES proof_revisions (session_id, rev) ON DELETE CASCADE
 ) STRICT;
@@ -676,7 +676,7 @@ CREATE TABLE "proof_task_links" (
   kira_session_id TEXT NOT NULL DEFAULT '',
   step_id TEXT NOT NULL DEFAULT '',
   step_name TEXT NOT NULL DEFAULT ''
-) STRICT;
+, slug TEXT NOT NULL DEFAULT '') STRICT;
 
 CREATE TABLE "proof_view_state" (
   session_id TEXT NOT NULL,
@@ -778,6 +778,39 @@ CREATE TABLE "tabs" (
   path TEXT NOT NULL,
   workspace_id TEXT,
   state_json TEXT NOT NULL CHECK (json_valid(state_json))
+) STRICT;
+
+CREATE TABLE task_file_intents (
+  task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,
+  rel_path TEXT NOT NULL CHECK (rel_path <> ''),
+  sha256 TEXT NOT NULL,
+  writer TEXT NOT NULL,
+  created_at INTEGER NOT NULL CHECK (created_at >= 0),
+  PRIMARY KEY (task_id, rel_path)
+) STRICT;
+
+CREATE TABLE task_files (
+  task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,
+  rel_path TEXT NOT NULL CHECK (rel_path <> ''),
+  kind TEXT NOT NULL,
+  size INTEGER NOT NULL DEFAULT 0 CHECK (size >= 0),
+  version TEXT NOT NULL DEFAULT '',
+  sha256 TEXT NOT NULL DEFAULT '',
+  accepted_sha256 TEXT NOT NULL DEFAULT '',
+  accepted_by TEXT NOT NULL DEFAULT '',
+  accepted_at INTEGER NOT NULL DEFAULT 0 CHECK (accepted_at >= 0),
+  review TEXT NOT NULL DEFAULT 'accepted' CHECK (review IN ('accepted', 'pending', 'invalid')),
+  problem TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (task_id, rel_path)
+) STRICT;
+
+CREATE TABLE task_files_migration (
+  task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,
+  part TEXT NOT NULL CHECK (part <> ''),
+  state TEXT NOT NULL CHECK (state IN ('running', 'done', 'failed')),
+  done_at INTEGER NOT NULL DEFAULT 0 CHECK (done_at >= 0),
+  verify_json TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (task_id, part)
 ) STRICT;
 
 CREATE TABLE "ui_layout" (
@@ -898,6 +931,8 @@ CREATE INDEX op_log_started ON op_log (started_ms, id);
 
 CREATE INDEX proof_sessions_closed ON proof_sessions (closed_at);
 
+CREATE UNIQUE INDEX proof_task_links_slug ON proof_task_links (task_id, slug) WHERE slug <> '';
+
 CREATE INDEX proof_task_links_task ON proof_task_links (task_id);
 
 CREATE INDEX script_runs_active ON script_runs (script_id) WHERE state IN ('running', 'waiting');
@@ -911,4 +946,6 @@ CREATE INDEX script_runs_terminal ON script_runs (terminal_id) WHERE state = 'ru
 CREATE INDEX tabs_connection ON tabs (connection_id);
 
 CREATE INDEX tabs_window ON tabs (window_key, sort_order);
+
+CREATE INDEX task_files_review ON task_files (task_id, review);
 

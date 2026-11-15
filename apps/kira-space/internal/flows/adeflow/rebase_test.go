@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"go.yaml.in/yaml/v3"
+
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
@@ -79,7 +81,7 @@ var rebaseMask = flowharness.Mask("startedAt", "finishedAt", "sessionId", "befor
 
 const rebaseSh = "git fetch -q origin && git rebase -q origin/main"
 
-func done() map[string]any { return map[string]any{"status": "done", "summary": "rebased"} }
+func done() map[string]any { return map[string]any{"status": "done"} }
 
 func (f *rbFx) rebase(t *testing.T, br adewire.Branch, args adewire.RebaseArgs) adewire.RebaseStart {
 	t.Helper()
@@ -153,7 +155,7 @@ func TestRebaseRun(t *testing.T) {
 		f.advanceMain(t, "clash.txt", "clash.txt\n\ntheirs\n")
 		f.waitBoardBehind(t, task.ID, 2) // the watcher lags a push; a stale base made behind 1 and no conflict
 		f.agent(rebaseSh+" || true", map[string]any{
-			"status": "failed", "summary": "conflict", "reason": "clash.txt conflicts",
+			"status": "failed", "reason": "clash.txt conflicts",
 			"conflictedFiles": []string{"clash.txt"}, "lastGitError": "CONFLICT (add/add)", "tried": "plain rebase",
 		})
 		run := f.waitRebase(t, task.ID, f.rebase(t, br, adewire.RebaseArgs{}).RunID)
@@ -352,16 +354,16 @@ func TestRebaseRun(t *testing.T) {
 		t.Logf("check-ref-format steps: %d", refChecks)
 	})
 
-	t.Run("run_outcome lists the failed rebase to a later step run of the same task only", func(t *testing.T) {
+	t.Run("state.yaml lists the failed rebase to a later step run of the same task", func(t *testing.T) {
 		f := newBaseFx(t)
 		saveWorkflow(t, f.app, "flow", flowYAML("flow", agentStep("one", "")+agentStep("two", "    before: approval\n")))
 		task, br := f.task(t, "Fix", adewire.BaseChoice{})
 		claude(f.app, map[string][]fakeagent.Action{"*": {
 			{Name: "done"},
 			{Name: "nofinish", MCP: []fakeagent.MCPCall{{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{
-				"status": "failed", "summary": "conflict", "reason": "clash", "conflictedFiles": []string{"x.txt"},
+				"status": "failed", "reason": "clash", "conflictedFiles": []string{"x.txt"},
 			}}}},
-			{Name: "done", MCP: []fakeagent.MCPCall{{Server: agentmcp.ServerName, Tool: "run_outcome", Args: map[string]any{"kind": "rebase"}}}},
+			{Name: "done"},
 		}})
 		if err := f.startRun(t, task, br, "feat/api-work"); err != nil {
 			t.Fatal(err)
@@ -388,9 +390,13 @@ func TestRebaseRun(t *testing.T) {
 		if !strings.Contains(prompt, "Last rebase of feat/api-work failed") {
 			t.Fatalf("step prompt lacks the failed-rebase line:\n%s", prompt)
 		}
-		out := fakeFile(t, f.app, "mcp-run_outcome-1.json")
-		if !strings.Contains(out, "clash") || !strings.Contains(out, "x.txt") {
-			t.Fatalf("run_outcome result = %s, want the rebase run's reason and conflicted files", out)
+		doc := stateYAML(t, f.app, task.ID, func(d map[string]any) bool {
+			raw, _ := yaml.Marshal(d["runs"])
+			return strings.Contains(string(raw), "clash")
+		})
+		raw, _ := yaml.Marshal(doc["runs"])
+		if !strings.Contains(string(raw), "x.txt") {
+			t.Fatalf("state.yaml runs = %s, want the rebase run's reason and conflicted files", raw)
 		}
 	})
 
@@ -439,7 +445,7 @@ func TestRebaseRun(t *testing.T) {
 		f.advanceMain(t, "clash.txt", "clash.txt\n\ntheirs\n")
 		claude(f.app, map[string][]fakeagent.Action{"*": {
 			{Name: "nofinish", Sh: rebaseSh + " || true", MCP: []fakeagent.MCPCall{{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{
-				"status": "failed", "summary": "conflict", "reason": "clash.txt conflicts",
+				"status": "failed", "reason": "clash.txt conflicts",
 			}}}},
 			{Name: "nofinish", Sh: "printf 'merged\\n' > clash.txt && git add clash.txt && GIT_EDITOR=true git rebase --continue", MCP: []fakeagent.MCPCall{{
 				Server: agentmcp.ServerName, Tool: "finish_step", Args: done(),
@@ -466,7 +472,7 @@ func TestRebaseRun(t *testing.T) {
 		task, br := f.task(t, "Fix", adewire.BaseChoice{})
 		claude(f.app, map[string][]fakeagent.Action{"*": {{Name: "nofinish", MCP: []fakeagent.MCPCall{{
 			Server: agentmcp.ServerName, Tool: "finish_step",
-			Args: map[string]any{"status": "failed", "summary": "stuck", "reason": "push rejected", "lastGitError": "non-fast-forward"},
+			Args: map[string]any{"status": "failed", "reason": "push rejected", "lastGitError": "non-fast-forward"},
 		}}}}})
 		if err := f.startRun(t, task, br, "feat/api-fix"); err != nil {
 			t.Fatal(err)

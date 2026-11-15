@@ -93,11 +93,17 @@ export const proofDiagramPayloadSchema = /*#__PURE__*/ z.object({
 });
 export type ProofDiagramPayload = z.infer<typeof proofDiagramPayloadSchema>;
 
-// A stored JPEG: the file's dimensions and size, and its bytes as standard base64.
+export const proofImageFormatSchema = /*#__PURE__*/ z.enum(['png', 'jpeg', 'webp', 'svg']);
+export type ProofImageFormat = z.infer<typeof proofImageFormatSchema>;
+
+// A proof image file: its format, dimensions, size and name beside proof.md, and its bytes as
+// standard base64.
 export const proofImagePayloadSchema = /*#__PURE__*/ z.object({
+  format: proofImageFormatSchema,
   width: z.number().int().positive(),
   height: z.number().int().positive(),
   bytes: z.number().int().positive(),
+  file: z.string(),
   base64: z.string(),
 });
 export type ProofImagePayload = z.infer<typeof proofImagePayloadSchema>;
@@ -139,20 +145,9 @@ export const proofViewStateSchema = /*#__PURE__*/ z.object({
 });
 export type ProofViewState = z.infer<typeof proofViewStateSchema>;
 
-export const proofSummarySchema = /*#__PURE__*/ z.object({
-  id: z.string(),
-  name: z.string(),
-  closedAt: z.number(),
-  steps: z.number().int(),
-  pending: z.boolean(),
-  seen: z.boolean(),
-  // Title of the task the session is attached to; '' when none.
-  taskTitle: z.string(),
-});
-export type ProofSummary = z.infer<typeof proofSummarySchema>;
-
 export const proofStepMetaSchema = /*#__PURE__*/ z.object({
   ordinal: z.number().int(),
+  id: z.string(),
   description: z.string(),
   language: proofLanguageSchema,
   source: z.string(),
@@ -173,6 +168,10 @@ export type ProofRevision = z.infer<typeof proofRevisionSchema>;
 
 export const proofDetailSchema = /*#__PURE__*/ z.object({
   id: z.string(),
+  // The proof's folder is tasks/<taskId>/proofs/<slug>.
+  taskId: z.string(),
+  taskTitle: z.string(),
+  slug: z.string(),
   name: z.string(),
   summary: z.string(),
   closedAt: z.number(),
@@ -226,15 +225,15 @@ export type ProofSaveJpegToResult = z.infer<typeof proofSaveJpegToResultSchema>;
 export type ProofOpenResult = z.infer<typeof proofOpenResultSchema>;
 export type ProofWindowTarget = z.infer<typeof proofWindowTargetSchema>;
 
-// kira:proof:changed and kira:proof:select payloads.
+// kira:proof:changed payload.
 export const proofChangedSchema = /*#__PURE__*/ z.object({ sessionId: z.string() });
-export const proofSelectSchema = /*#__PURE__*/ z.object({ sessionId: z.string() });
 export type ProofChanged = z.infer<typeof proofChangedSchema>;
-export type ProofSelect = z.infer<typeof proofSelectSchema>;
 
 // P520: payload of a proof.review approval item (internal/proof putReview).
 export const proofReviewPayloadSchema = /*#__PURE__*/ z.object({
   sessionId: z.string(),
+  taskId: z.string(),
+  slug: z.string(),
   name: z.string(),
   revision: z.number(),
   reason: z.string(),

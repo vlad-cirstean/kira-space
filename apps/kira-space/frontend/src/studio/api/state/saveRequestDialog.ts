@@ -21,6 +21,9 @@ interface SaveDialogState {
 }
 
 export const useSaveRequestDialogStore = defineStore('saveRequestDialog', () => {
+  // Settles at the next closeSaveDialog; a newer wait or open settles a pending one as dismissed.
+  let pendingClose: ((saved: boolean) => void) | null = null;
+
   const state = reactive<SaveDialogState>({
     open: false,
     tabId: null,
@@ -30,6 +33,8 @@ export const useSaveRequestDialogStore = defineStore('saveRequestDialog', () => 
 
   /** Save as… — the request view opens this without importing the dialog component. */
   function openSaveDialog(tabId: string, suggestedName: string, request: HttpSavedRequest): void {
+    pendingClose?.(false);
+    pendingClose = null;
     state.tabId = tabId;
     state.suggestedName = suggestedName;
     state.payload = { protocol: 'http', request };
@@ -42,16 +47,29 @@ export const useSaveRequestDialogStore = defineStore('saveRequestDialog', () => 
     suggestedName: string,
     request: GrpcSavedRequest,
   ): void {
+    pendingClose?.(false);
+    pendingClose = null;
     state.tabId = tabId;
     state.suggestedName = suggestedName;
     state.payload = { protocol: 'grpc', request };
     state.open = true;
   }
 
-  function closeSaveDialog(): void {
+  /** `saved` is true only when the dialog created and bound the row. */
+  function closeSaveDialog(saved = false): void {
     state.open = false;
     state.payload = null;
     state.tabId = null;
+    pendingClose?.(saved);
+    pendingClose = null;
+  }
+
+  /** Resolves true once the open dialog saved, false when it was dismissed. */
+  function waitForClose(): Promise<boolean> {
+    pendingClose?.(false);
+    return new Promise((resolve) => {
+      pendingClose = resolve;
+    });
   }
 
   return {
@@ -59,5 +77,6 @@ export const useSaveRequestDialogStore = defineStore('saveRequestDialog', () => 
     openSaveDialog,
     openSaveGrpcDialog,
     closeSaveDialog,
+    waitForClose,
   };
 });

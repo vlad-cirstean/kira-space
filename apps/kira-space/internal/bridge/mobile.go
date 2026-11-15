@@ -111,6 +111,8 @@ type MobileAccessService struct {
 	AgentSessions func() any
 	// AgentInfo is the agent provider's display facts for the phone.
 	AgentInfo func() any
+	// Approvals is the app's approvals queue; the phone sees its Space kinds.
+	Approvals mobileweb.Approvals
 	// Assets is the embedded mobile build.
 	Assets fs.FS
 	Hub    *mobileweb.Hub
@@ -152,7 +154,7 @@ func NewMobileAccessService(s *MobileAccessService) *MobileAccessService {
 				return nil, err
 			}
 			srv := mobileweb.New(mobileweb.Config{
-				Reader: s.Reader, AgentSessions: s.AgentSessions, AgentInfo: s.AgentInfo, Devices: s.Deps.Repos.MobileDevices,
+				Reader: s.Reader, AgentSessions: s.AgentSessions, AgentInfo: s.AgentInfo, Approvals: s.Approvals, Devices: s.Deps.Repos.MobileDevices,
 				Writer: s.Writer, Terminals: s.Terminals, AgentInputEnabled: s.agentInputEnabled,
 				Hub: s.Hub, Broker: s.Broker, Assets: s.Assets,
 				Port: cfg.Mobile.Port, Network: s.sup.network(), IsLAN: s.IsLAN, Now: s.Now,

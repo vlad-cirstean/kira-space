@@ -47,6 +47,8 @@ type promptInput struct {
 	Notes, Handover, HandoverFrom string
 	// Context lines (a rebase that did not finish) go after the body.
 	Context []string
+	// Files is the task-folder fragment; zero when the board has no files root.
+	Files llmprompts.FilesVars
 }
 
 // stepVars maps a run to the step prompt's template variables. Message and the step prompt arrive
@@ -59,7 +61,7 @@ func stepVars(in promptInput) llmprompts.StepVars {
 		StepPrompt: strings.TrimRight(substitute(in.Def.Prompt, in.Vars, false), "\n"),
 		Extra:      in.Extra, Context: in.Context,
 		Finish: agentmcp.FinishVars(resultSpecs(in.Def.Results)),
-		Notes:  capNotes(in.Notes), Handover: capNotes(in.Handover), HandoverFrom: in.HandoverFrom,
+		Notes:  capNotes(in.Notes), Handover: capNotes(in.Handover), HandoverFrom: in.HandoverFrom, Files: in.Files,
 	}
 	if in.Message != "" {
 		v.Message = strings.TrimRight(substitute(in.Message, in.Vars, false), "\n")
@@ -74,9 +76,17 @@ func composePrompt(src llmprompts.Source, in promptInput) string {
 }
 
 // composeResumePrompt is the message a resumed run gets, after a send-back or a restart: the line, then
-// the finish_step instruction, which follows the current step results.
-func composeResumePrompt(src llmprompts.Source, line string, results []adewire.StepResult) string {
-	return line + "\n\n" + agentmcp.FinishInstruction(src, resultSpecs(results)) + "\n"
+// the task-files reminder (a finished step's draft is consumed, so the resumed run writes a new one),
+// then the finish_step instruction, which follows the current step results.
+func composeResumePrompt(src llmprompts.Source, line string, files llmprompts.FilesVars, results []adewire.StepResult, space bool) string {
+	if files.Folder != "" {
+		line += "\n" + llmprompts.HeadlessSpaceFiles.Text(src, files)
+	}
+	finish := agentmcp.FinishInstruction
+	if !space { // a review round has no Space grant and finishes with finish_step
+		finish = agentmcp.PlainFinishInstruction
+	}
+	return line + "\n\n" + finish(src, resultSpecs(results)) + "\n"
 }
 
 // repoLine is one repo of a launch message.
@@ -102,10 +112,10 @@ func repoLineVars(repos []repoLine) []llmprompts.RepoLineVars {
 
 // composeManualMessage is the first message of a manual step's interactive session (SPEC2 section 5).
 // The step prompt sees every writable repo, joined with ", ".
-func composeManualMessage(src llmprompts.Source, step adewire.WorkflowStep, title, jiraKey, jiraURL, notes string, repos []repoLine, folder string, in handoverText) string {
+func composeManualMessage(src llmprompts.Source, step adewire.WorkflowStep, title, jiraKey, jiraURL, notes string, repos []repoLine, folder string, in handoverText, files llmprompts.FilesVars) string {
 	v := llmprompts.ManualVars{
 		StepName: step.Name, Title: title, JiraKey: jiraKey, JiraURL: jiraURL,
-		Notes: capNotes(notes), Repos: repoLineVars(repos), Folder: folder, Outside: step.OutsideRepo, Handover: capNotes(in.Body), HandoverFrom: in.From,
+		Notes: capNotes(notes), Repos: repoLineVars(repos), Folder: folder, Outside: step.OutsideRepo, Handover: capNotes(in.Body), HandoverFrom: in.From, Files: files,
 	}
 	if step.Prompt != "" {
 		v.StepPrompt = substitute(step.Prompt, repoVars(title, jiraKey, repos), false)
@@ -137,19 +147,19 @@ func capNotes(notes string) string {
 }
 
 // composeReviewMessage is the first message of a task's review agent.
-func composeReviewMessage(src llmprompts.Source, title, jiraKey, jiraURL, notes string, repos []repoLine, in handoverText) string {
+func composeReviewMessage(src llmprompts.Source, title, jiraKey, jiraURL, notes string, repos []repoLine, in handoverText, files llmprompts.FilesVars) string {
 	return llmprompts.AdeReviewMessage.Text(src, llmprompts.ReviewVars{
 		Title: title, JiraKey: jiraKey, JiraURL: jiraURL, Notes: capNotes(notes), Repos: repoLineVars(repos),
-		Handover: capNotes(in.Body), HandoverFrom: in.From,
+		Handover: capNotes(in.Body), HandoverFrom: in.From, Files: files,
 	})
 }
 
 // composeStartMessage is the first message of a branch-level Start session (SPEC2 section 9); step
 // is the first step not done, "" when the workflow has none.
-func composeStartMessage(src llmprompts.Source, title, jiraKey, jiraURL string, repo repoLine, step string, context []string, in handoverText) string {
+func composeStartMessage(src llmprompts.Source, title, jiraKey, jiraURL string, repo repoLine, step string, context []string, in handoverText, files llmprompts.FilesVars) string {
 	return llmprompts.AdeStartMessage.Text(src, llmprompts.StartVars{
 		Title: title, JiraKey: jiraKey, JiraURL: jiraURL,
 		Repo: repo.Nick, Branch: repo.Branch, Worktree: repo.Worktree, ReadOnlyRoot: repo.ReadOnlyRoot,
-		StepName: step, Context: context, Handover: capNotes(in.Body), HandoverFrom: in.From,
+		StepName: step, Context: context, Handover: capNotes(in.Body), HandoverFrom: in.From, Files: files,
 	})
 }

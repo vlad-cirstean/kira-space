@@ -307,7 +307,8 @@ describe('call() pre-flight (P168 Part 10 F21)', () => {
       await Promise.resolve();
 
       const { useTabsStore } = await import('../../../frontend/src/state/tabs');
-      useTabsStore().closeTab(closedTab);
+      // dropTabs, not closeTab: the tab holds a method, so closeTab would ask to discard first.
+      useTabsStore().dropTabs([closedTab]);
       grpcRequestViewStore.stop(stoppedTab);
       expect(grpcRequestViewStore.runtime[stoppedTab]?.status).toBe('cancelled');
 

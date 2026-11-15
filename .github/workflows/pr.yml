@@ -12,7 +12,8 @@ concurrency:
   group: pr-${{ github.ref }}
   cancel-in-progress: true
 
-# Only the aggregates `needs` (each its own matrix job); every other job starts at once.
+# Only the aggregates and the `go-split` consumer `go-shard` `needs`; every other job starts at once.
+# `go-split` prints the `go-shard` matrix from scripts/go-test-split.sh, the one place shards live.
 # Shared setup lives in .github/actions/setup.
 jobs:
   # Only the work that genuinely needs macOS: cgo-aware go vet/build (catches darwin build-tag
@@ -186,11 +187,30 @@ jobs:
             apps/kira-space/test-results/
           retention-days: 7
 
-  # Go packages that start no container, plus every package the container split does not name.
-  go:
-    name: go (Linux)
+  # Shard list for `go-shard`, read from scripts/go-test-split.sh so pr.yml cannot omit a shard and
+  # silently drop its packages.
+  go-split:
+    name: go-split (Linux)
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 5
+    outputs:
+      rest: ${{ steps.matrix.outputs.rest }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: matrix
+        run: echo "rest=$(sh scripts/go-test-split.sh --matrix rest)" >> "$GITHUB_OUTPUT"
+
+  # Go packages that start no container, plus every package the container group does not name.
+  # flows/adeflow is split by test name over two shards, the rest runs in `other`.
+  go-shard:
+    name: go (Linux, ${{ matrix.shard }})
+    needs: go-split
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.go-split.outputs.rest) }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -198,6 +218,8 @@ jobs:
         with:
           go-cache: go-rest
           gtk: "true"
+          # One saver keeps the PR-scope Go cache warm without an entry per shard per push.
+          cache-save: ${{ matrix.shard == 'other' && 'true' || 'false' }}
       - name: Give git a global author identity (gitsession exercises production code that shells out to real git commit-creating commands through gitclient's own exec runner, which never sets GIT_AUTHOR_*/GIT_COMMITTER_* itself; a fresh runner has none)
         run: |
           git config --global user.name "CI"
@@ -206,10 +228,28 @@ jobs:
         run: sudo sysctl -w fs.inotify.max_user_instances=8192
       - name: Build frontend bundles (the root main package embeds frontend/dist)
         run: bun run build
-      - run: bun run test:go:rest
+      - run: sh scripts/go-test-split.sh rest/${{ matrix.shard }} -timeout 7m
 
-  # Go packages that start Testcontainers. No bun, bindings or real frontend build: these
-  # packages never link the root main packages that embed frontend/dist.
+  # One stable required-check name over the shards. Fails unless split and every shard passed.
+  go:
+    name: go (Linux)
+    needs: [go-split, go-shard]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - env:
+          SPLIT: ${{ needs.go-split.result }}
+          SHARDS: ${{ needs.go-shard.result }}
+        run: |
+          echo "go-split: $SPLIT, go shards: $SHARDS"
+          test "$SPLIT" = success
+          test "$SHARDS" = success
+
+  # Go packages that start Testcontainers, one job. No bun, bindings or real frontend build: these
+  # packages never link the root main packages that embed frontend/dist. Images come from per-bundle
+  # caches that cache-warm.yml saves in main's scope; this job only restores, so a slow save can
+  # never time it out. A miss pulls just the missing kinds through the mirror.
   go-containers:
     name: go-containers (Linux)
     runs-on: ubuntu-24.04
@@ -220,17 +260,46 @@ jobs:
         run: |
           mkdir -p apps/kira-space/frontend/dist apps/kira-space/frontend/dist-mobile
           touch apps/kira-space/frontend/dist/.keep apps/kira-space/frontend/dist-mobile/.keep
-      - name: Restore cached Testcontainers images (keyed on the pinned image tags, so an unchanged adapter-test image set skips re-pulling)
-        id: docker-cache
+      - name: Resolve image bundles and the pin hash (the cache key changes only when an image pin changes)
+        id: images
+        run: |
+          echo "bundles= $(sh scripts/go-test-split.sh --bundles containers) " >> "$GITHUB_OUTPUT"
+          echo "pins=$(sh scripts/go-test-split.sh --pins-hash)" >> "$GITHUB_OUTPUT"
+      - name: Restore elastic images
+        if: contains(steps.images.outputs.bundles, ' elastic ')
         uses: actions/cache/restore@v6
         with:
-          path: ~/docker-images.tar
-          key: docker-${{ runner.os }}-${{ hashFiles('apps/kira-space/internal/adapters/testsupport/*.go') }}
+          path: ~/tc-images/elastic.tar
+          key: tc-images-${{ runner.os }}-elastic-${{ steps.images.outputs.pins }}
+      - name: Restore sql images
+        if: contains(steps.images.outputs.bundles, ' sql ')
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/tc-images/sql.tar
+          key: tc-images-${{ runner.os }}-sql-${{ steps.images.outputs.pins }}
+      - name: Restore kv images
+        if: contains(steps.images.outputs.bundles, ' kv ')
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/tc-images/kv.tar
+          key: tc-images-${{ runner.os }}-kv-${{ steps.images.outputs.pins }}
+      - name: Restore stream images
+        if: contains(steps.images.outputs.bundles, ' stream ')
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/tc-images/stream.tar
+          key: tc-images-${{ runner.os }}-stream-${{ steps.images.outputs.pins }}
+      - name: Restore flow images
+        if: contains(steps.images.outputs.bundles, ' flow ')
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/tc-images/flow.tar
+          key: tc-images-${{ runner.os }}-flow-${{ steps.images.outputs.pins }}
       - name: Load the cached images in the background (overlaps setup and the test compile)
-        if: steps.docker-cache.outputs.cache-hit == 'true'
         run: |
-          nohup docker load -i ~/docker-images.tar > "$RUNNER_TEMP/images.log" 2>&1 &
-          echo $! > "$RUNNER_TEMP/images.pid"
+          mkdir -p ~/tc-images
+          nohup sh -c 'for t in ~/tc-images/*.tar; do [ -e "$t" ] && docker load -i "$t"; done' > "$RUNNER_TEMP/load.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/load.pid"
       - uses: ./.github/actions/setup
         timeout-minutes: 10
         with:
@@ -238,37 +307,27 @@ jobs:
           bindings: "false"
           go-cache: go-ct
           gtk: "true"
-      - name: Pull the images in parallel on a cache miss (mirror.gcr.io avoids Docker Hub rate limits on shared runner IPs)
-        if: steps.docker-cache.outputs.cache-hit != 'true'
+      - name: Pull missing images in the background (present images are skipped; mirror.gcr.io avoids Docker Hub rate limits on shared runner IPs)
         run: |
-          nohup sh scripts/pull-test-images.sh > "$RUNNER_TEMP/images.log" 2>&1 &
+          nohup sh -c 'while kill -0 "$(cat "$RUNNER_TEMP/load.pid")" 2>/dev/null; do sleep 1; done; sh scripts/pull-test-images.sh $(sh scripts/go-test-split.sh --kinds ${{ steps.images.outputs.bundles }})' > "$RUNNER_TEMP/images.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/images.pid"
-      - name: Give git a global author identity (see the go job)
+      - name: Give git a global author identity (see go-shard)
         run: |
           git config --global user.name "CI"
           git config --global user.email "ci@kira-studio.test"
-      - name: Raise the inotify instance limit (see the go job)
+      - name: Raise the inotify instance limit (see go-shard)
         run: sudo sysctl -w fs.inotify.max_user_instances=8192
+      - name: Check the split table (stale shard, partition, image bundles)
+        run: sh scripts/go-test-split.sh --check
       - name: Wait for the images
-        timeout-minutes: 10
+        timeout-minutes: 6
         run: |
           while kill -0 "$(cat "$RUNNER_TEMP/images.pid")" 2>/dev/null; do sleep 2; done
-          cat "$RUNNER_TEMP/images.log"
+          cat "$RUNNER_TEMP/load.log" "$RUNNER_TEMP/images.log"
       - name: Go adapter and Docker flow tests against real Testcontainers
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
-        run: sh scripts/go-test-split.sh containers
-      - name: Save pulled Testcontainers images (always() so a partial pull from a failed run still seeds the next one)
-        if: always() && steps.docker-cache.outputs.cache-hit != 'true'
-        run: |
-          # shellcheck disable=SC2046
-          docker save $(docker images --filter dangling=false --format '{{.Repository}}:{{.Tag}}') -o ~/docker-images.tar
-      - name: Cache pulled Testcontainers images
-        if: always() && steps.docker-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ~/docker-images.tar
-          key: docker-${{ runner.os }}-${{ hashFiles('apps/kira-space/internal/adapters/testsupport/*.go') }}
+        run: sh scripts/go-test-split.sh containers -timeout 7m
 
   # Complete auth/config permutation matrix (P25/P26) on every PR (P614), one job per weight group
   # (P608). `rest` is every kind the three heavy groups do not name, so a new adapter lands there

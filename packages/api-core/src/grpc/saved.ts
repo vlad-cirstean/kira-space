@@ -50,7 +50,7 @@ export function isGrpcDirty(state: GrpcRequestTabState, saved: GrpcSavedRequest 
   return !sameGrpcRequest(toSavedGrpcRequest(state), saved);
 }
 
-function sameGrpcRequest(a: GrpcSavedRequest, b: GrpcSavedRequest): boolean {
+export function sameGrpcRequest(a: GrpcSavedRequest, b: GrpcSavedRequest): boolean {
   if (
     a.target !== b.target ||
     a.tlsMode !== b.tlsMode ||

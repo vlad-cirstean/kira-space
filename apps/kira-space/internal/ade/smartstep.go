@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"maps"
 	"slices"
 	"time"
@@ -53,7 +54,11 @@ func (b *TaskBoard) planSmartStep(tc *taskCtx, sb model.AdeTaskBranch, path stri
 		step.timeout = parseStepTimeout(def.Timeout)
 	}
 	body := scripts.PlainText(scripts.Compose(script.Command, rendered))
-	step.prompt = body + "\n\n" + agentmcp.SpaceNote(b.prompts()) + "\n\n" + agentmcp.FinishInstruction(b.prompts(), resultSpecs(def.Results))
+	files := ""
+	if v := b.filesVarsFor(tc, def.ID, def.Agent, b.isOrchestrator(tc.task.ID)); v.Folder != "" {
+		files = "\n" + llmprompts.HeadlessSpaceFiles.Text(b.prompts(), v)
+	}
+	step.prompt = body + "\n\n" + agentmcp.SpaceNote(b.prompts()) + files + "\n\n" + agentmcp.FinishInstruction(b.prompts(), resultSpecs(def.Results))
 	return step, nil
 }
 
@@ -127,9 +132,11 @@ func (s *smartStep) checkMCP(ctx context.Context, src agentcfg.ServerSource, age
 
 // spec is the process spec of a smart step run; the caller adds the MCP config and user servers.
 func (s *smartStep) spec(agent harness.Provider, base harness.HeadlessSpec, space bool) harness.HeadlessSpec {
-	extra := harness.ToolNames(agent, agentmcp.FinishStep, agentmcp.RunOutcome)
+	var extra []string
 	if space {
-		extra = append(extra, harness.ToolNames(agent, agentmcp.SpaceToolIDs...)...)
+		extra = harness.ToolNames(agent, agentmcp.SpaceToolIDs...) // state ends a Space run
+	} else {
+		extra = harness.ToolNames(agent, agentmcp.FinishStep)
 	}
 	base.Dir, base.Model, base.MaxBudgetUSD, base.Isolated = s.dir, s.script.Smart.Model, s.script.Smart.MaxBudgetUSD, true
 	base.Tools, base.AllowedTools = agent.ToolArgs(s.script.Smart.ToolPolicy(extra))

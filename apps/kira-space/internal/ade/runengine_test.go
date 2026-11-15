@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -88,7 +89,7 @@ func runFakeClaude(args []string) int {
 	emit(map[string]any{"type": "system", "subtype": "init", "session_id": "fake"})
 	finish := func(status string) int {
 		cfg := argAfter(args, "--mcp-config")
-		if err := fakeFinish(cfg, status, "summary-"+status); err != nil {
+		if err := fakeFinish(cfg, string(prompt), status, "summary-"+status); err != nil {
 			fmt.Fprintln(os.Stderr, "finish_step:", err)
 			return 3
 		}
@@ -137,10 +138,37 @@ func (b fakeBearer) RoundTrip(r *http.Request) (*http.Response, error) {
 	return http.DefaultTransport.RoundTrip(r)
 }
 
-func fakeFinish(cfgPath, status, summary string) error {
+var (
+	fakeFilesRe = regexp.MustCompile(`Task folder: (\S+)\. See README\.md there\.`)
+	fakeDraftRe = regexp.MustCompile(`write (handovers/draft-\S+?\.md), then call state step\.finish`)
+)
+
+// fakeFinish ends the step as the agent does: a done finish refused for a missing draft gets the
+// draft the refusal names, then finishes again.
+func fakeFinish(cfgPath, prompt, status, summary string) error {
+	reply, err := fakeFinishOnce(cfgPath, status, summary)
+	d, m := fakeDraftRe.FindStringSubmatch(reply), fakeFilesRe.FindStringSubmatch(prompt)
+	if err != nil || d == nil || m == nil {
+		return err
+	}
+	path := filepath.Join(m[1], d[1])
+	if _, err := os.Stat(path); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(path, []byte(summary), 0o644); err != nil {
+			return err
+		}
+	}
+	_, err = fakeFinishOnce(cfgPath, status, summary)
+	return err
+}
+
+// fakeFinishOnce returns the reply as JSON: a refused state step.finish is an invalid item, not a tool error.
+func fakeFinishOnce(cfgPath, status, summary string) (string, error) {
 	raw, err := os.ReadFile(cfgPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	var cfg struct {
 		MCPServers map[string]struct {
@@ -149,7 +177,7 @@ func fakeFinish(cfgPath, status, summary string) error {
 		} `json:"mcpServers"`
 	}
 	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return err
+		return "", err
 	}
 	entry := cfg.MCPServers[agentmcp.ServerName]
 	token := strings.TrimPrefix(entry.Headers["Authorization"], "Bearer ")
@@ -159,16 +187,28 @@ func fakeFinish(cfgPath, status, summary string) error {
 		Endpoint: entry.URL, HTTPClient: &http.Client{Transport: fakeBearer{token}}, DisableStandaloneSSE: true, MaxRetries: -1,
 	}, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "summary": summary, "reason": summary}})
+	// A Space grant ends a run with state step.finish; a rebase run or review round keeps finish_step.
+	call := &mcp.CallToolParams{Name: "state", Arguments: map[string]any{"action": "step.finish", "args": map[string]any{"status": status, "reason": summary}}}
+	tools, err := sess.ListTools(ctx, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
+	for _, tl := range tools.Tools {
+		if tl.Name == "finish_step" {
+			call = &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "reason": summary}}
+		}
+	}
+	res, err := sess.CallTool(ctx, call)
+	if err != nil {
+		return "", err
+	}
+	reply, _ := json.Marshal(res)
 	if res.IsError {
-		return fmt.Errorf("tool error: %v", res.Content)
+		return "", fmt.Errorf("tool error: %v", res.Content)
 	}
-	return nil
+	return string(reply), nil
 }
 
 // --- harness -----------------------------------------------------------------------------------
@@ -244,6 +284,7 @@ func newEngine(t *testing.T, scen map[string][]string) *engine {
 		Logs:      r.AdeLogs, Sessions: r.AdeSessions, AgentDir: filepath.Join(t.TempDir(), "agent"), AgentBin: self,
 		OnLog:            func(ev adewire.LogEvent) { e.mu.Lock(); e.logs = append(e.logs, ev); e.mu.Unlock() },
 		AutofetchMinutes: func() int { return 0 }, HomeDir: e.home,
+		FilesDir: filepath.Join(t.TempDir(), "tasks"), TaskFiles: r.TaskFiles,
 	})
 	e.tracker.SetStoppedHandler(e.board.OnTUIStopped)
 	t.Cleanup(e.board.Close)
@@ -423,7 +464,7 @@ func TestRunEngine_eachRepoAutoAdvanceApprovalAndStepDone(t *testing.T) {
 	}
 
 	args := e.fakeFile("api-1.args")
-	for _, want := range []string{"--output-format\nstream-json", "--setting-sources\nproject,local", toolName(agentmcp.FinishStep), "Bash(git *)"} {
+	for _, want := range []string{"--output-format\nstream-json", "--setting-sources\nproject,local", toolName(agentmcp.State), "Bash(git *)"} {
 		if !strings.Contains(args, want) {
 			t.Fatalf("argv lacks %q:\n%s", want, args)
 		}

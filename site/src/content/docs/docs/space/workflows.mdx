@@ -109,7 +109,7 @@ A step with a `review` block waits for you instead of running an agent. Put it a
 
 The run enters the `review` state and the board shows **Waiting for review** and a **Review** item in Needs you. Open **Review code**, comment on the diff, then pick **Send to agent** in the **Workflow review** tab. The tab also holds the route and the finish buttons.
 
-A comment is a **Change** or a **Question**. One send is one headless round. The agent answers each open comment with `reply_review_comment` and may commit. An answered comment turns **Addressed**. Reopen one and send again for another round. A round runs one at a time. A round resumed on the `implementer` runs with that step's `allowed_tools` plus `reply_review_comment`, so list `Edit` there if answers may change files. A `new` agent gets no `allowed_tools` list.
+A comment is a **Change** or a **Question**. One send is one headless round. The agent answers each open comment with `state` action `review.reply` and may commit. An answered comment turns **Addressed**. Reopen one and send again for another round. A round runs one at a time. A round resumed on the `implementer` runs with that step's `allowed_tools` plus `state` action `review.reply`, so list `Edit` there if answers may change files. A `new` agent gets no `allowed_tools` list.
 
 Finish with one of the step's results. The note you type (up to 2000 characters) reaches the step the result routes to. Open comments ask for a confirmation first.
 

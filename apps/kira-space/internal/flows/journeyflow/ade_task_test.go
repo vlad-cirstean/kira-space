@@ -62,7 +62,7 @@ func TestADETaskEveryFailure(t *testing.T) {
 	commit := func(file string) string {
 		return "echo " + file + " > " + file + " && git add -A && git commit -q -m " + file
 	}
-	finish := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{"status": "done", "summary": "ok"}}
+	finish := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{"status": "done"}}
 	// api calls: 1 the step (fails), 2 its retry, 3 the conflicting rebase, 4 the rebase that resolves it.
 	app.Scenario(fakeagent.Scenario{Claude: map[string][]fakeagent.Action{
 		"api": {

@@ -50,7 +50,7 @@ func TestGolden(t *testing.T) {
 		out[0].ChangeRequestURL = "https://github.com/acme/kira-space/pull/42"
 		return out
 	}
-	startCtx := []string{"- Last rebase of feat/a failed: conflicts (run r1; call run_outcome for details)"}
+	startCtx := []string{"- Last rebase of feat/a failed: conflicts (run r1; see runs in state.yaml)"}
 
 	cases := []struct {
 		name string
@@ -64,13 +64,16 @@ func TestGolden(t *testing.T) {
 		{"ade.rebase.prompt.single-review-autostash", AdeRebasePrompt.id, rebase(RebaseVars{Stack: stack1, Review: "review/feat-login", Autostash: true})},
 
 		{"ade.step.prompt.default-implicit", AdeStepPrompt.id, step(func(*StepVars) {})},
+		{"ade.step.prompt.files", AdeStepPrompt.id, step(func(v *StepVars) {
+			v.Files = FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Draft: "handovers/draft-implement.md", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__state,mcp__kira-space__submit".`}
+		})},
 		{"ade.step.prompt.jira", AdeStepPrompt.id, step(func(v *StepVars) { v.JiraKey, v.JiraURL = jiraKey, jiraURL })},
 		{"ade.step.prompt.message", AdeStepPrompt.id, step(func(v *StepVars) { v.Message = "Do the thing for Add login form." })},
 		{"ade.step.prompt.extra-context", AdeStepPrompt.id, step(func(v *StepVars) {
 			v.Extra = "Verify failed on feat/login: tests red. Fix the implementation."
 			v.Context = []string{
-				"- Last rebase of feat/login failed: conflicts (run r1; call run_outcome for details)",
-				"- Last rebase of feat/b needs input: which base? (run r2; call run_outcome for details)",
+				"- Last rebase of feat/login failed: conflicts (run r1; see runs in state.yaml)",
+				"- Last rebase of feat/b needs input: which base? (run r2; see runs in state.yaml)",
 			}
 		})},
 		{"ade.step.prompt.notes-handover-message", AdeStepPrompt.id, step(func(v *StepVars) {

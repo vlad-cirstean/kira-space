@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/postman"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
@@ -134,7 +135,7 @@ func (s *Store) recordCollection(tx *sql.Tx, stem, valueJSON string, ch *Changes
 		}
 		ch.Tree = true
 	}
-	if err := s.syncItems(tx, id, stem, f.Items, ch); err != nil {
+	if err := s.syncItems(tx, id, stem, f.Items, f.Skipped, ch); err != nil {
 		return err
 	}
 	if err := syncVariables(tx, d, OwnerCollection, id, f.Variables, ch); err != nil {
@@ -176,9 +177,16 @@ type flatItem struct {
 	requestJSON    string
 }
 
-func flatten(items []Item, parentKey string, out *[]flatItem) error {
-	for i, it := range items {
-		f := flatItem{key: it.ID, parentKey: parentKey, name: it.Name, order: i, protocol: model.ItemProtocolHTTP}
+// flatten walks the valid items; an item's order is its index in the file, so it steps over the
+// indices skippedAt lists for the same parent.
+func flatten(items []Item, parentKey string, skippedAt map[string][]int, out *[]flatItem) error {
+	pos := 0
+	for _, it := range items {
+		for slices.Contains(skippedAt[parentKey], pos) {
+			pos++
+		}
+		f := flatItem{key: it.ID, parentKey: parentKey, name: it.Name, order: pos, protocol: model.ItemProtocolHTTP}
+		pos++
 		switch {
 		case it.Items != nil:
 			f.folder = true
@@ -205,7 +213,7 @@ func flatten(items []Item, parentKey string, out *[]flatItem) error {
 		}
 		*out = append(*out, f)
 		if it.Items != nil {
-			if err := flatten(*it.Items, it.ID, out); err != nil {
+			if err := flatten(*it.Items, it.ID, skippedAt, out); err != nil {
 				return err
 			}
 		}
@@ -218,17 +226,32 @@ type itemRow struct {
 	order                                                              int
 }
 
-func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, ch *Changes) error {
+func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, skipped []SkippedItem, ch *Changes) error {
+	skippedAt := map[string][]int{}
+	for _, sk := range skipped {
+		skippedAt[sk.ParentKey] = append(skippedAt[sk.ParentKey], sk.Index)
+	}
 	var flat []flatItem
-	if err := flatten(items, "", &flat); err != nil {
+	if err := flatten(items, "", skippedAt, &flat); err != nil {
 		return err
 	}
 	d := s.o.Dialect
-	c := kiraschema.APIItems
 	existing, unkeyed, err := loadItemRows(tx, d, collectionID, stem)
 	if err != nil {
 		return err
 	}
+	kept, err := s.upsertItems(tx, collectionID, stem, flat, existing, ch)
+	if err != nil {
+		return err
+	}
+	if err := keepSkippedItems(tx, d, skipped, existing, kept, ch); err != nil {
+		return err
+	}
+	return deleteStaleItems(tx, d, existing, unkeyed, kept, ch)
+}
+
+// upsertItems inserts or updates every flat item and returns the ids of the rows it touched.
+func (s *Store) upsertItems(tx *sql.Tx, collectionID, stem string, flat []flatItem, existing map[string]itemRow, ch *Changes) (map[string]bool, error) {
 	kept := map[string]bool{}
 	ids := map[string]string{}
 	now := kiratime.NowMs()
@@ -238,7 +261,7 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, c
 		if !found {
 			id, err := s.insertItem(tx, collectionID, stem, parent, f, now, ch)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			ids[f.key] = id
 			kept[id] = true
@@ -246,27 +269,61 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, c
 		}
 		ids[f.key] = old.id
 		kept[old.id] = true
-		if err := updateItem(tx, d, old, parent, f, now, ch); err != nil {
-			return err
+		if err := updateItem(tx, s.o.Dialect, old, parent, f, now, ch); err != nil {
+			return nil, err
 		}
 	}
-	for _, r := range existing {
-		if !kept[r.id] {
-			del := d.DeleteFrom(c.Table)
-			del.Where(del.Equal(c.ID, r.id))
-			if _, err := sqlb.Exec(tx, del); err != nil {
-				return fmt.Errorf("apifiles: delete item: %w", err)
+	return kept, nil
+}
+
+// keepSkippedItems marks a skipped item's last good rows kept: deleting them would cascade the
+// response history. The skipped item's own row also takes its file index as order.
+func keepSkippedItems(tx *sql.Tx, d sqlb.Dialect, skipped []SkippedItem, existing map[string]itemRow, kept map[string]bool, ch *Changes) error {
+	c := kiraschema.APIItems
+	for _, sk := range skipped {
+		for _, key := range sk.Keys {
+			r, found := existing[key]
+			if !found || kept[r.id] {
+				continue
+			}
+			kept[r.id] = true
+			if key != sk.ID || r.order == sk.Index {
+				continue
+			}
+			ub := d.Update(c.Table)
+			ub.Set(ub.Assign(c.SortOrder, sk.Index)).Where(ub.Equal(c.ID, r.id))
+			if _, err := sqlb.Exec(tx, ub); err != nil {
+				return fmt.Errorf("apifiles: order kept item %s: %w", key, err)
 			}
 			ch.Tree = true
 		}
 	}
-	for _, id := range unkeyed {
-		del := d.DeleteFrom(c.Table)
-		del.Where(del.Equal(c.ID, id))
-		if _, err := sqlb.Exec(tx, del); err != nil {
-			return fmt.Errorf("apifiles: delete unkeyed item: %w", err)
+	return nil
+}
+
+// deleteStaleItems deletes rows no longer in the file and rows with no key.
+func deleteStaleItems(tx *sql.Tx, d sqlb.Dialect, existing map[string]itemRow, unkeyed []string, kept map[string]bool, ch *Changes) error {
+	c := kiraschema.APIItems
+	del := func(id, what string) error {
+		b := d.DeleteFrom(c.Table)
+		b.Where(b.Equal(c.ID, id))
+		if _, err := sqlb.Exec(tx, b); err != nil {
+			return fmt.Errorf("apifiles: delete %s: %w", what, err)
 		}
 		ch.Tree = true
+		return nil
+	}
+	for _, r := range existing {
+		if !kept[r.id] {
+			if err := del(r.id, "item"); err != nil {
+				return err
+			}
+		}
+	}
+	for _, id := range unkeyed {
+		if err := del(id, "unkeyed item"); err != nil {
+			return err
+		}
 	}
 	return nil
 }

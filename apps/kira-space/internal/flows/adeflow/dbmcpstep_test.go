@@ -141,11 +141,8 @@ func TestDbMcpStep(t *testing.T) {
 		t.Fatal(err)
 	}
 	listConnections := fakeagent.MCPCall{Server: dbSrvName, Tool: "list_connections"}
-	proofSave := fakeagent.MCPCall{Server: dbSrvName, Tool: "proof_save", Args: map[string]any{"name": "Db step proof", "steps": []any{map[string]any{
-		"description": "Notes", "view": "keyvalue", "data": map[string]any{"entries": []any{map[string]any{"field": "rows", "value": 1}}},
-	}}}}
 	claude(app, map[string][]fakeagent.Action{"*": {
-		{MCP: []fakeagent.MCPCall{listConnections, {Server: dbSrvName, Tool: "proof_list"}, proofSave}, Name: "done"},
+		{MCP: []fakeagent.MCPCall{listConnections}, Name: "done"},
 		{MCP: []fakeagent.MCPCall{listConnections}, Name: "done"},
 		{WaitFile: hold},
 	}, "work": {{WaitFile: hold}}}) // the interactive session runs as repo "work": it must outlive the tracker grace
@@ -190,11 +187,6 @@ func TestDbMcpStep(t *testing.T) {
 	}
 	if got := fakeFile(t, app, "mcp-list_connections-1.json"); !strings.Contains(got, "step db") {
 		t.Fatalf("list_connections result = %s, want the connection", got)
-	}
-	fakeFile(t, app, "mcp-proof_list-1.json")
-	// proof_save on the session server attaches the new proof to the step's task.
-	if got := taskProofs(t, app, task.ID); len(got) != 1 || got[0].Name != "Db step proof" || got[0].Source != "agent" || got[0].StepID != "withdb" {
-		t.Fatalf("task proofs = %+v, want the saved proof attached by the agent", got)
 	}
 	args1 := fakeFile(t, app, "api-1.args")
 	mustContain(t, "withdb argv", args1, dbAllowRule)

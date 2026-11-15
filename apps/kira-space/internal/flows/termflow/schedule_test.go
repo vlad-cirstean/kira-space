@@ -404,7 +404,11 @@ func TestScheduleNoDuplicateFireAfterRestart(t *testing.T) {
 	rearmed(t, clock)
 
 	app.Restart()
-	clock.BlockUntil(1, wait)
+	// The fake clock never drops the quit scheduler's timer, so the relaunched loop is armed only
+	// once two timers are pending; one would let the advance below race its startup.
+	if !clock.BlockUntil(2, wait) {
+		t.Fatal("the relaunched scheduler never armed a timer")
+	}
 	advance(t, clock, 10*time.Second)
 	rearmed(t, clock)
 	if n := len(scheduledRuns(t, app, rec.ID)); n != 1 {

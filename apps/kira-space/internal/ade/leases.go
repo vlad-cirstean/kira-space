@@ -54,6 +54,15 @@ type leaseState struct {
 	// one is dropped instead of leaking a pending entry. Guarded by mu.
 	ended      map[leases.Key]struct{}
 	endedOrder []leases.Key
+	// waiters holds the lease.acquire call blocked per owner. Its grant answers that call, so no
+	// notice is pushed for it. Guarded by mu.
+	waiters map[leases.Key]*leaseWaiter
+}
+
+// leaseWaiter is one blocked lease.acquire: ch gets the grant of its queue.
+type leaseWaiter struct {
+	queue string
+	ch    chan leases.Grant // buffered 1
 }
 
 // endedKeep bounds the ended-owner memory.
@@ -95,7 +104,7 @@ func (s *leaseState) flushOf(key leases.Key) *leaseFlush {
 }
 
 func (b *TaskBoard) initLeases() {
-	b.lease = &leaseState{pending: map[leases.Key][]string{}, runs: map[leases.Key]struct{}{}, flush: map[leases.Key]*leaseFlush{}}
+	b.lease = &leaseState{pending: map[leases.Key][]string{}, waiters: map[leases.Key]*leaseWaiter{}, runs: map[leases.Key]struct{}{}, flush: map[leases.Key]*leaseFlush{}}
 	now := b.deps.Now
 	if b.deps.LeaseNow != nil {
 		now = b.deps.LeaseNow
@@ -122,6 +131,7 @@ func (b *TaskBoard) initLeases() {
 }
 
 func (b *TaskBoard) leasesChanged() {
+	b.markAllStateDirty()
 	if b.deps.OnLeases != nil {
 		b.deps.OnLeases()
 	}
@@ -211,23 +221,34 @@ func ttlText(d time.Duration) string {
 func leaseMessage(g leases.Grant, ttl time.Duration) string {
 	switch g.Reason {
 	case leases.ReasonRevoked:
-		return "Kira: the user revoked your lease `" + g.Queue + "`. Stop using the resource; call acquire_lease to queue again."
+		return "Kira: the user revoked your lease `" + g.Queue + "`. Stop using the resource; call state lease.acquire to queue again."
 	case leases.ReasonRemoved:
-		return "Kira: the user removed lease queue `" + g.Queue + "`; you no longer wait for it. Call acquire_lease again if you still need a lease."
+		return "Kira: the user removed lease queue `" + g.Queue + "`; you no longer wait for it. Call state lease.acquire again if you still need a lease."
 	case leases.ReasonExpired:
-		return "Kira: your lease `" + g.Queue + "` expired after " + ttlText(ttl) + " of silence. Stop using the resource; call acquire_lease to queue again."
+		return "Kira: your lease `" + g.Queue + "` expired after " + ttlText(ttl) + " of silence. Stop using the resource; call state lease.acquire to queue again."
 	}
-	return "Kira: you now hold lease `" + g.Queue + "`. Continue the work that waited for it. Call release_lease when done."
+	return "Kira: you now hold lease `" + g.Queue + "`. Continue the work that waited for it. Call state lease.release when done."
 }
 
+// onLeaseGrant hands a grant to the lease.acquire call blocked on it, else pushes it as a notice.
 func (b *TaskBoard) onLeaseGrant(g leases.Grant) {
-	b.deliverLease(g.Key, leaseMessage(g, b.lease.book.TTL()))
+	b.lease.mu.Lock()
+	w := b.lease.waiters[g.Key]
+	if w != nil && w.queue == g.Queue {
+		delete(b.lease.waiters, g.Key)
+		b.lease.mu.Unlock()
+		w.ch <- g
+		b.leasesChanged()
+		return
+	}
+	b.lease.mu.Unlock()
+	b.deliverNotice(g.Key, leaseMessage(g, b.lease.book.TTL()))
 }
 
-// deliverLease queues msg for key, then sends what waits if the session is idle now. Otherwise the
-// next Stop or UserPromptSubmit hook reply, the idle handler or the owner's next lease tool call
-// carries it.
-func (b *TaskBoard) deliverLease(key leases.Key, msg string) {
+// deliverNotice queues msg for key, then sends what waits if the session is idle now. Otherwise the
+// next Stop or UserPromptSubmit hook reply, the idle handler or the owner's next state call
+// carries it. A run has no terminal: it reads state.yaml.
+func (b *TaskBoard) deliverNotice(key leases.Key, msg string) {
 	b.lease.mu.Lock()
 	if _, gone := b.lease.ended[key]; gone {
 		b.lease.mu.Unlock()
@@ -283,8 +304,8 @@ func (b *TaskBoard) flushLease(recordID string) {
 	}
 }
 
-// takeLeaseNotices removes and returns the messages waiting for key.
-func (b *TaskBoard) takeLeaseNotices(key leases.Key) []string {
+// takeNotices removes and returns the messages waiting for key.
+func (b *TaskBoard) takeNotices(key leases.Key) []string {
 	// Wait for a delivery in flight: its messages are neither pending nor sent yet.
 	b.lease.mu.Lock()
 	f := b.lease.flush[key]
@@ -306,7 +327,7 @@ func (b *TaskBoard) takeLeaseNotices(key leases.Key) []string {
 // leaseHookReply answers a session's Stop and UserPromptSubmit hooks with the messages waiting for
 // it, once.
 func (b *TaskBoard) leaseHookReply(recordID string, ev harness.AgentEvent) harness.HookReply {
-	msgs := b.takeLeaseNotices(leases.Key(recordID))
+	msgs := b.takeNotices(leases.Key(recordID))
 	if len(msgs) == 0 {
 		return harness.HookReply{}
 	}
@@ -354,6 +375,7 @@ func (b *TaskBoard) endLeases(key leases.Key) {
 	b.lease.markEnded(key)
 	b.lease.mu.Unlock()
 	b.lease.book.ReleaseSession(key)
+	b.withdrawOwnerBranchCalls(string(key)) // detached approvals die with their owner
 }
 
 // --- agent tools ---------------------------------------------------------------------------------
@@ -372,29 +394,75 @@ func (b *TaskBoard) leaseToolError(err error) error {
 // leaseNext tells the agent how it will learn of a grant.
 func (b *TaskBoard) leaseNext(call agentmcp.SpaceCall, state string) string {
 	if state == agentmcp.LeaseHeld {
-		return "You hold the lease. Call release_lease when done."
+		return "You hold the lease. Call state lease.release when done."
 	}
-	if call.SessionID != "" && b.deps.Tracker != nil {
-		if _, live := b.deps.Tracker.TerminalOf(call.SessionID); live {
-			return "Kira messages you in this session when the lease is granted. Do other work meanwhile."
-		}
-	}
-	return "Call acquire_lease or lease_status again later to check."
+	return "The lease is not granted yet; check leases in state.yaml."
 }
 
-func (b *TaskBoard) AcquireLease(_ context.Context, call agentmcp.SpaceCall, args agentmcp.AcquireLeaseArgs) (agentmcp.AcquireLeaseResult, error) {
+// AcquireLease implements agentmcp.LeaseTools. A queued caller blocks until the grant or the call wait
+// ends; at the end it stays queued and answers queued, and the grant reaches it as a notice (a session)
+// or in state.yaml (a run).
+func (b *TaskBoard) AcquireLease(ctx context.Context, call agentmcp.SpaceCall, args agentmcp.AcquireLeaseArgs) (agentmcp.AcquireLeaseResult, error) {
 	key := leaseKeyOf(call.SessionID, call.RunID)
 	b.lease.mu.Lock()
 	delete(b.lease.ended, key) // a resumed owner is live again
+	w := &leaseWaiter{queue: args.Queue, ch: make(chan leases.Grant, 1)}
+	b.lease.waiters[key] = w
 	b.lease.mu.Unlock()
+	drop := func() {
+		b.lease.mu.Lock()
+		if b.lease.waiters[key] == w {
+			delete(b.lease.waiters, key)
+		}
+		b.lease.mu.Unlock()
+	}
 	st, err := b.lease.book.Acquire(key, call.TaskID, args.Queue)
 	if err != nil {
+		drop()
 		return agentmcp.AcquireLeaseResult{}, b.leaseToolError(err)
 	}
-	return agentmcp.AcquireLeaseResult{
+	if st.State == agentmcp.LeaseQueued {
+		timer := time.NewTimer(b.callWait())
+		defer timer.Stop()
+		select {
+		case g := <-w.ch:
+			if g.Reason != leases.ReasonGranted {
+				return agentmcp.AcquireLeaseResult{}, agentmcp.ToolError(leaseMessage(g, b.lease.book.TTL()))
+			}
+			if st, err = b.lease.book.Acquire(key, call.TaskID, args.Queue); err != nil {
+				return agentmcp.AcquireLeaseResult{}, b.leaseToolError(err)
+			}
+		case <-timer.C:
+			drop()
+			if g, ok := drained(w.ch); ok && g.Reason == leases.ReasonGranted { // granted at the deadline
+				st, _ = b.lease.book.Acquire(key, call.TaskID, args.Queue)
+			} else if st2, err := b.lease.book.Acquire(key, call.TaskID, args.Queue); err == nil {
+				st = st2
+			}
+		case <-ctx.Done():
+			drop()
+			return agentmcp.AcquireLeaseResult{}, ctx.Err()
+		}
+	} else {
+		drop()
+	}
+	res := agentmcp.AcquireLeaseResult{
 		Queue: st.Queue, State: st.State, Position: st.Position, HolderTask: b.leaseTaskName(st.HolderTask),
-		TTLSeconds: st.TTLSeconds, Next: b.leaseNext(call, st.State), Notices: b.takeLeaseNotices(key),
-	}, nil
+		TTLSeconds: st.TTLSeconds, Next: b.leaseNext(call, st.State), Notices: b.takeNotices(key),
+	}
+	if st.State == agentmcp.LeaseQueued {
+		res.Waited = b.callWait()
+	}
+	return res, nil
+}
+
+func drained(ch chan leases.Grant) (leases.Grant, bool) {
+	select {
+	case g := <-ch:
+		return g, true
+	default:
+		return leases.Grant{}, false
+	}
 }
 
 func (b *TaskBoard) ReleaseLease(_ context.Context, call agentmcp.SpaceCall, args agentmcp.ReleaseLeaseArgs) (agentmcp.ReleaseLeaseResult, error) {
@@ -403,31 +471,7 @@ func (b *TaskBoard) ReleaseLease(_ context.Context, call agentmcp.SpaceCall, arg
 		return agentmcp.ReleaseLeaseResult{}, b.leaseToolError(leases.ErrUnknownQueue)
 	}
 	released := b.lease.book.Release(key, args.Queue)
-	return agentmcp.ReleaseLeaseResult{Released: released, Notices: b.takeLeaseNotices(key)}, nil
-}
-
-func (b *TaskBoard) LeaseStatus(_ context.Context, call agentmcp.SpaceCall, args agentmcp.LeaseStatusArgs) (agentmcp.LeaseStatusResult, error) {
-	key := leaseKeyOf(call.SessionID, call.RunID)
-	names := b.lease.book.Names()
-	if args.Queue != "" && !slices.Contains(names, args.Queue) {
-		return agentmcp.LeaseStatusResult{}, b.leaseToolError(leases.ErrUnknownQueue)
-	}
-	out := agentmcp.LeaseStatusResult{Queues: []agentmcp.LeaseQueueInfo{}}
-	for _, q := range b.lease.book.Snapshot() {
-		if args.Queue != "" && q.Name != args.Queue {
-			continue
-		}
-		info := agentmcp.LeaseQueueInfo{Name: q.Name, Waiters: []agentmcp.LeaseEntryInfo{}}
-		if q.Holder != nil {
-			info.Holder = &agentmcp.LeaseEntryInfo{TaskID: q.Holder.TaskID, TaskTitle: b.leaseTaskName(q.Holder.TaskID), Mine: q.Holder.Key == key}
-		}
-		for i, w := range q.Waiters {
-			info.Waiters = append(info.Waiters, agentmcp.LeaseEntryInfo{TaskID: w.TaskID, TaskTitle: b.leaseTaskName(w.TaskID), Position: i + 1, Mine: w.Key == key})
-		}
-		out.Queues = append(out.Queues, info)
-	}
-	out.Notices = b.takeLeaseNotices(key)
-	return out, nil
+	return agentmcp.ReleaseLeaseResult{Released: released, Notices: b.takeNotices(key)}, nil
 }
 
 // leaseTaskName is a task's title (or Jira key), else its id; "" for no task.
@@ -502,7 +546,7 @@ func (b *TaskBoard) RequestLeaseRelease(queue string) error {
 	if err != nil {
 		return invalid("%v", err)
 	}
-	b.deliverLease(key, "Kira: the user asks you to release lease `"+queue+"`: finish the current step, then call release_lease.")
+	b.deliverNotice(key, "Kira: the user asks you to release lease `"+queue+"`: finish the current step, then call state lease.release.")
 	return nil
 }
 

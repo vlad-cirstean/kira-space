@@ -52,13 +52,11 @@ import type {
   ProofDetail,
   ProofOpenResult,
   ProofSaveJpegToResult,
-  ProofSelect,
   ProofShotClipboard,
   ProofShotClipResult,
   ProofShotFolderResult,
   ProofShotLocation,
   ProofStepDetail,
-  ProofSummary,
   ProofViewState,
   ProofViewStateEntry,
   ProofWindowTarget,
@@ -380,8 +378,6 @@ const studioControl = {
   dbMcpPendingResponse: (requestId: string): Promise<DbMcpPendingResponse> =>
     unwrap(DbMcpService.PendingResponse({ requestId })).then((r) => trust<DbMcpPendingResponse>(r)),
 
-  proofSessions: (): Promise<ProofSummary[]> =>
-    unwrap(ProofService.Sessions()).then((r) => trust<ProofSummary[]>(r ?? [])),
   proofSession: (sessionId: string): Promise<ProofDetail> =>
     unwrap(ProofService.Session({ sessionId })).then((r) => trust<ProofDetail>(r)),
   proofStep: (sessionId: string, rev: number, ordinal: number): Promise<ProofStepDetail> =>
@@ -402,8 +398,12 @@ const studioControl = {
     unwrap(ProofService.RejectEdit({ sessionId })),
   proofDelete: (sessionId: string): Promise<void> => unwrap(ProofService.Delete({ sessionId })),
   proofMarkSeen: (sessionId: string): Promise<void> => unwrap(ProofService.MarkSeen({ sessionId })),
-  proofOpenWindow: (sessionId?: string): Promise<ProofOpenResult> =>
-    unwrap(ProofService.OpenWindow({ sessionId })).then((r) => trust<ProofOpenResult>(r)),
+  proofOpenWindow: (taskId: string, slug: string): Promise<ProofOpenResult> =>
+    unwrap(ProofService.OpenWindow({ taskId, slug })).then((r) => trust<ProofOpenResult>(r)),
+  proofOpenFolder: (sessionId: string): Promise<void> =>
+    unwrap(ProofService.OpenFolder({ sessionId })),
+  proofRevealFolder: (sessionId: string): Promise<void> =>
+    unwrap(ProofService.RevealFolder({ sessionId })),
   proofWindowTarget: (): Promise<ProofWindowTarget> =>
     unwrap(ProofService.WindowTarget({ key: windowKey })).then((r) => trust<ProofWindowTarget>(r)),
   proofShotLocation: (): Promise<ProofShotLocation> =>
@@ -441,7 +441,6 @@ const studioControl = {
   proofCloseShotClip: (clipId: string): Promise<void> =>
     unwrap(ProofService.CloseShotClip({ clipId })),
   onProofChanged: (cb: (event: ProofChanged) => void): (() => void) => on(CHANNEL.proofChanged, cb),
-  onProofSelect: (cb: (event: ProofSelect) => void): (() => void) => on(CHANNEL.proofSelect, cb),
 
   // Go's SavedQuery is one flat struct with `kind: string` and `body: json.RawMessage` (typed
   // `any` in the bindings) rather than the domain's real discriminated union — Go has no sum

@@ -4,6 +4,7 @@ import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed, ref, watch } from 'vue';
+import AdePortBackupsDialog from '../port/AdePortBackupsDialog.vue';
 import AdePortExportDialog from '../port/AdePortExportDialog.vue';
 import AdePortImportDialog from '../port/AdePortImportDialog.vue';
 import { usePortProviders } from '../port/queries';
@@ -30,7 +31,7 @@ watch(
 // provider the app can port.
 const ports = usePortProviders();
 const port = computed(() => ports.data.value?.find((p) => p.id === current.value?.id));
-const dialog = ref<'import' | 'export' | null>(null);
+const dialog = ref<'import' | 'export' | 'backups' | null>(null);
 const importOpen = computed({
   get: () => dialog.value === 'import',
   set: (v) => (dialog.value = v ? 'import' : null),
@@ -38,6 +39,10 @@ const importOpen = computed({
 const exportOpen = computed({
   get: () => dialog.value === 'export',
   set: (v) => (dialog.value = v ? 'export' : null),
+});
+const backupsOpen = computed({
+  get: () => dialog.value === 'backups',
+  set: (v) => (dialog.value = v ? 'backups' : null),
 });
 </script>
 
@@ -68,6 +73,14 @@ const exportOpen = computed({
           @click="dialog = 'export'"
         >
           {{ t('space.ade.port.exportButton.label', { agent: port.label }) }}
+        </Button>
+        <Button
+          variant="link"
+          size="inline"
+          data-testid="ade-port-backups-open"
+          @click="dialog = 'backups'"
+        >
+          {{ t('space.ade.port.backups.label') }}
         </Button>
       </div>
       <section
@@ -117,6 +130,7 @@ const exportOpen = computed({
     <template v-if="port">
       <AdePortImportDialog v-model:open="importOpen" :provider="port" />
       <AdePortExportDialog v-model:open="exportOpen" :provider="port" />
+      <AdePortBackupsDialog v-model:open="backupsOpen" :provider="port" />
     </template>
   </div>
 </template>

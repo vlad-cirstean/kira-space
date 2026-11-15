@@ -68,6 +68,12 @@ func ToolNames(p MCPHost, ts ...MCPTool) []string {
 	return out
 }
 
+// ToolLoader is a provider that lists MCP tools lazily: its LoadHint is the sentence that makes the
+// agent load exactly the given tools before its first call.
+type ToolLoader interface {
+	LoadHint(ts ...MCPTool) string
+}
+
 // UserServer is one MCP server from the user's own agent config, described without its secrets.
 type UserServer struct {
 	Name string `json:"name"`

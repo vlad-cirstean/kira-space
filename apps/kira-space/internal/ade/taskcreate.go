@@ -367,9 +367,10 @@ func (b *TaskBoard) createChild(call agentmcp.SpaceCall, p childPlan, res agentm
 			slog.Warn("ade: shelve child task", "scope", "ade", "task", child.ID, "err", err)
 		}
 	}
+	b.mirrorTask(child.ID, userMirror)
 	b.notifyBoard()
 	res.Outcome, res.TaskID = agentmcp.TaskCreated, child.ID
-	res.Next = "Task created. The user starts it and you are not woken when it finishes, so do not wait: carry on or finish your step. In a later pass, read its final handover with task_chain or list_tasks."
+	res.Next = "Task created. The user starts it and you are not woken when it finishes, so do not wait: carry on or finish your step. In a later pass, read its handovers in ../" + pathSegment(child.ID) + "/handovers/ (state.yaml chain lists it)."
 	return res, nil
 }
 

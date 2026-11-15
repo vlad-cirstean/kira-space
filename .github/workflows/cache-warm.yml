@@ -71,7 +71,7 @@ jobs:
       - run: bun run typecheck
       - run: go build -o /dev/null ./internal/llmprompts/cmd/checkprompts
 
-  # Mirrors pr.yml `go (Linux)`.
+  # Mirrors pr.yml `go (Linux, <shard>)`: one compile warms every shard (same go-rest cache).
   go-rest:
     name: warm go (Linux)
     runs-on: ubuntu-24.04
@@ -85,7 +85,7 @@ jobs:
       - run: bun run build
       - run: sh scripts/go-test-split.sh rest -run '^$' -exec true
 
-  # Mirrors pr.yml `go-containers (Linux)`.
+  # Mirrors pr.yml `go-containers (Linux)`; its images are warmed by `tc-images`.
   go-containers:
     name: warm go-containers (Linux)
     runs-on: ubuntu-24.04
@@ -103,25 +103,49 @@ jobs:
           go-cache: go-ct
           gtk: "true"
       - run: sh scripts/go-test-split.sh containers -run '^$' -exec true
-      - name: Look up the Testcontainers image cache
-        id: docker-cache
+
+  # Per-bundle Testcontainers image caches that pr.yml `go-containers (Linux)` restores (it never
+  # saves). Bundles and kinds live in scripts/go-test-split.sh; the key changes only with an image pin.
+  tc-images:
+    name: warm Testcontainers images (Linux, ${{ matrix.bundle }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        bundle: [elastic, sql, kv, stream, flow]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          bun: "false"
+          bindings: "false"
+          gtk: "true"
+      - name: Compute the pin hash (same key as pr.yml)
+        id: images
+        run: echo "pins=$(sh scripts/go-test-split.sh --pins-hash)" >> "$GITHUB_OUTPUT"
+      - name: Look up this bundle's image cache
+        id: image-cache
         uses: actions/cache/restore@v6
         with:
-          path: ~/docker-images.tar
-          key: docker-${{ runner.os }}-${{ hashFiles('apps/kira-space/internal/adapters/testsupport/*.go') }}
+          path: ~/tc-images/${{ matrix.bundle }}.tar
+          key: tc-images-${{ runner.os }}-${{ matrix.bundle }}-${{ steps.images.outputs.pins }}
           lookup-only: true
-      - name: Pull and pack the images (miss only)
-        if: steps.docker-cache.outputs.cache-hit != 'true'
+      - name: Pull and pack this bundle's images (miss only)
+        if: steps.image-cache.outputs.cache-hit != 'true'
         run: |
-          sh scripts/pull-test-images.sh
+          set -eu
+          KINDS="$(sh scripts/go-test-split.sh --kinds ${{ matrix.bundle }})"
+          sh scripts/pull-test-images.sh $KINDS
+          mkdir -p ~/tc-images
           # shellcheck disable=SC2046
-          docker save $(docker images --filter dangling=false --format '{{.Repository}}:{{.Tag}}') -o ~/docker-images.tar
-          du -h ~/docker-images.tar
-      - if: steps.docker-cache.outputs.cache-hit != 'true'
+          docker save $(sh scripts/pull-test-images.sh --print $KINDS) -o ~/tc-images/${{ matrix.bundle }}.tar
+          du -h ~/tc-images/${{ matrix.bundle }}.tar
+      - if: steps.image-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
-          path: ~/docker-images.tar
-          key: docker-${{ runner.os }}-${{ hashFiles('apps/kira-space/internal/adapters/testsupport/*.go') }}
+          path: ~/tc-images/${{ matrix.bundle }}.tar
+          key: tc-images-${{ runner.os }}-${{ matrix.bundle }}-${{ steps.images.outputs.pins }}
 
   # Mirrors pr.yml `test-matrix (Linux, <group>)`'s image cache: same groups, same key.
   matrix-images:

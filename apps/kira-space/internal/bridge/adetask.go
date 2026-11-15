@@ -49,6 +49,14 @@ type AdeTaskService struct {
 	OpenWindow     func(rec shell.WindowRecord)
 	CloseWindow    func(key string) bool
 	SetWindowTitle func(key, title string)
+	// Opener opens and reveals a task folder; nil in a fixture that never calls those.
+	Opener TaskFolderOpener
+}
+
+// TaskFolderOpener shows a task folder in the file manager.
+type TaskFolderOpener interface {
+	OpenFile(path string) error
+	RevealFile(path string) error
 }
 
 // AdeTaskOpenSession is FocusSession's emit half: addressed to the one window just brought forward.
@@ -1016,38 +1024,6 @@ func (s *AdeTaskService) DbAudit(ctx context.Context, args adewire.TaskArgs) (ad
 	return adewire.DbAuditResult{Entries: rows}, adeTaskError(err)
 }
 
-// ProofChoices lists the closed proof sessions no task holds yet.
-func (s *AdeTaskService) ProofChoices(ctx context.Context) (adewire.ProofChoicesResult, error) {
-	ctx = adeUserCtx(ctx)
-	rows, err := s.Engine.ProofChoices(ctx)
-	return adewire.ProofChoicesResult{Proofs: rows}, adeTaskError(err)
-}
-
-func validateAdeLinkProof(args adewire.LinkProofArgs) error {
-	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
-		return err
-	}
-	return validateAdeItemID(args.ProofID, "proofId")
-}
-
-// LinkProof attaches a closed proof session to the task.
-func (s *AdeTaskService) LinkProof(ctx context.Context, args adewire.LinkProofArgs) error {
-	ctx = adeUserCtx(ctx)
-	if err := validateAdeLinkProof(args); err != nil {
-		return err
-	}
-	return adeTaskError(s.Engine.LinkProof(ctx, args.TaskID, args.ProofID))
-}
-
-// UnlinkProof removes a proof session from the task; the session stays in the proof window.
-func (s *AdeTaskService) UnlinkProof(ctx context.Context, args adewire.LinkProofArgs) error {
-	ctx = adeUserCtx(ctx)
-	if err := validateAdeLinkProof(args); err != nil {
-		return err
-	}
-	return adeTaskError(s.Engine.UnlinkProof(ctx, args.TaskID, args.ProofID))
-}
-
 // UpdateHandover replaces a handover row's body (a note up to 1 MiB, other rows up to 16 KiB); an empty body deletes it.
 func (s *AdeTaskService) UpdateHandover(ctx context.Context, args adewire.UpdateHandoverArgs) error {
 	ctx = adeUserCtx(ctx)
@@ -1531,4 +1507,65 @@ func (s *AdeTaskService) ReviewForwardText(ctx context.Context, args adewire.Bra
 	}
 	text, err := s.Engine.ReviewForwardText(ctx, args.BranchID)
 	return adewire.ReviewForwardText{Text: text}, adeTaskError(err)
+}
+
+// DetailsDiskChanges lists the files of a task folder that differ from what the app accepted.
+func (s *AdeTaskService) DetailsDiskChanges(ctx context.Context, args adewire.DiskChangesArgs) ([]adewire.DiskChange, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return nil, err
+	}
+	out, err := s.Engine.DiskChanges(ctx, args.TaskID)
+	return out, adeTaskError(err)
+}
+
+// DetailsAcceptDisk makes the named disk changes (all when none named) the accepted copy.
+func (s *AdeTaskService) DetailsAcceptDisk(ctx context.Context, args adewire.DiskResolveArgs) error {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return err
+	}
+	return adeTaskError(s.Engine.AcceptDisk(ctx, args.TaskID, args.Paths))
+}
+
+// DetailsDiscardDisk restores the named files (all when none named) from the accepted copy.
+func (s *AdeTaskService) DetailsDiscardDisk(ctx context.Context, args adewire.DiskResolveArgs) error {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return err
+	}
+	return adeTaskError(s.Engine.DiscardDisk(ctx, args.TaskID, args.Paths))
+}
+
+// DetailsFolder is the absolute path of the task's folder.
+func (s *AdeTaskService) DetailsFolder(_ context.Context, args adewire.DiskChangesArgs) (adewire.DetailsFolder, error) {
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return adewire.DetailsFolder{}, err
+	}
+	p, err := s.Engine.TaskFolder(args.TaskID)
+	return adewire.DetailsFolder{Path: p}, adeTaskError(err)
+}
+
+// OpenDetailsFolder opens the task folder in the file manager.
+func (s *AdeTaskService) OpenDetailsFolder(_ context.Context, args adewire.DiskChangesArgs) error {
+	return s.withFolder(args.TaskID, func(p string) error { return s.Opener.OpenFile(p) })
+}
+
+// RevealDetailsFolder shows the task folder in the file manager.
+func (s *AdeTaskService) RevealDetailsFolder(_ context.Context, args adewire.DiskChangesArgs) error {
+	return s.withFolder(args.TaskID, func(p string) error { return s.Opener.RevealFile(p) })
+}
+
+func (s *AdeTaskService) withFolder(taskID string, fn func(string) error) error {
+	if err := validateAdeTaskID(taskID, "taskId"); err != nil {
+		return err
+	}
+	if s.Opener == nil {
+		return nil
+	}
+	p, err := s.Engine.TaskFolder(taskID)
+	if err != nil || p == "" {
+		return adeTaskError(err)
+	}
+	return fn(p)
 }

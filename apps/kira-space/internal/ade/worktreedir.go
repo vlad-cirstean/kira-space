@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
@@ -142,6 +143,7 @@ type attachFacts struct {
 // attachCache loads attachFacts once per repo. It is a snapshot for one call: build a new one after
 // anything that can move a worktree.
 type attachCache struct {
+	mu     sync.Mutex // load only: a cache the state writers share is read concurrently
 	b      *TaskBoard
 	facts  map[string]*attachFacts
 	seeded map[string][]porcelain.InventoryRef // inventories the caller already loaded
@@ -157,6 +159,8 @@ func (c *attachCache) seed(codeRepoID string, inv []porcelain.InventoryRef) {
 }
 
 func (c *attachCache) load(ctx context.Context, codeRepoID string) (*attachFacts, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if f, ok := c.facts[codeRepoID]; ok {
 		return f, nil
 	}

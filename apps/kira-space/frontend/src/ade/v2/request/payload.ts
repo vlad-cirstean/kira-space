@@ -44,3 +44,21 @@ export const taskCreatePayloadSchema = /*#__PURE__*/ z.object({
   repos: z.array(z.object({ codeRepoId: z.string(), name: z.string(), base: z.string() })),
   brief: z.string(),
 });
+
+// payload of a details.edit approval item (internal/ade detailsPayload): the task-folder files of one task
+// that wait for the user. Options answer {approved: [paths]}; a path left out is restored.
+const detailsEditFileSchema = /*#__PURE__*/ z.object({
+  path: z.string(),
+  kind: z.string(),
+  cause: z.string(),
+  text: z.string(),
+  reason: z.string(),
+  collision: z.string().optional(),
+});
+
+export const detailsEditPayloadSchema = /*#__PURE__*/ z.object({
+  taskId: z.string(),
+  taskTitle: z.string(),
+  reason: z.string(),
+  items: z.array(detailsEditFileSchema),
+});

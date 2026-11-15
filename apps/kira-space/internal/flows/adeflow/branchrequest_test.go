@@ -68,19 +68,40 @@ func (f *brFixture) startRun(t *testing.T) {
 	}
 }
 
-// waitRequest waits for the task's open request and returns it.
-func (f *brFixture) waitRequest(t *testing.T) adewire.BranchRequest {
+// waitRequest waits for the task's open request, holding at least items items (default 1), and
+// returns it. Calls of one run merge into one request as they arrive, so a test waits for them all.
+func (f *brFixture) waitRequest(t *testing.T, items ...int) adewire.BranchRequest {
 	t.Helper()
-	var id string
-	testx.WaitUntil(t, waitFor, func() bool {
-		id = taskOf(t, board(t, f.app), f.task.ID).BranchRequestID
-		return id != ""
-	})
-	req, err := branchRequest(f.app, id)
-	if err != nil {
-		t.Fatalf("BranchRequest: %v", err)
+	want := 1
+	if len(items) > 0 {
+		want = items[0]
 	}
+	var req adewire.BranchRequest
+	testx.WaitUntil(t, waitFor, func() bool {
+		id := taskOf(t, board(t, f.app), f.task.ID).BranchRequestID
+		if id == "" {
+			return false
+		}
+		r, err := branchRequest(f.app, id)
+		if err != nil || len(r.Items) < want {
+			return false
+		}
+		req = r
+		return true
+	})
 	return req
+}
+
+// itemOf is the request item of a repo nick.
+func itemOf(t *testing.T, req adewire.BranchRequest, repo string) adewire.BranchRequestItem {
+	t.Helper()
+	for _, it := range req.Items {
+		if it.Repo == repo {
+			return it
+		}
+	}
+	t.Fatalf("request %+v has no item for %s", req, repo)
+	return adewire.BranchRequestItem{}
 }
 
 func (f *brFixture) requestPrompts(t *testing.T) []prompts.Routed {
@@ -98,38 +119,68 @@ func (f *brFixture) requestPrompts(t *testing.T) []prompts.Routed {
 	return out
 }
 
+// result waits for the n-th branch.request reply of the agent and returns its recorded JSON.
 func (f *brFixture) result(t *testing.T, n int) string {
+	t.Helper()
+	return f.resultOf(t, "branch.request", n)
+}
+
+// resultOf is result for any state action (branch.rename, branch.change, ...).
+func (f *brFixture) resultOf(t *testing.T, action string, n int) string {
 	t.Helper()
 	var raw []byte
 	testx.WaitUntil(t, waitFor, func() bool {
 		var err error
-		raw, err = os.ReadFile(filepath.Join(f.app.FakeDir, "mcp-request_branches-"+strconv.Itoa(n)+".json"))
-		return err == nil
+		raw, err = os.ReadFile(filepath.Join(f.app.FakeDir, "mcp-"+action+"-"+strconv.Itoa(n)+".json"))
+		return err == nil && len(raw) > 0
 	})
 	return string(raw)
 }
 
-// requestCall is a request_branches call for {repo, branch} pairs.
-func requestCall(branches ...[2]string) fakeagent.MCPCall {
-	list := make([]any, len(branches))
-	for i, b := range branches {
-		list[i] = map[string]any{"repo": b[0], "branch": b[1]}
+// results joins the first n branch.request replies.
+func (f *brFixture) results(t *testing.T, n int) string {
+	t.Helper()
+	var all []string
+	for i := 1; i <= n; i++ {
+		all = append(all, f.result(t, i))
 	}
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "request_branches", Tolerate: true, Args: map[string]any{"branches": list}}
+	return strings.Join(all, "\n")
 }
 
-// requestCallBase is a request_branches call for {repo, branch, base} triples; "" omits the base.
-func requestCallBase(branches ...[3]string) fakeagent.MCPCall {
-	list := make([]any, len(branches))
-	for i, b := range branches {
-		e := map[string]any{"repo": b[0], "branch": b[1]}
-		if b[2] != "" {
-			e["base"] = b[2]
-		}
-		list[i] = e
+func branchArgs(repo, branch, base string) map[string]any {
+	a := map[string]any{"repo": repo, "branch": branch}
+	if base != "" {
+		a["base"] = base
 	}
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "request_branches", Tolerate: true, Args: map[string]any{"branches": list}}
+	return a
 }
+
+// requestCalls is one branch.request call per {repo, branch} pair; run them in a Parallel action so
+// they merge into one approval.
+func requestCalls(branches ...[2]string) []fakeagent.MCPCall {
+	out := make([]fakeagent.MCPCall, len(branches))
+	for i, b := range branches {
+		out[i] = stateCall("branch.request", branchArgs(b[0], b[1], ""))
+		out[i].Tolerate = true
+	}
+	return out
+}
+
+// requestCall is one branch.request call for a {repo, branch} pair.
+func requestCall(branch [2]string) fakeagent.MCPCall { return requestCalls(branch)[0] }
+
+// requestCallsBase is requestCalls for {repo, branch, base} triples; "" omits the base.
+func requestCallsBase(branches ...[3]string) []fakeagent.MCPCall {
+	out := make([]fakeagent.MCPCall, len(branches))
+	for i, b := range branches {
+		out[i] = stateCall("branch.request", branchArgs(b[0], b[1], b[2]))
+		out[i].Tolerate = true
+	}
+	return out
+}
+
+// requestCallBase is one branch.request call for a {repo, branch, base} triple.
+func requestCallBase(branch [3]string) fakeagent.MCPCall { return requestCallsBase(branch)[0] }
 
 // pushBase creates name from main with one commit and pushes it, then resets the local copy to main:
 // only origin holds the commit. It returns the origin tip.
@@ -169,26 +220,41 @@ func (f *brFixture) branchName(t *testing.T, repoID string) string {
 	return branchOf(t, board(t, f.app), f.task.ID, repoID).Name
 }
 
-// agentOp waits for the one finished agent op of kind under the tool's mcp op and checks its task.
-func (f *brFixture) agentOp(t *testing.T, kind, tool string) oplog.Record {
+// agentOps waits for the finished agent ops of kind under the tool's mcp ops (one op per call), at
+// least n of them, and checks their task.
+func (f *brFixture) agentOps(t *testing.T, kind, tool string, n int) []oplog.Record {
 	t.Helper()
 	var got []oplog.Record
 	testx.WaitUntil(t, waitFor, func() bool {
 		got = got[:0]
 		rows := opsNow(t, f.app)
-		call, ok := findOp(rows, oplog.CategoryMCP, tool)
-		if !ok {
-			return false
+		calls := map[string]bool{}
+		for _, r := range rows {
+			if r.Category == oplog.CategoryMCP && r.Kind == tool {
+				calls[r.ID] = true
+			}
 		}
 		for _, r := range rows {
-			if r.Category == oplog.CategoryAgent && r.Kind == kind && r.ParentID == call.ID && r.Status != oplog.StatusRunning {
+			if r.Category == oplog.CategoryAgent && r.Kind == kind && calls[r.ParentID] && r.Status != oplog.StatusRunning {
 				got = append(got, r)
 			}
 		}
-		return len(got) > 0
+		return len(got) >= n
 	})
-	if len(got) != 1 || got[0].TaskID != f.task.ID {
-		t.Fatalf("%s ops under %s = %+v, want one for task %s", kind, tool, got, f.task.ID)
+	for _, r := range got {
+		if r.TaskID != f.task.ID {
+			t.Fatalf("%s op %+v is not for task %s", kind, r, f.task.ID)
+		}
+	}
+	return got
+}
+
+// agentOp is agentOps for the one op of kind.
+func (f *brFixture) agentOp(t *testing.T, kind, tool string) oplog.Record {
+	t.Helper()
+	got := f.agentOps(t, kind, tool, 1)
+	if len(got) != 1 {
+		t.Fatalf("%s ops under %s = %+v, want one", kind, tool, got)
 	}
 	return got[0]
 }
@@ -202,13 +268,13 @@ func opError(r oplog.Record) string {
 
 func TestBranchRequest(t *testing.T) {
 	t.Run("approve one repo, deny the other", func(t *testing.T) {
-		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"})}, Name: "done"}}, onceStepYML, true)
+		f := newBRFixture(t, []fakeagent.Action{{MCP: requestCalls([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"}), Parallel: true, Name: "done"}}, onceStepYML, true)
 		f.startRun(t)
-		req := f.waitRequest(t)
+		req := f.waitRequest(t, 2)
 		if len(req.Items) != 2 || req.Items[0].Source != "run" || req.Items[0].Kind != "branch" || req.TaskTitle == "" {
 			t.Fatalf("request = %+v, want two new-branch items from a run", req)
 		}
-		f.app.Contract(t, brScenario, "ApprovalsService.List#branch", []approvals.Item{*branchItem(f.app, req.ID)}, brListMask)
+		f.app.Contract(t, brScenario, "ApprovalsService.List#branch", []approvals.Item{orderedBranchItem(t, f.app, req.ID)}, brListMask)
 		if ps := f.requestPrompts(t); len(ps) != 1 || ps[0].Ref != branchItemPrefix+req.ID {
 			t.Fatalf("prompts = %+v, want one for the request", ps)
 		}
@@ -217,13 +283,13 @@ func TestBranchRequest(t *testing.T) {
 			t.Fatalf("run note = %q, want the approval note while it waits", run.Note)
 		}
 
-		ans, err := approveBR(f.app, req.ID, []string{req.Items[0].ID}, nil)
+		ans, err := approveBR(f.app, req.ID, []string{itemOf(t, req, "api").ID}, nil)
 		if err != nil || !ans.Resolved {
 			t.Fatalf("Approve = %+v, %v", ans, err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")
-		got := f.result(t, 1)
-		if !strings.Contains(got, "created") || !strings.Contains(got, "denied") {
+		got := f.results(t, 2)
+		if !strings.Contains(got, `"status":"done"`) || !strings.Contains(got, `"status":"denied"`) {
 			t.Fatalf("agent result = %s, want api created and web denied", got)
 		}
 		if name := f.branchName(t, f.api); name != "feat/login" {
@@ -245,8 +311,10 @@ func TestBranchRequest(t *testing.T) {
 		if _, err := branchRequest(f.app, req.ID); errCode(err) != "E_NOT_FOUND" {
 			t.Fatalf("BranchRequest after answer: %v, want E_NOT_FOUND", err)
 		}
-		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusOK || op.Command == nil || *op.Command != "Fix login, 2 branches" {
-			t.Fatalf("approval op = %+v, want ok for %q", op, "Fix login, 2 branches")
+		for _, op := range f.agentOps(t, "agentApproval", "branch.request", 2) {
+			if op.Status != oplog.StatusOK || op.Command == nil || !strings.HasPrefix(*op.Command, "Fix login") {
+				t.Fatalf("approval op = %+v, want ok for the task", op)
+			}
 		}
 		if ans, err := denyBR(f.app, req.ID); err != nil || ans.Resolved {
 			t.Fatalf("Deny after answer = %+v, %v, want resolved=false", ans, err)
@@ -254,12 +322,12 @@ func TestBranchRequest(t *testing.T) {
 	})
 
 	t.Run("approved branches of two repos are created together", func(t *testing.T) {
-		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"})}, Name: "done"}}, onceStepYML, true)
+		f := newBRFixture(t, []fakeagent.Action{{MCP: requestCalls([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"}), Parallel: true, Name: "done"}}, onceStepYML, true)
 		f.startRun(t)
-		req := f.waitRequest(t)
+		req := f.waitRequest(t, 2)
 		mustApprove(t, f.app, req.ID, []string{req.Items[0].ID, req.Items[1].ID}, nil)
 		waitRun(t, f.app, f.task.ID, "one", "done")
-		if got := f.result(t, 1); strings.Count(got, "created") != 2 {
+		if got := f.results(t, 2); strings.Count(got, `"status":"done"`) != 2 {
 			t.Fatalf("agent result = %s, want both branches created", got)
 		}
 		if name := f.branchName(t, f.api); name != "feat/login" {
@@ -268,36 +336,46 @@ func TestBranchRequest(t *testing.T) {
 		if name := f.branchName(t, f.web); name != "feat/login-web" {
 			t.Fatalf("web branch = %q, want the asked name", name)
 		}
-		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusOK {
-			t.Fatalf("approval op = %+v, want ok", op)
+		for _, op := range f.agentOps(t, "agentApproval", "branch.request", 2) {
+			if op.Status != oplog.StatusOK {
+				t.Fatalf("approval op = %+v, want ok", op)
+			}
 		}
-		if op := f.agentOp(t, "agentBranches", "request_branches"); op.Status != oplog.StatusOK || op.Command == nil || *op.Command != "api, web" {
-			t.Fatalf("branches op = %+v, want ok for %q", op, "api, web")
+		for _, op := range f.agentOps(t, "agentBranches", "branch.request", 1) {
+			if op.Status != oplog.StatusOK || op.Command == nil || (*op.Command != "api, web" && *op.Command != "api" && *op.Command != "web") {
+				t.Fatalf("branches op = %+v, want ok for the approved repos", op)
+			}
 		}
 	})
 
 	t.Run("one repo's failure leaves the other created and fails the op", func(t *testing.T) {
-		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"})}, Name: "done"}}, onceStepYML, true)
+		f := newBRFixture(t, []fakeagent.Action{{MCP: requestCalls([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"}), Parallel: true, Name: "done"}}, onceStepYML, true)
 		f.pushBase(t, "feat/api-base")
 		draft := branchOf(t, board(t, f.app), f.task.ID, f.api)
 		if err := f.app.W.AdeTask.SetBranchBase(ctx, adewire.SetBranchBaseArgs{BranchID: draft.ID, Base: adewire.BaseChoice{Ref: "feat/api-base"}}); err != nil {
 			t.Fatal(err)
 		}
 		f.startRun(t)
-		req := f.waitRequest(t)
+		req := f.waitRequest(t, 2)
 		f.repo.Git("push", "-q", "origin", "--delete", "feat/api-base")
 		f.repo.Git("branch", "-D", "feat/api-base")
 		mustApprove(t, f.app, req.ID, []string{req.Items[0].ID, req.Items[1].ID}, nil)
 		waitRun(t, f.app, f.task.ID, "one", "done")
-		got := f.result(t, 1)
-		if !strings.Contains(got, "failed") || !strings.Contains(got, "created") {
+		got := f.results(t, 2)
+		if !strings.Contains(got, `"status":"failed"`) || !strings.Contains(got, `"status":"done"`) || !strings.Contains(got, `"id":"api/feat/login"`) {
 			t.Fatalf("agent result = %s, want api failed and web created", got)
 		}
 		if name := f.branchName(t, f.web); name != "feat/login-web" {
 			t.Fatalf("web branch = %q, want it created despite api failing", name)
 		}
-		if op := f.agentOp(t, "agentBranches", "request_branches"); op.Status != oplog.StatusError || opError(op) != "failed: api" {
-			t.Fatalf("branches op = %+v, want error %q", op, "failed: api")
+		failedOps := 0
+		for _, op := range f.agentOps(t, "agentBranches", "branch.request", 1) {
+			if op.Status == oplog.StatusError && opError(op) == "failed: api" {
+				failedOps++
+			}
+		}
+		if failedOps != 1 {
+			t.Fatalf("branches ops failed for api = %d, want 1", failedOps)
 		}
 	})
 
@@ -349,14 +427,14 @@ func TestBranchRequest(t *testing.T) {
 		if n := len(taskOf(t, board(t, f.app), f.task.ID).BranchIDs); n != 1 {
 			t.Fatalf("branch rows after deny = %d, want 1", n)
 		}
-		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusCancelled || opError(op) != "denied" {
+		if op := f.agentOp(t, "agentApproval", "branch.request"); op.Status != oplog.StatusCancelled || opError(op) != "denied" {
 			t.Fatalf("approval op = %+v, want cancelled: denied", op)
 		}
 	})
 
 	t.Run("repeat call finds the branch; deny answers the rest", func(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{
-			MCP:  []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"}), requestCall([2]string{"api", "feat/a"}, [2]string{"web", "feat/b"})},
+			MCP:  []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"}), requestCall([2]string{"api", "feat/a"}), requestCall([2]string{"web", "feat/b"})},
 			Name: "done",
 		}}, onceStepYML, true)
 		f.startRun(t)
@@ -380,9 +458,11 @@ func TestBranchRequest(t *testing.T) {
 			t.Fatalf("Deny = %+v, %v", ans, err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")
-		got := f.result(t, 2)
-		if !strings.Contains(got, "existing") || !strings.Contains(got, "denied") {
-			t.Fatalf("second result = %s, want api existing and web denied", got)
+		if got := f.result(t, 2); !strings.Contains(got, `"status":"done"`) {
+			t.Fatalf("second result = %s, want api found again", got)
+		}
+		if got := f.result(t, 3); !strings.Contains(got, `"status":"denied"`) {
+			t.Fatalf("third result = %s, want web denied", got)
 		}
 	})
 
@@ -399,7 +479,7 @@ func TestBranchRequest(t *testing.T) {
 			t.Fatal(err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")
-		if got := f.result(t, 1); !strings.Contains(got, "created") || !strings.Contains(got, `"base":"feat/api-base"`) {
+		if got := f.result(t, 1); !strings.Contains(got, `"status":"done"`) {
 			t.Fatalf("agent result = %s, want created with the base", got)
 		}
 		row := f.branchNamed(t, "feat/login")
@@ -447,11 +527,11 @@ func TestBranchRequest(t *testing.T) {
 	})
 
 	t.Run("a bad base fails that branch before any prompt", func(t *testing.T) {
-		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCallBase([3]string{"api", "feat/x", "no/such"}, [3]string{"api", "feat/y", "bad..name"})}, Name: "done"}}, onceStepYML, false)
+		f := newBRFixture(t, []fakeagent.Action{{MCP: requestCallsBase([3]string{"api", "feat/x", "no/such"}, [3]string{"api", "feat/y", "bad..name"}), Parallel: true, Name: "done"}}, onceStepYML, false)
 		f.startRun(t)
 		waitRun(t, f.app, f.task.ID, "one", "done")
-		got := f.result(t, 1)
-		if strings.Count(got, "failed") != 2 || strings.Count(got, "Cannot use base") != 2 {
+		got := f.results(t, 2)
+		if strings.Count(got, `"status":"failed"`) != 2 || strings.Count(got, "Cannot use base") != 2 {
 			t.Fatalf("agent result = %s, want both branches failed with Cannot use base", got)
 		}
 		if ps := f.requestPrompts(t); len(ps) != 0 {
@@ -460,11 +540,12 @@ func TestBranchRequest(t *testing.T) {
 	})
 
 	t.Run("the same branch with two bases fails the call", func(t *testing.T) {
-		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCallBase([3]string{"api", "feat/x", "main"}, [3]string{"api", "feat/x", "develop"})}, Name: "done"}}, onceStepYML, false)
-		f.startRun(t)
-		waitRun(t, f.app, f.task.ID, "one", "done")
-		if got := f.result(t, 1); !strings.Contains(got, "asked twice with different bases") {
-			t.Fatalf("agent result = %s, want the contradiction refusal", got)
+		f := newBRFixture(t, []fakeagent.Action{{Name: "done"}}, onceStepYML, false)
+		_, err := f.app.W.AdeBoard.RequestBranches(ctx, agentmcp.SpaceCall{TaskID: f.task.ID}, []agentmcp.BranchSpec{
+			{Repo: "api", Branch: "feat/x", Base: "main"}, {Repo: "api", Branch: "feat/x", Base: "develop"},
+		})
+		if err == nil || !strings.Contains(err.Error(), "asked twice with different bases") {
+			t.Fatalf("RequestBranches = %v, want the contradiction refusal", err)
 		}
 		if ps := f.requestPrompts(t); len(ps) != 0 {
 			t.Fatalf("prompts = %+v, want none", ps)
@@ -505,28 +586,8 @@ func TestBranchRequest(t *testing.T) {
 			t.Fatal(err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")
-		if got := f.result(t, 2); !strings.Contains(got, "existing") || !strings.Contains(got, "keeps its base feat/api-base") {
+		if got := f.result(t, 2); !strings.Contains(got, `"status":"done"`) || !strings.Contains(got, "keeps its base feat/api-base") {
 			t.Fatalf("second result = %s, want existing with the kept-base note", got)
-		}
-	})
-
-	t.Run("no answer times out", func(t *testing.T) {
-		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"})}, Name: "done"}}, onceStepYML, false,
-			flowharness.WithBranchRequestWait(2*time.Second))
-		f.startRun(t)
-		f.waitRequest(t)
-		waitRun(t, f.app, f.task.ID, "one", "done")
-		if got := f.result(t, 1); !strings.Contains(got, "timeout") || !strings.Contains(got, "2 seconds") {
-			t.Fatalf("agent result = %s, want timeout after 2 seconds", got)
-		}
-		if ps := f.requestPrompts(t); len(ps) != 0 {
-			t.Fatalf("prompts after timeout = %+v", ps)
-		}
-		if name := f.branchName(t, f.api); name != "" {
-			t.Fatalf("branch = %q, want none after a timeout", name)
-		}
-		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusCancelled || opError(op) != "timeout" {
-			t.Fatalf("approval op = %+v, want cancelled: timeout", op)
 		}
 	})
 
@@ -559,41 +620,6 @@ func TestBranchRequest(t *testing.T) {
 		}
 		mustDeny(t, f.app, req.ID)
 		waitRun(t, f.app, f.task.ID, "one", "done")
-	})
-
-	t.Run("each call times out on its own clock", func(t *testing.T) {
-		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"})}, Name: "done"}}, onceStepYML, true,
-			flowharness.WithBranchRequestWait(4*time.Second))
-		f.startRun(t)
-		req := f.waitRequest(t)
-		time.Sleep(2 * time.Second) // margin for the joined call to outlive the first under -race
-		type answer struct {
-			res agentmcp.RequestBranchesResult
-			err error
-		}
-		done := make(chan answer, 1)
-		go func() {
-			res, err := f.app.W.AdeBoard.RequestBranches(ctx, agentmcp.SpaceCall{TaskID: f.task.ID}, []agentmcp.BranchSpec{{Repo: "web", Branch: "feat/w"}})
-			done <- answer{res, err}
-		}()
-		f.waitItems(t, 2)
-		// The first call ends at its own 4 s; the joined call keeps waiting in the same request.
-		waitRun(t, f.app, f.task.ID, "one", "done")
-		if got := f.result(t, 1); !strings.Contains(got, "timeout") {
-			t.Fatalf("first call result = %s, want timeout", got)
-		}
-		left, err := branchRequest(f.app, req.ID)
-		if err != nil || len(left.Items) != 1 || left.Items[0].ID != "c1i0" {
-			t.Fatalf("after the first call timed out: %+v, %v, want only c1i0", left, err)
-		}
-		select {
-		case a := <-done:
-			if a.err != nil || len(a.res.Branches) != 1 || a.res.Branches[0].Outcome == "" {
-				t.Fatalf("joined call = %+v, %v", a.res, a.err)
-			}
-		case <-time.After(5 * time.Second):
-			t.Fatal("joined call never timed out")
-		}
 	})
 
 	t.Run("approval leaves a call that joined after the view rendered pending", func(t *testing.T) {
@@ -685,7 +711,7 @@ func TestBranchRequest(t *testing.T) {
 			t.Fatalf("branch = %q, want none", name)
 		}
 		// An interactive session gets the same op as a run.
-		if op := f.agentOp(t, "agentApproval", "request_branches"); op.Status != oplog.StatusCancelled || opError(op) != "abandoned" {
+		if op := f.agentOp(t, "agentApproval", "branch.request"); op.Status != oplog.StatusCancelled || opError(op) != "abandoned" {
 			t.Fatalf("approval op = %+v, want cancelled: abandoned", op)
 		}
 	})
@@ -711,33 +737,38 @@ func TestBranchRequestTwentyAskedSevenApproved(t *testing.T) {
 		}
 		specs = append(specs, [3]string{"api", "feat/b" + strconv.Itoa(100+i), base})
 	}
-	f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCallBase(specs...)}, Name: "done"}}, onceStepYML, false)
+	f := newBRFixture(t, []fakeagent.Action{{MCP: requestCallsBase(specs...), Parallel: true, Name: "done"}}, onceStepYML, false)
 	f.startRun(t)
 	req := f.waitItems(t, asked)
-	f.app.Contract(t, brScenario, "ApprovalsService.List#twenty", []approvals.Item{*branchItem(f.app, req.ID)}, brListMask)
+	f.app.Contract(t, brScenario, "ApprovalsService.List#twenty", []approvals.Item{orderedBranchItem(t, f.app, req.ID)}, brListMask)
 	if ps := f.requestPrompts(t); len(ps) != 1 {
 		t.Fatalf("prompts = %+v, want one for the whole request", ps)
+	}
+	// Calls arrive in any order: pick items by branch name, not position.
+	idOf := map[string]string{}
+	for _, it := range req.Items {
+		idOf[it.Branch] = it.ID
 	}
 	var keep []string
 	for i := 0; i < asked; i += 3 {
 		if len(keep) < approved {
-			keep = append(keep, req.Items[i].ID)
+			keep = append(keep, idOf[specs[i][1]])
 		}
 	}
 	mustApprove(t, f.app, req.ID, keep, nil)
 	waitRun(t, f.app, f.task.ID, "one", "done")
-	got := f.result(t, 1)
-	if n := strings.Count(got, `"created"`); n != approved {
-		t.Fatalf("agent result lists %d created, want %d: %s", n, approved, got)
+	got := f.results(t, asked)
+	if n := strings.Count(got, `"status":"done"`); n != approved {
+		t.Fatalf("agent results list %d done, want %d: %s", n, approved, got)
 	}
-	if n := strings.Count(got, `"denied"`); n != asked-approved {
+	if n := strings.Count(got, `"status":"denied"`); n != asked-approved {
 		t.Fatalf("agent result lists %d denied, want %d: %s", n, asked-approved, got)
 	}
 	main := gitOut(t, f.repo.Dir, "rev-parse", "main")
 	var made int
-	for i, it := range req.Items {
+	for i := range specs {
 		out := gitOut(t, f.repo.Dir, "branch", "--list", specs[i][1])
-		want := slices.Contains(keep, it.ID)
+		want := slices.Contains(keep, idOf[specs[i][1]])
 		if (strings.TrimSpace(out) != "") != want {
 			t.Fatalf("branch %s exists = %q, want exists %v", specs[i][1], out, want)
 		}
@@ -787,8 +818,8 @@ func TestBranchRequestSurvivesClockAdvance(t *testing.T) {
 	}
 	mustApprove(t, f.app, req.ID, itemIDsOf(again), nil)
 	waitRun(t, f.app, f.task.ID, "one", "done")
-	if got := f.result(t, 1); !strings.Contains(got, "created") {
-		t.Fatalf("agent result = %s, want created after the late answer", got)
+	if got := f.result(t, 1); !strings.Contains(got, `"status":"done"`) {
+		t.Fatalf("agent result = %s, want done after the late answer", got)
 	}
 	if name := f.branchName(t, f.api); name != "feat/late" {
 		t.Fatalf("api branch = %q, want feat/late", name)

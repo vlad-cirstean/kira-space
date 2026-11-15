@@ -43,6 +43,147 @@
   "mysql#delimiter": {
     "code": "E_QUERY"
   },
+  "mysql#delimiterEffects": [
+    [
+      "a;b$$",
+      "2"
+    ],
+    [
+      "c",
+      "4"
+    ]
+  ],
+  "mysql#delimiterPages": [
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "status"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "OK"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "body",
+        "twice"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "a;b$$",
+          "2"
+        ],
+        [
+          "c",
+          "4"
+        ]
+      ],
+      "truncated": false
+    },
+    {
+      "columns": [
+        "TRIGGER_NAME"
+      ],
+      "hasMore": false,
+      "kind": "tabular",
+      "rows": [
+        [
+          "kira_delim_bi"
+        ]
+      ],
+      "truncated": false
+    }
+  ],
+  "mysql#delimiterScript": "-- P636: trigger and function bodies under custom delimiters\nDROP TABLE IF EXISTS kira_delim;\nDROP FUNCTION IF EXISTS kira_delim_twice;\nCREATE TABLE kira_delim (id INT PRIMARY KEY AUTO_INCREMENT, body VARCHAR(64));\nDELIMITER $$\nCREATE TRIGGER kira_delim_bi BEFORE INSERT ON kira_delim FOR EACH ROW\nBEGIN\n  IF NEW.body = 'a;b' THEN\n    SET NEW.body = CONCAT(NEW.body, '$$'); -- '$$' quoted, no boundary\n  END IF;\nEND$$\nDELIMITER //\nCREATE FUNCTION kira_delim_twice(x INT) RETURNS INT DETERMINISTIC\nBEGIN\n  DECLARE y INT;\n  SET y = x * 2;\n  RETURN y;\nEND //\nDELIMITER ;\nINSERT INTO kira_delim (body) VALUES ('a;b'), ('c');\nSELECT body, kira_delim_twice(id) AS twice FROM kira_delim ORDER BY id;\nSELECT trigger_name FROM information_schema.triggers WHERE trigger_schema = DATABASE() AND trigger_name = 'kira_delim_bi'",
+  "mysql#delimiterStatements": [
+    "-- P636: trigger and function bodies under custom delimiters\nDROP TABLE IF EXISTS kira_delim",
+    "DROP FUNCTION IF EXISTS kira_delim_twice",
+    "CREATE TABLE kira_delim (id INT PRIMARY KEY AUTO_INCREMENT, body VARCHAR(64))",
+    "CREATE TRIGGER kira_delim_bi BEFORE INSERT ON kira_delim FOR EACH ROW\nBEGIN\n  IF NEW.body = 'a;b' THEN\n    SET NEW.body = CONCAT(NEW.body, '$$'); -- '$$' quoted, no boundary\n  END IF;\nEND",
+    "CREATE FUNCTION kira_delim_twice(x INT) RETURNS INT DETERMINISTIC\nBEGIN\n  DECLARE y INT;\n  SET y = x * 2;\n  RETURN y;\nEND",
+    "INSERT INTO kira_delim (body) VALUES ('a;b'), ('c')",
+    "SELECT body, kira_delim_twice(id) AS twice FROM kira_delim ORDER BY id",
+    "SELECT trigger_name FROM information_schema.triggers WHERE trigger_schema = DATABASE() AND trigger_name = 'kira_delim_bi'"
+  ],
+  "mysql#dumpScript": "-- Dump of kira_dump\nDROP TABLE IF EXISTS `kira_dump`;\nCREATE TABLE `kira_dump` (id INT PRIMARY KEY AUTO_INCREMENT, body VARCHAR(64));\n/*!50003 SET @saved_cs_client      = @@character_set_client */ ;\nDELIMITER ;;\n/*!50003 CREATE*/ /*!50017 DEFINER=CURRENT_USER*/ /*!50003 TRIGGER `kira_dump_bi` BEFORE INSERT ON `kira_dump` FOR EACH ROW BEGIN\n  SET NEW.body = CONCAT(NEW.body, ';');\nEND */;;\nDELIMITER ;\n/*!50003 SET character_set_client  = @saved_cs_client */ ;\n-- Dump completed on 2026-01-01  0:00:00",
+  "mysql#dumpStatements": [
+    "-- Dump of kira_dump\nDROP TABLE IF EXISTS `kira_dump`",
+    "CREATE TABLE `kira_dump` (id INT PRIMARY KEY AUTO_INCREMENT, body VARCHAR(64))",
+    "/*!50003 SET @saved_cs_client      = @@character_set_client */",
+    "/*!50003 CREATE*/ /*!50017 DEFINER=CURRENT_USER*/ /*!50003 TRIGGER `kira_dump_bi` BEFORE INSERT ON `kira_dump` FOR EACH ROW BEGIN\n  SET NEW.body = CONCAT(NEW.body, ';');\nEND */",
+    "/*!50003 SET character_set_client  = @saved_cs_client */"
+  ],
   "mysql#failing": [
     "BEGIN",
     "INSERT INTO kira_tx VALUES (4)",

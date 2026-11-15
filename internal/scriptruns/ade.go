@@ -20,9 +20,9 @@ type ADE interface {
 	ClaimWorktree(ctx context.Context, branchID, script string) (release func(), err error)
 	// Busy says why a smart run cannot claim the branch now, "" when it can.
 	Busy(branchID string) string
-	// Tools are the Kira Space tools and run_outcome a task-bound smart run may call.
-	Tools() (agentmcp.SpaceTools, agentmcp.Outcomes)
-	// SandboxGit serves fetch_remote and push_branch to a sandboxed smart run.
+	// Tools are the Kira Space tools a task-bound smart run may call.
+	Tools() agentmcp.SpaceTools
+	// SandboxGit serves state remote.fetch and branch.push to a sandboxed smart run.
 	SandboxGit() agentmcp.SandboxGit
 	// SandboxTarget points those tools at branchID's worktree for one run; release drops it.
 	SandboxTarget(runID, branchID, worktree string) (release func(), err error)

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -12,16 +13,14 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
-	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
-// The proof channels: changed reaches every window, select reaches the one proof window.
+// ChannelProofChanged reaches every window.
 const (
 	ChannelProofChanged = proof.ChannelChanged
-	ChannelProofSelect  = "kira:proof:select"
 )
 
 const (
@@ -83,8 +82,9 @@ type ProofShotLocations interface {
 	SetProofShotLocation(path string) error
 }
 
-// ProofRevealer shows a folder in the file manager; configsvc.FileOpener satisfies it.
+// ProofRevealer opens and reveals a folder in the file manager; configsvc.FileOpener satisfies it.
 type ProofRevealer interface {
+	OpenFile(path string) error
 	RevealFile(path string) error
 }
 
@@ -109,6 +109,8 @@ type ProofService struct {
 	Opener    ProofRevealer
 	// Clipboard writes image batches; nil means no multi-image clipboard.
 	Clipboard ProofClipboard
+	// Folder resolves the absolute path of a task folder; main binds it once the task board exists.
+	Folder func(taskID string) (string, error)
 
 	openMu sync.Mutex
 	shots  proofShotFolders
@@ -144,12 +146,13 @@ type ProofSetViewStateArgs struct {
 	State     proof.ViewState `json:"state"`
 }
 
-// ProofOpenArgs opens the proof window, on SessionID when given.
+// ProofOpenArgs opens the window of one proof, named by its task and folder.
 type ProofOpenArgs struct {
-	SessionID string `json:"sessionId,omitempty"`
+	TaskID string `json:"taskId"`
+	Slug   string `json:"slug"`
 }
 
-// ProofOpenResult says which window shows the proofs and whether this call created it.
+// ProofOpenResult says which window shows the proof and whether this call created it.
 type ProofOpenResult struct {
 	Key    string `json:"key"`
 	Opened bool   `json:"opened"`
@@ -163,11 +166,6 @@ type ProofWindowKeyArgs struct {
 // ProofWindowTarget is the session a proof window was opened for; null when none.
 type ProofWindowTarget struct {
 	SessionID *string `json:"sessionId"`
-}
-
-// ProofSelect is the kira:proof:select payload.
-type ProofSelect struct {
-	SessionID string `json:"sessionId"`
 }
 
 func proofErr(err error) error {
@@ -196,9 +194,6 @@ func proofID(id string) error {
 	}
 	return nil
 }
-
-// Sessions lists closed sessions, newest first.
-func (s *ProofService) Sessions() ([]proof.Summary, error) { return proofResult(s.Svc.Sessions()) }
 
 // Session returns one session with its current and pending revisions.
 func (s *ProofService) Session(args ProofSessionArgs) (proof.Detail, error) {
@@ -256,6 +251,40 @@ func (s *ProofService) Delete(args ProofSessionArgs) error {
 	return proofErr(s.Svc.Delete(args.SessionID))
 }
 
+// OpenFolder opens the proof's folder in the file manager.
+func (s *ProofService) OpenFolder(args ProofSessionArgs) error {
+	return s.withFolder(args.SessionID, func(p string) error { return s.Opener.OpenFile(p) })
+}
+
+// RevealFolder shows the proof's folder in the file manager.
+func (s *ProofService) RevealFolder(args ProofSessionArgs) error {
+	return s.withFolder(args.SessionID, func(p string) error { return s.Opener.RevealFile(p) })
+}
+
+func (s *ProofService) withFolder(sessionID string, fn func(string) error) error {
+	if err := proofID(sessionID); err != nil {
+		return err
+	}
+	if s.Opener == nil || s.Folder == nil {
+		return nil
+	}
+	taskID, slug, ok, err := s.Svc.LinkOf(sessionID)
+	if err != nil {
+		return proofErr(err)
+	}
+	if !ok {
+		return ipcerr.NotFoundNamed("proofs/" + sessionID)
+	}
+	root, err := s.Folder(taskID)
+	if err != nil {
+		return ipcerr.InternalErr(err)
+	}
+	if root == "" {
+		return nil
+	}
+	return fn(filepath.Join(root, "proofs", slug))
+}
+
 // MarkSeen records that the user opened the session.
 func (s *ProofService) MarkSeen(args ProofSessionArgs) error {
 	if err := proofID(args.SessionID); err != nil {
@@ -264,36 +293,28 @@ func (s *ProofService) MarkSeen(args ProofSessionArgs) error {
 	return proofErr(s.Svc.MarkSeen(args.SessionID))
 }
 
-// liveKey is the key of the open proof window, "" when none.
-func (s *ProofService) liveKey() string {
-	for _, k := range s.Shell.Keys() {
-		if proof.IsWindowKey(k) {
-			return k
-		}
-	}
-	return ""
-}
-
-// OpenWindow shows the proof window, creating it or focusing the live one. With a sessionId the
-// window selects that session.
+// OpenWindow shows the window of one proof, creating it or focusing the live one. A window shows
+// one proof; the proof of a task is named by its task id and folder.
 func (s *ProofService) OpenWindow(args ProofOpenArgs) (ProofOpenResult, error) {
-	if args.SessionID != "" {
-		if err := proofID(args.SessionID); err != nil {
-			return ProofOpenResult{}, err
-		}
+	if args.TaskID == "" || len(args.TaskID) > 128 || args.Slug == "" || len(args.Slug) > 64 {
+		return ProofOpenResult{}, ipcerr.Contract("taskId and slug are required")
 	}
 	if s.Shell == nil {
 		return ProofOpenResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.unavailable.body", nil)
 	}
+	sessionID, ok, err := s.Svc.SessionOf(args.TaskID, args.Slug)
+	if err != nil {
+		return ProofOpenResult{}, proofErr(err)
+	}
+	if !ok {
+		return ProofOpenResult{}, ipcerr.NotFoundNamed("proofs/" + args.Slug)
+	}
 	s.openMu.Lock()
 	defer s.openMu.Unlock()
-	if key := s.liveKey(); key != "" {
+	key := proof.WindowKeyPrefix + sessionID
+	if slices.Contains(s.Shell.Keys(), key) {
 		s.Shell.Focus(key)
-		if args.SessionID != "" {
-			s.Targets.Set(key, args.SessionID)
-			s.Events.EmitTo(key, ChannelProofSelect, ProofSelect{SessionID: args.SessionID})
-		}
-		s.markOpened(args.SessionID)
+		s.markOpened(sessionID)
 		return ProofOpenResult{Key: key}, nil
 	}
 	records, err := s.Windows.List()
@@ -306,16 +327,13 @@ func (s *ProofService) OpenWindow(args ProofOpenArgs) (ProofOpenResult, error) {
 			order = r.Order + 1
 		}
 	}
-	key := proof.WindowKeyPrefix + ids.NewID()
 	if err := s.Windows.Create(model.WindowRecord{Key: key, Order: order}); err != nil {
 		return ProofOpenResult{}, ipcerr.InternalErr(err)
 	}
-	if args.SessionID != "" {
-		s.Targets.Set(key, args.SessionID)
-	}
+	s.Targets.Set(key, sessionID)
 	s.Shell.Open(shell.WindowRecord{Key: key, Order: order})
 	s.Shell.SetTitle(key, i18n.T("backend.studio.proof.window.title", nil))
-	s.markOpened(args.SessionID)
+	s.markOpened(sessionID)
 	return ProofOpenResult{Key: key, Opened: true}, nil
 }
 

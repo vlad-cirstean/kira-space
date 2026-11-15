@@ -21,8 +21,8 @@ const changeScenario = "ade-branch-change"
 
 func changeCall(from, to string) fakeagent.MCPCall {
 	return fakeagent.MCPCall{
-		Server: agentmcp.ServerName, Tool: "change_branch", Tolerate: true,
-		Args: map[string]any{"repo": "api", "from": from, "to": to},
+		Server: agentmcp.ServerName, Tool: "state", Tolerate: true,
+		Args: map[string]any{"action": "branch.change", "args": map[string]any{"repo": "api", "from": from, "to": to}},
 	}
 }
 
@@ -35,7 +35,7 @@ func gitIn(t *testing.T, dir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// newChangeFixture sets up two agent runs: the first creates feat/old, the second calls change_branch.
+// newChangeFixture sets up two agent runs: the first creates feat/old, the second calls branch.change.
 // It stops after the first run with the agent still waiting, so the test can move the worktree first.
 func newChangeFixture(t *testing.T, from, to string) (*brFixture, *flowharness.Repo, string) {
 	t.Helper()
@@ -66,7 +66,7 @@ func (f *brFixture) changeResult(t *testing.T) string {
 	var raw []byte
 	testx.WaitUntil(t, waitFor, func() bool {
 		var err error
-		raw, err = os.ReadFile(filepath.Join(f.app.FakeDir, "mcp-change_branch-1.json"))
+		raw, err = os.ReadFile(filepath.Join(f.app.FakeDir, "mcp-branch.change-1.json"))
 		return err == nil && len(raw) > 0 // the fake agent writes the file in place; skip a read of the empty file
 	})
 	return string(raw)
@@ -84,14 +84,11 @@ func TestBranchChange(t *testing.T) {
 			return before.Worktree == "" && before.Detached != nil && before.Detached.Head == "feat/other"
 		})
 		f.app.Contract(t, changeScenario, "AdeTaskService.Board#mismatch", []adewire.Branch{before}, adoptMask)
-		info, err := f.app.W.AdeBoard.BranchStatus(ctx, f.task.ID, "api", "feat/old", 0)
-		if err != nil || !strings.Contains(info.Next, "change_branch") || !strings.Contains(info.Next, "feat/other") {
-			t.Fatalf("branch status next = %q, %v; want a change_branch hint naming feat/other", info.Next, err)
-		}
-		task, err := f.app.W.AdeBoard.TaskInfo(ctx, f.task.ID, true)
-		if err != nil || len(task.Repos) != 1 || task.Repos[0].Mismatch == nil || task.Repos[0].Mismatch.CheckedOut != "feat/other" {
-			t.Fatalf("task info = %+v, %v; want a mismatch on feat/other", task, err)
-		}
+		folder := dfFolder(t, f.app, f.task.ID)
+		testx.WaitUntil(t, waitFor, func() bool {
+			st := dfRead(t, folder, "state.yaml")
+			return strings.Contains(st, "mismatch:") && strings.Contains(st, "checkedOut: feat/other")
+		})
 
 		f.release(t)
 		req := f.waitRequest(t)
@@ -103,7 +100,7 @@ func TestBranchChange(t *testing.T) {
 		if _, err := approveBR(f.app, req.ID, []string{item.ID}, nil); err != nil {
 			t.Fatal(err)
 		}
-		if got := f.changeResult(t); !strings.Contains(got, `"outcome":"changed"`) {
+		if got := f.changeResult(t); !strings.Contains(got, `"status":"done"`) {
 			t.Fatalf("agent result = %s, want changed", got)
 		}
 		row := branchOf(t, board(t, f.app), f.task.ID, f.api)
@@ -119,7 +116,7 @@ func TestBranchChange(t *testing.T) {
 		f.release(t)
 		req := f.waitRequest(t)
 		mustApprove(t, f.app, req.ID, []string{req.Items[0].ID}, nil)
-		if got := f.changeResult(t); !strings.Contains(got, `"outcome":"changed"`) {
+		if got := f.changeResult(t); !strings.Contains(got, `"status":"done"`) {
 			t.Fatalf("agent result = %s, want changed", got)
 		}
 		if head := gitIn(t, own, "symbolic-ref", "HEAD"); head != "refs/heads/feat/b" {
@@ -136,7 +133,7 @@ func TestBranchChange(t *testing.T) {
 		f.release(t)
 		req := f.waitRequest(t)
 		mustDeny(t, f.app, req.ID)
-		if got := f.changeResult(t); !strings.Contains(got, `"outcome":"denied"`) {
+		if got := f.changeResult(t); !strings.Contains(got, `"status":"denied"`) {
 			t.Fatalf("agent result = %s, want denied", got)
 		}
 		if head := gitIn(t, own, "symbolic-ref", "HEAD"); head != "refs/heads/feat/old" {
@@ -167,7 +164,7 @@ func TestBranchChange(t *testing.T) {
 			f, repo, own := newChangeFixture(t, "feat/old", tc.to)
 			tc.setup(t, repo, own)
 			f.release(t)
-			if got := f.changeResult(t); !strings.Contains(got, `"outcome":"failed"`) || !strings.Contains(got, tc.want) {
+			if got := f.changeResult(t); !strings.Contains(got, `"status":"failed"`) || !strings.Contains(got, tc.want) {
 				t.Fatalf("agent result = %s, want a refusal naming %q", got, tc.want)
 			}
 			if ps := f.requestPrompts(t); len(ps) != 0 {
@@ -196,7 +193,7 @@ func TestBranchChange(t *testing.T) {
 				t.Fatal(err)
 			}
 			f.release(t)
-			if got := f.changeResult(t); !strings.Contains(got, `"outcome":"failed"`) || !strings.Contains(got, "another agent session is open") {
+			if got := f.changeResult(t); !strings.Contains(got, `"status":"failed"`) || !strings.Contains(got, "another agent session is open") {
 				t.Fatalf("agent result = %s, want a refusal naming the other session", got)
 			}
 			if ps := f.requestPrompts(t); len(ps) != 0 {

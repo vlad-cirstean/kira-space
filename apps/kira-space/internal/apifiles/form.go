@@ -93,7 +93,7 @@ func (s *Store) SaveFile(file, baseHash, text string) (FileDetail, error) {
 }
 
 func (s *Store) saveLocked(kind, file, baseHash, text string) (FileDetail, error) {
-	var problem *configfs.Problem
+	var sig string
 	if kind == kindCollection {
 		if _, ok := s.collections.Get(file); !ok {
 			return FileDetail{}, fmt.Errorf("%w: %s", ErrNotFound, file)
@@ -102,7 +102,7 @@ func (s *Store) saveLocked(kind, file, baseHash, text string) (FileDetail, error
 		if err != nil {
 			return FileDetail{}, err
 		}
-		problem = e.Problem
+		sig = collectionSig(e)
 	} else {
 		if _, ok := s.environments.Get(file); !ok {
 			return FileDetail{}, fmt.Errorf("%w: %s", ErrNotFound, file)
@@ -111,9 +111,9 @@ func (s *Store) saveLocked(kind, file, baseHash, text string) (FileDetail, error
 		if err != nil {
 			return FileDetail{}, err
 		}
-		problem = e.Problem
+		sig = problemSig(e.Problem)
 	}
-	s.noteProblems1(file, problem)
+	s.noteProblems1(file, sig)
 	return s.detailLocked(kind, file)
 }
 

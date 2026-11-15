@@ -52,7 +52,7 @@ func (s *Service) mcpServer() *agentmcp.Server {
 	if s.server == nil {
 		opts := agentmcp.Options{Dir: filepath.Join(s.Home, "automations-mcp"), OnFinish: s.recordFinish, Prompts: s.llmPrompts()}
 		if s.ADE != nil {
-			opts.Space, opts.Outcomes = s.ADE.Tools()
+			opts.Space = s.ADE.Tools()
 			opts.SandboxGit = s.ADE.SandboxGit()
 		}
 		s.server = agentmcp.NewServer(opts)

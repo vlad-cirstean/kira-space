@@ -128,7 +128,7 @@ func TestStageMoveMixedSessions(t *testing.T) {
 	// Call 1 is run one, 2 the stage session that drafts, 3 a branch session that ends early, 4 one that keeps running.
 	claude(app, map[string][]fakeagent.Action{"*": {
 		{Name: "done"},
-		{MCP: []fakeagent.MCPCall{handoverCall("Drafted before the move.", false)}, WaitFile: flag("s1")},
+		{WaitBefore: flag("go"), MCP: []fakeagent.MCPCall{submitCall(false)}, WaitFile: flag("s1")},
 		{WaitFile: flag("gone")},
 		{WaitFile: flag("live")},
 	}})
@@ -160,6 +160,10 @@ func TestStageMoveMixedSessions(t *testing.T) {
 		return l
 	}
 	s1 := launch()
+	writeTaskFile(t, app, task.ID, "handovers/draft-work.md", "Drafted before the move.")
+	if err := os.WriteFile(flag("go"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	testx.WaitUntil(t, waitFor, func() bool {
 		return len(taskOf(t, board(t, app), task.ID).HandoverDrafts) == 1
 	})

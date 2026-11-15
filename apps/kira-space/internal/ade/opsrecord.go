@@ -2,6 +2,7 @@ package ade
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
@@ -126,10 +127,27 @@ func (b *TaskBoard) mcpRecorder(ctx context.Context, c agentmcp.ToolCall) (conte
 	o := oplog.Origin{Module: oplog.ModuleADE, Trigger: oplog.TriggerMCP, Label: "MCP " + c.Tool, TaskID: c.TaskID}
 	ctx = oplog.WithOrigin(ctx, o)
 	op := b.deps.Ops.Start(ctx, oplog.Meta{
-		Category: oplog.CategoryMCP, Kind: c.Tool, Source: "MCP " + c.Tool, Subject: b.opSubject(c.TaskID),
+		Category: oplog.CategoryMCP, Kind: mcpOpKind(c), Source: "MCP " + c.Tool, Subject: b.opSubject(c.TaskID),
 	})
 	op.SetCommand(c.Tool + " " + oplog.RedactJSON(c.Args, 2<<10))
-	return oplog.WithOp(ctx, op), func(isError bool, text string, err error) { oplog.FinishCall(op, isError, text, err) }
+	return oplog.WithOp(ctx, op), func(isError bool, text string, err error) {
+		oplog.FinishCall(op, isError, text, err)
+		b.markStateDirty(c.TaskID, true) // a tool call is agent activity; its effect shows in state.yaml
+	}
+}
+
+// mcpOpKind is the op kind of a tool call: the tool, or for state its action, so each action has its own kind.
+func mcpOpKind(c agentmcp.ToolCall) string {
+	if c.Tool != agentmcp.State.Tool {
+		return c.Tool
+	}
+	var a struct {
+		Action string `json:"action"`
+	}
+	if json.Unmarshal(c.Args, &a) != nil || a.Action == "" {
+		return c.Tool
+	}
+	return a.Action
 }
 
 // recordSessionEnd logs one finished stop of an interactive session: a user stop, a terminal that

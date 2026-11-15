@@ -233,7 +233,7 @@ func (b *TaskBoard) releaseClaim(sb model.AdeTaskBranch) {
 }
 
 // Tools implements scriptruns.ADE.
-func (b *TaskBoard) Tools() (agentmcp.SpaceTools, agentmcp.Outcomes) { return b, b }
+func (b *TaskBoard) Tools() agentmcp.SpaceTools { return b }
 
 // launchAutomationHeld launches the step runs a smart script held when the app last quit: no claim
 // survives a restart.
@@ -261,7 +261,7 @@ func (b *TaskBoard) launchAutomationHeld() {
 	}
 }
 
-// SandboxGit serves fetch_remote and push_branch to a sandboxed smart run (scriptruns.ADE).
+// SandboxGit serves state remote.fetch and branch.push to a sandboxed smart run (scriptruns.ADE).
 func (b *TaskBoard) SandboxGit() agentmcp.SandboxGit { return b }
 
 // SandboxTarget points the sandbox git tools at a branch's worktree for one smart run.

@@ -2,84 +2,58 @@ package claude
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/internal/loginshell"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 )
 
-// proofMcpApp starts the real app with the kira-studio MCP enabled and writes the claude MCP config.
-func proofMcpApp(t *testing.T) (*realApp, string, string) {
+// proofRun runs one agent step with prompt, which must end in finish_step, and returns the task and its
+// proofs once the run is done. The agent learns the proof format from the README and the prompt text.
+func proofRun(t *testing.T, prompt string) (*adeFixture, adewire.Task, []adewire.TaskProof) {
 	t.Helper()
-	app := newRealApp(t)
-	_, url, helper := enableDbMcp(t, app)
-	cfg := filepath.Join(t.TempDir(), "mcp.json")
-	raw, err := json.Marshal(map[string]any{"mcpServers": map[string]any{
-		dbServer: map[string]any{"type": "http", "url": url, "headersHelper": loginshell.Quote(helper)},
-	}})
+	f := newAdeFixture(t, nil)
+	step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 4m\n    prompt: |\n      " + prompt + "\n"
+	f.saveWorkflow(t, "flow", step+manualStepYAML)
+	task := f.createTask(t, "flow")
+	run := f.startRun(t, task, "feat/proof")
+	if run.State != "done" {
+		t.Fatalf("run = %+v, want done; log:\n%s", run, tail(f.runLog(t, run.ID), 1500))
+	}
+	res, err := f.W.AdeTask.TaskProofs(ctx, adewire.TaskArgs{TaskID: task.ID})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("TaskProofs: %v", err)
 	}
-	if err := os.WriteFile(cfg, raw, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	return app, cfg, "mcp__" + dbServer + "__"
+	return f, task, res.Proofs
 }
 
-// TestProofMcpThroughClaude has the real claude write a validation proof through kira-studio
-// proof_save and checks the stored session.
+// TestProofMcpThroughClaude has the real claude write a validation proof as proofs/<slug>/proof.md in
+// the task folder and submit it, then checks the stored proof.
 func TestProofMcpThroughClaude(t *testing.T) {
-	app, cfg, pre := proofMcpApp(t)
-	app.claudeP(t, t.TempDir(), nil,
-		`Use the kira-studio proof_save tool once with name "Claude proof" and two steps: `+
-			`first a table step (description "Two rows", view "table", data {"columns":[{"name":"id"},{"name":"label"}],"rows":[[1,"a"],[2,"b"]]}), `+
-			`then a document step (description "One doc", view "document", data {"documents":[{"body":{"ok":true}}]}). `+
-			`Reply with the word done.`,
-		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", pre+"proof_save",
-		"--output-format", "stream-json", "--verbose")
-
-	list, err := app.W.Proof.Sessions()
-	if err != nil || len(list) != 1 || list[0].Name != "Claude proof" {
-		t.Fatalf("Sessions = %+v, %v; want one named %q", list, err, "Claude proof")
+	f, _, proofs := proofRun(t, `Write a validation proof named "Claude proof" in the task folder with two steps: `+
+		`first a table step (description "Two rows", columns id and label, rows 1 a and 2 b), `+
+		`then a document step (description "One doc", one document with body ok true). `+
+		`Call submit, then call finish_step with status done.`)
+	if len(proofs) != 1 || proofs[0].Name != "Claude proof" || proofs[0].Slug != "claude-proof" {
+		t.Fatalf("proofs = %+v, want one named %q in folder claude-proof", proofs, "Claude proof")
 	}
-	det, err := app.W.Proof.Session(bridge.ProofSessionArgs{SessionID: list[0].ID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	steps := det.Current.Steps
+	steps := proofs[0].Steps
 	if len(steps) != 2 || steps[0].View != "table" || steps[0].Description != "Two rows" || steps[1].View != "document" || steps[1].Description != "One doc" {
 		t.Fatalf("steps = %+v, want table then document in order", steps)
 	}
+	f.requireCostUnder(t)
 }
 
-// TestProofChartThroughClaude has the real claude save a bar chart step from the tool text alone
-// and checks the stored payload.
+// TestProofChartThroughClaude has the real claude write a bar chart step from the README text alone and
+// checks the stored payload.
 func TestProofChartThroughClaude(t *testing.T) {
-	app, cfg, pre := proofMcpApp(t)
-	app.claudeP(t, t.TempDir(), nil,
-		`Use the kira-studio proof_save tool once with name "Chart proof" and one step: `+
-			`a chart step with description "Errors by service" showing errors per service as a bar chart: api 3, web 5, worker 0. `+
-			`Reply with the word done.`,
-		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", pre+"proof_save",
-		"--output-format", "stream-json", "--verbose")
-
-	list, err := app.W.Proof.Sessions()
-	if err != nil || len(list) != 1 || list[0].Name != "Chart proof" {
-		t.Fatalf("Sessions = %+v, %v; want one named %q", list, err, "Chart proof")
+	f, _, proofs := proofRun(t, `Write a validation proof named "Chart proof" in the task folder with one step: `+
+		`a chart step with description "Errors by service" showing errors per service as a bar chart: api 3, web 5, worker 0. `+
+		`Call submit, then call finish_step with status done.`)
+	if len(proofs) != 1 || proofs[0].Name != "Chart proof" || len(proofs[0].Steps) != 1 || proofs[0].Steps[0].View != "chart" || proofs[0].Steps[0].Description != "Errors by service" {
+		t.Fatalf("proofs = %+v, want one chart step %q", proofs, "Errors by service")
 	}
-	det, err := app.W.Proof.Session(bridge.ProofSessionArgs{SessionID: list[0].ID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	steps := det.Current.Steps
-	if len(steps) != 1 || steps[0].View != "chart" || steps[0].Description != "Errors by service" {
-		t.Fatalf("steps = %+v, want one chart step %q", steps, "Errors by service")
-	}
-	step, err := app.W.Proof.Step(bridge.ProofStepArgs{SessionID: list[0].ID, Rev: det.Current.Rev, Ordinal: steps[0].Ordinal})
+	step, err := f.W.Proof.Step(bridge.ProofStepArgs{SessionID: proofs[0].ProofID, Rev: proofs[0].Rev, Ordinal: proofs[0].Steps[0].Ordinal})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,4 +82,5 @@ func TestProofChartThroughClaude(t *testing.T) {
 			t.Fatalf("points = %v, want %v", got, want)
 		}
 	}
+	f.requireCostUnder(t)
 }

@@ -98,7 +98,7 @@ func toolIDs(name string) ([]string, bool) {
 }
 
 // translateRules turns Kira tool entries into OpenCode permission rules with action. A Bash(...)
-// entry becomes a bash pattern, an Edit(...) entry an edit pattern; every other entry with
+// entry becomes a bash pattern, an Edit(...) or Write(...) entry an edit pattern; every other entry with
 // arguments, and every unknown name, is an error naming it (fail closed).
 func translateRules(entries []string, action string) (map[string]*ruleSet, error) {
 	out := map[string]*ruleSet{}
@@ -129,7 +129,7 @@ func translateRules(entries []string, action string) (map[string]*ruleSet, error
 		switch name {
 		case "Bash":
 			add("bash", bashPattern(arg))
-		case "Edit":
+		case "Edit", "Write": // OpenCode's edit permission covers write and patch too
 			add("edit", editPattern(arg))
 		default:
 			return nil, unsupported(e)

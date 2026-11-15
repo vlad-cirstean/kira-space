@@ -81,7 +81,7 @@ export function isDirty(state: HttpRequestTabState, saved: HttpSavedRequest | nu
 // A hand-written comparison rather than JSON.stringify: key order is not guaranteed across two
 // objects built by different code paths (one from tab state, one from Go's own JSON), and a
 // stringify mismatch on ordering alone would light the dirty mark on an untouched request.
-function sameRequest(a: HttpSavedRequest, b: HttpSavedRequest): boolean {
+export function sameRequest(a: HttpSavedRequest, b: HttpSavedRequest): boolean {
   if (
     a.method !== b.method ||
     a.url !== b.url ||

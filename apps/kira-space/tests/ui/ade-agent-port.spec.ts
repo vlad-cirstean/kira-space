@@ -19,6 +19,22 @@ const exportPreview = contract<Record<string, unknown> & { files: { role: string
   'agent-port-export',
   'preview',
 );
+const journeyImport = contract<{ token: string; items: { id: string; state: string }[] }>(
+  'agent-port-journey',
+  'import',
+);
+const journeyExport = contract<Record<string, unknown> & { files: { role: string }[] }>(
+  'agent-port-journey',
+  'export',
+);
+const journeyBackups = contract<{ file: string; role: string; restorable: boolean }[]>(
+  'agent-port-journey',
+  'backups',
+);
+const journeyRestore = contract<{ written: string[]; backups: string[] }>(
+  'agent-port-journey',
+  'restore',
+);
 const providers = [
   { id: 'claude', label: 'Claude', files: [] },
   { id: 'opencode', label: 'OpenCode', files: [] },
@@ -181,4 +197,114 @@ test('a missing CLI shows the alert and leaves servers out', async ({ relaunch }
   const dialog = page.locator(t('ade-port-export-dialog'));
   await expect(dialog.locator(t('ade-port-cli-missing'))).toBeVisible();
   await expect(dialog.locator(t('ade-port-servers-check'))).toBeDisabled();
+});
+
+// J-HAR-002, frontend half: the flow test TestAgentPortClaudeJourney runs the same scenario on the
+// backend and asserts the same results (masked previews, backups, restore) from the same contracts.
+test('journey: import masks secrets, export shows statusline and skips, backups list, restore', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openSettings(relaunch, [
+    { channel: IPC.agentPortImportPreview, response: journeyImport },
+    { channel: IPC.agentPortExportPreview, response: journeyExport },
+    { channel: IPC.agentPortBackups, response: journeyBackups },
+    { channel: IPC.agentPortRestore, response: journeyRestore },
+  ]);
+
+  await page.locator(t('ade-port-import')).click();
+  const imp = page.locator(t('ade-port-import-dialog'));
+  await imp.locator(t('ade-port-items')).waitFor();
+  await reveal(imp, 'mcp/gh');
+  const slots = imp.locator(t('ade-port-secret'));
+  await expect(slots.first()).toBeVisible();
+  for (const text of await slots.allTextContents()) expect(text).toContain('••••');
+  await expect(imp).not.toContainText('p635-');
+  await reveal(imp, 'claude/status_line');
+  await expect(imp.locator(t('ade-port-item-claude/status_line'))).toHaveAttribute(
+    'data-state',
+    'new',
+  );
+  await imp.locator(t('ade-port-close')).click();
+
+  await page.locator(t('ade-port-export')).click();
+  const exp = page.locator(t('ade-port-export-dialog'));
+  await exp.locator(t('ade-port-files')).waitFor();
+  await exp.locator(t('ade-port-file-settings')).getByRole('button').first().click();
+  const diff = exp.locator('[data-kira-diff-original-text]').first();
+  await expect(diff).toHaveAttribute('data-kira-diff-modified-text', /refreshInterval/);
+  await expect(diff).toHaveAttribute('data-kira-diff-original-text', /••••/);
+  await expect(diff).not.toHaveAttribute('data-kira-diff-original-text', /p635-/);
+  await expect(exp.locator(t('ade-port-skipped'))).toContainText('env.JIRA_TOKEN');
+  await exp.locator(t('ade-port-close')).click();
+
+  await page.locator(t('ade-port-backups-open')).click();
+  const dialog = page.locator(t('ade-port-backups-dialog'));
+  await dialog.locator(t('ade-port-backup-list')).waitFor();
+  const ids = await dialog
+    .locator('[data-role]')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('data-testid')));
+  expect(ids).toEqual(journeyBackups.map((b) => `ade-port-backup-${b.file}`));
+  const mcp = journeyBackups.find((b) => b.role === 'mcp');
+  if (!mcp) throw new Error('no mcp backup in the contract');
+  expect(mcp.restorable).toBe(false);
+  await expect(dialog.locator(t(`ade-port-restore-${mcp.file}`))).toBeDisabled();
+  await expect(dialog.locator(t(`ade-port-backup-reason-${mcp.file}`))).toBeVisible();
+
+  const oldest = journeyBackups.filter((b) => b.role === 'settings').at(-1);
+  if (!oldest) throw new Error('no settings backup in the contract');
+  await dialog.locator(t(`ade-port-restore-${oldest.file}`)).click();
+  await expect(page.locator(t('confirm-dialog'))).toBeVisible();
+  await expect(page.locator(t('confirm-dialog-message'))).toContainText(oldest.file);
+  await page.locator(t('confirm-dialog-confirm')).click();
+  await dialog.locator(t('ade-port-result')).waitFor();
+  expect(calls(control, IPC.agentPortRestore)).toHaveLength(1);
+  expect(calls(control, IPC.agentPortRestore)[0]?.args).toEqual({
+    provider: 'claude',
+    file: oldest.file,
+  });
+  await expect(dialog.locator(t('ade-port-written'))).toContainText(
+    journeyRestore.written[0]?.split('/').pop() ?? '',
+  );
+  await expect(dialog.locator(t('ade-port-backups'))).toContainText(
+    journeyRestore.backups[0]?.split('/').pop() ?? '',
+  );
+  await expect.poll(() => calls(control, IPC.agentPortBackups)).toHaveLength(2);
+});
+
+test('restore cancelled at the confirm sends nothing', async ({ relaunch }) => {
+  const { window: page, control } = await openSettings(relaunch, [
+    { channel: IPC.agentPortBackups, response: journeyBackups },
+    { channel: IPC.agentPortRestore, response: journeyRestore },
+  ]);
+  await page.locator(t('ade-port-backups-open')).click();
+  const dialog = page.locator(t('ade-port-backups-dialog'));
+  const first = journeyBackups.find((b) => b.restorable);
+  if (!first) throw new Error('no restorable backup in the contract');
+  await dialog.locator(t(`ade-port-restore-${first.file}`)).click();
+  await page.locator(t('confirm-dialog-cancel')).click();
+  await expect(page.locator(t('confirm-dialog'))).toHaveCount(0);
+  expect(calls(control, IPC.agentPortRestore)).toHaveLength(0);
+  await expect(dialog.locator(t('ade-port-result'))).toHaveCount(0);
+});
+
+test('export apply reloads the backups list', async ({ relaunch }) => {
+  const { window: page, control } = await openSettings(relaunch, [
+    { channel: IPC.agentPortExportPreview, response: exportPreview },
+    { channel: IPC.agentPortExportApply, response: applied },
+    { channel: IPC.agentPortBackups, response: journeyBackups },
+  ]);
+  await page.locator(t('ade-port-backups-open')).click();
+  const dialog = page.locator(t('ade-port-backups-dialog'));
+  await dialog.locator(t('ade-port-backup-list')).waitFor();
+  await dialog.locator(t('ade-port-close')).click();
+  expect(calls(control, IPC.agentPortBackups)).toHaveLength(1);
+
+  await page.locator(t('ade-port-export')).click();
+  const exp = page.locator(t('ade-port-export-dialog'));
+  await exp.locator(t('ade-port-files')).waitFor();
+  await exp.locator(t('ade-port-apply')).click();
+  await exp.locator(t('ade-port-result')).waitFor();
+  await exp.locator(t('ade-port-close')).click();
+  await page.locator(t('ade-port-backups-open')).click();
+  await expect.poll(() => calls(control, IPC.agentPortBackups)).toHaveLength(2);
 });

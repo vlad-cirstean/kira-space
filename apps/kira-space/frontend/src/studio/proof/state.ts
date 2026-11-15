@@ -32,13 +32,9 @@ export const useProofWindowStore = defineStore('proofWindow', () => {
     shotResult.value = null;
   }
 
+  /** A window shows one proof for its whole life: set once at boot. */
   function selectSession(id: string | null): void {
-    if (sessionId.value === id) return;
     sessionId.value = id;
-    shotResult.value = null;
-    side.value = null;
-    compare.value = false;
-    activeId.value = null;
   }
 
   function markReady(key: string): void {

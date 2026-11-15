@@ -8,13 +8,10 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-
-	"github.com/kirathecat/kira-studio/internal/llmprompts"
 )
 
 const (
 	maxDeclareRepos = 20
-	maxWaitSeconds  = 600
 )
 
 // ToolError is a failure the agent can act on; its text is returned to the agent verbatim. Any other
@@ -43,8 +40,8 @@ type TaskRepo struct {
 // WorktreeMismatch says what the row's own folder holds instead of the task branch. CheckedOut is
 // "HEAD" for a detached commit.
 type WorktreeMismatch struct {
-	Folder     string `json:"folder"`
-	CheckedOut string `json:"checkedOut"`
+	Folder     string `json:"folder" yaml:"folder"`
+	CheckedOut string `json:"checkedOut" yaml:"checkedOut"`
 }
 
 // RegisteredRepo is a repo imported into Kira Space; only these can be declared.
@@ -78,7 +75,7 @@ type BranchInfo struct {
 	Next     string    `json:"next"`
 }
 
-// Outcomes of one branch in a request_branches call.
+// Outcomes of one branch in a branch.request call.
 const (
 	BranchCreated  = "created"
 	BranchExisting = "existing"
@@ -86,24 +83,30 @@ const (
 	BranchCheckedOut = "checkedOut"
 	BranchDenied     = "denied"
 	BranchFailed     = "failed"
-	BranchTimeout    = "timeout"
+	// BranchPending: the call wait ended with the user's approval still open. The approval stays
+	// open and applies on its own when the user answers.
+	BranchPending = "pending"
+	// BranchWaiting: the branch exists but its worktree setup was still running when the wait ended.
+	BranchWaiting = "waiting"
 )
 
-// RequestedBranch is the answer for one branch of a request_branches call.
+// RequestedBranch is the answer for one branch of a branch.request call.
 type RequestedBranch struct {
 	BranchInfo
 	Outcome string `json:"outcome"`
 }
 
-// RequestBranchesResult is request_branches' answer, one entry per branch asked for.
+// RequestBranchesResult is branch.request's answer, one entry per branch asked for. Waited is how long
+// the call waited, for a pending or waiting entry.
 type RequestBranchesResult struct {
 	Branches []RequestedBranch `json:"branches"`
+	Waited   time.Duration     `json:"-"`
 }
 
-// Outcomes of rename_branch; renamed, denied, failed and timeout reuse the request_branches words.
+// Outcomes of branch.rename; denied, failed and pending reuse the branch.request words.
 const BranchRenamed = "renamed"
 
-// Remote branch states after rename_branch: renamed, kept (left as it was), untracked (the branch had no
+// Remote branch states after branch.rename: renamed, kept (left as it was), untracked (the branch had no
 // remote branch) or failed (the local rename stands).
 const (
 	RemoteRenamed   = "renamed"
@@ -120,7 +123,7 @@ type RenameBranchArgs struct {
 	RenameRemote bool   `json:"renameRemote,omitempty"`
 }
 
-// RenameBranchResult is rename_branch's answer.
+// RenameBranchResult is branch.rename's answer.
 type RenameBranchResult struct {
 	Repo     string `json:"repo"`
 	From     string `json:"from"`
@@ -129,9 +132,11 @@ type RenameBranchResult struct {
 	Remote   string `json:"remote"`
 	Worktree string `json:"worktree"`
 	Next     string `json:"next"`
+	// Waited is how long the call waited, for a pending outcome.
+	Waited time.Duration `json:"-"`
 }
 
-// BranchChanged is change_branch's success outcome; denied, failed and timeout reuse the request_branches words.
+// BranchChanged is branch.change's success outcome; denied, failed and pending reuse the branch.request words.
 const BranchChanged = "changed"
 
 // ChangeBranchArgs asks to re-point the task's branch From at the existing local branch To.
@@ -141,7 +146,7 @@ type ChangeBranchArgs struct {
 	To   string `json:"to"`
 }
 
-// ChangeBranchResult is change_branch's answer.
+// ChangeBranchResult is branch.change's answer.
 type ChangeBranchResult struct {
 	Repo     string `json:"repo"`
 	From     string `json:"from"`
@@ -149,13 +154,8 @@ type ChangeBranchResult struct {
 	Outcome  string `json:"outcome"`
 	Worktree string `json:"worktree"`
 	Next     string `json:"next"`
-}
-
-// AttachProofResult is one proof attached through a report_artifacts item of kind proof; Status is "attached".
-type AttachProofResult struct {
-	Name   string `json:"name"`
-	Steps  int    `json:"steps"`
-	Status string `json:"status"`
+	// Waited is how long the call waited, for a pending outcome.
+	Waited time.Duration `json:"-"`
 }
 
 // OperationInfo is one running operation of the task that an agent may stop.
@@ -165,20 +165,6 @@ type OperationInfo struct {
 	Subject   string `json:"subject,omitempty"`
 	StartedAt string `json:"startedAt"`
 	ElapsedMs int64  `json:"elapsedMs"`
-}
-
-// OperationsArgs is the operations tool's input: empty lists, Cancel stops one.
-type OperationsArgs struct {
-	Cancel string `json:"cancel,omitempty"`
-}
-
-// OperationsResult is the operations tool's answer: Operations when listing, OpID, Kind and Cancelled
-// after a cancel.
-type OperationsResult struct {
-	Operations *[]OperationInfo `json:"operations,omitempty"`
-	OpID       string           `json:"opId,omitempty"`
-	Kind       string           `json:"kind,omitempty"`
-	Cancelled  *bool            `json:"cancelled,omitempty"`
 }
 
 // CancelOperationResult is the engine's answer to a cancel.
@@ -197,33 +183,31 @@ type SpaceCall struct {
 	StepID string
 	// SessionID is the Kira session record that made the call, "" when unknown.
 	SessionID string
+	// Orchestrator is true for the orchestrator on its own task.
+	Orchestrator bool
 }
 
-// SpaceTools is what the Kira Space tools call; *ade.TaskBoard implements it. Every method acts on
-// one task only. RequestBranches blocks until the user answers; ctx ends when the caller is gone.
+// SpaceTools is what the state and submit tools call; *ade.TaskBoard implements it. Every method acts
+// on one task only. RequestBranches, RenameBranch, ChangeBranch and AcquireLease block until the user
+// answers or the call wait ends; ctx ends when the caller is gone.
 type SpaceTools interface {
 	LeaseTools
-	// TaskInfo lists the registered repos only for a task with no repos, or with includeRegistered.
-	TaskInfo(ctx context.Context, taskID string, includeRegistered bool) (TaskInfo, error)
 	DeclareRepos(ctx context.Context, taskID string, repos []string) (TaskInfo, error)
 	RequestBranches(ctx context.Context, call SpaceCall, branches []BranchSpec) (RequestBranchesResult, error)
-	BranchStatus(ctx context.Context, taskID, repo, branch string, wait time.Duration) (BranchInfo, error)
 	RenameBranch(ctx context.Context, call SpaceCall, args RenameBranchArgs) (RenameBranchResult, error)
 	ChangeBranch(ctx context.Context, call SpaceCall, args ChangeBranchArgs) (ChangeBranchResult, error)
-	ReportArtifacts(ctx context.Context, call SpaceCall, in []ArtifactInput) (ReportArtifactsResult, error)
-	// AttachProof shows a closed proof session, by name, in the task's notes chain; report_artifacts
-	// kind proof calls it.
-	AttachProof(ctx context.Context, call SpaceCall, name string) (AttachProofResult, error)
+	// Submit reads the named task files (all when none) as the calling session; the reply is the count line then one line per file.
+	Submit(ctx context.Context, call SpaceCall, in SubmitArgs) (string, error)
+	// SubmitForFinish is a run's step.finish implicit submit; an ok finish with no draft is refused
+	// while its result's route continues.
+	SubmitForFinish(ctx context.Context, call SpaceCall, status string, ok bool) (SubmitFinish, error)
+	// FinishSession is a session's step.finish: it submits the task files, marks the stage's draft
+	// finished and asks the user to move the task on. The reply is a note for the agent.
+	FinishSession(ctx context.Context, call SpaceCall) (string, error)
 	// ListArtifacts lists every artifact of the task; a failing source is a gap, not an error.
 	ListArtifacts(ctx context.Context, taskID string) (TaskArtifacts, error)
-	// ListOperations lists the task's running operations that can be stopped; background rows stay out.
-	ListOperations(ctx context.Context, taskID string) ([]OperationInfo, error)
 	// CancelOperation stops one of them; an unknown or finished id is a ToolError.
 	CancelOperation(ctx context.Context, taskID, opID string) (CancelOperationResult, error)
-}
-
-type declareArgs struct {
-	Repos []string `json:"repos"`
 }
 
 // BranchSpec is one branch an agent asks for: a task or registered repo, the branch name the agent chose
@@ -236,22 +220,6 @@ type BranchSpec struct {
 	Existing bool   `json:"existing,omitempty"`
 }
 
-type requestBranchesArgs struct {
-	Branches []BranchSpec `json:"branches"`
-}
-
-type taskInfoArgs struct {
-	Repo        string `json:"repo,omitempty"`
-	Branch      string `json:"branch,omitempty"`
-	WaitSeconds int    `json:"waitSeconds,omitempty"`
-	// IncludeRegistered lists the registered repos even when the task has repos.
-	IncludeRegistered bool `json:"includeRegistered,omitempty"`
-}
-
-type reportArtifactsArgs struct {
-	Artifacts []ArtifactInput `json:"artifacts"`
-}
-
 // spaceTask resolves the Space grant behind a call; every Space tool acts on that task alone.
 func (s *Server) spaceTask(req *mcp.CallToolRequest) (SpaceCall, *mcp.CallToolResult) {
 	var g Grant
@@ -262,7 +230,7 @@ func (s *Server) spaceTask(req *mcp.CallToolRequest) (SpaceCall, *mcp.CallToolRe
 	if !ok || !g.Space || g.TaskID == "" {
 		return SpaceCall{}, toolError("Kira Space tools are not available for this session.")
 	}
-	return SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID}, nil
+	return SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID, Orchestrator: g.Orchestrator}, nil
 }
 
 // cleanBranches trims and dedups specs by (repo, branch, base); it returns the refusal text when the list is
@@ -294,234 +262,4 @@ func fail(tool string, err error) *mcp.CallToolResult {
 	}
 	slog.Warn("agentmcp: space tool", "scope", "ade", "tool", tool, "err", err)
 	return toolError("Kira Space could not complete that. Try again, or ask the user.")
-}
-
-func (s *Server) addSpaceTools(srv *mcp.Server) {
-	s.addTaskInfoTool(srv)
-	s.addDeclareReposTool(srv)
-	s.addRequestBranchesTool(srv)
-	s.addRenameBranchTool(srv)
-	s.addChangeBranchTool(srv)
-	s.addReportArtifactsTool(srv)
-	s.addOperationsTool(srv)
-	s.addLeaseTools(srv)
-}
-
-func (s *Server) addOperationsTool(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "operations",
-		Description: llmprompts.HeadlessToolOperations.Text(s.prompts, llmprompts.NoVars{}),
-		InputSchema: llmprompts.InputSchema[OperationsArgs](s.prompts, llmprompts.HeadlessToolOperations.ID(), nil),
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args OperationsArgs) (*mcp.CallToolResult, OperationsResult, error) {
-		call, bad := s.spaceTask(req)
-		if bad != nil {
-			return bad, OperationsResult{}, nil
-		}
-		ctx, done := s.callCtx(ctx, req)
-		defer done()
-		if opID := strings.TrimSpace(args.Cancel); opID != "" {
-			res, err := s.space.CancelOperation(ctx, call.TaskID, opID)
-			if err != nil {
-				return fail("operations", err), OperationsResult{}, nil
-			}
-			return nil, OperationsResult{OpID: res.OpID, Kind: res.Kind, Cancelled: &res.Cancelled}, nil
-		}
-		ops, err := s.space.ListOperations(ctx, call.TaskID)
-		if err != nil {
-			return fail("operations", err), OperationsResult{}, nil
-		}
-		if ops == nil {
-			ops = []OperationInfo{}
-		}
-		return nil, OperationsResult{Operations: &ops}, nil
-	})
-}
-
-func (s *Server) addTaskInfoTool(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "task_info",
-		Description: llmprompts.HeadlessToolTaskInfo.Text(s.prompts, llmprompts.NoVars{}),
-		InputSchema: llmprompts.InputSchema[taskInfoArgs](s.prompts, llmprompts.HeadlessToolTaskInfo.ID(), map[string]any{
-			"waitSeconds": llmprompts.MaxVars{Max: maxWaitSeconds},
-		}),
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args taskInfoArgs) (*mcp.CallToolResult, TaskInfo, error) {
-		call, bad := s.spaceTask(req)
-		if bad != nil {
-			return bad, TaskInfo{}, nil
-		}
-		args.Repo, args.Branch = strings.TrimSpace(args.Repo), strings.TrimSpace(args.Branch)
-		if (args.Repo == "") != (args.Branch == "") {
-			return toolError("repo and branch go together; give both or neither."), TaskInfo{}, nil
-		}
-		if args.WaitSeconds < 0 || args.WaitSeconds > maxWaitSeconds {
-			return toolError("waitSeconds must be 0 to 600."), TaskInfo{}, nil
-		}
-		if args.WaitSeconds > 0 && args.Repo == "" {
-			return toolError("waitSeconds needs repo and branch."), TaskInfo{}, nil
-		}
-		ctx, done := s.callCtx(ctx, req)
-		defer done()
-		ctx = withProgress(ctx, req)
-		// Wait first: the task's repos then agree with the branch's setup state.
-		var br *BranchInfo
-		if args.Repo != "" {
-			st, err := s.space.BranchStatus(ctx, call.TaskID, args.Repo, args.Branch, time.Duration(args.WaitSeconds)*time.Second)
-			if err != nil {
-				return fail("task_info", err), TaskInfo{}, nil
-			}
-			br = &st
-		}
-		info, err := s.space.TaskInfo(ctx, call.TaskID, args.IncludeRegistered)
-		if err != nil {
-			return fail("task_info", err), TaskInfo{}, nil
-		}
-		info.Branch = br
-		return nil, info, nil
-	})
-}
-
-func (s *Server) addDeclareReposTool(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "declare_repos",
-		Description: llmprompts.HeadlessToolDeclareRepos.Text(s.prompts, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[declareArgs](s.prompts, llmprompts.HeadlessToolDeclareRepos.ID(), map[string]any{
-			"repos": llmprompts.MaxVars{Max: maxDeclareRepos},
-		}), "repos"),
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args declareArgs) (*mcp.CallToolResult, TaskInfo, error) {
-		call, bad := s.spaceTask(req)
-		if bad != nil {
-			return bad, TaskInfo{}, nil
-		}
-		if n := len(args.Repos); n == 0 || n > maxDeclareRepos {
-			return toolError("repos needs 1 to 20 entries."), TaskInfo{}, nil
-		}
-		ctx, done := s.callCtx(ctx, req)
-		defer done()
-		info, err := s.space.DeclareRepos(ctx, call.TaskID, args.Repos)
-		if err != nil {
-			return fail("declare_repos", err), TaskInfo{}, nil
-		}
-		return nil, info, nil
-	})
-}
-
-func (s *Server) addRequestBranchesTool(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "request_branches",
-		Description: llmprompts.HeadlessToolRequestBranches.Text(s.prompts, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[requestBranchesArgs](s.prompts, llmprompts.HeadlessToolRequestBranches.ID(), map[string]any{
-			"branches": llmprompts.MaxVars{Max: maxDeclareRepos},
-		}), "branches"),
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args requestBranchesArgs) (*mcp.CallToolResult, RequestBranchesResult, error) {
-		call, bad := s.spaceTask(req)
-		if bad != nil {
-			return bad, RequestBranchesResult{}, nil
-		}
-		specs, msg := cleanBranches(args.Branches)
-		if msg != "" {
-			return toolError(msg), RequestBranchesResult{}, nil
-		}
-		ctx, done := s.callCtx(ctx, req)
-		defer done()
-		res, err := s.space.RequestBranches(ctx, call, specs)
-		if err != nil {
-			return fail("request_branches", err), RequestBranchesResult{}, nil
-		}
-		return nil, res, nil
-	})
-}
-
-func (s *Server) addRenameBranchTool(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "rename_branch",
-		Description: llmprompts.HeadlessToolRenameBranch.Text(s.prompts, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[RenameBranchArgs](s.prompts, llmprompts.HeadlessToolRenameBranch.ID(), nil), "repo", "from", "to"),
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args RenameBranchArgs) (*mcp.CallToolResult, RenameBranchResult, error) {
-		call, bad := s.spaceTask(req)
-		if bad != nil {
-			return bad, RenameBranchResult{}, nil
-		}
-		args.From, args.To = strings.TrimSpace(args.From), strings.TrimSpace(args.To)
-		if args.From == "" || args.To == "" || args.From == args.To {
-			return toolError("from and to must be two different branch names."), RenameBranchResult{}, nil
-		}
-		ctx, done := s.callCtx(ctx, req)
-		defer done()
-		res, err := s.space.RenameBranch(ctx, call, args)
-		if err != nil {
-			return fail("rename_branch", err), RenameBranchResult{}, nil
-		}
-		return nil, res, nil
-	})
-}
-
-func (s *Server) addChangeBranchTool(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "change_branch",
-		Description: llmprompts.HeadlessToolChangeBranch.Text(s.prompts, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[ChangeBranchArgs](s.prompts, llmprompts.HeadlessToolChangeBranch.ID(), nil), "repo", "from", "to"),
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args ChangeBranchArgs) (*mcp.CallToolResult, ChangeBranchResult, error) {
-		call, bad := s.spaceTask(req)
-		if bad != nil {
-			return bad, ChangeBranchResult{}, nil
-		}
-		args.From, args.To = strings.TrimSpace(args.From), strings.TrimSpace(args.To)
-		if args.From == "" || args.To == "" || args.From == args.To {
-			return toolError("from and to must be two different branch names."), ChangeBranchResult{}, nil
-		}
-		ctx, done := s.callCtx(ctx, req)
-		defer done()
-		res, err := s.space.ChangeBranch(ctx, call, args)
-		if err != nil {
-			return fail("change_branch", err), ChangeBranchResult{}, nil
-		}
-		return nil, res, nil
-	})
-}
-
-func (s *Server) addReportArtifactsTool(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "report_artifacts",
-		Description: llmprompts.HeadlessToolReportArtifacts.Text(s.prompts, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[reportArtifactsArgs](s.prompts, llmprompts.HeadlessToolReportArtifacts.ID(), map[string]any{
-			"artifacts": llmprompts.MaxVars{Max: MaxArtifactsPerCall},
-		}), "artifacts"),
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args reportArtifactsArgs) (*mcp.CallToolResult, ReportArtifactsResult, error) {
-		call, bad := s.spaceTask(req)
-		if bad != nil {
-			return bad, ReportArtifactsResult{}, nil
-		}
-		var proofs []string
-		var others []ArtifactInput
-		for _, a := range args.Artifacts {
-			if strings.TrimSpace(a.Kind) != ArtifactProof {
-				others = append(others, a)
-				continue
-			}
-			name := strings.TrimSpace(a.Ref)
-			if name == "" {
-				return toolError("A proof item needs ref: the proof's name."), ReportArtifactsResult{}, nil
-			}
-			proofs = append(proofs, name)
-		}
-		ctx, done := s.callCtx(ctx, req)
-		defer done()
-		var out ReportArtifactsResult
-		// Attaching is idempotent, so a proof that fails midway leaves nothing to undo; items record after.
-		for _, name := range proofs {
-			res, err := s.space.AttachProof(ctx, call, name)
-			if err != nil {
-				return fail("report_artifacts", err), ReportArtifactsResult{}, nil
-			}
-			out.Proofs = append(out.Proofs, res)
-		}
-		if len(others) > 0 {
-			res, err := s.space.ReportArtifacts(ctx, call, others)
-			if err != nil {
-				return fail("report_artifacts", err), ReportArtifactsResult{}, nil
-			}
-			out.Recorded = res.Recorded
-		}
-		return nil, out, nil
-	})
 }

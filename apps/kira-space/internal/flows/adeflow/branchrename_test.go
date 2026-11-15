@@ -9,7 +9,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -26,10 +25,9 @@ const noSandbox = "    sandbox:\n      access: off\n"
 const writeSandbox = "    sandbox:\n      access: write\n"
 
 func renameCall(from, to string, remote bool) fakeagent.MCPCall {
-	return fakeagent.MCPCall{
-		Server: agentmcp.ServerName, Tool: "rename_branch", Tolerate: true,
-		Args: map[string]any{"repo": "api", "from": from, "to": to, "renameRemote": remote},
-	}
+	c := stateCall("branch.rename", map[string]any{"repo": "api", "from": from, "to": to, "renameRemote": remote})
+	c.Tolerate = true
+	return c
 }
 
 // newRenameFixture sets up two agent runs: the first creates feat/old, the second asks to rename it.
@@ -73,7 +71,7 @@ func (f *brFixture) renameResult(t *testing.T) string {
 	var raw []byte
 	testx.WaitUntil(t, waitFor, func() bool {
 		var err error
-		raw, err = os.ReadFile(filepath.Join(f.app.FakeDir, "mcp-rename_branch-1.json"))
+		raw, err = os.ReadFile(filepath.Join(f.app.FakeDir, "mcp-branch.rename-1.json"))
 		return err == nil
 	})
 	return string(raw)
@@ -93,7 +91,7 @@ func TestBranchRename(t *testing.T) {
 			t.Fatal(err)
 		}
 		got := f.renameResult(t)
-		if !strings.Contains(got, `"outcome":"renamed"`) || !strings.Contains(got, `"remote":"renamed"`) {
+		if !strings.Contains(got, `"status":"done"`) {
 			t.Fatalf("agent result = %s, want renamed on both sides", got)
 		}
 		row := branchOf(t, board(t, f.app), f.task.ID, f.api)
@@ -105,10 +103,10 @@ func TestBranchRename(t *testing.T) {
 			t.Fatalf("remote branches = %q, want only feat/new", heads)
 		}
 		f.app.Contract(t, renameScenario, "AdeTaskBoard.Board.renamedBranch", row, brMask, flowharness.Mask("worktree", "addedAt", "tip", "base", "setup"))
-		if op := f.agentOp(t, "agentApproval", "rename_branch"); op.Status != oplog.StatusOK {
+		if op := f.agentOp(t, "agentApproval", "branch.rename"); op.Status != oplog.StatusOK {
 			t.Fatalf("approval op = %+v, want ok", op)
 		}
-		if op := f.agentOp(t, "agentRename", "rename_branch"); op.Status != oplog.StatusOK || op.Command == nil || *op.Command != "feat/old to feat/new" {
+		if op := f.agentOp(t, "agentRename", "branch.rename"); op.Status != oplog.StatusOK || op.Command == nil || *op.Command != "feat/old to feat/new" {
 			t.Fatalf("rename op = %+v, want ok for feat/old to feat/new", op)
 		}
 	})
@@ -119,7 +117,7 @@ func TestBranchRename(t *testing.T) {
 		if _, err := approveBR(f.app, req.ID, []string{req.Items[0].ID}, nil); err != nil {
 			t.Fatal(err)
 		}
-		if got := f.renameResult(t); !strings.Contains(got, `"outcome":"renamed"`) || !strings.Contains(got, `"remote":"kept"`) {
+		if got := f.renameResult(t); !strings.Contains(got, `"status":"done"`) {
 			t.Fatalf("agent result = %s, want renamed locally and remote kept", got)
 		}
 		if heads := bare.Git("branch", "--list"); !strings.Contains(heads, "feat/old") || strings.Contains(heads, "feat/new") {
@@ -136,7 +134,7 @@ func TestBranchRename(t *testing.T) {
 		if _, err := denyBR(f.app, req.ID); err != nil {
 			t.Fatal(err)
 		}
-		if got := f.renameResult(t); !strings.Contains(got, `"outcome":"denied"`) {
+		if got := f.renameResult(t); !strings.Contains(got, `"status":"denied"`) {
 			t.Fatalf("agent result = %s, want denied", got)
 		}
 		if name := f.branchName(t, f.api); name != "feat/old" {
@@ -155,7 +153,7 @@ func TestBranchRename(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(f.app.Work, "pushed"), nil, 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if got := f.renameResult(t); !strings.Contains(got, `"outcome":"failed"`) || !strings.Contains(got, "main branch") {
+		if got := f.renameResult(t); !strings.Contains(got, `"status":"failed"`) || !strings.Contains(got, "main branch") {
 			t.Fatalf("agent result = %s, want the main-branch refusal", got)
 		}
 		if ps := f.requestPrompts(t); len(ps) != 0 {
@@ -174,7 +172,7 @@ func TestBranchRename(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(f.app.Work, "pushed"), nil, 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if got := f.renameResult(t); !strings.Contains(got, `"outcome":"failed"`) || !strings.Contains(got, "sandbox") {
+		if got := f.renameResult(t); !strings.Contains(got, `"status":"failed"`) || !strings.Contains(got, "sandbox") {
 			t.Fatalf("agent result = %s, want the sandbox refusal", got)
 		}
 		if name := f.branchName(t, f.api); name != "feat/old" {

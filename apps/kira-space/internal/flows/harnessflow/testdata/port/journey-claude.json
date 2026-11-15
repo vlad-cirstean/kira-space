@@ -1,0 +1,20 @@
+{
+  "oauthAccount": { "emailAddress": "user@example.com", "token": "@OAUTH@" },
+  "mcpServers": {
+    "gh": {
+      "type": "http",
+      "url": "https://api.example.com/mcp",
+      "headers": { "Authorization": "Bearer @GH@" }
+    },
+    "notes": {
+      "command": "/usr/bin/notes",
+      "args": ["${HOME}/notes"],
+      "env": { "API_KEY": "@NOTES@" }
+    },
+    "hdr": {
+      "type": "http",
+      "url": "https://team.example.com/mcp",
+      "headers": { "X-Team": "@TEAM@" }
+    }
+  }
+}

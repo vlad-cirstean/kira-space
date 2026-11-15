@@ -150,7 +150,7 @@ function splitTarget(value: string): [string, string | null] {
           variant="dialog"
           size="kira-lg"
           data-testid="save-request-cancel"
-          @click="saveDialogStore.closeSaveDialog"
+          @click="saveDialogStore.closeSaveDialog()"
           >{{
             t('common.action.cancel.label')
           }}</Button

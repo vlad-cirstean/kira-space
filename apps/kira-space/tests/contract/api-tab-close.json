@@ -1,0 +1,78 @@
+{
+  "CreateItem#close": {
+    "collectionId": "<masked>",
+    "createdAt": "<masked>",
+    "id": "<masked>",
+    "kind": "request",
+    "method": "GET",
+    "name": "Fresh",
+    "parentId": null,
+    "protocol": "http",
+    "sortOrder": 2,
+    "updatedAt": "<masked>",
+    "url": "https://x.test/fresh"
+  },
+  "SaveRequest#close": {
+    "collectionId": "<masked>",
+    "createdAt": "<masked>",
+    "id": "<masked>",
+    "kind": "request",
+    "method": "GET",
+    "name": "shared",
+    "parentId": null,
+    "protocol": "http",
+    "sortOrder": 0,
+    "updatedAt": "<masked>",
+    "url": "https://x.test/edited"
+  },
+  "args:CreateItem#close": {
+    "collectionId": "<masked>",
+    "kind": "request",
+    "name": "Fresh",
+    "parentId": null,
+    "request": {
+      "binaryFile": null,
+      "body": "",
+      "bodyMode": "none",
+      "code": "",
+      "codeLanguage": "json",
+      "formData": null,
+      "headers": null,
+      "method": "GET",
+      "paramDescriptions": null,
+      "url": "https://x.test/fresh",
+      "urlEncoded": null
+    }
+  },
+  "args:SaveRequest#close": {
+    "expect": {
+      "binaryFile": null,
+      "body": "",
+      "bodyMode": "none",
+      "code": "",
+      "codeLanguage": "json",
+      "formData": null,
+      "headers": null,
+      "method": "GET",
+      "paramDescriptions": null,
+      "url": "https://x.test/saved",
+      "urlEncoded": null
+    },
+    "expectName": "shared",
+    "itemId": "<masked>",
+    "name": "shared",
+    "request": {
+      "binaryFile": null,
+      "body": "",
+      "bodyMode": "none",
+      "code": "",
+      "codeLanguage": "json",
+      "formData": null,
+      "headers": null,
+      "method": "GET",
+      "paramDescriptions": null,
+      "url": "https://x.test/edited",
+      "urlEncoded": null
+    }
+  }
+}

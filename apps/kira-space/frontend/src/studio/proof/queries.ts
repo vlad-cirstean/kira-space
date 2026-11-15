@@ -3,7 +3,6 @@ import type {
   ProofShotClipboard,
   ProofShotLocation,
   ProofStepDetail,
-  ProofSummary,
   ProofViewState,
   ProofViewStateEntry,
 } from '@shared/domain/proof';
@@ -19,20 +18,12 @@ import { useProofWindowStore } from './state';
 // so every read stays fresh until the broadcast invalidates it.
 const proofKey = {
   all: ['proof'] as const,
-  sessions: ['proof', 'sessions'] as const,
   session: (id: string) => ['proof', 'session', id] as const,
   step: (id: string, rev: number, ordinal: number) => ['proof', 'step', id, rev, ordinal] as const,
   shotLocation: ['proof', 'shotLocation'] as const,
   shotClipboard: ['proof', 'shotClipboard'] as const,
   viewState: (id: string, rev: number) => ['proof', 'viewState', id, rev] as const,
 };
-
-export function useProofSessions() {
-  return useQuery<ProofSummary[]>({
-    queryKey: proofKey.sessions,
-    queryFn: () => control.proofSessions(),
-  });
-}
 
 export function useProofSession(id: MaybeRefOrGetter<string | null>) {
   return useQuery<ProofDetail>({
@@ -118,7 +109,6 @@ export function useDeleteProof() {
     mutationFn: (sessionId: string) => control.proofDelete(sessionId),
     onSuccess: (_void, sessionId) => {
       queryClient.removeQueries({ queryKey: proofKey.session(sessionId) });
-      return queryClient.invalidateQueries({ queryKey: proofKey.sessions });
     },
   });
 }
@@ -144,18 +134,10 @@ export function useReviewEdit() {
   return { accept, reject };
 }
 
-/** Go broadcasts: refetch whatever changed, and follow a `select` push to a session. */
+/** Go broadcasts: refetch whatever changed. */
 export function useProofSync(): void {
-  const store = useProofWindowStore();
-  const offs = [
-    control.onProofChanged(() => {
-      void refreshProof();
-    }),
-    control.onProofSelect(({ sessionId }) => {
-      store.selectSession(sessionId);
-    }),
-  ];
-  onUnmounted(() => {
-    for (const off of offs) off();
+  const off = control.onProofChanged(() => {
+    void refreshProof();
   });
+  onUnmounted(off);
 }

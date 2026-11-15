@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
+import { useApprovals } from '@workbench/approvals/approvalsQueries';
+import { computed } from 'vue';
 import { useAgentsModel } from './state/useAgentsModel';
 
 // Need You, Later and Plan. Plain links: each tab is its own route, so back and reload work.
 const { model } = useAgentsModel();
+const { data: approvals } = useApprovals();
+const needsBadge = computed(() => (model.value?.needs.badge ?? 0) + (approvals.value?.length ?? 0));
 const TABS = [
   { to: '/needs', label: 'space.common.needYou.label', id: 'needs' },
   { to: '/later', label: 'common.later.label', id: 'later' },
@@ -26,11 +30,11 @@ const TABS = [
     >
       {{ t(tab.label) }}
       <Badge
-        v-if="tab.id === 'needs' && model && model.needs.badge > 0"
+        v-if="tab.id === 'needs' && needsBadge > 0"
         variant="count"
         data-testid="tab-needs-badge"
         >{{
-          model.needs.badge
+          needsBadge
         }}</Badge
       >
     </RouterLink>

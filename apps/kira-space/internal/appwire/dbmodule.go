@@ -2,6 +2,7 @@ package appwire
 
 import (
 	"log/slog"
+	"path/filepath"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
@@ -38,6 +39,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles/store"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/docker"
@@ -213,7 +215,7 @@ func (w *Wired) wireEmbedded(deps appcore.Deps, installer harness.MCPInstaller, 
 	// never fatal.
 	dbMcpApprovals := dbmcp.NewApprovalBroker(time.Now, w.Approvals)
 	kubeSvc := &bridge.KubernetesService{BoundService: kubernetes.NewBoundService(deps.Repos.KubeClusters, deps.Events, append([]kubernetes.Option{kubernetes.WithRecorder(bridge.KubeRecorder{Host: deps.Router.Host()})}, opts.KubernetesExtra...)...)}
-	dbMcpSvc := bridge.NewDbMcpService(deps, installer, dbMcpApprovals, proofSvc, kubernetes.ServiceOf(kubeSvc.BoundService))
+	dbMcpSvc := bridge.NewDbMcpService(deps, installer, dbMcpApprovals, kubernetes.ServiceOf(kubeSvc.BoundService))
 	dbMcpSvc.Port = opts.DbMcpPort
 	dbMcpSvc.SessionAudit = w.dbAudit
 	dbMcpApprovals.SetObserver(w.dbAudit)
@@ -260,8 +262,12 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 	if opts.Clock != nil {
 		proofDeps.Now = opts.Clock.Now
 	}
+	if blobs, err := store.NewBlobs(filepath.Join(config.KiraSpaceHome(), "task-blobs")); err != nil {
+		slog.Error("proof: open blob store, proofs are off", "scope", "proof", "err", err)
+	} else {
+		proofDeps.Blobs = blobs
+	}
 	proofSvc := proof.New(proofDeps)
-	proofSvc.PurgeStale()
 	proofSvc.RaiseUnreviewed()
 	proofTargets := &bridge.ProofWindowTargets{}
 	shellForProof := &registryShell{windows: w.Windows}

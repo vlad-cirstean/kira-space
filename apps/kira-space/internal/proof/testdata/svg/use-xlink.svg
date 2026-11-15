@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="40" height="30">
+  <rect width="40" height="30"/>
+  <use xlink:href="https://example.invalid/sprite.svg#a"/>
+</svg>

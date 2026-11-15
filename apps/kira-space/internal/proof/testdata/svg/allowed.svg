@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 120 80">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#36c"/><stop offset="1" stop-color="#c36"/></linearGradient>
+    <rect id="box" width="50" height="30"/>
+  </defs>
+  <style>.t { fill: url(#g); }</style>
+  <use href="#box" class="t"/>
+  <use xlink:href="#box" x="60" y="40" fill="url(#g)"/>
+  <image x="0" y="50" width="1" height="1" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="/>
+</svg>

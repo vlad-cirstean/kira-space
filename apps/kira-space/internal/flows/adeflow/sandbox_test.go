@@ -11,7 +11,6 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox/sandboxtest"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
@@ -110,7 +109,7 @@ func TestSandboxReadStep(t *testing.T) {
 	if d.Access != "read" || len(d.Write) != 0 || len(d.Read) == 0 {
 		t.Fatalf("detail = %+v, want read access that writes nothing", d)
 	}
-	mustContain(t, "argv", fakeFile(t, f.app, "api-1.args"), "Edit", "Write", "NotebookEdit")
+	mustContain(t, "argv", fakeFile(t, f.app, "api-1.args"), "Edit(", "Write(")
 	mustContain(t, "env", fakeFile(t, f.app, "api-1.sandbox-env"), "GIT_OPTIONAL_LOCKS=0")
 	mustContain(t, "prompt", fakeFile(t, f.app, "api-1.prompt"), "read only")
 }
@@ -127,7 +126,7 @@ func TestSandboxOff(t *testing.T) {
 	if n := len(fake.Policies()); n != 0 {
 		t.Fatalf("Prepare ran %d times for an unconfined run", n)
 	}
-	mustLack(t, "argv", fakeFile(t, f.app, "api-1.args"), "--add-dir", "Bash(git branch:*)")
+	mustLack(t, "argv", fakeFile(t, f.app, "api-1.args"), "Bash(git branch:*)")
 	mustLack(t, "prompt", fakeFile(t, f.app, "api-1.prompt"), "Sandbox")
 	f.app.Contract(t, sbScenario, "AdeTaskService.RunSandbox#off", sandboxOf(t, f, run.ID), sbMask)
 	f.app.Contract(t, sbScenario, "AdeTaskService.Run#off", run, sbMask)
@@ -205,9 +204,7 @@ func TestSandboxPrepareFails(t *testing.T) {
 }
 
 func TestSandboxTools(t *testing.T) {
-	call := func(tool string, args map[string]any) fakeagent.MCPCall {
-		return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: tool, Args: args}
-	}
+	call := stateCall
 	tolerated := func(c fakeagent.MCPCall) fakeagent.MCPCall { c.Tolerate = true; return c }
 	result := func(f *runFixture, tool string) string {
 		t.Helper()
@@ -225,12 +222,12 @@ func TestSandboxTools(t *testing.T) {
 	t.Run("push and fetch", func(t *testing.T) {
 		f := newSandboxFx(t, &sandboxtest.Fake{}, []fakeagent.Action{{
 			Sh:   "git commit -q --allow-empty -m sandboxed",
-			MCP:  []fakeagent.MCPCall{tolerated(call("fetch_remote", map[string]any{"remote": "nope"})), call("fetch_remote", nil), call("push_branch", nil)},
+			MCP:  []fakeagent.MCPCall{tolerated(call("remote.fetch", map[string]any{"remote": "nope"})), call("remote.fetch", nil), call("branch.push", nil)},
 			Name: "done",
 		}}, sbStep("one", ""))
 		f.start(t, "feat/api-sb")
 		waitRun(t, f.app, f.taskID, "one", "done")
-		mustContain(t, "bad remote", result(f, "fetch_remote"), "remote must be one of: origin")
+		mustContain(t, "bad remote", result(f, "remote.fetch"), "remote must be one of: origin")
 		br := branchOf(t, board(t, f.app), f.taskID, f.repoID)
 		if got, want := f.bare.Git("rev-parse", "refs/heads/feat/api-sb"), gitOut(t, br.Worktree, "rev-parse", "HEAD"); got != want {
 			t.Fatalf("remote branch = %s, want the pushed commit %s", got, want)
@@ -238,11 +235,11 @@ func TestSandboxTools(t *testing.T) {
 	})
 
 	t.Run("read step cannot push", func(t *testing.T) {
-		f := newSandboxFx(t, &sandboxtest.Fake{}, []fakeagent.Action{{MCP: []fakeagent.MCPCall{tolerated(call("push_branch", nil))}, Name: "done"}},
+		f := newSandboxFx(t, &sandboxtest.Fake{}, []fakeagent.Action{{MCP: []fakeagent.MCPCall{tolerated(call("branch.push", nil))}, Name: "done"}},
 			sbStep("one", "    sandbox:\n      access: read\n"))
 		f.start(t, "feat/api-sb")
 		waitRun(t, f.app, f.taskID, "one", "done")
-		mustContain(t, "push result", result(f, "push_branch"), "push is not allowed in a read-only step")
+		mustContain(t, "push result", result(f, "branch.push"), "unknown action branch.push")
 		if out := f.bare.Git("branch", "--list", "feat/api-sb"); out != "" {
 			t.Fatalf("remote has %q after a refused push", out)
 		}
@@ -476,7 +473,7 @@ func TestSandboxManualSession(t *testing.T) {
 		fake := &sandboxtest.Fake{}
 		f := newManualSbFx(t, fake, sessionStep("work", "    sandbox:\n      access: off\n"))
 		launch := f.launch(t)
-		mustLack(t, "launch command", launch.Command, filepath.Join(fake.Dir, shim), " -f ", "--disallowed", "--add-dir")
+		mustLack(t, "launch command", launch.Command, filepath.Join(fake.Dir, shim), " -f ", "Bash(git branch:*)")
 		openLaunch(t, f.app, launch)
 		waitSession(t, f.app, launch.SessionID, "running")
 		if n := len(fake.Policies()); n != 0 {
@@ -503,7 +500,7 @@ func TestSandboxManualSession(t *testing.T) {
 			t.Fatalf("manual step sandbox access = %q, want off", got)
 		}
 		launch := f.launch(t)
-		mustLack(t, "launch command", launch.Command, filepath.Join(fake.Dir, shim), " -f ", "--disallowed")
+		mustLack(t, "launch command", launch.Command, filepath.Join(fake.Dir, shim), " -f ", "Bash(git branch:*)")
 		openLaunch(t, f.app, launch)
 		waitSession(t, f.app, launch.SessionID, "running")
 		if n := len(fake.Policies()); n != 0 {
@@ -594,7 +591,7 @@ func TestSandboxPolicyPerStep(t *testing.T) {
 			t.Fatalf("policy %d = %+v, want run %s, network %v, writes %v", i, pol[i], w.run, w.network, w.writes)
 		}
 	}
-	mustLack(t, "open step argv", fakeFile(t, f.app, "api-3.args"), "--add-dir")
+	mustLack(t, "open step argv", fakeFile(t, f.app, "api-3.args"), "Bash(git branch:*)")
 	mustContain(t, "write step argv", fakeFile(t, f.app, "api-1.args"), "--add-dir")
 	mustContain(t, "read step argv", fakeFile(t, f.app, "api-2.args"), "Edit", "Write")
 }

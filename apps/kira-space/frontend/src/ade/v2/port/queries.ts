@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
+import { computed } from 'vue';
 import { control } from '../../../bridge/control';
 import { agentContextKey } from '../context/queries';
 import { agentSettingsKey } from '../settings/queries';
-import type { ExportApplyArgs, ImportApplyArgs } from './types';
+import type { ExportApplyArgs, ImportApplyArgs, RestoreArgs } from './types';
 
 const agentPortKey = ['agentPort'] as const;
+const backupsKey = ['agentPort', 'backups'] as const;
 
 export function usePortProviders() {
   return useQuery({ queryKey: agentPortKey, queryFn: () => control.agentPortList() });
@@ -40,8 +42,30 @@ export function useImportApply() {
   });
 }
 
+// An export takes backups, so the list reloads.
 export function useExportApply() {
-  return useMutation({ mutationFn: (args: ExportApplyArgs) => control.agentPortExportApply(args) });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (args: ExportApplyArgs) => control.agentPortExportApply(args),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: backupsKey }),
+  });
+}
+
+export function usePortBackups(provider: () => string, enabled: () => boolean) {
+  return useQuery({
+    queryKey: computed(() => [...backupsKey, provider()]),
+    queryFn: () => control.agentPortBackups({ provider: provider() }),
+    enabled: computed(enabled),
+  });
+}
+
+// A restore writes a native file and takes a backup of the one it replaces.
+export function useRestore() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (args: RestoreArgs) => control.agentPortRestore(args),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: backupsKey }),
+  });
 }
 
 export function useCancelPort() {

@@ -7,46 +7,23 @@ import { t } from '@theme/i18n';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import QueryState from '@workbench/components/QueryState.vue';
 import TabStrip from '@workbench/components/TabStrip.vue';
-import { computed, useTemplateRef, watch } from 'vue';
-import { useCellSelectionStore } from '../state/cellSelection';
+import { computed, useTemplateRef } from 'vue';
 import ProofChangePanel from './ProofChangePanel.vue';
 import ProofCompare from './ProofCompare.vue';
 import ProofHeader from './ProofHeader.vue';
-import ProofHistory from './ProofHistory.vue';
 import ProofScreenshotMenu from './ProofScreenshotMenu.vue';
 import ProofShotStatus from './ProofShotStatus.vue';
 import ProofStepView from './ProofStepView.vue';
-import { useProofSession, useProofSessions, useProofSync } from './queries';
+import { useProofSession, useProofSync } from './queries';
 import { useProofWindowStore } from './state';
 import { createProofTabHost, type ProofTab, proofTabId } from './tabHost';
 
-// Three panes like the Kira Space review window: sessions (left) and the step tabs (centre).
+// One proof per window: the step tabs (centre) and, for a pending edit, the change panel (right).
 const store = useProofWindowStore();
-const cellSelection = useCellSelectionStore();
 const centre = useTemplateRef<HTMLElement>('centre');
 useProofSync();
-const sessions = useProofSessions();
 const session = useProofSession(() => store.sessionId);
 const detail = computed(() => session.data.value ?? null);
-
-// Selections belong to the steps of one session; a switch drops the old session's.
-watch(
-  () => store.sessionId,
-  (_, old) => {
-    if (old) cellSelection.clearSelectedCellsWhere((id) => id.startsWith(`proof:${old}:`));
-  },
-);
-
-// A deleted or evicted session leaves the selection; fall back to the newest.
-watch(
-  () => [sessions.data.value, store.sessionId] as const,
-  ([list, id]) => {
-    if (!list) return;
-    if (id && list.some((s) => s.id === id)) return;
-    store.selectSession(list[0]?.id ?? null);
-  },
-  { immediate: true },
-);
 
 const side = computed(() => store.side ?? (detail.value?.pending ? 'pending' : 'current'));
 const revision = computed(() =>
@@ -96,16 +73,6 @@ const host = createProofTabHost(tabs, activeId, store, (tab) => {
   return badge ? { icon: badge.icon, tooltip: badge.label() } : null;
 });
 
-const LEFT_MIN = 180;
-const LEFT_MAX = 480;
-const storedLeft = usePersistedState('kira.proof.leftWidth', 260);
-const left = useLiveSize(
-  () => Math.max(LEFT_MIN, Math.min(LEFT_MAX, storedLeft.value)),
-  (w) => {
-    storedLeft.value = w;
-  },
-);
-
 const RIGHT_MIN = 280;
 const RIGHT_MAX = 720;
 const storedRight = usePersistedState('kira.proof.rightWidth', 340);
@@ -125,21 +92,6 @@ const right = useLiveSize(
     <div v-else class="h-titlebar shrink-0 bg-chrome" />
     <ProofShotStatus v-if="detail && store.shotResult" />
     <div class="flex min-h-0 flex-1 gap-0.5 bg-chrome px-1.5 pb-0.5">
-      <section
-        class="min-h-0 flex-none overflow-hidden rounded-kira bg-bg"
-        :style="{ width: `${left.size.value}px` }"
-        :aria-label="t('studio.proof.history.aria')"
-        data-testid="proof-left"
-      >
-        <ProofHistory />
-      </section>
-      <ResizeHandle
-        :label="t('studio.proof.resize.label')"
-        data-testid="proof-resize-handle"
-        :min="LEFT_MIN"
-        :max="LEFT_MAX"
-        v-bind="left.bind"
-      />
       <section
         ref="centre"
         class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira bg-bg"

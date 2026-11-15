@@ -410,9 +410,8 @@ func (b *TaskBoard) finishableRun(tc *taskCtx, rec *model.AdeSession) string {
 	return run.ID
 }
 
-// prepareWithGrant registers the agent MCP grant every task TUI launch carries (handover, run_outcome;
-// finish_step for a taken-over run; the Space tools) and prepares the
-// launch with its flags. grantStep is the stage the session opens for, "" when it has none. The grant
+// prepareWithGrant registers the agent MCP grant every task TUI launch carries (the Space tools, state
+// and submit; step.finish ends a run) and prepares the launch with its flags. grantStep is the stage the session opens for, "" when it has none. The grant
 // lives until the record stops or its launch expires. plan, when not nil and not off, confines the
 // session (P511); nil launches it unconfined.
 func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskCtx, pa PrepareArgs, kind, runID, grantStep string, plan *tuiSandboxPlan) (_ adewire.Launch, err error) {
@@ -421,6 +420,9 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 		return adewire.Launch{}, err
 	}
 	pa.Provider = agent.ID()
+	if err := b.withTaskFolderArgs(&pa, tc.task.ID); err != nil {
+		return adewire.Launch{}, err
+	}
 	pa.Op = b.startSessionOp(ctx, kind, tc.task.ID, agent.Label(), "")
 	defer func() {
 		if err != nil {
@@ -434,7 +436,6 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 	var tools []harness.MCPTool
 	if runID != "" {
 		grant.Results = resultSpecs(stepResultsOf(tc, pa.StepID))
-		tools = append(tools, agentmcp.FinishStep)
 	} else {
 		grant.StepID = grantStep
 	}
@@ -449,16 +450,14 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 		return adewire.Launch{}, err
 	}
 	release = joinRelease(release, releaseDb)
-	tools = append(tools, agentmcp.RunOutcome)
-
-	if runID == "" {
-		tools = append(tools, agentmcp.Handover)
-	}
 	tools = append(tools, agentmcp.SpaceToolIDs...)
 	if grant.Orchestrator {
 		tools = append(tools, agentmcp.OrchestratorToolIDs...)
 	}
 	pa.MCPConfig, pa.AllowedTools = cfg, withDbMcpTool(sdef, harness.ToolNames(agent, tools...))
+	if dir, derr := b.filesDir(tc.task.ID); derr == nil && dir != "" {
+		pa.AllowedTools = appendMissing(pa.AllowedTools, taskFolderAllows(dir)...)
+	}
 	stem := ids.New(ids.TUI)
 	prep, err := b.prepareApp(ctx, agentcfg.Launch{Provider: agent, Kind: harness.LaunchInteractive, Dir: b.deps.AgentDir, Stem: stem})
 	if err != nil {
@@ -666,7 +665,8 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 	}
 	message := args.Message
 	if message == "" {
-		message = composeManualMessage(b.prompts(), step, taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL, b.userNotes(tc.task.ID), lines, folder, b.handoverFor(tc, step.ID))
+		message = composeManualMessage(b.prompts(), step, taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL, b.userNotes(tc.task.ID), lines, folder, b.handoverFor(tc, step.ID),
+			b.filesVarsFor(tc, step.ID, step.Agent, tc.task.Kind == model.AdeTaskKindOrchestrator))
 	}
 	pa := PrepareArgs{TaskID: tc.task.ID, StepID: step.ID, Cwd: cwd, Message: message, Settings: step.Settings, Provider: step.Agent}
 	if len(extra) > 0 {
@@ -730,7 +730,8 @@ func (b *TaskBoard) StartBranch(ctx context.Context, args adewire.StartBranchArg
 			return args.Message
 		}
 		return composeStartMessage(b.prompts(), taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL,
-			repoLine{Nick: b.repoNick(tc, sb), Branch: sb.Name, Worktree: path}, b.firstOpenStep(tc), b.rebaseContext(tc), b.handoverFor(tc, b.currentStepID(tc)))
+			repoLine{Nick: b.repoNick(tc, sb), Branch: sb.Name, Worktree: path}, b.firstOpenStep(tc), b.rebaseContext(tc), b.handoverFor(tc, b.currentStepID(tc)),
+			b.filesVarsFor(tc, b.currentStepID(tc), stepAgentOf(tc, b.currentStepID(tc)), tc.task.Kind == model.AdeTaskKindOrchestrator))
 	})
 }
 

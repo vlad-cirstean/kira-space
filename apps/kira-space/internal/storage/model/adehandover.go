@@ -39,6 +39,8 @@ type AdeHandover struct {
 	FromTaskID string
 	// FromTaskTitle is that child's title, filled only by AdeTaskRepo.Handovers and HandoverPage.
 	FromTaskTitle string
+	// RelPath is the file in the task folder that holds the body (P643); "" before it was written.
+	RelPath string
 }
 
 // AdeHandoff turns the open draft of FromStepID into a handed row in the same transaction that moves

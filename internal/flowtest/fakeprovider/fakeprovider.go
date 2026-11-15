@@ -151,8 +151,8 @@ func (p *Provider) RunHeadless(_ context.Context, s harness.HeadlessSpec, h harn
 	if h.OnLine != nil {
 		h.OnLine(harness.Line{Stream: harness.StreamStdout, Text: "fake agent at work"})
 	}
-	args := map[string]any{"status": "done", "summary": "summary-fake"}
-	if err := fakeagent.CallTool(s.MCPConfigs, agentmcp.ServerName, "finish_step", args); err != nil {
+	args := map[string]any{"status": "done"}
+	if err := fakeagent.CallTool(s.Prompt, s.MCPConfigs, agentmcp.ServerName, "finish_step", args); err != nil {
 		return harness.Exit{Code: 1}, fmt.Errorf("fakeprovider: finish_step: %w", err)
 	}
 	if h.OnResult != nil {

@@ -221,7 +221,7 @@ func (s *Service) plan(ctx context.Context, args RunArgs, o planOpts) (*planned,
 	extraTools := []harness.MCPTool{agentmcp.FinishStep}
 	if args.TaskID != "" {
 		pv.Suffix = agentmcp.SpaceNote(s.llmPrompts()) + "\n\n" + pv.Suffix
-		extraTools = append(append(extraTools, agentmcp.RunOutcome), agentmcp.SpaceToolIDs...)
+		extraTools = agentmcp.SpaceToolIDs // state ends a Space run
 	}
 	p.sent = scripts.PlainText(pv.Prompt) + "\n\n" + pv.Suffix
 	pv.Model, pv.MaxBudgetUSD, pv.Timeout = smart.Model, smart.MaxBudgetUSD, smart.Timeout

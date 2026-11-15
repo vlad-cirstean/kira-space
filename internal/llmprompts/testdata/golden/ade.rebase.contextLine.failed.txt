@@ -1,1 +1,1 @@
-- Last rebase of feat/login failed: conflicts in a.go (run run-7; call run_outcome for details)
+- Last rebase of feat/login failed: conflicts in a.go (run run-7; see runs in state.yaml)

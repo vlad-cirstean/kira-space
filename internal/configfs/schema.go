@@ -25,6 +25,21 @@ type Rule[T any] struct {
 // validate against the JSON Schema (draft 2020-12), decode into T (unknown fields refused), run rules.
 // The DocModel carries the options and rule docs for AGENTS.md. Every Problem points at the file line of the offending field and never echoes the offending value.
 func YAMLSchema[T any](schemaJSON []byte, rules ...Rule[T]) (DecodeFunc[T], DocModel, error) {
+	dec, model, err := YAMLSchemaSkip[T](schemaJSON, Skip{}, rules...)
+	if err != nil {
+		return nil, DocModel{}, err
+	}
+	return func(file string, src []byte) (T, *Problem) {
+		out, _, prob := dec(file, src)
+		return out, prob
+	}, model, nil
+}
+
+// YAMLSchemaSkip is YAMLSchema with Skip. The returned T still holds the stand-ins at the skipped
+// pointers; the caller drops them. On a whole-file problem T is zero and skipped keeps what was
+// dropped before it.
+func YAMLSchemaSkip[T any](schemaJSON []byte, skip Skip, rules ...Rule[T]) (
+	func(file string, src []byte) (T, []Skipped, *Problem), DocModel, error) {
 	for _, r := range rules {
 		if r.Doc == "" || r.Check == nil {
 			return nil, DocModel{}, fmt.Errorf("configfs: rule needs Doc and Check")
@@ -46,44 +61,89 @@ func YAMLSchema[T any](schemaJSON []byte, rules ...Rule[T]) (DecodeFunc[T], DocM
 	if err != nil {
 		return nil, DocModel{}, err
 	}
-	return func(_ string, src []byte) (T, *Problem) {
+	check := func(val any, at Locator) (T, *Problem) { return checkValue(sch, rc, rules, val, at) }
+	return func(_ string, src []byte) (T, []Skipped, *Problem) {
 		var zero T
 		doc, prob := parseNode(src)
 		if prob != nil {
-			return zero, prob
+			return zero, nil, prob
 		}
 		w := &walker{idx: nodeIndex{}}
 		val := w.value(doc, "")
 		if w.prob != nil {
-			return zero, w.prob
+			return zero, nil, w.prob
 		}
 		at := w.idx.locator()
-		if prob := validate(sch, val, at); prob != nil {
-			return zero, prob
-		}
-		if prob := rc.check(rc.root, val, "", at); prob != nil {
-			return zero, prob
-		}
-		var out T
-		raw, err := json.Marshal(val)
-		if err == nil {
-			dec := json.NewDecoder(bytes.NewReader(raw))
-			dec.DisallowUnknownFields()
-			err = dec.Decode(&out)
-		}
-		if err != nil {
-			return zero, &Problem{Message: i18n.T("backend.core.config.invalid.body", map[string]string{"field": fieldName("")})}
-		}
-		for _, r := range rules {
-			if p := r.Check(out, at); p != nil {
-				if p.Line == 0 {
-					p.Line, p.Col = at(p.Path)
-				}
-				return zero, p
+		var skipped []Skipped
+		for {
+			out, p := check(val, at)
+			if p == nil {
+				return out, skipped, nil
 			}
+			next, ns, ok := dropElement(skip, val, skipped, p)
+			if !ok {
+				return zero, skipped, p
+			}
+			val, skipped = next, ns
 		}
-		return out, nil
 	}, model, nil
+}
+
+// checkValue validates val against the schema and id references, decodes it into T, runs rules.
+func checkValue[T any](sch *jsonschema.Schema, rc *refChecker, rules []Rule[T], val any, at Locator) (T, *Problem) {
+	var zero T
+	if prob := validate(sch, val, at); prob != nil {
+		return zero, prob
+	}
+	if prob := rc.check(rc.root, val, "", at); prob != nil {
+		return zero, prob
+	}
+	var out T
+	raw, err := json.Marshal(val)
+	if err == nil {
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.DisallowUnknownFields()
+		err = dec.Decode(&out)
+	}
+	if err != nil {
+		return zero, &Problem{Message: i18n.T("backend.core.config.invalid.body", map[string]string{"field": fieldName("")})}
+	}
+	for _, r := range rules {
+		if p := r.Check(out, at); p != nil {
+			if p.Line == 0 {
+				p.Line, p.Col = at(p.Path)
+			}
+			return zero, p
+		}
+	}
+	return out, nil
+}
+
+// dropElement swaps the element p falls in for a stand-in and records it. ok is false when the
+// problem must fail the file: no droppable element, Max reached, element already dropped or
+// unresolvable.
+func dropElement(skip Skip, val any, skipped []Skipped, p *Problem) (any, []Skipped, bool) {
+	if skip.Element == nil {
+		return val, skipped, false
+	}
+	ptr, ok := skip.Element(p.Path)
+	if !ok || len(skipped) >= skip.Max {
+		return val, skipped, false
+	}
+	for _, s := range skipped {
+		if under(ptr, s.Pointer) {
+			return val, skipped, false
+		}
+	}
+	v, ok := valueAt(val, ptr)
+	if !ok {
+		return val, skipped, false
+	}
+	next, err := setAt(val, ptr, skip.StandIn(val, len(skipped)))
+	if err != nil {
+		return val, skipped, false
+	}
+	return next, append(skipped, Skipped{Pointer: ptr, Value: v, Problem: *p}), true
 }
 
 func compileSchema(schemaJSON []byte) (*jsonschema.Schema, error) {

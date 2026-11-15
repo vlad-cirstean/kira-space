@@ -127,7 +127,7 @@ const {
 const savedQuery = useSavedGrpcRequest(() => props.tab.state.itemId);
 const saved = computed(() => savedQuery.data.value ?? null);
 const dirty = computed(() => isGrpcDirty(props.tab.state, saved.value));
-const seenSaved = useSeenSaved(saved, (against) => isGrpcDirty(props.tab.state, against));
+const seenSaved = useSeenSaved(props.tab.id, saved, (a) => isGrpcDirty(props.tab.state, a));
 const canSave = computed(() => props.tab.state.itemId !== null && saved.value !== null);
 
 const unresolved = computed(

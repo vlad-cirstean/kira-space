@@ -7,7 +7,7 @@ import type { ToasterProps } from 'vue-sonner';
 import { Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css';
 
-const props = defineProps<Pick<ToasterProps, 'position'>>();
+const props = defineProps<Pick<ToasterProps, 'position' | 'offset' | 'mobileOffset'>>();
 
 // Unstyled: the theme's floating surface replaces vue-sonner's own look.
 const toastOptions = {
@@ -26,6 +26,8 @@ const toastOptions = {
 <template>
   <Toaster
     :position="props.position"
+    :offset="props.offset"
+    :mobile-offset="props.mobileOffset"
     :toast-options="toastOptions"
     class="z-(--kira-z-popover)"
     data-slot="sonner"

@@ -92,18 +92,25 @@ function linkCategory(kind: Artifact['kind']): LinkCategory {
   return 'misc';
 }
 
+/** Own: slots, detected change requests and issues, rows whose URL is in `ownUrls`. */
+function isOwn(a: Artifact, ownSet: ReadonlySet<string>): boolean {
+  if (a.id === '' && (a.kind === 'changeRequest' || a.kind === 'issue')) return true;
+  return a.url !== '' && ownSet.has(norm(a.url));
+}
+
 /** Links bucketed by category (issue, change request, misc; every bucket present, maybe empty).
- *  Order within a bucket: the task's Jira and host links, detected change requests, then every
- *  other artifact, minus what the first set already holds. Detected branches only with `branches`. */
+ *  Order within a bucket: the task's own links (Jira and host slots, detected change requests and
+ *  issues, rows whose URL is in `ownUrls`), then others, then detected branches (only with
+ *  `branches`); input order inside each. */
 export function linkGroups(
   task: Task,
   artifacts: readonly Artifact[],
-  opts: { branches?: boolean } = {},
+  opts: { branches?: boolean; ownUrls?: readonly string[] } = {},
 ): { id: LinkCategory; items: LinkItem[] }[] {
-  const main: LinkItem[] = [];
+  const own: LinkItem[] = [];
   const jira = task.jira;
   if (jira) {
-    main.push({
+    own.push({
       key: 'jira',
       label: jira.key,
       title: jira.key,
@@ -118,7 +125,7 @@ export function linkGroups(
     });
   }
   if (task.hostUrl) {
-    main.push({
+    own.push({
       key: 'host',
       label: task.hostLink?.ref || task.hostUrl,
       title: task.hostLink?.ref || task.hostUrl,
@@ -132,23 +139,21 @@ export function linkGroups(
       sessionId: '',
     });
   }
-  const seen = new Set(main.map((m) => norm(m.url)).filter(Boolean));
-  for (const a of artifacts) {
-    if (a.kind !== 'changeRequest' || a.id !== '' || a.source !== 'host') continue;
-    if (a.url && seen.has(norm(a.url))) continue;
-    if (a.url) seen.add(norm(a.url));
-    main.push(fromArtifact(a));
-  }
-  const related: LinkItem[] = [];
+  const seen = new Set(own.map((m) => norm(m.url)).filter(Boolean));
+  const ownSet = new Set((opts.ownUrls ?? []).map(norm).filter(Boolean));
+  const others: LinkItem[] = [];
   const branches: LinkItem[] = [];
   for (const a of artifacts) {
-    if (a.kind === 'branch' && a.id === '' && !opts.branches) continue;
+    const detectedBranch = a.kind === 'branch' && a.id === '';
+    if (detectedBranch && !opts.branches) continue;
     if (a.url && seen.has(norm(a.url))) continue;
     // The tracker's own row for the Jira key the task already shows.
     if (a.kind === 'issue' && jira && (a.title === jira.key || a.ref === jira.key)) continue;
-    (a.kind === 'branch' && a.id === '' ? branches : related).push(fromArtifact(a));
+    if (a.url) seen.add(norm(a.url));
+    if (detectedBranch) branches.push(fromArtifact(a));
+    else (isOwn(a, ownSet) ? own : others).push(fromArtifact(a));
   }
-  const all = [...main, ...related, ...branches];
+  const all = [...own, ...others, ...branches];
   return LINK_CATEGORIES.map((id) => ({
     id,
     items: all.filter((item) => linkCategory(item.kind) === id),

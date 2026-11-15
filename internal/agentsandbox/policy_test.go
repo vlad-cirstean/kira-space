@@ -28,6 +28,7 @@ func TestResolvePolicy(t *testing.T) {
 	p, notes, err := ResolvePolicy(Input{
 		RunID: "r", Access: AccessWrite, Worktrees: []string{link}, Read: []string{"~/specs", "~/nope"},
 		Scratch: filepath.Join(real, "scratch"), Cache: filepath.Join(real, "cache"), Branch: map[string]string{link: "b"},
+		DenyWrite: []string{filepath.Join(link, "state.yaml")},
 	}, rt)
 	if err != nil {
 		t.Fatal(err)
@@ -43,6 +44,9 @@ func TestResolvePolicy(t *testing.T) {
 	}
 	if len(p.Git) != 1 || p.Git[0].GitDir != filepath.Join(repo, ".git", "worktrees", "wt") || p.Git[0].CommonDir != filepath.Join(repo, ".git") {
 		t.Fatalf("git layout: %+v", p.Git)
+	}
+	if len(p.DenyWrite) != 1 || p.DenyWrite[0] != filepath.Join(wt, "state.yaml") {
+		t.Fatalf("deny write: %v", p.DenyWrite)
 	}
 	if p.Branch[wt] != "b" {
 		t.Fatalf("branch: %v", p.Branch)

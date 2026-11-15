@@ -2,8 +2,9 @@ package proofflow
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
@@ -12,22 +13,22 @@ import (
 	"github.com/kirathecat/kira-studio/internal/approvals"
 )
 
-var maskIDs = flowharness.Mask("id", "closedAt", "createdAt")
+var maskIDs = flowharness.Mask("id", "closedAt", "createdAt", "linkedAt")
 
 func TestProofCloseAndRead(t *testing.T) {
 	f := newFixture(t)
 	c := f.save(t, "Checkout fix", tableStep("Orders before"), documentStep("Doc hit"), keyValueStep("Stats"))
-	if c.Name != "Checkout fix" || c.Steps != 3 || c.Status != "closed" {
-		t.Fatalf("close = %+v", c)
+	if c.Name != "Checkout fix" || c.Slug != "checkout-fix" {
+		t.Fatalf("saved = %+v", c)
 	}
 
-	list, err := f.app.W.Proof.Sessions()
-	if err != nil || len(list) != 1 {
-		t.Fatalf("Sessions = %+v, %v", list, err)
+	list := f.proofs(t)
+	if len(list) != 1 || len(list[0].Steps) != 3 {
+		t.Fatalf("proofs = %+v", list)
 	}
-	f.app.Contract(t, "proof", "ProofService.Sessions", list, maskIDs)
+	f.app.Contract(t, "proof", "AdeTaskService.TaskProofs", list, maskIDs)
 
-	det := session(t, f.app, list[0].ID)
+	det := session(t, f.app, list[0].ProofID)
 	if len(det.Current.Steps) != 3 || det.Pending != nil {
 		t.Fatalf("detail = %+v", det)
 	}
@@ -39,7 +40,7 @@ func TestProofCloseAndRead(t *testing.T) {
 	f.app.Contract(t, "proof", "ProofService.Session", det, maskIDs)
 
 	for i, key := range []string{"table", "document", "keyvalue"} {
-		st, err := f.app.W.Proof.Step(bridge.ProofStepArgs{SessionID: list[0].ID, Rev: det.Current.Rev, Ordinal: i + 1})
+		st, err := f.app.W.Proof.Step(bridge.ProofStepArgs{SessionID: list[0].ProofID, Rev: det.Current.Rev, Ordinal: i + 1})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -47,7 +48,7 @@ func TestProofCloseAndRead(t *testing.T) {
 	}
 
 	// Large integers survive as written.
-	st, _ := f.app.W.Proof.Step(bridge.ProofStepArgs{SessionID: list[0].ID, Rev: det.Current.Rev, Ordinal: 1})
+	st, _ := f.app.W.Proof.Step(bridge.ProofStepArgs{SessionID: list[0].ProofID, Rev: det.Current.Rev, Ordinal: 1})
 	if !bytes.Contains(st.Data, []byte("9007199254740993")) {
 		t.Fatalf("integer precision lost: %s", st.Data)
 	}
@@ -56,16 +57,18 @@ func TestProofCloseAndRead(t *testing.T) {
 		t.Fatalf("first-row name missing: %s", st.Data)
 	}
 
-	if ps := proofPrompts(t, f.app); len(ps) != 1 || ps[0].Ref != list[0].ID {
-		t.Fatalf("prompts = %+v, want one for %s", ps, list[0].ID)
+	if ps := proofPrompts(t, f.app); len(ps) != 1 || ps[0].Ref != list[0].ProofID {
+		t.Fatalf("prompts = %+v, want one for %s", ps, list[0].ProofID)
 	}
 }
 
 func TestProofNameCollision(t *testing.T) {
 	f := newFixture(t)
 	f.save(t, "Same Name", keyValueStep("one"))
-	msg := f.saveFail(t, "  same NAME ", keyValueStep("two"))
-	if !strings.Contains(msg, "already") {
+	delete(f.last, "Same Name")
+	f.slug = "other-folder"
+	msg := f.saveFail(t, "same NAME", keyValueStep("two"))
+	if !strings.Contains(msg, "proofs/same-name/") || !strings.Contains(msg, "Pick another name") {
 		t.Fatalf("message = %q, want a name-taken error", msg)
 	}
 }
@@ -73,22 +76,17 @@ func TestProofNameCollision(t *testing.T) {
 func TestProofEditFlow(t *testing.T) {
 	f := newFixture(t)
 	f.save(t, "Edit me", keyValueStep("keep"), keyValueStep("replace"), keyValueStep("drop"))
-	id := sessionID(t, f.app, "Edit me")
+	id := f.idOf(t, "Edit me")
 	cur := session(t, f.app, id)
 
 	if err := f.app.W.Proof.SetViewState(bridge.ProofSetViewStateArgs{SessionID: id, Rev: cur.Current.Rev, Ordinal: 1, State: proof.ViewState{}}); err != nil {
 		t.Fatal(err)
 	}
 
-	var listed struct{ Steps []proof.StepBrief }
-	f.call(t, "proof_list", map[string]any{"name": "Edit me"}, &listed)
-	if len(listed.Steps) != 3 || listed.Steps[1].Description != "replace" {
-		t.Fatalf("proof_list steps = %+v", listed.Steps)
-	}
 	r := keyValueStep("replaced")
 	r["replacesOrdinal"] = 2
-	if c := f.edit(t, "Edit me", "tighten", map[string]any{"keepOrdinal": 1}, r, keyValueStep("brand new")); c.Status != "pending_review" {
-		t.Fatalf("edit status = %q, want pending_review", c.Status)
+	if c := f.edit(t, "Edit me", "tighten", map[string]any{"keepOrdinal": 1}, r, keyValueStep("brand new")); !c.Pending {
+		t.Fatalf("edit reply = %q, want pending", c.Reply)
 	}
 
 	det := session(t, f.app, id)
@@ -113,7 +111,7 @@ func TestProofEditFlow(t *testing.T) {
 	if ps := proofPrompts(t, f.app); len(ps) != 1 {
 		t.Fatalf("prompts before open = %+v, want the ready popup", ps)
 	}
-	if _, err := f.app.W.Proof.OpenWindow(bridge.ProofOpenArgs{SessionID: id}); err != nil {
+	if _, err := f.app.W.Proof.OpenWindow(bridge.ProofOpenArgs{TaskID: f.taskID, Slug: "edit-me"}); err != nil {
 		t.Fatal(err)
 	}
 	if ps := proofPrompts(t, f.app); len(ps) != 0 {
@@ -163,95 +161,31 @@ func TestProofEditFlow(t *testing.T) {
 	}
 }
 
-func TestProofRetentionAndDelete(t *testing.T) {
+func TestProofDelete(t *testing.T) {
 	f := newFixture(t)
-	for i := 0; i < 31; i++ {
-		f.save(t, "s"+string(rune('A'+i/26))+string(rune('a'+i%26)), keyValueStep("x"))
-	}
-	list, err := f.app.W.Proof.Sessions()
-	if err != nil || len(list) != 30 {
-		t.Fatalf("kept %d sessions (%v), want 30", len(list), err)
-	}
-	for _, s := range list {
-		if s.Name == "sAa" {
-			t.Fatal("oldest session survived")
-		}
-	}
-	if err := f.app.W.Proof.Delete(bridge.ProofSessionArgs{SessionID: list[0].ID}); err != nil {
+	f.save(t, "Delete me", keyValueStep("x"))
+	id := f.idOf(t, "Delete me")
+	if err := f.app.W.Proof.Delete(bridge.ProofSessionArgs{SessionID: id}); err != nil {
 		t.Fatal(err)
 	}
-	f.save(t, list[0].Name, keyValueStep("again"))
-}
-
-func TestProofParallelSave(t *testing.T) {
-	f := newFixture(t)
-	const n = 4
-	var wg sync.WaitGroup
-	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			f.save(t, "Parallel "+string(rune('a'+i)), keyValueStep("p"), keyValueStep("q"))
-		}()
+	if _, err := os.Stat(filepath.Join(f.folder, "proofs", "delete-me", "proof.md")); !os.IsNotExist(err) {
+		t.Fatalf("folder after delete: %v, want gone", err)
 	}
-	wg.Wait()
-	list, err := f.app.W.Proof.Sessions()
-	if err != nil || len(list) != n {
-		t.Fatalf("Sessions = %d (%v), want %d", len(list), err, n)
+	if list := f.proofs(t); len(list) != 0 {
+		t.Fatalf("proofs after delete = %+v", list)
 	}
-}
-
-// A bad step rejects the whole call and leaves no draft: the same name saves right after.
-func TestProofSaveIsAtomic(t *testing.T) {
-	f := newFixture(t)
-	long := strings.Repeat("x", (64<<10)+1)
-	for name, bad := range map[string]map[string]any{
-		"oversize cell": {"description": "d", "view": "table", "data": map[string]any{
-			"columns": []any{map[string]any{"name": "a"}}, "rows": []any{[]any{long}}}},
-		"short row": {"description": "d", "view": "table", "data": map[string]any{
-			"columns": []any{map[string]any{"name": "a"}, map[string]any{"name": "b"}}, "rows": []any{[]any{1}}}},
-	} {
-		if msg := f.saveFail(t, "Atomic", keyValueStep("fine"), bad); !strings.Contains(msg, "steps[1].") {
-			t.Fatalf("%s: message = %q, want steps[1]", name, msg)
-		}
-	}
-	// The schema refuses an unknown view before any step is checked.
-	if msg := f.saveFail(t, "Atomic", map[string]any{"description": "d", "view": "heatmap", "data": map[string]any{}}); !strings.Contains(msg, "heatmap") {
-		t.Fatalf("unknown view: message = %q", msg)
-	}
-	steps := make([]map[string]any, 101)
-	for i := range steps {
-		steps[i] = keyValueStep("s")
-	}
-	if msg := f.saveFail(t, "Atomic", steps...); !strings.Contains(msg, "1-100") {
-		t.Fatalf("message = %q, want the step limit", msg)
-	}
-	if msg := f.saveFail(t, "Atomic", map[string]any{"keepOrdinal": 1}); !strings.Contains(msg, "steps[0].") {
-		t.Fatalf("keep on a new proof: message = %q, want steps[0]", msg)
-	}
-	if list, err := f.app.W.Proof.Sessions(); err != nil || len(list) != 0 {
-		t.Fatalf("Sessions = %+v (%v), want none", list, err)
-	}
-	f.save(t, "Atomic", keyValueStep("fine"))
-
-	// A step the store refuses after the draft exists leaves no edit draft behind either.
-	if msg := f.fail(t, "proof_save", map[string]any{"name": "Atomic", "reason": "r", "steps": []any{map[string]any{"keepOrdinal": 9}}}); !strings.Contains(msg, "steps[0]") {
-		t.Fatalf("keepOrdinal 9: message = %q, want steps[0]", msg)
-	}
-	if c := f.edit(t, "Atomic", "retry", map[string]any{"keepOrdinal": 1}); c.Status != "pending_review" {
-		t.Fatalf("edit after a refused one = %+v", c)
-	}
+	f.save(t, "Delete me", keyValueStep("again"))
 }
 
 func TestProofWindow(t *testing.T) {
 	f := newFixture(t)
 	f.save(t, "Window", keyValueStep("x"))
-	id := sessionID(t, f.app, "Window")
+	id := f.idOf(t, "Window")
 
 	if ps := proofPrompts(t, f.app); len(ps) != 1 {
 		t.Fatalf("prompts before open = %+v, want one", ps)
 	}
-	res, err := f.app.W.Proof.OpenWindow(bridge.ProofOpenArgs{SessionID: id})
+	res, err := f.app.W.Proof.OpenWindow(bridge.ProofOpenArgs{TaskID: f.taskID, Slug: "window"})
 	if ps := proofPrompts(t, f.app); err == nil && len(ps) != 0 {
 		t.Fatalf("prompts after open = %+v, want the ready popup withdrawn", ps)
 	}
@@ -263,7 +197,7 @@ func TestProofWindow(t *testing.T) {
 	if err != nil || tg.SessionID == nil || *tg.SessionID != id {
 		t.Fatalf("WindowTarget = %+v, %v", tg, err)
 	}
-	again, err := f.app.W.Proof.OpenWindow(bridge.ProofOpenArgs{SessionID: id})
+	again, err := f.app.W.Proof.OpenWindow(bridge.ProofOpenArgs{TaskID: f.taskID, Slug: "window"})
 	if err != nil || again.Opened || again.Key != res.Key {
 		t.Fatalf("second OpenWindow = %+v, %v; want the same window raised", again, err)
 	}

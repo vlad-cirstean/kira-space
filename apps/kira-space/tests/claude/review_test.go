@@ -16,7 +16,7 @@ import (
 
 const reviewStepsYAML = "  - id: implement\n    name: implement\n    kind: agent\n    runs_on: each repo\n    timeout: 3m\n" +
 	"    allowed_tools: [\"Bash(sh:*)\", \"Bash(git:*)\", \"Edit\"]\n" +
-	"    prompt: \"Run exactly one Bash command: sh -c \\\"printf 'one\\\\ntwo\\\\nthree\\\\n' > notes.txt && git add notes.txt && git commit -q -m add-notes\\\" . Then call finish_step with status done and summary ok.\"\n" +
+	"    prompt: \"Run exactly one Bash command: sh -c \\\"printf 'one\\\\ntwo\\\\nthree\\\\n' > notes.txt && git add notes.txt && git commit -q -m add-notes\\\" . Then call state with action step.finish and args status done.\"\n" +
 	"  - id: review\n    name: review\n    kind: review\n    runs_on: each repo\n    timeout: 5m\n" +
 	"    review:\n      send_to: implementer\n" +
 	"    results:\n      - id: approved\n        ok: true\n"
@@ -140,7 +140,7 @@ func (r *reviewRig) roundLog(t *testing.T, round adewire.ReviewRound) string {
 }
 
 // TestAdeReviewStep sends review comments to the implementer's resumed session and then to a
-// dedicated agent: the real claude must answer both comments through reply_review_comment.
+// dedicated agent: the real claude must answer both comments through state review.reply.
 func TestAdeReviewStep(t *testing.T) {
 	r := startReview(t)
 	change := r.comment(t, 1, "Rewrite this line as ONE in capitals and commit the change.", "change")

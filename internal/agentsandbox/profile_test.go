@@ -104,6 +104,13 @@ func TestProfileGolden(t *testing.T) {
 			p.ReadFiles = []string{configDir + "/task-t1-2.mcp.json", configDir + "/tui-s1.settings.json"}
 			return p, rt
 		},
+		"task_folder": func() (Policy, Runtime) {
+			p := basePolicy()
+			dir := "/Users/ada/Library/Application Support/Kira/tasks/t1"
+			p.Allow = []string{dir}
+			p.DenyWrite = []string{dir + "/README.md", dir + "/task.yaml", dir + "/state.yaml"}
+			return p, rt
+		},
 		"path_escaping": func() (Policy, Runtime) {
 			p := basePolicy()
 			p.Allow = []string{`/Users/ada/we"ird\dir`, "/Users/ada/sp ace"}

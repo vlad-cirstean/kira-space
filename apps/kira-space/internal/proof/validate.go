@@ -4,8 +4,8 @@ package proof
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -76,14 +76,6 @@ func CheckText(field, s string, maxRunes int) error {
 	return nil
 }
 
-// StepInput is one proof_add_step call. Data is the raw JSON of the data argument, taken from the
-// wire so number precision and key order survive.
-type StepInput struct {
-	DraftID, Description, Query, Language, Source, View string
-	Data                                                json.RawMessage
-	KeepOrdinal, ReplacesOrdinal                        *int
-}
-
 var languages = map[string]bool{"sql": true, "json": true, "shell": true, "text": true}
 
 type column struct {
@@ -93,74 +85,79 @@ type column struct {
 
 var columnTypes = map[string]bool{"number": true, "text": true, "boolean": true, "temporal": true, "json": true, "other": true}
 
-// checked is a validated step ready to store.
-type checked struct {
-	Description, Query, Language, Source, View string
-	Payload                                    []byte
-}
+// Languages a step's query can be written in.
+func ValidLanguage(l string) bool { return languages[l] }
 
-func (in StepInput) validate(ctx context.Context) (checked, bool, error) {
-	if in.KeepOrdinal != nil && in.ReplacesOrdinal != nil {
-		return checked{}, false, invalid("keepOrdinal and replacesOrdinal are mutually exclusive")
+// Field limits of a step, shared with the file pipeline.
+const (
+	MaxDescRunes    = maxDescRunes
+	MaxSourceRunes  = maxSourceRunes
+	MaxQueryBytes   = maxQueryBytes
+	MaxNameRunes    = maxNameRunes
+	MaxSummaryRunes = maxSummaryRunes
+)
+
+// ValidateStep checks one step's data for view and returns the payload JSON a step row stores. The
+// data is raw JSON so number precision and key order survive.
+func ValidateStep(view string, data json.RawMessage) ([]byte, error) {
+	if len(data) == 0 {
+		return nil, invalid("data is required")
 	}
-	if in.KeepOrdinal != nil {
-		if in.Description != "" || in.Query != "" || in.Language != "" || in.Source != "" || in.View != "" || len(in.Data) != 0 {
-			return checked{}, false, invalid("keepOrdinal copies the old step as is; pass no description, query, language, source, view or data")
-		}
-		return checked{}, true, nil
-	}
-	desc := strings.TrimSpace(in.Description)
-	if n := utf8.RuneCountInString(desc); n < 1 || n > maxDescRunes || !utf8.ValidString(desc) || strings.ContainsAny(desc, "\r\n") {
-		return checked{}, false, invalid("description must be one line of 1-%d characters", maxDescRunes)
-	}
-	if err := CheckText("source", in.Source, maxSourceRunes); err != nil {
-		return checked{}, false, err
-	}
-	if len(in.Query) > maxQueryBytes || !utf8.ValidString(in.Query) {
-		return checked{}, false, invalid("query must be valid UTF-8 and at most %d KiB", maxQueryBytes>>10)
-	}
-	lang := in.Language
-	if lang == "" {
-		lang = "text"
-	}
-	if !languages[lang] {
-		return checked{}, false, invalid("language must be one of sql, json, shell, text")
-	}
-	if len(in.Data) == 0 {
-		return checked{}, false, invalid("data is required")
-	}
-	if !utf8.Valid(in.Data) {
-		return checked{}, false, invalid("data must be valid UTF-8")
+	if !utf8.Valid(data) {
+		return nil, invalid("data must be valid UTF-8")
 	}
 	var payload any
 	var err error
-	switch in.View {
+	switch view {
 	case ViewTable:
-		payload, err = checkTable(in.Data)
+		payload, err = checkTable(data)
 	case ViewDocument:
-		payload, err = checkDocuments(in.Data)
+		payload, err = checkDocuments(data)
 	case ViewKeyValue:
-		payload, err = checkEntries(in.Data)
+		payload, err = checkEntries(data)
 	case ViewChart:
-		payload, err = checkChart(in.Data)
+		payload, err = checkChart(data)
 	case ViewDiagram:
-		payload, err = checkDiagram(in.Data)
+		payload, err = checkDiagram(data)
 	case ViewImage:
-		payload, err = checkImage(ctx, in.Data)
+		return nil, invalid("an image step takes a file: set data to the image file in the proof folder")
 	default:
-		return checked{}, false, invalid("view must be one of table, document, keyvalue, chart, diagram, image")
+		return nil, invalid("view must be one of table, document, keyvalue, chart, diagram, image")
 	}
 	if err != nil {
-		return checked{}, false, err
+		return nil, withShape(view, err)
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
-		return checked{}, false, fmt.Errorf("proof: encode payload: %w", err)
+		return nil, fmt.Errorf("proof: encode payload: %w", err)
 	}
 	if len(raw) > maxPayloadBytes {
-		return checked{}, false, invalid("data is %d KiB serialized; the limit is %d MiB per step", len(raw)>>10, maxPayloadBytes>>20)
+		return nil, invalid("data is %d KiB serialized; the limit is %d MiB per step", len(raw)>>10, maxPayloadBytes>>20)
 	}
-	return checked{Description: desc, Query: in.Query, Language: lang, Source: in.Source, View: in.View, Payload: raw}, false, nil
+	return raw, nil
+}
+
+// viewShapes are the data formats of each view. The README holds none, so a rejected step carries its view's.
+var viewShapes = map[string]string{
+	ViewTable:    `Table shape: {columns: [{name, type: number|text|boolean|temporal|json|other}], rows: [[value per column]]}`,
+	ViewDocument: `Document shape: {documents: [{id, body}]} where body is any JSON, for example {documents: [{id: why, body: {text: "..."}}]}`,
+	ViewKeyValue: `Key-value shape: {entries: [{field, value}]}`,
+	ViewChart:    `Chart shape: {type: bar|line|area|scatter|pie, x: {type: category|time|value, name}, y: {name, unit}, stacked, horizontal, series: [{name, points: [[x, y]]}]}; pie takes {type: pie, unit, slices: [{name, value}]} instead of x, y and series. Example: {type: bar, x: {type: category}, series: [{name: errors, points: [[api, 3], [web, 5]]}]}`,
+	ViewDiagram:  `Diagram shape: Mermaid text as a block scalar, "inline: |" then the indented source`,
+}
+
+// withShape appends the view's format to a rejection of the data's shape.
+func withShape(view string, err error) error {
+	var ie *InvalidError
+	if !errors.As(err, &ie) {
+		return err
+	}
+	shape := viewShapes[view]
+	if shape == "" || !(strings.HasPrefix(ie.Msg, "data is not valid for this view") || strings.HasPrefix(ie.Msg, "data has trailing") ||
+		view == ViewChart && strings.HasPrefix(ie.Msg, "data.type")) {
+		return err
+	}
+	return invalid("%s. %s", ie.Msg, shape)
 }
 
 func decodeStrict(data json.RawMessage, into any) error {

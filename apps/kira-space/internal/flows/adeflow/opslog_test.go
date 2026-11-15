@@ -95,7 +95,7 @@ func TestOpsAde(t *testing.T) {
 		})
 	})
 
-	t.Run("mcp request_branches", func(t *testing.T) {
+	t.Run("mcp state", func(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/ops"})}, Name: "done"}}, onceStepYML, false)
 		f.startRun(t)
 		req := f.waitRequest(t)
@@ -105,11 +105,11 @@ func TestOpsAde(t *testing.T) {
 		waitRun(t, f.app, f.task.ID, "one", "done")
 		var call oplog.Record
 		testx.WaitUntil(t, waitFor, func() bool {
-			r, ok := findOp(opsNow(t, f.app), oplog.CategoryMCP, "request_branches")
+			r, ok := findOp(opsNow(t, f.app), oplog.CategoryMCP, "branch.request")
 			call = r
 			return ok && r.Status == oplog.StatusOK
 		})
-		if call.Module != oplog.ModuleADE || call.Trigger != oplog.TriggerMCP || call.Source != "MCP request_branches" || call.Command == nil {
+		if call.Module != oplog.ModuleADE || call.Trigger != oplog.TriggerMCP || call.Source != "MCP state" || call.Command == nil {
 			t.Fatalf("mcp op = %+v", call)
 		}
 		var child oplog.Record

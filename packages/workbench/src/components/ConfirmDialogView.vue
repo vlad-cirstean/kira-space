@@ -20,28 +20,31 @@ const props = withDefaults(
     title: string;
     message: string;
     confirmLabel: string;
+    secondaryLabel?: string;
     tone: 'danger' | 'primary';
     pending?: boolean;
     error?: string;
     touch?: boolean;
     testids?: Partial<
-      Record<'root' | 'close' | 'message' | 'cancel' | 'confirm' | 'error', string>
+      Record<'root' | 'close' | 'message' | 'cancel' | 'secondary' | 'confirm' | 'error', string>
     >;
   }>(),
   {
+    secondaryLabel: '',
     pending: false,
     error: '',
     touch: false,
     testids: () => ({}),
   },
 );
-const emit = defineEmits<{ confirm: []; cancel: [] }>();
+const emit = defineEmits<{ confirm: []; secondary: []; cancel: [] }>();
 
 const ids = {
   root: 'confirm-dialog',
   close: 'confirm-dialog-close',
   message: 'confirm-dialog-message',
   cancel: 'confirm-dialog-cancel',
+  secondary: 'confirm-dialog-secondary',
   confirm: 'confirm-dialog-confirm',
   error: 'confirm-dialog-error',
 };
@@ -75,6 +78,16 @@ const id = (name: keyof typeof ids): string => props.testids[name] ?? ids[name];
           @click="!pending && emit('cancel')"
         >
           {{ t('common.action.cancel.label') }}
+        </Button>
+        <Button
+          v-if="secondaryLabel"
+          variant="dialog"
+          :size="touch ? 'touch' : 'kira-lg'"
+          :class="touch ? 'flex-1' : undefined"
+          :data-testid="id('secondary')"
+          @click="!pending && emit('secondary')"
+        >
+          {{ secondaryLabel }}
         </Button>
         <Button
           data-dialog-initial

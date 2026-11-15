@@ -2,6 +2,7 @@ package adeflow_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -78,10 +79,6 @@ func createTaskCall(title, workflow, brief string, repos ...map[string]any) fake
 		args["repos"] = list
 	}
 	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "create_task", Tolerate: true, Args: args}
-}
-
-func spaceCall(tool string, args map[string]any) fakeagent.MCPCall {
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: tool, Tolerate: true, Args: args}
 }
 
 func taskItems(app *flowharness.App) []approvals.Item {
@@ -285,6 +282,8 @@ func TestOrchestratorPass(t *testing.T) {
 	f := newORFixture(t, []fakeagent.Action{{Name: "done"}, {Name: "done"}}, nil)
 	f.startOrchestrator(t)
 	waitRun(t, f.app, f.orch.ID, "plan", "done")
+	// The run row turns done before its handover row lands; wait for it.
+	testx.WaitUntil(t, waitFor, func() bool { return len(handovers(t, f.app, f.orch.ID)) > 0 })
 	if hs := handovers(t, f.app, f.orch.ID); len(hs) != 1 || hs[0].ToStepID != "done" || hs[0].Body != "summary-done" {
 		t.Fatalf("pass 1 handovers = %+v, want the final run row", hs)
 	}
@@ -344,10 +343,7 @@ func TestOrchestratorChildChain(t *testing.T) {
 				createTaskCall("With notes", "flow", "brief one", map[string]any{"repo": "api"}),
 				createTaskCall("Without row", "manual", "brief two"),
 			}, Name: "done"},
-			{MCP: []fakeagent.MCPCall{
-				spaceCall("list_tasks", nil),
-				spaceCall("task_chain", map[string]any{"limit": 5}),
-			}, Name: "done"},
+			{Name: "done"},
 		},
 		[]fakeagent.Action{{Name: "done"}})
 	f.startOrchestrator(t)
@@ -405,53 +401,45 @@ func TestOrchestratorChildChain(t *testing.T) {
 	if res, err := f.app.W.AdeTask.NextPass(ctx, adewire.NextPassArgs{TaskID: f.orch.ID}); err != nil || !res.Started {
 		t.Fatalf("NextPass = %+v, %v", res, err)
 	}
-	listed := mcpResult(t, f.app, "list_tasks", 1)
-	tasks, _ := listed["tasks"].([]any)
-	if len(tasks) != 2 {
-		t.Fatalf("list_tasks = %v, want both children", listed)
-	}
-	if first := tasks[0].(map[string]any); first["id"] != ids[1] || first["finished"] != true || first["archived"] != false {
+	doc := stateYAML(t, f.app, f.orch.ID, func(d map[string]any) bool {
+		kids := stateChildren(d)
+		return len(kids) == 2 && kids[0]["finished"] == true
+	})
+	if first := stateChildren(doc)[0]; first["id"] != ids[1] || first["finished"] != true || first["archived"] != false {
 		t.Fatalf("newest child = %v, want the second child finished", first)
 	}
-	if got := mcpResult(t, f.app, "task_chain", 1); len(got["rows"].([]any)) == 0 {
-		t.Fatalf("task_chain = %v, want the own chain", got)
-	}
+	testx.WaitUntil(t, waitFor, func() bool { return fakeFileOrEmpty(f.app, "tasks-2.prompt") != "" })
 	if prompt := fakeFile(t, f.app, "tasks-2.prompt"); strings.Contains(prompt, notes) {
 		t.Fatalf("pass 2 prompt = %q, want no child notes in it", prompt)
 	}
+	// The pass is granted the folders of the children that exist at its launch, to read their handovers.
+	args := fakeFile(t, f.app, "tasks-2.args")
+	for _, id := range ids {
+		if folder := dfFolder(t, f.app, id); !strings.Contains(args, folder) {
+			t.Fatalf("pass 2 argv lacks the child folder %s:\n%s", folder, args)
+		}
+	}
 
-	// Engine reads: paging, child chains, archived children, strangers.
-	call := agentmcp.SpaceCall{TaskID: f.orch.ID}
-	eng := f.app.W.AdeTask.Engine
-	page1, err := eng.TaskChain(ctx, call, agentmcp.TaskChainArgs{Limit: 1})
-	if err != nil || len(page1.Rows) != 1 || !page1.More || page1.Next != page1.Rows[0].ID {
-		t.Fatalf("page 1 = %+v, %v, want one row and a cursor", page1, err)
-	}
-	page2, err := eng.TaskChain(ctx, call, agentmcp.TaskChainArgs{Limit: 1, Before: page1.Next})
-	if err != nil || len(page2.Rows) != 1 || page2.Rows[0].ID == page1.Rows[0].ID {
-		t.Fatalf("page 2 = %+v, %v, want the next older row", page2, err)
-	}
-	childChain, err := eng.TaskChain(ctx, call, agentmcp.TaskChainArgs{TaskID: ids[0], Limit: 10})
-	if err != nil || len(childChain.Rows) == 0 || childChain.Rows[len(childChain.Rows)-1].Source != "orchestrator" {
-		t.Fatalf("child chain = %+v, %v, want the brief at the oldest end", childChain, err)
-	}
-	plain := createTask(t, f.app, "Stranger", "manual")
-	if _, err := eng.TaskChain(ctx, call, agentmcp.TaskChainArgs{TaskID: plain.ID}); err == nil || !strings.Contains(err.Error(), "not one of your child tasks") {
-		t.Fatalf("chain of a stranger: %v, want a refusal", err)
-	}
+	// Archived children stay listed, flagged; a child's own state.yaml names its parent.
 	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: ids[1]}); err != nil {
 		t.Fatal(err)
 	}
-	archived, err := eng.ListTasks(ctx, call, agentmcp.ListTasksArgs{State: "archived"})
-	if err != nil || len(archived.Tasks) != 1 || archived.Tasks[0].ID != ids[1] || !archived.Tasks[0].Archived || !archived.Tasks[0].Finished {
-		t.Fatalf("archived children = %+v, %v", archived, err)
+	doc = stateYAML(t, f.app, f.orch.ID, func(d map[string]any) bool {
+		for _, c := range stateChildren(d) {
+			if c["id"] == ids[1] && c["archived"] == true && c["finished"] == true {
+				return true
+			}
+		}
+		return false
+	})
+	for _, c := range stateChildren(doc) {
+		if c["id"] == ids[0] && (c["archived"] != false || !strings.Contains(fmt.Sprint(c["preview"]), notes)) {
+			t.Fatalf("live child = %v", c)
+		}
 	}
-	live, err := eng.ListTasks(ctx, call, agentmcp.ListTasksArgs{State: "live"})
-	if err != nil || len(live.Tasks) != 1 || live.Tasks[0].ID != ids[0] || live.Tasks[0].LastHandover != notes {
-		t.Fatalf("live children = %+v, %v", live, err)
-	}
-	if _, err := eng.TaskChain(ctx, call, agentmcp.TaskChainArgs{TaskID: ids[1]}); err != nil {
-		t.Fatalf("chain of an archived child: %v, want it readable", err)
+	child := stateYAML(t, f.app, ids[0], func(d map[string]any) bool { c, _ := d["chain"].(map[string]any); return c["parent"] != nil })
+	if parent, _ := child["chain"].(map[string]any)["parent"].(map[string]any); parent["id"] != f.orch.ID {
+		t.Fatalf("child chain parent = %v, want %s", parent, f.orch.ID)
 	}
 }
 
@@ -529,27 +517,26 @@ func TestOrchestratorArchivedChildStepName(t *testing.T) {
 		t.Fatal("create_task created no task")
 	}
 	waitRun(t, f.app, f.orch.ID, "plan", "done")
-	call := agentmcp.SpaceCall{TaskID: f.orch.ID}
-	live, err := f.app.W.AdeTask.Engine.ListTasks(ctx, call, agentmcp.ListTasksArgs{State: "live"})
-	if err != nil || len(live.Tasks) != 1 || live.Tasks[0].Step != "Ship" {
-		t.Fatalf("live child = %+v, %v, want step Ship", live, err)
+	stepOf := func(archived bool) func(map[string]any) bool {
+		return func(d map[string]any) bool {
+			kids := stateChildren(d)
+			return len(kids) == 1 && kids[0]["step"] == "Ship" && kids[0]["archived"] == archived && kids[0]["finished"] == false
+		}
 	}
+	stateYAML(t, f.app, f.orch.ID, stepOf(false))
 	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: id}); err != nil {
 		t.Fatal(err)
 	}
-	archived, err := f.app.W.AdeTask.Engine.ListTasks(ctx, call, agentmcp.ListTasksArgs{State: "archived"})
-	if err != nil || len(archived.Tasks) != 1 || archived.Tasks[0].Step != "Ship" || archived.Tasks[0].Finished {
-		t.Fatalf("archived child = %+v, %v, want step Ship", archived, err)
-	}
+	stateYAML(t, f.app, f.orch.ID, stepOf(true))
 }
 
-// J-RUN-027: a second pass sees the child the first pass made, through list_tasks, and adds none unless it asks;
+// J-RUN-027: a second pass sees the child the first pass made, through state.yaml chain, and adds none unless it asks;
 // the child keeps the repo it was created with.
 func TestOrchestratorSecondPassSeesFirstPassChild(t *testing.T) {
 	f := newORFixture(t,
 		[]fakeagent.Action{
 			{MCP: []fakeagent.MCPCall{createTaskCall("API login", "flow", "wire it", map[string]any{"repo": "api"})}, Name: "done"},
-			{MCP: []fakeagent.MCPCall{spaceCall("list_tasks", nil)}, Name: "done"},
+			{Name: "done"},
 		},
 		[]fakeagent.Action{{Name: "done"}})
 	f.startOrchestrator(t)
@@ -566,9 +553,9 @@ func TestOrchestratorSecondPassSeesFirstPassChild(t *testing.T) {
 		r, ok := latestRun(t, f.app, f.orch.ID, "plan")
 		return ok && r.Attempt >= 2 && r.State == "done"
 	})
-	listed := fakeFile(t, f.app, "mcp-list_tasks-1.json")
-	if !strings.Contains(listed, childID) || !strings.Contains(listed, "API login") {
-		t.Fatalf("pass 2 list_tasks = %s, want the pass 1 child %s", listed, childID)
+	doc := stateYAML(t, f.app, f.orch.ID, func(d map[string]any) bool { return len(stateChildren(d)) == 1 })
+	if c := stateChildren(doc)[0]; c["id"] != childID || c["title"] != "API login" {
+		t.Fatalf("pass 2 state.yaml children = %v, want the pass 1 child %s", stateChildren(doc), childID)
 	}
 	kids := childrenOf(t, f.app, f.orch.ID)
 	if len(kids) != 1 || kids[0].ID != childID {

@@ -39,6 +39,9 @@ export interface SqlLexOptions {
   /** SQLite triggers and MySQL/MariaDB routines, triggers and events carry a `BEGIN ... END` body
    *  whose inner `;` do not end the `CREATE` statement; the splitter keeps the block whole. */
   compoundBlocks?: boolean;
+  /** MySQL/MariaDB client `DELIMITER <token>` directive: the splitter consumes it and switches its
+   *  statement terminator. Server never sees it. */
+  delimiterDirective?: boolean;
 }
 
 /** The public, all-optional shape `lintSql`/`splitSqlStatements`/`tokenizeSql`'s own callers pass
@@ -60,6 +63,7 @@ export function resolveLexOptions(options?: SqlScanOptions): SqlLexOptions {
     bracketIdentifiers: options?.bracketIdentifiers,
     postgresEscapeStrings: options?.postgresEscapeStrings,
     compoundBlocks: options?.compoundBlocks,
+    delimiterDirective: options?.delimiterDirective,
   };
 }
 

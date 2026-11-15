@@ -64,7 +64,7 @@ func TestFinishStepServer(t *testing.T) {
 	var got []string
 	srv := NewServer(Options{Dir: t.TempDir(), OnFinish: func(runID string, f Finish) {
 		mu.Lock()
-		got = append(got, runID+"|"+f.Status+"|"+f.Summary)
+		got = append(got, runID+"|"+f.Status)
 		mu.Unlock()
 	}})
 	t.Cleanup(func() { _ = srv.Close() })
@@ -93,7 +93,7 @@ func TestFinishStepServer(t *testing.T) {
 		t.Fatalf("connect: %v", err)
 	}
 	call := func(s *mcp.ClientSession, status string) *mcp.CallToolResult {
-		res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "summary": "s-" + status, "reason": "r"}})
+		res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "reason": "r"}})
 		if err != nil { // the schema enum refuses an unknown status before the handler runs
 			return &mcp.CallToolResult{IsError: true}
 		}
@@ -111,7 +111,7 @@ func TestFinishStepServer(t *testing.T) {
 	}
 	call(sessB, "failed")
 	mu.Lock()
-	want := []string{"run-a|done|s-done", "run-b|failed|s-failed"}
+	want := []string{"run-a|done", "run-b|failed"}
 	if len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("finish calls = %v, want %v", got, want)
 	}
@@ -127,19 +127,17 @@ func TestFinishStepServer(t *testing.T) {
 }
 
 type fakeSpace struct {
-	mu    sync.Mutex
-	calls []string
+	mu     sync.Mutex
+	calls  []string
+	finish SubmitFinish
+	paths  []string
+	reason string
 }
 
 func (f *fakeSpace) rec(s string) {
 	f.mu.Lock()
 	f.calls = append(f.calls, s)
 	f.mu.Unlock()
-}
-
-func (f *fakeSpace) TaskInfo(_ context.Context, task string, _ bool) (TaskInfo, error) {
-	f.rec("info|" + task)
-	return TaskInfo{Title: "t-" + task, Repos: []TaskRepo{}, Registered: []RegisteredRepo{}}, nil
 }
 
 func (f *fakeSpace) DeclareRepos(_ context.Context, task string, repos []string) (TaskInfo, error) {
@@ -149,6 +147,10 @@ func (f *fakeSpace) DeclareRepos(_ context.Context, task string, repos []string)
 
 func (f *fakeSpace) RequestBranches(ctx context.Context, call SpaceCall, specs []BranchSpec) (RequestBranchesResult, error) {
 	f.rec("branch|" + call.TaskID + "|" + specs[0].Repo)
+	if specs[0].Repo == "progress" {
+		ReportProgress(ctx, "preparing one")
+		ReportProgress(ctx, "preparing two")
+	}
 	if specs[0].Repo == "gone" {
 		return RequestBranchesResult{}, ToolError("repo is no longer registered")
 	}
@@ -161,15 +163,6 @@ func (f *fakeSpace) RequestBranches(ctx context.Context, call SpaceCall, specs [
 		out.Branches = append(out.Branches, RequestedBranch{BranchInfo: BranchInfo{Repo: sp.Repo, Branch: sp.Branch}, Outcome: BranchCreated})
 	}
 	return out, nil
-}
-
-func (f *fakeSpace) BranchStatus(ctx context.Context, task, repo, _ string, _ time.Duration) (BranchInfo, error) {
-	f.rec("status|" + task + "|" + repo)
-	if repo == "progress" {
-		ReportProgress(ctx, "preparing one")
-		ReportProgress(ctx, "preparing two")
-	}
-	return BranchInfo{Repo: repo}, nil
 }
 
 func (f *fakeSpace) ChangeBranch(_ context.Context, call SpaceCall, args ChangeBranchArgs) (ChangeBranchResult, error) {
@@ -187,19 +180,9 @@ func (f *fakeSpace) ReleaseLease(_ context.Context, call SpaceCall, args Release
 	return ReleaseLeaseResult{}, nil
 }
 
-func (f *fakeSpace) LeaseStatus(_ context.Context, call SpaceCall, args LeaseStatusArgs) (LeaseStatusResult, error) {
-	f.rec("leases|" + call.TaskID + "|" + args.Queue)
-	return LeaseStatusResult{}, nil
-}
-
 func (f *fakeSpace) RenameBranch(_ context.Context, call SpaceCall, args RenameBranchArgs) (RenameBranchResult, error) {
 	f.rec("rename|" + call.TaskID + "|" + args.From + ">" + args.To)
 	return RenameBranchResult{Repo: args.Repo, From: args.From, To: args.To, Outcome: BranchRenamed, Remote: RemoteKept}, nil
-}
-
-func (f *fakeSpace) ListOperations(_ context.Context, task string) ([]OperationInfo, error) {
-	f.rec("ops|" + task)
-	return nil, nil
 }
 
 func (f *fakeSpace) CancelOperation(_ context.Context, task, opID string) (CancelOperationResult, error) {
@@ -207,19 +190,45 @@ func (f *fakeSpace) CancelOperation(_ context.Context, task, opID string) (Cance
 	return CancelOperationResult{OpID: opID, Cancelled: true}, nil
 }
 
-func (f *fakeSpace) ReportArtifacts(_ context.Context, call SpaceCall, in []ArtifactInput) (ReportArtifactsResult, error) {
-	f.rec("report|" + call.TaskID)
-	return ReportArtifactsResult{Recorded: len(in)}, nil
+func (f *fakeSpace) Submit(_ context.Context, _ SpaceCall, in SubmitArgs) (string, error) {
+	f.mu.Lock()
+	f.paths, f.reason = in.Paths, in.Reason
+	f.mu.Unlock()
+	return "accepted 0, pending user 0, invalid 0", nil
 }
 
-func (f *fakeSpace) AttachProof(_ context.Context, call SpaceCall, name string) (AttachProofResult, error) {
-	f.rec("attachproof|" + call.TaskID + "|" + name)
-	return AttachProofResult{Name: name, Status: "attached"}, nil
+func (f *fakeSpace) SubmitForFinish(context.Context, SpaceCall, string, bool) (SubmitFinish, error) {
+	return f.finish, nil
+}
+
+func (f *fakeSpace) FinishSession(_ context.Context, call SpaceCall) (string, error) {
+	f.rec("finishsession|" + call.TaskID)
+	return "Stage finished.", nil
 }
 
 func (f *fakeSpace) ListArtifacts(_ context.Context, task string) (TaskArtifacts, error) {
 	f.rec("artifacts|" + task)
 	return TaskArtifacts{Artifacts: []Artifact{{Kind: ArtifactDoc, Title: "d", Ref: "d.md", Source: "agent"}}}, nil
+}
+
+type fakeOrchestrator struct{}
+
+func (fakeOrchestrator) SpawnTask(context.Context, SpaceCall, CreateTaskArgs) (CreateTaskResult, error) {
+	return CreateTaskResult{}, nil
+}
+
+type fakeReviewer struct{}
+
+func (fakeReviewer) Reply(string, string, string, bool) error { return nil }
+
+type fakeSandbox struct{}
+
+func (fakeSandbox) FetchRemote(context.Context, string, string) (RemoteResult, error) {
+	return RemoteResult{}, nil
+}
+
+func (fakeSandbox) PushBranch(context.Context, string, bool) (RemoteResult, error) {
+	return RemoteResult{}, nil
 }
 
 func toolNames(t *testing.T, s *mcp.ClientSession) map[string]bool {
@@ -233,6 +242,31 @@ func toolNames(t *testing.T, s *mcp.ClientSession) map[string]bool {
 		out[tool.Name] = true
 	}
 	return out
+}
+
+// stateCall calls the state tool and returns its structured reply.
+func stateCall(t *testing.T, s *mcp.ClientSession, action string, args map[string]any, token ...string) (*mcp.CallToolResult, map[string]any) {
+	t.Helper()
+	params := &mcp.CallToolParams{Name: "state", Arguments: map[string]any{"action": action, "args": args}}
+	if len(token) > 0 {
+		params.SetProgressToken(token[0])
+	}
+	res, err := s.CallTool(context.Background(), params)
+	if err != nil {
+		t.Fatalf("state %s: %v", action, err)
+	}
+	reply, _ := res.StructuredContent.(map[string]any)
+	return res, reply
+}
+
+// firstItem is the first item of a state reply.
+func firstItem(t *testing.T, reply map[string]any) map[string]any {
+	t.Helper()
+	items, _ := reply["items"].([]any)
+	if len(items) == 0 {
+		t.Fatalf("reply has no items: %v", reply)
+	}
+	return items[0].(map[string]any)
 }
 
 // A grant exposes only its own tools and acts on its own task; a released token is dead.
@@ -261,21 +295,21 @@ func TestGrantScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if names := toolNames(t, run); !names["finish_step"] || names["request_branches"] || names["task_info"] {
+	if names := toolNames(t, run); len(names) != 1 || !names["finish_step"] {
 		t.Fatalf("run-only grant tools = %v", names)
 	}
-	if res, err := run.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"branches": []map[string]string{{"repo": "r", "branch": "feat/x"}}}}); err == nil && !res.IsError {
-		t.Fatal("run-only grant called a Space tool")
+	if res, err := run.CallTool(context.Background(), &mcp.CallToolParams{Name: "state", Arguments: map[string]any{"action": "branch.request"}}); err == nil && !res.IsError {
+		t.Fatal("run-only grant called the state tool")
 	}
 
 	sp, err := connect(t, cfgSpace, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if names := toolNames(t, sp); names["finish_step"] || !names["request_branches"] || !names["declare_repos"] || !names["task_info"] || !names["operations"] || !names["rename_branch"] || !names["change_branch"] || !names["acquire_lease"] || !names["release_lease"] || !names["lease_status"] || !names["report_artifacts"] || names["branch_status"] || names["attach_proof"] || names["list_operations"] || names["cancel_operation"] {
+	if names := toolNames(t, sp); len(names) != 2 || !names["submit"] || !names["state"] {
 		t.Fatalf("space-only grant tools = %v", names)
 	}
-	if res, err := sp.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done", "summary": "x"}}); err == nil && !res.IsError {
+	if res, err := sp.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done"}}); err == nil && !res.IsError {
 		t.Fatal("space-only grant called finish_step")
 	}
 	if len(finished) != 0 {
@@ -286,31 +320,24 @@ func TestGrantScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if names := toolNames(t, both); len(names) != 11 {
-		t.Fatalf("full grant lists %d tools, want 11 (finish_step plus the ten Space tools): %v", len(names), names)
+	if names := toolNames(t, both); len(names) != 2 || !names["submit"] || !names["state"] {
+		t.Fatalf("a Space run lists %v, want submit and state: step.finish replaces finish_step", names)
 	}
-	res, err := both.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"branches": []map[string]string{{"repo": "api", "branch": "feat/x"}}}})
-	if err != nil || res.IsError {
-		t.Fatalf("request_branches: %v %v", err, res)
+	if res, reply := stateCall(t, both, "branch.request", map[string]any{"repo": "api", "branch": "feat/x"}); res.IsError || firstItem(t, reply)["status"] != "done" {
+		t.Fatalf("branch.request: %v", reply)
 	}
-	if _, err := sp.CallTool(context.Background(), &mcp.CallToolParams{Name: "task_info"}); err != nil {
-		t.Fatal(err)
+	if res, reply := stateCall(t, sp, "lease.acquire", map[string]any{"queue": "q"}); res.IsError || firstItem(t, reply)["status"] != "done" {
+		t.Fatalf("lease.acquire: %v", reply)
 	}
-	res, err = both.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"branches": []map[string]string{{"repo": "gone", "branch": "feat/x"}}}})
-	if err != nil || !res.IsError {
-		t.Fatalf("a ToolError must come back as an error result: %v %v", err, res)
+	if res, reply := stateCall(t, both, "branch.request", map[string]any{"repo": "gone", "branch": "feat/x"}); res.IsError || firstItem(t, reply)["status"] != "invalid" {
+		t.Fatalf("an agent-fixable refusal must be an invalid item, not an error: %v", reply)
 	}
 	space.mu.Lock()
 	got := space.calls
 	space.mu.Unlock()
-	want := []string{"branch|task-2|api", "info|task-1", "branch|task-2|gone"}
-	if len(got) != len(want) {
+	want := []string{"branch|task-2|api", "acquire|task-1||q", "branch|task-2|gone"}
+	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("calls = %v, want %v", got, want)
-	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Fatalf("calls = %v, want %v", got, want)
-		}
 	}
 
 	raw, err := os.ReadFile(cfgSpace)
@@ -324,6 +351,79 @@ func TestGrantScopes(t *testing.T) {
 	relSpace()
 	if _, err := connect(t, kept, ""); err == nil {
 		t.Fatal("a released grant connected")
+	}
+}
+
+// A bad state call is an invalid item with a one-line fix, never an MCP error.
+func TestStateInvalidCalls(t *testing.T) {
+	srv := NewServer(Options{Dir: t.TempDir(), Space: &fakeSpace{}})
+	t.Cleanup(func() { _ = srv.Close() })
+	cfg, rel, err := srv.Register(Grant{Agent: claude.New(), TaskID: "task-1", Space: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rel()
+	sess, err := connect(t, cfg, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, raw := range map[string]map[string]any{
+		"flat":          {"action": "branch.request", "repo": "app", "branch": "x"},
+		"stray field":   {"action": "branch.request", "args": map[string]any{"repo": "app", "branch": "x", "color": "red"}},
+		"missing field": {"action": "branch.request", "args": map[string]any{"repo": "app"}},
+		"args string":   {"action": "branch.request", "args": `{"repo": "app", "branch": "x"}`},
+		"wrong type":    {"action": "branch.request", "args": map[string]any{"repo": "app", "branch": 7}},
+	} {
+		res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "state", Arguments: raw})
+		if err != nil || res.IsError {
+			t.Fatalf("%s: %v %v, want an invalid item", name, err, res)
+		}
+		reply, _ := res.StructuredContent.(map[string]any)
+		it := firstItem(t, reply)
+		if it["status"] != "invalid" || it["fix"] == "" || it["fix"] == nil {
+			t.Fatalf("%s: item = %v, want invalid with a fix", name, it)
+		}
+	}
+}
+
+// Every grant's tools/list stays inside its token budget (bytes/4 of the tools/list JSON): the
+// schema is paid on each turn of every run.
+func TestToolSchemaBudget(t *testing.T) {
+	srv := NewServer(Options{Dir: t.TempDir(), Space: &fakeSpace{}, Orchestrator: fakeOrchestrator{}, Review: fakeReviewer{}, SandboxGit: fakeSandbox{}})
+	t.Cleanup(func() { _ = srv.Close() })
+	review := &ReviewGrant{}
+	for _, c := range []struct {
+		name   string
+		grant  Grant
+		budget int
+	}{
+		{"run", Grant{RunID: "r", TaskID: "t", Space: true}, 900},
+		{"session", Grant{TaskID: "t", SessionID: "s", Space: true}, 900},
+		{"orchestrator", Grant{RunID: "r", TaskID: "t", Space: true, Orchestrator: true}, 1230},
+		{"review", Grant{RunID: "r", TaskID: "t", Review: review}, 940},
+		{"push", Grant{RunID: "r", TaskID: "t", Space: true, Sandbox: &SandboxGrant{Push: true}}, 960},
+	} {
+		g := c.grant
+		g.Agent = claude.New()
+		cfg, rel, err := srv.Register(g)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		sess, err := connect(t, cfg, "")
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		res, err := sess.ListTools(context.Background(), nil)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		raw, _ := json.Marshal(res.Tools)
+		tokens := len(raw) / 4
+		t.Logf("%s: %d tokens (budget %d)", c.name, tokens, c.budget)
+		if tokens > c.budget {
+			t.Errorf("%s: tools/list is %d tokens, budget %d", c.name, tokens, c.budget)
+		}
+		rel()
 	}
 }
 
@@ -390,7 +490,7 @@ func TestFinishStepStatusEnum(t *testing.T) {
 		t.Fatal(err)
 	}
 	call := func(status string) bool {
-		res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "summary": "x", "reason": "r"}})
+		res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "reason": "r"}})
 		return err == nil && !res.IsError
 	}
 	if call("done") || call("bogus") {
@@ -415,7 +515,7 @@ func TestReleaseCancelsBlockedCall(t *testing.T) {
 	}
 	done := make(chan *mcp.CallToolResult, 1)
 	go func() {
-		res, _ := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"branches": []map[string]string{{"repo": "block", "branch": "feat/x"}}}})
+		res, _ := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "state", Arguments: map[string]any{"action": "branch.request", "args": map[string]any{"repo": "block", "branch": "feat/x"}}})
 		done <- res
 	}()
 	time.Sleep(200 * time.Millisecond)
@@ -456,7 +556,7 @@ func TestOnToolCallReportsEveryCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done", "summary": "s"}}); err != nil {
+	if _, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done"}}); err != nil {
 		t.Fatal(err)
 	}
 	mu.Lock()
@@ -466,8 +566,8 @@ func TestOnToolCallReportsEveryCall(t *testing.T) {
 	}
 }
 
-// task_info reports progress to a client that sent a progress token, in order, before its result.
-func TestTaskInfoReportsProgress(t *testing.T) {
+// A state call reports progress to a client that sent a progress token, in order, before its result.
+func TestStateReportsProgress(t *testing.T) {
 	srv := NewServer(Options{Dir: t.TempDir(), Space: &fakeSpace{}})
 	t.Cleanup(func() { _ = srv.Close() })
 	cfg, rel, err := srv.Register(Grant{Agent: claude.New(), TaskID: "task-1", Space: true})
@@ -485,11 +585,8 @@ func TestTaskInfoReportsProgress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	params := &mcp.CallToolParams{Name: "task_info", Arguments: map[string]any{"repo": "progress", "branch": "feat/x", "waitSeconds": 1}}
-	params.SetProgressToken("tok")
-	res, err := cs.CallTool(context.Background(), params)
-	if err != nil || res.IsError {
-		t.Fatalf("task_info: %v %v", err, res)
+	if res, _ := stateCall(t, cs, "branch.request", map[string]any{"repo": "progress", "branch": "feat/x"}, "tok"); res.IsError {
+		t.Fatalf("state: %v", res)
 	}
 	// The client runs notification handlers on their own goroutines: wait, then compare by the
 	// increasing progress value the server stamped.
@@ -502,5 +599,68 @@ func TestTaskInfoReportsProgress(t *testing.T) {
 	defer mu.Unlock()
 	if got[1] != "preparing one" || got[2] != "preparing two" {
 		t.Fatalf("progress = %v, want 1 then 2 with the two messages", got)
+	}
+}
+
+// An ok step.finish the board refuses (no draft) records nothing and is an invalid item with the
+// refusal; an accepted one goes through, carrying the submit reply.
+func TestStepFinishImplicitSubmit(t *testing.T) {
+	var mu sync.Mutex
+	var got []string
+	fs := &fakeSpace{finish: SubmitFinish{Refuse: "write handovers/draft-build.md, then call state step.finish"}}
+	srv := NewServer(Options{Dir: t.TempDir(), Space: fs, OnFinish: func(runID string, f Finish) {
+		mu.Lock()
+		got = append(got, f.Status)
+		mu.Unlock()
+	}})
+	t.Cleanup(func() { _ = srv.Close() })
+	cfg, release, err := srv.Register(Grant{Agent: claude.New(), RunID: "run-1", TaskID: "task-1", Space: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	sess, err := connect(t, cfg, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, reply := stateCall(t, sess, "step.finish", map[string]any{"status": "done"})
+	if it := firstItem(t, reply); res.IsError || it["status"] != "invalid" || !strings.Contains(it["message"].(string), "draft-build.md") {
+		t.Fatalf("ok finish without a draft = %v; want the refusal", reply)
+	}
+	fs.finish = SubmitFinish{Reply: "accepted 1, pending user 0, invalid 0"}
+	res, reply = stateCall(t, sess, "step.finish", map[string]any{"status": "done"})
+	if it := firstItem(t, reply); res.IsError || it["status"] != "done" || !strings.Contains(it["message"].(string), "accepted 1, pending user 0, invalid 0") {
+		t.Fatalf("ok finish with a draft = %v; want done with the reply", reply)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(got) != 1 || got[0] != "done" {
+		t.Fatalf("finishes = %v, want one done", got)
+	}
+}
+
+// A proof is a folder plus submit: no grant lists a proof tool.
+func TestNoProofTool(t *testing.T) {
+	srv := NewServer(Options{Dir: t.TempDir(), Space: &fakeSpace{}})
+	t.Cleanup(func() { _ = srv.Close() })
+	for _, g := range []Grant{
+		{Agent: claude.New(), TaskID: "task-1", Space: true},
+		{Agent: claude.New(), RunID: "run-1", TaskID: "task-1", Space: true},
+	} {
+		cfg, rel, err := srv.Register(g)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rel()
+		s, err := connect(t, cfg, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for name := range toolNames(t, s) {
+			if strings.Contains(name, "proof") || name == "create" {
+				t.Errorf("grant %+v lists %q", g, name)
+			}
+		}
+		_ = s.Close()
 	}
 }

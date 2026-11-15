@@ -38,7 +38,12 @@ export function usePrompts() {
     },
     queryClient,
   );
-  const off = control.onPromptsChanged((list) => queryClient.setQueryData(PROMPTS_KEY, list));
+  // A list fetch still in flight would resolve later and overwrite the push with stale entries.
+  const off = control.onPromptsChanged((list) => {
+    void queryClient
+      .cancelQueries({ queryKey: PROMPTS_KEY })
+      .then(() => queryClient.setQueryData(PROMPTS_KEY, list));
+  });
   onScopeDispose(off);
   const focused = useWindowFocus();
   watch(focused, (f) => {

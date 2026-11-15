@@ -27,7 +27,7 @@ func holdScript(t *testing.T, flag string) string {
 }
 
 func holdPrompt(script string) string {
-	return "Run exactly one Bash command: sh " + script + " . It is safe to run again: if an earlier call was cut off, run it again and inspect nothing first. Wait for it to finish, then call finish_step with status done and summary ok."
+	return "Run exactly one Bash command: sh " + script + " . It is safe to run again: if an earlier call was cut off, run it again and inspect nothing first. Wait for it to finish, then call state with action step.finish and args status done."
 }
 
 // startHeld starts the ADE run and returns once the agent has issued its Bash call.
@@ -96,7 +96,7 @@ func (f *adeFixture) stepRun(t *testing.T, taskID string) adewire.Run {
 }
 
 // TestAdeResumeRun cuts a real agent off mid Bash call with an app restart, resumes it, releases the
-// call and expects the same Claude session to finish through finish_step. The CLI's interrupted tool_result
+// call and expects the same Claude session to finish through state step.finish. The CLI's interrupted tool_result
 // line is not in the run log, so the check is the shared Claude session id.
 func TestAdeResumeRun(t *testing.T) {
 	f := newAdeFixture(t, nil)
@@ -122,7 +122,7 @@ func TestAdeResumeRun(t *testing.T) {
 	})
 	log := f.runLog(t, resumed.ID)
 	if resumed.State != "done" || resumed.Outcome == nil || !resumed.Outcome.Reported {
-		t.Fatalf("resumed run = %+v, want done through finish_step; log:\n%s", resumed, tail(log, 1500))
+		t.Fatalf("resumed run = %+v, want done through state step.finish; log:\n%s", resumed, tail(log, 1500))
 	}
 	if got, want := f.claudeSession(t, resumed.SessionID), f.claudeSession(t, run.SessionID); got == "" || got != want {
 		t.Fatalf("resumed run on claude session %q, want the interrupted run's %q", got, want)

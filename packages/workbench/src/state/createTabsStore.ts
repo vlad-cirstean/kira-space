@@ -47,6 +47,8 @@ interface KindLookup<R> {
     pinned?: true;
     /** True while the tab holds unsaved work; closing it asks to discard first. */
     isDirty?(tabId: string): boolean;
+    /** Kind's own close question for a dirty tab; true closes it. Absent: generic discard confirm. */
+    confirmClose?(tabId: string): Promise<boolean>;
     dropResources(tabId: string): void;
     /** P108 Part 12 F14: hydrateTabs' own reset-on-unparseable fallback. */
     defaultState(): unknown;
@@ -483,6 +485,24 @@ export function createTabsStore<
       });
     }
 
+    // Dirty tabs with their own question are asked one by one in strip order; the rest share one
+    // generic discard confirm. Any decline closes nothing.
+    async function confirmCloses(ids: ReadonlySet<string>): Promise<boolean> {
+      const own: R[] = [];
+      let generic = 0;
+      for (const tab of tabsState.tabs) {
+        if (!ids.has(tab.id)) continue;
+        const kind = host.kinds[tab.kind];
+        if (kind?.isDirty?.(tab.id) !== true) continue;
+        if (kind.confirmClose) own.push(tab);
+        else generic++;
+      }
+      for (const tab of own) {
+        if (!(await host.kinds[tab.kind]?.confirmClose?.(tab.id))) return false;
+      }
+      return generic === 0 || askDiscard(generic);
+    }
+
     function othersToClose(id: string): Set<string> {
       const keep = tabsState.tabs.find((t) => t.id === id);
       if (!keep) return new Set();
@@ -518,8 +538,8 @@ export function createTabsStore<
     }
 
     async function closeTab(id: string): Promise<void> {
-      const dirty = dirtyCount([id]);
-      if (dirty > 0 && !(await askDiscard(dirty))) return;
+      const ids = new Set([id]);
+      if (dirtyCount(ids) > 0 && !(await confirmCloses(ids))) return;
       closeTabInternal(id);
       saveNow();
     }
@@ -531,8 +551,8 @@ export function createTabsStore<
     }
 
     async function closeOthers(id: string): Promise<void> {
-      const dirty = dirtyCount(othersToClose(id));
-      if (dirty > 0 && !(await askDiscard(dirty))) return;
+      const asked = othersToClose(id);
+      if (dirtyCount(asked) > 0 && !(await confirmCloses(asked))) return;
       const keep = tabsState.tabs.find((t) => t.id === id);
       if (!keep) return;
       const key = host.workspaceKeyOf(keep);
@@ -551,8 +571,8 @@ export function createTabsStore<
     }
 
     async function closeToTheRight(id: string): Promise<void> {
-      const dirty = dirtyCount(rightToClose(id));
-      if (dirty > 0 && !(await askDiscard(dirty))) return;
+      const asked = rightToClose(id);
+      if (dirtyCount(asked) > 0 && !(await confirmCloses(asked))) return;
       const target = tabsState.tabs.find((t) => t.id === id);
       if (!target) return;
       const key = host.workspaceKeyOf(target);
@@ -572,8 +592,8 @@ export function createTabsStore<
     }
 
     async function closeAll(key: K): Promise<void> {
-      const dirty = dirtyCount(allToClose(key));
-      if (dirty > 0 && !(await askDiscard(dirty))) return;
+      const asked = allToClose(key);
+      if (dirtyCount(asked) > 0 && !(await confirmCloses(asked))) return;
       const closeIds = allToClose(key);
       for (const tabId of closeIds) {
         dropAllPagesForTab(tabId);

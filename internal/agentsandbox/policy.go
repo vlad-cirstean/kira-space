@@ -37,8 +37,10 @@ type Policy struct {
 	// Read are the step's read folders plus the worktree for read access.
 	Read []string
 	// Allow are the step's extra read-write paths.
-	Allow   []string
-	Network bool
+	Allow []string
+	// DenyWrite are files inside an allowed folder that stay read-only: literal write denies.
+	DenyWrite []string
+	Network   bool
 	// Git is one layout per worktree that is a git checkout.
 	Git []GitLayout
 	// Scratch is TMPDIR's parent: <AgentDir>/sandbox/<runID>.
@@ -77,9 +79,11 @@ type Input struct {
 	// RunDir is the cwd; empty means Worktrees[0].
 	RunDir      string
 	Read, Allow []string
-	Network     bool
-	Scratch     string
-	Cache       string
+	// DenyWrite are files (they need not exist yet) the profile denies writes to, after every allow.
+	DenyWrite []string
+	Network   bool
+	Scratch   string
+	Cache     string
 	// ConfigDir is the folder the run's MCP config files are written to: <run>-<n>.mcp.json and the app settings files <run>-app.<role>.json.
 	ConfigDir string
 	// ContextDir is the folder of the run's agent context file ("" = none).
@@ -171,6 +175,9 @@ func ResolvePolicy(in Input, rt Runtime) (Policy, []string, error) {
 		p.ContextDir = realPath(filepath.Clean(in.ContextDir))
 	}
 	p.Allow = allowExtra
+	if p.DenyWrite, err = resolveDenyWrite(in.DenyWrite, rt.Home); err != nil {
+		return Policy{}, nil, err
+	}
 	for _, f := range in.ReadFiles {
 		r, err := real(f)
 		if err != nil {
@@ -196,6 +203,23 @@ func ResolvePolicy(in Input, rt Runtime) (Policy, []string, error) {
 	}
 	p.Git = git
 	return p, notes, nil
+}
+
+// resolveDenyWrite canonicalizes the folder of each file; the file itself may not exist yet.
+func resolveDenyWrite(files []string, home string) ([]string, error) {
+	var out []string
+	for _, f := range files {
+		abs, err := ExpandHome(f, home)
+		if err != nil {
+			return nil, err
+		}
+		dir, err := filepath.EvalSymlinks(filepath.Dir(abs))
+		if err != nil {
+			return nil, fmt.Errorf("agentsandbox: deny write %s: %w", f, err)
+		}
+		out = appendUnique(out, filepath.Join(dir, filepath.Base(abs)))
+	}
+	return out, nil
 }
 
 // guard holds the paths no read or allow entry may cover: the keychain directory, and the agent's

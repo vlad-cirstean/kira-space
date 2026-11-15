@@ -15,6 +15,17 @@ export interface ApiConfigFile {
   problem: ApiFileProblem | null;
   /** The rows still follow the last valid text of this file. */
   lastGood: boolean;
+  /** Items a partly loaded collection left out; empty when the file loaded whole or failed whole. */
+  skipped: ApiSkippedItem[];
+}
+
+/** Mirrors apifiles.SkippedView. */
+export interface ApiSkippedItem {
+  line: number;
+  index: number;
+  id: string;
+  name: string;
+  message: string;
 }
 
 export interface ApiSecret {

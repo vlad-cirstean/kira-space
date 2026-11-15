@@ -103,7 +103,7 @@
         "value": "cats"
       }
     ],
-    "prompt": "Say hi about cats\n\nWhen finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
+    "prompt": "Say hi about cats\n\nWhen finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status \"done\" and a one-line reason. If you could not finish, use status \"failed\" and the reason. If you need a decision, use status \"needs_input\" and your question.",
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "",
@@ -150,11 +150,10 @@
       "reason": "summary-failed",
       "reported": true,
       "source": "agent",
-      "status": "failed",
-      "summary": "summary-failed"
+      "status": "failed"
     },
     "params": [],
-    "prompt": "Say hi\n\nWhen finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
+    "prompt": "Say hi\n\nWhen finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status \"done\" and a one-line reason. If you could not finish, use status \"failed\" and the reason. If you need a decision, use status \"needs_input\" and your question.",
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "",
@@ -236,7 +235,7 @@
       }
     ],
     "secretIssue": "",
-    "suffix": "When finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
+    "suffix": "When finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status \"done\" and a one-line reason. If you could not finish, use status \"failed\" and the reason. If you need a decision, use status \"needs_input\" and your question.",
     "timeout": "15m",
     "tools": [
       "Read",

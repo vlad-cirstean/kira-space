@@ -97,12 +97,14 @@ import type { FormEdit } from '@workbench/config/configForm';
 import { type BoardChange, normalizeBoardEvent } from '../ade/v2/boardEvent';
 import type { AgentContextSaveArgs, AgentContextView } from '../ade/v2/context/types';
 import type {
+  Backup,
   ExportApplyArgs,
   ExportPreview,
   ImportApplyArgs,
   ImportPreview,
   PortProvider,
   PortResult,
+  RestoreArgs,
 } from '../ade/v2/port/types';
 import type {
   AgentSetSecretArgs,
@@ -608,6 +610,10 @@ const spaceControl = {
     unwrap(AgentPortService.ExportPreview(args)).then((r) => trust<ExportPreview>(r)),
   agentPortExportApply: (args: ExportApplyArgs): Promise<PortResult> =>
     unwrap(AgentPortService.ExportApply(args)).then((r) => trust<PortResult>(r)),
+  agentPortBackups: (args: { provider: string }): Promise<Backup[]> =>
+    unwrap(AgentPortService.Backups(args)).then((r) => trust<Backup[]>(r ?? [])),
+  agentPortRestore: (args: RestoreArgs): Promise<PortResult> =>
+    unwrap(AgentPortService.Restore(args)).then((r) => trust<PortResult>(r)),
   agentPortCancel: (args: { token: string }): Promise<void> =>
     unwrap(AgentPortService.Cancel(args)).then(() => undefined),
   onAgentSettingsChanged: (cb: () => void): (() => void) => on(CHANNEL.agentSettingsChanged, cb),
@@ -677,12 +683,6 @@ const spaceControl = {
     unwrap(AdeTaskService.TaskProofs(args)).then((r) => trust<V2.TaskProofsResult>(r)),
   adeTaskDbAudit: (args: V2.TaskArgs): Promise<V2.DbAuditResult> =>
     unwrap(AdeTaskService.DbAudit(args)).then((r) => trust<V2.DbAuditResult>(r)),
-  adeTaskProofChoices: (): Promise<V2.ProofChoicesResult> =>
-    unwrap(AdeTaskService.ProofChoices()).then((r) => trust<V2.ProofChoicesResult>(r)),
-  adeTaskLinkProof: (args: V2.LinkProofArgs): Promise<void> =>
-    unwrap(AdeTaskService.LinkProof(args)),
-  adeTaskUnlinkProof: (args: V2.LinkProofArgs): Promise<void> =>
-    unwrap(AdeTaskService.UnlinkProof(args)),
   adeTaskUpdateHandover: (args: V2.UpdateHandoverArgs): Promise<void> =>
     unwrap(AdeTaskService.UpdateHandover(args)),
   adeTaskDismissHandover: (args: V2.TaskArgs): Promise<void> =>
@@ -706,6 +706,18 @@ const spaceControl = {
     unwrap(AdeTaskService.EditLink(args)).then((r) => trust<V2.LinkResult>(r)),
   adeTaskRemoveArtifact: (args: V2.RemoveArtifactArgs): Promise<void> =>
     unwrap(AdeTaskService.RemoveArtifact(args)),
+  adeTaskDetailsDiskChanges: (args: V2.DiskChangesArgs): Promise<V2.DiskChange[]> =>
+    unwrap(AdeTaskService.DetailsDiskChanges(args)).then((r) => trust<V2.DiskChange[]>(r ?? [])),
+  adeTaskDetailsAcceptDisk: (args: V2.DiskResolveArgs): Promise<void> =>
+    unwrap(AdeTaskService.DetailsAcceptDisk(args)),
+  adeTaskDetailsDiscardDisk: (args: V2.DiskResolveArgs): Promise<void> =>
+    unwrap(AdeTaskService.DetailsDiscardDisk(args)),
+  adeTaskDetailsFolder: (args: V2.DiskChangesArgs): Promise<V2.DetailsFolder> =>
+    unwrap(AdeTaskService.DetailsFolder(args)).then((r) => trust<V2.DetailsFolder>(r)),
+  adeTaskOpenDetailsFolder: (args: V2.DiskChangesArgs): Promise<void> =>
+    unwrap(AdeTaskService.OpenDetailsFolder(args)),
+  adeTaskRevealDetailsFolder: (args: V2.DiskChangesArgs): Promise<void> =>
+    unwrap(AdeTaskService.RevealDetailsFolder(args)),
   adeTaskSetTaskStep: (args: V2.SetTaskStepArgs): Promise<V2.Task> =>
     unwrap(AdeTaskService.SetTaskStep(args)).then((r) => trust<V2.Task>(r)),
   adeTaskNextPass: (args: V2.NextPassArgs): Promise<V2.NextPassResult> =>

@@ -37,7 +37,7 @@ import { ACTION_CLASS } from '../tones';
 import { RUN_PREVIEW_IDS, runPreviewVars } from './runPreview';
 
 // Agent step Run dialog (SPEC2 section 5, R24): per-branch names for branches not created yet, the
-// editable message and the read-only finish_step suffix the server always appends.
+// editable message and the read-only finish suffix the server always appends.
 const ui = useAdeBoardUiStore();
 const { model } = usePlanModel();
 const { start } = useTaskWrites();
@@ -96,7 +96,7 @@ const smartBody = computed(() => {
 const named = computed(
   () => card.value?.rows.filter((r) => r.branch.kind === 'mine' && r.branch.name === '') ?? [],
 );
-// An agent step leaves an empty name to the agent (request_branches; the user approves); another step derives it.
+// An agent step leaves an empty name to the agent (state branch.request; the user approves); another step derives it.
 const askable = computed(() => def.value?.kind === 'agent' || Boolean(def.value?.smartScript));
 const slug = computed(() => `feat/${branchSlug(card.value?.title ?? '')}`);
 const placeholder = computed(() =>

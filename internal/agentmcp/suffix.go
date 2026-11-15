@@ -17,7 +17,14 @@ func FinishInstruction(src llmprompts.Source, results []ResultSpec) string {
 	return llmprompts.HeadlessFinishStepSuffix.Text(src, FinishVars(results))
 }
 
-// SpaceNote tells an agent to create branches only through request_branches.
+// PlainFinishInstruction is FinishInstruction for a run with no Space grant, which ends with finish_step.
+func PlainFinishInstruction(src llmprompts.Source, results []ResultSpec) string {
+	v := FinishVars(results)
+	v.Plain = true
+	return llmprompts.HeadlessFinishStepSuffix.Text(src, v)
+}
+
+// SpaceNote tells an agent to create branches only through state branch.request.
 func SpaceNote(src llmprompts.Source) string {
 	return llmprompts.HeadlessSpaceSuffix.Text(src, llmprompts.NoVars{})
 }

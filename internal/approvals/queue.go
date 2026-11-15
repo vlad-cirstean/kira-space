@@ -22,6 +22,7 @@ const (
 	KindProofReview   = "proof.review"
 	KindBranchRequest = "branch.request"
 	KindTaskCreate    = "task.create"
+	KindDetailsEdit   = "details.edit"
 	KindScriptRun     = "script.run"
 	KindAPIRequest    = "api.request"
 )

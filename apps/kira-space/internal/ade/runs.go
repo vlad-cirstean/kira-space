@@ -421,7 +421,7 @@ func (b *TaskBoard) prepareStepWorktrees(ctx context.Context, tc *taskCtx, def s
 
 // prepareWorktrees makes every mine branch's worktree exist and starts a setup in each new one. When the
 // step is run by an agent, an unnamed branch the user did not name gets none: the run starts in the repo
-// root and the agent asks for the branch through request_branches; Kira Space names it. Any other step
+// root and the agent asks for the branch through state branch.request; Kira Space names it. Any other step
 // cannot ask, so its unnamed branch takes a name derived from the task title.
 func (b *TaskBoard) prepareWorktrees(ctx context.Context, tc *taskCtx, names map[string]string, agentStep bool) (map[string]string, error) {
 	var (
@@ -480,7 +480,7 @@ func (b *TaskBoard) prepareWorktree(ctx context.Context, sb model.AdeTaskBranch,
 		return "", invalid("code repo %s not found", sb.CodeRepoID)
 	}
 	if agentStep && sb.Name == "" && names[sb.ID] == "" {
-		return rec.Root, nil // the agent creates the branch via request_branches
+		return rec.Root, nil // the agent creates the branch via state branch.request
 	}
 	res, err := b.ensureWorktree(ctx, *rec, sb, newBranchName{title: title, wanted: names[sb.ID]})
 	if err != nil {
@@ -738,7 +738,7 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 		agentSessionID := b.proposeAgentID(agent, spec.ResumeID)
 		switch {
 		case spec.ResumeID != "":
-			prompt = composeResumePrompt(b.prompts(), spec.Prompt, def.Results)
+			prompt = composeResumePrompt(b.prompts(), spec.Prompt, b.filesVars(tc, def.ID, agent, b.isOrchestrator(tc.task.ID)), def.Results, true)
 		case smart != nil:
 			prompt = smart.prompt
 		default:
@@ -748,6 +748,7 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 				Step: stepN, Of: stepOf, Def: def, Message: b.stepMessage(tc.task.ID, def.ID), Extra: spec.Extra,
 				Context: b.rebaseContext(tc),
 				Notes:   b.userNotes(tc.task.ID), Handover: ho.Body, HandoverFrom: ho.From,
+				Files: b.filesVars(tc, def.ID, agent, b.isOrchestrator(tc.task.ID)),
 			})
 		}
 		if err := b.deps.Sessions.InsertHeadless(model.AdeSession{
@@ -859,9 +860,11 @@ func (b *TaskBoard) configScope() harness.ConfigScope {
 
 func allowedTools(p harness.MCPHost, step []string, space, orchestrator bool) []string {
 	out := slices.Clone(step)
-	want := harness.ToolNames(p, agentmcp.FinishStep, agentmcp.RunOutcome)
+	var want []string
 	if space {
-		want = append(want, harness.ToolNames(p, agentmcp.SpaceToolIDs...)...)
+		want = harness.ToolNames(p, agentmcp.SpaceToolIDs...) // state ends a Space run
+	} else {
+		want = harness.ToolNames(p, agentmcp.FinishStep)
 	}
 	if orchestrator {
 		want = append(want, harness.ToolNames(p, agentmcp.OrchestratorToolIDs...)...)
@@ -974,18 +977,9 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		fail(&harness.MissingRole{Agent: l.agent.Label(), Role: "headless runs"})
 		return
 	}
-	if l.smart != nil {
-		if err := l.smart.checkMCP(ctx, b.deps.Servers, l.agent, b.deps.ScriptsHome); err != nil {
-			fail(err)
-			return
-		}
-	}
-	if b.deps.ContextFile != nil {
-		var err error
-		if l.contextFile, err = b.deps.ContextFile(); err != nil {
-			fail(err)
-			return
-		}
+	if err := b.preflightAgent(ctx, &l); err != nil {
+		fail(err)
+		return
 	}
 	sbx, err := b.prepareSandbox(ctx, run, l)
 	if err != nil {
@@ -999,6 +993,9 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	}
 	// Only an orchestrator's own step runs carry the spawn tools: not rebase or review runs, not smart steps.
 	orchestrator := space && l.smart == nil && b.isOrchestrator(run.TaskID)
+	if space {
+		b.markSynced(cmpNonEmpty(l.sessionID, run.ID))
+	}
 	grant := agentmcp.Grant{RunID: run.ID, TaskID: run.TaskID, SessionID: l.sessionID, Space: space, Orchestrator: orchestrator, Git: l.git, Review: l.review, Sandbox: grantSandbox, Agent: l.agent, Results: grantResults(rebase || round, def), OneShot: true}
 	releaseDb, err := b.grantDbMcp(def, dbmcp.SessionIdentity{SessionID: l.sessionID, TaskID: run.TaskID, RunID: run.ID, Cwd: l.path}, &grant)
 	if err != nil {
@@ -1050,6 +1047,13 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	if l.smart != nil {
 		spec = withTicked(l.smart.spec(agent, spec, space), ticked)
 	}
+	if !rebase {
+		if spec, err = b.withTaskFolder(spec, run.TaskID); err != nil {
+			release()
+			fail(err)
+			return
+		}
+	}
 	spec = b.applySandbox(spec, sbx, l)
 	b.noticeSandbox(sink, sbx)
 	var res *harness.Result
@@ -1078,6 +1082,21 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		return // app quit: rows stay running (R18)
 	}
 	b.endAgentRun(ctx, run, l, runEnd{exit: exit, err: runErr, res: res, sink: sink, sbx: sbx, complete: complete, headless: headless})
+}
+
+// preflightAgent checks a smart step's MCP servers and writes the run's agent context file.
+func (b *TaskBoard) preflightAgent(ctx context.Context, l *agentLaunch) error {
+	if l.smart != nil {
+		if err := l.smart.checkMCP(ctx, b.deps.Servers, l.agent, b.deps.ScriptsHome); err != nil {
+			return err
+		}
+	}
+	if b.deps.ContextFile != nil {
+		var err error
+		l.contextFile, err = b.deps.ContextFile()
+		return err
+	}
+	return nil
 }
 
 // withTicked adds the ticked servers' wiring to a smart step's spec.
@@ -1713,6 +1732,7 @@ func (b *TaskBoard) StepDone(_ context.Context, taskID string, notes *string, cl
 		return adewire.Task{}, err
 	}
 	b.closeHandoverPrompt(taskID)
+	b.mirrorTask(taskID, userEdit(false))
 	b.syncStatus(taskID)
 	b.notifyBoard()
 	task, err := b.deps.Tasks.GetTask(taskID)
@@ -1783,6 +1803,7 @@ func (b *TaskBoard) SetTaskStep(_ context.Context, taskID, stepID, fromStepID st
 		return adewire.Task{}, err
 	}
 	b.closeHandoverPrompt(taskID)
+	b.mirrorTask(taskID, userEdit(false))
 	b.syncStatus(taskID)
 	b.clearStepMessages(taskID)
 	b.notifyBoard()

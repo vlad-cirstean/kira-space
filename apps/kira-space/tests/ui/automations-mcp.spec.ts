@@ -128,6 +128,17 @@ test('contract: choosing Long running sends an mcp.mode edit and the YAML tab sh
   control.respond(IPC.customScriptsForm, form('mcp'));
   await dialog(page).locator('[data-testid="script-mcp-enabled"]').click();
   await expect(dialog(page).locator('[data-testid="script-mcp-mode"]')).toBeVisible();
+  // The debounced enable edit must reach the bridge before the response switches to the long form,
+  // or it is answered with that form and the mode click then has nothing left to diff.
+  await expect
+    .poll(() =>
+      control
+        .log()
+        .filter((e) => e.channel === IPC.customScriptsForm)
+        .flatMap((e) => (e.args as { edits: { path: string[] }[] }).edits)
+        .some((e) => e.path.join('.') === 'mcp.enabled'),
+    )
+    .toBe(true);
   control.respond(IPC.customScriptsForm, long);
   await dialog(page).locator('[data-testid="script-mcp-long"]').click();
   await expect

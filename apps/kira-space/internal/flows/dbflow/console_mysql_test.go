@@ -35,8 +35,9 @@ func mysqlRows(t *testing.T, fx *testsupport.MysqlFixture, query string) [][]any
 
 // J-CONS-021 (contract studio-console-script): the MySQL console's script behaviour, pinned. A
 // compound CREATE PROCEDURE runs as one statement. DELIMITER is a client directive the engine
-// rejects. A CALL that returns several result sets shows the first only (follow-up F-A13). Session
-// variables live on the pooled connection and are gone after a reconnect (strip note: F-A3).
+// rejects; the console splitter consumes it (P636). A CALL that returns several result sets shows
+// the first only (follow-up F-A13). Session variables live on the pooled connection and are gone
+// after a reconnect (strip note: F-A3).
 func TestConsoleMySQLScript(t *testing.T) {
 	flowharness.RequireDocker(t)
 	fx := testsupport.StartMysql(t)

@@ -1,0 +1,71 @@
+{
+  "ApiConfigService.View": {
+    "dir": "<space>/config/api",
+    "files": [
+      {
+        "file": "hand.collection.yaml",
+        "kind": "collection",
+        "lastGood": false,
+        "name": "Hand",
+        "path": "<space>/config/api/hand.collection.yaml",
+        "problem": null,
+        "skipped": [
+          {
+            "id": "bad",
+            "index": 1,
+            "line": 9,
+            "message": "An item sets exactly one of items, http or grpc.",
+            "name": "No protocol"
+          }
+        ]
+      }
+    ],
+    "secrets": [],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  },
+  "CollectionsService.List": {
+    "collections": [
+      {
+        "createdAt": "<time>",
+        "file": "hand.collection.yaml",
+        "id": "<id:1>",
+        "name": "Hand",
+        "sortOrder": 0,
+        "updatedAt": "<time>"
+      }
+    ],
+    "items": [
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:2>",
+        "kind": "request",
+        "method": "GET",
+        "name": "Good one",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "url": "https://x.test/ok1"
+      },
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:3>",
+        "kind": "request",
+        "method": "GET",
+        "name": "Good two",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 2,
+        "updatedAt": "<time>",
+        "url": "https://x.test/ok2"
+      }
+    ]
+  }
+}

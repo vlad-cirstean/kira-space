@@ -10,7 +10,7 @@ import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import AdeTaskCard from './AdeTaskCard.vue';
 import type { BranchRowModel, CardModel } from './usePlanModel';
 
-// One day of the timeline: date heading, history rows, overdue and overflow strips, the day's cards and
+// One day of the timeline: left day bar, date heading, history rows, overdue and overflow strips, the day's cards and
 // the continuation rows of multi-day tasks. Plan writes are the parent's: this only emits intent.
 const ui = useAdeBoardUiStore();
 const props = defineProps<{
@@ -83,6 +83,7 @@ const sub = computed(() => {
   if (props.band.dayOff) return t('common.off.status');
   return props.band.hours ? t('format.relative.unitHour', { count: props.band.hours }) : '';
 });
+const barClass = computed(() => (props.band.isToday ? 'w-0.75 bg-today' : 'w-0.5 bg-day-bar'));
 const ruleClass = computed(() => {
   if (props.band.isToday) return 'bg-today';
   return props.band.isMonday || props.band.isLater ? 'bg-border' : 'bg-border/50';
@@ -92,7 +93,7 @@ const ruleClass = computed(() => {
 <template>
   <!-- biome-ignore lint/a11y/noStaticElementInteractions: right-click only; the band holds nested interactive rows. -->
   <div
-    class="flex flex-col rounded-kira"
+    class="relative flex flex-col rounded-kira"
     :class="[
       band.isToday ? 'bg-today-tint' : '',
       highlight ? 'outline outline-1 outline-focus' : '',
@@ -104,6 +105,13 @@ const ruleClass = computed(() => {
     :data-ade-day="band.key"
     @contextmenu.prevent="emit('dayMenu', $event)"
   >
+    <span
+      v-if="!band.isLater"
+      class="pointer-events-none absolute -left-2.5 top-1 bottom-1 rounded-full"
+      :class="barClass"
+      aria-hidden="true"
+      data-testid="ade-day-bar"
+    />
     <div class="flex h-row items-center gap-2 px-1" data-testid="ade-band-head">
       <div
         class="whitespace-nowrap text-kira-md font-medium"

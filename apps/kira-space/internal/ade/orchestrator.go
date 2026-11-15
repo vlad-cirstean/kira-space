@@ -2,15 +2,12 @@ package ade
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
-	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 )
 
@@ -18,10 +15,8 @@ import (
 // pass starts from the first step and keeps every earlier run. Its tools list its children and read chains.
 
 const (
-	maxChildTasks      = 100
-	lastHandoverBytes  = 500
-	taskNotACaller     = "That task is not one of your child tasks."
-	handoverNotInChain = "That row is not in the chain."
+	maxChildTasks     = 100
+	lastHandoverBytes = 500
 )
 
 // isOrchestrator reports whether the task is a live orchestrator.
@@ -119,6 +114,7 @@ func (b *TaskBoard) movePass(args adewire.NextPassArgs) (first string, auto bool
 		return "", false, err
 	}
 	b.closeHandoverPrompt(args.TaskID)
+	b.mirrorTask(args.TaskID, userEdit(false))
 	b.syncStatus(args.TaskID)
 	b.clearStepMessages(args.TaskID)
 	b.notifyBoard()
@@ -136,125 +132,4 @@ func capBytes(s string, n int) string {
 		cut = cut[:len(cut)-1]
 	}
 	return cut
-}
-
-// ListTasks implements agentmcp.OrchestratorTools: the caller's children, newest first.
-func (b *TaskBoard) ListTasks(_ context.Context, call agentmcp.SpaceCall, args agentmcp.ListTasksArgs) (agentmcp.ListTasksResult, error) {
-	state := cmpNonEmpty(args.State, "all")
-	tasks, more, err := b.deps.Tasks.ChildTasks(call.TaskID, state, maxChildTasks)
-	if err != nil {
-		return agentmcp.ListTasksResult{}, toolErr(err)
-	}
-	statuses, err := b.deps.Statuses.List()
-	if err != nil {
-		return agentmcp.ListTasksResult{}, err
-	}
-	statusName := make(map[string]string, len(statuses))
-	for _, s := range statuses {
-		statusName[s.ID] = s.Name
-	}
-	facts, err := b.loadSpaceFacts()
-	if err != nil {
-		return agentmcp.ListTasksResult{}, err
-	}
-	taskIDs := make([]string, len(tasks))
-	for i, t := range tasks {
-		taskIDs[i] = t.ID
-	}
-	lastByTask, err := b.deps.Tasks.LatestHandovers(taskIDs)
-	if err != nil {
-		return agentmcp.ListTasksResult{}, err
-	}
-	runsByTask, err := b.deps.Tasks.LatestRunsOf(taskIDs)
-	if err != nil {
-		return agentmcp.ListTasksResult{}, err
-	}
-	out := agentmcp.ListTasksResult{Tasks: make([]agentmcp.ChildTaskInfo, 0, len(tasks)), More: more}
-	for _, t := range tasks {
-		info := agentmcp.ChildTaskInfo{
-			ID: t.ID, Title: t.Title, Kind: t.Kind, Workflow: t.WorkflowID, Status: cmpNonEmpty(statusName[t.StatusID], t.StatusID),
-			Archived: t.ArchivedAt != nil, CreatedAt: kiratime.MsToISO(t.CreatedAt),
-		}
-		if info.Title == "" {
-			info.Title = cmpNonEmpty(t.JiraKey, "New task")
-		}
-		if wf, ok := b.taskWorkflow(t); ok {
-			info.Workflow = cmpNonEmpty(wf.Name, wf.ID)
-		}
-		b.fillChildStep(&info, t, facts, runsByTask[t.ID])
-		if last, ok := lastByTask[t.ID]; ok {
-			info.LastHandover = capBytes(last.Body, lastHandoverBytes)
-		}
-		out.Tasks = append(out.Tasks, info)
-	}
-	return out, nil
-}
-
-// fillChildStep sets the child's current step name and whether it is done.
-func (b *TaskBoard) fillChildStep(info *agentmcp.ChildTaskInfo, t model.AdeTask, facts spaceFacts, runs []model.AdeRun) {
-	if t.ArchivedAt != nil {
-		info.Finished = t.EntryStepID == entryDone
-		if !info.Finished {
-			info.Step = t.EntryStepID
-			if wf, ok := b.taskWorkflow(t); ok {
-				info.Step = cmpNonEmpty(stepName(&taskCtx{wf: &wf}, t.EntryStepID), t.EntryStepID)
-			}
-		}
-		return
-	}
-	tc, err := b.buildTaskCtx(t, facts)
-	if err != nil {
-		return
-	}
-	tc.runs = &runs
-	cur := b.currentStepID(tc)
-	if info.Finished = cur == entryDone; !info.Finished {
-		info.Step = cmpNonEmpty(stepName(tc, cur), cur)
-	}
-}
-
-// TaskChain implements agentmcp.OrchestratorTools: a handover chain page of the caller or one child.
-func (b *TaskBoard) TaskChain(_ context.Context, call agentmcp.SpaceCall, args agentmcp.TaskChainArgs) (agentmcp.TaskChainResult, error) {
-	taskID := cmpNonEmpty(args.TaskID, call.TaskID)
-	if taskID != call.TaskID {
-		child, err := b.deps.Tasks.GetTask(taskID)
-		if err != nil {
-			if errors.Is(err, repos.ErrTaskNotFound) {
-				return agentmcp.TaskChainResult{}, agentmcp.ToolError(taskNotACaller)
-			}
-			return agentmcp.TaskChainResult{}, err
-		}
-		if child.ParentID != call.TaskID {
-			return agentmcp.TaskChainResult{}, agentmcp.ToolError(taskNotACaller)
-		}
-	}
-	rows, more, err := b.deps.Tasks.HandoverPage(taskID, args.Before, args.Limit)
-	switch {
-	case errors.Is(err, repos.ErrHandoverNotFound):
-		return agentmcp.TaskChainResult{}, agentmcp.ToolError(handoverNotInChain)
-	case err != nil:
-		return agentmcp.TaskChainResult{}, err
-	}
-	out := agentmcp.TaskChainResult{Rows: make([]agentmcp.ChainRow, 0, len(rows))}
-	total := 0
-	for i, h := range rows {
-		body := agentmcp.ChainBodyCap(h.Body)
-		if i > 0 && total+len(body) > agentmcp.ChainTotalMaxBytes {
-			more = true
-			break
-		}
-		total += len(body)
-		from := h.FromStepName
-		if h.Source == model.AdeHandoverSourceChild {
-			from = cmpNonEmpty(h.FromTaskTitle, h.FromStepName)
-		}
-		out.Rows = append(out.Rows, agentmcp.ChainRow{
-			ID: h.ID, From: from, To: cmpNonEmpty(h.ToStepName, h.ToStepID), Source: h.Source, State: h.State, Body: body,
-			CreatedAt: kiratime.MsToISO(h.CreatedAt), FromTaskID: h.FromTaskID,
-		})
-	}
-	if more && len(out.Rows) > 0 {
-		out.More, out.Next = true, out.Rows[len(out.Rows)-1].ID
-	}
-	return out, nil
 }

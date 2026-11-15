@@ -10,10 +10,12 @@
 // one statement failing no longer takes its neighbours down with it, and the statement COUNT
 // survives every case (what the caret-by-index mapping in ConsoleView.onFormat depends on).
 import { describe, expect, test } from 'bun:test';
+import { splitSqlScript } from '@shared/domain/sqlSplit';
 import {
   formatConsoleText,
   joinFormattedStatements,
 } from '../../../frontend/src/studio/views/console/format';
+import { lexOptionsFor } from '../../../frontend/src/studio/views/shared/sqlIdent';
 
 describe('formatConsoleText — mongodb', () => {
   test('one argument', async () => {
@@ -271,5 +273,49 @@ describe('formatConsoleText — F9 end to end, real sql-formatter output', () =>
     expect(result.failures).toEqual([
       { index: 0, reason: { key: 'studio.console.format.trailing.error' } },
     ]);
+  });
+});
+
+// P636: a MySQL script with `DELIMITER` lines keeps them, and each statement keeps its terminator.
+describe('formatConsoleText — mysql DELIMITER', () => {
+  const script = [
+    'select 1;',
+    'DELIMITER $$',
+    'CREATE TRIGGER t BEFORE INSERT ON a FOR EACH ROW BEGIN SET NEW.b = 1; END$$',
+    'select 2 -- note',
+    '$$',
+    'DELIMITER ;',
+    'select 3',
+  ].join('\n');
+
+  test('directive lines stay, each statement ends with its own delimiter', async () => {
+    const result = await formatConsoleText('mysql', script);
+    expect(result.ok).toBe(true);
+    const lines = result.text.split('\n');
+    expect(lines).toContain('DELIMITER $$');
+    expect(lines).toContain('DELIMITER ;');
+    expect(result.text).toMatch(/END\$\$/);
+    expect(result.text).toMatch(/select\s+1;/);
+  });
+
+  test('a line comment before a custom delimiter moves it to the next line', async () => {
+    const result = await formatConsoleText('mysql', script);
+    expect(result.text).toContain('-- note\n$$');
+  });
+
+  test('an unterminated last statement stays unterminated', async () => {
+    const result = await formatConsoleText('mysql', script);
+    expect(result.text.trimEnd().endsWith(';')).toBe(false);
+    expect(result.text.trimEnd().endsWith('3')).toBe(true);
+  });
+
+  test('formatting the output again keeps statements and delimiters', async () => {
+    const once = await formatConsoleText('mysql', script);
+    const twice = await formatConsoleText('mysql', once.text);
+    const shape = (text: string) =>
+      splitSqlScript(text, lexOptionsFor('mysql')).statements.map((s) => [s.text, s.delimiter]);
+    expect(shape(once.text)).toHaveLength(4);
+    expect(shape(twice.text)).toEqual(shape(once.text));
+    expect(splitSqlScript(twice.text, lexOptionsFor('mysql')).directives).toHaveLength(2);
   });
 });

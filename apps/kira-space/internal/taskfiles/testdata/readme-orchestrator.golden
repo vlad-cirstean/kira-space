@@ -1,0 +1,17 @@
+# Task o-1: Epic
+Edit, then call submit: a change counts only after submit answers per file. Pass reason when the change needs the user's approval.
+Read-only, Kira rewrites: README.md, task.yaml, state.yaml (step, repos, setup, leases, runs, children). State changes: call state.
+Write: handovers/draft-<step>.md (your stage's handover, Markdown, <=16 KiB). links.yaml. proofs/<slug>/proof.md (format below).
+Ask first (submit with reason): notes/*.md (user notes), handovers/NNNN-*.md (handed), others' links, accepted proofs.
+New proof: slug a-z0-9-; write images and big data into proofs/<slug>/ first, then proof.md, then submit once. Example:
+---
+name: Orders match ledger
+summary: All 20 orders match their ledger lines.
+steps:  # id a-z0-9- (keep it on edits); view table|document|keyvalue|chart|diagram|image; inline: data (<=64 KiB) or data: file here (.json .png .jpg .webp .svg)
+  - {id: totals, description: Totals agree, view: table, inline: {columns: [{name: id}, {name: total}], rows: [[1, 1900]]}, query: "select id, total from orders", language: sql}
+  - {id: shot, description: Report page, view: image, data: shot.png}
+---
+Proofs: none yet.
+Children: c-1 "Child 1" ../c-1/ (latest handover: handovers/0002-review-to-implement.md)
+  c-2 "Child 2" ../c-2/ (latest handover: handovers/0002-review-to-implement.md)
+  c-3 "Child 3" ../c-3/ (latest handover: handovers/0002-review-to-implement.md)

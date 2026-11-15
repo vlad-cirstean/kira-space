@@ -36,7 +36,6 @@ import (
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/prompts"
-	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -104,6 +103,10 @@ type TaskBoardDeps struct {
 	AgentDir string
 	// TasksDir holds each task's folder for runs and sessions on a task with no branch.
 	TasksDir string
+	// FilesDir is the root of the task file folders, <home>/tasks (P643). Empty grants no folder.
+	FilesDir string
+	// TaskFiles is the index of the task folders' files; with FilesDir it turns the file layer on.
+	TaskFiles *repos.TaskFilesRepo
 	// Prompts resolves the editable LLM prompt texts; nil means the registry defaults.
 	Prompts llmprompts.Source
 	// Agent resolves the provider of a new run. AgentBin overrides its CLI (a test points it at a fake).
@@ -122,11 +125,9 @@ type TaskBoardDeps struct {
 	Windows            *repos.WindowsRepo
 	ReviewWindows      *repos.AdeReviewWindowsRepo
 	CloseReviewWindows func(taskID string)
-	// ScriptRunsOf lists the script runs started for a task, newest first (run_outcome kind automation).
 	// CustomScripts and ScriptsHome resolve the smart script of a workflow step and its own folder.
 	CustomScripts *scripts.Repo
 	ScriptsHome   string
-	ScriptRunsOf  func(taskID string, limit int) ([]scriptruns.Run, error)
 	// HeadlessSettingSources returns the ade.headlessSettingSources setting, read fresh per run.
 	HeadlessSettingSources func() string
 	// Servers is where a smart step's ticked MCP servers come from; the zero value reads the CLI.
@@ -143,8 +144,9 @@ type TaskBoardDeps struct {
 	Trackers *issuetracker.Registry
 	// ArtifactSources append to the built-in task artifact sources.
 	ArtifactSources []ArtifactSource
-	// BranchRequestWait is how long an agent's branch request waits for the user; 0 = defaultBranchRequestWait.
-	BranchRequestWait time.Duration
+	// CallWait is how long a state call that waits (a branch, a rename, a lease) blocks before it
+	// answers pending or waiting; 0 = defaultCallWait. Nothing is cancelled when it ends.
+	CallWait time.Duration
 	// TaskRequestWait is how long an orchestrator's create_task waits for the user; 0 = defaultTaskRequestWait.
 	TaskRequestWait time.Duration
 	// RebaseTimeout bounds a rebase run; 0 = defaultRebaseTimeout.
@@ -226,6 +228,8 @@ type TaskBoard struct {
 	history        historyMemo
 	updates        *updateWatcher
 
+	files *detailsFiles // nil without FilesDir and TaskFiles: Details stay in SQLite only
+
 	panelEdits panelEdits // pending task panel edits per task (panelforward.go)
 
 	runMu            sync.Mutex                 // guards live, setupLive, archiving, taskMus, finishes, stepMsgs
@@ -244,6 +248,7 @@ type TaskBoard struct {
 	lease            *leaseState    // resource leases (leases.go)
 	branchReqs       branchRequests // open agent branch requests (P408)
 	taskReqs         taskRequests   // open orchestrator create_task requests (P571)
+	stateFiles       stateFiles     // state.yaml writers and late answers (P643)
 	runNotes         runNotes       // run notes held while an MCP call waits on the user
 	wg               sync.WaitGroup // background setups and runs; Close waits
 	closeMu          sync.Mutex     // orders goTracked's wg.Add before Close's wg.Wait
@@ -273,8 +278,9 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	if deps.Approvals != nil {
 		deps.Approvals.Register(approvals.KindBranchRequest, branchOwner{b})
 		deps.Approvals.Register(approvals.KindTaskCreate, taskCreateOwner{b})
+		deps.Approvals.Register(approvals.KindDetailsEdit, detailsOwner{b})
 	}
-	b.agent = agentmcp.NewServer(agentmcp.Options{Dir: deps.AgentDir, OnFinish: b.recordFinish, Space: b, Outcomes: b, Review: b, SandboxGit: b, Git: b, Handover: b, Orchestrator: b, Prompts: b.prompts(), OnToolCall: b.mcpRecorder})
+	b.agent = agentmcp.NewServer(agentmcp.Options{Dir: deps.AgentDir, OnFinish: b.recordFinish, Space: b, Review: b, SandboxGit: b, Git: b, Orchestrator: b, Prompts: b.prompts(), OnToolCall: b.mcpRecorder})
 	if deps.Tracker != nil {
 		deps.Tracker.deps.Ops, deps.Tracker.deps.OpSubject = deps.Ops, b.opSubject
 	}
@@ -286,6 +292,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	b.checker = newRebaseChecker(ctx, deps.GitStatus, b.checkDone)
 	b.updates = newUpdateWatcher(b, deps.Updates)
 	b.initLeases()
+	b.initDetails()
 	return b
 }
 

@@ -589,27 +589,49 @@ export interface RemoveArtifactArgs {
   taskId: string;
   id: string;
 }
+/** One task-folder file whose content differs from what the app accepted. */
+export interface DiskChange {
+  path: string;
+  kind: string;
+  state: 'new' | 'edited' | 'missing';
+  /** Unified text diff; empty for a file that is not text. */
+  diff: string;
+  /** Waiting for the user's approval in the approvals surface. */
+  pending: boolean;
+  /** Why the file cannot be read, empty when it can. */
+  problem: string;
+}
+export interface DiskChangesArgs {
+  taskId: string;
+}
+/** Empty `paths` resolves every change. */
+export interface DiskResolveArgs {
+  taskId: string;
+  paths: string[];
+}
+export interface DetailsFolder {
+  path: string;
+}
 export interface HandoversResult {
   handovers: Handover[];
 }
 /** One step of an attached proof session; the data stays in the proof window's store. */
 interface TaskProofStep {
   ordinal: number;
+  id: string;
   description: string;
   view: 'table' | 'document' | 'keyvalue' | 'chart' | 'diagram' | 'image';
   source: string;
 }
-/** A closed proof session attached to a task. `sessionId` is the Kira session that attached it ('' = the user). */
+/** A proof of a task: the folder `proofs/<slug>/` and its cache. `sessionId` is the Kira session that wrote it. */
 export interface TaskProof {
   proofId: string;
   name: string;
   summary: string;
   closedAt: number;
   linkedAt: number;
-  source: 'agent' | 'user';
+  slug: string;
   sessionId: string;
-  stepId: string;
-  stepName: string;
   rev: number;
   pending: boolean;
   steps: TaskProofStep[];
@@ -670,20 +692,6 @@ export interface DbAuditResult {
 /** Payload of the dbAudit push: the task whose trail changed. */
 export interface DbAuditEvent {
   taskId: string;
-}
-/** A closed proof session no task holds yet. */
-interface ProofChoice {
-  proofId: string;
-  name: string;
-  closedAt: number;
-  steps: number;
-}
-export interface ProofChoicesResult {
-  proofs: ProofChoice[];
-}
-export interface LinkProofArgs {
-  taskId: string;
-  proofId: string;
 }
 export interface AddNoteArgs {
   taskId: string;

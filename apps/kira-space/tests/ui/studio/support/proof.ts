@@ -9,6 +9,7 @@ import { IPC } from '../../support/ipcChannels';
 
 export const SESSION_ID = 'session-1';
 export const PENDING_ID = 'session-2';
+export const TASK_ID = 'task-1';
 
 // biome-ignore lint/suspicious/noExplicitAny: Go-written fixtures have no static shape
 type Json = Record<string, any>;
@@ -63,20 +64,15 @@ export const CLOSED_AT = Date.UTC(2026, 0, 2, 3, 4, 5);
 export const session = (): Json => ({
   ...fixture('proof', 'ProofService.Session'),
   id: SESSION_ID,
+  taskId: TASK_ID,
   closedAt: CLOSED_AT,
 });
 export const pendingSession = (): Json => ({
   ...fixture('proof-pending', 'ProofService.Session'),
   id: PENDING_ID,
+  taskId: TASK_ID,
   closedAt: CLOSED_AT,
 });
-export const sessions = (): Json[] =>
-  (fixture('proof', 'ProofService.Sessions') as unknown as Json[]).map((s) => ({
-    ...s,
-    id: SESSION_ID,
-    closedAt: CLOSED_AT,
-  }));
-
 /** A wide, tall table so both scroll axes have somewhere to go. */
 export function bigTable(rows = 160, cols = 12): Json {
   return {
@@ -113,11 +109,13 @@ export function stepSnapshot(
 export const chartSession = (): Json => ({
   ...fixture('proof-chart', 'ProofService.Session'),
   id: SESSION_ID,
+  taskId: TASK_ID,
   closedAt: CLOSED_AT,
 });
 export const chartPendingSession = (): Json => ({
   ...fixture('proof-chart', 'ProofService.Session#pending'),
   id: PENDING_ID,
+  taskId: TASK_ID,
   closedAt: CLOSED_AT,
 });
 export const chartViewStates = (): ProofViewStateEntry[] =>
@@ -149,14 +147,6 @@ export function chartControl(
 ): ControlSnapshot[] {
   return [
     { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
-    {
-      channel: IPC.proofSessions,
-      response: (fixture('proof-chart', 'ProofService.Sessions') as unknown as Json[]).map((x) => ({
-        ...x,
-        id: SESSION_ID,
-        closedAt: CLOSED_AT,
-      })),
-    },
     { channel: IPC.proofSession, response: chartSession() },
     ...CHART_KEYS.map((key, i) => chartStep(SESSION_ID, 1, i + 1, key, patches[i + 1])),
     ...extra,
@@ -169,16 +159,11 @@ export function explainedControl(): ControlSnapshot[] {
   return [
     { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
     {
-      channel: IPC.proofSessions,
-      response: (fixture('proof-explained', 'ProofService.Sessions') as unknown as Json[]).map(
-        (x) => ({ ...x, id: SESSION_ID, closedAt: CLOSED_AT }),
-      ),
-    },
-    {
       channel: IPC.proofSession,
       response: {
         ...fixture('proof-explained', 'ProofService.Session'),
         id: SESSION_ID,
+        taskId: TASK_ID,
         closedAt: CLOSED_AT,
       },
     },
@@ -193,7 +178,6 @@ export function explainedControl(): ControlSnapshot[] {
 export function proofControl(extra: ControlSnapshot[] = []): ControlSnapshot[] {
   return [
     { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
-    { channel: IPC.proofSessions, response: sessions() },
     { channel: IPC.proofSession, response: session() },
     ...extra,
   ];
@@ -296,16 +280,11 @@ export function diagramControl(extra: ControlSnapshot[] = []): ControlSnapshot[]
   return [
     { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
     {
-      channel: IPC.proofSessions,
-      response: (fixture('proof-diagram', 'ProofService.Sessions') as unknown as Json[]).map(
-        (x) => ({ ...x, id: SESSION_ID, closedAt: CLOSED_AT }),
-      ),
-    },
-    {
       channel: IPC.proofSession,
       response: {
         ...fixture('proof-diagram', 'ProofService.Session'),
         id: SESSION_ID,
+        taskId: TASK_ID,
         closedAt: CLOSED_AT,
       },
     },
@@ -314,8 +293,8 @@ export function diagramControl(extra: ControlSnapshot[] = []): ControlSnapshot[]
   ];
 }
 
-export type ImageKey = 'path' | 'inline' | 'symlink' | 'tall';
-export const IMAGE_KEYS: ImageKey[] = ['path', 'inline', 'symlink', 'tall'];
+export type ImageKey = 'jpeg' | 'png' | 'svg' | 'tall';
+export const IMAGE_KEYS: ImageKey[] = ['jpeg', 'png', 'svg', 'tall'];
 
 /** An image step from the Go-written contract; `patch` overrides any field of the step. */
 export function imageStep(
@@ -336,26 +315,15 @@ export function imageStep(
 export function imageControl(
   extra: ControlSnapshot[] = [],
   target: Json = { sessionId: SESSION_ID },
-  older: Json[] = [],
 ): ControlSnapshot[] {
   return [
     { channel: IPC.proofWindowTarget, response: target },
-    {
-      channel: IPC.proofSessions,
-      response: [
-        ...(fixture('proof-image', 'ProofService.Sessions') as unknown as Json[]).map((x) => ({
-          ...x,
-          id: SESSION_ID,
-          closedAt: CLOSED_AT,
-        })),
-        ...older,
-      ],
-    },
     {
       channel: IPC.proofSession,
       response: {
         ...fixture('proof-image', 'ProofService.Session'),
         id: SESSION_ID,
+        taskId: TASK_ID,
         closedAt: CLOSED_AT,
       },
     },
@@ -363,9 +331,6 @@ export function imageControl(
     ...extra,
   ];
 }
-
-/** What a proof window opened from the Window menu (no task) boots with: a null session. */
-export const menuTarget = (): Json => fixture('proof-image', 'ProofService.WindowTarget#menu');
 
 /** The default proof: a table, a document and a key-value step. */
 export const threeSteps = () => [

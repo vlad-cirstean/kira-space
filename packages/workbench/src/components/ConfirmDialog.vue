@@ -34,11 +34,13 @@ watch(
     :title="confirmDialogStore.title"
     :message="confirmDialogStore.message"
     :confirm-label="confirmDialogStore.confirmLabel"
+    :secondary-label="confirmDialogStore.secondaryLabel"
     :tone="confirmDialogStore.tone"
     :pending="confirmDialogStore.busy"
     :error="confirmDialogStore.error"
     :touch="touch"
     @confirm="confirmDialogStore.acceptConfirm()"
+    @secondary="confirmDialogStore.acceptSecondary()"
     @cancel="confirmDialogStore.cancelConfirm()"
   />
 </template>

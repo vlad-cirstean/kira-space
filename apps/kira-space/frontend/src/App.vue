@@ -2,7 +2,6 @@
 import type { AppMode } from '@shared/domain/mode';
 // P104 §6.1: every converted call site reaches timing (delayDuration/skipDelayDuration) through
 // this one provider.
-import { Toaster } from '@theme/components/ui/sonner';
 import { TooltipProvider } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { agentControlKey, useAgentMessageDefaults } from '@workbench/agent/agentInfo';
@@ -15,6 +14,7 @@ import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import AppLiveRegion from '@workbench/components/AppLiveRegion.vue';
 import ConfirmDialog from '@workbench/components/ConfirmDialog.vue';
 import ContextMenu from '@workbench/components/ContextMenu.vue';
+import CornerStack from '@workbench/components/CornerStack.vue';
 import UpdateDialog from '@workbench/components/UpdateDialog.vue';
 import WorkbenchTitleBar from '@workbench/components/WorkbenchTitleBar.vue';
 import { workbenchHostKey } from '@workbench/host';
@@ -251,9 +251,10 @@ function onToggleKeepAwake(): void {
     <UploadObjectDialog v-if="objectStoreStore.open" />
     <GenerateDataDialog v-if="fakeDataStore.open" />
     <PromptHost :kinds="promptKinds" />
-    <ApprovalsSurface />
-    <Toaster position="bottom-right" />
-    <ConfigSyncToast v-if="mainWindow()" />
+    <CornerStack>
+      <ApprovalsSurface />
+      <ConfigSyncToast v-if="mainWindow()" />
+    </CornerStack>
     <ConfirmDialog />
     <AppLiveRegion />
     <UpdateDialog v-if="appUpdateStore.dialogOpen" :store="appUpdateStore" />

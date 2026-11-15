@@ -120,9 +120,12 @@ type Options struct {
 	TrackerGrace time.Duration
 	// RebaseTimeout bounds one ADE rebase run; 0 keeps the default (20 minutes).
 	RebaseTimeout time.Duration
-	// BranchRequestWait is how long an agent's branch request or create_task waits for the user; 0 keeps
+	// BranchRequestWait is how long an agent's create_task waits for the user; 0 keeps
 	// the default (30 minutes).
 	BranchRequestWait time.Duration
+	// CallWait is how long a state call blocks on unfinished work before it answers pending or waiting;
+	// 0 keeps the ade default.
+	CallWait time.Duration
 	// LeaseTTL and LeaseNow replace the lease silence limit and the clock its heartbeats read (flow-test
 	// seams); zero and nil keep 10 minutes and the wall clock.
 	LeaseTTL time.Duration
@@ -547,10 +550,8 @@ func Build(opts Options) (*Wired, error) {
 				return w.AdeTask.CloseWindow(key)
 			}
 			return w.Windows.Close(key)
-		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.LeaseTTL, opts.LeaseNow, opts.LeaseElapsed, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
+		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.CallWait, opts.LeaseTTL, opts.LeaseNow, opts.LeaseElapsed, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
 	runs.ADE = w.AdeBoard
-	// proof_save on the session server attaches to the task through the board, which exists only now.
-	w.DbMcp.ProofAttach = w.AdeBoard
 	w.watchRepoConfig(events)
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
 	loader, err := scripts.NewLoader(scripts.LoaderOptions{
@@ -566,8 +567,9 @@ func Build(opts Options) (*Wired, error) {
 	w.sched.Start()
 	w.ConfigSync.Start()
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
-	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry}
+	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry, Opener: opts.FileOpener}
 	w.Capture.Tasks = w.AdeTask
+	w.Proof.Folder = w.AdeBoard.TaskFolder
 	w.Leases = &bridge.LeasesService{Board: w.AdeBoard}
 	// Registry.OnChange fires after every agent session registers or is removed (spawn and exit) —
 	// Reconcile picks up both, and AgentSessionsChanged refreshes the P127 store's own live count
@@ -604,6 +606,7 @@ func Build(opts Options) (*Wired, error) {
 			info, _ := w.AgentSvc.Info()
 			return info
 		},
+		Approvals: w.Approvals,
 		Writer:    &bridge.MobileWriter{Svc: w.AdeTask, Launches: mobileLaunches},
 		Launches:  mobileLaunches,
 		Terminals: termBroker,

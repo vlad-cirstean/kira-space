@@ -121,6 +121,7 @@ export function lexOptionsFor(dialect: SqlDialect | undefined): SqlLexOptions {
     bracketIdentifiers: bracketIdentifiersFor(dialect),
     postgresEscapeStrings: postgresEscapeStringsFor(dialect),
     compoundBlocks: dialect === 'sqlite' || dialect === 'mysql',
+    delimiterDirective: dialect === 'mysql',
   };
 }
 

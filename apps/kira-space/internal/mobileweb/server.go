@@ -33,6 +33,8 @@ type Config struct {
 	AgentSessions     func() any
 	// AgentInfo is the active agent provider's display facts; the phone names the agent from it.
 	AgentInfo func() any
+	// Approvals is the app's approvals queue; without it the approvals routes answer 503.
+	Approvals Approvals
 	Devices   DeviceStore
 	Hub       *Hub
 	// Broker outlives the server: the desktop approval dialog stays subscribed across restarts.

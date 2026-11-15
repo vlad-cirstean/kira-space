@@ -5,7 +5,7 @@ id 4 question src/login.ts:30
 Why retry twice?
 id 5 change src/login.ts:41 (uncommitted)
 Drop this log line.
-Per comment, call reply_review_comment once.
+Per comment, call state review.reply once.
 change: make the change, commit it, reply what changed, resolved true.
 question: answer in the reply, change no file for it, resolved true.
 Cannot do it: reply why, resolved false.

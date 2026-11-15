@@ -49,8 +49,7 @@
       "result": "changes",
       "route": "back:impl",
       "source": "agent",
-      "status": "failed",
-      "summary": "summary-changes"
+      "status": "failed"
     },
     "purpose": "",
     "resumable": false,
@@ -66,7 +65,7 @@
     "startedAt": 0,
     "state": "back",
     "stepId": "review",
-    "summary": "summary-changes",
+    "summary": "",
     "taskId": "<id:3>"
   },
   "AdeTaskService.Run#review-spent": {
@@ -84,8 +83,7 @@
       "result": "changes",
       "route": "stop",
       "source": "agent",
-      "status": "failed",
-      "summary": "summary-changes"
+      "status": "failed"
     },
     "purpose": "",
     "resumable": false,
@@ -101,7 +99,7 @@
     "startedAt": 0,
     "state": "failed",
     "stepId": "review",
-    "summary": "summary-changes",
+    "summary": "",
     "taskId": "<id:3>"
   },
   "AdeTaskService.Workflows": {

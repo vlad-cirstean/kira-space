@@ -78,7 +78,7 @@ func TestHermeticSession(t *testing.T) {
 			out, _ := json.Marshal(cfg)
 			writeFile(t, filepath.Join(f.Home, ".claude.json"), string(out))
 			f.SetHermetic(t, hermetic) // off by default since P588
-			step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 2m\n    prompt: " + prompt + " Then call finish_step with status done and summary ok.\n"
+			step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 2m\n    prompt: " + prompt + " Then call state with action step.finish and args status done.\n"
 			f.saveWorkflow(t, "flow", step+manualStepYAML)
 			run := f.startRun(t, f.createTask(t, "flow"), "feat/hermetic")
 			log := f.runLog(t, run.ID)

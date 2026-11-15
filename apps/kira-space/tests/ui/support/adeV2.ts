@@ -222,9 +222,6 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskHandovers, response: { handovers: [] } },
     { channel: IPC.adeTaskProofs, response: { proofs: [] } },
     { channel: IPC.adeTaskDbAudit, response: { entries: [] } },
-    { channel: IPC.adeTaskProofChoices, response: { proofs: [] } },
-    { channel: IPC.adeTaskLinkProof },
-    { channel: IPC.adeTaskUnlinkProof },
     { channel: IPC.adeTaskUpdateHandover },
     { channel: IPC.adeTaskDismissHandover },
     { channel: IPC.adeTaskPanelForward, response: NO_PANEL_FORWARD },
@@ -237,6 +234,12 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskAddLink, response: { filed: 'stored', kind: 'link', artifact: null } },
     { channel: IPC.adeTaskEditLink, response: { filed: 'stored', kind: 'link', artifact: null } },
     { channel: IPC.adeTaskRemoveArtifact },
+    { channel: IPC.adeTaskDetailsDiskChanges, response: [] },
+    { channel: IPC.adeTaskDetailsAcceptDisk },
+    { channel: IPC.adeTaskDetailsDiscardDisk },
+    { channel: IPC.adeTaskDetailsFolder, response: { path: '/tmp/kira/tasks/t1' } },
+    { channel: IPC.adeTaskOpenDetailsFolder },
+    { channel: IPC.adeTaskRevealDetailsFolder },
     {
       channel: IPC.adeTaskSaveStatuses,
       response: (() => {

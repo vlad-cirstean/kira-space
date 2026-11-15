@@ -516,5 +516,23 @@ opencode:
 	if got := readFile(t, cfg); !strings.Contains(got, "// user comment") || strings.Contains(got, "hdr-") || len(res.Written) == 0 {
 		t.Errorf("opencode.jsonc = %s, want the comment kept", got)
 	}
+	exported := jsonFile(t, cfg)
+	jsonEqual(t, "model", jsonAt(t, exported, "model"), `"anthropic/claude-opus-4-1"`)
+	jsonEqual(t, "mcp.fresh.headers", jsonAt(t, exported, "mcp", "fresh", "headers"), `{"Authorization":"Bearer {env:KIRA_SECRET_OC_TOKEN}"}`)
+	exportedBytes := []byte(readFile(t, cfg))
+	ob := backupsOf(t, app, "opencode", "config")
+	if len(ob) != 1 || !ob[0].Restorable {
+		t.Fatalf("opencode backups = %+v, want the config backup, restorable", ob)
+	}
+	rr, err := svc.Restore(ctx, agentport.RestoreArgs{Provider: "opencode", File: ob[0].File})
+	if err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+	if got, _ := os.ReadFile(cfg); !bytes.Equal(got, seedCfg) {
+		t.Error("restore left opencode.jsonc different from the seed")
+	}
+	if len(rr.Backups) != 1 || !bytes.Equal([]byte(readFile(t, rr.Backups[0])), exportedBytes) {
+		t.Errorf("restore result = %+v, want the exported bytes backed up", rr)
+	}
 	lit.scan(t, app)
 }

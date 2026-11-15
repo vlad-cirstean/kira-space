@@ -1,23 +1,22 @@
 import type { Page } from '@playwright/test';
 import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
-import {
-  imageControl,
-  jpegHeight,
-  menuTarget,
-  openProofWindow,
-  SESSION_ID,
-  shotFolder,
-} from './support/proof';
+import { imageControl, jpegHeight, openProofWindow, shotFolder } from './support/proof';
 
 // UI half of the proof-image scenario; the Go half is proofflow TestProofImage. Every answer is
 // that test's recorded result, so bytes the backend stores are what the window draws here.
 
 const TITLES = [
-  '#1 Login form, from a file',
-  '#2 Login form, inline',
-  '#3 Login form, through a symlink',
+  '#1 Login form, JPEG',
+  '#2 Login form, PNG',
+  '#3 Login logo, SVG',
   '#4 Long login page',
+];
+// Format, intrinsic size and data URL type of steps 1-3 (proofflow TestProofImage).
+const FORMATS: { mime: string; size: [number, number] }[] = [
+  { mime: 'image/jpeg', size: [64, 48] },
+  { mime: 'image/png', size: [8, 8] },
+  { mime: 'image/svg+xml', size: [40, 30] },
 ];
 const tab = (page: Page, n: number) =>
   page.locator('[data-testid="tab"]', { hasText: TITLES[n - 1] });
@@ -30,7 +29,7 @@ const stepReady = (page: Page) =>
 // biome-ignore lint/suspicious/noExplicitAny: logged bridge args
 type Json = Record<string, any>;
 
-test('contract: an image step draws the stored JPEG', async ({ relaunch, uiServer }) => {
+test('contract: an image step draws each stored format', async ({ relaunch, uiServer }) => {
   const { window: page } = await relaunch({ control: imageControl() });
   await openProofWindow(page, uiServer.url);
   await stepReady(page);
@@ -39,9 +38,11 @@ test('contract: an image step draws the stored JPEG', async ({ relaunch, uiServe
     await expect(region(page)).toBeVisible();
     const img = region(page).locator('img');
     await expect(img).toHaveAttribute('alt', TITLES[n - 1]?.replace(/^#\d+ /, '') ?? '');
+    const want = FORMATS[n - 1] as (typeof FORMATS)[number];
+    expect(await img.getAttribute('src')).toContain(`data:${want.mime};base64,`);
     await expect
       .poll(() => img.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight]))
-      .toEqual([64, 48]);
+      .toEqual(want.size);
     await stepReady(page);
   }
 });
@@ -105,32 +106,4 @@ test('contract: saving writes a JPEG of the image step', async ({ relaunch, uiSe
   expect(args.filename).toMatch(/^01-Login-form/);
   expect(args.jpegBase64.startsWith('/9j/')).toBe(true);
   expect(jpegHeight(args.jpegBase64)).toBeGreaterThan(0);
-});
-
-test('contract: a window opened from the menu shows the newest session', async ({
-  relaunch,
-  uiServer,
-}) => {
-  const older = {
-    id: 'session-9',
-    name: 'Older proof',
-    closedAt: 1,
-    steps: 1,
-    pending: false,
-    seen: true,
-  };
-  const { window: page, control: log } = await relaunch({
-    control: imageControl([], menuTarget(), [older]),
-  });
-  await openProofWindow(page, uiServer.url);
-  await stepReady(page);
-  expect(menuTarget()).toEqual({ sessionId: null });
-  await expect(tab(page, 1)).toBeVisible();
-  await expect(region(page)).toBeVisible();
-  expect(
-    log
-      .log()
-      .filter((c) => c.channel === IPC.proofSession)
-      .map((c) => (c.args as Json).sessionId),
-  ).toEqual([SESSION_ID]);
 });

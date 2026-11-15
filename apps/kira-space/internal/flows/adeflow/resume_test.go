@@ -64,7 +64,7 @@ func TestResumeAfterRestart(t *testing.T) {
 		t.Fatalf("call 2 args carry --session-id:\n%s", second)
 	}
 	prompt := fakeFile(t, f.app, "api-2.prompt")
-	if !strings.Contains(prompt, "Kira Space closed while you worked") || !strings.Contains(prompt, "finish_step") {
+	if !strings.Contains(prompt, "Kira Space closed while you worked") || !strings.Contains(prompt, "step.finish") {
 		t.Fatalf("call 2 prompt lacks the resume line or the finish instruction:\n%s", prompt)
 	}
 

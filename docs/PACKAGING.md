@@ -361,7 +361,7 @@ the renderer build, typecheck, lint, the Go unit tests, and the static half of `
 jobs, see `docs/ARCHITECTURE.md`).
 
 **`pr.yml`** (trigger: `pull_request` to `main` plus `workflow_dispatch`; no push, so `main` is reached
-only through a PR). Only the three aggregates (`ui (Linux)`, `test-matrix (Linux)`, `db-compat (Linux)`) `needs` their matrix jobs; every other job starts at once:
+only through a PR). Only the four aggregates (`ui (Linux)`, `go (Linux)`, `test-matrix (Linux)`, `db-compat (Linux)`) and the `go-split` consumer `go-shard` `needs` anything; every other job starts at once:
 
 | Job | Runner | What it does |
 |---|---|---|
@@ -371,8 +371,10 @@ only through a PR). Only the three aggregates (`ui (Linux)`, `test-matrix (Linux
 | `ui (Linux)` | `ubuntu-24.04` | Aggregate: fails unless every shard passed. The required-check name for ui |
 | `ui-extra (Linux)` | `ubuntu-latest` | ipc-frontend and ui-clipboard, then ui-timing alone on an idle machine |
 | `visual (Linux)` | `ubuntu-latest` | Playwright `visual` project (webkit) |
-| `go (Linux)` | `ubuntu-latest` | Go packages that start no container, plus every package the container split does not name |
-| `go-containers (Linux)` | `ubuntu-latest` | Go packages that start Testcontainers; no bun, bindings or real frontend build |
+| `go-split (Linux)` | `ubuntu-24.04` | Prints the `go-shard` matrix from `scripts/go-test-split.sh --matrix rest`, so the shard list lives only in the script |
+| `go (Linux, <shard>)` | `ubuntu-24.04` | Go packages that start no container, in shards `adeflow1`, `adeflow2` (`flows/adeflow` split by test name, round robin) and `other` (everything else), 12 min, `go test -timeout 7m` |
+| `go (Linux)` | `ubuntu-24.04` | Aggregate: fails unless `go-split` and every shard passed. The required-check name for go |
+| `go-containers (Linux)` | `ubuntu-24.04` | Go packages that start Testcontainers (adapters, `ipcfixture`, `dockerflow`, `dbflow`, `dbmcpflow`), one job, 15 min, `go test -timeout 7m`. Restore-only per-bundle image caches (`tc-images-*`); a miss pulls only the missing kinds through the mirror. No bun, bindings or real frontend build |
 | `test-matrix (Linux, <group>)` | `ubuntu-24.04` | Complete auth/config matrix (P25), one job per group (postgres, mysqlfamily, clickhouse, rest), 12 min. Restore-only per-group image cache keyed on the group's pinned image list; a miss pulls through `mirror.gcr.io` (P614) |
 | `test-matrix (Linux)` | `ubuntu-24.04` | Aggregate: fails unless every group passed. The required-check name for the matrix |
 | `db-compat (Linux, min\|max)` | `ubuntu-24.04` | Conformance against each kind's oldest or newest server (P16), 12 min, images pulled through the mirror (no cache: about 12 GB would pass the 10 GB repo cache limit) |
@@ -399,8 +401,9 @@ The bundle assertion lives only in `release.yml`'s own "Assert packaged bundle a
 `refs/pull/N/merge` scope, which no other PR or release restores. `cache-warm.yml` runs on `main`
 after each merge and saves what `pr.yml` restores: Go modules, the four Go build kinds
 (`macos`, `checks`, `go-rest`, `go-ct`), bun, the `wails3` CLI, bindings, tsbuildinfo, the
-golangci-lint binary, both Playwright browser sets, the Testcontainers images and the four per-group
-`test-matrix` image caches (`matrix-images-*`; each on a miss only).
+golangci-lint binary, both Playwright browser sets, the five Testcontainers image bundles
+(`tc-images-<os>-<bundle>-<pins-hash>`, one tar of only the bundle's test images; the hash changes only when
+an image pin changes) and the four per-group `test-matrix` image caches (`matrix-images-*`; each on a miss only).
 It installs and compiles, no tests: `go test -run '^$' -exec true` builds test binaries and runs
 nothing. Cost: about 30-55 runner-minutes in parallel per merge, free on a public repo. On a private
 repo the macOS job bills at 10x, about 190 billed minutes in total.
@@ -541,8 +544,8 @@ gone.
 1. Ruleset "Protected branches" (`refs/heads/main`): add **Require status checks to pass**, source
    GitHub Actions. Add these checks: `checks (macOS)`, `checks (Linux)`, `ui (Linux)`,
    `ui-extra (Linux)`, `visual (Linux)`, `go (Linux)`, `go-containers (Linux)`,
-   `test-matrix (Linux)`, `db-compat (Linux)`. Each matrix job (ui shards, test-matrix groups,
-   db-compat min/max) gates through its aggregate; never list leg names. Leave "Require branches to be up to date" off: one chapter PR at a time, a stale base is rare, and a forced rebase would rerun full CI. Keep the
+   `test-matrix (Linux)`, `db-compat (Linux)`. Each matrix job (ui shards, go shards, test-matrix groups,
+   db-compat min/max) gates through its aggregate; never list leg names or `go-split (Linux)`. Leave "Require branches to be up to date" off: one chapter PR at a time, a stale base is rare, and a forced rebase would rerun full CI. Keep the
    squash-only and PR rules. **Do this before step 2.** With no required checks, auto-merge merges
    the moment it is enabled.
 2. Settings, General, Pull Requests: enable **Allow auto-merge**. Squash stays allowed.

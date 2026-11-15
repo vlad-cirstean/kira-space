@@ -84,7 +84,7 @@ func TestSmartScriptRun(t *testing.T) {
 		}
 		rec, err := f.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
 			Name: "real", Kind: scripts.KindSmart, Color: "blue", UseAdeDir: true,
-			Command: "Call task_info, then call finish_step with status done and a one-line summary.",
+			Command: "Call the state tool with action operation.cancel and args opId none-such (an error is fine), then call finish_step with status done and a one-line summary.",
 			Smart:   &scripts.Smart{Model: "haiku", MaxBudgetUSD: 0.05, Timeout: "3m", Tools: []string{"Read"}},
 		}})
 		if err != nil {
@@ -111,7 +111,7 @@ func TestSmartScriptRun(t *testing.T) {
 		if !strings.HasPrefix(run.Cwd, filepath.Join(f.Home, ade.WorktreesDir)) || run.TaskID != task.ID || run.BranchID != branchID {
 			t.Fatalf("run cwd %q task %q branch %q, want the task worktree", run.Cwd, run.TaskID, run.BranchID)
 		}
-		if !strings.Contains(strings.Join(run.Tools.AllowedTools, " "), "mcp__kira-space__task_info") {
+		if !strings.Contains(strings.Join(run.Tools.AllowedTools, " "), "mcp__kira-space__state") {
 			t.Fatalf("allowed tools = %v, want the Space tools", run.Tools.AllowedTools)
 		}
 		t.Logf("PASS in task worktree: cost %.4f USD in %s", *o.CostUSD, run.Cwd)

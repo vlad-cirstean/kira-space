@@ -79,7 +79,7 @@ test('the approval wait is its own chip and never toasts', async ({ relaunch }) 
 
 test('a remote tool call mirrors as a push chip', async ({ relaunch }) => {
   const page = await open(relaunch);
-  await push(page, opRecord({ id: 'op-push', category: 'mcp', kind: 'push_branch' }));
+  await push(page, opRecord({ id: 'op-push', category: 'mcp', kind: 'branch.push' }));
   await expect(chip(page)).toHaveAttribute('data-op', 'agentPush');
 });
 

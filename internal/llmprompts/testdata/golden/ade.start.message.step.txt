@@ -2,6 +2,6 @@ Task: Add login form
 - Jira: KIRA-42 https://jira.example.com/browse/KIRA-42
 - Repo: kira-space · Branch: feat/a · Worktree: /wt/kira-space/feat-a
 Step: Implement
-- Last rebase of feat/a failed: conflicts (run r1; call run_outcome for details)
-Kira Space tools: task_info, declare_repos, request_branches. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for all; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.
-Call handover with notes for the next stage; they join the task's notes. Set finished true when this stage is done.
+- Last rebase of feat/a failed: conflicts (run r1; see runs in state.yaml)
+Kira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.
+When this stage is done, write your handover to its draft file in the task folder, then call submit. Then call state with action step.finish and args status "done".

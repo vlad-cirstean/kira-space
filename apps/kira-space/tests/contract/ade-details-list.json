@@ -232,24 +232,24 @@
         "proofId": "<masked>",
         "rev": 1,
         "sessionId": "<masked>",
-        "source": "agent",
-        "stepId": "work",
-        "stepName": "Work",
+        "slug": "login-checks",
         "steps": [
           {
-            "description": "Login checks step 1",
+            "description": "Login checks flow",
+            "id": "<masked>",
             "ordinal": 1,
             "source": "mermaid",
             "view": "diagram"
           },
           {
-            "description": "Login checks step 2",
+            "description": "Login checks rows",
+            "id": "<masked>",
             "ordinal": 2,
             "source": "postgres",
             "view": "table"
           }
         ],
-        "summary": ""
+        "summary": "Checks Login checks"
       }
     ]
   }

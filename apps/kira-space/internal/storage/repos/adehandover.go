@@ -21,6 +21,7 @@ var handoverCols = []string{
 	kiraschema.AdeTaskHandovers.Body, kiraschema.AdeTaskHandovers.Source, kiraschema.AdeTaskHandovers.State,
 	kiraschema.AdeTaskHandovers.Finished, kiraschema.AdeTaskHandovers.Dismissed, kiraschema.AdeTaskHandovers.Edited,
 	kiraschema.AdeTaskHandovers.CreatedAt, kiraschema.AdeTaskHandovers.UpdatedAt, kiraschema.AdeTaskHandovers.SessionID, kiraschema.AdeTaskHandovers.FromTaskID,
+	kiraschema.AdeTaskHandovers.RelPath,
 }
 
 func (r *AdeTaskRepo) selectHandovers() *sqlbuilder.SelectBuilder {
@@ -37,7 +38,7 @@ func scanHandover(row rowScanner) (model.AdeHandover, error) {
 func scanHandoverInto(row rowScanner, h *model.AdeHandover, extra ...any) error {
 	var from sql.NullString
 	dest := append([]any{&h.ID, &h.TaskID, &h.FromStepID, &h.FromStepName, &h.ToStepID, &h.ToStepName, &h.Body,
-		&h.Source, &h.State, &h.Finished, &h.Dismissed, &h.Edited, &h.CreatedAt, &h.UpdatedAt, &h.SessionID, &from}, extra...)
+		&h.Source, &h.State, &h.Finished, &h.Dismissed, &h.Edited, &h.CreatedAt, &h.UpdatedAt, &h.SessionID, &from, &h.RelPath}, extra...)
 	if err := row.Scan(dest...); err != nil {
 		return err
 	}

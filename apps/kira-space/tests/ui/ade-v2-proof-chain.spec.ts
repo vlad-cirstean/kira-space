@@ -7,9 +7,10 @@ import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
 
-// Proof as an artifact chain in the task details panel. Contract ade-proof-chain; backend half:
-// flows/adeflow TestProofChain (proofchain_test.go). The contract masks ids and times, so the
-// specs fill them in.
+// Proof as an artifact chain in the task details panel. Contracts ade-proof-chain and proof-files;
+// backend halves: flows/adeflow TestProofChain (proofchain_test.go) and flows/proofflow
+// TestProofFiles. A proof is a folder proofs/<slug>/ of the task; the contract masks ids and times,
+// so the specs fill them in.
 
 const t = (id: string) => `[data-testid="${id}"]`;
 const HOUR = 3_600_000;
@@ -17,9 +18,10 @@ const HOUR = 3_600_000;
 interface ProofFx {
   proofId: string;
   name: string;
+  slug: string;
   closedAt: number;
   sessionId: string;
-  steps: { ordinal: number; view: string }[];
+  steps: { id: string; ordinal: number; view: string }[];
   [key: string]: unknown;
 }
 
@@ -31,6 +33,7 @@ function proofs(closedAt = FIXED_NOW - 2 * HOUR): ProofFx[] {
     sessionId: '',
     closedAt,
     linkedAt: closedAt,
+    steps: p.steps.map((st, i) => ({ ...st, id: `s${i + 1}` })),
   }));
 }
 
@@ -73,19 +76,6 @@ const diagramStep: ControlSnapshot = {
   channel: IPC.proofStep,
   response: contract('ade-proof-chain', 'ProofService.Step#diagram'),
 };
-const choices = (): ControlSnapshot => {
-  const fx = contract<{ proofs: Record<string, unknown>[] }>(
-    'ade-proof-chain',
-    'AdeTaskService.ProofChoices',
-  );
-  return {
-    channel: IPC.adeTaskProofChoices,
-    response: {
-      proofs: fx.proofs.map((p) => ({ ...p, proofId: 'P_legacy', closedAt: FIXED_NOW - 9 * HOUR })),
-    },
-  };
-};
-
 async function openChain(page: Page, taskId = 'T_alerts'): Promise<void> {
   await openTask(page, taskId);
   await page.locator(t('ade-panel-tab-details')).click();
@@ -111,7 +101,7 @@ test('Details order: links, then the task chain with the Timeline toggle in its 
   ).toBeVisible();
 });
 
-test('contract: the chain mixes a note and an agent proof newest first', async ({ relaunch }) => {
+test('contract: the chain mixes a note and a proof newest first', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     proofsSnapshot(proofs()),
     notesSnapshot('T_alerts', FIXED_NOW - HOUR),
@@ -121,14 +111,10 @@ test('contract: the chain mixes a note and an agent proof newest first', async (
   await expect.poll(() => kinds(page)).toEqual(['handover', 'proof']);
   const entry = page.locator(t('ade-proof-entry'));
   await expect(entry.locator(t('ade-proof-open'))).toHaveText('Login checks');
-  await expect(entry.locator(t('ade-note-author'))).toHaveAttribute(
-    'aria-label',
-    'Written by an agent',
-  );
-  await expect(entry.locator(t('ade-note-stage'))).toContainText('During Design');
+  await expect(entry.locator(t('ade-proof-path'))).toHaveText('proofs/login-checks');
   await expect(entry.locator(t('ade-proof-step'))).toHaveCount(2);
   await expect(entry.locator(`${t('ade-proof-step')}[data-view="table"]`)).toContainText(
-    'Login checks step 2',
+    'Login checks rows',
   );
 });
 
@@ -155,7 +141,7 @@ test('contract: the diagram step draws inline', async ({ relaunch }) => {
   await expect(diagram.locator('svg text', { hasText: 'Check' }).first()).toBeVisible();
 });
 
-test('the proof name opens the proof window on that session', async ({ relaunch }) => {
+test('the proof name opens the proof window of its task and folder', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
     proofsSnapshot(proofs()),
     diagramStep,
@@ -163,7 +149,10 @@ test('the proof name opens the proof window on that session', async ({ relaunch 
   await openChain(page);
   await page.locator(t('ade-proof-open')).click();
   await expect.poll(() => calls(control, IPC.proofOpenWindow)).toHaveLength(1);
-  expect(calls(control, IPC.proofOpenWindow)[0]?.args).toEqual({ sessionId: 'P_login' });
+  expect(calls(control, IPC.proofOpenWindow)[0]?.args).toEqual({
+    taskId: 'T_alerts',
+    slug: 'login-checks',
+  });
 });
 
 test('a refused proof window toasts the error', async ({ relaunch }) => {
@@ -177,31 +166,41 @@ test('a refused proof window toasts the error', async ({ relaunch }) => {
   await expect(page.locator('[data-sonner-toast]')).toContainText('proof is gone');
 });
 
-test('Attach proof lists unattached sessions; choosing one and removing one send the calls', async ({
+test('contract: a proof with image and data steps lists every step by its id', async ({
+  relaunch,
+}) => {
+  const fx = contract<ProofFx[]>('proof-files', 'AdeTaskService.TaskProofs');
+  const list = fx.map((p) => ({
+    ...p,
+    proofId: 'P_checkout',
+    sessionId: '',
+    closedAt: FIXED_NOW - HOUR,
+    linkedAt: FIXED_NOW - HOUR,
+    steps: p.steps.map((st, i) => ({ ...st, id: `s${i + 1}` })),
+  }));
+  const { window: page } = await openPlan(relaunch, [proofsSnapshot(list), diagramStep]);
+  await openChain(page);
+  const entry = page.locator(t('ade-proof-entry'));
+  await expect(entry.locator(t('ade-proof-path'))).toHaveText('proofs/checkout-fix');
+  await expect(entry.locator(t('ade-proof-step'))).toHaveCount(3);
+  await expect(entry.locator(`${t('ade-proof-step')}[data-view="image"]`)).toHaveCount(1);
+});
+
+test('Delete asks first, then removes the proof folder; no attach entry point exists', async ({
   relaunch,
 }) => {
   const { window: page, control } = await openPlan(relaunch, [
     proofsSnapshot(proofs()),
-    choices(),
     diagramStep,
+    { channel: IPC.proofDelete },
   ]);
   await openChain(page);
-  await page.locator(t('ade-proof-attach')).click();
-  const item = page.locator(t('ade-proof-attach-item'));
-  await expect(item).toHaveCount(1);
-  await expect(item).toContainText('Legacy');
-  await item.click();
-  await expect.poll(() => calls(control, IPC.adeTaskLinkProof)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskLinkProof)[0]?.args).toEqual({
-    taskId: 'T_alerts',
-    proofId: 'P_legacy',
-  });
+  await expect(page.locator(t('ade-proof-attach'))).toHaveCount(0);
   await page.locator(t('ade-proof-remove')).click();
-  await expect.poll(() => calls(control, IPC.adeTaskUnlinkProof)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskUnlinkProof)[0]?.args).toEqual({
-    taskId: 'T_alerts',
-    proofId: 'P_login',
-  });
+  await expect(page.locator(t('confirm-dialog-message'))).toContainText('Login checks');
+  await page.locator(t('confirm-dialog-confirm')).click();
+  await expect.poll(() => calls(control, IPC.proofDelete)).toHaveLength(1);
+  expect(calls(control, IPC.proofDelete)[0]?.args).toEqual({ sessionId: 'P_login' });
 });
 
 test('a proof changed push refetches the task proofs', async ({ relaunch }) => {
@@ -218,7 +217,7 @@ test('a proof changed push refetches the task proofs', async ({ relaunch }) => {
     .toBeGreaterThan(before);
 });
 
-test('an archived task shows its proof with no attach or remove button', async ({ relaunch }) => {
+test('an archived task shows its proof with no delete button', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     { channel: IPC.adeTaskArchivedTask, response: archivedTaskFx('H_1') },
     proofsSnapshot(proofs()),
@@ -228,6 +227,5 @@ test('an archived task shows its proof with no attach or remove button', async (
   await page.locator(`${t('ade-archived-find-item')}[data-task-id="H_1"]`).click();
   await page.locator(t('ade-panel-tab-details')).click();
   await expect(page.locator(t('ade-proof-entry'))).toHaveCount(1);
-  await expect(page.locator(t('ade-proof-attach'))).toHaveCount(0);
   await expect(page.locator(t('ade-proof-remove'))).toHaveCount(0);
 });

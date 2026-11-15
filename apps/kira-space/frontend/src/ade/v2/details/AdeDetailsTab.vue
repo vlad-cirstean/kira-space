@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AdeLinkStrip from '../links/AdeLinkStrip.vue';
 import type { Task } from '../wire';
+import AdeDetailsDiskBanner from './AdeDetailsDiskBanner.vue';
 import AdeTaskChain from './AdeTaskChain.vue';
 import type { TimelineBranch } from './taskTimeline';
 
@@ -16,6 +17,7 @@ const emit = defineEmits<{ openSession: [sessionId: string] }>();
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3" data-testid="ade-details-tab">
+    <AdeDetailsDiskBanner :task-id="task.id" :readonly="readonly" />
     <AdeLinkStrip
       :task="props.task"
       :mode="readonly ? 'view' : 'edit'"

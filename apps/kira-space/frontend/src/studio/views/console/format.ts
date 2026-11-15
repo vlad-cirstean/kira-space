@@ -1,7 +1,7 @@
 import type { ConnectionKind } from '@shared/domain/connection';
 import { MONGO_CONSOLE_METHODS } from '@shared/domain/console';
 import type { EditorLanguageId } from '@shared/domain/editor';
-import { splitSqlStatements } from '@shared/domain/sqlSplit';
+import { type SqlStatement, splitSqlScript } from '@shared/domain/sqlSplit';
 import { errorText } from '@workbench/bridge/codedError';
 import { beautifyShellText } from '../shared/document/ejson';
 import type { CatalogReason } from '../shared/document/rawTree';
@@ -156,14 +156,49 @@ export function joinFormattedStatements(
   hashComments: boolean,
 ): string {
   return statements
-    .map((stmt, index) => {
-      if (index === statements.length - 1) return stmt;
-      const lastLine = stmt.slice(stmt.lastIndexOf('\n') + 1);
-      const hasTrailingComment =
-        lastLine.includes('--') || (hashComments && lastLine.includes('#'));
-      return hasTrailingComment ? `${stmt}\n` : stmt;
-    })
+    .map((stmt, index) =>
+      index !== statements.length - 1 && endsInLineComment(stmt, hashComments) ? `${stmt}\n` : stmt,
+    )
     .join(';\n\n');
+}
+
+function endsInLineComment(stmt: string, hashComments: boolean): boolean {
+  const lastLine = stmt.slice(stmt.lastIndexOf('\n') + 1);
+  return lastLine.includes('--') || (hashComments && lastLine.includes('#'));
+}
+
+// Script with `DELIMITER` lines (MySQL/MariaDB): directives stay in place and each statement keeps
+// its own terminator, so the output re-splits to the same statements and delimiters.
+function rebuildWithDirectives(
+  text: string,
+  statements: readonly SqlStatement[],
+  formatted: readonly string[],
+  directives: readonly { start: number; end: number }[],
+  hashComments: boolean,
+): string {
+  const items = [
+    ...statements.map((stmt, index) => ({ start: stmt.start, stmt, index })),
+    ...directives.map((d) => ({ start: d.start, line: text.slice(d.start, d.end).trim() })),
+  ].sort((a, b) => a.start - b.start);
+  let out = '';
+  let prevWasDirective = false;
+  for (const item of items) {
+    if (out.length > 0) out += prevWasDirective ? '\n' : '\n\n';
+    if ('line' in item) {
+      out += item.line;
+      prevWasDirective = true;
+      continue;
+    }
+    prevWasDirective = false;
+    const body = formatted[item.index] ?? item.stmt.text;
+    const delimiter = item.stmt.delimiter ?? ';';
+    if (!text.startsWith(delimiter, item.stmt.end)) {
+      out += body;
+      continue;
+    }
+    out += endsInLineComment(body, hashComments) ? `${body}\n${delimiter}` : `${body}${delimiter}`;
+  }
+  return out;
 }
 
 interface FormatFailure {
@@ -202,7 +237,7 @@ export async function formatConsoleText(kind: ConnectionKind, text: string): Pro
   // P108 Part 11 F4: the same per-dialect lexical options ConsoleView.vue's own splitOptionsFor
   // pairs for Run all — Format must never split a document differently than the run it formats
   // for, or the caret-by-index mapping below (D12) points at the wrong statement.
-  const statements = splitSqlStatements(text, {
+  const { statements, directives } = splitSqlScript(text, {
     ...lexOptionsFor(dialect),
     slashSlashComments: kind === 'mongodb',
   });
@@ -266,6 +301,16 @@ export async function formatConsoleText(kind: ConnectionKind, text: string): Pro
   // every press: a regression against the whole-document formatDialect call, which preserved every
   // ';' it was given. The terminator is now a property of the SOURCE, not of the join: a document
   // that ended in ';' still does, one that did not still does not.
+  if (directives.length > 0) {
+    const rebuilt = rebuildWithDirectives(
+      text,
+      statements,
+      out,
+      directives,
+      hashCommentsFor(dialect),
+    );
+    return { text: rebuilt, ok: true, failures };
+  }
   const endedWithTerminator = /;\s*$/.test(text);
   const joined = joinFormattedStatements(out, hashCommentsFor(dialect));
   return { text: endedWithTerminator ? `${joined};` : joined, ok: true, failures };

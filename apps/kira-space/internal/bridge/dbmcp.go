@@ -35,9 +35,6 @@ type DbMcpService struct {
 	// service's own server start/stop, so the event subscription wired at boot (Events.Attach)
 	// stays valid across a restart of the embedded server.
 	Approvals *dbmcp.ApprovalBroker
-	// Proof backs the proof tools (P420). ProofAttach attaches a saved proof to a session's task.
-	Proof       dbmcp.ProofStore
-	ProofAttach dbmcp.ProofAttacher
 	// Kube backs the kube_* tools (P440).
 	Kube dbmcp.KubeReader
 	// Runs backs the script-run half of the operations tools.
@@ -60,8 +57,8 @@ type DbMcpService struct {
 // NewDbMcpService wires the embedded lifecycle's own start/stop/status closures once, here, so
 // every other method can assume s.embedded is ready — a plain struct literal (main.go's own shape
 // before T2-13) would leave them nil.
-func NewDbMcpService(deps appcore.Deps, installer harness.MCPInstaller, approvals *dbmcp.ApprovalBroker, proofStore dbmcp.ProofStore, kube dbmcp.KubeReader) *DbMcpService {
-	s := &DbMcpService{Deps: deps, Installer: installer, Approvals: approvals, Proof: proofStore, Kube: kube}
+func NewDbMcpService(deps appcore.Deps, installer harness.MCPInstaller, approvals *dbmcp.ApprovalBroker, kube dbmcp.KubeReader) *DbMcpService {
+	s := &DbMcpService{Deps: deps, Installer: installer, Approvals: approvals, Kube: kube}
 	s.embedded = embedded.Service[*dbmcp.Server, DbMcpStatus]{
 		StartFn: func(mint bool) (*dbmcp.Server, error) {
 			home := config.KiraSpaceHome()
@@ -133,8 +130,6 @@ func (s *DbMcpService) serverConfig(port int) dbmcp.Config {
 		Tree:             s.Deps.Tree,
 		Query:            s.Deps.Router,
 		Approvals:        s.Approvals,
-		Proof:            s.Proof,
-		ProofAttach:      s.ProofAttach,
 		Kube:             s.Kube,
 		Ops:              s.Deps.Router,
 		Runs:             s.Runs,

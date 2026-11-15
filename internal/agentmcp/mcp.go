@@ -34,7 +34,7 @@ const (
 // Finish is one finish_step call. Reason, ConflictedFiles, LastGitError and Tried are optional detail
 // for a failure or a question.
 type Finish struct {
-	Status, Summary, Reason string
+	Status, Summary, Reason string // Summary is unset: finish_step takes no summary since P643
 	ConflictedFiles         []string
 	LastGitError, Tried     string
 }
@@ -52,8 +52,8 @@ const (
 	maxFinishFileLen = 1 << 10
 )
 
-// Grant is what one registration may do. A run grant reports through finish_step; a Space grant
-// adds the task tools, which act on TaskID alone.
+// Grant is what one registration may do. A run grant without Space reports through finish_step; a
+// Space grant gets submit and state, which act on TaskID alone.
 type Grant struct {
 	RunID  string
 	TaskID string
@@ -65,14 +65,14 @@ type Grant struct {
 	// Results are the step's declared results; finish_step's status is one of their ids or
 	// needs_input. Empty = the implicit done (ok) and failed (not ok).
 	Results []ResultSpec
-	// Review, when set on a run grant, adds reply_review_comment for those comment ids.
+	// Review, when set on a run grant, adds the state action review.reply for those comment ids.
 	Review *ReviewGrant
-	// Sandbox, when set on a run grant, adds fetch_remote and push_branch: the git operations a
-	// sandboxed agent cannot do itself.
+	// Sandbox, when set on a run grant, adds the state actions remote.fetch and branch.push: the git
+	// operations a sandboxed agent cannot do itself.
 	Sandbox *SandboxGrant
-	// Orchestrator, on a Space grant, adds create_task, list_tasks and task_chain.
+	// Orchestrator, on a Space grant, adds create_task.
 	Orchestrator bool
-	// StepID is the stage a task session without a run was opened for; handover refuses a task that moved on.
+	// StepID is the stage a task session without a run was opened for.
 	StepID string
 	// Agent is the provider the run's CLI belongs to; it writes the grant's MCP config.
 	Agent harness.Provider
@@ -125,12 +125,10 @@ type Server struct {
 	onFinish     FinishFunc
 	space        SpaceTools
 	orchestrator OrchestratorTools
-	outcomes     Outcomes
 	review       ReviewReplier
 	sandbox      SandboxGit
 	git          GitRunner
 	onCall       func(ctx context.Context, c ToolCall) (context.Context, func(isError bool, text string, err error))
-	handover     HandoverRecorder
 	prompts      llmprompts.Source
 
 	mu     sync.Mutex
@@ -144,26 +142,22 @@ type Server struct {
 	sharedRev uint64
 }
 
-// Options configure a Server. Space may be nil: a Space grant is then refused. Outcomes may be nil:
-// no grant then lists run_outcome.
+// Options configure a Server. Space may be nil: a Space grant is then refused.
 type Options struct {
 	Dir      string
 	OnFinish FinishFunc
 	Space    SpaceTools
 	// Orchestrator runs the orchestrator tools; nil refuses orchestrator grants.
 	Orchestrator OrchestratorTools
-	Outcomes     Outcomes
-	// Review answers reply_review_comment calls; nil refuses review grants.
+	// Review answers review.reply calls; nil refuses review grants.
 	Review ReviewReplier
-	// SandboxGit runs fetch_remote and push_branch; nil refuses sandbox grants.
+	// SandboxGit runs remote.fetch and branch.push; nil refuses sandbox grants.
 	SandboxGit SandboxGit
 	// Git runs the git tool's commands; nil refuses git grants.
 	Git GitRunner
 	// OnToolCall, when set, records each tools/call: it returns the ctx the handler runs under and
 	// the func that reports the outcome (isError and the tool's text, or a Go error).
 	OnToolCall func(ctx context.Context, c ToolCall) (context.Context, func(isError bool, text string, err error))
-	// Handover stores handover calls; nil means no grant lists the handover tool.
-	Handover HandoverRecorder
 	// Prompts resolves tool and instruction texts; nil means the registry defaults.
 	Prompts llmprompts.Source
 }
@@ -173,12 +167,11 @@ func NewServer(o Options) *Server {
 	if o.Prompts == nil {
 		o.Prompts = llmprompts.Defaults()
 	}
-	return &Server{dir: o.Dir, onFinish: o.OnFinish, space: o.Space, orchestrator: o.Orchestrator, outcomes: o.Outcomes, review: o.Review, sandbox: o.SandboxGit, git: o.Git, onCall: o.OnToolCall, handover: o.Handover, prompts: o.Prompts}
+	return &Server{dir: o.Dir, onFinish: o.OnFinish, space: o.Space, orchestrator: o.Orchestrator, review: o.Review, sandbox: o.SandboxGit, git: o.Git, onCall: o.OnToolCall, prompts: o.Prompts}
 }
 
 type finishArgs struct {
 	Status          string   `json:"status"`
-	Summary         string   `json:"summary"`
 	Reason          string   `json:"reason,omitempty"`
 	ConflictedFiles []string `json:"conflictedFiles,omitempty"`
 	LastGitError    string   `json:"lastGitError,omitempty"`
@@ -191,7 +184,7 @@ func checkFinish(a finishArgs) string {
 		name string
 		v    string
 		max  int
-	}{{"summary", a.Summary, maxFinishText}, {"reason", a.Reason, maxFinishText}, {"tried", a.Tried, maxFinishText}, {"lastGitError", a.LastGitError, maxFinishGitErr}} {
+	}{{"reason", a.Reason, maxFinishText}, {"tried", a.Tried, maxFinishText}, {"lastGitError", a.LastGitError, maxFinishGitErr}} {
 		if len(f.v) > f.max {
 			return fmt.Sprintf("%s is too long: at most %d bytes", f.name, f.max)
 		}
@@ -234,7 +227,7 @@ func needsReason(results []ResultSpec, status string) bool {
 func (s *Server) finishSchema(results []ResultSpec) (*jsonschema.Schema, error) {
 	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[finishArgs](s.prompts, llmprompts.HeadlessToolFinishStep.ID(), map[string]any{
 		"status": llmprompts.StatusVars{Results: FinishVars(resultsOrImplicit(results)).Results},
-	}), "summary")
+	}), "status")
 	status := sch.Properties["status"]
 	if status == nil {
 		return nil, errors.New("agentmcp: finish_step schema has no status")
@@ -246,21 +239,21 @@ func (s *Server) finishSchema(results []ResultSpec) (*jsonschema.Schema, error) 
 	return sch, nil
 }
 
-// toolSet is the set of tool groups a grant sees; it keys the shared servers.
+// toolSet is the set of tool groups a grant sees; it keys the shared servers. finish is finish_step,
+// only for a run with no Space grant; a Space grant ends its step through the state action step.finish.
 type toolSet struct {
-	finish, space, outcomes, git, review, sandbox, handover, orchestrator bool
+	finish, space, git, review, sandbox, push, orchestrator bool
 }
 
-func (ts toolSet) any() bool {
-	return ts.finish || ts.space || ts.outcomes || ts.git || ts.review || ts.sandbox || ts.handover
-}
+func (ts toolSet) state() bool { return ts.space || ts.review || ts.sandbox }
 
-// toolSetOf is the tool set of a grant: finish_step only for a run, review only when asked for (a shared
-// server never carries it).
-func (s *Server) toolSetOf(g Grant, review bool) toolSet {
+func (ts toolSet) any() bool { return ts.finish || ts.space || ts.git || ts.state() }
+
+// toolSetOf is the tool set of a grant.
+func (s *Server) toolSetOf(g Grant) toolSet {
 	return toolSet{
-		finish: g.RunID != "", space: g.Space, outcomes: g.TaskID != "" && s.outcomes != nil, git: g.Git != nil,
-		review: review, sandbox: g.Sandbox != nil, handover: s.handoverGranted(g),
+		finish: g.RunID != "" && !g.Space, space: g.Space, git: g.Git != nil,
+		review: g.Review != nil, sandbox: g.Sandbox != nil, push: g.Sandbox != nil && g.Sandbox.Push,
 		orchestrator: g.Space && g.Orchestrator,
 	}
 }
@@ -284,22 +277,13 @@ func (s *Server) buildMCPServer(ts toolSet, results []ResultSpec) *mcp.Server {
 		}, s.finishStep)
 	}
 	if ts.space {
-		s.addSpaceTools(srv)
+		s.addSubmitTool(srv)
 	}
-	if ts.outcomes {
-		s.addOutcomeTool(srv)
+	if ts.state() {
+		s.addStateTool(srv, ts)
 	}
 	if ts.git {
 		s.addGitTool(srv)
-	}
-	if ts.review {
-		s.addReviewTool(srv)
-	}
-	if ts.sandbox {
-		s.addSandboxGitTools(srv)
-	}
-	if ts.handover {
-		s.addHandoverTool(srv)
 	}
 	if ts.orchestrator {
 		s.addOrchestratorTools(srv)
@@ -383,24 +367,71 @@ func (s *Server) finishStep(ctx context.Context, req *mcp.CallToolRequest, args 
 	if !ok || g.RunID == "" {
 		return nil, nil, errors.New("finish_step: no run behind this call")
 	}
+	ack, refuse, err := s.finishRun(ctx, req, g, args)
+	switch {
+	case err != nil:
+		return fail("finish_step", err), nil, nil
+	case refuse != "":
+		return toolError(refuse), nil, nil
+	}
+	return &mcp.CallToolResult{Content: s.finishContent(ctx, req, ack, g)}, nil, nil
+}
+
+// finishRun checks and records a run's finish. refuse is a call the agent can fix; err is an engine
+// failure. ack is the reply text.
+func (s *Server) finishRun(ctx context.Context, req *mcp.CallToolRequest, g Grant, args finishArgs) (ack, refuse string, err error) {
+	var info *auth.TokenInfo
+	if req.Extra != nil {
+		info = req.Extra.TokenInfo
+	}
 	if allowed := statusIDs(g.Results); !slices.Contains(allowed, args.Status) {
-		return toolError(fmt.Sprintf("status must be one of: %s", strings.Join(allowed, ", "))), nil, nil
+		return "", fmt.Sprintf("status must be one of: %s", strings.Join(allowed, ", ")), nil
 	}
 	if needsReason(g.Results, args.Status) && strings.TrimSpace(args.Reason) == "" {
-		return toolError(fmt.Sprintf("reason is required when status is %q.", args.Status)), nil, nil
+		return "", fmt.Sprintf("reason is required when status is %q.", args.Status), nil
 	}
 	if msg := checkFinish(args); msg != "" {
-		return toolError(msg), nil, nil
+		return "", msg, nil
+	}
+	var submitted, summary string
+	if g.Space && g.TaskID != "" && s.space != nil {
+		call := SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID, Orchestrator: g.Orchestrator}
+		cctx, done := s.callCtx(ctx, req)
+		out, err := s.space.SubmitForFinish(cctx, call, args.Status, isOKStatus(g.Results, args.Status))
+		done()
+		if err != nil {
+			return "", "", err
+		}
+		if out.Refuse != "" {
+			return "", out.Refuse, nil
+		}
+		submitted, summary = out.Reply, out.Summary
+	}
+	if summary == "" && isOKStatus(g.Results, args.Status) {
+		summary = strings.TrimSpace(args.Reason) // a run with no draft (smart script, rebase): the reason is its one-line result
 	}
 	if g.OneShot && !s.markFinished(info) {
-		return toolError(stepFinished), nil, nil
+		return "", stepFinished, nil
 	}
 	s.onFinish(g.RunID, Finish{
-		Status: args.Status, Summary: args.Summary, Reason: args.Reason, ConflictedFiles: args.ConflictedFiles,
+		Status: args.Status, Reason: args.Reason, Summary: summary, ConflictedFiles: args.ConflictedFiles,
 		LastGitError: args.LastGitError, Tried: args.Tried,
 	})
-	ack := llmprompts.HeadlessFinishStepAck.Text(s.prompts, llmprompts.NoVars{})
-	return &mcp.CallToolResult{Content: s.finishContent(ctx, req, ack, g)}, nil, nil
+	ack = llmprompts.HeadlessFinishStepAck.Text(s.prompts, llmprompts.NoVars{})
+	if submitted != "" {
+		ack = submitted + "\n" + ack
+	}
+	return ack, "", nil
+}
+
+// isOKStatus reports whether status is a result that counts as success.
+func isOKStatus(results []ResultSpec, status string) bool {
+	for _, r := range resultsOrImplicit(results) {
+		if r.ID == status {
+			return r.OK
+		}
+	}
+	return false
 }
 
 // verify maps a presented bearer token to the registration it was minted for.
@@ -435,7 +466,7 @@ func (s *Server) startLocked() error {
 		if reg.server != nil {
 			return reg.server
 		}
-		return s.sharedServer(s.toolSetOf(reg.grant, false))
+		return s.sharedServer(s.toolSetOf(reg.grant))
 	}, &mcp.StreamableHTTPOptions{Stateless: true})
 	protected := auth.RequireBearerToken(s.verify, nil)(handler)
 	mux := http.NewServeMux()
@@ -465,7 +496,7 @@ func (s *Server) sharedServer(key toolSet) *mcp.Server {
 // checkGrant validates a grant against the server's tools and returns it with its git, review and
 // sandbox parts normalized.
 func (s *Server) checkGrant(g Grant) (Grant, error) {
-	if g.RunID == "" && !g.Space && !s.handoverGranted(g) {
+	if g.RunID == "" && !g.Space {
 		return g, errors.New("agentmcp: grant allows nothing")
 	}
 	if g.Space && (g.TaskID == "" || s.space == nil) {
@@ -514,8 +545,8 @@ func (s *Server) Register(g Grant) (configPath string, release func(), err error
 		return "", nil, err
 	}
 	var perRun *mcp.Server
-	if g.RunID != "" && (!IsImplicit(g.Results) || g.Review != nil) {
-		perRun = s.buildMCPServer(s.toolSetOf(g, g.Review != nil), g.Results)
+	if g.RunID != "" && !g.Space && !IsImplicit(g.Results) {
+		perRun = s.buildMCPServer(s.toolSetOf(g), g.Results)
 	}
 	plain, hash, salt, err := tokenauth.Mint()
 	if err != nil {

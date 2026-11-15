@@ -7,6 +7,7 @@ import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useOnline } from '@vueuse/core';
 import { useAgentMessageDefaults } from '@workbench/agent/agentInfo';
+import { queryClient as approvalsClient } from '@workbench/state/queryClient';
 import { onMounted } from 'vue';
 import { useServerEvents } from './api/events';
 import { useAgentSessionsStore } from './state/agentSessions';
@@ -24,6 +25,8 @@ function refresh(): void {
 // Pushes sent while the stream was down are lost: refetch everything and re-read the agent state.
 const { connection } = useServerEvents(() => {
   void queryClient.invalidateQueries({ queryKey: ['adetask'] });
+  // useApprovals lives on the workbench client, not the phone's.
+  void approvalsClient.invalidateQueries({ queryKey: ['approvals'] });
   void agentSessions.initAgentSessions();
 });
 onMounted(() => void agentSessions.initAgentSessions());

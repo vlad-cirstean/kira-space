@@ -1103,6 +1103,31 @@ func (r *AdeTaskRepo) RunsOfTask(taskID string) ([]model.AdeRun, error) {
 	return by[taskID], err
 }
 
+// RecentRunsOfTask returns up to limit of one task's runs, newest first, review rounds left out.
+func (r *AdeTaskRepo) RecentRunsOfTask(taskID string, limit int) ([]model.AdeRun, error) {
+	c := kiraschema.AdeRuns
+	sb := r.selectRuns()
+	sb.Where(sb.Equal(c.TaskID, taskID), "COALESCE("+c.Purpose+", '') <> "+sb.Var(model.AdeRunPurposeReview)).
+		OrderBy("COALESCE("+c.StartedAt+", 0) DESC", c.ID+" DESC").Limit(limit)
+	rows, err := sqlb.Query(r.DB, sb)
+	if err != nil {
+		return nil, fmt.Errorf("repos: query recent ade runs: %w", err)
+	}
+	defer rows.Close()
+	var out []model.AdeRun
+	for rows.Next() {
+		run, err := scanAdeRun(rows)
+		if err != nil {
+			return nil, fmt.Errorf("repos: scan ade run: %w", err)
+		}
+		out = append(out, run)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("repos: ade runs rows: %w", err)
+	}
+	return out, nil
+}
+
 func (r *AdeTaskRepo) queryRunsByTask(where func(sb *sqlbuilder.SelectBuilder) []string) (map[string][]model.AdeRun, error) {
 	c := kiraschema.AdeRuns
 	sb := r.selectRuns()

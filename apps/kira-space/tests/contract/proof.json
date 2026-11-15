@@ -1,4 +1,40 @@
 {
+  "AdeTaskService.TaskProofs": [
+    {
+      "closedAt": 0,
+      "linkedAt": 0,
+      "name": "Checkout fix",
+      "pending": false,
+      "proofId": "<id:1>",
+      "rev": 1,
+      "sessionId": "",
+      "slug": "checkout-fix",
+      "steps": [
+        {
+          "description": "Orders before",
+          "id": "<masked>",
+          "ordinal": 1,
+          "source": "postgres",
+          "view": "table"
+        },
+        {
+          "description": "Doc hit",
+          "id": "<masked>",
+          "ordinal": 2,
+          "source": "elasticsearch",
+          "view": "document"
+        },
+        {
+          "description": "Stats",
+          "id": "<masked>",
+          "ordinal": 3,
+          "source": "",
+          "view": "keyvalue"
+        }
+      ],
+      "summary": ""
+    }
+  ],
   "ProofService.ChooseShotLocation": {
     "canceled": false,
     "location": {
@@ -28,6 +64,7 @@
           "bytes": 209,
           "description": "Orders before",
           "diff": "added",
+          "id": "<masked>",
           "language": "sql",
           "ordinal": 1,
           "originOrdinal": null,
@@ -38,6 +75,7 @@
           "bytes": 102,
           "description": "Doc hit",
           "diff": "added",
+          "id": "<masked>",
           "language": "json",
           "ordinal": 2,
           "originOrdinal": null,
@@ -48,6 +86,7 @@
           "bytes": 80,
           "description": "Stats",
           "diff": "added",
+          "id": "<masked>",
           "language": "text",
           "ordinal": 3,
           "originOrdinal": null,
@@ -60,19 +99,11 @@
     "name": "Checkout fix",
     "pending": null,
     "removed": [],
-    "summary": ""
+    "slug": "checkout-fix",
+    "summary": "",
+    "taskId": "<id:2>",
+    "taskTitle": "Login form"
   },
-  "ProofService.Sessions": [
-    {
-      "closedAt": 0,
-      "id": "<masked>",
-      "name": "Checkout fix",
-      "pending": false,
-      "seen": false,
-      "steps": 3,
-      "taskTitle": ""
-    }
-  ],
   "ProofService.ShotClipboard": {
     "multiImage": true
   },
@@ -104,6 +135,7 @@
     },
     "description": "Doc hit",
     "diff": "added",
+    "id": "<masked>",
     "language": "json",
     "ordinal": 2,
     "originOrdinal": null,
@@ -127,6 +159,7 @@
     },
     "description": "Stats",
     "diff": "added",
+    "id": "<masked>",
     "language": "text",
     "ordinal": 3,
     "originOrdinal": null,
@@ -176,6 +209,7 @@
     },
     "description": "Orders before",
     "diff": "added",
+    "id": "<masked>",
     "language": "sql",
     "ordinal": 1,
     "originOrdinal": null,

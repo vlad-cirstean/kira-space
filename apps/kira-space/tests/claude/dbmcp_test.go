@@ -327,7 +327,7 @@ func TestDbMcpSessionStep(t *testing.T) {
 		t.Fatalf("Connections.Connect: %v", err)
 	}
 	f.saveWorkflow(t, "flow", "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 3m\n    db_mcp: true\n"+
-		"    prompt: Call the list_connections tool of the kira-studio-session server once, then call finish_step with status done and summary ok.\n"+
+		"    prompt: Call the list_connections tool of the kira-studio-session server once, then call state with action step.finish and args status done.\n"+
 		manualStepYAML)
 	run := f.startRun(t, f.createTask(t, "flow"), "feat/real-claude-db")
 	log := f.runLog(t, run.ID)

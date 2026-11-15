@@ -680,6 +680,17 @@
         "notJSON": {
           "body": "{file} is not valid JSON. It was not read."
         },
+        "restore": {
+          "claudeJSON": {
+            "body": "Kira never writes Claude’s main config file, because Claude rewrites it while it runs. Restore the backup by hand."
+          },
+          "same": {
+            "body": "{file} already holds the backup’s content. Nothing was written."
+          },
+          "unknown": {
+            "body": "No backup with that name belongs to this agent."
+          }
+        },
         "skip": {
           "badName": {
             "body": "The name is not valid in Kira settings."
@@ -1640,6 +1651,9 @@
       "dbMcpScript": {
         "title": "Run script {name}"
       },
+      "detailsEdit": {
+        "title": "Review task file edits · {task}"
+      },
       "gitCredential": {
         "title": "Git needs a credential"
       },
@@ -2230,6 +2244,9 @@
         },
         "agentInputOffGlobal": {
           "body": "Agent input is off. Turn it on in the mobile access settings on the computer."
+        },
+        "approvalsUnavailable": {
+          "body": "Approvals are unavailable."
         },
         "changesUnavailable": {
           "body": "Changes are unavailable."
@@ -6996,7 +7013,7 @@
         }
       },
       "adeHandoverLine": {
-        "description": "Tells an interactive session to call the handover tool with notes for the next stage.",
+        "description": "Tells an interactive session to write its handover draft file and call submit.",
         "title": "Handover instruction",
         "usedBy": {
           "body": "Ends the manual step, review and start messages."
@@ -7038,7 +7055,7 @@
         }
       },
       "adeRebaseContextLine": {
-        "description": "Tells the agent that the last rebase of a branch did not finish and points to run_outcome.",
+        "description": "Tells the agent that the last rebase of a branch did not finish and points to the runs listed in the task’s state file.",
         "title": "Unfinished rebase line",
         "usedBy": {
           "body": "Added to step prompts and launch messages for each branch with an unfinished rebase."
@@ -7156,25 +7173,11 @@
           "body": "Ends every ADE step prompt and every resumed step message."
         }
       },
-      "headlessHandoverAck": {
-        "description": "The reply to a handover call.",
-        "title": "Handover result",
-        "usedBy": {
-          "body": "Returned to the agent after it records handover notes."
-        }
-      },
       "headlessRebaseReportSuffix": {
         "description": "Tells the rebase agent to run git only through the git tool and how to report with finish_step.",
         "title": "Rebase report instruction",
         "usedBy": {
           "body": "Ends every rebase run prompt, edited ones included."
-        }
-      },
-      "headlessReviewReplyAck": {
-        "description": "The reply to a reply_review_comment call.",
-        "title": "Review reply result",
-        "usedBy": {
-          "body": "Returned to the agent after it replies to a review comment."
         }
       },
       "headlessSandboxNote": {
@@ -7191,15 +7194,22 @@
           "body": "Ends every smart script prompt, one-off edits included."
         }
       },
+      "headlessSpaceFiles": {
+        "description": "Names the task folder, points at the readme there, tells the agent to call submit after editing task files, names the step draft to write before an ok finish that continues the route, and says how to load the tools.",
+        "title": "Task files instruction",
+        "usedBy": {
+          "body": "Follows the Kira Space tools line in every ADE step prompt and session message."
+        }
+      },
       "headlessSpaceInstructions": {
-        "description": "Tells the agent the order to use the Kira Space tools. It reads the task, declares repositories, then asks the user for branches.",
+        "description": "Tells the agent to create and change branches only through the Kira Space tools, and to edit task files and then submit them.",
         "title": "Kira Space tools instructions",
         "usedBy": {
           "body": "Sent to {agent} when a run connects to the Kira Space tools server."
         }
       },
       "headlessSpaceSuffix": {
-        "description": "Lists the Kira Space tools and tells the agent to create branches only through request_branches, which the user approves.",
+        "description": "Lists the Kira Space tools and tells the agent to create branches only with the state tool’s branch request action, which the user approves.",
         "title": "Kira Space tools notice",
         "usedBy": {
           "body": "Added before the finish instruction of every agent step and smart step, and to the first message of manual, review and start sessions."
@@ -7459,6 +7469,9 @@
       "outcome": {
         "description": "How the last rebase ended, as a short phrase."
       },
+      "plain": {
+        "description": "True when the run ends with finish_step, because it has no Kira Space grant."
+      },
       "push": {
         "description": "True when the rebase pushes the rebased branches."
       },
@@ -7484,7 +7497,7 @@
         "description": "A review branch the rebase must leave alone. Empty when there is none."
       },
       "runID": {
-        "description": "The run ID to pass to run_outcome."
+        "description": "The run ID, as the task’s state file lists it."
       },
       "space": {
         "description": "True when the Kira Space tools are on."
@@ -8080,6 +8093,14 @@
     }
   },
   "mobile": {
+    "approvals": {
+      "answerOff": {
+        "hint": "Answering agent requests is off for this phone."
+      },
+      "heading": {
+        "title": "Agent requests"
+      }
+    },
     "backlog": {
       "handle": {
         "aria": "Drag to reorder"
@@ -9236,6 +9257,49 @@
             "body": "Statement not recorded ({count} characters)."
           }
         },
+        "diskAccept": {
+          "label": "Accept edit"
+        },
+        "diskAcceptAll": {
+          "label": "Accept all"
+        },
+        "diskBanner": {
+          "body": "{count} file differs from what Kira holds. | {count} files differ from what Kira holds.",
+          "title": "Task folder changed on disk"
+        },
+        "diskDialog": {
+          "body": "Accept keeps the file as it is on disk. Discard restores what Kira holds.",
+          "empty": {
+            "body": "Nothing differs."
+          },
+          "title": "Changes on disk"
+        },
+        "diskDiscardAll": {
+          "label": "Discard all"
+        },
+        "diskFolderOpen": {
+          "label": "Open task folder"
+        },
+        "diskFolderReveal": {
+          "label": "Reveal in file manager"
+        },
+        "diskPending": {
+          "label": "Waiting for your approval"
+        },
+        "diskReview": {
+          "label": "Review edits"
+        },
+        "diskState": {
+          "edited": {
+            "label": "Edited on disk"
+          },
+          "missing": {
+            "label": "Deleted on disk"
+          },
+          "new": {
+            "label": "New on disk"
+          }
+        },
         "empty": {
           "body": "No links yet."
         },
@@ -9273,6 +9337,43 @@
           "toggle": {
             "tooltip": "Show task events in the list"
           }
+        }
+      },
+      "detailsEdit": {
+        "cause": {
+          "collision": {
+            "label": "Conflicting change"
+          },
+          "handover": {
+            "label": "Handover"
+          },
+          "link": {
+            "label": "Another author’s link"
+          },
+          "note": {
+            "label": "Note edit"
+          },
+          "proof": {
+            "label": "Proof file"
+          },
+          "proofdelete": {
+            "label": "Proof deletion"
+          },
+          "readonly": {
+            "label": "Read-only file"
+          },
+          "slot": {
+            "label": "Jira or PR slot"
+          },
+          "stage": {
+            "label": "Other stage"
+          }
+        },
+        "collision": {
+          "body": "Changed by {by} since this session last synced."
+        },
+        "op": {
+          "label": "{count} file edit | {count} file edits"
         }
       },
       "estimate": {
@@ -10097,6 +10198,17 @@
         "append": {
           "status": "Append"
         },
+        "backupList": {
+          "confirm": {
+            "body": "Restore {file} over {target}? The current file is backed up first.",
+            "title": "Restore backup"
+          },
+          "empty": {
+            "title": "No backups yet"
+          },
+          "hint": "Backups an export took of the agent’s files. Restore writes one back over its file.",
+          "title": "{agent} backups"
+        },
         "backups": {
           "label": "Backups"
         },
@@ -10226,24 +10338,18 @@
         }
       },
       "proof": {
-        "attach": {
-          "empty": {
-            "body": "No proof sessions to attach."
-          },
-          "tooltip": "Attach a proof session"
-        },
         "chain": {
           "title": "Notes and proof"
         },
         "entry": {
+          "delete": {
+            "tooltip": "Delete proof"
+          },
           "open": {
             "tooltip": "Open in the proof window"
           },
           "pending": {
             "status": "Edit to review"
-          },
-          "remove": {
-            "tooltip": "Remove from task"
           }
         }
       },
@@ -13296,6 +13402,11 @@
             "status": "Unused"
           }
         },
+        "skipped": {
+          "hint": "The rest of the file is loaded. An item that loaded before keeps its last good version. Fix the file to load the rest.",
+          "label": "Line {line}, {label}: {message}",
+          "title": "{count} item in {file} isn’t loaded | {count} items in {file} aren’t loaded"
+        },
         "variables": {
           "empty": "No variables in this file"
         }
@@ -13472,6 +13583,15 @@
       "start": {
         "empty": "No request open",
         "emptyHint": "Send a request and see its response here."
+      },
+      "tabClose": {
+        "modified": {
+          "body": "This request has unsaved changes. Closing without saving loses them."
+        },
+        "title": "Save changes to {name}",
+        "unsaved": {
+          "body": "This request was never saved. Closing without saving loses it."
+        }
       },
       "variableCompletion": {
         "base64": {
@@ -17182,8 +17302,8 @@
         }
       },
       "delete": {
-        "body": "Removes {name} and its saved views. This can’t be undone.",
-        "title": "Delete this session"
+        "body": "Removes {name}, its folder and its saved views. This can’t be undone.",
+        "title": "Delete this proof"
       },
       "diagram": {
         "invalid": {
@@ -17199,11 +17319,15 @@
           "body": "The diagram is too large to draw."
         }
       },
-      "history": {
-        "aria": "Validation sessions",
-        "empty": "No validation sessions yet",
-        "unseen": {
-          "aria": "Not opened yet"
+      "folder": {
+        "open": {
+          "label": "Open proof folder"
+        },
+        "path": {
+          "aria": "Proof folder"
+        },
+        "reveal": {
+          "label": "Reveal proof folder"
         }
       },
       "image": {
@@ -17223,7 +17347,7 @@
       "session": {
         "aria": "Proof",
         "empty": {
-          "emptyHint": "Select a session on the left."
+          "emptyHint": "This proof no longer exists."
         },
         "steps": {
           "label": "{count} step | {count} steps"

@@ -139,8 +139,7 @@
       "reported": true,
       "result": "failed",
       "source": "agent",
-      "status": "failed",
-      "summary": "conflict"
+      "status": "failed"
     },
     "purpose": "rebase",
     "resumable": false,
@@ -156,7 +155,7 @@
     "startedAt": 0,
     "state": "failed",
     "stepId": "rebase",
-    "summary": "conflict",
+    "summary": "",
     "taskId": "<id:3>"
   },
   "AdeTaskService.Run#rebase-conflict": {
@@ -200,8 +199,7 @@
       "reported": true,
       "result": "failed",
       "source": "agent",
-      "status": "failed",
-      "summary": "conflict"
+      "status": "failed"
     },
     "purpose": "rebase",
     "resumable": false,
@@ -217,7 +215,7 @@
     "startedAt": 0,
     "state": "failed",
     "stepId": "rebase",
-    "summary": "conflict",
+    "summary": "",
     "taskId": "<id:3>"
   },
   "AdeTaskService.Run#rebase-done": {
@@ -252,8 +250,7 @@
       "reported": true,
       "result": "done",
       "source": "agent",
-      "status": "done",
-      "summary": "rebased"
+      "status": "done"
     },
     "purpose": "rebase",
     "resumable": false,
@@ -269,7 +266,7 @@
     "startedAt": 0,
     "state": "done",
     "stepId": "rebase",
-    "summary": "rebased",
+    "summary": "",
     "taskId": "<id:3>"
   },
   "args:AdeTaskService.CreateTask.bases#develop": {

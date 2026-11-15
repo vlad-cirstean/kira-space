@@ -105,6 +105,7 @@ func (s *Server) routes() []route {
 			}
 			writeJSON(w, http.StatusOK, s.cfg.AgentInfo())
 		}),
+		read("/api/approvals", s.handleApprovals),
 		write("/api/ade/later/items", "later.add", permWrite, s.handleLaterAdd),
 		write("/api/ade/shelf/move", "shelf.move", permWrite, s.handleShelfMove),
 		write("/api/ade/tasks/step", "task.step", permWrite, s.handleTaskStep),
@@ -112,6 +113,7 @@ func (s *Server) routes() []route {
 		write("/api/ade/tasks/launch", "task.launch", permWrite, s.handleTaskLaunch),
 		write("/api/agent/sessions/{id}/send", "session.send", permAgentInput, s.handleSessionSend),
 		write("/api/agent/sessions/{id}/take-over", "session.takeOver", permAgentInput, s.handleSessionTakeOver),
+		write("/api/approvals/answer", "approval.answer", permAgentInput, s.handleApprovalAnswer),
 		{method: http.MethodGet, path: "/api/agent/sessions/{id}/terminal", access: accessDevice,
 			perm: permAgentInput, kind: kindUpgrade, action: "terminal.attach", handle: s.handleTerminal},
 	}

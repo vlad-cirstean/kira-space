@@ -14,6 +14,7 @@ import {
   useTaskIssue,
   useUpdateTask,
 } from '../queries';
+import { useChangeRequests } from '../readQueries';
 import { useMarkTrackedSeen } from '../updates/queries';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { Artifact, Task } from '../wire';
@@ -32,6 +33,7 @@ export function useTaskLinks(
   opts: { branches?: MaybeRefOrGetter<boolean> } = {},
 ) {
   const query = useTaskArtifacts(() => toValue(task).id);
+  const crs = useChangeRequests();
   const update = useUpdateTask();
   const addLink = useAddLink();
   const editLink = useEditLink();
@@ -50,9 +52,17 @@ export function useTaskLinks(
     () => Boolean(toValue(task).jira),
   );
 
+  // Board change requests of the task's own branches: stored rows with these URLs are its own PRs.
+  const ownUrls = computed(() =>
+    toValue(task)
+      .branchIds.map((id) => crs.data.value?.branches[id]?.url ?? '')
+      .filter(Boolean),
+  );
+
   const groups = computed<LinkGroup[]>(() =>
     linkGroups(toValue(task), query.data.value?.artifacts ?? [], {
       branches: toValue(opts.branches) ?? false,
+      ownUrls: ownUrls.value,
     })
       .filter((g) => g.items.length > 0)
       .map((g) => ({

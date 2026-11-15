@@ -435,6 +435,7 @@ var AdeTaskHandovers = struct {
 	SessionID    string
 	Body         string
 	FromTaskID   string
+	RelPath      string
 }{
 	Table:        "ade_task_handovers",
 	ID:           "id",
@@ -453,6 +454,7 @@ var AdeTaskHandovers = struct {
 	SessionID:    "session_id",
 	Body:         "body",
 	FromTaskID:   "from_task_id",
+	RelPath:      "rel_path",
 }
 
 // AdeTaskPlan names table ade_task_plan.
@@ -1293,6 +1295,8 @@ var ProofRevisions = struct {
 	ClosedAt  string
 	DraftID   string
 	Reason    string
+	Name      string
+	Summary   string
 }{
 	Table:     "proof_revisions",
 	SessionID: "session_id",
@@ -1302,6 +1306,8 @@ var ProofRevisions = struct {
 	ClosedAt:  "closed_at",
 	DraftID:   "draft_id",
 	Reason:    "reason",
+	Name:      "name",
+	Summary:   "summary",
 }
 
 // ProofSessions names table proof_sessions.
@@ -1348,6 +1354,7 @@ var ProofSteps = struct {
 	Language      string
 	Source        string
 	Payload       string
+	StepKey       string
 }{
 	Table:         "proof_steps",
 	SessionID:     "session_id",
@@ -1362,6 +1369,7 @@ var ProofSteps = struct {
 	Language:      "language",
 	Source:        "source",
 	Payload:       "payload",
+	StepKey:       "step_key",
 }
 
 // ProofTaskLinks names table proof_task_links.
@@ -1374,6 +1382,7 @@ var ProofTaskLinks = struct {
 	KiraSessionID string
 	StepID        string
 	StepName      string
+	Slug          string
 }{
 	Table:         "proof_task_links",
 	SessionID:     "session_id",
@@ -1383,6 +1392,7 @@ var ProofTaskLinks = struct {
 	KiraSessionID: "kira_session_id",
 	StepID:        "step_id",
 	StepName:      "step_name",
+	Slug:          "slug",
 }
 
 // ProofViewState names table proof_view_state.
@@ -1583,6 +1593,69 @@ var Tabs = struct {
 	Path:         "path",
 	WorkspaceID:  "workspace_id",
 	StateJSON:    "state_json",
+}
+
+// TaskFileIntents names table task_file_intents.
+var TaskFileIntents = struct {
+	Table     string
+	TaskID    string
+	RelPath   string
+	Sha256    string
+	Writer    string
+	CreatedAt string
+}{
+	Table:     "task_file_intents",
+	TaskID:    "task_id",
+	RelPath:   "rel_path",
+	Sha256:    "sha256",
+	Writer:    "writer",
+	CreatedAt: "created_at",
+}
+
+// TaskFiles names table task_files.
+var TaskFiles = struct {
+	Table          string
+	TaskID         string
+	RelPath        string
+	Kind           string
+	Size           string
+	Version        string
+	Sha256         string
+	AcceptedSha256 string
+	AcceptedBy     string
+	AcceptedAt     string
+	Review         string
+	Problem        string
+}{
+	Table:          "task_files",
+	TaskID:         "task_id",
+	RelPath:        "rel_path",
+	Kind:           "kind",
+	Size:           "size",
+	Version:        "version",
+	Sha256:         "sha256",
+	AcceptedSha256: "accepted_sha256",
+	AcceptedBy:     "accepted_by",
+	AcceptedAt:     "accepted_at",
+	Review:         "review",
+	Problem:        "problem",
+}
+
+// TaskFilesMigration names table task_files_migration.
+var TaskFilesMigration = struct {
+	Table      string
+	TaskID     string
+	Part       string
+	State      string
+	DoneAt     string
+	VerifyJSON string
+}{
+	Table:      "task_files_migration",
+	TaskID:     "task_id",
+	Part:       "part",
+	State:      "state",
+	DoneAt:     "done_at",
+	VerifyJSON: "verify_json",
 }
 
 // UiLayout names table ui_layout.

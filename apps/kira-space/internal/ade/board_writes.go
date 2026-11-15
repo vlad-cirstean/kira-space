@@ -208,6 +208,7 @@ func (b *TaskBoard) CreateTask(ctx context.Context, args adewire.CreateTaskArgs)
 	if err != nil {
 		return adewire.Task{}, err
 	}
+	b.mirrorTask(stored.ID, userMirror)
 	b.notifyBoard()
 	return b.wireTask(stored)
 }
@@ -524,6 +525,7 @@ func (b *TaskBoard) attachExistingBranch(ctx context.Context, args adewire.AddEx
 		if task, err = b.deps.Tasks.CreateTask(task, []model.AdeTaskBranch{sb}, nil, nil); err != nil {
 			return adewire.AddExistingBranchResult{}, err
 		}
+		b.mirrorTask(task.ID, userMirror)
 	} else {
 		sb = model.AdeTaskBranch{ID: ids.NewID(), TaskID: task.ID, CodeRepoID: args.CodeRepoID, Name: args.Name, Kind: target.kind, AddedAt: now}
 		draft, err := b.draftOf(task.ID, args.CodeRepoID)
