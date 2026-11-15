@@ -545,3 +545,29 @@ func TestFinishStepImplicitSubmit(t *testing.T) {
 		t.Fatalf("finishes = %v, want one done", got)
 	}
 }
+
+// A proof is a folder plus submit: no grant lists a proof tool.
+func TestNoProofTool(t *testing.T) {
+	srv := NewServer(Options{Dir: t.TempDir(), Space: &fakeSpace{}})
+	t.Cleanup(func() { _ = srv.Close() })
+	for _, g := range []Grant{
+		{Agent: claude.New(), TaskID: "task-1", Space: true},
+		{Agent: claude.New(), RunID: "run-1", TaskID: "task-1", Space: true},
+	} {
+		cfg, rel, err := srv.Register(g)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rel()
+		s, err := connect(t, cfg, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for name := range toolNames(t, s) {
+			if strings.Contains(name, "proof") || name == "create" {
+				t.Errorf("grant %+v lists %q", g, name)
+			}
+		}
+		_ = s.Close()
+	}
+}
