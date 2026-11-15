@@ -221,11 +221,6 @@ func (f *fakeSpace) SubmitForFinish(context.Context, SpaceCall, bool) (SubmitFin
 	return f.finish, nil
 }
 
-func (f *fakeSpace) AttachProof(_ context.Context, call SpaceCall, name string) (AttachProofResult, error) {
-	f.rec("attachproof|" + call.TaskID + "|" + name)
-	return AttachProofResult{Name: name, Status: "attached"}, nil
-}
-
 func (f *fakeSpace) ListArtifacts(_ context.Context, task string) (TaskArtifacts, error) {
 	f.rec("artifacts|" + task)
 	return TaskArtifacts{Artifacts: []Artifact{{Kind: ArtifactDoc, Title: "d", Ref: "d.md", Source: "agent"}}}, nil
@@ -281,7 +276,7 @@ func TestGrantScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if names := toolNames(t, sp); names["finish_step"] || !names["request_branches"] || !names["declare_repos"] || !names["task_info"] || !names["operations"] || !names["rename_branch"] || !names["change_branch"] || !names["acquire_lease"] || !names["release_lease"] || !names["lease_status"] || !names["submit"] || names["branch_status"] || names["attach_proof"] || names["list_operations"] || names["cancel_operation"] {
+	if names := toolNames(t, sp); names["finish_step"] || !names["request_branches"] || !names["declare_repos"] || !names["task_info"] || !names["operations"] || !names["rename_branch"] || !names["change_branch"] || !names["acquire_lease"] || !names["release_lease"] || !names["lease_status"] || !names["submit"] || names["branch_status"] || names["list_operations"] || names["cancel_operation"] {
 		t.Fatalf("space-only grant tools = %v", names)
 	}
 	if res, err := sp.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done"}}); err == nil && !res.IsError {

@@ -36,10 +36,6 @@ const (
 	ArtifactLink          = "link"
 )
 
-// ArtifactProof is the report_artifacts kind that attaches a closed proof session by name (ref). It is
-// not stored as an artifact, so ReportableArtifactKind refuses it.
-const ArtifactProof = "proof"
-
 // ReportableArtifactKind reports whether a kind may be reported.
 func ReportableArtifactKind(kind string) bool {
 	switch kind {

@@ -183,6 +183,8 @@ type FilesVars struct {
 	Folder string `json:"folder"`
 	Draft  string `json:"draft"`
 	Load   string `json:"load"`
+	// Proofs are the task's proofs, one index line each ("slug "Name": id (view), ..."), at most 5.
+	Proofs []string `json:"proofs"`
 }
 
 // ManualVars fills the manual step message. StepPrompt arrives substituted; Notes arrive capped.
@@ -849,7 +851,8 @@ var HeadlessSpaceFiles = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceFiles.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceFiles.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceFiles.usedBy.body",
-	Default:    `Task folder: {{.Folder}}. See README.md there. Write your handover to {{.Draft}}, then call submit.{{if .Load}} {{.Load}}{{end}}`,
+	Default:    `Task folder: {{.Folder}}. See README.md there. Write your handover to {{.Draft}}, then call submit.{{range $i, $p := .Proofs}}
+{{if eq $i 0}}Proofs: {{else}}  {{end}}{{$p}}{{end}}{{if .Load}} {{.Load}}{{end}}`,
 }, FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Draft: "handovers/draft-implement.md", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__submit,mcp__kira-space__task_info".`})
 
 // HeadlessSandboxNote tells a sandboxed agent what it may write and what to do on a denial.
@@ -1453,7 +1456,7 @@ var DbmcpInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructions.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructions.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructions.usedBy.body",
-	Default:    "Query the databases, Kubernetes clusters and scripts the user exposed in Kira Studio. Start with `list_connections`: each entry's `access` names the modes `run_query` may use and which need approval, `description` says what it is for, `maskedColumns` lists masked columns. Declare the least powerful `mode` that fits. Walk structure with `list_children`, passing back a returned `path`; levels differ per engine. `describe` a database or schema path for every table's columns before writing a query. Read rows, counts and pages with `browse_table`; use `run_query` only for joins, grouped aggregates or expressions, and `explain` an expensive-looking one first. A masked cell is redacted; a trailing `#TAG` is a correlation token: equal values share a tag, rarely two distinct ones do, so a match is a hint, not proof. A prompt permission waits up to 10 minutes for the user. `operations` lists running work; its `cancel` stops one. `run_script` runs a `list_scripts` script and returns its output tail. `kube_*` tools are read only; start with `kube_list_clusters`. `api_request` appears only when the user enabled it; you see variable names, never values. `proof_save` saves proof of your work.",
+	Default:    "Query the databases, Kubernetes clusters and scripts the user exposed in Kira Studio. Start with `list_connections`: each entry's `access` names the modes `run_query` may use and which need approval, `description` says what it is for, `maskedColumns` lists masked columns. Declare the least powerful `mode` that fits. Walk structure with `list_children`, passing back a returned `path`; levels differ per engine. `describe` a database or schema path for every table's columns before writing a query. Read rows, counts and pages with `browse_table`; use `run_query` only for joins, grouped aggregates or expressions, and `explain` an expensive-looking one first. A masked cell is redacted; a trailing `#TAG` is a correlation token: equal values share a tag, rarely two distinct ones do, so a match is a hint, not proof. A prompt permission waits up to 10 minutes for the user. `operations` lists running work; its `cancel` stops one. `run_script` runs a `list_scripts` script and returns its output tail. `kube_*` tools are read only; start with `kube_list_clusters`. `api_request` appears only when the user enabled it; you see variable names, never values.",
 }, NoVars{})
 
 // DbmcpToolListConnections describes the list_connections tool.
@@ -1530,35 +1533,6 @@ var (
 	_ = arg(DbmcpToolRunQuery.id, "exemption.id", studioApp, NextCall, `Exemption id from the refusal. Works once; expires in 10 minutes.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption.reason", studioApp, NextCall, `One sentence for the user: why this statement needs the limit lifted. Max 300 characters.`, NoVars{})
 )
-
-// DbmcpToolProofSave describes the proof_save tool.
-var DbmcpToolProofSave = define(Entry{
-	ID: "dbmcp.tool.proof_save", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_save",
-	Default: "Save proof that your work is correct. Prove functionality and behavior, not code: show what the system does (query results, responses, screenshots), not source or diffs. One call creates and closes it, and the user reviews it in a window. Steps show in order; each step's description is the explanation the user reads first. Pick each step's view for its data: table, document and keyvalue show rows; chart plots a table and shows no table, so add a table step when exact values matter; diagram draws Mermaid text; image shows a JPEG, such as a UI screenshot. Names are unique, ignoring case and outer spaces. In a Kira Space task the new proof also attaches to the task. With reason, changes a closed proof instead: a step may keepOrdinal an old step unchanged or replacesOrdinal one, an old step not listed is dropped; read ordinals with proof_list and name. An edit returns pending_review until the user accepts or rejects it. Every value is validated: a bad step rejects the call, saves nothing and names steps[i] and the limit.",
-}, NoVars{})
-
-var (
-	_ = arg(DbmcpToolProofSave.id, "name", studioApp, NextCall, `Unique name, 1-80 characters.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "summary", studioApp, NextCall, `Which behavior it proves: 1-3 terse, clear sentences, up to 500 characters. Shown above the steps. New proofs only.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "reason", studioApp, NextCall, `Edits the closed proof with this name: what changes and why, up to 500 characters.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "steps", studioApp, NextCall, `1 to 100 steps, in display order.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "steps.description", studioApp, NextCall, `The explanation, shown large above the data: one terse, clear line, ideally under 120 characters, at most 200. Say what the step shows and what that proves. Required unless keepOrdinal is set.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "steps.query", studioApp, NextCall, `The query or command you ran, up to 64 KiB. Shown above the data.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "steps.language", studioApp, NextCall, `Highlighting for query: sql, json, shell or text. Default text.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "steps.source", studioApp, NextCall, `Short label of the tool that produced the data, such as elasticsearch. Up to 64 characters.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "steps.view", studioApp, NextCall, `table, document, keyvalue, chart, diagram or image. Required unless keepOrdinal is set.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "steps.data", studioApp, NextCall, `table: {columns:[{name,type?}],rows:[[cell,...]]}, type number, text, boolean, temporal, json or other (inferred when omitted). document: {documents:[{id?,body:{...}}]}. keyvalue: {entries:[{field,value}]}. chart, type bar, line, area or scatter: {type,x:{type,name?},y?:{name?,unit?},stacked?,horizontal?,series:[{name,points:[[x,y],...]}]}; x.type is category (x a string label), time (ISO-8601 or epoch milliseconds) or value (number); y is a number, null for a gap; stacked: bar and area only; horizontal: bar only. Histogram: bar, one point per bucket. Time series: line or area, x.type time. Up to 20 series, 1000 categories, 20000 points (bar and scatter 1000). chart, type pie: {type,unit?,slices:[{name,value}]}, up to 50 slices, values 0 or more. diagram: {source}, Mermaid text whose first line starts with flowchart, graph, sequenceDiagram, classDiagram, stateDiagram, stateDiagram-v2, erDiagram, gantt, journey, gitGraph, mindmap or timeline. No front matter, %%{...}%% directives, click lines, url(), @import or image nodes; send screenshots as an image step. Up to 20000 bytes, 1000 lines, 500 edges. Quote labels that hold punctuation: A["label (x)"]; a syntax error shows the user the parser message and your source. image: exactly one of {path} or {base64}. path is the absolute path of a JPEG on this machine; the app reads it at save, follows symlinks and stores a copy. base64 is the file's bytes, standard base64, no data: prefix. JPEG only, at most 3071 KiB, 16384 pixels a side and 16 megapixels. Inline base64 counts toward the 8 MiB request limit; pass paths for large or several images. A proof holds at most 32 MiB of stored data; an image stores about 4/3 of its file size. Limits: 10000 rows or documents, 64 KiB per cell, 4 MiB per step. Required unless keepOrdinal is set.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "steps.keepOrdinal", studioApp, NextCall, `Edits only: reuse the old step with this ordinal unchanged. Pass no other step field.`, NoVars{})
-	_ = arg(DbmcpToolProofSave.id, "steps.replacesOrdinal", studioApp, NextCall, `Edits only: this step is a changed version of the old step with this ordinal.`, NoVars{})
-)
-
-// DbmcpToolProofList describes the proof_list tool.
-var DbmcpToolProofList = define(Entry{
-	ID: "dbmcp.tool.proof_list", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_list",
-	Default: "List closed proofs, newest first, with step count and whether an edit waits for review. With name: that proof's current steps (ordinal, description, view), for an edit. The app keeps the newest 30 not attached to a task.",
-}, NoVars{})
-
-var _ = arg(DbmcpToolProofList.id, "name", studioApp, NextCall, `Name of a closed proof. Omit to list all.`, NoVars{})
 
 // DbmcpToolOperations describes the operations tool.
 var DbmcpToolOperations = define(Entry{

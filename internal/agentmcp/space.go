@@ -151,13 +151,6 @@ type ChangeBranchResult struct {
 	Next     string `json:"next"`
 }
 
-// AttachProofResult is one proof attached through a report_artifacts item of kind proof; Status is "attached".
-type AttachProofResult struct {
-	Name   string `json:"name"`
-	Steps  int    `json:"steps"`
-	Status string `json:"status"`
-}
-
 // OperationInfo is one running operation of the task that an agent may stop.
 type OperationInfo struct {
 	OpID      string `json:"opId"`
@@ -216,8 +209,6 @@ type SpaceTools interface {
 	Submit(ctx context.Context, call SpaceCall, in SubmitArgs) (string, error)
 	// SubmitForFinish is finish_step's implicit submit; an ok finish with no draft is refused.
 	SubmitForFinish(ctx context.Context, call SpaceCall, ok bool) (SubmitFinish, error)
-	// AttachProof shows a closed proof session, by name, in the task's notes chain; no tool calls it until the proof part lands.
-	AttachProof(ctx context.Context, call SpaceCall, name string) (AttachProofResult, error)
 	// ListArtifacts lists every artifact of the task; a failing source is a gap, not an error.
 	ListArtifacts(ctx context.Context, taskID string) (TaskArtifacts, error)
 	// ListOperations lists the task's running operations that can be stopped; background rows stay out.
