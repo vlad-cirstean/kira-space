@@ -119,6 +119,7 @@ func (b *TaskBoard) movePass(args adewire.NextPassArgs) (first string, auto bool
 		return "", false, err
 	}
 	b.closeHandoverPrompt(args.TaskID)
+	b.mirrorTask(args.TaskID, userEdit(false))
 	b.syncStatus(args.TaskID)
 	b.clearStepMessages(args.TaskID)
 	b.notifyBoard()

@@ -89,6 +89,7 @@ func (b *TaskBoard) RecordHandover(_ context.Context, taskID, stepID, sessionID,
 	}); err != nil {
 		return err
 	}
+	b.mirrorTask(taskID, mirrorOpts{})
 	// Board first: the prompt's dialog reads the draft from the board snapshot.
 	b.notifyBoardNow(taskChanged(taskID))
 	if finished && cur != "" && cur != entryDone {
@@ -177,6 +178,7 @@ func (b *TaskBoard) recordRunHandoverLocked(run model.AdeRun) {
 		return
 	}
 	b.closeHandoverPrompt(run.TaskID)
+	b.mirrorTask(run.TaskID, mirrorOpts{})
 	b.notifyBoard()
 }
 
@@ -246,6 +248,7 @@ func (b *TaskBoard) DismissHandover(_ context.Context, taskID string) error {
 		return err
 	}
 	b.closeHandoverPrompt(taskID)
+	b.mirrorTask(taskID, userEdit(false))
 	b.notifyBoardWith(taskChanged(taskID))
 	return nil
 }
@@ -274,6 +277,7 @@ func (b *TaskBoard) AddNote(_ context.Context, taskID, body string) (adewire.Han
 		return adewire.Handover{}, err
 	}
 	b.recordHandover(n, "", n.Body)
+	b.mirrorTask(taskID, userMirror)
 	b.notifyBoard()
 	return toWireHandover(n), nil
 }
@@ -332,6 +336,7 @@ func (b *TaskBoard) UpdateHandover(_ context.Context, id, body string) error {
 		after = ""
 	}
 	b.recordHandover(*row, row.Body, after)
+	b.mirrorTask(row.TaskID, userEdit(false, id))
 	b.notifyBoard()
 	return nil
 }

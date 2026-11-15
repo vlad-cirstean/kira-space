@@ -270,6 +270,7 @@ func wireAdeTask(
 		AgentDir:     adeRunsDir(config.KiraSpaceHome()),
 		TasksDir:     filepath.Join(config.KiraSpaceHome(), "ade", "tasks"),
 		FilesDir:     filepath.Join(config.KiraSpaceHome(), "tasks"),
+		TaskFiles:    repositories.TaskFiles,
 		HeadlessSettingSources: func() string {
 			settings, err := repositories.Settings.GetAll()
 			if err != nil {

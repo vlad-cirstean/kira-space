@@ -171,6 +171,7 @@ func (b *TaskBoard) Start() {
 			recovered := b.recoveredRebases
 			b.goTracked(func() { b.reverifyRecovered(recovered) })
 		}
+		b.goTracked(b.startDetails)
 		b.updates.start()
 		b.goTracked(b.sweepLeases)
 		b.goTracked(b.launchAutomationHeld)

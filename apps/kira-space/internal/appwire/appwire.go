@@ -566,7 +566,7 @@ func Build(opts Options) (*Wired, error) {
 	w.sched.Start()
 	w.ConfigSync.Start()
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
-	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry}
+	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry, Opener: opts.FileOpener}
 	w.Capture.Tasks = w.AdeTask
 	w.Leases = &bridge.LeasesService{Board: w.AdeBoard}
 	// Registry.OnChange fires after every agent session registers or is removed (spawn and exit) —

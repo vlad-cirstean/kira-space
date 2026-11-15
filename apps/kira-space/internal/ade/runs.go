@@ -1726,6 +1726,7 @@ func (b *TaskBoard) StepDone(_ context.Context, taskID string, notes *string, cl
 		return adewire.Task{}, err
 	}
 	b.closeHandoverPrompt(taskID)
+	b.mirrorTask(taskID, userEdit(false))
 	b.syncStatus(taskID)
 	b.notifyBoard()
 	task, err := b.deps.Tasks.GetTask(taskID)
@@ -1796,6 +1797,7 @@ func (b *TaskBoard) SetTaskStep(_ context.Context, taskID, stepID, fromStepID st
 		return adewire.Task{}, err
 	}
 	b.closeHandoverPrompt(taskID)
+	b.mirrorTask(taskID, userEdit(false))
 	b.syncStatus(taskID)
 	b.clearStepMessages(taskID)
 	b.notifyBoard()

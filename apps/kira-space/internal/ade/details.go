@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -143,6 +144,8 @@ type wantFile struct {
 	kind  taskfiles.Kind
 	// force overwrites a file that holds an unsettled change.
 	force bool
+	// renameFrom is the draft file a stage move turned into this handed file.
+	renameFrom string
 }
 
 // mirrorOpts tune one mirror pass.
@@ -153,9 +156,16 @@ type mirrorOpts struct {
 	force []string
 	// links forces links.yaml the same way.
 	links bool
+	// drop removes the file of a vanished row even over an unsettled edit: the user deleted it.
+	drop bool
 }
 
 var userMirror = mirrorOpts{by: string(taskfiles.RoleUser)}
+
+// userEdit is the mirror after a UI edit or delete of one handover row or the links.
+func userEdit(links bool, rowIDs ...string) mirrorOpts {
+	return mirrorOpts{by: string(taskfiles.RoleUser), force: rowIDs, links: links, drop: true}
+}
 
 // mirrorTask writes the task's cached notes, handovers and links to their files. The caller holds the
 // task lock when one is held for the change that led here. A failure is logged: the cache stays
@@ -206,7 +216,7 @@ func (df *detailsFiles) mirror(b *TaskBoard, taskID string, o mirrorOpts) error 
 		if wanted[r.RelPath] || !mirroredKind(r.Kind) || r.Review != model.TaskFileAccepted {
 			continue
 		}
-		if err := df.dropStale(ctx, st, taskID, r); err != nil {
+		if err := df.dropStale(ctx, st, taskID, r, o.drop); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", r.RelPath, err))
 		}
 	}
@@ -229,40 +239,11 @@ func (df *detailsFiles) wanted(b *TaskBoard, tc *taskCtx, o mirrorOpts) ([]wantF
 	if err != nil {
 		return nil, err
 	}
-	// oldest first: ordinals follow the handed order
-	sort.SliceStable(rows, func(i, j int) bool { return rows[i].CreatedAt < rows[j].CreatedAt })
-	next := 1
-	for _, r := range rows {
-		if m := handedOrdinal.FindStringSubmatch(r.RelPath); m != nil {
-			if n, _ := strconv.Atoi(m[1]); n >= next {
-				next = n + 1
-			}
-		}
-	}
 	force := map[string]bool{}
 	for _, id := range o.force {
 		force[id] = true
 	}
-	var out []wantFile
-	for _, r := range rows {
-		w := wantFile{rowID: r.ID, data: []byte(r.Body), force: force[r.ID]}
-		switch {
-		case r.State == model.AdeHandoverNote:
-			w.rel, w.kind = cmpNonEmpty(r.RelPath, noteRel(r)), taskfiles.KindNote
-		case r.State == model.AdeHandoverDraft:
-			w.rel, w.kind = cmpNonEmpty(r.RelPath, draftRel(r.FromStepID)), taskfiles.KindDraft
-		case r.State == model.AdeHandoverHanded:
-			rel := r.RelPath
-			if rel == "" {
-				rel = handedRel(next, r)
-				next++
-			}
-			w.rel, w.kind = rel, taskfiles.KindHandover
-		default:
-			continue // a child's mirrored finish stays a row: it derives from the child
-		}
-		out = append(out, w)
-	}
+	out := planHandoverFiles(rows, force)
 	links, err := df.currentLinks(b, taskID)
 	if err != nil {
 		return nil, err
@@ -278,6 +259,11 @@ func (df *detailsFiles) wanted(b *TaskBoard, tc *taskCtx, o mirrorOpts) ([]wantF
 // writeWanted writes one file when the cache and the accepted copy differ and the disk holds nothing
 // unsettled.
 func (df *detailsFiles) writeWanted(ctx context.Context, st store.Store, taskID string, w wantFile, row model.TaskFile, by string) error {
+	if w.renameFrom != "" {
+		if err := df.svc.Delete(ctx, taskID, w.renameFrom, by, nil); err != nil {
+			return err
+		}
+	}
 	wantSum := sha(w.data)
 	hasRow := row.TaskID != ""
 	info, statErr := st.Stat(ctx, w.rel)
@@ -297,6 +283,8 @@ func (df *detailsFiles) writeWanted(ctx context.Context, st store.Store, taskID 
 		switch {
 		case err == nil && diskSum == wantSum && hasRow && row.AcceptedSHA256 == wantSum:
 			return df.recordRel(ctx, taskID, w)
+		case err == nil && diskSum == wantSum:
+			// settled by content (migration): fall through to write, which records the index row
 		case w.kind == taskfiles.KindLinks && err == nil && df.sameLinks(raw, w.data):
 			return nil
 		case !w.force && !(hasRow && err == nil && row.AcceptedSHA256 == diskSum):
@@ -326,13 +314,13 @@ func (df *detailsFiles) recordRel(_ context.Context, taskID string, w wantFile) 
 }
 
 // dropStale removes the file of a row that is gone, unless the disk holds an unsettled edit of it.
-func (df *detailsFiles) dropStale(ctx context.Context, st store.Store, taskID string, r model.TaskFile) error {
+func (df *detailsFiles) dropStale(ctx context.Context, st store.Store, taskID string, r model.TaskFile, force bool) error {
 	raw, _, err := st.Read(ctx, r.RelPath, taskfiles.MaxBytes(taskfiles.Kind(r.Kind), r.RelPath))
 	switch {
 	case errors.Is(err, store.ErrNotExist):
 	case err != nil:
 		return err
-	case sha(raw) != r.AcceptedSHA256:
+	case !force && sha(raw) != r.AcceptedSHA256:
 		return nil
 	}
 	return df.svc.Delete(ctx, taskID, r.RelPath, string(taskfiles.RoleKira), nil)
@@ -489,4 +477,46 @@ func parseLinks(raw []byte, norm func(agentmcp.ArtifactInput) agentmcp.ArtifactI
 		out.Entries = append(out.Entries, entry)
 	}
 	return out, nil
+}
+
+// planHandoverFiles names the file of every note, draft and handed row: a row with a path keeps it,
+// a handed row gets the next ordinal, and a handed row still on its draft path is renamed.
+func planHandoverFiles(rows []model.AdeHandover, force map[string]bool) []wantFile {
+	// oldest first: ordinals follow the handed order
+	rows = slices.Clone(rows)
+	sort.SliceStable(rows, func(i, j int) bool { return rows[i].CreatedAt < rows[j].CreatedAt })
+	next := 1
+	for _, r := range rows {
+		if m := handedOrdinal.FindStringSubmatch(r.RelPath); m != nil {
+			if n, _ := strconv.Atoi(m[1]); n >= next {
+				next = n + 1
+			}
+		}
+	}
+	var out []wantFile
+	for _, r := range rows {
+		if r.Source == model.AdeHandoverSourceChild {
+			continue // a child's finish stays a row: it derives from the child
+		}
+		w := wantFile{rowID: r.ID, data: []byte(r.Body), force: force[r.ID]}
+		switch {
+		case r.State == model.AdeHandoverNote:
+			w.rel, w.kind = cmpNonEmpty(r.RelPath, noteRel(r)), taskfiles.KindNote
+		case r.State == model.AdeHandoverDraft:
+			w.rel, w.kind = cmpNonEmpty(r.RelPath, draftRel(r.FromStepID)), taskfiles.KindDraft
+		case r.State == model.AdeHandoverHanded:
+			rel := r.RelPath
+			if rel == "" || strings.HasPrefix(rel, "handovers/draft-") {
+				w.renameFrom = rel
+				rel = handedRel(next, r)
+				next++
+				w.force = true
+			}
+			w.rel, w.kind = rel, taskfiles.KindHandover
+		default:
+			continue
+		}
+		out = append(out, w)
+	}
+	return out
 }
