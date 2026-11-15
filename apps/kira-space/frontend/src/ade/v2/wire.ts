@@ -589,6 +589,29 @@ export interface RemoveArtifactArgs {
   taskId: string;
   id: string;
 }
+/** One task-folder file whose content differs from what the app accepted. */
+export interface DiskChange {
+  path: string;
+  kind: string;
+  state: 'new' | 'edited' | 'missing';
+  /** Unified text diff; empty for a file that is not text. */
+  diff: string;
+  /** Waiting for the user's approval in the approvals surface. */
+  pending: boolean;
+  /** Why the file cannot be read, empty when it can. */
+  problem: string;
+}
+export interface DiskChangesArgs {
+  taskId: string;
+}
+/** Empty `paths` resolves every change. */
+export interface DiskResolveArgs {
+  taskId: string;
+  paths: string[];
+}
+export interface DetailsFolder {
+  path: string;
+}
 export interface HandoversResult {
   handovers: Handover[];
 }

@@ -712,6 +712,18 @@ const spaceControl = {
     unwrap(AdeTaskService.EditLink(args)).then((r) => trust<V2.LinkResult>(r)),
   adeTaskRemoveArtifact: (args: V2.RemoveArtifactArgs): Promise<void> =>
     unwrap(AdeTaskService.RemoveArtifact(args)),
+  adeTaskDetailsDiskChanges: (args: V2.DiskChangesArgs): Promise<V2.DiskChange[]> =>
+    unwrap(AdeTaskService.DetailsDiskChanges(args)).then((r) => trust<V2.DiskChange[]>(r ?? [])),
+  adeTaskDetailsAcceptDisk: (args: V2.DiskResolveArgs): Promise<void> =>
+    unwrap(AdeTaskService.DetailsAcceptDisk(args)),
+  adeTaskDetailsDiscardDisk: (args: V2.DiskResolveArgs): Promise<void> =>
+    unwrap(AdeTaskService.DetailsDiscardDisk(args)),
+  adeTaskDetailsFolder: (args: V2.DiskChangesArgs): Promise<V2.DetailsFolder> =>
+    unwrap(AdeTaskService.DetailsFolder(args)).then((r) => trust<V2.DetailsFolder>(r)),
+  adeTaskOpenDetailsFolder: (args: V2.DiskChangesArgs): Promise<void> =>
+    unwrap(AdeTaskService.OpenDetailsFolder(args)),
+  adeTaskRevealDetailsFolder: (args: V2.DiskChangesArgs): Promise<void> =>
+    unwrap(AdeTaskService.RevealDetailsFolder(args)),
   adeTaskSetTaskStep: (args: V2.SetTaskStepArgs): Promise<V2.Task> =>
     unwrap(AdeTaskService.SetTaskStep(args)).then((r) => trust<V2.Task>(r)),
   adeTaskNextPass: (args: V2.NextPassArgs): Promise<V2.NextPassResult> =>

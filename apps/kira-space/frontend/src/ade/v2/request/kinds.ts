@@ -1,6 +1,6 @@
 import type { ApprovalKinds } from '@workbench/approvals/registry';
 import { markRaw } from 'vue';
-import { branchRequestKind, taskCreateKind } from './kindDefs';
+import { branchRequestKind, detailsEditKind, taskCreateKind } from './kindDefs';
 import TaskCreateBody from './TaskCreateBody.vue';
 
 // P520: Space's approval kinds (internal/approvals Kind* constants). The shared surface supplies the
@@ -9,6 +9,7 @@ import TaskCreateBody from './TaskCreateBody.vue';
 export function spaceApprovalKinds(): ApprovalKinds {
   return {
     'branch.request': branchRequestKind(),
+    'details.edit': detailsEditKind(),
     'task.create': taskCreateKind(markRaw(TaskCreateBody)),
   };
 }

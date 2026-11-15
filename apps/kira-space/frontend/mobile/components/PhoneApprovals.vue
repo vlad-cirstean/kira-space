@@ -12,7 +12,7 @@ import { computed, watch } from 'vue';
 import { useAuthStore } from '../state/auth';
 import PermissionHint from './PermissionHint.vue';
 
-// Pending agent approvals (task.create, branch.request) above the board-derived needs. The footer
+// Pending agent approvals (task.create, branch.request, details.edit) above the board-derived needs. The footer
 // is touch sized; answering shares the desktop's store and actions.
 const store = useApprovalsStore();
 const { answering } = storeToRefs(store);

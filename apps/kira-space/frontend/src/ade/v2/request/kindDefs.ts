@@ -2,7 +2,12 @@ import { t } from '@theme/i18n';
 import type { ApprovalKindDef } from '@workbench/approvals/registry';
 import { type Component, markRaw } from 'vue';
 import BranchRequestBody from './BranchRequestBody.vue';
-import { branchRequestPayloadSchema, taskCreatePayloadSchema } from './payload';
+import DetailsEditBody from './DetailsEditBody.vue';
+import {
+  branchRequestPayloadSchema,
+  detailsEditPayloadSchema,
+  taskCreatePayloadSchema,
+} from './payload';
 import { branchSource } from './source';
 import TaskCreateDetails from './TaskCreateDetails.vue';
 
@@ -32,5 +37,16 @@ export function taskCreateKind(content: Component): ApprovalKindDef {
       [taskCreatePayloadSchema.parse(item.payload).parentTitle, item.origin.step]
         .filter(Boolean)
         .join(' · '),
+  };
+}
+
+export function detailsEditKind(): ApprovalKindDef {
+  return {
+    content: markRaw(DetailsEditBody),
+    operation: (item) =>
+      t('space.ade.detailsEdit.op.label', {
+        count: detailsEditPayloadSchema.parse(item.payload).items.length,
+      }),
+    requester: (item) => detailsEditPayloadSchema.parse(item.payload).taskTitle,
   };
 }

@@ -9261,6 +9261,49 @@
             "body": "Statement not recorded ({count} characters)."
           }
         },
+        "diskAccept": {
+          "label": "Accept edit"
+        },
+        "diskAcceptAll": {
+          "label": "Accept all"
+        },
+        "diskBanner": {
+          "body": "{count} file differs from what Kira holds. | {count} files differ from what Kira holds.",
+          "title": "Task folder changed on disk"
+        },
+        "diskDialog": {
+          "body": "Accept keeps the file as it is on disk. Discard restores what Kira holds.",
+          "empty": {
+            "body": "Nothing differs."
+          },
+          "title": "Changes on disk"
+        },
+        "diskDiscardAll": {
+          "label": "Discard all"
+        },
+        "diskFolderOpen": {
+          "label": "Open task folder"
+        },
+        "diskFolderReveal": {
+          "label": "Reveal in file manager"
+        },
+        "diskPending": {
+          "label": "Waiting for your approval"
+        },
+        "diskReview": {
+          "label": "Review edits"
+        },
+        "diskState": {
+          "edited": {
+            "label": "Edited on disk"
+          },
+          "missing": {
+            "label": "Deleted on disk"
+          },
+          "new": {
+            "label": "New on disk"
+          }
+        },
         "empty": {
           "body": "No links yet."
         },
@@ -9298,6 +9341,43 @@
           "toggle": {
             "tooltip": "Show task events in the list"
           }
+        }
+      },
+      "detailsEdit": {
+        "cause": {
+          "collision": {
+            "label": "Conflicting change"
+          },
+          "handover": {
+            "label": "Handover"
+          },
+          "link": {
+            "label": "Another author’s link"
+          },
+          "note": {
+            "label": "Note edit"
+          },
+          "proof": {
+            "label": "Proof file"
+          },
+          "proofdelete": {
+            "label": "Proof deletion"
+          },
+          "readonly": {
+            "label": "Read-only file"
+          },
+          "slot": {
+            "label": "Jira or PR slot"
+          },
+          "stage": {
+            "label": "Other stage"
+          }
+        },
+        "collision": {
+          "body": "Changed by {by} since this session last synced."
+        },
+        "op": {
+          "label": "{count} file edit | {count} file edits"
         }
       },
       "estimate": {
