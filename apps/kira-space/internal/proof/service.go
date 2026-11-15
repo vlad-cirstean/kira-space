@@ -1,7 +1,7 @@
 package proof
 
 import (
-	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles/store"
 	"github.com/kirathecat/kira-studio/internal/approvals"
-	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -25,11 +25,13 @@ func IsWindowKey(key string) bool { return strings.HasPrefix(key, WindowKeyPrefi
 // ChannelChanged is broadcast to every window when sessions change.
 const ChannelChanged = "kira:proof:changed"
 
-const draftTTL = 24 * time.Hour
-
 // Deps are the seams Service reads.
 type Deps struct {
 	Repo *repos.ProofRepo
+	// Blobs holds the accepted and proposed bytes of proof files; image steps read from it.
+	Blobs *store.Blobs
+	// OnEditResolved runs after the user accepts or rejects a pending edit, so the files follow the decision.
+	OnEditResolved func(sessionID string, accepted bool) error
 	// Prompts receives the "ready to review" popup; nil drops it.
 	Prompts prompts.Sink
 	// Approvals receives a pending edit for review; nil drops it.
@@ -150,13 +152,6 @@ func (s *Service) putReview(id, name string) {
 	})
 }
 
-// PurgeStale drops drafts an agent abandoned.
-func (s *Service) PurgeStale() {
-	if _, err := s.d.Repo.PurgeStaleDrafts(s.d.Now().Add(-draftTTL)); err != nil {
-		slog.Warn("proof: purge stale drafts", "scope", "proof", "err", err)
-	}
-}
-
 // RaiseUnreviewed re-raises the popup of every closed session the user has not opened or that
 // holds a pending edit. The router persists nothing, so a restart calls this.
 func (s *Service) RaiseUnreviewed() {
@@ -170,276 +165,11 @@ func (s *Service) RaiseUnreviewed() {
 	}
 }
 
-// StartResult answers StartSession and EditSession.
-type StartResult struct {
-	DraftID string      `json:"draftId"`
-	Name    string      `json:"name"`
-	Steps   []StepBrief `json:"steps,omitempty"`
-}
-
-// StepBrief is a step as the agent sees it.
-type StepBrief struct {
-	Ordinal     int    `json:"ordinal"`
-	Description string `json:"description"`
-	View        string `json:"view"`
-}
-
-// StartSession opens a draft for a new session.
-func (s *Service) StartSession(name, summary string) (StartResult, error) {
-	clean, key, err := NormalizeName(name)
-	if err != nil {
-		return StartResult{}, err
-	}
-	if err := CheckText("summary", summary, maxSummaryRunes); err != nil {
-		return StartResult{}, err
-	}
-	s.PurgeStale()
-	draft := ids.NewID()
-	if err := s.d.Repo.CreateSessionDraft(ids.NewID(), clean, key, strings.TrimSpace(summary), draft, s.d.Now()); err != nil {
-		return StartResult{}, err
-	}
-	return StartResult{DraftID: draft, Name: clean}, nil
-}
-
-// EditSession opens an edit draft on a closed session.
-func (s *Service) EditSession(name, reason string) (StartResult, error) {
-	_, key, err := NormalizeName(name)
-	if err != nil {
-		return StartResult{}, err
-	}
-	if err := CheckText("reason", reason, maxSummaryRunes); err != nil {
-		return StartResult{}, err
-	}
-	s.PurgeStale()
-	draft := ids.NewID()
-	sess, steps, err := s.d.Repo.CreateEditDraft(key, draft, strings.TrimSpace(reason), s.d.Now())
-	if err != nil {
-		return StartResult{}, err
-	}
-	out := StartResult{DraftID: draft, Name: sess.Name, Steps: make([]StepBrief, len(steps))}
-	for i, st := range steps {
-		out.Steps[i] = StepBrief{Ordinal: st.Ordinal, Description: st.Description, View: st.View}
-	}
-	return out, nil
-}
-
-// AddStep validates and appends a step; it returns the step's ordinal.
-func (s *Service) AddStep(in StepInput) (int, error) {
-	if in.DraftID == "" {
-		return 0, invalid("draftId is required")
-	}
-	c, keep, err := in.validate(context.Background())
-	if err != nil {
-		return 0, err
-	}
-	return s.addChecked(in.DraftID, in, c, keep)
-}
-
-// addChecked appends a step that validate already accepted, so a file-backed step is read once.
-func (s *Service) addChecked(draftID string, in StepInput, c checked, keep bool) (int, error) {
-	step := repos.ProofNewStep{
-		Description: c.Description, Query: c.Query, Language: c.Language, Source: c.Source, View: c.View, Payload: c.Payload,
-		Replaces: in.ReplacesOrdinal,
-	}
-	if keep {
-		step.Keep = in.KeepOrdinal
-	}
-	return s.d.Repo.AddStep(draftID, step)
-}
-
-// CloseResult answers CloseSession and Save.
-type CloseResult struct {
-	Name   string `json:"name"`
-	Steps  int    `json:"steps"`
-	Status string `json:"status"`
-}
-
-// CloseSession finishes a draft and notifies the user.
-func (s *Service) CloseSession(draftID string) (CloseResult, error) {
-	if draftID == "" {
-		return CloseResult{}, invalid("draftId is required")
-	}
-	c, err := s.d.Repo.CloseDraft(draftID, s.d.Now())
-	if err != nil {
-		return CloseResult{}, err
-	}
-	for _, id := range c.Pruned {
-		s.closePrompt(id)
-	}
-	s.openPrompt(c.SessionID, c.Name, c.Edit)
-	s.emit(c.SessionID)
-	status := "closed"
-	if c.Edit {
-		status = "pending_review"
-	}
-	return CloseResult{Name: c.Name, Steps: c.Steps, Status: status}, nil
-}
-
-// AgentSession is one row of proof_list.
-type AgentSession struct {
-	Name        string `json:"name"`
-	ClosedAt    string `json:"closedAt"`
-	Steps       int    `json:"steps"`
-	PendingEdit bool   `json:"pendingEdit"`
-}
-
-// ListForAgent lists closed sessions, newest first.
-func (s *Service) ListForAgent() ([]AgentSession, error) {
-	list, err := s.d.Repo.Sessions()
-	if err != nil {
-		return nil, err
-	}
-	out := make([]AgentSession, len(list))
-	for i, p := range list {
-		out[i] = AgentSession{Name: p.Name, ClosedAt: time.UnixMilli(p.ClosedAt).UTC().Format(time.RFC3339), Steps: p.Steps, PendingEdit: p.Pending}
-	}
-	return out, nil
-}
-
-// SaveInput is one proof_save call. Reason set edits the closed proof Name; a Step may then keep or
-// replace a step of the current revision, and a step left out is dropped.
-type SaveInput struct {
-	Name, Summary, Reason string
-	Steps                 []StepInput
-}
-
-// Save validates every step, then creates or edits the proof and closes it in one go. A failure at any
-// point leaves no draft behind; step failures name the step as steps[i].
-func (s *Service) Save(ctx context.Context, in SaveInput) (CloseResult, error) {
-	edit := strings.TrimSpace(in.Reason) != ""
-	if edit && strings.TrimSpace(in.Summary) != "" {
-		return CloseResult{}, invalid("summary only applies to a new proof; an edit gives a reason")
-	}
-	if len(in.Steps) < 1 || len(in.Steps) > repos.ProofMaxSteps {
-		return CloseResult{}, invalid("steps must hold 1-%d steps", repos.ProofMaxSteps)
-	}
-	type vetted struct {
-		c    checked
-		keep bool
-	}
-	vet := make([]vetted, len(in.Steps))
-	// Vetted payloads stay in memory until AddStep, and a path-backed image is not covered by the request
-	// body cap: refuse once they exceed what a session can store, before reading further files.
-	held := 0
-	for i, st := range in.Steps {
-		if err := ctx.Err(); err != nil {
-			return CloseResult{}, err
-		}
-		if held > repos.ProofMaxSessionBytes {
-			return CloseResult{}, stepErr(i, invalid("the steps before this one already exceed the %d MiB data limit of a session", repos.ProofMaxSessionBytes>>20))
-		}
-		if !edit && (st.KeepOrdinal != nil || st.ReplacesOrdinal != nil) {
-			return CloseResult{}, stepErr(i, invalid("keepOrdinal and replacesOrdinal only apply when a reason edits an existing proof"))
-		}
-		c, keep, err := st.validate(ctx)
-		if err != nil {
-			return CloseResult{}, stepErr(i, err)
-		}
-		vet[i] = vetted{c, keep}
-		held += len(c.Payload)
-	}
-	var draft string
-	if edit {
-		r, err := s.EditSession(in.Name, in.Reason)
-		if err != nil {
-			return CloseResult{}, err
-		}
-		draft = r.DraftID
-	} else {
-		r, err := s.StartSession(in.Name, in.Summary)
-		if err != nil {
-			return CloseResult{}, err
-		}
-		draft = r.DraftID
-	}
-	fail := func(err error) (CloseResult, error) {
-		if derr := s.d.Repo.DiscardDraft(draft); derr != nil {
-			slog.Warn("proof: discard draft", "scope", "proof", "err", derr)
-		}
-		return CloseResult{}, err
-	}
-	for i, st := range in.Steps {
-		if err := ctx.Err(); err != nil {
-			return fail(err)
-		}
-		if _, err := s.addChecked(draft, st, vet[i].c, vet[i].keep); err != nil {
-			return fail(stepErr(i, err))
-		}
-	}
-	res, err := s.CloseSession(draft)
-	if err != nil {
-		return fail(err)
-	}
-	return res, nil
-}
-
-// stepErr prefixes a caller-correctable error with the step it came from; any other error passes.
-func stepErr(i int, err error) error {
-	var inv *InvalidError
-	var pe *repos.ProofError
-	switch {
-	case errors.As(err, &inv):
-		return &InvalidError{Msg: fmt.Sprintf("steps[%d].%s", i, inv.Msg)}
-	case errors.As(err, &pe):
-		return &repos.ProofError{Code: pe.Code, Msg: fmt.Sprintf("steps[%d]: %s", i, pe.Msg)}
-	}
-	return err
-}
-
-// StepsForAgent lists a closed proof's current steps, the ordinals an edit keeps or replaces.
-func (s *Service) StepsForAgent(name string) ([]StepBrief, error) {
-	_, key, err := NormalizeName(name)
-	if err != nil {
-		return nil, err
-	}
-	row, ok, err := s.d.Repo.SessionByKey(key)
-	if err != nil {
-		return nil, err
-	}
-	if !ok || row.CurrentRev == nil {
-		return nil, &repos.ProofError{Code: repos.ProofNotFound, Msg: "no proof session with that name; call proof_list without a name for the existing ones"}
-	}
-	list, err := s.d.Repo.Steps(row.ID, *row.CurrentRev)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]StepBrief, len(list))
-	for i, st := range list {
-		out[i] = StepBrief{Ordinal: st.Ordinal, Description: st.Description, View: st.View}
-	}
-	return out, nil
-}
-
 // IsUserError reports whether err is a caller-correctable failure (validation or repo conflict).
 func IsUserError(err error) bool {
 	var inv *InvalidError
 	var pe *repos.ProofError
 	return errors.As(err, &inv) || errors.As(err, &pe)
-}
-
-// Summary is one history row.
-type Summary struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	ClosedAt int64  `json:"closedAt"`
-	Steps    int    `json:"steps"`
-	Pending  bool   `json:"pending"`
-	Seen     bool   `json:"seen"`
-	// TaskTitle is the title of the task the session is attached to; "" when none.
-	TaskTitle string `json:"taskTitle"`
-}
-
-// Sessions lists closed sessions, newest first.
-func (s *Service) Sessions() ([]Summary, error) {
-	list, err := s.d.Repo.Sessions()
-	if err != nil {
-		return nil, err
-	}
-	out := make([]Summary, len(list))
-	for i, p := range list {
-		out[i] = Summary{ID: p.ID, Name: p.Name, ClosedAt: p.ClosedAt, Steps: p.Steps, Pending: p.Pending, Seen: p.Seen, TaskTitle: p.TaskTitle}
-	}
-	return out, nil
 }
 
 // StepMeta is a step without its data. Diff is relative to the current revision for a pending one.
@@ -555,7 +285,45 @@ func (s *Service) Step(id string, rev, ordinal int) (StepDetail, error) {
 	if !ok {
 		return StepDetail{}, &repos.ProofError{Code: repos.ProofNotFound, Msg: "no such proof step"}
 	}
-	return StepDetail{StepMeta: meta([]repos.ProofStepRow{r})[0], Query: r.Query, Data: json.RawMessage(r.Payload)}, nil
+	data := json.RawMessage(r.Payload)
+	if r.View == ViewImage {
+		if data, err = s.imageData(r.Payload); err != nil {
+			return StepDetail{}, err
+		}
+	}
+	return StepDetail{StepMeta: meta([]repos.ProofStepRow{r})[0], Query: r.Query, Data: data}, nil
+}
+
+// ImageData is the wire payload of an image step: the file's bytes beside its metadata.
+type ImageData struct {
+	Format string `json:"format"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+	Bytes  int    `json:"bytes"`
+	File   string `json:"file"`
+	Base64 string `json:"base64"`
+}
+
+// imageData resolves a stored ImageMeta against the blob store.
+func (s *Service) imageData(payload []byte) (json.RawMessage, error) {
+	var m ImageMeta
+	if err := json.Unmarshal(payload, &m); err != nil {
+		return nil, fmt.Errorf("proof: unreadable image step: %w", err)
+	}
+	var raw []byte
+	if s.d.Blobs != nil {
+		b, ok, err := s.d.Blobs.Get(m.SHA256)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			raw = b
+		}
+	}
+	if raw == nil {
+		return nil, &repos.ProofError{Code: repos.ProofNotFound, Msg: "the image file of this step is missing"}
+	}
+	return json.Marshal(ImageData{Format: m.Format, Width: m.Width, Height: m.Height, Bytes: m.Bytes, File: m.File, Base64: base64.StdEncoding.EncodeToString(raw)})
 }
 
 // ViewStateEntry is one step's saved view state.
@@ -602,6 +370,11 @@ func (s *Service) AcceptEdit(id string) error {
 	if err := s.d.Repo.AcceptEdit(id, s.d.Now()); err != nil {
 		return err
 	}
+	if s.d.OnEditResolved != nil {
+		if err := s.d.OnEditResolved(id, true); err != nil {
+			return err
+		}
+	}
 	s.seen(id)
 	s.emit(id)
 	return nil
@@ -611,6 +384,11 @@ func (s *Service) AcceptEdit(id string) error {
 func (s *Service) RejectEdit(id string) error {
 	if err := s.d.Repo.RejectEdit(id, s.d.Now()); err != nil {
 		return err
+	}
+	if s.d.OnEditResolved != nil {
+		if err := s.d.OnEditResolved(id, false); err != nil {
+			return err
+		}
 	}
 	s.seen(id)
 	s.emit(id)

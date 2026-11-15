@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/huandu/go-sqlbuilder"
@@ -15,8 +16,6 @@ import (
 const (
 	ProofMaxSteps        = 100
 	ProofMaxSessionBytes = 32 << 20
-	ProofMaxDrafts       = 5
-	ProofKeepClosed      = 30
 )
 
 // ProofCode classifies a ProofError.
@@ -71,6 +70,7 @@ type ProofRevisionRow struct {
 type ProofStepRow struct {
 	SessionID                                  string
 	Rev, Ordinal                               int
+	StepKey                                    string
 	Description, Query, Language, Source, View string
 	Payload                                    []byte
 	PayloadBytes                               int
@@ -160,389 +160,6 @@ func (r *ProofRepo) tx(fn func(tx *sql.Tx) error) error {
 	return nil
 }
 
-func sessionByKey(tx *sql.Tx, d sqlb.Dialect, nameKey string) (ProofSessionRow, bool, error) {
-	c := kiraschema.ProofSessions
-	sb := d.Select(proofSessionCols...).From(c.Table)
-	sb.Where(sb.Equal(c.NameKey, nameKey))
-	s, err := scanProofSession(sqlb.QueryRow(tx, sb))
-	if errors.Is(err, sql.ErrNoRows) {
-		return ProofSessionRow{}, false, nil
-	}
-	return s, err == nil, err
-}
-
-func draftCount(tx *sql.Tx, d sqlb.Dialect) (int, error) {
-	var n int
-	c := kiraschema.ProofRevisions
-	sb := d.Select("COUNT(*)").From(c.Table)
-	sb.Where(sb.Equal(c.State, "draft"))
-	err := sqlb.QueryRow(tx, sb).Scan(&n)
-	return n, err
-}
-
-// PurgeStaleDrafts drops drafts created before cutoff: never-closed sessions and unfinished edit
-// revisions. Returns how many it dropped.
-func (r *ProofRepo) PurgeStaleDrafts(cutoff time.Time) (int, error) {
-	c := cutoff.UnixMilli()
-	n := 0
-	err := r.tx(func(tx *sql.Tx) error {
-		ps := kiraschema.ProofSessions
-		del := r.Dialect.DeleteFrom(ps.Table)
-		del.Where(del.Equal(ps.State, "open"), del.LessThan(ps.CreatedAt, c))
-		res, err := sqlb.Exec(tx, del)
-		if err != nil {
-			return err
-		}
-		a, _ := res.RowsAffected()
-		n += int(a)
-		pr := kiraschema.ProofRevisions
-		del = r.Dialect.DeleteFrom(pr.Table)
-		del.Where(del.Equal(pr.State, "draft"), del.LessThan(pr.CreatedAt, c))
-		res, err = sqlb.Exec(tx, del)
-		if err != nil {
-			return err
-		}
-		a, _ = res.RowsAffected()
-		n += int(a)
-		return nil
-	})
-	if err != nil {
-		return 0, fmt.Errorf("repos/proof: purge drafts: %w", err)
-	}
-	return n, nil
-}
-
-// CreateSessionDraft opens a new, unclosed session with revision 1 as its draft.
-func (r *ProofRepo) CreateSessionDraft(id, name, nameKey, summary, draftID string, now time.Time) error {
-	ts := now.UnixMilli()
-	return r.tx(func(tx *sql.Tx) error {
-		if n, err := draftCount(tx, r.Dialect); err != nil {
-			return err
-		} else if n >= ProofMaxDrafts {
-			return proofErr(ProofLimit, "%d proof saves are in flight; retry in a moment", n)
-		}
-		if ex, ok, err := sessionByKey(tx, r.Dialect, nameKey); err != nil {
-			return err
-		} else if ok {
-			if ex.State == "open" {
-				return proofErr(ProofNameTaken, "a proof session named %q is still being saved; retry in a moment", ex.Name)
-			}
-			return proofErr(ProofNameTaken, "a proof session named %q already exists (closed %s); pick another name, or call proof_save with a reason to change it", ex.Name, time.UnixMilli(*ex.ClosedAt).UTC().Format(time.RFC3339))
-		}
-		ps := kiraschema.ProofSessions
-		ins := r.Dialect.InsertInto(ps.Table).Cols(ps.ID, ps.Name, ps.NameKey, ps.State, ps.Summary, ps.CreatedAt, ps.UpdatedAt).
-			Values(id, name, nameKey, "open", summary, ts, ts)
-		if _, err := sqlb.Exec(tx, ins); err != nil {
-			return err
-		}
-		pr := kiraschema.ProofRevisions
-		rev := r.Dialect.InsertInto(pr.Table).Cols(pr.SessionID, pr.Rev, pr.DraftID, pr.State, pr.CreatedAt).
-			Values(id, 1, draftID, "draft", ts)
-		_, err := sqlb.Exec(tx, rev)
-		return err
-	})
-}
-
-// CreateEditDraft opens a draft revision on a closed session and returns the session with its
-// current steps (no payload).
-func (r *ProofRepo) CreateEditDraft(nameKey, draftID, reason string, now time.Time) (ProofSessionRow, []ProofStepRow, error) {
-	ts := now.UnixMilli()
-	var sess ProofSessionRow
-	var steps []ProofStepRow
-	err := r.tx(func(tx *sql.Tx) error {
-		s, ok, err := sessionByKey(tx, r.Dialect, nameKey)
-		if err != nil {
-			return err
-		}
-		switch {
-		case !ok:
-			return proofErr(ProofNotFound, "no proof session with that name; call proof_list for the existing names")
-		case s.State != "closed" || s.CurrentRev == nil:
-			return proofErr(ProofBadState, "proof session %q is still being saved; retry in a moment", s.Name)
-		case s.PendingRev != nil:
-			return proofErr(ProofBadState, "proof session %q already has an edit waiting for the user's review", s.Name)
-		}
-		var open int
-		pr := kiraschema.ProofRevisions
-		oq := r.Dialect.Select("COUNT(*)").From(pr.Table)
-		oq.Where(oq.Equal(pr.SessionID, s.ID), oq.Equal(pr.State, "draft"))
-		if err := sqlb.QueryRow(tx, oq).Scan(&open); err != nil {
-			return err
-		}
-		if open > 0 {
-			return proofErr(ProofBadState, "proof session %q is already being edited; retry in a moment", s.Name)
-		}
-		if n, err := draftCount(tx, r.Dialect); err != nil {
-			return err
-		} else if n >= ProofMaxDrafts {
-			return proofErr(ProofLimit, "%d proof saves are in flight; retry in a moment", n)
-		}
-		var rev int
-		rq := r.Dialect.Select("COALESCE(MAX(" + pr.Rev + "), 0) + 1").From(pr.Table)
-		rq.Where(rq.Equal(pr.SessionID, s.ID))
-		if err := sqlb.QueryRow(tx, rq).Scan(&rev); err != nil {
-			return err
-		}
-		ins := r.Dialect.InsertInto(pr.Table).Cols(pr.SessionID, pr.Rev, pr.DraftID, pr.Reason, pr.State, pr.CreatedAt).
-			Values(s.ID, rev, draftID, reason, "draft", ts)
-		if _, err := sqlb.Exec(tx, ins); err != nil {
-			return err
-		}
-		pst := kiraschema.ProofSteps
-		sq := r.Dialect.Select(pst.Ordinal, pst.Description, pst.View).From(pst.Table)
-		sq.Where(sq.Equal(pst.SessionID, s.ID), sq.Equal(pst.Rev, *s.CurrentRev)).OrderBy(pst.Ordinal)
-		rows, err := sqlb.Query(tx, sq)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			st := ProofStepRow{SessionID: s.ID, Rev: *s.CurrentRev}
-			if err := rows.Scan(&st.Ordinal, &st.Description, &st.View); err != nil {
-				return err
-			}
-			steps = append(steps, st)
-		}
-		sess = s
-		return rows.Err()
-	})
-	return sess, steps, err
-}
-
-// ProofNewStep is what AddStep stores. For a kept step only Keep is set and every other content
-// field comes from the old step.
-type ProofNewStep struct {
-	Description, Query, Language, Source, View string
-	Payload                                    []byte
-	Keep, Replaces                             *int
-}
-
-// applyRef resolves keepOrdinal/replacesOrdinal against the current revision's steps and fills step.
-func applyRef(tx *sql.Tx, d sqlb.Dialect, sid string, rev int, curRev int64, in ProofNewStep, step *ProofStepRow) error {
-	ref := in.Keep
-	if in.Replaces != nil {
-		ref = in.Replaces
-	}
-	if ref == nil {
-		return nil
-	}
-	c := kiraschema.ProofSteps
-	refq := d.Select("1").From(c.Table)
-	refq.Where(refq.Equal(c.SessionID, sid), refq.Equal(c.Rev, rev), refq.Equal(c.OriginOrdinal, *ref))
-	if err := sqlb.QueryRow(tx, refq).Scan(new(int)); err == nil {
-		return proofErr(ProofBadRef, "old step %d is already referenced by another step of this draft", *ref)
-	} else if !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-	var old ProofStepRow
-	oldq := d.Select(c.Description, c.Query, c.Language, c.Source, c.View, c.Payload).From(c.Table)
-	oldq.Where(oldq.Equal(c.SessionID, sid), oldq.Equal(c.Rev, curRev), oldq.Equal(c.Ordinal, *ref))
-	err := sqlb.QueryRow(tx, oldq).Scan(&old.Description, &old.Query, &old.Language, &old.Source, &old.View, &old.Payload)
-	if errors.Is(err, sql.ErrNoRows) {
-		return proofErr(ProofBadRef, "the session has no step %d to keep or replace", *ref)
-	}
-	if err != nil {
-		return err
-	}
-	step.OriginOrdinal = ref
-	if in.Keep != nil {
-		step.Description, step.Query, step.Language, step.Source, step.View, step.Payload = old.Description, old.Query, old.Language, old.Source, old.View, old.Payload
-		step.Diff = "unchanged"
-	} else {
-		step.Diff = "changed"
-	}
-	return nil
-}
-
-// AddStep appends a step to an open draft and returns its ordinal.
-func (r *ProofRepo) AddStep(draftID string, in ProofNewStep) (int, error) {
-	var ordinal int
-	err := r.tx(func(tx *sql.Tx) error {
-		var sid string
-		var rev int
-		var cur sql.NullInt64
-		err := sqlb.QueryRow(tx, r.draftSessionSelect(draftID, "r."+kiraschema.ProofRevisions.SessionID, "r."+kiraschema.ProofRevisions.Rev, "s."+kiraschema.ProofSessions.CurrentRev)).
-			Scan(&sid, &rev, &cur)
-		if errors.Is(err, sql.ErrNoRows) {
-			return proofErr(ProofNotFound, "unknown or already closed draftId")
-		}
-		if err != nil {
-			return err
-		}
-		edit := cur.Valid
-		if (in.Keep != nil || in.Replaces != nil) && !edit {
-			return proofErr(ProofBadRef, "keepOrdinal and replacesOrdinal only apply when a reason edits an existing proof")
-		}
-		var count int
-		pst := kiraschema.ProofSteps
-		cq := r.Dialect.Select("COUNT(*)").From(pst.Table)
-		cq.Where(cq.Equal(pst.SessionID, sid), cq.Equal(pst.Rev, rev))
-		if err := sqlb.QueryRow(tx, cq).Scan(&count); err != nil {
-			return err
-		}
-		if count >= ProofMaxSteps {
-			return proofErr(ProofLimit, "a proof session holds at most %d steps", ProofMaxSteps)
-		}
-		step := ProofStepRow{SessionID: sid, Rev: rev, Description: in.Description, Query: in.Query, Language: in.Language,
-			Source: in.Source, View: in.View, Payload: in.Payload, Diff: "added"}
-		if err := applyRef(tx, r.Dialect, sid, rev, cur.Int64, in, &step); err != nil {
-			return err
-		}
-		step.PayloadBytes = len(step.Payload)
-		var used int
-		uq := r.Dialect.Select("COALESCE(SUM(" + pst.PayloadBytes + "), 0)").From(pst.Table)
-		uq.Where(uq.Equal(pst.SessionID, sid))
-		if err := sqlb.QueryRow(tx, uq).Scan(&used); err != nil {
-			return err
-		}
-		if used+step.PayloadBytes > ProofMaxSessionBytes {
-			return proofErr(ProofLimit, "the session would exceed its %d MiB data limit", ProofMaxSessionBytes>>20)
-		}
-		oq := r.Dialect.Select("COALESCE(MAX(" + pst.Ordinal + "), 0) + 1").From(pst.Table)
-		oq.Where(oq.Equal(pst.SessionID, sid), oq.Equal(pst.Rev, rev))
-		if err := sqlb.QueryRow(tx, oq).Scan(&ordinal); err != nil {
-			return err
-		}
-		ins := r.Dialect.InsertInto(pst.Table).
-			Cols(pst.SessionID, pst.Rev, pst.Ordinal, pst.Description, pst.Query, pst.Language, pst.Source, pst.View, pst.Payload, pst.PayloadBytes, pst.Diff, pst.OriginOrdinal).
-			Values(sid, rev, ordinal, step.Description, step.Query, step.Language, step.Source, step.View, step.Payload, step.PayloadBytes, step.Diff, step.OriginOrdinal)
-		_, err = sqlb.Exec(tx, ins)
-		return err
-	})
-	return ordinal, err
-}
-
-// DiscardDraft drops an open draft: a never-closed session with its steps, or an unfinished edit
-// revision. An unknown draft id is not an error.
-func (r *ProofRepo) DiscardDraft(draftID string) error {
-	return r.tx(func(tx *sql.Tx) error {
-		var sid string
-		var rev int
-		var cur sql.NullInt64
-		err := sqlb.QueryRow(tx, r.draftSessionSelect(draftID, "r."+kiraschema.ProofRevisions.SessionID, "r."+kiraschema.ProofRevisions.Rev, "s."+kiraschema.ProofSessions.CurrentRev)).
-			Scan(&sid, &rev, &cur)
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if !cur.Valid {
-			ps := kiraschema.ProofSessions
-			del := r.Dialect.DeleteFrom(ps.Table)
-			del.Where(del.Equal(ps.ID, sid))
-			_, err = sqlb.Exec(tx, del)
-			return err
-		}
-		pr := kiraschema.ProofRevisions
-		del := r.Dialect.DeleteFrom(pr.Table)
-		del.Where(del.Equal(pr.SessionID, sid), del.Equal(pr.Rev, rev))
-		_, err = sqlb.Exec(tx, del)
-		return err
-	})
-}
-
-// ProofClosed is CloseDraft's result.
-type ProofClosed struct {
-	SessionID, Name string
-	Rev, Steps      int
-	Edit            bool
-	Pruned          []string
-}
-
-// CloseDraft finishes a draft. A new session becomes closed with rev 1 current and the closed
-// sessions beyond the newest ProofKeepClosed are pruned; an edit becomes the pending revision.
-func (r *ProofRepo) CloseDraft(draftID string, now time.Time) (ProofClosed, error) {
-	var out ProofClosed
-	err := r.tx(func(tx *sql.Tx) error {
-		var cur sql.NullInt64
-		err := sqlb.QueryRow(tx, r.draftSessionSelect(draftID, "r."+kiraschema.ProofRevisions.SessionID, "r."+kiraschema.ProofRevisions.Rev,
-			"s."+kiraschema.ProofSessions.Name, "s."+kiraschema.ProofSessions.CurrentRev)).Scan(&out.SessionID, &out.Rev, &out.Name, &cur)
-		if errors.Is(err, sql.ErrNoRows) {
-			return proofErr(ProofNotFound, "unknown or already closed draftId")
-		}
-		if err != nil {
-			return err
-		}
-		out.Edit = cur.Valid
-		pst := kiraschema.ProofSteps
-		cq := r.Dialect.Select("COUNT(*)").From(pst.Table)
-		cq.Where(cq.Equal(pst.SessionID, out.SessionID), cq.Equal(pst.Rev, out.Rev))
-		if err := sqlb.QueryRow(tx, cq).Scan(&out.Steps); err != nil {
-			return err
-		}
-		if out.Steps == 0 {
-			return proofErr(ProofBadState, "the draft has no steps")
-		}
-		closedAt, err := monotonicClose(tx, r.Dialect, now)
-		if err != nil {
-			return err
-		}
-		pr, ps := kiraschema.ProofRevisions, kiraschema.ProofSessions
-		revState := "current"
-		if out.Edit {
-			revState = "pending"
-		}
-		rev := r.Dialect.Update(pr.Table)
-		rev.Set(rev.Assign(pr.State, revState), pr.DraftID+" = NULL", rev.Assign(pr.ClosedAt, closedAt)).
-			Where(rev.Equal(pr.SessionID, out.SessionID), rev.Equal(pr.Rev, out.Rev))
-		if _, err := sqlb.Exec(tx, rev); err != nil {
-			return err
-		}
-		sess := r.Dialect.Update(ps.Table)
-		if out.Edit {
-			sess.Set(sess.Assign(ps.PendingRev, out.Rev), ps.SeenAt+" = NULL", sess.Assign(ps.UpdatedAt, closedAt))
-		} else {
-			sess.Set(sess.Assign(ps.State, "closed"), sess.Assign(ps.CurrentRev, out.Rev), sess.Assign(ps.ClosedAt, closedAt),
-				sess.Assign(ps.UpdatedAt, closedAt))
-		}
-		sess.Where(sess.Equal(ps.ID, out.SessionID))
-		if _, err := sqlb.Exec(tx, sess); err != nil {
-			return err
-		}
-		if out.Edit {
-			return nil
-		}
-		out.Pruned, err = pruneClosed(tx, r.Dialect)
-		return err
-	})
-	return out, err
-}
-
-// pruneClosed deletes the unattached closed sessions beyond the newest ProofKeepClosed and returns
-// their ids. A session linked to a task is never pruned.
-func pruneClosed(tx *sql.Tx, d sqlb.Dialect) ([]string, error) {
-	ps, tl := kiraschema.ProofSessions, kiraschema.ProofTaskLinks
-	linked := d.Select(tl.SessionID).From(tl.Table)
-	sb := d.Select(ps.ID).From(ps.Table)
-	sb.Where(sb.Equal(ps.State, "closed"), sb.NotIn(ps.ID, linked)).OrderBy(ps.ClosedAt+" DESC", sqlb.RowID+" DESC")
-	sqlb.OffsetOnly(d, sb, ProofKeepClosed)
-	rows, err := sqlb.Query(tx, sb)
-	if err != nil {
-		return nil, err
-	}
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			_ = rows.Close()
-			return nil, err
-		}
-		ids = append(ids, id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	for _, id := range ids {
-		del := d.DeleteFrom(ps.Table)
-		del.Where(del.Equal(ps.ID, id))
-		if _, err := sqlb.Exec(tx, del); err != nil {
-			return nil, err
-		}
-	}
-	return ids, nil
-}
-
 // monotonicClose returns now (unix ms) strictly after every closed_at, so "newest closed" is a
 // total order even when two closes land in one millisecond.
 func monotonicClose(tx *sql.Tx, d sqlb.Dialect, now time.Time) (int64, error) {
@@ -570,38 +187,11 @@ type ProofSummary struct {
 	TaskTitle string
 }
 
-// Sessions lists closed sessions, newest first.
-func (r *ProofRepo) Sessions() ([]ProofSummary, error) {
-	ps := kiraschema.ProofSessions
-	tl, tk := kiraschema.ProofTaskLinks, kiraschema.AdeTasks
-	sb := r.proofSummarySelect().SelectMore(
-		"COALESCE((SELECT k." + tk.Title + " FROM " + tl.Table + " l JOIN " + tk.Table + " k ON k." + tk.ID + " = l." + tl.TaskID +
-			" WHERE l." + tl.SessionID + " = s." + ps.ID + "), '')")
-	sb.Where(sb.Equal("s."+ps.State, "closed")).OrderBy("s."+ps.ClosedAt+" DESC", "s."+sqlb.RowID+" DESC")
-	rows, err := sqlb.Query(r.DB, sb)
-	return queryAll(rows, err, func(rows *sql.Rows) (ProofSummary, error) {
-		var p ProofSummary
-		return p, rows.Scan(&p.ID, &p.Name, &p.ClosedAt, &p.Pending, &p.Seen, &p.Steps, &p.TaskTitle)
-	})
-}
-
 // Session returns one session; ok is false when absent or still open.
 func (r *ProofRepo) Session(id string) (ProofSessionRow, bool, error) {
 	ps := kiraschema.ProofSessions
 	sb := r.Dialect.Select(proofSessionCols...).From(ps.Table)
 	sb.Where(sb.Equal(ps.ID, id), sb.Equal(ps.State, "closed"))
-	s, err := scanProofSession(sqlb.QueryRow(r.DB, sb))
-	if errors.Is(err, sql.ErrNoRows) {
-		return ProofSessionRow{}, false, nil
-	}
-	return s, err == nil, err
-}
-
-// SessionByKey returns the closed session with that name key; ok is false when absent or still open.
-func (r *ProofRepo) SessionByKey(nameKey string) (ProofSessionRow, bool, error) {
-	ps := kiraschema.ProofSessions
-	sb := r.Dialect.Select(proofSessionCols...).From(ps.Table)
-	sb.Where(sb.Equal(ps.NameKey, nameKey), sb.Equal(ps.State, "closed"))
 	s, err := scanProofSession(sqlb.QueryRow(r.DB, sb))
 	if errors.Is(err, sql.ErrNoRows) {
 		return ProofSessionRow{}, false, nil
@@ -632,13 +222,13 @@ func (r *ProofRepo) Revision(id string, rev int) (ProofRevisionRow, bool, error)
 // Steps lists one revision's steps in ordinal order, without payload.
 func (r *ProofRepo) Steps(id string, rev int) ([]ProofStepRow, error) {
 	c := kiraschema.ProofSteps
-	sb := r.Dialect.Select(c.Ordinal, c.Description, c.Query, c.Language, c.Source, c.View, c.PayloadBytes, c.Diff, c.OriginOrdinal).From(c.Table)
+	sb := r.Dialect.Select(c.Ordinal, c.Description, c.Query, c.Language, c.Source, c.View, c.PayloadBytes, c.Diff, c.OriginOrdinal, c.StepKey).From(c.Table)
 	sb.Where(sb.Equal(c.SessionID, id), sb.Equal(c.Rev, rev)).OrderBy(c.Ordinal)
 	rows, err := sqlb.Query(r.DB, sb)
 	return queryAll(rows, err, func(rows *sql.Rows) (ProofStepRow, error) {
 		s := ProofStepRow{SessionID: id, Rev: rev}
 		var origin sql.NullInt64
-		err := rows.Scan(&s.Ordinal, &s.Description, &s.Query, &s.Language, &s.Source, &s.View, &s.PayloadBytes, &s.Diff, &origin)
+		err := rows.Scan(&s.Ordinal, &s.Description, &s.Query, &s.Language, &s.Source, &s.View, &s.PayloadBytes, &s.Diff, &origin, &s.StepKey)
 		s.OriginOrdinal = nullInt(origin)
 		return s, err
 	})
@@ -651,9 +241,9 @@ func (r *ProofRepo) Step(id string, rev, ordinal int) (ProofStepRow, bool, error
 	c := kiraschema.ProofSteps
 	sb := r.stepOfFinishedRevision(id, rev, ordinal,
 		"st."+c.Description, "st."+c.Query, "st."+c.Language, "st."+c.Source, "st."+c.View, "st."+c.Payload,
-		"st."+c.PayloadBytes, "st."+c.Diff, "st."+c.OriginOrdinal)
+		"st."+c.PayloadBytes, "st."+c.Diff, "st."+c.OriginOrdinal, "st."+c.StepKey)
 	err := sqlb.QueryRow(r.DB, sb).
-		Scan(&s.Description, &s.Query, &s.Language, &s.Source, &s.View, &s.Payload, &s.PayloadBytes, &s.Diff, &origin)
+		Scan(&s.Description, &s.Query, &s.Language, &s.Source, &s.View, &s.Payload, &s.PayloadBytes, &s.Diff, &origin, &s.StepKey)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ProofStepRow{}, false, nil
 	}
@@ -721,12 +311,33 @@ func (r *ProofRepo) AcceptEdit(id string, now time.Time) error {
 		if _, err := sqlb.Exec(tx, promote); err != nil {
 			return err
 		}
+		// A pending edit carries the proposed name and summary; empty means the edit kept them.
+		var name, summary string
+		rq := r.Dialect.Select(pr.Name, pr.Summary).From(pr.Table)
+		rq.Where(rq.Equal(pr.SessionID, id), rq.Equal(pr.Rev, pend))
+		if err := sqlb.QueryRow(tx, rq).Scan(&name, &summary); err != nil {
+			return err
+		}
 		sess := r.Dialect.Update(ps.Table)
-		sess.Set(sess.Assign(ps.CurrentRev, pend), ps.PendingRev+" = NULL", sess.Assign(ps.UpdatedAt, ts)).Where(sess.Equal(ps.ID, id))
+		sets := []string{sess.Assign(ps.CurrentRev, pend), ps.PendingRev + " = NULL", sess.Assign(ps.UpdatedAt, ts)}
+		if name != "" {
+			var taskID string
+			tl := kiraschema.ProofTaskLinks
+			lq := r.Dialect.Select(tl.TaskID).From(tl.Table)
+			lq.Where(lq.Equal(tl.SessionID, id))
+			if err := sqlb.QueryRow(tx, lq).Scan(&taskID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+			sets = append(sets, sess.Assign(ps.Name, name), sess.Assign(ps.NameKey, ProofNameKey(taskID, name)), sess.Assign(ps.Summary, summary))
+		}
+		sess.Set(sets...).Where(sess.Equal(ps.ID, id))
 		_, err = sqlb.Exec(tx, sess)
 		return err
 	})
 }
+
+// ProofNameKey is the uniqueness key of a proof name: names are unique per task, case-insensitively.
+func ProofNameKey(taskID, name string) string { return taskID + "\x00" + strings.ToLower(name) }
 
 // RejectEdit drops the pending revision.
 func (r *ProofRepo) RejectEdit(id string, now time.Time) error {
@@ -828,6 +439,8 @@ func queryAll[T any](rows *sql.Rows, err error, scan func(*sql.Rows) (T, error))
 // ProofTaskLink is one proof_task_links row, minus the session it belongs to.
 type ProofTaskLink struct {
 	TaskID, Source, KiraSessionID, StepID, StepName string
+	// Slug is the proof folder, proofs/<slug>/, of the session's files.
+	Slug string
 }
 
 // ProofTaskSession is a closed session attached to a task, with its current revision's steps
@@ -839,71 +452,12 @@ type ProofTaskSession struct {
 	Steps    []ProofStepRow
 }
 
-// LinkTask attaches a closed session, found by id or (byKey) by name key, to a task. Linking to the
-// same task again changes nothing; a session belongs to one task.
-func (r *ProofRepo) LinkTask(idOrKey string, byKey bool, l ProofTaskLink, now time.Time) (ProofSessionRow, error) {
-	var out ProofSessionRow
-	err := r.tx(func(tx *sql.Tx) error {
-		ps := kiraschema.ProofSessions
-		col := ps.ID
-		if byKey {
-			col = ps.NameKey
-		}
-		sb := r.Dialect.Select(proofSessionCols...).From(ps.Table)
-		sb.Where(sb.Equal(col, idOrKey))
-		s, err := scanProofSession(sqlb.QueryRow(tx, sb))
-		if errors.Is(err, sql.ErrNoRows) {
-			return proofErr(ProofNotFound, "no proof session with that name; call proof_list")
-		}
-		if err != nil {
-			return err
-		}
-		if s.State != "closed" {
-			return proofErr(ProofBadState, "the proof is still being saved; retry in a moment")
-		}
-		out = s
-		var taskID string
-		tl := kiraschema.ProofTaskLinks
-		lq := r.Dialect.Select(tl.TaskID).From(tl.Table)
-		lq.Where(lq.Equal(tl.SessionID, s.ID))
-		err = sqlb.QueryRow(tx, lq).Scan(&taskID)
-		switch {
-		case err == nil && taskID == l.TaskID:
-			return nil
-		case err == nil:
-			return proofErr(ProofBadState, "proof session %q belongs to another task", s.Name)
-		case !errors.Is(err, sql.ErrNoRows):
-			return err
-		}
-		ins := r.Dialect.InsertInto(tl.Table).Cols(tl.SessionID, tl.TaskID, tl.Source, tl.KiraSessionID, tl.StepID, tl.StepName, tl.LinkedAt).
-			Values(s.ID, l.TaskID, l.Source, l.KiraSessionID, l.StepID, l.StepName, now.UnixMilli())
-		_, err = sqlb.Exec(tx, ins)
-		return err
-	})
-	return out, err
-}
-
-// UnlinkTask detaches a session from a task.
-func (r *ProofRepo) UnlinkTask(id, taskID string) error {
-	tl := kiraschema.ProofTaskLinks
-	del := r.Dialect.DeleteFrom(tl.Table)
-	del.Where(del.Equal(tl.SessionID, id), del.Equal(tl.TaskID, taskID))
-	res, err := sqlb.Exec(r.DB, del)
-	if err != nil {
-		return fmt.Errorf("repos/proof: unlink: %w", err)
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return proofErr(ProofNotFound, "no such proof session on this task")
-	}
-	return nil
-}
-
 // TaskSessions lists the sessions attached to a task, newest closed first, each with its current
 // revision's steps. Two queries, grouped in Go.
 func (r *ProofRepo) TaskSessions(taskID string) ([]ProofTaskSession, error) {
 	ps, tl, st := kiraschema.ProofSessions, kiraschema.ProofTaskLinks, kiraschema.ProofSteps
 	sb := r.Dialect.Select(append(proofAlias("s", proofSessionCols...),
-		proofAlias("l", tl.Source, tl.KiraSessionID, tl.StepID, tl.StepName, tl.LinkedAt)...)...).From(tl.Table + " l")
+		proofAlias("l", tl.Source, tl.KiraSessionID, tl.StepID, tl.StepName, tl.LinkedAt, tl.Slug)...)...).From(tl.Table + " l")
 	sb.Join(ps.Table+" s", "s."+ps.ID+" = l."+tl.SessionID)
 	sb.Where(sb.Equal("l."+tl.TaskID, taskID), sb.Equal("s."+ps.State, "closed")).
 		OrderBy("s."+ps.ClosedAt+" DESC", "s."+sqlb.RowID+" DESC")
@@ -913,7 +467,7 @@ func (r *ProofRepo) TaskSessions(taskID string) ([]ProofTaskSession, error) {
 		var cur, pend, closed, seen sql.NullInt64
 		s := &t.Session
 		err := rows.Scan(&s.ID, &s.Name, &s.NameKey, &s.State, &cur, &pend, &s.Summary, &s.CreatedAt, &closed, &seen, &s.UpdatedAt,
-			&t.Link.Source, &t.Link.KiraSessionID, &t.Link.StepID, &t.Link.StepName, &t.LinkedAt)
+			&t.Link.Source, &t.Link.KiraSessionID, &t.Link.StepID, &t.Link.StepName, &t.LinkedAt, &t.Link.Slug)
 		s.CurrentRev, s.PendingRev, s.ClosedAt, s.SeenAt = nullInt(cur), nullInt(pend), nullInt64(closed), nullInt64(seen)
 		t.Link.TaskID = taskID
 		return t, err
@@ -922,7 +476,7 @@ func (r *ProofRepo) TaskSessions(taskID string) ([]ProofTaskSession, error) {
 		return list, err
 	}
 	sq := r.Dialect.Select(proofAlias("st", st.SessionID, st.Rev, st.Ordinal, st.Description, st.Query, st.Language, st.Source,
-		st.View, st.PayloadBytes, st.Diff, st.OriginOrdinal)...).From(tl.Table + " l")
+		st.View, st.PayloadBytes, st.Diff, st.OriginOrdinal, st.StepKey)...).From(tl.Table + " l")
 	sq.Join(ps.Table+" s", "s."+ps.ID+" = l."+tl.SessionID)
 	sq.Join(st.Table+" st", "st."+st.SessionID+" = s."+ps.ID, "st."+st.Rev+" = s."+ps.CurrentRev)
 	sq.Where(sq.Equal("l."+tl.TaskID, taskID), sq.Equal("s."+ps.State, "closed")).OrderBy("st."+st.SessionID, "st."+st.Ordinal)
@@ -930,7 +484,7 @@ func (r *ProofRepo) TaskSessions(taskID string) ([]ProofTaskSession, error) {
 	steps, err := queryAll(srows, err, func(rows *sql.Rows) (ProofStepRow, error) {
 		var st ProofStepRow
 		var origin sql.NullInt64
-		err := rows.Scan(&st.SessionID, &st.Rev, &st.Ordinal, &st.Description, &st.Query, &st.Language, &st.Source, &st.View, &st.PayloadBytes, &st.Diff, &origin)
+		err := rows.Scan(&st.SessionID, &st.Rev, &st.Ordinal, &st.Description, &st.Query, &st.Language, &st.Source, &st.View, &st.PayloadBytes, &st.Diff, &origin, &st.StepKey)
 		st.OriginOrdinal = nullInt(origin)
 		return st, err
 	})
@@ -946,29 +500,6 @@ func (r *ProofRepo) TaskSessions(taskID string) ([]ProofTaskSession, error) {
 		list[i].Steps = append(list[i].Steps, st)
 	}
 	return list, nil
-}
-
-// UnattachedSessions lists closed sessions with no task link, newest first.
-func (r *ProofRepo) UnattachedSessions() ([]ProofSummary, error) {
-	ps, tl := kiraschema.ProofSessions, kiraschema.ProofTaskLinks
-	sb := r.proofSummarySelect()
-	linked := r.Dialect.Select(tl.SessionID).From(tl.Table)
-	sb.Where(sb.Equal("s."+ps.State, "closed"), sb.NotIn("s."+ps.ID, linked)).
-		OrderBy("s."+ps.ClosedAt+" DESC", "s."+sqlb.RowID+" DESC")
-	rows, err := sqlb.Query(r.DB, sb)
-	return queryAll(rows, err, func(rows *sql.Rows) (ProofSummary, error) {
-		var p ProofSummary
-		return p, rows.Scan(&p.ID, &p.Name, &p.ClosedAt, &p.Pending, &p.Seen, &p.Steps)
-	})
-}
-
-// draftSessionSelect selects cols (aliases r = proof_revisions, s = proof_sessions) of the open draft draftID.
-func (r *ProofRepo) draftSessionSelect(draftID string, cols ...string) *sqlbuilder.SelectBuilder {
-	pr, ps := kiraschema.ProofRevisions, kiraschema.ProofSessions
-	sb := r.Dialect.Select(cols...).From(pr.Table + " r")
-	sb.Join(ps.Table+" s", "s."+ps.ID+" = r."+pr.SessionID)
-	sb.Where(sb.Equal("r."+pr.DraftID, draftID), sb.Equal("r."+pr.State, "draft"))
-	return sb
 }
 
 // stepOfFinishedRevision selects cols (aliases st = proof_steps, rv = proof_revisions) of one step whose revision is not a draft.

@@ -633,7 +633,7 @@ CREATE TABLE "proof_revisions" (
   created_at INTEGER NOT NULL CHECK (created_at >= 0),
   closed_at INTEGER CHECK (closed_at IS NULL OR closed_at >= 0),
   draft_id TEXT UNIQUE,
-  reason TEXT NOT NULL DEFAULT '',
+  reason TEXT NOT NULL DEFAULT '', name TEXT NOT NULL DEFAULT '', summary TEXT NOT NULL DEFAULT '',
   PRIMARY KEY (session_id, rev)
 ) STRICT;
 
@@ -663,7 +663,7 @@ CREATE TABLE "proof_steps" (
   query TEXT NOT NULL DEFAULT '',
   language TEXT NOT NULL DEFAULT 'text',
   source TEXT NOT NULL DEFAULT '',
-  payload BLOB NOT NULL,
+  payload BLOB NOT NULL, step_key TEXT NOT NULL DEFAULT '',
   PRIMARY KEY (session_id, rev, ordinal),
   FOREIGN KEY (session_id, rev) REFERENCES proof_revisions (session_id, rev) ON DELETE CASCADE
 ) STRICT;
@@ -676,7 +676,7 @@ CREATE TABLE "proof_task_links" (
   kira_session_id TEXT NOT NULL DEFAULT '',
   step_id TEXT NOT NULL DEFAULT '',
   step_name TEXT NOT NULL DEFAULT ''
-) STRICT;
+, slug TEXT NOT NULL DEFAULT '') STRICT;
 
 CREATE TABLE "proof_view_state" (
   session_id TEXT NOT NULL,
@@ -930,6 +930,8 @@ CREATE INDEX op_log_connection ON op_log (connection_id);
 CREATE INDEX op_log_started ON op_log (started_ms, id);
 
 CREATE INDEX proof_sessions_closed ON proof_sessions (closed_at);
+
+CREATE UNIQUE INDEX proof_task_links_slug ON proof_task_links (task_id, slug) WHERE slug <> '';
 
 CREATE INDEX proof_task_links_task ON proof_task_links (task_id);
 

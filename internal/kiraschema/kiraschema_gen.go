@@ -1295,6 +1295,8 @@ var ProofRevisions = struct {
 	ClosedAt  string
 	DraftID   string
 	Reason    string
+	Name      string
+	Summary   string
 }{
 	Table:     "proof_revisions",
 	SessionID: "session_id",
@@ -1304,6 +1306,8 @@ var ProofRevisions = struct {
 	ClosedAt:  "closed_at",
 	DraftID:   "draft_id",
 	Reason:    "reason",
+	Name:      "name",
+	Summary:   "summary",
 }
 
 // ProofSessions names table proof_sessions.
@@ -1350,6 +1354,7 @@ var ProofSteps = struct {
 	Language      string
 	Source        string
 	Payload       string
+	StepKey       string
 }{
 	Table:         "proof_steps",
 	SessionID:     "session_id",
@@ -1364,6 +1369,7 @@ var ProofSteps = struct {
 	Language:      "language",
 	Source:        "source",
 	Payload:       "payload",
+	StepKey:       "step_key",
 }
 
 // ProofTaskLinks names table proof_task_links.
@@ -1376,6 +1382,7 @@ var ProofTaskLinks = struct {
 	KiraSessionID string
 	StepID        string
 	StepName      string
+	Slug          string
 }{
 	Table:         "proof_task_links",
 	SessionID:     "session_id",
@@ -1385,6 +1392,7 @@ var ProofTaskLinks = struct {
 	KiraSessionID: "kira_session_id",
 	StepID:        "step_id",
 	StepName:      "step_name",
+	Slug:          "slug",
 }
 
 // ProofViewState names table proof_view_state.

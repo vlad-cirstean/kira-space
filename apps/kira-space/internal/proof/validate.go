@@ -4,7 +4,6 @@ package proof
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -76,14 +75,6 @@ func CheckText(field, s string, maxRunes int) error {
 	return nil
 }
 
-// StepInput is one proof_add_step call. Data is the raw JSON of the data argument, taken from the
-// wire so number precision and key order survive.
-type StepInput struct {
-	DraftID, Description, Query, Language, Source, View string
-	Data                                                json.RawMessage
-	KeepOrdinal, ReplacesOrdinal                        *int
-}
-
 var languages = map[string]bool{"sql": true, "json": true, "shell": true, "text": true}
 
 type column struct {
@@ -93,50 +84,21 @@ type column struct {
 
 var columnTypes = map[string]bool{"number": true, "text": true, "boolean": true, "temporal": true, "json": true, "other": true}
 
-// checked is a validated step ready to store.
-type checked struct {
-	Description, Query, Language, Source, View string
-	Payload                                    []byte
-}
+// Languages a step's query can be written in.
+func ValidLanguage(l string) bool { return languages[l] }
 
-func (in StepInput) validate(ctx context.Context) (checked, bool, error) {
-	if in.KeepOrdinal != nil && in.ReplacesOrdinal != nil {
-		return checked{}, false, invalid("keepOrdinal and replacesOrdinal are mutually exclusive")
-	}
-	if in.KeepOrdinal != nil {
-		if in.Description != "" || in.Query != "" || in.Language != "" || in.Source != "" || in.View != "" || len(in.Data) != 0 {
-			return checked{}, false, invalid("keepOrdinal copies the old step as is; pass no description, query, language, source, view or data")
-		}
-		return checked{}, true, nil
-	}
-	desc := strings.TrimSpace(in.Description)
-	if n := utf8.RuneCountInString(desc); n < 1 || n > maxDescRunes || !utf8.ValidString(desc) || strings.ContainsAny(desc, "\r\n") {
-		return checked{}, false, invalid("description must be one line of 1-%d characters", maxDescRunes)
-	}
-	if err := CheckText("source", in.Source, maxSourceRunes); err != nil {
-		return checked{}, false, err
-	}
-	if len(in.Query) > maxQueryBytes || !utf8.ValidString(in.Query) {
-		return checked{}, false, invalid("query must be valid UTF-8 and at most %d KiB", maxQueryBytes>>10)
-	}
-	lang := in.Language
-	if lang == "" {
-		lang = "text"
-	}
-	if !languages[lang] {
-		return checked{}, false, invalid("language must be one of sql, json, shell, text")
-	}
-	raw, err := ValidateStep(ctx, in.View, in.Data)
-	if err != nil {
-		return checked{}, false, err
-	}
-	return checked{Description: desc, Query: in.Query, Language: lang, Source: in.Source, View: in.View, Payload: raw}, false, nil
-}
+// Field limits of a step, shared with the file pipeline.
+const (
+	MaxDescRunes    = maxDescRunes
+	MaxSourceRunes  = maxSourceRunes
+	MaxQueryBytes   = maxQueryBytes
+	MaxNameRunes    = maxNameRunes
+	MaxSummaryRunes = maxSummaryRunes
+)
 
 // ValidateStep checks one step's data for view and returns the payload JSON a step row stores. The
-// data is raw JSON so number precision and key order survive. File submits and the proof tool share
-// it with the old save path.
-func ValidateStep(ctx context.Context, view string, data json.RawMessage) ([]byte, error) {
+// data is raw JSON so number precision and key order survive.
+func ValidateStep(view string, data json.RawMessage) ([]byte, error) {
 	if len(data) == 0 {
 		return nil, invalid("data is required")
 	}
@@ -157,7 +119,7 @@ func ValidateStep(ctx context.Context, view string, data json.RawMessage) ([]byt
 	case ViewDiagram:
 		payload, err = checkDiagram(data)
 	case ViewImage:
-		payload, err = checkImage(ctx, data)
+		return nil, invalid("an image step takes a file: set data to the image file in the proof folder")
 	default:
 		return nil, invalid("view must be one of table, document, keyvalue, chart, diagram, image")
 	}
