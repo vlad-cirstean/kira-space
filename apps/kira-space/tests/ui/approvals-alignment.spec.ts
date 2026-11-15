@@ -250,6 +250,8 @@ function studioItems(): ApprovalItem[] {
       { class: 'edit', tone: 'caution' },
       {
         sessionId: 'p1',
+        taskId: 't1',
+        slug: 'q4-runbook',
         name: 'Q4 runbook',
         revision: 3,
         reason: 'Step 2 limit too low for the batch job',
