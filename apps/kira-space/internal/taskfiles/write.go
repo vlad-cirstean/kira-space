@@ -22,6 +22,9 @@ func (s *Service) restoreResult(ctx context.Context, taskID, rel string) (FileRe
 // the file is removed. It is what a denied edit and a read-only violation both end in.
 func (s *Service) Restore(ctx context.Context, taskID, rel string) error {
 	class := Classify(rel)
+	if isProofKind(class.Kind) && s.cfg.Proof != nil {
+		return s.RestoreProof(ctx, taskID, class.Slug)
+	}
 	h := s.cfg.Handlers[class.Kind]
 	if h == nil {
 		return fmt.Errorf("%w: %s", ErrNoHandler, rel)
@@ -116,6 +119,9 @@ func (s *Service) dropIntent(taskID, rel string) error {
 // edit) and what recovery and migration end in. A file that is gone is removed from the cache.
 func (s *Service) Adopt(ctx context.Context, taskID, rel, by string) error {
 	class := Classify(rel)
+	if isProofKind(class.Kind) && s.cfg.Proof != nil {
+		return s.adoptProof(ctx, taskID, class.Slug, by)
+	}
 	h := s.cfg.Handlers[class.Kind]
 	if h == nil {
 		return fmt.Errorf("%w: %s", ErrNoHandler, rel)

@@ -286,54 +286,57 @@ func (r *ProofRepo) SetViewState(id string, rev, ordinal int, state string, now 
 // AcceptEdit makes the pending revision current, copies the view state of unchanged steps onto
 // it and deletes the old revision.
 func (r *ProofRepo) AcceptEdit(id string, now time.Time) error {
-	return r.tx(func(tx *sql.Tx) error {
-		cur, pend, err := revs(tx, r.Dialect, id)
-		if err != nil {
-			return err
-		}
-		ts := now.UnixMilli()
-		vs, st, pr, ps := kiraschema.ProofViewState, kiraschema.ProofSteps, kiraschema.ProofRevisions, kiraschema.ProofSessions
-		sel := r.Dialect.Select("n."+st.SessionID, "n."+st.Rev, "n."+st.Ordinal, "v."+vs.State, "v."+vs.UpdatedAt).From(st.Table + " n")
-		sel.Join(vs.Table+" v", "v."+vs.SessionID+" = n."+st.SessionID, "v."+vs.Rev+" = "+sel.Var(cur), "v."+vs.Ordinal+" = n."+st.OriginOrdinal)
-		sel.Where(sel.Equal("n."+st.SessionID, id), sel.Equal("n."+st.Rev, pend), sel.Equal("n."+st.Diff, "unchanged"))
-		copyView := r.Dialect.InsertInto(vs.Table).Cols(vs.SessionID, vs.Rev, vs.Ordinal, vs.State, vs.UpdatedAt)
-		copyView.SQL(copyView.Var(sel))
-		if _, err := sqlb.Exec(tx, copyView); err != nil {
-			return err
-		}
-		dropOld := r.Dialect.DeleteFrom(pr.Table)
-		dropOld.Where(dropOld.Equal(pr.SessionID, id), dropOld.Equal(pr.Rev, cur))
-		if _, err := sqlb.Exec(tx, dropOld); err != nil {
-			return err
-		}
-		promote := r.Dialect.Update(pr.Table)
-		promote.Set(promote.Assign(pr.State, "current")).Where(promote.Equal(pr.SessionID, id), promote.Equal(pr.Rev, pend))
-		if _, err := sqlb.Exec(tx, promote); err != nil {
-			return err
-		}
-		// A pending edit carries the proposed name and summary; empty means the edit kept them.
-		var name, summary string
-		rq := r.Dialect.Select(pr.Name, pr.Summary).From(pr.Table)
-		rq.Where(rq.Equal(pr.SessionID, id), rq.Equal(pr.Rev, pend))
-		if err := sqlb.QueryRow(tx, rq).Scan(&name, &summary); err != nil {
-			return err
-		}
-		sess := r.Dialect.Update(ps.Table)
-		sets := []string{sess.Assign(ps.CurrentRev, pend), ps.PendingRev + " = NULL", sess.Assign(ps.UpdatedAt, ts)}
-		if name != "" {
-			var taskID string
-			tl := kiraschema.ProofTaskLinks
-			lq := r.Dialect.Select(tl.TaskID).From(tl.Table)
-			lq.Where(lq.Equal(tl.SessionID, id))
-			if err := sqlb.QueryRow(tx, lq).Scan(&taskID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-				return err
-			}
-			sets = append(sets, sess.Assign(ps.Name, name), sess.Assign(ps.NameKey, ProofNameKey(taskID, name)), sess.Assign(ps.Summary, summary))
-		}
-		sess.Set(sets...).Where(sess.Equal(ps.ID, id))
-		_, err = sqlb.Exec(tx, sess)
+	return r.tx(func(tx *sql.Tx) error { return ProofCache{r.Dialect}.Accept(tx, id, now) })
+}
+
+// Accept is AcceptEdit inside the caller's transaction.
+func (c ProofCache) Accept(tx sqlb.Querier, id string, now time.Time) error {
+	cur, pend, err := revs(tx, c.Dialect, id)
+	if err != nil {
 		return err
-	})
+	}
+	ts := now.UnixMilli()
+	vs, st, pr, ps := kiraschema.ProofViewState, kiraschema.ProofSteps, kiraschema.ProofRevisions, kiraschema.ProofSessions
+	sel := c.Dialect.Select("n."+st.SessionID, "n."+st.Rev, "n."+st.Ordinal, "v."+vs.State, "v."+vs.UpdatedAt).From(st.Table + " n")
+	sel.Join(vs.Table+" v", "v."+vs.SessionID+" = n."+st.SessionID, "v."+vs.Rev+" = "+sel.Var(cur), "v."+vs.Ordinal+" = n."+st.OriginOrdinal)
+	sel.Where(sel.Equal("n."+st.SessionID, id), sel.Equal("n."+st.Rev, pend), sel.Equal("n."+st.Diff, "unchanged"))
+	copyView := c.Dialect.InsertInto(vs.Table).Cols(vs.SessionID, vs.Rev, vs.Ordinal, vs.State, vs.UpdatedAt)
+	copyView.SQL(copyView.Var(sel))
+	if _, err := sqlb.Exec(tx, copyView); err != nil {
+		return err
+	}
+	dropOld := c.Dialect.DeleteFrom(pr.Table)
+	dropOld.Where(dropOld.Equal(pr.SessionID, id), dropOld.Equal(pr.Rev, cur))
+	if _, err := sqlb.Exec(tx, dropOld); err != nil {
+		return err
+	}
+	promote := c.Dialect.Update(pr.Table)
+	promote.Set(promote.Assign(pr.State, "current")).Where(promote.Equal(pr.SessionID, id), promote.Equal(pr.Rev, pend))
+	if _, err := sqlb.Exec(tx, promote); err != nil {
+		return err
+	}
+	// A pending edit carries the proposed name and summary; empty means the edit kept them.
+	var name, summary string
+	rq := c.Dialect.Select(pr.Name, pr.Summary).From(pr.Table)
+	rq.Where(rq.Equal(pr.SessionID, id), rq.Equal(pr.Rev, pend))
+	if err := sqlb.QueryRow(tx, rq).Scan(&name, &summary); err != nil {
+		return err
+	}
+	sess := c.Dialect.Update(ps.Table)
+	sets := []string{sess.Assign(ps.CurrentRev, pend), ps.PendingRev + " = NULL", sess.Assign(ps.UpdatedAt, ts)}
+	if name != "" {
+		var taskID string
+		tl := kiraschema.ProofTaskLinks
+		lq := c.Dialect.Select(tl.TaskID).From(tl.Table)
+		lq.Where(lq.Equal(tl.SessionID, id))
+		if err := sqlb.QueryRow(tx, lq).Scan(&taskID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		sets = append(sets, sess.Assign(ps.Name, name), sess.Assign(ps.NameKey, ProofNameKey(taskID, name)), sess.Assign(ps.Summary, summary))
+	}
+	sess.Set(sets...).Where(sess.Equal(ps.ID, id))
+	_, err = sqlb.Exec(tx, sess)
+	return err
 }
 
 // ProofNameKey is the uniqueness key of a proof name: names are unique per task, case-insensitively.
@@ -359,7 +362,7 @@ func (r *ProofRepo) RejectEdit(id string, now time.Time) error {
 	})
 }
 
-func revs(tx *sql.Tx, d sqlb.Dialect, id string) (cur, pend int, err error) {
+func revs(tx sqlb.Querier, d sqlb.Dialect, id string) (cur, pend int, err error) {
 	var c, p sql.NullInt64
 	ps := kiraschema.ProofSessions
 	sb := d.Select(ps.CurrentRev, ps.PendingRev).From(ps.Table)

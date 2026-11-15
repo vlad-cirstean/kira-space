@@ -39,6 +39,8 @@ type FileResult struct {
 	// Line is the 1-based line of an invalid file's problem, 0 when unknown.
 	Line   int
 	Notify Notify
+	// Proof is set once per proof unit, on its proof.md entry.
+	Proof *ProofResult
 }
 
 // Result is the answer of one submit, files in path order.
@@ -94,8 +96,10 @@ type Config struct {
 	// Open returns the store of a task's folder.
 	Open     func(taskID string) (store.Store, error)
 	Handlers map[Kind]Handler
-	Events   Events
-	Now      func() time.Time
+	// Proof wires the proof unit; nil leaves proof paths unhandled.
+	Proof  *ProofConfig
+	Events Events
+	Now    func() time.Time
 }
 
 // Service is the submit core. Callers serialize calls per task.
@@ -166,9 +170,33 @@ func (s *Service) Submit(ctx context.Context, req Request) (Result, error) {
 
 	pend := PendingSubmit{TaskID: req.TaskID, Session: req.Session, Reason: req.Reason}
 	ignored := 0
+	unitDone := map[string]bool{}
+	hinted := map[string]bool{}
+	if s.cfg.Proof != nil {
+		for _, slug := range unitSlugs(paths) {
+			unitDone[slug] = true
+			fr, item := s.unit(ctx, st, req, slug, present, byPath, over)
+			if fr.Path == "" {
+				continue
+			}
+			out = append(out, fr)
+			if item != nil {
+				pend.Items = append(pend.Items, *item)
+			}
+		}
+	}
 	for _, rel := range paths {
+		if c := Classify(rel); c.Slug != "" && unitDone[c.Slug] {
+			continue
+		}
 		e, ok := present[rel]
 		fr, item := s.one(ctx, st, req, rel, e, ok, byPath[rel], over)
+		if fr.Status == StatusInvalid && hinted[fr.Path] {
+			continue
+		}
+		if fr.Status == StatusInvalid && ProofFolderHint(rel) != "" {
+			hinted[fr.Path] = true
+		}
 		if fr.Status == StatusIgnored {
 			if ignored++; ignored > maxIgnoredReported {
 				continue
@@ -266,6 +294,12 @@ func (s *Service) sizeProblems(entries []store.Entry) map[string]string {
 // one processes a single path; the pending item it returns is nil unless the file waits on the user.
 func (s *Service) one(ctx context.Context, st store.Store, req Request, rel string, e store.Entry, exists bool, row model.TaskFile, over map[string]string) (FileResult, *PendingItem) {
 	hasRow := row.TaskID != ""
+	if hint := ProofFolderHint(rel); hint != "" {
+		if !exists && !strings.HasSuffix(rel, "/") {
+			return FileResult{}, nil
+		}
+		return FileResult{Path: hintPath(rel), Status: StatusInvalid, Message: hint}, nil
+	}
 	if strings.HasSuffix(rel, "/") {
 		return FileResult{Path: rel, Status: StatusIgnored, Message: "not a task file."}, nil
 	}
@@ -523,7 +557,7 @@ func (s *Service) Changed(ctx context.Context, taskID string) ([]string, error) 
 	seen := make(map[string]bool, len(entries))
 	for _, e := range entries {
 		seen[e.Rel] = true
-		if e.Dir || s.cfg.Handlers[Classify(e.Rel).Kind] == nil {
+		if e.Dir || !s.handles(Classify(e.Rel).Kind) {
 			continue
 		}
 		r, ok := byPath[e.Rel]

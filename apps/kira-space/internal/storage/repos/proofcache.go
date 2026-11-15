@@ -197,3 +197,28 @@ func originOf(m map[int]int, i int) any {
 	}
 	return nil
 }
+
+// LinkOf returns the task and proof folder of a session; ok is false when it has no folder.
+func (r *ProofRepo) LinkOf(sessionID string) (taskID, slug string, ok bool, err error) {
+	tl := kiraschema.ProofTaskLinks
+	sb := r.Dialect.Select(tl.TaskID, tl.Slug).From(tl.Table)
+	sb.Where(sb.Equal(tl.SessionID, sessionID))
+	err = sqlb.QueryRow(r.DB, sb).Scan(&taskID, &slug)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", false, nil
+	}
+	return taskID, slug, err == nil && slug != "", err
+}
+
+// SlugOf returns the folder slug of a proof session, "" when unknown.
+func (c ProofCache) SlugOf(q sqlb.Querier, sessionID string) (string, error) {
+	tl := kiraschema.ProofTaskLinks
+	sb := c.Dialect.Select(tl.Slug).From(tl.Table)
+	sb.Where(sb.Equal(tl.SessionID, sessionID))
+	var slug string
+	err := sqlb.QueryRow(q, sb).Scan(&slug)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return slug, err
+}

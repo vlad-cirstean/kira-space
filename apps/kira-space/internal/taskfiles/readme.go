@@ -8,7 +8,7 @@ import (
 )
 
 // README limits. The file is read at the start of a run, so it stays one screen: at most 35 lines,
-// the index lines at most 300 bytes each, no tool list, no proof format.
+// the index lines at most 300 bytes each, no tool list, one proof example block.
 const (
 	MaxReadmeLines     = 35
 	maxReadmeLineBytes = 300
@@ -45,6 +45,19 @@ type ReadmeInput struct {
 	Children []ReadmeChild
 }
 
+// proofExample is the one proof format block: 8 lines, each at most 300 bytes. It rides the README the
+// agent reads anyway, so a proof needs no tool and no extra file.
+var proofExample = []string{
+	"New proof: slug a-z0-9-; write images and big data into proofs/<slug>/ first, then proof.md, then submit once. Example:",
+	"---",
+	"name: Orders match ledger",
+	"summary: All 20 orders match their ledger lines.",
+	"steps:  # id a-z0-9- (keep it on edits); view table|document|keyvalue|chart|diagram|image; inline: data (<=64 KiB) or data: file here (.json .png .jpg .webp .svg)",
+	"  - {id: totals, description: Totals agree, view: table, inline: {columns: [{name: id}, {name: total}], rows: [[1, 1900]]}, query: \"select id, total from orders\", language: sql}",
+	"  - {id: shot, description: Report page, view: image, data: shot.png}",
+	"---",
+}
+
 // Readme renders README.md: at most MaxReadmeLines lines, one idea per line. Index lines beyond the
 // budget become one "more" line, so the cap holds for any task.
 func Readme(in ReadmeInput) string {
@@ -56,9 +69,10 @@ func Readme(in ReadmeInput) string {
 		fmt.Sprintf("# Task %s: %s", oneLine(in.TaskID, maxReadmeTitle), oneLine(in.Title, maxReadmeTitle)),
 		"Edit, then call submit: a change counts only after submit answers per file. Pass reason when the change needs the user's approval.",
 		"Read-only, edits undone: README.md, task.yaml, state.yaml (step, branches, setup, leases, runs, children).",
-		fmt.Sprintf("Write: handovers/draft-%s.md (your stage's handover, Markdown, <=16 KiB). links.yaml. proofs/<slug>/proof.md.", oneLine(step, 80)),
+		fmt.Sprintf("Write: handovers/draft-%s.md (your stage's handover, Markdown, <=16 KiB). links.yaml. proofs/<slug>/proof.md (format below).", oneLine(step, 80)),
 		"Ask first (submit with reason): notes/*.md (user notes), handovers/NNNN-*.md (handed), others' links, accepted proofs.",
 	}...)
+	lines = append(lines, proofExample...)
 	lines = append(lines, proofLines(in.Proofs)...)
 	room := MaxReadmeLines - len(lines)
 	lines = append(lines, childLines(in.Children, room)...)

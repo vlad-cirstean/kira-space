@@ -5,6 +5,7 @@
 package taskfiles
 
 import (
+	"fmt"
 	"path"
 	"regexp"
 	"strings"
@@ -88,7 +89,7 @@ func Classify(rel string) Class {
 		return Class{Kind: KindHandover}
 	}
 	parts := strings.Split(rel, "/")
-	if len(parts) == 3 && parts[0] == "proofs" && slugRe.MatchString(parts[1]) {
+	if len(parts) == 3 && parts[0] == "proofs" && slugRe.MatchString(parts[1]) && len(parts[1]) <= MaxSlugLen {
 		switch name := parts[2]; {
 		case name == ProofFile:
 			return Class{Kind: KindProof, Slug: parts[1]}
@@ -99,6 +100,60 @@ func Classify(rel string) Class {
 		}
 	}
 	return Class{}
+}
+
+// MaxSlugLen is the longest proof folder name.
+const MaxSlugLen = 40
+
+var nonSlug = regexp.MustCompile(`[^a-z0-9]+`)
+
+// SuggestSlug turns a folder name into a valid slug.
+func SuggestSlug(name string) string {
+	s := strings.Trim(nonSlug.ReplaceAllString(strings.ToLower(name), "-"), "-")
+	if len(s) > MaxSlugLen {
+		s = strings.Trim(s[:MaxSlugLen], "-")
+	}
+	if s == "" {
+		s = "proof"
+	}
+	return s
+}
+
+// ProofFolderHint explains a path under proofs/ that Classify ignores: a folder name that breaks the
+// slug rule, a file deeper than proofs/<slug>/, a file outside any folder or a name no proof file may
+// have. It is "" for every other path, valid proof files included.
+func ProofFolderHint(rel string) string {
+	trimmed := strings.TrimSuffix(rel, "/")
+	if !strings.HasPrefix(trimmed, "proofs/") || path.Clean(trimmed) != trimmed || Classify(trimmed).Kind != KindIgnored && Classify(trimmed).Slug != "" {
+		return ""
+	}
+	parts := strings.Split(trimmed, "/")
+	for _, seg := range parts {
+		if strings.HasPrefix(seg, ".") {
+			return ""
+		}
+	}
+	if !slugRe.MatchString(parts[1]) || len(parts[1]) > MaxSlugLen {
+		return fmt.Sprintf("proofs/%s/: folder name must be a-z, 0-9 and - (at most %d characters); rename it to proofs/%s/.", parts[1], MaxSlugLen, SuggestSlug(parts[1]))
+	}
+	switch {
+	case len(parts) == 2 && !strings.HasSuffix(rel, "/"):
+		return fmt.Sprintf("%s: a proof is a folder. Write proofs/<slug>/proof.md.", rel)
+	case len(parts) > 3:
+		return fmt.Sprintf("%s: too deep. Proof files go directly in proofs/%s/.", trimmed, parts[1])
+	case len(parts) == 3 && Classify(trimmed).Kind == KindIgnored:
+		return fmt.Sprintf("%s: not a proof file. Use proof.md, <id>.json (a-z, 0-9, -), or an image: png, jpg, webp or svg.", trimmed)
+	}
+	return ""
+}
+
+// hintPath is the path a folder hint is reported on: the folder for a bad name, else the path itself.
+func hintPath(rel string) string {
+	parts := strings.Split(strings.TrimSuffix(rel, "/"), "/")
+	if len(parts) >= 2 && (!slugRe.MatchString(parts[1]) || len(parts[1]) > MaxSlugLen) {
+		return "proofs/" + parts[1] + "/"
+	}
+	return rel
 }
 
 // KiraOwned reports whether only Kira writes the kind: any other write is restored.

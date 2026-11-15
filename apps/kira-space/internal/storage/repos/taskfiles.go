@@ -128,6 +128,18 @@ func (t *TaskFilesTx) File(taskID, relPath string) (*model.TaskFile, error) {
 	return taskFileOne(t.tx, t.dialect.Select(taskFileCols...).From(kiraschema.TaskFiles.Table), taskID, relPath)
 }
 
+// FilesUnder lists the rows whose path starts with prefix, in path order. The prefix must hold no LIKE wildcard.
+func (t *TaskFilesTx) FilesUnder(taskID, prefix string) ([]model.TaskFile, error) {
+	c := kiraschema.TaskFiles
+	sb := t.dialect.Select(taskFileCols...).From(c.Table)
+	sb.Where(sb.Equal(c.TaskID, taskID), sb.Like(c.RelPath, prefix+"%")).OrderBy(c.RelPath)
+	rows, err := sqlb.Query(t.tx, sb)
+	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.TaskFile, bool, error) {
+		f, err := scanTaskFile(rows)
+		return f, true, err
+	})
+}
+
 // PutFile inserts or replaces the row.
 func (t *TaskFilesTx) PutFile(f model.TaskFile) error {
 	c := kiraschema.TaskFiles

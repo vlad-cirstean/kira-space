@@ -10,6 +10,7 @@ import (
 // they commit with the index rows.
 type Tx interface {
 	File(taskID, relPath string) (*model.TaskFile, error)
+	FilesUnder(taskID, prefix string) ([]model.TaskFile, error)
 	PutFile(model.TaskFile) error
 	DeleteFile(taskID, relPath string) error
 	PutIntent(model.TaskFileIntent) error
