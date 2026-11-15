@@ -22,10 +22,11 @@ Final user answers. Binding for every build Part.
 - Leases stay in `state.yaml` (user): the per-task file lists the task's leases; a lease change
   rewrites only the affected tasks' `state.yaml`. Lease state stays in Kira's lease book, changed
   only through `lease`; never driven by a file edit.
-- Waits: deferred to Part 5 (section 9.2). Until Part 5 lands, `task_info` stays unchanged. Part
-  5's planner picks between (d) Kira pushes "worktree ready" like a lease grant and `task_info` goes
-  (recommended default, if its first check passes), (a) `task_info` slimmed to wait-only (fallback),
-  (b) and (c); F5 is re-benchmarked either way.
+- Waits (settled for Part 5, section 9.2): `task_info` goes; no wait tool. A `branches` request
+  returns only once each requested worktree's setup is ready or failed, within the call deadline;
+  the same request again is the ready check. Interactive sessions also get a lease-style push when
+  a setup they asked about ends. `state.yaml` `repos[].setup` carries state and failure note. Until
+  Part 5 lands, `task_info` stays unchanged. F5 re-benchmarked (14.1).
 - Content is files (notes, handovers, links incl. Jira and PR slots, proofs with images as files).
   State stays in SQLite (approvals, stages, branches, leases, runs, status, workflow, plan
   placement) and is never driven by a file edit. `state.yaml` and `task.yaml` are read-only mirrors
@@ -38,7 +39,7 @@ Final user answers. Binding for every build Part.
 - Q3 yes: folders by task id, `<home>/tasks/<taskId>/`.
 - Q9 yes, adjusted by spike: merged `branches {action: declare|request|rename|change}` and
   `lease {action: acquire|release}`; `run_outcome`, `lease_status`, `operations` list fold into
-  `state.yaml`; `cancel_operation` tool. Branch setup wait: Part 5 decides (Waits bullet above).
+  `state.yaml`; `cancel_operation` tool. Branch setup wait: blocking `branches` request (Waits bullet above).
 - Q10: no proof outside a task. Removed: standalone proofs folder, kira-studio `proof_save` and
   `proof_list` for every client, Window menu "Validation proof", standalone picker, history pane,
   unattached sessions, attach and detach. List in section 10.
@@ -70,8 +71,8 @@ From SPEC P643 Scope, the design talk and the spike. SPEC conflicts and how the 
   as files): SPEC wins (user, final). No `proof` tool; the files arm gap is reported (14.1).
 - "for standalone sessions `submit` is on kira-studio": dropped by Q10 (no proof outside a task).
 - "one-time migration with backup": no backup (Q11).
-- Tool list: SPEC "about 6"; plan 6 for a run, 7 for an orchestrator run (section 9.3), one fewer
-  each if Part 5 removes `task_info` (9.2).
+- Tool list: SPEC "about 6"; plan 5 for a run, 6 for an orchestrator run (section 9.3; Part 5
+  removes `task_info`, 9.2).
 
 ## 2. Current state map
 
@@ -418,8 +419,8 @@ New item to old tool:
 | Child task | `create_task` | b | unchanged: `create_task`, b, 30 min |
 
 So `submit` never blocks. Tools that blocked keep their waits: `branches` (request, rename,
-change), `create_task`, kira-studio db tools. The setup wait (`task_info waitSeconds` today) is
-Part 5's decision (9.2).
+change), `create_task`, kira-studio db tools. From Part 5 a `branches` request also waits for the
+worktree setup, replacing `task_info waitSeconds` (9.2).
 
 A `pending` item's answer reaches the agent through the lease notice path (`SendIfIdle`, hook
 reply, next tool result `notices`) and the `pending` list in `state.yaml`. Deny restores the
@@ -617,9 +618,9 @@ Edit task files, then call submit (finish_step submits for you).
 - Last line: the submit reminder. `finish_step` suffix stays last in step prompts.
 - `HeadlessSpaceInstructions` rewritten: `Kira Space tools for this task. Task state is in
   state.yaml in the task folder. Declare repos and create or change branches only with branches;
-  never git branch or git worktree. Edit task files, then call submit.` (Part 3 writes it without
-  the `state.yaml` sentence; Part 5 adds that sentence and the setup-wait sentence its 9.2 choice
-  needs.)
+  never git branch or git worktree. A branches request returns when the worktree is ready. Edit
+  task files, then call submit.` (Part 3 writes it without the `state.yaml` and setup sentences;
+  Part 5 adds both, 9.2.)
 
 ToolSearch limits (spike 1b, measured): built-in tool schemas 33.1k tokens and the 2.4k system
 prompt are fixed by Claude Code (87 percent of turn 1); MCP schemas cost 0 at turn 1 and are paid
@@ -631,14 +632,14 @@ hint removes that failure, it does not remove the ToolSearch turn.
 ## 8. State file (Part 5)
 
 `state.yaml` header: `# Read-only. Kira rewrites this file. Change state only with Kira tools:
-branches, lease, cancel_operation, finish_step.` plus the setup-wait sentence of Part 5's 9.2
-choice (Part 2's `headers.go` text names `task_info`; Part 5 updates it). Coarse state only:
+branches, lease, cancel_operation, finish_step. A branches request waits until the worktree is
+ready.` (Part 2's `headers.go` text names `task_info`; Part 5 replaces it.) Coarse state only:
 
 ```yaml
 rev: 41                       # increments per rewrite; no file times
 task: {id, kind, status, step: {id, name, position, of}, workflow}
 repos:                        # per repo: branch, base, worktree, setup {state, note}, mismatch
-registered: [...]             # only while the task has no repo (task_info rule today)
+registered: [...]             # names, always (task_info includeRegistered goes)
 leases: [{queue, state: held|queued, position, holder}]
 operations: [{opId, kind, subject, startedAt}]
 runs: [{runId, kind, step, state, outcome}]   # last 3; outcome capped at 2 KiB
@@ -677,83 +678,91 @@ it)".
 | New proof | agent Writes `proofs/<slug>/proof.md` (and side files) plus `submit` | F2 files FP 1.31 (1c), haiku 1.38 (1) | user chose files; gap reported (14.1) |
 | Proof edit | Read, Edit `proof.md` by step id, `submit {reason}` | F3 files FL 1.28, FA 1.18 (inconclusive), FP 1.24 | user chose files; gap reported (14.1) |
 | Child task | `create_task` tool, unchanged | F6 files FL 1.36, FF 1.40 vs gate 1.1; context 1.06 to 1.09 | user dropped drafts |
-| Branch setup wait | `task_info {waitSeconds}` until Part 5; then 9.2 choice | F5 FL 1.26, FF 1.17 (1 run each, inconclusive); haiku 1.30 | Part 5 decides; F5 re-benchmarked |
+| Branch setup wait | `task_info {waitSeconds}` until Part 5; then blocking `branches` request plus session push (9.2) | F5 FL 1.26, FF 1.17 (1 run each, inconclusive); haiku 1.30 | no wait tool (user); F5 re-benchmarked |
 
-### 9.2 Wait decision (open, Part 5)
+### 9.2 Setup wait (settled, Part 5)
 
-Until Part 5 lands, `task_info` stays, schema and handler unchanged (`repo`, `branch`,
-`waitSeconds`, `includeRegistered`). Part 5's planner decides the setup wait. User direction:
-`task_info` should disappear; at most a ready-check of the worktree survives, no other details.
+Until Part 5 lands, `task_info` stays, schema and handler unchanged. User direction: `task_info`
+goes; at most a worktree-ready check survives; the model is leases (state in `state.yaml`, Kira
+pushes on grant).
 
-Today (code, `codegraph_explore`): `task_info {repo, branch, waitSeconds}` calls
-`TaskBoard.BranchStatus` (`ade/agenttools.go`), which polls the `ade_worktree_setup` row and the
-`setupDone` channel while the state is `running`, reporting progress. A setup starts in
-`startSetup` (`ade/setup.go`) from: `request_branches` (`ade/agenttools.go`, `branchadopt.go`),
-`launchGate` for a fresh worktree (`ade/launches.go`), board writes and the user's Retry setup.
-Kira already gates launches on setup: `queueRun` holds a run `pending` with `noteWaitingSetup`
-until the setup is ready (`ade/runs.go` `gateNote`, released by `onSetupReady`), and
-`launchGate` refuses a session launch with `E_PREPARING` while it runs (the UI waits with
-`useSetupWait`). So an agent normally starts only after its worktree is ready; the wait happens
-when the agent itself asked for branches mid-turn, or after a Retry setup.
+Facts (code, `codegraph_explore`):
 
-Options:
+- A setup starts only in `startSetup` (`ade/setup.go`). Seven callers: `createBranch` (agent
+  request, after approval, `ade/agenttools.go`), `applyExisting` (request for an existing branch,
+  `ade/branchadopt.go`), `prepareAttached` (UI attach, review to task, `setTaskBranch`,
+  `addHostLink`, `ade/board_writes.go`), `launchGate` (session launch, takeover, rebase; fresh
+  worktree, `ade/launches.go`), `prepareWorktree` (step start, `ade/runs.go`), `RetrySetup` (user).
+  Rename and change start none (change switches in the same folder). `create_task` creates branch
+  rows only; the child's setup runs at its step start.
+- No agent launches before its launch worktree is ready: `queueRun` holds a step run `pending`
+  (`gateNote`: waiting, failed, worktree gone) until `onSetupReady`; `launchGate` refuses session,
+  takeover and rebase with `E_PREPARING` (UI waits, `useSetupWait`) or the failure text.
+- Mid-run waits come from: the agent's own branch request (new branch, or existing branch; an agent
+  step with an unnamed branch starts in the repo root and requests mid-run), and a setup the agent
+  did not start on a branch it uses (user Retry, UI attach, another session's request).
+- Roles with Space tools: headless step run (`superviseAgent`, `OneShot`, one turn) and interactive
+  sessions (manual, run-step TUI, review agent, orchestrator session). Rebase runs and review rounds
+  get no Space grant (`space := !rebase && !round`).
+- A request already blocks up to 30 min for approval (`defaultBranchRequestWait`). Harness MCP call
+  timeout 35 min (`harness.MCPCallTimeout`). Prepare timeout 15 min default, 2 h max.
+- Lease channel (`ade/leases.go`): `deliverLease`, `flushLease` (`SendIfIdle`), Stop and
+  UserPromptSubmit hook replies, lease tool reply `notices`. Reaches sessions mid-turn and idle.
+  Misses headless runs: `flushLease` returns for `run:` keys, runs emit no hooks, and `endLeases`
+  drops pending messages when the one turn ends.
+- Boot `Recover` (`ade/recover.go`) marks running setups failed with the restart reason, sets
+  pending runs' note to failed and stops all sessions; nothing resumes by itself.
 
-- (a) `task_info` slimmed to wait-only: `{repo, branch, waitSeconds}`, reply `{setup: ready|failed,
-  note}`; everything else read from `state.yaml`. Fallback default.
-- (b) Fold the wait into the `branches` request reply (optional `waitForSetup`, up to 600 s after
-  the request is approved); `task_info` removed. Safe only if no agent waits for a setup it did not
-  trigger.
-- (c) Kira delays the step until setup is done. Exists for launches (above); covers no setup an
-  agent triggers mid-run.
-- (d) Push, like a lease grant: `branches` replies at once (`setup running`); when the setup ends
-  Kira delivers "Kira: worktree of <branch> is ready at <path>." (or "setup of <branch> failed:
-  <note>. Tell the user; do not edit there.") through the lease delivery channel; `state.yaml`
-  `repos` carries branch, worktree and `setup {state, note}`; `task_info` removed. Recommended
-  default if the first check below passes.
+Design:
 
-Lease delivery channel, findings (code read for this plan, `ade/leases.go`, `ade/tracker.go`):
+- Blocking request, every role. `branches {action: request}` replies per slot only once its setup
+  is `ready` or `failed`, not at `running`. Covers new branches (after approval and create) and
+  existing branches whose setup is running, whoever started it. One deadline per call for approval
+  plus setup: call start plus 33 min (`harness.MCPCallTimeout` minus 2 min). Progress
+  `preparing <branch>: <note>` through `ReportProgress`, as `BranchStatus` does now. The loop
+  (`setupDone` channel, 5 s row re-read fallback) moves from `BranchStatus` to new
+  `ade/setupwait.go`, called by `RequestBranches` (`ade/branchrequest.go`) and `applyExisting`
+  before the reply is built. The same request again is the wait and the ready check: no other tool,
+  no polling.
+- Waiter leaving (Esc, run end, context cancel) never cancels the setup. `cancel_operation` on the
+  setup op fails it; a blocked waiter then gets `failed`.
+- Push, interactive sessions only, supplement. In-memory watcher per (repo, branch, session owner
+  key), added when a request to that session ends before the setup does (deadline, or wait
+  cancelled by Esc) or replies `failed`. At setup end (`runSetup` end, `recordSetupFailure`) Kira
+  delivers to each watcher not blocked in a request on that branch, through the lease delivery path
+  generalized to `deliverNotice` and `takeNotices` (`ade/leases.go`); notices also ride on
+  `branches` replies. Ready removes the watcher; failed keeps it, so a later Retry reaches it.
+  `run:` owners get no watcher (unreachable; their request blocks). Watchers drop on owner end
+  (`endLeases`).
+- Reply `Next` texts (`branchInfo`):
+  - ready: `Ready. Work in <path>.` (unchanged)
+  - failed: `The worktree setup failed. Tell the user; do not edit until it is fixed. Reason:
+    <note>` (unchanged)
+  - deadline, run: `Still preparing. Call branches with action request and the same branch again
+    to keep waiting; do not edit in <path> yet.`
+  - deadline, session: `Still preparing. Kira tells you when it is ready; do other work or end
+    your turn. Do not edit in <path> yet.`
+  - none: unchanged except `request_branches` reads `branches` with action request.
+- Push texts:
+  - `Kira: the worktree of <branch> (<repo>) is ready at <path>. Continue the work that waited for
+    it.`
+  - `Kira: the worktree setup of <branch> (<repo>) failed: <note>. Tell the user; do not edit
+    there until it is fixed.`
+- `state.yaml` `repos[].setup: {state: none|running|ready|failed, note}` from `setupInfoFrom` (no
+  row with a worktree = `ready`, no worktree = `none`). `note` = failure reason when `failed`, else
+  omitted. Rewritten on `startSetup`, setup end and `recordSetupFailure` (through `notifyBoard`),
+  and once for live tasks at board start after `Recover`.
+- Restart: watchers and queued messages are memory only. `Recover` marks running setups failed
+  with the restart reason and stops sessions; `state.yaml` shows `failed` with that reason. A
+  resumed agent tells the user; after Retry a `branches` request waits again.
+- Timeouts: the wait is bound by the call deadline; the setup by the prepare timeout. A setup
+  outlasting the call gets the deadline reply: a run calls again, a session gets the push.
+- Launch gating (`queueRun`, `launchGate`) stays as is.
 
-- Path: `onLeaseGrant` to `deliverLease` (queue per owner key, drop if the owner ended) to
-  `flushLease` (`Tracker.SendIfIdle`: pastes into the terminal only while the turn is idle, no draft
-  in the prompt box). Otherwise the next Stop hook reply (`leaseHookReply`: `Block` keeps the agent
-  working) or UserPromptSubmit (`Context`), the idle handler, or the owner's next lease tool reply
-  (`notices` from `takeLeaseNotices`) carries it. A hook reply that never arrived is re-queued first
-  in line (`requeueLeaseReply`).
-- (1) Interactive sessions (manual step, review agent, orchestrator session): reached. Mid-turn the
-  message waits for the Stop hook (blocks the stop, agent continues with it) or the next lease
-  reply; idle turns get it typed in by `SendIfIdle`, which wakes the agent.
-- (2) Headless runs mid-run: only partly. `flushLease` returns for `run:` keys (no terminal) and
-  headless runs emit no hook events (`leaseState.runs` comment), so the only carrier is the next
-  lease tool reply's `notices`. A run that calls no lease tool never hears it. Passing (d) needs
-  `notices` on every `kira-space` tool reply (via the `mcpRecorder` hook or the server wrapper),
-  not only lease tools; still the run must call some Kira tool after the setup ends.
-- (3) A turn that ended while waiting: session = reached (idle, `SendIfIdle` types it in and wakes
-  the agent). Headless run = not reachable: a headless run is one turn (`OneShot`), its end calls
-  `endLeases`, which drops pending messages and marks the owner ended.
-- Agent between `setup running` and the message: a session continues other work or ends its turn
-  and is woken by the paste. A headless run must not end its turn (the run would finish); with no
-  other work it has nothing to call but a wait, which is (a) or (b).
-- Failure modes: setup fails = same channel, failure text with the note (`runSetup` already sets
-  `noteSetupFailed`); message lost (hook reply failed) = re-queued; owner ended = dropped, harmless;
-  app restart = pending messages are memory only and lost, setup rows left `running` by a quit stay
-  `running` (R18) until rerun, sessions resume without the push; `state.yaml` `repos[].setup` is
-  the truth to read after any doubt.
-
-Preliminary verdict from these findings: (d) passes for interactive sessions and fails (2) and (3)
-for headless runs as the channel stands. Part 5's first check, with `codegraph_explore`: does any
-agent wait for a setup it did not trigger (Retry setup by the user, a second session's
-`request_branches` on the same task, adopt), and which roles call `task_info` with `waitSeconds`
-today (flows `taskinfowait`, real `claude` rows). Then:
-
-- (d) for every role if the planner adds a headless carrier that meets (2) and (3) (for example,
-  `branches` request in a headless run blocks until setup ends, which is (b) for runs only).
-- Else (d) for sessions plus (b) for headless runs when the check shows no run waits for a setup it
-  did not trigger; else (a) as the fallback for headless runs, or for all roles if mixing costs
-  more than one tool.
-
-F5 is re-benchmarked in the Part 5 round whichever option lands (a needs the wait schema, b the
-request schema, d the push). Declined earlier and still declined: `branches {action: wait}`
-(loaded schema carries four merged tools' texts, F5 search context 1.7k to 1.8k against T 0).
+Rejected: (a) wait-only `task_info`, one more tool (kept only as the F5 fallback, 14.1); (c) launch
+gating alone, exists but misses mid-run requests; (d) push alone, cannot reach a headless run
+mid-turn or after its one turn; `branches {action: wait}`, extra schema text (spike F5 search
+context 1.7k to 1.8k against T 0).
 
 ### 9.3 Tool table
 
@@ -761,7 +770,7 @@ request schema, d the push). Declined earlier and still declined: `branches {act
 |---|---|---|---|
 | `finish_step` | kira-space | runs; summary = handover | kept; summary moves to draft file; implicit submit |
 | `submit` | kira-space | | new, every Space grant |
-| `task_info` | kira-space | Space | until Part 5 unchanged; then 9.2: removed (d, b) or wait-only (a) |
+| `task_info` | kira-space | Space | until Part 5 unchanged; then removed: task facts in `state.yaml`, setup wait in `branches` request (9.2) |
 | `declare_repos`, `request_branches`, `rename_branch`, `change_branch` | kira-space | Space | merged: `branches {action: declare|request|rename|change}` |
 | `acquire_lease`, `release_lease` | kira-space | Space | merged: `lease {action: acquire|release}`; notices stay on replies |
 | `operations` | kira-space | Space | list in `state.yaml`; cancel: `cancel_operation` |
@@ -778,18 +787,39 @@ Counts (conditional tools excluded):
 
 | Role | Before | After | Tools after |
 |---|---|---|---|
-| Run | 12 | 6 | `finish_step`, `submit`, `task_info`, `branches`, `lease`, `cancel_operation` |
-| Session without run (manual, review agent) | 12 | 5 | run set minus `finish_step` |
-| Orchestrator run | 15 | 7 | run set plus `create_task` |
-| Orchestrator session | 15 | 6 | session set plus `create_task` |
+| Run | 12 | 5 | `finish_step`, `submit`, `branches`, `lease`, `cancel_operation` |
+| Session without run (manual, review agent) | 12 | 4 | run set minus `finish_step` |
+| Orchestrator run | 15 | 6 | run set plus `create_task` |
+| Orchestrator session | 15 | 5 | session set plus `create_task` |
 | kira-studio proof tools, any client | 2 | 0 | |
 
 Removed names: `handover`, `run_outcome`, `report_artifacts`, `operations`, `lease_status`,
-`list_tasks`, `task_chain`, `proof_save`, `proof_list`. Merged away: `declare_repos`,
-`request_branches`, `rename_branch`, `change_branch`, `acquire_lease`, `release_lease`. New:
-`submit`, `branches`, `lease`, `cancel_operation`. `lease` calls stay the heartbeat
-(`mcpRecorder`). Counts assume `task_info` stays (option a); options (b) and (d) take one off each
-role: run 5, session 4, orchestrator run 6, orchestrator session 5.
+`list_tasks`, `task_chain`, `task_info`, `proof_save`, `proof_list`. Merged away:
+`declare_repos`, `request_branches`, `rename_branch`, `change_branch`, `acquire_lease`,
+`release_lease`. New: `submit`, `branches`, `lease`, `cancel_operation`. `lease` calls stay the
+heartbeat (`mcpRecorder`).
+
+`task_info` removal, Part 5 (paths as in 7.3):
+
+- `agentmcp/space.go`: `addTaskInfoTool`, `taskInfoArgs`, `maxWaitSeconds`,
+  `SpaceTools.TaskInfo`, `SpaceTools.BranchStatus`, `TaskInfo.Branch` go. `TaskInfo` stays as the
+  declare reply shape. The request handler passes the owner key and the progress reporter.
+- `agentmcp/tools.go`: `task_info` out of `SpaceToolIDs`.
+- `ade/agenttools.go`: `TaskBoard.TaskInfo` and `BranchStatus` go; `branchInfo` `Next` texts per
+  role (9.2). New `ade/setupwait.go`: wait loop, watchers, push. `ade/branchrequest.go`,
+  `ade/branchadopt.go`: wait before the reply. `ade/setup.go`: setup end and `recordSetupFailure`
+  notify watchers and the state writer. `ade/leases.go`: `deliverNotice`, `takeNotices`.
+- `llmprompts/registry.go`: `HeadlessToolTaskInfo` and its args go; arg texts "from task_info"
+  (declare repo, request repo, `create_task` `repos.repo`) read "from state.yaml";
+  `headless.space.suffix` names `branches`, `lease`, `cancel_operation`, `submit` and says a
+  `branches` request returns when each worktree is ready; its `FilesVars` example names
+  `mcp__kira-space__branches`; `branches` description adds "request returns when the worktree is
+  ready or its setup failed". `HeadlessSpaceInstructions` per 7.6.
+- `internal/taskfiles/headers.go`: `headerState` per section 8.
+- Texts and fixtures: `internal/llmprompts/testdata/golden/ade.*.txt`, `budget.tsv`, contracts
+  `ade-automation.json` and `ade-run.json`, `tests/unit/ade-v2-dialog.spec.ts` `SPACE_NOTE`,
+  `termflow/smart_test.go`, site `reference/mcp-tools.md`. `tests/claude/details_spike*` and the
+  bench T stubs keep `task_info` (frozen baseline).
 
 ## 10. Proofs
 
