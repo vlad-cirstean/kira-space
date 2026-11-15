@@ -7,10 +7,10 @@ import (
 	"unicode/utf8"
 )
 
-// README limits. The file is read at the start of a run, so it stays one screen: at most 25 lines,
+// README limits. The file is read at the start of a run, so it stays one screen: at most 35 lines,
 // the index lines at most 300 bytes each, no tool list, no proof format.
 const (
-	MaxReadmeLines     = 25
+	MaxReadmeLines     = 35
 	maxReadmeLineBytes = 300
 	maxReadmeProofs    = 5
 	maxReadmeChildren  = 20
@@ -56,8 +56,8 @@ func Readme(in ReadmeInput) string {
 		fmt.Sprintf("# Task %s: %s", oneLine(in.TaskID, maxReadmeTitle), oneLine(in.Title, maxReadmeTitle)),
 		"Edit, then call submit: a change counts only after submit answers per file. Pass reason when the change needs the user's approval.",
 		"Read-only, edits undone: README.md, task.yaml, state.yaml (step, branches, setup, leases, runs, children).",
-		fmt.Sprintf("Write: handovers/draft-%s.md (your stage's handover, Markdown, <=16 KiB). links.yaml. Proofs: use the proof tool, or edit proofs/<slug>/proof.md and submit.", oneLine(step, 80)),
-		"Ask first (submit with reason): notes/*.md (user notes), handovers/NNNN-*.md (handed), others' links.",
+		fmt.Sprintf("Write: handovers/draft-%s.md (your stage's handover, Markdown, <=16 KiB). links.yaml. proofs/<slug>/proof.md.", oneLine(step, 80)),
+		"Ask first (submit with reason): notes/*.md (user notes), handovers/NNNN-*.md (handed), others' links, accepted proofs.",
 	}
 	lines = append(lines, proofLines(in.Proofs)...)
 	room := MaxReadmeLines - len(lines)

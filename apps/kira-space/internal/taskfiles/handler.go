@@ -43,10 +43,10 @@ type Handler interface {
 
 // PendingItem is one file waiting on the user.
 type PendingItem struct {
-	Path    string
-	Kind    Kind
-	Cause   Cause
-	Changes []Change
+	Path      string
+	Kind      Kind
+	Cause     Cause
+	Changes   []Change
 	Collision *Collision
 }
 

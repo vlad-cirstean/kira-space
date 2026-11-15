@@ -53,7 +53,7 @@ func TestSubmitNoteNeedsReason(t *testing.T) {
 	e.seed(rel, "user note\n")
 	e.disk(rel, "agent edit\n")
 	f := e.submit(RoleRun, "s1", "").find(rel)
-	want := ReasonError(rel, CauseNote, "submit")
+	want := ReasonError(rel, CauseNote)
 	if f.Status != StatusInvalid || f.Message != want {
 		t.Fatalf("got %q %q\nwant %q", f.Status, f.Message, want)
 	}

@@ -63,7 +63,7 @@ func TestDecide(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			d := Decide("f", "submit", tc.in)
+			d := Decide("f", tc.in)
 			if d.Outcome != tc.want || d.Cause != tc.cause || d.Notify != tc.notify {
 				t.Fatalf("got %+v, want outcome %s cause %q notify %q", d, tc.want, tc.cause, tc.notify)
 			}
@@ -75,7 +75,7 @@ func TestDecide(t *testing.T) {
 }
 
 func TestReasonError(t *testing.T) {
-	got := ReasonError("proofs/orders/proof.md", CauseProof, "submit")
+	got := ReasonError("proofs/orders/proof.md", CauseProof)
 	want := `proofs/orders/proof.md: needs reason (the user approves changes to an accepted proof). Call submit again with {"reason": "order 12 corrected"}.`
 	if got != want {
 		t.Fatalf("got %q\nwant %q", got, want)

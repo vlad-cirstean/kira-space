@@ -5,7 +5,7 @@ package taskfiles
 // needs it. Kira never rewrites an agent-written file to add one.
 const (
 	headerLinks = "Kira links. Edit, then call submit (reason when you change another author's link)."
-	headerProof = "Kira proof. Edit, then call submit (reason when the proof is accepted). Or call the proof tool."
+	headerProof = "Kira proof. Edit, then call submit (pass reason to submit when the proof is accepted)."
 	headerState = "Read-only. Kira rewrites this file. Change state only with Kira tools: branches, lease, cancel_operation, finish_step; task_info waits for a setup."
 	headerTask  = "Read-only. Kira rewrites this file. It mirrors the task definition; change it only in the app."
 )

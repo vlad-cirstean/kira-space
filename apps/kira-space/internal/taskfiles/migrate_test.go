@@ -33,7 +33,9 @@ func (f *fakeExporter) Export(ctx context.Context, _ string, st store.Store) (Ma
 	return Manifest{Paths: []string{"notes/20261101T090000-a1.md", "notes/20261101T090001-b2.md"}}, nil
 }
 
-func (f *fakeExporter) Verify(context.Context, string, store.Store, Manifest) error { return f.failVerify }
+func (f *fakeExporter) Verify(context.Context, string, store.Store, Manifest) error {
+	return f.failVerify
+}
 
 func (f *fakeExporter) Record(context.Context, Tx, string, Manifest) error {
 	f.recorded++

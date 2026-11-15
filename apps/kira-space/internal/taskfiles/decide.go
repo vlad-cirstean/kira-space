@@ -113,9 +113,8 @@ type Decision struct {
 	Collision *Collision
 }
 
-// Decide applies the matrix of plan section 7.3 to one change. rel names the file in messages and
-// tool is the tool the agent calls again ("submit" or "proof").
-func Decide(rel, tool string, in Input) Decision {
+// Decide applies the matrix of plan section 7.3 to one change. rel names the file in messages.
+func Decide(rel string, in Input) Decision {
 	switch {
 	case !in.Role.Agent():
 		return Decision{Outcome: Accept}
@@ -133,7 +132,7 @@ func Decide(rel, tool string, in Input) Decision {
 		return Decision{Outcome: Accept, Notify: notify}
 	}
 	if strings.TrimSpace(in.Reason) == "" {
-		return Decision{Outcome: Invalid, Cause: cause, Message: ReasonError(rel, cause, tool)}
+		return Decision{Outcome: Invalid, Cause: cause, Message: ReasonError(rel, cause)}
 	}
 	return Decision{Outcome: Pending, Cause: cause, Collision: in.Collision}
 }
@@ -181,12 +180,12 @@ var reasonText = map[Cause][2]string{
 
 // ReasonError is the one-line message of a change that needs a reason and has none. It names the
 // field and gives an example, so the agent retries once.
-func ReasonError(rel string, cause Cause, tool string) string {
+func ReasonError(rel string, cause Cause) string {
 	t := reasonText[cause]
 	if t[0] == "" {
 		t = [2]string{"the user approves this change", "what changed and why"}
 	}
-	return fmt.Sprintf("%s: needs reason (%s). Call %s again with {\"reason\": %q}.", rel, t[0], tool, t[1])
+	return fmt.Sprintf("%s: needs reason (%s). Call submit again with {\"reason\": %q}.", rel, t[0], t[1])
 }
 
 // Reason limits, in runes.

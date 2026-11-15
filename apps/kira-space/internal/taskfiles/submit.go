@@ -86,8 +86,6 @@ type Request struct {
 	Paths   []string
 	Reason  string
 	Session Session
-	// Tool names the tool in error texts: "submit" (default) or "proof".
-	Tool string
 }
 
 // Config wires a Service.
@@ -133,9 +131,6 @@ func writerName(r Role, key string) string {
 // its cache, decides, applies what is accepted, restores what is refused and raises one approval for
 // what waits on the user.
 func (s *Service) Submit(ctx context.Context, req Request) (Result, error) {
-	if req.Tool == "" {
-		req.Tool = "submit"
-	}
 	reason, err := CleanReason(req.Reason)
 	if err != nil {
 		return Result{}, err
@@ -370,7 +365,7 @@ func (s *Service) decide(ctx context.Context, st store.Store, req Request, rel s
 		var notify Notify
 		var cause Cause
 		for _, c := range changes {
-			d := Decide(rel, req.Tool, Input{
+			d := Decide(rel, Input{
 				Role: req.Session.Role, Kind: class.Kind, Op: c.Op, Own: c.Own, Slot: c.Slot,
 				Step: class.Step, CurrentStep: req.Session.Step, ProofAccepted: proofAccepted,
 				Collision: coll, Reason: req.Reason,

@@ -18,7 +18,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P643 Part 1 | Details on disk: spike, files vs tools on real `claude`; design plan, user approves before the build | Done |
 | P643 Part 2 | Details on disk: foundation (store seam, `task_files`, submit core, migration framework, proof validator export, README generator, task folder grant, bench harness) | Done |
 | P643 Part 3 | Details on disk: notes, handovers, links as files, `submit` tool, `finish_step` change, approvals, disk banner, migration exporters, prompts; round F1 | Todo |
-| P643 Part 4 | Details on disk: proofs as files, `proof` tool, image formats, single-proof window, retention removed, proof migration (Stream A); round F2, F3 | Todo |
+| P643 Part 4 | Details on disk: proofs as files written by the agent and sent with `submit` (no proof tool), image formats, single-proof window, retention removed, proof migration (Stream A); round F2, F3 | Todo |
 | P643 Part 5 | Details on disk: `state.yaml` and `task.yaml`, branch, lease, cancel tools, tool removals, orchestrator chain reads, children add-dir (Stream B); round F4 to F6, final benchmark | Todo |
 | P644 | Chapter non-UI full run, 2 code review rounds | Todo |
 | P645 | Close chapter | Todo |
@@ -204,7 +204,7 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
 ### P643 Part 2 Result
 
 - Seam and store: migration 0101 (`task_files`, `task_file_intents`, `task_files_migration`, `ade_task_handovers.rel_path`), `storage/repos/taskfiles.go`, `taskfiles/store` (local adapter refuses symlinks, hard links, special files).
-- Core `internal/taskfiles`: classify with caps, decide matrix and reason error text, link and proof diffs, README generator (25-line cap, goldens), submit core (walk, classify, diff, apply, restore, collisions), file-then-database writes with intents and `Recover`, migration framework. Handlers per kind come with Parts 3 and 4.
+- Core `internal/taskfiles`: classify with caps, decide matrix and reason error text, link and proof diffs, README generator (35-line cap, goldens), submit core (walk, classify, diff, apply, restore, collisions), file-then-database writes with intents and `Recover`, migration framework. Handlers per kind come with Parts 3 and 4.
 - `proof.ValidateStep` and `proof.InlineToJSON` (inline YAML to JSON, integer text and key order kept).
 - Task folder grant: add-dir, sandbox `Allow` plus literal `DenyWrite` for `README.md`, `task.yaml`, `state.yaml`, `Edit` and `Write` deny rules (`ade/taskfolder.go`, `TaskBoardDeps.FilesDir`).
 - Harness: spike tests need explicit output paths; `details_bench_test.go`, frozen `tools-baseline.json`, fixtures, `bun run test:claude:details`. DEV_ENVIRONMENT row and ARCHITECTURE "Task files (P643)" added.
