@@ -48,6 +48,7 @@ type Repos struct {
 	DockerRestore         *DockerRestoreRepo
 	KubeClusters          *KubeClustersRepo
 	Proof                 *ProofRepo
+	TaskFiles             *TaskFilesRepo
 	CustomScripts         *scripts.Repo
 	ScriptRuns            *scriptruns.Repo
 
@@ -106,6 +107,7 @@ func New(db *sql.DB) (*Repos, error) {
 		DockerRestore:         &DockerRestoreRepo{DB: db},
 		KubeClusters:          &KubeClustersRepo{DB: db},
 		Proof:                 &ProofRepo{DB: db},
+		TaskFiles:             &TaskFilesRepo{DB: db},
 		CustomScripts:         &scripts.Repo{DB: db},
 		ScriptRuns:            &scriptruns.Repo{DB: db},
 		stmts:                 []*sql.Stmt{settingsSelectAll, layoutSelectAll, tabsSelectAll},

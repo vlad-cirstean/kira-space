@@ -219,7 +219,7 @@ CREATE TABLE "ade_task_handovers" (
   session_id TEXT NOT NULL DEFAULT '',
   body TEXT NOT NULL,
   from_task_id TEXT REFERENCES ade_tasks (id) ON DELETE SET NULL
-) STRICT;
+, rel_path TEXT NOT NULL DEFAULT '') STRICT;
 
 CREATE TABLE "ade_task_plan" (
   task_id TEXT NOT NULL PRIMARY KEY REFERENCES ade_tasks (id) ON DELETE CASCADE,
@@ -780,6 +780,39 @@ CREATE TABLE "tabs" (
   state_json TEXT NOT NULL CHECK (json_valid(state_json))
 ) STRICT;
 
+CREATE TABLE task_file_intents (
+  task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,
+  rel_path TEXT NOT NULL CHECK (rel_path <> ''),
+  sha256 TEXT NOT NULL,
+  writer TEXT NOT NULL,
+  created_at INTEGER NOT NULL CHECK (created_at >= 0),
+  PRIMARY KEY (task_id, rel_path)
+) STRICT;
+
+CREATE TABLE task_files (
+  task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,
+  rel_path TEXT NOT NULL CHECK (rel_path <> ''),
+  kind TEXT NOT NULL,
+  size INTEGER NOT NULL DEFAULT 0 CHECK (size >= 0),
+  version TEXT NOT NULL DEFAULT '',
+  sha256 TEXT NOT NULL DEFAULT '',
+  accepted_sha256 TEXT NOT NULL DEFAULT '',
+  accepted_by TEXT NOT NULL DEFAULT '',
+  accepted_at INTEGER NOT NULL DEFAULT 0 CHECK (accepted_at >= 0),
+  review TEXT NOT NULL DEFAULT 'accepted' CHECK (review IN ('accepted', 'pending', 'invalid')),
+  problem TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (task_id, rel_path)
+) STRICT;
+
+CREATE TABLE task_files_migration (
+  task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,
+  part TEXT NOT NULL CHECK (part <> ''),
+  state TEXT NOT NULL CHECK (state IN ('running', 'done', 'failed')),
+  done_at INTEGER NOT NULL DEFAULT 0 CHECK (done_at >= 0),
+  verify_json TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (task_id, part)
+) STRICT;
+
 CREATE TABLE "ui_layout" (
   key TEXT NOT NULL PRIMARY KEY CHECK (key <> ''),
   value TEXT NOT NULL
@@ -911,4 +944,6 @@ CREATE INDEX script_runs_terminal ON script_runs (terminal_id) WHERE state = 'ru
 CREATE INDEX tabs_connection ON tabs (connection_id);
 
 CREATE INDEX tabs_window ON tabs (window_key, sort_order);
+
+CREATE INDEX task_files_review ON task_files (task_id, review);
 
