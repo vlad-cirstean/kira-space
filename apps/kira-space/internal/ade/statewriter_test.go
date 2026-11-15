@@ -1,6 +1,7 @@
 package ade
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -116,7 +117,7 @@ func TestArchiveWaitsForInFlightRender(t *testing.T) {
 	}
 	b.markStateDirty("t1", true)
 	time.Sleep(3 * stateCoalesce)
-	if again, _ := os.ReadFile(statePath); string(again) != string(got) {
+	if again, _ := os.ReadFile(statePath); !bytes.Equal(again, got) {
 		t.Fatalf("a later render rewrote the archived file:\n%s", again)
 	}
 }

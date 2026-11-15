@@ -290,28 +290,15 @@ func (r *submitRun) finish() error {
 }
 
 // targets are the paths a call looks at, in path order, and an invalid result per unusable named path.
-// With a truncated listing a named path outside it is checked with Stat and indexed paths outside it
-// are left alone.
+// With a truncated listing indexed paths outside it are left alone.
 func (s *Service) targets(ctx context.Context, st store.Store, req Request, present map[string]store.Entry, rows map[string]model.TaskFile, truncated bool) ([]string, []FileResult) {
 	var out []string
 	var bad []FileResult
 	if len(req.Paths) > 0 {
 		for _, p := range req.Paths {
-			if err := store.ValidRel(p); err != nil {
-				bad = append(bad, FileResult{Path: p, Status: StatusInvalid, Message: p + ": not a path inside the task folder; use a relative path like notes/a.md."})
-				continue
-			}
-			if truncated && !hasEntry(p, present, nil) {
-				if _, err := st.Stat(ctx, strings.TrimSuffix(p, "/")); err == nil {
-					bad = append(bad, FileResult{Path: p, Status: StatusInvalid, Message: fmt.Sprintf("%s: not read, the task folder holds more than %d files; remove some.", p, MaxFilesPerTask)})
-					continue
-				}
-			}
-			if !hasEntry(p, present, rows) {
-				bad = append(bad, FileResult{Path: p, Status: StatusInvalid, Message: p + ": no such file in the task folder."})
-				continue
-			}
-			if !slices.Contains(out, p) {
+			if msg := namedProblem(ctx, st, p, present, rows, truncated); msg != "" {
+				bad = append(bad, FileResult{Path: p, Status: StatusInvalid, Message: msg})
+			} else if !slices.Contains(out, p) {
 				out = append(out, p)
 			}
 		}
@@ -334,6 +321,23 @@ func (s *Service) targets(ctx context.Context, st store.Store, req Request, pres
 	}
 	sort.Strings(out)
 	return out, bad
+}
+
+// namedProblem is why a named path cannot be processed, "" when it can. A path a truncated listing
+// lacks is checked with Stat: on disk it is unread, off disk it is a deletion to process.
+func namedProblem(ctx context.Context, st store.Store, p string, present map[string]store.Entry, rows map[string]model.TaskFile, truncated bool) string {
+	if err := store.ValidRel(p); err != nil {
+		return p + ": not a path inside the task folder; use a relative path like notes/a.md."
+	}
+	if truncated && !hasEntry(p, present, nil) {
+		if _, err := st.Stat(ctx, strings.TrimSuffix(p, "/")); err == nil {
+			return fmt.Sprintf("%s: not read, the task folder holds more than %d files; remove some.", p, MaxFilesPerTask)
+		}
+	}
+	if !hasEntry(p, present, rows) {
+		return p + ": no such file in the task folder."
+	}
+	return ""
 }
 
 // hasEntry reports whether rel names a file or folder in the task folder, or an indexed file (or proof
