@@ -7,8 +7,8 @@ package claude
 // Knobs: KIRA_BENCH_FLOWS (comma list, default F1), KIRA_BENCH_ARMS (default: every registered arm),
 // KIRA_BENCH_REPS (default 3), KIRA_BENCH_BUDGET (USD for the round, default 1.5). KIRA_BENCH_OUT is
 // required: results never go to a default path. Arm T serves the frozen tool list in
-// testdata/details-bench/tools-baseline.json over stub backends. Arm R, the implementation, registers
-// in benchArmSetups when the Part that ships its tools lands; its oracles are the spike flows' own.
+// testdata/details-bench/tools-baseline.json over stub backends. Arm R is the real agentmcp.Server (submit,
+// implicit-submit finish_step) and the files prompt fragment; its oracles are the spike flows' own.
 
 import (
 	"bytes"
@@ -28,7 +28,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/harness/providers"
 )
 
 const (
@@ -73,9 +75,66 @@ func loadBenchBaseline(t *testing.T) benchBaseline {
 	return b
 }
 
-// benchArmSetups are the registered arms. T serves the frozen tools; R is added by Part 3.
+// benchArmSetups are the registered arms. T serves the frozen tools; R serves the real agentmcp.Server
+// (submit, implicit-submit finish_step) over the task folder the files prompt names.
 var benchArmSetups = map[string]func(*testing.T, benchBaseline) func(*testing.T, *spikeRun, spikeFlow) (string, []string, func()){
 	"T": benchSetupT,
+	"R": benchSetupR,
+}
+
+// benchSpaceR backs arm R's server: submit and finish_step read the stage's draft in the task folder as
+// the board does (the ade package is not importable from this module). F1 is the only flow R runs.
+type benchSpaceR struct {
+	*spikeSpace
+	draft string
+}
+
+func (s *benchSpaceR) body() string {
+	b, _ := os.ReadFile(s.draft)
+	return strings.TrimSpace(string(b))
+}
+
+func (s *benchSpaceR) Submit(_ context.Context, _ agentmcp.SpaceCall, in agentmcp.SubmitArgs) (string, error) {
+	if s.body() == "" {
+		return "accepted 0, pending user 0, invalid 0", nil
+	}
+	text := "accepted 1, pending user 0, invalid 0\nhandovers/draft-implement.md: accepted"
+	if in.Finished {
+		text += "\nfinished: the user was asked to move the task on"
+	}
+	return text, nil
+}
+
+func (s *benchSpaceR) SubmitForFinish(_ context.Context, _ agentmcp.SpaceCall, ok bool) (agentmcp.SubmitFinish, error) {
+	body := s.body()
+	if body == "" && ok {
+		return agentmcp.SubmitFinish{Refuse: "write handovers/draft-implement.md, then call finish_step"}, nil
+	}
+	return agentmcp.SubmitFinish{Summary: body}, nil
+}
+
+// benchSetupR is the implementation arm: the real tool surface of a run grant and the task folder
+// granted with --add-dir.
+func benchSetupR(*testing.T, benchBaseline) func(*testing.T, *spikeRun, spikeFlow) (string, []string, func()) {
+	return func(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string, func()) {
+		// The folder Part 3 leaves: the real README, the task's notes and handed handovers.
+		writeFile(t, filepath.Join(r.taskDir, "README.md"), taskfiles.Readme(taskfiles.ReadmeInput{TaskID: "t-1", Title: "Orders ledger", Step: "implement"}))
+		seedHistory(t, filepath.Join(benchFixtures, "t1"), r.taskDir, false)
+		space := &benchSpaceR{spikeSpace: r.space, draft: filepath.Join(r.taskDir, "handovers", "draft-implement.md")}
+		srv := agentmcp.NewServer(agentmcp.Options{
+			Dir: filepath.Join(r.root, "mcp"), Space: space, Orchestrator: space, Outcomes: space,
+			OnFinish: func(_ string, f agentmcp.Finish) { r.finishes = append(r.finishes, f) },
+		})
+		claudeProv, ok := providers.New().Get("claude")
+		if !ok {
+			t.Fatal("no claude provider")
+		}
+		cfg, release, err := srv.Register(agentmcp.Grant{RunID: "run-1", TaskID: "t-1", Space: true, Agent: claudeProv})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return cfg, []string{r.taskDir}, func() { release(); _ = srv.Close() }
+	}
 }
 
 func textResult(v any) (*mcp.CallToolResult, error) {
@@ -271,8 +330,16 @@ loop:
 		for _, id := range flows {
 			fl := flowByIDs(spikeFlows1b, id)
 			for _, arm := range arms {
-				if spent+benchRunCap > budget {
-					note = fmt.Sprintf("Budget guard: spent %.4f USD, next run could add %.2f, budget %.2f. Remaining runs skipped.", spent, benchRunCap, budget)
+				// The first run may cost the cap; later ones are bounded by the dearest run seen.
+				next := benchRunCap
+				if len(recs) > 0 {
+					next = 0
+					for _, r := range recs {
+						next = max(next, r.Cost)
+					}
+				}
+				if spent+next > budget {
+					note = fmt.Sprintf("Budget guard: spent %.4f USD, next run could add %.2f, budget %.2f. Remaining runs skipped.", spent, next, budget)
 					break loop
 				}
 				benchSetup = benchArmSetups[arm](t, base)

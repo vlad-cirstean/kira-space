@@ -29,6 +29,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
+	"github.com/kirathecat/kira-studio/internal/llmprompts"
 )
 
 const (
@@ -106,6 +107,15 @@ func rowsEqual(got, want [][]any) bool {
 }
 
 func (r *spikeRun) folderLine() string {
+	if r.arm == "R" { // the files fragment Kira appends to a step prompt
+		v := llmprompts.FilesVars{Folder: r.taskDir, Draft: "handovers/draft-implement.md"}
+		if p, ok := providers.New().Get("claude"); ok {
+			if l, ok := p.(harness.ToolLoader); ok {
+				v.Load = l.LoadHint(agentmcp.FinishStep, agentmcp.Submit)
+			}
+		}
+		return "\n\n" + llmprompts.HeadlessSpaceFiles.Text(llmprompts.Defaults(), v)
+	}
 	if r.arm != "F" {
 		return ""
 	}

@@ -148,6 +148,9 @@ func (l *spikeLib) latest() libHandover { return l.t1[len(l.t1)-1] }
 
 // inline is what a step prompt carries today (Q13): the incoming handover and the task's notes.
 func (r *spikeRun) inline() string {
+	if r.arm == "R" { // the files arm reads the handover and notes from the task folder
+		return ""
+	}
 	h := r.lib.latest()
 	var b strings.Builder
 	fmt.Fprintf(&b, "Incoming handover (from %s):\n---\n%s---\n\nUser notes on this task:\n", h.from, h.body)
@@ -333,6 +336,12 @@ var spikeFlows1b = []spikeFlow{
 			}
 			if !strings.Contains(strings.ToLower(r.draftText()), "greeting") {
 				return false, "draft missing or does not name greeting.txt"
+			}
+			if r.arm == "R" { // the real server's finish_step
+				if len(r.finishes) == 0 || r.finishes[len(r.finishes)-1].Status != "done" {
+					return false, "finish_step done not accepted"
+				}
+				return true, ""
 			}
 			if len(r.fa.finish) == 0 || r.fa.finish[len(r.fa.finish)-1] != "done" {
 				return false, "finish_step done not accepted"

@@ -256,10 +256,33 @@ func TestAdeManualSession(t *testing.T) {
 		t.Fatalf("second Send: %v", err)
 	}
 	waitStops(2)
+
+	folder, err := f.W.AdeTask.DetailsFolder(ctx, adewire.DiskChangesArgs{TaskID: task.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.W.AdeTask.Send(ctx, adewire.SendArgs{
+		SessionID: launch.SessionID,
+		Message:   "Write the text `manual ok` to " + filepath.Join(folder.Path, "handovers", "draft-work.md") + ", then call the submit tool with no arguments, then reply done.",
+	}); err != nil {
+		t.Fatalf("third Send: %v", err)
+	}
+	waitStops(3)
+	res, err := f.W.AdeTask.Handovers(ctx, adewire.TaskArgs{TaskID: task.ID})
+	if err != nil {
+		t.Fatalf("Handovers: %v", err)
+	}
+	for _, h := range res.Handovers {
+		if h.State == "draft" && strings.Contains(h.Body, "manual ok") {
+			f.requireCostUnder(t)
+			return
+		}
+	}
+	t.Fatalf("no draft with the text in %+v", res.Handovers)
 }
 
 // TestAdeAdHocSession opens an agent session with no first message: the agent starts idle, the user's
-// first prompt arrives through Send, and the session holds the Space grant (handover).
+// first prompt arrives through Send, and the session holds the Space grant (links.yaml and submit).
 func TestAdeAdHocSession(t *testing.T) {
 	f := newAdeFixture(t, nil)
 	f.saveWorkflow(t, "flow", manualStepYAML)
@@ -293,11 +316,15 @@ func TestAdeAdHocSession(t *testing.T) {
 	t.Cleanup(func() { _ = f.W.Terminal.Close(terminal.CloseArgs{TerminalID: launch.TerminalID}) })
 
 	f.waitAgentEvent(t, mark, launch.TerminalID, "SessionStart", 60*time.Second)
+	folder, err := f.W.AdeTask.DetailsFolder(ctx, adewire.DiskChangesArgs{TaskID: task.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
 	// SessionStart fires before the input box accepts keys.
 	time.Sleep(2 * time.Second)
 	if err := f.W.AdeTask.Send(ctx, adewire.SendArgs{
 		SessionID: launch.SessionID,
-		Message:   "Call the handover tool with notes `adhoc ok`, then reply done.",
+		Message:   "Write `links:\n  - {kind: doc, title: adhoc ok, ref: adhoc.md}\n` to " + filepath.Join(folder.Path, "links.yaml") + ", then call the submit tool with no arguments, then reply done.",
 	}); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
@@ -309,17 +336,17 @@ func TestAdeAdHocSession(t *testing.T) {
 		}
 		return false
 	})
-	res, err := f.W.AdeTask.Handovers(ctx, adewire.TaskArgs{TaskID: task.ID})
+	res, err := f.W.AdeTask.Artifacts(ctx, adewire.TaskArgs{TaskID: task.ID})
 	if err != nil {
-		t.Fatalf("Handovers: %v", err)
+		t.Fatalf("Artifacts: %v", err)
 	}
-	for _, h := range res.Handovers {
-		if strings.Contains(h.Body, "adhoc ok") {
+	for _, a := range res.Artifacts {
+		if a.Kind == "doc" && a.Ref == "adhoc.md" {
 			f.requireCostUnder(t)
 			return
 		}
 	}
-	t.Fatalf("no handover with the notes in %+v", res.Handovers)
+	t.Fatalf("no doc artifact adhoc.md in %+v", res.Artifacts)
 }
 
 // TestAdeRebaseRun rebases a pushed task branch in a background run with the real claude: main
@@ -412,13 +439,14 @@ func TestAdeRebaseRun(t *testing.T) {
 	}
 }
 
-// TestAdeReportArtifacts runs a step that reports a doc by ref: the real claude must call
-// report_artifacts with a doc, and the task's artifacts hold the row.
-func TestAdeReportArtifacts(t *testing.T) {
+// TestAdeDetailsSubmit runs a step that files a link in links.yaml and writes its draft: the real claude
+// must call submit (or finish_step, its implicit submit), the link lands as an agent artifact and the
+// draft as the run's handover.
+func TestAdeDetailsSubmit(t *testing.T) {
 	f := newAdeFixture(t, nil)
 	step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 3m\n" +
-		"    prompt: Do not write any file. Call report_artifacts once with one artifact of kind doc, title Notes, " +
-		"ref notes.md. Then call finish_step with status pass and summary ok.\n"
+		"    prompt: Add one link to links.yaml in the task folder, with kind doc, title Notes and ref notes.md. " +
+		"Write your handover to the draft file, then call finish_step with status pass.\n"
 	f.saveWorkflow(t, "flow", step+manualStepYAML)
 	task := f.createTask(t, "flow")
 	run := f.startRun(t, task, "feat/real-claude")
@@ -426,18 +454,18 @@ func TestAdeReportArtifacts(t *testing.T) {
 	if run.State != "done" {
 		t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 1500))
 	}
-	if !strings.Contains(log, "mcp__kira-space__report_artifacts") {
-		t.Fatalf("run log lacks the report_artifacts tool call:\n%s", tail(log, 1500))
+	if !strings.Contains(log, "mcp__kira-space__submit") && !strings.Contains(log, "mcp__kira-space__finish_step") {
+		t.Fatalf("run log lacks a submit or finish_step call:\n%s", tail(log, 1500))
 	}
 	res, err := f.W.AdeTask.Artifacts(ctx, adewire.TaskArgs{TaskID: task.ID})
 	if err != nil {
 		t.Fatalf("Artifacts: %v", err)
 	}
 	for _, a := range res.Artifacts {
-		if a.Kind == "doc" && a.Ref == "notes.md" {
+		if a.Kind == "doc" && a.Ref == "notes.md" && a.Source == "agent" {
 			f.requireCostUnder(t)
 			return
 		}
 	}
-	t.Fatalf("no doc artifact notes.md in %+v; log:\n%s", res.Artifacts, tail(log, 1500))
+	t.Fatalf("no agent doc artifact notes.md in %+v; log:\n%s", res.Artifacts, tail(log, 1500))
 }
