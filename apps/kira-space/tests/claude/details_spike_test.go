@@ -109,6 +109,9 @@ func (r *spikeRun) folderLine() string {
 	if r.arm != "F" {
 		return ""
 	}
+	if (r.variant == "FA" || r.variant == "FP") && r.flow == "F3" { // Part 1c A: Kira inlines the proof path
+		return "\n\nTask folder: " + r.taskDir + " (README.md there). Proof file: proofs/orders-match-ledger/proof.md."
+	}
 	return "\n\nTask folder: " + r.taskDir + " (README.md there)."
 }
 

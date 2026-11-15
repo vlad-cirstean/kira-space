@@ -571,6 +571,7 @@ type proofFront struct {
 		Description string `yaml:"description"`
 		View        string `yaml:"view"`
 		Data        string `yaml:"data"`
+		Inline      any    `yaml:"inline"` // Part 1c: step data in proof.md itself
 	} `yaml:"steps"`
 }
 
@@ -603,28 +604,44 @@ func readProof(dir string) (*spikeProof, string, error) {
 		if strings.TrimSpace(s.Description) == "" || !slices.Contains(proofViews, s.View) {
 			return nil, "proof.md", fmt.Errorf("step %s needs description and a valid view", s.ID)
 		}
-		if s.Data == "" || strings.Contains(s.Data, "/") || strings.HasPrefix(s.Data, ".") {
-			return nil, "proof.md", fmt.Errorf("step %s: data must name a file in the proof folder", s.ID)
+		var b []byte
+		name := s.Data
+		if s.Inline != nil {
+			name = "proof.md"
+			switch v := s.Inline.(type) {
+			case string:
+				b = []byte(v)
+			default:
+				var jerr error
+				if b, jerr = json.Marshal(v); jerr != nil {
+					return nil, name, fmt.Errorf("step %s: inline data: %v", s.ID, jerr)
+				}
+			}
+		} else {
+			if s.Data == "" || strings.Contains(s.Data, "/") || strings.HasPrefix(s.Data, ".") {
+				return nil, "proof.md", fmt.Errorf("step %s: data must name a file in the proof folder", s.ID)
+			}
+			var rerr error
+			if b, rerr = os.ReadFile(filepath.Join(dir, s.Data)); rerr != nil {
+				return nil, s.Data, fmt.Errorf("step %s: data file %s is missing", s.ID, s.Data)
+			}
 		}
-		b, err := os.ReadFile(filepath.Join(dir, s.Data))
-		if err != nil {
-			return nil, s.Data, fmt.Errorf("step %s: data file %s is missing", s.ID, s.Data)
-		}
+		var err error
 		st := spikeStep{ID: s.ID, Description: s.Description, View: s.View}
 		switch s.View {
 		case "table":
 			if st.Rows, err = decodeTable(b); err != nil {
-				return nil, s.Data, fmt.Errorf("step %s: %v", s.ID, err)
+				return nil, name, fmt.Errorf("step %s: %v", s.ID, err)
 			}
 		case "image":
 			if err := checkJPEG(b); err != nil {
-				return nil, s.Data, fmt.Errorf("step %s: %v", s.ID, err)
+				return nil, name, fmt.Errorf("step %s: %v", s.ID, err)
 			}
 			st.ImageOK = true
 		case "diagram":
 			first, _, _ := strings.Cut(strings.TrimSpace(string(b)), "\n")
-			if !strings.HasSuffix(s.Data, ".mmd") || !slices.ContainsFunc(mermaidKinds, func(k string) bool { return strings.HasPrefix(first, k) }) {
-				return nil, s.Data, fmt.Errorf("step %s: a diagram is a .mmd file whose first line starts with a Mermaid diagram type", s.ID)
+			if (s.Inline == nil && !strings.HasSuffix(s.Data, ".mmd")) || !slices.ContainsFunc(mermaidKinds, func(k string) bool { return strings.HasPrefix(first, k) }) {
+				return nil, name, fmt.Errorf("step %s: a diagram is a .mmd file whose first line starts with a Mermaid diagram type", s.ID)
 			}
 			st.Text = string(b)
 		case "document":
@@ -632,7 +649,7 @@ func readProof(dir string) (*spikeProof, string, error) {
 				Documents []any `json:"documents"`
 			}
 			if json.Unmarshal(b, &d) != nil || len(d.Documents) == 0 {
-				return nil, s.Data, fmt.Errorf("step %s: document data is JSON {documents:[{body:{...}}]}", s.ID)
+				return nil, name, fmt.Errorf("step %s: document data is JSON {documents:[{body:{...}}]}", s.ID)
 			}
 			st.Text = string(b)
 		}

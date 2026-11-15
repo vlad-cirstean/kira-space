@@ -214,7 +214,11 @@ func (r *spikeRun) setupFiles1b(t *testing.T, fl spikeFlow) (string, []string, f
 	writeFile(t, filepath.Join(r.taskDir, "task.yaml"), string(mustRead(t, filepath.Join(fx, "t1", "task.yaml"))))
 	writeFile(t, filepath.Join(r.taskDir, "state.yaml"), strings.ReplaceAll(string(mustRead(t, filepath.Join(fx, "states", state+".yaml"))), "__WT__", r.wt))
 	vd := filepath.Join(fx, "variants", r.variant)
-	writeFile(t, filepath.Join(r.taskDir, "README.md"), renderDoc(string(mustRead(t, filepath.Join(vd, "README.md"))), orch))
+	proofIdx := "none yet."
+	if fl.id == "F3" {
+		proofIdx = `orders-match-ledger, "Orders match ledger", 3 steps: proofs/orders-match-ledger/proof.md`
+	}
+	writeFile(t, filepath.Join(r.taskDir, "README.md"), strings.ReplaceAll(renderDoc(string(mustRead(t, filepath.Join(vd, "README.md"))), orch), "__PROOFS__", proofIdx))
 	agents := string(mustRead(t, filepath.Join(vd, "AGENTS.md")))
 	if orch {
 		agents += "\n" + string(mustRead(t, filepath.Join(vd, "AGENTS-children.md")))
@@ -231,7 +235,11 @@ func (r *spikeRun) setupFiles1b(t *testing.T, fl spikeFlow) (string, []string, f
 		handed = seedHistory(t, filepath.Join(fx, "t1"), r.taskDir, cons)
 	}
 	if fl.id == "F3" {
-		copyTree(t, filepath.Join(fx, "f3", "proof"), filepath.Join(r.taskDir, "proofs", "orders-match-ledger"), nil)
+		pd := map[string]string{"FA": "proof-fa", "FP": "proof-fp"}[r.variant]
+		if pd == "" {
+			pd = "proof"
+		}
+		copyTree(t, filepath.Join(fx, "f3", pd), filepath.Join(r.taskDir, "proofs", "orders-match-ledger"), nil)
 	}
 	r.fa = newFilesArm(r.taskDir, "implement", r.wt, r.ready, fl.id == "F4")
 	r.fa.cons, r.fa.handed = cons, handed
@@ -610,7 +618,7 @@ func TestDetailsSpike1b(t *testing.T) {
 		return m
 	}
 	flows, noFC := set("KIRA_SPIKE1B_FLOWS"), set("KIRA_SPIKE1B_NOFC")
-	arms := []string{"T", "FF", "FL", "FC"}
+	arms := []string{"T", "FF", "FL", "FC", "FA", "FP"}
 	if a := set("KIRA_SPIKE1B_ARMS"); len(a) > 0 {
 		arms = slices.DeleteFunc(arms, func(x string) bool { return !a[x] })
 	}
@@ -796,7 +804,7 @@ func TestDetailsSpike1bReport(t *testing.T) {
 	if dirs == "" || logs == "" {
 		t.Skip("set KIRA_SPIKE_REPORT_DIRS and KIRA_SPIKE_REPORT_LOGS")
 	}
-	re := regexp.MustCompile(`(F\d) (T|FF|FL|FC) #(\d+) pass=(true|false) cost=[0-9.]+ turns=\d+ spent=[0-9.]+ ?(.*)$`)
+	re := regexp.MustCompile(`(F\d) (T|FF|FL|FC|FA|FP) #(\d+) pass=(true|false) cost=[0-9.]+ turns=\d+ spent=[0-9.]+ ?(.*)$`)
 	pass := map[string][2]string{}
 	for _, lf := range strings.Split(logs, ",") {
 		for _, l := range strings.Split(string(mustRead(t, lf)), "\n") {
@@ -826,7 +834,7 @@ func TestDetailsSpike1bReport(t *testing.T) {
 		}
 	}
 	var arms []string
-	for _, a := range []string{"T", "FF", "FL", "FC"} {
+	for _, a := range []string{"T", "FF", "FL", "FC", "FA", "FP"} {
 		if armSet[a] {
 			arms = append(arms, a)
 		}
