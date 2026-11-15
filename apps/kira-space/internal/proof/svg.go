@@ -43,6 +43,8 @@ type svgScan struct {
 	root     *xml.StartElement
 	rootLine int
 	inStyle  bool
+	css      strings.Builder // all text of the open <style>, checked once at its end tag
+	cssLine  int
 }
 
 // CheckSVG validates a SVG file and returns its intrinsic size.
@@ -83,12 +85,15 @@ func (sc *svgScan) token(line int, tok xml.Token) error {
 			return svgError(line, "not well-formed: </%s> does not close the open element", t.Name.Local)
 		}
 		sc.stack = sc.stack[:len(sc.stack)-1]
-		sc.inStyle = false
+		if sc.inStyle {
+			sc.inStyle = false
+			if err := checkCSS(sc.css.String()); err != nil {
+				return svgError(sc.cssLine, "CSS loads from outside: %v", err)
+			}
+		}
 	case xml.CharData:
 		if sc.inStyle {
-			if err := checkCSS(string(t)); err != nil {
-				return svgError(line, "CSS loads from outside: %v", err)
-			}
+			sc.css.Write(t)
 		}
 	}
 	return nil
@@ -110,7 +115,13 @@ func (sc *svgScan) start(line int, t xml.StartElement) error {
 	if svgBadElements[name] {
 		return svgError(line, "SVG element <%s> is not allowed", t.Name.Local)
 	}
-	sc.inStyle = name == "style"
+	if sc.inStyle {
+		return svgError(line, "<style> may hold only text, not <%s>", t.Name.Local)
+	}
+	if name == "style" {
+		sc.inStyle, sc.cssLine = true, line
+		sc.css.Reset()
+	}
 	return checkSVGAttrs(line, t)
 }
 
