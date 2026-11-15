@@ -3,6 +3,28 @@
 Design-first. User approves this plan, and answers "Open questions", before any build Part starts.
 Planner: Opus. Base `1e1300e16`. Discovery through `codegraph_explore`, then targeted reads.
 
+## Decisions (user answers to section 18, recorded at Part 1)
+
+- Q1 yes: no watcher; stat on open, focus, Refresh, submit.
+- Q9 yes: merged `branches` and `lease` tools with an `action` argument; `run_outcome` folds into `state.yaml`.
+- Q12 yes: spike runs haiku 3 per flow and arm plus one sonnet run each; cap 0.25 USD per run, 5 USD total.
+- Q15 changed: `details.edit` approvals also reach the phone. Recorded for later Parts (supersedes
+  "desktop only" in section 7.3 and Q15 recommendation).
+- Silent accept: a submit change that needs no approval and has no notification today is accepted
+  with no notification at all. Overrides the notify entries of section 7.3 for such rows. A new proof
+  keeps today's behavior: accept plus the existing "proof ready" notification, not silent. Only
+  changes that need the user's approval raise a prompt.
+- Q6 changed: `submit` is not uniformly non-blocking. It behaves like the old tool each prompted item
+  replaces: an item whose old tool blocked for the user's answer blocks the `submit` call the same way
+  (same wait and timeout as today's equivalent, `request_branches` style up to 30 min); an item whose
+  old tool returned at once returns at once. Section 7 must map each prompted item type to its old
+  tool's behavior (`handover`, `report_artifacts`, `proof_save`, `proof_list`, ...). A submit with
+  mixed items waits for the blocking items only and reports the rest as `pending` in the same reply.
+  Open for Part 2 and 3: from today's code, `handover`, `report_artifacts` and `proof_save` (an edit
+  answers `pending_review`) all return at once, so the mapping may leave no blocking item. Part 2
+  confirms it against the code and writes the table into section 7.3. Spike stubs stay as built.
+- All other questions (Q2 to Q8, Q10, Q11, Q13, Q14): plan's recommendation.
+
 ## 1. Decisions taken as input
 
 From SPEC P643 Scope and the design talk. Binding.
@@ -315,13 +337,15 @@ an intent whose file hash matches completes the DB side; otherwise drops. File i
 | User note edited, deleted or created | prompt | user |
 | New link, edit or remove of own link, empty Jira or PR slot filled | silent accept | panel forward chip shows to user |
 | Edit or remove of another author's link, Jira or PR slot replaced | prompt | user |
-| New proof | accept, existing "proof ready" prompt (notify) | user |
+| New proof | accept, existing "proof ready" notification (kept as today) | user |
 | Edit of an accepted proof | pending review, existing `proof.review` approval with step diff | user |
 | `task.yaml`, `state.yaml`, README written | restored | agent (`restored`) |
 | Collision (7.2 step 9) | warn-and-confirm prompt | user |
 | Invalid file | `invalid` with line | agent; UI problem strip |
 
-Prompt items are non-blocking: submit returns `pending` at once. The answer reaches the agent
+Blocking per item follows the old tool (Decisions, Q6 changed; mapping table due in Part 2): a blocking item holds the `submit` call, a non-blocking one returns `pending` at once. Silent-accept rows raise no notification (Decisions).
+
+Until that table lands, read: submit returns `pending` at once. The answer reaches the agent
 through the lease notice path (`SendIfIdle`, hook reply, next tool result `notices`) and the
 `pending` list in `state.yaml`. Deny restores the accepted copy on disk. A new submit of the same
 file replaces its open item. Approvals kind `details.edit` (new; desktop only like Studio kinds,
@@ -596,8 +620,9 @@ Each with the plan's recommendation.
   stay relative only. Recommend: yes.
 - Q5 Agent edits a user note or a handed handover: prompt with diff. Alternative: always reject.
   Recommend: prompt.
-- Q6 Prompted submit items: non-blocking, answer by notice and `state.yaml`. Alternative: block
-  like `request_branches` (up to 30 min). Recommend: non-blocking.
+- Q6 Prompted submit items. Answered: follow the old tool per item (see Decisions); plan's
+  recommendation (non-blocking, answer by notice and `state.yaml`) applies only to items whose old
+  tool returned at once.
 - Q7 `finish_step` ok with no draft while the route continues: refuse with the path. Alternative:
   accept and note it. Recommend: refuse.
 - Q8 Child finish mirror rows: derive from the child's file, no copy in the parent. Recommend: yes.
