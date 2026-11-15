@@ -464,11 +464,11 @@ func writeDraftAsked(prompt []byte, refusal, body string) bool {
 		return false
 	}
 	path := filepath.Join(string(m[1]), d[1])
-	if _, err := os.Stat(path); err == nil {
-		return false
+	if _, err := os.Stat(path); err != nil { // a parallel branch's run may have written it since the refusal
+		_ = os.MkdirAll(filepath.Dir(path), 0o755)
+		_ = os.WriteFile(path, []byte(body), 0o644)
 	}
-	_ = os.MkdirAll(filepath.Dir(path), 0o755)
-	return os.WriteFile(path, []byte(body), 0o644) == nil
+	return true
 }
 
 var promptPath = regexp.MustCompile(`"path":"([^"]*)"`)

@@ -14,8 +14,7 @@
       "result": "failed",
       "route": "stop",
       "source": "agent",
-      "status": "failed",
-      "summary": "summary-failed"
+      "status": "failed"
     },
     "purpose": "",
     "resumable": false,
@@ -31,7 +30,7 @@
     "startedAt": 0,
     "state": "failed",
     "stepId": "one",
-    "summary": "summary-failed",
+    "summary": "",
     "taskId": "<masked>"
   },
   "AdeTaskService.Run#notEnforced": {

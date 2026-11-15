@@ -152,11 +152,13 @@ func fakeFinish(cfgPath, prompt, status, summary string) error {
 		return err
 	}
 	path := filepath.Join(m[1], d[1])
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	if err := os.WriteFile(path, []byte(summary), 0o644); err != nil {
-		return err
+	if _, err := os.Stat(path); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(path, []byte(summary), 0o644); err != nil {
+			return err
+		}
 	}
 	_, err = fakeFinishOnce(cfgPath, status, summary)
 	return err
