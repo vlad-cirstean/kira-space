@@ -704,14 +704,42 @@ Facts (code, `codegraph_explore`):
 - Roles with Space tools: headless step run (`superviseAgent`, `OneShot`, one turn) and interactive
   sessions (manual, run-step TUI, review agent, orchestrator session). Rebase runs and review rounds
   get no Space grant (`space := !rebase && !round`).
-- A request already blocks up to 30 min for approval (`defaultBranchRequestWait`). Harness MCP call
-  timeout 35 min (`harness.MCPCallTimeout`). Prepare timeout 15 min default, 2 h max.
-- Lease channel (`ade/leases.go`): `deliverLease`, `flushLease` (`SendIfIdle`), Stop and
-  UserPromptSubmit hook replies, lease tool reply `notices`. Reaches sessions mid-turn and idle.
-  Misses headless runs: `flushLease` returns for `run:` keys, runs emit no hooks, and `endLeases`
-  drops pending messages when the one turn ends.
+- A request already blocks up to 30 min for approval: `TaskBoard.branchRequestWait()` returns
+  `Deps.BranchRequestWait`, else `defaultBranchRequestWait` (30 min, `ade/branchrequest.go`). It is
+  a wiring field (flow tests set it through `flowharness.WithBranchRequestWait`), not a user
+  setting; rename, change and `create_task` share it. On timeout `withdrawBranchCall` removes the
+  call's items from the approval and the reply says nothing was created. Harness MCP call timeout
+  35 min (`harness.MCPCallTimeout`, passed to Claude as `MCP_TOOL_TIMEOUT`). Prepare timeout 15
+  min default, 2 h max.
+- Headless run launch (`internal/harness/claude/headless.go` `Script`, `RunHeadless`): `claude -p
+  --output-format stream-json --verbose`, `--session-id` or `--resume`. No `--input-format
+  stream-json`. Stdin is `strings.NewReader(spec.Prompt)`: the prompt, then EOF. OpenCode runs the
+  same way. Kira's hook settings are added only to terminal launches (`Tracker.Compose`,
+  `Hooks.Compose(provider, terminalID, ...)`); `Script` adds none, and isolated runs set hooks off.
+- Lease channel (`ade/leases.go`): `deliverLease` queues per owner key, then `flushLease`. For a
+  session, `flushLease` types the text into the idle terminal (`Tracker.SendIfIdle`); otherwise the
+  Stop hook reply (`Block`), UserPromptSubmit reply (`Context`) or the next lease tool reply
+  (`notices` from `takeLeaseNotices`) carries it. For a `run:` key `flushLease` returns at its
+  first line (no terminal), no hook ever fires (`leaseState.runs`: "headless runs, which emit no
+  hook events"), so only `notices` on the run's own next lease tool call reach it. At run end
+  `endLeases` drops pending messages and marks the owner ended.
 - Boot `Recover` (`ade/recover.go`) marks running setups failed with the restart reason, sets
   pending runs' note to failed and stops all sessions; nothing resumes by itself.
+
+Push to a headless run, the answer for the user: the lease push does not reach a headless run.
+Kira starts it as `claude -p` with the prompt on stdin and closes stdin right after, so there is
+no open input to write into; Kira adds no hooks to it, so there is no Stop hook to answer; and
+`flushLease` skips `run:` keys because there is no terminal to type into. A run only hears a lease
+grant in the `notices` of its own next lease call, and after its one turn ends the run is over and
+`endLeases` drops the message. Making a push work would need one of three changes, none cheap:
+(1) stream-json input (`--input-format stream-json`, stdin kept open, Kira writes a user message):
+changes `RunHeadless` for every provider (OpenCode has no equivalent), the run no longer ends at
+its result event, and when Claude takes a message sent mid-turn is unverified (experiment: one real
+`claude` run with stdin open, a message sent mid-tool-call, about 0.05 USD); (2) a Kira Stop hook
+in headless runs that holds the turn end until the setup ends: still a block, only in a hook, and
+needs run-keyed hook routing plus hooks in isolated runs; (3) end the run and resume it with "the
+worktree is ready" (`queueResumeLocked`): a new attempt, which re-reads the whole conversation
+(cache likely cold after minutes) and changes finish semantics. So runs keep the blocking reply.
 
 Design:
 
@@ -761,7 +789,7 @@ Design:
 
 Rejected: (a) wait-only `task_info`, one more tool (kept only as the F5 fallback, 14.1); (c) launch
 gating alone, exists but misses mid-run requests; (d) push alone, cannot reach a headless run
-mid-turn or after its one turn; `branches {action: wait}`, extra schema text (spike F5 search
+(paragraph above); `branches {action: wait}`, extra schema text (spike F5 search
 context 1.7k to 1.8k against T 0).
 
 ### 9.3 Tool table
