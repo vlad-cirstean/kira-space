@@ -492,3 +492,54 @@ F3 and F6 fail on cost, F6 also on context.
 | F6 | T | 1 | yes | 0.0672 | 4 | 40834 | 0 | 0 | 0 | 1 | 0 | ToolSearch×1 create_task×2 |  |
 | F6 | T | 2 | yes | 0.0668 | 4 | 40789 | 0 | 0 | 0 | 1 | 0 | ToolSearch×1 create_task×2 |  |
 | F6 | T | 3 | yes | 0.0669 | 4 | 40824 | 0 | 0 | 0 | 1 | 0 | ToolSearch×1 create_task×2 |  |
+
+## Part 1c: proof flows, improved files approach
+
+Scope: F2 (new proof) and F3 (proof edit), sonnet, 3 runs per cell. 12 new runs, spend 0.9441 USD, running total about 5.83 USD of the 6 USD cap. All 12 passed. T F3 reuses the Part 1b runs (stub unchanged, see D). FL F3 is the Part 1b baseline. Raw per-run rows: `KIRA_SPIKE_DUMP` dirs, rebuild with `TestDetailsSpike1bReport`.
+
+Arms: `FA` = A+C, separate data files. `FP` = A+B+C, one inline proof file. Ladder: FL to FA isolates A+C, FA to FP isolates B. FA ran F3 only (budget); F2 has T and FP.
+
+- A: the step prompt names `proofs/orders-match-ledger/proof.md` (F3 only; F2 names the proof by title, as a user would). README adds `Proofs: <slug>, "<title>", N steps: <path>` (`none yet.` in F2). No answer leaks: the index names the proof, not its content.
+- B: `proof.md` holds frontmatter plus step data under `inline:` (table rows one per line, diagram as `|` block scalar, document as one JSON line). Images and large data stay `data: <file>`.
+- C: README line 1 reads "Edit, then call `submit`: a change counts only after it answers per file." The proof file starts with the comment `# Edit this file, then call submit.`
+
+### D: fair T proof_list
+
+No stub change. Real `proof_list` with a name returns `{name, steps: StepsForAgent(name)}`, each step `proof.StepBrief{ordinal, description, view}` (`internal/proof/service.go:181`). No step data, by design: an edit replaces a step with new data from the caller and keeps the rest by ordinal. Without a name it returns `ListForAgent()`. The Part 1b stub returns the same fields. T is neither handicapped nor advantaged. The Part 1b T F3 rep 3 failure was agent behaviour (stopped after `proof_list` and Grep, never called `proof_save`), so T F3 stays 2/3.
+
+### Results (median [min-max])
+
+| Flow | Arm | Pass | Cost USD | Final context | Turns | Failed edits + retries |
+|---|---|---|---|---|---|---|
+| F2 | T | 3/3 | 0.0638 [0.0637-0.0760] | 42921 [42913-42922] | 3 [3-3] | 0 |
+| F2 | FP | 3/3 | 0.0837 [0.0833-0.0847] | 42635 [42585-42688] | 6 [6-6] | 0 |
+| F3 | T | 2/3 | 0.0666 [0.0643-0.0815] | 42778 [42163-42778] | 5 [4-5] | 0 |
+| F3 | FL (1b) | 3/3 | 0.0854 [0.0796-0.0875] | 42531 [42319-42858] | 7 [6-7] | 0 |
+| F3 | FA | 3/3 | 0.0787 [0.0782-0.0854] | 42723 [42642-42818] | 7 [6-8] | 0 |
+| F3 | FP | 3/3 | 0.0826 [0.0810-0.0831] | 42489 [42461-43037] | 8 [8-8] | 0.67 (2 of 3 runs) |
+
+Against T (gate: cost <= 1.2, final context <= 1.0, pass not lower, edit ease not worse):
+
+| Flow | Arm | Cost F/T | Ctx F/T | Pass | Edit ease |
+|---|---|---|---|---|---|
+| F2 | FP | 1.31, fails | 0.99, ok | 3/3 vs 3/3 | ok |
+| F3 | FL | 1.28, fails | 0.99, ok | 3/3 vs 2/3 | ok |
+| F3 | FA | 1.18, ok (inconclusive) | 1.00, ok (inconclusive) | 3/3 vs 2/3 | ok |
+| F3 | FP | 1.24, fails (inconclusive) | 0.99, ok (inconclusive) | 3/3 vs 2/3 | 0.67 vs 0, worse |
+
+Inconclusive: gap between medians is below the larger run-to-run range. T F3 spans 0.064-0.082, so F3 cost ratios carry roughly +-0.1 of noise. Turns are informational: T 3 (F2) and 5 (F3) against 6 to 8 for files.
+
+### What explains what
+
+- Discovery (A): Bash discovery calls per F3 run fall from 4 (FL: 4, 4, 4) to 1-3 (FA) to 0 (FP). Cost FL to FA falls 0.0854 to 0.0787. A is real but small, and FA still reads README or Bash-lists before editing.
+- Doc bytes read: FL 2075, FA 1918, FP 442 (median). B stops the agent reading AGENTS.md, since the proof file is self-describing. Bytes saved are about 400 tokens, below the cost of the extra turns.
+- B on cost: no gain. FP F3 costs 0.0826 against FA 0.0787 because it takes 8 turns against 7. Both Edit calls (cell, then `reason`) are separate turns, and 2 of 3 runs submitted first, got "set reason in proof.md frontmatter", fixed it and submitted again. Cause: the README and header comment never mention `reason`; the format doc that does is no longer read. Inline data itself edits cleanly: Edit of one table cell `[12, 1150, 1150]` to `[12, 1175, 1175]` applied and validated in 3 of 3 runs, no failed Edit.
+- Submit friction (C): forgotten submits, 0 of 12 new runs (and 0 in the Part 1b F3 files runs). Every files run submitted. The stub's clear error text was enough for the one thing agents got wrong (missing `reason`). C costs nothing and is kept.
+- ToolSearch: T, 1 per run (loads `proof_save`; F3 `proof_list` rides the same search). FA and FP, 1 per run (loads `submit`) in 12 of 12 new runs. FL (1b): 1 of 3. No arm avoids the load; the tools arm and the files arm pay the same here.
+- Remaining gap is turn structure: T does `ToolSearch`, `proof_save` (F3: `proof_list` x2). Files do ToolSearch, Read, Edit (x1-2), submit, plus optional Bash. Each turn costs about 0.007-0.01 USD at this context size. Closing the gap needs fewer turns, not fewer bytes.
+
+### Verdict
+
+No variant reaches full parity. FA (A+C) is within the cost gate on F3 (1.18) but inconclusive, and F2 was not run for it. FP fails cost on both flows (1.24, 1.31) and edit ease on F3. Pass rate and final context are at or above T for every files arm. All files arms stay at or below T on context, so the earlier NO-GO for files-only stands; proof flows narrow from 1.28 (FL) to about 1.2 with A+C, not to 1.0.
+
+Single-file inline proof (B) is valid and edits cleanly but does not pay for itself in cost. Follow-up not run (budget left 0.156 USD): add `reason:` to the proof header comment (`# To change an accepted proof: set reason:, edit, then call submit.`) and rerun FP F3; the retry turn is the only cost B adds over FA. The plan's proof section (format of proof.md, folder index) is left unchanged because no variant passed the gate.
