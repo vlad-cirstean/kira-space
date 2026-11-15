@@ -20,8 +20,8 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P643 Part 3 | Details on disk: notes, handovers, links as files, `submit` tool, `finish_step` change, approvals, disk banner, migration exporters, prompts; round F1 | Done |
 | P643 Part 4 | Details on disk: proofs as files written by the agent and sent with `submit` (no proof tool), image formats, single-proof window, retention removed, proof migration (Stream A); round F2, F3 | Done |
 | P643 Part 5 | Details on disk: `state.yaml` and `task.yaml`, branch, lease, cancel tools, tool removals, orchestrator chain reads, children add-dir (Stream B); round F4 to F6, final benchmark | Done |
-| P644 | Chapter non-UI full run, 2 code review rounds | Todo |
-| P645 | Close chapter | Todo |
+| P644 | Chapter non-UI full run, 2 code review rounds | Done |
+| P645 | Close chapter | Done |
 
 ## Scope
 
@@ -266,3 +266,14 @@ Built and tested; the benchmark gate is not met, so the row stays Todo. Round F4
 - Decisions: an untouched blank new tab closes without asking. Incognito tabs never ask. Title copy has no question mark (catalog rule C7). Keys `studio.api.tabClose.*`.
 - Bug found and fixed: Save as cancel passed its click event as `saved`, so cancelling closed the tab. `closeSaveDialog(saved = false)`, template calls it with no argument.
 - Flow: `TestTabCloseSaveOrDiscard` (save then close persists, discard leaves the file unchanged), contract `api-tab-close.json`. UI: `api-tab-close.spec.ts`, 7 cases. 149 of 149 neighbour specs pass.
+
+### P644 Result
+
+- Full non-UI run after the last implementation phase passed after fixes. Test fixes: `grpc-stream-terminal-race.spec.ts` (open item from P643 Part 4) drops the tab instead of closing it; phone approvals fixture orders the branch request after the task item.
+- Review round 1 (`plans/P644-review-1.md`, base `v0.3.13`): 0 high, 5 medium, 4 low, 1 nit, all fixed (`4f2b3b964` to `32e233ccf`): finish refuses a missing draft only while the route continues, `state.yaml` writer survives idle with a live agent and archive waits for an in-flight render, shared attach facts, named missing submit path, child folder Kira-file denies.
+- Review round 2 (`plans/P644-review-2.md`, full diff since base): 0 high, 3 medium, 3 low, 2 nit, all fixed (`c7857ff0c` to `3d261093c`): proof blob GC sweep at start and after archive, truncated listing never deletes or reports indexed files missing, `continues` over skipped steps, svg style text checked once with children in style refused, `ade.handoverLine` dropped when the files fragment names the draft, slice shard fails on `go test -list` error or empty slice.
+- Open gates carried from P643, recorded plainly and not relaxed: Part 3 F1 cost gate open (1.32 against 1.2); Part 4 F2 (cost 4.42x) and F3 (cost 1.40x) not re-benchmarked after the validator format fix; Part 5 F1 (1.27), F5 (1.53), F6 (1.50) cost and F6 context (1.05 against 1.0) over bound. Benchmark spend exceeded the 8.0 USD cap.
+
+### P645 Result
+
+- Hand-written close, no tool. History block `chapter v0.3.14` appended to `docs/history/06-v2.8.md`, index range extended. `docs/v0.3.14/` removed. Dangling references (claude test comments and default output paths, DEV_ENVIRONMENT, ARCHITECTURE) repointed to `docs/HISTORY.md`. PR opened from `chapter/v0.3.14` to `main` over REST.

@@ -7,7 +7,7 @@ package claude
 //
 // Knobs: KIRA_SPIKE_REPS (haiku runs per flow and arm, default 3); flows F1..F6, KIRA_SPIKE_SONNET=0 (skip the
 // sonnet round), KIRA_SPIKE_FLOWS (comma list, default F1..F5), KIRA_SPIKE_OUT (results file).
-// Gate and thresholds: docs/v0.3.14/plans/P643-details-on-disk.md section 14.
+// Gate and thresholds: docs/HISTORY.md (v0.3.14 P643).
 
 import (
 	"bytes"
@@ -644,7 +644,7 @@ func TestDetailsSpike(t *testing.T) {
 	}
 	out := os.Getenv("KIRA_SPIKE_OUT")
 	if out == "" {
-		out = "../../../../docs/v0.3.14/plans/P643-spike-results.md"
+		out = filepath.Join(t.TempDir(), "P643-spike-results.md") // set KIRA_SPIKE_OUT to keep it
 	}
 
 	home := t.TempDir()

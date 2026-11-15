@@ -260,7 +260,7 @@ func TestDetailsSpikeReport(t *testing.T) {
 	}
 	out := os.Getenv("KIRA_SPIKE_OUT")
 	if out == "" {
-		out = "../../../../docs/v0.3.14/plans/P643-spike-results.md"
+		out = filepath.Join(t.TempDir(), "P643-spike-results.md") // set KIRA_SPIKE_OUT to keep it
 	}
 	if err := os.WriteFile(out, []byte(spikeReport(recs, spent, "", len(recs))), 0o644); err != nil {
 		t.Fatal(err)

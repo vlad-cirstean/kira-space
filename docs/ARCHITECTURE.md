@@ -4054,7 +4054,7 @@ config, project files.
 
 ## Task files (P643)
 
-Details content (notes, handovers, links, proofs) moves to files in `<home>/tasks/<taskId>/`; SQLite keeps state, a cache and an index. Plan: `docs/v0.3.14/plans/P643-details-on-disk.md`. Part 2 is the foundation; Part 3 adds notes, handovers, links, `submit` and the UI. Proofs (Part 4) and state files (Part 5) follow.
+Details content (notes, handovers, links, proofs) moves to files in `<home>/tasks/<taskId>/`; SQLite keeps state, a cache and an index. Plan and results: `docs/HISTORY.md` (v0.3.14 P643). Part 2 is the foundation; Part 3 adds notes, handovers, links, `submit` and the UI. Proofs (Part 4) and state files (Part 5) follow.
 
 - **Files are truth.** A row in `task_files` (migration 0101, `storage/repos/taskfiles.go`) per path: `version` (size and mtime ns), `sha256`, `accepted_sha256`, `accepted_by`, `accepted_at`, `review` (`accepted`, `pending`, `invalid`), `problem`. Stat compares size and version only; a file is read when they differ. A file whose hash equals `accepted_sha256` is unchanged whatever its mtime.
 - **Store seam.** `taskfiles/store.Store`: `Stat`, `Read`, `List`, `WriteAtomic(ifVersion)`, `Remove`, `Rename`, relative slash paths, opaque versions. The local adapter refuses symlinks, hard links (`nlink` over 1) and special files, opens with `O_NOFOLLOW|O_NONBLOCK` and checks `SameFile` after open, writes through `renameio`. A later adapter changes the folder only.

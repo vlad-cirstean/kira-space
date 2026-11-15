@@ -15,7 +15,7 @@ package claude
 // (context probes), KIRA_SPIKE1B_TOOLS_OUT (tool bytes); a test skips without its variable.
 // Knobs: KIRA_SPIKE1B_REPS (default 3), KIRA_SPIKE1B_FLOWS, KIRA_SPIKE1B_ARMS (default T,FF,FL,FC),
 // KIRA_SPIKE1B_NOFC (flows that skip FC), KIRA_SPIKE1B_BUDGET (USD, default 4),
-// KIRA_SPIKE_DUMP (raw transcripts). Results: docs/v0.3.14/plans/P643-spike-results.md "Part 1b".
+// KIRA_SPIKE_DUMP (raw transcripts). Results: docs/HISTORY.md (v0.3.14 P643).
 
 import (
 	"bytes"

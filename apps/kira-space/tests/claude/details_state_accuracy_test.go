@@ -4,7 +4,7 @@ package claude
 // {action, args} (arm N) than with the flat union (arm FLAT)? Real claude on sonnet, stub tool, no Kira
 // backend. Opt-in, spends real tokens (18 runs, about 1.35 USD), never in hooks or CI:
 //
-//	KIRA_SPIKE=state KIRA_ACC_OUT=<abs>/docs/v0.3.14/plans/P643-state-accuracy.md \
+//	KIRA_SPIKE=state KIRA_ACC_OUT=<abs>/P643-state-accuracy.md \
 //	KIRA_SPIKE_DUMP=<scratch>/acc-dump CGO_ENABLED=1 go test -count=1 -v -timeout 2h -run 'TestStateAccuracy$' .
 //
 // Knobs: KIRA_ACC_REPS (default 3), KIRA_ACC_FLOWS (default A1,A2,A3), KIRA_ACC_ARMS (default N,FLAT),
