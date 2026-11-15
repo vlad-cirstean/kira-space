@@ -17,8 +17,10 @@ package claude
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,6 +31,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 )
@@ -621,14 +625,23 @@ func TestDetailsSpike1b(t *testing.T) {
 		arm string
 		rep int
 	}
+	skip := set("KIRA_SPIKE1B_SKIP") // done runs as "F1-T-1"
+	flowReps := map[string]int{}     // KIRA_SPIKE1B_FLOWREPS="F2=1,F5=1" overrides reps per flow
+	for k := range set("KIRA_SPIKE1B_FLOWREPS") {
+		id, n, _ := strings.Cut(k, "=")
+		flowReps[id], _ = strconv.Atoi(n)
+	}
 	var jobs []job
 	for rep := 1; rep <= reps; rep++ {
 		for _, fl := range spikeFlows1b {
 			if len(flows) > 0 && !flows[fl.id] {
 				continue
 			}
+			if n, ok := flowReps[fl.id]; ok && rep > n {
+				continue
+			}
 			for _, arm := range arms {
-				if arm == "FC" && noFC[fl.id] {
+				if arm == "FC" && noFC[fl.id] || skip[fmt.Sprintf("%s-%s-%d", fl.id, arm, rep)] {
 					continue
 				}
 				jobs = append(jobs, job{fl, arm, rep})
@@ -771,4 +784,134 @@ func filteredEnv(home string) []string {
 		env = append(env, e)
 	}
 	return env
+}
+
+// TestDetailsSpike1bReport rebuilds the report from transcripts of earlier runs (KIRA_SPIKE_REPORT_DIRS,
+// comma list of dump dirs) and their verbose logs (KIRA_SPIKE_REPORT_LOGS); no tokens spent.
+func TestDetailsSpike1bReport(t *testing.T) {
+	dirs, logs := os.Getenv("KIRA_SPIKE_REPORT_DIRS"), os.Getenv("KIRA_SPIKE_REPORT_LOGS")
+	if dirs == "" || logs == "" {
+		t.Skip("set KIRA_SPIKE_REPORT_DIRS and KIRA_SPIKE_REPORT_LOGS")
+	}
+	re := regexp.MustCompile(`(F\d) (T|FF|FL|FC) #(\d+) pass=(true|false) cost=[0-9.]+ turns=\d+ spent=[0-9.]+ ?(.*)$`)
+	pass := map[string][2]string{}
+	for _, lf := range strings.Split(logs, ",") {
+		for _, l := range strings.Split(string(mustRead(t, lf)), "\n") {
+			if m := re.FindStringSubmatch(l); m != nil {
+				pass[m[1]+"-"+m[2]+"-"+m[3]] = [2]string{m[4], strings.TrimSpace(m[5])}
+			}
+		}
+	}
+	var recs []spikeRec
+	var spent float64
+	armSet := map[string]bool{}
+	for _, d := range strings.Split(dirs, ",") {
+		files, _ := filepath.Glob(filepath.Join(d, "F*-sonnet-*.jsonl"))
+		for _, f := range files {
+			parts := strings.Split(strings.TrimSuffix(filepath.Base(f), ".jsonl"), "-")
+			if len(parts) != 4 {
+				continue
+			}
+			rep, _ := strconv.Atoi(parts[3])
+			rec := spikeRec{Flow: parts[0], Arm: parts[1], Model: "sonnet", Rep: rep}
+			parseSpikeStream(string(mustRead(t, f)), &rec)
+			p := pass[parts[0]+"-"+parts[1]+"-"+parts[3]]
+			rec.Pass, rec.Why = p[0] == "true", p[1]
+			spent += rec.Cost
+			recs = append(recs, rec)
+			armSet[parts[1]] = true
+		}
+	}
+	var arms []string
+	for _, a := range []string{"T", "FF", "FL", "FC"} {
+		if armSet[a] {
+			arms = append(arms, a)
+		}
+	}
+	out := os.Getenv("KIRA_SPIKE1B_OUT")
+	if out == "" {
+		out = "../../../../docs/v0.3.14/plans/P643-spike-1b-raw.md"
+	}
+	if err := os.WriteFile(out, []byte(spike1bReport(recs, spent, os.Getenv("KIRA_SPIKE1B_NOTE"), len(recs), arms)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%d runs, %.4f USD", len(recs), spent)
+}
+
+// TestDetailsSpikeToolBytes lists the tools each arm serves and sums their JSON size (name,
+// description, input schema): the schema share of the context once loaded. Free, no claude.
+func TestDetailsSpikeToolBytes(t *testing.T) {
+	if os.Getenv("KIRA_SPIKE") != "run1b" {
+		t.Skip("KIRA_SPIKE=run1b")
+	}
+	spike1bOn = true
+	defer func() { spike1bOn = false }()
+	var b strings.Builder
+	b.WriteString("| Arm and role | Tools | Bytes (name, description, schema) | Tokens at bytes/4 |\n|---|---|---|---|\n")
+	for _, c := range []struct{ name, flow, arm string }{
+		{"T run role (F5)", "F5", "T"}, {"T run role with proof tools (F2)", "F2", "T"}, {"T orchestrator (F4)", "F4", "T"},
+		{"F run role", "F5", "FL"}, {"F orchestrator with create_task (F4)", "F4", "FL"}, {"F orchestrator without create_task (F6)", "F6", "FL"},
+	} {
+		r := &spikeRun{t: t, flow: c.flow, arm: map[bool]string{true: "T", false: "F"}[c.arm == "T"], variant: c.arm, lib: loadSpikeLib(t)}
+		if c.arm == "T" {
+			r.variant = ""
+		}
+		cfg, _, done := r.setup(t, flowByIDs(spikeFlows1b, c.flow))
+		var conf struct {
+			MCPServers map[string]struct {
+				URL     string            `json:"url"`
+				Headers map[string]string `json:"headers"`
+			} `json:"mcpServers"`
+		}
+		if err := json.Unmarshal(mustRead(t, cfg), &conf); err != nil {
+			t.Fatal(err)
+		}
+		n, total := 0, 0
+		for _, sv := range conf.MCPServers {
+			tools, err := listTools(t, sv.URL, sv.Headers)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, tl := range tools {
+				raw, _ := json.Marshal(tl)
+				total += len(raw)
+				n++
+			}
+		}
+		done()
+		fmt.Fprintf(&b, "| %s | %d | %d | %d |\n", c.name, n, total, total/4)
+	}
+	out := os.Getenv("KIRA_SPIKE1B_TOOLS_OUT")
+	if out == "" {
+		out = "../../../../docs/v0.3.14/plans/P643-spike-1b-toolbytes.md"
+	}
+	if err := os.WriteFile(out, []byte(b.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type headerTransport map[string]string
+
+func (h headerTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	r = r.Clone(r.Context())
+	for k, v := range h {
+		r.Header.Set(k, v)
+	}
+	return http.DefaultTransport.RoundTrip(r)
+}
+
+func listTools(t *testing.T, url string, headers map[string]string) ([]*mcp.Tool, error) {
+	t.Helper()
+	ctx := context.Background()
+	cl := mcp.NewClient(&mcp.Implementation{Name: "spike", Version: "1"}, nil)
+	sess, err := cl.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: url, HTTPClient: &http.Client{Transport: headerTransport(headers)}}, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer sess.Close()
+	res, err := sess.ListTools(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	return res.Tools, nil
 }
