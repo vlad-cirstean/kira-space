@@ -103,7 +103,12 @@ shard_pkgs() {
 slice_tests() {
   _k="${2%/*}"
   _n="${2#*/}"
-  go test -list '.' "$1" | grep -E '^(Test|Fuzz|Example)' | sort | awk -v k="$_k" -v n="$_n" '(NR - 1) % n == k - 1'
+  # Plain assignment: a failed listing (build error, TestMain failure) must fail the shard, not yield an empty slice.
+  _raw="$(go test -list '.' "$1")" || {
+    echo "go-test-split: go test -list failed for $1" >&2
+    return 1
+  }
+  printf '%s\n' "$_raw" | grep -E '^(Test|Fuzz|Example)' | sort | awk -v k="$_k" -v n="$_n" '(NR - 1) % n == k - 1'
 }
 
 slice_regex() {
@@ -179,7 +184,8 @@ case "${1:-}" in
       _slice="$(field "$GROUP" "$SHARD" 4)"
       printf '%s\n' "$_pkgs"
       if [ -n "$_slice" ]; then
-        echo "slice $_slice: $(slice_tests "$_pkgs" "$_slice" | wc -l | tr -d ' ') tests" >&2
+        _st="$(slice_tests "$_pkgs" "$_slice")" || exit 1
+        echo "slice $_slice: $(printf '%s\n' "$_st" | sed '/^$/d' | wc -l | tr -d ' ') tests" >&2
       fi
     else
       group_pkgs "$GROUP"
@@ -250,10 +256,10 @@ if [ -n "$SLICE" ]; then
         ;;
     esac
   done
-  TESTS="$(slice_tests "$PKGS" "$SLICE")"
+  TESTS="$(slice_tests "$PKGS" "$SLICE")" || exit 1
   if [ -z "$TESTS" ]; then
-    echo "go-test-split: slice $SLICE of $PKGS has no tests, nothing to run"
-    exit 0
+    echo "go-test-split: slice $SLICE of $PKGS has no tests" >&2
+    exit 1
   fi
   echo "go-test-split: $GROUP/$SHARD runs slice $SLICE ($(printf '%s\n' "$TESTS" | wc -l | tr -d ' ') tests)"
   exec go test "$@" -run "$(slice_regex "$TESTS")" "$PKGS"
