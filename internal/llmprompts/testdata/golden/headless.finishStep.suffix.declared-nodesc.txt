@@ -1,1 +1,1 @@
-When this step ends, call finish_step once with status one of: pass (ok), fail (not ok), retry (not ok). Add a one-line summary; for a not-ok status add the reason. If you need a decision from me, use status "needs_input" with your question.
+When this step ends, call finish_step once with status one of: pass (ok), fail (not ok), retry (not ok). For a not-ok status add the reason. If you need a decision from me, use status "needs_input" with your question.

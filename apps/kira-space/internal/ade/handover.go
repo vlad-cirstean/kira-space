@@ -65,41 +65,6 @@ func (b *TaskBoard) closeHandoverPrompt(taskID string) {
 	}
 }
 
-// RecordHandover stores a session's handover notes as the open draft of the task's current stage. stepID is the
-// stage the session was opened for; a task that moved on since refuses. A finished draft on a live stage raises
-// the "move to next stage" prompt.
-func (b *TaskBoard) RecordHandover(_ context.Context, taskID, stepID, sessionID, notes string, finished bool) error {
-	if len(notes) > maxHandoverBytes {
-		return agentmcp.ToolError(fmt.Sprintf("notes is too long: at most %d bytes.", maxHandoverBytes))
-	}
-	mu := b.taskMu(taskID)
-	mu.Lock()
-	defer mu.Unlock()
-	tc, err := b.loadTaskCtx(taskID)
-	if err != nil {
-		return err
-	}
-	cur := b.currentStepID(tc)
-	if stepID != "" && stepID != cur {
-		return agentmcp.ToolError(fmt.Sprintf("The task moved on to %s; nothing was recorded. Tell the user.", cmpNonEmpty(stepName(tc, cur), cur)))
-	}
-	if _, err := b.deps.Tasks.UpsertHandoverDraft(model.AdeHandover{
-		ID: ids.NewID(), TaskID: taskID, FromStepID: cur, FromStepName: stepName(tc, cur),
-		Body: notes, Finished: finished, SessionID: sessionID, UpdatedAt: b.deps.Now().UnixMilli(),
-	}); err != nil {
-		return err
-	}
-	b.mirrorTask(taskID, mirrorOpts{})
-	// Board first: the prompt's dialog reads the draft from the board snapshot.
-	b.notifyBoardNow(taskChanged(taskID))
-	if finished && cur != "" && cur != entryDone {
-		b.openHandoverPrompt(tc)
-	} else {
-		b.closeHandoverPrompt(taskID)
-	}
-	return nil
-}
-
 // ErrHandoverReadOnly refuses an edit of a row that copies another task's text.
 var ErrHandoverReadOnly = errors.New("ade: handover is a copy of a child task's text")
 

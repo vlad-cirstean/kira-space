@@ -7013,7 +7013,7 @@
         }
       },
       "adeHandoverLine": {
-        "description": "Tells an interactive session to call the handover tool with notes for the next stage.",
+        "description": "Tells an interactive session to write its handover draft file and call submit.",
         "title": "Handover instruction",
         "usedBy": {
           "body": "Ends the manual step, review and start messages."
@@ -7173,13 +7173,6 @@
           "body": "Ends every ADE step prompt and every resumed step message."
         }
       },
-      "headlessHandoverAck": {
-        "description": "The reply to a handover call.",
-        "title": "Handover result",
-        "usedBy": {
-          "body": "Returned to the agent after it records handover notes."
-        }
-      },
       "headlessRebaseReportSuffix": {
         "description": "Tells the rebase agent to run git only through the git tool and how to report with finish_step.",
         "title": "Rebase report instruction",
@@ -7208,8 +7201,15 @@
           "body": "Ends every smart script prompt, one-off edits included."
         }
       },
+      "headlessSpaceFiles": {
+        "description": "Names the task folder and the draft file of the step, tells the agent to read the readme there, write the handover and call submit, and how to load the tools.",
+        "title": "Task files instruction",
+        "usedBy": {
+          "body": "Follows the Kira Space tools line in every ADE step prompt and session message."
+        }
+      },
       "headlessSpaceInstructions": {
-        "description": "Tells the agent the order to use the Kira Space tools. It reads the task, declares repositories, then asks the user for branches.",
+        "description": "Tells the agent to create and change branches only through the Kira Space tools, and to edit task files and then submit them.",
         "title": "Kira Space tools instructions",
         "usedBy": {
           "body": "Sent to {agent} when a run connects to the Kira Space tools server."

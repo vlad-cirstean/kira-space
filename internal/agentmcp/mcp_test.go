@@ -64,7 +64,7 @@ func TestFinishStepServer(t *testing.T) {
 	var got []string
 	srv := NewServer(Options{Dir: t.TempDir(), OnFinish: func(runID string, f Finish) {
 		mu.Lock()
-		got = append(got, runID+"|"+f.Status+"|"+f.Summary)
+		got = append(got, runID+"|"+f.Status)
 		mu.Unlock()
 	}})
 	t.Cleanup(func() { _ = srv.Close() })
@@ -93,7 +93,7 @@ func TestFinishStepServer(t *testing.T) {
 		t.Fatalf("connect: %v", err)
 	}
 	call := func(s *mcp.ClientSession, status string) *mcp.CallToolResult {
-		res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "summary": "s-" + status, "reason": "r"}})
+		res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "reason": "r"}})
 		if err != nil { // the schema enum refuses an unknown status before the handler runs
 			return &mcp.CallToolResult{IsError: true}
 		}
@@ -111,7 +111,7 @@ func TestFinishStepServer(t *testing.T) {
 	}
 	call(sessB, "failed")
 	mu.Lock()
-	want := []string{"run-a|done|s-done", "run-b|failed|s-failed"}
+	want := []string{"run-a|done", "run-b|failed"}
 	if len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("finish calls = %v, want %v", got, want)
 	}
@@ -127,8 +127,11 @@ func TestFinishStepServer(t *testing.T) {
 }
 
 type fakeSpace struct {
-	mu    sync.Mutex
-	calls []string
+	mu     sync.Mutex
+	calls  []string
+	finish SubmitFinish
+	paths  []string
+	reason string
 }
 
 func (f *fakeSpace) rec(s string) {
@@ -207,9 +210,15 @@ func (f *fakeSpace) CancelOperation(_ context.Context, task, opID string) (Cance
 	return CancelOperationResult{OpID: opID, Cancelled: true}, nil
 }
 
-func (f *fakeSpace) ReportArtifacts(_ context.Context, call SpaceCall, in []ArtifactInput) (ReportArtifactsResult, error) {
-	f.rec("report|" + call.TaskID)
-	return ReportArtifactsResult{Recorded: len(in)}, nil
+func (f *fakeSpace) Submit(_ context.Context, _ SpaceCall, in SubmitArgs) (string, error) {
+	f.mu.Lock()
+	f.paths, f.reason = in.Paths, in.Reason
+	f.mu.Unlock()
+	return "accepted 0, pending user 0, invalid 0", nil
+}
+
+func (f *fakeSpace) SubmitForFinish(context.Context, SpaceCall, bool) (SubmitFinish, error) {
+	return f.finish, nil
 }
 
 func (f *fakeSpace) AttachProof(_ context.Context, call SpaceCall, name string) (AttachProofResult, error) {
@@ -272,10 +281,10 @@ func TestGrantScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if names := toolNames(t, sp); names["finish_step"] || !names["request_branches"] || !names["declare_repos"] || !names["task_info"] || !names["operations"] || !names["rename_branch"] || !names["change_branch"] || !names["acquire_lease"] || !names["release_lease"] || !names["lease_status"] || !names["report_artifacts"] || names["branch_status"] || names["attach_proof"] || names["list_operations"] || names["cancel_operation"] {
+	if names := toolNames(t, sp); names["finish_step"] || !names["request_branches"] || !names["declare_repos"] || !names["task_info"] || !names["operations"] || !names["rename_branch"] || !names["change_branch"] || !names["acquire_lease"] || !names["release_lease"] || !names["lease_status"] || !names["submit"] || names["branch_status"] || names["attach_proof"] || names["list_operations"] || names["cancel_operation"] {
 		t.Fatalf("space-only grant tools = %v", names)
 	}
-	if res, err := sp.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done", "summary": "x"}}); err == nil && !res.IsError {
+	if res, err := sp.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done"}}); err == nil && !res.IsError {
 		t.Fatal("space-only grant called finish_step")
 	}
 	if len(finished) != 0 {
@@ -390,7 +399,7 @@ func TestFinishStepStatusEnum(t *testing.T) {
 		t.Fatal(err)
 	}
 	call := func(status string) bool {
-		res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "summary": "x", "reason": "r"}})
+		res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "reason": "r"}})
 		return err == nil && !res.IsError
 	}
 	if call("done") || call("bogus") {
@@ -456,7 +465,7 @@ func TestOnToolCallReportsEveryCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done", "summary": "s"}}); err != nil {
+	if _, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done"}}); err != nil {
 		t.Fatal(err)
 	}
 	mu.Lock()
@@ -502,5 +511,42 @@ func TestTaskInfoReportsProgress(t *testing.T) {
 	defer mu.Unlock()
 	if got[1] != "preparing one" || got[2] != "preparing two" {
 		t.Fatalf("progress = %v, want 1 then 2 with the two messages", got)
+	}
+}
+
+// An ok finish the board refuses (no draft) records nothing and returns the refusal; a failed finish
+// and an accepted ok finish go through, the latter carrying the submit reply.
+func TestFinishStepImplicitSubmit(t *testing.T) {
+	var mu sync.Mutex
+	var got []string
+	fs := &fakeSpace{finish: SubmitFinish{Refuse: "write handovers/draft-build.md, then call finish_step"}}
+	srv := NewServer(Options{Dir: t.TempDir(), Space: fs, OnFinish: func(runID string, f Finish) {
+		mu.Lock()
+		got = append(got, f.Status)
+		mu.Unlock()
+	}})
+	t.Cleanup(func() { _ = srv.Close() })
+	cfg, release, err := srv.Register(Grant{Agent: claude.New(), RunID: "run-1", TaskID: "task-1", Space: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	sess, err := connect(t, cfg, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done"}})
+	if err != nil || !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "draft-build.md") {
+		t.Fatalf("ok finish without a draft = %+v, %v; want the refusal", res, err)
+	}
+	fs.finish = SubmitFinish{Reply: "accepted 1, pending user 0, invalid 0"}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done"}})
+	if err != nil || res.IsError || !strings.HasPrefix(res.Content[0].(*mcp.TextContent).Text, "accepted 1, pending user 0, invalid 0") {
+		t.Fatalf("ok finish with a draft = %+v, %v; want the reply first", res, err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(got) != 1 || got[0] != "done" {
+		t.Fatalf("finishes = %v, want one done", got)
 	}
 }

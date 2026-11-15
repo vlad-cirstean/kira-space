@@ -2,7 +2,6 @@ package ade
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -455,30 +454,6 @@ func (b *TaskBoard) normalizeArtifact(in agentmcp.ArtifactInput) agentmcp.Artifa
 	return in
 }
 
-// storeArtifacts validates and upserts a batch under the task lock; nothing is written when any item
-// or the task's cap refuses. The refusal is an ErrInvalidInput.
-func (b *TaskBoard) storeArtifacts(taskID, source, stepID, runID, sessionID string, kindOK func(string) bool, in []agentmcp.ArtifactInput) ([]model.AdeTaskArtifact, error) {
-	if n := len(in); n == 0 || n > agentmcp.MaxArtifactsPerCall {
-		return nil, invalid("artifacts needs 1 to %d entries.", agentmcp.MaxArtifactsPerCall)
-	}
-	clean := make([]agentmcp.ArtifactInput, len(in))
-	for i, a := range in {
-		c, msg := agentmcp.CleanArtifactAs(a, kindOK)
-		if msg != "" {
-			return nil, invalid("artifacts[%d]: %s", i, msg)
-		}
-		clean[i] = b.normalizeArtifact(c)
-	}
-	mu := b.taskMu(taskID)
-	mu.Lock()
-	defer mu.Unlock()
-	tc, err := b.loadTaskCtx(taskID)
-	if err != nil {
-		return nil, err
-	}
-	return b.storeCleanLocked(tc, source, stepID, runID, sessionID, clean)
-}
-
 // storeCleanLocked upserts validated artifacts. The caller holds the task lock and loaded tc under it.
 func (b *TaskBoard) storeCleanLocked(tc *taskCtx, source, stepID, runID, sessionID string, clean []agentmcp.ArtifactInput) ([]model.AdeTaskArtifact, error) {
 	taskID := tc.task.ID
@@ -522,18 +497,6 @@ func (b *TaskBoard) storeCleanLocked(tc *taskCtx, source, stepID, runID, session
 	b.mirrorTask(taskID, userEdit(true))
 	b.notifyBoard()
 	return out, nil
-}
-
-// ReportArtifacts records the artifacts an agent reports for its task.
-func (b *TaskBoard) ReportArtifacts(_ context.Context, call agentmcp.SpaceCall, in []agentmcp.ArtifactInput) (agentmcp.ReportArtifactsResult, error) {
-	rows, err := b.storeArtifacts(call.TaskID, model.AdeArtifactSourceAgent, call.StepID, call.RunID, call.SessionID, agentmcp.ReportableArtifactKind, in)
-	if err != nil {
-		if errors.Is(err, ErrInvalidInput) {
-			return agentmcp.ReportArtifactsResult{}, agentmcp.ToolError(trimInvalid(err))
-		}
-		return agentmcp.ReportArtifactsResult{}, err
-	}
-	return agentmcp.ReportArtifactsResult{Recorded: len(rows)}, nil
 }
 
 // ListArtifacts is the task's artifacts as an agent reads them, from local data only (Quick): its

@@ -2,6 +2,7 @@ package claude
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude/mcpinstall"
@@ -85,4 +86,12 @@ func (p *Provider) ToolArgs(pol harness.ToolPolicy) (tools, allowed []string) {
 // MCPInstaller registers servers through `claude mcp add-json`.
 func (p *Provider) MCPInstaller() harness.MCPInstaller {
 	return mcpinstall.New(mcpinstall.Deps{LookPath: p.lookPath, Stat: p.stat, Candidates: Candidates})
+}
+
+// LoadHint tells claude to load the named tools with ToolSearch; its MCP tools are deferred until then.
+func (p *Provider) LoadHint(ts ...harness.MCPTool) string {
+	if len(ts) == 0 {
+		return ""
+	}
+	return "Load the tools first: ToolSearch with query \"select:" + strings.Join(harness.ToolNames(p, ts...), ",") + "\"."
 }

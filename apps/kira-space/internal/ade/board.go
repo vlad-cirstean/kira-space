@@ -281,7 +281,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 		deps.Approvals.Register(approvals.KindTaskCreate, taskCreateOwner{b})
 		deps.Approvals.Register(approvals.KindDetailsEdit, detailsOwner{b})
 	}
-	b.agent = agentmcp.NewServer(agentmcp.Options{Dir: deps.AgentDir, OnFinish: b.recordFinish, Space: b, Outcomes: b, Review: b, SandboxGit: b, Git: b, Handover: b, Orchestrator: b, Prompts: b.prompts(), OnToolCall: b.mcpRecorder})
+	b.agent = agentmcp.NewServer(agentmcp.Options{Dir: deps.AgentDir, OnFinish: b.recordFinish, Space: b, Outcomes: b, Review: b, SandboxGit: b, Git: b, Orchestrator: b, Prompts: b.prompts(), OnToolCall: b.mcpRecorder})
 	if deps.Tracker != nil {
 		deps.Tracker.deps.Ops, deps.Tracker.deps.OpSubject = deps.Ops, b.opSubject
 	}

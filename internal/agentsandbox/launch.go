@@ -14,7 +14,9 @@ func Flags(p Policy, agent harness.Sandboxed) (addDirs, disallowed []string) {
 	addDirs = appendUnique(addDirs, p.Allow...)
 	addDirs = appendUnique(addDirs, p.Scratch)
 	if agent != nil {
-		disallowed = agent.SandboxDenies(p.Access == AccessRead, p.Read, p.Network)
+		// A read run with an allowed folder (the task folder) must edit there: a blanket tool deny beats the
+		// --add-dir grant, so it denies edits under the read folders instead and the profile bounds the rest.
+		disallowed = agent.SandboxDenies(p.Access == AccessRead && len(p.Allow) == 0, p.Read, p.Network)
 	}
 	return addDirs, disallowed
 }

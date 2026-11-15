@@ -197,6 +197,8 @@ type SpaceCall struct {
 	StepID string
 	// SessionID is the Kira session record that made the call, "" when unknown.
 	SessionID string
+	// Orchestrator is true for the orchestrator on its own task.
+	Orchestrator bool
 }
 
 // SpaceTools is what the Kira Space tools call; *ade.TaskBoard implements it. Every method acts on
@@ -210,9 +212,11 @@ type SpaceTools interface {
 	BranchStatus(ctx context.Context, taskID, repo, branch string, wait time.Duration) (BranchInfo, error)
 	RenameBranch(ctx context.Context, call SpaceCall, args RenameBranchArgs) (RenameBranchResult, error)
 	ChangeBranch(ctx context.Context, call SpaceCall, args ChangeBranchArgs) (ChangeBranchResult, error)
-	ReportArtifacts(ctx context.Context, call SpaceCall, in []ArtifactInput) (ReportArtifactsResult, error)
-	// AttachProof shows a closed proof session, by name, in the task's notes chain; report_artifacts
-	// kind proof calls it.
+	// Submit reads the named task files (all when none) as the calling session; the reply is the count line then one line per file.
+	Submit(ctx context.Context, call SpaceCall, in SubmitArgs) (string, error)
+	// SubmitForFinish is finish_step's implicit submit; an ok finish with no draft is refused.
+	SubmitForFinish(ctx context.Context, call SpaceCall, ok bool) (SubmitFinish, error)
+	// AttachProof shows a closed proof session, by name, in the task's notes chain; no tool calls it until the proof part lands.
 	AttachProof(ctx context.Context, call SpaceCall, name string) (AttachProofResult, error)
 	// ListArtifacts lists every artifact of the task; a failing source is a gap, not an error.
 	ListArtifacts(ctx context.Context, taskID string) (TaskArtifacts, error)
@@ -248,10 +252,6 @@ type taskInfoArgs struct {
 	IncludeRegistered bool `json:"includeRegistered,omitempty"`
 }
 
-type reportArtifactsArgs struct {
-	Artifacts []ArtifactInput `json:"artifacts"`
-}
-
 // spaceTask resolves the Space grant behind a call; every Space tool acts on that task alone.
 func (s *Server) spaceTask(req *mcp.CallToolRequest) (SpaceCall, *mcp.CallToolResult) {
 	var g Grant
@@ -262,7 +262,7 @@ func (s *Server) spaceTask(req *mcp.CallToolRequest) (SpaceCall, *mcp.CallToolRe
 	if !ok || !g.Space || g.TaskID == "" {
 		return SpaceCall{}, toolError("Kira Space tools are not available for this session.")
 	}
-	return SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID}, nil
+	return SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID, Orchestrator: g.Orchestrator}, nil
 }
 
 // cleanBranches trims and dedups specs by (repo, branch, base); it returns the refusal text when the list is
@@ -302,7 +302,7 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 	s.addRequestBranchesTool(srv)
 	s.addRenameBranchTool(srv)
 	s.addChangeBranchTool(srv)
-	s.addReportArtifactsTool(srv)
+	s.addSubmitTool(srv)
 	s.addOperationsTool(srv)
 	s.addLeaseTools(srv)
 }
@@ -476,52 +476,5 @@ func (s *Server) addChangeBranchTool(srv *mcp.Server) {
 			return fail("change_branch", err), ChangeBranchResult{}, nil
 		}
 		return nil, res, nil
-	})
-}
-
-func (s *Server) addReportArtifactsTool(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "report_artifacts",
-		Description: llmprompts.HeadlessToolReportArtifacts.Text(s.prompts, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[reportArtifactsArgs](s.prompts, llmprompts.HeadlessToolReportArtifacts.ID(), map[string]any{
-			"artifacts": llmprompts.MaxVars{Max: MaxArtifactsPerCall},
-		}), "artifacts"),
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args reportArtifactsArgs) (*mcp.CallToolResult, ReportArtifactsResult, error) {
-		call, bad := s.spaceTask(req)
-		if bad != nil {
-			return bad, ReportArtifactsResult{}, nil
-		}
-		var proofs []string
-		var others []ArtifactInput
-		for _, a := range args.Artifacts {
-			if strings.TrimSpace(a.Kind) != ArtifactProof {
-				others = append(others, a)
-				continue
-			}
-			name := strings.TrimSpace(a.Ref)
-			if name == "" {
-				return toolError("A proof item needs ref: the proof's name."), ReportArtifactsResult{}, nil
-			}
-			proofs = append(proofs, name)
-		}
-		ctx, done := s.callCtx(ctx, req)
-		defer done()
-		var out ReportArtifactsResult
-		// Attaching is idempotent, so a proof that fails midway leaves nothing to undo; items record after.
-		for _, name := range proofs {
-			res, err := s.space.AttachProof(ctx, call, name)
-			if err != nil {
-				return fail("report_artifacts", err), ReportArtifactsResult{}, nil
-			}
-			out.Proofs = append(out.Proofs, res)
-		}
-		if len(others) > 0 {
-			res, err := s.space.ReportArtifacts(ctx, call, others)
-			if err != nil {
-				return fail("report_artifacts", err), ReportArtifactsResult{}, nil
-			}
-			out.Recorded = res.Recorded
-		}
-		return nil, out, nil
 	})
 }

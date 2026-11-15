@@ -171,9 +171,18 @@ type StepVars struct {
 	Finish     FinishVars `json:"finish"`
 	// Notes are the task notes; Handover is what the previous stage left, HandoverFrom its stage name.
 	// All arrive capped and outside Message, so a Run dialog edit keeps them.
-	Notes        string `json:"notes"`
-	Handover     string `json:"handover"`
-	HandoverFrom string `json:"handoverFrom"`
+	Notes        string    `json:"notes"`
+	Handover     string    `json:"handover"`
+	HandoverFrom string    `json:"handoverFrom"`
+	Files        FilesVars `json:"files"`
+}
+
+// FilesVars fills the task-files fragment: the task folder, the draft file of the step and the
+// provider's tool-loading sentence. A zero value drops the fragment (a board with no files root).
+type FilesVars struct {
+	Folder string `json:"folder"`
+	Draft  string `json:"draft"`
+	Load   string `json:"load"`
 }
 
 // ManualVars fills the manual step message. StepPrompt arrives substituted; Notes arrive capped.
@@ -190,8 +199,9 @@ type ManualVars struct {
 	Outside    bool   `json:"outside"`
 	StepPrompt string `json:"stepPrompt"`
 	// Handover is what the previous stage left, HandoverFrom its stage name; both capped.
-	Handover     string `json:"handover"`
-	HandoverFrom string `json:"handoverFrom"`
+	Handover     string    `json:"handover"`
+	HandoverFrom string    `json:"handoverFrom"`
+	Files        FilesVars `json:"files"`
 }
 
 // ReviewVars fills the review message. Notes arrive capped.
@@ -202,8 +212,9 @@ type ReviewVars struct {
 	Notes   string         `json:"notes"`
 	Repos   []RepoLineVars `json:"repos"`
 	// Handover is what the previous stage left, HandoverFrom its stage name; both capped.
-	Handover     string `json:"handover"`
-	HandoverFrom string `json:"handoverFrom"`
+	Handover     string    `json:"handover"`
+	HandoverFrom string    `json:"handoverFrom"`
+	Files        FilesVars `json:"files"`
 }
 
 // StartVars fills the Start message; StepName is empty when the workflow has no open step.
@@ -218,8 +229,9 @@ type StartVars struct {
 	StepName     string   `json:"stepName"`
 	Context      []string `json:"context"`
 	// Handover is what the previous stage left, HandoverFrom its stage name; both capped.
-	Handover     string `json:"handover"`
-	HandoverFrom string `json:"handoverFrom"`
+	Handover     string    `json:"handover"`
+	HandoverFrom string    `json:"handoverFrom"`
+	Files        FilesVars `json:"files"`
 }
 
 // RebaseContextVars fills the line about a branch whose last rebase did not finish.
@@ -819,7 +831,7 @@ var HeadlessFinishStepSuffix = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessFinishStepSuffix.title",
 	PurposeKey: "llmPrompts.entry.headlessFinishStepSuffix.description",
 	UsedByKey:  "llmPrompts.entry.headlessFinishStepSuffix.usedBy.body",
-	Default:    `{{if .Implicit}}When this step is done, call finish_step with status "done" and a one-line summary. If it failed, call it with status "failed", what failed and the reason. If you need a decision from me, call it with status "needs_input" and your question.{{else}}When this step ends, call finish_step once with status one of: {{range $i, $r := .Results}}{{if $i}}, {{end}}{{$r.ID}} ({{if $r.OK}}ok{{else}}not ok{{end}}{{if $r.Description}}: {{$r.Description}}{{end}}){{end}}. Add a one-line summary; for a not-ok status add the reason. If you need a decision from me, use status "needs_input" with your question.{{end}}`,
+	Default:    `{{if .Implicit}}When this step is done, call finish_step with status "done". If it failed, call it with status "failed", what failed and the reason. If you need a decision from me, call it with status "needs_input" and your question.{{else}}When this step ends, call finish_step once with status one of: {{range $i, $r := .Results}}{{if $i}}, {{end}}{{$r.ID}} ({{if $r.OK}}ok{{else}}not ok{{end}}{{if $r.Description}}: {{$r.Description}}{{end}}){{end}}. For a not-ok status add the reason. If you need a decision from me, use status "needs_input" with your question.{{end}}`,
 }, FinishVars{Implicit: true, Results: []ResultVar{{ID: "done", OK: true}, {ID: "failed"}}})
 
 // HeadlessSpaceSuffix goes before the finish instruction when the Kira Space tools are on.
@@ -830,6 +842,15 @@ var HeadlessSpaceSuffix = define(Entry{
 	UsedByKey:  "llmPrompts.entry.headlessSpaceSuffix.usedBy.body",
 	Default:    `Kira Space tools: task_info, declare_repos, request_branches. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for all; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.`,
 }, NoVars{})
+
+// HeadlessSpaceFiles names the task folder, the step's draft file and how to load the tools.
+var HeadlessSpaceFiles = define(Entry{
+	ID: "headless.space.files", Kind: KindFragment, Apps: spaceApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.headlessSpaceFiles.title",
+	PurposeKey: "llmPrompts.entry.headlessSpaceFiles.description",
+	UsedByKey:  "llmPrompts.entry.headlessSpaceFiles.usedBy.body",
+	Default:    `Task folder: {{.Folder}}. Read README.md there first. Write your handover to {{.Draft}}, then call submit.{{if .Load}} {{.Load}}{{end}}`,
+}, FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Draft: "handovers/draft-implement.md", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__submit,mcp__kira-space__task_info".`})
 
 // HeadlessSandboxNote tells a sandboxed agent what it may write and what to do on a denial.
 var HeadlessSandboxNote = define(Entry{
@@ -861,7 +882,7 @@ var HeadlessScriptReportSuffix = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessScriptReportSuffix.title",
 	PurposeKey: "llmPrompts.entry.headlessScriptReportSuffix.description",
 	UsedByKey:  "llmPrompts.entry.headlessScriptReportSuffix.usedBy.body",
-	Default:    `When finished, call finish_step with status "done" and a one-line summary. If you could not finish, call it with status "failed" and the reason. If you need a decision, call it with status "needs_input" and your question.`,
+	Default:    `When finished, call finish_step with status "done". If you could not finish, call it with status "failed" and the reason. If you need a decision, call it with status "needs_input" and your question.`,
 }, NoVars{})
 
 // HeadlessSpaceInstructions is what the Kira Space tools server tells a client when it connects.
@@ -870,7 +891,7 @@ var HeadlessSpaceInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceInstructions.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceInstructions.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceInstructions.usedBy.body",
-	Default:    `Kira Space tools for this task. Call task_info first. Declare repos the work touches with declare_repos before branching. Create branches and worktrees only with request_branches, one call for all; you name each branch, the user approves. Never git branch or git worktree. Record docs, deployments and links you make with report_artifacts; finishing replies list every artifact.`,
+	Default:    `Kira Space tools for this task. Declare repos and create or change branches only with branches; never git branch or git worktree. Edit task files, then call submit.`,
 }, NoVars{})
 
 // HeadlessToolFinishStep describes the finish_step tool.
@@ -883,7 +904,6 @@ var (
 	_ = arg(HeadlessToolFinishStep.id, "status", bothApps, NextCall,
 		`How the step ended. {{range .Results}}{{.ID}} ({{if .OK}}ok{{else}}not ok{{end}}{{if .Description}}: {{.Description}}{{end}}). {{end}}needs_input when the user must decide.`,
 		StatusVars{Results: []ResultVar{{ID: "done", OK: true}, {ID: "failed"}}})
-	_ = arg(HeadlessToolFinishStep.id, "summary", bothApps, NextCall, `One line: what was done, what failed, or the question for the user.`, NoVars{})
 	_ = arg(HeadlessToolFinishStep.id, "reason", bothApps, NextCall, `Why it failed, or what you need. Required when status is not ok or needs_input.`, NoVars{})
 	_ = arg(HeadlessToolFinishStep.id, "conflictedFiles", bothApps, NextCall, `Files that still conflict, relative to the repo.`, NoVars{})
 	_ = arg(HeadlessToolFinishStep.id, "lastGitError", bothApps, NextCall, `Last git error output you saw.`, NoVars{})
@@ -1042,38 +1062,15 @@ var (
 	_ = arg(HeadlessToolRunOutcome.id, "limit", spaceApp, NextCall, `How many runs, 1 to {{.Max}}. Default 3.`, MaxVars{Max: 10})
 )
 
-// HeadlessToolHandover describes the handover tool.
-var HeadlessToolHandover = define(Entry{
-	ID: "headless.tool.handover", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "handover",
-	Default: `Leave notes for the next stage of this task. Call it when you did work the next stage must know about; again to replace the notes. Be terse: facts, open items and decisions, at most 10 short lines. Do not restate proof, diffs or links the task already shows.`,
+// HeadlessToolSubmit describes the submit tool.
+var HeadlessToolSubmit = define(Entry{
+	ID: "headless.tool.submit", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "submit",
+	Default: `Tell Kira Space you changed files in the task folder. It reads them, applies what it accepts and replies with a count line, then one line per file. A change that needs the user's approval needs reason.`,
 }, NoVars{})
 
 var (
-	_ = arg(HeadlessToolHandover.id, "notes", spaceApp, NextCall, `What you did, what is left, what the next stage must know. Markdown, at most {{.Max}} bytes. Shown in the task's notes; the user may edit it.`, MaxVars{Max: 16384})
-	_ = arg(HeadlessToolHandover.id, "finished", spaceApp, NextCall, `true when your stage's work is done: Kira Space then offers the user to move the task on. Default false.`, NoVars{})
-)
-
-// HeadlessHandoverAck is the reply to a handover call.
-var HeadlessHandoverAck = define(Entry{
-	ID: "headless.handover.ack", Kind: KindToolResult, Apps: spaceApp, Applies: NextCall,
-	TitleKey:   "llmPrompts.entry.headlessHandoverAck.title",
-	PurposeKey: "llmPrompts.entry.headlessHandoverAck.description",
-	UsedByKey:  "llmPrompts.entry.headlessHandoverAck.usedBy.body",
-	Default:    `Recorded. The user moves the task on.`,
-}, NoVars{})
-
-// HeadlessToolReportArtifacts describes the report_artifacts tool.
-var HeadlessToolReportArtifacts = define(Entry{
-	ID: "headless.tool.report_artifacts", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "report_artifacts",
-	Default: `Record what you made outside the task's git branches: docs, deployments, PRs in other repos, issues, links. The task's branches, their PRs and configured deployments are found already. Kind proof attaches a saved proof by name.`,
-}, NoVars{})
-
-var (
-	_ = arg(HeadlessToolReportArtifacts.id, "artifacts", spaceApp, NextCall, `1 to {{.Max}} items to record. A url already recorded is updated.`, MaxVars{Max: 20})
-	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.kind", spaceApp, NextCall, `changeRequest, issue, deployment, doc, link or proof.`, NoVars{})
-	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.title", spaceApp, NextCall, `Short name, at most 200 bytes. Skip for proof.`, NoVars{})
-	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.url", spaceApp, NextCall, `http or https address. Give url or ref.`, NoVars{})
-	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.ref", spaceApp, NextCall, `Name without a url, such as a file path. Proof: its name.`, NoVars{})
+	_ = arg(HeadlessToolSubmit.id, "paths", spaceApp, NextCall, `Files to read, relative to the task folder, at most {{.Max}}. Default: every changed file.`, MaxVars{Max: 50})
+	_ = arg(HeadlessToolSubmit.id, "reason", spaceApp, NextCall, `One line: why you changed a handed handover, a note or another author's link. Required for those; the user reads it.`, NoVars{})
 )
 
 // HeadlessArtifactsHeader opens the artifact list a finishing call returns.
@@ -1192,7 +1189,8 @@ Step {{.StepNumber}}/{{.StepCount}}: {{.StepName}}{{if .StepPrompt}}
 
 {{template "ade.handoverBlock" .}}{{end}}
 
-{{template "headless.space.suffix"}}
+{{template "headless.space.suffix"}}{{if .Files.Folder}}
+{{template "headless.space.files" .Files}}{{end}}
 
 {{template "headless.finishStep.suffix" .Finish}}
 `,
@@ -1218,7 +1216,8 @@ var AdeManualMessage = define(Entry{
 - Notes: {{.Notes}}{{end}}{{if .StepPrompt}}
 {{.StepPrompt}}{{end}}{{if .Handover}}
 {{template "ade.handoverBlock" .}}{{end}}
-{{template "headless.space.suffix"}}
+{{template "headless.space.suffix"}}{{if .Files.Folder}}
+{{template "headless.space.files" .Files}}{{end}}
 {{template "ade.handoverLine"}}`,
 }, ManualVars{
 	StepName: "Review", Title: "Add login form", JiraKey: "KIRA-42", JiraURL: "https://jira.example.com/browse/KIRA-42",
@@ -1257,7 +1256,8 @@ var AdeReviewMessage = define(Entry{
 {{if .ReadOnlyRoot}}- {{.Repo}}: read only, in {{.ReadOnlyRoot}}{{else}}- {{.Repo}}: {{.Branch}} (base {{.Base}}) worktree {{.Worktree}}{{end}}{{if .ChangeRequestURL}}, PR {{.ChangeRequestURL}}{{end}}{{end}}
 I review these branches in Kira Space and will ask questions about them. Answer from the code; change files only when I ask.{{if .Handover}}
 {{template "ade.handoverBlock" .}}{{end}}
-{{template "headless.space.suffix"}}
+{{template "headless.space.suffix"}}{{if .Files.Folder}}
+{{template "headless.space.files" .Files}}{{end}}
 {{template "ade.handoverLine"}}`,
 }, ReviewVars{
 	Title: "Add login form", JiraKey: "KIRA-42", JiraURL: "https://jira.example.com/browse/KIRA-42",
@@ -1358,7 +1358,8 @@ var AdeStartMessage = define(Entry{
 Step: {{.StepName}}{{end}}{{range .Context}}
 {{.}}{{end}}{{if .Handover}}
 {{template "ade.handoverBlock" .}}{{end}}
-{{template "headless.space.suffix"}}
+{{template "headless.space.suffix"}}{{if .Files.Folder}}
+{{template "headless.space.files" .Files}}{{end}}
 {{template "ade.handoverLine"}}`,
 }, StartVars{
 	Title: "Add login form", JiraKey: "KIRA-42", JiraURL: "https://jira.example.com/browse/KIRA-42",
@@ -1395,7 +1396,7 @@ var AdeHandoverLine = define(Entry{
 	TitleKey:   "llmPrompts.entry.adeHandoverLine.title",
 	PurposeKey: "llmPrompts.entry.adeHandoverLine.description",
 	UsedByKey:  "llmPrompts.entry.adeHandoverLine.usedBy.body",
-	Default:    `Call handover with notes for the next stage; they join the task's notes. Set finished true when this stage is done.`,
+	Default:    `When this stage is done, write your handover to its draft file in the task folder, then call submit.`,
 }, NoVars{})
 
 // AdeRepoLine is one repository line of a launch message.

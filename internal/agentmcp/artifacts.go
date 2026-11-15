@@ -83,13 +83,6 @@ type TaskArtifacts struct {
 	Gaps      []ArtifactGap `json:"gaps"`
 }
 
-// ReportArtifactsResult is report_artifacts' answer.
-type ReportArtifactsResult struct {
-	Recorded int `json:"recorded"`
-	// Proofs lists the proof sessions attached to the task by kind proof items.
-	Proofs []AttachProofResult `json:"proofs,omitempty"`
-}
-
 // CleanArtifact trims an input and returns it, or the refusal text when it breaks a rule.
 func CleanArtifact(in ArtifactInput) (ArtifactInput, string) {
 	return CleanArtifactAs(in, ReportableArtifactKind)
