@@ -23,13 +23,23 @@ Final user answers. Binding for every build Part.
   rewrites only the affected tasks' `state.yaml`. Lease state stays in Kira's lease book, changed
   only through the `state` tool's `lease.*` actions (was `lease`); never driven by a file edit.
 - Uniform surface (user principle, Part 5, sections 9.3 and 9.4): "the same method for all"; the
-  surface was "way too big and granular". Every Space role gets two tools: `submit` (content, and
-  `finish` in place of `finish_step`, QN4) and `state` (every state change, `action` enum per
-  grant). One reply shape and status vocabulary (`done`, `pending`, `waiting`, `denied`, `failed`,
-  `invalid`) in replies and `state.yaml`; one wait rule; one approval and notification table; one
-  header and README phrasing. Uniformity ranks above the last few percent of per-flow cost.
-  Exceptions only where a named requirement forces them (9.3). Binding decisions it would change
-  are questions: QN4 (`finish_step` fold), QN5 (context gate), QN6 (`create_task` as action).
+  surface was "way too big and granular". Every Space role gets two tools: `submit` (content only)
+  and `state` (every state change, `action` enum per grant, `step.finish` included). One reply
+  shape and status vocabulary (`done`, `pending`, `waiting`, `denied`, `failed`, `invalid`) in
+  replies and `state.yaml`; one wait rule; one approval and notification table; one header and
+  README phrasing. Uniformity ranks above the last few percent of per-flow cost. Exceptions only
+  where a named requirement forces them (9.3).
+- QN4 (user): `finish_step` does not fold into `submit`. New `state {action: step.finish}` ends a
+  step and runs an implicit submit first, as `finish_step` does today. `submit` stays content
+  only. Rebase runs and review rounds keep `finish_step` unchanged. Part 3's `finish_step` stays as
+  shipped until Part 5 replaces it with `step.finish` in Space grants.
+- QN6 (user): `create_task` stays a separate MCP tool for now, exactly as today (30 min wait
+  included). Orchestrator tools: `submit`, `state`, `create_task`.
+- `state` schema (user): top level only `{action, args}`. Per-action fields live under `args`; the
+  per-grant description lists one line per granted action naming its args, e.g. `branch.request:
+  args {repo, branch, base?, existing?}`. Kira validates server-side and answers an `invalid` item
+  with `fix`. Replaces the flat union (`action, repo?, branch?, ...`). Nested versus flat is decided
+  by the Part 5 step 0 accuracy test (14.2); Part 5 builds the winner.
 - Waits (Part 5, 9.2 and 9.4): `task_info` goes; no wait tool. Every blocking call waits up to 10
   min (`Deps.CallWait`), approval included, then replies `pending` or `waiting` with the
   `state.yaml` fields to check; nothing is cancelled and approvals stay open for the user. Branch
@@ -40,7 +50,8 @@ Final user answers. Binding for every build Part.
   placement) and is never driven by a file edit. `state.yaml` and `task.yaml` are read-only mirrors
   Kira rewrites atomically; state changes only over MCP.
 - Q1 yes: no watcher. Explicit `submit` is the consent point. Kira stats the folder on
-  task open, Details focus, Refresh, submit, `finish_step`. Banner with Accept or Discard.
+  task open, Details focus, Refresh, submit, `finish_step` (`step.finish` from Part 5). Banner with
+  Accept or Discard.
 - No chmod, no FUSE, no lock. No index unless it is state or needed (section 3).
 - Proof window shows one proof, one file.
 - Relative paths only in the file layer (future cloud).
@@ -61,13 +72,15 @@ Final user answers. Binding for every build Part.
 - Silent accept: a change that needs no approval and has no notification today is accepted with no
   notification. A new proof keeps accept plus the existing "proof ready" notification.
 - Q6: blocking mirrors the old tools (table 7.3). No `submit` item blocks: none maps to a blocking
-  old tool now that child drafts are gone. `create_task` keeps its own 30 min wait (QN6 asks to
-  move it to the uniform 10 min rule). Branch actions block under the uniform wait rule (9.4).
+  old tool now that child drafts are gone. `create_task` keeps its own 30 min wait (QN6, user).
+  Branch actions block under the uniform wait rule (9.4).
 - Benchmarks: per-Part and final (14.1). Sonnet, 3 reps per flow and arm, 0.5 USD per-run cap,
-  real implementation, same harness. Gate: cost at most 1.2x, final context at most 1.0x, pass
-  rate not lower, failed edit-path calls plus retries not higher; turns reported only. F2 and F3
-  (proofs as files) are reported, not gated: the user chose the design regardless. QN5 asks to
-  raise the context gate to 1.05 for the uniform surface.
+  real implementation, same harness. Gate: cost at most 1.2x, final context at most 1.05x on F1 to
+  F4 (QN5, user; was 1.0x) and 1.0x on F5 and F6, pass rate not lower, failed edit-path calls plus
+  retries not higher; turns reported only. F2 and F3 (proofs as files) are reported, not gated:
+  the user chose the design regardless.
+- State schema accuracy test (Part 5 step 0, 14.2): real `claude` against a stub `state` tool,
+  nested `{action, args}` versus flat union, before any `state` code is built.
 - Q4 to Q8, Q13, Q14: plan recommendation (section 18).
 
 ## 1. Inputs and SPEC conflicts
@@ -83,7 +96,7 @@ From SPEC P643 Scope, the design talk and the spike. SPEC conflicts and how the 
 - "for standalone sessions `submit` is on kira-studio": dropped by Q10 (no proof outside a task).
 - "one-time migration with backup": no backup (Q11).
 - Tool list: SPEC "about 6"; plan 2 for every Space role (`submit`, `state`), 3 for an
-  orchestrator until QN6 (section 9.3, user uniformity principle).
+  orchestrator (`create_task` stays, QN6) (section 9.3, user uniformity principle).
 
 ## 2. Current state map
 
@@ -337,19 +350,25 @@ session key. A recovered headless run has no base: collisions fall back to plain
 
 Granted to every Space grant (runs, sessions, review agent, orchestrator).
 
-Part 5 (uniform surface, 9.3 and 9.4, QN4): `finished` becomes `finish` and absorbs `finish_step`
-in Space grants: `submit {paths?, reason?, finish?}`. Run grant: `finish` = a step result id
-(enum from `grantResults`) plus `finish_step`'s fields (reason, conflictedFiles, lastGitError,
-tried); session grant: `finish: "done"` raises the move prompt. The reply moves to the shared
-shape: `summary` counts line (`2 done, 1 pending, 0 invalid`), items with `status` in the 9.4
-words (accepted and unchanged to `done`, rejected to `denied`, restored to `invalid` with fix),
-`next`, `notices`. Part 4's proof summary rides in the proof item's `message`.
+Part 5 (uniform surface, 9.3 and 9.4, QN4 user): `submit` stays content only:
+`submit {paths?, reason?}`. `finished` leaves `submit`; the session's "move to next stage" signal
+becomes `state {action: step.finish, args {status: done}}` (a state signal, so a `state` action;
+interpretation of "submit stays content only"). The reply moves to the shared shape: `summary`
+counts line (`2 done, 1 pending, 0 invalid`), items with `status` in the 9.4 words (accepted and
+unchanged to `done`, rejected to `denied`, restored to `invalid` with fix), `next`, `notices`.
+Part 4's proof summary rides in the proof item's `message`.
 
 `finish_step` keeps status, reason, conflictedFiles, lastGitError, tried; `summary` goes. It runs
 an implicit submit first (no reason: approval items in it come back `invalid` in the reply and
 the finish still records). Ok status, route continues, no draft for the step = refused: "write
 handovers/draft-<step>.md, then call finish_step" (Q7). Reply: ack, submit results, artifact list
-as today (`finishContent`).
+as today (`finishContent`). Part 5 moves this behaviour unchanged into `state {action:
+step.finish, args {status, reason?, conflictedFiles?, lastGitError?, tried?}}` for Space grants:
+run grant `status` = a step result id (enum from `grantResults`) or `needs_input`; session grant
+`status: done` raises the move prompt. Implicit submit first, Q7 refusal as an `invalid` item
+(fix: "write handovers/draft-<step>.md, then call state with step.finish"), submit results and
+artifact list as items and `next`. `finish_step` stays only for Space-less grants (rebase runs,
+review rounds).
 
 ### 7.2 Algorithm (under `taskMu`)
 
@@ -440,7 +459,7 @@ New item to old tool:
 So `submit` never blocks. From Part 5 every blocking `state` action (branch request, rename,
 change, lease acquire) follows the uniform wait rule (9.4: 10 min, then `pending` or `waiting`
 pointing at `state.yaml`); a branch request also waits for the worktree setup, replacing
-`task_info waitSeconds` (9.2). `create_task` keeps its 30 min until QN6. kira-studio db tools keep
+`task_info waitSeconds` (9.2). `create_task` keeps its 30 min (QN6, user). kira-studio db tools keep
 their own waits (exception, 9.3).
 
 A `pending` item's answer reaches the agent through the lease notice path (`SendIfIdle`, hook
@@ -455,7 +474,7 @@ User changes:
 - UI edit: Kira writes the file, accepted at once; recorded in the panel forward set as today, the
   forwarded message names the relative path.
 - Hand edit while the app runs: no watcher. Stat on task open, Details focus, Refresh, every submit
-  and `finish_step`, and at start for live tasks. A change not made through submit or UI shows
+  and `finish_step` (`step.finish` from Part 5), and at start for live tasks. A change not made through submit or UI shows
   the banner "N files changed on disk, not submitted" with a diff per file, Accept or Discard.
   Accept is the user's consent.
 
@@ -483,14 +502,15 @@ New proof, agent side:
    `proofs/<slug>/`): PNG, JPEG, WebP, SVG under the section 10 rules; `<id>.json` over 64 KiB.
 3. Writes `proofs/<slug>/proof.md` with `Write` (new file: Claude Code needs no prior Read; 11 of
    11 new-file Writes in the spike transcripts passed with none, analysis section 2).
-4. Calls `submit` once (or `finish_step`, which submits first). No `reason`.
+4. Calls `submit` once (or `finish_step`, from Part 5 `state {action: step.finish}`, which submits
+   first). No `reason`.
 
 Format source, read once, no extra file: the README carries one short example block (7.6) beside
 the `Proofs:` index. Why the README and not `proofs/README-example` or a Kira template path: the
 spike files arms read README in 3 of 3 runs before acting, so the example rides a read the agent
 already makes; a separate file costs one more turn (0.007 to 0.009 USD, about 10 percent of an F2
 T run, analysis section 2) and a second path to name. The block is 8 lines, paid only when the
-README is read. Fallback if Part 4's F1 context ratio rises above 1.0 because of it: the block moves
+README is read. Fallback if Part 4's F1 context ratio rises above 1.05 because of it: the block moves
 to a Kira-owned read-only `proofs/EXAMPLE.md` and the README keeps one line pointing at it.
 
 Submit, Kira side (under `taskMu`, the 7.2 pipeline):
@@ -627,22 +647,23 @@ Step, manual, review and start prompts (`AdeStepPrompt`, `AdeManualMessage`, `Ad
 Task folder: <abs path>. Write your handover to handovers/draft-<step>.md there.
 Proofs: orders-match-ledger "Orders match ledger": totals (table), flow (diagram), why (document)
 Kira tools: submit, state. Load them first with ToolSearch select:mcp__kira-space__submit,mcp__kira-space__state
-Edit task files, then call submit; add finish when the step is done.
+Edit task files, then call submit. When the step is done, call state with step.finish.
 ```
 
 - Latest handover and notes stay inlined (Q13), so the common input needs no read.
 - `Proofs:` line only when the task has proofs (cap 5 lines, 300 bytes each).
 - Tool line: from Part 5 the same for every role (9.4): `submit`, `state` (orchestrator adds
-  `create_task` until QN6). Parts 3 and 4 ship the interim line naming `finish_step`, `submit`. The load sentence comes from a new
+  `create_task`, QN6). Parts 3 and 4 ship the interim line naming `finish_step`, `submit`. The load sentence comes from a new
   optional harness interface `harness.ToolLoader{ LoadHint(names []string) string }`; Claude
   returns the `ToolSearch select:` sentence with `harness.ToolNames` names, other providers ""
   (no deferral). One select call loads all named schemas in one turn.
 - Last line: the submit reminder. The finish suffix stays last in step prompts and names
-  `submit {finish}` from Part 5 (`finish_step` in Parts 3 and 4).
+  `state {action: step.finish}` from Part 5 (`finish_step` in Parts 3 and 4).
 - `HeadlessSpaceInstructions` rewritten: `Kira tools: submit for task files, state for everything
   else. Task state is in state.yaml in the task folder. Create or change branches only with state;
   never git branch or git worktree. A call that waits returns within 10 minutes; if it is not
-  done, check the state.yaml fields it names. Edit task files, then call submit.` (Part 3 writes
+  done, check the state.yaml fields it names. Edit task files, then call submit; end the step
+  with state step.finish.` (Part 3 writes
   an interim text naming today's branch tools; Part 5 writes this one, 9.4.)
 
 ToolSearch limits (spike 1b, measured): built-in tool schemas 33.1k tokens and the 2.4k system
@@ -696,8 +717,8 @@ it)".
 
 | Flow | Path | Spike numbers (sonnet, median cost F/T; final context) | Why |
 |---|---|---|---|
-| Handover (run) | `handovers/draft-<step>.md` plus `finish_step` (implicit submit) | F1 FL 1.08, FF 1.12 (inconclusive); context 1.00 to 1.01 (parity) | parity; prose edits are natural |
-| Handover (session) | draft file plus `submit {finished}` | same shape as F1 | `handover` tool goes |
+| Handover (run) | `handovers/draft-<step>.md` plus `finish_step` (implicit submit; Part 5: `state {action: step.finish}`) | F1 FL 1.08, FF 1.12 (inconclusive); context 1.00 to 1.01 (parity) | parity; prose edits are natural |
+| Handover (session) | draft file plus `submit {finished}` (Part 5: `submit`, then `state {action: step.finish, args {status: done}}`) | same shape as F1 | `handover` tool goes |
 | Notes read | prompt inline plus `notes/*.md` | not a flow; prompt inlines notes in both arms | no tool existed |
 | Notes, handed handovers change | file plus `submit` with reason, prompt | no data; rare agent action | no tool existed |
 | Links | `links.yaml` plus `submit` | not measured; same edit-submit shape as F1 | `report_artifacts` goes |
@@ -705,7 +726,7 @@ it)".
 | Orchestrator chain read | `state.yaml` chain plus children's `handovers/` | F4 FL 0.72, FF 0.79; context 0.87, 0.88 | files win; `task_chain` returned whole chains |
 | New proof | agent Writes `proofs/<slug>/proof.md` (and side files) plus `submit` | F2 files FP 1.31 (1c), haiku 1.38 (1) | user chose files; gap reported (14.1) |
 | Proof edit | Read, Edit `proof.md` by step id, `submit {reason}` | F3 files FL 1.28, FA 1.18 (inconclusive), FP 1.24 | user chose files; gap reported (14.1) |
-| Child task | `create_task` tool, unchanged (QN6: `state` action `task.create`) | F6 files FL 1.36, FF 1.40 vs gate 1.1; context 1.06 to 1.09 | user dropped drafts |
+| Child task | `create_task` tool, unchanged (QN6, user: stays a separate tool) | F6 files FL 1.36, FF 1.40 vs gate 1.1; context 1.06 to 1.09 | user dropped drafts |
 | Branch setup wait | `task_info {waitSeconds}` until Part 5; then blocking `state {action: branch.request}` plus session push (9.2) | F5 FL 1.26, FF 1.17 (1 run each, inconclusive); haiku 1.30 | no wait tool (user); F5 re-benchmarked |
 
 ### 9.2 Setup wait (settled, Part 5)
@@ -823,24 +844,51 @@ for every state change. Both share one call and reply convention (9.4).
 
 | Tool | Server | Before (last revision) | After |
 |---|---|---|---|
-| `submit` | kira-space | content; `finished` for sessions | content for every role; `finish` argument replaces `finish_step` in Space grants (QN4) |
+| `submit` | kira-space | content; `finished` for sessions | content only, every role (QN4, user); `finished` moves to `step.finish` |
 | `state` | kira-space | | new, every Space grant: one tool, `action` enum per grant |
-| `finish_step` | kira-space | runs | folded into `submit {finish}` (Space grants); kept only for Space-less grants (rebase runs, review rounds) |
+| `finish_step` | kira-space | runs | `state` action `step.finish` in Space grants (QN4, user; same fields and implicit submit); kept only for Space-less grants (rebase runs, review rounds) |
 | `branches` (declare, request, rename, change) | kira-space | Space | `state` actions `repo.declare`, `branch.request`, `branch.rename`, `branch.change` |
 | `lease` (acquire, release) | kira-space | Space | `state` actions `lease.acquire` (now waits like every call), `lease.release` |
 | `cancel_operation` | kira-space | Space | `state` action `operation.cancel` |
-| `create_task` | kira-space | orchestrator | binding (Decisions): stays its own tool, exactly as today, 30 min wait. Recommended (QN6): `state` action `task.create`, orchestrator grant only, same args and approval, uniform 10 min wait |
+| `create_task` | kira-space | orchestrator | unchanged: its own tool, exactly as today, 30 min wait (QN6, user) |
 | `fetch_remote`, `push_branch`, `reply_review_comment` | kira-space | conditional | `state` actions `remote.fetch`, `branch.push`, `review.reply`, same grant conditions |
 | `git` | kira-space | rebase runs | unchanged (exception, 9.4) |
 | `task_info` | kira-space | Space | removed (9.2) |
 | `handover`, `run_outcome`, `report_artifacts`, `operations`, `lease_status`, `list_tasks`, `task_chain` | kira-space | | removed (Parts 3 to 5) |
 | `proof_save`, `proof_list` | kira-studio | every DB MCP client | removed (Q10) |
 
-`state` schema: `{action, repo?, branch?, base?, existing?, name?, queue?, opId?, task?, args?}`
-with one shared field note each; `action` enum and description lines built per grant, so a role
-never loads text for an action it cannot call (run: 7 actions; orchestrator adds `task.create`
-under QN6; review grants add `review.reply`; push grants add `branch.push`, `remote.fetch`). Description:
-one header line plus one line per granted action, no copy of the old tool texts.
+`state` schema (user, decided by 14.2): top level only `{action, args}`. `action` is an enum built
+per grant; `args` is an object with no per-action sub-schema. The description is one header line
+plus one line per granted action naming its args, no copy of the old tool texts, so a role never
+loads text for an action it cannot call. Action lines (args, then a short note):
+
+- `repo.declare: args {repos}`: repos the work touches.
+- `branch.request: args {repo, branch, base?, existing?}`: new branch (user approves) or existing
+  one; waits until its worktree is ready.
+- `branch.rename: args {repo, from, to}`: rename your branch (user approves).
+- `branch.change: args {repo, from, to}`: point task branch `from` at existing local branch `to`
+  (user approves).
+- `lease.acquire: args {queue}`: wait for the queue's lease. `lease.release: args {queue?}`: leave
+  one queue, or every queue.
+- `operation.cancel: args {opId}`: stop a running operation (`state.yaml` operations).
+- `step.finish: args {status, reason?, conflictedFiles?, lastGitError?, tried?}`: end the step;
+  submits task files first. Status enum per grant in the line (run: result ids and `needs_input`;
+  session: `done`).
+- Conditional grants: `remote.fetch: args {remote?}`, `branch.push: args {force?}` (push grants),
+  `review.reply: args {id, reply, resolved?}` (review grants).
+
+Field names are today's arg struct names (`BranchSpec`, `RenameBranchArgs`, `ChangeBranchArgs`,
+`AcquireLeaseArgs`, `ReleaseLeaseArgs`, `declareArgs`, `fetchRemoteArgs`, `pushBranchArgs`,
+`reviewReplyArgs`, `finishArgs`, opId). Kira decodes `args` per action into those structs, rejects
+unknown fields and fields at the wrong level, and answers an `invalid` item with a one-line `fix`
+holding an example call (9.4). Run grant: 8 actions (`repo.declare`, `branch.request`,
+`branch.rename`, `branch.change`, `lease.acquire`, `lease.release`, `operation.cancel`,
+`step.finish`); session grant the same 8 (`step.finish` status `done`).
+
+Fallback if 14.2 picks flat: `{action, repo?, repos?, branch?, base?, existing?, from?, to?,
+queue?, opId?, status?, reason?, conflictedFiles?, lastGitError?, tried?}` plus the conditional
+grants' fields (`remote?`, `force?`, `id?`, `reply?`, `resolved?`), same action lines without the
+`args` wrapper, same validation and reply.
 
 Counts:
 
@@ -848,8 +896,8 @@ Counts:
 |---|---|---|---|---|
 | Run | 12 | 5 | 2 | `submit`, `state` |
 | Session (manual, run-step TUI, review agent) | 12 | 4 | 2 | `submit`, `state` |
-| Orchestrator run | 15 | 6 | 3 (2 with QN6) | `submit`, `state`, `create_task` |
-| Orchestrator session | 15 | 5 | 3 (2 with QN6) | `submit`, `state`, `create_task` |
+| Orchestrator run | 15 | 6 | 3 | `submit`, `state`, `create_task` |
+| Orchestrator session | 15 | 5 | 3 | `submit`, `state`, `create_task` |
 | Rebase run | 2 | 2 | 2 | `finish_step`, `git` (Space-less, exception) |
 | kira-studio proof tools, any client | 2 | 0 | 0 | |
 
@@ -864,17 +912,23 @@ enforced in Part 5 by `TestToolSchemaBudget` (`agentmcp`, free, no `claude`: JSO
 
 | Grant | Budget (tokens, bytes/4) | Parts |
 |---|---|---|
-| Run | 900 | `submit` with `finish` 300, `state` 7 actions 600 |
-| Orchestrator | 1,200 | plus `task.create` 300 (QN6) or `create_task` unchanged (about 323) |
-| Session | 850 | `submit` without step results 250, `state` 600 |
+| Run | 900 | `submit` content only 250, `state` 8 actions incl. `step.finish` 650 |
+| Session | 900 | `submit` 250, `state` 8 actions (`step.finish` status `done`) 650 |
+| Orchestrator | 1,230 | run grant plus `create_task` unchanged (about 323) |
 
-So the uniform surface loads about 0.5k to 0.6k tokens less than the spike F surface and 3k less
-than T, but loads `state`'s whole text even when one action is needed (lease-only use pays the
-branch lines, about 300 tokens). Loading both tools up front (one `select` call, 7.6) adds about
-600 tokens to flows that never change state (F1 to F4: about 1.5 percent of a 40k context) and
-saves the on-demand ToolSearch turn in flows that do (F5, F6: about 0.015 to 0.02 USD each, spike
-1b). Net cost about neutral; final context about 1.01 to 1.02 on F1 to F4: above the 1.00 gate.
-Gate change asked as QN5.
+Review grants add about 40 tokens for `review.reply`, push grants about 60 for `branch.push` and
+`remote.fetch`; the budget test checks those grants against the run budget plus those amounts.
+The budgets hold for the shape 14.2 picks; 14.2 reports both arms' `state` schema tokens. If the
+winner's `state` exceeds 650, Part 5 shortens the action lines first; raising a budget is a user
+decision.
+
+So the uniform surface loads about 0.5k tokens less than the spike F surface and 3k less than T,
+but loads `state`'s whole text even when one action is needed (lease-only use pays the branch
+lines, about 300 tokens). Loading both tools up front (one `select` call, 7.6) adds about 650
+tokens to flows that never change state (F1 to F4: about 1.5 percent of a 40k context) and saves
+the on-demand ToolSearch turn in flows that do (F5, F6: about 0.015 to 0.02 USD each, spike 1b).
+Net cost about neutral; final context about 1.01 to 1.02 on F1 to F4: inside the 1.05 gate (QN5,
+user).
 
 Exceptions to uniformity, each with its requirement:
 
@@ -885,17 +939,17 @@ Exceptions to uniformity, each with its requirement:
   schema (`grantResults`; conflictedFiles, lastGitError) and nothing to submit.
 - kira-studio db tools keep their own `waitSeconds` and reply shapes: a separate server serving
   DB MCP clients outside any task (no task folder, no `state.yaml` to point at); out of P643.
-- `create_task` stays a third orchestrator tool with its 30 min wait until QN6: binding decision
-  ("stays exactly as today": name, args, 30 min wait, approval, phone kind).
-- `submit` stays separate from `state`: binding decision (content = files plus `submit`; state
-  changes only over MCP, never by a file edit), and its argument set (paths, reason, finish) has
-  no overlap with state actions.
+- `create_task` stays a third orchestrator tool with its 30 min wait: QN6 (user) and the binding
+  decision ("stays exactly as today": name, args, 30 min wait, approval, phone kind).
+- `submit` stays separate from `state` and content only: binding decision and QN4 (user) (content
+  = files plus `submit`; state changes only over MCP, never by a file edit); its argument set
+  (paths, reason) has no overlap with state actions.
 
 ### 9.4 Uniform rules
 
 Call convention, `submit` and `state` alike:
 
-- Arguments: `state {action, <fields>}`; `submit {paths?, reason?, finish?}`.
+- Arguments: `state {action, args}` (flat fallback per 14.2); `submit {paths?, reason?}`.
 - Reply (structured and text): first line counts, then one line per item, then `next`, then
   `notices`. JSON `{summary: "1 done, 1 pending", items: [{id, status, message, fix?}], next,
   notices: [...]}`. `id` = path for files, `repo/branch` for branches, queue, opId, task id.
@@ -907,22 +961,25 @@ Call convention, `submit` and `state` alike:
   to `invalid` (fix: "read-only file, Kira restored it; change state with state"), ignored items
   are not listed.
 - Errors: an agent-fixable problem is never an MCP error; it is an item with `invalid` and `fix`
-  (a bad action or missing field is item id `call`). MCP `isError` only for Kira faults (internal
-  error, caller gone). Fix hints one line, with an example call, as 7.1.
+  (a bad action, a field at the wrong level, an unknown or missing field is item id `call`). MCP
+  `isError` only for Kira faults (internal error, caller gone). Fix hints one line, with an
+  example call in the tool's own shape, as 7.1, e.g. `branch.request needs args.branch. Call
+  state again with {"action": "branch.request", "args": {"repo": "app", "branch": "feature/x"}}.`
 
 Wait rule, every call that can block (`branch.request`, `branch.rename`, `branch.change`,
-`lease.acquire`, and `task.create` under QN6; `submit` never blocks, 7.3):
+`lease.acquire`; `submit` and `step.finish` never block, 7.3):
 
 - One wait per call, 10 min default: `Deps.CallWait` (const `defaultCallWait`; flow tests set it
   through `flowharness.WithCallWait`), replacing `Deps.BranchRequestWait` (30 min) for branch
-  actions. `create_task` keeps its 30 min and withdraw-on-timeout until QN6. A wiring field like
-  today's, not a user setting.
+  actions. `create_task` keeps its 30 min and withdraw-on-timeout (QN6, user) through today's
+  `Deps.BranchRequestWait` and `flowharness.WithBranchRequestWait`, which no branch action reads
+  any more. A wiring field like today's, not a user setting.
 - Wait ran out: nothing is cancelled or withdrawn. Approvals stay open for the user, setups keep
   running, lease places keep their position. Item status `pending` or `waiting`; text (run):
   `Not finished after 10 minutes. Check state.yaml in the task folder: <fields>. Do not act on it
   until it shows done.` Session adds `Kira also tells you when it changes.` Fields named per case:
   approval `pending[]` (id <id>), then `answers[]`; setup `repos[].setup.status` and
-  `repos[].setup.note` for <repo>; lease `leases[].status` for <queue>; child task `chain.children`.
+  `repos[].setup.note` for <repo>; lease `leases[].status` for <queue>.
 - Calling the same action again is allowed (it joins the same item, waits up to another call
   wait); the texts do not offer it, per the user.
 - Every item lives until done or until its owner (run, session) ends; owner end withdraws open
@@ -936,8 +993,8 @@ Notification and approval rule:
 | Another author's content, handed handover, note, collision | yes | approvals | yes (`details.edit`) | reply `pending`; answer via push, `answers[]`, notices |
 | Accepted proof changed or deleted | yes | approvals (`proof.review`) | no (exception: no phone proof view) | same |
 | `branch.request` new, `branch.rename`, `branch.change` | yes | approvals | yes | same |
-| `create_task` (or `task.create`, QN6) | yes | approvals | yes | same (pending after return only under QN6) |
-| `repo.declare`, `lease.*`, `operation.cancel`, `remote.fetch`, `branch.push`, `review.reply`, existing branch | none | board push | no | reply |
+| `create_task` (QN6, user: own tool) | yes | approvals | yes | reply after the answer or after 30 min (withdrawn, as today) |
+| `repo.declare`, `lease.*`, `operation.cancel`, `remote.fetch`, `branch.push`, `review.reply`, `step.finish`, existing branch | none | board push | no | reply |
 | Wait finished after the call returned (setup end, lease grant, user answer) | | | | push to sessions; `state.yaml`; notices on the next reply; runs read `state.yaml` |
 
 Phrasing, every file and prompt:
@@ -948,32 +1005,37 @@ Phrasing, every file and prompt:
   changes: call state.`
 - Prompt tool line: `Kira tools: submit, state. Load them first with ToolSearch
   select:mcp__kira-space__submit,mcp__kira-space__state` (same line for every role; orchestrator
-  adds `create_task` until QN6).
+  adds `create_task`, QN6).
 
 ### 9.5 Removal and file list (Part 5)
 
-- `agentmcp`: new `state.go` (one tool, per-grant enum and description, action dispatch to the
-  existing `SpaceTools` methods), new `reply.go` (shared reply builder, status vocabulary). Remove
-  `branches.go` (Part 5's own planned file, never written), `addTaskInfoTool`, `taskInfoArgs`,
-  `maxWaitSeconds`, `SpaceTools.TaskInfo`, `SpaceTools.BranchStatus`, `TaskInfo.Branch`; `leases.go`
-  and `orchestrator.go` tool registrations (handlers kept as action targets); `optools.go`
-  `cancel_operation` registration; `finish_step` registration for Space grants (`mcp.go`), kept for
-  Space-less grants; `submit.go` gets `finish` (enum from the grant's step results; session enum
-  `done` raises the move prompt) and the shared reply. `tools.go`: `SpaceToolIDs` = `submit`,
-  `state`; `OrchestratorToolIDs` = `create_task`
-  (empty under QN6).
+- `agentmcp`: new `state.go` (one tool, per-grant enum and description, shape per 14.2, `args`
+  decode per action into today's arg structs with unknown-field check, action dispatch to the
+  existing `SpaceTools` methods; `step.finish` reuses `finishStep`'s logic: `checkFinish`,
+  `statusIDs`, `needsReason`, implicit `SubmitForFinish`), new `reply.go` (shared reply builder,
+  status vocabulary). Remove `branches.go` (Part 5's own planned file, never written),
+  `addTaskInfoTool`, `taskInfoArgs`, `maxWaitSeconds`, `SpaceTools.TaskInfo`,
+  `SpaceTools.BranchStatus`, `TaskInfo.Branch`; `leases.go` tool registrations (handlers kept as
+  action targets); `optools.go` `cancel_operation` registration; `list_tasks` and `task_chain`
+  registrations in `orchestrator.go` (`create_task` stays registered, QN6); `finish_step`
+  registration for Space grants (`mcp.go`), kept for Space-less grants; `submit.go` drops
+  `finished` (content only, QN4) and gets the shared reply. `tools.go`: `SpaceToolIDs` = `submit`,
+  `state`; `OrchestratorToolIDs` = `create_task`.
 - `ade`: new `ade/setupwait.go` (setup loop), new `ade/callwait.go` (one wait helper, `Deps.CallWait`,
   detach on wait end, apply on late answer with the owner's `SpaceCall`, withdraw on owner end).
-  `branchrequest.go`, `branchadopt.go`, `branchrename.go`, `branchchange.go` (`taskcreate.go`
-  under QN6): use the helper; approvals items drop `ExpiresAt` (no countdown). `leases.go`: `AcquireLease` waits
+  `branchrequest.go`, `branchadopt.go`, `branchrename.go`, `branchchange.go`: use the helper;
+  their approvals items drop `ExpiresAt` (no countdown). `taskcreate.go` keeps its 30 min wait and
+  `ExpiresAt` (QN6). `leases.go`: `AcquireLease` waits
   through the helper; `deliverNotice`, `takeNotices`. `setup.go`: setup end notifies watchers and the
   state writer. `agenttools.go`: `TaskBoard.TaskInfo`, `BranchStatus` go.
-- `llmprompts/registry.go`: entries for `submit` (with finish), `state` (header plus one line per
-  action, field notes); removed: `HeadlessToolTaskInfo`, `HeadlessToolDeclareRepos`,
+- `llmprompts/registry.go`: entries for `submit` (content only), `state` (header plus one line per
+  action naming its args, `step.finish` line included); `HeadlessToolFinishStep` stays for
+  Space-less grants; removed: `HeadlessToolTaskInfo`, `HeadlessToolDeclareRepos`,
   `HeadlessToolRequestBranches`, `HeadlessToolRenameBranch`, `HeadlessToolChangeBranch`,
   `HeadlessToolAcquireLease`, `HeadlessToolReleaseLease`, `HeadlessToolLeaseStatus`,
   `HeadlessToolOperations`, the `fetch_remote`, `push_branch`,
-  `reply_review_comment` tool entries (texts move into action lines), finish suffix for Space grants;
+  `reply_review_comment` tool entries (texts move into action lines); finish suffix for Space
+  grants names `state {action: step.finish}` (7.6);
   "from task_info" arg texts read "from state.yaml"; `headless.space.suffix` and its `FilesVars`
   example name `submit` and `state`. `HeadlessSpaceInstructions` per 7.6.
 - `internal/taskfiles/headers.go` (`headerState`, content headers), `readme.go` lines: 9.4
@@ -986,7 +1048,8 @@ Phrasing, every file and prompt:
   `ade-automation.json` and `ade-run.json`, `tests/unit/ade-v2-dialog.spec.ts` `SPACE_NOTE`,
   `termflow/smart_test.go`, site `reference/mcp-tools.md`, `docs/ARCHITECTURE.md` agent tools
   section. `tests/claude/details_spike*` and the bench T stubs keep the old tools (frozen
-  baseline).
+  baseline). `tests/claude/details_state_*` (14.2) stay as written: a stub with its own texts,
+  never tied to the registry.
 
 ## 10. Proofs
 
@@ -1154,12 +1217,14 @@ Findings that shape this plan:
   to a default path under `docs/`.
 - Metrics: as Part 1b (cost, final context, turns, pass, failed edit-path calls plus retries, tool
   calls, reads, ToolSearch).
-- Gate per flow, sonnet medians, R over T: cost at most 1.2; final context at most 1.0; pass count
-  not lower; failed edit-path calls plus retries (mean) not higher; turns reported only. A metric
-  whose median gap is below the larger run-to-run range is marked inconclusive; an inconclusive
-  fail gets an Opus review of the raw runs before the verdict. Binding for F1, F4, F5, F6. Under
-  QN5 (uniform surface loads `submit` and `state` up front) the context bound is 1.05; cost and
-  the other gates unchanged.
+- Gate per flow, sonnet medians, R over T: cost at most 1.2; final context at most 1.05 on F1 to
+  F4 (QN5, user; the uniform surface loads `submit` and `state` up front) and at most 1.0 on F5
+  and F6; pass count not lower; failed edit-path calls plus retries (mean) not higher; turns
+  reported only. A metric whose median gap is below the larger run-to-run range is marked
+  inconclusive; an inconclusive fail gets an Opus review of the raw runs before the verdict.
+  Binding for F1, F4, F5, F6. `benchReport` (Part 2 code) still prints a 1.0 context gate for
+  every flow: the first Part whose round runs after this decision (Part 3 if its F1 round has not
+  run) makes the bound per flow.
 - Surface per round: Parts 3 and 4 run the interim tools (`finish_step`, `submit`, merged tools);
   the Part 5 round and the final run the uniform surface (9.3). F1 is rerun in the final under it.
   New diagnostic every flow: loaded schema tokens (ToolSearch result size).
@@ -1173,14 +1238,18 @@ Findings that shape this plan:
   |---|---|---|---|
   | Part 3 | F1 | 6 | 0.47 (T 0.074, R about 0.08 per run) |
   | Part 4 | F2, F3 | 12 | 0.89 (T 0.064 to 0.067; R files arm 0.084 F2, 0.083 F3) |
+  | Part 5 step 0, accuracy test (14.2) | A1, A2, A3; arms N and F | 18 | 1.35 (A1 about 0.06, A2 about 0.09, A3 about 0.075 per run) |
   | Part 5 | F4, F5, F6 | 18 | 1.26 (F4 0.098 and 0.071; F5 0.057 and about 0.06; F6 0.067 and about 0.067) |
   | Final (end of Part 5, after both streams land) | F1 to F6 | 36 | 2.62 |
 
-  Total Parts 3 to 5 rounds 2.62 USD; with the final 5.24 USD. Reserve for one Part rerun after a
-  miss: 1.26 USD. Asked cap: 6.5 USD (question QN1), unchanged. Estimates are Part 1b and 1c
+  Total Parts 3 to 5 rounds plus the accuracy test 3.97 USD; with the final 6.59 USD. Reserve for
+  one Part rerun after a miss: 1.26 USD. Asked cap: 8.0 USD (question QN1; was 6.5 before the
+  accuracy test). Estimates are Part 1b and 1c
   medians; R is assumed near T where R uses the same tool shape (F5 wait, F6 `create_task`), near FL
   where it reads files (F1, F4) and at the measured files arms for F2 (FP 0.0837) and F3 (FA and FP
-  0.079 to 0.085). F5 R has no measured arm in this shape; estimate kept at about 0.06.
+  0.079 to 0.085). F5 R has no measured arm in this shape; estimate kept at about 0.06. Accuracy
+  test runs: A1 near spike F5 T (0.051 to 0.057) plus one ToolSearch turn; A2 and A3 scaled by
+  their call count (about 7 and 5 turns).
 - F5 (setup wait, Part 5 round). Arm T: frozen baseline, spike stub (`task_info` waits until the
   stub setup is ready). Arm R: real `ade.TaskBoard` and `agentmcp.Server`; task with repo `api`
   (step runs there, worktree ready) and repo `app` branch `feature/x` attached through
@@ -1192,7 +1261,7 @@ Findings that shape this plan:
   plus the folder line. Oracle: reply holds the worktree path and arrives after the setup row's
   `FinishedAt`. Diagnostics: ToolSearch loads, `state` calls, Bash `sleep` calls, `state.yaml`
   reads (more than one read means the agent polled). Gate binding as above. Main risk: `state`
-  schema load context (spike FF context 1.05 with full merged texts; the 9.3 budget is about 600
+  schema load context (spike FF context 1.05 with full merged texts; the 9.3 budget is about 650
   tokens). On a miss: first shorten the `state` action lines, rerun F5 (6 runs, about 0.36 USD);
   still failing: Opus review of raw runs, then the user decides on a wait-only `task_info {repo,
   branch}` (option a, one more tool).
@@ -1207,6 +1276,177 @@ Findings that shape this plan:
   reruns its round. A final miss goes to the user with the numbers.
 - Results: each round appends a section ("Part 3", "Part 4", "Part 5", "Final", "Kira-side") to
   `P643-spike-results.md`. The P643 `SPEC.md` Result carries per-flow final ratios and verdicts.
+
+### 14.2 State schema accuracy test (Part 5 step 0)
+
+Question: does the agent call `state` correctly more often with nested `{action, args}` (arm N,
+user proposal) than with the flat union (arm F)? Runs before any `state` code is written; Part 5
+builds the winner (9.3). Real `claude`, stub `state` tool only, no Kira backends. Spend: 18 runs,
+estimate 1.35 USD (14.1 table).
+
+Files (nested module `apps/kira-space/tests/claude/`, package `claude`, Stream B):
+
+- new `details_state_stub_test.go`: stub world, both schemas, decode, validation, reply, call log.
+- new `details_state_accuracy_test.go`: flows, `TestStateAccuracy` (real runs), free tests,
+  report.
+- result `docs/v0.3.14/plans/P643-state-accuracy.md`, written only through `KIRA_ACC_OUT`.
+- No `package.json` script, no DEV_ENVIRONMENT row, never in hooks or CI: one-off decision test
+  like the spike; the command lives in the file comment.
+
+Opt-in and knobs (file comment lists them):
+
+```
+KIRA_SPIKE=state KIRA_ACC_OUT=<abs>/docs/v0.3.14/plans/P643-state-accuracy.md \
+KIRA_SPIKE_DUMP=<scratch>/acc-dump CGO_ENABLED=1 go test -count=1 -v -timeout 2h -run 'TestStateAccuracy$' .
+```
+
+`TestStateAccuracy` skips unless `KIRA_SPIKE=state`, `KIRA_ACC_OUT` is set and `claude` is on
+PATH. Knobs: `KIRA_ACC_REPS` (default 3), `KIRA_ACC_FLOWS` (default `A1,A2,A3`), `KIRA_ACC_ARMS`
+(default `N,FLAT`), `KIRA_ACC_BUDGET` (USD, default 1.9: estimate 1.35 plus one run's cap, because
+the guard stops before a run that could pass it). Model `sonnet`. Per-run cap 0.5 USD: set
+`benchRunCapUSD = 0.5` for the test and restore it after, as `TestDetailsBench` does.
+
+Harness reuse (no new runner):
+
+- `execute(t, home, fl, arm, "sonnet", rep)` runs `claude -p` and scores through `parseSpikeStream`
+  (cost, turns, `CtxFinal`, `SearchCalls`, `SearchCtx`, tool counts) and `fl.oracle`. `home` from
+  `spikeHome(t)`. Flows are `spikeFlow` values (`id`, `name`, `prompt`, `oracle`).
+- Tool surface through the `benchSetup` hook: before each run set `benchSetup` to the arm's setup
+  func and reset it to nil after the test. `spikeRun.setup` calls the hook after it has made
+  `r.root`, `r.repo`, `r.taskDir`, `r.wt`.
+- Arm labels `N` and `FLAT`, never `F` or `T`: `spikeRun.setup` treats arm `F` as the spike files
+  arm and returns before the hook; the report prints `FLAT` as F. Leave `spike1bOn` false.
+- The setup func builds an `accStub`, stores it in a package var `accCur` (the oracle reads it),
+  serves it with `mcp.NewStreamableHTTPHandler` (stateless) on `httptest`, writes `mcp.json` with
+  one server `kira-space`, as `benchSetupT` does; done func closes the server.
+- Register the tool with the raw `(*mcp.Server).AddTool(tool, handler)` and an explicit
+  `*jsonschema.Schema`, never the typed `mcp.AddTool`: the SDK must not reject or coerce input,
+  every input reaches the handler so bad calls become `invalid` items.
+
+Tool, same in both arms except the shape:
+
+- One server `kira-space`, one tool `state`. Actions (11, the full set): `repo.declare`,
+  `branch.request`, `branch.rename`, `branch.change`, `lease.acquire`, `lease.release`,
+  `operation.cancel`, `remote.fetch`, `branch.push`, `review.reply`, `step.finish`.
+- Description: header `Every task state change goes through this tool. Pick action; <shape
+  sentence>. A call that waits returns within 10 minutes. Reply: a summary line, then one item per
+  change with status done, pending, waiting, denied, failed or invalid; invalid has fix.` Shape
+  sentence N: `put the action's fields in args`; F: `put the action's fields next to action`.
+  Then the 9.3 action lines with the field names below; N writes `branch.request: args {repo,
+  branch, base?, existing?}: ...`, F writes `branch.request: repo, branch, base?, existing?: ...`.
+  Note texts identical. `step.finish` status values in its line: `done, failed, needs_input`.
+- Schema N: `{action: enum[11], args: object}`, `required: [action]`, `args` free object (no
+  sub-schema, no property descriptions).
+- Schema F: `{action: enum[11], repos: string[], repo, branch, base: string, existing: bool, from,
+  to, queue, opId, remote: string, force: bool, id, reply: string, resolved: bool, status, reason:
+  string, conflictedFiles: string[], lastGitError, tried: string}`, `required: [action]`, types
+  only, no property descriptions (field notes live in the action lines in both arms, so the arms
+  differ only in nesting).
+- Report both arms' `tools/list` JSON bytes and bytes/4 (reuse `listTools` from
+  `details_spike1b_test.go`).
+
+Decode and validation (shared after the shape step):
+
+1. Shape. N: top-level keys other than `action` and `args` are `invalid` (fix: move them under
+   args); `args` not an object is `invalid`, a JSON string holding an object counted as class
+   `args-string`. F: an `args` key is `invalid` (fix: put fields next to action). Both: missing or
+   unknown `action` is `invalid` (fix lists the actions).
+2. Fields per action, the 9.3 lists: missing required field and field not in the action's list
+   are `invalid`, fix names the field.
+3. Values against the stub world: unknown repo, branch not on the task (rename, change `from`),
+   `to` not an existing local branch (change), unknown queue, comment id or opId, `status` not in
+   `done, failed, needs_input`, `reason` missing when status is not `done`: `invalid`.
+
+Every `invalid` item has id `call` and a one-line `fix` with an example call in the arm's own
+shape (N: `{"action": "branch.request", "args": {"repo": "app", "branch": "feature/x"}}`; F: same
+call flat). One wording table, arm only changes the example. Invalid classes recorded per call:
+`action`, `shape`, `args-string`, `missing`, `stray`, `value`.
+
+Reply, both arms (9.4 shape, JSON as text content plus `structuredContent`): `{summary: "1
+done", items: [{id, status, message, fix?}], next, notices: []}`; text form: summary line, one
+line per item, `next`. Item ids: `repo/branch` for branch actions, `repos` for declare, queue,
+opId, comment id, `step` for `step.finish`.
+
+Stub world (one per run, seeded by flow):
+
+- Task repos `api` (worktree ready) and `app`; registered repo `web` (not on the task;
+  `branch.request` on it adds it, as Kira does). Local branches per repo: `api` `main`; `app`
+  `main`, `feature/x`, `feature/x-alt`; `web` `main`, `release/2.4`.
+- `branch.request`: new branch, auto-approved after 2 s, setup done 3 s later, reply `done` with
+  message `worktree <path> ready` (path under `r.root/wt/`). Existing branch on the task with a
+  setup running (A1): waits until `r.ready`, then `done` with the path; `existing` true or omitted
+  both accepted. Blocks through ctx; caller gone ends the wait.
+- `branch.rename`, `branch.change`: auto-approved after 2 s, `done`; change records the switch.
+- `lease.acquire` queue `deploy-staging`: held by another task, granted 5 s after the call, then
+  `done` (blocking, 9.4). `lease.release`: `done`. `operation.cancel`: op `op-7` exists, `done`.
+  `remote.fetch`, `branch.push`: `done`. `review.reply` comment `c-17`: records reply and
+  resolved, `done`. `step.finish`: records status, `done` (no implicit submit: no task files).
+- Task folder `r.taskDir` gets `README.md` (2 lines, 9.4 phrasing) and `state.yaml` (section 8
+  fields this world has; A1: `repos[app].setup.status: waiting`, rewritten to `done` at
+  `r.ready`). The stub never reads them.
+- Call log: per call the raw arguments, action, valid or invalid, invalid class, item statuses,
+  time.
+
+Flows (prompt core, then `\n\nTask folder: <r.taskDir> (README.md there).\nKira tool: state.
+Load it first with ToolSearch select:mcp__kira-space__state`; same text in both arms):
+
+- A1 branch wait (F5 shape): world as above with `app` branch `feature/x` on the task, setup
+  running, `r.ready` = setup time plus 20 s (set in the setup func, after `spikeRun.setup`). Core:
+  spike F5's ("Branch feature/x of repo app in this task is being set up. Wait until its setup is
+  done, then reply with the branch's worktree path and nothing else."). Oracle: reply holds the
+  path, arrives after `r.ready`, call log holds a valid `branch.request` for `app/feature/x`.
+- A2 two repos (F6 style): core: "This task needs work in two repos. Create branch feat/billing
+  in repo api from main, and branch feat/billing-ui in repo web from release/2.4. Then rename the
+  api branch to feat/billing-api. Then take the lease on queue deploy-staging and release it once
+  you hold it. Reply with the two final branch names, one per line." Oracle: world has `api`
+  `feat/billing-api` (base `main`), `web` `feat/billing-ui` (base `release/2.4`), lease acquired
+  then released (not held at end), reply names both branches.
+- A3 change and review reply: world adds comment `c-17` ("Use feature/x-alt; it has the fixed
+  migration.") on `app`. Core: "Reviewer comment c-17 asks you to switch branches. Point the
+  task's branch feature/x of repo app at the existing local branch feature/x-alt. Then reply to
+  comment c-17 with \"Switched to feature/x-alt.\", mark it resolved, and finish the step with
+  status done. Reply with the word done." Oracle: change `app` `feature/x` to `feature/x-alt`
+  recorded, `c-17` reply holds "Switched to feature/x-alt" and resolved, `step.finish` status
+  `done` recorded after both.
+
+Metrics per run (`accRec`: the `spikeRec` plus the fields below; scoring reads the call log):
+
+- `calls`: `state` calls that reached the stub; `clientCalls`: `rec.Tools["state"]` (transcript
+  tool uses, prefix stripped by `parseSpikeStream`); the gap counts calls the client refused, e.g.
+  before ToolSearch.
+- Attempts, walked over the call log in order, per action: a call opens an attempt when none is
+  open for its action; an `invalid` reply keeps it open; a valid reply closes it. Attempt
+  first-try-correct = closed by its first call. An attempt never closed counts as not
+  first-try-correct. `ftc` = first-try-correct attempts, `attempts` = all.
+- `invalid` = calls with an `invalid` item, per class; `retries` = calls made while their
+  action's attempt was open after an `invalid` reply.
+- Pass (oracle), cost, final context tokens (`CtxFinal`), turns, `SearchCtx` (loaded schema).
+
+Free tests (no tokens, run them before the real run; same file, no `KIRA_SPIKE` needed):
+
+- `TestStateAccuracyScoring`: table of call-log sequences to attempts, `ftc`, `invalid`,
+  `retries` (two valid calls of one action are two attempts; invalid then valid is one attempt,
+  not first-try-correct, one retry; invalid then other action then valid; never closed).
+- `TestStateAccuracyShapes`: per arm, one valid call per action decodes to the same fields; wrong
+  level, `args` as string, stray and missing fields give the expected class and a fix in the
+  arm's shape.
+
+Report (`KIRA_ACC_OUT`, rewritten after every run, as `TestDetailsBench`): runs done of planned,
+spend, budget note; schema tokens per arm; table per flow and arm (runs, pass, mean calls and
+client calls, attempts, `ftc` rate, invalid by class, retries, median cost, median final context,
+median turns); overall per arm; verdict line; raw per-run lines.
+
+Gate (never relaxed):
+
+- Overall first-try-correct rate per arm = sum `ftc` / sum `attempts` over all its runs. Fail
+  count = runs whose oracle failed.
+- N wins when its rate is at least F's and its fail count is not higher; otherwise F wins.
+- Both arms under 90 percent first-try-correct: stop, report to the user, build nothing. Same when
+  the winner is under 90 percent (the gate must not pick an arm under the bar).
+- Budget guard hit before 18 runs: report partial, no verdict; the user decides on more spend.
+- Results go to `P643-state-accuracy.md` and a one-line verdict to the P643 `SPEC.md` Result;
+  Part 5 builds the winner's schema (9.3 nested text or its flat fallback). Cost and context are
+  reported, not gated here (the Part 5 F5 round gates them).
 
 ## 15. Tests per Part (IPC split)
 
@@ -1260,21 +1500,27 @@ interacting rules.
   `<svg>`) and `ade-v2-proof-chain.spec.ts` on the contract. Real `claude`
   `TestProofMcpThroughClaude`, `TestProofChartThroughClaude` rewritten: the agent writes
   `proof.md` (and a chart step) and calls `submit`.
+- Part 5 step 0: accuracy test (14.2), free `TestStateAccuracyScoring` and
+  `TestStateAccuracyShapes` first, then the real run; its gate decides the `state` shape.
 - Part 5: flow `adeflow` `TestDetailsStateFile` (contract `ade-state-file.json`): lease, op, setup,
   stage, pending and answer changes land in `state.yaml` within 250 ms with the 9.4 status words,
   coalesced (count writes), byte-equal skip. New `adeflow/statetool_test.go` (contract
   `ade-state-tool.json`): every `state` action through the one tool; `action` enum and description
   per grant (run, session, orchestrator, review, push grant); reply shape table test: every action
   and `submit` decode to `{summary, items[{id, status, message, fix}], next, notices}`, summary
-  first, status in the 9.4 set; agent-fixable errors come back as `invalid` items with `fix`, never
-  `isError`; `submit {finish}` ends a run step (result enum) and raises the session move prompt,
-  refusal without draft (Q7) as an `invalid` item. New `adeflow/callwait_test.go`
-  (`flowharness.WithCallWait` shortens the wait), one case per blocking action (branch request,
-  rename, change, lease acquire; `task.create` under QN6): wait runs out, reply `pending` or
-  `waiting` naming its exact `state.yaml` fields, no "call again" text, item still open; late
-  Approve applies the action with no caller and lands in `answers[]` and `repos[]` (or `leases[]`,
-  `chain`); session gets the push, run gets none; owner end withdraws open approvals and frees
-  leases. New `adeflow/setupwait_test.go` (replaces `taskinfowait_test.go`): (1) request for a new
+  first, status in the 9.4 set; agent-fixable errors come back as `invalid` items with `fix` in the
+  built shape, never `isError` (wrong level, unknown field, missing field, `args` not an object);
+  `state {action: step.finish}` runs the implicit submit, ends a run step (result enum,
+  `needs_input` needs reason) and, with status `done`, raises the session move prompt; refusal
+  without draft (Q7) as an `invalid` item; `submit` takes no `finished` any more; Space-less
+  grants (rebase run, review round) still list `finish_step` and no `state`. New
+  `adeflow/callwait_test.go` (`flowharness.WithCallWait` shortens the wait), one case per
+  blocking action (branch request, rename, change, lease acquire): wait runs out, reply `pending`
+  or `waiting` naming its exact `state.yaml` fields, no "call again" text, item still open; late
+  Approve applies the action with no caller and lands in `answers[]` and `repos[]` (or
+  `leases[]`); session gets the push, run gets none; owner end withdraws open approvals and frees
+  leases; `create_task` still waits 30 min and withdraws on timeout (`WithBranchRequestWait`).
+  New `adeflow/setupwait_test.go` (replaces `taskinfowait_test.go`): (1) request for a new
   branch replies `done` after setup end with path and progress notes; (2) existing branch whose
   setup was started by UI attach or Retry waits; (3) failed setup replies `failed` with the note,
   `state.yaml` the same; (4) wait runs out during setup: `waiting`, names
@@ -1291,8 +1537,8 @@ interacting rules.
   `state` actions and the shared reply; real `claude` `hooks_test.go` busy work and
   `automation_test.go` move to `state {action: repo.declare}` of the declared repo (or
   `lease.acquire` then `lease.release` if declare is not a no-op); removed tools absent from every
-  grant, every Space grant lists exactly `submit`, `state` (plus `create_task` for orchestrators
-  until QN6) (`TestOrchestratorToolGrants`, agentmcp `TestGrantScopes`, `toolnames_test.go`);
+  grant, every Space grant lists exactly `submit`, `state` (plus `create_task` for orchestrators,
+  QN6) (`TestOrchestratorToolGrants`, agentmcp `TestGrantScopes`, `toolnames_test.go`);
   orchestrator reads children through `chain` and README `Children:` lines; `create_task` reply
   `next` names the child's `handovers/` path. UI spec on the same contracts: folder bar lists
   `state.yaml` read-only with its `rev`, which rises after a lease change, a setup end and an
@@ -1316,7 +1562,7 @@ passes (F2 and F3 reported, not gated).
 | 2 Foundation | store seam, `task_files`, intents, migration framework, submit core (walk, classify, diff, apply, restore, reason rule), proof validators export plus inline YAML to JSON, README generator, header texts, task folder grant (add-dir, sandbox allow and denies, deny rules), harness hygiene, bench harness and frozen baseline | new `internal/taskfiles/**`, `internal/taskfiles/store/**`, `storage/migrations/0101_p643_task_files.sql`, `storage/repos/taskfiles.go`, `internal/proof/validate.go`, `ade/sandbox.go`, `ade/sandbox_tui.go`, `ade/launches.go`, `appwire/wire.go`, `tests/claude/details_spike1b_test.go`, new `tests/claude/details_bench_test.go`, `tests/claude/testdata/details-bench/**`, `package.json` (`test:claude:details`), `docs/DEV_ENVIRONMENT.md` row, `docs/ARCHITECTURE.md` "Task files (P643)" |
 | 3 Notes, handovers, links, submit, prompts | file writes for every UI action, caches, stage move rename, `submit` tool (reason, reply wording), `finish_step` change, `handover` and `report_artifacts` removed (kind proof attach stays until Part 4 removes it), `details.edit` approvals desktop and phone, disk banner, migration exporters, panel forward paths, `headless.space.files` fragment and `harness.ToolLoader`, `HeadlessSpaceInstructions`, child brief written as a handed file, README content lines | `ade/handover.go`, `ade/links.go`, `ade/artifacts.go`, `ade/orchestrator.go`, `ade/taskcreate.go` (brief file), `ade/panelforward.go`, `ade/vars.go`, new `ade/details.go`, `agentmcp/{handover,artifacts,mcp,space,tools}.go`, new `agentmcp/submit.go`, `internal/harness/mcp.go`, `internal/harness/claude/mcp.go`, `llmprompts/registry.go`, `bridge/adetask.go`, `adewire/wire.go`, `mobileweb/approvals.go`, `frontend/src/ade/v2/details/**`, `request/kindDefs.ts`, mobile approval view, tests, bench F1 |
 | 4 Proofs (Stream A) | proofs as agent-written files plus `submit` (7.5): `proof.md` format, submit proof unit (all or nothing, side files, slug and name rules, YAML fix hints, proof reply summary), `Request.Tool` and `Decide` `tool` argument removed, image formats incl. SVG, window single and task-only, retention removed, kira-studio proof tools removed, Q10 entry points removed, proof migration and image rewrite, Q16 deletion, README example block, line 4 and `Proofs:` line, prompt `Proofs:` line, proof header text | `internal/proof/**`, `storage/repos/proof.go`, `storage/migrations/0102_p643_proof_step_key.sql`, `dbmcp/proof_tools.go` (removed), `dbmcp/server.go`, `ade/proof.go`, new `internal/taskfiles/proofunit.go`, `internal/taskfiles/{submit,decide,classify,readme,headers}.go`, `bridge/proof.go`, `bridge/dbmcp.go`, `bridge/adetask.go`, `appshell/menu.go`, `appwire/menuactions.go`, `frontend/src/studio/proof/**`, `details/AdeProofEntry.vue`, `AdeProofAttachMenu.vue` (removed), `packages/shared/domain/proof.ts`, `go.mod` (`golang.org/x/image`), tests, bench F2 F3 |
-| 5 State file and uniform surface (Stream B) | `state.yaml` (9.4 status words, `pending`, `answers`), `task.yaml` writer, uniform surface (9.3): `state` tool with per-grant actions, `submit {finish}` absorbs `finish_step` for Space grants (QN4), shared reply and error shape, one call wait `Deps.CallWait` 10 min with items open after return (9.4), notices for every answer, removals (9.5: `task_info`, `run_outcome`, `lease_status`, `operations`, `list_tasks`, `task_chain`, old branch, lease, op, push, fetch and review-reply tools), setup wait (9.2: blocking `state {action: branch.request}`, `repos[].setup`), approvals without countdown, `TestToolSchemaBudget`, 9.4 header and README phrasing, orchestrator chain reads, children add-dir, `create_task` `next` text (or `task.create` under QN6), README `Children:` line, `HeadlessSpaceInstructions` (7.6) | new `ade/statefile.go`, new `ade/setupwait.go`, new `ade/callwait.go`, new `agentmcp/state.go`, new `agentmcp/reply.go`, `agentmcp/{submit,space,leases,orchestrator,outcomes,tools,gittool}.go`, `llmprompts/registry.go`, `ade/leases.go`, `ade/orchestrator.go`, `ade/taskcreate.go`, `ade/launches.go` (children add-dir), `ade/agenttools.go`, `ade/branchrequest.go`, `ade/branchadopt.go`, `ade/branchrename.go`, `ade/branchchange.go`, `ade/setup.go`, `internal/flowharness` (`WithCallWait`), `details/AdeDetailsFolderBar.vue`, `request/kindDefs.ts`, tests, bench F1 rerun, F4 F5 F6 |
+| 5 State file and uniform surface (Stream B) | step 0: state schema accuracy test (14.2), nested versus flat, before any `state` code; then `state.yaml` (9.4 status words, `pending`, `answers`), `task.yaml` writer, uniform surface (9.3): `state` tool in the 14.2 winner's shape with per-grant actions, `state {action: step.finish}` replaces `finish_step` for Space grants and `submit` drops `finished` (QN4, user), shared reply and error shape, one call wait `Deps.CallWait` 10 min with items open after return (9.4), notices for every answer, removals (9.5: `task_info`, `run_outcome`, `lease_status`, `operations`, `list_tasks`, `task_chain`, old branch, lease, op, push, fetch and review-reply tools), setup wait (9.2: blocking `state {action: branch.request}`, `repos[].setup`), approvals without countdown, `TestToolSchemaBudget`, 9.4 header and README phrasing, orchestrator chain reads, children add-dir, `create_task` `next` text (tool stays, QN6), README `Children:` line, `HeadlessSpaceInstructions` (7.6) | new `tests/claude/details_state_stub_test.go`, new `tests/claude/details_state_accuracy_test.go`, `plans/P643-state-accuracy.md` (step 0), new `ade/statefile.go`, new `ade/setupwait.go`, new `ade/callwait.go`, new `agentmcp/state.go`, new `agentmcp/reply.go`, `agentmcp/{submit,space,leases,orchestrator,outcomes,tools,gittool}.go`, `llmprompts/registry.go`, `ade/leases.go`, `ade/orchestrator.go`, `ade/taskcreate.go`, `ade/launches.go` (children add-dir), `ade/agenttools.go`, `ade/branchrequest.go`, `ade/branchadopt.go`, `ade/branchrename.go`, `ade/branchchange.go`, `ade/setup.go`, `internal/flowharness` (`WithCallWait`), `details/AdeDetailsFolderBar.vue`, `request/kindDefs.ts`, tests, bench F1 rerun, F4 F5 F6 |
 
 Part 2 tasks for the spike gaps and hygiene:
 
@@ -1353,6 +1599,15 @@ Part 4 tasks for the spike gaps:
   still names the proof tool), proof header without "Or call the proof tool." (`headers.go`),
   YAML fix hints, slug and name errors; golden README test keeps the 35-line cap.
 
+Part 5 order:
+
+- Step 0 (14.2): write the stub and flows, pass the two free tests, run `TestStateAccuracy`,
+  commit `P643-state-accuracy.md` with the verdict. Nothing under `agentmcp/state.go` or
+  `ade/` is written before that commit.
+- Verdict N or F: Part 5 builds that shape (9.3). Stop verdict (under 90 percent, or partial run):
+  Part 5 halts and the orchestrator reports to the user; never a relaxed bar.
+- Then the rest of the Part 5 row, then its round (F4, F5, F6, F1 rerun under the final).
+
 Streams after Part 3 (cap 3; two used): Stream A = Part 4, Stream B = Part 5, each its own
 worktree off the Part 3 end commit.
 
@@ -1366,14 +1621,14 @@ File ownership:
 | File or area | Owner |
 |---|---|
 | `internal/proof/**`, `storage/repos/proof.go`, `dbmcp/**` proof parts, `bridge/proof.go`, `bridge/dbmcp.go`, `appshell/menu.go`, `appwire/menuactions.go`, `frontend/src/studio/proof/**`, `details/AdeProofEntry.vue`, `AdeProofAttachMenu.vue`, `packages/shared/domain/proof.ts`, new `internal/taskfiles/proofunit.go`, `internal/taskfiles/{submit,decide}.go`, `ade/proof.go`, `go.mod`, migration `0102` | A |
-| new `ade/statefile.go`, new `ade/setupwait.go`, new `ade/callwait.go`, new `agentmcp/state.go`, new `agentmcp/reply.go`, `agentmcp/{submit,space,leases,orchestrator,outcomes,tools,gittool,mcp}.go`, `ade/leases.go`, `ade/agenttools.go`, `ade/branchrequest.go`, `ade/branchadopt.go`, `ade/branchrename.go`, `ade/branchchange.go`, `ade/setup.go`, `ade/orchestrator.go`, `ade/taskcreate.go`, `internal/flowharness/**`, `details/AdeDetailsFolderBar.vue`, `request/kindDefs.ts` | B |
+| new `tests/claude/details_state_stub_test.go`, new `tests/claude/details_state_accuracy_test.go`, new `plans/P643-state-accuracy.md`, new `ade/statefile.go`, new `ade/setupwait.go`, new `ade/callwait.go`, new `agentmcp/state.go`, new `agentmcp/reply.go`, `agentmcp/{submit,space,leases,orchestrator,outcomes,tools,gittool,mcp}.go`, `ade/leases.go`, `ade/agenttools.go`, `ade/branchrequest.go`, `ade/branchadopt.go`, `ade/branchrename.go`, `ade/branchchange.go`, `ade/setup.go`, `ade/orchestrator.go`, `ade/taskcreate.go`, `internal/flowharness/**`, `details/AdeDetailsFolderBar.vue`, `request/kindDefs.ts` | B |
 | shared, listed below | A and B |
 
 Shared files, additive hunks:
 
 | Shared file | Stream A edit | Stream B edit |
 |---|---|---|
-| `internal/llmprompts/registry.go` | `DbmcpToolProofSave`, `DbmcpToolProofList` removed | `state` tool and action texts, `submit` `finish` text, wait ran-out texts (9.4); removed entries (9.5) incl. `task_info`; `headless.space.suffix`, tool line (9.4), `HeadlessSpaceInstructions` (7.6) |
+| `internal/llmprompts/registry.go` | `DbmcpToolProofSave`, `DbmcpToolProofList` removed | `state` tool and action texts (`step.finish` line), `submit` content-only text, finish suffix, wait ran-out texts (9.4); removed entries (9.5) incl. `task_info`; `headless.space.suffix`, tool line (9.4), `HeadlessSpaceInstructions` (7.6) |
 | `internal/taskfiles/classify.go` | proof-folder hint for a bad slug or a too-deep path | none (Kira-owned patterns exist from Part 2) |
 | `internal/taskfiles/readme.go` | line 4, example block, `Proofs:` line, cap 35 | `Children:` line; 9.4 phrasing ("Edit, then call submit.", state line) |
 | `internal/taskfiles/headers.go` | `headerProof` without the proof tool | `headerState` text (section 8, 9.4 phrasing) |
@@ -1419,8 +1674,8 @@ proofs).
 - YAML mistakes in hand-written `proof.md` (tabs, unquoted colons, indentation): one retry turn;
   file:line plus a one-line fix hint per error class; flow-style example in the README avoids deep
   indentation.
-- README example block adds about 200 tokens to every README read (F1 context gate 1.0 is at
-  parity): fallback moves it to `proofs/EXAMPLE.md` (7.5).
+- README example block adds about 200 tokens to every README read (F1 context gate 1.05, QN5):
+  fallback moves it to `proofs/EXAMPLE.md` (7.5).
 - Call wait: a blocking `state` call holds the agent at most 10 min (approval and setup
   together). Then a run reads `state.yaml` itself, which can turn into polling with Bash `sleep`
   (F5 counts reads); a session also gets the push. The push misses runs by design (9.2
@@ -1428,6 +1683,10 @@ proofs).
 - Uniform surface: one `state` schema loads every action of the grant. It may fail the F5 context
   gate (lever and fallback in 14.1); `TestToolSchemaBudget` stops growth. Agents may pick a wrong
   action: one `invalid` item with `fix` costs one retry turn, as a wrong tool does today.
+- `{action, args}` with a free `args` object gives the client no per-field schema: agents may put
+  fields at the wrong level or pass `args` as a JSON string. The 14.2 test measures this against
+  the flat union before any build, with a 90 percent first-try-correct floor; Part 5 builds the
+  winner.
 - Approvals shortened from 30 to 10 min of blocking: a slow user no longer loses the request
   (items stay open), so the shorter wait trades only a later `answers[]` read.
 
@@ -1448,35 +1707,36 @@ Plan recommendations in force (user accepted "all other questions: plan's recomm
 - Q13 Step prompts keep inlining incoming handover and notes beside the folder line. Yes.
 - Q14 Gate: superseded by the benchmark gate in Decisions.
 
-New, for the user:
+Answered after the uniform-surface revision (user):
 
-- QN1 Benchmark spend for Parts 3 to 5 and the final: estimate 2.62 USD for the three Part rounds
-  plus 2.62 USD for the final, 5.24 USD total (section 14.1; F2 and F3 now run the files arm).
-  Recommend: approve a 6.5 USD cap (1.26 USD reserve, one Part rerun), per-run cap 0.5 USD.
-  Alternative: final reuses each Part's T runs (saves about 1.2 USD) at the cost of comparing
-  across days.
+- QN4 `finish_step` does not fold into `submit`. Part 5 adds `state {action: step.finish}` (same
+  fields, implicit submit first, Q7 refusal) for Space grants; `submit` stays content only (its
+  `finished` moves to `step.finish` status `done`); rebase runs and review rounds keep
+  `finish_step`; Part 3's `finish_step` stays as shipped until Part 5 (7.1, 9.3).
+- QN5 Final-context gate on F1 to F4 is 1.05 (was 1.0); F5 and F6 stay at 1.0; cost gate
+  unchanged (14.1).
+- QN6 `create_task` stays a separate MCP tool for now, 30 min wait unchanged. Orchestrator tools:
+  `submit`, `state`, `create_task` (9.3).
+- `state` schema: top level `{action, args}`, args per action in the description lines, Kira
+  validates and answers `invalid` with `fix`; nested versus flat decided by the Part 5 step 0
+  accuracy test (14.2).
+
+Open, for the user:
+
+- QN1 Benchmark spend for Parts 3 to 5, the accuracy test and the final: estimate 2.62 USD for the
+  three Part rounds, 1.35 USD for the accuracy test (14.2, 18 runs), 2.62 USD for the final, 6.59
+  USD total (section 14.1; F2 and F3 run the files arm). Recommend: approve an 8.0 USD cap (1.26
+  USD reserve, one Part rerun), per-run cap 0.5 USD. Alternative: final reuses each Part's T runs
+  (saves about 1.2 USD) at the cost of comparing across days.
 - QN2 superseded: no `proof` tool (user). Proofs work in every task folder through `submit`, which
   every Space grant has.
-- QN3 Wait scope (9.2, 9.4), changed by the uniformity principle: one 10 min wait for the whole
-  call (approval plus setup), the same for every blocking `state` action. This shortens the 30 min
-  approval wait of branch request, rename and change to 10 min. When it runs out nothing is
-  cancelled: the request stays in `pending[]` (approvals item without countdown) until answered or
-  owner end; a late Approve applies it with no caller and lands in `answers[]`. The agent finds out
-  by the ran-out reply, which names those fields, then by reading `state.yaml`; a session also
-  gets the push; a run is told by nothing else. Recommend: approve. Alternative: setup-only 10 min,
-  approval keeps 30 min (up to 33 min per call, two wait rules).
-- QN4 `finish_step` folds into `submit {finish}` for Space grants (7.1, 9.3): one call ends a step
-  and submits the files; fields `status`, `reason`, `conflictedFiles`, `lastGitError`, `tried` move
-  along. Space-less grants (rebase runs, review rounds) keep `finish_step` because they have no
-  task folder to submit. Changes the Part 3 `finish_step` work (binding: implicit submit stays, now
-  explicit). Recommend: approve.
-- QN5 Context gate for the uniform surface: loading `submit` and `state` up front (one ToolSearch
-  select) adds about 600 tokens to F1 to F4 (context about 1.01 to 1.02 against T) and saves a
-  ToolSearch turn on F5 and F6. Recommend: context bound 1.05 for the Part 5 round and the final;
-  cost and turn gates unchanged. Alternative: keep 1.0 and load `state` only on demand (two
-  ToolSearch lines, less uniform).
-- QN6 `create_task` becomes the `state` action `task.create` with the uniform 10 min wait (binding
-  decision says it stays a tool, name, args and 30 min wait unchanged). Effect: orchestrator 2 tools
-  like every Space role, about 120 tokens less schema, one wait rule; the approval behaves like a
-  branch request after return (open until answered, child created later, `answers[]` and
-  `chain.children`). Recommend: approve. Until answered, the plan keeps `create_task` as is.
+- QN3 Wait scope (9.2, 9.4). Decided (user): setup wait 10 min, then `state.yaml`; lease stays in
+  `state.yaml`. Still open: the approval part of the same 10 min wait. One 10 min wait for the
+  whole call (approval plus setup), the same for every blocking `state` action, shortens the 30
+  min approval wait of branch request, rename and change to 10 min (`create_task` keeps 30 min,
+  QN6). When it runs out nothing is cancelled: the request stays in `pending[]` (approvals item
+  without countdown) until answered or owner end; a late Approve applies it with no caller and
+  lands in `answers[]`. The agent finds out by the ran-out reply, which names those fields, then
+  by reading `state.yaml`; a session also gets the push; a run is told by nothing else.
+  Recommend: approve. Alternative: setup-only 10 min, approval keeps 30 min (up to 33 min per
+  call, two wait rules).
