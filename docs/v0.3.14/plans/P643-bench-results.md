@@ -58,3 +58,23 @@ Candidates not tried, because the round budget is spent:
   changing any prompt text. The failing edit has not been root-caused.
 
 Benchmark spend of Part 3: 0.0843 (smoke) + 0.4282 + 0.3877 = 0.90 USD.
+
+## Edit failure root cause
+
+Not proven: the run transcripts are gone. `execute` writes the stream-json only when `KIRA_SPIKE_DUMP` is set; the bench
+rounds ran without it, and the bench `t.TempDir` homes were removed with the test. The results file keeps only counts.
+
+What the numbers allow: 0.67 mean over 3 runs is 2 events, one failed edit-path call plus one retry, both in run 1 (9 turns
+against 7). The metric counts any `Edit`/`Write` error and any Kira tool error (`is_error`), not only edits. In arm R the
+Kira calls that can error are `finish_step` refused by the bench stub ("write handovers/draft-implement.md, then call
+finish_step", no draft yet) and `submit`. Two Part 3 prompt candidates fit:
+
+1. Relative draft path. The fragment gives `Task folder: <abs>` and `Write your handover to handovers/draft-implement.md`.
+   The `Write` tool takes an absolute path and the run's cwd is the repo, not the task folder. A joined-wrong write lands in
+   the repo, `finish_step` is then refused, and the model rewrites: one failure, one retry, two extra turns.
+2. Order. The fragment says "then call submit" while the finish suffix says `finish_step`; calling `finish_step` first gets the
+   same refusal.
+
+Neither is confirmed, so no code or prompt change was made (a fix without the transcript would be a guess that burns a
+benchmark round). Next owner: rerun R with `KIRA_SPIKE_DUMP=<dir>`, read run 1, then decide. If candidate 1 holds, render
+`Draft` as `<Folder>/<draft>` in `filesVars`.
