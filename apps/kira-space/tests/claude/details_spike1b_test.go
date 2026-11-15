@@ -11,8 +11,10 @@ package claude
 //	KIRA_SPIKE=run1b go test -count=1 -run TestDetailsSpike1b -timeout 4h .
 //	KIRA_SPIKE=run1b go test -count=1 -run TestDetailsSpikeContext1b -timeout 1h .
 //
+// Output files are required, never defaulted: KIRA_SPIKE1B_OUT (runs and report), KIRA_SPIKE1B_PROBE_OUT
+// (context probes), KIRA_SPIKE1B_TOOLS_OUT (tool bytes); a test skips without its variable.
 // Knobs: KIRA_SPIKE1B_REPS (default 3), KIRA_SPIKE1B_FLOWS, KIRA_SPIKE1B_ARMS (default T,FF,FL,FC),
-// KIRA_SPIKE1B_NOFC (flows that skip FC), KIRA_SPIKE1B_BUDGET (USD, default 4), KIRA_SPIKE1B_OUT,
+// KIRA_SPIKE1B_NOFC (flows that skip FC), KIRA_SPIKE1B_BUDGET (USD, default 4),
 // KIRA_SPIKE_DUMP (raw transcripts). Results: docs/v0.3.14/plans/P643-spike-results.md "Part 1b".
 
 import (
@@ -624,7 +626,7 @@ func TestDetailsSpike1b(t *testing.T) {
 	}
 	out := os.Getenv("KIRA_SPIKE1B_OUT")
 	if out == "" {
-		out = "../../../../docs/v0.3.14/plans/P643-spike-1b-raw.md"
+		t.Skip("set KIRA_SPIKE1B_OUT")
 	}
 	home := spikeHome(t)
 
@@ -689,8 +691,8 @@ func TestDetailsSpike1b(t *testing.T) {
 // TestDetailsSpikeContext1b measures the turn-1 context of single-turn probes to split the ~38k
 // tokens into components. KIRA_SPIKE1B_PROBES picks probes (default: the cheap ones).
 func TestDetailsSpikeContext1b(t *testing.T) {
-	if os.Getenv("KIRA_SPIKE") != "run1b" {
-		t.Skip("P643 Part 1b spends real tokens; run with KIRA_SPIKE=run1b")
+	if os.Getenv("KIRA_SPIKE") != "run1b" || os.Getenv("KIRA_SPIKE1B_PROBE_OUT") == "" {
+		t.Skip("P643 Part 1b spends real tokens; run with KIRA_SPIKE=run1b and KIRA_SPIKE1B_PROBE_OUT")
 	}
 	if _, err := exec.LookPath("claude"); err != nil {
 		t.Skip("no claude on PATH")
@@ -769,9 +771,6 @@ func TestDetailsSpikeContext1b(t *testing.T) {
 		}
 	}
 	out := os.Getenv("KIRA_SPIKE1B_PROBE_OUT")
-	if out == "" {
-		out = "../../../../docs/v0.3.14/plans/P643-spike-1b-probes.md"
-	}
 	if err := os.WriteFile(out, []byte(b.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -800,9 +799,9 @@ func filteredEnv(home string) []string {
 // TestDetailsSpike1bReport rebuilds the report from transcripts of earlier runs (KIRA_SPIKE_REPORT_DIRS,
 // comma list of dump dirs) and their verbose logs (KIRA_SPIKE_REPORT_LOGS); no tokens spent.
 func TestDetailsSpike1bReport(t *testing.T) {
-	dirs, logs := os.Getenv("KIRA_SPIKE_REPORT_DIRS"), os.Getenv("KIRA_SPIKE_REPORT_LOGS")
-	if dirs == "" || logs == "" {
-		t.Skip("set KIRA_SPIKE_REPORT_DIRS and KIRA_SPIKE_REPORT_LOGS")
+	dirs, logs, out := os.Getenv("KIRA_SPIKE_REPORT_DIRS"), os.Getenv("KIRA_SPIKE_REPORT_LOGS"), os.Getenv("KIRA_SPIKE1B_OUT")
+	if dirs == "" || logs == "" || out == "" {
+		t.Skip("set KIRA_SPIKE_REPORT_DIRS, KIRA_SPIKE_REPORT_LOGS and KIRA_SPIKE1B_OUT")
 	}
 	re := regexp.MustCompile(`(F\d) (T|FF|FL|FC|FA|FP) #(\d+) pass=(true|false) cost=[0-9.]+ turns=\d+ spent=[0-9.]+ ?(.*)$`)
 	pass := map[string][2]string{}
@@ -839,10 +838,6 @@ func TestDetailsSpike1bReport(t *testing.T) {
 			arms = append(arms, a)
 		}
 	}
-	out := os.Getenv("KIRA_SPIKE1B_OUT")
-	if out == "" {
-		out = "../../../../docs/v0.3.14/plans/P643-spike-1b-raw.md"
-	}
 	if err := os.WriteFile(out, []byte(spike1bReport(recs, spent, os.Getenv("KIRA_SPIKE1B_NOTE"), len(recs), arms)), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -852,8 +847,9 @@ func TestDetailsSpike1bReport(t *testing.T) {
 // TestDetailsSpikeToolBytes lists the tools each arm serves and sums their JSON size (name,
 // description, input schema): the schema share of the context once loaded. Free, no claude.
 func TestDetailsSpikeToolBytes(t *testing.T) {
-	if os.Getenv("KIRA_SPIKE") != "run1b" {
-		t.Skip("KIRA_SPIKE=run1b")
+	out := os.Getenv("KIRA_SPIKE1B_TOOLS_OUT")
+	if os.Getenv("KIRA_SPIKE") != "run1b" || out == "" {
+		t.Skip("set KIRA_SPIKE=run1b and KIRA_SPIKE1B_TOOLS_OUT")
 	}
 	spike1bOn = true
 	defer func() { spike1bOn = false }()
@@ -891,10 +887,6 @@ func TestDetailsSpikeToolBytes(t *testing.T) {
 		}
 		done()
 		fmt.Fprintf(&b, "| %s | %d | %d | %d |\n", c.name, n, total, total/4)
-	}
-	out := os.Getenv("KIRA_SPIKE1B_TOOLS_OUT")
-	if out == "" {
-		out = "../../../../docs/v0.3.14/plans/P643-spike-1b-toolbytes.md"
 	}
 	if err := os.WriteFile(out, []byte(b.String()), 0o644); err != nil {
 		t.Fatal(err)
