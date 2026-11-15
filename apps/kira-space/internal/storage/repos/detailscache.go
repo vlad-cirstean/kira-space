@@ -67,6 +67,18 @@ func (c DetailsCache) SetHandoverBody(q sqlb.Querier, id, body string, edited bo
 	return sqlitex.RequireOneRow(res, "handover "+id)
 }
 
+// SetDraftFinished marks a draft as the session's last word on its stage, or clears the mark.
+func (c DetailsCache) SetDraftFinished(q sqlb.Querier, id string, finished bool, now int64) error {
+	k := kiraschema.AdeTaskHandovers
+	ub := c.Dialect.Update(k.Table)
+	ub.Set(ub.Assign(k.Finished, finished), ub.Assign(k.Dismissed, false), ub.Assign(k.UpdatedAt, now)).Where(ub.Equal(k.ID, id))
+	res, err := sqlb.Exec(q, ub)
+	if err != nil {
+		return fmt.Errorf("repos: finish handover %s: %w", id, err)
+	}
+	return sqlitex.RequireOneRow(res, "handover "+id)
+}
+
 // SetHandoverRel records the file of a row.
 func (c DetailsCache) SetHandoverRel(q sqlb.Querier, id, rel string) error {
 	k := kiraschema.AdeTaskHandovers

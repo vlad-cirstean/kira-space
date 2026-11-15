@@ -153,7 +153,7 @@ func (o detailsOwner) Answer(taskID string, a approvals.Answer) error {
 	mu := o.b.taskMu(taskID)
 	mu.Lock()
 	defer mu.Unlock()
-	ctx := withDetailsSession(o.b.ctx, detailsSession{role: taskfiles.RoleUser})
+	ctx := withDetailsSession(o.b.ctxWithTask(o.b.ctx, taskID), detailsSession{role: taskfiles.RoleUser})
 	var errs []error
 	for _, p := range paths {
 		var err error
@@ -193,20 +193,20 @@ func (b *TaskBoard) SubmitFiles(ctx context.Context, taskID string, s detailsSes
 	df.mu.Lock()
 	last := df.lastSync[s.key]
 	df.mu.Unlock()
-	ctx = withDetailsSession(ctx, s)
+	call := b.taskCallOf(tc)
+	ctx = withDetailsSession(withTaskCall(ctx, call), s)
 	res, err := df.svc.Submit(ctx, taskfiles.Request{
 		TaskID: taskID, Paths: paths, Reason: reason,
-		Session: taskfiles.Session{Key: s.key, Role: s.role, LastSync: last, Step: fileSlug(b.currentStepID(tc))},
+		Session: taskfiles.Session{Key: s.key, Role: s.role, LastSync: last, Step: fileSlug(call.step)},
 	})
 	if err != nil {
 		return res, err
 	}
-	if res.Counts().Accepted > 0 {
-		df.mu.Lock()
-		df.lastSync[s.key] = b.deps.Now()
-		df.mu.Unlock()
-	}
 	b.mirrorTask(taskID, mirrorOpts{})
+	// After the mirror: Kira's own re-render of what the agent just submitted is not a collision for it.
+	df.mu.Lock()
+	df.lastSync[s.key] = b.deps.Now()
+	df.mu.Unlock()
 	b.notifyBoardNow(taskChanged(taskID))
 	return res, nil
 }
@@ -231,7 +231,7 @@ func (b *TaskBoard) DiskChanges(ctx context.Context, taskID string) ([]adewire.D
 	mu := b.taskMu(taskID)
 	mu.Lock()
 	defer mu.Unlock()
-	paths, err := df.svc.Changed(ctx, taskID)
+	paths, err := df.svc.Changed(b.ctxWithTask(ctx, taskID), taskID)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +304,7 @@ func (b *TaskBoard) resolveDisk(ctx context.Context, taskID string, paths []stri
 			return err
 		}
 	}
-	ctx = withDetailsSession(ctx, detailsSession{role: taskfiles.RoleUser})
+	ctx = withDetailsSession(b.ctxWithTask(ctx, taskID), detailsSession{role: taskfiles.RoleUser})
 	var errs []error
 	for _, p := range paths {
 		c := taskfiles.Classify(p)

@@ -24,7 +24,9 @@ var (
 	uuidRe = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
 	nanoRe = regexp.MustCompile(ids.Pattern)
 	wtRe   = regexp.MustCompile(`\bwt_[0-9a-hjkmnp-tv-z]{10}\b`)
-	timeRe = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})`)
+	// noteStampRe is the creation stamp a task note file name carries (notes/<stamp>-<id>.md).
+	noteStampRe = regexp.MustCompile(`(notes/)\d{8}T\d{6}`)
+	timeRe      = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})`)
 
 	contractMu sync.Mutex
 	// numbering keeps <id:n> consistent across the keys one test stores in one file.
@@ -208,7 +210,7 @@ func (n *normalizer) str(s string) string {
 	s = uuidRe.ReplaceAllStringFunc(s, func(m string) string { return number(n.ids, "id", strings.ToLower(m)) })
 	s = wtRe.ReplaceAllString(s, "<wt>")
 	s = nanoRe.ReplaceAllStringFunc(s, func(m string) string { return number(n.ids, "id", m) })
-	return timeRe.ReplaceAllString(s, "<time>")
+	return noteStampRe.ReplaceAllString(timeRe.ReplaceAllString(s, "<time>"), "${1}<time>")
 }
 
 // zero keeps the JSON type of a masked value so the renderer still parses it.

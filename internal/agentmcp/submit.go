@@ -15,17 +15,20 @@ const MaxHandoverBytes = 16 << 10
 // maxSubmitPaths bounds the paths of one submit call.
 const maxSubmitPaths = 50
 
-// SubmitArgs is the submit tool's input: the files to read (all when none) and why, for a change that
-// needs the user's approval.
+// SubmitArgs is the submit tool's input: the files to read (all when none), whether the stage is done
+// and why, for a change that needs the user's approval.
 type SubmitArgs struct {
-	Paths  []string `json:"paths,omitempty"`
-	Reason string   `json:"reason,omitempty"`
+	Paths    []string `json:"paths,omitempty"`
+	Finished bool     `json:"finished,omitempty"`
+	Reason   string   `json:"reason,omitempty"`
 }
 
 // SubmitFinish is finish_step's implicit submit: the reply to append, or the refusal of an ok finish.
 type SubmitFinish struct {
 	Reply  string
 	Refuse string
+	// Summary is the step's draft handover: the run records it as its summary.
+	Summary string
 }
 
 func (s *Server) addSubmitTool(srv *mcp.Server) {

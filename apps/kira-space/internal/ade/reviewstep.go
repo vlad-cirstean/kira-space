@@ -747,7 +747,7 @@ func (b *TaskBoard) startRound(ctx context.Context, tc *taskCtx, run model.AdeRu
 			def.Name, def.Timeout, def.Sandbox, def.Settings, def.DbMcp = s.Name, s.Timeout, s.Sandbox, s.Settings, s.DbMcp
 		}
 	}
-	prompt := composeResumePrompt(b.prompts(), launch.Prompt, nil)
+	prompt := composeResumePrompt(b.prompts(), launch.Prompt, b.filesVars(tc.task.ID, run.StepID, agent, true, false), nil)
 	runCtx, endRun := b.beginLive(b.live, run.ID)
 	started = true
 	go func() {

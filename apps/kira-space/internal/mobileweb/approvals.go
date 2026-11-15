@@ -25,6 +25,7 @@ const maxAnswerIDs = 50
 var phoneApprovalKinds = map[string]bool{
 	approvals.KindTaskCreate:    true,
 	approvals.KindBranchRequest: true,
+	approvals.KindDetailsEdit:   true,
 }
 
 // phoneApprovals keeps the phone kinds and strips absolute paths: Cwd, Location, payload cwd keys,

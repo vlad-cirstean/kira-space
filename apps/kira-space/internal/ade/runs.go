@@ -738,7 +738,7 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 		agentSessionID := b.proposeAgentID(agent, spec.ResumeID)
 		switch {
 		case spec.ResumeID != "":
-			prompt = composeResumePrompt(b.prompts(), spec.Prompt, def.Results)
+			prompt = composeResumePrompt(b.prompts(), spec.Prompt, b.filesVars(tc.task.ID, def.ID, agent, true, b.isOrchestrator(tc.task.ID)), def.Results)
 		case smart != nil:
 			prompt = smart.prompt
 		default:
@@ -991,6 +991,9 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	}
 	// Only an orchestrator's own step runs carry the spawn tools: not rebase or review runs, not smart steps.
 	orchestrator := space && l.smart == nil && b.isOrchestrator(run.TaskID)
+	if space {
+		b.markSynced(cmpNonEmpty(l.sessionID, run.ID))
+	}
 	grant := agentmcp.Grant{RunID: run.ID, TaskID: run.TaskID, SessionID: l.sessionID, Space: space, Orchestrator: orchestrator, Git: l.git, Review: l.review, Sandbox: grantSandbox, Agent: l.agent, Results: grantResults(rebase || round, def), OneShot: true}
 	releaseDb, err := b.grantDbMcp(def, dbmcp.SessionIdentity{SessionID: l.sessionID, TaskID: run.TaskID, RunID: run.ID, Cwd: l.path}, &grant)
 	if err != nil {

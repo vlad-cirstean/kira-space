@@ -849,7 +849,7 @@ var HeadlessSpaceFiles = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceFiles.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceFiles.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceFiles.usedBy.body",
-	Default:    `Task folder: {{.Folder}}. Read README.md there first. Write your handover to {{.Draft}}, then call submit.{{if .Load}} {{.Load}}{{end}}`,
+	Default:    `Task folder: {{.Folder}}. See README.md there. Write your handover to {{.Draft}}, then call submit.{{if .Load}} {{.Load}}{{end}}`,
 }, FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Draft: "handovers/draft-implement.md", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__submit,mcp__kira-space__task_info".`})
 
 // HeadlessSandboxNote tells a sandboxed agent what it may write and what to do on a denial.
@@ -1070,6 +1070,7 @@ var HeadlessToolSubmit = define(Entry{
 
 var (
 	_ = arg(HeadlessToolSubmit.id, "paths", spaceApp, NextCall, `Files to read, relative to the task folder, at most {{.Max}}. Default: every changed file.`, MaxVars{Max: 50})
+	_ = arg(HeadlessToolSubmit.id, "finished", spaceApp, NextCall, `true when this stage is done and the user should move the task on. Interactive sessions only.`, NoVars{})
 	_ = arg(HeadlessToolSubmit.id, "reason", spaceApp, NextCall, `One line: why you changed a handed handover, a note or another author's link. Required for those; the user reads it.`, NoVars{})
 )
 
@@ -1396,7 +1397,7 @@ var AdeHandoverLine = define(Entry{
 	TitleKey:   "llmPrompts.entry.adeHandoverLine.title",
 	PurposeKey: "llmPrompts.entry.adeHandoverLine.description",
 	UsedByKey:  "llmPrompts.entry.adeHandoverLine.usedBy.body",
-	Default:    `When this stage is done, write your handover to its draft file in the task folder, then call submit.`,
+	Default:    `When this stage is done, write your handover to its draft file in the task folder, then call submit with finished true.`,
 }, NoVars{})
 
 // AdeRepoLine is one repository line of a launch message.

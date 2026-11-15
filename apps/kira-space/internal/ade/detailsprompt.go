@@ -32,16 +32,16 @@ func (b *TaskBoard) filesVars(taskID, stepID string, agent harness.Provider, run
 	return v
 }
 
-// sessionTools are the Kira tools a headless run (finish_step too) or an interactive session carries.
+// sessionTools are the Kira tools a stage needs at once: a headless run's finish_step and submit, an
+// interactive session's submit, the orchestrator's create_task. The suffix names the others.
 func sessionTools(run, orchestrator bool) []harness.MCPTool {
 	var tools []harness.MCPTool
 	if run {
 		tools = append(tools, agentmcp.FinishStep)
 	}
-	tools = append(tools, agentmcp.RunOutcome)
-	tools = append(tools, agentmcp.SpaceToolIDs...)
+	tools = append(tools, agentmcp.Submit)
 	if orchestrator {
-		tools = append(tools, agentmcp.OrchestratorToolIDs...)
+		tools = append(tools, agentmcp.CreateTask)
 	}
 	return tools
 }

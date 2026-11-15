@@ -71,7 +71,7 @@ func (h *detailsHandlers) Diff(ctx context.Context, tx taskfiles.Tx, taskID, rel
 		}
 		return changes, nil
 	case taskfiles.KindReadme:
-		want, err := h.readme(taskID)
+		want, err := h.readme(ctx, taskID)
 		if err != nil || parsed == nil {
 			return nil, err
 		}
@@ -80,7 +80,7 @@ func (h *detailsHandlers) Diff(ctx context.Context, tx taskfiles.Tx, taskID, rel
 		}
 		return []taskfiles.Change{{Op: taskfiles.OpEdit, Text: taskfiles.TextDiff(rel, want, string(parsed.(textBody)))}}, nil
 	}
-	row, err := h.row(tx, taskID, rel, c)
+	row, err := h.row(ctx, tx, taskID, rel, c)
 	if err != nil {
 		return nil, err
 	}
@@ -103,20 +103,20 @@ func (h *detailsHandlers) ownRow(r *model.AdeHandover, s detailsSession) bool {
 
 // row is the handover row a file holds: by path, and for a draft also by its step, since a row
 // written before the file existed has no path yet.
-func (h *detailsHandlers) row(tx taskfiles.Tx, taskID, rel string, c taskfiles.Class) (*model.AdeHandover, error) {
+func (h *detailsHandlers) row(ctx context.Context, tx taskfiles.Tx, taskID, rel string, c taskfiles.Class) (*model.AdeHandover, error) {
 	r, err := h.cache().HandoverByRel(tx.Querier(), taskID, rel)
 	if err != nil || r != nil || c.Kind != taskfiles.KindDraft {
 		return r, err
 	}
-	return h.cache().DraftOf(tx.Querier(), taskID, h.stepOfSlug(taskID, c.Step))
+	return h.cache().DraftOf(tx.Querier(), taskID, h.stepOfSlug(ctx, taskID, c.Step))
 }
 
 // stepOfSlug maps the step part of a draft file name back to the step id: the current step when
 // its slug matches, else the slug itself.
-func (h *detailsHandlers) stepOfSlug(taskID, slug string) string {
-	if tc, err := h.b.loadTaskCtx(taskID); err == nil {
-		if cur := h.b.currentStepID(tc); fileSlug(cur) == slug {
-			return cur
+func (h *detailsHandlers) stepOfSlug(ctx context.Context, taskID, slug string) string {
+	if c, err := h.taskOf(ctx, taskID); err == nil {
+		if fileSlug(c.step) == slug {
+			return c.step
 		}
 	}
 	return slug
@@ -153,7 +153,7 @@ func (h *detailsHandlers) Adopt(ctx context.Context, tx taskfiles.Tx, taskID, re
 func (h *detailsHandlers) adoptText(ctx context.Context, tx taskfiles.Tx, taskID, rel string, c taskfiles.Class, parsed taskfiles.Parsed) error {
 	body := string(parsed.(textBody))
 	now := h.b.deps.Now().UnixMilli()
-	row, err := h.row(tx, taskID, rel, c)
+	row, err := h.row(ctx, tx, taskID, rel, c)
 	if err != nil {
 		return err
 	}
@@ -167,13 +167,15 @@ func (h *detailsHandlers) adoptText(ctx context.Context, tx taskfiles.Tx, taskID
 		if row.Body == body {
 			return nil
 		}
-		return h.cache().SetHandoverBody(q, row.ID, body, true, now)
+		// "edited" marks a hand change; an agent revising its own draft is not one.
+		return h.cache().SetHandoverBody(q, row.ID, body, row.Edited || detailsSessionOf(ctx).role == taskfiles.RoleUser, now)
 	}
 	s := detailsSessionOf(ctx)
-	tc, err := h.b.loadTaskCtx(taskID)
+	call, err := h.taskOf(ctx, taskID)
 	if err != nil {
 		return err
 	}
+	tc := call.tc
 	n := model.AdeHandover{ID: ids.NewID(), TaskID: taskID, Body: body, RelPath: rel, CreatedAt: now, UpdatedAt: now, SessionID: s.key,
 		Source: model.AdeHandoverSourceAgent}
 	if s.role == taskfiles.RoleUser {
@@ -181,10 +183,10 @@ func (h *detailsHandlers) adoptText(ctx context.Context, tx taskfiles.Tx, taskID
 	}
 	switch c.Kind {
 	case taskfiles.KindNote:
-		cur := h.b.currentStepID(tc)
+		cur := call.step
 		n.State, n.FromStepID, n.FromStepName = model.AdeHandoverNote, cur, stepName(tc, cur)
 	case taskfiles.KindDraft:
-		step := h.stepOfSlug(taskID, c.Step)
+		step := h.stepOfSlug(ctx, taskID, c.Step)
 		n.State, n.FromStepID, n.FromStepName = model.AdeHandoverDraft, step, stepName(tc, step)
 		if s.role == taskfiles.RoleRun {
 			n.Source = model.AdeHandoverSourceRun
@@ -209,14 +211,14 @@ func (h *detailsHandlers) Remove(ctx context.Context, tx taskfiles.Tx, taskID, r
 	case taskfiles.KindReadme:
 		return nil
 	}
-	row, err := h.row(tx, taskID, rel, c)
+	row, err := h.row(ctx, tx, taskID, rel, c)
 	if err != nil || row == nil {
 		return err
 	}
 	return h.cache().DeleteHandover(q, row.ID)
 }
 
-func (h *detailsHandlers) Render(_ context.Context, tx taskfiles.Tx, taskID, rel string, c taskfiles.Class) ([]byte, bool, error) {
+func (h *detailsHandlers) Render(ctx context.Context, tx taskfiles.Tx, taskID, rel string, c taskfiles.Class) ([]byte, bool, error) {
 	switch c.Kind {
 	case taskfiles.KindLinks:
 		cur, err := h.df.linksIn(tx, taskID)
@@ -225,7 +227,7 @@ func (h *detailsHandlers) Render(_ context.Context, tx taskfiles.Tx, taskID, rel
 		}
 		return renderLinks(cur), true, nil
 	case taskfiles.KindReadme:
-		s, err := h.readme(taskID)
+		s, err := h.readme(ctx, taskID)
 		return []byte(s), err == nil, nil
 	}
 	row, err := h.cache().HandoverByRel(tx.Querier(), taskID, rel)
@@ -235,17 +237,17 @@ func (h *detailsHandlers) Render(_ context.Context, tx taskfiles.Tx, taskID, rel
 	return []byte(row.Body), true, nil
 }
 
-func (h *detailsHandlers) readme(taskID string) (string, error) {
-	tc, err := h.b.loadTaskCtx(taskID)
+func (h *detailsHandlers) readme(ctx context.Context, taskID string) (string, error) {
+	call, err := h.taskOf(ctx, taskID)
 	if err != nil {
 		return "", err
 	}
-	return h.df.readmeText(h.b, tc), nil
+	return h.df.readmeText(call.tc, call.step), nil
 }
 
-func (df *detailsFiles) readmeText(b *TaskBoard, tc *taskCtx) string {
+func (df *detailsFiles) readmeText(tc *taskCtx, step string) string {
 	return taskfiles.Readme(taskfiles.ReadmeInput{
-		TaskID: tc.task.ID, Title: taskTitle(tc.task, tc.branches), Step: fileSlug(b.currentStepID(tc)),
+		TaskID: tc.task.ID, Title: taskTitle(tc.task, tc.branches), Step: fileSlug(step),
 	})
 }
 
@@ -305,8 +307,8 @@ func (h *detailsHandlers) applyLinks(ctx context.Context, tx taskfiles.Tx, taskI
 			}
 			a := model.AdeTaskArtifact{ID: ids.NewID(), TaskID: taskID, Kind: e.Kind, Title: e.Title, URL: e.URL, Ref: e.Ref, Source: src,
 				RunID: s.run, SessionID: s.key, CreatedAt: now, UpdatedAt: now}
-			if tc, err := h.b.loadTaskCtx(taskID); err == nil {
-				a.StepID = h.b.currentStepID(tc)
+			if c, err := h.taskOf(ctx, taskID); err == nil {
+				a.StepID = c.step
 			}
 			if err := h.cache().InsertArtifact(q, a); err != nil {
 				return err

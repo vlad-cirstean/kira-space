@@ -86,6 +86,39 @@ type detailsSession struct {
 
 type detailsCtxKey struct{}
 
+type taskCtxKey struct{}
+
+// taskCall is the task as a handler call sees it: loaded, with its current step, before the
+// service opens its index transaction. Handlers run inside that transaction on the single DB
+// connection, so they must not load either themselves.
+type taskCall struct {
+	tc   *taskCtx
+	step string
+}
+
+func (b *TaskBoard) taskCallOf(tc *taskCtx) taskCall {
+	return taskCall{tc: tc, step: b.currentStepID(tc)}
+}
+
+func withTaskCall(ctx context.Context, c taskCall) context.Context {
+	return context.WithValue(ctx, taskCtxKey{}, c)
+}
+
+// ctxWithTask loads the task before a service call opens its transaction.
+func (b *TaskBoard) ctxWithTask(ctx context.Context, taskID string) context.Context {
+	if tc, err := b.loadTaskCtx(taskID); err == nil {
+		return withTaskCall(ctx, b.taskCallOf(tc))
+	}
+	return ctx
+}
+
+func (h *detailsHandlers) taskOf(ctx context.Context, taskID string) (taskCall, error) {
+	if c, ok := ctx.Value(taskCtxKey{}).(taskCall); ok && c.tc.task.ID == taskID {
+		return c, nil
+	}
+	return taskCall{}, fmt.Errorf("ade: task %s not loaded for the files call", taskID)
+}
+
 func withDetailsSession(ctx context.Context, s detailsSession) context.Context {
 	return context.WithValue(ctx, detailsCtxKey{}, s)
 }
@@ -180,15 +213,16 @@ func (b *TaskBoard) mirrorTask(taskID string, o mirrorOpts) {
 }
 
 func (df *detailsFiles) mirror(b *TaskBoard, taskID string, o mirrorOpts) error {
-	ctx := b.ctx
 	tc, err := b.loadTaskCtx(taskID)
 	if err != nil {
 		return nil // archived tasks keep the files they have
 	}
+	call := b.taskCallOf(tc)
+	ctx := withTaskCall(b.ctx, call)
 	if o.by == "" {
 		o.by = string(taskfiles.RoleKira)
 	}
-	want, err := df.wanted(b, tc, o)
+	want, err := df.wanted(b, call, o)
 	if err != nil {
 		return err
 	}
@@ -233,7 +267,8 @@ func mirroredKind(k string) bool {
 
 // wanted builds every file the cache of the task calls for. Rows with no file yet get their path
 // here: notes by creation time, handed rows by the next ordinal.
-func (df *detailsFiles) wanted(b *TaskBoard, tc *taskCtx, o mirrorOpts) ([]wantFile, error) {
+func (df *detailsFiles) wanted(b *TaskBoard, call taskCall, o mirrorOpts) ([]wantFile, error) {
+	tc := call.tc
 	taskID := tc.task.ID
 	rows, err := b.deps.Tasks.Handovers(taskID)
 	if err != nil {
@@ -251,7 +286,7 @@ func (df *detailsFiles) wanted(b *TaskBoard, tc *taskCtx, o mirrorOpts) ([]wantF
 	if !links.empty() {
 		out = append(out, wantFile{rel: taskfiles.LinksFile, kind: taskfiles.KindLinks, data: renderLinks(links), force: o.links})
 	}
-	readme := df.readmeText(b, tc)
+	readme := df.readmeText(tc, call.step)
 	out = append(out, wantFile{rel: taskfiles.ReadmeFile, kind: taskfiles.KindReadme, data: []byte(readme), force: true})
 	return out, nil
 }

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -88,6 +89,12 @@ func runFakeClaude(args []string) int {
 	emit(map[string]any{"type": "system", "subtype": "init", "session_id": "fake"})
 	finish := func(status string) int {
 		cfg := argAfter(args, "--mcp-config")
+		if status == "done" {
+			if err := writeFakeDraft(string(prompt), "summary-done"); err != nil {
+				fmt.Fprintln(os.Stderr, "draft:", err)
+				return 3
+			}
+		}
 		if err := fakeFinish(cfg, status, "summary-"+status); err != nil {
 			fmt.Fprintln(os.Stderr, "finish_step:", err)
 			return 3
@@ -137,6 +144,21 @@ func (b fakeBearer) RoundTrip(r *http.Request) (*http.Response, error) {
 	return http.DefaultTransport.RoundTrip(r)
 }
 
+var fakeFilesRe = regexp.MustCompile(`Task folder: (\S+)\. See README\.md there\. Write your handover to (\S+), then`)
+
+// writeFakeDraft writes the step's draft where the prompt's files line says: an ok finish needs one.
+func writeFakeDraft(text, body string) error {
+	m := fakeFilesRe.FindStringSubmatch(text)
+	if m == nil {
+		return nil
+	}
+	path := filepath.Join(m[1], m[2])
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(body), 0o644)
+}
+
 func fakeFinish(cfgPath, status, summary string) error {
 	raw, err := os.ReadFile(cfgPath)
 	if err != nil {
@@ -161,7 +183,7 @@ func fakeFinish(cfgPath, status, summary string) error {
 	if err != nil {
 		return err
 	}
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "summary": summary, "reason": summary}})
+	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "reason": summary}})
 	if err != nil {
 		return err
 	}
@@ -244,6 +266,7 @@ func newEngine(t *testing.T, scen map[string][]string) *engine {
 		Logs:      r.AdeLogs, Sessions: r.AdeSessions, AgentDir: filepath.Join(t.TempDir(), "agent"), AgentBin: self,
 		OnLog:            func(ev adewire.LogEvent) { e.mu.Lock(); e.logs = append(e.logs, ev); e.mu.Unlock() },
 		AutofetchMinutes: func() int { return 0 }, HomeDir: e.home,
+		FilesDir: filepath.Join(t.TempDir(), "tasks"), TaskFiles: r.TaskFiles,
 	})
 	e.tracker.SetStoppedHandler(e.board.OnTUIStopped)
 	t.Cleanup(e.board.Close)

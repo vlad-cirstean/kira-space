@@ -385,7 +385,7 @@ func (s *Server) finishStep(ctx context.Context, req *mcp.CallToolRequest, args 
 	if msg := checkFinish(args); msg != "" {
 		return toolError(msg), nil, nil
 	}
-	var submitted string
+	var submitted, summary string
 	if g.Space && g.TaskID != "" && s.space != nil {
 		call := SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID, Orchestrator: g.Orchestrator}
 		ctx, done := s.callCtx(ctx, req)
@@ -397,13 +397,13 @@ func (s *Server) finishStep(ctx context.Context, req *mcp.CallToolRequest, args 
 		if out.Refuse != "" {
 			return toolError(out.Refuse), nil, nil
 		}
-		submitted = out.Reply
+		submitted, summary = out.Reply, out.Summary
 	}
 	if g.OneShot && !s.markFinished(info) {
 		return toolError(stepFinished), nil, nil
 	}
 	s.onFinish(g.RunID, Finish{
-		Status: args.Status, Reason: args.Reason, ConflictedFiles: args.ConflictedFiles,
+		Status: args.Status, Reason: args.Reason, Summary: summary, ConflictedFiles: args.ConflictedFiles,
 		LastGitError: args.LastGitError, Tried: args.Tried,
 	})
 	ack := llmprompts.HeadlessFinishStepAck.Text(s.prompts, llmprompts.NoVars{})

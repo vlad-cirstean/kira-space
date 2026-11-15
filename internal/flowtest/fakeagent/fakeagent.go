@@ -123,6 +123,8 @@ type MCPCall struct {
 	Args   map[string]any `json:"args,omitempty"`
 	// Tolerate records a tool error as the result and carries on instead of ending the run.
 	Tolerate bool `json:"tolerate,omitempty"`
+	// Files are written under the task folder the prompt names (path relative to it) before the call.
+	Files map[string]string `json:"files,omitempty"`
 }
 
 // PromptRule answers a headless call whose --system-prompt contains System. Doc narrows it to one
@@ -366,6 +368,7 @@ func runMCPCalls(action Action, dir string, args []string) (code int, done bool)
 	outs := make([]outcome, len(action.MCP))
 	play := func(i int) {
 		c := action.MCP[i]
+		writeTaskFiles(c.Files)
 		outs[i].res, outs[i].err = callTool(cfg, args, c.Server, c.Tool, c.Args)
 	}
 	if action.Parallel {
@@ -398,7 +401,7 @@ func runMCPCalls(action Action, dir string, args []string) (code int, done bool)
 func finishAction(action Action, args []string, headless bool) int {
 	cfg := argAfter(args, "--mcp-config")
 	finish := func(status string) int {
-		if _, err := callTool([]string{cfg}, nil, agentmcp.ServerName, "finish_step", map[string]any{"status": status, "summary": "summary-" + status, "reason": "summary-" + status}); err != nil {
+		if _, err := callTool([]string{cfg}, nil, agentmcp.ServerName, "finish_step", map[string]any{"status": status, "reason": "summary-" + status}); err != nil {
 			fmt.Fprintln(os.Stderr, "finish_step:", err)
 			return 3
 		}
@@ -431,6 +434,39 @@ func finishAction(action Action, args []string, headless bool) int {
 		emitJSON(map[string]any{"type": "result", "subtype": "success", "num_turns": 1})
 	}
 	return 0 // "nofinish"
+}
+
+var (
+	lastPrompt  []byte
+	promptFiles = regexp.MustCompile(`Task folder: (.+?)\. See README\.md there\. Write your handover to (handovers/draft-[^ ,]+?\.md)`)
+)
+
+// writeTaskFiles writes files under the task folder the files prompt names.
+func writeTaskFiles(files map[string]string) {
+	m := promptFiles.FindSubmatch(lastPrompt)
+	if m == nil {
+		return
+	}
+	for rel, body := range files {
+		path := filepath.Join(string(m[1]), rel)
+		_ = os.MkdirAll(filepath.Dir(path), 0o755)
+		_ = os.WriteFile(path, []byte(body), 0o644)
+	}
+}
+
+// writeDefaultDraft writes the step's draft the files prompt names, unless the scenario already
+// did: a done finish needs one, and flow scenarios do not care about its text.
+func writeDefaultDraft(prompt []byte, body string) {
+	m := promptFiles.FindSubmatch(prompt)
+	if m == nil {
+		return
+	}
+	path := filepath.Join(string(m[1]), string(m[2]))
+	if _, err := os.Stat(path); err == nil {
+		return
+	}
+	_ = os.MkdirAll(filepath.Dir(path), 0o755)
+	_ = os.WriteFile(path, []byte(body), 0o644)
 }
 
 var promptPath = regexp.MustCompile(`"path":"([^"]*)"`)
@@ -480,6 +516,7 @@ func answerPrompt(scen Scenario, dir string, args []string) (code int, answered 
 // answered the whole call.
 func startHeadless(scen Scenario, dir, stem string, args []string) (code int, done bool) {
 	prompt, _ := io.ReadAll(os.Stdin)
+	lastPrompt = prompt
 	_ = os.WriteFile(stem+".prompt", prompt, 0o644)
 	if doc := promptDoc(prompt); doc != "" {
 		_ = os.Setenv("KIRA_DOC", doc)
@@ -803,6 +840,10 @@ func listStatus(ok bool) string {
 // callTool connects to server from the --mcp-config files (HTTP or stdio entry) or, when argv makes
 // claude load the user's servers, from the user's config, and calls one tool.
 func callTool(cfgPaths, argv []string, server, tool string, args map[string]any) (*mcp.CallToolResult, error) {
+	if tool == "finish_step" {
+		status, _ := args["status"].(string)
+		writeDefaultDraft(lastPrompt, "summary-"+status)
+	}
 	var entry serverEntry
 	found := false
 	for _, path := range cfgPaths {
@@ -866,7 +907,12 @@ func callTool(cfgPaths, argv []string, server, tool string, args map[string]any)
 
 // CallTool calls one tool on a server named in the MCP config files (paths or inline JSON), as the
 // fake claude does for finish_step; a test provider's headless role uses it with HeadlessSpec.MCPConfigs.
-func CallTool(cfgPaths []string, server, tool string, args map[string]any) error {
+// A done finish writes the draft the prompt names, as the agent would.
+func CallTool(prompt string, cfgPaths []string, server, tool string, args map[string]any) error {
+	if tool == "finish_step" {
+		status, _ := args["status"].(string)
+		writeDefaultDraft([]byte(prompt), "summary-"+status)
+	}
 	_, err := callTool(cfgPaths, nil, server, tool, args)
 	return err
 }

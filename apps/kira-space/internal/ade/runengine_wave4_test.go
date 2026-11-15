@@ -13,7 +13,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
-	"github.com/kirathecat/kira-studio/internal/loginshell"
 )
 
 // P147 engine scenarios: send-back, stop, recovery, Take over, launches, archive, add-existing.
@@ -391,6 +390,9 @@ func TestRunEngine_takeOver(t *testing.T) {
 	}
 
 	cfg := quotedAfter(t, composed, "--mcp-config")
+	if err := writeFakeDraft("Task folder: "+filepath.Join(e.board.files.root, pathSegment(id))+". See README.md there. Write your handover to handovers/draft-first.md, then", "tui-done"); err != nil {
+		t.Fatal(err)
+	}
 	if err := fakeFinish(cfg, "done", "tui-done"); err != nil {
 		t.Fatal(err)
 	}
@@ -410,9 +412,11 @@ func TestRunEngine_takeOver(t *testing.T) {
 
 const manualSessionStep = "  - id: spec\n    name: Spec\n    kind: manual\n    status: todo\n    session: true\n    prompt: Write the spec for {task}\n"
 
-// handoverLine ends every interactive launch message, after the Kira Space note.
-var handoverLine = llmprompts.HeadlessSpaceSuffix.Text(llmprompts.Defaults(), llmprompts.NoVars{}) + "\n" +
-	llmprompts.AdeHandoverLine.Text(llmprompts.Defaults(), llmprompts.NoVars{})
+// spaceNote follows the launch message's head; the task folder line comes next and handoverLine ends it.
+var spaceNote = llmprompts.HeadlessSpaceSuffix.Text(llmprompts.Defaults(), llmprompts.NoVars{}) + "\n"
+
+// handoverLine ends every interactive launch message, after the task folder line.
+var handoverLine = llmprompts.AdeHandoverLine.Text(llmprompts.Defaults(), llmprompts.NoVars{})
 
 func TestRunEngine_launchStep(t *testing.T) {
 	ctx := context.Background()
@@ -429,9 +433,9 @@ func TestRunEngine_launchStep(t *testing.T) {
 		t.Fatalf("cwd = %s, want the repo root %s", l.Cwd, e.code["api"].Root)
 	}
 	composed := e.spawn(l)
-	want := " -- " + loginshell.Quote("Spec: Fix login\n- Repo: api (read only, in "+e.code["api"].Root+")\nWrite the spec for Fix login\n"+handoverLine)
-	if !strings.HasSuffix(composed, want) {
-		t.Fatalf("command = %q\nwant suffix %q", composed, want)
+	head := " -- '" + "Spec: Fix login\n- Repo: api (read only, in " + e.code["api"].Root + ")\nWrite the spec for Fix login\n" + spaceNote
+	if !strings.Contains(composed, head) || !strings.Contains(composed, "\nTask folder: ") || !strings.HasSuffix(composed, handoverLine+"'") {
+		t.Fatalf("command = %q\nwant head %q, the task folder line and the handover line", composed, head)
 	}
 	if _, err := e.board.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: id}); err == nil || !strings.Contains(err.Error(), "Spec session is already running") {
 		t.Fatalf("second LaunchStep: %v", err)
@@ -458,8 +462,9 @@ func TestRunEngine_startBranch(t *testing.T) {
 			t.Fatal(err)
 		}
 		composed := e.spawn(l)
-		if want := " -- " + loginshell.Quote("Task: Fix login\n- Repo: api · Branch: feat/fix-login · Worktree: "+l.Cwd+"\nHandover from one:\nsummary-done\n"+handoverLine); !strings.HasSuffix(composed, want) {
-			t.Fatalf("command = %q\nwant suffix %q", composed, want)
+		head := " -- '" + "Task: Fix login\n- Repo: api · Branch: feat/fix-login · Worktree: " + l.Cwd + "\nHandover from one:\nsummary-done\n" + spaceNote
+		if !strings.Contains(composed, head) || !strings.Contains(composed, "\nTask folder: ") || !strings.HasSuffix(composed, handoverLine+"'") {
+			t.Fatalf("command = %q\nwant head %q, the task folder line and the handover line", composed, head)
 		}
 		if _, err := e.board.StartBranch(ctx, adewire.StartBranchArgs{BranchID: branchOf(t, e, id, "api")}); err == nil || !strings.Contains(err.Error(), "already open") {
 			t.Fatalf("second StartBranch: %v", err)

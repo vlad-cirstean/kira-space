@@ -372,15 +372,23 @@ func (b *TaskBoard) DismissPanelEdits(_ context.Context, taskID string) error {
 // panelTime formats a millisecond stamp for a label.
 func panelTime(ms int64) string { return time.UnixMilli(ms).Format("15:04") }
 
+// withPath puts a file's relative path in a label, so the interactive agent edits that file.
+func withPath(label, rel string) string {
+	if rel == "" {
+		return label
+	}
+	return label + " " + rel
+}
+
 func noteLabel(h model.AdeHandover) string {
-	return fmt.Sprintf("note (%s, %s)", cmpNonEmpty(h.FromStepName, h.FromStepID), panelTime(h.CreatedAt))
+	return withPath("note", h.RelPath) + fmt.Sprintf(" (%s, %s)", cmpNonEmpty(h.FromStepName, h.FromStepID), panelTime(h.CreatedAt))
 }
 
 func handoverLabel(h model.AdeHandover) string {
 	if h.State == model.AdeHandoverDraft {
-		return fmt.Sprintf("handover draft (%s)", cmpNonEmpty(h.FromStepName, h.FromStepID))
+		return withPath("handover draft", h.RelPath) + fmt.Sprintf(" (%s)", cmpNonEmpty(h.FromStepName, h.FromStepID))
 	}
-	return fmt.Sprintf("handover (%s to %s)", cmpNonEmpty(h.FromStepName, h.FromStepID), cmpNonEmpty(h.ToStepName, h.ToStepID))
+	return withPath("handover", h.RelPath) + fmt.Sprintf(" (%s to %s)", cmpNonEmpty(h.FromStepName, h.FromStepID), cmpNonEmpty(h.ToStepName, h.ToStepID))
 }
 
 // recordHandover records a note or handover body change.
@@ -399,7 +407,7 @@ func linkText(kind, title, url, ref string) string {
 func artifactText(a model.AdeTaskArtifact) string { return linkText(a.Kind, a.Title, a.URL, a.Ref) }
 
 func (b *TaskBoard) recordArtifact(taskID, id, before, after string) {
-	b.recordPanelEdit(taskID, "link:"+id, panelItemKindLink, "link", before, after)
+	b.recordPanelEdit(taskID, "link:"+id, panelItemKindLink, "link in links.yaml", before, after)
 }
 
 func jiraText(key, url string) string {
@@ -417,11 +425,11 @@ func hostText(url string) string {
 }
 
 func (b *TaskBoard) recordJira(taskID, beforeKey, beforeURL, afterKey, afterURL string) {
-	b.recordPanelEdit(taskID, "link:jira", panelItemKindLink, "Jira link", jiraText(beforeKey, beforeURL), jiraText(afterKey, afterURL))
+	b.recordPanelEdit(taskID, "link:jira", panelItemKindLink, "Jira link in links.yaml", jiraText(beforeKey, beforeURL), jiraText(afterKey, afterURL))
 }
 
 func (b *TaskBoard) recordHost(taskID, before, after string) {
-	b.recordPanelEdit(taskID, "link:host", panelItemKindLink, "host link", hostText(before), hostText(after))
+	b.recordPanelEdit(taskID, "link:host", panelItemKindLink, "host link in links.yaml", hostText(before), hostText(after))
 }
 
 // proofText is the line a proof shows in a forward: its name and summary.

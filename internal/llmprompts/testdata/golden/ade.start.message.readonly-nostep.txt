@@ -1,4 +1,4 @@
 Task: Add login form
 - Repo: docs (read only, in /repos/docs)
 Kira Space tools: task_info, declare_repos, request_branches. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for all; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.
-When this stage is done, write your handover to its draft file in the task folder, then call submit.
+When this stage is done, write your handover to its draft file in the task folder, then call submit with finished true.
