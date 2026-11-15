@@ -679,14 +679,81 @@ it)".
 | Child task | `create_task` tool, unchanged | F6 files FL 1.36, FF 1.40 vs gate 1.1; context 1.06 to 1.09 | user dropped drafts |
 | Branch setup wait | `task_info {waitSeconds}` until Part 5; then 9.2 choice | F5 FL 1.26, FF 1.17 (1 run each, inconclusive); haiku 1.30 | Part 5 decides; F5 re-benchmarked |
 
-### 9.2 Wait decision
+### 9.2 Wait decision (open, Part 5)
 
-`task_info` stays, schema and handler unchanged (`repo`, `branch`, `waitSeconds`,
-`includeRegistered`). F5 files arm read README or `state.yaml` (2 reads) before calling
-`branches {action: wait}`: cost 1.17 to 1.30 times T, context 1.04 to 1.05. One sonnet run per arm,
-so inconclusive, but the T path needs no doc and its numbers are the baseline. `branches` has no
-wait action. Declined: `branches {action: wait}`, because its loaded schema carries four merged
-tools' texts (F5 search context 1.7k to 1.8k against T 0) and the agent must find the action first.
+Until Part 5 lands, `task_info` stays, schema and handler unchanged (`repo`, `branch`,
+`waitSeconds`, `includeRegistered`). Part 5's planner decides the setup wait. User direction:
+`task_info` should disappear; at most a ready-check of the worktree survives, no other details.
+
+Today (code, `codegraph_explore`): `task_info {repo, branch, waitSeconds}` calls
+`TaskBoard.BranchStatus` (`ade/agenttools.go`), which polls the `ade_worktree_setup` row and the
+`setupDone` channel while the state is `running`, reporting progress. A setup starts in
+`startSetup` (`ade/setup.go`) from: `request_branches` (`ade/agenttools.go`, `branchadopt.go`),
+`launchGate` for a fresh worktree (`ade/launches.go`), board writes and the user's Retry setup.
+Kira already gates launches on setup: `queueRun` holds a run `pending` with `noteWaitingSetup`
+until the setup is ready (`ade/runs.go` `gateNote`, released by `onSetupReady`), and
+`launchGate` refuses a session launch with `E_PREPARING` while it runs (the UI waits with
+`useSetupWait`). So an agent normally starts only after its worktree is ready; the wait happens
+when the agent itself asked for branches mid-turn, or after a Retry setup.
+
+Options:
+
+- (a) `task_info` slimmed to wait-only: `{repo, branch, waitSeconds}`, reply `{setup: ready|failed,
+  note}`; everything else read from `state.yaml`. Fallback default.
+- (b) Fold the wait into the `branches` request reply (optional `waitForSetup`, up to 600 s after
+  the request is approved); `task_info` removed. Safe only if no agent waits for a setup it did not
+  trigger.
+- (c) Kira delays the step until setup is done. Exists for launches (above); covers no setup an
+  agent triggers mid-run.
+- (d) Push, like a lease grant: `branches` replies at once (`setup running`); when the setup ends
+  Kira delivers "Kira: worktree of <branch> is ready at <path>." (or "setup of <branch> failed:
+  <note>. Tell the user; do not edit there.") through the lease delivery channel; `state.yaml`
+  `repos` carries branch, worktree and `setup {state, note}`; `task_info` removed. Recommended
+  default if the first check below passes.
+
+Lease delivery channel, findings (code read for this plan, `ade/leases.go`, `ade/tracker.go`):
+
+- Path: `onLeaseGrant` to `deliverLease` (queue per owner key, drop if the owner ended) to
+  `flushLease` (`Tracker.SendIfIdle`: pastes into the terminal only while the turn is idle, no draft
+  in the prompt box). Otherwise the next Stop hook reply (`leaseHookReply`: `Block` keeps the agent
+  working) or UserPromptSubmit (`Context`), the idle handler, or the owner's next lease tool reply
+  (`notices` from `takeLeaseNotices`) carries it. A hook reply that never arrived is re-queued first
+  in line (`requeueLeaseReply`).
+- (1) Interactive sessions (manual step, review agent, orchestrator session): reached. Mid-turn the
+  message waits for the Stop hook (blocks the stop, agent continues with it) or the next lease
+  reply; idle turns get it typed in by `SendIfIdle`, which wakes the agent.
+- (2) Headless runs mid-run: only partly. `flushLease` returns for `run:` keys (no terminal) and
+  headless runs emit no hook events (`leaseState.runs` comment), so the only carrier is the next
+  lease tool reply's `notices`. A run that calls no lease tool never hears it. Passing (d) needs
+  `notices` on every `kira-space` tool reply (via the `mcpRecorder` hook or the server wrapper),
+  not only lease tools; still the run must call some Kira tool after the setup ends.
+- (3) A turn that ended while waiting: session = reached (idle, `SendIfIdle` types it in and wakes
+  the agent). Headless run = not reachable: a headless run is one turn (`OneShot`), its end calls
+  `endLeases`, which drops pending messages and marks the owner ended.
+- Agent between `setup running` and the message: a session continues other work or ends its turn
+  and is woken by the paste. A headless run must not end its turn (the run would finish); with no
+  other work it has nothing to call but a wait, which is (a) or (b).
+- Failure modes: setup fails = same channel, failure text with the note (`runSetup` already sets
+  `noteSetupFailed`); message lost (hook reply failed) = re-queued; owner ended = dropped, harmless;
+  app restart = pending messages are memory only and lost, setup rows left `running` by a quit stay
+  `running` (R18) until rerun, sessions resume without the push; `state.yaml` `repos[].setup` is
+  the truth to read after any doubt.
+
+Preliminary verdict from these findings: (d) passes for interactive sessions and fails (2) and (3)
+for headless runs as the channel stands. Part 5's first check, with `codegraph_explore`: does any
+agent wait for a setup it did not trigger (Retry setup by the user, a second session's
+`request_branches` on the same task, adopt), and which roles call `task_info` with `waitSeconds`
+today (flows `taskinfowait`, real `claude` rows). Then:
+
+- (d) for every role if the planner adds a headless carrier that meets (2) and (3) (for example,
+  `branches` request in a headless run blocks until setup ends, which is (b) for runs only).
+- Else (d) for sessions plus (b) for headless runs when the check shows no run waits for a setup it
+  did not trigger; else (a) as the fallback for headless runs, or for all roles if mixing costs
+  more than one tool.
+
+F5 is re-benchmarked in the Part 5 round whichever option lands (a needs the wait schema, b the
+request schema, d the push). Declined earlier and still declined: `branches {action: wait}`
+(loaded schema carries four merged tools' texts, F5 search context 1.7k to 1.8k against T 0).
 
 ### 9.3 Tool table
 
