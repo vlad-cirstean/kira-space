@@ -65,22 +65,23 @@ func (p *PausableProxy) accept() {
 	}
 }
 
-// forward copies client bytes upstream; once they contain the PauseWhenSent marker it forwards them
-// and pauses, so the statement runs on the server while its answer is withheld.
+// forward copies client bytes upstream; once they contain the PauseWhenSent marker it pauses and
+// forwards them, so the statement runs on the server while its answer is withheld.
 func (p *PausableProxy) forward(upstream, client net.Conn) {
 	buf := make([]byte, 32*1024)
 	for {
 		n, err := client.Read(buf)
 		if n > 0 {
-			if _, werr := upstream.Write(buf[:n]); werr != nil {
-				return
-			}
+			// Pause before forwarding: a fast server's answer must never overtake the pause.
 			p.mu.Lock()
 			if p.marker != "" && bytes.Contains(buf[:n], []byte(p.marker)) {
 				p.marker = ""
 				p.paused = true
 			}
 			p.mu.Unlock()
+			if _, werr := upstream.Write(buf[:n]); werr != nil {
+				return
+			}
 		}
 		if err != nil {
 			return
