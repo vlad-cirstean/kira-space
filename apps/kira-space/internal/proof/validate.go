@@ -126,41 +126,52 @@ func (in StepInput) validate(ctx context.Context) (checked, bool, error) {
 	if !languages[lang] {
 		return checked{}, false, invalid("language must be one of sql, json, shell, text")
 	}
-	if len(in.Data) == 0 {
-		return checked{}, false, invalid("data is required")
-	}
-	if !utf8.Valid(in.Data) {
-		return checked{}, false, invalid("data must be valid UTF-8")
-	}
-	var payload any
-	var err error
-	switch in.View {
-	case ViewTable:
-		payload, err = checkTable(in.Data)
-	case ViewDocument:
-		payload, err = checkDocuments(in.Data)
-	case ViewKeyValue:
-		payload, err = checkEntries(in.Data)
-	case ViewChart:
-		payload, err = checkChart(in.Data)
-	case ViewDiagram:
-		payload, err = checkDiagram(in.Data)
-	case ViewImage:
-		payload, err = checkImage(ctx, in.Data)
-	default:
-		return checked{}, false, invalid("view must be one of table, document, keyvalue, chart, diagram, image")
-	}
+	raw, err := ValidateStep(ctx, in.View, in.Data)
 	if err != nil {
 		return checked{}, false, err
 	}
+	return checked{Description: desc, Query: in.Query, Language: lang, Source: in.Source, View: in.View, Payload: raw}, false, nil
+}
+
+// ValidateStep checks one step's data for view and returns the payload JSON a step row stores. The
+// data is raw JSON so number precision and key order survive. File submits and the proof tool share
+// it with the old save path.
+func ValidateStep(ctx context.Context, view string, data json.RawMessage) ([]byte, error) {
+	if len(data) == 0 {
+		return nil, invalid("data is required")
+	}
+	if !utf8.Valid(data) {
+		return nil, invalid("data must be valid UTF-8")
+	}
+	var payload any
+	var err error
+	switch view {
+	case ViewTable:
+		payload, err = checkTable(data)
+	case ViewDocument:
+		payload, err = checkDocuments(data)
+	case ViewKeyValue:
+		payload, err = checkEntries(data)
+	case ViewChart:
+		payload, err = checkChart(data)
+	case ViewDiagram:
+		payload, err = checkDiagram(data)
+	case ViewImage:
+		payload, err = checkImage(ctx, data)
+	default:
+		return nil, invalid("view must be one of table, document, keyvalue, chart, diagram, image")
+	}
+	if err != nil {
+		return nil, err
+	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
-		return checked{}, false, fmt.Errorf("proof: encode payload: %w", err)
+		return nil, fmt.Errorf("proof: encode payload: %w", err)
 	}
 	if len(raw) > maxPayloadBytes {
-		return checked{}, false, invalid("data is %d KiB serialized; the limit is %d MiB per step", len(raw)>>10, maxPayloadBytes>>20)
+		return nil, invalid("data is %d KiB serialized; the limit is %d MiB per step", len(raw)>>10, maxPayloadBytes>>20)
 	}
-	return checked{Description: desc, Query: in.Query, Language: lang, Source: in.Source, View: in.View, Payload: raw}, false, nil
+	return raw, nil
 }
 
 func decodeStrict(data json.RawMessage, into any) error {
