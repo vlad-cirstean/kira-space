@@ -292,8 +292,6 @@ func session(t *testing.T, app *flowharness.App, id string) proof.Detail {
 	return d
 }
 
-func sessionID(t *testing.T, f *fixture, name string) string { return f.idOf(t, name) }
-
 func chartStep(desc, source string, data map[string]any) map[string]any {
 	return map[string]any{"description": desc, "view": "chart", "source": source, "data": data}
 }

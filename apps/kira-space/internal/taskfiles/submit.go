@@ -148,49 +148,89 @@ func (s *Service) Submit(ctx context.Context, req Request) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	byPath := make(map[string]model.TaskFile, len(rows))
+	run := &submitRun{s: s, ctx: ctx, st: st, req: req, byPath: make(map[string]model.TaskFile, len(rows)),
+		pend: PendingSubmit{TaskID: req.TaskID, Session: req.Session, Reason: req.Reason}}
 	for _, r := range rows {
-		byPath[r.RelPath] = r
+		run.byPath[r.RelPath] = r
 	}
-	entries, listErr := st.List(ctx, store.ListOptions{MaxDepth: MaxDepth, MaxFiles: MaxFilesPerTask})
-	var out []FileResult
-	if errors.Is(listErr, store.ErrTooManyFiles) {
-		out = append(out, FileResult{Path: ".", Status: StatusInvalid,
-			Message: fmt.Sprintf("the task folder holds more than %d files; remove some.", MaxFilesPerTask)})
-	} else if listErr != nil {
-		return Result{}, listErr
+	entries, err := run.list()
+	if err != nil {
+		return Result{}, err
 	}
-	present := make(map[string]store.Entry, len(entries))
-	for _, e := range entries {
-		present[e.Rel] = e
+	paths, bad := s.targets(req, run.present, run.byPath)
+	run.out = append(run.out, bad...)
+	run.over = s.sizeProblems(entries)
+	units := run.units(paths)
+	run.files(paths, units)
+	if err := run.finish(); err != nil {
+		return Result{}, err
 	}
-	paths, bad := s.targets(req, present, byPath)
-	out = append(out, bad...)
-	over := s.sizeProblems(entries)
+	return Result{Files: run.out}, nil
+}
 
-	pend := PendingSubmit{TaskID: req.TaskID, Session: req.Session, Reason: req.Reason}
-	ignored := 0
-	unitDone := map[string]bool{}
-	hinted := map[string]bool{}
-	if s.cfg.Proof != nil {
-		for _, slug := range unitSlugs(paths) {
-			unitDone[slug] = true
-			fr, item := s.unit(ctx, st, req, slug, present, byPath, over)
-			if fr.Path == "" {
-				continue
-			}
-			out = append(out, fr)
-			if item != nil {
-				pend.Items = append(pend.Items, *item)
-			}
-		}
+// submitRun is the state of one Submit call.
+type submitRun struct {
+	s       *Service
+	ctx     context.Context
+	st      store.Store
+	req     Request
+	byPath  map[string]model.TaskFile
+	present map[string]store.Entry
+	over    map[string]string
+	out     []FileResult
+	pend    PendingSubmit
+}
+
+// list reads the folder; a folder over the file cap is one invalid result, not an error.
+func (r *submitRun) list() ([]store.Entry, error) {
+	entries, err := r.st.List(r.ctx, store.ListOptions{MaxDepth: MaxDepth, MaxFiles: MaxFilesPerTask})
+	if errors.Is(err, store.ErrTooManyFiles) {
+		r.out = append(r.out, FileResult{Path: ".", Status: StatusInvalid,
+			Message: fmt.Sprintf("the task folder holds more than %d files; remove some.", MaxFilesPerTask)})
+	} else if err != nil {
+		return nil, err
 	}
+	r.present = make(map[string]store.Entry, len(entries))
+	for _, e := range entries {
+		r.present[e.Rel] = e
+	}
+	return entries, nil
+}
+
+// add keeps a result and the approval item it raised, if any; a result with no path says nothing.
+func (r *submitRun) add(fr FileResult, item *PendingItem) {
+	if fr.Path == "" {
+		return
+	}
+	r.out = append(r.out, fr)
+	if item != nil {
+		r.pend.Items = append(r.pend.Items, *item)
+	}
+}
+
+// units runs every proof folder as one unit and returns the slugs it handled.
+func (r *submitRun) units(paths []string) map[string]bool {
+	done := map[string]bool{}
+	if r.s.cfg.Proof == nil {
+		return done
+	}
+	for _, slug := range unitSlugs(paths) {
+		done[slug] = true
+		r.add(r.s.unit(r.ctx, r.st, r.req, slug, r.present, r.byPath, r.over))
+	}
+	return done
+}
+
+// files runs every other path on its own, skipping the files of a proof unit.
+func (r *submitRun) files(paths []string, units map[string]bool) {
+	ignored := 0
+	hinted := map[string]bool{}
 	for _, rel := range paths {
-		if c := Classify(rel); c.Slug != "" && unitDone[c.Slug] {
+		if c := Classify(rel); c.Slug != "" && units[c.Slug] {
 			continue
 		}
-		e, ok := present[rel]
-		fr, item := s.one(ctx, st, req, rel, e, ok, byPath[rel], over)
+		e, ok := r.present[rel]
+		fr, item := r.s.one(r.ctx, r.st, r.req, rel, e, ok, r.byPath[rel], r.over)
 		if fr.Status == StatusInvalid && hinted[fr.Path] {
 			continue
 		}
@@ -202,30 +242,32 @@ func (s *Service) Submit(ctx context.Context, req Request) (Result, error) {
 				continue
 			}
 		}
-		if fr.Path == "" {
-			continue
-		}
-		out = append(out, fr)
-		if item != nil {
-			pend.Items = append(pend.Items, *item)
-		}
+		r.add(fr, item)
 	}
 	if ignored > maxIgnoredReported {
-		out = append(out, FileResult{Path: ".", Status: StatusIgnored, Message: fmt.Sprintf("and %d more files that are not task files.", ignored-maxIgnoredReported)})
+		r.out = append(r.out, FileResult{Path: ".", Status: StatusIgnored, Message: fmt.Sprintf("and %d more files that are not task files.", ignored-maxIgnoredReported)})
 	}
-	if len(pend.Items) > 0 && s.cfg.Events != nil {
-		if err := s.cfg.Events.Pending(ctx, pend); err != nil {
-			return Result{}, fmt.Errorf("taskfiles: raise approval: %w", err)
+}
+
+// finish raises the approval for what waits on the user and notifies what was accepted.
+func (r *submitRun) finish() error {
+	ev := r.s.cfg.Events
+	if ev == nil {
+		return nil
+	}
+	if len(r.pend.Items) > 0 {
+		if err := ev.Pending(r.ctx, r.pend); err != nil {
+			return fmt.Errorf("taskfiles: raise approval: %w", err)
 		}
 	}
-	for _, f := range out {
-		if f.Status == StatusAccepted && f.Notify != NotifyNone && s.cfg.Events != nil {
-			if err := s.cfg.Events.Accepted(ctx, req.TaskID, f.Path, f.Notify); err != nil {
-				slog.Warn("taskfiles: notify accepted file", "scope", "ade", "task", req.TaskID, "path", f.Path, "err", err)
+	for _, f := range r.out {
+		if f.Status == StatusAccepted && f.Notify != NotifyNone {
+			if err := ev.Accepted(r.ctx, r.req.TaskID, f.Path, f.Notify); err != nil {
+				slog.Warn("taskfiles: notify accepted file", "scope", "ade", "task", r.req.TaskID, "path", f.Path, "err", err)
 			}
 		}
 	}
-	return Result{Files: out}, nil
+	return nil
 }
 
 // targets are the paths a call looks at, in path order, and an invalid result per unusable named path.

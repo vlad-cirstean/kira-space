@@ -237,7 +237,7 @@ func stepRows(doc proofDoc) []repos.ProofStepRow {
 }
 
 func proofInfo(doc proofDoc, read []unitFile) ([]ProofStepInfo, ProofCounts) {
-	var steps []ProofStepInfo
+	steps := make([]ProofStepInfo, 0, len(doc.Steps))
 	c := ProofCounts{Steps: len(doc.Steps)}
 	for _, st := range doc.Steps {
 		steps = append(steps, ProofStepInfo{ID: st.ID, View: st.View})
@@ -288,120 +288,171 @@ func (s *Service) cacheHead(tx Tx, u *repos.ProofUnit) (ProofHead, error) {
 
 // unitApply decides a valid unit: new, unchanged, accepted edit, pending edit or invalid for want of a reason.
 func (s *Service) unitApply(ctx context.Context, req Request, slug string, doc proofDoc, read []unitFile, rows []model.TaskFile, byPath map[string]model.TaskFile) (FileResult, *PendingItem) {
-	pc := s.cfg.Proof
 	folder := proofFolder(slug)
 	md := folder + ProofFile
 	for _, f := range read { // blobs first: a crash before the commit leaves the files unaccepted
-		if _, err := pc.Blobs.Put(f.raw); err != nil {
+		if _, err := s.cfg.Proof.Blobs.Put(f.raw); err != nil {
 			return FileResult{Path: md, Status: StatusInvalid, Message: fmt.Sprintf("%s: could not store the file: %v", f.rel, err)}, nil
 		}
 	}
-	by := writerName(req.Session.Role, req.Session.Key)
-	steps, counts := proofInfo(doc, read)
-	res := FileResult{Path: md}
-	var review *bool
-	err := s.cfg.Index.InTx(func(tx Tx) error {
-		q := tx.Querier()
-		u, err := pc.Cache.ByTaskSlug(q, req.TaskID, slug)
-		if err != nil {
-			return err
-		}
-		if other, err := pc.Cache.NameTakenBy(q, req.TaskID, doc.Name); err != nil {
-			return err
-		} else if other != "" && (u == nil || other != u.Session.ID) {
-			otherSlug, err := pc.Cache.SlugOf(q, other)
-			if err != nil {
-				return err
-			}
-			msg := problem{ProofFile, 0, fmt.Sprintf("name %q is used by %s. Pick another name or edit that proof.", doc.Name, proofFolder(otherSlug))}.text(folder)
-			res = FileResult{Path: md, Status: StatusInvalid, Message: msg, Proof: &ProofResult{Slug: slug, Name: doc.Name, Status: string(StatusInvalid), Problems: []string{msg}}}
-			return nil
-		}
-		now := s.nowMs()
-		if u == nil {
-			d := Decide(md, Input{Role: req.Session.Role, Kind: KindProof, Op: OpCreate, Reason: req.Reason})
-			if err := pc.Cache.Create(q, repos.ProofNew{ID: pc.NewID(), TaskID: req.TaskID, Slug: slug, Name: doc.Name, Summary: doc.Summary, Steps: stepRows(doc), Now: now}); err != nil {
-				return err
-			}
-			if err := s.putUnitRows(tx, req, read, rows, true, by); err != nil {
-				return err
-			}
-			res = FileResult{Path: md, Status: StatusAccepted, Notify: d.Notify,
-				Proof: &ProofResult{Slug: slug, Name: doc.Name, Status: string(StatusAccepted), New: true, Steps: steps, Counts: counts}}
-			return nil
-		}
-		before, err := s.cacheHead(tx, u)
-		if err != nil {
-			return err
-		}
-		changes := DiffProof(before, doc.head())
-		hadPending := u.Session.PendingRev != nil
-		if len(changes) == 0 {
-			if hadPending {
-				if err := pc.Cache.DropPending(q, u.Session.ID, now); err != nil {
-					return err
-				}
-				f := false
-				review = &f
-			}
-			if err := s.putUnitRows(tx, req, read, rows, true, by); err != nil {
-				return err
-			}
-			res = FileResult{Path: md, Status: StatusUnchanged,
-				Proof: &ProofResult{Slug: slug, Name: doc.Name, Status: string(StatusAccepted), Steps: steps, Counts: counts}}
-			return nil
-		}
-		d := Decide(md, Input{Role: req.Session.Role, Kind: KindProof, Op: OpEdit, ProofAccepted: true, Reason: req.Reason})
-		pr := &ProofResult{Slug: slug, Name: doc.Name, Steps: steps, Counts: counts, Changed: changedOf(changes), Reason: req.Reason}
-		switch d.Outcome {
-		case Invalid:
-			msg := d.Message
-			res = FileResult{Path: md, Status: StatusInvalid, Message: msg, Proof: &ProofResult{Slug: slug, Name: doc.Name, Status: string(StatusInvalid), Problems: []string{msg}}}
-			return nil
-		case Pending:
-			if err := pc.Cache.Propose(q, repos.ProofEdit{SessionID: u.Session.ID, Name: doc.Name, Summary: doc.Summary, Reason: req.Reason,
-				Steps: diffRows(doc, before), Origin: originsOf(doc, before), Now: now}); err != nil {
-				return err
-			}
-			if err := s.putUnitRows(tx, req, read, rows, false, by); err != nil {
-				return err
-			}
-			t := true
-			review = &t
-			pr.Status = string(StatusPending)
-			res = FileResult{Path: md, Status: StatusPending, Message: pendingMessage(md, req.Reason, nil), Proof: pr}
-			return nil
-		}
-		// A user's edit: the revision is proposed and accepted at once, so view state of unchanged steps carries over.
-		if err := pc.Cache.Propose(q, repos.ProofEdit{SessionID: u.Session.ID, Name: doc.Name, Summary: doc.Summary, Reason: req.Reason,
-			Steps: diffRows(doc, before), Origin: originsOf(doc, before), Now: now}); err != nil {
-			return err
-		}
-		if err := pc.Cache.Accept(q, u.Session.ID, s.cfg.Now()); err != nil {
-			return err
-		}
-		if err := s.putUnitRows(tx, req, read, rows, true, by); err != nil {
-			return err
-		}
-		if hadPending {
-			f := false
-			review = &f
-		}
-		pr.Status = string(StatusAccepted)
-		res = FileResult{Path: md, Status: StatusAccepted, Proof: pr}
-		return nil
-	})
-	if err != nil {
+	a := &unitTx{s: s, req: req, slug: slug, doc: doc, read: read, rows: rows, md: md,
+		by: writerName(req.Session.Role, req.Session.Key), res: FileResult{Path: md}}
+	a.steps, a.counts = proofInfo(doc, read)
+	if err := s.cfg.Index.InTx(a.run); err != nil {
 		return FileResult{Path: md, Status: StatusInvalid, Message: fmt.Sprintf("%s: could not apply: %v", md, err)}, nil
 	}
-	if review != nil {
+	if a.review != nil {
 		if pe, ok := s.cfg.Events.(ProofEvents); ok {
-			if err := pe.ProofReview(ctx, req.TaskID, slug, *review); err != nil {
+			if err := pe.ProofReview(ctx, req.TaskID, slug, *a.review); err != nil {
 				slog.Warn("taskfiles: proof review", "scope", "ade", "task", req.TaskID, "slug", slug, "err", err)
 			}
 		}
 	}
-	return res, nil
+	return a.res, nil
+}
+
+// unitTx is the write of one valid proof unit inside the index transaction.
+type unitTx struct {
+	s      *Service
+	tx     Tx
+	req    Request
+	slug   string
+	doc    proofDoc
+	read   []unitFile
+	rows   []model.TaskFile
+	md, by string
+	steps  []ProofStepInfo
+	counts ProofCounts
+	res    FileResult
+	// review is set when the pending-review flag of the proof changed: true raised, false cleared.
+	review *bool
+}
+
+func (a *unitTx) setReview(v bool) { a.review = &v }
+
+func (a *unitTx) result(st Status, pr *ProofResult) {
+	a.res = FileResult{Path: a.md, Status: st, Proof: pr}
+}
+
+func (a *unitTx) invalid(msg string) {
+	a.res = FileResult{Path: a.md, Status: StatusInvalid, Message: msg, Proof: &ProofResult{Slug: a.slug, Name: a.doc.Name, Status: string(StatusInvalid), Problems: []string{msg}}}
+}
+
+func (a *unitTx) putRows(accept bool) error {
+	return a.s.putUnitRows(a.tx, a.req, a.read, a.rows, accept, a.by)
+}
+
+func (a *unitTx) run(tx Tx) error {
+	a.tx = tx
+	pc := a.s.cfg.Proof
+	q := tx.Querier()
+	u, err := pc.Cache.ByTaskSlug(q, a.req.TaskID, a.slug)
+	if err != nil {
+		return err
+	}
+	if taken, err := a.nameTaken(u); err != nil || taken {
+		return err
+	}
+	if u == nil {
+		return a.create()
+	}
+	before, err := a.s.cacheHead(tx, u)
+	if err != nil {
+		return err
+	}
+	changes := DiffProof(before, a.doc.head())
+	if len(changes) == 0 {
+		return a.unchanged(u)
+	}
+	return a.edit(u, before, changes)
+}
+
+// nameTaken reports that another proof of the task holds the name, and records the invalid result.
+func (a *unitTx) nameTaken(u *repos.ProofUnit) (bool, error) {
+	pc := a.s.cfg.Proof
+	q := a.tx.Querier()
+	other, err := pc.Cache.NameTakenBy(q, a.req.TaskID, a.doc.Name)
+	if err != nil || other == "" || (u != nil && other == u.Session.ID) {
+		return false, err
+	}
+	otherSlug, err := pc.Cache.SlugOf(q, other)
+	if err != nil {
+		return false, err
+	}
+	a.invalid(problem{ProofFile, 0, fmt.Sprintf("name %q is used by %s. Pick another name or edit that proof.", a.doc.Name, proofFolder(otherSlug))}.text(proofFolder(a.slug)))
+	return true, nil
+}
+
+func (a *unitTx) create() error {
+	pc := a.s.cfg.Proof
+	d := Decide(a.md, Input{Role: a.req.Session.Role, Kind: KindProof, Op: OpCreate, Reason: a.req.Reason})
+	if err := pc.Cache.Create(a.tx.Querier(), repos.ProofNew{ID: pc.NewID(), TaskID: a.req.TaskID, Slug: a.slug, Name: a.doc.Name, Summary: a.doc.Summary, Steps: stepRows(a.doc), Now: a.s.nowMs()}); err != nil {
+		return err
+	}
+	if err := a.putRows(true); err != nil {
+		return err
+	}
+	a.result(StatusAccepted, &ProofResult{Slug: a.slug, Name: a.doc.Name, Status: string(StatusAccepted), New: true, Steps: a.steps, Counts: a.counts})
+	a.res.Notify = d.Notify
+	return nil
+}
+
+// unchanged covers a folder whose content equals the accepted proof; a waiting edit it undoes is dropped.
+func (a *unitTx) unchanged(u *repos.ProofUnit) error {
+	if u.Session.PendingRev != nil {
+		if err := a.s.cfg.Proof.Cache.DropPending(a.tx.Querier(), u.Session.ID, a.s.nowMs()); err != nil {
+			return err
+		}
+		a.setReview(false)
+	}
+	if err := a.putRows(true); err != nil {
+		return err
+	}
+	a.result(StatusUnchanged, &ProofResult{Slug: a.slug, Name: a.doc.Name, Status: string(StatusAccepted), Steps: a.steps, Counts: a.counts})
+	return nil
+}
+
+func (a *unitTx) propose(u *repos.ProofUnit, before ProofHead) error {
+	return a.s.cfg.Proof.Cache.Propose(a.tx.Querier(), repos.ProofEdit{SessionID: u.Session.ID, Name: a.doc.Name, Summary: a.doc.Summary, Reason: a.req.Reason,
+		Steps: diffRows(a.doc, before), Origin: originsOf(a.doc, before), Now: a.s.nowMs()})
+}
+
+func (a *unitTx) edit(u *repos.ProofUnit, before ProofHead, changes []Change) error {
+	d := Decide(a.md, Input{Role: a.req.Session.Role, Kind: KindProof, Op: OpEdit, ProofAccepted: true, Reason: a.req.Reason})
+	pr := &ProofResult{Slug: a.slug, Name: a.doc.Name, Steps: a.steps, Counts: a.counts, Changed: changedOf(changes), Reason: a.req.Reason}
+	switch d.Outcome {
+	case Invalid:
+		a.invalid(d.Message)
+		return nil
+	case Pending:
+		if err := a.propose(u, before); err != nil {
+			return err
+		}
+		if err := a.putRows(false); err != nil {
+			return err
+		}
+		a.setReview(true)
+		pr.Status = string(StatusPending)
+		a.result(StatusPending, pr)
+		a.res.Message = pendingMessage(a.md, a.req.Reason, nil)
+		return nil
+	}
+	// A user's edit: the revision is proposed and accepted at once, so view state of unchanged steps carries over.
+	if err := a.propose(u, before); err != nil {
+		return err
+	}
+	if err := a.s.cfg.Proof.Cache.Accept(a.tx.Querier(), u.Session.ID, a.s.cfg.Now()); err != nil {
+		return err
+	}
+	if err := a.putRows(true); err != nil {
+		return err
+	}
+	if u.Session.PendingRev != nil {
+		a.setReview(false)
+	}
+	pr.Status = string(StatusAccepted)
+	a.result(StatusAccepted, pr)
+	return nil
 }
 
 // diffRows is stepRows with each step's difference to the accepted revision: unchanged, changed or added.

@@ -1,6 +1,7 @@
 package proofflow
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -135,7 +136,7 @@ func TestProofFiles(t *testing.T) {
 	f.put(t, "proofs/big/proof.md", []byte(big))
 	msg := f.submit(t, "")
 	mustHave(t, "over-cap reply", msg, "proofs/big/proof.md", "steps[rows].inline is 71 KiB", "Move it to <this folder>/rows.json")
-	f.app.Contract(t, filesScenario, "reply#overcap", strings.Replace(msg, "\n", " | ", -1))
+	f.app.Contract(t, filesScenario, "reply#overcap", strings.ReplaceAll(msg, "\n", " | "))
 	_ = os.RemoveAll(filepath.Join(f.folder, "proofs", "big"))
 	f.submit(t, "")
 
@@ -174,7 +175,7 @@ func TestProofFiles(t *testing.T) {
 	f.put(t, "proofs/tabs/proof.md", []byte("---\nname: Tabs\nsummary: x\nsteps:\n\t- id: a\n---\n"))
 	msg = f.submit(t, "")
 	mustHave(t, "yaml error", msg, "proofs/tabs/proof.md:5", "tab")
-	f.app.Contract(t, filesScenario, "reply#yaml", strings.Replace(msg, "\n", " | ", -1))
+	f.app.Contract(t, filesScenario, "reply#yaml", strings.ReplaceAll(msg, "\n", " | "))
 	_ = os.RemoveAll(filepath.Join(f.folder, "proofs", "tabs"))
 	f.submit(t, "")
 
@@ -208,7 +209,7 @@ func TestProofFiles(t *testing.T) {
 	if res, err := f.app.W.ApprovalsSvc.Answer(approvals.AnswerArgs{IDs: []string{"proof.review:" + id}, Approve: false}); err != nil || res[0].Error != "" {
 		t.Fatalf("deny = %+v, %v", res, err)
 	}
-	if string(f.read(t, "proofs/checkout-fix/proof.md")) != filesProofMD || string(f.read(t, "proofs/checkout-fix/shot.jpg")) != string(jpg) {
+	if string(f.read(t, "proofs/checkout-fix/proof.md")) != filesProofMD || !bytes.Equal(f.read(t, "proofs/checkout-fix/shot.jpg"), jpg) {
 		t.Fatal("deny did not restore the accepted files")
 	}
 

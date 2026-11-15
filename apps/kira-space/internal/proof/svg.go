@@ -35,6 +35,16 @@ func svgError(line int, format string, args ...any) error {
 	return invalid("line %d: "+format, append([]any{line}, args...)...)
 }
 
+// svgScan is the state of one pass over a SVG token stream.
+type svgScan struct {
+	raw      []byte
+	stack    []string // RawToken does not match end tags to start tags
+	elements int
+	root     *xml.StartElement
+	rootLine int
+	inStyle  bool
+}
+
 // CheckSVG validates a SVG file and returns its intrinsic size.
 func CheckSVG(raw []byte) (width, height int, err error) {
 	if len(raw) > MaxSVGBytes {
@@ -44,11 +54,7 @@ func CheckSVG(raw []byte) (width, height int, err error) {
 	dec := xml.NewDecoder(bytes.NewReader(raw))
 	dec.Strict = true
 	dec.Entity = nil
-	var stack []string // RawToken does not match end tags to start tags
-	var elements int
-	var root *xml.StartElement
-	var rootLine int
-	var inStyle bool
+	sc := &svgScan{raw: raw}
 	for {
 		off := dec.InputOffset()
 		tok, terr := dec.RawToken()
@@ -59,53 +65,66 @@ func CheckSVG(raw []byte) (width, height int, err error) {
 		if terr != nil {
 			return 0, 0, invalid("not well-formed: %v", terr)
 		}
-		switch t := tok.(type) {
-		case xml.Directive:
-			return 0, 0, svgError(line, "DOCTYPE or entity declarations are not allowed")
-		case xml.StartElement:
-			elements++
-			stack = append(stack, t.Name.Local)
-			if elements > maxSVGElements || len(stack) > maxSVGDepth {
-				return 0, 0, invalid("too large: more than %d elements or deeper than %d levels", maxSVGElements, maxSVGDepth)
-			}
-			if root == nil {
-				cp := t
-				root, rootLine = &cp, line
-				if strings.ToLower(t.Name.Local) != "svg" || xmlnsOf(t) != svgNS {
-					return 0, 0, svgError(line, "the root element must be <svg xmlns=\"%s\">", svgNS)
-				}
-			}
-			name := strings.ToLower(t.Name.Local)
-			if svgBadElements[name] {
-				return 0, 0, svgError(line, "SVG element <%s> is not allowed", t.Name.Local)
-			}
-			inStyle = name == "style"
-			if err := checkSVGAttrs(line, t); err != nil {
-				return 0, 0, err
-			}
-		case xml.EndElement:
-			if len(stack) == 0 || stack[len(stack)-1] != t.Name.Local {
-				return 0, 0, svgError(line, "not well-formed: </%s> does not close the open element", t.Name.Local)
-			}
-			stack = stack[:len(stack)-1]
-			inStyle = false
-		case xml.CharData:
-			if inStyle {
-				if err := checkCSS(string(t)); err != nil {
-					return 0, 0, svgError(line, "CSS loads from outside: %v", err)
-				}
+		if err := sc.token(line, tok); err != nil {
+			return 0, 0, err
+		}
+	}
+	return sc.size()
+}
+
+func (sc *svgScan) token(line int, tok xml.Token) error {
+	switch t := tok.(type) {
+	case xml.Directive:
+		return svgError(line, "DOCTYPE or entity declarations are not allowed")
+	case xml.StartElement:
+		return sc.start(line, t)
+	case xml.EndElement:
+		if len(sc.stack) == 0 || sc.stack[len(sc.stack)-1] != t.Name.Local {
+			return svgError(line, "not well-formed: </%s> does not close the open element", t.Name.Local)
+		}
+		sc.stack = sc.stack[:len(sc.stack)-1]
+		sc.inStyle = false
+	case xml.CharData:
+		if sc.inStyle {
+			if err := checkCSS(string(t)); err != nil {
+				return svgError(line, "CSS loads from outside: %v", err)
 			}
 		}
 	}
-	if root == nil {
+	return nil
+}
+
+func (sc *svgScan) start(line int, t xml.StartElement) error {
+	sc.elements++
+	sc.stack = append(sc.stack, t.Name.Local)
+	if sc.elements > maxSVGElements || len(sc.stack) > maxSVGDepth {
+		return invalid("too large: more than %d elements or deeper than %d levels", maxSVGElements, maxSVGDepth)
+	}
+	if sc.root == nil {
+		sc.root, sc.rootLine = &t, line
+		if !strings.EqualFold(t.Name.Local, "svg") || xmlnsOf(t) != svgNS {
+			return svgError(line, "the root element must be <svg xmlns=\"%s\">", svgNS)
+		}
+	}
+	name := strings.ToLower(t.Name.Local)
+	if svgBadElements[name] {
+		return svgError(line, "SVG element <%s> is not allowed", t.Name.Local)
+	}
+	sc.inStyle = name == "style"
+	return checkSVGAttrs(line, t)
+}
+
+// size is the verdict once the stream ended: well-formed, sized and within the limits.
+func (sc *svgScan) size() (int, int, error) {
+	if sc.root == nil {
 		return 0, 0, invalid("not well-formed: no root element")
 	}
-	if len(stack) > 0 {
-		return 0, 0, invalid("not well-formed: <%s> is never closed", stack[len(stack)-1])
+	if len(sc.stack) > 0 {
+		return 0, 0, invalid("not well-formed: <%s> is never closed", sc.stack[len(sc.stack)-1])
 	}
-	w, h, ok := svgSize(*root)
+	w, h, ok := svgSize(*sc.root)
 	if !ok {
-		return 0, 0, svgError(rootLine, "size missing: give <svg> width and height (px or unitless) or a viewBox")
+		return 0, 0, svgError(sc.rootLine, "size missing: give <svg> width and height (px or unitless) or a viewBox")
 	}
 	if w < 1 || h < 1 || w > maxImageSide || h > maxImageSide || w*h > maxImagePixels {
 		return 0, 0, invalid("side or area out of range: svg is %dx%d; each side must be 1-%d and the area at most %d megapixels", w, h, maxImageSide, maxImagePixels/1_000_000)

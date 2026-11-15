@@ -160,23 +160,6 @@ func (r *ProofRepo) tx(fn func(tx *sql.Tx) error) error {
 	return nil
 }
 
-// monotonicClose returns now (unix ms) strictly after every closed_at, so "newest closed" is a
-// total order even when two closes land in one millisecond.
-func monotonicClose(tx *sql.Tx, d sqlb.Dialect, now time.Time) (int64, error) {
-	var latest sql.NullInt64
-	ps := kiraschema.ProofSessions
-	sb := d.Select("MAX(" + ps.ClosedAt + ")").From(ps.Table)
-	sb.Where(sb.Equal(ps.State, "closed"))
-	if err := sqlb.QueryRow(tx, sb).Scan(&latest); err != nil {
-		return 0, err
-	}
-	ts := now.UnixMilli()
-	if latest.Valid && ts <= latest.Int64 {
-		ts = latest.Int64 + 1
-	}
-	return ts, nil
-}
-
 // ProofSummary is one closed session in the history list.
 type ProofSummary struct {
 	ID, Name      string

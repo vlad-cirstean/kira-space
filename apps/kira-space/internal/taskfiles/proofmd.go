@@ -258,52 +258,8 @@ func (p *proofParser) step(n *yaml.Node, ids map[string]bool) (proofStep, bool) 
 		p.add(n.Line, "a step must be a mapping: - id: totals, description: ..., view: table, inline: ...")
 		return proofStep{}, false
 	}
-	st := proofStep{Line: n.Line, Language: "text"}
 	start := len(p.probs)
-	var inline, data *yaml.Node
-	seen := map[string]bool{}
-	for i := 0; i+1 < len(n.Content); i += 2 {
-		k, v := n.Content[i], n.Content[i+1]
-		if seen[k.Value] {
-			p.add(k.Line, "duplicate key %q. Remove one of them.", k.Value)
-			continue
-		}
-		seen[k.Value] = true
-		if !stepFields[k.Value] {
-			p.add(k.Line, "unknown step field %q. Allowed: id, description, view, inline, data, query, language, source.", k.Value)
-			continue
-		}
-		s, isScalar := scalarOf(v)
-		switch k.Value {
-		case "inline":
-			inline = v
-		case "data":
-			data = v
-			if !isScalar {
-				p.add(v.Line, "data must be a file name in this folder, like data: shot.png. Put structured data under inline.")
-			}
-			st.File = s
-		default:
-			if !isScalar {
-				p.add(v.Line, "%s must be text.", k.Value)
-				continue
-			}
-			switch k.Value {
-			case "id":
-				st.ID = s
-			case "description":
-				st.Description = strings.TrimSpace(s)
-			case "view":
-				st.View = s
-			case "query":
-				st.Query = s
-			case "language":
-				st.Language = s
-			case "source":
-				st.Source = s
-			}
-		}
-	}
+	st, inline, data := p.stepFields(n)
 	id := st.ID
 	label := "steps[" + id + "]"
 	if id == "" {
@@ -353,6 +309,59 @@ func (p *proofParser) step(n *yaml.Node, ids map[string]bool) (proofStep, bool) 
 		p.dataFile(&st, label, data)
 	}
 	return st, len(p.probs) == start
+}
+
+// stepFields reads the keys of one step mapping; inline and data are the nodes of those keys.
+func (p *proofParser) stepFields(n *yaml.Node) (st proofStep, inline, data *yaml.Node) {
+	st = proofStep{Line: n.Line, Language: "text"}
+	seen := map[string]bool{}
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		k, v := n.Content[i], n.Content[i+1]
+		if seen[k.Value] {
+			p.add(k.Line, "duplicate key %q. Remove one of them.", k.Value)
+			continue
+		}
+		seen[k.Value] = true
+		if !stepFields[k.Value] {
+			p.add(k.Line, "unknown step field %q. Allowed: id, description, view, inline, data, query, language, source.", k.Value)
+			continue
+		}
+		s, isScalar := scalarOf(v)
+		switch k.Value {
+		case "inline":
+			inline = v
+		case "data":
+			data = v
+			if !isScalar {
+				p.add(v.Line, "data must be a file name in this folder, like data: shot.png. Put structured data under inline.")
+			}
+			st.File = s
+		default:
+			if !isScalar {
+				p.add(v.Line, "%s must be text.", k.Value)
+				continue
+			}
+			setStepText(&st, k.Value, s)
+		}
+	}
+	return st, inline, data
+}
+
+func setStepText(st *proofStep, key, s string) {
+	switch key {
+	case "id":
+		st.ID = s
+	case "description":
+		st.Description = strings.TrimSpace(s)
+	case "view":
+		st.View = s
+	case "query":
+		st.Query = s
+	case "language":
+		st.Language = s
+	case "source":
+		st.Source = s
+	}
 }
 
 func (p *proofParser) inline(st *proofStep, label string, n *yaml.Node) {

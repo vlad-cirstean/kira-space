@@ -80,33 +80,9 @@ func (e *ProofExporter) Export(ctx context.Context, taskID string, st store.Stor
 	taken := map[string]bool{}
 	var plans []*proofPlan
 	for _, p := range list {
-		if p.Session.CurrentRev == nil || len(p.Cur) == 0 {
-			return m, fmt.Errorf("proof %s has no current revision", p.Session.ID)
-		}
-		pl := &proofPlan{p: p, slug: uniqueSlug(p.Session.Name, taken)}
-		curIDs := make([]string, len(p.Cur))
-		for i := range p.Cur {
-			curIDs[i] = fmt.Sprintf("s%d", p.Cur[i].Ordinal)
-		}
-		if pl.cur, err = buildUnit(p.Session.Name, p.Session.Summary, p.Cur, curIDs); err != nil {
-			return m, fmt.Errorf("proof %s: %w", p.Session.ID, err)
-		}
-		if p.Session.PendingRev != nil && len(p.Pend) > 0 {
-			u, err := buildUnit(p.Session.Name, p.Session.Summary, p.Pend, pendingIDs(p.Cur, curIDs, p.Pend))
-			if err != nil {
-				return m, fmt.Errorf("proof %s (pending edit): %w", p.Session.ID, err)
-			}
-			pl.pend = &u
-		}
-		for _, u := range []*migUnit{&pl.cur, pl.pend} {
-			if u == nil {
-				continue
-			}
-			for _, raw := range u.files { // blobs before the rows that name them
-				if _, err := e.Blobs.Put(raw); err != nil {
-					return m, err
-				}
-			}
+		pl, err := e.plan(p, taken)
+		if err != nil {
+			return m, err
 		}
 		for name, raw := range pl.disk().files {
 			rel := proofFolder(pl.slug) + name
@@ -125,6 +101,41 @@ func (e *ProofExporter) Export(ctx context.Context, taskID string, st store.Stor
 	e.plans[taskID] = plans
 	e.mu.Unlock()
 	return m, nil
+}
+
+// plan builds the folder content of one legacy proof, current revision and pending edit, and stores the
+// blobs the rows will name.
+func (e *ProofExporter) plan(p repos.LegacyProof, taken map[string]bool) (*proofPlan, error) {
+	if p.Session.CurrentRev == nil || len(p.Cur) == 0 {
+		return nil, fmt.Errorf("proof %s has no current revision", p.Session.ID)
+	}
+	pl := &proofPlan{p: p, slug: uniqueSlug(p.Session.Name, taken)}
+	curIDs := make([]string, len(p.Cur))
+	for i := range p.Cur {
+		curIDs[i] = fmt.Sprintf("s%d", p.Cur[i].Ordinal)
+	}
+	var err error
+	if pl.cur, err = buildUnit(p.Session.Name, p.Session.Summary, p.Cur, curIDs); err != nil {
+		return nil, fmt.Errorf("proof %s: %w", p.Session.ID, err)
+	}
+	if p.Session.PendingRev != nil && len(p.Pend) > 0 {
+		u, err := buildUnit(p.Session.Name, p.Session.Summary, p.Pend, pendingIDs(p.Cur, curIDs, p.Pend))
+		if err != nil {
+			return nil, fmt.Errorf("proof %s (pending edit): %w", p.Session.ID, err)
+		}
+		pl.pend = &u
+	}
+	for _, u := range []*migUnit{&pl.cur, pl.pend} {
+		if u == nil {
+			continue
+		}
+		for _, raw := range u.files { // blobs before the rows that name them
+			if _, err := e.Blobs.Put(raw); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return pl, nil
 }
 
 // Verify re-reads the staged folders, parses them like a submit and compares them to the rows.
@@ -169,55 +180,67 @@ func (e *ProofExporter) Record(_ context.Context, tx Tx, taskID string, _ Manife
 	plans := e.plans[taskID]
 	delete(e.plans, taskID)
 	e.mu.Unlock()
-	q := tx.Querier()
 	now := e.now().UnixMilli()
 	for _, pl := range plans {
-		s := pl.p.Session
-		if err := e.Cache.SetSlug(q, s.ID, pl.slug); err != nil {
+		if err := e.recordSteps(tx, pl); err != nil {
 			return err
 		}
-		for i, st := range pl.cur.doc.Steps {
-			if err := e.Cache.SetStep(q, s.ID, *s.CurrentRev, i+1, st.ID, st.Payload); err != nil {
-				return err
-			}
+		if err := recordFiles(tx, taskID, pl, now); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// recordSteps points the cache at the folder: slug, step ids and payloads of both revisions.
+func (e *ProofExporter) recordSteps(tx Tx, pl *proofPlan) error {
+	q := tx.Querier()
+	s := pl.p.Session
+	if err := e.Cache.SetSlug(q, s.ID, pl.slug); err != nil {
+		return err
+	}
+	for i, st := range pl.cur.doc.Steps {
+		if err := e.Cache.SetStep(q, s.ID, *s.CurrentRev, i+1, st.ID, st.Payload); err != nil {
+			return err
+		}
+	}
+	if pl.pend == nil {
+		return nil
+	}
+	for i, st := range pl.pend.doc.Steps {
+		if err := e.Cache.SetStep(q, s.ID, *s.PendingRev, i+1, st.ID, st.Payload); err != nil {
+			return err
+		}
+	}
+	return e.Cache.SetRevisionText(q, s.ID, *s.PendingRev, s.Name, s.Summary)
+}
+
+// recordFiles writes the file rows of one proof folder; a pending edit leaves its files unaccepted.
+func recordFiles(tx Tx, taskID string, pl *proofPlan, now int64) error {
+	disk := pl.disk()
+	names := map[string]bool{}
+	for n := range pl.cur.files {
+		names[n] = true
+	}
+	for n := range disk.files {
+		names[n] = true
+	}
+	for name := range names {
+		rel := proofFolder(pl.slug) + name
+		row := model.TaskFile{TaskID: taskID, RelPath: rel, Kind: string(Classify(rel).Kind), Review: model.TaskFileAccepted}
+		if acc, ok := pl.cur.files[name]; ok {
+			row.AcceptedSHA256, row.AcceptedBy, row.AcceptedAt = sum(acc), string(RoleKira), now
+		}
+		if d, ok := disk.files[name]; ok {
+			row.SHA256, row.Size = sum(d), int64(len(d))
 		}
 		if pl.pend != nil {
-			for i, st := range pl.pend.doc.Steps {
-				if err := e.Cache.SetStep(q, s.ID, *s.PendingRev, i+1, st.ID, st.Payload); err != nil {
-					return err
-				}
-			}
-			if err := e.Cache.SetRevisionText(q, s.ID, *s.PendingRev, s.Name, s.Summary); err != nil {
-				return err
-			}
+			row.Review = model.TaskFilePending
+		} else {
+			row.AcceptedSHA256 = row.SHA256
 		}
-		disk := pl.disk()
-		names := map[string]bool{}
-		for n := range pl.cur.files {
-			names[n] = true
-		}
-		for n := range disk.files {
-			names[n] = true
-		}
-		for name := range names {
-			rel := proofFolder(pl.slug) + name
-			row := model.TaskFile{TaskID: taskID, RelPath: rel, Kind: string(Classify(rel).Kind), Review: model.TaskFileAccepted}
-			acc, hadAcc := pl.cur.files[name]
-			d, onDisk := disk.files[name]
-			if hadAcc {
-				row.AcceptedSHA256, row.AcceptedBy, row.AcceptedAt = sum(acc), string(RoleKira), now
-			}
-			if onDisk {
-				row.SHA256, row.Size = sum(d), int64(len(d))
-			}
-			if pl.pend != nil {
-				row.Review = model.TaskFilePending
-			} else {
-				row.AcceptedSHA256 = row.SHA256
-			}
-			if err := tx.PutFile(row); err != nil {
-				return err
-			}
+		if err := tx.PutFile(row); err != nil {
+			return err
 		}
 	}
 	return nil
