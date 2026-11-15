@@ -55,7 +55,6 @@ const detailsEditFileSchema = /*#__PURE__*/ z.object({
   reason: z.string(),
   collision: z.string().optional(),
 });
-export type DetailsEditFile = z.infer<typeof detailsEditFileSchema>;
 
 export const detailsEditPayloadSchema = /*#__PURE__*/ z.object({
   taskId: z.string(),
