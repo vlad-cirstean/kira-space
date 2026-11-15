@@ -459,6 +459,9 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 		tools = append(tools, agentmcp.OrchestratorToolIDs...)
 	}
 	pa.MCPConfig, pa.AllowedTools = cfg, withDbMcpTool(sdef, harness.ToolNames(agent, tools...))
+	if dir, derr := b.filesDir(tc.task.ID); derr == nil && dir != "" {
+		pa.AllowedTools = appendMissing(pa.AllowedTools, taskFolderAllows(dir)...)
+	}
 	stem := ids.New(ids.TUI)
 	prep, err := b.prepareApp(ctx, agentcfg.Launch{Provider: agent, Kind: harness.LaunchInteractive, Dir: b.deps.AgentDir, Stem: stem})
 	if err != nil {

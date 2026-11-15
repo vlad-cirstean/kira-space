@@ -399,6 +399,9 @@ func (s *Server) finishStep(ctx context.Context, req *mcp.CallToolRequest, args 
 		}
 		submitted, summary = out.Reply, out.Summary
 	}
+	if summary == "" && isOKStatus(g.Results, args.Status) {
+		summary = strings.TrimSpace(args.Reason) // a run with no draft (smart script, rebase): the reason is its one-line result
+	}
 	if g.OneShot && !s.markFinished(info) {
 		return toolError(stepFinished), nil, nil
 	}

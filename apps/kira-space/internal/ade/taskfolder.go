@@ -46,13 +46,24 @@ func taskFolderDenies(dir string) []string {
 	return out
 }
 
+// taskFolderAllows let a headless run write its draft and files in the task folder with no prompt;
+// the denies of the Kira-owned files win over them.
+func taskFolderAllows(dir string) []string {
+	g := "/" + filepath.ToSlash(dir) + "/**"
+	return []string{"Edit(" + g + ")", "Write(" + g + ")"}
+}
+
 // withTaskFolder adds the task folder to a headless spec.
 func (b *TaskBoard) withTaskFolder(spec harness.HeadlessSpec, taskID string) (harness.HeadlessSpec, error) {
 	dir, err := b.filesDir(taskID)
 	if err != nil || dir == "" {
 		return spec, err
 	}
+	if err := os.MkdirAll(filepath.Join(dir, "handovers"), 0o700); err != nil {
+		return spec, fmt.Errorf("create handovers folder: %w", err)
+	}
 	spec.AddDirs = appendMissing(slices.Clone(spec.AddDirs), dir)
+	spec.AllowedTools = appendMissing(slices.Clone(spec.AllowedTools), taskFolderAllows(dir)...)
 	spec.DisallowedTools = appendMissing(slices.Clone(spec.DisallowedTools), taskFolderDenies(dir)...)
 	return spec, nil
 }
@@ -62,6 +73,9 @@ func (b *TaskBoard) withTaskFolderArgs(pa *PrepareArgs, taskID string) error {
 	dir, err := b.filesDir(taskID)
 	if err != nil || dir == "" {
 		return err
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "handovers"), 0o700); err != nil {
+		return fmt.Errorf("create handovers folder: %w", err)
 	}
 	pa.AddDirs = appendMissing(slices.Clone(pa.AddDirs), dir)
 	pa.DisallowedTools = appendMissing(slices.Clone(pa.DisallowedTools), taskFolderDenies(dir)...)

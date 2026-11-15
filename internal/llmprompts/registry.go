@@ -882,7 +882,7 @@ var HeadlessScriptReportSuffix = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessScriptReportSuffix.title",
 	PurposeKey: "llmPrompts.entry.headlessScriptReportSuffix.description",
 	UsedByKey:  "llmPrompts.entry.headlessScriptReportSuffix.usedBy.body",
-	Default:    `When finished, call finish_step with status "done". If you could not finish, call it with status "failed" and the reason. If you need a decision, call it with status "needs_input" and your question.`,
+	Default:    `When finished, call finish_step with status "done" and a one-line reason. If you could not finish, call it with status "failed" and the reason. If you need a decision, call it with status "needs_input" and your question.`,
 }, NoVars{})
 
 // HeadlessSpaceInstructions is what the Kira Space tools server tells a client when it connects.

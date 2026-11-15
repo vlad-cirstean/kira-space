@@ -22,6 +22,12 @@ func TestWithTaskFolder(t *testing.T) {
 	if len(spec.AddDirs) != 2 || spec.AddDirs[1] != dir {
 		t.Fatalf("add dirs %v", spec.AddDirs)
 	}
+	if got := spec.AllowedTools; len(got) != 2 || got[0] != "Edit(/"+dir+"/**)" || got[1] != "Write(/"+dir+"/**)" {
+		t.Fatalf("allows %v, want Edit and Write on the task folder", got)
+	}
+	if st, err := os.Stat(filepath.Join(dir, "handovers")); err != nil || !st.IsDir() {
+		t.Fatalf("handovers folder not created: %v", err)
+	}
 	want := []string{"Bash"}
 	for _, f := range []string{"README.md", "task.yaml", "state.yaml"} {
 		want = append(want, "Edit(/"+dir+"/"+f+")", "Write(/"+dir+"/"+f+")")

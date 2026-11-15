@@ -747,7 +747,8 @@ func (b *TaskBoard) startRound(ctx context.Context, tc *taskCtx, run model.AdeRu
 			def.Name, def.Timeout, def.Sandbox, def.Settings, def.DbMcp = s.Name, s.Timeout, s.Sandbox, s.Settings, s.DbMcp
 		}
 	}
-	prompt := composeResumePrompt(b.prompts(), launch.Prompt, b.filesVars(tc.task.ID, run.StepID, agent, true, false), nil)
+	// A round has no Space grant, so no submit tool: its prompt carries no task files fragment.
+	prompt := composeResumePrompt(b.prompts(), launch.Prompt, llmprompts.FilesVars{}, nil)
 	runCtx, endRun := b.beginLive(b.live, run.ID)
 	started = true
 	go func() {

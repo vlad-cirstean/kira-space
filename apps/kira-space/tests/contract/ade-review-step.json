@@ -51,7 +51,8 @@
           "reported": true,
           "result": "done",
           "source": "agent",
-          "status": "done"
+          "status": "done",
+          "summary": "summary-done"
         },
         "purpose": "review",
         "resumable": false,
@@ -62,7 +63,7 @@
         "startedAt": 0,
         "state": "done",
         "stepId": "review",
-        "summary": "",
+        "summary": "summary-done",
         "taskId": "<masked>"
       }
     },
@@ -220,7 +221,8 @@
           "reported": true,
           "result": "done",
           "source": "agent",
-          "status": "done"
+          "status": "done",
+          "summary": "summary-done"
         },
         "purpose": "review",
         "resumable": false,
@@ -231,7 +233,7 @@
         "startedAt": 0,
         "state": "done",
         "stepId": "review",
-        "summary": "",
+        "summary": "summary-done",
         "taskId": "<masked>"
       }
     },

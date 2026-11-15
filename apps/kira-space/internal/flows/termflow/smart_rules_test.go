@@ -169,7 +169,7 @@ func TestSmartScriptRules(t *testing.T) {
 		}
 		done := waitSmart(t, app, id, "done")
 		o := done.Outcome
-		if o == nil || o.Status != "done" || !o.Reported || o.Source != "agent" || o.Summary != "" {
+		if o == nil || o.Status != "done" || !o.Reported || o.Source != "agent" || o.Summary != "summary-done" {
 			t.Fatalf("outcome = %+v", o)
 		}
 		if want := filepath.Join(app.SpaceHome, "automations", rec.ID); done.Cwd != want || callFile(t, app, 1, ".cwd") != want {
