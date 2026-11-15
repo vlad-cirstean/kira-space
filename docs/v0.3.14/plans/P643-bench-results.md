@@ -177,3 +177,100 @@ one call; preload the two tools to drop the `ToolSearch` turn; or compare agains
 
 Spend of Part 5: 1.8473 + 0.6392 = 2.4865 USD, above the 1.26 USD planned for F4 to F6 because of the T harness bug.
 
+
+# F1b and F3b: read-and-edit, two passes
+
+Why: F1 to F3 pay the files design's fixed ceremony once and show none of its savings. F1b and F3b read an existing large artifact and
+revise a small part of it, twice. A run is two separate `claude -p` passes over the same task state (fresh context each, as two steps
+would be). The cell is the sum of both passes; per-pass records feed the crossover table. Sonnet, `KIRA_SPIKE_DUMP` set (transcripts
+kept: `F1b-R-sonnet-1-p1.jsonl` and so on in the round's dump dir), round guard 0.9 USD. Not gated: new flows, the existing bounds are
+shown for information only.
+
+Command: `KIRA_SPIKE_DUMP=<dir> KIRA_BENCH_OUT=<file> KIRA_BENCH_FLOWS=F1b,F3b KIRA_BENCH_BUDGET=0.9 bun run test:claude:details`.
+Code: `details_bench_revise_test.go` (flows, oracles, `executePasses`, per-pass table, free test `TestDetailsBenchReviseServes`).
+
+## Flows
+
+- F1b handover revision. The task holds the 4,993-byte (about 1,250 token) `0003-review-to-implement.md` handover: summary, 14 changes,
+  7 decisions, risks, verification. Pass 1: change the seed-script line, change the admin-table risk line, add a `## Follow-up`
+  section. Pass 2: change decision 6. Arm T: the handover text is in the prompt (pass 2: pass 1's `finish_step` summary) and the model
+  resends it whole in `finish_step`'s `summary`; the frozen tools have no separate `handover` tool, `finish_step` summary is the
+  handover call. Arm R: the text is `handovers/draft-implement.md`; the model edits it, then `submit` and `state step.finish`.
+- F3b proof revision. Closed proof "Orders match ledger": table of 10 rows (F3 fixture rows 1 to 10), the F3 diagram, the F3 document
+  (3 steps). Pass 1: order 7's two cells to 900, add a fourth document step "Late correction note". Pass 2: one cell (order 3
+  `order_total` 2550). Arm T: `proof_list` (ordinals only, no data), so the current rows come in the prompt; `proof_save` resends the
+  table and uses `keepOrdinal` for untouched steps; the harness accepts pass 1's pending edit between passes. Arm R: real board, real
+  `proof.md` with `totals.json`, `explain.json`, inline diagram; edit files, then `submit` with a reason.
+- Oracles check the stored result per pass: every earlier change kept, nothing else lost (handover length, sections, diagram and
+  document text), `finish_step done` or a submit answered "pending user, change to" in that pass.
+
+## Free test (before spending)
+
+`TestDetailsBenchReviseServes`, `TestDetailsBenchFrozenServes`, `TestDetailsBenchArmRServes`: all pass, no tokens. Per arm and flow: seed
+is correct (T F1b prompt carries the handover; R draft equals the handover; T proof 10 rows with the current rows in the prompt, R
+`proof.md` and `totals.json` a real 10-row proof the real board accepts), replies carry structured content, the oracle refuses the
+untouched start and accepts a correct revision in pass 1 and in pass 2 (R proof: a second `submit` over a pending first edit is
+accepted and replaces it; T: the edit is promoted between passes).
+
+## Result (1 rep per cell: the guard stopped the round)
+
+Planned 12 runs (3 reps x 2 flows x 2 arms, 24 passes). The guard counts the dearest run seen (0.2285) and stopped after rep 1:
+spent 0.6836 USD (4 runs, 8 passes) of 0.90; free tests 0.0018. Not rerun. One rep per cell: ratios are indicative, not a
+measurement; run-to-run spread on earlier flows was under 0.01 USD per cell, which is about the size of the F1b cost gap.
+
+| Flow | Arm | Pass | Cost USD | Final context | Turns | Failed edit-path + retries |
+|---|---|---|---|---|---|---|
+| F1b | R | 1 of 1 | 0.1531 | 41008 | 14 | 0 |
+| F1b | T | 1 of 1 | 0.1663 | 41531 | 6 | 0 |
+| F3b | R | 1 of 1 | 0.2285 | 42017 | 25 | 2 |
+| F3b | T | 1 of 1 | 0.1356 | 40408 | 8 | 0 |
+
+R/T against the existing gate numbers (information only; cost max 1.2, context max 1.05; earlier F1 cost 1.27, F3 cost 1.40):
+
+| Flow | Cost R/T | Context R/T | Pass R vs T | Failed + retries R vs T | Turns R/T |
+|---|---|---|---|---|---|
+| F1b | 0.92 | 0.99 | 1 vs 1 | 0 vs 0 | 2.33 |
+| F3b | 1.68 | 1.04 | 1 vs 1 | 2 vs 0 | 3.12 |
+
+## Per pass
+
+Input tokens are fresh plus cache read plus cache write summed over the pass's model calls.
+
+| Flow | Arm | Pass | Cost USD | Input tokens | Output tokens | Final context | Turns |
+|---|---|---|---|---|---|---|---|
+| F1b | R | 1 | 0.0801 | 202602 | 1020 | 41644 | 8 |
+| F1b | R | 2 | 0.0730 | 200537 | 585 | 41008 | 6 |
+| F1b | T | 1 | 0.0835 | 120383 | 2202 | 41555 | 3 |
+| F1b | T | 2 | 0.0828 | 120268 | 2148 | 41531 | 3 |
+| F1b | R/T | 1 | 0.96 | 1.68 | 0.46 | 1.00 | 2.67 |
+| F1b | R/T | 2 | 0.88 | 1.67 | 0.27 | 0.99 | 2.00 |
+| F3b | R | 1 | 0.1296 | 456302 | 2564 | 43871 | 15 |
+| F3b | R | 2 | 0.0989 | 322790 | 1550 | 42017 | 10 |
+| F3b | T | 1 | 0.0673 | 157468 | 657 | 40454 | 4 |
+| F3b | T | 2 | 0.0683 | 157309 | 770 | 40408 | 4 |
+| F3b | R/T | 1 | 1.93 | 2.90 | 3.90 | 1.08 | 3.75 |
+| F3b | R/T | 2 | 1.45 | 2.05 | 2.01 | 1.04 | 2.50 |
+
+## Verdict
+
+- F1b: files break even to a slight win (0.92 cost, 0.99 context, one rep). The saving is real but small and sits in output: T
+  writes the whole 1,250-token handover each pass (about 2,200 output tokens, flat across passes), R writes only the edits (1,020 then
+  585). R pays that back in input: every pass is a fresh process with its own `ToolSearch`, README-less draft read and `Edit` turns,
+  so it makes 2 to 3 times the turns and reads about 1.7x the input tokens (cache reads of the same 41k context per turn). Crossover:
+  R/T cost goes 0.96 on pass 1 to 0.88 on pass 2, so the margin grows with each pass because R's output shrinks to the edit while T's
+  stays the full text; per-pass fixed ceremony does not shrink. With one rep the 8 percent gap is about the run-to-run spread; the
+  honest reading is "no loss, small gain, not proven".
+- F3b: files lose (1.68 cost, 2 failed edit-path calls against 0). The 10-row proof is small: T's `proof_save` resend is about 700
+  output tokens, so there is little to save, and T needs 4 turns per pass. R needed 15 and 10 turns, 2.9x and 2.1x the input tokens.
+  Transcripts show behaviour that is partly the prompt fragment, not the file mechanism: in pass 1 the files fragment's "Write your
+  handover to handovers/draft-implement.md, then call submit" pulled the model away from a proof-only task. It edited the proof with
+  `sed`, called `submit`, then tried to `mv` a draft that did not exist (failed call), created `handovers/draft-work.md`, submitted
+  it, called `state step.finish` (not asked), and submitted the proof paths again. Pass 2 repeated the pattern in a milder form (a
+  failed `rm` of a missing draft, a second `submit`). It also used `Bash` (`sed`, `python3`) for edits instead of `Edit`. Pass 2 is
+  cheaper (1.45) because the model had less to discover, but the detour persists.
+- Overall: reading and editing a large artifact in place is where files should win, and the handover case shows the direction (R
+  output 27 to 46 percent of T's), but at about 1,250 tokens the saving is within what one extra `ToolSearch` and read turn costs. The
+  proof case does not show it at 10 rows. Cause for the loss in F3b is call count, as in every earlier flow, plus a handover-draft
+  instruction that does not belong in a proof task. Not proven by more reps: the guard stopped the round at one rep per cell.
+
+Spend of this round: 0.6836 USD (benchmark) plus 0.0018 (free tests).
