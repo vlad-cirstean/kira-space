@@ -67,6 +67,8 @@ type spikeRun struct {
 	shot    string
 	wt      string
 	ready   time.Time
+	variant string    // Part 1b files arm: FF, FL or FC; empty in Part 1
+	lib     *spikeLib // Part 1b fixtures; nil in Part 1
 
 	finishes []agentmcp.Finish
 	studio   *studioStub
@@ -426,6 +428,9 @@ func (r *spikeRun) setup(t *testing.T, fl spikeFlow) (mcpConfig string, addDirs 
 	}
 	writeShot(t, r.shot)
 
+	if r.arm == "F" && r.lib != nil {
+		return r.setupFiles1b(t, fl)
+	}
 	if r.arm == "F" {
 		repl := map[string]string{"__WT__": r.wt}
 		copyTree(t, filepath.Join(spikeFixtures, "task"), r.taskDir, repl)
@@ -463,7 +468,9 @@ func (r *spikeRun) setup(t *testing.T, fl spikeFlow) (mcpConfig string, addDirs 
 	}
 	r.studio = newStudioStub(seed)
 	space := &spikeSpace{br: spikeBranch{Repo: "app", Branch: "feature/x", Worktree: r.wt, ReadyAt: r.ready}}
-	if fl.id == "F4" {
+	if fl.id == "F4" && r.lib != nil {
+		space.children, space.chain = r.lib.children(), r.lib.chains()
+	} else if fl.id == "F4" {
 		space.children = []agentmcp.ChildTaskInfo{
 			{ID: "c-billing", Title: "Billing API", Kind: "task", Workflow: "default", Status: "running", Step: "review", CreatedAt: "2026-11-01T09:00:00Z",
 				LastHandover: "Migrated 14 endpoints to v2. Two tests still flaky: test_refund, test_proration."},
@@ -531,7 +538,15 @@ type spikeResultLine struct {
 // execute runs one real claude -p and scores it.
 func execute(t *testing.T, home string, fl spikeFlow, arm, model string, rep int) spikeRec {
 	t.Helper()
+	label := arm
 	r := &spikeRun{t: t, flow: fl.id, arm: arm}
+	if spike1bOn { // Part 1b: realistic fixtures; files arms are the variants FF, FL, FC
+		r.lib = loadSpikeLib(t)
+		if arm != "T" {
+			r.arm, r.variant = "F", arm
+		}
+	}
+	arm = label
 	cfg, addDirs, done := r.setup(t, fl)
 	defer done()
 	args := []string{"-p", fl.prompt(r), "--model", model, "--max-budget-usd", fmt.Sprint(spikeRunCap),

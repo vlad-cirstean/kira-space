@@ -1,0 +1,9 @@
+flowchart LR
+  A["Orders table (day D)"] --> B["Export in id order"]
+  B --> C["Match on order id and total in cents"]
+  L["Ledger lines (day D)"] --> C
+  C --> D{"Totals equal?"}
+  D -- "yes" --> E["Matched"]
+  D -- "no" --> F["Mismatch grouped by cause"]
+  F --> G["Admin report"]
+  E --> G

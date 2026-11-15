@@ -21,12 +21,19 @@ type spikeEditStats struct {
 	WrongFile     int // write to a read-only task file (README.md, task.yaml, state.yaml of the task folder)
 	ReadCalls     int // Read, Glob, Grep and read-only Bash (cat, ls, head, find, grep, ...)
 	ReadBytes     int // bytes of their results
+	DocBytes      int // result bytes of reads that touched README.md or AGENTS.md
+	HistReads     int // read calls that touched handovers or notes
+	HistBytes     int // their result bytes
+	SearchCalls   int // ToolSearch calls
+	SearchCtx     int // context growth caused by ToolSearch results
 }
 
 var (
 	shellWriteRe = regexp.MustCompile(`(>|\btee\b|\bcp\b|\bmv\b|sed\s+-i)`)
 	shellNoiseRe = regexp.MustCompile(`[0-9]*>&[0-9]|[0-9]*>\s*/dev/null`)
 	shellReadRe  = regexp.MustCompile(`\b(cat|ls|head|tail|find|grep|wc|stat)\b`)
+	docRe        = regexp.MustCompile(`(README|AGENTS)\.md`)
+	histRe       = regexp.MustCompile(`handovers|notes`)
 	readOnlyRe   = regexp.MustCompile(`/tasks/t-1/(README\.md|task\.yaml|state\.yaml)$`)
 )
 
@@ -50,6 +57,7 @@ func parseSpikeStream(raw string, rec *spikeRec) spikeResultLine {
 	}
 	uses := map[string]use{}
 	var order []string // tool_use ids in call order
+	var searchAt []int // ctx index of each model call that issued ToolSearch
 	failedFile := map[string]bool{}
 	var lastFailed *use
 	for _, line := range strings.Split(raw, "\n") {
@@ -94,6 +102,10 @@ func parseSpikeStream(raw string, rec *spikeRec) spikeResultLine {
 			for _, b := range bs {
 				if b.Type != "tool_use" {
 					continue
+				}
+				if b.Name == "ToolSearch" {
+					rec.SearchCalls++
+					searchAt = append(searchAt, len(ctxs)-1)
 				}
 				short := strings.TrimPrefix(strings.TrimPrefix(b.Name, "mcp__kira-space__"), "mcp__kira-studio__")
 				rec.Tools[short]++
@@ -146,6 +158,14 @@ func parseSpikeStream(raw string, rec *spikeRec) spikeResultLine {
 				txt := toolResultText(b)
 				if u.read {
 					rec.ReadBytes += len(txt)
+					where := u.file + " " + u.cmd
+					if docRe.MatchString(where) {
+						rec.DocBytes += len(txt)
+					}
+					if histRe.MatchString(where) {
+						rec.HistReads++
+						rec.HistBytes += len(txt)
+					}
 				}
 				bad := b.IsError
 				if !bad && (u.name == "mcp__kira-space__submit" || u.name == "mcp__kira-space__finish_step") {
@@ -166,6 +186,11 @@ func parseSpikeStream(raw string, rec *spikeRec) spikeResultLine {
 		}
 	}
 	_ = order
+	for _, i := range searchAt {
+		if i >= 0 && i+1 < len(ctxs) {
+			rec.SearchCtx += ctxs[i+1] - ctxs[i]
+		}
+	}
 	if n := len(ctxs); n > 0 {
 		rec.CtxFirst, rec.CtxFinal = ctxs[0], ctxs[n-1]
 		if n > 1 {

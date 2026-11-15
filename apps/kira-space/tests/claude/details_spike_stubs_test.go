@@ -39,6 +39,7 @@ type spikeStep struct {
 	ID, Description, View string
 	Rows                  [][]any // table
 	ImageOK               bool    // image step with a decodable JPEG
+	Text                  string  // diagram source or document data (Part 1b)
 }
 
 type spikeProof struct {
@@ -74,6 +75,8 @@ func checkJPEG(raw []byte) error {
 	}
 	return nil
 }
+
+var mermaidKinds = []string{"flowchart", "graph", "sequenceDiagram", "classDiagram", "stateDiagram", "erDiagram", "gantt", "journey", "gitGraph", "mindmap", "timeline"}
 
 var proofViews = []string{"table", "document", "keyvalue", "chart", "diagram", "image"}
 
@@ -221,6 +224,7 @@ func (st *studioStub) save(_ context.Context, req *mcp.CallToolRequest, a spikeS
 				if len(data) == 0 {
 					return toolErr("steps[%d].data is required.", i)
 				}
+				out.Text = string(data)
 			}
 		}
 		p.Steps = append(p.Steps, out)
@@ -338,6 +342,8 @@ type filesArm struct {
 	finish []string
 	kids   map[string]spikeChild // by folder slug, created through submit
 	srv    *httptest.Server
+	cons   bool   // consolidated layout: handovers.md and notes.md instead of one file each (Part 1b)
+	handed string // cons: the handed sections of handovers.md as seeded
 }
 
 type spikeChild struct {
@@ -496,7 +502,9 @@ func (fa *filesArm) scan(paths []string) []fileResult {
 			} else {
 				out = append(out, fileResult{rel, "restored", "read-only file edited; restored"})
 			}
-		case parts[0] == "notes":
+		case fa.cons && rel == "handovers.md":
+			out = append(out, fa.checkCons(abs, rel, sha))
+		case rel == "notes.md" || parts[0] == "notes":
 			fa.pend[rel] = true
 			out = append(out, fileResult{rel, "pending", "user note: waiting for the user's approval"})
 		case parts[0] == "handovers" && len(parts) == 2 && strings.HasPrefix(parts[1], "draft-") && strings.HasSuffix(parts[1], ".md"):
@@ -613,6 +621,20 @@ func readProof(dir string) (*spikeProof, string, error) {
 				return nil, s.Data, fmt.Errorf("step %s: %v", s.ID, err)
 			}
 			st.ImageOK = true
+		case "diagram":
+			first, _, _ := strings.Cut(strings.TrimSpace(string(b)), "\n")
+			if !strings.HasSuffix(s.Data, ".mmd") || !slices.ContainsFunc(mermaidKinds, func(k string) bool { return strings.HasPrefix(first, k) }) {
+				return nil, s.Data, fmt.Errorf("step %s: a diagram is a .mmd file whose first line starts with a Mermaid diagram type", s.ID)
+			}
+			st.Text = string(b)
+		case "document":
+			var d struct {
+				Documents []any `json:"documents"`
+			}
+			if json.Unmarshal(b, &d) != nil || len(d.Documents) == 0 {
+				return nil, s.Data, fmt.Errorf("step %s: document data is JSON {documents:[{body:{...}}]}", s.ID)
+			}
+			st.Text = string(b)
 		}
 		p.Steps = append(p.Steps, st)
 	}
@@ -673,7 +695,10 @@ func (fa *filesArm) finishStep(_ context.Context, _ *mcp.CallToolRequest, a fini
 	if a.Status != "done" && a.Status != "failed" && a.Status != "needs_input" {
 		return toolErr("status must be one of: done, failed, needs_input")
 	}
-	if a.Status == "done" && fileSHA(filepath.Join(fa.root, "handovers", "draft-"+fa.step+".md")) == "" {
+	if a.Status == "done" && fa.cons && fa.consDraft() == "" {
+		return toolErr("Write the ## draft-%s section at the end of handovers.md, then call finish_step.", fa.step)
+	}
+	if a.Status == "done" && !fa.cons && fileSHA(filepath.Join(fa.root, "handovers", "draft-"+fa.step+".md")) == "" {
 		return toolErr("Write handovers/draft-%s.md, then call finish_step.", fa.step)
 	}
 	res := fa.scan(nil)
@@ -763,4 +788,39 @@ func (fa *filesArm) checkChild(slug string) fileResult {
 		preview = preview[:200]
 	}
 	return fileResult{rel, "created", "child " + c.ID + " created. Brief preview: " + preview}
+}
+
+// consDraft returns the body of the current step's draft section in handovers.md (Part 1b layout).
+func (fa *filesArm) consDraft() string {
+	b, _ := os.ReadFile(filepath.Join(fa.root, "handovers.md"))
+	return consDraftOf(string(b), fa.step)
+}
+
+func consDraftOf(content, step string) string {
+	_, rest, ok := strings.Cut(content, "## draft-"+step)
+	if !ok {
+		return ""
+	}
+	_, body, _ := strings.Cut(rest, "\n")
+	return strings.TrimSpace(body)
+}
+
+// checkCons classifies handovers.md: the handed sections stay as seeded, the draft section is the agent's.
+func (fa *filesArm) checkCons(abs, rel, sha string) fileResult {
+	b, _ := os.ReadFile(abs)
+	txt := string(b)
+	switch {
+	case !strings.HasPrefix(txt, fa.handed):
+		return fileResult{rel, "rejected", "handed sections are read-only; only the draft section at the end is yours"}
+	case consDraftOf(txt, fa.step) == "":
+		if strings.Contains(txt[len(fa.handed):], "## draft-") {
+			return fileResult{rel, "rejected", fmt.Sprintf("The task is in step %s: name your draft section ## draft-%s.", fa.step, fa.step)}
+		}
+		fa.seen[rel], fa.base[rel] = sha, sha
+		return fileResult{rel, "accepted", "draft removed"}
+	case len(txt)-len(fa.handed) > 16<<10:
+		return fileResult{rel, "invalid", "draft over 16 KiB"}
+	}
+	fa.seen[rel], fa.base[rel] = sha, sha
+	return fileResult{rel, "accepted", ""}
 }
