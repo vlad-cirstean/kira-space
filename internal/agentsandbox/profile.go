@@ -111,6 +111,15 @@ func Profile(p Policy, rt Runtime) string {
 		gitRules(b, p)
 	}
 
+	if len(p.DenyWrite) > 0 {
+		b.section("read-only files")
+		lits := make([]string, len(p.DenyWrite))
+		for i, f := range p.DenyWrite {
+			lits[i] = lit(f)
+		}
+		b.rule("deny", "file-write*", lits...)
+	}
+
 	protectWrites(b, rt)
 
 	b.section("network")
