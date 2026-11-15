@@ -112,16 +112,13 @@ type chartPieOut struct {
 	Slices []chartOutSlice `json:"slices"`
 }
 
-// chartShape is the whole chart format; the README holds no chart schema, so a rejected chart carries it.
-const chartShape = `Chart shape: {type: bar|line|area|scatter|pie, x: {type: category|time|value, name}, y: {name, unit}, stacked, horizontal, series: [{name, points: [[x, y]]}]}; pie takes {type: pie, unit, slices: [{name, value}]} instead of x, y and series. Example: {type: bar, x: {type: category}, series: [{name: errors, points: [[api, 3], [web, 5]]}]}`
-
 func checkChart(data json.RawMessage) (any, error) {
 	var in chartIn
 	if err := decodeStrict(data, &in); err != nil {
-		return nil, invalid("%v. %s", err, chartShape)
+		return nil, err
 	}
 	if in.Type == nil {
-		return nil, invalid("data.type is required: one of bar, line, area, scatter, pie. %s", chartShape)
+		return nil, invalid("data.type is required: one of bar, line, area, scatter, pie")
 	}
 	switch *in.Type {
 	case chartPie:

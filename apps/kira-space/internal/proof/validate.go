@@ -5,6 +5,7 @@ package proof
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -124,7 +125,7 @@ func ValidateStep(view string, data json.RawMessage) ([]byte, error) {
 		return nil, invalid("view must be one of table, document, keyvalue, chart, diagram, image")
 	}
 	if err != nil {
-		return nil, err
+		return nil, withShape(view, err)
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -134,6 +135,29 @@ func ValidateStep(view string, data json.RawMessage) ([]byte, error) {
 		return nil, invalid("data is %d KiB serialized; the limit is %d MiB per step", len(raw)>>10, maxPayloadBytes>>20)
 	}
 	return raw, nil
+}
+
+// viewShapes are the data formats of each view. The README holds none, so a rejected step carries its view's.
+var viewShapes = map[string]string{
+	ViewTable:    `Table shape: {columns: [{name, type: number|text|boolean|temporal|json|other}], rows: [[value per column]]}`,
+	ViewDocument: `Document shape: {documents: [{id, body}]} where body is any JSON, for example {documents: [{id: why, body: {text: "..."}}]}`,
+	ViewKeyValue: `Key-value shape: {entries: [{field, value}]}`,
+	ViewChart:    `Chart shape: {type: bar|line|area|scatter|pie, x: {type: category|time|value, name}, y: {name, unit}, stacked, horizontal, series: [{name, points: [[x, y]]}]}; pie takes {type: pie, unit, slices: [{name, value}]} instead of x, y and series. Example: {type: bar, x: {type: category}, series: [{name: errors, points: [[api, 3], [web, 5]]}]}`,
+	ViewDiagram:  `Diagram shape: Mermaid text as a block scalar, "inline: |" then the indented source`,
+}
+
+// withShape appends the view's format to a rejection of the data's shape.
+func withShape(view string, err error) error {
+	var ie *InvalidError
+	if !errors.As(err, &ie) {
+		return err
+	}
+	shape := viewShapes[view]
+	if shape == "" || !(strings.HasPrefix(ie.Msg, "data is not valid for this view") || strings.HasPrefix(ie.Msg, "data has trailing") ||
+		view == ViewChart && strings.HasPrefix(ie.Msg, "data.type")) {
+		return err
+	}
+	return invalid("%s. %s", ie.Msg, shape)
 }
 
 func decodeStrict(data json.RawMessage, into any) error {
