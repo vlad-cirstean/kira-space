@@ -17,7 +17,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P642 | ADE task list: today background, day start/end left bar, today bar differs | Done |
 | P643 Part 1 | Details on disk: spike, files vs tools on real `claude`; design plan, user approves before the build | Done |
 | P643 Part 2 | Details on disk: foundation (store seam, `task_files`, submit core, migration framework, proof validator export, README generator, task folder grant, bench harness) | Done |
-| P643 Part 3 | Details on disk: notes, handovers, links as files, `submit` tool, `finish_step` change, approvals, disk banner, migration exporters, prompts; round F1 | Todo |
+| P643 Part 3 | Details on disk: notes, handovers, links as files, `submit` tool, `finish_step` change, approvals, disk banner, migration exporters, prompts; round F1 | Done |
 | P643 Part 4 | Details on disk: proofs as files written by the agent and sent with `submit` (no proof tool), image formats, single-proof window, retention removed, proof migration (Stream A); round F2, F3 | Todo |
 | P643 Part 5 | Details on disk: `state.yaml` and `task.yaml`, branch, lease, cancel tools, tool removals, orchestrator chain reads, children add-dir (Stream B); round F4 to F6, final benchmark | Todo |
 | P644 | Chapter non-UI full run, 2 code review rounds | Todo |
@@ -212,7 +212,7 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
 
 ### P643 Part 3 Result
 
-Gate not met, so the row stays Todo. Round F1 (`plans/P643-bench-results.md`): round 1 cost 1.42x, context 1.05x; after fixing the files fragment (no forced README read) and loading only `finish_step` and `submit`, round 2 cost 1.32x, context 0.98x, edit failures 0.67 against 0.00. Turns 7 against 4: `ToolSearch`, draft write, `submit`. Spend 0.90 USD. The next owner decides how to close the cost gap (see the results file); the gate was not relaxed.
+F1 gate deferred to the final benchmark, cost 1.32 vs 1.2 and edit-failure cause unconfirmed, recorded as open. Round F1 (`plans/P643-bench-results.md`): round 1 cost 1.42x, context 1.05x; after fixing the files fragment (no forced README read) and loading only `finish_step` and `submit`, round 2 cost 1.32x, context 0.98x, edit failures 0.67 against 0.00. Turns 7 against 4: `ToolSearch`, draft write, `submit`. Spend 0.90 USD. The next owner decides how to close the cost gap (see the results file); the gate was not relaxed.
 
 - Mirror model: UI actions keep their DB writes, then `mirrorTask` renders notes, handovers, links and README through `Service.Write`. It never overwrites unsettled disk content. README is forced. Created tasks and child briefs mirror at creation. Caches change only by sync and accept.
 - `submit` tool (`paths`, `finished`, `reason`): count line first (`accepted N, pending user N, invalid N`), then per-item lines. A change to a user-owned file needs a `reason` and waits as one `details.edit:<taskId>` approval, on desktop and phone (`options.approved` lists the paths; nil approves all). Deny restores the file.
