@@ -30,6 +30,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
@@ -546,14 +548,14 @@ func benchSetupRProof(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string
 	board := &benchBoardR{TaskBoard: f.W.AdeBoard}
 	want := "accepted, new proof"
 	if fl.id == "F3" {
-		copyTree(t, filepath.Join(benchFixtures, "f3", "proof"), filepath.Join(folder, "proofs", "orders-match-ledger"), nil)
+		seedProofR(t, filepath.Join(folder, "proofs", "orders-match-ledger"))
 		out, err := f.W.AdeBoard.Submit(ctx, agentmcp.SpaceCall{TaskID: task.ID, SessionID: "seed"}, agentmcp.SubmitArgs{})
 		if err != nil || !strings.Contains(out, "accepted, new proof") {
 			t.Fatalf("seed submit: %q %v", out, err)
 		}
 		want = "pending user, change to"
 	}
-	r.realSeen = func() (bool, string) { return board.seen(want) }
+	r.realProof = func() (*spikeProof, bool, string) { return storedProof(f, task.ID, board, want) }
 	srv := agentmcp.NewServer(agentmcp.Options{
 		Dir: filepath.Join(r.root, "mcp"), Space: board, Orchestrator: board, Outcomes: board,
 		OnFinish: func(_ string, f agentmcp.Finish) { r.finishes = append(r.finishes, f) },
@@ -567,4 +569,62 @@ func benchSetupRProof(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string
 		t.Fatal(err)
 	}
 	return cfg, []string{folder}, func() { release(); _ = srv.Close() }
+}
+
+// storedProof reads the proof Kira holds for the task: the pending revision when an edit waits, else the
+// current one. seen is whether a submit answered for it with the wanted line.
+func storedProof(f *adeFixture, taskID string, board *benchBoardR, want string) (*spikeProof, bool, string) {
+	list, err := f.W.AdeTask.TaskProofs(ctx, adewire.TaskArgs{TaskID: taskID})
+	if err != nil || len(list.Proofs) == 0 {
+		return nil, false, "no proof stored"
+	}
+	d, err := f.W.Proof.Session(bridge.ProofSessionArgs{SessionID: list.Proofs[0].ProofID})
+	if err != nil {
+		return nil, false, err.Error()
+	}
+	rev := d.Current
+	if d.Pending != nil {
+		rev = *d.Pending
+	}
+	seen, reason := board.seen(want)
+	p := &spikeProof{Name: d.Name, Summary: d.Summary, Reason: reason, Pending: d.Pending != nil}
+	for _, m := range rev.Steps {
+		st, err := f.W.Proof.Step(bridge.ProofStepArgs{SessionID: d.ID, Rev: rev.Rev, Ordinal: m.Ordinal})
+		if err != nil {
+			return nil, false, err.Error()
+		}
+		ss := spikeStep{View: m.View, Description: m.Description}
+		switch m.View {
+		case "table":
+			ss.Rows, _ = decodeTable(st.Data)
+		case "diagram":
+			var dg struct {
+				Source string `json:"source"`
+			}
+			_ = json.Unmarshal(st.Data, &dg)
+			ss.Text = dg.Source
+		default:
+			ss.Text = string(st.Data)
+		}
+		p.Steps = append(p.Steps, ss)
+	}
+	return p, seen, ""
+}
+
+// seedProofR writes the F3 starting proof in the real proof.md format from the F3 fixtures: the table and
+// document as data files, the diagram inline.
+func seedProofR(t *testing.T, dir string) {
+	t.Helper()
+	src := filepath.Join(benchFixtures, "f3", "proof")
+	for _, n := range []string{"totals.json", "explain.json"} {
+		writeFile(t, filepath.Join(dir, n), string(mustRead(t, filepath.Join(src, n))))
+	}
+	var flow strings.Builder
+	for _, l := range strings.Split(strings.TrimSpace(string(mustRead(t, filepath.Join(src, "flow.mmd")))), "\n") {
+		flow.WriteString("      " + l + "\n")
+	}
+	writeFile(t, filepath.Join(dir, "proof.md"), "---\nname: Orders match ledger\nsummary: All 20 orders of the day match their ledger lines on id and total.\nsteps:\n"+
+		"  - id: totals\n    description: Orders and ledger agree on all 20 rows\n    view: table\n    data: totals.json\n"+
+		"  - id: flow\n    description: The matching path the reconcile command follows\n    view: diagram\n    inline: |\n"+flow.String()+
+		"  - id: why\n    description: Why the match holds and what a late edit does\n    view: document\n    data: explain.json\n---\n")
 }

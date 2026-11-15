@@ -75,8 +75,8 @@ type spikeRun struct {
 	studio   *studioStub
 	space    *spikeSpace
 	fa       *filesArm
-	// realSeen, set by the real-app arm R, reports whether a submit answered for the proof and the reason sent.
-	realSeen func() (bool, string)
+	// realProof, set by the real-app arm R, reads the proof Kira stored (the pending edit when there is one).
+	realProof func() (*spikeProof, bool, string)
 }
 
 type spikeFlow struct {
@@ -129,18 +129,8 @@ func (r *spikeRun) folderLine() string {
 
 // finalProof reads the proof an arm-F run left in the task folder and whether a submit saw it.
 func (r *spikeRun) finalProof() (*spikeProof, bool, string) {
-	if r.realSeen != nil {
-		ents, _ := os.ReadDir(filepath.Join(r.taskDir, "proofs"))
-		for _, e := range ents {
-			p, _, err := readProof(filepath.Join(r.taskDir, "proofs", e.Name()))
-			if err != nil {
-				return nil, false, err.Error()
-			}
-			seen, reason := r.realSeen()
-			p.Reason = reason
-			return p, seen, ""
-		}
-		return nil, false, "no proof folder"
+	if r.realProof != nil {
+		return r.realProof()
 	}
 	ents, _ := os.ReadDir(filepath.Join(r.taskDir, "proofs"))
 	for _, e := range ents {
