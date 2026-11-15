@@ -1,0 +1,12 @@
+# Read-only. Kira rewrites this file. Change state only with Kira tools: branches, lease, cancel_operation, finish_step.
+rev: 9
+task: {id: t-1, kind: orchestrator, status: running, step: {id: orchestrate, name: Orchestrate, position: 1, of: 1}, workflow: default}
+repos: []
+leases: []
+operations: []
+runs: []
+chain:
+  children:
+    - {id: c-billing, title: Billing API, status: running, step: review, finished: false, archived: false, lastHandover: ../c-billing/handovers/0002-implement-to-review.md, preview: "Migrated 14 endpoints to v2. Two tests still flaky: test_refund, test_proration."}
+    - {id: c-settings, title: Settings UI, status: running, step: review, finished: false, archived: false, lastHandover: ../c-settings/handovers/0002-implement-to-review.md, preview: "Replaced the nav bar with the new component. Accessibility audit still open."}
+pending: []
