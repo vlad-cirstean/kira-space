@@ -572,16 +572,8 @@ func (s *Service) DeleteProof(ctx context.Context, taskID, slug string) error {
 	if err != nil {
 		return err
 	}
-	entries, err := st.List(ctx, store.ListOptions{MaxDepth: MaxDepth, MaxFiles: MaxFilesPerTask})
-	if err != nil && !errors.Is(err, store.ErrTooManyFiles) {
+	if err := st.Remove(ctx, strings.TrimSuffix(proofFolder(slug), "/")); err != nil && !errors.Is(err, store.ErrNotExist) {
 		return err
-	}
-	for _, e := range entries {
-		if !e.Dir && Classify(e.Rel).Slug == slug {
-			if err := st.Remove(ctx, e.Rel); err != nil && !errors.Is(err, store.ErrNotExist) {
-				return err
-			}
-		}
 	}
 	return s.cfg.Index.InTx(func(tx Tx) error {
 		u, err := s.cfg.Proof.Cache.ByTaskSlug(tx.Querier(), taskID, slug)
