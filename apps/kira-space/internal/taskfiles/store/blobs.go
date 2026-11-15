@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+	"time"
 )
 
 // Blobs is a content-addressed store of accepted file bytes, keyed by SHA-256. A proof folder holds
@@ -39,11 +41,16 @@ func (b *Blobs) path(sum string) (string, error) {
 	return filepath.Join(b.root, sum[:2], sum), nil
 }
 
-// Put stores data and returns its key; a present blob is not rewritten.
+// Put stores data and returns its key; a present blob is not rewritten, only touched: a Sweep must
+// not take a blob a submit has just reused and not yet committed.
 func (b *Blobs) Put(data []byte) (string, error) {
 	sum := SumOf(data)
 	p, _ := b.path(sum)
 	if _, err := os.Stat(p); err == nil {
+		now := time.Now()
+		if err := os.Chtimes(p, now, now); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return "", err
+		}
 		return sum, nil
 	}
 	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
@@ -89,4 +96,42 @@ func (b *Blobs) Remove(sum string) error {
 		return err
 	}
 	return nil
+}
+
+// Sweep deletes every blob whose key is not in live and whose mtime is before cutoff, plus stale
+// temp files of an interrupted Put. The age gate covers a blob stored by a submit that has not
+// committed its index rows yet. It returns the number of blobs removed.
+func (b *Blobs) Sweep(live map[string]struct{}, cutoff time.Time) (int, error) {
+	removed := 0
+	err := filepath.WalkDir(b.root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		name := d.Name()
+		if _, ok := live[name]; ok && blobKey.MatchString(name) {
+			return nil
+		}
+		if !blobKey.MatchString(name) && !strings.HasPrefix(name, ".put-") {
+			return nil
+		}
+		fi, err := d.Info()
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil
+			}
+			return err
+		}
+		if !fi.ModTime().Before(cutoff) {
+			return nil
+		}
+		if err := os.Remove(p); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		removed++
+		return nil
+	})
+	return removed, err
 }

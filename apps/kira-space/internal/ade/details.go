@@ -87,6 +87,36 @@ func (b *TaskBoard) initDetails() {
 	df.proofIndex = b.proofIndex
 	df.svc = taskfiles.New(cfg)
 	b.files = df
+	b.sweepBlobs()
+}
+
+// blobGrace is how old (file mtimes are wall time, so the cutoff ignores the board clock) an unreferenced blob must be before a sweep takes it: a submit stores its blobs
+// before it commits the rows that point at them.
+const blobGrace = time.Hour
+
+// sweepBlobs deletes the blobs no task file or proof step references, in the background.
+func (b *TaskBoard) sweepBlobs() {
+	df := b.files
+	if df == nil || df.blobs == nil || b.deps.TaskFiles == nil {
+		return
+	}
+	b.goTracked(func() { sweepBlobs(df.blobs, b.deps.TaskFiles, time.Now().Add(-blobGrace)) })
+}
+
+func sweepBlobs(blobs *store.Blobs, files *repos.TaskFilesRepo, cutoff time.Time) {
+	live, err := files.LiveBlobKeys()
+	if err != nil {
+		slog.Warn("ade: blob sweep: read live keys", "scope", "ade", "err", err)
+		return
+	}
+	n, err := blobs.Sweep(live, cutoff)
+	if err != nil {
+		slog.Warn("ade: blob sweep", "scope", "ade", "removed", n, "err", err)
+		return
+	}
+	if n > 0 {
+		slog.Info("ade: blob sweep", "scope", "ade", "removed", n)
+	}
 }
 
 func (df *detailsFiles) open(taskID string) (store.Store, error) {

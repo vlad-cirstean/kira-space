@@ -2,6 +2,7 @@ package repos
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"github.com/huandu/go-sqlbuilder"
@@ -73,6 +74,46 @@ func (r *TaskFilesRepo) Pending(taskID string) ([]model.TaskFile, error) {
 		f, err := scanTaskFile(rows)
 		return f, true, err
 	})
+}
+
+// LiveBlobKeys is every blob key an index row still points at: the accepted copy of each task file
+// (archived tasks included) and the file of every image step of every proof revision.
+func (r *TaskFilesRepo) LiveBlobKeys() (map[string]struct{}, error) {
+	live := map[string]struct{}{}
+	c := kiraschema.TaskFiles
+	sb := r.Dialect.Select(c.AcceptedSha256).From(c.Table)
+	sb.Where(sb.NotEqual(c.AcceptedSha256, ""))
+	rows, err := sqlb.Query(r.DB, sb)
+	keys, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (string, bool, error) {
+		var k string
+		return k, true, rows.Scan(&k)
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, k := range keys {
+		live[k] = struct{}{}
+	}
+	st := kiraschema.ProofSteps
+	pb := r.Dialect.Select(st.Payload).From(st.Table)
+	pb.Where(pb.Equal(st.View, "image"))
+	rows, err = sqlb.Query(r.DB, pb)
+	payloads, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) ([]byte, bool, error) {
+		var p []byte
+		return p, true, rows.Scan(&p)
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, raw := range payloads {
+		var m struct {
+			SHA256 string `json:"sha256"`
+		}
+		if json.Unmarshal(raw, &m) == nil && m.SHA256 != "" {
+			live[m.SHA256] = struct{}{}
+		}
+	}
+	return live, nil
 }
 
 // Intents lists every unfinished write intent, oldest first.

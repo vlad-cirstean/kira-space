@@ -208,6 +208,7 @@ func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string) error {
 	}
 	b.closeHandoverPrompt(taskID)
 	b.removeTaskDir(taskID)
+	b.sweepBlobs()
 	b.snapshotReviewComments(ctx, tc.branches)
 	b.notifyBoard()
 	b.notifySessions()
