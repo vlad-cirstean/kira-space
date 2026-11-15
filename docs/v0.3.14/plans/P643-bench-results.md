@@ -274,3 +274,5 @@ Input tokens are fresh plus cache read plus cache write summed over the pass's m
   instruction that does not belong in a proof task. Not proven by more reps: the guard stopped the round at one rep per cell.
 
 Spend of this round: 0.6836 USD (benchmark) plus 0.0018 (free tests).
+
+The files fragment's unconditional handover instruction is fixed (commit c0f2960cf); the F3b and F3 numbers predate the fix and were not rerun by decision.

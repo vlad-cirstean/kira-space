@@ -19,7 +19,7 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P643 Part 2 | Details on disk: foundation (store seam, `task_files`, submit core, migration framework, proof validator export, README generator, task folder grant, bench harness) | Done |
 | P643 Part 3 | Details on disk: notes, handovers, links as files, `submit` tool, `finish_step` change, approvals, disk banner, migration exporters, prompts; round F1 | Done |
 | P643 Part 4 | Details on disk: proofs as files written by the agent and sent with `submit` (no proof tool), image formats, single-proof window, retention removed, proof migration (Stream A); round F2, F3 | Done |
-| P643 Part 5 | Details on disk: `state.yaml` and `task.yaml`, branch, lease, cancel tools, tool removals, orchestrator chain reads, children add-dir (Stream B); round F4 to F6, final benchmark | Todo, gate not met |
+| P643 Part 5 | Details on disk: `state.yaml` and `task.yaml`, branch, lease, cancel tools, tool removals, orchestrator chain reads, children add-dir (Stream B); round F4 to F6, final benchmark | Done |
 | P644 | Chapter non-UI full run, 2 code review rounds | Todo |
 | P645 | Close chapter | Todo |
 
@@ -239,7 +239,7 @@ Built and tested; benchmark gate not met on F2 and F3, reported not gated, so th
 
 ### P643 Part 5 Result
 
-Built and tested; the benchmark gate is not met, so the row stays Todo. Round F4, F5, F6, F1 (`plans/P643-bench-results.md`): F4 passes (cost 0.89, context 0.89). F5 cost 1.53, F6 cost 1.50 and context 1.05 (bound 1.0), F1 cost 1.27. Cause: the files surface adds a draft write, `submit` and `step.finish` that the tool baseline never runs (7 to 8 turns against 3 to 5). The gate was not relaxed. Spend 2.49 USD.
+Built and tested; the benchmark gate is not met, so the row stays Todo. Round F4, F5, F6, F1 (`plans/P643-bench-results.md`): F4 passes (cost 0.89, context 0.89). F5 cost 1.53, F6 cost 1.50 and context 1.05 (bound 1.0), F1 cost 1.27. Cause: the files surface adds a draft write, `submit` and `step.finish` that the tool baseline never runs (7 to 8 turns against 3 to 5). The gate was not relaxed. Spend 2.49 USD. Row closed Done by user decision with the cost gaps recorded as open; F1b/F3b read-and-edit flows measured separately (P643-bench-results.md).
 
 - One `state` tool, nested `{action, args}`: `repo.declare`, `branch.request`, `branch.rename`, `branch.change`, `lease.acquire`, `lease.release`, `operation.cancel`, `remote.fetch`, `branch.push`, `review.reply`, `step.finish`. Reply is `{summary, items[{id, status, message, fix}], next, notices}`; a call the agent can fix is an `invalid` item with a `fix` example, `isError` is for Kira faults only.
 - Every Space grant gets `submit` and `state`; an orchestrator adds `create_task` (30 min wait). `step.finish` replaces `finish_step` there and needs a draft handover. Removed: `task_info`, `list_tasks`, `task_chain`, `run_outcome`, `branch_status`, `lease_status`, `operations` and the per-action tools.
