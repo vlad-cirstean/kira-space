@@ -153,12 +153,24 @@ func TestSubmitFolderLimits(t *testing.T) {
 	if f := r.find("random.txt"); f.Status != StatusIgnored {
 		t.Fatalf("stray: %+v", f)
 	}
+	// Sorts after the cap: listed nowhere, still on disk, so a truncated listing must not delete it.
+	const past = "notes/20261101T095900-zzz.md"
+	e.seed(past, "kept\n")
 	for i := 0; i < MaxFilesPerTask+1; i++ {
 		e.disk(fmt.Sprintf("notes/20261101T0900%02d-%03d.md", i%60, i), "n")
 	}
 	r = e.submit(RoleRun, "s1", "")
 	if f := r.find("."); f.Status != StatusInvalid || !strings.Contains(f.Message, "more than 500 files") {
 		t.Fatalf("501 files: %+v", f)
+	}
+	if f := r.find(past); f.Status != "absent" {
+		t.Fatalf("unlisted indexed file handled: %+v", f)
+	}
+	if _, ok := e.h.get(past); !ok {
+		t.Fatal("unlisted indexed file dropped from the cache")
+	}
+	if f := e.submit(RoleRun, "s1", "", past).find(past); f.Status != StatusInvalid || !strings.Contains(f.Message, "not read") {
+		t.Fatalf("named unlisted file: %+v", f)
 	}
 }
 

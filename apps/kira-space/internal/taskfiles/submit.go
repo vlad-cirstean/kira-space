@@ -157,7 +157,7 @@ func (s *Service) Submit(ctx context.Context, req Request) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	paths, bad := s.targets(req, run.present, run.byPath)
+	paths, bad := s.targets(ctx, st, req, run.present, run.byPath, run.truncated)
 	run.out = append(run.out, bad...)
 	run.over = s.sizeProblems(entries)
 	units := run.units(paths)
@@ -177,14 +177,17 @@ type submitRun struct {
 	byPath  map[string]model.TaskFile
 	present map[string]store.Entry
 	over    map[string]string
-	out     []FileResult
-	pend    PendingSubmit
+	// truncated: the listing stopped at the file cap, so a path missing from present is unknown, not gone.
+	truncated bool
+	out       []FileResult
+	pend      PendingSubmit
 }
 
 // list reads the folder; a folder over the file cap is one invalid result, not an error.
 func (r *submitRun) list() ([]store.Entry, error) {
 	entries, err := r.st.List(r.ctx, store.ListOptions{MaxDepth: MaxDepth, MaxFiles: MaxFilesPerTask})
 	if errors.Is(err, store.ErrTooManyFiles) {
+		r.truncated = true
 		r.out = append(r.out, FileResult{Path: ".", Status: StatusInvalid,
 			Message: fmt.Sprintf("the task folder holds more than %d files; remove some.", MaxFilesPerTask)})
 	} else if err != nil {
@@ -216,9 +219,25 @@ func (r *submitRun) units(paths []string) map[string]bool {
 	}
 	for _, slug := range unitSlugs(paths) {
 		done[slug] = true
+		if r.truncated && r.unitUnlisted(slug) {
+			continue
+		}
 		r.add(r.s.unit(r.ctx, r.st, r.req, slug, r.present, r.byPath, r.over))
 	}
 	return done
+}
+
+// unitUnlisted is whether an indexed file of the proof folder is outside a truncated listing, so the
+// unit cannot tell a deleted file from an unlisted one.
+func (r *submitRun) unitUnlisted(slug string) bool {
+	for rel := range r.byPath {
+		if Classify(rel).Slug == slug {
+			if _, ok := r.present[rel]; !ok {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // files runs every other path on its own, skipping the files of a proof unit.
@@ -271,7 +290,9 @@ func (r *submitRun) finish() error {
 }
 
 // targets are the paths a call looks at, in path order, and an invalid result per unusable named path.
-func (s *Service) targets(req Request, present map[string]store.Entry, rows map[string]model.TaskFile) ([]string, []FileResult) {
+// With a truncated listing a named path outside it is checked with Stat and indexed paths outside it
+// are left alone.
+func (s *Service) targets(ctx context.Context, st store.Store, req Request, present map[string]store.Entry, rows map[string]model.TaskFile, truncated bool) ([]string, []FileResult) {
 	var out []string
 	var bad []FileResult
 	if len(req.Paths) > 0 {
@@ -279,6 +300,12 @@ func (s *Service) targets(req Request, present map[string]store.Entry, rows map[
 			if err := store.ValidRel(p); err != nil {
 				bad = append(bad, FileResult{Path: p, Status: StatusInvalid, Message: p + ": not a path inside the task folder; use a relative path like notes/a.md."})
 				continue
+			}
+			if truncated && !hasEntry(p, present, nil) {
+				if _, err := st.Stat(ctx, strings.TrimSuffix(p, "/")); err == nil {
+					bad = append(bad, FileResult{Path: p, Status: StatusInvalid, Message: fmt.Sprintf("%s: not read, the task folder holds more than %d files; remove some.", p, MaxFilesPerTask)})
+					continue
+				}
 			}
 			if !hasEntry(p, present, rows) {
 				bad = append(bad, FileResult{Path: p, Status: StatusInvalid, Message: p + ": no such file in the task folder."})
@@ -295,7 +322,7 @@ func (s *Service) targets(req Request, present map[string]store.Entry, rows map[
 			}
 		}
 		for p := range rows {
-			if _, ok := present[p]; !ok {
+			if _, ok := present[p]; !ok && !truncated {
 				out = append(out, p)
 			}
 		}
