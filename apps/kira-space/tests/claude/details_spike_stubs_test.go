@@ -118,19 +118,39 @@ func newStudioStub(seed *spikeProof) *studioStub {
 	if seed != nil {
 		st.proofs[strings.ToLower(seed.Name)] = seed
 	}
-	src := llmprompts.Defaults()
-	saveSch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[spikeSaveArgs](src, llmprompts.DbmcpToolProofSave.ID(), nil), "name", "steps")
-	saveSch.Properties["steps"].MinItems = jsonschema.Ptr(1)
-	step := saveSch.Properties["steps"].Items
-	step.Properties["view"].Enum = []any{"table", "document", "keyvalue", "chart", "diagram", "image"}
-	step.Properties["language"].Enum = []any{"sql", "json", "shell", "text"}
-	step.Properties["keepOrdinal"].Minimum = jsonschema.Ptr(1.0)
-	step.Properties["replacesOrdinal"].Minimum = jsonschema.Ptr(1.0)
+	// The proof tools are gone from the product: arm T serves the frozen texts and schemas.
+	var frozen benchBaseline
+	raw, err := os.ReadFile(filepath.Join(benchFixtures, "tools-baseline.json"))
+	if err != nil {
+		panic(err)
+	}
+	if err := json.Unmarshal(raw, &frozen); err != nil {
+		panic(err)
+	}
 	mk := func() *mcp.Server {
 		srv := mcp.NewServer(&mcp.Implementation{Name: "kira-studio", Version: "1"}, nil)
-		mcp.AddTool(srv, &mcp.Tool{Name: "proof_save", Description: llmprompts.DbmcpToolProofSave.Text(src, llmprompts.NoVars{}), InputSchema: saveSch}, st.save)
-		mcp.AddTool(srv, &mcp.Tool{Name: "proof_list", Description: llmprompts.DbmcpToolProofList.Text(src, llmprompts.NoVars{}),
-			InputSchema: llmprompts.InputSchema[spikeListArgs](src, llmprompts.DbmcpToolProofList.ID(), nil)}, st.list)
+		for _, tl := range frozen.Roles["run-proof"]["kira-studio"] {
+			switch tl.Name {
+			case "proof_save":
+				srv.AddTool(tl, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+					var a spikeSaveArgs
+					if err := json.Unmarshal(req.Params.Arguments, &a); err != nil {
+						return errResult(err.Error()), nil
+					}
+					res, out, err := st.save(ctx, req, a)
+					return studioReply(res, out, err)
+				})
+			case "proof_list":
+				srv.AddTool(tl, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+					var a spikeListArgs
+					if err := json.Unmarshal(req.Params.Arguments, &a); err != nil {
+						return errResult(err.Error()), nil
+					}
+					res, out, err := st.list(ctx, req, a)
+					return studioReply(res, out, err)
+				})
+			}
+		}
 		return srv
 	}
 	srv := mk()

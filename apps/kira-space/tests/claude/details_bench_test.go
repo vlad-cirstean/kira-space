@@ -23,11 +23,13 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
@@ -117,6 +119,9 @@ func (s *benchSpaceR) SubmitForFinish(_ context.Context, _ agentmcp.SpaceCall, o
 // granted with --add-dir.
 func benchSetupR(*testing.T, benchBaseline) func(*testing.T, *spikeRun, spikeFlow) (string, []string, func()) {
 	return func(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string, func()) {
+		if fl.id == "F2" || fl.id == "F3" {
+			return benchSetupRProof(t, r, fl)
+		}
 		// The folder Part 3 leaves: the real README, the task's notes and handed handovers.
 		writeFile(t, filepath.Join(r.taskDir, "README.md"), taskfiles.Readme(taskfiles.ReadmeInput{TaskID: "t-1", Title: "Orders ledger", Step: "implement"}))
 		seedHistory(t, filepath.Join(benchFixtures, "t1"), r.taskDir, false)
@@ -485,4 +490,81 @@ func TestDetailsBenchFrozenServes(t *testing.T) {
 		_ = sess.Close()
 		done()
 	}
+}
+
+// benchBoardR is the real task board with its submit calls recorded: the proof oracles need what the
+// agent sent and what Kira answered.
+type benchBoardR struct {
+	*ade.TaskBoard
+	mu      sync.Mutex
+	replies []string
+	reason  string
+}
+
+func (b *benchBoardR) Submit(ctx context.Context, call agentmcp.SpaceCall, in agentmcp.SubmitArgs) (string, error) {
+	out, err := b.TaskBoard.Submit(ctx, call, in)
+	b.mu.Lock()
+	b.replies = append(b.replies, out)
+	if strings.TrimSpace(in.Reason) != "" {
+		b.reason = in.Reason
+	}
+	b.mu.Unlock()
+	return out, err
+}
+
+func (b *benchBoardR) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall, ok bool) (agentmcp.SubmitFinish, error) {
+	out, err := b.TaskBoard.SubmitForFinish(ctx, call, ok)
+	b.mu.Lock()
+	b.replies = append(b.replies, out.Reply)
+	b.mu.Unlock()
+	return out, err
+}
+
+// seen reports whether a submit answered for the proof unit with the wanted line.
+func (b *benchBoardR) seen(want string) (bool, string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for _, rp := range b.replies {
+		if strings.Contains(rp, want) {
+			return true, b.reason
+		}
+	}
+	return false, b.reason
+}
+
+// benchSetupRProof runs F2 and F3 on a real app: a real task folder, the real submit with the proof
+// unit, and the board as the grant's tools. F3 starts from an accepted proof.
+func benchSetupRProof(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string, func()) {
+	f := newAdeFixture(t, nil)
+	f.saveWorkflow(t, "flow", manualStepYAML)
+	task := f.createTask(t, "flow")
+	folder, err := f.W.AdeBoard.TaskFolder(task.ID)
+	if err != nil || folder == "" {
+		t.Fatalf("TaskFolder: %q %v", folder, err)
+	}
+	r.taskDir = folder
+	board := &benchBoardR{TaskBoard: f.W.AdeBoard}
+	want := "accepted, new proof"
+	if fl.id == "F3" {
+		copyTree(t, filepath.Join(benchFixtures, "f3", "proof"), filepath.Join(folder, "proofs", "orders-match-ledger"), nil)
+		out, err := f.W.AdeBoard.Submit(ctx, agentmcp.SpaceCall{TaskID: task.ID, SessionID: "seed"}, agentmcp.SubmitArgs{})
+		if err != nil || !strings.Contains(out, "accepted, new proof") {
+			t.Fatalf("seed submit: %q %v", out, err)
+		}
+		want = "pending user, change to"
+	}
+	r.realSeen = func() (bool, string) { return board.seen(want) }
+	srv := agentmcp.NewServer(agentmcp.Options{
+		Dir: filepath.Join(r.root, "mcp"), Space: board, Orchestrator: board, Outcomes: board,
+		OnFinish: func(_ string, f agentmcp.Finish) { r.finishes = append(r.finishes, f) },
+	})
+	claudeProv, ok := providers.New().Get("claude")
+	if !ok {
+		t.Fatal("no claude provider")
+	}
+	cfg, release, err := srv.Register(agentmcp.Grant{RunID: "run-1", TaskID: task.ID, SessionID: "sess-1", Space: true, Agent: claudeProv})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cfg, []string{folder}, func() { release(); _ = srv.Close() }
 }
