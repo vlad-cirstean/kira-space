@@ -354,37 +354,9 @@ func (s *Service) decide(ctx context.Context, st store.Store, req Request, rel s
 		if err != nil {
 			return err
 		}
-		var coll *Collision
-		if hasRow && !req.Session.LastSync.IsZero() && row.AcceptedBy != "" && row.AcceptedBy != writerName(req.Session.Role, req.Session.Key) &&
-			row.AcceptedAt > req.Session.LastSync.UnixMilli() {
-			coll = &Collision{By: row.AcceptedBy, At: time.UnixMilli(row.AcceptedAt)}
-		}
-		proofAccepted := s.proofAccepted(req.TaskID, class, tx)
-		var accepted, pending []Change
-		var invalid, reject []Decision
-		var notify Notify
-		var cause Cause
-		for _, c := range changes {
-			d := Decide(rel, Input{
-				Role: req.Session.Role, Kind: class.Kind, Op: c.Op, Own: c.Own, Slot: c.Slot,
-				Step: class.Step, CurrentStep: req.Session.Step, ProofAccepted: proofAccepted,
-				Collision: coll, Reason: req.Reason,
-			})
-			switch d.Outcome {
-			case Accept:
-				accepted = append(accepted, c)
-				if d.Notify != NotifyNone {
-					notify = d.Notify
-				}
-			case Pending:
-				pending = append(pending, c)
-				cause = d.Cause
-			case Invalid:
-				invalid = append(invalid, d)
-			case Reject:
-				reject = append(reject, d)
-			}
-		}
+		coll := s.collisionOf(req, row, hasRow)
+		v := s.judge(req, rel, class, changes, coll, s.proofAccepted(req.TaskID, class, tx))
+		pending, invalid, reject, notify, cause := v.pending, v.invalid, v.reject, v.notify, v.cause
 		switch {
 		case len(reject) > 0:
 			res = FileResult{Path: rel, Status: StatusRejected, Message: reject[0].Message}
@@ -393,30 +365,15 @@ func (s *Service) decide(ctx context.Context, st store.Store, req Request, rel s
 			res = FileResult{Path: rel, Status: StatusUnchanged}
 			return s.putRow(tx, req, rel, class, row, hasRow, info, hash, model.TaskFileAccepted, "", true)
 		}
-		if len(accepted) > 0 {
-			if parsed == nil {
-				if len(pending) == 0 && len(invalid) == 0 {
-					if err := h.Remove(ctx, tx, req.TaskID, rel, class); err != nil {
-						return err
-					}
-				}
-			} else if err := h.Apply(ctx, tx, req.TaskID, rel, class, parsed, accepted); err != nil {
-				return err
-			}
+		if err := applyAccepted(ctx, tx, h, req.TaskID, rel, class, parsed, v); err != nil {
+			return err
 		}
 		switch {
 		case len(invalid) > 0:
-			msgs := make([]string, len(invalid))
-			for i, d := range invalid {
-				msgs[i] = d.Message
-			}
-			res = FileResult{Path: rel, Status: StatusInvalid, Message: strings.Join(dedupe(msgs), " ")}
+			res = FileResult{Path: rel, Status: StatusInvalid, Message: invalidMessage(invalid)}
 			return s.putRow(tx, req, rel, class, row, hasRow, info, hash, model.TaskFileInvalid, res.Message, false)
 		case len(pending) > 0:
-			msg := fmt.Sprintf("%s: waiting for the user (%s).", rel, req.Reason)
-			if coll != nil {
-				msg = fmt.Sprintf("%s: %s changed it at %s after your last read; waiting for the user (%s).", rel, coll.By, coll.At.UTC().Format("15:04:05"), req.Reason)
-			}
+			msg := pendingMessage(rel, req.Reason, coll)
 			res = FileResult{Path: rel, Status: StatusPending, Message: msg}
 			item = &PendingItem{Path: rel, Kind: class.Kind, Cause: cause, Changes: pending, Collision: coll}
 			return s.putRow(tx, req, rel, class, row, hasRow, info, hash, model.TaskFilePending, msg, false)
@@ -436,6 +393,78 @@ func (s *Service) decide(ctx context.Context, st store.Store, req Request, rel s
 		}
 	}
 	return res, item
+}
+
+// applyAccepted moves the accepted changes of a file into the cache. A delete applies only when
+// nothing else of the file waits on the user.
+func applyAccepted(ctx context.Context, tx Tx, h Handler, taskID, rel string, class Class, parsed Parsed, v verdict) error {
+	switch {
+	case len(v.accepted) == 0:
+		return nil
+	case parsed != nil:
+		return h.Apply(ctx, tx, taskID, rel, class, parsed, v.accepted)
+	case len(v.pending) == 0 && len(v.invalid) == 0:
+		return h.Remove(ctx, tx, taskID, rel, class)
+	}
+	return nil
+}
+
+func invalidMessage(invalid []Decision) string {
+	msgs := make([]string, len(invalid))
+	for i, d := range invalid {
+		msgs[i] = d.Message
+	}
+	return strings.Join(dedupe(msgs), " ")
+}
+
+func pendingMessage(rel, reason string, coll *Collision) string {
+	if coll != nil {
+		return fmt.Sprintf("%s: %s changed it at %s after your last read; waiting for the user (%s).", rel, coll.By, coll.At.UTC().Format("15:04:05"), reason)
+	}
+	return fmt.Sprintf("%s: waiting for the user (%s).", rel, reason)
+}
+
+// collisionOf is set when another writer accepted the file after the session's last sync.
+func (s *Service) collisionOf(req Request, row model.TaskFile, hasRow bool) *Collision {
+	if hasRow && !req.Session.LastSync.IsZero() && row.AcceptedBy != "" && row.AcceptedBy != writerName(req.Session.Role, req.Session.Key) &&
+		row.AcceptedAt > req.Session.LastSync.UnixMilli() {
+		return &Collision{By: row.AcceptedBy, At: time.UnixMilli(row.AcceptedAt)}
+	}
+	return nil
+}
+
+// verdict sorts the changes of one file by their decision.
+type verdict struct {
+	accepted, pending []Change
+	invalid, reject   []Decision
+	notify            Notify
+	cause             Cause
+}
+
+func (s *Service) judge(req Request, rel string, class Class, changes []Change, coll *Collision, proofAccepted bool) verdict {
+	var v verdict
+	for _, c := range changes {
+		d := Decide(rel, Input{
+			Role: req.Session.Role, Kind: class.Kind, Op: c.Op, Own: c.Own, Slot: c.Slot,
+			Step: class.Step, CurrentStep: req.Session.Step, ProofAccepted: proofAccepted,
+			Collision: coll, Reason: req.Reason,
+		})
+		switch d.Outcome {
+		case Accept:
+			v.accepted = append(v.accepted, c)
+			if d.Notify != NotifyNone {
+				v.notify = d.Notify
+			}
+		case Pending:
+			v.pending = append(v.pending, c)
+			v.cause = d.Cause
+		case Invalid:
+			v.invalid = append(v.invalid, d)
+		case Reject:
+			v.reject = append(v.reject, d)
+		}
+	}
+	return v
 }
 
 // putRow writes the file's index row. accept moves the accepted copy to this file's hash.

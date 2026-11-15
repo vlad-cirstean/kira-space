@@ -974,18 +974,9 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		fail(&harness.MissingRole{Agent: l.agent.Label(), Role: "headless runs"})
 		return
 	}
-	if l.smart != nil {
-		if err := l.smart.checkMCP(ctx, b.deps.Servers, l.agent, b.deps.ScriptsHome); err != nil {
-			fail(err)
-			return
-		}
-	}
-	if b.deps.ContextFile != nil {
-		var err error
-		if l.contextFile, err = b.deps.ContextFile(); err != nil {
-			fail(err)
-			return
-		}
+	if err := b.preflightAgent(ctx, &l); err != nil {
+		fail(err)
+		return
 	}
 	sbx, err := b.prepareSandbox(ctx, run, l)
 	if err != nil {
@@ -1085,6 +1076,21 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		return // app quit: rows stay running (R18)
 	}
 	b.endAgentRun(ctx, run, l, runEnd{exit: exit, err: runErr, res: res, sink: sink, sbx: sbx, complete: complete, headless: headless})
+}
+
+// preflightAgent checks a smart step's MCP servers and writes the run's agent context file.
+func (b *TaskBoard) preflightAgent(ctx context.Context, l *agentLaunch) error {
+	if l.smart != nil {
+		if err := l.smart.checkMCP(ctx, b.deps.Servers, l.agent, b.deps.ScriptsHome); err != nil {
+			return err
+		}
+	}
+	if b.deps.ContextFile != nil {
+		var err error
+		l.contextFile, err = b.deps.ContextFile()
+		return err
+	}
+	return nil
 }
 
 // withTicked adds the ticked servers' wiring to a smart step's spec.

@@ -163,54 +163,65 @@ func (l *Local) Read(ctx context.Context, rel string, max int64) ([]byte, Info, 
 	return data, infoOf(ffi), nil
 }
 
+// lister is one List walk: it collects entries and counts files against the cap.
+type lister struct {
+	ctx   context.Context
+	opt   ListOptions
+	out   []Entry
+	files int
+}
+
+func (w *lister) walk(dir, relDir string, depth int) error {
+	if err := w.ctx.Err(); err != nil {
+		return err
+	}
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	sort.Slice(ents, func(i, j int) bool { return ents[i].Name() < ents[j].Name() })
+	for _, e := range ents {
+		if err := w.visit(dir, relDir, depth, e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *lister) visit(dir, relDir string, depth int, e os.DirEntry) error {
+	rel := e.Name()
+	if relDir != "" {
+		rel = relDir + "/" + e.Name()
+	}
+	fi, err := e.Info()
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	ent := Entry{Rel: rel, Info: infoOf(fi), Refused: refusal(fi)}
+	if fi.IsDir() {
+		if depth >= w.opt.MaxDepth {
+			w.out = append(w.out, ent)
+			return nil
+		}
+		return w.walk(filepath.Join(dir, e.Name()), rel, depth+1)
+	}
+	if w.files++; w.opt.MaxFiles > 0 && w.files > w.opt.MaxFiles {
+		return ErrTooManyFiles
+	}
+	w.out = append(w.out, ent)
+	return nil
+}
+
 func (l *Local) List(ctx context.Context, opt ListOptions) ([]Entry, error) {
-	var out []Entry
-	files := 0
-	var walk func(dir, relDir string, depth int) error
-	walk = func(dir, relDir string, depth int) error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		ents, err := os.ReadDir(dir)
-		if err != nil {
-			return err
-		}
-		sort.Slice(ents, func(i, j int) bool { return ents[i].Name() < ents[j].Name() })
-		for _, e := range ents {
-			rel := e.Name()
-			if relDir != "" {
-				rel = relDir + "/" + e.Name()
-			}
-			fi, err := e.Info()
-			if err != nil {
-				if errors.Is(err, fs.ErrNotExist) {
-					continue
-				}
-				return err
-			}
-			ent := Entry{Rel: rel, Info: infoOf(fi), Refused: refusal(fi)}
-			if fi.IsDir() {
-				if depth >= opt.MaxDepth {
-					out = append(out, ent)
-					continue
-				}
-				if err := walk(filepath.Join(dir, e.Name()), rel, depth+1); err != nil {
-					return err
-				}
-				continue
-			}
-			if files++; opt.MaxFiles > 0 && files > opt.MaxFiles {
-				return ErrTooManyFiles
-			}
-			out = append(out, ent)
-		}
-		return nil
-	}
-	err := walk(l.root, "", 1)
+	w := &lister{ctx: ctx, opt: opt}
+	err := w.walk(l.root, "", 1)
 	if errors.Is(err, ErrTooManyFiles) {
-		return out, fmt.Errorf("%w: more than %d files", ErrTooManyFiles, opt.MaxFiles)
+		return w.out, fmt.Errorf("%w: more than %d files", ErrTooManyFiles, opt.MaxFiles)
 	}
-	return out, err
+	return w.out, err
 }
 
 func (l *Local) WriteAtomic(ctx context.Context, rel string, data []byte, ifVersion *Version) (Info, error) {

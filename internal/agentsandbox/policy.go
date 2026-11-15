@@ -175,16 +175,8 @@ func ResolvePolicy(in Input, rt Runtime) (Policy, []string, error) {
 		p.ContextDir = realPath(filepath.Clean(in.ContextDir))
 	}
 	p.Allow = allowExtra
-	for _, f := range in.DenyWrite {
-		abs, err := ExpandHome(f, rt.Home)
-		if err != nil {
-			return Policy{}, nil, err
-		}
-		dir, err := filepath.EvalSymlinks(filepath.Dir(abs))
-		if err != nil {
-			return Policy{}, nil, fmt.Errorf("agentsandbox: deny write %s: %w", f, err)
-		}
-		p.DenyWrite = appendUnique(p.DenyWrite, filepath.Join(dir, filepath.Base(abs)))
+	if p.DenyWrite, err = resolveDenyWrite(in.DenyWrite, rt.Home); err != nil {
+		return Policy{}, nil, err
 	}
 	for _, f := range in.ReadFiles {
 		r, err := real(f)
@@ -211,6 +203,23 @@ func ResolvePolicy(in Input, rt Runtime) (Policy, []string, error) {
 	}
 	p.Git = git
 	return p, notes, nil
+}
+
+// resolveDenyWrite canonicalizes the folder of each file; the file itself may not exist yet.
+func resolveDenyWrite(files []string, home string) ([]string, error) {
+	var out []string
+	for _, f := range files {
+		abs, err := ExpandHome(f, home)
+		if err != nil {
+			return nil, err
+		}
+		dir, err := filepath.EvalSymlinks(filepath.Dir(abs))
+		if err != nil {
+			return nil, fmt.Errorf("agentsandbox: deny write %s: %w", f, err)
+		}
+		out = appendUnique(out, filepath.Join(dir, filepath.Base(abs)))
+	}
+	return out, nil
 }
 
 // guard holds the paths no read or allow entry may cover: the keychain directory, and the agent's

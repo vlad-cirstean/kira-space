@@ -38,32 +38,7 @@ func writeJSON(buf *bytes.Buffer, n *yaml.Node) error {
 	case yaml.AliasNode:
 		return inlineErr(n, "aliases are not allowed")
 	case yaml.MappingNode:
-		buf.WriteByte('{')
-		seen := map[string]bool{}
-		for i := 0; i+1 < len(n.Content); i += 2 {
-			k, v := n.Content[i], n.Content[i+1]
-			if k.ShortTag() == "!!merge" {
-				return inlineErr(k, "merge keys are not allowed")
-			}
-			if k.Kind != yaml.ScalarNode || k.ShortTag() != "!!str" {
-				return inlineErr(k, "mapping keys must be strings")
-			}
-			if seen[k.Value] {
-				return inlineErr(k, "duplicate key "+strconv.Quote(k.Value))
-			}
-			seen[k.Value] = true
-			if i > 0 {
-				buf.WriteByte(',')
-			}
-			key, _ := json.Marshal(k.Value)
-			buf.Write(key)
-			buf.WriteByte(':')
-			if err := writeJSON(buf, v); err != nil {
-				return err
-			}
-		}
-		buf.WriteByte('}')
-		return nil
+		return writeMapping(buf, n)
 	case yaml.SequenceNode:
 		buf.WriteByte('[')
 		for i, c := range n.Content {
@@ -78,6 +53,35 @@ func writeJSON(buf *bytes.Buffer, n *yaml.Node) error {
 		return nil
 	}
 	return writeScalar(buf, n)
+}
+
+func writeMapping(buf *bytes.Buffer, n *yaml.Node) error {
+	buf.WriteByte('{')
+	seen := map[string]bool{}
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		k, v := n.Content[i], n.Content[i+1]
+		if k.ShortTag() == "!!merge" {
+			return inlineErr(k, "merge keys are not allowed")
+		}
+		if k.Kind != yaml.ScalarNode || k.ShortTag() != "!!str" {
+			return inlineErr(k, "mapping keys must be strings")
+		}
+		if seen[k.Value] {
+			return inlineErr(k, "duplicate key "+strconv.Quote(k.Value))
+		}
+		seen[k.Value] = true
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+		key, _ := json.Marshal(k.Value)
+		buf.Write(key)
+		buf.WriteByte(':')
+		if err := writeJSON(buf, v); err != nil {
+			return err
+		}
+	}
+	buf.WriteByte('}')
+	return nil
 }
 
 func writeScalar(buf *bytes.Buffer, n *yaml.Node) error {

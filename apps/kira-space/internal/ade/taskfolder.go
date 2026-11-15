@@ -39,7 +39,7 @@ func taskFolderDenyFiles(dir string) []string {
 // taskFolderDenies are the deny rules that back the sandbox on a host with no Seatbelt: the Claude
 // absolute-path form is "//<abs>". Submit restores whatever a rule misses.
 func taskFolderDenies(dir string) []string {
-	var out []string
+	out := make([]string, 0, 2*len(kiraOwnedFiles))
 	for _, f := range taskFolderDenyFiles(dir) {
 		out = append(out, "Edit(/"+filepath.ToSlash(f)+")", "Write(/"+filepath.ToSlash(f)+")")
 	}
