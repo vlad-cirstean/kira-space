@@ -109,6 +109,19 @@ func TestProofFiles(t *testing.T) {
 		f.app.Contract(t, filesScenario, "ProofService.Step#"+key, st, filesMask)
 	}
 
+	// Open and reveal go to the proof's folder inside the task folder.
+	if err := f.app.W.Proof.OpenFolder(bridge.ProofSessionArgs{SessionID: id}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.app.W.Proof.RevealFolder(bridge.ProofSessionArgs{SessionID: id}); err != nil {
+		t.Fatal(err)
+	}
+	for name, got := range map[string][]string{"open": f.app.FileOpener.OpenedFiles(), "reveal": f.app.FileOpener.RevealedFiles()} {
+		if len(got) != 1 || !strings.HasSuffix(got[0], "/proofs/checkout-fix") {
+			t.Fatalf("%s paths = %v, want the proof folder", name, got)
+		}
+	}
+
 	// 2. Nothing changed: unchanged.
 	mustHave(t, "second submit", f.submit(t, ""), "accepted 0", "invalid 0")
 
