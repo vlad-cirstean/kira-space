@@ -369,7 +369,7 @@ func runMCPCalls(action Action, dir string, args []string) (code int, done bool)
 	play := func(i int) {
 		c := action.MCP[i]
 		writeTaskFiles(c.Files)
-		outs[i].res, outs[i].err = callTool(cfg, args, c.Server, c.Tool, c.Args)
+		outs[i].res, outs[i].err = callTool(lastPrompt, cfg, args, c.Server, c.Tool, c.Args)
 	}
 	if action.Parallel {
 		var wg sync.WaitGroup
@@ -401,7 +401,7 @@ func runMCPCalls(action Action, dir string, args []string) (code int, done bool)
 func finishAction(action Action, args []string, headless bool) int {
 	cfg := argAfter(args, "--mcp-config")
 	finish := func(status string) int {
-		if _, err := callTool([]string{cfg}, nil, agentmcp.ServerName, "finish_step", map[string]any{"status": status, "reason": "summary-" + status}); err != nil {
+		if _, err := callTool(lastPrompt, []string{cfg}, nil, agentmcp.ServerName, "finish_step", map[string]any{"status": status, "reason": "summary-" + status}); err != nil {
 			fmt.Fprintln(os.Stderr, "finish_step:", err)
 			return 3
 		}
@@ -438,7 +438,8 @@ func finishAction(action Action, args []string, headless bool) int {
 
 var (
 	lastPrompt  []byte
-	promptFiles = regexp.MustCompile(`Task folder: (.+?)\. See README\.md there\. Write your handover to (handovers/draft-[^ ,]+?\.md)`)
+	promptFiles = regexp.MustCompile(`Task folder: (.+?)\. See README\.md there\.`)
+	draftAsked  = regexp.MustCompile(`write (handovers/draft-[^ ,]+?\.md), then call state step\.finish`)
 )
 
 // writeTaskFiles writes files under the task folder the files prompt names.
@@ -454,19 +455,20 @@ func writeTaskFiles(files map[string]string) {
 	}
 }
 
-// writeDefaultDraft writes the step's draft the files prompt names, unless the scenario already
-// did: a done finish needs one, and flow scenarios do not care about its text.
-func writeDefaultDraft(prompt []byte, body string) {
+// writeDraftAsked writes the draft a refused done finish names, in the task folder the files prompt
+// names, as the agent would on that refusal. It reports whether it wrote one.
+func writeDraftAsked(prompt []byte, refusal, body string) bool {
+	d := draftAsked.FindStringSubmatch(refusal)
 	m := promptFiles.FindSubmatch(prompt)
-	if m == nil {
-		return
+	if d == nil || m == nil {
+		return false
 	}
-	path := filepath.Join(string(m[1]), string(m[2]))
+	path := filepath.Join(string(m[1]), d[1])
 	if _, err := os.Stat(path); err == nil {
-		return
+		return false
 	}
 	_ = os.MkdirAll(filepath.Dir(path), 0o755)
-	_ = os.WriteFile(path, []byte(body), 0o644)
+	return os.WriteFile(path, []byte(body), 0o644) == nil
 }
 
 var promptPath = regexp.MustCompile(`"path":"([^"]*)"`)
@@ -839,10 +841,25 @@ func listStatus(ok bool) string {
 
 // callTool connects to server from the --mcp-config files (HTTP or stdio entry) or, when argv makes
 // claude load the user's servers, from the user's config, and calls one tool.
-func callTool(cfgPaths, argv []string, server, tool string, args map[string]any) (*mcp.CallToolResult, error) {
-	if status, ok := finishStatus(tool, args); ok {
-		writeDefaultDraft(lastPrompt, "summary-"+status)
+func callTool(prompt []byte, cfgPaths, argv []string, server, tool string, args map[string]any) (*mcp.CallToolResult, error) {
+	res, err := callToolOnce(cfgPaths, argv, server, tool, args)
+	if status, ok := finishStatus(tool, args); ok && writeDraftAsked(prompt, refusalText(res, err), "summary-"+status) {
+		return callToolOnce(cfgPaths, argv, server, tool, args)
 	}
+	return res, err
+}
+
+// refusalText is where a refused finish says what it wants: the error, or the reply of a state call,
+// which reports a refusal as an invalid item.
+func refusalText(res *mcp.CallToolResult, err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	raw, _ := json.Marshal(res)
+	return string(raw)
+}
+
+func callToolOnce(cfgPaths, argv []string, server, tool string, args map[string]any) (*mcp.CallToolResult, error) {
 	var entry serverEntry
 	found := false
 	for _, path := range cfgPaths {
@@ -912,12 +929,9 @@ func callTool(cfgPaths, argv []string, server, tool string, args map[string]any)
 
 // CallTool calls one tool on a server named in the MCP config files (paths or inline JSON), as the
 // fake claude does for finish_step; a test provider's headless role uses it with HeadlessSpec.MCPConfigs.
-// A done finish writes the draft the prompt names, as the agent would.
+// A done finish the server refuses for a missing draft writes the draft it names, as the agent would.
 func CallTool(prompt string, cfgPaths []string, server, tool string, args map[string]any) error {
-	if status, ok := finishStatus(tool, args); ok {
-		writeDefaultDraft([]byte(prompt), "summary-"+status)
-	}
-	_, err := callTool(cfgPaths, nil, server, tool, args)
+	_, err := callTool([]byte(prompt), cfgPaths, nil, server, tool, args)
 	return err
 }
 

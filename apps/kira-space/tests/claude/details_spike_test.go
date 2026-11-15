@@ -114,7 +114,7 @@ func rowsEqual(got, want [][]any) bool {
 
 func (r *spikeRun) folderLine() string {
 	if r.arm == "R" { // the files fragment Kira appends to a step prompt
-		v := llmprompts.FilesVars{Folder: r.taskDir, Draft: "handovers/draft-implement.md"}
+		v := llmprompts.FilesVars{Folder: r.taskDir}
 		if p, ok := providers.New().Get("claude"); ok {
 			if l, ok := p.(harness.ToolLoader); ok {
 				tools := []harness.MCPTool{agentmcp.Submit, agentmcp.State}

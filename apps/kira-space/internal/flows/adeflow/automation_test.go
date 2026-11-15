@@ -514,7 +514,7 @@ func TestAutomationStep(t *testing.T) {
 		if want := "Lint feat/api-lint at high for Fix login\n\n" + agentmcp.SpaceNote(llmprompts.Defaults()) + "\nTask folder: "; !strings.HasPrefix(got, want) {
 			t.Fatalf("prompt = %q, want it to start with %q", got, want)
 		}
-		if want := "Write your handover to handovers/draft-s1.md, then call submit"; !strings.Contains(got, want) {
+		if want := "See README.md there. Call submit after editing task files."; !strings.Contains(got, want) {
 			t.Fatalf("prompt = %q, want %q", got, want)
 		}
 		if want := "\n\n" + agentmcp.FinishInstruction(llmprompts.Defaults(), nil); !strings.Contains(got, want) {

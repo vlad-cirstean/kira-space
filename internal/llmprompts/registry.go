@@ -180,11 +180,10 @@ type StepVars struct {
 	Files        FilesVars `json:"files"`
 }
 
-// FilesVars fills the task-files fragment: the task folder, the draft file of the step and the
-// provider's tool-loading sentence. A zero value drops the fragment (a board with no files root).
+// FilesVars fills the task-files fragment: the task folder and the provider's tool-loading sentence.
+// A zero value drops the fragment (a board with no files root).
 type FilesVars struct {
 	Folder string `json:"folder"`
-	Draft  string `json:"draft"`
 	Load   string `json:"load"`
 	// Proofs are the task's proofs, one index line each ("slug "Name": id (view), ..."), at most 5.
 	Proofs []string `json:"proofs"`
@@ -848,15 +847,15 @@ var HeadlessSpaceSuffix = define(Entry{
 	Default:    `Kira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.`,
 }, NoVars{})
 
-// HeadlessSpaceFiles names the task folder, the step's draft file and how to load the tools.
+// HeadlessSpaceFiles names the task folder and how to load the tools.
 var HeadlessSpaceFiles = define(Entry{
 	ID: "headless.space.files", Kind: KindFragment, Apps: spaceApp, Applies: NextCall,
 	TitleKey:   "llmPrompts.entry.headlessSpaceFiles.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceFiles.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceFiles.usedBy.body",
-	Default: `Task folder: {{.Folder}}. See README.md there. Write your handover to {{.Draft}}, then call submit. When the step is done, call state with step.finish.{{range $i, $p := .Proofs}}
+	Default: `Task folder: {{.Folder}}. See README.md there. Call submit after editing task files. When the step is done, call state with step.finish.{{range $i, $p := .Proofs}}
 {{if eq $i 0}}Proofs: {{else}}  {{end}}{{$p}}{{end}}{{if .Load}} {{.Load}}{{end}}`,
-}, FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Draft: "handovers/draft-implement.md", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__submit,mcp__kira-space__state".`})
+}, FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__submit,mcp__kira-space__state".`})
 
 // HeadlessSandboxNote tells a sandboxed agent what it may write and what to do on a denial.
 var HeadlessSandboxNote = define(Entry{

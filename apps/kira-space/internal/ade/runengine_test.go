@@ -89,13 +89,7 @@ func runFakeClaude(args []string) int {
 	emit(map[string]any{"type": "system", "subtype": "init", "session_id": "fake"})
 	finish := func(status string) int {
 		cfg := argAfter(args, "--mcp-config")
-		if status == "done" {
-			if err := writeFakeDraft(string(prompt), "summary-done"); err != nil {
-				fmt.Fprintln(os.Stderr, "draft:", err)
-				return 3
-			}
-		}
-		if err := fakeFinish(cfg, status, "summary-"+status); err != nil {
+		if err := fakeFinish(cfg, string(prompt), status, "summary-"+status); err != nil {
 			fmt.Fprintln(os.Stderr, "finish_step:", err)
 			return 3
 		}
@@ -144,25 +138,35 @@ func (b fakeBearer) RoundTrip(r *http.Request) (*http.Response, error) {
 	return http.DefaultTransport.RoundTrip(r)
 }
 
-var fakeFilesRe = regexp.MustCompile(`Task folder: (\S+)\. See README\.md there\. Write your handover to (\S+), then`)
+var (
+	fakeFilesRe = regexp.MustCompile(`Task folder: (\S+)\. See README\.md there\.`)
+	fakeDraftRe = regexp.MustCompile(`write (handovers/draft-\S+?\.md), then call state step\.finish`)
+)
 
-// writeFakeDraft writes the step's draft where the prompt's files line says: an ok finish needs one.
-func writeFakeDraft(text, body string) error {
-	m := fakeFilesRe.FindStringSubmatch(text)
-	if m == nil {
-		return nil
+// fakeFinish ends the step as the agent does: a done finish refused for a missing draft gets the
+// draft the refusal names, then finishes again.
+func fakeFinish(cfgPath, prompt, status, summary string) error {
+	reply, err := fakeFinishOnce(cfgPath, status, summary)
+	d, m := fakeDraftRe.FindStringSubmatch(reply), fakeFilesRe.FindStringSubmatch(prompt)
+	if err != nil || d == nil || m == nil {
+		return err
 	}
-	path := filepath.Join(m[1], m[2])
+	path := filepath.Join(m[1], d[1])
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, []byte(body), 0o644)
+	if err := os.WriteFile(path, []byte(summary), 0o644); err != nil {
+		return err
+	}
+	_, err = fakeFinishOnce(cfgPath, status, summary)
+	return err
 }
 
-func fakeFinish(cfgPath, status, summary string) error {
+// fakeFinishOnce returns the reply as JSON: a refused state step.finish is an invalid item, not a tool error.
+func fakeFinishOnce(cfgPath, status, summary string) (string, error) {
 	raw, err := os.ReadFile(cfgPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	var cfg struct {
 		MCPServers map[string]struct {
@@ -171,7 +175,7 @@ func fakeFinish(cfgPath, status, summary string) error {
 		} `json:"mcpServers"`
 	}
 	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return err
+		return "", err
 	}
 	entry := cfg.MCPServers[agentmcp.ServerName]
 	token := strings.TrimPrefix(entry.Headers["Authorization"], "Bearer ")
@@ -181,13 +185,13 @@ func fakeFinish(cfgPath, status, summary string) error {
 		Endpoint: entry.URL, HTTPClient: &http.Client{Transport: fakeBearer{token}}, DisableStandaloneSSE: true, MaxRetries: -1,
 	}, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 	// A Space grant ends a run with state step.finish; a rebase run or review round keeps finish_step.
 	call := &mcp.CallToolParams{Name: "state", Arguments: map[string]any{"action": "step.finish", "args": map[string]any{"status": status, "reason": summary}}}
 	tools, err := sess.ListTools(ctx, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 	for _, tl := range tools.Tools {
 		if tl.Name == "finish_step" {
@@ -196,12 +200,13 @@ func fakeFinish(cfgPath, status, summary string) error {
 	}
 	res, err := sess.CallTool(ctx, call)
 	if err != nil {
-		return err
+		return "", err
 	}
+	reply, _ := json.Marshal(res)
 	if res.IsError {
-		return fmt.Errorf("tool error: %v", res.Content)
+		return "", fmt.Errorf("tool error: %v", res.Content)
 	}
-	return nil
+	return string(reply), nil
 }
 
 // --- harness -----------------------------------------------------------------------------------

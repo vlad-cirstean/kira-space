@@ -666,7 +666,7 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 	message := args.Message
 	if message == "" {
 		message = composeManualMessage(b.prompts(), step, taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL, b.userNotes(tc.task.ID), lines, folder, b.handoverFor(tc, step.ID),
-			b.filesVarsFor(tc.task.ID, step.ID, step.Agent, tc.task.Kind == model.AdeTaskKindOrchestrator))
+			b.filesVarsFor(tc.task.ID, step.Agent, tc.task.Kind == model.AdeTaskKindOrchestrator))
 	}
 	pa := PrepareArgs{TaskID: tc.task.ID, StepID: step.ID, Cwd: cwd, Message: message, Settings: step.Settings, Provider: step.Agent}
 	if len(extra) > 0 {
@@ -731,7 +731,7 @@ func (b *TaskBoard) StartBranch(ctx context.Context, args adewire.StartBranchArg
 		}
 		return composeStartMessage(b.prompts(), taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL,
 			repoLine{Nick: b.repoNick(tc, sb), Branch: sb.Name, Worktree: path}, b.firstOpenStep(tc), b.rebaseContext(tc), b.handoverFor(tc, b.currentStepID(tc)),
-			b.filesVarsFor(tc.task.ID, b.currentStepID(tc), stepAgentOf(tc, b.currentStepID(tc)), tc.task.Kind == model.AdeTaskKindOrchestrator))
+			b.filesVarsFor(tc.task.ID, stepAgentOf(tc, b.currentStepID(tc)), tc.task.Kind == model.AdeTaskKindOrchestrator))
 	})
 }
 

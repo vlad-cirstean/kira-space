@@ -390,10 +390,7 @@ func TestRunEngine_takeOver(t *testing.T) {
 	}
 
 	cfg := quotedAfter(t, composed, "--mcp-config")
-	if err := writeFakeDraft("Task folder: "+filepath.Join(e.board.files.root, pathSegment(id))+". See README.md there. Write your handover to handovers/draft-first.md, then", "tui-done"); err != nil {
-		t.Fatal(err)
-	}
-	if err := fakeFinish(cfg, "done", "tui-done"); err != nil {
+	if err := fakeFinish(cfg, "Task folder: "+filepath.Join(e.board.files.root, pathSegment(id))+". See README.md there.", "done", "tui-done"); err != nil {
 		t.Fatal(err)
 	}
 	if r := e.waitRun(id, "first/api", model.AdeRunDone); r.Summary != "tui-done" {

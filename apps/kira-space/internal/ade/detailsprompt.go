@@ -7,18 +7,18 @@ import (
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 )
 
-// filesVars is the task-files fragment of a prompt: the folder, the step's draft file and, for a
+// filesVars is the task-files fragment of a prompt: the folder and, for a
 // provider that loads MCP tools lazily, the sentence that loads exactly the session's tools. Zero
 // when the board has no files root.
-func (b *TaskBoard) filesVarsFor(taskID, stepID, agentID string, orchestrator bool) llmprompts.FilesVars {
+func (b *TaskBoard) filesVarsFor(taskID, agentID string, orchestrator bool) llmprompts.FilesVars {
 	agent, err := b.agentFor(agentID)
 	if err != nil {
 		agent = nil
 	}
-	return b.filesVars(taskID, stepID, agent, orchestrator)
+	return b.filesVars(taskID, agent, orchestrator)
 }
 
-func (b *TaskBoard) filesVars(taskID, stepID string, agent harness.Provider, orchestrator bool) llmprompts.FilesVars {
+func (b *TaskBoard) filesVars(taskID string, agent harness.Provider, orchestrator bool) llmprompts.FilesVars {
 	if b.files == nil {
 		return llmprompts.FilesVars{}
 	}
@@ -26,7 +26,7 @@ func (b *TaskBoard) filesVars(taskID, stepID string, agent harness.Provider, orc
 	if err != nil || dir == "" {
 		return llmprompts.FilesVars{}
 	}
-	v := llmprompts.FilesVars{Folder: dir, Draft: draftRel(stepID), Proofs: taskfiles.PromptProofLines(b.proofIndex(taskID))}
+	v := llmprompts.FilesVars{Folder: dir, Proofs: taskfiles.PromptProofLines(b.proofIndex(taskID))}
 	if l, ok := agent.(harness.ToolLoader); ok {
 		v.Load = l.LoadHint(sessionTools(orchestrator)...)
 	}

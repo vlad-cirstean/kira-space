@@ -266,7 +266,7 @@ func openCodeRun(scen Scenario, dir, stem, cwd string, args []string) int {
 		return code
 	}
 	finish := func(status string) int {
-		_, err := callTool([]string{openCodeGrant()}, nil, agentmcp.ServerName, "finish_step", map[string]any{"status": status, "reason": "summary-" + status})
+		_, err := callTool(lastPrompt, []string{openCodeGrant()}, nil, agentmcp.ServerName, "finish_step", map[string]any{"status": status, "reason": "summary-" + status})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "finish_step:", err)
 			return 3

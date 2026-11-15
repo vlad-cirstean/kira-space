@@ -7195,7 +7195,7 @@
         }
       },
       "headlessSpaceFiles": {
-        "description": "Names the task folder and the draft file of the step, tells the agent to read the readme there, write the handover and call submit, and how to load the tools.",
+        "description": "Names the task folder, points at the readme there, tells the agent to call submit after editing task files, and says how to load the tools.",
         "title": "Task files instruction",
         "usedBy": {
           "body": "Follows the Kira Space tools line in every ADE step prompt and session message."
