@@ -20,6 +20,12 @@ const branchItem = (): ApprovalItem => {
   return it;
 };
 
+const detailsItem = (): ApprovalItem => {
+  const [it] = contract<ApprovalItem[]>('mobile-approvals', 'http:GET /api/approvals#detailsEdit');
+  if (!it) throw new Error('contract has no details.edit item');
+  return it;
+};
+
 const answers = (server: { state: { requests: { method: string; path: string }[] } }) =>
   server.state.requests.filter(
     (r) => r.method === 'POST' && r.path === '/api/approvals/answer',
@@ -190,6 +196,28 @@ test('contract: a branch request shows the holder without a path and answers wit
     ids: [it.id],
     approve: true,
     options: { [it.id]: { itemIds: ['c1i1'], remoteItemIds: [], shownItemIds: ['c1i1'] } },
+  });
+});
+
+test('contract: a details edit shows the agent reason and its files and answers with the paths', async ({
+  app,
+  page,
+  server,
+}) => {
+  pair(server);
+  const it = detailsItem();
+  const { reason, items } = it.payload as { reason: string; items: { path: string }[] };
+  server.state.replies.approvals = [it];
+  await app();
+  const body = page.locator(t('ade-details-edit-body'));
+  await expect(body.locator(t('ade-details-edit-reason'))).toContainText(reason);
+  await expect(body.locator(t('ade-details-edit-file'))).toHaveCount(items.length);
+  await page.locator(t(`approval-approve-${it.id}`)).click();
+  await expect.poll(() => answers(server).length).toBe(1);
+  expect(JSON.parse(answers(server)[0]?.body ?? '{}')).toEqual({
+    ids: [it.id],
+    approve: true,
+    options: { [it.id]: { approved: items.map((f) => f.path) } },
   });
 });
 

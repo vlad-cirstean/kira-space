@@ -510,8 +510,15 @@ func TestAutomationStep(t *testing.T) {
 		if r.State != "done" {
 			t.Fatalf("run = %+v", r)
 		}
-		if got, want := fakeFile(t, f.app, "api-1.prompt"), "Lint feat/api-lint at high for Fix login\n\n"+agentmcp.SpaceNote(llmprompts.Defaults())+"\n\n"+agentmcp.FinishInstruction(llmprompts.Defaults(), nil); !strings.HasPrefix(got, want) {
+		got := fakeFile(t, f.app, "api-1.prompt")
+		if want := "Lint feat/api-lint at high for Fix login\n\n" + agentmcp.SpaceNote(llmprompts.Defaults()) + "\nTask folder: "; !strings.HasPrefix(got, want) {
 			t.Fatalf("prompt = %q, want it to start with %q", got, want)
+		}
+		if want := "Write your handover to handovers/draft-s1.md, then call submit"; !strings.Contains(got, want) {
+			t.Fatalf("prompt = %q, want %q", got, want)
+		}
+		if want := "\n\n" + agentmcp.FinishInstruction(llmprompts.Defaults(), nil); !strings.Contains(got, want) {
+			t.Fatalf("prompt = %q, want the finish instruction", got)
 		}
 		args := fakeFile(t, f.app, "api-1.args")
 		for _, want := range []string{"--model\nopus", "--max-budget-usd\n0.5", "--tools\nRead,Grep", "--strict-mcp-config", toolName(agentmcp.FinishStep), toolName(agentmcp.RunOutcome)} {

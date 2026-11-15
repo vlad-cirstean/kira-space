@@ -35,7 +35,7 @@ func TestUnifiedNotes(t *testing.T) {
 	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second))
 	// The Design session runs in the task folder (work), the Build run in the repo (api).
 	claude(app, map[string][]fakeagent.Action{
-		"work": {{MCP: []fakeagent.MCPCall{handoverCall("Form wired.\nValidation missing.", true)}, WaitFile: flag("hold")}},
+		"work": {{WaitBefore: flag("go"), MCP: []fakeagent.MCPCall{submitCall(true)}, WaitFile: flag("hold")}},
 		"api":  {{Name: "done"}},
 	})
 	t.Cleanup(func() { _ = os.WriteFile(flag("hold"), nil, 0o644) })
@@ -77,6 +77,11 @@ func TestUnifiedNotes(t *testing.T) {
 		t.Fatal(err)
 	}
 	openLaunch(t, app, launch)
+	waitSession(t, app, launch.SessionID, "running")
+	writeTaskFile(t, app, task.ID, "handovers/draft-design.md", "Form wired.\nValidation missing.")
+	if err := os.WriteFile(flag("go"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	testx.WaitUntil(t, waitFor, func() bool {
 		ds := taskOf(t, board(t, app), task.ID).HandoverDrafts
 		return len(ds) == 1 && ds[0].Finished

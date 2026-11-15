@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -183,7 +184,7 @@ func TestSecondProviderRegistered(t *testing.T) {
 		smart, _ = app.W.ScriptRuns.Get(scriptruns.IDArgs{ID: started.RunID})
 		return smart.State == "done"
 	})
-	if smart.Provider != "fake" || smart.SessionID == "" || smart.Outcome == nil || smart.Outcome.Summary != "summary-fake" {
+	if smart.Provider != "fake" || smart.SessionID == "" || smart.Outcome == nil {
 		t.Fatalf("smart run = %+v, want a done run of the fake", smart)
 	}
 	head := fake.Headless()
@@ -265,7 +266,7 @@ func TestSecondProviderRegistered(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := fakeagent.Persona + " --resume " + headless.AgentSessionID + " --hermetic"; launch.Command != want {
+	if want := fakeagent.Persona + " --resume " + headless.AgentSessionID + " --hermetic"; sansFolderDenies(launch.Command) != want {
 		t.Fatalf("take over command = %q, want %q", launch.Command, want)
 	}
 	resume, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: smart.ID})
@@ -427,7 +428,7 @@ func TestLeanProviderSeams(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if step.Command != fakeagent.Persona+" lean" || strings.Contains(step.Command, "lean-config") {
+	if sansFolderDenies(step.Command) != fakeagent.Persona+" lean" {
 		t.Fatalf("interactive command = %q, want the bare lean launch", step.Command)
 	}
 	if s := sessionByID(t, app, step.SessionID); s.AgentSessionID != "" {
@@ -476,7 +477,7 @@ func TestLeanProviderSeams(t *testing.T) {
 	if err != nil {
 		t.Fatalf("take over with the id reported: %v", err)
 	}
-	if want := fakeagent.Persona + " lean --resume " + learned.ID; launch.Command != want {
+	if want := fakeagent.Persona + " lean --resume " + learned.ID; sansFolderDenies(launch.Command) != want {
 		t.Fatalf("take over command = %q, want %q", launch.Command, want)
 	}
 	if s := sessionByID(t, app, step.SessionID); s.AgentSessionID != learned.ID {
@@ -628,3 +629,8 @@ func TestHermeticToggleReachesEveryLaunch(t *testing.T) {
 		}
 	}
 }
+
+var folderDenies = regexp.MustCompile(` --disallowed '(?:Edit|Write)\(//[^']*/(?:README\.md|task\.yaml|state\.yaml)\)'`)
+
+// sansFolderDenies drops the task folder's deny flags every launch carries, which these tests do not compare.
+func sansFolderDenies(cmd string) string { return folderDenies.ReplaceAllString(cmd, "") }

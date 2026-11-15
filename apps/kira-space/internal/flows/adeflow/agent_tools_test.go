@@ -23,25 +23,22 @@ func TestAgentToolsInvalidInputAndAfterFinish(t *testing.T) {
 	}
 	calls := []fakeagent.MCPCall{
 		toolCall("task_info", nil), // 1 ok
-		toolCall("declare_repos", map[string]any{"repos": []any{"no-such-repo"}}),                        // 1 refused
-		toolCall("request_branches", map[string]any{"branches": branches}),                               // 1 refused (21)
-		toolCall("acquire_lease", map[string]any{"queue": ""}),                                           // 1 refused
-		toolCall("release_lease", map[string]any{"queue": ""}),                                           // 1 ok: leaves every queue
-		toolCall("rename_branch", map[string]any{"name": "main"}),                                        // 1 refused: protected
-		toolCall("finish_step", map[string]any{"status": "bogus", "summary": "x"}),                       // 1 refused
-		toolCall("finish_step", map[string]any{"status": "done", "summary": "final"}),                    // 2 ok
-		toolCall("task_info", nil),                                                                       // 2 refused: finished
-		toolCall("release_lease", map[string]any{"queue": ""}),                                           // 2 refused: finished
-		toolCall("finish_step", map[string]any{"status": "failed", "summary": "late", "reason": "late"}), // 3 refused
+		toolCall("declare_repos", map[string]any{"repos": []any{"no-such-repo"}}),     // 1 refused
+		toolCall("request_branches", map[string]any{"branches": branches}),            // 1 refused (21)
+		toolCall("acquire_lease", map[string]any{"queue": ""}),                        // 1 refused
+		toolCall("release_lease", map[string]any{"queue": ""}),                        // 1 ok: leaves every queue
+		toolCall("rename_branch", map[string]any{"name": "main"}),                     // 1 refused: protected
+		toolCall("finish_step", map[string]any{"status": "bogus"}),                    // 1 refused
+		toolCall("finish_step", map[string]any{"status": "done"}),                     // 2 ok
+		toolCall("task_info", nil),                                                    // 2 refused: finished
+		toolCall("release_lease", map[string]any{"queue": ""}),                        // 2 refused: finished
+		toolCall("finish_step", map[string]any{"status": "failed", "reason": "late"}), // 3 refused
 	}
 	f := newRunFixtureWith(t, []fakeagent.Action{{MCP: calls, Name: ""}}, agentStep("one", ""))
 	app := f.app
 	refsBefore := gitOut(t, f.repo.Dir, "branch", "--list", "--format=%(refname)")
 	f.start(t, "feat/api-tools")
 	run := waitRun(t, app, f.taskID, "one", "done")
-	if run.Summary != "final" {
-		t.Fatalf("run = %+v, want the summary of the accepted finish_step", run)
-	}
 	if o := run.Outcome; o == nil || o.Status != "done" || o.Source != "agent" {
 		t.Fatalf("outcome = %+v, want done by the agent: a late failed must not change it", o)
 	}

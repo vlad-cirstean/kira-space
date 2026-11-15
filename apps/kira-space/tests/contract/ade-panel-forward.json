@@ -3,7 +3,7 @@
     "ended": [],
     "failed": [],
     "sent": [
-      "<id:2>"
+      "<id:3>"
     ]
   },
   "AdeTaskService.PanelForward#headless": {
@@ -29,13 +29,13 @@
         "at": 0,
         "key": "<masked>",
         "kind": "note",
-        "label": "note (Design, 12:00)"
+        "label": "note notes/<time>-<id:1>.md (Design, 12:00)"
       },
       {
         "at": 0,
         "key": "<masked>",
         "kind": "link",
-        "label": "link"
+        "label": "link in links.yaml"
       },
       {
         "at": 0,
@@ -44,7 +44,7 @@
         "label": "task title"
       }
     ],
-    "preview": "The user changed the task panel. Only the changes follow, as a diff; nothing else changed.\n--- note (Design, 12:00)\n@@ -1,4 +1,4 @@\n alpha\n-bravo\n+bravo final\n charlie\n delta\n--- link\n+ link Runbook https://wiki.example/runbook\n--- task title\n- Fix login\n+ Fix login form\nTake these changes into account in your current work.",
+    "preview": "The user changed the task panel. Only the changes follow, as a diff; nothing else changed.\n--- note notes/<time>-<id:1>.md (Design, 12:00)\n@@ -1,4 +1,4 @@\n alpha\n-bravo\n+bravo final\n charlie\n delta\n--- link in links.yaml\n+ link Runbook https://wiki.example/runbook\n--- task title\n- Fix login\n+ Fix login form\nTake these changes into account in your current work.",
     "stepId": "design",
     "stepName": "Design",
     "targets": [
@@ -59,6 +59,6 @@
     "taskId": "<id:1>"
   },
   "args:AdeTaskService.ForwardPanelEdits": {
-    "taskId": "<id:1>"
+    "taskId": "<id:2>"
   }
 }

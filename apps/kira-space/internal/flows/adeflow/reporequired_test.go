@@ -2,6 +2,7 @@ package adeflow_test
 
 import (
 	"errors"
+	"github.com/kirathecat/kira-studio/internal/testx"
 	"os"
 	"testing"
 
@@ -107,6 +108,7 @@ func TestTaskStartNeedsRepo(t *testing.T) {
 		if _, ok := latestRun(t, f.app, f.task.ID, "two"); ok {
 			t.Fatal("step two started without a repo")
 		}
+		testx.WaitUntil(t, waitFor, func() bool { return taskOf(t, board(t, f.app), f.task.ID).StatusStep == "two" })
 		f.app.Contract(t, rrScenario, "AdeTaskService.Board#waitingRepo", taskOf(t, board(t, f.app), f.task.ID), nrMask)
 		_, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: f.task.ID})
 		noRepoErr(t, err)

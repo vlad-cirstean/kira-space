@@ -360,3 +360,71 @@ func TestPhoneApprovals(t *testing.T) {
 		t.Fatal("expired answer unblocked the agent")
 	}
 }
+
+// A phone answers a details.edit request: the agent's note edit is kept on Approve.
+func TestPhoneDetailsEdit(t *testing.T) {
+	app := flowharness.New(t)
+	entry, err := app.W.AdeTask.SaveWorkflowYaml(ctx, adewire.SaveWorkflowYamlArgs{FileName: "manual.yaml", Yaml: "id: manual\nname: Flow\nsteps:\n  - id: ship\n    name: Ship\n    kind: manual\n"})
+	if err != nil || entry.Error != nil {
+		t.Fatalf("SaveWorkflowYaml: %v %+v", err, entry.Error)
+	}
+	task, err := app.W.AdeTask.CreateTask(ctx, adewire.CreateTaskArgs{Title: "Login form", WorkflowID: "manual"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: "Check the error states."}); err != nil {
+		t.Fatal(err)
+	}
+	where, err := app.W.AdeTask.DetailsFolder(ctx, adewire.DiskChangesArgs{TaskID: task.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := filepath.Glob(filepath.Join(where.Path, "notes", "*.md"))
+	if err != nil || len(notes) != 1 {
+		t.Fatalf("note files = %v, %v", notes, err)
+	}
+	const changed = "Check the error states and the empty form."
+	if err := os.WriteFile(notes[0], []byte(changed), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rel := filepath.Join("notes", filepath.Base(notes[0]))
+	reply, err := app.W.AdeBoard.Submit(ctx, agentmcp.SpaceCall{TaskID: task.ID, SessionID: "session-1"},
+		agentmcp.SubmitArgs{Paths: []string{rel}, Reason: "the empty form case is missing"})
+	if err != nil || !strings.HasPrefix(reply, "accepted 0, pending user 1, invalid 0") {
+		t.Fatalf("submit = %q, %v", reply, err)
+	}
+	id := approvals.KindDetailsEdit + ":" + task.ID
+
+	st := serve(t, app)
+	p := newPhone(t, st.AppURL)
+	deviceID := p.pair(app, "Ana's phone")
+	if err := app.W.Mobile.SetDevicePermissions(bridge.MobileDevicePermissionsArgs{ID: deviceID, AgentInput: true}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.W.Mobile.SetAgentInputEnabled(bridge.MobileSetAgentInputArgs{Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	r := p.get("/api/approvals")
+	var listed []approvals.Item
+	r.json(t, &listed)
+	if got := apIDs(listed); !slices.Equal(got, []string{id}) {
+		t.Fatalf("phone approvals = %v, want [%s]", got, id)
+	}
+	if strings.Contains(string(r.Body), app.Work) {
+		t.Fatalf("phone approvals leak a path: %s", r.Body)
+	}
+	app.Contract(t, approvalsScenario, "http:GET /api/approvals#detailsEdit", r.raw(t), apItemMask)
+
+	r, res := apAnswer(t, p, []string{id}, true)
+	if r.Status != http.StatusOK || len(res) != 1 || res[0].Error != "" {
+		t.Fatalf("approve = %d %s", r.Status, r.Body)
+	}
+	app.Contract(t, approvalsScenario, "http:POST /api/approvals/answer#detailsEdit", r.raw(t))
+	if apListed(t, app, id) {
+		t.Fatalf("%s still listed after the phone approved", id)
+	}
+	raw, err := os.ReadFile(notes[0])
+	if err != nil || string(raw) != changed {
+		t.Fatalf("note after the phone approved = %q, %v", raw, err)
+	}
+}

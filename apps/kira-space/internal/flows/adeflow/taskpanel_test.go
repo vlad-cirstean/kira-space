@@ -47,11 +47,8 @@ func TestTaskPanelOrigins(t *testing.T) {
 	// Call 1 is run `one`; 2 the first work session; 3 its resume.
 	claude(app, map[string][]fakeagent.Action{"*": {
 		{Name: "done"},
-		{MCP: []fakeagent.MCPCall{
-			handoverCall("Form wired.", false),
-			reportCall(artItem("link", "Runbook", tpRunbook, "")),
-		}, WaitFile: flag("hold1")},
-		{MCP: []fakeagent.MCPCall{handoverCall("Form wired; tests missing.", false)}, WaitFile: flag("hold2")},
+		{WaitBefore: flag("go1"), MCP: []fakeagent.MCPCall{submitCall(false)}, WaitFile: flag("hold1")},
+		{WaitBefore: flag("go2"), MCP: []fakeagent.MCPCall{submitCall(false)}, WaitFile: flag("hold2")},
 	}})
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	gitOut(t, repo.Dir, "remote", "set-url", "origin", "https://forge.test/acme/api.git")
@@ -78,6 +75,12 @@ func TestTaskPanelOrigins(t *testing.T) {
 		t.Fatal(err)
 	}
 	openLaunch(t, app, first)
+	waitSession(t, app, first.SessionID, "running")
+	writeTaskFile(t, app, task.ID, "handovers/draft-work.md", "Form wired.")
+	writeTaskFile(t, app, task.ID, "links.yaml", linksYAML("", artItem("link", "Runbook", tpRunbook, "")))
+	if err := os.WriteFile(flag("go1"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	var draft adewire.Handover
 	testx.WaitUntil(t, waitFor, func() bool {
 		var ok bool
@@ -109,6 +112,11 @@ func TestTaskPanelOrigins(t *testing.T) {
 		t.Fatalf("resume session = %q, want %q", again.SessionID, first.SessionID)
 	}
 	openLaunch(t, app, again)
+	waitSession(t, app, again.SessionID, "running")
+	writeTaskFile(t, app, task.ID, "handovers/draft-work.md", "Form wired; tests missing.")
+	if err := os.WriteFile(flag("go2"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	testx.WaitUntil(t, waitFor, func() bool {
 		d, ok := draftOf(handovers(t, app, task.ID))
 		draft = d

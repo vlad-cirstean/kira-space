@@ -65,7 +65,7 @@ func TestTaskIssueTracker(t *testing.T) {
 	forge := fakehost.New()
 	acli := fakeacli.New(itSite)
 	acli.SetIssue("KIRA-12", fakeacli.IssueJSON("KIRA-12", "Add the thing", "In Review", "indeterminate", 4))
-	finish := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{"status": "done", "summary": "all done"}}
+	finish := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{"status": "done"}}
 	f := newRunFixtureWith(t, []fakeagent.Action{{Sh: rvImplement, MCP: []fakeagent.MCPCall{finish}, Name: "nofinish"}},
 		agentStep("one", "")+manualStep,
 		flowharness.WithGitHost(forge), flowharness.WithoutGh(), flowharness.WithTrackerGrace(time.Second),

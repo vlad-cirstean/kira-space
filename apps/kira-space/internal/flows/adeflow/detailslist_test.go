@@ -26,7 +26,7 @@ func TestDetailsList(t *testing.T) {
 	hold := filepath.Join(dir, "hold")
 	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second))
 	claude(app, map[string][]fakeagent.Action{"*": {
-		{MCP: []fakeagent.MCPCall{handoverCall("Form wired.", false)}, WaitFile: hold},
+		{WaitBefore: hold + ".go", MCP: []fakeagent.MCPCall{submitCall(false)}, WaitFile: hold},
 	}})
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	rec := importRepo(t, app, repo.Dir)
@@ -46,6 +46,11 @@ func TestDetailsList(t *testing.T) {
 		t.Fatal(err)
 	}
 	openLaunch(t, app, launch)
+	waitSession(t, app, launch.SessionID, "running")
+	writeTaskFile(t, app, task.ID, "handovers/draft-work.md", "Form wired.")
+	if err := os.WriteFile(hold+".go", nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	testx.WaitUntil(t, waitFor, func() bool {
 		_, ok := draftOf(handovers(t, app, task.ID))
 		return ok

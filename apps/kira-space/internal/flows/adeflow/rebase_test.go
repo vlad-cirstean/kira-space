@@ -79,7 +79,7 @@ var rebaseMask = flowharness.Mask("startedAt", "finishedAt", "sessionId", "befor
 
 const rebaseSh = "git fetch -q origin && git rebase -q origin/main"
 
-func done() map[string]any { return map[string]any{"status": "done", "summary": "rebased"} }
+func done() map[string]any { return map[string]any{"status": "done"} }
 
 func (f *rbFx) rebase(t *testing.T, br adewire.Branch, args adewire.RebaseArgs) adewire.RebaseStart {
 	t.Helper()
@@ -153,7 +153,7 @@ func TestRebaseRun(t *testing.T) {
 		f.advanceMain(t, "clash.txt", "clash.txt\n\ntheirs\n")
 		f.waitBoardBehind(t, task.ID, 2) // the watcher lags a push; a stale base made behind 1 and no conflict
 		f.agent(rebaseSh+" || true", map[string]any{
-			"status": "failed", "summary": "conflict", "reason": "clash.txt conflicts",
+			"status": "failed", "reason": "clash.txt conflicts",
 			"conflictedFiles": []string{"clash.txt"}, "lastGitError": "CONFLICT (add/add)", "tried": "plain rebase",
 		})
 		run := f.waitRebase(t, task.ID, f.rebase(t, br, adewire.RebaseArgs{}).RunID)
@@ -359,7 +359,7 @@ func TestRebaseRun(t *testing.T) {
 		claude(f.app, map[string][]fakeagent.Action{"*": {
 			{Name: "done"},
 			{Name: "nofinish", MCP: []fakeagent.MCPCall{{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{
-				"status": "failed", "summary": "conflict", "reason": "clash", "conflictedFiles": []string{"x.txt"},
+				"status": "failed", "reason": "clash", "conflictedFiles": []string{"x.txt"},
 			}}}},
 			{Name: "done", MCP: []fakeagent.MCPCall{{Server: agentmcp.ServerName, Tool: "run_outcome", Args: map[string]any{"kind": "rebase"}}}},
 		}})
@@ -439,7 +439,7 @@ func TestRebaseRun(t *testing.T) {
 		f.advanceMain(t, "clash.txt", "clash.txt\n\ntheirs\n")
 		claude(f.app, map[string][]fakeagent.Action{"*": {
 			{Name: "nofinish", Sh: rebaseSh + " || true", MCP: []fakeagent.MCPCall{{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{
-				"status": "failed", "summary": "conflict", "reason": "clash.txt conflicts",
+				"status": "failed", "reason": "clash.txt conflicts",
 			}}}},
 			{Name: "nofinish", Sh: "printf 'merged\\n' > clash.txt && git add clash.txt && GIT_EDITOR=true git rebase --continue", MCP: []fakeagent.MCPCall{{
 				Server: agentmcp.ServerName, Tool: "finish_step", Args: done(),
@@ -466,7 +466,7 @@ func TestRebaseRun(t *testing.T) {
 		task, br := f.task(t, "Fix", adewire.BaseChoice{})
 		claude(f.app, map[string][]fakeagent.Action{"*": {{Name: "nofinish", MCP: []fakeagent.MCPCall{{
 			Server: agentmcp.ServerName, Tool: "finish_step",
-			Args: map[string]any{"status": "failed", "summary": "stuck", "reason": "push rejected", "lastGitError": "non-fast-forward"},
+			Args: map[string]any{"status": "failed", "reason": "push rejected", "lastGitError": "non-fast-forward"},
 		}}}}})
 		if err := f.startRun(t, task, br, "feat/api-fix"); err != nil {
 			t.Fatal(err)

@@ -61,9 +61,24 @@ func handoverPrompts(t *testing.T, app *flowharness.App) []prompts.Routed {
 	return out
 }
 
-func handoverCall(notes string, finished bool) fakeagent.MCPCall {
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "handover", Tolerate: true,
-		Args: map[string]any{"notes": notes, "finished": finished}}
+func submitCall(finished bool) fakeagent.MCPCall {
+	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Args: map[string]any{"finished": finished}}
+}
+
+// writeTaskFile writes a file under the task's folder, as an agent session editing it would.
+func writeTaskFile(t *testing.T, app *flowharness.App, taskID, rel, body string) {
+	t.Helper()
+	folder, err := app.W.AdeTask.DetailsFolder(ctx, adewire.DiskChangesArgs{TaskID: taskID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(folder.Path, rel)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func handovers(t *testing.T, app *flowharness.App, taskID string) []adewire.Handover {
@@ -82,8 +97,8 @@ func TestStageHandover(t *testing.T) {
 	// Call 1 is run `one`; 2 is the first work session; 3 a session that tries to write after the task moved on.
 	claude(app, map[string][]fakeagent.Action{"*": {
 		{Name: "done"},
-		{MCP: []fakeagent.MCPCall{handoverCall("Form wired; validation missing.", true)}, WaitFile: flag("hold1")},
-		{Sh: "until [ -f " + flag("late") + " ]; do sleep 0.1; done", MCP: []fakeagent.MCPCall{handoverCall("too late", true)}, WaitFile: flag("hold2")},
+		{WaitBefore: flag("go1"), MCP: []fakeagent.MCPCall{submitCall(true)}, WaitFile: flag("hold1")},
+		{WaitBefore: flag("late"), MCP: []fakeagent.MCPCall{submitCall(true)}, WaitFile: flag("hold2")},
 		{Name: "done"},
 	}})
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
@@ -106,7 +121,7 @@ func TestStageHandover(t *testing.T) {
 		t.Fatalf("after run one: %+v, want one handed run row one -> work", hs)
 	}
 	if in := taskOf(t, board(t, app), task.ID).HandoverIn; in == nil || in.Body != "summary-done" {
-		t.Fatalf("board handoverIn = %+v, want the run summary", in)
+		t.Fatalf("board handoverIn = %+v, want the run draft", in)
 	}
 
 	// An interactive session writes a draft and says it is finished: the board offers the stage move.
@@ -115,6 +130,11 @@ func TestStageHandover(t *testing.T) {
 		t.Fatal(err)
 	}
 	openLaunch(t, app, first)
+	waitSession(t, app, first.SessionID, "running")
+	writeTaskFile(t, app, task.ID, "handovers/draft-work.md", "Form wired; validation missing.")
+	if err := os.WriteFile(flag("go1"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	var draft adewire.Handover
 	testx.WaitUntil(t, waitFor, func() bool {
 		ds := taskOf(t, board(t, app), task.ID).HandoverDrafts
@@ -188,11 +208,12 @@ func TestStageHandover(t *testing.T) {
 	}
 
 	// The session of the stage the task left cannot write any more.
+	writeTaskFile(t, app, task.ID, "handovers/draft-work.md", "too late")
 	if err := os.WriteFile(flag("late"), nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	testx.WaitUntil(t, waitFor, func() bool {
-		raw, err := os.ReadFile(filepath.Join(app.FakeDir, "mcp-handover-2.json"))
+		raw, err := os.ReadFile(filepath.Join(app.FakeDir, "mcp-submit-2.json"))
 		return err == nil && strings.Contains(string(raw), "moved on to")
 	})
 	if ds := taskOf(t, board(t, app), task.ID).HandoverDrafts; len(ds) != 0 {

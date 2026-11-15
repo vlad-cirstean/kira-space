@@ -31,12 +31,29 @@ const (
 
 var artMask = flowharness.Mask("id", "createdAt", "ref", "taskId", "sessionId")
 
+// reportCall writes links.yaml with the slots the task already holds plus the items, then submits it.
 func reportCall(items ...map[string]any) fakeagent.MCPCall {
-	arr := make([]any, len(items))
-	for i, it := range items {
-		arr[i] = it
+	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true,
+		Files: map[string]string{"links.yaml": linksYAML(artSlots, items...)}}
+}
+
+// artSlots keeps the Jira and PR slots TestTaskArtifacts sets, so a rewrite of links.yaml does not clear them.
+const artSlots = "jira: {key: KIRA-12, url: \"https://jira.test/browse/KIRA-12\"}\npr: " + artIssue + "\n"
+
+func linksYAML(slots string, items ...map[string]any) string {
+	var sb strings.Builder
+	sb.WriteString(slots)
+	sb.WriteString("links:\n")
+	for _, it := range items {
+		var parts []string
+		for _, k := range []string{"kind", "title", "url", "ref"} {
+			if v, _ := it[k].(string); v != "" {
+				parts = append(parts, k+": "+strconv.Quote(v))
+			}
+		}
+		sb.WriteString("  - {" + strings.Join(parts, ", ") + "}\n")
 	}
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "report_artifacts", Tolerate: true, Args: map[string]any{"artifacts": arr}}
+	return sb.String()
 }
 
 func artItem(kind, title, url, ref string) map[string]any {
@@ -65,6 +82,7 @@ func mcpReply(t *testing.T, app *flowharness.App, name string) (text string, lis
 	if err := json.Unmarshal(raw, &blocks); err != nil {
 		t.Fatalf("%s: %v\n%s", name, err, raw)
 	}
+	texts := make([]string, 0, len(blocks))
 	for _, b := range blocks {
 		if _, body, ok := strings.Cut(b.Text, "\n"); ok && strings.HasPrefix(body, "{") {
 			if err := json.Unmarshal([]byte(body), &list); err != nil {
@@ -72,8 +90,9 @@ func mcpReply(t *testing.T, app *flowharness.App, name string) (text string, lis
 			}
 			return b.Text, list
 		}
+		texts = append(texts, b.Text)
 	}
-	return string(raw), list
+	return strings.Join(texts, "\n"), list
 }
 
 func artifactsOf(t *testing.T, app *flowharness.App, taskID string) adewire.ArtifactsResult {
@@ -97,31 +116,25 @@ func findArtifact(res adewire.ArtifactsResult, kind, title string) (adewire.Arti
 func TestTaskArtifacts(t *testing.T) {
 	dir := t.TempDir()
 	ready, hold1, hold2 := filepath.Join(dir, "ready"), filepath.Join(dir, "hold1"), filepath.Join(dir, "hold2")
-	finish := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{"status": "done", "summary": "all done"}}
-	tooMany := make([]map[string]any, 21)
-	for i := range tooMany {
-		tooMany[i] = artItem("link", "l", "https://x.example/"+string(rune('a'+i)), "")
-	}
+	finish := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{"status": "done"}}
+	design := artItem("doc", "Design notes", "", "docs/design.md")
+	thePR := artItem("link", "The PR", artPRURL, "")
 	forge := fakehost.New()
 	forge.AddChangeRequest(githost.ChangeRequest{
 		Number: 7, Title: "Fix login", State: "open", HeadRef: artBranch, HeadOwner: "acme", BaseRef: "main", URL: artPRURL,
 	})
 	f := newRunFixtureWith(t, []fakeagent.Action{
 		{Sh: rvImplement + " && until [ -f " + ready + " ]; do sleep 0.1; done", MCP: []fakeagent.MCPCall{
-			reportCall(
-				artItem("doc", "Design notes", "", "docs/design.md"),
-				artItem("deployment", "Preview", artPreview, ""),
-				artItem("link", "The PR", artPRURL, ""),
-			),
-			reportCall(artItem("deployment", "Preview env", artPreview, "")),
+			reportCall(design, artItem("deployment", "Preview", artPreview, ""), thePR),
+			reportCall(design, artItem("deployment", "Preview env", artPreview, ""), thePR),
 			reportCall(artItem("link", "bad", "javascript:alert(1)", "")),
 			reportCall(artItem("branch", "b", "", "b")),
 			reportCall(artItem("doc", "nothing", "", "")),
-			reportCall(tooMany...),
+			reportCall(design, artItem("deployment", "Preview env", artPreview, ""), thePR),
 			finish,
 		}, Name: "nofinish"},
-		{MCP: []fakeagent.MCPCall{handoverCall("Signed off.", true)}, WaitFile: hold1},
-		{MCP: []fakeagent.MCPCall{handoverCall("Signed off again.", true)}, WaitFile: hold2},
+		{MCP: []fakeagent.MCPCall{submitCall(false)}, WaitFile: hold1},
+		{MCP: []fakeagent.MCPCall{submitCall(false)}, WaitFile: hold2},
 	}, agentStep("one", "")+manualStep, flowharness.WithGitHost(forge), flowharness.WithoutGh(), flowharness.WithTrackerGrace(time.Second))
 	app := f.app
 	gitOut(t, f.repo.Dir, "remote", "set-url", "origin", "https://forge.test/acme/api.git")
@@ -204,15 +217,10 @@ func TestTaskArtifacts(t *testing.T) {
 		t.Fatalf("preview rows = %d, want 1", preview)
 	}
 
-	// 3. Refusals are tool errors and store nothing.
-	for n, want := range map[string]string{
-		"mcp-report_artifacts-3.json": "http or https",
-		"mcp-report_artifacts-4.json": "unknown kind",
-		"mcp-report_artifacts-5.json": "url or a ref",
-		"mcp-report_artifacts-6.json": "1 to 20",
-	} {
-		if text, _ := mcpReply(t, app, n); !strings.Contains(text, want) {
-			t.Fatalf("%s = %q, want %q", n, text, want)
+	// 3. An invalid links.yaml is reported as invalid and stores nothing.
+	for _, n := range []string{"mcp-submit-3.json", "mcp-submit-4.json", "mcp-submit-5.json"} {
+		if text, _ := mcpReply(t, app, n); !strings.HasPrefix(text, "accepted 0, pending user 0, invalid 1\nlinks.yaml: invalid") {
+			t.Fatalf("%s = %q, want links.yaml invalid", n, text)
 		}
 	}
 	stored := 0
@@ -222,7 +230,7 @@ func TestTaskArtifacts(t *testing.T) {
 		}
 	}
 	if stored != 2 {
-		t.Fatalf("stored rows = %d, want the doc and the preview", stored)
+		t.Fatalf("stored rows = %d, want the doc and the preview; the reported PR folds into the detected one", stored)
 	}
 
 	// 4. The bridge adds a user row, removes one, and refuses a detected id.
@@ -255,15 +263,15 @@ func TestTaskArtifacts(t *testing.T) {
 		t.Fatalf("artifacts after add and remove = %+v", after.Artifacts)
 	}
 
-	// 5. A finished handover from an interactive session lists the artifacts too.
+	// 5. A submit from an interactive session leaves the links as they are.
 	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
 	launch, err := app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: f.taskID})
 	if err != nil {
 		t.Fatal(err)
 	}
 	openLaunch(t, app, launch)
-	if text, list := mcpReply(t, app, "mcp-handover-1.json"); len(list.Artifacts) != 6 || !strings.Contains(text, "Runbook") {
-		t.Fatalf("handover reply = %q, %+v", text, list)
+	if text, _ := mcpReply(t, app, "mcp-submit-7.json"); !strings.HasPrefix(text, "accepted 0, pending user 0, invalid 0") {
+		t.Fatalf("session submit reply = %q, want nothing to apply", text)
 	}
 	if err := os.WriteFile(hold1, nil, 0o644); err != nil {
 		t.Fatal(err)
@@ -279,9 +287,8 @@ func TestTaskArtifacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	openLaunch(t, app, second)
-	_, list = mcpReply(t, app, "mcp-handover-2.json")
-	if len(list.Gaps) != 0 {
-		t.Fatalf("gaps = %+v, want none with the host offline", list.Gaps)
+	if text, _ := mcpReply(t, app, "mcp-submit-8.json"); !strings.HasPrefix(text, "accepted 0, pending user 0, invalid 0") {
+		t.Fatalf("session submit reply = %q, want nothing to apply", text)
 	}
 	if gaps := artifactsOf(t, app, f.taskID).Gaps; len(gaps) != 2 || gaps[0].Source != "host" || gaps[0].Repo != "api" || gaps[1].Source != "jira" {
 		t.Fatalf("panel gaps = %+v, want a host gap for api and the jira gap", gaps)
@@ -315,31 +322,33 @@ func TestTaskArtifacts(t *testing.T) {
 	app.Contract(t, "ade-artifacts", "AdeTaskService.Artifacts#archived", arch, artMask)
 }
 
-// J-LINK-011: an agent reports 201 artifacts in 21 calls of at most 20. The task keeps exactly the cap, the
-// refused call says why and stores nothing, and no earlier artifact is dropped.
+// J-LINK-011: an agent writes 201 links. The task keeps exactly the cap, the refused submit says why and
+// stores nothing, and no earlier link is dropped.
 func TestTaskArtifactsCapAtTwoHundred(t *testing.T) {
 	const capN = agentmcp.MaxArtifactsPerTask
-	var calls []fakeagent.MCPCall
-	for from := 0; from <= capN; from += agentmcp.MaxArtifactsPerCall {
-		var items []map[string]any
-		for i := from; i < min(from+agentmcp.MaxArtifactsPerCall, capN+1); i++ {
-			items = append(items, artItem("link", "Link "+strconv.Itoa(i), "https://x.example/"+strconv.Itoa(i), ""))
-		}
-		calls = append(calls, reportCall(items...))
+	var items []map[string]any
+	for i := 0; i <= capN; i++ {
+		items = append(items, artItem("link", "Link "+strconv.Itoa(i), "https://x.example/"+strconv.Itoa(i), ""))
 	}
-	// A repeat of a known URL at the cap updates in place and is not refused.
-	calls = append(calls, reportCall(artItem("link", "Link 0 again", "https://x.example/0", "")))
+	// The first 200 are accepted; the 201st is refused; a rename of a known link at the cap is accepted.
+	renamed := append([]map[string]any{artItem("link", "Link 0 again", "https://x.example/0", "")}, items[1:capN]...)
+	calls := []fakeagent.MCPCall{
+		{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Files: map[string]string{"links.yaml": linksYAML("", items[:capN]...)}},
+		{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Files: map[string]string{"links.yaml": linksYAML("", items...)}},
+		{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Files: map[string]string{"links.yaml": linksYAML("", renamed...)}},
+	}
 	f := newRunFixture(t, []fakeagent.Action{{MCP: calls, Name: "done"}}, agentStep("one", ""))
 	f.start(t, "feat/api-cap")
 	waitRun(t, f.app, f.taskID, "one", "done")
 
-	last := len(calls)  // the repeat (replies are numbered from 1)
-	refused := last - 1 // the call holding the 201st
-	if text := leaseRaw(t, f.app, "mcp-report_artifacts-"+strconv.Itoa(refused)+".json"); !strings.Contains(text, "at most 200 artifacts") {
-		t.Fatalf("201st artifact reply = %q, want the cap message", text)
+	if text := leaseRaw(t, f.app, "mcp-submit-1.json"); !strings.Contains(text, "accepted 1, pending user 0, invalid 0") {
+		t.Fatalf("first 200 links reply = %q, want accepted", text)
 	}
-	if text := leaseRaw(t, f.app, "mcp-report_artifacts-"+strconv.Itoa(last)+".json"); !strings.Contains(text, `"recorded":1`) {
-		t.Fatalf("repeat of a known URL at the cap = %q, want it recorded", text)
+	if text := leaseRaw(t, f.app, "mcp-submit-2.json"); !strings.Contains(text, "at most 200 links") {
+		t.Fatalf("201st link reply = %q, want the cap message", text)
+	}
+	if text := leaseRaw(t, f.app, "mcp-submit-3.json"); !strings.Contains(text, "accepted 1, pending user 0, invalid 0") {
+		t.Fatalf("rename at the cap = %q, want accepted", text)
 	}
 	var stored, hasFirst, hasLast int
 	for _, a := range artifactsOf(t, f.app, f.taskID).Artifacts {

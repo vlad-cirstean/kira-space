@@ -26,10 +26,6 @@ const proofChainScenario = "ade-proof-chain"
 
 var proofChainMask = flowharness.Mask("id", "proofId", "taskId", "sessionId", "createdAt", "updatedAt", "closedAt", "linkedAt")
 
-func attachCall(name string) fakeagent.MCPCall {
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "report_artifacts", Tolerate: true, Args: map[string]any{"artifacts": []map[string]any{{"kind": "proof", "ref": name}}}}
-}
-
 // closedProof builds a closed proof session of the given steps; a "diagram" step is a flowchart, any other a one-row table.
 func closedProof(t *testing.T, svc *proof.Service, name string, views ...string) string {
 	t.Helper()
@@ -101,8 +97,8 @@ func TestProofChain(t *testing.T) {
 	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second))
 	// Task folder sessions: the first launch belongs to "Login form", the second to "Other".
 	claude(app, map[string][]fakeagent.Action{"work": {
-		{MCP: []fakeagent.MCPCall{attachCall("Login checks"), attachCall("login checks"), attachCall("Draft proof"), attachCall("No such proof")}, WaitFile: hold},
-		{MCP: []fakeagent.MCPCall{attachCall("Login checks")}, WaitFile: hold},
+		{WaitFile: hold},
+		{WaitFile: hold},
 	}})
 	t.Cleanup(func() { _ = os.WriteFile(hold, nil, 0o644) })
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
@@ -123,12 +119,24 @@ func TestProofChain(t *testing.T) {
 	openProofDraft(t, svc, "Draft proof", "table")
 	legacyID := closedProof(t, svc, "Legacy", "table")
 
-	// The agent attaches through the MCP server; the repeat, the open draft and the unknown name leave one link.
+	// The engine attaches for the session; the repeat, the open draft and the unknown name leave one link.
 	launch, err := app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: login.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
 	openLaunch(t, app, launch)
+	waitSession(t, app, launch.SessionID, "running")
+	own := agentmcp.SpaceCall{TaskID: login.ID, SessionID: launch.SessionID}
+	for _, name := range []string{"Login checks", "login checks"} {
+		if _, err := app.W.AdeBoard.AttachProof(ctx, own, name); err != nil {
+			t.Fatalf("AttachProof(%q): %v", name, err)
+		}
+	}
+	for _, name := range []string{"Draft proof", "No such proof"} {
+		if _, err := app.W.AdeBoard.AttachProof(ctx, own, name); err == nil {
+			t.Fatalf("AttachProof(%q) succeeded", name)
+		}
+	}
 	testx.WaitUntil(t, waitFor, func() bool { return len(taskProofs(t, app, login.ID)) == 1 })
 	if err := os.WriteFile(hold, nil, 0o644); err != nil {
 		t.Fatal(err)

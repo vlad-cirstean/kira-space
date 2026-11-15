@@ -195,6 +195,47 @@
     "worktreeBasePath": "<home>/kira-space-wts"
   },
   "event:kira:approvals:changed#afterPhoneApprove": [],
+  "http:GET /api/approvals#detailsEdit": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "details.edit:<id:1>",
+      "kind": "details.edit",
+      "operation": {
+        "class": "review",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "manual",
+        "step": "",
+        "task": "Login form"
+      },
+      "payload": {
+        "items": [
+          {
+            "cause": "note",
+            "kind": "note",
+            "path": "notes/<time>-<id:2>.md",
+            "reason": "the empty form case is missing",
+            "text": "--- a/notes/<time>-<id:2>.md\n+++ b/notes/<time>-<id:2>.md\n@@ -1 +1 @@\n-Check the error states.\n+Check the error states and the empty form.\n"
+          }
+        ],
+        "reason": "the empty form case is missing",
+        "taskId": "<id:1>",
+        "taskTitle": "Login form"
+      },
+      "reason": "review",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Login form",
+        "readOnly": false
+      }
+    }
+  ],
   "http:GET /api/approvals#pending": [
     {
       "createdAt": 0,
@@ -296,6 +337,13 @@
       "code": "",
       "error": "",
       "id": "task.create:<id:4>"
+    }
+  ],
+  "http:POST /api/approvals/answer#detailsEdit": [
+    {
+      "code": "",
+      "error": "",
+      "id": "details.edit:<id:1>"
     }
   ],
   "http:POST /api/approvals/answer#expired": {

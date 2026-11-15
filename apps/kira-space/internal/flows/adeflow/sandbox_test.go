@@ -110,7 +110,7 @@ func TestSandboxReadStep(t *testing.T) {
 	if d.Access != "read" || len(d.Write) != 0 || len(d.Read) == 0 {
 		t.Fatalf("detail = %+v, want read access that writes nothing", d)
 	}
-	mustContain(t, "argv", fakeFile(t, f.app, "api-1.args"), "Edit", "Write", "NotebookEdit")
+	mustContain(t, "argv", fakeFile(t, f.app, "api-1.args"), "Edit(", "Write(")
 	mustContain(t, "env", fakeFile(t, f.app, "api-1.sandbox-env"), "GIT_OPTIONAL_LOCKS=0")
 	mustContain(t, "prompt", fakeFile(t, f.app, "api-1.prompt"), "read only")
 }
@@ -127,7 +127,7 @@ func TestSandboxOff(t *testing.T) {
 	if n := len(fake.Policies()); n != 0 {
 		t.Fatalf("Prepare ran %d times for an unconfined run", n)
 	}
-	mustLack(t, "argv", fakeFile(t, f.app, "api-1.args"), "--add-dir", "Bash(git branch:*)")
+	mustLack(t, "argv", fakeFile(t, f.app, "api-1.args"), "Bash(git branch:*)")
 	mustLack(t, "prompt", fakeFile(t, f.app, "api-1.prompt"), "Sandbox")
 	f.app.Contract(t, sbScenario, "AdeTaskService.RunSandbox#off", sandboxOf(t, f, run.ID), sbMask)
 	f.app.Contract(t, sbScenario, "AdeTaskService.Run#off", run, sbMask)
@@ -476,7 +476,7 @@ func TestSandboxManualSession(t *testing.T) {
 		fake := &sandboxtest.Fake{}
 		f := newManualSbFx(t, fake, sessionStep("work", "    sandbox:\n      access: off\n"))
 		launch := f.launch(t)
-		mustLack(t, "launch command", launch.Command, filepath.Join(fake.Dir, shim), " -f ", "--disallowed", "--add-dir")
+		mustLack(t, "launch command", launch.Command, filepath.Join(fake.Dir, shim), " -f ", "Bash(git branch:*)")
 		openLaunch(t, f.app, launch)
 		waitSession(t, f.app, launch.SessionID, "running")
 		if n := len(fake.Policies()); n != 0 {
@@ -503,7 +503,7 @@ func TestSandboxManualSession(t *testing.T) {
 			t.Fatalf("manual step sandbox access = %q, want off", got)
 		}
 		launch := f.launch(t)
-		mustLack(t, "launch command", launch.Command, filepath.Join(fake.Dir, shim), " -f ", "--disallowed")
+		mustLack(t, "launch command", launch.Command, filepath.Join(fake.Dir, shim), " -f ", "Bash(git branch:*)")
 		openLaunch(t, f.app, launch)
 		waitSession(t, f.app, launch.SessionID, "running")
 		if n := len(fake.Policies()); n != 0 {
@@ -594,7 +594,7 @@ func TestSandboxPolicyPerStep(t *testing.T) {
 			t.Fatalf("policy %d = %+v, want run %s, network %v, writes %v", i, pol[i], w.run, w.network, w.writes)
 		}
 	}
-	mustLack(t, "open step argv", fakeFile(t, f.app, "api-3.args"), "--add-dir")
+	mustLack(t, "open step argv", fakeFile(t, f.app, "api-3.args"), "Bash(git branch:*)")
 	mustContain(t, "write step argv", fakeFile(t, f.app, "api-1.args"), "--add-dir")
 	mustContain(t, "read step argv", fakeFile(t, f.app, "api-2.args"), "Edit", "Write")
 }

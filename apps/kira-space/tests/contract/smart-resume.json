@@ -17,7 +17,7 @@
       "status": "failed"
     },
     "params": [],
-    "prompt": "Say hi\n\nWhen finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
+    "prompt": "Say hi\n\nWhen finished, call finish_step with status \"done\". If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
     "provider": "claude",
     "resumable": true,
     "resumedFrom": "",
@@ -61,11 +61,10 @@
       "reason": "",
       "reported": true,
       "source": "agent",
-      "status": "done",
-      "summary": "summary-done"
+      "status": "done"
     },
     "params": [],
-    "prompt": "Kira Space closed while you worked; your last turn was cut off. A tool call marked interrupted has an unknown outcome: it may have run in part. Check that action's current state (files, git, running processes) before you redo or skip it. Then continue the task.\n\nWhen finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
+    "prompt": "Kira Space closed while you worked; your last turn was cut off. A tool call marked interrupted has an unknown outcome: it may have run in part. Check that action's current state (files, git, running processes) before you redo or skip it. Then continue the task.\n\nWhen finished, call finish_step with status \"done\". If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "<id:1>",

@@ -1,0 +1,182 @@
+{
+  "AdeTaskService.AddNote": {
+    "body": "Check the error states.",
+    "createdAt": 0,
+    "dismissed": false,
+    "edited": false,
+    "finished": false,
+    "fromStepId": "work",
+    "fromStepName": "Work",
+    "id": "<masked>",
+    "sessionId": "<masked>",
+    "source": "user",
+    "state": "note",
+    "taskId": "<masked>",
+    "toStepId": "",
+    "toStepName": "",
+    "updatedAt": 0
+  },
+  "AdeTaskService.Artifacts#link": {
+    "artifacts": [
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "doc",
+        "ref": "docs/design.md",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "agent",
+        "status": "",
+        "title": "Design notes",
+        "url": ""
+      }
+    ],
+    "gaps": []
+  },
+  "AdeTaskService.DetailsDiskChanges": [
+    {
+      "diff": "--- a/notes/<time>-<id:1>.md\n+++ b/notes/<time>-<id:1>.md\n@@ -1 +1 @@\n-Check the error states and the empty form.\n+Edited by hand.\n",
+      "kind": "note",
+      "path": "notes/<time>-<id:1>.md",
+      "pending": false,
+      "problem": "",
+      "state": "edited"
+    }
+  ],
+  "AdeTaskService.Handovers#draft": {
+    "handovers": [
+      {
+        "body": "Form wired; validation missing.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": true,
+        "fromStepId": "work",
+        "fromStepName": "Work",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "agent",
+        "state": "draft",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "Check the error states.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "work",
+        "fromStepName": "Work",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "user",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      }
+    ]
+  },
+  "AdeTaskService.Handovers#final": {
+    "handovers": [
+      {
+        "body": "Form wired; validation missing.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": true,
+        "fromStepId": "work",
+        "fromStepName": "Work",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "agent",
+        "state": "draft",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "Edited by hand.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": true,
+        "finished": false,
+        "fromStepId": "work",
+        "fromStepName": "Work",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "user",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      }
+    ]
+  },
+  "ApprovalsService.List#detailsEdit": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "details.edit",
+      "operation": {
+        "class": "review",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "manual",
+        "step": "",
+        "task": "Login form"
+      },
+      "payload": {
+        "items": [
+          {
+            "cause": "note",
+            "kind": "note",
+            "path": "notes/<time>-<id:1>.md",
+            "reason": "the empty form case is missing",
+            "text": "--- a/notes/<time>-<id:1>.md\n+++ b/notes/<time>-<id:1>.md\n@@ -1 +1 @@\n-Check the error states.\n+Check the error states and the empty form.\n"
+          }
+        ],
+        "reason": "the empty form case is missing",
+        "taskId": "<masked>",
+        "taskTitle": "Login form"
+      },
+      "reason": "review",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Login form",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:AdeTaskService.AddNote": {
+    "body": "Check the error states.",
+    "taskId": "<masked>"
+  },
+  "args:AdeTaskService.DetailsAcceptDisk": {
+    "paths": [
+      "notes/<time>-<id:1>.md"
+    ],
+    "taskId": "<masked>"
+  },
+  "args:AdeTaskService.DetailsDiscardDisk": {
+    "paths": [],
+    "taskId": "<masked>"
+  },
+  "args:ApprovalsService.Answer#approve": {
+    "approved": [
+      "notes/<time>-<id:1>.md"
+    ]
+  }
+}
