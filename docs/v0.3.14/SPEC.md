@@ -15,7 +15,11 @@ the IPC-boundary test split (flow test plus UI spec). First `P` is P634.
 | P640 | API module: dialog when closing an unsaved tab, new or modified | Done |
 | P641 | ADE task: own Jira and PR links first in their group | Done |
 | P642 | ADE task list: today background, day start/end left bar, today bar differs | Done |
-| P643 | Details tab on disk: notes, handovers, links, PR link and proofs (with images) as files, source of truth; design plan first, user approves it before the build | Todo |
+| P643 Part 1 | Details on disk: spike, files vs tools on real `claude`; design plan, user approves before the build | Done |
+| P643 Part 2 | Details on disk: foundation (store seam, `task_files`, submit core, migration framework, proof validator export, README generator, task folder grant, bench harness) | Done |
+| P643 Part 3 | Details on disk: notes, handovers, links as files, `submit` tool, `finish_step` change, approvals, disk banner, migration exporters, prompts; round F1 | Todo |
+| P643 Part 4 | Details on disk: proofs as files, `proof` tool, image formats, single-proof window, retention removed, proof migration (Stream A); round F2, F3 | Todo |
+| P643 Part 5 | Details on disk: `state.yaml` and `task.yaml`, branch, lease, cancel tools, tool removals, orchestrator chain reads, children add-dir (Stream B); round F4 to F6, final benchmark | Todo |
 | P644 | Chapter non-UI full run, 2 code review rounds | Todo |
 | P645 | Close chapter | Todo |
 
@@ -190,6 +194,21 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
 - Unit: `ade-v2-link-groups.spec.ts`, 4 cases. UI: 2 new tests in `ade-v2-links-strip.spec.ts`. 46 of 46 targeted specs pass.
 - Visual baselines judged unchanged from fixtures. Not run locally, they run in PR CI.
 - No backend change. `docs/ARCHITECTURE.md` ADE links line and Tests line updated.
+
+### P643 Part 1 Result
+
+- Spike on real `claude` (sonnet, haiku): tools against files for six flows (F1 handover, F2 new proof, F3 proof edit, F4 orchestrator chain, F5 branch wait, F6 child creation). Part 1, 1b (realistic fixtures, README and layout ablations, context breakdown), 1c (proof flows). 5.83 of the 6 USD spike cap.
+- Verdict: files-only NO-GO on every flow; the gap is call structure (2 to 3 extra turns), not text size. Files win F4 (cost 0.72 to 0.79). Tools win F2, F3 (1.18 to 1.40) and F6 (1.36 to 1.40).
+- User chose the narrowed design: content as files with a `submit` tool, a `proof` tool, `create_task` kept, `state.yaml` a Kira-written mirror. Plan: `plans/P643-details-on-disk.md`; numbers: `plans/P643-spike-results.md`.
+
+### P643 Part 2 Result
+
+- Seam and store: migration 0101 (`task_files`, `task_file_intents`, `task_files_migration`, `ade_task_handovers.rel_path`), `storage/repos/taskfiles.go`, `taskfiles/store` (local adapter refuses symlinks, hard links, special files).
+- Core `internal/taskfiles`: classify with caps, decide matrix and reason error text, link and proof diffs, README generator (25-line cap, goldens), submit core (walk, classify, diff, apply, restore, collisions), file-then-database writes with intents and `Recover`, migration framework. Handlers per kind come with Parts 3 and 4.
+- `proof.ValidateStep` and `proof.InlineToJSON` (inline YAML to JSON, integer text and key order kept).
+- Task folder grant: add-dir, sandbox `Allow` plus literal `DenyWrite` for `README.md`, `task.yaml`, `state.yaml`, `Edit` and `Write` deny rules (`ade/taskfolder.go`, `TaskBoardDeps.FilesDir`).
+- Harness: spike tests need explicit output paths; `details_bench_test.go`, frozen `tools-baseline.json`, fixtures, `bun run test:claude:details`. DEV_ENVIRONMENT row and ARCHITECTURE "Task files (P643)" added.
+- Open: read-access sandbox runs cannot edit the task folder (Known open items); Part 3 decides.
 
 ### P642 Result
 

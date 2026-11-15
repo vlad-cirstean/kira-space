@@ -39,10 +39,10 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 )
 
-const (
-	spikeFixtures1b = "testdata/details-spike-1b"
-	spikeRunCap1b   = 0.5
-)
+const spikeRunCap1b = 0.5
+
+// spikeFixtures1b is a var so the benchmark (details_bench_test.go) points the loaders at its own copy.
+var spikeFixtures1b = "testdata/details-spike-1b"
 
 // spike1bOn switches execute to the Part 1b fixtures and variants.
 var spike1bOn bool

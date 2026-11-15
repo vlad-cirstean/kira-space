@@ -1,0 +1,2971 @@
+{
+  "roles": {
+    "orchestrator": {
+      "kira-space": [
+        {
+          "description": "Take a named lease on a shared resource the user configured, such as a port, the full test suite, push or merge. Never blocks: returns held, or queued with your position. The lease is keyed to your session, so calling again keeps your place. When it frees, Kira messages your session; a headless run calls acquire_lease or lease_status again to check. Call release_lease when done. A lease ends with the session, or after 10 minutes of silence.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "queue": {
+                "description": "Lease queue name. lease_status lists them.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": ["queue"],
+            "type": "object"
+          },
+          "name": "acquire_lease",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "holderTask": {
+                "type": "string"
+              },
+              "next": {
+                "type": "string"
+              },
+              "notices": {
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              },
+              "position": {
+                "type": "integer"
+              },
+              "queue": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "ttlSeconds": {
+                "type": "integer"
+              }
+            },
+            "required": ["queue", "state", "position", "holderTask", "ttlSeconds", "next"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Ask the user to approve pointing your task's branch at another existing local branch; waits for the answer. Use when the task folder holds a different branch than the task shows, or you must work on another existing branch. The folder and sessions stay; git switch runs there if needed. Never creates a branch: use request_branches. Outcome: changed, denied, failed or timeout. Refused for main, integration and checked-out-elsewhere branches, and a dirty folder that needs a switch.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "description": "Task branch to re-point.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "repo": {
+                "description": "Task repo: nickname, name or code repo id.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "to": {
+                "description": "Existing local branch to work on instead.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": ["repo", "from", "to"],
+            "type": "object"
+          },
+          "name": "change_branch",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "next": {
+                "type": "string"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "repo": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "worktree": {
+                "type": "string"
+              }
+            },
+            "required": ["repo", "from", "to", "outcome", "worktree", "next"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Ask the user to approve a new child task; waits for the answer. The brief is the child's first handover. Child tasks cannot create tasks. Every call waits for the user, so ask for what you need in one call. Outcome: created, denied, timeout or failed. Read results with list_tasks and task_chain; you are not woken when a child finishes.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "brief": {
+                "description": "What the child must do, what it needs to know and what to hand back. Markdown, at most 16384 bytes.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "repos": {
+                "description": "Repos of the child, 0 to 10. Each gets a branch slot the child names later.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "base": {
+                      "description": "Ref the child's branch starts from, such as main. Default: the repo's default branch.",
+                      "type": "string"
+                    },
+                    "repo": {
+                      "description": "Repo: nickname, name or code repo id, from task_info.",
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "title": {
+                "description": "Child task title, 1 to 200 characters.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "workflow": {
+                "description": "Workflow id or name. It must exist and have a step.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": ["title", "workflow", "brief"],
+            "type": "object"
+          },
+          "name": "create_task",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "next": {
+                "type": "string"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "taskId": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": ["outcome", "title", "next"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Add repos to the task. Only repos registered in Kira Space can be added. An unknown repo is refused: ask the user to import it from the Git module. Never removes a repo.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "repos": {
+                "description": "Repos to add: nickname, name or code repo id of a registered repo, from task_info. 1 to 20.",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": ["repos"],
+            "type": "object"
+          },
+          "name": "declare_repos",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branch": {
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "type": "string"
+                  },
+                  "branch": {
+                    "type": "string"
+                  },
+                  "next": {
+                    "type": "string"
+                  },
+                  "repo": {
+                    "type": "string"
+                  },
+                  "setup": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "note": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["state", "note"],
+                    "type": "object"
+                  },
+                  "worktree": {
+                    "type": "string"
+                  }
+                },
+                "required": ["repo", "branch", "worktree", "setup", "next"],
+                "type": ["null", "object"]
+              },
+              "jiraKey": {
+                "type": "string"
+              },
+              "registered": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "codeRepoId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nickname": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name", "nickname", "codeRepoId", "path"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "repos": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "branch": {
+                      "type": ["null", "string"]
+                    },
+                    "codeRepoId": {
+                      "type": "string"
+                    },
+                    "mismatch": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "checkedOut": {
+                          "type": "string"
+                        },
+                        "folder": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["folder", "checkedOut"],
+                      "type": ["null", "object"]
+                    },
+                    "repo": {
+                      "type": "string"
+                    },
+                    "setup": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["state", "note"],
+                      "type": "object"
+                    },
+                    "worktree": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo", "codeRepoId", "branch", "worktree", "setup"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "step": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "workflow": {
+                "type": "string"
+              }
+            },
+            "required": ["title", "jiraKey", "workflow", "step", "repos", "registered"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Report how this pipeline step ended. Call it exactly once, as the last action.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "conflictedFiles": {
+                "description": "Files that still conflict, relative to the repo.",
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              },
+              "lastGitError": {
+                "description": "Last git error output you saw.",
+                "type": "string"
+              },
+              "reason": {
+                "description": "Why it failed, or what you need. Required when status is not ok or needs_input.",
+                "type": "string"
+              },
+              "status": {
+                "description": "How the step ended. done (ok). failed (not ok). needs_input when the user must decide.",
+                "enum": ["done", "failed", "needs_input"],
+                "type": "string"
+              },
+              "summary": {
+                "description": "One line: what was done, what failed, or the question for the user.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "tried": {
+                "description": "What you tried before giving up.",
+                "type": "string"
+              }
+            },
+            "required": ["status", "summary"],
+            "type": "object"
+          },
+          "name": "finish_step"
+        },
+        {
+          "description": "Show lease queues with their holder and waiters in grant order, and which are yours. Read only. Also delivers any lease notice waiting for you.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "queue": {
+                "description": "Lease queue name. Omit for all.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "lease_status",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "notices": {
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              },
+              "queues": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "holder": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "mine": {
+                          "type": "boolean"
+                        },
+                        "position": {
+                          "type": "integer"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        },
+                        "taskTitle": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["taskId", "taskTitle", "mine"],
+                      "type": ["null", "object"]
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "waiters": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "mine": {
+                            "type": "boolean"
+                          },
+                          "position": {
+                            "type": "integer"
+                          },
+                          "taskId": {
+                            "type": "string"
+                          },
+                          "taskTitle": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["taskId", "taskTitle", "mine"],
+                        "type": "object"
+                      },
+                      "type": ["null", "array"]
+                    }
+                  },
+                  "required": ["name", "holder", "waiters"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["queues"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "List the child tasks you created, newest first: id, title, workflow, status, step, whether finished or archived, and the start of the child's last handover. At most 100.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "state": {
+                "description": "live, archived or all. Default all.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "list_tasks",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "more": {
+                "type": "boolean"
+              },
+              "tasks": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "archived": {
+                      "type": "boolean"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "finished": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "lastHandover": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "step": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "workflow": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "kind",
+                    "workflow",
+                    "status",
+                    "step",
+                    "finished",
+                    "archived",
+                    "createdAt",
+                    "lastHandover"
+                  ],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["tasks"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "List this task's stoppable operations, such as a slow git fetch or push. With cancel: stop one by id.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "cancel": {
+                "description": "Operation id. Omit to list.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "operations",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "cancelled": {
+                "type": ["null", "boolean"]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "opId": {
+                "type": "string"
+              },
+              "operations": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "elapsedMs": {
+                      "type": "integer"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "opId": {
+                      "type": "string"
+                    },
+                    "startedAt": {
+                      "type": "string"
+                    },
+                    "subject": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["opId", "kind", "startedAt", "elapsedMs"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "description": "Release a lease you hold, or leave its queue. Call it as soon as you finish with the resource. Without queue: every lease you hold or wait for.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "queue": {
+                "description": "Lease queue name. Omit for all.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "release_lease",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "notices": {
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              },
+              "released": {
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["released"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Ask the user to approve renaming one of your task's branches; waits for the answer. The worktree folder stays. Never git branch -m. A pushed branch renames on the remote only if the user agrees. Outcome: renamed, denied, failed or timeout. Refused for main, integration and protected branches, open change requests and sandboxed branches.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "description": "Current branch name.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "renameRemote": {
+                "description": "true proposes renaming the remote branch too. The user decides. Default false.",
+                "type": "boolean"
+              },
+              "repo": {
+                "description": "Task repo: nickname, name or code repo id.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "to": {
+                "description": "New branch name. Must not exist yet.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": ["repo", "from", "to"],
+            "type": "object"
+          },
+          "name": "rename_branch",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "next": {
+                "type": "string"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "remote": {
+                "type": "string"
+              },
+              "repo": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "worktree": {
+                "type": "string"
+              }
+            },
+            "required": ["repo", "from", "to", "outcome", "remote", "worktree", "next"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Record what you made outside the task's git branches: docs, deployments, PRs in other repos, issues, links. The task's branches, their PRs and configured deployments are found already. Kind proof attaches a saved proof by name.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "artifacts": {
+                "description": "1 to 20 items to record. A url already recorded is updated.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "description": "changeRequest, issue, deployment, doc, link or proof.",
+                      "type": "string"
+                    },
+                    "ref": {
+                      "description": "Name without a url, such as a file path. Proof: its name.",
+                      "type": "string"
+                    },
+                    "title": {
+                      "description": "Short name, at most 200 bytes. Skip for proof.",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "http or https address. Give url or ref.",
+                      "type": "string"
+                    }
+                  },
+                  "required": ["kind"],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": ["artifacts"],
+            "type": "object"
+          },
+          "name": "report_artifacts",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "proofs": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "steps": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["name", "steps", "status"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "recorded": {
+                "type": "integer"
+              }
+            },
+            "required": ["recorded"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Ask the user to approve branches and worktrees, all in one call; waits for the answer. You name each branch; Kira Space picks the folder. A repo may get several branches. Approval adds a registered repo missing from the task. With existing: true, checks out a branch that exists; if another worktree holds it, the user approves detaching it there. Per branch: created, checkedOut, existing, denied, failed or timeout. A new worktree may still be preparing; task_info with repo and branch shows it.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branches": {
+                "description": "Branches, 1 to 20.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "base": {
+                      "description": "Existing branch to start from, such as main or feat/api: short name, origin checked first. A branch of a task stacks on it. Omit for main.",
+                      "type": "string"
+                    },
+                    "branch": {
+                      "description": "Branch name, such as feat/login-form. New unless existing is true.",
+                      "type": "string"
+                    },
+                    "existing": {
+                      "description": "true: work on this existing branch instead of creating it. No base.",
+                      "type": "boolean"
+                    },
+                    "repo": {
+                      "description": "Repo: nickname, name or code repo id, from task_info.",
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo", "branch"],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": ["branches"],
+            "type": "object"
+          },
+          "name": "request_branches",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branches": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "base": {
+                      "type": "string"
+                    },
+                    "branch": {
+                      "type": "string"
+                    },
+                    "next": {
+                      "type": "string"
+                    },
+                    "outcome": {
+                      "type": "string"
+                    },
+                    "repo": {
+                      "type": "string"
+                    },
+                    "setup": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["state", "note"],
+                      "type": "object"
+                    },
+                    "worktree": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo", "branch", "worktree", "setup", "next", "outcome"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["branches"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "How this task's latest runs ended: state, reason, conflicted files, last git error and, for a rebase, what git showed. Use to learn why a rebase or step failed. Only this task's runs.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branch": {
+                "description": "Only runs on this branch name.",
+                "type": "string"
+              },
+              "kind": {
+                "description": "rebase, step or automation (script runs started for this task). Default rebase and step.",
+                "type": "string"
+              },
+              "limit": {
+                "description": "How many runs, 1 to 10. Default 3.",
+                "type": "integer"
+              },
+              "runId": {
+                "description": "One run id, from a prompt or an earlier call.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "run_outcome",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "runs": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "branch": {
+                      "type": "string"
+                    },
+                    "finishedAt": {
+                      "type": ["null", "integer"]
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "outcome": true,
+                    "repo": {
+                      "type": "string"
+                    },
+                    "runId": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "step": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "runId",
+                    "kind",
+                    "step",
+                    "repo",
+                    "branch",
+                    "state",
+                    "finishedAt",
+                    "outcome"
+                  ],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["runs"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Read the handover chain of your own task or of one of your children, newest first: your earlier passes' handovers and finished children's results. Drafts included. Page with before.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "before": {
+                "description": "The next value of the previous page: rows older than that row.",
+                "type": "string"
+              },
+              "limit": {
+                "description": "Rows per page, 1 to 50. Default 10.",
+                "type": "integer"
+              },
+              "taskId": {
+                "description": "A child's task id from list_tasks. Omit for your own chain.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "task_chain",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "more": {
+                "type": "boolean"
+              },
+              "next": {
+                "type": "string"
+              },
+              "rows": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "body": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "type": "string"
+                    },
+                    "fromTaskId": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "to": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["id", "from", "to", "source", "state", "body", "createdAt"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["rows"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Your Kira Space task: title, Jira key, workflow, step, repos, branches; registered repos only with no repos or includeRegistered. With repo and branch: that worktree's state.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branch": {
+                "description": "Branch name. With repo.",
+                "type": "string"
+              },
+              "includeRegistered": {
+                "description": "true: also list the registered repos. Default: only when the task has no repos.",
+                "type": "boolean"
+              },
+              "repo": {
+                "description": "Task repo: nickname, name or id. With branch.",
+                "type": "string"
+              },
+              "waitSeconds": {
+                "description": "Seconds to wait for setup, 0 to 600. Default 0.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "name": "task_info",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branch": {
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "type": "string"
+                  },
+                  "branch": {
+                    "type": "string"
+                  },
+                  "next": {
+                    "type": "string"
+                  },
+                  "repo": {
+                    "type": "string"
+                  },
+                  "setup": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "note": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["state", "note"],
+                    "type": "object"
+                  },
+                  "worktree": {
+                    "type": "string"
+                  }
+                },
+                "required": ["repo", "branch", "worktree", "setup", "next"],
+                "type": ["null", "object"]
+              },
+              "jiraKey": {
+                "type": "string"
+              },
+              "registered": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "codeRepoId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nickname": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name", "nickname", "codeRepoId", "path"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "repos": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "branch": {
+                      "type": ["null", "string"]
+                    },
+                    "codeRepoId": {
+                      "type": "string"
+                    },
+                    "mismatch": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "checkedOut": {
+                          "type": "string"
+                        },
+                        "folder": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["folder", "checkedOut"],
+                      "type": ["null", "object"]
+                    },
+                    "repo": {
+                      "type": "string"
+                    },
+                    "setup": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["state", "note"],
+                      "type": "object"
+                    },
+                    "worktree": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo", "codeRepoId", "branch", "worktree", "setup"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "step": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "workflow": {
+                "type": "string"
+              }
+            },
+            "required": ["title", "jiraKey", "workflow", "step", "repos", "registered"],
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "run": {
+      "kira-space": [
+        {
+          "description": "Take a named lease on a shared resource the user configured, such as a port, the full test suite, push or merge. Never blocks: returns held, or queued with your position. The lease is keyed to your session, so calling again keeps your place. When it frees, Kira messages your session; a headless run calls acquire_lease or lease_status again to check. Call release_lease when done. A lease ends with the session, or after 10 minutes of silence.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "queue": {
+                "description": "Lease queue name. lease_status lists them.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": ["queue"],
+            "type": "object"
+          },
+          "name": "acquire_lease",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "holderTask": {
+                "type": "string"
+              },
+              "next": {
+                "type": "string"
+              },
+              "notices": {
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              },
+              "position": {
+                "type": "integer"
+              },
+              "queue": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "ttlSeconds": {
+                "type": "integer"
+              }
+            },
+            "required": ["queue", "state", "position", "holderTask", "ttlSeconds", "next"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Ask the user to approve pointing your task's branch at another existing local branch; waits for the answer. Use when the task folder holds a different branch than the task shows, or you must work on another existing branch. The folder and sessions stay; git switch runs there if needed. Never creates a branch: use request_branches. Outcome: changed, denied, failed or timeout. Refused for main, integration and checked-out-elsewhere branches, and a dirty folder that needs a switch.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "description": "Task branch to re-point.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "repo": {
+                "description": "Task repo: nickname, name or code repo id.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "to": {
+                "description": "Existing local branch to work on instead.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": ["repo", "from", "to"],
+            "type": "object"
+          },
+          "name": "change_branch",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "next": {
+                "type": "string"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "repo": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "worktree": {
+                "type": "string"
+              }
+            },
+            "required": ["repo", "from", "to", "outcome", "worktree", "next"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Add repos to the task. Only repos registered in Kira Space can be added. An unknown repo is refused: ask the user to import it from the Git module. Never removes a repo.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "repos": {
+                "description": "Repos to add: nickname, name or code repo id of a registered repo, from task_info. 1 to 20.",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": ["repos"],
+            "type": "object"
+          },
+          "name": "declare_repos",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branch": {
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "type": "string"
+                  },
+                  "branch": {
+                    "type": "string"
+                  },
+                  "next": {
+                    "type": "string"
+                  },
+                  "repo": {
+                    "type": "string"
+                  },
+                  "setup": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "note": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["state", "note"],
+                    "type": "object"
+                  },
+                  "worktree": {
+                    "type": "string"
+                  }
+                },
+                "required": ["repo", "branch", "worktree", "setup", "next"],
+                "type": ["null", "object"]
+              },
+              "jiraKey": {
+                "type": "string"
+              },
+              "registered": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "codeRepoId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nickname": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name", "nickname", "codeRepoId", "path"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "repos": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "branch": {
+                      "type": ["null", "string"]
+                    },
+                    "codeRepoId": {
+                      "type": "string"
+                    },
+                    "mismatch": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "checkedOut": {
+                          "type": "string"
+                        },
+                        "folder": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["folder", "checkedOut"],
+                      "type": ["null", "object"]
+                    },
+                    "repo": {
+                      "type": "string"
+                    },
+                    "setup": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["state", "note"],
+                      "type": "object"
+                    },
+                    "worktree": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo", "codeRepoId", "branch", "worktree", "setup"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "step": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "workflow": {
+                "type": "string"
+              }
+            },
+            "required": ["title", "jiraKey", "workflow", "step", "repos", "registered"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Report how this pipeline step ended. Call it exactly once, as the last action.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "conflictedFiles": {
+                "description": "Files that still conflict, relative to the repo.",
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              },
+              "lastGitError": {
+                "description": "Last git error output you saw.",
+                "type": "string"
+              },
+              "reason": {
+                "description": "Why it failed, or what you need. Required when status is not ok or needs_input.",
+                "type": "string"
+              },
+              "status": {
+                "description": "How the step ended. done (ok). failed (not ok). needs_input when the user must decide.",
+                "enum": ["done", "failed", "needs_input"],
+                "type": "string"
+              },
+              "summary": {
+                "description": "One line: what was done, what failed, or the question for the user.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "tried": {
+                "description": "What you tried before giving up.",
+                "type": "string"
+              }
+            },
+            "required": ["status", "summary"],
+            "type": "object"
+          },
+          "name": "finish_step"
+        },
+        {
+          "description": "Show lease queues with their holder and waiters in grant order, and which are yours. Read only. Also delivers any lease notice waiting for you.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "queue": {
+                "description": "Lease queue name. Omit for all.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "lease_status",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "notices": {
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              },
+              "queues": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "holder": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "mine": {
+                          "type": "boolean"
+                        },
+                        "position": {
+                          "type": "integer"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        },
+                        "taskTitle": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["taskId", "taskTitle", "mine"],
+                      "type": ["null", "object"]
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "waiters": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "mine": {
+                            "type": "boolean"
+                          },
+                          "position": {
+                            "type": "integer"
+                          },
+                          "taskId": {
+                            "type": "string"
+                          },
+                          "taskTitle": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["taskId", "taskTitle", "mine"],
+                        "type": "object"
+                      },
+                      "type": ["null", "array"]
+                    }
+                  },
+                  "required": ["name", "holder", "waiters"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["queues"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "List this task's stoppable operations, such as a slow git fetch or push. With cancel: stop one by id.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "cancel": {
+                "description": "Operation id. Omit to list.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "operations",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "cancelled": {
+                "type": ["null", "boolean"]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "opId": {
+                "type": "string"
+              },
+              "operations": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "elapsedMs": {
+                      "type": "integer"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "opId": {
+                      "type": "string"
+                    },
+                    "startedAt": {
+                      "type": "string"
+                    },
+                    "subject": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["opId", "kind", "startedAt", "elapsedMs"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "description": "Release a lease you hold, or leave its queue. Call it as soon as you finish with the resource. Without queue: every lease you hold or wait for.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "queue": {
+                "description": "Lease queue name. Omit for all.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "release_lease",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "notices": {
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              },
+              "released": {
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["released"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Ask the user to approve renaming one of your task's branches; waits for the answer. The worktree folder stays. Never git branch -m. A pushed branch renames on the remote only if the user agrees. Outcome: renamed, denied, failed or timeout. Refused for main, integration and protected branches, open change requests and sandboxed branches.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "description": "Current branch name.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "renameRemote": {
+                "description": "true proposes renaming the remote branch too. The user decides. Default false.",
+                "type": "boolean"
+              },
+              "repo": {
+                "description": "Task repo: nickname, name or code repo id.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "to": {
+                "description": "New branch name. Must not exist yet.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": ["repo", "from", "to"],
+            "type": "object"
+          },
+          "name": "rename_branch",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "next": {
+                "type": "string"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "remote": {
+                "type": "string"
+              },
+              "repo": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "worktree": {
+                "type": "string"
+              }
+            },
+            "required": ["repo", "from", "to", "outcome", "remote", "worktree", "next"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Record what you made outside the task's git branches: docs, deployments, PRs in other repos, issues, links. The task's branches, their PRs and configured deployments are found already. Kind proof attaches a saved proof by name.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "artifacts": {
+                "description": "1 to 20 items to record. A url already recorded is updated.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "description": "changeRequest, issue, deployment, doc, link or proof.",
+                      "type": "string"
+                    },
+                    "ref": {
+                      "description": "Name without a url, such as a file path. Proof: its name.",
+                      "type": "string"
+                    },
+                    "title": {
+                      "description": "Short name, at most 200 bytes. Skip for proof.",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "http or https address. Give url or ref.",
+                      "type": "string"
+                    }
+                  },
+                  "required": ["kind"],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": ["artifacts"],
+            "type": "object"
+          },
+          "name": "report_artifacts",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "proofs": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "steps": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["name", "steps", "status"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "recorded": {
+                "type": "integer"
+              }
+            },
+            "required": ["recorded"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Ask the user to approve branches and worktrees, all in one call; waits for the answer. You name each branch; Kira Space picks the folder. A repo may get several branches. Approval adds a registered repo missing from the task. With existing: true, checks out a branch that exists; if another worktree holds it, the user approves detaching it there. Per branch: created, checkedOut, existing, denied, failed or timeout. A new worktree may still be preparing; task_info with repo and branch shows it.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branches": {
+                "description": "Branches, 1 to 20.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "base": {
+                      "description": "Existing branch to start from, such as main or feat/api: short name, origin checked first. A branch of a task stacks on it. Omit for main.",
+                      "type": "string"
+                    },
+                    "branch": {
+                      "description": "Branch name, such as feat/login-form. New unless existing is true.",
+                      "type": "string"
+                    },
+                    "existing": {
+                      "description": "true: work on this existing branch instead of creating it. No base.",
+                      "type": "boolean"
+                    },
+                    "repo": {
+                      "description": "Repo: nickname, name or code repo id, from task_info.",
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo", "branch"],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": ["branches"],
+            "type": "object"
+          },
+          "name": "request_branches",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branches": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "base": {
+                      "type": "string"
+                    },
+                    "branch": {
+                      "type": "string"
+                    },
+                    "next": {
+                      "type": "string"
+                    },
+                    "outcome": {
+                      "type": "string"
+                    },
+                    "repo": {
+                      "type": "string"
+                    },
+                    "setup": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["state", "note"],
+                      "type": "object"
+                    },
+                    "worktree": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo", "branch", "worktree", "setup", "next", "outcome"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["branches"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "How this task's latest runs ended: state, reason, conflicted files, last git error and, for a rebase, what git showed. Use to learn why a rebase or step failed. Only this task's runs.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branch": {
+                "description": "Only runs on this branch name.",
+                "type": "string"
+              },
+              "kind": {
+                "description": "rebase, step or automation (script runs started for this task). Default rebase and step.",
+                "type": "string"
+              },
+              "limit": {
+                "description": "How many runs, 1 to 10. Default 3.",
+                "type": "integer"
+              },
+              "runId": {
+                "description": "One run id, from a prompt or an earlier call.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "run_outcome",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "runs": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "branch": {
+                      "type": "string"
+                    },
+                    "finishedAt": {
+                      "type": ["null", "integer"]
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "outcome": true,
+                    "repo": {
+                      "type": "string"
+                    },
+                    "runId": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "step": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "runId",
+                    "kind",
+                    "step",
+                    "repo",
+                    "branch",
+                    "state",
+                    "finishedAt",
+                    "outcome"
+                  ],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["runs"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Your Kira Space task: title, Jira key, workflow, step, repos, branches; registered repos only with no repos or includeRegistered. With repo and branch: that worktree's state.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branch": {
+                "description": "Branch name. With repo.",
+                "type": "string"
+              },
+              "includeRegistered": {
+                "description": "true: also list the registered repos. Default: only when the task has no repos.",
+                "type": "boolean"
+              },
+              "repo": {
+                "description": "Task repo: nickname, name or id. With branch.",
+                "type": "string"
+              },
+              "waitSeconds": {
+                "description": "Seconds to wait for setup, 0 to 600. Default 0.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "name": "task_info",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branch": {
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "type": "string"
+                  },
+                  "branch": {
+                    "type": "string"
+                  },
+                  "next": {
+                    "type": "string"
+                  },
+                  "repo": {
+                    "type": "string"
+                  },
+                  "setup": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "note": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["state", "note"],
+                    "type": "object"
+                  },
+                  "worktree": {
+                    "type": "string"
+                  }
+                },
+                "required": ["repo", "branch", "worktree", "setup", "next"],
+                "type": ["null", "object"]
+              },
+              "jiraKey": {
+                "type": "string"
+              },
+              "registered": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "codeRepoId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nickname": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name", "nickname", "codeRepoId", "path"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "repos": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "branch": {
+                      "type": ["null", "string"]
+                    },
+                    "codeRepoId": {
+                      "type": "string"
+                    },
+                    "mismatch": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "checkedOut": {
+                          "type": "string"
+                        },
+                        "folder": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["folder", "checkedOut"],
+                      "type": ["null", "object"]
+                    },
+                    "repo": {
+                      "type": "string"
+                    },
+                    "setup": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["state", "note"],
+                      "type": "object"
+                    },
+                    "worktree": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo", "codeRepoId", "branch", "worktree", "setup"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "step": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "workflow": {
+                "type": "string"
+              }
+            },
+            "required": ["title", "jiraKey", "workflow", "step", "repos", "registered"],
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "run-proof": {
+      "kira-space": [
+        {
+          "description": "Take a named lease on a shared resource the user configured, such as a port, the full test suite, push or merge. Never blocks: returns held, or queued with your position. The lease is keyed to your session, so calling again keeps your place. When it frees, Kira messages your session; a headless run calls acquire_lease or lease_status again to check. Call release_lease when done. A lease ends with the session, or after 10 minutes of silence.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "queue": {
+                "description": "Lease queue name. lease_status lists them.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": ["queue"],
+            "type": "object"
+          },
+          "name": "acquire_lease",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "holderTask": {
+                "type": "string"
+              },
+              "next": {
+                "type": "string"
+              },
+              "notices": {
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              },
+              "position": {
+                "type": "integer"
+              },
+              "queue": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "ttlSeconds": {
+                "type": "integer"
+              }
+            },
+            "required": ["queue", "state", "position", "holderTask", "ttlSeconds", "next"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Ask the user to approve pointing your task's branch at another existing local branch; waits for the answer. Use when the task folder holds a different branch than the task shows, or you must work on another existing branch. The folder and sessions stay; git switch runs there if needed. Never creates a branch: use request_branches. Outcome: changed, denied, failed or timeout. Refused for main, integration and checked-out-elsewhere branches, and a dirty folder that needs a switch.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "description": "Task branch to re-point.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "repo": {
+                "description": "Task repo: nickname, name or code repo id.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "to": {
+                "description": "Existing local branch to work on instead.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": ["repo", "from", "to"],
+            "type": "object"
+          },
+          "name": "change_branch",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "next": {
+                "type": "string"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "repo": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "worktree": {
+                "type": "string"
+              }
+            },
+            "required": ["repo", "from", "to", "outcome", "worktree", "next"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Add repos to the task. Only repos registered in Kira Space can be added. An unknown repo is refused: ask the user to import it from the Git module. Never removes a repo.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "repos": {
+                "description": "Repos to add: nickname, name or code repo id of a registered repo, from task_info. 1 to 20.",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": ["repos"],
+            "type": "object"
+          },
+          "name": "declare_repos",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branch": {
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "type": "string"
+                  },
+                  "branch": {
+                    "type": "string"
+                  },
+                  "next": {
+                    "type": "string"
+                  },
+                  "repo": {
+                    "type": "string"
+                  },
+                  "setup": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "note": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["state", "note"],
+                    "type": "object"
+                  },
+                  "worktree": {
+                    "type": "string"
+                  }
+                },
+                "required": ["repo", "branch", "worktree", "setup", "next"],
+                "type": ["null", "object"]
+              },
+              "jiraKey": {
+                "type": "string"
+              },
+              "registered": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "codeRepoId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nickname": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name", "nickname", "codeRepoId", "path"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "repos": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "branch": {
+                      "type": ["null", "string"]
+                    },
+                    "codeRepoId": {
+                      "type": "string"
+                    },
+                    "mismatch": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "checkedOut": {
+                          "type": "string"
+                        },
+                        "folder": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["folder", "checkedOut"],
+                      "type": ["null", "object"]
+                    },
+                    "repo": {
+                      "type": "string"
+                    },
+                    "setup": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["state", "note"],
+                      "type": "object"
+                    },
+                    "worktree": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo", "codeRepoId", "branch", "worktree", "setup"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "step": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "workflow": {
+                "type": "string"
+              }
+            },
+            "required": ["title", "jiraKey", "workflow", "step", "repos", "registered"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Report how this pipeline step ended. Call it exactly once, as the last action.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "conflictedFiles": {
+                "description": "Files that still conflict, relative to the repo.",
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              },
+              "lastGitError": {
+                "description": "Last git error output you saw.",
+                "type": "string"
+              },
+              "reason": {
+                "description": "Why it failed, or what you need. Required when status is not ok or needs_input.",
+                "type": "string"
+              },
+              "status": {
+                "description": "How the step ended. done (ok). failed (not ok). needs_input when the user must decide.",
+                "enum": ["done", "failed", "needs_input"],
+                "type": "string"
+              },
+              "summary": {
+                "description": "One line: what was done, what failed, or the question for the user.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "tried": {
+                "description": "What you tried before giving up.",
+                "type": "string"
+              }
+            },
+            "required": ["status", "summary"],
+            "type": "object"
+          },
+          "name": "finish_step"
+        },
+        {
+          "description": "Show lease queues with their holder and waiters in grant order, and which are yours. Read only. Also delivers any lease notice waiting for you.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "queue": {
+                "description": "Lease queue name. Omit for all.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "lease_status",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "notices": {
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              },
+              "queues": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "holder": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "mine": {
+                          "type": "boolean"
+                        },
+                        "position": {
+                          "type": "integer"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        },
+                        "taskTitle": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["taskId", "taskTitle", "mine"],
+                      "type": ["null", "object"]
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "waiters": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "mine": {
+                            "type": "boolean"
+                          },
+                          "position": {
+                            "type": "integer"
+                          },
+                          "taskId": {
+                            "type": "string"
+                          },
+                          "taskTitle": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["taskId", "taskTitle", "mine"],
+                        "type": "object"
+                      },
+                      "type": ["null", "array"]
+                    }
+                  },
+                  "required": ["name", "holder", "waiters"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["queues"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "List this task's stoppable operations, such as a slow git fetch or push. With cancel: stop one by id.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "cancel": {
+                "description": "Operation id. Omit to list.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "operations",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "cancelled": {
+                "type": ["null", "boolean"]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "opId": {
+                "type": "string"
+              },
+              "operations": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "elapsedMs": {
+                      "type": "integer"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "opId": {
+                      "type": "string"
+                    },
+                    "startedAt": {
+                      "type": "string"
+                    },
+                    "subject": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["opId", "kind", "startedAt", "elapsedMs"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "description": "Release a lease you hold, or leave its queue. Call it as soon as you finish with the resource. Without queue: every lease you hold or wait for.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "queue": {
+                "description": "Lease queue name. Omit for all.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "release_lease",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "notices": {
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              },
+              "released": {
+                "items": {
+                  "type": "string"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["released"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Ask the user to approve renaming one of your task's branches; waits for the answer. The worktree folder stays. Never git branch -m. A pushed branch renames on the remote only if the user agrees. Outcome: renamed, denied, failed or timeout. Refused for main, integration and protected branches, open change requests and sandboxed branches.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "description": "Current branch name.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "renameRemote": {
+                "description": "true proposes renaming the remote branch too. The user decides. Default false.",
+                "type": "boolean"
+              },
+              "repo": {
+                "description": "Task repo: nickname, name or code repo id.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "to": {
+                "description": "New branch name. Must not exist yet.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": ["repo", "from", "to"],
+            "type": "object"
+          },
+          "name": "rename_branch",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "next": {
+                "type": "string"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "remote": {
+                "type": "string"
+              },
+              "repo": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "worktree": {
+                "type": "string"
+              }
+            },
+            "required": ["repo", "from", "to", "outcome", "remote", "worktree", "next"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Record what you made outside the task's git branches: docs, deployments, PRs in other repos, issues, links. The task's branches, their PRs and configured deployments are found already. Kind proof attaches a saved proof by name.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "artifacts": {
+                "description": "1 to 20 items to record. A url already recorded is updated.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "description": "changeRequest, issue, deployment, doc, link or proof.",
+                      "type": "string"
+                    },
+                    "ref": {
+                      "description": "Name without a url, such as a file path. Proof: its name.",
+                      "type": "string"
+                    },
+                    "title": {
+                      "description": "Short name, at most 200 bytes. Skip for proof.",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "http or https address. Give url or ref.",
+                      "type": "string"
+                    }
+                  },
+                  "required": ["kind"],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": ["artifacts"],
+            "type": "object"
+          },
+          "name": "report_artifacts",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "proofs": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "steps": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["name", "steps", "status"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "recorded": {
+                "type": "integer"
+              }
+            },
+            "required": ["recorded"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Ask the user to approve branches and worktrees, all in one call; waits for the answer. You name each branch; Kira Space picks the folder. A repo may get several branches. Approval adds a registered repo missing from the task. With existing: true, checks out a branch that exists; if another worktree holds it, the user approves detaching it there. Per branch: created, checkedOut, existing, denied, failed or timeout. A new worktree may still be preparing; task_info with repo and branch shows it.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branches": {
+                "description": "Branches, 1 to 20.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "base": {
+                      "description": "Existing branch to start from, such as main or feat/api: short name, origin checked first. A branch of a task stacks on it. Omit for main.",
+                      "type": "string"
+                    },
+                    "branch": {
+                      "description": "Branch name, such as feat/login-form. New unless existing is true.",
+                      "type": "string"
+                    },
+                    "existing": {
+                      "description": "true: work on this existing branch instead of creating it. No base.",
+                      "type": "boolean"
+                    },
+                    "repo": {
+                      "description": "Repo: nickname, name or code repo id, from task_info.",
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo", "branch"],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": ["branches"],
+            "type": "object"
+          },
+          "name": "request_branches",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branches": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "base": {
+                      "type": "string"
+                    },
+                    "branch": {
+                      "type": "string"
+                    },
+                    "next": {
+                      "type": "string"
+                    },
+                    "outcome": {
+                      "type": "string"
+                    },
+                    "repo": {
+                      "type": "string"
+                    },
+                    "setup": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["state", "note"],
+                      "type": "object"
+                    },
+                    "worktree": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo", "branch", "worktree", "setup", "next", "outcome"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["branches"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "How this task's latest runs ended: state, reason, conflicted files, last git error and, for a rebase, what git showed. Use to learn why a rebase or step failed. Only this task's runs.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branch": {
+                "description": "Only runs on this branch name.",
+                "type": "string"
+              },
+              "kind": {
+                "description": "rebase, step or automation (script runs started for this task). Default rebase and step.",
+                "type": "string"
+              },
+              "limit": {
+                "description": "How many runs, 1 to 10. Default 3.",
+                "type": "integer"
+              },
+              "runId": {
+                "description": "One run id, from a prompt or an earlier call.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "run_outcome",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "runs": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "branch": {
+                      "type": "string"
+                    },
+                    "finishedAt": {
+                      "type": ["null", "integer"]
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "outcome": true,
+                    "repo": {
+                      "type": "string"
+                    },
+                    "runId": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "step": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "runId",
+                    "kind",
+                    "step",
+                    "repo",
+                    "branch",
+                    "state",
+                    "finishedAt",
+                    "outcome"
+                  ],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              }
+            },
+            "required": ["runs"],
+            "type": "object"
+          }
+        },
+        {
+          "description": "Your Kira Space task: title, Jira key, workflow, step, repos, branches; registered repos only with no repos or includeRegistered. With repo and branch: that worktree's state.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branch": {
+                "description": "Branch name. With repo.",
+                "type": "string"
+              },
+              "includeRegistered": {
+                "description": "true: also list the registered repos. Default: only when the task has no repos.",
+                "type": "boolean"
+              },
+              "repo": {
+                "description": "Task repo: nickname, name or id. With branch.",
+                "type": "string"
+              },
+              "waitSeconds": {
+                "description": "Seconds to wait for setup, 0 to 600. Default 0.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "name": "task_info",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "branch": {
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "type": "string"
+                  },
+                  "branch": {
+                    "type": "string"
+                  },
+                  "next": {
+                    "type": "string"
+                  },
+                  "repo": {
+                    "type": "string"
+                  },
+                  "setup": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "note": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["state", "note"],
+                    "type": "object"
+                  },
+                  "worktree": {
+                    "type": "string"
+                  }
+                },
+                "required": ["repo", "branch", "worktree", "setup", "next"],
+                "type": ["null", "object"]
+              },
+              "jiraKey": {
+                "type": "string"
+              },
+              "registered": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "codeRepoId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nickname": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name", "nickname", "codeRepoId", "path"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "repos": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "branch": {
+                      "type": ["null", "string"]
+                    },
+                    "codeRepoId": {
+                      "type": "string"
+                    },
+                    "mismatch": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "checkedOut": {
+                          "type": "string"
+                        },
+                        "folder": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["folder", "checkedOut"],
+                      "type": ["null", "object"]
+                    },
+                    "repo": {
+                      "type": "string"
+                    },
+                    "setup": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["state", "note"],
+                      "type": "object"
+                    },
+                    "worktree": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["repo", "codeRepoId", "branch", "worktree", "setup"],
+                  "type": "object"
+                },
+                "type": ["null", "array"]
+              },
+              "step": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "workflow": {
+                "type": "string"
+              }
+            },
+            "required": ["title", "jiraKey", "workflow", "step", "repos", "registered"],
+            "type": "object"
+          }
+        }
+      ],
+      "kira-studio": [
+        {
+          "description": "List closed proofs, newest first, with step count and whether an edit waits for review. With name: that proof's current steps (ordinal, description, view), for an edit. The app keeps the newest 30 not attached to a task.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "Name of a closed proof. Omit to list all.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "proof_list"
+        },
+        {
+          "description": "Save proof that your work is correct. Prove functionality and behavior, not code: show what the system does (query results, responses, screenshots), not source or diffs. One call creates and closes it, and the user reviews it in a window. Steps show in order; each step's description is the explanation the user reads first. Pick each step's view for its data: table, document and keyvalue show rows; chart plots a table and shows no table, so add a table step when exact values matter; diagram draws Mermaid text; image shows a JPEG, such as a UI screenshot. Names are unique, ignoring case and outer spaces. In a Kira Space task the new proof also attaches to the task. With reason, changes a closed proof instead: a step may keepOrdinal an old step unchanged or replacesOrdinal one, an old step not listed is dropped; read ordinals with proof_list and name. An edit returns pending_review until the user accepts or rejects it. Every value is validated: a bad step rejects the call, saves nothing and names steps[i] and the limit.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "Unique name, 1-80 characters.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "reason": {
+                "description": "Edits the closed proof with this name: what changes and why, up to 500 characters.",
+                "type": "string"
+              },
+              "steps": {
+                "description": "1 to 100 steps, in display order.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "additionalProperties": true,
+                      "description": "table: {columns:[{name,type?}],rows:[[cell,...]]}, type number, text, boolean, temporal, json or other (inferred when omitted). document: {documents:[{id?,body:{...}}]}. keyvalue: {entries:[{field,value}]}. chart, type bar, line, area or scatter: {type,x:{type,name?},y?:{name?,unit?},stacked?,horizontal?,series:[{name,points:[[x,y],...]}]}; x.type is category (x a string label), time (ISO-8601 or epoch milliseconds) or value (number); y is a number, null for a gap; stacked: bar and area only; horizontal: bar only. Histogram: bar, one point per bucket. Time series: line or area, x.type time. Up to 20 series, 1000 categories, 20000 points (bar and scatter 1000). chart, type pie: {type,unit?,slices:[{name,value}]}, up to 50 slices, values 0 or more. diagram: {source}, Mermaid text whose first line starts with flowchart, graph, sequenceDiagram, classDiagram, stateDiagram, stateDiagram-v2, erDiagram, gantt, journey, gitGraph, mindmap or timeline. No front matter, %%{...}%% directives, click lines, url(), @import or image nodes; send screenshots as an image step. Up to 20000 bytes, 1000 lines, 500 edges. Quote labels that hold punctuation: A[\"label (x)\"]; a syntax error shows the user the parser message and your source. image: exactly one of {path} or {base64}. path is the absolute path of a JPEG on this machine; the app reads it at save, follows symlinks and stores a copy. base64 is the file's bytes, standard base64, no data: prefix. JPEG only, at most 3071 KiB, 16384 pixels a side and 16 megapixels. Inline base64 counts toward the 8 MiB request limit; pass paths for large or several images. A proof holds at most 32 MiB of stored data; an image stores about 4/3 of its file size. Limits: 10000 rows or documents, 64 KiB per cell, 4 MiB per step. Required unless keepOrdinal is set.",
+                      "type": "object"
+                    },
+                    "description": {
+                      "description": "The explanation, shown large above the data: one terse, clear line, ideally under 120 characters, at most 200. Say what the step shows and what that proves. Required unless keepOrdinal is set.",
+                      "type": "string"
+                    },
+                    "keepOrdinal": {
+                      "description": "Edits only: reuse the old step with this ordinal unchanged. Pass no other step field.",
+                      "minimum": 1,
+                      "type": ["null", "integer"]
+                    },
+                    "language": {
+                      "description": "Highlighting for query: sql, json, shell or text. Default text.",
+                      "enum": ["sql", "json", "shell", "text"],
+                      "type": "string"
+                    },
+                    "query": {
+                      "description": "The query or command you ran, up to 64 KiB. Shown above the data.",
+                      "type": "string"
+                    },
+                    "replacesOrdinal": {
+                      "description": "Edits only: this step is a changed version of the old step with this ordinal.",
+                      "minimum": 1,
+                      "type": ["null", "integer"]
+                    },
+                    "source": {
+                      "description": "Short label of the tool that produced the data, such as elasticsearch. Up to 64 characters.",
+                      "type": "string"
+                    },
+                    "view": {
+                      "description": "table, document, keyvalue, chart, diagram or image. Required unless keepOrdinal is set.",
+                      "enum": ["table", "document", "keyvalue", "chart", "diagram", "image"],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "summary": {
+                "description": "Which behavior it proves: 1-3 terse, clear sentences, up to 500 characters. Shown above the steps. New proofs only.",
+                "type": "string"
+              }
+            },
+            "required": ["name", "steps"],
+            "type": "object"
+          },
+          "name": "proof_save"
+        }
+      ]
+    }
+  },
+  "finishAck": "Recorded. Stop now."
+}

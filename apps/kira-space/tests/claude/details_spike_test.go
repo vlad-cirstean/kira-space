@@ -494,6 +494,9 @@ func (r *spikeRun) setup(t *testing.T, fl spikeFlow) (mcpConfig string, addDirs 
 		}
 	}
 	r.space = space
+	if benchSetup != nil {
+		return benchSetup(t, r, fl)
+	}
 	srv := agentmcp.NewServer(agentmcp.Options{
 		Dir: filepath.Join(r.root, "mcp"), Space: space, Orchestrator: space, Outcomes: space,
 		OnFinish: func(_ string, f agentmcp.Finish) { r.finishes = append(r.finishes, f) },
@@ -545,14 +548,14 @@ func execute(t *testing.T, home string, fl spikeFlow, arm, model string, rep int
 	r := &spikeRun{t: t, flow: fl.id, arm: arm}
 	if spike1bOn { // Part 1b: realistic fixtures; files arms are the variants FF, FL, FC
 		r.lib = loadSpikeLib(t)
-		if arm != "T" {
+		if arm != "T" && benchSetup == nil {
 			r.arm, r.variant = "F", arm
 		}
 	}
 	arm = label
 	cfg, addDirs, done := r.setup(t, fl)
 	defer done()
-	args := []string{"-p", fl.prompt(r), "--model", model, "--max-budget-usd", fmt.Sprint(spikeRunCap),
+	args := []string{"-p", fl.prompt(r), "--model", model, "--max-budget-usd", fmt.Sprint(max(spikeRunCap, benchRunCapUSD)),
 		"--output-format", "stream-json", "--verbose", "--strict-mcp-config", "--mcp-config", cfg,
 		"--allowedTools", "mcp__kira-space,mcp__kira-studio,Read,Edit,Write,Glob,Grep,Bash"}
 	for _, d := range addDirs {
