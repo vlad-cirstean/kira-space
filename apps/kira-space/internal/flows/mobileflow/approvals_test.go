@@ -167,9 +167,11 @@ func TestPhoneApprovals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.W.Approvals.Put(approvals.Item{ID: dbID, Kind: approvals.KindDbQuery, CreatedAt: time.Now().UnixMilli(),
+	// After the task item: equal milliseconds order by id, which puts the branch request first.
+	putAt := max(time.Now().UnixMilli(), taskItem.CreatedAt+1)
+	app.W.Approvals.Put(approvals.Item{ID: dbID, Kind: approvals.KindDbQuery, CreatedAt: putAt,
 		Origin: approvals.Origin{Cwd: app.Work}, Payload: json.RawMessage(`{"statement":"select 1"}`)})
-	app.W.Approvals.Put(approvals.Item{ID: branchID, Kind: approvals.KindBranchRequest, CreatedAt: time.Now().UnixMilli(),
+	app.W.Approvals.Put(approvals.Item{ID: branchID, Kind: approvals.KindBranchRequest, CreatedAt: putAt,
 		Origin: approvals.Origin{Cwd: app.Work}, Target: approvals.Target{Name: "Fix login", Location: app.Work},
 		Operation: approvals.Operation{Class: "request", Tone: "neutral"}, Reason: "request", Payload: branchPayload})
 	defer app.W.Approvals.Remove(dbID)
