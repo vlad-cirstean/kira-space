@@ -8,6 +8,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/ids"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
@@ -251,73 +252,101 @@ func (df *detailsFiles) readmeText(tc *taskCtx, step string) string {
 	})
 }
 
+// linksApply carries the state of one applyLinks pass.
+type linksApply struct {
+	h         *detailsHandlers
+	ctx       context.Context
+	q         sqlb.Querier
+	taskID    string
+	next      linksDoc
+	slots     repos.TaskSlots
+	arts      []model.AdeTaskArtifact
+	byKey     map[string]model.AdeTaskArtifact
+	nextByKey map[string]taskfiles.LinkEntry
+	now       int64
+}
+
 // applyLinks applies the accepted changes of a links.yaml to the slots and artifact rows.
 func (h *detailsHandlers) applyLinks(ctx context.Context, tx taskfiles.Tx, taskID string, parsed taskfiles.Parsed, accepted []taskfiles.Change) error {
-	var next linksDoc
+	la := &linksApply{h: h, ctx: ctx, q: tx.Querier(), taskID: taskID, now: h.b.deps.Now().UnixMilli(),
+		byKey: map[string]model.AdeTaskArtifact{}, nextByKey: map[string]taskfiles.LinkEntry{}}
 	if parsed != nil {
-		next = parsed.(linksDoc)
+		la.next = parsed.(linksDoc)
 	}
-	q := tx.Querier()
-	s := detailsSessionOf(ctx)
-	now := h.b.deps.Now().UnixMilli()
-	slots, err := h.cache().Slots(q, taskID)
-	if err != nil {
+	var err error
+	if la.slots, err = h.cache().Slots(la.q, taskID); err != nil {
 		return err
 	}
-	arts, err := h.cache().Artifacts(q, taskID)
-	if err != nil {
+	if la.arts, err = h.cache().Artifacts(la.q, taskID); err != nil {
 		return err
 	}
-	byKey := map[string]model.AdeTaskArtifact{}
-	for _, a := range arts {
-		byKey[entryOfArtifact(a).Key()] = a
+	for _, a := range la.arts {
+		la.byKey[entryOfArtifact(a).Key()] = a
 	}
-	nextByKey := map[string]taskfiles.LinkEntry{}
-	for _, e := range next.Entries {
-		nextByKey[e.Key()] = e
+	for _, e := range la.next.Entries {
+		la.nextByKey[e.Key()] = e
 	}
 	slotsChanged := false
 	for _, ch := range accepted {
-		switch {
-		case ch.Slot && ch.Key == "jira":
-			slots.JiraKey, slots.JiraURL, slotsChanged = next.JiraKey, next.JiraURL, true
-		case ch.Slot && ch.Key == "pr":
-			slots.HostURL, slotsChanged = next.PR, true
-		case ch.Op == taskfiles.OpDelete:
-			if a, ok := byKey[ch.Key]; ok {
-				if err := h.cache().DeleteArtifact(q, a.ID); err != nil {
-					return err
-				}
-			}
-		case ch.Op == taskfiles.OpEdit:
-			e, a := nextByKey[ch.Key], byKey[ch.Key]
-			if a.ID != "" {
-				if err := h.cache().UpdateArtifact(q, a.ID, e.Kind, e.Title, e.URL, e.Ref, now); err != nil {
-					return err
-				}
-			}
-		case ch.Op == taskfiles.OpCreate:
-			e := nextByKey[ch.Key]
-			if len(arts) >= agentmcp.MaxArtifactsPerTask {
-				return fmt.Errorf("a task holds at most %d links", agentmcp.MaxArtifactsPerTask)
-			}
-			src := model.AdeArtifactSourceAgent
-			if s.role == taskfiles.RoleUser {
-				src = model.AdeArtifactSourceUser
-			}
-			a := model.AdeTaskArtifact{ID: ids.NewID(), TaskID: taskID, Kind: e.Kind, Title: e.Title, URL: e.URL, Ref: e.Ref, Source: src,
-				RunID: s.run, SessionID: s.key, CreatedAt: now, UpdatedAt: now}
-			if c, err := h.taskOf(ctx, taskID); err == nil {
-				a.StepID = c.step
-			}
-			if err := h.cache().InsertArtifact(q, a); err != nil {
-				return err
-			}
-			arts = append(arts, a)
+		if ch.Slot {
+			slotsChanged = la.slot(ch) || slotsChanged
+			continue
+		}
+		if err := la.entry(ch); err != nil {
+			return err
 		}
 	}
 	if slotsChanged {
-		return h.cache().SetSlots(q, taskID, slots)
+		return h.cache().SetSlots(la.q, taskID, la.slots)
+	}
+	return nil
+}
+
+// slot applies a jira or pr slot change; reports whether a slot changed.
+func (la *linksApply) slot(ch taskfiles.Change) bool {
+	switch ch.Key {
+	case "jira":
+		la.slots.JiraKey, la.slots.JiraURL = la.next.JiraKey, la.next.JiraURL
+	case "pr":
+		la.slots.HostURL = la.next.PR
+	default:
+		return false
+	}
+	return true
+}
+
+// entry applies one artifact create, edit or delete.
+func (la *linksApply) entry(ch taskfiles.Change) error {
+	h := la.h
+	switch ch.Op {
+	case taskfiles.OpDelete:
+		if a, ok := la.byKey[ch.Key]; ok {
+			return h.cache().DeleteArtifact(la.q, a.ID)
+		}
+	case taskfiles.OpEdit:
+		e, a := la.nextByKey[ch.Key], la.byKey[ch.Key]
+		if a.ID != "" {
+			return h.cache().UpdateArtifact(la.q, a.ID, e.Kind, e.Title, e.URL, e.Ref, la.now)
+		}
+	case taskfiles.OpCreate:
+		e := la.nextByKey[ch.Key]
+		if len(la.arts) >= agentmcp.MaxArtifactsPerTask {
+			return fmt.Errorf("a task holds at most %d links", agentmcp.MaxArtifactsPerTask)
+		}
+		s := detailsSessionOf(la.ctx)
+		src := model.AdeArtifactSourceAgent
+		if s.role == taskfiles.RoleUser {
+			src = model.AdeArtifactSourceUser
+		}
+		a := model.AdeTaskArtifact{ID: ids.NewID(), TaskID: la.taskID, Kind: e.Kind, Title: e.Title, URL: e.URL, Ref: e.Ref, Source: src,
+			RunID: s.run, SessionID: s.key, CreatedAt: la.now, UpdatedAt: la.now}
+		if c, err := h.taskOf(la.ctx, la.taskID); err == nil {
+			a.StepID = c.step
+		}
+		if err := h.cache().InsertArtifact(la.q, a); err != nil {
+			return err
+		}
+		la.arts = append(la.arts, a)
 	}
 	return nil
 }
