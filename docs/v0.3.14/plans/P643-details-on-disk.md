@@ -9,19 +9,28 @@ Opus. Base `abe943dbe`. Discovery through `codegraph_explore`, then targeted rea
 Final user answers. Binding for every build Part.
 
 - Design (after spike, user "Looks good"): files are the source of truth for content and the
-  readable state. Proofs and `create_task` keep a tool entry. `create_task` stays exactly as today
-  (name, args, 30 min blocking wait, `task.create` approval, phone kind). Child draft folders
-  (former D-Q2 variant F) are dropped: no `children/`, no `task_child_drafts`, no draft item.
-- Proofs: one `proof` tool on `kira-space` writes `proofs/<slug>/proof.md` (single file, step data
-  inline; images and large data beside it) and runs the same validate, diff and approval path as
-  `submit`. Files stay the source; the UI diff and Accept flow is shared. Hand edits of `proof.md`
-  plus `submit` also work (section 7.5).
-- Waits: `task_info` stays a tool, unchanged, used for branch setup waits (F5 data, section 9.2).
+  readable state. `create_task` keeps its tool entry and stays exactly as today (name, args, 30 min
+  blocking wait, `task.create` approval, phone kind; user, final). Child draft folders (former D-Q2
+  variant F) are dropped: no `children/`, no `task_child_drafts`, no draft item.
+- Proofs without a tool (user, final, accepted although spike F2 and F3 favour a tool): the agent
+  writes `proofs/<slug>/proof.md` (single file, step data inline; images and large data beside it)
+  itself and calls `submit`; editing works the same way. No `proof` tool, no `create` tool. Expected
+  cost gap on F2 and F3: 1.2 to 1.3 times T, reported, not gated (14.1). Flow: section 7.5.
+- Create-first rejected (analysis `P643-create-submit-analysis.md`): no `create {kind}` tool that
+  writes a skeleton for the agent to fill; it costs 3 to 4 calls per new resource against 1 or 2 and
+  reopens child drafts, draft cleanup and a blocking `submit`.
+- Leases stay in `state.yaml` (user): the per-task file lists the task's leases; a lease change
+  rewrites only the affected tasks' `state.yaml`. Lease state stays in Kira's lease book, changed
+  only through `lease`; never driven by a file edit.
+- Waits: deferred to Part 5 (section 9.2). Until Part 5 lands, `task_info` stays unchanged. Part
+  5's planner picks between (d) Kira pushes "worktree ready" like a lease grant and `task_info` goes
+  (recommended default, if its first check passes), (a) `task_info` slimmed to wait-only (fallback),
+  (b) and (c); F5 is re-benchmarked either way.
 - Content is files (notes, handovers, links incl. Jira and PR slots, proofs with images as files).
   State stays in SQLite (approvals, stages, branches, leases, runs, status, workflow, plan
   placement) and is never driven by a file edit. `state.yaml` and `task.yaml` are read-only mirrors
   Kira rewrites atomically; state changes only over MCP.
-- Q1 yes: no watcher. Explicit `submit` (or `proof`) is the consent point. Kira stats the folder on
+- Q1 yes: no watcher. Explicit `submit` is the consent point. Kira stats the folder on
   task open, Details focus, Refresh, submit, `finish_step`. Banner with Accept or Discard.
 - No chmod, no FUSE, no lock. No index unless it is state or needed (section 3).
 - Proof window shows one proof, one file.
@@ -29,7 +38,7 @@ Final user answers. Binding for every build Part.
 - Q3 yes: folders by task id, `<home>/tasks/<taskId>/`.
 - Q9 yes, adjusted by spike: merged `branches {action: declare|request|rename|change}` and
   `lease {action: acquire|release}`; `run_outcome`, `lease_status`, `operations` list fold into
-  `state.yaml`; `cancel_operation` tool. Branch wait stays on `task_info`, not `branches`.
+  `state.yaml`; `cancel_operation` tool. Branch setup wait: Part 5 decides (Waits bullet above).
 - Q10: no proof outside a task. Removed: standalone proofs folder, kira-studio `proof_save` and
   `proof_list` for every client, Window menu "Validation proof", standalone picker, history pane,
   unattached sessions, attach and detach. List in section 10.
@@ -41,11 +50,12 @@ Final user answers. Binding for every build Part.
 - Q17: proof images PNG, JPEG, WebP, SVG (safe SVG rules, section 10). WebP is the one to drop.
 - Silent accept: a change that needs no approval and has no notification today is accepted with no
   notification. A new proof keeps accept plus the existing "proof ready" notification.
-- Q6: blocking mirrors the old tools (table 7.3). No `submit` or `proof` item blocks: none maps to
-  a blocking old tool now that child drafts are gone. `create_task` keeps its own 30 min wait.
+- Q6: blocking mirrors the old tools (table 7.3). No `submit` item blocks: none maps to a blocking
+  old tool now that child drafts are gone. `create_task` keeps its own 30 min wait.
 - Benchmarks: per-Part and final (14.1). Sonnet, 3 reps per flow and arm, 0.5 USD per-run cap,
   real implementation, same harness. Gate: cost at most 1.2x, final context at most 1.0x, pass
-  rate not lower, failed edit-path calls plus retries not higher; turns reported only.
+  rate not lower, failed edit-path calls plus retries not higher; turns reported only. F2 and F3
+  (proofs as files) are reported, not gated: the user chose the design regardless.
 - Q4 to Q8, Q13, Q14: plan recommendation (section 18).
 
 ## 1. Inputs and SPEC conflicts
@@ -57,11 +67,11 @@ From SPEC P643 Scope, the design talk and the spike. SPEC conflicts and how the 
   Kira-written read-only files; `create_task` stays a tool": the latter. Spike F6 made child drafts
   24 to 40 percent dearer; the user dropped them.
 - "agent writes the proof file and calls `submit`" versus spike F2 and F3 (+18 to +40 percent cost
-  as files): the `proof` tool writes the file for the agent; hand edits plus `submit` stay valid.
+  as files): SPEC wins (user, final). No `proof` tool; the files arm gap is reported (14.1).
 - "for standalone sessions `submit` is on kira-studio": dropped by Q10 (no proof outside a task).
 - "one-time migration with backup": no backup (Q11).
-- Tool list: SPEC "about 6"; plan 7 for a run, 8 for an orchestrator run (section 9.3), because
-  `proof` and `task_info` stay on spike data.
+- Tool list: SPEC "about 6"; plan 6 for a run, 7 for an orchestrator run (section 9.3), one fewer
+  each if Part 5 removes `task_info` (9.2).
 
 ## 2. Current state map
 
@@ -162,7 +172,7 @@ No `AGENTS.md` at the root or in a task folder (section 7.6).
 ```
 <home>/tasks/
   <taskId>/
-    README.md                  Kira, read-only: <=25 lines, paths, index of proofs and children
+    README.md                  Kira, read-only: <=35 lines, paths, proof example, index of proofs and children
     task.yaml                  Kira, read-only: definition mirror (Part 5)
     state.yaml                 Kira, read-only: state mirror (Part 5)
     links.yaml                 content: links, Jira slot, PR slot
@@ -170,7 +180,7 @@ No `AGENTS.md` at the root or in a task folder (section 7.6).
     handovers/draft-<step>.md  content: open draft of a stage
     handovers/<NNNN>-<from>-to-<to>.md   content: one file per handed handover
     proofs/<slug>/proof.md     content: proof, step data inline
-    proofs/<slug>/<id>.json    content: step data over the inline cap (64 KiB), tool-written
+    proofs/<slug>/<id>.json    content: step data over the inline cap (64 KiB), agent-written
     proofs/<slug>/<file>.png   content: image step (.png, .jpg, .jpeg, .webp, .svg)
 <home>/tasks-blobs/            Kira only: accepted image bytes
 ```
@@ -192,7 +202,7 @@ Content files hold content only. Metadata (stage names, author, session, times) 
 and shows in README and UI. Kira never rewrites an agent-written file to normalize it.
 
 `reason` is never a file field. It is a request property, like `finished`: an argument of `submit`
-and `proof` (section 7.1). Spike 1c: two of three FP runs missed a `reason:` frontmatter key that
+(section 7.1). Spike 1c: two of three FP runs missed a `reason:` frontmatter key that
 no read doc mentioned.
 
 Header comment, first line of every Kira-created content file (YAML `#`, bare Markdown
@@ -218,7 +228,7 @@ Rules are `agentmcp.CleanArtifact`'s (kinds, caps, absolute http(s) URL, `ref` r
 
 ```yaml
 ---
-# Kira proof. Edit, then call submit (reason when the proof is accepted). Or call the proof tool.
+# Kira proof. Edit, then call submit (pass reason to submit when the proof is accepted).
 kira: proof/1
 name: Orders match ledger
 summary: All 20 orders of the day match their ledger lines on id and total.
@@ -250,7 +260,8 @@ Optional longer explanation.
 
 Per step exactly one of `inline` (table, document, keyvalue, chart as YAML or JSON flow; diagram as
 block scalar) or `data` (file in the proof folder: `.json` for structured views, image file for
-`image`). Inline cap 64 KiB per step; over it the `proof` tool writes `<id>.json`. Inline YAML is
+`image`). Inline cap 64 KiB per step; over it submit answers `invalid` with the fix ("move the data
+to proofs/<slug>/<id>.json and set data: <id>.json"). Inline YAML is
 converted to JSON preserving integer precision and key order (yaml.v3 node walk, not `any`
 decode). Step `id` replaces `keepOrdinal`/`replacesOrdinal`: same id same hash = unchanged, same id
 changed = changed, new id = added, missing id = removed. Caps and checks are today's
@@ -260,8 +271,7 @@ changed = changed, new id = added, missing id = removed. Caps and checks are tod
 
 Cells: R read, A create, W rewrite, D delete, `-` none. run = headless step run, manual = manual
 step session, review = review agent, orch = orchestrator on its own task, child = a child task's
-agent on the parent's folder. Hand = user's editor while the app runs. "via tool" = Kira writes the
-file on the agent's behalf (`proof` tool); the calling session is the writer.
+agent on the parent's folder. Hand = user's editor while the app runs.
 
 | File | run | manual | review | orch | child | user UI | hand | Kira |
 |---|---|---|---|---|---|---|---|---|
@@ -272,7 +282,7 @@ file on the agent's behalf (`proof` tool); the calling session is the writer.
 | `handovers/draft-<other>.md` | - | - | - | - | - | W D | W | D |
 | `handovers/<NNNN>-*.md` | R | R | R | R (+children R) | - | W D | W | A (move, run, brief, pass) |
 | `links.yaml` | A W own entries | same | same | same | - | W | W | W (UI, migration) |
-| `proofs/<slug>/*` | A W via tool or file | same | same | same | - | D (delete proof) | W | W (tool, restore), D |
+| `proofs/<slug>/*` | A W | same | same | same | - | D (delete proof) | W | W (restore, migration), D |
 | children's folders | - | - | - | R | - | - | - | W |
 
 Collision rules:
@@ -283,13 +293,13 @@ Collision rules:
 | draft of current stage | changed by someone else after this session's last sync and this version differs = warn-and-confirm | today's upsert overwrites silently; strictly better |
 | handed handovers | one file each; agent change = prompt | none |
 | `links.yaml` | entry diff: new and own entries silent; others' entries = prompt; file changed by another after this session's sync = warn-and-confirm | small file, rare overlap; one file keeps one read |
-| proofs | single owner (creating session); another agent's change = prompt; `proof` tool and hand edit share the rule | user deletes a proof an agent still edits: next write recreates it as new |
+| proofs | single owner (creating session); another agent's change = prompt; agent and user editor share the rule | user deletes a proof an agent still edits: next write recreates it as new |
 | `task.yaml`, `state.yaml`, README | Kira only; any other write restored | an unsandboxed agent can scribble; restored at next submit or rewrite |
 
-"Last sync" = launch or last accepted submit or `proof` call of the session, held in memory per
+"Last sync" = launch or last accepted submit of the session, held in memory per
 session key. A recovered headless run has no base: collisions fall back to plain classification.
 
-## 7. Submit, proof tool, agent guidance
+## 7. Submit, proofs, agent guidance
 
 ### 7.1 `submit`
 
@@ -325,7 +335,8 @@ as today (`finishContent`).
 
 1. Walk the folder (depth cap 3, `Lstat`; symlink, hard link count above 1, FIFO, device refused
    per file; at most 500 files, 64 MiB per task, 32 MiB per proof).
-2. Classify path by pattern into kind; no match = `ignored`.
+2. Classify path by pattern into kind; no match = `ignored`. Paths under `proofs/<slug>/` group
+   into one proof unit per slug, decided all or nothing (7.5).
 3. `Store.Stat`: size and version equal to `task_files` = unchanged, no read.
 4. Read up to the kind cap, sha256. Equal to `accepted_sha256` = refresh version only.
 5. Parse and validate: configfs YAML pipeline (line, column), kind schema, kind rules (handover
@@ -346,7 +357,7 @@ as today (`finishContent`).
 12. Reply per file: `accepted`, `pending`, `rejected` (reason), `invalid` (message, line),
     `restored` (read-only), `unchanged`, `ignored`. Update the session's last sync.
 
-Kira's own writes (UI edits, stage move rename, restore, `proof` tool): intent row, atomic write
+Kira's own writes (UI edits, stage move rename, restore, migration): intent row, atomic write
 (`renameio`), cache and index in one transaction, intent removed. Start-up reconcile: an intent
 whose file hash matches completes the DB side; otherwise dropped. File is truth, retry safe.
 
@@ -360,8 +371,8 @@ whose file hash matches completes the DB side; otherwise dropped. File is truth,
 | User note edited, deleted or created | prompt | user, desktop and phone |
 | New link, own link edited or removed, empty Jira or PR slot filled | silent accept | panel forward chip |
 | Another author's link edited or removed, Jira or PR slot replaced | prompt | user, desktop and phone |
-| New proof (tool or file) | accept, existing "proof ready" notification | user |
-| Accepted proof changed (tool or file) | pending, existing `proof.review` approval with step diff | user |
+| New proof | accept, existing "proof ready" notification | user |
+| Accepted proof changed | pending, existing `proof.review` approval with step diff | user |
 | Proof deleted by an agent | pending; deny restores | user |
 | `task.yaml`, `state.yaml`, README written | restored | agent (`restored`) |
 | Collision (7.2 step 9) | warn-and-confirm prompt | user |
@@ -399,15 +410,16 @@ New item to old tool:
 | New or own link, empty slot | `report_artifacts` | a | accepted at once |
 | Other author's link, slot replaced | none | - | `pending` at once |
 | Note, handed handover changed | none | - | `pending` at once |
-| New proof (`proof` or file) | `proof_save` new | a | accepted at once, ready prompt |
-| Proof change (`proof` or file) | `proof_save` edit | a | `pending` at once, `proof.review` |
+| New proof (files plus `submit`) | `proof_save` new | a | accepted at once, ready prompt |
+| Proof change (files plus `submit`) | `proof_save` edit | a | `pending` at once, `proof.review` |
 | Proof deleted by agent | none | - | `pending` at once |
 | Kira-owned file written | none | - | `restored` at once |
 | Collision, invalid | none | - | `pending` or `invalid` at once |
 | Child task | `create_task` | b | unchanged: `create_task`, b, 30 min |
 
-So `submit` and `proof` never block. Tools that blocked keep their waits: `branches` (request,
-rename, change), `create_task`, kira-studio db tools; `task_info waitSeconds` keeps its wait.
+So `submit` never blocks. Tools that blocked keep their waits: `branches` (request, rename,
+change), `create_task`, kira-studio db tools. The setup wait (`task_info waitSeconds` today) is
+Part 5's decision (9.2).
 
 A `pending` item's answer reaches the agent through the lease notice path (`SendIfIdle`, hook
 reply, next tool result `notices`) and the `pending` list in `state.yaml`. Deny restores the
@@ -420,14 +432,14 @@ User changes:
 - UI edit: Kira writes the file, accepted at once; recorded in the panel forward set as today, the
   forwarded message names the relative path.
 - Hand edit while the app runs: no watcher. Stat on task open, Details focus, Refresh, every submit
-  and `finish_step`, and at start for live tasks. A change not made through submit, `proof` or UI
-  shows the banner "N files changed on disk, not submitted" with a diff per file, Accept or
-  Discard. Accept is the user's consent.
+  and `finish_step`, and at start for live tasks. A change not made through submit or UI shows
+  the banner "N files changed on disk, not submitted" with a diff per file, Accept or Discard.
+  Accept is the user's consent.
 
 ### 7.4 Edit protection
 
 - Agents read freely. No lock.
-- Ask-to-edit through the matrix, enforced at submit and `proof`; Kira restores anything rejected.
+- Ask-to-edit through the matrix, enforced at submit; Kira restores anything rejected.
 - Sandbox on: task folder in `Allow`, literal write denies on `README.md`, `task.yaml`,
   `state.yaml`; orchestrator gets children folders in `Read`. Sandbox off (default, every Linux
   host): `DisallowedTools` `Edit(//<abs>/task.yaml)` and `Write(...)` for the same files; restore
@@ -435,77 +447,149 @@ User changes:
 - Every run, session and review agent gets `--add-dir <home>/tasks/<id>` (and existing children for
   an orchestrator). Nothing else under `<home>/tasks/` is granted.
 
-### 7.5 `proof` tool
+### 7.5 Proofs through files and `submit`
 
-Why a tool: spike F2 and F3 as files cost 1.18 to 1.40 times T (Part 1b, 1c) on turn structure
-(read, edit, submit, retry). A tool call is one turn after ToolSearch, as `proof_save` was.
+User decision: no `proof` tool and no `create` tool. The agent writes the files itself and calls
+`submit`, for a new proof and for an edit. Cost: spike F2 FP 1.31, F3 FA 1.18 and FP 1.24 times T
+(Part 1b, 1c); reported, not gated (14.1).
 
-`proof` on `kira-space`, every Space grant:
+New proof, agent side:
+
+1. Picks a slug: the folder name, `[a-z0-9][a-z0-9-]*`, 1 to 40 chars, unique per task.
+2. Writes image and large data side files first (`Write` or a Bash copy from its worktree into
+   `proofs/<slug>/`): PNG, JPEG, WebP, SVG under the section 10 rules; `<id>.json` over 64 KiB.
+3. Writes `proofs/<slug>/proof.md` with `Write` (new file: Claude Code needs no prior Read; 11 of
+   11 new-file Writes in the spike transcripts passed with none, analysis section 2).
+4. Calls `submit` once (or `finish_step`, which submits first). No `reason`.
+
+Format source, read once, no extra file: the README carries one short example block (7.6) beside
+the `Proofs:` index. Why the README and not `proofs/README-example` or a Kira template path: the
+spike files arms read README in 3 of 3 runs before acting, so the example rides a read the agent
+already makes; a separate file costs one more turn (0.007 to 0.009 USD, about 10 percent of an F2
+T run, analysis section 2) and a second path to name. The block is 8 lines, paid only when the
+README is read. Fallback if Part 4's F1 context ratio rises above 1.0 because of it: the block moves
+to a Kira-owned read-only `proofs/EXAMPLE.md` and the README keeps one line pointing at it.
+
+Submit, Kira side (under `taskMu`, the 7.2 pipeline):
+
+- Walk and classify `proofs/<slug>/**`. A folder name that fails the slug rule, or a file deeper
+  than `proofs/<slug>/`, comes back `invalid` with the fix: `proofs/Orders Match/: folder name must
+  be a-z, 0-9 and -; rename it to proofs/orders-match/.` (Classify today reports these `ignored`;
+  Part 4 adds the proof-folder hint.)
+- Group per slug into one proof unit: `proof.md` plus the side files its steps name in `data:`.
+  The unit is decided all or nothing: one invalid part (proof.md, a named side file missing or
+  invalid) leaves every file of the unit on disk untouched, accepts nothing of it and lists each
+  problem. A side file no step names is `invalid` ("not used by proof.md; name it in a step's data
+  or remove it"), also untouched.
+- Validate `proof.md`: frontmatter between `---` lines, YAML through the configfs node pipeline
+  (line and column), `kira: proof/1`, `name` 1 to 80 chars, `summary` (new proof), 1 to 100 steps,
+  step `id` `[a-z0-9-]{1,40}` unique, `view` in the enum, exactly one of `inline` or `data`, data
+  through `proof.ValidateStep(view, raw)`, caps of section 5 and 10.
+- Error lines name file, line, step id and field, and end with a one-line fix. Examples:
+  - `proofs/orders/proof.md:7: steps[totals].inline: rows[3] has 2 cells; columns has 3. Add the missing cell.`
+  - `proofs/orders/proof.md:12: YAML: mapping values are not allowed here. Quote the value: description: "Totals: all rows".`
+  - `proofs/orders/proof.md:9: YAML: found a tab. Indent with spaces.`
+  - `proofs/orders/proof.md:1: no frontmatter. Start the file with --- and end the YAML with ---.`
+  - `proofs/orders/proof.md:15: steps[shot].data: shot.png not found in proofs/orders/. Write the image there first.`
+  - `proofs/orders/proof.md:4: name "Orders match ledger" is used by proofs/orders-ledger/. Pick another name or edit that proof.`
+  - `proofs/orders/proof.md:20: steps[big].inline is 80 KiB; the limit is 64 KiB. Move it to proofs/orders/big.json and set data: big.json.`
+  A YAML parse error maps the yaml.v3 message to one fix hint per known class (tab, unquoted colon,
+  bad indent, unclosed flow, duplicate key); unknown classes keep the line and the raw message.
+- New proof (no accepted `proof.md` in the folder): accepted silently except the existing "proof
+  ready" notification; session, revision and step rows (caches, `step_key` = step id), task link
+  and `task_files` rows commit in one transaction; README `Proofs:` line regenerated.
+- Edit of an accepted proof: `reason` required (7.1 error text, `Call submit again with {"reason":
+  ...}`); with it, the pending revision from disk and the existing `proof.review` approval with the
+  step diff (one item per proof unit). Never blocks.
+- Deleted folder of an accepted proof: pending delete (7.3); deny restores files from caches and
+  blobs.
+
+Slug collision:
+
+- Folder exists with an accepted `proof.md`: writing it again is an edit, not a new proof. Claude
+  Code refuses an overwriting `Write` without a prior Read, so the agent learns the file exists;
+  after a Read the overwrite goes through the edit path (reason, approval). No `-2` suffixing:
+  Kira never renames an agent folder.
+- Same `name` (case folded, `NormalizeName`) in another folder: `invalid` naming the other folder.
+- Folder exists without an accepted `proof.md` (orphan or partial from an earlier invalid submit,
+  or a crash before submit): treated as a new proof; nothing is cleaned up by Kira. Leftovers show
+  in the disk banner like any unsubmitted change; the user may Discard them.
+
+Submit reply for proofs (fixes spike gap 6, `proof_list` without step data). Per unit, one line,
+after the count line of 7.1:
 
 ```
-proof {
-  name: string,                 # 1-80 chars; slug from name, unique per task (case folded)
-  summary?: string,             # new proof only
-  reason?: string,              # required when the proof exists and is accepted
-  steps?: [{
-    id: string,                 # stable step id; a-z0-9-, 1-40
-    description?: string, view?: table|document|keyvalue|chart|diagram|image,
-    data?: object|string,       # inline data: JSON object, or Mermaid text for diagram
-    image?: string,             # image file path relative to the task folder
-    query?, language?, source?: string
-  }],
-  removeSteps?: [string]        # step ids to drop (edit only)
-}
+proofs/orders-match-ledger/: accepted, new proof "Orders match ledger": totals (table), flow (diagram), shot (image); 3 steps, 1 image
+proofs/orders-match-ledger/: pending user, change to "Orders match ledger": totals changed, why added, flow removed (order 12 corrected)
+proofs/orders/: invalid, 2 problems (lines follow)
 ```
 
-- New proof (no `proofs/<slug>/` with an accepted `proof.md`): `summary` and at least one step
-  required; full validation; Kira writes `proof.md` (data inline up to 64 KiB per step, else
-  `<id>.json`), copies each `image` into the proof folder as `<id>.<ext>` when it is not there
-  yet, then runs the submit pipeline on those paths with the calling session as writer. Result:
-  `accepted`, ready notification, proof linked to the task.
-- Edit (proof exists): patch by step id onto the file on disk. A listed id replaces that step
-  (fields given replace, fields left out keep the old value); a new id appends; `removeSteps` drops;
-  unlisted steps stay. `reason` required (7.1 error text). Result `pending`, `proof.review`
-  approval with step diff, non-blocking. `summary` on an edit refused, as today.
-- Base of an edit: the `proof.md` on disk. If it does not parse, the tool refuses with the line:
-  `proofs/<slug>/proof.md is invalid at line 12: <msg>. Fix the file and call submit, or call proof with every step.`
-- The tool never edits other files; the reply names the path:
-  `{status, path: "proofs/orders-match-ledger/proof.md", steps: [{id, view}], next}`. `steps` lists
-  the proof's step ids and views, so a later edit needs no read (spike 1c: `proof_list` returned
-  ordinals only; a T run stopped there).
-- Validation errors name step id and field: `steps[totals].data: rows[3] has 2 cells; columns has 3.`
-- Hand edit of `proof.md` (agent `Edit` or user editor) plus `submit` goes through the same
-  pipeline; the tool is the efficient path, the file stays the source.
-- `proof_list` is not kept: `proof.md` is one Read with inline data; the reply and the README
-  index carry step ids.
-- Image path relative to the task folder (relative only, section 13). An agent with a screenshot
-  in its worktree copies it into the task folder first; the description says so.
-- Description (short): `Create or change a validation proof of this task. New: name, summary,
-  steps. Change an accepted proof: name, reason, only the steps that change (by id) and
-  removeSteps; others stay. Writes proofs/<slug>/proof.md; a new proof is accepted, a change waits
-  for the user. Images: copy the file into the task folder and pass its path.`
+Structured result: `FileResult` gains `proof: {slug, name, status, steps: [{id, view}], counts:
+{steps, images, dataFiles}, changed?: {added, changed, removed}}` once per unit (on the `proof.md`
+entry; side files of an accepted unit are folded into it, not listed again). So the agent learns
+the step ids and views that `proof` used to return, without a Read. `proof_list` stays removed;
+the README `Proofs:` index and the prompt `Proofs:` line name every proof with its steps.
+
+Edit, agent side: Read `proofs/<slug>/proof.md` (one Read, data inline), Edit the step by id (keep
+the `id` to keep view state), write new side files, `submit {reason}`.
+
+What replaces the tool's idempotency and atomicity:
+
+- Per-file hash: unchanged files (size and version equal, or hash equal to `accepted_sha256`) are
+  `unchanged`, no work; a second `submit` with nothing changed answers `unchanged` per file. A
+  second submit of a still-pending edit replaces its open approval item (7.3), never a second item.
+- Proof unit commit: everything Kira writes to SQLite for one unit (proof rows, caches,
+  `task_files` rows) commits in one transaction; image bytes go to the content-addressed blob store
+  first (same hash = same file, idempotent), then the transaction. A crash before the commit
+  leaves the files unaccepted on disk; the next submit or the start-up stat sees them again and
+  reaches the same result. Kira-side file writes (restore on deny, migration) use the Part 2 intent
+  journal (`task_file_intents`, `Recover` at start).
+- Proof.md first, image later, same submit: the unit reads every file once and validates them
+  together, so path order inside the folder does not matter. Image written later, separate submit:
+  if the first submit had `data: shot.png` and no `shot.png`, the unit was invalid and nothing was
+  accepted; the second submit accepts the whole proof as new. If the first submit accepted a proof
+  without the image step, adding it later is an edit of an accepted proof: reason and approval, as
+  `proof_save` edits were. The README example line says "write images first, then proof.md, then
+  submit once" to steer agents away from that.
+- Agent writes during a submit: the unit uses the bytes it read and hashed; a later write shows as
+  a new version on the next submit or stat.
+- `taskfiles.Request.Tool` and `Decide`'s `tool` argument (Part 2, "submit" or "proof") lose the
+  "proof" value; Part 4 removes the field and the argument (error texts always say `submit`).
 
 ### 7.6 Agent guidance: README, headers, prompts, ToolSearch
 
 Spike gaps addressed here: forgotten submit (spike 1 F3), missing `reason` (1c F3), discovery Bash
-calls (1b, 1c), second `AGENTS.md` read (1b), failed calls before ToolSearch (1b F1).
+calls (1b, 1c), second `AGENTS.md` read (1b), failed calls before ToolSearch (1b F1), proof format
+discovery without a tool (1c FP read README plus `AGENTS.md`).
 
-README, one per task folder, Kira-written, at most 25 lines, no `AGENTS.md`:
+README, one per task folder, Kira-written, at most 35 lines, no `AGENTS.md`:
 
 ```
 # Task <id>: <title>
 Edit, then call submit: a change counts only after submit answers per file. Pass reason when the change needs the user's approval.
 Read-only, edits undone: README.md, task.yaml, state.yaml (step, branches, setup, leases, runs, children).
-Write: handovers/draft-<step>.md (your stage's handover, Markdown, <=16 KiB). links.yaml. Proofs: use the proof tool, or edit proofs/<slug>/proof.md and submit.
-Ask first (submit with reason): notes/*.md (user notes), handovers/NNNN-*.md (handed), others' links.
+Write: handovers/draft-<step>.md (your stage's handover, Markdown, <=16 KiB). links.yaml. proofs/<slug>/proof.md (format below).
+Ask first (submit with reason): notes/*.md (user notes), handovers/NNNN-*.md (handed), others' links, accepted proofs.
+New proof: slug a-z0-9-; write images and big data into proofs/<slug>/ first, then proof.md, then submit once. Example:
+---
+name: Orders match ledger
+summary: All 20 orders match their ledger lines.
+steps:  # id a-z0-9- (keep it on edits); view table|document|keyvalue|chart|diagram|image; inline: data (<=64 KiB) or data: file here (.json .png .jpg .webp .svg)
+  - {id: totals, description: Totals agree, view: table, inline: {columns: [{name: id}, {name: total}], rows: [[1, 1900]]}, query: "select id, total from orders", language: sql}
+  - {id: shot, description: Report page, view: image, data: shot.png}
+---
 Proofs: orders-match-ledger "Orders match ledger": totals (table), flow (diagram), why (document)
 Children: c-billing "Billing refunds" ../c-billing/ (latest handover: handovers/0003-review-to-implement.md)
 ```
 
-- No tool list, no rule restated that a tool description carries, no proof format (the
-  `proof.md` header and the `proof` schema carry it), formats only for kinds the task uses.
-  `Proofs:` line `none yet.` when empty; `Children:` lines only for an orchestrator, one per
-  child, cap 20.
+- No tool list, no rule restated that a tool description carries, formats only for kinds the task
+  uses. The proof example is the one format block (7.5 says why not a separate file): 7 lines plus
+  its intro line, each at most 300 bytes. `Proofs:` line `none yet.` when empty; `Children:` lines
+  only for an orchestrator, one per child, cap 20.
+- Cap 35 (was 25): 5 fixed lines, 8 example lines, up to 6 `Proofs:` lines leave 16 for
+  `Children:`; with at most one proof all 20 children fit. Overflow keeps the existing "and N more,
+  see state.yaml chain" line. The spike's lean README was 17 lines; this one stays under that plus
+  the example.
 - README is regenerated on accept of a proof or link change, on child create, on stage move.
   Byte-equal skip.
 
@@ -519,22 +603,23 @@ Step, manual, review and start prompts (`AdeStepPrompt`, `AdeManualMessage`, `Ad
 ```
 Task folder: <abs path>. Write your handover to handovers/draft-<step>.md there.
 Proofs: orders-match-ledger "Orders match ledger": totals (table), flow (diagram), why (document)
-Kira tools for this step: finish_step, submit, proof. Load them first with ToolSearch select:mcp__kira-space__finish_step,mcp__kira-space__submit,mcp__kira-space__proof
+Kira tools for this step: finish_step, submit. Load them first with ToolSearch select:mcp__kira-space__finish_step,mcp__kira-space__submit
 Edit task files, then call submit (finish_step submits for you).
 ```
 
 - Latest handover and notes stay inlined (Q13), so the common input needs no read.
 - `Proofs:` line only when the task has proofs (cap 5 lines, 300 bytes each).
-- Tool line: names the always-needed tools of the grant (run: `finish_step`, `submit`, `proof`;
-  session: `submit`, `proof`; orchestrator adds `create_task`). The load sentence comes from a new
+- Tool line: names the always-needed tools of the grant (run: `finish_step`, `submit`; session:
+  `submit`; orchestrator adds `create_task`). The load sentence comes from a new
   optional harness interface `harness.ToolLoader{ LoadHint(names []string) string }`; Claude
   returns the `ToolSearch select:` sentence with `harness.ToolNames` names, other providers ""
   (no deferral). One select call loads all named schemas in one turn.
 - Last line: the submit reminder. `finish_step` suffix stays last in step prompts.
 - `HeadlessSpaceInstructions` rewritten: `Kira Space tools for this task. Task state is in
-  state.yaml in the task folder; task_info waits for a branch setup. Declare repos and create or
-  change branches only with branches; never git branch or git worktree. Edit task files, then call
-  submit.` (Part 3 writes the first sentence without `state.yaml`; Part 5 adds it.)
+  state.yaml in the task folder. Declare repos and create or change branches only with branches;
+  never git branch or git worktree. Edit task files, then call submit.` (Part 3 writes it without
+  the `state.yaml` sentence; Part 5 adds that sentence and the setup-wait sentence its 9.2 choice
+  needs.)
 
 ToolSearch limits (spike 1b, measured): built-in tool schemas 33.1k tokens and the 2.4k system
 prompt are fixed by Claude Code (87 percent of turn 1); MCP schemas cost 0 at turn 1 and are paid
@@ -546,7 +631,8 @@ hint removes that failure, it does not remove the ToolSearch turn.
 ## 8. State file (Part 5)
 
 `state.yaml` header: `# Read-only. Kira rewrites this file. Change state only with Kira tools:
-branches, lease, cancel_operation, finish_step; task_info waits for a setup.` Coarse state only:
+branches, lease, cancel_operation, finish_step.` plus the setup-wait sentence of Part 5's 9.2
+choice (Part 2's `headers.go` text names `task_info`; Part 5 updates it). Coarse state only:
 
 ```yaml
 rev: 41                       # increments per rewrite; no file times
@@ -559,7 +645,7 @@ runs: [{runId, kind, step, state, outcome}]   # last 3; outcome capped at 2 KiB
 chain:
   parent: {id, title, path: ../<id>/}
   children: [{id, title, status, step, finished, archived, lastHandover: ../<id>/handovers/<file>, preview}]
-pending: [{path, kind, since}]  # submit and proof items waiting on the user
+pending: [{path, kind, since}]  # submit items waiting on the user
 ```
 
 Worktree paths are absolute: host-local mirror, regenerated per host, never content (Q4). One
@@ -588,10 +674,10 @@ it)".
 | Links | `links.yaml` plus `submit` | not measured; same edit-submit shape as F1 | `report_artifacts` goes |
 | Task state read | `state.yaml` | F5 reads in both arms were 0 to 2 | replaces `lease_status`, `operations` list, `run_outcome` |
 | Orchestrator chain read | `state.yaml` chain plus children's `handovers/` | F4 FL 0.72, FF 0.79; context 0.87, 0.88 | files win; `task_chain` returned whole chains |
-| New proof | `proof` tool writes `proof.md` | F2 files FP 1.31 (1c), haiku 1.38 (1) | tool is one turn |
-| Proof edit | `proof` patch by step id | F3 files FL 1.28, FA 1.18 (inconclusive), FP 1.24 | tool; files stay editable |
+| New proof | agent Writes `proofs/<slug>/proof.md` (and side files) plus `submit` | F2 files FP 1.31 (1c), haiku 1.38 (1) | user chose files; gap reported (14.1) |
+| Proof edit | Read, Edit `proof.md` by step id, `submit {reason}` | F3 files FL 1.28, FA 1.18 (inconclusive), FP 1.24 | user chose files; gap reported (14.1) |
 | Child task | `create_task` tool, unchanged | F6 files FL 1.36, FF 1.40 vs gate 1.1; context 1.06 to 1.09 | user dropped drafts |
-| Branch setup wait | `task_info {waitSeconds}`, unchanged | F5 FL 1.26, FF 1.17 (1 run each, inconclusive); haiku 1.30 | wait needs no README read; files arm read README or state first |
+| Branch setup wait | `task_info {waitSeconds}` until Part 5; then 9.2 choice | F5 FL 1.26, FF 1.17 (1 run each, inconclusive); haiku 1.30 | Part 5 decides; F5 re-benchmarked |
 
 ### 9.2 Wait decision
 
@@ -608,8 +694,7 @@ tools' texts (F5 search context 1.7k to 1.8k against T 0) and the agent must fin
 |---|---|---|---|
 | `finish_step` | kira-space | runs; summary = handover | kept; summary moves to draft file; implicit submit |
 | `submit` | kira-space | | new, every Space grant |
-| `proof` | kira-space | | new, every Space grant (7.5) |
-| `task_info` | kira-space | Space | kept unchanged; description says "use it to wait" |
+| `task_info` | kira-space | Space | until Part 5 unchanged; then 9.2: removed (d, b) or wait-only (a) |
 | `declare_repos`, `request_branches`, `rename_branch`, `change_branch` | kira-space | Space | merged: `branches {action: declare|request|rename|change}` |
 | `acquire_lease`, `release_lease` | kira-space | Space | merged: `lease {action: acquire|release}`; notices stay on replies |
 | `operations` | kira-space | Space | list in `state.yaml`; cancel: `cancel_operation` |
@@ -626,23 +711,24 @@ Counts (conditional tools excluded):
 
 | Role | Before | After | Tools after |
 |---|---|---|---|
-| Run | 12 | 7 | `finish_step`, `submit`, `proof`, `task_info`, `branches`, `lease`, `cancel_operation` |
-| Session without run (manual, review agent) | 12 | 6 | run set minus `finish_step` |
-| Orchestrator run | 15 | 8 | run set plus `create_task` |
-| Orchestrator session | 15 | 7 | session set plus `create_task` |
+| Run | 12 | 6 | `finish_step`, `submit`, `task_info`, `branches`, `lease`, `cancel_operation` |
+| Session without run (manual, review agent) | 12 | 5 | run set minus `finish_step` |
+| Orchestrator run | 15 | 7 | run set plus `create_task` |
+| Orchestrator session | 15 | 6 | session set plus `create_task` |
 | kira-studio proof tools, any client | 2 | 0 | |
 
 Removed names: `handover`, `run_outcome`, `report_artifacts`, `operations`, `lease_status`,
 `list_tasks`, `task_chain`, `proof_save`, `proof_list`. Merged away: `declare_repos`,
 `request_branches`, `rename_branch`, `change_branch`, `acquire_lease`, `release_lease`. New:
-`submit`, `proof`, `branches`, `lease`, `cancel_operation`. `lease` calls stay the heartbeat
-(`mcpRecorder`).
+`submit`, `branches`, `lease`, `cancel_operation`. `lease` calls stay the heartbeat
+(`mcpRecorder`). Counts assume `task_info` stays (option a); options (b) and (d) take one off each
+role: run 5, session 4, orchestrator run 6, orchestrator session 5.
 
 ## 10. Proofs
 
 - A proof exists only in a task folder: `<home>/tasks/<id>/proofs/<slug>/` (Q10). Slug from name,
   unique per task (case folded, as `name_key`).
-- New proof through `proof` or file plus `submit`: Kira creates session, revision and step rows
+- New proof through files plus `submit` (7.5): Kira creates session, revision and step rows
   (caches, `step_key` = step id), links it to the task (state), raises the ready prompt. Edit:
   pending revision from the disk version, current revision stays the accepted copy; approve copies
   view state of unchanged steps by step id; deny restores files from caches and blobs. Step diff
@@ -760,7 +846,7 @@ Framework in Part 2, exporters in Parts 3 and 4.
 `apps/kira-space/internal/taskfiles/store`: `Store { Stat, Read, List, WriteAtomic(rel, data,
 ifVersion), Remove, Rename }`, relative paths only, opaque `Version` (local: size plus mtime ns;
 object storage: ETag). Only the local adapter joins a root, follows the filesystem, checks symlinks
-and reads file times. Submit, `proof`, validators, migration and UI wire carry relative paths.
+and reads file times. Submit, validators, migration and UI wire carry relative paths.
 Agents still need a local directory; a cloud build syncs or mounts it (out of scope). Loopback NFS
 noted as a later option, not built.
 
@@ -777,12 +863,13 @@ Findings that shape this plan:
 - Files win: F4 orchestrator chain reads (cost 0.72 to 0.79, context 0.87 to 0.88).
 - Files tie: F1 handover (cost 1.08 to 1.12 inconclusive, context parity).
 - Tools win: F2 and F3 proofs (1.18 to 1.40), F6 child creation (1.36 to 1.40), F5 wait (1.17 to
-  1.30, one sonnet run).
+  1.30, one sonnet run). The user kept proofs as files anyway (Decisions); F2 and F3 are reported.
 - Lean README (17 lines) beat full README plus `AGENTS.md` by 0.003 to 0.008 USD per run and lost
   no pass rate; per-file history beat one `handovers.md` by 44 percent on F4.
 - Gaps: forgotten submit (1 of 3 haiku F3), missing `reason` retry (2 of 3 FP F3), Bash discovery
   (2 to 5 calls), `AGENTS.md` second read, failed calls before ToolSearch (T F1 3 of 3, FF and FC
-  2 of 3), `proof_list` without step data. Each has a task in section 16.
+  2 of 3), `proof_list` without step data, proof format discovery (FP read README plus
+  `AGENTS.md`). Each has a task in section 16.
 
 ### 14.1 Benchmarks through the build
 
@@ -795,7 +882,9 @@ Findings that shape this plan:
   the spike's stub backends, so it stays runnable after removals.
 - Arm R: real implementation: real `ade.TaskBoard`, `agentmcp.Server`, task folder, prompts
   composed by Kira's real `composePrompt` (with `headless.space.files`), as `orchestrator_test.go`
-  does. No stub. Same flow prompt core and oracles as Part 1b.
+  does. No stub. Same flow prompt core and oracles as Part 1b. For F2 and F3 arm R is the files
+  arm in the spike's FA/FP shape: proof path in the prompt, README `Proofs:` index and example
+  block, single-file `proof.md` with inline data, `submit` (reason on F3).
 - Model sonnet, 3 reps per flow and arm, 0.5 USD per-run cap, runs stop when a round's budget
   (below) is spent. Results written to `KIRA_BENCH_OUT` (required; the test skips without it), never
   to a default path under `docs/`.
@@ -804,20 +893,25 @@ Findings that shape this plan:
 - Gate per flow, sonnet medians, R over T: cost at most 1.2; final context at most 1.0; pass count
   not lower; failed edit-path calls plus retries (mean) not higher; turns reported only. A metric
   whose median gap is below the larger run-to-run range is marked inconclusive; an inconclusive
-  fail gets an Opus review of the raw runs before the verdict.
+  fail gets an Opus review of the raw runs before the verdict. Binding for F1, F4, F5, F6.
+- F2 and F3: same metrics, reported, not blocking (user chose files regardless). Expected cost 1.2
+  to 1.3 times T (spike FP 1.31 on F2; FA 1.18, FP 1.24 on F3), context near 1.0. Pass count lower
+  than T still goes back to the Part 4 implementer (correctness, not cost). Diagnostics reported:
+  README reads, YAML or validation retries, forgotten submits, "has not been read" errors.
 - Rounds (minimal):
 
   | After | Flows | Runs | Estimate USD |
   |---|---|---|---|
   | Part 3 | F1 | 6 | 0.47 (T 0.074, R about 0.08 per run) |
-  | Part 4 | F2, F3 | 12 | 0.80 (T 0.064 to 0.067, R about 0.07) |
+  | Part 4 | F2, F3 | 12 | 0.89 (T 0.064 to 0.067; R files arm 0.084 F2, 0.083 F3) |
   | Part 5 | F4, F5, F6 | 18 | 1.26 (F4 0.098 and 0.071; F5 0.057 and about 0.06; F6 0.067 and about 0.067) |
-  | Final (end of Part 5, after both streams land) | F1 to F6 | 36 | 2.53 |
+  | Final (end of Part 5, after both streams land) | F1 to F6 | 36 | 2.62 |
 
-  Total Parts 3 to 5 rounds 2.53 USD; with the final 5.06 USD. Reserve for one Part rerun after a
-  miss: 1.3 USD. Asked cap: 6.5 USD (question QN1). Estimates are Part 1b and 1c medians; R is
-  assumed near T where R uses the same tool shape (F2, F3 `proof`, F5 `task_info`, F6
-  `create_task`) and near FL where it reads files (F1, F4).
+  Total Parts 3 to 5 rounds 2.62 USD; with the final 5.24 USD. Reserve for one Part rerun after a
+  miss: 1.26 USD. Asked cap: 6.5 USD (question QN1), unchanged. Estimates are Part 1b and 1c
+  medians; R is assumed near T where R uses the same tool shape (F5 wait, F6 `create_task`), near FL
+  where it reads files (F1, F4) and at the measured files arms for F2 (FP 0.0837) and F3 (FA and FP
+  0.079 to 0.085). F5 under option (d) has no measured arm; estimate kept at about 0.06.
 - Kira-side cost, final, deterministic Go tests outside the `claude` module: submit latency (one
   changed file in a 500-file folder, p95 at most 200 ms); stat on task open, 500 files, at most 5
   ms; `state.yaml` rewrite at most 5 ms, at most one write per 150 ms window under a 100-change
@@ -840,7 +934,7 @@ interacting rules.
   and key order). Store adapter conformance: traversal, symlink, hard link, FIFO, caps, atomic
   replace. Bench: stat of a 500-file folder under 5 ms. Migration framework flow test with a fake
   exporter (crash, resume, verify fail). README generator: one golden per role (run task,
-  orchestrator) asserting at most 25 lines.
+  orchestrator) asserting at most 25 lines (Part 4 raises the cap to 35 with the proof example).
 - Part 3: flow `adeflow` `TestDetailsFiles` (contract `ade-details-files.json`): user note writes a
   file; agent draft plus submit accepted and on the board; agent edits a user note without reason:
   `invalid` naming `reason` with example; with reason: pending, approve updates cache, deny restores
@@ -853,18 +947,26 @@ interacting rules.
   banner, diff dialog, approvals item with reason, problem strip, folder bar; phone approval spec
   case for `details.edit`. Update listed adeflow tests and UI specs; real `claude`
   `TestAdeReportArtifacts` becomes `TestAdeDetailsSubmit`; `TestAdeManualSession` writes a draft.
-- Part 4: flow `proofflow` `TestProofFiles` (contract `proof-files.json`): `proof` new raises the
-  ready prompt and writes `proof.md` with inline data; over-cap data goes to `<id>.json`; image
-  copied into the proof folder; edit patch by id without reason `invalid`, with reason pending,
-  approve keeps view state by step id, deny restores files and image; unlisted steps kept,
-  `removeSteps` drops; hand edit of `proof.md` plus submit gives the same result; edit on an
-  invalid `proof.md` refused with line; user delete removes folder and rows; migration of linked
+- Part 4: flow `proofflow` `TestProofFiles` (contract `proof-files.json`): agent-written new
+  `proof.md` (inline data, image and `<id>.json` side files) plus submit is accepted, raises the
+  ready prompt, links the proof and the reply carries name, step ids, views and counts; over-cap
+  inline data `invalid` with the move-to-`<id>.json` fix; `proof.md` naming a missing image:
+  whole unit `invalid`, files untouched, image written later plus submit accepts the proof as new;
+  unreferenced side file `invalid`; bad folder name `invalid` with the suggested slug; duplicate
+  name `invalid` naming the other folder; YAML error answers file:line and the fix hint; second
+  submit with nothing changed `unchanged`; edit by step id without reason `invalid`, with reason
+  pending, approve keeps view state by step id, deny restores files and image; resubmit of a
+  pending edit replaces its approval item; user delete removes folder and rows; README and prompt
+  `Proofs:` lines and the README example block present; migration of linked
   sessions and images (`.jpg`), taskless sessions deleted with log lines. Removal assertions:
-  kira-studio lists no proof tool for any client, Window menu has no "Validation proof",
+  kira-studio lists no proof tool for any client, no `kira-space` grant lists a `proof` tool,
+  Window menu has no "Validation proof",
   `OpenWindow` without (task id, slug) refused, no unattached or attach call left. Image unit table
   (`proof/image_test.go`): one valid file per format (PNG, JPEG, WebP lossy and lossless, SVG);
   extension mismatch; GIF and `.svgz` refused; APNG and animated WebP refused; size, side and area
-  caps; damaged data. Hostile SVG fixtures in `internal/proof/testdata/svg/`, one per rule
+  caps; damaged data. Unit table for the proof unit decision and the YAML fix-hint mapping (one
+  row per hint class, unit all-or-nothing with missing, extra and invalid side files): interacting
+  rules, so they earn a unit test. Hostile SVG fixtures in `internal/proof/testdata/svg/`, one per rule
   (`<script>`, `<foreignObject>`, `iframe`/`object`/`embed`, `<animate>`, `<set>`, `onload`,
   `javascript:` href, external `href`, external `xlink:href` on `<use>`, nested SVG data URL,
   `@import`, external `url()` in `style`, DOCTYPE with entity, not well-formed, no size, side over
@@ -872,32 +974,35 @@ interacting rules.
   with `#fragment` refs, `url(#g)` gradient and embedded `data:image/png`. UI proof window spec (one
   proof, no history, path header, image per format incl. SVG through `<img>` data URL, no inline
   `<svg>`) and `ade-v2-proof-chain.spec.ts` on the contract. Real `claude`
-  `TestProofMcpThroughClaude`, `TestProofChartThroughClaude` rewritten for the `proof` tool.
+  `TestProofMcpThroughClaude`, `TestProofChartThroughClaude` rewritten: the agent writes
+  `proof.md` (and a chart step) and calls `submit`.
 - Part 5: flow `adeflow` `TestDetailsStateFile` (contract `ade-state-file.json`): lease, op, setup,
   stage and pending changes land in `state.yaml` within 250 ms, coalesced (count writes), byte-equal
-  skip; `branches` all four actions, `lease` both actions, `cancel_operation`; `task_info` wait
-  unchanged (`taskinfowait_test.go` stays green); removed tools absent from every grant
+  skip; `branches` all four actions, `lease` both actions, `cancel_operation`; setup wait per the
+  9.2 choice (`taskinfowait_test.go` rewritten for it: push delivered to a session and the failure
+  text on a failed setup for (d), wait-only reply for (a), request reply after setup for (b)); removed tools absent from every grant
   (`TestOrchestratorToolGrants`, agentmcp `TestGrantScopes`, `toolnames_test.go`); orchestrator
   reads children through `chain` and README `Children:` lines; `create_task` reply `next` names the
   child's `handovers/` path. UI spec: folder bar lists `state.yaml` read-only with its `rev`, which
   rises after a lease change; leases and branch request specs still pass. Real `claude`
   `TestAdeOrchestrator`, `TestAdeHeadlessRun`, branch request rows rerun.
 - Every Part: matching real `claude` rows of DEV_ENVIRONMENT ("ADE runs and sessions", "Agent
-  sandbox") once near Part end. Parts 3, 4, 5: benchmark round (14.1), gate binding.
+  sandbox") once near Part end. Parts 3, 4, 5: benchmark round (14.1), gate binding except F2 and F3
+(reported).
 
 ## 16. Parts
 
 Numbers stay P643 (`P643 Part 1` to `Part 5`). Order: Part 1 (done), Part 2, Part 3, then Parts 4
 and 5 as two streams, then the final benchmark. Parts 3, 4, 5 count done only when their round
-passes.
+passes (F2 and F3 reported, not gated).
 
 | Part | Content | Main files |
 |---|---|---|
 | 1 Spike | Done: Part 1, 1b, 1c; NO-GO for files-only; user chose narrowed fallback (a) | `tests/claude/details_spike*_test.go`, `testdata/details-spike/**`, `details-spike-1b/**`, `plans/P643-spike-results.md` |
 | 2 Foundation | store seam, `task_files`, intents, migration framework, submit core (walk, classify, diff, apply, restore, reason rule), proof validators export plus inline YAML to JSON, README generator, header texts, task folder grant (add-dir, sandbox allow and denies, deny rules), harness hygiene, bench harness and frozen baseline | new `internal/taskfiles/**`, `internal/taskfiles/store/**`, `storage/migrations/0101_p643_task_files.sql`, `storage/repos/taskfiles.go`, `internal/proof/validate.go`, `ade/sandbox.go`, `ade/sandbox_tui.go`, `ade/launches.go`, `appwire/wire.go`, `tests/claude/details_spike1b_test.go`, new `tests/claude/details_bench_test.go`, `tests/claude/testdata/details-bench/**`, `package.json` (`test:claude:details`), `docs/DEV_ENVIRONMENT.md` row, `docs/ARCHITECTURE.md` "Task files (P643)" |
 | 3 Notes, handovers, links, submit, prompts | file writes for every UI action, caches, stage move rename, `submit` tool (reason, reply wording), `finish_step` change, `handover` and `report_artifacts` removed (kind proof attach stays until Part 4 removes it), `details.edit` approvals desktop and phone, disk banner, migration exporters, panel forward paths, `headless.space.files` fragment and `harness.ToolLoader`, `HeadlessSpaceInstructions`, child brief written as a handed file, README content lines | `ade/handover.go`, `ade/links.go`, `ade/artifacts.go`, `ade/orchestrator.go`, `ade/taskcreate.go` (brief file), `ade/panelforward.go`, `ade/vars.go`, new `ade/details.go`, `agentmcp/{handover,artifacts,mcp,space,tools}.go`, new `agentmcp/submit.go`, `internal/harness/mcp.go`, `internal/harness/claude/mcp.go`, `llmprompts/registry.go`, `bridge/adetask.go`, `adewire/wire.go`, `mobileweb/approvals.go`, `frontend/src/ade/v2/details/**`, `request/kindDefs.ts`, mobile approval view, tests, bench F1 |
-| 4 Proofs (Stream A) | `proof` tool, `proof.md` format, submit kind proof, image formats incl. SVG, window single and task-only, retention removed, kira-studio proof tools removed, Q10 entry points removed, proof migration and image rewrite, Q16 deletion, README `Proofs:` line and prompt `Proofs:` line | `internal/proof/**`, `storage/repos/proof.go`, `storage/migrations/0102_p643_proof_step_key.sql`, `dbmcp/proof_tools.go` (removed), `dbmcp/server.go`, `ade/proof.go`, new `agentmcp/proof.go`, `bridge/proof.go`, `bridge/dbmcp.go`, `bridge/adetask.go`, `appshell/menu.go`, `appwire/menuactions.go`, `frontend/src/studio/proof/**`, `details/AdeProofEntry.vue`, `AdeProofAttachMenu.vue` (removed), `packages/shared/domain/proof.ts`, `go.mod` (`golang.org/x/image`), tests, bench F2 F3 |
-| 5 State file and tools (Stream B) | `state.yaml`, `task.yaml` writer, `branches`, `lease`, `cancel_operation`, removals (`run_outcome`, `lease_status`, `operations`, `list_tasks`, `task_chain`, old branch and lease tools), `task_info` description, orchestrator chain reads, children add-dir, `create_task` `next` text, README `Children:` line, `HeadlessSpaceInstructions` `state.yaml` sentence | new `ade/statefile.go`, `agentmcp/{space,leases,orchestrator,outcomes,tools}.go`, new `agentmcp/branches.go`, `llmprompts/registry.go`, `ade/leases.go`, `ade/orchestrator.go`, `ade/taskcreate.go` (`next` text), `ade/launches.go` (children add-dir), `details/AdeDetailsFolderBar.vue`, tests, bench F4 F5 F6 |
+| 4 Proofs (Stream A) | proofs as agent-written files plus `submit` (7.5): `proof.md` format, submit proof unit (all or nothing, side files, slug and name rules, YAML fix hints, proof reply summary), `Request.Tool` and `Decide` `tool` argument removed, image formats incl. SVG, window single and task-only, retention removed, kira-studio proof tools removed, Q10 entry points removed, proof migration and image rewrite, Q16 deletion, README example block, line 4 and `Proofs:` line, prompt `Proofs:` line, proof header text | `internal/proof/**`, `storage/repos/proof.go`, `storage/migrations/0102_p643_proof_step_key.sql`, `dbmcp/proof_tools.go` (removed), `dbmcp/server.go`, `ade/proof.go`, new `internal/taskfiles/proofunit.go`, `internal/taskfiles/{submit,decide,classify,readme,headers}.go`, `bridge/proof.go`, `bridge/dbmcp.go`, `bridge/adetask.go`, `appshell/menu.go`, `appwire/menuactions.go`, `frontend/src/studio/proof/**`, `details/AdeProofEntry.vue`, `AdeProofAttachMenu.vue` (removed), `packages/shared/domain/proof.ts`, `go.mod` (`golang.org/x/image`), tests, bench F2 F3 |
+| 5 State file and tools (Stream B) | `state.yaml`, `task.yaml` writer, `branches`, `lease`, `cancel_operation`, removals (`run_outcome`, `lease_status`, `operations`, `list_tasks`, `task_chain`, old branch and lease tools), setup wait open question (9.2: first a `codegraph_explore` check whether an agent ever waits for a setup it did not trigger and whether the lease channel reaches headless runs; default (d) push "worktree ready" and remove `task_info` if the check passes, else (b) where safe, fallback (a) wait-only `task_info`; F5 re-benchmarked either way), `state.yaml` header setup sentence, orchestrator chain reads, children add-dir, `create_task` `next` text, README `Children:` line, `HeadlessSpaceInstructions` `state.yaml` sentence | new `ade/statefile.go`, `agentmcp/{space,leases,orchestrator,outcomes,tools}.go`, new `agentmcp/branches.go`, `llmprompts/registry.go`, `ade/leases.go`, `ade/orchestrator.go`, `ade/taskcreate.go` (`next` text), `ade/launches.go` (children add-dir), `ade/agenttools.go` and `ade/setup.go` (setup wait per 9.2), `details/AdeDetailsFolderBar.vue`, tests, bench F4 F5 F6 |
 
 Part 2 tasks for the spike gaps and hygiene:
 
@@ -907,7 +1012,8 @@ Part 2 tasks for the spike gaps and hygiene:
 - Gap 7: bench harness (14.1), frozen `tools-baseline.json`, fixtures under
   `testdata/details-bench/`, `KIRA_BENCH_OUT` required.
 - Gap 4: README generator `internal/taskfiles/readme.go` (lines of 7.6 the Part owns; Parts 3, 4,
-  5 add their lines), golden tests with the 25-line cap; no `AGENTS.md` writer for tasks.
+  5 add their lines), golden tests with the 25-line cap (35 from Part 4); no `AGENTS.md` writer for
+  tasks.
 - Gaps 1 and 2 (core): header texts in `internal/taskfiles/headers.go`; reason rule in
   `internal/taskfiles/decide.go` with the error text builder.
 
@@ -925,15 +1031,19 @@ Part 3 tasks for the spike gaps:
 
 Part 4 tasks for the spike gaps:
 
-- Gap 6: `proof_list` removed; `proof` reply carries step ids and views; README and prompt
-  `Proofs:` lines; flow test asserts both.
-- Gap 1: `proof` `reason` required on edit with the same error text; `proof.md` header names it.
+- Gap 6: `proof_list` removed; the submit reply's proof summary carries name, step ids, views and
+  counts; README and prompt `Proofs:` lines; flow test asserts all three.
+- Gap 1: `reason` required on an accepted proof's edit, with the 7.1 error text naming `submit`;
+  `proof.md` header and README line 5 name it.
+- Format gap (no tool): README example block and line 4 (`taskfiles/readme.go`; Part 2's line 4
+  still names the proof tool), proof header without "Or call the proof tool." (`headers.go`),
+  YAML fix hints, slug and name errors; golden README test keeps the 35-line cap.
 
 Streams after Part 3 (cap 3; two used): Stream A = Part 4, Stream B = Part 5, each its own
 worktree off the Part 3 end commit.
 
-No ordering dependency: Part 4 touches proof storage, the `proof` tool, the proof window and proof
-migration; Part 5 touches the state mirror, branch and lease tool shapes, orchestrator reads.
+No ordering dependency: Part 4 touches proof storage, the submit proof unit, the proof window and
+proof migration; Part 5 touches the state mirror, branch and lease tool shapes, orchestrator reads.
 `state.yaml` `pending` reads `task_files.review` (Part 2, generic), not proof tables. Neither
 stream reads a file the other creates.
 
@@ -941,19 +1051,18 @@ File ownership:
 
 | File or area | Owner |
 |---|---|
-| `internal/proof/**`, `storage/repos/proof.go`, `dbmcp/**` proof parts, `bridge/proof.go`, `bridge/dbmcp.go`, `appshell/menu.go`, `appwire/menuactions.go`, `frontend/src/studio/proof/**`, `details/AdeProofEntry.vue`, `AdeProofAttachMenu.vue`, `packages/shared/domain/proof.ts`, new `agentmcp/proof.go`, `ade/proof.go`, `go.mod`, migration `0102` | A |
-| new `ade/statefile.go`, new `agentmcp/branches.go`, `agentmcp/{space,leases,orchestrator,outcomes}.go`, `ade/leases.go`, `ade/orchestrator.go`, `ade/taskcreate.go`, `details/AdeDetailsFolderBar.vue` | B |
+| `internal/proof/**`, `storage/repos/proof.go`, `dbmcp/**` proof parts, `bridge/proof.go`, `bridge/dbmcp.go`, `appshell/menu.go`, `appwire/menuactions.go`, `frontend/src/studio/proof/**`, `details/AdeProofEntry.vue`, `AdeProofAttachMenu.vue`, `packages/shared/domain/proof.ts`, new `internal/taskfiles/proofunit.go`, `internal/taskfiles/{submit,decide}.go`, `ade/proof.go`, `go.mod`, migration `0102` | A |
+| new `ade/statefile.go`, new `agentmcp/branches.go`, `agentmcp/{space,leases,orchestrator,outcomes,tools,mcp}.go`, `ade/leases.go`, `ade/agenttools.go`, `ade/setup.go`, `ade/orchestrator.go`, `ade/taskcreate.go`, `details/AdeDetailsFolderBar.vue` | B |
 | shared, listed below | A and B |
 
 Shared files, additive hunks:
 
 | Shared file | Stream A edit | Stream B edit |
 |---|---|---|
-| `internal/agentmcp/tools.go` | add `Proof` id line | replace branch, lease, operations, outcome and orchestrator id lines |
-| `internal/agentmcp/mcp.go` | `addProofTool` call in `buildMCPServer` | replace space tool registration calls |
-| `internal/llmprompts/registry.go` | `proof` tool texts; `DbmcpToolProofSave`, `DbmcpToolProofList` removed | `branches`, `lease`, `cancel_operation` texts; removed entries; `task_info` description; `HeadlessSpaceInstructions` sentence |
-| `internal/taskfiles/classify.go` | `proofs/<slug>/` patterns | none (Kira-owned patterns exist from Part 2) |
-| `internal/taskfiles/readme.go` | `Proofs:` line | `Children:` line |
+| `internal/llmprompts/registry.go` | `DbmcpToolProofSave`, `DbmcpToolProofList` removed | `branches`, `lease`, `cancel_operation` texts; removed entries; setup-wait text per 9.2 (`task_info` description or its removal); `HeadlessSpaceInstructions` sentence |
+| `internal/taskfiles/classify.go` | proof-folder hint for a bad slug or a too-deep path | none (Kira-owned patterns exist from Part 2) |
+| `internal/taskfiles/readme.go` | line 4, example block, `Proofs:` line, cap 35 | `Children:` line |
+| `internal/taskfiles/headers.go` | `headerProof` without the proof tool | `headerState` setup-wait sentence |
 | `ade/vars.go` | prompt `Proofs:` line input | none |
 | `ade/launches.go` | none | children add-dir |
 | `bridge/adetask.go` | proof choices and link calls removed | none |
@@ -978,7 +1087,7 @@ proofs).
   registry fragment and the Claude provider only; a wrong hint costs one failed call, as today.
 - Change size: four build Parts, two streams; columns kept as caches limit blast radius.
 - File then DB order: intents journal, start-up reconcile, atomic rename.
-- Path traversal, symlinks, special files, size caps: checked per file at submit, `proof` and store.
+- Path traversal, symlinks, special files, size caps: checked per file at submit and store.
 - Seatbelt profile and `--add-dir` fixed at launch: children created later unreadable under an
   enforced sandbox; previews and `create_task` reply cover it.
 - Migration: per task, resumable, verify before rename, no backup (Q11); image rewrite only after
@@ -988,12 +1097,24 @@ proofs).
 - Large image data URLs over IPC: one step on demand, as today.
 - New dependency `golang.org/x/image/webp` (BSD-3), only for WebP.
 - Benchmarks cost tokens: rounds are flow subsets, per-run cap 0.5 USD, opt-in, never in CI.
+- Proofs without a tool cost more turns (F2 and F3 about 1.2 to 1.3 times T): accepted by the user;
+  reported each round so a regression past the spike numbers is visible.
+- Proof built across two submits (accepted without an image step, image added later) becomes an
+  edit needing reason and approval: README example line says images first, then `proof.md`, then
+  one submit; the unit's all-or-nothing rule keeps an invalid first attempt from being accepted.
+- YAML mistakes in hand-written `proof.md` (tabs, unquoted colons, indentation): one retry turn;
+  file:line plus a one-line fix hint per error class; flow-style example in the README avoids deep
+  indentation.
+- README example block adds about 200 tokens to every README read (F1 context gate 1.0 is at
+  parity): fallback moves it to `proofs/EXAMPLE.md` (7.5).
+- Setup wait push (option d) cannot reach a headless run that calls no Kira tool or whose turn
+  ended (9.2 findings): Part 5's check decides; fallback (a) keeps a wait-only tool.
 
 ## 18. Questions
 
 Answered (kept for the record): Q1 no watcher; Q2 superseded by the narrowed design
 (`create_task` stays, no drafts); Q3 folders by id; Q6 blocking mirrors old tools; Q9 merged
-`branches` and `lease`, wait on `task_info`; Q10 no proof outside a task; Q11 no backup; Q12 spike
+`branches` and `lease` (setup wait reopened for Part 5, 9.2); Q10 no proof outside a task; Q11 no backup; Q12 spike
 models (done); Q15 phone; Q16 delete taskless proof rows after a log line; Q17 image formats.
 
 Plan recommendations in force (user accepted "all other questions: plan's recommendation"):
@@ -1007,10 +1128,14 @@ Plan recommendations in force (user accepted "all other questions: plan's recomm
 
 New, for the user:
 
-- QN1 Benchmark spend for Parts 3 to 5 and the final: estimate 2.53 USD for the three Part rounds
-  plus 2.53 USD for the final, 5.06 USD total (section 14.1). Recommend: approve a 6.5 USD cap
-  (one Part rerun of reserve), per-run cap 0.5 USD. Alternative: final reuses each Part's T runs
-  (saves about 1.2 USD) at the cost of comparing across days.
-- QN2 `proof` on every Space grant, also steps without the `DbMcp` option (proofs hold images and
-  diagrams, not only query results; one listed name costs about 10 tokens). Recommend: yes, every
-  Space grant. Alternative: only steps with `DbMcp`, as `proof_save` today.
+- QN1 Benchmark spend for Parts 3 to 5 and the final: estimate 2.62 USD for the three Part rounds
+  plus 2.62 USD for the final, 5.24 USD total (section 14.1; F2 and F3 now run the files arm).
+  Recommend: approve a 6.5 USD cap (1.26 USD reserve, one Part rerun), per-run cap 0.5 USD.
+  Alternative: final reuses each Part's T runs (saves about 1.2 USD) at the cost of comparing
+  across days.
+- QN2 superseded: no `proof` tool (user). Proofs work in every task folder through `submit`, which
+  every Space grant has.
+
+Open for a Part planner, not the user:
+
+- Setup wait (Part 5): options (a) to (d), findings and default in 9.2.
