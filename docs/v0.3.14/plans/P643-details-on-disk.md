@@ -21,12 +21,20 @@ Final user answers. Binding for every build Part.
   reopens child drafts, draft cleanup and a blocking `submit`.
 - Leases stay in `state.yaml` (user): the per-task file lists the task's leases; a lease change
   rewrites only the affected tasks' `state.yaml`. Lease state stays in Kira's lease book, changed
-  only through `lease`; never driven by a file edit.
-- Waits (settled for Part 5, section 9.2): `task_info` goes; no wait tool. A `branches` request
-  returns once each requested worktree's setup is ready or failed, or after a 10 min setup wait
-  (approval keeps its 30 min); then the agent checks `repos[].setup` in `state.yaml`. Interactive sessions also get a lease-style push when
-  a setup they asked about ends. `state.yaml` `repos[].setup` carries state and failure note. Until
-  Part 5 lands, `task_info` stays unchanged. F5 re-benchmarked (14.1).
+  only through the `state` tool's `lease.*` actions (was `lease`); never driven by a file edit.
+- Uniform surface (user principle, Part 5, sections 9.3 and 9.4): "the same method for all"; the
+  surface was "way too big and granular". Every Space role gets two tools: `submit` (content, and
+  `finish` in place of `finish_step`, QN4) and `state` (every state change, `action` enum per
+  grant). One reply shape and status vocabulary (`done`, `pending`, `waiting`, `denied`, `failed`,
+  `invalid`) in replies and `state.yaml`; one wait rule; one approval and notification table; one
+  header and README phrasing. Uniformity ranks above the last few percent of per-flow cost.
+  Exceptions only where a named requirement forces them (9.3). Binding decisions it would change
+  are questions: QN4 (`finish_step` fold), QN5 (context gate), QN6 (`create_task` as action).
+- Waits (Part 5, 9.2 and 9.4): `task_info` goes; no wait tool. Every blocking call waits up to 10
+  min (`Deps.CallWait`), approval included, then replies `pending` or `waiting` with the
+  `state.yaml` fields to check; nothing is cancelled and approvals stay open for the user. Branch
+  approvals shorten from 30 to 10 min. Sessions also get a push when it finishes; headless runs
+  cannot (9.2) and read `state.yaml`. Until Part 5 lands, `task_info` stays unchanged.
 - Content is files (notes, handovers, links incl. Jira and PR slots, proofs with images as files).
   State stays in SQLite (approvals, stages, branches, leases, runs, status, workflow, plan
   placement) and is never driven by a file edit. `state.yaml` and `task.yaml` are read-only mirrors
@@ -37,9 +45,10 @@ Final user answers. Binding for every build Part.
 - Proof window shows one proof, one file.
 - Relative paths only in the file layer (future cloud).
 - Q3 yes: folders by task id, `<home>/tasks/<taskId>/`.
-- Q9 yes, adjusted by spike: merged `branches {action: declare|request|rename|change}` and
-  `lease {action: acquire|release}`; `run_outcome`, `lease_status`, `operations` list fold into
-  `state.yaml`; `cancel_operation` tool. Branch setup wait: blocking `branches` request (Waits bullet above).
+- Q9 yes, adjusted by spike, then by the uniformity principle: the merged `branches`, `lease` and
+  `cancel_operation` become actions of one `state` tool; `run_outcome`, `lease_status`,
+  `operations` list fold into `state.yaml`. Branch setup wait: blocking `branch.request` (Waits
+  bullet above).
 - Q10: no proof outside a task. Removed: standalone proofs folder, kira-studio `proof_save` and
   `proof_list` for every client, Window menu "Validation proof", standalone picker, history pane,
   unattached sessions, attach and detach. List in section 10.
@@ -52,11 +61,13 @@ Final user answers. Binding for every build Part.
 - Silent accept: a change that needs no approval and has no notification today is accepted with no
   notification. A new proof keeps accept plus the existing "proof ready" notification.
 - Q6: blocking mirrors the old tools (table 7.3). No `submit` item blocks: none maps to a blocking
-  old tool now that child drafts are gone. `create_task` keeps its own 30 min wait.
+  old tool now that child drafts are gone. `create_task` keeps its own 30 min wait (QN6 asks to
+  move it to the uniform 10 min rule). Branch actions block under the uniform wait rule (9.4).
 - Benchmarks: per-Part and final (14.1). Sonnet, 3 reps per flow and arm, 0.5 USD per-run cap,
   real implementation, same harness. Gate: cost at most 1.2x, final context at most 1.0x, pass
   rate not lower, failed edit-path calls plus retries not higher; turns reported only. F2 and F3
-  (proofs as files) are reported, not gated: the user chose the design regardless.
+  (proofs as files) are reported, not gated: the user chose the design regardless. QN5 asks to
+  raise the context gate to 1.05 for the uniform surface.
 - Q4 to Q8, Q13, Q14: plan recommendation (section 18).
 
 ## 1. Inputs and SPEC conflicts
@@ -71,8 +82,8 @@ From SPEC P643 Scope, the design talk and the spike. SPEC conflicts and how the 
   as files): SPEC wins (user, final). No `proof` tool; the files arm gap is reported (14.1).
 - "for standalone sessions `submit` is on kira-studio": dropped by Q10 (no proof outside a task).
 - "one-time migration with backup": no backup (Q11).
-- Tool list: SPEC "about 6"; plan 5 for a run, 6 for an orchestrator run (section 9.3; Part 5
-  removes `task_info`, 9.2).
+- Tool list: SPEC "about 6"; plan 2 for every Space role (`submit`, `state`), 3 for an
+  orchestrator until QN6 (section 9.3, user uniformity principle).
 
 ## 2. Current state map
 
@@ -326,6 +337,14 @@ session key. A recovered headless run has no base: collisions fall back to plain
 
 Granted to every Space grant (runs, sessions, review agent, orchestrator).
 
+Part 5 (uniform surface, 9.3 and 9.4, QN4): `finished` becomes `finish` and absorbs `finish_step`
+in Space grants: `submit {paths?, reason?, finish?}`. Run grant: `finish` = a step result id
+(enum from `grantResults`) plus `finish_step`'s fields (reason, conflictedFiles, lastGitError,
+tried); session grant: `finish: "done"` raises the move prompt. The reply moves to the shared
+shape: `summary` counts line (`2 done, 1 pending, 0 invalid`), items with `status` in the 9.4
+words (accepted and unchanged to `done`, rejected to `denied`, restored to `invalid` with fix),
+`next`, `notices`. Part 4's proof summary rides in the proof item's `message`.
+
 `finish_step` keeps status, reason, conflictedFiles, lastGitError, tried; `summary` goes. It runs
 an implicit submit first (no reason: approval items in it come back `invalid` in the reply and
 the finish still records). Ok status, route continues, no draft for the step = refused: "write
@@ -418,12 +437,15 @@ New item to old tool:
 | Collision, invalid | none | - | `pending` or `invalid` at once |
 | Child task | `create_task` | b | unchanged: `create_task`, b, 30 min |
 
-So `submit` never blocks. Tools that blocked keep their waits: `branches` (request, rename,
-change), `create_task`, kira-studio db tools. From Part 5 a `branches` request also waits for the
-worktree setup, replacing `task_info waitSeconds` (9.2).
+So `submit` never blocks. From Part 5 every blocking `state` action (branch request, rename,
+change, lease acquire) follows the uniform wait rule (9.4: 10 min, then `pending` or `waiting`
+pointing at `state.yaml`); a branch request also waits for the worktree setup, replacing
+`task_info waitSeconds` (9.2). `create_task` keeps its 30 min until QN6. kira-studio db tools keep
+their own waits (exception, 9.3).
 
 A `pending` item's answer reaches the agent through the lease notice path (`SendIfIdle`, hook
-reply, next tool result `notices`) and the `pending` list in `state.yaml`. Deny restores the
+reply, next tool result `notices`), the `pending` list and, once answered, `answers` in
+`state.yaml` (9.4 notification rule). Deny restores the
 accepted copy on disk. A new submit of the same file replaces its open item. Approvals kind
 `details.edit` (new) reaches desktop and phone (`mobileweb/approvals.go` allowlist plus phone
 view).
@@ -604,23 +626,24 @@ Step, manual, review and start prompts (`AdeStepPrompt`, `AdeManualMessage`, `Ad
 ```
 Task folder: <abs path>. Write your handover to handovers/draft-<step>.md there.
 Proofs: orders-match-ledger "Orders match ledger": totals (table), flow (diagram), why (document)
-Kira tools for this step: finish_step, submit. Load them first with ToolSearch select:mcp__kira-space__finish_step,mcp__kira-space__submit
-Edit task files, then call submit (finish_step submits for you).
+Kira tools: submit, state. Load them first with ToolSearch select:mcp__kira-space__submit,mcp__kira-space__state
+Edit task files, then call submit; add finish when the step is done.
 ```
 
 - Latest handover and notes stay inlined (Q13), so the common input needs no read.
 - `Proofs:` line only when the task has proofs (cap 5 lines, 300 bytes each).
-- Tool line: names the always-needed tools of the grant (run: `finish_step`, `submit`; session:
-  `submit`; orchestrator adds `create_task`). The load sentence comes from a new
+- Tool line: from Part 5 the same for every role (9.4): `submit`, `state` (orchestrator adds
+  `create_task` until QN6). Parts 3 and 4 ship the interim line naming `finish_step`, `submit`. The load sentence comes from a new
   optional harness interface `harness.ToolLoader{ LoadHint(names []string) string }`; Claude
   returns the `ToolSearch select:` sentence with `harness.ToolNames` names, other providers ""
   (no deferral). One select call loads all named schemas in one turn.
-- Last line: the submit reminder. `finish_step` suffix stays last in step prompts.
-- `HeadlessSpaceInstructions` rewritten: `Kira Space tools for this task. Task state is in
-  state.yaml in the task folder. Declare repos and create or change branches only with branches;
-  never git branch or git worktree. A branches request waits up to 10 minutes for the worktree; if
-  it is still preparing, check repos[].setup in state.yaml. Edit task files, then call submit.` (Part 3 writes it without the `state.yaml` and setup sentences;
-  Part 5 adds both, 9.2.)
+- Last line: the submit reminder. The finish suffix stays last in step prompts and names
+  `submit {finish}` from Part 5 (`finish_step` in Parts 3 and 4).
+- `HeadlessSpaceInstructions` rewritten: `Kira tools: submit for task files, state for everything
+  else. Task state is in state.yaml in the task folder. Create or change branches only with state;
+  never git branch or git worktree. A call that waits returns within 10 minutes; if it is not
+  done, check the state.yaml fields it names. Edit task files, then call submit.` (Part 3 writes
+  an interim text naming today's branch tools; Part 5 writes this one, 9.4.)
 
 ToolSearch limits (spike 1b, measured): built-in tool schemas 33.1k tokens and the 2.4k system
 prompt are fixed by Claude Code (87 percent of turn 1); MCP schemas cost 0 at turn 1 and are paid
@@ -631,22 +654,24 @@ hint removes that failure, it does not remove the ToolSearch turn.
 
 ## 8. State file (Part 5)
 
-`state.yaml` header: `# Read-only. Kira rewrites this file. Change state only with Kira tools:
-branches, lease, cancel_operation, finish_step. repos[].setup shows each worktree setup: running,
-ready or failed with note.` (Part 2's `headers.go` text names `task_info`; Part 5 replaces it.) Coarse state only:
+`state.yaml` header: `# Read-only. Kira rewrites this file. State changes: call state. status is
+done, pending (the user must answer), waiting (Kira or a queue is on it), denied or failed (see
+note).` (Part 2's `headers.go` text names `task_info`; Part 5 replaces it.) Coarse state only, the
+9.4 status words on every item:
 
 ```yaml
 rev: 41                       # increments per rewrite; no file times
 task: {id, kind, status, step: {id, name, position, of}, workflow}
-repos:                        # per repo: branch, base, worktree, setup {state, note}, mismatch
+repos:                        # per repo: branch, base, worktree, setup {status: waiting|done|failed, note}, mismatch
 registered: [...]             # names, always (task_info includeRegistered goes)
-leases: [{queue, state: held|queued, position, holder}]
-operations: [{opId, kind, subject, startedAt}]
-runs: [{runId, kind, step, state, outcome}]   # last 3; outcome capped at 2 KiB
+leases: [{queue, status: done|waiting, position, holder}]   # done = held, waiting = queued
+operations: [{opId, kind, subject, status: waiting, startedAt}]
+runs: [{runId, kind, step, status: waiting|done|failed, outcome}]   # last 3; outcome capped at 2 KiB
 chain:
   parent: {id, title, path: ../<id>/}
   children: [{id, title, status, step, finished, archived, lastHandover: ../<id>/handovers/<file>, preview}]
-pending: [{path, kind, since}]  # submit items waiting on the user
+pending: [{id, kind, subject, since}]  # everything waiting on the user: submit items (subject = path), branch.request, branch.rename, branch.change, task.create
+answers: [{id, kind, subject, status: done|denied|failed, note, at}]  # last 10 user answers and late results
 ```
 
 Worktree paths are absolute: host-local mirror, regenerated per host, never content (Q4). One
@@ -655,6 +680,9 @@ board change (`notifyBoard`), lease book change, op start and end, setup change,
 review change. Live tasks only; one final write at archive.
 
 `task.yaml`: id, title, kind, workflow, parent, repos, created. Same header and writer.
+
+`task.status` and `chain.children[].status` keep the board's task status (workflow position), not
+the 9.4 words: they describe where a task stands, not the outcome of an agent's call.
 
 Orchestrator children created after launch are outside the fixed Seatbelt profile and `--add-dir`
 list. `chain.children[].preview` (first 500 bytes) and the `create_task` reply cover them until the
@@ -677,8 +705,8 @@ it)".
 | Orchestrator chain read | `state.yaml` chain plus children's `handovers/` | F4 FL 0.72, FF 0.79; context 0.87, 0.88 | files win; `task_chain` returned whole chains |
 | New proof | agent Writes `proofs/<slug>/proof.md` (and side files) plus `submit` | F2 files FP 1.31 (1c), haiku 1.38 (1) | user chose files; gap reported (14.1) |
 | Proof edit | Read, Edit `proof.md` by step id, `submit {reason}` | F3 files FL 1.28, FA 1.18 (inconclusive), FP 1.24 | user chose files; gap reported (14.1) |
-| Child task | `create_task` tool, unchanged | F6 files FL 1.36, FF 1.40 vs gate 1.1; context 1.06 to 1.09 | user dropped drafts |
-| Branch setup wait | `task_info {waitSeconds}` until Part 5; then blocking `branches` request plus session push (9.2) | F5 FL 1.26, FF 1.17 (1 run each, inconclusive); haiku 1.30 | no wait tool (user); F5 re-benchmarked |
+| Child task | `create_task` tool, unchanged (QN6: `state` action `task.create`) | F6 files FL 1.36, FF 1.40 vs gate 1.1; context 1.06 to 1.09 | user dropped drafts |
+| Branch setup wait | `task_info {waitSeconds}` until Part 5; then blocking `state {action: branch.request}` plus session push (9.2) | F5 FL 1.26, FF 1.17 (1 run each, inconclusive); haiku 1.30 | no wait tool (user); F5 re-benchmarked |
 
 ### 9.2 Setup wait (settled, Part 5)
 
@@ -741,130 +769,224 @@ needs run-keyed hook routing plus hooks in isolated runs; (3) end the run and re
 worktree is ready" (`queueResumeLocked`): a new attempt, which re-reads the whole conversation
 (cache likely cold after minutes) and changes finish semantics. So runs keep the blocking reply.
 
-Design:
+Design (under the uniform rules of 9.4; the setup wait is one case of the uniform wait):
 
-- Blocking request, every role. `branches {action: request}` replies per slot only once its setup
-  is `ready` or `failed`, not at `running`. Covers new branches (after approval and create) and
-  existing branches whose setup is running, whoever started it. Setup wait: 10 min default, new
-  `Deps.SetupWait` beside `Deps.BranchRequestWait` (const `defaultSetupWait`; flow tests set it
-  through new `flowharness.WithSetupWait`). It covers the setup phase only, counted from when the
-  wait starts (after approval and create, or at once for an existing branch). The approval phase
-  keeps `branchRequestWait()` (30 min) and today's timeout behaviour. Clamp: the setup wait never
-  runs past call start plus `harness.MCPCallTimeout` minus 2 min, so a call stays under the MCP
-  limit even after a long approval. Progress
-  `preparing <branch>: <note>` through `ReportProgress`, as `BranchStatus` does now. The loop
-  (`setupDone` channel, 5 s row re-read fallback) moves from `BranchStatus` to new
-  `ade/setupwait.go`, called by `RequestBranches` (`ade/branchrequest.go`) and `applyExisting`
-  before the reply is built. After the setup wait runs out, the agent reads `state.yaml` itself;
-  no wait tool.
-- Why setup-only: making 10 min cover approval too would cut today's 30 min approval wait to 10
-  min, and the request would have to stay pending for the user after the call returns. Today a
-  timed-out call withdraws its items. That needs a new lifecycle: approval kept after the call, the
-  branch created on a later Approve with no caller, and the agent told through `state.yaml` and the
-  session push. Bigger change, user question QN3.
-- Waiter leaving (Esc, run end, context cancel) never cancels the setup. `cancel_operation` on the
-  setup op fails it; a blocked waiter then gets `failed`.
-- Push, interactive sessions only, supplement. In-memory watcher per (repo, branch, session owner
-  key), added when a request to that session ends before the setup does (setup wait ran out, or
-  wait cancelled by Esc) or replies `failed`. At setup end (`runSetup` end, `recordSetupFailure`) Kira
-  delivers to each watcher not blocked in a request on that branch, through the lease delivery path
-  generalized to `deliverNotice` and `takeNotices` (`ade/leases.go`); notices also ride on
-  `branches` replies. Ready removes the watcher; failed keeps it, so a later Retry reaches it.
-  `run:` owners get no watcher (unreachable; their request blocks). Watchers drop on owner end
-  (`endLeases`).
-- Reply `Next` texts (`branchInfo`):
-  - ready: `Ready. Work in <path>.` (unchanged)
-  - failed: `The worktree setup failed. Tell the user; do not edit until it is fixed. Reason:
-    <note>` (unchanged)
-  - setup wait ran out, run: `Setup still running after <N> minutes. Check state.yaml in the task
-    folder: repos[].setup.state for <repo> is running, ready or failed; repos[].setup.note holds
-    the failure reason. Do not edit in <path> until it says ready.`
-  - setup wait ran out, session: same text plus `Kira also tells you when it is ready.`
-  - `pending` is not named: it lists submit items, and an approval still open never reaches this
-    reply (approval keeps its own wait). Calling the same request again blocks up to another setup
-    wait; harmless (no new approval, no new setup) but not offered, per the user.
-  - none: unchanged except `request_branches` reads `branches` with action request.
+- Blocking request, every role. `state {action: branch.request}` replies per branch once its setup
+  is `done` or `failed`, or when the call wait runs out. Covers new branches (approval, create,
+  setup) and existing branches whose setup is running, whoever started it. One wait for the whole
+  call, approval plus setup: 10 min default (`Deps.CallWait`, 9.4). This replaces today's 30 min
+  approval wait (`Deps.BranchRequestWait`, `defaultBranchRequestWait`): approval waits shorten
+  from 30 to 10 min. Progress `preparing <branch>: <note>` through `ReportProgress`, as
+  `BranchStatus` does now. The setup loop (`setupDone` channel, 5 s row re-read fallback) moves
+  from `BranchStatus` to new `ade/setupwait.go`.
+- Call wait ran out: nothing is cancelled. An approval still open stays in the approvals queue
+  for the user (no countdown; it lives until answered or until its owner ends). A setup keeps
+  running. The reply says `pending` (approval) or `waiting` (setup) and names the `state.yaml`
+  fields to check (9.4 texts). A later Approve makes Kira create the branch and start its setup
+  with no caller; the answer lands in `state.yaml` `answers[]` and the branch in `repos[]`.
+- Waiter leaving (Esc, run end, context cancel) never cancels the setup. Owner end (run end,
+  session end) withdraws its open approvals, as `endLeases` frees its leases. `state {action:
+  operation.cancel}` on the setup op fails it; a blocked waiter then gets `failed`.
+- Push, interactive sessions only (9.4 notification rule): when an approval is answered or a
+  setup ends after the session's call returned, Kira delivers through the lease delivery path
+  generalized to `deliverNotice` and `takeNotices` (`ade/leases.go`); notices also ride on every
+  `state` and `submit` reply. `run:` owners get no push (paragraph above); they read `state.yaml`.
 - Push texts:
   - `Kira: the worktree of <branch> (<repo>) is ready at <path>. Continue the work that waited for
     it.`
   - `Kira: the worktree setup of <branch> (<repo>) failed: <note>. Tell the user; do not edit
     there until it is fixed.`
-- `state.yaml` `repos[].setup: {state: none|running|ready|failed, note}` from `setupInfoFrom` (no
-  row with a worktree = `ready`, no worktree = `none`). `note` = failure reason when `failed`, else
-  omitted. Rewritten on `startSetup`, setup end and `recordSetupFailure` (through `notifyBoard`),
-  and once for live tasks at board start after `Recover`.
-- Restart: watchers and queued messages are memory only. `Recover` marks running setups failed
-  with the restart reason and stops sessions; `state.yaml` shows `failed` with that reason. A
-  resumed agent tells the user; after Retry a `branches` request waits again.
-- Timeouts: approval up to 30 min (unchanged), then setup wait up to 10 min, clamped to
-  `MCPCallTimeout` minus 2 min from call start (worst case 33 min when the user approves late; 10
-  min when no approval is needed). The setup itself is bound by the prepare timeout (15 min
-  default). A setup outlasting the wait gets the "check state.yaml" reply; a session also gets the
-  push.
+  - `Kira: the user approved <kind> <subject>.` / `Kira: the user declined <kind> <subject>.`
+- `state.yaml` `repos[].setup: {status: waiting|done|failed, note}` (absent = no worktree), from
+  `setupInfoFrom`. `note` = failure reason when `failed`, else omitted. Rewritten on `startSetup`,
+  setup end and `recordSetupFailure` (through `notifyBoard`), and once for live tasks at board
+  start after `Recover`.
+- Restart: open approvals, queued messages and pushes are memory only; the board drops open
+  approvals at quit as today. `Recover` marks running setups failed with the restart reason and
+  stops sessions; `state.yaml` shows `failed` with that reason. A resumed agent tells the user;
+  after Retry a `branch.request` waits again.
+- Timeouts: whole call up to 10 min (`Deps.CallWait`), under `harness.MCPCallTimeout` (35 min,
+  kept: one `MCP_TOOL_TIMEOUT` value covers every MCP server, kira-studio included). The setup
+  itself is bound by the prepare timeout (15 min default).
 - Launch gating (`queueRun`, `launchGate`) stays as is.
 
 Rejected: (a) wait-only `task_info`, one more tool (kept only as the F5 fallback, 14.1); (c) launch
 gating alone, exists but misses mid-run requests; (d) push alone, cannot reach a headless run
-(paragraph above); `branches {action: wait}`, extra schema text (spike F5 search
-context 1.7k to 1.8k against T 0).
+(paragraph above); a `wait` action, one more action with no new effect.
 
-### 9.3 Tool table
+### 9.3 Uniform surface (user principle)
 
-| Tool | Server | Before | After |
+User principle (overrides per-flow cost tuning): "having the same method for all"; the MCP
+surface was "way too big and granular"; "things as uniform as possible, for things to mostly
+behave the same way". So every Space role gets the same two tools: `submit` for content, `state`
+for every state change. Both share one call and reply convention (9.4).
+
+| Tool | Server | Before (last revision) | After |
 |---|---|---|---|
-| `finish_step` | kira-space | runs; summary = handover | kept; summary moves to draft file; implicit submit |
-| `submit` | kira-space | | new, every Space grant |
-| `task_info` | kira-space | Space | until Part 5 unchanged; then removed: task facts in `state.yaml`, setup wait in `branches` request (9.2) |
-| `declare_repos`, `request_branches`, `rename_branch`, `change_branch` | kira-space | Space | merged: `branches {action: declare|request|rename|change}` |
-| `acquire_lease`, `release_lease` | kira-space | Space | merged: `lease {action: acquire|release}`; notices stay on replies |
-| `operations` | kira-space | Space | list in `state.yaml`; cancel: `cancel_operation` |
-| `handover` | kira-space | sessions without run | removed: draft file plus `submit {finished}` |
-| `run_outcome` | kira-space | task grants | removed: `state.yaml` `runs` |
-| `report_artifacts` | kira-space | Space | removed: `links.yaml` plus `submit`; kind proof gone with attach |
-| `lease_status` | kira-space | Space | removed: `state.yaml` `leases` |
-| `create_task` | kira-space | orchestrator | kept unchanged; reply `next` text updated (8); brief written as the child's first handed file |
-| `list_tasks`, `task_chain` | kira-space | orchestrator | removed: `state.yaml` `chain` plus children's `handovers/` |
-| `git`, `reply_review_comment`, `fetch_remote`, `push_branch` | kira-space | conditional | unchanged |
-| `proof_save`, `proof_list` | kira-studio | every DB MCP client | removed for every client (Q10) |
+| `submit` | kira-space | content; `finished` for sessions | content for every role; `finish` argument replaces `finish_step` in Space grants (QN4) |
+| `state` | kira-space | | new, every Space grant: one tool, `action` enum per grant |
+| `finish_step` | kira-space | runs | folded into `submit {finish}` (Space grants); kept only for Space-less grants (rebase runs, review rounds) |
+| `branches` (declare, request, rename, change) | kira-space | Space | `state` actions `repo.declare`, `branch.request`, `branch.rename`, `branch.change` |
+| `lease` (acquire, release) | kira-space | Space | `state` actions `lease.acquire` (now waits like every call), `lease.release` |
+| `cancel_operation` | kira-space | Space | `state` action `operation.cancel` |
+| `create_task` | kira-space | orchestrator | binding (Decisions): stays its own tool, exactly as today, 30 min wait. Recommended (QN6): `state` action `task.create`, orchestrator grant only, same args and approval, uniform 10 min wait |
+| `fetch_remote`, `push_branch`, `reply_review_comment` | kira-space | conditional | `state` actions `remote.fetch`, `branch.push`, `review.reply`, same grant conditions |
+| `git` | kira-space | rebase runs | unchanged (exception, 9.4) |
+| `task_info` | kira-space | Space | removed (9.2) |
+| `handover`, `run_outcome`, `report_artifacts`, `operations`, `lease_status`, `list_tasks`, `task_chain` | kira-space | | removed (Parts 3 to 5) |
+| `proof_save`, `proof_list` | kira-studio | every DB MCP client | removed (Q10) |
 
-Counts (conditional tools excluded):
+`state` schema: `{action, repo?, branch?, base?, existing?, name?, queue?, opId?, task?, args?}`
+with one shared field note each; `action` enum and description lines built per grant, so a role
+never loads text for an action it cannot call (run: 7 actions; orchestrator adds `task.create`
+under QN6; review grants add `review.reply`; push grants add `branch.push`, `remote.fetch`). Description:
+one header line plus one line per granted action, no copy of the old tool texts.
 
-| Role | Before | After | Tools after |
-|---|---|---|---|
-| Run | 12 | 5 | `finish_step`, `submit`, `branches`, `lease`, `cancel_operation` |
-| Session without run (manual, review agent) | 12 | 4 | run set minus `finish_step` |
-| Orchestrator run | 15 | 6 | run set plus `create_task` |
-| Orchestrator session | 15 | 5 | session set plus `create_task` |
-| kira-studio proof tools, any client | 2 | 0 | |
+Counts:
 
-Removed names: `handover`, `run_outcome`, `report_artifacts`, `operations`, `lease_status`,
-`list_tasks`, `task_chain`, `task_info`, `proof_save`, `proof_list`. Merged away:
-`declare_repos`, `request_branches`, `rename_branch`, `change_branch`, `acquire_lease`,
-`release_lease`. New: `submit`, `branches`, `lease`, `cancel_operation`. `lease` calls stay the
-heartbeat (`mcpRecorder`).
+| Role | Spike T (old) | Last revision | Uniform | Tools |
+|---|---|---|---|---|
+| Run | 12 | 5 | 2 | `submit`, `state` |
+| Session (manual, run-step TUI, review agent) | 12 | 4 | 2 | `submit`, `state` |
+| Orchestrator run | 15 | 6 | 3 (2 with QN6) | `submit`, `state`, `create_task` |
+| Orchestrator session | 15 | 5 | 3 (2 with QN6) | `submit`, `state`, `create_task` |
+| Rebase run | 2 | 2 | 2 | `finish_step`, `git` (Space-less, exception) |
+| kira-studio proof tools, any client | 2 | 0 | 0 | |
 
-`task_info` removal, Part 5 (paths as in 7.3):
+Schema size (spike, `TestDetailsSpikeToolBytes`, JSON of `tools/list`, bytes/4): T run 12 tools
+3,868 tokens, T orchestrator 4,767; F run 5 tools 1,396, F orchestrator 6 tools 1,719 (so
+`create_task` about 323). Spike search context once loaded (merged tools carried every replaced
+tool's full text): F5 `branches` 1,725 to 1,807, F6 2,319 to 2,833, F1 1,045; T F5 0 extra (one
+small `task_info`). A per-tool split of the F numbers was not measured: the free run of the bytes
+test failed on a full disk in this sandbox (153 MB left), so the split stays an estimate. Budget,
+enforced in Part 5 by `TestToolSchemaBudget` (`agentmcp`, free, no `claude`: JSON bytes of
+`tools/list` per grant):
 
-- `agentmcp/space.go`: `addTaskInfoTool`, `taskInfoArgs`, `maxWaitSeconds`,
-  `SpaceTools.TaskInfo`, `SpaceTools.BranchStatus`, `TaskInfo.Branch` go. `TaskInfo` stays as the
-  declare reply shape. The request handler passes the owner key and the progress reporter.
-- `agentmcp/tools.go`: `task_info` out of `SpaceToolIDs`.
-- `ade/agenttools.go`: `TaskBoard.TaskInfo` and `BranchStatus` go; `branchInfo` `Next` texts per
-  role (9.2). New `ade/setupwait.go`: wait loop, watchers, push. `ade/branchrequest.go`,
-  `ade/branchadopt.go`: wait before the reply. `ade/setup.go`: setup end and `recordSetupFailure`
-  notify watchers and the state writer. `ade/leases.go`: `deliverNotice`, `takeNotices`.
-- `llmprompts/registry.go`: `HeadlessToolTaskInfo` and its args go; arg texts "from task_info"
-  (declare repo, request repo, `create_task` `repos.repo`) read "from state.yaml";
-  `headless.space.suffix` names `branches`, `lease`, `cancel_operation`, `submit` and says a
-  `branches` request waits up to 10 minutes for each worktree, then `state.yaml` `repos[].setup`
-  tells; its `FilesVars` example names `mcp__kira-space__branches`; `branches` description adds
-  "request waits up to 10 min for the worktree setup". `ade/branchrequest.go` also gets
-  `defaultSetupWait` and `Deps.SetupWait` (`ade/board.go` deps), `flowharness.WithSetupWait`. `HeadlessSpaceInstructions` per 7.6.
-- `internal/taskfiles/headers.go`: `headerState` per section 8.
+| Grant | Budget (tokens, bytes/4) | Parts |
+|---|---|---|
+| Run | 900 | `submit` with `finish` 300, `state` 7 actions 600 |
+| Orchestrator | 1,200 | plus `task.create` 300 (QN6) or `create_task` unchanged (about 323) |
+| Session | 850 | `submit` without step results 250, `state` 600 |
+
+So the uniform surface loads about 0.5k to 0.6k tokens less than the spike F surface and 3k less
+than T, but loads `state`'s whole text even when one action is needed (lease-only use pays the
+branch lines, about 300 tokens). Loading both tools up front (one `select` call, 7.6) adds about
+600 tokens to flows that never change state (F1 to F4: about 1.5 percent of a 40k context) and
+saves the on-demand ToolSearch turn in flows that do (F5, F6: about 0.015 to 0.02 USD each, spike
+1b). Net cost about neutral; final context about 1.01 to 1.02 on F1 to F4: above the 1.00 gate.
+Gate change asked as QN5.
+
+Exceptions to uniformity, each with its requirement:
+
+- `git` stays its own tool: rebase runs have no Space grant and no task folder (`withTaskFolder`
+  skipped for rebase), and the tool is a checked passthrough of free-form git argv
+  (`CheckGitArgs`), not a state action with a result to record.
+- `finish_step` stays for rebase runs and review rounds: Space-less grants with Kira's own result
+  schema (`grantResults`; conflictedFiles, lastGitError) and nothing to submit.
+- kira-studio db tools keep their own `waitSeconds` and reply shapes: a separate server serving
+  DB MCP clients outside any task (no task folder, no `state.yaml` to point at); out of P643.
+- `create_task` stays a third orchestrator tool with its 30 min wait until QN6: binding decision
+  ("stays exactly as today": name, args, 30 min wait, approval, phone kind).
+- `submit` stays separate from `state`: binding decision (content = files plus `submit`; state
+  changes only over MCP, never by a file edit), and its argument set (paths, reason, finish) has
+  no overlap with state actions.
+
+### 9.4 Uniform rules
+
+Call convention, `submit` and `state` alike:
+
+- Arguments: `state {action, <fields>}`; `submit {paths?, reason?, finish?}`.
+- Reply (structured and text): first line counts, then one line per item, then `next`, then
+  `notices`. JSON `{summary: "1 done, 1 pending", items: [{id, status, message, fix?}], next,
+  notices: [...]}`. `id` = path for files, `repo/branch` for branches, queue, opId, task id.
+- Status vocabulary, same words in replies and `state.yaml`: `done` (applied, held, ready,
+  accepted), `pending` (the user must answer), `waiting` (Kira or a queue is on it: setup running,
+  lease queued, operation running), `denied` (the user said no), `failed` (tried, did not work;
+  message has the reason), `invalid` (bad input; `fix` gives the one-line correction). Submit's old
+  words map: accepted to `done`, unchanged to `done` ("no change"), rejected to `denied`, restored
+  to `invalid` (fix: "read-only file, Kira restored it; change state with state"), ignored items
+  are not listed.
+- Errors: an agent-fixable problem is never an MCP error; it is an item with `invalid` and `fix`
+  (a bad action or missing field is item id `call`). MCP `isError` only for Kira faults (internal
+  error, caller gone). Fix hints one line, with an example call, as 7.1.
+
+Wait rule, every call that can block (`branch.request`, `branch.rename`, `branch.change`,
+`lease.acquire`, and `task.create` under QN6; `submit` never blocks, 7.3):
+
+- One wait per call, 10 min default: `Deps.CallWait` (const `defaultCallWait`; flow tests set it
+  through `flowharness.WithCallWait`), replacing `Deps.BranchRequestWait` (30 min) for branch
+  actions. `create_task` keeps its 30 min and withdraw-on-timeout until QN6. A wiring field like
+  today's, not a user setting.
+- Wait ran out: nothing is cancelled or withdrawn. Approvals stay open for the user, setups keep
+  running, lease places keep their position. Item status `pending` or `waiting`; text (run):
+  `Not finished after 10 minutes. Check state.yaml in the task folder: <fields>. Do not act on it
+  until it shows done.` Session adds `Kira also tells you when it changes.` Fields named per case:
+  approval `pending[]` (id <id>), then `answers[]`; setup `repos[].setup.status` and
+  `repos[].setup.note` for <repo>; lease `leases[].status` for <queue>; child task `chain.children`.
+- Calling the same action again is allowed (it joins the same item, waits up to another call
+  wait); the texts do not offer it, per the user.
+- Every item lives until done or until its owner (run, session) ends; owner end withdraws open
+  approvals and frees leases (`endLeases`).
+
+Notification and approval rule:
+
+| What | Approval | Desktop | Phone | Agent hears |
+|---|---|---|---|---|
+| Own content (draft, own link, empty slot, new proof) | none | board push; "proof ready" for a new proof | no | reply `done` |
+| Another author's content, handed handover, note, collision | yes | approvals | yes (`details.edit`) | reply `pending`; answer via push, `answers[]`, notices |
+| Accepted proof changed or deleted | yes | approvals (`proof.review`) | no (exception: no phone proof view) | same |
+| `branch.request` new, `branch.rename`, `branch.change` | yes | approvals | yes | same |
+| `create_task` (or `task.create`, QN6) | yes | approvals | yes | same (pending after return only under QN6) |
+| `repo.declare`, `lease.*`, `operation.cancel`, `remote.fetch`, `branch.push`, `review.reply`, existing branch | none | board push | no | reply |
+| Wait finished after the call returned (setup end, lease grant, user answer) | | | | push to sessions; `state.yaml`; notices on the next reply; runs read `state.yaml` |
+
+Phrasing, every file and prompt:
+
+- Content files' header and README line: `Edit, then call submit.` (plus `reason` clause where the
+  user approves).
+- `state.yaml`, `task.yaml` header and README line: `Read-only. Kira rewrites this file. State
+  changes: call state.`
+- Prompt tool line: `Kira tools: submit, state. Load them first with ToolSearch
+  select:mcp__kira-space__submit,mcp__kira-space__state` (same line for every role; orchestrator
+  adds `create_task` until QN6).
+
+### 9.5 Removal and file list (Part 5)
+
+- `agentmcp`: new `state.go` (one tool, per-grant enum and description, action dispatch to the
+  existing `SpaceTools` methods), new `reply.go` (shared reply builder, status vocabulary). Remove
+  `branches.go` (Part 5's own planned file, never written), `addTaskInfoTool`, `taskInfoArgs`,
+  `maxWaitSeconds`, `SpaceTools.TaskInfo`, `SpaceTools.BranchStatus`, `TaskInfo.Branch`; `leases.go`
+  and `orchestrator.go` tool registrations (handlers kept as action targets); `optools.go`
+  `cancel_operation` registration; `finish_step` registration for Space grants (`mcp.go`), kept for
+  Space-less grants; `submit.go` gets `finish` (enum from the grant's step results; session enum
+  `done` raises the move prompt) and the shared reply. `tools.go`: `SpaceToolIDs` = `submit`,
+  `state`; `OrchestratorToolIDs` = `create_task`
+  (empty under QN6).
+- `ade`: new `ade/setupwait.go` (setup loop), new `ade/callwait.go` (one wait helper, `Deps.CallWait`,
+  detach on wait end, apply on late answer with the owner's `SpaceCall`, withdraw on owner end).
+  `branchrequest.go`, `branchadopt.go`, `branchrename.go`, `branchchange.go` (`taskcreate.go`
+  under QN6): use the helper; approvals items drop `ExpiresAt` (no countdown). `leases.go`: `AcquireLease` waits
+  through the helper; `deliverNotice`, `takeNotices`. `setup.go`: setup end notifies watchers and the
+  state writer. `agenttools.go`: `TaskBoard.TaskInfo`, `BranchStatus` go.
+- `llmprompts/registry.go`: entries for `submit` (with finish), `state` (header plus one line per
+  action, field notes); removed: `HeadlessToolTaskInfo`, `HeadlessToolDeclareRepos`,
+  `HeadlessToolRequestBranches`, `HeadlessToolRenameBranch`, `HeadlessToolChangeBranch`,
+  `HeadlessToolAcquireLease`, `HeadlessToolReleaseLease`, `HeadlessToolLeaseStatus`,
+  `HeadlessToolOperations`, the `fetch_remote`, `push_branch`,
+  `reply_review_comment` tool entries (texts move into action lines), finish suffix for Space grants;
+  "from task_info" arg texts read "from state.yaml"; `headless.space.suffix` and its `FilesVars`
+  example name `submit` and `state`. `HeadlessSpaceInstructions` per 7.6.
+- `internal/taskfiles/headers.go` (`headerState`, content headers), `readme.go` lines: 9.4
+  phrasing.
+- `mobileweb/approvals.go`: `phoneApprovalKinds` already holds `task.create`, `branch.request`
+  and (Part 3) `details.edit`: unchanged.
+- Frontend: approvals list shows no countdown for items without `ExpiresAt`
+  (`request/kindDefs.ts`); `state.yaml` view unchanged.
 - Texts and fixtures: `internal/llmprompts/testdata/golden/ade.*.txt`, `budget.tsv`, contracts
   `ade-automation.json` and `ade-run.json`, `tests/unit/ade-v2-dialog.spec.ts` `SPACE_NOTE`,
-  `termflow/smart_test.go`, site `reference/mcp-tools.md`. `tests/claude/details_spike*` and the
-  bench T stubs keep `task_info` (frozen baseline).
+  `termflow/smart_test.go`, site `reference/mcp-tools.md`, `docs/ARCHITECTURE.md` agent tools
+  section. `tests/claude/details_spike*` and the bench T stubs keep the old tools (frozen
+  baseline).
 
 ## 10. Proofs
 
@@ -1035,7 +1157,12 @@ Findings that shape this plan:
 - Gate per flow, sonnet medians, R over T: cost at most 1.2; final context at most 1.0; pass count
   not lower; failed edit-path calls plus retries (mean) not higher; turns reported only. A metric
   whose median gap is below the larger run-to-run range is marked inconclusive; an inconclusive
-  fail gets an Opus review of the raw runs before the verdict. Binding for F1, F4, F5, F6.
+  fail gets an Opus review of the raw runs before the verdict. Binding for F1, F4, F5, F6. Under
+  QN5 (uniform surface loads `submit` and `state` up front) the context bound is 1.05; cost and
+  the other gates unchanged.
+- Surface per round: Parts 3 and 4 run the interim tools (`finish_step`, `submit`, merged tools);
+  the Part 5 round and the final run the uniform surface (9.3). F1 is rerun in the final under it.
+  New diagnostic every flow: loaded schema tokens (ToolSearch result size).
 - F2 and F3: same metrics, reported, not blocking (user chose files regardless). Expected cost 1.2
   to 1.3 times T (spike FP 1.31 on F2; FA 1.18, FP 1.24 on F3), context near 1.0. Pass count lower
   than T still goes back to the Part 4 implementer (correctness, not cost). Diagnostics reported:
@@ -1058,15 +1185,17 @@ Findings that shape this plan:
   stub setup is ready). Arm R: real `ade.TaskBoard` and `agentmcp.Server`; task with repo `api`
   (step runs there, worktree ready) and repo `app` branch `feature/x` attached through
   `addExistingBranch`, prepare script `sleep 20`, setup started just before launch; headless run,
-  real composed prompt, default 10 min setup wait (20 s is far inside it, so R measures the
-  blocking path; the ran-out path is covered by the flow test). Prompt core as 1b: "Branch feature/x of repo app in this task is being set
+  real composed prompt, default 10 min call wait (20 s is far inside it, so R measures the
+  blocking path of `state {action: branch.request}`; the ran-out path is covered by the flow
+  test). Prompt core as 1b: "Branch feature/x of repo app in this task is being set
   up. Wait until its setup is done, then reply with the branch's worktree path and nothing else."
   plus the folder line. Oracle: reply holds the worktree path and arrives after the setup row's
-  `FinishedAt`. Diagnostics: ToolSearch loads, `branches` calls, Bash `sleep` calls, `state.yaml`
-  reads (more than one read means the agent polled). Gate binding as above. Main risk: `branches` schema load context (spike FF context 1.05).
-  On a miss: first shorten the `branches` description and schema, rerun F5 (6 runs, about 0.36
-  USD); still failing: Opus review of raw runs, then the user decides on a wait-only
-  `task_info {repo, branch}` (option a, one more tool).
+  `FinishedAt`. Diagnostics: ToolSearch loads, `state` calls, Bash `sleep` calls, `state.yaml`
+  reads (more than one read means the agent polled). Gate binding as above. Main risk: `state`
+  schema load context (spike FF context 1.05 with full merged texts; the 9.3 budget is about 600
+  tokens). On a miss: first shorten the `state` action lines, rerun F5 (6 runs, about 0.36 USD);
+  still failing: Opus review of raw runs, then the user decides on a wait-only `task_info {repo,
+  branch}` (option a, one more tool).
 - Kira-side cost, final, deterministic Go tests outside the `claude` module: submit latency (one
   changed file in a 500-file folder, p95 at most 200 ms); stat on task open, 500 files, at most 5
   ms; `state.yaml` rewrite at most 5 ms, at most one write per 150 ms window under a 100-change
@@ -1132,33 +1261,45 @@ interacting rules.
   `TestProofMcpThroughClaude`, `TestProofChartThroughClaude` rewritten: the agent writes
   `proof.md` (and a chart step) and calls `submit`.
 - Part 5: flow `adeflow` `TestDetailsStateFile` (contract `ade-state-file.json`): lease, op, setup,
-  stage and pending changes land in `state.yaml` within 250 ms, coalesced (count writes), byte-equal
-  skip; `branches` all four actions, `lease` both actions, `cancel_operation`; setup wait (9.2) in
-  new `adeflow/setupwait_test.go` (replaces `taskinfowait_test.go`; `flowharness.WithSetupWait`
-  shortens the setup wait), 11 cases: (1) run request for a new branch replies after setup end
-  with path and progress notes; (2) request for an existing branch whose setup was started by UI
-  attach or Retry waits; (3) failed setup replies the failure text and `state.yaml` shows `failed`
-  with the note; (4) setup wait ran out, per role: the reply names `state.yaml`,
-  `repos[].setup.state` and `repos[].setup.note`, has no "call branches again", the session text
-  adds the push sentence, and `state.yaml` shows `running`; (5) the setup wait starts after
-  approval: a slow approval inside `WithBranchRequestWait` still gets the full setup wait, clamped
-  by the MCP limit (seam); (6) session wait cancelled mid-setup gets the ready push; (7) failed
-  then Retry then ready reaches the watcher; (8) no push to a session blocked on that branch, no
-  watcher for a run; (9) waiter cancel leaves the setup running; (10) `cancel_operation` on the
-  setup op fails the blocked waiter; (11) after `Recover` `state.yaml` shows `failed` with the
-  restart reason and a request after Retry waits again. agentmcp `TestTaskInfoReportsProgress` becomes
-  `TestBranchesRequestReportsSetupProgress`; `ade/agenttools_test.go`
-  `TestSpaceTools_archivedAndBranchStatus`, `adeflow` `agent_tools_test.go` and
-  `branchchange_test.go` move off `task_info` and `BranchStatus` (archived refusal through
-  `branches`, setup reads through `state.yaml`); real `claude` `hooks_test.go` busy work and
-  `automation_test.go` move off `task_info` to `branches {action: declare}` of the declared repo
-  (or `lease` acquire then release if declare is not a no-op); removed tools absent from every grant
-  (`TestOrchestratorToolGrants`, agentmcp `TestGrantScopes`, `toolnames_test.go`); orchestrator
-  reads children through `chain` and README `Children:` lines; `create_task` reply `next` names the
-  child's `handovers/` path. UI spec: folder bar lists `state.yaml` read-only with its `rev`, which
-  rises after a lease change and after a setup end; leases, branch request and `useSetupWait`
-  specs still pass. Real `claude`
-  `TestAdeOrchestrator`, `TestAdeHeadlessRun`, branch request rows rerun.
+  stage, pending and answer changes land in `state.yaml` within 250 ms with the 9.4 status words,
+  coalesced (count writes), byte-equal skip. New `adeflow/statetool_test.go` (contract
+  `ade-state-tool.json`): every `state` action through the one tool; `action` enum and description
+  per grant (run, session, orchestrator, review, push grant); reply shape table test: every action
+  and `submit` decode to `{summary, items[{id, status, message, fix}], next, notices}`, summary
+  first, status in the 9.4 set; agent-fixable errors come back as `invalid` items with `fix`, never
+  `isError`; `submit {finish}` ends a run step (result enum) and raises the session move prompt,
+  refusal without draft (Q7) as an `invalid` item. New `adeflow/callwait_test.go`
+  (`flowharness.WithCallWait` shortens the wait), one case per blocking action (branch request,
+  rename, change, lease acquire; `task.create` under QN6): wait runs out, reply `pending` or
+  `waiting` naming its exact `state.yaml` fields, no "call again" text, item still open; late
+  Approve applies the action with no caller and lands in `answers[]` and `repos[]` (or `leases[]`,
+  `chain`); session gets the push, run gets none; owner end withdraws open approvals and frees
+  leases. New `adeflow/setupwait_test.go` (replaces `taskinfowait_test.go`): (1) request for a new
+  branch replies `done` after setup end with path and progress notes; (2) existing branch whose
+  setup was started by UI attach or Retry waits; (3) failed setup replies `failed` with the note,
+  `state.yaml` the same; (4) wait runs out during setup: `waiting`, names
+  `repos[].setup.status` and `repos[].setup.note`, session text adds the push sentence; (5) wait
+  runs out during approval: `pending`, names `pending[]` and `answers[]`; (6) session wait
+  cancelled mid-setup gets the ready push; (7) failed, Retry, ready reaches the session; (8) no push
+  to a session blocked on that branch, none to a run; (9) waiter cancel leaves the setup running;
+  (10) `operation.cancel` on the setup op fails the blocked waiter; (11) after `Recover`
+  `state.yaml` shows `failed` with the restart reason and a request after Retry waits again.
+  agentmcp `TestToolSchemaBudget` (9.3 budgets per grant); `TestTaskInfoReportsProgress` becomes
+  `TestStateBranchRequestReportsProgress`; `ade/agenttools_test.go`
+  `TestSpaceTools_archivedAndBranchStatus`, `adeflow` `agent_tools_test.go`,
+  `branchchange_test.go`, `branchrequest_test.go`, `branchadopt_test.go`, leases tests move to
+  `state` actions and the shared reply; real `claude` `hooks_test.go` busy work and
+  `automation_test.go` move to `state {action: repo.declare}` of the declared repo (or
+  `lease.acquire` then `lease.release` if declare is not a no-op); removed tools absent from every
+  grant, every Space grant lists exactly `submit`, `state` (plus `create_task` for orchestrators
+  until QN6) (`TestOrchestratorToolGrants`, agentmcp `TestGrantScopes`, `toolnames_test.go`);
+  orchestrator reads children through `chain` and README `Children:` lines; `create_task` reply
+  `next` names the child's `handovers/` path. UI spec on the same contracts: folder bar lists
+  `state.yaml` read-only with its `rev`, which rises after a lease change, a setup end and an
+  answer; approvals item without countdown for an open branch request after the call returned;
+  phone approval spec answers a branch request after its call returned; leases, branch request and
+  `useSetupWait` specs still pass. Real `claude` `TestAdeOrchestrator`, `TestAdeHeadlessRun`,
+  branch request and lease rows rerun.
 - Every Part: matching real `claude` rows of DEV_ENVIRONMENT ("ADE runs and sessions", "Agent
   sandbox") once near Part end. Parts 3, 4, 5: benchmark round (14.1), gate binding except F2 and F3
 (reported).
@@ -1175,7 +1316,7 @@ passes (F2 and F3 reported, not gated).
 | 2 Foundation | store seam, `task_files`, intents, migration framework, submit core (walk, classify, diff, apply, restore, reason rule), proof validators export plus inline YAML to JSON, README generator, header texts, task folder grant (add-dir, sandbox allow and denies, deny rules), harness hygiene, bench harness and frozen baseline | new `internal/taskfiles/**`, `internal/taskfiles/store/**`, `storage/migrations/0101_p643_task_files.sql`, `storage/repos/taskfiles.go`, `internal/proof/validate.go`, `ade/sandbox.go`, `ade/sandbox_tui.go`, `ade/launches.go`, `appwire/wire.go`, `tests/claude/details_spike1b_test.go`, new `tests/claude/details_bench_test.go`, `tests/claude/testdata/details-bench/**`, `package.json` (`test:claude:details`), `docs/DEV_ENVIRONMENT.md` row, `docs/ARCHITECTURE.md` "Task files (P643)" |
 | 3 Notes, handovers, links, submit, prompts | file writes for every UI action, caches, stage move rename, `submit` tool (reason, reply wording), `finish_step` change, `handover` and `report_artifacts` removed (kind proof attach stays until Part 4 removes it), `details.edit` approvals desktop and phone, disk banner, migration exporters, panel forward paths, `headless.space.files` fragment and `harness.ToolLoader`, `HeadlessSpaceInstructions`, child brief written as a handed file, README content lines | `ade/handover.go`, `ade/links.go`, `ade/artifacts.go`, `ade/orchestrator.go`, `ade/taskcreate.go` (brief file), `ade/panelforward.go`, `ade/vars.go`, new `ade/details.go`, `agentmcp/{handover,artifacts,mcp,space,tools}.go`, new `agentmcp/submit.go`, `internal/harness/mcp.go`, `internal/harness/claude/mcp.go`, `llmprompts/registry.go`, `bridge/adetask.go`, `adewire/wire.go`, `mobileweb/approvals.go`, `frontend/src/ade/v2/details/**`, `request/kindDefs.ts`, mobile approval view, tests, bench F1 |
 | 4 Proofs (Stream A) | proofs as agent-written files plus `submit` (7.5): `proof.md` format, submit proof unit (all or nothing, side files, slug and name rules, YAML fix hints, proof reply summary), `Request.Tool` and `Decide` `tool` argument removed, image formats incl. SVG, window single and task-only, retention removed, kira-studio proof tools removed, Q10 entry points removed, proof migration and image rewrite, Q16 deletion, README example block, line 4 and `Proofs:` line, prompt `Proofs:` line, proof header text | `internal/proof/**`, `storage/repos/proof.go`, `storage/migrations/0102_p643_proof_step_key.sql`, `dbmcp/proof_tools.go` (removed), `dbmcp/server.go`, `ade/proof.go`, new `internal/taskfiles/proofunit.go`, `internal/taskfiles/{submit,decide,classify,readme,headers}.go`, `bridge/proof.go`, `bridge/dbmcp.go`, `bridge/adetask.go`, `appshell/menu.go`, `appwire/menuactions.go`, `frontend/src/studio/proof/**`, `details/AdeProofEntry.vue`, `AdeProofAttachMenu.vue` (removed), `packages/shared/domain/proof.ts`, `go.mod` (`golang.org/x/image`), tests, bench F2 F3 |
-| 5 State file and tools (Stream B) | `state.yaml`, `task.yaml` writer, `branches`, `lease`, `cancel_operation`, removals (`run_outcome`, `lease_status`, `operations`, `list_tasks`, `task_chain`, old branch and lease tools, `task_info`), setup wait (9.2: blocking `branches` request, session push through the generalized lease notice path, `state.yaml` `repos[].setup`), `state.yaml` header setup sentence, orchestrator chain reads, children add-dir, `create_task` `next` text, README `Children:` line, `HeadlessSpaceInstructions` `state.yaml` and setup sentences | new `ade/statefile.go`, new `ade/setupwait.go`, `agentmcp/{space,leases,orchestrator,outcomes,tools}.go`, new `agentmcp/branches.go`, `llmprompts/registry.go`, `ade/leases.go`, `ade/orchestrator.go`, `ade/taskcreate.go` (`next` text), `ade/launches.go` (children add-dir), `ade/agenttools.go`, `ade/branchrequest.go`, `ade/branchadopt.go`, `ade/setup.go`, `details/AdeDetailsFolderBar.vue`, tests, bench F4 F5 F6 |
+| 5 State file and uniform surface (Stream B) | `state.yaml` (9.4 status words, `pending`, `answers`), `task.yaml` writer, uniform surface (9.3): `state` tool with per-grant actions, `submit {finish}` absorbs `finish_step` for Space grants (QN4), shared reply and error shape, one call wait `Deps.CallWait` 10 min with items open after return (9.4), notices for every answer, removals (9.5: `task_info`, `run_outcome`, `lease_status`, `operations`, `list_tasks`, `task_chain`, old branch, lease, op, push, fetch and review-reply tools), setup wait (9.2: blocking `state {action: branch.request}`, `repos[].setup`), approvals without countdown, `TestToolSchemaBudget`, 9.4 header and README phrasing, orchestrator chain reads, children add-dir, `create_task` `next` text (or `task.create` under QN6), README `Children:` line, `HeadlessSpaceInstructions` (7.6) | new `ade/statefile.go`, new `ade/setupwait.go`, new `ade/callwait.go`, new `agentmcp/state.go`, new `agentmcp/reply.go`, `agentmcp/{submit,space,leases,orchestrator,outcomes,tools,gittool}.go`, `llmprompts/registry.go`, `ade/leases.go`, `ade/orchestrator.go`, `ade/taskcreate.go`, `ade/launches.go` (children add-dir), `ade/agenttools.go`, `ade/branchrequest.go`, `ade/branchadopt.go`, `ade/branchrename.go`, `ade/branchchange.go`, `ade/setup.go`, `internal/flowharness` (`WithCallWait`), `details/AdeDetailsFolderBar.vue`, `request/kindDefs.ts`, tests, bench F1 rerun, F4 F5 F6 |
 
 Part 2 tasks for the spike gaps and hygiene:
 
@@ -1225,17 +1366,17 @@ File ownership:
 | File or area | Owner |
 |---|---|
 | `internal/proof/**`, `storage/repos/proof.go`, `dbmcp/**` proof parts, `bridge/proof.go`, `bridge/dbmcp.go`, `appshell/menu.go`, `appwire/menuactions.go`, `frontend/src/studio/proof/**`, `details/AdeProofEntry.vue`, `AdeProofAttachMenu.vue`, `packages/shared/domain/proof.ts`, new `internal/taskfiles/proofunit.go`, `internal/taskfiles/{submit,decide}.go`, `ade/proof.go`, `go.mod`, migration `0102` | A |
-| new `ade/statefile.go`, new `ade/setupwait.go`, new `agentmcp/branches.go`, `agentmcp/{space,leases,orchestrator,outcomes,tools,mcp}.go`, `ade/leases.go`, `ade/agenttools.go`, `ade/branchrequest.go`, `ade/branchadopt.go`, `ade/setup.go`, `ade/orchestrator.go`, `ade/taskcreate.go`, `details/AdeDetailsFolderBar.vue` | B |
+| new `ade/statefile.go`, new `ade/setupwait.go`, new `ade/callwait.go`, new `agentmcp/state.go`, new `agentmcp/reply.go`, `agentmcp/{submit,space,leases,orchestrator,outcomes,tools,gittool,mcp}.go`, `ade/leases.go`, `ade/agenttools.go`, `ade/branchrequest.go`, `ade/branchadopt.go`, `ade/branchrename.go`, `ade/branchchange.go`, `ade/setup.go`, `ade/orchestrator.go`, `ade/taskcreate.go`, `internal/flowharness/**`, `details/AdeDetailsFolderBar.vue`, `request/kindDefs.ts` | B |
 | shared, listed below | A and B |
 
 Shared files, additive hunks:
 
 | Shared file | Stream A edit | Stream B edit |
 |---|---|---|
-| `internal/llmprompts/registry.go` | `DbmcpToolProofSave`, `DbmcpToolProofList` removed | `branches`, `lease`, `cancel_operation` texts; removed entries incl. `task_info`; `branches` request readiness clause, `headless.space.suffix`, "from state.yaml" arg texts (9.3); `HeadlessSpaceInstructions` sentences |
+| `internal/llmprompts/registry.go` | `DbmcpToolProofSave`, `DbmcpToolProofList` removed | `state` tool and action texts, `submit` `finish` text, wait ran-out texts (9.4); removed entries (9.5) incl. `task_info`; `headless.space.suffix`, tool line (9.4), `HeadlessSpaceInstructions` (7.6) |
 | `internal/taskfiles/classify.go` | proof-folder hint for a bad slug or a too-deep path | none (Kira-owned patterns exist from Part 2) |
-| `internal/taskfiles/readme.go` | line 4, example block, `Proofs:` line, cap 35 | `Children:` line |
-| `internal/taskfiles/headers.go` | `headerProof` without the proof tool | `headerState` text (section 8) |
+| `internal/taskfiles/readme.go` | line 4, example block, `Proofs:` line, cap 35 | `Children:` line; 9.4 phrasing ("Edit, then call submit.", state line) |
+| `internal/taskfiles/headers.go` | `headerProof` without the proof tool | `headerState` text (section 8, 9.4 phrasing) |
 | `ade/vars.go` | prompt `Proofs:` line input | none |
 | `ade/launches.go` | none | children add-dir |
 | `bridge/adetask.go` | proof choices and link calls removed | none |
@@ -1280,17 +1421,22 @@ proofs).
   indentation.
 - README example block adds about 200 tokens to every README read (F1 context gate 1.0 is at
   parity): fallback moves it to `proofs/EXAMPLE.md` (7.5).
-- Setup wait: a blocked `branches` request holds the agent up to 10 min of setup (plus approval,
-  at most 33 min in all). Then a run reads `state.yaml` itself, which can turn into polling with
-  Bash `sleep` (F5 counts reads); a session also gets the push. The push misses runs by design
-  (9.2 paragraph). `branches` schema load may fail the F5 context gate: lever and fallback in
-  14.1.
+- Call wait: a blocking `state` call holds the agent at most 10 min (approval and setup
+  together). Then a run reads `state.yaml` itself, which can turn into polling with Bash `sleep`
+  (F5 counts reads); a session also gets the push. The push misses runs by design (9.2
+  paragraph). Late answers act with no caller: covered by `answers[]` and the callwait tests.
+- Uniform surface: one `state` schema loads every action of the grant. It may fail the F5 context
+  gate (lever and fallback in 14.1); `TestToolSchemaBudget` stops growth. Agents may pick a wrong
+  action: one `invalid` item with `fix` costs one retry turn, as a wrong tool does today.
+- Approvals shortened from 30 to 10 min of blocking: a slow user no longer loses the request
+  (items stay open), so the shorter wait trades only a later `answers[]` read.
 
 ## 18. Questions
 
 Answered (kept for the record): Q1 no watcher; Q2 superseded by the narrowed design
 (`create_task` stays, no drafts); Q3 folders by id; Q6 blocking mirrors old tools; Q9 merged
-`branches` and `lease` (setup wait settled in 9.2: blocking request, no wait tool); Q10 no proof outside a task; Q11 no backup; Q12 spike
+branch and lease tools (now actions of the one `state` tool, 9.3; setup wait settled in 9.2:
+blocking request, no wait tool); Q10 no proof outside a task; Q11 no backup; Q12 spike
 models (done); Q15 phone; Q16 delete taskless proof rows after a log line; Q17 image formats.
 
 Plan recommendations in force (user accepted "all other questions: plan's recommendation"):
@@ -1311,9 +1457,26 @@ New, for the user:
   across days.
 - QN2 superseded: no `proof` tool (user). Proofs work in every task folder through `submit`, which
   every Space grant has.
-- QN3 Setup wait scope (9.2): the 10 min default covers the setup phase only; the approval keeps
-  its 30 min wait, so a call can still block up to 33 min when the user approves late. Recommend:
-  keep it. Alternative: 10 min for the whole call, which cuts the approval wait to 10 min and needs
-  the request to stay pending after the call returns (Approve later creates the branch with no
-  caller; the agent learns through `state.yaml` and the session push; a run is told by nothing
-  until it reads `state.yaml`). Larger change to approvals.
+- QN3 Wait scope (9.2, 9.4), changed by the uniformity principle: one 10 min wait for the whole
+  call (approval plus setup), the same for every blocking `state` action. This shortens the 30 min
+  approval wait of branch request, rename and change to 10 min. When it runs out nothing is
+  cancelled: the request stays in `pending[]` (approvals item without countdown) until answered or
+  owner end; a late Approve applies it with no caller and lands in `answers[]`. The agent finds out
+  by the ran-out reply, which names those fields, then by reading `state.yaml`; a session also
+  gets the push; a run is told by nothing else. Recommend: approve. Alternative: setup-only 10 min,
+  approval keeps 30 min (up to 33 min per call, two wait rules).
+- QN4 `finish_step` folds into `submit {finish}` for Space grants (7.1, 9.3): one call ends a step
+  and submits the files; fields `status`, `reason`, `conflictedFiles`, `lastGitError`, `tried` move
+  along. Space-less grants (rebase runs, review rounds) keep `finish_step` because they have no
+  task folder to submit. Changes the Part 3 `finish_step` work (binding: implicit submit stays, now
+  explicit). Recommend: approve.
+- QN5 Context gate for the uniform surface: loading `submit` and `state` up front (one ToolSearch
+  select) adds about 600 tokens to F1 to F4 (context about 1.01 to 1.02 against T) and saves a
+  ToolSearch turn on F5 and F6. Recommend: context bound 1.05 for the Part 5 round and the final;
+  cost and turn gates unchanged. Alternative: keep 1.0 and load `state` only on demand (two
+  ToolSearch lines, less uniform).
+- QN6 `create_task` becomes the `state` action `task.create` with the uniform 10 min wait (binding
+  decision says it stays a tool, name, args and 30 min wait unchanged). Effect: orchestrator 2 tools
+  like every Space role, about 120 tokens less schema, one wait rule; the approval behaves like a
+  branch request after return (open until answered, child created later, `answers[]` and
+  `chain.children`). Recommend: approve. Until answered, the plan keeps `create_task` as is.
