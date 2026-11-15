@@ -212,7 +212,7 @@ func (b *TaskBoard) recordAnswer(call agentmcp.SpaceCall, a stateAnswer) {
 	if s.answers == nil {
 		s.answers = map[string][]stateAnswer{}
 	}
-	list := append(s.answers[call.TaskID], a)
+	list := slices.Concat(s.answers[call.TaskID], []stateAnswer{a})
 	if len(list) > maxStateAnswers {
 		list = list[len(list)-maxStateAnswers:]
 	}

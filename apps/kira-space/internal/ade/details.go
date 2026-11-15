@@ -303,8 +303,9 @@ func (df *detailsFiles) wanted(b *TaskBoard, call taskCall, o mirrorOpts) ([]wan
 		out = append(out, wantFile{rel: taskfiles.LinksFile, kind: taskfiles.KindLinks, data: renderLinks(links), force: o.links})
 	}
 	readme := df.readmeText(tc, call.step)
-	out = append(out, wantFile{rel: taskfiles.ReadmeFile, kind: taskfiles.KindReadme, data: []byte(readme), force: true})
-	out = append(out, wantFile{rel: taskfiles.TaskFile, kind: taskfiles.KindTask, data: df.taskYAML(tc), force: true})
+	out = append(out,
+		wantFile{rel: taskfiles.ReadmeFile, kind: taskfiles.KindReadme, data: []byte(readme), force: true},
+		wantFile{rel: taskfiles.TaskFile, kind: taskfiles.KindTask, data: df.taskYAML(tc), force: true})
 	return out, nil
 }
 

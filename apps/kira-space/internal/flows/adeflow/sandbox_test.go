@@ -204,9 +204,7 @@ func TestSandboxPrepareFails(t *testing.T) {
 }
 
 func TestSandboxTools(t *testing.T) {
-	call := func(tool string, args map[string]any) fakeagent.MCPCall {
-		return stateCall(tool, args)
-	}
+	call := stateCall
 	tolerated := func(c fakeagent.MCPCall) fakeagent.MCPCall { c.Tolerate = true; return c }
 	result := func(f *runFixture, tool string) string {
 		t.Helper()

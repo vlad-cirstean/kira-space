@@ -81,10 +81,6 @@ func createTaskCall(title, workflow, brief string, repos ...map[string]any) fake
 	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "create_task", Tolerate: true, Args: args}
 }
 
-func spaceCall(tool string, args map[string]any) fakeagent.MCPCall {
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: tool, Tolerate: true, Args: args}
-}
-
 func taskItems(app *flowharness.App) []approvals.Item {
 	all, err := app.W.ApprovalsSvc.List()
 	if err != nil {

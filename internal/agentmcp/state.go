@@ -20,7 +20,6 @@ import (
 
 // Bounds on state call fields.
 const (
-	maxStateText = 8 << 10
 	// maxStateRepos bounds repo.declare's list.
 	maxStateRepos = maxDeclareRepos
 )
@@ -188,24 +187,13 @@ func decodeState(raw json.RawMessage, actions []stateAction) (stateCallArgs, *st
 			example = actions[0].name
 		}
 	}
-	var stray []string
-	for k := range top {
-		if k != "action" && k != "args" {
-			stray = append(stray, k)
-		}
-	}
-	slices.Sort(stray)
-	if len(stray) > 0 {
+	if stray := strayKeys(top, func(k string) bool { return k == "action" || k == "args" }); len(stray) > 0 {
 		return d, &stateInvalid{"shape", "fields " + strings.Join(stray, ", ") + " are at the top level; they belong under args.", fixOf(example, "Move them under args.")}
 	}
 	fields := map[string]json.RawMessage{}
 	if a, ok := top["args"]; ok && string(a) != "null" {
 		if err := json.Unmarshal(a, &fields); err != nil {
-			var str string
-			if json.Unmarshal(a, &str) == nil && json.Unmarshal([]byte(str), &map[string]json.RawMessage{}) == nil {
-				return d, &stateInvalid{"args-string", "args is a JSON string; it must be an object.", fixOf(example, "Pass args as an object, not as a string.")}
-			}
-			return d, &stateInvalid{"shape", "args must be an object.", fixOf(example, "Pass args as an object.")}
+			return d, argsNotObject(a, example)
 		}
 	}
 	act := stateActionByName(actions, d.action)
@@ -217,29 +205,48 @@ func decodeState(raw json.RawMessage, actions []stateAction) (stateCallArgs, *st
 		return d, &stateInvalid{"action", msg + " Actions: " + strings.Join(actionNames(actions), ", ") + ".", fixOf(example, "Pick one action.")}
 	}
 	d.fields = fields
-	stray = stray[:0]
-	for k := range fields {
-		if _, ok := act.fieldNamed(k); !ok {
+	return d, checkFields(act, fields)
+}
+
+// strayKeys lists the keys of m that known rejects, sorted.
+func strayKeys(m map[string]json.RawMessage, known func(string) bool) []string {
+	var stray []string
+	for k := range m {
+		if !known(k) {
 			stray = append(stray, k)
 		}
 	}
 	slices.Sort(stray)
-	if len(stray) > 0 {
-		return d, &stateInvalid{"stray", act.name + " has no field " + strings.Join(stray, ", ") + ".", fixOf(act.name, "Use only the fields of "+act.name+".")}
+	return stray
+}
+
+func argsNotObject(a json.RawMessage, example string) *stateInvalid {
+	var str string
+	if json.Unmarshal(a, &str) == nil && json.Unmarshal([]byte(str), &map[string]json.RawMessage{}) == nil {
+		return &stateInvalid{"args-string", "args is a JSON string; it must be an object.", fixOf(example, "Pass args as an object, not as a string.")}
+	}
+	return &stateInvalid{"shape", "args must be an object.", fixOf(example, "Pass args as an object.")}
+}
+
+// checkFields is the field step: no stray field, every required one present, each of its kind.
+func checkFields(act *stateAction, fields map[string]json.RawMessage) *stateInvalid {
+	known := func(k string) bool { _, ok := act.fieldNamed(k); return ok }
+	if stray := strayKeys(fields, known); len(stray) > 0 {
+		return &stateInvalid{"stray", act.name + " has no field " + strings.Join(stray, ", ") + ".", fixOf(act.name, "Use only the fields of "+act.name+".")}
 	}
 	for _, f := range act.fields {
 		v, ok := fields[f.name]
 		if !ok {
 			if f.req {
-				return d, &stateInvalid{"missing", act.name + " needs " + f.name + ".", fixOf(act.name, act.name+" needs "+f.name+".")}
+				return &stateInvalid{"missing", act.name + " needs " + f.name + ".", fixOf(act.name, act.name+" needs "+f.name+".")}
 			}
 			continue
 		}
 		if !kindOK(f.kind, v) {
-			return d, &stateInvalid{"value", f.name + " has the wrong type.", fixOf(act.name, f.name+" has the wrong type.")}
+			return &stateInvalid{"value", f.name + " has the wrong type.", fixOf(act.name, f.name+" has the wrong type.")}
 		}
 	}
-	return d, nil
+	return nil
 }
 
 func kindOK(kind byte, raw json.RawMessage) bool {
@@ -301,90 +308,30 @@ func (s *Server) stateCall(ctx context.Context, req *mcp.CallToolRequest) (*mcp.
 	return out.reply.result(out.extra...), nil
 }
 
+func oneOut(it Item, next string, notices ...string) stateOutcome {
+	return stateOutcome{reply: oneItem(it, next, notices)}
+}
+
 func (s *Server) runState(ctx context.Context, req *mcp.CallToolRequest, g Grant, d stateCallArgs) stateOutcome {
 	call := SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID, Orchestrator: g.Orchestrator}
-	one := func(it Item, next string, notices ...string) stateOutcome {
-		return stateOutcome{reply: oneItem(it, next, notices)}
-	}
 	switch d.action {
 	case "repo.declare":
-		repos := d.list("repos")
-		if n := len(repos); n == 0 || n > maxStateRepos {
-			return one(invalidItem(d.action, "repos needs 1 to 20 entries."), "")
-		}
-		info, err := s.space.DeclareRepos(ctx, call.TaskID, repos)
-		if err != nil {
-			return one(stateFail(d.action, "repos", err), "")
-		}
-		return one(Item{ID: "repos", Status: StatusDone, Message: declaredText(info)}, "Create each branch with branch.request.")
+		return s.stateRepoDeclare(ctx, call, d)
 	case "branch.request":
-		specs, msg := cleanBranches([]BranchSpec{{Repo: d.str("repo"), Branch: d.str("branch"), Base: d.str("base"), Existing: d.boolean("existing")}})
-		if msg != "" {
-			return one(invalidItem(d.action, "Every branch.request needs a repo and a branch."), "")
-		}
-		res, err := s.space.RequestBranches(ctx, call, specs)
-		if err != nil {
-			return one(stateFail(d.action, specs[0].Repo+"/"+specs[0].Branch, err), "")
-		}
-		items := make([]Item, 0, len(res.Branches))
-		for _, rb := range res.Branches {
-			items = append(items, branchItem(call, rb, res.Waited))
-		}
-		return stateOutcome{reply: newReply(items, nextOf(items), nil)}
-	case "branch.rename":
-		args := RenameBranchArgs{Repo: d.str("repo"), From: d.str("from"), To: d.str("to"), RenameRemote: d.boolean("renameRemote")}
-		if args.From == "" || args.To == "" || args.From == args.To {
-			return one(invalidItem(d.action, "from and to must be two different branch names."), "")
-		}
-		res, err := s.space.RenameBranch(ctx, call, args)
-		if err != nil {
-			return one(stateFail(d.action, args.Repo+"/"+args.To, err), "")
-		}
-		return one(outcomeItem(call, args.Repo+"/"+args.To, res.Outcome, BranchRenamed, res.Next, res.Waited, "answers[]"), nextOfOutcome(res.Outcome))
-	case "branch.change":
-		args := ChangeBranchArgs{Repo: d.str("repo"), From: d.str("from"), To: d.str("to")}
-		if args.From == "" || args.To == "" || args.From == args.To {
-			return one(invalidItem(d.action, "from and to must be two different branch names."), "")
-		}
-		res, err := s.space.ChangeBranch(ctx, call, args)
-		if err != nil {
-			return one(stateFail(d.action, args.Repo+"/"+args.To, err), "")
-		}
-		return one(outcomeItem(call, args.Repo+"/"+args.To, res.Outcome, BranchChanged, res.Next, res.Waited, "answers[]"), nextOfOutcome(res.Outcome))
+		return s.stateBranchRequest(ctx, call, d)
+	case "branch.rename", "branch.change":
+		return s.stateBranchMove(ctx, call, d)
 	case "lease.acquire":
-		queue := d.str("queue")
-		if queue == "" {
-			return one(invalidItem(d.action, "queue is required."), "")
-		}
-		res, err := s.space.AcquireLease(ctx, call, AcquireLeaseArgs{Queue: queue})
-		if err != nil {
-			return one(stateFail(d.action, queue, err), "")
-		}
-		it := Item{ID: queue, Status: StatusDone, Message: res.Next}
-		next := ""
-		if res.State == LeaseQueued {
-			it.Status = StatusWaiting
-			it.Message = notFinished(call, res.Waited, "leases", leaseWaitDetail(res))
-			next = "Do other work, or check leases in state.yaml."
-		}
-		return one(it, next, res.Notices...)
+		return s.stateLeaseAcquire(ctx, call, d)
 	case "lease.release":
-		res, err := s.space.ReleaseLease(ctx, call, ReleaseLeaseArgs{Queue: d.str("queue")})
-		if err != nil {
-			return one(stateFail(d.action, cmpNonEmpty(d.str("queue"), "leases"), err), "")
-		}
-		msg := "No lease was held."
-		if len(res.Released) > 0 {
-			msg = "Released: " + strings.Join(res.Released, ", ") + "."
-		}
-		return one(Item{ID: cmpNonEmpty(d.str("queue"), "leases"), Status: StatusDone, Message: msg}, "", res.Notices...)
+		return s.stateLeaseRelease(ctx, call, d)
 	case "operation.cancel":
 		opID := d.str("opId")
 		res, err := s.space.CancelOperation(ctx, call.TaskID, opID)
 		if err != nil {
-			return one(stateFail(d.action, opID, err), "")
+			return oneOut(stateFail(d.action, opID, err), "")
 		}
-		return one(Item{ID: opID, Status: StatusDone, Message: fmt.Sprintf("Cancelled the %s operation.", res.Kind)}, "")
+		return oneOut(Item{ID: opID, Status: StatusDone, Message: fmt.Sprintf("Cancelled the %s operation.", res.Kind)}, "")
 	case "remote.fetch":
 		return s.sandboxState(ctx, req, d, func(ctx context.Context, g Grant) (RemoteResult, error) {
 			remote := remoteName(d.str("remote"))
@@ -401,10 +348,95 @@ func (s *Server) runState(ctx context.Context, req *mcp.CallToolRequest, g Grant
 			return s.sandbox.PushBranch(ctx, g.RunID, d.boolean("force"))
 		})
 	case "review.reply":
-		return one(s.reviewState(g, d), "")
+		return oneOut(s.reviewState(g, d), "")
 	default: // step.finish
 		return s.finishState(ctx, req, g, d)
 	}
+}
+
+func (s *Server) stateRepoDeclare(ctx context.Context, call SpaceCall, d stateCallArgs) stateOutcome {
+	repos := d.list("repos")
+	if n := len(repos); n == 0 || n > maxStateRepos {
+		return oneOut(invalidItem(d.action, "repos needs 1 to 20 entries."), "")
+	}
+	info, err := s.space.DeclareRepos(ctx, call.TaskID, repos)
+	if err != nil {
+		return oneOut(stateFail(d.action, "repos", err), "")
+	}
+	return oneOut(Item{ID: "repos", Status: StatusDone, Message: declaredText(info)}, "Create each branch with branch.request.")
+}
+
+func (s *Server) stateBranchRequest(ctx context.Context, call SpaceCall, d stateCallArgs) stateOutcome {
+	specs, msg := cleanBranches([]BranchSpec{{Repo: d.str("repo"), Branch: d.str("branch"), Base: d.str("base"), Existing: d.boolean("existing")}})
+	if msg != "" {
+		return oneOut(invalidItem(d.action, "Every branch.request needs a repo and a branch."), "")
+	}
+	res, err := s.space.RequestBranches(ctx, call, specs)
+	if err != nil {
+		return oneOut(stateFail(d.action, specs[0].Repo+"/"+specs[0].Branch, err), "")
+	}
+	items := make([]Item, 0, len(res.Branches))
+	for _, rb := range res.Branches {
+		items = append(items, branchItem(call, rb, res.Waited))
+	}
+	return stateOutcome{reply: newReply(items, nextOf(items), nil)}
+}
+
+// stateBranchMove is branch.rename and branch.change: both take from and to.
+func (s *Server) stateBranchMove(ctx context.Context, call SpaceCall, d stateCallArgs) stateOutcome {
+	repo, from, to := d.str("repo"), d.str("from"), d.str("to")
+	if from == "" || to == "" || from == to {
+		return oneOut(invalidItem(d.action, "from and to must be two different branch names."), "")
+	}
+	id := repo + "/" + to
+	var outcome, ok, next string
+	var waited time.Duration
+	var err error
+	if d.action == "branch.rename" {
+		var res RenameBranchResult
+		res, err = s.space.RenameBranch(ctx, call, RenameBranchArgs{Repo: repo, From: from, To: to, RenameRemote: d.boolean("renameRemote")})
+		outcome, ok, next, waited = res.Outcome, BranchRenamed, res.Next, res.Waited
+	} else {
+		var res ChangeBranchResult
+		res, err = s.space.ChangeBranch(ctx, call, ChangeBranchArgs{Repo: repo, From: from, To: to})
+		outcome, ok, next, waited = res.Outcome, BranchChanged, res.Next, res.Waited
+	}
+	if err != nil {
+		return oneOut(stateFail(d.action, id, err), "")
+	}
+	return oneOut(outcomeItem(call, id, outcome, ok, next, waited, "answers[]"), nextOfOutcome(outcome))
+}
+
+func (s *Server) stateLeaseAcquire(ctx context.Context, call SpaceCall, d stateCallArgs) stateOutcome {
+	queue := d.str("queue")
+	if queue == "" {
+		return oneOut(invalidItem(d.action, "queue is required."), "")
+	}
+	res, err := s.space.AcquireLease(ctx, call, AcquireLeaseArgs{Queue: queue})
+	if err != nil {
+		return oneOut(stateFail(d.action, queue, err), "")
+	}
+	it := Item{ID: queue, Status: StatusDone, Message: res.Next}
+	next := ""
+	if res.State == LeaseQueued {
+		it.Status = StatusWaiting
+		it.Message = notFinished(call, res.Waited, "leases", leaseWaitDetail(res))
+		next = "Do other work, or check leases in state.yaml."
+	}
+	return oneOut(it, next, res.Notices...)
+}
+
+func (s *Server) stateLeaseRelease(ctx context.Context, call SpaceCall, d stateCallArgs) stateOutcome {
+	id := cmpNonEmpty(d.str("queue"), "leases")
+	res, err := s.space.ReleaseLease(ctx, call, ReleaseLeaseArgs{Queue: d.str("queue")})
+	if err != nil {
+		return oneOut(stateFail(d.action, id, err), "")
+	}
+	msg := "No lease was held."
+	if len(res.Released) > 0 {
+		msg = "Released: " + strings.Join(res.Released, ", ") + "."
+	}
+	return oneOut(Item{ID: id, Status: StatusDone, Message: msg}, "", res.Notices...)
 }
 
 func cmpNonEmpty(a, b string) string {
