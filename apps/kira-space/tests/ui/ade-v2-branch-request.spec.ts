@@ -129,6 +129,21 @@ test('an answered item that stays listed (late call) can be approved again', asy
   await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(2);
 });
 
+test('a request has no countdown and Approve still answers it late', async ({ relaunch }) => {
+  // The call wait ending cancels nothing: the item stays open with no expiry. Backend half: flows/adeflow
+  // TestBranchRequestSurvivesClockAdvance.
+  const open = { ...item(), expiresAt: 0 };
+  const { window: page, control } = await openPlan(relaunch, [
+    ...seedApprovals([open]),
+    { channel: IPC.approvalsAnswer, response: answeredOk([open.id]) },
+  ]);
+  const dialog = page.locator(t('approvals-dialog'));
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(t('approval-countdown'))).toHaveCount(0);
+  await dialog.locator(t(`approval-approve-${open.id}`)).click();
+  await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
+});
+
 test('Deny answers the item with a denial', async ({ relaunch }) => {
   const { page, control, it } = await openRequest(relaunch);
   await page.locator(t(`approval-deny-${it.id}`)).click();

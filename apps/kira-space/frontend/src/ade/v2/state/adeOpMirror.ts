@@ -13,8 +13,8 @@ const AGENT_KINDS: Record<string, AdeOpKind> = {
   agentChange: 'agentChange',
 };
 const MCP_KINDS: Record<string, AdeOpKind> = {
-  fetch_remote: 'agentFetch',
-  push_branch: 'agentPush',
+  'remote.fetch': 'agentFetch',
+  'branch.push': 'agentPush',
 };
 
 function mirrorKind(rec: SpaceOpRecord): AdeOpKind | null {

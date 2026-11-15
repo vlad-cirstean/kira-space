@@ -8,7 +8,7 @@ import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 
-// An agent's change_branch request, and how a row shows what its worktree folder holds.
+// An agent's branch.change request, and how a row shows what its worktree folder holds.
 // Contract ade-branch-change; backend half: flows/adeflow TestBranchChange (branchchange_test.go).
 
 const t = (id: string) => `[data-testid="${id}"]`;

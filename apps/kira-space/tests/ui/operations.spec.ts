@@ -203,8 +203,8 @@ test('module, source and subject columns show where an op came from', async ({ r
   const { window } = await openDock(relaunch, [mcp, run, opRecord({ id: 'op-git' })]);
   const rows = window.locator('[data-testid="op-row"]');
   await expect(rows).toHaveCount(3);
-  await expect(rows.filter({ hasText: 'request_branches' })).toContainText('MCP request_branches');
-  await expect(rows.filter({ hasText: 'request_branches' })).toContainText('Fix login');
+  await expect(rows.filter({ hasText: 'branch.request' })).toContainText('MCP state');
+  await expect(rows.filter({ hasText: 'branch.request' })).toContainText('Fix login');
   await expect(rows.filter({ hasText: 'run' }).first()).toContainText('Claude');
   await expect(rows.filter({ hasText: 'branchCreate' })).toContainText('alpha');
 });
@@ -400,7 +400,7 @@ test('contract: a child op renders under its MCP parent, indented', async ({ rel
   await window.locator('[data-testid="ops-filter"]').fill('worktreeAdd');
   await expect(rows).toHaveCount(1);
   await expect(childRow).toHaveAttribute('data-depth', '0');
-  await expect(childRow).toContainText('Via request_branches');
+  await expect(childRow).toContainText('Via branch.request');
 });
 
 test('status tabs, the module facet and Clear filters narrow and restore the list', async ({
