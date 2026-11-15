@@ -186,9 +186,12 @@ func TestDetailsFiles(t *testing.T) {
 
 	// 3. The agent writes the stage handover and says it is done: a draft row, the move prompt.
 	dfWrite(t, folder, "handovers/draft-work.md", "Form wired; validation missing.")
-	reply = dfSubmit(t, app, task.ID, agentmcp.SubmitArgs{Finished: true})
-	if !strings.HasPrefix(reply, "accepted 1, pending user 0, invalid 0\n") || !strings.Contains(reply, "finished: the user was asked to move the task on") {
+	reply = dfSubmit(t, app, task.ID, agentmcp.SubmitArgs{})
+	if !strings.HasPrefix(reply, "accepted 1, pending user 0, invalid 0") {
 		t.Fatalf("draft submit reply = %q", reply)
+	}
+	if note, err := app.W.AdeBoard.FinishSession(ctx, agentmcp.SpaceCall{TaskID: task.ID, SessionID: "session-1"}); err != nil || !strings.Contains(note, "The user was asked to move the task on") {
+		t.Fatalf("session step.finish = %q, %v", note, err)
 	}
 	if got := dfHandoverBodies(t, app, task.ID); len(got) != 2 || got[0] != "draft: Form wired; validation missing." {
 		t.Fatalf("chain = %q, want the draft, then the note", got)

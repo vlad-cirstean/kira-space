@@ -119,14 +119,14 @@ func TestBranchRequestMerge(t *testing.T) {
 	waitRun(t, app, f.task.ID, "two", "done")
 
 	// Each call reads only its own items, in call order (result 1 is the first run's request).
-	if got := f.result(t, 2); !strings.Contains(got, "created") || strings.Contains(got, "feat/c") || strings.Contains(got, "denied") {
+	if got := f.result(t, 2); !strings.Contains(got, "feat/b") || !strings.Contains(got, `"status":"done"`) || strings.Contains(got, "feat/c") || strings.Contains(got, "denied") {
 		t.Fatalf("first call = %s, want only feat/b created", got)
 	}
 	if got := f.result(t, 3); !strings.Contains(got, "denied") || strings.Contains(got, "feat/b") {
 		t.Fatalf("second call = %s, want only feat/c denied (%s)", got, drop.ID)
 	}
-	if got := f.renameResult(t); !strings.Contains(got, `"outcome":"renamed"`) || !strings.Contains(got, `"remote":"renamed"`) {
-		t.Fatalf("rename call = %s, want renamed on both sides", got)
+	if got := f.renameResult(t); !strings.Contains(got, `"status":"done"`) {
+		t.Fatalf("rename call = %s, want done", got)
 	}
 	if id := taskOf(t, board(t, app), f.task.ID).BranchRequestID; id != "" {
 		t.Fatalf("request %s still open after the answer", id)

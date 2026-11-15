@@ -183,7 +183,18 @@ func fakeFinish(cfgPath, status, summary string) error {
 	if err != nil {
 		return err
 	}
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "reason": summary}})
+	// A Space grant ends a run with state step.finish; a rebase run or review round keeps finish_step.
+	call := &mcp.CallToolParams{Name: "state", Arguments: map[string]any{"action": "step.finish", "args": map[string]any{"status": status, "reason": summary}}}
+	tools, err := sess.ListTools(ctx, nil)
+	if err != nil {
+		return err
+	}
+	for _, tl := range tools.Tools {
+		if tl.Name == "finish_step" {
+			call = &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": status, "reason": summary}}
+		}
+	}
+	res, err := sess.CallTool(ctx, call)
 	if err != nil {
 		return err
 	}
@@ -446,7 +457,7 @@ func TestRunEngine_eachRepoAutoAdvanceApprovalAndStepDone(t *testing.T) {
 	}
 
 	args := e.fakeFile("api-1.args")
-	for _, want := range []string{"--output-format\nstream-json", "--setting-sources\nproject,local", toolName(agentmcp.FinishStep), "Bash(git *)"} {
+	for _, want := range []string{"--output-format\nstream-json", "--setting-sources\nproject,local", toolName(agentmcp.State), "Bash(git *)"} {
 		if !strings.Contains(args, want) {
 			t.Fatalf("argv lacks %q:\n%s", want, args)
 		}

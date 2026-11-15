@@ -50,7 +50,7 @@ func TestGolden(t *testing.T) {
 		out[0].ChangeRequestURL = "https://github.com/acme/kira-space/pull/42"
 		return out
 	}
-	startCtx := []string{"- Last rebase of feat/a failed: conflicts (run r1; call run_outcome for details)"}
+	startCtx := []string{"- Last rebase of feat/a failed: conflicts (run r1; see runs in state.yaml)"}
 
 	cases := []struct {
 		name string
@@ -72,8 +72,8 @@ func TestGolden(t *testing.T) {
 		{"ade.step.prompt.extra-context", AdeStepPrompt.id, step(func(v *StepVars) {
 			v.Extra = "Verify failed on feat/login: tests red. Fix the implementation."
 			v.Context = []string{
-				"- Last rebase of feat/login failed: conflicts (run r1; call run_outcome for details)",
-				"- Last rebase of feat/b needs input: which base? (run r2; call run_outcome for details)",
+				"- Last rebase of feat/login failed: conflicts (run r1; see runs in state.yaml)",
+				"- Last rebase of feat/b needs input: which base? (run r2; see runs in state.yaml)",
 			}
 		})},
 		{"ade.step.prompt.notes-handover-message", AdeStepPrompt.id, step(func(v *StepVars) {

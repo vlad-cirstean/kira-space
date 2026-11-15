@@ -40,7 +40,7 @@ var rebaseBuiltins = []string{"Read", "Edit", "Write", "Grep", "Glob"}
 
 func rebaseTools(p harness.MCPHost) []string {
 	out := slices.Clone(rebaseBuiltins)
-	return append(out, harness.ToolNames(p, agentmcp.Git, agentmcp.FinishStep, agentmcp.RunOutcome)...)
+	return append(out, harness.ToolNames(p, agentmcp.Git, agentmcp.FinishStep)...)
 }
 
 // rebaseWorktrees are the stack's worktrees: where the git tool runs and what the run may edit.

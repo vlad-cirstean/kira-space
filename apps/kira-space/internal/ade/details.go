@@ -36,6 +36,7 @@ import (
 // detailsFiles is the file layer of a board: the submit service, its cache writer and the open
 // approvals. Nil on a board with no files root.
 type detailsFiles struct {
+	b     *TaskBoard
 	svc   *taskfiles.Service
 	blobs *store.Blobs
 	idx   taskfiles.Index
@@ -51,6 +52,7 @@ type detailsFiles struct {
 
 // detailsPending is one file of an open details.edit approval.
 type detailsPending struct {
+	at     int64 // unix ms the approval opened
 	item   taskfiles.PendingItem
 	reason string
 	by     string
@@ -62,7 +64,7 @@ func (b *TaskBoard) initDetails() {
 		return
 	}
 	df := &detailsFiles{
-		idx: taskfiles.RepoIndex(d.TaskFiles), cache: repos.DetailsCache{Dialect: d.Tasks.Dialect}, root: d.FilesDir,
+		b: b, idx: taskfiles.RepoIndex(d.TaskFiles), cache: repos.DetailsCache{Dialect: d.Tasks.Dialect}, root: d.FilesDir,
 		pending: map[string]map[string]detailsPending{}, lastSync: map[string]time.Time{},
 	}
 	h := &detailsHandlers{b: b, df: df}
@@ -71,6 +73,7 @@ func (b *TaskBoard) initDetails() {
 		Open:  df.open,
 		Handlers: map[taskfiles.Kind]taskfiles.Handler{
 			taskfiles.KindNote: h, taskfiles.KindDraft: h, taskfiles.KindHandover: h, taskfiles.KindLinks: h, taskfiles.KindReadme: h,
+			taskfiles.KindTask: h, taskfiles.KindState: h,
 		},
 		Events: detailsEvents{b},
 		Now:    d.Now,
@@ -222,6 +225,7 @@ func (b *TaskBoard) mirrorTask(taskID string, o mirrorOpts) {
 	if err := b.files.mirror(b, taskID, o); err != nil {
 		slog.Warn("ade: mirror task files", "scope", "ade", "task", taskID, "err", err)
 	}
+	b.markStateDirty(taskID, false)
 }
 
 func (df *detailsFiles) mirror(b *TaskBoard, taskID string, o mirrorOpts) error {
@@ -300,6 +304,7 @@ func (df *detailsFiles) wanted(b *TaskBoard, call taskCall, o mirrorOpts) ([]wan
 	}
 	readme := df.readmeText(tc, call.step)
 	out = append(out, wantFile{rel: taskfiles.ReadmeFile, kind: taskfiles.KindReadme, data: []byte(readme), force: true})
+	out = append(out, wantFile{rel: taskfiles.TaskFile, kind: taskfiles.KindTask, data: df.taskYAML(tc), force: true})
 	return out, nil
 }
 

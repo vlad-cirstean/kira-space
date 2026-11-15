@@ -2,6 +2,7 @@ package ade
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -25,6 +26,27 @@ func (b *TaskBoard) filesDir(taskID string) (string, error) {
 		return "", fmt.Errorf("create task files folder: %w", err)
 	}
 	return dir, nil
+}
+
+// childFolders are the task folders of an orchestrator's existing children, which state.yaml chain
+// points at. The grant is fixed at launch: a child made later is covered by chain.children[].preview and
+// the next launch. Other tasks get none.
+func (b *TaskBoard) childFolders(taskID string) []string {
+	if b.deps.Tasks == nil || !b.isOrchestrator(taskID) {
+		return nil
+	}
+	children, _, err := b.deps.Tasks.ChildTasks(taskID, "all", maxChildTasks)
+	if err != nil {
+		slog.Warn("ade: list children for the task folder grant", "scope", "ade", "task", taskID, "err", err)
+		return nil
+	}
+	var dirs []string
+	for _, c := range children {
+		if dir, err := b.filesDir(c.ID); err == nil && dir != "" {
+			dirs = append(dirs, dir)
+		}
+	}
+	return dirs
 }
 
 // taskFolderDenyFiles are the absolute paths of the Kira-owned files of dir.
@@ -62,7 +84,8 @@ func (b *TaskBoard) withTaskFolder(spec harness.HeadlessSpec, taskID string) (ha
 	if err := os.MkdirAll(filepath.Join(dir, "handovers"), 0o700); err != nil {
 		return spec, fmt.Errorf("create handovers folder: %w", err)
 	}
-	spec.AddDirs = appendMissing(slices.Clone(spec.AddDirs), dir)
+	b.writeStateNow(taskID)
+	spec.AddDirs = appendMissing(slices.Clone(spec.AddDirs), append([]string{dir}, b.childFolders(taskID)...)...)
 	spec.AllowedTools = appendMissing(slices.Clone(spec.AllowedTools), taskFolderAllows(dir)...)
 	spec.DisallowedTools = appendMissing(slices.Clone(spec.DisallowedTools), taskFolderDenies(dir)...)
 	return spec, nil
@@ -77,7 +100,8 @@ func (b *TaskBoard) withTaskFolderArgs(pa *PrepareArgs, taskID string) error {
 	if err := os.MkdirAll(filepath.Join(dir, "handovers"), 0o700); err != nil {
 		return fmt.Errorf("create handovers folder: %w", err)
 	}
-	pa.AddDirs = appendMissing(slices.Clone(pa.AddDirs), dir)
+	b.writeStateNow(taskID)
+	pa.AddDirs = appendMissing(slices.Clone(pa.AddDirs), append([]string{dir}, b.childFolders(taskID)...)...)
 	pa.DisallowedTools = appendMissing(slices.Clone(pa.DisallowedTools), taskFolderDenies(dir)...)
 	return nil
 }

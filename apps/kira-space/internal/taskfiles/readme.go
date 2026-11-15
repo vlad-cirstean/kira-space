@@ -68,7 +68,7 @@ func Readme(in ReadmeInput) string {
 	lines := append(make([]string, 0, MaxReadmeLines), []string{
 		fmt.Sprintf("# Task %s: %s", oneLine(in.TaskID, maxReadmeTitle), oneLine(in.Title, maxReadmeTitle)),
 		"Edit, then call submit: a change counts only after submit answers per file. Pass reason when the change needs the user's approval.",
-		"Read-only, edits undone: README.md, task.yaml, state.yaml (step, branches, setup, leases, runs, children).",
+		"Read-only, Kira rewrites: README.md, task.yaml, state.yaml (step, repos, setup, leases, runs, children). State changes: call state.",
 		fmt.Sprintf("Write: handovers/draft-%s.md (your stage's handover, Markdown, <=16 KiB). links.yaml. proofs/<slug>/proof.md (format below).", oneLine(step, 80)),
 		"Ask first (submit with reason): notes/*.md (user notes), handovers/NNNN-*.md (handed), others' links, accepted proofs.",
 	}...)

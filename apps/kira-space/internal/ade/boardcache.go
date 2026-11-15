@@ -165,6 +165,7 @@ func (b *TaskBoard) notifyBoard() { b.notifyBoardWith(allChanged) }
 // lands within boardPushWindow, as one board-changed event.
 func (b *TaskBoard) notifyBoardWith(ch adewire.BoardChangedEvent) {
 	b.invalidateBoard()
+	b.markStateFor(ch)
 	c := &b.bcache
 	c.pushMu.Lock()
 	defer c.pushMu.Unlock()
@@ -178,6 +179,7 @@ func (b *TaskBoard) notifyBoardWith(ch adewire.BoardChangedEvent) {
 // another push which reads the board it announces.
 func (b *TaskBoard) notifyBoardNow(ch adewire.BoardChangedEvent) {
 	b.invalidateBoard()
+	b.markStateFor(ch)
 	c := &b.bcache
 	c.pushMu.Lock()
 	c.push.merge(ch)

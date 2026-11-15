@@ -72,7 +72,7 @@ See [Hermetic launches](../../space/agents/#hermetic-launches).
 
 The run history lists denied tools.
 
-Kira adds a closing instruction to the prompt so the run reports through `finish_step`. See [Prompts](../../reference/prompts/).
+Kira adds a closing instruction to the prompt so the run reports through `state` action `step.finish`. See [Prompts](../../reference/prompts/).
 
 Studio-module smart scripts use the same agent settings and context files, from `~/.kira-space/config/agent/`. They always launch hermetic.
 

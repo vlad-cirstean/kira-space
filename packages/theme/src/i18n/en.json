@@ -7055,7 +7055,7 @@
         }
       },
       "adeRebaseContextLine": {
-        "description": "Tells the agent that the last rebase of a branch did not finish and points to run_outcome.",
+        "description": "Tells the agent that the last rebase of a branch did not finish and points to the runs listed in the task’s state file.",
         "title": "Unfinished rebase line",
         "usedBy": {
           "body": "Added to step prompts and launch messages for each branch with an unfinished rebase."
@@ -7180,13 +7180,6 @@
           "body": "Ends every rebase run prompt, edited ones included."
         }
       },
-      "headlessReviewReplyAck": {
-        "description": "The reply to a reply_review_comment call.",
-        "title": "Review reply result",
-        "usedBy": {
-          "body": "Returned to the agent after it replies to a review comment."
-        }
-      },
       "headlessSandboxNote": {
         "description": "Tells a sandboxed agent where it may write and to stop when the sandbox blocks an action.",
         "title": "Sandbox notice",
@@ -7216,7 +7209,7 @@
         }
       },
       "headlessSpaceSuffix": {
-        "description": "Lists the Kira Space tools and tells the agent to create branches only through request_branches, which the user approves.",
+        "description": "Lists the Kira Space tools and tells the agent to create branches only with the state tool’s branch request action, which the user approves.",
         "title": "Kira Space tools notice",
         "usedBy": {
           "body": "Added before the finish instruction of every agent step and smart step, and to the first message of manual, review and start sessions."
@@ -7476,6 +7469,9 @@
       "outcome": {
         "description": "How the last rebase ended, as a short phrase."
       },
+      "plain": {
+        "description": "True when the run ends with finish_step, because it has no Kira Space grant."
+      },
       "push": {
         "description": "True when the rebase pushes the rebased branches."
       },
@@ -7501,7 +7497,7 @@
         "description": "A review branch the rebase must leave alone. Empty when there is none."
       },
       "runID": {
-        "description": "The run ID to pass to run_outcome."
+        "description": "The run ID, as the task’s state file lists it."
       },
       "space": {
         "description": "True when the Kira Space tools are on."

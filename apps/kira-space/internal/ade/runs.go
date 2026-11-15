@@ -421,7 +421,7 @@ func (b *TaskBoard) prepareStepWorktrees(ctx context.Context, tc *taskCtx, def s
 
 // prepareWorktrees makes every mine branch's worktree exist and starts a setup in each new one. When the
 // step is run by an agent, an unnamed branch the user did not name gets none: the run starts in the repo
-// root and the agent asks for the branch through request_branches; Kira Space names it. Any other step
+// root and the agent asks for the branch through state branch.request; Kira Space names it. Any other step
 // cannot ask, so its unnamed branch takes a name derived from the task title.
 func (b *TaskBoard) prepareWorktrees(ctx context.Context, tc *taskCtx, names map[string]string, agentStep bool) (map[string]string, error) {
 	var (
@@ -480,7 +480,7 @@ func (b *TaskBoard) prepareWorktree(ctx context.Context, sb model.AdeTaskBranch,
 		return "", invalid("code repo %s not found", sb.CodeRepoID)
 	}
 	if agentStep && sb.Name == "" && names[sb.ID] == "" {
-		return rec.Root, nil // the agent creates the branch via request_branches
+		return rec.Root, nil // the agent creates the branch via state branch.request
 	}
 	res, err := b.ensureWorktree(ctx, *rec, sb, newBranchName{title: title, wanted: names[sb.ID]})
 	if err != nil {
@@ -738,7 +738,7 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 		agentSessionID := b.proposeAgentID(agent, spec.ResumeID)
 		switch {
 		case spec.ResumeID != "":
-			prompt = composeResumePrompt(b.prompts(), spec.Prompt, b.filesVars(tc.task.ID, def.ID, agent, true, b.isOrchestrator(tc.task.ID)), def.Results)
+			prompt = composeResumePrompt(b.prompts(), spec.Prompt, b.filesVars(tc.task.ID, def.ID, agent, b.isOrchestrator(tc.task.ID)), def.Results, true)
 		case smart != nil:
 			prompt = smart.prompt
 		default:
@@ -748,7 +748,7 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 				Step: stepN, Of: stepOf, Def: def, Message: b.stepMessage(tc.task.ID, def.ID), Extra: spec.Extra,
 				Context: b.rebaseContext(tc),
 				Notes:   b.userNotes(tc.task.ID), Handover: ho.Body, HandoverFrom: ho.From,
-				Files: b.filesVars(tc.task.ID, def.ID, agent, true, b.isOrchestrator(tc.task.ID)),
+				Files: b.filesVars(tc.task.ID, def.ID, agent, b.isOrchestrator(tc.task.ID)),
 			})
 		}
 		if err := b.deps.Sessions.InsertHeadless(model.AdeSession{
@@ -860,9 +860,11 @@ func (b *TaskBoard) configScope() harness.ConfigScope {
 
 func allowedTools(p harness.MCPHost, step []string, space, orchestrator bool) []string {
 	out := slices.Clone(step)
-	want := harness.ToolNames(p, agentmcp.FinishStep, agentmcp.RunOutcome)
+	var want []string
 	if space {
-		want = append(want, harness.ToolNames(p, agentmcp.SpaceToolIDs...)...)
+		want = harness.ToolNames(p, agentmcp.SpaceToolIDs...) // state ends a Space run
+	} else {
+		want = harness.ToolNames(p, agentmcp.FinishStep)
 	}
 	if orchestrator {
 		want = append(want, harness.ToolNames(p, agentmcp.OrchestratorToolIDs...)...)

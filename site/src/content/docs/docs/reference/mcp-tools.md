@@ -99,23 +99,25 @@ Server name `kira-studio`. Workflow steps with `db_mcp` reach the same tools as 
 
 ## Agent tools (Kira Space)
 
-Server name `kira-space`. `finish_step` is available to every agent run. `fetch_remote` and `push_branch` come with a sandboxed run. The other tools are always on. See [Agents](../../space/agents/).
+Server name `kira-space`. A run or session on a task has `submit` and `state`. A rebase run has `finish_step` and `git`. See [Agents](../../space/agents/).
 
-- `finish_step`: report how a step ended. Call it once, last. The reply lists the task's artifacts. Arguments: `status`, `summary`, `reason`, `conflictedFiles`, `lastGitError`, `tried`.
-- `reply_review_comment`: answer one review comment. Only in a workflow review round. Call once per comment. Arguments: `id`, `reply`, `resolved`.
-- `report_artifacts`: record what the task produced. Argument: `artifacts`, 1 to 20 items of `kind` (`change_request`, `issue`, `deployment`, `doc`, `link`), `title`, `url`, `ref`. Branches, commits, change requests and deployments of the task repositories are found without a report. A proof is a folder in the task folder and needs no report: see [Proof](../../space/proof/).
-- `task_info`: the task, its workflow, step, repositories and branches. With `repo` and `branch` it adds that branch's worktree and setup state, and `waitSeconds` (0 to 600) waits for setup. The registered repositories are listed only for a task with no repositories, or with `includeRegistered: true`.
-- `declare_repos`: add registered repositories to the task. Argument: `repos`, 1 to 20.
-- `request_branches`: ask the user to approve branches and worktrees, one call for all. You name each branch. A repository may get several branches. The call waits for the answer, up to 30 minutes. Per branch the result is `created`, `existing`, `denied`, `timeout` or `failed`. Argument: `branches`, 1 to 20 items of `repo`, `branch` and an optional `base`, an existing branch to start from (main when omitted). The result names the base.
-- `rename_branch`: ask the user to approve renaming one of the task's branches. The worktree folder stays. The remote branch is renamed only if the user agrees. The result is `renamed`, `denied`, `timeout` or `failed`, with the remote state `renamed`, `kept`, `untracked` or `failed`. Refused for main, integration and protected branches, open change requests and sandboxed branches. Arguments: `repo`, `from`, `to`, `renameRemote`.
-- `change_branch`: ask the user to approve pointing one of the task's branches at another existing local branch. Use it when the worktree folder holds a different branch than the task shows. The task, folder and sessions stay. `git switch` runs in the folder when needed. Never creates a branch. The result is `changed`, `denied`, `timeout` or `failed`. Refused for main and integration branches, a branch checked out elsewhere, a dirty folder that needs a switch and sandboxed branches. Arguments: `repo`, `from`, `to`.
-- `acquire_lease`: take a named lease on a shared resource the user set up, such as a port, the full test suite, push or merge. Never blocks. The result is `held`, or `queued` with your position; calling again keeps your place. When the lease frees, Kira types a short message into your session once you are idle, or hands it to you on your next turn. A lease ends with the session, or after 10 minutes without any tool call. Argument: `queue`.
-- `release_lease`: give a lease back, or leave its line. Without `queue` it leaves every queue. Call it when done. Argument: `queue`.
-- `lease_status`: the queues, their holders and your place. Any lease tool call keeps your lease alive. Argument: `queue` (empty shows all).
-- `operations`: the task's running git operations that can be stopped, such as a slow fetch or push. Returns `opId`, `kind`, `subject` and `elapsedMs` per operation. Argument `cancel` (an `opId` from the list) stops one; another task's operation reads as unknown.
-- `run_outcome`: how the latest runs of the task ended. Arguments: `runId`, `branch`, `kind`, `limit` (default 3, maximum 10).
-- `fetch_remote`: fetch one remote of the repository, in the app. Sandboxed runs only. Argument: `remote` (default `origin`).
-- `push_branch`: push the task branch to the same-named remote branch, in the app. Sandboxed write runs only. Never a protected branch. Argument: `force` (lease-checked force push).
+- `submit`: hand the task folder's files to Kira, such as the handover draft, notes and links. A proof is a folder in the task folder and needs no report: see [Proof](../../space/proof/). Arguments: `paths` (default every changed file), `reason`. It never finishes a step.
+- `state`: ask Kira for something, or finish the step. Arguments: `action` and `args`. Every reply lists items, each with a status. Statuses: `done`, `pending` (awaiting the user), `waiting` (Kira is working), `denied`, `failed` and `invalid` (the call is wrong; the item shows a fixed example). Read `state.yaml` in the task folder for what Kira knows: repositories, setup, leases, operations, runs and late answers.
+
+Actions of `state`:
+
+- `repo.declare`: add registered repositories to the task. Args: `repos`.
+- `branch.request`: ask the user to approve a branch and its worktree. You name the branch. The call waits for the answer, then for the worktree setup, up to 10 minutes; after that read `state.yaml`, the request stays open. Args: `repo`, `branch`, optional `base` and `existing`.
+- `branch.rename`: ask the user to approve renaming one of the task's branches. The worktree folder stays. The remote branch is renamed only if the user agrees. Args: `repo`, `from`, `to`, `renameRemote`.
+- `branch.change`: ask the user to approve pointing one of the task's branches at another existing local branch, when the worktree folder holds a different one. Args: `repo`, `from`, `to`.
+- `lease.acquire`: take a named lease on a shared resource the user set up, such as a port, the full test suite, push or merge. The answer is `done` (held) or `waiting` with your position; calling again keeps your place. A lease ends with the session, or after 10 minutes of silence. Args: `queue`.
+- `lease.release`: give a lease back, or leave its line. Without `queue` it leaves every queue. Args: `queue`.
+- `operation.cancel`: stop one running git operation of the task, such as a slow fetch or push. Args: `opId` from `state.yaml`.
+- `remote.fetch`: fetch one remote, in the app. Sandboxed runs only. Args: `remote` (default `origin`).
+- `branch.push`: push the task branch to the same-named remote branch, in the app. Sandboxed write runs only. Never a protected branch. Args: `force`.
+- `review.reply`: answer one review comment. Only in a workflow review round. Args: `id`, `reply`, `resolved`.
+- `step.finish`: report how the step ended. Call it once, last. In a session only `done`. The reply lists the task's artifacts. Args: `status`, `reason`, `conflictedFiles`, `lastGitError`, `tried`.
+- `finish_step`: the same report, for a rebase run or a review round. Arguments: `status`, `summary`, `reason`, `conflictedFiles`, `lastGitError`, `tried`.
 - `git`: run restricted git in a named worktree. Used by rebase runs. Arguments: `worktree`, `args`.
 
 ### Orchestrator tools
@@ -123,5 +125,4 @@ Server name `kira-space`. `finish_step` is available to every agent run. `fetch_
 Only a task of kind orchestrator carries these. A child task never does.
 
 - `create_task`: ask the user to approve a child task. The call waits for the answer, up to 30 minutes. The result is `created` with the `taskId`, `denied`, `timeout` or `failed`. The child starts on the first step of its workflow with your brief as its first handover, and waits for the user to run it. Arguments: `title`, `workflow` (id or name), `repos` (0 to 10 items of `repo` and `base`), `brief`.
-- `list_tasks`: your child tasks, newest first, at most 100. Each row has the step, whether it finished, whether it is archived and the start of its newest handover. Argument: `state` (`live`, `archived`, `all`).
-- `task_chain`: a handover chain, newest first, drafts included. A finished child's handover is copied into your chain. Arguments: `taskId` (a child; empty for your own), `limit` (default 10, maximum 50), `before` (the `next` of the previous page).
+- Read your children in `state.yaml` (`chain`): step, finished, archived, newest handover.

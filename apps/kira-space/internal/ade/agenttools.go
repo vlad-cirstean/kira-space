@@ -19,9 +19,6 @@ import (
 // maxBranchNameBytes is git's ref name limit on common file systems.
 const maxBranchNameBytes = 255
 
-// maxScriptRunScan bounds the script runs run_outcome reads before filtering.
-const maxScriptRunScan = 50
-
 // toolErr turns a caller mistake into text the agent can act on; anything else passes through.
 func toolErr(err error) error {
 	switch {
@@ -92,7 +89,7 @@ func resolveRepoRef(ref string, cands []repoCandidate, kind string) (string, err
 		return "", agentmcp.ToolError(fmt.Sprintf("Repo %q is not registered in Kira Space. Registered: %s. Ask the user to import it from Agents > Repositories, then try again.",
 			ref, joinOrNone(names)))
 	}
-	return "", agentmcp.ToolError(fmt.Sprintf("Repo %q is not on this task. On the task: %s. Call declare_repos first.", ref, joinOrNone(names)))
+	return "", agentmcp.ToolError(fmt.Sprintf("Repo %q is not on this task. On the task: %s. Declare it first with state repo.declare.", ref, joinOrNone(names)))
 }
 
 func joinOrNone(s []string) string {
@@ -152,9 +149,8 @@ func (b *TaskBoard) worktreePath(ctx context.Context, sb model.AdeTaskBranch) st
 	return path
 }
 
-// spaceInfo builds the task as an agent sees it. The registered repos are listed only for a task
-// with no repos, or when includeRegistered asks: the agent re-reads task_info often and the list
-// rarely changes.
+// spaceInfo builds the task as state.yaml and a declare reply show it. The registered repos are listed
+// only for a task with no repos, or when includeRegistered asks: the list rarely changes.
 func (b *TaskBoard) spaceInfo(ctx context.Context, tc *taskCtx, includeRegistered bool) (agentmcp.TaskInfo, error) {
 	_, cfgs, err := b.registeredCandidates()
 	if err != nil {
@@ -207,15 +203,6 @@ func (b *TaskBoard) spaceInfo(ctx context.Context, tc *taskCtx, includeRegistere
 		}
 	}
 	return info, nil
-}
-
-// TaskInfo implements agentmcp.SpaceTools.
-func (b *TaskBoard) TaskInfo(ctx context.Context, taskID string, includeRegistered bool) (agentmcp.TaskInfo, error) {
-	tc, err := b.spaceCtx(taskID)
-	if err != nil {
-		return agentmcp.TaskInfo{}, err
-	}
-	return b.spaceInfo(ctx, tc, includeRegistered)
 }
 
 // DeclareRepos implements agentmcp.SpaceTools: it only adds not-created branches in registered
@@ -377,16 +364,16 @@ func switchedNext(sb model.AdeTaskBranch, at attachment) string {
 		return ""
 	}
 	if at.head == "" {
-		return "The task folder " + at.own + " is on a detached commit, not " + sb.Name + ". Run git switch " + sb.Name + " there, or call change_branch with from=" + sb.Name + " and a local branch name in to."
+		return "The task folder " + at.own + " is on a detached commit, not " + sb.Name + ". Run git switch " + sb.Name + " there, or call state branch.change with from=" + sb.Name + " and a local branch name in to."
 	}
-	return "The task folder " + at.own + " holds " + at.head + ", not " + sb.Name + ". Call change_branch with from=" + sb.Name + " and to=" + at.head + " to make it the task branch, or run git switch " + sb.Name + " there to go back."
+	return "The task folder " + at.own + " holds " + at.head + ", not " + sb.Name + ". Call state branch.change with from=" + sb.Name + " and to=" + at.head + " to make it the task branch, or run git switch " + sb.Name + " there to go back."
 }
 
 func (b *TaskBoard) branchInfo(sb model.AdeTaskBranch, nick, worktree string) agentmcp.BranchInfo {
 	info := agentmcp.BranchInfo{Repo: nick, Branch: sb.Name, Base: sb.Base, Worktree: worktree, Setup: b.setupInfo(sb, worktree)}
 	switch info.Setup.State {
 	case model.AdeSetupRunning:
-		info.Next = "The worktree is still preparing. Call task_info with repo, branch and waitSeconds, then edit in " + worktree + "."
+		info.Next = "The worktree is still preparing: its setup is in repos[].setup of state.yaml. Edit in " + worktree + " only when it shows done."
 	case model.AdeSetupFailed:
 		info.Next = "The worktree setup failed. Tell the user; do not edit until it is fixed."
 		if info.Setup.Note != "" {
@@ -394,49 +381,12 @@ func (b *TaskBoard) branchInfo(sb model.AdeTaskBranch, nick, worktree string) ag
 		}
 	default:
 		if worktree == "" {
-			info.Next = "No worktree. Call request_branches with existing: true to check it out."
+			info.Next = "No worktree. Call state with action branch.request and existing: true to check it out."
 		} else {
 			info.Next = "Ready. Work in " + worktree + "."
 		}
 	}
 	return info
-}
-
-// BranchStatus implements agentmcp.SpaceTools: the state of the branch's worktree, waiting up to wait
-// for a running setup to finish.
-func (b *TaskBoard) BranchStatus(ctx context.Context, taskID, repo, branch string, wait time.Duration) (agentmcp.BranchInfo, error) {
-	br, nick, err := b.taskBranch(taskID, repo, branch)
-	if err != nil {
-		return agentmcp.BranchInfo{}, err
-	}
-	deadline := time.Now().Add(wait)
-	lastNote := ""
-	reported := false
-	for time.Now().Before(deadline) {
-		// Take the channel before reading the row: a setup that ends between the two still closes
-		// the channel taken here, so the wait wakes at once instead of at the fallback tick.
-		done := b.setupDone(br.ID)
-		row, err := b.deps.Tasks.GetSetup(br.ID)
-		if err != nil || row == nil || row.State != model.AdeSetupRunning {
-			break
-		}
-		if !reported || row.Note != lastNote {
-			reported, lastNote = true, row.Note
-			agentmcp.ReportProgress(ctx, "preparing "+br.Name+": "+row.Note)
-		}
-		select {
-		case <-ctx.Done():
-			return b.branchInfo(br, nick, b.worktreePath(ctx, br)), ctx.Err()
-		case <-done:
-		case <-time.After(min(5*time.Second, time.Until(deadline))):
-		}
-	}
-	at, _ := b.rowWorktree(ctx, br)
-	info := b.branchInfo(br, nick, at.attached)
-	if next := switchedNext(br, at); next != "" && info.Setup.State != model.AdeSetupFailed {
-		info.Next = next
-	}
-	return info, nil
 }
 
 // setupDone returns the channel that closes when the branch's live setup run has recorded its
@@ -469,24 +419,26 @@ func (b *TaskBoard) taskBranch(taskID, repo, branch string) (br model.AdeTaskBra
 			return br, tc.nick[id], nil
 		}
 	}
-	return br, "", agentmcp.ToolError(fmt.Sprintf("Branch %q is not on this task in that repo. Call request_branches.", branch))
+	return br, "", agentmcp.ToolError(fmt.Sprintf("Branch %q is not on this task in that repo. Request it with state branch.request.", branch))
 }
 
-// RunOutcomes is the run_outcome tool's read: the task's runs, newest first, filtered by q.
-func (b *TaskBoard) RunOutcomes(_ context.Context, taskID string, q agentmcp.OutcomeQuery) ([]agentmcp.RunOutcomeEntry, error) {
-	tc, err := b.spaceCtx(taskID)
-	if err != nil {
-		return nil, err
-	}
-	if q.Kind == "automation" {
-		return b.automationOutcomes(taskID, q)
-	}
+// recentRun is one run as state.yaml shows it. Outcome is the stored outcome, nil while the run has none.
+type recentRun struct {
+	RunID   string
+	Kind    string
+	Step    string
+	State   string
+	Outcome any
+}
+
+// recentRuns reads the task's newest runs, review rounds left out.
+func (b *TaskBoard) recentRuns(taskID string, limit int) ([]recentRun, error) {
 	runs, err := b.deps.Tasks.RunsOfTask(taskID)
 	if err != nil {
 		return nil, err
 	}
-	out := []agentmcp.RunOutcomeEntry{}
-	for i := len(runs) - 1; i >= 0 && len(out) < q.Limit; i-- {
+	out := []recentRun{}
+	for i := len(runs) - 1; i >= 0 && len(out) < limit; i-- {
 		r := runs[i]
 		if r.Purpose == model.AdeRunPurposeReview {
 			continue
@@ -495,49 +447,7 @@ func (b *TaskBoard) RunOutcomes(_ context.Context, taskID string, q agentmcp.Out
 		if r.Purpose == model.AdeRunPurposeRebase {
 			kind = "rebase"
 		}
-		if q.RunID != "" && r.ID != q.RunID || q.Kind != "" && q.Kind != kind {
-			continue
-		}
-		br, _ := tc.branch(r.BranchID)
-		if q.Branch != "" && br.Name != q.Branch {
-			continue
-		}
-		entry := agentmcp.RunOutcomeEntry{
-			RunID: r.ID, Kind: kind, Step: r.StepID, Repo: tc.nick[br.CodeRepoID], Branch: br.Name,
-			State: r.State, FinishedAt: r.FinishedAt,
-		}
-		if r.Outcome != nil {
-			entry.Outcome = r.Outcome
-		}
-		out = append(out, entry)
-	}
-	return out, nil
-}
-
-// automationOutcomes lists the task's script runs, newest first, for run_outcome kind automation.
-func (b *TaskBoard) automationOutcomes(taskID string, q agentmcp.OutcomeQuery) ([]agentmcp.RunOutcomeEntry, error) {
-	out := []agentmcp.RunOutcomeEntry{}
-	if b.deps.ScriptRunsOf == nil {
-		return out, nil
-	}
-	runs, err := b.deps.ScriptRunsOf(taskID, maxScriptRunScan)
-	if err != nil {
-		return nil, err
-	}
-	for _, r := range runs {
-		if len(out) >= q.Limit {
-			break
-		}
-		if q.RunID != "" && r.ID != q.RunID {
-			continue
-		}
-		repo, branch, _ := strings.Cut(r.BranchLabel, " · ")
-		if q.Branch != "" && branch != q.Branch {
-			continue
-		}
-		entry := agentmcp.RunOutcomeEntry{
-			RunID: r.ID, Kind: "automation", Step: r.ScriptName, Repo: repo, Branch: branch, State: r.State, FinishedAt: r.FinishedAt,
-		}
+		entry := recentRun{RunID: r.ID, Kind: kind, Step: r.StepID, State: r.State}
 		if r.Outcome != nil {
 			entry.Outcome = r.Outcome
 		}
@@ -594,5 +504,5 @@ func (b *TaskBoard) CancelOperation(ctx context.Context, taskID, opID string) (a
 		}
 		break
 	}
-	return agentmcp.CancelOperationResult{}, agentmcp.ToolError(fmt.Sprintf("No running operation with id %q; it may have finished. Call operations for current ids.", opID))
+	return agentmcp.CancelOperationResult{}, agentmcp.ToolError(fmt.Sprintf("No running operation with id %q; it may have finished. Current ids are in state.yaml operations.", opID))
 }

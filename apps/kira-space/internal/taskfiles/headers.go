@@ -6,8 +6,8 @@ package taskfiles
 const (
 	headerLinks = "Kira links. Edit, then call submit (reason when you change another author's link)."
 	headerProof = "Kira proof. Edit, then call submit (pass reason to submit when the proof is accepted)."
-	headerState = "Read-only. Kira rewrites this file. Change state only with Kira tools: branches, lease, cancel_operation, finish_step; task_info waits for a setup."
-	headerTask  = "Read-only. Kira rewrites this file. It mirrors the task definition; change it only in the app."
+	headerState = "Read-only. Kira rewrites this file. State changes: call state. status is done, pending (the user must answer), waiting (Kira or a queue is on it), denied or failed (see note)."
+	headerTask  = "Read-only. Kira rewrites this file. State changes: call state."
 )
 
 // Header returns the comment line a Kira-created file of kind starts with, newline included, or "".

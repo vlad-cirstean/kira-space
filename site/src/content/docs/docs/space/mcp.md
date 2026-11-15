@@ -23,7 +23,7 @@ Kira Space runs several local [MCP](https://modelcontextprotocol.io) servers. Ea
 
 ## What an agent session gets
 
-A task run gets `kira-space`. It reports how a step ended, replies to review comments, records artifacts and attaches proof. A sandboxed run also gets `fetch_remote` and `push_branch`.
+A task run gets `kira-space`. It has `submit` for the task folder and `state` for requests, leases and finishing a step. A sandboxed run also gets `remote.fetch` and `branch.push` actions.
 
 A step that ticks **Kira database tools** also gets `kira-studio-session`. It shares your exposed connections, limits and approvals. See [Studio MCP server](../../studio/database-mcp/).
 

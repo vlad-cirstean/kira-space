@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
@@ -42,19 +43,37 @@ func (b *TaskBoard) ChangeBranch(ctx context.Context, call agentmcp.SpaceCall, a
 	if plan.refusal != "" {
 		return changeResult(args, plan.nick, agentmcp.BranchFailed, plan.refusal), nil
 	}
-	dec, prefix := b.awaitBranchRequest(ctx, call, plan.draft)
-	itemID := prefix + "i0"
+	deadline := time.Now().Add(b.callWait())
+	late := func(dec branchDecision, prefix string) {
+		if dec.kind == decisionAbandoned {
+			return
+		}
+		res, err := b.changeDecision(b.ctx, call, args, plan.nick, dec, prefix+"i0")
+		if err != nil {
+			b.recordAnswer(call, stateAnswer{ID: args.Repo + "/" + args.To, Kind: "branch.change", Subject: args.Repo + "/" + args.To, Status: answerFailed, Message: toolMessage(err)})
+			return
+		}
+		b.recordAnswer(call, answerOfOutcome("branch.change", args.Repo+"/"+args.To, res.Outcome, agentmcp.BranchChanged, res.Next))
+	}
+	dec, prefix := b.awaitBranchRequest(ctx, call, plan.draft, deadline, late)
+	if dec.kind == decisionPending {
+		res := changeResult(args, plan.nick, agentmcp.BranchPending, "")
+		res.Waited = b.callWait()
+		return res, nil
+	}
+	return b.changeDecision(ctx, call, args, plan.nick, dec, prefix+"i0")
+}
+
+// changeDecision applies the user's decision on a change.
+func (b *TaskBoard) changeDecision(ctx context.Context, call agentmcp.SpaceCall, args agentmcp.ChangeBranchArgs, nick string, dec branchDecision, itemID string) (agentmcp.ChangeBranchResult, error) {
 	if err := ctx.Err(); err != nil {
 		return agentmcp.ChangeBranchResult{}, err // the caller is gone: nothing changes for it
 	}
 	switch {
 	case dec.kind == decisionAbandoned:
 		return agentmcp.ChangeBranchResult{}, agentmcp.ToolError("The branch change request was cancelled.")
-	case dec.kind == decisionTimeout:
-		next := fmt.Sprintf("No answer from the user in %s; nothing changed. Call change_branch again later or ask the user.", waitText(b.branchRequestWait()))
-		return changeResult(args, plan.nick, agentmcp.BranchTimeout, next), nil
 	case dec.kind == decisionDenied || !dec.approved[itemID]:
-		return changeResult(args, plan.nick, agentmcp.BranchDenied, "The user declined this change. Do not switch branches with git in the task folder; keep working on the task branch or ask the user."), nil
+		return changeResult(args, nick, agentmcp.BranchDenied, "The user declined this change. Do not switch branches with git in the task folder; keep working on the task branch or ask the user."), nil
 	}
 	return b.applyChange(ctx, call, args)
 }
@@ -152,7 +171,7 @@ func (b *TaskBoard) changeRefusal(ctx context.Context, call agentmcp.SpaceCall, 
 	}
 	target, ok := localBranch(inv, to)
 	if !ok {
-		plan.refusal = fmt.Sprintf("Branch %s does not exist locally. Use request_branches to create or check out a branch.", to)
+		plan.refusal = fmt.Sprintf("Branch %s does not exist locally. Use state branch.request to create or check out a branch.", to)
 		return nil
 	}
 	live, err := b.deps.Tasks.BranchesLive()
@@ -190,7 +209,7 @@ func (b *TaskBoard) changeRefusal(ctx context.Context, call agentmcp.SpaceCall, 
 	case text != "":
 		plan.refusal = text
 	case dirty > 0:
-		plan.refusal = fmt.Sprintf("The worktree %s has %d uncommitted changes. Commit or stash them, then call change_branch again.", own, dirty)
+		plan.refusal = fmt.Sprintf("The worktree %s has %d uncommitted changes. Commit or stash them, then call state branch.change again.", own, dirty)
 	}
 	return nil
 }

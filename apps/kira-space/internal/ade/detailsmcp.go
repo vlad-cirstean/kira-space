@@ -23,24 +23,32 @@ func submitSession(call agentmcp.SpaceCall) detailsSession {
 
 // Submit is the submit tool: it reads the named task files as the calling session.
 func (b *TaskBoard) Submit(ctx context.Context, call agentmcp.SpaceCall, in agentmcp.SubmitArgs) (string, error) {
-	s := submitSession(call)
-	res, err := b.SubmitFiles(ctx, call.TaskID, s, in.Paths, in.Reason)
+	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), in.Paths, in.Reason)
 	if err != nil {
 		return "", err
 	}
-	reply := submitReply(res)
-	if in.Finished && s.role != taskfiles.RoleRun {
-		note, err := b.finishDraft(call.TaskID)
-		if err != nil {
-			return "", err
-		}
-		reply += note
-	}
-	return reply, nil
+	return submitReply(res), nil
 }
 
-// finishDraft marks the current stage's draft finished and raises the move prompt. The note is
-// appended to the reply: a missing draft is not an error, the agent writes one and submits again.
+// FinishSession is a session's step.finish: it submits the task files, then marks the stage's draft
+// finished.
+func (b *TaskBoard) FinishSession(ctx context.Context, call agentmcp.SpaceCall) (string, error) {
+	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), nil, "")
+	if err != nil {
+		return "", err
+	}
+	note, err := b.finishDraft(call.TaskID)
+	if err != nil {
+		return "", err
+	}
+	if c := res.Counts(); c.Accepted+c.Pending+c.Invalid > 0 {
+		return submitReply(res) + "\n" + note, nil
+	}
+	return note, nil
+}
+
+// finishDraft marks the current stage's draft finished and raises the move prompt. A missing draft is
+// not an error: the note tells the agent to write one and finish again.
 func (b *TaskBoard) finishDraft(taskID string) (string, error) {
 	mu := b.taskMu(taskID)
 	mu.Lock()
@@ -51,7 +59,7 @@ func (b *TaskBoard) finishDraft(taskID string) (string, error) {
 	}
 	cur := b.currentStepID(tc)
 	if cur == "" || cur == entryDone {
-		return "\nfinished: the task has no open stage", nil
+		return "The task has no open stage.", nil
 	}
 	var id string
 	err = b.files.idx.InTx(func(tx taskfiles.Tx) error {
@@ -66,15 +74,15 @@ func (b *TaskBoard) finishDraft(taskID string) (string, error) {
 		return "", err
 	}
 	if id == "" {
-		return fmt.Sprintf("\nfinished: write %s first, then call submit with finished", draftRel(cur)), nil
+		return fmt.Sprintf("Write %s first, then call state step.finish again.", draftRel(cur)), nil
 	}
 	// Board first: the prompt's dialog reads the draft from the board snapshot.
 	b.notifyBoardNow(taskChanged(taskID))
 	b.openHandoverPrompt(tc)
-	return "\nfinished: the user was asked to move the task on", nil
+	return "The user was asked to move the task on.", nil
 }
 
-// SubmitForFinish is finish_step's implicit submit. An ok finish needs the current step's draft:
+// SubmitForFinish is a run's step.finish implicit submit. An ok finish needs the current step's draft:
 // without one the finish is refused.
 func (b *TaskBoard) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall, ok bool) (agentmcp.SubmitFinish, error) {
 	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), nil, "")
@@ -98,7 +106,7 @@ func (b *TaskBoard) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall
 	if draft != "" || !ok || b.noStageRun(call.RunID) {
 		return agentmcp.SubmitFinish{Reply: reply, Summary: draft}, nil
 	}
-	msg := fmt.Sprintf("write %s, then call finish_step", draftRel(cur))
+	msg := fmt.Sprintf("write %s, then call state step.finish", draftRel(cur))
 	if c.Invalid > 0 {
 		msg += "\n" + reply
 	}

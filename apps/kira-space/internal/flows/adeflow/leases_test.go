@@ -2,6 +2,7 @@ package adeflow_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -15,7 +16,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/shell"
@@ -29,23 +29,41 @@ const leaseScenario = "ade-leases"
 
 var leaseMask = flowharness.Mask("sessionId", "taskId", "since", "expiresAt")
 
+// leaseCall is a state call on the push queue: tool is acquire_lease or release_lease.
 func leaseCall(tool string) fakeagent.MCPCall {
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: tool, Args: map[string]any{"queue": "push"}}
+	action := map[string]string{"acquire_lease": "lease.acquire", "release_lease": "lease.release"}[tool]
+	return stateCall(action, map[string]any{"queue": "push"})
 }
 
-func leaseResult(t *testing.T, app *flowharness.App, name string) agentmcp.AcquireLeaseResult {
+type leaseOutcome struct {
+	State    string // held or queued
+	Position int
+}
+
+// leaseResult reads a recorded lease.acquire reply: done is held, waiting is queued at a position.
+func leaseResult(t *testing.T, app *flowharness.App, name string) leaseOutcome {
 	t.Helper()
-	var raw []byte
-	testx.WaitUntil(t, waitFor, func() bool {
-		var err error
-		raw, err = os.ReadFile(filepath.Join(app.FakeDir, name))
-		return err == nil && json.Valid(raw)
-	})
-	var res agentmcp.AcquireLeaseResult
-	if err := json.Unmarshal(raw, &res); err != nil {
-		t.Fatalf("%s: %v\n%s", name, err, raw)
+	reply, errText := stateReply(t, app, strings.Replace(name, "acquire_lease", "lease.acquire", 1))
+	if errText != "" {
+		t.Fatalf("%s: %s", name, errText)
 	}
-	return res
+	item := replyItem(t, reply)
+	switch item["status"] {
+	case "done":
+		return leaseOutcome{State: "held"}
+	case "waiting":
+		var pos int
+		if _, err := fmt.Sscanf(fmt.Sprint(item["message"]), "queued at position %d", &pos); err != nil {
+			// The message wraps the detail; find it inside.
+			msg := fmt.Sprint(item["message"])
+			if i := strings.Index(msg, "queued at position "); i >= 0 {
+				fmt.Sscanf(msg[i:], "queued at position %d", &pos)
+			}
+		}
+		return leaseOutcome{State: "queued", Position: pos}
+	}
+	t.Fatalf("%s: item %v, want done or waiting", name, item)
+	return leaseOutcome{}
 }
 
 func leaseSnapshot(t *testing.T, app *flowharness.App) adewire.LeaseSnapshot {
@@ -89,7 +107,7 @@ func waitPrompt(t *testing.T, app *flowharness.App, name, sub string) {
 func TestLeases(t *testing.T) {
 	dir := t.TempDir()
 	flag := func(n string) string { return filepath.Join(dir, n) }
-	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second))
+	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second), flowharness.WithCallWait(time.Second))
 	// Fake calls 1 to 3 are the sessions of C, B and A, started in that order. C releases once
 	// relC exists, B calls acquire again once relB exists.
 	claude(app, map[string][]fakeagent.Action{"*": {
@@ -148,15 +166,15 @@ func TestLeases(t *testing.T) {
 
 	// 1. C asks first and holds; B then A queue, and A ranks ahead of B whatever the arrival.
 	launch(taskC, "feat/c")
-	if r := leaseResult(t, app, "mcp-acquire_lease-1.json"); r.State != "held" {
+	if r := leaseResult(t, app, "mcp-lease.acquire-1.json"); r.State != "held" {
 		t.Fatalf("C acquire = %+v, want held", r)
 	}
 	lb := launch(taskB, "feat/b")
-	if r := leaseResult(t, app, "mcp-acquire_lease-2.json"); r.State != "queued" || r.Position != 1 {
+	if r := leaseResult(t, app, "mcp-lease.acquire-2.json"); r.State != "queued" || r.Position != 1 {
 		t.Fatalf("B acquire = %+v, want queued at 1", r)
 	}
 	la := launch(taskA, "feat/a")
-	if r := leaseResult(t, app, "mcp-acquire_lease-3.json"); r.State != "queued" || r.Position != 1 {
+	if r := leaseResult(t, app, "mcp-lease.acquire-3.json"); r.State != "queued" || r.Position != 1 {
 		t.Fatalf("A acquire = %+v, want queued at 1", r)
 	}
 	q := waitHolder(t, app, "Task C")
@@ -169,7 +187,7 @@ func TestLeases(t *testing.T) {
 	if err := os.WriteFile(flag("relB"), nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if r := leaseResult(t, app, "mcp-acquire_lease-4.json"); r.State != "queued" || r.Position != 2 {
+	if r := leaseResult(t, app, "mcp-lease.acquire-4.json"); r.State != "queued" || r.Position != 2 {
 		t.Fatalf("B second acquire = %+v, want queued at 2", r)
 	}
 
@@ -250,7 +268,7 @@ func TestLeases(t *testing.T) {
 // the TTL, the next waiter is granted and the old holder hears it on its next Stop.
 func TestLeaseExpiryHonoursBusyTurns(t *testing.T) {
 	clock := fakeclock.New(scheduleStart)
-	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second), flowharness.WithLeaseClock(4*time.Second, clock))
+	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second), flowharness.WithCallWait(time.Second), flowharness.WithLeaseClock(4*time.Second, clock))
 	claude(app, map[string][]fakeagent.Action{"*": {
 		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, Name: "sleep"},
 		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, Name: "sleep"},
@@ -278,11 +296,11 @@ func TestLeaseExpiryHonoursBusyTurns(t *testing.T) {
 		return l
 	}
 	holder := launch("Holder", "feat/h")
-	if r := leaseResult(t, app, "mcp-acquire_lease-1.json"); r.State != "held" {
+	if r := leaseResult(t, app, "mcp-lease.acquire-1.json"); r.State != "held" {
 		t.Fatalf("holder acquire = %+v, want held", r)
 	}
 	launch("Waiter", "feat/w")
-	if r := leaseResult(t, app, "mcp-acquire_lease-2.json"); r.State != "queued" {
+	if r := leaseResult(t, app, "mcp-lease.acquire-2.json"); r.State != "queued" {
 		t.Fatalf("waiter acquire = %+v, want queued", r)
 	}
 	send := func(l adewire.Launch, payload string) string {
@@ -318,7 +336,7 @@ func TestLeaseExpiryHonoursBusyTurns(t *testing.T) {
 // the new holder keeps the lease.
 func TestLeaseForceReleasedHolderCannotFreeNewHolder(t *testing.T) {
 	relA := filepath.Join(t.TempDir(), "relA")
-	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second))
+	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second), flowharness.WithCallWait(time.Second))
 	claude(app, map[string][]fakeagent.Action{"*": {
 		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, WaitFile: relA, MCPAfter: []fakeagent.MCPCall{leaseCall("release_lease")}, Name: "sleep"},
 		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, Name: "sleep"},
@@ -345,12 +363,12 @@ func TestLeaseForceReleasedHolderCannotFreeNewHolder(t *testing.T) {
 		openLaunch(t, app, l)
 		waitSession(t, app, l.SessionID, "running")
 		if c[0] == "Old" {
-			if r := leaseResult(t, app, "mcp-acquire_lease-1.json"); r.State != "held" {
+			if r := leaseResult(t, app, "mcp-lease.acquire-1.json"); r.State != "held" {
 				t.Fatalf("Old acquire = %+v, want held", r)
 			}
 		}
 	}
-	if r := leaseResult(t, app, "mcp-acquire_lease-2.json"); r.State != "queued" {
+	if r := leaseResult(t, app, "mcp-lease.acquire-2.json"); r.State != "queued" {
 		t.Fatalf("New acquire = %+v, want queued", r)
 	}
 	if err := app.W.Leases.ForceRelease(ctx, adewire.LeaseQueueArgs{Queue: "push"}); err != nil {
@@ -360,10 +378,9 @@ func TestLeaseForceReleasedHolderCannotFreeNewHolder(t *testing.T) {
 	if err := os.WriteFile(relA, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	raw := leaseRaw(t, app, "mcp-release_lease-1.json")
-	var rel agentmcp.ReleaseLeaseResult
-	if err := json.Unmarshal([]byte(raw), &rel); err != nil || len(rel.Released) != 0 {
-		t.Fatalf("revoked holder's release = %s, %v, want nothing released", raw, err)
+	raw := leaseRaw(t, app, "mcp-lease.release-1.json")
+	if !strings.Contains(raw, "No lease was held.") {
+		t.Fatalf("revoked holder's release = %s, want nothing released", raw)
 	}
 	if q := leaseSnapshot(t, app).Queues[0]; q.Holder == nil || q.Holder.TaskTitle != "New" {
 		t.Fatalf("queue after the old holder's release = %+v, want New to keep the lease", q)
@@ -382,19 +399,19 @@ func leaseRaw(t *testing.T, app *flowharness.App, name string) string {
 }
 
 // J-LEASE-003 (OQ-ADE-2): queue names survive a restart, holds do not. A resumed run is told to
-// re-acquire, and lease_status shows nothing held until it does.
+// re-acquire, and state.yaml leases show nothing held until it does.
 func TestLeasesAcrossRestart(t *testing.T) {
 	hold := filepath.Join(t.TempDir(), "hold")
 	f := newRunFixture(t, []fakeagent.Action{
 		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, WaitFile: hold},
-		{MCP: []fakeagent.MCPCall{leaseCall("lease_status")}, Name: "done"},
+		{Name: "done"},
 	}, agentStep("one", ""))
 	t.Cleanup(func() { _ = os.WriteFile(hold, nil, 0o644) })
 	if err := f.app.W.Leases.SaveQueues(ctx, adewire.LeaseQueuesArgs{Names: []string{"push", "e2e"}}); err != nil {
 		t.Fatal(err)
 	}
 	f.start(t, "feat/api-lease")
-	if r := leaseResult(t, f.app, "mcp-acquire_lease-1.json"); r.State != "held" {
+	if r := leaseResult(t, f.app, "mcp-lease.acquire-1.json"); r.State != "held" {
 		t.Fatalf("acquire = %+v, want held", r)
 	}
 	f.app.Restart()
@@ -421,23 +438,14 @@ func TestLeasesAcrossRestart(t *testing.T) {
 	if !strings.Contains(prompt, "re-acquire any you held") {
 		t.Fatalf("resume prompt lacks the lease line:\n%s", prompt)
 	}
-	var status agentmcp.LeaseStatusResult
-	raw := leaseRaw(t, f.app, "mcp-lease_status-1.json")
-	if err := json.Unmarshal([]byte(raw), &status); err != nil {
-		t.Fatalf("lease_status result %s: %v", raw, err)
-	}
-	for _, q := range status.Queues {
-		if q.Holder != nil {
-			t.Fatalf("lease_status after resume = %s, want nothing held", raw)
-		}
-	}
+	stateYAML(t, f.app, f.taskID, func(d map[string]any) bool { held, _ := d["leases"].([]any); return len(held) == 0 })
 }
 
 // OQ-ADE-3: lease silence counts only time the app ran. A laptop asleep for hours (wall time moves, no
 // running time passes) expires nothing; the TTL then runs out on running time alone.
 func TestLeaseSleepDoesNotExpire(t *testing.T) {
 	clock := fakeclock.New(scheduleStart)
-	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second), flowharness.WithLeaseClock(4*time.Second, clock))
+	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second), flowharness.WithCallWait(time.Second), flowharness.WithLeaseClock(4*time.Second, clock))
 	claude(app, map[string][]fakeagent.Action{"*": {
 		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, Name: "sleep"},
 		{MCP: []fakeagent.MCPCall{leaseCall("acquire_lease")}, Name: "sleep"},
@@ -463,10 +471,10 @@ func TestLeaseSleepDoesNotExpire(t *testing.T) {
 		openLaunch(t, app, l)
 		waitSession(t, app, l.SessionID, "running")
 	}
-	if r := leaseResult(t, app, "mcp-acquire_lease-1.json"); r.State != "held" {
+	if r := leaseResult(t, app, "mcp-lease.acquire-1.json"); r.State != "held" {
 		t.Fatalf("holder acquire = %+v, want held", r)
 	}
-	if r := leaseResult(t, app, "mcp-acquire_lease-2.json"); r.State != "queued" {
+	if r := leaseResult(t, app, "mcp-lease.acquire-2.json"); r.State != "queued" {
 		t.Fatalf("waiter acquire = %+v, want queued", r)
 	}
 

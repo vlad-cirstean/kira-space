@@ -61,8 +61,12 @@ func handoverPrompts(t *testing.T, app *flowharness.App) []prompts.Routed {
 	return out
 }
 
+// submitCall is a submit of every file, or, when finished, the stage's step.finish (submit is content only).
 func submitCall(finished bool) fakeagent.MCPCall {
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Args: map[string]any{"finished": finished}}
+	if finished {
+		return stateCall("step.finish", map[string]any{"status": "done"})
+	}
+	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true}
 }
 
 // writeTaskFile writes a file under the task's folder, as an agent session editing it would.
@@ -213,7 +217,7 @@ func TestStageHandover(t *testing.T) {
 		t.Fatal(err)
 	}
 	testx.WaitUntil(t, waitFor, func() bool {
-		raw, err := os.ReadFile(filepath.Join(app.FakeDir, "mcp-submit-2.json"))
+		raw, err := os.ReadFile(filepath.Join(app.FakeDir, "mcp-step.finish-2.json"))
 		return err == nil && strings.Contains(string(raw), "moved on to")
 	})
 	if ds := taskOf(t, board(t, app), task.ID).HandoverDrafts; len(ds) != 0 {

@@ -148,7 +148,7 @@ func (b *TaskBoard) namedWorktree(ctx context.Context, entry *gitsession.RepoEnt
 		return worktreeResult{Path: at.attached, Name: sb.Name}, nil
 	}
 	if at.owner != nil {
-		return worktreeResult{}, invalid("branch %s is checked out in the worktree of another task (%s). An agent can take it back with request_branches existing: true.", sb.Name, at.holder)
+		return worktreeResult{}, invalid("branch %s is checked out in the worktree of another task (%s). An agent can take it back with state branch.request existing: true.", sb.Name, at.holder)
 	}
 	if at.detached && at.holder == "" && b.registeredWorktree(ctx, entry, at.own) {
 		// The row's own folder was detached for another task; the branch is free again.

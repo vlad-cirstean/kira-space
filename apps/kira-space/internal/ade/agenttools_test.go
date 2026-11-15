@@ -58,6 +58,12 @@ func TestSpaceTools_declareIsAdditiveAndIdempotent(t *testing.T) {
 
 // requestBranch asks for one named branch, approves the request when one opens, and returns the result.
 func requestBranch(ctx context.Context, b *TaskBoard, taskID, repo, branch string) (agentmcp.BranchInfo, error) {
+	rb, err := requestBranchResult(ctx, b, taskID, repo, branch)
+	return rb.BranchInfo, err
+}
+
+// requestBranchResult is requestBranch with the outcome.
+func requestBranchResult(ctx context.Context, b *TaskBoard, taskID, repo, branch string) (agentmcp.RequestedBranch, error) {
 	type answer struct {
 		res agentmcp.RequestBranchesResult
 		err error
@@ -71,12 +77,12 @@ func requestBranch(ctx context.Context, b *TaskBoard, taskID, repo, branch strin
 		select {
 		case a := <-done:
 			if a.err != nil {
-				return agentmcp.BranchInfo{}, a.err
+				return agentmcp.RequestedBranch{}, a.err
 			}
 			if len(a.res.Branches) != 1 || a.res.Branches[0].Outcome == agentmcp.BranchFailed {
-				return agentmcp.BranchInfo{}, errors.New("request failed: " + a.res.Branches[0].Next)
+				return agentmcp.RequestedBranch{}, errors.New("request failed: " + a.res.Branches[0].Next)
 			}
-			return a.res.Branches[0].BranchInfo, nil
+			return a.res.Branches[0], nil
 		case <-time.After(10 * time.Millisecond):
 			if id := b.branchRequestOf(taskID); id != "" {
 				if req, err := b.BranchRequest(id); err == nil {
@@ -127,7 +133,9 @@ func TestSpaceTools_requestBranch(t *testing.T) {
 	}
 }
 
-func TestSpaceTools_archivedAndBranchStatus(t *testing.T) {
+// A branch.request whose setup outlasts the call wait answers waiting and leaves the setup running;
+// a later request sees it done. An archived task refuses new branches.
+func TestSpaceTools_setupWaitAndArchived(t *testing.T) {
 	e := newEngine(t, nil)
 	e.repo("api")
 	gate := t.TempDir() + "/gate"
@@ -135,35 +143,30 @@ func TestSpaceTools_archivedAndBranchStatus(t *testing.T) {
 	e.workflow(flowYAML(agentStep("first", "")))
 	id := e.task("api")
 	ctx := context.Background()
+	e.board.deps.CallWait = 500 * time.Millisecond
 
-	if _, err := e.board.BranchStatus(ctx, id, "api", "feat/api-one", 0); err == nil || !strings.Contains(toolErrText(t, err), "request_branches") {
-		t.Fatalf("status before branch: %v", err)
-	}
-	if _, err := requestBranch(ctx, e.board, id, "api", "feat/api-one"); err != nil {
+	rb, err := requestBranchResult(ctx, e.board, id, "api", "feat/api-one")
+	if err != nil {
 		t.Fatal(err)
 	}
-	st, err := e.board.BranchStatus(ctx, id, "api", "feat/api-one", 0)
-	if err != nil || st.Setup.State != model.AdeSetupRunning {
-		t.Fatalf("status during setup = %+v, %v", st, err)
-	}
-	cctx, cancel := context.WithTimeout(ctx, 1500*time.Millisecond)
-	defer cancel()
-	if _, err := e.board.BranchStatus(cctx, id, "api", "feat/api-one", time.Minute); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("a cancelled wait returned %v", err)
+	if rb.Outcome != agentmcp.BranchWaiting || rb.Setup.State != model.AdeSetupRunning {
+		t.Fatalf("request during setup = %+v; want waiting with the setup running", rb)
 	}
 	if err := os.WriteFile(gate, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	st, err = e.board.BranchStatus(ctx, id, "api", "feat/api-one", 30*time.Second)
-	if err != nil || st.Setup.State != model.AdeSetupReady {
-		t.Fatalf("status after the wait = %+v, %v", st, err)
+	sb := e.branch(t, id, "api")
+	waitUntil(t, "setup ready", func() bool {
+		s, _ := e.repos.AdeTasks.GetSetup(sb.ID)
+		return s != nil && s.State == model.AdeSetupReady
+	})
+	rb, err = requestBranchResult(ctx, e.board, id, "api", "feat/api-one")
+	if err != nil || rb.Setup.State != model.AdeSetupReady || rb.Outcome == agentmcp.BranchWaiting {
+		t.Fatalf("request after setup = %+v, %v; want ready", rb, err)
 	}
 
 	if err := e.board.ArchiveTask(ctx, id); err != nil {
 		t.Fatal(err)
-	}
-	if _, err := e.board.TaskInfo(ctx, id, true); err == nil || !strings.Contains(toolErrText(t, err), "archived") {
-		t.Fatalf("TaskInfo of an archived task: %v", err)
 	}
 	if _, err := requestBranch(ctx, e.board, id, "api", "feat/api-two"); err == nil {
 		t.Fatal("archived task accepted a branch")
@@ -193,6 +196,6 @@ func TestSpaceTools_startRunCreatesNoBranch(t *testing.T) {
 	}
 	info, err := requestBranch(context.Background(), e.board, id, "api", "feat/api-one")
 	if err != nil || info.Branch != "feat/api-one" {
-		t.Fatalf("request_branches after start: %+v, %v", info, err)
+		t.Fatalf("branch.request after start: %+v, %v", info, err)
 	}
 }

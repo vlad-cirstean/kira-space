@@ -38,8 +38,7 @@ func rvStep(sendTo string) string {
 }
 
 func rvReply(id string, text string) fakeagent.MCPCall {
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "reply_review_comment",
-		Args: map[string]any{"id": id, "reply": text, "resolved": true}}
+	return stateCall("review.reply", map[string]any{"id": id, "reply": text, "resolved": true})
 }
 
 // reviewFx is a task on implement, review, verify, with the review window's git stream.
@@ -250,7 +249,7 @@ func TestReviewSendImplementer(t *testing.T) {
 		t.Fatalf("round args lack %s:\n%s", toolName(agentmcp.ReviewReply), args)
 	}
 	prompt := fakeFile(t, f.app, "api-2.prompt")
-	for _, want := range []string{"id 1 change r.txt:1", "rename this", "id 2 question r.txt:3", "why twice?", "reply_review_comment", "finish_step"} {
+	for _, want := range []string{"id 1 change r.txt:1", "rename this", "id 2 question r.txt:3", "why twice?", "review.reply", "finish_step"} {
 		if !strings.Contains(prompt, want) {
 			t.Fatalf("round prompt lacks %q:\n%s", want, prompt)
 		}
@@ -440,7 +439,7 @@ func TestReviewQuitResume(t *testing.T) {
 		t.Fatalf("resumed round --resume = %q, want %q", got, implementID)
 	}
 	prompt := fakeFile(t, f.app, "api-3.prompt")
-	if !strings.Contains(prompt, "Kira Space closed while you worked") || !strings.Contains(prompt, "reply_review_comment") {
+	if !strings.Contains(prompt, "Kira Space closed while you worked") || !strings.Contains(prompt, "review.reply") {
 		t.Fatalf("resumed round prompt lacks the resume line or the reply instruction:\n%s", prompt)
 	}
 	if err := f.app.W.AdeTask.ResumeRun(ctx, adewire.RunArgs{RunID: st.Round.Run.ID}); err == nil {
@@ -487,14 +486,15 @@ func TestReviewRefusals(t *testing.T) {
 		t.Fatalf("comments after a round that replied to nothing = %+v, want the comment still open", got)
 	}
 
-	// A reply to an id the round was not sent comes back as a tool error and stores nothing.
+	// A reply to an id the round was not sent comes back as an invalid item and stores nothing.
 	if err := f.send("", ""); err != nil {
 		t.Fatal(err)
 	}
-	st = f.waitPhase(t, "stuck")
-	if log := logText(t, f.app, "run", st.Round.Run.ID); !strings.Contains(log, "tool error") {
-		t.Fatalf("round log lacks the refused reply:\n%s", log)
+	reply, errText := stateReply(t, f.app, "mcp-review.reply-1.json")
+	if it := replyItem(t, reply); errText != "" || it["status"] != "invalid" || it["fix"] == nil {
+		t.Fatalf("refused reply = %v %q, want an invalid item with a fix", reply, errText)
 	}
+	f.waitPhase(t, "waiting")
 	if got := f.comments(t); len(got) != 1 || got[0].State != "open" || got[0].Reply != "" {
 		t.Fatalf("comments after the refused reply = %+v", got)
 	}
@@ -552,7 +552,7 @@ func TestReviewForwardComments(t *testing.T) {
 	if p := fakeFile(t, f.app, "api-2.prompt"); !strings.Contains(p, strings.TrimSpace(copied.Text)) {
 		t.Fatalf("forwarded prompt differs from the copy text:\n%s\nvs\n%s", p, copied.Text)
 	}
-	if p := fakeFile(t, f.app, "api-2.prompt"); strings.Contains(p, "already handled") || strings.Contains(p, "reply_review_comment") {
+	if p := fakeFile(t, f.app, "api-2.prompt"); strings.Contains(p, "already handled") || strings.Contains(p, "review.reply") {
 		t.Fatalf("forwarded prompt carries an addressed comment or the round tool:\n%s", p)
 	}
 	left := f.comments(t)

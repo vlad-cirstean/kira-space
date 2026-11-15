@@ -7,38 +7,23 @@ const ServerName = "kira-space"
 
 // Tool ids of the Kira tool server; harness.ToolNames renders them in a provider's names.
 var (
-	FinishStep  = harness.MCPTool{Server: ServerName, Tool: "finish_step"}
-	RunOutcome  = harness.MCPTool{Server: ServerName, Tool: "run_outcome"}
-	Git         = harness.MCPTool{Server: ServerName, Tool: "git"}
-	ReviewReply = harness.MCPTool{Server: ServerName, Tool: "reply_review_comment"}
-	Submit      = harness.MCPTool{Server: ServerName, Tool: "submit"}
-	CreateTask  = harness.MCPTool{Server: ServerName, Tool: "create_task"}
+	FinishStep = harness.MCPTool{Server: ServerName, Tool: "finish_step"}
+	Git        = harness.MCPTool{Server: ServerName, Tool: "git"}
+	Submit     = harness.MCPTool{Server: ServerName, Tool: "submit"}
+	State      = harness.MCPTool{Server: ServerName, Tool: "state"}
+	CreateTask = harness.MCPTool{Server: ServerName, Tool: "create_task"}
 
-	// SpaceToolIDs are the Kira Space tools; a headless run and a TUI launch pass them next to
-	// finish_step.
-	SpaceToolIDs = []harness.MCPTool{
-		{Server: ServerName, Tool: "task_info"},
-		{Server: ServerName, Tool: "declare_repos"},
-		{Server: ServerName, Tool: "request_branches"},
-		{Server: ServerName, Tool: "rename_branch"},
-		{Server: ServerName, Tool: "change_branch"},
-		{Server: ServerName, Tool: "submit"},
-		{Server: ServerName, Tool: "operations"},
-		{Server: ServerName, Tool: "acquire_lease"},
-		{Server: ServerName, Tool: "release_lease"},
-		{Server: ServerName, Tool: "lease_status"},
-	}
+	// SpaceToolIDs are the Kira Space tools; a run and a TUI launch with a Space grant pass them
+	// instead of finish_step.
+	SpaceToolIDs = []harness.MCPTool{Submit, State}
 
 	// OrchestratorToolIDs are the tools only an orchestrator task carries, next to SpaceToolIDs.
-	OrchestratorToolIDs = []harness.MCPTool{
-		{Server: ServerName, Tool: "create_task"},
-		{Server: ServerName, Tool: "list_tasks"},
-		{Server: ServerName, Tool: "task_chain"},
-	}
+	OrchestratorToolIDs = []harness.MCPTool{CreateTask}
 
-	// SandboxToolIDs are the sandbox git tools.
-	SandboxToolIDs = []harness.MCPTool{
-		{Server: ServerName, Tool: "fetch_remote"},
-		{Server: ServerName, Tool: "push_branch"},
-	}
+	// StateToolIDs is the state tool alone: a review round or a sandboxed run without Space.
+	StateToolIDs = []harness.MCPTool{State}
+
+	// ReviewReply and SandboxToolIDs are state actions now: a review round or a sandboxed run lists state.
+	ReviewReply    = State
+	SandboxToolIDs = StateToolIDs
 )

@@ -157,12 +157,15 @@ func (s *Server) artifactsReply(ctx context.Context, req *mcp.CallToolRequest, t
 	return &mcp.TextContent{Text: text}
 }
 
-// finishContent is a finishing call's reply: the ack, then the task's artifacts when the grant is a
-// Kira Space task and Space tools are wired.
-func (s *Server) finishContent(ctx context.Context, req *mcp.CallToolRequest, ack string, g Grant) []mcp.Content {
-	out := []mcp.Content{&mcp.TextContent{Text: ack}}
+// artifactBlocks is the task's artifacts block when the grant is a Kira Space task and Space tools are wired.
+func (s *Server) artifactBlocks(ctx context.Context, req *mcp.CallToolRequest, g Grant) []mcp.Content {
 	if g.Space && g.TaskID != "" && s.space != nil {
-		out = append(out, s.artifactsReply(ctx, req, g.TaskID))
+		return []mcp.Content{s.artifactsReply(ctx, req, g.TaskID)}
 	}
-	return out
+	return nil
+}
+
+// finishContent is a finishing call's reply: the ack, then the task's artifacts.
+func (s *Server) finishContent(ctx context.Context, req *mcp.CallToolRequest, ack string, g Grant) []mcp.Content {
+	return append([]mcp.Content{&mcp.TextContent{Text: ack}}, s.artifactBlocks(ctx, req, g)...)
 }

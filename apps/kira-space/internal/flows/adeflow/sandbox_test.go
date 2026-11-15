@@ -11,7 +11,6 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox/sandboxtest"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
@@ -206,7 +205,7 @@ func TestSandboxPrepareFails(t *testing.T) {
 
 func TestSandboxTools(t *testing.T) {
 	call := func(tool string, args map[string]any) fakeagent.MCPCall {
-		return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: tool, Args: args}
+		return stateCall(tool, args)
 	}
 	tolerated := func(c fakeagent.MCPCall) fakeagent.MCPCall { c.Tolerate = true; return c }
 	result := func(f *runFixture, tool string) string {
@@ -225,12 +224,12 @@ func TestSandboxTools(t *testing.T) {
 	t.Run("push and fetch", func(t *testing.T) {
 		f := newSandboxFx(t, &sandboxtest.Fake{}, []fakeagent.Action{{
 			Sh:   "git commit -q --allow-empty -m sandboxed",
-			MCP:  []fakeagent.MCPCall{tolerated(call("fetch_remote", map[string]any{"remote": "nope"})), call("fetch_remote", nil), call("push_branch", nil)},
+			MCP:  []fakeagent.MCPCall{tolerated(call("remote.fetch", map[string]any{"remote": "nope"})), call("remote.fetch", nil), call("branch.push", nil)},
 			Name: "done",
 		}}, sbStep("one", ""))
 		f.start(t, "feat/api-sb")
 		waitRun(t, f.app, f.taskID, "one", "done")
-		mustContain(t, "bad remote", result(f, "fetch_remote"), "remote must be one of: origin")
+		mustContain(t, "bad remote", result(f, "remote.fetch"), "remote must be one of: origin")
 		br := branchOf(t, board(t, f.app), f.taskID, f.repoID)
 		if got, want := f.bare.Git("rev-parse", "refs/heads/feat/api-sb"), gitOut(t, br.Worktree, "rev-parse", "HEAD"); got != want {
 			t.Fatalf("remote branch = %s, want the pushed commit %s", got, want)
@@ -238,11 +237,11 @@ func TestSandboxTools(t *testing.T) {
 	})
 
 	t.Run("read step cannot push", func(t *testing.T) {
-		f := newSandboxFx(t, &sandboxtest.Fake{}, []fakeagent.Action{{MCP: []fakeagent.MCPCall{tolerated(call("push_branch", nil))}, Name: "done"}},
+		f := newSandboxFx(t, &sandboxtest.Fake{}, []fakeagent.Action{{MCP: []fakeagent.MCPCall{tolerated(call("branch.push", nil))}, Name: "done"}},
 			sbStep("one", "    sandbox:\n      access: read\n"))
 		f.start(t, "feat/api-sb")
 		waitRun(t, f.app, f.taskID, "one", "done")
-		mustContain(t, "push result", result(f, "push_branch"), "push is not allowed in a read-only step")
+		mustContain(t, "push result", result(f, "branch.push"), "unknown action branch.push")
 		if out := f.bare.Git("branch", "--list", "feat/api-sb"); out != "" {
 			t.Fatalf("remote has %q after a refused push", out)
 		}

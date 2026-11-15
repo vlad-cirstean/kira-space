@@ -90,8 +90,11 @@ type ResultVar struct {
 // FinishVars fills the finish instruction. Implicit is true when the step declares no results
 // beyond the implicit done and failed pair.
 type FinishVars struct {
-	Implicit bool        `json:"implicit"`
-	Results  []ResultVar `json:"results"`
+	Implicit bool `json:"implicit"`
+	// Plain names the finish_step tool: a run without a Space grant, such as a review round, has no
+	// state step.finish.
+	Plain   bool        `json:"plain"`
+	Results []ResultVar `json:"results"`
 }
 
 // StatusVars fills the finish_step status argument description.
@@ -833,7 +836,7 @@ var HeadlessFinishStepSuffix = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessFinishStepSuffix.title",
 	PurposeKey: "llmPrompts.entry.headlessFinishStepSuffix.description",
 	UsedByKey:  "llmPrompts.entry.headlessFinishStepSuffix.usedBy.body",
-	Default:    `{{if .Implicit}}When this step is done, call finish_step with status "done". If it failed, call it with status "failed", what failed and the reason. If you need a decision from me, call it with status "needs_input" and your question.{{else}}When this step ends, call finish_step once with status one of: {{range $i, $r := .Results}}{{if $i}}, {{end}}{{$r.ID}} ({{if $r.OK}}ok{{else}}not ok{{end}}{{if $r.Description}}: {{$r.Description}}{{end}}){{end}}. For a not-ok status add the reason. If you need a decision from me, use status "needs_input" with your question.{{end}}`,
+	Default:    `{{if .Implicit}}When this step is done, call {{if .Plain}}finish_step with status "done"{{else}}state with action step.finish and args status "done"{{end}}. If it failed, use status "failed", what failed and the reason. If you need a decision from me, use status "needs_input" and your question.{{else}}When this step ends, call {{if .Plain}}finish_step once with status one of: {{else}}state with action step.finish once, args status one of: {{end}}{{range $i, $r := .Results}}{{if $i}}, {{end}}{{$r.ID}} ({{if $r.OK}}ok{{else}}not ok{{end}}{{if $r.Description}}: {{$r.Description}}{{end}}){{end}}. For a not-ok status add the reason. If you need a decision from me, use status "needs_input" with your question.{{end}}`,
 }, FinishVars{Implicit: true, Results: []ResultVar{{ID: "done", OK: true}, {ID: "failed"}}})
 
 // HeadlessSpaceSuffix goes before the finish instruction when the Kira Space tools are on.
@@ -842,7 +845,7 @@ var HeadlessSpaceSuffix = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceSuffix.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceSuffix.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceSuffix.usedBy.body",
-	Default:    `Kira Space tools: task_info, declare_repos, request_branches. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for all; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.`,
+	Default:    `Kira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.`,
 }, NoVars{})
 
 // HeadlessSpaceFiles names the task folder, the step's draft file and how to load the tools.
@@ -851,9 +854,9 @@ var HeadlessSpaceFiles = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceFiles.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceFiles.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceFiles.usedBy.body",
-	Default: `Task folder: {{.Folder}}. See README.md there. Write your handover to {{.Draft}}, then call submit.{{range $i, $p := .Proofs}}
+	Default: `Task folder: {{.Folder}}. See README.md there. Write your handover to {{.Draft}}, then call submit. When the step is done, call state with step.finish.{{range $i, $p := .Proofs}}
 {{if eq $i 0}}Proofs: {{else}}  {{end}}{{$p}}{{end}}{{if .Load}} {{.Load}}{{end}}`,
-}, FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Draft: "handovers/draft-implement.md", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__submit,mcp__kira-space__task_info".`})
+}, FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Draft: "handovers/draft-implement.md", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__submit,mcp__kira-space__state".`})
 
 // HeadlessSandboxNote tells a sandboxed agent what it may write and what to do on a denial.
 var HeadlessSandboxNote = define(Entry{
@@ -864,8 +867,8 @@ var HeadlessSandboxNote = define(Entry{
 	Default: `Sandbox{{if not .Enforced}} (declared, not enforced){{end}}: {{if eq .Access "write"}}write only in {{.Worktree}} and $TMPDIR{{else}}read only; write only in $TMPDIR{{end}}.{{range .Read}}
 Read also: {{.}}{{end}}{{if not .Network}}
 Network: Claude API only.{{end}}{{if .Tools}}
-No git branch, worktree, tag, stash, fetch or push. Use request_branches, fetch_remote, push_branch.{{end}}
-"Operation not permitted" means the sandbox blocked it. Do not retry. Call finish_step failed; name the path in reason.`,
+No git branch, worktree, tag, stash, fetch or push. Use state: branch.request, remote.fetch, branch.push.{{end}}
+"Operation not permitted" means the sandbox blocked it. Do not retry. Finish with status failed (state step.finish, or finish_step); name the path in reason.`,
 }, SandboxNoteVars{
 	Access: "write", Worktree: "/work/kira-space/feat-login", Read: []string{"/work/specs"}, Network: false, Enforced: true, Tools: true,
 })
@@ -885,7 +888,7 @@ var HeadlessScriptReportSuffix = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessScriptReportSuffix.title",
 	PurposeKey: "llmPrompts.entry.headlessScriptReportSuffix.description",
 	UsedByKey:  "llmPrompts.entry.headlessScriptReportSuffix.usedBy.body",
-	Default:    `When finished, call finish_step with status "done" and a one-line reason. If you could not finish, call it with status "failed" and the reason. If you need a decision, call it with status "needs_input" and your question.`,
+	Default:    `When finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status "done" and a one-line reason. If you could not finish, use status "failed" and the reason. If you need a decision, use status "needs_input" and your question.`,
 }, NoVars{})
 
 // HeadlessSpaceInstructions is what the Kira Space tools server tells a client when it connects.
@@ -894,7 +897,7 @@ var HeadlessSpaceInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceInstructions.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceInstructions.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceInstructions.usedBy.body",
-	Default:    `Kira Space tools for this task. Declare repos and create or change branches only with branches; never git branch or git worktree. Edit task files, then call submit.`,
+	Default:    `Kira tools: submit for task files, state for everything else. Task state is in state.yaml in the task folder. Create or change branches only with state; never git branch or git worktree. A call that waits returns within 10 minutes; if it is not done, check the state.yaml fields it names. Edit task files, then call submit; end the step with state step.finish.`,
 }, NoVars{})
 
 // HeadlessToolFinishStep describes the finish_step tool.
@@ -922,159 +925,49 @@ var HeadlessFinishStepAck = define(Entry{
 	Default:    `Recorded. Stop now.`,
 }, NoVars{})
 
-// HeadlessToolReplyReviewComment describes the reply_review_comment tool.
-var HeadlessToolReplyReviewComment = define(Entry{
-	ID: "headless.tool.reply_review_comment", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "reply_review_comment",
-	Default: `Answer one review comment. Call once per comment you were sent.`,
-}, NoVars{})
-
-var (
-	_ = arg(HeadlessToolReplyReviewComment.id, "id", spaceApp, NextCall, `The comment id from the list.`, NoVars{})
-	_ = arg(HeadlessToolReplyReviewComment.id, "reply", spaceApp, NextCall, `What you changed, or the answer. Plain text.`, NoVars{})
-	_ = arg(HeadlessToolReplyReviewComment.id, "resolved", spaceApp, NextCall, `true when done or answered; false when you could not.`, NoVars{})
-)
-
-// HeadlessReviewReplyAck is the reply to a reply_review_comment call.
-var HeadlessReviewReplyAck = define(Entry{
-	ID: "headless.reviewReply.ack", Kind: KindToolResult, Apps: spaceApp, Applies: NextCall,
-	TitleKey:   "llmPrompts.entry.headlessReviewReplyAck.title",
-	PurposeKey: "llmPrompts.entry.headlessReviewReplyAck.description",
-	UsedByKey:  "llmPrompts.entry.headlessReviewReplyAck.usedBy.body",
-	Default:    `Saved.`,
-}, NoVars{})
-
-// HeadlessToolTaskInfo describes the task_info tool.
-var HeadlessToolTaskInfo = define(Entry{
-	ID: "headless.tool.task_info", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "task_info",
-	Default: `Your Kira Space task: title, Jira key, workflow, step, repos, branches; registered repos only with no repos or includeRegistered. With repo and branch: that worktree's state.`,
-}, NoVars{})
-
-var (
-	_ = arg(HeadlessToolTaskInfo.id, "repo", spaceApp, NextCall, `Task repo: nickname, name or id. With branch.`, NoVars{})
-	_ = arg(HeadlessToolTaskInfo.id, "branch", spaceApp, NextCall, `Branch name. With repo.`, NoVars{})
-	_ = arg(HeadlessToolTaskInfo.id, "waitSeconds", spaceApp, NextCall, `Seconds to wait for setup, 0 to {{.Max}}. Default 0.`, MaxVars{Max: 600})
-	_ = arg(HeadlessToolTaskInfo.id, "includeRegistered", spaceApp, NextCall, `true: also list the registered repos. Default: only when the task has no repos.`, NoVars{})
-)
-
-// HeadlessToolDeclareRepos describes the declare_repos tool.
-var HeadlessToolDeclareRepos = define(Entry{
-	ID: "headless.tool.declare_repos", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "declare_repos",
-	Default: `Add repos to the task. Only repos registered in Kira Space can be added. An unknown repo is refused: ask the user to import it from the Git module. Never removes a repo.`,
-}, NoVars{})
-
-var _ = arg(HeadlessToolDeclareRepos.id, "repos", spaceApp, NextCall,
-	`Repos to add: nickname, name or code repo id of a registered repo, from task_info. 1 to {{.Max}}.`, MaxVars{Max: 20})
-
-// HeadlessToolRequestBranches describes the request_branches tool.
-var HeadlessToolRequestBranches = define(Entry{
-	ID: "headless.tool.request_branches", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "request_branches",
-	Default: `Ask the user to approve branches and worktrees, all in one call; waits for the answer. You name each branch; Kira Space picks the folder. A repo may get several branches. Approval adds a registered repo missing from the task. With existing: true, checks out a branch that exists; if another worktree holds it, the user approves detaching it there. Per branch: created, checkedOut, existing, denied, failed or timeout. A new worktree may still be preparing; task_info with repo and branch shows it.`,
-}, NoVars{})
-
-var (
-	_ = arg(HeadlessToolRequestBranches.id, "branches", spaceApp, NextCall, `Branches, 1 to {{.Max}}.`, MaxVars{Max: 20})
-	_ = arg(HeadlessToolRequestBranches.id, "branches.repo", spaceApp, NextCall, `Repo: nickname, name or code repo id, from task_info.`, NoVars{})
-	_ = arg(HeadlessToolRequestBranches.id, "branches.branch", spaceApp, NextCall, `Branch name, such as feat/login-form. New unless existing is true.`, NoVars{})
-	_ = arg(HeadlessToolRequestBranches.id, "branches.existing", spaceApp, NextCall, `true: work on this existing branch instead of creating it. No base.`, NoVars{})
-	_ = arg(HeadlessToolRequestBranches.id, "branches.base", spaceApp, NextCall, `Existing branch to start from, such as main or feat/api: short name, origin checked first. A branch of a task stacks on it. Omit for main.`, NoVars{})
-)
-
-// HeadlessToolOperations describes the operations tool.
-var HeadlessToolOperations = define(Entry{
-	ID: "headless.tool.operations", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "operations",
-	Default: `List this task's stoppable operations, such as a slow git fetch or push. With cancel: stop one by id.`,
-}, NoVars{})
-
-var _ = arg(HeadlessToolOperations.id, "cancel", spaceApp, NextCall, `Operation id. Omit to list.`, NoVars{})
-
-// HeadlessToolRenameBranch describes the rename_branch tool.
-var HeadlessToolRenameBranch = define(Entry{
-	ID: "headless.tool.rename_branch", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "rename_branch",
-	Default: `Ask the user to approve renaming one of your task's branches; waits for the answer. The worktree folder stays. Never git branch -m. A pushed branch renames on the remote only if the user agrees. Outcome: renamed, denied, failed or timeout. Refused for main, integration and protected branches, open change requests and sandboxed branches.`,
-}, NoVars{})
-
-var (
-	_ = arg(HeadlessToolRenameBranch.id, "repo", spaceApp, NextCall, `Task repo: nickname, name or code repo id.`, NoVars{})
-	_ = arg(HeadlessToolRenameBranch.id, "from", spaceApp, NextCall, `Current branch name.`, NoVars{})
-	_ = arg(HeadlessToolRenameBranch.id, "to", spaceApp, NextCall, `New branch name. Must not exist yet.`, NoVars{})
-	_ = arg(HeadlessToolRenameBranch.id, "renameRemote", spaceApp, NextCall, `true proposes renaming the remote branch too. The user decides. Default false.`, NoVars{})
-)
-
-// HeadlessToolChangeBranch describes the change_branch tool.
-var HeadlessToolChangeBranch = define(Entry{
-	ID: "headless.tool.change_branch", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "change_branch",
-	Default: `Ask the user to approve pointing your task's branch at another existing local branch; waits for the answer. Use when the task folder holds a different branch than the task shows, or you must work on another existing branch. The folder and sessions stay; git switch runs there if needed. Never creates a branch: use request_branches. Outcome: changed, denied, failed or timeout. Refused for main, integration and checked-out-elsewhere branches, and a dirty folder that needs a switch.`,
-}, NoVars{})
-
-var (
-	_ = arg(HeadlessToolChangeBranch.id, "repo", spaceApp, NextCall, `Task repo: nickname, name or code repo id.`, NoVars{})
-	_ = arg(HeadlessToolChangeBranch.id, "from", spaceApp, NextCall, `Task branch to re-point.`, NoVars{})
-	_ = arg(HeadlessToolChangeBranch.id, "to", spaceApp, NextCall, `Existing local branch to work on instead.`, NoVars{})
-)
-
-// HeadlessToolAcquireLease describes the acquire_lease tool.
-var HeadlessToolAcquireLease = define(Entry{
-	ID: "headless.tool.acquire_lease", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "acquire_lease",
-	Default: `Take a named lease on a shared resource the user configured, such as a port, the full test suite, push or merge. Never blocks: returns held, or queued with your position. The lease is keyed to your session, so calling again keeps your place. When it frees, Kira messages your session; a headless run calls acquire_lease or lease_status again to check. Call release_lease when done. A lease ends with the session, or after 10 minutes of silence.`,
-}, NoVars{})
-
-var _ = arg(HeadlessToolAcquireLease.id, "queue", spaceApp, NextCall, `Lease queue name. lease_status lists them.`, NoVars{})
-
-// HeadlessToolReleaseLease describes the release_lease tool.
-var HeadlessToolReleaseLease = define(Entry{
-	ID: "headless.tool.release_lease", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "release_lease",
-	Default: `Release a lease you hold, or leave its queue. Call it as soon as you finish with the resource. Without queue: every lease you hold or wait for.`,
-}, NoVars{})
-
-var _ = arg(HeadlessToolReleaseLease.id, "queue", spaceApp, NextCall, `Lease queue name. Omit for all.`, NoVars{})
-
-// HeadlessToolLeaseStatus describes the lease_status tool.
-var HeadlessToolLeaseStatus = define(Entry{
-	ID: "headless.tool.lease_status", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "lease_status",
-	Default: `Show lease queues with their holder and waiters in grant order, and which are yours. Read only. Also delivers any lease notice waiting for you.`,
-}, NoVars{})
-
-var _ = arg(HeadlessToolLeaseStatus.id, "queue", spaceApp, NextCall, `Lease queue name. Omit for all.`, NoVars{})
-
-// HeadlessToolFetchRemote describes the fetch_remote tool.
-var HeadlessToolFetchRemote = define(Entry{
-	ID: "headless.tool.fetch_remote", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "fetch_remote",
-	Default: `Fetch a remote of your repo. Runs in Kira, outside the sandbox.`,
-}, NoVars{})
-
-var _ = arg(HeadlessToolFetchRemote.id, "remote", spaceApp, NextCall, `Remote name. Default origin.`, NoVars{})
-
-// HeadlessToolPushBranch describes the push_branch tool.
-var HeadlessToolPushBranch = define(Entry{
-	ID: "headless.tool.push_branch", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "push_branch",
-	Default: `Push your worktree's branch to its remote. Only that branch.`,
-}, NoVars{})
-
-var _ = arg(HeadlessToolPushBranch.id, "force", spaceApp, NextCall, `true pushes with --force-with-lease. Default false.`, NoVars{})
-
-// HeadlessToolRunOutcome describes the run_outcome tool.
-var HeadlessToolRunOutcome = define(Entry{
-	ID: "headless.tool.run_outcome", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "run_outcome",
-	Default: `How this task's latest runs ended: state, reason, conflicted files, last git error and, for a rebase, what git showed. Use to learn why a rebase or step failed. Only this task's runs.`,
-}, NoVars{})
-
-var (
-	_ = arg(HeadlessToolRunOutcome.id, "runId", spaceApp, NextCall, `One run id, from a prompt or an earlier call.`, NoVars{})
-	_ = arg(HeadlessToolRunOutcome.id, "branch", spaceApp, NextCall, `Only runs on this branch name.`, NoVars{})
-	_ = arg(HeadlessToolRunOutcome.id, "kind", spaceApp, NextCall, `rebase, step or automation (script runs started for this task). Default rebase and step.`, NoVars{})
-	_ = arg(HeadlessToolRunOutcome.id, "limit", spaceApp, NextCall, `How many runs, 1 to {{.Max}}. Default 3.`, MaxVars{Max: 10})
-)
-
 // HeadlessToolSubmit describes the submit tool.
 var HeadlessToolSubmit = define(Entry{
 	ID: "headless.tool.submit", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "submit",
-	Default: `Tell Kira Space you changed files in the task folder. It reads them, applies what it accepts and replies with a count line, then one line per file. A change that needs the user's approval needs reason.`,
+	Default: `Tell Kira Space you changed files in the task folder. It reads them, applies what it accepts and replies with a count line, then one line per file. A change that needs the user's approval needs reason. Task state changes use state.`,
 }, NoVars{})
 
 var (
 	_ = arg(HeadlessToolSubmit.id, "paths", spaceApp, NextCall, `Files to read, relative to the task folder, at most {{.Max}}. Default: every changed file.`, MaxVars{Max: 50})
-	_ = arg(HeadlessToolSubmit.id, "finished", spaceApp, NextCall, `true when this stage is done and the user should move the task on. Interactive sessions only.`, NoVars{})
 	_ = arg(HeadlessToolSubmit.id, "reason", spaceApp, NextCall, `One line: why you changed a handed handover, a note or another author's link. Required for those; the user reads it.`, NoVars{})
+)
+
+// HeadlessToolState describes the state tool: the header of its description. Each granted action adds
+// its own line (HeadlessStateAction*).
+var HeadlessToolState = define(Entry{
+	ID: "headless.tool.state", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "state",
+	Default: `Every task state change goes through this tool. Pick action; put the action's fields in args. A call that waits returns within 10 minutes. Reply: a summary line, then one item per change with status done, pending, waiting, denied, failed or invalid; invalid has fix.`,
+}, NoVars{})
+
+var (
+	_ = arg(HeadlessToolState.id, "action", spaceApp, NextCall, `What to do; see the tool description.`, NoVars{})
+	_ = arg(HeadlessToolState.id, "args", spaceApp, NextCall, `The action's fields, as an object.`, NoVars{})
+)
+
+func defineStateAction(name, text string) Prompt[NoVars] {
+	return define(Entry{
+		ID: ID("headless.tool.state.action." + name), Kind: KindTool, Apps: spaceApp, Applies: NextCall,
+		Name: name, Default: text,
+	}, NoVars{})
+}
+
+// The state action lines: one entry per action, named in the state description of a grant that holds it.
+var (
+	HeadlessStateRepoDeclare     = defineStateAction("repo.declare", `repo.declare: args {repos}: repos the work touches.`)
+	HeadlessStateBranchRequest   = defineStateAction("branch.request", `branch.request: args {repo, branch, base?, existing?}: new branch (user approves) or existing one; waits until its worktree is ready.`)
+	HeadlessStateBranchRename    = defineStateAction("branch.rename", `branch.rename: args {repo, from, to, renameRemote?}: rename your branch, and with renameRemote its remote branch too (user approves).`)
+	HeadlessStateBranchChange    = defineStateAction("branch.change", `branch.change: args {repo, from, to}: point task branch from at existing local branch to (user approves).`)
+	HeadlessStateLeaseAcquire    = defineStateAction("lease.acquire", `lease.acquire: args {queue}: wait for the queue's lease.`)
+	HeadlessStateLeaseRelease    = defineStateAction("lease.release", `lease.release: args {queue?}: leave one queue, or every queue.`)
+	HeadlessStateOperationCancel = defineStateAction("operation.cancel", `operation.cancel: args {opId}: stop a running operation (state.yaml operations).`)
+	HeadlessStateRemoteFetch     = defineStateAction("remote.fetch", `remote.fetch: args {remote?}: fetch a remote of your repo.`)
+	HeadlessStateBranchPush      = defineStateAction("branch.push", `branch.push: args {force?}: push your worktree's branch.`)
+	HeadlessStateReviewReply     = defineStateAction("review.reply", `review.reply: args {id, reply, resolved?}: answer one review comment you were sent.`)
+	HeadlessStateStepFinish      = defineStateAction("step.finish", `step.finish: args {status, reason?, conflictedFiles?, lastGitError?, tried?}: end the step; submits task files first. Status values: see the step prompt.`)
 )
 
 // HeadlessArtifactsHeader opens the artifact list a finishing call returns.
@@ -1118,36 +1011,16 @@ var (
 // HeadlessToolCreateTask describes the create_task tool.
 var HeadlessToolCreateTask = define(Entry{
 	ID: "headless.tool.create_task", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "create_task",
-	Default: `Ask the user to approve a new child task; waits for the answer. The brief is the child's first handover. Child tasks cannot create tasks. Every call waits for the user, so ask for what you need in one call. Outcome: created, denied, timeout or failed. Read results with list_tasks and task_chain; you are not woken when a child finishes.`,
+	Default: `Ask the user to approve a new child task; waits for the answer. The brief is the child's first handover. Child tasks cannot create tasks. Every call waits for the user, so ask for what you need in one call. Outcome: created, denied, timeout or failed. Read children in state.yaml (chain) and their folders; you are not woken when a child finishes.`,
 }, NoVars{})
 
 var (
 	_ = arg(HeadlessToolCreateTask.id, "title", spaceApp, NextCall, `Child task title, 1 to 200 characters.`, NoVars{})
 	_ = arg(HeadlessToolCreateTask.id, "workflow", spaceApp, NextCall, `Workflow id or name. It must exist and have a step.`, NoVars{})
 	_ = arg(HeadlessToolCreateTask.id, "repos", spaceApp, NextCall, `Repos of the child, 0 to {{.Max}}. Each gets a branch slot the child names later.`, MaxVars{Max: 10})
-	_ = arg(HeadlessToolCreateTask.id, "repos.repo", spaceApp, NextCall, `Repo: nickname, name or code repo id, from task_info.`, NoVars{})
+	_ = arg(HeadlessToolCreateTask.id, "repos.repo", spaceApp, NextCall, `Repo: nickname, name or code repo id, from state.yaml.`, NoVars{})
 	_ = arg(HeadlessToolCreateTask.id, "repos.base", spaceApp, NextCall, `Ref the child's branch starts from, such as main. Default: the repo's default branch.`, NoVars{})
 	_ = arg(HeadlessToolCreateTask.id, "brief", spaceApp, NextCall, `What the child must do, what it needs to know and what to hand back. Markdown, at most {{.Max}} bytes.`, MaxVars{Max: 16384})
-)
-
-// HeadlessToolListTasks describes the list_tasks tool.
-var HeadlessToolListTasks = define(Entry{
-	ID: "headless.tool.list_tasks", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "list_tasks",
-	Default: `List the child tasks you created, newest first: id, title, workflow, status, step, whether finished or archived, and the start of the child's last handover. At most 100.`,
-}, NoVars{})
-
-var _ = arg(HeadlessToolListTasks.id, "state", spaceApp, NextCall, `live, archived or all. Default all.`, NoVars{})
-
-// HeadlessToolTaskChain describes the task_chain tool.
-var HeadlessToolTaskChain = define(Entry{
-	ID: "headless.tool.task_chain", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "task_chain",
-	Default: `Read the handover chain of your own task or of one of your children, newest first: your earlier passes' handovers and finished children's results. Drafts included. Page with before.`,
-}, NoVars{})
-
-var (
-	_ = arg(HeadlessToolTaskChain.id, "taskId", spaceApp, NextCall, `A child's task id from list_tasks. Omit for your own chain.`, NoVars{})
-	_ = arg(HeadlessToolTaskChain.id, "limit", spaceApp, NextCall, `Rows per page, 1 to {{.Max}}. Default 10.`, MaxVars{Max: 50})
-	_ = arg(HeadlessToolTaskChain.id, "before", spaceApp, NextCall, `The next value of the previous page: rows older than that row.`, NoVars{})
 )
 
 // ADE.
@@ -1291,7 +1164,7 @@ var AdeReviewComments = define(Entry{
 	UsedByKey:  "llmPrompts.entry.adeReviewComments.usedBy.body",
 	Default: `{{range .Comments}}id {{.ID}} {{.Kind}} {{.Path}}:{{.Lines}}{{if .Uncommitted}} (uncommitted){{end}}
 {{.Body}}
-{{end}}Per comment, call reply_review_comment once.
+{{end}}Per comment, call state review.reply once.
 change: make the change, commit it, reply what changed, resolved true.
 question: answer in the reply, change no file for it, resolved true.
 Cannot do it: reply why, resolved false.`,
@@ -1400,7 +1273,7 @@ var AdeHandoverLine = define(Entry{
 	TitleKey:   "llmPrompts.entry.adeHandoverLine.title",
 	PurposeKey: "llmPrompts.entry.adeHandoverLine.description",
 	UsedByKey:  "llmPrompts.entry.adeHandoverLine.usedBy.body",
-	Default:    `When this stage is done, write your handover to its draft file in the task folder, then call submit with finished true.`,
+	Default:    `When this stage is done, write your handover to its draft file in the task folder, then call submit. Then call state with action step.finish and args status "done".`,
 }, NoVars{})
 
 // AdeRepoLine is one repository line of a launch message.
@@ -1427,7 +1300,7 @@ var AdeRebaseContextLine = define(Entry{
 	TitleKey:   "llmPrompts.entry.adeRebaseContextLine.title",
 	PurposeKey: "llmPrompts.entry.adeRebaseContextLine.description",
 	UsedByKey:  "llmPrompts.entry.adeRebaseContextLine.usedBy.body",
-	Default:    `- Last rebase of {{.Branch}} {{.Outcome}}: {{.Reason}} (run {{.RunID}}; call run_outcome for details)`,
+	Default:    `- Last rebase of {{.Branch}} {{.Outcome}}: {{.Reason}} (run {{.RunID}}; see runs in state.yaml)`,
 }, RebaseContextVars{Branch: "feat/login", Outcome: "failed", Reason: "conflicts in a.go", RunID: "run-7"})
 
 // AdeSendBackLine tells a step's agent that a later step failed on its work.

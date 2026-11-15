@@ -385,14 +385,14 @@ func runMCPCalls(action Action, dir string, args []string) (code int, done bool)
 		}
 		o := outs[i]
 		if o.err != nil && o.res != nil && c.Tolerate {
-			recordMCPResult(dir, c.Tool, o.res)
+			recordMCPResult(dir, c.Tool, c.Args, o.res)
 			continue
 		}
 		if o.err != nil {
 			fmt.Fprintln(os.Stderr, "mcp:", o.err)
 			return 3, true
 		}
-		recordMCPResult(dir, c.Tool, o.res)
+		recordMCPResult(dir, c.Tool, c.Args, o.res)
 	}
 	return 0, false
 }
@@ -840,8 +840,7 @@ func listStatus(ok bool) string {
 // callTool connects to server from the --mcp-config files (HTTP or stdio entry) or, when argv makes
 // claude load the user's servers, from the user's config, and calls one tool.
 func callTool(cfgPaths, argv []string, server, tool string, args map[string]any) (*mcp.CallToolResult, error) {
-	if tool == "finish_step" {
-		status, _ := args["status"].(string)
+	if status, ok := finishStatus(tool, args); ok {
 		writeDefaultDraft(lastPrompt, "summary-"+status)
 	}
 	var entry serverEntry
@@ -895,6 +894,12 @@ func callTool(cfgPaths, argv []string, server, tool string, args map[string]any)
 		return nil, err
 	}
 	defer sess.Close()
+	if tool == "finish_step" {
+		// A Space grant ends its step through state step.finish; a plain run still has finish_step.
+		if listed, err := sess.ListTools(ctx, nil); err == nil && !slices.ContainsFunc(listed.Tools, func(t *mcp.Tool) bool { return t.Name == "finish_step" }) {
+			tool, args = "state", map[string]any{"action": "step.finish", "args": args}
+		}
+	}
 	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: tool, Arguments: args})
 	if err != nil {
 		return nil, err
@@ -909,8 +914,7 @@ func callTool(cfgPaths, argv []string, server, tool string, args map[string]any)
 // fake claude does for finish_step; a test provider's headless role uses it with HeadlessSpec.MCPConfigs.
 // A done finish writes the draft the prompt names, as the agent would.
 func CallTool(prompt string, cfgPaths []string, server, tool string, args map[string]any) error {
-	if tool == "finish_step" {
-		status, _ := args["status"].(string)
+	if status, ok := finishStatus(tool, args); ok {
 		writeDefaultDraft([]byte(prompt), "summary-"+status)
 	}
 	_, err := callTool(cfgPaths, nil, server, tool, args)
@@ -927,13 +931,32 @@ func toolText(res *mcp.CallToolResult) string {
 	return strings.Join(parts, " ")
 }
 
-// recordMCPResult keeps what a scripted tool call returned, as <dir>/mcp-<tool>-<n>.json.
-func recordMCPResult(dir, tool string, res *mcp.CallToolResult) {
+// finishStatus is the status of a finish_step call or a state step.finish call, which end a step.
+func finishStatus(tool string, args map[string]any) (string, bool) {
+	if tool == "state" {
+		if action, _ := args["action"].(string); action != "step.finish" {
+			return "", false
+		}
+		inner, _ := args["args"].(map[string]any)
+		args = inner
+	} else if tool != "finish_step" {
+		return "", false
+	}
+	status, _ := args["status"].(string)
+	return status, true
+}
+
+// recordMCPResult keeps what a scripted tool call returned, as <dir>/mcp-<tool>-<n>.json. A state call
+// is named by its action, mcp-branch.request-<n>.json, so each action counts on its own.
+func recordMCPResult(dir, tool string, args map[string]any, res *mcp.CallToolResult) {
+	if action, _ := args["action"].(string); tool == "state" && action != "" {
+		tool = action
+	}
 	var v any = res.StructuredContent
 	if res.IsError {
 		v = map[string]any{"isError": true, "text": toolText(res)}
-	} else if v == nil {
-		v = res.Content
+	} else if v == nil || len(res.Content) > 1 {
+		v = res.Content // extra blocks (finish artifacts) carry what the structured reply does not
 	}
 	raw, err := json.Marshal(v)
 	if err != nil {

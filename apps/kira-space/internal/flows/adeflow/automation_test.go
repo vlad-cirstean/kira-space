@@ -232,7 +232,7 @@ func TestAutomationRun(t *testing.T) {
 			t.Fatalf("env = %v", env)
 		}
 		allowed := strings.Join(pv.Allowed, " ")
-		for _, want := range append([]string{toolName(agentmcp.FinishStep), toolName(agentmcp.RunOutcome)}, spaceToolNames()...) {
+		for _, want := range spaceToolNames() {
 			if !strings.Contains(allowed, want) {
 				t.Errorf("allowed tools lack %q: %s", want, allowed)
 			}
@@ -429,7 +429,7 @@ func TestAutomationRun(t *testing.T) {
 		release(t, f.gateOne)
 	})
 
-	t.Run("run_outcome automation and task filter", func(t *testing.T) {
+	t.Run("task filter", func(t *testing.T) {
 		f := newAutoFixture(t, "", false)
 		rec := f.script(t, smartFields("audit", "Audit {branch}"))
 		args := scriptruns.RunArgs{ScriptID: rec.ID, TaskID: f.task, BranchID: f.apiBr.ID}
@@ -521,7 +521,7 @@ func TestAutomationStep(t *testing.T) {
 			t.Fatalf("prompt = %q, want the finish instruction", got)
 		}
 		args := fakeFile(t, f.app, "api-1.args")
-		for _, want := range []string{"--model\nopus", "--max-budget-usd\n0.5", "--tools\nRead,Grep", "--strict-mcp-config", toolName(agentmcp.FinishStep), toolName(agentmcp.RunOutcome)} {
+		for _, want := range []string{"--model\nopus", "--max-budget-usd\n0.5", "--tools\nRead,Grep", "--strict-mcp-config", toolName(agentmcp.State)} {
 			if !strings.Contains(args, want) {
 				t.Errorf("argv lacks %q:\n%s", want, args)
 			}
@@ -678,37 +678,4 @@ func TestAutomationStep(t *testing.T) {
 			t.Fatalf("run = %+v", r)
 		}
 	})
-}
-
-func TestRunOutcomeAutomation(t *testing.T) {
-	f := newAutoFixture(t, agentStep("two", "    before: approval\n"), false)
-	call := func(kind string) fakeagent.MCPCall {
-		return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "run_outcome", Args: map[string]any{"kind": kind}}
-	}
-	// Attempt 1 of api was step one; 2 is the failing script; 3 is step two asking for outcomes.
-	f.app.Scenario(fakeagent.Scenario{Claude: map[string][]fakeagent.Action{
-		"api": {{Name: "done"}, {Name: "failed"}, {Name: "done", MCP: []fakeagent.MCPCall{call("automation"), call("")}}},
-		"*":   {{Name: "done"}},
-	}})
-	rec := f.script(t, smartFields("audit", "Audit {branch}"))
-	started := f.start(t, scriptruns.RunArgs{ScriptID: rec.ID, TaskID: f.task, BranchID: f.apiBr.ID})
-	failed := f.run(t, started.RunID, "failed")
-	if failed.Outcome == nil || failed.Outcome.Reason == "" {
-		t.Fatalf("script run = %+v, want a reason", failed)
-	}
-
-	if err := f.app.W.AdeTask.Approve(ctx, adewire.StepArgs{TaskID: f.task, StepID: "two"}); err != nil {
-		t.Fatal(err)
-	}
-	testx.WaitUntil(t, waitFor, func() bool {
-		r, ok := stepRunOn(t, f.app, f.task, "two", f.apiBr.ID)
-		return ok && r.State == "done"
-	})
-	listed := fakeFile(t, f.app, "mcp-run_outcome-1.json")
-	if !strings.Contains(listed, "audit") || !strings.Contains(listed, failed.Outcome.Reason) {
-		t.Fatalf("kind automation result = %s, want the failed script run and its reason", listed)
-	}
-	if plain := fakeFile(t, f.app, "mcp-run_outcome-2.json"); strings.Contains(plain, "audit") {
-		t.Fatalf("kind \"\" result = %s, must not list script runs", plain)
-	}
 }

@@ -63,7 +63,7 @@ func (df *detailsFiles) addPending(b *TaskBoard, p taskfiles.PendingSubmit) {
 		df.pending[p.TaskID] = m
 	}
 	for _, it := range p.Items {
-		m[it.Path] = detailsPending{item: it, reason: p.Reason, by: string(p.Session.Role)}
+		m[it.Path] = detailsPending{item: it, reason: p.Reason, by: string(p.Session.Role), at: df.b.deps.Now().UnixMilli()}
 	}
 	df.mu.Unlock()
 	df.putItem(b, p.TaskID)

@@ -116,7 +116,7 @@ func findArtifact(res adewire.ArtifactsResult, kind, title string) (adewire.Arti
 func TestTaskArtifacts(t *testing.T) {
 	dir := t.TempDir()
 	ready, hold1, hold2 := filepath.Join(dir, "ready"), filepath.Join(dir, "hold1"), filepath.Join(dir, "hold2")
-	finish := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{"status": "done"}}
+	finish := stateCall("step.finish", map[string]any{"status": "done"})
 	design := artItem("doc", "Design notes", "", "docs/design.md")
 	thePR := artItem("link", "The PR", artPRURL, "")
 	forge := fakehost.New()
@@ -169,13 +169,13 @@ func TestTaskArtifacts(t *testing.T) {
 
 	// 1. The finishing reply is built from local data: the cached PR, the branch, the stored rows, the
 	// stored issue link; no deployment detected from git and no gap. The reported PR folds into the PR.
-	_, list := mcpReply(t, app, "mcp-finish_step-1.json")
+	_, list := mcpReply(t, app, "mcp-step.finish-1.json")
 	kinds := map[string]int{}
 	for _, a := range list.Artifacts {
 		kinds[a.Kind]++
 	}
 	if kinds["changeRequest"] != 1 || kinds["issue"] != 2 || kinds["branch"] != 1 || kinds["deployment"] != 1 || kinds["doc"] != 1 || kinds["link"] != 0 || len(list.Artifacts) != 6 {
-		t.Fatalf("finish_step artifacts = %+v", list.Artifacts)
+		t.Fatalf("step.finish artifacts = %+v", list.Artifacts)
 	}
 	if len(list.Gaps) != 0 {
 		t.Fatalf("gaps = %+v, want none: the finish reply makes no host, git or tracker call", list.Gaps)

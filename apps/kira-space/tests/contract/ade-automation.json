@@ -71,7 +71,7 @@
       "summary": "summary-done"
     },
     "params": [],
-    "prompt": "Audit feat/api-login on main in <home>/kira-space-wts/api/<wt> for Fix login\n\nKira Space tools: task_info, declare_repos, request_branches. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for all; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.\n\nWhen finished, call finish_step with status \"done\" and a one-line reason. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
+    "prompt": "Audit feat/api-login on main in <home>/kira-space-wts/api/<wt> for Fix login\n\nKira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.\n\nWhen finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status \"done\" and a one-line reason. If you could not finish, use status \"failed\" and the reason. If you need a decision, use status \"needs_input\" and your question.",
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "",
@@ -88,18 +88,8 @@
         "Read",
         "Grep",
         "Glob",
-        "mcp__kira-space__finish_step",
-        "mcp__kira-space__run_outcome",
-        "mcp__kira-space__task_info",
-        "mcp__kira-space__declare_repos",
-        "mcp__kira-space__request_branches",
-        "mcp__kira-space__rename_branch",
-        "mcp__kira-space__change_branch",
         "mcp__kira-space__submit",
-        "mcp__kira-space__operations",
-        "mcp__kira-space__acquire_lease",
-        "mcp__kira-space__release_lease",
-        "mcp__kira-space__lease_status"
+        "mcp__kira-space__state"
       ],
       "mcpServers": [],
       "tools": [
@@ -123,7 +113,7 @@
     "model": "sonnet",
     "outcome": null,
     "params": [],
-    "prompt": "Audit feat/api-login on main in <home>/kira-space-wts/api/<wt> for Fix login\n\nKira Space tools: task_info, declare_repos, request_branches. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for all; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.\n\nWhen finished, call finish_step with status \"done\" and a one-line reason. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
+    "prompt": "Audit feat/api-login on main in <home>/kira-space-wts/api/<wt> for Fix login\n\nKira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.\n\nWhen finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status \"done\" and a one-line reason. If you could not finish, use status \"failed\" and the reason. If you need a decision, use status \"needs_input\" and your question.",
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "",
@@ -140,18 +130,8 @@
         "Read",
         "Grep",
         "Glob",
-        "mcp__kira-space__finish_step",
-        "mcp__kira-space__run_outcome",
-        "mcp__kira-space__task_info",
-        "mcp__kira-space__declare_repos",
-        "mcp__kira-space__request_branches",
-        "mcp__kira-space__rename_branch",
-        "mcp__kira-space__change_branch",
         "mcp__kira-space__submit",
-        "mcp__kira-space__operations",
-        "mcp__kira-space__acquire_lease",
-        "mcp__kira-space__release_lease",
-        "mcp__kira-space__lease_status"
+        "mcp__kira-space__state"
       ],
       "mcpServers": [],
       "tools": [
@@ -173,18 +153,8 @@
       "Read",
       "Grep",
       "Glob",
-      "mcp__kira-space__finish_step",
-      "mcp__kira-space__run_outcome",
-      "mcp__kira-space__task_info",
-      "mcp__kira-space__declare_repos",
-      "mcp__kira-space__request_branches",
-      "mcp__kira-space__rename_branch",
-      "mcp__kira-space__change_branch",
       "mcp__kira-space__submit",
-      "mcp__kira-space__operations",
-      "mcp__kira-space__acquire_lease",
-      "mcp__kira-space__release_lease",
-      "mcp__kira-space__lease_status"
+      "mcp__kira-space__state"
     ],
     "blocker": "",
     "body": "Audit {branch} on {base} in {worktree} for {task}",
@@ -294,7 +264,7 @@
       }
     ],
     "secretIssue": "",
-    "suffix": "Kira Space tools: task_info, declare_repos, request_branches. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for all; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.\n\nWhen finished, call finish_step with status \"done\" and a one-line reason. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
+    "suffix": "Kira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.\n\nWhen finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status \"done\" and a one-line reason. If you could not finish, use status \"failed\" and the reason. If you need a decision, use status \"needs_input\" and your question.",
     "timeout": "15m",
     "tools": [
       "Read",

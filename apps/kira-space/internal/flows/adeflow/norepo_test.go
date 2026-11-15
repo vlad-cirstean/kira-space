@@ -8,7 +8,6 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -54,8 +53,8 @@ func waitFakeText(t *testing.T, app *flowharness.App, name, want string) {
 
 func TestRepolessWorkflow(t *testing.T) {
 	t.Run("agent stages: the first picks repos, the next runs on them", func(t *testing.T) {
-		pick := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "declare_repos", Args: map[string]any{"repos": []any{"api"}}}
-		// The agent holds its MCP calls until the "started" snapshot is taken, else declare_repos races it.
+		pick := stateCall("repo.declare", map[string]any{"repos": []any{"api"}})
+		// The agent holds its MCP calls until the "started" snapshot is taken, else repo.declare races it.
 		hold := filepath.Join(t.TempDir(), "hold")
 		t.Cleanup(func() { _ = os.WriteFile(hold, nil, 0o644) })
 		f := newNRFixture(t, map[string][]fakeagent.Action{

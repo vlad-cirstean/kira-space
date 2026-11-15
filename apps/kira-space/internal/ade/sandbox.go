@@ -114,7 +114,7 @@ func (b *TaskBoard) sandboxInput(run model.AdeRun, l agentLaunch, sd adewire.Ste
 }
 
 // requestedWorktreeDirs are the per-repo folders new worktrees land in, for every branch of the
-// task. A run that starts at a repo root asks for its branches later through request_branches and must
+// task. A run that starts at a repo root asks for its branches later through state branch.request and must
 // reach the worktrees it gets; the folders are created so the policy can resolve them.
 func (b *TaskBoard) requestedWorktreeDirs(taskID string) ([]string, error) {
 	rows, err := b.deps.Tasks.BranchesOfTask(taskID)

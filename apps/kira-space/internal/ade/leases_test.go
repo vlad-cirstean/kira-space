@@ -88,7 +88,7 @@ func TestLeases_endedOwnerDropsRequeueAndDelivery(t *testing.T) {
 	key := leases.Key("rec")
 	b.endLeases(key)
 	b.requeueLeaseReply("rec", harness.HookReply{Block: "x"})
-	b.deliverLease(key, "y")
+	b.deliverNotice(key, "y")
 	if n := len(b.lease.pending[key]) + len(b.lease.flush); n != 0 {
 		t.Fatalf("ended owner kept %d pending or flush entries", n)
 	}

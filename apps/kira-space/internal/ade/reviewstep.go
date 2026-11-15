@@ -21,7 +21,7 @@ import (
 
 // reviewstep.go: the review step. A review step run has no process: it waits in state `review`
 // while the user comments in the review window. "Send to agent" queues a round, a headless run
-// (purpose `review`) that answers the open comments through reply_review_comment. Finish routes the
+// (purpose `review`) that answers the open comments through state review.reply. Finish routes the
 // step on a result the user picks.
 
 const noteReviewRound = "review round"
@@ -748,7 +748,7 @@ func (b *TaskBoard) startRound(ctx context.Context, tc *taskCtx, run model.AdeRu
 		}
 	}
 	// A round has no Space grant, so no submit tool: its prompt carries no task files fragment.
-	prompt := composeResumePrompt(b.prompts(), launch.Prompt, llmprompts.FilesVars{}, nil)
+	prompt := composeResumePrompt(b.prompts(), launch.Prompt, llmprompts.FilesVars{}, nil, false)
 	runCtx, endRun := b.beginLive(b.live, run.ID)
 	started = true
 	go func() {

@@ -303,7 +303,7 @@ func (b *TaskBoard) takeLocked(ctx context.Context, tc *taskCtx, s *requestSlot,
 			asked = s.item.Holder.Worktree
 		}
 		if asked == "" || filepath.Clean(asked) != filepath.Clean(h.path) {
-			return st, nil, fmt.Sprintf("Branch %s moved to %s while waiting. Call request_branches again.", s.branch, h.path), nil
+			return st, nil, fmt.Sprintf("Branch %s moved to %s while waiting. Call state branch.request again.", s.branch, h.path), nil
 		}
 		if t, _, err := b.holderBlock(ctx, entry, s.branch, h); t != "" || err != nil {
 			return st, nil, t, err
@@ -312,7 +312,7 @@ func (b *TaskBoard) takeLocked(ctx context.Context, tc *taskCtx, s *requestSlot,
 	if st.sb, st.added, st.named, err = b.takeRow(tc, s, named, draft, live); err != nil {
 		b.undoTake(ctx, entry, st, s.branch)
 		if errors.Is(err, repos.ErrBranchOnTask) || errors.Is(err, repos.ErrBranchNameTaken) {
-			return takeState{}, nil, fmt.Sprintf("Branch %s is already on a task. Call request_branches again.", s.branch), nil
+			return takeState{}, nil, fmt.Sprintf("Branch %s is already on a task. Call state branch.request again.", s.branch), nil
 		}
 		return takeState{}, nil, "", err
 	}

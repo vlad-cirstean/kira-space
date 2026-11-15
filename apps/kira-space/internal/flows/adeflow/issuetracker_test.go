@@ -15,7 +15,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -65,7 +64,7 @@ func TestTaskIssueTracker(t *testing.T) {
 	forge := fakehost.New()
 	acli := fakeacli.New(itSite)
 	acli.SetIssue("KIRA-12", fakeacli.IssueJSON("KIRA-12", "Add the thing", "In Review", "indeterminate", 4))
-	finish := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{"status": "done"}}
+	finish := stateCall("step.finish", map[string]any{"status": "done"})
 	f := newRunFixtureWith(t, []fakeagent.Action{{Sh: rvImplement, MCP: []fakeagent.MCPCall{finish}, Name: "nofinish"}},
 		agentStep("one", "")+manualStep,
 		flowharness.WithGitHost(forge), flowharness.WithoutGh(), flowharness.WithTrackerGrace(time.Second),
@@ -132,7 +131,7 @@ func TestTaskIssueTracker(t *testing.T) {
 	}
 
 	// 4. The finishing reply lists no jira gap.
-	_, list := mcpReply(t, app, "mcp-finish_step-1.json")
+	_, list := mcpReply(t, app, "mcp-step.finish-1.json")
 	for _, g := range list.Gaps {
 		if g.Source == "jira" {
 			t.Fatalf("finish_step gaps = %+v, want no jira gap", list.Gaps)

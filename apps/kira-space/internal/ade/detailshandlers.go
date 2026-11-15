@@ -71,8 +71,8 @@ func (h *detailsHandlers) Diff(ctx context.Context, tx taskfiles.Tx, taskID, rel
 			ch.Own = ch.Op == taskfiles.OpCreate || own[ch.Key]
 		}
 		return changes, nil
-	case taskfiles.KindReadme:
-		want, err := h.readme(ctx, taskID)
+	case taskfiles.KindReadme, taskfiles.KindTask, taskfiles.KindState:
+		want, err := h.kiraText(ctx, taskID, rel, c)
 		if err != nil || parsed == nil {
 			return nil, err
 		}
@@ -127,7 +127,7 @@ func (h *detailsHandlers) Apply(ctx context.Context, tx taskfiles.Tx, taskID, re
 	if c.Kind == taskfiles.KindLinks {
 		return h.applyLinks(ctx, tx, taskID, parsed, accepted)
 	}
-	if c.Kind == taskfiles.KindReadme {
+	if c.Kind.KiraOwned() {
 		return nil
 	}
 	if len(accepted) == 0 {
@@ -144,7 +144,7 @@ func (h *detailsHandlers) Adopt(ctx context.Context, tx taskfiles.Tx, taskID, re
 			return err
 		}
 		return h.applyLinks(ctx, tx, taskID, parsed, taskfiles.DiffLinks(cur.Links, parsed.(linksDoc).Links))
-	case taskfiles.KindReadme:
+	case taskfiles.KindReadme, taskfiles.KindTask, taskfiles.KindState:
 		return nil
 	}
 	return h.adoptText(ctx, tx, taskID, rel, c, parsed)
@@ -209,7 +209,7 @@ func (h *detailsHandlers) Remove(ctx context.Context, tx taskfiles.Tx, taskID, r
 			return err
 		}
 		return h.applyLinks(ctx, tx, taskID, linksDoc{}, taskfiles.DiffLinks(cur.Links, taskfiles.Links{}))
-	case taskfiles.KindReadme:
+	case taskfiles.KindReadme, taskfiles.KindTask, taskfiles.KindState:
 		return nil
 	}
 	row, err := h.row(ctx, tx, taskID, rel, c)
@@ -227,17 +227,36 @@ func (h *detailsHandlers) Render(ctx context.Context, tx taskfiles.Tx, taskID, r
 			return nil, false, err
 		}
 		return renderLinks(cur), true, nil
-	case taskfiles.KindReadme:
-		s, err := h.readme(ctx, taskID)
+	case taskfiles.KindReadme, taskfiles.KindTask:
+		s, err := h.kiraText(ctx, taskID, rel, c)
 		return []byte(s), err == nil, nil
 	case taskfiles.KindProof, taskfiles.KindProofData, taskfiles.KindProofImage:
 		return h.proofAccepted(tx, taskID, rel)
+	case taskfiles.KindState:
+		raw := h.df.kiraBytes(taskID, rel)
+		return raw, raw != nil, nil
 	}
 	row, err := h.cache().HandoverByRel(tx.Querier(), taskID, rel)
 	if err != nil || row == nil {
 		return nil, false, err
 	}
 	return []byte(row.Body), true, nil
+}
+
+// kiraText is the content a Kira-owned file must hold: the README and task.yaml from the task, state.yaml
+// from the last render, since a render needs the DB and a restore runs inside a transaction.
+func (h *detailsHandlers) kiraText(ctx context.Context, taskID, rel string, c taskfiles.Class) (string, error) {
+	switch c.Kind {
+	case taskfiles.KindState:
+		return string(h.df.kiraBytes(taskID, rel)), nil
+	case taskfiles.KindTask:
+		call, err := h.taskOf(ctx, taskID)
+		if err != nil {
+			return "", err
+		}
+		return string(h.df.taskYAML(call.tc)), nil
+	}
+	return h.readme(ctx, taskID)
 }
 
 func (h *detailsHandlers) readme(ctx context.Context, taskID string) (string, error) {

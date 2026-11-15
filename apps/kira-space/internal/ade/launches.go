@@ -410,9 +410,8 @@ func (b *TaskBoard) finishableRun(tc *taskCtx, rec *model.AdeSession) string {
 	return run.ID
 }
 
-// prepareWithGrant registers the agent MCP grant every task TUI launch carries (handover, run_outcome;
-// finish_step for a taken-over run; the Space tools) and prepares the
-// launch with its flags. grantStep is the stage the session opens for, "" when it has none. The grant
+// prepareWithGrant registers the agent MCP grant every task TUI launch carries (the Space tools, state
+// and submit; step.finish ends a run) and prepares the launch with its flags. grantStep is the stage the session opens for, "" when it has none. The grant
 // lives until the record stops or its launch expires. plan, when not nil and not off, confines the
 // session (P511); nil launches it unconfined.
 func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskCtx, pa PrepareArgs, kind, runID, grantStep string, plan *tuiSandboxPlan) (_ adewire.Launch, err error) {
@@ -437,7 +436,6 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 	var tools []harness.MCPTool
 	if runID != "" {
 		grant.Results = resultSpecs(stepResultsOf(tc, pa.StepID))
-		tools = append(tools, agentmcp.FinishStep)
 	} else {
 		grant.StepID = grantStep
 	}
@@ -452,8 +450,6 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 		return adewire.Launch{}, err
 	}
 	release = joinRelease(release, releaseDb)
-	tools = append(tools, agentmcp.RunOutcome)
-
 	tools = append(tools, agentmcp.SpaceToolIDs...)
 	if grant.Orchestrator {
 		tools = append(tools, agentmcp.OrchestratorToolIDs...)
@@ -670,7 +666,7 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 	message := args.Message
 	if message == "" {
 		message = composeManualMessage(b.prompts(), step, taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL, b.userNotes(tc.task.ID), lines, folder, b.handoverFor(tc, step.ID),
-			b.filesVarsFor(tc.task.ID, step.ID, step.Agent, false, tc.task.Kind == model.AdeTaskKindOrchestrator))
+			b.filesVarsFor(tc.task.ID, step.ID, step.Agent, tc.task.Kind == model.AdeTaskKindOrchestrator))
 	}
 	pa := PrepareArgs{TaskID: tc.task.ID, StepID: step.ID, Cwd: cwd, Message: message, Settings: step.Settings, Provider: step.Agent}
 	if len(extra) > 0 {
@@ -735,7 +731,7 @@ func (b *TaskBoard) StartBranch(ctx context.Context, args adewire.StartBranchArg
 		}
 		return composeStartMessage(b.prompts(), taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL,
 			repoLine{Nick: b.repoNick(tc, sb), Branch: sb.Name, Worktree: path}, b.firstOpenStep(tc), b.rebaseContext(tc), b.handoverFor(tc, b.currentStepID(tc)),
-			b.filesVarsFor(tc.task.ID, b.currentStepID(tc), stepAgentOf(tc, b.currentStepID(tc)), false, tc.task.Kind == model.AdeTaskKindOrchestrator))
+			b.filesVarsFor(tc.task.ID, b.currentStepID(tc), stepAgentOf(tc, b.currentStepID(tc)), tc.task.Kind == model.AdeTaskKindOrchestrator))
 	})
 }
 

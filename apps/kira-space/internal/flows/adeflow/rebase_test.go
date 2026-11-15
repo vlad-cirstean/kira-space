@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"go.yaml.in/yaml/v3"
+
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
@@ -352,7 +354,7 @@ func TestRebaseRun(t *testing.T) {
 		t.Logf("check-ref-format steps: %d", refChecks)
 	})
 
-	t.Run("run_outcome lists the failed rebase to a later step run of the same task only", func(t *testing.T) {
+	t.Run("state.yaml lists the failed rebase to a later step run of the same task", func(t *testing.T) {
 		f := newBaseFx(t)
 		saveWorkflow(t, f.app, "flow", flowYAML("flow", agentStep("one", "")+agentStep("two", "    before: approval\n")))
 		task, br := f.task(t, "Fix", adewire.BaseChoice{})
@@ -361,7 +363,7 @@ func TestRebaseRun(t *testing.T) {
 			{Name: "nofinish", MCP: []fakeagent.MCPCall{{Server: agentmcp.ServerName, Tool: "finish_step", Args: map[string]any{
 				"status": "failed", "reason": "clash", "conflictedFiles": []string{"x.txt"},
 			}}}},
-			{Name: "done", MCP: []fakeagent.MCPCall{{Server: agentmcp.ServerName, Tool: "run_outcome", Args: map[string]any{"kind": "rebase"}}}},
+			{Name: "done"},
 		}})
 		if err := f.startRun(t, task, br, "feat/api-work"); err != nil {
 			t.Fatal(err)
@@ -388,9 +390,13 @@ func TestRebaseRun(t *testing.T) {
 		if !strings.Contains(prompt, "Last rebase of feat/api-work failed") {
 			t.Fatalf("step prompt lacks the failed-rebase line:\n%s", prompt)
 		}
-		out := fakeFile(t, f.app, "mcp-run_outcome-1.json")
-		if !strings.Contains(out, "clash") || !strings.Contains(out, "x.txt") {
-			t.Fatalf("run_outcome result = %s, want the rebase run's reason and conflicted files", out)
+		doc := stateYAML(t, f.app, task.ID, func(d map[string]any) bool {
+			raw, _ := yaml.Marshal(d["runs"])
+			return strings.Contains(string(raw), "clash")
+		})
+		raw, _ := yaml.Marshal(doc["runs"])
+		if !strings.Contains(string(raw), "x.txt") {
+			t.Fatalf("state.yaml runs = %s, want the rebase run's reason and conflicted files", raw)
 		}
 	})
 

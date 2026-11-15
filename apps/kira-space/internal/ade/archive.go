@@ -196,6 +196,9 @@ func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string) error {
 	b.closeReviewWindows(tc)
 	b.snapshotChangeRequests(ctx, taskID, tc.branches)
 	err = b.deps.Tasks.ArchiveTask(taskID, b.deps.Now().UnixMilli())
+	if err == nil {
+		b.writeArchivedState(taskID)
+	}
 	b.touchHistory()
 	if err != nil {
 		return err

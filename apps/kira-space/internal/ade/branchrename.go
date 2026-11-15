@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
@@ -53,19 +54,37 @@ func (b *TaskBoard) RenameBranch(ctx context.Context, call agentmcp.SpaceCall, a
 	if plan.refusal != "" {
 		return renameResult(args, plan.nick, agentmcp.BranchFailed, plan.refusal), nil
 	}
-	dec, prefix := b.awaitBranchRequest(ctx, call, plan.draft)
-	itemID := prefix + "i0"
+	deadline := time.Now().Add(b.callWait())
+	late := func(dec branchDecision, prefix string) {
+		if dec.kind == decisionAbandoned {
+			return
+		}
+		res, err := b.renameDecision(b.ctx, call, args, plan.nick, dec, prefix+"i0")
+		if err != nil {
+			b.recordAnswer(call, stateAnswer{ID: args.Repo + "/" + args.To, Kind: "branch.rename", Subject: args.Repo + "/" + args.To, Status: answerFailed, Message: toolMessage(err)})
+			return
+		}
+		b.recordAnswer(call, answerOfOutcome("branch.rename", args.Repo+"/"+args.To, res.Outcome, agentmcp.BranchRenamed, res.Next))
+	}
+	dec, prefix := b.awaitBranchRequest(ctx, call, plan.draft, deadline, late)
+	if dec.kind == decisionPending {
+		res := renameResult(args, plan.nick, agentmcp.BranchPending, "")
+		res.Waited = b.callWait()
+		return res, nil
+	}
+	return b.renameDecision(ctx, call, args, plan.nick, dec, prefix+"i0")
+}
+
+// renameDecision applies the user's decision on a rename.
+func (b *TaskBoard) renameDecision(ctx context.Context, call agentmcp.SpaceCall, args agentmcp.RenameBranchArgs, nick string, dec branchDecision, itemID string) (agentmcp.RenameBranchResult, error) {
 	if err := ctx.Err(); err != nil {
 		return agentmcp.RenameBranchResult{}, err // the caller is gone: nothing is renamed for it
 	}
 	switch {
 	case dec.kind == decisionAbandoned:
 		return agentmcp.RenameBranchResult{}, agentmcp.ToolError("The rename request was cancelled.")
-	case dec.kind == decisionTimeout:
-		next := fmt.Sprintf("No answer from the user in %s; nothing was renamed. Call rename_branch again later or ask the user.", waitText(b.branchRequestWait()))
-		return renameResult(args, plan.nick, agentmcp.BranchTimeout, next), nil
 	case dec.kind == decisionDenied || !dec.approved[itemID]:
-		return renameResult(args, plan.nick, agentmcp.BranchDenied, "The user declined this rename. Do not rename it with git; keep the branch name or ask the user."), nil
+		return renameResult(args, nick, agentmcp.BranchDenied, "The user declined this rename. Do not rename it with git; keep the branch name or ask the user."), nil
 	}
 	return b.applyRename(ctx, call, args, dec.remote[itemID])
 }

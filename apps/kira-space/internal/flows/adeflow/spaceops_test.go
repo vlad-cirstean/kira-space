@@ -1,23 +1,18 @@
 package adeflow_test
 
 import (
-	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-// Backend half of an agent stopping its task's git operation through the operations tool; UI half: tests/ui/operations.spec.ts. Contract space-ops-agent-cancel.
+// Backend half of an agent stopping its task's git operation through state operation.cancel; UI half: tests/ui/operations.spec.ts. Contract space-ops-agent-cancel.
 
 func TestAgentCancelsTaskOperation(t *testing.T) {
-	listCall := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "operations"}
-	f := newRunFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{listCall}, Name: "done"}},
+	f := newRunFixture(t, []fakeagent.Action{{Name: "done"}},
 		agentStep("one", "")+agentStep("two", "    before: approval\n"))
 	log := f.app.W.Ops.Log
 	start := func(taskID, category string) *oplog.Op {
@@ -33,23 +28,18 @@ func TestAgentCancelsTaskOperation(t *testing.T) {
 
 	f.start(t, "feat/api-work")
 	waitRun(t, f.app, f.taskID, "one", "done")
-	var listed struct {
-		Operations []agentmcp.OperationInfo `json:"operations"`
-	}
-	raw, err := os.ReadFile(filepath.Join(f.app.FakeDir, "mcp-operations-1.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(raw, &listed); err != nil {
-		t.Fatalf("operations result %s: %v", raw, err)
-	}
-	if len(listed.Operations) != 1 || listed.Operations[0].OpID != mine.ID() {
-		t.Fatalf("operations = %s, want only the task's git op %s", raw, mine.ID())
+	doc := stateYAML(t, f.app, f.taskID, func(d map[string]any) bool {
+		ops, _ := d["operations"].([]any)
+		return len(ops) > 0
+	})
+	ops, _ := doc["operations"].([]any)
+	if first, _ := ops[0].(map[string]any); len(ops) != 1 || first["opId"] != mine.ID() {
+		t.Fatalf("state.yaml operations = %v, want only the task's git op %s", ops, mine.ID())
 	}
 
 	// Step two cancels the listed id, then an id of another task's op and of the session op.
 	cancel := func(id string) fakeagent.MCPCall {
-		return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "operations", Tolerate: true, Args: map[string]any{"cancel": id}}
+		return stateCall("operation.cancel", map[string]any{"opId": id})
 	}
 	claude(f.app, map[string][]fakeagent.Action{"*": {{Name: "done"}, {
 		MCP:  []fakeagent.MCPCall{cancel(mine.ID()), cancel(other.ID()), cancel(session.ID())},

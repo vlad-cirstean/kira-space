@@ -78,11 +78,15 @@ func composePrompt(src llmprompts.Source, in promptInput) string {
 // composeResumePrompt is the message a resumed run gets, after a send-back or a restart: the line, then
 // the task-files reminder (a finished step's draft is consumed, so the resumed run writes a new one),
 // then the finish_step instruction, which follows the current step results.
-func composeResumePrompt(src llmprompts.Source, line string, files llmprompts.FilesVars, results []adewire.StepResult) string {
+func composeResumePrompt(src llmprompts.Source, line string, files llmprompts.FilesVars, results []adewire.StepResult, space bool) string {
 	if files.Folder != "" {
 		line += "\n" + llmprompts.HeadlessSpaceFiles.Text(src, files)
 	}
-	return line + "\n\n" + agentmcp.FinishInstruction(src, resultSpecs(results)) + "\n"
+	finish := agentmcp.FinishInstruction
+	if !space { // a review round has no Space grant and finishes with finish_step
+		finish = agentmcp.PlainFinishInstruction
+	}
+	return line + "\n\n" + finish(src, resultSpecs(results)) + "\n"
 }
 
 // repoLine is one repo of a launch message.

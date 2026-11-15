@@ -67,7 +67,7 @@ func (f *adoptFixture) rowOf(t *testing.T, taskID, name string) adewire.Branch {
 	return adewire.Branch{}
 }
 
-// asked is one request_branches call in flight.
+// asked is one branch.request call in flight.
 type asked struct {
 	f    *adoptFixture
 	task adewire.Task
@@ -121,7 +121,7 @@ func (a *asked) result(t *testing.T) agentmcp.RequestedBranch {
 		}
 		return r.res.Branches[0]
 	case <-time.After(waitFor):
-		t.Fatal("request_branches did not end")
+		t.Fatal("branch.request did not end")
 	}
 	return agentmcp.RequestedBranch{}
 }
@@ -395,7 +395,7 @@ func TestBranchAdopt(t *testing.T) {
 		}
 	})
 
-	t.Run("rename_branch refuses a shared branch", func(t *testing.T) {
+	t.Run("branch.rename refuses a shared branch", func(t *testing.T) {
 		f := newAdoptFixture(t, "")
 		f.donorHolds(t, "feat/x")
 		a := f.ask(f.adopter, existing("feat/x"))
