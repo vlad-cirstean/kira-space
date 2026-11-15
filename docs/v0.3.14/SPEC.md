@@ -210,6 +210,21 @@ Scope change (user): `go-containers` stays one job, no shards, no aggregate. `go
 - Harness: spike tests need explicit output paths; `details_bench_test.go`, frozen `tools-baseline.json`, fixtures, `bun run test:claude:details`. DEV_ENVIRONMENT row and ARCHITECTURE "Task files (P643)" added.
 - Open: read-access sandbox runs cannot edit the task folder (Known open items); Part 3 decides.
 
+### P643 Part 3 Result
+
+Gate not met, so the row stays Todo. Round F1 (`plans/P643-bench-results.md`): round 1 cost 1.42x, context 1.05x; after fixing the files fragment (no forced README read) and loading only `finish_step` and `submit`, round 2 cost 1.32x, context 0.98x, edit failures 0.67 against 0.00. Turns 7 against 4: `ToolSearch`, draft write, `submit`. Spend 0.90 USD. The next owner decides how to close the cost gap (see the results file); the gate was not relaxed.
+
+- Mirror model: UI actions keep their DB writes, then `mirrorTask` renders notes, handovers, links and README through `Service.Write`. It never overwrites unsettled disk content. README is forced. Created tasks and child briefs mirror at creation. Caches change only by sync and accept.
+- `submit` tool (`paths`, `finished`, `reason`): count line first (`accepted N, pending user N, invalid N`), then per-item lines. A change to a user-owned file needs a `reason` and waits as one `details.edit:<taskId>` approval, on desktop and phone (`options.approved` lists the paths; nil approves all). Deny restores the file.
+- `finish_step`: implicit submit, no `summary` argument; an ok finish with no draft is refused ("write handovers/draft-<step>.md, then call finish_step"). The draft body is the run summary. Rebase, check and script runs are exempt, so they record an empty summary.
+- `handover` and `report_artifacts` tools removed; the proof attach kind stays until Part 4.
+- Disk banner: stat on open, focus, Refresh and submit; Accept and Discard; no watcher. Migration exporters through `Migrator`; `Service.Recover` at app start.
+- Prompts: fragment `headless.space.files` (folder, draft path, load hint), `harness.ToolLoader` with a Claude `LoadHint`, resume prompts carry the fragment, `HeadlessSpaceInstructions` rewritten, panel-forward labels carry the relative path.
+- Real `claude` found three gaps the fake agent hid, now fixed: a run or session could not write its draft without a permission prompt (task folder `Edit` and `Write` allow rules, `handovers/` pre-created); a review round has no Space grant, so it gets no files fragment; smart scripts lost their one-line result (an ok finish's `reason` is the summary of a run with no draft).
+- Sandbox: a read-access run with an allowed folder keeps edit tools, so it writes its draft. Known open items entry removed. OpenCode translates `Write(...)` denies to its edit permission.
+- Tests: flow `TestDetailsFiles` (contract `ade-details-files`) with UI spec `ade-v2-details-files.spec.ts`; `TestPhoneDetailsEdit` with the phone approvals case; contract note-path normalizer (`notes/<time>`); unit `TestLoadHintNamesSubmit`. Real `claude`: `TestAdeReportArtifacts` is now `TestAdeDetailsSubmit`, `TestAdeManualSession` writes a draft, `TestAdeAdHocSession` files a link.
+- Open for Parts 4 and 5: the agent is not told when an approval is answered (needs `state.yaml` `pending`, Part 5); README has no Proofs or Children lines; `task.yaml` and `state.yaml` have no handler (submit reports them ignored); the proof attach kind is unreachable until Part 4.
+
 ### P642 Result
 
 - Today tint is now a faint blue, 7% `--kira-info` mix (`--color-today-tint`, `tones.css`). Was a 5% grey mix. Fallback if the blue is disliked: drop the fill.
