@@ -1,6 +1,7 @@
 package ade
 
 import (
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
@@ -25,7 +26,7 @@ func (b *TaskBoard) filesVars(taskID, stepID string, agent harness.Provider, run
 	if err != nil || dir == "" {
 		return llmprompts.FilesVars{}
 	}
-	v := llmprompts.FilesVars{Folder: dir, Draft: draftRel(stepID)}
+	v := llmprompts.FilesVars{Folder: dir, Draft: draftRel(stepID), Proofs: taskfiles.PromptProofLines(b.proofIndex(taskID))}
 	if l, ok := agent.(harness.ToolLoader); ok {
 		v.Load = l.LoadHint(sessionTools(run, orchestrator)...)
 	}

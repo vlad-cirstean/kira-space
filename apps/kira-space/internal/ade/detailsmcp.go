@@ -137,10 +137,88 @@ func submitReply(res taskfiles.Result) string {
 		if f.Status == taskfiles.StatusUnchanged || f.Status == taskfiles.StatusIgnored {
 			continue
 		}
+		if f.Proof != nil && proofLine(&sb, f) {
+			continue
+		}
 		fmt.Fprintf(&sb, "\n%s: %s", f.Path, f.Status)
 		if f.Message != "" {
 			sb.WriteString(": " + f.Message)
 		}
 	}
 	return sb.String()
+}
+
+// proofLine writes the unit line of a proof result and, for an invalid unit, one line per problem. It
+// reports false for a result with nothing to say beyond the plain per-file line.
+func proofLine(sb *strings.Builder, f taskfiles.FileResult) bool {
+	p := f.Proof
+	folder := "proofs/" + p.Slug + "/"
+	switch f.Status {
+	case taskfiles.StatusInvalid:
+		if len(p.Problems) == 0 {
+			return false
+		}
+		fmt.Fprintf(sb, "\n%s: invalid, %d %s (lines follow)", folder, len(p.Problems), proofPlural(len(p.Problems), "problem"))
+		for _, l := range p.Problems {
+			sb.WriteString("\n" + l)
+		}
+		return true
+	case taskfiles.StatusPending:
+		if p.Changed != nil && len(p.Changed.Fields) == 1 && p.Changed.Fields[0] == "delete" {
+			fmt.Fprintf(sb, "\n%s: pending user, delete of %q (%s)", folder, p.Name, p.Reason)
+			return true
+		}
+		fmt.Fprintf(sb, "\n%s: pending user, change to %q: %s (%s)", folder, p.Name, changeText(p.Changed), p.Reason)
+		return true
+	case taskfiles.StatusAccepted:
+		if p.New {
+			steps := make([]string, len(p.Steps))
+			for i, st := range p.Steps {
+				steps[i] = fmt.Sprintf("%s (%s)", st.ID, st.View)
+			}
+			fmt.Fprintf(sb, "\n%s: accepted, new proof %q: %s; %d %s", folder, p.Name, strings.Join(steps, ", "), p.Counts.Steps, proofPlural(p.Counts.Steps, "step"))
+			if p.Counts.Images > 0 {
+				fmt.Fprintf(sb, ", %d %s", p.Counts.Images, proofPlural(p.Counts.Images, "image"))
+			}
+			if p.Counts.DataFiles > 0 {
+				fmt.Fprintf(sb, ", %d data %s", p.Counts.DataFiles, proofPlural(p.Counts.DataFiles, "file"))
+			}
+			return true
+		}
+		if p.Changed != nil {
+			fmt.Fprintf(sb, "\n%s: accepted, change to %q: %s", folder, p.Name, changeText(p.Changed))
+			return true
+		}
+		fmt.Fprintf(sb, "\n%s: accepted, deleted %q", folder, p.Name)
+		return true
+	}
+	return false
+}
+
+func proofPlural(n int, word string) string {
+	if n == 1 {
+		return word
+	}
+	return word + "s"
+}
+
+// changeText lists what an edit changes by step id.
+func changeText(c *taskfiles.ProofChanged) string {
+	if c == nil {
+		return "no change"
+	}
+	var parts []string
+	for _, id := range c.Changed {
+		parts = append(parts, id+" changed")
+	}
+	for _, id := range c.Added {
+		parts = append(parts, id+" added")
+	}
+	for _, id := range c.Removed {
+		parts = append(parts, id+" removed")
+	}
+	for _, f := range c.Fields {
+		parts = append(parts, f+" changed")
+	}
+	return strings.Join(parts, ", ")
 }

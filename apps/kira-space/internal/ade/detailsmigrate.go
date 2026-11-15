@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles/store"
 )
@@ -184,7 +185,16 @@ func (b *TaskBoard) startDetails() {
 			&handoverExporter{df: df, b: b, part: partNotes}, &handoverExporter{df: df, b: b, part: partHandovers}, linksExporter{df: df, b: b},
 		},
 	}
-	if err := mig.Run(b.ctx); err != nil && b.ctx.Err() == nil {
+	if links := b.proofLinks(); links != nil && df.blobs != nil {
+		mig.Exporters = append(mig.Exporters, &taskfiles.ProofExporter{
+			Source: links, Cache: repos.ProofCache{Dialect: b.deps.Tasks.Dialect}, Blobs: df.blobs, Now: b.deps.Now,
+		})
+	}
+	err := mig.Run(b.ctx)
+	if links := b.proofLinks(); links != nil {
+		links.PurgeTaskless()
+	}
+	if err != nil && b.ctx.Err() == nil {
 		slog.Error("ade: migrate task files", "scope", "ade", "err", err)
 	}
 	live, err := b.deps.Tasks.ListLive()

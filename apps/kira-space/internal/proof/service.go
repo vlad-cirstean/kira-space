@@ -32,6 +32,8 @@ type Deps struct {
 	Blobs *store.Blobs
 	// OnEditResolved runs after the user accepts or rejects a pending edit, so the files follow the decision.
 	OnEditResolved func(sessionID string, accepted bool) error
+	// DeleteFiles removes the folder of a proof and its rows; Delete calls it for a proof with a folder.
+	DeleteFiles func(taskID, slug string) error
 	// Prompts receives the "ready to review" popup; nil drops it.
 	Prompts prompts.Sink
 	// Approvals receives a pending edit for review; nil drops it.
@@ -175,6 +177,7 @@ func IsUserError(err error) bool {
 // StepMeta is a step without its data. Diff is relative to the current revision for a pending one.
 type StepMeta struct {
 	Ordinal       int    `json:"ordinal"`
+	ID            string `json:"id"`
 	Description   string `json:"description"`
 	Language      string `json:"language"`
 	Source        string `json:"source"`
@@ -211,7 +214,7 @@ func notFound() error {
 func meta(rows []repos.ProofStepRow) []StepMeta {
 	out := make([]StepMeta, len(rows))
 	for i, r := range rows {
-		out[i] = StepMeta{Ordinal: r.Ordinal, Description: r.Description, Language: r.Language, Source: r.Source, View: r.View,
+		out[i] = StepMeta{Ordinal: r.Ordinal, ID: r.StepKey, Description: r.Description, Language: r.Language, Source: r.Source, View: r.View,
 			Bytes: r.PayloadBytes, Diff: r.Diff, OriginOrdinal: r.OriginOrdinal}
 	}
 	return out
@@ -397,6 +400,16 @@ func (s *Service) RejectEdit(id string) error {
 
 // Delete removes a closed session and withdraws its popup.
 func (s *Service) Delete(id string) error {
+	if taskID, slug, ok, err := s.d.Repo.LinkOf(id); err != nil {
+		return err
+	} else if ok && s.d.DeleteFiles != nil {
+		if err := s.d.DeleteFiles(taskID, slug); err != nil {
+			return err
+		}
+		s.closePrompt(id)
+		s.emit(id)
+		return nil
+	}
 	ok, err := s.d.Repo.Delete(id)
 	if err != nil {
 		return err
@@ -427,4 +440,77 @@ func (s *Service) seen(id string) {
 		slog.Warn("proof: mark seen", "scope", "proof", "err", err)
 	}
 	s.closePrompt(id)
+}
+
+// Blobs is the store holding the bytes of proof files.
+func (s *Service) Blobs() *store.Blobs { return s.d.Blobs }
+
+// SetOnEditResolved registers the hook that makes the files follow an accepted or rejected edit. The
+// task board owns the files and exists after the service, so it registers itself here.
+func (s *Service) SetOnEditResolved(fn func(sessionID string, accepted bool) error) {
+	s.d.OnEditResolved = fn
+}
+
+// SessionOf returns the proof session of a task folder.
+func (s *Service) SessionOf(taskID, slug string) (id string, ok bool, err error) {
+	u, err := s.d.Repo.ByTaskSlug(taskID, slug)
+	if err != nil || u == nil {
+		return "", false, err
+	}
+	return u.Session.ID, true, nil
+}
+
+// RaiseReady opens the "ready to review" popup of a new proof.
+func (s *Service) RaiseReady(id string) {
+	if row, ok, err := s.d.Repo.Session(id); err == nil && ok {
+		s.openPrompt(id, row.Name, false)
+	}
+	s.emit(id)
+}
+
+// RaiseReview puts the review of a pending edit in the approvals queue, replacing an earlier one.
+func (s *Service) RaiseReview(id string) {
+	if row, ok, err := s.d.Repo.Session(id); err == nil && ok {
+		s.putReview(id, row.Name)
+	}
+	s.emit(id)
+}
+
+// WithdrawReview removes the review of an edit that no longer exists.
+func (s *Service) WithdrawReview(id string) {
+	s.closePrompt(id)
+	s.emit(id)
+}
+
+// LinkOf returns the task and proof folder of a session.
+func (s *Service) LinkOf(id string) (taskID, slug string, ok bool, err error) {
+	return s.d.Repo.LinkOf(id)
+}
+
+// SetOnDelete registers the hook that deletes a proof's folder with its rows.
+func (s *Service) SetOnDelete(fn func(taskID, slug string) error) { s.d.DeleteFiles = fn }
+
+// LegacyProofs lists the sessions of a task whose files the migration has not written yet.
+func (s *Service) LegacyProofs(taskID string) ([]repos.LegacyProof, error) {
+	return s.d.Repo.LegacyProofs(taskID)
+}
+
+// PurgeTaskless deletes the sessions no task holds, one log line each: unattached sessions have no
+// entry point since proofs became task files.
+func (s *Service) PurgeTaskless() {
+	list, err := s.d.Repo.TasklessSessions()
+	if err != nil {
+		slog.Warn("proof: list taskless sessions", "scope", "proof", "err", err)
+		return
+	}
+	for _, p := range list {
+		var closed int64
+		if p.ClosedAt != nil {
+			closed = *p.ClosedAt
+		}
+		slog.Info("proof: delete taskless session", "scope", "proof", "session", p.ID, "name", p.Name, "closedAt", closed)
+		if err := s.d.Repo.DeleteSession(p.ID); err != nil {
+			slog.Warn("proof: delete taskless session", "scope", "proof", "session", p.ID, "err", err)
+		}
+	}
 }

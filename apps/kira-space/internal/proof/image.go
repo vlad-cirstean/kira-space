@@ -202,3 +202,6 @@ type ImageMeta struct {
 
 // String names an image for a message.
 func (i ImageInfo) String() string { return fmt.Sprintf("%s %dx%d", i.Format, i.Width, i.Height) }
+
+// SniffFormat names the raster format of raw by its magic bytes; "" when it is none of PNG, JPEG, WebP.
+func SniffFormat(raw []byte) string { return sniffRaster(raw) }

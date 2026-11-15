@@ -89,11 +89,28 @@ func proofLines(proofs []ReadmeProof) []string {
 			out = append(out, fmt.Sprintf("  and %d more under proofs/", len(proofs)-maxReadmeProofs))
 			break
 		}
-		steps := make([]string, len(p.Steps))
-		for j, s := range p.Steps {
-			steps[j] = fmt.Sprintf("%s (%s)", s.ID, s.View)
+		out = append(out, indexLine(i, "Proofs:", ProofSummary(p)))
+	}
+	return out
+}
+
+// ProofSummary is the index text of one proof: its folder, name and steps with their views.
+func ProofSummary(p ReadmeProof) string {
+	steps := make([]string, len(p.Steps))
+	for j, s := range p.Steps {
+		steps[j] = fmt.Sprintf("%s (%s)", s.ID, s.View)
+	}
+	return fmt.Sprintf("%s %q: %s", p.Slug, oneLine(p.Name, 80), strings.Join(steps, ", "))
+}
+
+// PromptProofLines are the proof lines of a prompt: at most maxReadmeProofs, each cut to the byte cap.
+func PromptProofLines(proofs []ReadmeProof) []string {
+	var out []string
+	for i, p := range proofs {
+		if i == maxReadmeProofs {
+			break
 		}
-		out = append(out, indexLine(i, "Proofs:", fmt.Sprintf("%s %q: %s", p.Slug, oneLine(p.Name, 80), strings.Join(steps, ", "))))
+		out = append(out, capBytes(ProofSummary(p), maxReadmeLineBytes-len("Proofs: ")))
 	}
 	return out
 }

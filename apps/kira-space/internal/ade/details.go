@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"io"
 	"log/slog"
 	"path/filepath"
@@ -36,9 +37,12 @@ import (
 // approvals. Nil on a board with no files root.
 type detailsFiles struct {
 	svc   *taskfiles.Service
+	blobs *store.Blobs
 	idx   taskfiles.Index
-	cache repos.DetailsCache
-	root  string
+	// proofIndex lists the task's proofs for the README; nil when proofs are off.
+	proofIndex func(taskID string) []taskfiles.ReadmeProof
+	cache      repos.DetailsCache
+	root       string
 
 	mu       sync.Mutex
 	pending  map[string]map[string]detailsPending // task id -> path -> open item
@@ -62,7 +66,7 @@ func (b *TaskBoard) initDetails() {
 		pending: map[string]map[string]detailsPending{}, lastSync: map[string]time.Time{},
 	}
 	h := &detailsHandlers{b: b, df: df}
-	df.svc = taskfiles.New(taskfiles.Config{
+	cfg := taskfiles.Config{
 		Index: df.idx,
 		Open:  df.open,
 		Handlers: map[taskfiles.Kind]taskfiles.Handler{
@@ -70,7 +74,15 @@ func (b *TaskBoard) initDetails() {
 		},
 		Events: detailsEvents{b},
 		Now:    d.Now,
-	})
+	}
+	if d.Proofs != nil && d.Proofs.Blobs() != nil {
+		cfg.Proof = &taskfiles.ProofConfig{Cache: repos.ProofCache{Dialect: d.Tasks.Dialect}, Blobs: d.Proofs.Blobs(), NewID: ids.NewID}
+		d.Proofs.SetOnEditResolved(b.proofEditResolved)
+		d.Proofs.SetOnDelete(b.proofDelete)
+		df.blobs = d.Proofs.Blobs()
+	}
+	df.proofIndex = b.proofIndex
+	df.svc = taskfiles.New(cfg)
 	b.files = df
 }
 

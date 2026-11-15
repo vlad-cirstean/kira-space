@@ -230,6 +230,8 @@ func (h *detailsHandlers) Render(ctx context.Context, tx taskfiles.Tx, taskID, r
 	case taskfiles.KindReadme:
 		s, err := h.readme(ctx, taskID)
 		return []byte(s), err == nil, nil
+	case taskfiles.KindProof, taskfiles.KindProofData, taskfiles.KindProofImage:
+		return h.proofAccepted(tx, taskID, rel)
 	}
 	row, err := h.cache().HandoverByRel(tx.Querier(), taskID, rel)
 	if err != nil || row == nil {
@@ -362,4 +364,16 @@ func handedEnds(rel string) (from, to string) {
 		from = ""
 	}
 	return from, to
+}
+
+// proofAccepted returns the accepted bytes of a proof file from the blob store.
+func (h *detailsHandlers) proofAccepted(tx taskfiles.Tx, taskID, rel string) ([]byte, bool, error) {
+	if h.df.blobs == nil {
+		return nil, false, nil
+	}
+	row, err := tx.File(taskID, rel)
+	if err != nil || row == nil || row.AcceptedSHA256 == "" {
+		return nil, false, err
+	}
+	return h.df.blobs.Get(row.AcceptedSHA256)
 }

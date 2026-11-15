@@ -30,8 +30,13 @@ func (e detailsEvents) Pending(_ context.Context, p taskfiles.PendingSubmit) err
 	return nil
 }
 
-// Accepted needs no action in this part: a silent accept has no notification yet.
-func (detailsEvents) Accepted(context.Context, string, string, taskfiles.Notify) error { return nil }
+// Accepted raises the ready popup of a new proof; every other accept is silent.
+func (e detailsEvents) Accepted(_ context.Context, taskID, rel string, n taskfiles.Notify) error {
+	if n == taskfiles.NotifyProofReady {
+		e.b.proofReady(taskID, rel)
+	}
+	return nil
+}
 
 type detailsItemFile struct {
 	Path      string `json:"path"`
@@ -263,7 +268,14 @@ func (b *TaskBoard) DiskChanges(ctx context.Context, taskID string) ([]adewire.D
 			accepted, _, _ = h.Render(ctx, tx, taskID, p, c)
 			return nil
 		})
+		binary := c.Kind == taskfiles.KindProofImage
 		switch {
+		case binary && errors.Is(rerr, store.ErrNotExist):
+			dc.State = "missing"
+		case binary && len(accepted) == 0:
+			dc.State = "new"
+		case binary:
+			dc.State = "edited"
 		case errors.Is(rerr, store.ErrNotExist):
 			dc.State = "missing"
 			dc.Diff = taskfiles.TextDiff(p, string(accepted), "")

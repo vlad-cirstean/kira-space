@@ -359,7 +359,7 @@ func (s *Service) unitApply(ctx context.Context, req Request, slug string, doc p
 			res = FileResult{Path: md, Status: StatusInvalid, Message: msg, Proof: &ProofResult{Slug: slug, Name: doc.Name, Status: string(StatusInvalid), Problems: []string{msg}}}
 			return nil
 		case Pending:
-			if err := pc.Cache.Propose(q, repos.ProofEdit{SessionID: u.Session.ID, Name: doc.Name, Summary: doc.Summary,
+			if err := pc.Cache.Propose(q, repos.ProofEdit{SessionID: u.Session.ID, Name: doc.Name, Summary: doc.Summary, Reason: req.Reason,
 				Steps: stepRows(doc), Origin: originsOf(doc, before), Now: now}); err != nil {
 				return err
 			}
@@ -373,7 +373,7 @@ func (s *Service) unitApply(ctx context.Context, req Request, slug string, doc p
 			return nil
 		}
 		// A user's edit: the revision is proposed and accepted at once, so view state of unchanged steps carries over.
-		if err := pc.Cache.Propose(q, repos.ProofEdit{SessionID: u.Session.ID, Name: doc.Name, Summary: doc.Summary,
+		if err := pc.Cache.Propose(q, repos.ProofEdit{SessionID: u.Session.ID, Name: doc.Name, Summary: doc.Summary, Reason: req.Reason,
 			Steps: stepRows(doc), Origin: originsOf(doc, before), Now: now}); err != nil {
 			return err
 		}
