@@ -650,6 +650,9 @@ func TestDetailsSpike1b(t *testing.T) {
 	}
 	var recs []spikeRec
 	var spent, maxRun float64
+	if v, err := strconv.ParseFloat(os.Getenv("KIRA_SPIKE1B_FIRSTRUN"), 64); err == nil {
+		maxRun = v / 1.5 // expected cost of the first run, when the budget left is below the per-run cap
+	}
 	note := ""
 	for _, j := range jobs {
 		reserve := spikeRunCap1b
