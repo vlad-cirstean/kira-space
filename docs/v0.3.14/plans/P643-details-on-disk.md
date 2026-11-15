@@ -23,8 +23,8 @@ Final user answers. Binding for every build Part.
   rewrites only the affected tasks' `state.yaml`. Lease state stays in Kira's lease book, changed
   only through `lease`; never driven by a file edit.
 - Waits (settled for Part 5, section 9.2): `task_info` goes; no wait tool. A `branches` request
-  returns only once each requested worktree's setup is ready or failed, within the call deadline;
-  the same request again is the ready check. Interactive sessions also get a lease-style push when
+  returns once each requested worktree's setup is ready or failed, or after a 10 min setup wait
+  (approval keeps its 30 min); then the agent checks `repos[].setup` in `state.yaml`. Interactive sessions also get a lease-style push when
   a setup they asked about ends. `state.yaml` `repos[].setup` carries state and failure note. Until
   Part 5 lands, `task_info` stays unchanged. F5 re-benchmarked (14.1).
 - Content is files (notes, handovers, links incl. Jira and PR slots, proofs with images as files).
@@ -618,8 +618,8 @@ Edit task files, then call submit (finish_step submits for you).
 - Last line: the submit reminder. `finish_step` suffix stays last in step prompts.
 - `HeadlessSpaceInstructions` rewritten: `Kira Space tools for this task. Task state is in
   state.yaml in the task folder. Declare repos and create or change branches only with branches;
-  never git branch or git worktree. A branches request returns when the worktree is ready. Edit
-  task files, then call submit.` (Part 3 writes it without the `state.yaml` and setup sentences;
+  never git branch or git worktree. A branches request waits up to 10 minutes for the worktree; if
+  it is still preparing, check repos[].setup in state.yaml. Edit task files, then call submit.` (Part 3 writes it without the `state.yaml` and setup sentences;
   Part 5 adds both, 9.2.)
 
 ToolSearch limits (spike 1b, measured): built-in tool schemas 33.1k tokens and the 2.4k system
@@ -632,8 +632,8 @@ hint removes that failure, it does not remove the ToolSearch turn.
 ## 8. State file (Part 5)
 
 `state.yaml` header: `# Read-only. Kira rewrites this file. Change state only with Kira tools:
-branches, lease, cancel_operation, finish_step. A branches request waits until the worktree is
-ready.` (Part 2's `headers.go` text names `task_info`; Part 5 replaces it.) Coarse state only:
+branches, lease, cancel_operation, finish_step. repos[].setup shows each worktree setup: running,
+ready or failed with note.` (Part 2's `headers.go` text names `task_info`; Part 5 replaces it.) Coarse state only:
 
 ```yaml
 rev: 41                       # increments per rewrite; no file times
@@ -745,18 +745,28 @@ Design:
 
 - Blocking request, every role. `branches {action: request}` replies per slot only once its setup
   is `ready` or `failed`, not at `running`. Covers new branches (after approval and create) and
-  existing branches whose setup is running, whoever started it. One deadline per call for approval
-  plus setup: call start plus 33 min (`harness.MCPCallTimeout` minus 2 min). Progress
+  existing branches whose setup is running, whoever started it. Setup wait: 10 min default, new
+  `Deps.SetupWait` beside `Deps.BranchRequestWait` (const `defaultSetupWait`; flow tests set it
+  through new `flowharness.WithSetupWait`). It covers the setup phase only, counted from when the
+  wait starts (after approval and create, or at once for an existing branch). The approval phase
+  keeps `branchRequestWait()` (30 min) and today's timeout behaviour. Clamp: the setup wait never
+  runs past call start plus `harness.MCPCallTimeout` minus 2 min, so a call stays under the MCP
+  limit even after a long approval. Progress
   `preparing <branch>: <note>` through `ReportProgress`, as `BranchStatus` does now. The loop
   (`setupDone` channel, 5 s row re-read fallback) moves from `BranchStatus` to new
   `ade/setupwait.go`, called by `RequestBranches` (`ade/branchrequest.go`) and `applyExisting`
-  before the reply is built. The same request again is the wait and the ready check: no other tool,
-  no polling.
+  before the reply is built. After the setup wait runs out, the agent reads `state.yaml` itself;
+  no wait tool.
+- Why setup-only: making 10 min cover approval too would cut today's 30 min approval wait to 10
+  min, and the request would have to stay pending for the user after the call returns. Today a
+  timed-out call withdraws its items. That needs a new lifecycle: approval kept after the call, the
+  branch created on a later Approve with no caller, and the agent told through `state.yaml` and the
+  session push. Bigger change, user question QN3.
 - Waiter leaving (Esc, run end, context cancel) never cancels the setup. `cancel_operation` on the
   setup op fails it; a blocked waiter then gets `failed`.
 - Push, interactive sessions only, supplement. In-memory watcher per (repo, branch, session owner
-  key), added when a request to that session ends before the setup does (deadline, or wait
-  cancelled by Esc) or replies `failed`. At setup end (`runSetup` end, `recordSetupFailure`) Kira
+  key), added when a request to that session ends before the setup does (setup wait ran out, or
+  wait cancelled by Esc) or replies `failed`. At setup end (`runSetup` end, `recordSetupFailure`) Kira
   delivers to each watcher not blocked in a request on that branch, through the lease delivery path
   generalized to `deliverNotice` and `takeNotices` (`ade/leases.go`); notices also ride on
   `branches` replies. Ready removes the watcher; failed keeps it, so a later Retry reaches it.
@@ -766,10 +776,13 @@ Design:
   - ready: `Ready. Work in <path>.` (unchanged)
   - failed: `The worktree setup failed. Tell the user; do not edit until it is fixed. Reason:
     <note>` (unchanged)
-  - deadline, run: `Still preparing. Call branches with action request and the same branch again
-    to keep waiting; do not edit in <path> yet.`
-  - deadline, session: `Still preparing. Kira tells you when it is ready; do other work or end
-    your turn. Do not edit in <path> yet.`
+  - setup wait ran out, run: `Setup still running after <N> minutes. Check state.yaml in the task
+    folder: repos[].setup.state for <repo> is running, ready or failed; repos[].setup.note holds
+    the failure reason. Do not edit in <path> until it says ready.`
+  - setup wait ran out, session: same text plus `Kira also tells you when it is ready.`
+  - `pending` is not named: it lists submit items, and an approval still open never reaches this
+    reply (approval keeps its own wait). Calling the same request again blocks up to another setup
+    wait; harmless (no new approval, no new setup) but not offered, per the user.
   - none: unchanged except `request_branches` reads `branches` with action request.
 - Push texts:
   - `Kira: the worktree of <branch> (<repo>) is ready at <path>. Continue the work that waited for
@@ -783,8 +796,11 @@ Design:
 - Restart: watchers and queued messages are memory only. `Recover` marks running setups failed
   with the restart reason and stops sessions; `state.yaml` shows `failed` with that reason. A
   resumed agent tells the user; after Retry a `branches` request waits again.
-- Timeouts: the wait is bound by the call deadline; the setup by the prepare timeout. A setup
-  outlasting the call gets the deadline reply: a run calls again, a session gets the push.
+- Timeouts: approval up to 30 min (unchanged), then setup wait up to 10 min, clamped to
+  `MCPCallTimeout` minus 2 min from call start (worst case 33 min when the user approves late; 10
+  min when no approval is needed). The setup itself is bound by the prepare timeout (15 min
+  default). A setup outlasting the wait gets the "check state.yaml" reply; a session also gets the
+  push.
 - Launch gating (`queueRun`, `launchGate`) stays as is.
 
 Rejected: (a) wait-only `task_info`, one more tool (kept only as the F5 fallback, 14.1); (c) launch
@@ -840,9 +856,10 @@ heartbeat (`mcpRecorder`).
 - `llmprompts/registry.go`: `HeadlessToolTaskInfo` and its args go; arg texts "from task_info"
   (declare repo, request repo, `create_task` `repos.repo`) read "from state.yaml";
   `headless.space.suffix` names `branches`, `lease`, `cancel_operation`, `submit` and says a
-  `branches` request returns when each worktree is ready; its `FilesVars` example names
-  `mcp__kira-space__branches`; `branches` description adds "request returns when the worktree is
-  ready or its setup failed". `HeadlessSpaceInstructions` per 7.6.
+  `branches` request waits up to 10 minutes for each worktree, then `state.yaml` `repos[].setup`
+  tells; its `FilesVars` example names `mcp__kira-space__branches`; `branches` description adds
+  "request waits up to 10 min for the worktree setup". `ade/branchrequest.go` also gets
+  `defaultSetupWait` and `Deps.SetupWait` (`ade/board.go` deps), `flowharness.WithSetupWait`. `HeadlessSpaceInstructions` per 7.6.
 - `internal/taskfiles/headers.go`: `headerState` per section 8.
 - Texts and fixtures: `internal/llmprompts/testdata/golden/ade.*.txt`, `budget.tsv`, contracts
   `ade-automation.json` and `ade-run.json`, `tests/unit/ade-v2-dialog.spec.ts` `SPACE_NOTE`,
@@ -1041,11 +1058,12 @@ Findings that shape this plan:
   stub setup is ready). Arm R: real `ade.TaskBoard` and `agentmcp.Server`; task with repo `api`
   (step runs there, worktree ready) and repo `app` branch `feature/x` attached through
   `addExistingBranch`, prepare script `sleep 20`, setup started just before launch; headless run,
-  real composed prompt. Prompt core as 1b: "Branch feature/x of repo app in this task is being set
+  real composed prompt, default 10 min setup wait (20 s is far inside it, so R measures the
+  blocking path; the ran-out path is covered by the flow test). Prompt core as 1b: "Branch feature/x of repo app in this task is being set
   up. Wait until its setup is done, then reply with the branch's worktree path and nothing else."
   plus the folder line. Oracle: reply holds the worktree path and arrives after the setup row's
   `FinishedAt`. Diagnostics: ToolSearch loads, `branches` calls, Bash `sleep` calls, `state.yaml`
-  reads. Gate binding as above. Main risk: `branches` schema load context (spike FF context 1.05).
+  reads (more than one read means the agent polled). Gate binding as above. Main risk: `branches` schema load context (spike FF context 1.05).
   On a miss: first shorten the `branches` description and schema, rerun F5 (6 runs, about 0.36
   USD); still failing: Opus review of raw runs, then the user decides on a wait-only
   `task_info {repo, branch}` (option a, one more tool).
@@ -1116,15 +1134,19 @@ interacting rules.
 - Part 5: flow `adeflow` `TestDetailsStateFile` (contract `ade-state-file.json`): lease, op, setup,
   stage and pending changes land in `state.yaml` within 250 ms, coalesced (count writes), byte-equal
   skip; `branches` all four actions, `lease` both actions, `cancel_operation`; setup wait (9.2) in
-  new `adeflow/setupwait_test.go` (replaces `taskinfowait_test.go`; deadline shortened through a
-  test seam): run request for a new branch replies after setup end with path and progress notes;
-  request for an existing branch whose setup was started by UI attach or Retry waits; failed setup
-  replies the failure text and `state.yaml` shows `failed` with the note; deadline reply per role
-  (run: call again; session: Kira tells you); session wait cancelled mid-setup gets the ready push;
-  failed then Retry then ready reaches the watcher; no push to a session blocked on that branch,
-  no watcher for a run; waiter cancel leaves the setup running; `cancel_operation` on the setup op
-  fails the blocked waiter; after `Recover` `state.yaml` shows `failed` with the restart reason and
-  a request after Retry waits again. agentmcp `TestTaskInfoReportsProgress` becomes
+  new `adeflow/setupwait_test.go` (replaces `taskinfowait_test.go`; `flowharness.WithSetupWait`
+  shortens the setup wait), 11 cases: (1) run request for a new branch replies after setup end
+  with path and progress notes; (2) request for an existing branch whose setup was started by UI
+  attach or Retry waits; (3) failed setup replies the failure text and `state.yaml` shows `failed`
+  with the note; (4) setup wait ran out, per role: the reply names `state.yaml`,
+  `repos[].setup.state` and `repos[].setup.note`, has no "call branches again", the session text
+  adds the push sentence, and `state.yaml` shows `running`; (5) the setup wait starts after
+  approval: a slow approval inside `WithBranchRequestWait` still gets the full setup wait, clamped
+  by the MCP limit (seam); (6) session wait cancelled mid-setup gets the ready push; (7) failed
+  then Retry then ready reaches the watcher; (8) no push to a session blocked on that branch, no
+  watcher for a run; (9) waiter cancel leaves the setup running; (10) `cancel_operation` on the
+  setup op fails the blocked waiter; (11) after `Recover` `state.yaml` shows `failed` with the
+  restart reason and a request after Retry waits again. agentmcp `TestTaskInfoReportsProgress` becomes
   `TestBranchesRequestReportsSetupProgress`; `ade/agenttools_test.go`
   `TestSpaceTools_archivedAndBranchStatus`, `adeflow` `agent_tools_test.go` and
   `branchchange_test.go` move off `task_info` and `BranchStatus` (archived refusal through
@@ -1258,9 +1280,11 @@ proofs).
   indentation.
 - README example block adds about 200 tokens to every README read (F1 context gate 1.0 is at
   parity): fallback moves it to `proofs/EXAMPLE.md` (7.5).
-- Setup wait: a blocked `branches` request holds the agent up to 33 min; a run gets the deadline
-  reply and calls again, a session gets the push. The push misses runs by design (their request
-  blocks). `branches` schema load may fail the F5 context gate: lever and fallback in 14.1.
+- Setup wait: a blocked `branches` request holds the agent up to 10 min of setup (plus approval,
+  at most 33 min in all). Then a run reads `state.yaml` itself, which can turn into polling with
+  Bash `sleep` (F5 counts reads); a session also gets the push. The push misses runs by design
+  (9.2 paragraph). `branches` schema load may fail the F5 context gate: lever and fallback in
+  14.1.
 
 ## 18. Questions
 
@@ -1287,3 +1311,9 @@ New, for the user:
   across days.
 - QN2 superseded: no `proof` tool (user). Proofs work in every task folder through `submit`, which
   every Space grant has.
+- QN3 Setup wait scope (9.2): the 10 min default covers the setup phase only; the approval keeps
+  its 30 min wait, so a call can still block up to 33 min when the user approves late. Recommend:
+  keep it. Alternative: 10 min for the whole call, which cuts the approval wait to 10 min and needs
+  the request to stay pending after the call returns (Approve later creates the branch with no
+  caller; the agent learns through `state.yaml` and the session push; a run is told by nothing
+  until it reads `state.yaml`). Larger change to approvals.
