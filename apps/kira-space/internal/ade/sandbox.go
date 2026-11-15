@@ -79,6 +79,14 @@ func (b *TaskBoard) sandboxInput(run model.AdeRun, l agentLaunch, sd adewire.Ste
 		}
 		return in, nil
 	}
+	dir, err := b.filesDir(run.TaskID)
+	if err != nil {
+		return in, err
+	}
+	if dir != "" {
+		in.Allow = append(slices.Clone(in.Allow), dir)
+		in.DenyWrite = taskFolderDenyFiles(dir)
+	}
 	var sb model.AdeTaskBranch
 	if run.BranchID != taskTarget {
 		var err error

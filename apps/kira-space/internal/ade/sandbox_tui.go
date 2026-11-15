@@ -29,6 +29,8 @@ type tuiSandboxIn struct {
 	worktrees, read []string
 	runDir          string
 	branch          map[string]string
+	// taskDir is the task's file folder: writable, with its Kira-owned files denied. "" = none.
+	taskDir string
 }
 
 // tuiSandboxPlan is a manual step's sandbox request for one launch.
@@ -81,6 +83,10 @@ func (b *TaskBoard) manualSandboxPlan(sd adewire.StepSandbox, tc *taskCtx, lines
 			return nil, err
 		}
 		in.worktrees = []string{dir}
+	}
+	var err error
+	if in.taskDir, err = b.filesDir(tc.task.ID); err != nil {
+		return nil, err
 	}
 	return &tuiSandboxPlan{sd: sd, in: in}, nil
 }
@@ -138,6 +144,10 @@ func (b *TaskBoard) prepareTUISandbox(ctx context.Context, recordID string, agen
 	}
 	if files.isolation != "" {
 		in.Allow = append(in.Allow, files.isolation)
+	}
+	if plan.in.taskDir != "" {
+		in.Allow = append(in.Allow, plan.in.taskDir)
+		in.DenyWrite = taskFolderDenyFiles(plan.in.taskDir)
 	}
 	if files.contextFile != "" {
 		in.ContextDir = filepath.Dir(files.contextFile)

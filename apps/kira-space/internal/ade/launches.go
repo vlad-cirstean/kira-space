@@ -421,6 +421,9 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 		return adewire.Launch{}, err
 	}
 	pa.Provider = agent.ID()
+	if err := b.withTaskFolderArgs(&pa, tc.task.ID); err != nil {
+		return adewire.Launch{}, err
+	}
 	pa.Op = b.startSessionOp(ctx, kind, tc.task.ID, agent.Label(), "")
 	defer func() {
 		if err != nil {

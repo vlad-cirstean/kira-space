@@ -1050,6 +1050,13 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	if l.smart != nil {
 		spec = withTicked(l.smart.spec(agent, spec, space), ticked)
 	}
+	if !rebase {
+		if spec, err = b.withTaskFolder(spec, run.TaskID); err != nil {
+			release()
+			fail(err)
+			return
+		}
+	}
 	spec = b.applySandbox(spec, sbx, l)
 	b.noticeSandbox(sink, sbx)
 	var res *harness.Result

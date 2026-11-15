@@ -104,6 +104,8 @@ type TaskBoardDeps struct {
 	AgentDir string
 	// TasksDir holds each task's folder for runs and sessions on a task with no branch.
 	TasksDir string
+	// FilesDir is the root of the task file folders, <home>/tasks (P643). Empty grants no folder.
+	FilesDir string
 	// Prompts resolves the editable LLM prompt texts; nil means the registry defaults.
 	Prompts llmprompts.Source
 	// Agent resolves the provider of a new run. AgentBin overrides its CLI (a test points it at a fake).
