@@ -237,7 +237,11 @@ func continues(plan []stepView, idx int, res adewire.StepResult) bool {
 	if t := stepIndex(plan, res.Next); t >= 0 && t <= idx {
 		return true
 	}
-	return routeIndex(plan, idx, res.Next) < len(plan)
+	t := routeIndex(plan, idx, res.Next)
+	for t < len(plan) && plan[t].Def.Skip { // walkPath passes over skipped steps
+		t++
+	}
+	return t < len(plan)
 }
 
 // routeContinues reports whether finishing the step with status continues the route; with no status, any ok
