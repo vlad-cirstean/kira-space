@@ -225,6 +225,18 @@ F1 gate deferred to the final benchmark, cost 1.32 vs 1.2 and edit-failure cause
 - Tests: flow `TestDetailsFiles` (contract `ade-details-files`) with UI spec `ade-v2-details-files.spec.ts`; `TestPhoneDetailsEdit` with the phone approvals case; contract note-path normalizer (`notes/<time>`); unit `TestLoadHintNamesSubmit`. Real `claude`: `TestAdeReportArtifacts` is now `TestAdeDetailsSubmit`, `TestAdeManualSession` writes a draft, `TestAdeAdHocSession` files a link.
 - Open for Parts 4 and 5: the agent is not told when an approval is answered (needs `state.yaml` `pending`, Part 5); README has no Proofs or Children lines; `task.yaml` and `state.yaml` have no handler (submit reports them ignored); the proof attach kind is unreachable until Part 4.
 
+### P643 Part 4 Result
+
+Built and tested; benchmark gate not met, so the row stays Todo. Round F2 and F3 (`plans/P643-bench-results.md`): F2 cost 4.42x, context 1.30x, pass 1 of 2 against 1 of 1; F3 cost 1.40x, context 1.00x, pass equal. Cause: the validator rejected document and chart data without the format, so arm R guessed field names for up to 44 turns. Fixed after the run (`viewShapes`, every view's rejection carries its format); not re-benchmarked, the round budget is spent (1.04 of 0.89 USD: the first attempt died on two harness faults, the second ran to its guard). Rerun F2 and F3 in the Part 5 final benchmark; the gate was not relaxed.
+
+- Proof is a folder `proofs/<slug>/`: `proof.md` (YAML frontmatter, steps with `id`, inline or `data:` file) plus image and data files, sent with `submit`. All-or-nothing unit; an invalid unit answers one line per problem (file, line, step id) with the fix. No proof or create tool; `proof_save`, `proof_list` and the `report_artifacts` proof kind are removed.
+- Images: PNG, JPEG, WebP, SVG. Raster is decoded in full; SVG goes through a reject-never-sanitize validator (hostile fixtures per rule plus one allowed). Payload `{format, width, height, bytes, file, sha256}`; bytes stay in the file and the content-addressed blob store. Blob GC is not done (Known open items has no entry; ARCHITECTURE notes it).
+- Decision: a new proof is accepted; an agent edit or delete of an accepted proof needs a reason and is pending with `proof.review`; a user edit is accepted. Files are truth, `proof_*` tables a cache in the taskfiles transaction.
+- Window: one proof per window by (task id, slug), header `proofs/<slug>` with open, reveal and delete. Removed: Window > Validation proof, `ProofHistory.vue`, unattached sessions, attach and detach (`AdeProofAttachMenu.vue`, `ProofChoices`, `LinkProof`, `UnlinkProof`, `useProofChoices`, `useLinkProof`, `useUnlinkProof`), retention of 30, `kira:proof:select`.
+- Migration: asynchronous after start, `Migrator` proof exporters write `proofs/<slug>/proof.md` (step ids `s<ordinal>`), then `PurgeTaskless`. README line 4, example block, `Proofs:` line, cap 35; prompt `Proofs:` line; proof header text.
+- Tests: flow `proofflow` `TestProofFiles` (contract `proof-files.json`), `TestProofRemovals`, agentmcp `TestNoProofTool`; UI proof window, ready, chart, image, history-free specs and `ade-v2-proof-chain.spec.ts` on the contract; unit tables for images, proof-unit decision, YAML hints, SVG fixtures. Real `claude`: `TestProofMcpThroughClaude` and `TestProofChartThroughClaude` rewritten, pass.
+- Open: `apps/kira-space/tests/unit/studio/grpc-stream-terminal-race.spec.ts` fails identically on `chapter/v0.3.14` before this part, not root-caused.
+
 ### P642 Result
 
 - Today tint is now a faint blue, 7% `--kira-info` mix (`--color-today-tint`, `tones.css`). Was a 5% grey mix. Fallback if the blue is disliked: drop the fill.
