@@ -324,7 +324,7 @@ func TestAdeAdHocSession(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	if err := f.W.AdeTask.Send(ctx, adewire.SendArgs{
 		SessionID: launch.SessionID,
-		Message:   "Write `links:\n  - {kind: doc, title: adhoc ok, ref: adhoc.md}\n` to " + filepath.Join(folder.Path, "links.yaml") + ", then call the submit tool with no arguments, then reply done.",
+		Message:   "With the Write tool, write `links:\n  - {kind: doc, title: adhoc ok, ref: adhoc.md}\n` to " + filepath.Join(folder.Path, "links.yaml") + ", then call the submit tool with no arguments, then reply done.",
 	}); err != nil {
 		t.Fatalf("Send: %v", err)
 	}

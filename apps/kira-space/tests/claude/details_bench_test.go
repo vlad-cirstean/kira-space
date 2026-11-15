@@ -691,3 +691,84 @@ func seedProofR(t *testing.T, dir string) {
 		"  - id: flow\n    description: The matching path the reconcile command follows\n    view: diagram\n    inline: |\n"+flow.String()+
 		"  - id: why\n    description: Why the match holds and what a late edit does\n    view: document\n    data: explain.json\n---\n")
 }
+
+// TestDetailsBenchArmRServes checks, with no claude and no tokens, that arm R serves the uniform Space
+// surface over the task folder and answers the calls its flows make.
+func TestDetailsBenchArmRServes(t *testing.T) {
+	spike1bOn, spikeFixtures1b = true, benchFixtures
+	benchSetup = benchSetupR(t, benchBaseline{})
+	defer func() { spike1bOn, spikeFixtures1b, benchSetup = false, "testdata/details-spike-1b", nil }()
+	for _, flow := range []string{"F1", "F4", "F5", "F6"} {
+		r := &spikeRun{t: t, flow: flow, arm: "R", lib: loadSpikeLib(t)}
+		fl := flowByIDs(spikeFlows1b, flow)
+		cfg, dirs, done := r.setup(t, fl)
+		var conf struct {
+			MCPServers map[string]struct {
+				URL     string            `json:"url"`
+				Headers map[string]string `json:"headers"`
+			} `json:"mcpServers"`
+		}
+		if err := json.Unmarshal(mustRead(t, cfg), &conf); err != nil {
+			t.Fatal(err)
+		}
+		url, hdr := conf.MCPServers["kira-space"].URL, conf.MCPServers["kira-space"].Headers
+		tools, err := listTools(t, url, hdr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var names []string
+		for _, tl := range tools {
+			names = append(names, tl.Name)
+		}
+		slices.Sort(names)
+		want := []string{"state", "submit"}
+		if flow == "F4" || flow == "F6" {
+			want = []string{"create_task", "state", "submit"}
+		}
+		if !slices.Equal(names, want) {
+			t.Fatalf("%s tools = %v, want %v", flow, names, want)
+		}
+		for _, f := range []string{"README.md", "task.yaml", "state.yaml"} {
+			if _, err := os.Stat(filepath.Join(r.taskDir, f)); err != nil {
+				t.Fatalf("%s: %v", flow, err)
+			}
+		}
+		if n := len(dirs); (flow == "F4") != (n == 3) {
+			t.Fatalf("%s add-dirs = %v", flow, dirs)
+		}
+		sess, err := mcp.NewClient(&mcp.Implementation{Name: "check", Version: "1"}, nil).Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: url, HTTPClient: &http.Client{Transport: headerTransport(hdr)}}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		call := func(tool string, args map[string]any) string {
+			res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: tool, Arguments: args})
+			if err != nil {
+				t.Fatalf("%s: %v", tool, err)
+			}
+			raw, _ := json.Marshal(res.Content)
+			if res.IsError {
+				t.Fatalf("%s %s: error %s", flow, tool, raw)
+			}
+			return string(raw)
+		}
+		switch flow {
+		case "F5":
+			out := call("state", map[string]any{"action": "branch.request", "args": map[string]any{"repo": "app", "branch": "feature/x", "existing": true}})
+			if !strings.Contains(out, r.wt) || time.Now().Before(r.ready) {
+				t.Fatalf("branch.request = %s, want the worktree after setup ends", out)
+			}
+		case "F6":
+			call("create_task", map[string]any{"title": "x", "workflow": "default", "brief": "b", "repos": []map[string]any{{"repo": "app"}}})
+			if len(r.space.spawned) != 1 {
+				t.Fatalf("spawned = %d, want 1", len(r.space.spawned))
+			}
+		default:
+			writeFile(t, filepath.Join(r.taskDir, "handovers", "draft-implement.md"), "done\n")
+			if out := call("state", map[string]any{"action": "step.finish", "args": map[string]any{"status": "done"}}); !strings.Contains(out, "done") || len(r.finishes) != 1 {
+				t.Fatalf("step.finish = %s, finishes %v", out, r.finishes)
+			}
+		}
+		_ = sess.Close()
+		done()
+	}
+}
