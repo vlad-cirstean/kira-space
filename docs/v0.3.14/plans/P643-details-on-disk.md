@@ -1008,7 +1008,19 @@ Findings that shape this plan:
   miss: 1.26 USD. Asked cap: 6.5 USD (question QN1), unchanged. Estimates are Part 1b and 1c
   medians; R is assumed near T where R uses the same tool shape (F5 wait, F6 `create_task`), near FL
   where it reads files (F1, F4) and at the measured files arms for F2 (FP 0.0837) and F3 (FA and FP
-  0.079 to 0.085). F5 under option (d) has no measured arm; estimate kept at about 0.06.
+  0.079 to 0.085). F5 R has no measured arm in this shape; estimate kept at about 0.06.
+- F5 (setup wait, Part 5 round). Arm T: frozen baseline, spike stub (`task_info` waits until the
+  stub setup is ready). Arm R: real `ade.TaskBoard` and `agentmcp.Server`; task with repo `api`
+  (step runs there, worktree ready) and repo `app` branch `feature/x` attached through
+  `addExistingBranch`, prepare script `sleep 20`, setup started just before launch; headless run,
+  real composed prompt. Prompt core as 1b: "Branch feature/x of repo app in this task is being set
+  up. Wait until its setup is done, then reply with the branch's worktree path and nothing else."
+  plus the folder line. Oracle: reply holds the worktree path and arrives after the setup row's
+  `FinishedAt`. Diagnostics: ToolSearch loads, `branches` calls, Bash `sleep` calls, `state.yaml`
+  reads. Gate binding as above. Main risk: `branches` schema load context (spike FF context 1.05).
+  On a miss: first shorten the `branches` description and schema, rerun F5 (6 runs, about 0.36
+  USD); still failing: Opus review of raw runs, then the user decides on a wait-only
+  `task_info {repo, branch}` (option a, one more tool).
 - Kira-side cost, final, deterministic Go tests outside the `claude` module: submit latency (one
   changed file in a 500-file folder, p95 at most 200 ms); stat on task open, 500 files, at most 5
   ms; `state.yaml` rewrite at most 5 ms, at most one write per 150 ms window under a 100-change
@@ -1075,13 +1087,27 @@ interacting rules.
   `proof.md` (and a chart step) and calls `submit`.
 - Part 5: flow `adeflow` `TestDetailsStateFile` (contract `ade-state-file.json`): lease, op, setup,
   stage and pending changes land in `state.yaml` within 250 ms, coalesced (count writes), byte-equal
-  skip; `branches` all four actions, `lease` both actions, `cancel_operation`; setup wait per the
-  9.2 choice (`taskinfowait_test.go` rewritten for it: push delivered to a session and the failure
-  text on a failed setup for (d), wait-only reply for (a), request reply after setup for (b)); removed tools absent from every grant
+  skip; `branches` all four actions, `lease` both actions, `cancel_operation`; setup wait (9.2) in
+  new `adeflow/setupwait_test.go` (replaces `taskinfowait_test.go`; deadline shortened through a
+  test seam): run request for a new branch replies after setup end with path and progress notes;
+  request for an existing branch whose setup was started by UI attach or Retry waits; failed setup
+  replies the failure text and `state.yaml` shows `failed` with the note; deadline reply per role
+  (run: call again; session: Kira tells you); session wait cancelled mid-setup gets the ready push;
+  failed then Retry then ready reaches the watcher; no push to a session blocked on that branch,
+  no watcher for a run; waiter cancel leaves the setup running; `cancel_operation` on the setup op
+  fails the blocked waiter; after `Recover` `state.yaml` shows `failed` with the restart reason and
+  a request after Retry waits again. agentmcp `TestTaskInfoReportsProgress` becomes
+  `TestBranchesRequestReportsSetupProgress`; `ade/agenttools_test.go`
+  `TestSpaceTools_archivedAndBranchStatus`, `adeflow` `agent_tools_test.go` and
+  `branchchange_test.go` move off `task_info` and `BranchStatus` (archived refusal through
+  `branches`, setup reads through `state.yaml`); real `claude` `hooks_test.go` busy work and
+  `automation_test.go` move off `task_info` to `branches {action: declare}` of the declared repo
+  (or `lease` acquire then release if declare is not a no-op); removed tools absent from every grant
   (`TestOrchestratorToolGrants`, agentmcp `TestGrantScopes`, `toolnames_test.go`); orchestrator
   reads children through `chain` and README `Children:` lines; `create_task` reply `next` names the
   child's `handovers/` path. UI spec: folder bar lists `state.yaml` read-only with its `rev`, which
-  rises after a lease change; leases and branch request specs still pass. Real `claude`
+  rises after a lease change and after a setup end; leases, branch request and `useSetupWait`
+  specs still pass. Real `claude`
   `TestAdeOrchestrator`, `TestAdeHeadlessRun`, branch request rows rerun.
 - Every Part: matching real `claude` rows of DEV_ENVIRONMENT ("ADE runs and sessions", "Agent
   sandbox") once near Part end. Parts 3, 4, 5: benchmark round (14.1), gate binding except F2 and F3
@@ -1099,7 +1125,7 @@ passes (F2 and F3 reported, not gated).
 | 2 Foundation | store seam, `task_files`, intents, migration framework, submit core (walk, classify, diff, apply, restore, reason rule), proof validators export plus inline YAML to JSON, README generator, header texts, task folder grant (add-dir, sandbox allow and denies, deny rules), harness hygiene, bench harness and frozen baseline | new `internal/taskfiles/**`, `internal/taskfiles/store/**`, `storage/migrations/0101_p643_task_files.sql`, `storage/repos/taskfiles.go`, `internal/proof/validate.go`, `ade/sandbox.go`, `ade/sandbox_tui.go`, `ade/launches.go`, `appwire/wire.go`, `tests/claude/details_spike1b_test.go`, new `tests/claude/details_bench_test.go`, `tests/claude/testdata/details-bench/**`, `package.json` (`test:claude:details`), `docs/DEV_ENVIRONMENT.md` row, `docs/ARCHITECTURE.md` "Task files (P643)" |
 | 3 Notes, handovers, links, submit, prompts | file writes for every UI action, caches, stage move rename, `submit` tool (reason, reply wording), `finish_step` change, `handover` and `report_artifacts` removed (kind proof attach stays until Part 4 removes it), `details.edit` approvals desktop and phone, disk banner, migration exporters, panel forward paths, `headless.space.files` fragment and `harness.ToolLoader`, `HeadlessSpaceInstructions`, child brief written as a handed file, README content lines | `ade/handover.go`, `ade/links.go`, `ade/artifacts.go`, `ade/orchestrator.go`, `ade/taskcreate.go` (brief file), `ade/panelforward.go`, `ade/vars.go`, new `ade/details.go`, `agentmcp/{handover,artifacts,mcp,space,tools}.go`, new `agentmcp/submit.go`, `internal/harness/mcp.go`, `internal/harness/claude/mcp.go`, `llmprompts/registry.go`, `bridge/adetask.go`, `adewire/wire.go`, `mobileweb/approvals.go`, `frontend/src/ade/v2/details/**`, `request/kindDefs.ts`, mobile approval view, tests, bench F1 |
 | 4 Proofs (Stream A) | proofs as agent-written files plus `submit` (7.5): `proof.md` format, submit proof unit (all or nothing, side files, slug and name rules, YAML fix hints, proof reply summary), `Request.Tool` and `Decide` `tool` argument removed, image formats incl. SVG, window single and task-only, retention removed, kira-studio proof tools removed, Q10 entry points removed, proof migration and image rewrite, Q16 deletion, README example block, line 4 and `Proofs:` line, prompt `Proofs:` line, proof header text | `internal/proof/**`, `storage/repos/proof.go`, `storage/migrations/0102_p643_proof_step_key.sql`, `dbmcp/proof_tools.go` (removed), `dbmcp/server.go`, `ade/proof.go`, new `internal/taskfiles/proofunit.go`, `internal/taskfiles/{submit,decide,classify,readme,headers}.go`, `bridge/proof.go`, `bridge/dbmcp.go`, `bridge/adetask.go`, `appshell/menu.go`, `appwire/menuactions.go`, `frontend/src/studio/proof/**`, `details/AdeProofEntry.vue`, `AdeProofAttachMenu.vue` (removed), `packages/shared/domain/proof.ts`, `go.mod` (`golang.org/x/image`), tests, bench F2 F3 |
-| 5 State file and tools (Stream B) | `state.yaml`, `task.yaml` writer, `branches`, `lease`, `cancel_operation`, removals (`run_outcome`, `lease_status`, `operations`, `list_tasks`, `task_chain`, old branch and lease tools), setup wait open question (9.2: first a `codegraph_explore` check whether an agent ever waits for a setup it did not trigger and whether the lease channel reaches headless runs; default (d) push "worktree ready" and remove `task_info` if the check passes, else (b) where safe, fallback (a) wait-only `task_info`; F5 re-benchmarked either way), `state.yaml` header setup sentence, orchestrator chain reads, children add-dir, `create_task` `next` text, README `Children:` line, `HeadlessSpaceInstructions` `state.yaml` sentence | new `ade/statefile.go`, `agentmcp/{space,leases,orchestrator,outcomes,tools}.go`, new `agentmcp/branches.go`, `llmprompts/registry.go`, `ade/leases.go`, `ade/orchestrator.go`, `ade/taskcreate.go` (`next` text), `ade/launches.go` (children add-dir), `ade/agenttools.go` and `ade/setup.go` (setup wait per 9.2), `details/AdeDetailsFolderBar.vue`, tests, bench F4 F5 F6 |
+| 5 State file and tools (Stream B) | `state.yaml`, `task.yaml` writer, `branches`, `lease`, `cancel_operation`, removals (`run_outcome`, `lease_status`, `operations`, `list_tasks`, `task_chain`, old branch and lease tools, `task_info`), setup wait (9.2: blocking `branches` request, session push through the generalized lease notice path, `state.yaml` `repos[].setup`), `state.yaml` header setup sentence, orchestrator chain reads, children add-dir, `create_task` `next` text, README `Children:` line, `HeadlessSpaceInstructions` `state.yaml` and setup sentences | new `ade/statefile.go`, new `ade/setupwait.go`, `agentmcp/{space,leases,orchestrator,outcomes,tools}.go`, new `agentmcp/branches.go`, `llmprompts/registry.go`, `ade/leases.go`, `ade/orchestrator.go`, `ade/taskcreate.go` (`next` text), `ade/launches.go` (children add-dir), `ade/agenttools.go`, `ade/branchrequest.go`, `ade/branchadopt.go`, `ade/setup.go`, `details/AdeDetailsFolderBar.vue`, tests, bench F4 F5 F6 |
 
 Part 2 tasks for the spike gaps and hygiene:
 
@@ -1149,17 +1175,17 @@ File ownership:
 | File or area | Owner |
 |---|---|
 | `internal/proof/**`, `storage/repos/proof.go`, `dbmcp/**` proof parts, `bridge/proof.go`, `bridge/dbmcp.go`, `appshell/menu.go`, `appwire/menuactions.go`, `frontend/src/studio/proof/**`, `details/AdeProofEntry.vue`, `AdeProofAttachMenu.vue`, `packages/shared/domain/proof.ts`, new `internal/taskfiles/proofunit.go`, `internal/taskfiles/{submit,decide}.go`, `ade/proof.go`, `go.mod`, migration `0102` | A |
-| new `ade/statefile.go`, new `agentmcp/branches.go`, `agentmcp/{space,leases,orchestrator,outcomes,tools,mcp}.go`, `ade/leases.go`, `ade/agenttools.go`, `ade/setup.go`, `ade/orchestrator.go`, `ade/taskcreate.go`, `details/AdeDetailsFolderBar.vue` | B |
+| new `ade/statefile.go`, new `ade/setupwait.go`, new `agentmcp/branches.go`, `agentmcp/{space,leases,orchestrator,outcomes,tools,mcp}.go`, `ade/leases.go`, `ade/agenttools.go`, `ade/branchrequest.go`, `ade/branchadopt.go`, `ade/setup.go`, `ade/orchestrator.go`, `ade/taskcreate.go`, `details/AdeDetailsFolderBar.vue` | B |
 | shared, listed below | A and B |
 
 Shared files, additive hunks:
 
 | Shared file | Stream A edit | Stream B edit |
 |---|---|---|
-| `internal/llmprompts/registry.go` | `DbmcpToolProofSave`, `DbmcpToolProofList` removed | `branches`, `lease`, `cancel_operation` texts; removed entries; setup-wait text per 9.2 (`task_info` description or its removal); `HeadlessSpaceInstructions` sentence |
+| `internal/llmprompts/registry.go` | `DbmcpToolProofSave`, `DbmcpToolProofList` removed | `branches`, `lease`, `cancel_operation` texts; removed entries incl. `task_info`; `branches` request readiness clause, `headless.space.suffix`, "from state.yaml" arg texts (9.3); `HeadlessSpaceInstructions` sentences |
 | `internal/taskfiles/classify.go` | proof-folder hint for a bad slug or a too-deep path | none (Kira-owned patterns exist from Part 2) |
 | `internal/taskfiles/readme.go` | line 4, example block, `Proofs:` line, cap 35 | `Children:` line |
-| `internal/taskfiles/headers.go` | `headerProof` without the proof tool | `headerState` setup-wait sentence |
+| `internal/taskfiles/headers.go` | `headerProof` without the proof tool | `headerState` text (section 8) |
 | `ade/vars.go` | prompt `Proofs:` line input | none |
 | `ade/launches.go` | none | children add-dir |
 | `bridge/adetask.go` | proof choices and link calls removed | none |
@@ -1204,14 +1230,15 @@ proofs).
   indentation.
 - README example block adds about 200 tokens to every README read (F1 context gate 1.0 is at
   parity): fallback moves it to `proofs/EXAMPLE.md` (7.5).
-- Setup wait push (option d) cannot reach a headless run that calls no Kira tool or whose turn
-  ended (9.2 findings): Part 5's check decides; fallback (a) keeps a wait-only tool.
+- Setup wait: a blocked `branches` request holds the agent up to 33 min; a run gets the deadline
+  reply and calls again, a session gets the push. The push misses runs by design (their request
+  blocks). `branches` schema load may fail the F5 context gate: lever and fallback in 14.1.
 
 ## 18. Questions
 
 Answered (kept for the record): Q1 no watcher; Q2 superseded by the narrowed design
 (`create_task` stays, no drafts); Q3 folders by id; Q6 blocking mirrors old tools; Q9 merged
-`branches` and `lease` (setup wait reopened for Part 5, 9.2); Q10 no proof outside a task; Q11 no backup; Q12 spike
+`branches` and `lease` (setup wait settled in 9.2: blocking request, no wait tool); Q10 no proof outside a task; Q11 no backup; Q12 spike
 models (done); Q15 phone; Q16 delete taskless proof rows after a log line; Q17 image formats.
 
 Plan recommendations in force (user accepted "all other questions: plan's recommendation"):
@@ -1232,7 +1259,3 @@ New, for the user:
   across days.
 - QN2 superseded: no `proof` tool (user). Proofs work in every task folder through `submit`, which
   every Space grant has.
-
-Open for a Part planner, not the user:
-
-- Setup wait (Part 5): options (a) to (d), findings and default in 9.2.
