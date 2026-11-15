@@ -106,6 +106,8 @@ type TaskBoardDeps struct {
 	TasksDir string
 	// FilesDir is the root of the task file folders, <home>/tasks (P643). Empty grants no folder.
 	FilesDir string
+	// TaskFiles is the index of the task folders' files; with FilesDir it turns the file layer on.
+	TaskFiles *repos.TaskFilesRepo
 	// Prompts resolves the editable LLM prompt texts; nil means the registry defaults.
 	Prompts llmprompts.Source
 	// Agent resolves the provider of a new run. AgentBin overrides its CLI (a test points it at a fake).
@@ -228,6 +230,8 @@ type TaskBoard struct {
 	history        historyMemo
 	updates        *updateWatcher
 
+	files *detailsFiles // nil without FilesDir and TaskFiles: Details stay in SQLite only
+
 	panelEdits panelEdits // pending task panel edits per task (panelforward.go)
 
 	runMu            sync.Mutex                 // guards live, setupLive, archiving, taskMus, finishes, stepMsgs
@@ -275,6 +279,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	if deps.Approvals != nil {
 		deps.Approvals.Register(approvals.KindBranchRequest, branchOwner{b})
 		deps.Approvals.Register(approvals.KindTaskCreate, taskCreateOwner{b})
+		deps.Approvals.Register(approvals.KindDetailsEdit, detailsOwner{b})
 	}
 	b.agent = agentmcp.NewServer(agentmcp.Options{Dir: deps.AgentDir, OnFinish: b.recordFinish, Space: b, Outcomes: b, Review: b, SandboxGit: b, Git: b, Handover: b, Orchestrator: b, Prompts: b.prompts(), OnToolCall: b.mcpRecorder})
 	if deps.Tracker != nil {
@@ -288,6 +293,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	b.checker = newRebaseChecker(ctx, deps.GitStatus, b.checkDone)
 	b.updates = newUpdateWatcher(b, deps.Updates)
 	b.initLeases()
+	b.initDetails()
 	return b
 }
 

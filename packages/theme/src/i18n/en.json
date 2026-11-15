@@ -1651,6 +1651,9 @@
       "dbMcpScript": {
         "title": "Run script {name}"
       },
+      "detailsEdit": {
+        "title": "Review task file edits · {task}"
+      },
       "gitCredential": {
         "title": "Git needs a credential"
       },
