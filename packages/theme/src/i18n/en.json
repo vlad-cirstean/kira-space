@@ -10342,24 +10342,18 @@
         }
       },
       "proof": {
-        "attach": {
-          "empty": {
-            "body": "No proof sessions to attach."
-          },
-          "tooltip": "Attach a proof session"
-        },
         "chain": {
           "title": "Notes and proof"
         },
         "entry": {
+          "delete": {
+            "tooltip": "Delete proof"
+          },
           "open": {
             "tooltip": "Open in the proof window"
           },
           "pending": {
             "status": "Edit to review"
-          },
-          "remove": {
-            "tooltip": "Remove from task"
           }
         }
       },
@@ -17312,8 +17306,8 @@
         }
       },
       "delete": {
-        "body": "Removes {name} and its saved views. This can’t be undone.",
-        "title": "Delete this session"
+        "body": "Removes {name}, its folder and its saved views. This can’t be undone.",
+        "title": "Delete this proof"
       },
       "diagram": {
         "invalid": {
@@ -17329,11 +17323,15 @@
           "body": "The diagram is too large to draw."
         }
       },
-      "history": {
-        "aria": "Validation sessions",
-        "empty": "No validation sessions yet",
-        "unseen": {
-          "aria": "Not opened yet"
+      "folder": {
+        "open": {
+          "label": "Open proof folder"
+        },
+        "path": {
+          "aria": "Proof folder"
+        },
+        "reveal": {
+          "label": "Reveal proof folder"
         }
       },
       "image": {
@@ -17353,7 +17351,7 @@
       "session": {
         "aria": "Proof",
         "empty": {
-          "emptyHint": "Select a session on the left."
+          "emptyHint": "This proof no longer exists."
         },
         "steps": {
           "label": "{count} step | {count} steps"

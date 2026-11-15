@@ -233,8 +233,6 @@
         "rev": 1,
         "sessionId": "<masked>",
         "slug": "login-checks",
-        "stepId": "",
-        "stepName": "",
         "steps": [
           {
             "description": "Login checks flow",

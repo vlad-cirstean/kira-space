@@ -230,12 +230,6 @@ test('contract: a pending edit compares the old and new chart', async ({ relaunc
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.proofWindowTarget, response: { sessionId: PENDING_ID } },
-      {
-        channel: IPC.proofSessions,
-        response: [
-          { id: PENDING_ID, name: pending.name, closedAt: 0, steps: 6, pending: true, seen: true },
-        ],
-      },
       { channel: IPC.proofSession, response: pending },
       ...steps,
     ],

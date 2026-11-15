@@ -10,7 +10,6 @@ import {
   pendingSession,
   proofControl,
   SESSION_ID,
-  sessions,
   stepSnapshot,
   viewState,
 } from '../../ui/studio/support/proof';
@@ -78,7 +77,6 @@ test('proof window, document step with an expanded row (P420)', async ({ relaunc
 
 test('proof window, compare mode with a pending edit (P420)', async ({ relaunch, uiServer }) => {
   const pending = pendingSession();
-  const summary = { ...sessions()[0], id: PENDING_ID, name: 'Edit me', pending: true };
   const steps = [
     ...['keep', 'replace', 'drop'].map((d, i) =>
       stepSnapshot(PENDING_ID, 1, i + 1, 'keyvalue', { description: d }),
@@ -90,7 +88,6 @@ test('proof window, compare mode with a pending edit (P420)', async ({ relaunch,
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.proofWindowTarget, response: { sessionId: PENDING_ID } },
-      { channel: IPC.proofSessions, response: [summary] },
       { channel: IPC.proofSession, args: { sessionId: PENDING_ID }, response: pending },
       ...steps,
     ],

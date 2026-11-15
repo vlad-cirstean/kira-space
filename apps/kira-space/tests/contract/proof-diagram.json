@@ -9,8 +9,6 @@
       "rev": 1,
       "sessionId": "",
       "slug": "checkout-flow",
-      "stepId": "",
-      "stepName": "",
       "steps": [
         {
           "description": "Diagram 1",
@@ -101,7 +99,10 @@
     "name": "Checkout flow",
     "pending": null,
     "removed": [],
-    "summary": ""
+    "slug": "checkout-flow",
+    "summary": "",
+    "taskId": "<id:2>",
+    "taskTitle": "Login form"
   },
   "ProofService.Step#broken": {
     "bytes": 58,

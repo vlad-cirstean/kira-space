@@ -51,7 +51,7 @@ func (b *TaskBoard) TaskProofs(_ context.Context, taskID string) ([]adewire.Task
 			steps[j] = adewire.TaskProofStep{Ordinal: st.Ordinal, ID: st.ID, Description: st.Description, View: st.View, Source: st.Source}
 		}
 		out[i] = adewire.TaskProof{ProofID: r.ID, Name: r.Name, Summary: r.Summary, ClosedAt: r.ClosedAt, LinkedAt: r.LinkedAt,
-			Slug: r.Slug, SessionID: r.KiraSessionID, StepID: r.StepID, StepName: r.StepName, Rev: r.Rev, Pending: r.Pending, Steps: steps}
+			Slug: r.Slug, SessionID: r.KiraSessionID, Rev: r.Rev, Pending: r.Pending, Steps: steps}
 	}
 	return out, nil
 }

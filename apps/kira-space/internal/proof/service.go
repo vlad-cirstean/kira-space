@@ -121,6 +121,8 @@ type reviewStep struct {
 
 type reviewPayload struct {
 	SessionID string       `json:"sessionId"`
+	TaskID    string       `json:"taskId"`
+	Slug      string       `json:"slug"`
 	Name      string       `json:"name"`
 	Revision  int          `json:"revision"`
 	Reason    string       `json:"reason"`
@@ -133,6 +135,7 @@ func (s *Service) putReview(id, name string) {
 	}
 	pl := reviewPayload{SessionID: id, Name: name, Steps: []reviewStep{}}
 	if d, err := s.Session(id); err == nil && d.Pending != nil {
+		pl.TaskID, pl.Slug = d.TaskID, d.Slug
 		pl.Revision, pl.Reason = d.Pending.Rev, d.Pending.Reason
 		for _, st := range d.Pending.Steps {
 			pl.Steps = append(pl.Steps, reviewStep{Ordinal: st.Ordinal, Description: st.Description, Diff: st.Diff})
@@ -198,13 +201,18 @@ type Revision struct {
 // Detail is a session with its current revision and, when the agent proposed an edit, the pending
 // one plus the old steps the edit drops.
 type Detail struct {
-	ID       string     `json:"id"`
-	Name     string     `json:"name"`
-	Summary  string     `json:"summary"`
-	ClosedAt int64      `json:"closedAt"`
-	Current  Revision   `json:"current"`
-	Pending  *Revision  `json:"pending"`
-	Removed  []StepMeta `json:"removed"`
+	ID string `json:"id"`
+	// TaskID and Slug name the proof's folder: tasks/<TaskID>/proofs/<Slug>.
+	TaskID string `json:"taskId"`
+	// TaskTitle is the title of the task holding the proof.
+	TaskTitle string     `json:"taskTitle"`
+	Slug      string     `json:"slug"`
+	Name      string     `json:"name"`
+	Summary   string     `json:"summary"`
+	ClosedAt  int64      `json:"closedAt"`
+	Current   Revision   `json:"current"`
+	Pending   *Revision  `json:"pending"`
+	Removed   []StepMeta `json:"removed"`
 }
 
 func notFound() error {
@@ -248,7 +256,15 @@ func (s *Service) Session(id string) (Detail, error) {
 	if err != nil {
 		return Detail{}, err
 	}
-	d := Detail{ID: row.ID, Name: row.Name, Summary: row.Summary, ClosedAt: *row.ClosedAt, Current: cur, Removed: []StepMeta{}}
+	taskID, slug, _, err := s.d.Repo.LinkOf(id)
+	if err != nil {
+		return Detail{}, err
+	}
+	title, err := s.d.Repo.TaskTitleOf(id)
+	if err != nil {
+		return Detail{}, err
+	}
+	d := Detail{ID: row.ID, TaskTitle: title, TaskID: taskID, Slug: slug, Name: row.Name, Summary: row.Summary, ClosedAt: *row.ClosedAt, Current: cur, Removed: []StepMeta{}}
 	if row.PendingRev == nil {
 		return d, nil
 	}

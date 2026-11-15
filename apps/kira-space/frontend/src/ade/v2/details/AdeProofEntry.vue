@@ -9,27 +9,36 @@ import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
 import { formatRelative } from '@workbench/behaviour/format';
 import { errorText } from '@workbench/bridge/codedError';
+import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
+import { computed } from 'vue';
 import { control as studioControl } from '../../../studio/bridge/control';
 import { proofViewIcon } from '../../../studio/proof/viewIcon';
 import AdeChip from '../AdeChip.vue';
-import { useUnlinkProof } from '../queries';
+import { useDeleteProof } from '../queries';
 import type { TaskProof } from '../wire';
 import AdeOriginSession from './AdeOriginSession.vue';
 import AdeProofDiagramStep from './AdeProofDiagramStep.vue';
 
-// One attached proof session of the task chain: its diagram steps draw inline, the rest open the
-// proof window.
+// One proof of the task chain (a folder `proofs/<slug>/`): its diagram steps draw inline, the rest
+// open the proof window.
 const props = defineProps<{ proof: TaskProof; taskId: string; readonly?: boolean }>();
 const emit = defineEmits<{ openSession: [sessionId: string] }>();
 const open = useMutation({
-  mutationFn: () => studioControl.proofOpenWindow(props.proof.proofId),
+  mutationFn: () => studioControl.proofOpenWindow(props.taskId, props.proof.slug),
   onError: (err) => toast.error(errorText(err)),
 });
-const unlink = useUnlinkProof();
+const folderPath = computed(() => `proofs/${props.proof.slug}`);
+const remove = useDeleteProof();
+const confirmDialog = useConfirmDialogStore();
 
-function stage(p: TaskProof): string {
-  const name = p.stepName || p.stepId;
-  return name ? t('space.ade.notes.entry.during.label', { stage: name }) : '';
+async function askDelete(): Promise<void> {
+  await confirmDialog.confirm({
+    title: t('studio.proof.delete.title'),
+    message: t('studio.proof.delete.body', { name: props.proof.name }),
+    confirmLabel: t('common.action.delete.label'),
+    tone: 'danger',
+    run: () => remove.mutateAsync(props.proof.proofId),
+  });
 }
 </script>
 
@@ -37,7 +46,7 @@ function stage(p: TaskProof): string {
   <Card
     class="flex flex-col gap-2 p-2 text-kira-md"
     data-kind="proof"
-    :data-author="proof.source"
+    :data-slug="proof.slug"
     data-testid="ade-proof-entry"
   >
     <div class="flex items-center gap-2 text-kira-sm">
@@ -52,31 +61,7 @@ function stage(p: TaskProof): string {
         @click="open.mutate()"
         ><span class="truncate">{{ proof.name }}</span></Button
       >
-      <span
-        class="inline-flex items-center gap-1"
-        role="img"
-        :aria-label="
-          t(
-            proof.source === 'user'
-              ? 'space.ade.notes.author.user.aria'
-              : 'space.ade.notes.author.agent.aria',
-          )
-        "
-        data-testid="ade-note-author"
-      >
-        <CodiconIcon :name="proof.source === 'user' ? 'account' : 'hubot'" :size="12" />
-        <AdeChip
-          :label="
-            proof.source === 'user'
-              ? t('common.picker.you.label')
-              : t('memory.common.origin.agent.label')
-          "
-          tone="grey"
-        />
-      </span>
-      <span v-if="stage(proof)" class="text-muted-foreground" data-testid="ade-note-stage">{{
-        stage(proof)
-      }}</span>
+      <span class="text-subtle" data-testid="ade-proof-path">{{ folderPath }}</span>
       <AdeChip
         v-if="proof.pending"
         :label="t('space.ade.proof.entry.pending.status')"
@@ -93,19 +78,14 @@ function stage(p: TaskProof): string {
       <TooltipIconButton
         v-if="!readonly"
         icon="close"
-        :label="t('space.ade.proof.entry.remove.tooltip')"
+        :label="t('space.ade.proof.entry.delete.tooltip')"
         data-testid="ade-proof-remove"
-        @click="unlink.mutate({ taskId, proofId: proof.proofId })"
+        @click="askDelete()"
       />
     </div>
     <p v-if="proof.summary" class="whitespace-pre-wrap text-kira-md">{{ proof.summary }}</p>
     <ol class="m-0 flex list-none flex-col gap-1 p-0" :aria-label="t('studio.proof.tabs.aria')">
-      <li
-        v-for="s in proof.steps"
-        :key="s.ordinal"
-        :data-view="s.view"
-        data-testid="ade-proof-step"
-      >
+      <li v-for="s in proof.steps" :key="s.id" :data-view="s.view" data-testid="ade-proof-step">
         <AdeProofDiagramStep
           v-if="s.view === 'diagram'"
           :proof-id="proof.proofId"

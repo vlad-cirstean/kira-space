@@ -9,8 +9,6 @@
       "rev": 1,
       "sessionId": "<masked>",
       "slug": "checkout-fix",
-      "stepId": "",
-      "stepName": "",
       "steps": [
         {
           "description": "Orders table shows declined for order 3",
@@ -83,7 +81,10 @@
     "name": "Checkout fix",
     "pending": null,
     "removed": [],
-    "summary": "Checkout rejects an expired card."
+    "slug": "checkout-fix",
+    "summary": "Checkout rejects an expired card.",
+    "taskId": "<masked>",
+    "taskTitle": "Login form"
   },
   "ProofService.Step#data-file": {
     "bytes": 59,

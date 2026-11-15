@@ -9,8 +9,6 @@
       "rev": 1,
       "sessionId": "",
       "slug": "deploy-health",
-      "stepId": "",
-      "stepName": "",
       "steps": [
         {
           "description": "Errors per minute around the deploy",
@@ -137,7 +135,10 @@
     "name": "Deploy health",
     "pending": null,
     "removed": [],
-    "summary": ""
+    "slug": "deploy-health",
+    "summary": "",
+    "taskId": "<id:2>",
+    "taskTitle": "Login form"
   },
   "ProofService.Session#pending": {
     "closedAt": 0,
@@ -290,7 +291,10 @@
       ]
     },
     "removed": [],
-    "summary": ""
+    "slug": "deploy-health",
+    "summary": "",
+    "taskId": "<id:2>",
+    "taskTitle": "Login form"
   },
   "ProofService.Step#area": {
     "bytes": 359,

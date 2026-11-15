@@ -566,6 +566,7 @@ func Build(opts Options) (*Wired, error) {
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
 	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry, Opener: opts.FileOpener}
 	w.Capture.Tasks = w.AdeTask
+	w.Proof.Folder = w.AdeBoard.TaskFolder
 	w.Leases = &bridge.LeasesService{Board: w.AdeBoard}
 	// Registry.OnChange fires after every agent session registers or is removed (spawn and exit) —
 	// Reconcile picks up both, and AgentSessionsChanged refreshes the P127 store's own live count

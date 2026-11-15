@@ -5,6 +5,7 @@ import { queryClient } from '@workbench/state/queryClient';
 import type { MaybeRefOrGetter } from 'vue';
 import { toValue, watch } from 'vue';
 import { control } from '../../bridge/control';
+import { control as studioControl } from '../../studio/bridge/control';
 import { withShelved } from './board/shelf';
 import {
   archivedTaskKey,
@@ -31,7 +32,6 @@ import type {
   HostLinkArgs,
   ImportWorkflowArgs,
   LaunchStepArgs,
-  LinkProofArgs,
   MarkSessionSeenArgs,
   NewStepArgs,
   NewWorkflowArgs,
@@ -102,7 +102,6 @@ export const reviewStepPrefix = ['adetask', 'reviewStep'] as const;
 export const handoversPrefix = ['adetask', 'handovers'] as const;
 export const proofsPrefix = ['adetask', 'proofs'] as const;
 export const dbAuditPrefix = ['adetask', 'dbAudit'] as const;
-export const proofChoicesKey = ['adetask', 'proofChoices'] as const;
 export const artifactsPrefix = ['adetask', 'artifacts'] as const;
 export const issuePrefix = ['adetask', 'issue'] as const;
 export const reviewTargetKey = (windowKey: string) =>
@@ -573,34 +572,11 @@ export function useTaskDbAudit(taskId: MaybeRefOrGetter<string>) {
   });
 }
 
-/** Closed proof sessions no task holds; read only while the attach menu is open. */
-export function useProofChoices(enabled: MaybeRefOrGetter<boolean>) {
-  return useQuery({
-    queryKey: proofChoicesKey,
-    queryFn: () => control.adeTaskProofChoices(),
-    staleTime: 0,
-    enabled: () => toValue(enabled),
-  });
-}
-
-function refreshProofs(): Promise<unknown> {
-  return Promise.all([
-    queryClient.invalidateQueries({ queryKey: proofsPrefix }),
-    queryClient.invalidateQueries({ queryKey: proofChoicesKey }),
-  ]);
-}
-
-export function useLinkProof() {
+/** Deletes a proof: its folder and rows go; the chain refetches. */
+export function useDeleteProof() {
   return useMutation({
-    mutationFn: (args: LinkProofArgs) => control.adeTaskLinkProof(args),
-    onSuccess: refreshProofs,
-  });
-}
-
-export function useUnlinkProof() {
-  return useMutation({
-    mutationFn: (args: LinkProofArgs) => control.adeTaskUnlinkProof(args),
-    onSuccess: refreshProofs,
+    mutationFn: (proofId: string) => studioControl.proofDelete(proofId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: proofsPrefix }),
   });
 }
 

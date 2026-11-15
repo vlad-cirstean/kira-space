@@ -683,12 +683,6 @@ const spaceControl = {
     unwrap(AdeTaskService.TaskProofs(args)).then((r) => trust<V2.TaskProofsResult>(r)),
   adeTaskDbAudit: (args: V2.TaskArgs): Promise<V2.DbAuditResult> =>
     unwrap(AdeTaskService.DbAudit(args)).then((r) => trust<V2.DbAuditResult>(r)),
-  adeTaskProofChoices: (): Promise<V2.ProofChoicesResult> =>
-    unwrap(AdeTaskService.ProofChoices()).then((r) => trust<V2.ProofChoicesResult>(r)),
-  adeTaskLinkProof: (args: V2.LinkProofArgs): Promise<void> =>
-    unwrap(AdeTaskService.LinkProof(args)),
-  adeTaskUnlinkProof: (args: V2.LinkProofArgs): Promise<void> =>
-    unwrap(AdeTaskService.UnlinkProof(args)),
   adeTaskUpdateHandover: (args: V2.UpdateHandoverArgs): Promise<void> =>
     unwrap(AdeTaskService.UpdateHandover(args)),
   adeTaskDismissHandover: (args: V2.TaskArgs): Promise<void> =>

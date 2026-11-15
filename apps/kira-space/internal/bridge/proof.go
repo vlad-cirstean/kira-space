@@ -82,8 +82,9 @@ type ProofShotLocations interface {
 	SetProofShotLocation(path string) error
 }
 
-// ProofRevealer shows a folder in the file manager; configsvc.FileOpener satisfies it.
+// ProofRevealer opens and reveals a folder in the file manager; configsvc.FileOpener satisfies it.
 type ProofRevealer interface {
+	OpenFile(path string) error
 	RevealFile(path string) error
 }
 
@@ -108,6 +109,8 @@ type ProofService struct {
 	Opener    ProofRevealer
 	// Clipboard writes image batches; nil means no multi-image clipboard.
 	Clipboard ProofClipboard
+	// Folder resolves the absolute path of a task folder; main binds it once the task board exists.
+	Folder func(taskID string) (string, error)
 
 	openMu sync.Mutex
 	shots  proofShotFolders
@@ -246,6 +249,40 @@ func (s *ProofService) Delete(args ProofSessionArgs) error {
 		return err
 	}
 	return proofErr(s.Svc.Delete(args.SessionID))
+}
+
+// OpenFolder opens the proof's folder in the file manager.
+func (s *ProofService) OpenFolder(args ProofSessionArgs) error {
+	return s.withFolder(args.SessionID, func(p string) error { return s.Opener.OpenFile(p) })
+}
+
+// RevealFolder shows the proof's folder in the file manager.
+func (s *ProofService) RevealFolder(args ProofSessionArgs) error {
+	return s.withFolder(args.SessionID, func(p string) error { return s.Opener.RevealFile(p) })
+}
+
+func (s *ProofService) withFolder(sessionID string, fn func(string) error) error {
+	if err := proofID(sessionID); err != nil {
+		return err
+	}
+	if s.Opener == nil || s.Folder == nil {
+		return nil
+	}
+	taskID, slug, ok, err := s.Svc.LinkOf(sessionID)
+	if err != nil {
+		return proofErr(err)
+	}
+	if !ok {
+		return ipcerr.NotFoundNamed("proofs/" + sessionID)
+	}
+	root, err := s.Folder(taskID)
+	if err != nil {
+		return ipcerr.InternalErr(err)
+	}
+	if root == "" {
+		return nil
+	}
+	return fn(filepath.Join(root, "proofs", slug))
 }
 
 // MarkSeen records that the user opened the session.

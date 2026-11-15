@@ -210,6 +210,20 @@ func (r *ProofRepo) LinkOf(sessionID string) (taskID, slug string, ok bool, err 
 	return taskID, slug, err == nil && slug != "", err
 }
 
+// TaskTitleOf returns the title of the task holding the session; "" when none does.
+func (r *ProofRepo) TaskTitleOf(sessionID string) (string, error) {
+	tl, tk := kiraschema.ProofTaskLinks, kiraschema.AdeTasks
+	sb := r.Dialect.Select("k." + tk.Title).From(tl.Table + " l")
+	sb.Join(tk.Table+" k", "k."+tk.ID+" = l."+tl.TaskID)
+	sb.Where(sb.Equal("l."+tl.SessionID, sessionID))
+	var title string
+	err := sqlb.QueryRow(r.DB, sb).Scan(&title)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return title, err
+}
+
 // SlugOf returns the folder slug of a proof session, "" when unknown.
 func (c ProofCache) SlugOf(q sqlb.Querier, sessionID string) (string, error) {
 	tl := kiraschema.ProofTaskLinks

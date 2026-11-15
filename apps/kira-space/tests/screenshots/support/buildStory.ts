@@ -550,6 +550,7 @@ const proofSummary = (s: Rec, diff: string): Rec => ({
   diff,
   language: s.language,
   ordinal: s.ordinal,
+  id: `s${s.ordinal}`,
   originOrdinal: diff === 'added' ? null : s.ordinal,
   source: s.source,
   view: s.view,
@@ -574,6 +575,8 @@ export function storyProof(pending = false): ControlSnapshot[] {
   const session: Rec = {
     ...base,
     id,
+    taskId: 'T_orders',
+    slug: 'orders-export',
     name: 'Orders export',
     closedAt: CLOSED,
     current: proofRev(1, false, added),
@@ -586,10 +589,6 @@ export function storyProof(pending = false): ControlSnapshot[] {
   });
   return [
     { channel: IPC.proofWindowTarget, response: { sessionId: id } },
-    {
-      channel: IPC.proofSessions,
-      response: [{ id, name: 'Orders export', closedAt: CLOSED, steps: 4, pending, seen: true }],
-    },
     { channel: IPC.proofSession, response: session },
     ...proofSteps(false).map((s) => step(1, s)),
     ...(pending
@@ -616,11 +615,10 @@ export function storyProofChain(): ControlSnapshot[] {
             proofId: 'P_orders',
             rev: 1,
             sessionId: '',
-            source: 'agent',
-            stepId: 'impl',
-            stepName: 'Implement',
+            slug: 'orders-export',
             steps: steps.map((s) => ({
               description: s.description,
+              id: `s${s.ordinal}`,
               ordinal: s.ordinal,
               source: s.source,
               view: s.view,

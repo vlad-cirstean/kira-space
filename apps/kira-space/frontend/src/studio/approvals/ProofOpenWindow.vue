@@ -17,7 +17,7 @@ const payload = computed(() => proofReviewPayloadSchema.parse(props.item.payload
     size="inline"
     class="text-kira-sm font-normal text-muted-foreground underline decoration-border underline-offset-3"
     data-testid="proof-review-open"
-    @click="control.proofOpenWindow(payload.sessionId)"
+    @click="control.proofOpenWindow(payload.taskId, payload.slug)"
   >
     {{ t('studio.proof.change.openWindow.label') }}
   </Button>

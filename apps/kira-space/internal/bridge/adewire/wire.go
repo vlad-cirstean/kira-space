@@ -647,8 +647,6 @@ type TaskProof struct {
 	LinkedAt  int64           `json:"linkedAt"`
 	Slug      string          `json:"slug"`
 	SessionID string          `json:"sessionId"`
-	StepID    string          `json:"stepId"`
-	StepName  string          `json:"stepName"`
 	Rev       int             `json:"rev"`
 	Pending   bool            `json:"pending"`
 	Steps     []TaskProofStep `json:"steps"`

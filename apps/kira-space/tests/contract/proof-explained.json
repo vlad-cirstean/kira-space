@@ -9,8 +9,6 @@
       "rev": 1,
       "sessionId": "",
       "slug": "explained",
-      "stepId": "",
-      "stepName": "",
       "steps": [
         {
           "description": "Checkout now rejects an expired card: the orders table shows status declined for order 3 and no charge row, where before the fix it showed paid and charged twice, so no customer pays.",
@@ -47,7 +45,10 @@
     "name": "Explained",
     "pending": null,
     "removed": [],
-    "summary": "Checkout rejects an expired card. The orders table shows declined and no charge row."
+    "slug": "explained",
+    "summary": "Checkout rejects an expired card. The orders table shows declined and no charge row.",
+    "taskId": "<id:2>",
+    "taskTitle": "Login form"
   },
   "ProofService.Step#table": {
     "bytes": 209,

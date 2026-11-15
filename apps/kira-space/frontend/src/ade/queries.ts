@@ -17,7 +17,6 @@ import {
   dbAuditPrefix,
   handoversPrefix,
   issuePrefix,
-  proofChoicesKey,
   proofsPrefix,
   reviewStepPrefix,
   stepYamlKey,
@@ -89,7 +88,6 @@ export function installAdeSignals(
   // A proof session closing, attaching or deleting changes a task's chain.
   studioControl.onProofChanged(() => {
     void queryClient.invalidateQueries({ queryKey: proofsPrefix });
-    void queryClient.invalidateQueries({ queryKey: proofChoicesKey });
   });
   // A burst of Kira Studio calls refetches the trail once.
   const refreshDbAudit = useDebounceFn(() => {

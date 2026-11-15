@@ -3,10 +3,11 @@ import type { ProofImagePayload } from '@shared/domain/proof';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { t } from '@theme/i18n';
 import { useScroll } from '@vueuse/core';
-import { nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
-// One JPEG step: the stored bytes as a data URL (the window CSP allows data:, not blob:), fitted
-// to the width and never upscaled; a tall image scrolls.
+// One image step (PNG, JPEG, WebP or SVG): the file's bytes as a data URL (the window CSP allows
+// data:, not blob:), fitted to the width and never upscaled; a tall image scrolls. SVG renders only
+// through <img>, never inline, so its scripts cannot run.
 const props = defineProps<{
   payload: ProofImagePayload;
   description: string;
@@ -14,6 +15,13 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ 'update:scroll': [top: number, left: number]; ready: [] }>();
 
+const MIME = {
+  png: 'image/png',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+} as const;
+const src = computed(() => `data:${MIME[props.payload.format]};base64,${props.payload.base64}`);
 const failed = ref(false);
 const scroller = useTemplateRef<HTMLElement>('scroller');
 const { x, y } = useScroll(scroller);
@@ -61,7 +69,7 @@ function onError(): void {
     data-testid="proof-image"
   >
     <img
-      :src="`data:image/jpeg;base64,${payload.base64}`"
+      :src="src"
       :alt="description"
       :width="payload.width"
       :height="payload.height"

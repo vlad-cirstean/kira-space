@@ -1,10 +1,8 @@
 import type { Page } from '@playwright/test';
-import { CHANNEL } from '@shared/protocol/events';
 import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
-import { emitWailsEvent } from '../support/mockRuntime';
 import { installClipboardSpy } from './support/clipboard';
 import { editorText } from './support/editorText';
 import {
@@ -20,10 +18,10 @@ import {
   RESULT_VIEWPORT,
   SESSION_ID,
   session,
-  sessions,
   shotFolder,
   shotLocation,
   stepSnapshot,
+  TASK_ID,
   threeSteps,
   viewState,
 } from './support/proof';
@@ -108,37 +106,36 @@ test('tabs follow step order and the data renders literally', async ({ relaunch,
   await expect(result.locator('[data-testid="console-result-kv-row"]')).toHaveCount(2);
 });
 
-test('the history lists sessions, marks one seen when opened, and deletes after confirming', async ({
+test('the header shows the proof folder; open, reveal and delete reach the backend', async ({
   relaunch,
   uiServer,
 }) => {
-  const other = { ...sessions()[0], id: 'session-9', name: 'Second run', seen: true };
   const { window: page, control } = await relaunch({
-    control: [
-      { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
-      { channel: IPC.proofSessions, response: [...sessions(), other] },
-      { channel: IPC.proofSessions, response: [other] },
-      { channel: IPC.proofSession, response: session() },
-      ...threeSteps(),
-    ],
+    control: [...proofControl(), ...threeSteps()],
   });
   await openProofWindow(page, uiServer.url);
   await stepsReady(page);
 
-  const row = page.locator(`[data-testid="proof-session-${SESSION_ID}"]`);
-  await expect(row).toContainText('Checkout fix');
-  await expect(row.locator('[data-testid="proof-session-unseen"]')).toBeVisible();
-  await row.click();
+  await expect(page.locator('[data-testid="proof-path"]')).toHaveText('proofs/checkout-fix');
+  // One proof per window: no history pane, no session list.
+  await expect(page.locator('[data-testid="proof-left"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="proof-history"]')).toHaveCount(0);
+
+  await page.locator('[data-testid="proof-folder-open"]').click();
+  await page.locator('[data-testid="proof-folder-reveal"]').click();
   await expect
     .poll(() =>
       control
         .log()
-        .filter((c) => c.channel === IPC.proofMarkSeen)
-        .map((c) => c.args),
+        .filter((c) => c.channel === IPC.proofOpenFolder || c.channel === IPC.proofRevealFolder)
+        .map((c) => [c.channel, c.args]),
     )
-    .toEqual([{ sessionId: SESSION_ID }]);
+    .toEqual([
+      [IPC.proofOpenFolder, { sessionId: SESSION_ID }],
+      [IPC.proofRevealFolder, { sessionId: SESSION_ID }],
+    ]);
 
-  await page.locator(`[data-testid="proof-session-delete-${SESSION_ID}"]`).click({ force: true });
+  await page.locator('[data-testid="proof-delete"]').click();
   await expect(page.locator('[data-testid="confirm-dialog-message"]')).toContainText(
     'Checkout fix',
   );
@@ -151,8 +148,6 @@ test('the history lists sessions, marks one seen when opened, and deletes after 
         .map((c) => c.args),
     )
     .toEqual([{ sessionId: SESSION_ID }]);
-  await expect(page.locator(`[data-testid="proof-session-${SESSION_ID}"]`)).toHaveCount(0);
-  await expect(page.locator('[data-testid="proof-session-session-9"]')).toBeVisible();
 });
 
 test('scroll and the highlighted cell persist per tab and across a reload', async ({
@@ -495,7 +490,6 @@ test('a pending edit shows the diff, compares old to new, and accepts', async ({
 }) => {
   const pending = pendingSession();
   const accepted = { ...pending, current: pending.pending, pending: null, removed: [] };
-  const pendingSummary = { ...sessions()[0], id: PENDING_ID, name: 'Edit me', pending: true };
   const steps = [
     ...['keep', 'replace', 'drop'].map((d, i) =>
       stepSnapshot(PENDING_ID, 1, i + 1, 'keyvalue', { description: d }),
@@ -507,7 +501,6 @@ test('a pending edit shows the diff, compares old to new, and accepts', async ({
   const { window: page, control } = await relaunch({
     control: [
       { channel: IPC.proofWindowTarget, response: { sessionId: PENDING_ID } },
-      { channel: IPC.proofSessions, response: [pendingSummary] },
       { channel: IPC.proofSession, args: { sessionId: PENDING_ID }, response: pending },
       { channel: IPC.proofSession, args: { sessionId: PENDING_ID }, response: accepted },
       ...steps,
@@ -582,10 +575,6 @@ test('rejecting a pending edit calls RejectEdit', async ({ relaunch, uiServer })
   const { window: page, control } = await relaunch({
     control: [
       { channel: IPC.proofWindowTarget, response: { sessionId: PENDING_ID } },
-      {
-        channel: IPC.proofSessions,
-        response: [{ ...sessions()[0], id: PENDING_ID, pending: true }],
-      },
       { channel: IPC.proofSession, args: { sessionId: PENDING_ID }, response: pending },
       {
         channel: IPC.proofSession,
@@ -608,26 +597,16 @@ test('rejecting a pending edit calls RejectEdit', async ({ relaunch, uiServer })
   await expect(page.locator('[data-testid="proof-change"]')).toHaveCount(0);
 });
 
-test('a ready prompt opens the proof window, and a pushed select switches session', async ({
-  relaunch,
-  uiServer,
-}) => {
-  const other = { ...sessions()[0], id: 'session-9', name: 'Second run' };
+test('a ready prompt opens the proof window of its proof', async ({ relaunch, uiServer }) => {
   const { window: page, control } = await relaunch({
     control: [
       { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
       {
-        channel: IPC.proofSessions,
-        response: [{ ...sessions()[0], taskTitle: 'Fix checkout' }, other],
-      },
-      { channel: IPC.proofSession, args: { sessionId: SESSION_ID }, response: session() },
-      {
         channel: IPC.proofSession,
-        args: { sessionId: other.id },
-        response: { ...session(), id: other.id, name: other.name },
+        args: { sessionId: SESSION_ID },
+        response: { ...session(), taskTitle: 'Fix checkout' },
       },
       ...threeSteps(),
-      ...[1, 2, 3].map((o) => ({ ...stepSnapshot(other.id, 1, o, 'keyvalue') })),
     ],
   });
   await emitPrompts(page, [routed('proof', SESSION_ID, { title: 'Proof ready: Checkout fix' })]);
@@ -643,18 +622,18 @@ test('a ready prompt opens the proof window, and a pushed select switches sessio
         .filter((c) => c.channel === IPC.proofOpenWindow)
         .map((c) => c.args),
     )
-    .toEqual([{ sessionId: SESSION_ID }]);
+    .toEqual([{ taskId: TASK_ID, slug: 'checkout-fix' }]);
   await expect(page.locator('[data-testid="proof-ready-dialog"]')).toHaveCount(0);
 
   await openProofWindow(page, uiServer.url);
   await expect(page.locator('[data-testid="proof-title"]')).toHaveText('Checkout fix');
-  await emitWailsEvent(page, CHANNEL.proofSelect, { sessionId: other.id });
-  await expect(page.locator('[data-testid="proof-title"]')).toHaveText('Second run');
 });
 
-test('a ready prompt for a session with no task is titled by the entry', async ({ relaunch }) => {
+test('a ready prompt for a proof with no task title is titled by the entry', async ({
+  relaunch,
+}) => {
   const { window: page } = await relaunch({
-    control: [{ channel: IPC.proofSessions, response: sessions() }],
+    control: [{ channel: IPC.proofSession, response: { ...session(), taskTitle: '' } }],
   });
   await emitPrompts(page, [routed('proof', SESSION_ID, { title: 'Proof ready: Checkout fix' })]);
   await expect(page.locator('[data-testid="proof-ready-dialog"]')).toContainText(

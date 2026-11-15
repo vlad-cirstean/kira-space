@@ -22,7 +22,6 @@ import { useAdeDetailsListStore } from '../state/adeDetailsList';
 import { useAdeNoteComposerStore } from '../state/adeNoteComposer';
 import type { Task } from '../wire';
 import AdeAuditEntry from './AdeAuditEntry.vue';
-import AdeProofAttachMenu from './AdeProofAttachMenu.vue';
 import AdeProofEntry from './AdeProofEntry.vue';
 import AdeTimelineEntry from './AdeTimelineEntry.vue';
 import { taskChain } from './taskChain';
@@ -115,7 +114,6 @@ const editing = ref<string | null>(null);
           @pointerenter="prefetchNotesEditor"
           @click="composer.show(task.id)"
         />
-        <AdeProofAttachMenu :task-id="task.id" />
       </template>
     </div>
     <Card v-if="composing" class="flex flex-col gap-2 p-2" data-testid="ade-note-composer">

@@ -9,8 +9,6 @@
       "rev": 1,
       "sessionId": "",
       "slug": "checkout-fix",
-      "stepId": "",
-      "stepName": "",
       "steps": [
         {
           "description": "Orders before",
@@ -101,7 +99,10 @@
     "name": "Checkout fix",
     "pending": null,
     "removed": [],
-    "summary": ""
+    "slug": "checkout-fix",
+    "summary": "",
+    "taskId": "<id:2>",
+    "taskTitle": "Login form"
   },
   "ProofService.ShotClipboard": {
     "multiImage": true

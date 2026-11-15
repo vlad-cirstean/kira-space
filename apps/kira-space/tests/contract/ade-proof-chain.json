@@ -20,16 +20,6 @@
       }
     ]
   },
-  "AdeTaskService.ProofChoices": {
-    "proofs": [
-      {
-        "closedAt": 0,
-        "name": "Legacy",
-        "proofId": "<masked>",
-        "steps": 1
-      }
-    ]
-  },
   "AdeTaskService.TaskProofs#chain": {
     "proofs": [
       {
@@ -41,8 +31,6 @@
         "rev": 1,
         "sessionId": "<masked>",
         "slug": "login-checks",
-        "stepId": "",
-        "stepName": "",
         "steps": [
           {
             "description": "Login checks flow",
