@@ -1095,8 +1095,8 @@ var AdeManualMessage = define(Entry{
 {{.StepPrompt}}{{end}}{{if .Handover}}
 {{template "ade.handoverBlock" .}}{{end}}
 {{template "headless.space.suffix"}}{{if .Files.Folder}}
-{{template "headless.space.files" .Files}}{{end}}
-{{template "ade.handoverLine"}}`,
+{{template "headless.space.files" .Files}}{{end}}{{if not .Files.Draft}}
+{{template "ade.handoverLine"}}{{end}}`,
 }, ManualVars{
 	StepName: "Review", Title: "Add login form", JiraKey: "KIRA-42", JiraURL: "https://jira.example.com/browse/KIRA-42",
 	Notes: "Check the error states.", StepPrompt: "Check kira-space on feat/login.",
@@ -1135,8 +1135,8 @@ var AdeReviewMessage = define(Entry{
 I review these branches in Kira Space and will ask questions about them. Answer from the code; change files only when I ask.{{if .Handover}}
 {{template "ade.handoverBlock" .}}{{end}}
 {{template "headless.space.suffix"}}{{if .Files.Folder}}
-{{template "headless.space.files" .Files}}{{end}}
-{{template "ade.handoverLine"}}`,
+{{template "headless.space.files" .Files}}{{end}}{{if not .Files.Draft}}
+{{template "ade.handoverLine"}}{{end}}`,
 }, ReviewVars{
 	Title: "Add login form", JiraKey: "KIRA-42", JiraURL: "https://jira.example.com/browse/KIRA-42",
 	Notes: "Check the error states.", Handover: "Form wired; validation still missing.", HandoverFrom: "Implement",
@@ -1237,8 +1237,8 @@ Step: {{.StepName}}{{end}}{{range .Context}}
 {{.}}{{end}}{{if .Handover}}
 {{template "ade.handoverBlock" .}}{{end}}
 {{template "headless.space.suffix"}}{{if .Files.Folder}}
-{{template "headless.space.files" .Files}}{{end}}
-{{template "ade.handoverLine"}}`,
+{{template "headless.space.files" .Files}}{{end}}{{if not .Files.Draft}}
+{{template "ade.handoverLine"}}{{end}}`,
 }, StartVars{
 	Title: "Add login form", JiraKey: "KIRA-42", JiraURL: "https://jira.example.com/browse/KIRA-42",
 	Repo: "kira-space", Branch: "feat/login", Worktree: "/work/kira-space/feat-login", StepName: "Implement",
