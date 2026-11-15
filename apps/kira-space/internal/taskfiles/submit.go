@@ -280,6 +280,10 @@ func (s *Service) targets(req Request, present map[string]store.Entry, rows map[
 				bad = append(bad, FileResult{Path: p, Status: StatusInvalid, Message: p + ": not a path inside the task folder; use a relative path like notes/a.md."})
 				continue
 			}
+			if !hasEntry(p, present, rows) {
+				bad = append(bad, FileResult{Path: p, Status: StatusInvalid, Message: p + ": no such file in the task folder."})
+				continue
+			}
 			if !slices.Contains(out, p) {
 				out = append(out, p)
 			}
@@ -303,6 +307,21 @@ func (s *Service) targets(req Request, present map[string]store.Entry, rows map[
 	}
 	sort.Strings(out)
 	return out, bad
+}
+
+// hasEntry reports whether rel names a file or folder in the task folder, or an indexed file (or proof
+// folder) that was deleted since: submit still has to process the deletion.
+func hasEntry(rel string, present map[string]store.Entry, rows map[string]model.TaskFile) bool {
+	trimmed := strings.TrimSuffix(rel, "/")
+	if _, ok := present[trimmed]; ok {
+		return true
+	}
+	for p := range rows {
+		if p == trimmed || strings.HasPrefix(p, trimmed+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // sizeProblems maps a path to its cap message when the task or its proof folder is over its total.

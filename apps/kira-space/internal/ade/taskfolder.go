@@ -59,11 +59,14 @@ func taskFolderDenyFiles(dir string) []string {
 }
 
 // taskFolderDenies are the deny rules that back the sandbox on a host with no Seatbelt: the Claude
-// absolute-path form is "//<abs>". Submit restores whatever a rule misses.
-func taskFolderDenies(dir string) []string {
-	out := make([]string, 0, 2*len(kiraOwnedFiles))
-	for _, f := range taskFolderDenyFiles(dir) {
-		out = append(out, "Edit(/"+filepath.ToSlash(f)+")", "Write(/"+filepath.ToSlash(f)+")")
+// absolute-path form is "//<abs>". Submit restores whatever a rule misses. An orchestrator passes its
+// own folder and its children's.
+func taskFolderDenies(dirs ...string) []string {
+	out := make([]string, 0, 2*len(kiraOwnedFiles)*len(dirs))
+	for _, dir := range dirs {
+		for _, f := range taskFolderDenyFiles(dir) {
+			out = append(out, "Edit(/"+filepath.ToSlash(f)+")", "Write(/"+filepath.ToSlash(f)+")")
+		}
 	}
 	return out
 }
@@ -85,9 +88,10 @@ func (b *TaskBoard) withTaskFolder(spec harness.HeadlessSpec, taskID string) (ha
 		return spec, fmt.Errorf("create handovers folder: %w", err)
 	}
 	b.writeStateNow(taskID)
-	spec.AddDirs = appendMissing(slices.Clone(spec.AddDirs), append([]string{dir}, b.childFolders(taskID)...)...)
+	children := b.childFolders(taskID)
+	spec.AddDirs = appendMissing(slices.Clone(spec.AddDirs), append([]string{dir}, children...)...)
 	spec.AllowedTools = appendMissing(slices.Clone(spec.AllowedTools), taskFolderAllows(dir)...)
-	spec.DisallowedTools = appendMissing(slices.Clone(spec.DisallowedTools), taskFolderDenies(dir)...)
+	spec.DisallowedTools = appendMissing(slices.Clone(spec.DisallowedTools), taskFolderDenies(append([]string{dir}, children...)...)...)
 	return spec, nil
 }
 
@@ -101,8 +105,9 @@ func (b *TaskBoard) withTaskFolderArgs(pa *PrepareArgs, taskID string) error {
 		return fmt.Errorf("create handovers folder: %w", err)
 	}
 	b.writeStateNow(taskID)
-	pa.AddDirs = appendMissing(slices.Clone(pa.AddDirs), append([]string{dir}, b.childFolders(taskID)...)...)
-	pa.DisallowedTools = appendMissing(slices.Clone(pa.DisallowedTools), taskFolderDenies(dir)...)
+	children := b.childFolders(taskID)
+	pa.AddDirs = appendMissing(slices.Clone(pa.AddDirs), append([]string{dir}, children...)...)
+	pa.DisallowedTools = appendMissing(slices.Clone(pa.DisallowedTools), taskFolderDenies(append([]string{dir}, children...)...)...)
 	return nil
 }
 
