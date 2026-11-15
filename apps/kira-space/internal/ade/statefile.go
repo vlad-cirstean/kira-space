@@ -30,7 +30,6 @@ import (
 
 const (
 	stateCoalesce   = 150 * time.Millisecond
-	stateIdle       = 30 * time.Minute
 	maxStateAnswers = 10
 	maxStateRuns    = 3
 	maxRunOutcome   = 2 << 10
@@ -203,6 +202,9 @@ type stateFiles struct {
 	// read per repo serves every writer that renders for the same change.
 	attach *attachCache
 }
+
+// stateIdle is how long a writer with no agent-side touch and no live agent stays; a var so a test lowers it.
+var stateIdle = 30 * time.Minute
 
 var revLine = regexp.MustCompile(`(?m)^rev: (\d+)$`)
 
