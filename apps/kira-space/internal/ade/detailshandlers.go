@@ -249,8 +249,12 @@ func (h *detailsHandlers) readme(ctx context.Context, taskID string) (string, er
 }
 
 func (df *detailsFiles) readmeText(tc *taskCtx, step string) string {
+	var proofs []taskfiles.ReadmeProof
+	if df.proofIndex != nil {
+		proofs = df.proofIndex(tc.task.ID)
+	}
 	return taskfiles.Readme(taskfiles.ReadmeInput{
-		TaskID: tc.task.ID, Title: taskTitle(tc.task, tc.branches), Step: fileSlug(step),
+		TaskID: tc.task.ID, Title: taskTitle(tc.task, tc.branches), Step: fileSlug(step), Proofs: proofs,
 	})
 }
 

@@ -44,7 +44,8 @@ func CheckSVG(raw []byte) (width, height int, err error) {
 	dec := xml.NewDecoder(bytes.NewReader(raw))
 	dec.Strict = true
 	dec.Entity = nil
-	var depth, elements int
+	var stack []string // RawToken does not match end tags to start tags
+	var elements int
 	var root *xml.StartElement
 	var rootLine int
 	var inStyle bool
@@ -63,8 +64,8 @@ func CheckSVG(raw []byte) (width, height int, err error) {
 			return 0, 0, svgError(line, "DOCTYPE or entity declarations are not allowed")
 		case xml.StartElement:
 			elements++
-			depth++
-			if elements > maxSVGElements || depth > maxSVGDepth {
+			stack = append(stack, t.Name.Local)
+			if elements > maxSVGElements || len(stack) > maxSVGDepth {
 				return 0, 0, invalid("too large: more than %d elements or deeper than %d levels", maxSVGElements, maxSVGDepth)
 			}
 			if root == nil {
@@ -83,7 +84,10 @@ func CheckSVG(raw []byte) (width, height int, err error) {
 				return 0, 0, err
 			}
 		case xml.EndElement:
-			depth--
+			if len(stack) == 0 || stack[len(stack)-1] != t.Name.Local {
+				return 0, 0, svgError(line, "not well-formed: </%s> does not close the open element", t.Name.Local)
+			}
+			stack = stack[:len(stack)-1]
 			inStyle = false
 		case xml.CharData:
 			if inStyle {
@@ -95,6 +99,9 @@ func CheckSVG(raw []byte) (width, height int, err error) {
 	}
 	if root == nil {
 		return 0, 0, invalid("not well-formed: no root element")
+	}
+	if len(stack) > 0 {
+		return 0, 0, invalid("not well-formed: <%s> is never closed", stack[len(stack)-1])
 	}
 	w, h, ok := svgSize(*root)
 	if !ok {

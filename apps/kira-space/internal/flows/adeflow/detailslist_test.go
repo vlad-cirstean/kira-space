@@ -55,10 +55,8 @@ func TestDetailsList(t *testing.T) {
 		_, ok := draftOf(handovers(t, app, task.ID))
 		return ok
 	})
-	proofID := closedProof(t, app.W.ProofStore, "Login checks", "diagram", "table")
-	if _, err := app.W.AdeBoard.AttachProof(ctx, agentmcp.SpaceCall{TaskID: task.ID}, "Login checks"); err != nil {
-		t.Fatal(err)
-	}
+	writeProof(t, dfFolder(t, app, task.ID), "login-checks", "Login checks", "diagram", "table")
+	dfSubmit(t, app, task.ID, agentmcp.SubmitArgs{})
 
 	b := board(t, app)
 	tk := taskOf(t, b, task.ID)
@@ -80,7 +78,7 @@ func TestDetailsList(t *testing.T) {
 			note = &hs[i]
 		}
 	}
-	if stored == nil || !hasDraft || note == nil || len(ps) != 1 || ps[0].ProofID != proofID {
+	if stored == nil || !hasDraft || note == nil || len(ps) != 1 || ps[0].Name != "Login checks" {
 		t.Fatalf("sources: artifact %v, draft %v, note %v, proofs %+v", stored, hasDraft, note, ps)
 	}
 	if draft.State == "note" {

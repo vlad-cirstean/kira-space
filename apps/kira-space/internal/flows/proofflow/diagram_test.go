@@ -44,19 +44,10 @@ func TestProofDiagram(t *testing.T) {
 			t.Errorf("%s: message = %q, want %q", c.name, msg, c.want)
 		}
 	}
-	extra := diagramStep("bad", "flowchart TD\n  A --> B")
-	extra["data"] = map[string]any{"source": "flowchart TD\n  A --> B", "theme": "dark"}
-	if msg := f.saveFail(t, "Bad diagram", extra); !strings.Contains(msg, "theme") {
-		t.Errorf("unknown field: message = %q, want it named", msg)
-	}
 
 	f.save(t, "Checkout flow", steps...)
-	id := sessionID(t, f.app, "Checkout flow")
-	list, err := f.app.W.Proof.Sessions()
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.app.Contract(t, "proof-diagram", "ProofService.Sessions", list, maskIDs)
+	id := f.idOf(t, "Checkout flow")
+	f.app.Contract(t, "proof-diagram", "AdeTaskService.TaskProofs", f.proofs(t), maskIDs)
 	det := session(t, f.app, id)
 	f.app.Contract(t, "proof-diagram", "ProofService.Session", det, maskIDs)
 	if len(det.Current.Steps) != 4 {

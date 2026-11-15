@@ -270,7 +270,7 @@ func (s *ProofService) OpenWindow(args ProofOpenArgs) (ProofOpenResult, error) {
 		return ProofOpenResult{}, proofErr(err)
 	}
 	if !ok {
-		return ProofOpenResult{}, ipcerr.NotFound("no proof in that folder")
+		return ProofOpenResult{}, ipcerr.NotFoundNamed("proofs/" + args.Slug)
 	}
 	s.openMu.Lock()
 	defer s.openMu.Unlock()

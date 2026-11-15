@@ -360,7 +360,7 @@ func (s *Service) unitApply(ctx context.Context, req Request, slug string, doc p
 			return nil
 		case Pending:
 			if err := pc.Cache.Propose(q, repos.ProofEdit{SessionID: u.Session.ID, Name: doc.Name, Summary: doc.Summary, Reason: req.Reason,
-				Steps: stepRows(doc), Origin: originsOf(doc, before), Now: now}); err != nil {
+				Steps: diffRows(doc, before), Origin: originsOf(doc, before), Now: now}); err != nil {
 				return err
 			}
 			if err := s.putUnitRows(tx, req, read, rows, false, by); err != nil {
@@ -374,7 +374,7 @@ func (s *Service) unitApply(ctx context.Context, req Request, slug string, doc p
 		}
 		// A user's edit: the revision is proposed and accepted at once, so view state of unchanged steps carries over.
 		if err := pc.Cache.Propose(q, repos.ProofEdit{SessionID: u.Session.ID, Name: doc.Name, Summary: doc.Summary, Reason: req.Reason,
-			Steps: stepRows(doc), Origin: originsOf(doc, before), Now: now}); err != nil {
+			Steps: diffRows(doc, before), Origin: originsOf(doc, before), Now: now}); err != nil {
 			return err
 		}
 		if err := pc.Cache.Accept(q, u.Session.ID, s.cfg.Now()); err != nil {
@@ -402,6 +402,26 @@ func (s *Service) unitApply(ctx context.Context, req Request, slug string, doc p
 		}
 	}
 	return res, nil
+}
+
+// diffRows is stepRows with each step's difference to the accepted revision: unchanged, changed or added.
+func diffRows(doc proofDoc, before ProofHead) []repos.ProofStepRow {
+	hash := make(map[string]string, len(before.Steps))
+	for _, st := range before.Steps {
+		hash[st.ID] = st.Hash
+	}
+	rows := stepRows(doc)
+	for i, st := range doc.Steps {
+		switch h, ok := hash[st.ID]; {
+		case !ok:
+			rows[i].Diff = "added"
+		case h == st.hash():
+			rows[i].Diff = "unchanged"
+		default:
+			rows[i].Diff = "changed"
+		}
+	}
+	return rows
 }
 
 // originsOf maps the index of each unchanged or changed step to the ordinal it descends from.

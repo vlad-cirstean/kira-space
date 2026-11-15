@@ -2,8 +2,6 @@ package proofflow
 
 import (
 	"bytes"
-	"context"
-	"encoding/base64"
 	"encoding/json"
 	"image"
 	"image/color"
@@ -12,19 +10,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
-	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
-
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appshell"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/internal/shell"
-	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
-const maxImageBytes = 3<<20 - 1<<10
+const svgShot = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="30"><rect width="40" height="30" fill="#36c"/></svg>`
 
 // jpegBytes encodes a w x h image: a solid fill with a contrasting block in the top-left corner.
 func jpegBytes(t *testing.T, w, h int) []byte {
@@ -55,64 +46,34 @@ func pngBytes(t *testing.T) []byte {
 	return b.Bytes()
 }
 
-func writeFile(t *testing.T, path string, data []byte) string {
-	t.Helper()
-	if err := os.WriteFile(path, data, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	return path
+func imageStep(desc string, raw []byte, ext string) map[string]any {
+	return map[string]any{"description": desc, "view": "image", "source": "playwright", "image": raw, "ext": ext}
 }
 
-func imageStep(desc string, data map[string]any) map[string]any {
-	return map[string]any{"description": desc, "view": "image", "source": "playwright", "data": data}
-}
-
-func b64(b []byte) string { return base64.StdEncoding.EncodeToString(b) }
-
-type imageData struct {
-	Width, Height, Bytes int
-	Base64               string
-}
-
+// An image is a file beside proof.md: PNG, JPEG and SVG all open through the proof window's step read.
 func TestProofImage(t *testing.T) {
 	f := newFixture(t)
-	dir := t.TempDir()
 	shot := jpegBytes(t, 64, 48)
 	tall := jpegBytes(t, 64, 2000)
-	shotPath := writeFile(t, filepath.Join(dir, "shot.jpg"), shot)
-	linkPath := filepath.Join(dir, "link.jpg")
-	if err := os.Symlink(shotPath, linkPath); err != nil {
-		t.Fatal(err)
-	}
-	tallPath := writeFile(t, filepath.Join(dir, "tall.jpg"), tall)
-
 	f.save(t, "Login page",
-		imageStep("Login form, from a file", map[string]any{"path": shotPath}),
-		imageStep("Login form, inline", map[string]any{"base64": b64(shot)}),
-		imageStep("Login form, through a symlink", map[string]any{"path": linkPath}),
-		imageStep("Long login page", map[string]any{"path": tallPath}),
+		imageStep("Login form, JPEG", shot, "jpg"),
+		imageStep("Login form, PNG", pngBytes(t), "png"),
+		imageStep("Login logo, SVG", []byte(svgShot), "svg"),
+		imageStep("Long login page", tall, "jpg"),
 	)
-	// The bytes were copied at save: a later change or deletion of the file never alters the proof.
-	if err := os.Remove(shotPath); err != nil {
-		t.Fatal(err)
-	}
-
-	id := sessionID(t, f.app, "Login page")
-	list, err := f.app.W.Proof.Sessions()
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.app.Contract(t, "proof-image", "ProofService.Sessions", list, maskIDs)
+	// The file in the folder is the proof: the bytes are in the blob store, so deleting it changes nothing here.
+	id := f.idOf(t, "Login page")
+	f.app.Contract(t, "proof-image", "AdeTaskService.TaskProofs", f.proofs(t), maskIDs)
 	det := session(t, f.app, id)
 	f.app.Contract(t, "proof-image", "ProofService.Session", det, maskIDs)
 	if len(det.Current.Steps) != 4 {
 		t.Fatalf("steps = %d, want 4", len(det.Current.Steps))
 	}
 	for i, c := range []struct {
-		key           string
+		key, format   string
 		file          []byte
 		width, height int
-	}{{"path", shot, 64, 48}, {"inline", shot, 64, 48}, {"symlink", shot, 64, 48}, {"tall", tall, 64, 2000}} {
+	}{{"jpeg", "jpeg", shot, 64, 48}, {"png", "png", pngBytes(t), 8, 8}, {"svg", "svg", []byte(svgShot), 40, 30}, {"tall", "jpeg", tall, 64, 2000}} {
 		st, err := f.app.W.Proof.Step(bridge.ProofStepArgs{SessionID: id, Rev: det.Current.Rev, Ordinal: i + 1})
 		if err != nil {
 			t.Fatal(err)
@@ -120,183 +81,53 @@ func TestProofImage(t *testing.T) {
 		if st.View != "image" {
 			t.Fatalf("step %d view = %q, want image", i+1, st.View)
 		}
-		var p imageData
+		var p struct {
+			Format, File, Base64 string
+			Width, Height, Bytes int
+		}
 		if err := json.Unmarshal(st.Data, &p); err != nil {
 			t.Fatal(err)
 		}
-		got, err := base64.StdEncoding.DecodeString(p.Base64)
-		if err != nil || !bytes.Equal(got, c.file) {
-			t.Fatalf("step %d base64 does not decode to the file bytes (%v)", i+1, err)
+		if p.Format != c.format || p.Width != c.width || p.Height != c.height || p.Bytes != len(c.file) {
+			t.Fatalf("step %d = %+v, want %s %dx%d %d bytes", i+1, p, c.format, c.width, c.height, len(c.file))
 		}
-		if p.Width != c.width || p.Height != c.height || p.Bytes != len(c.file) {
-			t.Fatalf("step %d = %dx%d %d bytes, want %dx%d %d", i+1, p.Width, p.Height, p.Bytes, c.width, c.height, len(c.file))
-		}
-		if strings.Contains(string(st.Data), dir) {
+		if strings.Contains(string(st.Data), f.folder) {
 			t.Fatalf("step %d payload stores the path: %s", i+1, st.Data)
 		}
 		f.app.Contract(t, "proof-image", "ProofService.Step#"+c.key, st, maskIDs)
 	}
+	// The file on disk can go; the accepted copy stays readable and the step still opens.
+	if err := os.Remove(filepath.Join(f.folder, "proofs", "login-page", "s1.jpg")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.app.W.Proof.Step(bridge.ProofStepArgs{SessionID: id, Rev: det.Current.Rev, Ordinal: 1}); err != nil {
+		t.Fatal(err)
+	}
 }
 
-func TestProofImageRefusals(t *testing.T) {
+// Every refusal names the proof file, the step and the rule, and leaves no proof behind.
+func TestProofImageRefused(t *testing.T) {
 	f := newFixture(t)
-	dir := t.TempDir()
-	shot := jpegBytes(t, 64, 48)
-	good := writeFile(t, filepath.Join(dir, "ok.jpg"), shot)
-
-	fifo := filepath.Join(dir, "pipe.jpg")
-	if err := syscall.Mkfifo(fifo, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	huge := filepath.Join(dir, "huge.jpg")
-	hf, err := os.Create(huge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := hf.Write(shot[:3]); err != nil {
-		t.Fatal(err)
-	}
-	if err := hf.Truncate(maxImageBytes + 1); err != nil { // sparse: refused on size, never read
-		t.Fatal(err)
-	}
-	_ = hf.Close()
-
-	wideBytes := jpegBytes(t, 16385, 1)
-	wide := writeFile(t, filepath.Join(dir, "wide.jpg"), wideBytes)
-	bigArea := jpegBytes(t, 4001, 4001)
-	pngPath := writeFile(t, filepath.Join(dir, "x.jpg"), pngBytes(t))
-	corrupt := writeFile(t, filepath.Join(dir, "corrupt.jpg"), append(append([]byte{}, shot[:len(shot)/2]...), 0xFF))
-	const notJPEG = "data is not a JPEG image (baseline or progressive)"
-	// Every path-source failure past the absolute check reads the same, so the agent learns nothing about the file.
-	const unreadable = "data.path is not a readable JPEG file within the limits"
-	const tooBigInline = "the limit is 3071 KiB per image"
-
 	cases := []struct {
 		name string
-		data map[string]any
+		step map[string]any
 		want string
 	}{
-		{"relative path", map[string]any{"path": "shot.jpg"}, "data.path must be an absolute path"},
-		{"tilde path", map[string]any{"path": "~/x.jpg"}, "data.path must be an absolute path"},
-		{"missing file", map[string]any{"path": filepath.Join(dir, "nope.jpg")}, unreadable},
-		{"directory", map[string]any{"path": dir}, unreadable},
-		{"png by path", map[string]any{"path": pngPath}, unreadable},
-		{"png inline", map[string]any{"base64": b64(pngBytes(t))}, notJPEG},
-		{"truncated jpeg", map[string]any{"path": corrupt}, unreadable},
-		{"sparse over the cap", map[string]any{"path": huge}, unreadable},
-		{"inline over the cap", map[string]any{"base64": b64(append(append([]byte{}, shot...), make([]byte, maxImageBytes)...))}, tooBigInline},
-		{"both", map[string]any{"path": good, "base64": b64(shot)}, "data must hold exactly one of path or base64"},
-		{"neither", map[string]any{}, "data must hold exactly one of path or base64"},
-		{"url-safe base64", map[string]any{"base64": strings.NewReplacer("+", "-", "/", "_").Replace(b64(append([]byte{0xFF, 0xD8, 0xFF, 0xFB, 0xFF}, shot[3:]...)))}, "data.base64 is not standard base64"},
-		{"data url", map[string]any{"base64": "data:image/jpeg;base64," + b64(shot)}, "data.base64 is not standard base64"},
-		{"too wide by path", map[string]any{"path": wide}, unreadable},
-		{"too wide inline", map[string]any{"base64": b64(wideBytes)}, "image is 16385x1; each side must be 1-16384 pixels"},
-		{"over the area cap", map[string]any{"base64": b64(bigArea)}, "area at most 16 megapixels"},
-		{"unknown field", map[string]any{"path": good, "mime": "image/jpeg"}, "mime"},
+		{"gif", imageStep("bad", []byte("GIF89a"), "gif"), "s1.gif"},
+		{"png named jpg", imageStep("bad", pngBytes(t), "jpg"), "extension mismatch"},
+		{"garbage", imageStep("bad", []byte("not an image"), "png"), "not an allowed image"},
+		{"svg script", imageStep("bad", []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><script>x</script></svg>`), "svg"), "<script> is not allowed"},
 	}
 	for _, c := range cases {
-		msg := f.saveFail(t, "Bad image", imageStep("bad", c.data))
-		if !strings.Contains(msg, c.want) {
-			t.Errorf("%s: message = %q, want %q", c.name, msg, c.want)
+		msg := f.saveFail(t, "Bad image", c.step)
+		if !strings.Contains(msg, c.want) || !strings.Contains(msg, "proofs/bad-image/") {
+			t.Errorf("%s: reply = %q, want %q", c.name, msg, c.want)
 		}
-		if strings.Contains(msg, dir) {
-			t.Errorf("%s: message echoes the path: %q", c.name, msg)
-		}
-		if c.want == unreadable && msg != f.saveFail(t, "Bad image", imageStep("bad", map[string]any{"path": filepath.Join(dir, "nope.jpg")})) {
-			t.Errorf("%s: message differs from the missing-file message: %q", c.name, msg)
+		if strings.Contains(msg, f.folder) {
+			t.Errorf("%s: reply echoes the folder path: %q", c.name, msg)
 		}
 	}
-
-	// A FIFO must be refused, not block the save.
-	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	res, err := f.sess.CallTool(cctx, &mcp.CallToolParams{Name: "proof_save", Arguments: saveArgs("Bad image", []map[string]any{imageStep("bad", map[string]any{"path": fifo})})})
-	if err != nil || !res.IsError || !strings.Contains(text(res), unreadable) {
-		t.Fatalf("fifo: err = %v, result = %+v", err, res)
-	}
-
-	if list, err := f.app.W.Proof.Sessions(); err != nil || len(list) != 0 {
-		t.Fatalf("refused saves left sessions behind: %+v, %v", list, err)
-	}
-}
-
-// A call whose steps outgrow the session cap is refused before the remaining files are read.
-func TestProofImageEarlyCap(t *testing.T) {
-	f := newFixture(t)
-	big := append(jpegBytes(t, 64, 48), make([]byte, maxImageBytes)...)[:maxImageBytes]
-	path := writeFile(t, filepath.Join(t.TempDir(), "big.jpg"), big)
-	steps := make([]map[string]any, 12)
-	for i := range steps {
-		steps[i] = imageStep("max image", map[string]any{"path": path})
-	}
-	msg := f.saveFail(t, "Way too many images", steps...)
-	if !strings.Contains(msg, "steps[9]") || !strings.Contains(msg, "32 MiB data limit") {
-		t.Fatalf("message = %q, want steps[9] and the 32 MiB limit", msg)
-	}
-}
-
-func TestProofImageSessionCap(t *testing.T) {
-	f := newFixture(t)
-	dir := t.TempDir()
-	// Pad a small JPEG with trailing bytes (ignored after EOI) up to the file cap.
-	big := append(jpegBytes(t, 64, 48), make([]byte, maxImageBytes)...)[:maxImageBytes]
-	path := writeFile(t, filepath.Join(dir, "big.jpg"), big)
-	steps := make([]map[string]any, 9)
-	for i := range steps {
-		steps[i] = imageStep("max image", map[string]any{"path": path})
-	}
-	// Each stores about 4 MiB (4/3 of the file), so the ninth passes the 32 MiB session cap.
-	msg := f.saveFail(t, "Too many images", steps...)
-	if !strings.Contains(msg, "steps[8]") || !strings.Contains(msg, "32 MiB data limit") {
-		t.Fatalf("message = %q, want steps[8] and the 32 MiB limit", msg)
-	}
-	if list, err := f.app.W.Proof.Sessions(); err != nil || len(list) != 0 {
-		t.Fatalf("session left behind: %+v, %v", list, err)
-	}
-	if c := f.save(t, "Eight images", steps[:8]...); c.Steps != 8 {
-		t.Fatalf("eight images = %+v", c)
-	}
-}
-
-// The Window menu opens the proof window outside any task: no session is targeted.
-func TestProofMenuOpensWindow(t *testing.T) {
-	f := newFixture(t)
-	var inWindow bool
-	for _, sec := range appshell.BuildTemplate("Kira Space", false) {
-		if sec.Label != i18n.T("backend.menu.window.label", nil) {
-			continue
-		}
-		for _, it := range sec.Items {
-			if it.Kind == shell.ItemAction && it.Action == appshell.ActionOpenProofs {
-				inWindow = true
-			}
-		}
-	}
-	if !inWindow {
-		t.Fatal("no Validation proof item in the Window section")
-	}
-	open := f.app.W.MenuActions()[appshell.ActionOpenProofs]
-	if open == nil {
-		t.Fatal("proof.open action not wired")
-	}
-
-	open()
-	opened := f.app.ProofWindows.Opened
-	if len(opened) != 1 || !strings.HasPrefix(opened[0].Key, "proof-") {
-		t.Fatalf("opened windows = %+v, want one proof-* window", opened)
-	}
-	key := opened[0].Key
-	tg, err := f.app.W.Proof.WindowTarget(bridge.ProofWindowKeyArgs{Key: key})
-	if err != nil || tg.SessionID != nil {
-		t.Fatalf("WindowTarget = %+v, %v; want a null session", tg, err)
-	}
-	f.app.Contract(t, "proof-image", "ProofService.WindowTarget#menu", tg)
-
-	open()
-	if got := f.app.ProofWindows.Opened; len(got) != 1 {
-		t.Fatalf("second menu click opened %d windows, want the first raised", len(got))
-	}
-	if raised := f.app.ProofWindows.Raised; len(raised) == 0 || raised[len(raised)-1] != key {
-		t.Fatalf("raised = %v, want %s last", raised, key)
+	if list := f.proofs(t); len(list) != 0 {
+		t.Fatalf("refused proofs left rows behind: %+v", list)
 	}
 }

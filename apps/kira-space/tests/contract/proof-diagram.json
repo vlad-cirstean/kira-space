@@ -1,4 +1,49 @@
 {
+  "AdeTaskService.TaskProofs": [
+    {
+      "closedAt": 0,
+      "linkedAt": 0,
+      "name": "Checkout flow",
+      "pending": false,
+      "proofId": "<id:1>",
+      "rev": 1,
+      "sessionId": "",
+      "slug": "checkout-flow",
+      "stepId": "",
+      "stepName": "",
+      "steps": [
+        {
+          "description": "Diagram 1",
+          "id": "<masked>",
+          "ordinal": 1,
+          "source": "mermaid",
+          "view": "diagram"
+        },
+        {
+          "description": "Diagram 2",
+          "id": "<masked>",
+          "ordinal": 2,
+          "source": "mermaid",
+          "view": "diagram"
+        },
+        {
+          "description": "Diagram 3",
+          "id": "<masked>",
+          "ordinal": 3,
+          "source": "mermaid",
+          "view": "diagram"
+        },
+        {
+          "description": "Diagram 4",
+          "id": "<masked>",
+          "ordinal": 4,
+          "source": "mermaid",
+          "view": "diagram"
+        }
+      ],
+      "summary": ""
+    }
+  ],
   "ProofService.Session": {
     "closedAt": 0,
     "current": {
@@ -10,6 +55,7 @@
           "bytes": 96,
           "description": "Diagram 1",
           "diff": "added",
+          "id": "<masked>",
           "language": "text",
           "ordinal": 1,
           "originOrdinal": null,
@@ -20,6 +66,7 @@
           "bytes": 121,
           "description": "Diagram 2",
           "diff": "added",
+          "id": "<masked>",
           "language": "text",
           "ordinal": 2,
           "originOrdinal": null,
@@ -30,6 +77,7 @@
           "bytes": 108,
           "description": "Diagram 3",
           "diff": "added",
+          "id": "<masked>",
           "language": "text",
           "ordinal": 3,
           "originOrdinal": null,
@@ -40,6 +88,7 @@
           "bytes": 58,
           "description": "Diagram 4",
           "diff": "added",
+          "id": "<masked>",
           "language": "text",
           "ordinal": 4,
           "originOrdinal": null,
@@ -54,17 +103,6 @@
     "removed": [],
     "summary": ""
   },
-  "ProofService.Sessions": [
-    {
-      "closedAt": 0,
-      "id": "<masked>",
-      "name": "Checkout flow",
-      "pending": false,
-      "seen": false,
-      "steps": 4,
-      "taskTitle": ""
-    }
-  ],
   "ProofService.Step#broken": {
     "bytes": 58,
     "data": {
@@ -73,6 +111,7 @@
     },
     "description": "Diagram 4",
     "diff": "added",
+    "id": "<masked>",
     "language": "text",
     "ordinal": 4,
     "originOrdinal": null,
@@ -88,6 +127,7 @@
     },
     "description": "Diagram 1",
     "diff": "added",
+    "id": "<masked>",
     "language": "text",
     "ordinal": 1,
     "originOrdinal": null,
@@ -103,6 +143,7 @@
     },
     "description": "Diagram 3",
     "diff": "added",
+    "id": "<masked>",
     "language": "text",
     "ordinal": 3,
     "originOrdinal": null,
@@ -118,6 +159,7 @@
     },
     "description": "Diagram 2",
     "diff": "added",
+    "id": "<masked>",
     "language": "text",
     "ordinal": 2,
     "originOrdinal": null,

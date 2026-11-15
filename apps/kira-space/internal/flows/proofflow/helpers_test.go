@@ -3,136 +3,223 @@ package proofflow
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-	"regexp"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mcpauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles"
+	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 )
 
 var ctx = context.Background()
 
-var urlRe = regexp.MustCompile(`"url":"([^"]+)"`)
-
-type bearer struct{ token string }
-
-func (b bearer) RoundTrip(r *http.Request) (*http.Response, error) {
-	r = r.Clone(r.Context())
-	r.Header.Set("Authorization", "Bearer "+b.token)
-	return http.DefaultTransport.RoundTrip(r)
-}
-
-// fixture is an app with the MCP server on and a connected client.
+// fixture is an app with one task whose folder holds the proofs.
 type fixture struct {
-	app  *flowharness.App
-	sess *mcp.ClientSession
+	app    *flowharness.App
+	taskID string
+	folder string
+	// last holds the steps each proof was written with, so an edit can keep or replace one by ordinal.
+	last map[string][]map[string]any
+	// summary is written to the next proof; slug, when set, names the folder of the next write once.
+	summary, slug string
 }
 
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
 	app := flowharness.New(t)
-	st, err := app.W.DbMcp.SetEnabled(bridge.DbMcpSetEnabledArgs{Enabled: true})
-	if err != nil || !st.Running {
-		t.Fatalf("SetEnabled = %+v (%v), want running", st, err)
+	task, err := app.W.AdeTask.CreateTask(ctx, adewire.CreateTaskArgs{Title: "Login form"})
+	if err != nil {
+		t.Fatalf("CreateTask: %v", err)
 	}
-	m := urlRe.FindStringSubmatch(st.Command)
-	if m == nil {
-		t.Fatalf("Status.Command has no server url: %q", st.Command)
-	}
-	plain, ok, err := mcpauth.LoadHelperToken(mcpauth.HelperTokenPathNamed(app.SpaceHome, "mcp-db"))
-	if err != nil || !ok {
-		t.Fatalf("helper token: ok=%v err=%v", ok, err)
-	}
-	client := mcp.NewClient(&mcp.Implementation{Name: "flow-client", Version: "1"}, nil)
-	sess, err := client.Connect(ctx, &mcp.StreamableClientTransport{
-		Endpoint: m[1], HTTPClient: &http.Client{Transport: bearer{plain}, Timeout: 30 * time.Second},
-	}, nil)
+	dir, err := app.W.AdeTask.DetailsFolder(ctx, adewire.DiskChangesArgs{TaskID: task.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = sess.Close() })
-	return &fixture{app: app, sess: sess}
+	return &fixture{app: app, taskID: task.ID, folder: dir.Path, last: map[string][]map[string]any{}}
 }
 
-func text(res *mcp.CallToolResult) string {
-	var b strings.Builder
-	for _, c := range res.Content {
-		if tc, ok := c.(*mcp.TextContent); ok {
-			b.WriteString(tc.Text)
-		}
-	}
-	return b.String()
+// saved is what a submit of one proof answers.
+type saved struct {
+	ID, Slug, Name string
+	// Reply is the whole submit reply; Pending is true when the edit waits for review.
+	Reply   string
+	Pending bool
 }
 
-// call runs a tool and decodes its JSON answer into out (nil to ignore it).
-func (f *fixture) call(t *testing.T, name string, args map[string]any, out any) {
+// slugOf names the folder of a proof.
+func slugOf(name string) string { return taskfiles.SuggestSlug(name) }
+
+// write renders the proof folder: proof.md from the step maps and a side file per image or data file.
+// A step holds description, view, query, language, source and data (inline YAML); "image" is raw
+// bytes written as a file and "file" a name for a data file; "id" names it (default s<position>);
+// keepOrdinal and replacesOrdinal reuse the id of the previous write's step at that ordinal.
+func (f *fixture) write(t *testing.T, name string, steps []map[string]any) string {
 	t.Helper()
-	res, err := f.sess.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
-	if err != nil {
-		t.Fatalf("%s: %v", name, err)
+	slug := slugOf(name)
+	if f.slug != "" {
+		slug, f.slug = f.slug, ""
 	}
-	if res.IsError {
-		t.Fatalf("%s failed: %s", name, text(res))
+	dir := filepath.Join(f.folder, "proofs", slug)
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatal(err)
 	}
-	if out != nil {
-		if err := json.Unmarshal([]byte(text(res)), out); err != nil {
-			t.Fatalf("%s answer %q: %v", name, text(res), err)
-		}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
 	}
-}
-
-// fail runs a tool that must be refused and returns the message the agent sees.
-func (f *fixture) fail(t *testing.T, name string, args map[string]any) string {
-	t.Helper()
-	res, err := f.sess.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
-	if err != nil {
-		return err.Error()
-	}
-	if !res.IsError {
-		t.Fatalf("%s succeeded: %s", name, text(res))
-	}
-	return text(res)
-}
-
-func saveArgs(name string, steps []map[string]any) map[string]any {
-	list := make([]any, len(steps))
+	prev := f.last[name]
+	var out []any
+	var written []map[string]any
+	fresh := 0
 	for i, st := range steps {
-		list[i] = st
+		if k, ok := st["keepOrdinal"].(int); ok && k >= 1 && k <= len(prev) {
+			st = prev[k-1]
+		} else if r, ok := st["replacesOrdinal"].(int); ok && r >= 1 && r <= len(prev) {
+			cp := map[string]any{}
+			for key, v := range st {
+				if key != "replacesOrdinal" {
+					cp[key] = v
+				}
+			}
+			cp["id"] = prev[r-1]["id"]
+			st = cp
+		}
+		id, _ := st["id"].(string)
+		if id == "" {
+			id = fmt.Sprintf("s%d", i+1)
+			if len(prev) > 0 {
+				fresh++
+				id = fmt.Sprintf("n%d", fresh)
+			}
+		}
+		step := map[string]any{"id": id}
+		keep := map[string]any{"id": id}
+		for k, v := range st {
+			keep[k] = v
+			switch k {
+			case "id", "image", "file", "data", "keepOrdinal", "replacesOrdinal":
+			default:
+				step[k] = v
+			}
+		}
+		switch {
+		case st["image"] != nil:
+			raw := st["image"].([]byte)
+			ext, _ := st["ext"].(string)
+			if ext == "" {
+				ext = "png"
+			}
+			file := id + "." + ext
+			if err := os.WriteFile(filepath.Join(dir, file), raw, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			step["data"] = file
+		case st["file"] != nil:
+			file := st["file"].(string)
+			raw, err := json.Marshal(st["data"])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, file), raw, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			step["data"] = file
+		case st["view"] == "diagram":
+			if d, ok := st["data"].(map[string]any); ok {
+				step["inline"] = d["source"]
+			}
+		default:
+			step["inline"] = st["data"]
+		}
+		delete(step, "ext")
+		out = append(out, step)
+		written = append(written, keep)
 	}
-	return map[string]any{"name": name, "steps": list}
+	f.last[name] = written
+	body, err := yaml.Marshal(map[string]any{"name": name, "summary": f.summary, "steps": out})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "proof.md"), append(append([]byte("---\n"), body...), []byte("---\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return slug
 }
 
-// save creates a proof through proof_save and returns its answer.
-func (f *fixture) save(t *testing.T, name string, steps ...map[string]any) proof.CloseResult {
+// submit runs the agent's submit for the task and returns the reply.
+func (f *fixture) submit(t *testing.T, reason string) string {
 	t.Helper()
-	var r proof.CloseResult
-	f.call(t, "proof_save", saveArgs(name, steps), &r)
-	return r
+	reply, err := f.app.W.AdeBoard.Submit(ctx, agentmcp.SpaceCall{TaskID: f.taskID, SessionID: "session-1"}, agentmcp.SubmitArgs{Reason: reason})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return reply
 }
 
-// saveFail runs a proof_save that must be refused and returns the message the agent sees.
+// save writes a proof and submits it; the proof must be accepted.
+func (f *fixture) save(t *testing.T, name string, steps ...map[string]any) saved {
+	t.Helper()
+	slug := f.write(t, name, steps)
+	reply := f.submit(t, "")
+	if !strings.Contains(reply, "accepted") || strings.Contains(reply, "invalid 1") {
+		t.Fatalf("submit of %q = %q, want accepted", name, reply)
+	}
+	return saved{ID: f.idOf(t, name), Slug: slug, Name: name, Reply: reply}
+}
+
+// saveFail writes a proof that must be refused and returns the reply; no proof of that name remains.
 func (f *fixture) saveFail(t *testing.T, name string, steps ...map[string]any) string {
 	t.Helper()
-	return f.fail(t, "proof_save", saveArgs(name, steps))
+	slug := f.write(t, name, steps)
+	reply := f.submit(t, "")
+	if !strings.Contains(reply, "invalid") || strings.Contains(reply, "invalid 0") {
+		t.Fatalf("submit of %q = %q, want invalid", name, reply)
+	}
+	// An invalid folder stays on disk and in the next submit's reply: clear it.
+	if err := os.RemoveAll(filepath.Join(f.folder, "proofs", slug)); err != nil {
+		t.Fatal(err)
+	}
+	f.submit(t, "")
+	delete(f.last, name)
+	return reply
 }
 
-// edit changes a closed proof through proof_save with a reason.
-func (f *fixture) edit(t *testing.T, name, reason string, steps ...map[string]any) proof.CloseResult {
+// edit rewrites an accepted proof and submits with a reason; the edit waits for review.
+func (f *fixture) edit(t *testing.T, name, reason string, steps ...map[string]any) saved {
 	t.Helper()
-	args := saveArgs(name, steps)
-	args["reason"] = reason
-	var r proof.CloseResult
-	f.call(t, "proof_save", args, &r)
-	return r
+	slug := f.write(t, name, steps)
+	reply := f.submit(t, reason)
+	return saved{ID: f.idOf(t, name), Slug: slug, Name: name, Reply: reply, Pending: strings.Contains(reply, "pending user 1")}
+}
+
+// proofs lists the task's proofs.
+func (f *fixture) proofs(t *testing.T) []adewire.TaskProof {
+	t.Helper()
+	res, err := f.app.W.AdeTask.TaskProofs(ctx, adewire.TaskArgs{TaskID: f.taskID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return res.Proofs
+}
+
+func (f *fixture) idOf(t *testing.T, name string) string {
+	t.Helper()
+	for _, p := range f.proofs(t) {
+		if p.Name == name {
+			return p.ProofID
+		}
+	}
+	t.Fatalf("no proof named %q in %+v", name, f.proofs(t))
+	return ""
 }
 
 func tableStep(desc string) map[string]any {
@@ -205,20 +292,7 @@ func session(t *testing.T, app *flowharness.App, id string) proof.Detail {
 	return d
 }
 
-func sessionID(t *testing.T, app *flowharness.App, name string) string {
-	t.Helper()
-	list, err := app.W.Proof.Sessions()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, s := range list {
-		if s.Name == name {
-			return s.ID
-		}
-	}
-	t.Fatalf("no session named %q in %+v", name, list)
-	return ""
-}
+func sessionID(t *testing.T, f *fixture, name string) string { return f.idOf(t, name) }
 
 func chartStep(desc, source string, data map[string]any) map[string]any {
 	return map[string]any{"description": desc, "view": "chart", "source": source, "data": data}
