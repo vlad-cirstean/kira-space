@@ -906,6 +906,31 @@ cost, final context, pass rate, edit ease; turns reported only), haiku medians F
   tools that write the files, or (b) stop P643 after the spike. Turn-1 context is equal because
   Claude Code defers MCP tool schemas behind ToolSearch, so fewer tools did not shrink context.
 
+### Spike result (Part 1b)
+
+Follow-up after the NO-GO challenge (haiku weak, README too long, fixtures too small, context).
+Details, tables and every run: `P643-spike-results.md` "Part 1b". Test:
+`apps/kira-space/tests/claude/details_spike1b_test.go`, fixtures `testdata/details-spike-1b/`. Sonnet
+only, arms T, FF (full README plus `AGENTS.md`), FL (lean, 17 lines), FC (FL with one `handovers.md`
+and `notes.md`). 45 runs, 3.92 USD with probes (running total 4.89 of 5). F1, F3, F4, F6: 3 runs per
+arm (FC on F1 and F4 only); F5: 1 run per arm; F2 not run (budget).
+
+- Cost, median F over T (FF, FL): F1 1.12, 1.08 (inconclusive); F3 1.40, 1.28; F4 0.79, 0.72; F6 1.40,
+  1.36; F5 1.17, 1.26 (one run). FC: F1 1.11, F4 1.04. Limit 1.2 (F6 1.1).
+- Final context: F1 1.00 to 1.01 (parity), F3 1.03 and 0.99, F4 0.87 to 0.88 (FC 0.98), F6 1.09 and
+  1.06. Pass rate and edit ease: no files arm worse than T anywhere (T F3 2 of 3).
+- Attribution: README length and redundancy explain 0.003 to 0.008 USD per run (10 to 30 percent of
+  the F3 and F6 gap); file count does not hurt writes and per-file layout beats one `handovers.md` by
+  44 percent on F4; history reading decides F4 for files (T's `task_chain` returns whole chains);
+  the remaining 70 to 90 percent of the F3 and F6 gap is call structure (2 to 3 more turns: read two
+  docs, write, submit).
+- Context: 2.4k system prompt, 33.1k built-in tool schemas, 0.26k to 0.37k ToolSearch and MCP names
+  (about 10 tokens per tool), MCP schemas 0 at turn 1. ToolSearch costs about one turn in both arms.
+- Verdict: still NO-GO for files-only; no arm passes every flow. Recommendation: fallback (a) narrowed:
+  files are the source of truth and the readable state (orchestrator chain reads win), proofs and
+  child creation keep a tool entry that writes the files; handover by file plus `finish_step` is at
+  parity. Data give `D-Q2: T`. The user decides; Parts stay unbuilt until then.
+
 ## 15. Tests per Part (IPC split)
 
 Each feature Part ships one Go flow test and one UI spec on a shared contract.
@@ -977,7 +1002,7 @@ passes; each adds its flows to `tests/claude/details_bench_test.go`.
 
 | Part | Content | Main files |
 |---|---|---|
-| 1 Spike | real `claude` comparison, gate, baseline, D-Q2 verdict | `tests/claude/details_spike_test.go`, `tests/claude/testdata/details-spike/**` (incl. `tools-baseline.json`), `package.json` (`test:claude:details`), `docs/DEV_ENVIRONMENT.md` (real `claude` row), new `plans/P643-spike-results.md` |
+| 1 Spike (done: Part 1 and Part 1b, gate NO-GO, user decides fallback and D-Q2) | real `claude` comparison on haiku, then on sonnet with realistic fixtures and README and layout ablations (Part 1b), gate, baseline, D-Q2 data | `tests/claude/details_spike_test.go`, `details_spike1b_test.go`, `details_spike_{stubs,metrics,report}_test.go`, `tests/claude/testdata/details-spike/**` and `details-spike-1b/**` (`tools-baseline.json` not frozen: the gate failed before Part 2), `docs/DEV_ENVIRONMENT.md` (real `claude` row), `plans/P643-spike-results.md` |
 | 2 Foundation | store seam, formats, validators export, submit core (walk, classify, diff, apply, restore), intents, `task_files`, migration framework, README and `AGENTS.md` generator, task folder grant (add-dir, sandbox allow and denies, deny rules) | new `internal/taskfiles/**`, `internal/taskfiles/store/**`, `storage/migrations/0101_p643_task_files.sql`, `storage/repos/taskfiles.go`, `internal/proof/validate.go` (export), `ade/sandbox.go`, `ade/sandbox_tui.go`, `ade/launches.go`, `appwire/wire.go` |
 | 3 Notes, handovers, links | file writes for every UI action, caches, stage move rename, `submit` tool, `finish_step` change, `handover` and `report_artifacts` removed, prompts and approvals kind `details.edit`, disk banner, migration exporters, panel forward paths | `ade/handover.go`, `ade/links.go`, `ade/artifacts.go`, `ade/orchestrator.go`, `ade/taskcreate.go`, `ade/panelforward.go`, new `ade/details.go`, `agentmcp/{handover,artifacts,mcp,space,tools}.go`, new `agentmcp/submit.go`, `llmprompts/registry.go`, `bridge/adetask.go`, `adewire/wire.go`, `frontend/src/ade/v2/details/**`, `request/kindDefs.ts`, tests |
 | 4 Proofs | proof format, submit kind proof, image formats (Q17) incl. SVG checks, proof window single and task-only, retention removed, `proof_save`/`proof_list` removed for every client, standalone entry points removed (Q10 list, section 10), proof migration | `internal/proof/**`, `storage/repos/proof.go`, `dbmcp/proof_tools.go`, `dbmcp/server.go`, `ade/proof.go`, `bridge/proof.go`, `bridge/dbmcp.go`, `bridge/adetask.go`, `appshell/menu.go`, `appwire/menuactions.go`, `frontend/src/studio/proof/**` (`ProofImage.vue` changed, `ProofHistory.vue` removed), `details/AdeProofEntry.vue`, `AdeProofAttachMenu.vue` (removed), `packages/shared/domain/proof.ts`, `go.mod` (`golang.org/x/image`), tests |
