@@ -188,6 +188,8 @@ type stateWriter struct {
 	rev    int
 	loaded bool
 	last   []byte // the last written body, rev line as 0
+	// archived is set under mu by the final archive write: later renders of this writer write nothing.
+	archived bool
 }
 
 type stateFiles struct {
@@ -197,6 +199,9 @@ type stateFiles struct {
 	// kira holds the last rendered bytes of the Kira-owned files, by task and path: a restore of an
 	// edited one returns them.
 	kira map[string]map[string][]byte
+	// attach is the attach cache the writers share until the next board notification: one inventory
+	// read per repo serves every writer that renders for the same change.
+	attach *attachCache
 }
 
 var revLine = regexp.MustCompile(`(?m)^rev: (\d+)$`)
@@ -236,6 +241,7 @@ func (b *TaskBoard) markStateDirty(taskID string, touch bool) {
 	}
 	s := &b.stateFiles
 	s.mu.Lock()
+	s.attach = nil // facts read before this change must not serve a render after it
 	w := s.writers[taskID]
 	if w == nil {
 		if !touch {
@@ -293,6 +299,16 @@ func (b *TaskBoard) markAllStateDirty() {
 	}
 }
 
+// agentLive reports whether the task has a running session or run. On a lookup error it answers true:
+// a writer kept too long costs one idle render, a dropped one a stale file.
+func (b *TaskBoard) agentLive(taskID string) bool {
+	if b.deps.Sessions == nil {
+		return false
+	}
+	rows, err := b.deps.Sessions.ListRunning(taskID)
+	return err != nil || len(rows) > 0
+}
+
 func (b *TaskBoard) runStateWriter(taskID string, w *stateWriter) {
 	s := &b.stateFiles
 	idle := time.NewTimer(stateIdle)
@@ -314,12 +330,30 @@ func (b *TaskBoard) runStateWriter(taskID string, w *stateWriter) {
 			b.writeState(taskID, w)
 		case <-idle.C:
 			s.mu.Lock()
+			if s.writers[taskID] != w { // archived: the writer was dropped
+				s.mu.Unlock()
+				return
+			}
 			if quiet := b.deps.Now().Sub(w.seen); quiet < stateIdle || len(w.dirty) > 0 {
 				s.mu.Unlock()
 				idle.Reset(max(stateIdle-quiet, stateCoalesce))
 				continue
 			}
-			delete(s.writers, taskID)
+			s.mu.Unlock()
+			// A live session or run reads state.yaml with no call that touches it: keep the writer.
+			if b.agentLive(taskID) {
+				idle.Reset(stateIdle)
+				continue
+			}
+			s.mu.Lock()
+			if len(w.dirty) > 0 || b.deps.Now().Sub(w.seen) < stateIdle {
+				s.mu.Unlock()
+				idle.Reset(stateCoalesce)
+				continue
+			}
+			if s.writers[taskID] == w {
+				delete(s.writers, taskID)
+			}
 			s.mu.Unlock()
 			return
 		}
@@ -359,6 +393,9 @@ func (b *TaskBoard) writeState(taskID string, w *stateWriter) {
 }
 
 func (b *TaskBoard) writeStateLocked(df *detailsFiles, taskID string, w *stateWriter) error {
+	if w.archived {
+		return nil
+	}
 	doc, err := b.renderState(b.ctx, taskID)
 	if err != nil {
 		return nil // archived or gone: the final write at archive stands
@@ -408,11 +445,15 @@ func (b *TaskBoard) writeArchivedState(taskID string) {
 	s.mu.Lock()
 	w := s.writers[taskID]
 	delete(s.writers, taskID)
+	s.mu.Unlock()
 	rev := 0
 	if w != nil {
+		// Wait out a live render in flight so its rename cannot land after the archived file.
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		w.archived = true
 		rev = w.rev
 	}
-	s.mu.Unlock()
 	if rev == 0 {
 		rev = b.files.diskRev(b.ctx, taskID)
 	}
@@ -492,13 +533,24 @@ func (df *detailsFiles) kiraBytes(taskID, rel string) []byte {
 	return s.kira[taskID][rel]
 }
 
+// sharedAttach is the attach cache of the current notification epoch, created on first use.
+func (b *TaskBoard) sharedAttach() *attachCache {
+	s := &b.stateFiles
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.attach == nil {
+		s.attach = b.newAttachCache()
+	}
+	return s.attach
+}
+
 // renderState reads the task as state.yaml shows it. It runs outside every taskfiles transaction.
 func (b *TaskBoard) renderState(ctx context.Context, taskID string) (stateDoc, error) {
 	tc, err := b.loadTaskCtx(taskID)
 	if err != nil {
 		return stateDoc{}, err
 	}
-	info, err := b.spaceInfo(ctx, tc, true)
+	info, err := b.spaceInfoWith(ctx, tc, true, b.sharedAttach())
 	if err != nil {
 		return stateDoc{}, err
 	}

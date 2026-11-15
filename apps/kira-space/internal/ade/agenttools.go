@@ -152,6 +152,11 @@ func (b *TaskBoard) worktreePath(ctx context.Context, sb model.AdeTaskBranch) st
 // spaceInfo builds the task as state.yaml and a declare reply show it. The registered repos are listed
 // only for a task with no repos, or when includeRegistered asks: the list rarely changes.
 func (b *TaskBoard) spaceInfo(ctx context.Context, tc *taskCtx, includeRegistered bool) (agentmcp.TaskInfo, error) {
+	return b.spaceInfoWith(ctx, tc, includeRegistered, b.newAttachCache())
+}
+
+// spaceInfoWith is spaceInfo reading attach facts through cache, which a caller may share.
+func (b *TaskBoard) spaceInfoWith(ctx context.Context, tc *taskCtx, includeRegistered bool, cache *attachCache) (agentmcp.TaskInfo, error) {
 	_, cfgs, err := b.registeredCandidates()
 	if err != nil {
 		return agentmcp.TaskInfo{}, err
@@ -177,7 +182,6 @@ func (b *TaskBoard) spaceInfo(ctx context.Context, tc *taskCtx, includeRegistere
 			}
 		}
 	}
-	cache := b.newAttachCache()
 	for _, br := range tc.branches {
 		r := agentmcp.TaskRepo{Repo: tc.nick[br.CodeRepoID], CodeRepoID: br.CodeRepoID}
 		if br.Name != "" {
@@ -433,16 +437,12 @@ type recentRun struct {
 
 // recentRuns reads the task's newest runs, review rounds left out.
 func (b *TaskBoard) recentRuns(taskID string, limit int) ([]recentRun, error) {
-	runs, err := b.deps.Tasks.RunsOfTask(taskID)
+	runs, err := b.deps.Tasks.RecentRunsOfTask(taskID, limit)
 	if err != nil {
 		return nil, err
 	}
 	out := []recentRun{}
-	for i := len(runs) - 1; i >= 0 && len(out) < limit; i-- {
-		r := runs[i]
-		if r.Purpose == model.AdeRunPurposeReview {
-			continue
-		}
+	for _, r := range runs {
 		kind := "step"
 		if r.Purpose == model.AdeRunPurposeRebase {
 			kind = "rebase"
