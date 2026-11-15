@@ -13,7 +13,7 @@ import (
 func proofRun(t *testing.T, prompt string) (*adeFixture, adewire.Task, []adewire.TaskProof) {
 	t.Helper()
 	f := newAdeFixture(t, nil)
-	step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 4m\n    prompt: " + prompt + "\n"
+	step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 4m\n    prompt: |\n      " + prompt + "\n"
 	f.saveWorkflow(t, "flow", step+manualStepYAML)
 	task := f.createTask(t, "flow")
 	run := f.startRun(t, task, "feat/proof")
@@ -33,7 +33,7 @@ func TestProofMcpThroughClaude(t *testing.T) {
 	f, _, proofs := proofRun(t, `Write a validation proof named "Claude proof" in the task folder with two steps: `+
 		`first a table step (description "Two rows", columns id and label, rows 1 a and 2 b), `+
 		`then a document step (description "One doc", one document with body ok true). `+
-		`Call submit, then call finish_step with status pass and summary ok.`)
+		`Call submit, then call finish_step with status done.`)
 	if len(proofs) != 1 || proofs[0].Name != "Claude proof" || proofs[0].Slug != "claude-proof" {
 		t.Fatalf("proofs = %+v, want one named %q in folder claude-proof", proofs, "Claude proof")
 	}
@@ -49,7 +49,7 @@ func TestProofMcpThroughClaude(t *testing.T) {
 func TestProofChartThroughClaude(t *testing.T) {
 	f, _, proofs := proofRun(t, `Write a validation proof named "Chart proof" in the task folder with one step: `+
 		`a chart step with description "Errors by service" showing errors per service as a bar chart: api 3, web 5, worker 0. `+
-		`Call submit, then call finish_step with status pass and summary ok.`)
+		`Call submit, then call finish_step with status done.`)
 	if len(proofs) != 1 || proofs[0].Name != "Chart proof" || len(proofs[0].Steps) != 1 || proofs[0].Steps[0].View != "chart" || proofs[0].Steps[0].Description != "Errors by service" {
 		t.Fatalf("proofs = %+v, want one chart step %q", proofs, "Errors by service")
 	}

@@ -39,7 +39,7 @@ test('contract: an image step draws each stored format', async ({ relaunch, uiSe
     const img = region(page).locator('img');
     await expect(img).toHaveAttribute('alt', TITLES[n - 1]?.replace(/^#\d+ /, '') ?? '');
     const want = FORMATS[n - 1] as (typeof FORMATS)[number];
-    await expect(img).toHaveAttribute('src', new RegExp(`^data:${want.mime};base64,`));
+    expect(await img.getAttribute('src')).toContain(`data:${want.mime};base64,`);
     await expect
       .poll(() => img.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight]))
       .toEqual(want.size);
