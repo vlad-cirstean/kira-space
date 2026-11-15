@@ -65,7 +65,7 @@ func TestGolden(t *testing.T) {
 
 		{"ade.step.prompt.default-implicit", AdeStepPrompt.id, step(func(*StepVars) {})},
 		{"ade.step.prompt.files", AdeStepPrompt.id, step(func(v *StepVars) {
-			v.Files = FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__finish_step,mcp__kira-space__submit".`}
+			v.Files = FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Draft: "handovers/draft-implement.md", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__state,mcp__kira-space__submit".`}
 		})},
 		{"ade.step.prompt.jira", AdeStepPrompt.id, step(func(v *StepVars) { v.JiraKey, v.JiraURL = jiraKey, jiraURL })},
 		{"ade.step.prompt.message", AdeStepPrompt.id, step(func(v *StepVars) { v.Message = "Do the thing for Add login form." })},

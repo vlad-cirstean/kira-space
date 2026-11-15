@@ -107,7 +107,7 @@ func (s *benchSpaceR) Submit(_ context.Context, _ agentmcp.SpaceCall, in agentmc
 	return "accepted 1, pending user 0, invalid 0\nhandovers/draft-implement.md: accepted", nil
 }
 
-func (s *benchSpaceR) SubmitForFinish(_ context.Context, _ agentmcp.SpaceCall, ok bool) (agentmcp.SubmitFinish, error) {
+func (s *benchSpaceR) SubmitForFinish(_ context.Context, _ agentmcp.SpaceCall, _ string, ok bool) (agentmcp.SubmitFinish, error) {
 	body := s.body()
 	if body == "" && ok {
 		return agentmcp.SubmitFinish{Refuse: "write handovers/draft-implement.md, then call state step.finish"}, nil
@@ -626,8 +626,8 @@ func (b *benchBoardR) Submit(ctx context.Context, call agentmcp.SpaceCall, in ag
 	return out, err
 }
 
-func (b *benchBoardR) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall, ok bool) (agentmcp.SubmitFinish, error) {
-	out, err := b.TaskBoard.SubmitForFinish(ctx, call, ok)
+func (b *benchBoardR) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall, status string, ok bool) (agentmcp.SubmitFinish, error) {
+	out, err := b.TaskBoard.SubmitForFinish(ctx, call, status, ok)
 	b.mu.Lock()
 	b.replies = append(b.replies, out.Reply)
 	b.mu.Unlock()

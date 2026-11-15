@@ -198,8 +198,9 @@ type SpaceTools interface {
 	ChangeBranch(ctx context.Context, call SpaceCall, args ChangeBranchArgs) (ChangeBranchResult, error)
 	// Submit reads the named task files (all when none) as the calling session; the reply is the count line then one line per file.
 	Submit(ctx context.Context, call SpaceCall, in SubmitArgs) (string, error)
-	// SubmitForFinish is a run's step.finish implicit submit; an ok finish with no draft is refused.
-	SubmitForFinish(ctx context.Context, call SpaceCall, ok bool) (SubmitFinish, error)
+	// SubmitForFinish is a run's step.finish implicit submit; an ok finish with no draft is refused
+	// while its result's route continues.
+	SubmitForFinish(ctx context.Context, call SpaceCall, status string, ok bool) (SubmitFinish, error)
 	// FinishSession is a session's step.finish: it submits the task files, marks the stage's draft
 	// finished and asks the user to move the task on. The reply is a note for the agent.
 	FinishSession(ctx context.Context, call SpaceCall) (string, error)

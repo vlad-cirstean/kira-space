@@ -397,7 +397,7 @@ func (s *Server) finishRun(ctx context.Context, req *mcp.CallToolRequest, g Gran
 	if g.Space && g.TaskID != "" && s.space != nil {
 		call := SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID, Orchestrator: g.Orchestrator}
 		cctx, done := s.callCtx(ctx, req)
-		out, err := s.space.SubmitForFinish(cctx, call, isOKStatus(g.Results, args.Status))
+		out, err := s.space.SubmitForFinish(cctx, call, args.Status, isOKStatus(g.Results, args.Status))
 		done()
 		if err != nil {
 			return "", "", err

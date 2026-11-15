@@ -3,6 +3,7 @@ package ade
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
@@ -23,11 +24,31 @@ func submitSession(call agentmcp.SpaceCall) detailsSession {
 
 // Submit is the submit tool: it reads the named task files as the calling session.
 func (b *TaskBoard) Submit(ctx context.Context, call agentmcp.SpaceCall, in agentmcp.SubmitArgs) (string, error) {
-	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), in.Paths, in.Reason)
+	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), b.relToFolder(call.TaskID, in.Paths), in.Reason)
 	if err != nil {
 		return "", err
 	}
 	return submitReply(res), nil
+}
+
+// relToFolder turns a path inside the task folder that an agent gave absolute (as its Write call did)
+// into the relative path submit takes. Any other path stays, so submit answers it invalid.
+func (b *TaskBoard) relToFolder(taskID string, paths []string) []string {
+	if b.deps.FilesDir == "" {
+		return paths
+	}
+	dir := filepath.Join(b.deps.FilesDir, pathSegment(taskID))
+	out := make([]string, len(paths))
+	for i, p := range paths {
+		out[i] = p
+		if !filepath.IsAbs(p) {
+			continue
+		}
+		if rel, err := filepath.Rel(dir, filepath.Clean(p)); err == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			out[i] = filepath.ToSlash(rel)
+		}
+	}
+	return out
 }
 
 // FinishSession is a session's step.finish: it submits the task files, then marks the stage's draft
@@ -83,8 +104,8 @@ func (b *TaskBoard) finishDraft(taskID string) (string, error) {
 }
 
 // SubmitForFinish is a run's step.finish implicit submit. An ok finish needs the current step's draft:
-// without one the finish is refused.
-func (b *TaskBoard) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall, ok bool) (agentmcp.SubmitFinish, error) {
+// without one the finish is refused, unless its route ends the task.
+func (b *TaskBoard) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall, status string, ok bool) (agentmcp.SubmitFinish, error) {
 	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), nil, "")
 	if err != nil {
 		return agentmcp.SubmitFinish{}, err
@@ -103,7 +124,7 @@ func (b *TaskBoard) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall
 	if err != nil {
 		return agentmcp.SubmitFinish{}, err
 	}
-	if draft != "" || !ok || b.noStageRun(call.RunID) {
+	if draft != "" || !ok || b.noStageRun(call.RunID) || !b.routeContinues(tc, cur, status) {
 		return agentmcp.SubmitFinish{Reply: reply, Summary: draft}, nil
 	}
 	msg := fmt.Sprintf("write %s, then call state step.finish", draftRel(cur))

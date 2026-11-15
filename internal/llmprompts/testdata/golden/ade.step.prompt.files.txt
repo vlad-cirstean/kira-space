@@ -4,6 +4,6 @@ Step 2/5: Implement
 Implement Add login form in kira-space on feat/login.
 
 Kira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.
-Task folder: /home/me/.kira-space/tasks/t1. See README.md there. Call submit after editing task files. When the step is done, call state with step.finish. Load the tools first: ToolSearch with query "select:mcp__kira-space__finish_step,mcp__kira-space__submit".
+Task folder: /home/me/.kira-space/tasks/t1. See README.md there. Call submit after editing task files. Write your handover to handovers/draft-implement.md before an ok finish. When the step is done, call state with step.finish. Load the tools first: ToolSearch with query "select:mcp__kira-space__state,mcp__kira-space__submit".
 
 When this step is done, call state with action step.finish and args status "done". If it failed, use status "failed", what failed and the reason. If you need a decision from me, use status "needs_input" and your question.

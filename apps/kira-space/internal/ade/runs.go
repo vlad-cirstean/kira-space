@@ -738,7 +738,7 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 		agentSessionID := b.proposeAgentID(agent, spec.ResumeID)
 		switch {
 		case spec.ResumeID != "":
-			prompt = composeResumePrompt(b.prompts(), spec.Prompt, b.filesVars(tc.task.ID, agent, b.isOrchestrator(tc.task.ID)), def.Results, true)
+			prompt = composeResumePrompt(b.prompts(), spec.Prompt, b.filesVars(tc, def.ID, agent, b.isOrchestrator(tc.task.ID)), def.Results, true)
 		case smart != nil:
 			prompt = smart.prompt
 		default:
@@ -748,7 +748,7 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 				Step: stepN, Of: stepOf, Def: def, Message: b.stepMessage(tc.task.ID, def.ID), Extra: spec.Extra,
 				Context: b.rebaseContext(tc),
 				Notes:   b.userNotes(tc.task.ID), Handover: ho.Body, HandoverFrom: ho.From,
-				Files: b.filesVars(tc.task.ID, agent, b.isOrchestrator(tc.task.ID)),
+				Files: b.filesVars(tc, def.ID, agent, b.isOrchestrator(tc.task.ID)),
 			})
 		}
 		if err := b.deps.Sessions.InsertHeadless(model.AdeSession{

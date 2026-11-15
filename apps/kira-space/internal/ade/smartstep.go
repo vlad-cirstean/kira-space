@@ -55,7 +55,7 @@ func (b *TaskBoard) planSmartStep(tc *taskCtx, sb model.AdeTaskBranch, path stri
 	}
 	body := scripts.PlainText(scripts.Compose(script.Command, rendered))
 	files := ""
-	if v := b.filesVarsFor(tc.task.ID, def.Agent, b.isOrchestrator(tc.task.ID)); v.Folder != "" {
+	if v := b.filesVarsFor(tc, def.ID, def.Agent, b.isOrchestrator(tc.task.ID)); v.Folder != "" {
 		files = "\n" + llmprompts.HeadlessSpaceFiles.Text(b.prompts(), v)
 	}
 	step.prompt = body + "\n\n" + agentmcp.SpaceNote(b.prompts()) + files + "\n\n" + agentmcp.FinishInstruction(b.prompts(), resultSpecs(def.Results))

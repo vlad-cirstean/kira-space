@@ -78,7 +78,7 @@ headless.tool.finish_step.arg.tried	32
 headless.tool.submit	231
 headless.tool.submit.arg.paths	84
 headless.tool.submit.arg.reason	116
-headless.space.files	288
+headless.space.files	328
 headless.finishStep.ack	19
 headless.artifacts.header	73
 headless.artifacts.more	27

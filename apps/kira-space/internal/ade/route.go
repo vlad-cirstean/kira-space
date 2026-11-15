@@ -227,3 +227,34 @@ func (l *pendingLoop) queue(b *TaskBoard) {
 		slog.Warn("ade: loop run", "scope", "ade", "branch", l.branch, "err", err)
 	}
 }
+
+// continues reports whether a result of plan[idx] leaves a stage that reads the step's handover: a
+// forward route with a step left, or a return. An end or a stop does not.
+func continues(plan []stepView, idx int, res adewire.StepResult) bool {
+	if res.Next == adewire.RouteStop {
+		return false
+	}
+	if t := stepIndex(plan, res.Next); t >= 0 && t <= idx {
+		return true
+	}
+	return routeIndex(plan, idx, res.Next) < len(plan)
+}
+
+// routeContinues reports whether finishing the step with status continues the route; with no status, any ok
+// result of the step does. A task with no workflow, or a step it lacks, hands nothing over.
+func (b *TaskBoard) routeContinues(tc *taskCtx, stepID, status string) bool {
+	plan, err := b.plan(tc)
+	if err != nil {
+		return false
+	}
+	idx := stepIndex(plan, stepID)
+	if idx < 0 {
+		return false
+	}
+	def := plan[idx].Def
+	if status != "" {
+		res, ok := def.resultOf(status)
+		return ok && continues(plan, idx, res)
+	}
+	return slices.ContainsFunc(def.Results, func(r adewire.StepResult) bool { return r.OK && continues(plan, idx, r) })
+}

@@ -197,7 +197,7 @@ func (f *fakeSpace) Submit(_ context.Context, _ SpaceCall, in SubmitArgs) (strin
 	return "accepted 0, pending user 0, invalid 0", nil
 }
 
-func (f *fakeSpace) SubmitForFinish(context.Context, SpaceCall, bool) (SubmitFinish, error) {
+func (f *fakeSpace) SubmitForFinish(context.Context, SpaceCall, string, bool) (SubmitFinish, error) {
 	return f.finish, nil
 }
 

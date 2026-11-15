@@ -7195,7 +7195,7 @@
         }
       },
       "headlessSpaceFiles": {
-        "description": "Names the task folder, points at the readme there, tells the agent to call submit after editing task files, and says how to load the tools.",
+        "description": "Names the task folder, points at the readme there, tells the agent to call submit after editing task files, names the step draft to write before an ok finish that continues the route, and says how to load the tools.",
         "title": "Task files instruction",
         "usedBy": {
           "body": "Follows the Kira Space tools line in every ADE step prompt and session message."
