@@ -133,3 +133,47 @@ shape rejection (`viewShapes`: table, document, key-value, chart, diagram), with
 - F3 R used 13 turns and one failed edit-path call against T's 4: ToolSearch, a README read, a proof read, the edit, then
   `submit` with a reason. The README read could be cut by inlining the proof index (already in the prompt `Proofs:` line).
 - Cost floor: arm R needs a `ToolSearch` turn that T does not (deferred MCP schemas), as Part 3 found.
+
+## Part 5 round: F4, F5, F6 and the F1 rerun on the uniform surface
+
+Arm R is the real `agentmcp.Server` with `submit`, `state` (and `create_task` for F4 and F6) over a task folder with Kira-shaped
+`README.md`, `task.yaml`, `state.yaml`. F4 adds the two child folders with `--add-dir`. F5 answers `state branch.request` once setup ends
+(4 s after start, not the 20 s of the plan; both arms share the delay). Sonnet, 3 reps. Raw transcripts were kept with `KIRA_SPIKE_DUMP`.
+
+First round (24 runs, 1.8473 USD): arm T failed every F4 and F5 run. The frozen tools declare an output schema and the T handlers returned
+text only, so the CLI refused each reply ("did not return structured content"). F6 and F1 T runs passed. This was a harness bug, not a gate
+result: `textResult` now sets `StructuredContent`, and `TestDetailsBenchFrozenServes` checks each reply against its schema. Arm R rows of that
+round stand. Arm T rows for F4 to F6 were rerun alone (9 runs, 0.6392 USD), so R and T come from different invocations of the same harness.
+
+| Flow | Arm | Pass | Cost (median) | Final context (median) | Turns | Failed edit-path + retries |
+|---|---|---|---|---|---|---|
+| F4 | R | 3 of 3 | 0.0871 | 43548 | 7 | 0.00 |
+| F4 | T | 3 of 3 | 0.0979 | 48920 | 5 | 0.00 |
+| F5 | R | 3 of 3 | 0.0774 | 39992 | 8 | 0.00 |
+| F5 | T | 3 of 3 | 0.0507 | 40733 | 3 | 0.33 |
+| F6 | R | 3 of 3 | 0.0969 | 42368 | 8 | 0.00 |
+| F6 | T | 3 of 3 | 0.0648 | 40341 | 4 | 0.00 |
+| F1 | R | 3 of 3 | 0.0685 | 39461 | 7 | 0.00 |
+| F1 | T | 3 of 3 | 0.0540 | 40196 | 4 | 0.00 |
+
+Gate, R over T (cost at most 1.2; context at most 1.05 on F1 to F4 and 1.0 on F5 and F6; pass not lower; failed plus retries not higher):
+
+| Flow | Cost R/T | Context R/T | Pass | Failed + retries | Verdict |
+|---|---|---|---|---|---|
+| F4 | 0.89 | 0.89 | 3 vs 3 | 0.00 vs 0.00 | pass |
+| F5 | 1.53 | 0.98 | 3 vs 3 | 0.00 vs 0.33 | fail (cost) |
+| F6 | 1.50 | 1.05 | 3 vs 3 | 0.00 vs 0.00 | fail (cost, context) |
+| F1 | 1.27 | 0.98 | 3 vs 3 | 0.00 vs 0.00 | fail (cost) |
+
+Verdict: the gate is not met and was not relaxed. Run-to-run spread is under 0.01 USD per cell, so the cost gaps are not noise.
+
+Cause, from the R transcripts: R runs the step ceremony the files design requires and T does not. Per run: `ToolSearch`, `Read` of the
+README, the call itself, a `Write` of `handovers/draft-implement.md`, `submit`, then `state step.finish`: 7 to 8 turns against 3 to 5. The T
+flows stop at the tool answer. F5 shows it most: T is one `task_info` call with a wait; R must also write a draft and finish. F4 passes because
+T needs three read tools there and R reads the files. F6 context is 1.05 because the README and the draft sit in R's context.
+
+Open for the owner (plan decision, nothing tried): let `step.finish` take the handover body so the draft write and `submit` collapse into
+one call; preload the two tools to drop the `ToolSearch` turn; or compare against a T arm that also writes a handover and calls `finish_step`.
+
+Spend of Part 5: 1.8473 + 0.6392 = 2.4865 USD, above the 1.26 USD planned for F4 to F6 because of the T harness bug.
+

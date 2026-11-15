@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
@@ -195,7 +196,8 @@ func textResult(v any) (*mcp.CallToolResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(raw)}}}, nil
+	// The frozen tools declare an output schema: the client rejects a reply without structured content.
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(raw)}}, StructuredContent: v}, nil
 }
 
 func errResult(msg string) *mcp.CallToolResult {
@@ -543,9 +545,33 @@ func TestDetailsBenchFrozenServes(t *testing.T) {
 			}
 			return res
 		}
-		if res := call("task_info", map[string]any{}); res.IsError {
-			t.Fatalf("task_info: %+v", res.Content)
+		// The CLI refuses a reply without structured content that fits the tool's output schema.
+		fitsSchema := func(tool string, args map[string]any) {
+			i := slices.IndexFunc(base.Roles[benchRoleOf(flow)]["kira-space"], func(w *mcp.Tool) bool { return w.Name == tool })
+			if i < 0 {
+				return
+			}
+			res := call(tool, args)
+			raw, _ := json.Marshal(base.Roles[benchRoleOf(flow)]["kira-space"][i].OutputSchema)
+			var sc jsonschema.Schema
+			if err := json.Unmarshal(raw, &sc); err != nil {
+				t.Fatal(err)
+			}
+			rs, err := sc.Resolve(nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var inst any
+			b, _ := json.Marshal(res.StructuredContent)
+			_ = json.Unmarshal(b, &inst)
+			if res.IsError || res.StructuredContent == nil || rs.Validate(inst) != nil {
+				t.Fatalf("%s %s: reply %s does not fit the output schema: %v", flow, tool, b, rs.Validate(inst))
+			}
 		}
+		fitsSchema("task_info", map[string]any{})
+		fitsSchema("task_info", map[string]any{"repo": "app", "branch": "feature/x"})
+		fitsSchema("list_tasks", map[string]any{})
+		fitsSchema("task_chain", map[string]any{"taskId": "c-billing"})
 		if res := call("finish_step", map[string]any{"status": "done", "summary": "x"}); res.IsError || len(r.finishes) != 1 || r.finishes[0].Status != "done" {
 			t.Fatalf("finish_step: %+v %v", res, r.finishes)
 		}
