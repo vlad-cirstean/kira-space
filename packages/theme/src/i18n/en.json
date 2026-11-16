@@ -661,10 +661,10 @@
           }
         },
         "fixContext": {
-          "body": "The context file has a problem. Fix it first."
+          "body": "The agent context has a problem. Fix it first."
         },
         "fixSettings": {
-          "body": "The settings file has a problem. Fix it first."
+          "body": "The agent settings have a problem. Fix them first."
         },
         "note": {
           "atImports": {
@@ -747,7 +747,7 @@
       },
       "agentSettings": {
         "changed": {
-          "body": "The settings file changed since you loaded it."
+          "body": "The agent settings changed since you loaded them."
         },
         "headlessNote": {
           "body": "Headless steps use the same files without permission_mode, allow and status_line."
@@ -902,22 +902,22 @@
           "body": "{field} is required."
         },
         "root": {
-          "label": "The file"
+          "label": "The top level"
         },
         "syntax": {
           "body": "Invalid YAML syntax: {detail}."
         },
         "textEncoding": {
-          "body": "The file must be plain text with valid encoding."
+          "body": "The text has an invalid encoding."
         },
         "textTooLarge": {
-          "body": "The file is larger than {limit} bytes."
+          "body": "The text is larger than {limit} bytes."
         },
         "type": {
           "body": "{field} must be of type {want}."
         },
         "unreadable": {
-          "body": "Can’t read the file ({detail})."
+          "body": "Can’t read the saved config ({detail})."
         }
       },
       "docker": {
@@ -1082,7 +1082,7 @@
           "body": "The kira folder takes no path."
         },
         "fileChanged": {
-          "body": "This file changed since you opened it."
+          "body": "This script changed since you opened it."
         },
         "kindInvalid": {
           "body": "The kind must be script or smart."
@@ -1893,10 +1893,10 @@
           "body": "The workflow changed. Refresh and retry."
         },
         "workflowEmpty": {
-          "body": "The file is empty."
+          "body": "The workflow is empty."
         },
         "workflowIdMismatch": {
-          "body": "The ID must equal the file name without its extension."
+          "body": "The ID can’t be edited. Change the name instead."
         },
         "workflowSwitchLoses": {
           "body": "Switching the workflow deletes this task’s runs ({runs}) and run logs ({logs})."
@@ -1905,7 +1905,7 @@
           "body": "The file changed while you reviewed it. Refresh the diff."
         },
         "yamlTooLarge": {
-          "body": "The workflow file is too large."
+          "body": "The workflow is too large."
         }
       },
       "capture": {
@@ -1970,7 +1970,7 @@
             "body": "Literal credential at {at}. Use a secret reference instead. The shared repository must not hold one."
           },
           "localInvalid": {
-            "body": "The local file is not valid, so it can’t be merged. Fix it first."
+            "body": "The local version is not valid, so it can’t be merged. Fix it first."
           },
           "repoOrigins": {
             "body": "This repository has more than one origin address, so it doesn’t sync."
@@ -2319,10 +2319,10 @@
           "body": "The worktree base path must be absolute."
         },
         "changed": {
-          "body": "The file changed since you opened it. Refresh it and retry."
+          "body": "The settings changed since you opened them. Refresh and retry."
         },
         "duplicatePath": {
-          "body": "{file} already configures this repository. This file applies nothing."
+          "body": "Other settings already configure this repository, so these apply nothing."
         },
         "envDuplicate": {
           "body": "An environment name is listed twice."
@@ -2331,10 +2331,10 @@
           "body": "An environment needs exactly one of deployed_sha_script and deployed_sha_run."
         },
         "fileBroken": {
-          "body": "{file} has an error on line {line}. Fix it in the file first."
+          "body": "The repository settings have an error on line {line}. Fix it first."
         },
         "gone": {
-          "body": "That settings file no longer exists."
+          "body": "These repository settings no longer exist."
         },
         "hashRequired": {
           "body": "Saving an existing file needs the hash of the text you loaded."
@@ -2358,7 +2358,7 @@
           "body": "A repository path is required."
         },
         "pathTaken": {
-          "body": "Another file already configures this repository."
+          "body": "Other settings already configure this repository."
         },
         "prepareBoth": {
           "body": "Set one of prepare_script and prepare_run, not both."
@@ -2658,16 +2658,16 @@
           "body": "The secret {name} is available to agents but lists no allowed host. Add at least one allowed host."
         },
         "changed": {
-          "body": "The file changed while Kira saved. Retry."
+          "body": "This changed while Kira saved. Retry."
         },
         "fileBroken": {
-          "body": "Kira can’t save into {file}. Line {line} has an error. Fix the file first."
+          "body": "Kira can’t save this change. Line {line} has an error. Fix it first."
         },
         "fileName": {
           "body": "A file name is 1 to 64 lowercase letters, numbers and dashes, plus the suffix of its kind."
         },
         "itemDuplicate": {
-          "body": "The item ID {id} is used twice. Each item ID is unique in the file."
+          "body": "The item ID {id} is used twice. Each item ID is unique in a collection."
         },
         "itemKind": {
           "body": "An item sets exactly one of items, http or grpc."
@@ -2676,7 +2676,7 @@
           "body": "The secret store isn’t available, so Kira can’t keep a secret value."
         },
         "notFound": {
-          "body": "That item is no longer in the file."
+          "body": "That item no longer exists."
         },
         "secretUnreadable": {
           "body": "Secret {name} can’t be read. Set it again."
@@ -2834,7 +2834,7 @@
       },
       "connectionFiles": {
         "editInvalid": {
-          "body": "Kira didn’t save that edit. It makes the file invalid: {detail}."
+          "body": "Kira didn’t save that edit. It makes the connection invalid: {detail}."
         },
         "fieldNotUsed": {
           "body": "{field} isn’t used by {why}."
@@ -2852,7 +2852,7 @@
           "body": "A number mask can’t correlate."
         },
         "notFound": {
-          "body": "That connection’s file is gone."
+          "body": "That connection no longer exists."
         },
         "secretUnreadable": {
           "body": "The secret “{name}” can’t be read. Save it again."

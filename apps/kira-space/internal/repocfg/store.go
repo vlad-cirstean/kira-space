@@ -213,10 +213,10 @@ func (s *Store) load(patched string) loaded {
 		}
 		cfg := e.Value.Config()
 		st.Path = cfg.Path
-		if first, taken := owner[cfg.Path]; taken {
+		if _, taken := owner[cfg.Path]; taken {
 			st.Duplicate = true
 			if st.Problem == nil {
-				st.Problem = s.duplicateProblem(e.File, first)
+				st.Problem = s.duplicateProblem(e.File)
 			}
 			files = append(files, st)
 			continue
@@ -257,8 +257,8 @@ func (s *Store) load(patched string) loaded {
 }
 
 // duplicateProblem points at the path line of the later file.
-func (s *Store) duplicateProblem(file, winner string) *configfs.Problem {
-	p := &configfs.Problem{Path: "/path", Message: i18n.T("backend.space.repoFiles.duplicatePath.body", map[string]string{"file": winner})}
+func (s *Store) duplicateProblem(file string) *configfs.Problem {
+	p := &configfs.Problem{Path: "/path", Message: i18n.T("backend.space.repoFiles.duplicatePath.body", nil)}
 	if src, _, err := s.folder.Read(file); err == nil {
 		var doc yaml.Node
 		if yaml.Unmarshal(src, &doc) == nil && len(doc.Content) == 1 {

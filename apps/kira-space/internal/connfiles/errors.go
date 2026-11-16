@@ -24,7 +24,7 @@ func IPCError(err error) error {
 	case errors.Is(err, configfs.ErrConflict):
 		return ipcerr.T(ipcerr.CodeConflict, "backend.studio.apiFiles.changed.body", nil)
 	case errors.As(err, &broken):
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.apiFiles.fileBroken.body", map[string]string{"file": broken.File, "line": fmt.Sprint(broken.Line)})
+		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.apiFiles.fileBroken.body", map[string]string{"line": fmt.Sprint(broken.Line)})
 	case errors.As(err, &invalid):
 		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connectionFiles.editInvalid.body", map[string]string{"detail": strings.TrimSuffix(invalid.Problem.Message, ".")})
 	}
