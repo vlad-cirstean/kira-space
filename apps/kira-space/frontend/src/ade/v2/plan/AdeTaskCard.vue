@@ -84,12 +84,6 @@ const selected = computed(() => ui.selectedTaskId === props.card.task.id);
 const inRipple = computed(() => rippleIds.value.tasks.has(props.card.task.id));
 const headSelected = computed(() => selected.value && ui.selectedBranchId === null);
 const p = computed(() => props.card.progress);
-// The workflow tip, with the bar's tip and percent when the task shows one (the bar left the row).
-const stepTip = computed(() =>
-  p.value.showBar
-    ? [p.value.workflowTip, p.value.barTip, formatPercent(p.value.percent)].join(' · ')
-    : p.value.workflowTip,
-);
 const segClass = (state: string): string => {
   if (state === 'done') return 'bg-muted-foreground';
   if (state === 'todo') return 'bg-border';
@@ -217,7 +211,7 @@ const boxClass = computed(() => {
         </div>
         <div class="flex h-4.5 min-w-0 items-center gap-1.5 overflow-hidden pl-6">
           <template v-if="p.hasWorkflow && !card.parked">
-            <AdeTip :text="stepTip">
+            <AdeTip :text="p.workflowTip">
               <span
                 class="inline-flex w-12 shrink-0 items-center gap-0.5"
                 data-testid="ade-step-segs"
@@ -231,6 +225,15 @@ const boxClass = computed(() => {
               </span>
             </AdeTip>
             <AdeStepMenu :card="card" />
+            <AdeTip v-if="p.showBar" :text="p.barTip">
+              <span
+                class="shrink-0 text-kira-sm text-muted-foreground"
+                data-testid="ade-step-percent"
+                >{{
+                  formatPercent(p.percent)
+                }}</span
+              >
+            </AdeTip>
           </template>
           <AdeEstimateChip v-if="!card.review" :card="card" />
           <AdeTagIcon
@@ -245,25 +248,21 @@ const boxClass = computed(() => {
           <AdeOrchestratorBadge v-if="card.orchestrator" icon-only />
           <AdeOpStatus :task-id="card.task.id" />
           <AdeAttention v-if="card.attention" :tip="card.attention" :item="card.attentionItem" />
-          <span class="inline-flex @max-[380px]:hidden"
-            ><AdeAutomationChip :task-id="card.task.id" /></span
-          >
-          <span class="inline-flex @max-[380px]:hidden"
-            ><AdeLeaseChip :task-id="card.task.id" /></span
-          >
+          <AdeAutomationChip :task-id="card.task.id" />
+          <AdeLeaseChip :task-id="card.task.id" />
           <AdeUpdatesPopover v-if="taskUpdates.length" :task-id="card.task.id" />
-          <AdeParentChip
-            v-if="card.parent"
-            :parent="card.parent"
-            icon-only
-            @select="card.parent && ui.select(card.parent.id)"
-          />
+          <span v-if="card.parent" class="inline-flex min-w-0 max-w-24">
+            <AdeParentChip
+              :parent="card.parent"
+              @select="card.parent && ui.select(card.parent.id)"
+            />
+          </span>
           <Button
             v-if="card.task.branchRequestId"
             type="button"
             variant="toolbar"
             size="inline"
-            class="h-4.5 shrink-0 rounded-kira-sm px-1 text-kira-sm text-tone-amber"
+            class="h-4.5 min-w-0 max-w-24 truncate rounded-kira-sm px-1 text-kira-sm text-tone-amber"
             data-testid="ade-card-branch-request"
             @click.stop="approvalsStore.open(`branch.request:${card.task.branchRequestId}`)"
           >
@@ -271,7 +270,7 @@ const boxClass = computed(() => {
           </Button>
           <AdeTip :text="card.meta">
             <span
-              class="min-w-0 flex-1 truncate text-kira-sm leading-3.5 text-subtle @max-[400px]:hidden"
+              class="min-w-0 flex-1 truncate text-kira-sm leading-3.5 text-subtle"
               data-testid="ade-card-meta"
               >{{
                 card.meta

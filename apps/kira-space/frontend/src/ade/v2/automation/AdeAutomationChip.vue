@@ -46,17 +46,17 @@ function open(): void {
   <AdeTip v-if="run" :text="tip">
     <button
       type="button"
-      class="inline-flex shrink-0 items-center gap-1 border-0 bg-transparent p-0 text-inherit"
+      class="inline-flex min-w-0 shrink items-center gap-1 border-0 bg-transparent p-0 text-inherit"
       data-testid="ade-automation-chip"
       :data-state="run.state"
       @click.stop="open"
     >
       <SmartBadge v-if="run.kind === 'smart'" />
-      <AdeChip :label="label" :tone="tone" class="max-w-40 truncate" />
+      <AdeChip :label="label" :tone="tone" class="max-w-24 truncate" />
       <RunElapsed
         v-if="run.state === 'running'"
         :run="run"
-        class="text-kira-sm text-muted-foreground"
+        class="shrink-0 text-kira-sm text-muted-foreground"
       />
     </button>
   </AdeTip>
