@@ -9,9 +9,6 @@ export interface ScriptMenuActions {
   run(script: CustomScript): void | Promise<void>;
   runNow(script: CustomScript): void;
   editFile(script: CustomScript): void;
-  openFile(script: CustomScript): void | Promise<void>;
-  revealFile(script: CustomScript): void | Promise<void>;
-  copyPath(script: CustomScript): void | Promise<void>;
   /** Kira Space: set the ADE task and branch of a recurring run. */
   editTarget?(script: CustomScript): void;
   /** Collection names, in panel order. */
@@ -129,27 +126,6 @@ export function scriptMenu(script: CustomScript, actions: ScriptMenuActions): Me
       label: t('automations.script.editFile.label'),
       icon: 'edit',
       run: () => actions.editFile(script),
-    },
-    {
-      type: 'item',
-      id: 'open-file',
-      label: t('common.action.open.label'),
-      icon: 'go-to-file',
-      run: () => actions.openFile(script),
-    },
-    {
-      type: 'item',
-      id: 'reveal-file',
-      label: t('common.action.reveal.label'),
-      icon: 'folder-opened',
-      run: () => actions.revealFile(script),
-    },
-    {
-      type: 'item',
-      id: 'copy-path',
-      label: t('common.action.copyPath.label'),
-      icon: 'copy',
-      run: () => actions.copyPath(script),
     },
     { type: 'separator' },
     moveToCollectionMenu({

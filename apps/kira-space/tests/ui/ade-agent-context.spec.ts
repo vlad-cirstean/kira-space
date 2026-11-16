@@ -95,16 +95,6 @@ test('the resume note names providers that keep the recorded context', async ({ 
   await expect(page.locator(t('ade-context-resume'))).toContainText('Claude Code');
 });
 
-test('Open names the agent folder and file', async ({ relaunch }) => {
-  const { window: page, control } = await openContext(relaunch);
-  await page.locator(t('config-file-open')).click();
-  await expect.poll(() => calls(control, IPC.configFilesOpen)).toHaveLength(1);
-  expect(calls(control, IPC.configFilesOpen)[0]?.args).toEqual({
-    folder: 'agent',
-    file: 'context.md',
-  });
-});
-
 test('a save refused for a changed file offers Reload and Overwrite', async ({ relaunch }) => {
   const { window: page, control } = await openContext(relaunch, {}, [
     {

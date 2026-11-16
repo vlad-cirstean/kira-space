@@ -143,7 +143,7 @@ test('the step file bar shows only in YAML mode', async ({ relaunch }) => {
   await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
   await expect(page.locator(t('config-file-problem'))).toHaveCount(0);
   await page.locator(t('ade-step-mode-yaml')).click();
-  await expect(page.locator(t('config-file-bar'))).toContainText('implement.yaml');
+  await expect(page.locator(t('config-file-bar'))).toBeVisible();
 });
 
 test('a broken step file shows its problem in Form mode', async ({ relaunch }) => {

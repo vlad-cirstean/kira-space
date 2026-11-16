@@ -359,10 +359,6 @@ const scriptActions: ScriptMenuActions = {
     }
   },
   editFile,
-  openFile: (script) => guarded(() => ctx.files.open(runFileName(script.id))),
-  revealFile: (script) => guarded(() => ctx.files.reveal(runFileName(script.id))),
-  copyPath: (script) =>
-    guarded(async () => copy((await scripts.readFile(runFileName(script.id))).path)),
   editTarget: scripts.setScheduleTarget
     ? (script) => {
         targetFor.value = script;
@@ -427,12 +423,6 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
             :pressed="showSearch"
             data-testid="toggle-search"
             @click="toggleSearch"
-          />
-          <TooltipIconButton
-            icon="info"
-            :label="t('common.config.about.label')"
-            data-testid="automations-about"
-            @click="guarded(() => ctx.files.open('AGENTS.md'))"
           />
           <MenuIconButton
             :label="t('automations.panel.add.tooltip')"

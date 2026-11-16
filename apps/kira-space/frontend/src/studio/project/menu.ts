@@ -322,22 +322,6 @@ function connectionMenu(row: TreeRowVm): MenuItem[] {
       disabled: !record?.file,
       run: () => useConnectionDialogStore().openFile(record?.file ?? ''),
     },
-    {
-      type: 'item',
-      id: 'open-file',
-      label: t('studio.project.menu.openInEditor.label'),
-      icon: 'go-to-file',
-      disabled: !record?.file,
-      run: () => control.configFilesOpen({ folder: 'connections', file: record?.file ?? '' }),
-    },
-    {
-      type: 'item',
-      id: 'reveal-file',
-      label: t('studio.project.menu.revealFile.label'),
-      icon: 'folder-opened',
-      disabled: !record?.file,
-      run: () => control.configFilesReveal({ folder: 'connections', file: record?.file ?? '' }),
-    },
     ...(canUpdateCredentials(record)
       ? [
           {

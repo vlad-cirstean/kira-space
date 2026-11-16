@@ -86,12 +86,10 @@ const CONTROL: ControlSnapshot[] = [
     },
   },
   { channel: IPC.apiConfigForm, response: contract('api-variables-form', 'form#collection') },
-  { channel: IPC.configFilesOpen, response: undefined },
-  { channel: IPC.configFilesReveal, response: undefined },
   { channel: IPC.apiConfigSetSecret, response: afterSet },
 ];
 
-test('api config files — the tree shows the file, a bad edit shows its line, Open and Reveal use the api folder, a secret is set', async ({
+test('api config files — the tree shows the file, a bad edit shows its line, Edit opens the variables dialog, a secret is set', async ({
   relaunch,
 }) => {
   const { window: page, control } = await relaunch({ control: CONTROL });
@@ -112,23 +110,10 @@ test('api config files — the tree shows the file, a bad edit shows its line, O
   await expect(strip.locator('[data-testid="api-config-last-good"]')).toBeVisible();
   await expect(collectionRow(page, tree.items[0].id)).toContainText(tree.items[0].name);
 
-  // Open and Reveal name the api folder and the file.
-  await strip.locator('[data-testid="config-file-open"]').click();
-  await strip.locator('[data-testid="config-file-reveal"]').click();
-  await expect
-    .poll(() => control.log().filter((e) => e.channel === IPC.configFilesOpen))
-    .toHaveLength(1);
-  expect(control.log().find((e) => e.channel === IPC.configFilesOpen)?.args).toMatchObject({
-    folder: 'api',
-    file,
-  });
-  await expect
-    .poll(() => control.log().filter((e) => e.channel === IPC.configFilesReveal))
-    .toHaveLength(1);
-  expect(control.log().find((e) => e.channel === IPC.configFilesReveal)?.args).toMatchObject({
-    folder: 'api',
-    file,
-  });
+  // Edit opens the variables dialog on the broken text.
+  await strip.locator('[data-testid="api-config-problem-edit"]').click();
+  await expect(page.locator('[data-testid="api-variables-dialog"]')).toBeVisible();
+  await page.keyboard.press('Escape');
 
   // The variable-set tab follows the last good rows, read-only, with the same problem on top.
   await collectionRow(page, collection.id).click({ button: 'right' });

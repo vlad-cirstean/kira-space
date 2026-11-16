@@ -6,7 +6,6 @@ import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { useTemplateRef } from 'vue';
-import { control } from '../../../bridge/control';
 import { useAgentFileEditor } from '../agents/useAgentFileEditor';
 import AdeSettingsResult from './AdeSettingsResult.vue';
 import AdeSettingsSecrets from './AdeSettingsSecrets.vue';
@@ -40,14 +39,7 @@ useShortcut(root, ['form.save'], () => void saveNow());
   <div class="min-h-0 flex-1 overflow-auto p-4" data-testid="ade-settings">
     <div v-if="view" ref="root" class="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
       <div class="flex min-w-0 flex-col gap-3">
-        <ConfigFileBar
-          v-if="view.exists"
-          :path="view.path"
-          :error="view.problem"
-          :open="() => control.configFilesOpen({ folder: view!.folder, file: view!.file })"
-          :reveal="() => control.configFilesReveal({ folder: view!.folder, file: view!.file })"
-          :about="() => control.configFilesOpen({ folder: view!.folder, file: 'AGENTS.md' })"
-        />
+        <ConfigFileBar v-if="view.exists" :error="view.problem" />
         <div v-else class="text-kira-sm text-subtle" data-testid="ade-settings-none">
           {{ t('space.ade.settings.none.hint', { path: view.path }) }}
         </div>

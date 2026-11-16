@@ -6,7 +6,6 @@ import { useCopy } from '@workbench/behaviour/clipboard';
 import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { defineAsyncComponent } from 'vue';
-import { control } from '../../../bridge/control';
 import { useWorkflowYaml } from '../queries';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import type { WorkflowEntry } from '../wire';
@@ -46,14 +45,7 @@ async function setMode(v: unknown): Promise<void> {
         data-testid="ade-wf-mode"
         @update:model-value="setMode"
       />
-      <ConfigFileBar
-        v-if="wfUi.workflowMode === 'yaml'"
-        :path="entry.path"
-        :error="entry.error"
-        :open="() => control.configFilesOpen({ folder: 'workflows', file: entry.fileName })"
-        :reveal="() => control.configFilesReveal({ folder: 'workflows', file: entry.fileName })"
-        :about="() => control.configFilesOpen({ folder: 'workflows', file: 'AGENTS.md' })"
-      />
+      <ConfigFileBar v-if="wfUi.workflowMode === 'yaml'" :error="entry.error" />
       <Button
         variant="dialog"
         size="kira-lg"

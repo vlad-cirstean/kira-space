@@ -473,28 +473,22 @@ test('Copy YAML confirms the copy', async ({ relaunch }) => {
   await expect(copy).toHaveText('Copied');
 });
 
-test('the config file bar shows only in YAML mode; Open and Reveal name the folder and file', async ({
+test('the config file bar shows only in YAML mode and has no path or file actions', async ({
   relaunch,
 }) => {
-  const fx = adeFixture<WorkflowsFx>('workflows');
-  const { window: page, control } = await openWorkflows(relaunch);
+  const { window: page } = await openWorkflows(relaunch);
   await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
   await expect(page.locator(t('config-file-problem'))).toHaveCount(0);
   await openYaml(page);
   await expect(page.locator(t('config-file-status'))).toContainText('✓ Valid');
-  await page.locator(t('config-file-open')).click();
-  await page.locator(t('config-file-reveal')).click();
-  const file = (fx.workflows[0] as { fileName: string }).fileName;
-  await expect.poll(() => calls(control, IPC.configFilesOpen)).toHaveLength(1);
-  await expect.poll(() => calls(control, IPC.configFilesReveal)).toHaveLength(1);
-  expect(calls(control, IPC.configFilesOpen)[0]?.args).toEqual({ folder: 'workflows', file });
-  expect(calls(control, IPC.configFilesReveal)[0]?.args).toEqual({ folder: 'workflows', file });
-  await page.locator(t('config-file-about')).click();
-  await expect.poll(() => calls(control, IPC.configFilesOpen)).toHaveLength(2);
-  expect(calls(control, IPC.configFilesOpen)[1]?.args).toEqual({
-    folder: 'workflows',
-    file: 'AGENTS.md',
-  });
+  for (const id of [
+    'config-file-path',
+    'config-file-open',
+    'config-file-reveal',
+    'config-file-about',
+  ]) {
+    await expect(page.locator(t(id))).toHaveCount(0);
+  }
 });
 
 test('a broken workflow file shows its problem in Graph mode and its line in the YAML file bar', async ({

@@ -19,12 +19,12 @@ import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
+import { configName } from '@workbench/config/configName';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref, watch } from 'vue';
-import { control } from '../bridge/control';
 import {
   useConnectionConfig,
   useConnectionFile,
@@ -52,7 +52,6 @@ import {
 // One connection's file as a form and as YAML over one draft. Save sends the hash of the text the
 // draft was edited from; a file changed elsewhere is refused with Reload and Overwrite. A typed
 // password or URI goes through the write-only secret call after the file is written.
-const FOLDER = 'connections';
 
 const dialogStore = useConnectionDialogStore();
 const connectionsStore = useConnectionsStore();
@@ -199,7 +198,9 @@ async function onDelete(): Promise<void> {
   const ok = await confirmDialogStore.confirm({
     title: t('studio.project.deleteConnectionConfirm.title'),
     message: [
-      t('studio.project.deleteConnectionConfirm.body', { name: record.value?.name ?? d.file }),
+      t('studio.project.deleteConnectionConfirm.body', {
+        name: record.value?.name ?? configName(d.file),
+      }),
       t('common.confirm.irreversible.body'),
     ].join(' '),
     confirmLabel: t('common.action.delete.label'),
@@ -240,7 +241,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
     >
       <DialogHeader close-testid="connection-file-close">
         <DialogTitle>{{
-          t('studio.connections.file.title', { name: record?.name ?? detail?.file ?? '' })
+          t('studio.connections.file.title', {
+            name: record?.name ?? configName(detail?.file ?? ''),
+          })
         }}</DialogTitle>
       </DialogHeader>
       <ViewToolbar v-if="detail" class="px-3">
@@ -312,7 +315,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
                 :saved-uri="savedSecret('uri')"
                 :storage-available="storageAvailable"
                 :connection-id="detail.id"
-                :connection-name="record?.name ?? detail.file"
+                :connection-name="record?.name ?? configName(detail.file)"
               />
               <ConnectionAdvancedTab
                 v-show="section === 'advanced'"
@@ -339,13 +342,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             </fieldset>
           </template>
           <template v-else>
-            <ConfigFileBar
-              :path="detail.path"
-              :error="detail.problem"
-              :open="() => control.configFilesOpen({ folder: FOLDER, file: detail!.file })"
-              :reveal="() => control.configFilesReveal({ folder: FOLDER, file: detail!.file })"
-              :about="() => control.configFilesOpen({ folder: FOLDER, file: 'AGENTS.md' })"
-            />
+            <ConfigFileBar :error="detail.problem" />
             <CodeTextEditor
               :model-value="draft.draft.value"
               language="yaml"
@@ -361,7 +358,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
           <ConnectionSecrets
             v-if="detail.id"
             :connection-id="detail.id"
-            :connection-name="record?.name ?? detail.file"
+            :connection-name="record?.name ?? configName(detail.file)"
             :secrets="detail.secrets"
             :storage-available="storageAvailable"
           />

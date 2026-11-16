@@ -135,7 +135,7 @@ test('the file bar shows only on the YAML tab', async ({ relaunch }) => {
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('[data-testid="config-file-bar"]')).toHaveCount(0);
   await dialog.locator('[data-testid="connection-tab-yaml"]').click();
-  await expect(dialog.locator('[data-testid="config-file-bar"]')).toContainText('local.yaml');
+  await expect(dialog.locator('[data-testid="config-file-bar"]')).toBeVisible();
 });
 
 test('a file problem the form does not show stays visible on General', async ({ relaunch }) => {
@@ -198,17 +198,6 @@ test('Edit file shows the file error and Save sends the text with its base hash'
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.connectionConfigSaveFile)?.args)
     .toEqual({ file: FILE, text: fixed.text, baseHash: 'hash-1' });
-});
-
-test('Open in editor from the menu opens the connection file', async ({ relaunch }) => {
-  const { window: page, control } = await relaunch({
-    control: boot([{ channel: IPC.configFilesOpen, response: null }]),
-  });
-  await (await connectionRow(page, 'Local')).click({ button: 'right' });
-  await page.click('[data-testid="menu-item-open-file"]');
-  await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.configFilesOpen)?.args)
-    .toEqual({ folder: 'connections', file: FILE });
 });
 
 test('the connection menu has no color or read-only item', async ({ relaunch }) => {

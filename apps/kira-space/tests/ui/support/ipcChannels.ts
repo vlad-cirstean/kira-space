@@ -72,8 +72,6 @@ export const IPC = {
   agentPortRestore: 'kira:agentport:restore',
   agentPortCancel: 'kira:agentport:cancel',
   agentSettingsChanged: 'kira:agentSettings:changed',
-  configFilesOpen: 'kira:configfiles:open',
-  configFilesReveal: 'kira:configfiles:reveal',
   // P128 §2.2/§2.6: this app now persists a per-window module mode too, same channels as Kira
   // Studio's own ipcChannels.ts.
   windowsEnsure: 'kira:windows:ensure',

@@ -4,11 +4,7 @@ import { codeEditorText, expectHighlighted, replaceCodeEditorText } from '../cod
 import type { ScenarioEnv } from './env';
 
 type Env = ScenarioEnv<
-  | 'configFilesOpen'
-  | 'customScriptsFile'
-  | 'customScriptsForm'
-  | 'customScriptsList'
-  | 'customScriptsSaveFile'
+  'customScriptsFile' | 'customScriptsForm' | 'customScriptsList' | 'customScriptsSaveFile'
 >;
 
 export interface Options {
@@ -129,22 +125,6 @@ export function registerFileScenarios(env: Env, options: Options): void {
     await expect(dialog(page).locator('[data-testid="run-file-save-error"]')).toBeVisible();
     await expect(dialog(page).locator('[data-testid="run-file-reload"]')).toBeVisible();
     await expect(dialog(page).locator('[data-testid="run-file-overwrite"]')).toBeVisible();
-  });
-
-  test('Open sends the runs folder and the file name', async ({ relaunch }) => {
-    const { window: page, control } = await relaunch({
-      control: [
-        ...base(snapshot('valid'), file('edited')),
-        { channel: IPC.configFilesOpen, response: null },
-      ],
-    });
-    await openPanel(page);
-    await page.locator('[data-testid="script-deploy"]').dblclick();
-    await yamlTab(page).click();
-    await dialog(page).locator('[data-testid="config-file-open"]').click();
-    await expect
-      .poll(() => control.log().find((e) => e.channel === IPC.configFilesOpen)?.args)
-      .toEqual({ folder: 'runs', file: 'deploy.yaml' });
   });
 
   test('a file with no valid version is listed as a broken row that opens', async ({

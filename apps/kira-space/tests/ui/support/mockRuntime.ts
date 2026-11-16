@@ -139,8 +139,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   agentPortBackups: 'AgentPortService.Backups',
   agentPortRestore: 'AgentPortService.Restore',
   agentPortCancel: 'AgentPortService.Cancel',
-  configFilesOpen: 'ConfigFilesService.Open',
-  configFilesReveal: 'ConfigFilesService.Reveal',
   customScriptsList: 'CustomScriptsService.List',
   customScriptsCreate: 'CustomScriptsService.Create',
   customScriptsDelete: 'CustomScriptsService.Delete',

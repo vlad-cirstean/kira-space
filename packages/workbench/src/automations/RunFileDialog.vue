@@ -269,14 +269,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
       </ViewToolbar>
       <DialogBody class="min-h-80">
         <div v-if="view" class="flex min-w-0 flex-col gap-3">
-          <ConfigFileBar
-            v-if="!view.editable || section === 'yaml'"
-            :path="view.path"
-            :error="view.problem"
-            :open="() => ctx.files.open(view!.file)"
-            :reveal="() => ctx.files.reveal(view!.file)"
-            :about="() => ctx.files.open('AGENTS.md')"
-          />
+          <ConfigFileBar v-if="!view.editable || section === 'yaml'" :error="view.problem" />
           <div
             v-if="view.lastGood"
             class="text-kira-sm text-subtle"

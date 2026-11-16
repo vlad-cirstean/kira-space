@@ -140,16 +140,6 @@ test('storage that is unavailable disables Set and shows its reason', async ({ r
   await expect(page.locator(t('ade-settings-secret-set'))).toBeDisabled();
 });
 
-test('Open names the agent folder and file', async ({ relaunch }) => {
-  const { window: page, control } = await openSettings(relaunch);
-  await page.locator(t('config-file-open')).click();
-  await expect.poll(() => calls(control, IPC.configFilesOpen)).toHaveLength(1);
-  expect(calls(control, IPC.configFilesOpen)[0]?.args).toEqual({
-    folder: 'agent',
-    file: 'settings.yaml',
-  });
-});
-
 test('a save refused for a changed file offers Reload and Overwrite', async ({ relaunch }) => {
   const { window: page, control } = await openSettings(relaunch, {}, [
     {

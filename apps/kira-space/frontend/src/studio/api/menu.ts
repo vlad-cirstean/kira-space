@@ -45,29 +45,6 @@ export interface CollectionMenuActions {
   /** The background menu's own "Dynamic values…" item — opens the read-only reference
    *  dialog. Not row-scoped, same as environments() above. */
   dynamicValues(): void;
-  /** Opens the row's collection file in the system editor. */
-  openFile(row: CollectionRowVm): void;
-  /** Shows the row's collection file in the file manager. */
-  revealFile(row: CollectionRowVm): void;
-}
-
-function fileItems(row: CollectionRowVm, actions: CollectionMenuActions): MenuItem[] {
-  return [
-    {
-      type: 'item',
-      id: 'open-file',
-      label: t('studio.api.config.openFile.label'),
-      icon: 'go-to-file',
-      run: () => actions.openFile(row),
-    },
-    {
-      type: 'item',
-      id: 'reveal-file',
-      label: t('common.action.reveal.label'),
-      icon: 'folder-opened',
-      run: () => actions.revealFile(row),
-    },
-  ];
 }
 
 // Request and folder rows only: a move lands at a collection's root, so a collection is a valid
@@ -185,8 +162,6 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
       moveMenu([row], actions),
       ...moveItems(row, actions),
       { type: 'separator' },
-      ...fileItems(row, actions),
-      { type: 'separator' },
       deleteItem(row, actions),
     ];
   }
@@ -268,12 +243,7 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
     );
   }
 
-  items.push(
-    { type: 'separator' },
-    ...fileItems(row, actions),
-    { type: 'separator' },
-    deleteItem(row, actions),
-  );
+  items.push({ type: 'separator' }, deleteItem(row, actions));
   return items;
 }
 

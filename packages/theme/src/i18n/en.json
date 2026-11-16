@@ -3379,24 +3379,11 @@
       "label": "Comment"
     },
     "config": {
-      "about": {
-        "label": "About these files"
-      },
       "fileError": {
         "error": "✕ {text}"
       },
       "lineError": {
         "error": "✕ Line {line}: {text}"
-      },
-      "open": {
-        "failed": {
-          "error": "The config file did not open: {text}"
-        }
-      },
-      "reveal": {
-        "failed": {
-          "error": "The config file did not show in the file manager: {text}"
-        }
       },
       "valid": {
         "status": "✓ Valid"
@@ -13329,9 +13316,6 @@
         "lastGood": {
           "hint": "The file has an error. The app uses the last good version."
         },
-        "openFile": {
-          "label": "Open file"
-        },
         "problems": {
           "aria": "Config file problems"
         },
@@ -13369,7 +13353,7 @@
         "skipped": {
           "hint": "The rest of the file is loaded. An item that loaded before keeps its last good version. Fix the file to load the rest.",
           "label": "Line {line}, {label}: {message}",
-          "title": "{count} item in {file} isn’t loaded | {count} items in {file} aren’t loaded"
+          "title": "{count} item in {name} isn’t loaded | {count} items in {name} aren’t loaded"
         },
         "variables": {
           "empty": "No variables in this file"
@@ -17135,12 +17119,6 @@
         },
         "openDefinition": {
           "label": "Open definition"
-        },
-        "openInEditor": {
-          "label": "Open in editor"
-        },
-        "revealFile": {
-          "label": "Show file in folder"
         },
         "savedFilters": {
           "empty": "No saved filters",

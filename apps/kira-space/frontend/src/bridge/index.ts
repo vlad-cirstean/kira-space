@@ -9,7 +9,6 @@ import * as ApprovalsService from '@bindings/approvalsservice.js';
 import * as AppService from '@bindings/appservice.js';
 import * as CaptureService from '@bindings/captureservice.js';
 import * as CodeWorkspaceService from '@bindings/codeworkspaceservice.js';
-import * as ConfigFilesService from '@bindings/configfilesservice.js';
 import * as ConfigSyncService from '@bindings/configsyncservice.js';
 import * as CustomScriptsService from '@bindings/customscriptsservice.js';
 import * as FileHandlersService from '@bindings/filehandlersservice.js';
@@ -568,10 +567,6 @@ const spaceControl = {
     unwrap(AdeTaskService.CaptureTask(args)).then((r) => trust<V2.Task>(r)),
   adeTaskSetQueuedAfter: (args: V2.SetQueuedAfterArgs): Promise<void> =>
     unwrap(AdeTaskService.SetQueuedAfter(args)),
-  configFilesOpen: (args: { folder: string; file: string }): Promise<void> =>
-    unwrap(ConfigFilesService.Open(args)),
-  configFilesReveal: (args: { folder: string; file: string }): Promise<void> =>
-    unwrap(ConfigFilesService.Reveal(args)),
   repoConfigList: (): Promise<RepoConfigList> =>
     unwrap(RepoConfigService.List()).then((r) => trust<RepoConfigList>(r)),
   repoConfigFile: (args: RepoConfigFileArgs): Promise<RepoConfigFile> =>

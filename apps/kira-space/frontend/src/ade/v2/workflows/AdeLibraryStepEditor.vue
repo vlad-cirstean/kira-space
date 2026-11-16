@@ -9,7 +9,6 @@ import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
-import { control } from '../../../bridge/control';
 import { useDeleteStep, useStepYaml } from '../queries';
 import { useWorkflows } from '../readQueries';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
@@ -79,14 +78,7 @@ async function remove(): Promise<void> {
         data-testid="ade-step-mode"
         @update:model-value="setMode"
       />
-      <ConfigFileBar
-        v-if="wfUi.stepMode === 'yaml'"
-        :path="entry.path"
-        :error="entry.error"
-        :open="() => control.configFilesOpen({ folder: 'steps', file: entry.fileName })"
-        :reveal="() => control.configFilesReveal({ folder: 'steps', file: entry.fileName })"
-        :about="() => control.configFilesOpen({ folder: 'steps', file: 'AGENTS.md' })"
-      />
+      <ConfigFileBar v-if="wfUi.stepMode === 'yaml'" :error="entry.error" />
       <Button
         variant="dialog"
         size="kira-lg"
