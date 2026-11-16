@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import {
   DropdownMenu,
@@ -118,6 +117,7 @@ const boxClass = computed(() => {
         :class="headSelected ? 'bg-select' : 'hover:bg-field'"
         role="button"
         tabindex="0"
+        :aria-label="t('space.ade.plan.card.open.aria', { title: card.title })"
         data-testid="ade-card-head"
         @click="emit('select')"
         @keydown.enter.self="emit('select')"
@@ -256,18 +256,13 @@ const boxClass = computed(() => {
           <AdeTaskActionButton :card="card" icon />
         </div>
         <AdeTip :text="card.title">
-          <Button
-            type="button"
-            variant="link"
-            size="inline"
-            class="line-clamp-2 block justify-start whitespace-normal break-words rounded-none border-0 text-left text-kira-lg font-medium leading-4"
+          <span
+            class="line-clamp-2 break-words text-left text-kira-lg font-medium leading-4"
             :class="card.parked ? 'text-muted-foreground' : 'text-fg'"
-            :aria-label="t('space.ade.plan.card.open.aria', { title: card.title })"
             data-testid="ade-card-title"
-            @click.stop="emit('select')"
           >
             {{ card.title }}
-          </Button>
+          </span>
         </AdeTip>
       </div>
       <AdeBranchRow
