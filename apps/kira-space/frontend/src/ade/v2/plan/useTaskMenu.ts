@@ -3,6 +3,7 @@ import { errorText } from '@workbench/bridge/codedError';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { type MaybeRefOrGetter, toValue } from 'vue';
 import { control } from '../../../bridge/control';
+import { useProjectOptions } from '../../../repo/state/projectOptions';
 import { useRunAutomation } from '../automation/useRunAutomation';
 import { changeBaseChoices } from '../board/changeBase';
 import { movePlanArgs } from '../board/dropPlan';
@@ -16,6 +17,8 @@ import { taskPatch } from '../board/panelFacts';
 import { reviewChoices } from '../board/reviewCode';
 import { shelfIds } from '../board/shelf';
 import { useHostLabels } from '../hostLabels';
+import { useSwitchWorkflow } from '../panel/useSwitchWorkflow';
+import { useAddTaskRepo } from '../queries';
 import { useReviewCode } from '../review/useReviewCode';
 import { useTaskAction } from '../run/useTaskAction';
 import { useSessionViews } from '../sessions/useSessionViews';
@@ -47,6 +50,13 @@ export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
   const reviewCode = useReviewCode();
   const automation = useRunAutomation();
   const hostLabels = useHostLabels();
+  const addRepo = useAddTaskRepo();
+  const switchWorkflow = useSwitchWorkflow();
+  const addRepos = useProjectOptions(() =>
+    toValue(card)
+      .rows.filter((r) => r.branch.name === '')
+      .map((r) => r.branch.codeRepoId),
+  );
   let anchor: HTMLElement | null = null;
 
   function fail(taskId: string, err: unknown): void {
@@ -132,6 +142,18 @@ export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
           return;
         case 'review':
           return reviewCode.open(taskId, cmd.branchId, anchor);
+        case 'rename':
+          ui.rowEdit = { taskId, field: 'title' };
+          return;
+        case 'estimate':
+          ui.rowEdit = { taskId, field: 'estimate' };
+          return;
+        case 'addRepo':
+          await addRepo.mutateAsync({ taskId, codeRepoId: cmd.codeRepoId, base: null });
+          return;
+        case 'workflow':
+          await switchWorkflow.switchTo(taskId, cmd.workflowId);
+          return;
         case 'archive':
           return dialogs.archive(taskId);
         case 'changeBase':
@@ -180,6 +202,8 @@ export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
       automations: automation.items(),
       hostLabel:
         hostLabels.infoOf(c.task.hostLink?.provider ?? '')?.label ?? hostLabels.labels.value,
+      addRepos: addRepos.options.value.map((o) => ({ id: o.value, label: o.label })),
+      workflows: switchWorkflow.options.value,
       choices: reviewChoices(c, m.view.graph),
       baseChoices: changeBaseChoices(c, {
         graph: m.view.graph,

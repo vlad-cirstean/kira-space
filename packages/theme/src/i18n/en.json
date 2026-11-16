@@ -8976,6 +8976,9 @@
           "branchNames": {
             "label": "Branch names"
           },
+          "estimate": {
+            "label": "Estimate…"
+          },
           "jiraLink": {
             "label": "Jira link"
           },
