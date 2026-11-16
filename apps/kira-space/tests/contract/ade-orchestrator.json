@@ -342,6 +342,50 @@
       }
     }
   ],
+  "ApprovalsService.List#taskCreateNoBase": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "task.create:<id:4>",
+      "kind": "task.create",
+      "operation": {
+        "class": "create",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "run",
+        "step": "Plan",
+        "task": "Ship login"
+      },
+      "payload": {
+        "brief": "never made",
+        "parentTaskId": "<masked>",
+        "parentTitle": "Ship login",
+        "repos": [
+          {
+            "base": "",
+            "codeRepoId": "<masked>",
+            "name": "api"
+          }
+        ],
+        "title": "Denied one",
+        "workflow": {
+          "id": "flow",
+          "name": "Flow"
+        }
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Denied one",
+        "readOnly": false
+      }
+    }
+  ],
   "args:AdeTaskService.NextPass": {
     "notes": "Focus on the API tasks.",
     "taskId": "<id:1>"

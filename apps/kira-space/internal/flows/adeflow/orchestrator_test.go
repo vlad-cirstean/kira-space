@@ -181,7 +181,7 @@ func TestOrchestratorSpawn(t *testing.T) {
 	f := newORFixture(t,
 		[]fakeagent.Action{{MCP: []fakeagent.MCPCall{
 			createTaskCall("API login", "flow", brief, map[string]any{"repo": "api", "base": "main"}),
-			createTaskCall("Denied one", "flow", "never made"),
+			createTaskCall("Denied one", "flow", "never made", map[string]any{"repo": "api"}),
 			createTaskCall("Slow one", "flow", "nobody answers"),
 			createTaskCall("Withdrawn one", "flow", "parent archived"),
 		}, Name: "done"}},
@@ -234,6 +234,12 @@ func TestOrchestratorSpawn(t *testing.T) {
 	if got := fakeFile(t, f.app, "api-1.prompt"); !strings.Contains(got, brief) {
 		t.Fatalf("child prompt = %q, want the brief", got)
 	}
+
+	// A repo without a base still carries "base" in the payload: the UI schema requires the key.
+	if !strings.Contains(string(it.Payload), `"base":""`) {
+		t.Fatalf("payload = %s, want an empty base key", it.Payload)
+	}
+	f.app.Contract(t, orScenario, "ApprovalsService.List#taskCreateNoBase", []approvals.Item{it}, orItemMask)
 
 	// A denied call creates nothing.
 	answerTask(t, f.app, it, false)

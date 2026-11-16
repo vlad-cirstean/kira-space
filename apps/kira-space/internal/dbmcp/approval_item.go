@@ -45,6 +45,7 @@ type queryPayload struct {
 	Mode        string       `json:"mode"`
 	Detected    string       `json:"detected"`
 	Enforcement string       `json:"enforcement"`
+	Explain     bool         `json:"explain,omitempty"`
 	Plan        *planPayload `json:"plan"`
 	// ReviewOffered shows "review the result"; ReviewResult says the connection's settings already do.
 	ReviewOffered bool `json:"reviewOffered"`
@@ -178,7 +179,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		it.Target, it.Operation = dbTarget(r)
 		it.Payload = mustJSON(queryPayload{
 			ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
-			Enforcement: r.Enforcement, Plan: planPayloadOf(r.Plan),
+			Enforcement: r.Enforcement, Explain: r.Explain, Plan: planPayloadOf(r.Plan),
 			ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
 		})
 	}

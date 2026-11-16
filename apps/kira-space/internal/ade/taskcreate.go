@@ -52,7 +52,7 @@ type taskRequests struct {
 type taskCreateRepo struct {
 	CodeRepoID string `json:"codeRepoId"`
 	Name       string `json:"name"`
-	Base       string `json:"base,omitempty"`
+	Base       string `json:"base"`
 }
 
 type taskCreateWorkflow struct {

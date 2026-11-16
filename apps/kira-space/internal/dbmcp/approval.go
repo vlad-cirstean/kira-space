@@ -203,7 +203,9 @@ type ApprovalRequest struct {
 	// Enforcement says what backs mode read on this kind: session, app or none. Read items only.
 	Enforcement string
 	Statement   string
-	Target      ApprovalTarget
+	// Explain marks a plan request: the card shows the agent SQL as an explain.
+	Explain bool
+	Target  ApprovalTarget
 	// Stage defaults to ApprovalStageQuery when empty.
 	Stage ApprovalStage
 	// Response is set only for ApprovalStageResponse.

@@ -164,10 +164,13 @@ export function studioApprovalKinds(): ApprovalKinds {
     'db.query': {
       content: markRaw(DbQueryBody),
       footerAction: markRaw(ReviewResultOption),
-      operation: (item) =>
-        dbQueryPayloadSchema.parse(item.payload).mode === 'masked'
+      operation: (item) => {
+        const p = dbQueryPayloadSchema.parse(item.payload);
+        if (p.explain) return t('studio.console.explain.label');
+        return p.mode === 'masked'
           ? t('studio.dbMcp.approval.op.maskedRead.label')
-          : dbOperation(item),
+          : dbOperation(item);
+      },
       where: connectionWhere,
       risks: queryRisks,
     },

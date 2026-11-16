@@ -766,14 +766,15 @@ func (s *Server) explainPreflight(args explainQueryArgs) (model.ConnectionSummar
 
 // awaitExplainApproval raises the explain approval once the connection answers. done is true when
 // the call ends here: an unreachable connection (no prompt raised) or a refused approval.
-func (s *Server) awaitExplainApproval(ctx context.Context, args explainQueryArgs, summary model.ConnectionSummary, statements []string) (resolved model.ConnectionSummary, res *mcp.CallToolResult, out any, err error, done bool) {
+func (s *Server) awaitExplainApproval(ctx context.Context, args explainQueryArgs, summary model.ConnectionSummary) (resolved model.ConnectionSummary, res *mcp.CallToolResult, out any, err error, done bool) {
 	if res, out, err, done := s.ensureReachable(ctx, summary, modeRead); done {
 		return summary, res, out, err, true
 	}
 	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
 		ConnectionID: args.ConnectionID, ConnectionName: summary.Name, Kind: summary.Kind,
-		Class: adapters.ClassRead, Statement: strings.Join(statements, "\n"),
-		Reason: ApprovalReasonPermission, Origin: originFrom(ctx),
+		Class: adapters.ClassRead, Mode: modeRead, Enforcement: enforcementFor(summary, modeRead),
+		// The agent's SQL, not the composed EXPLAIN: the card labels it "Explain".
+		Statement: args.SQL, Explain: true, Reason: ApprovalReasonPermission, Origin: originFrom(ctx),
 	})
 	if outcome != ApprovalApproved {
 		res, out, err = approvalOutcomeError(outcome, fmt.Sprintf("query against %q", summary.Name))
@@ -831,7 +832,7 @@ func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args 
 	case "allow":
 		// fall through to Execute below.
 	case "prompt":
-		resolved, res, out, err, done := s.awaitExplainApproval(ctx, args, summary, statements)
+		resolved, res, out, err, done := s.awaitExplainApproval(ctx, args, summary)
 		if done {
 			return res, out, err
 		}

@@ -1,0 +1,40 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "read",
+        "enforcement": "session",
+        "explain": true,
+        "mode": "read",
+        "plan": null,
+        "reviewOffered": false,
+        "reviewResult": false,
+        "statement": "select body from notes where id = 1"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "",
+        "kind": "sqlite",
+        "location": "",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ]
+}
