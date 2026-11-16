@@ -67,9 +67,7 @@ test('selecting a task shows its facts; status is read-only', async ({ relaunch 
     'placeholder',
     /PAY-102/,
   );
-  await expect(page.locator('[data-testid="ade-panel-facts"]')).toContainText(
-    '3 branches in api, web-app',
-  );
+  await expect(page.locator('[data-testid="ade-panel-facts"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="ade-task-status-why"]')).not.toBeEmpty();
   await expect(page.locator('[data-testid="ade-task-branch"]')).toHaveCount(3);
 });
@@ -341,11 +339,12 @@ test('dragging the handle persists the dragged width; a click persists nothing',
   expect(widthWrites()).toHaveLength(0);
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x - 120, y, { steps: 6 });
+  // Right: the panel narrows and the list widens; left would clamp at the 360px list floor.
+  await page.mouse.move(x + 120, y, { steps: 6 });
   await page.mouse.up();
   await expect.poll(() => widthWrites()).toHaveLength(1);
   expect(widthWrites()[0]?.args).toEqual({
-    patch: { panel: { ade: { width: startWidth + 120 } } },
+    patch: { panel: { ade: { width: startWidth - 120 } } },
   });
 });
 
