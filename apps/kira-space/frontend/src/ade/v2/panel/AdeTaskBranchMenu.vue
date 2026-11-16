@@ -34,6 +34,7 @@ const removeBranch = useRemoveTaskBranch();
 const removeRepo = useRemoveTaskRepo();
 
 const formOpen = ref(false);
+const menuOpen = ref(false);
 const mode = ref<'branch' | 'repo'>('branch');
 const label = computed(() => props.row.name || props.row.repo);
 
@@ -86,13 +87,14 @@ async function remove(what: 'branch' | 'repo'): Promise<void> {
     :mode="mode"
     :draft-repo-ids="draftRepoIds"
   >
-    <DropdownMenu>
+    <DropdownMenu v-model:open="menuOpen">
       <DropdownMenuTrigger as-child>
         <Button
           variant="toolbar"
           size="kira-icon"
           class="shrink-0"
           :aria-label="t('space.ade.taskTab.branchMenu.trigger.aria')"
+          :data-pinned="menuOpen || formOpen || undefined"
           data-testid="ade-task-branch-menu"
           :data-branch-id="row.id"
           @click.stop

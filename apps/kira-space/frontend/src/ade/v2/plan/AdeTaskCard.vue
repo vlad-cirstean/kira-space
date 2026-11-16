@@ -77,6 +77,9 @@ const baseChoices = computed(() => {
   return v && board ? changeBaseChoices(props.card, { graph: v.graph, after: v.after, board }) : [];
 });
 
+const draftRepoIds = computed(() =>
+  props.card.rows.filter((r) => r.branch.name === '').map((r) => r.branch.codeRepoId),
+);
 const selected = computed(() => ui.selectedTaskId === props.card.task.id);
 const inRipple = computed(() => rippleIds.value.tasks.has(props.card.task.id));
 const headSelected = computed(() => selected.value && ui.selectedBranchId === null);
@@ -283,6 +286,8 @@ const boxClass = computed(() => {
         :row="row"
         :color="card.color"
         :task-row="card.review"
+        :draft-repo-ids="draftRepoIds"
+        :editable="!card.review"
         @force-push="emit('forcePush', row)"
         @task-menu="taskMenu.open"
       />
