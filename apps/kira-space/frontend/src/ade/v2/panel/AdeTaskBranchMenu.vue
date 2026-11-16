@@ -24,6 +24,7 @@ const props = defineProps<{
   row: BranchRowModel;
   /** Repos where the task has a branch slot waiting for a name. */
   draftRepoIds: readonly string[];
+  align?: 'start' | 'end';
 }>();
 const emit = defineEmits<{ error: [message: string] }>();
 
@@ -86,6 +87,7 @@ async function remove(what: 'branch' | 'repo'): Promise<void> {
     :branch="row.branch"
     :mode="mode"
     :draft-repo-ids="draftRepoIds"
+    :align="align"
   >
     <DropdownMenu v-model:open="menuOpen">
       <DropdownMenuTrigger as-child>
@@ -103,7 +105,7 @@ async function remove(what: 'branch' | 'repo'): Promise<void> {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="end"
+        :align="align ?? 'end'"
         data-testid="ade-task-branch-menu-content"
         @close-auto-focus.prevent
       >

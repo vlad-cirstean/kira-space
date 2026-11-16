@@ -514,6 +514,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
       >
         <AdeTaskBranchMenu
           v-if="editable"
+          align="start"
           :row="row"
           :draft-repo-ids="draftRepoIds"
           @error="onEditError"

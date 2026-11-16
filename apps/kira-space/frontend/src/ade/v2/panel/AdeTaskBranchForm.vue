@@ -20,6 +20,7 @@ const props = defineProps<{
   mode: 'branch' | 'repo';
   /** Repos where the task has a branch slot waiting for a name. */
   draftRepoIds: readonly string[];
+  align?: 'start' | 'end';
 }>();
 const open = defineModel<boolean>('open', { required: true });
 
@@ -91,7 +92,7 @@ async function submitRepo(codeRepoId: string): Promise<void> {
   <Popover v-model:open="open">
     <PopoverAnchor as-child><slot /></PopoverAnchor>
     <PopoverContent
-      align="end"
+      :align="align ?? 'end'"
       class="w-80 gap-0 overflow-hidden p-0"
       data-testid="ade-branch-form"
     >
