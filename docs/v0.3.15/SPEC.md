@@ -14,7 +14,7 @@ User gates: P646 ships a design mock only; implementation of the task-list actio
 | P651 | Drop YAML path and edit-config wording app-wide | Done |
 | P652 | Task-list finish: fixes, stale UI specs, real-data check | Todo |
 | P653 | Minor-stepped updates and release retention | Todo |
-| P654 | Fix real-claude ade_smart_step failure | Todo |
+| P654 | Fix real-claude ade_smart_step failure | Done |
 | P655 | Close chapter | Todo |
 
 ## P646 Task-list actions design mock
@@ -80,6 +80,8 @@ Goal: apply minor versions one at a time, so legacy migration and backward-compa
 ## P654 Real-claude ade_smart_step
 
 `TestRealClaudeSettingsUntouched/ade_smart_step` fails ("smart step run = failed, want done"), also on base commit 07246566, found in P650. Root-cause and fix.
+
+Result: plan `plans/P654.md`. Root cause: P643 refused an ok `step.finish` with no draft while the route continues, but a smart step's script tools (`Read`) cannot write one, and its prompt asked for it. Fix: `smartStepOf`; a smart step run hands over by the ok `reason`, gets no draft clause, and is not refused (also on resume); sessions unchanged. New flow subtest `TestAutomationStep/hands over its reason, no draft` (fails without fix, passes with), fakeagent records `.draft-asked`. Real-claude test command now names `state` `step.finish`. Real claude: `TestRealClaudeSettingsUntouched` 5 of 5 pass (0.0018 USD), ADE runs row all pass (0.0929 USD). Go build, `ade`, `agentmcp`, whole `adeflow` package, `lint:claude` green.
 
 ## P655 Close chapter
 
