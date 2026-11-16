@@ -5,8 +5,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/to
 import { colorMarkClass, connBgClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { useApprovalsStore } from '@workbench/state/approvals';
-import { computed } from 'vue';
+import { computed, onErrorCaptured, ref, watch } from 'vue';
+import { logWarn } from '../bridge/log';
 import { type ApprovalRisk, useApprovalKind } from './registry';
+import { safeKind } from './safeKind';
 import { formatClock, useCountdown } from './useCountdown';
 
 const props = defineProps<{ item: ApprovalItem }>();
@@ -34,11 +36,26 @@ const RISK_ICON = {
 } as const;
 const RISK_GLYPH = { warn: 'warning', neutral: 'info', error: 'error' } as const;
 
-const operation = computed(() => def?.operation(props.item) ?? props.item.operation.class);
-const where = computed(() => {
-  if (!def) return [props.item.target.kind, props.item.target.location].filter(Boolean).join(' · ');
-  return def.where?.(props.item) ?? '';
-});
+const fallbackOperation = props.item.operation.class;
+const operation = computed(() =>
+  safeKind(
+    props.item.kind,
+    () => def?.operation(props.item) ?? fallbackOperation,
+    fallbackOperation,
+  ),
+);
+const where = computed(() =>
+  safeKind(
+    props.item.kind,
+    () => {
+      if (!def) {
+        return [props.item.target.kind, props.item.target.location].filter(Boolean).join(' · ');
+      }
+      return def.where?.(props.item) ?? '';
+    },
+    '',
+  ),
+);
 const countdown = computed(() => {
   const left = remaining.value;
   if (left === null) return '';
@@ -47,13 +64,41 @@ const countdown = computed(() => {
     : t('workbench.approvals.left.status', { time: formatClock(left) });
 });
 
+const kindRisks = computed(() =>
+  safeKind<ApprovalRisk[]>(props.item.kind, () => def?.risks?.(props.item) ?? [], []),
+);
+// A body or details component that throws while rendering is dropped for a fallback line.
+const bodyFailed = ref(false);
+onErrorCaptured((err) => {
+  logWarn('approvals', `kind ${props.item.kind} unreadable`, err);
+  bodyFailed.value = true;
+  return false;
+});
+const broken = computed(
+  () =>
+    store.isBroken(props.item.id) ||
+    bodyFailed.value ||
+    operation.value.failed ||
+    where.value.failed ||
+    kindRisks.value.failed,
+);
+watch(broken, (v) => v && store.markBroken(props.item.id), { immediate: true });
+
 const risks = computed<ApprovalRisk[]>(() => {
   const out: ApprovalRisk[] = [];
   if (props.item.target.readOnly) {
     out.push({ text: t('common.state.readOnly.status'), tone: 'neutral' });
   }
-  if (def) out.push(...(def.risks?.(props.item) ?? []));
+  if (def) out.push(...kindRisks.value.value);
   else out.push({ text: t('workbench.approvals.risk.unsupported.status'), tone: 'warn' });
+  if (broken.value) {
+    out.push({
+      text: t('workbench.approvals.risk.unreadable.status'),
+      tooltip: t('workbench.approvals.risk.unreadable.tooltip'),
+      tone: 'error',
+      testid: 'approval-unreadable',
+    });
+  }
   if (error.value) out.push({ text: error.value, tone: 'error', testid: 'approval-error' });
   return out;
 });
@@ -73,7 +118,7 @@ const risks = computed<ApprovalRisk[]>(() => {
           :class="TONE_TEXT[item.operation.tone]"
           data-testid="approval-operation"
         >
-          {{ operation }}
+          {{ operation.value }}
         </span>
         <span
           class="min-w-0 break-words text-kira-lg font-medium text-fg"
@@ -83,12 +128,12 @@ const risks = computed<ApprovalRisk[]>(() => {
           {{ item.target.name }}
         </span>
         <span
-          v-if="where"
+          v-if="where.value"
           class="text-kira-md text-muted-foreground"
           :class="def?.whereData && 'font-data'"
           data-testid="approval-target-kind"
         >
-          {{ where }}
+          {{ where.value }}
         </span>
         <Tooltip v-for="(risk, i) in risks" :key="i" :disabled="!risk.tooltip">
           <TooltipTrigger as-child>
@@ -129,12 +174,21 @@ const risks = computed<ApprovalRisk[]>(() => {
     />
 
     <div v-if="def" class="flex min-w-0 flex-1 flex-col gap-2 pl-3" data-testid="approval-body">
-      <component
-        :is="def.content"
-        :item="item"
-        @options="(v: unknown) => store.setOption(item.id, v)"
-      />
-      <component :is="def.details" v-if="def.details" :item="item" />
+      <p
+        v-if="bodyFailed"
+        class="text-kira-md text-muted-foreground"
+        data-testid="approval-body-failed"
+      >
+        {{ t('workbench.approvals.risk.unreadable.tooltip') }}
+      </p>
+      <template v-else>
+        <component
+          :is="def.content"
+          :item="item"
+          @options="(v: unknown) => store.setOption(item.id, v)"
+        />
+        <component :is="def.details" v-if="def.details" :item="item" />
+      </template>
     </div>
   </section>
 </template>

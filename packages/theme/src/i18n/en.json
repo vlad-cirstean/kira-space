@@ -18321,6 +18321,10 @@
         "status": "{time} left"
       },
       "risk": {
+        "unreadable": {
+          "status": "Request unreadable",
+          "tooltip": "Request details couldn’t be read. Deny it or ask the agent to retry"
+        },
         "unsupported": {
           "status": "Unsupported"
         }

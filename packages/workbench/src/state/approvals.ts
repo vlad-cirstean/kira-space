@@ -8,6 +8,8 @@ export const useApprovalsStore = defineStore('approvals', () => {
   const focusId = ref<string | null>(null);
   const answering = ref<string[]>([]);
   const errors = ref<Record<string, string>>({});
+  // Items whose kind code threw on the payload: the card shows an error and Deny only.
+  const broken = ref<string[]>([]);
   // Per-item choices a kind body collected (branch.request: itemIds, remoteItemIds).
   const options = ref<Record<string, unknown>>({});
 
@@ -22,6 +24,14 @@ export const useApprovalsStore = defineStore('approvals', () => {
 
   function setOption(id: string, value: unknown): void {
     options.value = { ...options.value, [id]: value };
+  }
+
+  function markBroken(id: string): void {
+    if (!broken.value.includes(id)) broken.value = [...broken.value, id];
+  }
+
+  function isBroken(id: string): boolean {
+    return broken.value.includes(id);
   }
 
   function begin(ids: string[]): void {
@@ -51,6 +61,7 @@ export const useApprovalsStore = defineStore('approvals', () => {
     options.value = Object.fromEntries(
       Object.entries(options.value).filter(([k]) => live.includes(k)),
     );
+    broken.value = broken.value.filter((b) => live.includes(b));
     if (focusId.value && !live.includes(focusId.value)) focusId.value = null;
     if (live.length === 0) minimised.value = false;
   }
@@ -61,9 +72,12 @@ export const useApprovalsStore = defineStore('approvals', () => {
     answering,
     errors,
     options,
+    broken,
     minimise,
     open,
     setOption,
+    markBroken,
+    isBroken,
     begin,
     done,
     fail,
