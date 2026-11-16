@@ -33,8 +33,11 @@ import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
+import { TONE_TEXT_CLASS } from '../tones';
 import AdeAttention from './AdeAttention.vue';
+import AdeBranchChips from './AdeBranchChips.vue';
 import AdeBranchPr from './AdeBranchPr.vue';
+import AdeBranchProg from './AdeBranchProg.vue';
 import AdeBranchTip from './AdeBranchTip.vue';
 import AdeOpStatus from './AdeOpStatus.vue';
 import AdeTagIcon from './AdeTagIcon.vue';
@@ -80,6 +83,7 @@ watch(focused, (f) => {
 const hasChips = computed(
   () => props.row.chips.merged.length + props.row.chips.deployed.length > 0,
 );
+const twoLine = computed(() => !panel.value && (props.row.prog !== null || hasChips.value));
 const selected = computed(() =>
   props.taskRow
     ? ui.selectedTaskId === props.row.branch.taskId && ui.selectedBranchId === null
@@ -229,15 +233,6 @@ function onMenu(ev: MouseEvent): void {
   contextMenu.openContextMenu(ev, menuItems());
 }
 
-const SEG: Record<string, string> = {
-  done: 'bg-muted-foreground',
-  running: 'bg-fg',
-  bad: 'bg-tone-red-solid',
-};
-const segClass = (state: string): string => SEG[state] ?? 'bg-border';
-const progClass = computed(() => {
-  return props.row.prog?.tone === 'red' ? 'text-tone-red' : 'text-muted-foreground';
-});
 const baseName = computed(() => {
   const part = props.row.base?.label.find((p) => typeof p !== 'string');
   return part && typeof part !== 'string' ? part.value : '';
@@ -268,7 +263,9 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
     ref="rowEl"
     class="group group/row"
     :class="[
-      panel ? ADE_ROW : 'box-border flex h-row w-full items-center gap-1.5 px-2',
+      panel
+        ? ADE_ROW
+        : ['box-border flex w-full items-center gap-1.5 px-2', twoLine ? 'h-board-row' : 'h-row'],
       selected ? 'bg-select' : panel ? '' : 'hover:bg-field',
     ]"
     :style="panel ? rowIndent(row.depth) : undefined"
@@ -358,21 +355,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               v-if="row.context || row.prog || hasChips"
               class="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap"
             >
-              <span
-                v-if="row.prog"
-                class="inline-flex shrink-0 items-center gap-1"
-                data-testid="ade-branch-prog"
-              >
-                <span class="inline-flex gap-0.5">
-                  <span
-                    v-for="(seg, i) in row.prog.segs"
-                    :key="i"
-                    class="h-1.25 w-1.75 rounded-kira-sm"
-                    :class="segClass(seg)"
-                  />
-                </span>
-                <span class="text-kira-sm" :class="progClass">{{ row.prog.label }}</span>
-              </span>
+              <AdeBranchProg v-if="row.prog" :prog="row.prog" />
               <span
                 v-if="row.context"
                 class="truncate"
@@ -382,27 +365,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
                   row.context
                 }}</span
               >
-              <span
-                v-for="c in row.chips.merged"
-                :key="c.label"
-                class="shrink-0 text-kira-sm"
-                :class="c.tone === 'stale' ? 'text-tone-amber' : rowMeta"
-                data-testid="ade-branch-merged"
-                >{{
-                  c.label
-                }}</span
-              >
-              <span v-if="row.chips.divider" class="h-2.5 w-px shrink-0 bg-border" />
-              <span
-                v-for="c in row.chips.deployed"
-                :key="c.label"
-                class="shrink-0 text-kira-sm"
-                :class="c.tone === 'stale' ? 'text-tone-amber' : rowMeta"
-                data-testid="ade-branch-deployed"
-                >{{
-                  c.label
-                }}</span
-              >
+              <AdeBranchChips :chips="row.chips" />
             </span>
           </div>
           <AdeAttention v-if="row.attention" :tip="row.attention" :item="row.attentionItem" />
@@ -458,128 +421,175 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           class="absolute -top-1 right-0.5 box-border h-4.5 w-2 rounded-bl-kira-sm border-b-2 border-l-2 border-border"
         />
       </span>
-      <AdeBranchTip v-model:open="tipOpen" :row="row" :color="color">
-        <span class="flex min-w-0 items-center gap-1.5">
-          <Badge
-            variant="chip"
-            class="max-w-20 truncate"
-            :class="repoTintOf.class"
-            :style="repoTintOf.style"
-            data-testid="ade-branch-repo"
-            >{{
-              row.repo
-            }}</Badge
-          >
-          <AdeOpStatus :task-id="row.branch.taskId" :branch-id="row.id" />
-          <Badge v-if="row.isReview" data-testid="ade-owner-pill">{{ row.branch.owner }}</Badge>
-          <span
-            v-if="row.branch.origin === 'agent'"
-            class="inline-flex shrink-0 text-subtle"
-            data-testid="ade-branch-agent"
-          >
-            <CodiconIcon name="sparkle" :size="13" />
-          </span>
-          <span
-            class="truncate font-data text-kira-md font-medium"
-            :class="
-              row.draft || row.attach?.state === 'detached' ? 'text-muted-foreground' : 'text-fg'
-            "
-            data-testid="ade-branch-name"
-            >{{
-              row.name
-            }}</span
-          >
-          <AdeTip v-if="row.attach" :text="row.attach.tip">
-            <span
-              role="img"
-              class="inline-flex shrink-0 text-subtle"
-              :aria-label="row.attach.tip"
-              :data-testid="`ade-branch-${row.attach.state}`"
-            >
-              <CodiconIcon :name="ATTACH_GLYPH[row.attach.state].icon" :size="13" />
+      <div
+        class="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1.5 gap-y-0.5"
+      >
+        <Badge
+          variant="chip"
+          class="max-w-20 truncate"
+          :class="repoTintOf.class"
+          :style="repoTintOf.style"
+          data-testid="ade-branch-repo"
+          >{{
+            row.repo
+          }}</Badge
+        >
+        <div class="flex h-control min-w-0 items-center gap-1.5">
+          <AdeBranchTip v-model:open="tipOpen" :row="row" :color="color">
+            <span class="flex min-w-0 shrink items-center gap-1.5">
+              <Badge v-if="row.isReview" data-testid="ade-owner-pill">{{ row.branch.owner }}</Badge>
+              <span
+                v-if="row.branch.origin === 'agent'"
+                class="inline-flex shrink-0 text-subtle"
+                data-testid="ade-branch-agent"
+              >
+                <CodiconIcon name="sparkle" :size="13" />
+              </span>
+              <span
+                class="truncate font-data text-kira-md font-medium"
+                :class="
+                  row.draft || row.attach?.state === 'detached'
+                    ? 'text-muted-foreground'
+                    : 'text-fg'
+                "
+                data-testid="ade-branch-name"
+                >{{
+                  row.name
+                }}</span
+              >
+              <AdeTip v-if="row.attach" :text="row.attach.tip">
+                <span
+                  role="img"
+                  class="inline-flex shrink-0 text-subtle"
+                  :aria-label="row.attach.tip"
+                  :data-testid="`ade-branch-${row.attach.state}`"
+                >
+                  <CodiconIcon :name="ATTACH_GLYPH[row.attach.state].icon" :size="13" />
+                </span>
+              </AdeTip>
+              <AdeTip v-if="row.checkedOut" :text="row.attach?.tip ?? ''">
+                <BranchChip
+                  :name="t('space.ade.plan.branchRow.checkedOut.label', { branch: row.checkedOut })"
+                  variant="warn"
+                  class="max-w-24 shrink-0"
+                  data-testid="ade-branch-checked-out"
+                />
+              </AdeTip>
+              <AdeTip v-if="row.base && (baseName || row.base.pending)" :parts="row.base.tip">
+                <span
+                  class="inline-flex min-w-0 max-w-20 items-center gap-0.5 font-data text-kira-sm"
+                  :class="
+                    row.base.pending
+                      ? TONE_TEXT_CLASS.amber
+                      : row.base.tone === 'blue'
+                        ? TONE_TEXT_CLASS.blue
+                        : 'text-subtle'
+                  "
+                  data-testid="ade-base-marker"
+                  :data-pending="row.base.pending || undefined"
+                >
+                  <CodiconIcon name="git-branch" :size="12" class="shrink-0" />
+                  <span v-if="baseName" class="truncate">{{ baseName }}</span>
+                </span>
+              </AdeTip>
             </span>
-          </AdeTip>
-          <AdeTip v-if="row.checkedOut" :text="row.attach?.tip ?? ''">
-            <BranchChip
-              :name="t('space.ade.plan.branchRow.checkedOut.label', { branch: row.checkedOut })"
-              variant="warn"
-              class="max-w-24 shrink-0"
-              data-testid="ade-branch-checked-out"
+          </AdeBranchTip>
+          <span
+            class="hidden shrink-0 items-center gap-0.5 group-hover/row:flex group-focus-visible/row:flex group-has-[:focus-visible]/row:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
+          >
+            <AdeTaskBranchMenu
+              v-if="editable"
+              align="start"
+              :row="row"
+              :draft-repo-ids="draftRepoIds"
+              @error="onEditError"
             />
+            <TooltipIconButton
+              v-for="a in split.shown.filter((x) => VARIANT[x.kind] === 'dialog')"
+              :key="a.act?.id ?? a.kind"
+              :icon="BRANCH_ACTION_ICON[a.kind]"
+              :label="a.label"
+              :variant="VARIANT[a.kind]"
+              size="kira-icon"
+              class="shrink-0"
+              disabled-trigger
+              :disabled="a.disabled"
+              :data-testid="TESTID[a.kind]"
+              @click.stop="act(a)"
+            >
+              <div class="font-medium">{{ a.label }}</div>
+              <div><VarText :parts="a.tipParts ?? [a.tip]" /></div>
+            </TooltipIconButton>
+            <MenuIconButton
+              v-if="split.overflow.length"
+              :icon="ICON.moreActions"
+              :label="t('common.moreActions.tooltip')"
+              :items="menuItems"
+              class="shrink-0"
+              data-testid="ade-branch-more"
+              @click.stop
+            />
+            <TooltipIconButton
+              v-if="choice"
+              icon="git-compare"
+              :label="t('space.ade.board.taskMenu.reviewCode.label')"
+              class="size-5 shrink-0"
+              disabled-trigger
+              :pending="reviewCode.pendingFor([row.id])"
+              :disabled="choice.disabled"
+              data-testid="ade-branch-review"
+              @click.stop="reviewCode.open(row.branch.taskId, row.id, rowRef)"
+            >
+              <VarText :parts="choice.tip" />
+              <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
+            </TooltipIconButton>
+          </span>
+          <AdeTip v-if="row.context" :text="row.context">
+            <span
+              class="min-w-0 flex-1 basis-0 truncate"
+              :class="rowMeta"
+              data-testid="ade-branch-context"
+              >{{
+                row.context
+              }}</span
+            >
           </AdeTip>
-        </span>
-      </AdeBranchTip>
-      <span
-        class="hidden shrink-0 items-center gap-0.5 group-hover/row:flex group-focus-visible/row:flex group-has-[:focus-visible]/row:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
-      >
-        <AdeTaskBranchMenu
-          v-if="editable"
-          align="start"
-          :row="row"
-          :draft-repo-ids="draftRepoIds"
-          @error="onEditError"
-        />
-        <TooltipIconButton
-          v-for="a in split.shown.filter((x) => VARIANT[x.kind] === 'dialog')"
-          :key="a.act?.id ?? a.kind"
-          :icon="BRANCH_ACTION_ICON[a.kind]"
-          :label="a.label"
-          :variant="VARIANT[a.kind]"
-          size="kira-icon"
-          class="shrink-0"
-          disabled-trigger
-          :disabled="a.disabled"
-          :data-testid="TESTID[a.kind]"
-          @click.stop="act(a)"
-        >
-          <div class="font-medium">{{ a.label }}</div>
-          <div><VarText :parts="a.tipParts ?? [a.tip]" /></div>
-        </TooltipIconButton>
-        <MenuIconButton
-          v-if="split.overflow.length"
-          :icon="ICON.moreActions"
-          :label="t('common.moreActions.tooltip')"
-          :items="menuItems"
-          class="shrink-0"
-          data-testid="ade-branch-more"
-          @click.stop
-        />
-        <TooltipIconButton
-          v-if="choice"
-          icon="git-compare"
-          :label="t('space.ade.board.taskMenu.reviewCode.label')"
-          class="size-5 shrink-0"
-          disabled-trigger
-          :pending="reviewCode.pendingFor([row.id])"
-          :disabled="choice.disabled"
-          data-testid="ade-branch-review"
-          @click.stop="reviewCode.open(row.branch.taskId, row.id, rowRef)"
-        >
-          <VarText :parts="choice.tip" />
-          <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
-        </TooltipIconButton>
-      </span>
-      <span class="flex-1" />
-      <AdeBranchPr :row="row" />
-      <AdeAttention v-if="row.attention" :tip="row.attention" :item="row.attentionItem" />
-      <AdeTagIcon v-bind="tagProps" />
-      <TooltipIconButton
-        v-for="a in split.shown.filter((x) => VARIANT[x.kind] === 'dialog-danger')"
-        :key="a.act?.id ?? a.kind"
-        :icon="BRANCH_ACTION_ICON[a.kind]"
-        :label="a.label"
-        :variant="VARIANT[a.kind]"
-        size="kira-icon"
-        class="shrink-0"
-        disabled-trigger
-        :disabled="a.disabled"
-        :data-testid="TESTID[a.kind]"
-        @click.stop="act(a)"
-      >
-        <div class="font-medium">{{ a.label }}</div>
-        <div><VarText :parts="a.tipParts ?? [a.tip]" /></div>
-      </TooltipIconButton>
-      <slot />
+          <span v-else class="flex-1" />
+        </div>
+        <div class="flex items-center gap-1">
+          <AdeOpStatus :task-id="row.branch.taskId" :branch-id="row.id" />
+          <AdeBranchPr :row="row" />
+          <AdeAttention v-if="row.attention" :tip="row.attention" :item="row.attentionItem" />
+          <AdeTagIcon v-bind="tagProps" />
+          <TooltipIconButton
+            v-for="a in split.shown.filter((x) => VARIANT[x.kind] === 'dialog-danger')"
+            :key="a.act?.id ?? a.kind"
+            :icon="BRANCH_ACTION_ICON[a.kind]"
+            :label="a.label"
+            :variant="VARIANT[a.kind]"
+            size="kira-icon"
+            class="shrink-0"
+            disabled-trigger
+            :disabled="a.disabled"
+            :data-testid="TESTID[a.kind]"
+            @click.stop="act(a)"
+          >
+            <div class="font-medium">{{ a.label }}</div>
+            <div><VarText :parts="a.tipParts ?? [a.tip]" /></div>
+          </TooltipIconButton>
+          <slot />
+        </div>
+        <AdeBranchTip v-if="twoLine" :row="row" :color="color">
+          <div
+            class="col-span-2 col-start-2 flex h-4.5 min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap"
+            data-testid="ade-branch-line2"
+          >
+            <AdeBranchProg v-if="row.prog" :prog="row.prog" />
+            <span class="flex-1" />
+            <AdeBranchChips :chips="row.chips" />
+          </div>
+        </AdeBranchTip>
+      </div>
     </template>
   </div>
 </template>
