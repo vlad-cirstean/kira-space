@@ -17,8 +17,8 @@ const labelClass = computed(() =>
 </script>
 
 <template>
-  <span class="inline-flex shrink-0 items-center gap-1" data-testid="ade-branch-prog">
-    <span class="inline-flex gap-0.5">
+  <span class="inline-flex min-w-0 shrink items-center gap-1" data-testid="ade-branch-prog">
+    <span class="inline-flex shrink-0 gap-0.5">
       <span
         v-for="(seg, i) in prog.segs"
         :key="i"
@@ -26,6 +26,6 @@ const labelClass = computed(() =>
         :class="segClass(seg)"
       />
     </span>
-    <span class="max-w-28 truncate text-kira-sm" :class="labelClass">{{ prog.label }}</span>
+    <span class="max-w-28 min-w-0 truncate text-kira-sm" :class="labelClass">{{ prog.label }}</span>
   </span>
 </template>

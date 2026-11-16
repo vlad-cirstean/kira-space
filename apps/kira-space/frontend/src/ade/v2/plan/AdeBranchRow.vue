@@ -586,7 +586,9 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           >
             <AdeBranchProg v-if="row.prog" :prog="row.prog" />
             <span class="flex-1" />
-            <AdeBranchChips :chips="row.chips" />
+            <span class="flex shrink-0 items-center gap-1"
+              ><AdeBranchChips :chips="row.chips" /></span
+            >
           </div>
         </AdeBranchTip>
       </div>
