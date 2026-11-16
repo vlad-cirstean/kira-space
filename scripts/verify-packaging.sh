@@ -138,6 +138,12 @@ if [ "${GO_CONTRACT_COUNT:-0}" -ne 1 ]; then
   fail "installer contract marker out of sync" "internal/appupdate/install.go's installContract does not match scripts/install.sh's own contract line"
 fi
 
+SCRIPT_ASSET="$(sed -n 's/^  ASSET="\([^"]*\)".*/\1/p' scripts/install.sh 2>/dev/null | head -1)"
+GO_ASSET="$(sed -n 's/^const macAsset = "\([^"]*\)".*/\1/p' internal/appupdate/version.go 2>/dev/null | head -1)"
+if [ -z "$SCRIPT_ASSET" ] || [ "$SCRIPT_ASSET" != "$GO_ASSET" ]; then
+  fail "installer asset name out of sync" "scripts/install.sh ASSET ('$SCRIPT_ASSET') != internal/appupdate/version.go macAsset ('$GO_ASSET')"
+fi
+
 INSTALL_URL_HITS="$(grep -rn 'raw.githubusercontent.com' apps/ packages/ internal/ \
   --include=*.go --include=*.ts --include=*.vue 2>/dev/null || true)"
 INSTALL_URL_COUNT="$(printf '%s\n' "$INSTALL_URL_HITS" | grep -c . || true)"

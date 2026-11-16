@@ -1,19 +1,20 @@
 #!/bin/sh
 # kira-install-contract: 2
 # scripts/install.sh installs or updates Kira Space on this Mac: it downloads the latest published
-# release's disk image, verifies it, and swaps it into /Applications, then opens the app.
+# release's disk image (or the release named by --tag), verifies it, and swaps it into /Applications, then opens the app.
 # Interactive: `curl -fsSL <raw-url> | sh` — the same command installs a fresh
 # copy or replaces an older one. Self-update: the app itself runs this script with
 # --wait-pid/--notify-fd, stages the new bundle, hands off over fd 3, then quits once it reads that
 # hand-off — the app never overwrites its own running binary. Log file, either mode:
 # ~/Library/Logs/<App name>/install.log.
 #
-# Usage: install.sh [--wait-pid=<pid> --notify-fd=<3-9>]
+# Usage: install.sh [--tag=vX.Y.Z] [--wait-pid=<pid> --notify-fd=<3-9>]
 # Exit codes: 0 installed and launched; 1 any failure; 2 usage; 130 interrupted.
 #
 # P119 §2: rewritten by hand, not generated — every requirement in the plan's own §2 is load-
 # bearing, none of it optional polish. Never break the --wait-pid/--notify-fd flags or the
-# fd-3 "staged <tag>" handshake without bumping the line-2 marker above (marker 2 dropped --app) —
+# fd-3 "staged <tag>" handshake without bumping the line-2 marker above (marker 2 dropped --app;
+# adding an optional flag, like --tag, needs no bump; removing or changing one does) —
 # an older app then refuses the new script with a clear error instead of misdriving it (internal/appupdate/
 # install.go's own installContract constant is the other side of this same contract; S11 in
 # scripts/verify-packaging.sh checks the two agree literally).
@@ -30,7 +31,7 @@ main() {
   # Every global this script touches gets a default here, up front — set -u then never trips on a
   # variable a later step hasn't reached yet, including inside cleanup, which can run at any point
   # once its trap is armed.
-  WAIT_PID="" NOTIFY_FD="" LOG=""
+  WAIT_PID="" NOTIFY_FD="" LOG="" REQ_TAG=""
   # Kira Space is the only app.
   APP_NAME="Kira Space"
   BUNDLE_ID="com.kirathecat.kira-space"
@@ -106,8 +107,9 @@ APPLESCRIPT_EOF
     case "$ARG" in
       --wait-pid=*) WAIT_PID="${ARG#--wait-pid=}" ;;
       --notify-fd=*) NOTIFY_FD="${ARG#--notify-fd=}" ;;
+      --tag=*) REQ_TAG="${ARG#--tag=}" ;;
       *)
-        echo "usage: install.sh [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
+        echo "usage: install.sh [--tag=vX.Y.Z] [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
         exit 2
         ;;
     esac
@@ -134,6 +136,19 @@ APPLESCRIPT_EOF
         exit 2
         ;;
     esac
+  fi
+
+  # --tag is interpolated into the release URL below, so only this shape ever gets there.
+  if [ -n "$REQ_TAG" ] && ! expr "$REQ_TAG" : 'v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null; then
+    echo "usage: --tag must match ^v[0-9]+\.[0-9]+\.[0-9]+\$" >&2
+    exit 2
+  fi
+  if [ -n "$REQ_TAG" ]; then
+    RELEASE_URL="https://api.github.com/repos/vlad-cirstean/kira-space/releases/tags/$REQ_TAG"
+    RELEASE_DESC="release $REQ_TAG"
+  else
+    RELEASE_URL="https://api.github.com/repos/vlad-cirstean/kira-space/releases/latest"
+    RELEASE_DESC="the latest release"
   fi
 
   LOG="$HOME/Library/Logs/$LOG_NAME/install.log"
@@ -186,11 +201,14 @@ APPLESCRIPT_EOF
   HTTP_STATUS="$(curl --proto '=https' --tlsv1.2 -fsSL --connect-timeout 20 --retry 3 --retry-delay 2 \
     -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' \
     -o "$RELEASE_JSON" -w '%{http_code}' \
-    https://api.github.com/repos/vlad-cirstean/kira-space/releases/latest </dev/null)"
+    "$RELEASE_URL" </dev/null)"
   CURL_STATUS=$?
   set -e
   if [ "$CURL_STATUS" != "0" ]; then
     if [ "$HTTP_STATUS" = "404" ]; then
+      if [ -n "$REQ_TAG" ]; then
+        die "no published release $REQ_TAG"
+      fi
       die "no published release yet"
     fi
     die "couldn't reach GitHub to check for a release (curl exit $CURL_STATUS, HTTP $HTTP_STATUS)"
@@ -238,9 +256,12 @@ JXA_EOF
   ASSET_SIZE="$(sed -n '5p' "$WORK/release.txt")"
   ASSET_DIGEST="$(sed -n '6p' "$WORK/release.txt")"
 
-  # Same belt-and-braces as internal/appupdate.buildResult — releases/latest already excludes both.
-  [ "$IS_DRAFT" = "false" ] || die "the latest release is a draft"
-  [ "$IS_PRERELEASE" = "false" ] || die "the latest release is a prerelease"
+  # Belt-and-braces: releases/latest already excludes both, and a tag lookup does not.
+  [ "$IS_DRAFT" = "false" ] || die "$RELEASE_DESC is a draft"
+  [ "$IS_PRERELEASE" = "false" ] || die "$RELEASE_DESC is a prerelease"
+  if [ -n "$REQ_TAG" ] && [ "$TAG" != "$REQ_TAG" ]; then
+    die "asked for release $REQ_TAG, GitHub returned '$TAG'"
+  fi
   if ! expr "$TAG" : 'v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null; then
     die "release tag '$TAG' does not look like v<major>.<minor>.<patch>"
   fi
@@ -249,7 +270,7 @@ JXA_EOF
     *) die "release asset URL is not the expected GitHub download URL" ;;
   esac
   case "$ASSET_SIZE" in
-    '' | *[!0-9]*) die "release asset '$ASSET' was not found on the latest release" ;;
+    '' | *[!0-9]*) die "release asset '$ASSET' was not found on $RELEASE_DESC" ;;
   esac
 
   # ---- 6: download ----------------------------------------------------------------------------
