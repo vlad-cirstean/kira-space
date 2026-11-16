@@ -8,7 +8,7 @@ User gates: P646 ships a design mock only; implementation of the task-list actio
 |---|-------|--------|
 | P646 | Task-list actions design mock | Done |
 | P647 | Task-list polish | Done |
-| P648 | Task-list actions per approved design | Todo |
+| P648 | Task-list actions per approved design | Done |
 | P649 | Prompt dialogs: empty body, 10 min limits, typing-safe, proof-update notification | Todo |
 | P650 | Status bar CPU/RAM includes agents | Todo |
 | P651 | Drop YAML path and edit-config wording app-wide | Todo |
@@ -34,6 +34,8 @@ Result: plan `plans/P647.md`, UI only, typecheck, lint and build green, no tests
 ## P648 Task-list actions
 
 Implement approved P646 design.
+
+Result: plans `plans/P648.md`, `plans/P648-iter2.md`, UI only, typecheck, lint, lint:dead and build green, no tests run (user). Row actions per P646 R-list; list 400px default, 360 floor; branch rows restored base, context, progress, merged/deployed on a second line; branch form aligns under the pencil; cluster shows on hover or keyboard focus only; compact offset drag ghost. Known: `fix/cart-flaky` line 2 clips about 8px at 400px; drag ghost still covers the last row of the target card. Stale UI specs from P647 plus plan specs reading old branch-row elements and plan visual baselines stay unedited; PR CI will fail on them until fixed.
 
 ## P649 Prompt dialogs
 
