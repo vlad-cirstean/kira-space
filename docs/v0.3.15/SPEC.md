@@ -9,9 +9,9 @@ User gates: P646 ships a design mock only; implementation of the task-list actio
 | P646 | Task-list actions design mock | Done |
 | P647 | Task-list polish | Done |
 | P648 | Task-list actions per approved design | Done |
-| P649 | Prompt dialogs: empty body, 10 min limits, typing-safe, proof-update notification | Todo |
-| P650 | Status bar CPU/RAM includes agents | Todo |
-| P651 | Drop YAML path and edit-config wording app-wide | Todo |
+| P649 | Prompt dialogs: empty body, 10 min limits, typing-safe, proof-update notification | Done |
+| P650 | Status bar CPU/RAM includes agents | Done |
+| P651 | Drop YAML path and edit-config wording app-wide | Done |
 | P652 | Task-list finish: fixes, stale UI specs, real-data check | Todo |
 | P653 | Minor-stepped updates and release retention | Todo |
 | P654 | Fix real-claude ade_smart_step failure | Todo |
@@ -47,13 +47,19 @@ Result: plans `plans/P648.md`, `plans/P648-iter2.md`, UI only, typecheck, lint, 
 - User typing: do not open the dialog, show only the toast. Open after a quiet period of a few seconds (pick a value that lets a sentence finish).
 - Proof-update "forward to agent" notification has no clear purpose. Show a prompt like other prompts, or nothing.
 
+Result: plan `plans/P649.md`. Blank approve dialogs fixed at the source (create-task `base` omitempty, explain `Mode` empty) plus an unreadable-request guard; one `prompts.AnswerWait` 10 min wait for agent prompts; two-key chords (Mod+Enter approve, Mod+Backspace deny, Shift+Escape hide) with prompt focus mode; typing gate (4 s) defers dialogs to a toast; proof forward notification removed. Typecheck, lint, lint:dead, build, Go flow tests and 209 UI specs touching prompt dialogs green; full UI suite not run.
+
 ## P650 Status bar CPU/RAM
 
 Widget counts agents and their subprocesses. Tooltip splits App and Agents.
 
+Result: plan `plans/P650.md`. `internal/agentproc` tracks agent roots at the four spawn sites; metrics split App and Agents by process tree (gopsutil), tooltip table App/Agents/Total. Go, typecheck, lint, build green; UI specs updated, run in PR CI. darwin process code unverified on Linux. Real-claude `ade_smart_step` fails on base too (P654).
+
 ## P651 YAML wording
 
 Remove file paths and "open file" affordances pointing to YAML files. Remove "edit the config file" copy (editing a connection, etc.). App-wide, not only the examples.
+
+Result: plan `plans/P651.md` plus amendment. `ConfigFileBar` removed from 9 screens; invalid file shows an alert "Can't be read, fix it here" with a Show in YAML link, project-tree and script row markers; `configsvc` and task folder open/reveal removed; about 75 texts reworded; en.json sweep clean. Checks green; adeflow timed out once under load and passed on rerun.
 
 ## P652 Task-list finish
 
