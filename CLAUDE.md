@@ -28,6 +28,13 @@ General rules live in `docs/WORKING_AGREEMENT.md`, imported above. Rules below a
 - Chapter's non-UI full run: Go, typecheck, lint, site and package tests, flow tests. UI suites
   (Playwright `ui`, `visual`, `ui-timing`, screenshots) stay out of it and run in PR CI.
 
+## Minor bumps drop legacy code
+
+Updater applies minor versions one at a time (P652): an install reaches `X.(Y+1).0` only through the
+newest patch of `X.Y`. On a minor bump, drop every migration and backward-compat path for versions
+before the previous minor. No install reaches the new minor without passing through it. Never keep
+legacy code across a minor bump.
+
 ## Closing a chapter
 
 Chapter's last phase closes it by hand. Its Sonnet implementer writes the close itself, never with
