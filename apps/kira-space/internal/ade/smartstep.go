@@ -55,11 +55,27 @@ func (b *TaskBoard) planSmartStep(tc *taskCtx, sb model.AdeTaskBranch, path stri
 	}
 	body := scripts.PlainText(scripts.Compose(script.Command, rendered))
 	files := ""
-	if v := b.filesVarsFor(tc, def.ID, def.Agent, b.isOrchestrator(tc.task.ID)); v.Folder != "" {
+	v := b.filesVarsFor(tc, def.ID, def.Agent, b.isOrchestrator(tc.task.ID))
+	v.Draft = "" // a smart step needs no draft (see smartStepOf)
+	if v.Folder != "" {
 		files = "\n" + llmprompts.HeadlessSpaceFiles.Text(b.prompts(), v)
 	}
 	step.prompt = body + "\n\n" + agentmcp.SpaceNote(b.prompts()) + files + "\n\n" + agentmcp.FinishInstruction(b.prompts(), resultSpecs(def.Results))
 	return step, nil
+}
+
+// smartStepOf reports whether the workflow's step stepID runs a smart script. Its runs hand over
+// by the ok finish's reason: the script's tools are its own, often without a write tool.
+func smartStepOf(tc *taskCtx, stepID string) bool {
+	if tc.wf == nil {
+		return false
+	}
+	for _, s := range tc.wf.Steps {
+		if s.ID == stepID {
+			return s.SmartScript != ""
+		}
+	}
+	return false
 }
 
 // secretParams is the step's param values with each saved secret param filled from the script's sealed
