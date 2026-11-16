@@ -93,11 +93,8 @@ const ruleClass = computed(() => {
 <template>
   <!-- biome-ignore lint/a11y/noStaticElementInteractions: right-click only; the band holds nested interactive rows. -->
   <div
-    class="relative flex flex-col rounded-kira"
-    :class="[
-      band.isToday ? 'bg-today-tint' : '',
-      highlight ? 'outline outline-1 outline-focus' : '',
-    ]"
+    class="relative flex flex-col"
+    :class="[highlight ? 'outline outline-1 outline-focus' : '']"
     data-testid="ade-day-band"
     data-ade-band
     :data-weekend="band.weekend || undefined"
