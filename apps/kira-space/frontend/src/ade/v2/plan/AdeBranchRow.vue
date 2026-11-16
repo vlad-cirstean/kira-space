@@ -510,7 +510,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
         </span>
       </AdeBranchTip>
       <span
-        class="hidden shrink-0 items-center gap-0.5 group-hover/row:flex group-focus-within/row:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
+        class="hidden shrink-0 items-center gap-0.5 group-hover/row:flex group-focus-visible/row:flex group-has-[:focus-visible]/row:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
       >
         <AdeTaskBranchMenu
           v-if="editable"

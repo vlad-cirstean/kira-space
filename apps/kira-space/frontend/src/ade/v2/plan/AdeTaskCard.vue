@@ -149,7 +149,7 @@ const boxClass = computed(() => {
           </span>
           <span class="flex min-w-0 items-center"><AdeTaskTitle :card="card" /></span>
           <span
-            class="hidden shrink-0 items-center gap-0.5 group-hover/head:flex group-focus-within/head:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
+            class="hidden shrink-0 items-center gap-0.5 group-hover/head:flex group-focus-visible/head:flex group-has-[:focus-visible]/head:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
           >
             <AdeTaskAddMenu v-if="!card.review" :card="card" />
             <DropdownMenu v-if="baseChoices.length > 1">

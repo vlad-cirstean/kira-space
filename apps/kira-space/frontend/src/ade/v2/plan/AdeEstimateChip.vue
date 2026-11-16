@@ -49,7 +49,7 @@ const open = computed({
         type="button"
         variant="toolbar"
         size="inline"
-        class="invisible size-4.5 group-hover/head:visible group-focus-within/head:visible data-[state=open]:visible"
+        class="invisible size-4.5 group-hover/head:visible group-focus-visible/head:visible group-has-[:focus-visible]/head:visible data-[state=open]:visible"
         :aria-label="t('space.ade.estimate.field.label')"
         data-testid="ade-card-est"
         @click.stop
