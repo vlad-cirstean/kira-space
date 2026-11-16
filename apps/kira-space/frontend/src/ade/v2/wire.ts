@@ -1035,7 +1035,7 @@ export interface ForwardReviewResult {
 }
 interface PanelForwardItem {
   key: string;
-  kind: 'note' | 'handover' | 'link' | 'proof' | 'field';
+  kind: 'note' | 'handover' | 'link' | 'field';
   label: string;
   at: number;
 }

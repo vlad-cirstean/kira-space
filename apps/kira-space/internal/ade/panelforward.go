@@ -26,7 +26,6 @@ const (
 	panelItemKindNote     = "note"
 	panelItemKindHandover = "handover"
 	panelItemKindLink     = "link"
-	panelItemKindProof    = "proof"
 	panelItemKindField    = "field"
 
 	panelDiffContext    = 2
@@ -211,7 +210,7 @@ func textDiff(before, after string) string {
 	return strings.Join(lines, "\n")
 }
 
-// lineDiff is the one-line-per-side form of links, proofs and the title.
+// lineDiff is the one-line-per-side form of links and the title.
 func lineDiff(before, after string) string {
 	var lines []string
 	if before != "" {
@@ -430,28 +429,6 @@ func (b *TaskBoard) recordJira(taskID, beforeKey, beforeURL, afterKey, afterURL 
 
 func (b *TaskBoard) recordHost(taskID, before, after string) {
 	b.recordPanelEdit(taskID, "link:host", panelItemKindLink, "host link in links.yaml", hostText(before), hostText(after))
-}
-
-// proofText is the line a proof shows in a forward: its name and summary.
-func proofText(name, summary string) string {
-	if summary == "" {
-		return name
-	}
-	return name + ": " + summary
-}
-
-// proofOf reads the task's attached proof proofID, nil when none.
-func (b *TaskBoard) proofOf(taskID, proofID string) *adewire.TaskProof {
-	rows, err := b.TaskProofs(context.Background(), taskID)
-	if err != nil {
-		return nil
-	}
-	for i := range rows {
-		if rows[i].ProofID == proofID {
-			return &rows[i]
-		}
-	}
-	return nil
 }
 
 // recordTaskEdit records the title, Jira and host slot changes of a user task update.
