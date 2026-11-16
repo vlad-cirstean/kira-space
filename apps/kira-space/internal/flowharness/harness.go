@@ -53,6 +53,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox/sandboxtest"
+	"github.com/kirathecat/kira-studio/internal/appupdate"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
@@ -70,6 +71,7 @@ import (
 var dbMcpPortRe = regexp.MustCompile(`:(\d+)/mcp`)
 
 type options struct {
+	updateChecker   *appupdate.Checker
 	noSecretStore   bool
 	smartTimeout    time.Duration
 	sandbox         agentsandbox.Enforcer
@@ -162,6 +164,9 @@ func WithSmartTimeout(d time.Duration) Opt { return func(o *options) { o.smartTi
 
 // WithScheduleTimeout replaces every headless scheduled run's own timeout.
 func WithScheduleTimeout(d time.Duration) Opt { return func(o *options) { o.scheduleTimeout = d } }
+
+// WithUpdateChecker replaces the app update checker (a dev build never checks).
+func WithUpdateChecker(c *appupdate.Checker) Opt { return func(o *options) { o.updateChecker = c } }
 
 // WithMobileClock drives the phone server's pairing windows, device expiry and rate limits with now.
 func WithMobileClock(now func() time.Time) Opt { return func(o *options) { o.mobileNow = now } }
@@ -492,7 +497,7 @@ func (a *App) build() {
 		tracker = *a.opts.issueTracker
 	}
 	a.W, err = appwire.Build(appwire.Options{
-		Cipher: cipher, DbMcpPort: dbMcpPort,
+		UpdateChecker: a.opts.updateChecker, Cipher: cipher, DbMcpPort: dbMcpPort,
 		Authorizer:   localauth.New(time.Now, a.OSAuth.evaluate, a.OSAuth.isAvailable),
 		McpInstaller: a.McpInstaller, WindowFocus: focus, DockerHubAPI: a.opts.dockerHubAPI, DockerExtra: a.opts.dockerExtra,
 		KubernetesExtra: append([]kubernetes.Option{kubernetes.WithEnv(kubeEnv)}, a.opts.kubeExtra...),

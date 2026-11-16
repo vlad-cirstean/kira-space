@@ -81,6 +81,8 @@ import (
 // in the harness.
 type Options struct {
 	Repos *repos.Repos
+	// UpdateChecker replaces the production update checker; nil builds one (flow tests only).
+	UpdateChecker *appupdate.Checker
 	// Authorizer is shared by connections and variables, so a reveal grace is shared; nil builds one.
 	Authorizer *localauth.Authorizer
 	// Cipher seals saved secret values; nil builds one from the keychain.
@@ -411,7 +413,10 @@ func Build(opts Options) (*Wired, error) {
 	w.Deps = deps
 
 	// P119: the update-availability checker and its detached installer.
-	updateChecker := appupdate.NewChecker(appupdate.Space.Name, buildinfo.Version)
+	updateChecker := opts.UpdateChecker
+	if updateChecker == nil {
+		updateChecker = appupdate.NewChecker(appupdate.Space.Name, buildinfo.Version)
+	}
 	updateInstaller := appupdate.NewInstaller(appupdate.Space, buildinfo.Version)
 	w.UpdateInstall = updateInstaller
 

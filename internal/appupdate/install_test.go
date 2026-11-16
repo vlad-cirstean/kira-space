@@ -74,7 +74,7 @@ func TestInstaller_Stage_HandsOffOnStaged(t *testing.T) {
 
 	done := make(chan error, 1)
 	start := time.Now()
-	go func() { done <- i.Stage(context.Background()) }()
+	go func() { done <- i.Stage(context.Background(), "v9.9.9") }()
 
 	select {
 	case err := <-done:
@@ -102,11 +102,27 @@ func TestInstaller_Stage_HandsOffOnStaged(t *testing.T) {
 	}
 }
 
+func TestInstaller_Stage_PassesTagAndRefusesOtherStaged(t *testing.T) {
+	dir := t.TempDir()
+	argvFile := filepath.Join(dir, "argv")
+	script := fmt.Sprintf("#!/bin/sh\n%s\necho \"$@\" > %q\nprintf 'staged v1.2.3\\n' >&3\n", installContract, argvFile)
+	i, _ := newTestInstaller(t, script)
+
+	err := i.Stage(context.Background(), "v9.9.9")
+	if err == nil || !strings.Contains(err.Error(), "installer staged v1.2.3, want v9.9.9") {
+		t.Fatalf("Stage() = %v, want a wrong-tag refusal", err)
+	}
+	argv, _ := os.ReadFile(argvFile)
+	if !strings.Contains(string(argv), "--tag=v9.9.9") {
+		t.Fatalf("script argv = %q, want --tag=v9.9.9", argv)
+	}
+}
+
 func TestInstaller_Stage_ReportsScriptFailure(t *testing.T) {
 	script := fmt.Sprintf("#!/bin/sh\n%s\necho 'ERROR: boom' >&2\nexit 1\n", installContract)
 	i, _ := newTestInstaller(t, script)
 
-	err := i.Stage(context.Background())
+	err := i.Stage(context.Background(), "v9.9.9")
 	if err == nil {
 		t.Fatal("Stage() = nil, want an error")
 	}
@@ -132,7 +148,7 @@ func TestInstaller_Cancel_KillsWholeGroup(t *testing.T) {
 	i, _ := newTestInstaller(t, script)
 
 	done := make(chan error, 1)
-	go func() { done <- i.Stage(context.Background()) }()
+	go func() { done <- i.Stage(context.Background(), "v9.9.9") }()
 
 	selfPid := readPidFile(t, selfPidFile)
 	childPid := readPidFile(t, childPidFile)

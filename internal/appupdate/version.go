@@ -1,6 +1,7 @@
 package appupdate
 
 import (
+	"runtime"
 	"strings"
 
 	"golang.org/x/mod/semver"
@@ -30,9 +31,15 @@ func isReleaseBuild(v string) bool {
 // which is the only form x/mod/semver accepts.
 func normalize(v string) string { return "v" + strings.TrimPrefix(v, "v") }
 
-// updateAvailable reports whether latest is a validly-formed, strictly newer semver than running.
-// An unparseable version on either side yields no update, not a guess.
-func updateAvailable(running, latest string) bool {
-	r, l := normalize(running), normalize(latest)
-	return semver.IsValid(r) && semver.IsValid(l) && semver.Compare(l, r) > 0
+// macAsset is the one shipped artifact; scripts/install.sh's ASSET must equal it (S11 in
+// scripts/verify-packaging.sh checks).
+const macAsset = "kira-space-macos-arm64.dmg"
+
+// platformAsset is the release asset this build installs; other platforms have none, so no
+// update is offered there.
+func platformAsset() string {
+	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+		return macAsset
+	}
+	return ""
 }

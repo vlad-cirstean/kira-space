@@ -7,12 +7,20 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/kirathecat/kira-studio/internal/releaseline"
 )
 
-const testTag = "v1.1.0"
+const (
+	testAsset   = "app.dmg"
+	testVersion = "1.1.0"
+)
 
-func testRelease() release {
-	return release{TagName: testTag}
+func testReleases() []releaseline.Release {
+	return []releaseline.Release{{
+		Tag:    "v" + testVersion,
+		Assets: []releaseline.Asset{{Name: testAsset, State: "uploaded", Size: 1}},
+	}}
 }
 
 // TestChecker_Status_SingleFlight: N concurrent Status calls on a cold cache produce exactly one
@@ -22,11 +30,12 @@ func TestChecker_Status_SingleFlight(t *testing.T) {
 	var calls int32
 	c := &Checker{
 		running: "1.0.0",
+		asset:   testAsset,
 		now:     time.Now,
-		fetch: func(ctx context.Context, userAgent string) (release, error) {
+		fetch: func(ctx context.Context, userAgent string) ([]releaseline.Release, error) {
 			atomic.AddInt32(&calls, 1)
 			time.Sleep(20 * time.Millisecond) // widen the window so concurrent callers actually overlap
-			return testRelease(), nil
+			return testReleases(), nil
 		},
 	}
 
@@ -56,13 +65,14 @@ func TestChecker_Status_CacheIntervals(t *testing.T) {
 
 	c := &Checker{
 		running: "1.0.0",
+		asset:   testAsset,
 		now:     func() time.Time { return clock },
-		fetch: func(ctx context.Context, userAgent string) (release, error) {
+		fetch: func(ctx context.Context, userAgent string) ([]releaseline.Release, error) {
 			atomic.AddInt32(&calls, 1)
 			if failing {
-				return release{}, errors.New("boom")
+				return nil, errors.New("boom")
 			}
-			return testRelease(), nil
+			return testReleases(), nil
 		},
 	}
 
@@ -94,8 +104,8 @@ func TestChecker_Status_CacheIntervals(t *testing.T) {
 	result := c.Status(context.Background()) // past failureInterval: fetch #3, succeeds
 	want(t, 3)
 
-	if !result.UpdateAvailable || result.LatestVersion != testTag {
-		t.Fatalf("Status() = %+v, want UpdateAvailable with LatestVersion %q", result, testTag)
+	if !result.UpdateAvailable || result.TargetVersion != testVersion {
+		t.Fatalf("Status() = %+v, want UpdateAvailable with TargetVersion %q", result, testVersion)
 	}
 }
 
@@ -106,13 +116,14 @@ func TestChecker_Check_BypassesCache(t *testing.T) {
 	failing := false
 	c := &Checker{
 		running: "1.0.0",
+		asset:   testAsset,
 		now:     time.Now,
-		fetch: func(ctx context.Context, userAgent string) (release, error) {
+		fetch: func(ctx context.Context, userAgent string) ([]releaseline.Release, error) {
 			atomic.AddInt32(&calls, 1)
 			if failing {
-				return release{}, errors.New("boom")
+				return nil, errors.New("boom")
 			}
-			return testRelease(), nil
+			return testReleases(), nil
 		},
 	}
 
@@ -128,14 +139,14 @@ func TestChecker_Check_BypassesCache(t *testing.T) {
 	if _, err := c.Check(context.Background()); err == nil {
 		t.Fatal("Check() error = nil, want the fetch error")
 	}
-	if res := c.Status(context.Background()); !res.UpdateAvailable || res.LatestVersion != testTag {
+	if res := c.Status(context.Background()); !res.UpdateAvailable || res.TargetVersion != testVersion {
 		t.Fatalf("Status() after a failed Check = %+v, want the last good result", res)
 	}
 
 	var devCalls int32
-	dev := &Checker{running: "dev", now: time.Now, fetch: func(context.Context, string) (release, error) {
+	dev := &Checker{running: "dev", asset: testAsset, now: time.Now, fetch: func(context.Context, string) ([]releaseline.Release, error) {
 		atomic.AddInt32(&devCalls, 1)
-		return testRelease(), nil
+		return testReleases(), nil
 	}}
 	if _, err := dev.Check(context.Background()); !errors.Is(err, ErrNotReleaseBuild) {
 		t.Fatalf("dev Check() error = %v, want ErrNotReleaseBuild", err)

@@ -9,14 +9,17 @@ import (
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
-// UpdateStatus is the whole wire shape. It deliberately carries no URL and no error string: the
+// UpdateStatus is the whole wire shape. TargetVersion is the one minor-stepped update on offer,
+// NewestVersion the highest published release (equal when the offer is not stepped). Neither has a
+// v prefix. It deliberately carries no URL and no error string: the
 // renderer never supplies or receives a URL (internal/appupdate's own security note), and a
 // failed poll is silence, not a surface (Check reports one). InstallLogPath is a display path only, read by the
 // in-app dialog on a failed install — never sent back as, or accepted as, a URL.
 type UpdateStatus struct {
 	UpdateAvailable bool   `json:"updateAvailable"`
 	CurrentVersion  string `json:"currentVersion"`
-	LatestVersion   string `json:"latestVersion"`
+	TargetVersion   string `json:"targetVersion"`
+	NewestVersion   string `json:"newestVersion"`
 	InstallLogPath  string `json:"installLogPath"`
 }
 
@@ -35,7 +38,8 @@ func toWireUpdateStatus(r appupdate.Result, logPath string) UpdateStatus {
 	return UpdateStatus{
 		UpdateAvailable: r.UpdateAvailable,
 		CurrentVersion:  r.CurrentVersion,
-		LatestVersion:   r.LatestVersion,
+		TargetVersion:   r.TargetVersion,
+		NewestVersion:   r.NewestVersion,
 		InstallLogPath:  logPath,
 	}
 }
@@ -64,10 +68,11 @@ func (s *UpdateService) Check(ctx context.Context) (UpdateStatus, error) {
 // detached installer, then quits so the installer can swap the bundle into place. A dev build's
 // Status is never UpdateAvailable, so a dev build can never reach Stage.
 func (s *UpdateService) InstallUpdate(ctx context.Context) error {
-	if !s.Checker.Status(ctx).UpdateAvailable {
+	st := s.Checker.Status(ctx)
+	if !st.UpdateAvailable {
 		return ipcerr.T(ipcerr.CodeConflict, "backend.core.appUpdate.noNewerRelease.body", nil)
 	}
-	if err := s.Installer.Stage(ctx); err != nil {
+	if err := s.Installer.Stage(ctx, "v"+st.TargetVersion); err != nil {
 		return err
 	}
 	go s.Quit() // after this call's own reply has gone out, not racing it
