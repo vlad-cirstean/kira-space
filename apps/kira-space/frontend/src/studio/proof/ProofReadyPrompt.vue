@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
+import { Kbd } from '@theme/components/ui/kbd';
 import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
@@ -35,11 +36,16 @@ function openWindow(): void {
 const sessionQuery = useProofSession(() => props.entry.ref);
 const session = computed(() => sessionQuery.data.value);
 const taskTitle = computed(() => session.value?.taskTitle ?? '');
+
+import { formatShortcut } from '@workbench/shortcuts/keys';
+import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
+
+const onChord = shortcutKeydown(['form.submit'], () => openWindow());
 </script>
 
 <template>
   <Dialog v-if="sessionQuery.isFetched.value" :open="true" @update:open="(v) => !v && emit('hide')">
-    <DialogContent size="md" data-testid="proof-ready-dialog">
+    <DialogContent size="md" prompt data-testid="proof-ready-dialog" @keydown="onChord">
       <DialogHeader>
         <DialogTitle>{{ taskTitle || entry.title }}</DialogTitle>
         <DialogDescription v-if="taskTitle" data-testid="proof-ready-proof">
@@ -53,21 +59,24 @@ const taskTitle = computed(() => session.value?.taskTitle ?? '');
       </DialogBody>
       <DialogFooter>
         <Button
-          data-dialog-initial
+          :aria-keyshortcuts="formatShortcut('prompt.hide')"
           variant="dialog"
           size="kira-lg"
           data-testid="proof-ready-later"
           @click="emit('hide')"
         >
           {{ t('common.later.label') }}
+          <Kbd>{{ formatShortcut('prompt.hide') }}</Kbd>
         </Button>
         <Button
           variant="dialog-primary"
+          :aria-keyshortcuts="formatShortcut('form.submit')"
           size="kira-lg"
           data-testid="proof-ready-open"
           @click="openWindow()"
         >
           {{ t('common.action.open.label') }}
+          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

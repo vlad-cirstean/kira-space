@@ -10,8 +10,11 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { FieldError } from '@theme/components/ui/field';
+import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
+import { formatShortcut } from '../shortcuts/keys';
+import { shortcutKeydown } from '../shortcuts/useShortcut';
 import type { AppUpdateStore } from '../state/createAppUpdateStore';
 
 // The in-app update flow, replacing Kira Studio's own release-page banner click.
@@ -36,19 +39,28 @@ const state = computed<DialogState>(() => {
 // Esc/overlay click while idle or in error is Later (ConfirmDialog.vue's own @update:open
 // precedent); while installing, both are ignored (below) so `open` never goes false to begin with.
 function onOpenChange(open: boolean): void {
-  if (!open) props.store.later();
+  if (!open && state.value !== 'installing') props.store.later();
 }
 
 function onEscapeOrOutside(e: Event): void {
   if (state.value === 'installing') e.preventDefault();
 }
+
+// Mod+Enter runs the primary button of the shown state; single keys do nothing.
+const onChord = shortcutKeydown(['form.submit'], () => {
+  if (state.value === 'checkFailed') void props.store.checkForUpdates();
+  else if (state.value === 'upToDate') props.store.later();
+  else if (state.value === 'idle' || state.value === 'error') void props.store.install();
+});
 </script>
 
 <template>
   <Dialog :open="true" @update:open="onOpenChange">
     <DialogContent
       size="sm"
+      prompt
       data-testid="update-dialog"
+      @keydown="onChord"
       @escape-key-down="onEscapeOrOutside"
       @pointer-down-outside="onEscapeOrOutside"
     >
@@ -146,6 +158,7 @@ function onEscapeOrOutside(e: Event): void {
             @click="store.checkForUpdates()"
           >
             {{ t('common.action.retry.label') }}
+            <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
           </Button>
         </template>
         <template v-else-if="state === 'upToDate'">
@@ -156,6 +169,7 @@ function onEscapeOrOutside(e: Event): void {
             @click="store.later()"
           >
             {{ t('common.action.close.label') }}
+            <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
           </Button>
         </template>
         <template v-else>
@@ -166,6 +180,7 @@ function onEscapeOrOutside(e: Event): void {
             @click="store.later()"
           >
             {{ t('common.later.label') }}
+            <Kbd>{{ formatShortcut('prompt.hide') }}</Kbd>
           </Button>
           <Button
             variant="dialog-primary"
@@ -178,6 +193,7 @@ function onEscapeOrOutside(e: Event): void {
                 ? t('common.action.retry.label')
                 : t('workbench.update.install.label')
             }}
+            <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
           </Button>
         </template>
       </DialogFooter>

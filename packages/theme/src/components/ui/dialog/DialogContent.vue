@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { SHORTCUTS } from '@shared/domain/shortcuts';
 import DialogOverlay from '@theme/components/ui/dialog/DialogOverlay.vue';
 import DialogResizeHandles from '@theme/components/ui/dialog/DialogResizeHandles.vue';
 import { CONFIRM_DISCARD_KEY, DIALOG_REQUEST_CLOSE_KEY } from '@theme/components/ui/dialog/discard';
@@ -37,6 +38,8 @@ const props = withDefaults(
       dirty?: boolean;
       /** Right and bottom edge handles; the dialog grows from its centre and never exceeds the size variant's bounds. */
       resizable?: boolean;
+      /** Prompt dialog: no initial focus on an action, single keys inert, Shift+Esc hides. */
+      prompt?: boolean;
     }
   >(),
   {
@@ -44,6 +47,7 @@ const props = withDefaults(
     destructive: false,
     dirty: false,
     resizable: false,
+    prompt: false,
   },
 );
 const emits = defineEmits<DialogContentEmits>();
@@ -56,6 +60,7 @@ const delegatedProps = reactiveOmit(
   'destructive',
   'dirty',
   'resizable',
+  'prompt',
 );
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
@@ -67,7 +72,14 @@ function onOpenAutoFocus(event: Event): void {
   const target = root?.querySelector<HTMLElement>(
     props.destructive ? '[data-dialog-dismiss]' : '[data-dialog-initial]',
   );
-  if (!target) return;
+  if (!target) {
+    // A prompt opens on its inert root, so a key typed elsewhere cannot press a button.
+    if (props.prompt && root) {
+      event.preventDefault();
+      root.focus();
+    }
+    return;
+  }
   event.preventDefault();
   target.focus();
 }
@@ -97,7 +109,20 @@ async function requestClose(): Promise<void> {
 provide(DIALOG_REQUEST_CLOSE_KEY, requestClose);
 
 function onEscapeKeyDown(event: KeyboardEvent): void {
+  if (props.prompt) {
+    event.preventDefault();
+    return;
+  }
   if (!props.dirty) return;
+  event.preventDefault();
+  void requestClose();
+}
+
+const HIDE_CHORD = SHORTCUTS['prompt.hide'].chord;
+function onPromptKeydown(event: KeyboardEvent): void {
+  if (!props.prompt || event.isComposing || event.key !== HIDE_CHORD.key) return;
+  if (event.shiftKey !== Boolean(HIDE_CHORD.shift)) return;
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
   event.preventDefault();
   void requestClose();
 }
@@ -137,6 +162,8 @@ const contentClass = computed(() =>
       :class="contentClass"
       :style="sizeStyle"
       :data-dirty="dirty || undefined"
+      :tabindex="prompt ? -1 : undefined"
+      @keydown="onPromptKeydown"
       @open-auto-focus="onOpenAutoFocus"
       @escape-key-down="onEscapeKeyDown"
       @pointer-down-outside="onPointerDownOutside"

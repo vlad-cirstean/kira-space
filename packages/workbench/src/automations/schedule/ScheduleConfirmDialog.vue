@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Kbd } from '@theme/components/ui/kbd';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
@@ -19,6 +20,7 @@ import type { TextPart } from '@theme/varText';
 import { refDebounced } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import QueryState from '@workbench/components/QueryState.vue';
+import { formatShortcut } from '@workbench/shortcuts/keys';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
 import { errorText } from '../../bridge/codedError';
@@ -127,12 +129,28 @@ function run(): void {
   accept.mutate();
 }
 
+function declineOrClose(): void {
+  if (props.runId) decline.mutate();
+  else emit('close');
+}
+
 const onSubmitKey = shortcutKeydown(['form.submit'], run);
+const onDeclineKey = shortcutKeydown(['prompt.deny'], declineOrClose, { ignoreTextFields: true });
+function onChord(event: KeyboardEvent): void {
+  onSubmitKey(event);
+  onDeclineKey(event);
+}
 </script>
 
 <template>
   <Dialog :open="true" @update:open="(v) => !v && emit('close')">
-    <DialogContent @keydown="onSubmitKey" size="lg" :dirty="dirty" data-testid="schedule-confirm">
+    <DialogContent
+      size="lg"
+      prompt
+      :dirty="dirty"
+      data-testid="schedule-confirm"
+      @keydown="onChord"
+    >
       <DialogHeader close-testid="schedule-confirm-close">
         <DialogTitle>{{
           script
@@ -219,19 +237,23 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
           size="kira-lg"
           :pending="decline.isPending.value"
           data-testid="schedule-confirm-decline"
-          @click="runId ? decline.mutate() : emit('close')"
+          :aria-keyshortcuts="formatShortcut('prompt.deny')"
+          @click="declineOrClose"
         >
           {{ t('git.dialog.postCheckoutPullConfirm.notNow.label') }}
+          <Kbd>{{ formatShortcut('prompt.deny') }}</Kbd>
         </Button>
         <Button
           variant="dialog-approve"
           size="kira-lg"
           :disabled="!canRun"
           :pending="accept.isPending.value"
+          :aria-keyshortcuts="formatShortcut('form.submit')"
           data-testid="schedule-confirm-run"
           @click="run"
         >
           {{ t('common.action.run.label') }}
+          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

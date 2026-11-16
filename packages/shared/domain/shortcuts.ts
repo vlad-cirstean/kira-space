@@ -14,7 +14,15 @@ export interface Chord {
 
 /** Where a chord is live. A chord may repeat across scopes (Cmd+C copies a tree name in `tree`, a cell
  *  in `grid`), never inside one scope or between `global` and any other. */
-export type ShortcutScope = 'global' | 'view' | 'tree' | 'grid' | 'form' | 'editor' | 'list';
+export type ShortcutScope =
+  | 'global'
+  | 'view'
+  | 'tree'
+  | 'grid'
+  | 'form'
+  | 'editor'
+  | 'list'
+  | 'prompt';
 
 export interface Binding {
   chord: Chord;
@@ -60,6 +68,10 @@ export const SHORTCUTS = {
 
   'form.submit': { scope: 'form', chord: { key: 'Return', cmdOrCtrl: true } },
   'form.cancel': { scope: 'form', chord: { key: 'Escape' } },
+  // Prompt dialogs (approvals, proof, update, ...) take two-key chords only: a single key typed
+  // elsewhere must never answer or hide one. Approve reuses form.submit.
+  'prompt.deny': { scope: 'prompt', chord: { key: 'Backspace', cmdOrCtrl: true } },
+  'prompt.hide': { scope: 'prompt', chord: { key: 'Escape', shift: true } },
   'form.save': { scope: 'form', chord: { key: 'S', cmdOrCtrl: true } },
   // The ContextMenu key opens the same menu (matched alongside in shortcutFor).
   'menu.open': { scope: 'view', chord: { key: 'F10', shift: true } },

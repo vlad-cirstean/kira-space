@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
+import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { control } from '../bridge/control';
 import { useConnectionDialogStore } from '../state/connectionDialogs';
@@ -32,11 +33,16 @@ function review(): void {
   if (record) dialogStore.openFile(record.file, 'privacy');
   emit('hide');
 }
+
+import { formatShortcut } from '@workbench/shortcuts/keys';
+import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
+
+const onChord = shortcutKeydown(['form.submit'], () => review());
 </script>
 
 <template>
   <Dialog :open="true" @update:open="(v) => !v && emit('hide')">
-    <DialogContent size="md" data-testid="masking-review-dialog">
+    <DialogContent size="md" prompt data-testid="masking-review-dialog" @keydown="onChord">
       <DialogHeader>
         <DialogTitle>{{ entry.title }}</DialogTitle>
       </DialogHeader>
@@ -50,21 +56,24 @@ function review(): void {
       </DialogBody>
       <DialogFooter>
         <Button
-          data-dialog-initial
+          :aria-keyshortcuts="formatShortcut('prompt.hide')"
           variant="dialog"
           size="kira-lg"
           data-testid="masking-review-later"
           @click="emit('hide')"
         >
           {{ t('common.later.label') }}
+          <Kbd>{{ formatShortcut('prompt.hide') }}</Kbd>
         </Button>
         <Button
           variant="dialog-primary"
+          :aria-keyshortcuts="formatShortcut('form.submit')"
           size="kira-lg"
           data-testid="masking-review-open"
           @click="review"
         >
           {{ t('studio.prompt.maskingReview.label') }}
+          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

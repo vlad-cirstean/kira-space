@@ -11,11 +11,13 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { t } from '@theme/i18n';
+import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed } from 'vue';
 import ApprovalItemActions from './ApprovalItemActions.vue';
 import ApprovalItemCard from './ApprovalItemCard.vue';
 import { useApprovalActions } from './approvalsQueries';
+import { useApprovalKinds } from './registry';
 
 const props = defineProps<{ items: ApprovalItem[] }>();
 
@@ -35,11 +37,38 @@ function denyAll(): void {
     false,
   );
 }
+
+// Two-key chords only: Mod+Enter approves and Mod+Backspace denies the shown item. Single keys do
+// nothing here, so text typed elsewhere can never answer a request.
+const kinds = useApprovalKinds();
+const approveKey = shortcutKeydown(['form.submit'], () => {
+  const item = current.value;
+  if (item.kind in kinds && !store.isBroken(item.id) && !store.answering.includes(item.id)) {
+    void answer([item.id], true);
+  }
+});
+const denyKey = shortcutKeydown(
+  ['prompt.deny'],
+  () => {
+    if (!store.answering.includes(current.value.id)) void answer([current.value.id], false);
+  },
+  { ignoreTextFields: true },
+);
+function onChord(event: KeyboardEvent): void {
+  approveKey(event);
+  denyKey(event);
+}
 </script>
 
 <template>
   <Dialog :open="true" @update:open="(v) => !v && store.minimise()">
-    <DialogContent size="full" fixed-height data-testid="approvals-dialog">
+    <DialogContent
+      size="full"
+      fixed-height
+      prompt
+      data-testid="approvals-dialog"
+      @keydown.capture="onChord"
+    >
       <DialogHeader>
         <DialogTitle>{{ t('workbench.approvals.dialog.title') }}</DialogTitle>
         <Badge variant="count" data-testid="approvals-count">{{ items.length }}</Badge>
