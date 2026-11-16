@@ -6,7 +6,7 @@ User gates: P646 ships a design mock only; implementation of the task-list actio
 
 | # | Phase | Status |
 |---|-------|--------|
-| P646 | Task-list actions design mock | Todo |
+| P646 | Task-list actions design mock | Done |
 | P647 | Task-list polish | Todo |
 | P648 | Task-list actions per approved design | Todo |
 | P649 | Prompt dialogs: empty body, 10 min limits, typing-safe, proof-update notification | Todo |
@@ -18,6 +18,8 @@ User gates: P646 ships a design mock only; implementation of the task-list actio
 ## P646 Task-list actions design mock
 
 Task rows handle more of what the main task tab does, without opening it (example: edit branches). List stays narrow, fits a MacBook Air screen. Survey every capability in the main task tab, propose which move to the list, deliver a static HTML mock the user opens. No app code changed. Gate: user approval.
+
+Result: plan `plans/P646.md`, mock `design/P646-task-list-mock.html`. User asked to judge it in the real app, so P648 implements it there.
 
 ## P647 Task-list polish
 
