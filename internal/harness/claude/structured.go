@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/renameio/v2"
 
+	"github.com/kirathecat/kira-studio/internal/agentproc"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/toolexec"
 )
@@ -109,7 +110,7 @@ func (p *Provider) RunStructured(ctx context.Context, model string, c harness.St
 	}
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	out, runErr := toolexec.RunIO(runCtx, path, structuredArgs(model, c, mcpConfig, allowed), dir, ScrubSessionEnv(os.Environ()), []byte(c.Input))
+	out, runErr := toolexec.RunIOTracked(runCtx, path, structuredArgs(model, c, mcpConfig, allowed), dir, ScrubSessionEnv(os.Environ()), []byte(c.Input), agentproc.Track)
 	if runErr != nil && runCtx.Err() != nil {
 		if ctx.Err() != nil {
 			return harness.StructuredResult{}, ctx.Err()

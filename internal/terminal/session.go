@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+
+	"github.com/kirathecat/kira-studio/internal/agentproc"
 )
 
 // readBufSize is the reader goroutine's own read(2) buffer (§4 rule 1) — large enough that a
@@ -495,7 +497,14 @@ func (r *Registry) Open(p OpenParams) (*Session, error) {
 		}
 		return nil, ErrRegistryClosed
 	}
-	sess.unregister = func() { r.remove(p.WindowKey, p.ID) }
+	untrack := func() {}
+	if p.Agent {
+		untrack = agentproc.Track(sess.PID())
+	}
+	sess.unregister = func() {
+		r.remove(p.WindowKey, p.ID)
+		untrack()
+	}
 
 	r.sessions[p.ID] = sess
 	if r.byWindow[p.WindowKey] == nil {
