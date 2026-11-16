@@ -28,7 +28,6 @@ const twMerge = extendTailwindMerge({
         'control-inline',
         'row',
         'board-row',
-        'board-row-tall',
         'bar',
         'graph-row',
         'graph-row-compact',

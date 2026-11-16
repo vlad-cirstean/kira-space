@@ -786,7 +786,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - DropdownMenuContent is content-sized (min-w-45, max-w-80).
 - Every pane resize handle binds resizeHandleVariants (2px bar, 4px/8px hit area, bg-focus on hover/focus/drag, 10px arrow step, Home/End); shell, dock and ADE panel handles measure identical at rest, hover and drag.
 - Status-bar items are Button variant="toolbar" size="kira".
-- text-kira-touch is 16px, the iOS focus-zoom floor; h-board-row and h-board-row-tall size the ADE plan board; RadioGroupItem hit area is -inset-1.
+- text-kira-touch is 16px, the iOS focus-zoom floor; h-board-row sizes the ADE plan card head; RadioGroupItem hit area is -inset-1.
 - Bind interaction behaviours from their single implementation in packages/workbench/src/behaviour/ (or the theme primitive it names); never re-implement them in app code.
 - List and tree keyboard handling uses useListNavigation; context menus use one store and renderer (state/contextMenu.ts, ContextMenu.vue), with git MenuSection[] passed through sectionsToMenuItems.
 - A danger confirm and any DialogContent destructive open focused on the data-dialog-dismiss control; confirms use confirm({ message, title?, confirmLabel, tone, run? }) over ConfirmDialogView.

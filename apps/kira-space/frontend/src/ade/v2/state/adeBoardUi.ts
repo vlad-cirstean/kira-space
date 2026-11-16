@@ -20,6 +20,8 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
   const revealSessionId = ref<string | null>(null);
   /** Days of history shown beyond the settings window after a Go to; in memory only. */
   const historyReach = ref<number | null>(null);
+  /** Inline edit a task row opened (title rename, estimate popover); the task menu sets it too. */
+  const rowEdit = ref<{ taskId: string; field: 'title' | 'estimate' } | null>(null);
   /** A See error click asked the open branch panel to scroll to its Worktree setup block. */
   const focusSetup = ref(false);
   /** A See log click asked the open branch panel to open its Last rebase log. */
@@ -79,6 +81,7 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
     historyReach,
     runTaskId,
     runDrafts,
+    rowEdit,
     focusSetup,
     focusRebaseLog,
     actionError,

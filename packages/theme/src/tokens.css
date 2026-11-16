@@ -133,8 +133,7 @@
     --kira-h-md
   ); /* dialog density: .md variants, dialog button, tab, panel head, table head */
   --kira-control-h-sm: var(--kira-h-xs); /* chip / badge / count / status density */
-  --kira-board-row-h: 40px; /* ADE plan board row (action cell, branch row); tall = two-line cell */
-  --kira-board-row-h-tall: 68px;
+  --kira-board-row-h: 44px; /* ADE plan card head (two lines) */
   --kira-t-touch: 16px; /* fixed: iOS zooms a focused input under 16px */
   --kira-touch-target: 44px; /* minimum coarse-pointer hit area (h-touch, size-touch, min-h-touch) */
   /* P266: the one transition duration and easing; Tailwind's defaults read these (tailwind-core.css). */

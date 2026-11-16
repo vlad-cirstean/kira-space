@@ -10076,8 +10076,14 @@
           }
         },
         "card": {
+          "add": {
+            "aria": "Add a repository or branch"
+          },
           "changeBase": {
             "tooltip": "Change the base of a branch"
+          },
+          "estimate": {
+            "aria": "Estimate: {value}. Change estimate"
           },
           "open": {
             "aria": "Open {title}"
@@ -10096,6 +10102,9 @@
           },
           "status": {
             "aria": "Status: {status}. Change status"
+          },
+          "step": {
+            "aria": "Step: {step}. Move to another step"
           }
         },
         "history": {
