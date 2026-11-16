@@ -47,7 +47,10 @@ const emit = defineEmits<{
 // drop target from card geometry instead (usePlanDrag).
 const dropEl = ref<HTMLElement | null>(null);
 const ghostClass = SORTABLE_GHOST_CLASS;
-useDraggable(dropEl, {
+// Ghost's left edge sits GHOST_GAP right of the pointer, vertically centred on it: the pointer's target stays visible.
+const GHOST_GAP = 16;
+const GHOST_HALF_H = 22;
+const sortable = useDraggable(dropEl, {
   draggable: '[data-ade-task]',
   sort: false,
   group: { name: 'ade-plan', pull: false, put: false },
@@ -60,7 +63,17 @@ useDraggable(dropEl, {
   scrollSpeed: 14,
   bubbleScroll: false,
   ghostClass,
-  onStart: (evt) => emit('dragStart', evt.item.dataset.taskId ?? ''),
+  onStart: (evt) => {
+    const ev = (evt as { originalEvent?: Event }).originalEvent;
+    if (ev instanceof MouseEvent) {
+      const r = evt.item.getBoundingClientRect();
+      sortable.option('fallbackOffset', {
+        x: ev.clientX - r.left + GHOST_GAP,
+        y: ev.clientY - r.top - GHOST_HALF_H,
+      });
+    }
+    emit('dragStart', evt.item.dataset.taskId ?? '');
+  },
   onEnd: () => emit('dragEnd'),
 });
 

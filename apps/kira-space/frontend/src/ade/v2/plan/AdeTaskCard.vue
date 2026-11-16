@@ -112,7 +112,7 @@ const boxClass = computed(() => {
     <Card
       variant="section"
       :data-task-id="card.task.id"
-      class="box-border flex min-w-0 flex-1 flex-col overflow-hidden"
+      class="box-border flex min-w-0 flex-1 flex-col overflow-hidden in-[.sortable-fallback]:max-h-board-row in-[.sortable-fallback]:max-w-64 in-[.sortable-fallback]:shadow-kira"
       :class="boxClass"
       :style="{ borderLeftColor: card.color }"
       :aria-current="selected || undefined"
