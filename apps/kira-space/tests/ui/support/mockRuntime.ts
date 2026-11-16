@@ -673,13 +673,15 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.updateStatus]: JSON.stringify({
     updateAvailable: false,
     currentVersion: '0.0.0-dev',
-    latestVersion: '',
+    targetVersion: '',
+    newestVersion: '',
     installLogPath: '',
   }),
   [IPC.updateCheck]: JSON.stringify({
     updateAvailable: false,
     currentVersion: '0.0.0-dev',
-    latestVersion: '',
+    targetVersion: '',
+    newestVersion: '',
     installLogPath: '',
   }),
   // Every boot calls TerminalService.AgentSessions (createAgentSessionsStore's own initAgentSessions);

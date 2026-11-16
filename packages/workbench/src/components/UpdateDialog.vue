@@ -79,7 +79,7 @@ const onChord = shortcutKeydown(['form.submit'], () => {
             {{
               t('workbench.update.installing.body', {
                 app: store.appName,
-                version: store.latestVersion,
+                version: store.targetVersion,
               })
             }}
           </p>
@@ -109,8 +109,16 @@ const onChord = shortcutKeydown(['form.submit'], () => {
             {{
               t('workbench.update.versions.body', {
                 app: store.appName,
-                latest: store.latestVersion,
+                target: store.targetVersion,
                 current: store.currentVersion,
+              })
+            }}
+          </p>
+          <p v-if="store.stepped" class="m-0" data-testid="update-dialog-step-note">
+            {{
+              t('workbench.update.stepNote.body', {
+                app: store.appName,
+                newest: store.newestVersion,
               })
             }}
           </p>

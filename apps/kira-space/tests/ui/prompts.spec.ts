@@ -30,7 +30,8 @@ const UPDATE = {
   response: {
     updateAvailable: true,
     currentVersion: '1.2.0',
-    latestVersion: '1.3.0',
+    targetVersion: '1.3.0',
+    newestVersion: '1.3.0',
     installLogPath: '/tmp/kira-space-update.log',
   },
 } as const;
@@ -121,7 +122,8 @@ studioTest.describe('databases module', () => {
     response: {
       updateAvailable: true,
       currentVersion: '1.2.0',
-      latestVersion: '1.3.0',
+      targetVersion: '1.3.0',
+      newestVersion: '1.3.0',
       installLogPath: '/tmp/kira-space-update.log',
     },
   } as const;

@@ -168,7 +168,8 @@ export interface KeepAwakeStatus {
 export interface AppUpdateStatus {
   updateAvailable: boolean;
   currentVersion: string;
-  latestVersion: string;
+  targetVersion: string;
+  newestVersion: string;
   installLogPath: string;
 }
 

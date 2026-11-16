@@ -50,7 +50,15 @@ export function createAppUpdateStore(control: AppUpdateControl, appName: string)
     // (TanStack Query's own default: an error never clears `data`).
     const available = computed(() => statusQuery.data.value?.updateAvailable ?? false);
     const currentVersion = computed(() => statusQuery.data.value?.currentVersion ?? '');
-    const latestVersion = computed(() => statusQuery.data.value?.latestVersion ?? '');
+    // Target is the one minor-stepped update on offer; newest is the highest published release.
+    const targetVersion = computed(() => statusQuery.data.value?.targetVersion ?? '');
+    const newestVersion = computed(() => statusQuery.data.value?.newestVersion ?? '');
+    const stepped = computed(
+      () =>
+        available.value &&
+        newestVersion.value !== '' &&
+        newestVersion.value !== targetVersion.value,
+    );
     const installLogPath = computed(() => statusQuery.data.value?.installLogPath ?? '');
 
     // Shared by every window of this app (same origin) — VueUse syncs it across windows via the
@@ -79,17 +87,17 @@ export function createAppUpdateStore(control: AppUpdateControl, appName: string)
     );
     const checking = computed(() => checkMutation.isPending.value);
 
-    // Net: the router shows the update popup once per new version, in one window; **Later**
-    // silences that version until a newer one appears. Skipped while installing — the dialog stays
+    // Net: the router shows the update popup once per new target, in one window; **Later**
+    // silences that target until a different one appears. Skipped while installing — the dialog stays
     // open through its own installing state even if another window's poll lands in between.
     // `dialogOpen` is only the status-bar item's own local open.
-    watch([available, latestVersion, dismissedVersion], ([isAvailable, latest, dismissed]) => {
+    watch([available, targetVersion, dismissedVersion], ([isAvailable, target, dismissed]) => {
       if (installing.value) return;
       // The open dialog already shows the update (a manual check); no second popup.
-      if (isAvailable && latest !== dismissed && !dialogOpen.value) {
+      if (isAvailable && target !== dismissed && !dialogOpen.value) {
         // Best effort: the status-bar item still opens the dialog.
-        fireAndForget(control.promptsRaiseUpdate(latest), 'appUpdate');
-      } else if (dismissed === latest) {
+        fireAndForget(control.promptsRaiseUpdate(target), 'appUpdate');
+      } else if (dismissed === target) {
         dialogOpen.value = false;
       }
     });
@@ -125,10 +133,10 @@ export function createAppUpdateStore(control: AppUpdateControl, appName: string)
         checkRequested.value = false;
         return;
       }
-      dismissedVersion.value = latestVersion.value;
+      dismissedVersion.value = targetVersion.value;
       dialogOpen.value = false;
       // The popup is already hidden here; a stale one in another window closes with its own Later.
-      fireAndForget(control.promptsDismiss(`update:${latestVersion.value}`), 'appUpdate');
+      fireAndForget(control.promptsDismiss(`update:${targetVersion.value}`), 'appUpdate');
     }
 
     async function install(): Promise<void> {
@@ -155,7 +163,9 @@ export function createAppUpdateStore(control: AppUpdateControl, appName: string)
       appName,
       available,
       currentVersion,
-      latestVersion,
+      targetVersion,
+      newestVersion,
+      stepped,
       installLogPath,
       dialogOpen,
       installing,

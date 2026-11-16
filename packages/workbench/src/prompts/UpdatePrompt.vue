@@ -12,5 +12,5 @@ if (!store) throw new Error('appUpdateStoreKey is not provided');
 </script>
 
 <template>
-  <UpdateDialog v-if="store.latestVersion !== ''" :store="store" />
+  <UpdateDialog v-if="store.targetVersion !== ''" :store="store" />
 </template>

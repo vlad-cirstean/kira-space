@@ -18553,14 +18553,20 @@
       "installing": {
         "body": "Downloading and verifying {app} {version}. {app} quits once the new version is ready."
       },
+      "newest": {
+        "label": "Newest version"
+      },
       "newVersion": {
         "label": "New version"
+      },
+      "stepNote": {
+        "body": "{newest} is the newest version. {app} updates one minor version at a time, so it offers the next update after this one."
       },
       "upToDate": {
         "body": "{app} {current} is the latest version."
       },
       "versions": {
-        "body": "{app} {latest} is available. You have {current}."
+        "body": "{app} {target} is available. You have {current}."
       }
     }
   }

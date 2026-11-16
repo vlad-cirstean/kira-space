@@ -59,7 +59,8 @@ async function boot(relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunc
         response: {
           updateAvailable: true,
           currentVersion: '1.2.0',
-          latestVersion: '1.3.0',
+          targetVersion: '1.3.0',
+          newestVersion: '1.3.0',
           installLogPath: '/tmp/kira-space-update.log',
         },
       },
