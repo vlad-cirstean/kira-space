@@ -258,15 +258,6 @@ describe('first-10 cap', () => {
     expect(v.shownTaskIds).not.toContain('t9');
     expect(v.hiddenCount).toBe(1);
   });
-
-  test('a hidden repo does not count toward the cap', () => {
-    const b = many(11);
-    const hiddenBranch = b.branches[0];
-    if (hiddenBranch) hiddenBranch.codeRepoId = 'repo-hidden';
-    const v = view(b, { hiddenRepoIds: new Set(['repo-hidden']) });
-    expect(v.hiddenCount).toBe(0);
-    expect(v.shownTaskIds).not.toContain('t0');
-  });
 });
 
 describe('7-day window', () => {

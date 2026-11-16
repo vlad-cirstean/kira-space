@@ -1,5 +1,5 @@
 import { t } from '@theme/i18n';
-import type { MergedInto, RemoteOpError, RepoRefresh, Task, TaskPatch } from '../wire';
+import type { RemoteOpError, Task, TaskPatch } from '../wire';
 import type { TaskProgress } from './progress';
 
 /** Why the status chip reads as it does: the user set it, or the workflow position did. */
@@ -32,22 +32,6 @@ export interface ForcePushTarget {
 export function throwOnRemoteError<T extends { error: RemoteOpError | null }>(res: T): T {
   if (res.error) throw new Error(remoteErrorText(res.error));
   return res;
-}
-
-function countByTarget(merged: readonly MergedInto[]): Map<string, number> {
-  const byTarget = new Map<string, number>();
-  for (const m of merged) byTarget.set(m.target, (byTarget.get(m.target) ?? 0) + 1);
-  return byTarget;
-}
-
-/** `3 refs changed · 1 merged into develop`; `No changes` when the fetch moved nothing. */
-export function refreshNote(r: RepoRefresh): string {
-  const byTarget = countByTarget(r.mergedInto);
-  if (r.refsChanged === 0 && byTarget.size === 0) return t('space.ade.refresh.noChanges.status');
-  const parts = [t('space.ade.refresh.refsChanged.status', { count: r.refsChanged })];
-  for (const [target, n] of byTarget)
-    parts.push(t('space.ade.refresh.mergedInto.status', { count: n, target }));
-  return parts.join(' · ');
 }
 
 /** A patch that changes nothing; spread the fields to write over it (null = unchanged). */

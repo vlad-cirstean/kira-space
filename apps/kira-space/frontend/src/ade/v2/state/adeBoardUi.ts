@@ -30,13 +30,10 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
   const runDrafts = ref<Record<string, { message: string; names: Record<string, string> }>>({});
   /** Last failed step action per task, shown in the panel header until the next attempt. */
   const actionError = ref<Record<string, string>>({});
-  /** Per repo: what the last fetch changed, shown on its chip until the next fetch. */
-  const refreshSummary = ref<Record<string, string>>({});
   /** The Needs page's All sessions list is open; the status bar's Show all sessions sets it. */
   const showAllSessions = ref(false);
   const showAllItems = usePersistedState('kira.ade.showAllItems', false);
   const showHistory = usePersistedState('kira.ade.showHistory', false);
-  const hiddenRepoIds = usePersistedState<string[]>('kira.ade.hiddenRepoIds', []);
 
   function select(taskId: string | null): void {
     selectedTaskId.value = taskId;
@@ -74,12 +71,6 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
     tabs.setTaskTab(taskId, 'sessions');
   }
 
-  function toggleRepo(codeRepoId: string): void {
-    hiddenRepoIds.value = hiddenRepoIds.value.includes(codeRepoId)
-      ? hiddenRepoIds.value.filter((id) => id !== codeRepoId)
-      : [...hiddenRepoIds.value, codeRepoId];
-  }
-
   return {
     view,
     selectedTaskId,
@@ -91,16 +82,13 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
     focusSetup,
     focusRebaseLog,
     actionError,
-    refreshSummary,
     showAllSessions,
     showAllItems,
     showHistory,
-    hiddenRepoIds,
     select,
     selectBranch,
     openTask,
     openSession,
     openSessions,
-    toggleRepo,
   };
 });

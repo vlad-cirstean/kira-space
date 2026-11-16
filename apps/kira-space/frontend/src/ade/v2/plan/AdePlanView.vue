@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { toast } from '@theme/components/ui/sonner';
@@ -18,7 +19,7 @@ import { dayLabel, firstWork, isoToOffset, LATER, nextWork } from '../board/cale
 import { dropVerdict, shiftPlanArgs } from '../board/dropPlan';
 import { isWorkKind } from '../board/kind';
 import { dayMenuFor } from '../board/menu';
-import { type ForcePushTarget, refreshNote, remoteErrorText } from '../board/panelFacts';
+import { type ForcePushTarget, remoteErrorText } from '../board/panelFacts';
 import { ITEM_LIMIT, type TimelineBand, WINDOW_DAYS } from '../board/timeline';
 import { useRefresh, useSetPlan } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
@@ -26,14 +27,13 @@ import { useConfirmRun } from '../useConfirmRun';
 import AdeDayBand from './AdeDayBand.vue';
 import AdeHistoryBar from './AdeHistoryBar.vue';
 import AdeHistoryControl from './AdeHistoryControl.vue';
-import AdePlanRepos, { type RepoChipModel } from './AdePlanRepos.vue';
 import { usePlanDrag } from './usePlanDrag';
 import { type BranchRowModel, type CardModel, type PlanModel, usePlanModel } from './usePlanModel';
 
 const ui = useAdeBoardUiStore();
 const settingsStore = useSettingsStore();
 const contextMenu = useContextMenuStore();
-const { model, today, repoLabel, settings, boardQuery, ripple } = usePlanModel();
+const { model, today, repoLabel, settings, boardQuery } = usePlanModel();
 const setPlan = useSetPlan();
 const refresh = useRefresh();
 
@@ -43,53 +43,26 @@ const { height: headerHeight } = useElementSize(headerEl);
 const { y: scrollY } = useScroll(scrollEl);
 
 // ---- refresh
-const refreshingIds = ref<string[]>([]);
 const refreshingAll = ref(false);
-const refreshErrors = ref<Record<string, string>>({});
 
-/** A failed fetch shows on the repo chip and as a toast, since the chip may be scrolled away. */
-function failRefresh(errs: Record<string, string>, codeRepoId: string, message: string): void {
-  errs[codeRepoId] = message;
+/** A failed fetch shows as a toast naming its repo. */
+function failRefresh(codeRepoId: string, message: string): void {
   toast.error(t('common.dashPair.label', { first: repoLabel(codeRepoId), second: message }));
 }
 
-async function runRefresh(codeRepoIds: string[], all: boolean): Promise<void> {
-  const ids = all ? (model.value?.board.repos.map((r) => r.codeRepoId) ?? []) : codeRepoIds;
-  refreshingIds.value = [...refreshingIds.value, ...ids];
-  refreshingAll.value = refreshingAll.value || all;
-  const errs = { ...refreshErrors.value };
-  for (const id of ids) delete errs[id];
+async function runRefresh(): Promise<void> {
+  const ids = model.value?.board.repos.map((r) => r.codeRepoId) ?? [];
+  refreshingAll.value = true;
   try {
     const res = await refresh.mutateAsync({ codeRepoIds: ids });
-    const summaries = { ...ui.refreshSummary };
-    for (const r of res.repos) {
-      if (r.error) failRefresh(errs, r.codeRepoId, remoteErrorText(r.error));
-      else summaries[r.codeRepoId] = refreshNote(r);
-    }
-    ui.refreshSummary = summaries;
+    for (const r of res.repos) if (r.error) failRefresh(r.codeRepoId, remoteErrorText(r.error));
   } catch (err) {
     const msg = errorText(err);
-    for (const id of ids) failRefresh(errs, id, msg);
+    for (const id of ids) failRefresh(id, msg);
   } finally {
-    refreshErrors.value = errs;
-    refreshingIds.value = refreshingIds.value.filter((id) => !ids.includes(id));
-    if (all) refreshingAll.value = false;
+    refreshingAll.value = false;
   }
 }
-
-const chips = computed<RepoChipModel[]>(() =>
-  (model.value?.board.repos ?? []).map((r) => ({
-    codeRepoId: r.codeRepoId,
-    label: repoLabel(r.codeRepoId),
-    remote: r.remote,
-    lastFetchAt: r.lastFetchAt,
-    shown: !ui.hiddenRepoIds.includes(r.codeRepoId),
-    pending: refreshingIds.value.includes(r.codeRepoId),
-    updating: r.updating ?? false,
-    error: refreshErrors.value[r.codeRepoId] ?? '',
-    summary: ui.refreshSummary[r.codeRepoId] ?? '',
-  })),
-);
 
 // ---- bands
 const NO_CARDS: CardModel[] = [];
@@ -396,14 +369,22 @@ function onForcePush(row: BranchRowModel): void {
     >
       <template v-if="model">
         <div ref="headerEl" class="sticky top-0 z-2 bg-chrome">
-          <AdePlanRepos
-            :repos="chips"
-            :all-pending="refreshingAll"
-            :ripple="ripple"
-            @refresh-all="runRefresh([], true)"
-            @refresh-one="(id) => runRefresh([id], false)"
-            @toggle="(id) => ui.toggleRepo(id)"
-          />
+          <AdeHistoryControl
+            :count="model.view.historyCount"
+            :tip="model.view.historyTip"
+            :open="ui.showHistory"
+            @load="openHistory"
+            @hide="hideHistory"
+            @pick="onFindArchived"
+          >
+            <TooltipIconButton
+              icon="refresh"
+              :label="t('common.refreshAll.label')"
+              :pending="refreshingAll"
+              data-testid="ade-refresh-all"
+              @click="runRefresh()"
+            />
+          </AdeHistoryControl>
           <AdeHistoryBar
             v-if="inHistory"
             @go-to-date="onGoToDate"
@@ -422,14 +403,6 @@ function onForcePush(row: BranchRowModel): void {
               </AlertAction>
             </Alert>
           </div>
-          <AdeHistoryControl
-            :count="model.view.historyCount"
-            :tip="model.view.historyTip"
-            :open="ui.showHistory"
-            @load="openHistory"
-            @hide="hideHistory"
-            @pick="onFindArchived"
-          />
           <template v-for="band in model.view.bands" :key="band.key">
             <span
               v-if="band.key === 0"

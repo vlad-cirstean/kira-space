@@ -10098,14 +10098,6 @@
             "aria": "Status: {status}. Change status"
           }
         },
-        "header": {
-          "onMerge": {
-            "label": "On merge"
-          },
-          "refreshing": {
-            "loading": "Refreshing…"
-          }
-        },
         "history": {
           "current": {
             "label": "Current work"
@@ -10118,26 +10110,6 @@
           },
           "hide": {
             "label": "Hide history"
-          }
-        },
-        "repoChip": {
-          "neverFetched": {
-            "status": "Never fetched"
-          },
-          "noRemote": {
-            "status": "No remote"
-          },
-          "refresh": {
-            "aria": "Refresh {label}"
-          },
-          "rescan": {
-            "tooltip": "Rescan {label} (no remote to fetch)"
-          },
-          "toggle": {
-            "tooltip": "Show or hide this repository"
-          },
-          "updating": {
-            "loading": "Updating…"
           }
         },
         "view": {
@@ -10383,17 +10355,6 @@
         },
         "sharesFile": {
           "tooltip": "Shares {file} with {base}; rebase onto it"
-        }
-      },
-      "refresh": {
-        "mergedInto": {
-          "status": "{count} merged into {target}"
-        },
-        "noChanges": {
-          "status": "No changes"
-        },
-        "refsChanged": {
-          "status": "{count} ref changed | {count} refs changed"
         }
       },
       "repoGate": {
