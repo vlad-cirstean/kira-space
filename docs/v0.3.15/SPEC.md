@@ -1,6 +1,6 @@
 # v0.3.15
 
-Task-list ergonomics, prompt/dialog fixes, status bar, YAML wording cleanup. Phases `P646` to `P653`.
+Task-list ergonomics, prompt/dialog fixes, status bar, YAML wording cleanup. Phases `P646` to `P655`.
 
 User gates: P646 ships a design mock only; implementation of the task-list actions waits for user approval of it. User chose task list first: P647 then P648 run sequentially in one stream (same component), before the rest.
 
@@ -12,8 +12,10 @@ User gates: P646 ships a design mock only; implementation of the task-list actio
 | P649 | Prompt dialogs: empty body, 10 min limits, typing-safe, proof-update notification | Todo |
 | P650 | Status bar CPU/RAM includes agents | Todo |
 | P651 | Drop YAML path and edit-config wording app-wide | Todo |
-| P652 | Minor-stepped updates and release retention | Todo |
-| P653 | Close chapter | Todo |
+| P652 | Task-list finish: fixes, stale UI specs, real-data check | Todo |
+| P653 | Minor-stepped updates and release retention | Todo |
+| P654 | Fix real-claude ade_smart_step failure | Todo |
+| P655 | Close chapter | Todo |
 
 ## P646 Task-list actions design mock
 
@@ -53,7 +55,15 @@ Widget counts agents and their subprocesses. Tooltip splits App and Agents.
 
 Remove file paths and "open file" affordances pointing to YAML files. Remove "edit the config file" copy (editing a connection, etc.). App-wide, not only the examples.
 
-## P652 Minor-stepped updates and release retention
+## P652 Task-list finish
+
+Owed after P647 and P648 (user: do it after the parallel streams, do not forget):
+
+- Fix `fix/cart-flaky` branch row line 2 clipping about 8px at 400px.
+- Update every UI spec and visual baseline made stale by P647 and P648 (`tests/ui/ade-v2-plan.spec.ts`, `ade-v2-repo-updating.spec.ts`, `ade-v2-panel.spec.ts`, specs reading `ade-branch-context`, `ade-base-marker`, `ade-branch-prog`, `ade-branch-merged`, plan screenshots). Run them.
+- Run the real app on real data and click through each row action (branch edit, add repo or branch, estimate, step, status, workflow, rename, updates, branch request, drag and drop). Fix what fails.
+
+## P653 Minor-stepped updates and release retention
 
 Goal: apply minor versions one at a time, so legacy migration and backward-compat code can be pruned per minor. The updater is the main part; retention supports it. Add the "Minor bumps drop legacy code" rule to `CLAUDE.md` (done at chapter open).
 
@@ -61,6 +71,10 @@ Goal: apply minor versions one at a time, so legacy migration and backward-compa
 - Retention in a GitHub Action (separate workflow, runs after `release.yml` succeeds and on manual dispatch, `contents: write` on that job only): keep assets of every `vX.Y.0` release, the last patch of every minor (the update path needs it), and the last 5 patches of the current minor. Delete only release assets, never tags or release pages. Dry-run mode first. Never touch `releases/latest`. Updater skips a release with no assets.
 - Update `docs/PACKAGING.md` §7 and the architecture doc.
 
-## P653 Close chapter
+## P654 Real-claude ade_smart_step
+
+`TestRealClaudeSettingsUntouched/ade_smart_step` fails ("smart step run = failed, want done"), also on base commit 07246566, found in P650. Root-cause and fix.
+
+## P655 Close chapter
 
 Per `CLAUDE.md` "Closing a chapter".

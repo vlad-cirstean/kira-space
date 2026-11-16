@@ -31,7 +31,7 @@ General rules live in `docs/WORKING_AGREEMENT.md`, imported above. Rules below a
 ## Minor bumps drop legacy code
 
 An install is either clean (latest release) or an old install that steps through every minor in
-order (P652): `X.Y.z` goes to the last patch of `X.Y`, then `X.(Y+1).0`, then the last patch of
+order (P653): `X.Y.z` goes to the last patch of `X.Y`, then `X.(Y+1).0`, then the last patch of
 `X.(Y+1)`, and so on. The last patch of a minor holds all that minor's migrations, so migration and
 backward-compat code covers only the previous minor's last patch to this minor. On a minor bump,
 drop every path from older minors. Never keep legacy code across a minor bump.
