@@ -30,10 +30,10 @@ General rules live in `docs/WORKING_AGREEMENT.md`, imported above. Rules below a
 
 ## Minor bumps drop legacy code
 
-Updater applies minor versions one at a time (P652): an install reaches `X.(Y+1).0` only through the
-newest patch of `X.Y`. On a minor bump, drop every migration and backward-compat path for versions
-before the previous minor. No install reaches the new minor without passing through it. Never keep
-legacy code across a minor bump.
+An install is either clean (latest release) or an old install that steps through every minor in
+order (P652): `X.Y.z` goes to `X.(Y+1).0`, never past it. Migration and backward-compat code
+therefore covers only the previous minor to this one. On a minor bump, drop every path from older
+minors. Never keep legacy code across a minor bump.
 
 ## Closing a chapter
 
