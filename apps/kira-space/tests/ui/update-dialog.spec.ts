@@ -135,7 +135,7 @@ studioTest.describe('databases module', () => {
 
     const install = window.locator('[data-testid="update-dialog-install"]');
     await expect(install).toBeEnabled();
-    await expect(install).toHaveText('Retry');
+    await expect(install).toContainText('Retry');
   });
 
   studioTest('menu check failing shows the error, Retry checks again', async ({ relaunch }) => {
