@@ -277,6 +277,59 @@ test('dragging a card to another day writes the plan once, with no dialog', asyn
   await expect(page.locator('[data-testid="ade-confirm-dialog"]')).toHaveCount(0);
 });
 
+// Backend half: adeflow SetPlan scenarios (queue_test.go, shelf_test.go). Dragging between two
+// cards of one day shows the snap slot there and writes the card before the lower one.
+test('dragging between two cards shows the slot between them and writes the order', async ({
+  relaunch,
+}) => {
+  const board = adeFixture<BoardFx>('board');
+  const { window: page, control } = await openPlan(relaunch);
+  await page.setViewportSize({ width: 1440, height: 2400 });
+  const ids = await bandOf(page, 3)
+    .locator('[data-testid="ade-card"]')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('data-task-id') ?? ''));
+  expect(ids.length).toBeGreaterThanOrEqual(2);
+  const [upper, lower] = ids as [string, string];
+  const dragged = await bandOf(page, 1)
+    .locator('[data-testid="ade-card"]')
+    .first()
+    .getAttribute('data-task-id');
+  if (!dragged) throw new Error('no card to drag');
+  await card(page, dragged).scrollIntoViewIfNeeded();
+  const from = await card(page, dragged).boundingBox();
+  if (!from) throw new Error('drag source missing');
+  const grabY = from.y + Math.min(30, from.height / 2);
+  await page.mouse.move(from.x + 40, grabY);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 60, grabY + 20, { steps: 4 });
+  const slot = bandOf(page, 3).locator('[data-testid="ade-drop-slot"]');
+  // The slot opens in each band the pointer crosses and shifts the cards below: re-aim at the gap
+  // above the lower card until the slot sits right there.
+  await expect(async () => {
+    const rect = await card(page, lower).boundingBox();
+    if (!rect) throw new Error('lower card missing');
+    await page.mouse.move(rect.x + 40, rect.y - 8, { steps: 12 });
+    await page.evaluate(
+      () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+    );
+    await expect(slot).toBeVisible({ timeout: 500 });
+  }).toPass({ timeout: 10_000 });
+  const [above, gap, below] = await Promise.all([
+    card(page, upper).boundingBox(),
+    slot.boundingBox(),
+    card(page, lower).boundingBox(),
+  ]);
+  expect((gap?.y ?? 0) + (gap?.height ?? 0)).toBeLessThanOrEqual(below?.y ?? 0);
+  expect(gap?.y ?? 0).toBeGreaterThanOrEqual((above?.y ?? 0) + (above?.height ?? 0));
+  await page.mouse.up();
+
+  const calls = () => control.log().filter((e) => e.channel === IPC.adeTaskSetPlan);
+  await expect.poll(() => calls().length).toBe(1);
+  const order = board.plan.order.filter((id) => id !== dragged);
+  order.splice(order.indexOf(lower), 0, dragged);
+  expect(calls()[0]?.args).toMatchObject({ order });
+});
+
 test('dragging a review card to another day pins it', async ({ relaunch }) => {
   const board = adeFixture<BoardFx>('board');
   const { window: page, control } = await openPlan(relaunch);

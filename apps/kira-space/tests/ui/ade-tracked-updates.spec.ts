@@ -84,6 +84,26 @@ test('Mark seen sends the item key and clears its line', async ({ relaunch }) =>
   await expect(page.locator(t('ade-task-update-issue'))).toHaveCount(0);
 });
 
+// The popover on the card's updated dot is the frontend half too; same backend scenario.
+test('the card dot opens the list; Mark seen sends the key and removes the dot', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskTrackedUpdates, response: { updates: [issue] } },
+    { channel: IPC.adeTaskMarkTrackedSeen, hold: true },
+  ]);
+  const dot = page.locator(`${t('ade-card')}[data-task-id="T_bill"] ${t('ade-task-updated')}`);
+  await dot.click();
+  await expect(page.locator(t('ade-task-update-issue'))).toContainText('Issue status changed');
+  await page.locator(t('ade-task-update-seen-issue')).click();
+  await expect.poll(() => calls(control, IPC.adeTaskMarkTrackedSeen)).toHaveLength(1);
+  expect(calls(control, IPC.adeTaskMarkTrackedSeen)[0]?.args).toEqual({
+    taskId: 'T_bill',
+    itemKeys: ['issue'],
+  });
+  await expect(dot).toHaveCount(0);
+});
+
 test('Mark all seen sends an empty key list', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskTrackedUpdates, response: { updates: [cr, issue] } },
