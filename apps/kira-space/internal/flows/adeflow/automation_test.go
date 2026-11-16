@@ -503,6 +503,26 @@ func TestAutomationStep(t *testing.T) {
 	level := []scripts.Param{{Name: "level", Type: scripts.ParamSelect, Options: []string{"low", "high"}, Required: true}}
 	lintStep := func(extra string) string { return smartStepYAML("lint", extra) }
 
+	t.Run("hands over its reason, no draft", func(t *testing.T) {
+		f := newRunFixture(t, []fakeagent.Action{{Name: "done"}}, lintStep("    params:\n      level: high\n")+manualStep)
+		smart(f, "lint", "Lint {branch}", level, nil)
+		r := runOnly(t, f, "feat/api-reason")
+		if r.State != "done" {
+			t.Fatalf("run = %+v", r)
+		}
+		got := fakeFile(t, f.app, "api-1.prompt")
+		if !strings.Contains(got, "Task folder: ") || strings.Contains(got, "handovers/draft-s1.md") {
+			t.Fatalf("prompt = %q, want the task folder and no draft path", got)
+		}
+		if _, err := os.Stat(filepath.Join(f.app.FakeDir, "api-1.draft-asked")); !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("the finish was refused for a draft: %v", err)
+		}
+		hs := handovers(t, f.app, f.taskID)
+		if len(hs) != 1 || hs[0].Source != "run" || hs[0].FromStepID != "s1" || hs[0].ToStepID != "signoff" || hs[0].Body != "summary-done" {
+			t.Fatalf("handovers = %+v", hs)
+		}
+	})
+
 	t.Run("runs the script", func(t *testing.T) {
 		f := newRunFixture(t, []fakeagent.Action{{Name: "done"}}, lintStep("    params:\n      level: high\n"))
 		smart(f, "lint", "Lint {branch} at {level} for {task}", level, nil)
