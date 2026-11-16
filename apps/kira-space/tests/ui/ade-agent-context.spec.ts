@@ -80,7 +80,7 @@ test('a broken file shows its line and the last-good note', async ({ relaunch })
     lastGood: true,
     editable: false,
   });
-  await expect(page.locator(t('config-file-status'))).toContainText('2');
+  await expect(page.locator(t('config-file-problem'))).toContainText('Can’t be read');
   await expect(page.locator(t('ade-context-last-good'))).toBeVisible();
   await expect(page.locator(t('ade-context-read-only'))).toBeVisible();
 });

@@ -54,7 +54,7 @@ test('api collection skipped — valid items load, the skipped item is listed wi
   await expect(rows).toContainText(skipped.name);
   await expect(rows).toContainText(skipped.message);
   await expect(page.locator('[data-testid="api-config-last-good"]')).toHaveCount(0);
-  await expect(page.locator('[data-testid="config-file-status"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="config-file-problem"]')).toHaveCount(0);
 
   await alert.locator('[data-testid="api-config-skipped-edit"]').click();
   await expect(page.locator('[data-testid="api-variables-dialog"]')).toBeVisible();

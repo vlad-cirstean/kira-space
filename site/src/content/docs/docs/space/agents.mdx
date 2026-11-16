@@ -222,7 +222,7 @@ The Studio modules have no switch. Their launches are always hermetic.
 Workflows and agent config are plain files in `~/.kira-space/config`, in the `workflows` and `agent` folders.
 
 - Each folder has a generated `AGENTS.md` that lists every option, so an AI agent can edit the files. Kira rewrites it at start. Edits to it are lost.
-- The file bar on the Workflows, Context and Settings pages shows the path and status, with Open, Reveal, Copy path and **About these files**.
+- A Workflows, Context or Settings page that cannot be read shows a notice. Agents keep the last good version.
 - Edit with any editor. Kira watches the folder. A broken edit keeps the last good version and names the line.
 - Files hold secret references, never values.
 

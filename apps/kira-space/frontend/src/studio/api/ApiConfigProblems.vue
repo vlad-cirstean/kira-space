@@ -2,7 +2,7 @@
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
-import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
+import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { configName } from '@workbench/config/configName';
 import { computed } from 'vue';
 import { useApiConfig } from './state/apiConfig';
@@ -32,7 +32,7 @@ const partial = computed(() =>
         <span class="shrink-0 text-kira-sm font-medium" data-testid="api-config-problem-name">{{
           file.name || configName(file.file)
         }}</span>
-        <ConfigFileBar :error="file.problem" />
+        <ConfigFileProblem :error="file.problem" class="min-w-0 flex-1" />
         <Button
           variant="dialog"
           size="kira-lg"

@@ -111,7 +111,7 @@ test('a file with an error shows its line and the last-good note', async ({ rela
     problem: { line: 4, message: 'event: not one of the events' },
     lastGood: true,
   });
-  await expect(page.locator(t('config-file-status'))).toContainText('4');
+  await expect(page.locator(t('config-file-problem'))).toContainText('Can’t be read');
   await expect(page.locator(t('ade-settings-last-good'))).toBeVisible();
 });
 

@@ -101,12 +101,10 @@ test('api config files — the tree shows the file, a bad edit shows its line, E
   await expect(collectionRow(page, tree.items[0].id)).toContainText(tree.items[0].name);
   await expect(page.locator('[data-testid="api-config-problems"]')).toHaveCount(0);
 
-  // A bad edit reaches the app as a `config` push: the strip names the line.
+  // A bad edit reaches the app as a `config` push: the strip says the file can't be read, with no line.
   await emitWailsEvent(page, IPC.apiDataChanged, { changes: [{ kind: 'config' }] });
   const strip = page.locator('[data-testid="api-config-problems"]');
-  await expect(strip.locator('[data-testid="config-file-status"]')).toHaveText(
-    `✕ Line ${problem.line}: ${problem.message}`,
-  );
+  await expect(strip.locator('[data-testid="config-file-problem"]')).toContainText('Can’t be read');
   await expect(strip.locator('[data-testid="api-config-last-good"]')).toBeVisible();
   await expect(collectionRow(page, tree.items[0].id)).toContainText(tree.items[0].name);
 
@@ -120,10 +118,7 @@ test('api config files — the tree shows the file, a bad edit shows its line, E
   await page.click('[data-testid="menu-item-variables"]');
   const view = page.locator('[data-testid="variables-dialog"][data-scope="collection"]');
   await expect(view).toBeVisible();
-  await expect(view.locator('[data-testid="config-file-bar"]')).toHaveCount(0);
-  await expect(view.locator('[data-testid="config-file-problem"]')).toHaveText(
-    new RegExp(`Line ${problem.line}: ${problem.message}`),
-  );
+  await expect(view.locator('[data-testid="config-file-problem"]')).toContainText('Can’t be read');
   await expect(view.locator('[data-testid="variable-row"]')).toHaveCount(2);
   await expect(
     view.locator('[data-testid="variable-row"][data-id="var-base"] [data-testid="variable-value"]'),
@@ -135,13 +130,13 @@ test('api config files — the tree shows the file, a bad edit shows its line, E
   ).toBeVisible();
   await expect(view.locator('input')).toHaveCount(1); // the name filter only: no cell is editable
 
-  // Show in YAML opens the variables dialog on its YAML tab, with the file bar and the same line.
+  // Show in YAML opens the variables dialog on its YAML tab, with the same notice.
   await view.locator('[data-testid="config-file-problem-show-yaml"]').click();
   const dialog = page.locator('[data-testid="api-variables-dialog"]');
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('[data-testid="api-tab-yaml"]')).toHaveAttribute('data-state', 'on');
-  await expect(dialog.locator('[data-testid="config-file-status"]')).toHaveText(
-    `✕ Line ${problem.line}: ${problem.message}`,
+  await expect(dialog.locator('[data-testid="config-file-problem"]')).toContainText(
+    'Can’t be read',
   );
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);

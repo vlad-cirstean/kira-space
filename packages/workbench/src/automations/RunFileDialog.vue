@@ -24,7 +24,6 @@ import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
 import { errorText } from '../bridge/codedError';
-import ConfigFileBar from '../config/ConfigFileBar.vue';
 import ConfigFileProblem from '../config/ConfigFileProblem.vue';
 import { useConfigFormDraft } from '../config/useConfigFormDraft';
 import McpToolsField from './form/McpToolsField.vue';
@@ -270,7 +269,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
       </ViewToolbar>
       <DialogBody class="min-h-80">
         <div v-if="view" class="flex min-w-0 flex-col gap-3">
-          <ConfigFileBar v-if="!view.editable || section === 'yaml'" :error="view.problem" />
+          <ConfigFileProblem v-if="!view.editable || section === 'yaml'" :error="view.problem" />
           <div
             v-if="view.lastGood"
             class="text-kira-sm text-subtle"

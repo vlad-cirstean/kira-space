@@ -52,7 +52,7 @@ test('contract: the pane shows the file and Save sends the hash it loaded', asyn
     { channel: IPC.repoConfigFile, response: fx },
   ]);
   await expect.poll(() => codeEditorText(page.locator(t('repo-file-text')))).toBe(fx.text);
-  await expect(page.locator(t('config-file-bar'))).toContainText('proj.yaml');
+  await expect(page.locator(t('config-file-problem'))).toHaveCount(0);
   await expectHighlighted(page.locator(t('repo-file-text')), 'yaml');
   await expect(page.locator(t('repo-file-save'))).toBeDisabled();
   expect(calls(control, IPC.repoConfigFile)[0]?.args).toEqual({
@@ -84,7 +84,7 @@ test('contract: a repo without a file shows the template and Save creates it', a
   ]);
   await expect(page.locator(t('repo-file-none'))).toBeVisible();
   await expect.poll(() => codeEditorText(page.locator(t('repo-file-text')))).toBe(fx.text);
-  await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
+  await expect(page.locator(t('config-file-problem'))).toHaveCount(0);
   await expect(page.locator(t('repo-file-save'))).toHaveText('Create settings');
   await page.locator(t('repo-file-save')).click();
   await expect.poll(() => calls(control, IPC.repoConfigSaveFile)).toHaveLength(1);
@@ -96,34 +96,35 @@ test('contract: a repo without a file shows the template and Save creates it', a
   });
 });
 
-test('contract: a broken file shows its line and the last-good note', async ({ relaunch }) => {
+test('contract: a broken file shows the unreadable notice and the last-good note', async ({
+  relaunch,
+}) => {
   const fx = broken();
   const { window: page } = await open(relaunch, [{ channel: IPC.repoConfigFile, response: fx }]);
-  await expect(page.locator(t('config-file-status'))).toContainText(String(fx.problem?.line));
+  await expect(page.locator(t('config-file-problem'))).toContainText('Can’t be read');
   await expect(page.locator(t('repo-file-last-good'))).toBeVisible();
   await expect.poll(() => codeEditorText(page.locator(t('repo-file-text')))).toBe(fx.text);
 });
 
-test('the file bar shows only on the YAML tab', async ({ relaunch }) => {
+test('a valid file shows no notice on any tab', async ({ relaunch }) => {
   const { window: page } = await openAdeRepos(relaunch, [
     { channel: IPC.repoConfigFile, response: saved() },
   ]);
   await page.locator(t('repo-file')).waitFor();
-  await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
+  await expect(page.locator(t('config-file-problem'))).toHaveCount(0);
   await page.locator(t('repo-file-tab-yaml')).click();
-  await expect(page.locator(t('config-file-bar'))).toContainText('proj.yaml');
+  await expect(page.locator(t('config-file-problem'))).toHaveCount(0);
 });
 
-test("a broken file's problem shows on the Form tab without the bar", async ({ relaunch }) => {
+test("a broken file's problem shows on the Form tab on every tab", async ({ relaunch }) => {
   const fx = broken();
   const { window: page } = await openAdeRepos(relaunch, [
     { channel: IPC.repoConfigFile, response: fx },
   ]);
   await page.locator(t('repo-file')).waitFor();
-  await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
-  await expect(page.locator(t('config-file-problem'))).toContainText(String(fx.problem?.line));
+  await expect(page.locator(t('config-file-problem'))).toContainText('Can’t be read');
   await page.locator(t('config-file-problem-show-yaml')).click();
-  await expect(page.locator(t('config-file-status'))).toContainText(String(fx.problem?.line));
+  await expect(page.locator(t('config-file-problem'))).toContainText('Can’t be read');
 });
 
 test('a save refused for a changed file offers Reload and Overwrite', async ({ relaunch }) => {

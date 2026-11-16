@@ -333,7 +333,7 @@ useEventListener(treeBodyEl, 'contextmenu', onBackgroundContextMenu);
         >
           <CodiconIcon name="warning" :size="13" />
           <TruncatedText
-            :text="`${configName(f.file)}: ${f.problem?.line ? t('common.config.lineError.error', { line: f.problem.line, text: f.problem.message }) : f.problem?.message}`"
+            :text="`${configName(f.file)}: ${t('common.configForm.unreadable.status')}`"
           />
         </Button>
       </li>

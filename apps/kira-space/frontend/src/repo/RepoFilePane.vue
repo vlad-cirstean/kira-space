@@ -5,7 +5,6 @@ import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
-import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
@@ -78,7 +77,7 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
 
 <template>
   <div v-if="view" ref="root" class="flex max-w-4xl flex-col gap-3" data-testid="repo-file">
-    <ConfigFileBar
+    <ConfigFileProblem
       v-if="view.exists && (!view.editable || draft.tab.value === 'yaml')"
       :error="view.problem"
     />

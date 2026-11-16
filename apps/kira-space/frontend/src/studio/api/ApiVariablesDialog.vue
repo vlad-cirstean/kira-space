@@ -18,7 +18,6 @@ import {
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { configName } from '@workbench/config/configName';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
@@ -275,7 +274,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             </fieldset>
           </template>
           <template v-else>
-            <ConfigFileBar :error="detail.problem" />
+            <ConfigFileProblem :error="detail.problem" />
             <CodeTextEditor
               :model-value="draft.draft.value"
               language="yaml"

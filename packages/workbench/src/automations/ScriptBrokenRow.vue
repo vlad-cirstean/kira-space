@@ -36,10 +36,6 @@ const emit = defineEmits<{ open: [] }>();
         </div>
       </div>
     </TooltipTrigger>
-    <TooltipContent>{{
-      problem.line > 0
-        ? t('common.config.lineError.error', { line: problem.line, text: problem.message })
-        : t('common.config.fileError.error', { text: problem.message })
-    }}</TooltipContent>
+    <TooltipContent>{{ t('common.configForm.unreadable.status') }}</TooltipContent>
   </Tooltip>
 </template>

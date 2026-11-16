@@ -3378,23 +3378,15 @@
     "comment": {
       "label": "Comment"
     },
-    "config": {
-      "fileError": {
-        "error": "✕ {text}"
-      },
-      "lineError": {
-        "error": "✕ Line {line}: {text}"
-      },
-      "valid": {
-        "status": "✓ Valid"
-      }
-    },
     "configForm": {
       "problem": {
         "status": "Line {line}: {message}"
       },
       "showYaml": {
         "label": "Show in YAML"
+      },
+      "unreadable": {
+        "status": "Can’t be read, fix it here"
       }
     },
     "confirm": {

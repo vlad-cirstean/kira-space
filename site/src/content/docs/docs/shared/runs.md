@@ -21,12 +21,11 @@ Runs exist in the Automations mode and the Studio modules. A run is a YAML file.
 A run lives in `<id>.yaml` in the `runs` folder of the home config: `~/.kira-space/config/runs`. The file name without `.yaml` is the run id. Use lowercase letters, digits, `-` and `_`.
 
 - **New script** and **New smart script** write a small valid file and open it.
-- Double-click a row, or choose **Edit file**, to edit it as a form or as YAML. Both tabs edit the same text; **Save** writes the file. A form edit keeps your comments and key order. **Open** opens the file in your editor. **Reveal** and **Copy path** work as in other config files.
+- Double-click a row, or choose **Edit script**, to edit it as a form or as YAML. Both tabs edit the same text; **Save** keeps it. A form edit keeps your comments and key order. A script that cannot be read shows a notice, and runs use the last good version.
 - A change in your editor shows in the panel after a moment. Kira checks the file on every change.
 - A file with an error shows the line and the message. A run that was valid before keeps running its last good version, and its row shows a warning mark.
 - A file that was never valid is listed as a broken row. Open it to fix it.
 - A file with a name that is not a valid id is listed and never used.
-- **About these files** opens `AGENTS.md` beside the files. It lists every key and rule.
 - Deleting a run through the row menu removes its file and its saved secret values. Deleting the file in an editor drops the run but leaves its folder under `automations`.
 
 Keys include `name`, `kind`, `command` (or `prompt` for a smart run), `params`, `schedule`, `dir`, `path`, `color` and `collection`. A `collection` is a name. A run with no `collection` is ungrouped. The run folder is the Kira scripts folder under the app home (`dir: kira`) or a folder you name (`dir: fixed` with `path`).

@@ -105,10 +105,10 @@ Every repository setting lives in one YAML file under `~/.kira-space/config/repo
 
 In the dialog, the prepare script and each environment's deployed-SHA script can be a command or a Run script picked from the list. A repository file runs normal Run scripts only, not smart ones.
 
-- A repository with no file uses the defaults. **Create settings file** in the dialog starts one from a template.
+- A repository with no file uses the defaults. **Create settings** in the dialog starts one from a template.
 - Changing a setting in the Git window edits the same file and keeps your comments.
-- A file with an error keeps the last good settings and shows the failing line.
-- Two files with the same `path:`: the first by name applies, the other is flagged under **Other files**.
+- A file with an error keeps the last good settings and shows a notice.
+- Two files with the same `path:`: the first by name applies, the other is flagged under **Other settings**.
 - Deleting the file returns the repository to the defaults.
 
 `Settings > Git` holds the global settings: protected branches, the auto-fetch interval, the git path and the graph font size.
