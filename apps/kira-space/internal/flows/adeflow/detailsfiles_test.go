@@ -140,17 +140,6 @@ func TestDetailsFiles(t *testing.T) {
 	task := createTask(t, app, "Login form", "flow", rec.ID)
 	folder := dfFolder(t, app, task.ID)
 
-	// The folder buttons hand the task folder to the file manager.
-	if err := app.W.AdeTask.OpenDetailsFolder(ctx, adewire.DiskChangesArgs{TaskID: task.ID}); err != nil {
-		t.Fatal(err)
-	}
-	if err := app.W.AdeTask.RevealDetailsFolder(ctx, adewire.DiskChangesArgs{TaskID: task.ID}); err != nil {
-		t.Fatal(err)
-	}
-	if o, r := app.FileOpener.OpenedFiles(), app.FileOpener.RevealedFiles(); len(o) != 1 || o[0] != folder || len(r) != 1 || r[0] != folder {
-		t.Fatalf("opened %v, revealed %v, want the task folder %s", o, r, folder)
-	}
-
 	// 1. A UI note is a file of the task folder.
 	const first = "Check the error states."
 	addNote := adewire.AddNoteArgs{TaskID: task.ID, Body: first}

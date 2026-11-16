@@ -566,7 +566,7 @@ func Build(opts Options) (*Wired, error) {
 	w.sched.Start()
 	w.ConfigSync.Start()
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
-	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry, Opener: opts.FileOpener}
+	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry}
 	w.Capture.Tasks = w.AdeTask
 	w.Proof.Folder = w.AdeBoard.TaskFolder
 	w.Leases = &bridge.LeasesService{Board: w.AdeBoard}

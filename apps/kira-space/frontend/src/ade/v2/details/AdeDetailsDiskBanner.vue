@@ -15,14 +15,7 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { ref } from 'vue';
 import type { DiskChange } from '../wire';
-import {
-  refreshDisk,
-  useAcceptDisk,
-  useDiscardDisk,
-  useDiskChanges,
-  useOpenDetailsFolder,
-  useRevealDetailsFolder,
-} from './useDetailsDisk';
+import { refreshDisk, useAcceptDisk, useDiscardDisk, useDiskChanges } from './useDetailsDisk';
 
 // The task folder against what Kira holds: files edited outside a submit. Stat on open, window focus and
 // Refresh; no watcher. Accept makes a change the held copy, Discard restores the held copy.
@@ -34,8 +27,6 @@ const changes = useDiskChanges(
 );
 const accept = useAcceptDisk();
 const discard = useDiscardDisk();
-const openFolder = useOpenDetailsFolder();
-const revealFolder = useRevealDetailsFolder();
 const reviewing = ref(false);
 
 function resolve(kind: 'accept' | 'discard', paths: string[]): void {
@@ -55,23 +46,6 @@ function stateLabel(c: DiskChange): string {
 <template>
   <div v-if="!readonly" class="flex flex-col gap-2" data-testid="ade-details-disk">
     <div class="flex items-center gap-1">
-      <Button
-        variant="toolbar"
-        size="kira"
-        data-testid="ade-details-disk-open"
-        @click="openFolder.mutate(props.taskId)"
-      >
-        <CodiconIcon name="folder-opened" :size="13" />
-        {{ t('space.ade.details.diskFolderOpen.label') }}
-      </Button>
-      <Button
-        variant="toolbar"
-        size="kira"
-        data-testid="ade-details-disk-reveal"
-        @click="revealFolder.mutate(props.taskId)"
-      >
-        {{ t('space.ade.details.diskFolderReveal.label') }}
-      </Button>
       <Button
         variant="toolbar"
         size="kira"

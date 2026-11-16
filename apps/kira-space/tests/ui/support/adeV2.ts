@@ -236,8 +236,6 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskDetailsAcceptDisk },
     { channel: IPC.adeTaskDetailsDiscardDisk },
     { channel: IPC.adeTaskDetailsFolder, response: { path: '/tmp/kira/tasks/t1' } },
-    { channel: IPC.adeTaskOpenDetailsFolder },
-    { channel: IPC.adeTaskRevealDetailsFolder },
     {
       channel: IPC.adeTaskSaveStatuses,
       response: (() => {

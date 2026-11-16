@@ -9267,12 +9267,6 @@
         "diskDiscardAll": {
           "label": "Discard all"
         },
-        "diskFolderOpen": {
-          "label": "Open task folder"
-        },
-        "diskFolderReveal": {
-          "label": "Reveal in file manager"
-        },
         "diskPending": {
           "label": "Waiting for your approval"
         },

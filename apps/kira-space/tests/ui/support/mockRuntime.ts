@@ -270,8 +270,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskDetailsAcceptDisk: 'AdeTaskService.DetailsAcceptDisk',
   adeTaskDetailsDiscardDisk: 'AdeTaskService.DetailsDiscardDisk',
   adeTaskDetailsFolder: 'AdeTaskService.DetailsFolder',
-  adeTaskOpenDetailsFolder: 'AdeTaskService.OpenDetailsFolder',
-  adeTaskRevealDetailsFolder: 'AdeTaskService.RevealDetailsFolder',
   adeTaskSetTaskStep: 'AdeTaskService.SetTaskStep',
   adeTaskNextPass: 'AdeTaskService.NextPass',
   adeTaskSaveStatuses: 'AdeTaskService.SaveStatuses',

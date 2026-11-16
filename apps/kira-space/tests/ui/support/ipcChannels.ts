@@ -294,8 +294,6 @@ export const IPC = {
   adeTaskDetailsAcceptDisk: 'kira:adetask:detailsAcceptDisk',
   adeTaskDetailsDiscardDisk: 'kira:adetask:detailsDiscardDisk',
   adeTaskDetailsFolder: 'kira:adetask:detailsFolder',
-  adeTaskOpenDetailsFolder: 'kira:adetask:openDetailsFolder',
-  adeTaskRevealDetailsFolder: 'kira:adetask:revealDetailsFolder',
   adeTaskSetTaskStep: 'kira:adetask:setTaskStep',
   adeTaskNextPass: 'kira:adetask:nextPass',
   adeTaskSaveStatuses: 'kira:adetask:saveStatuses',
