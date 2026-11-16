@@ -104,6 +104,7 @@ watch(
         ? dialogStore.tab
         : 'variables';
   },
+  { immediate: true },
 );
 
 const sections = computed<VariablesSection[]>(() =>

@@ -138,7 +138,8 @@ test('task panel, every tab', async ({ relaunch }) => {
 test('workflows page, editor and inspectors', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   await setPseudoLocale(page);
-  const allow = fixtureData();
+  // A workflow with no valid version is named after its file: data, not chrome.
+  const allow = [...fixtureData(), /^broken$/];
   await page.locator(t('ade-tab-workflows')).click();
   await expectCatalogText(page.locator(t('ade-workflows')), { allow });
   await page.locator(t('ade-wf-row')).first().click();

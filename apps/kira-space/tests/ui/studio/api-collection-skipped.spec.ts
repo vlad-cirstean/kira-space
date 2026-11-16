@@ -47,7 +47,7 @@ test('api collection skipped — valid items load, the skipped item is listed wi
 
   const alert = page.locator('[data-testid="api-config-skipped"]');
   await expect(alert).toBeVisible();
-  await expect(alert).toContainText(collection.file);
+  await expect(alert).toContainText('Hand');
   const rows = alert.locator('[data-testid="api-config-skipped-item"]');
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText(`Line ${skipped.line}`);

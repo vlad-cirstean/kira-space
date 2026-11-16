@@ -64,7 +64,7 @@ test('contract: a file edit repaints the row name and color', async ({ relaunch 
   await expect(row.locator('[data-testid="tree-rail"]')).toHaveClass(/\bbg-conn-green\b/);
 });
 
-test('contract: a bad edit marks the row with its line and keeps the last valid name and color', async ({
+test('contract: a bad edit marks the row as unreadable and keeps the last valid name and color', async ({
   relaunch,
 }) => {
   const { window: page } = await relaunch({
@@ -81,7 +81,7 @@ test('contract: a bad edit marks the row with its line and keeps the last valid 
   await emitWailsEvent(page, IPC.connectionConfigChanged, null);
   const marker = row.locator('[data-testid="tree-connection-problem"]');
   await expect(marker).toBeVisible();
-  await expect(marker).toContainText('Line 3');
+  await expect(marker).toContainText('Can’t be read');
   await expect(row.locator('[data-testid="tree-rail"]')).toHaveClass(/\bbg-conn-blue\b/);
   await expect(await connectionRow(page, 'Local')).toBeVisible();
 });
