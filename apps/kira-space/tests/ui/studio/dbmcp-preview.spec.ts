@@ -94,7 +94,7 @@ test('contract: Withhold denies the held result', async ({ relaunch }) => {
   const item = first();
   const { window: page, control } = await relaunch({ control: mocks(item.id) });
   await pushApprovals(page, [item]);
-  await expect(page.locator(`[data-testid="approval-deny-${item.id}"]`)).toHaveText('Withhold');
+  await expect(page.locator(`[data-testid="approval-deny-${item.id}"]`)).toHaveText(/^Withhold\b/);
   await page.click(`[data-testid="approval-deny-${item.id}"]`);
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)

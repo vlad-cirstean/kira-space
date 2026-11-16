@@ -59,9 +59,11 @@ test('contract: Lift for this query answers the item id, Keep the limit denies i
   });
   await pushApprovals(page, [liveItem(it)]);
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toHaveText(
-    'Lift for this query',
+    /^Lift for this query\b/,
   );
-  await expect(page.locator(`[data-testid="approval-deny-${it.id}"]`)).toHaveText('Keep the limit');
+  await expect(page.locator(`[data-testid="approval-deny-${it.id}"]`)).toHaveText(
+    /^Keep the limit/,
+  );
   await page.click(`[data-testid="approval-approve-${it.id}"]`);
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)

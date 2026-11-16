@@ -16,7 +16,14 @@ import { loc, openKubernetes, setupKubernetes } from './studio/support/kubernete
 import { COMPOSITE_PK_PATH } from './studio/support/postgresFixture';
 import { readOnlySqsSnapshots, SQS_QUEUE_PATH } from './studio/support/sqsFixture';
 import { connectionRow, expandRow, findRow, openRowMenu } from './studio/support/tree';
-import { adeBoard, adeFixture, adeV2Control, openAdeRepos, openPlan } from './support/adeV2';
+import {
+  adeBoard,
+  adeFixture,
+  adeV2Control,
+  openAdeRepos,
+  openPlan,
+  revealRow,
+} from './support/adeV2';
 import { IPC } from './support/ipcChannels';
 import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
@@ -50,6 +57,7 @@ test('force push asks with Cancel / Force push', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     { channel: IPC.adeTaskBoard, response: board },
   ]);
+  await revealRow(page, 'b_deps', 'board', 'ade-force-push');
   await page.locator(t('ade-force-push')).click();
   const dialog = page.locator(t('ade-confirm-dialog'));
   await expect(dialog).toContainText('Force push?');

@@ -137,7 +137,7 @@ test('the branch panel and the task link use the host words', async ({ relaunch 
   await page.locator(t('ade-panel-tab-main')).click();
 
   await page.locator(`${t('ade-task-branch')}[data-branch-id="b_auth"]`).click();
-  const pr = page.locator(t('ade-branch-pr'));
+  const pr = page.locator(`${t('ade-branch-details')} ${t('ade-branch-pr')}`);
   await expect(pr).toContainText('#7');
   await expect(
     page.locator(t('ade-branch-details')).getByText('MR', { exact: true }),
