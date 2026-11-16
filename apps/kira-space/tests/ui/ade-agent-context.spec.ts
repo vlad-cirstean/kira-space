@@ -87,7 +87,7 @@ test('a broken file shows its line and the last-good note', async ({ relaunch })
 
 test('a missing file shows the none hint', async ({ relaunch }) => {
   const { window: page } = await openContext(relaunch, { exists: false, text: '', hash: '' });
-  await expect(page.locator(t('ade-context-none'))).toContainText('context.md');
+  await expect(page.locator(t('ade-context-none'))).toContainText('No context yet');
 });
 
 test('the resume note names providers that keep the recorded context', async ({ relaunch }) => {

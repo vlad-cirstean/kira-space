@@ -85,7 +85,7 @@ test('contract: a repo without a file shows the template and Save creates it', a
   await expect(page.locator(t('repo-file-none'))).toBeVisible();
   await expect.poll(() => codeEditorText(page.locator(t('repo-file-text')))).toBe(fx.text);
   await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
-  await expect(page.locator(t('repo-file-save'))).toHaveText('Create settings file');
+  await expect(page.locator(t('repo-file-save'))).toHaveText('Create settings');
   await page.locator(t('repo-file-save')).click();
   await expect.poll(() => calls(control, IPC.repoConfigSaveFile)).toHaveLength(1);
   expect(calls(control, IPC.repoConfigSaveFile)[0]?.args).toEqual({

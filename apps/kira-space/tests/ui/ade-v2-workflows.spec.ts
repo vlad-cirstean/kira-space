@@ -58,9 +58,7 @@ test('an empty folder shows the explanation', async ({ relaunch }) => {
       response: { dir: '~/.kira-space/config/workflows', workflows: [] },
     },
   ]);
-  await expect(page.locator(t('ade-wf-empty'))).toContainText(
-    'No workflows yet. Workflows are YAML files in ~/.kira-space/config/workflows.',
-  );
+  await expect(page.locator(t('ade-wf-empty'))).toContainText('No workflows yet.');
 });
 
 test('the list shows each file with its steps and flags a broken one', async ({ relaunch }) => {
@@ -391,7 +389,7 @@ test('YAML mode validates while typing and saves the text on Save', async ({ rel
   const area = page.locator(t('ade-wf-yaml'));
   await replaceCodeEditorText(page, area, `${await codeEditorText(area)}\n# note\n`);
   await expect(page.locator(t('ade-wf-yaml-msg'))).toContainText(
-    '✓ Valid, the form and the plan use this file',
+    '✓ Valid, the form and the plan use this version',
   );
   expect(calls(control, IPC.adeTaskSaveWorkflowYaml)).toHaveLength(0);
   await page.locator(t('ade-wf-save')).click();

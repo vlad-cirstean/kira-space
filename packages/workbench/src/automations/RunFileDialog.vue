@@ -19,6 +19,7 @@ import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
+import { configName } from '@workbench/config/configName';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
@@ -68,7 +69,7 @@ const applyForm = useRunForm(() => props.file);
 
 const view = computed(() => query.data.value);
 const script = computed(() => ctx.scripts.records().find((s) => s.id === view.value?.id));
-const title = computed(() => script.value?.name ?? props.file);
+const title = computed(() => script.value?.name ?? configName(props.file));
 
 // Write-only typed values of secret params, component-local so they die with the dialog.
 const secretDraft = ref<SecretValues>({});

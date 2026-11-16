@@ -133,7 +133,7 @@ test('Import lists the items with states, secrets as dots, and sends the picked 
   expect(args.items.find((i) => i.id === 'mcp/gh')).toEqual({ id: 'mcp/gh', mode: '' });
   expect(args.items.find((i) => i.id === 'context')).toEqual({ id: 'context', mode: 'append' });
   expect(args.items.some((i) => i.id === 'mcp/old')).toBe(false);
-  await expect(dialog.locator(t('ade-port-written'))).toContainText('settings.yaml');
+  await expect(dialog.locator(t('ade-port-written'))).toHaveCount(0);
 });
 
 test('a preview that went stale offers Preview again', async ({ relaunch }) => {

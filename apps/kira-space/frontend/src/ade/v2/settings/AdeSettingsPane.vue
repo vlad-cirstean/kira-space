@@ -41,7 +41,7 @@ useShortcut(root, ['form.save'], () => void saveNow());
       <div class="flex min-w-0 flex-col gap-3">
         <ConfigFileBar v-if="view.exists" :error="view.problem" />
         <div v-else class="text-kira-sm text-subtle" data-testid="ade-settings-none">
-          {{ t('space.ade.settings.none.hint', { path: view.path }) }}
+          {{ t('space.ade.settings.none.hint') }}
         </div>
         <div
           v-if="view.lastGood"

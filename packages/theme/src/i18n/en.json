@@ -100,13 +100,13 @@
         "status": "Not valid"
       },
       "field": {
-        "aria": "Run file text"
+        "aria": "Script YAML"
       },
       "lastGood": {
-        "hint": "The file has an error. Runs use the last good version."
+        "hint": "This script has an error. Runs use the last good version."
       },
       "secrets": {
-        "hint": "Saved in the keychain. The file lists only the parameter name.",
+        "hint": "Saved in the keychain. The script lists only the parameter name.",
         "title": "Secret values"
       }
     },
@@ -461,7 +461,7 @@
         "label": "Default: {value}"
       },
       "editFile": {
-        "label": "Edit file"
+        "label": "Edit script"
       },
       "editTarget": {
         "label": "Set target…"
@@ -9166,16 +9166,16 @@
           "aria": "Agent context"
         },
         "lastGood": {
-          "hint": "The file has an error. Agents get the last good version."
+          "hint": "This text has an error. Agents get the last good version."
         },
         "none": {
-          "hint": "No context yet. Save creates {path}."
+          "hint": "No context yet. Write it below and save."
         },
         "overSize": {
           "error": "Over the limit of {max} bytes. Agents do not use this text."
         },
         "readOnly": {
-          "hint": "This file is too large or not valid text. Open it in an editor to change it."
+          "hint": "This content is too large or not valid text to edit."
         },
         "resume": {
           "hint": "A resumed {label} conversation keeps the context it started with until it compacts."
@@ -10376,7 +10376,7 @@
           "emptyHint": "Import a repository to configure it."
         },
         "discardConfirm": {
-          "body": "Your edits to this repository’s settings file are not saved."
+          "body": "Your edits to this repository’s settings are not saved."
         },
         "empty": {
           "empty": "No repositories imported"
@@ -10830,10 +10830,10 @@
           "body": "Your unsaved changes to the agent settings are lost."
         },
         "field": {
-          "aria": "Agent settings file"
+          "aria": "Agent settings YAML"
         },
         "none": {
-          "hint": "No settings yet. Save creates {path}."
+          "hint": "No settings yet. Write them below and save."
         },
         "overSize": {
           "error": "Over the limit of {max} bytes. Agents do not use these settings."
@@ -10859,9 +10859,9 @@
             "hint": "The value is sent once and never shown again.",
             "title": "Set {name}"
           },
-          "hint": "Write {ref} in the file. Values stay sealed on this computer.",
+          "hint": "Write {ref} in the settings. Values stay sealed on this computer.",
           "none": {
-            "hint": "No secrets yet. Reference one in the file to see it here."
+            "hint": "No secrets yet. Reference one in the settings to see it here."
           },
           "set": {
             "label": "Set value",
@@ -11071,11 +11071,11 @@
       },
       "steps": {
         "delete": {
-          "body": "Delete the library step “{name}”? The file is removed.",
+          "body": "Delete the library step “{name}”? It is removed from the library.",
           "title": "Delete step"
         },
         "empty": {
-          "emptyHint": "No library steps yet. Library steps are YAML files in {dir}."
+          "emptyHint": "No library steps yet."
         },
         "intro": {
           "body": "A library step is a step that many workflows share. Edit it once and every workflow that uses it changes. Tasks already started keep the steps they began with."
@@ -11084,7 +11084,7 @@
           "aria": "Step editor mode"
         },
         "noValid": {
-          "body": "This step file has no valid version yet."
+          "body": "This step has no valid version yet."
         },
         "usedBy": {
           "hint": "Used by {workflows}. Detach the step there before deleting it.",
@@ -11356,9 +11356,6 @@
             "label": "Runs on"
           }
         },
-        "fileName": {
-          "description": "Saved as {file}. A new name renames the file on save."
-        },
         "gate": {
           "approval": {
             "option": "Wait for my approval"
@@ -11384,7 +11381,7 @@
             "emptyHint": "Select a step to edit it. Drag from a result dot to another step to set where it goes. {tokens} are filled in per run."
           },
           "noValid": {
-            "body": "This file has no valid version yet."
+            "body": "This workflow has no valid version yet."
           },
           "removeStepConfirm": {
             "body": "The step “{name}” and its results are removed from this workflow draft.",
@@ -11443,7 +11440,7 @@
         },
         "page": {
           "empty": {
-            "emptyHint": "No workflows yet. Workflows are YAML files in {dir}."
+            "emptyHint": "No workflows yet."
           },
           "import": {
             "label": "Import YAML"
@@ -11751,7 +11748,7 @@
             "error": "✕ Line {line}: {text} (the last valid version stays in use)."
           },
           "valid": {
-            "status": "✓ Valid, the form and the plan use this file"
+            "status": "✓ Valid, the form and the plan use this version"
           }
         }
       }
@@ -12305,7 +12302,7 @@
             "label": "Script to run"
           },
           "secretGiven": {
-            "error": "A secret param takes the value saved in the script, not one in the repository file: {names}."
+            "error": "A secret param takes the value saved in the script, not one in the repository settings: {names}."
           },
           "secretParams": {
             "hint": "Saved with the script: {names}."
@@ -12314,7 +12311,7 @@
             "hint": "No value saved yet for {names}."
           },
           "smart": {
-            "error": "A repository file runs a normal script, not the smart script “{script}”."
+            "error": "Repository settings run a normal script, not the smart script “{script}”."
           },
           "unknownParams": {
             "error": "Not params of “{script}”: {names}."
@@ -12464,27 +12461,27 @@
           "label": "Copy for shared config"
         },
         "create": {
-          "label": "Create settings file"
+          "label": "Create settings"
         },
         "field": {
-          "aria": "Repository settings file"
+          "aria": "Repository settings YAML"
         },
         "lastGood": {
-          "hint": "The file has an error. Kira Space uses the last good settings."
+          "hint": "These settings have an error. Kira Space uses the last good version."
         },
         "none": {
-          "hint": "No settings file for this repository yet. Create one to set its nickname, branches, worktree and Git options."
+          "hint": "No settings for this repository yet. Create them to set its nickname, branches, worktree and Git options."
         },
         "otherFiles": {
-          "empty": "No other settings files",
-          "hint": "Files in the repos folder that configure no listed repository, or whose path an earlier file already owns.",
-          "label": "Other files"
+          "empty": "No other settings",
+          "hint": "Settings that configure no listed repository, or a repository other settings already configure.",
+          "label": "Other settings"
         },
         "problem": {
-          "aria": "Settings file has an error"
+          "aria": "Settings have an error"
         },
         "tabs": {
-          "aria": "Settings file view"
+          "aria": "Settings view"
         }
       },
       "tree": {
@@ -13308,10 +13305,10 @@
           "status": "Has errors"
         },
         "lastGood": {
-          "hint": "The file has an error. The app uses the last good version."
+          "hint": "This has an error. The app uses the last good version."
         },
         "problems": {
-          "aria": "Config file problems"
+          "aria": "Config problems"
         },
         "secrets": {
           "clear": {
@@ -13327,7 +13324,7 @@
           },
           "hint": "Write {ref} in a value. Values stay sealed on this computer.",
           "none": {
-            "hint": "No secrets yet. Reference one in a file to see it here."
+            "hint": "No secrets yet. Reference one in a collection or environment to see it here."
           },
           "set": {
             "label": "Enter value",
@@ -13345,12 +13342,12 @@
           }
         },
         "skipped": {
-          "hint": "The rest of the file is loaded. An item that loaded before keeps its last good version. Fix the file to load the rest.",
+          "hint": "The rest of the collection is loaded. An item that loaded before keeps its last good version. Fix the items to load them.",
           "label": "Line {line}, {label}: {message}",
           "title": "{count} item in {name} isn’t loaded | {count} items in {name} aren’t loaded"
         },
         "variables": {
-          "empty": "No variables in this file"
+          "empty": "No variables here"
         }
       },
       "copyAsCurl": {
@@ -13595,7 +13592,7 @@
           "label": "Edit environment"
         },
         "file": {
-          "aria": "Variables file"
+          "aria": "Variables YAML"
         },
         "name": {
           "aria": "Variable name"
@@ -13606,7 +13603,7 @@
           }
         },
         "tabs": {
-          "aria": "Variables file sections"
+          "aria": "Variables sections"
         },
         "title": "Variables of {name}",
         "value": {
@@ -14051,21 +14048,21 @@
     "connections": {
       "file": {
         "field": {
-          "aria": "Connection file text"
+          "aria": "Connection YAML"
         },
         "lastGood": {
-          "hint": "The file has an error. Kira uses the last valid version until you fix it."
+          "hint": "This connection has an error. Kira uses the last valid version until you fix it."
         },
         "secrets": {
           "clearConfirm": {
-            "body": "The saved value is deleted. The file keeps the reference.",
+            "body": "The saved value is deleted. The connection keeps the reference.",
             "title": "Clear the secret “{name}”?"
           },
           "kindUri": {
             "label": "URI"
           },
           "none": {
-            "hint": "This file references no secrets."
+            "hint": "This connection references no secrets."
           },
           "storageOff": {
             "hint": "Secure storage is off, so secrets can’t be saved or read."
@@ -14074,7 +14071,7 @@
             "aria": "New value for {name}"
           }
         },
-        "title": "Connection file: {name}"
+        "title": "Connection: {name}"
       }
     },
     "console": {
@@ -17094,7 +17091,7 @@
           "label": "Disconnect"
         },
         "editFile": {
-          "label": "Edit connection file…"
+          "label": "Edit connection…"
         },
         "editSchema": {
           "label": "Edit schema (DDL)…"
@@ -17533,7 +17530,7 @@
           "label": "Enable the Studio MCP server"
         },
         "exposed": {
-          "description": "Deny by default. Only connections whose file turns MCP on are visible to an MCP client through this server.",
+          "description": "Deny by default. Only connections with MCP turned on are visible to an MCP client through this server.",
           "label": "Exposed connections",
           "status": "Exposed"
         },

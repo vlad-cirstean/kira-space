@@ -122,7 +122,7 @@ test('a missing file shows the none hint', async ({ relaunch }) => {
     hash: '',
     secrets: [],
   });
-  await expect(page.locator(t('ade-settings-none'))).toContainText('settings.yaml');
+  await expect(page.locator(t('ade-settings-none'))).toContainText('No settings yet');
   await expect(page.locator(t('ade-settings-secrets-none'))).toBeVisible();
 });
 
@@ -144,7 +144,7 @@ test('a save refused for a changed file offers Reload and Overwrite', async ({ r
   const { window: page, control } = await openSettings(relaunch, {}, [
     {
       channel: IPC.agentSettingsSave,
-      error: { code: 'E_CONFLICT', message: 'The settings file changed since you loaded it.' },
+      error: { code: 'E_CONFLICT', message: 'The agent settings changed since you loaded them.' },
     },
   ]);
   await replaceCodeEditorText(page, page.locator(t('ade-settings-text')), 'env:\n  A: b\n');

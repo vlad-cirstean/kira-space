@@ -138,7 +138,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
         }}</DialogTitle>
       </DialogHeader>
       <DialogBody>
-        <AdePortResult v-if="result" :result="result" />
+        <AdePortResult v-if="result" :result="result" :show-written="false" />
         <template v-else>
           <FieldDescription>{{ t('space.ade.port.importDialog.hint') }}</FieldDescription>
           <template v-if="error">

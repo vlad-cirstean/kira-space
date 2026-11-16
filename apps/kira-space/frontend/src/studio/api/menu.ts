@@ -6,7 +6,7 @@ import type { CollectionRowVm } from './state/collections';
 
 // The row and background context menus, built with the existing MenuItem type from
 // state/contextMenu.ts. The collections are config files: each action here is an edit of the
-// collection file, and Open file / Reveal show the file itself.
+// collection file.
 //
 // The actions themselves are injected rather than imported, so this module stays free of both the
 // store's mutation half and the request-view's open path — the menu is a description, and

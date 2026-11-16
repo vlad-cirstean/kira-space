@@ -14,6 +14,7 @@ import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
+import { configName } from '@workbench/config/configName';
 import { computed, ref, watch } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeTip from '../AdeTip.vue';
@@ -31,7 +32,6 @@ const newStep = useNewStep();
 const listError = ref('');
 
 const entries = computed(() => workflows.data.value?.steps ?? []);
-const dir = computed(() => workflows.data.value?.stepsDir ?? '');
 const current = computed(
   () => entries.value.find((e) => e.fileName === wfUi.stepFile) ?? entries.value[0] ?? null,
 );
@@ -108,7 +108,7 @@ async function createNew(kind: StepKind): Promise<void> {
           kind="empty"
           data-testid="ade-step-empty"
         >
-          {{ t('space.ade.steps.empty.emptyHint', { dir }) }}
+          {{ t('space.ade.steps.empty.emptyHint') }}
         </InlineState>
         <button
           v-for="e in entries"
@@ -147,7 +147,8 @@ async function createNew(kind: StepKind): Promise<void> {
     </div>
     <div :class="cn(paneFrame, 'flex flex-1 flex-col')">
       <PanelHeader>{{
-        current?.step?.name ?? current?.fileName ?? t('space.ade.workflows.tabs.steps.label')
+        current?.step?.name ??
+        (current ? configName(current.fileName) : t('space.ade.workflows.tabs.steps.label'))
       }}</PanelHeader>
       <div class="min-h-0 flex-1 overflow-auto p-4">
         <AdeLibraryStepEditor v-if="current" :key="current.fileName" :entry="current" />

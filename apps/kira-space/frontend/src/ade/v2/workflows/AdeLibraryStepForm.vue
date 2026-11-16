@@ -89,7 +89,6 @@ onBeforeUnmount(() => {
         :key="draft.step.id"
         :step="draft.step"
         :steps="draft.draft.steps"
-        :file-name="entry.fileName"
         library
       />
     </div>
