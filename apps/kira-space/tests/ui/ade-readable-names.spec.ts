@@ -44,7 +44,9 @@ test('saving a step under a new name follows the renamed file', async ({ relaunc
   ]);
   await page.locator(t('ade-wf-tab-steps')).click();
   await page.locator(`${t('ade-step-row')}[data-file="new-step.yaml"]`).click();
-  await expect(page.locator(t('ade-step-file'))).toContainText('new-step.yaml');
+  await expect(
+    page.locator(`${t('ade-step-row')}[data-file="new-step.yaml"][data-selected]`),
+  ).toHaveCount(1);
   await page.locator(t('ade-wf-step-name')).fill('Lint repo');
   control.respond(IPC.adeTaskWorkflows, renamedList);
   await page.locator(t('ade-wf-save')).click();
@@ -53,7 +55,9 @@ test('saving a step under a new name follows the renamed file', async ({ relaunc
     fileName: 'new-step.yaml',
     step: { id: 'new-step', name: 'Lint repo' },
   });
-  await expect(page.locator(t('ade-step-file'))).toContainText('lint-repo.yaml');
+  await expect(
+    page.locator(`${t('ade-step-row')}[data-file="lint-repo.yaml"][data-selected]`),
+  ).toHaveCount(1);
   await expect(page.locator(t('ade-wf-step-name'))).toHaveValue('Lint repo');
   await expect(
     page.locator(`${t('ade-step-row')}[data-file="lint-repo.yaml"] ${t('ade-step-row-name')}`),
@@ -107,6 +111,8 @@ test('saving a workflow under a new name stays on the renamed file', async ({ re
   });
   await page.locator(t('ade-wf-save')).click();
   await expect.poll(() => calls(control, IPC.adeTaskSaveWorkflow)).toHaveLength(1);
-  await expect(page.locator(t('ade-wf-form-file'))).toContainText('release.yaml');
+  await expect(
+    page.locator(`${t('ade-wf-row')}[data-file="release.yaml"][data-selected]`),
+  ).toHaveCount(1);
   await expect(page.locator(t('ade-wf-form-name'))).toHaveValue(renamedWorkflow.workflow.name);
 });

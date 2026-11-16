@@ -117,6 +117,7 @@ async function createNew(kind: StepKind): Promise<void> {
           :class="rowClass(current?.fileName === e.fileName)"
           data-testid="ade-step-row"
           :data-file="e.fileName"
+          :data-selected="current?.fileName === e.fileName || undefined"
           @click="pick(e.fileName)"
         >
           <span class="flex w-full items-center gap-1.5">

@@ -161,6 +161,7 @@ async function createNew(): Promise<void> {
           :class="rowClass(selectedFile === e.fileName)"
           data-testid="ade-wf-row"
           :data-file="e.fileName"
+          :data-selected="selectedFile === e.fileName || undefined"
           @click="pick(e.fileName)"
         >
           <span class="flex w-full items-center gap-1.5">
