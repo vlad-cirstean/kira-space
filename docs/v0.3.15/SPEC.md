@@ -1,6 +1,6 @@
 # v0.3.15
 
-Task-list ergonomics, prompt/dialog fixes, status bar, YAML wording cleanup. Phases `P646` to `P651`.
+Task-list ergonomics, prompt/dialog fixes, status bar, YAML wording cleanup. Phases `P646` to `P652`.
 
 User gates: P646 ships a design mock only; implementation of the task-list actions waits for user approval of it. After approval, P647 to P649 run as 3 parallel streams.
 
