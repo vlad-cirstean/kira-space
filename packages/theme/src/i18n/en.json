@@ -18499,16 +18499,16 @@
         "cores": {
           "label": "Cores"
         },
-        "cpuShare": {
-          "label": "{percent} of total capacity"
-        },
         "interval": {
-          "hint": "Includes helper processes. Updates every 5 seconds."
+          "hint": "CPU is a share of total capacity. Agents include their subprocesses. Updates every 5 seconds."
         },
         "processes": {
           "label": "Processes"
         },
-        "tooltip": "{app} resource use"
+        "tooltip": "{app} resource use",
+        "total": {
+          "label": "Total"
+        }
       },
       "ops": {
         "notStoppable": {

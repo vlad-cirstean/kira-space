@@ -169,7 +169,9 @@ test('a pushed kira:app:metrics sample renders CPU and memory in the status bar'
     cpuPercent: 3.4,
     memoryBytes: 512 * 1024 * 1024,
     logicalCPUs: 8,
-    processCount: 2,
+    processCount: 7,
+    app: { cpuPercent: 1.2, memoryBytes: 400 * 1024 * 1024, processCount: 4 },
+    agents: { cpuPercent: 2.2, memoryBytes: 112 * 1024 * 1024, processCount: 3 },
   };
   await emitWailsEvent(window, IPC.appMetrics, sample);
 
@@ -190,12 +192,20 @@ test('a pushed kira:app:metrics sample renders CPU and memory in the status bar'
   );
   const row = (label: string) =>
     window.locator(`[data-testid="tooltip-details-row"][data-label="${label}"]`);
-  await expect(row('CPU')).toContainText('3.4% of total capacity');
   await expect(row('Cores')).toContainText('8');
-  await expect(row('Memory')).toContainText('512');
-  await expect(row('Processes')).toContainText('2');
+  const cell = (group: string, col: string) =>
+    window.locator(`[data-testid="app-metrics-row"][data-group="${group}"] [data-col="${col}"]`);
+  await expect(cell('app', 'cpu')).toHaveText('1.2%');
+  await expect(cell('app', 'memory')).toContainText('400');
+  await expect(cell('app', 'processes')).toHaveText('4');
+  await expect(cell('agents', 'cpu')).toHaveText('2.2%');
+  await expect(cell('agents', 'memory')).toContainText('112');
+  await expect(cell('agents', 'processes')).toHaveText('3');
+  await expect(cell('total', 'cpu')).toHaveText('3.4%');
+  await expect(cell('total', 'memory')).toContainText('512');
+  await expect(cell('total', 'processes')).toHaveText('7');
   await expect(window.locator('[data-testid="tooltip-details-hint"]')).toHaveText(
-    'Includes helper processes. Updates every 5 seconds.',
+    'CPU is a share of total capacity. Agents include their subprocesses. Updates every 5 seconds.',
   );
 
   // The tooltip sits on the elevated ground, draws no arrow and keeps off its trigger.

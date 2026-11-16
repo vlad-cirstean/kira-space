@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AppMetricsSample } from '@shared/protocol/events';
+import type { AppMetricsSample, AppMetricsUsage } from '@shared/protocol/events';
 import TooltipDetails from '@theme/components/TooltipDetails.vue';
 import { t } from '@theme/i18n';
 import { formatBytes, formatPercent } from '@workbench/behaviour/format';
@@ -11,25 +11,40 @@ import { computed } from 'vue';
 // each app's own appMetrics store (createAppMetricsStore.ts).
 const props = defineProps<{ sample: AppMetricsSample | null; appName: string }>();
 
-// Summed across every process metrics.Sample covers (internal/metrics/ticker.go's Interval, 5s) —
-// a single app-wide figure, not a per-process breakdown.
+// Headline is the total across app and agent processes (internal/metrics/ticker.go's Interval, 5s);
+// the tooltip splits it into App and Agents.
 const cpuLabel = computed(() => (props.sample ? formatPercent(props.sample.cpuPercent) : ''));
 const memLabel = computed(() => {
   const sample = props.sample;
   return sample ? formatBytes(sample.memoryBytes) : '';
 });
 
-const rows = computed(() => {
+const rows = computed(() =>
+  props.sample
+    ? [
+        {
+          label: t('workbench.statusBar.metrics.cores.label'),
+          value: String(props.sample.logicalCPUs),
+        },
+      ]
+    : [],
+);
+
+// App, Agents, Total: the two groups are disjoint, the top-level sample figures are their sum.
+const breakdown = computed(() => {
   const sample = props.sample;
   if (!sample) return [];
+  const line = (group: string, label: string, u: AppMetricsUsage) => ({
+    group,
+    label,
+    cpu: formatPercent(u.cpuPercent),
+    memory: formatBytes(u.memoryBytes),
+    processes: String(u.processCount),
+  });
   return [
-    {
-      label: t('docker.metric.cpu.label'),
-      value: t('workbench.statusBar.metrics.cpuShare.label', { percent: cpuLabel.value }),
-    },
-    { label: t('workbench.statusBar.metrics.cores.label'), value: String(sample.logicalCPUs) },
-    { label: t('common.module.memory.label'), value: memLabel.value },
-    { label: t('workbench.statusBar.metrics.processes.label'), value: String(sample.processCount) },
+    line('app', t('memory.start.event.source.ui.label'), sample.app),
+    line('agents', t('mobile.shell.heading.title'), sample.agents),
+    line('total', t('workbench.statusBar.metrics.total.label'), sample),
   ];
 });
 </script>
@@ -50,7 +65,32 @@ const rows = computed(() => {
         :title="t('workbench.statusBar.metrics.tooltip', { app: appName })"
         :rows="rows"
         :hint="t('workbench.statusBar.metrics.interval.hint')"
-      />
+      >
+        <div
+          class="grid grid-cols-[auto_repeat(3,auto)] gap-x-3 gap-y-0.5 tabular-nums"
+          data-testid="app-metrics-breakdown"
+        >
+          <div class="contents text-muted-foreground">
+            <span />
+            <span class="text-right">{{ t('docker.metric.cpu.label') }}</span>
+            <span class="text-right">{{ t('common.module.memory.label') }}</span>
+            <span class="text-right">{{ t('workbench.statusBar.metrics.processes.label') }}</span>
+          </div>
+          <div
+            v-for="row in breakdown"
+            :key="row.group"
+            class="contents"
+            :class="{ 'font-medium': row.group === 'total' }"
+            data-testid="app-metrics-row"
+            :data-group="row.group"
+          >
+            <span>{{ row.label }}</span>
+            <span class="text-right" data-col="cpu">{{ row.cpu }}</span>
+            <span class="text-right" data-col="memory">{{ row.memory }}</span>
+            <span class="text-right" data-col="processes">{{ row.processes }}</span>
+          </div>
+        </div>
+      </TooltipDetails>
     </template>
   </StatusBarItem>
 </template>

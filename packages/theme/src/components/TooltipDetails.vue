@@ -27,6 +27,7 @@ defineProps<{
         <dd class="tabular-nums wrap-anywhere" :class="row.class">{{ row.value }}</dd>
       </div>
     </dl>
+    <slot />
     <FieldDescription v-if="hint" data-testid="tooltip-details-hint">{{ hint }}</FieldDescription>
   </div>
 </template>
