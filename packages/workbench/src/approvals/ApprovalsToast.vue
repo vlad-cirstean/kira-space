@@ -3,13 +3,12 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { floatingSurface } from '@theme/lib/frames';
-import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed } from 'vue';
 import { formatClock, useCountdown } from './useCountdown';
 
-const props = defineProps<{ items: ApprovalItem[] }>();
+const props = defineProps<{ items: ApprovalItem[]; deferred?: boolean }>();
+const emit = defineEmits<{ show: [] }>();
 
-const store = useApprovalsStore();
 const soonest = computed(() => {
   const times = props.items.map((i) => i.expiresAt).filter((e) => e > 0);
   return times.length ? Math.min(...times) : null;
@@ -29,6 +28,13 @@ const remaining = useCountdown(() => soonest.value);
         {{ t('workbench.approvals.toast.count.status', { count: items.length }) }}
       </span>
       <span
+        v-if="deferred"
+        class="text-kira-sm text-muted-foreground"
+        data-testid="approvals-toast-typing"
+      >
+        {{ t('workbench.prompts.toast.typing.status') }}
+      </span>
+      <span
         v-if="remaining !== null"
         class="text-kira-sm text-muted-foreground"
         data-testid="approvals-toast-expires"
@@ -40,7 +46,7 @@ const remaining = useCountdown(() => soonest.value);
       variant="dialog-primary"
       size="kira-lg"
       data-testid="approvals-toast-review"
-      @click="store.open()"
+      @click="emit('show')"
     >
       {{ t('common.action.show.label') }}
     </Button>

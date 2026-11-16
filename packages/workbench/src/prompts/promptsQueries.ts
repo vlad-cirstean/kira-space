@@ -2,7 +2,7 @@ import type { QuitStatus, RoutedPrompt } from '@shared/domain/prompts';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { createSharedComposable, useWindowFocus } from '@vueuse/core';
 import { queryClient } from '@workbench/state/queryClient';
-import { type InjectionKey, inject, onScopeDispose, ref, watch } from 'vue';
+import { type InjectionKey, inject, onScopeDispose, ref, shallowRef, watch } from 'vue';
 
 // P246: client side of the Go prompt router (internal/prompts). Entries are metadata; each kind's
 // own store holds the content and the answer.
@@ -58,6 +58,17 @@ export const usePromptVisibility = createSharedComposable(() => {
   const revealed = ref<string | null>(null);
   // Set by PromptHost: a prompt is on screen in this window.
   const shown = ref(false);
+  // Set by PromptHost: the head prompt waits for the user to stop typing; `release` shows it now.
+  const deferred = shallowRef<{ entry: RoutedPrompt; more: number } | null>(null);
+  let releaseFn: () => void = () => {};
+
+  function onRelease(fn: () => void): void {
+    releaseFn = fn;
+  }
+
+  function release(): void {
+    releaseFn();
+  }
 
   function hide(id: string): void {
     if (!hidden.value.includes(id)) hidden.value = [...hidden.value, id];
@@ -74,7 +85,7 @@ export const usePromptVisibility = createSharedComposable(() => {
     if (revealed.value && !live.includes(revealed.value)) revealed.value = null;
   }
 
-  return { hidden, revealed, shown, hide, reveal, prune };
+  return { hidden, revealed, shown, deferred, onRelease, release, hide, reveal, prune };
 });
 
 /** Moves a prompt to this window and shows it, even after Escape hid it here. */

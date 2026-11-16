@@ -21,6 +21,7 @@ import { workbenchHostKey } from '@workbench/host';
 import { llmPromptsControlKey } from '@workbench/llmPrompts/queries';
 import { memoryModuleKey } from '@workbench/memory/module';
 import PromptHost from '@workbench/prompts/PromptHost.vue';
+import PromptsToast from '@workbench/prompts/PromptsToast.vue';
 import { promptsControlKey } from '@workbench/prompts/promptsQueries';
 import QuitPrompt from '@workbench/prompts/QuitPrompt.vue';
 import UpdatePrompt from '@workbench/prompts/UpdatePrompt.vue';
@@ -253,6 +254,7 @@ function onToggleKeepAwake(): void {
     <PromptHost :kinds="promptKinds" />
     <CornerStack>
       <ApprovalsSurface />
+      <PromptsToast />
       <ConfigSyncToast v-if="mainWindow()" />
     </CornerStack>
     <ConfirmDialog />

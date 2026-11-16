@@ -18400,6 +18400,13 @@
         "empty": "No operations yet"
       }
     },
+    "prompts": {
+      "toast": {
+        "typing": {
+          "status": "Opens when you pause typing"
+        }
+      }
+    },
     "quitConfirm": {
       "agents": {
         "label": "{agent} sessions: {count}"
