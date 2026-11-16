@@ -13,25 +13,6 @@ export function statusWhy(task: Task, blocked: boolean, progress: TaskProgress):
   return progress.step ? t('space.ade.panelFacts.why.step.hint', { step: progress.step.name }) : '';
 }
 
-/** `Today–Wed 23 · 3 branches in api, web-app · 1/5 steps`. */
-export function taskFacts(i: {
-  span: string;
-  branches: number;
-  repos: string[];
-  doneSteps: number;
-  steps: number;
-}): string {
-  const parts = [
-    i.span,
-    i.repos.length
-      ? t('space.ade.panelFacts.branchesIn.label', { count: i.branches, repos: i.repos.join(', ') })
-      : t('space.ade.panelFacts.branches.label', { count: i.branches }),
-  ];
-  if (i.steps > 0)
-    parts.push(t('space.ade.panelFacts.steps.label', { count: i.steps, done: i.doneSteps }));
-  return parts.join(' · ');
-}
-
 /** A remote operation's failure as one line: the remote's own words when it sent any. */
 export function remoteErrorText(e: RemoteOpError): string {
   return e.remoteMessage

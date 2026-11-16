@@ -12,8 +12,7 @@ import AdeChip from '../AdeChip.vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
 import AdeTip from '../AdeTip.vue';
 import AdeAutomationsBlock from '../automation/AdeAutomationsBlock.vue';
-import { dayLabel, LATER } from '../board/calendar';
-import { taskFacts, taskPatch } from '../board/panelFacts';
+import { taskPatch } from '../board/panelFacts';
 import { taskReviewTip } from '../board/reviewCode';
 import AdeDetailsTab from '../details/AdeDetailsTab.vue';
 import type { CardModel, PlanModel } from '../plan/usePlanModel';
@@ -29,7 +28,7 @@ import AdeMainTab from './AdeMainTab.vue';
 import AdePanelForwardBar from './AdePanelForwardBar.vue';
 import AdePanelFrame from './AdePanelFrame.vue';
 
-// Task mode: header facts, then the Main, Details and Sessions tabs.
+// Task mode: header, then the Main, Details and Sessions tabs.
 const props = defineProps<{ card: CardModel; model: PlanModel }>();
 
 const ui = useAdeBoardUiStore();
@@ -77,28 +76,6 @@ const chip = computed(() =>
 const label = computed(() =>
   props.card.parked ? t('space.ade.board.notMerging.label') : props.card.status.name,
 );
-
-const facts = computed(() => {
-  const e = props.card.entry;
-  const cal = props.model.cal;
-  const shelf = props.card.shelf;
-  const span =
-    shelf === 'backlog'
-      ? t('space.common.backlog.label')
-      : e.day === LATER
-        ? t('common.later.label')
-        : dayLabel(cal, e.day) + (e.days.length > 1 ? `–${dayLabel(cal, e.end)}` : '');
-  const repos: string[] = [];
-  for (const row of props.card.rows) if (!repos.includes(row.repo)) repos.push(row.repo);
-  const p = props.card.progress;
-  return taskFacts({
-    span,
-    branches: props.card.rows.length,
-    repos,
-    doneSteps: p.doneSteps,
-    steps: p.totalSteps,
-  });
-});
 </script>
 
 <template>
@@ -166,9 +143,6 @@ const facts = computed(() => {
       <Alert v-if="titleEdit.error.value" variant="error" data-testid="ade-title-error"
         ><AlertDescription>{{ titleEdit.error.value }}</AlertDescription></Alert
       >
-      <div class="truncate text-kira-sm text-muted-foreground" data-testid="ade-panel-facts">{{
-        facts
-      }}</div>
       <Alert
         v-if="ui.actionError[card.task.id]"
         variant="error"

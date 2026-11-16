@@ -9994,15 +9994,6 @@
         }
       },
       "panelFacts": {
-        "branches": {
-          "label": "{count} branch | {count} branches"
-        },
-        "branchesIn": {
-          "label": "{count} branch in {repos} | {count} branches in {repos}"
-        },
-        "steps": {
-          "label": "{done}/{count} step | {done}/{count} steps"
-        },
         "why": {
           "finished": {
             "hint": "The workflow is finished."
