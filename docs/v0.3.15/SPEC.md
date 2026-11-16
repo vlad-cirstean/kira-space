@@ -51,8 +51,8 @@ Implement approved P646 design.
 
 Goal: apply minor versions one at a time, so legacy migration and backward-compat code can be pruned per minor. The updater is the main part; retention supports it. Add the "Minor bumps drop legacy code" rule to `CLAUDE.md` (done at chapter open).
 
-- Updater offers the next step, never a jump: an install on `X.Y.z` is offered `X.(Y+1).0` if a newer minor exists, otherwise the newest patch of its own minor. Clean install gets the latest release. Today it reads `releases/latest` (`docs/PACKAGING.md` §7), so it needs a release listing and a stepping rule.
-- Retention in a GitHub Action (separate workflow, runs after `release.yml` succeeds and on manual dispatch, `contents: write` on that job only): keep assets of every `vX.Y.0` release and of the last 5 patches of the current minor. Delete only release assets, never tags or release pages. Dry-run mode first. Never touch `releases/latest`. Updater skips a release with no assets.
+- Updater offers the next step, never a jump: an install on `X.Y.z` is offered the last patch of `X.Y` first, then `X.(Y+1).0`, then the last patch of `X.(Y+1)`, and so on. The last patch holds all of a minor's migrations. Clean install gets the latest release. Today it reads `releases/latest` (`docs/PACKAGING.md` §7), so it needs a release listing and a stepping rule.
+- Retention in a GitHub Action (separate workflow, runs after `release.yml` succeeds and on manual dispatch, `contents: write` on that job only): keep assets of every `vX.Y.0` release, the last patch of every minor (the update path needs it), and the last 5 patches of the current minor. Delete only release assets, never tags or release pages. Dry-run mode first. Never touch `releases/latest`. Updater skips a release with no assets.
 - Update `docs/PACKAGING.md` §7 and the architecture doc.
 
 ## P653 Close chapter
