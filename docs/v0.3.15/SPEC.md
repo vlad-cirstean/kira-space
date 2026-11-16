@@ -1,6 +1,6 @@
 # v0.3.15
 
-Task-list ergonomics, prompt/dialog fixes, status bar, YAML wording cleanup. Phases `P646` to `P652`.
+Task-list ergonomics, prompt/dialog fixes, status bar, YAML wording cleanup. Phases `P646` to `P653`.
 
 User gates: P646 ships a design mock only; implementation of the task-list actions waits for user approval of it. After approval, P647 to P649 run as 3 parallel streams.
 
@@ -12,7 +12,8 @@ User gates: P646 ships a design mock only; implementation of the task-list actio
 | P649 | Drop YAML path and edit-config wording app-wide | Todo |
 | P650 | Task-list polish | Todo |
 | P651 | Task-list actions per approved design | Todo |
-| P652 | Close chapter | Todo |
+| P652 | Minor-stepped updates and release retention | Todo |
+| P653 | Close chapter | Todo |
 
 ## P646 Task-list actions design mock
 
@@ -46,6 +47,14 @@ Remove file paths and "open file" affordances pointing to YAML files. Remove "ed
 
 Implement approved P646 design.
 
-## P652 Close chapter
+## P652 Minor-stepped updates and release retention
+
+Goal: apply minor versions one at a time, so legacy migration and backward-compat code can be pruned per minor.
+
+- Updater offers the next step, never a jump: an install on `X.Y.*` first gets the newest patch of `X.Y`, then `X.(Y+1).0`, then the newest patch of that minor, and so on. Today it reads `releases/latest` (`docs/PACKAGING.md` §7), so it needs a release listing and a stepping rule.
+- Retention in a GitHub Action (separate workflow, runs after `release.yml` succeeds and on manual dispatch, `contents: write` on that job only): keep assets of every `vX.Y.0` release and of the last 5 patches of the current minor. Delete only release assets, never tags or release pages. Dry-run mode first. Never touch `releases/latest`. Updater skips a release with no assets.
+- Update `docs/PACKAGING.md` §7 and the architecture doc.
+
+## P653 Close chapter
 
 Per `CLAUDE.md` "Closing a chapter".
