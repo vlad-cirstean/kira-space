@@ -7,7 +7,7 @@ User gates: P646 ships a design mock only; implementation of the task-list actio
 | # | Phase | Status |
 |---|-------|--------|
 | P646 | Task-list actions design mock | Done |
-| P647 | Task-list polish | Todo |
+| P647 | Task-list polish | Done |
 | P648 | Task-list actions per approved design | Todo |
 | P649 | Prompt dialogs: empty body, 10 min limits, typing-safe, proof-update notification | Todo |
 | P650 | Status bar CPU/RAM includes agents | Todo |
@@ -28,6 +28,8 @@ Result: plan `plans/P646.md`, mock `design/P646-task-list-mock.html`. User asked
 - Drop repos header; keep only refresh-all, placed efficiently.
 - Task title never underlined.
 - Task detail: drop second line under title (today, branch count, repo).
+
+Result: plan `plans/P647.md`, UI only, typecheck, lint and build green, no tests run (user). Today tint removed; plan drag resolves slot by card geometry with a dashed snap slot; repos header replaced by a refresh-all icon beside History (repo filter removed); card title plain span; task-panel facts line removed. Existing UI specs `ade-v2-plan`, `ade-v2-repo-updating`, `ade-v2-panel` and the day-bars visual baseline are stale and stay unedited; PR CI will fail on them until fixed.
 
 ## P648 Task-list actions
 
