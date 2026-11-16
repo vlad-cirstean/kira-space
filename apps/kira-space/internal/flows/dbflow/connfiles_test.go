@@ -16,7 +16,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
-	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -74,16 +73,6 @@ func TestConnectionConfigFile(t *testing.T) {
 	file := filepath.Join(app.W.ConnectionFiles.Dir(), conn.File)
 	if _, err := os.Stat(file); err != nil {
 		t.Fatalf("connection file missing: %v", err)
-	}
-	openArgs := configsvc.FileArgs{Folder: "connections", File: conn.File}
-	if err := app.W.ConfigFiles.Open(openArgs); err != nil {
-		t.Fatal(err)
-	}
-	if err := app.W.ConfigFiles.Reveal(openArgs); err != nil {
-		t.Fatal(err)
-	}
-	if want := filepath.Join(app.ConfigDir("connections"), conn.File); app.FileOpener.OpenedFiles()[0] != want || app.FileOpener.RevealedFiles()[0] != want {
-		t.Fatalf("opened %v, revealed %v, want %s", app.FileOpener.OpenedFiles(), app.FileOpener.RevealedFiles(), want)
 	}
 	list, err := app.W.Connections.List()
 	if err != nil {

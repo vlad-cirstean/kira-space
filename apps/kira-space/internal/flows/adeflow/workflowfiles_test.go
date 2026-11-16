@@ -11,7 +11,6 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -126,41 +125,5 @@ func TestWorkflowSaveWritesAtomicallyOnce(t *testing.T) {
 		if e.Name() != "saved.yaml" && e.Name() != "AGENTS.md" && e.Name() != ".p526-backup" {
 			t.Errorf("unexpected file %s beside the saved workflow", e.Name())
 		}
-	}
-}
-
-// TestConfigFilesOpenReveal: the bound service resolves only a registered folder and a plain file.
-func TestConfigFilesOpenReveal(t *testing.T) {
-	app := flowharness.New(t)
-	saveWorkflow(t, app, "shown", flowYAML("shown", manualStep))
-	want := filepath.Join(app.ConfigDir("workflows"), "shown.yaml")
-	args := configsvc.FileArgs{Folder: "workflows", File: "shown.yaml"}
-
-	if err := app.W.ConfigFiles.Open(args); err != nil {
-		t.Fatal(err)
-	}
-	if err := app.W.ConfigFiles.Reveal(args); err != nil {
-		t.Fatal(err)
-	}
-	if got := app.FileOpener.OpenedFiles(); len(got) != 1 || got[0] != want {
-		t.Errorf("opened = %v, want [%s]", got, want)
-	}
-	if got := app.FileOpener.RevealedFiles(); len(got) != 1 || got[0] != want {
-		t.Errorf("revealed = %v, want [%s]", got, want)
-	}
-
-	for _, bad := range []configsvc.FileArgs{
-		{Folder: "workflows", File: "../kira.db"},
-		{Folder: "workflows", File: "/etc/passwd"},
-		{Folder: "workflows", File: ".shown.yaml.tmp"},
-		{Folder: "workflows", File: "missing.yaml"},
-		{Folder: "nope", File: "shown.yaml"},
-	} {
-		if err := app.W.ConfigFiles.Open(bad); err == nil {
-			t.Errorf("Open(%+v) accepted", bad)
-		}
-	}
-	if got := app.FileOpener.OpenedFiles(); len(got) != 1 {
-		t.Errorf("refused calls reached the OS: %v", got)
 	}
 }

@@ -200,7 +200,7 @@ func (f *fileOpener) RevealFile(path string) error {
 	return app.Env.OpenFileManager(path, true)
 }
 
-// NewDeferredFileOpener is NewDeferredBrowser's counterpart for configsvc.Service. attach must be
+// NewDeferredFileOpener is NewDeferredBrowser's counterpart for the proof folder reveal. attach must be
 // called with the real *App immediately after New returns.
 func NewDeferredFileOpener() (f *fileOpener, attach func(*application.App)) {
 	fo := &fileOpener{}

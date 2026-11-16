@@ -82,7 +82,7 @@ type ProofShotLocations interface {
 	SetProofShotLocation(path string) error
 }
 
-// ProofRevealer opens and reveals a folder in the file manager; configsvc.FileOpener satisfies it.
+// ProofRevealer opens and reveals a folder in the file manager; the platform file opener (shell.NewDeferredFileOpener) satisfies it.
 type ProofRevealer interface {
 	OpenFile(path string) error
 	RevealFile(path string) error

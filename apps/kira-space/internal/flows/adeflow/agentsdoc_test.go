@@ -12,7 +12,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/configfs"
-	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
 )
 
@@ -83,12 +82,5 @@ func TestWorkflowsAgentsDoc(t *testing.T) {
 	app.Restart()
 	if got, _ := os.ReadFile(path); !bytes.Equal(got, want) {
 		t.Errorf("AGENTS.md not regenerated at start: %q", got)
-	}
-
-	if err := app.W.ConfigFiles.Open(configsvc.FileArgs{Folder: "workflows", File: "AGENTS.md"}); err != nil {
-		t.Fatal(err)
-	}
-	if got := app.FileOpener.OpenedFiles(); len(got) != 1 || got[0] != path {
-		t.Errorf("opened = %v, want [%s]", got, path)
 	}
 }

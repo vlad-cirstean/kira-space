@@ -59,7 +59,6 @@ import (
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
 	"github.com/kirathecat/kira-studio/internal/configfs"
-	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/agentsvc"
@@ -91,8 +90,8 @@ type Options struct {
 	// Emitter is the window event sink (a deferred Wails emitter in production).
 	Emitter appevent.Emitter
 	Browser bridge.Browser
-	// FileOpener opens or reveals a config file; main passes the Wails adapter.
-	FileOpener configsvc.FileOpener
+	// FileOpener opens or reveals a proof folder; main passes the Wails adapter.
+	FileOpener bridge.ProofRevealer
 	// ImageClipboard writes several images to the system clipboard; main passes imageclip, nil means none.
 	ImageClipboard bridge.ProofClipboard
 	Dialogs        bridge.Dialogs
@@ -253,7 +252,6 @@ type Wired struct {
 	MemoryImport    *bridge.MemoryImportService
 	MemoryDistill   *bridge.MemoryDistillService
 	WindowsSvc      *bridge.WindowsService
-	ConfigFiles     *bridge.ConfigFilesService
 	PromptsSvc      *bridge.PromptsService
 	ApprovalsSvc    *bridge.ApprovalsService
 	Approvals       *approvals.Queue
@@ -582,8 +580,6 @@ func Build(opts Options) (*Wired, error) {
 	}
 	bridge.KeepAwakeRecompute(w.KeepAwake)
 
-	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, configFolders(deps.Home, w.RepoConfig.Dir()))}
-
 	// OpenNewWindow is assigned by BindShell once the shell exists.
 	w.WindowsSvc = &bridge.WindowsService{Service: &windowsvc.Service{Windows: deps.Repos.Windows}}
 
@@ -716,7 +712,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.ApprovalsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc), application.NewService(w.ConfigSyncSvc),
-		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
+		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
 		application.NewService(w.App), application.NewService(w.Connections),
 		application.NewService(w.MaskRules), application.NewService(w.Tree),
 		application.NewService(w.Filters), application.NewService(w.Queries), application.NewService(w.Schema),
