@@ -19,7 +19,7 @@ const pidPathBufSize = 4 * 1024
 
 // listProcesses is AppProcessSet's darwin process-table source: one proc_listpids(PROC_ALL_PIDS)
 // call, sized by its own documented convention (call once with a NULL buffer to learn the byte
-// count, then once for real), then one proc_pidpath per pid into a single reused buffer — 1+N
+// count, then once for real), then one proc_pidpath and proc_pidinfo (for the ppid) per pid into a single reused buffer — 1+2N
 // syscalls and one allocation total, replacing gopsutil's process.Processes()+Exe() (~5 syscalls
 // and a fresh allocation per process on the machine to find this app's own handful of pids). A
 // pid whose path cannot be read is skipped, exactly as the gopsutil-based path does — proc_pidpath
@@ -46,11 +46,19 @@ func listProcesses() ([]procEntry, error) {
 	pathBuf := make([]C.char, pidPathBufSize)
 	entries := make([]procEntry, 0, len(pids))
 	for _, pid := range pids {
+		var exe string
 		ret := C.proc_pidpath(pid, unsafe.Pointer(&pathBuf[0]), pidPathBufSize)
-		if ret <= 0 {
+		if ret > 0 {
+			exe = C.GoStringN(&pathBuf[0], ret)
+		}
+		var info C.struct_proc_bsdinfo
+		infoSize := C.int(unsafe.Sizeof(info))
+		infoOK := C.proc_pidinfo(pid, C.PROC_PIDTBSDINFO, 0, unsafe.Pointer(&info), infoSize) == infoSize
+		// Drop only when both fail: an exe-less entry still keeps a parent chain intact.
+		if ret <= 0 && !infoOK {
 			continue
 		}
-		entries = append(entries, procEntry{pid: int32(pid), exe: C.GoStringN(&pathBuf[0], ret)})
+		entries = append(entries, procEntry{pid: int32(pid), ppid: int32(info.pbi_ppid), exe: exe})
 	}
 	return entries, nil
 }

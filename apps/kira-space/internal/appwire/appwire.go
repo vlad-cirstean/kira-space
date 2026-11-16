@@ -53,6 +53,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/agentport"
+	"github.com/kirathecat/kira-studio/internal/agentproc"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/approvals"
@@ -587,7 +588,7 @@ func Build(opts Options) (*Wired, error) {
 	w.WindowsSvc = &bridge.WindowsService{Service: &windowsvc.Service{Windows: deps.Repos.Windows}}
 
 	// P116 G7: the status bar's CPU/memory readout.
-	w.Metrics = metrics.NewAppTicker("Kira Space")
+	w.Metrics = metrics.NewAppTicker("Kira Space", agentproc.Roots)
 	w.Metrics.Start()
 	w.detachMetrics = events.AttachMetrics(w.Metrics)
 
