@@ -14,7 +14,7 @@ interface AdeLayoutSlice {
 }
 
 export const useAdeLayoutStore = defineStore('adeLayout', () => {
-  /** 0 = half the row. */
+  /** 0 = list at 400px. */
   const width = ref(0);
 
   function apply(layout: unknown): void {

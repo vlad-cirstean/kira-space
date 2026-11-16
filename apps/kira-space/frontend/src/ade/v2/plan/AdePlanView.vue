@@ -359,7 +359,7 @@ function onForcePush(row: BranchRowModel): void {
 <template>
   <div
     ref="scrollEl"
-    :class="cn(paneFrame, 'relative flex-1 overflow-auto bg-chrome')"
+    :class="cn(paneFrame, '@container relative flex-1 overflow-auto bg-chrome')"
     data-testid="ade-plan"
   >
     <QueryState
@@ -392,7 +392,7 @@ function onForcePush(row: BranchRowModel): void {
             @current="scrollToDay(0)"
           />
         </div>
-        <div class="px-4 pb-4 pt-3">
+        <div class="px-3 pb-4 pt-3">
           <div v-if="planError" class="mb-2">
             <Alert variant="error" data-testid="ade-plan-error">
               <AlertDescription>{{ planError }}</AlertDescription>

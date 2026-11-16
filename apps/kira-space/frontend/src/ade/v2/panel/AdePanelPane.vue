@@ -8,10 +8,11 @@ import { useElementSize, useParentElement } from '@vueuse/core';
 import { computed } from 'vue';
 import { useAdeLayoutStore } from '../../../state/adeLayout';
 
-// Resizable right-hand pane beside a page. Width is `panel.ade.width` in the layout store, 0 = half
-// the row.
+// Resizable right-hand pane beside a page. Width is `panel.ade.width` in the layout store, 0 = list at 400px
+// (panel takes the rest of the row).
+const LIST_DEFAULT = 400;
 const MIN_WIDTH = 340;
-const MIN_PAGE = 320;
+const MIN_PAGE = 360;
 
 const layout = useAdeLayoutStore();
 
@@ -22,7 +23,7 @@ const maxWidth = computed(() => Math.max(MIN_WIDTH, rowWidth.value - MIN_PAGE));
 const pane = useLiveSize(
   () => {
     const stored = layout.width;
-    const base = stored > 0 ? stored : Math.round(rowWidth.value / 2);
+    const base = stored > 0 ? stored : rowWidth.value - LIST_DEFAULT;
     return Math.max(MIN_WIDTH, Math.min(maxWidth.value, base));
   },
   (w) => layout.setWidth(Math.round(w)),
