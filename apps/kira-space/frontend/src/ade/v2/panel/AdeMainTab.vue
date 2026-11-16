@@ -26,6 +26,7 @@ import AdeRow from './AdeRow.vue';
 import AdeRowDetail from './AdeRowDetail.vue';
 import AdeStatusPicker from './AdeStatusPicker.vue';
 import AdeWorkflowBlock from './AdeWorkflowBlock.vue';
+import { useEstimateWrite } from './useEstimateWrite';
 
 // Main tab: the editable fields, the branches, then the workflow.
 const props = defineProps<{ card: CardModel }>();
@@ -37,7 +38,7 @@ const boardUi = useAdeBoardUiStore();
 const task = computed(() => props.card.task);
 const review = computed(() => props.card.review);
 const fieldError = ref('');
-const estError = ref<string | null>(null);
+const est = useEstimateWrite(() => task.value.id);
 
 async function write(patch: Partial<TaskPatch>): Promise<boolean> {
   fieldError.value = '';
@@ -54,14 +55,6 @@ async function write(patch: Partial<TaskPatch>): Promise<boolean> {
 const why = computed(() => statusWhy(task.value, props.card.blocked, props.card.progress));
 
 // ---- estimate
-async function saveEst(value: string): Promise<void> {
-  estError.value = null;
-  try {
-    await update.mutateAsync({ taskId: task.value.id, patch: taskPatch({ est: value }) });
-  } catch (err) {
-    estError.value = errorText(err);
-  }
-}
 const spanDays = computed(() => props.card.entry.span);
 
 // ---- kind
@@ -85,7 +78,12 @@ const toggle = computed(() => orchestratorToggle(props.card));
         <span class="truncate" :class="rowMeta" data-testid="ade-task-status-why">{{ why }}</span>
       </AdeRow>
       <AdeRow term :label="t('space.ade.estimate.field.label')" label-for="ade-est-num">
-        <AdeEstimateField :est="task.est" :days="spanDays" :error="estError" @save="saveEst" />
+        <AdeEstimateField
+          :est="task.est"
+          :days="spanDays"
+          :error="est.error.value"
+          @save="est.save"
+        />
       </AdeRow>
       <AdeRow
         v-if="task.branchRequestId"

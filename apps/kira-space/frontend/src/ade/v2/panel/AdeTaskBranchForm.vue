@@ -92,7 +92,7 @@ async function submitRepo(codeRepoId: string): Promise<void> {
     <PopoverAnchor as-child><slot /></PopoverAnchor>
     <PopoverContent
       align="end"
-      class="w-96 gap-0 overflow-hidden p-0"
+      class="w-80 gap-0 overflow-hidden p-0"
       data-testid="ade-branch-form"
     >
       <BranchPicker

@@ -9,38 +9,14 @@ import {
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { computed } from 'vue';
-import { stepMoves } from '../board/stepMoves';
 import type { CardModel } from '../plan/usePlanModel';
-import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import AdeRow from './AdeRow.vue';
+import { useStepMoves } from './useStepMoves';
 
 // Moves the task to any step of its workflow, or to Done, in either direction: each move opens the
 // stage dialog, where the handover notes go.
 const props = defineProps<{ card: CardModel }>();
-const stage = useAdeStageDialogStore();
-
-const moves = computed(() =>
-  stepMoves(
-    props.card.blocks,
-    props.card.progress.finished
-      ? 'done'
-      : (props.card.progress.step?.id ?? props.card.task.entryStepId),
-    props.card.task.runs,
-  ),
-);
-const options = computed(() => moves.value.options);
-const at = computed(() => moves.value.at);
-const prev = computed(() => moves.value.prev);
-const next = computed(() => moves.value.next);
-const live = computed(() => moves.value.live);
-const reason = computed(() =>
-  live.value ? t('space.ade.board.taskMenu.liveBlocked.tooltip') : '',
-);
-
-function move(toStepId: string): void {
-  stage.open({ taskId: props.card.task.id, toStepId });
-}
+const { options, at, prev, next, live, reason, move } = useStepMoves(() => props.card);
 </script>
 
 <template>

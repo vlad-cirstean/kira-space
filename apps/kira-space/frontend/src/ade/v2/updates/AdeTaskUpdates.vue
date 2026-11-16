@@ -7,7 +7,7 @@ import AdeChip from '../AdeChip.vue';
 import { useMarkTrackedSeen } from './queries';
 import { useTaskUpdates } from './useTaskUpdates';
 
-const props = defineProps<{ taskId: string }>();
+const props = withDefaults(defineProps<{ taskId: string; framed?: boolean }>(), { framed: true });
 
 const { byTask, describe } = useTaskUpdates();
 const markSeen = useMarkTrackedSeen();
@@ -21,7 +21,8 @@ function seen(itemKeys: string[]): void {
 <template>
   <div
     v-if="updates.length"
-    class="flex flex-col gap-1.5 border border-border px-2 py-1.5"
+    class="flex flex-col gap-1.5 px-2 py-1.5"
+    :class="{ 'border border-border': framed }"
     data-testid="ade-task-updates"
   >
     <div class="flex items-center gap-2">
