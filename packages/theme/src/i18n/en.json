@@ -10097,6 +10097,11 @@
             "label": "Hide history"
           }
         },
+        "refreshAll": {
+          "updating": {
+            "tooltip": "Updating {repos}…"
+          }
+        },
         "view": {
           "archivedTasks": {
             "label": "{count} archived task | {count} archived tasks"

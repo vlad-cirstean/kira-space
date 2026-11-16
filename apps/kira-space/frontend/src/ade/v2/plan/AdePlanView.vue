@@ -44,6 +44,12 @@ const { y: scrollY } = useScroll(scrollEl);
 
 // ---- refresh
 const refreshingAll = ref(false);
+// Repos whose facts are past the deadline; the flag arrives on a board push (P622).
+const updatingRepos = computed(
+  () =>
+    model.value?.board.repos.filter((r) => r.updating).map((r) => repoLabel(r.codeRepoId)) ?? [],
+);
+const isUpdating = computed(() => updatingRepos.value.length > 0);
 
 /** A failed fetch shows as a toast naming its repo. */
 function failRefresh(codeRepoId: string, message: string): void {
@@ -379,8 +385,15 @@ function onForcePush(row: BranchRowModel): void {
           >
             <TooltipIconButton
               icon="refresh"
-              :label="t('common.refreshAll.label')"
+              :label="
+                isUpdating
+                  ? t('space.ade.plan.refreshAll.updating.tooltip', {
+                      repos: updatingRepos.join(', '),
+                    })
+                  : t('common.refreshAll.label')
+              "
               :pending="refreshingAll"
+              :data-updating="isUpdating || undefined"
               data-testid="ade-refresh-all"
               @click="runRefresh()"
             />
