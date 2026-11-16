@@ -22,7 +22,7 @@ function bandOf(root: HTMLElement, y: number): HTMLElement | null {
 }
 
 /** Slot under the pointer: before the first card whose midpoint is below it, else the band's end. */
-export function resolveSlot(
+function resolveSlot(
   root: HTMLElement,
   x: number,
   y: number,

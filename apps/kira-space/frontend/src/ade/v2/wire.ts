@@ -845,11 +845,11 @@ export interface AddExistingBranchResult {
   task: Task;
   branch: Branch;
 }
-export interface MergedInto {
+interface MergedInto {
   branchId: string;
   target: string;
 }
-export interface RepoRefresh {
+interface RepoRefresh {
   codeRepoId: string;
   refsChanged: number;
   mergedInto: MergedInto[];
