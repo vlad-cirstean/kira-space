@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures';
-import { type AdeBoardFx, adeBoard, adeFixture, openPlan } from './support/adeV2';
+import { type AdeBoardFx, adeBoard, adeFixture, openPlan, revealRow } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
 
 // The Plan card's icon row: the tag and the step action in the head line, the tag and at most
@@ -122,6 +122,7 @@ test('a failed rebase row shows the tag, one action and More; More lists the res
 }) => {
   const { window: page } = await open(relaunch, failedRebase);
   const r = page.locator(row('b_auth'));
+  await revealRow(page, 'b_auth', 'board', 'ade-branch-more');
   await expect(r.locator(t('ade-tag'))).toHaveAttribute('data-kind', 'rebasePending');
   await expect(r.locator(t('ade-branch-more'))).toBeVisible();
   const cluster = r.locator(
@@ -136,20 +137,41 @@ test('a failed rebase row shows the tag, one action and More; More lists the res
   await expect(page.locator(t('ade-branch-details'))).toBeVisible();
 });
 
-test('row and card icons are always visible, never hover-only', async ({ relaunch }) => {
+test('state glyphs and danger actions stay visible; the action cluster shows on hover or keyboard focus', async ({
+  relaunch,
+}) => {
   const { window: page } = await open(relaunch, failedRebase);
   await page.mouse.move(0, 0);
   const r = page.locator(row('b_auth'));
-  for (const id of ['ade-tag', 'ade-branch-more']) {
-    const el = r.locator(t(id));
+  const head = page.locator(`${task('T_auth')} ${t('ade-card-head')}`);
+  const danger = page.locator(`${task('T_search')} ${t('ade-see-error')}`);
+  const idleVisible = [r.locator(t('ade-tag')), danger];
+  for (const el of idleVisible) {
     await expect(el).toBeVisible();
     expect(await el.evaluate((e) => getComputedStyle(e).opacity)).toBe('1');
   }
-  const review = page.locator(t('ade-branch-review')).first();
-  if (await review.count()) {
-    await expect(review).toBeVisible();
-    expect(await review.evaluate((e) => getComputedStyle(e).opacity)).toBe('1');
-  }
+  const rowCluster = r.locator(t('ade-branch-more'));
+  const headCluster = head.locator(t('ade-card-more'));
+  await expect(rowCluster).toBeHidden();
+  await expect(headCluster).toBeHidden();
+
+  await r.hover();
+  await expect(rowCluster).toBeVisible();
+  await head.hover();
+  await expect(headCluster).toBeVisible();
+  await expect(rowCluster).toBeHidden();
+
+  await page.mouse.move(0, 0);
+  await expect(headCluster).toBeHidden();
+  await head.click();
+  await page.mouse.move(0, 0);
+  await expect(headCluster).toBeHidden();
+  for (const el of idleVisible) await expect(el).toBeVisible();
+
+  await page.keyboard.press('Tab');
+  await head.focus();
+  await expect(head).toBeFocused();
+  await expect(headCluster).toBeVisible();
 });
 
 test('right-click on the status text or a branch tag opens the matching menu', async ({

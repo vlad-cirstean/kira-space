@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { adeBoard, emitAgentEvent, emitAgentSessions, openPlan } from './support/adeV2';
+import { adeBoard, emitAgentEvent, emitAgentSessions, openPlan, revealRow } from './support/adeV2';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 
@@ -20,6 +20,7 @@ test('Rebase on ↓N main shows the server prompt and starts a background run', 
   relaunch,
 }) => {
   const { window: page, control } = await openPlan(relaunch);
+  await revealRow(page, 'b_auth', 'board', 'ade-rebase');
   await page
     .locator(`${row('b_auth')} >> xpath=ancestor::*[@data-testid="ade-task"][1]`)
     .locator(t('ade-rebase'))
@@ -44,6 +45,7 @@ test('Rebase on ↓N main shows the server prompt and starts a background run', 
 
 test('a blank message disables Send', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
+  await revealRow(page, 'b_auth', 'board', 'ade-rebase');
   await page
     .locator(`${row('b_auth')} >> xpath=ancestor::*[@data-testid="ade-task"][1]`)
     .locator(t('ade-rebase'))

@@ -288,6 +288,35 @@ export async function openPlan(
   return app;
 }
 
+/**
+ * Hovers a card head so its action cluster shows (it is hidden until hover or focus), then waits
+ * for `testid`, the cluster button the caller needs.
+ */
+export async function revealHead(page: Page, taskId: string, testid: string): Promise<void> {
+  const card = page.locator(`[data-testid="ade-card"][data-task-id="${taskId}"]`);
+  await card.locator('[data-testid="ade-card-head"]').hover();
+  await expect(card.locator(`[data-testid="${testid}"]`).first()).toBeVisible();
+}
+
+/**
+ * Hovers a branch row (`board`: plan row, `panel`: task panel row) so its action cluster shows,
+ * then waits for `testid`, the cluster button the caller needs.
+ */
+export async function revealRow(
+  page: Page,
+  branchId: string,
+  scope: 'board' | 'panel',
+  testid: string,
+): Promise<void> {
+  const row = page.locator(
+    scope === 'board'
+      ? `[data-testid="ade-branch-row"][data-branch-id="${branchId}"]`
+      : `[data-testid="ade-task-branch"][data-branch-id="${branchId}"]`,
+  );
+  await row.hover();
+  await expect(row.locator(`[data-testid="${testid}"]`).first()).toBeVisible();
+}
+
 /** Opens the Sessions tab of task `taskId`'s panel. */
 export async function openSessions(page: Page, taskId: string): Promise<void> {
   await page

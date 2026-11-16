@@ -81,7 +81,9 @@ test('step blocks hold no branch rows', async ({ relaunch }) => {
 test('the edit menu opens and a click selects the branch', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   await openTask(page, 'T_bill');
-  await page.locator(`${t('ade-task-branch-menu')}[data-branch-id="b_bill"]`).click();
+  await page
+    .locator(`${t('ade-task-branch-item')}[data-branch-id="b_bill"] ${t('ade-task-branch-menu')}`)
+    .click();
   await expect(page.locator(t('ade-task-branch-menu-content'))).toBeVisible();
   await page.keyboard.press('Escape');
   await page.locator(mine('b_meter')).click();
