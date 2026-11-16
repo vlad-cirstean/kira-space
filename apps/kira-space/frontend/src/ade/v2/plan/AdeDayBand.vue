@@ -29,7 +29,8 @@ const props = defineProps<{
   overdueNote: string;
   overflowNote: string;
   overflowLabel: string;
-  dragOver: boolean;
+  /** Snap slot: `undefined` none in this band, `null` after the last card, an id before that card. */
+  dropBefore?: string | null;
 }>();
 const emit = defineEmits<{
   select: [taskId: string];
@@ -43,7 +44,7 @@ const emit = defineEmits<{
 
 // SortableJS only drags direct children of its list, so each band's drop area is its own list.
 // `sort: false` and no group pull/put mean it never moves Vue-managed DOM; the parent resolves the
-// drop target from the pointer instead.
+// drop target from card geometry instead (usePlanDrag).
 const dropEl = ref<HTMLElement | null>(null);
 const ghostClass = SORTABLE_GHOST_CLASS;
 useDraggable(dropEl, {
@@ -53,19 +54,24 @@ useDraggable(dropEl, {
   forceFallback: true,
   fallbackOnBody: true,
   fallbackTolerance: 4,
+  filter: 'button, a, input, textarea, [role="menuitem"]',
+  preventOnFilter: false,
+  scrollSensitivity: 56,
+  scrollSpeed: 14,
+  bubbleScroll: false,
   ghostClass,
   onStart: (evt) => emit('dragStart', evt.item.dataset.taskId ?? ''),
   onEnd: () => emit('dragEnd'),
 });
 
+const slotClass =
+  'h-control-lg shrink-0 rounded-kira border border-dashed border-focus bg-focus/10';
 const greyed = computed(() => props.band.weekend || props.band.dayOff);
 const empty = computed(
   () => props.cards.length === 0 && props.spans.length === 0 && props.history.length === 0,
 );
 const overdue = computed(() => props.band.overdueTaskIds.length > 0);
 const over = computed(() => props.band.overflowTaskIds.length > 0 && !greyed.value);
-const accepts = computed(() => !props.band.isPast && !props.band.dayOff);
-const highlight = computed(() => props.dragOver && accepts.value);
 
 const labelClass = computed(() => {
   if (props.band.isToday) return 'text-fg';
@@ -94,7 +100,6 @@ const ruleClass = computed(() => {
   <!-- biome-ignore lint/a11y/noStaticElementInteractions: right-click only; the band holds nested interactive rows. -->
   <div
     class="relative flex flex-col"
-    :class="[highlight ? 'outline outline-1 outline-focus' : '']"
     data-testid="ade-day-band"
     data-ade-band
     :data-weekend="band.weekend || undefined"
@@ -176,6 +181,12 @@ const ruleClass = computed(() => {
         </Button>
       </div>
       <template v-for="(card, i) in cards" :key="card.task.id">
+        <div
+          v-if="dropBefore === card.task.id"
+          :class="slotClass"
+          data-testid="ade-drop-slot"
+          aria-hidden="true"
+        />
         <AdeTaskCard
           :class="i > 0 ? 'mt-2' : undefined"
           :card="card"
@@ -183,6 +194,12 @@ const ruleClass = computed(() => {
           @force-push="(row) => emit('forcePush', row)"
         />
       </template>
+      <div
+        v-if="dropBefore === null"
+        :class="slotClass"
+        data-testid="ade-drop-slot"
+        aria-hidden="true"
+      />
       <Button
         size="kira"
         v-for="s in spans"

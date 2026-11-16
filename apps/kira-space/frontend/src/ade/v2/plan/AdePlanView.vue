@@ -211,15 +211,26 @@ function onOverflowMove(band: TimelineBand): void {
   void shift(band.overflowTaskIds, band.overflowMoveTo);
 }
 
-const drag = usePlanDrag((taskId, target) => {
+const drag = usePlanDrag(scrollEl, (taskId, target) => {
   const m = model.value;
   if (!m) return;
   const verdict = dropVerdict(m.view, m.board.plan, today.value, taskId, target);
   if (verdict.kind === 'move') setPlan.mutate(verdict.args);
 });
-const dragOverDay = computed(() =>
-  drag.draggedId.value && drag.target.value?.kind === 'band' ? drag.target.value.day : null,
-);
+// The snap slot shows exactly where a release lands: same verdict as the write, so a refused
+// target shows nothing.
+const dropSlot = computed<{ day: number; before: string | null } | null>(() => {
+  const m = model.value;
+  const id = drag.draggedId.value;
+  const target = drag.target.value;
+  if (!m || !id || !target) return null;
+  if (dropVerdict(m.view, m.board.plan, today.value, id, target).kind !== 'move') return null;
+  if (target.kind === 'band') return { day: target.day, before: null };
+  // Band key, not entry day: days past the window render in the tail band.
+  const day = m.view.bands.find((b) => b.taskIds.includes(target.taskId))?.key;
+  if (day === undefined) return null;
+  return { day, before: m.view.entries.get(target.taskId)?.auto ? null : target.taskId };
+});
 
 // ---- day menu
 const dayOff = ref<{ title: string; text: string; yes: string; ids: string[]; to: number } | null>(
@@ -434,7 +445,7 @@ function onForcePush(row: BranchRowModel): void {
               :overdue-note="overdueNote(band)"
               :overflow-note="overflowNote(band)"
               :overflow-label="overflowLabel(band)"
-              :drag-over="dragOverDay === band.key"
+              :drop-before="dropSlot?.day === band.key ? dropSlot.before : undefined"
               @select="(id) => ui.select(id)"
               @rollover="onRollover(band)"
               @overflow-move="onOverflowMove(band)"
