@@ -16,10 +16,11 @@ import (
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/notify"
+	"github.com/kirathecat/kira-studio/internal/prompts"
 )
 
 // ApprovalTimeout bounds how long a prompt-mode query waits for a human answer before giving up.
-const ApprovalTimeout = 10 * time.Minute
+const ApprovalTimeout = prompts.AnswerWait
 
 // approvalWindow renders ApprovalTimeout for tool error texts.
 func approvalWindow() string {

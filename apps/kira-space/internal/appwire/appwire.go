@@ -121,7 +121,7 @@ type Options struct {
 	// RebaseTimeout bounds one ADE rebase run; 0 keeps the default (20 minutes).
 	RebaseTimeout time.Duration
 	// BranchRequestWait is how long an agent's create_task waits for the user; 0 keeps
-	// the default (30 minutes).
+	// the default (10 minutes).
 	BranchRequestWait time.Duration
 	// CallWait is how long a state call blocks on unfinished work before it answers pending or waiting;
 	// 0 keeps the ade default.

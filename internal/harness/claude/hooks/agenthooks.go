@@ -131,7 +131,7 @@ func (s *Server) Status() harness.HookStatus {
 }
 
 // MCPToolTimeoutEnv lifts the CLI's 60 s limit on one MCP tool call: a tool that waits for the user, such
-// as Kira Space's state branch.request, holds its call open for up to 30 minutes.
+// as Kira Space's state branch.request, holds its call open for up to 10 minutes.
 var MCPToolTimeoutEnv = "MCP_TOOL_TIMEOUT=" + strconv.FormatInt(harness.MCPCallTimeout.Milliseconds(), 10)
 
 // Compose returns command with " --settings '<hooks.json>'" appended and the hook env vars a
