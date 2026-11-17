@@ -15,6 +15,8 @@ import { Kbd } from '@theme/components/ui/kbd';
 import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
+import { formatShortcut } from '@workbench/shortcuts/keys';
+import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed } from 'vue';
 import { control } from '../bridge/control';
 import { useProofSession } from './queries';
@@ -36,9 +38,6 @@ function openWindow(): void {
 const sessionQuery = useProofSession(() => props.entry.ref);
 const session = computed(() => sessionQuery.data.value);
 const taskTitle = computed(() => session.value?.taskTitle ?? '');
-
-import { formatShortcut } from '@workbench/shortcuts/keys';
-import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 
 const onChord = shortcutKeydown(['form.submit'], () => openWindow());
 </script>

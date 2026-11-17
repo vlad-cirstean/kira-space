@@ -798,7 +798,7 @@ func (s *Server) awaitExplainApproval(ctx context.Context, args explainQueryArgs
 // explainQuery plans one SELECT/WITH statement without running it (the gate order):
 // resolve → kind support → explainability → read-mode deny (before connecting) → connect →
 // classify-assert every composed statement as a read → verdict on the read mode (prompt
-// raises the approval, carrying the composed statement) → execute → parse → project, dropping Raw
+// raises the approval with the agent's SQL marked as an explain) → execute → parse → project, dropping Raw
 // unless IncludeRaw.
 func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args explainQueryArgs) (*mcp.CallToolResult, any, error) {
 	summary, m, msg, err := s.explainPreflight(args)
