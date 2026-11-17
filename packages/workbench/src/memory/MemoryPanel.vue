@@ -14,7 +14,7 @@ import { refDebounced } from '@vueuse/core';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { storeToRefs } from 'pinia';
-import { computed, ref, useId, useTemplateRef, watch } from 'vue';
+import { computed, useId, useTemplateRef, watch } from 'vue';
 import { useFocusOnMount } from '../behaviour/focus';
 import { useListNavigation } from '../behaviour/listNavigation';
 import { usePanelHeaderSearch } from '../behaviour/panelSearch';

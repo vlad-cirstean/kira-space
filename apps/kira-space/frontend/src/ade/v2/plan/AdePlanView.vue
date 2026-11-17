@@ -8,6 +8,7 @@ import { t } from '@theme/i18n';
 import { paneFrame } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
 import { useElementSize, useIntersectionObserver, useScroll } from '@vueuse/core';
+import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
 import QueryState from '@workbench/components/QueryState.vue';
@@ -360,6 +361,8 @@ function onForcePush(row: BranchRowModel): void {
     taskId: row.branch.taskId,
   };
 }
+
+useKeptScroll('ade:plan', scrollEl, { ready: () => model.value !== null });
 </script>
 
 <template>

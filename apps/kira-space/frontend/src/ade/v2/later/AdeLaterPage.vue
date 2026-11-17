@@ -4,8 +4,9 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { paneFrame } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
+import { useKeptScroll } from '@workbench/behaviour/viewState';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { shelfIds } from '../board/shelf';
 import { usePlanModel } from '../plan/usePlanModel';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
@@ -35,6 +36,9 @@ watch(
   },
   { immediate: true },
 );
+
+const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
+useKeptScroll('ade:later', bodyEl);
 </script>
 
 <template>
@@ -46,7 +50,7 @@ watch(
         ><AlertDescription>{{ error }}</AlertDescription></Alert
       >
     </div>
-    <div class="flex min-h-0 flex-1 flex-col overflow-auto pb-3">
+    <div ref="bodyEl" class="flex min-h-0 flex-1 flex-col overflow-auto pb-3">
       <AdeShelfSection shelf="later" :cards="later" @error="error = $event" />
       <AdeShelfSection shelf="backlog" :cards="backlog" @error="error = $event" />
     </div>

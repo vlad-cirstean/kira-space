@@ -5,10 +5,11 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { formatDateTime } from '@workbench/behaviour/format';
+import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import QueryState from '@workbench/components/QueryState.vue';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
 import AdeChip from '../AdeChip.vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
@@ -122,6 +123,9 @@ async function onRestore(): Promise<void> {
     restoreError.value = errorText(err);
   }
 }
+
+const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
+useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
 </script>
 
 <template>
@@ -188,6 +192,7 @@ async function onRestore(): Promise<void> {
 
         <div
           v-if="tab === 'main'"
+          ref="bodyEl"
           class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 pb-3 pt-3 text-kira-md"
           data-testid="ade-archived-task-tab"
         >

@@ -9,11 +9,12 @@ import { Button } from '@theme/components/ui/button';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { hostWords, type MessageKey, t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
+import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import Identifier from '@workbench/components/Identifier.vue';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
 import { useOpenChangeRequest } from '../../../hostview/queries';
 import { useRepos } from '../../../repo/state/reposQueries';
@@ -277,6 +278,9 @@ function deployNote(d: Deployment): string {
     return d.note || t('space.ade.branchPanel.runsStale.status', { sha: d.deployedSha });
   return d.status === 'unknown' ? d.error : '';
 }
+
+const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
+useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
 </script>
 
 <template>
@@ -415,6 +419,7 @@ function deployNote(d: Deployment): string {
 
     <div
       v-if="tab === 'details'"
+      ref="bodyEl"
       class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 pb-3 pt-3 text-kira-md"
       data-testid="ade-branch-details"
     >
