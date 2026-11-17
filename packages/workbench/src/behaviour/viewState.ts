@@ -3,6 +3,7 @@ import {
   computed,
   type MaybeRefOrGetter,
   type Ref,
+  ref,
   toValue,
   type WritableComputedRef,
   watch,
@@ -55,15 +56,23 @@ export function useKeptScroll(
   );
 }
 
-// Monaco: `initial` seeds the `scrollTop` prop once, `save` is wired to `update:scrollTop`.
+// Monaco: `initial` seeds the `scrollTop` prop, `save` is wired to `update:scrollTop`. `initial` is
+// a snapshot per key, taken before the editor's own first scroll event writes 0 over the store.
 export function useKeptEditorScroll(key: MaybeRefOrGetter<string>): {
-  initial: number;
+  readonly initial: number;
   save: (top: number) => void;
 } {
   const store = useViewStateStore();
+  const initial = ref(store.scroll(toValue(key))?.top ?? 0);
+  watch(
+    () => toValue(key),
+    (k) => {
+      initial.value = store.scroll(k)?.top ?? 0;
+    },
+  );
   return {
     get initial() {
-      return store.scroll(toValue(key))?.top ?? 0;
+      return initial.value;
     },
     save: (top) => store.setScroll(toValue(key), { top, left: 0 }),
   };
