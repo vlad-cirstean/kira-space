@@ -13,7 +13,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P660 Part 2 | Git review panel state across module switches | Planned |
 | P661 | Agents module memory efficiency | Done |
 | P662 | Query module UI freeze | Planned |
-| P663 | Panel resize bar and update widget placement | Planned |
+| P663 | Panel resize bar and update widget placement | Done |
 | P664 | API tab bar plus and request input editing | Planned |
 | P665 | Cmd+F search in left panels | Planned |
 | P666 | Git module last | Planned |
@@ -133,6 +133,8 @@ Plan: `plans/P662.md`.
 Resize bar between panels is strong blue; app-update version widget sits on the status bar's right. Acceptance: (1) resize bar uses a neutral grey theme token (muted, no blue) in idle, hover and drag states; hover and drag stay distinguishable from idle by a step in grey; (2) update version widget moves to the status bar's left side, right side loses it; UI specs cover bar color per state and widget position; visual baselines re-recorded where changed.
 
 Plan: `plans/P663.md`.
+
+Result: Done. Tokens `--kira-resize` (= border), `--kira-resize-hover` (#52525b), `--kira-resize-active` (= fg-subtle) plus `bg-resize*` utilities; `resizeHandleVariants` uses grey hover and drag, keeps `bg-focus` on keyboard focus only. SlickGrid column handle and Monaco `sash.hoverBorder` use the same tokens. Update item moved first in the status bar left group; groups carry `status-bar-left`/`status-bar-right` test ids. ARCHITECTURE lines updated. No Go half: UI-only, no IPC. Ran (Chromium, Playwright `--trace off`): `ui` `resize-handle-color.spec.ts` (5 new: project panel, ops dock, line handle, Monaco sash, SlickGrid column) and `update-dialog.spec.ts` (position assertions added): 14 passed; `visual` `status-bar`: `status-bar-visual-linux.png` re-recorded (update item left), tooltip and popover shots unchanged, 3 passed after; `typecheck`, `bun run lint:dead` clean, pre-commit hook clean. Deviations: the status bar move landed in the first commit, not its own.
 
 ## P664 API tab bar plus and request input editing
 
