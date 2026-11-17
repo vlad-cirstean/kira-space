@@ -7,6 +7,7 @@ import { ICON } from '@theme/icons';
 import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
+import { formatShortcut } from '@workbench/shortcuts/keys';
 import { computed, useTemplateRef } from 'vue';
 import CredentialsUpdateDialog from '../../project/CredentialsUpdateDialog.vue';
 import FiltersDialog from '../../project/FiltersDialog.vue';
@@ -56,6 +57,7 @@ const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
             showSearch ? t('common.action.hideSearch.label') : t('common.action.search.label')
           "
           :pressed="showSearch"
+          :kbd="formatShortcut('panel.find')"
           data-testid="toggle-search"
           @click="toggleSearch"
         />

@@ -10,6 +10,7 @@ import { useKeptScroll, useKeptState } from '@workbench/behaviour/viewState';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
+import { formatShortcut } from '@workbench/shortcuts/keys';
 import { computed, onMounted, onUnmounted, reactive, useTemplateRef, watch } from 'vue';
 import { useCodeReposStore } from '../state/coderepos';
 import { useLayoutStore } from '../state/layout';
@@ -168,6 +169,7 @@ onUnmounted(() => {
             showSearch ? t('common.action.hideSearch.label') : t('common.action.search.label')
           "
           :pressed="showSearch"
+          :kbd="formatShortcut('panel.find')"
           data-testid="toggle-search"
           @click="toggleSearch"
         />

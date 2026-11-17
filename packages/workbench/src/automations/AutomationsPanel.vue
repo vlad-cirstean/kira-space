@@ -20,6 +20,7 @@ import MenuIconButton from '@workbench/components/MenuIconButton.vue';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import SortableList from '@workbench/components/SortableList.vue';
+import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef } from 'vue';
@@ -425,6 +426,7 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
               showSearch ? t('common.action.hideSearch.label') : t('common.action.search.label')
             "
             :pressed="showSearch"
+            :kbd="formatShortcut('panel.find')"
             data-testid="toggle-search"
             @click="toggleSearch"
           />

@@ -6,6 +6,7 @@ import { t } from '@theme/i18n';
 import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
+import { formatShortcut } from '@workbench/shortcuts/keys';
 import { ref, useTemplateRef } from 'vue';
 import { useKubernetesUiStore } from '../state';
 import ClusterList from './ClusterList.vue';
@@ -45,6 +46,7 @@ async function refresh(): Promise<void> {
             showSearch ? t('common.action.hideSearch.label') : t('common.action.search.label')
           "
           :pressed="showSearch"
+          :kbd="formatShortcut('panel.find')"
           data-testid="toggle-search"
           @click="toggleSearch"
         />
