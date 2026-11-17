@@ -12,7 +12,7 @@ sidebar:
   order: 3
 ---
 
-Kira Space is one native macOS app. A mode switcher moves between its modules: Agents, Automations, Memory, Git, Studio, Api, Docker and Kubernetes.
+Kira Space is one native macOS app. A mode switcher moves between its modules: Agents, Automations, Studio, Api, Docker, Kubernetes, Git and Memory.
 
 ## Local data
 
