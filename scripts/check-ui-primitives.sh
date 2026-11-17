@@ -138,6 +138,9 @@ U62 packages/git-ui/src/components/CommitGrid.vue # SlickGrid engine host owns r
 U47 packages/git-ui/src/components/SearchResults.vue # listbox of the SearchBox combobox; keys live in SearchBox
 U46 packages/git-ui/src/graph/layoutClient.ts # main-thread worker fallback defers each request with its own zero-delay timer; debounce drops concurrent ones
 U47 packages/git-ui/src/lib/gridKeyboard.ts # PageUp/PageDown over a streamed 100k-row store, not list semantics
+U109 apps/kira-space/frontend/src/repo/RepoFileTree.vue # debounced copy of the kept fileSearch prop, derived not owned
+U109 packages/git-ui/src/components/FileTree.vue # git-ui is its own Vue app with no Pinia; P660 Part 2 changes its mount contract
+U109 packages/git-ui/src/components/review/ReviewView.vue # git-ui is its own Vue app with no Pinia; P660 Part 2 changes its mount contract
 PERMANENT
 
 # `(?&t)` = the inside of one tag, quote-aware so `=>` or `a > b` inside an attribute value does not
@@ -254,6 +257,7 @@ U105@@vt@@AdeDayBand.vue@@repeating gradient texture (surfaces are flat tokens)@
 U106@@v@@@@filled button (outline or toolbar; see P525 rules)@@<(?:Button|TooltipIconButton|SplitButton)\b(?&t)\s:?class="[^"]*${TOK}bg-(?:primary|agent|tone-[a-z]+-solid|ok|warn|error|info)(?![\w/-])
 U107@@v@@@@icon in a dialog header (title, description and actions only)@@(?s)<DialogHeader\b(?&t)>(?:(?!</DialogHeader>|<Button\b|<TooltipIconButton\b).)*?<(?:CodiconIcon|EngineIcon|svg)\b
 U108@@v@@@@toolbar pressed look by class (use aria-pressed / aria-expanded; the toolbar variant draws it)@@<(?:Button|TooltipIconButton)\b(?&t)\s:class="[^"]*'bg-field
+U109@@s@@/behaviour/!|/testing/!@@panel view state in a component ref (use useKeptState, useKeptScroll)@@const \w*(?:[Ss]earch|[Qq]uery|[Ff]ilter|[Nn]eedle)\w*\s*=\s*ref\b|reactive\(\{[^}]*[Ss]earch\w*:\s*''
 GUARDS
 
 # hits: "U<n> path"

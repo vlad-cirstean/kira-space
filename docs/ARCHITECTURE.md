@@ -1153,6 +1153,13 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - The per-tab runtime store (createRuntimeStore) owns setActionError, toggleSearchOpen and setSearchOpen, so views do not re-implement them.
 - Saved queries and filter history are cached with `staleTime: Infinity`. Go emits `kira:savedQueries:changed` ({connectionId, kind}) after each Save, SaveConsole, SaveDiscover, Update, UpdateDiscover, Delete and Touch, and `kira:filterHistory:changed` ({connectionId, path}) after each recorded filter, both with Emit; `state/savedQueriesSync.ts` invalidates the matching menu keys. The tree's saved-filters submenu still reads on right-click.
 - Studio tab views unmount on every tab switch (no keepMounted). Per-tab view UI state (filter inputs, open flags, find query and matches, unapplied filter-row drafts) lives in the view's runtime store, session-only and cleared on tab close, never in a component ref. An open find bar keeps its scan across a switch and rescans only when its page changed; closing the bar clears query and filter-rows toggle (P375).
+- Module panels, start views and the ADE full view unmount on every module switch; tab views
+  unmount on every tab switch. Their view state (search bar visibility, filter text, list and
+  editor scroll, roving row) lives in `useViewStateStore` (`packages/workbench/src/state/
+  viewState.ts`) through `useKeptState`, `useKeptScroll` and `useVirtualRows({ keepScroll })`.
+  Keys `<mode>:<surface>[:<id>]` or `tab:<tabId>:<surface>`; session-only; LRU 400 keys; tab keys
+  drop on tab close. Guard U109. No KeepAlive: hidden subtrees would keep queries, watchers and
+  commands live and retain DOM (P660).
 - views/shared/viewOp.ts's beginOp/applyLoadFailure are the one load-op preamble and load-failure tail behind every view's load() except Browse, which supersedes by loadSeq, not opId, and has no E_CANCELLED branch.
 - views/shared/page/store.ts is the one two-level page-cache implementation behind all five page modules (grid, documents, keyvalue, stream, console).
 - Visible-window pruning of the page cache is wired into the view side of all five page modules (P5 C3); documents also prunes the parsed-tree cache in views/shared/document/rows.ts to the same window.
