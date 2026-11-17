@@ -98,6 +98,8 @@ test('the menu find event focuses the open diff find widget', async ({ relaunch 
   });
   await openDiff(page);
   await expect(page.locator('.monaco-diff-editor .monaco-editor').first()).toBeVisible();
+  // Focus in the editor, not the tree row: Find in a focused left panel opens that panel's search (P665).
+  await page.locator('.monaco-diff-editor .monaco-editor').first().click();
   await expect(async () => {
     await emitWailsEvent(page, IPC.viewFind, undefined);
     await expect(page.locator('.monaco-editor .find-widget.visible').first()).toBeVisible({
