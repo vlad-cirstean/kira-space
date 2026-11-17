@@ -15,7 +15,7 @@ User gates: P646 ships a design mock only; implementation of the task-list actio
 | P652 | Task-list finish: fixes, stale UI specs, real-data check | Done |
 | P653 | Minor-stepped updates and release retention | Done |
 | P654 | Fix real-claude ade_smart_step failure | Done |
-| P655 | Close chapter | Todo |
+| P655 | Close chapter | Done |
 
 ## P646 Task-list actions design mock
 
@@ -92,3 +92,7 @@ Result: plan `plans/P654.md`. Root cause: P643 refused an ok `step.finish` with 
 ## P655 Close chapter
 
 Per `CLAUDE.md` "Closing a chapter".
+
+Result: chapter closed by hand. Non-UI full run after P654: Go, typecheck, lint, site, package and flow tests passed on rerun. Review round 1 (`plans/review-r1.md`, base `7c65b1f5`): 7 findings, 6 fixed. R1-1 `c17fe3dd` (prompt chords swallowed until the dialog is open 700 ms and a Mod keydown started after open), R1-2 `b4c7133d` (`install.sh` self-update steps minors via JXA `nextStep`, verify-packaging S16 replays `releaseline` fixture), R1-3 `508ef55d` (`releaseline.Eligible` shared by updater and retention), R1-4 `347189b5` (`GH_TOKEN` only on fetch and apply steps), R1-6 and R1-7 `c53e6190`. R1-5 (Agents CPU misses short-lived subprocesses) stays a Known open item in ARCHITECTURE (`bdcddb58`).
+
+Left open: `install.sh` JXA step path verified only through Node on Linux (`sh -n`, S16); the rest needs a macOS smoke test. `--tag` first runs in `release.yml` install-smoke at the next release. P652 click-after-drag finding not reproduced. `ade-sessions-menu.spec.ts:6` flakes only under 3 concurrent visual runs. User steps after merge: dispatch `Release retention` with dry run, inspect the plan, then set repository variable `RELEASE_RETENTION=apply`.
