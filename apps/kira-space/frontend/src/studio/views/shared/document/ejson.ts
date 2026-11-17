@@ -331,6 +331,12 @@ export function parseDocument(body: string): DocNode | null {
   } catch {
     return null;
   }
+  return documentFromValue(parsed);
+}
+
+/** `parseDocument` after the `JSON.parse`: the page-stats worker parses once for both the field
+ *  names and the node tree. */
+export function documentFromValue(parsed: unknown): DocNode | null {
   if (!isPlainObject(parsed)) return null;
   // A bare-object body could itself be a recognised wrapper (unlikely for a whole document, but
   // not impossible for a hand-crafted fixture) — buildNode's own object branch already checks

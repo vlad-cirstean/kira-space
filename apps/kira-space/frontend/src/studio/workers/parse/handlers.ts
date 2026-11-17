@@ -1,6 +1,7 @@
 import { beautifyJson, beautifyXml } from '../../beautify';
 import { copyAllDocuments } from '../../views/console/copyAll';
 import { formatConsoleText } from '../../views/console/format';
+import { documentPageStats } from '../../views/shared/document/pageStats';
 import type { JobInput, JobKind, JobOutput, PrettyResult } from './protocol';
 
 /** One parse per body: detects the format and, when asked, returns the pretty text from that same parse. */
@@ -23,6 +24,7 @@ export const handlers = {
   'body.format': ({ body, wantText }) => formatBody(body, wantText),
   'json.beautify': ({ text, mode }) => beautifyJson(text, mode),
   'ejson.copyAll': ({ format, bodies }) => copyAllDocuments(format, bodies),
+  'doc.pageStats': (input) => documentPageStats(input),
   'xml.beautify': ({ text, mode }) => beautifyXml(text, mode),
   'console.format': ({ kind, text }) => formatConsoleText(kind, text),
 } satisfies { [K in JobKind]: Handler<K> };
