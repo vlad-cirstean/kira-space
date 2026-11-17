@@ -11,7 +11,7 @@ import { computed } from 'vue';
 // each app's own appMetrics store (createAppMetricsStore.ts).
 const props = defineProps<{ sample: AppMetricsSample | null; appName: string }>();
 
-// Headline is the total across app and agent processes (internal/metrics/ticker.go's Interval, 5s);
+// Headline is the total across app, agent and script processes (internal/metrics/ticker.go's Interval, 5s);
 // the tooltip splits it into App and Agents.
 const cpuLabel = computed(() => (props.sample ? formatPercent(props.sample.cpuPercent) : ''));
 const memLabel = computed(() => {
@@ -30,7 +30,7 @@ const rows = computed(() =>
     : [],
 );
 
-// App, Agents, Total: the two groups are disjoint, the top-level sample figures are their sum.
+// App, Agents, Scripts, Total: the three groups are disjoint, the top-level sample figures are their sum.
 const breakdown = computed(() => {
   const sample = props.sample;
   if (!sample) return [];
@@ -44,6 +44,7 @@ const breakdown = computed(() => {
   return [
     line('app', t('memory.start.event.source.ui.label'), sample.app),
     line('agents', t('mobile.shell.heading.title'), sample.agents),
+    line('scripts', t('studio.settings.dbMcp.scripts.legend.label'), sample.scripts),
     line('total', t('workbench.statusBar.metrics.total.label'), sample),
   ];
 });

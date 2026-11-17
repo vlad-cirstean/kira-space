@@ -18466,7 +18466,7 @@
           "label": "Cores"
         },
         "interval": {
-          "hint": "CPU is a share of total capacity. Agents include their subprocesses. Updates every 5 seconds."
+          "hint": "CPU is a share of total capacity. Agents and scripts include their subprocesses. Updates every 5 seconds."
         },
         "processes": {
           "label": "Processes"

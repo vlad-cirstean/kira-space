@@ -159,24 +159,25 @@ test('the keep-awake button turns on from a pushed kira:keepAwake:changed event 
   await expect(button).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('a pushed kira:app:metrics sample renders CPU and memory in the status bar', async ({
+test('a pushed kira:app:metrics sample renders CPU and memory, with App, Agents and Scripts in the tooltip', async ({
   relaunch,
 }) => {
   const { window } = await relaunch();
   await expect(window.locator('[data-testid="app-metrics"]')).toHaveCount(0);
 
   const sample: AppMetricsSample = {
-    cpuPercent: 3.4,
-    memoryBytes: 512 * 1024 * 1024,
+    cpuPercent: 4.0,
+    memoryBytes: 600 * 1024 * 1024,
     logicalCPUs: 8,
-    processCount: 7,
+    processCount: 9,
     app: { cpuPercent: 1.2, memoryBytes: 400 * 1024 * 1024, processCount: 4 },
     agents: { cpuPercent: 2.2, memoryBytes: 112 * 1024 * 1024, processCount: 3 },
+    scripts: { cpuPercent: 0.6, memoryBytes: 88 * 1024 * 1024, processCount: 2 },
   };
   await emitWailsEvent(window, IPC.appMetrics, sample);
 
   await expect(window.locator('[data-testid="app-metrics"]')).toBeVisible();
-  await expect(window.locator('[data-testid="app-metrics-cpu"]')).toHaveText('3.4%');
+  await expect(window.locator('[data-testid="app-metrics-cpu"]')).toHaveText('4.0%');
 
   const family = (selector: string) =>
     window
@@ -201,11 +202,22 @@ test('a pushed kira:app:metrics sample renders CPU and memory in the status bar'
   await expect(cell('agents', 'cpu')).toHaveText('2.2%');
   await expect(cell('agents', 'memory')).toContainText('112');
   await expect(cell('agents', 'processes')).toHaveText('3');
-  await expect(cell('total', 'cpu')).toHaveText('3.4%');
-  await expect(cell('total', 'memory')).toContainText('512');
-  await expect(cell('total', 'processes')).toHaveText('7');
+  await expect(cell('scripts', 'cpu')).toHaveText('0.6%');
+  await expect(cell('scripts', 'memory')).toContainText('88');
+  await expect(cell('scripts', 'processes')).toHaveText('2');
+  await expect(cell('total', 'cpu')).toHaveText('4.0%');
+  await expect(cell('total', 'memory')).toContainText('600');
+  await expect(cell('total', 'processes')).toHaveText('9');
+  await expect(
+    window.locator('[data-testid="app-metrics-row"][data-group="scripts"]'),
+  ).toContainText('Scripts');
+  expect(
+    await window
+      .locator('[data-testid="app-metrics-row"]')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-group'))),
+  ).toEqual(['app', 'agents', 'scripts', 'total']);
   await expect(window.locator('[data-testid="tooltip-details-hint"]')).toHaveText(
-    'CPU is a share of total capacity. Agents include their subprocesses. Updates every 5 seconds.',
+    'CPU is a share of total capacity. Agents and scripts include their subprocesses. Updates every 5 seconds.',
   );
 
   // The tooltip sits on the elevated ground, draws no arrow and keeps off its trigger.

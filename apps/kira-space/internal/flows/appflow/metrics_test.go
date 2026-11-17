@@ -7,15 +7,14 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/internal/appevent"
-	"github.com/kirathecat/kira-studio/internal/flowtest"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/metrics"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 // Backend half of the status bar metrics scenario: a running agent shows in Agents, totals are
-// App + Agents, and Agents empties once the run ends. The UI half is window-chrome.spec.ts.
+// App + Agents + Scripts, and Agents empties once the run ends. The UI half is window-chrome.spec.ts
+// (shared with TestAppMetricsCountsScripts and TestSQLitePreconnectCountsAsScript).
 func TestAppMetricsCountsAgents(t *testing.T) {
 	app := flowharness.New(t)
 	hold := filepath.Join(t.TempDir(), "hold")
@@ -50,25 +49,17 @@ func TestAppMetricsCountsAgents(t *testing.T) {
 		return len(raw) > 0
 	})
 
-	decode := func(ev flowtest.Event) metrics.Sample {
-		var s metrics.Sample
-		ev.Decode(t, &s)
-		return s
-	}
-	ev := app.Events.WaitAfter(t, mark, appevent.ChannelAppMetrics, func(ev flowtest.Event) bool {
-		s := decode(ev)
+	s := app.WaitMetrics(t, mark, func(s metrics.Sample) bool {
 		return s.Agents.ProcessCount >= 1 && s.Agents.MemoryBytes > 0
 	}, waitFor)
-	s := decode(ev)
-	if s.MemoryBytes != s.App.MemoryBytes+s.Agents.MemoryBytes || s.ProcessCount != s.App.ProcessCount+s.Agents.ProcessCount {
-		t.Fatalf("totals are not App + Agents: %+v", s)
+	flowharness.CheckMetricsTotals(t, s)
+	if s.Scripts.ProcessCount != 0 {
+		t.Fatalf("agent filed under Scripts: %+v", s)
 	}
 
 	if err := os.WriteFile(hold, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	mark = app.Events.Mark()
-	app.Events.WaitAfter(t, mark, appevent.ChannelAppMetrics, func(ev flowtest.Event) bool {
-		return decode(ev).Agents.ProcessCount == 0
-	}, waitFor)
+	app.WaitMetrics(t, mark, func(s metrics.Sample) bool { return s.Agents.ProcessCount == 0 }, waitFor)
 }
