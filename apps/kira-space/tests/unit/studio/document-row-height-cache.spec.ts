@@ -20,6 +20,10 @@ import { useDocumentRowsStore } from '../../../frontend/src/studio/views/shared/
 setActivePinia(pinia);
 const {
   dropRows,
+  fillLineCounts,
+  generationOf,
+  knownRowHeight,
+  primeLineCounts,
   pruneRows,
   registerDocumentRows,
   resetRows,
@@ -246,5 +250,79 @@ describe('documentPageStats equals the main-thread height model', () => {
 
   test('field names match the old fieldNamesOnPage rule', () => {
     expect(stats.fieldNames).toEqual(oldFieldNames(EQUIVALENCE_BODIES));
+  });
+});
+
+const height = (lines: number) => HEAD_H + lines * LINE_H + BODY_PADDING_V;
+
+describe('page-wide height model: window fill, worker prime, estimate', () => {
+  test('knownRowHeight parses nothing and follows the mean of the filled counts', () => {
+    const tabId = scope('known');
+    try {
+      withParseCounting(() => {
+        expect(knownRowHeight(tabId, 3, null, true)).toBe(height(8)); // nothing counted yet
+      });
+      expect(parseCalls).toBe(0);
+      fillLineCounts(tabId, [0]); // two lines
+      withParseCounting(() => {
+        expect(knownRowHeight(tabId, 3, null, true)).toBe(height(2));
+        expect(knownRowHeight(tabId, 0, null, true)).toBe(height(2));
+        expect(knownRowHeight(tabId, 3, null, false)).toBe(HEAD_H);
+      });
+      expect(parseCalls).toBe(0);
+    } finally {
+      unregisterDocumentRows(tabId);
+      dropRows(tabId);
+    }
+  });
+
+  test('fillLineCounts parses only rows with no entry', () => {
+    const tabId = scope('fill');
+    try {
+      withParseCounting(() => fillLineCounts(tabId, [0, 1]));
+      expect(parseCalls).toBe(2 * PARSES_PER_ROW);
+      withParseCounting(() => fillLineCounts(tabId, [0, 1]));
+      expect(parseCalls).toBe(0);
+    } finally {
+      unregisterDocumentRows(tabId);
+      dropRows(tabId);
+    }
+  });
+
+  test('primeLineCounts fills only uncounted, un-toggled rows and maps -1 to the raw fallback', () => {
+    const tabId = scope('prime', NESTED_BODY);
+    try {
+      fillLineCounts(tabId, [0]); // two lines
+      togglePath(tabId, 1, 'b'); // row 1 now has nested paths: not the worker's to answer
+      primeLineCounts(tabId, generationOf(tabId), Int32Array.of(9, 9, 5, -1));
+      withParseCounting(() => {
+        expect(knownRowHeight(tabId, 0, null, true)).toBe(height(2));
+        expect(knownRowHeight(tabId, 2, null, true)).toBe(height(5));
+        expect(knownRowHeight(tabId, 3, null, true)).toBe(HEAD_H + 220);
+      });
+      expect(parseCalls).toBe(0);
+      fillLineCounts(tabId, [1]);
+      expect(knownRowHeight(tabId, 1, null, true)).toBe(height(4));
+    } finally {
+      unregisterDocumentRows(tabId);
+      dropRows(tabId);
+    }
+  });
+
+  test('a stale generation is a no-op after resetRows or dropRows', () => {
+    const tabId = scope('stale');
+    try {
+      const generation = generationOf(tabId);
+      resetRows(tabId);
+      primeLineCounts(tabId, generation, Int32Array.of(7));
+      expect(knownRowHeight(tabId, 0, null, true)).toBe(height(8));
+      const second = generationOf(tabId);
+      dropRows(tabId);
+      primeLineCounts(tabId, second, Int32Array.of(7));
+      expect(knownRowHeight(tabId, 0, null, true)).toBe(height(8));
+    } finally {
+      unregisterDocumentRows(tabId);
+      dropRows(tabId);
+    }
   });
 });
