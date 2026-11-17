@@ -18,11 +18,12 @@
  * an unrelated row happened to already be pending).
  *
  * The modal shell is shadcn's `Dialog`/`DialogContent` now, `title` feeds
- * `DialogTitle`'s default slot, and the four modes' own controls are Input/Checkbox/RadioGroup —
+ * `DialogTitle`'s default slot, and the four modes' own controls are Input/Checkbox/SecondaryTabs —
  * `mode`/`onClose`'s own dispatch is otherwise unchanged.
  */
 import { validateRefName } from '@kira/git-core';
 import type { StashBranchPreflight, StashEntry } from '@kira/git-ipc';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
@@ -43,7 +44,6 @@ import {
   FieldSet,
 } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { useFormErrors } from '@workbench/behaviour/formErrors';
@@ -220,7 +220,23 @@ type SaveSource = 'workingTree' | 'entry';
 const saveLabel = ref('');
 const saveSource = ref<SaveSource>('workingTree');
 const saveLabelId = useId();
-const saveSourceId = useId();
+const saveSourceItems = computed(() => [
+  {
+    value: 'workingTree',
+    label: t('git.dialog.stash.workingTree.label'),
+    testid: 'stash-save-source-workingTree',
+  },
+  ...(props.saveSourceEntry
+    ? [
+        {
+          value: 'entry',
+          label: t('git.dialog.stash.entry.label', { label: stashLabel(props.saveSourceEntry) }),
+          testid: 'stash-save-source-entry',
+          tooltip: t('git.dialog.stash.entry.label', { label: stashLabel(props.saveSourceEntry) }),
+        },
+      ]
+    : []),
+]);
 
 watch(
   () => [props.saveOpen, props.saveSourceEntry] as const,
@@ -398,27 +414,23 @@ function onClose(): void {
           </Field>
           <FieldSet>
             <FieldLegend>{{ t('common.field.source.label') }}</FieldLegend>
-            <RadioGroup v-model="saveSource">
-              <Field orientation="horizontal">
-                <RadioGroupItem :id="`${saveSourceId}-workingTree`" value="workingTree" />
-                <FieldLabel :for="`${saveSourceId}-workingTree`">{{
-                  t('git.dialog.stash.workingTree.label')
-                }}</FieldLabel>
-              </Field>
-              <Alert v-if="saveSource === 'workingTree' && saveHasUntracked" variant="warn">
-                <AlertDescription>
-                  <CatalogText k="git.dialog.stash.untrackedLimit.hint">
-                    <template #command><code class="font-data">git stash create</code></template>
-                  </CatalogText>
-                </AlertDescription>
-              </Alert>
-              <Field v-if="saveSourceEntry" orientation="horizontal">
-                <RadioGroupItem :id="`${saveSourceId}-entry`" value="entry" />
-                <FieldLabel :for="`${saveSourceId}-entry`">
-                  {{ t('git.dialog.stash.entry.label', { label: stashLabel(saveSourceEntry) }) }}
-                </FieldLabel>
-              </Field>
-            </RadioGroup>
+            <SecondaryTabs
+              variant="choice"
+              size="kira-lg"
+              wrap
+              :aria-label="t('common.field.source.label')"
+              :items="saveSourceItems"
+              :model-value="saveSource"
+              data-testid="stash-save-source"
+              @update:model-value="(v) => (saveSource = v as SaveSource)"
+            />
+            <Alert v-if="saveSource === 'workingTree' && saveHasUntracked" variant="warn">
+              <AlertDescription>
+                <CatalogText k="git.dialog.stash.untrackedLimit.hint">
+                  <template #command><code class="font-data">git stash create</code></template>
+                </CatalogText>
+              </AlertDescription>
+            </Alert>
           </FieldSet>
           <FieldDescription>{{ t('git.dialog.stash.copied.hint') }}</FieldDescription>
         </template>
