@@ -4,7 +4,7 @@
 
 Native macOS workbench: git client, code workspace, coding agents, memory store, terminal, phone
 view, plus the database (Studio), Api, Docker and Kubernetes modules. Wails (Go) and Vue 3. Modes:
-Agents, Automations, Memory, Git, Studio, Api, Docker, Kubernetes. Replaces the former Kira Studio
+Agents, Automations, Studio, Api, Docker, Kubernetes, Git, Memory. Replaces the former Kira Studio
 app.
 
 [Presentation page](https://vlad-cirstean.github.io/kira-space/) and

@@ -11,7 +11,6 @@ import CollectionsPanel from '../studio/api/CollectionsPanel.vue';
 import ProjectPanel from '../studio/workbench/panels/ProjectPanel.vue';
 import StudioStart from '../studio/workbench/panels/StudioStart.vue';
 
-// Space modules first, then the database, API, Docker and Kubernetes modules.
 /** Modes whose project panel lists connections (database, API, Docker, Kubernetes). */
 export const CONNECTION_PANEL_MODES: ReadonlySet<AppMode> = new Set([
   'studio',
@@ -20,15 +19,16 @@ export const CONNECTION_PANEL_MODES: ReadonlySet<AppMode> = new Set([
   'kubernetes',
 ]);
 
+// Title-bar order: Space modules, the database, API, Docker and Kubernetes modules, Git, Memory last.
 export const MODE_ORDER: AppMode[] = [
   'ade',
   'automations',
-  'memory',
-  'git',
   'studio',
   'api',
   'docker',
   'kubernetes',
+  'git',
+  'memory',
 ];
 
 export const MODES: ModeRegistry<AppMode> = {
