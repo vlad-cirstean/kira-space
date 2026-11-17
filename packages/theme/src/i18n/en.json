@@ -13129,6 +13129,9 @@
         "previousTab": {
           "label": "Go to previous tab"
         },
+        "searchPanel": {
+          "label": "Search panel"
+        },
         "toggleOperationsPanel": {
           "label": "Show or hide operations"
         },
