@@ -36,6 +36,7 @@ import {
   connectAndExpandControl as mongoConnectAndExpandControl,
   mongoConnectionSummary,
   WIDGETS_PATH,
+  widgetsFixture,
 } from './support/mongoFixture';
 import {
   ORDER_ITEMS_PATH,
@@ -145,6 +146,12 @@ for (const away of [false, true]) {
     const rows = '[data-testid="console-result-doc-row"]';
     await expect(page.locator(rows).first()).toBeVisible({ timeout: 60_000 });
     await expectResponsive(page, 'documents arrival', BUDGET_MS);
+
+    await resetFreezeProbe(page);
+    await page.click('[data-testid="console-expand-all"]');
+    await expect(page.locator('[data-testid="document-body"]').first()).toBeVisible();
+    await page.waitForTimeout(1000);
+    await expectResponsive(page, 'documents expand all', BUDGET_MS);
 
     await roundTripModules(page, 'documents', rows);
   });
@@ -416,4 +423,76 @@ test('a held console run cancels on Stop without a freeze', async ({ relaunch })
   // No result exists to carry a status label: the run ending is the Stop button going idle.
   await expect(page.locator('[data-testid="console-stop"]')).toBeDisabled();
   await expectResponsive(page, 'cancel', BUDGET_MS);
+});
+
+test('documents tab stays responsive on a 10,000-document page', async ({ relaunch }) => {
+  const CONNECTION_ID = 'conn-large-doctab';
+  const FIXTURE = widgetsFixture(CONNECTION_ID);
+  const CONTROL: ControlSnapshot[] = [
+    { channel: IPC.connectionsList, response: [] },
+    {
+      channel: IPC.connectionsCreate,
+      args: mongoCreateArgs('Large DocTab'),
+      response: mongoConnectionSummary(CONNECTION_ID, 'Large DocTab', 'green'),
+    },
+    ...FIXTURE.control,
+  ];
+  const [unfiltered, ...rest] = FIXTURE.port;
+  const PORT: PortSnapshot[] = [
+    {
+      ...unfiltered,
+      response: { kind: 'read', page: docPage(), source: 'server' },
+      delayMs: DELAY_MS,
+    } as PortSnapshot,
+    ...rest,
+  ];
+  const { window: page } = await relaunch({ control: CONTROL, stream: PORT });
+  await startProbe(page);
+  await connectMongoAndExpand(page, 'Large DocTab');
+  await (await findRow(page, WIDGETS_PATH)).dblclick();
+  // Tab mount costs the same for any page size; let it settle while the reply is held, so the
+  // window holds the page's arrival and the height work after it.
+  await expect(page.locator('[data-testid="document-list"]')).toBeVisible({ timeout: 60_000 });
+  await page.waitForTimeout(500);
+  await resetFreezeProbe(page);
+  const rows = page.locator('[data-testid="document-row"]');
+  await expect(rows.first()).toBeVisible({ timeout: 60_000 });
+  await page.waitForTimeout(1500);
+  await expectResponsive(page, 'documents tab arrival', BUDGET_MS);
+
+  // Exact heights: head 26 + one 18 px line per field + 8 px body padding.
+  const rowBox = async (index: number) => {
+    const box = await rows.nth(index).boundingBox();
+    if (!box) throw new Error(`document row ${index} not rendered`);
+    return box;
+  };
+  const fieldCount = Number(
+    (await rows.first().locator('[data-testid="document-field-count"]').innerText()).match(
+      /\d+/,
+    )?.[0],
+  );
+  expect(fieldCount).toBeGreaterThan(0);
+  expect((await rowBox(0)).height).toBeCloseTo(26 + fieldCount * 18 + 8, 0);
+
+  await scrollAndExpectResponsive(page, page.locator('[data-testid="document-list"]'), 'documents');
+  await expect(rows.first()).toBeVisible();
+
+  await resetFreezeProbe(page);
+  await page.click('[data-testid="document-collapse-all"]');
+  await expect(rows.first()).toBeVisible();
+  await page.waitForTimeout(500);
+  await expectResponsive(page, 'documents collapse all', BUDGET_MS);
+  await resetFreezeProbe(page);
+  await page.click('[data-testid="document-expand-all"]');
+  await expect(rows.first()).toBeVisible();
+  await page.waitForTimeout(500);
+  await expectResponsive(page, 'documents expand all', BUDGET_MS);
+
+  // Toggling a row moves only the rows below it: the next row starts where this one now ends.
+  await resetFreezeProbe(page);
+  await rows.first().locator('[data-testid="document-toggle-expand"]').click();
+  await page.waitForTimeout(500);
+  await expectResponsive(page, 'documents toggle', BUDGET_MS);
+  const [a, b] = [await rowBox(0), await rowBox(1)];
+  expect(Math.abs(b.y - (a.y + a.height))).toBeLessThanOrEqual(1);
 });
