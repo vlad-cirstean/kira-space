@@ -25,12 +25,16 @@ type restoreEnv struct {
 	gen *flowharness.BootGen
 }
 
-func bootRestore(t *testing.T) restoreEnv {
+func bootRestore(t *testing.T) restoreEnv { return bootRestoreGrace(t, time.Second) }
+
+// bootRestoreGrace boots with a given grace: a stopped container leaves the snapshot after it, so a
+// test that stops one and then bumps the boot id needs grace longer than a loaded daemon's stop latency.
+func bootRestoreGrace(t *testing.T, grace time.Duration) restoreEnv {
 	t.Helper()
 	d := flowharness.RequireDocker(t)
 	gen := &flowharness.BootGen{}
 	app := flowharness.New(t, flowharness.WithDockerOptions(
-		docker.WithRestoreTiming(200*time.Millisecond, time.Second, 2*time.Second),
+		docker.WithRestoreTiming(200*time.Millisecond, grace, 2*time.Second),
 		docker.WithBootProbe(gen.Probe()),
 	))
 	return restoreEnv{app: app, d: d, gen: gen}
@@ -309,7 +313,7 @@ func TestRestoreShutdownCasualty(t *testing.T) {
 }
 
 func TestRestoreWaitingPolicy(t *testing.T) {
-	e := bootRestore(t)
+	e := bootRestoreGrace(t, time.Minute)
 	keeper := keepAlive(e.d, "keeper", "always")
 	e.waitSnapshot(t, keeper)
 	if _, err := e.d.Cli.ContainerStop(context.Background(), keeper, client.ContainerStopOptions{}); err != nil {
