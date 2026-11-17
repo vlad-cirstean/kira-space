@@ -82,3 +82,8 @@ fill the per-stream file-ownership tables and list each shared file with that st
 P670 implementation waits for user confirmation if its plan flags a lost capability.
 
 Landing: as in batch 1.
+
+## Batch 6: P672
+
+Sequential: Part 1 analysis, then Parts 2..n. Starts after batch 5 landed because it touches every
+module and must see P667/P668 and the other changes.

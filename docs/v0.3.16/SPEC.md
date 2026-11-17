@@ -21,6 +21,8 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P669 | Drop move up/down from left-panel menus | Planned |
 | P670 | Remove connection Secrets section | Planned |
 | P671 | Terminal links: copy via right click and reliable file paths | Planned |
+| P672 Part 1 | UI inventory and uniformity rules | Planned |
+| P672 Part 2 | Apply uniformity (cut into Parts 2..n after Part 1) | Planned |
 
 ## P656 Release retention deletes whole releases, never tags
 
@@ -133,3 +135,15 @@ Plan: `plans/P670.md`.
 Two fixes. (1) In terminal output a URL link opens only on Cmd-click. Right click on a link must show a menu with Copy link and Open, as in other terminals. Same for file path links: Copy path, Open. (2) File paths in terminal output do not always become links. Planner finds why (`packages/workbench/src/terminal/fileLinkProvider.ts` `findFilePaths`/`resolve`, `apps/kira-space/frontend/src/state/terminalFileLinks.ts`, Go `openedFilesTerminalResolve` against the terminal's cwd) and fixes the misses. Shapes to check: relative paths, `./` `../` `~`, `path:line:col`, paths wrapped across rows, paths inside quotes and parens, cwd of agent and script terminals, exited terminals. Acceptance: right-click menu on web and file links; a table of path shapes that must link in the plan, each covered by a test (unit test for the path finder if it has interacting rules, flow test for the resolve backend, UI spec for the right-click menu and a clickable path); no regression of Cmd-click.
 
 Plan: `plans/P671.md`.
+
+## P672 Part 1: UI inventory and uniformity rules
+
+User feedback: nothing in the UI is uniform. Not only per module: each dialog, menu, card in the same module differs in components and design. "Elements" means more than dialog and card: how information shows inside them. Covers alignment, colors, fonts, sizes, spacing, labels, icons, empty/loading/error states, headers/footers, button placement and order, form layouts, lists/tables/rows, tooltips, badges. Part 1 is analysis only, no UI change. Deliver: (1) exhaustive inventory of element types and each variant actually used, with counts and file references (via codegraph), grouped per element type; (2) a small set of canonical patterns; (3) a mapping of every variant to its canonical pattern, or a justified exception. Output committed under `plans/`: inventory, canonical rules, migration list. From the inventory the planner decides how to cut Part 2 into Parts 2, 3, ... by element type or module, each sized for one planner and one implementer; the orchestrator then adds them as rows. Acceptance: exhaustive (every dialog, menu, card, list, form in every module appears) and canonical rules concrete enough to review (token values, component to use, markup shape). Tests: none (docs).
+
+Plan: `plans/P672.md`.
+
+## P672 Part 2: Apply uniformity
+
+Placeholder, cut into Parts 2..n after Part 1. Migrate variants to the canonical patterns per Part 1's migration list. Each part keeps behavior unchanged except look and layout. Tests: UI specs and visual baselines updated; no new unit tests unless complex logic.
+
+Plan: `plans/P672-part2.md`.
