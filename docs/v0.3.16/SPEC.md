@@ -16,7 +16,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P663 | Panel resize bar and update widget placement | Done |
 | P664 | API tab bar plus and request input editing | Done |
 | P665 | Cmd+F search in left panels | Done |
-| P666 | Git module last | Planned |
+| P666 | Git and Memory modules last | Done |
 | P667 | Single-select cards | Planned |
 | P668 | Single-select toggle groups | Planned |
 | P669 | Drop move up/down from left-panel menus | Planned |
@@ -154,11 +154,13 @@ Plan: `plans/P665.md`.
 
 Result: Done. New shortcut `panel.find` (scope `panel`, same chord as `view.find`), routed by focus: `usePanelHeaderSearch` binds it on the panel root inside `data-slot="side-panel"` (innermost searchable panel wins), plus a module registry behind `openFocusedPanelSearch` (menu Find event in `App.vue`, falls back to `view.find`) and `openActivePanelSearch` (palette entry `panel.find`, "Search panel"). Palette commands with `movesFocus` run on the dialog's close-auto-focus (`CommandDialog` forwards it) so focus restore cannot undo them. Six toggle buttons print the chord. Ran (Playwright `ui`, WebKit): new `panel-find.spec.ts` 7 of 8 pass (Automations, Memory, Git Repos, Files, Files>Search, menu, palette), `studio/panel-find.spec.ts` 5 of 5 pass; `consistency`, `module-state`, `studio/module-state`, `studio/collections` pass. Unverified here: Git Review case and `repo-review-interaction.spec.ts` (11 tests) fail in this sandbox at `openReviewListing`, also at base commit `10066c82` (`consistency-git` review row), so the review-file-filter path is covered by CI only. macOS WKWebView menu-accelerator versus keydown ordering is unverified here (Linux WebKit, no native menu); the menu path and local chord both call the idempotent `openSearch`, so either order converges. Deviations: Studio and API panels hide the bar when empty, so `searchable` is now `!empty` (Cmd+F then falls through to `view.find`); `consistency.spec.ts` find test clicks the diff editor first, since Find with focus in the left tree now opens the panel search; UI helper `support/panelFind.ts` presses Meta or Control by UA (Linux WebKit reports Mac).
 
-## P666 Git module last
+## P666 Git and Memory modules last
 
-Move the Git module to the last position in the module switcher/navigation: sidebar order, shortcut numbering if tied to order, persisted order defaults. Acceptance: resulting order stated in Result; shortcuts and docs updated; UI spec. UI-only, no backend.
+Move the Git module to the second-to-last position and Memory (when on) to the last in the module switcher/navigation: sidebar order, shortcut numbering if tied to order, persisted order defaults. Acceptance: resulting order stated in Result; shortcuts and docs updated; UI spec. UI-only, no backend.
 
 Plan: `plans/P666.md`.
+
+Result: Done. `MODE_ORDER` (`workbench/modes.ts`) is now ade, automations, studio, api, docker, kubernetes, git, memory. Memory shows only under `experimental.memory`, so the default order ends with Git. Scope grew mid-phase (user): Memory also last, noted in the plan. No shortcut renumbering existed: no per-module chord, so nothing to renumber. Default module stays Git (by id: `WindowModes.Default`, `createModeStore`, memory-gate fallback); no Go change, no persisted order, no migration. `modules.spec.ts` order tests assert the new order (Git `nth(-2)`, Memory last, Git still `is-active`): 5 of 5 pass. Docs updated: ARCHITECTURE, README, app README, site how-it-works. Visual baselines re-recorded with Memory off (Git icon now last): `new-connection-dialog`, `console`, `data-grid`, `schema-dialog`, `workbench-shell`; `ade-repos-page` unchanged. All six pass on rerun. Besides icon order, a faint sub-pixel diff (max 41 of 255) sits on the focused primary button in three baselines, and a thin one on the data-grid row; neither is visible on inspection.
 
 ## P667 Single-select cards
 
