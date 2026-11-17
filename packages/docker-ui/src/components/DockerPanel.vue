@@ -72,6 +72,7 @@ const stopped = computed(() => (containers.data.value?.length ?? 0) - running.va
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: 'docker:panel',
   searchable: () => ok.value,
   getSearch: () => ui.search,
   setSearch: (v) => {

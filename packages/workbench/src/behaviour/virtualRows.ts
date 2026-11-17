@@ -1,6 +1,7 @@
 import { defaultRangeExtractor, type Range, useVirtualizer } from '@tanstack/vue-virtual';
 import { useResizeObserver } from '@vueuse/core';
-import { computed, onMounted, type Ref, ref, watch } from 'vue';
+import { computed, type MaybeRefOrGetter, onMounted, type Ref, ref, watch } from 'vue';
+import { useKeptScroll } from './viewState';
 
 // The 9 consuming files' own scoped `.virtual-row`/`.sticky-row` copies (each byte-identical,
 // restored per-file after base.css's shared `@utility virtual-row`/`sticky-row` was reverted --
@@ -35,6 +36,8 @@ export interface UseVirtualRowsOptions {
   pinned?: () => number | null;
   /** Offset of the first row from the scroll element's content top, when other content sits above the list. */
   scrollMargin?: () => number;
+  /** View-state key: scroll survives an unmount (P660). Null disables. */
+  keepScroll?: MaybeRefOrGetter<string | null>;
 }
 
 export function useVirtualRows(opts: UseVirtualRowsOptions) {
@@ -69,6 +72,9 @@ export function useVirtualRows(opts: UseVirtualRowsOptions) {
 
   const virtualItems = computed(() => virtualizer.value.getVirtualItems());
   const totalSize = computed(() => virtualizer.value.getTotalSize());
+  if (opts.keepScroll) {
+    useKeptScroll(opts.keepScroll, opts.scrollElement, { ready: () => totalSize.value > 0 });
+  }
 
   // Published for callers that need raw scroll geometry (the sticky ancestor band's own
   // stickyBand.ts) -- VirtualList's own `scrollstate` emit, republished as refs instead since

@@ -1,5 +1,6 @@
 import { useEventListener } from '@vueuse/core';
 import { nextTick, type Ref, ref } from 'vue';
+import { useKeptState } from './viewState';
 
 // P104 §3 (PanelShell -> inline composition): the reveal/toggle/type-ahead-redirect behaviour
 // PanelShell.vue used to own, factored out so GitPanel.vue/AutomationsPanel.vue/ProjectPanel.vue can
@@ -17,10 +18,15 @@ export function usePanelHeaderSearch(
     getSearch: () => string;
     setSearch: (value: string) => void;
     searchTestid?: string;
+    /** View-state key prefix: bar visibility survives an unmount. Null keeps it a local ref (git-ui has no Pinia, P660 Part 2). */
+    stateKey: string | null;
   },
 ) {
   const testid = opts.searchTestid ?? 'tree-search';
-  const showSearch = ref(false);
+  const showSearch =
+    opts.stateKey === null ? ref(false) : useKeptState(`${opts.stateKey}:showSearch`, false);
+  // Never a hidden active filter.
+  if (opts.getSearch() !== '') showSearch.value = true;
 
   function revealSearch(): void {
     if (showSearch.value) return;

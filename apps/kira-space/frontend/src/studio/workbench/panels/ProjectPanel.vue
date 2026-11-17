@@ -36,6 +36,7 @@ const empty = computed(() => connectionsStore.records.length === 0 && !hasBroken
 // shared usePanelHeaderSearch composable rather than kept as a wrapper component.
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: 'studio:panel',
   searchable: () => true,
   getSearch: () => treeStore.search,
   setSearch: (v) => {

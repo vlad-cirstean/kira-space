@@ -258,6 +258,7 @@ const filterVisible = ref(false);
 
 // Type to search: a printable key in the commit list reveals the file filter and starts it.
 const { showSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: null,
   searchable: () => showsPanes.value,
   getSearch: () => filter.value,
   setSearch: (value) => {

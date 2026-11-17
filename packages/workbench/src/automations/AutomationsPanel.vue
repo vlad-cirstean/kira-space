@@ -185,6 +185,7 @@ async function guarded(fn: () => Promise<unknown>): Promise<void> {
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: 'automations:panel',
   searchable: () => true,
   getSearch: () => search.value,
   setSearch: (v) => {

@@ -58,6 +58,7 @@ function onSearch(value: string): void {
 // shared usePanelHeaderSearch composable rather than an inline copy.
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: 'api:panel',
   searchable: () => true,
   getSearch: () => collectionsStore.search,
   setSearch: onSearch,

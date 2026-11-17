@@ -15,6 +15,7 @@ const qc = useQueryClient();
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: 'kubernetes:panel',
   searchable: () => true,
   getSearch: () => ui.clusterSearch,
   setSearch: (v) => {

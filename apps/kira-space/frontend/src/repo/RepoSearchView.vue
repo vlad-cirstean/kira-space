@@ -92,6 +92,7 @@ function onSelect(row: RepoSearchRowVm): void {
 // Type-to-search: a printable key on the results lands in the query field.
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 usePanelHeaderSearch(rootEl, {
+  stateKey: 'git:search',
   searchable: () => true,
   getSearch: () => query.value,
   setSearch: (v) => {

@@ -56,6 +56,7 @@ const searchInput = computed(
 useFocusOnMount(searchInput);
 // Recall-first: the field is always shown; a printable key on the list redirects into it.
 const { showSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: 'memory:panel',
   searchable: () => true,
   getSearch: () => query.value,
   setSearch: (value) => {

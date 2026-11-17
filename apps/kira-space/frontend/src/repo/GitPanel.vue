@@ -116,6 +116,7 @@ const panelEmpty = computed(() => codeReposStore.records.length === 0);
 const panelSearchable = computed(() => tab.value !== 'review');
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: 'git:panel',
   searchable: () => panelSearchable.value,
   getSearch: () => panelSearch.value,
   setSearch: (v) => {

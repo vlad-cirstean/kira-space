@@ -1,5 +1,5 @@
 import { STICKY_MAX_ROWS, type StickyRowLike, stickyBand, stickyInsetFor } from '@theme/stickyBand';
-import { computed, type Ref } from 'vue';
+import { computed, type MaybeRefOrGetter, type Ref } from 'vue';
 import { useVirtualRows } from './virtualRows';
 
 // P104 §3.4: the old hand-rolled tree host's own recipe (virtualization + the pinned ancestor
@@ -9,11 +9,13 @@ export function useTreeVirtualRows<T extends StickyRowLike & { key: string }>(op
   rows: () => readonly T[];
   rowHeight: () => number;
   scrollElement: Ref<HTMLElement | null>;
+  keepScroll?: MaybeRefOrGetter<string | null>;
 }) {
   const virtual = useVirtualRows({
     count: () => opts.rows().length,
     rowHeight: opts.rowHeight,
     scrollElement: opts.scrollElement,
+    keepScroll: opts.keepScroll,
   });
 
   // D5: three rows, further clamped so a deliberately short panel never spends more of its own

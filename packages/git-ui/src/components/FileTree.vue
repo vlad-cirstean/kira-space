@@ -183,6 +183,7 @@ const activeKey = ref<string | null>(null);
 
 // Type to search: a printable key on the tree redirects into the filter field.
 usePanelHeaderSearch(rootEl, {
+  stateKey: null,
   searchable: () => props.showToolbar !== false,
   getSearch: () => filterInput.value,
   setSearch: onFilterInput,
