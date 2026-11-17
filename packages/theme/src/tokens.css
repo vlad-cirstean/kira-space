@@ -20,6 +20,11 @@
   --kira-scrollbar: var(--kira-border);
   --kira-scrollbar-hover: var(--kira-fg-subtle);
   --kira-scrollbar-active: var(--kira-fg-subtle);
+  /* P663: pane/column resize bar, neutral grey, never blue. Idle line = the one border line;
+     hover and drag each one grey step up. Keyboard focus keeps --kira-focus (the P122 ring). */
+  --kira-resize: var(--kira-border);
+  --kira-resize-hover: #52525b;
+  --kira-resize-active: var(--kira-fg-subtle);
   --kira-scrim: rgb(0 0 0 / 0.6);
   --kira-error: #e66e68;
   --kira-warn: #d5b449;

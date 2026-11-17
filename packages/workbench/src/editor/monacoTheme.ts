@@ -168,6 +168,8 @@ export function defineKiraTheme(mod: MonacoModule): void {
       'editorCursor.foreground': cssVar('--kira-fg', '#d4d4d8'),
       'editorGutter.background': cssVar('--kira-bg', '#1b1b1e'),
       focusBorder: cssVar('--kira-focus', '#5a8ae6'),
+      // P663: sashes (diff split, widget resize) default to focusBorder; keep them grey.
+      'sash.hoverBorder': cssVar('--kira-resize-hover', '#52525b'),
       // §4.5: the themed wavy underline replacing CodeMirror's hard-coded raster squiggle.
       'editorError.foreground': cssVar('--kira-error', '#e66e68'),
       'editorWarning.foreground': cssVar('--kira-warn', '#d5b449'),

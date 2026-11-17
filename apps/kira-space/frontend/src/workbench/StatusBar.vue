@@ -80,6 +80,15 @@ function onRevealBlameCommit(): void {
 <template>
   <StatusBarBase>
     <template #left-extra>
+      <!-- P663: app-wide, first so module items never shift it. -->
+      <UpdateAvailableItem
+        v-if="appUpdateStore.available"
+        :target-version="appUpdateStore.targetVersion"
+        :newest-version="appUpdateStore.newestVersion"
+        :stepped="appUpdateStore.stepped"
+        :current-version="appUpdateStore.currentVersion"
+        @open="appUpdateStore.openUpdateDialog()"
+      />
       <!-- P76 §5.2: left-side item. -->
       <StatusBarItem
         v-if="blame"
@@ -110,14 +119,6 @@ function onRevealBlameCommit(): void {
       <AdeAgentsStatusItem />
       <RunningOpsStatusItem :items="items" @open="automations.showOperations()" />
       <RunsStatusItem />
-      <UpdateAvailableItem
-        v-if="appUpdateStore.available"
-        :target-version="appUpdateStore.targetVersion"
-        :newest-version="appUpdateStore.newestVersion"
-        :stepped="appUpdateStore.stepped"
-        :current-version="appUpdateStore.currentVersion"
-        @open="appUpdateStore.openUpdateDialog()"
-      />
       <AppMetricsItem :sample="appMetricsStore.sample" :app-name="appUpdateStore.appName" />
     </template>
   </StatusBarBase>
