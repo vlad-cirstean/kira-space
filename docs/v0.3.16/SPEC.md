@@ -15,7 +15,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P662 | Query module UI freeze | Done |
 | P663 | Panel resize bar and update widget placement | Done |
 | P664 | API tab bar plus and request input editing | Done |
-| P665 | Cmd+F search in left panels | Planned |
+| P665 | Cmd+F search in left panels | Done |
 | P666 | Git module last | Planned |
 | P667 | Single-select cards | Planned |
 | P668 | Single-select toggle groups | Planned |
@@ -151,6 +151,8 @@ Result: Done. Part 1: new `studio/api/ApiNewTab.vue` (Runs pattern: `TabStripNew
 Focus in a left panel (Connections, Collections, etc.) plus Cmd/Ctrl+F opens that panel's search bar and focuses it, typing starts at once. Acceptance: every left panel with a search bar; palette/shortcut registry entry; UI spec per panel. UI-only, no backend.
 
 Plan: `plans/P665.md`.
+
+Result: Done. New shortcut `panel.find` (scope `panel`, same chord as `view.find`), routed by focus: `usePanelHeaderSearch` binds it on the panel root inside `data-slot="side-panel"` (innermost searchable panel wins), plus a module registry behind `openFocusedPanelSearch` (menu Find event in `App.vue`, falls back to `view.find`) and `openActivePanelSearch` (palette entry `panel.find`, "Search panel"). Palette commands with `movesFocus` run on the dialog's close-auto-focus (`CommandDialog` forwards it) so focus restore cannot undo them. Six toggle buttons print the chord. Ran (Playwright `ui`, WebKit): new `panel-find.spec.ts` 7 of 8 pass (Automations, Memory, Git Repos, Files, Files>Search, menu, palette), `studio/panel-find.spec.ts` 5 of 5 pass; `consistency`, `module-state`, `studio/module-state`, `studio/collections` pass. Unverified here: Git Review case and `repo-review-interaction.spec.ts` (11 tests) fail in this sandbox at `openReviewListing`, also at base commit `10066c82` (`consistency-git` review row), so the review-file-filter path is covered by CI only. macOS WKWebView menu-accelerator versus keydown ordering is unverified here (Linux WebKit, no native menu); the menu path and local chord both call the idempotent `openSearch`, so either order converges. Deviations: Studio and API panels hide the bar when empty, so `searchable` is now `!empty` (Cmd+F then falls through to `view.find`); `consistency.spec.ts` find test clicks the diff editor first, since Find with focus in the left tree now opens the panel search; UI helper `support/panelFind.ts` presses Meta or Control by UA (Linux WebKit reports Mac).
 
 ## P666 Git module last
 
