@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
@@ -13,7 +14,6 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { Kbd } from '@theme/components/ui/kbd';
 import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
@@ -37,6 +37,19 @@ const fromName = computed(
 const targets = computed(() =>
   (store.moves?.options ?? []).filter((o) => o.id !== store.fromStepId && !o.skipped),
 );
+
+const closeItems = computed(() => [
+  {
+    value: 'close',
+    label: t('space.ade.stageDialog.sessions.close.label', { count: store.closable.length }),
+    testid: 'ade-stage-close',
+  },
+  {
+    value: 'keep',
+    label: t('space.ade.stageDialog.sessions.keep.label'),
+    testid: 'ade-stage-keep',
+  },
+]);
 
 const sessionStages = computed(() => {
   const names = new Map((store.moves?.options ?? []).map((o) => [o.id, o.name]));
@@ -154,20 +167,17 @@ onBeforeUnmount(() => {
             {{ t('space.ade.stageDialog.sessions.label', { count: store.closable.length }) }}
             <span v-if="sessionStages" class="text-kira-sm">({{ sessionStages }})</span>
           </div>
-          <RadioGroup v-model="store.closeChoice" class="gap-1.5">
-            <div class="flex items-center gap-2">
-              <RadioGroupItem id="ade-stage-close" value="close" data-testid="ade-stage-close" />
-              <Label for="ade-stage-close">{{
-                t('space.ade.stageDialog.sessions.close.label', { count: store.closable.length })
-              }}</Label>
-            </div>
-            <div class="flex items-center gap-2">
-              <RadioGroupItem id="ade-stage-keep" value="keep" data-testid="ade-stage-keep" />
-              <Label for="ade-stage-keep">{{
-                t('space.ade.stageDialog.sessions.keep.label')
-              }}</Label>
-            </div>
-          </RadioGroup>
+          <SecondaryTabs
+            variant="choice"
+            size="kira-lg"
+            :aria-label="
+              t('space.ade.stageDialog.sessions.label', { count: store.closable.length })
+            "
+            :items="closeItems"
+            :model-value="store.closeChoice"
+            data-testid="ade-stage-close-choice"
+            @update:model-value="(v) => (store.closeChoice = v === 'keep' ? 'keep' : 'close')"
+          />
           <FieldDescription>{{ t('space.ade.stageDialog.sessions.hint') }}</FieldDescription>
         </div>
         <Alert v-if="live" variant="error" data-testid="ade-stage-live">

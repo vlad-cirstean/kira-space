@@ -6,7 +6,6 @@ import { FieldDescription, FieldError } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { refDebounced } from '@vueuse/core';
@@ -61,6 +60,14 @@ const title = ref('');
 const jira = ref('');
 const notes = ref('');
 const kind = ref<'task' | 'orchestrator'>('task');
+const kindItems = computed(() => [
+  { value: 'task', label: t('common.task.label'), testid: 'ade-nw-kind-task' },
+  {
+    value: 'orchestrator',
+    label: t('space.ade.orchestrator.badge.label'),
+    testid: 'ade-nw-kind-orchestrator',
+  },
+]);
 const createTask = useCreateTask();
 const { model, today } = usePlanModel();
 
@@ -214,22 +221,15 @@ async function pick(value: string): Promise<void> {
         />
         <span class="text-muted-foreground">{{ t('common.field.kind.label') }}</span>
         <div class="flex flex-col gap-1">
-          <RadioGroup v-model="kind" class="flex gap-4" data-testid="ade-nw-kind">
-            <div class="flex items-center gap-2">
-              <RadioGroupItem id="ade-nw-kind-task" value="task" data-testid="ade-nw-kind-task" />
-              <Label for="ade-nw-kind-task">{{ t('common.task.label') }}</Label>
-            </div>
-            <div class="flex items-center gap-2">
-              <RadioGroupItem
-                id="ade-nw-kind-orchestrator"
-                value="orchestrator"
-                data-testid="ade-nw-kind-orchestrator"
-              />
-              <Label for="ade-nw-kind-orchestrator">{{
-                t('space.ade.orchestrator.badge.label')
-              }}</Label>
-            </div>
-          </RadioGroup>
+          <SecondaryTabs
+            variant="choice"
+            size="kira-lg"
+            :aria-label="t('common.field.kind.label')"
+            :items="kindItems"
+            :model-value="kind"
+            data-testid="ade-nw-kind"
+            @update:model-value="(v) => (kind = v === 'orchestrator' ? 'orchestrator' : 'task')"
+          />
           <FieldDescription v-if="kind === 'orchestrator'" data-testid="ade-nw-kind-hint">{{
             t('space.ade.orchestrator.kind.orchestrator.hint')
           }}</FieldDescription>
