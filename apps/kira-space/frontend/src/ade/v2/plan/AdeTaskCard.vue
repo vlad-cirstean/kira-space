@@ -65,6 +65,11 @@ const tagGlyph = computed(() =>
     : null,
 );
 
+function onRowMenu(at: MouseEvent | HTMLElement): void {
+  if (at instanceof HTMLElement) taskMenu.openAt(at);
+  else taskMenu.open(at);
+}
+
 const head = useTemplateRef<HTMLElement>('head');
 useShortcut(head, ['menu.open'], () => {
   if (head.value) taskMenu.openAt(head.value);
@@ -141,9 +146,10 @@ const boxClass = computed(() => {
               :sessions="card.sessions"
             />
           </span>
-          <span class="flex min-w-0 items-center"><AdeTaskTitle :card="card" /></span>
+          <span class="flex min-w-0 flex-1 items-center"><AdeTaskTitle :card="card" /></span>
           <span
             class="hidden shrink-0 items-center gap-0.5 group-hover/head:flex group-focus-visible/head:flex group-has-[:focus-visible]/head:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
+            data-testid="ade-card-actions"
           >
             <AdeTaskAddMenu v-if="!card.review" :card="card" />
             <DropdownMenu v-if="baseChoices.length > 1">
@@ -197,15 +203,7 @@ const boxClass = computed(() => {
               <VarText :parts="reviewTip" />
               <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
             </TooltipIconButton>
-            <TooltipIconButton
-              icon="ellipsis"
-              :label="t('common.moreActions.tooltip')"
-              class="size-4.5 shrink-0"
-              data-testid="ade-card-more"
-              @click.stop="(ev: MouseEvent) => taskMenu.openAt(ev.currentTarget as HTMLElement)"
-            />
           </span>
-          <span class="flex-1" />
           <AdeTaskStatusMenu :card="card" />
           <AdeTaskActionButton :card="card" icon />
         </div>
@@ -288,7 +286,7 @@ const boxClass = computed(() => {
         :draft-repo-ids="draftRepoIds"
         :editable="!card.review"
         @force-push="emit('forcePush', row)"
-        @task-menu="taskMenu.open"
+        @task-menu="onRowMenu"
       />
       <AdeTaskChildren v-if="card.orchestrator" :card="card" />
     </Card>

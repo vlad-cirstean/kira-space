@@ -11,6 +11,7 @@ import { useFocus } from '@vueuse/core';
 import { errorText } from '@workbench/bridge/codedError';
 import MenuIconButton from '@workbench/components/MenuIconButton.vue';
 import { formatShortcut } from '@workbench/shortcuts/keys';
+import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { useRepoLinksStore } from '../../../repo/state/repoLinks';
@@ -61,7 +62,7 @@ const props = withDefaults(
   { testid: 'ade-branch-row', layout: 'board', draftRepoIds: () => [], editable: false },
 );
 const panel = computed(() => props.layout === 'panel');
-const emit = defineEmits<{ forcePush: []; taskMenu: [ev: MouseEvent] }>();
+const emit = defineEmits<{ forcePush: []; taskMenu: [ev: MouseEvent | HTMLElement] }>();
 const ui = useAdeBoardUiStore();
 const dialogs = useAdeDialogsStore();
 const contextMenu = useContextMenuStore();
@@ -232,6 +233,14 @@ function onMenu(ev: MouseEvent): void {
   ev.stopPropagation();
   contextMenu.openContextMenu(ev, menuItems());
 }
+
+function onMenuKey(): void {
+  const el = rowRef.value;
+  if (panel.value || !el) return;
+  if (props.taskRow) emit('taskMenu', el);
+  else contextMenu.openContextMenuFor(el, menuItems());
+}
+useShortcut(rowRef, ['menu.open'], onMenuKey);
 
 const baseName = computed(() => {
   const part = props.row.base?.label.find((p) => typeof p !== 'string');
@@ -494,12 +503,26 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               </AdeTip>
             </span>
           </AdeBranchTip>
+          <AdeTip v-if="row.context" :text="row.context">
+            <span
+              class="min-w-0 flex-1 basis-0 truncate"
+              :class="rowMeta"
+              data-testid="ade-branch-context"
+              >{{
+                row.context
+              }}</span
+            >
+          </AdeTip>
+          <span v-else class="flex-1" />
+        </div>
+        <div class="flex items-center gap-1">
           <span
             class="hidden shrink-0 items-center gap-0.5 group-hover/row:flex group-focus-visible/row:flex group-has-[:focus-visible]/row:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
+            data-testid="ade-branch-actions"
           >
             <AdeTaskBranchMenu
               v-if="editable"
-              align="start"
+              align="end"
               :row="row"
               :draft-repo-ids="draftRepoIds"
               @error="onEditError"
@@ -520,15 +543,6 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               <div class="font-medium">{{ a.label }}</div>
               <div><VarText :parts="a.tipParts ?? [a.tip]" /></div>
             </TooltipIconButton>
-            <MenuIconButton
-              v-if="split.overflow.length"
-              :icon="ICON.moreActions"
-              :label="t('common.moreActions.tooltip')"
-              :items="menuItems"
-              class="shrink-0"
-              data-testid="ade-branch-more"
-              @click.stop
-            />
             <TooltipIconButton
               v-if="choice"
               icon="git-compare"
@@ -544,19 +558,6 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
             </TooltipIconButton>
           </span>
-          <AdeTip v-if="row.context" :text="row.context">
-            <span
-              class="min-w-0 flex-1 basis-0 truncate"
-              :class="rowMeta"
-              data-testid="ade-branch-context"
-              >{{
-                row.context
-              }}</span
-            >
-          </AdeTip>
-          <span v-else class="flex-1" />
-        </div>
-        <div class="flex items-center gap-1">
           <AdeOpStatus :task-id="row.branch.taskId" :branch-id="row.id" />
           <AdeBranchPr :row="row" />
           <AdeAttention v-if="row.attention" :tip="row.attention" :item="row.attentionItem" />

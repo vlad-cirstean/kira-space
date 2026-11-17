@@ -29,7 +29,9 @@ test('the row pencil opens Change branch under itself and sends the existing bra
     `${t('ade-branch-row')}[data-branch-id="b_cart"] ${t('ade-task-branch-menu')}`,
   );
   const [formBox, pencilBox] = await Promise.all([form.boundingBox(), pencil.boundingBox()]);
-  expect(formBox?.x ?? 0).toBeGreaterThanOrEqual((pencilBox?.x ?? 0) - 1);
+  expect((formBox?.x ?? 0) + (formBox?.width ?? 0)).toBeGreaterThanOrEqual(
+    (pencilBox?.x ?? 0) + (pencilBox?.width ?? 0) - 1,
+  );
   await page.locator('[data-testid^="ade-branch-form-option-"]').first().click();
   await expect.poll(() => calls(control, IPC.adeTaskSetTaskBranch)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskSetTaskBranch)[0]?.args).toMatchObject({
@@ -159,8 +161,7 @@ test('the card menu switches the workflow; a refusal opens the confirm and Yes r
       response: adeFixture('task'),
     },
   ]);
-  await revealHead(page, 'T_bill', 'ade-card-more');
-  await page.locator(`${card('T_bill')} ${t('ade-card-more')}`).click();
+  await page.locator(`${card('T_bill')} ${t('ade-card-head')}`).click({ button: 'right' });
   await page.locator(item('ade-task-workflow')).hover();
   await page.locator(item('ade-task-workflow-bugfix')).click();
   await expect(page.locator(t('confirm-dialog-message'))).toContainText('runs (1)');
