@@ -780,6 +780,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - The tone vocabulary is ok, warn, error, info (Badge, Alert, StatusDot); neutral is muted text. Chips tint /16, banners /10 with /20 border; app code never writes a tone alpha.
 - Error sentences use FieldError and list/popover lines use InlineState; Alert takes icon and strip and no layout classes.
 - A boolean that applies on flip is a Switch; an option in a form committed by a button is a Checkbox (14px box).
+- A single choice whose options need a description uses RadioGroup with RadioGroupCard: the whole card is the radio (reka item), title plus description, selected `border-focus bg-select` (Reset mode, review route, mainline pickers, P667).
 - Use Tooltip for hints, never native title; the theme provider owns the 400ms delay. Shortcuts use Kbd. A tooltip with several facts uses TooltipDetails (title, label/value rows, hint); a joined sentence of facts is not allowed.
 - Loading uses Spinner; Skeleton only where the layout is known.
 - Grey has three roles: text-muted-foreground for secondary content, text-subtle for tertiary chrome and absence markers.
