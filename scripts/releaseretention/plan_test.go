@@ -9,11 +9,13 @@ import (
 	"github.com/kirathecat/kira-studio/internal/releaseline"
 )
 
+const testAsset = "a.dmg"
+
 var nextID int64
 
 func rel(tag string) releaseline.Release {
 	nextID++
-	return releaseline.Release{Tag: tag, Assets: []releaseline.Asset{{ID: nextID, Name: "a.dmg", State: "uploaded", Size: 5}}}
+	return releaseline.Release{Tag: tag, Assets: []releaseline.Asset{{ID: nextID, Name: testAsset, State: "uploaded", Size: 5}}}
 }
 
 func rels(tags ...string) []releaseline.Release {
@@ -32,7 +34,7 @@ func edit(r releaseline.Release, f func(*releaseline.Release)) releaseline.Relea
 // outcome reduces a plan to sorted kept tags and sorted deleted tags.
 func outcome(t *testing.T, rs []releaseline.Release, latest string) (kept, deleted []string, err error) {
 	t.Helper()
-	ds, dels, err := plan(rs, latest)
+	ds, dels, err := plan(rs, latest, testAsset)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -71,6 +73,11 @@ func TestPlan(t *testing.T) {
 		{"release without assets is ignored for first and last",
 			append(rels("v0.4.0", "v0.3.5", "v0.3.4", "v0.3.3"), releaseline.Release{Tag: "v0.3.2"}, releaseline.Release{Tag: "v0.3.6"}), "v0.4.0",
 			[]string{"v0.3.3", "v0.3.5", "v0.4.0"}, []string{"v0.3.4"}, ""},
+		{"release without the updater asset uploaded is ignored for first and last",
+			append(rels("v0.4.0", "v0.3.5", "v0.3.4", "v0.3.3"),
+				edit(rel("v0.3.6"), func(r *releaseline.Release) { r.Assets[0].Name = "sums.txt" }),
+				edit(rel("v0.3.2"), func(r *releaseline.Release) { r.Assets[0].State = "new" })), "v0.4.0",
+			[]string{"v0.3.3", "v0.3.5", "v0.4.0"}, []string{"v0.3.2", "v0.3.4", "v0.3.6"}, ""},
 		{"draft and prerelease are untouched",
 			append(rels("v0.4.0", "v0.3.3", "v0.3.2", "v0.3.1"),
 				edit(rel("v0.3.9"), func(r *releaseline.Release) { r.Draft = true }),
@@ -107,7 +114,7 @@ func TestPlan(t *testing.T) {
 // A rerun after the deletions applied deletes nothing new.
 func TestPlanIsIdempotent(t *testing.T) {
 	rs := rels("v0.4.0", "v0.3.9", "v0.3.8", "v0.3.7", "v0.3.6", "v0.3.5", "v0.3.4", "v0.3.3")
-	_, dels, err := plan(rs, "v0.4.0")
+	_, dels, err := plan(rs, "v0.4.0", testAsset)
 	if err != nil || len(dels) == 0 {
 		t.Fatalf("first plan: %v, %d deletes", err, len(dels))
 	}
@@ -118,7 +125,7 @@ func TestPlanIsIdempotent(t *testing.T) {
 	for i := range rs {
 		rs[i].Assets = slices.DeleteFunc(rs[i].Assets, func(a releaseline.Asset) bool { return gone[a.ID] })
 	}
-	if _, again, err := plan(rs, "v0.4.0"); err != nil || len(again) != 0 {
+	if _, again, err := plan(rs, "v0.4.0", testAsset); err != nil || len(again) != 0 {
 		t.Fatalf("rerun: %v, %d deletes, want none", err, len(again))
 	}
 }

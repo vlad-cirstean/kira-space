@@ -51,6 +51,13 @@ func HasAsset(r Release, name string) bool {
 	return false
 }
 
+// Eligible reports whether r counts as an update target: published, not a prerelease, and carrying
+// the named asset fully uploaded. Updater and retention both use it, so they never disagree on
+// which releases are line members.
+func Eligible(r Release, asset string) bool {
+	return !r.Draft && !r.Prerelease && HasAsset(r, asset)
+}
+
 // Line is one major.minor line with its versions, ascending.
 type Line struct {
 	Key      string
@@ -95,9 +102,7 @@ func NextStep(current string, rels []Release, asset string) Step {
 	if !semver.IsValid(cur) {
 		return Step{}
 	}
-	lines := Lines(rels, func(r Release) bool {
-		return !r.Draft && !r.Prerelease && HasAsset(r, asset)
-	})
+	lines := Lines(rels, func(r Release) bool { return Eligible(r, asset) })
 	if len(lines) == 0 {
 		return Step{}
 	}

@@ -30,8 +30,9 @@ type Delete struct {
 // with a plain vX.Y.Z tag; everything else is skipped and never touched. A candidate keeps every
 // asset when it is a minor's .0, the first or last of its line (the next-step targets of
 // releaseline), among the 5 highest of the current line, or releases/latest. Any other candidate
-// loses all assets. Errors leave nothing to delete.
-func plan(rels []releaseline.Release, latest string) ([]Decision, []Delete, error) {
+// loses all assets. First and last of a line count only releases the updater would pick
+// (releaseline.Eligible for asset). Errors leave nothing to delete.
+func plan(rels []releaseline.Release, latest, asset string) ([]Decision, []Delete, error) {
 	var decisions []Decision
 	var cands []releaseline.Release
 	seen := map[string]bool{}
@@ -69,7 +70,7 @@ func plan(rels []releaseline.Release, latest string) ([]Decision, []Delete, erro
 			add(r.Tag, "x.y.0")
 		}
 	}
-	for _, l := range releaseline.Lines(cands, func(r releaseline.Release) bool { return len(r.Assets) > 0 }) {
+	for _, l := range releaseline.Lines(cands, func(r releaseline.Release) bool { return releaseline.Eligible(r, asset) }) {
 		add(l.Versions[0], "first of minor")
 		add(l.Versions[len(l.Versions)-1], "last patch of minor")
 	}

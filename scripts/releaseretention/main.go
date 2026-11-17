@@ -19,15 +19,16 @@ import (
 func main() {
 	releases := flag.String("releases", "", "file with the releases listing (`gh api --paginate --slurp` output or a flat array)")
 	latest := flag.String("latest", "", "tag releases/latest returns")
+	asset := flag.String("asset", "kira-space-macos-arm64.dmg", "asset the updater installs; releases without it uploaded are not line members")
 	deletes := flag.String("deletes", "", "write the asset deletions here as TSV: id, tag, name")
 	flag.Parse()
-	if err := run(*releases, *latest, *deletes); err != nil {
+	if err := run(*releases, *latest, *asset, *deletes); err != nil {
 		fmt.Fprintln(os.Stderr, "releaseretention:", err)
 		os.Exit(1)
 	}
 }
 
-func run(releasesPath, latest, deletesPath string) error {
+func run(releasesPath, latest, asset, deletesPath string) error {
 	if releasesPath == "" || latest == "" {
 		return fmt.Errorf("-releases and -latest are required")
 	}
@@ -39,7 +40,7 @@ func run(releasesPath, latest, deletesPath string) error {
 	if err != nil {
 		return err
 	}
-	decisions, dels, err := plan(rels, latest)
+	decisions, dels, err := plan(rels, latest, asset)
 	if err != nil {
 		return err
 	}
