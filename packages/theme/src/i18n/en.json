@@ -4870,7 +4870,7 @@
         "confirm": "Force delete"
       },
       "mergeParent": {
-        "option": "Parent {number}: {sha} {subject}"
+        "option": "Parent {number}"
       },
       "operationInProgress": {
         "body": "An operation is already in progress. Resolve or abort it first."
