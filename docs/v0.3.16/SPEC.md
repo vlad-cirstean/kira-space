@@ -6,7 +6,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | # | Phase | Status |
 |---|-------|--------|
 | P656 | Release retention deletes whole releases, never tags | Planned |
-| P657 | Memory tooltip Scripts category | Planned |
+| P657 | Memory tooltip Scripts category | Done |
 | P658 | SQL data view column search | Planned |
 | P659 | Task card hover actions UX | Planned |
 | P660 | Keep module state across tab switches | Planned |
@@ -51,6 +51,15 @@ with `dry_run=true`, confirm the 5 releases, then keep or set `RELEASE_RETENTION
 Status-bar memory tooltip shows Agents category (CPU/RAM) but not script processes. Add a Scripts category next to Agents showing CPU/RAM of script processes, same behavior and layout as Agents. Acceptance: tooltip lists Scripts beside Agents with live values; tests per CLAUDE.md "Tests" (flow test on backend, UI spec on frontend, same scenario).
 
 Plan: `plans/P657.md`.
+
+Result: Done. `internal/procroots` (Agents, Scripts ref-counted root sets) replaces `internal/agentproc`. Scripts roots
+tracked at terminal script runs (`OpenParams.Script`), headless script runs and DB pre-connect scripts. Sampler adds a
+disjoint Scripts group, precedence Agents > Scripts > App; totals and headline are App + Agents + Scripts. Tooltip shows a
+Scripts row between Agents and Total; hint reworded. Ran: `go test ./internal/metrics ./internal/terminal ./internal/scriptruns
+./apps/kira-space/internal/preconnect` (incl. 4 new `TestGroupProcesses` cases); flow tests `TestAppMetricsCountsScripts`,
+`TestAppMetricsCountsAgents`, `TestSQLitePreconnect*`; Playwright `ui` window-chrome metrics test and `visual` status-bar
+test (no baseline change); `bun run typecheck` and `bun run lint` via pre-commit hook. Frontend bindings regenerated locally
+(gitignored) for the hook's typecheck. Commits 2 and 3 of the plan's grouping landed in one commit.
 
 ## P658 SQL data view column search
 
