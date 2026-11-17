@@ -11,7 +11,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P659 | Task card hover actions UX | Done |
 | P660 Part 1 | Keep module state across tab switches | Done |
 | P660 Part 2 | Git review panel state across module switches | Planned |
-| P661 | Agents module memory efficiency | Planned |
+| P661 | Agents module memory efficiency | Done |
 | P662 | Query module UI freeze | Planned |
 | P663 | Panel resize bar and update widget placement | Planned |
 | P664 | API tab bar plus and request input editing | Planned |
@@ -110,6 +110,17 @@ Plan: `plans/P660-part2.md`.
 App uses ~1.1 GB RAM with no other module opened and few tasks and sessions. Make the agents module very memory efficient. Acceptance: measure before and after, name the biggest retainers found, fix them, report the reduction in Result.
 
 Plan: `plans/P661.md`.
+
+Result: Done. Fixture: `ade-agents` world (`heap-ram.spec.ts`: 10 tasks, 200 archived, 300 stopped rows, 4 running agents at 2 MB each, 2 panes, 10 switches, 50 pushes, one approval), Chromium, PSS from `/proc/<pid>/smaps_rollup` (descendants of the Playwright pid only). `memory-mcp` fixture: real binary, ORT 1.31.1, arctic-embed-s int8, 4 `memory-mcp` plus one search each (`/tmp` script, not committed). Same fixtures before and after.
+Named retainers, ranked by measurement:
+1. H1 one `memory-embed` per session: 4 workers, 431 MB PSS (936 MB RSS). F1 shared worker over `embed.sock` (flock spawn, idle exit): 1 worker, 134 MB PSS (241 MB RSS). `memory-mcp` plus `memory-embed` total PSS 598.8 to 335.3 MB (-263 MB, -44%), RSS 1562 to 875 MB.
+2. H4 Monaco after an agent approval: renderer PSS 328.2 MB at the approval step, a +107 MB jump (JS heap 48.7 to 56.8 MB). F5 loads Monaco only when a pending approval's kind renders in it (`monaco` flag on the kind def). After: 189.3 MB (-139 MB, -42%); JS heap 46.4 MB (-10 MB).
+3. H3 xterm buffers: typed arrays 33.2 MB (4 sessions x 5000 lines at 200 cols), HEAPSNAP total 97.8 to 80.4 MB, typed arrays 8.2 MB (-25 MB). F4: agent scrollback 1000 and `term.open` only on first view (a never-opened session renders no DOM). Renderer PSS after `launch4` 205.5 to 166.3 MB; at `final` 221-223 to 185.2 MB (-37 MB, -17%), before the approval step.
+Total, renderer at the approval step plus `memory-mcp`/`memory-embed` (two separate fixtures, summed): 927 to 525 MB PSS (-402 MB, -43%).
+Dropped as measured and below the gate (5% or 20 MB): F2 sessions bound (300 rows = 122 KB JSON per push); F3 history out of board (200 entries = 33 KB JSON, 50 pushes grew Go total 34.4 to 38.4 MB); F6 app `SetMemoryLimit` (live heap 8.4 MB, total 34-38 MB); `memory-mcp` `SetMemoryLimit`/`GOGC` (heap objects 16 MB, total 32 MB). F4 focus-only `cursorBlink` dropped: xterm's DOM renderer blinks by CSS animation on the focused row only, no timer per terminal; toggling the option on focus broke Cmd-click link activation (`terminal-file-links.spec.ts`). No top-3 retainer outside the plan list, no P661-iter2.
+Added: `KIRA_PPROF` loopback pprof (app and `memory-mcp`), `ade-agents` RAM world, "Agents module footprint run" in `docs/DEV_ENVIRONMENT.md`.
+Ran: `go test ./internal/memory/embed/...` (shared worker race, one spawn, idle exit, respawn), Playwright `ui` `approvals-payload.spec.ts` (ADE approval leaves `MonacoEnvironment` unset, db.query defines it), `ade-terminal-lazy.spec.ts` (never-opened agent terminal has no `.xterm`, pane shows earlier output), terminal link, takeover, sessions, automations and repo-workspace specs (62 passed), typecheck, lint, knip via pre-commit.
+Deviations: no `memoryflow` two-process flow test (needs the real model, ORT and binary, absent in the flow tier); covered by the `embed` race test and the real-binary run above. No `sessions_bound` or `history` flow tests and no `ade-v2-history` spec (F2, F3 dropped). Not measured here: Mac `footprint` per process, WebKit WebContent PSS, tooltip App/Agents totals, Go app `pprof` on a real run. User run: `docs/DEV_ENVIRONMENT.md` "Agents module footprint run (user-run)"; WebKit sandbox proxy `KIRA_RAM_WORLD=ade-agents bunx playwright test --config=apps/kira-space/playwright.perf.config.ts --project=heap-webkit heap-ram`.
 
 ## P662 Query module UI freeze
 
