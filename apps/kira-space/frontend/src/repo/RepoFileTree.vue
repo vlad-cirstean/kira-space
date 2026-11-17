@@ -63,6 +63,7 @@ const { virtualItems, totalSize, band, onScroll, revealKey } = useTreeVirtualRow
   rows: () => rows.value,
   rowHeight: () => rowHeight.value,
   scrollElement: scrollEl,
+  keepScroll: () => `git:files:${props.repoId}`,
 });
 
 function onSelect(row: RepoTreeRowVm): void {
