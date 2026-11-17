@@ -3,14 +3,14 @@ import { matchesQuery } from '@workbench/behaviour/match';
 import { resolveColumnOrder } from '../shared/page/columns';
 
 /** Lowercased, whitespace/comma-split query terms; empty when the query is blank. */
-export function columnQueryTerms(query: string): string[] {
+function columnQueryTerms(query: string): string[] {
   return query
     .toLowerCase()
     .split(/[\s,]+/)
     .filter((term) => term !== '');
 }
 
-export function matchesColumnQuery(name: string, terms: readonly string[]): boolean {
+function matchesColumnQuery(name: string, terms: readonly string[]): boolean {
   return terms.some((term) => matchesQuery(name, term));
 }
 
