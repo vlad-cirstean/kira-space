@@ -43,18 +43,26 @@ func freePort(t *testing.T) int {
 	return 0
 }
 
-// serve trusts the loopback network and starts the phone server on a free port.
+// serve trusts the loopback network and starts the phone server on a free port. Another test
+// process can take the probed port before the listen, so a port-in-use stop retries on a fresh port.
 func serve(t *testing.T, app *flowharness.App) bridge.MobileStatus {
 	t.Helper()
-	if _, err := app.W.Mobile.SetPort(bridge.MobileSetPortArgs{Port: freePort(t)}); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := app.W.Mobile.TrustCurrentNetwork(); err != nil {
 		t.Fatal(err)
 	}
-	st, err := app.W.Mobile.SetEnabled(bridge.MobileSetEnabledArgs{Enabled: true})
-	if err != nil {
-		t.Fatal(err)
+	var st bridge.MobileStatus
+	for range 20 {
+		if _, err := app.W.Mobile.SetPort(bridge.MobileSetPortArgs{Port: freePort(t)}); err != nil {
+			t.Fatal(err)
+		}
+		var err error
+		st, err = app.W.Mobile.SetEnabled(bridge.MobileSetEnabledArgs{Enabled: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if st.Running || !strings.Contains(st.Error, "in use") {
+			break
+		}
 	}
 	if !st.Running || st.AppURL == "" {
 		t.Fatalf("phone server not running: %+v", st)
