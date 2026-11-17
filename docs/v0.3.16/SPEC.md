@@ -17,7 +17,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P664 | API tab bar plus and request input editing | Done |
 | P665 | Cmd+F search in left panels | Done |
 | P666 | Git and Memory modules last | Done |
-| P667 | Single-select cards | Planned |
+| P667 | Single-select cards | Done |
 | P668 | Single-select toggle groups | Done |
 | P669 | Drop move up/down from left-panel menus | Planned |
 | P670 | Remove connection Secrets section | Planned |
@@ -167,6 +167,8 @@ Result: Done. `MODE_ORDER` (`workbench/modes.ts`) is now ade, automations, studi
 Round RadioGroup becomes shadcn card-style radio: whole card is the click target, title plus description, selected state clearly visible (border and tint from theme tokens). Keyboard and aria radio semantics stay via RadioGroup. Surfaces: Reset mode (`packages/git-ui/src/components/dialogs/ResetDialog.vue`, soft/mixed/hard with descriptions), Review route (`apps/kira-space/frontend/src/ade/v2/review/AdeWorkflowReviewPanel.vue`), mainline parent pickers (`CherryPickDialog.vue`, `RevertDialog.vue`). One shared theme component for card radios (`packages/theme/src/components/ui/radio-group` or a sibling), Tailwind only. Existing data-testids kept. Acceptance: states stated (idle, hover, selected, focus-visible, disabled); existing UI specs that click these radios updated; visual baselines re-recorded where changed. UI-only, no flow half.
 
 Plan: `plans/P667.md`.
+
+Result: Done. New theme `RadioGroupCard` (reka `RadioGroupItem` as the card: title and description slots, idle/hover/`border-focus bg-select`/focus-visible/disabled from tokens, Tailwind only). Used by Reset mode (`reset-mode-soft|mixed|hard`), Review route (new descriptions, verified against `sendReview`: implementer resumes the picked run's agent session, new starts or resumes the dedicated review session), Cherry-pick and Revert mainline (`cherry-pick-mainline-N`, `revert-mainline-N`, new `revert-confirm`; catalog `git.common.mergeParent.option` is now "Parent {number}", sha plus subject move to the description). Review `NativeSelect` moved out of the radio group. UI-only, no flow half. Ran: Playwright `ui` `git-choice-cards.spec.ts` (3 passed), `ade-v2-review-step.spec.ts` (new route-card test, all pass), `copy-coverage-git.spec.ts` (all pass except `review view uses catalog text`, which times out in `openReviewListing` with an empty Review sidebar; fails identically on an untouched checkout, no radio involved, not fixed); visual: re-recorded `review-step-panel`, added `git-reset-dialog`; `lint:dead`, typecheck and lint via pre-commit. Deviations: Revert sha heading uses `FieldDescription` (guard U95 rejects a hand `<p>` hint); revert spec tabs until the first card is focused (dialog focuses its own first control); full `visual` project and `copy-wording-git.spec.ts` not run.
 
 ## P668 Single-select toggle groups
 
