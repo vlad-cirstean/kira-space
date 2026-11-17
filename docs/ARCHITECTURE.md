@@ -941,7 +941,8 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Toggling incognito on or off flushes the tab's existing row immediately (registerIncognitoSetListener); closing a tab drops the flag through registerTabRuntimeCleanup.
 - On the Go side, incognito is two Incognito bool fields (HttpSendArgs, GrpcCallArgs) threaded into adapterhost.OpSpec, guarding ResponseHistoryRepo.Record and internal/oplog persistence; an incognito op still emits live events to the Operations panel but is never written to op_log.
 - An incognito tab's active environment is a per-tab in-memory override (incognitoEnvByTab), never a write to the shared active-environment row.
-- usePanelHeaderSearch (packages/workbench/src/behaviour/panelSearch.ts) owns the left panel header's search reveal/toggle and VS-Code-style type-ahead redirect; ProjectPanel.vue and api/CollectionsPanel.vue inline their own header markup over it, and there are still exactly three layout panels.
+- usePanelHeaderSearch (packages/workbench/src/behaviour/panelSearch.ts) owns the left panel header's search reveal/toggle and VS-Code-style type-ahead redirect; ten left panels mount it, each inlining its own header markup.
+- usePanelHeaderSearch binds `panel.find` (Cmd/Ctrl+F) on the panel root while focus is inside the `data-slot="side-panel"` slot; the innermost searchable panel wins, a non-searchable one defers to its ancestor. `openFocusedPanelSearch` and `openActivePanelSearch` serve the menu Find event and the palette.
 - useTreeVirtualRows (packages/workbench/src/behaviour/treeVirtualRows.ts) is the shared virtualized-tree hook (@tanstack/vue-virtual, pinned-ancestor sticky band, reveal-scroll with band inset), generic over rows with depth/hasChildren/expanded/key; stickyBand.ts lives in packages/theme/src.
 - ProjectTree.vue still owns Studio-specific behaviour: the connection-driven row model, five openable-kind dispatch, context menus, and keyboard shortcuts.
 - api/CollectionsTree.vue is the second consumer of useTreeVirtualRows, over its own row model CollectionRowVm (four structural members plus seven of its own versus TreeRowVm's fourteen), since connectionId, color, status, statusDetail, groupKind, badges, loading and error mean nothing there.
@@ -1372,8 +1373,8 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - EmptyState (theme) is the only Empty composition (U74), with props/slots icon?, title, description?, default slot for actions, and media slot for a custom glyph.
 - A side panel empty state gets icon, title and a one-line description with no button (U78); its action lives on the module front door.
 - ModuleStart (workbench) is the module front door: icon, title, description, one primary action, optional secondary actions and #below; error or unavailable states may carry Retry.
-- The command palette (CommandPalette.vue, palette.ts in packages/workbench/src/shortcuts/) is shared; each app supplies commands with providePaletteCommands.
-- Both app menus carry View: Command palette and Find.
+- The command palette (CommandPalette.vue, palette.ts in packages/workbench/src/shortcuts/) is shared; each app supplies commands with providePaletteCommands. A command that moves focus sets `movesFocus` and runs on the dialog's close-auto-focus, so the focus restore cannot undo it.
+- Both app menus carry View: Command palette and Find. Find opens the focused left panel's search, else the active view's find.
 - WorkbenchTitleBar replaces per-app title bars; LogLines is the one virtualized log viewer; its text selects (`select-text`, body is `select-none`), and a whole-log copy goes through CopyLogButton over the loaded chunks, since unmounted virtual rows drop out of a drag selection; StatusBar stays per app.
 - Text a person reads as data opts back into selection with `select-text` (LogLines, CodeBlock, run outcome text, op log, console result cells). A tab view's root fills MainView with `h-full`: MainView's host is not a flex column, so `flex-1` alone takes content height.
 - Shared UI test helpers live in packages/workbench/src/testing/ui/; app-only ones in apps/*/tests/ui/support/.
