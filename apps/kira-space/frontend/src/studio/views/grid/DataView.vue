@@ -209,6 +209,7 @@ onMounted(() => {
     // same reconnect-or-refresh semantics as the visible button, not a second, unguarded one.
     registerCommand('view.refresh', () => onRefresh()),
     registerCommand('data.generate', onGenerateData),
+    registerCommand('data.filterColumns', () => filterToolbarRef.value?.focusColumnFilter()),
   ];
 });
 
@@ -216,10 +217,19 @@ onUnmounted(() => {
   for (const off of unregisterCommands) off();
 });
 
-const dataGridRef = ref<{ scrollCellIntoView: (row: number, col: number) => void } | null>(null);
+const dataGridRef = ref<{
+  revealPageCell: (row: number, pageCol: number) => boolean;
+  applyColumnFilterNow: () => void;
+} | null>(null);
+const filterToolbarRef = ref<{ focusColumnFilter: () => void } | null>(null);
 
+// `match.col` is a page column index. A match in a column the display-only column filter hides
+// clears the filter first, applies it at once, then reveals.
 function onGoToMatch(match: Match): void {
-  dataGridRef.value?.scrollCellIntoView(match.row, match.col);
+  if (dataGridRef.value?.revealPageCell(match.row, match.col)) return;
+  gridViewStore.setColumnFilter(props.tab.id, '');
+  dataGridRef.value?.applyColumnFilterNow();
+  dataGridRef.value?.revealPageCell(match.row, match.col);
 }
 function onCloseSearch(): void {
   gridViewStore.setSearchOpen(props.tab.id, false);
@@ -350,7 +360,7 @@ function onCloseSearch(): void {
       </div>
     </ViewToolbar>
     <ViewToolbar data-testid="filter-toolbar">
-      <FilterToolbar :tab="tab" />
+      <FilterToolbar ref="filterToolbarRef" :tab="tab" />
     </ViewToolbar>
 
     <!-- Below the filter row, not floating over the grid it searches — the "docks at the bottom

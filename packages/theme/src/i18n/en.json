@@ -15024,6 +15024,15 @@
       "columnCount": {
         "status": "{count} column | {count} columns"
       },
+      "columnFilter": {
+        "field": {
+          "aria": "Filter columns by name",
+          "placeholder": "Column name"
+        },
+        "noMatch": {
+          "status": "No match"
+        }
+      },
       "columns": {
         "footerClient": {
           "hint": "Applied after fetch."
@@ -17646,6 +17655,9 @@
       "palette": {
         "explainQuery": {
           "label": "Explain query"
+        },
+        "filterColumns": {
+          "label": "Filter grid columns"
         },
         "formatQuery": {
           "label": "Format query"

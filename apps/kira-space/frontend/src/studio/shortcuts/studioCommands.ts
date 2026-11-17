@@ -113,5 +113,11 @@ export function studioPaletteCommands(): PaletteCommand[] {
       label: t('studio.shortcuts.palette.generateData.label'),
       run: () => runCommand('data.generate'),
     },
+    // View-scoped like data.generate.
+    {
+      id: 'data.filterColumns',
+      label: t('studio.shortcuts.palette.filterColumns.label'),
+      run: () => runCommand('data.filterColumns'),
+    },
   ];
 }

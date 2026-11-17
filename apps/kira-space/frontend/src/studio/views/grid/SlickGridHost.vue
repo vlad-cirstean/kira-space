@@ -2,14 +2,14 @@
 import { foldRulesByColumn, type MaskingRule } from '@shared/domain/mask';
 import type { ColumnMeta, ForeignKeyMeta, ObjectMeta } from '@shared/domain/tree';
 import { decodePath } from '@shared/domain/tree';
-import type { ColumnDescriptor } from '@shared/protocol/page';
+import type { ColumnDescriptor, TabularPage } from '@shared/protocol/page';
 import { useQuery } from '@tanstack/vue-query';
 import AttributeTooltip from '@theme/components/AttributeTooltip.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { buttonVariants } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
-import { useDebounceFn } from '@vueuse/core';
+import { useDebounceFn, watchDebounced } from '@vueuse/core';
 import { copyAndAnnounce, readClipboardText } from '@workbench/behaviour/clipboard';
 import { TIMING } from '@workbench/behaviour/timing';
 import { errorText } from '@workbench/bridge/codedError';
@@ -68,6 +68,7 @@ import { KiraSlickGrid } from '../shared/slick/kiraSlickGrid';
 import { createScrollVelocityTracker } from '../shared/slick/scrollVelocity';
 import { attachScrollProbes, createHybridSelectionModel } from '../shared/slick/selectionModel';
 import { sqlDialectFor } from '../shared/sqlIdent';
+import { visibleColumnOrder } from './columnFilter';
 import FkPreviewPopover from './FkPreviewPopover.vue';
 import {
   type CellFocusRequest,
@@ -78,7 +79,7 @@ import {
 } from './focusRequest';
 import { buildMaskTagCache, createMaskPreviewTransform } from './maskPreview';
 import { cellMenu, type FkNavContext, headerMenu, rowMenu } from './menu';
-import { registerOpenEditFlush, unregisterOpenEditFlush } from './openEdit';
+import { flushOpenEdit, registerOpenEditFlush, unregisterOpenEditFlush } from './openEdit';
 import { applyPastedCells, resolvePasteTarget } from './paste';
 import { usePendingChangesStore } from './pendingChanges';
 import { matchedRows, searchState } from './search';
@@ -355,7 +356,16 @@ function qualifiedName(): string {
 // no SlickGrid API).
 function currentOrder(): string[] {
   const p = getPage(props.tabId);
-  return p ? resolveColumnOrder(p, tab()?.state.columnOrder ?? null) : [];
+  return p ? displayOrder(p) : [];
+}
+
+// Component-local, not read from the store per call: `currentOrder()` and the built SlickGrid
+// columns must never disagree during the filter's debounce window. Seeded at mount (host remounts
+// per tab); the debounced watch below advances it.
+let appliedColumnFilter = rt()?.columnFilter ?? '';
+
+function displayOrder(p: TabularPage): string[] {
+  return visibleColumnOrder(p, tab()?.state.columnOrder ?? null, appliedColumnFilter);
 }
 
 // Thin, tabId/page/order-bound wrappers over rowValues.ts's own pure functions — every call site
@@ -1165,7 +1175,7 @@ function settledWidthsFor(page: ReturnType<typeof getPage>): Record<string, numb
 function rebuildAndSetColumns(): void {
   if (!grid) return;
   const p = getPage(props.tabId);
-  const order = p ? resolveColumnOrder(p, tab()?.state.columnOrder ?? null) : [];
+  const order = p ? displayOrder(p) : [];
   grid.setColumns(buildColumns(p, order, currentWidths(), settledWidthsFor(p), rt()?.meta ?? null));
   // setColumns rebuilds every header from scratch (F8's own indicator divs included) — restore
   // the sort chevrons the fresh headers just lost.
@@ -2012,7 +2022,7 @@ onMounted(() => {
 
   const t = tab();
   const p = getPage(props.tabId);
-  const order = p ? resolveColumnOrder(p, t?.state.columnOrder ?? null) : [];
+  const order = p ? displayOrder(p) : [];
   lastAppliedPage = p;
   lastAppliedOrderKey = order.join('\u0000');
   formatterCtx.rowNumberBase = t ? t.state.pageIndex * t.state.pageSize : 0;
@@ -2302,33 +2312,50 @@ onUnmounted(() => {
   editorCtx.commit = () => {};
 });
 
+// Rebuild core shared by the `pageVersion` watch and the column-filter apply. Returns whether it
+// rebuilt: pageVersion counts every tab's loads and closes, and rebuilding for one that is not
+// ours would destroy an open inline editor and mis-consume a pending focus request.
+function applyPageAndOrder(): boolean {
+  if (!grid || !dataSource) return false;
+  const p = getPage(props.tabId);
+  const t = tab();
+  const order = p ? displayOrder(p) : [];
+  const orderKey = order.join('\u0000');
+  if (p === lastAppliedPage && orderKey === lastAppliedOrderKey) return false;
+  lastAppliedPage = p;
+  lastAppliedOrderKey = orderKey;
+  formatterCtx.rowNumberBase = t ? t.state.pageIndex * t.state.pageSize : 0;
+  dataSource.setState(dataSourceState(p, order));
+  grid.setColumns(buildColumns(p, order, currentWidths(), settledWidthsFor(p), rt()?.meta ?? null));
+  grid.updateRowCount();
+  grid.invalidateAllRows();
+  // C5 — the rendered band's own numbers can coincidentally match the pre-reload band (a page
+  // reload commonly lands back at scrollTop 0), which would fool onGridRendered's own
+  // band-change check into skipping a refresh a genuinely new page needs. The sentinel forces it.
+  lastCssLayerBand = { start: 0, end: -1 };
+  grid.render();
+  syncSortIndicators();
+  refreshSearchLayer();
+  return true;
+}
+
+function applyColumnFilterNow(): void {
+  const next = rt()?.columnFilter ?? '';
+  if (next === appliedColumnFilter) return;
+  // setColumns destroys an open inline editor: stage it first. Display-column ranges would point
+  // at other columns after the rebuild; clearing also clears rt().selection.
+  flushOpenEdit(props.tabId);
+  selectionModel?.setSelectedRanges([]);
+  appliedColumnFilter = next;
+  applyPageAndOrder();
+}
+
+watchDebounced(() => rt()?.columnFilter ?? '', applyColumnFilterNow, { debounce: TIMING.search });
+
 watch(
   () => pageVersion.n,
   () => {
-    if (!grid || !dataSource) return;
-    const p = getPage(props.tabId);
-    const t = tab();
-    const order = p ? resolveColumnOrder(p, t?.state.columnOrder ?? null) : [];
-    // pageVersion counts every tab's loads and closes; rebuilding for one that is not ours would
-    // destroy an open inline editor and mis-consume a pending focus request.
-    const orderKey = order.join('\u0000');
-    if (p === lastAppliedPage && orderKey === lastAppliedOrderKey) return;
-    lastAppliedPage = p;
-    lastAppliedOrderKey = orderKey;
-    formatterCtx.rowNumberBase = t ? t.state.pageIndex * t.state.pageSize : 0;
-    dataSource.setState(dataSourceState(p, order));
-    grid.setColumns(
-      buildColumns(p, order, currentWidths(), settledWidthsFor(p), rt()?.meta ?? null),
-    );
-    grid.updateRowCount();
-    grid.invalidateAllRows();
-    // C5 — the rendered band's own numbers can coincidentally match the pre-reload band (a page
-    // reload commonly lands back at scrollTop 0), which would fool onGridRendered's own
-    // band-change check into skipping a refresh a genuinely new page needs. The sentinel forces it.
-    lastCssLayerBand = { start: 0, end: -1 };
-    grid.render();
-    syncSortIndicators();
-    refreshSearchLayer();
+    if (!applyPageAndOrder()) return;
     // P67 §5.2: this is exactly when a freshly loaded page is rendered and its columns are built
     // — the point a pending focus request (a host that wasn't registered yet, or one that was but
     // had no matching page at request time) can finally be satisfied.
@@ -2695,6 +2722,20 @@ watch(
 );
 
 defineExpose({
+  applyColumnFilterNow,
+  /** `pageCol` is a page column index. False when that column is filtered out. */
+  revealPageCell(row: number, pageCol: number): boolean {
+    if (!grid) return false;
+    const name = getPage(props.tabId)?.columns[pageCol]?.name;
+    const idx = name === undefined ? -1 : currentOrder().indexOf(name);
+    if (idx === -1) return false;
+    const di = {
+      displayRows: currentDisplayRows(),
+      pageRowCount: getPage(props.tabId)?.rowCount ?? 0,
+    };
+    grid.scrollCellIntoView(displayPositionOf(di, row), idx + 1);
+    return true;
+  },
   // DataView.vue's own contract (matching DataGrid.vue's identical export): `row` is a *page* row
   // index, `col` a *display* column index. SlickGrid's own scrollCellIntoView wants its own
   // display *position* and a column index that accounts for the frozen gutter occupying slot 0.
