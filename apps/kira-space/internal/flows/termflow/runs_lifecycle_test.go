@@ -98,8 +98,8 @@ func TestRunsLifecycle(t *testing.T) {
 	rename := bridge.CustomScriptsRenameCollectionArgs{Name: "A", NewName: "C"}
 	app.Contract(t, "runs-lifecycle", "args:CustomScriptsService.RenameCollection", rename, runsMasks...)
 	err := cs.RenameCollection(rename)
-	if err == nil || !strings.Contains(err.Error(), "y.yaml") {
-		t.Fatalf("RenameCollection with a broken member = %v, want an error naming y.yaml", err)
+	if err == nil || !strings.Contains(err.Error(), "y has a problem") {
+		t.Fatalf("RenameCollection with a broken member = %v, want an error naming y", err)
 	}
 	for _, f := range []string{"x.yaml", "z.yaml"} {
 		if txt := fileText(t, app, f); !strings.Contains(txt, "collection: A") {

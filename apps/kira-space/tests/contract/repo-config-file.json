@@ -68,7 +68,7 @@
     "path": "<work>/proj",
     "problem": {
       "line": 1,
-      "message": "proj.yaml already configures this repository. This file applies nothing."
+      "message": "Other settings already configure this repository, so these apply nothing."
     },
     "repo": ""
   },
