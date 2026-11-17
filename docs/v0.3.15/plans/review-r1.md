@@ -130,3 +130,12 @@ Severity counts: High 1, Medium 1, Low 5.
   `adeflow` smart-step subtest, `dbmcpflow/mode_test.go`) and UI halves (`update-dialog`,
   `window-chrome`, `prompts-typing`, `approvals-payload`, `ade-v2-row-actions`). No gap against the
   Tests rules found.
+
+## Fix status
+
+- R1-1 fixed, `c17fe3dd`. Chords kept. `DialogContent` (prompt) swallows Mod+Enter and Mod+Backspace until open 700 ms and a Mod keydown started after open; key repeat never counts. `prompts-typing` guards type, pause, immediate chord.
+- R1-2 fixed, `b4c7133d`. `install.sh` self-update without `--tag` steps via a JXA `nextStep`; verify-packaging S16 replays `internal/releaseline/testdata/next_step.json` through it. Not run on macOS (`sh -n`, S16 only); shellcheck absent here. Open item removed.
+- R1-3 fixed, `508ef55d`. `releaseline.Eligible` shared by updater and retention.
+- R1-4 fixed, `347189b5`. `GH_TOKEN` only on fetch and apply steps.
+- R1-5 not fixed, `bdcddb58`. Child-CPU counters double count live descendants; recorded as a Known open item.
+- R1-6, R1-7 fixed, `c53e6190`.
