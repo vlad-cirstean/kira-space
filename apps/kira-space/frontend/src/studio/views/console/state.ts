@@ -374,6 +374,15 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
     return runtime[tabId]?.expandedDocIds.has(`${resultKey}:${id}`) ?? false;
   }
 
+  function resultDocExpandedIds(tabId: string, resultKey: string): string[] {
+    const set = runtime[tabId]?.expandedDocIds;
+    if (!set) return [];
+    const prefix = `${resultKey}:`;
+    const out: string[] = [];
+    for (const key of set) if (key.startsWith(prefix)) out.push(key.slice(prefix.length));
+    return out;
+  }
+
   // ConsoleSlickGrid.vue's own onMounted/onColumnsResized read and write
   // through these two rather than reaching into `runtime[tabId]` directly, mirroring
   // grid/SlickGridHost.vue's own `currentWidths()`/`onColumnsResized` pair (tab.state.columnWidths)
@@ -711,6 +720,7 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
     toggleSearchOpen,
     setSearchOpen,
     isResultDocExpanded,
+    resultDocExpandedIds,
     consoleColumnWidths,
     setConsoleColumnWidths,
     toggleResultDocExpanded,
