@@ -5,8 +5,9 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { tabChipVariants } from '@theme/components/ui/tabs';
 import { t } from '@theme/i18n';
+import { useKeptState } from '@workbench/behaviour/viewState';
 import TerminalHostView from '@workbench/terminal/TerminalHostView.vue';
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 import { useDocker } from '../context';
 import { useDockerExecSessionsStore } from '../state/dockerExec';
 
@@ -15,7 +16,7 @@ const props = defineProps<{ containerId: string }>();
 const ctx = useDocker();
 const store = useDockerExecSessionsStore();
 const sessions = computed(() => store.forContainer(props.containerId));
-const activeId = ref('');
+const activeId = useKeptState(() => `docker:exec:${props.containerId}`, '');
 const shownId = computed(() =>
   sessions.value.some((s) => s.id === activeId.value)
     ? activeId.value
@@ -29,14 +30,6 @@ function openSession(): void {
 function closeSession(id: string): void {
   store.close(ctx, id);
 }
-
-watch(
-  () => props.containerId,
-  () => {
-    activeId.value = sessions.value[0]?.id ?? '';
-  },
-  { immediate: true },
-);
 
 // TerminalHostView needs a tab-shaped state; exec sessions have no cwd.
 const hostTab = (id: string) => ({

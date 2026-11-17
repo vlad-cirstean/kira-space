@@ -9,6 +9,7 @@ import { copyText } from '@workbench/behaviour/clipboard';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { useTreeShortcuts } from '@workbench/behaviour/treeShortcuts';
+import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { logError } from '@workbench/bridge/log';
 import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
@@ -144,6 +145,7 @@ function menuFor(row: ClusterRow): MenuItem[] {
 }
 
 const listEl = ref<HTMLElement | null>(null);
+useKeptScroll('kubernetes:clusters', listEl);
 const activeKey = ref<string | null>(null);
 const nav = useListNavigation<ClusterRow>({
   container: listEl,

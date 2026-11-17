@@ -75,6 +75,7 @@ const { virtualizer, virtualItems, totalSize, scrollToIndex } = useVirtualRows({
   count: () => rows.value.length,
   rowHeight: () => rowHeight.double.value,
   scrollElement: computed(() => props.scrollEl),
+  keepScroll: 'docker:containerTable',
   scrollMargin: () => scrollMargin.value,
   pinned: () => (activeIndex.value < 0 ? null : activeIndex.value),
 });

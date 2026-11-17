@@ -234,6 +234,7 @@ const groupTree = {
       <VirtualList
         :rows="rows"
         :row-heights="rowHeights"
+        keep-scroll-key="docker:containers"
         testid="docker-container-list"
         :select="selectRow"
         :menu-for="menuFor"

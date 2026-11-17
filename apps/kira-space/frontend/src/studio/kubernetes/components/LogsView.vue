@@ -7,6 +7,7 @@ import { NativeSelect } from '@theme/components/ui/native-select';
 import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
 import { matchesQuery, splitMatches } from '@workbench/behaviour/match';
+import { useKeptState } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
 import CopyLogButton from '@workbench/components/CopyLogButton.vue';
 import LogLines from '@workbench/components/LogLines.vue';
@@ -34,13 +35,15 @@ interface Line extends KubeLogLine {
   plain: string;
 }
 
-const container = ref('');
+const logKey = (field: string): string =>
+  `kubernetes:logs:${props.clusterId}/${props.namespace}/${props.pod}:${field}`;
+const container = useKeptState(() => logKey('container'), '');
 const previous = ref(false);
 const tail = ref<number>(1000);
 const timestamps = ref(false);
 const follow = ref(true);
 const wrap = ref(false);
-const filter = ref('');
+const filter = useKeptState(() => logKey('filter'), '');
 const lines = shallowRef<Line[]>([]);
 const ended = ref(false);
 const failure = ref('');
@@ -130,6 +133,7 @@ async function open(): Promise<void> {
 watch(
   () => [props.clusterId, props.namespace, props.pod],
   () => {
+    if (props.containers.some((c) => c.name === container.value)) return;
     container.value =
       props.containers.find((c) => !c.init)?.name ?? props.containers[0]?.name ?? '';
   },
