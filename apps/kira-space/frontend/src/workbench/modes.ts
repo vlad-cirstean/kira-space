@@ -84,6 +84,7 @@ export const MODES: ModeRegistry<AppMode> = {
     icon: 'globe',
     panel: CollectionsPanel,
     start: ApiStart,
+    newTab: defineAsyncComponent(() => import('../studio/api/ApiNewTab.vue')),
   },
   docker: {
     get label() {

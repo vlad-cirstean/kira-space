@@ -7,16 +7,7 @@ import { rowVariants } from '@theme/lib/rowVariants';
 import { autoClosePairsOnType, wrapSelectionOnType } from '@theme/wrapSelection';
 import { useEventListener, useTimeoutFn } from '@vueuse/core';
 import { loadMonaco, type MonacoModule } from '@workbench/editor/monaco';
-import {
-  computed,
-  type HTMLAttributes,
-  nextTick,
-  onMounted,
-  ref,
-  shallowRef,
-  useId,
-  watch,
-} from 'vue';
+import { computed, type HTMLAttributes, nextTick, ref, shallowRef, useId, watch } from 'vue';
 import { isActiveDescendantKey, useActiveDescendant } from '../behaviour/activeDescendant';
 import { revealElement } from '../behaviour/focus';
 import { TIMING } from '../behaviour/timing';
@@ -27,7 +18,7 @@ import {
   tokenAt as wordTokenAt,
 } from '../editor/fieldCompletion';
 import { monacoLanguageIdFor } from '../editor/monacoLanguages';
-import { overlayOffsetAtPoint, paintOverlayHtml } from '../editor/paintSpans';
+import { overlayOffsetAtPoint, paintOverlayHtml, paintRangesHtml } from '../editor/paintSpans';
 import type { RangeHighlight } from '../editor/ranges';
 import { shortcutFor } from '../shortcuts/keys';
 
@@ -92,23 +83,36 @@ const emit = defineEmits<{
 
 const highlighted = computed(() => !!props.language && props.language !== 'plain');
 const showOverlay = computed(() => highlighted.value || !!props.rangeHighlights);
+// Ranges-only: the native control paints glyphs and caret in one layout; the overlay only tints
+// behind it, so a layout difference can misplace a tint, never the caret.
+const underlay = computed(() => !highlighted.value && !!props.rangeHighlights);
 const overlayClass = computed(() =>
   props.grow || props.multiline
-    ? 'block whitespace-pre-wrap wrap-anywhere leading-[inherit]'
-    : 'flex items-center whitespace-pre leading-[normal]',
+    ? 'block whitespace-pre-wrap wrap-anywhere leading-[inherit] [font-variant-ligatures:none]'
+    : 'flex items-center whitespace-pre leading-[normal] [font-variant-ligatures:none]',
 );
-// Text is transparent over the overlay so only its coloured glyphs show; the caret stays visible.
-const fieldOverlayClass = computed(() =>
-  showOverlay.value ? 'relative z-1 text-transparent caret-fg' : 'text-fg',
-);
+// Highlighted: text is transparent over the overlay so only its coloured glyphs show; the caret
+// stays visible.
+const fieldOverlayClass = computed(() => {
+  if (!showOverlay.value) return 'text-fg';
+  return underlay.value ? 'relative z-1 text-fg' : 'relative z-1 text-transparent caret-fg';
+});
+// CR and CRLF are line breaks in the control and the overlay, but plain spaces in `data-value`.
+const displayText = computed(() => text.value.replace(/\r\n?/g, '\n'));
 
 // Loaded lazily and shared app-wide; until it resolves the overlay paints plain text.
 const monacoMod = shallowRef<MonacoModule | null>(null);
-onMounted(() => {
-  void loadMonaco().then((mod) => {
-    monacoMod.value = mod;
-  });
-});
+watch(
+  highlighted,
+  (h) => {
+    if (h && !monacoMod.value) {
+      void loadMonaco().then((mod) => {
+        monacoMod.value = mod;
+      });
+    }
+  },
+  { immediate: true },
+);
 
 function escapePlain(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -121,17 +125,24 @@ async function repaintOverlay(): Promise<void> {
     overlayHtml.value = '';
     return;
   }
-  const mod = monacoMod.value;
-  if (!mod) {
-    overlayHtml.value = escapePlain(text.value);
+  if (underlay.value) {
+    overlayHtml.value = paintRangesHtml(
+      displayText.value,
+      props.rangeHighlights?.(displayText.value) ?? [],
+    );
     return;
   }
-  const ranges = props.rangeHighlights ? props.rangeHighlights(text.value) : [];
+  const mod = monacoMod.value;
+  if (!mod) {
+    overlayHtml.value = escapePlain(displayText.value);
+    return;
+  }
+  const ranges = props.rangeHighlights ? props.rangeHighlights(displayText.value) : [];
   // Only the paint started last may win: a fast retype can outrun colorize()'s async grammar load.
   const generation = ++paintGeneration;
   const html = await paintOverlayHtml(
     mod,
-    text.value,
+    displayText.value,
     monacoLanguageIdFor(props.language ?? 'plain'),
     ranges,
   );
@@ -324,7 +335,7 @@ function onInputMouseMove(e: MouseEvent): void {
     overlay.style.pointerEvents = 'none';
     el.style.pointerEvents = '';
   }
-  const lines = offset === null ? null : props.hoverAt(text.value, offset);
+  const lines = offset === null ? null : props.hoverAt(displayText.value, offset);
   const key = lines ? JSON.stringify(lines) : null;
   if (key === lastHoverKey) return;
   lastHoverKey = key;
@@ -407,7 +418,7 @@ const fieldAttrs = computed(
         <span
           class="input-wrap relative flex min-w-0 flex-1"
           :class="multiline ? 'items-stretch' : 'items-center'"
-          :data-value="text"
+          :data-value="displayText"
         >
           <!-- Paint-only, aria-hidden, sized to sit exactly under the real input; `overlayHtml` is
            built entirely by `paintOverlayHtml` (HTML-escaped text in static class names). -->
@@ -415,7 +426,7 @@ const fieldAttrs = computed(
             v-if="showOverlay"
             ref="overlayRootRef"
             class="highlight-overlay absolute inset-0 pointer-events-none overflow-hidden font-data text-kira-md bg-transparent"
-            :class="overlayClass"
+            :class="[overlayClass, underlay ? 'is-underlay text-transparent' : '']"
             aria-hidden="true"
             v-html="overlayHtml"
           ></div>
@@ -424,14 +435,14 @@ const fieldAttrs = computed(
             ref="inputRef"
             :rows="multiline ? rows : 1"
             wrap="soft"
-            class="min-w-0 flex-1 border-0 bg-transparent font-data text-kira-md outline-none placeholder:text-muted-foreground"
+            class="min-w-0 flex-1 border-0 bg-transparent font-data text-kira-md outline-none placeholder:text-muted-foreground [font-variant-ligatures:none]"
             :class="multiline ? 'resize-y p-0 whitespace-pre-wrap wrap-anywhere' : ''"
             v-bind="{ ...$attrs, ...fieldAttrs }"
           />
           <input
             v-else
             ref="inputRef"
-            class="min-w-0 flex-1 border-0 bg-transparent font-data text-kira-md outline-none placeholder:text-muted-foreground [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none"
+            class="min-w-0 flex-1 border-0 bg-transparent font-data text-kira-md outline-none placeholder:text-muted-foreground [font-variant-ligatures:none] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none"
             v-bind="{ ...$attrs, ...fieldAttrs }"
           >
           <PopoverAnchor :reference="inputRef ?? undefined" />

@@ -176,14 +176,20 @@ watch(
 // count, so form-data's own extra content-type field in the trailing slot does not shift the
 // mapping for rows that lack it (it has no target there, and navigation into it does
 // nothing rather than landing on the wrong field). `, textarea` covers a `grow` cell's own
-// `<textarea>` — no cell value can contain a newline, so a cell is still one logical
-// line, and this table's own row-stepping contract is unaffected.
+// `<textarea>`. Row stepping with ArrowUp/ArrowDown applies to one-line cells only: a value with a
+// newline (paste, import, `%0A`) or a soft-wrapped one keeps native line movement.
 function textInputsIn(row: Element): (HTMLInputElement | HTMLTextAreaElement)[] {
   return Array.from(
     row.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
       'input:not([type=checkbox]), textarea',
     ),
   );
+}
+
+function isSingleLine(el: HTMLInputElement | HTMLTextAreaElement): boolean {
+  if (el instanceof HTMLInputElement) return true;
+  if (el.value.includes('\n')) return false;
+  return el.scrollHeight < 1.5 * Number.parseFloat(getComputedStyle(el).lineHeight);
 }
 
 function onContainerKeydown(e: KeyboardEvent): void {
@@ -223,6 +229,7 @@ function onContainerKeydown(e: KeyboardEvent): void {
   if (colIndex === -1) return;
 
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if (!isSingleLine(el)) return;
     // No wrap at either end — the trailing blank row is itself a normal target, so ArrowDown from
     // the last real row reaches it exactly as a click would.
     const targetRow = rows[rowIndex + (e.key === 'ArrowDown' ? 1 : -1)];

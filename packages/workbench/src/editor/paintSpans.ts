@@ -162,14 +162,12 @@ export async function paintOverlayHtml(
   // actual mismatch with a non-trivial `runs` list (colorize() produced spans, but the
   // concatenated text does not match) means the HTML shape changed under us — that one degrades to
   // plain escaped text rather than risk mis-painting.
-  const baseRuns =
-    parsedText === text
-      ? runs
-      : runs.length === 0
-        ? [{ from: 0, to: text.length, classes: [] }]
-        : null;
-  if (baseRuns === null) return escapeHtml(text);
-  const merged = mergeHighlightRanges(text.length, baseRuns, ranges);
+  if (parsedText !== text && runs.length === 0) return paintRangesHtml(text, ranges);
+  if (parsedText !== text) return escapeHtml(text);
+  return runsToHtml(text, mergeHighlightRanges(text.length, runs, ranges));
+}
+
+function runsToHtml(text: string, merged: readonly ClassRun[]): string {
   let html = '';
   let cursor = 0;
   for (const run of merged) {
@@ -179,6 +177,15 @@ export async function paintOverlayHtml(
   }
   if (cursor < text.length) html += escapeHtml(text.slice(cursor));
   return html;
+}
+
+/** One classless base run plus `ranges`: the ranges-only overlay needs no tokenizer. */
+export function paintRangesHtml(text: string, ranges: readonly HighlightRange[]): string {
+  if (text === '') return '';
+  return runsToHtml(
+    text,
+    mergeHighlightRanges(text.length, [{ from: 0, to: text.length, classes: [] }], ranges),
+  );
 }
 
 /** `document.caretPositionFromPoint`/`caretRangeFromPoint` (WebKit ships the latter only, as of
