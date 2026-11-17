@@ -19,6 +19,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/memory/embed"
 	"github.com/kirathecat/kira-studio/internal/memory/importer"
 	"github.com/kirathecat/kira-studio/internal/memory/mcpserver"
+	"github.com/kirathecat/kira-studio/internal/pprofserve"
 )
 
 // OpsRecorder builds the tools/call hook for a server of project (import mode when importMode), plus
@@ -41,6 +42,7 @@ func Run(args []string, promptsPath string, agents harness.Selector, models memo
 		}
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
+	pprofserve.Start()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 

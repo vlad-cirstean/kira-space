@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { buildPackedChunk, type PackedChunkRow } from '@kira/git-core/testing/packedChunk';
 import type { Page, TestInfo } from '@playwright/test';
 import { closeAllTabs } from '@workbench/testing/ui/heapProbe';
@@ -5,6 +7,7 @@ import { type MemSampler, runMemWorld, worldEnabled } from '@workbench/testing/u
 import { emitWailsEvent } from '@workbench/testing/ui/mockRuntime';
 import { expect } from '../../ui/fixtures';
 import { connectionRow, expandRow, openRowMenu } from '../../ui/studio/support/tree';
+import { adeBoard, adeFixture } from '../../ui/support/adeV2';
 import { buildGraphStreamChunk } from '../../ui/support/graphStreamFixture';
 
 export const APP = 'space';
@@ -189,4 +192,126 @@ export async function feedTerminal(
       exited: false,
     });
   }
+}
+
+/** P661 `ade-agents` fixture sizes: archived tasks, stopped session rows, running TUI sessions. */
+export const AGENTS_WORLD = { history: 200, stopped: 300, running: 4, bytesPerSession: 2_000_000 };
+
+/** ADE board with `AGENTS_WORLD.history` archived tasks and ten active tasks. */
+export function agentsBoard() {
+  return adeBoard((b) => {
+    b.tasks = b.tasks.slice(0, 10);
+    b.history = Array.from({ length: AGENTS_WORLD.history }, (_, i) => ({
+      taskId: `H_${i}`,
+      title: `Archived task ${i}: ship the billing export for tenant ${i}`,
+      codeRepoIds: ['repo-web-app', 'repo-api'],
+      mergedAt: 1_789_000_000_000 + i * 3_600_000,
+      archivedAt: 1_789_000_000_000 + i * 3_600_000,
+    }));
+  });
+}
+
+/** The first `running` active tasks, each with one running TUI session; plus the stopped rows. */
+export function agentsSessions(taskIds: readonly string[]) {
+  const base = adeFixture<{ sessions: Record<string, unknown>[] }>('sessions').sessions;
+  const stopped = base.find((s) => s.state === 'stopped' && s.mode === 'headless');
+  if (!stopped) throw new Error('sessions fixture has no stopped headless row');
+  const rows: Record<string, unknown>[] = [];
+  for (let i = 0; i < AGENTS_WORLD.running; i++) {
+    rows.push({
+      ...base.find((s) => s.id === 'tk01'),
+      id: `ag${i}`,
+      agentSessionId: `claude-ag${i}`,
+      terminalId: `term-ag${i}`,
+      taskId: taskIds[i],
+      branchId: '',
+      resumes: '',
+    });
+  }
+  for (let i = 0; i < AGENTS_WORLD.stopped; i++) {
+    rows.push({
+      ...stopped,
+      id: `st${i}`,
+      agentSessionId: `claude-st${i}`,
+      taskId: taskIds[i % taskIds.length],
+      branchId: '',
+      runId: `r_st${i}`,
+      startedAt: 1_789_000_000_000 + i * 60_000,
+      lastActiveAt: 1_789_000_000_000 + i * 60_000 + 30_000,
+    });
+  }
+  return { sessions: rows };
+}
+
+/** Claude-like redraws: ED2, home, a 40-line frame of 190-column colored text; until `bytes`. */
+export function agentFrames(seed: number, bytes: number): string[] {
+  const out: string[] = [];
+  let total = 0;
+  for (let f = 0; total < bytes; f++) {
+    let frame = '\x1b[2J\x1b[H';
+    for (let l = 0; l < 40; l++) {
+      const text = `agent ${seed} frame ${f} line ${l} `.padEnd(190, `${l % 10}`);
+      frame += `\x1b[3${(l % 6) + 1}m${text}\x1b[0m\r\n`;
+    }
+    out.push(frame);
+    total += frame.length;
+  }
+  return out;
+}
+
+export async function feedFrames(
+  page: Page,
+  channel: string,
+  terminalId: string,
+  frames: readonly string[],
+): Promise<void> {
+  const per = 8;
+  for (let at = 0; at < frames.length; at += per) {
+    await emitWailsEvent(page, channel, {
+      terminalId,
+      data: Buffer.from(frames.slice(at, at + per).join('')).toString('base64'),
+      exited: false,
+    });
+  }
+}
+
+const WEBKIT_PROC = /WPEWebProcess|WPENetworkProcess|WPEGraphicsProcess|WebKitWebProcess/;
+
+/** PSS in MB, by process kind, of the browser under test (`/proc/<pid>/smaps_rollup`). */
+export function browserPss(engine: 'chromium' | 'webkit'): Record<string, number> {
+  const out: Record<string, number> = {};
+  const ps = execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' });
+  const rows = ps
+    .split('\n')
+    .map((l) => l.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/))
+    .filter((m): m is RegExpMatchArray => m !== null)
+    .map((m) => ({ pid: m[1], ppid: m[2], cmd: m[3] }));
+  const parent = new Map(rows.map((r) => [r.pid, r.ppid]));
+  // Only this run's browser: a sibling Playwright on the host owns the other processes.
+  const mine = (pid: string): boolean => {
+    for (let p: string | undefined = pid; p && p !== '1'; p = parent.get(p)) {
+      if (p === String(process.pid)) return true;
+    }
+    return false;
+  };
+  for (const { pid, cmd } of rows) {
+    if (!mine(pid)) continue;
+    let kind = '';
+    if (engine === 'webkit') {
+      if (!WEBKIT_PROC.test(cmd)) continue;
+      kind = /Network/.test(cmd) ? 'network' : /Graphics/.test(cmd) ? 'gpu' : 'webcontent';
+    } else {
+      if (!cmd.includes('/opt/pw-browsers')) continue;
+      const t = cmd.match(/--type=([a-z-]+)/)?.[1];
+      kind = t ?? 'browser';
+    }
+    try {
+      const roll = readFileSync(`/proc/${pid}/smaps_rollup`, 'utf8');
+      const kb = Number(roll.match(/^Pss:\s+(\d+)/m)?.[1] ?? 0);
+      out[kind] = Math.round(((out[kind] ?? 0) + kb / 1024) * 10) / 10;
+    } catch {
+      // process gone
+    }
+  }
+  return out;
 }
