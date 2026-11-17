@@ -35,3 +35,8 @@ each stream's edit. If overlap proves large or semantic, or the P662 cause turns
 no split: run those two sequentially, P660 first. P661 expected independent; its planner confirms.
 
 Landing: as in batch 1.
+
+## Batch 3: P663
+
+Batch 3 = P663 (single stream, starts after batch 2 landed). Plan written against the tree with
+batches 1 and 2 included.

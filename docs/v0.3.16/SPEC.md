@@ -12,6 +12,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P660 | Keep module state across tab switches | Planned |
 | P661 | Agents module memory efficiency | Planned |
 | P662 | Query module UI freeze | Planned |
+| P663 | Panel resize bar and update widget placement | Planned |
 
 ## P656 Release retention deletes whole releases, never tags
 
@@ -70,3 +71,9 @@ Plan: `plans/P661.md`.
 Some queries freeze the whole UI before data shows (unknown whether data arrives). Opening a new request from the menu bar unfreezes it, until returning to Studio. Find the root cause and fix it for all modules and places in the app. Acceptance: no query freezes the UI; root cause named in Result; tests per CLAUDE.md "Tests" (flow test + UI spec halves).
 
 Plan: `plans/P662.md`.
+
+## P663 Panel resize bar and update widget placement
+
+Resize bar between panels is strong blue; app-update version widget sits on the status bar's right. Acceptance: (1) resize bar uses a neutral grey theme token (muted, no blue) in idle, hover and drag states; hover and drag stay distinguishable from idle by a step in grey; (2) update version widget moves to the status bar's left side, right side loses it; UI specs cover bar color per state and widget position; visual baselines re-recorded where changed.
+
+Plan: `plans/P663.md`.
