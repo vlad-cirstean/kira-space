@@ -19,7 +19,7 @@ import { useRunState } from '../../state/runState';
 import PagerControls from '../shared/page/PagerControls.vue';
 import { pageSizeOptions } from '../shared/page/sizes';
 import ProjectionMenu from './ProjectionMenu.vue';
-import { fieldNamesOnPage, pageVersion } from './page';
+import { pageFieldNames, pageVersion } from './page';
 import { useDocumentViewStore } from './state';
 
 const props = defineProps<{
@@ -51,7 +51,7 @@ const projectionTriggerEl = ref<{ $el: HTMLElement } | null>(null);
 
 const projectionCount = computed(() => {
   void pageVersion.n;
-  const total = fieldNamesOnPage(props.tab.id).length;
+  const total = pageFieldNames(props.tab.id)?.length ?? 0;
   if (total === 0) return null;
   const projection = props.tab.state.projection;
   return { shown: projection ? projection.length : total, total };

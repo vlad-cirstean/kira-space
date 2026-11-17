@@ -18,7 +18,7 @@ import {
   mongoSortCandidates,
   useMongoFieldSampleStore,
 } from '../shared/mongoFieldSample';
-import { fieldNamesOnPage, pageVersion } from './page';
+import { pageFieldNames, pageVersion } from './page';
 import { parseSortText, sortSpecToText } from './sortDocument';
 import { useDocumentViewStore } from './state';
 
@@ -56,22 +56,18 @@ watch(
 
 const filterCandidates = computed(() => {
   void pageVersion.n;
-  return mongoFilterCandidates(['_id', ...fieldNamesOnPage(props.tab.id)]);
+  return mongoFilterCandidates(['_id', ...(pageFieldNames(props.tab.id) ?? [])]);
 });
 const sortCandidates = computed(() => {
   void pageVersion.n;
-  return mongoSortCandidates(['_id', ...fieldNamesOnPage(props.tab.id)]);
+  return mongoSortCandidates(['_id', ...(pageFieldNames(props.tab.id) ?? [])]);
 });
 
 watch(
-  () => [pageVersion.n, props.tab.connectionId, props.tab.path] as const,
-  ([, connectionId, path]) => {
-    if (!connectionId) return;
-    mongoFieldSampleStore.registerMongoFieldSample(
-      connectionId,
-      path,
-      fieldNamesOnPage(props.tab.id),
-    );
+  () => [pageFieldNames(props.tab.id), props.tab.connectionId, props.tab.path] as const,
+  ([names, connectionId, path]) => {
+    if (!connectionId || !names) return;
+    mongoFieldSampleStore.registerMongoFieldSample(connectionId, path, names);
   },
   { immediate: true },
 );

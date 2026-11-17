@@ -29,6 +29,7 @@ import EngineIcon from '../../theme/EngineIcon.vue';
 import DocumentRow from '../shared/document/DocumentRow.vue';
 import DocumentTree from '../shared/document/DocumentTree.vue';
 import { type DocumentRowView, useDocumentRowsStore } from '../shared/document/rows';
+import { useHeightAnchor } from '../shared/document/useHeightAnchor';
 import SearchFilterNotice from '../shared/page/SearchFilterNotice.vue';
 import SearchToolbar from '../shared/page/SearchToolbar.vue';
 import { setVisibleRows } from '../shared/page/visibleRows';
@@ -40,7 +41,7 @@ import DocumentFilterRow from './DocumentFilterRow.vue';
 import DocumentToolbar from './DocumentToolbar.vue';
 import { confirmDeleteDocument, rowMenu } from './menu';
 import { deleteDocument } from './mutations';
-import { documentRow, pageVersion, setVisibleWindow } from './page';
+import { documentId, documentRow, pageVersion, setVisibleWindow } from './page';
 import RowActionButton from './RowActionButton.vue';
 import { type Match, matchedRows, pageSearchApi } from './search';
 import { useDocumentViewStore } from './state';
@@ -153,8 +154,8 @@ function rowAt(row: number): DocumentRowEntry | null {
 function idsOf(indices: readonly number[]): string[] {
   const out: string[] = [];
   for (const i of indices) {
-    const doc = documentRow(props.tab.id, i);
-    if (doc) out.push(doc.id);
+    const id = documentId(props.tab.id, i);
+    if (id !== null) out.push(id);
   }
   return out;
 }
@@ -162,10 +163,15 @@ function idsOf(indices: readonly number[]): string[] {
 const rowHeights = computed<number[]>(() => {
   void pageVersion.n;
   void documentRowsStore.rowsVersion.n;
+  void documentRowsStore.lineCountsVersion.n;
+  // Every document defaults to expanded: with no collapsed entry no id is decoded at all.
+  const collapsed = new Set(
+    Object.entries(props.tab.state.expanded).flatMap(([id, open]) => (open === false ? id : [])),
+  );
   return rows.value.map((row) => {
-    const id = documentRow(props.tab.id, row)?.id ?? null;
-    const expanded = id !== null && documentViewStore.isDocumentExpanded(props.tab.id, id);
-    return documentRowsStore.rowHeight(
+    const id = collapsed.size > 0 ? documentId(props.tab.id, row) : null;
+    const expanded = id === null || !collapsed.has(id);
+    return documentRowsStore.knownRowHeight(
       props.tab.id,
       row,
       editingRow.value,
@@ -196,6 +202,8 @@ const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({
   pinned: () => rt.value?.selectedRow ?? null,
   keepScroll: tabViewKey(props.tab.id, 'documents'),
 });
+
+useHeightAnchor(scrollEl, () => rowHeights.value);
 
 const nav = useListNavigation<number>({
   container: scrollEl,
@@ -243,6 +251,12 @@ watch(virtualItems, (items) => {
   setVisibleRows(props.tab.id, from, to + 1);
   setVisibleWindow(props.tab.id, from, to + 1);
   documentRowsStore.pruneRows(props.tab.id, from, to + 1);
+  // After the prune, so the parses the fill makes stay cached for this render. Exact heights for
+  // the window; the rest of the page is estimated until the worker's counts land.
+  documentRowsStore.fillLineCounts(
+    props.tab.id,
+    items.flatMap((item) => rows.value[item.index] ?? []),
+  );
 });
 
 function onGoToMatch(match: Match): void {
