@@ -12,6 +12,7 @@ import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
+import { tabViewKey } from '@workbench/state/viewState';
 import { computed, ref, watch } from 'vue';
 import { datasetNumber } from '../eventCoords';
 import SearchFilterNotice from '../page/SearchFilterNotice.vue';
@@ -52,6 +53,7 @@ const {
   rowHeight: () => rowHeight.value,
   scrollElement: scrollRef,
   overscan: 8,
+  keepScroll: () => tabViewKey(props.viewKey, 'rows'),
 });
 // A virtual item's `index` is its position in rowIndices; `i` is the page-row number.
 const visibleRows = computed(() =>

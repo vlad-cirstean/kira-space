@@ -79,6 +79,7 @@ const { virtualItems, totalSize, band, onScroll, revealKey } = useTreeVirtualRow
   rows: () => treeStore.visibleRows,
   rowHeight: () => rowHeight.value,
   scrollElement: scrollEl,
+  keepScroll: 'studio:tree',
 });
 
 // Raw `search` (not the debounced query) so typing pauses drag at once.

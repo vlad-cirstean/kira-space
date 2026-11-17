@@ -13,6 +13,7 @@ import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
+import { tabViewKey } from '@workbench/state/viewState';
 import { computed, ref, watch } from 'vue';
 import type { StreamTabRecord } from '../../../state/tabDomain';
 import { useTabsStore } from '../../../state/tabs';
@@ -66,6 +67,7 @@ const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({
   count: () => rowIndices.value.length,
   rowHeight: () => rowHeight.value,
   scrollElement: scrollEl,
+  keepScroll: tabViewKey(props.tab.id, 'stream'),
 });
 
 function onRowClick(i: number): void {

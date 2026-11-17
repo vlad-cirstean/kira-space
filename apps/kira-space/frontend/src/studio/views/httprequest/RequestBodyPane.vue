@@ -13,8 +13,10 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { type MessageKey, t } from '@theme/i18n';
+import { useKeptEditorScroll } from '@workbench/behaviour/viewState';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import type { RangeHighlight } from '@workbench/editor/ranges';
+import { tabViewKey } from '@workbench/state/viewState';
 import { computed, ref } from 'vue';
 import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import {
@@ -55,6 +57,10 @@ const props = defineProps<{
    *  the other. */
   findHighlights?: (doc: string) => readonly RangeHighlight[];
 }>();
+
+const bodyScroll = useKeptEditorScroll(() =>
+  tabViewKey(props.tab.id, `body:${props.tab.state.bodyMode}`),
+);
 
 /** Variable ranges first, find ranges second — a match's class wins on overlap, which is
  *  what a user searching for text that happens to sit inside a {{reference}} expects to see.
@@ -244,6 +250,8 @@ const BODY_MODE_ITEMS = computed(() =>
       :autocomplete="!!variables"
       :completion-sources="variables && [variableCompletionSource(variables.candidates)]"
       auto-close-brackets
+      :scroll-top="bodyScroll.initial"
+      @update:scroll-top="bodyScroll.save"
       @update:doc="onRawChange"
     />
     <MonacoHost
@@ -256,6 +264,8 @@ const BODY_MODE_ITEMS = computed(() =>
       :autocomplete="!!variables"
       :completion-sources="variables && [variableCompletionSource(variables.candidates)]"
       auto-close-brackets
+      :scroll-top="bodyScroll.initial"
+      @update:scroll-top="bodyScroll.save"
       @update:doc="onCodeChange"
     />
     <UrlEncodedTable

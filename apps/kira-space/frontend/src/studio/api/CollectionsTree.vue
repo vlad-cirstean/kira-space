@@ -56,6 +56,7 @@ const { virtualItems, totalSize, band, onScroll, revealKey } = useTreeVirtualRow
   rows: () => collectionsStore.visibleRows,
   rowHeight: () => rowHeight.value,
   scrollElement: scrollEl,
+  keepScroll: 'api:tree',
 });
 
 /** Called by the panel after a mutation adds a row worth scrolling to. */

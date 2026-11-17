@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useKeptState } from '@workbench/behaviour/viewState';
 import FindBar from '@workbench/components/FindBar.vue';
 import SearchOptionToggles from '@workbench/components/SearchOptionToggles.vue';
 import { computed, ref, watch } from 'vue';
@@ -17,10 +18,10 @@ export interface FindBarTarget {
 }
 
 // One target for the Body pane, two for the Raw pane (request wire, response wire).
-const props = defineProps<{ targets: readonly FindBarTarget[] }>();
+const props = defineProps<{ targets: readonly FindBarTarget[]; stateKey: string }>();
 const emit = defineEmits<{ close: [] }>();
 
-const query = ref('');
+const query = useKeptState(() => `${props.stateKey}:query`, '');
 // 0-based, across every target's matches concatenated in order.
 const currentGlobal = ref(0);
 

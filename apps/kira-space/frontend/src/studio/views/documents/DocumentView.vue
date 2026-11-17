@@ -18,6 +18,7 @@ import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
+import { tabViewKey } from '@workbench/state/viewState';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { DocumentTabRecord } from '../../../state/tabDomain';
 import MonacoHost from '../../editor/MonacoHost.vue';
@@ -193,6 +194,7 @@ const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({
   scrollElement: scrollEl,
   overscan: () => overscanRows.value,
   pinned: () => rt.value?.selectedRow ?? null,
+  keepScroll: tabViewKey(props.tab.id, 'documents'),
 });
 
 const nav = useListNavigation<number>({
