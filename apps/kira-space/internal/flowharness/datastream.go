@@ -306,6 +306,29 @@ func (s *DataStream) ExecuteTx(connID, path string, stmts ...string) ([]DataPage
 	return out, adapters.TxState(er.Transaction()), nil
 }
 
+// ExecuteFire starts data:execute without waiting; wait returns the pages. Pair with Router.Cancel(opID).
+func (s *DataStream) ExecuteFire(connID, path string, stmts ...string) (opID string, wait func() ([]DataPage, error)) {
+	s.t.Helper()
+	w := adapterhost.ExecuteRequestWire{OpID: ids.NewID(), ConnectionID: connID, Path: path, Statements: stmts}
+	reply, id := s.fire("data:execute", w)
+	return w.OpID, func() ([]DataPage, error) {
+		f, err := decodeResponse(id, <-reply)
+		if err != nil {
+			return nil, err
+		}
+		var er wire.ExecuteResponse
+		tab := payloadTab(s.t, f)
+		er.Init(tab.Bytes, tab.Pos)
+		out := make([]DataPage, er.PagesLength())
+		for i := range out {
+			var p wire.Page
+			er.Pages(&p, i)
+			out[i] = decodePage(s.t, &p)
+		}
+		return out, nil
+	}
+}
+
 func payloadTab(t testing.TB, f *wire.Frame) flatbuffers.Table {
 	t.Helper()
 	var tab flatbuffers.Table
