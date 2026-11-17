@@ -8,7 +8,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P656 | Release retention deletes whole releases, never tags | Planned |
 | P657 | Memory tooltip Scripts category | Done |
 | P658 | SQL data view column search | Done |
-| P659 | Task card hover actions UX | Planned |
+| P659 | Task card hover actions UX | Done |
 | P660 | Keep module state across tab switches | Planned |
 | P661 | Agents module memory efficiency | Planned |
 | P662 | Query module UI freeze | Planned |
@@ -74,6 +74,21 @@ Result: Done. Filter toolbar gets a column-name field (case-insensitive substrin
 Hover buttons on a task card appear mid-content and confuse. Acceptance: hover buttons align right; buttons that appear over the title move to a clearer place; menu button removed (same as right click); "no branch" shows once, not twice; agent indicator bigger (key info). Tests per CLAUDE.md "Tests" (flow test + UI spec halves where behavior is new).
 
 Plan: `plans/P659.md`.
+
+Result: Done. Card head and board branch row hover clusters moved to the right action zone
+(`ade-card-actions`, `ade-branch-actions`); row pencil dropdown is `align="end"`. `ade-card-more` and
+board `ade-branch-more` removed; right-click and Shift+F10 (new `menu.open` shortcut on the board row)
+open the same menus; panel More kept. Draft row context reads once: `usePlanModel` takes
+`line2.context`; `space.ade.baseMarker.draft.label` is now `Forks from {base}` (plan said `From {base}`,
+`check-catalog` C3/C4 rejected it as a near-duplicate of other keys). Agent indicator: `AdeTaskSessions`
+`size="lg"` (24px button, 16px glyph) in a left lead column spanning both head lines; `AdeActivityIcon`
+gains size 16. UI only, no flow-test half. Ran: `typecheck:web` (only preexisting missing-bindings
+errors without copied bindings; hook typecheck green), lint hooks, UI specs `ade-v2-card-icons`,
+`ade-v2-row-actions`, `ade-v2-task-row`, `ade-v2-plan`, `ade-v2-session-status`, `ade-v2-add`,
+`ade-v2-base-rebase`, `ade-v2-force-push`, `ade-v2-review-open`, `ade-v2-review-uncommitted`,
+`ade-v2-dialogs`, `copy-wording*`, `ade-v2-panel` all pass. Visual: re-recorded `plan-branches-stacked`
+and `plan-day-bars`; the other five baselines unchanged. Spec tweak: row actions right-edge bound is
+60px (b_auth keeps tag and danger action after the cluster).
 
 ## P660 Keep module state across tab switches
 
