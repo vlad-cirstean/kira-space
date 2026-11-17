@@ -162,7 +162,10 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
     // that arrives before a view mounts wraps as it will later.
     const lastSize = new Map<string, { cols: number; rows: number }>();
 
-    async function attachHeadlessTerminal(tabId: string): Promise<void> {
+    async function attachHeadlessTerminal(
+      tabId: string,
+      launchKind: TerminalLaunchKind,
+    ): Promise<void> {
       try {
         const renderer = await loadTerminalRenderer();
         if (!byTabId.has(tabId) || sinks.has(tabId)) return;
@@ -177,6 +180,7 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
             fileLinks: options.fileLinks,
           },
           lastSize.get(tabId),
+          launchKind,
         );
       } catch (err) {
         logError('terminals', `${tabId}: renderer load failed`, err);
@@ -213,7 +217,7 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
         error: null,
         shell: '',
       });
-      if (!sinks.has(tabId)) void attachHeadlessTerminal(tabId);
+      if (!sinks.has(tabId)) void attachHeadlessTerminal(tabId, launchKind);
 
       try {
         const { shell } = await control.terminalOpen(

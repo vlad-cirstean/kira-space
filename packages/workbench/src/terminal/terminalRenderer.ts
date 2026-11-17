@@ -18,6 +18,8 @@ interface Attached {
   fit: FitAddon;
   host: HTMLDivElement;
   off: () => void;
+  /** Attaches the renderer to `host`; the first call does the work. */
+  open: () => void;
 }
 
 // `useSettingsStore`/`useTerminalsStore` used to be imported directly (each app's own
@@ -139,14 +141,20 @@ function terminalTheme(): import('@xterm/xterm').ITheme {
 
 const encoder = new TextEncoder();
 
+// Claude Code keeps its own transcript; a TUI user scrolls back a screen or two. Each line costs
+// cols x 4 bytes, so this saves ~80% of an agent buffer against the 5000 default.
+const AGENT_SCROLLBACK = 1000;
+const DEFAULT_SCROLLBACK = 5000;
+
 /** Returns tabId's own attached Terminal, creating and wiring it on first call. `host` is a
- *  detached `<div>` — RepoTerminalView.vue appends it to its container on mount and never calls
- *  `term.open()` a second time (the one mechanically safe way to reattach an xterm across
- *  unmounts, since whether `open()` itself is re-entrant is never relied on). */
+ *  detached `<div>` — the view appends it to its container on mount. The Terminal parses and
+ *  buffers from creation, but `term.open(host)` (DOM renderer) waits for `openTerminalIfNeeded`,
+ *  so a never-viewed session pays no DOM. `open()` runs once and is never repeated on remount. */
 export function getOrCreateTerminal(
   tabId: string,
   deps: TerminalRendererDeps,
   size?: { cols: number; rows: number },
+  launchKind?: string,
 ): Attached {
   const existing = byTabId.get(tabId);
   if (existing) return existing;
@@ -169,7 +177,7 @@ export function getOrCreateTerminal(
   const term = new Terminal({
     ...(size ?? {}),
     linkHandler: { activate, ...linkHover, allowNonHttpProtocols: false },
-    scrollback: 5000,
+    scrollback: launchKind === 'agent' ? AGENT_SCROLLBACK : DEFAULT_SCROLLBACK,
     cursorBlink: true,
     allowProposedApi: false,
     // VS Code parity: keeps screens cleared with ED2 in scrollback.
@@ -190,8 +198,6 @@ export function getOrCreateTerminal(
     }
     return false;
   });
-  term.open(host);
-  if (deps.linkActivation === 'modifier') hint = createLinkHint(term);
   const fileLinks = deps.fileLinks;
   if (fileLinks) {
     term.registerLinkProvider(
@@ -220,9 +226,22 @@ export function getOrCreateTerminal(
     deps.writeTerminal(tabId, bytes);
   });
 
-  const attached: Attached = { term, fit, host, off };
+  let opened = false;
+  const open = (): void => {
+    if (opened) return;
+    opened = true;
+    term.open(host);
+    if (deps.linkActivation === 'modifier') hint = createLinkHint(term);
+  };
+
+  const attached: Attached = { term, fit, host, off, open };
   byTabId.set(tabId, attached);
   return attached;
+}
+
+/** Attaches tabId's renderer to its host on first call; a no-op for an id with no terminal. */
+export function openTerminalIfNeeded(tabId: string): void {
+  byTabId.get(tabId)?.open();
 }
 
 /** Re-measures tabId's own terminal against its current container size and applies it — the

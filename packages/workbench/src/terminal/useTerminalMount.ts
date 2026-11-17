@@ -104,8 +104,9 @@ export function useTerminalMount(options: UseTerminalMountOptions) {
     if (!container.value) return;
     renderer = mod;
 
-    const { host } = mod.getOrCreateTerminal(tabId, rendererDeps);
+    const { host } = mod.getOrCreateTerminal(tabId, rendererDeps, undefined, tabState.launchKind);
     container.value.appendChild(host);
+    mod.openTerminalIfNeeded(tabId);
 
     // §7.3/§7.4: openTerminalSession only on the tab's very first mount — a remount (switching
     // back to an already-open terminal) reattaches the same live session, never spawns a second one.

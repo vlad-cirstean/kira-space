@@ -86,6 +86,7 @@ onMounted(async () => {
     appCursor.value = attached?.term.modes.applicationCursorKeysMode ?? false;
   });
   container.value.append(attached.host);
+  renderer.openTerminalIfNeeded(props.sessionId);
   await nextTick();
   renderer.fitTerminal(props.sessionId);
   remote.connect();
