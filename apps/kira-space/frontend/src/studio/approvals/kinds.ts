@@ -163,6 +163,7 @@ export function studioApprovalKinds(): ApprovalKinds {
   return {
     'db.query': {
       content: markRaw(DbQueryBody),
+      monaco: true,
       footerAction: markRaw(ReviewResultOption),
       operation: (item) => {
         const p = dbQueryPayloadSchema.parse(item.payload);
@@ -176,6 +177,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'db.exemption': {
       content: markRaw(DbExemptionBody),
+      monaco: true,
       details: markRaw(DbExemptionDetails),
       footerAction: markRaw(ReviewResultOption),
       operation: () => t('studio.dbMcp.approval.op.liftLimit.label'),
@@ -188,6 +190,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'db.response': {
       content: markRaw(DbResponseBody),
+      monaco: true,
       details: markRaw(DbResponseDetails),
       operation: () => t('common.field.result.label'),
       where: connectionWhere,
@@ -230,6 +233,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'api.request': {
       content: markRaw(ApiRequestBody),
+      monaco: true,
       details: markRaw(ApiRequestDetails),
       operation: (item) => apiRequestPayloadSchema.parse(item.payload).method,
       where: (item) =>

@@ -13,6 +13,7 @@ import { computed, onScopeDispose, watch } from 'vue';
 import ApprovalsDialog from './ApprovalsDialog.vue';
 import ApprovalsToast from './ApprovalsToast.vue';
 import { useApprovals } from './approvalsQueries';
+import { useApprovalKinds } from './registry';
 
 // One dialog for every agent approval routed to this window. Closing it minimises to a toast and
 // never answers; a prompt (quit, update, credential) on screen turns the dialog into the toast so
@@ -23,6 +24,7 @@ const store = useApprovalsStore();
 const { data: items } = useApprovals();
 const { data: prompts } = usePrompts();
 const { shown: promptShown } = usePromptVisibility();
+const kinds = useApprovalKinds();
 onScopeDispose(
   usePromptsControl().onPromptsReveal(({ id }) => {
     if (id.startsWith(PREFIX)) store.open(id.slice(PREFIX.length));
@@ -51,10 +53,11 @@ function show(): void {
   gate.force();
 }
 
-// Statements and bodies render in Monaco: load it while the dialog opens, not after.
+// Statements and bodies of some kinds render in Monaco: load it while the dialog opens, not after.
+// Only for those kinds: Monaco and its worker cost tens of MB for the app's life.
 watch(
-  () => mine.value.length,
-  (n) => n > 0 && void loadMonaco(),
+  () => mine.value.some((i) => kinds[i.kind]?.monaco),
+  (needs) => needs && void loadMonaco(),
   { immediate: true },
 );
 
