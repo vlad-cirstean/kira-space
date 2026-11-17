@@ -9,6 +9,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitrpc"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 const reviewSyncContract = "ade-review-sync"
@@ -72,9 +73,13 @@ func TestReviewSync(t *testing.T) {
 		t.Fatalf("sync before fetch = %+v, want a remote base and a current branch checked out in %s", before, wt)
 	}
 	app.Contract(t, reviewSyncContract, "AdeTaskService.ReviewSync#before", before, maskSync...)
-	if got := reviewFilePaths(listFiles()); !slices.Equal(got, []string{"mine.txt"}) {
-		t.Fatalf("files before fetch = %v, want mine.txt", got)
-	}
+	// The commit above is an out-of-band git write: the shared refs cache (already filled by the
+	// board's background fact collection) drops only when the watcher's debounced signal lands.
+	var got []string
+	testx.WaitUntil(t, waitFor, func() bool {
+		got = reviewFilePaths(listFiles())
+		return slices.Equal(got, []string{"mine.txt"})
+	})
 
 	if res, err := app.W.AdeTask.ReviewFetch(ctx, args); err != nil || res.Error != nil {
 		t.Fatalf("ReviewFetch = %+v, %v", res, err)
