@@ -7,7 +7,7 @@ import type { DialogSize } from '@theme/components/ui/dialog/resizeSize';
 import { t } from '@theme/i18n';
 import { dialogSurface } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
-import { reactiveOmit } from '@vueuse/core';
+import { reactiveOmit, useEventListener, useTimeoutFn } from '@vueuse/core';
 import type { DialogContentEmits, DialogContentProps } from 'reka-ui';
 import {
   DialogContent,
@@ -17,7 +17,7 @@ import {
   useForwardPropsEmits,
 } from 'reka-ui';
 import type { HTMLAttributes } from 'vue';
-import { computed, inject, provide, ref } from 'vue';
+import { computed, inject, provide, ref, watch } from 'vue';
 import type { DialogContentSizeVariants } from '.';
 import { dialogContentSizeVariants } from '.';
 
@@ -127,6 +127,46 @@ function onPromptKeydown(event: KeyboardEvent): void {
   void requestClose();
 }
 
+// A prompt can open while the user is mid-chord in another surface: Mod+Enter runs a query and
+// Mod+Backspace deletes rows there, and both answer a prompt here. Until the prompt has been open
+// PROMPT_CHORD_GRACE_MS and a Mod keydown started after it opened, those chords are swallowed.
+const PROMPT_CHORD_GRACE_MS = 700;
+const chordsArmed = ref(!props.prompt);
+let modSeen = false;
+const { start: armLater, stop: cancelArm } = useTimeoutFn(
+  () => {
+    chordsArmed.value = true;
+  },
+  PROMPT_CHORD_GRACE_MS,
+  { immediate: false },
+);
+watch(
+  () => props.prompt && rootContext.open.value,
+  (open) => {
+    cancelArm();
+    chordsArmed.value = !props.prompt;
+    modSeen = false;
+    if (open) armLater();
+  },
+  { immediate: true },
+);
+useEventListener(
+  window,
+  'keydown',
+  (e: KeyboardEvent) => {
+    if (!props.prompt || !rootContext.open.value) return;
+    if (e.key === 'Meta' || e.key === 'Control') {
+      if (!e.repeat) modSeen = true;
+      return;
+    }
+    if (!(e.metaKey || e.ctrlKey) || (e.key !== 'Enter' && e.key !== 'Backspace')) return;
+    if (chordsArmed.value && modSeen && !e.repeat) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  },
+  { capture: true },
+);
+
 function onPointerDownOutside(event: Event): void {
   if (props.dirty) event.preventDefault();
 }
@@ -162,6 +202,7 @@ const contentClass = computed(() =>
       :class="contentClass"
       :style="sizeStyle"
       :data-dirty="dirty || undefined"
+      :data-chords-armed="prompt ? chordsArmed : undefined"
       :tabindex="prompt ? -1 : undefined"
       @keydown="onPromptKeydown"
       @open-auto-focus="onOpenAutoFocus"

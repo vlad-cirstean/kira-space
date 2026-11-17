@@ -56,6 +56,10 @@ test('contract: single keys do nothing; Mod+Backspace denies by item id', async 
   await expect(page.locator(`[data-testid="approval-deny-${item.id}"]`)).not.toBeFocused();
   await page.keyboard.press('Enter');
   expect(control.log().some((e) => e.channel === IPC.approvalsAnswer)).toBe(false);
+  await expect(page.locator('[data-testid="approvals-dialog"]')).toHaveAttribute(
+    'data-chords-armed',
+    'true',
+  );
   await page.keyboard.press('Meta+Backspace');
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)

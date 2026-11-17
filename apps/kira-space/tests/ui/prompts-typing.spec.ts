@@ -8,7 +8,7 @@ import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 
-// Prompt dialogs never take the screen while the user types, and answer to two-key chords only.
+// Prompt dialogs never take the screen while the user types, and answer to two-key chords only, and only after a short grace.
 // The quiet time is PROMPT_QUIET_MS (4 s); the page clock jumps it.
 
 const t = (id: string) => `[data-testid="${id}"]`;
@@ -67,12 +67,39 @@ test('single keys do nothing in an open approval; Mod+Enter approves', async ({ 
   for (const key of ['Enter', 'Space', 'a', 'Backspace', 'Escape']) await page.keyboard.press(key);
   await expect(dialog).toBeVisible();
   expect(calls(control, IPC.approvalsAnswer)).toHaveLength(0);
+  await expect(dialog).toHaveAttribute('data-chords-armed', 'true');
   await page.keyboard.press('Meta+Enter');
   await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
   expect(calls(control, IPC.approvalsAnswer)[0]?.args).toMatchObject({
     ids: [it.id],
     approve: true,
   });
+});
+
+// The editor chord pressed right after a prompt took focus must not answer it (Mod+Enter runs a
+// query, Mod+Backspace deletes rows elsewhere). A chord whose Mod keydown predates the open, or
+// that lands inside the grace period, is swallowed.
+test('a chord pressed right after the dialog opens does not answer it', async ({ relaunch }) => {
+  const it = approval();
+  const { window: page, control } = await relaunch({
+    control: [{ channel: IPC.approvalsAnswer, response: answeredOk([it.id]) }],
+  });
+  await page.clock.install();
+  await startTyping(page);
+  // The pause passes, then time stands still so the grace period cannot lapse under load.
+  await page.clock.pauseAt(Date.now() + 10_000);
+  await pushApprovals(page, [it]);
+  const dialog = page.locator(t('approvals-dialog'));
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute('data-chords-armed', 'false');
+  await page.keyboard.press('Meta+Enter');
+  await page.keyboard.press('Meta+Backspace');
+  expect(calls(control, IPC.approvalsAnswer)).toHaveLength(0);
+  await expect(dialog).toBeVisible();
+  await page.clock.runFor(1000);
+  await expect(dialog).toHaveAttribute('data-chords-armed', 'true');
+  await page.keyboard.press('Meta+Enter');
+  await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
 });
 
 test('Mod+Backspace denies and Shift+Escape minimises', async ({ relaunch }) => {
@@ -85,6 +112,7 @@ test('Mod+Backspace denies and Shift+Escape minimises', async ({ relaunch }) => 
   await page.keyboard.press('Shift+Escape');
   await expect(page.locator(t('approvals-toast'))).toBeVisible();
   await page.locator(t('approvals-toast-review')).click();
+  await expect(page.locator(t('approvals-dialog'))).toHaveAttribute('data-chords-armed', 'true');
   await page.keyboard.press('Meta+Backspace');
   await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
   expect(calls(control, IPC.approvalsAnswer)[0]?.args).toMatchObject({
