@@ -1075,6 +1075,20 @@ Needs Xcode command line tools. Not run in the sandbox, `wkhost.swift` is uncomp
    the real app: `__kiraScrollTrace` (`docs/PERF.md` section 2.1a). Note perceived smoothness and
    blank edges per page.
 
+### Agents module footprint run (user-run)
+
+Per-process memory with ADE open and agents running. Mac only; the sandbox has no `footprint`.
+
+1. Open the app on ADE only. Start 4 agent sessions on a seeded repo. Let each call the Kira
+   memory tool once. Wait 1 min.
+2. `ps -o pid,ppid,rss,command -g <pgid>` lists the tree. `footprint -p <pid>` for the app,
+   `com.apple.WebKit.WebContent`, `com.apple.WebKit.GPU`, `com.apple.WebKit.Networking`, each
+   `kira-space memory-mcp`, each `kira-space memory-embed`, each `claude`.
+3. Read the tooltip App/Agents/Scripts totals next to the footprint sum.
+4. Sandbox proxy for the same fixture: `KIRA_RAM_WORLD=ade-agents bunx playwright test
+   --config=apps/kira-space/playwright.perf.config.ts --project=heap heap-ram` prints `PSS` lines
+   per step. Footprint, not RSS, is the figure of record on Mac. Never `vmmap`.
+
 
 ## `KIRA_*` environment variables
 
