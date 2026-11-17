@@ -24,6 +24,7 @@ const props = defineProps<{
   row: BranchRowModel;
   /** Repos where the task has a branch slot waiting for a name. */
   draftRepoIds: readonly string[];
+  align?: 'start' | 'end';
 }>();
 const emit = defineEmits<{ error: [message: string] }>();
 
@@ -34,6 +35,7 @@ const removeBranch = useRemoveTaskBranch();
 const removeRepo = useRemoveTaskRepo();
 
 const formOpen = ref(false);
+const menuOpen = ref(false);
 const mode = ref<'branch' | 'repo'>('branch');
 const label = computed(() => props.row.name || props.row.repo);
 
@@ -85,14 +87,16 @@ async function remove(what: 'branch' | 'repo'): Promise<void> {
     :branch="row.branch"
     :mode="mode"
     :draft-repo-ids="draftRepoIds"
+    :align="align"
   >
-    <DropdownMenu>
+    <DropdownMenu v-model:open="menuOpen">
       <DropdownMenuTrigger as-child>
         <Button
           variant="toolbar"
           size="kira-icon"
           class="shrink-0"
           :aria-label="t('space.ade.taskTab.branchMenu.trigger.aria')"
+          :data-pinned="menuOpen || formOpen || undefined"
           data-testid="ade-task-branch-menu"
           :data-branch-id="row.id"
           @click.stop
@@ -101,7 +105,7 @@ async function remove(what: 'branch' | 'repo'): Promise<void> {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="end"
+        :align="align ?? 'end'"
         data-testid="ade-task-branch-menu-content"
         @close-auto-focus.prevent
       >

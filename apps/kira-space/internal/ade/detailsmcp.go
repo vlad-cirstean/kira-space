@@ -104,7 +104,7 @@ func (b *TaskBoard) finishDraft(taskID string) (string, error) {
 }
 
 // SubmitForFinish is a run's step.finish implicit submit. An ok finish needs the current step's draft:
-// without one the finish is refused, unless its route ends the task.
+// without one the finish is refused, unless its route ends the task or the step is a smart step.
 func (b *TaskBoard) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall, status string, ok bool) (agentmcp.SubmitFinish, error) {
 	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), nil, "")
 	if err != nil {
@@ -124,7 +124,7 @@ func (b *TaskBoard) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall
 	if err != nil {
 		return agentmcp.SubmitFinish{}, err
 	}
-	if draft != "" || !ok || b.noStageRun(call.RunID) || !b.routeContinues(tc, cur, status) {
+	if draft != "" || !ok || b.noStageRun(call.RunID) || smartStepOf(tc, cur) || !b.routeContinues(tc, cur, status) {
 		return agentmcp.SubmitFinish{Reply: reply, Summary: draft}, nil
 	}
 	msg := fmt.Sprintf("write %s, then call state step.finish", draftRel(cur))

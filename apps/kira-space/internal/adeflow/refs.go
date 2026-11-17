@@ -249,7 +249,7 @@ func ParseStep(src []byte) (adewire.WorkflowStep, *yaml.Node, *adewire.WorkflowE
 		return adewire.WorkflowStep{}, nil, &adewire.WorkflowError{Line: yamlErrLineOf(err), Message: syntaxMessage}
 	}
 	if doc.Kind == 0 || len(doc.Content) == 0 {
-		return adewire.WorkflowStep{}, nil, &adewire.WorkflowError{Message: "the step file is empty"}
+		return adewire.WorkflowStep{}, nil, &adewire.WorkflowError{Message: "the step is empty"}
 	}
 	v := &validator{library: true}
 	step, _ := v.step(doc.Content[0], "", map[string]bool{}, map[string]bool{})

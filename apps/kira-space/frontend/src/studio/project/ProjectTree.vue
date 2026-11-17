@@ -11,6 +11,7 @@ import { useTreeShortcuts } from '@workbench/behaviour/treeShortcuts';
 import { useTreeVirtualRows } from '@workbench/behaviour/treeVirtualRows';
 import { STICKY_ROW_CLASS, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import { logError } from '@workbench/bridge/log';
+import { configName } from '@workbench/config/configName';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import {
   type MenuItem,
@@ -332,7 +333,7 @@ useEventListener(treeBodyEl, 'contextmenu', onBackgroundContextMenu);
         >
           <CodiconIcon name="warning" :size="13" />
           <TruncatedText
-            :text="`${f.file}: ${f.problem?.line ? t('common.config.lineError.error', { line: f.problem.line, text: f.problem.message }) : f.problem?.message}`"
+            :text="`${configName(f.file)}: ${t('common.configForm.unreadable.status')}`"
           />
         </Button>
       </li>

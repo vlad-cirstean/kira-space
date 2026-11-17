@@ -14,12 +14,10 @@ import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
-import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, useTemplateRef } from 'vue';
 import type { EnvironmentsTabRecord } from '../../state/tabDomain';
-import { control } from '../bridge/control';
 import { useConnectionsStore } from '../state/connections';
 import { useRunState } from '../state/runState';
 import ApiAgentAccess from './ApiAgentAccess.vue';
@@ -88,14 +86,6 @@ async function onNewEnvironment(): Promise<void> {
 
 function onEditVariables(id: string, name: string): void {
   openVariableSetTab('environment', id, name);
-}
-
-async function onOpenFile(file: string): Promise<void> {
-  try {
-    await control.configFilesOpen({ folder: 'api', file });
-  } catch (err) {
-    variablesStore.error = errorText(err);
-  }
 }
 
 async function onDelete(id: string, name: string): Promise<void> {
@@ -244,14 +234,6 @@ async function onSetActive(id: string): Promise<void> {
                 t('studio.api.config.invalid.status')
               }}</Badge
             >
-            <Button
-              variant="toolbar"
-              size="kira"
-              data-testid="environment-open-file"
-              @click="onOpenFile(env.file)"
-            >
-              {{ t('studio.api.config.openFile.label') }}
-            </Button>
             <Button
               variant="toolbar"
               size="kira"

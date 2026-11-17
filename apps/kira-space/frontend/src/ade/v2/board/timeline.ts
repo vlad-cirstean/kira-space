@@ -1,6 +1,6 @@
 import { t } from '@theme/i18n';
 import type { Settings } from '../../../state/settingsDomain';
-import type { Board, Branch, HistoryEntry, Task } from '../wire';
+import type { Board, Branch, HistoryEntry } from '../wire';
 import { type BranchGraph, isDraft, shortBranchName } from './branchGraph';
 import {
   type Calendar,
@@ -45,8 +45,6 @@ export interface TimelineInput {
   repoLabel: (codeRepoId: string) => string;
   showAllItems: boolean;
   showHistory: boolean;
-  /** Repos hidden by the repo filter; a task is visible when it has no branch or one in a shown repo. */
-  hiddenRepoIds?: ReadonlySet<string>;
 }
 
 interface TimelineSpan {
@@ -326,21 +324,15 @@ export function buildTimeline(input: TimelineInput): TimelineView {
   const branchRows = makeBranchRows(graph, input.repoLabel);
   const after = computeAfter(seq, branchRows, graph);
 
-  // First-10 cap and the repo filter. Only visible items count toward the cap.
-  const hidden = input.hiddenRepoIds;
-  const visSeq = seq.filter((e) => {
-    const ids = (graph.byTask.get(e.taskId) as Task).branchIds;
-    if (!hidden?.size || ids.length === 0) return true;
-    return ids.some((id) => !hidden.has(graph.byBranch.get(id)?.codeRepoId ?? ''));
-  });
-  const shownTaskIds = visSeq
+  // First-10 cap.
+  const shownTaskIds = seq
     .filter((_, i) => input.showAllItems || i < ITEM_LIMIT)
     .map((e) => e.taskId);
   const shown = new Set(shownTaskIds);
-  const hiddenCount = visSeq.length - shown.size;
+  const hiddenCount = seq.length - shown.size;
   const lastShownDay = Math.max(
     -1e9,
-    ...visSeq.filter((e) => shown.has(e.taskId) && e.day !== LATER).map((e) => e.end),
+    ...seq.filter((e) => shown.has(e.taskId) && e.day !== LATER).map((e) => e.end),
   );
 
   const dayKeys = collectDayKeys(input, seq, shown, hiddenCount, lastShownDay);
@@ -365,7 +357,7 @@ export function buildTimeline(input: TimelineInput): TimelineView {
     entries,
     shownTaskIds,
     hiddenCount,
-    canCollapse: input.showAllItems && visSeq.length > ITEM_LIMIT,
+    canCollapse: input.showAllItems && seq.length > ITEM_LIMIT,
     mergeOrder,
     after,
     branchRows,

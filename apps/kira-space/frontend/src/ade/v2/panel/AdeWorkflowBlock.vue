@@ -5,71 +5,35 @@ import { Button } from '@theme/components/ui/button';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
-import { errorText, toCodedError } from '@workbench/bridge/codedError';
-import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
-import { computed, ref } from 'vue';
+import { errorText } from '@workbench/bridge/codedError';
+import { ref } from 'vue';
 import type { CardModel } from '../plan/usePlanModel';
-import { useSetTaskWorkflow, useWorkflows } from '../queries';
 import AdeTaskActionButton from '../run/AdeTaskActionButton.vue';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import AdeRow from './AdeRow.vue';
 import AdeRowDetail from './AdeRowDetail.vue';
 import AdeStepBlock from './AdeStepBlock.vue';
 import AdeStepMover from './AdeStepMover.vue';
+import { useSwitchWorkflow } from './useSwitchWorkflow';
 
 // Task tab Workflow section (SPEC2 section 7): the workflow picker, then one block per step.
 const props = defineProps<{ card: CardModel }>();
 const wfUi = useAdeWorkflowsUiStore();
-const workflows = useWorkflows();
-const setWorkflow = useSetTaskWorkflow();
-const confirm = useConfirmDialogStore();
+const { options, switchTo } = useSwitchWorkflow();
 const error = ref('');
 const selectKey = ref(0);
 
-const valid = computed(() =>
-  (workflows.data.value?.workflows ?? []).flatMap((e) =>
-    e.workflow ? [{ file: e.fileName, wf: e.workflow }] : [],
-  ),
-);
-
-function lossCounts(err: unknown): { runs: number; logs: number } {
-  const d = toCodedError(err).details as { runs?: number; logs?: number } | undefined;
-  return { runs: d?.runs ?? 0, logs: d?.logs ?? 0 };
-}
-
 async function pick(value: unknown): Promise<void> {
   error.value = '';
-  const args = { taskId: props.card.task.id, workflowId: String(value ?? '') };
   try {
-    await setWorkflow.mutateAsync(args);
+    if (!(await switchTo(props.card.task.id, String(value ?? '')))) selectKey.value++; // remount: the native select shows the declined value otherwise
   } catch (err) {
-    // E_CONFLICT is the unconfirmed switch: its text names the runs and logs the switch deletes.
-    if ((err as { code?: string }).code !== 'E_CONFLICT') {
-      error.value = errorText(err);
-      return;
-    }
-    // The confirmation covers the counts the dialog names; the backend refuses again if the task
-    // holds more by the time it arrives (a run finished meanwhile).
-    const { runs, logs } = lossCounts(err);
-    const ok = await confirm.confirm({
-      title: t('space.ade.workflowBlock.switch.title'),
-      message: errorText(err),
-      confirmLabel: t('space.ade.workflowBlock.switch.confirm.label'),
-      tone: 'danger',
-      run: () =>
-        setWorkflow.mutateAsync({
-          ...args,
-          confirmed: true,
-          confirmedRuns: runs,
-          confirmedLogs: logs,
-        }),
-    });
-    if (!ok) selectKey.value++; // remount: the native select shows the declined value otherwise
+    error.value = errorText(err);
   }
 }
 
 function edit(): void {
-  const hit = valid.value.find((v) => v.wf.id === props.card.task.workflowId);
+  const hit = options.value.find((v) => v.id === props.card.task.workflowId);
   wfUi.openWorkflow(hit?.file ?? null);
 }
 </script>
@@ -89,7 +53,7 @@ function edit(): void {
         <option v-if="card.task.workflowId === ''" value="">{{
           t('space.ade.workflowBlock.choose.option')
         }}</option>
-        <option v-for="v in valid" :key="v.wf.id" :value="v.wf.id">{{ v.wf.name }}</option>
+        <option v-for="v in options" :key="v.id" :value="v.id">{{ v.name }}</option>
       </NativeSelect>
       <Tooltip v-if="card.task.workflowOutdated">
         <TooltipTrigger as-child>

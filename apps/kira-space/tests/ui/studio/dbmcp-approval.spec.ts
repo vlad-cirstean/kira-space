@@ -47,7 +47,7 @@ test('contract: a pending write shows connection, operation and statement; Appro
     .toEqual(answer);
 });
 
-test('contract: Deny is focused first and denies by item id', async ({ relaunch }) => {
+test('contract: single keys do nothing; Mod+Backspace denies by item id', async ({ relaunch }) => {
   const [item] = contract<ApprovalItem[]>('dbmcp', 'ApprovalsService.List');
   if (!item) throw new Error('contract has no item');
   const { window: page, control } = await relaunch({
@@ -55,8 +55,15 @@ test('contract: Deny is focused first and denies by item id', async ({ relaunch 
   });
 
   await pushApprovals(page, [liveItem(item)]);
-  await expect(page.locator(`[data-testid="approval-deny-${item.id}"]`)).toBeFocused();
+  await expect(page.locator(`[data-testid="approval-deny-${item.id}"]`)).not.toBeFocused();
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Space');
+  expect(control.log().some((e) => e.channel === IPC.approvalsAnswer)).toBe(false);
+  await expect(page.locator('[data-testid="approvals-dialog"]')).toHaveAttribute(
+    'data-chords-armed',
+    'true',
+  );
+  await page.keyboard.press('Meta+Backspace');
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
     .toEqual({ ids: [item.id], approve: false, options: null });

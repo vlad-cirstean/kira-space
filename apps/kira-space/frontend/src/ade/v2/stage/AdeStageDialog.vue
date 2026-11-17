@@ -10,10 +10,13 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { FieldDescription } from '@theme/components/ui/field';
+import { Kbd } from '@theme/components/ui/kbd';
 import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
+import { formatShortcut } from '@workbench/shortcuts/keys';
+import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import AdeLinkStrip from '../links/AdeLinkStrip.vue';
 import { AdeNotesEditor } from '../notes/asyncEditor';
@@ -51,6 +54,10 @@ function close(): void {
 function move(): void {
   if (store.submit()) emit('close');
 }
+// The routed popup answers to two-key chords only; the board's own dialog keeps its keys.
+const onMoveKey = shortcutKeydown(['form.submit'], () => {
+  if (props.routed && !live.value && store.toStepId) move();
+});
 // The non-routed mount is the only one that can show a reopened (refused) move.
 onMounted(() => {
   if (!props.routed) store.boardMounted = true;
@@ -62,7 +69,13 @@ onBeforeUnmount(() => {
 
 <template>
   <Dialog :open="open" @update:open="(v) => !v && close()">
-    <DialogContent size="lg" :dirty="store.dirty" data-testid="ade-stage-dialog">
+    <DialogContent
+      size="lg"
+      :prompt="routed"
+      :dirty="store.dirty"
+      data-testid="ade-stage-dialog"
+      @keydown="onMoveKey"
+    >
       <DialogHeader>
         <DialogTitle>{{
           t(pass ? 'space.ade.stageDialog.passTitle.title' : 'space.ade.stageDialog.title.title', {
@@ -184,11 +197,11 @@ onBeforeUnmount(() => {
           variant="dialog-primary"
           size="kira-lg"
           :disabled="live || !store.toStepId"
+          :aria-keyshortcuts="routed ? formatShortcut('form.submit') : undefined"
           data-testid="ade-stage-move"
           @click="move"
-          >{{
-            pass ? t('space.ade.board.taskAction.nextPass.label') : t('space.common.move.label')
-          }}</Button
+          >{{ pass ? t('space.ade.board.taskAction.nextPass.label') : t('space.common.move.label')
+          }}<Kbd v-if="routed">{{ formatShortcut('form.submit') }}</Kbd></Button
         >
       </DialogFooter>
     </DialogContent>

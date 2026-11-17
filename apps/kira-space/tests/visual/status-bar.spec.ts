@@ -59,7 +59,8 @@ async function boot(relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunc
         response: {
           updateAvailable: true,
           currentVersion: '1.2.0',
-          latestVersion: '1.3.0',
+          targetVersion: '1.3.0',
+          newestVersion: '1.3.0',
           installLogPath: '/tmp/kira-space-update.log',
         },
       },
@@ -71,6 +72,8 @@ async function boot(relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunc
     memoryBytes: 512 * 1024 * 1024,
     logicalCPUs: 8,
     processCount: 14,
+    app: { cpuPercent: 1.4, memoryBytes: 300 * 1024 * 1024, processCount: 6 },
+    agents: { cpuPercent: 2, memoryBytes: 212 * 1024 * 1024, processCount: 8 },
   });
   await app.window.setViewportSize({ width: 1400, height: 900 });
   await expect(app.window.locator('[data-testid="status-agents"]')).toBeVisible();

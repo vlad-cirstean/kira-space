@@ -7,9 +7,12 @@
 // tool, is unaffected — see its own header comment.
 //
 // The process set is not obvious and getting it wrong invalidates any measurement built on this
-// package: a native webview's helper processes (WebKitGTK's WebProcess/NetworkProcess on Linux,
-// WKWebView's com.apple.WebKit.* helpers on macOS) are not children of this process in the ppid
-// sense, so Sum matches by executable path substring rather than walking the pid tree.
+// package. It has two disjoint groups. App: a native webview's helper processes (WebKitGTK's
+// WebProcess/NetworkProcess on Linux, WKWebView's com.apple.WebKit.* helpers on macOS) are not
+// children of this process in the ppid sense, so the app is matched by executable path substring.
+// Agents: the descendant trees of the root pids registered in internal/agentproc (the caller
+// passes them in), walked over the one process table listed per tick. An agent pid never also
+// counts as App.
 package metrics
 
 import (
@@ -33,11 +36,23 @@ import (
 // either figure on faith — ProcessCount is the number of pids that answered the probe this tick
 // (the ones MemoryBytes is summed over), not the number discovered.
 type Sample struct {
+	CPUPercent   float64 `json:"cpuPercent"`  // App + Agents, clamped 0..100
+	MemoryBytes  uint64  `json:"memoryBytes"` // App + Agents
+	LogicalCPUs  int     `json:"logicalCPUs"`
+	ProcessCount int     `json:"processCount"` // App + Agents
+	App          Usage   `json:"app"`
+	Agents       Usage   `json:"agents"`
+}
+
+// Usage is one process group's share of a Sample.
+type Usage struct {
 	CPUPercent   float64 `json:"cpuPercent"`
 	MemoryBytes  uint64  `json:"memoryBytes"`
-	LogicalCPUs  int     `json:"logicalCPUs"`
 	ProcessCount int     `json:"processCount"`
 }
+
+// ProcessSet is one tick's process groups. A pid is in at most one.
+type ProcessSet struct{ App, Agents []int32 }
 
 // cpuState is one pid's cumulative CPU time, tagged with the OS process-creation time it was read
 // from — the tag is what lets two samples of "the same pid" be told apart from two samples of two
@@ -76,7 +91,7 @@ type Sampler struct {
 	// instead of calling probe a second time for the same pid on the same tick. nil/empty is
 	// always a valid answer (a revalidate-only tick has no fresh probe data to offer; any
 	// pids-only caller can return nil), so this is additive, not a stricter contract.
-	pids        func() ([]int32, map[int32]procSample, error)
+	pids        func() (ProcessSet, map[int32]procSample, error)
 	probe       func(pid int32) (procSample, bool)
 	prevCPU     map[int32]cpuState
 	prevAt      time.Time
@@ -87,48 +102,62 @@ type Sampler struct {
 // see Sum below for the bundle-matching implementation this app uses. The per-process
 // probe itself is always defaultProbe (platform-selected, see probe_darwin.go/probe_other.go) —
 // there is no production caller that needs a different one, so it is not part of this signature.
-func NewSampler(pids func() ([]int32, map[int32]procSample, error)) *Sampler {
+func NewSampler(pids func() (ProcessSet, map[int32]procSample, error)) *Sampler {
 	return &Sampler{pids: pids, probe: defaultProbe, prevCPU: map[int32]cpuState{}, logicalCPUs: runtime.NumCPU()}
 }
 
 func (s *Sampler) Sample() (Sample, error) {
-	ids, fresh, err := s.pids()
+	set, fresh, err := s.pids()
 	if err != nil {
 		return Sample{}, err
 	}
 
-	var totalMem uint64
-	var processCount int
-	cpuNow := make(map[int32]cpuState, len(ids))
-	for _, pid := range ids {
-		ps, ok := fresh[pid]
-		if !ok {
-			ps, ok = s.probe(pid)
+	// A failed probe drops a pid from both readings for the tick rather than contributing a
+	// zero: cpuState.time is cumulative, so a zero fed into next tick's delta would read as this
+	// pid's entire lifetime CPU usage in one window (F2, D7).
+	collect := func(ids []int32) (Usage, map[int32]cpuState) {
+		var u Usage
+		now := make(map[int32]cpuState, len(ids))
+		for _, pid := range ids {
+			ps, ok := fresh[pid]
+			if !ok {
+				ps, ok = s.probe(pid)
+			}
+			if !ok {
+				continue
+			}
+			u.MemoryBytes += ps.memBytes
+			u.ProcessCount++
+			now[pid] = cpuState{time: ps.cpuSeconds, createTime: ps.createTime}
 		}
-		if !ok {
-			// A failed probe drops this pid from both readings for the tick rather than
-			// contributing a zero: cpuState.time is cumulative, so a zero fed into next tick's
-			// delta would read as this pid's entire lifetime CPU usage in one window (F2, D7).
-			continue
-		}
-		totalMem += ps.memBytes
-		processCount++
-		cpuNow[pid] = cpuState{time: ps.cpuSeconds, createTime: ps.createTime}
+		return u, now
 	}
+	app, appNow := collect(set.App)
+	agents, agentNow := collect(set.Agents)
 
 	now := time.Now()
-	var cpuPercent float64
 	if !s.prevAt.IsZero() {
-		cpuPercent = cpuDeltaPercent(s.prevCPU, cpuNow, now.Sub(s.prevAt).Seconds(), s.logicalCPUs)
+		elapsed := now.Sub(s.prevAt).Seconds()
+		app.CPUPercent = cpuDeltaPercent(s.prevCPU, appNow, elapsed, s.logicalCPUs)
+		agents.CPUPercent = cpuDeltaPercent(s.prevCPU, agentNow, elapsed, s.logicalCPUs)
+	}
+	cpuNow := make(map[int32]cpuState, len(appNow)+len(agentNow))
+	for pid, c := range appNow {
+		cpuNow[pid] = c
+	}
+	for pid, c := range agentNow {
+		cpuNow[pid] = c
 	}
 	s.prevCPU = cpuNow
 	s.prevAt = now
 
 	return Sample{
-		CPUPercent:   cpuPercent,
-		MemoryBytes:  totalMem,
+		CPUPercent:   min(app.CPUPercent+agents.CPUPercent, 100),
+		MemoryBytes:  app.MemoryBytes + agents.MemoryBytes,
 		LogicalCPUs:  s.logicalCPUs,
-		ProcessCount: processCount,
+		ProcessCount: app.ProcessCount + agents.ProcessCount,
+		App:          app,
+		Agents:       agents,
 	}, nil
 }
 
@@ -178,12 +207,13 @@ func cpuDeltaPercent(prev, cur map[int32]cpuState, elapsedSeconds float64, logic
 	}
 }
 
-// procEntry is one listProcesses result: a pid paired with its executable path. Kept
+// procEntry is one listProcesses result: a pid paired with its parent pid and executable path. Kept
 // platform-independent so listProcesses.go/processlist_other.go's darwin/other split is only about
 // *how* the process table is enumerated — AppProcessSet's own matching loop below never changes.
 type procEntry struct {
-	pid int32
-	exe string
+	pid  int32
+	ppid int32
+	exe  string
 }
 
 // AppProcessSet finds this app's own process set: pids matching anchorNeedles directly (this
@@ -216,14 +246,55 @@ type procEntry struct {
 // processlist_other.go's gopsutil process.Processes()+Exe() — P7 F8): the matching rule below is
 // unaffected by which one supplied procEntry's pid/exe pairs.
 func AppProcessSet(anchorNeedles, helperNeedles []string) ([]int32, error) {
+	set, err := ProcessSets(anchorNeedles, helperNeedles, nil)
+	return set.App, err
+}
+
+// ProcessSets lists the process table once and splits it into the app group (AppProcessSet's
+// rule) and the agent group: every root in agentRoots still in the table, plus all its
+// descendants. Agents win over the helper/anchor match, so a sandbox helper (bwrap) inside an
+// agent tree is counted once, as an agent.
+func ProcessSets(anchorNeedles, helperNeedles []string, agentRoots []int32) (ProcessSet, error) {
 	entries, err := listProcesses()
 	if err != nil {
-		return nil, err
+		return ProcessSet{}, err
+	}
+	return groupProcesses(entries, anchorNeedles, helperNeedles, agentRoots, responsibilityTracked, responsiblePID), nil
+}
+
+// groupProcesses is ProcessSets' pure core: tree walk plus classification precedence.
+func groupProcesses(entries []procEntry, anchorNeedles, helperNeedles []string, roots []int32, tracked bool, responsible func(int32) int32) ProcessSet {
+	children := make(map[int32][]int32, len(entries))
+	present := make(map[int32]bool, len(entries))
+	for _, e := range entries {
+		present[e.pid] = true
+		children[e.ppid] = append(children[e.ppid], e.pid)
+	}
+
+	// BFS with a visited set: a ppid cycle from a pid-reuse race must terminate.
+	agent := map[int32]bool{}
+	var agents, queue []int32
+	for _, r := range roots {
+		if present[r] && !agent[r] {
+			agent[r] = true
+			queue = append(queue, r)
+		}
+	}
+	for len(queue) > 0 {
+		pid := queue[0]
+		queue = queue[1:]
+		agents = append(agents, pid)
+		for _, c := range children[pid] {
+			if !agent[c] {
+				agent[c] = true
+				queue = append(queue, c)
+			}
+		}
 	}
 
 	var anchors, helpers []int32
 	for _, e := range entries {
-		if e.exe == "" {
+		if e.exe == "" || agent[e.pid] {
 			continue
 		}
 		switch {
@@ -238,14 +309,13 @@ func AppProcessSet(anchorNeedles, helperNeedles []string) ([]int32, error) {
 	for _, pid := range anchors {
 		anchorSet[pid] = true
 	}
-
-	out := append([]int32{}, anchors...)
+	app := append([]int32{}, anchors...)
 	for _, pid := range helpers {
-		if includeHelper(responsibilityTracked, anchorSet[responsiblePID(pid)]) {
-			out = append(out, pid)
+		if includeHelper(tracked, anchorSet[responsible(pid)]) {
+			app = append(app, pid)
 		}
 	}
-	return out, nil
+	return ProcessSet{App: app, Agents: agents}
 }
 
 // includeHelper is AppProcessSet's own inclusion rule, pulled out pure and platform-independent
@@ -289,16 +359,17 @@ func containsAny(s string, needles []string) bool {
 // rather than surfacing that the pid died — only a fresh process.NewProcess(pid) queries the OS
 // again.
 type CachedPIDs struct {
-	resolve     func() ([]int32, error)
+	resolve     func() (ProcessSet, error)
 	rescanEvery int
 	sinceScan   int
 	createTimes map[int32]int64
+	agent       map[int32]bool
 }
 
 // NewCachedPIDs builds a CachedPIDs. rescanEvery must be at least 1 (a full resolve every call —
 // pass 1 for that, not 0).
-func NewCachedPIDs(resolve func() ([]int32, error), rescanEvery int) *CachedPIDs {
-	return &CachedPIDs{resolve: resolve, rescanEvery: rescanEvery, createTimes: map[int32]int64{}}
+func NewCachedPIDs(resolve func() (ProcessSet, error), rescanEvery int) *CachedPIDs {
+	return &CachedPIDs{resolve: resolve, rescanEvery: rescanEvery, createTimes: map[int32]int64{}, agent: map[int32]bool{}}
 }
 
 // PIDs is the func a Ticker/Sampler calls each tick.
@@ -309,12 +380,12 @@ func NewCachedPIDs(resolve func() ([]int32, error), rescanEvery int) *CachedPIDs
 // revalidate-only tick (sinceScan != 0) has no fresh probe data of its own to offer — revalidate
 // only confirms createTime, cheaper than a full probe, and does not read memory/CPU — so it
 // returns nil, which Sample already treats as "probe this pid yourself".
-func (c *CachedPIDs) PIDs() ([]int32, map[int32]procSample, error) {
+func (c *CachedPIDs) PIDs() (ProcessSet, map[int32]procSample, error) {
 	var fresh map[int32]procSample
 	if c.sinceScan == 0 {
 		samples, err := c.rescan()
 		if err != nil {
-			return nil, nil, err
+			return ProcessSet{}, nil, err
 		}
 		fresh = samples
 	} else {
@@ -322,27 +393,39 @@ func (c *CachedPIDs) PIDs() ([]int32, map[int32]procSample, error) {
 	}
 	c.sinceScan = (c.sinceScan + 1) % c.rescanEvery
 
-	out := make([]int32, 0, len(c.createTimes))
+	var out ProcessSet
 	for pid := range c.createTimes {
-		out = append(out, pid)
+		if c.agent[pid] {
+			out.Agents = append(out.Agents, pid)
+		} else {
+			out.App = append(out.App, pid)
+		}
 	}
 	return out, fresh, nil
 }
 
 func (c *CachedPIDs) rescan() (map[int32]procSample, error) {
-	pids, err := c.resolve()
+	set, err := c.resolve()
 	if err != nil {
 		return nil, err
 	}
-	createTimes := make(map[int32]int64, len(pids))
-	samples := make(map[int32]procSample, len(pids))
-	for _, pid := range pids {
-		if ps, ok := defaultProbe(pid); ok {
-			createTimes[pid] = ps.createTime
-			samples[pid] = ps
+	n := len(set.App) + len(set.Agents)
+	createTimes := make(map[int32]int64, n)
+	samples := make(map[int32]procSample, n)
+	agent := make(map[int32]bool, len(set.Agents))
+	probe := func(pids []int32, isAgent bool) {
+		for _, pid := range pids {
+			if ps, ok := defaultProbe(pid); ok {
+				createTimes[pid] = ps.createTime
+				samples[pid] = ps
+				agent[pid] = isAgent
+			}
 		}
 	}
+	probe(set.App, false)
+	probe(set.Agents, true)
 	c.createTimes = createTimes
+	c.agent = agent
 	return samples, nil
 }
 
@@ -351,6 +434,7 @@ func (c *CachedPIDs) revalidate() {
 		got, ok := processCreateTime(pid)
 		if !ok || got != want {
 			delete(c.createTimes, pid)
+			delete(c.agent, pid)
 		}
 	}
 }

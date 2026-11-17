@@ -5,13 +5,11 @@ import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
-import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue';
-import { control } from '../bridge/control';
 import { useRepoSharedText } from '../configsync/queries';
 import RepoConfigForm from './RepoConfigForm.vue';
 import { useRepoConfigFile, useSaveRepoConfigFile } from './state/repoConfigQueries';
@@ -24,8 +22,6 @@ import type { RepoFileModel } from './state/repoFormTypes';
 // with no file shows a template, and Save creates it.
 const props = defineProps<{ path: string; file?: string }>();
 const emit = defineEmits<{ dirty: [value: boolean] }>();
-
-const FOLDER = 'repos';
 
 const query = useRepoConfigFile(() => ({ path: props.path, file: props.file ?? '' }));
 const save = useSaveRepoConfigFile();
@@ -81,12 +77,9 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
 
 <template>
   <div v-if="view" ref="root" class="flex max-w-4xl flex-col gap-3" data-testid="repo-file">
-    <ConfigFileBar
+    <ConfigFileProblem
       v-if="view.exists && (!view.editable || draft.tab.value === 'yaml')"
-      :path="view.filePath"
       :error="view.problem"
-      :open="() => control.configFilesOpen({ folder: FOLDER, file: view!.file })"
-      :reveal="() => control.configFilesReveal({ folder: FOLDER, file: view!.file })"
     />
     <div v-if="!view.exists" class="text-kira-sm text-subtle" data-testid="repo-file-none">
       {{ t('space.repo.settingsFile.none.hint') }}

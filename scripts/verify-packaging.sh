@@ -138,6 +138,12 @@ if [ "${GO_CONTRACT_COUNT:-0}" -ne 1 ]; then
   fail "installer contract marker out of sync" "internal/appupdate/install.go's installContract does not match scripts/install.sh's own contract line"
 fi
 
+SCRIPT_ASSET="$(sed -n 's/^  ASSET="\([^"]*\)".*/\1/p' scripts/install.sh 2>/dev/null | head -1)"
+GO_ASSET="$(sed -n 's/^const macAsset = "\([^"]*\)".*/\1/p' internal/appupdate/version.go 2>/dev/null | head -1)"
+if [ -z "$SCRIPT_ASSET" ] || [ "$SCRIPT_ASSET" != "$GO_ASSET" ]; then
+  fail "installer asset name out of sync" "scripts/install.sh ASSET ('$SCRIPT_ASSET') != internal/appupdate/version.go macAsset ('$GO_ASSET')"
+fi
+
 INSTALL_URL_HITS="$(grep -rn 'raw.githubusercontent.com' apps/ packages/ internal/ \
   --include=*.go --include=*.ts --include=*.vue 2>/dev/null || true)"
 INSTALL_URL_COUNT="$(printf '%s\n' "$INSTALL_URL_HITS" | grep -c . || true)"
@@ -149,6 +155,13 @@ case "$INSTALL_URL_HITS" in
 esac
 if [ "${INSTALL_URL_COUNT:-0}" -ne 1 ]; then
   fail "installer URL referenced more than once" "raw.githubusercontent.com should appear exactly once across apps/, packages/, internal/ (InstallScriptURL only); got $INSTALL_URL_COUNT hits: $INSTALL_URL_HITS"
+fi
+
+# --- S16: install.sh's stepping rule is the updater's (P653) ------------------------------------
+# Apps up to 0.3.14 run install.sh with no --tag, so the script steps minors itself in a JXA twin of
+# releaseline.NextStep. Replay the Go table (internal/releaseline/testdata/next_step.json) through it.
+if ! bun scripts/check-install-step.ts; then
+  fail "installer stepping drifted" "scripts/install.sh's nextStep disagrees with internal/releaseline's NextStep table"
 fi
 
 # --- S12: the bundled ONNX Runtime version agrees everywhere it is pinned (P210) ----------------

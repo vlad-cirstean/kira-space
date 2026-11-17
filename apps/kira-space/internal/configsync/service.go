@@ -18,6 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpath"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -114,7 +115,7 @@ const (
 	previewTTL   = 10 * time.Minute
 	fetchTimeout = 2 * time.Minute
 	// promptTimeout leaves time for the user to answer a credential prompt.
-	promptTimeout = 10 * time.Minute
+	promptTimeout = prompts.AnswerWait
 	// maxSessions bounds open previews; the oldest is dropped past it.
 	maxSessions     = 8
 	backoffCap      = 60 * time.Minute

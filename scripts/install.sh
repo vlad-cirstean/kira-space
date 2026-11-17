@@ -1,19 +1,20 @@
 #!/bin/sh
 # kira-install-contract: 2
 # scripts/install.sh installs or updates Kira Space on this Mac: it downloads the latest published
-# release's disk image, verifies it, and swaps it into /Applications, then opens the app.
+# release's disk image (or the release named by --tag), verifies it, and swaps it into /Applications, then opens the app.
 # Interactive: `curl -fsSL <raw-url> | sh` — the same command installs a fresh
 # copy or replaces an older one. Self-update: the app itself runs this script with
 # --wait-pid/--notify-fd, stages the new bundle, hands off over fd 3, then quits once it reads that
 # hand-off — the app never overwrites its own running binary. Log file, either mode:
 # ~/Library/Logs/<App name>/install.log.
 #
-# Usage: install.sh [--wait-pid=<pid> --notify-fd=<3-9>]
+# Usage: install.sh [--tag=vX.Y.Z] [--wait-pid=<pid> --notify-fd=<3-9>]
 # Exit codes: 0 installed and launched; 1 any failure; 2 usage; 130 interrupted.
 #
 # P119 §2: rewritten by hand, not generated — every requirement in the plan's own §2 is load-
 # bearing, none of it optional polish. Never break the --wait-pid/--notify-fd flags or the
-# fd-3 "staged <tag>" handshake without bumping the line-2 marker above (marker 2 dropped --app) —
+# fd-3 "staged <tag>" handshake without bumping the line-2 marker above (marker 2 dropped --app;
+# adding an optional flag, like --tag, needs no bump; removing or changing one does) —
 # an older app then refuses the new script with a clear error instead of misdriving it (internal/appupdate/
 # install.go's own installContract constant is the other side of this same contract; S11 in
 # scripts/verify-packaging.sh checks the two agree literally).
@@ -30,7 +31,7 @@ main() {
   # Every global this script touches gets a default here, up front — set -u then never trips on a
   # variable a later step hasn't reached yet, including inside cleanup, which can run at any point
   # once its trap is armed.
-  WAIT_PID="" NOTIFY_FD="" LOG=""
+  WAIT_PID="" NOTIFY_FD="" LOG="" REQ_TAG=""
   # Kira Space is the only app.
   APP_NAME="Kira Space"
   BUNDLE_ID="com.kirathecat.kira-space"
@@ -106,8 +107,9 @@ APPLESCRIPT_EOF
     case "$ARG" in
       --wait-pid=*) WAIT_PID="${ARG#--wait-pid=}" ;;
       --notify-fd=*) NOTIFY_FD="${ARG#--notify-fd=}" ;;
+      --tag=*) REQ_TAG="${ARG#--tag=}" ;;
       *)
-        echo "usage: install.sh [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
+        echo "usage: install.sh [--tag=vX.Y.Z] [--wait-pid=<pid> --notify-fd=<3-9>]" >&2
         exit 2
         ;;
     esac
@@ -134,6 +136,19 @@ APPLESCRIPT_EOF
         exit 2
         ;;
     esac
+  fi
+
+  # --tag is interpolated into the release URL below, so only this shape ever gets there.
+  if [ -n "$REQ_TAG" ] && ! expr "$REQ_TAG" : 'v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null; then
+    echo "usage: --tag must match ^v[0-9]+\.[0-9]+\.[0-9]+\$" >&2
+    exit 2
+  fi
+  if [ -n "$REQ_TAG" ]; then
+    RELEASE_URL="https://api.github.com/repos/vlad-cirstean/kira-space/releases/tags/$REQ_TAG"
+    RELEASE_DESC="release $REQ_TAG"
+  else
+    RELEASE_URL="https://api.github.com/repos/vlad-cirstean/kira-space/releases/latest"
+    RELEASE_DESC="the latest release"
   fi
 
   LOG="$HOME/Library/Logs/$LOG_NAME/install.log"
@@ -180,17 +195,126 @@ APPLESCRIPT_EOF
   trap cleanup EXIT
   trap 'exit 130' INT TERM HUP
 
+  # ---- 4b: step one minor at a time (self-update without --tag) -------------------------------
+  # Apps up to 0.3.14 run this script without --tag, so it would install /releases/latest and skip
+  # the intermediate minors' migrations. Apply the updater's stepping rule (internal/releaseline
+  # NextStep) here: the last patch of the installed minor when newer, else the lowest release of the
+  # next minor. nextStep below must stay identical to it; scripts/verify-packaging.sh (S16) runs it
+  # against internal/releaseline/testdata/next_step.json, the table the Go test uses. Newer apps
+  # always pass --tag, so this only ever serves the older ones. Interactive mode is a clean install
+  # or a deliberate reinstall and keeps taking the latest release.
+  if [ -n "$NOTIFY_FD" ] && [ -z "$REQ_TAG" ]; then
+    CUR_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+      "/Applications/$APP_NAME.app/Contents/Info.plist" 2>/dev/null || echo '')"
+    PAGE=1
+    while [ "$PAGE" -le 10 ]; do
+      curl --proto '=https' --tlsv1.2 -fsSL --connect-timeout 20 --retry 3 --retry-delay 2 \
+        -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' \
+        -o "$WORK/releases-$PAGE.json" \
+        "https://api.github.com/repos/vlad-cirstean/kira-space/releases?per_page=100&page=$PAGE" </dev/null \
+        || die "couldn't list releases to pick the next update step"
+      # A page with fewer than 100 releases is the last one.
+      PAGE_COUNT="$(grep -o '"tag_name"' "$WORK/releases-$PAGE.json" | wc -l | tr -d ' ')"
+      [ "$PAGE_COUNT" -ge 100 ] || break
+      PAGE=$((PAGE + 1))
+    done
+    [ "$PAGE" -le 10 ] || PAGE=10
+    cat >"$WORK/step-release.js" <<'STEP_JXA_EOF'
+function parseVer(tag) {
+  var m = /^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.exec(tag);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+function cmpVer(a, b) {
+  for (var i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+  }
+  return 0;
+}
+function hasAsset(r, name) {
+  var assets = r.assets || [];
+  for (var i = 0; i < assets.length; i++) {
+    var a = assets[i];
+    if (a.name === name && a.state === "uploaded" && a.size > 0) return true;
+  }
+  return false;
+}
+// The tag to install for a running version, or "" when none (the Go twin: releaseline.NextStep).
+function nextStep(current, rels, asset) {
+  var m = /^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/.exec(current);
+  if (!m) return "";
+  var cur = [Number(m[1]), Number(m[2]), Number(m[3])];
+  var curPre = m[4] !== undefined;
+  var byKey = {};
+  var lines = [];
+  for (var i = 0; i < rels.length; i++) {
+    var r = rels[i];
+    if (r.draft || r.prerelease || !hasAsset(r, asset)) continue;
+    var v = parseVer(r.tag_name);
+    if (!v) continue;
+    var key = v[0] + "." + v[1];
+    if (!byKey[key]) {
+      byKey[key] = { major: v[0], minor: v[1], vs: [] };
+      lines.push(byKey[key]);
+    }
+    byKey[key].vs.push(v);
+  }
+  lines.sort(function (a, b) { return cmpVer([a.major, a.minor, 0], [b.major, b.minor, 0]); });
+  for (var j = 0; j < lines.length; j++) {
+    var l = lines[j];
+    l.vs.sort(cmpVer);
+    var c = cmpVer([l.major, l.minor, 0], [cur[0], cur[1], 0]);
+    var top = l.vs[l.vs.length - 1];
+    var pick = null;
+    if (c === 0) {
+      // A prerelease of x.y.z sorts below x.y.z itself.
+      var d = cmpVer(top, cur);
+      if (d > 0 || (d === 0 && curPre)) pick = top;
+    } else if (c > 0) {
+      pick = l.vs[0];
+    }
+    if (pick) return "v" + pick.join(".");
+  }
+  return "";
+}
+function run(argv) {
+  var app = Application.currentApplication();
+  app.includeStandardAdditions = true;
+  var rels = [];
+  for (var p = 1; p <= Number(argv[3]); p++) {
+    rels = rels.concat(JSON.parse(app.read(Path(argv[2] + "/releases-" + p + ".json"))));
+  }
+  return nextStep(argv[0], rels, argv[1]);
+}
+STEP_JXA_EOF
+    STEP_TAG=""
+    if [ -n "$CUR_VERSION" ]; then
+      STEP_TAG="$(osascript -l JavaScript "$WORK/step-release.js" "$CUR_VERSION" "$ASSET" "$WORK" "$PAGE" \
+        </dev/null)" || die "couldn't pick the next update step"
+    fi
+    if [ -n "$STEP_TAG" ]; then
+      log "stepping from $CUR_VERSION to $STEP_TAG"
+      REQ_TAG="$STEP_TAG"
+      RELEASE_URL="https://api.github.com/repos/vlad-cirstean/kira-space/releases/tags/$REQ_TAG"
+      RELEASE_DESC="release $REQ_TAG"
+    else
+      log "no update step found from '$CUR_VERSION'; taking the latest release"
+    fi
+  fi
+
   # ---- 5: resolve release --------------------------------------------------------------------
   RELEASE_JSON="$WORK/release.json"
   set +e
   HTTP_STATUS="$(curl --proto '=https' --tlsv1.2 -fsSL --connect-timeout 20 --retry 3 --retry-delay 2 \
     -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' \
     -o "$RELEASE_JSON" -w '%{http_code}' \
-    https://api.github.com/repos/vlad-cirstean/kira-space/releases/latest </dev/null)"
+    "$RELEASE_URL" </dev/null)"
   CURL_STATUS=$?
   set -e
   if [ "$CURL_STATUS" != "0" ]; then
     if [ "$HTTP_STATUS" = "404" ]; then
+      if [ -n "$REQ_TAG" ]; then
+        die "no published release $REQ_TAG"
+      fi
       die "no published release yet"
     fi
     die "couldn't reach GitHub to check for a release (curl exit $CURL_STATUS, HTTP $HTTP_STATUS)"
@@ -238,9 +362,12 @@ JXA_EOF
   ASSET_SIZE="$(sed -n '5p' "$WORK/release.txt")"
   ASSET_DIGEST="$(sed -n '6p' "$WORK/release.txt")"
 
-  # Same belt-and-braces as internal/appupdate.buildResult — releases/latest already excludes both.
-  [ "$IS_DRAFT" = "false" ] || die "the latest release is a draft"
-  [ "$IS_PRERELEASE" = "false" ] || die "the latest release is a prerelease"
+  # Belt-and-braces: releases/latest already excludes both, and a tag lookup does not.
+  [ "$IS_DRAFT" = "false" ] || die "$RELEASE_DESC is a draft"
+  [ "$IS_PRERELEASE" = "false" ] || die "$RELEASE_DESC is a prerelease"
+  if [ -n "$REQ_TAG" ] && [ "$TAG" != "$REQ_TAG" ]; then
+    die "asked for release $REQ_TAG, GitHub returned '$TAG'"
+  fi
   if ! expr "$TAG" : 'v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null; then
     die "release tag '$TAG' does not look like v<major>.<minor>.<patch>"
   fi
@@ -249,7 +376,7 @@ JXA_EOF
     *) die "release asset URL is not the expected GitHub download URL" ;;
   esac
   case "$ASSET_SIZE" in
-    '' | *[!0-9]*) die "release asset '$ASSET' was not found on the latest release" ;;
+    '' | *[!0-9]*) die "release asset '$ASSET' was not found on $RELEASE_DESC" ;;
   esac
 
   # ---- 6: download ----------------------------------------------------------------------------

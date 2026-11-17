@@ -9,7 +9,6 @@ import { useTreePointerDrag } from '@workbench/behaviour/treePointerDrag';
 import { useTreeShortcuts } from '@workbench/behaviour/treeShortcuts';
 import { useTreeVirtualRows } from '@workbench/behaviour/treeVirtualRows';
 import { STICKY_ROW_CLASS, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
-import { errorText } from '@workbench/bridge/codedError';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { isPrimaryModifier } from '@workbench/shortcuts/keys';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
@@ -19,7 +18,6 @@ import {
   useContextMenuStore,
 } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
-import { control } from '../bridge/control';
 import CollectionRow from './CollectionRow.vue';
 import {
   collectionOrderFor,
@@ -115,19 +113,6 @@ function fileOf(row: CollectionRowVm): string {
   return collectionsStore.collectionRecord(row.collectionId)?.file ?? '';
 }
 
-async function runFileAction(
-  row: CollectionRowVm,
-  call: (args: { folder: string; file: string }) => Promise<void>,
-): Promise<void> {
-  const file = fileOf(row);
-  if (!file) return;
-  try {
-    await call({ folder: 'api', file });
-  } catch (err) {
-    collectionsStore.error = errorText(err);
-  }
-}
-
 // The menu is a description (menu.ts) and this is the one place that knows how to perform any of
 // it — so the actions are injected rather than imported there, which also keeps that module free
 // of both the store's mutation half and the tab-opening path.
@@ -168,8 +153,6 @@ const actions: CollectionMenuActions = {
   },
   environments: () => variablesStore.openEnvironments(),
   dynamicValues: () => dynamicValuesStore.openDynamicValuesDialog(),
-  openFile: (row) => void runFileAction(row, control.configFilesOpen),
-  revealFile: (row) => void runFileAction(row, control.configFilesReveal),
 };
 
 /** Creating *into* a collection row means the root; into a folder row means that folder. */

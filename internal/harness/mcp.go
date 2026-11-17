@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// MCPCallTimeout is the longest wait any Kira MCP tool holds one call: a Space branch request (30 min)
-// plus margin, or a Studio query, run and result approval (two 10 min waits plus the run). It lifts the
+// MCPCallTimeout is the longest wait any Kira MCP tool holds one call: a Space branch request or a Studio
+// query, run and result approval (two 10 min waits plus the run, plus margin). It lifts the
 // agent CLI's 60 s default through each server entry's timeout and MCP_TOOL_TIMEOUT.
 const MCPCallTimeout = 35 * time.Minute
 

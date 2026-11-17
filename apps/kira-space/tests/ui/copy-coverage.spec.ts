@@ -138,7 +138,8 @@ test('task panel, every tab', async ({ relaunch }) => {
 test('workflows page, editor and inspectors', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   await setPseudoLocale(page);
-  const allow = fixtureData();
+  // A workflow with no valid version is named after its file: data, not chrome.
+  const allow = [...fixtureData(), /^broken$/];
   await page.locator(t('ade-tab-workflows')).click();
   await expectCatalogText(page.locator(t('ade-workflows')), { allow });
   await page.locator(t('ade-wf-row')).first().click();
@@ -230,8 +231,8 @@ reviewTest('review window', async ({ relaunch }) => {
 test('repositories page', async ({ relaunch }) => {
   const { window: page } = await openAdeRepos(relaunch);
   await setPseudoLocale(page);
-  // The settings file's path is data from the contract, not chrome.
-  const allow = [...fixtureData(), /^(?:\/[\w.-]+)*\/repos\/$|^proj\.yaml$/];
+  // The other-settings entry is named after its file: data from the contract, not chrome.
+  const allow = [...fixtureData(), /^proj$/];
   await expectCatalogText(page.locator(t('ade-repos')), { allow });
   await page.locator(t('ade-repos-repo')).nth(1).click();
   await expectCatalogText(page.locator(t('ade-repos')), { allow });

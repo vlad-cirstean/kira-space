@@ -12,6 +12,7 @@ import { cn } from '@theme/lib/utils';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
 import { errorText } from '@workbench/bridge/codedError';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
+import { configName } from '@workbench/config/configName';
 import { computed, ref, watch } from 'vue';
 import AdeTip from '../AdeTip.vue';
 import { useImportWorkflow, useNewWorkflow, useWorkflows } from '../queries';
@@ -35,7 +36,6 @@ function rowClass(selected: boolean): string {
 }
 
 const entries = computed(() => workflows.data.value?.workflows ?? []);
-const dir = computed(() => workflows.data.value?.dir ?? '');
 const current = computed(
   () => entries.value.find((e) => e.fileName === wfUi.workflowFile) ?? entries.value[0] ?? null,
 );
@@ -152,7 +152,7 @@ async function createNew(): Promise<void> {
           kind="empty"
           data-testid="ade-wf-empty"
         >
-          {{ t('space.ade.workflows.page.empty.emptyHint', { dir }) }}
+          {{ t('space.ade.workflows.page.empty.emptyHint') }}
         </InlineState>
         <button
           v-for="e in entries"
@@ -161,6 +161,7 @@ async function createNew(): Promise<void> {
           :class="rowClass(selectedFile === e.fileName)"
           data-testid="ade-wf-row"
           :data-file="e.fileName"
+          :data-selected="selectedFile === e.fileName || undefined"
           @click="pick(e.fileName)"
         >
           <span class="flex w-full items-center gap-1.5">
@@ -168,7 +169,7 @@ async function createNew(): Promise<void> {
               class="min-w-0 flex-1 truncate text-kira-lg font-medium"
               data-testid="ade-wf-row-name"
               >{{
-                e.workflow?.name ?? e.fileName
+                e.workflow?.name ?? configName(e.fileName)
               }}</span
             >
             <AdeTip v-if="e.error" :text="e.error.message">
@@ -199,7 +200,8 @@ async function createNew(): Promise<void> {
     </div>
     <div :class="cn(paneFrame, 'flex flex-1 flex-col')">
       <PanelHeader>{{
-        current?.workflow?.name ?? current?.fileName ?? t('space.common.workflow.label')
+        current?.workflow?.name ??
+        (current ? configName(current.fileName) : t('space.common.workflow.label'))
       }}</PanelHeader>
       <div class="min-h-0 flex-1 overflow-auto p-4">
         <AdeWorkflowEditor v-if="current" :key="current.fileName" :entry="current" />

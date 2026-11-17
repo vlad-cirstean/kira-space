@@ -118,8 +118,21 @@ test('a card shows its agent sessions as one state; click opens the Sessions tab
   await expect(page.locator('[data-testid="ade-sessions-tab"]')).toBeVisible();
 });
 
-test('a card shows its step, progress, span and clamped title', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch);
+test('a card shows its step, progress, span and a one-line title with the full text in its tooltip', async ({
+  relaunch,
+}) => {
+  const longTitle =
+    'Push notification settings with quiet hours, per-channel digests and a very long title';
+  const { window: page } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskBoard,
+      response: adeBoard((b) => {
+        const t = b.tasks.find((x) => x.id === 'T_push') as { title: string } | undefined;
+        if (t) t.title = longTitle;
+      }),
+    },
+  ]);
+  await page.setViewportSize({ width: 560, height: 900 });
   const search = card(page, 'T_search');
   await expect(search.locator('[data-testid="ade-step-label"]')).toHaveText('Make CI green 3/6');
   await expect(search).toContainText('50.0%');
@@ -127,13 +140,22 @@ test('a card shows its step, progress, span and clamped title', async ({ relaunc
     '3d → Mon 28 · SRCH-41 · web-app',
   );
   await expect(search.locator('[data-testid="ade-card-title"]')).toHaveText('Search v2');
-  const clamp = await card(page, 'T_push')
-    .locator('[data-testid="ade-card-title"]')
+  const title = card(page, 'T_push').locator('[data-testid="ade-card-title"]');
+  await expect(title).toHaveText(longTitle);
+  const line = await title
+    .locator('span')
+    .first()
     .evaluate((el) => {
       const s = getComputedStyle(el);
-      return { clamp: s.webkitLineClamp, overflow: s.overflow };
+      return {
+        textOverflow: s.textOverflow,
+        whiteSpace: s.whiteSpace,
+        cut: el.scrollWidth > el.clientWidth,
+      };
     });
-  expect(clamp).toEqual({ clamp: '2', overflow: 'hidden' });
+  expect(line).toEqual({ textOverflow: 'ellipsis', whiteSpace: 'nowrap', cut: true });
+  await title.hover();
+  await expect(page.locator('[data-slot="tooltip-content"]').first()).toContainText(longTitle);
 });
 
 test('the Plan shows 7 days; later work sits in Later with its date; no date control', async ({
@@ -181,20 +203,7 @@ test('branch rows show base markers and the derived branch tags', async ({ relau
   expect(tags).toContain('Setup failed');
 });
 
-test('a repo chip hides and shows its branches', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch);
-  const push = card(page, 'T_notif');
-  await expect(push).toBeVisible();
-  const toggle = page.locator(
-    '[data-testid="ade-repo-chip"][data-repo-id="repo-web-app"] [data-testid="ade-repo-toggle"]',
-  );
-  await toggle.click();
-  await expect(push).toHaveCount(0);
-  await toggle.click();
-  await expect(push).toBeVisible();
-});
-
-test('Refresh all sends every repo the plan shows; a chip sends its own', async ({ relaunch }) => {
+test('Refresh all sends every repo the plan shows', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskRefresh, response: adeFixture('refresh') },
   ]);
@@ -204,38 +213,6 @@ test('Refresh all sends every repo the plan shows; a chip sends its own', async 
   expect(calls()[0]?.args).toEqual({
     codeRepoIds: adeFixture<BoardFx>('board').repos.map((r) => r.codeRepoId),
   });
-  await page
-    .locator(
-      '[data-testid="ade-repo-chip"][data-repo-id="repo-api"] [data-testid="ade-repo-refresh"]',
-    )
-    .click();
-  await expect.poll(() => calls().length).toBe(2);
-  expect(calls()[1]?.args).toEqual({ codeRepoIds: ['repo-api'] });
-});
-
-test('a repo without a remote reads no remote, never an error', async ({ relaunch }) => {
-  const board = adeFixture<{
-    repos: { codeRepoId: string; remote: string; lastFetchAt: number | null }[];
-  }>('board');
-  const mobile = board.repos.find((r) => r.codeRepoId === 'repo-mobile');
-  if (!mobile) throw new Error('fixture lost repo-mobile');
-  mobile.remote = '';
-  mobile.lastFetchAt = null;
-  const { window: page } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskBoard, response: board },
-    {
-      channel: IPC.adeTaskRefresh,
-      response: {
-        repos: [{ codeRepoId: 'repo-mobile', refsChanged: 0, mergedInto: [], error: null }],
-      },
-    },
-  ]);
-  const chip = page.locator('[data-testid="ade-repo-chip"][data-repo-id="repo-mobile"]');
-  const note = chip.locator('[data-testid="ade-repo-note"]');
-  await expect(note).toHaveText('No remote');
-  await chip.locator('[data-testid="ade-repo-refresh"]').click();
-  await expect(note).toHaveText('No remote · No changes');
-  await expect(note).not.toHaveClass(/text-tone-red/);
 });
 
 /** Drags a card onto a day band. Waits for the layout to settle first, else the band moves under the pointer. */
@@ -260,16 +237,26 @@ async function dragCardToBand(
     .toBe(true);
   const [from, to] = JSON.parse(last) as [DOMRect | null, DOMRect | null];
   if (!from || !to) throw new Error('drag geometry missing');
-  await page.mouse.move(from.x + 40, from.y + 30);
+  // A review card is one 22px row: grab inside it, not 30px down.
+  const grabY = from.y + Math.min(30, from.height / 2);
+  await page.mouse.move(from.x + 40, grabY);
   await page.mouse.down();
-  await page.mouse.move(from.x + 60, from.y + 50, { steps: 4 });
-  // The drop area has no side padding now: aim at its 4px top padding, clear of the cards.
-  const aimY = target === 'ade-band-head' ? to.y + to.height / 2 : to.y + 2;
-  await page.mouse.move(to.x + 4, aimY, { steps: 12 });
-  // The drop target is hit-tested per animation frame: let it catch up with the pointer.
-  await page.evaluate(
-    () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
-  );
+  await page.mouse.move(from.x + 60, grabY + 20, { steps: 4 });
+  // Below the band's last card means "append to the day"; the top padding now means "before the
+  // first card". The slot opens in each band the pointer crosses and shifts the bands below it, so
+  // re-aim at the target's live rect until its own slot shows.
+  const slot = bandOf(page, day).locator('[data-testid="ade-drop-slot"]');
+  await expect(async () => {
+    const rect = await drop.boundingBox();
+    if (!rect) throw new Error('drop target missing');
+    const aimY = target === 'ade-band-head' ? rect.y + rect.height / 2 : rect.y + rect.height - 2;
+    await page.mouse.move(rect.x + 4, aimY, { steps: 12 });
+    // The drop target is hit-tested per animation frame: let it catch up with the pointer.
+    await page.evaluate(
+      () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+    );
+    await expect(slot).toBeVisible({ timeout: 500 });
+  }).toPass({ timeout: 10_000 });
   await page.mouse.up();
 }
 
@@ -288,6 +275,59 @@ test('dragging a card to another day writes the plan once, with no dialog', asyn
     days: { T_deps: '2026-09-28' },
   });
   await expect(page.locator('[data-testid="ade-confirm-dialog"]')).toHaveCount(0);
+});
+
+// Backend half: adeflow SetPlan scenarios (queue_test.go, shelf_test.go). Dragging between two
+// cards of one day shows the snap slot there and writes the card before the lower one.
+test('dragging between two cards shows the slot between them and writes the order', async ({
+  relaunch,
+}) => {
+  const board = adeFixture<BoardFx>('board');
+  const { window: page, control } = await openPlan(relaunch);
+  await page.setViewportSize({ width: 1440, height: 2400 });
+  const ids = await bandOf(page, 3)
+    .locator('[data-testid="ade-card"]')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('data-task-id') ?? ''));
+  expect(ids.length).toBeGreaterThanOrEqual(2);
+  const [upper, lower] = ids as [string, string];
+  const dragged = await bandOf(page, 1)
+    .locator('[data-testid="ade-card"]')
+    .first()
+    .getAttribute('data-task-id');
+  if (!dragged) throw new Error('no card to drag');
+  await card(page, dragged).scrollIntoViewIfNeeded();
+  const from = await card(page, dragged).boundingBox();
+  if (!from) throw new Error('drag source missing');
+  const grabY = from.y + Math.min(30, from.height / 2);
+  await page.mouse.move(from.x + 40, grabY);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 60, grabY + 20, { steps: 4 });
+  const slot = bandOf(page, 3).locator('[data-testid="ade-drop-slot"]');
+  // The slot opens in each band the pointer crosses and shifts the cards below: re-aim at the gap
+  // above the lower card until the slot sits right there.
+  await expect(async () => {
+    const rect = await card(page, lower).boundingBox();
+    if (!rect) throw new Error('lower card missing');
+    await page.mouse.move(rect.x + 40, rect.y - 8, { steps: 12 });
+    await page.evaluate(
+      () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+    );
+    await expect(slot).toBeVisible({ timeout: 500 });
+  }).toPass({ timeout: 10_000 });
+  const [above, gap, below] = await Promise.all([
+    card(page, upper).boundingBox(),
+    slot.boundingBox(),
+    card(page, lower).boundingBox(),
+  ]);
+  expect((gap?.y ?? 0) + (gap?.height ?? 0)).toBeLessThanOrEqual(below?.y ?? 0);
+  expect(gap?.y ?? 0).toBeGreaterThanOrEqual((above?.y ?? 0) + (above?.height ?? 0));
+  await page.mouse.up();
+
+  const calls = () => control.log().filter((e) => e.channel === IPC.adeTaskSetPlan);
+  await expect.poll(() => calls().length).toBe(1);
+  const order = board.plan.order.filter((id) => id !== dragged);
+  order.splice(order.indexOf(lower), 0, dragged);
+  expect(calls()[0]?.args).toMatchObject({ order });
 });
 
 test('dragging a review card to another day pins it', async ({ relaunch }) => {
@@ -369,7 +409,7 @@ test('a card is a 6px rounded box with a task-colour left edge on the terminal g
   expect(plan).toBe(chrome);
   expect(style.bg).not.toBe(plan);
   const head = await box.locator('[data-testid="ade-card-head"]').boundingBox();
-  expect(head?.height).toBe(68);
+  expect(head?.height).toBe(44);
 
   const band = bandOf(page, 3);
   await expect(band.locator('[data-testid="ade-task-separator"]')).toHaveCount(0);
@@ -510,14 +550,21 @@ test('the Plan scrolls inside the window instead of growing it', async ({ relaun
   expect(m.scroll).toBeGreaterThan(m.client);
 });
 
-test('the Plan has no top bar; Refresh all sits in the repo row', async ({ relaunch }) => {
+test('the Plan has no top bar; Refresh all sits in the sticky header beside History', async ({
+  relaunch,
+}) => {
   const { window: page } = await openPlan(relaunch);
   const plan = page.locator('[data-testid="ade-plan"]');
   await expect(plan.locator('[data-slot="panel-header"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="ade-plan-header"]')).toHaveCount(0);
-  await expect(
-    page.locator('[data-testid="ade-plan-repos"] [data-testid="ade-refresh-all"]'),
-  ).toBeVisible();
+  const refresh = page.locator('[data-testid="ade-refresh-all"]');
+  await expect(refresh).toBeVisible();
+  const [history, button] = await Promise.all([
+    page.locator('[data-testid="ade-load-history"]').boundingBox(),
+    refresh.boundingBox(),
+  ]);
+  expect(Math.abs((history?.y ?? 0) - (button?.y ?? -99))).toBeLessThan(8);
+  expect(button?.x ?? 0).toBeGreaterThan(history?.x ?? 0);
 });
 
 test('a branch row shows its own progress under the name', async ({ relaunch }) => {
@@ -545,7 +592,7 @@ test('line 2 shows merged and deployed chips with stale in amber and tooltips', 
   const stale = auth.locator('[data-testid="ade-branch-merged"]');
   await expect(stale).toHaveText('dev ⚠');
   await expect(stale).toHaveCSS('color', 'rgb(219, 175, 113)');
-  await auth.hover();
+  await auth.locator('[data-testid="ade-branch-line2"]').hover();
   await expect(
     page
       .locator('[data-testid="ade-branch-tip"]')
@@ -556,27 +603,21 @@ test('line 2 shows merged and deployed chips with stale in amber and tooltips', 
 
 test('branch tooltip shows plan colours', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
-  await page.locator('[data-testid="ade-branch-row"][data-branch-id="b_search"]').first().hover();
+  await page
+    .locator(
+      '[data-testid="ade-branch-row"][data-branch-id="b_search"] [data-testid="ade-branch-name"]',
+    )
+    .first()
+    .hover();
   const tip = page.locator('[data-testid="ade-branch-tip"]');
   await expect(tip).toBeVisible();
   await expect(tip.locator('[data-testid="ade-chip"]').first()).toBeVisible();
   await expect(tip.locator('[data-var="base"]').first()).toBeVisible();
 });
 
-test('a repo chip reports what the last fetch changed', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskRefresh, response: adeFixture('refresh') },
-  ]);
-  await page.locator('[data-testid="ade-refresh-all"]').click();
-  await expect(
-    page.locator(
-      '[data-testid="ade-repo-chip"][data-repo-id="repo-web-app"] [data-testid="ade-repo-note"]',
-    ),
-  ).toContainText('3 refs changed · 1 merged into develop');
-});
-
 // Contract ade-board. Backend half: adeflow TestRefreshDefaultSettings (one repo with a remote that
 // another clone pushed to, one without). Fixture repos repo-api and repo-mobile take the two states.
+// The plan shows no fetch note; the UI half asserts what Refresh all sends and that no error shows.
 function boardWithStates(phase: 'before' | 'after'): BoardFx {
   const board = adeFixture<BoardFx>('board');
   const state = (name: string, id: string) => ({
@@ -594,27 +635,14 @@ function boardWithStates(phase: 'before' | 'after'): BoardFx {
   return board;
 }
 
-const repoNote = (page: Page, id: string) =>
-  page.locator(`[data-testid="ade-repo-chip"][data-repo-id="${id}"] [data-testid="ade-repo-note"]`);
-
-test('contract: before a refresh the repo with a remote was never fetched, the other has none', async ({
-  relaunch,
-}) => {
-  const { window: page } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskBoard, response: boardWithStates('before') },
-  ]);
-  await expect(repoNote(page, 'repo-api')).toHaveText('Never fetched');
-  await expect(repoNote(page, 'repo-mobile')).toHaveText('No remote');
-});
-
-test('contract: Refresh all fetches a repo with a remote and rescans one without', async ({
+test('contract: Refresh all sends both repos and a repo without a remote raises no error', async ({
   relaunch,
 }) => {
   const refresh = (name: string, id: string) => ({
     ...contract<Record<string, unknown>>('ade-board', `AdeTaskService.Refresh#${name}`),
     codeRepoId: id,
   });
-  const { window: page } = await openPlan(relaunch, [
+  const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskBoard, response: boardWithStates('after') },
     {
       channel: IPC.adeTaskRefresh,
@@ -622,12 +650,18 @@ test('contract: Refresh all fetches a repo with a remote and rescans one without
     },
   ]);
   await page.locator('[data-testid="ade-refresh-all"]').click();
-  await expect(repoNote(page, 'repo-api')).toContainText('1 ref');
-  await expect(repoNote(page, 'repo-mobile')).toHaveText('No remote · No changes');
-  await expect(page.locator('[data-testid="ade-repo-note"].text-tone-red')).toHaveCount(0);
+  await expect
+    .poll(() => control.log().filter((e) => e.channel === IPC.adeTaskRefresh))
+    .toHaveLength(1);
+  expect(control.log().find((e) => e.channel === IPC.adeTaskRefresh)?.args).toEqual({
+    codeRepoIds: boardWithStates('after').repos.map((r) => r.codeRepoId),
+  });
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
 });
 
-test('today is a subtle grey, not yellow, not like other days', async ({ relaunch }) => {
+test('today has no band tint; its heading rule is a subtle grey that differs from other days', async ({
+  relaunch,
+}) => {
   const { window: page } = await openPlan(relaunch);
   const today = page.locator('[data-testid="ade-day-band"][data-today="true"]');
   await expect(today).toHaveCount(1);
@@ -641,7 +675,7 @@ test('today is a subtle grey, not yellow, not like other days', async ({ relaunc
   expect(todayRule).not.toBe(otherRule);
   const bg = (band: import('@playwright/test').Locator) =>
     band.evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(await bg(today)).not.toBe('rgba(0, 0, 0, 0)');
+  expect(await bg(today)).toBe('rgba(0, 0, 0, 0)');
   expect(await bg(other)).toBe('rgba(0, 0, 0, 0)');
   expect(
     await today
@@ -731,18 +765,7 @@ test("each day has a left bar from its heading to its last row; today's is wider
     return 0.2126 * x + 0.7152 * y + 0.0722 * z;
   };
   expect(lum(today.color ?? '')).toBeGreaterThan(lum(other.color ?? ''));
-  const probe = await page.evaluate(() => {
-    const d = document.createElement('div');
-    d.style.background = 'var(--color-today-tint)';
-    document.body.append(d);
-    const c = getComputedStyle(d).backgroundColor;
-    d.remove();
-    return c;
-  });
-  expect(today.bg).toBe(probe);
-  const [r = 0, , b = 0] = rgb(probe);
-  expect(b).toBeGreaterThan(r);
-  for (const d of info.filter((x) => !x.today)) expect(d.bg).toBe('rgba(0, 0, 0, 0)');
+  for (const d of info) expect(d.bg).toBe('rgba(0, 0, 0, 0)');
 });
 
 test('the timeline has no date gutter and each date shows once', async ({ relaunch }) => {

@@ -24,7 +24,7 @@ func (l *Loader) setCollection(id, name string) error {
 		return fmt.Errorf("scripts: file %s: %w", file, sql.ErrNoRows)
 	}
 	if e.Problem != nil {
-		return fmt.Errorf("scripts: %s has a problem (line %d: %s); fix the file first: %w",
+		return fmt.Errorf("scripts: %s has a problem (line %d: %s); fix it first: %w",
 			file, e.Problem.Line, e.Problem.Message, configfs.ErrInvalid)
 	}
 	src, hash, err := l.folder.Read(file)
@@ -162,7 +162,7 @@ func (s *Service) RenameCollection(args RenameCollectionArgs) error {
 	}
 	for _, id := range ids {
 		if e, ok := l.folder.Get(FileName(id)); !ok || e.Problem != nil {
-			return ipcerr.BadRequest(FileName(id) + " has a problem; fix the file before renaming the collection")
+			return ipcerr.BadRequest(id + " has a problem; fix it before renaming the collection")
 		}
 	}
 	// Held so a watcher reload cannot prune the renamed order row before a member names it.

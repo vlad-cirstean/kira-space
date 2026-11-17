@@ -147,7 +147,7 @@ type TaskBoardDeps struct {
 	// CallWait is how long a state call that waits (a branch, a rename, a lease) blocks before it
 	// answers pending or waiting; 0 = defaultCallWait. Nothing is cancelled when it ends.
 	CallWait time.Duration
-	// TaskRequestWait is how long an orchestrator's create_task waits for the user; 0 = defaultTaskRequestWait.
+	// TaskRequestWait is how long an orchestrator's create_task waits for the user; 0 = prompts.AnswerWait.
 	TaskRequestWait time.Duration
 	// RebaseTimeout bounds a rebase run; 0 = defaultRebaseTimeout.
 	RebaseTimeout time.Duration

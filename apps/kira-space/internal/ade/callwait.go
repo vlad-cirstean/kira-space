@@ -3,12 +3,14 @@ package ade
 import (
 	"fmt"
 	"time"
+
+	"github.com/kirathecat/kira-studio/internal/prompts"
 )
 
 // defaultCallWait is how long a state call blocks on work that is not finished yet: the user's
 // approval, a worktree setup, a lease queue. When it ends nothing is cancelled: the call answers
 // pending or waiting and the work goes on.
-const defaultCallWait = 10 * time.Minute
+const defaultCallWait = prompts.AnswerWait
 
 func (b *TaskBoard) callWait() time.Duration {
 	if b.deps.CallWait > 0 {

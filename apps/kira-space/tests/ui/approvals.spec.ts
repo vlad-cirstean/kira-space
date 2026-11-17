@@ -58,7 +58,7 @@ test('a push that joins a call keeps the person’s choices on the item', async 
 
 studioTest.describe('databases module', () => {
   // Contract approvals-studio. Backend half: dbmcpflow TestApprovalsPerItem (three concurrent writes). One dialog holds every
-  // pending agent approval; X or Escape minimises to a toast and never answers.
+  // pending agent approval; X or Shift+Escape minimises to a toast and never answers.
 
   const SCENARIO = 'approvals-studio';
 
@@ -82,7 +82,7 @@ studioTest.describe('databases module', () => {
       await expect(dialog).toBeVisible();
       await expect(page.locator('[data-testid="approvals-count"]')).toHaveText('2');
 
-      await page.keyboard.press('Escape');
+      await page.keyboard.press('Shift+Escape');
       await expect(dialog).toHaveCount(0);
       await expect(toast).toBeVisible();
       await expect(page.locator('[data-testid="approvals-toast-count"]')).toHaveText(

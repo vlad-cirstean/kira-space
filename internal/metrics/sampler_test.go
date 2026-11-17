@@ -147,9 +147,9 @@ func TestIncludeHelper_UntrackedAlwaysIncludes(t *testing.T) {
 func TestCachedPIDs_ResolveOnlyRunsEveryRescanEvery(t *testing.T) {
 	self := int32(os.Getpid())
 	resolveCalls := 0
-	c := NewCachedPIDs(func() ([]int32, error) {
+	c := NewCachedPIDs(func() (ProcessSet, error) {
 		resolveCalls++
-		return []int32{self}, nil
+		return ProcessSet{App: []int32{self}}, nil
 	}, 3)
 
 	for i := 1; i <= 7; i++ {
@@ -157,7 +157,7 @@ func TestCachedPIDs_ResolveOnlyRunsEveryRescanEvery(t *testing.T) {
 		if err != nil {
 			t.Fatalf("PIDs() call %d: %v", i, err)
 		}
-		if len(pids) != 1 || pids[0] != self {
+		if len(pids.App) != 1 || pids.App[0] != self {
 			t.Fatalf("PIDs() call %d = %v, want [%d]", i, pids, self)
 		}
 	}
@@ -178,15 +178,15 @@ func TestCachedPIDs_DropsExitedPidBeforeNextRescan(t *testing.T) {
 	}
 	childPID := int32(cmd.Process.Pid)
 
-	c := NewCachedPIDs(func() ([]int32, error) {
-		return []int32{self, childPID}, nil
+	c := NewCachedPIDs(func() (ProcessSet, error) {
+		return ProcessSet{App: []int32{self, childPID}}, nil
 	}, 10) // large enough that the second PIDs() call below stays on the cheap revalidation path
 
 	first, _, err := c.PIDs()
 	if err != nil {
 		t.Fatalf("PIDs() (rescan): %v", err)
 	}
-	if !containsPID(first, self) || !containsPID(first, childPID) {
+	if !containsPID(first.App, self) || !containsPID(first.App, childPID) {
 		t.Fatalf("PIDs() (rescan) = %v, want both %d and %d (child must still be alive here)", first, self, childPID)
 	}
 
@@ -199,10 +199,10 @@ func TestCachedPIDs_DropsExitedPidBeforeNextRescan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PIDs() (revalidate): %v", err)
 	}
-	if !containsPID(second, self) {
+	if !containsPID(second.App, self) {
 		t.Errorf("PIDs() (revalidate) = %v, want %d (still alive) kept", second, self)
 	}
-	if containsPID(second, exitedPID) {
+	if containsPID(second.App, exitedPID) {
 		t.Errorf("PIDs() (revalidate) = %v, want exited pid %d dropped, not kept or misattributed to whatever now has that pid number", second, exitedPID)
 	}
 }
@@ -232,8 +232,8 @@ func TestSampler_Sample_ReusesFreshProcSamples_NoDoubleProbe(t *testing.T) {
 	}
 	probeCalls := 0
 	s := &Sampler{
-		pids: func() ([]int32, map[int32]procSample, error) {
-			return []int32{1, 2}, freshSamples, nil
+		pids: func() (ProcessSet, map[int32]procSample, error) {
+			return ProcessSet{App: []int32{1}, Agents: []int32{2}}, freshSamples, nil
 		},
 		probe: func(pid int32) (procSample, bool) {
 			probeCalls++
@@ -251,6 +251,9 @@ func TestSampler_Sample_ReusesFreshProcSamples_NoDoubleProbe(t *testing.T) {
 	if probeCalls != 0 {
 		t.Errorf("probe was called %d time(s), want 0", probeCalls)
 	}
+	if sample.App.MemoryBytes != 1000 || sample.Agents.MemoryBytes != 2000 {
+		t.Errorf("App/Agents MemoryBytes = %d/%d, want 1000/2000", sample.App.MemoryBytes, sample.Agents.MemoryBytes)
+	}
 	if sample.MemoryBytes != 3000 {
 		t.Errorf("MemoryBytes = %d, want 3000 (1000 + 2000, from the fresh samples)", sample.MemoryBytes)
 	}
@@ -264,8 +267,8 @@ func TestSampler_Sample_ReusesFreshProcSamples_NoDoubleProbe(t *testing.T) {
 func TestSampler_Sample_FallsBackToProbeWhenNoFreshSample(t *testing.T) {
 	probeCalls := 0
 	s := &Sampler{
-		pids: func() ([]int32, map[int32]procSample, error) {
-			return []int32{7}, nil, nil // nil fresh map: the revalidate-tick shape
+		pids: func() (ProcessSet, map[int32]procSample, error) {
+			return ProcessSet{App: []int32{7}}, nil, nil // nil fresh map: the revalidate-tick shape
 		},
 		probe: func(pid int32) (procSample, bool) {
 			probeCalls++
@@ -285,4 +288,67 @@ func TestSampler_Sample_FallsBackToProbeWhenNoFreshSample(t *testing.T) {
 	if sample.MemoryBytes != 500 {
 		t.Errorf("MemoryBytes = %d, want 500", sample.MemoryBytes)
 	}
+}
+
+// Tree walk plus classification precedence: a slip double counts or drops a group silently.
+func TestGroupProcesses(t *testing.T) {
+	const app = "/x/Kira Space"
+	noResp := func(int32) int32 { return -1 }
+	tests := []struct {
+		name       string
+		entries    []procEntry
+		roots      []int32
+		wantApp    []int32
+		wantAgents []int32
+	}{
+		{
+			name: "descendants at depth 3",
+			entries: []procEntry{
+				{pid: 10, ppid: 1, exe: "/bin/zsh"}, {pid: 11, ppid: 10}, {pid: 12, ppid: 11, exe: "/bin/node"},
+				{pid: 13, ppid: 12, exe: "/bin/sh"}, {pid: 99, ppid: 1, exe: "/bin/other"},
+			},
+			roots:      []int32{10},
+			wantAgents: []int32{10, 11, 12, 13},
+		},
+		{
+			name:    "root missing from table ignored",
+			entries: []procEntry{{pid: 20, ppid: 1, exe: "/bin/zsh"}},
+			roots:   []int32{555},
+		},
+		{
+			name:       "ppid cycle terminates",
+			entries:    []procEntry{{pid: 30, ppid: 31, exe: "/bin/a"}, {pid: 31, ppid: 30, exe: "/bin/b"}},
+			roots:      []int32{30},
+			wantAgents: []int32{30, 31},
+		},
+		{
+			name: "helper in agent tree is an agent, anchor outside stays app",
+			entries: []procEntry{
+				{pid: 40, ppid: 1, exe: app}, {pid: 50, ppid: 1, exe: "/bin/zsh"}, {pid: 51, ppid: 50, exe: "/usr/bin/bwrap"},
+			},
+			roots:      []int32{50},
+			wantApp:    []int32{40},
+			wantAgents: []int32{50, 51},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := groupProcesses(tt.entries, []string{"Kira Space"}, HelperNeedles, tt.roots, false, noResp)
+			if !sameSet(got.App, tt.wantApp) || !sameSet(got.Agents, tt.wantAgents) {
+				t.Errorf("got App=%v Agents=%v, want App=%v Agents=%v", got.App, got.Agents, tt.wantApp, tt.wantAgents)
+			}
+		})
+	}
+}
+
+func sameSet(a, b []int32) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for _, p := range b {
+		if !containsPID(a, p) {
+			return false
+		}
+	}
+	return true
 }

@@ -111,7 +111,7 @@ test('a file with an error shows its line and the last-good note', async ({ rela
     problem: { line: 4, message: 'event: not one of the events' },
     lastGood: true,
   });
-  await expect(page.locator(t('config-file-status'))).toContainText('4');
+  await expect(page.locator(t('config-file-problem'))).toContainText('Can’t be read');
   await expect(page.locator(t('ade-settings-last-good'))).toBeVisible();
 });
 
@@ -122,7 +122,7 @@ test('a missing file shows the none hint', async ({ relaunch }) => {
     hash: '',
     secrets: [],
   });
-  await expect(page.locator(t('ade-settings-none'))).toContainText('settings.yaml');
+  await expect(page.locator(t('ade-settings-none'))).toContainText('No settings yet');
   await expect(page.locator(t('ade-settings-secrets-none'))).toBeVisible();
 });
 
@@ -140,21 +140,11 @@ test('storage that is unavailable disables Set and shows its reason', async ({ r
   await expect(page.locator(t('ade-settings-secret-set'))).toBeDisabled();
 });
 
-test('Open names the agent folder and file', async ({ relaunch }) => {
-  const { window: page, control } = await openSettings(relaunch);
-  await page.locator(t('config-file-open')).click();
-  await expect.poll(() => calls(control, IPC.configFilesOpen)).toHaveLength(1);
-  expect(calls(control, IPC.configFilesOpen)[0]?.args).toEqual({
-    folder: 'agent',
-    file: 'settings.yaml',
-  });
-});
-
 test('a save refused for a changed file offers Reload and Overwrite', async ({ relaunch }) => {
   const { window: page, control } = await openSettings(relaunch, {}, [
     {
       channel: IPC.agentSettingsSave,
-      error: { code: 'E_CONFLICT', message: 'The settings file changed since you loaded it.' },
+      error: { code: 'E_CONFLICT', message: 'The agent settings changed since you loaded them.' },
     },
   ]);
   await replaceCodeEditorText(page, page.locator(t('ade-settings-text')), 'env:\n  A: b\n');

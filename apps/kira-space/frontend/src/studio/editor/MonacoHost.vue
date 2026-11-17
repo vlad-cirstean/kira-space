@@ -453,6 +453,9 @@ function applyBaseOptions(): ConstructionOptions {
     automaticLayout: true,
     readOnly: props.readonly,
     domReadOnly: props.readonly,
+    // A read-only view has no caret worth marking; the lane's canvas paints a frame late, so a
+    // capture could land before or after it.
+    hideCursorInOverviewRuler: props.readonly,
     lineNumbers: props.singleLine ? 'off' : 'on',
     minimap: { enabled: false },
     scrollBeyondLastLine: false,
@@ -768,7 +771,11 @@ watch(
 watch(
   () => props.readonly,
   (readOnly) => {
-    editor?.updateOptions({ readOnly, domReadOnly: readOnly });
+    editor?.updateOptions({
+      readOnly,
+      domReadOnly: readOnly,
+      hideCursorInOverviewRuler: readOnly,
+    });
   },
 );
 

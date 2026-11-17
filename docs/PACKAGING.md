@@ -356,7 +356,7 @@ the renderer build, typecheck, lint, the Go unit tests, and the static half of `
 ## 7. CI, releases, install and update
 
 **Status:** applied. `.github/workflows/` holds `pr.yml`, `pr-auto-merge.yml`, `pr-rerun-flaky.yml`,
-`release-on-merge.yml`, `release.yml`, `cache-warm.yml` and `pages.yml`
+`release-on-merge.yml`, `release.yml`, `release-retention.yml`, `cache-warm.yml` and `pages.yml`
 (`db-compat.yml` and `test-matrix.yml` existed at one point but were folded into `release.yml`'s own
 jobs, see `docs/ARCHITECTURE.md`).
 
@@ -431,7 +431,11 @@ repo the macOS job bills at 10x, about 190 billed minutes in total.
 4. The release is public at once and `/releases/latest` serves it. The §4 real-hardware checks run
    after publish against the published assets. A failure found there means a fixed next patch tag
    (the updater offers only strictly newer versions); optionally delete the bad release so
-   `/releases/latest` falls back to the previous one. Installed copies are not downgraded.
+   `/releases/latest` falls back to the previous one and the updater's step target falls back to
+   the previous last patch. Installed copies are not downgraded. Never delete the assets of a kept
+   release by hand: retention (below) keeps each minor's `.0`, first and last release because the
+   updater steps to them. `install-smoke` runs `install.sh` twice: first the latest-release path,
+   then `--tag=<tag>` over it.
 
 Recovery:
 
@@ -483,7 +487,7 @@ P29 added three more static checks, guarding §2.1/§2.2's own findings against 
   `scripts/install.sh` exists and passes `sh -n`; its line-2 contract marker
   (`# kira-install-contract: 2`) matches `internal/appupdate/install.go`'s own constant;
   `raw.githubusercontent.com` appears exactly once across `apps/`, `packages/`, `internal/`
-  (`InstallScriptURL`); `shellcheck` runs against the script when it's on `PATH`.
+  (`InstallScriptURL`); `install.sh`'s `ASSET` equals `internal/appupdate`'s `macAsset` (P653); `shellcheck` runs against the script when it's on `PATH`.
 - **S12** (P210) — the bundled ONNX Runtime version agrees: `internal/memory/embed/paths.go`'s
   `ORTVersion` equals `scripts/fetch-onnxruntime.sh`'s `ORT_VERSION`, and `create:app:bundle` in
   `apps/kira-space/build/darwin/Taskfile.yml` references `libonnxruntime.<version>.dylib`.
@@ -496,13 +500,13 @@ by construction rather than deleted per build.
 
 **P66 (v1.6) added an update-*availability* check; P119 (v1.9) added the install itself, still only
 on an explicit click.** A tagged release build polls `GET https://api.github.com/repos/
-vlad-cirstean/kira-space/releases/latest` (repo-root `internal/appupdate`, no
-`gh` CLI dependency — public metadata needs no per-user credential) and, when the tag is newer than
-the running build, shows a status-bar item (`internal/bridge/update.go`,
+vlad-cirstean/kira-space/releases` (P653; paged, 100 a page; repo-root `internal/appupdate`, no
+`gh` CLI dependency — public metadata needs no per-user credential) and, when `internal/releaseline`
+finds a step, shows a status-bar item (`internal/bridge/update.go`,
 `packages/workbench/src/components/{UpdateAvailableItem,UpdateDialog}.vue`) that opens a modal
 dialog with an **Update** button. Clicking it re-checks availability, then `internal/
 appupdate.Installer` fetches `scripts/install.sh` fresh from `main` (never bundled), validates its
-contract marker, and spawns it detached with `--wait-pid`/`--notify-fd`; the script and the app hand off
+contract marker, and spawns it detached with `--wait-pid`/`--notify-fd`/`--tag=<target>`; the script and the app hand off
 over an fd once the disk image is staged, the app quits, and the script swaps the bundle into
 `/Applications` and reopens it. **Nothing downloads or installs without that click** — S10/S11
 above are what keep the app-code half of that true; `scripts/install.sh` itself is the one
@@ -510,8 +514,29 @@ sanctioned exception, run by the user's own action. A dev/test build (`buildinfo
 `0.0.0`/`0.0.0-dev`/`0.0.0-unknown`) makes no request and refuses `InstallUpdate` outright. And
 because `release.yml` publishes the release only after every gate and asset check passed (step 3
 above), a release is visible to this check from the moment it is published. It goes through a draft
-first, and `/releases/latest` excludes drafts and prereleases by construction, so a failed run
-never shows up.
+first, and the check skips drafts and prereleases, so a failed run never shows up.
+
+**Updates step one minor at a time (P653).** The target is the last patch of the running minor when
+newer, else the first release of the next minor (`X.(Y+1).0`, or its first patch if `.0` was never
+published). A release counts only when it is published, not a prerelease, plain `vX.Y.Z`, and its
+`kira-space-macos-arm64.dmg` is uploaded and non-empty. The app passes the target to `install.sh
+--tag=`; without `--tag` the script installs `/releases/latest`, which is the clean-install path.
+Apps up to 0.3.14 pass no `--tag` in self-update mode (`--wait-pid`), so the script steps itself: it lists
+`/releases` (up to 10 pages), reads the installed bundle's `CFBundleShortVersionString` and applies the same
+rule in a JXA function (`nextStep`). It falls back to `/releases/latest` only when no version or step is
+found. `verify-packaging.sh` S16 replays `internal/releaseline/testdata/next_step.json`, the table the Go
+test uses, through that function, so the two cannot drift.
+Last patch holds a minor's migrations, so an old install must pass through it.
+
+**Release retention (P653).** `release-retention.yml` deletes the assets of releases the updater no
+longer needs, so the repository does not keep every DMG. It keeps every asset of: each minor's `.0`,
+each minor's first and last release (those the updater would pick: published, platform asset uploaded), the 5 newest releases of the current minor, and
+the `/releases/latest` release. Tags, release pages, drafts, prereleases and `/releases/latest` are
+never touched; the only endpoint it deletes through is `releases/assets/{id}`. Selection is Go
+(`scripts/releaseretention`, sharing `internal/releaseline` with the updater). Triggers: `workflow_run` after a
+successful `Release`, a daily schedule as fallback (the plan is idempotent), and `workflow_dispatch`
+with `dry_run` (default `true`). Unattended runs only delete when the repository variable
+`RELEASE_RETENTION` is `apply`; otherwise they dry-run. Each decision is logged to the job summary.
 
 **What a future *silent* auto-update (no click at all) would require, in order:** code signing and
 notarization (SPEC.md §1/§3), then a SPEC.md scope change reversing "no silent auto-update", then an
@@ -559,6 +584,9 @@ gone.
    tag. If it is ever enabled, it needs GitHub Actions as a bypass actor.
 5. Settings, Actions, General, Workflow permissions: default read stays. Every job declares its own.
    "Allow GitHub Actions to create and approve pull requests" is not needed.
+6. Run `gh workflow run release-retention.yml -f dry_run=true`, read the plan in the run summary,
+   then set the repository variable `RELEASE_RETENTION=apply` (Settings, Secrets and variables,
+   Actions, Variables). Until it is set, unattended runs only dry-run.
 
 ## 8. Kira Space packaging
 

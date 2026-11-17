@@ -6,7 +6,7 @@ import type { CollectionRowVm } from './state/collections';
 
 // The row and background context menus, built with the existing MenuItem type from
 // state/contextMenu.ts. The collections are config files: each action here is an edit of the
-// collection file, and Open file / Reveal show the file itself.
+// collection file.
 //
 // The actions themselves are injected rather than imported, so this module stays free of both the
 // store's mutation half and the request-view's open path — the menu is a description, and
@@ -45,29 +45,6 @@ export interface CollectionMenuActions {
   /** The background menu's own "Dynamic values…" item — opens the read-only reference
    *  dialog. Not row-scoped, same as environments() above. */
   dynamicValues(): void;
-  /** Opens the row's collection file in the system editor. */
-  openFile(row: CollectionRowVm): void;
-  /** Shows the row's collection file in the file manager. */
-  revealFile(row: CollectionRowVm): void;
-}
-
-function fileItems(row: CollectionRowVm, actions: CollectionMenuActions): MenuItem[] {
-  return [
-    {
-      type: 'item',
-      id: 'open-file',
-      label: t('studio.api.config.openFile.label'),
-      icon: 'go-to-file',
-      run: () => actions.openFile(row),
-    },
-    {
-      type: 'item',
-      id: 'reveal-file',
-      label: t('common.action.reveal.label'),
-      icon: 'folder-opened',
-      run: () => actions.revealFile(row),
-    },
-  ];
 }
 
 // Request and folder rows only: a move lands at a collection's root, so a collection is a valid
@@ -185,8 +162,6 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
       moveMenu([row], actions),
       ...moveItems(row, actions),
       { type: 'separator' },
-      ...fileItems(row, actions),
-      { type: 'separator' },
       deleteItem(row, actions),
     ];
   }
@@ -268,12 +243,7 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
     );
   }
 
-  items.push(
-    { type: 'separator' },
-    ...fileItems(row, actions),
-    { type: 'separator' },
-    deleteItem(row, actions),
-  );
+  items.push({ type: 'separator' }, deleteItem(row, actions));
   return items;
 }
 

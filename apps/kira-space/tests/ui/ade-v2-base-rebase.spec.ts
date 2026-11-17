@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { type AdeBoardFx, adeBoard, openPlan } from './support/adeV2';
+import { type AdeBoardFx, adeBoard, openPlan, revealHead, revealRow } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -142,6 +142,7 @@ test('a branch behind a develop base offers Rebase onto develop, run in the back
   relaunch,
 }) => {
   const { window: page, control } = await open(relaunch, onDevelop);
+  await revealRow(page, 'b_auth', 'board', 'ade-rebase');
   const tag = authTask(page).locator(t('ade-rebase')).first();
   await expect(tag).toHaveAttribute('aria-label', 'Rebase');
   await tag.hover();
@@ -163,6 +164,7 @@ test('a branch behind a develop base offers Rebase onto develop, run in the back
 
 test('an edited prompt is what Rebase sends', async ({ relaunch }) => {
   const { window: page, control } = await open(relaunch, onDevelop);
+  await revealRow(page, 'b_auth', 'board', 'ade-rebase');
   await authTask(page).locator(t('ade-rebase')).first().click();
   await page.locator(t('ade-dialog-message')).fill('Rebase, keep merge commits.');
   await page.locator(t('ade-dialog-send')).click();
@@ -178,6 +180,7 @@ test('a refused Rebase keeps the dialog open with its message and the error', as
   const { window: page, control } = await open(relaunch, onDevelop, [
     { channel: IPC.adeTaskRebase, error: { code: 'invalid', message: 'worktree has changes' } },
   ] as never);
+  await revealRow(page, 'b_auth', 'board', 'ade-rebase');
   await authTask(page).locator(t('ade-rebase')).first().click();
   await page.locator(t('ade-dialog-message')).fill('Rebase, keep merge commits.');
   await page.locator(t('ade-dialog-send')).click();
@@ -208,10 +211,12 @@ test('the card base button opens the dialog for one branch and a menu for severa
 }) => {
   const { window: page } = await open(relaunch, idleNotif);
   const notif = page.locator(`${t('ade-card')}[data-task-id="T_notif"]`);
+  await revealHead(page, 'T_notif', 'ade-card-change-base');
   await notif.locator(t('ade-card-change-base')).click();
   await expect(page.locator(t('ade-dialog-title'))).toHaveText('Change the base');
   await page.locator(t('ade-dialog-cancel')).click();
   const auth = page.locator(`${t('ade-card')}[data-task-id="T_auth"]`);
+  await revealHead(page, 'T_auth', 'ade-card-change-base');
   await auth.locator(t('ade-card-change-base')).click();
   await expect(page.locator(t('ade-card-change-base-menu'))).toBeInViewport();
   await expect(page.locator(t('ade-card-change-base-item')).first()).toBeVisible();
@@ -223,6 +228,7 @@ test('Change base on a created branch refetches the preview with onto and runs R
   const { window: page, control } = await open(relaunch, idleNotif, [
     { channel: IPC.adeTaskSessions, response: { sessions: [] } },
   ] as never);
+  await revealHead(page, 'T_notif', 'ade-card-change-base');
   await page
     .locator(`${t('ade-card')}[data-task-id="T_notif"]`)
     .locator(t('ade-card-change-base'))
@@ -242,6 +248,7 @@ test('Change base on a created branch refetches the preview with onto and runs R
 
 test('Change base on a draft stores the base with no prompt', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch);
+  await revealHead(page, 'T_alerts', 'ade-card-change-base');
   await page
     .locator(`${t('ade-card')}[data-task-id="T_alerts"]`)
     .locator(t('ade-card-change-base'))
@@ -270,6 +277,7 @@ test('a dirty worktree blocks Send until Autostash is on', async ({ relaunch }) 
   const { window: page } = await open(relaunch, onDevelop, [
     { channel: IPC.adeTaskRebasePreview, response: dirty },
   ] as never);
+  await revealRow(page, 'b_auth', 'board', 'ade-rebase');
   await authTask(page).locator(t('ade-rebase')).first().click();
   await expect(page.locator(t('ade-dialog-blocker'))).toContainText('2 uncommitted files');
   await expect(page.locator(t('ade-dialog-send'))).toBeDisabled();

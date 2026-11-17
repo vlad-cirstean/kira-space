@@ -16,10 +16,11 @@ import (
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/notify"
+	"github.com/kirathecat/kira-studio/internal/prompts"
 )
 
 // ApprovalTimeout bounds how long a prompt-mode query waits for a human answer before giving up.
-const ApprovalTimeout = 10 * time.Minute
+const ApprovalTimeout = prompts.AnswerWait
 
 // approvalWindow renders ApprovalTimeout for tool error texts.
 func approvalWindow() string {
@@ -202,7 +203,9 @@ type ApprovalRequest struct {
 	// Enforcement says what backs mode read on this kind: session, app or none. Read items only.
 	Enforcement string
 	Statement   string
-	Target      ApprovalTarget
+	// Explain marks a plan request: the card shows the agent SQL as an explain.
+	Explain bool
+	Target  ApprovalTarget
 	// Stage defaults to ApprovalStageQuery when empty.
 	Stage ApprovalStage
 	// Response is set only for ApprovalStageResponse.

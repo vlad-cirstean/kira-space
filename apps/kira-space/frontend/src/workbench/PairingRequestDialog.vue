@@ -8,11 +8,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
+import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { usePendingDecision } from '@workbench/behaviour/pendingDecision';
+import { formatShortcut } from '@workbench/shortcuts/keys';
+import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 
 // Shared shell for a pairing prompt PromptHost mounts. Renders nothing while `requestId` is absent;
-// Escape and the frame's close hide it (`hide`), only Deny denies. The countdown keys on the
+// Shift+Escape and the frame's close hide it (`hide`), only Deny denies. Mod+Enter approves,
+// Mod+Backspace denies; single keys do nothing. The countdown keys on the
 // request id (usePendingDecision), so the queue advancing A to B re-arms Deny focus and the timer.
 const props = defineProps<{
   title: string;
@@ -27,11 +31,15 @@ const { remainingSeconds } = usePendingDecision({
   pendingId: () => props.requestId,
   expiresAtMs: () => props.expiresAtMs,
 });
+
+const onChord = shortcutKeydown(['form.submit', 'prompt.deny'], (id) =>
+  id === 'form.submit' ? emit('approve') : emit('deny'),
+);
 </script>
 
 <template>
   <Dialog v-if="requestId" :open="true" @update:open="(v) => !v && emit('hide')">
-    <DialogContent size="sm" :data-testid="`${testidPrefix}-dialog`">
+    <DialogContent size="sm" prompt :data-testid="`${testidPrefix}-dialog`" @keydown="onChord">
       <DialogHeader>
         <DialogTitle>{{ title }}</DialogTitle>
       </DialogHeader>
@@ -49,20 +57,24 @@ const { remainingSeconds } = usePendingDecision({
       <DialogFooter>
         <Button
           ref="denyButton"
+          :aria-keyshortcuts="formatShortcut('prompt.deny')"
           variant="dialog-deny"
           size="kira-lg"
           :data-testid="`${testidPrefix}-deny`"
           @click="emit('deny')"
         >
           {{ t('common.action.deny.label') }}
+          <Kbd>{{ formatShortcut('prompt.deny') }}</Kbd>
         </Button>
         <Button
           variant="dialog-approve"
+          :aria-keyshortcuts="formatShortcut('form.submit')"
           size="kira-lg"
           :data-testid="`${testidPrefix}-approve`"
           @click="emit('approve')"
         >
           {{ t('common.action.approve.label') }}
+          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

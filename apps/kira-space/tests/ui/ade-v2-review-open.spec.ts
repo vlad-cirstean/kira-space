@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { adeBoard, openPlan } from './support/adeV2';
+import { adeBoard, openPlan, revealHead, revealRow } from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
@@ -33,6 +33,7 @@ async function pickerIds(page: Page): Promise<string[]> {
 test('the card button opens the only branch and previews branch and base', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [OPEN]);
   const btn = page.locator(`${card('T_deps')} ${t('ade-card-review')}`);
+  await revealHead(page, 'T_deps', 'ade-card-review');
   await btn.hover();
   const tooltip = page.locator(tip);
   await expect(tooltip.locator('[data-var="branch"]')).toHaveText('chore/deps-bump');
@@ -46,12 +47,14 @@ test('the card button opens the only branch and previews branch and base', async
 test('a task with several branches shows a picker', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [OPEN]);
   const btn = page.locator(`${card('T_bill')} ${t('ade-card-review')}`);
+  await revealHead(page, 'T_bill', 'ade-card-review');
   await btn.click();
   expect(await pickerIds(page)).toHaveLength(3);
   await page.locator(item('ade-review-pick-b_billdash')).click();
   await expect.poll(() => calls(control)).toHaveLength(1);
   expect(calls(control)[0]?.args).toEqual({ branchId: 'b_billdash' });
 
+  await revealHead(page, 'T_bill', 'ade-card-review');
   await btn.click();
   await expect(page.locator(t('context-menu'))).toBeVisible();
   await page.keyboard.press('Escape');
@@ -64,6 +67,7 @@ test('the picker lists a branch with no commits as disabled with the reason', as
   relaunch,
 }) => {
   const { window: page, control } = await openPlan(relaunch, [OPEN]);
+  await revealHead(page, 'T_search', 'ade-card-review');
   await page.locator(`${card('T_search')} ${t('ade-card-review')}`).click();
   const none = page.locator(item('ade-review-pick-b_searchui'));
   await expect(none).toHaveAttribute('data-disabled', '');
@@ -81,6 +85,7 @@ test('the picker lists a branch with no commits as disabled with the reason', as
 test('an uncreated branch is disabled in the button and the menu', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [OPEN]);
   const btn = page.locator(`${card('T_alerts')} ${t('ade-card-review')}`);
+  await revealHead(page, 'T_alerts', 'ade-card-review');
   await expect(btn).toBeDisabled();
   await page.locator(card('T_alerts')).click({ button: 'right', position: { x: 60, y: 30 } });
   await page.locator(item('ade-task-review')).hover();
@@ -162,10 +167,12 @@ test('an open failure shows in the panel', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     { channel: IPC.adeTaskOpenReviewWindow, error: { code: 'failed', message: 'no window' } },
   ]);
+  await revealHead(page, 'T_deps', 'ade-card-review');
   await page.locator(`${card('T_deps')} ${t('ade-card-review')}`).click();
   await expect(page.locator(t('ade-panel-action-error'))).toContainText('no window');
 
   await page.locator(`${card('T_auth')} ${t('ade-card-head')}`).click();
+  await revealRow(page, 'b_auth', 'panel', 'ade-branch-review');
   await page
     .locator(`${t('ade-task-branch')}[data-branch-id="b_auth"] ${t('ade-branch-review')}`)
     .click();
@@ -185,6 +192,7 @@ test('the earlier entry points still open their branch', async ({ relaunch }) =>
   expect(calls(control)[1]?.args).toEqual({ branchId: 'b_deps' });
 
   await page.locator(`${card('T_auth')} ${t('ade-card-head')}`).click();
+  await revealRow(page, 'b_auth', 'panel', 'ade-branch-review');
   await page
     .locator(`${t('ade-task-branch')}[data-branch-id="b_auth"] ${t('ade-branch-review')}`)
     .click();
@@ -200,6 +208,7 @@ test('Review code on an open review window only focuses it', async ({ relaunch }
     { channel: IPC.adeTaskOpenReviewWindow, response: existing },
   ]);
   const btn = page.locator(`${card('T_deps')} ${t('ade-card-review')}`);
+  await revealHead(page, 'T_deps', 'ade-card-review');
   await btn.click();
   await btn.click();
   await expect.poll(() => calls(control)).toHaveLength(2);
@@ -232,6 +241,7 @@ for (const phase of ['uncommitted', 'committed'] as const) {
       },
     ]);
     const btn = page.locator(`${card('T_deps')} ${t('ade-card-review')}`);
+    await revealHead(page, 'T_deps', 'ade-card-review');
     await btn.locator('xpath=..').hover();
     const tooltip = page.locator(tip);
     await expect(tooltip.locator('[data-var="base"]')).toHaveText(facts.base);

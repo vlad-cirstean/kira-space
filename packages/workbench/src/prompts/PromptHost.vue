@@ -2,6 +2,7 @@
 import type { PromptKind, RoutedPrompt } from '@shared/domain/prompts';
 import { compareNatural } from '@workbench/behaviour/match';
 import { windowKey } from '@workbench/lib/window';
+import { useGatedOpen } from '@workbench/state/promptGate';
 import { type Component, computed, onScopeDispose, watch, watchEffect } from 'vue';
 import { usePrompts, usePromptsControl, usePromptVisibility } from './promptsQueries';
 
@@ -11,7 +12,7 @@ const props = defineProps<{ kinds: Partial<Record<PromptKind, Component>> }>();
 
 const control = usePromptsControl();
 const { data } = usePrompts();
-const { hidden, revealed, shown, hide, reveal, prune } = usePromptVisibility();
+const { hidden, revealed, shown, deferred, onRelease, hide, reveal, prune } = usePromptVisibility();
 onScopeDispose(control.onPromptsReveal(({ id }) => reveal(id)));
 
 watch(
@@ -32,12 +33,24 @@ onScopeDispose(() => {
   shown.value = false;
 });
 const more = computed(() => Math.max(0, visible.value.length - 1));
+
+// A prompt waits for the user to stop typing and shows a toast meanwhile; quit is the user's own
+// act, never deferred.
+const gated = useGatedOpen(() => (head.value && head.value.kind !== 'quit' ? head.value.id : ''));
+const open = computed(() => !!head.value && (head.value.kind === 'quit' || gated.ready.value));
+onRelease(gated.force);
+watchEffect(() => {
+  deferred.value = head.value && !open.value ? { entry: head.value, more: more.value } : null;
+});
+onScopeDispose(() => {
+  deferred.value = null;
+});
 </script>
 
 <template>
   <component
     :is="kinds[head.kind]"
-    v-if="head"
+    v-if="head && open"
     :key="head.id"
     :entry="head"
     :more="more"

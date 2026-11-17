@@ -13,7 +13,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox/sandboxtest"
-	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeprovider"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
@@ -145,12 +144,6 @@ func TestAgentContextReachesEveryLaunch(t *testing.T) {
 	saveContext(t, app, marker1)
 	if _, err := app.W.AgentContextSvc.Save(agentctx.SaveArgs{Text: "x", BaseHash: "stale"}); err == nil {
 		t.Fatal("Save on a stale hash succeeded")
-	}
-	if err := app.W.ConfigFiles.Open(configsvc.FileArgs{Folder: agentctx.Folder, File: agentctx.File}); err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	if got := app.FileOpener.OpenedFiles(); len(got) != 1 || got[0] != filepath.Join(app.ConfigDir("agent"), agentctx.File) {
-		t.Fatalf("opened = %v, want the context file", got)
 	}
 
 	// Claude interactive: ad hoc session on a task branch.

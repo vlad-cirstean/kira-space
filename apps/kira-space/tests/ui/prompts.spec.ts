@@ -30,7 +30,8 @@ const UPDATE = {
   response: {
     updateAvailable: true,
     currentVersion: '1.2.0',
-    latestVersion: '1.3.0',
+    targetVersion: '1.3.0',
+    newestVersion: '1.3.0',
     installLogPath: '/tmp/kira-space-update.log',
   },
 } as const;
@@ -48,14 +49,16 @@ test('contract: a git credential shows only in the window the router targets', a
   await expect(dialog).toHaveCount(0);
 });
 
-test('Escape hides a prompt in this window; a reveal push brings it back', async ({ kira }) => {
+test('Shift+Escape hides a prompt in this window; a reveal push brings it back', async ({
+  kira,
+}) => {
   const { window, control } = kira;
   const dialog = window.locator('[data-testid="git-credential-dialog"]');
   await emitWailsEvent(window, IPC.gitCredential, [credential('req-1')]);
   await emitPrompts(window, [routed('git-credential', 'req-1')]);
   await expect(dialog).toBeVisible();
 
-  await window.keyboard.press('Escape');
+  await window.keyboard.press('Shift+Escape');
   await expect(dialog).toHaveCount(0);
   expect(control.log().some((e) => e.channel === IPC.gitCredentialProvide)).toBe(false);
 
@@ -119,7 +122,8 @@ studioTest.describe('databases module', () => {
     response: {
       updateAvailable: true,
       currentVersion: '1.2.0',
-      latestVersion: '1.3.0',
+      targetVersion: '1.3.0',
+      newestVersion: '1.3.0',
       installLogPath: '/tmp/kira-space-update.log',
     },
   } as const;

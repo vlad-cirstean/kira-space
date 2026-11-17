@@ -284,9 +284,6 @@ onBeforeUnmount(() => {
         data-testid="ade-wf-form-name"
         @update:model-value="(v: string | number) => draft.patchWorkflow({ name: String(v) })"
       />
-      <FieldDescription data-testid="ade-wf-form-file">{{
-        t('space.ade.workflows.fileName.description', { file: entry.fileName })
-      }}</FieldDescription>
     </div>
     <div ref="split" class="flex min-h-96 flex-1 rounded-kira bg-bg">
       <div class="relative min-w-0" :style="{ flex: `0 0 ${graphPane.size.value}%` }">

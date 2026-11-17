@@ -123,7 +123,7 @@ func (e detailsEvents) ProofReview(_ context.Context, taskID, slug string, pendi
 	return nil
 }
 
-// proofReady raises the ready popup of a new proof and records it for the panel forward.
+// proofReady raises the ready popup of a new proof.
 func (b *TaskBoard) proofReady(taskID, rel string) {
 	links := b.proofLinks()
 	c := taskfiles.Classify(rel)
@@ -135,9 +135,6 @@ func (b *TaskBoard) proofReady(taskID, rel string) {
 		return
 	}
 	links.RaiseReady(id)
-	if p := b.proofOf(taskID, id); p != nil {
-		b.recordPanelEdit(taskID, "proof:"+id, panelItemKindProof, "proof", "", proofText(p.Name, p.Summary))
-	}
 }
 
 // proofDelete is the user's delete of a proof: the folder and every row of it go.

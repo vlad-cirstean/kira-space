@@ -21,7 +21,7 @@ test('approvals dialog and toast', async ({ relaunch }) => {
     mask: [page.locator('[data-testid="approval-countdown"]')],
   });
 
-  await page.keyboard.press('Escape');
+  await page.keyboard.press('Shift+Escape');
   const toast = page.locator('[data-testid="approvals-toast"]');
   await expect(toast).toBeVisible();
   await settleFonts(page);

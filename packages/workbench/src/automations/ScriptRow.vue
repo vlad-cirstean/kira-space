@@ -26,10 +26,8 @@ defineProps<{
 }>();
 const emit = defineEmits<{ run: []; open: []; menu: [event: MouseEvent] }>();
 
-function problemText(p: ScriptFileProblem): string {
-  return p.line > 0
-    ? t('common.config.lineError.error', { line: p.line, text: p.message })
-    : t('common.config.fileError.error', { text: p.message });
+function problemText(): string {
+  return t('common.configForm.unreadable.status');
 }
 
 function firstLine(command: string): string {
@@ -81,7 +79,7 @@ function firstLine(command: string): string {
                   data-testid="script-row-problem"
                 />
               </TooltipTrigger>
-              <TooltipContent>{{ problemText(problem) }}</TooltipContent>
+              <TooltipContent>{{ problemText() }}</TooltipContent>
             </Tooltip>
           </span>
           <span class="truncate text-muted-foreground text-kira-sm">{{

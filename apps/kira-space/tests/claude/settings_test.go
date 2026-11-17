@@ -120,7 +120,7 @@ func TestRealClaudeSettingsUntouched(t *testing.T) {
 	t.Run("ade smart step", func(t *testing.T) {
 		if _, err := f.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
 			Name: "settings-lint", Kind: scripts.KindSmart, Color: "blue", UseAdeDir: true,
-			Command: "Call finish_step with status done and summary ok.",
+			Command: "Call state with action step.finish and args status done.",
 			Smart:   &scripts.Smart{Model: "haiku", MaxBudgetUSD: 0.05, Timeout: "3m", Tools: []string{"Read"}},
 		}}); err != nil {
 			t.Fatal(err)

@@ -120,11 +120,18 @@ func RunIO(ctx context.Context, path string, args []string, dir string, env []st
 	return spawn(ctx, spec{path: path, args: args, dir: dir, env: env, stdin: stdin, capture: true})
 }
 
+// RunIOTracked is RunIO that reports the child's pid once started: onStart returns a done func
+// called after the child is reaped. A caller uses it to track a live process for its lifetime.
+func RunIOTracked(ctx context.Context, path string, args []string, dir string, env []string, stdin []byte, onStart func(pid int) (done func())) ([]byte, error) {
+	return spawn(ctx, spec{path: path, args: args, dir: dir, env: env, stdin: stdin, capture: true, onStart: onStart})
+}
+
 type spec struct {
 	path, dir string
 	args, env []string
 	stdin     []byte
 	capture   bool
+	onStart   func(pid int) (done func())
 }
 
 type boundedBuffer struct {
@@ -157,7 +164,16 @@ func spawn(ctx context.Context, sp spec) ([]byte, error) {
 		cmd.Stdout = &stdout
 		cmd.Stdin = bytes.NewReader(sp.stdin)
 	}
-	err := cmd.Run()
+	var err error
+	if sp.onStart == nil {
+		err = cmd.Run()
+	} else if err = cmd.Start(); err == nil {
+		done := sp.onStart(cmd.Process.Pid)
+		err = cmd.Wait()
+		if done != nil {
+			done()
+		}
+	}
 	// On timeout/cancel a SIGTERM-ignoring group member can outlive the direct child; stopEscalate
 	// would disarm the SIGKILL that targets it, so kill the group outright first.
 	if ctx.Err() != nil && cmd.Process != nil {

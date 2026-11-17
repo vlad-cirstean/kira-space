@@ -134,7 +134,9 @@ test('contract: the exemption dialog names the timeout limit and the no-limit ru
   await expect(card.locator('[data-testid="db-mcp-exemption-limit"]')).toContainText('Timeout');
   await expect(card.locator('[data-testid="db-mcp-exemption-limit"]')).toContainText('/ 1');
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toHaveText(
-    'Lift for this query',
+    /^Lift for this query\b/,
   );
-  await expect(page.locator(`[data-testid="approval-deny-${it.id}"]`)).toHaveText('Keep the limit');
+  await expect(page.locator(`[data-testid="approval-deny-${it.id}"]`)).toHaveText(
+    /^Keep the limit/,
+  );
 });

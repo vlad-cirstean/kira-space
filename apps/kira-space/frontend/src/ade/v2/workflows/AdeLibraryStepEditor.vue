@@ -5,11 +5,9 @@ import { FieldDescription, FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
-import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
-import { control } from '../../../bridge/control';
 import { useDeleteStep, useStepYaml } from '../queries';
 import { useWorkflows } from '../readQueries';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
@@ -79,14 +77,6 @@ async function remove(): Promise<void> {
         data-testid="ade-step-mode"
         @update:model-value="setMode"
       />
-      <ConfigFileBar
-        v-if="wfUi.stepMode === 'yaml'"
-        :path="entry.path"
-        :error="entry.error"
-        :open="() => control.configFilesOpen({ folder: 'steps', file: entry.fileName })"
-        :reveal="() => control.configFilesReveal({ folder: 'steps', file: entry.fileName })"
-        :about="() => control.configFilesOpen({ folder: 'steps', file: 'AGENTS.md' })"
-      />
       <Button
         variant="dialog"
         size="kira-lg"
@@ -117,9 +107,8 @@ async function remove(): Promise<void> {
       deleteError
     }}</FieldError>
     <ConfigFileProblem
-      v-if="wfUi.stepMode !== 'yaml'"
       :error="entry.error"
-      :show-yaml="() => void setMode('yaml')"
+      :show-yaml="wfUi.stepMode !== 'yaml' ? () => void setMode('yaml') : undefined"
       class="shrink-0"
     />
     <AdeLibraryStepYaml v-if="wfUi.stepMode === 'yaml'" :entry="entry" />

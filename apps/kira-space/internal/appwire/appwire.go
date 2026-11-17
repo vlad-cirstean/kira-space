@@ -53,12 +53,12 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/agentport"
+	"github.com/kirathecat/kira-studio/internal/agentproc"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
 	"github.com/kirathecat/kira-studio/internal/configfs"
-	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/agentsvc"
@@ -81,6 +81,8 @@ import (
 // in the harness.
 type Options struct {
 	Repos *repos.Repos
+	// UpdateChecker replaces the production update checker; nil builds one (flow tests only).
+	UpdateChecker *appupdate.Checker
 	// Authorizer is shared by connections and variables, so a reveal grace is shared; nil builds one.
 	Authorizer *localauth.Authorizer
 	// Cipher seals saved secret values; nil builds one from the keychain.
@@ -90,8 +92,8 @@ type Options struct {
 	// Emitter is the window event sink (a deferred Wails emitter in production).
 	Emitter appevent.Emitter
 	Browser bridge.Browser
-	// FileOpener opens or reveals a config file; main passes the Wails adapter.
-	FileOpener configsvc.FileOpener
+	// FileOpener opens or reveals a proof folder; main passes the Wails adapter.
+	FileOpener bridge.ProofRevealer
 	// ImageClipboard writes several images to the system clipboard; main passes imageclip, nil means none.
 	ImageClipboard bridge.ProofClipboard
 	Dialogs        bridge.Dialogs
@@ -121,7 +123,7 @@ type Options struct {
 	// RebaseTimeout bounds one ADE rebase run; 0 keeps the default (20 minutes).
 	RebaseTimeout time.Duration
 	// BranchRequestWait is how long an agent's create_task waits for the user; 0 keeps
-	// the default (30 minutes).
+	// the default (10 minutes).
 	BranchRequestWait time.Duration
 	// CallWait is how long a state call blocks on unfinished work before it answers pending or waiting;
 	// 0 keeps the ade default.
@@ -252,7 +254,6 @@ type Wired struct {
 	MemoryImport    *bridge.MemoryImportService
 	MemoryDistill   *bridge.MemoryDistillService
 	WindowsSvc      *bridge.WindowsService
-	ConfigFiles     *bridge.ConfigFilesService
 	PromptsSvc      *bridge.PromptsService
 	ApprovalsSvc    *bridge.ApprovalsService
 	Approvals       *approvals.Queue
@@ -412,7 +413,10 @@ func Build(opts Options) (*Wired, error) {
 	w.Deps = deps
 
 	// P119: the update-availability checker and its detached installer.
-	updateChecker := appupdate.NewChecker(appupdate.Space.Name, buildinfo.Version)
+	updateChecker := opts.UpdateChecker
+	if updateChecker == nil {
+		updateChecker = appupdate.NewChecker(appupdate.Space.Name, buildinfo.Version)
+	}
 	updateInstaller := appupdate.NewInstaller(appupdate.Space, buildinfo.Version)
 	w.UpdateInstall = updateInstaller
 
@@ -567,7 +571,7 @@ func Build(opts Options) (*Wired, error) {
 	w.sched.Start()
 	w.ConfigSync.Start()
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
-	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry, Opener: opts.FileOpener}
+	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry}
 	w.Capture.Tasks = w.AdeTask
 	w.Proof.Folder = w.AdeBoard.TaskFolder
 	w.Leases = &bridge.LeasesService{Board: w.AdeBoard}
@@ -581,13 +585,11 @@ func Build(opts Options) (*Wired, error) {
 	}
 	bridge.KeepAwakeRecompute(w.KeepAwake)
 
-	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, configFolders(deps.Home, w.RepoConfig.Dir()))}
-
 	// OpenNewWindow is assigned by BindShell once the shell exists.
 	w.WindowsSvc = &bridge.WindowsService{Service: &windowsvc.Service{Windows: deps.Repos.Windows}}
 
 	// P116 G7: the status bar's CPU/memory readout.
-	w.Metrics = metrics.NewAppTicker("Kira Space")
+	w.Metrics = metrics.NewAppTicker("Kira Space", agentproc.Roots)
 	w.Metrics.Start()
 	w.detachMetrics = events.AttachMetrics(w.Metrics)
 
@@ -715,7 +717,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.ApprovalsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc), application.NewService(w.ConfigSyncSvc),
-		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
+		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
 		application.NewService(w.App), application.NewService(w.Connections),
 		application.NewService(w.MaskRules), application.NewService(w.Tree),
 		application.NewService(w.Filters), application.NewService(w.Queries), application.NewService(w.Schema),

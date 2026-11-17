@@ -46,15 +46,3 @@ export function useDiscardDisk() {
     onSuccess: settled,
   });
 }
-
-export function useOpenDetailsFolder() {
-  return useMutation({
-    mutationFn: (taskId: string) => control.adeTaskOpenDetailsFolder({ taskId }),
-  });
-}
-
-export function useRevealDetailsFolder() {
-  return useMutation({
-    mutationFn: (taskId: string) => control.adeTaskRevealDetailsFolder({ taskId }),
-  });
-}

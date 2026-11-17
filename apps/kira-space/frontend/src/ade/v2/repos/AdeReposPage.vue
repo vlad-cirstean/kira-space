@@ -20,6 +20,7 @@ import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualR
 import { errorText } from '@workbench/bridge/codedError';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
+import { configName } from '@workbench/config/configName';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
@@ -391,7 +392,7 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
                   tone="error"
                   :label="t('space.repo.settingsFile.problem.aria')"
                 />
-                {{ f.file }}
+                {{ configName(f.file) }}
               </Button>
             </div>
             <RepoFilePane

@@ -49,14 +49,6 @@ type AdeTaskService struct {
 	OpenWindow     func(rec shell.WindowRecord)
 	CloseWindow    func(key string) bool
 	SetWindowTitle func(key, title string)
-	// Opener opens and reveals a task folder; nil in a fixture that never calls those.
-	Opener TaskFolderOpener
-}
-
-// TaskFolderOpener shows a task folder in the file manager.
-type TaskFolderOpener interface {
-	OpenFile(path string) error
-	RevealFile(path string) error
 }
 
 // AdeTaskOpenSession is FocusSession's emit half: addressed to the one window just brought forward.
@@ -1544,28 +1536,4 @@ func (s *AdeTaskService) DetailsFolder(_ context.Context, args adewire.DiskChang
 	}
 	p, err := s.Engine.TaskFolder(args.TaskID)
 	return adewire.DetailsFolder{Path: p}, adeTaskError(err)
-}
-
-// OpenDetailsFolder opens the task folder in the file manager.
-func (s *AdeTaskService) OpenDetailsFolder(_ context.Context, args adewire.DiskChangesArgs) error {
-	return s.withFolder(args.TaskID, func(p string) error { return s.Opener.OpenFile(p) })
-}
-
-// RevealDetailsFolder shows the task folder in the file manager.
-func (s *AdeTaskService) RevealDetailsFolder(_ context.Context, args adewire.DiskChangesArgs) error {
-	return s.withFolder(args.TaskID, func(p string) error { return s.Opener.RevealFile(p) })
-}
-
-func (s *AdeTaskService) withFolder(taskID string, fn func(string) error) error {
-	if err := validateAdeTaskID(taskID, "taskId"); err != nil {
-		return err
-	}
-	if s.Opener == nil {
-		return nil
-	}
-	p, err := s.Engine.TaskFolder(taskID)
-	if err != nil || p == "" {
-		return adeTaskError(err)
-	}
-	return fn(p)
 }

@@ -1338,7 +1338,7 @@ type ForwardReviewResult struct {
 	Count int `json:"count"`
 }
 
-// PanelForwardItem is one pending task panel edit. Kind is note, handover, link, proof or field.
+// PanelForwardItem is one pending task panel edit. Kind is note, handover, link or field.
 type PanelForwardItem struct {
 	Key   string `json:"key"`
 	Kind  string `json:"kind"`

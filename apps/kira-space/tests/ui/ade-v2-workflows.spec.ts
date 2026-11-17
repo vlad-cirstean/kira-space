@@ -58,9 +58,7 @@ test('an empty folder shows the explanation', async ({ relaunch }) => {
       response: { dir: '~/.kira-space/config/workflows', workflows: [] },
     },
   ]);
-  await expect(page.locator(t('ade-wf-empty'))).toContainText(
-    'No workflows yet. Workflows are YAML files in ~/.kira-space/config/workflows.',
-  );
+  await expect(page.locator(t('ade-wf-empty'))).toContainText('No workflows yet.');
 });
 
 test('the list shows each file with its steps and flags a broken one', async ({ relaunch }) => {
@@ -391,7 +389,7 @@ test('YAML mode validates while typing and saves the text on Save', async ({ rel
   const area = page.locator(t('ade-wf-yaml'));
   await replaceCodeEditorText(page, area, `${await codeEditorText(area)}\n# note\n`);
   await expect(page.locator(t('ade-wf-yaml-msg'))).toContainText(
-    '✓ Valid, the form and the plan use this file',
+    '✓ Valid, the form and the plan use this version',
   );
   expect(calls(control, IPC.adeTaskSaveWorkflowYaml)).toHaveLength(0);
   await page.locator(t('ade-wf-save')).click();
@@ -473,31 +471,24 @@ test('Copy YAML confirms the copy', async ({ relaunch }) => {
   await expect(copy).toHaveText('Copied');
 });
 
-test('the config file bar shows only in YAML mode; Open and Reveal name the folder and file', async ({
-  relaunch,
-}) => {
-  const fx = adeFixture<WorkflowsFx>('workflows');
-  const { window: page, control } = await openWorkflows(relaunch);
-  await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
+test('a valid workflow shows no config status, path or file actions', async ({ relaunch }) => {
+  const { window: page } = await openWorkflows(relaunch);
   await expect(page.locator(t('config-file-problem'))).toHaveCount(0);
   await openYaml(page);
-  await expect(page.locator(t('config-file-status'))).toContainText('✓ Valid');
-  await page.locator(t('config-file-open')).click();
-  await page.locator(t('config-file-reveal')).click();
-  const file = (fx.workflows[0] as { fileName: string }).fileName;
-  await expect.poll(() => calls(control, IPC.configFilesOpen)).toHaveLength(1);
-  await expect.poll(() => calls(control, IPC.configFilesReveal)).toHaveLength(1);
-  expect(calls(control, IPC.configFilesOpen)[0]?.args).toEqual({ folder: 'workflows', file });
-  expect(calls(control, IPC.configFilesReveal)[0]?.args).toEqual({ folder: 'workflows', file });
-  await page.locator(t('config-file-about')).click();
-  await expect.poll(() => calls(control, IPC.configFilesOpen)).toHaveLength(2);
-  expect(calls(control, IPC.configFilesOpen)[1]?.args).toEqual({
-    folder: 'workflows',
-    file: 'AGENTS.md',
-  });
+  await expect(page.locator(t('config-file-problem'))).toHaveCount(0);
+  for (const id of [
+    'config-file-bar',
+    'config-file-status',
+    'config-file-path',
+    'config-file-open',
+    'config-file-reveal',
+    'config-file-about',
+  ]) {
+    await expect(page.locator(t(id))).toHaveCount(0);
+  }
 });
 
-test('a broken workflow file shows its problem in Graph mode and its line in the YAML file bar', async ({
+test('a broken workflow file shows its problem in Graph mode and the same notice in YAML mode', async ({
   relaunch,
 }) => {
   const fx = adeFixture<WorkflowsFx>('workflows');
@@ -515,16 +506,13 @@ test('a broken workflow file shows its problem in Graph mode and its line in the
     },
   ]);
   // A broken file opens in YAML mode; switch to Graph.
-  await expect(page.locator(t('config-file-bar'))).toBeVisible();
+  await expect(page.locator(t('config-file-problem'))).toContainText('Can’t be read');
+  await expect(page.locator(t('config-file-problem-show-yaml'))).toHaveCount(0);
   await page.locator(t('ade-wf-mode-graph')).click();
-  await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
-  await expect(page.locator(t('config-file-problem'))).toContainText(
-    'Line 7: kind must be agent, script, review or manual',
-  );
+  await expect(page.locator(t('config-file-problem'))).toContainText('Can’t be read');
+  await expect(page.locator(t('config-file-problem'))).not.toContainText('Line 7');
   await page.locator(t('config-file-problem-show-yaml')).click();
-  await expect(page.locator(t('config-file-status'))).toContainText(
-    '✕ Line 7: kind must be agent, script, review or manual',
-  );
+  await expect(page.locator(t('config-file-problem'))).toContainText('Can’t be read');
 });
 
 test('Import sends the typed path and opens YAML mode', async ({ relaunch }) => {

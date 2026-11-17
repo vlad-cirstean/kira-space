@@ -99,7 +99,7 @@ test('chips and toasts stack in one column and follow chip removal', async ({ re
     syncToast,
   ]);
   await expect(page.locator(t('approvals-dialog'))).toBeVisible();
-  await page.keyboard.press('Escape');
+  await page.keyboard.press('Shift+Escape');
   await expect(page.locator(t('approvals-toast'))).toBeVisible();
   await expect(page.locator(t('config-sync-toast'))).toBeVisible();
   await holdToast(page);
@@ -145,7 +145,7 @@ test('a narrow window keeps the toast under the title bar and inside the viewpor
 test('clicks pass through the column outside the chips', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [...seedApprovals([item()]), syncToast]);
   await expect(page.locator(t('approvals-dialog'))).toBeVisible();
-  await page.keyboard.press('Escape');
+  await page.keyboard.press('Shift+Escape');
   await expect(page.locator(t('approvals-toast'))).toBeVisible();
   await expect(page.locator(t('config-sync-toast'))).toBeVisible();
   const stack = await box(page, t('corner-stack'));

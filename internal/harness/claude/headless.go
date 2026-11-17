@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kirathecat/kira-studio/internal/agentproc"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude/hooks"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -233,6 +234,7 @@ func (p *Provider) RunHeadless(ctx context.Context, spec harness.HeadlessSpec, h
 	if err := cmd.Start(); err != nil {
 		return harness.Exit{}, err
 	}
+	defer agentproc.Track(cmd.Process.Pid)()
 	if h.OnStart != nil {
 		h.OnStart(cmd.Process.Pid)
 	}

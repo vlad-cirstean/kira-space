@@ -43,7 +43,7 @@ linters:
       - path: internal/httpclient/cookiejar/(jar|punycode|example_test)\.go
         linters: [gocognit, gocyclo, gocritic, bodyclose]
       # gocritic reads cgo's rewritten `_Cgo_ptr(p) == _Cgo_ptr(p)` nil guards as identical operands.
-      - path: registry_darwin\.go
+      - path: (registry|processlist)_darwin\.go
         text: dupSubExpr
         linters: [gocritic]
 

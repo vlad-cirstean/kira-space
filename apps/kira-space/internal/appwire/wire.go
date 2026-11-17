@@ -14,13 +14,11 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentnotify"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentusage"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configsync"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitaskpass"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
@@ -35,7 +33,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
-	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/configfs"
@@ -46,7 +43,6 @@ import (
 	"github.com/kirathecat/kira-studio/internal/memory/memorycli"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
-	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 )
@@ -602,15 +598,6 @@ func repoFile(store *repocfg.Store) func(repoID string) (string, *adewire.RepoPr
 // promptsPath is the user prompt overrides file under an app home.
 func promptsPath(home string) string {
 	return filepath.Join(configfs.ModuleDir(home, llmprompts.Folder), llmprompts.File)
-}
-
-// configFolders maps every config module the file service edits to its folder.
-func configFolders(home, repoDir string) map[string]string {
-	folders := map[string]string{repocfg.Folder: repoDir}
-	for _, f := range []string{connfiles.Folder, apifiles.Folder, scripts.Folder, adeflow.WorkflowsFolder, adeflow.StepsFolder, agentctx.Folder} {
-		folders[f] = configfs.ModuleDir(home, f)
-	}
-	return folders
 }
 
 // adeRunsDir holds the per-run MCP files; runtime state, not config.

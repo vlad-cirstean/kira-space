@@ -46,15 +46,21 @@ test('contract: a script request shows the script, who asked and the masked secr
   await expect(card.locator('[data-testid="db-mcp-approval-statement"]')).toHaveCount(0);
 });
 
-test('contract: Deny is focused first and denies by item id', async ({ relaunch }) => {
+test('contract: single keys do nothing; Mod+Backspace denies by item id', async ({ relaunch }) => {
   const { item, answer } = setup();
   const { window: page, control } = await relaunch({
     control: [{ channel: IPC.approvalsAnswer, response: answeredOk(answer.ids) }],
   });
 
   await pushApprovals(page, [liveItem(item)]);
-  await expect(page.locator(`[data-testid="approval-deny-${item.id}"]`)).toBeFocused();
-  await page.click(`[data-testid="approval-deny-${item.id}"]`);
+  await expect(page.locator(`[data-testid="approval-deny-${item.id}"]`)).not.toBeFocused();
+  await page.keyboard.press('Enter');
+  expect(control.log().some((e) => e.channel === IPC.approvalsAnswer)).toBe(false);
+  await expect(page.locator('[data-testid="approvals-dialog"]')).toHaveAttribute(
+    'data-chords-armed',
+    'true',
+  );
+  await page.keyboard.press('Meta+Backspace');
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
     .toEqual({ ids: [item.id], approve: false, options: null });

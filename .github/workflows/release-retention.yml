@@ -1,0 +1,112 @@
+name: Release retention
+
+# P653: deletes the assets of releases the updater no longer needs (docs/PACKAGING.md §7). Kept: each
+# minor's .0, first and last release (the updater's step targets), the 5 newest of the current minor
+# and releases/latest. Only assets go: tags, release pages and releases/latest are never touched.
+# Separate from release.yml so a failure here never fails a release. The plan is idempotent, so the
+# daily schedule is a harmless fallback for when a chained dispatch of release.yml creates no
+# workflow_run event.
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  schedule:
+    - cron: '43 5 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Plan only, delete nothing
+        required: false
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: release-retention
+  cancel-in-progress: false
+
+jobs:
+  retention:
+    if: >-
+      github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    name: release retention
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      # GH_TOKEN (contents: write) is set only on the steps that call gh api; the planner build and
+      # run see no token.
+      - name: Fetch releases
+        id: fetch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          gh api --paginate --slurp "repos/$GH_REPO/releases?per_page=100" > releases.json
+          ERR="$(mktemp)"
+          if ! LATEST="$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name 2>"$ERR")"; then
+            if grep -q 'HTTP 404' "$ERR"; then
+              echo "no published release yet; nothing to do"
+              echo "none=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            cat "$ERR" >&2
+            exit 1
+          fi
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+      - name: Plan
+        if: steps.fetch.outputs.none != 'true'
+        env:
+          LATEST: ${{ steps.fetch.outputs.latest }}
+        run: |
+          set -eu
+          go run ./scripts/releaseretention -releases releases.json -latest "$LATEST" -deletes deletes.tsv | tee plan.log
+          { echo '### Release retention'; echo; echo '```'; cat plan.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      # Dispatch follows its input. Unattended runs only apply once the repository variable
+      # RELEASE_RETENTION is 'apply', set after a reviewed dry run.
+      - name: Apply
+        if: steps.fetch.outputs.none != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          APPLY_VAR: ${{ vars.RELEASE_RETENTION }}
+        run: |
+          set -eu
+          if [ "$EVENT" = workflow_dispatch ]; then
+            DRY_RUN="$INPUT_DRY_RUN"
+          elif [ "$APPLY_VAR" = apply ]; then
+            DRY_RUN=false
+          else
+            DRY_RUN=true
+          fi
+
+          COUNT="$(grep -c . deletes.tsv || true)"
+          if [ "$DRY_RUN" != false ]; then
+            echo "dry run: would delete $COUNT assets"
+            exit 0
+          fi
+          ERR="$(mktemp)"
+          # Assets only: releases/assets/{id} is the one endpoint this job deletes through.
+          while IFS="$(printf '\t')" read -r ID TAG NAME; do
+            [ -n "$ID" ] || continue
+            if gh api -X DELETE "repos/$GH_REPO/releases/assets/$ID" 2>"$ERR"; then
+              echo "deleted $TAG asset $NAME (id $ID)"
+            elif grep -q 'HTTP 404' "$ERR"; then
+              echo "already deleted: $TAG asset $NAME (id $ID)"
+            else
+              cat "$ERR" >&2
+              exit 1
+            fi
+          done < deletes.tsv

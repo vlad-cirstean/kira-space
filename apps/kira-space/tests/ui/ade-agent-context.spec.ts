@@ -80,29 +80,19 @@ test('a broken file shows its line and the last-good note', async ({ relaunch })
     lastGood: true,
     editable: false,
   });
-  await expect(page.locator(t('config-file-status'))).toContainText('2');
+  await expect(page.locator(t('config-file-problem'))).toContainText('Can’t be read');
   await expect(page.locator(t('ade-context-last-good'))).toBeVisible();
   await expect(page.locator(t('ade-context-read-only'))).toBeVisible();
 });
 
 test('a missing file shows the none hint', async ({ relaunch }) => {
   const { window: page } = await openContext(relaunch, { exists: false, text: '', hash: '' });
-  await expect(page.locator(t('ade-context-none'))).toContainText('context.md');
+  await expect(page.locator(t('ade-context-none'))).toContainText('No context yet');
 });
 
 test('the resume note names providers that keep the recorded context', async ({ relaunch }) => {
   const { window: page } = await openContext(relaunch, { keepsOnResume: ['Claude Code'] });
   await expect(page.locator(t('ade-context-resume'))).toContainText('Claude Code');
-});
-
-test('Open names the agent folder and file', async ({ relaunch }) => {
-  const { window: page, control } = await openContext(relaunch);
-  await page.locator(t('config-file-open')).click();
-  await expect.poll(() => calls(control, IPC.configFilesOpen)).toHaveLength(1);
-  expect(calls(control, IPC.configFilesOpen)[0]?.args).toEqual({
-    folder: 'agent',
-    file: 'context.md',
-  });
 });
 
 test('a save refused for a changed file offers Reload and Overwrite', async ({ relaunch }) => {

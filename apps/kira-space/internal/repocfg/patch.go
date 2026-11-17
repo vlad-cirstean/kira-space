@@ -104,7 +104,7 @@ func (s *Store) patchLocked(id string, p model.GitRepoSettingsPatch) (loaded, er
 	for attempt := 0; ; attempt++ {
 		if e, ok := s.folder.Get(file); ok && e.Problem != nil {
 			return loaded{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.space.repoFiles.fileBroken.body",
-				map[string]string{"file": file, "line": strconv.Itoa(e.Problem.Line)})
+				map[string]string{"line": strconv.Itoa(e.Problem.Line)})
 		}
 		src, hash, err := s.folder.Read(file)
 		if err != nil {

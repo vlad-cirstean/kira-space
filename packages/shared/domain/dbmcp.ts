@@ -130,6 +130,8 @@ export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
   mode: dbMcpPayloadModeSchema,
   detected: z.string(),
   enforcement: z.string(),
+  // A plan request: the statement is the agent SQL, shown as an explain.
+  explain: z.boolean().default(false),
   plan: dbMcpApprovalPlanSchema.nullable(),
   // The item offers "review the result"; reviewResult says the connection's settings already do.
   reviewOffered: z.boolean().default(false),

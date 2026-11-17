@@ -2,8 +2,9 @@
 import { t } from '@theme/i18n';
 import type { PortResult } from './types';
 
-// What an Import or Export wrote. A backup path is one name beside its file.
-defineProps<{ result: PortResult }>();
+// What an Import or Export wrote. A backup path is one name beside its file. Import hides the
+// written list: those are Kira's own settings and context, not files the user manages.
+const { showWritten = true } = defineProps<{ result: PortResult; showWritten?: boolean }>();
 
 const base = (path: string): string => path.split(/[\\/]/).pop() ?? path;
 </script>
@@ -11,7 +12,7 @@ const base = (path: string): string => path.split(/[\\/]/).pop() ?? path;
 <template>
   <div class="flex min-w-0 flex-col gap-3 text-kira-md" data-testid="ade-port-result">
     <h3 class="m-0 text-kira-lg font-medium">{{ t('common.done.status') }}</h3>
-    <section v-if="result.written?.length" class="flex flex-col gap-0.5">
+    <section v-if="showWritten && result.written?.length" class="flex flex-col gap-0.5">
       <div class="text-kira-sm text-subtle">{{ t('space.ade.port.written.label') }}</div>
       <ul class="m-0 list-none p-0 font-data text-kira-sm" data-testid="ade-port-written">
         <li v-for="p in result.written" :key="p">{{ p }}</li>

@@ -364,3 +364,36 @@ func TestDbMcpExposureOffClosesLane(t *testing.T) {
 	}
 	testx.WaitUntil(t, 10*time.Second, func() bool { return !f.app.W.Router.ReadLaneOpen(f.connID) })
 }
+
+// Prompt-mode explain raises a read approval carrying the agent's SQL, flagged explain, so the card
+// renders. Contract dbmcp-explain-approval: tests/ui/approvals-payload.spec.ts renders this item.
+func TestDbMcpExplainApproval(t *testing.T) {
+	f := newFixture(t)
+	f.mcpSet(t, map[string]string{"read": "prompt"})
+	sess := f.session(t)
+	const sql = "select body from notes where id = 1"
+	args := withMode(f.connID, sql, "read")
+	args["explain"] = true
+	done := make(chan *mcp.CallToolResult, 1)
+	go func() {
+		res, _ := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: args})
+		done <- res
+	}()
+	req := f.pending(t)
+	var pl struct {
+		Mode      string `json:"mode"`
+		Statement string `json:"statement"`
+		Explain   bool   `json:"explain"`
+	}
+	if err := json.Unmarshal(req.Item.Payload, &pl); err != nil {
+		t.Fatal(err)
+	}
+	if pl.Mode != "read" || !pl.Explain || pl.Statement != sql {
+		t.Fatalf("approval = %+v, want mode read, explain, the agent SQL", pl)
+	}
+	f.app.Contract(t, "dbmcp-explain-approval", "ApprovalsService.List", []any{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.answerItems(t, true, req.Item.ID)
+	if res := <-done; res == nil || res.IsError {
+		t.Fatalf("approved explain = %+v, want the plan", res)
+	}
+}

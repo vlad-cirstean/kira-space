@@ -79,8 +79,8 @@ test('contract: Send answers the item id, Don’t send denies it', async ({ rela
     control: [{ channel: IPC.approvalsAnswer, response: answeredOk(answer.ids) }],
   });
   await pushApprovals(page, [liveItem(it)]);
-  await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toHaveText('Send');
-  await expect(page.locator(`[data-testid="approval-deny-${it.id}"]`)).toHaveText('Don’t send');
+  await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toHaveText(/^Send\b/);
+  await expect(page.locator(`[data-testid="approval-deny-${it.id}"]`)).toHaveText(/^Don’t send/);
   await page.click(`[data-testid="approval-approve-${it.id}"]`);
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)

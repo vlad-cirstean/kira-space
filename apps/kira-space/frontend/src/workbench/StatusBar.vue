@@ -112,7 +112,9 @@ function onRevealBlameCommit(): void {
       <RunsStatusItem />
       <UpdateAvailableItem
         v-if="appUpdateStore.available"
-        :latest-version="appUpdateStore.latestVersion"
+        :target-version="appUpdateStore.targetVersion"
+        :newest-version="appUpdateStore.newestVersion"
+        :stepped="appUpdateStore.stepped"
         :current-version="appUpdateStore.currentVersion"
         @open="appUpdateStore.openUpdateDialog()"
       />

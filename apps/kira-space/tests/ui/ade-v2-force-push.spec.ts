@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { adeFixture, openPlan } from './support/adeV2';
+import { adeFixture, openPlan, revealRow } from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 
@@ -21,6 +21,7 @@ test('asks first, names the repo and sends the branch', async ({ relaunch }) => 
     { channel: IPC.adeTaskBoard, response: unpushedBoard() },
     { channel: IPC.adeTaskForcePush, response: adeFixture('force-push') },
   ]);
+  await revealRow(page, 'b_deps', 'board', 'ade-force-push');
   await page.locator('[data-testid="ade-force-push"]').click();
   const dialog = page.locator('[data-testid="ade-confirm-dialog"]');
   await expect(dialog).toContainText('Force push?');
@@ -43,6 +44,7 @@ test('the danger dialog opens with Cancel focused and Escape closes it unsent', 
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskBoard, response: unpushedBoard() },
   ]);
+  await revealRow(page, 'b_deps', 'board', 'ade-force-push');
   await page.locator('[data-testid="ade-force-push"]').click();
   const dialog = page.locator('[data-testid="ade-confirm-dialog"]');
   await expect(dialog.locator('[data-testid="ade-confirm-no"]')).toBeFocused();
@@ -66,6 +68,7 @@ test('the backend error closes the dialog and lands in an error toast', async ({
       error: { kind: 'stale-lease', message: 'remote has newer commits', remoteMessage: null },
     }),
   ]);
+  await revealRow(page, 'b_deps', 'board', 'ade-force-push');
   await page.locator('[data-testid="ade-force-push"]').click();
   const dialog = page.locator('[data-testid="ade-confirm-dialog"]');
   await dialog.locator('[data-testid="ade-confirm-yes"]').click();
@@ -82,6 +85,7 @@ for (const key of ['stale-lease', 'unintegrated']) {
       { channel: IPC.adeTaskBoard, response: unpushedBoard() },
       forcePushSnapshot({ ...refused, branchId: 'b_deps' }),
     ]);
+    await revealRow(page, 'b_deps', 'board', 'ade-force-push');
     await page.locator('[data-testid="ade-force-push"]').click();
     await page.locator('[data-testid="ade-confirm-yes"]').click();
     await expect(toast(page)).toContainText('failed to push some refs');
@@ -99,6 +103,7 @@ test('a push in flight shows the chip, and past 2 s a loading then a success toa
     { channel: IPC.adeTaskBoard, response: unpushedBoard() },
     forcePushSnapshot(adeFixture('force-push'), true),
   ]);
+  await revealRow(page, 'b_deps', 'board', 'ade-force-push');
   await page.locator('[data-testid="ade-force-push"]').click();
   await page.locator('[data-testid="ade-confirm-yes"]').click();
   await expect(page.locator('[data-testid="ade-confirm-dialog"]')).toHaveCount(0);
@@ -121,6 +126,7 @@ test('a force push from the panel branch list shows the chip on that row', async
   const row = page.locator(
     '[data-testid="ade-task-branch-item"][data-branch-id="b_deps"] [data-testid="ade-force-push"]',
   );
+  await revealRow(page, 'b_deps', 'panel', 'ade-force-push');
   await row.click();
   await page.locator('[data-testid="ade-confirm-yes"]').click();
   const chip = page.locator(
@@ -136,6 +142,7 @@ test('a push that finishes within 2 s shows no toast', async ({ relaunch }) => {
     { channel: IPC.adeTaskBoard, response: unpushedBoard() },
     forcePushSnapshot(adeFixture('force-push')),
   ]);
+  await revealRow(page, 'b_deps', 'board', 'ade-force-push');
   await page.locator('[data-testid="ade-force-push"]').click();
   await page.locator('[data-testid="ade-confirm-yes"]').click();
   await expect(page.locator('[data-testid="ade-confirm-dialog"]')).toHaveCount(0);

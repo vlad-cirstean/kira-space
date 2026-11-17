@@ -84,15 +84,10 @@ export function createAutomationsModule(): AutomationsModuleContext {
     mcp: true,
     showAutomations: () => modeStore.setMode('automations'),
     showOperations: () => layoutStore.showOperationsPanel(),
-    files: {
-      open: (file) => control.configFilesOpen({ folder: 'runs', file }),
-      reveal: (file) => control.configFilesReveal({ folder: 'runs', file }),
-    },
     scripts: {
       records: () => customScriptsStore.records,
       collections: () => customScriptsStore.collections,
       problems: () => customScriptsStore.problems,
-      dir: () => customScriptsStore.dir,
       secretStorage: () => customScriptsStore.secretStorage,
       create: (fields) => customScriptsStore.createCustomScript(fields),
       remove: (id) => customScriptsStore.removeCustomScript(id),

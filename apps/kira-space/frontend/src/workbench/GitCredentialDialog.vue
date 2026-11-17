@@ -10,14 +10,17 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Input } from '@theme/components/ui/input';
+import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { useFocusOnMount } from '@workbench/behaviour/focus';
 import SecretInput from '@workbench/components/SecretInput.vue';
+import { formatShortcut } from '@workbench/shortcuts/keys';
+import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { type ComponentPublicInstance, computed, ref, useTemplateRef } from 'vue';
 import { useGitCredentialStore } from '../state/gitCredential';
 
 // git's own askpass prompt, mounted by PromptHost for the routed `git-credential` entry whose ref
-// is a relay request id. Escape and the frame's close hide it in this window
+// is a relay request id. Shift+Escape and the frame's close hide it in this window
 // (the op keeps waiting); Cancel answers null (the op fails). The typed value lives only in
 // `value`, cleared in the same statement that answers, and is never logged or persisted.
 const props = defineProps<{ entry: RoutedPrompt; more: number }>();
@@ -42,11 +45,26 @@ function onCancel(): void {
   value.value = '';
   if (prompt.value) void store.answer(prompt.value.requestId, null);
 }
+
+// Two-key chords only: Enter in the field types, never submits. Mod+Backspace deletes text in the
+// field, so it cancels only from outside it.
+const submitKey = shortcutKeydown(['form.submit'], onSubmit);
+const cancelKey = shortcutKeydown(['prompt.deny'], onCancel, { ignoreTextFields: true });
+function onChord(event: KeyboardEvent): void {
+  submitKey(event);
+  cancelKey(event);
+}
 </script>
 
 <template>
   <Dialog v-if="prompt" :open="true" @update:open="(v) => !v && emit('hide')">
-    <DialogContent size="sm" :dirty="value !== ''" data-testid="git-credential-dialog">
+    <DialogContent
+      size="sm"
+      prompt
+      :dirty="value !== ''"
+      data-testid="git-credential-dialog"
+      @keydown="onChord"
+    >
       <DialogHeader close-testid="git-credential-dialog-close">
         <DialogTitle>{{ t('space.gitCredential.dialog.title') }}</DialogTitle>
       </DialogHeader>
@@ -64,7 +82,7 @@ function onCancel(): void {
           ref="secretField"
           v-model="value"
           data-testid="git-credential-input"
-          @keydown.enter="onSubmit"
+          data-dialog-initial
         />
         <Input
           v-else
@@ -72,7 +90,7 @@ function onCancel(): void {
           v-model="value"
           class="w-full font-data"
           data-testid="git-credential-input"
-          @keydown.enter="onSubmit"
+          data-dialog-initial
         />
       </DialogBody>
 
@@ -85,18 +103,22 @@ function onCancel(): void {
         <Button
           variant="dialog"
           size="kira-lg"
+          :aria-keyshortcuts="formatShortcut('prompt.deny')"
           data-testid="git-credential-cancel"
           @click="onCancel"
         >
           {{ t('common.action.cancel.label') }}
+          <Kbd>{{ formatShortcut('prompt.deny') }}</Kbd>
         </Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"
+          :aria-keyshortcuts="formatShortcut('form.submit')"
           data-testid="git-credential-submit"
           @click="onSubmit"
         >
           {{ t('common.continue.label') }}
+          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

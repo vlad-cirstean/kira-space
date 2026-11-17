@@ -57,9 +57,7 @@ const fileProblem = computed(() => {
   const file = config.data.value?.files.find((f) => f.id === props.row.connectionId);
   const problem = file?.problem;
   if (!problem) return null;
-  return problem.line > 0
-    ? t('common.config.lineError.error', { line: problem.line, text: problem.message })
-    : problem.message;
+  return t('common.configForm.unreadable.status');
 });
 
 const icon = computed(() => {

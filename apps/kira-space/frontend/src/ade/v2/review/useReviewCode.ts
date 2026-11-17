@@ -70,11 +70,14 @@ export function useReviewCode() {
     ];
     const r = anchor?.getBoundingClientRect();
     contextMenu.openContextMenuAt(r?.left ?? 0, r?.bottom ?? 0, items);
+    // Keeps the hover-only cluster shown while the menu covers the pointer, so focus can return.
+    anchor?.setAttribute('data-pinned', '');
     watch(
       () => contextMenu.open,
       async () => {
         await nextTick();
         refocus(anchor);
+        anchor?.removeAttribute('data-pinned');
       },
       { once: true },
     );

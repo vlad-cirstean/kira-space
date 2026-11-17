@@ -4,11 +4,7 @@ import { codeEditorText, expectHighlighted, replaceCodeEditorText } from '../cod
 import type { ScenarioEnv } from './env';
 
 type Env = ScenarioEnv<
-  | 'configFilesOpen'
-  | 'customScriptsFile'
-  | 'customScriptsForm'
-  | 'customScriptsList'
-  | 'customScriptsSaveFile'
+  'customScriptsFile' | 'customScriptsForm' | 'customScriptsList' | 'customScriptsSaveFile'
 >;
 
 export interface Options {
@@ -84,8 +80,8 @@ export function registerFileScenarios(env: Env, options: Options): void {
     await page.locator('[data-testid="script-deploy"]').dblclick();
     await expect(dialog(page)).toBeVisible();
     await yamlTab(page).click();
-    await expect(dialog(page).locator('[data-testid="config-file-status"]')).toContainText(
-      'Line 3',
+    await expect(dialog(page).locator('[data-testid="config-file-problem"]')).toContainText(
+      'Can’t be read',
     );
     await expect(dialog(page).locator('[data-testid="run-file-last-good"]')).toBeVisible();
     await expect
@@ -102,7 +98,7 @@ export function registerFileScenarios(env: Env, options: Options): void {
     await expect
       .poll(() => control.log().find((e) => e.channel === IPC.customScriptsSaveFile)?.args)
       .toEqual({ file: 'deploy.yaml', text: edited.text, baseHash: bad.hash });
-    await expect(dialog(page).locator('[data-testid="config-file-status"]')).toContainText('Valid');
+    await expect(dialog(page).locator('[data-testid="config-file-problem"]')).toHaveCount(0);
     await expect(dialog(page).locator('[data-testid="run-file-last-good"]')).toHaveCount(0);
   });
 
@@ -129,22 +125,6 @@ export function registerFileScenarios(env: Env, options: Options): void {
     await expect(dialog(page).locator('[data-testid="run-file-save-error"]')).toBeVisible();
     await expect(dialog(page).locator('[data-testid="run-file-reload"]')).toBeVisible();
     await expect(dialog(page).locator('[data-testid="run-file-overwrite"]')).toBeVisible();
-  });
-
-  test('Open sends the runs folder and the file name', async ({ relaunch }) => {
-    const { window: page, control } = await relaunch({
-      control: [
-        ...base(snapshot('valid'), file('edited')),
-        { channel: IPC.configFilesOpen, response: null },
-      ],
-    });
-    await openPanel(page);
-    await page.locator('[data-testid="script-deploy"]').dblclick();
-    await yamlTab(page).click();
-    await dialog(page).locator('[data-testid="config-file-open"]').click();
-    await expect
-      .poll(() => control.log().find((e) => e.channel === IPC.configFilesOpen)?.args)
-      .toEqual({ folder: 'runs', file: 'deploy.yaml' });
   });
 
   test('a file with no valid version is listed as a broken row that opens', async ({
@@ -174,29 +154,26 @@ export function registerFileScenarios(env: Env, options: Options): void {
     await expect(dialog(page).locator('[data-testid="run-form-problem"]')).toContainText(
       'Invalid file name.',
     );
-    await expect(dialog(page).locator('[data-testid="config-file-bar"]')).toHaveCount(0);
     await expect(dialog(page).locator('[data-testid="config-file-problem"]')).toHaveCount(0);
     await yamlTab(page).click();
-    await expect(dialog(page).locator('[data-testid="config-file-status"]')).toContainText(
-      'Invalid file name.',
+    await expect(dialog(page).locator('[data-testid="config-file-problem"]')).toContainText(
+      'Can’t be read',
     );
   });
 
-  test('the file bar shows only on the YAML tab', async ({ relaunch }) => {
+  test('a valid script shows no notice on any tab', async ({ relaunch }) => {
     const { window: page } = await relaunch({
       control: base(snapshot('valid'), file('edited')),
     });
     await openPanel(page);
     await page.locator('[data-testid="script-deploy"]').dblclick();
     await expect(dialog(page)).toBeVisible();
-    await expect(dialog(page).locator('[data-testid="config-file-bar"]')).toHaveCount(0);
+    await expect(dialog(page).locator('[data-testid="config-file-problem"]')).toHaveCount(0);
     await yamlTab(page).click();
-    await expect(dialog(page).locator('[data-testid="config-file-bar"]')).toContainText(
-      'deploy.yaml',
-    );
+    await expect(dialog(page).locator('[data-testid="config-file-problem"]')).toHaveCount(0);
   });
 
-  test('a loader problem shows on a form tab without the bar', async ({ relaunch }) => {
+  test('a loader problem shows on a form tab', async ({ relaunch }) => {
     const bad = file('bad');
     const { window: page } = await relaunch({
       control: [
@@ -210,11 +187,12 @@ export function registerFileScenarios(env: Env, options: Options): void {
     });
     await openPanel(page);
     await page.locator('[data-testid="script-deploy"]').dblclick();
-    await expect(dialog(page).locator('[data-testid="config-file-bar"]')).toHaveCount(0);
     await expect(dialog(page).locator('[data-testid="config-file-problem"]')).toContainText(
-      'Line 3',
+      'Can’t be read',
     );
     await dialog(page).locator('[data-testid="config-file-problem-show-yaml"]').click();
-    await expect(dialog(page).locator('[data-testid="config-file-bar"]')).toBeVisible();
+    await expect(dialog(page).locator('[data-testid="config-file-problem"]')).toContainText(
+      'Can’t be read',
+    );
   });
 }

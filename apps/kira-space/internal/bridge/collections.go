@@ -360,7 +360,7 @@ func apiFilesErr(err error) error {
 	switch {
 	case errors.As(err, &broken):
 		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.apiFiles.fileBroken.body",
-			map[string]string{"file": broken.File, "line": strconv.Itoa(broken.Line)})
+			map[string]string{"line": strconv.Itoa(broken.Line)})
 	case errors.As(err, &invalid):
 		return ipcerr.BadRequest(invalid.Problem.Message)
 	case errors.Is(err, apifiles.ErrNotFound), errors.Is(err, apifiles.ErrItemGone):

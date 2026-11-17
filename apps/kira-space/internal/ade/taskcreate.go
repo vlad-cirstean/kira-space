@@ -15,6 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
+	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -22,11 +23,7 @@ import (
 // one approvals item and blocks, without the task lock, until the user answers, the wait runs out or the
 // caller is gone. Nothing caps the number of open calls: every child needs its own approval.
 
-const (
-	defaultTaskRequestWait = 30 * time.Minute
-
-	noteTaskApproval = "waiting for task approval"
-)
+const noteTaskApproval = "waiting for task approval"
 
 type taskVerdict int
 
@@ -55,7 +52,7 @@ type taskRequests struct {
 type taskCreateRepo struct {
 	CodeRepoID string `json:"codeRepoId"`
 	Name       string `json:"name"`
-	Base       string `json:"base,omitempty"`
+	Base       string `json:"base"`
 }
 
 type taskCreateWorkflow struct {
@@ -105,7 +102,7 @@ func (b *TaskBoard) taskRequestWait() time.Duration {
 	if b.deps.TaskRequestWait > 0 {
 		return b.deps.TaskRequestWait
 	}
-	return defaultTaskRequestWait
+	return prompts.AnswerWait
 }
 
 // resolveTaskRequest withdraws the item and hands the call the verdict; false when it was already

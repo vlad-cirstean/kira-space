@@ -119,8 +119,8 @@ test('connection menu and lifecycle over files', async ({ relaunch }) => {
   // The menu edits the file; colour and read-only are no longer menu items.
   await row.click({ button: 'right' });
   await expect(page.locator('[data-testid="menu-item-edit"]')).toBeVisible();
-  await expect(page.locator('[data-testid="menu-item-open-file"]')).toBeVisible();
-  await expect(page.locator('[data-testid="menu-item-reveal-file"]')).toBeVisible();
+  await expect(page.locator('[data-testid="menu-item-open-file"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="menu-item-reveal-file"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="menu-item-color"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="menu-item-readonly"]')).toHaveCount(0);
   await page.keyboard.press('Escape');

@@ -240,3 +240,31 @@ test('branch rows start with the depth indent, no lead cell', async ({ relaunch 
   expect(start).toBeGreaterThanOrEqual(0);
   expect(start).toBeLessThan(16);
 });
+
+// Layout only, no backend half. Line 2 of a board branch row (progress label plus target chips)
+// never clips: the label gives way, the chips keep their width.
+for (const [name, width] of [
+  ['the default 400px list', 1280],
+  ['the 360px floor', 760],
+] as const) {
+  test(`branch row line 2 fits at ${name}`, async ({ relaunch }) => {
+    const { window: page } = await openPlan(relaunch);
+    await page.setViewportSize({ width, height: 900 });
+    await page.locator(head('T_cart')).click();
+    await expect(page.locator(card('T_cart'))).toHaveAttribute('aria-current', 'true');
+    const plan = await page.locator(t('ade-plan')).boundingBox();
+    expect(plan?.width ?? 0).toBeGreaterThanOrEqual(360);
+    expect(plan?.width ?? 0).toBeLessThanOrEqual(400);
+    const clipped = await page
+      .locator(t('ade-branch-line2'))
+      .evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth).length);
+    expect(clipped).toBe(0);
+    const cart = page.locator(`${t('ade-branch-row')}[data-branch-id="b_cart"]`);
+    await expect(cart.locator(t('ade-branch-merged'))).toHaveText(['dev ✓']);
+    await expect(cart.locator(t('ade-branch-deployed'))).toHaveText(['▲staging ✓', '▲prod ✓']);
+    await cart.locator(t('ade-branch-line2')).hover();
+    await expect(
+      page.locator(t('ade-branch-tip')).getByText('Release · failed').first(),
+    ).toBeVisible();
+  });
+}

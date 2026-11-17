@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/to
 import { t } from '@theme/i18n';
 import { rowIndent, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
+import { configName } from '../config/configName';
 
 // A run file that is invalid and has no earlier valid version: listed so it can be opened and fixed.
 defineOptions({ inheritAttrs: false });
@@ -28,17 +29,13 @@ const emit = defineEmits<{ open: [] }>();
       >
         <CodiconIcon name="warning" :size="13" class="shrink-0 text-tone-red" aria-hidden="true" />
         <div class="flex-1 min-w-0 flex flex-col">
-          <TruncatedText :text="problem.file" />
+          <TruncatedText :text="configName(problem.file)" />
           <span class="truncate text-kira-sm text-tone-red">{{
             t('automations.file.broken.status')
           }}</span>
         </div>
       </div>
     </TooltipTrigger>
-    <TooltipContent>{{
-      problem.line > 0
-        ? t('common.config.lineError.error', { line: problem.line, text: problem.message })
-        : t('common.config.fileError.error', { text: problem.message })
-    }}</TooltipContent>
+    <TooltipContent>{{ t('common.configForm.unreadable.status') }}</TooltipContent>
   </Tooltip>
 </template>

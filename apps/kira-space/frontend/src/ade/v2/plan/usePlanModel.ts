@@ -392,7 +392,6 @@ function buildPlanModel() {
       repoLabel,
       showAllItems: ui.showAllItems,
       showHistory: ui.showHistory,
-      hiddenRepoIds: new Set(ui.hiddenRepoIds),
     });
   });
 
@@ -517,7 +516,6 @@ function buildPlanModel() {
     needs,
     history,
     view: timeline,
-    ripple,
     rippleIds,
     sessions,
     today,

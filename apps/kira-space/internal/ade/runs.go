@@ -738,7 +738,11 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 		agentSessionID := b.proposeAgentID(agent, spec.ResumeID)
 		switch {
 		case spec.ResumeID != "":
-			prompt = composeResumePrompt(b.prompts(), spec.Prompt, b.filesVars(tc, def.ID, agent, b.isOrchestrator(tc.task.ID)), def.Results, true)
+			files := b.filesVars(tc, def.ID, agent, b.isOrchestrator(tc.task.ID))
+			if smart != nil {
+				files.Draft = ""
+			}
+			prompt = composeResumePrompt(b.prompts(), spec.Prompt, files, def.Results, true)
 		case smart != nil:
 			prompt = smart.prompt
 		default:

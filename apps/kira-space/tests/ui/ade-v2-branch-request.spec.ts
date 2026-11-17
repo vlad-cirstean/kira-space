@@ -188,7 +188,7 @@ test('the Task tab row reopens the item after it was minimised', async ({ relaun
     },
   ]);
   await expect(page.locator(t('approvals-dialog'))).toBeVisible();
-  await page.keyboard.press('Escape');
+  await page.keyboard.press('Shift+Escape');
   await expect(page.locator(t('approvals-dialog'))).toHaveCount(0);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-task-branch-request-open')).click();

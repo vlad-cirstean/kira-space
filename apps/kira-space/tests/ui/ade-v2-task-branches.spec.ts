@@ -193,7 +193,10 @@ test('a review task offers no row menu', async ({ relaunch }) => {
   await expect(page.locator(t('ade-panel-review-note'))).toBeVisible();
   await page.locator(`${t('ade-task-branch')}[data-branch-id="b_sara"]`).click();
   await expect(page.locator(t('ade-panel-back'))).toBeVisible();
-  await expect(page.locator(t('ade-task-branch-menu'))).toHaveCount(0);
+  await expect(
+    page.locator(`${t('ade-task-branch-item')} ${t('ade-task-branch-menu')}`),
+  ).toHaveCount(0);
+  await expect(row.locator(t('ade-task-branch-menu'))).toHaveCount(0);
 });
 
 test('Add branch on the task still attaches an existing branch to a new row', async ({

@@ -18,6 +18,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/procgroup"
+	"github.com/kirathecat/kira-studio/internal/releaseline"
 )
 
 const (
@@ -114,10 +115,14 @@ func defaultLogPath(appName string) string {
 	return filepath.Join(home, "Library", "Logs", appName, "install.log")
 }
 
-// Stage fetches, validates, and runs the installer script detached in self-update mode, and
-// returns once the new bundle is staged and verified (the script's own `staged <tag>` line) —
-// never before, and never after the swap itself, which the script performs with no app open.
-func (i *Installer) Stage(ctx context.Context) error {
+// Stage fetches, validates, and runs the installer script detached in self-update mode for the
+// release tag (vX.Y.Z, passed as --tag), and returns once that bundle is staged and verified (the
+// script's own `staged <tag>` line) — never before, and never after the swap itself, which the
+// script performs with no app open.
+func (i *Installer) Stage(ctx context.Context, tag string) error {
+	if _, ok := releaseline.Version(tag); !ok {
+		return ipcerr.T(ipcerr.CodeInternal, "backend.core.appUpdate.stageFailed.body", map[string]string{"cause": fmt.Sprintf("invalid release tag %q", tag)})
+	}
 	sctx, ok, err := i.begin(ctx)
 	if !ok {
 		return err
@@ -145,7 +150,7 @@ func (i *Installer) Stage(ctx context.Context) error {
 		return ipcerr.T(ipcerr.CodeInternal, "backend.core.appUpdate.logOpenFailed.body", map[string]string{"cause": err.Error()})
 	}
 
-	staged, stageErr := i.spawnAndAwait(sctx, scriptPath, logFile)
+	staged, stageErr := i.spawnAndAwait(sctx, scriptPath, tag, logFile)
 	handedOff = staged
 	return stageErr
 }
@@ -295,7 +300,7 @@ func openLogFile(logPath, appName, running string) (*os.File, error) {
 // `staged <tag>` line on fd 3 means the new bundle is ready and the caller may quit; anything else
 // (EOF, an unexpected line, cancellation, or the stage deadline) means nothing changed. logFile is
 // always closed here — the child holds its own duplicated copy once Start succeeds.
-func (i *Installer) spawnAndAwait(ctx context.Context, scriptPath string, logFile *os.File) (staged bool, err error) {
+func (i *Installer) spawnAndAwait(ctx context.Context, scriptPath, tag string, logFile *os.File) (staged bool, err error) {
 	r, w, err := os.Pipe()
 	if err != nil {
 		_ = logFile.Close()
@@ -305,6 +310,7 @@ func (i *Installer) spawnAndAwait(ctx context.Context, scriptPath string, logFil
 	cmd := exec.Command(i.shell, scriptPath,
 		"--wait-pid="+strconv.Itoa(os.Getpid()),
 		"--notify-fd=3",
+		"--tag="+tag,
 	)
 	cmd.Stdin = nil
 	cmd.Stdout = logFile
@@ -344,14 +350,14 @@ func (i *Installer) spawnAndAwait(ctx context.Context, scriptPath string, logFil
 
 	select {
 	case text := <-line:
-		return i.handleLine(scriptPath, text, exited)
+		return i.handleLine(scriptPath, tag, text, exited)
 	case <-ctx.Done():
 		return false, i.handleCancel(scriptPath, cmd.Process.Pid, ctx, exited)
 	}
 }
 
-func (i *Installer) handleLine(scriptPath, text string, exited <-chan error) (bool, error) {
-	if strings.HasPrefix(text, "staged ") {
+func (i *Installer) handleLine(scriptPath, tag, text string, exited <-chan error) (bool, error) {
+	if text == "staged "+tag {
 		// sh holds its own open fd to the file; unlinking it here is safe.
 		_ = os.Remove(scriptPath)
 		return true, nil
@@ -361,7 +367,11 @@ func (i *Installer) handleLine(scriptPath, text string, exited <-chan error) (bo
 	case <-time.After(handoffGrace):
 	}
 	_ = os.Remove(scriptPath)
-	return false, ipcerr.T(ipcerr.CodeInternal, "backend.core.appUpdate.installerStopped.body", map[string]string{"cause": tailError(i.logPath)})
+	cause := tailError(i.logPath)
+	if strings.HasPrefix(text, "staged ") {
+		cause = fmt.Sprintf("installer staged %s, want %s", strings.TrimPrefix(text, "staged "), tag)
+	}
+	return false, ipcerr.T(ipcerr.CodeInternal, "backend.core.appUpdate.installerStopped.body", map[string]string{"cause": cause})
 }
 
 func (i *Installer) handleCancel(scriptPath string, pid int, ctx context.Context, exited <-chan error) error {

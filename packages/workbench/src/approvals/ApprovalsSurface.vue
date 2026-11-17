@@ -8,6 +8,7 @@ import {
   usePromptVisibility,
 } from '@workbench/prompts/promptsQueries';
 import { useApprovalsStore } from '@workbench/state/approvals';
+import { useGatedOpen } from '@workbench/state/promptGate';
 import { computed, onScopeDispose, watch } from 'vue';
 import ApprovalsDialog from './ApprovalsDialog.vue';
 import ApprovalsToast from './ApprovalsToast.vue';
@@ -39,6 +40,17 @@ const mine = computed(() => {
     .sort((a, b) => a.createdAt - b.createdAt || compareNatural(a.id, b.id));
 });
 
+// The dialog waits for the user to stop typing; the toast stands in meanwhile.
+const wantDialog = computed(() => mine.value.length > 0 && !store.minimised && !promptShown.value);
+const gate = useGatedOpen(wantDialog);
+const dialogOpen = computed(() => wantDialog.value && gate.ready.value);
+const deferred = computed(() => wantDialog.value && !gate.ready.value);
+
+function show(): void {
+  store.open();
+  gate.force();
+}
+
 // Statements and bodies render in Monaco: load it while the dialog opens, not after.
 watch(
   () => mine.value.length,
@@ -54,7 +66,7 @@ watch(
 
 <template>
   <template v-if="mine.length > 0">
-    <ApprovalsDialog v-if="!store.minimised && !promptShown" :items="mine" />
-    <ApprovalsToast v-else :items="mine" />
+    <ApprovalsDialog v-if="dialogOpen" :items="mine" />
+    <ApprovalsToast v-else :items="mine" :deferred="deferred" @show="show" />
   </template>
 </template>

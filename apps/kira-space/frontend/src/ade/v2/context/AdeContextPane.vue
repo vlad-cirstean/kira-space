@@ -2,11 +2,10 @@
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
-import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
+import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { useTemplateRef } from 'vue';
-import { control } from '../../../bridge/control';
 import { useAgentFileEditor } from '../agents/useAgentFileEditor';
 import { useAgentContext, useSaveAgentContext } from './queries';
 
@@ -37,17 +36,10 @@ useShortcut(root, ['form.save'], () => void saveNow());
 <template>
   <div class="min-h-0 flex-1 overflow-auto p-4" data-testid="ade-context">
     <div v-if="view" ref="root" class="flex max-w-4xl flex-col gap-3">
-      <ConfigFileBar
-        v-if="view.exists"
-        :path="view.path"
-        :error="view.problem"
-        :open="() => control.configFilesOpen({ folder: view!.folder, file: view!.file })"
-        :reveal="() => control.configFilesReveal({ folder: view!.folder, file: view!.file })"
-        :about="() => control.configFilesOpen({ folder: view!.folder, file: 'AGENTS.md' })"
-      />
-      <div v-else class="text-kira-sm text-subtle" data-testid="ade-context-none">
-        {{ t('space.ade.context.none.hint', { path: view.path }) }}
+      <div v-if="!view.exists" class="text-kira-sm text-subtle" data-testid="ade-context-none">
+        {{ t('space.ade.context.none.hint') }}
       </div>
+      <ConfigFileProblem v-else :error="view.problem" />
       <div
         v-if="view.lastGood"
         class="text-kira-sm text-subtle"

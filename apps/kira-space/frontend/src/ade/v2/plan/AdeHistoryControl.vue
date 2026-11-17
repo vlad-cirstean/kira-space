@@ -5,13 +5,13 @@ import { t } from '@theme/i18n';
 import AdeTip from '../AdeTip.vue';
 import AdeArchivedFinder from './AdeArchivedFinder.vue';
 
-// One compact row above the first day: toggles the loaded history and finds any archived task.
+// Compact row in the sticky header: toggles the loaded history, finds any archived task, and hosts a trailing slot.
 defineProps<{ count: number; tip: string; open: boolean }>();
 const emit = defineEmits<{ load: []; hide: []; pick: [taskId: string] }>();
 </script>
 
 <template>
-  <div class="mb-1 flex h-row items-center gap-1">
+  <div class="flex h-row items-center gap-1 px-3">
     <AdeTip :text="tip">
       <Button
         variant="toolbar"
@@ -29,5 +29,6 @@ const emit = defineEmits<{ load: []; hide: []; pick: [taskId: string] }>();
       </Button>
     </AdeTip>
     <AdeArchivedFinder @pick="(id) => emit('pick', id)" />
+    <span class="ml-auto flex items-center"><slot /></span>
   </div>
 </template>

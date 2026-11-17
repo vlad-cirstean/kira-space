@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { SHORTCUTS } from '@shared/domain/shortcuts';
 import DialogOverlay from '@theme/components/ui/dialog/DialogOverlay.vue';
 import DialogResizeHandles from '@theme/components/ui/dialog/DialogResizeHandles.vue';
 import { CONFIRM_DISCARD_KEY, DIALOG_REQUEST_CLOSE_KEY } from '@theme/components/ui/dialog/discard';
@@ -6,7 +7,7 @@ import type { DialogSize } from '@theme/components/ui/dialog/resizeSize';
 import { t } from '@theme/i18n';
 import { dialogSurface } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
-import { reactiveOmit } from '@vueuse/core';
+import { reactiveOmit, useEventListener, useTimeoutFn } from '@vueuse/core';
 import type { DialogContentEmits, DialogContentProps } from 'reka-ui';
 import {
   DialogContent,
@@ -16,7 +17,7 @@ import {
   useForwardPropsEmits,
 } from 'reka-ui';
 import type { HTMLAttributes } from 'vue';
-import { computed, inject, provide, ref } from 'vue';
+import { computed, inject, provide, ref, watch } from 'vue';
 import type { DialogContentSizeVariants } from '.';
 import { dialogContentSizeVariants } from '.';
 
@@ -37,6 +38,8 @@ const props = withDefaults(
       dirty?: boolean;
       /** Right and bottom edge handles; the dialog grows from its centre and never exceeds the size variant's bounds. */
       resizable?: boolean;
+      /** Prompt dialog: no initial focus on an action, single keys inert, Shift+Esc hides. */
+      prompt?: boolean;
     }
   >(),
   {
@@ -44,6 +47,7 @@ const props = withDefaults(
     destructive: false,
     dirty: false,
     resizable: false,
+    prompt: false,
   },
 );
 const emits = defineEmits<DialogContentEmits>();
@@ -56,6 +60,7 @@ const delegatedProps = reactiveOmit(
   'destructive',
   'dirty',
   'resizable',
+  'prompt',
 );
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
@@ -67,7 +72,14 @@ function onOpenAutoFocus(event: Event): void {
   const target = root?.querySelector<HTMLElement>(
     props.destructive ? '[data-dialog-dismiss]' : '[data-dialog-initial]',
   );
-  if (!target) return;
+  if (!target) {
+    // A prompt opens on its inert root, so a key typed elsewhere cannot press a button.
+    if (props.prompt && root) {
+      event.preventDefault();
+      root.focus();
+    }
+    return;
+  }
   event.preventDefault();
   target.focus();
 }
@@ -97,10 +109,63 @@ async function requestClose(): Promise<void> {
 provide(DIALOG_REQUEST_CLOSE_KEY, requestClose);
 
 function onEscapeKeyDown(event: KeyboardEvent): void {
+  if (props.prompt) {
+    event.preventDefault();
+    return;
+  }
   if (!props.dirty) return;
   event.preventDefault();
   void requestClose();
 }
+
+const HIDE_CHORD = SHORTCUTS['prompt.hide'].chord;
+function onPromptKeydown(event: KeyboardEvent): void {
+  if (!props.prompt || event.isComposing || event.key !== HIDE_CHORD.key) return;
+  if (event.shiftKey !== Boolean(HIDE_CHORD.shift)) return;
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  event.preventDefault();
+  void requestClose();
+}
+
+// A prompt can open while the user is mid-chord in another surface: Mod+Enter runs a query and
+// Mod+Backspace deletes rows there, and both answer a prompt here. Until the prompt has been open
+// PROMPT_CHORD_GRACE_MS and a Mod keydown started after it opened, those chords are swallowed.
+const PROMPT_CHORD_GRACE_MS = 700;
+const chordsArmed = ref(!props.prompt);
+let modSeen = false;
+const { start: armLater, stop: cancelArm } = useTimeoutFn(
+  () => {
+    chordsArmed.value = true;
+  },
+  PROMPT_CHORD_GRACE_MS,
+  { immediate: false },
+);
+watch(
+  () => props.prompt && rootContext.open.value,
+  (open) => {
+    cancelArm();
+    chordsArmed.value = !props.prompt;
+    modSeen = false;
+    if (open) armLater();
+  },
+  { immediate: true },
+);
+useEventListener(
+  window,
+  'keydown',
+  (e: KeyboardEvent) => {
+    if (!props.prompt || !rootContext.open.value) return;
+    if (e.key === 'Meta' || e.key === 'Control') {
+      if (!e.repeat) modSeen = true;
+      return;
+    }
+    if (!(e.metaKey || e.ctrlKey) || (e.key !== 'Enter' && e.key !== 'Backspace')) return;
+    if (chordsArmed.value && modSeen && !e.repeat) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  },
+  { capture: true },
+);
 
 function onPointerDownOutside(event: Event): void {
   if (props.dirty) event.preventDefault();
@@ -137,6 +202,9 @@ const contentClass = computed(() =>
       :class="contentClass"
       :style="sizeStyle"
       :data-dirty="dirty || undefined"
+      :data-chords-armed="prompt ? chordsArmed : undefined"
+      :tabindex="prompt ? -1 : undefined"
+      @keydown="onPromptKeydown"
       @open-auto-focus="onOpenAutoFocus"
       @escape-key-down="onEscapeKeyDown"
       @pointer-down-outside="onPointerDownOutside"

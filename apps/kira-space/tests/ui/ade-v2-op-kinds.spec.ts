@@ -71,7 +71,7 @@ test('refresh: a failing fetch also toasts the repo and the error', async ({ rel
   ]);
   await page.locator(t('ade-refresh-all')).click();
   await expect(toast(page).first()).toContainText('network down');
-  await expect(page.locator(t('ade-repo-note')).first()).toContainText('network down');
+  await expect(toast(page).first()).toContainText(/(web-app|mobile) — network down/);
 });
 
 test('stopRuns: the card shows a chip, a slow stop toasts twice, a fast one stays silent', async ({

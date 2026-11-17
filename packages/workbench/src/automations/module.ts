@@ -39,8 +39,6 @@ export interface ScriptsSeam {
   collections(): readonly ScriptCollection[];
   /** Run files that are invalid now. */
   problems(): readonly ScriptFileProblem[];
-  /** The runs folder. */
-  dir(): string;
   secretStorage(): SecretStorageStatus;
   /** Writes a new run file from `fields`; the panel opens it for editing. */
   create(fields: CustomScriptFields): Promise<CustomScript>;
@@ -125,8 +123,6 @@ export interface AutomationsModuleContext {
   host: TerminalHostDeps;
   scripts: ScriptsSeam;
   runs: ScriptRunsSeam;
-  /** The runs folder's plain-file actions; `file` is a name in it ('AGENTS.md' for the guide). */
-  files: { open(file: string): Promise<unknown>; reveal(file: string): Promise<unknown> };
   /** Focuses the Automations module, e.g. from the status bar. */
   showAutomations(): void;
   /** Opens the Operations dock, where finished runs are listed. */

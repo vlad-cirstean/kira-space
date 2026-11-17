@@ -16,7 +16,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/postman"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"go.yaml.in/yaml/v3"
 )
@@ -752,13 +751,6 @@ func TestExportCollectionDialogAndReveal(t *testing.T) {
 	want := tree(t, app, col.ID)
 	if strings.Join(back, "\n") != strings.Join(want, "\n") {
 		t.Errorf("export parses back to different items\n got: %q\nwant: %q", back, want)
-	}
-
-	if err := app.W.ConfigFiles.Reveal(configsvc.FileArgs{Folder: "api", File: col.File}); err != nil {
-		t.Fatal(err)
-	}
-	if got := app.FileOpener.RevealedFiles(); len(got) != 1 || got[0] != filepath.Join(app.ConfigDir("api"), col.File) {
-		t.Errorf("revealed = %v, want the collection file", got)
 	}
 }
 

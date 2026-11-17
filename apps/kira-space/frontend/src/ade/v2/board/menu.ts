@@ -34,6 +34,10 @@ export type TaskMenuCmd =
   | { kind: 'copy'; text: string }
   | { kind: 'review'; branchId: string }
   | { kind: 'changeBase'; act: RebaseAct }
+  | { kind: 'rename' }
+  | { kind: 'estimate' }
+  | { kind: 'addRepo'; codeRepoId: string }
+  | { kind: 'workflow'; workflowId: string }
   | { kind: 'archive' };
 
 export interface TaskMenuItem {
@@ -73,6 +77,10 @@ export interface TaskMenuInput {
   automations: readonly TaskMenuItem[];
   /** Name of the task link's code host, for "Open on …". */
   hostLabel: string;
+  /** Repositories the task can still add a branch slot in. */
+  addRepos: readonly { id: string; label: string }[];
+  /** The valid workflows the task can switch to. */
+  workflows: readonly { id: string; name: string }[];
 }
 
 const DONE = 'done';
@@ -299,6 +307,45 @@ export function taskMenuModel(i: TaskMenuInput): TaskMenuEntry[] {
       });
     }
     out.push(statusEntry(c, i.statuses), ...stepEntries(c, live));
+    out.push(
+      {
+        type: 'item',
+        id: 'ade-task-rename',
+        label: t('common.action.rename.label'),
+        cmd: { kind: 'rename' },
+      },
+      {
+        type: 'item',
+        id: 'ade-task-estimate',
+        label: t('space.ade.board.taskMenu.estimate.label'),
+        cmd: { kind: 'estimate' },
+      },
+    );
+    if (i.addRepos.length) {
+      out.push({
+        type: 'submenu',
+        id: 'ade-task-add-repo',
+        label: t('space.ade.taskTab.addRepo.option'),
+        items: i.addRepos.map((r) => ({
+          id: `ade-task-add-repo-${r.id}`,
+          label: r.label,
+          cmd: { kind: 'addRepo', codeRepoId: r.id },
+        })),
+      });
+    }
+    if (i.workflows.length) {
+      out.push({
+        type: 'submenu',
+        id: 'ade-task-workflow',
+        label: t('space.common.workflow.label'),
+        items: i.workflows.map((w) => ({
+          id: `ade-task-workflow-${w.id}`,
+          label: w.name,
+          cmd: { kind: 'workflow', workflowId: w.id },
+          checked: c.task.workflowId === w.id,
+        })),
+      });
+    }
     if (c.task.runs.some((r) => r.state === 'running' || r.state === 'pending')) {
       out.push({
         type: 'item',

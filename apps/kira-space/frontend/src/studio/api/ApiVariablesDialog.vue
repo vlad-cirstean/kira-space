@@ -18,13 +18,12 @@ import {
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
+import { configName } from '@workbench/config/configName';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
-import { control } from '../bridge/control';
 import ApiAgentAccessForm from './ApiAgentAccessForm.vue';
 import ApiVariablesTable from './ApiVariablesTable.vue';
 import BulkVariablesEditor from './BulkVariablesEditor.vue';
@@ -46,8 +45,6 @@ import {
 // only. Save sends the hash of the text the draft was edited from; a file changed elsewhere is refused
 // with Reload and Overwrite. A typed secret goes through the write-only call after the file is written.
 type FileModel = ApiEnvironmentFileModel | ApiCollectionFileModel;
-
-const FOLDER = 'api';
 
 const dialogStore = useApiVariablesDialogStore();
 const config = useApiConfig();
@@ -107,6 +104,7 @@ watch(
         ? dialogStore.tab
         : 'variables';
   },
+  { immediate: true },
 );
 
 const sections = computed<VariablesSection[]>(() =>
@@ -167,7 +165,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
     >
       <DialogHeader close-testid="api-variables-close">
         <DialogTitle>{{
-          t('studio.api.variablesDialog.title', { name: model?.name ?? detail?.file ?? '' })
+          t('studio.api.variablesDialog.title', {
+            name: model?.name ?? configName(detail?.file ?? ''),
+          })
         }}</DialogTitle>
       </DialogHeader>
       <ViewToolbar v-if="detail" class="px-3">
@@ -275,13 +275,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             </fieldset>
           </template>
           <template v-else>
-            <ConfigFileBar
-              :path="detail.path"
-              :error="detail.problem"
-              :open="() => control.configFilesOpen({ folder: FOLDER, file: detail!.file })"
-              :reveal="() => control.configFilesReveal({ folder: FOLDER, file: detail!.file })"
-              :about="() => control.configFilesOpen({ folder: FOLDER, file: 'AGENTS.md' })"
-            />
+            <ConfigFileProblem :error="detail.problem" />
             <CodeTextEditor
               :model-value="draft.draft.value"
               language="yaml"

@@ -20,6 +20,8 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
   const revealSessionId = ref<string | null>(null);
   /** Days of history shown beyond the settings window after a Go to; in memory only. */
   const historyReach = ref<number | null>(null);
+  /** Inline edit a task row opened (title rename, estimate popover); the task menu sets it too. */
+  const rowEdit = ref<{ taskId: string; field: 'title' | 'estimate' } | null>(null);
   /** A See error click asked the open branch panel to scroll to its Worktree setup block. */
   const focusSetup = ref(false);
   /** A See log click asked the open branch panel to open its Last rebase log. */
@@ -30,13 +32,10 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
   const runDrafts = ref<Record<string, { message: string; names: Record<string, string> }>>({});
   /** Last failed step action per task, shown in the panel header until the next attempt. */
   const actionError = ref<Record<string, string>>({});
-  /** Per repo: what the last fetch changed, shown on its chip until the next fetch. */
-  const refreshSummary = ref<Record<string, string>>({});
   /** The Needs page's All sessions list is open; the status bar's Show all sessions sets it. */
   const showAllSessions = ref(false);
   const showAllItems = usePersistedState('kira.ade.showAllItems', false);
   const showHistory = usePersistedState('kira.ade.showHistory', false);
-  const hiddenRepoIds = usePersistedState<string[]>('kira.ade.hiddenRepoIds', []);
 
   function select(taskId: string | null): void {
     selectedTaskId.value = taskId;
@@ -74,12 +73,6 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
     tabs.setTaskTab(taskId, 'sessions');
   }
 
-  function toggleRepo(codeRepoId: string): void {
-    hiddenRepoIds.value = hiddenRepoIds.value.includes(codeRepoId)
-      ? hiddenRepoIds.value.filter((id) => id !== codeRepoId)
-      : [...hiddenRepoIds.value, codeRepoId];
-  }
-
   return {
     view,
     selectedTaskId,
@@ -88,19 +81,17 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
     historyReach,
     runTaskId,
     runDrafts,
+    rowEdit,
     focusSetup,
     focusRebaseLog,
     actionError,
-    refreshSummary,
     showAllSessions,
     showAllItems,
     showHistory,
-    hiddenRepoIds,
     select,
     selectBranch,
     openTask,
     openSession,
     openSessions,
-    toggleRepo,
   };
 });

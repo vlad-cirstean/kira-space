@@ -4,8 +4,8 @@ import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 
-// A config file's problem on a tab without the file bar (P578). Nothing when the file is valid or
-// the tab already shows this same problem.
+// An invalid config's indicator (P578, P651): says it can't be read, never a path or line. Nothing when
+// the config is valid or the tab already shows this same problem.
 type Problem = { line: number; message: string };
 const props = defineProps<{
   error?: Problem | null;
@@ -25,11 +25,7 @@ const visible = computed(() => {
 
 <template>
   <Alert v-if="visible" variant="error" data-testid="config-file-problem">
-    <AlertDescription>{{
-      visible.line > 0
-        ? t('common.configForm.problem.status', { line: visible.line, message: visible.message })
-        : visible.message
-    }}</AlertDescription>
+    <AlertDescription>{{ t('common.configForm.unreadable.status') }}</AlertDescription>
     <AlertAction v-if="props.showYaml">
       <Button
         variant="link"

@@ -27,7 +27,8 @@ test('update available: the routed dialog shows, Later dismisses it, the item re
         response: {
           updateAvailable: true,
           currentVersion: '1.2.0',
-          latestVersion: '1.3.0',
+          targetVersion: '1.3.0',
+          newestVersion: '1.3.0',
           installLogPath: '/tmp/kira-space-update.log',
         },
       },
@@ -40,6 +41,7 @@ test('update available: the routed dialog shows, Later dismisses it, the item re
   await expect(window.locator('[data-testid="update-dialog-versions"]')).toHaveText(
     'Kira Space 1.3.0 is available. You have 1.2.0.',
   );
+  await expect(window.locator('[data-testid="update-dialog-step-note"]')).toHaveCount(0);
 
   const item = window.locator('[data-testid="update-available"]');
   await expect(item).toBeVisible();
@@ -65,9 +67,55 @@ test('update available: the routed dialog shows, Later dismisses it, the item re
   await expect(
     window.locator('[data-testid="tooltip-details-row"][data-label="Installed"]'),
   ).toContainText('1.2.0');
+  await expect(
+    window.locator('[data-testid="tooltip-details-row"][data-label="Newest version"]'),
+  ).toHaveCount(0);
 
   await item.click();
   await expect(dialog).toBeVisible();
+});
+
+test('stepped update: offers the next minor and names the newest', async ({ relaunch }) => {
+  const status = (currentVersion: string, targetVersion: string) => ({
+    control: [
+      {
+        channel: IPC.updateStatus,
+        response: {
+          updateAvailable: true,
+          currentVersion,
+          targetVersion,
+          newestVersion: '0.5.1',
+          installLogPath: '/tmp/kira-space-update.log',
+        },
+      },
+    ],
+  });
+
+  const first = await relaunch(status('0.3.14', '0.4.0'));
+  await emitPrompts(first.window, [routed('update', '0.4.0')]);
+  await expect(first.window.locator('[data-testid="update-dialog-versions"]')).toHaveText(
+    'Kira Space 0.4.0 is available. You have 0.3.14.',
+  );
+  await expect(first.window.locator('[data-testid="update-dialog-step-note"]')).toHaveText(
+    '0.5.1 is the newest version. Kira Space updates one minor version at a time, so it offers the next update after this one.',
+  );
+  const item = first.window.locator('[data-testid="update-available"]');
+  await expect(item).toHaveText('Update 0.4.0');
+  await expect
+    .poll(() => first.control.log().find((e) => e.channel === IPC.promptsRaise)?.args)
+    .toEqual({ kind: 'update', ref: '0.4.0' });
+  await first.window.click('[data-testid="update-dialog-later"]');
+  await emitPrompts(first.window, []);
+  await item.hover();
+  await expect(
+    first.window.locator('[data-testid="tooltip-details-row"][data-label="Newest version"]'),
+  ).toContainText('0.5.1');
+
+  // After the step the app relaunches and checks again: the next target raises its own popup.
+  const second = await relaunch(status('0.4.0', '0.4.3'));
+  await expect
+    .poll(() => second.control.log().find((e) => e.channel === IPC.promptsRaise)?.args)
+    .toEqual({ kind: 'update', ref: '0.4.3' });
 });
 
 test('Update click installs: control log shows the install call', async ({ relaunch }) => {
@@ -78,7 +126,8 @@ test('Update click installs: control log shows the install call', async ({ relau
         response: {
           updateAvailable: true,
           currentVersion: '1.2.0',
-          latestVersion: '1.3.0',
+          targetVersion: '1.3.0',
+          newestVersion: '1.3.0',
           installLogPath: '/tmp/kira-space-update.log',
         },
       },
@@ -115,7 +164,8 @@ studioTest.describe('databases module', () => {
           response: {
             updateAvailable: true,
             currentVersion: '1.2.0',
-            latestVersion: '1.3.0',
+            targetVersion: '1.3.0',
+            newestVersion: '1.3.0',
             installLogPath: '/tmp/kira-space-update.log',
           },
         },
@@ -135,7 +185,7 @@ studioTest.describe('databases module', () => {
 
     const install = window.locator('[data-testid="update-dialog-install"]');
     await expect(install).toBeEnabled();
-    await expect(install).toHaveText('Retry');
+    await expect(install).toContainText('Retry');
   });
 
   studioTest('menu check failing shows the error, Retry checks again', async ({ relaunch }) => {
@@ -168,7 +218,8 @@ studioTest.describe('databases module', () => {
             response: {
               updateAvailable: true,
               currentVersion: '1.2.0',
-              latestVersion: '1.3.0',
+              targetVersion: '1.3.0',
+              newestVersion: '1.3.0',
               installLogPath: '/tmp/kira-space-update.log',
             },
           },
@@ -195,7 +246,8 @@ studioTest.describe('databases module', () => {
             response: {
               updateAvailable: true,
               currentVersion: '1.2.0',
-              latestVersion: '1.3.0',
+              targetVersion: '1.3.0',
+              newestVersion: '1.3.0',
               installLogPath: '/tmp/kira-space-update.log',
             },
           },

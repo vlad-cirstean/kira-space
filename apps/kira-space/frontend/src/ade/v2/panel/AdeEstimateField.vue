@@ -8,13 +8,18 @@ import { rowMeta } from '@theme/lib/rowVariants';
 import { computed, ref, watch } from 'vue';
 
 // Estimate row: number + h/d, written on change; empty clears.
-const props = defineProps<{
-  /** `Task.est`: `''` none, else `<n>h` / `<n>d`. */
-  est: string;
-  /** Days the task spans on the plan. */
-  days: number;
-  error: string | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    /** `Task.est`: `''` none, else `<n>h` / `<n>d`. */
+    est: string;
+    /** Days the task spans on the plan. */
+    days: number;
+    error: string | null;
+    /** Id prefix of the input and error text: one per mounted field. */
+    idPrefix?: string;
+  }>(),
+  { idPrefix: 'ade-est' },
+);
 
 const emit = defineEmits<{ save: [value: string] }>();
 
@@ -61,7 +66,7 @@ const hint = computed(() =>
   <div class="flex flex-col gap-0.5">
     <div class="flex items-center gap-1.5">
       <Input
-        id="ade-est-num"
+        :id="`${idPrefix}-num`"
         v-model="num"
         type="number"
         min="0"
@@ -69,7 +74,7 @@ const hint = computed(() =>
         size="kira"
         class="w-20"
         :aria-invalid="error ? true : undefined"
-        :aria-describedby="error ? 'ade-estimate-error-text' : undefined"
+        :aria-describedby="error ? `${idPrefix}-error-text` : undefined"
         data-testid="ade-estimate-num"
         @change="commit"
       />
@@ -92,7 +97,7 @@ const hint = computed(() =>
       />
       <span :class="rowMeta">{{ hint }}</span>
     </div>
-    <FieldError v-if="error" id="ade-estimate-error-text" data-testid="ade-estimate-error">{{
+    <FieldError v-if="error" :id="`${idPrefix}-error-text`" data-testid="ade-estimate-error">{{
       error
     }}</FieldError>
   </div>

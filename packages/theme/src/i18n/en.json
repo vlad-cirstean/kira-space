@@ -100,13 +100,13 @@
         "status": "Not valid"
       },
       "field": {
-        "aria": "Run file text"
+        "aria": "Script YAML"
       },
       "lastGood": {
-        "hint": "The file has an error. Runs use the last good version."
+        "hint": "This script has an error. Runs use the last good version."
       },
       "secrets": {
-        "hint": "Saved in the keychain. The file lists only the parameter name.",
+        "hint": "Saved in the keychain. The script lists only the parameter name.",
         "title": "Secret values"
       }
     },
@@ -461,7 +461,7 @@
         "label": "Default: {value}"
       },
       "editFile": {
-        "label": "Edit file"
+        "label": "Edit script"
       },
       "editTarget": {
         "label": "Set target…"
@@ -661,10 +661,10 @@
           }
         },
         "fixContext": {
-          "body": "The context file has a problem. Fix it first."
+          "body": "The agent context has a problem. Fix it first."
         },
         "fixSettings": {
-          "body": "The settings file has a problem. Fix it first."
+          "body": "The agent settings have a problem. Fix them first."
         },
         "note": {
           "atImports": {
@@ -747,7 +747,7 @@
       },
       "agentSettings": {
         "changed": {
-          "body": "The settings file changed since you loaded it."
+          "body": "The agent settings changed since you loaded them."
         },
         "headlessNote": {
           "body": "Headless steps use the same files without permission_mode, allow and status_line."
@@ -902,22 +902,22 @@
           "body": "{field} is required."
         },
         "root": {
-          "label": "The file"
+          "label": "The top level"
         },
         "syntax": {
           "body": "Invalid YAML syntax: {detail}."
         },
         "textEncoding": {
-          "body": "The file must be plain text with valid encoding."
+          "body": "The text has an invalid encoding."
         },
         "textTooLarge": {
-          "body": "The file is larger than {limit} bytes."
+          "body": "The text is larger than {limit} bytes."
         },
         "type": {
           "body": "{field} must be of type {want}."
         },
         "unreadable": {
-          "body": "Can’t read the file ({detail})."
+          "body": "Can’t read the saved config ({detail})."
         }
       },
       "docker": {
@@ -1082,7 +1082,7 @@
           "body": "The kira folder takes no path."
         },
         "fileChanged": {
-          "body": "This file changed since you opened it."
+          "body": "This script changed since you opened it."
         },
         "kindInvalid": {
           "body": "The kind must be script or smart."
@@ -1893,10 +1893,10 @@
           "body": "The workflow changed. Refresh and retry."
         },
         "workflowEmpty": {
-          "body": "The file is empty."
+          "body": "The workflow is empty."
         },
         "workflowIdMismatch": {
-          "body": "The ID must equal the file name without its extension."
+          "body": "The ID can’t be edited. Change the name instead."
         },
         "workflowSwitchLoses": {
           "body": "Switching the workflow deletes this task’s runs ({runs}) and run logs ({logs})."
@@ -1905,7 +1905,7 @@
           "body": "The file changed while you reviewed it. Refresh the diff."
         },
         "yamlTooLarge": {
-          "body": "The workflow file is too large."
+          "body": "The workflow is too large."
         }
       },
       "capture": {
@@ -1970,7 +1970,7 @@
             "body": "Literal credential at {at}. Use a secret reference instead. The shared repository must not hold one."
           },
           "localInvalid": {
-            "body": "The local file is not valid, so it can’t be merged. Fix it first."
+            "body": "The local version is not valid, so it can’t be merged. Fix it first."
           },
           "repoOrigins": {
             "body": "This repository has more than one origin address, so it doesn’t sync."
@@ -2319,10 +2319,10 @@
           "body": "The worktree base path must be absolute."
         },
         "changed": {
-          "body": "The file changed since you opened it. Refresh it and retry."
+          "body": "The settings changed since you opened them. Refresh and retry."
         },
         "duplicatePath": {
-          "body": "{file} already configures this repository. This file applies nothing."
+          "body": "Other settings already configure this repository, so these apply nothing."
         },
         "envDuplicate": {
           "body": "An environment name is listed twice."
@@ -2331,10 +2331,10 @@
           "body": "An environment needs exactly one of deployed_sha_script and deployed_sha_run."
         },
         "fileBroken": {
-          "body": "{file} has an error on line {line}. Fix it in the file first."
+          "body": "The repository settings have an error on line {line}. Fix it first."
         },
         "gone": {
-          "body": "That settings file no longer exists."
+          "body": "These repository settings no longer exist."
         },
         "hashRequired": {
           "body": "Saving an existing file needs the hash of the text you loaded."
@@ -2358,7 +2358,7 @@
           "body": "A repository path is required."
         },
         "pathTaken": {
-          "body": "Another file already configures this repository."
+          "body": "Other settings already configure this repository."
         },
         "prepareBoth": {
           "body": "Set one of prepare_script and prepare_run, not both."
@@ -2658,16 +2658,16 @@
           "body": "The secret {name} is available to agents but lists no allowed host. Add at least one allowed host."
         },
         "changed": {
-          "body": "The file changed while Kira saved. Retry."
+          "body": "This changed while Kira saved. Retry."
         },
         "fileBroken": {
-          "body": "Kira can’t save into {file}. Line {line} has an error. Fix the file first."
+          "body": "Kira can’t save this change. Line {line} has an error. Fix it first."
         },
         "fileName": {
           "body": "A file name is 1 to 64 lowercase letters, numbers and dashes, plus the suffix of its kind."
         },
         "itemDuplicate": {
-          "body": "The item ID {id} is used twice. Each item ID is unique in the file."
+          "body": "The item ID {id} is used twice. Each item ID is unique in a collection."
         },
         "itemKind": {
           "body": "An item sets exactly one of items, http or grpc."
@@ -2676,7 +2676,7 @@
           "body": "The secret store isn’t available, so Kira can’t keep a secret value."
         },
         "notFound": {
-          "body": "That item is no longer in the file."
+          "body": "That item no longer exists."
         },
         "secretUnreadable": {
           "body": "Secret {name} can’t be read. Set it again."
@@ -2834,7 +2834,7 @@
       },
       "connectionFiles": {
         "editInvalid": {
-          "body": "Kira didn’t save that edit. It makes the file invalid: {detail}."
+          "body": "Kira didn’t save that edit. It makes the connection invalid: {detail}."
         },
         "fieldNotUsed": {
           "body": "{field} isn’t used by {why}."
@@ -2852,7 +2852,7 @@
           "body": "A number mask can’t correlate."
         },
         "notFound": {
-          "body": "That connection’s file is gone."
+          "body": "That connection no longer exists."
         },
         "secretUnreadable": {
           "body": "The secret “{name}” can’t be read. Save it again."
@@ -3378,36 +3378,15 @@
     "comment": {
       "label": "Comment"
     },
-    "config": {
-      "about": {
-        "label": "About these files"
-      },
-      "fileError": {
-        "error": "✕ {text}"
-      },
-      "lineError": {
-        "error": "✕ Line {line}: {text}"
-      },
-      "open": {
-        "failed": {
-          "error": "The config file did not open: {text}"
-        }
-      },
-      "reveal": {
-        "failed": {
-          "error": "The config file did not show in the file manager: {text}"
-        }
-      },
-      "valid": {
-        "status": "✓ Valid"
-      }
-    },
     "configForm": {
       "problem": {
         "status": "Line {line}: {message}"
       },
       "showYaml": {
         "label": "Show in YAML"
+      },
+      "unreadable": {
+        "status": "Can’t be read, fix it here"
       }
     },
     "confirm": {
@@ -8976,6 +8955,9 @@
           "branchNames": {
             "label": "Branch names"
           },
+          "estimate": {
+            "label": "Estimate…"
+          },
           "jiraLink": {
             "label": "Jira link"
           },
@@ -9176,16 +9158,16 @@
           "aria": "Agent context"
         },
         "lastGood": {
-          "hint": "The file has an error. Agents get the last good version."
+          "hint": "This text has an error. Agents get the last good version."
         },
         "none": {
-          "hint": "No context yet. Save creates {path}."
+          "hint": "No context yet. Write it below and save."
         },
         "overSize": {
           "error": "Over the limit of {max} bytes. Agents do not use this text."
         },
         "readOnly": {
-          "hint": "This file is too large or not valid text. Open it in an editor to change it."
+          "hint": "This content is too large or not valid text to edit."
         },
         "resume": {
           "hint": "A resumed {label} conversation keeps the context it started with until it compacts."
@@ -9276,12 +9258,6 @@
         },
         "diskDiscardAll": {
           "label": "Discard all"
-        },
-        "diskFolderOpen": {
-          "label": "Open task folder"
-        },
-        "diskFolderReveal": {
-          "label": "Reveal in file manager"
         },
         "diskPending": {
           "label": "Waiting for your approval"
@@ -9994,15 +9970,6 @@
         }
       },
       "panelFacts": {
-        "branches": {
-          "label": "{count} branch | {count} branches"
-        },
-        "branchesIn": {
-          "label": "{count} branch in {repos} | {count} branches in {repos}"
-        },
-        "steps": {
-          "label": "{done}/{count} step | {done}/{count} steps"
-        },
         "why": {
           "finished": {
             "hint": "The workflow is finished."
@@ -10085,8 +10052,14 @@
           }
         },
         "card": {
+          "add": {
+            "aria": "Add a repository or branch"
+          },
           "changeBase": {
             "tooltip": "Change the base of a branch"
+          },
+          "estimate": {
+            "aria": "Estimate: {value}. Change estimate"
           },
           "open": {
             "aria": "Open {title}"
@@ -10105,14 +10078,9 @@
           },
           "status": {
             "aria": "Status: {status}. Change status"
-          }
-        },
-        "header": {
-          "onMerge": {
-            "label": "On merge"
           },
-          "refreshing": {
-            "loading": "Refreshing…"
+          "step": {
+            "aria": "Step: {step}. Move to another step"
           }
         },
         "history": {
@@ -10129,24 +10097,9 @@
             "label": "Hide history"
           }
         },
-        "repoChip": {
-          "neverFetched": {
-            "status": "Never fetched"
-          },
-          "noRemote": {
-            "status": "No remote"
-          },
-          "refresh": {
-            "aria": "Refresh {label}"
-          },
-          "rescan": {
-            "tooltip": "Rescan {label} (no remote to fetch)"
-          },
-          "toggle": {
-            "tooltip": "Show or hide this repository"
-          },
+        "refreshAll": {
           "updating": {
-            "loading": "Updating…"
+            "tooltip": "Updating {repos}…"
           }
         },
         "view": {
@@ -10394,17 +10347,6 @@
           "tooltip": "Shares {file} with {base}; rebase onto it"
         }
       },
-      "refresh": {
-        "mergedInto": {
-          "status": "{count} merged into {target}"
-        },
-        "noChanges": {
-          "status": "No changes"
-        },
-        "refsChanged": {
-          "status": "{count} ref changed | {count} refs changed"
-        }
-      },
       "repoGate": {
         "body": "{task} has no repository. Choose at least one; the agent works in it.",
         "noRepos": {
@@ -10431,7 +10373,7 @@
           "emptyHint": "Import a repository to configure it."
         },
         "discardConfirm": {
-          "body": "Your edits to this repository’s settings file are not saved."
+          "body": "Your edits to this repository’s settings are not saved."
         },
         "empty": {
           "empty": "No repositories imported"
@@ -10885,10 +10827,10 @@
           "body": "Your unsaved changes to the agent settings are lost."
         },
         "field": {
-          "aria": "Agent settings file"
+          "aria": "Agent settings YAML"
         },
         "none": {
-          "hint": "No settings yet. Save creates {path}."
+          "hint": "No settings yet. Write them below and save."
         },
         "overSize": {
           "error": "Over the limit of {max} bytes. Agents do not use these settings."
@@ -10914,9 +10856,9 @@
             "hint": "The value is sent once and never shown again.",
             "title": "Set {name}"
           },
-          "hint": "Write {ref} in the file. Values stay sealed on this computer.",
+          "hint": "Write {ref} in the settings. Values stay sealed on this computer.",
           "none": {
-            "hint": "No secrets yet. Reference one in the file to see it here."
+            "hint": "No secrets yet. Reference one in the settings to see it here."
           },
           "set": {
             "label": "Set value",
@@ -11126,11 +11068,11 @@
       },
       "steps": {
         "delete": {
-          "body": "Delete the library step “{name}”? The file is removed.",
+          "body": "Delete the library step “{name}”? It is removed from the library.",
           "title": "Delete step"
         },
         "empty": {
-          "emptyHint": "No library steps yet. Library steps are YAML files in {dir}."
+          "emptyHint": "No library steps yet."
         },
         "intro": {
           "body": "A library step is a step that many workflows share. Edit it once and every workflow that uses it changes. Tasks already started keep the steps they began with."
@@ -11139,7 +11081,7 @@
           "aria": "Step editor mode"
         },
         "noValid": {
-          "body": "This step file has no valid version yet."
+          "body": "This step has no valid version yet."
         },
         "usedBy": {
           "hint": "Used by {workflows}. Detach the step there before deleting it.",
@@ -11411,9 +11353,6 @@
             "label": "Runs on"
           }
         },
-        "fileName": {
-          "description": "Saved as {file}. A new name renames the file on save."
-        },
         "gate": {
           "approval": {
             "option": "Wait for my approval"
@@ -11439,7 +11378,7 @@
             "emptyHint": "Select a step to edit it. Drag from a result dot to another step to set where it goes. {tokens} are filled in per run."
           },
           "noValid": {
-            "body": "This file has no valid version yet."
+            "body": "This workflow has no valid version yet."
           },
           "removeStepConfirm": {
             "body": "The step “{name}” and its results are removed from this workflow draft.",
@@ -11498,7 +11437,7 @@
         },
         "page": {
           "empty": {
-            "emptyHint": "No workflows yet. Workflows are YAML files in {dir}."
+            "emptyHint": "No workflows yet."
           },
           "import": {
             "label": "Import YAML"
@@ -11806,7 +11745,7 @@
             "error": "✕ Line {line}: {text} (the last valid version stays in use)."
           },
           "valid": {
-            "status": "✓ Valid, the form and the plan use this file"
+            "status": "✓ Valid, the form and the plan use this version"
           }
         }
       }
@@ -12360,7 +12299,7 @@
             "label": "Script to run"
           },
           "secretGiven": {
-            "error": "A secret param takes the value saved in the script, not one in the repository file: {names}."
+            "error": "A secret param takes the value saved in the script, not one in the repository settings: {names}."
           },
           "secretParams": {
             "hint": "Saved with the script: {names}."
@@ -12369,7 +12308,7 @@
             "hint": "No value saved yet for {names}."
           },
           "smart": {
-            "error": "A repository file runs a normal script, not the smart script “{script}”."
+            "error": "Repository settings run a normal script, not the smart script “{script}”."
           },
           "unknownParams": {
             "error": "Not params of “{script}”: {names}."
@@ -12519,27 +12458,27 @@
           "label": "Copy for shared config"
         },
         "create": {
-          "label": "Create settings file"
+          "label": "Create settings"
         },
         "field": {
-          "aria": "Repository settings file"
+          "aria": "Repository settings YAML"
         },
         "lastGood": {
-          "hint": "The file has an error. Kira Space uses the last good settings."
+          "hint": "These settings have an error. Kira Space uses the last good version."
         },
         "none": {
-          "hint": "No settings file for this repository yet. Create one to set its nickname, branches, worktree and Git options."
+          "hint": "No settings for this repository yet. Create them to set its nickname, branches, worktree and Git options."
         },
         "otherFiles": {
-          "empty": "No other settings files",
-          "hint": "Files in the repos folder that configure no listed repository, or whose path an earlier file already owns.",
-          "label": "Other files"
+          "empty": "No other settings",
+          "hint": "Settings that configure no listed repository, or a repository other settings already configure.",
+          "label": "Other settings"
         },
         "problem": {
-          "aria": "Settings file has an error"
+          "aria": "Settings have an error"
         },
         "tabs": {
-          "aria": "Settings file view"
+          "aria": "Settings view"
         }
       },
       "tree": {
@@ -13363,13 +13302,10 @@
           "status": "Has errors"
         },
         "lastGood": {
-          "hint": "The file has an error. The app uses the last good version."
-        },
-        "openFile": {
-          "label": "Open file"
+          "hint": "This has an error. The app uses the last good version."
         },
         "problems": {
-          "aria": "Config file problems"
+          "aria": "Config problems"
         },
         "secrets": {
           "clear": {
@@ -13385,7 +13321,7 @@
           },
           "hint": "Write {ref} in a value. Values stay sealed on this computer.",
           "none": {
-            "hint": "No secrets yet. Reference one in a file to see it here."
+            "hint": "No secrets yet. Reference one in a collection or environment to see it here."
           },
           "set": {
             "label": "Enter value",
@@ -13403,12 +13339,12 @@
           }
         },
         "skipped": {
-          "hint": "The rest of the file is loaded. An item that loaded before keeps its last good version. Fix the file to load the rest.",
+          "hint": "The rest of the collection is loaded. An item that loaded before keeps its last good version. Fix the items to load them.",
           "label": "Line {line}, {label}: {message}",
-          "title": "{count} item in {file} isn’t loaded | {count} items in {file} aren’t loaded"
+          "title": "{count} item in {name} isn’t loaded | {count} items in {name} aren’t loaded"
         },
         "variables": {
-          "empty": "No variables in this file"
+          "empty": "No variables here"
         }
       },
       "copyAsCurl": {
@@ -13653,7 +13589,7 @@
           "label": "Edit environment"
         },
         "file": {
-          "aria": "Variables file"
+          "aria": "Variables YAML"
         },
         "name": {
           "aria": "Variable name"
@@ -13664,7 +13600,7 @@
           }
         },
         "tabs": {
-          "aria": "Variables file sections"
+          "aria": "Variables sections"
         },
         "title": "Variables of {name}",
         "value": {
@@ -14109,21 +14045,21 @@
     "connections": {
       "file": {
         "field": {
-          "aria": "Connection file text"
+          "aria": "Connection YAML"
         },
         "lastGood": {
-          "hint": "The file has an error. Kira uses the last valid version until you fix it."
+          "hint": "This connection has an error. Kira uses the last valid version until you fix it."
         },
         "secrets": {
           "clearConfirm": {
-            "body": "The saved value is deleted. The file keeps the reference.",
+            "body": "The saved value is deleted. The connection keeps the reference.",
             "title": "Clear the secret “{name}”?"
           },
           "kindUri": {
             "label": "URI"
           },
           "none": {
-            "hint": "This file references no secrets."
+            "hint": "This connection references no secrets."
           },
           "storageOff": {
             "hint": "Secure storage is off, so secrets can’t be saved or read."
@@ -14132,7 +14068,7 @@
             "aria": "New value for {name}"
           }
         },
-        "title": "Connection file: {name}"
+        "title": "Connection: {name}"
       }
     },
     "console": {
@@ -17152,7 +17088,7 @@
           "label": "Disconnect"
         },
         "editFile": {
-          "label": "Edit connection file…"
+          "label": "Edit connection…"
         },
         "editSchema": {
           "label": "Edit schema (DDL)…"
@@ -17171,12 +17107,6 @@
         },
         "openDefinition": {
           "label": "Open definition"
-        },
-        "openInEditor": {
-          "label": "Open in editor"
-        },
-        "revealFile": {
-          "label": "Show file in folder"
         },
         "savedFilters": {
           "empty": "No saved filters",
@@ -17597,7 +17527,7 @@
           "label": "Enable the Studio MCP server"
         },
         "exposed": {
-          "description": "Deny by default. Only connections whose file turns MCP on are visible to an MCP client through this server.",
+          "description": "Deny by default. Only connections with MCP turned on are visible to an MCP client through this server.",
           "label": "Exposed connections",
           "status": "Exposed"
         },
@@ -18357,6 +18287,10 @@
         "status": "{time} left"
       },
       "risk": {
+        "unreadable": {
+          "status": "Request unreadable",
+          "tooltip": "Request details couldn’t be read. Deny it or ask the agent to retry"
+        },
         "unsupported": {
           "status": "Unsupported"
         }
@@ -18430,6 +18364,13 @@
       },
       "none": {
         "empty": "No operations yet"
+      }
+    },
+    "prompts": {
+      "toast": {
+        "typing": {
+          "status": "Opens when you pause typing"
+        }
       }
     },
     "quitConfirm": {
@@ -18524,16 +18465,16 @@
         "cores": {
           "label": "Cores"
         },
-        "cpuShare": {
-          "label": "{percent} of total capacity"
-        },
         "interval": {
-          "hint": "Includes helper processes. Updates every 5 seconds."
+          "hint": "CPU is a share of total capacity. Agents include their subprocesses. Updates every 5 seconds."
         },
         "processes": {
           "label": "Processes"
         },
-        "tooltip": "{app} resource use"
+        "tooltip": "{app} resource use",
+        "total": {
+          "label": "Total"
+        }
       },
       "ops": {
         "notStoppable": {
@@ -18617,14 +18558,20 @@
       "installing": {
         "body": "Downloading and verifying {app} {version}. {app} quits once the new version is ready."
       },
+      "newest": {
+        "label": "Newest version"
+      },
       "newVersion": {
         "label": "New version"
+      },
+      "stepNote": {
+        "body": "{newest} is the newest version. {app} updates one minor version at a time, so it offers the next update after this one."
       },
       "upToDate": {
         "body": "{app} {current} is the latest version."
       },
       "versions": {
-        "body": "{app} {latest} is available. You have {current}."
+        "body": "{app} {target} is available. You have {current}."
       }
     }
   }

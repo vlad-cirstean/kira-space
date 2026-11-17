@@ -39,9 +39,8 @@ const props = withDefaults(
     step: WorkflowStep;
     steps: WorkflowStep[];
     library?: boolean;
-    fileName?: string;
   }>(),
-  { library: false, fileName: '' },
+  { library: false },
 );
 provideStepScope(props.library ? 'library' : 'workflow');
 const draft = useAdeWorkflowDraftStore();
@@ -219,9 +218,6 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
         data-testid="ade-wf-step-name"
         @update:model-value="(v: string | number) => patch({ name: String(v) })"
       />
-      <FieldDescription v-if="library && fileName" data-testid="ade-step-file">{{
-        t('space.ade.workflows.fileName.description', { file: fileName })
-      }}</FieldDescription>
       <SecondaryTabs
         :model-value="step.kind"
         :items="kindItems"

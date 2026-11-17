@@ -31,13 +31,12 @@ const CONTROL: ControlSnapshot[] = [
   { channel: IPC.collectionsList, response: tree },
   { channel: IPC.variablesListEnvironments, response: [] },
   { channel: IPC.apiConfigView, response: view },
-  { channel: IPC.configFilesOpen, response: {} },
 ];
 
-test('api collection skipped — valid items load, the skipped item is listed with its line, Open file names the file', async ({
+test('api collection skipped — valid items load, the skipped item is listed with its line, Edit opens the variables dialog', async ({
   relaunch,
 }) => {
-  const { window: page, control } = await relaunch({ control: CONTROL });
+  const { window: page } = await relaunch({ control: CONTROL });
   await openHttpMode(page);
 
   await expect(collectionRow(page, collection.id)).toBeVisible();
@@ -48,21 +47,15 @@ test('api collection skipped — valid items load, the skipped item is listed wi
 
   const alert = page.locator('[data-testid="api-config-skipped"]');
   await expect(alert).toBeVisible();
-  await expect(alert).toContainText(collection.file);
+  await expect(alert).toContainText('Hand');
   const rows = alert.locator('[data-testid="api-config-skipped-item"]');
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText(`Line ${skipped.line}`);
   await expect(rows).toContainText(skipped.name);
   await expect(rows).toContainText(skipped.message);
   await expect(page.locator('[data-testid="api-config-last-good"]')).toHaveCount(0);
-  await expect(page.locator('[data-testid="config-file-status"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="config-file-problem"]')).toHaveCount(0);
 
-  await alert.locator('[data-testid="api-config-skipped-open"]').click();
-  await expect
-    .poll(() => control.log().filter((e) => e.channel === IPC.configFilesOpen))
-    .toHaveLength(1);
-  expect(control.log().find((e) => e.channel === IPC.configFilesOpen)?.args).toMatchObject({
-    folder: 'api',
-    file: collection.file,
-  });
+  await alert.locator('[data-testid="api-config-skipped-edit"]').click();
+  await expect(page.locator('[data-testid="api-variables-dialog"]')).toBeVisible();
 });

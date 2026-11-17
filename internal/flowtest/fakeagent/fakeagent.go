@@ -311,6 +311,7 @@ func pickAction(scen Scenario, dir, repo, cwd string, args []string) pickedActio
 	recordAppEnv(stem)
 	recordContext(stem, args, "--append-system-prompt-file")
 	writeFile(stem+".args", []byte(strings.Join(args, "\n"))) // marker: the call is fully recorded
+	curStem = stem
 	return pickedAction{Action: action, stem: stem}
 }
 
@@ -438,6 +439,7 @@ func finishAction(action Action, args []string, headless bool) int {
 
 var (
 	lastPrompt  []byte
+	curStem     string // the picked call's file stem
 	promptFiles = regexp.MustCompile(`Task folder: (.+?)\. See README\.md there\.`)
 	draftAsked  = regexp.MustCompile(`write (handovers/draft-[^ ,]+?\.md), then call state step\.finish`)
 )
@@ -844,6 +846,9 @@ func listStatus(ok bool) string {
 func callTool(prompt []byte, cfgPaths, argv []string, server, tool string, args map[string]any) (*mcp.CallToolResult, error) {
 	res, err := callToolOnce(cfgPaths, argv, server, tool, args)
 	if status, ok := finishStatus(tool, args); ok && writeDraftAsked(prompt, refusalText(res, err), "summary-"+status) {
+		if curStem != "" {
+			writeFile(curStem+".draft-asked", []byte(refusalText(res, err)))
+		}
 		return callToolOnce(cfgPaths, argv, server, tool, args)
 	}
 	return res, err

@@ -1,5 +1,5 @@
 import { expect, reviewTest, test } from './fixtures';
-import { adeBoard, openPlan } from './support/adeV2';
+import { adeBoard, openPlan, revealHead } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -34,6 +34,7 @@ test('Review code opens a branch with only uncommitted changes', async ({ relaun
   const facts = contract<Facts>(SCENARIO, 'AdeTaskService.Branch#uncommittedOnly');
   const { window: page, control } = await openPlan(relaunch, [OPEN, boardWith(facts)]);
   const btn = page.locator(`${card('T_deps')} ${t('ade-card-review')}`);
+  await revealHead(page, 'T_deps', 'ade-card-review');
   await expect(btn).toBeEnabled();
   await btn.locator('xpath=..').hover();
   const tooltip = page.locator(tip);
@@ -45,6 +46,7 @@ test('Review code opens a branch with only uncommitted changes', async ({ relaun
 
   await page.locator(`${card('T_deps')} ${t('ade-card-head')}`).click();
   await expect(page.locator(t('ade-panel-review'))).toBeEnabled();
+  await revealHead(page, 'T_deps', 'ade-card-review');
   await btn.click();
   await expect.poll(() => openCalls(control)).toHaveLength(1);
   // The contract's args carry the backend's id; the fixture branch keeps its own.
@@ -59,6 +61,7 @@ test('a mixed branch says it adds uncommitted changes', async ({ relaunch }) => 
   const facts = contract<Facts>(SCENARIO, 'AdeTaskService.Branch#mixed');
   const { window: page } = await openPlan(relaunch, [OPEN, boardWith(facts)]);
   const btn = page.locator(`${card('T_deps')} ${t('ade-card-review')}`);
+  await revealHead(page, 'T_deps', 'ade-card-review');
   await expect(btn).toBeEnabled();
   await btn.locator('xpath=..').hover();
   await expect(page.locator(tip)).toContainText('plus 1 uncommitted change');
@@ -70,6 +73,7 @@ test('a branch with nothing to review stays disabled', async ({ relaunch }) => {
     boardWith({ ahead: 0, dirty: [] }),
   ]);
   const btn = page.locator(`${card('T_deps')} ${t('ade-card-review')}`);
+  await revealHead(page, 'T_deps', 'ade-card-review');
   await expect(btn).toBeDisabled();
   await btn.locator('xpath=..').hover();
   await expect(page.locator(tip)).toContainText('no uncommitted changes');

@@ -3,10 +3,8 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
-import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { defineAsyncComponent } from 'vue';
-import { control } from '../../../bridge/control';
 import { useWorkflowYaml } from '../queries';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import type { WorkflowEntry } from '../wire';
@@ -46,14 +44,6 @@ async function setMode(v: unknown): Promise<void> {
         data-testid="ade-wf-mode"
         @update:model-value="setMode"
       />
-      <ConfigFileBar
-        v-if="wfUi.workflowMode === 'yaml'"
-        :path="entry.path"
-        :error="entry.error"
-        :open="() => control.configFilesOpen({ folder: 'workflows', file: entry.fileName })"
-        :reveal="() => control.configFilesReveal({ folder: 'workflows', file: entry.fileName })"
-        :about="() => control.configFilesOpen({ folder: 'workflows', file: 'AGENTS.md' })"
-      />
       <Button
         variant="dialog"
         size="kira-lg"
@@ -68,9 +58,8 @@ async function setMode(v: unknown): Promise<void> {
       </Button>
     </div>
     <ConfigFileProblem
-      v-if="wfUi.workflowMode !== 'yaml'"
       :error="entry.error"
-      :show-yaml="() => void setMode('yaml')"
+      :show-yaml="wfUi.workflowMode !== 'yaml' ? () => void setMode('yaml') : undefined"
       class="shrink-0"
     />
     <AdeWorkflowYaml v-if="wfUi.workflowMode === 'yaml'" :entry="entry" />

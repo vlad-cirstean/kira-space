@@ -19,11 +19,11 @@ import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
+import { configName } from '@workbench/config/configName';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
 import { errorText } from '../bridge/codedError';
-import ConfigFileBar from '../config/ConfigFileBar.vue';
 import ConfigFileProblem from '../config/ConfigFileProblem.vue';
 import { useConfigFormDraft } from '../config/useConfigFormDraft';
 import McpToolsField from './form/McpToolsField.vue';
@@ -68,7 +68,7 @@ const applyForm = useRunForm(() => props.file);
 
 const view = computed(() => query.data.value);
 const script = computed(() => ctx.scripts.records().find((s) => s.id === view.value?.id));
-const title = computed(() => script.value?.name ?? props.file);
+const title = computed(() => script.value?.name ?? configName(props.file));
 
 // Write-only typed values of secret params, component-local so they die with the dialog.
 const secretDraft = ref<SecretValues>({});
@@ -269,14 +269,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
       </ViewToolbar>
       <DialogBody class="min-h-80">
         <div v-if="view" class="flex min-w-0 flex-col gap-3">
-          <ConfigFileBar
-            v-if="!view.editable || section === 'yaml'"
-            :path="view.path"
-            :error="view.problem"
-            :open="() => ctx.files.open(view!.file)"
-            :reveal="() => ctx.files.reveal(view!.file)"
-            :about="() => ctx.files.open('AGENTS.md')"
-          />
+          <ConfigFileProblem v-if="!view.editable || section === 'yaml'" :error="view.problem" />
           <div
             v-if="view.lastGood"
             class="text-kira-sm text-subtle"

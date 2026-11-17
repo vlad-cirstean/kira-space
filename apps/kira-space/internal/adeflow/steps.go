@@ -83,7 +83,7 @@ func (l *StepLibrary) folder() *configfs.Folder[adewire.WorkflowStep] {
 func decodeLibraryStep(file string, src []byte) (adewire.WorkflowStep, *configfs.Problem) {
 	step, _, werr := ParseStep(src)
 	if werr == nil && step.ID != strings.TrimSuffix(file, ".yaml") {
-		werr = &adewire.WorkflowError{Message: "id must equal the file name without .yaml"}
+		werr = &adewire.WorkflowError{Message: "the ID can’t be edited; change the name instead"}
 	}
 	if werr != nil {
 		return adewire.WorkflowStep{}, &configfs.Problem{Line: werr.Line, Message: werr.Message}

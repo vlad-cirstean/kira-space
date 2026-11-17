@@ -25,7 +25,7 @@ const args = computed(() => ({
         : t('space.ade.leases.chip.waits.tooltip', args)
     "
   >
-    <span class="inline-flex shrink-0" data-testid="ade-lease-chip" :data-holds="holds">
+    <span class="inline-flex min-w-0 shrink" data-testid="ade-lease-chip" :data-holds="holds">
       <AdeChip
         :label="
           holds
@@ -33,7 +33,7 @@ const args = computed(() => ({
             : t('space.ade.leases.chip.waits.label', args)
         "
         :tone="holds ? 'blue' : 'grey'"
-        class="max-w-40 truncate"
+        class="max-w-24 truncate"
       />
     </span>
   </AdeTip>

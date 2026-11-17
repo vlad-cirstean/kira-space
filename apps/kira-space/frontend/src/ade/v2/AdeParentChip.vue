@@ -8,7 +8,7 @@ import { TONE_TAG_CLASS } from './tones';
 
 // A child's link to its orchestrator. An archived parent shows muted and does not select: it is no
 // longer on the board.
-defineProps<{ parent: ParentModel }>();
+defineProps<{ parent: ParentModel; iconOnly?: boolean }>();
 const emit = defineEmits<{ select: [] }>();
 </script>
 
@@ -23,20 +23,20 @@ const emit = defineEmits<{ select: [] }>();
     <Badge
       v-if="parent.archived"
       variant="chip"
-      class="max-w-40 min-w-0 shrink"
-      :class="TONE_TAG_CLASS.grey"
+      class="min-w-0 shrink"
+      :class="[TONE_TAG_CLASS.grey, iconOnly ? '' : 'max-w-40']"
       data-testid="ade-parent-chip"
       data-archived="true"
     >
       <CodiconIcon name="organization" :size="12" />
-      <span class="truncate">{{ parent.title }}</span>
+      <span v-if="!iconOnly" class="truncate">{{ parent.title }}</span>
     </Badge>
     <Badge
       v-else
       as-child
       variant="chip"
-      class="max-w-40 min-w-0 shrink"
-      :class="TONE_TAG_CLASS.blue"
+      class="min-w-0 shrink"
+      :class="[TONE_TAG_CLASS.blue, iconOnly ? '' : 'max-w-40']"
     >
       <button
         type="button"
@@ -45,7 +45,7 @@ const emit = defineEmits<{ select: [] }>();
         @click.stop="emit('select')"
       >
         <CodiconIcon name="organization" :size="12" />
-        <span class="truncate">{{ parent.title }}</span>
+        <span v-if="!iconOnly" class="truncate">{{ parent.title }}</span>
       </button>
     </Badge>
   </AdeTip>

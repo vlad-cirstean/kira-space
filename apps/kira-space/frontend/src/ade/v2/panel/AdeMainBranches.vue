@@ -4,10 +4,8 @@ import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { errorText } from '@workbench/bridge/codedError';
-import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
 import { computed, ref } from 'vue';
-import { useOpenChangeRequest } from '../../../hostview/queries';
 import { useProjectOptions } from '../../../repo/state/projectOptions';
 import AdeForcePushDialog from '../AdeForcePushDialog.vue';
 import AdeTip from '../AdeTip.vue';
@@ -19,11 +17,11 @@ import { useAddTaskRepo, useChangeRequests } from '../queries';
 import { useAdeAddUiStore } from '../state/adeAddUi';
 import { TONE_TEXT_CLASS } from '../tones';
 import AdeUpdatesDot from '../updates/AdeUpdatesDot.vue';
-import { useMarkTrackedSeen } from '../updates/queries';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
 import AdeRow from './AdeRow.vue';
 import AdeTaskBranchMenu from './AdeTaskBranchMenu.vue';
 import { PR_TONE, prStateLabel } from './prState';
+import { useOpenBranchPr } from './useOpenBranchPr';
 
 // Main tab branches: the repo and branch adders, then one row per branch.
 const props = defineProps<{ card: CardModel }>();
@@ -32,7 +30,6 @@ const emit = defineEmits<{ error: [message: string] }>();
 const addUi = useAdeAddUiStore();
 const addRepo = useAddTaskRepo();
 const changeRequests = useChangeRequests();
-const openView = useOpenChangeRequest();
 
 const lines = computed(() => {
   const byBranch = changeRequests.data.value?.branches ?? {};
@@ -44,15 +41,8 @@ const lines = computed(() => {
   }
   return [...groups.values()].flat().map((row) => ({ row, pr: byBranch[row.id] }));
 });
-const { byBranch, describe, pending } = useTaskUpdates();
-const markSeen = useMarkTrackedSeen();
-
-function openPr(branchId: string, url: string): void {
-  const taskId = props.card.task.id;
-  const itemKey = `cr:${branchId}`;
-  if (pending(taskId, itemKey)) markSeen.mutate({ taskId, itemKeys: [itemKey] });
-  fireAndForget(openView.mutateAsync(url), 'hostView.open');
-}
+const { byBranch, describe } = useTaskUpdates();
+const openBranchPr = useOpenBranchPr();
 const forcePushTarget = ref<ForcePushTarget | null>(null);
 
 const task = computed(() => props.card.task);
@@ -153,7 +143,7 @@ async function onAddRepo(id: string): Promise<void> {
         <a
           :href="pr.url"
           class="min-w-0 truncate text-info"
-          @click.prevent="openPr(row.id, pr.url)"
+          @click.prevent="openBranchPr.open(card.task.id, row.id, pr.url)"
           >{{
             pr.title
           }}</a

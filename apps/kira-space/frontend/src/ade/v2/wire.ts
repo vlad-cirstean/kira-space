@@ -845,11 +845,11 @@ export interface AddExistingBranchResult {
   task: Task;
   branch: Branch;
 }
-export interface MergedInto {
+interface MergedInto {
   branchId: string;
   target: string;
 }
-export interface RepoRefresh {
+interface RepoRefresh {
   codeRepoId: string;
   refsChanged: number;
   mergedInto: MergedInto[];
@@ -1035,7 +1035,7 @@ export interface ForwardReviewResult {
 }
 interface PanelForwardItem {
   key: string;
-  kind: 'note' | 'handover' | 'link' | 'proof' | 'field';
+  kind: 'note' | 'handover' | 'link' | 'field';
   label: string;
   at: number;
 }
