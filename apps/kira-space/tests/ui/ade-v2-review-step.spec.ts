@@ -137,6 +137,30 @@ reviewTest('picking a new review agent sends route new', async ({ relaunch }) =>
   });
 });
 
+reviewTest('route cards select by keyboard and send route new', async ({ relaunch }) => {
+  const { page, control } = await openWindow(relaunch, 'waiting');
+  const implementer = page.locator(t('ade-review-route-implementer'));
+  const fresh = page.locator(t('ade-review-route-new'));
+  await expect(implementer).toHaveAttribute('aria-checked', 'true');
+  await expect(implementer).toContainText('Resume the agent run that made these changes');
+  await expect(fresh).toContainText('Start a dedicated review agent session');
+
+  await implementer.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(fresh).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator(t('ade-review-target'))).toBeHidden();
+  await page.locator(t('ade-review-send-agent')).click();
+  await expect.poll(() => calls(control, IPC.adeTaskSendReview)).toHaveLength(1);
+  expect(calls(control, IPC.adeTaskSendReview)[0]?.args).toEqual({
+    runId: RUN_ID,
+    route: 'new',
+    targetRunId: '',
+  });
+
+  await implementer.click();
+  await expect(page.locator(t('ade-review-target'))).toHaveValue(IMPL_ID);
+});
+
 reviewTest('Send needs an open comment', async ({ relaunch }) => {
   const { page } = await openWindow(relaunch, 'answered', ALL_ADDRESSED);
   await expect(page.locator(t('ade-review-send-agent'))).toBeDisabled();
