@@ -13,7 +13,7 @@ User gates: P646 ships a design mock only; implementation of the task-list actio
 | P650 | Status bar CPU/RAM includes agents | Done |
 | P651 | Drop YAML path and edit-config wording app-wide | Done |
 | P652 | Task-list finish: fixes, stale UI specs, real-data check | Done |
-| P653 | Minor-stepped updates and release retention | Todo |
+| P653 | Minor-stepped updates and release retention | Done |
 | P654 | Fix real-claude ade_smart_step failure | Done |
 | P655 | Close chapter | Todo |
 
@@ -78,6 +78,8 @@ Goal: apply minor versions one at a time, so legacy migration and backward-compa
 - Updater offers the next step, never a jump: an install on `X.Y.z` is offered the last patch of `X.Y` first, then `X.(Y+1).0`, then the last patch of `X.(Y+1)`, and so on. The last patch holds all of a minor's migrations. Clean install gets the latest release. Today it reads `releases/latest` (`docs/PACKAGING.md` §7), so it needs a release listing and a stepping rule.
 - Retention in a GitHub Action (separate workflow, runs after `release.yml` succeeds and on manual dispatch, `contents: write` on that job only): keep assets of every `vX.Y.0` release, the last patch of every minor (the update path needs it), and the last 5 patches of the current minor. Delete only release assets, never tags or release pages. Dry-run mode first. Never touch `releases/latest`. Updater skips a release with no assets.
 - Update `docs/PACKAGING.md` §7 and the architecture doc.
+
+Result: plan `plans/P653.md`. Shipped: `internal/releaseline` (one stepping rule for updater and retention: last patch of own minor, then first release of next minor; missing `X.Y.0` falls to lowest eligible patch; draft, prerelease and asset-less releases skipped); Checker lists all releases (paged, fails closed on any bad page, `rate limited` cause) instead of `releases/latest`; `install.sh --tag=vX.Y.Z` (contract marker unchanged) and `Installer.Stage(tag)` refusing any other staged tag; wire `UpdateStatus` `targetVersion` and `newestVersion` replace `latestVersion` (no `v`); update dialog, status bar and prompt key on target, stepped offers show the newest version note; `scripts/releaseretention` plus `release-retention.yml` (dispatch dry run default, unattended runs apply only with repo variable `RELEASE_RETENTION=apply`, deletes release assets only); `release.yml` install smoke also runs `--tag`; `docs/PACKAGING.md` §7 and ARCHITECTURE updated. Verified: Go tests (`releaseline`, `appupdate`, `releaseretention`, flow `TestUpdateStepsOneMinorAtATime`, `TestUpdateCheckFailsClosed`), UI spec `update-dialog` stepped case, typecheck, lint; dry plan on live data: 10 releases, keeps `v0.3.3` and `v0.3.10` to `v0.3.14`, 4 assets to delete (`v0.3.4`, `.5`, `.6`, `.9`). Not verified: `install.sh --tag` runs only at the next release (macOS only, `release.yml` smoke). Limit D12: installs up to `0.3.14` read `releases/latest` and jump to newest; one updating after `0.4.0` ships skips `0.3.last` migrations (ARCHITECTURE Known open items). User step after merge: dispatch `Release retention` with dry run, inspect, then set repo variable `RELEASE_RETENTION=apply`.
 
 ## P654 Real-claude ade_smart_step
 
