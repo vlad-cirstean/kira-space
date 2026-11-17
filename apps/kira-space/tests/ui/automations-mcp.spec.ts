@@ -13,6 +13,7 @@ import { openSettings } from './studio/support/settings';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import { dragSelect, longLog, longLogText, stubClipboard } from './support/logSpecs';
+import { expectOn, expectStaysOnAfterClick } from './support/toggleGroup';
 
 // Contracts runs-form and automations. Backend half: termflow TestRunsForm (the mcp edits)
 // and dbmcpflow TestDbMcpScriptRunAndLogs (a run started by an agent has trigger mcp). The mcp.mode
@@ -155,6 +156,48 @@ test('contract: choosing Long running sends an mcp.mode edit and the YAML tab sh
   await expect
     .poll(() => codeEditorText(dialog(page).locator('[data-testid="run-file-text"]')))
     .toContain('mode: long');
+});
+
+test('contract: the run and mode choices are single-select toggles; arrows move focus, Space selects', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await relaunch({ control: base() });
+  await openDialog(page);
+  await dialog(page).locator('[data-testid="run-file-tab-mcp"]').click();
+  control.respond(IPC.customScriptsForm, form('mcpLong'));
+  await dialog(page).locator('[data-testid="script-mcp-enabled"]').click();
+  const mcpEdits = (path: string) =>
+    control
+      .log()
+      .filter((e) => e.channel === IPC.customScriptsForm)
+      .flatMap((e) => (e.args as { edits: { path: string[]; value?: unknown }[] }).edits)
+      .filter((e) => e.path.join('.') === path);
+  await expect.poll(() => mcpEdits('mcp.enabled')).toHaveLength(1);
+  control.respond(IPC.customScriptsForm, form('mcp'));
+
+  const prompt = dialog(page).locator('[data-testid="script-mcp-prompt"]');
+  const allow = dialog(page).locator('[data-testid="script-mcp-allow"]');
+  await expectOn(prompt);
+  await allow.click();
+  await expect
+    .poll(() => mcpEdits('mcp.run'))
+    .toEqual([expect.objectContaining({ value: 'allow', unset: false })]);
+  await expectStaysOnAfterClick(allow);
+  await page.waitForTimeout(500);
+  expect(mcpEdits('mcp.run')).toHaveLength(1);
+
+  const short = dialog(page).locator('[data-testid="script-mcp-short"]');
+  const long = dialog(page).locator('[data-testid="script-mcp-long"]');
+  await expectOn(short);
+  await short.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(long).toBeFocused();
+  await expectOn(short);
+  await expect(long).toHaveAttribute('data-state', 'off');
+  await page.keyboard.press('Space');
+  await expect
+    .poll(() => mcpEdits('mcp.mode'))
+    .toContainEqual(expect.objectContaining({ value: 'long' }));
 });
 
 test('contract: a problem on mcp.mode badges the MCP tab and shows on the field', async ({

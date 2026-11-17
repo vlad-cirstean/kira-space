@@ -9,6 +9,7 @@ import { contract } from './support/contract';
 import { armFirstFrame, firstFrame, framesLate } from './support/firstFrame';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
+import { expectOn, expectStaysOnAfterClick } from './support/toggleGroup';
 import type { ControlSnapshot } from './support/types';
 
 // Orchestrator tasks: kind choice, card and children group, parent links, the Run next pass dialog,
@@ -211,7 +212,9 @@ test('add popover creates orchestrator task', async ({ relaunch }) => {
   ]);
   await page.locator(t('ade-add')).click();
   await page.locator(t('ade-nw-title')).fill('Ship login');
+  await expectOn(page.locator(t('ade-nw-kind-task')));
   await page.locator(t('ade-nw-kind-orchestrator')).click();
+  await expectStaysOnAfterClick(page.locator(t('ade-nw-kind-orchestrator')));
   await page.locator(t('ade-nw-add')).click();
   await expect.poll(() => calls(control, IPC.adeTaskCreateTask)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskCreateTask)[0]?.args).toMatchObject({

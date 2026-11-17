@@ -245,7 +245,7 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
     await expect(dialog.locator('[data-testid="run-param-input-topic"]')).toHaveValue('build');
     await expect(dialog.locator('[data-testid="run-param-option-env-dev"]')).toHaveAttribute(
       'data-state',
-      'checked',
+      'on',
     );
     await expect(dialog.locator('[data-testid="run-param-option-areas-api"]')).toHaveAttribute(
       'data-state',
@@ -271,6 +271,74 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
             .at(-1)?.args,
       )
       .toMatchObject({ params: { areas: ['api', 'ui'] } });
+  });
+
+  test('a select param is a toggle group up to 5 choices, a select past that', async ({
+    relaunch,
+  }) => {
+    const region = {
+      name: 'region',
+      type: 'select',
+      options: [
+        'us-east-1',
+        'us-west-2',
+        'eu-west-1',
+        'eu-central-1',
+        'ap-south-1',
+        'sa-east-1',
+        'af-south-1',
+      ],
+      default: [],
+      required: false,
+      secret: false,
+    };
+    const { window: page, control } = await relaunch({
+      control: [
+        {
+          channel: IPC.customScriptsList,
+          response: { collections: [], scripts: [{ ...SMART, params: [...SMART.params, region] }] },
+        },
+        ...BASE.filter((e) => e.channel !== IPC.customScriptsList),
+      ],
+    });
+    await openPanel(page);
+    await page.locator(`[data-testid="script-${SMART.id}"] [data-testid="script-play"]`).click();
+    const dialog = page.locator('[data-testid="run-dialog"]');
+    const group = dialog.locator('[data-testid="run-param-input-env"]');
+    await expect(group).toHaveAttribute('data-slot', 'secondary-tabs');
+    const prod = dialog.locator('[data-testid="run-param-option-env-prod"]');
+    await prod.click();
+    await expect(prod).toHaveAttribute('data-state', 'on');
+    // The solid selection fill (--kira-select) beats the hover fill.
+    await expect(prod).toHaveCSS('background-color', 'rgb(31, 51, 84)');
+    await prod.click();
+    await expect(prod).toHaveAttribute('data-state', 'on');
+    const none = dialog.locator('[data-testid="run-param-option-env-"]');
+    await none.click();
+    await expect(none).toHaveAttribute('data-state', 'on');
+    await expect(prod).toHaveAttribute('data-state', 'off');
+    await expect
+      .poll(() => {
+        const last = control
+          .log()
+          .filter((e) => e.channel === IPC.scriptRunsPreview)
+          .at(-1)?.args as { params: Record<string, string[]> } | undefined;
+        return last?.params.env ?? [];
+      })
+      .toEqual([]);
+
+    const select = dialog.locator('[data-testid="run-param-input-region"]');
+    await expect(select).toHaveJSProperty('tagName', 'SELECT');
+    await select.selectOption('eu-west-1');
+    await expect
+      .poll(
+        () =>
+          control
+            .log()
+            .filter((e) => e.channel === IPC.scriptRunsPreview)
+            .at(-1)?.args,
+      )
+      .toMatchObject({ params: { region: ['eu-west-1'] } });
   });
 
   test('a one-off prompt edit reaches Start and is never saved', async ({ relaunch }) => {
