@@ -20,22 +20,29 @@ export interface SecondaryTabItem {
 withDefaults(
   defineProps<{
     items: readonly SecondaryTabItem[];
-    variant?: 'tabs' | 'segmented' | 'text';
+    variant?: 'tabs' | 'segmented' | 'text' | 'choice';
     size?: 'kira' | 'kira-lg';
     ariaLabel?: string;
     countBadge?: boolean;
+    /** Spaced chips that wrap onto further rows instead of one connected strip. */
+    wrap?: boolean;
   }>(),
   {
     variant: 'tabs',
     size: 'kira',
     ariaLabel: undefined,
     countBadge: false,
+    wrap: false,
   },
 );
 
 // `text`: bare underlined words, no chip (approval content tabs); `tabs` adds muted idle text.
 const TEXT_ITEM =
   'h-auto min-w-0 px-0 bg-transparent text-kira-sm font-normal text-subtle hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-fg data-[state=on]:underline data-[state=on]:decoration-primary data-[state=on]:underline-offset-3';
+
+// `choice`: form single-select. Solid `bg-select` fill; `segmented` selected equals hover (`bg-field`).
+const CHOICE_ITEM =
+  'max-w-full text-muted-foreground hover:text-fg data-[state=on]:bg-select aria-pressed:bg-select data-[state=on]:text-fg';
 
 const model = defineModel<string>({ required: true });
 
@@ -50,8 +57,9 @@ function onUpdate(v: unknown): void {
   <ToggleGroup
     type="single"
     data-slot="secondary-tabs"
-    :variant="variant === 'segmented' ? 'outline' : 'default'"
-    :class="variant === 'text' && 'gap-3'"
+    :variant="variant === 'segmented' || variant === 'choice' ? 'outline' : 'default'"
+    :spacing="wrap ? 1 : undefined"
+    :class="cn(variant === 'text' && 'gap-3', wrap && 'flex-wrap')"
     :size="size"
     :model-value="model"
     :aria-label="ariaLabel"
@@ -71,12 +79,13 @@ function onUpdate(v: unknown): void {
                 cn(
                   variant === 'tabs' && 'text-muted-foreground data-[state=on]:text-fg',
                   variant === 'text' && TEXT_ITEM,
+                  variant === 'choice' && CHOICE_ITEM,
                 )
               "
             >
               <slot name="item" :item="item" :active="item.value === model">
                 <CodiconIcon v-if="item.icon" :name="item.icon" :size="13" />
-                <span>{{ item.label }}</span>
+                <span :class="variant === 'choice' && 'min-w-0 truncate'">{{ item.label }}</span>
                 <template v-if="item.count !== undefined">
                   <Badge v-if="countBadge" variant="count" class="px-1">{{ item.count }}</Badge>
                   <span v-else class="text-kira-sm text-muted-foreground">{{ item.count }}</span>
@@ -96,12 +105,13 @@ function onUpdate(v: unknown): void {
           cn(
             variant === 'tabs' && 'text-muted-foreground data-[state=on]:text-fg',
             variant === 'text' && TEXT_ITEM,
+            variant === 'choice' && CHOICE_ITEM,
           )
         "
       >
         <slot name="item" :item="item" :active="item.value === model">
           <CodiconIcon v-if="item.icon" :name="item.icon" :size="13" />
-          <span>{{ item.label }}</span>
+          <span :class="variant === 'choice' && 'min-w-0 truncate'">{{ item.label }}</span>
           <template v-if="item.count !== undefined">
             <Badge v-if="countBadge" variant="count" class="px-1">{{ item.count }}</Badge>
             <span v-else class="text-kira-sm text-muted-foreground">{{ item.count }}</span>
