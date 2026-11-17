@@ -521,11 +521,16 @@ newer, else the first release of the next minor (`X.(Y+1).0`, or its first patch
 published). A release counts only when it is published, not a prerelease, plain `vX.Y.Z`, and its
 `kira-space-macos-arm64.dmg` is uploaded and non-empty. The app passes the target to `install.sh
 --tag=`; without `--tag` the script installs `/releases/latest`, which is the clean-install path.
+Apps up to 0.3.14 pass no `--tag` in self-update mode (`--wait-pid`), so the script steps itself: it lists
+`/releases` (up to 10 pages), reads the installed bundle's `CFBundleShortVersionString` and applies the same
+rule in a JXA function (`nextStep`). It falls back to `/releases/latest` only when no version or step is
+found. `verify-packaging.sh` S16 replays `internal/releaseline/testdata/next_step.json`, the table the Go
+test uses, through that function, so the two cannot drift.
 Last patch holds a minor's migrations, so an old install must pass through it.
 
 **Release retention (P653).** `release-retention.yml` deletes the assets of releases the updater no
 longer needs, so the repository does not keep every DMG. It keeps every asset of: each minor's `.0`,
-each minor's first and last release (with assets), the 5 newest releases of the current minor, and
+each minor's first and last release (those the updater would pick: published, platform asset uploaded), the 5 newest releases of the current minor, and
 the `/releases/latest` release. Tags, release pages, drafts, prereleases and `/releases/latest` are
 never touched; the only endpoint it deletes through is `releases/assets/{id}`. Selection is Go
 (`scripts/releaseretention`, sharing `internal/releaseline` with the updater). Triggers: `workflow_run` after a

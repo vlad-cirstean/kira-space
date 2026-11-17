@@ -157,6 +157,13 @@ if [ "${INSTALL_URL_COUNT:-0}" -ne 1 ]; then
   fail "installer URL referenced more than once" "raw.githubusercontent.com should appear exactly once across apps/, packages/, internal/ (InstallScriptURL only); got $INSTALL_URL_COUNT hits: $INSTALL_URL_HITS"
 fi
 
+# --- S16: install.sh's stepping rule is the updater's (P653) ------------------------------------
+# Apps up to 0.3.14 run install.sh with no --tag, so the script steps minors itself in a JXA twin of
+# releaseline.NextStep. Replay the Go table (internal/releaseline/testdata/next_step.json) through it.
+if ! bun scripts/check-install-step.ts; then
+  fail "installer stepping drifted" "scripts/install.sh's nextStep disagrees with internal/releaseline's NextStep table"
+fi
+
 # --- S12: the bundled ONNX Runtime version agrees everywhere it is pinned (P210) ----------------
 # internal/memory/embed/paths.go's ORTVersion names the dylib RuntimeLib loads from Frameworks; the
 # fetch script downloads that version and the bundle task copies that file name.

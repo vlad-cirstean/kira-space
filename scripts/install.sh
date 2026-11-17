@@ -195,6 +195,112 @@ APPLESCRIPT_EOF
   trap cleanup EXIT
   trap 'exit 130' INT TERM HUP
 
+  # ---- 4b: step one minor at a time (self-update without --tag) -------------------------------
+  # Apps up to 0.3.14 run this script without --tag, so it would install /releases/latest and skip
+  # the intermediate minors' migrations. Apply the updater's stepping rule (internal/releaseline
+  # NextStep) here: the last patch of the installed minor when newer, else the lowest release of the
+  # next minor. nextStep below must stay identical to it; scripts/verify-packaging.sh (S16) runs it
+  # against internal/releaseline/testdata/next_step.json, the table the Go test uses. Newer apps
+  # always pass --tag, so this only ever serves the older ones. Interactive mode is a clean install
+  # or a deliberate reinstall and keeps taking the latest release.
+  if [ -n "$NOTIFY_FD" ] && [ -z "$REQ_TAG" ]; then
+    CUR_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+      "/Applications/$APP_NAME.app/Contents/Info.plist" 2>/dev/null || echo '')"
+    PAGE=1
+    while [ "$PAGE" -le 10 ]; do
+      curl --proto '=https' --tlsv1.2 -fsSL --connect-timeout 20 --retry 3 --retry-delay 2 \
+        -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' \
+        -o "$WORK/releases-$PAGE.json" \
+        "https://api.github.com/repos/vlad-cirstean/kira-space/releases?per_page=100&page=$PAGE" </dev/null \
+        || die "couldn't list releases to pick the next update step"
+      # A page with fewer than 100 releases is the last one.
+      PAGE_COUNT="$(grep -o '"tag_name"' "$WORK/releases-$PAGE.json" | wc -l | tr -d ' ')"
+      [ "$PAGE_COUNT" -ge 100 ] || break
+      PAGE=$((PAGE + 1))
+    done
+    [ "$PAGE" -le 10 ] || PAGE=10
+    cat >"$WORK/step-release.js" <<'STEP_JXA_EOF'
+function parseVer(tag) {
+  var m = /^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.exec(tag);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+function cmpVer(a, b) {
+  for (var i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+  }
+  return 0;
+}
+function hasAsset(r, name) {
+  var assets = r.assets || [];
+  for (var i = 0; i < assets.length; i++) {
+    var a = assets[i];
+    if (a.name === name && a.state === "uploaded" && a.size > 0) return true;
+  }
+  return false;
+}
+// The tag to install for a running version, or "" when none (the Go twin: releaseline.NextStep).
+function nextStep(current, rels, asset) {
+  var m = /^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/.exec(current);
+  if (!m) return "";
+  var cur = [Number(m[1]), Number(m[2]), Number(m[3])];
+  var curPre = m[4] !== undefined;
+  var byKey = {};
+  var lines = [];
+  for (var i = 0; i < rels.length; i++) {
+    var r = rels[i];
+    if (r.draft || r.prerelease || !hasAsset(r, asset)) continue;
+    var v = parseVer(r.tag_name);
+    if (!v) continue;
+    var key = v[0] + "." + v[1];
+    if (!byKey[key]) {
+      byKey[key] = { major: v[0], minor: v[1], vs: [] };
+      lines.push(byKey[key]);
+    }
+    byKey[key].vs.push(v);
+  }
+  lines.sort(function (a, b) { return cmpVer([a.major, a.minor, 0], [b.major, b.minor, 0]); });
+  for (var j = 0; j < lines.length; j++) {
+    var l = lines[j];
+    l.vs.sort(cmpVer);
+    var c = cmpVer([l.major, l.minor, 0], [cur[0], cur[1], 0]);
+    var top = l.vs[l.vs.length - 1];
+    var pick = null;
+    if (c === 0) {
+      // A prerelease of x.y.z sorts below x.y.z itself.
+      var d = cmpVer(top, cur);
+      if (d > 0 || (d === 0 && curPre)) pick = top;
+    } else if (c > 0) {
+      pick = l.vs[0];
+    }
+    if (pick) return "v" + pick.join(".");
+  }
+  return "";
+}
+function run(argv) {
+  var app = Application.currentApplication();
+  app.includeStandardAdditions = true;
+  var rels = [];
+  for (var p = 1; p <= Number(argv[3]); p++) {
+    rels = rels.concat(JSON.parse(app.read(Path(argv[2] + "/releases-" + p + ".json"))));
+  }
+  return nextStep(argv[0], rels, argv[1]);
+}
+STEP_JXA_EOF
+    STEP_TAG=""
+    if [ -n "$CUR_VERSION" ]; then
+      STEP_TAG="$(osascript -l JavaScript "$WORK/step-release.js" "$CUR_VERSION" "$ASSET" "$WORK" "$PAGE" \
+        </dev/null)" || die "couldn't pick the next update step"
+    fi
+    if [ -n "$STEP_TAG" ]; then
+      log "stepping from $CUR_VERSION to $STEP_TAG"
+      REQ_TAG="$STEP_TAG"
+      RELEASE_URL="https://api.github.com/repos/vlad-cirstean/kira-space/releases/tags/$REQ_TAG"
+      RELEASE_DESC="release $REQ_TAG"
+    else
+      log "no update step found from '$CUR_VERSION'; taking the latest release"
+    fi
+  fi
+
   # ---- 5: resolve release --------------------------------------------------------------------
   RELEASE_JSON="$WORK/release.json"
   set +e
