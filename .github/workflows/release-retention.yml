@@ -1,8 +1,9 @@
 name: Release retention
 
-# P653: deletes the assets of releases the updater no longer needs (docs/PACKAGING.md §7). Kept: each
-# minor's .0, first and last release (the updater's step targets), the 5 newest of the current minor
-# and releases/latest. Only assets go: tags, release pages and releases/latest are never touched.
+# P653, P656: deletes releases the updater no longer needs, whole, with their assets
+# (docs/PACKAGING.md §7). Kept: each minor's .0, first and last release (the updater's step targets),
+# the 5 newest of the current minor and releases/latest. Git tags, drafts, prereleases and
+# releases/latest are never touched; releases/{id} is the one delete endpoint.
 # Separate from release.yml so a failure here never fails a release. The plan is idempotent, so the
 # daily schedule is a harmless fallback for when a chained dispatch of release.yml creates no
 # workflow_run event.
@@ -94,17 +95,18 @@ jobs:
 
           COUNT="$(grep -c . deletes.tsv || true)"
           if [ "$DRY_RUN" != false ]; then
-            echo "dry run: would delete $COUNT assets"
+            echo "dry run: would delete $COUNT releases (tags kept)"
             exit 0
           fi
           ERR="$(mktemp)"
-          # Assets only: releases/assets/{id} is the one endpoint this job deletes through.
-          while IFS="$(printf '\t')" read -r ID TAG NAME; do
+          # Whole releases: releases/{id} is the one endpoint this job deletes through. It leaves the tag.
+          while IFS="$(printf '\t')" read -r ID TAG; do
             [ -n "$ID" ] || continue
-            if gh api -X DELETE "repos/$GH_REPO/releases/assets/$ID" 2>"$ERR"; then
-              echo "deleted $TAG asset $NAME (id $ID)"
+            case "$ID" in *[!0-9]*) echo "bad release id '$ID' for $TAG" >&2; exit 1 ;; esac
+            if gh api -X DELETE "repos/$GH_REPO/releases/$ID" 2>"$ERR"; then
+              echo "deleted release $TAG (id $ID); tag kept"
             elif grep -q 'HTTP 404' "$ERR"; then
-              echo "already deleted: $TAG asset $NAME (id $ID)"
+              echo "already deleted: release $TAG (id $ID)"
             else
               cat "$ERR" >&2
               exit 1

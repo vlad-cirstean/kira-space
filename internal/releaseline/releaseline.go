@@ -1,5 +1,5 @@
 // Package releaseline holds the one definition of "which release comes next" shared by the in-app
-// updater (internal/appupdate) and the release-asset retention tool (scripts/releaseretention).
+// updater (internal/appupdate) and the release retention tool (scripts/releaseretention).
 // Leaf package: stdlib and x/mod/semver only.
 //
 // A line is a major.minor pair (v0.3). Lines order by semver. Pre-1.0 needs no special case:
@@ -23,6 +23,7 @@ type Asset struct {
 
 // Release is the subset of a GitHub release object this package reads.
 type Release struct {
+	ID         int64   `json:"id"` // release id, read only by retention (updater ignores it)
 	Tag        string  `json:"tag_name"`
 	Draft      bool    `json:"draft"`
 	Prerelease bool    `json:"prerelease"`

@@ -15,22 +15,23 @@ const keepRecent = 5
 // Decision is what retention does with one release.
 type Decision struct {
 	Tag     string
-	Action  string   // keep, skip, none, delete
+	Action  string   // keep, skip, delete
 	Reasons []string // why kept or skipped
 }
 
-// Delete is one asset to remove.
+// Delete is one release to remove whole. Its git tag stays.
 type Delete struct {
-	ID        int64
-	Tag, Name string
-	Size      int64
+	ID     int64 // release id
+	Tag    string
+	Assets int   // asset count, for the log
+	Size   int64 // summed asset bytes, for the log
 }
 
-// plan decides which release assets to delete. Candidates are published, non-prerelease releases
-// with a plain vX.Y.Z tag; everything else is skipped and never touched. A candidate keeps every
-// asset when it is a minor's .0, the first or last of its line (the next-step targets of
+// plan decides which releases to delete whole. Candidates are published, non-prerelease releases
+// with a plain vX.Y.Z tag; everything else is skipped and never touched. A candidate is kept
+// when it is a minor's .0, the first or last of its line (the next-step targets of
 // releaseline), among the 5 highest of the current line, or releases/latest. Any other candidate
-// loses all assets. First and last of a line count only releases the updater would pick
+// is deleted with all its assets; its tag stays. First and last of a line count only releases the updater would pick
 // (releaseline.Eligible for asset). Errors leave nothing to delete.
 func plan(rels []releaseline.Release, latest, asset string) ([]Decision, []Delete, error) {
 	var decisions []Decision
@@ -87,20 +88,23 @@ func plan(rels []releaseline.Release, latest, asset string) ([]Decision, []Delet
 	var deletes []Delete
 	for _, r := range cands {
 		switch {
-		case len(r.Assets) == 0:
-			decisions = append(decisions, Decision{r.Tag, "none", []string{"no assets"}})
 		case len(reasons[r.Tag]) > 0:
 			decisions = append(decisions, Decision{r.Tag, "keep", reasons[r.Tag]})
 		default:
-			decisions = append(decisions, Decision{r.Tag, "delete", nil})
-			for _, a := range r.Assets {
-				deletes = append(deletes, Delete{ID: a.ID, Tag: r.Tag, Name: a.Name, Size: a.Size})
+			if r.ID <= 0 {
+				return nil, nil, fmt.Errorf("release %s has no id", r.Tag)
 			}
+			var size int64
+			for _, a := range r.Assets {
+				size += a.Size
+			}
+			decisions = append(decisions, Decision{r.Tag, "delete", nil})
+			deletes = append(deletes, Delete{ID: r.ID, Tag: r.Tag, Assets: len(r.Assets), Size: size})
 		}
 	}
 	for _, d := range deletes {
 		if d.Tag == latest {
-			return nil, nil, fmt.Errorf("plan deletes an asset of the latest release %s", latest)
+			return nil, nil, fmt.Errorf("plan deletes the latest release %s", latest)
 		}
 	}
 	return decisions, deletes, nil
