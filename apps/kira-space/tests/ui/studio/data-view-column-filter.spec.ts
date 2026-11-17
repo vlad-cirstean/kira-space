@@ -6,7 +6,7 @@ import { IPC } from '../support/ipcChannels';
 import { emitWailsEvent } from '../support/mockRuntime';
 import { WIDE_TABLE_COLUMNS, WIDE_TABLE_ROWS } from './support/cellEditorCaptures';
 import { connectAndExpand, connectionCreateArgs } from './support/connect';
-import { cellText, headerCell } from './support/grid';
+import { cellText, headerCell, headerNames } from './support/grid';
 import {
   BIG_ROWS_PATH,
   bigRowsFixture,
@@ -97,12 +97,6 @@ const PORT: PortSnapshot[] = [
 
 function expectedNames(...prefixes: string[]): string[] {
   return NAMES.filter((n) => n === 'id' || prefixes.some((p) => n.includes(p)));
-}
-
-async function headerNames(page: Page): Promise<string[]> {
-  return page
-    .locator(HEADERS)
-    .evaluateAll((els) => els.map((el) => el.getAttribute('data-column') ?? ''));
 }
 
 async function expectHeaders(page: Page, names: string[]): Promise<void> {
