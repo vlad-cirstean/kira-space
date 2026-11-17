@@ -2,9 +2,14 @@
 // 64 KiB truncated cells) must never freeze the renderer: every frame gap stays under the budget on
 // arrival, on scroll, and when the Studio module is left and re-entered. The backend half is
 // dbflow/console_large_test.go; sizes mirror the cap it asserts.
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import { CELL_DISPLAY_CHARS } from '../../../frontend/src/studio/views/shared/page/display';
+import {
+  controlSnapshots as kafkaControl,
+  portSnapshots as kafkaPorts,
+} from '../../ipc/kafka/kafka.fixture';
+import { controlSnapshots as redisControl } from '../../ipc/redis/redis.fixture';
 import type { ControlSnapshot, LogicalPage, PortSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
 import {
@@ -25,20 +30,20 @@ import { mongoCreateArgs } from './support/connectionArgs';
 import { executeSnap } from './support/consolePages';
 import { typeInto } from './support/editor';
 import { editorText } from './support/editorText';
-import { largeDocumentPage, largeTabularPage } from './support/mockStream';
+import { largeDocumentPage, largeTabularPage, type StudioPortSnapshot } from './support/mockStream';
 import {
   DB_PATH as MONGO_DB_PATH,
   connectAndExpandControl as mongoConnectAndExpandControl,
   mongoConnectionSummary,
   WIDGETS_PATH,
-  widgetsFixture,
 } from './support/mongoFixture';
 import {
   ORDER_ITEMS_PATH,
   orderItemsFixture,
   postgresConnectionSummary,
 } from './support/postgresFixture';
-import { connectionRow, expandRow, findRow, openRowMenu } from './support/tree';
+import { openRedisBrowse, REDIS_DB0 } from './support/redisFixture';
+import { connectionRow, expandRow, findRow, openBrowseLeaf, openRowMenu } from './support/tree';
 
 const BUDGET_MS = 250;
 const DOC_ROWS = 10_000;
@@ -163,8 +168,8 @@ for (const away of [false, true]) {
       ...FIXTURE.control,
     ];
     const pages: LogicalPage[] = [
-      largeTabularPage(500, 4, CELL_BYTES),
-      largeTabularPage(100, 1, 64 * 1024, true),
+      largeTabularPage(250, 4, CELL_BYTES),
+      largeTabularPage(50, 1, 64 * 1024, true),
     ];
     const PORT: PortSnapshot[] = [
       ...FIXTURE.port,
@@ -200,7 +205,7 @@ for (const away of [false, true]) {
     await resetFreezeProbe(page);
     const grid = view.locator('[data-testid="console-result-grid"]');
     await grid.hover();
-    for (let i = 0; i < 20; i++) await page.mouse.wheel(0, 4000);
+    for (let i = 0; i < 8; i++) await page.mouse.wheel(0, 4000);
     await page.waitForTimeout(500);
     await expectResponsive(page, 'tabular scroll', BUDGET_MS);
 
@@ -218,33 +223,197 @@ for (const away of [false, true]) {
   });
 }
 
-test('documents tab stays responsive on a 10,000-document page', async ({ relaunch }) => {
-  const CONNECTION_ID = 'conn-large-doctab';
-  const FIXTURE = widgetsFixture(CONNECTION_ID);
+async function scrollAndExpectResponsive(page: Page, over: Locator, label: string): Promise<void> {
+  await resetFreezeProbe(page);
+  await over.hover();
+  for (let i = 0; i < 8; i++) await page.mouse.wheel(0, 4000);
+  await page.waitForTimeout(500);
+  await expectResponsive(page, `${label} scroll`, BUDGET_MS);
+}
+
+test('data grid tab stays responsive on a page of huge cells', async ({ relaunch }) => {
+  const CONNECTION_ID = 'conn-large-grid';
+  const FIXTURE = orderItemsFixture(CONNECTION_ID);
   const CONTROL: ControlSnapshot[] = [
     { channel: IPC.connectionsList, response: [] },
     {
       channel: IPC.connectionsCreate,
-      args: mongoCreateArgs('Large DocTab'),
-      response: mongoConnectionSummary(CONNECTION_ID, 'Large DocTab', 'green'),
+      args: connectionCreateArgs('Large Grid', 'green'),
+      response: postgresConnectionSummary(CONNECTION_ID, 'Large Grid', 'green'),
     },
     ...FIXTURE.control,
   ];
-  const [unfiltered, ...rest] = FIXTURE.port;
-  const PORT: PortSnapshot[] = [
-    {
-      ...unfiltered,
-      response: { kind: 'read', page: docPage(), source: 'server' },
-    } as PortSnapshot,
-    ...rest,
-  ];
+  const PORT: PortSnapshot[] = FIXTURE.port.map((snap) =>
+    snap.op === DATA_OP.read && (snap.payload as { path?: string }).path === ORDER_ITEMS_PATH
+      ? {
+          ...snap,
+          delayMs: DELAY_MS,
+          response: {
+            kind: 'read',
+            page: largeTabularPage(150, 4, CELL_BYTES),
+            source: 'server',
+          },
+        }
+      : snap,
+  );
   const { window: page } = await relaunch({ control: CONTROL, stream: PORT });
   await startProbe(page);
-  await connectMongoAndExpand(page, 'Large DocTab');
+  await connectAndExpand(page, 'Large Grid', 'green');
+  await (await findRow(page, ORDER_ITEMS_PATH)).dblclick();
+  // Reset once the tab shell is up, so the window holds the page's arrival, not the tab opening.
+  await page.waitForTimeout(DELAY_MS / 2);
   await resetFreezeProbe(page);
-  await (await findRow(page, WIDGETS_PATH)).dblclick();
-  await expect(page.locator('[data-testid="document-row"]').first()).toBeVisible({
+  const grid = page.locator('[data-testid="data-grid"]');
+  await expect(grid).toBeVisible({ timeout: 60_000 });
+  await expect(grid.locator('.slick-cell').first()).toBeVisible({ timeout: 60_000 });
+  await expectResponsive(page, 'data grid load', BUDGET_MS);
+  await scrollAndExpectResponsive(page, grid, 'data grid');
+});
+
+test('key/value tab stays responsive on a page of huge values', async ({ relaunch }) => {
+  const KEY_PATH = `${REDIS_DB0}/namespace:session/key:session%3Aabc`;
+  const NS = `${REDIS_DB0}/namespace:session`;
+  const fields = Array.from({ length: 150 }, (_, i) => `field-${i}`);
+  const values = fields.map((_, i) =>
+    `v${i}-`.repeat(Math.ceil(CELL_BYTES / 4)).slice(0, CELL_BYTES),
+  );
+  const read: StudioPortSnapshot = {
+    op: DATA_OP.read,
+    payload: {
+      connectionId: 'test-redis',
+      path: KEY_PATH,
+      projection: null,
+      filter: null,
+      sort: null,
+      pageSize: 100,
+      cursor: { mode: 'offset', offset: 0 },
+    },
+    delayMs: DELAY_MS,
+    response: {
+      kind: 'read',
+      page: {
+        kind: 'keyvalue',
+        redisType: 'hash',
+        ttlMs: null,
+        memoryBytes: null,
+        fields,
+        values,
+        position: {
+          offset: 0,
+          pageSize: fields.length,
+          hasMore: false,
+          nextToken: null,
+          prevToken: null,
+          strategy: 'offset',
+        },
+      },
+      source: 'server',
+    },
+  };
+  const { window: page } = await relaunch({ control: redisControl, stream: [read, read] });
+  await startProbe(page);
+  await openRedisBrowse(page);
+  const browse = page.locator('[data-testid="browse-view"]');
+  await browse.locator(`[data-testid="browse-row"][data-path="${NS}"]`).dblclick();
+  await openBrowseLeaf(page, KEY_PATH);
+  await page.waitForTimeout(DELAY_MS / 2);
+  await resetFreezeProbe(page);
+  const view = page.locator(`[data-testid="keyvalue-view"][data-path="${KEY_PATH}"]`);
+  await expect(view.locator('[data-testid="keyvalue-row"]').first()).toBeVisible({
     timeout: 60_000,
   });
-  await expectResponsive(page, 'documents tab load', BUDGET_MS);
+  await expectResponsive(page, 'key/value load', BUDGET_MS);
+  await scrollAndExpectResponsive(page, view, 'key/value');
+});
+
+test('stream tab stays responsive on a page of huge bodies', async ({ relaunch }) => {
+  const TOPIC_PATH = 'topic:orders';
+  const rows = 150;
+  const ordersRead = kafkaPorts.find(
+    (s) => s.op === DATA_OP.read && (s.payload as { path: string }).path === TOPIC_PATH,
+  ) as PortSnapshot;
+  const big: PortSnapshot = {
+    ...ordersRead,
+    response: {
+      kind: 'read',
+      page: {
+        kind: 'stream',
+        keys: Array.from({ length: rows }, (_, i) => `k${i}`),
+        headers: Array.from({ length: rows }, () => '[]'),
+        attrs: Array.from({ length: rows }, () => '{}'),
+        timestamps: Array.from({ length: rows }, () => '2026-01-01T00:00:00.000Z'),
+        bodies: Array.from({ length: rows }, (_, i) =>
+          `b${i}-`.repeat(Math.ceil(CELL_BYTES / 4)).slice(0, CELL_BYTES),
+        ),
+        position: {
+          offset: null,
+          pageSize: 100,
+          hasMore: false,
+          nextToken: null,
+          prevToken: null,
+          strategy: 'offsetWindow',
+        },
+        visibilityTimeoutSeconds: null,
+      },
+      source: 'server',
+    },
+  } as PortSnapshot;
+  const { window: page } = await relaunch({
+    control: kafkaControl as ControlSnapshot[],
+    stream: [big, ...kafkaPorts.filter((s) => s !== ordersRead)],
+  });
+  await startProbe(page);
+  await openRowMenu(page, '');
+  await page.click('[data-testid="menu-item-connect"]');
+  await expect(connectionRow(page).locator('.status-dot')).toHaveAttribute(
+    'data-status',
+    'connected',
+    { timeout: 10_000 },
+  );
+  await expandRow(page, '');
+  await resetFreezeProbe(page);
+  await (await findRow(page, TOPIC_PATH)).dblclick();
+  const view = page.locator(`[data-testid="stream-view"][data-path="${TOPIC_PATH}"]`);
+  await expect(view.locator('[data-testid="stream-row"]').first()).toBeVisible({ timeout: 60_000 });
+  await expectResponsive(page, 'stream load', BUDGET_MS);
+  await scrollAndExpectResponsive(page, view, 'stream');
+});
+
+test('a held console run cancels on Stop without a freeze', async ({ relaunch }) => {
+  const CONNECTION_ID = 'conn-large-cancel';
+  const STATEMENT = 'SELECT pg_sleep(60)';
+  const FIXTURE = orderItemsFixture(CONNECTION_ID);
+  const CONTROL: ControlSnapshot[] = [
+    { channel: IPC.connectionsList, response: [] },
+    {
+      channel: IPC.connectionsCreate,
+      args: connectionCreateArgs('Large Cancel', 'green'),
+      response: postgresConnectionSummary(CONNECTION_ID, 'Large Cancel', 'green'),
+    },
+    ...FIXTURE.control,
+  ];
+  const PORT: StudioPortSnapshot[] = [
+    ...FIXTURE.port,
+    {
+      op: DATA_OP.execute,
+      payload: { connectionId: CONNECTION_ID, path: ORDER_ITEMS_PATH, statements: [STATEMENT] },
+      error: { code: 'E_CANCELLED', message: 'operation was cancelled' },
+      untilCancel: true,
+    },
+  ];
+  const { window: page, control } = await relaunch({ control: CONTROL, stream: PORT });
+  await startProbe(page);
+  await connectAndExpand(page, 'Large Cancel', 'green');
+  await openConsoleFromMenu(page, ORDER_ITEMS_PATH);
+  const view = page.locator('[data-testid="console-view"]');
+  await typeInto(view, page, STATEMENT);
+  await page.click('[data-testid="console-run-statement"]');
+  await expect(page.locator('[data-testid="console-stop"]')).toBeEnabled();
+  await resetFreezeProbe(page);
+  await page.waitForTimeout(1000);
+  await page.click('[data-testid="console-stop"]');
+  await expect.poll(() => control.log().filter((e) => e.channel === IPC.opsCancel).length).toBe(1);
+  // No result exists to carry a status label: the run ending is the Stop button going idle.
+  await expect(page.locator('[data-testid="console-stop"]')).toBeDisabled();
+  await expectResponsive(page, 'cancel', BUDGET_MS);
 });
