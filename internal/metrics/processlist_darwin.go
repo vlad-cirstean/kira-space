@@ -52,8 +52,8 @@ func listProcesses() ([]procEntry, error) {
 			exe = C.GoStringN(&pathBuf[0], ret)
 		}
 		var info C.struct_proc_bsdinfo
-		infoSize := C.int(unsafe.Sizeof(info))
-		infoOK := C.proc_pidinfo(pid, C.PROC_PIDTBSDINFO, 0, unsafe.Pointer(&info), infoSize) == infoSize
+		infoLen := C.proc_pidinfo(pid, C.PROC_PIDTBSDINFO, 0, unsafe.Pointer(&info), C.int(unsafe.Sizeof(info)))
+		infoOK := int(infoLen) == int(unsafe.Sizeof(info))
 		// Drop only when both fail: an exe-less entry still keeps a parent chain intact.
 		if ret <= 0 && !infoOK {
 			continue
