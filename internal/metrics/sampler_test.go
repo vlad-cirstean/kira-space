@@ -295,11 +295,13 @@ func TestGroupProcesses(t *testing.T) {
 	const app = "/x/Kira Space"
 	noResp := func(int32) int32 { return -1 }
 	tests := []struct {
-		name       string
-		entries    []procEntry
-		roots      []int32
-		wantApp    []int32
-		wantAgents []int32
+		name        string
+		entries     []procEntry
+		roots       []int32
+		scriptRoots []int32
+		wantApp     []int32
+		wantAgents  []int32
+		wantScripts []int32
 	}{
 		{
 			name: "descendants at depth 3",
@@ -330,12 +332,49 @@ func TestGroupProcesses(t *testing.T) {
 			wantApp:    []int32{40},
 			wantAgents: []int32{50, 51},
 		},
+		{
+			name: "script tree at depth 2",
+			entries: []procEntry{
+				{pid: 60, ppid: 1, exe: "/bin/sh"}, {pid: 61, ppid: 60, exe: "/bin/sleep"}, {pid: 62, ppid: 61, exe: "/bin/x"},
+			},
+			scriptRoots: []int32{60},
+			wantScripts: []int32{60, 61, 62},
+		},
+		{
+			name: "script root inside agent tree stays agent",
+			entries: []procEntry{
+				{pid: 70, ppid: 1, exe: "/bin/zsh"}, {pid: 71, ppid: 70, exe: "/bin/sh"},
+			},
+			roots:       []int32{70},
+			scriptRoots: []int32{71},
+			wantAgents:  []int32{70, 71},
+		},
+		{
+			name: "agent root inside script tree stays agent, siblings stay script",
+			entries: []procEntry{
+				{pid: 80, ppid: 1, exe: "/bin/sh"}, {pid: 81, ppid: 80, exe: "/bin/claude"}, {pid: 82, ppid: 81, exe: "/bin/x"},
+				{pid: 83, ppid: 80, exe: "/bin/sleep"},
+			},
+			roots:       []int32{81},
+			scriptRoots: []int32{80},
+			wantAgents:  []int32{81, 82},
+			wantScripts: []int32{80, 83},
+		},
+		{
+			name: "helper in script tree is a script",
+			entries: []procEntry{
+				{pid: 40, ppid: 1, exe: app}, {pid: 90, ppid: 1, exe: "/bin/sh"}, {pid: 91, ppid: 90, exe: "/usr/bin/bwrap"},
+			},
+			scriptRoots: []int32{90},
+			wantApp:     []int32{40},
+			wantScripts: []int32{90, 91},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := groupProcesses(tt.entries, []string{"Kira Space"}, HelperNeedles, tt.roots, false, noResp)
-			if !sameSet(got.App, tt.wantApp) || !sameSet(got.Agents, tt.wantAgents) {
-				t.Errorf("got App=%v Agents=%v, want App=%v Agents=%v", got.App, got.Agents, tt.wantApp, tt.wantAgents)
+			got := groupProcesses(tt.entries, []string{"Kira Space"}, HelperNeedles, tt.roots, tt.scriptRoots, false, noResp)
+			if !sameSet(got.App, tt.wantApp) || !sameSet(got.Agents, tt.wantAgents) || !sameSet(got.Scripts, tt.wantScripts) {
+				t.Errorf("got App=%v Agents=%v Scripts=%v, want App=%v Agents=%v Scripts=%v", got.App, got.Agents, got.Scripts, tt.wantApp, tt.wantAgents, tt.wantScripts)
 			}
 		})
 	}

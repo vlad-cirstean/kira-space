@@ -67,13 +67,13 @@ func NewTicker(pids func() (ProcessSet, map[int32]procSample, error), interval t
 // NewTicker wired together the same way every app's own main.go used to duplicate inline.
 // appName is the anchor needle: the app's own shipping executable name (its own
 // Taskfile.yml's APP_NAME), matched since AppProcessSet finds an app's own process by executable
-// path substring, not by pid tree — see sampler.go's header comment. agentRoots supplies the live
-// agent root pids each tick (internal/agentproc.Roots in production); their descendant trees are
-// the Agents group. Call Start() on the result.
-func NewAppTicker(appName string, agentRoots func() []int32) *Ticker {
+// path substring, not by pid tree — see sampler.go's header comment. agentRoots and scriptRoots
+// supply the live root pids each tick (procroots.Agents.Roots and procroots.Scripts.Roots in
+// production); their descendant trees are the Agents and Scripts groups. Call Start() on the result.
+func NewAppTicker(appName string, agentRoots, scriptRoots func() []int32) *Ticker {
 	processSet := NewCachedPIDs(
 		func() (ProcessSet, error) {
-			return ProcessSets([]string{appName}, HelperNeedles, agentRoots())
+			return ProcessSets([]string{appName}, HelperNeedles, agentRoots(), scriptRoots())
 		},
 		RescanEvery,
 	)

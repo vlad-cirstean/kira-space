@@ -19,7 +19,7 @@ import (
 
 	"github.com/creack/pty"
 
-	"github.com/kirathecat/kira-studio/internal/agentproc"
+	"github.com/kirathecat/kira-studio/internal/procroots"
 )
 
 // readBufSize is the reader goroutine's own read(2) buffer (§4 rule 1) — large enough that a
@@ -368,6 +368,8 @@ type OpenParams struct {
 	// Registry.AgentSessions and Registry.OnChange, never inferred from Command (P85 OQ-3's own
 	// "no heuristic" rule, carried forward).
 	Agent bool
+	// Script marks a script run's session; its process tree counts as Scripts in metrics.
+	Script bool
 	// OnData is called from the session's own reader goroutine for every chunk read — never
 	// concurrently with itself, and never after OnExit (§4 rule 4).
 	OnData func([]byte)
@@ -498,8 +500,11 @@ func (r *Registry) Open(p OpenParams) (*Session, error) {
 		return nil, ErrRegistryClosed
 	}
 	untrack := func() {}
-	if p.Agent {
-		untrack = agentproc.Track(sess.PID())
+	switch {
+	case p.Agent:
+		untrack = procroots.Agents.Track(sess.PID())
+	case p.Script:
+		untrack = procroots.Scripts.Track(sess.PID())
 	}
 	sess.unregister = func() {
 		r.remove(p.WindowKey, p.ID)

@@ -7,12 +7,12 @@
 // tool, is unaffected — see its own header comment.
 //
 // The process set is not obvious and getting it wrong invalidates any measurement built on this
-// package. It has two disjoint groups. App: a native webview's helper processes (WebKitGTK's
+// package. It has three disjoint groups. App: a native webview's helper processes (WebKitGTK's
 // WebProcess/NetworkProcess on Linux, WKWebView's com.apple.WebKit.* helpers on macOS) are not
 // children of this process in the ppid sense, so the app is matched by executable path substring.
-// Agents: the descendant trees of the root pids registered in internal/agentproc (the caller
+// Agents: the descendant trees of the root pids registered in procroots.Agents (the caller
 // passes them in), walked over the one process table listed per tick. An agent pid never also
-// counts as App.
+// counts as App. Scripts: the descendant trees of root pids in procroots.Scripts, minus agent pids.
 package metrics
 
 import (
@@ -36,12 +36,13 @@ import (
 // either figure on faith — ProcessCount is the number of pids that answered the probe this tick
 // (the ones MemoryBytes is summed over), not the number discovered.
 type Sample struct {
-	CPUPercent   float64 `json:"cpuPercent"`  // App + Agents, clamped 0..100
-	MemoryBytes  uint64  `json:"memoryBytes"` // App + Agents
+	CPUPercent   float64 `json:"cpuPercent"`  // App + Agents + Scripts, clamped 0..100
+	MemoryBytes  uint64  `json:"memoryBytes"` // App + Agents + Scripts
 	LogicalCPUs  int     `json:"logicalCPUs"`
-	ProcessCount int     `json:"processCount"` // App + Agents
+	ProcessCount int     `json:"processCount"` // App + Agents + Scripts
 	App          Usage   `json:"app"`
 	Agents       Usage   `json:"agents"`
+	Scripts      Usage   `json:"scripts"`
 }
 
 // Usage is one process group's share of a Sample.
@@ -52,7 +53,7 @@ type Usage struct {
 }
 
 // ProcessSet is one tick's process groups. A pid is in at most one.
-type ProcessSet struct{ App, Agents []int32 }
+type ProcessSet struct{ App, Agents, Scripts []int32 }
 
 // cpuState is one pid's cumulative CPU time, tagged with the OS process-creation time it was read
 // from — the tag is what lets two samples of "the same pid" be told apart from two samples of two
@@ -134,30 +135,32 @@ func (s *Sampler) Sample() (Sample, error) {
 	}
 	app, appNow := collect(set.App)
 	agents, agentNow := collect(set.Agents)
+	scripts, scriptNow := collect(set.Scripts)
 
 	now := time.Now()
 	if !s.prevAt.IsZero() {
 		elapsed := now.Sub(s.prevAt).Seconds()
 		app.CPUPercent = cpuDeltaPercent(s.prevCPU, appNow, elapsed, s.logicalCPUs)
 		agents.CPUPercent = cpuDeltaPercent(s.prevCPU, agentNow, elapsed, s.logicalCPUs)
+		scripts.CPUPercent = cpuDeltaPercent(s.prevCPU, scriptNow, elapsed, s.logicalCPUs)
 	}
-	cpuNow := make(map[int32]cpuState, len(appNow)+len(agentNow))
-	for pid, c := range appNow {
-		cpuNow[pid] = c
-	}
-	for pid, c := range agentNow {
-		cpuNow[pid] = c
+	cpuNow := make(map[int32]cpuState, len(appNow)+len(agentNow)+len(scriptNow))
+	for _, m := range []map[int32]cpuState{appNow, agentNow, scriptNow} {
+		for pid, c := range m {
+			cpuNow[pid] = c
+		}
 	}
 	s.prevCPU = cpuNow
 	s.prevAt = now
 
 	return Sample{
-		CPUPercent:   min(app.CPUPercent+agents.CPUPercent, 100),
-		MemoryBytes:  app.MemoryBytes + agents.MemoryBytes,
+		CPUPercent:   min(app.CPUPercent+agents.CPUPercent+scripts.CPUPercent, 100),
+		MemoryBytes:  app.MemoryBytes + agents.MemoryBytes + scripts.MemoryBytes,
 		LogicalCPUs:  s.logicalCPUs,
-		ProcessCount: app.ProcessCount + agents.ProcessCount,
+		ProcessCount: app.ProcessCount + agents.ProcessCount + scripts.ProcessCount,
 		App:          app,
 		Agents:       agents,
+		Scripts:      scripts,
 	}, nil
 }
 
@@ -246,24 +249,25 @@ type procEntry struct {
 // processlist_other.go's gopsutil process.Processes()+Exe() — P7 F8): the matching rule below is
 // unaffected by which one supplied procEntry's pid/exe pairs.
 func AppProcessSet(anchorNeedles, helperNeedles []string) ([]int32, error) {
-	set, err := ProcessSets(anchorNeedles, helperNeedles, nil)
+	set, err := ProcessSets(anchorNeedles, helperNeedles, nil, nil)
 	return set.App, err
 }
 
 // ProcessSets lists the process table once and splits it into the app group (AppProcessSet's
 // rule) and the agent group: every root in agentRoots still in the table, plus all its
-// descendants. Agents win over the helper/anchor match, so a sandbox helper (bwrap) inside an
-// agent tree is counted once, as an agent.
-func ProcessSets(anchorNeedles, helperNeedles []string, agentRoots []int32) (ProcessSet, error) {
+// descendants, and the script group likewise for scriptRoots. Precedence Agents > Scripts > App: a
+// sandbox helper (bwrap) inside an agent tree is counted once, as an agent, and a pid claimed by
+// agents is never also a script.
+func ProcessSets(anchorNeedles, helperNeedles []string, agentRoots, scriptRoots []int32) (ProcessSet, error) {
 	entries, err := listProcesses()
 	if err != nil {
 		return ProcessSet{}, err
 	}
-	return groupProcesses(entries, anchorNeedles, helperNeedles, agentRoots, responsibilityTracked, responsiblePID), nil
+	return groupProcesses(entries, anchorNeedles, helperNeedles, agentRoots, scriptRoots, responsibilityTracked, responsiblePID), nil
 }
 
 // groupProcesses is ProcessSets' pure core: tree walk plus classification precedence.
-func groupProcesses(entries []procEntry, anchorNeedles, helperNeedles []string, roots []int32, tracked bool, responsible func(int32) int32) ProcessSet {
+func groupProcesses(entries []procEntry, anchorNeedles, helperNeedles []string, agentRoots, scriptRoots []int32, tracked bool, responsible func(int32) int32) ProcessSet {
 	children := make(map[int32][]int32, len(entries))
 	present := make(map[int32]bool, len(entries))
 	for _, e := range entries {
@@ -272,29 +276,34 @@ func groupProcesses(entries []procEntry, anchorNeedles, helperNeedles []string, 
 	}
 
 	// BFS with a visited set: a ppid cycle from a pid-reuse race must terminate.
-	agent := map[int32]bool{}
-	var agents, queue []int32
-	for _, r := range roots {
-		if present[r] && !agent[r] {
-			agent[r] = true
-			queue = append(queue, r)
-		}
-	}
-	for len(queue) > 0 {
-		pid := queue[0]
-		queue = queue[1:]
-		agents = append(agents, pid)
-		for _, c := range children[pid] {
-			if !agent[c] {
-				agent[c] = true
-				queue = append(queue, c)
+	claimed := map[int32]bool{}
+	walk := func(roots []int32) []int32 {
+		var out, queue []int32
+		for _, r := range roots {
+			if present[r] && !claimed[r] {
+				claimed[r] = true
+				queue = append(queue, r)
 			}
 		}
+		for len(queue) > 0 {
+			pid := queue[0]
+			queue = queue[1:]
+			out = append(out, pid)
+			for _, c := range children[pid] {
+				if !claimed[c] {
+					claimed[c] = true
+					queue = append(queue, c)
+				}
+			}
+		}
+		return out
 	}
+	agents := walk(agentRoots)
+	scripts := walk(scriptRoots)
 
 	var anchors, helpers []int32
 	for _, e := range entries {
-		if e.exe == "" || agent[e.pid] {
+		if e.exe == "" || claimed[e.pid] {
 			continue
 		}
 		switch {
@@ -315,7 +324,7 @@ func groupProcesses(entries []procEntry, anchorNeedles, helperNeedles []string, 
 			app = append(app, pid)
 		}
 	}
-	return ProcessSet{App: app, Agents: agents}
+	return ProcessSet{App: app, Agents: agents, Scripts: scripts}
 }
 
 // includeHelper is AppProcessSet's own inclusion rule, pulled out pure and platform-independent
@@ -363,13 +372,21 @@ type CachedPIDs struct {
 	rescanEvery int
 	sinceScan   int
 	createTimes map[int32]int64
-	agent       map[int32]bool
+	group       map[int32]procGroup
 }
+
+type procGroup uint8
+
+const (
+	groupApp procGroup = iota
+	groupAgents
+	groupScripts
+)
 
 // NewCachedPIDs builds a CachedPIDs. rescanEvery must be at least 1 (a full resolve every call —
 // pass 1 for that, not 0).
 func NewCachedPIDs(resolve func() (ProcessSet, error), rescanEvery int) *CachedPIDs {
-	return &CachedPIDs{resolve: resolve, rescanEvery: rescanEvery, createTimes: map[int32]int64{}, agent: map[int32]bool{}}
+	return &CachedPIDs{resolve: resolve, rescanEvery: rescanEvery, createTimes: map[int32]int64{}, group: map[int32]procGroup{}}
 }
 
 // PIDs is the func a Ticker/Sampler calls each tick.
@@ -395,9 +412,12 @@ func (c *CachedPIDs) PIDs() (ProcessSet, map[int32]procSample, error) {
 
 	var out ProcessSet
 	for pid := range c.createTimes {
-		if c.agent[pid] {
+		switch c.group[pid] {
+		case groupAgents:
 			out.Agents = append(out.Agents, pid)
-		} else {
+		case groupScripts:
+			out.Scripts = append(out.Scripts, pid)
+		default:
 			out.App = append(out.App, pid)
 		}
 	}
@@ -409,23 +429,24 @@ func (c *CachedPIDs) rescan() (map[int32]procSample, error) {
 	if err != nil {
 		return nil, err
 	}
-	n := len(set.App) + len(set.Agents)
+	n := len(set.App) + len(set.Agents) + len(set.Scripts)
 	createTimes := make(map[int32]int64, n)
 	samples := make(map[int32]procSample, n)
-	agent := make(map[int32]bool, len(set.Agents))
-	probe := func(pids []int32, isAgent bool) {
+	group := make(map[int32]procGroup, n)
+	probe := func(pids []int32, g procGroup) {
 		for _, pid := range pids {
 			if ps, ok := defaultProbe(pid); ok {
 				createTimes[pid] = ps.createTime
 				samples[pid] = ps
-				agent[pid] = isAgent
+				group[pid] = g
 			}
 		}
 	}
-	probe(set.App, false)
-	probe(set.Agents, true)
+	probe(set.App, groupApp)
+	probe(set.Agents, groupAgents)
+	probe(set.Scripts, groupScripts)
 	c.createTimes = createTimes
-	c.agent = agent
+	c.group = group
 	return samples, nil
 }
 
@@ -434,7 +455,7 @@ func (c *CachedPIDs) revalidate() {
 		got, ok := processCreateTime(pid)
 		if !ok || got != want {
 			delete(c.createTimes, pid)
-			delete(c.agent, pid)
+			delete(c.group, pid)
 		}
 	}
 }

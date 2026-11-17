@@ -14,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/linewriter"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 	"github.com/kirathecat/kira-studio/internal/procgroup"
+	"github.com/kirathecat/kira-studio/internal/procroots"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 )
@@ -172,7 +173,9 @@ func (s *Service) runHeadless(ctx context.Context, br *bgRun, p *planned, runID 
 		}
 		return runoutcome.ForProcess(proc), sink
 	}
+	untrack := procroots.Scripts.Track(cmd.Process.Pid)
 	waitErr := cmd.Wait()
+	untrack()
 	stopEscalate()
 	stdout.Flush()
 	stderr.Flush()

@@ -216,6 +216,7 @@ func (b *BoundService) Open(args OpenArgs) (OpenResult, error) {
 		Command:   command,
 		Env:       env,
 		Agent:     agent,
+		Script:    scriptRun != "",
 		OnEnd:     onEnd,
 	}, args.WindowKey, args.TerminalID, tap, onExit)
 	if err != nil {

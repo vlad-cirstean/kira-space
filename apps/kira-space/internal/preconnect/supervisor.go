@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/internal/notify"
+	"github.com/kirathecat/kira-studio/internal/procroots"
 )
 
 // Kind values match preconnect.ts's PreconnectStart discriminant.
@@ -335,6 +336,7 @@ func spawn(connectionID, command string) (*entry, chan outcome, error) {
 	}
 	_ = stderrW.Close()
 	e.pid = cmd.Process.Pid
+	untrack := procroots.Scripts.Track(e.pid)
 
 	e.stderrR = stderrR
 	go func() {
@@ -346,6 +348,7 @@ func spawn(connectionID, command string) (*entry, chan outcome, error) {
 	outcomeCh := make(chan outcome, 1)
 	go func() {
 		out := classifyExit(cmd.Wait())
+		untrack()
 		if syscall.Kill(-e.pid, 0) == syscall.ESRCH {
 			close(e.groupGone)
 		} else {
