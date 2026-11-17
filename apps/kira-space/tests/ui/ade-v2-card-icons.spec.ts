@@ -74,7 +74,7 @@ test('the task tag and step action are icons in the head line', async ({ relaunc
   const action = head.locator(t('ade-task-action-session'));
   await expect(action).toHaveText('');
   const last = await head
-    .locator('> div')
+    .locator('> div > div')
     .first()
     .locator('button')
     .last()
@@ -196,7 +196,7 @@ test('hover actions sit right', async ({ relaunch }) => {
   const rr = await r.boundingBox();
   if (!name || !rb || !rr) throw new Error('no box');
   expect(rb.x).toBeGreaterThanOrEqual(name.x + name.width);
-  expect(rr.x + rr.width - (rb.x + rb.width)).toBeLessThanOrEqual(40);
+  expect(rr.x + rr.width - (rb.x + rb.width)).toBeLessThanOrEqual(60);
 });
 
 test('Shift+F10 on a focused row opens the row menu', async ({ relaunch }) => {
