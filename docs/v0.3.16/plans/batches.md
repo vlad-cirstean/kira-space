@@ -36,6 +36,11 @@ no split: run those two sequentially, P660 first. P661 expected independent; its
 
 Landing: as in batch 1.
 
+## Later: P660 Part 2
+
+Split from P660. Runs after batch 2 landed, as its own phase (plan `plans/P660-part2.md`), before
+or with a later batch. Depends on P660 Part 1's `useViewStateStore` and `stateKey` seam.
+
 ## Batch 3: P663, P664, P665
 
 | Stream | Phase |

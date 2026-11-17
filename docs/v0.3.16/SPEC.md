@@ -9,7 +9,8 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P657 | Memory tooltip Scripts category | Done |
 | P658 | SQL data view column search | Done |
 | P659 | Task card hover actions UX | Done |
-| P660 | Keep module state across tab switches | Planned |
+| P660 Part 1 | Keep module state across tab switches | Planned |
+| P660 Part 2 | Git review panel state across module switches | Planned |
 | P661 | Agents module memory efficiency | Planned |
 | P662 | Query module UI freeze | Planned |
 | P663 | Panel resize bar and update widget placement | Planned |
@@ -90,11 +91,17 @@ errors without copied bindings; hook typecheck green), lint hooks, UI specs `ade
 and `plan-day-bars`; the other five baselines unchanged. Spec tweak: row actions right-edge bound is
 60px (b_auth keeps tag and danger action after the cluster).
 
-## P660 Keep module state across tab switches
+## P660 Part 1: Keep module state across tab switches
 
 Switching modules/tabs (API, Studio, others) loses scroll position, search bars and similar view state. User reported before; still happens. Find the cause, fix for every module. Acceptance: after switching away and back, each module restores scroll, search text and comparable view state; tests per CLAUDE.md "Tests" (flow test + UI spec halves).
 
 Plan: `plans/P660.md`.
+
+## P660 Part 2: Git review panel state across module switches
+
+Git review segment (`RepoReviewView.vue` hosting git-ui `ReviewView`) loses its in-flight review, file filter and scroll on module switch. git-ui is its own Vue app with no Pinia (`packages/git-ui/src/main.ts` `mount`, `NullViewStateStore`). Fix changes git-ui's mount contract so it keeps view state across module switches. Part 1 passes `stateKey: null` for git-ui's `usePanelHeaderSearch` callers (`ReviewView.vue`, `FileTree.vue`). Acceptance: after switching away and back, review segment restores in-flight review, file filter and scroll; own plan `plans/P660-part2.md`, UI spec, same rules as Part 1.
+
+Plan: `plans/P660-part2.md`.
 
 ## P661 Agents module memory efficiency
 
