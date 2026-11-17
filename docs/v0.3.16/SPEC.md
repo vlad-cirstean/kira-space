@@ -18,6 +18,8 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P666 | Git module last | Planned |
 | P667 | Single-select cards | Planned |
 | P668 | Single-select toggle groups | Planned |
+| P669 | Drop move up/down from left-panel menus | Planned |
+| P670 | Remove connection Secrets section | Planned |
 
 ## P656 Release retention deletes whole releases, never tags
 
@@ -112,3 +114,15 @@ Plan: `plans/P667.md`.
 Round RadioGroup becomes ToggleGroup (type single, segmented, solid selected fill). A value must stay selected: a click on the selected item must not deselect. Surfaces: Runs params `select` type (`packages/workbench/src/automations/run/ParamsForm.vue`; wrap for many options, Select past ~5 options), `RunMcpTab.vue` (both groups), `ClusterMcpDialog.vue` (`apps/kira-space/frontend/src/studio/kubernetes/components`), `RunFolderTab.vue`, `AdeAddPopover.vue` (kind), `AdeStageDialog.vue` (close/keep), `WorktreeDialog.vue`, `StashDialog.vue` (save source). Stay radios: `ConnectionEnginePicker`, `AdeTaskStatuses` colours, `EnvironmentsView` active env. Existing data-testids kept. Acceptance: states stated (idle, hover, selected, focus-visible, wrapped, Select fallback); existing UI specs that click these radios updated; visual baselines re-recorded where changed. UI-only, no flow half.
 
 Plan: `plans/P668.md`.
+
+## P669 Drop move up/down from left-panel menus
+
+Right-click menus in the left panels (Studio Connections, API Collections, Kubernetes clusters, any other left-panel tree) have Move up / Move down items. Drag and drop already covers reordering. Remove the items and their keyboard shortcuts, commands, palette entries and i18n keys, plus backend or state code only they used. Keep what drag and drop still uses (e.g. `orderAfterDrop`; `canMoveStep` only if still used). Acceptance: no Move up/down in any left-panel menu or the shortcut registry; drag reorder still works; UI specs of removed items removed, drag specs kept; `docs/ARCHITECTURE.md` and shortcut docs updated. UI specs; flow tests only where backend code is removed (planner states if none needed).
+
+Plan: `plans/P669.md`.
+
+## P670 Remove connection Secrets section
+
+Connection edit dialog shows a Secrets block on every tab; user finds it confusing and does not know its purpose. Planner first establishes what it does (`apps/kira-space/frontend/src/studio/project/connection/ConnectionSecrets.vue`, `ConnectionSecret` in `packages/shared/domain/connectionConfig.ts`, `revealConnectionSecret`, `deleteSecret`, their Go side) and whether any user flow depends on it (how passwords/URIs are stored, where else they are edited). Then remove the UI block and every code path only it used, keeping whatever stores/edits the connection password elsewhere. If removal loses a capability users need (no other way to set/clear a password or URI secret), the plan says so prominently and proposes the minimal alternative; the orchestrator confirms with the user before implementation. Acceptance: Secrets block gone from every tab; connections still save and connect with and without password; specs updated (credential-reveal, confirm-focus etc.); docs updated. UI specs plus flow tests where backend code is removed (planner states if none needed).
+
+Plan: `plans/P670.md`.
