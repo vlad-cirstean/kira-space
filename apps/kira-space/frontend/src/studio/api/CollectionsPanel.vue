@@ -60,7 +60,7 @@ function onSearch(value: string): void {
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
   stateKey: 'api:panel',
-  searchable: () => true,
+  searchable: () => !empty.value,
   getSearch: () => collectionsStore.search,
   setSearch: onSearch,
 });

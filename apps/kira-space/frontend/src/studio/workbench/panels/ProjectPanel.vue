@@ -38,7 +38,7 @@ const empty = computed(() => connectionsStore.records.length === 0 && !hasBroken
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
   stateKey: 'studio:panel',
-  searchable: () => true,
+  searchable: () => !empty.value,
   getSearch: () => treeStore.search,
   setSearch: (v) => {
     treeStore.search = v;
