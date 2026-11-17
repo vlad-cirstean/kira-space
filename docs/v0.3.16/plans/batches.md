@@ -36,7 +36,22 @@ no split: run those two sequentially, P660 first. P661 expected independent; its
 
 Landing: as in batch 1.
 
-## Batch 3: P663
+## Batch 3: P663, P664, P665
 
-Batch 3 = P663 (single stream, starts after batch 2 landed). Plan written against the tree with
-batches 1 and 2 included.
+| Stream | Phase |
+|--------|-------|
+| A | P663 |
+| B | P664 |
+| C | P665 |
+
+Starts after batch 2 landed. Plans written against the tree with batches 1 and 2 included. No
+ordering dependency between streams. Shared files likely: app shell, shortcut registry, i18n
+catalogs. Each stream's planner fills the per-stream file-ownership table in its plan and lists each
+shared file with that stream's additive hunk.
+
+Landing: as in batch 1.
+
+## Batch 4: P666
+
+Batch 4 = P666 (single stream, starts after batch 3 landed). Plan written against the tree with
+batches 1 to 3 included.

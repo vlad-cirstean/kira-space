@@ -13,6 +13,9 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P661 | Agents module memory efficiency | Planned |
 | P662 | Query module UI freeze | Planned |
 | P663 | Panel resize bar and update widget placement | Planned |
+| P664 | API tab bar plus and request input editing | Planned |
+| P665 | Cmd+F search in left panels | Planned |
+| P666 | Git module last | Planned |
 
 ## P656 Release retention deletes whole releases, never tags
 
@@ -77,3 +80,21 @@ Plan: `plans/P662.md`.
 Resize bar between panels is strong blue; app-update version widget sits on the status bar's right. Acceptance: (1) resize bar uses a neutral grey theme token (muted, no blue) in idle, hover and drag states; hover and drag stay distinguishable from idle by a step in grey; (2) update version widget moves to the status bar's left side, right side loses it; UI specs cover bar color per state and widget position; visual baselines re-recorded where changed.
 
 Plan: `plans/P663.md`.
+
+## P664 API tab bar plus and request input editing
+
+(1) API module tab bar gets a "+" button for a new request tab, like the Runs module tab bar. (2) Request param/header (key-value etc.) inputs misbehave, at least for multiline values, possibly single-line too (untested): left/right arrow navigation broken, caret stops on spaces not in the actual string or moves more than one character. Find cause (likely rendering overlay/mirror or custom editor), fix for every such input in the API module. Acceptance: arrow keys move one character, caret positions match the string, single and multiline; "+" opens a new request tab like Runs. UI-only, no backend: UI specs for both (plus, caret navigation per input kind).
+
+Plan: `plans/P664.md`.
+
+## P665 Cmd+F search in left panels
+
+Focus in a left panel (Connections, Collections, etc.) plus Cmd/Ctrl+F opens that panel's search bar and focuses it, typing starts at once. Acceptance: every left panel with a search bar; palette/shortcut registry entry; UI spec per panel. UI-only, no backend.
+
+Plan: `plans/P665.md`.
+
+## P666 Git module last
+
+Move the Git module to the last position in the module switcher/navigation: sidebar order, shortcut numbering if tied to order, persisted order defaults. Acceptance: resulting order stated in Result; shortcuts and docs updated; UI spec. UI-only, no backend.
+
+Plan: `plans/P666.md`.
