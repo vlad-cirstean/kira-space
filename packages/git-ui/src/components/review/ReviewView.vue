@@ -266,6 +266,9 @@ const { showSearch } = usePanelHeaderSearch(rootEl, {
     if (value !== '') filterVisible.value = true;
   },
   searchTestid: 'review-file-filter',
+  onReveal: () => {
+    filterVisible.value = true;
+  },
 });
 watch(filterVisible, (visible) => {
   if (!visible) showSearch.value = false;
