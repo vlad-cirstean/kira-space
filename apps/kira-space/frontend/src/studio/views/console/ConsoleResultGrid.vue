@@ -34,6 +34,7 @@ import {
 import type { ResultViewState } from './resultViewState';
 import { type Match, matchedRows, searchState } from './search';
 import { useConsoleViewStore } from './state';
+import { useDocumentResultHeights } from './useDocumentResultHeights';
 import { useResultScrollState } from './useResultScrollState';
 
 const cellSelectionStore = useCellSelectionStore();
@@ -104,19 +105,6 @@ const visibleDocRows = computed(() => {
   return out;
 });
 
-// Collapsed rows are `HEAD_H` with no per-row work; only expanded rows decode and parse.
-const documentRowHeights = computed<number[] | undefined>(() => {
-  void pageVersion.n;
-  void documentRowsStore.rowsVersion.n;
-  const expanded = consoleViewStore.resultDocExpandedIds(props.tabId, props.pageKey);
-  if (expanded.length === 0) return undefined;
-  const open = new Set(expanded);
-  return rowIndices.value.map((row) => {
-    const id = documentId(props.pageKey, row);
-    return documentRowsStore.rowHeight(props.pageKey, row, null, id !== null && open.has(id));
-  });
-});
-
 function onToggleDocExpanded(id: string): void {
   consoleViewStore.toggleResultDocExpanded(props.tabId, props.pageKey, id);
   emitViewState();
@@ -127,6 +115,17 @@ function onToggleDocExpanded(id: string): void {
 // the two is ever mounted at a time (the template's v-else-if/v-else) but each needs its own
 // scroll element, count and row-height source.
 const docScrollEl = ref<HTMLElement | null>(null);
+const {
+  heights: documentRowHeights,
+  hasExpanded: hasExpandedDocs,
+  fillWindow: fillWindowLineCounts,
+} = useDocumentResultHeights({
+  tabId: () => props.tabId,
+  pageKey: () => props.pageKey,
+  page: () => page.value,
+  rowIndices: () => rowIndices.value,
+  scrollEl: docScrollEl,
+});
 const docVirtual = useVirtualRows({
   count: () => rowIndices.value.length,
   rowHeight: () => documentRowsStore.rowHeight(props.pageKey, 0, null, false),
@@ -207,7 +206,9 @@ watch(docVirtual.virtualItems, (items) => {
   setVisibleWindow(props.pageKey, from, to + 1);
   // Keeps rows.ts's parseCache to the rendered window (docs/ARCHITECTURE.md, Caching).
   documentRowsStore.pruneRows(props.pageKey, from, to + 1);
+  fillWindowLineCounts(items);
 });
+watch(hasExpandedDocs, () => fillWindowLineCounts(docVirtual.virtualItems.value));
 
 // DocumentView.vue's own expand-all/collapse-all pair,
 // exposed the same way goToMatch already is (ConsoleView.vue calls through this ref) — its

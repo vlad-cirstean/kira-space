@@ -390,18 +390,25 @@ export const useDocumentRowsStore = defineStore('documentRows', () => {
   }
 
   /**
-   * Fills the page's line counts from the worker (`-1` is the raw-fallback `null`). A row already
+   * Fills line counts from the worker for the rows from `from` on (`-1` is the raw-fallback
+   * `null`), one batch of the page at a time. A row already
    * counted, or with nested paths expanded, keeps its own answer: the worker counts the first layer
    * only. No-op when the page was replaced or the scope dropped since the request.
    */
-  function primeLineCounts(tabId: string, generation: number, counts: Int32Array): void {
+  function primeLineCounts(
+    tabId: string,
+    generation: number,
+    from: number,
+    counts: Int32Array,
+  ): void {
     const entry = tabRows.get(tabId);
     if (!entry || entry.generation !== generation) return;
     let added = false;
-    for (let row = 0; row < counts.length; row++) {
+    for (let i = 0; i < counts.length; i++) {
+      const row = from + i;
       if (entry.lineCounts.has(row)) continue;
       if ((entry.expandedPaths.get(row)?.size ?? 0) > 0) continue;
-      recordLineCount(entry, row, counts[row] < 0 ? null : counts[row]);
+      recordLineCount(entry, row, counts[i] < 0 ? null : counts[i]);
       added = true;
     }
     if (added) lineCountsVersion.n++;

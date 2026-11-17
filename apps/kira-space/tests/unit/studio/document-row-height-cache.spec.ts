@@ -294,11 +294,13 @@ describe('page-wide height model: window fill, worker prime, estimate', () => {
     try {
       fillLineCounts(tabId, [0]); // two lines
       togglePath(tabId, 1, 'b'); // row 1 now has nested paths: not the worker's to answer
-      primeLineCounts(tabId, generationOf(tabId), Int32Array.of(9, 9, 5, -1));
+      primeLineCounts(tabId, generationOf(tabId), 0, Int32Array.of(9, 9, 5, -1));
+      primeLineCounts(tabId, generationOf(tabId), 4, Int32Array.of(6));
       withParseCounting(() => {
         expect(knownRowHeight(tabId, 0, null, true)).toBe(height(2));
         expect(knownRowHeight(tabId, 2, null, true)).toBe(height(5));
         expect(knownRowHeight(tabId, 3, null, true)).toBe(HEAD_H + 220);
+        expect(knownRowHeight(tabId, 4, null, true)).toBe(height(6)); // a later batch lands at its own offset
       });
       expect(parseCalls).toBe(0);
       fillLineCounts(tabId, [1]);
@@ -314,11 +316,11 @@ describe('page-wide height model: window fill, worker prime, estimate', () => {
     try {
       const generation = generationOf(tabId);
       resetRows(tabId);
-      primeLineCounts(tabId, generation, Int32Array.of(7));
+      primeLineCounts(tabId, generation, 0, Int32Array.of(7));
       expect(knownRowHeight(tabId, 0, null, true)).toBe(height(8));
       const second = generationOf(tabId);
       dropRows(tabId);
-      primeLineCounts(tabId, second, Int32Array.of(7));
+      primeLineCounts(tabId, second, 0, Int32Array.of(7));
       expect(knownRowHeight(tabId, 0, null, true)).toBe(height(8));
     } finally {
       unregisterDocumentRows(tabId);

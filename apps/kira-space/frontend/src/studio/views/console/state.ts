@@ -14,6 +14,7 @@ import { control } from '../../bridge/control';
 import { data } from '../../bridge/data';
 import { useConnectionsStore } from '../../state/connections';
 import { useStaleDataStore } from '../../state/staleData';
+import { useDocumentPageStatsStore } from '../shared/document/pageStatsStore';
 import { useDocumentRowsStore } from '../shared/document/rows';
 import { applyLoadFailure, classifyLoadError, createRuntimeStore, stopOp } from '../shared/viewOp';
 import { explainStatementsFor, isExplainable } from './explain';
@@ -139,6 +140,7 @@ function releaseResult(rt: ConsoleViewRuntime, result: ConsoleResult): void {
   dropPlan(result.key);
   documentRowsStore.unregisterDocumentRows(result.key);
   documentRowsStore.dropRows(result.key);
+  useDocumentPageStatsStore().drop(result.key);
   pruneExpandedDocIds(rt, result.key);
 }
 
