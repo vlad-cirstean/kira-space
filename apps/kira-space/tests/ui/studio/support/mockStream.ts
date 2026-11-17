@@ -253,3 +253,63 @@ export async function installMockStream(
       ),
   };
 }
+
+const LARGE_POSITION = (rows: number) => ({
+  offset: 0,
+  pageSize: rows,
+  hasMore: false,
+  nextToken: null,
+  prevToken: null,
+  strategy: 'offset' as const,
+});
+
+/** Deterministic filler text of exactly `bytes` ASCII chars, distinct per `seed`. */
+function filler(seed: number, bytes: number): string {
+  const unit = `r${seed}-lorem ipsum dolor sit amet `;
+  return unit.repeat(Math.ceil(bytes / unit.length)).slice(0, bytes);
+}
+
+/** A document page shaped like a capped Mongo console result: `rows` nested JSON bodies of about
+ *  `bodyBytes` each (the backend's DefaultConsoleCap bounds the real page at 10,000 rows). */
+export function largeDocumentPage(rows: number, bodyBytes: number): LogicalPage {
+  const ids: string[] = [];
+  const bodies: string[] = [];
+  for (let i = 0; i < rows; i++) {
+    const id = i.toString(16).padStart(24, '0');
+    const head = `{"_id":{"$oid":"${id}"},"n":${i},"tags":["a","b","c"],"nested":{"k":{"v":1,"w":[1,2,3]},"text":"`;
+    const tail = '"}}';
+    ids.push(id);
+    bodies.push(head + filler(i, Math.max(0, bodyBytes - head.length - tail.length)) + tail);
+  }
+  return { kind: 'document', ids, bodies, position: LARGE_POSITION(rows) };
+}
+
+/** A text tabular page of `rows` x `cols` cells of `cellBytes` each. `truncated` flags every cell
+ *  the way the backend flags a cell cut at MaxCellBytes. */
+export function largeTabularPage(
+  rows: number,
+  cols: number,
+  cellBytes: number,
+  truncated = false,
+): LogicalPage {
+  const columns = Array.from({ length: cols }, (_, c) => ({
+    name: `c${c}`,
+    dataType: 'text',
+    typeClass: 'text' as const,
+    nullable: true,
+    isPrimaryKey: false,
+    generated: false,
+  }));
+  const data = Array.from({ length: rows }, (_, r) =>
+    Array.from({ length: cols }, (_, c) => filler(r * cols + c, cellBytes)),
+  );
+  const all = Array.from({ length: rows }, (_, r) => r);
+  return {
+    kind: 'tabular',
+    columns,
+    rows: data,
+    position: LARGE_POSITION(rows),
+    truncatedCells: truncated ? rows * cols : 0,
+    truncatedRows: truncated ? columns.map(() => all) : undefined,
+  };
+}
