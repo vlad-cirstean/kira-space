@@ -10680,9 +10680,11 @@
         },
         "route": {
           "implementer": {
+            "description": "Resume the agent run that made these changes, with its context.",
             "label": "Implementer session"
           },
           "new": {
+            "description": "Start a dedicated review agent session. Later rounds resume it.",
             "label": "New review agent"
           }
         },
