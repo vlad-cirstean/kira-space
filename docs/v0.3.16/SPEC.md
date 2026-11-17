@@ -7,7 +7,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 |---|-------|--------|
 | P656 | Release retention deletes whole releases, never tags | Planned |
 | P657 | Memory tooltip Scripts category | Done |
-| P658 | SQL data view column search | Planned |
+| P658 | SQL data view column search | Done |
 | P659 | Task card hover actions UX | Planned |
 | P660 | Keep module state across tab switches | Planned |
 | P661 | Agents module memory efficiency | Planned |
@@ -66,6 +66,8 @@ test (no baseline change); `bun run typecheck` and `bun run lint` via pre-commit
 Tables have dozens of columns; `apps/kira-space/frontend/src/studio/views/grid/DataView.vue` offers no way to find one. Add search/filter of columns in the SQL data view grid. Acceptance: user narrows visible columns by typing a name; clearing restores all; tests per CLAUDE.md "Tests" (flow test + UI spec halves).
 
 Plan: `plans/P658.md`.
+
+Result: Done. Filter toolbar gets a column-name field (case-insensitive substring, whitespace/comma terms OR-ed, PK columns kept, no match keeps all columns and flags the field). Display-only: no bridge call, no `tab.state`. Text lives in `DataViewRuntime.columnFilter` (P660 seam); `SlickGridHost` applies it via `visibleColumnOrder` after a `TIMING.search` (150 ms) debounce. Palette command `data.filterColumns`; row-search jump to a hidden column clears the filter first (`revealPageCell`, fixes page-vs-display index mix). No Go half: IPC untouched, UI spec asserts every wide-table read keeps `projection: null`. Ran: `bun test visible-column-order.spec.ts` (7 pass), Playwright `ui` `data-view-column-filter.spec.ts` (1 passed) and `data-view.spec.ts` (1 passed), `typecheck` and `lint` via pre-commit. Deviations: debounce 150 ms not 120 (guard U46 requires `TIMING`); status uses `common.ofTotal.label`, field placeholder "Column name", palette label "Filter grid columns" (catalog guards C3/C4 reject duplicate wording); added `columnFilter` to the runtime literal in `grid-pending-by-primary-key.spec.ts` (type).
 
 ## P659 Task card hover actions UX
 
