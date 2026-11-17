@@ -16,6 +16,8 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P664 | API tab bar plus and request input editing | Planned |
 | P665 | Cmd+F search in left panels | Planned |
 | P666 | Git module last | Planned |
+| P667 | Single-select cards | Planned |
+| P668 | Single-select toggle groups | Planned |
 
 ## P656 Release retention deletes whole releases, never tags
 
@@ -98,3 +100,15 @@ Plan: `plans/P665.md`.
 Move the Git module to the last position in the module switcher/navigation: sidebar order, shortcut numbering if tied to order, persisted order defaults. Acceptance: resulting order stated in Result; shortcuts and docs updated; UI spec. UI-only, no backend.
 
 Plan: `plans/P666.md`.
+
+## P667 Single-select cards
+
+Round RadioGroup becomes shadcn card-style radio: whole card is the click target, title plus description, selected state clearly visible (border and tint from theme tokens). Keyboard and aria radio semantics stay via RadioGroup. Surfaces: Reset mode (`packages/git-ui/src/components/dialogs/ResetDialog.vue`, soft/mixed/hard with descriptions), Review route (`apps/kira-space/frontend/src/ade/v2/review/AdeWorkflowReviewPanel.vue`), mainline parent pickers (`CherryPickDialog.vue`, `RevertDialog.vue`). One shared theme component for card radios (`packages/theme/src/components/ui/radio-group` or a sibling), Tailwind only. Existing data-testids kept. Acceptance: states stated (idle, hover, selected, focus-visible, disabled); existing UI specs that click these radios updated; visual baselines re-recorded where changed. UI-only, no flow half.
+
+Plan: `plans/P667.md`.
+
+## P668 Single-select toggle groups
+
+Round RadioGroup becomes ToggleGroup (type single, segmented, solid selected fill). A value must stay selected: a click on the selected item must not deselect. Surfaces: Runs params `select` type (`packages/workbench/src/automations/run/ParamsForm.vue`; wrap for many options, Select past ~5 options), `RunMcpTab.vue` (both groups), `ClusterMcpDialog.vue` (`apps/kira-space/frontend/src/studio/kubernetes/components`), `RunFolderTab.vue`, `AdeAddPopover.vue` (kind), `AdeStageDialog.vue` (close/keep), `WorktreeDialog.vue`, `StashDialog.vue` (save source). Stay radios: `ConnectionEnginePicker`, `AdeTaskStatuses` colours, `EnvironmentsView` active env. Existing data-testids kept. Acceptance: states stated (idle, hover, selected, focus-visible, wrapped, Select fallback); existing UI specs that click these radios updated; visual baselines re-recorded where changed. UI-only, no flow half.
+
+Plan: `plans/P668.md`.

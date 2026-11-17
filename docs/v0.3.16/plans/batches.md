@@ -51,7 +51,20 @@ shared file with that stream's additive hunk.
 
 Landing: as in batch 1.
 
-## Batch 4: P666
+## Batch 4: P666, P667, P668
 
-Batch 4 = P666 (single stream, starts after batch 3 landed). Plan written against the tree with
-batches 1 to 3 included.
+| Stream | Phase |
+|--------|-------|
+| A | P666 |
+| B | P667 |
+| C | P668 |
+
+Starts after batch 3 landed. Plans written against the tree with batches 1 to 3 included. Planners
+fill the per-stream file-ownership tables and list each shared file with that stream's additive hunk.
+
+Ownership: P667 owns the new card-radio theme component. P668 must not touch `ResetDialog.vue`,
+`CherryPickDialog.vue`, `RevertDialog.vue` or `AdeWorkflowReviewPanel.vue`. Both may touch the theme
+package index and i18n catalogs, additive hunks only. P666 expected independent; its planner
+confirms.
+
+Landing: as in batch 1.
