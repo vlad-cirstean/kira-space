@@ -45,6 +45,8 @@ func RunWorker(args []string) int {
 	fs := flag.NewFlagSet("memory-embed", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	dir := fs.String("model-dir", "", "directory holding the installed model files")
+	socket := fs.String("socket", "", "serve many clients on this unix socket instead of stdin/stdout")
+	idle := fs.Duration("idle", DefaultIdleTimeout, "with --socket: exit after this long without a request")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -67,11 +69,19 @@ func RunWorker(args []string) int {
 		return fail(err)
 	}
 	defer enc.close()
+	if *socket != "" {
+		return serveSocket(*socket, out, enc, spec, *idle)
+	}
 	return serve(os.Stdin, out, enc, spec)
 }
 
 // serve writes the hello line, then answers requests until in reaches EOF.
 func serve(in io.Reader, out *bufio.Writer, enc encoder, spec Spec) int {
+	return serveConn(in, out, spec, func(texts []string) ([][]float32, error) { return enc.embed(texts) })
+}
+
+// serveConn is the NDJSON protocol: hello, then one reply per request until in reaches EOF.
+func serveConn(in io.Reader, out *bufio.Writer, spec Spec, embed func([]string) ([][]float32, error)) int {
 	w := json.NewEncoder(out)
 	if err := w.Encode(workerHello{Ready: true, Model: spec.ID, Dim: spec.Dim}); err != nil {
 		return 1
@@ -92,7 +102,7 @@ func serve(in io.Reader, out *bufio.Writer, enc encoder, spec Spec) int {
 		rep := workerReply{ID: req.ID}
 		if n := len(req.Texts); n < 1 || n > MaxBatch {
 			rep.Error = fmt.Sprintf("batch must hold 1 to %d texts", MaxBatch)
-		} else if vecs, err := enc.embed(req.Texts); err != nil {
+		} else if vecs, err := embed(req.Texts); err != nil {
 			rep.Error = err.Error()
 		} else {
 			for _, v := range vecs {
