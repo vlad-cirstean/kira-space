@@ -69,12 +69,13 @@ confirms.
 
 Landing: as in batch 1.
 
-## Batch 5: P669, P670
+## Batch 5: P669, P670, P671
 
 | Stream | Phase |
 |--------|-------|
 | A | P669 |
 | B | P670 |
+| C | P671 |
 
 Starts after batch 4 landed. Plans written against the tree with batches 1 to 4 included. Planners
 fill the per-stream file-ownership tables and list each shared file with that stream's additive hunk.

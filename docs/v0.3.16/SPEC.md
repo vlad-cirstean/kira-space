@@ -20,6 +20,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P668 | Single-select toggle groups | Planned |
 | P669 | Drop move up/down from left-panel menus | Planned |
 | P670 | Remove connection Secrets section | Planned |
+| P671 | Terminal links: copy via right click and reliable file paths | Planned |
 
 ## P656 Release retention deletes whole releases, never tags
 
@@ -126,3 +127,9 @@ Plan: `plans/P669.md`.
 Connection edit dialog shows a Secrets block on every tab; user finds it confusing and does not know its purpose. Planner first establishes what it does (`apps/kira-space/frontend/src/studio/project/connection/ConnectionSecrets.vue`, `ConnectionSecret` in `packages/shared/domain/connectionConfig.ts`, `revealConnectionSecret`, `deleteSecret`, their Go side) and whether any user flow depends on it (how passwords/URIs are stored, where else they are edited). Then remove the UI block and every code path only it used, keeping whatever stores/edits the connection password elsewhere. If removal loses a capability users need (no other way to set/clear a password or URI secret), the plan says so prominently and proposes the minimal alternative; the orchestrator confirms with the user before implementation. Acceptance: Secrets block gone from every tab; connections still save and connect with and without password; specs updated (credential-reveal, confirm-focus etc.); docs updated. UI specs plus flow tests where backend code is removed (planner states if none needed).
 
 Plan: `plans/P670.md`.
+
+## P671 Terminal links: copy via right click and reliable file paths
+
+Two fixes. (1) In terminal output a URL link opens only on Cmd-click. Right click on a link must show a menu with Copy link and Open, as in other terminals. Same for file path links: Copy path, Open. (2) File paths in terminal output do not always become links. Planner finds why (`packages/workbench/src/terminal/fileLinkProvider.ts` `findFilePaths`/`resolve`, `apps/kira-space/frontend/src/state/terminalFileLinks.ts`, Go `openedFilesTerminalResolve` against the terminal's cwd) and fixes the misses. Shapes to check: relative paths, `./` `../` `~`, `path:line:col`, paths wrapped across rows, paths inside quotes and parens, cwd of agent and script terminals, exited terminals. Acceptance: right-click menu on web and file links; a table of path shapes that must link in the plan, each covered by a test (unit test for the path finder if it has interacting rules, flow test for the resolve backend, UI spec for the right-click menu and a clickable path); no regression of Cmd-click.
+
+Plan: `plans/P671.md`.
