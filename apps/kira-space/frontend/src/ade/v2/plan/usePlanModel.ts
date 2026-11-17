@@ -70,7 +70,7 @@ export interface BranchRowModel {
   /** Branch name, `New branch` until created. */
   name: string;
   isReview: boolean;
-  /** Second line: `no branch yet · from main`, or a review item's PR title. */
+  /** Second line: `Forks from main`, or a review item's PR title. */
   context: string;
   tag: BranchTag;
   /** Own progress line while the task is in an agent or script step. */
@@ -164,17 +164,12 @@ function buildRow(c: Ctx, task: Task, bid: string, depth: number): BranchRowMode
   const graph = c.view.graph;
   const br = graph.byBranch.get(bid) as Branch;
   const draft = isDraft(br);
-  const parent = graph.parentOf.get(bid);
-  const parentName = parent === undefined ? undefined : graph.byBranch.get(parent)?.name;
   const attn = c.needs.items.find((n) => ASKS.has(n.kind) && n.branchId === bid);
   const main = c.mainName.get(br.codeRepoId) ?? '';
   const taskProgress = c.progress.get(task.id);
   const prog = taskProgress ? branchProgress(taskProgress, bid) : null;
   const line2 = branchLine2(br, graph, c.prTitle(bid));
-  let context = '';
-  if (draft)
-    context = t('space.ade.baseMarker.draft.label', { base: parentName || br.base || 'main' });
-  else if (br.kind === 'review') context = c.prTitle(bid);
+  const context = line2.context;
   return {
     id: bid,
     depth: task.kind === 'review' ? 0 : depth + 1,

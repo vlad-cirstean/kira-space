@@ -8665,7 +8665,7 @@
       },
       "baseMarker": {
         "draft": {
-          "label": "No branch yet · from {base}"
+          "label": "Forks from {base}"
         },
         "startsFrom": {
           "tooltip": "Starts from {base}"
