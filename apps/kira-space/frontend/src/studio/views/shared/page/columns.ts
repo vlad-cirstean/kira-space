@@ -1,5 +1,5 @@
 import type { ColumnDescriptor, TabularPage, TypeClass } from '@shared/protocol/page';
-import { cellText, isNull } from '@shared/protocol/page';
+import { cellPrefixText, isNull } from '@shared/protocol/page';
 import { t } from '@theme/i18n';
 import { typeClassColor } from '../../../theme/icons';
 import { typeDescription } from '../typeGlossary';
@@ -21,6 +21,8 @@ const MIN_INITIAL_WIDTH = 96;
 const MAX_WIDTH = 480;
 const CELL_PADDING = 20; // px, both sides combined plus a little breathing room
 const SAMPLE_ROWS = 50;
+// MAX_WIDTH clamps at 480 px: fewer than 512 chars at the smallest data font.
+const MEASURE_BYTES = 512;
 // The ceiling on headerAwareMinWidth below — without one, a column named
 // `customer_subscription_renewal_reason` would become undraggable below ~280px. Under MAX_WIDTH's
 // 480 and above 42-58px of header chrome plus ~20 characters of name, which covers the
@@ -146,7 +148,7 @@ function measuredWidths(page: TabularPage): number[] {
     let max = ctx.measureText(column.name).width;
     for (let r = 0; r < sampleCount; r++) {
       if (isNull(chunk, r)) continue;
-      const width = ctx.measureText(cellText(chunk, r, decoder)).width;
+      const width = ctx.measureText(cellPrefixText(chunk, r, decoder, MEASURE_BYTES)).width;
       if (width > max) max = width;
     }
     widths.push(Math.min(MAX_WIDTH, Math.max(MIN_INITIAL_WIDTH, Math.round(max + CELL_PADDING))));

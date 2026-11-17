@@ -15,6 +15,7 @@ import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu
 import { tabViewKey } from '@workbench/state/viewState';
 import { computed, ref, watch } from 'vue';
 import { datasetNumber } from '../eventCoords';
+import { displayText } from '../page/display';
 import SearchFilterNotice from '../page/SearchFilterNotice.vue';
 import SearchToolbar from '../page/SearchToolbar.vue';
 import { createMatchIndex } from '../page/search';
@@ -226,14 +227,14 @@ function cellClass(row: number, col: 'field' | 'value') {
                 :class="cellClass(entry.i, 'field')"
                 data-testid="keyvalue-field"
               >
-                <TruncatedText :text="rowAt(entry.i)?.field ?? ''" />
+                <TruncatedText :text="displayText(rowAt(entry.i)?.field ?? '')" />
               </div>
               <div
                 class="flex items-center px-2 border-r border-b border-border font-data text-kira-md flex-1 min-w-0"
                 :class="cellClass(entry.i, 'value')"
                 data-testid="keyvalue-value"
               >
-                <TruncatedText :text="rowAt(entry.i)?.value ?? ''" />
+                <TruncatedText :text="displayText(rowAt(entry.i)?.value ?? '')" />
                 <Tooltip v-if="rowAt(entry.i)?.isTruncated">
                   <TooltipTrigger as-child>
                     <Badge variant="chip" class="bg-field text-subtle ml-1.5 shrink-0">{{

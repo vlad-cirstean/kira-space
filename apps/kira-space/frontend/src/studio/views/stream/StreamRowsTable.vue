@@ -19,6 +19,7 @@ import type { StreamTabRecord } from '../../../state/tabDomain';
 import { useTabsStore } from '../../../state/tabs';
 import { type SelectedCell, useCellSelectionStore } from '../../state/cellSelection';
 import { datasetNumber } from '../shared/eventCoords';
+import { displayText } from '../shared/page/display';
 import SearchFilterNotice from '../shared/page/SearchFilterNotice.vue';
 import { setVisibleRows } from '../shared/page/visibleRows';
 import { rowMenu } from './menu';
@@ -395,7 +396,7 @@ const CELL_BASE =
                     t('studio.cellEditor.format.base64.label')
                   }}</Badge
                 >
-                {{ rowAt(rowIndices[vi.index])?.body }}
+                {{ displayText(rowAt(rowIndices[vi.index])?.body ?? '') }}
               </template>
               <Tooltip v-if="rowAt(rowIndices[vi.index])?.isTruncated">
                 <TooltipTrigger as-child>

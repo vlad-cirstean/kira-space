@@ -55,6 +55,7 @@ import {
   resolveColumnOrder,
   tooltipAttrs,
 } from '../shared/page/columns';
+import { displayText } from '../shared/page/display';
 import SearchFilterNotice from '../shared/page/SearchFilterNotice.vue';
 import { type EdgeHash, searchCellLayers } from '../shared/slick/cssLayers';
 import {
@@ -233,12 +234,12 @@ function cellFormatter(
   const classes = [navClasses, maskedClass].filter(Boolean).join(' ');
   if (view.truncated) {
     return {
-      text: view.text,
+      text: displayText(view.text),
       addClasses: classes ? `cell-truncated ${classes}` : 'cell-truncated',
       toolTip: truncatedCellTip(),
     };
   }
-  return classes ? { text: view.text, addClasses: classes } : view.text;
+  return classes ? { text: displayText(view.text), addClasses: classes } : displayText(view.text);
 }
 
 function rt() {

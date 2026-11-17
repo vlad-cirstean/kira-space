@@ -17,6 +17,7 @@ import DocumentRow from '../shared/document/DocumentRow.vue';
 import DocumentTree from '../shared/document/DocumentTree.vue';
 import { type DocumentRowView, useDocumentRowsStore } from '../shared/document/rows';
 import { datasetNumber } from '../shared/eventCoords';
+import { displayText } from '../shared/page/display';
 import { createMatchIndex } from '../shared/page/search';
 import { setVisibleRows } from '../shared/page/visibleRows';
 import ConsoleSlickGrid from './ConsoleSlickGrid.vue';
@@ -570,7 +571,7 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
               )
             "
           >
-            {{ kvRowAt(rowIndices[vi.index]!).field }}
+            {{ displayText(kvRowAt(rowIndices[vi.index]!).field) }}
           </div>
           <div
             class="cell"
@@ -588,7 +589,7 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
               )
             "
           >
-            {{ kvRowAt(rowIndices[vi.index]!).value }}
+            {{ displayText(kvRowAt(rowIndices[vi.index]!).value) }}
           </div>
         </div>
       </div>
