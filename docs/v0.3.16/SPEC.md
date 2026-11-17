@@ -14,7 +14,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P661 | Agents module memory efficiency | Done |
 | P662 | Query module UI freeze | Planned |
 | P663 | Panel resize bar and update widget placement | Done |
-| P664 | API tab bar plus and request input editing | Planned |
+| P664 | API tab bar plus and request input editing | Done |
 | P665 | Cmd+F search in left panels | Planned |
 | P666 | Git module last | Planned |
 | P667 | Single-select cards | Planned |
@@ -141,6 +141,8 @@ Result: Done. Tokens `--kira-resize` (= border), `--kira-resize-hover` (#52525b)
 (1) API module tab bar gets a "+" button for a new request tab, like the Runs module tab bar. (2) Request param/header (key-value etc.) inputs misbehave, at least for multiline values, possibly single-line too (untested): left/right arrow navigation broken, caret stops on spaces not in the actual string or moves more than one character. Find cause (likely rendering overlay/mirror or custom editor), fix for every such input in the API module. Acceptance: arrow keys move one character, caret positions match the string, single and multiline; "+" opens a new request tab like Runs. UI-only, no backend: UI specs for both (plus, caret navigation per input kind).
 
 Plan: `plans/P664.md`.
+
+Result: Done. Part 1: new `studio/api/ApiNewTab.vue` (Runs pattern: `TabStripNewButton` plus context menu, New request and New gRPC request, wording shared with the collection menu), wired as `newTab` on the `api` mode; Databases strip unchanged. Part 2 root cause class: two independent text layouts. `AutocompleteField` ranges-only mode painted glyphs in an overlay div and left the caret to a transparent native control, so any per-glyph advance, wrap or scroll difference between the two moves the caret off the visible text. The drift did not reproduce on WebKit WPE or Chromium here (arrows moved `selectionStart` by exactly 1 everywhere measured); it is unverified on the shipped engines (WKWebView, WebKitGTK), so the fix is by construction, not confirmed against the user's macOS report. Fix: ranges-only mode now uses an underlay (`is-underlay`): the native control paints glyphs (`text-fg`) and caret, the overlay only tints `{{var}}` behind it; ligatures off on control and overlay; Monaco loads only for language-highlighted fields. Measured or code defects also fixed: CR/CRLF in values (grow replica read CR as a space: box too short, hover offsets off by one per CRLF) now normalised for display only (`displayText`); `FieldRowsTable` sent ArrowUp/ArrowDown to the next row inside multi-line or wrapped cells, now row stepping applies to one-line cells only. Visible change: `{{var}}` glyphs render in the foreground colour on a tint (secret dotted, unknown wavy underline kept) instead of coloured text. Also applies to the Runs script body field (same mode). Ran: Playwright `ui` (WebKit) new `api-field-caret.spec.ts` (8 kinds: computed-style ownership guard plus real ArrowRight/ArrowLeft walks, multi-line Up/Down, CR box height) and `api-tab-strip-new.spec.ts`: 10 passed; existing `http-request`, `api-ui-consistency`, `http-variables`, `automations-module`, `tabs-scope-db`, `module-state`, `autocomplete`: 86 passed; visual `http-request-view` and `workbench` pass unchanged (the screenshot covers neither the strip nor a variable), no baseline re-recorded; `lint:dead` clean. Deviations: no unit test for `paintRangesHtml` (thin wrapper); specs prove the layout ownership, not a WKWebView drift fix.
 
 ## P665 Cmd+F search in left panels
 
