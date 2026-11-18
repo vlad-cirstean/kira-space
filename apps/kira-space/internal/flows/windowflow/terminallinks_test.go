@@ -65,7 +65,12 @@ func TestTerminalFileLinks(t *testing.T) {
 	}
 	resolve := func(fallback string, paths ...string) []bool {
 		t.Helper()
-		return resolveFull(fallback, paths...).Openable
+		got := resolveFull(fallback, paths...).Paths
+		out := make([]bool, len(got))
+		for i, p := range got {
+			out[i] = p != ""
+		}
+		return out
 	}
 	writeTerm := func(data string) {
 		t.Helper()
@@ -86,9 +91,6 @@ func TestTerminalFileLinks(t *testing.T) {
 			t.Fatal(err)
 		}
 		app.Contract(t, linksScenario, "OpenedFilesService.TerminalResolve", got)
-		if want := []bool{true, true, false, false, true, false, true}; !slices.Equal(got.Openable, want) {
-			t.Fatalf("openable = %v, want %v", got.Openable, want)
-		}
 		wantPaths := []string{
 			filepath.Join(repo.Dir, "src/a.go"), filepath.Join(repo.Dir, "src/a.go"), "", "", loose, "",
 			filepath.Join(app.Home, "k.json"),

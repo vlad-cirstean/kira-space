@@ -35,7 +35,6 @@ type OpenedFilesTerminalResolveArgs struct {
 }
 
 type OpenedFilesTerminalResolveResult struct {
-	Openable []bool `json:"openable"`
 	// Paths holds the absolute path per input, "" when not openable.
 	Paths []string `json:"paths"`
 }
@@ -91,11 +90,12 @@ func (s *OpenedFilesService) Read(args OpenedFilesReadArgs) (codeworkspace.FileC
 	return content, nil
 }
 
-// TerminalResolve reports per path whether it names a file Kira Space can open, against the
+// TerminalResolve returns per path the absolute path of the file it names when Kira Space can open it, else "", against the
 // terminal's live cwd, then fallbackCwd (the start cwd, also used once the terminal exited).
 //
 // Trust: as Read's comment says, bound calls come only from this app's webviews, which already
-// run shells; the answer is a boolean limited to the supported file types.
+// run shells. The answer is the absolute path of an existing regular file: any type inside an
+// imported repo, only the viewer's extension vocabulary elsewhere. Nothing else is revealed.
 func (s *OpenedFilesService) TerminalResolve(args OpenedFilesTerminalResolveArgs) (OpenedFilesTerminalResolveResult, error) {
 	if args.TerminalID == "" {
 		return OpenedFilesTerminalResolveResult{}, ipcerr.Contract("terminalId is required")
@@ -112,12 +112,7 @@ func (s *OpenedFilesService) TerminalResolve(args OpenedFilesTerminalResolveArgs
 	if err != nil {
 		return OpenedFilesTerminalResolveResult{}, err
 	}
-	paths := s.Files.Openable(cwds, userHome(), args.Paths)
-	openable := make([]bool, len(paths))
-	for i, p := range paths {
-		openable[i] = p != ""
-	}
-	return OpenedFilesTerminalResolveResult{Openable: openable, Paths: paths}, nil
+	return OpenedFilesTerminalResolveResult{Paths: s.Files.Openable(cwds, userHome(), args.Paths)}, nil
 }
 
 // TerminalOpen opens one terminal path in an opened-files window, cursor at line and col.

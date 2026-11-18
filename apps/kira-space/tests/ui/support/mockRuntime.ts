@@ -597,7 +597,7 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.configSyncIsReviewWindow]: 'false',
   [IPC.configSyncStatus]: JSON.stringify(IDLE_CONFIG_SYNC),
   [IPC.openedFilesPending]: '[]',
-  [IPC.openedFilesTerminalResolve]: '{"openable":[]}',
+  [IPC.openedFilesTerminalResolve]: '{"paths":[]}',
   [IPC.openedFilesTerminalOpen]: 'null',
   [IPC.windowsEnsure]: JSON.stringify({ mode: 'git' }),
   [IPC.windowsSetMode]: 'null',

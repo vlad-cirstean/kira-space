@@ -25,10 +25,7 @@ const resolveArgs = contract<{ paths: string[] }>(
   SCENARIO,
   'args:OpenedFilesService.TerminalResolve',
 );
-const resolved = contract<{ openable: boolean[]; paths: string[] }>(
-  SCENARIO,
-  'OpenedFilesService.TerminalResolve',
-);
+const resolved = contract<{ paths: string[] }>(SCENARIO, 'OpenedFilesService.TerminalResolve');
 const openArgs = contract<{ path: string; line: number; col: number }>(
   SCENARIO,
   'args:OpenedFilesService.TerminalOpen',

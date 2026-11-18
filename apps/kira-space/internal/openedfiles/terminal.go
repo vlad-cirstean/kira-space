@@ -57,7 +57,7 @@ func terminalCandidates(raw string, cwds []string, home string) []string {
 }
 
 // firstOpenable resolves the first candidate of raw that names an openable file.
-func firstOpenable(repos []model.CodeRepo, raw string, cwds []string, home string) (Target, string, bool) {
+func firstOpenable(repos []repoRoot, raw string, cwds []string, home string) (Target, string, bool) {
 	for _, c := range terminalCandidates(raw, cwds, home) {
 		if t, abs, err := resolve(c, repos, true); err == nil {
 			return t, abs, true
@@ -69,7 +69,7 @@ func firstOpenable(repos []model.CodeRepo, raw string, cwds []string, home strin
 // Openable returns per path the absolute path of the file it names, or "" when none is openable.
 // cwds are tried in order.
 func (s *Service) Openable(cwds []string, home string, paths []string) []string {
-	repos := s.repos()
+	repos := resolveRepos(s.repos())
 	out := make([]string, len(paths))
 	for i, p := range paths {
 		if _, abs, ok := firstOpenable(repos, p, cwds, home); ok {
@@ -82,7 +82,7 @@ func (s *Service) Openable(cwds []string, home string, paths []string) []string 
 // OpenTerminalPath opens the file raw names, placing the cursor at line and col (zero for none), in
 // a window of its own.
 func (s *Service) OpenTerminalPath(raw string, cwds []string, home string, line, col int) error {
-	t, _, ok := firstOpenable(s.repos(), raw, cwds, home)
+	t, _, ok := firstOpenable(resolveRepos(s.repos()), raw, cwds, home)
 	if !ok {
 		return ErrNotOpenable
 	}
