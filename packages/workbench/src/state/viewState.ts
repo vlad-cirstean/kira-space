@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import type { InjectionKey } from 'vue';
 import { reactive } from 'vue';
 import { registerTabRuntimeCleanup } from './tabRuntime';
 
@@ -8,6 +9,16 @@ export interface KeptScroll {
   top: number;
   left: number;
 }
+
+/** What a kept-state composable needs; the store satisfies it. Provided to a git-ui mount (P660). */
+export interface KeptViewState {
+  read<T>(key: string, fallback: T): T;
+  write(key: string, value: unknown): void;
+  scroll(key: string): KeptScroll | undefined;
+  setScroll(key: string, pos: KeptScroll): void;
+  drop(prefix: string): void;
+}
+export const KEPT_VIEW_STATE_KEY: InjectionKey<KeptViewState> = Symbol('keptViewState');
 
 export function tabViewKey(tabId: string, surface: string): string {
   return `tab:${tabId}:${surface}`;

@@ -70,7 +70,7 @@ export function usePanelHeaderSearch(
     getSearch: () => string;
     setSearch: (value: string) => void;
     searchTestid?: string;
-    /** View-state key prefix: bar visibility survives an unmount. Null keeps it a local ref (git-ui has no Pinia, P660 Part 2). */
+    /** View-state key prefix: bar visibility survives an unmount. Null keeps it a local ref (a git-ui mount without kept view state). */
     stateKey: string | null;
     /** Runs when Cmd/Ctrl+F reveals the bar, for a panel with its own visibility flag. */
     onReveal?: () => void;
