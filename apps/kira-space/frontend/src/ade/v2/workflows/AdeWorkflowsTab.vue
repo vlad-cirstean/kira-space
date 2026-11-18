@@ -10,7 +10,7 @@ import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { paneFrame } from '@theme/lib/frames';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
 import { errorText } from '@workbench/bridge/codedError';
@@ -187,7 +187,7 @@ async function createNew(): Promise<void> {
               stepList(e)
             }}</span
           >
-          <span class="text-kira-sm text-subtle" data-testid="ade-wf-row-used">{{
+          <span :class="rowMeta" data-testid="ade-wf-row-used">{{
             t('space.ade.workflows.page.usedBy.label', { count: e.usedBy })
           }}</span>
         </button>

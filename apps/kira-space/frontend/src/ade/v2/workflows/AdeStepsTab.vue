@@ -13,7 +13,7 @@ import {
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
 import { paneFrame } from '@theme/lib/frames';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
 import MenuItems from '@workbench/components/MenuItems.vue';
@@ -143,7 +143,7 @@ async function createNew(kind: StepKind): Promise<void> {
               >
             </TextTooltip>
           </span>
-          <span class="text-kira-sm text-subtle" data-testid="ade-step-row-used">{{
+          <span :class="rowMeta" data-testid="ade-step-row-used">{{
             t('space.ade.steps.usedBy.label', { count: e.usedBy.length })
           }}</span>
         </button>

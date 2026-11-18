@@ -6,7 +6,7 @@ import { Button } from '@theme/components/ui/button';
 import { colorMarkClass, connTextClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { formatRelative } from '@workbench/behaviour/format';
@@ -130,7 +130,7 @@ function openRecent(entry: RecentTableEntry): void {
             <CodiconIcon :name="iconFor(entry)" :size="13" />
           </span>
           <Identifier :value="entry.path" />
-          <span class="ml-auto text-kira-sm text-subtle"
+          <span :class="[rowMeta, 'ml-auto']"
             >{{ connectionFor(entry)?.name }}
             · {{ formatRelative(entry.openedAt) }}</span
           >

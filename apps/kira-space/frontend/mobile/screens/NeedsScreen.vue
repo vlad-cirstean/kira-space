@@ -108,7 +108,7 @@ async function confirmTakeOver(): Promise<void> {
                   <span class="truncate">{{ model.cards.get(item.taskId)?.title }}</span>
                 </span>
               </span>
-              <span class="text-kira-md text-fg">{{ item.what }}</span>
+              <span class="text-kira-md">{{ item.what }}</span>
               <span v-if="item.detail" class="text-kira-sm text-muted-foreground">{{
                 item.detail
               }}</span>

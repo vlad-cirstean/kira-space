@@ -4,7 +4,7 @@ import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { computed } from 'vue';
 import { FILE_KIND_LABEL, FILE_STATE_LABEL } from './importFormat';
@@ -40,18 +40,18 @@ const variant = computed(() => {
       @click="emit('select')"
     >
       <span class="min-w-0 flex-1"><TruncatedText :text="file.relPath" /></span>
-      <span class="shrink-0 text-kira-sm text-muted-foreground" data-testid="import-file-kind">{{
+      <span :class="[rowMeta, 'shrink-0']" data-testid="import-file-kind">{{
         t(FILE_KIND_LABEL[file.kind])
       }}</span>
       <span
         v-if="file.verified > 0"
-        class="shrink-0 text-kira-sm text-muted-foreground"
+        :class="[rowMeta, 'shrink-0']"
         data-testid="import-file-verified"
         >{{
           t('memory.import.file.verified.label', { count: file.verified })
         }}</span
       >
-      <span v-if="file.state === 'done'" class="shrink-0 text-kira-sm text-muted-foreground">
+      <span v-if="file.state === 'done'" :class="[rowMeta, 'shrink-0']">
         +{{ file.added }}
         ~{{ file.updated }}
         ={{ file.noop }}

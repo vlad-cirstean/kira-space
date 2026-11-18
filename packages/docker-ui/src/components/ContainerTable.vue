@@ -5,7 +5,7 @@ import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { tableHeadClass, tableHeadRowClass, tableRowClass } from '@theme/components/ui/table';
 import { t } from '@theme/i18n';
-import { rowActions } from '@theme/lib/rowVariants';
+import { rowActions, rowMeta } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useResizeObserver } from '@vueuse/core';
 import { displayValue, formatBytes, formatPercent } from '@workbench/behaviour/format';
@@ -159,7 +159,7 @@ const nav = useListNavigation<DockerContainer>({
                   c.name
                 }}</span
               >
-              <span v-if="c.composeProject" class="shrink-0 text-kira-sm text-muted-foreground">{{
+              <span v-if="c.composeProject" :class="[rowMeta, 'shrink-0']">{{
                 c.composeProject
               }}</span>
             </span>

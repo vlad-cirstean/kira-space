@@ -177,9 +177,7 @@ const rawLanguage = computed(() =>
           <span v-if="row.node.cost" class="plan-meta" :class="rowMeta">{{
             t('common.cost.label', { value: formatCount(row.node.cost.total) })
           }}</span>
-          <span v-if="row.node.detail" class="text-subtle text-kira-sm font-data">{{
-            row.node.detail
-          }}</span>
+          <span v-if="row.node.detail" :class="[rowMeta, 'font-data']">{{ row.node.detail }}</span>
           <span v-if="row.node.metrics.length" class="plan-metrics" :class="rowMeta">{{
             metricsLine(row.node)
           }}</span>

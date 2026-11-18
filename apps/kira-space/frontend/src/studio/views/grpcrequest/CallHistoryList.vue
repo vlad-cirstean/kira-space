@@ -14,7 +14,7 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { formatRelative } from '@workbench/behaviour/format';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
@@ -177,7 +177,7 @@ async function onClear(): Promise<void> {
         </TextTooltip>
         <span class="text-kira-sm font-data">{{ entry.method }}</span>
         <TextTooltip :text="entry.calledAt">
-          <span class="text-kira-sm text-subtle">{{ formatRelative(entry.calledAt) }}</span>
+          <span :class="rowMeta">{{ formatRelative(entry.calledAt) }}</span>
         </TextTooltip>
         <span class="ml-auto" />
         <TooltipIconButton

@@ -13,7 +13,7 @@ import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { methodTextClass } from '@theme/methodColor';
 import { formatBytes, formatDuration, formatRelative } from '@workbench/behaviour/format';
@@ -220,9 +220,7 @@ async function onClear(): Promise<void> {
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
           <div class="flex items-center gap-1">
             <TextTooltip :text="entry.sentAt">
-              <span class="text-kira-sm text-subtle min-w-16">{{
-                formatRelative(entry.sentAt)
-              }}</span>
+              <span :class="[rowMeta, 'min-w-16']">{{ formatRelative(entry.sentAt) }}</span>
             </TextTooltip>
             <Badge data variant="chip" :class="methodTextClass(httpMethodToken(entry.method))">{{
               entry.method
@@ -235,11 +233,9 @@ async function onClear(): Promise<void> {
                 >{{ entry.status }} {{ entry.statusText }}</Badge
               >
             </TextTooltip>
-            <span class="text-kira-sm text-subtle">{{ formatDuration(entry.elapsedMs) }}</span>
-            <span class="text-kira-sm text-subtle">{{ formatBytes(entry.bodyBytes) }}</span>
-            <span v-if="entry.environment" class="text-kira-sm text-subtle">{{
-              entry.environment
-            }}</span>
+            <span :class="rowMeta">{{ formatDuration(entry.elapsedMs) }}</span>
+            <span :class="rowMeta">{{ formatBytes(entry.bodyBytes) }}</span>
+            <span v-if="entry.environment" :class="rowMeta">{{ entry.environment }}</span>
             <span class="ml-auto" />
             <TooltipIconButton
               :icon="ICON.delete"

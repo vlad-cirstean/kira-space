@@ -69,9 +69,7 @@ const ROW_BG_CLASS: Record<Tone, string> = {
       >
       <div class="flex min-w-0 flex-1 flex-col">
         <span class="flex items-center gap-2">
-          <span class="truncate text-kira-md text-fg" data-testid="ade-needs-what">{{
-            item.what
-          }}</span>
+          <span class="truncate text-kira-md" data-testid="ade-needs-what">{{ item.what }}</span>
           <Button
             v-if="hasLog"
             variant="link"

@@ -232,7 +232,7 @@ function logToggleLabel(runId: string): string {
       <span :class="rowMeta" class="shrink-0">{{ block.step.n }}.</span>
       <span
         class="min-w-0 truncate font-medium"
-        :class="block.step.state === 'done' ? 'text-muted-foreground' : 'text-fg'"
+        :class="block.step.state === 'done' && 'text-muted-foreground'"
         data-testid="ade-step-name"
         >{{
           block.step.name

@@ -5,7 +5,7 @@ import { Badge } from '@theme/components/ui/badge';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useEventListener } from '@vueuse/core';
 import { formatBytes } from '@workbench/behaviour/format';
@@ -400,9 +400,7 @@ const CELL_BASE =
               </template>
               <Tooltip v-if="rowAt(rowIndices[vi.index])?.isTruncated">
                 <TooltipTrigger as-child>
-                  <span class="text-kira-sm text-muted-foreground">{{
-                    t('studio.common.truncated.status')
-                  }}</span>
+                  <span :class="rowMeta">{{ t('studio.common.truncated.status') }}</span>
                 </TooltipTrigger>
                 <TooltipContent>{{
                   t('studio.common.cellTruncated.tooltip', { size: formatBytes(64 * 1024) })

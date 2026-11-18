@@ -15,7 +15,7 @@ import { Button } from '@theme/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { formatBytes, formatClockTime, formatDuration } from '@workbench/behaviour/format';
 import { useKeptState } from '@workbench/behaviour/viewState';
@@ -488,12 +488,12 @@ onUnmounted(() => {
               :style="{ height: `${messageRowHeight}px` }"
               @click="toggleExpanded(entry.m.seq)"
             >
-              <span class="text-kira-sm text-subtle" data-testid="grpc-message-offset">{{
+              <span :class="rowMeta" data-testid="grpc-message-offset">{{
                 t('studio.grpc.response.offset.status', {
                   duration: formatDuration(entry.m.offsetMs),
                 })
               }}</span>
-              <span class="text-kira-sm text-subtle">{{ formatBytes(entry.m.wireBytes) }}</span>
+              <span :class="rowMeta">{{ formatBytes(entry.m.wireBytes) }}</span>
               <Tooltip v-if="entry.m.truncated">
                 <TooltipTrigger as-child>
                   <CodiconIcon
@@ -508,7 +508,7 @@ onUnmounted(() => {
                 }}</TooltipContent>
               </Tooltip>
               <span class="ml-auto" />
-              <span class="text-kira-sm text-subtle">#{{ entry.m.seq }}</span>
+              <span :class="rowMeta">#{{ entry.m.seq }}</span>
             </button>
             <!-- Fixed height (not auto-grow) for the same reason .message-header's is — MUST stay
                  numerically equal to the script's own MESSAGE_DETAIL_HEIGHT (200px); a JSON
