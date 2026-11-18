@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ScriptRun } from '@shared/domain/scriptRuns';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
@@ -72,21 +73,19 @@ function openRun(run: ScriptRun): void {
         </Button>
         <Button
           v-if="run.kind === 'smart'"
-          variant="dialog"
-          size="kira-lg"
+          variant="toolbar"
+          size="kira"
           data-testid="ade-automation-open"
           @click="openRun(run)"
-        >
-          {{ t('common.action.open.label') }}
+          ><CodiconIcon name="go-to-file" :size="13" />{{ t('common.action.open.label') }}
         </Button>
         <Button
           v-if="run.state === 'running'"
-          variant="dialog"
-          size="kira-lg"
+          variant="toolbar"
+          size="kira"
           data-testid="ade-automation-stop"
           @click="stop.mutate(run.id)"
-        >
-          {{ t('common.action.stop.label') }}
+          ><CodiconIcon name="debug-stop" :size="13" />{{ t('common.action.stop.label') }}
         </Button>
       </div>
       <div v-if="expanded === run.id" class="pt-1">

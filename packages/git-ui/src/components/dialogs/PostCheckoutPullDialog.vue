@@ -40,11 +40,9 @@ function pullNow(): void {
 
 <template>
   <Dialog v-if="pending" :open="active" @update:open="(v) => !v && notNow()">
-    <DialogContent size="md">
+    <DialogContent size="sm">
       <DialogHeader>
         <DialogTitle>{{ t('git.dialog.postCheckoutPullConfirm.title') }}</DialogTitle>
-      </DialogHeader>
-      <DialogBody>
         <DialogDescription>
           <CatalogText
             k="git.dialog.postCheckoutPullConfirm.body"
@@ -54,7 +52,8 @@ function pullNow(): void {
             <template #upstream><Identifier :value="pending.upstreamShortName" /></template>
           </CatalogText>
         </DialogDescription>
-      </DialogBody>
+      </DialogHeader>
+      <DialogBody> </DialogBody>
 
       <DialogFooter>
         <Button

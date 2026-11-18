@@ -24,6 +24,7 @@
  */
 import { SETTINGS } from '@kira/git-core';
 import type { RepoSettingsPatch, RepoSettingsSnapshot } from '@kira/git-ipc';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
@@ -172,9 +173,13 @@ const autoStashId = useId();
 const showInGraphId = useId();
 const includeUntrackedId = useId();
 const hostProviderId = useId();
-const graphScopeId = useId();
 const baseCandidatesId = useId();
-const pullStrategyId = useId();
+const graphScopeItems = computed(() =>
+  graphScopeOptions.map((o) => ({ value: o.value, label: t(o.label) })),
+);
+const pullStrategyItems = computed(() =>
+  pullStrategyOptions.map((o) => ({ value: o.value, label: t(o.label) })),
+);
 
 function close(): void {
   emit('close');
@@ -239,7 +244,7 @@ async function save(): Promise<void> {
             <NumberStepperInput
               :id="pageSizeId"
               :model-value="pageSizeText"
-              group-class="h-control w-32"
+              group-class="w-24"
               :min="SETTINGS['kiraSpace.graph.pageSize'].minimum"
               :max="SETTINGS['kiraSpace.graph.pageSize'].maximum"
               v-bind="form.invalidAttrs('pageSize')"
@@ -250,19 +255,15 @@ async function save(): Promise<void> {
             </FieldError>
           </Field>
           <Field>
-            <FieldLabel :for="graphScopeId">{{ t('common.field.scope.label') }}</FieldLabel>
-            <NativeSelect
-              :id="graphScopeId"
-              :model-value="draft['kiraSpace.graph.scope']"
-              variant="bordered"
+            <FieldLabel>{{ t('common.field.scope.label') }}</FieldLabel>
+            <SecondaryTabs
+              variant="choice"
               size="kira-lg"
-              class="w-full"
-              @update:model-value="(v) => onGraphScopeChange(v as string)"
-            >
-              <option v-for="opt in graphScopeOptions" :key="opt.value" :value="opt.value">
-                {{ t(opt.label) }}
-              </option>
-            </NativeSelect>
+              :aria-label="t('common.field.scope.label')"
+              :model-value="draft['kiraSpace.graph.scope']"
+              :items="graphScopeItems"
+              @update:model-value="onGraphScopeChange"
+            />
           </Field>
         </FieldSet>
 
@@ -304,7 +305,7 @@ async function save(): Promise<void> {
             <FieldLabel :for="baseCandidatesId">
               {{ t('git.dialog.repoSettings.baseCandidates.label') }}
             </FieldLabel>
-            <Textarea :id="baseCandidatesId" v-model="baseCandidatesText" rows="3" class="w-full" />
+            <Textarea :id="baseCandidatesId" v-model="baseCandidatesText" class="font-data" />
           </Field>
         </FieldSet>
 
@@ -318,7 +319,6 @@ async function save(): Promise<void> {
               :id="hostProviderId"
               :model-value="draft['kiraSpace.gitHost.provider']"
               variant="bordered"
-              size="kira-lg"
               class="w-full"
               @update:model-value="(v) => (draft['kiraSpace.gitHost.provider'] = v as string)"
             >
@@ -332,21 +332,15 @@ async function save(): Promise<void> {
         <FieldSet>
           <FieldLegend>{{ t('git.toolbar.pull.label') }}</FieldLegend>
           <Field>
-            <FieldLabel :for="pullStrategyId">{{
-              t('git.dialog.repoSettings.strategy.label')
-            }}</FieldLabel>
-            <NativeSelect
-              :id="pullStrategyId"
-              :model-value="draft['kiraSpace.pull.strategy']"
-              variant="bordered"
+            <FieldLabel>{{ t('git.dialog.repoSettings.strategy.label') }}</FieldLabel>
+            <SecondaryTabs
+              variant="choice"
               size="kira-lg"
-              class="w-full"
-              @update:model-value="(v) => onPullStrategyChange(v as string)"
-            >
-              <option v-for="opt in pullStrategyOptions" :key="opt.value" :value="opt.value">
-                {{ t(opt.label) }}
-              </option>
-            </NativeSelect>
+              :aria-label="t('git.dialog.repoSettings.strategy.label')"
+              :model-value="draft['kiraSpace.pull.strategy']"
+              :items="pullStrategyItems"
+              @update:model-value="onPullStrategyChange"
+            />
           </Field>
         </FieldSet>
 

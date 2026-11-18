@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Checkbox } from '@theme/components/ui/checkbox';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import { computed, ref, watch } from 'vue';
@@ -7,7 +8,6 @@ import { formatTools, parseTools } from '../../board/workflowForm';
 import { useAdeWorkflowDraftStore } from '../../state/adeWorkflowDraft';
 import type { WorkflowStep } from '../../wire';
 import { useStepScope } from '../stepScope';
-import AdeInspectorRow from './AdeInspectorRow.vue';
 import AdeStepAgentPick from './AdeStepAgentPick.vue';
 import AdeStepSettings from './AdeStepSettings.vue';
 import AdeStepStatus from './AdeStepStatus.vue';
@@ -50,12 +50,10 @@ function onTools(v: string | number): void {
     <AdeStepStatus :step="step" @patch="(p) => emit('patch', p)" />
     <AdeStepAgentPick v-if="step.session" :step="step" @patch="(p) => emit('patch', p)" />
   </template>
-  <AdeInspectorRow
-    v-if="step.kind === 'agent' && step.smartScript === ''"
-    stack
-    :label="t('space.ade.workflows.stepInspector.tools.label')"
-    :for="id('tools')"
-  >
+  <Field v-if="step.kind === 'agent' && step.smartScript === ''">
+    <FieldLabel :for="id('tools')">{{
+      t('space.ade.workflows.stepInspector.tools.label')
+    }}</FieldLabel>
     <Input
       :id="id('tools')"
       :model-value="toolsText"
@@ -64,32 +62,28 @@ function onTools(v: string | number): void {
       data-testid="ade-wf-step-tools"
       @update:model-value="onTools"
     />
-    <template #hint>{{ t('space.ade.workflows.stepInspector.tools.hint') }}</template>
-  </AdeInspectorRow>
-  <AdeInspectorRow
-    v-if="hasDbMcp"
-    :label="t('space.ade.workflows.stepInspector.dbMcp.label')"
-    :for="id('db-mcp')"
-  >
+    <FieldDescription>{{ t('space.ade.workflows.stepInspector.tools.hint') }}</FieldDescription>
+  </Field>
+  <Field v-if="hasDbMcp" orientation="responsive">
+    <FieldLabel :for="id('db-mcp')">{{
+      t('space.ade.workflows.stepInspector.dbMcp.label')
+    }}</FieldLabel>
     <Checkbox
       :id="id('db-mcp')"
       :model-value="step.dbMcp"
       data-testid="ade-wf-step-db-mcp"
       @update:model-value="(v) => emit('patch', { dbMcp: v === true })"
     />
-    <template #hint>{{ t('space.ade.workflows.stepInspector.dbMcp.hint') }}</template>
-  </AdeInspectorRow>
+    <FieldDescription>{{ t('space.ade.workflows.stepInspector.dbMcp.hint') }}</FieldDescription>
+  </Field>
   <AdeStepSettings
     v-if="hasSession"
     :settings="step.settings"
     :step-id="step.id"
     @patch="(settings) => emit('patch', { settings })"
   />
-  <AdeInspectorRow
-    v-if="!library"
-    :label="t('space.ade.stepBlock.skipThis.label')"
-    :for="id('skip')"
-  >
+  <Field v-if="!library" orientation="responsive">
+    <FieldLabel :for="id('skip')">{{ t('space.ade.stepBlock.skipThis.label') }}</FieldLabel>
     <Checkbox
       :id="id('skip')"
       :model-value="step.skip"
@@ -97,5 +91,5 @@ function onTools(v: string | number): void {
       data-testid="ade-wf-step-skip"
       @update:model-value="(v) => emit('patch', { skip: v === true })"
     />
-  </AdeInspectorRow>
+  </Field>
 </template>

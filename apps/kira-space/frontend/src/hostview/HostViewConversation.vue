@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -45,11 +46,11 @@ function reviewLabel(state: ReviewerState | undefined): string {
 </script>
 
 <template>
-  <section class="mt-6 flex flex-col gap-3" data-testid="host-view-conversation">
+  <section class="flex flex-col gap-3" data-testid="host-view-conversation">
     <SectionHeading :label="t('space.hostView.conversation.heading.title')" />
-    <FieldDescription v-if="threads.length === 0" data-testid="host-view-no-threads">{{
+    <InlineState kind="empty" v-if="threads.length === 0" data-testid="host-view-no-threads">{{
       t('space.hostView.conversation.empty.empty')
-    }}</FieldDescription>
+    }}</InlineState>
     <Collapsible
       v-for="thread in threads"
       :key="thread.id"
@@ -63,14 +64,9 @@ function reviewLabel(state: ReviewerState | undefined): string {
         v-if="thread.kind !== 'comment' || thread.resolved"
         class="flex flex-wrap items-center gap-2 px-3 py-1.5 text-kira-sm"
       >
-        <Badge
-          v-if="thread.kind === 'review'"
-          variant="chip"
-          data-testid="host-view-thread-review"
-          >{{
-            reviewLabel(thread.reviewState)
-          }}</Badge
-        >
+        <Badge v-if="thread.kind === 'review'" data-testid="host-view-thread-review">{{
+          reviewLabel(thread.reviewState)
+        }}</Badge>
         <span v-if="thread.path" class="font-data" data-testid="host-view-thread-path">{{
           thread.line ? `${thread.path}:${thread.line}` : thread.path
         }}</span>
@@ -121,7 +117,7 @@ function reviewLabel(state: ReviewerState | undefined): string {
             size="kira"
             data-testid="host-view-thread-reply"
             @click="replying = thread.id"
-          >
+            ><CodiconIcon name="reply" :size="13" />
             {{ t('space.common.reply.label') }}
           </Button>
           <CommentComposer

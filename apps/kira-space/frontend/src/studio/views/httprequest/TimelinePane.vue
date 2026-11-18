@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { HttpTimelineHop } from '@shared/domain/http';
 import { statusClass, statusHint } from '@shared/domain/http';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Card } from '@theme/components/ui/card';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { formatDuration } from '@workbench/behaviour/format';
@@ -247,12 +248,7 @@ function hopNotes(hop: HttpTimelineHop): HopNote[] {
       </div>
 
       <div class="flex flex-col gap-1.5">
-        <Card
-          v-for="hop in activeTimeline.hops"
-          :key="hop.index"
-          class="gap-0.5"
-          data-testid="http-timeline-hop"
-        >
+        <Card v-for="hop in activeTimeline.hops" :key="hop.index" data-testid="http-timeline-hop">
           <div
             class="flex items-center gap-1 text-kira-sm font-data"
             data-testid="http-timeline-hop-caption"
@@ -260,15 +256,12 @@ function hopNotes(hop: HttpTimelineHop): HopNote[] {
             <span class="text-muted-foreground">{{ hop.index + 1 }}</span>
             <span>{{ hop.method }}</span>
             <span class="min-w-0 flex-1"><TruncatedText :text="hop.url" /></span>
-            <span>→</span>
-            <Tooltip v-if="hop.status > 0">
-              <TooltipTrigger as-child>
-                <Badge data :variant="statusClass(hop.status)"
-                  >{{ hop.status }} {{ hop.statusText }}</Badge
-                >
-              </TooltipTrigger>
-              <TooltipContent>{{ statusHint(hop.status) }}</TooltipContent>
-            </Tooltip>
+            <CodiconIcon name="arrow-right" :size="12" />
+            <TextTooltip v-if="hop.status > 0" :text="statusHint(hop.status)"
+              ><Badge data :variant="statusClass(hop.status)"
+                >{{ hop.status }} {{ hop.statusText }}</Badge
+              ></TextTooltip
+            >
             <Badge data v-else variant="error" data-testid="http-timeline-hop-failed-chip">
               {{ hop.error || 'failed' }}
             </Badge>
@@ -288,19 +281,16 @@ function hopNotes(hop: HttpTimelineHop): HopNote[] {
 
           <div class="flex flex-wrap gap-1.5 text-kira-sm">
             <template v-for="seg in PHASE_SEGMENTS" :key="seg.key">
-              <Tooltip v-if="!hop[seg.key]">
-                <TooltipTrigger as-child>
-                  <span
-                    class="text-muted-foreground data-[present=false]:text-subtle"
-                    :data-testid="`http-timeline-phase-${seg.key}`"
-                    data-present="false"
-                  >
-                    {{ t(seg.labelKey) }}
-                    —
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{{ phaseTooltip(hop, seg.key) }}</TooltipContent>
-              </Tooltip>
+              <TextTooltip v-if="!hop[seg.key]" :text="phaseTooltip(hop, seg.key)"
+                ><span
+                  class="text-muted-foreground data-[present=false]:text-subtle"
+                  :data-testid="`http-timeline-phase-${seg.key}`"
+                  data-present="false"
+                >
+                  {{ t(seg.labelKey) }}
+                  —
+                </span></TextTooltip
+              >
               <span
                 v-else
                 class="text-muted-foreground data-[present=false]:text-subtle"
@@ -323,14 +313,13 @@ function hopNotes(hop: HttpTimelineHop): HopNote[] {
 
           <Disclosure
             v-if="hopHeaders(hop).length > 0"
-            class="mt-0.5"
             :label="t('studio.http.timeline.responseHeaders.label')"
-            trigger-class="text-kira-sm text-subtle"
+            meta
           >
-            <KeyValueList class="py-0.5 text-kira-sm font-data">
+            <KeyValueList density="compact">
               <template v-for="(h, i) in hopHeaders(hop)" :key="i">
-                <dt>{{ h.name }}</dt>
-                <dd class="wrap-anywhere">{{ h.value }}</dd>
+                <dt class="font-data">{{ h.name }}</dt>
+                <dd class="font-data wrap-anywhere">{{ h.value }}</dd>
               </template>
             </KeyValueList>
           </Disclosure>

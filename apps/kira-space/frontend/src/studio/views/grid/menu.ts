@@ -3,7 +3,7 @@ import type { ForeignKeyMeta, ObjectMeta } from '@shared/domain/tree';
 import { decodePath } from '@shared/domain/tree';
 import { type MessageKey, t } from '@theme/i18n';
 import { copyAndAnnounce } from '@workbench/behaviour/clipboard';
-import type { MenuItem } from '@workbench/state/contextMenu';
+import type { MenuItem, MenuRadioOption } from '@workbench/state/contextMenu';
 import { useTabsStore } from '../../../state/tabs';
 import { defaultCorrelateFor, MASK_KIND_OPTIONS } from '../../project/connection/maskKinds';
 import { maskRulesFor, removeMaskRule, upsertMaskRule } from '../../state/maskRules';
@@ -688,22 +688,29 @@ export function headerMenu(ctx: HeaderMenuContext): MenuItem[] {
       label: t('studio.grid.menu.markSensitive.label'),
       icon: 'shield',
       items: [
-        ...MASK_KIND_OPTIONS.map(
-          ({ value: kind, label }): MenuItem => ({
-            type: 'item',
-            id: `mask-${kind}`,
-            label: t(label),
-            checked: currentMaskRule?.kind === kind,
-            run: () => markColumnMaskKind(ctx, kind),
-          }),
-        ),
-        { type: 'separator' },
         {
-          type: 'item',
-          id: 'mask-none',
-          label: t('studio.grid.menu.notSensitive.label'),
-          checked: !currentMaskRule,
-          run: () => clearColumnMask(ctx),
+          type: 'radio',
+          id: 'mask',
+          value: currentMaskRule?.kind ?? null,
+          items: [
+            ...MASK_KIND_OPTIONS.map(
+              ({ value: kind, label }): MenuRadioOption => ({
+                type: 'option',
+                id: `mask-${kind}`,
+                value: kind,
+                label: t(label),
+                run: () => markColumnMaskKind(ctx, kind),
+              }),
+            ),
+            { type: 'separator' },
+            {
+              type: 'option',
+              id: 'mask-none',
+              value: null,
+              label: t('studio.grid.menu.notSensitive.label'),
+              run: () => clearColumnMask(ctx),
+            },
+          ],
         },
       ],
     },

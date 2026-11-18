@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
+import { t } from '@theme/i18n';
 import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import InlineEditInput from '@workbench/components/InlineEditInput.vue';
 import TreeTwisty from '@workbench/components/TreeTwisty.vue';
@@ -28,6 +29,7 @@ const emit = defineEmits<{
     <InlineEditInput
       v-if="renaming"
       :name="name"
+      :label="t('common.collection.label')"
       data-testid="script-collection-rename-input"
       @commit="(next) => emit('commit', next)"
       @cancel="emit('cancel')"

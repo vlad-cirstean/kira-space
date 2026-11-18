@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import EmptyState from '@theme/components/EmptyState.vue';
-import Spinner from '@theme/components/Spinner.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -182,11 +181,10 @@ function cellClass(row: number, col: 'field' | 'value') {
     <div class="flex-1 min-h-0 flex flex-col overflow-hidden" data-testid="keyvalue-list">
       <EmptyState
         v-if="!rt || rt.rowCount === 0"
-        :icon="rt ? 'database' : undefined"
+        icon="database"
+        :loading="!rt"
         :title="rt ? t('studio.keyValue.noData.empty') : t('common.state.loading.loading')"
-      >
-        <template v-if="!rt" #media><Spinner :size="24" /></template>
-      </EmptyState>
+      />
       <SearchFilterNotice
         v-else-if="displayRows && displayRows.length === 0"
         data-testid="keyvalue-no-matching-rows"
@@ -235,16 +233,13 @@ function cellClass(row: number, col: 'field' | 'value') {
                 data-testid="keyvalue-value"
               >
                 <TruncatedText :text="displayText(rowAt(entry.i)?.value ?? '')" />
-                <Tooltip v-if="rowAt(entry.i)?.isTruncated">
-                  <TooltipTrigger as-child>
-                    <Badge variant="chip" class="bg-field text-subtle ml-1.5 shrink-0">{{
-                      t('studio.common.truncated.status')
-                    }}</Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>{{
-                    t('studio.common.cellTruncated.tooltip', { size: formatBytes(64 * 1024) })
-                  }}</TooltipContent>
-                </Tooltip>
+                <TextTooltip
+                  v-if="rowAt(entry.i)?.isTruncated"
+                  :text="t('studio.common.cellTruncated.tooltip', { size: formatBytes(64 * 1024) })"
+                  ><Badge class="ml-1.5 shrink-0">{{
+                    t('studio.common.truncated.status')
+                  }}</Badge></TextTooltip
+                >
               </div>
             </div>
           </template>

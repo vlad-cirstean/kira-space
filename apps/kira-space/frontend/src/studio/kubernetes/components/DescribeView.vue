@@ -6,6 +6,7 @@ import SearchField from '@theme/components/SearchField.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { copyText } from '@workbench/behaviour/clipboard';
 import { compareNatural, matchesQuery, splitMatches } from '@workbench/behaviour/match';
 import { useKeptState } from '@workbench/behaviour/viewState';
@@ -156,23 +157,22 @@ const label = (id: SectionId): string => LABELS[id]();
           @click="copyText(describe.data.value?.manifest ?? '')"
         />
       </div>
-      <div class="min-h-0 flex-1 overflow-auto p-2">
+      <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3">
         <EmptyState
           v-if="needle !== '' && shown.length === 0"
+          :icon="ICON.search"
           data-testid="kube-describe-no-match"
           :title="t('common.state.noMatches.empty')"
         />
         <template v-for="id in shown" :key="id">
-          <section class="mb-3" :data-testid="`kube-describe-section-${id}`">
+          <section :data-testid="`kube-describe-section-${id}`">
             <SectionHeading :label="label(id)" />
             <KeyValueList
               v-if="id === 'overview' || id === 'labels' || id === 'annotations' || id === 'owners'"
             >
               <template v-for="[ k, v ] in sections![id]" :key="k">
                 <dt><HighlightedText :parts="parts(k)" /></dt>
-                <dd class="break-all font-data text-kira-sm"
-                  ><HighlightedText :parts="parts(v)" /></dd
-                >
+                <dd class="break-all font-data"><HighlightedText :parts="parts(v)" /></dd>
               </template>
             </KeyValueList>
             <ul v-else-if="id === 'conditions'" class="m-0 list-none p-0 text-kira-md">
@@ -226,7 +226,7 @@ const label = (id: SectionId): string => LABELS[id]();
             </template>
             <pre
               v-else
-              class="m-0 overflow-auto font-data text-kira-sm leading-relaxed"
+              class="m-0 overflow-auto font-data text-kira-sm leading-normal"
               data-testid="kube-manifest"
             ><template v-for="l in sections!.manifest" :key="l.n"><span class="mr-3 inline-block w-8 select-none text-right text-subtle">{{ l.n }}</span><span v-if="painted.has(l.n)" v-html="painted.get(l.n)"></span><HighlightedText v-else :parts="parts(l.text)" />
 </template></pre>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
@@ -8,7 +9,6 @@ import { copyText } from '@workbench/behaviour/clipboard';
 import { displayValue, formatDateTime } from '@workbench/behaviour/format';
 import { reactive } from 'vue';
 import type { DockerContainerDetail } from '../wire';
-import DetailSection from './DetailSection.vue';
 
 const props = defineProps<{ detail: DockerContainerDetail }>();
 

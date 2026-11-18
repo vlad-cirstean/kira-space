@@ -1,11 +1,7 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipDisabledTrigger,
-  TooltipTrigger,
-} from '@theme/components/ui/tooltip';
+import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { useTemplateRef } from 'vue';
@@ -39,26 +35,23 @@ useShortcut(rootEl, ['form.save'], () => {
         :show-compact="false"
       />
       <span class="flex-1 min-w-0"></span>
-      <Tooltip :disabled="!saveDisabledReason">
-        <TooltipTrigger as-child>
-          <TooltipDisabledTrigger>
-            <Button
-              variant="dialog-primary"
-              size="kira"
-              :pending="saving"
-              :disabled="!!saveDisabledReason"
-              :data-testid="`${testidPrefix}-save`"
-              @click="emit('save')"
-              >{{
-                t('common.action.save.label')
-              }}</Button
-            >
-          </TooltipDisabledTrigger>
-        </TooltipTrigger>
-        <TooltipContent v-if="saveDisabledReason">{{ saveDisabledReason }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="saveDisabledReason"
+        ><TooltipDisabledTrigger>
+          <Button
+            variant="dialog-primary"
+            size="kira"
+            :pending="saving"
+            :disabled="!!saveDisabledReason"
+            :data-testid="`${testidPrefix}-save`"
+            @click="emit('save')"
+            >{{
+              t('common.action.save.label')
+            }}</Button
+          >
+        </TooltipDisabledTrigger></TextTooltip
+      >
       <Button
-        variant="toolbar"
+        variant="dialog"
         size="kira"
         :data-testid="`${testidPrefix}-cancel`"
         @click="emit('cancel')"

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { Toggle } from '@theme/components/ui/toggle';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { computed, ref } from 'vue';
@@ -75,36 +77,29 @@ const editing = ref<string | null>(null);
 
 <template>
   <div class="flex flex-col gap-2" data-testid="ade-task-chain">
-    <div class="flex items-center gap-1 text-kira-sm text-muted-foreground">
-      <span class="flex-1">{{ t('space.ade.proof.chain.title') }}</span>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Toggle
-            :model-value="list.showTimeline"
-            size="kira"
-            data-testid="ade-details-timeline-toggle"
-            @update:model-value="list.setShowTimeline"
-          >
-            <CodiconIcon name="history" :size="13" />
-            {{ t('common.timeline.label') }}
-          </Toggle>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('space.ade.details.timeline.toggle.tooltip') }}</TooltipContent>
-      </Tooltip>
-      <Tooltip v-if="auditCount > 0">
-        <TooltipTrigger as-child>
-          <Toggle
-            :model-value="list.showDbAudit"
-            size="kira"
-            data-testid="ade-details-dbaudit-toggle"
-            @update:model-value="list.setShowDbAudit"
-          >
-            <CodiconIcon name="database" :size="13" />
-            {{ t('space.ade.details.dbAudit.toggle.label', { count: auditCount }) }}
-          </Toggle>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('space.ade.details.dbAudit.toggle.tooltip') }}</TooltipContent>
-      </Tooltip>
+    <SectionHeading flush :label="t('space.ade.proof.chain.title')">
+      <TextTooltip :text="t('space.ade.details.timeline.toggle.tooltip')">
+        <Toggle
+          :model-value="list.showTimeline"
+          size="kira"
+          data-testid="ade-details-timeline-toggle"
+          @update:model-value="list.setShowTimeline"
+        >
+          <CodiconIcon name="history" :size="13" />
+          {{ t('common.timeline.label') }}
+        </Toggle>
+      </TextTooltip>
+      <TextTooltip v-if="auditCount > 0" :text="t('space.ade.details.dbAudit.toggle.tooltip')"
+        ><Toggle
+          :model-value="list.showDbAudit"
+          size="kira"
+          data-testid="ade-details-dbaudit-toggle"
+          @update:model-value="list.setShowDbAudit"
+        >
+          <CodiconIcon name="database" :size="13" />
+          {{ t('space.ade.details.dbAudit.toggle.label', { count: auditCount }) }}
+        </Toggle></TextTooltip
+      >
       <template v-if="!readonly">
         <TooltipIconButton
           v-if="!composing"
@@ -115,8 +110,8 @@ const editing = ref<string | null>(null);
           @click="composer.show(task.id)"
         />
       </template>
-    </div>
-    <Card v-if="composing" class="flex flex-col gap-2 p-2" data-testid="ade-note-composer">
+    </SectionHeading>
+    <Card v-if="composing" data-testid="ade-note-composer">
       <AdeNotesEditor
         :key="`compose-${task.id}`"
         v-model="draft"
@@ -151,23 +146,17 @@ const editing = ref<string | null>(null);
         >
       </div>
     </Card>
-    <div
-      v-if="!hasChain && !composing"
-      class="flex items-center gap-2 text-kira-sm text-subtle"
-      data-testid="ade-notes-empty"
-    >
+    <InlineState v-if="!hasChain && !composing" kind="empty" data-testid="ade-notes-empty">
       <span>{{ t('space.ade.notes.empty.body') }}</span>
       <Button
         v-if="!readonly"
-        variant="dialog"
+        variant="toolbar"
         size="kira"
         data-testid="ade-note-add-empty"
         @click="composer.show(task.id)"
-        >{{
-          t('space.ade.notes.add.label')
-        }}</Button
+        ><CodiconIcon name="add" :size="13" />{{ t('space.ade.notes.add.label') }}</Button
       >
-    </div>
+    </InlineState>
     <template v-for="e in entries" :key="e.key">
       <AdeNoteEntry
         v-if="e.kind === 'handover'"

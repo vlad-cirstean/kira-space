@@ -6,12 +6,13 @@ import { Checkbox } from '@theme/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
-import { FieldDescription } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { type MessageKey, t } from '@theme/i18n';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref, watch } from 'vue';
 import {
   ACCESS_MODES,
@@ -23,7 +24,6 @@ import {
 } from '../../board/stepSandbox';
 import { useWorkflows } from '../../queries';
 import type { SandboxAccess, StepKind, StepSandbox } from '../../wire';
-import AdeInspectorRow from './AdeInspectorRow.vue';
 
 // A step's sandbox, for its agent or script: access level, extra folders, network.
 const props = defineProps<{ sandbox: StepSandbox; stepId: string; kind: StepKind }>();
@@ -89,55 +89,67 @@ const PRESET_LABEL = {
 const preset = (paths: readonly string[]): void => {
   set({ allow: addPaths(props.sandbox.allow, paths) });
 };
+const presetItems = computed<MenuItem[]>(() =>
+  TOOLCHAINS.map((c) => ({
+    type: 'item',
+    id: c.id,
+    testId: `ade-wf-sandbox-preset-${c.id}`,
+    label: t(PRESET_LABEL[c.id]),
+    run: () => preset(c.paths),
+  })),
+);
 </script>
 
 <template>
   <div class="flex flex-col gap-3" data-testid="ade-wf-step-sandbox">
-    <AdeInspectorRow :label="t('space.ade.workflows.sandbox.access.label')">
+    <Field orientation="responsive">
+      <FieldLabel>{{ t('space.ade.workflows.sandbox.access.label') }}</FieldLabel>
       <SecondaryTabs
+        variant="choice"
+        size="kira-lg"
+        :aria-label="t('space.ade.workflows.sandbox.access.label')"
         :model-value="sandbox.access"
         :items="items"
         data-testid="ade-wf-sandbox-access"
         @update:model-value="(v: string) => set({ access: v as SandboxAccess })"
       />
-    </AdeInspectorRow>
+    </Field>
     <FieldDescription v-if="sandbox.access === 'off'" data-testid="ade-wf-sandbox-off">{{
       t(offHint)
     }}</FieldDescription>
     <template v-else>
-      <AdeInspectorRow stack :label="t('space.ade.workflows.sandbox.read.label')" :for="id('read')">
+      <Field>
+        <FieldLabel :for="id('read')">{{ t('space.ade.workflows.sandbox.read.label') }}</FieldLabel>
         <Textarea
+          class="min-h-32 max-h-90 resize-y font-data"
           :id="id('read')"
           :model-value="readText"
           :placeholder="t('space.ade.workflows.sandbox.read.example')"
-          class="min-h-12 w-full resize-y font-data leading-normal"
           data-testid="ade-wf-sandbox-read"
           @update:model-value="onRead"
         />
-        <template #hint>
+        <FieldDescription>
           {{
             sandbox.access === 'read' && script
               ? t('space.ade.workflows.sandbox.readScript.hint')
               : t('space.ade.workflows.sandbox.paths.hint')
           }}
-        </template>
-        <template v-if="readInvalid" #error>
+        </FieldDescription>
+        <FieldError v-if="readInvalid">
           <span data-testid="ade-wf-sandbox-read-error">{{
             t('space.ade.workflows.sandbox.pathInvalid.error')
           }}</span>
-        </template>
-      </AdeInspectorRow>
-      <AdeInspectorRow
-        v-if="sandbox.access === 'write'"
-        stack
-        :label="t('space.ade.workflows.sandbox.allow.label')"
-        :for="id('allow')"
-      >
+        </FieldError>
+      </Field>
+      <Field v-if="sandbox.access === 'write'">
+        <FieldLabel :for="id('allow')">{{
+          t('space.ade.workflows.sandbox.allow.label')
+        }}</FieldLabel>
         <Textarea
+          class="min-h-32 max-h-90 resize-y font-data"
           :id="id('allow')"
           :model-value="allowText"
           :placeholder="t('space.ade.workflows.sandbox.allow.example')"
-          class="min-h-12 w-full resize-y font-data leading-normal"
           data-testid="ade-wf-sandbox-allow"
           @update:model-value="onAllow"
         />
@@ -145,7 +157,7 @@ const preset = (paths: readonly string[]): void => {
           <DropdownMenuTrigger as-child>
             <Button
               variant="dialog"
-              size="kira"
+              size="kira-lg"
               class="self-start"
               data-testid="ade-wf-sandbox-preset"
               >{{
@@ -154,38 +166,33 @@ const preset = (paths: readonly string[]): void => {
             >
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            <DropdownMenuItem
-              v-for="c in TOOLCHAINS"
-              :key="c.id"
-              :data-testid="`ade-wf-sandbox-preset-${c.id}`"
-              @select="preset(c.paths)"
-              >{{
-                t(PRESET_LABEL[c.id])
-              }}</DropdownMenuItem
-            >
+            <MenuItems :items="presetItems" />
           </DropdownMenuContent>
         </DropdownMenu>
-        <template v-if="allowInvalid" #error>
+        <FieldError v-if="allowInvalid">
           <span data-testid="ade-wf-sandbox-allow-error">{{
             t('space.ade.workflows.sandbox.pathInvalid.error')
           }}</span>
-        </template>
-      </AdeInspectorRow>
-      <AdeInspectorRow :label="t('space.ade.workflows.sandbox.network.label')" :for="id('network')">
+        </FieldError>
+      </Field>
+      <Field orientation="responsive">
+        <FieldLabel :for="id('network')">{{
+          t('space.ade.workflows.sandbox.network.label')
+        }}</FieldLabel>
         <Checkbox
           :id="id('network')"
           :model-value="sandbox.network"
           data-testid="ade-wf-sandbox-network"
           @update:model-value="(v) => set({ network: v === true })"
         />
-        <template #hint>
+        <FieldDescription>
           {{
             script
               ? t('space.ade.workflows.sandbox.networkScript.hint')
               : t('space.ade.workflows.sandbox.network.hint')
           }}
-        </template>
-      </AdeInspectorRow>
+        </FieldDescription>
+      </Field>
     </template>
     <FieldDescription
       v-if="manual && sandbox.access !== 'off'"

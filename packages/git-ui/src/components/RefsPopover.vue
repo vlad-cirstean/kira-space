@@ -19,13 +19,14 @@ import AttributeTooltip from '@theme/components/AttributeTooltip.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import {
   Popover,
   PopoverAnchor,
+  PopoverBar,
   PopoverContent,
   PopoverTrigger,
 } from '@theme/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { useEventListener, useFocus } from '@vueuse/core';
@@ -413,27 +414,25 @@ watch(visibleBranchNames, (names) => {
   <div class="relative">
     <Popover :open="isOpen" modal @update:open="onOpenChange">
       <PopoverAnchor as-child>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <PopoverTrigger as-child>
-              <PickerTrigger
-                data-testid="branch-trigger"
-                ref="triggerEl"
-                size="kira"
-                class="max-w-50"
-                :label="triggerLabel"
-              >
-                <template #leading><CodiconIcon name="git-branch" :size="13" /></template>
-              </PickerTrigger>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <TooltipContent>{{ triggerLabel }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="triggerLabel">
+          <PopoverTrigger as-child>
+            <PickerTrigger
+              data-testid="branch-trigger"
+              ref="triggerEl"
+              size="kira"
+              class="max-w-50"
+              :label="triggerLabel"
+            >
+              <template #leading><CodiconIcon name="git-branch" :size="13" /></template>
+            </PickerTrigger>
+          </PopoverTrigger>
+        </TextTooltip>
       </PopoverAnchor>
 
       <PopoverContent
         align="start"
-        class="w-96 p-0 gap-0"
+        flush
+        class="w-96"
         :aria-label="t('git.picker.region.aria', { tab: t(TAB_LABELS[activeTab]) })"
         @open-auto-focus="onOpenAutoFocus"
         @close-auto-focus="onCloseAutoFocus"
@@ -441,22 +440,24 @@ watch(visibleBranchNames, (names) => {
         <div
           class="flex flex-col min-h-0 max-h-[min(520px,var(--reka-popover-content-available-height))]"
         >
-          <SecondaryTabs
-            data-testid="branch-tabs"
-            class="mx-1 mt-1"
-            :aria-label="t('git.picker.sections.aria')"
-            :model-value="activeTab"
-            :items="tabItems"
-            @update:model-value="(v) => (activeTab = v as PickerTab)"
-          >
-            <template #item="{ item }">
-              <CodiconIcon :name="item.icon ?? ''" :size="13" />
-              <span class="sr-only">{{ item.label }}</span>
-              <span :class="rowMeta" data-testid="picker-tab-badge">{{ item.count }}</span>
-            </template>
-          </SecondaryTabs>
+          <PopoverBar>
+            <SecondaryTabs
+              data-testid="branch-tabs"
+              class="w-full"
+              :aria-label="t('git.picker.sections.aria')"
+              :model-value="activeTab"
+              :items="tabItems"
+              @update:model-value="(v) => (activeTab = v as PickerTab)"
+            >
+              <template #item="{ item }">
+                <CodiconIcon :name="item.icon ?? ''" :size="13" />
+                <span class="sr-only">{{ item.label }}</span>
+                <span :class="rowMeta" data-testid="picker-tab-badge">{{ item.count }}</span>
+              </template>
+            </SecondaryTabs>
+          </PopoverBar>
 
-          <div class="m-1">
+          <PopoverBar>
             <SearchField
               ref="filterEl"
               v-model="filter"
@@ -464,7 +465,7 @@ watch(visibleBranchNames, (names) => {
               :aria-label="t(TAB_FILTER_PLACEHOLDERS[activeTab])"
               @keydown.down="onFilterDown"
             />
-          </div>
+          </PopoverBar>
 
           <div
             ref="rowsScrollEl"

@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import type { ReviewComment } from '@kira/git-ipc';
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
-import { FieldError } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { RadioGroup, RadioGroupCard } from '@theme/components/ui/radio-group';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
+import { type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { errorText } from '@workbench/bridge/codedError';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
 import { computed, ref, watch } from 'vue';
-import AdeChip from '../AdeChip.vue';
-import AdeTip from '../AdeTip.vue';
-import type { Tone } from '../board/actions';
 import AdeRunLog from '../panel/AdeRunLog.vue';
 import AdeRunOutcome from '../panel/AdeRunOutcome.vue';
 import AdeOpStatus from '../plan/AdeOpStatus.vue';
@@ -26,7 +27,6 @@ import {
 } from '../queries';
 import { reviewPhaseLabel } from '../runState';
 import { useAdeOpsStore } from '../state/adeOps';
-import { ACTION_CLASS } from '../tones';
 import type { ReviewPhase, ReviewWindowTarget } from '../wire';
 import { useReviewComments } from './useReviewComments';
 
@@ -143,12 +143,12 @@ async function confirmFinish(): Promise<void> {
   if (result) await doFinish(result);
 }
 
-const PHASE_TONE: Record<ReviewPhase, Tone> = {
-  waiting: 'blue',
-  sent: 'amber',
-  working: 'amber',
-  stuck: 'red',
-  done: 'green',
+const PHASE_TONE: Record<ReviewPhase, StatusTone> = {
+  waiting: 'info',
+  sent: 'info',
+  working: 'info',
+  stuck: 'error',
+  done: 'ok',
 };
 
 function lineLabel(c: ReviewComment): string {
@@ -174,11 +174,9 @@ const stateLabel = (c: ReviewComment): string =>
   >
     <div class="flex flex-wrap items-center gap-2">
       <span data-testid="ade-review-step-name">{{ state?.stepName }}</span>
-      <AdeChip
-        :label="reviewPhaseLabel(phase)"
-        :tone="PHASE_TONE[phase]"
-        data-testid="ade-review-phase"
-      />
+      <Badge :variant="TONE_BADGE[PHASE_TONE[phase]]" data-testid="ade-review-phase">{{
+        reviewPhaseLabel(phase)
+      }}</Badge>
       <AdeOpStatus :task-id="target.taskId" :branch-id="target.branchId" />
       <span
         v-if="round"
@@ -205,7 +203,6 @@ const stateLabel = (c: ReviewComment): string =>
       <Card
         v-for="c in comments"
         :key="c.id"
-        class="flex flex-col gap-1 p-2"
         data-testid="ade-review-comment"
         :data-comment-id="c.id"
         :data-state="c.state"
@@ -221,14 +218,16 @@ const stateLabel = (c: ReviewComment): string =>
               lineLabel(c)
             }}</Button
           >
-          <AdeChip
+          <Badge
             v-if="c.origin === 'working'"
-            :label="t('space.ade.changes.uncommitted.label')"
-            tone="amber"
+            variant="warn"
             data-testid="ade-review-comment-uncommitted"
-          />
-          <AdeChip :label="kindLabel(c)" :tone="c.kind === 'question' ? 'purple' : 'blue'" />
-          <AdeChip :label="stateLabel(c)" :tone="c.state === 'addressed' ? 'green' : 'amber'" />
+            >{{
+              t('space.ade.changes.uncommitted.label')
+            }}</Badge
+          >
+          <Badge variant="default">{{ kindLabel(c) }}</Badge>
+          <Badge :variant="c.state === 'addressed' ? 'ok' : 'warn'">{{ stateLabel(c) }}</Badge>
           <Button
             variant="toolbar"
             size="kira"
@@ -244,6 +243,7 @@ const stateLabel = (c: ReviewComment): string =>
               )
             "
           >
+            <CodiconIcon :name="c.state === 'addressed' ? 'issue-reopened' : 'check'" :size="13" />
             {{
               c.state === 'addressed'
                 ? t('git.review.comments.reopen.label')
@@ -263,7 +263,7 @@ const stateLabel = (c: ReviewComment): string =>
     </section>
 
     <section class="flex flex-col gap-1.5" data-testid="ade-review-send">
-      <Label>{{ t('space.ade.workflows.stepInspector.reviewSendTo.label') }}</Label>
+      <FieldLabel>{{ t('space.ade.workflows.stepInspector.reviewSendTo.label') }}</FieldLabel>
       <RadioGroup
         :model-value="route"
         :aria-label="t('space.ade.workflows.stepInspector.reviewSendTo.label')"
@@ -288,6 +288,7 @@ const stateLabel = (c: ReviewComment): string =>
         </RadioGroupCard>
       </RadioGroup>
       <NativeSelect
+        :aria-label="t('space.ade.reviewStep.target.label')"
         v-if="route === 'implementer' && state && state.candidates.length > 0"
         variant="bordered"
         :model-value="targetRunId"
@@ -305,12 +306,12 @@ const stateLabel = (c: ReviewComment): string =>
           }}
         </option>
       </NativeSelect>
-      <AdeTip :text="sendTip">
+      <TextTooltip :text="sendTip">
         <span class="inline-flex">
+          <!-- conventions-allow N17: send commits the panel; outline primary, not approve (RB.2) -->
           <Button
-            variant="dialog-approve"
+            variant="dialog-primary"
             size="kira"
-            :class="ACTION_CLASS.agent"
             :disabled="sendTip !== ''"
             :pending="ops.isRunning(`sendReview:${target.branchId}`)"
             data-testid="ade-review-send-agent"
@@ -322,7 +323,7 @@ const stateLabel = (c: ReviewComment): string =>
             }}</span>
           </Button>
         </span>
-      </AdeTip>
+      </TextTooltip>
     </section>
 
     <section v-if="round" class="flex flex-col gap-1.5" data-testid="ade-review-round-block">
@@ -332,28 +333,26 @@ const stateLabel = (c: ReviewComment): string =>
         }}</span>
         <Button
           v-if="live"
-          variant="dialog"
+          variant="toolbar"
           size="kira"
           data-testid="ade-review-stop"
           @click="act(() => stop.mutateAsync({ runId: round!.run.id }), 'stopRuns')"
-        >
-          {{ t('common.action.stop.label') }}
+          ><CodiconIcon name="debug-stop" :size="13" />{{ t('common.action.stop.label') }}
         </Button>
         <Button
           v-if="round.run.resumable"
-          variant="dialog"
+          variant="toolbar"
           size="kira"
           data-testid="ade-review-resume"
           @click="act(() => resume.mutateAsync({ runId: round!.run.id }), 'resume')"
-        >
-          {{ t('common.action.resume.label') }}
+          ><CodiconIcon name="play" :size="13" />{{ t('common.action.resume.label') }}
         </Button>
         <Button
           variant="toolbar"
           size="kira"
           data-testid="ade-review-log-toggle"
           @click="showLog = !showLog"
-        >
+          ><CodiconIcon name="output" :size="13" />
           {{ showLog ? t('space.common.hideLog.label') : t('space.common.showLog.label') }}
         </Button>
       </div>
@@ -365,12 +364,15 @@ const stateLabel = (c: ReviewComment): string =>
       <AdeRunLog v-if="showLog" kind="run" :id="round.run.id" max-height="180px" />
     </section>
 
-    <FieldError v-if="error" data-testid="ade-review-error">{{ error }}</FieldError>
+    <Alert variant="error" v-if="error" data-testid="ade-review-error"
+      ><AlertDescription>{{ error }}</AlertDescription></Alert
+    >
 
     <section v-if="state" class="flex flex-col gap-1.5" data-testid="ade-review-finish">
       <Textarea
+        :aria-label="t('space.ade.reviewStep.finish.note.label')"
+        class="min-h-24 max-h-90 resize-y"
         v-model="note"
-        rows="2"
         maxlength="2000"
         :placeholder="t('space.ade.reviewStep.finish.note.placeholder')"
         data-testid="ade-review-finish-note"
@@ -381,7 +383,6 @@ const stateLabel = (c: ReviewComment): string =>
           :key="r.id"
           variant="dialog"
           size="kira"
-          :class="ACTION_CLASS[r.ok ? 'green' : 'amber']"
           :disabled="live || !waiting"
           :pending="ops.isRunning(`finishReview:${target.branchId}`)"
           :data-testid="`ade-review-finish-${r.id}`"

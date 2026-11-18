@@ -3,10 +3,10 @@ import { pathTail } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Button } from '@theme/components/ui/button';
-import { colorMarkClass, connTextClass } from '@theme/connColor';
+import { colorMarkClass, connIconClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { formatRelative } from '@workbench/behaviour/format';
@@ -51,10 +51,7 @@ function iconFor(entry: RecentTableEntry): string {
 }
 
 function iconColorClass(entry: RecentTableEntry): string {
-  if (entry.kind === 'document') {
-    return connTextClass(connectionFor(entry)?.color) ?? 'text-muted-foreground';
-  }
-  return 'text-info';
+  return connIconClass(connectionFor(entry)?.color);
 }
 
 function openRecent(entry: RecentTableEntry): void {
@@ -113,7 +110,7 @@ function openRecent(entry: RecentTableEntry): void {
     data-testid="no-tab-open"
   >
     <template v-if="recentEntries.length > 0" #below>
-      <SectionHeading :label="t('studio.start.recent.label')" class="mb-1.5 px-0" />
+      <SectionHeading flush :label="t('studio.start.recent.label')" class="mb-1.5" />
       <div class="flex flex-col">
         <button
           v-for="entry in recentEntries"
@@ -130,7 +127,7 @@ function openRecent(entry: RecentTableEntry): void {
             <CodiconIcon :name="iconFor(entry)" :size="13" />
           </span>
           <Identifier :value="entry.path" />
-          <span class="ml-auto text-kira-sm text-subtle"
+          <span :class="[rowMeta, 'ml-auto']"
             >{{ connectionFor(entry)?.name }}
             · {{ formatRelative(entry.openedAt) }}</span
           >

@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Field, FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { type MessageKey, t } from '@theme/i18n';
 import { useId } from 'vue';
@@ -29,41 +35,37 @@ function toggle(kind: TrackedKind, id: string, value: boolean): void {
     <FieldSet
       v-for="group in TRACKED_KINDS"
       :key="group.kind"
-      class="gap-3"
       :data-testid="`settings-updates-${group.kind}`"
     >
-      <div class="flex items-center justify-between gap-1">
-        <FieldLegend>{{ t(`space.settings.updates.${group.kind}.title`) }}</FieldLegend>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
-          :data-testid="`settings-reset-tracking-${group.kind}`"
-          :disabled-trigger="isAtDefault('tracking', group.kind)"
-          :disabled="isAtDefault('tracking', group.kind)"
-          @click="resetLeaf('tracking', group.kind)"
-        />
-      </div>
+      <FieldLegend>
+        {{ t(`space.settings.updates.${group.kind}.title`) }}
+        <template #actions>
+          <TooltipIconButton
+            icon="discard"
+            :label="t('common.action.resetToDefault.label')"
+            :data-testid="`settings-reset-tracking-${group.kind}`"
+            :disabled-trigger="isAtDefault('tracking', group.kind)"
+            :disabled="isAtDefault('tracking', group.kind)"
+            @click="resetLeaf('tracking', group.kind)"
+          />
+        </template>
+      </FieldLegend>
       <FieldDescription>{{
         t(`space.settings.updates.${group.kind}.description`)
       }}</FieldDescription>
-      <Field
-        v-for="c in group.concepts"
-        :key="c.id"
-        orientation="horizontal"
-        class="items-start justify-between"
-      >
-        <div class="flex min-w-0 flex-1 flex-col gap-1">
-          <Label :for="`${idBase}-${group.kind}-${c.id}`">{{
-            conceptText(group.kind, c.id, 'label')
-          }}</Label>
-          <FieldDescription>{{ conceptText(group.kind, c.id, 'description') }}</FieldDescription>
-        </div>
+      <Field v-for="c in group.concepts" :key="c.id" orientation="horizontal">
         <Switch
           :id="`${idBase}-${group.kind}-${c.id}`"
           :model-value="draft.tracking[group.kind][c.id] === true"
           :data-testid="`settings-updates-${group.kind}-${c.id}`"
           @update:model-value="(v) => toggle(group.kind, c.id, v === true)"
         />
+        <FieldContent>
+          <FieldLabel :for="`${idBase}-${group.kind}-${c.id}`">{{
+            conceptText(group.kind, c.id, 'label')
+          }}</FieldLabel>
+          <FieldDescription>{{ conceptText(group.kind, c.id, 'description') }}</FieldDescription>
+        </FieldContent>
       </Field>
     </FieldSet>
   </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CheckIcon } from '@lucide/vue';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import { cn } from '@theme/lib/utils';
 import { reactiveOmit } from '@vueuse/core';
 import type { DropdownMenuRadioItemEmits, DropdownMenuRadioItemProps } from 'reka-ui';
@@ -33,7 +33,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
     >
       <DropdownMenuItemIndicator>
         <slot name="indicator-icon">
-          <CheckIcon class="size-3.25" />
+          <CodiconIcon name="check" :size="13" />
         </slot>
       </DropdownMenuItemIndicator>
     </span>

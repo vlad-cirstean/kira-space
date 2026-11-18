@@ -1,12 +1,12 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
-import AdeTip from '../AdeTip.vue';
 import { useStopRun } from '../queries';
 import { useAdeOpsStore } from '../state/adeOps';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
-import { ACTION_CLASS } from '../tones';
 import type { SessionView } from './sessionView';
 
 // Take over and Stop of a background run, at the right end of the session tab row.
@@ -35,30 +35,30 @@ async function onStop(): Promise<void> {
 
 <template>
   <template v-if="view.headless">
-    <AdeTip :text="t('space.ade.headless.takeOver.tooltip')">
+    <TextTooltip :text="t('space.ade.headless.takeOver.tooltip')">
       <Button
-        variant="dialog"
+        variant="toolbar"
         size="kira"
-        class="shrink-0 rounded-kira-sm px-2"
-        :class="ACTION_CLASS.agent"
+        class="shrink-0"
         :pending="takeOver.pending.has(view.session.id)"
         data-testid="ade-session-takeover"
         @click="takeOver.request(view.session.id)"
       >
-        {{ t('common.action.takeOver.label') }}
+        <CodiconIcon name="terminal" :size="13" />{{ t('common.action.takeOver.label') }}
       </Button>
-    </AdeTip>
-    <AdeTip v-if="view.run?.state === 'running'" :text="t('space.ade.headless.stop.tooltip')">
+    </TextTooltip>
+    <TextTooltip v-if="view.run?.state === 'running'" :text="t('space.ade.headless.stop.tooltip')">
       <Button
-        variant="dialog"
+        variant="toolbar"
         size="kira"
-        class="shrink-0 rounded-kira-sm px-2"
+        class="shrink-0"
+        data-tone="error"
         :pending="ops.isRunning(stopId)"
         data-testid="ade-session-stop"
         @click="onStop"
       >
-        {{ t('common.action.stop.label') }}
+        <CodiconIcon name="debug-stop" :size="13" />{{ t('common.action.stop.label') }}
       </Button>
-    </AdeTip>
+    </TextTooltip>
   </template>
 </template>

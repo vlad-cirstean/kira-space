@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { checkTone, type StatusTone, TONE_TEXT } from '@theme/lib/statusTone';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { control } from '../bridge/control';
 import type { ChangeRequestDetail, Check, CheckState, ReviewerState } from './wire';
@@ -17,6 +19,13 @@ const REVIEWER_ICON: Record<ReviewerState, string> = {
   rejected: 'error',
   commented: 'comment',
   pending: 'clock',
+};
+const REVIEWER_TONE: Record<ReviewerState, StatusTone> = {
+  approved: 'ok',
+  changesRequested: 'warn',
+  rejected: 'error',
+  commented: 'neutral',
+  pending: 'neutral',
 };
 const CHECK_ICON: Record<CheckState, string> = {
   success: 'check',
@@ -64,7 +73,7 @@ function openCheck(c: Check): void {
 
 <template>
   <aside
-    class="flex w-72 shrink-0 flex-col gap-5 overflow-y-auto p-4"
+    class="flex w-72 shrink-0 flex-col gap-3 overflow-y-auto p-3"
     data-testid="host-view-sidebar"
   >
     <section
@@ -80,24 +89,25 @@ function openCheck(c: Check): void {
           deletions: detail.stats.deletions,
         })
       }}</p>
-      <p
-        v-if="detail.mergeable"
-        class="m-0 text-kira-sm"
-        :data-mergeable="detail.mergeable"
-        data-testid="host-view-mergeable"
-        >{{
-          detail.mergeable === 'conflicting'
-            ? t('space.hostView.mergeable.conflicting.status')
-            : t('space.hostView.mergeable.clean.status')
-        }}</p
-      >
+      <div v-if="detail.mergeable">
+        <Badge
+          :variant="detail.mergeable === 'conflicting' ? 'error' : 'ok'"
+          :data-mergeable="detail.mergeable"
+          data-testid="host-view-mergeable"
+          >{{
+            detail.mergeable === 'conflicting'
+              ? t('space.hostView.mergeable.conflicting.status')
+              : t('space.hostView.mergeable.clean.status')
+          }}</Badge
+        >
+      </div>
     </section>
 
     <section class="flex flex-col gap-1.5" data-testid="host-view-reviewers">
       <SectionHeading :label="t('space.hostView.reviewers.heading.title')" />
-      <FieldDescription v-if="detail.reviewers.length === 0">{{
+      <InlineState kind="empty" v-if="detail.reviewers.length === 0">{{
         t('space.hostView.reviewers.empty.empty')
-      }}</FieldDescription>
+      }}</InlineState>
       <div
         v-for="r in detail.reviewers"
         :key="r.person.login"
@@ -105,18 +115,22 @@ function openCheck(c: Check): void {
         :data-state="r.state"
         data-testid="host-view-reviewer"
       >
-        <CodiconIcon :name="REVIEWER_ICON[r.state]" :size="13" />
+        <CodiconIcon
+          :name="REVIEWER_ICON[r.state]"
+          :size="13"
+          :class="TONE_TEXT[REVIEWER_TONE[r.state]]"
+        />
         <span class="min-w-0 flex-1 truncate">{{ r.person.name || r.person.login }}</span>
-        <Badge v-if="r.required" variant="chip">{{ t('common.required.label') }}</Badge>
+        <Badge v-if="r.required">{{ t('common.required.label') }}</Badge>
         <span class="shrink-0 text-muted-foreground">{{ reviewerLabel(r.state) }}</span>
       </div>
     </section>
 
     <section class="flex flex-col gap-1.5" data-testid="host-view-checks">
       <SectionHeading :label="t('space.hostView.checks.heading.title')" />
-      <FieldDescription v-if="detail.checks.length === 0">{{
+      <InlineState kind="empty" v-if="detail.checks.length === 0">{{
         t('space.hostView.checks.empty.empty')
-      }}</FieldDescription>
+      }}</InlineState>
       <div
         v-for="c in detail.checks"
         :key="c.name"
@@ -124,7 +138,11 @@ function openCheck(c: Check): void {
         :data-state="c.state"
         data-testid="host-view-check"
       >
-        <CodiconIcon :name="CHECK_ICON[c.state]" :size="13" />
+        <CodiconIcon
+          :name="CHECK_ICON[c.state]"
+          :size="13"
+          :class="TONE_TEXT[checkTone(c.state)]"
+        />
         <button
           v-if="c.url"
           type="button"
@@ -135,7 +153,7 @@ function openCheck(c: Check): void {
           }}</button
         >
         <span v-else class="min-w-0 flex-1 truncate">{{ c.name }}</span>
-        <Badge v-if="c.required" variant="chip">{{ t('common.required.label') }}</Badge>
+        <Badge v-if="c.required">{{ t('common.required.label') }}</Badge>
         <span class="shrink-0 text-muted-foreground">{{ checkLabel(c.state) }}</span>
       </div>
       <FieldDescription v-if="detail.checksTruncated" data-testid="host-view-checks-truncated">{{
@@ -145,16 +163,11 @@ function openCheck(c: Check): void {
 
     <section class="flex flex-col gap-1.5" data-testid="host-view-labels">
       <SectionHeading :label="t('space.hostView.labels.heading.title')" />
-      <FieldDescription v-if="detail.labels.length === 0">{{
+      <InlineState kind="empty" v-if="detail.labels.length === 0">{{
         t('space.hostView.labels.empty.empty')
-      }}</FieldDescription>
+      }}</InlineState>
       <div class="flex flex-wrap gap-1">
-        <Badge
-          v-for="l in detail.labels"
-          :key="l.name"
-          variant="chip"
-          data-testid="host-view-label"
-        >
+        <Badge v-for="l in detail.labels" :key="l.name" data-testid="host-view-label">
           <StatusDot v-if="l.color" :color="`#${l.color}`" />
           {{ l.name }}
         </Badge>
@@ -163,9 +176,9 @@ function openCheck(c: Check): void {
 
     <section class="flex flex-col gap-1.5" data-testid="host-view-assignees">
       <SectionHeading :label="t('space.hostView.assignees.heading.title')" />
-      <FieldDescription v-if="detail.assignees.length === 0">{{
+      <InlineState kind="empty" v-if="detail.assignees.length === 0">{{
         t('space.hostView.assignees.empty.empty')
-      }}</FieldDescription>
+      }}</InlineState>
       <span
         v-for="a in detail.assignees"
         :key="a.login"

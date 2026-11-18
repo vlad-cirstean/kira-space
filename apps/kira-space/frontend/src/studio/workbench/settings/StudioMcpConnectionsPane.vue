@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { ConnectionSummary } from '@shared/domain/connection';
 import { useQuery } from '@tanstack/vue-query';
+import InlineState from '@theme/components/InlineState.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
-import { FieldDescription, FieldLegend } from '@theme/components/ui/field';
+import { FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { rowVariants } from '@theme/lib/rowVariants';
+import { cn } from '@theme/lib/utils';
 import type { SettingsPaneProps } from '../../../workbench/settings/types';
 import { useConnectionDialogStore } from '../../state/connectionDialogs';
 import { useConnectionsStore } from '../../state/connections';
@@ -41,80 +44,86 @@ function mcpDescriptionFirstLine(conn: ConnectionSummary): string {
 
 <template>
   <div class="contents" v-show="active">
-    <FieldLegend>{{ t('studio.settings.dbMcp.exposed.label') }}</FieldLegend>
-    <FieldDescription>{{ t('studio.settings.dbMcp.exposed.description') }}</FieldDescription>
-    <FieldDescription>{{ t('studio.settings.dbMcp.defaults.hint') }}</FieldDescription>
-    <ul
-      v-if="connectionsStore.records.length"
-      class="flex flex-col m-0 p-0 list-none gap-0.5"
-      data-testid="db-mcp-connections-list"
-    >
-      <li v-for="conn in connectionsStore.records" :key="conn.id">
-        <Card
-          variant="list"
-          class="flex-row items-center justify-between gap-1.5"
-          :data-testid="`db-mcp-connection-row-${conn.id}`"
-        >
-          <div class="flex flex-col min-w-0 gap-0.5">
-            <span class="break-words text-fg text-kira-md">{{ conn.name }}</span>
-            <FieldDescription>{{
-              t(
-                conn.mcpAutoExplain
-                  ? 'studio.settings.dbMcp.modesPlans.status'
-                  : 'studio.settings.dbMcp.modes.status',
-                {
-                  read: conn.mcpReadMode,
-                  write: conn.mcpWriteMode,
-                  ddl: conn.mcpDdlMode,
-                },
+    <FieldSet>
+      <FieldLegend>{{ t('studio.settings.dbMcp.exposed.label') }}</FieldLegend>
+      <FieldDescription>{{ t('studio.settings.dbMcp.exposed.description') }}</FieldDescription>
+      <FieldDescription>{{ t('studio.settings.dbMcp.defaults.hint') }}</FieldDescription>
+      <Card v-if="connectionsStore.records.length" variant="list">
+        <ul class="m-0 flex list-none flex-col p-0" data-testid="db-mcp-connections-list">
+          <li
+            v-for="conn in connectionsStore.records"
+            :key="conn.id"
+            :class="
+              cn(
+                rowVariants({ layout: 'double' }),
+                'items-center justify-between gap-1.5 whitespace-normal',
               )
-            }}</FieldDescription>
-            <FieldDescription
-              v-if="reviewStatus(conn)"
-              :data-testid="`db-mcp-connection-review-${conn.id}`"
-              >{{
-                reviewStatus(conn)
-              }}</FieldDescription
-            >
-            <FieldDescription v-if="mcpDescriptionFirstLine(conn)">{{
-              mcpDescriptionFirstLine(conn)
-            }}</FieldDescription>
-            <!-- M5 §7.5: extends this existing read-only glance — no second full editor
+            "
+            :data-testid="`db-mcp-connection-row-${conn.id}`"
+          >
+            <div class="flex flex-col min-w-0 gap-0.5">
+              <span class="break-words text-fg text-kira-md">{{ conn.name }}</span>
+              <FieldDescription>{{
+                t(
+                  conn.mcpAutoExplain
+                    ? 'studio.settings.dbMcp.modesPlans.status'
+                    : 'studio.settings.dbMcp.modes.status',
+                  {
+                    read: conn.mcpReadMode,
+                    write: conn.mcpWriteMode,
+                    ddl: conn.mcpDdlMode,
+                  },
+                )
+              }}</FieldDescription>
+              <FieldDescription
+                v-if="reviewStatus(conn)"
+                :data-testid="`db-mcp-connection-review-${conn.id}`"
+                >{{
+                  reviewStatus(conn)
+                }}</FieldDescription
+              >
+              <FieldDescription v-if="mcpDescriptionFirstLine(conn)">{{
+                mcpDescriptionFirstLine(conn)
+              }}</FieldDescription>
+              <!-- M5 §7.5: extends this existing read-only glance — no second full editor
                here (M2's own established split); editing lives in the connection's own
                Privacy tab. -->
-            <FieldDescription
-              v-if="maskRuleCountsQuery.data.value?.[conn.id]"
-              :data-testid="`db-mcp-connection-masked-${conn.id}`"
-              >{{
-                t('studio.settings.dbMcp.masked.status', {
-                  count: maskRuleCountsQuery.data.value?.[conn.id] ?? 0,
-                })
-              }}</FieldDescription
-            >
-          </div>
-          <div class="flex shrink-0 items-center gap-1.5">
-            <Badge
-              :variant="conn.mcpEnabled ? 'ok' : 'default'"
-              :data-testid="`db-mcp-connection-${conn.id}`"
-              >{{
-                conn.mcpEnabled ? t('studio.settings.dbMcp.exposed.status') : t('common.off.status')
-              }}</Badge
-            >
-            <Button
-              variant="dialog"
-              size="kira-lg"
-              :disabled="!conn.file"
-              :data-testid="`db-mcp-connection-edit-${conn.id}`"
-              @click="connectionDialogStore.openFile(conn.file)"
-            >
-              {{ t('common.action.edit.label') }}
-            </Button>
-          </div>
-        </Card>
-      </li>
-    </ul>
-    <FieldDescription v-else data-testid="db-mcp-connections-empty">
-      {{ t('studio.settings.dbMcp.empty.empty') }}
-    </FieldDescription>
+              <FieldDescription
+                v-if="maskRuleCountsQuery.data.value?.[conn.id]"
+                :data-testid="`db-mcp-connection-masked-${conn.id}`"
+                >{{
+                  t('studio.settings.dbMcp.masked.status', {
+                    count: maskRuleCountsQuery.data.value?.[conn.id] ?? 0,
+                  })
+                }}</FieldDescription
+              >
+            </div>
+            <div class="flex shrink-0 items-center gap-1.5">
+              <Badge
+                :variant="conn.mcpEnabled ? 'ok' : 'default'"
+                :data-testid="`db-mcp-connection-${conn.id}`"
+                >{{
+                  conn.mcpEnabled
+                    ? t('studio.settings.dbMcp.exposed.status')
+                    : t('common.off.status')
+                }}</Badge
+              >
+              <Button
+                variant="dialog"
+                size="kira-lg"
+                :disabled="!conn.file"
+                :data-testid="`db-mcp-connection-edit-${conn.id}`"
+                @click="connectionDialogStore.openFile(conn.file)"
+              >
+                {{ t('common.action.edit.label') }}
+              </Button>
+            </div>
+          </li>
+        </ul>
+      </Card>
+      <InlineState kind="empty" v-else data-testid="db-mcp-connections-empty">
+        {{ t('studio.settings.dbMcp.empty.empty') }}
+      </InlineState>
+    </FieldSet>
   </div>
 </template>

@@ -12,6 +12,23 @@
 #
 # Guards U72-U82: git show bd0c224688d9:docs/v2.2/plans/P266-consistency-audit.md section 4.4.
 #
+# Guards U110-U117: docs/HISTORY.md (v0.3.17).
+# Guards U91, U110, U116, U123 (extended): docs/HISTORY.md (v0.3.17).
+# Guard U133: docs/HISTORY.md (v0.3.17).
+# Guards U118-U121: docs/HISTORY.md (v0.3.17); U118 flush rule: Part 4 iter2.
+# Guards U134-U140: docs/HISTORY.md (v0.3.17).
+# Guards U122-U123: docs/HISTORY.md (v0.3.17).
+# Guards U141-U145, U123 extended: docs/HISTORY.md (v0.3.17).
+# Guard U124: docs/HISTORY.md (v0.3.17).
+# Guards U146, U13, U36, U124 (extended): docs/HISTORY.md (v0.3.17). U124 exempts AdeTaskCard: D1 board card tone, rail and selected fill.
+# Guard U125: docs/HISTORY.md (v0.3.17).
+# Guards U147-U151: docs/HISTORY.md (v0.3.17).
+# Guard U126: docs/HISTORY.md (v0.3.17).
+# Guards U117 (extended), U152: docs/HISTORY.md (v0.3.17).
+# Guards U127-U132 and U88 steps 5-12: docs/HISTORY.md (v0.3.17).
+# Guards U153-U156, U73/U88/U90 extensions: docs/HISTORY.md (v0.3.17).
+# Guards U157-U161, U149 extended: docs/HISTORY.md (v0.3.17).
+#
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
 
@@ -91,12 +108,11 @@ U41 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host maps
 U62 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host owns terminal focus: Terminal.focus(), not DOM focus
 U11 packages/workbench/src/components/LogLines.vue # ANSI bold is log data
 U62 packages/workbench/src/components/AutocompleteField.vue # accepting a suggestion restores focus and the caret on the real input
-U26 packages/workbench/src/components/OpLogPanel.vue # error log row wash at the shared /15 tint, with the inset rail
+U26 packages/workbench/src/components/OpLogPanel.vue # error log row wash at the shared /15 tint
 U36 packages/theme/src/components/VarText.vue # inline variable mark, not a content box
 # A (apps/kira-space)
 U100 apps/kira-space/frontend/src/studio/api/CopyAsCurlDialog.vue # read-only output fields, nothing to discard
 U34 apps/kira-space/frontend/src/studio/theme/EngineIcon.vue # engine brand marks are third-party logo colours
-U36 apps/kira-space/frontend/src/studio/project/connection/ConnectionEnginePicker.vue # engine tile is a selectable radio card, not a content box
 U46 apps/kira-space/frontend/src/studio/bridge/port.ts # bridge transport timeout
 U41 apps/kira-space/frontend/src/studio/editor/MonacoHost.vue # Monaco engine host reads modifier keys
 U62 apps/kira-space/frontend/src/studio/editor/MonacoHost.vue # Monaco engine host owns editor focus
@@ -115,8 +131,6 @@ U101 apps/kira-space/frontend/src/ade/v2/sessions/AdeSessionsMenu.vue # ADE tab 
 U101 packages/theme/src/components/SecondaryTabs.vue # countBadge opt-in renders the ADE tab count badge (P466)
 U101 apps/kira-space/frontend/mobile/TabBar.vue # count badge marks items needing attention, not a tab count
 U101 apps/kira-space/frontend/mobile/components/PhoneApprovals.vue # count marks agent requests awaiting the person
-U91 apps/kira-space/frontend/src/workbench/OperationsPanel.vue # tooltip shows the repo root, not the truncated name
-U91 packages/workbench/src/memory/import/ImportJobDetail.vue # tooltip lists the import roots, not the title text
 U34 apps/kira-space/frontend/src/workbench/settings/MobileQr.vue # QR needs a white ground for scanner contrast
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeTaskCard.vue # plan board task card selected fill, P129 board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeBranchRow.vue # plan board branch row selected fill, board visual exempt per P263 §2.10
@@ -131,7 +145,6 @@ U62 apps/kira-space/frontend/src/ade/v2/notes/AdeNotesEditor.vue # TipTap chain(
 U47 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # Up/Down jump between the wrapping pill lines of a roving-focus strip; useListNavigation is one vertical list
 U62 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # focus moves between pills and to the + after a removal; reka's roving group owns Left/Right only
 # C (rest)
-U91 packages/git-ui/src/components/UncommittedChangesStrip.vue # tooltip text differs from the visible label
 U11 packages/docker-ui/src/components/LogsView.vue # ANSI bold is log data, not UI chrome
 U41 packages/git-ui/src/App.vue # git engine host reads modifier keys
 U41 apps/kira-space/frontend/src/capture/chord.ts # chord recorder reads modifier flags to build an accelerator string, not a shortcut
@@ -140,8 +153,7 @@ U47 packages/git-ui/src/components/SearchResults.vue # listbox of the SearchBox 
 U46 packages/git-ui/src/graph/layoutClient.ts # main-thread worker fallback defers each request with its own zero-delay timer; debounce drops concurrent ones
 U47 packages/git-ui/src/lib/gridKeyboard.ts # PageUp/PageDown over a streamed 100k-row store, not list semantics
 U109 apps/kira-space/frontend/src/repo/RepoFileTree.vue # debounced copy of the kept fileSearch prop, derived not owned
-U109 packages/git-ui/src/components/FileTree.vue # git-ui is its own Vue app with no Pinia; P660 Part 2 changes its mount contract
-U109 packages/git-ui/src/components/review/ReviewView.vue # git-ui is its own Vue app with no Pinia; P660 Part 2 changes its mount contract
+U109 packages/git-ui/src/components/FileTree.vue # filterInput echoes the filter prop; its owner keeps it
 PERMANENT
 
 # `(?&t)` = the inside of one tag, quote-aware so `=>` or `a > b` inside an attribute value does not
@@ -164,7 +176,7 @@ U9@@v@@NumberStepperInput.vue@@Input/NativeSelect/Textarea/InputGroup with size=
 U10@@v@@@@raw <label>/<select> (use FieldLabel/Label, NativeSelect)@@<(?:label|select)\b
 U11@@vt@@@@font-bold, font-semibold, font-extrabold or font-black (headings use SectionHeading, FieldLegend)@@${TOK}font-(?:bold|semibold|extrabold|black)(?![\w-])
 U12@@v@@@@CodiconIcon :size outside 12/13/16/24@@<CodiconIcon\b(?&t)\s:size="(?!(?:12|13|16|24)")\d+"
-U13@@v@@@@hand-rolled panel header/toolbar bar (use PanelHeader/ViewToolbar)@@\bclass="(?=[^"]*${TOK}h-bar(?![\w-]))(?=[^"]*${TOK}gap-1(?![\w.-]))(?=[^"]*${TOK}border-b(?![\w-]))(?:(?=[^"]*${TOK}px-1\.5(?![\w-]))(?=[^"]*${TOK}text-kira-sm(?![\w-]))|(?=[^"]*${TOK}px-2(?![\w-]))(?=[^"]*${TOK}shrink-0(?![\w-])))
+U13@@v@@ViewToolbar.vue|PanelHeader.vue|AdeShell.vue@@hand-rolled panel header/toolbar bar (use PanelHeader/ViewToolbar)@@\bclass="(?=[^"]*${TOK}h-bar(?![\w-]))(?=[^"]*${TOK}gap-1(?![\w.-]))(?=[^"]*${TOK}border-b(?![\w-]))(?:(?=[^"]*${TOK}px-1\.5(?![\w-]))(?=[^"]*${TOK}text-kira-sm(?![\w-]))|(?=[^"]*${TOK}px-2(?![\w-]))(?=[^"]*${TOK}shrink-0(?![\w-])))|\bclass="(?=[^"]*${TOK}h-(?:bar|tabbar)(?![\w-]))(?=[^"]*${TOK}items-center(?![\w-]))(?=[^"]*${TOK}px-)
 U14@@v@@@@EmptyMedia variant="icon", or Alert faking an empty state@@<EmptyMedia\b(?&t)\svariant="icon"|<Alert\b(?&t)\sclass="[^"]*${TOK}bg-transparent
 U15@@v@@@@PopoverContent width outside w-56/w-80/w-96/w-120/w-auto@@<PopoverContent\b(?&t)\s:?class="[^"]*${TOK}w-(?!(?:56|80|96|120|auto)(?![\w.\[(-]))
 U16@@v@@@@DialogClose wrapping an icon-sm Button (use DialogHeader closable)@@<DialogClose\b(?&t)>\s*<Button\b(?&t)\ssize="icon-sm"
@@ -179,7 +191,7 @@ U24@@v@@@@Alert class sets width/margin/fill/radius/border/padding, AlertDescrip
 U25@@v@@InlineState.vue@@p/div with text-error (use FieldError or InlineState)@@<(?:p|div)\b(?&t)\s:?class="[^"]*${TOK}text-error(?![\w-])
 U26@@vt@@@@retired tone variant err/destructive/note, or a tone alpha (use Badge, Alert, StatusDot)@@<(?:Badge|Alert|DropdownMenuItem)\b(?&t)\svariant="(?:err|destructive|note)"|${TOK}(?:text|bg|border)-(?:ok|warn|info|error)/\d+
 U27@@v@@StatusDot.vue@@hand-rolled status dot or pill (use StatusDot, Badge)@@\bclass="(?=[^"]*${TOK}rounded-full(?![\w-]))(?:(?=[^"]*${TOK}size-(?:1\.5|2|2\.5)(?![\w.-]))|(?=[^"]*${TOK}w-2(?![\w.-]))(?=[^"]*${TOK}h-2(?![\w.-]))|(?=[^"]*${TOK}w-2\.5(?![\w.-]))(?=[^"]*${TOK}h-2\.5(?![\w.-])))|<span\b(?&t)\s:?class="(?=[^"]*${TOK}rounded-full(?![\w-]))(?=[^"]*${TOK}px-)
-U28@@v@@SwatchRadio.vue@@raw checkbox/radio input (use Checkbox, RadioGroup)@@type="(?:checkbox|radio)"
+U28@@v@@@@raw checkbox/radio input (use Checkbox, RadioGroup)@@type="(?:checkbox|radio)"
 U28@@vS@@@@Checkbox in a settings pane (a live boolean is a Switch)@@<Checkbox\b
 U28@@v@@/settings/|MemoryPanel.vue|AdeMainTab.vue|AdeReposPage.vue@@Switch outside settings panes (a form option is a Checkbox)@@<Switch\b
 U29@@v@@@@TooltipProvider with props (the theme owns the delays), or TooltipContent class other than whitespace-pre-wrap@@<TooltipProvider\b(?!\s*>)|<TooltipContent\b(?&t)\s:?class="(?!whitespace-pre-wrap")
@@ -189,7 +201,7 @@ U32@@v@@@@scrollbar styling in a component (use scrollbar-none, base.css)@@\[scr
 U33@@v@@@@keyboard hint text (use Kbd)@@Cmd/Ctrl|\(\{\{\s*formatShortcut
 U34@@vt@@monacoTheme.ts|/setiFileIcon|/ade/v2/palette.ts@@colour literal in app code (use tokens)@@(?:["'\`\[(]|:\s*)#(?:[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?|(?=[0-9]*[a-fA-F])[0-9a-fA-F]{3,4}|(?<d>\d)\k<d>\k<d>\k<d>?)\b|${TOK}(?:bg|text|border)-(?:black|white)(?![\w-])
 U35@@v@@AutocompleteField.vue@@outline-none, border-focus, not-allowed cursor or odd disabled opacity (one focus and disabled recipe)@@${TOK}outline-(?:none|hidden|0)(?![\w-])|focus:outline|focus-visible:outline-|${TOK}focus(?:-visible|-within)?:border-focus|${TOK}cursor-not-allowed|${TOK}disabled:opacity-(?!50(?![\w-]))|data-\[off\]
-U36@@v@@PickerTrigger.vue@@hand-rolled box (use Card)@@\bclass="(?=[^"]*${TOK}rounded-kira(?:-sm)?(?![\w-]))(?=[^"]*${TOK}border(?![\w-]))(?=[^"]*${TOK}(?:p|px|py)-)
+U36@@v@@PickerTrigger.vue@@hand-rolled box (use Card)@@\bclass="(?=[^"]*${TOK}rounded-kira(?:-sm)?(?![\w-]))(?=[^"]*${TOK}border(?![\w-]))(?=[^"]*${TOK}(?:p|px|py)-)|\bclass="(?![^"]*${TOK}inline-flex(?![\w-]))(?=[^"]*${TOK}rounded-kira(?:-sm)?(?![\w-]))(?=[^"]*${TOK}bg-(?:elevated|field)(?![\w-]))(?=[^"]*${TOK}(?:p|px|py)-)
 U37@@vt@@rowVariants.ts@@raw table markup, density formula, or hand-rolled row state (use Table, useRowHeight, rowVariants)@@<(?:table|thead|tbody|tr|th|td)\b|rowDensity\s*===|${TOK}(?:hover:)?bg-select(?![\w-])
 U38@@v@@@@scale leftovers: text-kira-xs, stock text size/radius, text-[Npx], raw h-5..h-12@@${TOK}text-kira-xs(?![\w-])|${TOK}text-(?:xs|sm|base|lg|xl|2xl)(?![\w-])|${TOK}text-\[\d|${TOK}rounded(?:-md|-lg|-xl)?(?![\w-])|${TOK}h-(?:5|6|7|8|9|10|12)(?![\w.-])
 U39@@vt@@/behaviour/!|/testing/!@@instanceof Error ? message : String (use errorText)@@instanceof\s+Error\s*\?\s*[\w.]+\.message\s*:\s*String\(
@@ -219,7 +231,7 @@ U61@@vt@@/behaviour/!|/testing/!@@empty catch (give a reason comment or surface 
 U62@@vt@@/behaviour/!|/testing/!|SearchField.vue@@manual focus() (use useFocusOnMount, useFocusReturn, useListNavigation)@@\.focus\(\)|nextTick\([^)]*\.focus
 U63@@s@@/behaviour/!|/testing/!@@side panel with SearchField and no usePanelHeaderSearch@@(?s)\A(?!.*usePanelHeaderSearch).*<SearchField
 U72@@vt@@@@@lucide/vue import outside the theme ui primitives (use CodiconIcon, ICON)@@['"]@lucide/vue
-U73@@vt@@/theme/src/icons.ts@@retired icon name gear/settings/kebab-vertical, or a 'codicon-' string literal (use ICON)@@(?<!<slot )\b(?:name|icon)(?:=|:\s*)["']{1,2}(?:gear|settings|kebab-vertical)["']|['"\x60]codicon-
+U73@@vt@@/theme/src/icons.ts@@retired icon name gear/settings/kebab-vertical/pencil, or a 'codicon-' string literal (use ICON)@@(?<!<slot )\b(?:name|icon)(?:=|:\s*)["']{1,2}(?:gear|settings|kebab-vertical|pencil)["']|['"\x60]codicon-
 U74@@v@@EmptyState.vue@@<Empty outside EmptyState.vue (use EmptyState)@@<Empty\b
 U75@@vt@@@@duration-, ease-, animate-in, animate-out outside theme (motion tokens own them)@@${TOK}(?:duration|ease)-[\w\[]|${TOK}animate-(?:in|out)(?![\w-])
 U76@@vt@@sortableReorder.ts@@ghostClass/chosenClass outside sortableReorder.ts (use SORTABLE_GHOST_CLASS; no chosen class)@@\b(?:ghost|chosen)Class:
@@ -236,10 +248,10 @@ U84@@v@@@@<Button class sets a size (the size variants own h-touch, size-touch, 
 U85@@v@@@@<EmptyState class sets padding or fill (use the fill prop)@@<EmptyState\b(?&t)\s:?class="[^"]*${TOK}(?:(?:p|px|py)-|h-full(?![\w-])|flex-1(?![\w-]))
 U86@@vt@@@@z-index off the token ladder (use z-(--kira-z-*) tiers; in-pane z-0..3)@@${TOK}z-(?:\d{2,}|\[)
 U87@@v@@Disclosure.vue@@<details (use Disclosure)@@<details\b
-U88@@vt@@@@off-scale density (scale is 0.5, 1, 1.5, 2, 3, 4)@@${TOK}(?:gap|gap-x|gap-y|p|px|py)-(?:0\.25|1\.25|1\.75|2\.5|3\.5)(?![\w.-])
+U88@@vt@@EmptyState.vue|PairScreen.vue@@off-scale density (scale is 0.5, 1, 1.5, 2, 3, 4)@@${TOK}(?:gap|gap-x|gap-y|p|px|py|mt|mb|my|pt|pb)-(?:0\.25|1\.25|1\.75|2\.5|3\.5|5|6|7|8|10|12)(?![\w.-])
 U89@@vt@@linkify.ts|badgeClass.ts@@cursor-pointer outside link owners, or cursor-help/copy (controls and rows are cursor-default)@@${TOK}cursor-(?:pointer|help|copy)(?![\w-])
-U90@@vt@@@@hover tone override, or opacity as muted (use tone, text-muted-foreground)@@hover:text-(?:ok|error|warn|primary)(?![\w-])|${TOK}opacity-(?:40|60|70|75|80)(?![\w.-])
-U91@@vt@@@@hand-written truncate, or tooltip-wrapped truncate (use TruncatedText)@@overflow-hidden text-ellipsis whitespace-nowrap|<TooltipTrigger\b(?&t)>\s*<(?:span|div|button)\b(?&t)\s:?class="[^"]*${TOK}truncate(?![\w-])
+U90@@vt@@rowVariants.ts|sortableReorder.ts|FilterBar.vue@@hover tone override, or opacity as muted or state (use tone, rowVariants muted/disabled, SORTABLE_GHOST_CLASS)@@hover:text-(?:ok|error|warn|primary)(?![\w-])|${TOK}opacity-(?:40|60|70|75|80)(?![\w.-])|(?<![\w:-])opacity-50(?![\w.-])
+U91@@vt@@@@hand-written truncate, or tooltip-wrapped truncate, also a TextTooltip repeating the truncated text (use TruncatedText)@@overflow-hidden text-ellipsis whitespace-nowrap|<TooltipTrigger\b(?&t)>\s*<(?:span|div|button)\b(?&t)\s:?class="[^"]*${TOK}truncate(?![\w-])|<TextTooltip\b(?&t)\s:text="(?<u91>[^"]+)"(?&t)>\s*<(?:span|div|button|Badge)\b(?&t)\s:?class="[^"]*${TOK}truncate(?![\w-])[^"]*"(?&t)>\s*\{\{\s*\k<u91>\s*\}\}
 U92@@v@@SplitButton.vue@@<Button :disabled carries a pending flag, or Spinner inside Button (use pending)@@<Button\b(?&t)\s:disabled="[^"]*(?i:pending|busy|saving|loading|running|installing|committing)|(?s)<Button\b(?&t)(?<!/)>(?:(?!</Button>).)*?<Spinner\b
 U93@@vt@@/theme/src/format.ts|/testing/!@@toFixed or {{ }}% (use formatPercent, formatBytes, formatDuration)@@toFixed\(|\}\}%
 U94@@v@@@@heading element without text-kira-lg font-medium@@<h[1-6]\b(?!(?=(?&t)\sclass="[^"]*${TOK}text-kira-lg(?![\w-]))(?=(?&t)\sclass="[^"]*${TOK}font-medium(?![\w-])))
@@ -259,6 +271,58 @@ U106@@v@@@@filled button (outline or toolbar; see P525 rules)@@<(?:Button|Toolti
 U107@@v@@@@icon in a dialog header (title, description and actions only)@@(?s)<DialogHeader\b(?&t)>(?:(?!</DialogHeader>|<Button\b|<TooltipIconButton\b).)*?<(?:CodiconIcon|EngineIcon|svg)\b
 U108@@v@@@@toolbar pressed look by class (use aria-pressed / aria-expanded; the toolbar variant draws it)@@<(?:Button|TooltipIconButton)\b(?&t)\s:class="[^"]*'bg-field
 U109@@s@@/behaviour/!|/testing/!@@panel view state in a component ref (use useKeptState, useKeptScroll)@@const \w*(?:[Ss]earch|[Qq]uery|[Ff]ilter|[Nn]eedle)\w*\s*=\s*ref\b|reactive\(\{[^}]*[Ss]earch\w*:\s*''
+U110@@v@@@@Checkbox restyled: size, colour, fill or shape class, or a check icon child (the primitive draws the 14px box and its CheckIcon; classes place it only)@@<Checkbox\b(?&t)\s:?class="[^"]*${TOK}size-|(?s)<Checkbox\b(?&t)(?<!/)>(?:(?!</Checkbox>).)*?<CodiconIcon\b|<Checkbox\b(?&t)\s:?class="[^"]*${TOK}(?:bg-|border-|rounded|text-)
+U111@@v@@@@PopoverContent padding or gap class (default form popover, or flush for a list popover)@@<PopoverContent\b(?&t)\s:?class="[^"]*${TOK}(?:p|px|py|pt|pb|gap)-
+U112@@v@@DetailHeader.vue@@heading element outside DetailHeader (titles DetailHeader, sections SectionHeading or FieldLegend, cards CardTitle)@@<h[1-6]\b
+U113@@v@@@@KeyValueList class sets grid, gap, type or alignment (use density)@@<KeyValueList\b(?&t)\s:?class="[^"]*${TOK}(?:grid-cols-|gap-|text-|font-|items-|py-|\[&)
+U113@@v@@KeyValueList.vue@@hand key-value grid or raw <dl> (use KeyValueList)@@${TOK}grid-cols-\[(?:auto|max-content|72px|7\.5rem)_(?:1fr|minmax\(0,1fr\))\]|<dl\b
+U114@@v@@/ade/v2/plan/@@ADE tone class off the plan board (theme tones and Badge elsewhere, P672 D1)@@${TOK}(?:text|bg|border)-tone-[a-z]
+U115@@vt@@@@font-mono (use font-data)@@${TOK}font-mono(?![\w-])
+U116@@v@@@@toned icon in a hand menu entry (menu icons stay muted)@@(?s)<DropdownMenu(?:RadioItem|CheckboxItem|Label|SubTrigger)\b(?:(?!</DropdownMenu(?:RadioItem|CheckboxItem|Label|SubTrigger)>).)*?<CodiconIcon\b(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info|tone-)
+U117@@v@@@@tabs or segmented SecondaryTabs inside a form field (a form value is variant choice)@@(?s)<(?:Field|FieldSet)\b(?&t)(?<!/)>(?:(?!</(?:Field|FieldSet)>).)*?<SecondaryTabs\b(?!(?&t)\svariant="choice")|(?s)<DialogBody\b(?&t)(?<!/)>(?:(?!</DialogBody>).)*?<SecondaryTabs\b(?&t)\svariant="segmented"
+U118@@v@@@@DialogBody class other than min-h-* (only flush and min-h-*, RD.5); flush body never re-adds p-3@@<DialogBody\b(?&t)\s:?class="(?!min-h-[\w.\[\]-]+")|<DialogBody\b(?=(?&t)\sflush\b)(?&t)>\s*(?:<template\b(?&t)>\s*)?<div\b(?=(?&t)\sclass="[^"]*${TOK}p-3\b)
+U120@@v@@@@link Button not size inline (RB.1)@@<Button\b(?=(?&t)\svariant="link")(?!(?&t)\ssize="inline")
+U121@@v@@@@DialogDescription inside DialogBody (intro text is the header description, RD.4)@@(?s)<DialogBody\b(?&t)(?<!/)>(?:(?!</DialogBody>).)*?<DialogDescription\b
+U122@@v@@MenuItems.vue@@hand DropdownMenuItem (menus render MenuItems from a MenuItem[]; radio, checkbox and label blocks are other tags, RM.1)@@<DropdownMenuItem\b
+U124@@v@@CodeBlock.vue|AdeTaskCard.vue@@Card class sets padding, gap, type, fill, border, opacity or row layout, or binds :class (variant inset, section or list; state shows through a Badge; code is CodeBlock; a row is never a Card, RC.1-RC.3)@@<Card\b(?&t)\s:?class="[^"]*${TOK}(?:font-data|whitespace-pre|flex-row|justify-between|p-|px-|py-|pt-|pb-|gap-|text-kira|text-muted|text-subtle|border|opacity-|bg-|rounded|shadow)|<Card\b(?&t)\s:class=
+U123@@v@@@@plain-text Tooltip triple (use TextTooltip; text and kbd: TextTooltip :kbd, RT.1)@@(?s)<Tooltip(?:\s+(?:v-if|v-else-if|v-for|:key)="[^"]*"|\s+v-else(?![-\w]))*\s*>\s*<TooltipTrigger as-child>(?:(?!</TooltipTrigger>|<Tooltip\b).)*</TooltipTrigger>\s*<TooltipContent(?:\s+(?:v-if|data-testid|side)="[^"]*")*\s*>\s*(?:\{\{(?:(?!\}\}).)*\}\}|[^<{]+)\s*(?:<Kbd>\{\{(?:(?!\}\}).)*\}\}</Kbd>\s*)?</TooltipContent>\s*</Tooltip>
+U125@@vt@@/ade/v2/plan/|/ade/v2/tones.ts|AdeChip.vue|PlanTaskCard.vue|AdeAutomationChip.vue@@ADE pastel map, tone token or toned AdeChip off the plan board (theme tones, Badge, statusTone.ts; P672 D1)@@\b(?:TONE_TEXT_CLASS|TONE_TAG_CLASS|SOLID_CLASS|ACTION_CLASS)\b|${TOK}(?:ring|outline|fill|stroke)-tone-[a-z]|--color-tone-|<AdeChip\b(?![^>]*\s:color=)
+U126@@v@@@@SecondaryTabs tabs, segmented or text with a size (only choice sizes to its host; tabs and segmented keep the default, RTa.1)@@<SecondaryTabs\b(?!(?&t)\svariant="choice")(?&t)\s:?size=
+U127@@v@@@@EmptyState media holding a CodiconIcon or Spinner (icon prop is muted; loading prop for a spinner, RE.2)@@(?s)<EmptyState\b(?&t)(?<!/)>(?:(?!</EmptyState>).)*?<template\s+#media>\s*<(?:CodiconIcon|Spinner)\b
+U128@@vt@@ModuleStart.vue|MobilePairingDialog.vue|PairScreen.vue@@text-kira-xl off the landing hero (detail values are text-kira-lg, RTy.1)@@${TOK}text-kira-xl(?![\w-])
+U129@@vt@@@@arbitrary shadow (shadows come from the elevation tiers, RBo.3)@@${TOK}!?shadow-\[
+U130@@v@@SectionHeading.vue|PanelHeader.vue|DetailSection.vue|VariableRow.vue|VariableHistoryMenu.vue|MobilePairingDialog.vue|PairScreen.vue|ProofScreenshotMenu.vue@@hand case or tracking outside header primitives (RTy.3)@@${TOK}(?:uppercase|normal-case|tracking-(?:tighter|tight|normal|wide|wider|widest))(?![\w-])
+U131@@v@@@@EmptyState without icon or loading (RE.2)@@<EmptyState\b(?!(?&t)\s(?::?icon|loading)(?=[\s=/>]))
+U132@@vt@@/ade/v2/plan/|AdeShelfRow.vue|AdeActivityIcon.vue|AdeTaskPanel.vue|AdeBranchPanel.vue|AdeStepNode.vue@@border-l-3 or border-2 off the plan board and glyph outlines (RBo.2)@@${TOK}!?(?:border-l-3|border-2)(?![\w-])
+U133@@v@@@@form control without id, aria-label or aria-labelledby (RF.1; FieldLabel for/id, or aria-label in bars, rows and cells; a v-bind of attrs forwards the caller's name)@@<(?:Input|Textarea|NativeSelect|InputGroupInput|InputGroupTextarea|NumberStepperInput|AutocompleteField)\b(?!(?&t)\s(?:(?::?id|:?aria-label|:?aria-labelledby)=|v-bind="[$]?attrs"))
+U134@@v@@DateTimePicker.vue|AdeSessionStrip.vue|DynamicValuesDialog.vue|AdeTaskStatuses.vue@@labelled toolbar Button without leading icon (RB.2; CodiconIcon 13 first, select-like trigger ends chevron-down)@@<Button\b(?=(?&t)\svariant="toolbar")(?=(?&t)\ssize="kira")(?!(?&t)\s:?aria-pressed=)(?&t)>(?!(?:(?!</Button\s*>)[\s\S])*?name="chevron-down")\s*(?!<(?:CodiconIcon|Spinner|EngineIcon)\b)(?!</Button)\S
+U135@@v@@@@Kbd inside Button (Button kbd prop)@@<Button\b(?&t)>(?:(?!</Button\s*>)[\s\S])*?<Kbd\b
+U136@@v@@@@styled text in DialogFooter (#start sets text-kira-sm text-subtle; bare span)@@<DialogFooter\b(?&t)>(?:(?!</DialogFooter\s*>)[\s\S])*?(?:<FieldDescription\b|<span\b(?=(?&t)\sclass="[^"]*${TOK}text-(?:kira-sm|muted-foreground|subtle)\b))
+U137@@v@@@@dialog-danger footer without DialogContent destructive (RD.7)@@<DialogContent\b(?!(?&t)\s:?destructive\b)(?&t)>(?:(?!</DialogContent\s*>)[\s\S])*?<DialogFooter\b(?&t)>(?:(?!</DialogFooter\s*>)[\s\S])*?variant="dialog-danger"
+U138@@v@@@@FieldError as last DialogBody child (failure is an error Alert, RD.6)@@</FieldError\s*>\s*(?:</template\s*>\s*)*</DialogBody\s*>
+U139@@v@@@@two adjacent emphasised buttons (one emphasised button rightmost, RD.2)@@<Button\b(?=(?&t)\svariant="dialog-(?:danger|primary|approve)")(?&t)>(?:(?!</Button\s*>)[\s\S])*</Button\s*>\s*(?:<!--(?:(?!-->)[\s\S])*-->\s*)?<Button\b(?=(?&t)\svariant="dialog-(?:danger|primary|approve)")
+U140@@v@@@@dismiss label on an emphasised button (Close, Done, Dismiss are dialog)@@<Button\b(?=(?&t)\svariant="dialog-(?:primary|approve|danger)")(?&t)>(?:(?!</Button\s*>)[\s\S])*?t\('common\.(?:done\.status|action\.close\.label|action\.dismiss\.label)'\)
+U146@@v@@@@hand title bar title (use TitleBarTitle)@@(?s)\A(?=.*<TitleBarBase\b).*\bclass="(?=[^"]*${TOK}text-kira-md(?![\w-]))(?=[^"]*${TOK}font-medium(?![\w-]))
+U141@@v@@@@menu indicator override (the primitive draws the codicon check, RM.2)@@<template #indicator-icon\b
+U142@@v@@@@disabled Tooltip wrapper (render the trigger bare, RT.1)@@<Tooltip\b(?&t)\s:disabled="true"
+U143@@v@@@@TextTooltip around an icon-only Button (use TooltipIconButton, RT.1)@@(?s)<TextTooltip\b(?&t)(?<!/)>\s*<Button\b(?&t)\ssize="(?:kira-icon|icon-sm|touch-icon|title)"
+U144@@v@@@@Kbd inside a TooltipIconButton body (use :kbd, RT.1)@@(?s)<TooltipIconButton\b(?&t)(?<!/)>(?:(?!</TooltipIconButton>).)*?<Kbd\b
+U145@@v@@@@margin or padding class on a popover bar control (use PopoverBar, RP.1)@@(?s)\A(?=.*<PopoverContent\b).*?<(?:SecondaryTabs|SearchField)\b(?&t)\s:?class="[^"]*${TOK}(?:m|mx|my|mt|mb|ml|mr|p|px|py)-
+U152@@v@@@@hand toggle (icon toggle is TooltipIconButton :pressed, text toggle is Toggle default variant, a single pick is SecondaryTabs or a rowVariants list)@@<Button\b(?=(?&t)\svariant="toolbar")(?&t)\s:?aria-pressed=|<Toggle\b(?&t)\s:?variant=
+U147@@v@@@@readable warn or note token outside Alert (use text-warn or text-info, RCo.1)@@${TOK}text-(?:warn|note)-text(?![\w-])
+U148@@v@@@@spin attribute on CodiconIcon (use Spinner, RS.1)@@<CodiconIcon\b(?&t)\s:?spin\b
+U149@@v@@@@tone class or TONE_TEXT in a bound class on a toolbar button (use tone or data-tone)@@(?:<TooltipIconButton\b|<Button\b(?=(?&t)\svariant="toolbar"))(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info)(?![\w-])|(?:<TooltipIconButton\b|<Button\b(?=(?&t)\svariant="toolbar"))(?&t)\s:class="[^"]*(?:TONE_TEXT\[|'text-(?:ok|warn|error|info)')
+U150@@v@@@@toned action icon (action icons stay muted, RI.2)@@<CodiconIcon\b(?=(?&t)\sname="(?:play|debug-stop|debug-start|run-all|debug-restart|debug-pause)")(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info)(?![\w-])
+U151@@v@@@@StatusDot status through a theme var colour (use tone)@@<StatusDot\b(?&t)\scolor="var\(--kira-
+U153@@v@@OpLogPanel.vue@@hand depth indent (use rowIndent)@@paddingLeft:\s*\x60[^\x60]*\bdepth\b
+U154@@v@@@@Disclosure trigger or content class (use the meta prop; content spacing is built in)@@<Disclosure\b(?&t)\s:?(?:trigger-class|content-class)=
+U155@@v@@@@hand pane frame or window body (use paneFrame, windowBody)@@\bclass="(?=[^"]*${TOK}rounded-kira(?![\w-]))(?=[^"]*${TOK}bg-bg(?![\w-]))|\bclass="(?=[^"]*${TOK}bg-chrome(?![\w-]))(?=[^"]*${TOK}px-1\.5(?![\w.-]))(?=[^"]*${TOK}pb-0\.5(?![\w.-]))
+U156@@v@@@@text glyph as icon or status (use CodiconIcon or StatusDot)@@>\s*(?:✕|✓|▶|●|•|→|↔|↩)\s*<|\?\s*'(?:●|•)'(?!\.repeat)
+U157@@v@@@@FieldError as a pane or section failure (padded; use EmptyState, Alert or InlineState)@@<FieldError\b(?&t)\s:?class="[^"]*${TOK}p[xy]?-
+U158@@v@@@@FieldDescription as an empty state (use InlineState kind empty)@@<FieldDescription\b(?&t)>\s*\{\{\s*t\('[^']*\.(?:empty|none)\b|<FieldDescription\b(?&t)\sdata-testid="[^"]*-(?:empty|none)"
+U159@@v@@@@untoned chip Badge (use the default Badge)@@<Badge\b(?=(?&t)\svariant="chip")(?!(?&t)\s:?(?:class|style)=)(?&t)>
+U160@@v@@@@hand required asterisk (use FieldLabel required)@@class="text-error"(?&t)?>\s*\*
+U161@@v@@@@default-size form control in a bar (use size="kira")@@<(ViewToolbar|PanelHeader|PopoverBar)\b(?&t)>(?:(?!</\2\s*>)[\s\S])*?<(?:NativeSelect|Input)\b(?!(?&t)\ssize=)(?&t)
 GUARDS
 
 # hits: "U<n> path"

@@ -5,6 +5,7 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
 import { errorText, toCodedError } from '../bridge/codedError';
@@ -78,20 +79,19 @@ function retry(): void {
       <EmptyState
         v-if="variant === 'pane'"
         fill
+        icon="warning"
         data-testid="query-error"
         :title="t('common.state.loadFailed.title')"
         :description="message"
       >
-        <template #media><CodiconIcon name="error" :size="24" class="text-error" /></template>
         <Button
           v-if="canRetry"
           size="kira"
           variant="toolbar"
           data-testid="query-retry"
           @click="retry"
-          >{{
-            t('common.action.retry.label')
-          }}</Button
+          ><CodiconIcon :name="ICON.refresh" :size="13" />
+          {{ t('common.action.retry.label') }}</Button
         >
       </EmptyState>
       <InlineState v-else kind="error" data-testid="query-error">{{ message }}</InlineState>

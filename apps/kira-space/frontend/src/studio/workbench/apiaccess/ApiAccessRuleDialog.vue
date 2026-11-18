@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import {
@@ -10,8 +12,6 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
-import { NativeSelect } from '@theme/components/ui/native-select';
 import {
   TagsInput,
   TagsInputInput,
@@ -29,7 +29,14 @@ const props = defineProps<{ rule?: ApiRule; pending: boolean; error: string | nu
 const open = defineModel<boolean>('open', { required: true });
 const emit = defineEmits<{ save: [rule: ApiRule] }>();
 
-const effectId = useId();
+const effectItems = computed(() => [
+  {
+    value: 'allow',
+    label: t('studio.project.connectionDialog.mcp.allow.label'),
+    testid: 'api-rule-effect-allow',
+  },
+  { value: 'deny', label: t('common.action.deny.label'), testid: 'api-rule-effect-deny' },
+]);
 const anyMethodId = useId();
 const methodsId = useId();
 const effect = ref<ApiRule['effect']>('allow');
@@ -86,22 +93,17 @@ function onSave(): void {
       <DialogHeader>
         <DialogTitle>{{ t('studio.settings.dbMcp.apiRules.dialog.title') }}</DialogTitle>
       </DialogHeader>
-      <DialogBody class="flex flex-col gap-3">
+      <DialogBody>
         <Field>
-          <Label :for="effectId">{{ t('studio.settings.dbMcp.apiRules.effect.label') }}</Label>
-          <NativeSelect
-            :id="effectId"
+          <FieldLabel>{{ t('studio.settings.dbMcp.apiRules.effect.label') }}</FieldLabel>
+          <SecondaryTabs
             v-model="effect"
-            variant="bordered"
+            variant="choice"
             size="kira-lg"
-            class="self-start"
+            :aria-label="t('studio.settings.dbMcp.apiRules.effect.label')"
+            :items="effectItems"
             data-testid="api-rule-effect"
-          >
-            <option value="allow">{{
-              t('studio.project.connectionDialog.mcp.allow.label')
-            }}</option>
-            <option value="deny">{{ t('common.action.deny.label') }}</option>
-          </NativeSelect>
+          />
           <FieldDescription data-testid="api-rule-effect-hint">{{
             t('studio.settings.dbMcp.apiRules.effect.hint')
           }}</FieldDescription>
@@ -134,7 +136,7 @@ function onSave(): void {
         <Field>
           <FieldLabel>{{ t('studio.settings.dbMcp.apiRules.methods.label') }}</FieldLabel>
           <div class="flex flex-wrap gap-x-3 gap-y-1.5">
-            <div v-for="m in API_METHODS" :key="m" class="flex items-center gap-1.5 text-kira-md">
+            <Field v-for="m in API_METHODS" :key="m" orientation="horizontal" class="w-auto">
               <Checkbox
                 :id="`${methodsId}-${m}`"
                 :model-value="methods.includes(m)"
@@ -142,22 +144,24 @@ function onSave(): void {
                 :data-testid="`api-rule-method-${m}`"
                 @update:model-value="(v) => setMethod(m, v === true)"
               />
-              <Label :for="`${methodsId}-${m}`">{{ m }}</Label>
-            </div>
+              <FieldLabel :for="`${methodsId}-${m}`">{{ m }}</FieldLabel>
+            </Field>
           </div>
-          <div class="flex items-center gap-2 text-kira-md">
+          <Field orientation="horizontal">
             <Checkbox
               :id="anyMethodId"
               :model-value="anyMethod"
               data-testid="api-rule-any-method"
               @update:model-value="(v) => (anyMethod = v === true)"
             />
-            <Label :for="anyMethodId">{{
+            <FieldLabel :for="anyMethodId">{{
               t('studio.settings.dbMcp.apiRules.anyMethod.label')
-            }}</Label>
-          </div>
+            }}</FieldLabel>
+          </Field>
         </Field>
-        <FieldError v-if="error" data-testid="api-rule-error">{{ error }}</FieldError>
+        <Alert v-if="error" variant="error" data-testid="api-rule-error">
+          <AlertDescription>{{ error }}</AlertDescription>
+        </Alert>
       </DialogBody>
       <DialogFooter>
         <Button variant="dialog" size="kira-lg" data-testid="api-rule-cancel" @click="open = false">

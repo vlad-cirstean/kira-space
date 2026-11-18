@@ -2,8 +2,8 @@
 import type { WorktreeEntry } from '@kira/git-ipc';
 import type { RepoSummary } from '@shared/domain/repo';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { rowIndent, rowVariants } from '@theme/lib/rowVariants';
@@ -55,34 +55,27 @@ const rowClass = computed(() => [
     <span class="min-w-0 flex-1"
       ><TruncatedText :text="wt.path">{{ worktreeLabel(wt) }}</TruncatedText></span
     >
-    <Tooltip v-if="wt.isMain">
-      <TooltipTrigger as-child>
-        <span class="worktree-badge shrink-0 text-kira-sm text-subtle">{{
-          t('common.main.label')
-        }}</span>
-      </TooltipTrigger>
-      <TooltipContent>{{ t('common.mainWorktree.tooltip') }}</TooltipContent>
-    </Tooltip>
-    <Tooltip v-if="terminalsStore.terminalCountAtPath(wt.path) > 0">
-      <TooltipTrigger as-child>
-        <CodiconIcon
-          name="terminal-bash"
-          :size="12"
-          class="shrink-0 text-subtle"
-          data-testid="repo-terminal-indicator"
-        />
-      </TooltipTrigger>
-      <TooltipContent>{{
+    <TextTooltip v-if="wt.isMain" :text="t('common.mainWorktree.tooltip')"
+      ><span class="worktree-badge shrink-0 text-kira-sm text-subtle">{{
+        t('common.main.label')
+      }}</span></TextTooltip
+    >
+    <TextTooltip
+      v-if="terminalsStore.terminalCountAtPath(wt.path) > 0"
+      :text="
         t('space.repo.panel.terminalOpen.tooltip', {
           count: terminalsStore.terminalCountAtPath(wt.path),
         })
-      }}</TooltipContent>
-    </Tooltip>
-    <Tooltip v-if="wt.locked">
-      <TooltipTrigger as-child>
-        <CodiconIcon name="lock" :size="12" class="shrink-0 text-subtle" />
-      </TooltipTrigger>
-      <TooltipContent>{{ wt.locked?.reason }}</TooltipContent>
-    </Tooltip>
+      "
+      ><CodiconIcon
+        name="terminal-bash"
+        :size="12"
+        class="shrink-0 text-subtle"
+        data-testid="repo-terminal-indicator"
+      /></TextTooltip
+    >
+    <TextTooltip v-if="wt.locked" :text="wt.locked?.reason"
+      ><CodiconIcon name="lock" :size="12" class="shrink-0 text-subtle" /></TextTooltip
+    >
   </div>
 </template>

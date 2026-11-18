@@ -4,11 +4,11 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { formatBytes, formatClockTime, formatDuration } from '@workbench/behaviour/format';
@@ -294,32 +294,22 @@ onUnmounted(() => {
 
     <ViewToolbar class="response-status-row">
       <template v-if="response">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Badge data :variant="statusClass(response.status)" data-testid="http-status">
-              {{ response.status }} {{ response.statusText }}
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>{{ hint }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="hint">
+          <Badge data :variant="statusClass(response.status)" data-testid="http-status">
+            {{ response.status }} {{ response.statusText }}
+          </Badge>
+        </TextTooltip>
         <span class="ml-auto" />
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Button
-              variant="toolbar"
-              size="status"
-              data-testid="http-elapsed"
-              @click="viewTimeline"
-            >
-              {{ formatDuration(response.elapsedMs) }}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('studio.http.response.timeTooltip.tooltip') }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="t('studio.http.response.timeTooltip.tooltip')">
+          <Button variant="toolbar" size="status" data-testid="http-elapsed" @click="viewTimeline">
+            {{ formatDuration(response.elapsedMs) }}
+          </Button>
+        </TextTooltip>
         <span class="text-kira-sm text-subtle" data-testid="http-body-bytes">{{
           formatBytes(response.bodyBytes)
         }}</span>
         <SecondaryTabs
+          variant="segmented"
           :model-value="tab.state.responseView"
           :items="RESPONSE_VIEW_OPTIONS"
           data-testid="http-response-view-toggle"
@@ -378,8 +368,8 @@ onUnmounted(() => {
       </AlertDescription>
       <AlertAction>
         <Button
-          variant="toolbar"
-          size="kira"
+          variant="link"
+          size="inline"
           data-testid="http-history-back"
           @click="onBackToLatest"
         >
@@ -418,20 +408,17 @@ onUnmounted(() => {
         }}
       </AlertDescription>
     </Alert>
-    <Tooltip v-if="redirectCaption">
-      <TooltipTrigger as-child>
-        <Button
-          variant="toolbar"
-          size="status"
-          class="w-full justify-start"
-          data-testid="http-redirects"
-          @click="viewTimeline"
-        >
-          {{ redirectCaption }}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ t('studio.http.response.timeTooltip.tooltip') }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip v-if="redirectCaption" :text="t('studio.http.response.timeTooltip.tooltip')"
+      ><Button
+        variant="toolbar"
+        size="status"
+        class="w-full justify-start"
+        data-testid="http-redirects"
+        @click="viewTimeline"
+      >
+        {{ redirectCaption }}
+      </Button></TextTooltip
+    >
 
     <ResponseHistoryList
       v-if="tab.state.responsePane === 'history'"

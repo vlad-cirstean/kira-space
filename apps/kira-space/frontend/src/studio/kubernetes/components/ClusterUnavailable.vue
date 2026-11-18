@@ -48,14 +48,12 @@ const hint = computed(() => COPY[reason.value].hint());
 <template>
   <EmptyState
     fill
+    icon="debug-disconnect"
     data-testid="kube-unavailable"
     :data-reason="reason"
     :title="title"
     :description="hint"
   >
-    <template #media
-      ><CodiconIcon name="debug-disconnect" :size="24" class="text-error" /></template
-    >
     <FieldDescription
       v-if="status.message"
       class="max-w-md"
@@ -71,7 +69,7 @@ const hint = computed(() => COPY[reason.value].hint());
       data-testid="kube-retry"
       @click="refresh.run(clusterId)"
     >
-      <CodiconIcon name="refresh" :size="12" />
+      <CodiconIcon name="refresh" :size="13" />
       {{ t('common.action.retry.label') }}
     </Button>
   </EmptyState>

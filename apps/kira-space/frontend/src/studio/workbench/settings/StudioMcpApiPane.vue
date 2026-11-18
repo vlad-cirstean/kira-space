@@ -1,8 +1,7 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
-import { Field, FieldContent, FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
-import { NativeSelect } from '@theme/components/ui/native-select';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
@@ -43,12 +42,25 @@ const sharedVariableCount = computed(() =>
 
 // `for`/`id` keeps the label-to-control association now that the field wrapper is a plain <Field> div.
 const dbMcpApiId = useId();
-const dbMcpApiApprovalId = useId();
+const approvalItems = computed(() => [
+  {
+    value: 'always',
+    label: t('studio.settings.dbMcp.apiApproval.always.option'),
+    disabled: apiApproval.pending.value,
+    testid: 'settings-db-mcp-api-approval-always',
+  },
+  {
+    value: 'never',
+    label: t('studio.settings.dbMcp.apiApproval.never.option'),
+    disabled: apiApproval.pending.value,
+    testid: 'settings-db-mcp-api-approval-never',
+  },
+]);
 </script>
 
 <template>
   <div class="contents" v-show="active">
-    <Field orientation="horizontal" class="items-start">
+    <Field orientation="horizontal">
       <Switch
         :id="dbMcpApiId"
         :model-value="settingsStore.dbMcp.apiRequests"
@@ -57,7 +69,7 @@ const dbMcpApiApprovalId = useId();
         @update:model-value="(v) => onToggleApiRequests(v === true)"
       />
       <FieldContent>
-        <Label :for="dbMcpApiId">{{ t('studio.settings.dbMcp.api.label') }}</Label>
+        <FieldLabel :for="dbMcpApiId">{{ t('studio.settings.dbMcp.api.label') }}</FieldLabel>
         <FieldDescription>{{ t('studio.settings.dbMcp.api.description') }}</FieldDescription>
         <FieldDescription data-testid="settings-db-mcp-api-count">{{
           t('studio.settings.dbMcp.api.count.status', {
@@ -68,20 +80,16 @@ const dbMcpApiApprovalId = useId();
       </FieldContent>
     </Field>
     <Field v-if="settingsStore.dbMcp.apiRequests">
-      <Label :for="dbMcpApiApprovalId">{{ t('studio.settings.dbMcp.apiApproval.label') }}</Label>
-      <NativeSelect
-        :id="dbMcpApiApprovalId"
-        variant="bordered"
+      <FieldLabel>{{ t('studio.settings.dbMcp.apiApproval.label') }}</FieldLabel>
+      <SecondaryTabs
+        variant="choice"
         size="kira-lg"
-        class="self-start"
-        data-testid="settings-db-mcp-api-approval"
+        :aria-label="t('studio.settings.dbMcp.apiApproval.label')"
         :model-value="settingsStore.dbMcp.apiApproval"
-        :disabled="apiApproval.pending.value"
+        :items="approvalItems"
+        data-testid="settings-db-mcp-api-approval"
         @update:model-value="onApiApprovalChange"
-      >
-        <option value="always">{{ t('studio.settings.dbMcp.apiApproval.always.option') }}</option>
-        <option value="never">{{ t('studio.settings.dbMcp.apiApproval.never.option') }}</option>
-      </NativeSelect>
+      />
       <Alert
         v-if="settingsStore.dbMcp.apiApproval === 'never'"
         variant="warn"

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
@@ -10,7 +13,6 @@ import { useInlineEdit } from '@workbench/behaviour/inlineEdit';
 import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
-import AdeTip from '../AdeTip.vue';
 import AdeAutomationsBlock from '../automation/AdeAutomationsBlock.vue';
 import { taskPatch } from '../board/panelFacts';
 import { taskReviewTip } from '../board/reviewCode';
@@ -70,9 +72,6 @@ const titleEdit = useInlineEdit({
   },
 });
 
-const chip = computed(() =>
-  props.card.parked ? { tone: 'grey' as const } : { color: props.card.status.color },
-);
 const label = computed(() =>
   props.card.parked ? t('space.ade.board.notMerging.label') : props.card.status.name,
 );
@@ -89,11 +88,11 @@ const label = computed(() =>
   >
     <template #actions>
       <AdeTaskActionButton :card="card" />
-      <AdeTip v-if="choices.length" :parts="reviewTip">
+      <TextTooltip v-if="choices.length" :parts="reviewTip">
         <TooltipDisabledTrigger :disabled="reviewDisabled">
           <Button
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             :disabled="reviewDisabled"
             data-testid="ade-panel-review"
             @click="(ev: MouseEvent) => reviewCode.openTask(card, ev.currentTarget as HTMLElement)"
@@ -102,7 +101,7 @@ const label = computed(() =>
             {{ t('space.ade.board.taskMenu.reviewCode.label') }}
           </Button>
         </TooltipDisabledTrigger>
-      </AdeTip>
+      </TextTooltip>
       <TooltipIconButton
         icon="ellipsis"
         :label="t('common.moreActions.tooltip')"
@@ -112,52 +111,53 @@ const label = computed(() =>
       />
     </template>
     <template #header>
-      <!-- biome-ignore lint/a11y/noStaticElementInteractions: right-click only; the keyboard opens the same menu from More. -->
-      <div class="flex items-start gap-2" @contextmenu="taskMenu.open">
-        <span
-          class="mt-1 box-border size-3 shrink-0 rounded-kira-sm"
-          :class="card.parked ? 'border-2' : ''"
-          :style="card.parked ? { borderColor: card.color } : { background: card.color }"
-          data-testid="ade-panel-dot"
-        />
-        <AdeChip :label="label" v-bind="chip" />
-        <AdeOrchestratorBadge v-if="card.orchestrator" />
-        <AdeChip
-          v-if="card.blocked"
-          :label="t('space.common.status.blocked.status')"
-          tone="red"
-          data-testid="ade-panel-blocked"
-        />
-        <Input
-          :model-value="titleEdit.text.value"
-          :placeholder="card.defaultTitle"
-          :aria-label="t('common.field.name.label')"
-          appearance="inline"
-          class="min-w-0 flex-1 text-kira-lg font-medium"
-          data-testid="ade-panel-title"
-          @update:model-value="titleEdit.onInput"
-          @blur="titleEdit.onCommit"
-          @keydown="titleEdit.onKeydown"
-        />
-      </div>
-      <Alert v-if="titleEdit.error.value" variant="error" data-testid="ade-title-error"
-        ><AlertDescription>{{ titleEdit.error.value }}</AlertDescription></Alert
-      >
-      <Alert
-        v-if="ui.actionError[card.task.id]"
-        variant="error"
-        data-testid="ade-panel-action-error"
-        ><AlertDescription>{{ ui.actionError[card.task.id] }}</AlertDescription></Alert
-      >
-      <AdePanelForwardBar v-if="!card.review" :task-id="card.task.id" />
-      <AdeAutomationsBlock :task-id="card.task.id" />
-      <Alert v-if="card.review" variant="info" data-testid="ade-panel-review-note"
-        ><AlertDescription>{{
-          t('space.ade.taskPanel.reviewNote.body', {
-            owner: card.task.owner || t('space.ade.taskPanel.someone.label'),
-          })
-        }}</AlertDescription></Alert
-      >
+      <DetailHeader @contextmenu="taskMenu.open">
+        <template #leading>
+          <span
+            class="box-border size-3 shrink-0 rounded-kira-sm"
+            :class="card.parked ? 'border-2' : ''"
+            :style="card.parked ? { borderColor: card.color } : { background: card.color }"
+            data-testid="ade-panel-dot"
+          />
+          <Badge v-if="card.parked" variant="default">{{ label }}</Badge>
+          <AdeChip v-else :label="label" :color="card.status.color" />
+          <AdeOrchestratorBadge v-if="card.orchestrator" />
+          <Badge v-if="card.blocked" variant="error" data-testid="ade-panel-blocked">{{
+            t('space.common.status.blocked.status')
+          }}</Badge>
+        </template>
+        <template #control>
+          <Input
+            :model-value="titleEdit.text.value"
+            :placeholder="card.defaultTitle"
+            :aria-label="t('common.field.name.label')"
+            appearance="inline"
+            class="min-w-0 flex-1 text-kira-lg font-medium"
+            data-testid="ade-panel-title"
+            @update:model-value="titleEdit.onInput"
+            @blur="titleEdit.onCommit"
+            @keydown="titleEdit.onKeydown"
+          />
+        </template>
+        <Alert v-if="titleEdit.error.value" variant="error" data-testid="ade-title-error"
+          ><AlertDescription>{{ titleEdit.error.value }}</AlertDescription></Alert
+        >
+        <Alert
+          v-if="ui.actionError[card.task.id]"
+          variant="error"
+          data-testid="ade-panel-action-error"
+          ><AlertDescription>{{ ui.actionError[card.task.id] }}</AlertDescription></Alert
+        >
+        <AdePanelForwardBar v-if="!card.review" :task-id="card.task.id" />
+        <AdeAutomationsBlock :task-id="card.task.id" />
+        <Alert v-if="card.review" variant="info" data-testid="ade-panel-review-note"
+          ><AlertDescription>{{
+            t('space.ade.taskPanel.reviewNote.body', {
+              owner: card.task.owner || t('space.ade.taskPanel.someone.label'),
+            })
+          }}</AlertDescription></Alert
+        >
+      </DetailHeader>
     </template>
     <AdeMainTab v-if="tab === 'main'" :card="card" />
     <AdeSessionsTab v-else-if="tab === 'sessions'" :task-id="card.task.id" />

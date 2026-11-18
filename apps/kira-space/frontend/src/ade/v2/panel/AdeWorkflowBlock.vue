@@ -1,16 +1,17 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import { ref } from 'vue';
 import type { CardModel } from '../plan/usePlanModel';
 import AdeTaskActionButton from '../run/AdeTaskActionButton.vue';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
-import AdeRow from './AdeRow.vue';
 import AdeRowDetail from './AdeRowDetail.vue';
 import AdeStepBlock from './AdeStepBlock.vue';
 import AdeStepMover from './AdeStepMover.vue';
@@ -39,36 +40,40 @@ function edit(): void {
 </script>
 
 <template>
-  <div class="flex flex-col gap-1" data-testid="ade-workflow-block">
-    <AdeRow :label="t('space.common.workflow.label')" label-for="ade-workflow-select">
-      <NativeSelect
-        id="ade-workflow-select"
-        variant="bordered"
-        size="kira"
-        :key="selectKey"
-        :model-value="card.task.workflowId"
-        data-testid="ade-workflow-select"
-        @update:model-value="pick"
-      >
-        <option v-if="card.task.workflowId === ''" value="">{{
-          t('space.ade.workflowBlock.choose.option')
-        }}</option>
-        <option v-for="v in options" :key="v.id" :value="v.id">{{ v.name }}</option>
-      </NativeSelect>
-      <Tooltip v-if="card.task.workflowOutdated">
-        <TooltipTrigger as-child>
-          <Badge variant="warn" data-testid="ade-workflow-outdated">{{
+  <div class="@container flex flex-col gap-1" data-testid="ade-workflow-block">
+    <Field orientation="responsive">
+      <FieldLabel for="ade-workflow-select">{{ t('space.common.workflow.label') }}</FieldLabel>
+      <div class="flex min-w-0 items-center gap-1.5">
+        <NativeSelect
+          id="ade-workflow-select"
+          variant="bordered"
+          :key="selectKey"
+          :model-value="card.task.workflowId"
+          data-testid="ade-workflow-select"
+          @update:model-value="pick"
+        >
+          <option v-if="card.task.workflowId === ''" value="">{{
+            t('space.ade.workflowBlock.choose.option')
+          }}</option>
+          <option v-for="v in options" :key="v.id" :value="v.id">{{ v.name }}</option>
+        </NativeSelect>
+        <TextTooltip
+          v-if="card.task.workflowOutdated"
+          :text="t('space.ade.workflowBlock.outdatedHint.hint')"
+          ><Badge variant="warn" data-testid="ade-workflow-outdated">{{
             t('space.ade.workflowBlock.outdated.status')
-          }}</Badge>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('space.ade.workflowBlock.outdatedHint.hint') }}</TooltipContent>
-      </Tooltip>
-      <template #actions>
-        <Button variant="dialog" size="kira" data-testid="ade-edit-workflows" @click="edit">
-          {{ t('space.ade.workflowBlock.edit.label') }}
+          }}</Badge></TextTooltip
+        >
+        <Button
+          variant="toolbar"
+          size="kira"
+          class="ml-auto"
+          data-testid="ade-edit-workflows"
+          @click="edit"
+          ><CodiconIcon name="edit" :size="13" />{{ t('space.ade.workflowBlock.edit.label') }}
         </Button>
-      </template>
-    </AdeRow>
+      </div>
+    </Field>
     <AdeRowDetail v-if="error">
       <Alert variant="error" data-testid="ade-workflow-error"
         ><AlertDescription>{{ error }}</AlertDescription></Alert

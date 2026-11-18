@@ -1,11 +1,10 @@
 <script setup lang="ts" generic="K extends string">
 import type { LogLevel } from '@shared/domain/settings';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Field } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
-import { NativeSelect } from '@theme/components/ui/native-select';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
-import { computed, useId } from 'vue';
+import { computed } from 'vue';
 
 // P120: generalized from the former GitLogLevelField.vue — the select/reset markup was
 // byte-identical between Kira Studio's own `advanced.logLevel` and Kira Space's own
@@ -26,16 +25,23 @@ function onLogLevelChange(value: unknown): void {
   props.advanced[props.leaf] = String(value) as LogLevel;
 }
 
-// F3: see DateFormatField.vue's own comment -- `for` + `id` ties the label to the select
-// explicitly, so the Reset button (a sibling, outside the label) is no longer what a title/helper
-// click activates.
-const fieldId = useId();
+const LEVEL_ITEMS = computed(() =>
+  (
+    [
+      ['off', t('common.off.status')],
+      ['error', t('workbench.opLog.error.status')],
+      ['warn', t('workbench.settings.logLevelWarn.option')],
+      ['info', t('workbench.settings.logLevelInfo.option')],
+      ['debug', t('workbench.settings.logLevelDebug.option')],
+    ] as const
+  ).map(([value, label]) => ({ value, label, testid: `${props.selectTestid}-${value}` })),
+);
 </script>
 
 <template>
   <Field>
     <div class="flex items-center justify-between gap-1">
-      <Label :for="fieldId">{{ label }}</Label>
+      <FieldLabel>{{ label }}</FieldLabel>
       <TooltipIconButton
         icon="discard"
         :label="t('common.action.resetToDefault.label')"
@@ -45,20 +51,15 @@ const fieldId = useId();
         @click="resetLeaf('advanced', leaf)"
       />
     </div>
-    <NativeSelect
-      :id="fieldId"
-      variant="bordered"
+    <SecondaryTabs
+      variant="choice"
       size="kira-lg"
-      :data-testid="selectTestid"
+      :aria-label="label"
       :model-value="advanced[leaf]"
+      :items="LEVEL_ITEMS"
+      :data-testid="selectTestid"
       @update:model-value="onLogLevelChange"
-    >
-      <option value="off">{{ t('common.off.status') }}</option>
-      <option value="error">{{ t('workbench.opLog.error.status') }}</option>
-      <option value="warn">{{ t('workbench.settings.logLevelWarn.option') }}</option>
-      <option value="info">{{ t('workbench.settings.logLevelInfo.option') }}</option>
-      <option value="debug">{{ t('workbench.settings.logLevelDebug.option') }}</option>
-    </NativeSelect>
+    />
     <slot />
   </Field>
 </template>

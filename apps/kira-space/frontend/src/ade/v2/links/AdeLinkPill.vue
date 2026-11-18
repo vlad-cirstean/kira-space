@@ -3,9 +3,10 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
+import { TONE_DOT } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
 import { artifactStatusLabel, kindIcon } from '../artifacts/status';
-import { TONE_TEXT_CLASS } from '../tones';
+import { THEME_TONE } from '../tones';
 import type { LinkItem } from './linkGroups';
 
 // One link as an 18px pill (a Badge): label and a status dot. Detected links draw dashed and unfilled.
@@ -38,9 +39,8 @@ withDefaults(defineProps<{ item: LinkItem; showKind?: boolean; as?: 'button' | '
     >
     <template v-if="item.tone">
       <StatusDot
-        :class="TONE_TEXT_CLASS[item.tone]"
-        color="currentColor"
-        :data-tone="item.tone"
+        :tone="TONE_DOT[THEME_TONE[item.tone]]"
+        :data-tone="THEME_TONE[item.tone]"
         data-testid="ade-links-pill-dot"
       />
       <span v-if="item.status" class="sr-only">{{ artifactStatusLabel(item.status) }}</span>

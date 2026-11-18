@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { pathTail } from '@shared/domain/tree';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import {
@@ -11,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from '@theme/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
 import { useTabsStore } from '../../../state/tabs';
 import type { ConstraintRow } from './structure';
@@ -87,18 +87,17 @@ function onNavigate(c: ConstraintRow): void {
             c.detail
           }}</TableCell>
           <TableCell class="def-con-table">
-            <Tooltip v-if="c.referencedPath">
-              <TooltipTrigger as-child>
-                <Button variant="link" size="inline" @click="onNavigate(c)">
-                  {{ referencedTableName(c) }}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{{
+            <TextTooltip
+              v-if="c.referencedPath"
+              :text="
                 t('studio.definition.constraint.openReferenced.tooltip', {
                   table: referencedTableName(c) ?? '',
                 })
-              }}</TooltipContent>
-            </Tooltip>
+              "
+              ><Button variant="link" size="inline" @click="onNavigate(c)">
+                {{ referencedTableName(c) }}
+              </Button></TextTooltip
+            >
           </TableCell>
         </TableRow>
       </TableBody>

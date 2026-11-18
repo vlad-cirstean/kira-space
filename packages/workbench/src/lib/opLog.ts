@@ -1,5 +1,6 @@
 import type { OpLogRecord, OpStatus } from '@shared/domain/ops';
 import { type MessageKey, t } from '@theme/i18n';
+import { TONE_TEXT } from '@theme/lib/statusTone';
 import { copyAndAnnounce } from '../behaviour/clipboard';
 import { monthNames } from '../behaviour/format';
 import type { MenuItem } from '../state/contextMenu';
@@ -48,8 +49,8 @@ export interface OpLogDetailLine {
 export type OpLogStatusFilter = 'all' | 'running' | 'error';
 
 export const STATUS_ICON: Record<OpStatus, { icon: string; tone: string }> = {
-  ok: { icon: 'pass', tone: 'text-muted-foreground' },
-  error: { icon: 'error', tone: 'text-error' },
+  ok: { icon: 'pass', tone: TONE_TEXT.ok },
+  error: { icon: 'error', tone: TONE_TEXT.error },
   cancelled: { icon: 'circle-slash', tone: 'text-muted-foreground' },
   running: { icon: 'loading', tone: 'text-muted-foreground' },
 };

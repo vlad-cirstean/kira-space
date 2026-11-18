@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { computed } from 'vue';
-import AdeTip from './AdeTip.vue';
 import { type ActivityKind, activityLabel } from './activity';
 
 // Activity glyph of a session: `!` needs input, a green dot working, `z` waiting on a monitor, a
@@ -14,28 +14,28 @@ const dot = computed(() => DOT[props.size ?? 12]);
 </script>
 
 <template>
-  <AdeTip :text="bare ? '' : activityLabel(kind)">
+  <TextTooltip :text="bare ? '' : activityLabel(kind)">
     <span :data-activity="kind" class="inline-flex shrink-0 items-center justify-center">
       <span
         v-if="kind === 'input'"
         :class="badge"
-        class="flex items-center justify-center rounded-full bg-tone-amber-solid text-kira-sm font-medium leading-none text-tone-ink"
+        class="flex items-center justify-center rounded-full bg-warn text-kira-sm font-medium leading-none text-chrome"
         >!</span
       >
       <span
         v-else-if="kind === 'working'"
         :class="dot"
-        class="m-0.5 inline-block rounded-full bg-tone-green-solid"
+        class="m-0.5 inline-block rounded-full bg-ok"
       />
       <span
         v-else-if="kind === 'unseen'"
         :class="dot"
-        class="m-0.5 inline-block rounded-full bg-tone-blue-solid ring-2 ring-tone-blue-solid/30"
+        class="m-0.5 inline-block rounded-full bg-info outline-1 outline-offset-1 outline-info"
       />
       <span
         v-else-if="kind === 'waiting'"
         :class="badge"
-        class="flex items-center justify-center rounded-full border-2 border-tone-blue-solid text-kira-sm font-medium leading-none text-tone-blue"
+        class="flex items-center justify-center rounded-full border-2 border-info text-kira-sm font-medium leading-none text-info"
         >z</span
       >
       <span
@@ -45,5 +45,5 @@ const dot = computed(() => DOT[props.size ?? 12]);
       />
       <span v-else class="m-0.75 inline-block size-1.5 rounded-kira-sm bg-subtle" />
     </span>
-  </AdeTip>
+  </TextTooltip>
 </template>

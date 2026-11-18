@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import HighlightedText from '@theme/components/HighlightedText.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
-import { rowIndent, rowVariants } from '@theme/lib/rowVariants';
+import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import TreeTwisty from '@workbench/components/TreeTwisty.vue';
 import { computed, type HTMLAttributes } from 'vue';
@@ -87,15 +87,12 @@ function onDblClick(): void {
     <span class="min-w-0 flex-1"
       ><TruncatedText :text="row.path">{{ fileName }}</TruncatedText></span
     >
-    <span class="text-kira-sm text-subtle shrink-0" data-testid="repo-search-match-count">{{
+    <span :class="[rowMeta, 'shrink-0']" data-testid="repo-search-match-count">{{
       row.matchCount
     }}</span>
-    <Tooltip v-if="row.fileTruncated">
-      <TooltipTrigger as-child>
-        <span class="text-kira-sm text-subtle">+</span>
-      </TooltipTrigger>
-      <TooltipContent>{{ t('space.repo.search.truncated.tooltip') }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip v-if="row.fileTruncated" :text="t('space.repo.search.truncated.tooltip')"
+      ><span class="text-kira-sm text-subtle">+</span></TextTooltip
+    >
   </div>
   <!-- biome-ignore lint/a11y/useKeyWithClickEvents: Enter, Space and the arrows come from useListNavigation on the list. -->
   <div
@@ -111,7 +108,7 @@ function onDblClick(): void {
     @click="onClick"
     @dblclick="onDblClick"
   >
-    <span class="text-kira-sm text-subtle shrink-0 min-w-10">{{ row.line }}:{{ row.column }}</span>
+    <span :class="[rowMeta, 'shrink-0 min-w-10']">{{ row.line }}:{{ row.column }}</span>
     <span class="min-w-0 truncate"><HighlightedText :parts="previewParts" /></span>
   </div>
   <!-- Row state and indent come from `rowVariants`/`rowIndent` (match rows sit one level in). -->

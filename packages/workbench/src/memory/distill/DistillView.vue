@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -7,6 +8,7 @@ import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 import { formatCurrency } from '../../behaviour/format';
@@ -120,14 +122,12 @@ async function run(): Promise<void> {
         size="kira"
         data-testid="distill-back"
         @click="memoryUi.view = 'memory'"
-        >{{
-          t('memory.import.back.label')
-        }}</Button
+        ><CodiconIcon :name="ICON.back" :size="13" />{{ t('memory.import.back.label') }}</Button
       >
       <SecondaryTabs v-model="source" variant="segmented" :items="SOURCES" />
       <SecondaryTabs v-if="source === 'text'" v-model="mode" variant="segmented" :items="MODES" />
     </PanelBar>
-    <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+    <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
       <FieldDescription data-testid="distill-hint">{{
         t(rewriting ? 'memory.distill.rewrite.hint' : 'memory.distill.hint')
       }}</FieldDescription>
@@ -136,7 +136,8 @@ async function run(): Promise<void> {
           originLabel
         }}</Badge>
         <Textarea
-          class="min-h-40 font-data"
+          :aria-label="t('common.field.text.label')"
+          class="min-h-32 max-h-90 resize-y font-data"
           :model-value="text"
           :disabled="inFlight"
           :placeholder="t('memory.distill.input.placeholder')"
@@ -156,7 +157,7 @@ async function run(): Promise<void> {
       <div v-else class="flex min-w-0 items-center gap-2">
         <Button
           variant="dialog"
-          size="kira"
+          size="kira-lg"
           :pending="choose.isPending.value"
           :disabled="inFlight"
           data-testid="distill-choose"

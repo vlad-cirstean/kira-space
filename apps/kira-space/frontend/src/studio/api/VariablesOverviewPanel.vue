@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import InlineState from '@theme/components/InlineState.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { PopoverContent } from '@theme/components/ui/popover';
+import { PopoverContent, PopoverList } from '@theme/components/ui/popover';
 import { tableCellClass, tableRowClass } from '@theme/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { copyOrReportError } from '@workbench/behaviour/clipboard';
@@ -94,7 +94,7 @@ function editEnvironmentVariables(): void {
 </script>
 
 <template>
-  <PopoverContent align="start" class="w-96 gap-0 p-0" data-testid="variables-overview">
+  <PopoverContent align="start" flush class="w-96" data-testid="variables-overview">
     <div class="flex max-h-105 flex-col">
       <SearchField
         v-model="filterQuery"
@@ -106,7 +106,7 @@ function editEnvironmentVariables(): void {
         <AlertDescription>{{ copyError }}</AlertDescription>
       </Alert>
 
-      <div class="flex flex-col gap-0.5 overflow-y-auto p-1">
+      <PopoverList class="overflow-y-auto">
         <InlineState
           v-if="isFiltered && filteredRows.length === 0"
           kind="empty"
@@ -135,43 +135,37 @@ function editEnvironmentVariables(): void {
           v-for="row in filteredRows"
           :key="`${row.scope}:${row.id}`"
           class="grid min-w-0 grid-cols-[1.2fr_2fr_auto_1.5fr] items-center gap-1"
-          :class="[tableRowClass, tableCellClass, { 'opacity-50': row.shadowed }]"
+          :class="[tableRowClass, tableCellClass]"
           data-testid="variables-overview-row"
           :data-scope="row.scope"
           :data-shadowed="row.shadowed"
         >
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button
-                variant="toolbar"
-                size="inline"
-                class="min-w-0 justify-start font-data font-normal text-fg hover:bg-transparent"
-                data-testid="variables-overview-name"
-                @click="onCopy(row.name)"
-                ><span class="truncate">{{ reference(row.name) }}</span></Button
-              >
-            </TooltipTrigger>
-            <TooltipContent>{{ t('common.action.copy.label') }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip :text="t('common.action.copy.label')">
+            <Button
+              variant="toolbar"
+              size="inline"
+              class="min-w-0 justify-start font-data font-normal text-fg hover:bg-transparent"
+              data-testid="variables-overview-name"
+              @click="onCopy(row.name)"
+              ><span class="truncate">{{ reference(row.name) }}</span></Button
+            >
+          </TextTooltip>
           <Badge v-if="row.isSecret" variant="warn" data-testid="variables-overview-secret">{{
             t('common.secret.label')
           }}</Badge>
           <span v-else class="min-w-0 text-subtle" data-testid="variables-overview-value"
             ><TruncatedText :text="row.value" /></span
           >
-          <Tooltip v-if="row.shadowed">
-            <TooltipTrigger as-child>
-              <Badge
-                class="justify-self-start"
-                :variant="row.scope === 'environment' ? 'info' : 'default'"
-                data-testid="variables-overview-scope"
-                >{{
-                  row.scope
-                }}</Badge
-              >
-            </TooltipTrigger>
-            <TooltipContent>{{ t('studio.api.variablesOverview.shadowed.hint') }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip v-if="row.shadowed" :text="t('studio.api.variablesOverview.shadowed.hint')"
+            ><Badge
+              class="justify-self-start"
+              :variant="row.scope === 'environment' ? 'info' : 'default'"
+              data-testid="variables-overview-scope"
+              >{{
+                row.scope
+              }}</Badge
+            ></TextTooltip
+          >
           <Badge
             v-else
             class="justify-self-start"
@@ -188,7 +182,7 @@ function editEnvironmentVariables(): void {
             ><TruncatedText :text="row.description" /></span
           >
         </div>
-      </div>
+      </PopoverList>
 
       <div class="flex flex-col gap-0.5 p-1">
         <Button

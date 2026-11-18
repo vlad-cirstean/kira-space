@@ -1,10 +1,9 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
-import AdeTip from '../AdeTip.vue';
 import { TASK_ACTION_ICON } from '../plan/glyphs';
 import type { CardModel } from '../plan/usePlanModel';
-import { ACTION_CLASS } from '../tones';
 import { usePrefetchRunPreview } from './runPreview';
 import { useTaskAction } from './useTaskAction';
 
@@ -38,12 +37,11 @@ function warm(): void {
       <div class="font-medium">{{ action.label }}</div>
       <div>{{ action.tip }}</div>
     </TooltipIconButton>
-    <AdeTip v-else :text="action.tip">
+    <TextTooltip v-else :text="action.tip">
       <Button
-        variant="dialog"
-        size="kira-lg"
+        :variant="action.tone === 'red' ? 'dialog-danger' : 'dialog'"
+        size="kira"
         class="shrink-0"
-        :class="ACTION_CLASS[action.tone]"
         :pending="busy"
         :data-testid="`ade-task-action-${action.kind}`"
         @pointerenter="warm"
@@ -51,6 +49,6 @@ function warm(): void {
       >
         {{ action.label }}
       </Button>
-    </AdeTip>
+    </TextTooltip>
   </template>
 </template>

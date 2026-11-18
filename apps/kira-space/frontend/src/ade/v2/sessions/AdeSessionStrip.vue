@@ -41,7 +41,7 @@ watch(() => props.selectedId, revealSelected, { flush: 'post' });
         <Button
           type="button"
           variant="toolbar"
-          size="kira-lg"
+          size="kira"
           :class="[
             tabChipVariants({ active: v.session.id === selectedId }),
             'font-data overflow-hidden',
@@ -59,7 +59,7 @@ watch(() => props.selectedId, revealSelected, { flush: 'post' });
           <CodiconIcon
             v-if="phones.holdOf(v.session.terminalId)"
             name="device-mobile"
-            :size="12"
+            :size="13"
             class="shrink-0 text-muted-foreground"
             data-testid="ade-session-phone"
           />

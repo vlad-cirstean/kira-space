@@ -39,7 +39,7 @@ function setRun(v: RepoScriptRefValue | undefined): void {
         :id="`repo-env-name-${props.index}`"
         :placeholder="t('space.repo.env.name.example')"
         :model-value="env.name"
-        class="w-48 min-w-0 font-data font-medium"
+        class="w-40 min-w-0 font-data font-medium"
         data-testid="repo-env-name"
         @update:model-value="(v) => (env = { ...env, name: String(v) })"
       />

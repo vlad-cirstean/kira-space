@@ -290,7 +290,7 @@ test('the Run dialog handover card selects', async ({ relaunch }) => {
   await page
     .locator(`${t('ade-task')}[data-task-id="T_alerts"] ${t('ade-task-action-run')}`)
     .click();
-  const card = page.locator(t('ade-run-handover')).locator('[data-slot="card"]');
+  const card = page.locator(t('ade-run-handover')).locator('[data-slot="code-block"]');
   const selected = await dragAcross(page, card);
   expect(selected).toContain((handed[0]?.body ?? '').split('\n')[0]?.trim());
 });

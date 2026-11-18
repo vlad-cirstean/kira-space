@@ -2,6 +2,7 @@
 import type { CommitStore } from '@kira/git-core';
 import type { ReviewDiffMode, ReviewFileStatus } from '@kira/git-ipc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import EmptyState from '@theme/components/EmptyState.vue';
 /**
  * The review sidebar's Files pane, and the only new component this phase adds to
  * `packages/git-ui` (which SPEC otherwise freezes). `FileTree` over `ReviewFilesState` instead of
@@ -23,7 +24,7 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { FieldError } from '@theme/components/ui/field';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { type MessageKey, t } from '@theme/i18n';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { formatShortcut } from '@workbench/shortcuts/keys';
@@ -65,6 +66,8 @@ const props = withDefaults(
     committed?: boolean;
     /** Shown above the Uncommitted section when `committed` is false. */
     emptyNote?: string;
+    /** View-state key of the committed tree's scroll; null keeps none. */
+    keepScroll?: string | null;
   }>(),
   { committed: true, emptyNote: '' },
 );
@@ -177,9 +180,13 @@ function onToggleWorkingReviewed(path: string): void {
 
 <template>
   <div class="flex flex-col min-h-0 h-full">
-    <FieldError v-if="reviewFiles.loadError.value" class="p-3">
-      {{ t('git.review.files.loadError.error', { error: reviewFiles.loadError.value }) }}
-    </FieldError>
+    <EmptyState
+      v-if="reviewFiles.loadError.value"
+      fill
+      icon="warning"
+      :title="t('common.state.loadFailed.title')"
+      :description="t('git.review.files.loadError.error', { error: reviewFiles.loadError.value })"
+    />
 
     <template v-else>
       <!-- G12 D12/D16: which two revisions a click opens in the host's diff editor — the one real
@@ -222,15 +229,19 @@ function onToggleWorkingReviewed(path: string): void {
           }}</span
         >
       </ViewToolbar>
-      <FieldError v-if="reviewFiles.diffError.value" class="p-3">
-        {{ t('git.review.files.diffError.error', { error: reviewFiles.diffError.value }) }}
-      </FieldError>
+      <Alert v-if="reviewFiles.diffError.value" variant="error" strip>
+        <AlertDescription>{{
+          t('git.review.files.diffError.error', { error: reviewFiles.diffError.value })
+        }}</AlertDescription>
+      </Alert>
       <!-- G30 round-1 functional-correctness review, finding #7: a failed review.mark used to be
            an unhandled promise rejection with nothing shown here — the checkbox just silently
            reverted on the next render. Mirrors loadError/diffError's own pattern exactly. -->
-      <FieldError v-if="reviewFiles.markError.value" class="p-3">
-        {{ t('git.review.files.markError.error', { error: reviewFiles.markError.value }) }}
-      </FieldError>
+      <Alert v-if="reviewFiles.markError.value" variant="error" strip>
+        <AlertDescription>{{
+          t('git.review.files.markError.error', { error: reviewFiles.markError.value })
+        }}</AlertDescription>
+      </Alert>
 
       <div
         v-if="committed"
@@ -258,6 +269,7 @@ function onToggleWorkingReviewed(path: string): void {
         v-if="committed"
         data-testid="review-files-tree"
         class="flex-auto min-h-0"
+        :keep-scroll="keepScroll"
         :files="files"
         :selected-file="selectedIndex"
         :list-mode="listMode"
@@ -282,7 +294,7 @@ function onToggleWorkingReviewed(path: string): void {
       >
       <section
         v-if="workingFiles.length > 0"
-        class="flex flex-col min-h-0 border-l-2 border-l-warn"
+        class="flex flex-col min-h-0"
         :class="committed ? 'max-h-[40%] shrink-0' : 'flex-auto'"
         data-testid="review-working"
       >

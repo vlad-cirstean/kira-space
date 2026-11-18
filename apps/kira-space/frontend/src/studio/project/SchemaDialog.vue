@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -146,10 +147,10 @@ async function onSave(): Promise<void> {
             ? t('studio.project.schemaDialog.dialog.named.title', { connectionName })
             : t('studio.project.schemaDialog.dialog.title')
         }}</DialogTitle>
+        <DialogDescription>{{ t('studio.project.schemaDialog.intro.body') }}</DialogDescription>
       </DialogHeader>
 
       <DialogBody>
-        <FieldDescription>{{ t('studio.project.schemaDialog.intro.body') }}</FieldDescription>
         <div :class="[paneFrame, 'flex-1']">
           <!-- `completionSources` (state/schemas.ts's own sqlKeywordCompletionSourceFor
              dispatch, project/ may not import views/ per biome.json) gives dialect-correct
@@ -186,12 +187,12 @@ async function onSave(): Promise<void> {
       <DialogFooter>
         <template #start>
           <FieldError v-if="saveError" data-testid="schema-save-error">{{ saveError }}</FieldError>
-          <FieldDescription v-else
+          <span v-else
             ><CatalogText k="studio.project.connectionScope.hint">
               <template #connectionName
                 ><span class="font-data">{{ connectionName }}</span></template
               >
-            </CatalogText></FieldDescription
+            </CatalogText></span
           >
         </template>
         <Button variant="dialog" size="kira-lg" @click="schemaDialogStore.closeSchemaDialog">{{

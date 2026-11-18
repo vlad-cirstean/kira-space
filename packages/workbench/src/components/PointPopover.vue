@@ -9,6 +9,7 @@ defineProps<{
   /** Viewport coordinates of the anchor. */
   x: number;
   y: number;
+  flush?: boolean;
   class?: HTMLAttributes['class'];
 }>();
 const open = defineModel<boolean>('open', { default: true });
@@ -19,7 +20,13 @@ const open = defineModel<boolean>('open', { default: true });
     <PopoverAnchor as-child>
       <span class="fixed size-0" aria-hidden="true" :style="{ left: `${x}px`, top: `${y}px` }" />
     </PopoverAnchor>
-    <PopoverContent align="start" :side-offset="6" avoid-collisions :class="$props.class">
+    <PopoverContent
+      align="start"
+      :side-offset="6"
+      avoid-collisions
+      :flush="flush"
+      :class="$props.class"
+    >
       <slot />
     </PopoverContent>
   </Popover>

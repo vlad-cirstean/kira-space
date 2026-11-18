@@ -460,6 +460,14 @@ test('the row-density ToggleGroup keeps a connected outline with 4px outer corne
   expect(comfortableRadii.tr).toBe('4px');
 
   expect(await comfortable.evaluate((el) => getComputedStyle(el).borderLeftWidth)).toBe('0px');
+
+  // A setting value is a `choice` at the 26px control height.
+  const selected = page.locator(
+    '[data-testid^="settings-appearance-rowDensity-"][data-state="on"]',
+  );
+  await expect(selected).toHaveClass(/data-\[state=on\]:bg-select/);
+  const box = await selected.boundingBox();
+  expect(box?.height).toBeCloseTo(26, 0);
 });
 
 // The console's own result chips ("Result 1", "Result 2") were the one tab-chip copy

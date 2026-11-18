@@ -68,9 +68,7 @@ const targets = (next: string): WorkflowStep[] => {
             data-testid="ade-wf-result-ok"
             @update:model-value="(v) => draft.changeResult(step.id, r.id, { ok: v === true })"
           />
-          <Label :for="id('ok', r.id)" class="text-kira-sm text-muted-foreground">{{
-            t('space.ade.workflows.results.ok.label')
-          }}</Label>
+          <Label :for="id('ok', r.id)">{{ t('space.ade.workflows.results.ok.label') }}</Label>
         </template>
         <Label :for="id('route', r.id)" class="sr-only">{{
           t('space.ade.workflows.results.route.label')
@@ -78,7 +76,7 @@ const targets = (next: string): WorkflowStep[] => {
         <NativeSelect
           :id="id('route', r.id)"
           variant="bordered"
-          class="w-36 shrink-0"
+          class="w-40 shrink-0"
           :model-value="r.next"
           data-testid="ade-wf-result-route"
           @update:model-value="(v) => draft.route(step.id, r.id, String(v))"
@@ -94,7 +92,7 @@ const targets = (next: string): WorkflowStep[] => {
           v-if="!fixed"
           icon="close"
           :label="t('space.ade.workflows.results.remove.tooltip')"
-          class="text-error"
+          tone="error"
           :disabled="step.results.length < 2"
           data-testid="ade-wf-result-remove"
           @click="draft.deleteResult(step.id, r.id)"
@@ -125,7 +123,7 @@ const targets = (next: string): WorkflowStep[] => {
       data-testid="ade-wf-add-result"
       @click="draft.createResult(step.id)"
     >
-      <CodiconIcon :name="ICON.add" :size="12" />
+      <CodiconIcon :name="ICON.add" :size="13" />
       {{ t('space.ade.workflows.results.add.label') }}
     </Button>
   </div>

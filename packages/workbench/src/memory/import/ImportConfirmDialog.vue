@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { MemoryScope } from '@shared/domain/memory';
 import { SOURCE_TAG_PATTERN } from '@shared/domain/memoryImport';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -14,9 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldError } from '@theme/components/ui/field';
+import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
@@ -154,19 +152,21 @@ async function dismiss(): Promise<void> {
           <p v-if="job.truncated" class="m-0 text-warn" data-testid="import-truncated">
             {{ t('memory.import.confirm.truncated.description', { count: job.estimate.files }) }}
           </p>
-          <div class="flex flex-col gap-1">
-            <Label>{{ t('memory.import.confirm.origin.label') }}</Label>
+          <Field>
+            <FieldLabel>{{ t('memory.import.confirm.origin.label') }}</FieldLabel>
             <SecondaryTabs
               v-model="origin"
               :items="originItems"
-              variant="segmented"
+              variant="choice"
               size="kira-lg"
               :aria-label="t('memory.import.confirm.origin.label')"
               data-testid="import-origin"
             />
-          </div>
-          <div v-if="origin === 'external'" class="flex flex-col gap-1">
-            <Label for="import-source-tag">{{ t('memory.import.confirm.sourceTag.label') }}</Label>
+          </Field>
+          <Field v-if="origin === 'external'">
+            <FieldLabel for="import-source-tag">{{
+              t('memory.import.confirm.sourceTag.label')
+            }}</FieldLabel>
             <Input
               id="import-source-tag"
               v-model="sourceTag"
@@ -177,25 +177,24 @@ async function dismiss(): Promise<void> {
             <FieldError v-if="!tagValid" data-testid="import-source-tag-error">{{
               t('memory.import.confirm.sourceTag.error')
             }}</FieldError>
-          </div>
+          </Field>
           <ScopeField
             v-model:scope="scope"
             v-model:project="project"
             prefix="import"
             :scopes="SCOPES"
           />
-          <div class="flex items-center gap-1.5">
+          <Field orientation="horizontal">
             <Checkbox
               id="import-write-doc"
-              class="size-3.5"
               :model-value="writeDoc"
               data-testid="import-write-doc"
               @update:model-value="(v) => (writeDoc = v === true)"
-            >
-              <CodiconIcon name="check" :size="12" />
-            </Checkbox>
-            <Label for="import-write-doc">{{ t('memory.import.confirm.writeDoc.label') }}</Label>
-          </div>
+            />
+            <FieldLabel for="import-write-doc">{{
+              t('memory.import.confirm.writeDoc.label')
+            }}</FieldLabel>
+          </Field>
         </template>
       </DialogBody>
       <DialogFooter>

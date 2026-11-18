@@ -18,10 +18,11 @@ import type { StackBranch } from '@kira/git-ipc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
-import { rowMeta } from '@theme/lib/rowVariants';
+import { rowIndent, rowMeta } from '@theme/lib/rowVariants';
 import { changeRequestBadgeClass, refBadgeClass } from '../lib/badgeClass.ts';
 import type { PickerList, PickerStackGroup } from '../lib/pickerModel.ts';
 import {
@@ -91,6 +92,7 @@ async function removeFromStack(branch: string): Promise<void> {
 
     <div v-for="group in stacks.visible" :key="group.summary.base" class="mb-1">
       <SectionHeading
+        data
         :label="group.summary.base"
         :data-kira-tip="t('git.stack.base.tooltip', { base: group.summary.base })"
       >
@@ -103,7 +105,7 @@ async function removeFromStack(branch: string): Promise<void> {
               group.summary.branches[group.summary.branches.length - 1]?.name ?? group.summary.base,
             )
           "
-        >
+          ><CodiconIcon name="layers" :size="13" />
           {{ t('git.common.restack.label') }}
         </Button>
       </SectionHeading>
@@ -112,8 +114,8 @@ async function removeFromStack(branch: string): Promise<void> {
         data-testid="branch-row"
         v-for="row in rowsFor(group.branches)"
         :key="row.name"
-        class="flex items-center gap-0.5 px-1"
-        :style="{ paddingLeft: `${4 + row.depth * 8}px` }"
+        class="flex items-center gap-0.5 pr-1"
+        :style="rowIndent(row.depth)"
         :data-row-id="`stack:${row.name}`"
         :tabindex="focusedRowId === `stack:${row.name}` ? 0 : -1"
       >
@@ -121,12 +123,11 @@ async function removeFromStack(branch: string): Promise<void> {
           data-testid="branch-row-main"
           class="flex items-center gap-0.5 flex-1 min-w-0 text-left"
         >
-          <span
+          <StatusDot
             v-if="row.isHead"
-            class="text-kira-sm text-muted-foreground"
+            tone="muted"
             :data-kira-tip="t('git.common.currentBranch.tooltip')"
-            >●</span
-          >
+          />
           <span class="truncate">{{ row.name }}</span>
           <span v-if="row.stale" :class="refBadgeClass('warn')" :data-kira-tip="row.staleText">
             {{ t('common.stale.status') }}

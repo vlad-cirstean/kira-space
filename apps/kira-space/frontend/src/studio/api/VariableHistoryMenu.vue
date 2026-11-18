@@ -3,8 +3,10 @@ import type { ApiVariableHistoryEntry } from '@shared/domain/variables';
 import InlineState from '@theme/components/InlineState.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { PopoverContent } from '@theme/components/ui/popover';
+import { PopoverContent, PopoverList } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
+import { rowVariants } from '@theme/lib/rowVariants';
+import { cn } from '@theme/lib/utils';
 import { formatRelative } from '@workbench/behaviour/format';
 import { reactive } from 'vue';
 import { useVariableSetStore } from './state/variables';
@@ -44,8 +46,8 @@ function onEye(entry: ApiVariableHistoryEntry): void {
 </script>
 
 <template>
-  <PopoverContent align="start" class="w-80 gap-0 p-0" data-testid="variable-history">
-    <div class="flex max-h-80 flex-col overflow-auto p-1">
+  <PopoverContent align="start" flush class="w-80" data-testid="variable-history">
+    <PopoverList class="max-h-80 overflow-auto">
       <InlineState
         v-if="variableSetStore.entries.length === 0"
         kind="empty"
@@ -57,7 +59,7 @@ function onEye(entry: ApiVariableHistoryEntry): void {
       <div
         v-for="entry in variableSetStore.entries"
         :key="entry.id"
-        class="flex items-center gap-1 px-1.5 py-1"
+        :class="cn(rowVariants(), 'h-auto py-1')"
         data-testid="variable-history-entry"
       >
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -84,6 +86,6 @@ function onEye(entry: ApiVariableHistoryEntry): void {
           @click="onEye(entry)"
         />
       </div>
-    </div>
+    </PopoverList>
   </PopoverContent>
 </template>

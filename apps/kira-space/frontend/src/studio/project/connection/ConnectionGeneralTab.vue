@@ -8,17 +8,16 @@ import {
   MIN_SERVER_VERSION,
 } from '@shared/domain/connection';
 import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
-import { colourLabel } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
-import SwatchRadio from '@theme/SwatchRadio.vue';
+import SwatchPicker from '@theme/SwatchPicker.vue';
 import SecretInput from '@workbench/components/SecretInput.vue';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, useId } from 'vue';
 import { control } from '../../bridge/control';
 import { revealConnectionSecret } from '../state/connectionReveal';
 import ConnectionEnginePicker from './ConnectionEnginePicker.vue';
@@ -38,6 +37,7 @@ const props = defineProps<{
   connectionName?: string;
 }>();
 const file = defineModel<ConnectionFileModel>({ required: true });
+const idBase = useId();
 const secrets = defineModel<{ password: string; uri: string }>('secrets', { required: true });
 
 const mode = computed(() => (file.value.mode === 'uri' ? 'uri' : 'fields'));
@@ -126,13 +126,16 @@ async function onBrowseDatabaseFile(): Promise<void> {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 p-3" data-testid="connection-section-general">
+  <div class="flex flex-col gap-3" data-testid="connection-section-general">
     <ConnectionEnginePicker v-if="pickingEngine" :kind="kind" @pick="pickKind" />
     <template v-else>
       <div class="flex gap-2 items-start">
-        <Field class="flex-2">
-          <FieldLabel>{{ t('common.field.name.label') }}</FieldLabel>
+        <Field class="flex-1">
+          <FieldLabel :for="`${idBase}-connection-name`">{{
+            t('common.field.name.label')
+          }}</FieldLabel>
           <Input
+            :id="`${idBase}-connection-name`"
             :model-value="file.name"
             :aria-invalid="props.errorFor('/name') ? true : undefined"
             class="font-ui"
@@ -144,24 +147,14 @@ async function onBrowseDatabaseFile(): Promise<void> {
           }}</FieldError>
         </Field>
         <Field class="flex-none">
-          <FieldLabel>{{ t('common.field.colour.label') }}</FieldLabel>
-          <fieldset
-            class="color-picker m-0 flex h-6.5 flex-wrap items-center gap-1 border-0 p-0"
-            :aria-label="t('studio.project.connectionDialog.colour.aria')"
-          >
-            <Tooltip v-for="color in PALETTE_COLOR_CHOICES" :key="color">
-              <TooltipTrigger as-child>
-                <SwatchRadio
-                  name="connection-color"
-                  :value="color"
-                  :color="color"
-                  :checked="(file.color ?? 'none') === color"
-                  @change="file.color = color"
-                />
-              </TooltipTrigger>
-              <TooltipContent>{{ colourLabel(color) }}</TooltipContent>
-            </Tooltip>
-          </fieldset>
+          <FieldLabel :id="`${idBase}-colour`">{{ t('common.field.colour.label') }}</FieldLabel>
+          <SwatchPicker
+            :model-value="file.color ?? 'none'"
+            :colors="PALETTE_COLOR_CHOICES"
+            class="h-control"
+            :labelledby="`${idBase}-colour`"
+            @update:model-value="(v) => (file.color = v)"
+          />
         </Field>
       </div>
 
@@ -171,7 +164,7 @@ async function onBrowseDatabaseFile(): Promise<void> {
         class="self-start"
         data-testid="connection-change-engine"
         @click="pickingEngine = true"
-      >
+        ><CodiconIcon name="arrow-swap" :size="13" />
         {{ t('studio.project.connectionDialog.changeEngine.title') }}
       </Button>
 
@@ -185,8 +178,9 @@ async function onBrowseDatabaseFile(): Promise<void> {
       <Field class="flex-1">
         <FieldLabel>{{ t('common.mode.label') }}</FieldLabel>
         <SecondaryTabs
-          variant="segmented"
+          variant="choice"
           size="kira-lg"
+          :aria-label="t('common.mode.label')"
           :model-value="mode"
           :items="MODE_ITEMS"
           @update:model-value="(v) => setMode(v as 'fields' | 'uri')"
@@ -195,10 +189,13 @@ async function onBrowseDatabaseFile(): Promise<void> {
 
       <template v-if="mode === 'fields' && isFileStyle">
         <Field class="flex-1">
-          <FieldLabel>{{ t('studio.project.connectionDialog.databaseFile.label') }}</FieldLabel>
+          <FieldLabel :for="`${idBase}-connection-database`">{{
+            t('studio.project.connectionDialog.databaseFile.label')
+          }}</FieldLabel>
           <div class="flex items-center gap-1">
             <div class="flex-1 min-w-0">
               <Input
+                :id="`${idBase}-connection-database`"
                 :model-value="file.database ?? ''"
                 :aria-invalid="props.errorFor('/database') ? true : undefined"
                 class="font-data"
@@ -223,8 +220,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
       <template v-else-if="mode === 'fields'">
         <div v-if="!isAwsStyle" class="flex gap-2 items-start">
           <Field class="flex-1">
-            <FieldLabel>{{ t('studio.project.connectionDialog.host.label') }}</FieldLabel>
+            <FieldLabel :for="`${idBase}-connection-host`">{{
+              t('studio.project.connectionDialog.host.label')
+            }}</FieldLabel>
             <Input
+              :id="`${idBase}-connection-host`"
               :model-value="file.host ?? ''"
               :aria-invalid="props.errorFor('/host') ? true : undefined"
               class="font-data"
@@ -233,9 +233,10 @@ async function onBrowseDatabaseFile(): Promise<void> {
             />
             <FieldError v-if="props.errorFor('/host')">{{ props.errorFor('/host') }}</FieldError>
           </Field>
-          <Field class="flex-none basis-24">
-            <FieldLabel>{{ t('common.port.label') }}</FieldLabel>
+          <Field class="flex-none w-24">
+            <FieldLabel :for="`${idBase}-connection-port`">{{ t('common.port.label') }}</FieldLabel>
             <NumberStepperInput
+              :id="`${idBase}-connection-port`"
               :model-value="file.port ? String(file.port) : ''"
               :aria-invalid="props.errorFor('/port') ? true : undefined"
               data-testid="connection-port"
@@ -246,8 +247,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
         </div>
         <div v-if="isAwsStyle" class="flex gap-2 items-start">
           <Field class="flex-1">
-            <FieldLabel>{{ t('studio.project.connectionDialog.region.label') }}</FieldLabel>
+            <FieldLabel :for="`${idBase}-connection-database`">{{
+              t('studio.project.connectionDialog.region.label')
+            }}</FieldLabel>
             <Input
+              :id="`${idBase}-connection-database`"
               :model-value="file.database ?? ''"
               :aria-invalid="props.errorFor('/database') ? true : undefined"
               class="font-data"
@@ -259,8 +263,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
             }}</FieldError>
           </Field>
           <Field class="flex-1">
-            <FieldLabel>{{ t('studio.project.connectionDialog.awsProfile.label') }}</FieldLabel>
+            <FieldLabel :for="`${idBase}-connection-username`">{{
+              t('studio.project.connectionDialog.awsProfile.label')
+            }}</FieldLabel>
             <Input
+              :id="`${idBase}-connection-username`"
               :model-value="file.username ?? ''"
               class="font-data"
               data-testid="connection-username"
@@ -270,12 +277,13 @@ async function onBrowseDatabaseFile(): Promise<void> {
         </div>
         <template v-else>
           <Field class="flex-1">
-            <FieldLabel>{{
+            <FieldLabel :for="`${idBase}-connection-database`">{{
               kind === 'kibana'
                 ? t('studio.kibana.space.label')
                 : t('studio.project.connectionDialog.database.label')
             }}</FieldLabel>
             <Input
+              :id="`${idBase}-connection-database`"
               :model-value="file.database ?? ''"
               :placeholder="kind === 'kibana' ? t('common.state.default.option') : undefined"
               :aria-invalid="props.errorFor('/database') ? true : undefined"
@@ -289,8 +297,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
           </Field>
           <div class="flex gap-2 items-start">
             <Field class="flex-1">
-              <FieldLabel>{{ t('common.user.label') }}</FieldLabel>
+              <FieldLabel :for="`${idBase}-connection-username`">{{
+                t('common.user.label')
+              }}</FieldLabel>
               <Input
+                :id="`${idBase}-connection-username`"
                 :model-value="file.username ?? ''"
                 class="font-data"
                 data-testid="connection-username"
@@ -298,8 +309,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
               />
             </Field>
             <Field class="flex-1">
-              <FieldLabel>{{ t('studio.project.connectionDialog.password.label') }}</FieldLabel>
+              <FieldLabel :for="`${idBase}-connection-password`">{{
+                t('studio.project.connectionDialog.password.label')
+              }}</FieldLabel>
               <SecretInput
+                :id="`${idBase}-connection-password`"
                 :model-value="secrets.password"
                 :set="savedPassword"
                 :reveal="connectionId ? () => revealSaved('password') : undefined"
@@ -319,8 +333,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
         </template>
       </template>
       <Field v-else class="flex-1">
-        <FieldLabel>{{ t('studio.project.connectionDialog.mode.uri.label') }}</FieldLabel>
+        <FieldLabel :for="`${idBase}-connection-uri`">{{
+          t('studio.project.connectionDialog.mode.uri.label')
+        }}</FieldLabel>
         <SecretInput
+          :id="`${idBase}-connection-uri`"
           :model-value="secrets.uri"
           :set="savedUri"
           :reveal="connectionId ? () => revealSaved('uri') : undefined"

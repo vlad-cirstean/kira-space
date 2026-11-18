@@ -4,14 +4,19 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
+import {
+  Field,
+  FieldDescription,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
 } from '@theme/components/ui/input-group';
-import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { computed, ref, useId } from 'vue';
 import { allowedToolsOf } from '../smart/smartSettings';
@@ -56,31 +61,29 @@ function resetTools(): void {
 
 <template>
   <FieldSet data-testid="smart-tools">
-    <div class="flex items-center gap-2">
-      <FieldLegend class="mb-0">{{ t('automations.smart.tools.label') }}</FieldLegend>
-      <Button
-        variant="dialog"
-        size="kira-lg"
-        class="ml-auto"
-        data-testid="smart-tools-default"
-        @click="resetTools"
-      >
-        {{ t('automations.smart.defaultTools.label') }}
-      </Button>
-    </div>
+    <FieldLegend>
+      {{ t('automations.smart.tools.label') }}
+      <template #actions>
+        <Button
+          variant="dialog"
+          size="kira-lg"
+          data-testid="smart-tools-default"
+          @click="resetTools"
+        >
+          {{ t('automations.smart.defaultTools.label') }}
+        </Button>
+      </template>
+    </FieldLegend>
     <div class="flex flex-wrap gap-x-4 gap-y-1">
-      <div v-for="tool in BUILTIN_TOOLS" :key="tool" class="flex items-center gap-1.5">
+      <Field v-for="tool in BUILTIN_TOOLS" :key="tool" orientation="horizontal" class="w-auto">
         <Checkbox
           :id="`${idBase}-${tool}`"
-          class="size-3.5"
           :model-value="smart.tools.includes(tool)"
           :data-testid="`smart-tool-${tool}`"
           @update:model-value="(v) => toggle(tool, v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
-        <Label :for="`${idBase}-${tool}`">{{ tool }}</Label>
-      </div>
+        />
+        <FieldLabel :for="`${idBase}-${tool}`">{{ tool }}</FieldLabel>
+      </Field>
     </div>
     <div v-if="bashOn" class="flex flex-col gap-1" data-testid="smart-bash-patterns">
       <FieldDescription>{{
@@ -103,6 +106,7 @@ function resetTools(): void {
       </div>
       <InputGroup>
         <InputGroupInput
+          :aria-label="t('automations.smart.bashPattern.label')"
           v-model="draft"
           :placeholder="t('automations.smart.bashExample.example')"
           class="font-data"

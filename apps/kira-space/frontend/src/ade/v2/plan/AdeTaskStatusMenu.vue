@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
@@ -61,6 +60,7 @@ async function pick(value: unknown): Promise<void> {
     </DropdownMenuTrigger>
     <DropdownMenuContent align="start" data-testid="ade-row-status-menu" @click.stop>
       <DropdownMenuLabel>{{ t('common.field.status.label') }}</DropdownMenuLabel>
+      <!-- radio: option body is an AdeChip -->
       <DropdownMenuRadioGroup :model-value="card.status.id" @update:model-value="pick">
         <DropdownMenuRadioItem
           v-for="s in statuses"
@@ -69,7 +69,6 @@ async function pick(value: unknown): Promise<void> {
           :data-testid="`ade-row-status-option-${s.id}`"
         >
           <AdeChip :label="s.name" :color="s.color" />
-          <template #indicator-icon><CodiconIcon name="check" :size="13" /></template>
         </DropdownMenuRadioItem>
       </DropdownMenuRadioGroup>
     </DropdownMenuContent>

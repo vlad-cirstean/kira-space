@@ -3,6 +3,7 @@ import type { ConnectionKind } from '@shared/domain/connection';
 import type { DataGripPreviewRow, DataGripReportRow } from '@shared/domain/datagrip';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -15,8 +16,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
@@ -24,26 +23,13 @@ import { computed } from 'vue';
 import { useConnectionsStore } from '../state/connections';
 import { looksAlreadyImported, useDatagripImportStore } from '../state/datagripImport';
 import EngineIcon from '../theme/EngineIcon.vue';
+import { KIND_ACCENT_CLASS } from './connection/kinds';
 
 // A real review step. Nothing is written until "Import N connections" is pressed —
 // every row here is either checkable (it maps to a supported engine and has enough of a JDBC URL
 // to build fields from) or greyed with the specific reason it cannot be. The password itself
 // is never fetched or shown here: only an outlook badge, resolved from file reads,
 // says what Import is expected to do.
-
-const KIND_ACCENT_CLASS: Record<ConnectionKind, string> = {
-  postgres: 'text-conn-cyan',
-  mariadb: 'text-conn-blue',
-  mysql: 'text-conn-teal',
-  sqlite: 'text-conn-violet',
-  clickhouse: 'text-conn-orange',
-  mongodb: 'text-conn-green',
-  redis: 'text-conn-red',
-  kafka: 'text-conn-amber',
-  sqs: 'text-conn-magenta',
-  s3: 'text-conn-olive',
-  kibana: 'text-conn-indigo',
-};
 
 const OUTLOOK_KEY: Record<string, MessageKey> = {
   'will-attempt': 'studio.project.dataGripImport.outlook.willAttempt.label',
@@ -191,8 +177,8 @@ async function onConfirm(): Promise<void> {
         }}</DialogTitle>
       </DialogHeader>
 
-      <DialogBody flush>
-        <div v-if="!report" class="flex flex-col gap-2 p-3">
+      <DialogBody>
+        <div v-if="!report" class="flex flex-col gap-2">
           <Alert
             v-if="secretStatus && !secretStatus.available"
             data-testid="datagrip-secrets-unavailable"
@@ -228,12 +214,10 @@ async function onConfirm(): Promise<void> {
               <span class="w-4 shrink-0 flex justify-center">
                 <Checkbox
                   v-if="row.importable"
+                  :aria-label="t('common.action.selectItem.aria', { name: row.name })"
                   :model-value="datagripImportStore.selected.has(row.uuid)"
-                  class="size-3.5"
                   @update:model-value="datagripImportStore.toggleDataGripRow(row.uuid)"
-                >
-                  <CodiconIcon name="check" :size="12" />
-                </Checkbox>
+                />
               </span>
               <span
                 v-if="row.importable"
@@ -256,16 +240,13 @@ async function onConfirm(): Promise<void> {
                 <span v-if="row.username" class="whitespace-nowrap" :class="rowMeta">{{
                   row.username
                 }}</span>
-                <Tooltip v-if="looksAlreadyImported(row)">
-                  <TooltipTrigger as-child>
-                    <Badge variant="warn" data-testid="datagrip-row-duplicate">
-                      {{ t('studio.project.dataGripImport.badge.duplicate.label') }}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>{{
-                    t('studio.project.dataGripImport.badge.duplicate.tooltip')
-                  }}</TooltipContent>
-                </Tooltip>
+                <TextTooltip
+                  v-if="looksAlreadyImported(row)"
+                  :text="t('studio.project.dataGripImport.badge.duplicate.tooltip')"
+                  ><Badge variant="warn" data-testid="datagrip-row-duplicate">
+                    {{ t('studio.project.dataGripImport.badge.duplicate.label') }}
+                  </Badge></TextTooltip
+                >
                 <Badge
                   v-if="row.passwordOutlook"
                   class="ml-auto"
@@ -287,14 +268,11 @@ async function onConfirm(): Promise<void> {
               </template>
 
               <span v-if="row.warnings.length > 0" class="flex shrink-0 gap-0.5">
-                <Tooltip v-for="w in row.warnings" :key="w">
-                  <TooltipTrigger as-child>
-                    <span class="size-4 flex items-center justify-center shrink-0 text-subtle">
-                      <CodiconIcon name="warning" :size="12" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{{ warningLabel(w) }}</TooltipContent>
-                </Tooltip>
+                <TextTooltip v-for="w in row.warnings" :key="w" :text="warningLabel(w)"
+                  ><span class="size-4 flex items-center justify-center shrink-0 text-warn">
+                    <CodiconIcon name="warning" :size="12" />
+                  </span></TextTooltip
+                >
               </span>
             </div>
             <InlineState v-if="rows.length === 0" kind="empty">{{
@@ -306,7 +284,7 @@ async function onConfirm(): Promise<void> {
         <!-- Review finding: the report Import returns used to be discarded on close with no display
          at all — every per-row outcome (created, password imported, or the specific reason it
          wasn't) is now shown here instead of auto-closing. -->
-        <div v-else class="flex flex-col gap-2 p-3">
+        <div v-else class="flex flex-col gap-2">
           <Alert data-testid="datagrip-report-summary" :variant="reportTone">
             <AlertDescription>
               {{ reportSummary }}
@@ -338,11 +316,17 @@ async function onConfirm(): Promise<void> {
 
       <DialogFooter>
         <template v-if="!report" #start>
-          <FieldDescription class="font-data">{{
-            datagripImportStore.projectPath
-          }}</FieldDescription>
+          <span class="font-data">{{ datagripImportStore.projectPath }}</span>
         </template>
         <template v-if="!report">
+          <Button
+            variant="dialog"
+            size="kira-lg"
+            data-testid="datagrip-import-cancel"
+            @click="datagripImportStore.closeDataGripImportDialog"
+          >
+            {{ t('common.action.cancel.label') }}
+          </Button>
           <Button
             v-if="!datagripImportStore.preview"
             variant="dialog"
@@ -352,14 +336,6 @@ async function onConfirm(): Promise<void> {
             @click="pick.run"
           >
             {{ t('studio.project.dataGripImport.chooseAnother.label') }}
-          </Button>
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            data-testid="datagrip-import-cancel"
-            @click="datagripImportStore.closeDataGripImportDialog"
-          >
-            {{ t('common.action.cancel.label') }}
           </Button>
           <Button
             variant="dialog-primary"
@@ -374,7 +350,7 @@ async function onConfirm(): Promise<void> {
         </template>
         <Button
           v-else
-          variant="dialog-primary"
+          variant="dialog"
           size="kira-lg"
           data-testid="datagrip-import-report-close"
           @click="datagripImportStore.closeDataGripImportDialog"

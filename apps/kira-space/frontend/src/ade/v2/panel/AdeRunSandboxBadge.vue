@@ -1,18 +1,25 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import CodeBlock from '@theme/components/CodeBlock.vue';
+import InlineState from '@theme/components/InlineState.vue';
+import KeyValueList from '@theme/components/KeyValueList.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { FieldDescription } from '@theme/components/ui/field';
-import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
+import { Popover, PopoverContent, PopoverList, PopoverTrigger } from '@theme/components/ui/popover';
 import { formatClockTime } from '@theme/format';
 import { t } from '@theme/i18n';
+import { rowIndent, rowVariants } from '@theme/lib/rowVariants';
+import { cn } from '@theme/lib/utils';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { computed, ref } from 'vue';
 import { useRunSandbox, useSessionSandbox } from '../queries';
@@ -41,11 +48,6 @@ const label = computed(() => {
         : 'space.ade.sandbox.write.label',
   );
 });
-const tone = computed(() => {
-  const b = props.badge;
-  if (b.denials > 0 || b.access === 'off') return 'text-warn-text';
-  return b.enforced ? 'text-muted-foreground' : 'text-subtle';
-});
 const d = computed(() => detail.value.data.value ?? null);
 const lists = computed(() =>
   d.value
@@ -67,16 +69,16 @@ const lists = computed(() =>
         variant="toolbar"
         size="kira"
         class="shrink-0 gap-1"
-        :class="tone"
+        :data-tone="badge.denials > 0 || badge.access === 'off' ? 'warn' : undefined"
         :data-testid="sessionId ? 'ade-session-sandbox-badge' : 'ade-run-sandbox'"
         :data-access="badge.access"
         :data-enforced="badge.enforced"
         :data-denials="badge.denials"
       >
-        <CodiconIcon name="lock" :size="12" />{{ label }}
+        <CodiconIcon name="lock" :size="13" />{{ label }}
       </Button>
     </PopoverTrigger>
-    <PopoverContent class="w-96 text-kira-md" align="start" data-testid="ade-run-sandbox-popover">
+    <PopoverContent class="w-96" align="start" data-testid="ade-run-sandbox-popover">
       <div v-if="d" class="flex flex-col gap-2">
         <FieldDescription data-testid="ade-run-sandbox-enforced">{{
           d.enforced ? t('space.ade.sandbox.popover.enforced.status') : d.reason
@@ -87,37 +89,38 @@ const lists = computed(() =>
           class="flex flex-col gap-0.5"
           :data-testid="`ade-run-sandbox-${id}`"
         >
-          <span class="text-kira-sm text-muted-foreground">{{ t(key) }}</span>
+          <SectionHeading flush :label="t(key)" />
           <span v-for="p in paths" :key="p" class="truncate font-data text-kira-sm">{{ p }}</span>
         </div>
-        <div class="flex gap-3 text-kira-sm">
-          <span class="text-muted-foreground">{{
-            t('space.ade.sandbox.popover.network.label')
-          }}</span>
-          <span data-testid="ade-run-sandbox-network">{{
-            d.network
-              ? t('space.ade.sandbox.popover.networkOn.status')
-              : t('space.ade.sandbox.popover.networkOff.status')
-          }}</span>
-        </div>
+        <KeyValueList density="compact">
+          <dt>{{ t('space.ade.sandbox.popover.network.label') }}</dt>
+          <dd data-testid="ade-run-sandbox-network">
+            {{
+              d.network
+                ? t('space.ade.sandbox.popover.networkOn.status')
+                : t('space.ade.sandbox.popover.networkOff.status')
+            }}
+          </dd>
+        </KeyValueList>
         <div class="flex flex-col gap-0.5" data-testid="ade-run-sandbox-denials">
-          <span class="text-kira-sm text-muted-foreground">{{
-            t('space.ade.sandbox.popover.denials.label')
-          }}</span>
-          <span v-if="d.denials.length === 0" class="text-kira-sm text-subtle">{{
+          <SectionHeading flush :label="t('space.ade.sandbox.popover.denials.label')" />
+          <InlineState v-if="d.denials.length === 0" kind="empty">{{
             t('common.state.none.option')
-          }}</span>
-          <div
-            v-for="(x, i) in d.denials"
-            :key="i"
-            class="flex gap-2 font-data text-kira-sm"
-            data-testid="ade-run-sandbox-denial"
-          >
-            <span class="shrink-0 text-subtle">{{ formatClockTime(x.at) }}</span>
-            <span class="shrink-0 text-warn-text">{{ x.op }}</span>
-            <span class="min-w-0 flex-1 truncate">{{ x.target }}</span>
-            <span class="shrink-0 text-subtle">{{ x.process }}</span>
-          </div>
+          }}</InlineState>
+          <PopoverList v-else class="p-0">
+            <div
+              v-for="(x, i) in d.denials"
+              :key="i"
+              :class="cn(rowVariants({ layout: 'tree' }), 'gap-2 text-kira-sm')"
+              :style="rowIndent(0)"
+              data-testid="ade-run-sandbox-denial"
+            >
+              <span class="shrink-0 text-subtle">{{ formatClockTime(x.at) }}</span>
+              <span class="shrink-0 text-warn">{{ x.op }}</span>
+              <span class="min-w-0 flex-1 truncate font-data">{{ x.target }}</span>
+              <span class="shrink-0 text-subtle">{{ x.process }}</span>
+            </div>
+          </PopoverList>
           <span v-if="d.denialCount > d.denials.length" class="text-kira-sm text-subtle">{{
             t('space.ade.sandbox.popover.shown.status', {
               shown: d.denials.length,
@@ -127,36 +130,45 @@ const lists = computed(() =>
         </div>
         <Button
           v-if="d.profile"
-          variant="dialog"
+          variant="toolbar"
           size="kira"
           class="self-start"
           data-testid="ade-run-sandbox-profile"
           @click="profileOpen = true"
         >
+          <CodiconIcon name="eye" :size="13" />
           {{ t('space.ade.sandbox.popover.viewProfile.label') }}
         </Button>
       </div>
     </PopoverContent>
   </Popover>
   <Dialog v-model:open="profileOpen">
-    <DialogContent size="lg" data-testid="ade-run-sandbox-profile-dialog">
+    <DialogContent size="xl" data-testid="ade-run-sandbox-profile-dialog">
       <DialogHeader>
         <DialogTitle>{{ t('space.ade.sandbox.profile.title') }}</DialogTitle>
       </DialogHeader>
       <DialogBody>
-        <Button
-          variant="toolbar"
-          size="kira"
-          class="self-start"
-          data-testid="ade-run-sandbox-profile-copy"
-          @click="copy(d?.profile ?? '')"
-        >
-          {{ copied ? t('common.copy.copied.announce') : t('common.action.copy.label') }}
-        </Button>
         <CodeBlock class="max-h-96 overflow-auto" data-testid="ade-run-sandbox-profile-text">{{
           d?.profile ?? ''
         }}</CodeBlock>
       </DialogBody>
+      <DialogFooter>
+        <template #start>
+          <Button
+            variant="dialog"
+            size="kira-lg"
+            data-testid="ade-run-sandbox-profile-copy"
+            @click="copy(d?.profile ?? '')"
+          >
+            {{ copied ? t('common.copy.copied.announce') : t('common.action.copy.label') }}
+          </Button>
+        </template>
+        <DialogClose as-child>
+          <Button variant="dialog" size="kira-lg" data-dialog-dismiss>{{
+            t('common.action.close.label')
+          }}</Button>
+        </DialogClose>
+      </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>

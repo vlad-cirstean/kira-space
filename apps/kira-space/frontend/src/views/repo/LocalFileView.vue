@@ -93,6 +93,7 @@ onUnmounted(() => {
     <div v-if="isMarkdown" class="flex flex-col h-full w-full">
       <ViewToolbar>
         <SecondaryTabs
+          variant="segmented"
           :model-value="view"
           :items="viewOptions"
           data-testid="local-file-view-toggle"
@@ -111,7 +112,7 @@ onUnmounted(() => {
       <div
         v-if="view === 'reading'"
         ref="readingPane"
-        class="kira-prose flex-1 min-h-0 overflow-auto text-fg bg-bg font-ui text-kira-md leading-relaxed p-4 [&>*]:max-w-prose [&>pre]:max-w-none [&>table]:max-w-none"
+        class="kira-prose flex-1 min-h-0 overflow-auto text-fg bg-bg font-ui text-kira-md leading-normal p-3 [&>*]:max-w-prose [&>pre]:max-w-none [&>table]:max-w-none"
         data-testid="local-file-markdown"
         v-html="renderedHtml"
       />
@@ -140,6 +141,7 @@ onUnmounted(() => {
     v-else
     fill
     icon="warning"
-    :title="errorMessage || t('space.repo.view.openFileFailed.error')"
+    :title="t('space.repo.view.openFileFailed.error')"
+    :description="errorMessage || undefined"
   />
 </template>

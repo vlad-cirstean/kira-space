@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { useDebounceFn, useEventListener, useResizeObserver } from '@vueuse/core';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import { TIMING } from '@workbench/behaviour/timing';
@@ -138,48 +140,55 @@ function leave(): void {
     :style="viewportHeight ? { height: `${viewportHeight}px` } : undefined"
     data-testid="terminal-screen"
   >
-    <header class="flex items-center gap-2 border-b border-border bg-chrome px-2 py-1">
-      <Button
-        size="touch-icon"
-        variant="toolbar"
-        :aria-label="t('common.action.back.label')"
-        data-testid="term-back"
-        @click="leave"
-      >
-        <CodiconIcon name="chevron-left" :size="16" />
-      </Button>
-      <h1 class="m-0 min-w-0 flex-1 truncate text-kira-lg font-medium">{{
-        t('common.module.terminal.label')
-      }}</h1>
-      <span class="text-kira-sm text-muted-foreground" role="status" data-testid="term-status">
-        {{ t(STATUS_LABEL[remote.status.value]) }}
-      </span>
-      <Button
-        size="touch-icon"
-        variant="toolbar"
-        :aria-label="t('mobile.terminal.fontDown.aria')"
-        data-testid="term-font-down"
-        :disabled="fontSize <= FONT_MIN"
-        @click="step(-1)"
-        >{{
-          t('mobile.terminal.fontDown.label')
-        }}</Button
-      >
-      <Button
-        size="touch-icon"
-        variant="toolbar"
-        :aria-label="t('mobile.terminal.fontUp.aria')"
-        data-testid="term-font-up"
-        :disabled="fontSize >= FONT_MAX"
-        @click="step(1)"
-        >{{
-          t('mobile.terminal.fontUp.label')
-        }}</Button
-      >
-      <Button size="touch" variant="dialog" data-testid="term-release" @click="leave">{{
-        t('mobile.terminal.release.label')
-      }}</Button>
-    </header>
+    <DetailHeader
+      as="h1"
+      class="border-b border-border bg-chrome"
+      :title="t('common.module.terminal.label')"
+    >
+      <template #leading>
+        <Button
+          size="touch-icon"
+          variant="toolbar"
+          :aria-label="t('common.action.back.label')"
+          data-testid="term-back"
+          @click="leave"
+        >
+          <CodiconIcon :name="ICON.back" :size="16" />
+        </Button>
+      </template>
+      <template #meta>
+        <span role="status" data-testid="term-status">
+          {{ t(STATUS_LABEL[remote.status.value]) }}
+        </span>
+      </template>
+      <template #actions>
+        <Button
+          size="touch-icon"
+          variant="toolbar"
+          :aria-label="t('mobile.terminal.fontDown.aria')"
+          data-testid="term-font-down"
+          :disabled="fontSize <= FONT_MIN"
+          @click="step(-1)"
+          >{{
+            t('mobile.terminal.fontDown.label')
+          }}</Button
+        >
+        <Button
+          size="touch-icon"
+          variant="toolbar"
+          :aria-label="t('mobile.terminal.fontUp.aria')"
+          data-testid="term-font-up"
+          :disabled="fontSize >= FONT_MAX"
+          @click="step(1)"
+          >{{
+            t('mobile.terminal.fontUp.label')
+          }}</Button
+        >
+        <Button size="touch" variant="dialog" data-testid="term-release" @click="leave">{{
+          t('mobile.terminal.release.label')
+        }}</Button>
+      </template>
+    </DetailHeader>
 
     <PermissionHint v-if="!permissions.agentInput" :what="t('mobile.terminal.controlOff.hint')" />
     <template v-else>
@@ -201,6 +210,7 @@ function leave(): void {
         @submit.prevent="sendCompose"
       >
         <Input
+          :aria-label="t('common.message.label')"
           :model-value="compose"
           size="touch"
           class="flex-1"

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
+import { Popover, PopoverContent, PopoverList, PopoverTrigger } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
+import { rowVariants } from '@theme/lib/rowVariants';
+import { cn } from '@theme/lib/utils';
 import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
@@ -71,20 +73,20 @@ const archived = computed(() =>
           {{ t('space.ade.orchestrator.archivedChildren.label', { count: archived.length }) }}
         </Button>
       </PopoverTrigger>
-      <PopoverContent class="w-80 gap-0 p-1" align="start">
-        <Button
-          v-for="a in archived"
-          :key="a.id"
-          type="button"
-          variant="toolbar"
-          size="status"
-          class="w-full justify-start rounded-none text-left"
-          data-testid="ade-card-archived-child"
-          :data-task-id="a.id"
-          @click.stop="ui.select(a.id)"
-        >
-          <span class="truncate">{{ a.title }}</span>
-        </Button>
+      <PopoverContent flush class="w-80" align="start">
+        <PopoverList>
+          <button
+            v-for="a in archived"
+            :key="a.id"
+            type="button"
+            :class="cn(rowVariants(), 'w-full border-0 bg-transparent text-left')"
+            data-testid="ade-card-archived-child"
+            :data-task-id="a.id"
+            @click.stop="ui.select(a.id)"
+          >
+            <span class="truncate">{{ a.title }}</span>
+          </button>
+        </PopoverList>
       </PopoverContent>
     </Popover>
   </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CheckIcon } from '@lucide/vue';
+import { CheckIcon, MinusIcon } from '@lucide/vue';
 import { cn } from '@theme/lib/utils';
 import { reactiveOmit } from '@vueuse/core';
 import type { CheckboxRootEmits, CheckboxRootProps } from 'reka-ui';
@@ -31,7 +31,8 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
       class="[&>svg]:size-2.5 grid place-content-center text-current transition-none"
     >
       <slot v-bind="slotProps">
-        <CheckIcon />
+        <MinusIcon v-if="slotProps.state === 'indeterminate'" />
+        <CheckIcon v-else />
       </slot>
     </CheckboxIndicator>
   </CheckboxRoot>

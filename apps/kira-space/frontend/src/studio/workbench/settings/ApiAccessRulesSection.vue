@@ -1,16 +1,25 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
-import { Field, FieldDescription, FieldLegend } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
-import { NativeSelect } from '@theme/components/ui/native-select';
+import {
+  Field,
+  FieldDescription,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import { rowVariants } from '@theme/lib/rowVariants';
+import { cn } from '@theme/lib/utils';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import { computed, ref, useId } from 'vue';
+import { computed, ref } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
 import type { ApiRule } from '../../../state/settingsDomain';
 import ApiAccessRuleDialog from '../apiaccess/ApiAccessRuleDialog.vue';
@@ -33,7 +42,20 @@ const write = useAsyncAction((next: ApiRule[]) =>
 const setDefault = useAsyncAction((apiDefault: 'ask' | 'deny') =>
   settingsStore.patchSettings({ dbMcp: { apiDefault } }),
 );
-const defaultId = useId();
+const defaultItems = computed(() => [
+  {
+    value: 'ask',
+    label: t('studio.project.connectionDialog.mcp.prompt.label'),
+    disabled: setDefault.pending.value,
+    testid: 'settings-db-mcp-api-default-ask-option',
+  },
+  {
+    value: 'deny',
+    label: t('common.action.deny.label'),
+    disabled: setDefault.pending.value,
+    testid: 'settings-db-mcp-api-default-deny-option',
+  },
+]);
 const defaultHint = computed(() => {
   if (settingsStore.dbMcp.apiDefault === 'deny') return 'deny';
   return settingsStore.dbMcp.apiApproval === 'never' ? 'ask-never' : 'ask';
@@ -65,140 +87,134 @@ function onRemove(index: number): void {
 </script>
 
 <template>
-  <FieldLegend>{{ t('studio.settings.dbMcp.apiRules.legend.label') }}</FieldLegend>
-  <FieldDescription>{{ t('studio.settings.dbMcp.apiRules.description') }}</FieldDescription>
-  <Alert
-    v-if="settingsStore.dbMcp.apiRulesInvalid"
-    variant="error"
-    data-testid="settings-db-mcp-api-rules-invalid"
-  >
-    <AlertDescription>{{ t('studio.settings.dbMcp.apiRules.invalid.body') }}</AlertDescription>
-  </Alert>
-  <ul
-    v-if="rules.length"
-    class="flex flex-col m-0 p-0 list-none gap-0.5"
-    data-testid="settings-db-mcp-api-rules"
-  >
-    <li v-for="(rule, i) in rules" :key="i">
-      <Card
-        variant="list"
-        class="flex-row items-center justify-between gap-1.5"
-        data-testid="settings-db-mcp-api-rule"
-      >
-        <div class="flex min-w-0 items-center gap-1.5">
-          <Badge :variant="rule.effect === 'allow' ? 'ok' : 'error'">{{
-            t(
-              rule.effect === 'allow'
-                ? 'studio.project.connectionDialog.mcp.allow.label'
-                : 'common.action.deny.label',
+  <FieldSet>
+    <FieldLegend>{{ t('studio.settings.dbMcp.apiRules.legend.label') }}</FieldLegend>
+    <FieldDescription>{{ t('studio.settings.dbMcp.apiRules.description') }}</FieldDescription>
+    <Alert
+      v-if="settingsStore.dbMcp.apiRulesInvalid"
+      variant="error"
+      data-testid="settings-db-mcp-api-rules-invalid"
+    >
+      <AlertDescription>{{ t('studio.settings.dbMcp.apiRules.invalid.body') }}</AlertDescription>
+    </Alert>
+    <Card v-if="rules.length" variant="list">
+      <ul class="m-0 flex list-none flex-col p-0" data-testid="settings-db-mcp-api-rules">
+        <li
+          v-for="(rule, i) in rules"
+          :key="i"
+          :class="
+            cn(
+              rowVariants({ layout: 'double' }),
+              'items-center justify-between gap-1.5 whitespace-normal',
             )
-          }}</Badge>
-          <span class="break-all font-data text-kira-md">{{ rule.hosts.join(', ') }}</span>
-          <span class="shrink-0 text-muted-foreground text-kira-md">{{
-            rule.methods.includes('*')
-              ? t('studio.settings.dbMcp.apiRules.anyMethod.label')
-              : rule.methods.join(', ')
-          }}</span>
-        </div>
-        <div class="flex shrink-0 items-center gap-0.5">
-          <Button
-            variant="toolbar"
-            size="kira-icon"
-            :aria-label="t('studio.settings.dbMcp.apiRules.edit.aria')"
-            data-testid="api-rule-edit"
-            @click="openDialog(i)"
-          >
-            <CodiconIcon :name="ICON.edit" :size="13" />
-          </Button>
-          <Button
-            variant="toolbar"
-            size="kira-icon"
-            :pending="remove.pending.value"
-            :aria-label="t('studio.project.connectionDialog.removeRule.tooltip')"
-            data-testid="api-rule-remove"
-            @click="onRemove(i)"
-          >
-            <CodiconIcon :name="ICON.delete" :size="13" />
-          </Button>
-        </div>
-      </Card>
-    </li>
-  </ul>
-  <FieldDescription v-else data-testid="settings-db-mcp-api-rules-empty">{{
-    t('studio.settings.dbMcp.apiRules.empty.body')
-  }}</FieldDescription>
-  <Alert v-if="remove.error.value" variant="error" data-testid="settings-db-mcp-api-rules-error">
-    <AlertDescription>{{ remove.error.value }}</AlertDescription>
-  </Alert>
-  <Button
-    variant="dialog"
-    size="kira-lg"
-    class="self-start"
-    data-testid="settings-db-mcp-api-rules-add"
-    @click="openDialog(null)"
-  >
-    <CodiconIcon :name="ICON.add" :size="13" />
-    {{ t('studio.settings.dbMcp.apiRules.add.label') }}
-  </Button>
-  <Field data-testid="settings-db-mcp-api-default-field">
-    <Label :for="defaultId">{{ t('studio.settings.dbMcp.apiDefault.label') }}</Label>
-    <NativeSelect
-      :id="defaultId"
-      variant="bordered"
+          "
+          data-testid="settings-db-mcp-api-rule"
+        >
+          <div class="flex min-w-0 items-center gap-1.5">
+            <Badge :variant="rule.effect === 'allow' ? 'ok' : 'error'">{{
+              t(
+                rule.effect === 'allow'
+                  ? 'studio.project.connectionDialog.mcp.allow.label'
+                  : 'common.action.deny.label',
+              )
+            }}</Badge>
+            <span class="break-all font-data text-kira-md">{{ rule.hosts.join(', ') }}</span>
+            <span class="shrink-0 text-muted-foreground text-kira-md">{{
+              rule.methods.includes('*')
+                ? t('studio.settings.dbMcp.apiRules.anyMethod.label')
+                : rule.methods.join(', ')
+            }}</span>
+          </div>
+          <div class="flex shrink-0 items-center gap-0.5">
+            <TooltipIconButton
+              :icon="ICON.edit"
+              :label="t('studio.settings.dbMcp.apiRules.edit.aria')"
+              data-testid="api-rule-edit"
+              @click="openDialog(i)"
+            />
+            <TooltipIconButton
+              :icon="ICON.delete"
+              :label="t('studio.project.connectionDialog.removeRule.tooltip')"
+              :pending="remove.pending.value"
+              data-testid="api-rule-remove"
+              @click="onRemove(i)"
+            />
+          </div>
+        </li>
+      </ul>
+    </Card>
+    <InlineState kind="empty" v-else data-testid="settings-db-mcp-api-rules-empty">{{
+      t('studio.settings.dbMcp.apiRules.empty.body')
+    }}</InlineState>
+    <Alert v-if="remove.error.value" variant="error" data-testid="settings-db-mcp-api-rules-error">
+      <AlertDescription>{{ remove.error.value }}</AlertDescription>
+    </Alert>
+    <Button
+      variant="dialog"
       size="kira-lg"
       class="self-start"
-      data-testid="settings-db-mcp-api-default"
-      :model-value="settingsStore.dbMcp.apiDefault"
-      :disabled="setDefault.pending.value"
-      @update:model-value="onDefaultChange"
+      data-testid="settings-db-mcp-api-rules-add"
+      @click="openDialog(null)"
     >
-      <option value="ask">{{ t('studio.project.connectionDialog.mcp.prompt.label') }}</option>
-      <option value="deny">{{ t('common.action.deny.label') }}</option>
-    </NativeSelect>
-    <FieldDescription
-      v-if="defaultHint === 'deny'"
-      data-testid="settings-db-mcp-api-default-deny"
-      >{{
-        t('studio.settings.dbMcp.apiDefault.deny.body')
-      }}</FieldDescription
-    >
-    <FieldDescription
-      v-else-if="defaultHint === 'ask-never'"
-      data-testid="settings-db-mcp-api-default-ask-never"
-      >{{
-        t('studio.settings.dbMcp.apiDefault.askNever.body')
-      }}</FieldDescription
-    >
-    <FieldDescription v-else data-testid="settings-db-mcp-api-default-ask">{{
-      t('studio.settings.dbMcp.apiDefault.ask.body')
-    }}</FieldDescription>
+      <CodiconIcon :name="ICON.add" :size="13" />
+      {{ t('studio.settings.dbMcp.apiRules.add.label') }}
+    </Button>
+    <Field data-testid="settings-db-mcp-api-default-field">
+      <FieldLabel>{{ t('studio.settings.dbMcp.apiDefault.label') }}</FieldLabel>
+      <SecondaryTabs
+        variant="choice"
+        size="kira-lg"
+        :aria-label="t('studio.settings.dbMcp.apiDefault.label')"
+        :model-value="settingsStore.dbMcp.apiDefault"
+        :items="defaultItems"
+        data-testid="settings-db-mcp-api-default"
+        @update:model-value="onDefaultChange"
+      />
+      <FieldDescription
+        v-if="defaultHint === 'deny'"
+        data-testid="settings-db-mcp-api-default-deny"
+        >{{
+          t('studio.settings.dbMcp.apiDefault.deny.body')
+        }}</FieldDescription
+      >
+      <FieldDescription
+        v-else-if="defaultHint === 'ask-never'"
+        data-testid="settings-db-mcp-api-default-ask-never"
+        >{{
+          t('studio.settings.dbMcp.apiDefault.askNever.body')
+        }}</FieldDescription
+      >
+      <FieldDescription v-else data-testid="settings-db-mcp-api-default-ask">{{
+        t('studio.settings.dbMcp.apiDefault.ask.body')
+      }}</FieldDescription>
+      <Alert
+        v-if="setDefault.error.value"
+        variant="error"
+        data-testid="settings-db-mcp-api-default-error"
+      >
+        <AlertDescription>{{ setDefault.error.value }}</AlertDescription>
+      </Alert>
+    </Field>
     <Alert
-      v-if="setDefault.error.value"
-      variant="error"
-      data-testid="settings-db-mcp-api-default-error"
+      v-if="allowsNothing(rules, settingsStore.dbMcp.apiDefault)"
+      variant="warn"
+      data-testid="settings-db-mcp-api-rules-no-allow"
     >
-      <AlertDescription>{{ setDefault.error.value }}</AlertDescription>
+      <AlertDescription>{{ t('studio.settings.dbMcp.apiRules.noAllow.body') }}</AlertDescription>
     </Alert>
-  </Field>
-  <Alert
-    v-if="allowsNothing(rules, settingsStore.dbMcp.apiDefault)"
-    variant="warn"
-    data-testid="settings-db-mcp-api-rules-no-allow"
-  >
-    <AlertDescription>{{ t('studio.settings.dbMcp.apiRules.noAllow.body') }}</AlertDescription>
-  </Alert>
-  <Alert
-    v-if="allowsAnyHost(rules)"
-    variant="warn"
-    data-testid="settings-db-mcp-api-rules-allow-any"
-  >
-    <AlertDescription>{{ t('studio.settings.dbMcp.apiRules.allowAny.body') }}</AlertDescription>
-  </Alert>
-  <ApiAccessRuleDialog
-    v-model:open="dialogOpen"
-    :rule="editingRule"
-    :pending="write.pending.value"
-    :error="write.error.value"
-    @save="onSave"
-  />
+    <Alert
+      v-if="allowsAnyHost(rules)"
+      variant="warn"
+      data-testid="settings-db-mcp-api-rules-allow-any"
+    >
+      <AlertDescription>{{ t('studio.settings.dbMcp.apiRules.allowAny.body') }}</AlertDescription>
+    </Alert>
+    <ApiAccessRuleDialog
+      v-model:open="dialogOpen"
+      :rule="editingRule"
+      :pending="write.pending.value"
+      :error="write.error.value"
+      @save="onSave"
+    />
+  </FieldSet>
 </template>

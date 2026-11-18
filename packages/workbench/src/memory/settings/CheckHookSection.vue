@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import CodeBlock from '@theme/components/CodeBlock.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Card } from '@theme/components/ui/card';
 import { FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -29,13 +29,7 @@ const hookCopy = useCopy();
       </template>
       <template v-if="install">
         <FieldDescription>{{ t('memory.checkHook.install.hint') }}</FieldDescription>
-        <Card
-          class="font-data whitespace-pre-wrap break-all select-all text-kira-sm leading-normal"
-          data-testid="memory-check-install"
-          >{{
-            install
-          }}</Card
-        >
+        <CodeBlock class="select-all" data-testid="memory-check-install">{{ install }}</CodeBlock>
         <div class="flex items-center gap-1">
           <Button
             variant="dialog"
@@ -51,13 +45,7 @@ const hookCopy = useCopy();
           </Button>
         </div>
         <FieldDescription>{{ t('memory.checkHook.hook.hint') }}</FieldDescription>
-        <Card
-          class="font-data whitespace-pre-wrap break-all select-all text-kira-sm leading-normal"
-          data-testid="memory-check-hook"
-          >{{
-            hook
-          }}</Card
-        >
+        <CodeBlock class="select-all" data-testid="memory-check-hook">{{ hook }}</CodeBlock>
         <div class="flex items-center gap-1">
           <Button
             variant="dialog"

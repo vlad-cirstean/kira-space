@@ -5,7 +5,8 @@ import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { tableHeadClass, tableHeadRowClass, tableRowClass } from '@theme/components/ui/table';
 import { t } from '@theme/i18n';
-import { rowActions } from '@theme/lib/rowVariants';
+import { rowActions, rowMeta } from '@theme/lib/rowVariants';
+import { TONE_DOT } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
 import { useResizeObserver } from '@vueuse/core';
 import { displayValue, formatBytes, formatPercent } from '@workbench/behaviour/format';
@@ -15,7 +16,7 @@ import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualR
 import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed, onMounted, ref, watch } from 'vue';
-import { publishedPorts, stateDotTone } from '../lib/format';
+import { containerStateTone, publishedPorts } from '../lib/format';
 import { useContainerAction, useContainers } from '../queries';
 import { useDockerStatsStore } from '../state/dockerStats';
 import { useDockerUiStore } from '../state/dockerUi';
@@ -149,7 +150,7 @@ const nav = useListNavigation<DockerContainer>({
           @click="open(c)"
           @dblclick="open(c, 'logs')"
         >
-          <StatusDot :tone="stateDotTone(c.state)" />
+          <StatusDot :tone="TONE_DOT[containerStateTone(c.state)]" />
           <span class="flex min-w-0 flex-col">
             <span class="flex min-w-0 items-baseline gap-1.5">
               <span
@@ -159,7 +160,7 @@ const nav = useListNavigation<DockerContainer>({
                   c.name
                 }}</span
               >
-              <span v-if="c.composeProject" class="shrink-0 text-kira-sm text-muted-foreground">{{
+              <span v-if="c.composeProject" :class="[rowMeta, 'shrink-0']">{{
                 c.composeProject
               }}</span>
             </span>

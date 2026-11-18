@@ -2,9 +2,8 @@
 import type { FileHandlerExt, FileHandlerGroup } from '@shared/domain/repo';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import Disclosure from '@theme/components/Disclosure.vue';
-import { Alert } from '@theme/components/ui/alert';
-import { Field, FieldDescription, FieldError } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
@@ -98,16 +97,19 @@ const open = ref<Record<string, boolean>>({});
       <Alert v-if="unrestored.length > 0" variant="warn" data-testid="file-types-unrestored">
         {{ t('space.settings.fileTypes.unrestored.body', { exts: unrestored.join(', ') }) }}
       </Alert>
-      <FieldError v-if="status.error.value" data-testid="file-types-load-error">
-        {{ errorText(status.error.value) }}
-      </FieldError>
-      <FieldError v-if="setHandlers.error.value" data-testid="file-types-set-error">
-        {{ errorText(setHandlers.error.value) }}
-      </FieldError>
+      <Alert variant="error" v-if="status.error.value" data-testid="file-types-load-error"
+        ><AlertDescription>
+          {{ errorText(status.error.value) }}
+        </AlertDescription></Alert
+      >
+      <Alert variant="error" v-if="setHandlers.error.value" data-testid="file-types-set-error"
+        ><AlertDescription>
+          {{ errorText(setHandlers.error.value) }}
+        </AlertDescription></Alert
+      >
 
       <Field v-for="group in groups" :key="group.id" :data-testid="`file-types-group-${group.id}`">
-        <div class="flex items-center justify-between gap-2">
-          <Label :for="`${baseId}-${group.id}`">{{ groupLabel(group.id) }}</Label>
+        <Field orientation="horizontal">
           <Switch
             :id="`${baseId}-${group.id}`"
             :model-value="groupOn(group)"
@@ -117,17 +119,19 @@ const open = ref<Record<string, boolean>>({});
             :data-mixed="groupMixed(group)"
             @update:model-value="(v) => toggleGroup(group, v === true)"
           />
-        </div>
-        <FieldDescription v-if="groupMixed(group)" :data-testid="`file-types-some-${group.id}`">
-          {{ t('space.settings.fileTypes.some.status', { count: selfCount(group) }) }}
-        </FieldDescription>
+          <FieldContent>
+            <FieldLabel :for="`${baseId}-${group.id}`">{{ groupLabel(group.id) }}</FieldLabel>
+            <FieldDescription v-if="groupMixed(group)" :data-testid="`file-types-some-${group.id}`">
+              {{ t('space.settings.fileTypes.some.status', { count: selfCount(group) }) }}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
         <Disclosure
           v-model:open="open[group.id]"
           :label="
             t('space.settings.fileTypes.extensions.label', { count: group.extensions.length })
           "
           :data-testid="`file-types-disclosure-${group.id}`"
-          content-class="flex flex-col gap-1 pt-1"
         >
           <div
             v-for="ext in group.extensions"
@@ -143,7 +147,7 @@ const open = ref<Record<string, boolean>>({});
               :data-testid="`file-types-ext-${ext.ext}`"
               @update:model-value="(v) => toggleExt(ext, v === true)"
             />
-            <span class="font-mono">.{{ ext.ext }}</span>
+            <span class="font-data">.{{ ext.ext }}</span>
             <span
               class="ml-auto text-muted-foreground"
               :data-testid="`file-types-handler-${ext.ext}`"

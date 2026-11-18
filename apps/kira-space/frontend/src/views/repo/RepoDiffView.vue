@@ -358,7 +358,8 @@ onUnmounted(() => {
       v-else
       fill
       icon="warning"
-      :title="errorMessage || t('space.repo.view.openDiffFailed.error')"
+      :title="t('space.repo.view.openDiffFailed.error')"
+      :description="errorMessage || undefined"
     />
   </div>
 </template>

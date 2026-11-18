@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -8,7 +9,6 @@ import {
   usesRepoTokens,
 } from '../../board/workflowForm';
 import type { WorkflowStep } from '../../wire';
-import AdeInspectorRow from './AdeInspectorRow.vue';
 
 const props = defineProps<{ step: WorkflowStep }>();
 const emit = defineEmits<{ patch: [p: Partial<WorkflowStep>] }>();
@@ -17,7 +17,8 @@ const outsideVars = computed(() => props.step.outsideRepo && usesRepoTokens(prop
 </script>
 
 <template>
-  <AdeInspectorRow stack :label="t('common.field.command.label')" :for="id">
+  <Field>
+    <FieldLabel :for="id">{{ t('common.field.command.label') }}</FieldLabel>
     <Input
       :id="id"
       :model-value="step.command"
@@ -26,7 +27,7 @@ const outsideVars = computed(() => props.step.outsideRepo && usesRepoTokens(prop
       data-testid="ade-wf-step-command"
       @update:model-value="(v: string | number) => emit('patch', { command: String(v) })"
     />
-    <template #hint>
+    <FieldDescription>
       {{
         step.outsideRepo
           ? t('space.ade.workflows.stepInspector.commandOutside.hint', {
@@ -34,14 +35,14 @@ const outsideVars = computed(() => props.step.outsideRepo && usesRepoTokens(prop
             })
           : t('space.ade.workflows.stepInspector.command.hint', { tokens: PLACEHOLDER_TOKENS })
       }}
-    </template>
-    <template v-if="outsideVars" #error>
+    </FieldDescription>
+    <FieldError v-if="outsideVars">
       <span data-testid="ade-wf-step-outside-vars-error">{{
         t('space.ade.workflows.stepInspector.outsideVars.error', {
           repo: '{repo}',
           branch: '{branch}',
         })
       }}</span>
-    </template>
-  </AdeInspectorRow>
+    </FieldError>
+  </Field>
 </template>

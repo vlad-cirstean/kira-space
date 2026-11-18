@@ -268,20 +268,16 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
       <AboutPane :active="s.activeSection === 'About'" />
     </template>
 
+    <template #footerStart="f">
+      <FieldError v-if="f.saveError" data-testid="settings-save-error">{{
+        f.saveError
+      }}</FieldError>
+      <span v-else data-testid="settings-footer-status">{{
+        f.isDirty ? t('common.state.unsavedChanges.status') : ''
+      }}</span>
+    </template>
+
     <template #footer="f">
-      <div class="mr-auto min-w-0">
-        <FieldError v-if="f.saveError" data-testid="settings-save-error">{{
-          f.saveError
-        }}</FieldError>
-        <span
-          v-else
-          class="text-subtle text-kira-sm leading-normal"
-          data-testid="settings-footer-status"
-          >{{
-            f.isDirty ? t('common.state.unsavedChanges.status') : ''
-          }}</span
-        >
-      </div>
       <Button variant="dialog" size="kira-lg" data-testid="settings-cancel" @click="f.onDismiss">{{
         t('common.action.cancel.label')
       }}</Button>

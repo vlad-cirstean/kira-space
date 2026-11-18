@@ -4,7 +4,7 @@ import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { Label } from '@theme/components/ui/label';
+import { FieldLabel } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
 import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import PanelBar from '@workbench/components/PanelBar.vue';
@@ -154,9 +154,9 @@ async function refresh(): Promise<void> {
           v-model="ui.showStopped"
           data-testid="docker-show-stopped"
         />
-        <Label for="docker-show-stopped" class="cursor-default">{{
+        <FieldLabel for="docker-show-stopped" class="cursor-default">{{
           t('docker.panel.showStopped.label')
-        }}</Label>
+        }}</FieldLabel>
         <span class="ml-auto" data-testid="docker-summary">{{
           stopped
             ? t('docker.panel.summaryStopped.label', { running, stopped })

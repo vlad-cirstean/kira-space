@@ -1,24 +1,26 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
-import { Kbd } from '@theme/components/ui/kbd';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
+import { plainText } from '@theme/varText';
 import { formatPercent } from '@workbench/behaviour/format';
+import MenuItems from '@workbench/components/MenuItems.vue';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { useApprovalsStore } from '@workbench/state/approvals';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, useTemplateRef } from 'vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
 import AdeParentChip from '../AdeParentChip.vue';
-import AdeTip from '../AdeTip.vue';
 import AdeAutomationChip from '../automation/AdeAutomationChip.vue';
 import { changeBaseChoices } from '../board/changeBase';
 import { taskReviewTip } from '../board/reviewCode';
@@ -81,6 +83,18 @@ const baseChoices = computed(() => {
   const board = boardQuery.data.value;
   return v && board ? changeBaseChoices(props.card, { graph: v.graph, after: v.after, board }) : [];
 });
+
+const baseItems = computed<MenuItem[]>(() =>
+  baseChoices.value.map((c) => ({
+    type: 'item',
+    id: c.branchId,
+    testId: 'ade-card-change-base-item',
+    label: plainText(c.parts),
+    parts: c.parts,
+    disabled: c.disabled,
+    run: () => dialogs.act(c.act),
+  })),
+);
 
 const draftRepoIds = computed(() =>
   props.card.rows.filter((r) => r.branch.name === '').map((r) => r.branch.codeRepoId),
@@ -166,15 +180,7 @@ const boxClass = computed(() => {
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" data-testid="ade-card-change-base-menu">
-                  <DropdownMenuItem
-                    v-for="c in baseChoices"
-                    :key="c.branchId"
-                    :disabled="c.disabled"
-                    data-testid="ade-card-change-base-item"
-                    @select="dialogs.act(c.act)"
-                  >
-                    <VarText :parts="c.parts" />
-                  </DropdownMenuItem>
+                  <MenuItems :items="baseItems" />
                 </DropdownMenuContent>
               </DropdownMenu>
               <TooltipIconButton
@@ -193,6 +199,7 @@ const boxClass = computed(() => {
                 v-if="choices.length"
                 icon="git-compare"
                 :label="t('space.ade.board.taskMenu.reviewCode.label')"
+                :kbd="formatShortcut('ade.reviewCode')"
                 class="size-4.5 shrink-0"
                 disabled-trigger
                 :pending="reviewCode.pendingFor(choices.map((c) => c.branchId))"
@@ -203,7 +210,6 @@ const boxClass = computed(() => {
                 "
               >
                 <VarText :parts="reviewTip" />
-                <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
               </TooltipIconButton>
             </span>
             <AdeTaskStatusMenu :card="card" />
@@ -211,7 +217,7 @@ const boxClass = computed(() => {
           </div>
           <div class="flex h-4.5 min-w-0 items-center gap-1.5 overflow-hidden">
             <template v-if="p.hasWorkflow && !card.parked">
-              <AdeTip :text="p.workflowTip">
+              <TextTooltip :text="p.workflowTip">
                 <span
                   class="inline-flex w-12 shrink-0 items-center gap-0.5"
                   data-testid="ade-step-segs"
@@ -223,9 +229,9 @@ const boxClass = computed(() => {
                     :class="segClass(seg.state)"
                   />
                 </span>
-              </AdeTip>
+              </TextTooltip>
               <AdeStepMenu :card="card" />
-              <AdeTip v-if="p.showBar" :text="p.barTip">
+              <TextTooltip v-if="p.showBar" :text="p.barTip">
                 <span
                   class="shrink-0 text-kira-sm text-muted-foreground"
                   data-testid="ade-step-percent"
@@ -233,7 +239,7 @@ const boxClass = computed(() => {
                     formatPercent(p.percent)
                   }}</span
                 >
-              </AdeTip>
+              </TextTooltip>
             </template>
             <AdeEstimateChip v-if="!card.review" :card="card" />
             <AdeTagIcon
@@ -268,15 +274,11 @@ const boxClass = computed(() => {
             >
               {{ t('space.ade.taskTab.branchRequest.label') }}
             </Button>
-            <AdeTip :text="card.meta">
-              <span
-                class="min-w-0 flex-1 truncate text-kira-sm leading-3.5 text-subtle"
-                data-testid="ade-card-meta"
-                >{{
-                  card.meta
-                }}</span
-              >
-            </AdeTip>
+            <span
+              class="min-w-0 flex-1 text-kira-sm leading-3.5 text-subtle"
+              data-testid="ade-card-meta"
+              ><TruncatedText :text="card.meta" /></span
+            >
           </div>
         </div>
       </div>

@@ -71,8 +71,7 @@ const hint = computed(() =>
         type="number"
         min="0"
         step="0.5"
-        size="kira"
-        class="w-20"
+        class="w-24"
         :aria-invalid="error ? true : undefined"
         :aria-describedby="error ? `${idPrefix}-error-text` : undefined"
         data-testid="ade-estimate-num"
@@ -80,8 +79,8 @@ const hint = computed(() =>
       />
       <!-- mousedown.prevent: a click would otherwise blur the number input first and commit with the stale unit. -->
       <SecondaryTabs
-        variant="segmented"
-        size="kira"
+        variant="choice"
+        size="kira-lg"
         :model-value="unit"
         :items="unitItems"
         :aria-label="t('space.ade.estimate.unit.aria')"

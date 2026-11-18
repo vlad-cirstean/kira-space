@@ -539,10 +539,7 @@ test('cell editor — autodetect, beautify, override, NULL/empty/truncated, read
   await page.keyboard.press(SELECT_ALL);
   await page.keyboard.type('{"a":}');
   await expect(invalidChip).toBeVisible();
-  await invalidChip.hover();
-  await expect(page.locator('[data-slot="tooltip-content"]').first()).toContainText(
-    /Broken JSON, invalid at offset \d+/,
-  );
+  await expect(invalidChip).toContainText(/Broken JSON, invalid at offset \d+/);
 
   await page.click('[data-testid="cell-editor-beautify-reset"]');
   await expect(invalidChip).toHaveCount(0);
@@ -553,10 +550,7 @@ test('cell editor — autodetect, beautify, override, NULL/empty/truncated, read
   await selectFormat(page, 'iso8601');
   await expect(panel).toHaveAttribute('data-format', 'iso8601');
   await expect(invalidChip).toBeVisible();
-  await invalidChip.hover();
-  await expect(page.locator('[data-slot="tooltip-content"]').first()).toContainText(
-    'Not a valid timestamp for this format.',
-  );
+  await expect(invalidChip).toContainText('Not a valid timestamp for this format.');
 
   // Every row in the picker explains itself on hover, reading from the same FORMAT_HELP
   // the trigger's own tooltip uses. ContextMenu.vue's own hint moved off the old

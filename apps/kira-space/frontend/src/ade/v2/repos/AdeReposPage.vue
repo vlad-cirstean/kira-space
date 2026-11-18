@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
+import { Card } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { Switch } from '@theme/components/ui/switch';
@@ -65,6 +69,16 @@ const hasProblem = (id: string) => !!configs.value.find((c) => c.codeRepoId === 
 const nickOf = (id: string) => configs.value.find((c) => c.codeRepoId === id)?.nickname ?? '';
 const selectedConfig = computed(
   () => configs.value.find((c) => c.codeRepoId === selected.value?.id) ?? null,
+);
+const problemFiles = computed(
+  () => new Set(otherFiles.value.filter((f) => f.problem).map((f) => f.file)),
+);
+const otherFileItems = computed(() =>
+  otherFiles.value.map((f) => ({
+    value: f.file,
+    label: configName(f.file),
+    testid: `ade-repos-file-${f.file}`,
+  })),
 );
 async function pickOtherFile(file: string): Promise<void> {
   if (pickedOther.value?.file === file) return;
@@ -186,8 +200,8 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
         {{ t('common.module.repositories.label') }}
         <template #actions>
           <Button
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             class="px-1.5"
             data-testid="ade-repos-import"
             @click="onImport"
@@ -221,43 +235,40 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
             :class="cn(VIRTUAL_ROW_CLASS, 'pb-px')"
             :style="{ transform: `translateY(${item.start}px)` }"
           >
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <button
-                  type="button"
-                  role="option"
-                  v-bind="nav.rowProps(r.id)"
-                  class="relative flex w-full shrink-0 items-center gap-1.5 border-none text-left"
-                  :class="repoRowClass(r)"
-                  :aria-selected="showRepos && selected?.id === r.id"
-                  data-testid="ade-repos-repo"
-                  :data-repo-id="r.id"
-                  :data-hidden="r.hidden"
-                  @click="reposUi.pickRepo(r.id)"
-                >
-                  <span
-                    :class="colorMarkClass('rail', r.color)"
-                    data-testid="ade-repos-repo-rail"
-                    aria-hidden="true"
-                  />
-                  <span class="min-w-0 flex-1 truncate">{{ nickOf(r.id) || r.name }}</span>
-                  <StatusDot
-                    v-if="hasProblem(r.id)"
-                    tone="error"
-                    :label="t('space.repo.settingsFile.problem.aria')"
-                    data-testid="ade-repos-repo-problem"
-                  />
-                  <CodiconIcon
-                    v-if="r.hidden"
-                    name="eye-closed"
-                    :size="13"
-                    class="shrink-0"
-                    data-testid="ade-repos-repo-hidden-mark"
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{{ r.root }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip :text="r.root">
+              <button
+                type="button"
+                role="option"
+                v-bind="nav.rowProps(r.id)"
+                class="relative flex w-full shrink-0 items-center gap-1.5 border-none text-left"
+                :class="repoRowClass(r)"
+                :aria-selected="showRepos && selected?.id === r.id"
+                data-testid="ade-repos-repo"
+                :data-repo-id="r.id"
+                :data-hidden="r.hidden"
+                @click="reposUi.pickRepo(r.id)"
+              >
+                <span
+                  :class="colorMarkClass('rail', r.color)"
+                  data-testid="ade-repos-repo-rail"
+                  aria-hidden="true"
+                />
+                <span class="min-w-0 flex-1 truncate">{{ nickOf(r.id) || r.name }}</span>
+                <StatusDot
+                  v-if="hasProblem(r.id)"
+                  tone="error"
+                  :label="t('space.repo.settingsFile.problem.aria')"
+                  data-testid="ade-repos-repo-problem"
+                />
+                <CodiconIcon
+                  v-if="r.hidden"
+                  name="eye-closed"
+                  :size="13"
+                  class="shrink-0"
+                  data-testid="ade-repos-repo-hidden-mark"
+                />
+              </button>
+            </TextTooltip>
           </div>
         </div>
       </div>
@@ -378,25 +389,22 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
             t('space.repo.settingsFile.otherFiles.empty')
           }}</p>
           <template v-else>
-            <div class="flex flex-wrap gap-1">
-              <Button
-                v-for="f in otherFiles"
-                :key="f.file"
-                variant="dialog"
-                size="kira-lg"
-                :aria-pressed="pickedOther?.file === f.file"
-                data-testid="ade-repos-file"
-                :data-file="f.file"
-                @click="pickOtherFile(f.file)"
-              >
+            <SecondaryTabs
+              wrap
+              :model-value="pickedOther?.file ?? ''"
+              :items="otherFileItems"
+              @update:model-value="pickOtherFile"
+            >
+              <template #item="{ item }">
                 <StatusDot
-                  v-if="f.problem"
+                  v-if="problemFiles.has(item.value)"
                   tone="error"
                   :label="t('space.repo.settingsFile.problem.aria')"
                 />
-                {{ configName(f.file) }}
-              </Button>
-            </div>
+                <CodiconIcon v-else name="file" :size="13" />
+                {{ item.label }}
+              </template>
+            </SecondaryTabs>
             <RepoFilePane
               v-if="pickedOther"
               :key="pickedOther.file"
@@ -412,8 +420,8 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
               t('space.ade.repos.foldersHint.hint')
             }}</p>
             <Button
-              variant="dialog"
-              size="kira-lg"
+              variant="toolbar"
+              size="kira"
               :pending="addFolder.isPending.value"
               data-testid="ade-repos-add-folder"
               @click="onAddFolder"
@@ -423,35 +431,35 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
             </Button>
           </div>
           <FieldDescription v-if="note" data-testid="ade-repos-note">{{ note }}</FieldDescription>
-          <p v-if="folders.length === 0" class="m-0 text-muted-foreground">{{
+          <InlineState v-if="folders.length === 0" kind="empty">{{
             t('space.ade.repos.noFolders.empty')
-          }}</p>
-          <div
-            v-for="(f, i) in folders"
-            :key="f.path"
-            class="flex items-center gap-2 rounded-kira bg-field px-2 py-1"
-            data-testid="ade-repos-folder"
-            :data-path="f.path"
-          >
-            <span class="min-w-0 flex-1 font-data"><TruncatedText :text="f.path" /></span>
-            <span
-              class="shrink-0 text-kira-sm text-muted-foreground"
-              data-testid="ade-repos-folder-count"
-              >{{
-                f.hiddenCount > 0
-                  ? t('common.dotPair.label', {
-                      first: t('space.ade.repos.folder.repoCount.label', {
-                        count: f.repoCount,
-                      }),
-                      second: t('space.ade.repos.folder.hiddenCount.label', {
-                        count: f.hiddenCount,
-                      }),
-                    })
-                  : t('space.ade.repos.folder.repoCount.label', { count: f.repoCount })
-              }}</span
+          }}</InlineState>
+          <Card v-else variant="list">
+            <div
+              v-for="(f, i) in folders"
+              :key="f.path"
+              :class="cn(rowVariants(), 'gap-2')"
+              data-testid="ade-repos-folder"
+              :data-path="f.path"
             >
-            <Tooltip>
-              <TooltipTrigger as-child>
+              <span class="min-w-0 flex-1 font-data"><TruncatedText :text="f.path" /></span>
+              <span
+                class="shrink-0 text-kira-sm text-muted-foreground"
+                data-testid="ade-repos-folder-count"
+                >{{
+                  f.hiddenCount > 0
+                    ? t('common.dotPair.label', {
+                        first: t('space.ade.repos.folder.repoCount.label', {
+                          count: f.repoCount,
+                        }),
+                        second: t('space.ade.repos.folder.hiddenCount.label', {
+                          count: f.hiddenCount,
+                        }),
+                      })
+                    : t('space.ade.repos.folder.repoCount.label', { count: f.repoCount })
+                }}</span
+              >
+              <TextTooltip :text="t('space.ade.repos.folder.watch.tooltip')">
                 <div class="flex shrink-0 items-center gap-1.5">
                   <Switch
                     :id="`ade-repos-watch-${i}`"
@@ -459,31 +467,30 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
                     data-testid="ade-repos-folder-watch"
                     @update:model-value="(v: boolean) => onWatch(f.path, v)"
                   />
-                  <Label :for="`ade-repos-watch-${i}`" class="text-kira-sm text-muted-foreground">{{
+                  <Label :for="`ade-repos-watch-${i}`">{{
                     t('space.ade.repos.folder.watch.label')
                   }}</Label>
                 </div>
-              </TooltipTrigger>
-              <TooltipContent>{{ t('space.ade.repos.folder.watch.tooltip') }}</TooltipContent>
-            </Tooltip>
-            <TooltipIconButton
-              :icon="f.hidden ? 'eye' : 'eye-closed'"
-              :label="
-                f.hidden
-                  ? t('common.action.showAll.label')
-                  : t('space.ade.repos.folder.hideAll.label')
-              "
-              :aria-pressed="f.hidden"
-              data-testid="ade-repos-folder-hide"
-              @click="onHideFolder(f.path, !f.hidden)"
-            />
-            <TooltipIconButton
-              icon="close"
-              :label="t('space.ade.repos.folder.remove.tooltip')"
-              data-testid="ade-repos-folder-remove"
-              @click="onRemoveFolder(f.path)"
-            />
-          </div>
+              </TextTooltip>
+              <TooltipIconButton
+                :icon="f.hidden ? 'eye' : 'eye-closed'"
+                :label="
+                  f.hidden
+                    ? t('common.action.showAll.label')
+                    : t('space.ade.repos.folder.hideAll.label')
+                "
+                :aria-pressed="f.hidden"
+                data-testid="ade-repos-folder-hide"
+                @click="onHideFolder(f.path, !f.hidden)"
+              />
+              <TooltipIconButton
+                icon="close"
+                :label="t('space.ade.repos.folder.remove.tooltip')"
+                data-testid="ade-repos-folder-remove"
+                @click="onRemoveFolder(f.path)"
+              />
+            </div>
+          </Card>
         </div>
       </div>
     </section>

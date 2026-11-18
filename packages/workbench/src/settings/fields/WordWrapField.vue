@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { AppearanceSettings } from '@shared/domain/settings';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Field, FieldContent, FieldGroup } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldContent, FieldGroup, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { useId } from 'vue';
@@ -27,7 +26,7 @@ const wordWrapId = useId();
 
 <template>
   <FieldGroup>
-    <Field orientation="horizontal" class="items-start">
+    <Field orientation="horizontal">
       <Switch
         :id="wordWrapId"
         :model-value="appearance.wordWrap"
@@ -35,7 +34,7 @@ const wordWrapId = useId();
         @update:model-value="(v) => onWordWrapChange(v === true)"
       />
       <FieldContent>
-        <Label :for="wordWrapId">{{ t('workbench.settings.wordWrap.label') }}</Label>
+        <FieldLabel :for="wordWrapId">{{ t('workbench.settings.wordWrap.label') }}</FieldLabel>
         <slot />
       </FieldContent>
     </Field>

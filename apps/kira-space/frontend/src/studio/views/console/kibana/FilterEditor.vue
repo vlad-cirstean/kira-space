@@ -112,6 +112,7 @@ function save(): void {
       testid="kibana-filter-field"
     />
     <NativeSelect
+      :aria-label="t('studio.kibana.filter.operator.label')"
       variant="bordered"
       :model-value="operator"
       data-testid="kibana-filter-operator"
@@ -150,7 +151,7 @@ function save(): void {
     <div class="flex justify-end gap-1.5">
       <Button
         type="button"
-        variant="toolbar"
+        variant="dialog"
         size="kira"
         data-testid="kibana-filter-cancel"
         @click="emit('cancel')"

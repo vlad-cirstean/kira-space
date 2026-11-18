@@ -1,4 +1,5 @@
-import type { TaskAction, Tone } from './board/actions';
+import type { StatusTone } from '@theme/lib/statusTone';
+import type { Tone } from './board/actions';
 
 // Class maps over the tokens in tones.css (built on theme tokens). Tailwind emits only literals, so each is spelled in full.
 export const TONE_TEXT_CLASS: Record<Tone, string> = {
@@ -21,23 +22,30 @@ export const TONE_TAG_CLASS: Record<Tone, string> = {
 };
 
 /** Solid indicator fill (never a button; fixed ink: a themed ink loses contrast under another theme). */
-export const SOLID_CLASS: Record<Tone | 'agent', string> = {
+export const SOLID_CLASS: Record<Tone, string> = {
   amber: 'bg-tone-amber-solid text-tone-ink border-transparent',
   red: 'bg-tone-red-solid text-tone-ink border-transparent',
   green: 'bg-tone-green-solid text-tone-ink border-transparent',
   blue: 'bg-tone-blue-solid text-tone-ink border-transparent',
   purple: 'bg-tone-purple-solid text-tone-ink border-transparent',
   grey: 'bg-tone-grey-solid text-tone-ink border-transparent',
-  agent: 'bg-agent text-tone-ink border-transparent',
 };
 
-/** Outline of a task action: its tone, or the agent colour for a launch (`▶ Run`). */
-export const ACTION_CLASS: Record<TaskAction['tone'] | Tone, string> = {
-  amber: 'border-tone-amber text-tone-amber focus-visible:outline-tone-amber',
-  red: 'border-error text-error focus-visible:outline-error',
-  green: 'border-tone-green text-tone-green focus-visible:outline-tone-green',
-  blue: 'border-tone-blue text-tone-blue focus-visible:outline-tone-blue',
-  purple: 'border-tone-purple text-tone-purple focus-visible:outline-tone-purple',
-  grey: 'border-tone-grey text-tone-grey focus-visible:outline-tone-grey',
-  agent: 'border-agent text-agent focus-visible:outline-agent',
+// Off-board render of a board tone (D1). Purple is merged on the board.
+export const THEME_TONE: Record<Tone, StatusTone> = {
+  amber: 'warn',
+  red: 'error',
+  green: 'ok',
+  blue: 'info',
+  purple: 'ok',
+  grey: 'neutral',
+};
+
+// Board pastel for an RS.1 tone.
+export const PASTEL: Record<StatusTone, Tone> = {
+  ok: 'green',
+  warn: 'amber',
+  error: 'red',
+  info: 'blue',
+  neutral: 'grey',
 };

@@ -93,6 +93,7 @@ function onJump(e: Event): void {
         <template #value>
           <div class="w-14">
             <Input
+              :aria-label="t('studio.pager.page.label')"
               v-model="pageInputValue"
               type="number"
               min="1"

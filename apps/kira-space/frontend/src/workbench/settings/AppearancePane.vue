@@ -5,9 +5,10 @@ import {
   FieldContent,
   FieldDescription,
   FieldGroup,
+  FieldLabel,
   FieldLegend,
+  FieldSet,
 } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { ROW_HEIGHT_PX } from '@workbench/lib/rowHeight';
@@ -42,97 +43,103 @@ const rowColoringId = useId();
 
 <template>
   <div class="contents" v-show="active">
-    <FieldLegend class="pt-0">{{ t('common.typography.label') }}</FieldLegend>
-    <FontFamilyField
-      :appearance="draft.appearance"
-      :is-at-default="isAtDefault"
-      :reset-leaf="resetLeaf"
-    />
-
-    <FontSizeField
-      :appearance="draft.appearance"
-      :is-at-default="isAtDefault"
-      :reset-leaf="resetLeaf"
-      :register-field-error="registerFieldError"
-    />
-
-    <RowDensityField
-      :appearance="draft.appearance"
-      :is-at-default="isAtDefault"
-      :reset-leaf="resetLeaf"
-    >
-      <FieldDescription>{{
-        t('space.settings.appearance.rowDensity.description')
-      }}</FieldDescription>
-      <RowDensityPreview :height-px="rowPreviewHeight" />
-    </RowDensityField>
-
-    <WordWrapField
-      :appearance="draft.appearance"
-      :is-at-default="isAtDefault"
-      :reset-leaf="resetLeaf"
-    >
-      <FieldDescription>{{ t('space.settings.appearance.wordWrap.description') }}</FieldDescription>
-    </WordWrapField>
-
-    <FieldGroup>
-      <Field orientation="horizontal" class="items-start">
-        <Switch
-          :id="rowColoringId"
-          :model-value="draft.appearance.rowColoring"
-          data-testid="settings-row-coloring"
-          @update:model-value="(v) => onRowColoringChange(v === true)"
-        />
-        <FieldContent>
-          <Label :for="rowColoringId">{{
-            t('studio.settings.appearance.rowColoring.label')
-          }}</Label>
-          <FieldDescription>{{
-            t('studio.settings.appearance.rowColoring.description')
-          }}</FieldDescription>
-        </FieldContent>
-      </Field>
-      <TooltipIconButton
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
-        class="ml-auto"
-        data-testid="settings-reset-appearance-rowColoring"
-        :disabled-trigger="isAtDefault('appearance', 'rowColoring')"
-        :disabled="isAtDefault('appearance', 'rowColoring')"
-        @click="resetLeaf('appearance', 'rowColoring')"
+    <FieldSet>
+      <FieldLegend>{{ t('common.typography.label') }}</FieldLegend>
+      <FontFamilyField
+        :appearance="draft.appearance"
+        :is-at-default="isAtDefault"
+        :reset-leaf="resetLeaf"
       />
-    </FieldGroup>
 
-    <FieldGroup>
-      <Field orientation="horizontal" class="items-start">
-        <Switch
-          :id="inlineBlameId"
-          :model-value="draft.appearance.inlineBlame"
-          data-testid="settings-inline-blame"
-          @update:model-value="(v) => onInlineBlameChange(v === true)"
-        />
-        <FieldContent>
-          <Label :for="inlineBlameId">{{ t('space.settings.appearance.inlineBlame.label') }}</Label>
-          <FieldDescription>{{
-            t('space.settings.appearance.inlineBlame.description')
-          }}</FieldDescription>
-        </FieldContent>
-      </Field>
-      <TooltipIconButton
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
-        class="ml-auto"
-        data-testid="settings-reset-appearance-inlineBlame"
-        :disabled-trigger="isAtDefault('appearance', 'inlineBlame')"
-        :disabled="isAtDefault('appearance', 'inlineBlame')"
-        @click="resetLeaf('appearance', 'inlineBlame')"
+      <FontSizeField
+        :appearance="draft.appearance"
+        :is-at-default="isAtDefault"
+        :reset-leaf="resetLeaf"
+        :register-field-error="registerFieldError"
       />
-    </FieldGroup>
 
-    <DateFormatField
-      :appearance="draft.appearance"
-      :is-at-default="isAtDefault"
-      :reset-leaf="resetLeaf"
-    />
+      <RowDensityField
+        :appearance="draft.appearance"
+        :is-at-default="isAtDefault"
+        :reset-leaf="resetLeaf"
+      >
+        <FieldDescription>{{
+          t('space.settings.appearance.rowDensity.description')
+        }}</FieldDescription>
+        <RowDensityPreview :height-px="rowPreviewHeight" />
+      </RowDensityField>
+
+      <WordWrapField
+        :appearance="draft.appearance"
+        :is-at-default="isAtDefault"
+        :reset-leaf="resetLeaf"
+      >
+        <FieldDescription>{{
+          t('space.settings.appearance.wordWrap.description')
+        }}</FieldDescription>
+      </WordWrapField>
+
+      <FieldGroup>
+        <Field orientation="horizontal">
+          <Switch
+            :id="rowColoringId"
+            :model-value="draft.appearance.rowColoring"
+            data-testid="settings-row-coloring"
+            @update:model-value="(v) => onRowColoringChange(v === true)"
+          />
+          <FieldContent>
+            <FieldLabel :for="rowColoringId">{{
+              t('studio.settings.appearance.rowColoring.label')
+            }}</FieldLabel>
+            <FieldDescription>{{
+              t('studio.settings.appearance.rowColoring.description')
+            }}</FieldDescription>
+          </FieldContent>
+        </Field>
+        <TooltipIconButton
+          icon="discard"
+          :label="t('common.action.resetToDefault.label')"
+          class="ml-auto"
+          data-testid="settings-reset-appearance-rowColoring"
+          :disabled-trigger="isAtDefault('appearance', 'rowColoring')"
+          :disabled="isAtDefault('appearance', 'rowColoring')"
+          @click="resetLeaf('appearance', 'rowColoring')"
+        />
+      </FieldGroup>
+
+      <FieldGroup>
+        <Field orientation="horizontal">
+          <Switch
+            :id="inlineBlameId"
+            :model-value="draft.appearance.inlineBlame"
+            data-testid="settings-inline-blame"
+            @update:model-value="(v) => onInlineBlameChange(v === true)"
+          />
+          <FieldContent>
+            <FieldLabel :for="inlineBlameId">{{
+              t('space.settings.appearance.inlineBlame.label')
+            }}</FieldLabel>
+            <FieldDescription>{{
+              t('space.settings.appearance.inlineBlame.description')
+            }}</FieldDescription>
+          </FieldContent>
+        </Field>
+        <TooltipIconButton
+          icon="discard"
+          :label="t('common.action.resetToDefault.label')"
+          class="ml-auto"
+          data-testid="settings-reset-appearance-inlineBlame"
+          :disabled-trigger="isAtDefault('appearance', 'inlineBlame')"
+          :disabled="isAtDefault('appearance', 'inlineBlame')"
+          @click="resetLeaf('appearance', 'inlineBlame')"
+        />
+      </FieldGroup>
+
+      <DateFormatField
+        :appearance="draft.appearance"
+        :is-at-default="isAtDefault"
+        :reset-leaf="resetLeaf"
+      />
+    </FieldSet>
   </div>
 </template>

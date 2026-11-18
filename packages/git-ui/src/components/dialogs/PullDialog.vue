@@ -45,16 +45,16 @@ function stashAndCarry(): void {
 
 <template>
   <Dialog v-if="pending" :open="active" @update:open="(v) => !v && cancel()">
-    <DialogContent size="md">
+    <DialogContent size="sm">
       <DialogHeader>
         <DialogTitle>{{ t('git.dialog.pull.title') }}</DialogTitle>
-      </DialogHeader>
-      <DialogBody>
         <DialogDescription>
           <CatalogText k="git.dialog.pull.body">
             <template #strategy><Identifier :value="pending.strategy" /></template>
           </CatalogText>
         </DialogDescription>
+      </DialogHeader>
+      <DialogBody>
         <Alert variant="warn">
           <AlertDescription>
             {{ t('git.dialog.pull.stash.hint') }}

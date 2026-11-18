@@ -2,23 +2,21 @@
 import type { EditorLanguageId } from '@shared/domain/editor';
 import { pathTail } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import EmptyState from '@theme/components/EmptyState.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipDisabledTrigger,
-  TooltipTrigger,
-} from '@theme/components/ui/tooltip';
+import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useEventListener } from '@vueuse/core';
 import { formatBytes } from '@workbench/behaviour/format';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import MonacoDiff from '@workbench/editor/MonacoDiff.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
-import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
+import { type MenuRadioOption, useContextMenuStore } from '@workbench/state/contextMenu';
 import { tabViewKey } from '@workbench/state/viewState';
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import type { ConsoleDiagnostic } from '../../../editor/diagnostics';
@@ -329,30 +327,32 @@ function setFormat(format: CellFormat | null): void {
 
 function openFormatMenu(e: MouseEvent): void {
   if (isNullValue.value) return;
-  const rows: MenuItem[] = [
+  const options: (MenuRadioOption | { type: 'separator' })[] = [
     {
-      type: 'item',
+      type: 'option',
       id: 'format-auto',
+      value: null,
       label: formatAutoLabel(detectedFormat.value),
-      checked: override.value === null,
       hint: detectedReason.value || undefined,
       run: () => setFormat(null),
     },
   ];
   FORMAT_GROUPS.forEach((group, i) => {
-    if (i > 0) rows.push({ type: 'separator' });
+    if (i > 0) options.push({ type: 'separator' });
     for (const f of group) {
-      rows.push({
-        type: 'item',
+      options.push({
+        type: 'option',
         id: `format-${f}`,
+        value: f,
         label: formatLabel(f),
-        checked: override.value === f,
         hint: formatHelp(f),
         run: () => setFormat(f),
       });
     }
   });
-  contextMenuStore.openContextMenu(e, rows);
+  contextMenuStore.openContextMenu(e, [
+    { type: 'radio', id: 'format', value: override.value, items: options },
+  ]);
 }
 
 function applyGenerator(gen: Generator): void {
@@ -409,12 +409,9 @@ const statusLine = computed(() => {
       <span class="text-kira-md text-fg truncate" data-testid="cell-editor-target">{{
         t('studio.cellEditor.target.label', { target: targetLabel, row: selectedCell.row + 1 })
       }}</span>
-      <Tooltip v-if="dataTypeHint">
-        <TooltipTrigger as-child>
-          <Badge data :class="dataTypeClass">{{ selectedCell.column.dataType }}</Badge>
-        </TooltipTrigger>
-        <TooltipContent>{{ dataTypeHint }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-if="dataTypeHint" :text="dataTypeHint"
+        ><Badge data :class="dataTypeClass">{{ selectedCell.column.dataType }}</Badge></TextTooltip
+      >
       <Badge data v-else :class="dataTypeClass">{{ selectedCell.column.dataType }}</Badge>
       <Badge v-if="isNullValue" variant="info" data-testid="cell-editor-badge-null">{{
         t('studio.common.nullValue.label')
@@ -425,39 +422,28 @@ const statusLine = computed(() => {
       <Badge v-if="isTruncatedValue" variant="warn" data-testid="cell-editor-badge-truncated">{{
         t('studio.common.truncated.status')
       }}</Badge>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Badge class="max-w-56 truncate" data-testid="cell-editor-status">{{ statusLine }}</Badge>
-        </TooltipTrigger>
-        <TooltipContent>{{ statusLine }}</TooltipContent>
-      </Tooltip>
-      <Tooltip v-if="formatProblem">
-        <TooltipTrigger as-child>
-          <Badge variant="error" class="max-w-56 truncate" data-testid="cell-editor-invalid">{{
-            formatProblem.message
-          }}</Badge>
-        </TooltipTrigger>
-        <TooltipContent>{{ formatProblem.message }}</TooltipContent>
-      </Tooltip>
+      <Badge class="max-w-56" data-testid="cell-editor-status"
+        ><TruncatedText :text="statusLine" /></Badge
+      >
+      <Badge v-if="formatProblem" variant="error" class="max-w-56" data-testid="cell-editor-invalid"
+        ><TruncatedText :text="formatProblem.message" /></Badge
+      >
 
       <!-- the format select + beautify/reset trio: this panel's own controls, set off from the
            identity badges with the standard s-4 gutter (mirrors CellEditor.html's inline group) -->
       <span class="flex items-center shrink-0 gap-1.5 ml-2">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <TooltipDisabledTrigger>
-              <PickerTrigger
-                size="kira"
-                class="max-w-40 font-ui"
-                data-testid="cell-editor-format"
-                :disabled="isNullValue"
-                :label="override ? formatLabel(override) : formatAutoLabel(detectedFormat)"
-                @click="openFormatMenu"
-              />
-            </TooltipDisabledTrigger>
-          </TooltipTrigger>
-          <TooltipContent>{{ formatHint }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="formatHint">
+          <TooltipDisabledTrigger>
+            <PickerTrigger
+              size="kira"
+              class="max-w-40 font-ui"
+              data-testid="cell-editor-format"
+              :disabled="isNullValue"
+              :label="override ? formatLabel(override) : formatAutoLabel(detectedFormat)"
+              @click="openFormatMenu"
+            />
+          </TooltipDisabledTrigger>
+        </TextTooltip>
 
         <template v-if="!viewerMode">
           <CellGenerateMenu :disabled="!isEditable" @apply="applyGenerator" />
@@ -479,15 +465,12 @@ const statusLine = computed(() => {
       </span>
 
       <span class="ml-auto flex items-center gap-1">
-        <Tooltip v-if="readOnlyReason && chipTitle">
-          <TooltipTrigger as-child>
-            <Badge variant="warn">
-              <CodiconIcon name="lock" :size="13" />
-              {{ chipText }}
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>{{ chipTitle }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip v-if="readOnlyReason && chipTitle" :text="chipTitle"
+          ><Badge variant="warn">
+            <CodiconIcon name="lock" :size="13" />
+            {{ chipText }}
+          </Badge></TextTooltip
+        >
         <Badge v-else-if="readOnlyReason" variant="warn">
           <CodiconIcon name="lock" :size="13" />
           {{ chipText }}
@@ -530,12 +513,12 @@ const statusLine = computed(() => {
         <!-- Hex/base64: the same bytes as editable plaintext, kept in lockstep with the encoded box
              above in both directions (encode<->decode, see onDecodedInput). -->
         <template v-if="showDecodedPane">
-          <div
-            class="flex shrink-0 items-center gap-1 bg-elevated text-subtle text-kira-sm leading-4 py-0.5 px-2"
+          <SectionHeading
+            :label="t('studio.cellEditor.decoded.label')"
+            class="shrink-0 bg-elevated"
           >
-            <CodiconIcon name="symbol-string" :size="13" />
-            <span>{{ t('studio.cellEditor.decoded.label') }}</span>
-          </div>
+            <template #leading><CodiconIcon name="symbol-string" :size="13" /></template>
+          </SectionHeading>
           <div
             v-if="decodedDoc !== null"
             class="flex-1 basis-5/12 min-h-0"
@@ -549,31 +532,28 @@ const statusLine = computed(() => {
               @ready="markDecodedReady"
             />
           </div>
-          <Alert
-            v-else
-            variant="info"
-            class="flex-1 basis-5/12 min-h-0 overflow-auto items-center text-subtle"
-            data-testid="cell-editor-decoded-empty"
-          >
-            <AlertDescription>
-              {{
+          <div v-else class="min-h-0 flex-1 basis-5/12" data-testid="cell-editor-decoded-empty">
+            <EmptyState
+              fill
+              icon="warning"
+              :title="
                 t('studio.cellEditor.decoded.invalid.hint', {
                   format: formatLabel(effectiveFormat),
                 })
-              }}
-            </AlertDescription>
-          </Alert>
+              "
+            />
+          </div>
         </template>
 
         <!-- The three timestamp formats: TimestampPane owns its own readings, zone switch, editable
              field and calendar entirely — this file only decides whether to show it. -->
         <template v-else-if="isTimestampFormat">
-          <div
-            class="flex shrink-0 items-center gap-1 bg-elevated text-subtle text-kira-sm leading-4 py-0.5 px-2"
+          <SectionHeading
+            :label="t('studio.cellEditor.timestamp.title')"
+            class="shrink-0 bg-elevated"
           >
-            <CodiconIcon name="calendar" :size="13" />
-            <span>{{ t('studio.cellEditor.timestamp.title') }}</span>
-          </div>
+            <template #leading><CodiconIcon name="calendar" :size="13" /></template>
+          </SectionHeading>
           <TimestampPane
             class="shrink-0"
             :doc="doc"

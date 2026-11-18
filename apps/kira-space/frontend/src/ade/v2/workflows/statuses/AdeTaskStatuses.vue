@@ -11,13 +11,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field, FieldDescription, FieldError } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { type MessageKey, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import SwatchPicker from '@theme/SwatchPicker.vue';
 import { errorText } from '@workbench/bridge/codedError';
 import SortableList from '@workbench/components/SortableList.vue';
 import { computed, ref } from 'vue';
@@ -56,10 +62,7 @@ const ids = computed(() => statuses.value.map((s) => s.id));
 const error = ref('');
 const fresh = ref('');
 
-const colorItems = STATUS_COLORS.map((c) => ({
-  value: c,
-  label: t(`common.colour.${c}.label` as MessageKey),
-}));
+const statusColorLabel = (c: string): string => t(`common.colour.${c}.label` as MessageKey);
 
 async function commit(
   next: TaskStatusDef[],
@@ -195,30 +198,19 @@ async function confirmRemove(): Promise<void> {
                   <span class="size-3 rounded-full" :class="STATUS_DOT_CLASS[s.color]" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" class="w-auto p-2" data-testid="ade-status-colors">
-                <RadioGroup
+              <PopoverContent align="start" class="w-auto" data-testid="ade-status-colors">
+                <SwatchPicker
                   :model-value="s.color"
+                  :colors="STATUS_COLORS"
+                  :swatch-class="(c) => STATUS_SWATCH_CLASS[c as StatusColor]"
+                  :color-label="statusColorLabel"
+                  testid-prefix="ade-status-color"
                   :aria-label="t('common.field.colour.label')"
                   class="grid grid-cols-8 gap-1.5"
                   @update:model-value="
-                    (v) => v !== s.color && edit(s.id, { color: String(v) as StatusColor })
+                    (v) => v !== s.color && edit(s.id, { color: v as StatusColor })
                   "
-                >
-                  <RadioGroupItem
-                    v-for="c in colorItems"
-                    :key="c.value"
-                    :value="c.value"
-                    :aria-label="c.label"
-                    :title="c.label"
-                    :class="[
-                      'size-4 border-transparent data-[state=checked]:border-fg',
-                      STATUS_SWATCH_CLASS[c.value],
-                    ]"
-                    :data-testid="`ade-status-color-${c.value}`"
-                  >
-                    <span />
-                  </RadioGroupItem>
-                </RadioGroup>
+                />
               </PopoverContent>
             </Popover>
             <AdeStatusName
@@ -247,24 +239,19 @@ async function confirmRemove(): Promise<void> {
       </div>
       <FieldError v-if="error && !removing" data-testid="ade-status-error">{{ error }}</FieldError>
       <div>
-        <Button variant="dialog" size="kira" data-testid="ade-status-add" @click="add">
-          <CodiconIcon :name="ICON.add" :size="12" />
+        <Button variant="dialog" size="kira-lg" data-testid="ade-status-add" @click="add">
+          <CodiconIcon :name="ICON.add" :size="13" />
           {{ t('space.ade.statuses.add.label') }}
         </Button>
       </div>
     </Field>
 
-    <Field>
-      <h4 class="m-0 text-kira-lg font-medium text-fg">
-        {{ t('space.ade.statuses.defaults.title') }}
-      </h4>
+    <FieldSet>
+      <FieldLegend>{{ t('space.ade.statuses.defaults.title') }}</FieldLegend>
       <FieldDescription>{{ t('space.ade.statuses.defaults.description') }}</FieldDescription>
-      <div class="flex flex-col gap-2" data-testid="ade-status-defaults">
-        <div v-for="slot in SLOTS" :key="slot" class="flex items-start gap-3">
-          <div class="flex min-w-0 flex-1 flex-col">
-            <Label :for="`ade-status-default-${slot}`">{{ t(SLOT_LABEL[slot]) }}</Label>
-            <span class="text-kira-sm text-muted-foreground">{{ t(SLOT_HINT[slot]) }}</span>
-          </div>
+      <div class="@container flex flex-col gap-2" data-testid="ade-status-defaults">
+        <Field v-for="slot in SLOTS" :key="slot" orientation="responsive">
+          <FieldLabel :for="`ade-status-default-${slot}`">{{ t(SLOT_LABEL[slot]) }}</FieldLabel>
           <NativeSelect
             :id="`ade-status-default-${slot}`"
             variant="bordered"
@@ -277,9 +264,10 @@ async function confirmRemove(): Promise<void> {
             }}</option>
             <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
           </NativeSelect>
-        </div>
+          <FieldDescription>{{ t(SLOT_HINT[slot]) }}</FieldDescription>
+        </Field>
       </div>
-    </Field>
+    </FieldSet>
 
     <Dialog :open="removing !== null" @update:open="(o) => !o && (removing = null)">
       <DialogContent size="sm" :dirty="false" data-testid="ade-status-delete-dialog">
@@ -306,16 +294,20 @@ async function confirmRemove(): Promise<void> {
               {{ t('space.ade.statuses.deleteDialog.steps.body', { count: uses.steps }) }}
             </li>
           </ul>
-          <Label for="ade-status-reassign">{{ t('space.ade.statuses.reassign.label') }}</Label>
-          <NativeSelect
-            id="ade-status-reassign"
-            v-model="reassignTo"
-            variant="bordered"
-            data-testid="ade-status-reassign"
-          >
-            <option v-for="o in targets" :key="o.id" :value="o.id">{{ o.name }}</option>
-          </NativeSelect>
-          <FieldError v-if="error" data-testid="ade-status-delete-error">{{ error }}</FieldError>
+          <Field>
+            <FieldLabel for="ade-status-reassign">{{
+              t('space.ade.statuses.reassign.label')
+            }}</FieldLabel>
+            <NativeSelect
+              id="ade-status-reassign"
+              v-model="reassignTo"
+              variant="bordered"
+              data-testid="ade-status-reassign"
+            >
+              <option v-for="o in targets" :key="o.id" :value="o.id">{{ o.name }}</option>
+            </NativeSelect>
+            <FieldError v-if="error" data-testid="ade-status-delete-error">{{ error }}</FieldError>
+          </Field>
         </DialogBody>
         <DialogFooter>
           <Button variant="dialog" size="kira-lg" @click="removing = null">{{

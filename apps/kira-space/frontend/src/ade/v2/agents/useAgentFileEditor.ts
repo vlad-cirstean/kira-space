@@ -30,7 +30,6 @@ export function useAgentFileEditor<V extends FileView>(
 
   const view = computed(() => query.data.value);
   const bytes = computed(() => new TextEncoder().encode(draft.value).length);
-  const actionable = computed(() => dirty.value && !save.isPending.value);
   const over = computed(() => view.value !== undefined && bytes.value > view.value.maxBytes);
 
   watch(
@@ -100,7 +99,6 @@ export function useAgentFileEditor<V extends FileView>(
     saveError,
     conflict,
     bytes,
-    actionable,
     over,
     saveNow,
     discard,

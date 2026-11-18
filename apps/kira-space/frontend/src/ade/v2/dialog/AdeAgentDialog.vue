@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import CodeBlock from '@theme/components/CodeBlock.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Card } from '@theme/components/ui/card';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import {
   Dialog,
@@ -12,8 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription, FieldLabel } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
@@ -21,13 +22,11 @@ import BranchPicker from '@workbench/components/pickers/BranchPicker.vue';
 import { computed, ref } from 'vue';
 import AdeActivityIcon from '../AdeActivityIcon.vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
-import AdeTip from '../AdeTip.vue';
 import { baseOf } from '../board/rebaseActions';
 import { baseChoiceOf, baseGroups, baseOptions, baseValue } from '../branchOptions';
 import AdeSetupProgress from '../panel/AdeSetupProgress.vue';
 import { useRebasePreview, useRepoBranches } from '../queries';
 import { useAdeDialogsStore } from '../state/adeDialogs';
-import { ACTION_CLASS } from '../tones';
 import { composeDialog, isRebaseKind } from './compose';
 
 // The one Claude dialog every opener shares (mockup `dlg`): kind-specific title, busy alert, targets,
@@ -135,11 +134,7 @@ async function discard(): Promise<void> {
   <Dialog v-if="view" :open="true" @update:open="(v) => !v && dialogs.close()">
     <DialogContent size="lg" :dirty="view.edited" data-testid="ade-dialog">
       <DialogHeader>
-        <DialogTitle>
-          <span class="text-kira-lg font-medium" data-testid="ade-dialog-title">{{
-            view.title
-          }}</span>
-        </DialogTitle>
+        <DialogTitle data-testid="ade-dialog-title">{{ view.title }}</DialogTitle>
       </DialogHeader>
 
       <DialogBody>
@@ -162,8 +157,8 @@ async function discard(): Promise<void> {
                 </div>
               </div>
               <Button
-                variant="dialog-danger"
-                size="kira-lg"
+                variant="dialog"
+                size="kira"
                 class="shrink-0"
                 data-testid="ade-dialog-override"
                 @click="dialogs.override = !dialogs.override"
@@ -183,11 +178,11 @@ async function discard(): Promise<void> {
           data-testid="ade-dialog-setup"
         />
 
-        <div v-if="baseBranch" class="flex items-center gap-2" data-testid="ade-dialog-base">
-          <span class="text-muted-foreground">{{ t('space.common.base.label') }}</span>
+        <Field v-if="baseBranch" orientation="responsive" data-testid="ade-dialog-base">
+          <FieldLabel for="ade-dialog-base-picker">{{ t('space.common.base.label') }}</FieldLabel>
           <BranchPicker
+            id="ade-dialog-base-picker"
             v-model:open="baseOpen"
-            size="kira"
             testid="ade-base-picker"
             :model-value="baseValue(baseChoice)"
             :branches="baseOpts"
@@ -197,7 +192,7 @@ async function discard(): Promise<void> {
             :loading="baseData.isPending.value"
             @select="(o) => dialogs.pickBase(baseChoiceOf(o.value))"
           />
-        </div>
+        </Field>
 
         <Alert
           v-for="b in view.blockers"
@@ -208,88 +203,81 @@ async function discard(): Promise<void> {
         >
           <AlertDescription>{{ b.text }}</AlertDescription>
         </Alert>
-        <Label v-if="view.canAutostash" for="ade-dialog-autostash" class="text-kira-sm">
+        <Field v-if="view.canAutostash" orientation="horizontal">
           <Checkbox
             id="ade-dialog-autostash"
             v-model="dialogs.autostash"
             data-testid="ade-dialog-autostash"
           />
-          <span>{{ t('space.ade.agentDialog.autostash.label') }}</span>
-        </Label>
+          <FieldLabel for="ade-dialog-autostash">{{
+            t('space.ade.agentDialog.autostash.label')
+          }}</FieldLabel>
+        </Field>
         <FieldDescription v-if="view.noOp" data-testid="ade-dialog-noop">
           {{ t('space.ade.agentDialog.noOp.hint') }}
         </FieldDescription>
 
-        <div
-          v-if="view.isArchive"
-          class="text-kira-md text-tone-amber"
-          data-testid="ade-dialog-risk"
-        >
-          {{ t('space.ade.agentDialog.risk.body', { risk: view.riskText }) }}
-        </div>
+        <Alert v-if="view.isArchive" variant="warn" data-testid="ade-dialog-risk">
+          <AlertDescription>{{
+            t('space.ade.agentDialog.risk.body', { risk: view.riskText })
+          }}</AlertDescription>
+        </Alert>
 
-        <div
-          v-for="(tg, i) in view.targets"
-          :key="tg.branchId"
-          class="flex flex-col gap-1.5"
-          data-testid="ade-dialog-target"
-        >
+        <Field v-for="(tg, i) in view.targets" :key="tg.branchId" data-testid="ade-dialog-target">
           <div class="flex items-center gap-2">
             <AdeRepoTag :code-repo-id="tg.repoId" :label="tg.repo" />
-            <span class="min-w-0 flex-1 truncate font-data text-kira-sm">{{ tg.branch }}</span>
+            <FieldLabel class="min-w-0 flex-1 truncate font-data">{{ tg.branch }}</FieldLabel>
           </div>
           <SecondaryTabs
-            variant="segmented"
+            variant="choice"
             size="kira-lg"
+            :aria-label="tg.branch"
             :model-value="tg.options.find((o) => o.on)?.value ?? ''"
             :items="tg.options"
             :data-testid="`ade-dialog-target-${i}`"
             @update:model-value="(v) => dialogs.pick(tg.branchId, v)"
           />
-        </div>
+        </Field>
 
-        <Label v-if="view.canPush" for="ade-dialog-push" class="text-kira-sm">
+        <Field v-if="view.canPush" orientation="horizontal">
           <Checkbox id="ade-dialog-push" v-model="dialogs.push" data-testid="ade-dialog-push" />
-          <span>
-            <span data-testid="ade-dialog-push-label">{{ view.pushLabel }}</span>
-            <span v-if="!dialogs.push" class="text-subtle">
-              {{ t('space.ade.agentDialog.pushOff.hint') }}</span
-            >
-          </span>
-        </Label>
+          <FieldContent>
+            <FieldLabel for="ade-dialog-push">
+              <span data-testid="ade-dialog-push-label">{{ view.pushLabel }}</span>
+            </FieldLabel>
+            <FieldDescription v-if="!dialogs.push">{{
+              t('space.ade.agentDialog.pushOff.hint')
+            }}</FieldDescription>
+          </FieldContent>
+        </Field>
 
-        <div v-if="view.showMessage" class="flex flex-col gap-1">
-          <div class="flex items-center gap-2">
-            <FieldLabel for="ade-dialog-message" class="flex-1">{{
+        <Field v-if="view.showMessage">
+          <div class="flex items-center justify-between gap-1">
+            <FieldLabel for="ade-dialog-message">{{
               t('space.ade.agentDialog.message.label')
             }}</FieldLabel>
-            <Button
+            <TooltipIconButton
               v-if="view.edited"
-              variant="toolbar"
-              size="kira"
-              class="text-muted-foreground"
+              icon="discard"
+              :label="t('common.action.resetToDefault.label')"
               data-testid="ade-dialog-reset"
               @click="dialogs.msg = null"
-            >
-              {{ t('common.action.reset.label') }}
-            </Button>
+            />
           </div>
           <Textarea
+            class="min-h-24 max-h-90 resize-y"
             id="ade-dialog-message"
             :model-value="view.message"
-            class="max-h-90 resize-y"
             data-testid="ade-dialog-message"
             @update:model-value="(v) => (dialogs.msg = String(v))"
           />
-          <Card
-            v-if="view.suffix"
-            class="whitespace-pre-wrap font-data text-kira-sm text-muted-foreground"
-            data-testid="ade-dialog-suffix"
-            >{{
-              view.suffix
-            }}</Card
-          >
-        </div>
+        </Field>
+        <Field v-if="view.showMessage && view.suffix">
+          <FieldLabel>{{ t('automations.dialog.run.suffix.label') }}</FieldLabel>
+          <CodeBlock class="text-muted-foreground" data-testid="ade-dialog-suffix">{{
+            view.suffix
+          }}</CodeBlock>
+        </Field>
 
         <Alert v-if="previewError" variant="error" data-testid="ade-dialog-preview-error">
           <AlertDescription>{{ previewError }}</AlertDescription>
@@ -310,9 +298,10 @@ async function discard(): Promise<void> {
             t('common.action.cancel.label')
           }}</Button
         >
-        <AdeTip v-if="view.isArchive" :text="t('space.ade.agentDialog.deleteAnyway.tooltip')">
+        <TextTooltip v-if="view.isArchive" :text="t('space.ade.agentDialog.deleteAnyway.tooltip')">
+          <!-- conventions-allow N17: second footer action; one emphasised button rightmost (RD.2) -->
           <Button
-            variant="dialog-danger"
+            variant="dialog"
             size="kira-lg"
             :pending="sending"
             data-testid="ade-dialog-delete"
@@ -320,11 +309,10 @@ async function discard(): Promise<void> {
           >
             {{ t('space.ade.agentDialog.deleteAnyway.label') }}
           </Button>
-        </AdeTip>
+        </TextTooltip>
         <Button
-          variant="dialog-primary"
+          :variant="view.overridden ? 'dialog-danger' : 'dialog-primary'"
           size="kira-lg"
-          :class="ACTION_CLASS[view.overridden ? 'red' : 'agent']"
           :pending="sending"
           :disabled="view.blocked || view.sendDisabled || dialogs.waitingSetup"
           data-testid="ade-dialog-send"

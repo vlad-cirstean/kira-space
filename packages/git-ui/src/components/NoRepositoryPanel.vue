@@ -10,10 +10,12 @@ import type { RepoCandidate } from '@kira/git-ipc';
  * the one-repo-per-workspace model).
  */
 import { TransportError } from '@kira/git-ipc';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { Button } from '@theme/components/ui/button';
 import { EmptyDescription } from '@theme/components/ui/empty';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { errorText } from '@workbench/bridge/codedError';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
 import type { PickerOption } from '@workbench/lib/pickerOptions';
@@ -99,7 +101,7 @@ async function openCandidate(option: PickerOption): Promise<void> {
         size="kira"
         data-testid="no-repository-retry"
         @click="refreshCandidates"
-      >
+        ><CodiconIcon :name="ICON.refresh" :size="13" />
         {{ t('common.action.retry.label') }}
       </Button>
     </template>

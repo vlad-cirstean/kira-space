@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
+import { Card } from '@theme/components/ui/card';
 import { t } from '@theme/i18n';
+import { changeRequestTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { formatDateTime } from '@workbench/behaviour/format';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
@@ -15,7 +21,6 @@ import AdeChip from '../AdeChip.vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
 import AdeParentChip from '../AdeParentChip.vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
-import AdeTip from '../AdeTip.vue';
 import AdeDetailsTab from '../details/AdeDetailsTab.vue';
 import { useHostLabels } from '../hostLabels';
 import { type ParentModel, usePlanModel } from '../plan/usePlanModel';
@@ -26,7 +31,7 @@ import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { type TaskPanelTab, useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { ArchivedBranch, ArchivedComment, ArchivedTask } from '../wire';
 import AdePanelFrame from './AdePanelFrame.vue';
-import { PR_TONE, prStateLabel } from './prState';
+import { prStateLabel } from './prState';
 
 // An archived task, read-only, with everything it kept. Restore brings it back to the Plan; edits
 // need that first.
@@ -133,61 +138,49 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
     <template #default="{ data: a }">
       <AdePanelFrame v-model="tab" :tabs="tabs">
         <template #header>
-          <div class="flex items-start gap-2">
-            <span class="mt-1 box-border size-3 shrink-0 rounded-kira-sm bg-subtle" />
-            <AdeChip :label="t('space.ade.panel.archived.label')" tone="grey" />
-            <AdeOrchestratorBadge v-if="a.task.kind === 'orchestrator'" />
-            <AdeParentChip
-              v-if="parentOf(a)"
-              :parent="parentOf(a)!"
-              @select="boardUi.select(a.task.parentId ?? '')"
-            />
-            <AdeChip
-              v-if="status(a)"
-              :label="status(a)!.name"
-              :color="status(a)!.color"
-              data-testid="ade-archived-status"
-            />
-            <AdeTip :text="titleOf(a)">
-              <h3
-                class="m-0 line-clamp-2 min-w-0 flex-1 break-words text-kira-lg font-medium text-fg"
-                data-testid="ade-panel-title"
-              >
-                {{ titleOf(a) }}
-              </h3>
-            </AdeTip>
-          </div>
-          <div class="flex items-center gap-2">
-            <span
-              class="min-w-0 flex-1 truncate text-kira-sm text-muted-foreground"
-              data-testid="ade-panel-facts"
-              >{{
+          <DetailHeader wrap :title="titleOf(a)" title-testid="ade-panel-title">
+            <template #leading>
+              <span class="box-border size-3 shrink-0 rounded-kira-sm bg-subtle" />
+              <Badge variant="default">{{ t('space.ade.panel.archived.label') }}</Badge>
+              <AdeOrchestratorBadge v-if="a.task.kind === 'orchestrator'" />
+              <AdeParentChip
+                v-if="parentOf(a)"
+                :parent="parentOf(a)!"
+                @select="boardUi.select(a.task.parentId ?? '')"
+              />
+              <AdeChip
+                v-if="status(a)"
+                :label="status(a)!.name"
+                :color="status(a)!.color"
+                data-testid="ade-archived-status"
+              />
+            </template>
+            <template #description>
+              <div class="truncate" data-testid="ade-panel-facts">{{
                 [repos(a), formatDateTime(a.archivedAt)].filter(Boolean).join(' · ')
-              }}</span
+              }}</div>
+              <div>{{ t('space.ade.archived.restore.hint') }}</div>
+            </template>
+            <Alert v-if="restoreError" variant="error" data-testid="ade-archived-restore-error"
+              ><AlertDescription>{{ restoreError }}</AlertDescription></Alert
             >
-            <span class="shrink-0 text-kira-sm text-subtle">{{
-              t('space.ade.archived.restore.hint')
-            }}</span>
-            <Button
-              variant="dialog"
-              size="kira"
-              class="shrink-0"
-              :pending="restore.isPending.value"
-              data-testid="ade-archived-restore"
-              @click="onRestore"
+            <Alert
+              v-if="boardUi.actionError[taskId]"
+              variant="error"
+              data-testid="ade-archived-resume-error"
+              ><AlertDescription>{{ boardUi.actionError[taskId] }}</AlertDescription></Alert
             >
-              {{ t('common.action.restore.label') }}
-            </Button>
-          </div>
-          <Alert v-if="restoreError" variant="error" data-testid="ade-archived-restore-error"
-            ><AlertDescription>{{ restoreError }}</AlertDescription></Alert
-          >
-          <Alert
-            v-if="boardUi.actionError[taskId]"
-            variant="error"
-            data-testid="ade-archived-resume-error"
-            ><AlertDescription>{{ boardUi.actionError[taskId] }}</AlertDescription></Alert
-          >
+          </DetailHeader>
+        </template>
+        <template #actions>
+          <Button
+            variant="toolbar"
+            size="kira"
+            :pending="restore.isPending.value"
+            data-testid="ade-archived-restore"
+            @click="onRestore"
+            ><CodiconIcon name="discard" :size="13" />{{ t('common.action.restore.label') }}
+          </Button>
         </template>
 
         <div
@@ -196,10 +189,10 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
           class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 pb-3 pt-3 text-kira-md"
           data-testid="ade-archived-task-tab"
         >
-          <KeyValueList class="items-center">
+          <KeyValueList>
             <template v-if="a.task.jira">
               <dt>{{ t('space.ade.taskTab.issue.label') }}</dt>
-              <dd class="min-h-row">
+              <dd>
                 <a
                   :href="a.task.jira.url"
                   class="text-info"
@@ -213,8 +206,8 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
             </template>
             <template v-if="a.task.hostLink">
               <dt>{{ t('space.ade.taskTab.pr.label') }}</dt>
-              <dd class="flex min-h-row items-center gap-2">
-                <AdeChip :label="hostLabels.chipOf(a.task.hostLink)" tone="grey" />
+              <dd class="flex items-center gap-2">
+                <Badge variant="default">{{ hostLabels.chipOf(a.task.hostLink) }}</Badge>
                 <a
                   :href="a.task.hostUrl"
                   class="text-info"
@@ -228,107 +221,107 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
             </template>
             <template v-if="a.task.est">
               <dt>{{ t('space.ade.estimate.field.label') }}</dt>
-              <dd class="min-h-row">{{ a.task.est }}</dd>
+              <dd>{{ a.task.est }}</dd>
             </template>
             <template v-if="a.task.workflow">
               <dt>{{ t('space.common.workflow.label') }}</dt>
-              <dd class="min-h-row" data-testid="ade-archived-workflow">{{ stepText(a) }}</dd>
+              <dd data-testid="ade-archived-workflow">{{ stepText(a) }}</dd>
             </template>
             <dt>{{ t('common.created.label') }}</dt>
-            <dd class="min-h-row">{{ formatDateTime(a.task.createdAt) }}</dd>
+            <dd>{{ formatDateTime(a.task.createdAt) }}</dd>
           </KeyValueList>
 
           <div class="flex flex-col gap-1">
-            <span class="pb-0.5 text-kira-sm text-subtle">{{
-              t('common.module.branches.label')
-            }}</span>
-            <div
-              v-for="b in a.branches"
-              :key="b.id"
-              class="flex flex-col gap-1 bg-elevated px-1.5 py-1"
-              data-testid="ade-archived-branch"
-              :data-branch-id="b.id"
-            >
-              <div class="flex min-w-0 items-center gap-2">
-                <AdeRepoTag :code-repo-id="b.codeRepoId" :label="repoLabel(b.codeRepoId)" />
-                <a
-                  v-if="b.name && b.branchUrl"
-                  :href="b.branchUrl"
-                  class="min-w-0 truncate font-data text-kira-md text-info"
-                  @click="(e) => open(b.branchUrl, e)"
-                  >{{
-                    b.name
-                  }}</a
-                >
-                <span
-                  v-else
-                  class="min-w-0 truncate font-data text-kira-md"
-                  :class="b.name ? '' : 'text-muted-foreground'"
-                  >{{
-                    b.name || t('space.ade.board.branchTag.notCreated.label')
-                  }}</span
-                >
-                <span class="flex-1" />
-                <span v-if="kindLabel(b)" class="shrink-0 text-kira-sm text-muted-foreground">{{
-                  kindLabel(b)
-                }}</span>
-                <AdeChip v-if="b.mergedAt" :label="t('common.merged.status')" tone="purple" />
-                <AdeChip v-if="b.removed" :label="t('common.removed.status')" tone="grey" />
-              </div>
-              <div v-if="b.base" class="text-kira-sm text-muted-foreground">{{
-                t('space.ade.review.header.base.label', { base: b.base })
-              }}</div>
+            <SectionHeading flush :label="t('common.module.branches.label')" />
+            <Card v-if="a.branches.length" variant="list">
               <div
-                v-if="b.changeRequest"
-                class="flex min-w-0 items-center gap-2"
-                data-testid="ade-archived-pr"
+                v-for="b in a.branches"
+                :key="b.id"
+                class="flex flex-col gap-1 px-1.5 py-1"
+                data-testid="ade-archived-branch"
+                :data-branch-id="b.id"
               >
-                <AdeChip
-                  :label="prStateLabel(b.changeRequest.state)"
-                  :tone="PR_TONE[b.changeRequest.state] ?? 'grey'"
-                />
-                <a
-                  :href="b.changeRequest.url"
-                  class="shrink-0 font-data text-kira-md text-info"
-                  @click="(e) => open(b.changeRequest!.url, e)"
-                  >#{{ b.changeRequest.number }}</a
-                >
-                <span class="min-w-0 flex-1 truncate">{{ b.changeRequest.title }}</span>
-                <span
-                  v-if="b.prSource === 'archived'"
-                  class="shrink-0 text-kira-sm text-subtle"
-                  data-testid="ade-archived-snapshot"
-                  >{{
-                    t('space.ade.archived.snapshot.hint')
-                  }}</span
-                >
-              </div>
-              <Disclosure
-                v-if="b.comments.length"
-                :label="t('space.ade.archived.comments.label', { count: b.comments.length })"
-                data-testid="ade-archived-comments"
-                content-class="flex flex-col gap-1 pt-1"
-              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <AdeRepoTag :code-repo-id="b.codeRepoId" :label="repoLabel(b.codeRepoId)" />
+                  <a
+                    v-if="b.name && b.branchUrl"
+                    :href="b.branchUrl"
+                    class="min-w-0 truncate font-data text-kira-md text-info"
+                    @click="(e) => open(b.branchUrl, e)"
+                    >{{
+                      b.name
+                    }}</a
+                  >
+                  <span
+                    v-else
+                    class="min-w-0 truncate font-data text-kira-md"
+                    :class="b.name ? '' : 'text-muted-foreground'"
+                    >{{
+                      b.name || t('space.ade.board.branchTag.notCreated.label')
+                    }}</span
+                  >
+                  <span class="flex-1" />
+                  <span v-if="kindLabel(b)" class="shrink-0 text-kira-sm text-muted-foreground">{{
+                    kindLabel(b)
+                  }}</span>
+                  <Badge v-if="b.mergedAt" variant="ok">{{ t('common.merged.status') }}</Badge>
+                  <Badge v-if="b.removed" variant="default">{{ t('common.removed.status') }}</Badge>
+                </div>
+                <div v-if="b.base" class="text-kira-sm text-muted-foreground">{{
+                  t('space.ade.review.header.base.label', { base: b.base })
+                }}</div>
                 <div
-                  v-for="(c, i) in b.comments"
-                  :key="i"
-                  class="flex flex-col gap-0.5 border-l-2 border-border pl-2"
-                  data-testid="ade-archived-comment"
+                  v-if="b.changeRequest"
+                  class="flex min-w-0 items-center gap-2"
+                  data-testid="ade-archived-pr"
                 >
-                  <div class="flex items-center gap-2 text-kira-sm text-muted-foreground">
-                    <span class="min-w-0 truncate font-data"
-                      >{{ c.path }}:{{ c.start }}{{ c.end > c.start ? `-${c.end}` : '' }}</span
-                    >
-                    <span class="shrink-0">{{ commentKind(c) }}</span>
-                    <span class="shrink-0">{{ commentState(c) }}</span>
-                  </div>
-                  <div class="whitespace-pre-wrap break-words">{{ c.body }}</div>
-                  <div v-if="c.reply" class="whitespace-pre-wrap break-words text-muted-foreground"
-                    >{{ t('space.common.reply.label') }}: {{ c.reply }}</div
+                  <Badge :variant="TONE_BADGE[changeRequestTone(b.changeRequest.state)]">{{
+                    prStateLabel(b.changeRequest.state)
+                  }}</Badge>
+                  <a
+                    :href="b.changeRequest.url"
+                    class="shrink-0 font-data text-kira-md text-info"
+                    @click="(e) => open(b.changeRequest!.url, e)"
+                    >#{{ b.changeRequest.number }}</a
+                  >
+                  <span class="min-w-0 flex-1 truncate">{{ b.changeRequest.title }}</span>
+                  <span
+                    v-if="b.prSource === 'archived'"
+                    class="shrink-0 text-kira-sm text-subtle"
+                    data-testid="ade-archived-snapshot"
+                    >{{
+                      t('space.ade.archived.snapshot.hint')
+                    }}</span
                   >
                 </div>
-              </Disclosure>
-            </div>
+                <Disclosure
+                  v-if="b.comments.length"
+                  :label="t('space.ade.archived.comments.label', { count: b.comments.length })"
+                  data-testid="ade-archived-comments"
+                >
+                  <div
+                    v-for="(c, i) in b.comments"
+                    :key="i"
+                    class="flex flex-col gap-0.5 border-l-2 border-border pl-2"
+                    data-testid="ade-archived-comment"
+                  >
+                    <div class="flex items-center gap-2 text-kira-sm text-muted-foreground">
+                      <span class="min-w-0 truncate font-data"
+                        >{{ c.path }}:{{ c.start }}{{ c.end > c.start ? `-${c.end}` : '' }}</span
+                      >
+                      <span class="shrink-0">{{ commentKind(c) }}</span>
+                      <span class="shrink-0">{{ commentState(c) }}</span>
+                    </div>
+                    <div class="whitespace-pre-wrap break-words">{{ c.body }}</div>
+                    <div
+                      v-if="c.reply"
+                      class="whitespace-pre-wrap break-words text-muted-foreground"
+                      >{{ t('space.common.reply.label') }}: {{ c.reply }}</div
+                    >
+                  </div>
+                </Disclosure>
+              </div>
+            </Card>
           </div>
         </div>
         <AdeDetailsTab

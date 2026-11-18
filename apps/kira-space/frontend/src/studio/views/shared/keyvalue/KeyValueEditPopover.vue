@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
-import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverHeader,
+  PopoverTitle,
+} from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
@@ -71,40 +76,40 @@ defineExpose({
       <PopoverAnchor :reference="anchorRef ?? undefined" />
     </div>
     <PopoverContent align="start" class="w-80" data-testid="keyvalue-edit-popover">
-      <div class="flex flex-col gap-1.5 p-1.5">
-        <SectionHeading :label="t('studio.keyValue.editValue.label')" />
-        <Input
-          v-model="draft"
-          size="kira-lg"
-          class="w-full"
-          data-testid="keyvalue-edit-input"
-          @keydown.enter="onSave"
-        />
-        <Alert v-if="error" variant="error" data-testid="keyvalue-edit-error">
-          <AlertDescription>{{ error }}</AlertDescription>
-        </Alert>
-        <div class="flex justify-end gap-1">
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            data-testid="keyvalue-edit-cancel"
-            @click="open = false"
-            >{{
-              t('common.action.cancel.label')
-            }}</Button
-          >
-          <Button
-            variant="dialog-primary"
-            size="kira-lg"
-            data-testid="keyvalue-edit-save"
-            :pending="pending"
-            :disabled="disabled"
-            @click="onSave"
-            >{{
-              t('common.action.save.label')
-            }}</Button
-          >
-        </div>
+      <PopoverHeader
+        ><PopoverTitle>{{ t('studio.keyValue.editValue.label') }}</PopoverTitle></PopoverHeader
+      >
+      <Input
+        :aria-label="t('studio.keyValue.editValue.label')"
+        v-model="draft"
+        class="w-full"
+        data-testid="keyvalue-edit-input"
+        @keydown.enter="onSave"
+      />
+      <Alert v-if="error" variant="error" data-testid="keyvalue-edit-error">
+        <AlertDescription>{{ error }}</AlertDescription>
+      </Alert>
+      <div class="flex justify-end gap-1">
+        <Button
+          variant="dialog"
+          size="kira"
+          data-testid="keyvalue-edit-cancel"
+          @click="open = false"
+          >{{
+            t('common.action.cancel.label')
+          }}</Button
+        >
+        <Button
+          variant="dialog-primary"
+          size="kira"
+          data-testid="keyvalue-edit-save"
+          :pending="pending"
+          :disabled="disabled"
+          @click="onSave"
+          >{{
+            t('common.action.save.label')
+          }}</Button
+        >
       </div>
     </PopoverContent>
   </Popover>

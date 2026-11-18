@@ -2,9 +2,9 @@
 import type { EditorLanguageId } from '@shared/domain/editor';
 import type { AppMode } from '@shared/domain/mode';
 import { splitSqlStatements } from '@shared/domain/sqlSplit';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Toggle } from '@theme/components/ui/toggle';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { type MessageKey, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -348,12 +348,7 @@ function menuFor(record: Row): MenuItem[] {
     @reset-filters="opsStore.resetFilters"
   >
     <template #toolbar>
-      <Toggle
-        v-model="opsStore.showBackground"
-        variant="outline"
-        size="kira"
-        data-testid="ops-background"
-      >
+      <Toggle v-model="opsStore.showBackground" size="kira" data-testid="ops-background">
         {{
           opsStore.backgroundCount > 0
             ? t('space.operations.backgroundCount.label', { count: opsStore.backgroundCount })
@@ -369,14 +364,11 @@ function menuFor(record: Row): MenuItem[] {
             triggerLabel(record.run)
           }}</span>
         </span>
-        <Tooltip v-else-if="column.id === 'subject'">
-          <TooltipTrigger as-child>
-            <span class="min-w-0 truncate">{{
-              record.run.taskTitle || record.run.scriptName
-            }}</span>
-          </TooltipTrigger>
-          <TooltipContent>{{ record.run.cwd }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip v-else-if="column.id === 'subject'" :text="record.run.cwd"
+          ><span class="min-w-0 truncate">{{
+            record.run.taskTitle || record.run.scriptName
+          }}</span></TextTooltip
+        >
       </template>
       <span v-else-if="column.id === 'rows'" class="justify-self-end text-right tabular-nums">{{
         isDb(record) ? displayValue(record.rows) : ''
@@ -400,12 +392,9 @@ function menuFor(record: Row): MenuItem[] {
           t('space.operations.via.label', { tool: parentTool(record) ?? '' })
         }}</span>
       </span>
-      <Tooltip v-else-if="column.id === 'subject'">
-        <TooltipTrigger as-child>
-          <span class="min-w-0 truncate">{{ record.subject || record.repoName }}</span>
-        </TooltipTrigger>
-        <TooltipContent>{{ record.repoRoot || record.subject }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-else-if="column.id === 'subject'" :text="record.repoRoot || record.subject"
+        ><span class="min-w-0 truncate">{{ record.subject || record.repoName }}</span></TextTooltip
+      >
     </template>
   </OpLogPanel>
 </template>

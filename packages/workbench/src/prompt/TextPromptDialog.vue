@@ -63,7 +63,6 @@ useEventListener(scrimEl, 'click', (e) => e.stopPropagation());
           <Input
             ref="inputRef"
             v-model="value"
-            size="kira-lg"
             :aria-labelledby="titleId"
             data-testid="text-prompt-input"
             @keydown="wrapSelectionOnType"

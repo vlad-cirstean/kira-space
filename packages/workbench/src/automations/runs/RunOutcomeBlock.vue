@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { ScriptRun } from '@shared/domain/scriptRuns';
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { formatCurrency } from '@workbench/behaviour/format';
@@ -80,36 +82,34 @@ async function copyForAgent(): Promise<void> {
         {{ run.outcome.outputTail }}
       </span>
     </template>
-    <span v-if="copyError" class="text-error">{{ copyError }}</span>
-    <span v-if="resumeError" class="text-error" data-testid="run-resume-error">{{
-      resumeError
-    }}</span>
+    <Alert v-if="copyError" variant="error"
+      ><AlertDescription>{{ copyError }}</AlertDescription></Alert
+    >
+    <Alert v-if="resumeError" variant="error" data-testid="run-resume-error"
+      ><AlertDescription>{{ resumeError }}</AlertDescription></Alert
+    >
     <div v-if="run.state !== 'running' && run.state !== 'waiting'" class="flex gap-1">
-      <Button variant="dialog" size="kira-lg" data-testid="run-copy" @click="copyForAgent">
+      <Button variant="toolbar" size="kira" data-testid="run-copy" @click="copyForAgent"
+        ><CodiconIcon name="copy" :size="13" />
         {{ copied ? t('common.copy.copied.announce') : t('common.copyForAgent.label') }}
       </Button>
-      <Tooltip v-if="run.resumable">
-        <TooltipTrigger as-child>
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            :pending="resume.isPending.value"
-            data-testid="run-resume"
-            @click="resume.mutate(run)"
-          >
-            {{ t('common.action.resume.label') }}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('automations.run.resume.tooltip') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-if="run.resumable" :text="t('automations.run.resume.tooltip')"
+        ><Button
+          variant="toolbar"
+          size="kira"
+          :pending="resume.isPending.value"
+          data-testid="run-resume"
+          @click="resume.mutate(run)"
+          ><CodiconIcon name="play" :size="13" />{{ t('common.action.resume.label') }}
+        </Button></TextTooltip
+      >
       <Button
         v-if="run.scriptId"
-        variant="dialog"
-        size="kira-lg"
+        variant="toolbar"
+        size="kira"
         data-testid="run-again"
         @click="emit('rerun')"
-      >
-        {{ t('automations.run.again.label') }}
+        ><CodiconIcon name="refresh" :size="13" />{{ t('automations.run.again.label') }}
       </Button>
     </div>
   </div>

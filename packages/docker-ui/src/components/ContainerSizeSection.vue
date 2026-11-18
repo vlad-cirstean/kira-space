@@ -1,15 +1,16 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailSection from '@theme/components/DetailSection.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import Spinner from '@theme/components/Spinner.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
-import { FieldError } from '@theme/components/ui/field';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { formatBytes, formatDateTime, useRelativeTime } from '@workbench/behaviour/format';
 import { computed } from 'vue';
 import { useContainerSize } from '../queries';
-import DetailSection from './DetailSection.vue';
 
 const props = defineProps<{ id: string }>();
 
@@ -24,13 +25,10 @@ const ago = useRelativeTime(takenAt);
 <template>
   <DetailSection :title="t('docker.field.size.label')">
     <template #actions>
-      <span class="ml-auto flex items-center gap-1 normal-case tracking-normal">
-        <Tooltip v-if="size">
-          <TooltipTrigger as-child>
-            <span data-testid="docker-size-taken">{{ ago }}</span>
-          </TooltipTrigger>
-          <TooltipContent>{{ formatDateTime(size.takenAt) }}</TooltipContent>
-        </Tooltip>
+      <span class="ml-auto flex items-center gap-1">
+        <TextTooltip v-if="size" :text="formatDateTime(size.takenAt)"
+          ><span data-testid="docker-size-taken">{{ ago }}</span></TextTooltip
+        >
         <TooltipIconButton
           icon="refresh"
           :label="t('docker.size.measure.tooltip')"
@@ -41,18 +39,18 @@ const ago = useRelativeTime(takenAt);
       </span>
     </template>
 
-    <FieldError v-if="query.error.value" class="mb-2" data-testid="docker-size-error">{{
+    <InlineState v-if="query.error.value" kind="error" data-testid="docker-size-error">{{
       query.error.value.message
-    }}</FieldError>
+    }}</InlineState>
 
     <div v-if="measuring && !size" class="flex items-center gap-2 text-muted-foreground">
       <Spinner label="" />{{ t('docker.measuring.loading') }}
     </div>
     <div v-else-if="!size" class="flex flex-wrap items-center gap-3 text-muted-foreground">
       <span>{{ t('docker.size.notMeasured.body') }}</span>
-      <Button size="kira" variant="toolbar" data-testid="docker-size-measure" @click="refresh">{{
-        t('docker.measure.label')
-      }}</Button>
+      <Button size="kira" variant="toolbar" data-testid="docker-size-measure" @click="refresh"
+        ><CodiconIcon name="dashboard" :size="13" />{{ t('docker.measure.label') }}</Button
+      >
     </div>
     <KeyValueList v-else>
       <dt>{{ t('docker.size.writableLayer.label') }}</dt>

@@ -15,7 +15,7 @@ const emit = defineEmits<{ retry: [] }>();
 </script>
 
 <template>
-  <div class="h-full flex items-center justify-center overflow-auto p-4" data-testid="boot-failure">
+  <div class="h-full flex items-center justify-center overflow-auto p-3" data-testid="boot-failure">
     <div class="w-105 max-w-full">
       <EmptyState
         icon="warning"

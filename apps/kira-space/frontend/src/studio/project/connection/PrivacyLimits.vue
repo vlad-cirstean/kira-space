@@ -14,8 +14,6 @@ const LIMITS: readonly MessageKey[] = [
 <template>
   <Disclosure
     :label="t('studio.project.connectionDialog.privacy.limits.label')"
-    trigger-class="text-fg font-medium"
-    content-class="pt-1.5"
     data-testid="connection-privacy-limits"
   >
     <ul

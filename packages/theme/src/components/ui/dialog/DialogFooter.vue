@@ -10,7 +10,10 @@ const props = defineProps<{
 
 <template>
   <div data-slot="dialog-footer" :class="cn(dialogFooterClass, props.class)">
-    <div v-if="$slots.start" class="mr-auto flex min-w-0 items-center gap-1.5">
+    <div
+      v-if="$slots.start"
+      class="mr-auto flex min-w-0 items-center gap-1.5 text-kira-sm text-subtle"
+    >
       <slot name="start" />
     </div>
     <slot />

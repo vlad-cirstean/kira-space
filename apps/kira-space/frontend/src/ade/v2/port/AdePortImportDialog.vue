@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Disclosure from '@theme/components/Disclosure.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -12,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
+import { FieldDescription, FieldError } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
@@ -167,7 +168,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
               <li v-for="s in preview.sources" :key="s.role" class="flex items-center gap-2">
                 <span class="min-w-0 flex-1 truncate font-data">{{ s.path }}</span>
                 <Badge v-if="!s.exists">{{ t('space.ade.port.missing.status') }}</Badge>
-                <span v-if="s.problem" class="text-error">{{ s.problem }}</span>
+                <FieldError v-if="s.problem">{{ s.problem }}</FieldError>
               </li>
             </ul>
             <ul
@@ -176,9 +177,9 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
             >
               <li v-for="n in preview.notes" :key="n">{{ n }}</li>
             </ul>
-            <FieldDescription v-if="items.length === 0" data-testid="ade-port-none">
+            <InlineState kind="empty" v-if="items.length === 0" data-testid="ade-port-none">
               {{ t('space.ade.port.items.emptyHint') }}
-            </FieldDescription>
+            </InlineState>
             <div
               v-else
               ref="scrollEl"
@@ -216,7 +217,6 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
                       v-if="item.modes?.length && picked.has(item.id)"
                       v-model="modes[item.id]"
                       variant="bordered"
-                      size="kira-lg"
                       :aria-label="t('space.ade.port.mode.aria')"
                       :data-testid="`ade-port-mode-${item.id}`"
                     >
@@ -252,11 +252,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
                       ••••
                     </li>
                   </ul>
-                  <Disclosure
-                    v-if="item.current"
-                    :label="t('space.ade.port.current.label')"
-                    content-class="pt-1"
-                  >
+                  <Disclosure v-if="item.current" :label="t('space.ade.port.current.label')">
                     <OpLogCodeBlock :text="item.current" :language="snippetLanguage(item.id)" />
                   </Disclosure>
                 </li>

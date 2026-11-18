@@ -11,7 +11,7 @@ const rules = '[data-testid="mask-rule"]';
 const row = (page: Page, ref: string) => page.locator(`${rows}[data-ref="${ref}"]`);
 const status = (page: Page) => page.locator('[data-testid="connection-privacy-review-status"]');
 const showAll = (page: Page) =>
-  page.locator('[data-testid="connection-privacy-review-filter"]').selectOption('all');
+  page.locator('[data-testid="connection-privacy-review-filter-all"]').click();
 
 test('contract: a rule naming another table still masks the column in every table', async ({
   relaunch,

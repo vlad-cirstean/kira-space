@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { dbExemptionPayloadSchema, dbQueryPayloadSchema } from '@shared/domain/dbmcp';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Label } from '@theme/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
@@ -30,16 +29,13 @@ function onTick(v: boolean): void {
 <template>
   <Tooltip v-if="payload.reviewOffered" :disabled="!payload.reviewResult">
     <TooltipTrigger as-child>
-      <Label class="flex shrink-0 items-center gap-1.5 text-kira-md font-normal">
+      <Label class="flex shrink-0 items-center gap-1.5 font-normal">
         <Checkbox
           :model-value="payload.reviewResult || ticked"
           :disabled="payload.reviewResult"
-          class="size-3.5"
           data-testid="db-mcp-approval-review-result"
           @update:model-value="(v) => onTick(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
+        />
         {{ t('studio.dbMcp.approval.reviewResultShort.label') }}
       </Label>
     </TooltipTrigger>

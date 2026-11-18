@@ -86,6 +86,7 @@ test('the Timeline toggle is off by default and the list shows no events', async
 test('contract: the toggle merges task events into one list newest first', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, snapshots());
   await openDetails(page);
+  await expect.poll(() => sequence(page)).toEqual(['proof', 'handover', 'handover']);
   const before = await page.locator('[data-kind="handover"]').count();
   await toggle(page).click();
   await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true');

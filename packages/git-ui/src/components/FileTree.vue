@@ -54,6 +54,7 @@ import {
   reviewAttention,
   toggleTitleKey,
 } from '../lib/reviewAttention.ts';
+import { keptScrollIf } from '../lib/reviewKeep.ts';
 import { buildFileRowMenu } from '../lib/rowMenuModel.ts';
 import { useRevealSelectedFile } from '../lib/useRevealSelectedFile.ts';
 import type { FileListMode } from '../state/detail.ts';
@@ -69,6 +70,8 @@ const props = defineProps<{
   parentIndex: number;
   store: CommitStore;
   actions: DetailActions;
+  /** Review Files pane only: view-state key of the tree scroll. */
+  keepScroll?: string | null;
   /** The commit these files belong to — enables the row menu's "Go to file"
    *  (`actions.goToFile({ rev: sha, path, line: 1 })`). Absent
    *  renders byte-identically: the item does not appear, the same "absent, not disabled"
@@ -178,6 +181,7 @@ const {
 watch(() => props.files, resetCap);
 
 const treeEl = ref<HTMLDivElement | null>(null);
+keptScrollIf(() => props.keepScroll ?? null, treeEl, { ready: () => visibleRows.value.length > 0 });
 const rootEl = ref<HTMLElement | null>(null);
 const activeKey = ref<string | null>(null);
 
@@ -499,12 +503,7 @@ function onToggleFolder(path: string): void {
             :data-kira-tip="folderToggleTitle(row.node.path)"
             @click.stop
             @update:model-value="() => onToggleFolder(row.node.path)"
-          >
-            <CodiconIcon
-              :name="folderState(row.node.path) === 'indeterminate' ? 'dash' : 'check'"
-              :size="13"
-            />
-          </Checkbox>
+          />
           <TreeTwisty
             :expanded="row.expanded"
             :has-children="true"
@@ -530,20 +529,12 @@ function onToggleFolder(path: string): void {
           <Checkbox
             v-if="reviewStates"
             class="shrink-0"
-            :class="{ 'border-warn': reviewAttentionFor(row.node.change.path) === 'changed' }"
             :model-value="reviewCheckboxState(row.node.change.path)"
             :aria-label="reviewToggleTitle(row.node.change.path)"
             :data-kira-tip="reviewToggleTitle(row.node.change.path)"
             @click.stop
             @update:model-value="() => emit('toggleReviewed', row.node.change.path)"
-          >
-            <CodiconIcon
-              :name="
-                reviewCheckboxState(row.node.change.path) === 'indeterminate' ? 'dash' : 'check'
-              "
-              :size="13"
-            />
-          </Checkbox>
+          />
           <span class="size-4 shrink-0 flex items-center justify-center" aria-hidden="true">
             <span
               class="size-3.25 mask-contain mask-no-repeat mask-center"

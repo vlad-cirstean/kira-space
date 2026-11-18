@@ -6,6 +6,8 @@
 // emit the size on release; a drag previews through local state, so the parent store sees one write.
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { t } from '@theme/i18n';
+import { paneFrame, windowBody } from '@theme/lib/frames';
+import { cn } from '@theme/lib/utils';
 import { computed, ref } from 'vue';
 import MainView from './MainView.vue';
 import TabStrip from './TabStrip.vue';
@@ -60,11 +62,11 @@ function commitOps(size: number): void {
        reproduce byte-identical geometry to the previous CSS grid. The dock's own 6px gaps above and
        below (main-to-dock, dock-to-status) come from this same gap-0.5 plus the handle's own h-0.5
        and the status bar's own mt-1 below — no separate spacing rule for the dock. -->
-  <div class="workbench-shell flex flex-1 flex-col min-h-0 gap-0.5 px-1.5 pb-0.5 bg-chrome">
+  <div :class="cn(windowBody, 'workbench-shell flex-col')">
     <div class="flex flex-1 min-h-0 gap-0.5">
       <div
         v-if="projectVisible"
-        class="overflow-hidden min-w-0 min-h-0 rounded-kira bg-bg"
+        :class="paneFrame"
         data-slot="side-panel"
         data-testid="project-panel"
         :style="{ flex: `0 0 ${projectSize}px` }"
@@ -85,7 +87,7 @@ function commitOps(size: number): void {
       <div class="min-w-0 flex-1" data-testid="main-panel">
         <div
           class="h-full flex flex-col min-w-0 min-h-0 overflow-hidden"
-          :class="{ 'rounded-kira bg-bg': mainFramed }"
+          :class="mainFramed ? paneFrame : undefined"
         >
           <!-- Taller than a tab (--kira-h-md, 26px) by design (h-tabbar) — the extra height is
                the tab's own breathing room within the chrome row, not a margin tacked
@@ -117,7 +119,7 @@ function commitOps(size: number): void {
         @cancel="liveOps = null"
       />
       <div
-        class="shrink-0 overflow-hidden min-w-0 min-h-0 rounded-kira bg-bg"
+        :class="cn(paneFrame, 'shrink-0')"
         data-testid="operations-panel"
         :style="{ height: `${dockHeight}px` }"
       >

@@ -2,14 +2,14 @@
 import { useQuery } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { FieldError } from '@theme/components/ui/field';
 import { InputGroup, InputGroupInput } from '@theme/components/ui/input-group';
 import { Label } from '@theme/components/ui/label';
-import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
+import { Popover, PopoverAnchor, PopoverContent, PopoverList } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
@@ -203,6 +203,7 @@ const partitionButtonLabel = computed(() => {
           }}</span
         >
         <InputGroupInput
+          :aria-label="t('studio.stream.offset.label')"
           :model-value="offsetText"
           :placeholder="t('studio.stream.offset.placeholder')"
           class="h-full p-0 font-data"
@@ -214,29 +215,26 @@ const partitionButtonLabel = computed(() => {
       </InputGroup>
     </div>
     <div class="relative">
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
-            ref="partitionTriggerEl"
-            variant="toolbar"
-            size="kira"
-            data-testid="stream-filter-partition"
-            :class="selectedPartitions.length ? 'text-state-on' : ''"
-            @click="partitionMenuOpen = !partitionMenuOpen"
-          >
-            <CodiconIcon :name="ICON.filter" :size="13" />
-            {{ partitionButtonLabel }}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.stream.partitionFilter.tooltip') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="t('studio.stream.partitionFilter.tooltip')">
+        <Button
+          ref="partitionTriggerEl"
+          variant="toolbar"
+          size="kira"
+          data-testid="stream-filter-partition"
+          :class="selectedPartitions.length ? 'text-state-on' : ''"
+          @click="partitionMenuOpen = !partitionMenuOpen"
+        >
+          <CodiconIcon :name="ICON.filter" :size="13" />
+          {{ partitionButtonLabel }}
+        </Button>
+      </TextTooltip>
       <Popover :open="partitionMenuOpen" @update:open="(v) => (partitionMenuOpen = v)">
         <PopoverAnchor
           :reference="(partitionTriggerEl?.$el as HTMLElement) ?? undefined"
           class="hidden"
         />
-        <PopoverContent align="start" class="w-56 p-0" data-testid="stream-partition-menu">
-          <div class="flex flex-col max-h-60 overflow-y-auto gap-0.5 p-1">
+        <PopoverContent align="start" flush class="w-56" data-testid="stream-partition-menu">
+          <PopoverList class="max-h-60 overflow-y-auto">
             <QueryState :query="partitionsQuery" variant="inline">
               <template #empty>
                 <InlineState kind="empty">{{ t('studio.stream.noPartitions.empty') }}</InlineState>
@@ -250,45 +248,40 @@ const partitionButtonLabel = computed(() => {
                   :data-testid="`stream-filter-partition-option-${p}`"
                 >
                   <Checkbox
-                    class="size-3.5"
                     :model-value="selectedPartitions.includes(p)"
                     @update:model-value="onTogglePartition(p)"
-                  >
-                    <CodiconIcon name="check" :size="12" />
-                  </Checkbox>
+                  />
                   <span>{{ t('studio.stream.partition.label', { id: String(p) }) }}</span>
                 </Label>
               </template>
             </QueryState>
-          </div>
+          </PopoverList>
         </PopoverContent>
       </Popover>
     </div>
     <div class="flex flex-col gap-0.5 shrink-0">
       <div class="flex items-center gap-0.5">
-        <Tooltip :disabled="!timestampError">
-          <TooltipTrigger as-child>
-            <InputGroup variant="kira" class="flex w-40 font-data" :aria-invalid="!!timestampError">
-              <span
-                class="shrink-0 text-kira-sm"
-                :class="tab.state.timestampFilter ? 'text-state-on' : 'text-muted-foreground'"
-                >{{
-                  t('studio.stream.since.label')
-                }}</span
-              >
-              <InputGroupInput
-                :model-value="timestampText"
-                :placeholder="t('studio.cellEditor.detect.iso8601.status')"
-                class="h-full p-0 font-data"
-                data-testid="stream-filter-timestamp"
-                @update:model-value="timestampEdit.onInput"
-                @keydown="timestampEdit.onKeydown"
-                @blur="timestampEdit.onCommit"
-              />
-            </InputGroup>
-          </TooltipTrigger>
-          <TooltipContent>{{ timestampError }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="timestampError"
+          ><InputGroup variant="kira" class="flex w-40 font-data" :aria-invalid="!!timestampError">
+            <span
+              class="shrink-0 text-kira-sm"
+              :class="tab.state.timestampFilter ? 'text-state-on' : 'text-muted-foreground'"
+              >{{
+                t('studio.stream.since.label')
+              }}</span
+            >
+            <InputGroupInput
+              :aria-label="t('studio.stream.since.label')"
+              :model-value="timestampText"
+              :placeholder="t('studio.cellEditor.detect.iso8601.status')"
+              class="h-full p-0 font-data"
+              data-testid="stream-filter-timestamp"
+              @update:model-value="timestampEdit.onInput"
+              @keydown="timestampEdit.onKeydown"
+              @blur="timestampEdit.onCommit"
+            />
+          </InputGroup></TextTooltip
+        >
         <span class="relative shrink-0">
           <TooltipIconButton
             icon="calendar"
@@ -304,7 +297,8 @@ const partitionButtonLabel = computed(() => {
             />
             <PopoverContent
               align="start"
-              class="w-56 p-0"
+              flush
+              class="w-56"
               data-testid="stream-filter-timestamp-calendar-popover"
             >
               <DateTimePicker
@@ -325,18 +319,11 @@ const partitionButtonLabel = computed(() => {
         }}</FieldError
       >
     </div>
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button
-          variant="toolbar"
-          size="kira"
-          data-testid="stream-filter-clear"
-          @click="onClearFilter"
-        >
-          {{ t('common.action.clear.label') }}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ t('studio.common.clearFilters.tooltip') }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip :text="t('studio.common.clearFilters.tooltip')">
+      <Button variant="toolbar" size="kira" data-testid="stream-filter-clear" @click="onClearFilter"
+        ><CodiconIcon :name="ICON.clearAll" :size="13" />
+        {{ t('common.action.clear.label') }}
+      </Button>
+    </TextTooltip>
   </ViewToolbar>
 </template>

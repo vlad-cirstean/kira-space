@@ -6,6 +6,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -71,14 +72,18 @@ function onChord(event: KeyboardEvent): void {
     >
       <DialogHeader>
         <DialogTitle>{{ t('workbench.approvals.dialog.title') }}</DialogTitle>
-        <Badge variant="count" data-testid="approvals-count">{{ items.length }}</Badge>
-        <Badge v-if="items.length > 1" variant="count" data-testid="approvals-position">
-          {{ t('common.ofTotal.label', { value: position, total: items.length }) }}
-        </Badge>
+        <DialogDescription class="flex items-center gap-1.5">
+          <Badge variant="count" data-testid="approvals-count">{{ items.length }}</Badge>
+          <Badge v-if="items.length > 1" variant="count" data-testid="approvals-position">
+            {{ t('common.ofTotal.label', { value: position, total: items.length }) }}
+          </Badge>
+        </DialogDescription>
       </DialogHeader>
 
-      <DialogBody class="gap-0 py-0">
-        <ApprovalItemCard :key="current.id" :item="current" />
+      <DialogBody flush>
+        <div class="flex flex-1 flex-col px-3">
+          <ApprovalItemCard :key="current.id" :item="current" />
+        </div>
       </DialogBody>
 
       <DialogFooter class="flex-col items-stretch gap-2">
@@ -89,7 +94,7 @@ function onChord(event: KeyboardEvent): void {
         >
           <Button
             variant="dialog-deny"
-            size="kira"
+            size="kira-lg"
             :pending="pending"
             data-testid="approvals-deny-all"
             @click="denyAll"

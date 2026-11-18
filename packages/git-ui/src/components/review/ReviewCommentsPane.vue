@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { LineRange, ReviewComment } from '@kira/git-ipc';
 import AttributeTooltip from '@theme/components/AttributeTooltip.vue';
+import EmptyState from '@theme/components/EmptyState.vue';
 /**
  * The review sidebar's Comments pane, and the only new component this phase adds to
  * `packages/git-ui`: the centralized list, the copy-for-AI action and clear-all. The webview never
@@ -15,16 +16,18 @@ import InlineState from '@theme/components/InlineState.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed, useTemplateRef } from 'vue';
+import { keptScrollIf } from '../../lib/reviewKeep.ts';
 import { shaLabel } from '../../lib/text.ts';
 import type { ReviewCommentsState } from '../../state/reviewComments.ts';
 
 const props = defineProps<{
   reviewComments: ReviewCommentsState;
+  /** View-state key of the list scroll; null keeps none. */
+  keepScroll?: string | null;
 }>();
 
 // Reuses ReviewFilesState.selectFile rather than a second editor.openRangeDiff call site (D10) —
@@ -91,6 +94,7 @@ function anchorTitle(c: ReviewComment): string | undefined {
 // data-kira-tip — MountRoot.vue's own TooltipProvider (Part 2 §3.5) covers every real
 // Tooltip/TooltipTrigger trio this file also uses.
 const listEl = useTemplateRef<HTMLElement>('list');
+keptScrollIf(() => props.keepScroll ?? null, listEl, { ready: () => groups.value.length > 0 });
 </script>
 
 <template>
@@ -113,23 +117,29 @@ const listEl = useTemplateRef<HTMLElement>('list');
         :disabled="reviewComments.comments.value.length === 0 || reviewComments.pending.value"
         @click="reviewComments.confirmClear()"
       />
-      <div v-else class="flex items-center gap-1 ml-auto text-graph-md">
-        <Button variant="toolbar" size="kira" @click="reviewComments.clear()">
+      <div v-else class="flex items-center gap-1 ml-auto">
+        <Button variant="dialog" size="kira" @click="reviewComments.cancelClear()">{{
+          t('common.action.cancel.label')
+        }}</Button>
+        <Button variant="dialog-danger" size="kira" @click="reviewComments.clear()">
           {{
             t('git.review.comments.confirmClear.label', {
               count: reviewComments.comments.value.length,
             })
           }}
         </Button>
-        <Button variant="toolbar" size="kira" @click="reviewComments.cancelClear()">{{
-          t('common.action.cancel.label')
-        }}</Button>
       </div>
     </ViewToolbar>
 
-    <FieldError v-if="reviewComments.loadError.value" class="p-3">
-      {{ t('git.review.comments.loadError.error', { error: reviewComments.loadError.value }) }}
-    </FieldError>
+    <EmptyState
+      v-if="reviewComments.loadError.value"
+      fill
+      icon="warning"
+      :title="t('common.state.loadFailed.title')"
+      :description="
+        t('git.review.comments.loadError.error', { error: reviewComments.loadError.value })
+      "
+    />
 
     <template v-else>
       <template v-if="groups.length > 0">

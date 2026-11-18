@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import TooltipDetails from '@theme/components/TooltipDetails.vue';
 import { t } from '@theme/i18n';
+import { TONE_TEXT } from '@theme/lib/statusTone';
 import { useIntervalFn, useNow } from '@vueuse/core';
 import { formatCompactDuration, formatDateTime, formatRelative } from '@workbench/behaviour/format';
 import { TIMING } from '@workbench/behaviour/timing';
@@ -57,8 +58,6 @@ function toneOf(percent: number): 'warn' | 'error' | undefined {
 
 const tone = computed(() => toneOf(Math.max(0, ...windows.value.map((w) => w.window.usedPercent))));
 
-const TONE_CLASS = { warn: 'text-warn', error: 'text-error' } as const;
-
 const rows = computed(() =>
   windows.value.map((w) => {
     const percent = toneOf(w.window.usedPercent);
@@ -72,7 +71,7 @@ const rows = computed(() =>
         when: formatDateTime(w.window.resetsAt),
         left,
       }),
-      class: percent ? TONE_CLASS[percent] : undefined,
+      class: percent ? TONE_TEXT[percent] : undefined,
     };
   }),
 );

@@ -257,7 +257,7 @@ test('picking a swatch sends SetRepoColor and the nav dot follows', async ({ rel
       },
     },
   ]);
-  await page.locator(`${t('repo-color')} ${t('color-red')}`).check({ force: true });
+  await page.locator(`${t('repo-color')} ${t('color-red')}`).click();
   await expect.poll(() => calls(control, IPC.codeWorkspaceSetRepoColor)).toHaveLength(1);
   expect(calls(control, IPC.codeWorkspaceSetRepoColor)[0]?.args).toEqual({
     id: 'repo-web-app',

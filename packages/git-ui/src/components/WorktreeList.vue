@@ -20,24 +20,28 @@ import type { WorktreeEntry, WorktreeRemovePreflight } from '@kira/git-ipc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldError } from '@theme/components/ui/field';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
+import { ICON } from '@theme/icons';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import Identifier from '@workbench/components/Identifier.vue';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import { type PickerList, worktreeLabel } from '../lib/pickerModel.ts';
 import type { OpsState } from '../state/ops.ts';
 import type { WorktreeState } from '../state/worktrees.ts';
@@ -71,6 +75,7 @@ const pendingRemove = ref<{ entry: WorktreeEntry; preflight: WorktreeRemovePrefl
   undefined,
 );
 const typedToken = ref('');
+const confirmTokenId = useId();
 
 async function requestRemove(entry: WorktreeEntry): Promise<void> {
   const preflight = await props.worktrees.previewRemove(entry.path);
@@ -122,7 +127,8 @@ async function confirmRemove(): Promise<void> {
 <template>
   <section :aria-label="t('common.module.worktrees.label')">
     <SectionHeading :label="t('common.module.worktrees.label')">
-      <Button variant="toolbar" size="kira" class="ml-auto" @click="emit('createWorktree')">
+      <Button variant="toolbar" size="kira" @click="emit('createWorktree')"
+        ><CodiconIcon :name="ICON.add" :size="13" />
         {{ t('git.worktree.create.label') }}
       </Button>
     </SectionHeading>
@@ -135,12 +141,11 @@ async function confirmRemove(): Promise<void> {
       :tabindex="focusedRowId === `worktree:${entry.path}` ? 0 : -1"
     >
       <div data-testid="branch-row-main" class="flex items-center gap-0.5 flex-1 min-w-0 text-left">
-        <span
+        <StatusDot
           v-if="entry.isCurrent"
-          class="text-kira-sm text-subtle"
+          tone="muted"
           :data-kira-tip="t('git.worktree.current.tooltip')"
-          >●</span
-        >
+        />
         <span
           v-if="entry.isMain"
           class="text-kira-sm text-subtle"
@@ -188,36 +193,32 @@ async function confirmRemove(): Promise<void> {
     <!-- P131 Part 2 §5: opens inside RefsPopover's own modal Popover panel (§5.2) -- reka's
          modal content there prevents the panel dismissing under this nested Dialog. -->
     <Dialog :open="pendingRemove !== undefined" @update:open="(v) => !v && cancelRemove()">
-      <DialogContent :aria-describedby="undefined" size="md" :dirty="typedToken !== ''">
+      <DialogContent :aria-describedby="undefined" size="sm" destructive :dirty="typedToken !== ''">
         <DialogHeader>
           <DialogTitle>{{
             pendingRemove
               ? t('git.worktree.removeConfirm.title', { path: pendingRemove.entry.path })
               : ''
           }}</DialogTitle>
+          <DialogDescription v-if="pendingRemove?.preflight.verdict === 'dirty'">
+            <CatalogText k="git.worktree.removeConfirm.body">
+              <template #token
+                ><Identifier :value="pendingRemove.preflight.confirmToken ?? ''" /></template
+              >
+            </CatalogText>
+          </DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <template v-if="pendingRemove?.preflight.verdict === 'blocked'">
-            <FieldError>{{ blockerText(pendingRemove.preflight) }}</FieldError>
-          </template>
-          <template v-else-if="pendingRemove?.preflight.verdict === 'dirty'">
-            <p>
-              <CatalogText k="git.worktree.removeConfirm.body">
-                <template #token
-                  ><Identifier :value="pendingRemove.preflight.confirmToken ?? ''" /></template
-                >
-              </CatalogText>
-            </p>
-            <Input
-              v-model="typedToken"
-              size="kira-lg"
-              class="w-full"
-              :aria-label="t('git.common.confirmToken.aria')"
-            />
-          </template>
+          <Alert v-if="pendingRemove?.preflight.verdict === 'blocked'" variant="error">
+            <AlertDescription>{{ blockerText(pendingRemove.preflight) }}</AlertDescription>
+          </Alert>
+          <Field v-else-if="pendingRemove?.preflight.verdict === 'dirty'">
+            <FieldLabel :for="confirmTokenId">{{ t('git.common.confirmToken.label') }}</FieldLabel>
+            <Input :id="confirmTokenId" v-model="typedToken" class="w-full" />
+          </Field>
         </DialogBody>
         <DialogFooter>
-          <Button variant="dialog" size="kira-lg" @click="cancelRemove">{{
+          <Button variant="dialog" size="kira-lg" data-dialog-dismiss @click="cancelRemove">{{
             t('common.action.cancel.label')
           }}</Button>
           <Button

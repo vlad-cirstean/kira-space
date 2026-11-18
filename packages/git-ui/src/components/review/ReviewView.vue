@@ -2,16 +2,15 @@
 import type { ReviewComment, ReviewSessionSnapshot, Transport, UiActionKind } from '@kira/git-ipc';
 import { TransportError } from '@kira/git-ipc';
 import EmptyState from '@theme/components/EmptyState.vue';
-import { Button } from '@theme/components/ui/button';
 /**
  * The sidebar view's root, mounted by `main.ts` when `view === "review"`. States: no branch, ask
  * for a base, unrelated histories, nothing to review, the list, plus `resolving` and `error`.
- * Persists nothing itself (`viewState` is accepted only to share `MountOptions` with `AppRoot`).
+ * Keeps view state through the host's `keep` (lib/reviewKeep.ts); `viewState` is accepted only to
+ * share `MountOptions`.
  *
  * The branch arrives three ways: `props.target` (cold bootstrap), the `review.target` event (any
  * time), and the no-branch state's own picker.
  */
-import { FieldError } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { useLiveRegion } from '@workbench/behaviour/liveRegion';
@@ -22,6 +21,7 @@ import { BridgeClient } from '../../bridge/client.ts';
 import { adjacentInOrder, orderedFilePaths } from '../../lib/fileTreeModel.ts';
 import { markOnToggle, reviewAttention } from '../../lib/reviewAttention.ts';
 import { createReviewFilesActions } from '../../lib/reviewFilesActions.ts';
+import { useReviewKeep } from '../../lib/reviewKeep.ts';
 import { useReviewAnnouncements } from '../../lib/useReviewAnnouncements.ts';
 import { useReviewStepping } from '../../lib/useReviewStepping.ts';
 import { useReviewWorkingOnly } from '../../lib/useReviewWorkingOnly.ts';
@@ -42,6 +42,7 @@ import type { ViewStateStore } from '../../state/viewState.ts';
 import GitViewHead, { type RepoHead } from '../GitViewHead.vue';
 import ReviewCommentsPane from './ReviewCommentsPane.vue';
 import ReviewCommitList from './ReviewCommitList.vue';
+import ReviewFailure from './ReviewFailure.vue';
 import ReviewFilesPane from './ReviewFilesPane.vue';
 import ReviewNoBranch from './ReviewNoBranch.vue';
 import ReviewToolbars from './ReviewToolbars.vue';
@@ -173,15 +174,9 @@ async function bootstrap(): Promise<void> {
   }
 }
 
-/**
- * The read half of durable persistence — its own round trip, made once `bootstrap()`
- * has a real `repoId` in hand (right here, alongside `props.target`/`review.target`'s own
- * priority, both of which still win unchanged: `props.target` already returned above, and a
- * `review.target` push that races ahead of this call already set `review.branch.value`, checked
- * again just before applying so it is never clobbered). No commit/diff data is ever restored —
- * only identifiers `setTarget`/`setBase` already re-ask fresh; a snapshot the extension host
- * judges too old (14 days) comes back as `{session: null}`, the same as never having saved one.
- */
+/** The read half of durable persistence, run once `bootstrap()` has a `repoId`. `props.target` and
+ *  a `review.target` push win over it. Only identifiers are restored; a snapshot older than 14
+ *  days comes back as `{session: null}`. */
 async function resumeSession(id: string): Promise<void> {
   if (review.value?.branch.value) return;
   let loaded: { session: ReviewSessionSnapshot | null };
@@ -244,6 +239,7 @@ async function persistSession(): Promise<void> {
  *  never silently jumps back into a comparison the user deliberately left. */
 async function goBackToSelection(): Promise<void> {
   const id = repoId.value;
+  forgetBranch();
   review.value?.clearTarget();
   if (id) await bridge.request('review.session.save', { repoId: id, session: null });
 }
@@ -253,15 +249,14 @@ const { workingOnly, showsPanes, pane, emptyNote } = useReviewWorkingOnly(
   () => props.workingChanges,
 );
 
-// The file filter is revealed by the toolbar's search button; `filterVisible` gates it.
-const filterVisible = ref(false);
-
-// Declared before the composable below, which reads it at setup.
-const filter = ref('');
+// The toolbar's search button reveals the file filter; `filterVisible` gates it. Declared before the
+// composable below, which reads `filter` at setup.
+const keep = useReviewKeep({ review, reviewFiles });
+const { filter, filterVisible, stateKey, scrollKeys, forgetBranch } = keep;
 
 // Type to search: a printable key in the commit list reveals the file filter and starts it.
 const { showSearch } = usePanelHeaderSearch(rootEl, {
-  stateKey: null,
+  stateKey,
   searchable: () => showsPanes.value,
   getSearch: () => filter.value,
   setSearch: (value) => {
@@ -462,32 +457,25 @@ useReviewAnnouncements(review, announce);
     <GitViewHead v-if="repoHead" :repo="repoHead" />
 
     <template v-if="bootError">
-      <div class="flex flex-col gap-2 p-3" data-testid="boot-error">
-        <p class="text-muted-foreground">{{
-          t('git.app.bootError.error', { error: bootError })
-        }}</p>
-        <Button
-          variant="dialog"
-          size="kira"
-          class="self-start"
-          data-testid="boot-retry"
-          @click="retryBootstrap"
-        >
-          {{ t('common.action.retry.label') }}
-        </Button>
-      </div>
+      <ReviewFailure
+        data-testid="boot-error"
+        retry-testid="boot-retry"
+        :description="t('git.app.bootError.error', { error: bootError })"
+        @retry="retryBootstrap"
+      />
     </template>
 
     <template v-else-if="!review">
       <EmptyState fill loading :title="t('git.review.loading.loading')" />
     </template>
 
-    <template v-else-if="noActiveRepo">
-      <div class="flex flex-col gap-1 p-3 min-h-0">
-        <h2 class="text-kira-lg font-medium text-fg">{{ t('git.review.start.title') }}</h2>
-        <p>{{ t('git.review.noRepo.emptyHint') }}</p>
-      </div>
-    </template>
+    <EmptyState
+      v-else-if="noActiveRepo"
+      fill
+      icon="repo"
+      :title="t('git.review.start.title')"
+      :description="t('git.review.noRepo.emptyHint')"
+    />
 
     <template v-else-if="!review.branch.value">
       <ReviewNoBranch :refs-state="refsState" @pick="pickBranch" />
@@ -508,18 +496,21 @@ useReviewAnnouncements(review, announce);
       />
 
       <div class="flex-1 min-h-0 flex flex-col">
-        <p v-if="review.phase.value === 'resolving'" class="p-3 text-muted-foreground">
-          {{ t('git.review.resolving.loading') }}
-        </p>
+        <EmptyState
+          v-if="review.phase.value === 'resolving'"
+          fill
+          loading
+          :title="t('git.review.resolving.loading')"
+        />
 
-        <div v-else-if="review.phase.value === 'error'" class="flex flex-col items-start gap-1 p-3">
-          <FieldError>{{
+        <ReviewFailure
+          v-else-if="review.phase.value === 'error'"
+          retry-testid="review-retry"
+          :description="
             t('git.review.async.compare.error', { error: review.resolveError.value ?? '' })
-          }}</FieldError>
-          <Button variant="dialog" size="kira" data-testid="review-retry" @click="retryCompare">
-            {{ t('common.action.retry.label') }}
-          </Button>
-        </div>
+          "
+          @retry="retryCompare"
+        />
 
         <div
           v-else-if="review.phase.value === 'ask'"
@@ -565,6 +556,7 @@ useReviewAnnouncements(review, announce);
             :list-mode="listMode"
             :filter="filter"
             :boundary="rootEl"
+            :keep-scroll="scrollKeys?.commits ?? null"
           />
         </template>
 
@@ -582,6 +574,7 @@ useReviewAnnouncements(review, announce);
           :cursor="cursor"
           :can-step="canStep"
           :review-shortcuts="reviewShortcuts === true"
+          :keep-scroll="scrollKeys?.files ?? null"
           @step="step"
           @opened-working="(path) => (cursor = { section: 'working', path })"
         />
@@ -590,6 +583,7 @@ useReviewAnnouncements(review, announce);
           v-else-if="showsPanes && pane === 'comments' && reviewComments"
           class="flex-1 min-h-0"
           :review-comments="reviewComments"
+          :keep-scroll="scrollKeys?.comments ?? null"
           @select="onSelectComment"
         />
       </div>

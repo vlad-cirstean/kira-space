@@ -86,9 +86,9 @@ const idOf = (o: PickerOption): string => o.testid ?? o.value;
       :data-testid="`${testid}-search`"
     />
     <slot name="top" />
-    <FieldError v-if="customError" class="px-2 pt-1" :data-testid="`${testid}-error`">{{
-      customError
-    }}</FieldError>
+    <div v-if="customError" class="px-2 pt-1">
+      <FieldError :data-testid="`${testid}-error`">{{ customError }}</FieldError>
+    </div>
     <CommandList :class="cn('max-h-72', listClass)">
       <CommandGroup v-if="showCustom">
         <CommandItem

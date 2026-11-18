@@ -5,18 +5,18 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Input } from '@theme/components/ui/input';
-import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { useFocusOnMount } from '@workbench/behaviour/focus';
 import SecretInput from '@workbench/components/SecretInput.vue';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
-import { type ComponentPublicInstance, computed, ref, useTemplateRef } from 'vue';
+import { type ComponentPublicInstance, computed, ref, useId, useTemplateRef } from 'vue';
 import { useGitCredentialStore } from '../state/gitCredential';
 
 // git's own askpass prompt, mounted by PromptHost for the routed `git-credential` entry whose ref
@@ -29,6 +29,7 @@ const store = useGitCredentialStore();
 const prompt = computed(() => store.prompts.find((p) => p.requestId === props.entry.ref) ?? null);
 
 const value = ref('');
+const promptId = useId();
 const secretField = useTemplateRef<{ input?: HTMLInputElement }>('secretField');
 const plainField = useTemplateRef<ComponentPublicInstance>('plainField');
 
@@ -67,24 +68,30 @@ function onChord(event: KeyboardEvent): void {
     >
       <DialogHeader close-testid="git-credential-dialog-close">
         <DialogTitle>{{ t('space.gitCredential.dialog.title') }}</DialogTitle>
+        <DialogDescription data-testid="git-credential-repo">
+          {{ t('common.dotPair.label', { first: prompt.source, second: prompt.repoLabel }) }}
+        </DialogDescription>
       </DialogHeader>
 
       <DialogBody>
-        <p class="m-0 text-subtle" data-testid="git-credential-repo">
-          {{ t('common.dotPair.label', { first: prompt.source, second: prompt.repoLabel }) }}
-        </p>
         <!-- git's own text, rendered verbatim — never reformatted, never parsed. -->
-        <p class="m-0 font-data whitespace-pre-wrap" data-testid="git-credential-prompt">
+        <p
+          :id="promptId"
+          class="m-0 font-data whitespace-pre-wrap"
+          data-testid="git-credential-prompt"
+        >
           {{ prompt.prompt }}
         </p>
         <SecretInput
           v-if="prompt.masked"
           ref="secretField"
           v-model="value"
+          :aria-labelledby="promptId"
           data-testid="git-credential-input"
           data-dialog-initial
         />
         <Input
+          :aria-labelledby="promptId"
           v-else
           ref="plainField"
           v-model="value"
@@ -96,29 +103,27 @@ function onChord(event: KeyboardEvent): void {
 
       <DialogFooter>
         <template v-if="more > 0" #start>
-          <span class="text-kira-sm text-muted-foreground" data-testid="git-credential-more">
+          <span data-testid="git-credential-more">
             {{ t('common.moreWaiting.status', { count: more }) }}
           </span>
         </template>
         <Button
           variant="dialog"
           size="kira-lg"
-          :aria-keyshortcuts="formatShortcut('prompt.deny')"
+          :kbd="formatShortcut('prompt.deny')"
           data-testid="git-credential-cancel"
           @click="onCancel"
         >
           {{ t('common.action.cancel.label') }}
-          <Kbd>{{ formatShortcut('prompt.deny') }}</Kbd>
         </Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"
-          :aria-keyshortcuts="formatShortcut('form.submit')"
+          :kbd="formatShortcut('form.submit')"
           data-testid="git-credential-submit"
           @click="onSubmit"
         >
           {{ t('common.continue.label') }}
-          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

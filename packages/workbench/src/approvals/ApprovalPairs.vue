@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import KeyValueList from '@theme/components/KeyValueList.vue';
 import { Button } from '@theme/components/ui/button';
 import { Collapsible, CollapsibleTrigger } from '@theme/components/ui/collapsible';
 import { t } from '@theme/i18n';
@@ -18,28 +19,26 @@ const hidden = computed(() => Math.max(0, props.rows.length - VISIBLE));
 </script>
 
 <template>
-  <Collapsible
-    v-model:open="open"
-    class="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5 font-data text-kira-md leading-normal"
-    :data-testid="testid"
-  >
-    <div
-      v-for="(row, i) in shown"
-      :key="`${i}-${row.name}`"
-      class="contents"
-      :data-testid="rowTestid?.(row.name)"
-    >
-      <span class="text-muted-foreground">{{ row.name }}</span>
-      <span class="break-all">
-        {{ row.value }}
-        <span v-if="row.secret" class="text-subtle">{{ t('common.secret.label') }}</span>
-      </span>
-    </div>
+  <Collapsible v-model:open="open" :data-testid="testid">
+    <KeyValueList>
+      <div
+        v-for="(row, i) in shown"
+        :key="`${i}-${row.name}`"
+        class="contents"
+        :data-testid="rowTestid?.(row.name)"
+      >
+        <dt class="font-data">{{ row.name }}</dt>
+        <dd class="break-all font-data">
+          {{ row.value }}
+          <span v-if="row.secret" class="text-subtle">{{ t('common.secret.label') }}</span>
+        </dd>
+      </div>
+    </KeyValueList>
     <CollapsibleTrigger v-if="hidden > 0 && !open" as-child>
       <Button
         variant="link"
         size="inline"
-        class="col-span-full justify-self-start text-kira-sm font-normal text-muted-foreground underline decoration-border underline-offset-3"
+        class="text-kira-sm font-normal text-muted-foreground underline decoration-border underline-offset-3"
         data-testid="approval-more"
       >
         {{ t('common.more.label', { count: hidden }) }}

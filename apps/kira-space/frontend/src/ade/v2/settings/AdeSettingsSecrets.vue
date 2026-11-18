@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -72,7 +74,7 @@ const refExample = '$' + '{secret:name}';
 
 <template>
   <section class="flex min-w-0 flex-col gap-2" data-testid="ade-settings-secrets">
-    <h3 class="m-0 text-kira-lg font-medium">{{ t('space.ade.settings.secrets.title') }}</h3>
+    <SectionHeading flush :label="t('space.ade.settings.secrets.title')" />
     <FieldDescription>
       {{ t('space.ade.settings.secrets.hint', { ref: refExample }) }}
     </FieldDescription>
@@ -81,9 +83,13 @@ const refExample = '$' + '{secret:name}';
         view.storage.reason ?? t('space.ade.settings.secrets.storageOff.hint')
       }}</AlertDescription>
     </Alert>
-    <FieldDescription v-if="view.secrets.length === 0" data-testid="ade-settings-secrets-none">
+    <InlineState
+      kind="empty"
+      v-if="view.secrets.length === 0"
+      data-testid="ade-settings-secrets-none"
+    >
       {{ t('space.ade.settings.secrets.none.hint') }}
-    </FieldDescription>
+    </InlineState>
     <ul v-else class="m-0 flex list-none flex-col gap-1 p-0">
       <li
         v-for="row in view.secrets"

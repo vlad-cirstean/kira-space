@@ -18,6 +18,7 @@ import {
 } from '@theme/components/ui/dialog';
 import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { computed, ref } from 'vue';
 import RestoreRowItem from './RestoreRowItem.vue';
 import type { RestoreRow } from './types';
@@ -55,10 +56,8 @@ function toggle(id: string, on: boolean): void {
   <Dialog :open="true" @update:open="(v) => !v && emit('close')">
     <DialogContent size="lg" data-testid="restore-dialog">
       <DialogHeader>
-        <div class="flex min-w-0 flex-col gap-0.5">
-          <DialogTitle>{{ title }}</DialogTitle>
-          <DialogDescription>{{ description }}</DialogDescription>
-        </div>
+        <DialogTitle>{{ title }}</DialogTitle>
+        <DialogDescription>{{ description }}</DialogDescription>
       </DialogHeader>
 
       <DialogBody>
@@ -76,9 +75,8 @@ function toggle(id: string, on: boolean): void {
               :disabled="chosen.length === ready.length"
               data-testid="restore-select-all"
               @click="excluded = []"
-              >{{
-                t('common.action.selectAll.label')
-              }}</Button
+              ><CodiconIcon name="check-all" :size="13" />
+              {{ t('common.action.selectAll.label') }}</Button
             >
             <Button
               variant="toolbar"
@@ -86,9 +84,8 @@ function toggle(id: string, on: boolean): void {
               :disabled="chosen.length === 0"
               data-testid="restore-select-none"
               @click="excluded = ready.map((r) => r.id)"
-              >{{
-                t('common.action.selectNone.label')
-              }}</Button
+              ><CodiconIcon :name="ICON.clearAll" :size="13" />
+              {{ t('common.action.selectNone.label') }}</Button
             >
           </div>
         </div>

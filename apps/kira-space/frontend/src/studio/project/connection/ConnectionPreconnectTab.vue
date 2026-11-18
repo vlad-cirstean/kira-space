@@ -1,13 +1,21 @@
 <script setup lang="ts">
 import { PRECONNECT_DELAY_RANGE } from '@shared/domain/connection';
 import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Checkbox } from '@theme/components/ui/checkbox';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
-import { computed } from 'vue';
-import CheckboxRow from './CheckboxRow.vue';
+import { computed, useId } from 'vue';
+
+const connectionPreconnectSidecarId = useId();
 
 // The command run before a connect. An emptied command removes the whole preconnect mapping.
 const props = defineProps<{ errorFor: (pointer: string) => string | undefined }>();
@@ -38,17 +46,20 @@ function setDelay(value: string): void {
   const n = Number.parseInt(value, 10);
   patch({ delay_sec: Number.isNaN(n) ? 0 : n });
 }
+const idBase = useId();
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 p-3" data-testid="connection-section-preconnect">
+  <div class="flex flex-col gap-3" data-testid="connection-section-preconnect">
     <Field class="flex-1">
-      <FieldLabel>{{ t('studio.project.connectionDialog.preconnect.label') }}</FieldLabel>
+      <FieldLabel :for="`${idBase}-connection-preconnect`">{{
+        t('studio.project.connectionDialog.preconnect.label')
+      }}</FieldLabel>
       <Textarea
+        :id="`${idBase}-connection-preconnect`"
+        class="min-h-32 max-h-90 resize-y font-data"
         v-model="command"
         :aria-invalid="props.errorFor('/preconnect') ? true : undefined"
-        class="font-data"
-        rows="4"
         maxlength="2000"
         data-testid="connection-preconnect"
         @keydown="wrapSelectionOnType"
@@ -68,19 +79,30 @@ function setDelay(value: string): void {
       }}</FieldError>
     </Field>
 
-    <CheckboxRow
-      v-if="command"
-      :model-value="file.preconnect?.sidecar ?? false"
-      :label="t('studio.project.connectionDialog.sidecar.label')"
-      :description="t('studio.project.connectionDialog.sidecar.description')"
-      testid="connection-preconnect-sidecar"
-      @update:model-value="(v) => patch({ sidecar: v })"
-    />
+    <Field v-if="command" orientation="horizontal">
+      <Checkbox
+        :id="connectionPreconnectSidecarId"
+        :model-value="file.preconnect?.sidecar ?? false"
+        data-testid="connection-preconnect-sidecar"
+        @update:model-value="(v) => patch({ sidecar: v === true })"
+      />
+      <FieldContent>
+        <FieldLabel :for="connectionPreconnectSidecarId">{{
+          t('studio.project.connectionDialog.sidecar.label')
+        }}</FieldLabel>
+        <FieldDescription>{{
+          t('studio.project.connectionDialog.sidecar.description')
+        }}</FieldDescription>
+      </FieldContent>
+    </Field>
 
     <Field v-if="command" class="flex-1">
-      <FieldLabel>{{ t('studio.project.connectionDialog.preconnectDelay.label') }}</FieldLabel>
+      <FieldLabel :for="`${idBase}-connection-preconnect-delay`">{{
+        t('studio.project.connectionDialog.preconnectDelay.label')
+      }}</FieldLabel>
       <div class="w-24">
         <NumberStepperInput
+          :id="`${idBase}-connection-preconnect-delay`"
           :min="0"
           :max="PRECONNECT_DELAY_RANGE.max"
           step="1"

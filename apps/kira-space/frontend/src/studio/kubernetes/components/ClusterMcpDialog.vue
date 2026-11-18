@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import {
@@ -11,13 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
 import { errorText } from '@workbench/bridge/codedError';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import { useClusters, useSetClusterMcp } from '../queries';
 import type { KubeMcpSettings } from '../wire';
 
@@ -66,6 +66,7 @@ function onSave(): void {
     },
   );
 }
+const idBase = useId();
 </script>
 
 <template>
@@ -77,7 +78,7 @@ function onSave(): void {
         }}</DialogTitle>
         <DialogDescription>{{ t('kubernetes.mcp.dialog.description') }}</DialogDescription>
       </DialogHeader>
-      <DialogBody v-if="draft" class="flex flex-col gap-3">
+      <DialogBody v-if="draft">
         <Field orientation="horizontal">
           <Checkbox
             id="kube-mcp-enabled"
@@ -85,25 +86,23 @@ function onSave(): void {
             data-testid="kube-mcp-enabled"
             @update:model-value="(v) => (draft!.enabled = v === true)"
           />
-          <Label for="kube-mcp-enabled">{{ t('kubernetes.mcp.enable.label') }}</Label>
+          <FieldLabel for="kube-mcp-enabled">{{ t('kubernetes.mcp.enable.label') }}</FieldLabel>
         </Field>
         <FieldDescription>{{ t('kubernetes.mcp.enable.hint') }}</FieldDescription>
         <template v-if="draft.enabled">
           <Field>
-            <FieldLabel
-              >{{ t('common.field.description.label') }}
-              <span class="text-subtle"
-                >— {{ t('kubernetes.mcp.descriptionNote.label') }}</span
-              ></FieldLabel
-            >
+            <FieldLabel :for="`${idBase}-kube-mcp-description`">{{
+              t('common.field.description.label')
+            }}</FieldLabel>
             <Textarea
-              v-model="draft.description"
+              :id="`${idBase}-kube-mcp-description`"
               class="font-data"
-              rows="2"
+              v-model="draft.description"
               maxlength="1000"
               data-testid="kube-mcp-description"
               @keydown="wrapSelectionOnType"
             />
+            <FieldDescription>{{ t('kubernetes.mcp.descriptionNote.label') }}</FieldDescription>
           </Field>
           <Field>
             <FieldLabel>{{ t('kubernetes.mcp.approval.label') }}</FieldLabel>
@@ -118,7 +117,9 @@ function onSave(): void {
             />
           </Field>
         </template>
-        <FieldError v-if="error" data-testid="kube-mcp-error">{{ error }}</FieldError>
+        <Alert v-if="error" variant="error" data-testid="kube-mcp-error">
+          <AlertDescription>{{ error }}</AlertDescription>
+        </Alert>
       </DialogBody>
       <DialogFooter>
         <Button variant="dialog" size="kira-lg" data-testid="kube-mcp-cancel" @click="open = false">

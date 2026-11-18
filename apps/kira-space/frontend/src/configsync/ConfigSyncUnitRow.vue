@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Checkbox } from '@theme/components/ui/checkbox';
+import { FieldError } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
-import { NativeSelect } from '@theme/components/ui/native-select';
 
 import { type MessageKey, t } from '@theme/i18n';
+import { CHANGE_TONE, type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { computed, useId } from 'vue';
 import type { ConfigSyncChoice, ConfigSyncKind, ConfigSyncRow } from './domain';
 import { unitKey } from './domain';
@@ -20,6 +22,19 @@ const emit = defineEmits<{
   deactivate: [off: boolean];
 }>();
 
+const CHOICE_ITEMS = computed(() => [
+  {
+    value: 'mine',
+    label: t('space.configSync.row.mine.option'),
+    testid: `config-sync-choice-${props.row.id}-mine`,
+  },
+  {
+    value: 'shared',
+    label: t('space.configSync.row.shared.option'),
+    testid: `config-sync-choice-${props.row.id}-shared`,
+  },
+]);
+
 const KIND_LABEL: Record<ConfigSyncKind, MessageKey> = {
   add: 'common.action.add.label',
   modify: 'space.configSync.kind.modify.label',
@@ -29,14 +44,14 @@ const KIND_LABEL: Record<ConfigSyncKind, MessageKey> = {
   unchanged: 'studio.http.diff.unchangedRow.status',
   unmatched: 'space.configSync.kind.unmatched.label',
 };
-const KIND_TONE: Record<ConfigSyncKind, 'ok' | 'info' | 'warn' | 'error' | 'default'> = {
-  add: 'ok',
-  modify: 'info',
-  delete: 'warn',
-  conflict: 'warn',
+const KIND_TONE: Record<ConfigSyncKind, StatusTone> = {
+  add: CHANGE_TONE.added,
+  modify: CHANGE_TONE.changed,
+  delete: CHANGE_TONE.removed,
+  conflict: 'error',
   blocked: 'error',
-  unchanged: 'default',
-  unmatched: 'default',
+  unchanged: CHANGE_TONE.unchanged,
+  unmatched: 'neutral',
 };
 
 const switchId = useId();
@@ -63,7 +78,10 @@ const repoLine = computed(() => props.row.repo || props.row.origin || '');
         <Badge v-if="row.runsCommands" variant="warn" data-testid="config-sync-row-runs">
           {{ t('space.configSync.row.runsCommands.label') }}
         </Badge>
-        <Badge :variant="KIND_TONE[row.kind]" :data-testid="`config-sync-row-kind-${row.id}`">
+        <Badge
+          :variant="TONE_BADGE[KIND_TONE[row.kind]]"
+          :data-testid="`config-sync-row-kind-${row.id}`"
+        >
           {{ t(KIND_LABEL[row.kind]) }}
         </Badge>
       </span>
@@ -74,38 +92,33 @@ const repoLine = computed(() => props.row.repo || props.row.origin || '');
       >
         {{ repoLine }}
       </span>
-      <span
-        v-if="row.problem"
-        class="text-kira-sm text-error"
-        :data-testid="`config-sync-row-problem-${row.id}`"
-      >
+      <FieldError v-if="row.problem" :data-testid="`config-sync-row-problem-${row.id}`">
         {{ row.problem }}
-      </span>
+      </FieldError>
       <span v-if="row.unsetSecrets.length > 0" class="text-kira-sm text-muted-foreground">
         {{ t('space.configSync.row.unsetSecrets.hint', { names: row.unsetSecrets.join(', ') }) }}
       </span>
     </button>
     <div class="flex items-center gap-3">
-      <NativeSelect
+      <SecondaryTabs
         v-if="row.kind === 'conflict'"
-        variant="bordered"
+        variant="choice"
+        :aria-label="t('space.configSync.row.choice.label')"
         :model-value="choice"
+        :items="CHOICE_ITEMS"
         :data-testid="`config-sync-choice-${row.id}`"
         @update:model-value="(v) => emit('update:choice', v === 'shared' ? 'shared' : 'mine')"
-      >
-        <option value="mine">{{ t('space.configSync.row.mine.option') }}</option>
-        <option value="shared">{{ t('space.configSync.row.shared.option') }}</option>
-      </NativeSelect>
+      />
       <span v-if="row.kind !== 'unmatched'" class="ml-auto flex items-center gap-1.5">
-        <Label :for="switchId" class="text-kira-sm text-muted-foreground">
-          {{ t('space.configSync.row.deactivate.label') }}
-        </Label>
         <Checkbox
           :id="switchId"
           :model-value="row.deactivated"
           :data-testid="`config-sync-deactivate-${row.id}`"
           @update:model-value="(v) => emit('deactivate', v === true)"
         />
+        <Label :for="switchId" class="text-kira-sm text-muted-foreground">
+          {{ t('space.configSync.row.deactivate.label') }}
+        </Label>
       </span>
     </div>
   </li>

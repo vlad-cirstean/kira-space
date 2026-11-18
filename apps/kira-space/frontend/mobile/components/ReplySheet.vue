@@ -58,6 +58,7 @@ async function send(): Promise<void> {
       </DialogHeader>
       <DialogBody>
         <Textarea
+          :aria-label="t('common.message.label')"
           :model-value="message"
           rows="4"
           class="text-kira-touch"

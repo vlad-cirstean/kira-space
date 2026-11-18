@@ -2,7 +2,6 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Button } from '@theme/components/ui/button';
-import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useApprovalsStore } from '@workbench/state/approvals';
@@ -54,24 +53,22 @@ watch(unreadable, (v) => v && store.markBroken(props.item.id), { immediate: true
         variant="dialog-deny"
         size="kira-lg"
         :pending="busy"
-        :aria-keyshortcuts="formatShortcut('prompt.deny')"
+        :kbd="formatShortcut('prompt.deny')"
         :data-testid="`approval-deny-${item.id}`"
         @click="answer([item.id], false)"
       >
         {{ labels.value?.deny ?? t('common.action.deny.label') }}
-        <Kbd>{{ formatShortcut('prompt.deny') }}</Kbd>
       </Button>
       <Button
         v-if="def && !unreadable"
         variant="dialog-approve"
         size="kira-lg"
         :pending="busy"
-        :aria-keyshortcuts="formatShortcut('form.submit')"
+        :kbd="formatShortcut('form.submit')"
         :data-testid="`approval-approve-${item.id}`"
         @click="answer([item.id], true)"
       >
         {{ labels.value?.approve ?? t('common.action.approve.label') }}
-        <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
       </Button>
     </div>
   </div>

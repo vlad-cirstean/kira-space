@@ -77,6 +77,8 @@ export class ReviewSessionState {
   readonly pane: ShallowRef<ReviewPane> = shallowRef('commits');
   readonly resolveError: ShallowRef<string | undefined> = shallowRef(undefined);
   readonly isLoadingMore: ShallowRef<boolean> = shallowRef(false);
+  /** A row stream is open: its chunks are still arriving. Kept-state restores wait on it. */
+  readonly streaming: ShallowRef<boolean> = shallowRef(false);
   /** D39: a background re-resolve found the outcome or the count changed. Never applied
    *  automatically — `acknowledgeStaleReview()` is the only thing that acts on it. */
   readonly staleReview: ShallowRef<boolean> = shallowRef(false);
@@ -392,6 +394,7 @@ export class ReviewSessionState {
     this.#streamController?.abort();
     const controller = new AbortController();
     this.#streamController = controller;
+    this.streaming.value = true;
     const range: CommitRange = { base, branch };
     try {
       await this.#bridge.stream(
@@ -401,7 +404,10 @@ export class ReviewSessionState {
         controller.signal,
       );
     } finally {
-      if (this.#streamController === controller) this.#streamController = undefined;
+      if (this.#streamController === controller) {
+        this.#streamController = undefined;
+        this.streaming.value = false;
+      }
     }
   }
 

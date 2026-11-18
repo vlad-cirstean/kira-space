@@ -1,22 +1,24 @@
 <script setup lang="ts">
 import { shortSha } from '@kira/git-core';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import CodeBlock from '@theme/components/CodeBlock.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
+import { Card } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
+import { type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import Identifier from '@workbench/components/Identifier.vue';
 import { computed, ref, watch } from 'vue';
-import AdeChip from '../AdeChip.vue';
-import AdeTip from '../AdeTip.vue';
-import type { Tone } from '../board/actions';
 import type { RebaseAct } from '../board/rebaseActions';
 import { runStateLabel } from '../runState';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
-import { ACTION_CLASS } from '../tones';
 import type { Run } from '../wire';
 import AdeRunLog from './AdeRunLog.vue';
 import AdeRunSandboxBadge from './AdeRunSandboxBadge.vue';
@@ -56,14 +58,14 @@ const files = computed(() => [
   ]),
 ]);
 
-const STATE_TONE: Record<string, Tone> = {
-  done: 'green',
-  failed: 'red',
-  stuck: 'red',
-  back: 'amber',
-  running: 'blue',
-  pending: 'grey',
-  review: 'blue',
+const STATE_TONE: Record<string, StatusTone> = {
+  done: 'ok',
+  failed: 'error',
+  stuck: 'error',
+  back: 'warn',
+  running: 'info',
+  pending: 'neutral',
+  review: 'info',
 };
 const state = computed(() => runStateLabel(props.run.state));
 
@@ -72,7 +74,7 @@ const result = computed(() => {
   const id = outcome.value?.result ?? '';
   return id && id !== 'done' && id !== 'failed' ? id : '';
 });
-const resultTone = computed<Tone>(() => (outcome.value?.status === 'done' ? 'green' : 'red'));
+const resultTone = computed<StatusTone>(() => (outcome.value?.status === 'done' ? 'ok' : 'error'));
 const route = computed(() => {
   const r = outcome.value?.route ?? '';
   switch (r) {
@@ -108,16 +110,12 @@ function copy(): void {
 </script>
 
 <template>
-  <div
-    class="flex flex-col gap-1.5 rounded-kira bg-elevated p-2"
-    data-testid="ade-run-outcome"
-    :data-run-id="run.id"
-  >
+  <Card data-testid="ade-run-outcome" :data-run-id="run.id">
     <div class="flex items-center gap-2">
       <span class="text-kira-sm text-muted-foreground">{{ title }}</span>
-      <AdeChip :label="state" :tone="STATE_TONE[run.state] ?? 'grey'" />
+      <Badge :variant="TONE_BADGE[STATE_TONE[run.state] ?? 'neutral']">{{ state }}</Badge>
       <span v-if="result" data-testid="ade-outcome-result"
-        ><AdeChip :label="result" :tone="resultTone" /></span
+        ><Badge :variant="TONE_BADGE[resultTone]">{{ result }}</Badge></span
       >
       <span
         v-if="route"
@@ -127,22 +125,19 @@ function copy(): void {
           route
         }}</span
       >
-      <AdeChip
-        v-if="rebase"
-        :label="
-          rebase.verified
-            ? t('space.ade.outcome.verified.status')
-            : t('space.ade.outcome.notVerified.status')
-        "
-        :tone="rebase.verified ? 'green' : 'amber'"
-      />
+      <Badge v-if="rebase" :variant="rebase.verified ? 'ok' : 'warn'">{{
+        rebase.verified
+          ? t('space.ade.outcome.verified.status')
+          : t('space.ade.outcome.notVerified.status')
+      }}</Badge>
       <AdeRunSandboxBadge
         v-if="run.sandbox && run.sandbox.denials > 0"
         :run-id="run.id"
         :badge="run.sandbox"
       />
       <span class="flex-1" />
-      <Button variant="toolbar" size="kira" data-testid="ade-outcome-copy" @click="copy">
+      <Button variant="toolbar" size="kira" data-testid="ade-outcome-copy" @click="copy"
+        ><CodiconIcon :name="ICON.copy" :size="13" />
         {{ copied ? t('common.copy.copied.announce') : t('common.copyForAgent.label') }}
       </Button>
     </div>
@@ -157,7 +152,7 @@ function copy(): void {
       class="m-0 flex list-none flex-col gap-0.5 p-0 font-data text-kira-sm"
       data-testid="ade-outcome-files"
     >
-      <li v-for="f in files" :key="f" class="truncate text-tone-red">{{ f }}</li>
+      <li v-for="f in files" :key="f" class="truncate text-error">{{ f }}</li>
     </ul>
     <CodeBlock
       v-if="outcome?.report?.lastGitError"
@@ -179,29 +174,28 @@ function copy(): void {
       <span class="min-w-0 truncate">{{ b.name }}</span>
       <span class="inline-flex items-center gap-1 text-subtle"
         ><Identifier :value="b.before" :short="shortSha" />
-        →
+        <CodiconIcon name="arrow-right" :size="12" />
         <Identifier :value="b.after" :short="shortSha" /></span
       >
-      <span v-if="!b.onBase" class="text-tone-amber">{{
-        t('space.ade.outcome.notOnBase.status')
-      }}</span>
+      <span v-if="!b.onBase" class="text-warn">{{ t('space.ade.outcome.notOnBase.status') }}</span>
     </div>
     <Alert v-if="copyError" variant="error"
       ><AlertDescription>{{ copyError }}</AlertDescription></Alert
     >
     <div v-if="acts?.length" class="flex flex-wrap gap-1.5">
-      <AdeTip v-for="a in acts" :key="a.id" :parts="a.tip">
+      <TextTooltip v-for="a in acts" :key="a.id" :parts="a.tip">
         <Button
-          variant="dialog"
+          variant="toolbar"
           size="kira"
-          :class="ACTION_CLASS[a.kind === 'abortRebase' ? 'red' : 'amber']"
+          :data-tone="a.kind === 'abortRebase' ? 'error' : undefined"
           :disabled="a.disabled"
           :data-testid="`ade-outcome-act-${a.id}`"
           @click="dialogs.act(a)"
         >
+          <CodiconIcon :name="a.kind === 'abortRebase' ? 'debug-stop' : 'repo-pull'" :size="13" />
           <VarText :parts="a.label" />
         </Button>
-      </AdeTip>
+      </TextTooltip>
     </div>
     <Button
       variant="toolbar"
@@ -209,9 +203,9 @@ function copy(): void {
       class="self-start"
       data-testid="ade-outcome-log-toggle"
       @click="showLog = !showLog"
-    >
+      ><CodiconIcon name="output" :size="13" />
       {{ showLog ? t('space.common.hideLog.label') : t('space.common.showLog.label') }}
     </Button>
     <AdeRunLog v-if="showLog" kind="run" :id="run.id" />
-  </div>
+  </Card>
 </template>

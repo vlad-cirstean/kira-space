@@ -11,10 +11,11 @@ import {
 } from '@theme/components/ui/empty';
 import { useSpinnerDelay } from '@theme/lib/useSpinnerDelay';
 
-// The one empty / unavailable composition. `media` slot replaces the icon (tinted icon). Default
-// slot = actions (Retry, a primary button). `fill` takes the full height of the parent. `loading`
-// swaps the icon for a spinner; the whole state stays invisible for `SPINNER_DELAY` so a fast load
-// never flashes. Side panels pass no actions; a module front door uses ModuleStart instead.
+// The one empty / unavailable composition. `media` only for a content illustration; loading is the
+// `loading` prop. Default slot = actions (Retry, a primary button). `fill` takes the full height of
+// the parent. `loading` swaps the icon for a spinner; the whole state stays invisible for
+// `SPINNER_DELAY` so a fast load never flashes. Side panels pass no actions; a module front door
+// uses ModuleStart instead.
 const props = defineProps<{
   icon?: string;
   title: string;

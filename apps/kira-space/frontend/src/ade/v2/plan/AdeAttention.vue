@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
-import AdeTip from '../AdeTip.vue';
 import type { NeedsItem } from '../board/needsYou';
 import { useNeedsAction } from '../needs/useNeedsAction';
 import { SOLID_CLASS } from '../tones';
@@ -17,7 +17,7 @@ function onClick(): void {
 </script>
 
 <template>
-  <AdeTip :text="tip">
+  <TextTooltip :text="tip">
     <Button
       size="inline"
       type="button"
@@ -30,5 +30,5 @@ function onClick(): void {
       @click.stop="onClick"
       >!</Button
     >
-  </AdeTip>
+  </TextTooltip>
 </template>

@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
+import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { type MessageKey, t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
+import { TONE_DOT } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
 import { displayValue, formatBytes, formatDateTime } from '@workbench/behaviour/format';
 import { computed } from 'vue';
-import { nameOrShortId, stateDotTone } from '../lib/format';
+import { containerStateTone, nameOrShortId } from '../lib/format';
 import {
   useContainers,
   useImages,
@@ -20,7 +22,6 @@ import {
 } from '../queries';
 import { useDockerUiStore } from '../state/dockerUi';
 import type { InspectKind } from '../wire';
-import DetailSection from './DetailSection.vue';
 import InspectView from './InspectView.vue';
 
 const props = defineProps<{ kind: InspectKind; id: string }>();
@@ -118,29 +119,24 @@ const usedByRows = computed(() =>
     data-testid="docker-resource-detail"
     :data-kind="kind"
   >
-    <div class="flex shrink-0 items-center gap-2 px-3 py-2">
-      <CodiconIcon :name="ICONS[kind]" :size="16" class="text-muted-foreground" />
-      <span class="min-w-0 truncate text-kira-lg font-medium" data-testid="docker-resource-title">{{
-        title
-      }}</span>
-      <TooltipIconButton
-        v-if="registry.url.value"
-        icon="link-external"
-        :label="t('docker.detail.openRegistry.tooltip')"
-        :disabled="registry.checking.value"
-        data-testid="docker-resource-registry"
-        @click="registry.open()"
-      />
-      <span
-        v-if="registry.missing.value"
-        class="text-kira-sm text-muted-foreground"
-        data-testid="docker-registry-missing"
-        >{{
+    <DetailHeader :title="title" :icon="ICONS[kind]" title-testid="docker-resource-title">
+      <template #meta>
+        <span v-if="registry.missing.value" data-testid="docker-registry-missing">{{
           t('docker.detail.registryMissing.status')
-        }}</span
-      >
-      <Badge>{{ t(KIND_LABELS[kind]) }}</Badge>
-    </div>
+        }}</span>
+        <Badge>{{ t(KIND_LABELS[kind]) }}</Badge>
+      </template>
+      <template #actions>
+        <TooltipIconButton
+          v-if="registry.url.value"
+          icon="link-external"
+          :label="t('docker.detail.openRegistry.tooltip')"
+          :disabled="registry.checking.value"
+          data-testid="docker-resource-registry"
+          @click="registry.open()"
+        />
+      </template>
+    </DetailHeader>
     <div class="@container p-3">
       <div class="grid grid-cols-1 items-start gap-3 @3xl:grid-cols-2">
         <DetailSection :title="t('common.details.title')">
@@ -173,7 +169,7 @@ const usedByRows = computed(() =>
             data-testid="docker-used-by"
             @click="ui.select({ kind: 'container', id: row.id })"
           >
-            <StatusDot :tone="row.state ? stateDotTone(row.state) : 'muted'" />
+            <StatusDot :tone="TONE_DOT[row.state ? containerStateTone(row.state) : 'neutral']" />
             {{ row.name }}
           </button>
         </DetailSection>

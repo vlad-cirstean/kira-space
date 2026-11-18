@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { type MessageKey, t } from '@theme/i18n';
 import { compareNatural } from '@workbench/behaviour/match';
 import { useKeptState } from '@workbench/behaviour/viewState';
@@ -100,14 +101,12 @@ const summary = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 p-3" data-testid="ade-all-sessions">
+  <div class="flex flex-col gap-3 p-3" data-testid="ade-all-sessions">
     <div class="flex items-center gap-3">
       <SecondaryTabs
         variant="segmented"
-        size="kira-lg"
         :model-value="filter"
         :items="filterItems"
-        count-badge
         @update:model-value="(v) => (filter = v as 'running' | 'stopped')"
       />
       <div class="flex gap-3">
@@ -126,10 +125,11 @@ const summary = computed(() => {
       class="flex flex-col gap-0.5"
       data-testid="ade-all-group"
     >
-      <div class="mb-1 flex items-center gap-2 px-3 pb-1.5">
-        <span class="size-2.5 shrink-0 rounded-kira-sm" :style="{ background: g.color }" />
-        <h3 class="m-0 truncate text-kira-lg font-medium">{{ g.title }}</h3>
-      </div>
+      <SectionHeading :label="g.title">
+        <template #leading>
+          <span class="size-2.5 shrink-0 rounded-kira-sm" :style="{ background: g.color }" />
+        </template>
+      </SectionHeading>
       <AdeAllSessionRow v-for="r in g.rows" :key="r.session.id" :view="r" :archived="g.archived" />
     </section>
     <InlineState v-if="groups.length === 0" kind="empty" data-testid="ade-all-empty">{{

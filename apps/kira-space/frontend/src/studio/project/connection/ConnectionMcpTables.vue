@@ -3,19 +3,28 @@ import type { ConnectionFileMcp } from '@shared/domain/connectionConfig';
 import { TABLE_LIST_KINDS } from '@shared/domain/dbmcp';
 import { useQuery } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { compareNatural, matchesQuery } from '@workbench/behaviour/match';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import { control } from '../../bridge/control';
-import CheckboxRow from './CheckboxRow.vue';
+
+const connectionMcpTablesAllId = useId();
 
 const props = defineProps<{
   mcp: ConnectionFileMcp;
@@ -89,25 +98,32 @@ function toggleShown(on: boolean): void {
 </script>
 
 <template>
-  <Field class="flex-1" data-testid="connection-mcp-tables">
-    <FieldLabel
-      >{{ t('studio.project.connectionDialog.mcp.tables.label') }}
-      <span class="text-subtle"
-        >— {{ t('studio.project.connectionDialog.mcp.tablesNote.label') }}</span
-      ></FieldLabel
-    >
+  <FieldSet class="flex-1" data-testid="connection-mcp-tables">
+    <FieldLegend>{{ t('studio.project.connectionDialog.mcp.tables.label') }}</FieldLegend>
+    <FieldDescription class="w-full">{{
+      t('studio.project.connectionDialog.mcp.tablesNote.label')
+    }}</FieldDescription>
     <FieldDescription v-if="!tablesApply" class="w-full" data-testid="connection-mcp-tables-na">
       {{ t('studio.project.connectionDialog.mcp.tablesNa.body') }}
     </FieldDescription>
     <template v-else>
-      <CheckboxRow
-        :model-value="allTables"
-        :disabled="!enabled"
-        :label="t('studio.project.connectionDialog.mcp.tablesAll.label')"
-        :description="t('studio.project.connectionDialog.mcp.tablesAll.description')"
-        testid="connection-mcp-tables-all"
-        @update:model-value="setAllTables"
-      />
+      <Field orientation="horizontal">
+        <Checkbox
+          :id="connectionMcpTablesAllId"
+          :model-value="allTables"
+          :disabled="!enabled"
+          data-testid="connection-mcp-tables-all"
+          @update:model-value="(v) => setAllTables(v === true)"
+        />
+        <FieldContent>
+          <FieldLabel :for="connectionMcpTablesAllId">{{
+            t('studio.project.connectionDialog.mcp.tablesAll.label')
+          }}</FieldLabel>
+          <FieldDescription>{{
+            t('studio.project.connectionDialog.mcp.tablesAll.description')
+          }}</FieldDescription>
+        </FieldContent>
+      </Field>
       <template v-if="!allTables">
         <FieldDescription
           v-if="!props.connectionId"
@@ -124,27 +140,24 @@ function toggleShown(on: boolean): void {
           :loading-label="t('studio.project.connectionDialog.mcp.tablesLoading.label')"
         >
           <template #error="{ retry }">
-            <div
-              class="flex items-center gap-2 text-kira-sm text-subtle"
-              data-testid="connection-mcp-tables-offline"
-            >
-              <span>{{ t('studio.project.connectionDialog.mcp.tablesOffline.body') }}</span>
-              <Button size="kira" variant="dialog" @click="retry">{{
-                t('common.action.retry.label')
-              }}</Button>
+            <div class="flex items-center gap-2" data-testid="connection-mcp-tables-offline">
+              <InlineState kind="error">{{
+                t('studio.project.connectionDialog.mcp.tablesOffline.body')
+              }}</InlineState>
+              <Button size="kira" variant="toolbar" @click="retry"
+                ><CodiconIcon name="refresh" :size="13" />
+                {{ t('common.action.retry.label') }}</Button
+              >
             </div>
           </template>
           <div class="flex items-center gap-2">
             <Checkbox
               :model-value="selectAllState"
               :disabled="!enabled || tableRows.length === 0"
-              class="size-3.5"
               :aria-label="t('studio.project.connectionDialog.mcp.tablesSelectAll.label')"
               data-testid="connection-mcp-tables-select-all"
               @update:model-value="(v) => toggleShown(v === true)"
-            >
-              <CodiconIcon :name="selectAllState === true ? 'check' : 'remove'" :size="12" />
-            </Checkbox>
+            />
             <SearchField
               v-model="tableSearch"
               class="flex-1"
@@ -177,13 +190,10 @@ function toggleShown(on: boolean): void {
                 <Checkbox
                   :model-value="chosen.has(tableRows[item.index]?.ref ?? '')"
                   :disabled="!enabled"
-                  class="size-3.5"
                   @update:model-value="
                     (v) => toggleTable(tableRows[item.index]?.ref ?? '', v === true)
                   "
-                >
-                  <CodiconIcon name="check" :size="12" />
-                </Checkbox>
+                />
                 <span class="font-data truncate">{{ tableRows[item.index]?.ref }}</span>
                 <span v-if="tableRows[item.index]?.stale" class="text-subtle text-kira-sm">{{
                   t('studio.project.connectionDialog.mcp.tablesStale.label')
@@ -206,5 +216,5 @@ function toggleShown(on: boolean): void {
         {{ t('studio.project.connectionDialog.mcp.tablesEnforceExempt.body') }}
       </FieldDescription>
     </template>
-  </Field>
+  </FieldSet>
 </template>

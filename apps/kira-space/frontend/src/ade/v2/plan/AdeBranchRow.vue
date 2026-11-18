@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import BranchChip from '@theme/components/BranchChip.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
-import { Kbd } from '@theme/components/ui/kbd';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -16,7 +17,6 @@ import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { useRepoLinksStore } from '../../../repo/state/repoLinks';
 import { repoTint } from '../../../state/coderepos';
-import AdeTip from '../AdeTip.vue';
 import { useRunAutomation } from '../automation/useRunAutomation';
 import { type BranchAction, tagLabel } from '../board/actions';
 import { fixItems } from '../board/menu';
@@ -341,7 +341,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
                   row.name
                 }}</span
               >
-              <AdeTip v-if="row.attach" :text="row.attach.tip">
+              <TextTooltip v-if="row.attach" :text="row.attach.tip">
                 <span
                   role="img"
                   class="inline-flex shrink-0 text-subtle"
@@ -350,15 +350,15 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
                 >
                   <CodiconIcon :name="ATTACH_GLYPH[row.attach.state].icon" :size="13" />
                 </span>
-              </AdeTip>
-              <AdeTip v-if="row.checkedOut" :text="row.attach?.tip ?? ''">
+              </TextTooltip>
+              <TextTooltip v-if="row.checkedOut" :text="row.attach?.tip ?? ''">
                 <BranchChip
                   :name="t('space.ade.plan.branchRow.checkedOut.label', { branch: row.checkedOut })"
                   variant="warn"
                   class="max-w-32 shrink-0"
                   data-testid="ade-branch-checked-out"
                 />
-              </AdeTip>
+              </TextTooltip>
             </span>
             <span
               v-if="row.context || row.prog || hasChips"
@@ -410,6 +410,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           v-if="choice"
           icon="git-compare"
           :label="t('space.ade.board.taskMenu.reviewCode.label')"
+          :kbd="formatShortcut('ade.reviewCode')"
           class="shrink-0"
           disabled-trigger
           :pending="reviewCode.pendingFor([row.id])"
@@ -418,7 +419,6 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           @click.stop="reviewCode.open(row.branch.taskId, row.id, rowRef)"
         >
           <VarText :parts="choice.tip" />
-          <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
         </TooltipIconButton>
         <slot />
       </div>
@@ -466,7 +466,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
                   row.name
                 }}</span
               >
-              <AdeTip v-if="row.attach" :text="row.attach.tip">
+              <TextTooltip v-if="row.attach" :text="row.attach.tip">
                 <span
                   role="img"
                   class="inline-flex shrink-0 text-subtle"
@@ -475,16 +475,16 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
                 >
                   <CodiconIcon :name="ATTACH_GLYPH[row.attach.state].icon" :size="13" />
                 </span>
-              </AdeTip>
-              <AdeTip v-if="row.checkedOut" :text="row.attach?.tip ?? ''">
+              </TextTooltip>
+              <TextTooltip v-if="row.checkedOut" :text="row.attach?.tip ?? ''">
                 <BranchChip
                   :name="t('space.ade.plan.branchRow.checkedOut.label', { branch: row.checkedOut })"
                   variant="warn"
                   class="max-w-24 shrink-0"
                   data-testid="ade-branch-checked-out"
                 />
-              </AdeTip>
-              <AdeTip v-if="row.base && (baseName || row.base.pending)" :parts="row.base.tip">
+              </TextTooltip>
+              <TextTooltip v-if="row.base && (baseName || row.base.pending)" :parts="row.base.tip">
                 <span
                   class="inline-flex min-w-0 max-w-20 items-center gap-0.5 font-data text-kira-sm"
                   :class="
@@ -500,19 +500,16 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
                   <CodiconIcon name="git-branch" :size="12" class="shrink-0" />
                   <span v-if="baseName" class="truncate">{{ baseName }}</span>
                 </span>
-              </AdeTip>
+              </TextTooltip>
             </span>
           </AdeBranchTip>
-          <AdeTip v-if="row.context" :text="row.context">
-            <span
-              class="min-w-0 flex-1 basis-0 truncate"
-              :class="rowMeta"
-              data-testid="ade-branch-context"
-              >{{
-                row.context
-              }}</span
-            >
-          </AdeTip>
+          <span
+            v-if="row.context"
+            class="min-w-0 flex-1 basis-0"
+            :class="rowMeta"
+            data-testid="ade-branch-context"
+            ><TruncatedText :text="row.context" /></span
+          >
           <span v-else class="flex-1" />
         </div>
         <div class="flex items-center gap-1">
@@ -547,6 +544,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               v-if="choice"
               icon="git-compare"
               :label="t('space.ade.board.taskMenu.reviewCode.label')"
+              :kbd="formatShortcut('ade.reviewCode')"
               class="size-5 shrink-0"
               disabled-trigger
               :pending="reviewCode.pendingFor([row.id])"
@@ -555,7 +553,6 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               @click.stop="reviewCode.open(row.branch.taskId, row.id, rowRef)"
             >
               <VarText :parts="choice.tip" />
-              <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
             </TooltipIconButton>
           </span>
           <AdeOpStatus :task-id="row.branch.taskId" :branch-id="row.id" />

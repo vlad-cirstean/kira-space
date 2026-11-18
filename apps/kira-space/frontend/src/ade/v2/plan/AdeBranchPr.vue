@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
-import AdeTip from '../AdeTip.vue';
 import { PR_TONE, prStateLabel } from '../panel/prState';
 import { useOpenBranchPr } from '../panel/useOpenBranchPr';
 import { useChangeRequests } from '../queries';
@@ -42,7 +42,7 @@ const checks = computed(() => (pr.value ? CHECKS_GLYPH[pr.value.checksState] : u
         >
       </div>
     </TooltipIconButton>
-    <AdeTip v-if="checks" :text="t(checks.tip)">
+    <TextTooltip v-if="checks" :text="t(checks.tip)">
       <span
         role="img"
         class="inline-flex shrink-0"
@@ -52,6 +52,6 @@ const checks = computed(() => (pr.value ? CHECKS_GLYPH[pr.value.checksState] : u
       >
         <CodiconIcon :name="checks.icon" :size="13" />
       </span>
-    </AdeTip>
+    </TextTooltip>
   </template>
 </template>

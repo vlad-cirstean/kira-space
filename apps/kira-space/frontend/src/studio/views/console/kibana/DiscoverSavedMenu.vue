@@ -5,10 +5,8 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
-import { Separator } from '@theme/components/ui/separator';
+import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
-import { rowVariants } from '@theme/lib/rowVariants';
-import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
 import TextPromptDialog from '@workbench/prompt/TextPromptDialog.vue';
 import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
@@ -184,22 +182,10 @@ function onSaveCurrent(): void {
         @click.stop="rename(entry)"
       />
     </template>
-    <template #footer>
-      <Separator class="my-1" />
+    <template #below>
       <Alert v-if="error" variant="error" data-testid="kibana-saved-menu-error">
         <AlertDescription>{{ error }}</AlertDescription>
       </Alert>
-      <button
-        type="button"
-        :class="cn(rowVariants(), 'w-full text-primary')"
-        data-testid="kibana-saved-save-current"
-        @click="onSaveCurrent"
-      >
-        <span class="size-4 flex items-center justify-center shrink-0"
-          ><CodiconIcon name="add" :size="13" /></span
-        >
-        {{ t('studio.kibana.saved.saveCurrent.label') }}
-      </button>
       <!-- Stays inside PopoverContent: a sibling would move focus outside its dismiss layer and
            close the menu before the prompt shows. -->
       <TextPromptDialog
@@ -210,6 +196,17 @@ function onSaveCurrent(): void {
         @submit="submitPrompt"
         @close="cancelPrompt"
       />
+    </template>
+    <template #footer>
+      <Button
+        variant="toolbar"
+        size="kira"
+        data-testid="kibana-saved-save-current"
+        @click="onSaveCurrent"
+      >
+        <CodiconIcon name="add" :size="13" />
+        {{ t('studio.kibana.saved.saveCurrent.label') }}
+      </Button>
     </template>
   </SavedListMenu>
 </template>

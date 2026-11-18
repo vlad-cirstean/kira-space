@@ -1,5 +1,5 @@
 import { t } from '@theme/i18n';
-import type { MenuItem } from '../state/contextMenu';
+import type { MenuItem, MenuRadioOption } from '../state/contextMenu';
 
 export interface CollectionChoice {
   id: string;
@@ -17,28 +17,31 @@ export function moveToCollectionMenu(opts: {
   onNew(): void | Promise<void>;
 }): MenuItem {
   const canMoveTo = opts.canMoveTo ?? ((id: string | null) => id !== opts.current);
-  const items: MenuItem[] = [];
+  const options: MenuRadioOption[] = [];
   if (opts.allowNone) {
-    items.push({
-      type: 'item',
+    options.push({
+      type: 'option',
       id: 'move-to-none',
+      value: null,
       label: t('automations.dialog.script.noCollection.option'),
-      checked: opts.current === null,
       disabled: !canMoveTo(null),
+      rerun: true,
       run: () => opts.onMove(null),
     });
   }
   for (const c of opts.collections) {
-    items.push({
-      type: 'item',
+    options.push({
+      type: 'option',
       id: `move-to-${c.id}`,
+      value: c.id,
       label: c.name,
-      checked: c.id === opts.current,
       disabled: !canMoveTo(c.id),
+      rerun: true,
       run: () => opts.onMove(c.id),
     });
   }
-  items.push(
+  const items: MenuItem[] = [
+    { type: 'radio', id: 'move-to', value: opts.current, items: options },
     { type: 'separator' },
     {
       type: 'item',
@@ -47,7 +50,7 @@ export function moveToCollectionMenu(opts: {
       icon: 'new-folder',
       run: () => opts.onNew(),
     },
-  );
+  ];
   return {
     type: 'submenu',
     id: 'move-to-collection',

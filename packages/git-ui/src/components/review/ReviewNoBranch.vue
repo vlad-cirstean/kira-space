@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import { t } from '@theme/i18n';
 import BranchPicker from '@workbench/components/pickers/BranchPicker.vue';
 import { computed } from 'vue';
@@ -12,18 +13,21 @@ const branches = computed(() => branchOptions(props.refsState, { remote: true })
 </script>
 
 <template>
-  <div class="flex flex-col gap-1 p-3 min-h-0 h-full" data-testid="review-no-branch">
-    <h2 class="text-kira-lg font-medium text-fg">{{ t('git.review.start.title') }}</h2>
-    <p class="text-muted-foreground">{{ t('git.review.noBranch.emptyHint') }}</p>
-    <BranchPicker
-      inline
-      class="min-h-0 flex-1"
-      testid="review-branch"
-      :branches="branches"
-      :groups="branchGroups()"
-      :placeholder="t('common.action.choose.label')"
-      :loading="refsState.head.value === undefined"
-      @select="(o) => emit('pick', o.value)"
-    />
+  <div class="flex h-full min-h-0 flex-col" data-testid="review-no-branch">
+    <DetailHeader :title="t('git.review.start.title')">
+      <template #description>{{ t('git.review.noBranch.emptyHint') }}</template>
+    </DetailHeader>
+    <div class="flex min-h-0 flex-1 flex-col px-3 pb-3">
+      <BranchPicker
+        inline
+        class="min-h-0 flex-1"
+        testid="review-branch"
+        :branches="branches"
+        :groups="branchGroups()"
+        :placeholder="t('common.action.choose.label')"
+        :loading="refsState.head.value === undefined"
+        @select="(o) => emit('pick', o.value)"
+      />
+    </div>
   </div>
 </template>

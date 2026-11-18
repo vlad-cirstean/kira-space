@@ -2,6 +2,7 @@
 import type { ColumnMeta } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import {
   Table,
   TableBody,
@@ -10,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from '@theme/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
 import { ref } from 'vue';
@@ -90,17 +90,14 @@ function onContextMenu(ev: MouseEvent, col: ColumnMeta): void {
           </TableCell>
           <TableCell class="whitespace-nowrap font-data text-muted-foreground">
             <span :class="columnTypeTextClass(col.dataType)">{{ col.dataType }}</span>
-            <Tooltip v-if="typeDescription(col.dataType)">
-              <TooltipTrigger as-child>
-                <span
-                  class="align-middle text-subtle ml-0.5"
-                  :aria-label="typeDescription(col.dataType) ?? ''"
-                >
-                  <CodiconIcon name="info" :size="13" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>{{ typeDescription(col.dataType) }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip v-if="typeDescription(col.dataType)" :text="typeDescription(col.dataType)"
+              ><span
+                class="align-middle text-subtle ml-0.5"
+                :aria-label="typeDescription(col.dataType) ?? ''"
+              >
+                <CodiconIcon name="info" :size="13" />
+              </span></TextTooltip
+            >
           </TableCell>
           <TableCell class="w-20 whitespace-nowrap font-data text-muted-foreground">{{
             col.nullable ? t('studio.common.nullValue.label') : t('studio.definition.notNull.label')

@@ -3,7 +3,6 @@ import { DEFAULT_SMART, type SmartSettings } from '@shared/domain/scripts';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
@@ -33,13 +32,12 @@ function onNoCostCap(on: boolean): void {
         :model-value="smart.model"
         @update:model-value="(v) => patch({ model: String(v) })"
         variant="bordered"
-        size="kira-lg"
         data-testid="smart-model"
       >
         <option v-for="m in info.models" :key="m.id" :value="m.id">{{ m.id }}</option>
       </NativeSelect>
     </Field>
-    <Field class="w-32">
+    <Field class="w-24">
       <FieldLabel for="smart-budget">{{ t('automations.smart.budget.label') }}</FieldLabel>
       <Input
         id="smart-budget"
@@ -59,9 +57,9 @@ function onNoCostCap(on: boolean): void {
         data-testid="smart-no-cost-cap"
         @update:model-value="(v) => onNoCostCap(v === true)"
       />
-      <Label for="smart-no-cost-cap">{{ t('automations.smart.noCostCap.label') }}</Label>
+      <FieldLabel for="smart-no-cost-cap">{{ t('automations.smart.noCostCap.label') }}</FieldLabel>
     </Field>
-    <Field class="w-28">
+    <Field class="w-24">
       <FieldLabel for="smart-timeout">{{ t('common.field.timeout.label') }}</FieldLabel>
       <Input
         id="smart-timeout"

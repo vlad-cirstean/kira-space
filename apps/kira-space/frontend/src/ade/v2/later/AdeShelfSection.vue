@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import InlineState from '@theme/components/InlineState.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { t } from '@theme/i18n';
 import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
 import { errorText } from '@workbench/bridge/codedError';
@@ -48,9 +49,11 @@ useSortableReorder(
 
 <template>
   <section class="flex min-h-0 flex-col" :data-testid="`ade-shelf-${shelf}`">
-    <h3 class="shrink-0 px-3 pb-1 pt-3 text-kira-lg font-medium">
-      {{ shelf === 'later' ? t('common.later.label') : t('space.common.backlog.label') }}
-    </h3>
+    <div class="shrink-0 px-1.5 pt-3">
+      <SectionHeading
+        :label="shelf === 'later' ? t('common.later.label') : t('space.common.backlog.label')"
+      />
+    </div>
     <div ref="list" class="flex min-h-16 flex-col" data-testid="ade-shelf-list">
       <AdeShelfRow v-for="card in cards" :key="card.task.id" :card="card" />
       <InlineState v-if="!cards.length" kind="empty">{{

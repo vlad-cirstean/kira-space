@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { EditorLanguageId } from '@shared/domain/editor';
+import CodeBlock from '@theme/components/CodeBlock.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -13,8 +15,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import {
+  Field,
+  FieldDescription,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
@@ -133,8 +140,8 @@ const fileName = (path: string): string => path.split(/[\\/]/).pop() ?? path;
             <Alert v-if="preview.cliMissing" variant="warn" data-testid="ade-port-cli-missing">
               <AlertDescription>{{ t('space.ade.port.cliMissing.hint') }}</AlertDescription>
             </Alert>
-            <section class="flex flex-col gap-2" data-testid="ade-port-files">
-              <h3 class="m-0 text-kira-lg font-medium">{{ t('common.module.files.label') }}</h3>
+            <FieldSet data-testid="ade-port-files">
+              <FieldLegend>{{ t('common.module.files.label') }}</FieldLegend>
               <div
                 v-for="f in files"
                 :key="f.role"
@@ -158,7 +165,7 @@ const fileName = (path: string): string => path.split(/[\\/]/).pop() ?? path;
                         : t('space.ade.port.file.new.status')
                   }}</Badge>
                 </div>
-                <Disclosure v-if="f.changed" :label="fileName(f.path)" content-class="pt-1">
+                <Disclosure v-if="f.changed" :label="fileName(f.path)">
                   <div class="h-60">
                     <MonacoDiff
                       :original="f.before"
@@ -168,20 +175,23 @@ const fileName = (path: string): string => path.split(/[\\/]/).pop() ?? path;
                   </div>
                 </Disclosure>
               </div>
-            </section>
+            </FieldSet>
             <section
               v-if="serverList.length"
               class="flex flex-col gap-1"
               data-testid="ade-port-server-list"
             >
-              <Label class="flex items-center gap-2 text-kira-md font-medium">
+              <Field orientation="horizontal">
                 <Checkbox
+                  id="ade-port-servers"
                   v-model="servers"
                   :disabled="preview.cliMissing"
                   data-testid="ade-port-servers-check"
                 />
-                {{ t('space.ade.port.servers.title') }}
-              </Label>
+                <FieldLabel for="ade-port-servers">{{
+                  t('space.ade.port.servers.title')
+                }}</FieldLabel>
+              </Field>
               <ul class="m-0 flex list-none flex-col gap-0.5 p-0 text-kira-sm">
                 <li
                   v-for="s in serverList"
@@ -206,12 +216,9 @@ const fileName = (path: string): string => path.split(/[\\/]/).pop() ?? path;
               class="flex flex-col gap-1"
               data-testid="ade-port-env"
             >
-              <h3 class="m-0 text-kira-lg font-medium">{{ t('space.ade.port.env.title') }}</h3>
+              <SectionHeading flush :label="t('space.ade.port.env.title')" />
               <FieldDescription>{{ t('space.ade.port.env.hint') }}</FieldDescription>
-              <pre
-                class="m-0 overflow-auto rounded-kira bg-field p-2 font-data text-kira-sm"
-                data-testid="ade-port-env-lines"
-              >{{ envLines }}</pre>
+              <CodeBlock data-testid="ade-port-env-lines">{{ envLines }}</CodeBlock>
               <div>
                 <Button
                   variant="dialog"
@@ -228,7 +235,7 @@ const fileName = (path: string): string => path.split(/[\\/]/).pop() ?? path;
               class="flex flex-col gap-1"
               data-testid="ade-port-skipped"
             >
-              <h3 class="m-0 text-kira-lg font-medium">{{ t('space.ade.port.skipped.title') }}</h3>
+              <SectionHeading flush :label="t('space.ade.port.skipped.title')" />
               <ul class="m-0 flex list-none flex-col gap-0.5 p-0 text-kira-sm">
                 <li v-for="s in preview.skipped" :key="s.what"
                   ><span class="font-data">{{ s.what }}</span> {{ s.reason }}</li

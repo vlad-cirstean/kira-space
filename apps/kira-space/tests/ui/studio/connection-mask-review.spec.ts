@@ -77,7 +77,7 @@ test('contract: rows show masked, reviewed and needs-review states from the draf
     masks: [{ column: 'body', kind: 'redact' }],
   });
   const all = listing().columns;
-  await page.locator('[data-testid="connection-privacy-review-filter"]').selectOption('all');
+  await page.locator('[data-testid="connection-privacy-review-filter-all"]').click();
   await expect(page.locator(rows)).toHaveCount(all.length);
   await expect(page.locator(`${rows}[data-ref="notes.id"]`)).toHaveAttribute(
     'data-state',
@@ -105,7 +105,7 @@ test('the default filter shows what needs review; search narrows the list', asyn
 }) => {
   const page = await open(relaunch, { reviewed: ['notes.id'] });
   await expect(page.locator(rows)).toHaveCount(2);
-  await page.locator('[data-testid="connection-privacy-review-filter"]').selectOption('all');
+  await page.locator('[data-testid="connection-privacy-review-filter-all"]').click();
   await page.locator('[data-testid="connection-privacy-review-search"]').fill('secret');
   await expect(page.locator(rows)).toHaveCount(1);
 });
@@ -118,7 +118,7 @@ test('Allow reviews one column; Allow all waiting reviews the rest', async ({ re
   await expect(page.locator('[data-testid="connection-privacy-review-status"]')).toContainText(
     'Every column is masked or allowed',
   );
-  await page.locator('[data-testid="connection-privacy-review-filter"]').selectOption('all');
+  await page.locator('[data-testid="connection-privacy-review-filter-all"]').click();
   await expect(page.locator(`${rows}[data-ref="notes.secret"]`)).toHaveAttribute(
     'data-state',
     'reviewed',

@@ -160,7 +160,7 @@ test('switching the kind to Review confirms, then saves a review block with appr
   await expect(page.locator(t('ade-wf-step-review'))).toBeVisible();
   await expect(page.locator(t('ade-wf-step-prompt'))).toHaveCount(0);
   await expect(node(page, 'pr')).toHaveAttribute('data-kind', 'review');
-  await page.locator(t('ade-wf-step-review-send-to')).selectOption('new');
+  await page.locator(t('ade-wf-step-review-send-to-new')).click();
   const args = await saved<SavedWorkflow>(page, control, 1);
   const step = stepOf(args, 'pr');
   expect(step?.kind).toBe('review');
@@ -190,6 +190,19 @@ test('the inspector groups a step into What it does, Where and when and How it e
   await node(page, 'ci').click();
   for (const section of ['what', 'where', 'sandbox', 'end'])
     await expect(page.locator(t(`ade-wf-step-section-${section}`))).toBeVisible();
+  // Field responsive: label column beside the control once the inspector is past 24rem, so widen.
+  await page.setViewportSize({ width: 2200, height: 960 });
+  const row = page
+    .locator(`${t('ade-wf-step')} [data-slot="field"][data-orientation="responsive"]`)
+    .first();
+  await expect(row).toBeVisible();
+  const labelBox = await row.locator(':scope > [data-slot="field-label"]').boundingBox();
+  const controlBox = await row
+    .locator(':scope > :not([data-slot="field-label"])')
+    .first()
+    .boundingBox();
+  expect(Math.abs((labelBox?.y ?? 0) - (controlBox?.y ?? 99))).toBeLessThan(4);
+  expect(labelBox?.x ?? 99).toBeLessThan(controlBox?.x ?? 0);
   await expect(page.locator(t('ade-wf-step-tools'))).toBeHidden();
   await openAdvanced(page);
   await expect(page.locator(t('ade-wf-step-tools'))).toBeVisible();

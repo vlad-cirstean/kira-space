@@ -7,12 +7,12 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
-import { Kbd } from '@theme/components/ui/kbd';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
@@ -157,10 +157,10 @@ function onChord(event: KeyboardEvent): void {
             ? t('automations.dialog.scheduleConfirm.title', { name: script.name })
             : t('automations.dialog.scheduleConfirm.untitledConfirm.title')
         }}</DialogTitle>
-        <SmartBadge v-if="script?.kind === 'smart'" />
-        <span class="text-kira-sm text-muted-foreground" data-testid="schedule-confirm-due">{{
-          due
-        }}</span>
+        <DialogDescription class="flex items-center gap-1.5">
+          <SmartBadge v-if="script?.kind === 'smart'" />
+          <span data-testid="schedule-confirm-due">{{ due }}</span>
+        </DialogDescription>
       </DialogHeader>
 
       <DialogBody>
@@ -228,7 +228,7 @@ function onChord(event: KeyboardEvent): void {
 
       <DialogFooter>
         <template v-if="more > 0" #start>
-          <span class="text-kira-sm text-muted-foreground" data-testid="schedule-confirm-more">{{
+          <span data-testid="schedule-confirm-more">{{
             t('common.moreWaiting.status', { count: more })
           }}</span>
         </template>
@@ -237,23 +237,21 @@ function onChord(event: KeyboardEvent): void {
           size="kira-lg"
           :pending="decline.isPending.value"
           data-testid="schedule-confirm-decline"
-          :aria-keyshortcuts="formatShortcut('prompt.deny')"
+          :kbd="formatShortcut('prompt.deny')"
           @click="declineOrClose"
         >
           {{ t('git.dialog.postCheckoutPullConfirm.notNow.label') }}
-          <Kbd>{{ formatShortcut('prompt.deny') }}</Kbd>
         </Button>
         <Button
           variant="dialog-approve"
           size="kira-lg"
           :disabled="!canRun"
           :pending="accept.isPending.value"
-          :aria-keyshortcuts="formatShortcut('form.submit')"
+          :kbd="formatShortcut('form.submit')"
           data-testid="schedule-confirm-run"
           @click="run"
         >
           {{ t('common.action.run.label') }}
-          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

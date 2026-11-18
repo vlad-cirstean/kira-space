@@ -1,24 +1,28 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { paneFrame } from '@theme/lib/frames';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
+import MenuItems from '@workbench/components/MenuItems.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { configName } from '@workbench/config/configName';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref, watch } from 'vue';
-import AdeChip from '../AdeChip.vue';
-import AdeTip from '../AdeTip.vue';
-import { KIND_TONE, kindLabel, STEP_KINDS } from '../board/workflowForm';
+import { kindLabel, STEP_KINDS } from '../board/workflowForm';
 import { useNewStep } from '../queries';
 import { useWorkflows } from '../readQueries';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
@@ -31,6 +35,15 @@ const workflows = useWorkflows();
 const newStep = useNewStep();
 const listError = ref('');
 
+const newStepItems = computed<MenuItem[]>(() =>
+  STEP_KINDS.map((k) => ({
+    type: 'item',
+    id: k,
+    testId: `ade-step-new-${k}`,
+    label: kindLabel(k),
+    run: () => createNew(k),
+  })),
+);
 const entries = computed(() => workflows.data.value?.steps ?? []);
 const current = computed(
   () => entries.value.find((e) => e.fileName === wfUi.stepFile) ?? entries.value[0] ?? null,
@@ -48,8 +61,7 @@ watch(
 function rowClass(selected: boolean): string {
   return cn(
     rowVariants({ layout: 'double', selected }),
-    'box-border w-full flex-col items-stretch gap-0.5 whitespace-normal rounded-kira border-0 border-l-3 border-solid px-2 py-2 text-left',
-    selected ? 'border-l-tone-amber-solid' : 'border-l-transparent',
+    'box-border w-full flex-col items-stretch gap-0.5 whitespace-normal px-2 py-2 text-left',
   );
 }
 
@@ -82,19 +94,13 @@ async function createNew(kind: StepKind): Promise<void> {
         <template #actions>
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <Button variant="dialog" size="kira-lg" class="px-1.5" data-testid="ade-step-new">
+              <Button variant="toolbar" size="kira" class="px-1.5" data-testid="ade-step-new"
+                ><CodiconIcon name="add" :size="13" />
                 {{ t('space.ade.workflows.step.defaultName.label') }}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                v-for="k in STEP_KINDS"
-                :key="k"
-                :data-testid="`ade-step-new-${k}`"
-                @select="createNew(k)"
-              >
-                {{ kindLabel(k) }}
-              </DropdownMenuItem>
+              <MenuItems :items="newStepItems" />
             </DropdownMenuContent>
           </DropdownMenu>
         </template>
@@ -121,23 +127,17 @@ async function createNew(kind: StepKind): Promise<void> {
           @click="pick(e.fileName)"
         >
           <span class="flex w-full items-center gap-1.5">
-            <span
-              class="min-w-0 flex-1 truncate text-kira-lg font-medium"
-              data-testid="ade-step-row-name"
-              >{{
-                e.step?.name ?? e.fileName
-              }}</span
-            >
-            <AdeChip v-if="e.step" :label="kindLabel(e.step.kind)" :tone="KIND_TONE[e.step.kind]" />
-            <AdeTip v-if="e.error" :text="e.error.message">
-              <span
-                class="shrink-0 text-kira-sm font-medium text-tone-red"
-                data-testid="ade-step-row-error"
-                >✕</span
+            <span class="min-w-0 flex-1 truncate font-medium" data-testid="ade-step-row-name">{{
+              e.step?.name ?? e.fileName
+            }}</span>
+            <Badge v-if="e.step" variant="default">{{ kindLabel(e.step.kind) }}</Badge>
+            <TextTooltip v-if="e.error" :text="e.error.message">
+              <span class="shrink-0 text-error" data-testid="ade-step-row-error"
+                ><CodiconIcon :name="ICON.error" :size="13" /></span
               >
-            </AdeTip>
+            </TextTooltip>
           </span>
-          <span class="text-kira-sm text-subtle" data-testid="ade-step-row-used">{{
+          <span :class="rowMeta" data-testid="ade-step-row-used">{{
             t('space.ade.steps.usedBy.label', { count: e.usedBy.length })
           }}</span>
         </button>
@@ -147,11 +147,13 @@ async function createNew(kind: StepKind): Promise<void> {
       </div>
     </div>
     <div :class="cn(paneFrame, 'flex flex-1 flex-col')">
-      <PanelHeader>{{
-        current?.step?.name ??
-        (current ? configName(current.fileName) : t('space.ade.workflows.tabs.steps.label'))
-      }}</PanelHeader>
-      <div class="min-h-0 flex-1 overflow-auto p-4">
+      <DetailHeader
+        :title="
+          current?.step?.name ??
+          (current ? configName(current.fileName) : t('space.ade.workflows.tabs.steps.label'))
+        "
+      />
+      <div class="min-h-0 flex-1 overflow-auto p-3">
         <AdeLibraryStepEditor v-if="current" :key="current.fileName" :entry="current" />
       </div>
     </div>

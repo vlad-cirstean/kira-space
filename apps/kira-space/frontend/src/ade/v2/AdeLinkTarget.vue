@@ -73,7 +73,7 @@ const item = computed<LinkItem | null>(() => {
         >
         <AdeLinkPill :item="item" as="span" show-kind data-testid="ade-link-target-pill" />
         <BranchChip v-if="target.changeRequest" :name="target.branch" class="max-w-60" />
-        <Badge v-if="target.fork" variant="chip" data-testid="ade-link-fork">{{
+        <Badge v-if="target.fork" data-testid="ade-link-fork">{{
           t('space.ade.add.link.fork.label', { owner: target.headOwner })
         }}</Badge>
         <span v-if="target.author" class="text-kira-sm text-muted-foreground">{{
@@ -81,8 +81,8 @@ const item = computed<LinkItem | null>(() => {
         }}</span>
         <Button
           class="ml-auto"
-          variant="dialog-primary"
-          size="kira-lg"
+          variant="dialog"
+          size="kira"
           :pending="busy"
           :disabled="target.onTaskId !== ''"
           data-testid="ade-link-add"

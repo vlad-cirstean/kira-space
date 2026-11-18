@@ -3,7 +3,7 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
-import { FieldDescription, FieldError } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
 import { Textarea } from '@theme/components/ui/textarea';
@@ -14,14 +14,12 @@ import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
 import { finishVars, previewTextParts } from '../board/runMessage';
 import { overriddenKeys } from '../board/stepLibrary';
-import { hasContent, KIND_TONE, kindLabel, STEP_KINDS, withKind } from '../board/workflowForm';
+import { hasContent, kindLabel, STEP_KINDS, withKind } from '../board/workflowForm';
 import { useAdePromptPreview, useNewStep } from '../queries';
 import { useWorkflows } from '../readQueries';
 import { useAdeWorkflowDraftStore } from '../state/adeWorkflowDraft';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
-import { TONE_TEXT_CLASS } from '../tones';
 import type { StepKind, WorkflowStep } from '../wire';
-import AdeInspectorRow from './inspector/AdeInspectorRow.vue';
 import AdeInspectorSection from './inspector/AdeInspectorSection.vue';
 import AdeStepAdvanced from './inspector/AdeStepAdvanced.vue';
 import AdeStepAgentFields from './inspector/AdeStepAgentFields.vue';
@@ -135,7 +133,7 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
   >
     <div class="flex flex-col gap-2 px-3 pt-3 pb-2">
       <div class="flex items-center gap-2 text-kira-sm text-subtle">
-        <StatusDot :class="TONE_TEXT_CLASS[KIND_TONE[step.kind]]" color="currentColor" />
+        <StatusDot tone="muted" />
         <span v-if="!library" data-testid="ade-wf-step-position">{{
           t('space.ade.workflows.stepInspector.position.label', position)
         }}</span>
@@ -212,13 +210,14 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
       <Input
         :id="id('name')"
         :model-value="step.name"
-        size="kira-lg"
         appearance="inline"
         class="min-w-0 font-medium"
         data-testid="ade-wf-step-name"
         @update:model-value="(v: string | number) => patch({ name: String(v) })"
       />
       <SecondaryTabs
+        variant="choice"
+        :aria-label="t('common.field.kind.label')"
         :model-value="step.kind"
         :items="kindItems"
         data-testid="ade-wf-step-kind"
@@ -227,7 +226,7 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
     </div>
 
     <div class="@container min-h-0 flex-1 overflow-auto px-3 pt-2 pb-3">
-      <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-4">
         <AdeInspectorSection name="what" :title="t('space.ade.workflows.stepInspector.what.title')">
           <AdeStepAgentFields v-if="step.kind === 'agent'" :step="step" @patch="patch" />
           <AdeStepScriptFields v-else-if="step.kind === 'script'" :step="step" @patch="patch" />
@@ -238,21 +237,21 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
             @patch="patch"
           />
           <AdeStepManualFields v-else :step="step" @patch="patch" />
-          <AdeInspectorRow
-            v-if="extraPrompt"
-            stack
-            :label="t('space.ade.workflows.library.extraPrompt.label')"
-            :for="id('extra-prompt')"
-          >
+          <Field v-if="extraPrompt">
+            <FieldLabel :for="id('extra-prompt')">{{
+              t('space.ade.workflows.library.extraPrompt.label')
+            }}</FieldLabel>
             <Textarea
+              class="min-h-24 max-h-90 resize-y"
               :id="id('extra-prompt')"
               :model-value="step.promptExtra ?? ''"
-              class="min-h-16 w-full resize-y leading-normal"
               data-testid="ade-wf-step-extra-prompt"
               @update:model-value="(v: string | number) => patch({ promptExtra: String(v) })"
             />
-            <template #hint>{{ t('space.ade.workflows.library.extraPrompt.hint') }}</template>
-          </AdeInspectorRow>
+            <FieldDescription>{{
+              t('space.ade.workflows.library.extraPrompt.hint')
+            }}</FieldDescription>
+          </Field>
         </AdeInspectorSection>
 
         <AdeInspectorSection
@@ -286,8 +285,8 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
               <FieldDescription>{{
                 t('space.ade.workflows.stepInspector.finishNote.hint')
               }}</FieldDescription>
-              <Card class="text-kira-sm text-subtle" data-testid="ade-wf-finish-note">
-                <VarText :parts="finish" />
+              <Card data-testid="ade-wf-finish-note">
+                <FieldDescription><VarText :parts="finish" /></FieldDescription>
               </Card>
             </template>
           </template>

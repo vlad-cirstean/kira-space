@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { statusClass, statusHint } from '@shared/domain/http';
 import type { ResponseHistorySnapshot } from '@shared/domain/responseHistory';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -23,9 +25,9 @@ import {
   TableHeader,
   TableRow,
 } from '@theme/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
+import { CHANGE_TONE, TONE_TEXT } from '@theme/lib/statusTone';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import {
   displayValue,
@@ -167,12 +169,8 @@ const HEADER_STATUS_KEYS: Record<HeaderRow['status'], MessageKey> = {
 function headerStatusText(status: HeaderRow['status']): string {
   return t(HEADER_STATUS_KEYS[status]);
 }
-const HEADER_STATUS_CLASS: Record<HeaderRow['status'], string> = {
-  added: 'text-ok',
-  removed: 'text-error',
-  changed: 'text-warn',
-  unchanged: '',
-};
+const headerStatusClass = (status: HeaderRow['status']): string =>
+  status === 'unchanged' ? '' : TONE_TEXT[CHANGE_TONE[status]];
 const headerRows = computed<HeaderRow[]>(() => {
   if (!snapA.value || !snapB.value) return [];
   const order: string[] = [];
@@ -275,54 +273,42 @@ onUnmounted(() => {
         <div v-else-if="snapA && snapB" class="flex h-full min-h-0 flex-col">
           <div class="flex shrink-0 items-center gap-2 px-2 py-1.5" data-testid="http-diff-summary">
             <div class="flex flex-col gap-0.5">
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <span :class="[rowMeta, 'self-start']">{{
-                    formatRelative(snapA.entry.sentAt)
-                  }}</span>
-                </TooltipTrigger>
-                <TooltipContent>{{ snapA.entry.sentAt }}</TooltipContent>
-              </Tooltip>
+              <TextTooltip :text="snapA.entry.sentAt">
+                <span :class="[rowMeta, 'self-start']">{{
+                  formatRelative(snapA.entry.sentAt)
+                }}</span>
+              </TextTooltip>
               <div class="flex items-center gap-1">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Badge
-                      data
-                      :variant="statusClass(snapA.entry.status)"
-                      data-testid="http-diff-status-a"
-                    >
-                      {{ snapA.entry.status }} {{ snapA.entry.statusText }}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>{{ statusHint(snapA.entry.status) }}</TooltipContent>
-                </Tooltip>
+                <TextTooltip :text="statusHint(snapA.entry.status)">
+                  <Badge
+                    data
+                    :variant="statusClass(snapA.entry.status)"
+                    data-testid="http-diff-status-a"
+                  >
+                    {{ snapA.entry.status }} {{ snapA.entry.statusText }}
+                  </Badge>
+                </TextTooltip>
                 <span :class="rowMeta">{{ formatDuration(snapA.entry.elapsedMs) }}</span>
                 <span :class="rowMeta">{{ formatBytes(snapA.entry.bodyBytes) }}</span>
               </div>
             </div>
-            <span class="text-muted-foreground">→</span>
+            <CodiconIcon name="arrow-right" :size="12" class="text-muted-foreground" />
             <div class="flex flex-col gap-0.5">
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <span :class="[rowMeta, 'self-start']">{{
-                    formatRelative(snapB.entry.sentAt)
-                  }}</span>
-                </TooltipTrigger>
-                <TooltipContent>{{ snapB.entry.sentAt }}</TooltipContent>
-              </Tooltip>
+              <TextTooltip :text="snapB.entry.sentAt">
+                <span :class="[rowMeta, 'self-start']">{{
+                  formatRelative(snapB.entry.sentAt)
+                }}</span>
+              </TextTooltip>
               <div class="flex items-center gap-1">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Badge
-                      data
-                      :variant="statusClass(snapB.entry.status)"
-                      data-testid="http-diff-status-b"
-                    >
-                      {{ snapB.entry.status }} {{ snapB.entry.statusText }}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>{{ statusHint(snapB.entry.status) }}</TooltipContent>
-                </Tooltip>
+                <TextTooltip :text="statusHint(snapB.entry.status)">
+                  <Badge
+                    data
+                    :variant="statusClass(snapB.entry.status)"
+                    data-testid="http-diff-status-b"
+                  >
+                    {{ snapB.entry.status }} {{ snapB.entry.statusText }}
+                  </Badge>
+                </TextTooltip>
                 <span :class="rowMeta">{{ formatDuration(snapB.entry.elapsedMs) }}</span>
                 <span :class="rowMeta">{{ formatBytes(snapB.entry.bodyBytes) }}</span>
               </div>
@@ -345,7 +331,7 @@ onUnmounted(() => {
                   :key="row.name"
                   data-testid="http-diff-header-row"
                 >
-                  <TableCell class="text-kira-sm" :class="HEADER_STATUS_CLASS[row.status]">{{
+                  <TableCell class="text-kira-sm" :class="headerStatusClass(row.status)">{{
                     headerStatusText(row.status)
                   }}</TableCell>
                   <TableCell class="font-data text-muted-foreground">{{ row.name }}</TableCell>
@@ -357,7 +343,7 @@ onUnmounted(() => {
             <Disclosure
               v-if="unchangedHeaderRows.length > 0"
               :label="t('studio.http.diff.unchanged.status', { count: unchangedHeaderRows.length })"
-              trigger-class="text-kira-sm text-subtle"
+              meta
             >
               <Table>
                 <TableBody>
@@ -366,7 +352,7 @@ onUnmounted(() => {
                     :key="row.name"
                     data-testid="http-diff-header-row-unchanged"
                   >
-                    <TableCell class="w-18 text-kira-sm" :class="HEADER_STATUS_CLASS[row.status]">{{
+                    <TableCell class="w-18 text-kira-sm" :class="headerStatusClass(row.status)">{{
                       headerStatusText(row.status)
                     }}</TableCell>
                     <TableCell class="w-40 font-data text-muted-foreground">{{
@@ -418,7 +404,7 @@ onUnmounted(() => {
 
 <style scoped>
 @reference "@theme/base.css";
-/* P110 I2-17: header status colors moved to HEADER_STATUS_CLASS lookup map on the status span.
+/* P110 I2-17: header status colors moved to headerStatusClass (CHANGE_TONE) on the status span.
    `.diff-merge-host` stays a bare marker to anchor this :deep() rule -- can't be expressed as a
    template utility since it targets a child Monaco renders into the ref'd div. */
 .diff-merge-host :deep(.monaco-diff-editor) {

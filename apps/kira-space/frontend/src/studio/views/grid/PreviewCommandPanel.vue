@@ -3,13 +3,14 @@ import { useQuery } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs, { type SecondaryTabItem } from '@theme/components/SecondaryTabs.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
-import { Button } from '@theme/components/ui/button';
-import { PopoverContent } from '@theme/components/ui/popover';
+import { PopoverBar, PopoverContent } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
+import { rowVariants } from '@theme/lib/rowVariants';
+import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
-import PanelHeader from '@workbench/components/PanelHeader.vue';
 import MonacoDiff from '@workbench/editor/MonacoDiff.vue';
 import { computed, ref } from 'vue';
 import { useTabsStore } from '../../../state/tabs';
@@ -100,28 +101,24 @@ function close(): void {
 </script>
 
 <template>
-  <PopoverContent align="end" class="w-120 gap-0 p-0" data-testid="preview-command-panel">
+  <PopoverContent align="end" flush class="w-120" data-testid="preview-command-panel">
     <div class="max-h-96 flex flex-col">
-      <PanelHeader>
-        <template #start><CodiconIcon name="code" :size="13" /></template>
-        {{ t('docker.edit.pending.title') }}
-        <template #actions>
-          <TooltipIconButton
-            icon="close"
-            :label="t('common.action.close.label')"
-            data-testid="preview-command-close"
-            @click="close"
-          />
-        </template>
-      </PanelHeader>
-      <SecondaryTabs
-        v-if="hasEdits"
-        v-model="view"
-        class="m-2 self-start"
-        variant="segmented"
-        :items="viewItems"
-        :aria-label="t('studio.grid.previewCommand.view.aria')"
-      />
+      <SectionHeading :label="t('docker.edit.pending.title')">
+        <TooltipIconButton
+          icon="close"
+          :label="t('common.action.close.label')"
+          data-testid="preview-command-close"
+          @click="close"
+        />
+      </SectionHeading>
+      <PopoverBar v-if="hasEdits">
+        <SecondaryTabs
+          v-model="view"
+          variant="segmented"
+          :items="viewItems"
+          :aria-label="t('studio.grid.previewCommand.view.aria')"
+        />
+      </PopoverBar>
       <template v-if="shownView === 'changes'">
         <ul
           class="flex max-h-24 flex-col overflow-auto"
@@ -129,10 +126,11 @@ function close(): void {
           data-testid="pending-diff-list"
         >
           <li v-for="c in cells" :key="c.id">
-            <Button
-              variant="toolbar"
-              size="kira"
-              class="justify-start"
+            <button
+              type="button"
+              :class="
+                cn(rowVariants({ layout: 'menu', selected: c.id === selected?.id }), 'w-full')
+              "
               :aria-pressed="c.id === selected?.id"
               :data-column="c.column"
               data-testid="pending-diff-item"
@@ -142,10 +140,10 @@ function close(): void {
               {{ c.column }}
               <template v-if="c.before === null || c.after === null">
                 <Badge v-if="c.before === null">{{ t('studio.common.nullValue.label') }}</Badge>
-                <span class="text-muted-foreground">→</span>
+                <CodiconIcon name="arrow-right" :size="12" class="text-muted-foreground" />
                 <Badge v-if="c.after === null">{{ t('studio.common.nullValue.label') }}</Badge>
               </template>
-            </Button>
+            </button>
           </li>
         </ul>
         <div v-if="sides" class="h-60">

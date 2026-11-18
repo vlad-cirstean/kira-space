@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Input } from '@theme/components/ui/input';
-import { NativeSelect } from '@theme/components/ui/native-select';
+import { Label } from '@theme/components/ui/label';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -21,6 +22,12 @@ const props = defineProps<{
 
 const PROTOCOLS = ['tcp', 'udp', 'sctp'] as const;
 const MOUNT_TYPES = ['volume', 'bind'] as const;
+const toItems = (values: readonly string[], testid: string) =>
+  computed(() =>
+    values.map((v) => ({ value: v, label: v, disabled: props.disabled, testid: `${testid}-${v}` })),
+  );
+const PROTOCOL_ITEMS = toItems(PROTOCOLS, 'docker-edit-port-proto');
+const MOUNT_TYPE_ITEMS = toItems(MOUNT_TYPES, 'docker-edit-mount-type');
 
 const rc = computed(() => props.draft.recreate);
 const base = computed(() => props.draft.base.recreate);
@@ -76,7 +83,7 @@ function addMount(): void {
 </script>
 
 <template>
-  <div class="grid grid-cols-1 gap-3 @2xl:grid-cols-2" data-testid="docker-edit-recreate">
+  <div class="flex flex-col gap-3" data-testid="docker-edit-recreate">
     <EditField
       field="image"
       :label="t('docker.field.image.label')"
@@ -84,9 +91,10 @@ function addMount(): void {
       :changed="changed('image')"
       :error="errors['recreate.image']"
       :description="t('docker.edit.imagePresent.hint')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         v-model="rc.image"
         :disabled="disabled"
         data-testid="docker-edit-image"
@@ -99,9 +107,10 @@ function addMount(): void {
       :label="t('common.user.label')"
       mode="recreate"
       :changed="changed('user')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         v-model="rc.user"
         :placeholder="t('docker.edit.imageDefault.placeholder')"
         :disabled="disabled"
@@ -116,9 +125,10 @@ function addMount(): void {
       mode="recreate"
       :changed="changed('hostname')"
       :description="t('docker.edit.hostname.hint')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         v-model="rc.hostname"
         :disabled="disabled"
         data-testid="docker-edit-hostname"
@@ -131,11 +141,12 @@ function addMount(): void {
       :label="t('docker.edit.entrypoint.label')"
       mode="recreate"
       :changed="changed('entrypoint')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Textarea
-        v-model="entrypointText"
         class="font-data"
+        :id="id"
+        v-model="entrypointText"
         :disabled="disabled"
         data-testid="docker-edit-entrypoint"
         v-bind="invalid"
@@ -147,11 +158,12 @@ function addMount(): void {
       :label="t('docker.edit.command.label')"
       mode="recreate"
       :changed="changed('cmd')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Textarea
-        v-model="cmdText"
         class="font-data"
+        :id="id"
+        v-model="cmdText"
         :disabled="disabled"
         data-testid="docker-edit-cmd"
         v-bind="invalid"
@@ -160,6 +172,7 @@ function addMount(): void {
 
     <EditField
       field="env"
+      multi
       :label="t('docker.field.env.label')"
       mode="recreate"
       :changed="changed('env')"
@@ -177,6 +190,7 @@ function addMount(): void {
         <template #row="{ item, index }">
           <Input
             class="w-40"
+            :aria-label="t('common.field.key.label')"
             :placeholder="t('docker.edit.envKey.example')"
             :model-value="split(item)[0]"
             :disabled="disabled"
@@ -185,6 +199,7 @@ function addMount(): void {
             v-bind="invalid"
           />
           <Input
+            :aria-label="t('common.field.value.label')"
             class="min-w-0 flex-1"
             :placeholder="t('common.field.value.label')"
             :model-value="split(item)[1]"
@@ -198,6 +213,7 @@ function addMount(): void {
 
     <EditField
       field="labels"
+      multi
       :label="t('docker.field.labels.label')"
       mode="recreate"
       :changed="changed('labels')"
@@ -214,6 +230,7 @@ function addMount(): void {
         <template #row="{ item, index }">
           <Input
             class="w-40"
+            :aria-label="t('common.field.key.label')"
             :placeholder="t('common.field.key.label')"
             :model-value="item[0]"
             :disabled="disabled"
@@ -222,6 +239,7 @@ function addMount(): void {
             v-bind="invalid"
           />
           <Input
+            :aria-label="t('common.field.value.label')"
             class="min-w-0 flex-1"
             :placeholder="t('common.field.value.label')"
             :model-value="item[1]"
@@ -235,11 +253,11 @@ function addMount(): void {
 
     <EditField
       field="ports"
+      multi
       :label="t('docker.field.ports.label')"
       mode="recreate"
       :changed="changed('ports')"
       :error="errors['recreate.ports']"
-      class="@2xl:col-span-2"
       v-slot="{ invalid }"
     >
       <EditRows
@@ -257,26 +275,28 @@ function addMount(): void {
             :placeholder="t('docker.edit.containerPort.placeholder')"
             :model-value="item.containerPort"
             :disabled="disabled"
+            :aria-label="t('docker.edit.containerPort.placeholder')"
             data-testid="docker-edit-port-container"
             @update:model-value="item.containerPort = toNumber($event)"
             v-bind="invalid"
           />
-          <NativeSelect
+          <SecondaryTabs
             v-model="item.proto"
-            class="w-20"
-            :disabled="disabled"
+            variant="choice"
+            :aria-label="t('docker.edit.protocol.label')"
+            :items="PROTOCOL_ITEMS"
             data-testid="docker-edit-port-proto"
-          >
-            <option v-for="p in PROTOCOLS" :key="p" :value="p">{{ p }}</option>
-          </NativeSelect>
+          />
           <Input
-            class="w-36"
+            :aria-label="t('docker.edit.hostIp.placeholder')"
+            class="w-40"
             :placeholder="t('docker.edit.hostIp.placeholder')"
             v-model="item.hostIp"
             :disabled="disabled"
             data-testid="docker-edit-port-ip"
           />
           <Input
+            :aria-label="t('docker.edit.hostPort.placeholder')"
             class="w-24"
             :placeholder="t('docker.edit.hostPort.placeholder')"
             v-model="item.hostPort"
@@ -289,11 +309,11 @@ function addMount(): void {
 
     <EditField
       field="mounts"
+      multi
       :label="t('docker.field.mounts.label')"
       mode="recreate"
       :changed="changed('mounts')"
       :error="errors['recreate.mounts']"
-      class="@2xl:col-span-2"
       v-slot="{ invalid }"
     >
       <datalist id="docker-edit-volumes">
@@ -308,16 +328,16 @@ function addMount(): void {
         @remove="rc.mounts.splice($event, 1)"
       >
         <template #row="{ item }">
-          <NativeSelect
+          <SecondaryTabs
             v-model="item.type"
-            class="w-24"
-            :disabled="disabled"
+            variant="choice"
+            :aria-label="t('docker.edit.mountType.label')"
+            :items="MOUNT_TYPE_ITEMS"
             data-testid="docker-edit-mount-type"
             v-bind="invalid"
-          >
-            <option v-for="m in MOUNT_TYPES" :key="m" :value="m">{{ m }}</option>
-          </NativeSelect>
+          />
           <Input
+            :aria-label="t('docker.edit.mountSource.label')"
             class="min-w-0 flex-1"
             :placeholder="t('docker.edit.mountSource.placeholder')"
             :list="item.type === 'volume' ? 'docker-edit-volumes' : undefined"
@@ -326,19 +346,20 @@ function addMount(): void {
             data-testid="docker-edit-mount-source"
           />
           <Input
+            :aria-label="t('docker.edit.mountTarget.label')"
             class="min-w-0 flex-1"
             :placeholder="t('docker.edit.mountTarget.example')"
             v-model="item.target"
             :disabled="disabled"
             data-testid="docker-edit-mount-target"
           />
-          <span class="flex shrink-0 items-center gap-1 text-muted-foreground"
+          <Label class="flex shrink-0 items-center gap-1 text-muted-foreground"
             ><Checkbox
               v-model="item.readOnly"
               :disabled="disabled"
               data-testid="docker-edit-mount-ro"
               :aria-label="t('common.state.readOnly.status')"
-            />{{ t('docker.edit.readOnlyShort.example') }}</span
+            />{{ t('docker.edit.readOnlyShort.example') }}</Label
           >
         </template>
       </EditRows>
@@ -346,6 +367,7 @@ function addMount(): void {
 
     <EditField
       field="capAdd"
+      multi
       :label="t('docker.edit.capAdd.label')"
       mode="recreate"
       :changed="changed('capAdd')"
@@ -362,6 +384,7 @@ function addMount(): void {
         <template #row="{ index }">
           <Input
             class="min-w-0 flex-1"
+            :aria-label="t('docker.edit.addCap.label')"
             :placeholder="t('docker.edit.capAdd.example')"
             v-model="rc.capAdd[index]"
             :disabled="disabled"
@@ -374,6 +397,7 @@ function addMount(): void {
 
     <EditField
       field="capDrop"
+      multi
       :label="t('docker.edit.capDrop.label')"
       mode="recreate"
       :changed="changed('capDrop')"
@@ -390,6 +414,7 @@ function addMount(): void {
         <template #row="{ index }">
           <Input
             class="min-w-0 flex-1"
+            :aria-label="t('docker.edit.dropCap.label')"
             :placeholder="t('docker.edit.capDrop.example')"
             v-model="rc.capDrop[index]"
             :disabled="disabled"
@@ -400,11 +425,7 @@ function addMount(): void {
       </EditRows>
     </EditField>
 
-    <div
-      v-if="preserved.length"
-      class="text-muted-foreground @2xl:col-span-2"
-      data-testid="docker-edit-preserved"
-    >
+    <div v-if="preserved.length" class="text-muted-foreground" data-testid="docker-edit-preserved">
       <span class="font-medium">{{ t('docker.edit.preserved.label') }}:</span>
       {{ preserved.join(', ') }}
     </div>

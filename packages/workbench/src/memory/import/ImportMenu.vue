@@ -3,10 +3,12 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
+import { computed } from 'vue';
+import MenuItems from '../../components/MenuItems.vue';
+import type { MenuItem } from '../../state/contextMenu';
 import { useChooseImport } from './importQueries';
 import { useImportUiStore } from './importStore';
 
@@ -21,6 +23,25 @@ function pick(kind: 'files' | 'folder'): void {
     },
   });
 }
+
+const items = computed<MenuItem[]>(() => [
+  {
+    type: 'item',
+    id: 'files',
+    testId: 'memory-import-files',
+    label: t('memory.import.files.label'),
+    icon: 'files',
+    run: () => pick('files'),
+  },
+  {
+    type: 'item',
+    id: 'folder',
+    testId: 'memory-import-folder',
+    label: t('memory.import.folder.label'),
+    icon: 'folder',
+    run: () => pick('folder'),
+  },
+]);
 </script>
 
 <template>
@@ -34,12 +55,7 @@ function pick(kind: 'files' | 'folder'): void {
       />
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">
-      <DropdownMenuItem data-testid="memory-import-files" @select="pick('files')">{{
-        t('memory.import.files.label')
-      }}</DropdownMenuItem>
-      <DropdownMenuItem data-testid="memory-import-folder" @select="pick('folder')">{{
-        t('memory.import.folder.label')
-      }}</DropdownMenuItem>
+      <MenuItems :items="items" />
     </DropdownMenuContent>
   </DropdownMenu>
 </template>

@@ -5,15 +5,16 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
+import { PopoverFooter } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
 import { computed, ref } from 'vue';
+import MenuItems from '../components/MenuItems.vue';
+import type { MenuItem } from '../state/contextMenu';
 import { ORIGIN_LABEL, SCOPE_LABEL } from './labels';
 import { useMemoryProjectOptions } from './queries';
 
@@ -41,6 +42,38 @@ const active = computed(
   () => (scopes.value.length > 0 ? 1 : 0) + (origins.value.length > 0 ? 1 : 0),
 );
 
+const filterItems = computed<MenuItem[]>(() => [
+  { type: 'label', label: t('common.field.scope.label') },
+  ...SCOPES.map(
+    (scope): MenuItem => ({
+      type: 'checkbox',
+      id: `scope-${scope}`,
+      testId: `memory-filter-scope-${scope}`,
+      label: t(SCOPE_LABEL[scope]),
+      checked: checked(scopes.value, scope),
+      keepOpen: true,
+      run: () => {
+        scopes.value = toggle(SCOPES, scopes.value, scope);
+      },
+    }),
+  ),
+  { type: 'separator' },
+  { type: 'label', label: t('memory.import.confirm.origin.label') },
+  ...ORIGINS.map(
+    (origin): MenuItem => ({
+      type: 'checkbox',
+      id: `origin-${origin}`,
+      testId: `memory-filter-origin-${origin}`,
+      label: t(ORIGIN_LABEL[origin]),
+      checked: checked(origins.value, origin),
+      keepOpen: true,
+      run: () => {
+        origins.value = toggle(ORIGINS, origins.value, origin);
+      },
+    }),
+  ),
+]);
+
 const projects = useMemoryProjectOptions();
 const pickerOpen = ref(false);
 
@@ -55,35 +88,13 @@ function clear(): void {
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <Button variant="toolbar" size="status" data-testid="memory-filter">
-          <CodiconIcon name="filter" :size="13" />
+          <CodiconIcon name="filter" :size="12" />
           {{ t('memory.panel.filter.label') }}
           <Badge v-if="active > 0" data-testid="memory-filter-count">{{ active }}</Badge>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <DropdownMenuLabel>{{ t('common.field.scope.label') }}</DropdownMenuLabel>
-        <DropdownMenuCheckboxItem
-          v-for="scope in SCOPES"
-          :key="scope"
-          :model-value="checked(scopes, scope)"
-          :data-testid="`memory-filter-scope-${scope}`"
-          @select.prevent
-          @update:model-value="scopes = toggle(SCOPES, scopes, scope)"
-        >
-          {{ t(SCOPE_LABEL[scope]) }}
-        </DropdownMenuCheckboxItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>{{ t('memory.import.confirm.origin.label') }}</DropdownMenuLabel>
-        <DropdownMenuCheckboxItem
-          v-for="origin in ORIGINS"
-          :key="origin"
-          :model-value="checked(origins, origin)"
-          :data-testid="`memory-filter-origin-${origin}`"
-          @select.prevent
-          @update:model-value="origins = toggle(ORIGINS, origins, origin)"
-        >
-          {{ t(ORIGIN_LABEL[origin]) }}
-        </DropdownMenuCheckboxItem>
+        <MenuItems :items="filterItems" />
       </DropdownMenuContent>
     </DropdownMenu>
     <ProjectPicker
@@ -100,16 +111,16 @@ function clear(): void {
       @update:model-value="(v) => (project = v ?? '')"
     >
       <template #footer>
-        <Button
-          v-if="project"
-          variant="toolbar"
-          size="status"
-          class="w-full"
-          data-testid="memory-boost-project-clear"
-          @click="clear"
-        >
-          {{ t('memory.panel.boostProject.clear.label') }}
-        </Button>
+        <PopoverFooter v-if="project">
+          <Button
+            variant="toolbar"
+            size="kira"
+            data-testid="memory-boost-project-clear"
+            @click="clear"
+            ><CodiconIcon :name="ICON.clearAll" :size="13" />
+            {{ t('memory.panel.boostProject.clear.label') }}
+          </Button>
+        </PopoverFooter>
       </template>
     </ProjectPicker>
   </div>

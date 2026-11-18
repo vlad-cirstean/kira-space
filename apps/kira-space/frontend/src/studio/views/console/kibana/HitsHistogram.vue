@@ -170,6 +170,7 @@ function onInterval(value: unknown): void {
       <span class="ml-auto" />
       <NativeSelect
         variant="bordered"
+        size="kira"
         :model-value="interval"
         :aria-label="t('studio.kibana.interval.select.aria')"
         data-testid="kibana-interval"

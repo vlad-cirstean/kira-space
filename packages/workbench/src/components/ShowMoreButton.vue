@@ -12,7 +12,7 @@ defineProps<{ hiddenCount: number; step: number }>();
   <Button
     v-if="hiddenCount > 0"
     variant="link"
-    size="kira"
+    size="inline"
     class="w-full justify-start px-2 py-0.5 h-auto text-muted-foreground"
   >
     {{ t('workbench.showMore.remaining.label', { count: hiddenCount }) }}

@@ -4,11 +4,11 @@ import {
   Field,
   FieldDescription,
   FieldError,
+  FieldLabel,
   FieldLegend,
   FieldSet,
 } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
@@ -95,14 +95,16 @@ const graphFontSizeId = useId();
 
 <template>
   <div class="contents" v-show="active">
-    <FieldSet class="gap-3">
-      <FieldLegend class="pt-0">{{ t('space.settings.git.remote.title') }}</FieldLegend>
+    <FieldSet>
+      <FieldLegend>{{ t('space.settings.git.remote.title') }}</FieldLegend>
       <FieldDescription>
         {{ t('space.settings.git.remote.description') }}
       </FieldDescription>
       <Field>
         <div class="flex items-center justify-between gap-1">
-          <Label :for="protectedBranchesId">{{ t('space.settings.git.protected.label') }}</Label>
+          <FieldLabel :for="protectedBranchesId">{{
+            t('space.settings.git.protected.label')
+          }}</FieldLabel>
           <TooltipIconButton
             icon="discard"
             :label="t('common.action.resetToDefault.label')"
@@ -113,10 +115,9 @@ const graphFontSizeId = useId();
           />
         </div>
         <Textarea
+          class="font-data"
           :id="protectedBranchesId"
           v-model="protectedBranchesText"
-          class="font-data"
-          rows="4"
           :placeholder="t('space.settings.git.protected.example')"
           data-testid="settings-git-protected-branches"
         />
@@ -124,9 +125,9 @@ const graphFontSizeId = useId();
       </Field>
       <Field>
         <div class="flex items-center justify-between gap-1">
-          <Label :for="fetchAutoIntervalMinutesId">{{
+          <FieldLabel :for="fetchAutoIntervalMinutesId">{{
             t('space.settings.git.fetchInterval.label')
-          }}</Label>
+          }}</FieldLabel>
           <TooltipIconButton
             icon="discard"
             :label="t('common.action.resetToDefault.label')"
@@ -157,7 +158,7 @@ const graphFontSizeId = useId();
       </Field>
       <Field>
         <div class="flex items-center justify-between gap-1">
-          <Label :for="gitPathId">{{ t('space.settings.git.gitPath.label') }}</Label>
+          <FieldLabel :for="gitPathId">{{ t('space.settings.git.gitPath.label') }}</FieldLabel>
           <TooltipIconButton
             icon="discard"
             :label="t('common.action.resetToDefault.label')"
@@ -177,11 +178,13 @@ const graphFontSizeId = useId();
         <FieldDescription>{{ t('space.settings.git.gitPath.description') }}</FieldDescription>
       </Field>
     </FieldSet>
-    <FieldSet class="gap-3">
+    <FieldSet>
       <FieldLegend>{{ t('common.graph.label') }}</FieldLegend>
       <Field>
         <div class="flex items-center justify-between gap-1">
-          <Label :for="graphFontSizeId">{{ t('space.settings.git.graphFont.label') }}</Label>
+          <FieldLabel :for="graphFontSizeId">{{
+            t('space.settings.git.graphFont.label')
+          }}</FieldLabel>
           <TooltipIconButton
             icon="discard"
             :label="t('common.action.resetToDefault.label')"

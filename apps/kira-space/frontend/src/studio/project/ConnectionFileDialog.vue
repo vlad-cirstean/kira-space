@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
@@ -386,11 +387,12 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             data-testid="connection-duplicate"
             @click="onDuplicate"
           >
-            <CodiconIcon name="copy" :size="13" />
+            <CodiconIcon :name="ICON.duplicate" :size="13" />
             {{ t('common.action.duplicate.label') }}
           </Button>
+          <!-- conventions-allow N17: second footer action; one emphasised button rightmost (RD.2) -->
           <Button
-            variant="dialog-danger"
+            variant="dialog"
             size="kira-lg"
             :disabled="!detail"
             data-testid="connection-delete"
@@ -399,14 +401,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             <CodiconIcon name="trash" :size="13" />
             {{ t('common.action.delete.label') }}
           </Button>
-          <span
-            v-if="detail?.id && draft.dirty.value"
-            class="text-kira-sm text-subtle"
-            data-testid="connection-save-first"
-            >{{
-              t('studio.project.connectionDialog.saveFirst.hint')
-            }}</span
-          >
+          <span v-if="detail?.id && draft.dirty.value" data-testid="connection-save-first">{{
+            t('studio.project.connectionDialog.saveFirst.hint')
+          }}</span>
           <Button
             variant="dialog"
             size="kira-lg"
@@ -427,8 +424,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             <TruncatedText :text="testResult.message" />
           </Badge>
         </template>
+        <!-- conventions-allow N17: second footer action; one emphasised button rightmost (RD.2) -->
         <Button
-          variant="dialog-danger"
+          variant="dialog"
           size="kira-lg"
           :disabled="!draft.dirty.value"
           data-testid="connection-file-discard"

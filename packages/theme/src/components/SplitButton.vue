@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import type { ButtonVariants } from '@theme/components/ui/button';
 import { Button } from '@theme/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger } from '@theme/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { cn } from '@theme/lib/utils';
 import type { HTMLAttributes } from 'vue';
 
@@ -31,21 +31,18 @@ const open = defineModel<boolean>('open', { default: false });
 
 <template>
   <div data-slot="split-button" :class="cn('inline-flex', props.class)">
-    <Tooltip v-if="tooltip">
-      <TooltipTrigger as-child>
-        <Button
-          :variant="variant"
-          :size="size"
-          class="rounded-r-none"
-          :disabled="disabled"
-          :pending="pending"
-          v-bind="$attrs"
-        >
-          <slot />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ tooltip }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip v-if="tooltip" :text="tooltip"
+      ><Button
+        :variant="variant"
+        :size="size"
+        class="rounded-r-none"
+        :disabled="disabled"
+        :pending="pending"
+        v-bind="$attrs"
+      >
+        <slot />
+      </Button></TextTooltip
+    >
     <Button
       v-else
       :variant="variant"

@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { Field, FieldDescription, FieldGroup } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
-import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { formatBytes, formatDuration } from '@workbench/behaviour/format';
 import { computed, useId } from 'vue';
@@ -108,19 +106,29 @@ function onEditGlobalDefaults(): void {
   useSettingsStore().openSettingsAt('Api');
 }
 
-// P110 B40: `.inherit`'s own shared class string, repeated 7 times in this file's template --
-// the DEF_TH/DEF_TD const idiom views/definition/*.vue already uses.
-const INHERIT_LABEL = 'flex items-center gap-1 text-muted-foreground text-kira-sm';
-
 // P110 I2-26: `for`/`id` preserves the old label-wraps-control implicit association (see
 // FontSizeField.vue's own precedent comment) now that the field wrapper is a plain <Field> div.
-const httpVersionId = useId();
+const HTTP_VERSION_ITEMS = computed(() =>
+  HTTP_VERSIONS.map((v) => ({
+    value: v,
+    label: t('studio.http.settings.versionOption.option', { version: v }),
+    testid: `http-settings-httpVersion-${v}`,
+    disabled: settings.value.httpVersion === null,
+  })),
+);
 const requestTimeoutMsId = useId();
 const maxResponseMbId = useId();
 const sslVerifyId = useId();
 const followRedirectsId = useId();
 const maxRedirectsId = useId();
 const disableCookieJarId = useId();
+const httpVersionInheritId = useId();
+const requestTimeoutMsInheritId = useId();
+const maxResponseMbInheritId = useId();
+const sslVerifyInheritId = useId();
+const followRedirectsInheritId = useId();
+const maxRedirectsInheritId = useId();
+const disableCookieJarInheritId = useId();
 </script>
 
 <template>
@@ -130,32 +138,28 @@ const disableCookieJarId = useId();
   >
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="httpVersionId">{{ t('studio.http.settings.version.label') }}</Label>
-        <Label :class="INHERIT_LABEL">
+        <FieldLabel>{{ t('studio.http.settings.version.label') }}</FieldLabel>
+        <Field orientation="horizontal" class="w-auto">
           <Checkbox
+            :id="httpVersionInheritId"
             :model-value="settings.httpVersion === null"
             data-testid="http-settings-httpVersion-inherit"
             @update:model-value="(v) => onHttpVersionInherit(v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
-          {{ t('common.state.inherit.option') }}
-        </Label>
+          />
+          <FieldLabel :for="httpVersionInheritId">{{
+            t('common.state.inherit.option')
+          }}</FieldLabel>
+        </Field>
       </div>
-      <NativeSelect
-        :id="httpVersionId"
-        variant="bordered"
+      <SecondaryTabs
+        variant="choice"
         size="kira-lg"
-        class="self-start"
+        :aria-label="t('studio.http.settings.version.label')"
         data-testid="http-settings-httpVersion"
-        :disabled="settings.httpVersion === null"
         :model-value="settings.httpVersion ?? global.httpVersion"
+        :items="HTTP_VERSION_ITEMS"
         @update:model-value="onHttpVersionChange"
-      >
-        <option v-for="v in HTTP_VERSIONS" :key="v" :value="v">{{
-          t('studio.http.settings.versionOption.option', { version: v })
-        }}</option>
-      </NativeSelect>
+      />
       <FieldDescription>{{
         t('studio.http.settings.global.status', {
           value: t('studio.http.settings.versionOption.option', { version: global.httpVersion }),
@@ -165,22 +169,24 @@ const disableCookieJarId = useId();
 
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="requestTimeoutMsId">{{ t('studio.http.settings.timeout.label') }}</Label>
-        <Label :class="INHERIT_LABEL">
+        <FieldLabel :for="requestTimeoutMsId">{{
+          t('studio.http.settings.timeout.label')
+        }}</FieldLabel>
+        <Field orientation="horizontal" class="w-auto">
           <Checkbox
+            :id="requestTimeoutMsInheritId"
             :model-value="settings.requestTimeoutMs === null"
             data-testid="http-settings-requestTimeoutMs-inherit"
             @update:model-value="(v) => onRequestTimeoutMsInherit(v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
-          {{ t('common.state.inherit.option') }}
-        </Label>
+          />
+          <FieldLabel :for="requestTimeoutMsInheritId">{{
+            t('common.state.inherit.option')
+          }}</FieldLabel>
+        </Field>
       </div>
       <Input
         :id="requestTimeoutMsId"
         type="number"
-        size="kira"
         :min="REQUEST_TIMEOUT_MS_RANGE.min"
         :max="REQUEST_TIMEOUT_MS_RANGE.max"
         :disabled="settings.requestTimeoutMs === null"
@@ -201,22 +207,24 @@ const disableCookieJarId = useId();
 
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="maxResponseMbId">{{ t('studio.http.settings.maxResponse.label') }}</Label>
-        <Label :class="INHERIT_LABEL">
+        <FieldLabel :for="maxResponseMbId">{{
+          t('studio.http.settings.maxResponse.label')
+        }}</FieldLabel>
+        <Field orientation="horizontal" class="w-auto">
           <Checkbox
+            :id="maxResponseMbInheritId"
             :model-value="settings.maxResponseMb === null"
             data-testid="http-settings-maxResponseMb-inherit"
             @update:model-value="(v) => onMaxResponseMbInherit(v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
-          {{ t('common.state.inherit.option') }}
-        </Label>
+          />
+          <FieldLabel :for="maxResponseMbInheritId">{{
+            t('common.state.inherit.option')
+          }}</FieldLabel>
+        </Field>
       </div>
       <Input
         :id="maxResponseMbId"
         type="number"
-        size="kira"
         :min="MAX_RESPONSE_MB_RANGE.min"
         :max="MAX_RESPONSE_MB_RANGE.max"
         :disabled="settings.maxResponseMb === null"
@@ -243,21 +251,18 @@ const disableCookieJarId = useId();
           :disabled="settings.sslVerify === null"
           data-testid="http-settings-sslVerify"
           @update:model-value="(v) => onSslVerifyChange(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
-        <Label :for="sslVerifyId">{{ t('studio.http.settings.verifySsl.label') }}</Label>
+        />
+        <FieldLabel :for="sslVerifyId">{{ t('studio.http.settings.verifySsl.label') }}</FieldLabel>
       </Field>
-      <Label :class="INHERIT_LABEL">
+      <Field orientation="horizontal" class="w-auto">
         <Checkbox
+          :id="sslVerifyInheritId"
           :model-value="settings.sslVerify === null"
           data-testid="http-settings-sslVerify-inherit"
           @update:model-value="(v) => onSslVerifyInherit(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
-        {{ t('common.state.inherit.option') }}
-      </Label>
+        />
+        <FieldLabel :for="sslVerifyInheritId">{{ t('common.state.inherit.option') }}</FieldLabel>
+      </Field>
     </FieldGroup>
     <FieldDescription>{{
       t(
@@ -275,23 +280,22 @@ const disableCookieJarId = useId();
           :disabled="settings.followRedirects === null"
           data-testid="http-settings-followRedirects"
           @update:model-value="(v) => onFollowRedirectsChange(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
-        <Label :for="followRedirectsId">{{
+        />
+        <FieldLabel :for="followRedirectsId">{{
           t('studio.http.settings.followRedirects.label')
-        }}</Label>
+        }}</FieldLabel>
       </Field>
-      <Label :class="INHERIT_LABEL">
+      <Field orientation="horizontal" class="w-auto">
         <Checkbox
+          :id="followRedirectsInheritId"
           :model-value="settings.followRedirects === null"
           data-testid="http-settings-followRedirects-inherit"
           @update:model-value="(v) => onFollowRedirectsInherit(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
-        {{ t('common.state.inherit.option') }}
-      </Label>
+        />
+        <FieldLabel :for="followRedirectsInheritId">{{
+          t('common.state.inherit.option')
+        }}</FieldLabel>
+      </Field>
     </FieldGroup>
     <FieldDescription>{{
       t(
@@ -303,22 +307,24 @@ const disableCookieJarId = useId();
 
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="maxRedirectsId">{{ t('studio.http.settings.maxRedirects.label') }}</Label>
-        <Label :class="INHERIT_LABEL">
+        <FieldLabel :for="maxRedirectsId">{{
+          t('studio.http.settings.maxRedirects.label')
+        }}</FieldLabel>
+        <Field orientation="horizontal" class="w-auto">
           <Checkbox
+            :id="maxRedirectsInheritId"
             :model-value="settings.maxRedirects === null"
             data-testid="http-settings-maxRedirects-inherit"
             @update:model-value="(v) => onMaxRedirectsInherit(v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
-          {{ t('common.state.inherit.option') }}
-        </Label>
+          />
+          <FieldLabel :for="maxRedirectsInheritId">{{
+            t('common.state.inherit.option')
+          }}</FieldLabel>
+        </Field>
       </div>
       <Input
         :id="maxRedirectsId"
         type="number"
-        size="kira"
         :min="MAX_REDIRECTS_RANGE.min"
         :max="MAX_REDIRECTS_RANGE.max"
         :disabled="settings.maxRedirects === null || !effectiveFollowRedirects"
@@ -342,21 +348,22 @@ const disableCookieJarId = useId();
           :disabled="settings.disableCookieJar === null"
           data-testid="http-settings-disableCookieJar"
           @update:model-value="(v) => onDisableCookieJarChange(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
-        <Label :for="disableCookieJarId">{{ t('studio.http.settings.disableJar.label') }}</Label>
+        />
+        <FieldLabel :for="disableCookieJarId">{{
+          t('studio.http.settings.disableJar.label')
+        }}</FieldLabel>
       </Field>
-      <Label :class="INHERIT_LABEL">
+      <Field orientation="horizontal" class="w-auto">
         <Checkbox
+          :id="disableCookieJarInheritId"
           :model-value="settings.disableCookieJar === null"
           data-testid="http-settings-disableCookieJar-inherit"
           @update:model-value="(v) => onDisableCookieJarInherit(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
-        {{ t('common.state.inherit.option') }}
-      </Label>
+        />
+        <FieldLabel :for="disableCookieJarInheritId">{{
+          t('common.state.inherit.option')
+        }}</FieldLabel>
+      </Field>
     </FieldGroup>
     <FieldDescription>{{
       t(

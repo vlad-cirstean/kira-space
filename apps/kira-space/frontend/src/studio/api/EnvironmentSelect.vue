@@ -1,17 +1,14 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed } from 'vue';
 import { useVariablesStore } from './state/variables';
 
@@ -29,25 +26,51 @@ const variablesStore = useVariablesStore();
 // gets exactly today's global behaviour for free.
 const props = withDefaults(defineProps<{ tabId?: string }>(), { tabId: '' });
 
-// reka radio values cannot be '' — "No environment" travels as this sentinel.
-const NONE = '__none__';
-const radioValue = computed(() =>
-  activeEnvironmentId.value === '' ? NONE : activeEnvironmentId.value,
-);
-
 const activeEnvironmentId = computed(() => variablesStore.environmentIdForTab(props.tabId));
 const activeEnvironment = computed(
   () => variablesStore.environments.find((e) => e.id === activeEnvironmentId.value) ?? null,
 );
 
-function onSelect(value: unknown): void {
-  const id = String(value);
-  void variablesStore.selectEnvironmentForTab(props.tabId, id === NONE ? '' : id);
+function selectEnvironment(id: string): void {
+  void variablesStore.selectEnvironmentForTab(props.tabId, id);
 }
 
-function manage(): void {
-  variablesStore.openEnvironments();
-}
+const menuItems = computed<MenuItem[]>(() => [
+  {
+    type: 'radio',
+    id: 'environment',
+    value: activeEnvironmentId.value || null,
+    items: [
+      {
+        type: 'option',
+        id: 'environment-none',
+        testId: 'api-environment-option-none',
+        value: null,
+        swatch: 'none',
+        label: t('studio.api.environments.none.option'),
+        run: () => selectEnvironment(''),
+      },
+      ...variablesStore.environments.map((env) => ({
+        type: 'option' as const,
+        id: `environment-${env.id}`,
+        testId: 'api-environment-option',
+        value: env.id,
+        swatch: env.color,
+        label: env.name,
+        run: () => selectEnvironment(env.id),
+      })),
+    ],
+  },
+  { type: 'separator' },
+  {
+    type: 'item',
+    id: 'manage',
+    testId: 'api-environment-manage',
+    label: t('studio.api.environments.manage.label'),
+    icon: 'settings-gear',
+    run: () => variablesStore.openEnvironments(),
+  },
+]);
 </script>
 
 <template>
@@ -67,32 +90,7 @@ function manage(): void {
       </DropdownMenuTrigger>
     </div>
     <DropdownMenuContent align="end" data-testid="api-environment-menu">
-      <DropdownMenuRadioGroup :model-value="radioValue" @update:model-value="onSelect">
-        <DropdownMenuRadioItem
-          :value="NONE"
-          data-testid="api-environment-option-none"
-          data-value=""
-        >
-          <span :class="colorMarkClass('dot', 'none')" data-testid="conn-dot" />
-          <span class="flex-1 truncate">{{ t('studio.api.environments.none.option') }}</span>
-          <template #indicator-icon><CodiconIcon name="check" :size="13" /></template>
-        </DropdownMenuRadioItem>
-        <DropdownMenuRadioItem
-          v-for="env in variablesStore.environments"
-          :key="env.id"
-          :value="env.id"
-          data-testid="api-environment-option"
-          :data-value="env.id"
-        >
-          <span :class="colorMarkClass('dot', env.color)" data-testid="conn-dot" />
-          <span class="flex-1 truncate">{{ env.name }}</span>
-          <template #indicator-icon><CodiconIcon name="check" :size="13" /></template>
-        </DropdownMenuRadioItem>
-      </DropdownMenuRadioGroup>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem data-testid="api-environment-manage" @select="manage">
-        <span class="flex-1 truncate">{{ t('studio.api.environments.manage.label') }}</span>
-      </DropdownMenuItem>
+      <MenuItems :items="menuItems" />
     </DropdownMenuContent>
   </DropdownMenu>
 </template>

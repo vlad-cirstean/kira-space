@@ -1,12 +1,11 @@
 import { type MessageKey, t } from '@theme/i18n';
+import { CHANGE_REQUEST_TONE } from '@theme/lib/statusTone';
 import type { Tone } from '../board/actions';
+import { PASTEL } from '../tones';
 
-export const PR_TONE: Record<string, Tone> = {
-  open: 'green',
-  merged: 'purple',
-  closed: 'red',
-  draft: 'grey',
-};
+export const PR_TONE: Record<string, Tone> = Object.fromEntries(
+  Object.entries(CHANGE_REQUEST_TONE).map(([k, v]) => [k, PASTEL[v]]),
+);
 
 const PR_STATE = {
   open: 'common.action.open.label',

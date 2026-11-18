@@ -18,7 +18,7 @@ const op = computed(() => {
 </script>
 
 <template>
-  <Badge v-if="op" variant="warn" data-testid="ade-op-status" :data-op="op.kind">
+  <Badge v-if="op" variant="info" data-testid="ade-op-status" :data-op="op.kind">
     <Spinner :size="12" label="" />
     {{ opLoadingText(op.kind) }}
   </Badge>

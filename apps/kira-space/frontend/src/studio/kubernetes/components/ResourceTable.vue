@@ -4,6 +4,7 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import { tableHeadClass, tableHeadRowClass, tableRowClass } from '@theme/components/ui/table';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useElementSize } from '@vueuse/core';
@@ -158,6 +159,7 @@ const nav = useListNavigation<KubeRow>({
     <EmptyState
       v-else-if="rows.length === 0"
       fill
+      :icon="ICON.search"
       data-testid="kube-list-no-match"
       :title="t('common.state.noMatches.empty')"
     />

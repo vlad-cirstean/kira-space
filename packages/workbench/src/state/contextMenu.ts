@@ -4,21 +4,45 @@ import { defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
 import { useFocusReturn } from '../behaviour/focus';
 
+/** One option of a `radio`; selecting it runs `run`. Reselecting the current one is a no-op unless `rerun`. */
+export interface MenuRadioOption {
+  type: 'option';
+  id: string;
+  /** Host `data-testid`; defaults to `menu-item-${id}`. */
+  testId?: string;
+  /** Compared with the radio's `value`; unique within the radio. `null` is the "none" option. */
+  value: string | null;
+  label: string;
+  /** Rich label (VarText) rendered in place of `label`; `label` carries its plain text. */
+  parts?: readonly TextPart[];
+  /** A second, muted line under the label. */
+  detail?: string;
+  /** Renders a small color swatch in the icon column. */
+  swatch?: string;
+  disabled?: boolean;
+  /** Run even when this option is the radio's current value. */
+  rerun?: boolean;
+  /** Hover explanation, also the reason a `disabled` option is blocked. */
+  hint?: string | readonly TextPart[];
+  run(): void | Promise<void>;
+}
+
 export type MenuItem =
   | {
       type: 'item';
       id: string;
+      /** Host `data-testid`; defaults to `menu-item-${id}`. May repeat across items. */
+      testId?: string;
       label: string;
+      /** Rich label (VarText) rendered in place of `label`; `label` carries its plain text. */
+      parts?: readonly TextPart[];
       /** A second, muted line under the label. */
       detail?: string;
       icon?: string;
-      /** Replaces the default muted icon colour (a Tailwind text-colour class). */
-      iconClass?: string;
       /** Renders a small color swatch instead of an icon — used by the Color submenu. */
       swatch?: string;
       danger?: boolean;
       disabled?: boolean;
-      checked?: boolean;
       /** A hover explanation for this one row (e.g. the cell editor's format picker) —
        *  rendered through the same Tooltip/TooltipTrigger/TooltipContent trio every other hint
        *  uses, so it inherits the shared open-delay/rearm behavior for free rather than
@@ -29,8 +53,37 @@ export type MenuItem =
       shortcut?: ShortcutId;
       run(): void | Promise<void>;
     }
-  | { type: 'submenu'; id: string; label: string; icon?: string; items: MenuItem[] }
+  | {
+      type: 'submenu';
+      id: string;
+      testId?: string;
+      label: string;
+      icon?: string;
+      items: MenuItem[];
+    }
   | { type: 'separator' }
+  /** One group of mutually exclusive options; `value` (null: none) marks the current one. Draws the
+   *  primitive's check on it. Separators between option runs stay inside the group. */
+  | {
+      type: 'radio';
+      id: string;
+      value: string | null;
+      items: readonly (MenuRadioOption | { type: 'separator' })[];
+    }
+  /** An on/off row; draws the primitive's check when `checked`. */
+  | {
+      type: 'checkbox';
+      id: string;
+      testId?: string;
+      label: string;
+      icon?: string;
+      checked: boolean;
+      disabled?: boolean;
+      hint?: string | readonly TextPart[];
+      /** Keeps the menu open on toggle (a facet list toggled several times in a row). */
+      keepOpen?: boolean;
+      run(): void | Promise<void>;
+    }
   /** A non-interactive heading row above the items that follow it (P129 Part 5 §0.10's day
    *  context menu: the day's own `dayLong` above its one toggle). */
   | { type: 'label'; label: string };

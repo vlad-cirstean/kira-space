@@ -2,6 +2,7 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
+import { unmaskedOps } from '../support/dbOps';
 import { IPC } from '../support/ipcChannels';
 import {
   clusters,
@@ -142,7 +143,7 @@ test('contract: a Kubernetes read shows the cluster and answers by item id', asy
 });
 
 test('contract: the Operations panel shows an MCP Kubernetes read', async ({ relaunch }) => {
-  const ops = contract<Record<string, unknown>[]>(SCENARIO, 'OpsService.Recent');
+  const ops = unmaskedOps(contract<Record<string, unknown>[]>(SCENARIO, 'OpsService.Recent'));
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.connectionsList, response: [] },

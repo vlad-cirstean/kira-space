@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -88,16 +89,11 @@ useFocusOnMount(titleInput);
     data-testid="capture-window"
   >
     <template v-if="isEmpty">
-      <FieldDescription data-testid="capture-empty">{{
+      <InlineState kind="empty" data-testid="capture-empty">{{
         t('space.capture.empty.body')
-      }}</FieldDescription>
+      }}</InlineState>
       <div class="mt-auto flex justify-end">
-        <Button
-          variant="dialog-primary"
-          size="kira-lg"
-          data-testid="capture-dismiss"
-          @click="close"
-        >
+        <Button variant="dialog" size="kira-lg" data-testid="capture-dismiss" @click="close">
           {{ t('common.action.dismiss.label') }}
         </Button>
       </div>

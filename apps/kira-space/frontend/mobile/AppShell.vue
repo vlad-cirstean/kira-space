@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useQueryClient } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -45,24 +46,31 @@ const DOT_LABEL = {
 
 <template>
   <div class="flex h-full flex-col pt-[env(safe-area-inset-top)]" data-testid="app-shell">
-    <header class="flex items-center gap-2 border-b border-border bg-chrome px-3 py-2">
-      <h1 class="m-0 flex-1 text-kira-lg font-medium">{{ t('mobile.shell.heading.title') }}</h1>
-      <Button
-        size="touch-icon"
-        variant="toolbar"
-        :aria-label="t('common.action.refresh.label')"
-        data-testid="refresh"
-        @click="refresh"
-      >
-        <CodiconIcon name="refresh" :size="13" />
-      </Button>
-      <StatusDot
-        :tone="DOT[connection]"
-        role="status"
-        :label="t(DOT_LABEL[connection])"
-        data-testid="connection-dot"
-      />
-    </header>
+    <DetailHeader
+      as="h1"
+      class="border-b border-border bg-chrome"
+      :title="t('mobile.shell.heading.title')"
+    >
+      <template #meta>
+        <StatusDot
+          :tone="DOT[connection]"
+          role="status"
+          :label="t(DOT_LABEL[connection])"
+          data-testid="connection-dot"
+        />
+      </template>
+      <template #actions>
+        <Button
+          size="touch-icon"
+          variant="toolbar"
+          :aria-label="t('common.action.refresh.label')"
+          data-testid="refresh"
+          @click="refresh"
+        >
+          <CodiconIcon name="refresh" :size="13" />
+        </Button>
+      </template>
+    </DetailHeader>
     <Alert v-if="!online" variant="warn" strip data-testid="offline-banner">
       <AlertDescription>{{ t('mobile.shell.offline.description') }}</AlertDescription>
     </Alert>

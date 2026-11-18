@@ -39,7 +39,6 @@ useKeptScroll('ade:workflows', bodyEl);
   <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-0.5" data-testid="ade-workflows">
     <SecondaryTabs
       class="px-1 py-0.5"
-      size="kira-lg"
       :model-value="wfUi.tab"
       :items="tabs"
       :aria-label="t('space.ade.workflows.tabs.aria')"
@@ -50,7 +49,7 @@ useKeptScroll('ade:workflows', bodyEl);
     <AdeStepsTab v-else-if="wfUi.tab === 'steps'" />
     <div v-else :class="cn(paneFrame, 'flex flex-1 flex-col')">
       <PanelHeader>{{ t('space.ade.workflows.page.statuses.label') }}</PanelHeader>
-      <div ref="bodyEl" class="min-h-0 flex-1 overflow-auto p-4">
+      <div ref="bodyEl" class="min-h-0 flex-1 overflow-auto p-3">
         <AdeTaskStatuses />
       </div>
     </div>

@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import type { MemoryOrigin, MemoryScope } from '@shared/domain/memory';
-import type { ImportAction } from '@shared/domain/memoryImport';
+import type { ImportAction, ImportJobState } from '@shared/domain/memoryImport';
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
+import KeyValueList from '@theme/components/KeyValueList.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Progress } from '@theme/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
+import { type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { storeToRefs } from 'pinia';
 import { computed, useTemplateRef } from 'vue';
@@ -23,6 +28,15 @@ import { useImportAction, useImportJob, useRetryImportFile, useStartImport } fro
 import { useImportUiStore } from './importStore';
 
 // P211: one import — state, totals, job actions and its virtualized file list.
+const JOB_TONE: Record<ImportJobState, StatusTone> = {
+  scanning: 'info',
+  awaiting: 'warn',
+  running: 'info',
+  paused: 'warn',
+  done: 'ok',
+  cancelled: 'neutral',
+  failed: 'error',
+};
 const props = defineProps<{ jobId: string }>();
 const ui = useImportUiStore();
 const { selectedFileId } = storeToRefs(ui);
@@ -78,48 +92,46 @@ async function discard(): Promise<void> {
     data-testid="import-job"
     :data-state="job.state"
   >
-    <div class="flex shrink-0 flex-col gap-1.5 p-3">
-      <div class="flex items-center gap-1.5">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <span class="min-w-0 flex-1 truncate text-kira-md font-medium">{{
-              jobTitle(job)
-            }}</span>
-          </TooltipTrigger>
-          <TooltipContent>{{ job.roots.join(', ') }}</TooltipContent>
-        </Tooltip>
-        <span class="text-kira-sm text-muted-foreground" data-testid="import-job-state">{{
+    <DetailHeader>
+      <template #title>
+        <TextTooltip :text="job.roots.join(', ')">
+          <span>{{ jobTitle(job) }}</span>
+        </TextTooltip>
+      </template>
+      <template #meta>
+        <Badge :variant="TONE_BADGE[JOB_TONE[job.state]]" data-testid="import-job-state">{{
           t(JOB_STATE_LABEL[job.state])
-        }}</span>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Badge variant="default" data-testid="import-job-channel">{{
-              t(
-                job.channel === 'mcp'
-                  ? 'memory.common.origin.agent.label'
-                  : 'memory.import.channel.ui.label',
-              )
-            }}</Badge>
-          </TooltipTrigger>
-          <TooltipContent v-if="job.sessionId">{{
-            t('memory.import.channel.agent.description', { session: job.sessionId })
-          }}</TooltipContent>
-        </Tooltip>
+        }}</Badge>
+        <TextTooltip
+          :text="
+            job.sessionId
+              ? t('memory.import.channel.agent.description', { session: job.sessionId })
+              : ''
+          "
+        >
+          <Badge variant="default" data-testid="import-job-channel">{{
+            t(
+              job.channel === 'mcp'
+                ? 'memory.common.origin.agent.label'
+                : 'memory.import.channel.ui.label',
+            )
+          }}</Badge>
+        </TextTooltip>
         <Badge variant="default" data-testid="import-job-origin">{{
           originText(job.origin as MemoryOrigin, job.sourceTag)
         }}</Badge>
         <Badge variant="default" data-testid="import-job-scope">{{
           job.project ? job.project : t(SCOPE_LABEL[job.scope as MemoryScope])
         }}</Badge>
+      </template>
+      <template #actions>
         <Button
           v-if="job.state === 'awaiting'"
           variant="toolbar"
           size="kira"
           data-testid="import-start"
           @click="startJob"
-          >{{
-            t('common.action.start.label')
-          }}</Button
+          ><CodiconIcon :name="ICON.run" :size="13" />{{ t('common.action.start.label') }}</Button
         >
         <Button
           v-if="job.state === 'running'"
@@ -127,9 +139,7 @@ async function discard(): Promise<void> {
           size="kira"
           data-testid="import-pause"
           @click="run('pause')"
-          >{{
-            t('memory.common.pause.label')
-          }}</Button
+          ><CodiconIcon name="debug-pause" :size="13" />{{ t('memory.common.pause.label') }}</Button
         >
         <Button
           v-if="job.state === 'paused'"
@@ -137,9 +147,8 @@ async function discard(): Promise<void> {
           size="kira"
           data-testid="import-resume"
           @click="run('resume')"
-          >{{
-            t('common.action.resume.label')
-          }}</Button
+          ><CodiconIcon name="debug-continue" :size="13" />
+          {{ t('common.action.resume.label') }}</Button
         >
         <Button
           v-if="job.state === 'running' || job.state === 'paused'"
@@ -147,9 +156,7 @@ async function discard(): Promise<void> {
           size="kira"
           data-testid="import-cancel"
           @click="run('cancel')"
-          >{{
-            t('common.action.cancel.label')
-          }}</Button
+          ><CodiconIcon :name="ICON.stop" :size="13" />{{ t('common.action.cancel.label') }}</Button
         >
         <Button
           v-if="job.totals.failedFiles > 0 && job.state !== 'running'"
@@ -157,7 +164,7 @@ async function discard(): Promise<void> {
           variant="toolbar"
           data-testid="import-retry-failed"
           @click="run('retryFailed')"
-        >
+          ><CodiconIcon :name="ICON.refresh" :size="13" />
           {{ t('memory.import.retryFailed.label') }}
         </Button>
         <Button
@@ -166,21 +173,20 @@ async function discard(): Promise<void> {
           size="kira"
           data-testid="import-dismiss"
           @click="run('dismiss')"
-          >{{
-            t('common.action.dismiss.label')
-          }}</Button
+          ><CodiconIcon :name="ICON.close" :size="13" />
+          {{ t('common.action.dismiss.label') }}</Button
         >
         <Button
           v-if="job.state !== 'running'"
           variant="toolbar"
           size="kira"
+          data-tone="error"
           data-testid="import-discard"
           @click="discard"
-          >{{
-            t('common.action.discard.label')
-          }}</Button
+          ><CodiconIcon :name="ICON.delete" :size="13" />
+          {{ t('common.action.discard.label') }}</Button
         >
-      </div>
+      </template>
       <Alert
         v-if="
           job.reason &&
@@ -221,7 +227,7 @@ async function discard(): Promise<void> {
           t('memory.import.totals.skipped.label', { count: job.totals.skippedFiles })
         }}</span>
       </div>
-    </div>
+    </DetailHeader>
     <div ref="scroll" class="min-h-0 flex-1 overflow-y-auto" data-testid="import-files">
       <div class="relative w-full" :style="{ height: `${totalSize}px` }">
         <div
@@ -254,25 +260,23 @@ async function discard(): Promise<void> {
           selectedFile.reason
         }}</p
       >
-      <div
-        v-if="selectedFile.groupId"
-        class="flex items-center gap-1.5 text-kira-sm text-muted-foreground"
-        data-testid="import-file-group"
-      >
-        <span>{{ t('memory.import.file.group.label') }}</span>
-        <Identifier :value="selectedFile.groupId" copyable />
-      </div>
+      <KeyValueList v-if="selectedFile.groupId || selectedFile.docPath">
+        <template v-if="selectedFile.groupId">
+          <dt>{{ t('memory.import.file.group.label') }}</dt>
+          <dd data-testid="import-file-group">
+            <Identifier :value="selectedFile.groupId" copyable />
+          </dd>
+        </template>
+        <template v-if="selectedFile.docPath">
+          <dt>{{ t('memory.import.file.docPath.label') }}</dt>
+          <dd data-testid="import-file-doc">
+            <Identifier :value="selectedFile.docPath" split="path" copyable />
+          </dd>
+        </template>
+      </KeyValueList>
       <FieldDescription v-if="selectedFile.orphaned > 0" data-testid="import-file-orphaned">{{
         t('memory.import.file.orphaned.label', { count: selectedFile.orphaned })
       }}</FieldDescription>
-      <div
-        v-if="selectedFile.docPath"
-        class="flex items-center gap-1.5 text-kira-sm text-muted-foreground"
-        data-testid="import-file-doc"
-      >
-        <span>{{ t('memory.import.file.docPath.label') }}</span>
-        <Identifier :value="selectedFile.docPath" split="path" copyable />
-      </div>
       <Alert
         v-if="selectedFile.docError"
         variant="warn"
@@ -287,7 +291,7 @@ async function discard(): Promise<void> {
           q
         }}</span>
       </Alert>
-      <Card v-for="(d, i) in selectedFile.dropped" :key="`d${i}`" class="gap-0">
+      <Card v-for="(d, i) in selectedFile.dropped" :key="`d${i}`">
         <span>{{ d.fact }}</span>
         <span class="text-kira-sm text-muted-foreground">{{
           t('memory.import.file.dropped.label', { why: d.why })

@@ -11,11 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, useId } from 'vue';
 import { errorText } from '../bridge/codedError';
 import { useStoreMemory } from './queries';
 import ScopeField from './ScopeField.vue';
@@ -25,6 +24,7 @@ import { useMemoryUiStore } from './store';
 // P285 Part 4: with `lines` (distilled output) it stores one fact per line instead of the text field.
 const props = defineProps<{ lines?: string[]; source?: string }>();
 const emit = defineEmits<{ close: [] }>();
+const linesId = useId();
 const ui = useMemoryUiStore();
 const store = useStoreMemory();
 
@@ -133,7 +133,7 @@ function select(id: string): void {
         <template v-if="stored && result">
           <ul class="m-0 flex list-none flex-col gap-1 p-0" data-testid="add-memory-outcomes">
             <li v-for="(o, i) in result.outcomes" :key="i">
-              <Card class="gap-0.5">
+              <Card>
                 <span
                   class="text-kira-sm text-muted-foreground"
                   :data-testid="`add-memory-outcome-${i}`"
@@ -159,16 +159,19 @@ function select(id: string): void {
         <template v-else>
           <div class="flex flex-col gap-1">
             <template v-if="lines">
-              <Label>{{ t('memory.distill.store.items.label', { count: lines.length }) }}</Label>
+              <FieldLabel :id="linesId">{{
+                t('memory.distill.store.items.label', { count: lines.length })
+              }}</FieldLabel>
               <ul
                 class="m-0 flex max-h-48 list-none flex-col gap-0.5 overflow-y-auto p-0 text-kira-md"
+                :aria-labelledby="linesId"
                 data-testid="add-memory-lines"
               >
                 <li v-for="(line, i) in lines" :key="i" class="whitespace-pre-wrap">{{ line }}</li>
               </ul>
             </template>
-            <template v-else>
-              <Label for="memory-text">{{ t('memory.add.text.label') }}</Label>
+            <Field v-else>
+              <FieldLabel for="memory-text">{{ t('memory.add.text.label') }}</FieldLabel>
               <Textarea
                 id="memory-text"
                 v-model="text"
@@ -183,7 +186,7 @@ function select(id: string): void {
                 >{{ text.length }}
                 / {{ MAX_TEXT }}</span
               >
-            </template>
+            </Field>
             <ScopeField
               v-model:scope="scope"
               v-model:project="project"
@@ -199,8 +202,8 @@ function select(id: string): void {
                 data-testid="add-memory-challenge"
               >
                 <span v-if="lines" class="text-kira-sm font-medium">{{ lines[c.index] }}</span>
-                <div v-for="(question, q) in c.questions" :key="q" class="flex flex-col gap-0.5">
-                  <Label :for="`memory-answer-${q}`">{{ question }}</Label>
+                <Field v-for="(question, q) in c.questions" :key="q">
+                  <FieldLabel :for="`memory-answer-${q}`">{{ question }}</FieldLabel>
                   <Textarea
                     :id="`memory-answer-${q}`"
                     v-model="answers[answerKey(c.index, q)]"
@@ -208,7 +211,7 @@ function select(id: string): void {
                     :placeholder="t('memory.add.answer.placeholder')"
                     data-testid="add-memory-answer"
                   />
-                </div>
+                </Field>
               </Alert>
             </template>
           </div>
@@ -220,7 +223,7 @@ function select(id: string): void {
       <DialogFooter>
         <template v-if="stored">
           <Button
-            variant="dialog-primary"
+            variant="dialog"
             size="kira-lg"
             data-testid="add-memory-done"
             @click="emit('close')"

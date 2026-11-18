@@ -3,8 +3,8 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import Spinner from '@theme/components/Spinner.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
@@ -184,17 +184,14 @@ function onKeydown(e: KeyboardEvent): void {
     </TreeTwisty>
 
     <span v-if="row.kind === 'connection'" class="size-4 flex items-center justify-center shrink-0">
-      <Tooltip :disabled="!statusTitle">
-        <TooltipTrigger as-child>
-          <StatusDot
-            class="status-dot"
-            :tone="STATUS_TONE[row.status ?? 'disconnected'] ?? 'muted'"
-            :pulse="row.status === 'connecting'"
-            :data-status="row.status"
-          />
-        </TooltipTrigger>
-        <TooltipContent v-if="statusTitle">{{ statusTitle }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="statusTitle"
+        ><StatusDot
+          class="status-dot"
+          :tone="STATUS_TONE[row.status ?? 'disconnected'] ?? 'muted'"
+          :pulse="row.status === 'connecting'"
+          :data-status="row.status"
+        /></TextTooltip
+      >
     </span>
     <span v-if="connectionKind" class="size-4 flex items-center justify-center shrink-0">
       <EngineIcon :kind="connectionKind" :size="13" />
@@ -213,15 +210,12 @@ function onKeydown(e: KeyboardEvent): void {
       </TruncatedText>
     </span>
 
-    <Tooltip v-if="fileProblem">
-      <TooltipTrigger as-child>
-        <span class="flex shrink-0 text-error" data-testid="tree-connection-problem">
-          <CodiconIcon name="warning" :size="13" />
-          <span class="sr-only">{{ fileProblem }}</span>
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{{ fileProblem }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip v-if="fileProblem" :text="fileProblem"
+      ><span class="flex shrink-0 text-error" data-testid="tree-connection-problem">
+        <CodiconIcon name="error" :size="13" />
+        <span class="sr-only">{{ fileProblem }}</span>
+      </span></TextTooltip
+    >
 
     <span v-if="row.badges?.length" class="flex gap-0.5 shrink-0">
       <span v-for="badge in row.badges" :key="badge" :class="rowMeta">{{ badge }}</span>

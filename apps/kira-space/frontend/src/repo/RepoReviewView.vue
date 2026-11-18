@@ -1,19 +1,19 @@
 <script setup lang="ts">
 // The review sidebar's real mount, modelled on views/repo/RepoGraphView.vue's own mount lifecycle
-// (view: 'graph' there, 'review' here) with two differences: this is not a tab (GitPanel.vue keeps
-// it mounted with v-show while the segment is hidden rather than unmounting it on every switch
-// away, so an in-flight review survives a trip to Files and back) and `viewState` is
-// `NullViewStateStore` — `ReviewView.vue` never reads it, so there is no per-mount state to persist
-// through a TabViewStateStore the way the graph needs one.
+// (view: 'graph' there, 'review' here) with two differences: this is not a tab, and the graph-shaped
+// `viewState` stays `NullViewStateStore`. A module switch unmounts the whole panel; the review's
+// filter, selection, expanded rows and scroll survive it through `keep` (the view-state store).
 import type { MountHandle } from '@kira/git-ui';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import EmptyState from '@theme/components/EmptyState.vue';
 import { t } from '@theme/i18n';
+import { useViewStateStore } from '@workbench/state/viewState';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useCodeReposStore } from '../state/coderepos';
 import { useReviewNavigationStore } from '../state/reviewNavigation';
 import { loadGitUi } from './git/gitUiModule';
 import { takePendingReviewTarget } from './git/hostHandlers';
 import { repoHeadOf } from './git/repoHead';
+import { reviewKeepKey } from './git/reviewSession';
 import { gitTransportFor } from './git/transport';
 
 const props = defineProps<{ repoId: string }>();
@@ -23,6 +23,7 @@ const container = ref<HTMLElement | null>(null);
 let handle: MountHandle | null = null;
 let unregisterNavigator: (() => void) | null = null;
 const navigation = useReviewNavigationStore();
+const viewState = useViewStateStore();
 
 async function mountReview(): Promise<void> {
   if (!props.repoId) {
@@ -43,6 +44,7 @@ async function mountReview(): Promise<void> {
     transport: gitTransportFor(props.repoId),
     viewState: new NullViewStateStore(),
     view: 'review',
+    keep: { state: viewState, key: reviewKeepKey(props.repoId) },
     repoHead: repoHeadOf(useCodeReposStore().codeRepoRecord(props.repoId)),
     target,
     onReviewApi: (api) => {
@@ -69,7 +71,11 @@ onUnmounted(() => {
 
 <template>
   <div v-if="!errorMessage" ref="container" class="h-full w-full" data-testid="repo-review-host" />
-  <Alert v-else variant="error">
-    <AlertDescription>{{ errorMessage }}</AlertDescription>
-  </Alert>
+  <EmptyState
+    v-else
+    fill
+    icon="warning"
+    :title="t('common.state.loadFailed.title')"
+    :description="errorMessage"
+  />
 </template>

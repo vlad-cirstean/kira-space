@@ -6,10 +6,13 @@ import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { paneFrame, windowBody } from '@theme/lib/frames';
+import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import Identifier from '@workbench/components/Identifier.vue';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
+import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
 import MonacoDiff from '@workbench/editor/MonacoDiff.vue';
 import { computed, reactive, ref } from 'vue';
 import { control } from '../bridge/control';
@@ -79,18 +82,21 @@ function onCancel(): void {
 <template>
   <div class="flex h-full flex-col" data-testid="config-sync-window">
     <TitleBarBase>
-      <span class="min-w-0 truncate text-kira-md font-medium" data-testid="config-sync-title">{{
+      <TitleBarTitle data-testid="config-sync-title">{{
         t('space.configSync.window.title')
-      }}</span>
+      }}</TitleBarTitle>
     </TitleBarBase>
     <div v-if="failure" class="mx-3 mt-2">
       <Alert variant="error" data-testid="config-sync-error">{{ errorText(failure) }}</Alert>
     </div>
-    <div class="flex min-h-0 flex-1 bg-chrome px-1.5 pb-0.5">
-      <section class="flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-kira bg-bg">
-        <div v-if="preview.isPending.value" class="m-auto text-muted-foreground">
-          {{ t('space.configSync.window.loading.loading') }}
-        </div>
+    <div :class="windowBody">
+      <section :class="cn(paneFrame, 'flex flex-1')">
+        <EmptyState
+          v-if="preview.isPending.value"
+          fill
+          loading
+          :title="t('space.configSync.window.loading.loading')"
+        />
         <EmptyState
           v-else-if="rows.length === 0"
           fill

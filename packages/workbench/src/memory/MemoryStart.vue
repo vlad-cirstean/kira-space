@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import KeyValueList from '@theme/components/KeyValueList.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -15,7 +16,7 @@ import ModuleStart from '../components/ModuleStart.vue';
 import QueryState from '../components/QueryState.vue';
 import DistillView from './distill/DistillView.vue';
 import ImportView from './import/ImportView.vue';
-import { eventText, GRADE_TEXT, KIND_LABEL, originText, SCOPE_LABEL } from './labels';
+import { eventText, GRADE_TEXT, KIND_LABEL, ORIGIN_BADGE, originText, SCOPE_LABEL } from './labels';
 import MemoryContext from './MemoryContext.vue';
 import { useMemoryHistory } from './queries';
 import { useMemoryUiStore } from './store';
@@ -57,22 +58,12 @@ function eventsFor(id: string) {
           <AlertDescription>{{ message }}</AlertDescription>
         </Alert>
       </template>
-      <div v-if="selected" class="flex flex-col gap-3 p-4" data-testid="memory-detail">
+      <div v-if="selected" class="flex flex-col gap-3 p-3" data-testid="memory-detail">
         <div class="flex flex-col gap-1.5">
           <div class="flex items-center gap-1">
-            <Badge
-              :variant="
-                selected.origin === 'user'
-                  ? 'info'
-                  : selected.origin === 'external'
-                    ? 'warn'
-                    : 'default'
-              "
-              data-testid="memory-detail-origin"
-              >{{
-                originText(selected.origin, selected.sourceTag)
-              }}</Badge
-            >
+            <Badge :variant="ORIGIN_BADGE[selected.origin]" data-testid="memory-detail-origin">{{
+              originText(selected.origin, selected.sourceTag)
+            }}</Badge>
             <Badge v-if="selected.kind === 'rule'" data-testid="memory-detail-kind">{{
               t(KIND_LABEL.rule)
             }}</Badge>
@@ -88,37 +79,35 @@ function eventsFor(id: string) {
           <p class="m-0 text-kira-md whitespace-pre-wrap" data-testid="memory-detail-fact">{{
             selected.fact
           }}</p>
-          <p class="m-0 text-kira-md text-muted-foreground whitespace-pre-wrap">
-            <span class="font-medium">{{ t('common.field.reason.label') }}</span>
-            {{ selected.reason }}
-          </p>
           <div v-if="selected.keywords.length" class="flex flex-wrap gap-1">
             <Badge v-for="k in selected.keywords" :key="k">{{ k }}</Badge>
           </div>
           <FieldDescription data-testid="memory-detail-grade">{{
             t(GRADE_TEXT[selected.origin])
           }}</FieldDescription>
-          <dl class="m-0 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 text-kira-sm">
-            <dt class="text-muted-foreground">{{ t('memory.start.id.label') }}</dt>
-            <dd class="m-0 min-w-0">
+          <KeyValueList>
+            <dt>{{ t('common.field.reason.label') }}</dt>
+            <dd class="whitespace-pre-wrap">{{ selected.reason }}</dd>
+            <dt>{{ t('memory.start.id.label') }}</dt>
+            <dd>
               <Identifier :value="selected.lineageId" copyable data-testid="memory-detail-id" />
             </dd>
             <template v-if="selected.project">
-              <dt class="text-muted-foreground">{{ t('memory.common.project.label') }}</dt>
-              <dd class="m-0 min-w-0">
+              <dt>{{ t('memory.common.project.label') }}</dt>
+              <dd>
                 <span class="font-data" data-testid="memory-detail-project"
                   ><TruncatedText :text="selected.project" /></span
                 >
               </dd>
             </template>
-            <dt class="text-muted-foreground">{{ t('memory.start.session.label') }}</dt>
-            <dd class="m-0 min-w-0" data-testid="memory-detail-session">
+            <dt>{{ t('memory.start.session.label') }}</dt>
+            <dd data-testid="memory-detail-session">
               <Identifier v-if="selected.sessionId" :value="selected.sessionId" copyable />
               <span v-else class="text-muted-foreground">{{
                 t('memory.start.noSession.description')
               }}</span>
             </dd>
-          </dl>
+          </KeyValueList>
         </div>
         <MemoryContext :memory-id="selected.id" @select="selectedId = $event" />
         <div v-if="trail.length > 1" class="flex flex-col gap-1.5" data-testid="memory-trail">
@@ -126,8 +115,6 @@ function eventsFor(id: string) {
           <Card
             v-for="version in trail"
             :key="version.id"
-            class="gap-0.5"
-            :class="{ 'opacity-50': version.historical }"
             :data-testid="`memory-version-${version.version}`"
           >
             <div class="flex items-center gap-1">

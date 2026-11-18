@@ -3,6 +3,7 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
+import { changeRequestTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { formatRelative } from '@workbench/behaviour/format';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
@@ -47,18 +48,6 @@ const stateLabel = computed(() => {
       return t('common.action.open.label');
   }
 });
-const stateVariant = computed(() => {
-  switch (detail.value?.state) {
-    case 'merged':
-      return 'info' as const;
-    case 'closed':
-      return 'error' as const;
-    case 'draft':
-      return 'chip' as const;
-    default:
-      return 'ok' as const;
-  }
-});
 
 function refresh(): void {
   void query.refetch();
@@ -85,14 +74,19 @@ function copyLink(): void {
     @open="openOnHost"
   >
     <template #badge>
-      <Badge v-if="detail" :variant="stateVariant" class="shrink-0" data-testid="host-view-state">
+      <Badge
+        v-if="detail"
+        :variant="TONE_BADGE[changeRequestTone(detail.state)]"
+        class="shrink-0"
+        data-testid="host-view-state"
+      >
         {{ stateLabel }}
       </Badge>
     </template>
     <div v-if="detail" class="flex min-h-0 flex-1" data-testid="host-view-body">
-      <main class="min-w-0 flex-1 overflow-y-auto p-4">
+      <main class="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         <div
-          class="mb-3 flex flex-wrap items-center gap-x-2 text-kira-sm text-muted-foreground"
+          class="flex flex-wrap items-center gap-x-2 text-kira-sm text-muted-foreground"
           data-testid="host-view-meta"
         >
           <CodiconIcon name="git-pull-request" :size="13" />
@@ -117,7 +111,7 @@ function copyLink(): void {
           :query-key="queryKey"
           :provider="target.provider"
         />
-        <section v-if="compose" class="mt-4 flex flex-col gap-2" data-testid="host-view-compose">
+        <section v-if="compose" class="flex flex-col gap-2" data-testid="host-view-compose">
           <SectionHeading :label="t('space.hostView.compose.heading.title')" />
           <CommentComposer
             kind="changeRequest"

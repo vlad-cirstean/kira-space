@@ -5,16 +5,19 @@ import {
   type KibanaField,
   type KibanaSort,
 } from '@shared/domain/kibana';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { formatCount } from '@theme/i18n/number';
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 
 const props = defineProps<{ fields: readonly KibanaField[]; timeField: string | null }>();
 const sort = defineModel<KibanaSort[]>('sort', { required: true });
 const sampleSize = defineModel<KibanaConsoleState['sampleSize']>('sampleSize', { required: true });
 
+const idBase = useId();
 const DEFAULT = '';
 const current = computed(() => sort.value[0] ?? null);
 const sortable = computed(() =>
@@ -31,6 +34,12 @@ function flip(): void {
   if (c) sort.value = [{ ...c, order: c.order === 'asc' ? 'desc' : 'asc' }];
 }
 
+const SAMPLE_SIZE_ITEMS = KIBANA_SAMPLE_SIZES.map((n) => ({
+  value: String(n),
+  label: formatCount(n),
+  testid: `kibana-sample-size-${n}`,
+}));
+
 function onSize(value: unknown): void {
   const n = Number(value);
   const match = KIBANA_SAMPLE_SIZES.find((s) => s === n);
@@ -40,25 +49,25 @@ function onSize(value: unknown): void {
 
 <template>
   <div class="flex items-center gap-1.5 px-2 py-1" data-testid="kibana-sort-control">
-    <span class="text-kira-sm text-muted-foreground">{{
-      t('studio.kibana.sort.field.label')
-    }}</span>
-    <NativeSelect
-      variant="bordered"
-      :model-value="current?.field ?? DEFAULT"
-      :aria-label="t('studio.kibana.sort.field.label')"
-      data-testid="kibana-sort-field"
-      @update:model-value="onField"
-    >
-      <option :value="DEFAULT">
-        {{
-          timeField
-            ? t('studio.kibana.sort.timeField.option', { field: timeField })
-            : t('studio.kibana.sort.score.option')
-        }}
-      </option>
-      <option v-for="f in sortable" :key="f.name" :value="f.name">{{ f.name }}</option>
-    </NativeSelect>
+    <Field orientation="horizontal" class="w-auto">
+      <FieldLabel :for="`${idBase}-field`">{{ t('studio.kibana.sort.field.label') }}</FieldLabel>
+      <NativeSelect
+        :id="`${idBase}-field`"
+        variant="bordered"
+        :model-value="current?.field ?? DEFAULT"
+        data-testid="kibana-sort-field"
+        @update:model-value="onField"
+      >
+        <option :value="DEFAULT">
+          {{
+            timeField
+              ? t('studio.kibana.sort.timeField.option', { field: timeField })
+              : t('studio.kibana.sort.score.option')
+          }}
+        </option>
+        <option v-for="f in sortable" :key="f.name" :value="f.name">{{ f.name }}</option>
+      </NativeSelect>
+    </Field>
     <TooltipIconButton
       :icon="current?.order === 'asc' ? 'arrow-up' : 'arrow-down'"
       :label="
@@ -70,17 +79,16 @@ function onSize(value: unknown): void {
       data-testid="kibana-sort-order"
       @click="flip"
     />
-    <span class="ml-auto text-kira-sm text-muted-foreground">{{
-      t('studio.kibana.sampleSize.label')
-    }}</span>
-    <NativeSelect
-      variant="bordered"
-      :model-value="sampleSize"
-      :aria-label="t('studio.kibana.sampleSize.label')"
-      data-testid="kibana-sample-size"
-      @update:model-value="onSize"
-    >
-      <option v-for="s in KIBANA_SAMPLE_SIZES" :key="s" :value="s">{{ formatCount(s) }}</option>
-    </NativeSelect>
+    <Field orientation="horizontal" class="ml-auto w-auto">
+      <FieldLabel>{{ t('studio.kibana.sampleSize.label') }}</FieldLabel>
+      <SecondaryTabs
+        variant="choice"
+        :aria-label="t('studio.kibana.sampleSize.label')"
+        :model-value="String(sampleSize)"
+        :items="SAMPLE_SIZE_ITEMS"
+        data-testid="kibana-sample-size"
+        @update:model-value="onSize"
+      />
+    </Field>
   </div>
 </template>

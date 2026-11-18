@@ -2,6 +2,7 @@
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import SaveBar from '@workbench/components/SaveBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
@@ -22,7 +23,6 @@ const {
   saveError,
   conflict,
   bytes,
-  actionable,
   over,
   saveNow,
   discard,
@@ -36,8 +36,8 @@ useShortcut(root, ['form.save'], () => void saveNow());
 </script>
 
 <template>
-  <div class="min-h-0 flex-1 overflow-auto p-4" data-testid="ade-settings">
-    <div v-if="view" ref="root" class="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+  <div class="min-h-0 flex-1 overflow-auto p-3" data-testid="ade-settings">
+    <div v-if="view" ref="root" class="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
       <div class="flex min-w-0 flex-col gap-3">
         <div v-if="!view.exists" class="text-kira-sm text-subtle" data-testid="ade-settings-none">
           {{ t('space.ade.settings.none.hint') }}
@@ -71,38 +71,24 @@ useShortcut(root, ['form.save'], () => void saveNow());
             @save="saveNow"
             @submit="saveNow"
           />
-          <div class="flex flex-wrap items-center gap-2">
-            <span
-              class="min-w-0 flex-1 text-kira-sm"
-              :class="over ? 'text-tone-red' : 'text-subtle'"
-              data-testid="ade-settings-size"
-            >
-              {{
-                over
-                  ? t('space.ade.settings.overSize.error', { max: view.maxBytes })
-                  : t('space.ade.context.size.status', { used: bytes, max: view.maxBytes })
-              }}
-            </span>
-            <Button
-              variant="dialog-danger"
-              size="kira-lg"
-              :disabled="!actionable"
-              data-testid="ade-settings-discard"
-              @click="discard"
-            >
-              {{ t('common.action.discard.label') }}
-            </Button>
-            <Button
-              variant="dialog-primary"
-              size="kira-lg"
-              :disabled="!dirty"
-              :pending="save.isPending.value"
-              data-testid="ade-settings-save"
-              @click="saveNow"
-            >
-              {{ t('common.action.save.label') }}
-            </Button>
-          </div>
+          <SaveBar
+            :dirty="dirty"
+            :saving="save.isPending.value"
+            :can-save="dirty"
+            testid-prefix="ade-settings"
+            @save="saveNow"
+            @discard="discard"
+          >
+            <template #start>
+              <span :class="over && 'text-error'" data-testid="ade-settings-size">
+                {{
+                  over
+                    ? t('space.ade.settings.overSize.error', { max: view.maxBytes })
+                    : t('space.ade.context.size.status', { used: bytes, max: view.maxBytes })
+                }}
+              </span>
+            </template>
+          </SaveBar>
         </template>
         <Alert v-if="saveError" variant="error" data-testid="ade-settings-save-error">
           <AlertDescription>{{ saveError }}</AlertDescription>

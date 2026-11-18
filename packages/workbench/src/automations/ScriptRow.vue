@@ -3,6 +3,7 @@ import type { ScriptRun } from '@shared/domain/scriptRuns';
 import type { CustomScript, ScriptFileProblem } from '@shared/domain/scripts';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import Spinner from '@theme/components/Spinner.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
@@ -59,28 +60,22 @@ function firstLine(command: string): string {
           <span class="flex min-w-0 items-center gap-1">
             <SmartBadge v-if="script.kind === 'smart'" />
             <span class="truncate">{{ script.name }}</span>
-            <Tooltip v-if="script.mcp?.enabled">
-              <TooltipTrigger as-child>
-                <CodiconIcon
-                  name="plug"
-                  :size="12"
-                  class="shrink-0 text-subtle"
-                  data-testid="script-mcp-badge"
-                />
-              </TooltipTrigger>
-              <TooltipContent>{{ t('automations.script.mcp.tooltip') }}</TooltipContent>
-            </Tooltip>
-            <Tooltip v-if="problem">
-              <TooltipTrigger as-child>
-                <CodiconIcon
-                  name="warning"
-                  :size="12"
-                  class="shrink-0 text-tone-red"
-                  data-testid="script-row-problem"
-                />
-              </TooltipTrigger>
-              <TooltipContent>{{ problemText() }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip v-if="script.mcp?.enabled" :text="t('automations.script.mcp.tooltip')"
+              ><CodiconIcon
+                name="plug"
+                :size="12"
+                class="shrink-0 text-subtle"
+                data-testid="script-mcp-badge"
+              /></TextTooltip
+            >
+            <TextTooltip v-if="problem" :text="problemText()"
+              ><CodiconIcon
+                name="error"
+                :size="12"
+                class="shrink-0 text-error"
+                data-testid="script-row-problem"
+              /></TextTooltip
+            >
           </span>
           <span class="truncate text-muted-foreground text-kira-sm">{{
             firstLine(script.command)

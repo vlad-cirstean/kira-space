@@ -41,7 +41,6 @@ async function onEnter(): Promise<void> {
       id="ade-capture"
       v-model="text"
       :placeholder="t('space.ade.later.add.placeholder')"
-      size="kira-lg"
       class="w-full min-w-32 max-w-72 @5xl:w-72"
       data-testid="ade-capture"
       @keydown.enter="onEnter"

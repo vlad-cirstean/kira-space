@@ -2,10 +2,15 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
-import { FieldDescription, FieldError } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
+import {
+  Popover,
+  PopoverBar,
+  PopoverBody,
+  PopoverContent,
+  PopoverTrigger,
+} from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { refDebounced } from '@vueuse/core';
@@ -170,57 +175,50 @@ async function pick(value: string): Promise<void> {
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
       <Button
-        variant="dialog"
-        size="kira-lg"
+        variant="toolbar"
+        size="kira"
         data-testid="ade-add"
         @pointerenter="prefetchNotesEditor"
       >
-        <CodiconIcon name="add" :size="12" />
+        <CodiconIcon name="add" :size="13" />
         {{ t('space.ade.add.trigger.label') }}
       </Button>
     </PopoverTrigger>
-    <PopoverContent
-      align="end"
-      class="w-120 gap-0 overflow-hidden p-0"
-      data-testid="ade-add-popover"
-    >
-      <div class="p-1">
-        <SecondaryTabs v-model="tab" :items="tabItems" size="kira-lg" class="w-full" />
-      </div>
-      <div
-        v-if="tab === 'new'"
-        class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 p-3 text-kira-md"
-      >
-        <Label for="ade-nw-title" class="text-muted-foreground">{{
-          t('common.field.title.label')
-        }}</Label>
-        <Input
-          id="ade-nw-title"
-          v-model="title"
-          :placeholder="t('space.ade.add.title.placeholder')"
-          data-testid="ade-nw-title"
-        />
-        <Label for="ade-nw-jira" class="text-muted-foreground">{{
-          t('space.ade.taskTab.issue.label')
-        }}</Label>
-        <Input
-          id="ade-nw-jira"
-          v-model="jira"
-          :placeholder="t('space.ade.add.jira.placeholder')"
-          data-testid="ade-nw-jira"
-        />
-        <Label for="ade-nw-notes" class="self-start pt-1.5 text-muted-foreground">{{
-          t('space.common.notes.label')
-        }}</Label>
-        <AdeNotesEditor
-          id="ade-nw-notes"
-          v-model="notes"
-          compact
-          :placeholder="t('space.ade.add.notes.placeholder')"
-          data-testid="ade-nw-notes"
-        />
-        <span class="text-muted-foreground">{{ t('common.field.kind.label') }}</span>
-        <div class="flex flex-col gap-1">
+    <PopoverContent align="end" flush class="w-120" data-testid="ade-add-popover">
+      <PopoverBar>
+        <SecondaryTabs v-model="tab" :items="tabItems" class="w-full" />
+      </PopoverBar>
+      <PopoverBody v-if="tab === 'new'" class="@container">
+        <Field orientation="responsive">
+          <FieldLabel for="ade-nw-title">{{ t('common.field.title.label') }}</FieldLabel>
+          <Input
+            id="ade-nw-title"
+            v-model="title"
+            :placeholder="t('space.ade.add.title.placeholder')"
+            data-testid="ade-nw-title"
+          />
+        </Field>
+        <Field orientation="responsive">
+          <FieldLabel for="ade-nw-jira">{{ t('space.ade.taskTab.issue.label') }}</FieldLabel>
+          <Input
+            id="ade-nw-jira"
+            v-model="jira"
+            :placeholder="t('space.ade.add.jira.placeholder')"
+            data-testid="ade-nw-jira"
+          />
+        </Field>
+        <Field orientation="responsive">
+          <FieldLabel for="ade-nw-notes">{{ t('space.common.notes.label') }}</FieldLabel>
+          <AdeNotesEditor
+            id="ade-nw-notes"
+            v-model="notes"
+            compact
+            :placeholder="t('space.ade.add.notes.placeholder')"
+            data-testid="ade-nw-notes"
+          />
+        </Field>
+        <Field orientation="responsive">
+          <FieldLabel>{{ t('common.field.kind.label') }}</FieldLabel>
           <SecondaryTabs
             variant="choice"
             size="kira-lg"
@@ -233,29 +231,34 @@ async function pick(value: string): Promise<void> {
           <FieldDescription v-if="kind === 'orchestrator'" data-testid="ade-nw-kind-hint">{{
             t('space.ade.orchestrator.kind.orchestrator.hint')
           }}</FieldDescription>
-        </div>
-        <span />
-        <div class="flex items-center gap-3">
-          <Button
-            variant="dialog-primary"
-            size="kira-lg"
-            :disabled="cantAdd"
-            data-testid="ade-nw-add"
-            @click="addNew"
-          >
-            {{ t('space.ade.add.addToToday.label') }}
-          </Button>
-          <span class="text-kira-sm text-subtle">{{ t('space.ade.add.noBranchesYet.hint') }}</span>
-        </div>
-      </div>
-      <div v-else>
-        <FieldDescription v-if="attachTo" class="truncate px-3 py-1.5" data-testid="ade-add-attach">
-          <CatalogText k="space.ade.add.attach.label">
-            <template #title
-              ><span class="font-medium text-fg">{{ attachTo.title }}</span></template
+        </Field>
+        <Field orientation="responsive">
+          <div class="flex items-center gap-3">
+            <Button
+              variant="dialog-primary"
+              size="kira"
+              :disabled="cantAdd"
+              data-testid="ade-nw-add"
+              @click="addNew"
             >
-          </CatalogText>
-        </FieldDescription>
+              {{ t('space.ade.add.addToToday.label') }}
+            </Button>
+            <span class="text-kira-sm text-subtle">{{
+              t('space.ade.add.noBranchesYet.hint')
+            }}</span>
+          </div>
+        </Field>
+      </PopoverBody>
+      <div v-else>
+        <PopoverBody v-if="attachTo">
+          <FieldDescription class="truncate" data-testid="ade-add-attach">
+            <CatalogText k="space.ade.add.attach.label">
+              <template #title
+                ><span class="font-medium text-fg">{{ attachTo.title }}</span></template
+              >
+            </CatalogText>
+          </FieldDescription>
+        </PopoverBody>
         <BranchPicker
           v-model:search="q"
           inline
@@ -281,9 +284,9 @@ async function pick(value: string): Promise<void> {
           </template>
         </BranchPicker>
       </div>
-      <FieldError v-if="error" class="px-3 pb-2" data-testid="ade-add-error">{{
-        error
-      }}</FieldError>
+      <PopoverBody v-if="error">
+        <FieldError data-testid="ade-add-error">{{ error }}</FieldError>
+      </PopoverBody>
     </PopoverContent>
   </Popover>
 </template>

@@ -49,9 +49,7 @@ function pickTask(id: string): void {
 <template>
   <div class="flex flex-col gap-3" data-testid="run-ade">
     <Field v-if="needs.tasks.length > 0">
-      <FieldLabel :for="`${idBase}-task`"
-        >{{ t('common.task.label') }} <span class="text-error">*</span></FieldLabel
-      >
+      <FieldLabel :for="`${idBase}-task`" required>{{ t('common.task.label') }}</FieldLabel>
       <Popover v-model:open="taskOpen">
         <PopoverTrigger as-child>
           <Button
@@ -64,10 +62,10 @@ function pickTask(id: string): void {
             <span class="truncate">{{
               taskTitle || t('automations.run.chooseTask.placeholder')
             }}</span>
-            <CodiconIcon name="chevron-down" :size="12" />
+            <CodiconIcon name="chevron-down" :size="13" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent class="w-96 p-0">
+        <PopoverContent flush class="w-96">
           <Command :model-value="taskId" @update:model-value="(v) => pickTask(String(v))">
             <CommandInput :placeholder="t('automations.run.findTask.placeholder')" />
             <CommandList>
@@ -90,9 +88,9 @@ function pickTask(id: string): void {
     </Field>
 
     <Field v-if="needs.branches.length > 0">
-      <FieldLabel :for="`${idBase}-branch`"
-        >{{ t('common.field.branch.label') }} <span class="text-error">*</span></FieldLabel
-      >
+      <FieldLabel :for="`${idBase}-branch`" required>{{
+        t('common.field.branch.label')
+      }}</FieldLabel>
       <BranchPicker
         :id="`${idBase}-branch`"
         :model-value="branchId || null"

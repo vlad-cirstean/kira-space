@@ -3,7 +3,10 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { paneFrame } from '@theme/lib/frames';
+import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
+import SaveBar from '@workbench/components/SaveBar.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { onBeforeUnmount, useTemplateRef, watch } from 'vue';
 import { libraryWorkflow } from '../board/stepLibrary';
@@ -12,7 +15,6 @@ import { useAdeWorkflowDraftStore } from '../state/adeWorkflowDraft';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import type { StepEntry } from '../wire';
 import AdeStepInspector from './AdeStepInspector.vue';
-import AdeWorkflowSaveBar from './AdeWorkflowSaveBar.vue';
 
 // Form mode of a library step: the step inspector over a one-step draft; Save writes the step whole,
 // Discard drops the edits. A pushed version never replaces unsaved edits.
@@ -78,13 +80,16 @@ onBeforeUnmount(() => {
     class="flex h-full min-h-0 flex-col gap-3"
     data-testid="ade-step-form"
   >
-    <AdeWorkflowSaveBar
+    <SaveBar
       :dirty="draft.dirty"
       :saving="save.isPending.value"
+      testid-prefix="ade-wf"
       @save="saveNow"
       @discard="discard"
-    />
-    <div class="min-h-96 flex-1 rounded-kira bg-bg" data-testid="ade-step-inspector">
+    >
+      <template #start>{{ t('space.ade.workflows.saveBar.applies.hint') }}</template>
+    </SaveBar>
+    <div :class="cn(paneFrame, 'min-h-96 flex-1')" data-testid="ade-step-inspector">
       <AdeStepInspector
         :key="draft.step.id"
         :step="draft.step"
@@ -118,6 +123,7 @@ onBeforeUnmount(() => {
   <EmptyState
     v-else
     fill
+    icon="symbol-event"
     :title="t('space.ade.steps.noValid.body')"
     data-testid="ade-step-no-valid"
   >

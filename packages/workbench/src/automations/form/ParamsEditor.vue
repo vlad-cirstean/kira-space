@@ -5,17 +5,23 @@ import type {
   ScriptParamType,
   SecretValues,
 } from '@shared/domain/scripts';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { Card } from '@theme/components/ui/card';
+import { Card, CardContent } from '@theme/components/ui/card';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { FieldDescription, FieldError, FieldLegend, FieldSet } from '@theme/components/ui/field';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { useId } from 'vue';
 import SecretInput from '../../components/SecretInput.vue';
 
@@ -136,167 +142,159 @@ function toggleDefault(i: number, option: string, on: boolean): void {
 
 <template>
   <FieldSet data-testid="params-editor">
-    <div class="flex items-center gap-2">
-      <FieldLegend class="mb-0">{{ t('automations.params.title.label') }}</FieldLegend>
-      <Button
-        variant="dialog"
-        size="kira-lg"
-        class="ml-auto"
-        data-testid="param-add"
-        @click="add"
-        >{{
+    <FieldLegend>
+      {{ t('automations.params.title.label') }}
+      <template #actions>
+        <Button variant="dialog" size="kira-lg" data-testid="param-add" @click="add">{{
           t('automations.params.add.label')
-        }}</Button
-      >
-    </div>
+        }}</Button>
+      </template>
+    </FieldLegend>
     <FieldDescription v-if="kind === 'script'">
       {{ t('automations.params.scriptHint.description', { variable: PARAM_VAR }) }}
     </FieldDescription>
     <FieldDescription v-else>
       {{ t('automations.params.smartHint.description', { token: '{name}', variable: PARAM_VAR }) }}
     </FieldDescription>
-    <Card v-for="(p, i) in params" :key="i" data-testid="param-row">
-      <div class="flex items-center gap-1.5">
-        <Input
-          :model-value="p.name"
-          :placeholder="t('common.field.name.label')"
-          class="min-w-0 flex-1 font-data"
-          :data-testid="`param-name-${i}`"
-          @update:model-value="(v) => patch(i, { name: String(v) })"
-        />
-        <SecondaryTabs
-          variant="segmented"
-          size="kira-lg"
-          :model-value="p.type"
-          :items="TYPE_ITEMS.map((it) => ({ ...it, testid: `param-type-${i}-${it.testid}` }))"
-          @update:model-value="(v) => setType(i, v as ScriptParamType)"
-        />
-        <TooltipIconButton
-          icon="trash"
-          :label="t('automations.params.remove.tooltip', { name: p.name })"
-          @click="remove(i)"
-        />
-      </div>
-      <span
-        v-if="p.name"
-        class="font-data text-kira-sm text-muted-foreground"
-        :data-testid="`param-token-${i}`"
-        >{{
-          tokenHint(kind, p.name)
-        }}</span
-      >
-      <FieldError v-for="m in errors?.[i] ?? []" :key="m" :data-testid="`param-error-${i}`">{{
-        m
-      }}</FieldError>
-      <Input
-        v-if="p.type === 'text' && !p.secret"
-        :model-value="p.default[0] ?? ''"
-        :placeholder="t('common.state.default.option')"
-        :data-testid="`param-default-${i}`"
-        @update:model-value="(v) => patch(i, { default: String(v) === '' ? [] : [String(v)] })"
-      />
-      <div
-        v-else-if="p.type === 'text'"
-        class="flex flex-col gap-1"
-        :data-testid="`param-secret-field-${i}`"
-      >
+    <Card v-for="(p, i) in params" :key="i" variant="section" data-testid="param-row">
+      <CardContent class="flex flex-col gap-1.5">
         <div class="flex items-center gap-1.5">
-          <SecretInput
-            :model-value="p.name ? (secretValues[p.name] ?? '') : ''"
-            :set="isSaved(p)"
-            :disabled="storageOff || !p.name"
-            class="min-w-0 flex-1"
-            :data-testid="`param-secret-value-${i}`"
-            @update:model-value="(v) => setSecret(p.name, String(v))"
+          <Input
+            :aria-label="t('common.field.name.label')"
+            :model-value="p.name"
+            :placeholder="t('common.field.name.label')"
+            class="min-w-0 flex-1 font-data"
+            :data-testid="`param-name-${i}`"
+            @update:model-value="(v) => patch(i, { name: String(v) })"
           />
-          <Badge v-if="isSaved(p)" :data-testid="`param-secret-saved-${i}`">{{
-            t('automations.params.secretValue.saved.status')
-          }}</Badge>
+          <SecondaryTabs
+            variant="choice"
+            size="kira-lg"
+            :aria-label="t('common.field.type.label')"
+            :model-value="p.type"
+            :items="TYPE_ITEMS.map((it) => ({ ...it, testid: `param-type-${i}-${it.testid}` }))"
+            @update:model-value="(v) => setType(i, v as ScriptParamType)"
+          />
+          <TooltipIconButton
+            :icon="ICON.remove"
+            :label="t('automations.params.remove.tooltip', { name: p.name })"
+            @click="remove(i)"
+          />
+        </div>
+        <span
+          v-if="p.name"
+          class="font-data text-kira-sm text-muted-foreground"
+          :data-testid="`param-token-${i}`"
+          >{{
+            tokenHint(kind, p.name)
+          }}</span
+        >
+        <FieldError v-for="m in errors?.[i] ?? []" :key="m" :data-testid="`param-error-${i}`">{{
+          m
+        }}</FieldError>
+        <Input
+          :aria-label="t('automations.params.defaultValue.label')"
+          v-if="p.type === 'text' && !p.secret"
+          :model-value="p.default[0] ?? ''"
+          :placeholder="t('common.state.default.option')"
+          :data-testid="`param-default-${i}`"
+          @update:model-value="(v) => patch(i, { default: String(v) === '' ? [] : [String(v)] })"
+        />
+        <div
+          v-else-if="p.type === 'text'"
+          class="flex flex-col gap-1"
+          :data-testid="`param-secret-field-${i}`"
+        >
+          <div class="flex items-center gap-1.5">
+            <SecretInput
+              :model-value="p.name ? (secretValues[p.name] ?? '') : ''"
+              :set="isSaved(p)"
+              :disabled="storageOff || !p.name"
+              class="min-w-0 flex-1"
+              :data-testid="`param-secret-value-${i}`"
+              @update:model-value="(v) => setSecret(p.name, String(v))"
+            />
+            <Badge v-if="isSaved(p)" :data-testid="`param-secret-saved-${i}`">{{
+              t('automations.params.secretValue.saved.status')
+            }}</Badge>
+            <Button
+              v-if="isSaved(p)"
+              variant="dialog"
+              size="kira-lg"
+              :data-testid="`param-secret-clear-${i}`"
+              @click="clearSecret(p.name)"
+              >{{
+                t('common.action.clear.label')
+              }}</Button
+            >
+          </div>
+          <FieldDescription v-if="storageOff" :data-testid="`param-secret-off-${i}`">{{
+            t('automations.params.secretValue.storageOff.description')
+          }}</FieldDescription>
+        </div>
+        <div v-else class="flex flex-col gap-1" :data-testid="`param-options-${i}`">
+          <div v-for="(o, k) in p.options" :key="k" class="flex items-center gap-1">
+            <Checkbox
+              :model-value="p.default.includes(o)"
+              :aria-label="t('automations.params.default.aria', { option: o })"
+              @update:model-value="(v) => toggleDefault(i, o, v === true)"
+            />
+            <Input
+              :aria-label="t('automations.params.option.placeholder')"
+              :model-value="o"
+              :placeholder="t('automations.params.option.placeholder')"
+              class="min-w-0 flex-1"
+              :data-testid="`param-option-${i}-${k}`"
+              @update:model-value="(v) => setOption(i, k, String(v))"
+            />
+            <TooltipIconButton
+              icon="arrow-up"
+              :label="t('common.moveUp.tooltip')"
+              @click="moveOption(i, k, -1)"
+            />
+            <TooltipIconButton
+              icon="arrow-down"
+              :label="t('common.moveDown.tooltip')"
+              @click="moveOption(i, k, 1)"
+            />
+            <TooltipIconButton
+              icon="close"
+              :label="t('automations.params.removeOption.tooltip')"
+              @click="removeOption(i, k)"
+            />
+          </div>
           <Button
-            v-if="isSaved(p)"
             variant="dialog"
             size="kira-lg"
-            :data-testid="`param-secret-clear-${i}`"
-            @click="clearSecret(p.name)"
-            >{{
-              t('common.action.clear.label')
-            }}</Button
+            class="self-start"
+            :data-testid="`param-option-add-${i}`"
+            @click="addOption(i)"
           >
+            {{ t('automations.params.addOption.label') }}
+          </Button>
         </div>
-        <FieldDescription v-if="storageOff" :data-testid="`param-secret-off-${i}`">{{
-          t('automations.params.secretValue.storageOff.description')
-        }}</FieldDescription>
-      </div>
-      <div v-else class="flex flex-col gap-1" :data-testid="`param-options-${i}`">
-        <div v-for="(o, k) in p.options" :key="k" class="flex items-center gap-1">
-          <Checkbox
-            class="size-3.5"
-            :model-value="p.default.includes(o)"
-            :aria-label="t('automations.params.default.aria', { option: o })"
-            @update:model-value="(v) => toggleDefault(i, o, v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
-          <Input
-            :model-value="o"
-            :placeholder="t('automations.params.option.placeholder')"
-            class="min-w-0 flex-1"
-            :data-testid="`param-option-${i}-${k}`"
-            @update:model-value="(v) => setOption(i, k, String(v))"
-          />
-          <TooltipIconButton
-            icon="arrow-up"
-            :label="t('common.moveUp.tooltip')"
-            @click="moveOption(i, k, -1)"
-          />
-          <TooltipIconButton
-            icon="arrow-down"
-            :label="t('common.moveDown.tooltip')"
-            @click="moveOption(i, k, 1)"
-          />
-          <TooltipIconButton
-            icon="close"
-            :label="t('automations.params.removeOption.tooltip')"
-            @click="removeOption(i, k)"
-          />
+        <div class="flex items-center gap-4">
+          <Field orientation="horizontal" class="w-auto">
+            <Checkbox
+              :id="`${idBase}-req-${i}`"
+              :model-value="p.required"
+              @update:model-value="(v) => patch(i, { required: v === true })"
+            />
+            <FieldLabel :for="`${idBase}-req-${i}`">{{ t('common.required.label') }}</FieldLabel>
+          </Field>
+          <Field v-if="p.type === 'text'" orientation="horizontal" class="w-auto">
+            <Checkbox
+              :id="`${idBase}-sec-${i}`"
+              :model-value="p.secret"
+              :data-testid="`param-secret-${i}`"
+              @update:model-value="
+                (v) => patch(i, v === true ? { secret: true, default: [] } : { secret: false })
+              "
+            />
+            <FieldLabel :for="`${idBase}-sec-${i}`">{{ t('common.secret.label') }}</FieldLabel>
+          </Field>
         </div>
-        <Button
-          variant="dialog"
-          size="kira-lg"
-          class="self-start"
-          :data-testid="`param-option-add-${i}`"
-          @click="addOption(i)"
-        >
-          {{ t('automations.params.addOption.label') }}
-        </Button>
-      </div>
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-1.5">
-          <Checkbox
-            :id="`${idBase}-req-${i}`"
-            class="size-3.5"
-            :model-value="p.required"
-            @update:model-value="(v) => patch(i, { required: v === true })"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
-          <Label :for="`${idBase}-req-${i}`">{{ t('common.required.label') }}</Label>
-        </div>
-        <div v-if="p.type === 'text'" class="flex items-center gap-1.5">
-          <Checkbox
-            :id="`${idBase}-sec-${i}`"
-            class="size-3.5"
-            :model-value="p.secret"
-            :data-testid="`param-secret-${i}`"
-            @update:model-value="
-              (v) => patch(i, v === true ? { secret: true, default: [] } : { secret: false })
-            "
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
-          <Label :for="`${idBase}-sec-${i}`">{{ t('common.secret.label') }}</Label>
-        </div>
-      </div>
+      </CardContent>
     </Card>
   </FieldSet>
 </template>

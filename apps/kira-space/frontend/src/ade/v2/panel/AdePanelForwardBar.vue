@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import CodeBlock from '@theme/components/CodeBlock.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -13,7 +15,6 @@ import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import { computed, ref } from 'vue';
-import AdeTip from '../AdeTip.vue';
 import { useDismissPanelEdits, useForwardPanelEdits, usePanelForward } from '../queries';
 
 // One offer per task for the panel edits not yet sent to the agents running in its step.
@@ -71,10 +72,11 @@ async function dismiss(): Promise<void> {
                 step: data.stepName,
               })
             }}</span>
-            <AdeTip :text="noTarget ? t('space.ade.panelForward.unreachable.tooltip') : ''">
+            <TextTooltip :text="noTarget ? t('space.ade.panelForward.unreachable.tooltip') : ''">
               <TooltipDisabledTrigger :disabled="off">
+                <!-- conventions-allow N17: send commits the bar; outline primary, not approve (RB.2) -->
                 <Button
-                  variant="dialog-approve"
+                  variant="dialog-primary"
                   size="kira"
                   :pending="forwardM.isPending.value"
                   :disabled="off"
@@ -84,7 +86,7 @@ async function dismiss(): Promise<void> {
                   {{ t('space.ade.panelForward.send.label', { count: data.targets.length }) }}
                 </Button>
               </TooltipDisabledTrigger>
-            </AdeTip>
+            </TextTooltip>
             <TooltipIconButton
               icon="close"
               :label="t('space.ade.panelForward.discard.tooltip')"
@@ -108,10 +110,9 @@ async function dismiss(): Promise<void> {
               {{ t('space.ade.panelForward.preview.label') }}
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <pre
-                class="max-h-60 overflow-auto whitespace-pre-wrap rounded-kira-sm p-2 font-mono text-kira-sm"
-                data-testid="ade-panel-forward-preview"
-              >{{ data.preview }}</pre>
+              <CodeBlock class="max-h-60 overflow-auto" data-testid="ade-panel-forward-preview">{{
+                data.preview
+              }}</CodeBlock>
             </CollapsibleContent>
           </Collapsible></span
         >

@@ -1,6 +1,10 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import EmptyState from '@theme/components/EmptyState.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { paneFrame } from '@theme/lib/frames';
+import { cn } from '@theme/lib/utils';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { computed, useTemplateRef } from 'vue';
@@ -25,14 +29,11 @@ useKeptScroll('ade:needs', bodyEl);
 </script>
 
 <template>
-  <div
-    class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira bg-bg"
-    data-testid="ade-needs-page"
-  >
+  <div :class="cn(paneFrame, 'flex flex-1 flex-col')" data-testid="ade-needs-page">
     <PanelHeader>
       {{ t('common.needsYou.status') }}
       <template v-if="needs && !needs.empty" #actions>
-        <span class="normal-case tracking-normal" data-testid="ade-needs-summary">{{
+        <span data-testid="ade-needs-summary">{{
           t('space.ade.needsPage.summary.label', { count: needs.items.length })
         }}</span>
       </template>
@@ -46,21 +47,20 @@ useKeptScroll('ade:needs', bodyEl);
           :task-title="taskOf(n.taskId).title"
           :task-color="taskOf(n.taskId).color"
         />
-        <div
+        <EmptyState
           v-if="needs.empty"
-          class="px-3 py-6 text-kira-lg text-tone-green"
+          icon="check"
           data-testid="ade-needs-empty"
-        >
-          {{ t('space.ade.needsPage.empty.emptyHint') }}
-        </div>
+          :title="t('space.ade.needsPage.empty.emptyHint')"
+        />
         <div class="flex items-center gap-3 px-3 py-2 text-kira-md text-muted-foreground">
           <span class="flex-1" data-testid="ade-needs-footer">{{ needs.footer }}</span>
           <Button
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             data-testid="ade-needs-all"
             @click="ui.showAllSessions = !ui.showAllSessions"
-          >
+            ><CodiconIcon name="eye" :size="13" />
             {{
               ui.showAllSessions
                 ? t('space.ade.needsPage.hideAll.label')

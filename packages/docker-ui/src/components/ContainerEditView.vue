@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DetailSection from '@theme/components/DetailSection.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
@@ -20,7 +21,6 @@ import {
 import { type EditFailure, useDockerEditStore } from '../state/dockerEdit';
 import { useDockerExecSessionsStore } from '../state/dockerExec';
 import { useDockerUiStore } from '../state/dockerUi';
-import DetailSection from './DetailSection.vue';
 import EditInPlaceSection from './EditInPlaceSection.vue';
 import EditPendingSummary from './EditPendingSummary.vue';
 import EditRecreateSection from './EditRecreateSection.vue';
@@ -213,15 +213,9 @@ const originNotice = computed(() => {
         <AlertDescription>
           <div class="flex items-center gap-2">
             {{ t('docker.edit.stale.body') }}
-            <Button
-              size="kira"
-              variant="toolbar"
-              data-testid="docker-edit-reload"
-              @click="reload"
-              >{{
-                t('common.action.refresh.label')
-              }}</Button
-            >
+            <Button size="inline" variant="link" data-testid="docker-edit-reload" @click="reload">{{
+              t('common.action.refresh.label')
+            }}</Button>
           </div>
         </AlertDescription>
       </Alert>
@@ -254,7 +248,7 @@ const originNotice = computed(() => {
             {{ item.label }}
             <StatusDot
               v-if="item.value === 'inPlace' ? inPlaceCount : recreateCount"
-              tone="muted"
+              tone="warn"
               data-testid="docker-edit-tab-dirty"
             />
           </template>
@@ -283,8 +277,8 @@ const originNotice = computed(() => {
             />
             <Button
               v-if="!readOnly"
-              size="kira"
-              variant="toolbar"
+              size="kira-lg"
+              variant="dialog-primary"
               :disabled="!canApplyNow"
               :pending="applying === 'inPlace'"
               data-testid="docker-edit-apply-now"
@@ -316,8 +310,8 @@ const originNotice = computed(() => {
             />
             <Button
               v-if="!readOnly"
-              size="kira"
-              variant="toolbar"
+              size="kira-lg"
+              variant="dialog-primary"
               :disabled="!canRecreate"
               :pending="applying === 'recreate'"
               data-testid="docker-edit-apply-recreate"

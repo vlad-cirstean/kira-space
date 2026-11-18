@@ -1,20 +1,22 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { issueTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed } from 'vue';
-import { initials, statusVariant } from './issueFormat';
+import { initials } from './issueFormat';
 import { useOpenHostView } from './queries';
 import RelativeTime from './RelativeTime.vue';
 import type { IssueDetail } from './wire';
 
 const props = defineProps<{ detail: IssueDetail; stacked: boolean }>();
 const open = useOpenHostView();
-const tone = computed(() => statusVariant(props.detail.statusCategory));
+const tone = computed(() => TONE_BADGE[issueTone(props.detail.statusCategory)]);
 
 function openView(urlOrKey: string): void {
   fireAndForget(open.mutateAsync(urlOrKey), 'hostView.issue');
@@ -23,11 +25,11 @@ function openView(urlOrKey: string): void {
 
 <template>
   <aside
-    class="flex shrink-0 flex-col gap-5 overflow-y-auto p-4"
+    class="flex shrink-0 flex-col gap-3 overflow-y-auto p-3"
     :class="stacked ? '' : 'w-72'"
     data-testid="issue-sidebar"
   >
-    <KeyValueList class="items-baseline gap-y-2">
+    <KeyValueList density="compact">
       <dt>{{ t('common.field.status.label') }}</dt>
       <dd>
         <Badge :variant="tone" data-testid="issue-side-status">{{ detail.status }}</Badge>
@@ -97,31 +99,23 @@ function openView(urlOrKey: string): void {
 
     <section class="flex flex-col gap-1.5" data-testid="issue-side-labels">
       <SectionHeading :label="t('space.hostView.labels.heading.title')" />
-      <FieldDescription v-if="detail.labels.length === 0">{{
+      <InlineState kind="empty" v-if="detail.labels.length === 0">{{
         t('space.hostView.labels.empty.empty')
-      }}</FieldDescription>
+      }}</InlineState>
       <div class="flex flex-wrap gap-1">
-        <Badge v-for="l in detail.labels" :key="l" variant="chip" data-testid="issue-side-label">{{
-          l
-        }}</Badge>
+        <Badge v-for="l in detail.labels" :key="l" data-testid="issue-side-label">{{ l }}</Badge>
       </div>
     </section>
 
     <section class="flex flex-col gap-1.5" data-testid="issue-side-components">
       <SectionHeading :label="t('space.hostView.issue.components.heading.title')" />
-      <FieldDescription v-if="detail.components.length === 0">{{
+      <InlineState kind="empty" v-if="detail.components.length === 0">{{
         t('space.hostView.issue.components.empty.empty')
-      }}</FieldDescription>
+      }}</InlineState>
       <div class="flex flex-wrap gap-1">
-        <Badge
-          v-for="c in detail.components"
-          :key="c"
-          variant="chip"
-          data-testid="issue-side-component"
-          >{{
-            c
-          }}</Badge
-        >
+        <Badge v-for="c in detail.components" :key="c" data-testid="issue-side-component">{{
+          c
+        }}</Badge>
       </div>
     </section>
 

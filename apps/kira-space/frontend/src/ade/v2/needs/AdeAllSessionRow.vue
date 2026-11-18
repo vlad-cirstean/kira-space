@@ -8,7 +8,6 @@ import AdeActivityIcon from '../AdeActivityIcon.vue';
 import { activityLabel, shortId } from '../activity';
 import type { SessionView } from '../sessions/sessionView';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
-import { ACTION_CLASS } from '../tones';
 import { useNeedsAction } from './useNeedsAction';
 
 // One session row of All sessions (mockup `agents`): glyph, state, age, button, id, repo, step and
@@ -27,11 +26,11 @@ const state = computed(() => {
   return activityLabel(props.view.kind);
 });
 const stateClass = computed(() => {
-  if (props.view.kind === 'unseen') return 'text-tone-blue';
+  if (props.view.kind === 'unseen') return 'text-info';
   if (!running.value) return 'text-muted-foreground';
-  if (props.view.kind === 'input') return 'text-tone-amber';
-  if (props.view.kind === 'working') return 'text-tone-green';
-  return props.view.kind === 'waiting' ? 'text-tone-blue' : 'text-muted-foreground';
+  if (props.view.kind === 'input') return 'text-warn';
+  if (props.view.kind === 'working') return 'text-ok';
+  return props.view.kind === 'waiting' ? 'text-info' : 'text-muted-foreground';
 });
 /** A live interactive session opens; everything else is taken over. */
 const opens = computed(() => running.value && !props.view.headless);
@@ -47,7 +46,7 @@ function open(): void {
   <div
     role="button"
     tabindex="0"
-    class="flex items-center gap-3 rounded-kira px-3 py-1.5"
+    class="flex items-center gap-3 rounded-kira-sm px-3 py-1.5"
     data-testid="ade-all-session"
     :data-session-id="view.session.id"
     @click="open"
@@ -66,10 +65,9 @@ function open(): void {
     <span class="w-19 shrink-0 text-kira-md text-muted-foreground">{{ ago }}</span>
     <Button
       v-if="!archived"
-      size="kira-lg"
+      size="kira"
       variant="dialog"
-      class="w-23 shrink-0 "
-      :class="opens ? undefined : ACTION_CLASS.agent"
+      class="w-23 shrink-0"
       :pending="takeOver.pending.has(view.session.id)"
       data-testid="ade-all-action"
       @click.stop="opens ? open() : takeOver.request(view.session.id)"

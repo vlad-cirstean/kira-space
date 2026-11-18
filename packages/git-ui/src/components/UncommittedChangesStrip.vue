@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { t } from '@theme/i18n';
 /**
  * G-UX (item 4): "current changes on a branch aren't visible in the git graph at all" — a small,
@@ -167,16 +167,13 @@ const tooltipText = computed(() => {
         />
       </svg>
     </div>
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <span
-          class="min-w-0 truncate text-muted-foreground text-graph-sm"
-          data-testid="uncommitted-strip-label"
-        >
-          {{ t('git.strip.uncommittedCount.label', { count: totalCount }) }}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{{ tooltipText }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip :text="tooltipText">
+      <span
+        class="min-w-0 truncate text-muted-foreground text-graph-sm"
+        data-testid="uncommitted-strip-label"
+      >
+        {{ t('git.strip.uncommittedCount.label', { count: totalCount }) }}
+      </span>
+    </TextTooltip>
   </button>
 </template>

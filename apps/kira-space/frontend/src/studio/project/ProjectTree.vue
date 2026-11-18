@@ -314,7 +314,7 @@ useEventListener(treeBodyEl, 'contextmenu', onBackgroundContextMenu);
           :data-testid="`tree-connection-broken-${f.file}`"
           @click="connectionDialogStore.openFile(f.file)"
         >
-          <CodiconIcon name="warning" :size="13" />
+          <CodiconIcon name="error" :size="13" />
           <TruncatedText
             :text="`${configName(f.file)}: ${t('common.configForm.unreadable.status')}`"
           />

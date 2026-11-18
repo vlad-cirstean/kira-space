@@ -4,16 +4,16 @@ import { HISTORY_PER_SCOPE_LIMIT, type ResponseHistoryEntry } from '@shared/doma
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { methodTextClass } from '@theme/methodColor';
 import { formatBytes, formatDuration, formatRelative } from '@workbench/behaviour/format';
@@ -151,7 +151,7 @@ async function onClear(): Promise<void> {
         :disabled="selected.length !== 2"
         data-testid="http-history-compare"
         @click="onCompare"
-      >
+        ><CodiconIcon name="diff" :size="13" />
         {{ t('studio.http.history.compare.label') }}
       </Button>
       <Button
@@ -161,7 +161,7 @@ async function onClear(): Promise<void> {
         data-testid="http-history-clear"
         @click="onClear"
       >
-        <CodiconIcon :name="ICON.delete" :size="13" />
+        <CodiconIcon :name="ICON.clearAll" :size="13" />
         {{ t('common.action.clearHistory.label') }}
       </Button>
     </ViewToolbar>
@@ -211,43 +211,36 @@ async function onClear(): Promise<void> {
         @keydown="onRowKeydown($event, entry.id)"
       >
         <Checkbox
+          :aria-label="
+            t('common.action.selectItem.aria', {
+              name: `${entry.method} ${formatRelative(entry.sentAt)}`,
+            })
+          "
           data-testid="http-history-checkbox"
           :model-value="selected.includes(entry.id)"
           :disabled="!selected.includes(entry.id) && selected.length >= 2"
           @click.stop
           @update:model-value="onToggle(entry.id)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
+        />
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
           <div class="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <span class="text-kira-sm text-subtle min-w-16">{{
-                  formatRelative(entry.sentAt)
-                }}</span>
-              </TooltipTrigger>
-              <TooltipContent>{{ entry.sentAt }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip :text="entry.sentAt">
+              <span :class="[rowMeta, 'min-w-16']">{{ formatRelative(entry.sentAt) }}</span>
+            </TextTooltip>
             <Badge data variant="chip" :class="methodTextClass(httpMethodToken(entry.method))">{{
               entry.method
             }}</Badge>
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <Badge
-                  data
-                  :variant="statusClass(entry.status)"
-                  data-testid="http-history-status-chip"
-                  >{{ entry.status }} {{ entry.statusText }}</Badge
-                >
-              </TooltipTrigger>
-              <TooltipContent>{{ statusHint(entry.status) }}</TooltipContent>
-            </Tooltip>
-            <span class="text-kira-sm text-subtle">{{ formatDuration(entry.elapsedMs) }}</span>
-            <span class="text-kira-sm text-subtle">{{ formatBytes(entry.bodyBytes) }}</span>
-            <span v-if="entry.environment" class="text-kira-sm text-subtle">{{
-              entry.environment
-            }}</span>
+            <TextTooltip :text="statusHint(entry.status)">
+              <Badge
+                data
+                :variant="statusClass(entry.status)"
+                data-testid="http-history-status-chip"
+                >{{ entry.status }} {{ entry.statusText }}</Badge
+              >
+            </TextTooltip>
+            <span :class="rowMeta">{{ formatDuration(entry.elapsedMs) }}</span>
+            <span :class="rowMeta">{{ formatBytes(entry.bodyBytes) }}</span>
+            <span v-if="entry.environment" :class="rowMeta">{{ entry.environment }}</span>
             <span class="ml-auto" />
             <TooltipIconButton
               :icon="ICON.delete"

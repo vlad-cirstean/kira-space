@@ -1,15 +1,17 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
+  FieldLabel,
   FieldLegend,
   FieldSet,
 } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
@@ -45,6 +47,7 @@ const confirmDialogStore = useConfirmDialogStore();
 const switchId = useId();
 const agentInputId = useId();
 const portId = useId();
+const deviceId = useId();
 
 const portDraft = ref(String(store.status.port));
 watch(
@@ -162,10 +165,7 @@ const activeDevices = computed(() =>
 
 <template>
   <div class="contents" v-show="active">
-    <Field>
-      <div class="flex items-center justify-between gap-1">
-        <Label :for="switchId">{{ t('space.settings.mobileAccess.enabled.label') }}</Label>
-      </div>
+    <Field orientation="horizontal">
       <Switch
         :id="switchId"
         :model-value="store.status.enabled"
@@ -173,26 +173,31 @@ const activeDevices = computed(() =>
         data-testid="mobile-access-enabled"
         @update:model-value="(v) => onToggle(v === true)"
       />
-      <FieldDescription>
-        {{ t('space.settings.mobileAccess.enabled.description') }}
-      </FieldDescription>
-      <FieldError v-if="store.status.error" data-testid="mobile-access-error">
-        {{ store.status.error }}
-      </FieldError>
+      <FieldContent>
+        <FieldLabel :for="switchId">{{
+          t('space.settings.mobileAccess.enabled.label')
+        }}</FieldLabel>
+        <FieldDescription>
+          {{ t('space.settings.mobileAccess.enabled.description') }}
+        </FieldDescription>
+        <FieldError v-if="store.status.error" data-testid="mobile-access-error">
+          {{ store.status.error }}
+        </FieldError>
+      </FieldContent>
     </Field>
 
     <Alert variant="warn" data-testid="mobile-access-plaintext-warning">
       {{ t('space.settings.mobileAccess.plaintext.body') }}
     </Alert>
 
-    <FieldSet class="gap-1" data-testid="mobile-access-network">
+    <FieldSet data-testid="mobile-access-network">
       <FieldLegend>{{ t('space.settings.mobileAccess.network.title') }}</FieldLegend>
       <p v-if="trusted" class="m-0 text-kira-sm" data-testid="mobile-access-trusted">
         {{ trustedText }}
       </p>
-      <FieldDescription v-else data-testid="mobile-access-trusted">
+      <InlineState kind="empty" v-else data-testid="mobile-access-trusted">
         {{ t('space.settings.mobileAccess.network.none.empty') }}
-      </FieldDescription>
+      </InlineState>
       <FieldDescription v-if="current" data-testid="mobile-access-current">
         {{
           t('space.settings.mobileAccess.network.current.status', {
@@ -203,9 +208,9 @@ const activeDevices = computed(() =>
           })
         }}
       </FieldDescription>
-      <FieldDescription v-else data-testid="mobile-access-current">
+      <InlineState kind="empty" v-else data-testid="mobile-access-current">
         {{ t('space.settings.mobileAccess.network.offNetwork.empty') }}
-      </FieldDescription>
+      </InlineState>
       <div class="flex gap-2">
         <Button
           variant="dialog"
@@ -236,7 +241,7 @@ const activeDevices = computed(() =>
       </p>
     </FieldSet>
 
-    <FieldSet v-if="store.status.running" class="gap-1" data-testid="mobile-access-step-app">
+    <FieldSet v-if="store.status.running" data-testid="mobile-access-step-app">
       <FieldLegend>{{ t('space.settings.mobileAccess.openApp.title') }}</FieldLegend>
       <figure class="m-0 flex flex-col gap-0.5">
         <MobileQr :url="store.status.appUrl" />
@@ -246,10 +251,7 @@ const activeDevices = computed(() =>
       </figure>
     </FieldSet>
 
-    <Field>
-      <div class="flex items-center justify-between gap-1">
-        <Label :for="agentInputId">{{ t('space.settings.mobileAccess.agentInput.label') }}</Label>
-      </div>
+    <Field orientation="horizontal">
       <Switch
         :id="agentInputId"
         :model-value="store.status.agentInput"
@@ -257,13 +259,18 @@ const activeDevices = computed(() =>
         data-testid="mobile-access-agent-input"
         @update:model-value="(v) => onToggleAgentInput(v === true)"
       />
-      <FieldDescription>
-        {{ t('space.settings.mobileAccess.agentInput.description') }}
-      </FieldDescription>
+      <FieldContent>
+        <FieldLabel :for="agentInputId">{{
+          t('space.settings.mobileAccess.agentInput.label')
+        }}</FieldLabel>
+        <FieldDescription>
+          {{ t('space.settings.mobileAccess.agentInput.description') }}
+        </FieldDescription>
+      </FieldContent>
     </Field>
 
     <Field>
-      <Label :for="portId">{{ t('common.port.label') }}</Label>
+      <FieldLabel :for="portId">{{ t('common.port.label') }}</FieldLabel>
       <NumberStepperInput
         :id="portId"
         :min="MOBILE_PORT_RANGE.min"
@@ -288,11 +295,15 @@ const activeDevices = computed(() =>
       </Button>
     </Field>
 
-    <FieldSet class="gap-1">
+    <FieldSet>
       <FieldLegend>{{ t('space.settings.mobileAccess.devices.title') }}</FieldLegend>
-      <FieldDescription v-if="activeDevices.length === 0" data-testid="mobile-devices-empty">
+      <InlineState
+        kind="empty"
+        v-if="activeDevices.length === 0"
+        data-testid="mobile-devices-empty"
+      >
         {{ t('space.settings.mobileAccess.devices.none.empty') }}
-      </FieldDescription>
+      </InlineState>
       <ul v-else class="m-0 flex list-none flex-col gap-1 p-0">
         <li
           v-for="device in activeDevices"
@@ -326,19 +337,22 @@ const activeDevices = computed(() =>
             </span>
           </span>
           <span class="flex shrink-0 items-center gap-2">
-            <Label class="flex items-center gap-1 text-kira-sm">
-              {{ t('space.ade.branchPanel.changes.label') }}
+            <Field orientation="horizontal" class="w-auto">
               <Switch
+                :id="`${deviceId}-${device.id}-write`"
                 :model-value="device.canWrite"
                 :data-testid="`mobile-device-write-${device.id}`"
                 @update:model-value="
                   (v) => onSetPermissions(device.id, v === true, device.canAgentInput)
                 "
               />
-            </Label>
-            <Label class="flex items-center gap-1 text-kira-sm">
-              {{ t('space.settings.mobileAccess.devices.agentInput.label') }}
+              <FieldLabel :for="`${deviceId}-${device.id}-write`">{{
+                t('space.ade.branchPanel.changes.label')
+              }}</FieldLabel>
+            </Field>
+            <Field orientation="horizontal" class="w-auto">
               <Switch
+                :id="`${deviceId}-${device.id}-agent-input`"
                 :model-value="device.canAgentInput"
                 :disabled="!store.status.agentInput"
                 :data-testid="`mobile-device-agent-input-${device.id}`"
@@ -346,7 +360,10 @@ const activeDevices = computed(() =>
                   (v) => onSetPermissions(device.id, device.canWrite, v === true)
                 "
               />
-            </Label>
+              <FieldLabel :for="`${deviceId}-${device.id}-agent-input`">{{
+                t('space.settings.mobileAccess.devices.agentInput.label')
+              }}</FieldLabel>
+            </Field>
             <TooltipIconButton
               icon="trash"
               :label="t('space.settings.mobileAccess.devices.revoke.label')"

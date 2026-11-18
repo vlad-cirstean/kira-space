@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import type { PageSize } from '@shared/domain/tabs';
 import { useQuery } from '@tanstack/vue-query';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import ToolbarSeparator from '@workbench/components/ToolbarSeparator.vue';
 import { computed, ref } from 'vue';
@@ -317,57 +314,39 @@ function onDeleteRow(): void {
   <ToolbarSeparator />
 
   <div class="flex items-center gap-1.5 min-w-0">
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button
-          variant="toolbar"
-          size="kira-icon"
-          data-testid="toolbar-count"
-          :class="rt?.countError ? 'text-error' : rt?.count?.stale ? 'text-warn' : ''"
-          :aria-label="t('studio.grid.count.tooltip')"
-          @click="onCount"
-        >
-          <CodiconIcon name="symbol-number" :size="13" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent data-testid="toolbar-count-tooltip">
-        {{
-          // F13 (P108 Part 10): a failed count is no longer silent — setFilter nulls `count`
-          // before a fresh count runs, so a failure right after has no old count to keep showing;
-          // a failed *refresh* of an existing count keeps that count on screen (unchanged) with
-          // the error appended, rather than losing it.
-          countTooltip
-        }}
-      </TooltipContent>
-    </Tooltip>
+    <!-- F13 (P108 Part 10): a failed count is no longer silent — setFilter nulls `count`
+         before a fresh count runs, so a failure right after has no old count to keep showing;
+         a failed *refresh* of an existing count keeps that count on screen (unchanged) with
+         the error appended, rather than losing it. -->
+    <TooltipIconButton
+      icon="symbol-number"
+      :label="countTooltip"
+      :aria-label="t('studio.grid.count.tooltip')"
+      content-testid="toolbar-count-tooltip"
+      data-testid="toolbar-count"
+      :tone="rt?.countError ? 'error' : rt?.count?.stale ? 'warn' : undefined"
+      @click="onCount"
+    />
 
     <Popover :open="columnsOpen" @update:open="columnsOpen = $event">
       <div ref="columnsAnchorRef" class="relative">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Button
-              variant="toolbar"
-              size="kira-icon"
-              class="relative"
-              data-testid="toolbar-columns"
-              :aria-label="t('studio.common.columns.label')"
-              :aria-expanded="columnsOpen"
-              @click="columnsOpen = !columnsOpen"
-            >
-              <CodiconIcon name="list-selection" :size="13" />
-              <StatusDot
-                v-if="columnsIndicator"
-                tone="state-on"
-                class="absolute top-0.5 right-0.5"
-              />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{{
+        <TooltipIconButton
+          icon="list-selection"
+          :label="
             columnCount
               ? t('studio.grid.columns.shown.tooltip', columnCount)
               : t('studio.common.columns.label')
-          }}</TooltipContent>
-        </Tooltip>
+          "
+          :aria-label="t('studio.common.columns.label')"
+          class="relative"
+          data-testid="toolbar-columns"
+          :aria-expanded="columnsOpen"
+          @click="columnsOpen = !columnsOpen"
+        >
+          <template #badge>
+            <StatusDot v-if="columnsIndicator" tone="state-on" class="absolute top-0.5 right-0.5" />
+          </template>
+        </TooltipIconButton>
         <PopoverAnchor :reference="columnsAnchorRef ?? undefined" />
       </div>
       <ColumnsMenu v-if="columnsOpen" :tab-id="tab.id" :caps="caps" />

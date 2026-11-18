@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import EmptyState from '@theme/components/EmptyState.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
+import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
 
 // The chrome both views share: title bar (badge, title, ref, refresh / copy / open), the loading
 // skeleton and the failure alert with Retry. The body is the default slot.
@@ -26,9 +29,7 @@ const emit = defineEmits<{ refresh: []; copy: []; open: [] }>();
     <TitleBarBase>
       <div class="flex min-w-0 flex-1 items-center gap-2" data-testid="host-view-header">
         <slot name="badge" />
-        <span class="min-w-0 truncate text-kira-md font-medium" data-testid="host-view-title">{{
-          title
-        }}</span>
+        <TitleBarTitle data-testid="host-view-title">{{ title }}</TitleBarTitle>
         <span
           class="shrink-0 font-data text-kira-sm text-muted-foreground"
           data-testid="host-view-ref"
@@ -70,19 +71,24 @@ const emit = defineEmits<{ refresh: []; copy: []; open: [] }>();
       </div>
     </TitleBarBase>
 
-    <div v-if="pending" class="flex flex-col gap-3 p-4" data-testid="host-view-loading">
-      <Skeleton class="h-4 w-1/2" />
+    <div v-if="pending" class="flex flex-col gap-3 p-3" data-testid="host-view-loading">
+      <Skeleton class="h-control-lg w-1/3" />
       <Skeleton class="h-4 w-full" />
-      <Skeleton class="h-4 w-full" />
+      <Skeleton class="h-4 w-2/3" />
     </div>
-    <div v-else-if="failure" class="flex flex-col gap-2 p-4" data-testid="host-view-failure">
-      <Alert variant="error">
-        <AlertDescription data-testid="host-view-failure-reason">{{ failure }}</AlertDescription>
-      </Alert>
-      <Button size="inline" variant="link" data-testid="host-view-retry" @click="emit('refresh')">
+    <EmptyState
+      v-else-if="failure"
+      fill
+      icon="warning"
+      data-testid="host-view-failure"
+      :title="t('common.state.loadFailed.title')"
+      :description="failure"
+    >
+      <Button size="kira" variant="toolbar" data-testid="host-view-retry" @click="emit('refresh')"
+        ><CodiconIcon :name="ICON.refresh" :size="13" />
         {{ t('common.action.retry.label') }}
       </Button>
-    </div>
+    </EmptyState>
     <slot v-else />
   </div>
 </template>

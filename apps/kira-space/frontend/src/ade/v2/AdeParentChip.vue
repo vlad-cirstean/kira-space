@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
-import AdeTip from './AdeTip.vue';
 import type { ParentModel } from './plan/usePlanModel';
-import { TONE_TAG_CLASS } from './tones';
 
 // A child's link to its orchestrator. An archived parent shows muted and does not select: it is no
 // longer on the board.
@@ -13,7 +12,7 @@ const emit = defineEmits<{ select: [] }>();
 </script>
 
 <template>
-  <AdeTip
+  <TextTooltip
     :text="
       parent.archived
         ? t('space.ade.orchestrator.parent.archived.tooltip', { title: parent.title })
@@ -22,9 +21,9 @@ const emit = defineEmits<{ select: [] }>();
   >
     <Badge
       v-if="parent.archived"
-      variant="chip"
+      variant="default"
       class="min-w-0 shrink"
-      :class="[TONE_TAG_CLASS.grey, iconOnly ? '' : 'max-w-40']"
+      :class="iconOnly ? '' : 'max-w-40'"
       data-testid="ade-parent-chip"
       data-archived="true"
     >
@@ -34,9 +33,9 @@ const emit = defineEmits<{ select: [] }>();
     <Badge
       v-else
       as-child
-      variant="chip"
+      variant="info"
       class="min-w-0 shrink"
-      :class="[TONE_TAG_CLASS.blue, iconOnly ? '' : 'max-w-40']"
+      :class="iconOnly ? '' : 'max-w-40'"
     >
       <button
         type="button"
@@ -48,5 +47,5 @@ const emit = defineEmits<{ select: [] }>();
         <span v-if="!iconOnly" class="truncate">{{ parent.title }}</span>
       </button>
     </Badge>
-  </AdeTip>
+  </TextTooltip>
 </template>

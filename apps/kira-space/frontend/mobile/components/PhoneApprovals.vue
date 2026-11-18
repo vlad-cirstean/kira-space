@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { TooltipProvider } from '@theme/components/ui/tooltip';
@@ -42,10 +43,11 @@ function requester(item: (typeof items.value)[number]): string {
       class="flex flex-col border-b border-border"
       data-testid="phone-approvals"
     >
-      <h2 class="m-0 flex items-center gap-2 px-3 pt-3 text-kira-lg font-medium text-fg">
-        {{ t('mobile.approvals.heading.title') }}
-        <Badge variant="count" data-testid="phone-approvals-count">{{ items.length }}</Badge>
-      </h2>
+      <div class="px-1.5 pt-3">
+        <SectionHeading :label="t('mobile.approvals.heading.title')">
+          <Badge variant="count" data-testid="phone-approvals-count">{{ items.length }}</Badge>
+        </SectionHeading>
+      </div>
       <PermissionHint v-if="!permissions.agentInput" :what="t('mobile.approvals.answerOff.hint')" />
       <ul class="m-0 flex list-none flex-col p-0">
         <li

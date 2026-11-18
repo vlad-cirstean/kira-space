@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import DetailSection from '@theme/components/DetailSection.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
-import { Card } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 
@@ -15,10 +15,10 @@ defineProps<{
 </script>
 
 <template>
-  <Card class="gap-1" data-testid="connection-privacy-overview">
-    <div class="text-fg font-medium">
-      {{ t('studio.project.connectionDialog.privacy.overview.title') }}
-    </div>
+  <DetailSection
+    :title="t('studio.project.connectionDialog.privacy.overview.title')"
+    data-testid="connection-privacy-overview"
+  >
     <p class="text-kira-sm" data-testid="connection-privacy-overview-rules">
       {{
         ruleCount > 0
@@ -43,5 +43,5 @@ defineProps<{
         t('studio.project.connectionDialog.privacy.overviewMcpOff.hint')
       }}</AlertDescription>
     </Alert>
-  </Card>
+  </DetailSection>
 </template>

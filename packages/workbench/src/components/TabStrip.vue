@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { tabChipVariants } from '@theme/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -217,36 +217,33 @@ if (moveTab) {
       data-testid="tab-strip-pinned"
     >
       <template v-for="{ tab, icon } in pinnedTabs" :key="tab.id">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <button
-              type="button"
-              :class="tabChipVariants({ active: tab.active, size: 'icon' })"
-              data-testid="tab"
-              :data-tab-id="tab.id"
-              :data-tab-kind="tab.kind"
-              :data-active="tab.active"
-              data-pinned="true"
-              :aria-label="titleFor(tab)"
-              @click="onClick(tab)"
-              @contextmenu.prevent="onContextMenu($event, tab)"
-            >
-              <CodiconIcon
-                v-if="'codicon' in icon"
-                :name="icon.codicon"
-                :size="13"
-                class="shrink-0"
-              />
-              <span
-                v-else
-                class="shrink-0 tab-file-icon w-3.5 h-3.5 text-muted-foreground mask-contain mask-no-repeat mask-center"
-                :style="icon.fileStyle"
-                aria-hidden="true"
-              />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>{{ titleFor(tab) }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="titleFor(tab)">
+          <button
+            type="button"
+            :class="tabChipVariants({ active: tab.active, size: 'icon' })"
+            data-testid="tab"
+            :data-tab-id="tab.id"
+            :data-tab-kind="tab.kind"
+            :data-active="tab.active"
+            data-pinned="true"
+            :aria-label="titleFor(tab)"
+            @click="onClick(tab)"
+            @contextmenu.prevent="onContextMenu($event, tab)"
+          >
+            <CodiconIcon
+              v-if="'codicon' in icon"
+              :name="icon.codicon"
+              :size="13"
+              class="shrink-0"
+            />
+            <span
+              v-else
+              class="shrink-0 tab-file-icon w-3.5 h-3.5 text-muted-foreground mask-contain mask-no-repeat mask-center"
+              :style="icon.fileStyle"
+              aria-hidden="true"
+            />
+          </button>
+        </TextTooltip>
       </template>
       <span class="self-stretch shrink-0 w-px my-1 mr-0.5 bg-transparent" aria-hidden="true"></span>
     </div>
@@ -291,30 +288,24 @@ if (moveTab) {
             aria-hidden="true"
           />
           <slot name="tab-leading" :tab="tab" />
-          <Tooltip v-if="indicatorFor(tab)">
-            <TooltipTrigger as-child>
-              <CodiconIcon
-                :name="indicatorFor(tab)!.icon"
-                :size="12"
-                class="shrink-0 text-muted-foreground"
-              />
-            </TooltipTrigger>
-            <TooltipContent>{{ indicatorFor(tab)!.tooltip }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip v-if="indicatorFor(tab)" :text="indicatorFor(tab)!.tooltip"
+            ><CodiconIcon
+              :name="indicatorFor(tab)!.icon"
+              :size="12"
+              class="shrink-0 text-muted-foreground"
+            /></TextTooltip
+          >
           <span class="tab-title truncate min-w-0" :class="{ italic: isPreview(tab) }">{{
             titleFor(tab)
           }}</span>
-          <Tooltip v-if="badgeFor(tab)">
-            <TooltipTrigger as-child>
-              <CodiconIcon
-                :name="badgeFor(tab)!.icon"
-                :size="12"
-                class="shrink-0 text-muted-foreground"
-                data-testid="tab-badge"
-              />
-            </TooltipTrigger>
-            <TooltipContent>{{ badgeFor(tab)!.tooltip }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip v-if="badgeFor(tab)" :text="badgeFor(tab)!.tooltip"
+            ><CodiconIcon
+              :name="badgeFor(tab)!.icon"
+              :size="12"
+              class="shrink-0 text-muted-foreground"
+              data-testid="tab-badge"
+            /></TextTooltip
+          >
         </button>
         <Button
           v-if="host.tabs.closeTab"

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import Spinner from '@theme/components/Spinner.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { formatDuration, formatRelative } from '@workbench/behaviour/format';
 import { computed, ref } from 'vue';
 import AdeRow from '../panel/AdeRow.vue';
@@ -23,11 +25,11 @@ const STATUS_VARIANT = {
   refused: 'warn',
   cancelled: 'default',
 } as const;
-const OUTCOME_VARIANT = {
+const OUTCOME_TONE: Record<string, StatusTone> = {
   approved: 'ok',
   denied: 'error',
-  pending: 'info',
-} as const;
+  pending: 'warn',
+};
 
 const hasStatement = computed(() => props.entry.statement !== '');
 function statusLabel(status: DbAuditEntry['status']): string {
@@ -76,10 +78,7 @@ function subjectLabel(a: DbAuditApproval): string {
       return a.subject;
   }
 }
-const outcomeVariant = (a: DbAuditApproval): 'ok' | 'error' | 'info' | 'warn' =>
-  a.outcome in OUTCOME_VARIANT
-    ? OUTCOME_VARIANT[a.outcome as keyof typeof OUTCOME_VARIANT]
-    : 'warn';
+const outcomeVariant = (a: DbAuditApproval) => TONE_BADGE[OUTCOME_TONE[a.outcome] ?? 'warn'];
 </script>
 
 <template>
@@ -98,7 +97,7 @@ const outcomeVariant = (a: DbAuditApproval): 'ok' | 'error' | 'info' | 'warn' =>
           entry.connectionName
         }}</span>
         <Badge :variant="STATUS_VARIANT[entry.status]">
-          <CodiconIcon v-if="entry.status === 'running'" name="loading" spin :size="12" />
+          <Spinner v-if="entry.status === 'running'" :size="12" label="" />
           {{ statusLabel(entry.status) }}
         </Badge>
         <span v-if="entry.durationMs !== null" class="text-subtle">{{

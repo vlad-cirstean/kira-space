@@ -4,22 +4,22 @@ import type { SavedDiscoverQuery } from '@shared/domain/queries';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
-import { Kbd } from '@theme/components/ui/kbd';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { errorText, toCodedError } from '@workbench/bridge/codedError';
+import MenuItems from '@workbench/components/MenuItems.vue';
 import TextPromptDialog from '@workbench/prompt/TextPromptDialog.vue';
 import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
 import { formatShortcut } from '@workbench/shortcuts/keys';
-import { ref, useTemplateRef, watch } from 'vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
 import { guardedSavedWrite } from '../../../state/guardedSavedWrite';
 import DiscoverSavedMenu from './DiscoverSavedMenu.vue';
@@ -120,6 +120,39 @@ function onApply(entry: SavedDiscoverQuery): void {
   if (props.d.applySaved(entry)) emit('run');
 }
 
+const moreItems = computed<MenuItem[]>(() => [
+  {
+    type: 'item',
+    id: 'save-as',
+    testId: 'kibana-save-as',
+    label: t('studio.kibana.saved.saveAs.label'),
+    icon: 'save-as',
+    disabled: !props.d.body.value || pending(),
+    run: onSaveAs,
+  },
+  {
+    type: 'item',
+    id: 'revert',
+    testId: 'kibana-revert',
+    label: t('studio.kibana.saved.revert.label'),
+    icon: 'discard',
+    disabled: !props.d.state.value.saved || !props.d.dirty.value,
+    run: onRevert,
+  },
+  ...(props.d.state.value.saved
+    ? [
+        {
+          type: 'item' as const,
+          id: 'detach',
+          testId: 'kibana-detach',
+          label: t('studio.kibana.saved.detach.label'),
+          icon: 'debug-disconnect',
+          run: () => props.d.unlink(),
+        },
+      ]
+    : []),
+]);
+
 const menuOpen = ref(false);
 const menuTrigger = useTemplateRef<{ $el: HTMLElement }>('menuTrigger');
 const saveChord = formatShortcut('form.save');
@@ -142,24 +175,19 @@ const saveChord = formatShortcut('form.save');
       />
     </span>
     <div class="flex items-center">
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
-            variant="toolbar"
-            size="kira"
-            :disabled="!d.body.value"
-            :pending="pending()"
-            data-testid="kibana-save"
-            @click="onSave"
-          >
-            <CodiconIcon name="save" :size="13" />
-            {{ t('common.action.save.label') }}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent
-          >{{ t('studio.kibana.saved.save.tooltip') }}<Kbd>{{ saveChord }}</Kbd></TooltipContent
+      <TextTooltip :text="t('studio.kibana.saved.save.tooltip')" :kbd="saveChord">
+        <Button
+          variant="toolbar"
+          size="kira"
+          :disabled="!d.body.value"
+          :pending="pending()"
+          data-testid="kibana-save"
+          @click="onSave"
         >
-      </Tooltip>
+          <CodiconIcon name="save" :size="13" />
+          {{ t('common.action.save.label') }}
+        </Button>
+      </TextTooltip>
       <DropdownMenu :modal="false">
         <DropdownMenuTrigger as-child>
           <Button
@@ -168,49 +196,26 @@ const saveChord = formatShortcut('form.save');
             :aria-label="t('studio.kibana.saved.more.aria')"
             data-testid="kibana-save-more"
           >
-            <CodiconIcon name="chevron-down" :size="12" />
+            <CodiconIcon name="chevron-down" :size="13" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            :disabled="!d.body.value || pending()"
-            data-testid="kibana-save-as"
-            @select="onSaveAs"
-          >
-            {{ t('studio.kibana.saved.saveAs.label') }}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            :disabled="!d.state.value.saved || !d.dirty.value"
-            data-testid="kibana-revert"
-            @select="onRevert"
-          >
-            {{ t('studio.kibana.saved.revert.label') }}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            v-if="d.state.value.saved"
-            data-testid="kibana-detach"
-            @select="d.unlink()"
-          >
-            {{ t('studio.kibana.saved.detach.label') }}
-          </DropdownMenuItem>
+          <MenuItems :items="moreItems" />
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button
-          ref="menuTrigger"
-          variant="toolbar"
-          size="kira"
-          data-testid="kibana-saved-toggle"
-          @click="menuOpen = !menuOpen"
-        >
-          <CodiconIcon name="bookmark" :size="13" />
-          {{ t('studio.console.savedMenu.title') }}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ t('studio.console.savedMenu.title') }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip :text="t('studio.console.savedMenu.title')">
+      <Button
+        ref="menuTrigger"
+        variant="toolbar"
+        size="kira"
+        data-testid="kibana-saved-toggle"
+        @click="menuOpen = !menuOpen"
+      >
+        <CodiconIcon name="bookmark" :size="13" />
+        {{ t('studio.console.savedMenu.title') }}
+      </Button>
+    </TextTooltip>
     <Popover :open="menuOpen" @update:open="(v) => (menuOpen = v)">
       <PopoverAnchor :reference="(menuTrigger?.$el as HTMLElement) ?? undefined" class="hidden" />
       <DiscoverSavedMenu

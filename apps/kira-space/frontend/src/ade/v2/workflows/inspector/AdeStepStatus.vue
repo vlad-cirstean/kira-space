@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { Button } from '@theme/components/ui/button';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import { useBoard } from '../../queries';
 import { useAdeWorkflowsUiStore } from '../../state/adeWorkflowsUi';
 import type { WorkflowStep } from '../../wire';
-import AdeInspectorRow from './AdeInspectorRow.vue';
 
 // The task status while a step runs: the default of its kind, or one of the user's statuses.
 const props = defineProps<{ step: WorkflowStep }>();
@@ -41,7 +41,10 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
 </script>
 
 <template>
-  <AdeInspectorRow :label="t('space.ade.workflows.stepInspector.status.label')" :for="id('status')">
+  <Field orientation="responsive">
+    <FieldLabel :for="id('status')">{{
+      t('space.ade.workflows.stepInspector.status.label')
+    }}</FieldLabel>
     <div class="flex items-center gap-2">
       <NativeSelect
         :id="id('status')"
@@ -57,7 +60,7 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
       </NativeSelect>
       <Button
         variant="link"
-        size="kira"
+        size="inline"
         class="shrink-0"
         data-testid="ade-step-edit-statuses"
         @click="wfUi.openStatuses()"
@@ -66,5 +69,5 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
         }}</Button
       >
     </div>
-  </AdeInspectorRow>
+  </Field>
 </template>

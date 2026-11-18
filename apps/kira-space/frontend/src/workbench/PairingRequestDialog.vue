@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { usePendingDecision } from '@workbench/behaviour/pendingDecision';
 import { formatShortcut } from '@workbench/shortcuts/keys';
@@ -49,32 +48,32 @@ const onChord = shortcutKeydown(['form.submit', 'prompt.deny'], (id) =>
         <p class="m-0 text-subtle" :data-testid="`${testidPrefix}-expires`">
           {{ t('common.expiresIn.status', { seconds: remainingSeconds }) }}
         </p>
-        <p v-if="more > 0" class="m-0 text-subtle" :data-testid="`${testidPrefix}-queue-count`">
-          {{ t('common.moreWaiting.status', { count: more }) }}
-        </p>
       </DialogBody>
 
       <DialogFooter>
+        <template v-if="more > 0" #start>
+          <span :data-testid="`${testidPrefix}-queue-count`">{{
+            t('common.moreWaiting.status', { count: more })
+          }}</span>
+        </template>
         <Button
           ref="denyButton"
-          :aria-keyshortcuts="formatShortcut('prompt.deny')"
+          :kbd="formatShortcut('prompt.deny')"
           variant="dialog-deny"
           size="kira-lg"
           :data-testid="`${testidPrefix}-deny`"
           @click="emit('deny')"
         >
           {{ t('common.action.deny.label') }}
-          <Kbd>{{ formatShortcut('prompt.deny') }}</Kbd>
         </Button>
         <Button
           variant="dialog-approve"
-          :aria-keyshortcuts="formatShortcut('form.submit')"
+          :kbd="formatShortcut('form.submit')"
           size="kira-lg"
           :data-testid="`${testidPrefix}-approve`"
           @click="emit('approve')"
         >
           {{ t('common.action.approve.label') }}
-          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

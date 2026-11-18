@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { computed, ref, watch } from 'vue';
 
@@ -220,7 +220,7 @@ const pageNextTitle = computed(() =>
       : t('studio.dateTimePicker.nextYears.tooltip'),
 );
 
-// The three clock steppers, each a writable computed so <Input type="number"> can v-model
+// The three clock steppers, each a writable computed so a number input can v-model
 // straight onto it — the browser's own native number stepper handles the chrome, so nothing
 // here needs to reinvent it, only clamp what a hand-typed value (as opposed to a stepper click,
 // which stepUp/stepDown already keeps in range) can push out of range.
@@ -263,23 +263,20 @@ const secondText = computed<string>({
         data-testid="datetime-picker-prev-month"
         @click="pagePrev"
       />
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <!-- P42 D33a: a plain <button> now, so the label itself is the mode-cycling control --
+      <TextTooltip :text="t('studio.dateTimePicker.cycleView.tooltip')">
+        <!-- P42 D33a: a plain <button> now, so the label itself is the mode-cycling control --
                reset to look like the <span> it replaces rather than a bordered control. -->
-          <Button
-            type="button"
-            variant="toolbar"
-            size="kira"
-            class="h-auto px-1 py-0.5 text-fg"
-            data-testid="datetime-picker-month"
-            @click="cycleMode"
-          >
-            {{ labelText }}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.dateTimePicker.cycleView.tooltip') }}</TooltipContent>
-      </Tooltip>
+        <Button
+          type="button"
+          variant="toolbar"
+          size="kira"
+          class="h-auto px-1 py-0.5 text-fg"
+          data-testid="datetime-picker-month"
+          @click="cycleMode"
+        >
+          {{ labelText }}
+        </Button>
+      </TextTooltip>
       <TooltipIconButton
         icon="chevron-right"
         :label="pageNextTitle"
@@ -353,6 +350,7 @@ const secondText = computed<string>({
     </div>
     <div class="flex items-center gap-0.5 pt-1">
       <Input
+        :aria-label="t('studio.dateTimePicker.hour.label')"
         v-model="hourText"
         type="number"
         min="0"
@@ -363,6 +361,7 @@ const secondText = computed<string>({
       />
       <span class="text-subtle">:</span>
       <Input
+        :aria-label="t('studio.dateTimePicker.minute.label')"
         v-model="minuteText"
         type="number"
         min="0"
@@ -373,6 +372,7 @@ const secondText = computed<string>({
       />
       <span class="text-subtle">:</span>
       <Input
+        :aria-label="t('studio.dateTimePicker.second.label')"
         v-model="secondText"
         type="number"
         min="0"

@@ -18,11 +18,8 @@
  * that emit to this component's exposed `refresh()`, so both paths share one implementation and
  * one `hasPendingChange` state.
  */
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
-import { Button } from '@theme/components/ui/button';
-import { Kbd } from '@theme/components/ui/kbd';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { computed, ref, watch } from 'vue';
@@ -73,31 +70,25 @@ defineExpose({ refresh: doRefresh });
 </script>
 
 <template>
-  <Tooltip>
-    <TooltipTrigger as-child>
-      <Button
-        variant="toolbar"
-        size="kira-icon"
-        class="relative"
-        :pending="isRefreshing"
-        :disabled="blockedByLoad"
-        :aria-label="t('common.action.refresh.label')"
-        @click="doRefresh"
-      >
-        <CodiconIcon name="refresh" :size="13" />
-        <StatusDot
-          v-if="hasPendingChange"
-          class="absolute top-0.5 right-0.5"
-          color="var(--kira-focus)"
-          aria-hidden="true"
-        />
-      </Button>
-    </TooltipTrigger>
-    <TooltipContent v-if="hasPendingChange">{{
-      t('git.toolbar.refreshPending.hint')
-    }}</TooltipContent>
-    <TooltipContent v-else
-      >{{ t('common.action.refresh.label') }} <Kbd>{{ REFRESH_CHORD }}</Kbd></TooltipContent
-    >
-  </Tooltip>
+  <TooltipIconButton
+    icon="refresh"
+    :label="
+      hasPendingChange ? t('git.toolbar.refreshPending.hint') : t('common.action.refresh.label')
+    "
+    :aria-label="t('common.action.refresh.label')"
+    :kbd="hasPendingChange ? undefined : REFRESH_CHORD"
+    class="relative"
+    :pending="isRefreshing"
+    :disabled="blockedByLoad"
+    @click="doRefresh"
+  >
+    <template #badge>
+      <StatusDot
+        v-if="hasPendingChange"
+        class="absolute top-0.5 right-0.5"
+        tone="info"
+        aria-hidden="true"
+      />
+    </template>
+  </TooltipIconButton>
 </template>

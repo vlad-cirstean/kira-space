@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
-import { colorMarkClass, connTextClass } from '@theme/connColor';
+import { colorMarkClass, connIconClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
@@ -64,7 +64,7 @@ const hasPage = computed(() => {
 
 const connRecord = computed(() => connectionsStore.connectionRecord(props.tab.connectionId));
 
-const iconClass = computed(() => connTextClass(connRecord.value?.color) ?? 'text-muted-foreground');
+const iconClass = computed(() => connIconClass(connRecord.value?.color));
 
 // P104 §3: ViewChrome/ViewHeader/RunState inlined at this call site (no library counterpart).
 const railColor = computed(() => (connRecord.value ? (connRecord.value.color ?? null) : undefined));
@@ -288,7 +288,7 @@ function onCloseSearch(): void {
           :icon="ICON.stop"
           :label="t('common.action.stop.label')"
           disabled-trigger
-          :class="{ 'text-error': !!rt?.opId }"
+          :tone="rt?.opId ? 'error' : undefined"
           data-testid="toolbar-stop"
           :disabled="!rt?.opId"
           @click="onStop"

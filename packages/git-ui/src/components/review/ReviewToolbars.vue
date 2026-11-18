@@ -4,6 +4,7 @@ import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { type MessageKey, t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { rowMeta } from '@theme/lib/rowVariants';
 import BranchPicker from '@workbench/components/pickers/BranchPicker.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
@@ -144,7 +145,7 @@ const summaryLabel = computed(() => {
   <ViewToolbar>
     <TooltipIconButton
       v-if="!locked"
-      icon="chevron-left"
+      :icon="ICON.back"
       :label="t('git.review.back.tooltip')"
       data-testid="review-back-button"
       @click="emit('back')"
@@ -157,7 +158,7 @@ const summaryLabel = computed(() => {
         review.branch.value
       }}</span
     >
-    <span class="text-muted-foreground shrink-0" aria-hidden="true">↔</span>
+    <CodiconIcon name="arrow-swap" :size="13" class="shrink-0 text-muted-foreground" />
     <span
       v-if="locked"
       class="min-w-0 truncate font-data text-kira-md text-fg"

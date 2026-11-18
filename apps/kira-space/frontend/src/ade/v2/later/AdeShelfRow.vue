@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
-import { rowIndent, rowVariants } from '@theme/lib/rowVariants';
+import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useRelativeTime } from '@workbench/behaviour/format';
 import { computed } from 'vue';
@@ -68,9 +68,7 @@ const facts = computed(() =>
         facts
       }}</span
     >
-    <span class="w-16 shrink-0 text-kira-sm text-subtle" data-testid="ade-shelf-ago">{{
-      ago
-    }}</span>
+    <span :class="[rowMeta, 'w-16 shrink-0']" data-testid="ade-shelf-ago">{{ ago }}</span>
     <TooltipIconButton
       icon="ellipsis"
       :label="t('common.moreActions.tooltip')"

@@ -98,8 +98,6 @@ function confirmPlain(): void {
         <DialogTitle>{{
           t('git.dialog.forcePushConfirm.title', { branch: pending.branch, remote: pending.remote })
         }}</DialogTitle>
-      </DialogHeader>
-      <DialogBody>
         <DialogDescription>
           <CatalogText
             :k="
@@ -117,7 +115,8 @@ function confirmPlain(): void {
             {{ t('git.dialog.forcePushConfirm.ahead.hint', { count: pending.preflight.behind }) }}
           </template>
         </DialogDescription>
-
+      </DialogHeader>
+      <DialogBody>
         <Alert v-if="protectedBy" variant="warn">
           <AlertDescription>
             <CatalogText k="git.dialog.forcePushConfirm.protected.hint">
@@ -133,26 +132,23 @@ function confirmPlain(): void {
             v-model="typedBranch"
             type="text"
             :placeholder="resolvedBranch"
-            size="kira-lg"
             class="w-full"
             data-testid="force-push-confirm-branch"
           />
         </Field>
 
-        <Disclosure class="pt-2" trigger-class="text-muted-foreground">
+        <Disclosure meta>
           <template #label
             ><CatalogText k="git.dialog.forcePushConfirm.plain.label">
               <template #flag><code class="font-data">--force</code></template>
             </CatalogText></template
           >
-          <div class="mt-3">
-            <Alert variant="warn">
-              <AlertDescription>
-                {{ t('git.dialog.forcePushConfirm.plain.hint') }}
-              </AlertDescription>
-            </Alert>
-          </div>
-          <Field orientation="horizontal" class="mt-3">
+          <Alert variant="warn">
+            <AlertDescription>
+              {{ t('git.dialog.forcePushConfirm.plain.hint') }}
+            </AlertDescription>
+          </Alert>
+          <Field orientation="horizontal">
             <Checkbox
               :id="plainAckId"
               v-model="understandPlain"
@@ -162,7 +158,7 @@ function confirmPlain(): void {
               {{ t('git.dialog.forcePushConfirm.plainAck.label') }}
             </FieldLabel>
           </Field>
-          <div class="mt-3 flex justify-end">
+          <div class="flex justify-end">
             <Button
               variant="dialog-danger"
               size="kira-lg"

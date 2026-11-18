@@ -769,7 +769,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 
 - Dialogs use DialogContent with a required size (sm|md|lg|xl|2xl, plus fixed-height), DialogHeader, DialogBody and DialogFooter; the header close button is on by default and closable=false only while a blocking op runs.
 - CommandDialog is the one dialog surface exempt from the DialogContent convention and renders reka content directly.
-- Use SecondaryTabs (variant tabs|segmented|choice) for secondary tabs and segmented pickers, never raw ToggleGroup/TabsList; primary tab bars keep tabChipVariants. `choice` is a form single-select: selected item `bg-select`, a click on the selected item changes nothing, arrows move focus, Space/Enter select. `wrap` breaks it into spaced chips. It replaces round RadioGroup except ConnectionEnginePicker, AdeTaskStatuses colours, EnvironmentsView active env and card radios.
+- Use SecondaryTabs (variant tabs|segmented|choice) for secondary tabs and segmented pickers, never raw ToggleGroup/TabsList; primary tab bars keep tabChipVariants. `choice` is a form single-select: selected item `bg-select`, a click on the selected item changes nothing, arrows move focus, Space/Enter select. `wrap` breaks it into spaced chips. It replaces round RadioGroup except AdeTaskStatuses colours, EnvironmentsView active env and card radios.
 - Runs params `select` renders `choice` up to 5 choices (None counted), NativeSelect past that.
 - Dialog and form controls are size kira-lg (26px); toolbar controls are kira (22px); all use rounded-kira-sm bg-field. font-data is opt-in per control, never part of an InputGroup variant.
 - Use SearchField for search and filter boxes and focus it through its exposed focus(), because biome forbids autofocus.
@@ -780,11 +780,11 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - The tone vocabulary is ok, warn, error, info (Badge, Alert, StatusDot); neutral is muted text. Chips tint /16, banners /10 with /20 border; app code never writes a tone alpha.
 - Error sentences use FieldError and list/popover lines use InlineState; Alert takes icon and strip and no layout classes.
 - A boolean that applies on flip is a Switch; an option in a form committed by a button is a Checkbox (14px box).
-- A single choice whose options need a description uses RadioGroup with RadioGroupCard: the whole card is the radio (reka item), title plus description, selected `border-focus bg-select` (Reset mode, review route, mainline pickers, P667).
-- Use Tooltip for hints, never native title; the theme provider owns the 400ms delay. Shortcuts use Kbd. A tooltip with several facts uses TooltipDetails (title, label/value rows, hint); a joined sentence of facts is not allowed.
-- Loading uses Spinner; Skeleton only where the layout is known.
+- A single choice whose options need a description uses RadioGroup with RadioGroupCard: the whole card is the radio (reka item), title plus description, selected `border-focus bg-select` (Reset mode, review route, mainline pickers, P667; Studio engine picker with icon 16 and name as the title, no description).
+- Use Tooltip for hints, never native title; the theme provider owns the 400ms delay. Shortcuts use Kbd. A tooltip with several facts uses TooltipDetails (title, label/value rows, hint); a joined sentence of facts is not allowed. A plain-text hint uses TextTooltip.
+- Loading uses Spinner; Skeleton only where the layout is known. A pane loading state is `EmptyState loading`.
 - Grey has three roles: text-muted-foreground for secondary content, text-subtle for tertiary chrome and absence markers.
-- Card inset holds text only, because its bg-field fill hides an Input, Select or Checkbox; Card section holds controls.
+- Card inset holds text only, because its bg-field fill hides an Input, Select or Checkbox; Card section holds controls. Card section with a title is DetailSection.
 - DropdownMenuContent is content-sized (min-w-45, max-w-80).
 - Every pane resize handle binds resizeHandleVariants (2px bar, 4px/8px hit area, grey --kira-resize-hover on hover, --kira-resize-active on drag, bg-focus on keyboard focus; SlickGrid column handles and Monaco sashes use the same tokens, 10px arrow step, Home/End); shell, dock and ADE panel handles measure identical at rest, hover and drag.
 - Status-bar items are Button variant="toolbar" size="kira".
@@ -1166,7 +1166,8 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
   viewState.ts`) through `useKeptState`, `useKeptScroll` and `useVirtualRows({ keepScroll })`.
   Keys `<mode>:<surface>[:<id>]` or `tab:<tabId>:<surface>`; session-only; LRU 400 keys; tab keys
   drop on tab close. Guard U109. No KeepAlive: hidden subtrees would keep queries, watchers and
-  commands live and retain DOM (P660).
+  commands live and retain DOM (P660). The git-ui review mount reads the store through
+  `KEPT_VIEW_STATE_KEY` (its app has no Pinia).
 - views/shared/viewOp.ts's beginOp/applyLoadFailure are the one load-op preamble and load-failure tail behind every view's load() except Browse, which supersedes by loadSeq, not opId, and has no E_CANCELLED branch.
 - views/shared/page/store.ts is the one two-level page-cache implementation behind all five page modules (grid, documents, keyvalue, stream, console).
 - Visible-window pruning of the page cache is wired into the view side of all five page modules (P5 C3); documents also prunes the parsed-tree cache in views/shared/document/rows.ts to the same window.
@@ -1295,13 +1296,14 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Use simple-icons for third-party brand marks and seti for file types.
 - @lucide/vue is allowed only inside vendored packages/theme/src/components/ui/** (guard U72).
 - The concept-to-icon table is ICON in packages/theme/src/icons.ts; a concept uses its row everywhere, and a kind of thing (file, engine) uses its kind icon.
-- Icon names gear, settings and kebab-vertical are banned.
+- Icon names gear, settings, kebab-vertical and pencil are banned.
 - No 'codicon-…' string literals are allowed outside CodiconIcon.vue, Spinner.vue, and the theme package (guard U73).
 
 | Concept | Icon |
 |---|---|
 | Delete (destroys stored data) | `trash` |
 | Remove from a list, row or selection; close; clear field | `close` |
+| Remove a draft row from a form list before save | `close` (`ICON.remove`); `trash` only when the click destroys stored data |
 | Clear all | `clear-all` |
 | Add | `add` |
 | Copy / duplicate | `copy` / `files` |
@@ -1376,7 +1378,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - QueryState shows its default loading state after TIMING.spinnerDelay (300ms), while Button pending shows its spinner at once.
 - The drag ghost class is SORTABLE_GHOST_CLASS (U76). No list sets a chosen class: Sortable's unstyled default keeps a press from flashing a ring.
 - Mobile code never hard-codes h-11 (U82).
-- EmptyState (theme) is the only Empty composition (U74), with props/slots icon?, title, description?, default slot for actions, and media slot for a custom glyph.
+- EmptyState (theme) is the only Empty composition (U74), with props/slots icon?, title, description?, default slot for actions, and media slot only for a content illustration; `loading` swaps the icon for a Spinner. Every EmptyState has icon or loading (U131); media never holds a CodiconIcon or Spinner (U127).
 - A side panel empty state gets icon, title and a one-line description with no button (U78); its action lives on the module front door.
 - ModuleStart (workbench) is the module front door: icon, title, description, one primary action, optional secondary actions and #below; error or unavailable states may carry Retry.
 - The command palette (CommandPalette.vue, palette.ts in packages/workbench/src/shortcuts/) is shared; each app supplies commands with providePaletteCommands. A command that moves focus sets `movesFocus` and runs on the dialog's close-auto-focus, so the focus restore cannot undo it.
@@ -1402,7 +1404,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Use text-muted-foreground for row meta, KV keys, secondary labels and values, timestamps, counts, icons, DialogDescription and bar status; muted never uses opacity.
 - Use text-subtle for section headings and legends, FieldDescription, empty and inline-state lines, placeholders, NULL markers and row numbers.
 - Use cursor-default on every control and row; pointer only for Button variant="link", linkify.ts anchors and the PR badge link; grab on drag handles; never help or copy cursors.
-- View or detail titles use text-kira-lg font-medium text-fg; sections use SectionHeading (pane, panel, list, picker) or FieldSet + FieldLegend + FieldDescription (form, settings pane).
+- View or detail titles use DetailHeader (text-kira-lg font-medium); sections use SectionHeading (pane, panel, list, picker) or FieldSet + FieldLegend + FieldDescription (form, settings pane).
 - A hint paragraph is FieldDescription; an empty line is InlineState kind="empty" or EmptyState.
 - Identifiers (ids, shas, branches, refs, paths) use font-data and are shown through Identifier (short, copyable, split="path"); single-line overflow uses TruncatedText.
 - Show counts in a tab, section or row as plain rowMeta; use Badge count only for attention; never put "(n)" in label text.
@@ -1417,10 +1419,10 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - With DialogContent dirty, outside click is ignored, and Esc and the header X ask the discard confirm; footer Cancel never asks.
 - Every host (Studio, Space, Space mobile, git-ui mount()) calls provideShellServices(app) from bootstrapShell.ts once per createApp, providing CONFIRM_DISCARD_KEY backed by the confirm store, because theme cannot import the store.
 - Each host mounts one ConfirmDialog; mobile passes touch for 44px buttons. Tabs ask before closing a dirty tab (TabKindDef.isDirty). A kind with `confirmClose` asks its own question instead; the confirm store's `choose()` adds a secondary button, and one button stays emphasised.
-- Two button looks: toolbar (borderless) and outline (1px border, transparent, hover:bg-field). No filled button. Emphasis is the border: dialog-primary is the accent outline with text-fg, dialog-danger is the error outline, ADE task actions use ACTION_CLASS tone outlines.
-- A labelled destructive action is dialog-danger; an icon or toolbar one is toolbar plus data-tone="error". Toggle state goes through aria-pressed (TooltipIconButton pressed) or aria-expanded, never a bg-field class.
+- Two button looks: toolbar (borderless) and outline (1px border, transparent, hover:bg-field). No filled button. Emphasis is the border: dialog-primary is the accent outline with text-fg, dialog-danger is the error outline, the ADE task step action (AdeTaskActionButton) alone uses ACTION_CLASS tone outlines.
+- A labelled destructive commit (footer, confirm strip) is dialog-danger; an in-view, icon or toolbar one is toolbar plus data-tone="error". Toggle state goes through aria-pressed (TooltipIconButton pressed) or aria-expanded, never a bg-field class.
 - Fills stay only on state controls (Checkbox, Radio, Switch, Progress), selection (bg-select, date cells) and indicators (StatusDot, Badge, ADE SOLID_CLASS, AdeAttention). Solid fill on a button fails U106.
-- DialogHeader has no icon (U107), and a dialog footer has one emphasised button. Dialog, command palette and text prompt share dialogSurface (`bg-dialog`, darker than `bg`, over scrim 0.6); popover, menus and toasts share floatingSurface (`bg-elevated`). Both in packages/theme/src/lib/frames.ts.
+- DialogHeader has no icon (U107), and a dialog footer has one emphasised button. Dialog, command palette and text prompt share dialogSurface (`bg-dialog`, darker than `bg`, over scrim 0.6); popover, menus and toasts share floatingSurface (`bg-elevated`). Both in packages/theme/src/lib/frames.ts. DialogHeader stacks title and DialogDescription; extras (badges, subject) live in the description, buttons in footer #start.
 - Toasts and corner prompt chips share one top-right column (packages/workbench CornerStack): chips (ApprovalsToast, ConfigSyncToast) first, Sonner toasts below, 8px under the title bar, 16px from the right edge; the toast offset follows the chips' measured height.
 - Operation failures use Alert variant="error" in the body; FieldError is only under a field or as a one-line footer status, paired with aria-invalid and aria-describedby (useFormErrors).
 - Use Button pending for busy state, never :disabled on a busy flag.
@@ -1432,9 +1434,9 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Every debounce, poll, tick and UI delay must be a TIMING key, and sort comparators must end on a stable key.
 - Bind shortcuts printed on a surface there; trees use useTreeShortcuts; refresh is F5 only; render cap is 500 via useCappedList.
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
-- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U108) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
+- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U161) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
-- check-ui-primitives.sh keeps 38 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
+- check-ui-primitives.sh keeps 48 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
 
 ### Shared pickers (P398)
@@ -1448,6 +1450,30 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - ADE base exclusions ship as codes (self, stacked) in adewire.BasePick.Excluded; the frontend owns the text. Candidate branches load per repo (adeTaskCandidateBranches takes codeRepoId).
 - git-ui option builders live in lib/refOptions.ts. Suggested base options use the s: value prefix so the same ref in the branch list keeps a unique value.
 - The git-ui toolbar popover (tabs for branches, tags, stashes, worktrees, stacks) is RefsPopover.vue, separate from the shared picker.
+
+### UI uniformity rules (P672)
+
+- Dialog size by content: sm confirm or single field; md form up to about 8 fields; lg sections or list picker; xl two panes, diff, preview; 2xl fixed-height editor or multi-tab config; full review windows only.
+- Dialog footer: `#start` secondary actions, then dismiss, alternate, one emphasised button (dialog-primary, dialog-danger or dialog-approve) rightmost. Header is the title plus an optional DialogDescription for intro text; mode tabs open DialogBody. Body keeps dialogBodyClass (only `flush`, `min-h-*`); sections are FieldSet + FieldLegend or SectionHeading. Failure is an error Alert as last body child, field validation FieldError. Dismiss (Cancel, Close, Done, Dismiss) is `dialog`. `#start` text inherits `text-kira-sm text-subtle` (bare span); queue counts go there. Destructive confirm: `DialogContent destructive`, dismiss `data-dialog-dismiss`. `flush` body never re-adds padding; tab panes inside a body carry none.
+- Button size by host: form commit kira-lg; bars, rows, popover action rows kira or TooltipIconButton; link is inline. Outline (dialog*) only commits a form or answers a question; every other in-view action is toolbar with a leading icon. ACTION_CLASS only on the plan board and task card step action. A shortcut hint on a Button is its `kbd` prop. Form save bars are SaveBar (packages/workbench): discard outline, save primary. A select-like trigger ends with chevron-down.
+- One field label: FieldLabel (bare Label only sr-only, or with placement-only classes for a checkbox or switch in a bar, menu or list row). Two layouts: stacked Field, or `Field orientation="responsive"` (label column 7.5rem once the nearest `@container` is 24rem wide, stacked below; the host pane carries `@container`). Checkbox and switch rows are `Field orientation="horizontal"`, control first, then FieldContent (FieldLabel, FieldDescription), reset button `ml-auto`; Checkbox classes place it only: no size, colour, fill or shape class and no icon child (U110), and shows the primitive minus glyph when indeterminate. FieldSet without gap override. Fixed widths w-24, w-40, w-56 only. Textarea steps: short text the primitive default (`font-data` for data), prompt or body `min-h-24 max-h-90 resize-y`, code or script `min-h-32 max-h-90 resize-y font-data`; no `rows`. Form controls take the primitive default size; `size="kira"` only in bars and rows, and a form control in a ViewToolbar, PanelHeader or PopoverBar always takes it (U161). A required field marks its FieldLabel `required` (U160), never a hand asterisk. Every control has a name: FieldLabel `for` its id, or aria-label in bars, rows and cells (U133). A colour choice is SwatchPicker. FieldLegend is the first child of its FieldSet; legend actions go in its `#actions` slot. FieldDescription follows the control.
+- Menus render MenuItems from a MenuItem[] (`testId` keeps a host testid; disabled reason is `hint`); kinds are item, submenu, radio, checkbox (`keepOpen` for toggles that stay open), separator, label; a hand entry only for option content a kind cannot carry (AdeChip, per-method colour, rich label block), with a comment. An option picker showing the current value is a radio kind (`value` null is the none option); the check indicator is the primitive codicon and never overridden (U141). Menu icons 13 and muted (U116 fails a toned icon in a hand entry); a danger item's icon follows its error colour. Popovers have two shapes: default (form: fields and a right-aligned action row, optional PopoverHeader) and `flush` (list: SectionHeading or PopoverHeader, PopoverBar for a search or tab bar, PopoverList for the row list, PopoverFooter px-1.5 py-1 holding a toolbar kira Button); a form block in a flush popover uses PopoverBody; no margin or padding class on a bar control (U145); widths w-56, w-80, w-96, w-120, w-auto only for a popover sized to one control.
+- Rows come from rowVariants; trailing meta is rowMeta; entity lists are rows, tabular data SlickGrid or Table.
+- Heading roles: PanelHeader (panel title bar, muted) is one grey step above SectionHeading (section in a panel, list or popover, subtle; actions in its default slot, right-aligned with case reset; `data` for a data-valued label; `#leading` icon or dot); FieldSet + FieldLegend groups a form; CardTitle on Card section titles a card (DetailSection); DetailHeader titles a view or detail pane (icon 16 muted or `#leading`, h2 lg 500 or `as="h1"` on a mobile screen, `#meta`, right-aligned `#actions`, `#description`, `#eyebrow`; `wrap` for long titles, `data` for a data name, `#control` for an inline-edit title). A detail head inside a toolbar row aligned with a sibling toolbar stays ViewToolbar (git detail-head, Studio tab view-head). A window title bar title is TitleBarTitle (U146). No other heading markup.
+- Key-value data is KeyValueList: default density in panes, `density="compact"` (sm, row gap 0.5) in sidebars and tooltips; dt muted, dd fg, font-data per data value, no class for grid, gap or type. Rows align on baseline; `columns="fixed"` gives a 72px key column for aligned approval details.
+- Card variants: inset (small block of text), section (titled group, DetailSection), list (scroll list of rows); classes only place the card in its parent; no bound :class; state shows through a Badge, never Card border, fill or opacity. Rows in a list sit in one list Card, never a box per row. CardHeader and CardTitle only through DetailSection; its content stacks with gap-2 (`flush`: none). Code text is CodeBlock; a row is never a Card. Card inset with an Input, Select or Checkbox is a Card section. U124 fails a Card class that sets padding, gap, type, fill, border, opacity or row layout, or a bound :class (AdeTaskCard is exempt: D1 board card tone, rail and selected fill).
+- Status tones: running or in progress info (+ Spinner), succeeded ok, waiting or partial warn, failed error, idle or unknown neutral. Row or header uses Badge, dense list StatusDot, prose tone text. ADE pastel tones stay on the plan board and task cards (D1). Agent liveness `working` is ok; `unseen` and `waiting` info; `input` warn. `@theme/lib/statusTone` holds the map (`StatusTone`, `TONE_BADGE`, `TONE_TEXT`, `TONE_DOT`, `CHANGE_REQUEST_TONE`: open info, merged ok, draft and closed neutral; git-ui badges and ADE read it; `ISSUE_CATEGORY_TONE`/`issueTone`; `CHECK_TONE`/`checkTone`; `CHANGE_TONE`: added ok, changed warn, removed error, every diff and change-kind surface reads it). Off-board ADE renders a board `Tone` through `THEME_TONE`; an AdeChip with a tone is board-only (`:color` status chips go anywhere). U125 fails an ADE pastel map, tone token or toned AdeChip off the board. Unsaved marker is StatusDot warn. StatusDot `color` only for data colours (U151). `warn-text` and `note-text` are Alert-only (U147). Toolbar button tone through `tone` / `data-tone` (ok, warn, error, info), never a class (U149 also fails `TONE_TEXT[` or a quoted tone in a bound class); `toolbarTone` maps a StatusTone to it (neutral none). Badge `chip` only with its own colour class or style; untoned tags are the default Badge (U159), and a required tag is the default Badge; action icons stay muted (U150). Spinning icon is Spinner, never a CodiconIcon `spin` (U148). Connection icon colour `connIconClass` (fallback muted).
+- State primitive by scope: whole pane EmptyState fill, list or section InlineState, failed operation with content kept Alert error, invalid field FieldError. FieldError never carries padding or stands in for a pane (U157). An empty list or section is InlineState, never FieldDescription (U158). Retry is a toolbar Button with `refresh`. EmptyState media only a content illustration. Skeleton shapes: text h-4, title h-control-lg w-1/3, block h-24 w-full. Failure: icon warning, title `common.state.loadFailed.title` or the view's failure key, error text as description, Retry toolbar. A block Skeleton may fill a fixed-height chart host.
+- Plain hint: TextTooltip (`text` or `parts`; no tooltip when empty) or Tooltip; TextTooltip also takes `side`, `contentTestid` and `kbd` (shortcut chip); TooltipIconButton takes a shortcut only through `kbd`, a `badge` slot and `contentTestid` (U144); a dead `:disabled="true"` Tooltip fails U142; TextTooltip around an icon-only Button fails U143; a plain-text Tooltip triple with only structural directives (`v-if`, `v-else-if`, `v-else`, `v-for`, `:key`), testid or side fails U123; a TextTooltip repeating a truncating child text is TruncatedText (U91); icon button TooltipIconButton; disabled reason TooltipDisabledTrigger; several facts TooltipDetails.
+- Type roles: xl landing hero, lg detail and dialog titles, md body and controls (no class), sm meta, badges, section labels; font-data for data only, never font-mono. xl only ModuleStart and pairing codes (U128); `leading-normal` only on prose, `leading-none` on icon-aligned lines; case and tracking only in SectionHeading, PanelHeader and DetailSection (their action slots reset them) or masked data (U130).
+- Spacing: bar px-1.5 gap-1; row from rowVariants gap-1.5; content pane p-3, blocks in a pane stack with gap-3, never margins, gap-2 inside; dialog body p-3 gap-3; card, popover, radio card keep the primitive 2.5 inset with gap-1.5 inside; inline icon and text gap-1, chips gap-1.5. Icons 13 in kira buttons, menus, rows, bars; 12 in Badge, chip, inline text and status or inline size buttons; 16 DetailHeader, card tile or title bar; 24 empty state. Steps 5 and up fail U88 except EmptyState inset and pairing hero; indent paddings stay.
+- Radii: rounded-kira-sm controls, rows, chips, inset blocks; rounded-kira containers; rounded-full dots, avatars, count badges. Dividers 1px border-border; border-l-2 only for quotes; shadows only from elevation tiers. border-l-3 and border-2 only on the plan board and glyph outlines (U132); no arbitrary shadow (U129).
+- Tabs by role: at most 5 short fixed options render SecondaryTabs: `choice` in a form (kira-lg) or in a row, cell or labelled strip (default size), `segmented` in a bar (ViewToolbar, PanelHeader, search bar). More than 5, a data-driven list, an action preset, or a set sharing a bar slot with a dependent select render NativeSelect (`size="kira"` in a bar or row, default in a form). A form value is SecondaryTabs `choice` (or RadioGroupCard for up to 6 options with descriptions); content sections `tabs`; view switch in a bar `segmented`. Bar-hosted controls stay `segmented`. Size: `choice` kira-lg beside form controls, default in a row or composer; `tabs` and `segmented` take no size (U126). A `choice` label is Field + FieldLabel with the same text as its aria-label. A view switch of the same content in a ViewToolbar is `segmented`. A text toggle is `Toggle` (default variant); an icon toggle is TooltipIconButton `:pressed`; a single pick from a list is SecondaryTabs or a `rowVariants` list, never pressed toolbar Buttons (U152). Toggle-shaped controls share idle muted text and `fg` when on (toggleVariants).
+- Pane frame is `paneFrame`, standalone window body is `windowBody` (frames.ts); no hand copy (U155).
+- Status glyphs are StatusDot or CodiconIcon, never text glyphs; arrows between values are `arrow-right` 12 (U156).
+- Disclosure owns its content spacing; secondary disclosures pass `meta`; no trigger or content classes (U154). Tree depth indent is `rowIndent` (U153).
+- Opacity never marks muted or state: tone, `rowVariants` muted/disabled, or `SORTABLE_GHOST_CLASS` (U90).
+- Guards U110-U161 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
 
 ## Process model
 
@@ -2055,8 +2081,8 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 ### Code review, ported natively (C11)
 
 - In Kira Space, the review panel is a third left-panel segment (Repos/Files/Review) in GitPanel.vue, not a tab. A repo-review tab kind mirroring repo-graph was rejected because the review workflow (pick a file, read its diff, mark it, pick the next) would cost two tab switches per file and hide the diff being reviewed.
-- ReviewView.vue is built for sidebar width and persists no per-mount viewState (it takes NullViewStateStore).
-- GitPanel.vue is one persistent instance across repo workspaces, so its review mount is tracked per repoId (reviewActivatedRepoIds); switching Files/Review/Search within the same repo keeps it mounted (v-show), while switching repo workspace remounts it, relying on session resume.
+- ReviewView.vue is built for sidebar width and takes NullViewStateStore for the graph-shaped viewState. Filter, filter bar, selected file, expanded rows and pane scrolls survive an unmount through MountOptions.keep (the host's useViewStateStore, provided as KEPT_VIEW_STATE_KEY); keys `git:review:<codeRepoId>` plus `:b:<branch>:<surface>`, dropped on workspace close and on back to branch selection (P660 Part 2).
+- GitPanel.vue is one persistent instance across repo workspaces, so its review mount is tracked per repoId (reviewActivatedRepoIds); switching Files/Review/Search within the same repo keeps it mounted (v-show), while switching repo workspace or module remounts it, relying on session resume and the kept view state.
 - The chosen Repos/Files/Review tab persists in localStorage key kira.git.panelTab (shared by all windows, last write wins) and defaults to Repos; opening a repo never switches it, and the panel shows Repos without writing it while no repo workspace is active.
 - The thirteen review.* methods never touch the user's repository: their only persistence is review.db (INSERT/UPDATE/DELETE on review_session/review_file/review_range/review_comment), and internal/gitreview has no exec.Command, os.WriteFile or git invocation.
 - The git work review.* handlers perform is read-only porcelain (cat-file, merge-base --is-ancestor, diff), with no update-index, write-tree, commit-tree or ref update.
@@ -2342,7 +2368,7 @@ and `docs/HISTORY.md (v2.0)`.
 
 ### Tab counts (P466)
 
-ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBadge`. Labels carry no number; the count goes in the item's `count`.
+Every SecondaryTabs `count` renders `Badge variant="count"`, in ADE and elsewhere. Labels carry no number; the count goes in the item's `count`.
 
 ### Tracked-item updates (P512)
 
@@ -2824,7 +2850,7 @@ role (`harness.UsageReporter`): only a provider that reports it feeds the servic
 - ADE dialogs share dialog/flow.ts (target pick: new session via StartBranch, or Send to a running session), compose.ts (message templates), deliver.ts and turnWatch.ts.
 - Plan drag and drop (plan/usePlanDrag.ts, board/dropPlan.ts) writes the day and position directly with no dialog.
 - ADE notes use TipTap (notes/), and the fix menu uses the shared context-menu primitive (R20).
-- ade/v2/tones.ts and palette.ts are dark-only; scripts/check-ade-colours.sh (part of bun run lint) fails any other colour literal under ade/.
+- ade/v2/tones.ts and palette.ts are dark-only and serve the plan board and task cards only (D1); scripts/check-ade-colours.sh (part of bun run lint) fails any other colour literal under ade/.
 - Plan board colour: status colour (16-colour palette, `--kira-status-*`) on the task's status text, red failures and amber needs-you/stale; branch tags other than red/amber render grey; task colour is a 3px left edge on cards, shelf rows and span rows; the branch row repo badge wears the repo colour (repoTint). Plan pane ground is bg-chrome (terminal ground); cards of one day have no line between, 16px apart; weekend and day-off bands carry no tint. Task cards have a 1px border-badge edge. The task open in the panel wears a focus frame (border-focus ring-1) and aria-current; its head, branch row, span and history rows use bg-select.
 - Task rows (P601): Plan card head and shelf row start with a lead slot holding the agent indicator (`AdeTaskSessions`, empty without sessions); the stored status shows as small coloured text (`AdeTaskStatusMenu`), a shadcn radio dropdown that writes `UpdateTask` `statusId` (no tooltip: a Tooltip between DropdownMenu and its trigger steals the popper anchor); tag glyphs stay for blocked, merged, not merging and pass done.
 - Plan window: shows today plus 6 days (`WINDOW_DAYS` in `timeline.ts`). Work scheduled later sits in Later, in date order before unscheduled and parked items; its card meta starts with the date. No horizon setting, no add-day control. Past bands come only from history or overdue work.
@@ -3069,7 +3095,7 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 - The embed worker exits when its stdin closes: after 5 min idle (so the OS reclaims the model, which in-process Session.Destroy does not) and whenever the parent dies. A crash or cancelled request kills only the worker. A failed spawn is refused for 60 s (Reset clears it).
 - Worker lifecycle lives in internal/memory/workerproc; model download, SHA-256 check and manifest live in internal/memory/modelstore (embed uses both).
 - Builds with CGO_ENABLED=0 compile an embedding stub whose status is unavailable.
-- The ONNX runtime library is taken from $KIRA_ORT_LIB, else Kira Space.app/Contents/Frameworks/libonnxruntime.1.31.1.dylib, bundled arm64-only by darwin:package (scripts/fetch-onnxruntime.sh, checksum-pinned); native code is never downloaded at runtime.
+- The ONNX runtime library is taken from $KIRA_ORT_LIB, else Kira Space.app/Contents/Frameworks/libonnxruntime.1.31.1.dylib, bundled arm64-only by darwin:package (scripts/fetch-onnxruntime.sh, from the Microsoft.ML.OnnxRuntime NuGet package, checksum-pinned); native code is never downloaded at runtime.
 - ORT 1.31.1 has no x86_64 macOS build, so the x86_64 slice of a universal bundle reports embeddings unavailable; keyword search is unaffected.
 - Search candidate pools are clamp(4 x limit, 100, 400) from each source, unioned by seq. Limit defaults to 40, max 200 (Space panel search uses 200).
 - Keyword score is bm25 (columns fact 10, keywords 6, reason 3) divided by the pool best: 0.7 x bnorm + 0.3 x term coverage, coverage restoring order under the OR query. Semantic score is cosine mapped linearly between embed.Spec.QueryFloor and QueryCeil.
@@ -4438,7 +4464,7 @@ Performance:
   (amber 1.79, red 2.40, green 1.78, blue 2.02, purple 2.11, grey 2.03) and work palette slots
   1.86-3.76:1 (`ade/v2/tones.ts`, `palette.ts`). All `ade` chrome resolves through `--kira-*`, so a light `:root` flips it with no
   `ade` edit. Closing this needs light tone variants plus a light `:root` in `packages/theme`,
-  which changes kept values.
+  which changes kept values. Since P672 Part 7 only the plan board and task cards use the kept tones; every other `ade` surface uses theme tones.
 
 - **ClickHouse console: a `Nullable` string equal to `ᴺᵁᴸᴸ` renders as NULL (P168 Part 3).** The `*Strings` JSON format prints NULL as that text. The table read path settles it exactly with an `isNull(col)` flag; arbitrary console SQL has no safe place for one. Non-Nullable columns are exact. Delete if the console moves to a typed format.
 

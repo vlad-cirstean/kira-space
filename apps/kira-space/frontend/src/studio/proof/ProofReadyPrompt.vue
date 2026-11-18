@@ -4,14 +4,12 @@ import { useMutation } from '@tanstack/vue-query';
 import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
-  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Kbd } from '@theme/components/ui/kbd';
 import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
@@ -44,38 +42,36 @@ const onChord = shortcutKeydown(['form.submit'], () => openWindow());
 
 <template>
   <Dialog v-if="sessionQuery.isFetched.value" :open="true" @update:open="(v) => !v && emit('hide')">
-    <DialogContent size="md" prompt data-testid="proof-ready-dialog" @keydown="onChord">
+    <DialogContent size="sm" prompt data-testid="proof-ready-dialog" @keydown="onChord">
       <DialogHeader>
         <DialogTitle>{{ taskTitle || entry.title }}</DialogTitle>
         <DialogDescription v-if="taskTitle" data-testid="proof-ready-proof">
           {{ session?.name || entry.title }}
         </DialogDescription>
       </DialogHeader>
-      <DialogBody v-if="more > 0">
-        <p v-if="more > 0" class="m-0 text-muted-foreground" data-testid="proof-ready-more">
-          {{ t('common.moreWaiting.status', { count: more }) }}
-        </p>
-      </DialogBody>
       <DialogFooter>
+        <template v-if="more > 0" #start>
+          <span data-testid="proof-ready-more">{{
+            t('common.moreWaiting.status', { count: more })
+          }}</span>
+        </template>
         <Button
-          :aria-keyshortcuts="formatShortcut('prompt.hide')"
+          :kbd="formatShortcut('prompt.hide')"
           variant="dialog"
           size="kira-lg"
           data-testid="proof-ready-later"
           @click="emit('hide')"
         >
           {{ t('common.later.label') }}
-          <Kbd>{{ formatShortcut('prompt.hide') }}</Kbd>
         </Button>
         <Button
           variant="dialog-primary"
-          :aria-keyshortcuts="formatShortcut('form.submit')"
+          :kbd="formatShortcut('form.submit')"
           size="kira-lg"
           data-testid="proof-ready-open"
           @click="openWindow()"
         >
           {{ t('common.action.open.label') }}
-          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

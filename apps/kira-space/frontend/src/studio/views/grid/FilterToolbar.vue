@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { SortSpec } from '@shared/domain/queries';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { useFocus } from '@vueuse/core';
@@ -212,6 +213,7 @@ function applyFromHistory(where: string | null, orderBy: SortSpec | null): void 
   </div>
   <div class="flex-1 min-w-0">
     <AutocompleteField
+      :aria-label="t('studio.grid.filter.where.label')"
       v-model="whereText"
       class="w-full"
       prefix="WHERE"
@@ -229,6 +231,7 @@ function applyFromHistory(where: string | null, orderBy: SortSpec | null): void 
   </div>
   <div class="w-56 shrink-0">
     <AutocompleteField
+      :aria-label="t('studio.grid.filter.orderBy.label')"
       v-model="orderByText"
       class="w-full"
       prefix="ORDER BY"
@@ -243,14 +246,11 @@ function applyFromHistory(where: string | null, orderBy: SortSpec | null): void 
       @blur="applyOrderBy"
     />
   </div>
-  <Tooltip>
-    <TooltipTrigger as-child>
-      <Button variant="toolbar" size="kira" @click="onClear">{{
-        t('common.action.clear.label')
-      }}</Button>
-    </TooltipTrigger>
-    <TooltipContent>{{ t('studio.common.clearFilters.tooltip') }}</TooltipContent>
-  </Tooltip>
+  <TextTooltip :text="t('studio.common.clearFilters.tooltip')">
+    <Button variant="toolbar" size="kira" @click="onClear"
+      ><CodiconIcon :name="ICON.clearAll" :size="13" />{{ t('common.action.clear.label') }}</Button
+    >
+  </TextTooltip>
   <ToolbarSeparator />
   <div ref="columnFilterWrap" class="flex w-48 shrink-0 items-center gap-1.5">
     <SearchField

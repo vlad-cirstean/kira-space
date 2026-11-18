@@ -6,14 +6,23 @@ import {
 } from '@shared/domain/connection';
 import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Checkbox } from '@theme/components/ui/checkbox';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { formatCount } from '@workbench/behaviour/format';
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
 import { schemaDialectFor } from '../../state/schemas';
-import CheckboxRow from './CheckboxRow.vue';
+
+const connectionReadonlyId = useId();
+const connectionAutoExplainId = useId();
 
 // Read-only, auto-explain, the command throttle and the expensive query threshold.
 const props = defineProps<{ errorFor: (pointer: string) => string | undefined }>();
@@ -65,31 +74,50 @@ function setThrottle(value: string): void {
   const n = Number.parseFloat(value);
   file.value.throttle_per_sec = Number.isNaN(n) ? 0 : n;
 }
+const idBase = useId();
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 p-3" data-testid="connection-section-advanced">
-    <CheckboxRow
-      :model-value="file.read_only ?? false"
-      :label="t('common.state.readOnly.status')"
-      :description="t('studio.project.connectionDialog.readOnly.description')"
-      testid="connection-readonly"
-      @update:model-value="(v) => (file.read_only = v)"
-    />
-    <CheckboxRow
-      v-if="isSqlKind"
-      :model-value="file.auto_explain ?? false"
-      :label="t('studio.project.connectionDialog.autoExplain.label')"
-      :description="t('studio.project.connectionDialog.autoExplain.description')"
-      testid="connection-auto-explain"
-      @update:model-value="(v) => (file.auto_explain = v)"
-    />
+  <div class="flex flex-col gap-3" data-testid="connection-section-advanced">
+    <Field orientation="horizontal">
+      <Checkbox
+        :id="connectionReadonlyId"
+        :model-value="file.read_only ?? false"
+        data-testid="connection-readonly"
+        @update:model-value="(v) => (file.read_only = v === true)"
+      />
+      <FieldContent>
+        <FieldLabel :for="connectionReadonlyId">{{ t('common.state.readOnly.status') }}</FieldLabel>
+        <FieldDescription>{{
+          t('studio.project.connectionDialog.readOnly.description')
+        }}</FieldDescription>
+      </FieldContent>
+    </Field>
+    <Field v-if="isSqlKind" orientation="horizontal">
+      <Checkbox
+        :id="connectionAutoExplainId"
+        :model-value="file.auto_explain ?? false"
+        data-testid="connection-auto-explain"
+        @update:model-value="(v) => (file.auto_explain = v === true)"
+      />
+      <FieldContent>
+        <FieldLabel :for="connectionAutoExplainId">{{
+          t('studio.project.connectionDialog.autoExplain.label')
+        }}</FieldLabel>
+        <FieldDescription>{{
+          t('studio.project.connectionDialog.autoExplain.description')
+        }}</FieldDescription>
+      </FieldContent>
+    </Field>
 
     <Field v-if="hasRowEstimate" class="flex-1">
-      <FieldLabel>{{ t('studio.settings.advanced.expensiveRows.label') }}</FieldLabel>
+      <FieldLabel :for="`${idBase}-connection-explain-threshold`">{{
+        t('studio.settings.advanced.expensiveRows.label')
+      }}</FieldLabel>
       <div class="flex items-center gap-1">
         <div class="w-40">
           <NumberStepperInput
+            :id="`${idBase}-connection-explain-threshold`"
             :min="EXPLAIN_THRESHOLD_ROWS_RANGE.min"
             :max="EXPLAIN_THRESHOLD_ROWS_RANGE.max"
             step="1000"
@@ -133,9 +161,12 @@ function setThrottle(value: string): void {
     </Field>
 
     <Field class="flex-1">
-      <FieldLabel>{{ t('studio.project.connectionDialog.throttle.label') }}</FieldLabel>
+      <FieldLabel :for="`${idBase}-connection-throttle`">{{
+        t('studio.project.connectionDialog.throttle.label')
+      }}</FieldLabel>
       <div class="w-24">
         <NumberStepperInput
+          :id="`${idBase}-connection-throttle`"
           :min="0"
           :max="CONNECTION_THROTTLE_RANGE.max"
           step="0.5"

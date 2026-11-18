@@ -2,20 +2,19 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import type { OpLogStatusFilter } from '../lib/opLog';
+import type { MenuItem } from '../state/contextMenu';
+import MenuItems from './MenuItems.vue';
 
 // The Operations panel's one toolbar row: filter text, status tabs (Running carries its count), the
 // optional facet dropdown, the app's own `default` slot content and Clear.
@@ -42,6 +41,28 @@ const statusFilterOptions = computed(() => [
     testid: 'ops-tab-running',
   },
   { value: 'error', label: t('workbench.opLog.errors.option'), testid: 'ops-tab-error' },
+]);
+
+const facetItems = computed<MenuItem[]>(() => [
+  {
+    type: 'item',
+    id: 'facet-all',
+    testId: 'ops-facet-all',
+    label: t('common.state.all.option'),
+    run: () => emit('update:facetValues', []),
+  },
+  { type: 'separator' },
+  ...(props.facet?.options ?? []).map(
+    (option): MenuItem => ({
+      type: 'checkbox',
+      id: `facet-${option.value}`,
+      testId: `ops-facet-${option.value}`,
+      label: option.label,
+      checked: props.facetValues.includes(option.value),
+      keepOpen: true,
+      run: () => toggleFacet(option.value),
+    }),
+  ),
 ]);
 
 function toggleFacet(value: string): void {
@@ -73,7 +94,7 @@ function toggleFacet(value: string): void {
     <DropdownMenu v-if="facet">
       <DropdownMenuTrigger as-child>
         <Button variant="toolbar" size="status" data-testid="ops-facet">
-          <CodiconIcon name="filter" :size="13" />
+          <CodiconIcon name="filter" :size="12" />
           {{ facet.label }}
           <Badge v-if="facetValues.length > 0" data-testid="ops-facet-count">{{
             facetValues.length
@@ -81,30 +102,14 @@ function toggleFacet(value: string): void {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <DropdownMenuItem data-testid="ops-facet-all" @select="emit('update:facetValues', [])">
-          {{ t('common.state.all.option') }}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuCheckboxItem
-          v-for="option in facet.options"
-          :key="option.value"
-          :model-value="facetValues.includes(option.value)"
-          :data-testid="`ops-facet-${option.value}`"
-          @select.prevent
-          @update:model-value="toggleFacet(option.value)"
-        >
-          {{ option.label }}
-        </DropdownMenuCheckboxItem>
+        <MenuItems :items="facetItems" />
       </DropdownMenuContent>
     </DropdownMenu>
     <slot />
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button class="ml-auto" variant="dialog" size="kira-lg" @click="emit('clear')">{{
-          t('common.action.clear.label')
-        }}</Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ clearHint }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip :text="clearHint">
+      <Button class="ml-auto" variant="toolbar" size="kira" @click="emit('clear')"
+        ><CodiconIcon name="clear-all" :size="13" />{{ t('common.action.clear.label') }}</Button
+      >
+    </TextTooltip>
   </div>
 </template>

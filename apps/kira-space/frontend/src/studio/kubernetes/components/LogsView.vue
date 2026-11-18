@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { newUuid } from '@shared/ids';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Toggle } from '@theme/components/ui/toggle';
@@ -39,6 +41,9 @@ const logKey = (field: string): string =>
   `kubernetes:logs:${props.clusterId}/${props.namespace}/${props.pod}:${field}`;
 const container = useKeptState(() => logKey('container'), '');
 const previous = ref(false);
+const TAIL_ITEMS = computed(() =>
+  TAILS.map((n) => ({ value: String(n), label: tailLabel(n), testid: `kube-logs-tail-${n}` })),
+);
 const tail = ref<number>(1000);
 const timestamps = ref(false);
 const follow = ref(true);
@@ -168,9 +173,10 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
 
 <template>
   <div class="flex h-full min-h-0 flex-col" data-testid="kube-logs">
-    <ViewToolbar class="flex-wrap">
+    <ViewToolbar class="h-auto min-h-bar flex-wrap py-1">
       <NativeSelect
         v-model="container"
+        size="kira"
         :aria-label="t('kubernetes.logs.container.label')"
         data-testid="kube-logs-container"
       >
@@ -181,13 +187,14 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
       <Toggle v-model="previous" size="kira" data-testid="kube-logs-previous">{{
         t('common.action.previous.label')
       }}</Toggle>
-      <NativeSelect
-        v-model="tail"
+      <SecondaryTabs
+        variant="segmented"
         :aria-label="t('docker.logs.tail.aria')"
         data-testid="kube-logs-tail"
-      >
-        <option v-for="n in TAILS" :key="n" :value="n">{{ tailLabel(n) }}</option>
-      </NativeSelect>
+        :model-value="String(tail)"
+        :items="TAIL_ITEMS"
+        @update:model-value="(v) => (tail = Number(v))"
+      />
       <Toggle v-model="timestamps" size="kira" data-testid="kube-logs-timestamps">{{
         t('docker.logs.timestamps.label')
       }}</Toggle>
@@ -242,9 +249,7 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
         size="kira"
         data-testid="kube-logs-reconnect"
         @click="open"
-        >{{
-          t('studio.common.reconnect.label')
-        }}</Button
+        ><CodiconIcon name="plug" :size="13" />{{ t('studio.common.reconnect.label') }}</Button
       >
     </div>
   </div>

@@ -9,6 +9,7 @@ import {
   DialogBody,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -22,7 +23,7 @@ import { refDebounced } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import QueryState from '@workbench/components/QueryState.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import { errorText } from '../../bridge/codedError';
 import { useAutomationsModule } from '../module';
 import { useScriptTabs } from '../scriptTabs';
@@ -40,6 +41,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ close: [] }>();
 const ctx = useAutomationsModule();
+const promptId = useId();
 const scriptTabs = useScriptTabs();
 
 const script = computed(() => ctx.scripts.records().find((s) => s.id === props.scriptId) ?? null);
@@ -161,7 +163,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
             ? t('automations.dialog.run.title', { name: script.name })
             : t('automations.dialog.run.untitled.title')
         }}</DialogTitle>
-        <SmartBadge v-if="isSmart" />
+        <DialogDescription v-if="isSmart"><SmartBadge /></DialogDescription>
       </DialogHeader>
 
       <DialogBody>
@@ -177,7 +179,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
           />
 
           <Field v-if="isSmart && pv" data-testid="run-prompt">
-            <FieldLabel>{{ t('common.prompt.label') }}</FieldLabel>
+            <FieldLabel :for="oneOff === null ? undefined : promptId">{{
+              t('common.prompt.label')
+            }}</FieldLabel>
             <template v-if="oneOff === null">
               <CodeBlock data-testid="run-prompt-text">
                 <VarText :parts="promptParts" />
@@ -194,10 +198,10 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
             </template>
             <template v-else>
               <Textarea
+                :id="promptId"
+                class="min-h-32 max-h-90 resize-y font-data"
                 :model-value="oneOff"
-                rows="6"
                 spellcheck="false"
-                class="field-sizing-fixed min-h-32 resize-y font-data leading-normal"
                 data-testid="run-prompt-input"
                 @update:model-value="(v) => (oneOff = String(v))"
               />
@@ -214,9 +218,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
                 <FieldDescription>{{ t('automations.dialog.run.notSaved.hint') }}</FieldDescription>
               </div>
             </template>
-            <FieldLabel class="mt-1 text-muted-foreground">{{
-              t('automations.dialog.run.suffix.label')
-            }}</FieldLabel>
+          </Field>
+          <Field v-if="isSmart && pv">
+            <FieldLabel>{{ t('automations.dialog.run.suffix.label') }}</FieldLabel>
             <CodeBlock class="text-muted-foreground" data-testid="run-suffix">{{
               pv.suffix
             }}</CodeBlock>

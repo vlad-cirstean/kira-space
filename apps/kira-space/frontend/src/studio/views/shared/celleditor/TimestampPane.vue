@@ -1,15 +1,11 @@
 <script setup lang="ts">
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Input } from '@theme/components/ui/input';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipDisabledTrigger,
-  TooltipTrigger,
-} from '@theme/components/ui/tooltip';
+import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useFocus } from '@vueuse/core';
 import { computed, nextTick, ref, watch } from 'vue';
@@ -120,11 +116,11 @@ watch(calendarOpen, (open) => {
                 reading.local
               }}</TimestampReading
             >
-            <span class="opacity-50">·</span>
+            <span class="text-subtle">·</span>
             <TimestampReading :subtle="zone !== 'utc'" data-testid="cell-editor-timestamp-utc">{{
               reading.utc
             }}</TimestampReading>
-            <span class="opacity-50">·</span>
+            <span class="text-subtle">·</span>
             <TimestampReading subtle data-testid="cell-editor-timestamp-relative">{{
               reading.relative
             }}</TimestampReading>
@@ -145,23 +141,21 @@ watch(calendarOpen, (open) => {
         @update:model-value="(v) => setZone(v)"
       />
       <div class="flex-1 min-w-0">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <TooltipDisabledTrigger class="w-full">
-              <Input
-                :model-value="fieldText"
-                :disabled="readonly"
-                size="kira"
-                class="w-full"
-                data-testid="cell-editor-timestamp-field"
-                @update:model-value="onFieldInput(String($event))"
-              />
-            </TooltipDisabledTrigger>
-          </TooltipTrigger>
-          <TooltipContent>{{
-            t('studio.cellEditor.timestamp.field.tooltip', { format: FIELD_PATTERN })
-          }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip
+          :text="t('studio.cellEditor.timestamp.field.tooltip', { format: FIELD_PATTERN })"
+        >
+          <TooltipDisabledTrigger class="w-full">
+            <Input
+              :aria-label="t('studio.cellEditor.timestamp.field.label')"
+              :model-value="fieldText"
+              :disabled="readonly"
+              size="kira"
+              class="w-full"
+              data-testid="cell-editor-timestamp-field"
+              @update:model-value="onFieldInput(String($event))"
+            />
+          </TooltipDisabledTrigger>
+        </TextTooltip>
       </div>
       <Popover :open="calendarOpen" @update:open="calendarOpen = $event">
         <span ref="calendarAnchorRef" class="relative shrink-0">
@@ -178,7 +172,8 @@ watch(calendarOpen, (open) => {
         </span>
         <PopoverContent
           align="start"
-          class="w-56 gap-0 p-0"
+          flush
+          class="w-56"
           data-testid="cell-editor-timestamp-calendar-popover"
         >
           <DateTimePicker :model-value="pickerDate" :zone="zone" @update:model-value="onPick" />

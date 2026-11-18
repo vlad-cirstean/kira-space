@@ -18,7 +18,7 @@ import { computed, useTemplateRef } from 'vue';
 // overwhelming majority of sites use the same string for both); `ariaLabel` is an escape hatch for
 // the few sites whose accessible name and tooltip text genuinely differ (a static aria-label next
 // to a dynamic tooltip). The default slot overrides the tooltip body for a site whose tooltip is
-// richer than plain text/an interpolation. Every other attribute (`data-testid`, `@click`,
+// richer than plain text/an interpolation. The `badge` slot draws over the icon (a status dot). Every other attribute (`data-testid`, `@click`,
 // `disabled`, extra classes) falls through to the Button via $attrs — inheritAttrs is off because
 // this component has no single root element to inherit onto.
 defineOptions({ inheritAttrs: false });
@@ -34,10 +34,12 @@ withDefaults(
     size?: ButtonVariants['size'];
     /** `aria-pressed`; the toolbar variant draws the pressed look from it. */
     pressed?: boolean;
-    /** Colours the icon for a state: `ok` (done, on) or `error`. */
-    tone?: 'ok' | 'error';
+    /** Colours the icon for a state: `ok` (done, on), `warn` or `error`. */
+    tone?: 'ok' | 'warn' | 'error' | 'info';
     /** Shortcut text (callers format it), shown as a `Kbd` after the label. */
     kbd?: string;
+    /** `data-testid` of the tooltip body. */
+    contentTestid?: string;
   }>(),
   {
     ariaLabel: undefined,
@@ -48,6 +50,7 @@ withDefaults(
     pressed: undefined,
     tone: undefined,
     kbd: undefined,
+    contentTestid: undefined,
   },
 );
 
@@ -79,6 +82,7 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
           v-bind="$attrs"
         >
           <CodiconIcon :name="icon" :size="iconSize" />
+          <slot name="badge" />
         </Button>
       </TooltipDisabledTrigger>
       <Button
@@ -92,8 +96,11 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
         v-bind="$attrs"
       >
         <CodiconIcon :name="icon" :size="iconSize" />
+        <slot name="badge" />
       </Button>
     </TooltipTrigger>
-    <TooltipContent><slot>{{ label }}</slot><Kbd v-if="kbd">{{ kbd }}</Kbd></TooltipContent>
+    <TooltipContent :data-testid="contentTestid"
+      ><slot>{{ label }}</slot><Kbd v-if="kbd">{{ kbd }}</Kbd></TooltipContent
+    >
   </Tooltip>
 </template>

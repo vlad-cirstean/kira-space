@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import type { ImportFile } from '@shared/domain/memoryImport';
+import type { ImportFile, ImportFileState } from '@shared/domain/memoryImport';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { ICON } from '@theme/icons';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
+import { type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
 import { computed } from 'vue';
 import { FILE_KIND_LABEL, FILE_STATE_LABEL } from './importFormat';
@@ -13,19 +16,18 @@ import { FILE_KIND_LABEL, FILE_STATE_LABEL } from './importFormat';
 const props = defineProps<{ file: ImportFile; selected: boolean }>();
 const emit = defineEmits<{ select: []; retry: [] }>();
 
-const variant = computed(() => {
-  switch (props.file.state) {
-    case 'done':
-      return 'ok';
-    case 'failed':
-      return 'error';
-    case 'skipped':
-    case 'cancelled':
-      return 'default';
-    default:
-      return 'info';
-  }
-});
+const FILE_TONE: Record<ImportFileState, StatusTone> = {
+  pending: 'neutral',
+  skipped: 'neutral',
+  extracting: 'info',
+  extracted: 'info',
+  verifying: 'info',
+  finalizing: 'info',
+  done: 'ok',
+  failed: 'error',
+  cancelled: 'neutral',
+};
+const variant = computed(() => TONE_BADGE[FILE_TONE[props.file.state]]);
 </script>
 
 <template>
@@ -40,18 +42,18 @@ const variant = computed(() => {
       @click="emit('select')"
     >
       <span class="min-w-0 flex-1"><TruncatedText :text="file.relPath" /></span>
-      <span class="shrink-0 text-kira-sm text-muted-foreground" data-testid="import-file-kind">{{
+      <span :class="[rowMeta, 'shrink-0']" data-testid="import-file-kind">{{
         t(FILE_KIND_LABEL[file.kind])
       }}</span>
       <span
         v-if="file.verified > 0"
-        class="shrink-0 text-kira-sm text-muted-foreground"
+        :class="[rowMeta, 'shrink-0']"
         data-testid="import-file-verified"
         >{{
           t('memory.import.file.verified.label', { count: file.verified })
         }}</span
       >
-      <span v-if="file.state === 'done'" class="shrink-0 text-kira-sm text-muted-foreground">
+      <span v-if="file.state === 'done'" :class="[rowMeta, 'shrink-0']">
         +{{ file.added }}
         ~{{ file.updated }}
         ={{ file.noop }}
@@ -68,7 +70,7 @@ const variant = computed(() => {
       variant="toolbar"
       :data-testid="`import-retry-file-${file.relPath}`"
       @click="emit('retry')"
-    >
+      ><CodiconIcon :name="ICON.refresh" :size="13" />
       {{ t('common.action.retry.label') }}
     </Button>
   </div>

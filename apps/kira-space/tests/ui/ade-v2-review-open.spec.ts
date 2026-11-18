@@ -26,7 +26,9 @@ async function pressReview(page: Page): Promise<void> {
 
 async function pickerIds(page: Page): Promise<string[]> {
   return page
-    .locator(`${t('context-menu')} [data-testid^="menu-item-ade-review-pick-"]`)
+    .locator(
+      `${t('context-menu')} [data-testid^="menu-item-ade-review-pick-"]:not([data-testid$="-reason"])`,
+    )
     .evaluateAll((els) => els.map((e) => (e.getAttribute('data-testid') ?? '').slice(25)));
 }
 

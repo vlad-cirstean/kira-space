@@ -18,7 +18,6 @@ import { TransportError } from '@kira/git-ipc';
  */
 import InlineState from '@theme/components/InlineState.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -246,9 +245,9 @@ function onOpenFile(index: number, pinned: boolean): void {
     </div>
 
     <div v-if="expanded" class="min-h-30 max-h-80 flex flex-col">
-      <FieldError v-if="expansion?.detail.error.value" class="p-2">
+      <InlineState v-if="expansion?.detail.error.value" kind="error">
         {{ t('git.detail.loadError.error', { error: expansion.detail.error.value }) }}
-      </FieldError>
+      </InlineState>
       <FileTree
         v-else-if="expansion?.detail.detail.value"
         :files="expansion.detail.detail.value.files"

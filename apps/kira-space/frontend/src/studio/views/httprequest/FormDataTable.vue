@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import type { HttpFormDataFieldState } from '@shared/domain/http';
 import { contentTypeForFilename } from '@shared/domain/objectStore';
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
 import { InputGroup, InputGroupTextarea } from '@theme/components/ui/input-group';
-import { NativeSelect } from '@theme/components/ui/native-select';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { formatBytes } from '@workbench/behaviour/format';
 import AutocompleteField from '@workbench/components/AutocompleteField.vue';
 import { templateToken } from '@workbench/editor/fieldCompletion';
+import { computed } from 'vue';
 import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import type { VariableSupport } from '../../api/state/variableCompletion';
 import { patchHttpRequestTabState } from '../../api/tabs';
@@ -59,6 +61,11 @@ function updateRow(index: number, patch: Partial<HttpFormDataFieldState>): void 
   patchHttpRequestTabState(props.tab.id, { formData: next });
 }
 
+const KIND_ITEMS = computed(() => [
+  { value: 'text', label: t('common.field.text.label'), testid: 'http-formdata-kind-text' },
+  { value: 'file', label: t('common.field.file.label'), testid: 'http-formdata-kind-file' },
+]);
+
 function onKindChange(index: number, value: unknown): void {
   updateRow(index, { kind: String(value) as 'text' | 'file' });
 }
@@ -98,6 +105,7 @@ function onClearFile(index: number): void {
     <template #value="{ row, update }">
       <div v-if="row.kind === 'text'" class="flex-1 min-w-0">
         <AutocompleteField
+          :aria-label="t('common.field.value.label')"
           v-if="variables"
           grow
           class="w-full"
@@ -112,6 +120,7 @@ function onClearFile(index: number): void {
         />
         <InputGroup v-else>
           <InputGroupTextarea
+            :aria-label="t('common.field.value.label')"
             :model-value="row.value"
             :placeholder="t('common.field.value.label')"
             data-testid="http-formdata-value"
@@ -123,36 +132,32 @@ function onClearFile(index: number): void {
     </template>
 
     <template #trailing="{ row, index }">
-      <NativeSelect
-        variant="bordered"
+      <SecondaryTabs
+        variant="choice"
+        :aria-label="t('common.field.kind.label')"
         data-testid="http-formdata-kind"
         :model-value="row.kind"
+        :items="KIND_ITEMS"
         @update:model-value="(v) => onKindChange(index, v)"
-      >
-        <option value="text">{{ t('common.field.text.label') }}</option>
-        <option value="file">{{ t('common.field.file.label') }}</option>
-      </NativeSelect>
+      />
       <template v-if="row.kind === 'file'">
         <Button
           variant="toolbar"
           size="kira"
           data-testid="http-formdata-choose-file"
           @click="onChooseFile(index)"
-        >
+          ><CodiconIcon name="folder-opened" :size="13" />
           {{ t('studio.http.body.chooseFile.label') }}
         </Button>
-        <Tooltip v-if="row.fileName">
-          <TooltipTrigger as-child>
-            <span
-              class="text-kira-sm text-muted-foreground whitespace-nowrap p-0"
-              data-testid="http-formdata-file-caption"
-            >
-              {{ row.fileName }}
-              ({{ formatBytes(row.fileSize) }})
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{{ row.path }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip v-if="row.fileName" :text="row.path"
+          ><span
+            class="text-kira-sm text-muted-foreground whitespace-nowrap p-0"
+            data-testid="http-formdata-file-caption"
+          >
+            {{ row.fileName }}
+            ({{ formatBytes(row.fileSize) }})
+          </span></TextTooltip
+        >
         <TooltipIconButton
           v-if="row.fileName"
           icon="close"
@@ -162,6 +167,7 @@ function onClearFile(index: number): void {
         />
         <div class="flex-1 min-w-0">
           <Input
+            :aria-label="t('studio.http.body.contentType.placeholder')"
             :model-value="row.contentType"
             :placeholder="t('studio.http.body.contentType.placeholder')"
             data-testid="http-formdata-content-type"

@@ -22,7 +22,6 @@ const edit = useInlineEdit({ source: () => props.name, commit: (text) => props.c
   <Input
     ref="input"
     :model-value="edit.text.value"
-    size="kira"
     :aria-label="label"
     :aria-invalid="edit.error.value ? true : undefined"
     :title="edit.error.value || undefined"

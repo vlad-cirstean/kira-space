@@ -35,6 +35,9 @@ export function loadReviewSession(codeRepoId: string): unknown | null {
   return tab?.state.reviewSession ?? null;
 }
 
+/** View-state key prefix of a repo's review mount (kept filter, selection, rows, scroll). */
+export const reviewKeepKey = (codeRepoId: string): string => `git:review:${codeRepoId}`;
+
 /** `review.session.save`'s native answer. `session: null` clears the stored resume point — the
  *  same "back to branch selection" gesture `clearTarget()` sends today. A no-op when the pinned
  *  tab does not exist yet, the same posture `loadReviewSession` takes (nothing to persist through,

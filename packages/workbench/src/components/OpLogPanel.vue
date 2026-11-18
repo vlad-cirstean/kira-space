@@ -5,13 +5,13 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import Spinner from '@theme/components/Spinner.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { tableHeadClass, tableHeadRowClass, tableRowClass } from '@theme/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { cn } from '@theme/lib/utils';
 import { useElementSize, useFocus, useIntervalFn } from '@vueuse/core';
@@ -329,7 +329,7 @@ function alignClass(column: OpLogColumn): string {
     </OpLogToolbar>
 
     <div v-if="loading" class="flex flex-col gap-px p-2" data-testid="ops-loading">
-      <Skeleton v-for="n in 4" :key="n" class="h-4.5" />
+      <Skeleton v-for="n in 4" :key="n" class="h-4 w-full" />
     </div>
     <div v-else-if="records.length === 0" class="flex-1 min-h-0">
       <EmptyState
@@ -341,8 +341,8 @@ function alignClass(column: OpLogColumn): string {
         data-testid="ops-no-match"
       >
         <Button
-          variant="dialog"
-          size="kira-lg"
+          variant="link"
+          size="inline"
           data-testid="ops-clear-filters"
           @click="emit('resetFilters')"
         >
@@ -394,8 +394,7 @@ function alignClass(column: OpLogColumn): string {
                   VIRTUAL_ROW_CLASS,
                   tableRowClass,
                   'group/row grid items-center gap-2 px-2 select-text h-4.5',
-                  entry.item.row.record.status === 'error' &&
-                    'bg-error/15 shadow-[inset_2px_0_0_var(--color-error)]',
+                  entry.item.row.record.status === 'error' && 'bg-error/15',
                 )
               "
               data-testid="op-row"
@@ -411,25 +410,22 @@ function alignClass(column: OpLogColumn): string {
             >
               <template v-for="column in fitted" :key="column.id">
                 <span v-if="column.id === 'status'" class="flex items-center gap-1 min-w-0">
-                  <Tooltip>
-                    <TooltipTrigger as-child>
-                      <span
-                        role="img"
-                        :aria-label="statusLabel(entry.item.row.record.status)"
-                        data-testid="op-status-icon"
-                        class="inline-flex shrink-0"
-                      >
-                        <Spinner v-if="entry.item.row.record.status === 'running'" label="" />
-                        <CodiconIcon
-                          v-else
-                          :name="STATUS_ICON[entry.item.row.record.status].icon"
-                          :size="13"
-                          :class="STATUS_ICON[entry.item.row.record.status].tone"
-                        />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>{{ statusLabel(entry.item.row.record.status) }}</TooltipContent>
-                  </Tooltip>
+                  <TextTooltip :text="statusLabel(entry.item.row.record.status)">
+                    <span
+                      role="img"
+                      :aria-label="statusLabel(entry.item.row.record.status)"
+                      data-testid="op-status-icon"
+                      class="inline-flex shrink-0"
+                    >
+                      <Spinner v-if="entry.item.row.record.status === 'running'" label="" />
+                      <CodiconIcon
+                        v-else
+                        :name="STATUS_ICON[entry.item.row.record.status].icon"
+                        :size="13"
+                        :class="STATUS_ICON[entry.item.row.record.status].tone"
+                      />
+                    </span>
+                  </TextTooltip>
                   <Badge
                     v-if="statusNote?.(entry.item.row.record)"
                     class="min-w-0 truncate px-0.5"
@@ -439,18 +435,17 @@ function alignClass(column: OpLogColumn): string {
                     }}</Badge
                   >
                 </span>
-                <Tooltip v-else-if="column.id === 'time'">
-                  <TooltipTrigger as-child>
-                    <span
-                      class="font-data tabular-nums whitespace-nowrap"
-                      data-testid="op-time-cell"
-                      >{{
-                        formatOpTime(entry.item.row.record.startedAt, now)
-                      }}</span
-                    >
-                  </TooltipTrigger>
-                  <TooltipContent>{{ timeTitle(entry.item.row.record) }}</TooltipContent>
-                </Tooltip>
+                <TextTooltip
+                  v-else-if="column.id === 'time'"
+                  :text="timeTitle(entry.item.row.record)"
+                  ><span
+                    class="font-data tabular-nums whitespace-nowrap"
+                    data-testid="op-time-cell"
+                    >{{
+                      formatOpTime(entry.item.row.record.startedAt, now)
+                    }}</span
+                  ></TextTooltip
+                >
                 <span
                   v-else-if="column.id === 'kind'"
                   class="truncate min-w-0 font-data text-muted-foreground"

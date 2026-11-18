@@ -35,9 +35,8 @@ const groups = computed(() => context.data.value?.groups ?? []);
         type="button"
         :class="
           cn(
-            rowVariants({ layout: 'menu' }),
+            rowVariants({ layout: 'menu', muted: fact.historical }),
             'h-auto w-full whitespace-normal py-1 text-left',
-            fact.historical && 'opacity-50',
           )
         "
         :data-testid="`memory-context-fact-${fact.id}`"

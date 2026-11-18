@@ -3,9 +3,11 @@ import { t } from '@theme/i18n';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { windowKey } from '@workbench/lib/window';
+import { useViewStateStore } from '@workbench/state/viewState';
 import { defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
 import { control } from '../bridge/control';
+import { reviewKeepKey } from '../repo/git/reviewSession';
 import { disposeGitTransport } from '../repo/git/transport';
 import { useFileTreeStore } from '../repo/state/fileTree';
 import { useRepoSearchStore } from '../repo/state/search';
@@ -141,6 +143,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     disposeGitTransport(repoId);
     useFileTreeStore().dropRepoTree(repoId);
     useRepoSearchStore().dropRepoSearch(repoId);
+    useViewStateStore().drop(`${reviewKeepKey(repoId)}:`);
     if (lastRepoKey.value === repoId) lastRepoKey.value = null;
     if (state.active === repoId) activateWorkspace(GENERAL_WORKSPACE);
   }

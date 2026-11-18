@@ -2,12 +2,12 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -145,12 +145,11 @@ async function onSetActive(id: string): Promise<void> {
       <RunState :state="runState" />
       <div class="flex items-center gap-1.5 shrink-0">
         <Button
-          variant="dialog-primary"
+          variant="toolbar"
           size="kira"
           data-testid="new-environment"
           @click="onNewEnvironment"
-        >
-          {{ t('studio.api.environments.new.label') }}
+          ><CodiconIcon name="add" :size="13" />{{ t('studio.api.environments.new.label') }}
         </Button>
       </div>
     </ViewToolbar>
@@ -158,15 +157,12 @@ async function onSetActive(id: string): Promise<void> {
     <Alert v-if="variablesStore.error" variant="error" strip data-testid="environments-error">
       <AlertDescription>{{ variablesStore.error }}</AlertDescription>
       <AlertAction>
-        <Button
-          variant="toolbar"
-          size="kira-icon"
-          :aria-label="t('common.action.dismiss.label')"
+        <TooltipIconButton
+          :icon="ICON.close"
+          :label="t('common.action.dismiss.label')"
           data-testid="environments-error-dismiss"
           @click="variablesStore.dismissError"
-        >
-          <CodiconIcon :name="ICON.close" :size="13" />
-        </Button>
+        />
       </AlertAction>
     </Alert>
 
@@ -186,20 +182,15 @@ async function onSetActive(id: string): Promise<void> {
             :data-id="env.id"
           >
             <span :class="colorMarkClass('dot', env.color)" data-testid="environment-color-dot" />
-            <Tooltip v-if="isFiltered">
-              <TooltipTrigger as-child>
-                <span
-                  class="flex cursor-grab items-center text-subtle"
-                  aria-hidden="true"
-                  data-testid="environment-grip"
-                >
-                  <CodiconIcon name="gripper" :size="13" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>{{
-                t('studio.api.environments.reorderBlocked.hint')
-              }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip v-if="isFiltered" :text="t('studio.api.environments.reorderBlocked.hint')"
+              ><span
+                class="flex cursor-grab items-center text-subtle"
+                aria-hidden="true"
+                data-testid="environment-grip"
+              >
+                <CodiconIcon name="gripper" :size="13" />
+              </span></TextTooltip
+            >
             <button
               v-else
               type="button"
@@ -209,16 +200,13 @@ async function onSetActive(id: string): Promise<void> {
             >
               <CodiconIcon name="gripper" :size="13" />
             </button>
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <RadioGroupItem
-                  :value="env.id"
-                  :aria-label="t('studio.api.environments.active.aria', { name: env.name })"
-                  data-testid="environment-active"
-                />
-              </TooltipTrigger>
-              <TooltipContent>{{ t('studio.api.environments.active.tooltip') }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip :text="t('studio.api.environments.active.tooltip')">
+              <RadioGroupItem
+                :value="env.id"
+                :aria-label="t('studio.api.environments.active.aria', { name: env.name })"
+                data-testid="environment-active"
+              />
+            </TextTooltip>
             <span class="min-w-0 flex-1 truncate text-kira-md" data-testid="environment-name">{{
               env.name
             }}</span>
@@ -243,7 +231,7 @@ async function onSetActive(id: string): Promise<void> {
               size="kira"
               data-testid="environment-edit-variables"
               @click="onEditVariables(env.id, env.name)"
-            >
+              ><CodiconIcon :name="ICON.variables" :size="13" />
               {{ t('studio.api.environments.editVariables.label') }}
             </Button>
             <Button
@@ -251,7 +239,7 @@ async function onSetActive(id: string): Promise<void> {
               size="kira"
               data-testid="environment-edit"
               @click="variablesDialogStore.open(env.file, 'environment')"
-            >
+              ><CodiconIcon :name="ICON.environments" :size="13" />
               {{ t('studio.api.variablesDialog.editEnvironment.label') }}
             </Button>
             <TooltipIconButton

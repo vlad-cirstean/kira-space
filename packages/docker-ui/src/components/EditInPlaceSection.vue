@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
 import { NativeSelect } from '@theme/components/ui/native-select';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { computed, provide, ref } from 'vue';
 import { resourceMode, toNumber } from '../lib/editDiff';
@@ -61,6 +63,14 @@ function setCpus(v: string | number): void {
   res.value.nanoCpus = n > 0 ? Math.round(n * 1e9) : 0;
 }
 
+const RESTART_ITEMS = computed(() =>
+  RESTARTS.map((r) => ({
+    value: r,
+    label: r,
+    disabled: props.disabled,
+    testid: `docker-edit-restart-${r}`,
+  })),
+);
 function setRestart(v: unknown): void {
   ip.value.restart.name = v as RestartPolicyName;
   if (ip.value.restart.name !== 'on-failure') ip.value.restart.maxRetries = 0;
@@ -100,16 +110,17 @@ const netChanged = (name: string): boolean => {
 </script>
 
 <template>
-  <div class="grid grid-cols-1 gap-3 @2xl:grid-cols-2" data-testid="docker-edit-inplace">
+  <div class="flex flex-col gap-3" data-testid="docker-edit-inplace">
     <EditField
       field="name"
       :label="t('common.field.name.label')"
       mode="now"
       :changed="ip.name !== baseIp.name"
       :error="errors.name"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         v-model="ip.name"
         :disabled="disabled"
         data-testid="docker-edit-name"
@@ -123,19 +134,22 @@ const netChanged = (name: string): boolean => {
       mode="now"
       :changed="restartChanged"
       :error="errors.restart"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <div class="flex items-center gap-2">
-        <NativeSelect
+        <SecondaryTabs
+          :id="id"
+          variant="choice"
+          size="kira-lg"
+          :aria-label="t('docker.field.restartPolicy.label')"
           :model-value="ip.restart.name"
-          :disabled="disabled"
+          :items="RESTART_ITEMS"
           data-testid="docker-edit-restart"
           @update:model-value="setRestart"
           v-bind="invalid"
-        >
-          <option v-for="r in RESTARTS" :key="r" :value="r">{{ r }}</option>
-        </NativeSelect>
+        />
         <Input
+          :aria-label="t('docker.edit.retries.placeholder')"
           v-if="ip.restart.name === 'on-failure'"
           type="number"
           min="0"
@@ -157,9 +171,10 @@ const netChanged = (name: string): boolean => {
       :changed="cpuChanged"
       :error="err('nanoCpus')"
       :description="cpuHint"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         type="number"
         min="0"
         step="0.1"
@@ -178,9 +193,10 @@ const netChanged = (name: string): boolean => {
         :mode="mode('cpuQuota')"
         :changed="changed('cpuQuota')"
         :error="err('cpuQuota')"
-        v-slot="{ invalid }"
+        v-slot="{ invalid, id }"
       >
         <Input
+          :id="id"
           type="number"
           min="0"
           :model-value="res.cpuQuota"
@@ -196,9 +212,10 @@ const netChanged = (name: string): boolean => {
         :mode="mode('cpuPeriod')"
         :changed="changed('cpuPeriod')"
         :error="err('cpuPeriod')"
-        v-slot="{ invalid }"
+        v-slot="{ invalid, id }"
       >
         <Input
+          :id="id"
           type="number"
           min="0"
           :model-value="res.cpuPeriod"
@@ -216,9 +233,10 @@ const netChanged = (name: string): boolean => {
       :mode="mode('cpuShares')"
       :changed="changed('cpuShares')"
       :error="err('cpuShares')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         type="number"
         min="0"
         :placeholder="t('common.state.default.option')"
@@ -237,9 +255,10 @@ const netChanged = (name: string): boolean => {
       :changed="changed('cpusetCpus')"
       :error="err('cpusetCpus')"
       :description="cpusetHint"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         v-model="res.cpusetCpus"
         :placeholder="t('docker.edit.cpusetCpus.example')"
         :disabled="disabled"
@@ -254,9 +273,10 @@ const netChanged = (name: string): boolean => {
       :mode="mode('cpusetMems')"
       :changed="changed('cpusetMems')"
       :error="err('cpusetMems')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         v-model="res.cpusetMems"
         :placeholder="t('docker.edit.cpusetMems.example')"
         :disabled="disabled"
@@ -271,9 +291,10 @@ const netChanged = (name: string): boolean => {
       :mode="mode('memory')"
       :changed="changed('memory')"
       :error="err('memory')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <EditSize
+        :id="id"
         v-model="res.memory"
         :disabled="disabled"
         testid="docker-edit-memory"
@@ -287,9 +308,10 @@ const netChanged = (name: string): boolean => {
       :mode="mode('memoryReservation')"
       :changed="changed('memoryReservation')"
       :error="err('memoryReservation')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <EditSize
+        :id="id"
         v-model="res.memoryReservation"
         :disabled="disabled"
         testid="docker-edit-reservation"
@@ -304,9 +326,10 @@ const netChanged = (name: string): boolean => {
       :changed="changed('memorySwap')"
       :error="err('memorySwap')"
       :description="t('docker.edit.swap.hint')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <EditSize
+        :id="id"
         v-model="res.memorySwap"
         allow-unlimited
         :disabled="disabled"
@@ -321,9 +344,10 @@ const netChanged = (name: string): boolean => {
       :mode="mode('blkioWeight')"
       :changed="changed('blkioWeight')"
       :error="err('blkioWeight')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         type="number"
         min="0"
         :placeholder="t('common.state.default.option')"
@@ -341,9 +365,10 @@ const netChanged = (name: string): boolean => {
       :mode="mode('pidsLimit')"
       :changed="changed('pidsLimit')"
       :error="err('pidsLimit')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         type="number"
         min="0"
         :placeholder="t('docker.edit.unlimited.label')"
@@ -357,6 +382,7 @@ const netChanged = (name: string): boolean => {
 
     <EditField
       field="networks"
+      multi
       :label="t('docker.field.networks.label')"
       mode="now"
       :changed="
@@ -366,7 +392,6 @@ const netChanged = (name: string): boolean => {
       :description="
         networkLocked ? t('docker.edit.networkLocked.hint') : t('docker.edit.aliasesChange.hint')
       "
-      class="@2xl:col-span-2"
       v-slot="{ invalid }"
     >
       <div class="flex flex-col gap-1.5" data-testid="docker-edit-networks">
@@ -380,6 +405,7 @@ const netChanged = (name: string): boolean => {
           <span class="w-40 shrink-0 truncate font-data">{{ n.name }}</span>
           <Input
             class="min-w-0 flex-1"
+            :aria-label="t('docker.edit.aliases.placeholder')"
             :placeholder="t('docker.edit.aliases.placeholder')"
             :model-value="n.aliases.join(', ')"
             :disabled="disabled || networkLocked || noAliases(n.name)"
@@ -387,12 +413,11 @@ const netChanged = (name: string): boolean => {
             @change="setAliases(n.name, ($event.target as HTMLInputElement).value)"
             v-bind="invalid"
           />
-          <Tooltip v-if="n.ipv4 || n.ipv6">
-            <TooltipTrigger as-child>
-              <span class="shrink-0 font-data text-muted-foreground">{{ n.ipv4 || n.ipv6 }}</span>
-            </TooltipTrigger>
-            <TooltipContent>{{ t('docker.edit.staticAddress.tooltip') }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip v-if="n.ipv4 || n.ipv6" :text="t('docker.edit.staticAddress.tooltip')"
+            ><span class="shrink-0 font-data text-muted-foreground">{{
+              n.ipv4 || n.ipv6
+            }}</span></TextTooltip
+          >
           <TooltipIconButton
             icon="trash"
             :label="t('docker.edit.detach.tooltip')"
@@ -403,8 +428,9 @@ const netChanged = (name: string): boolean => {
         </div>
         <div class="flex items-center gap-2">
           <NativeSelect
+            :aria-label="t('docker.edit.networkToAdd.label')"
             v-model="toAdd"
-            class="w-48"
+            class="w-40"
             :disabled="disabled || networkLocked"
             data-testid="docker-edit-network-select"
           >
@@ -417,9 +443,7 @@ const netChanged = (name: string): boolean => {
             :disabled="disabled || networkLocked || !toAdd"
             data-testid="docker-edit-network-add"
             @click="addNetwork"
-            >{{
-              t('docker.edit.attach.label')
-            }}</Button
+            ><CodiconIcon name="plug" :size="13" />{{ t('docker.edit.attach.label') }}</Button
           >
         </div>
       </div>

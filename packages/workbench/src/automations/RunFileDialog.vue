@@ -10,12 +10,12 @@ import {
   DialogBody,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field, FieldError } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
@@ -245,7 +245,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
     >
       <DialogHeader close-testid="run-file-close">
         <DialogTitle>{{ title }}</DialogTitle>
-        <SmartBadge v-if="isSmart" />
+        <DialogDescription v-if="isSmart"><SmartBadge /></DialogDescription>
       </DialogHeader>
       <ViewToolbar v-if="view?.editable" class="px-3">
         <SecondaryTabs
@@ -347,9 +347,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
                       v-model="scheduleOn"
                       data-testid="script-schedule"
                     />
-                    <Label for="script-schedule">{{
+                    <FieldLabel for="script-schedule">{{
                       t('automations.schedule.enable.label')
-                    }}</Label>
+                    }}</FieldLabel>
                   </Field>
                   <ScheduleFields
                     v-if="schedule"
@@ -413,19 +413,22 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             </AlertAction>
           </Alert>
         </div>
-        <div
-          v-else-if="query.error.value"
-          class="text-kira-sm text-tone-red"
-          data-testid="run-file-error"
-        >
-          {{ errorText(query.error.value) }}
-        </div>
+        <Alert v-else-if="query.error.value" variant="error" data-testid="run-file-error">
+          <AlertDescription>{{ errorText(query.error.value) }}</AlertDescription>
+        </Alert>
       </DialogBody>
       <DialogFooter>
         <DialogClose as-child>
-          <Button variant="dialog-danger" size="kira-lg" data-testid="run-file-cancel">{{
-            draft.dirty.value ? t('common.action.discard.label') : t('common.action.close.label')
-          }}</Button>
+          <!-- conventions-allow N17: second footer action; one emphasised button rightmost (RD.2) -->
+          <Button
+            variant="dialog"
+            size="kira-lg"
+            data-dialog-dismiss
+            data-testid="run-file-cancel"
+            >{{
+              draft.dirty.value ? t('common.action.discard.label') : t('common.action.close.label')
+            }}</Button
+          >
         </DialogClose>
         <Button
           variant="dialog-primary"

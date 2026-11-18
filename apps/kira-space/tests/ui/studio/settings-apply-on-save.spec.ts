@@ -226,10 +226,13 @@ test('a cleared numeric field blocks Save instead of writing 0', async ({ relaun
 // P117 S2: a `:value`/`@change` NativeSelect bound alongside `useVModel({ passive: true })` shows
 // blank on open -- the passive vModel's own internal state overwrites the prop-driven value before
 // paint. The log-level field binds through `model-value`/`update:model-value` instead.
-test('the log-level select shows its real value on open (P117 S2)', async ({ relaunch }) => {
+test('the log-level choice shows its real value on open (P117 S2)', async ({ relaunch }) => {
   const { window: page } = await relaunch();
   await openSettings(page);
 
   await page.click('[data-testid="settings-section-Advanced"]');
-  await expect(page.locator('[data-testid="settings-git-log-level"]')).toHaveValue('info');
+  await expect(page.locator('[data-testid="settings-git-log-level-info"]')).toHaveAttribute(
+    'data-state',
+    'on',
+  );
 });

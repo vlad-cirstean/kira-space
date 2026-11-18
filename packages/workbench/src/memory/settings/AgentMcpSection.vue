@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import CodeBlock from '@theme/components/CodeBlock.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Card } from '@theme/components/ui/card';
 import { FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
@@ -41,14 +41,9 @@ const message = computed(() => {
           <AlertDescription>{{ statusMessage }}</AlertDescription>
         </Alert>
       </template>
-      <Card
-        v-if="command"
-        class="font-data whitespace-pre-wrap break-all select-all text-kira-sm leading-normal"
-        data-testid="memory-mcp-command"
-        >{{
-          command
-        }}</Card
-      >
+      <CodeBlock v-if="command" class="select-all" data-testid="memory-mcp-command">{{
+        command
+      }}</CodeBlock>
     </QueryState>
     <FieldDescription v-if="command">
       <CatalogText k="memory.mcp.command.hint">
@@ -76,7 +71,7 @@ const message = computed(() => {
         data-testid="memory-mcp-install"
         @click="install.mutate()"
       >
-        <CodiconIcon name="plug" :size="12" /> {{ t('common.registerWithAgent.label') }}
+        <CodiconIcon name="plug" :size="13" /> {{ t('common.registerWithAgent.label') }}
       </Button>
     </div>
   </FieldSet>

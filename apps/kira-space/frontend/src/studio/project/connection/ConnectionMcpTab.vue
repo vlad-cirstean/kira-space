@@ -12,19 +12,29 @@ import {
   hasWriteConsole,
   statementTimeoutEnforcementOf,
 } from '@shared/domain/dbmcp';
+import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Checkbox } from '@theme/components/ui/checkbox';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { type MessageKey, t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
 import { formatCount } from '@workbench/behaviour/format';
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
-import CheckboxRow from './CheckboxRow.vue';
 import ConnectionMcpMasked from './ConnectionMcpMasked.vue';
 import ConnectionMcpReview from './ConnectionMcpReview.vue';
 import ConnectionMcpTables from './ConnectionMcpTables.vue';
+
+const connectionMcpEnabledId = useId();
+const connectionMcpAutoExplainId = useId();
 
 // What an AI client may do through the database MCP server. A key left out takes its default.
 const props = defineProps<{
@@ -165,48 +175,63 @@ const timeoutThrottled = computed(
     (file.value.throttle_per_sec ?? 0) > 0 &&
     (timeoutValue.value === 0 || timeoutValue.value >= 28),
 );
+const idBase = useId();
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 p-3" data-testid="connection-section-mcp">
-    <CheckboxRow
-      :model-value="enabled"
-      :label="t('studio.project.connectionDialog.mcp.expose.label')"
-      :description="t('studio.project.connectionDialog.mcp.expose.description')"
-      testid="connection-mcp-enabled"
-      @update:model-value="(v) => setMcp({ enabled: v })"
-    />
+  <div class="flex flex-col gap-3" data-testid="connection-section-mcp">
+    <Field orientation="horizontal">
+      <Checkbox
+        :id="connectionMcpEnabledId"
+        :model-value="enabled"
+        data-testid="connection-mcp-enabled"
+        @update:model-value="(v) => setMcp({ enabled: v === true })"
+      />
+      <FieldContent>
+        <FieldLabel :for="connectionMcpEnabledId">{{
+          t('studio.project.connectionDialog.mcp.expose.label')
+        }}</FieldLabel>
+        <FieldDescription>{{
+          t('studio.project.connectionDialog.mcp.expose.description')
+        }}</FieldDescription>
+      </FieldContent>
+    </Field>
 
     <Field class="flex-1">
-      <FieldLabel
-        >{{ t('common.field.description.label') }}
-        <span class="text-subtle"
-          >— {{ t('studio.project.connectionDialog.mcp.descriptionNote.label') }}</span
-        ></FieldLabel
-      >
+      <FieldLabel :for="`${idBase}-connection-mcp-description`">{{
+        t('common.field.description.label')
+      }}</FieldLabel>
       <Textarea
+        :id="`${idBase}-connection-mcp-description`"
+        class="font-data"
         :model-value="mcp.description ?? ''"
         :aria-invalid="props.errorFor('/mcp/description') ? true : undefined"
-        class="font-data"
-        rows="2"
         maxlength="1000"
         :disabled="!enabled"
         data-testid="connection-mcp-description"
         @update:model-value="(v) => setMcp({ description: String(v) })"
         @keydown="wrapSelectionOnType"
       />
+      <FieldDescription>{{
+        t('studio.project.connectionDialog.mcp.descriptionNote.label')
+      }}</FieldDescription>
       <FieldError v-if="props.errorFor('/mcp/description')">{{
         props.errorFor('/mcp/description')
       }}</FieldError>
     </Field>
 
-    <CheckboxRow
-      :model-value="mcp.auto_explain ?? true"
-      :disabled="!enabled || !explainSupported"
-      :label="t('studio.project.connectionDialog.mcp.plan.label')"
-      testid="connection-mcp-auto-explain"
-      @update:model-value="(v) => setMcp({ auto_explain: v })"
-    />
+    <Field orientation="horizontal">
+      <Checkbox
+        :id="connectionMcpAutoExplainId"
+        :model-value="mcp.auto_explain ?? true"
+        :disabled="!enabled || !explainSupported"
+        data-testid="connection-mcp-auto-explain"
+        @update:model-value="(v) => setMcp({ auto_explain: v === true })"
+      />
+      <FieldLabel :for="connectionMcpAutoExplainId">{{
+        t('studio.project.connectionDialog.mcp.plan.label')
+      }}</FieldLabel>
+    </Field>
     <template v-if="enabled">
       <template v-if="rowCheck === 'plan'">
         <FieldDescription class="w-full" data-testid="connection-mcp-rows-who">
@@ -244,26 +269,25 @@ const timeoutThrottled = computed(
       >
         {{ t('studio.project.connectionDialog.mcp.rowsOff.body') }}
       </FieldDescription>
-      <FieldDescription v-else class="w-full" data-testid="connection-mcp-rows-none">
+      <InlineState kind="empty" v-else class="w-full" data-testid="connection-mcp-rows-none">
         {{ t('studio.project.connectionDialog.mcp.rowsNone.body') }}
-      </FieldDescription>
+      </InlineState>
     </template>
 
     <ConnectionMcpMasked :mcp="mcp" :kind="file.kind" :enabled="enabled" @change="setMcp" />
 
     <Field v-for="c in CLASSES" :key="c.cls" class="flex-1">
-      <FieldLabel
-        >{{ t(c.label) }}
-        <span class="text-subtle">— {{ t(c.note) }}</span></FieldLabel
-      >
+      <FieldLabel>{{ t(c.label) }}</FieldLabel>
       <SecondaryTabs
-        variant="segmented"
+        variant="choice"
         size="kira-lg"
+        :aria-label="t(c.label)"
         :model-value="mcp[c.cls] ?? c.fallback"
         :items="modeOptions(c.cls)"
         :data-testid="`connection-mcp-${c.cls}`"
         @update:model-value="(v) => setMcp({ [c.cls]: String(v) })"
       />
+      <FieldDescription>{{ t(c.note) }}</FieldDescription>
       <FieldDescription
         v-if="classNote(c.cls)"
         class="w-full"
@@ -319,9 +343,12 @@ const timeoutThrottled = computed(
     </template>
 
     <Field class="flex-1">
-      <FieldLabel>{{ t('studio.project.connectionDialog.mcp.timeoutLabel.label') }}</FieldLabel>
+      <FieldLabel :for="`${idBase}-connection-mcp-timeout`">{{
+        t('studio.project.connectionDialog.mcp.timeoutLabel.label')
+      }}</FieldLabel>
       <div class="w-24">
         <NumberStepperInput
+          :id="`${idBase}-connection-mcp-timeout`"
           :min="0"
           :max="CONNECTION_MCP_STATEMENT_TIMEOUT.max"
           step="1"

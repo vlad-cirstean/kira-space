@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import { pathTail } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipDisabledTrigger,
-  TooltipTrigger,
-} from '@theme/components/ui/tooltip';
+import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import RunState from '@theme/RunState.vue';
@@ -261,80 +257,68 @@ onUnmounted(() => {
           icon="debug-stop"
           :label="t('common.action.stop.label')"
           disabled-trigger
-          :class="{ 'text-error': running }"
+          :tone="running ? 'error' : undefined"
           data-testid="console-stop"
           :disabled="!running"
           @click="onStop"
         />
       </div>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <TooltipDisabledTrigger>
-            <Button
-              variant="dialog-primary"
-              size="kira"
-              data-testid="console-run-statement"
-              :pending="running || starting"
-              @click="runStatement"
-            >
-              <CodiconIcon name="play" :size="13" />
-              {{ t('common.action.run.label') }}
-            </Button>
-          </TooltipDisabledTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.console.run.tooltip') }}</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <TooltipDisabledTrigger>
-            <Button
-              variant="toolbar"
-              size="kira"
-              data-testid="console-run-all"
-              :disabled="runBlocked"
-              @click="runAll"
-            >
-              <CodiconIcon name="run-all" :size="13" />
-              {{ t('common.action.runAll.label') }}
-            </Button>
-          </TooltipDisabledTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.console.runAll.tooltip') }}</TooltipContent>
-      </Tooltip>
-      <Tooltip v-if="canFormat">
-        <TooltipTrigger as-child>
-          <TooltipDisabledTrigger>
-            <Button
-              variant="toolbar"
-              size="kira"
-              data-testid="console-format"
-              :disabled="!tab.state.text.trim()"
-              @click="onFormat"
-            >
-              <CodiconIcon name="indent" :size="13" />
-              {{ t('studio.console.format.label') }}
-            </Button>
-          </TooltipDisabledTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.console.format.tooltip') }}</TooltipContent>
-      </Tooltip>
-      <Tooltip v-if="dialect">
-        <TooltipTrigger as-child>
-          <TooltipDisabledTrigger>
-            <Button
-              variant="toolbar"
-              size="kira"
-              data-testid="console-explain"
-              :disabled="!canExplain || runBlocked"
-              @click="onExplain"
-            >
-              <CodiconIcon name="list-tree" :size="13" />
-              {{ t('studio.console.explain.label') }}
-            </Button>
-          </TooltipDisabledTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{{ explainTooltip }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="t('studio.console.run.tooltip')">
+        <TooltipDisabledTrigger>
+          <Button
+            variant="dialog-primary"
+            size="kira"
+            data-testid="console-run-statement"
+            :pending="running || starting"
+            @click="runStatement"
+          >
+            <CodiconIcon name="play" :size="13" />
+            {{ t('common.action.run.label') }}
+          </Button>
+        </TooltipDisabledTrigger>
+      </TextTooltip>
+      <TextTooltip :text="t('studio.console.runAll.tooltip')">
+        <TooltipDisabledTrigger>
+          <Button
+            variant="toolbar"
+            size="kira"
+            data-testid="console-run-all"
+            :disabled="runBlocked"
+            @click="runAll"
+          >
+            <CodiconIcon name="run-all" :size="13" />
+            {{ t('common.action.runAll.label') }}
+          </Button>
+        </TooltipDisabledTrigger>
+      </TextTooltip>
+      <TextTooltip v-if="canFormat" :text="t('studio.console.format.tooltip')"
+        ><TooltipDisabledTrigger>
+          <Button
+            variant="toolbar"
+            size="kira"
+            data-testid="console-format"
+            :disabled="!tab.state.text.trim()"
+            @click="onFormat"
+          >
+            <CodiconIcon name="indent" :size="13" />
+            {{ t('studio.console.format.label') }}
+          </Button>
+        </TooltipDisabledTrigger></TextTooltip
+      >
+      <TextTooltip v-if="dialect" :text="explainTooltip"
+        ><TooltipDisabledTrigger>
+          <Button
+            variant="toolbar"
+            size="kira"
+            data-testid="console-explain"
+            :disabled="!canExplain || runBlocked"
+            @click="onExplain"
+          >
+            <CodiconIcon name="list-tree" :size="13" />
+            {{ t('studio.console.explain.label') }}
+          </Button>
+        </TooltipDisabledTrigger></TextTooltip
+      >
       <ToolbarSeparator />
       <TooltipIconButton
         icon="layers"
@@ -350,21 +334,18 @@ onUnmounted(() => {
       />
       <ToolbarSeparator />
       <div class="relative">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Button
-              ref="savedMenuTriggerEl"
-              variant="toolbar"
-              size="kira"
-              data-testid="console-saved-toggle"
-              @click="savedMenuOpen = !savedMenuOpen"
-            >
-              <CodiconIcon name="bookmark" :size="13" />
-              {{ t('studio.console.savedMenu.title') }}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('studio.console.savedMenu.title') }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="t('studio.console.savedMenu.title')">
+          <Button
+            ref="savedMenuTriggerEl"
+            variant="toolbar"
+            size="kira"
+            data-testid="console-saved-toggle"
+            @click="savedMenuOpen = !savedMenuOpen"
+          >
+            <CodiconIcon name="bookmark" :size="13" />
+            {{ t('studio.console.savedMenu.title') }}
+          </Button>
+        </TextTooltip>
         <Popover :open="savedMenuOpen" @update:open="(v) => (savedMenuOpen = v)">
           <PopoverAnchor
             :reference="(savedMenuTriggerEl?.$el as HTMLElement) ?? undefined"
@@ -383,11 +364,7 @@ onUnmounted(() => {
         @click="onToggleSearch"
       />
       <span class="ml-auto" />
-      <Tooltip :disabled="true">
-        <TooltipTrigger as-child>
-          <RunState :state="runState" />
-        </TooltipTrigger>
-      </Tooltip>
+      <RunState :state="runState" />
     </ViewToolbar>
 
     <Alert

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -66,11 +67,11 @@ function openRepos(): void {
     <DialogContent size="sm" data-testid="ade-repo-gate">
       <DialogHeader>
         <DialogTitle>{{ t('space.ade.repoGate.title') }}</DialogTitle>
+        <DialogDescription>{{
+          t('space.ade.repoGate.body', { task: card?.title ?? '' })
+        }}</DialogDescription>
       </DialogHeader>
       <DialogBody>
-        <FieldDescription>{{
-          t('space.ade.repoGate.body', { task: card?.title ?? '' })
-        }}</FieldDescription>
         <div v-if="registered" class="flex flex-col gap-2">
           <ProjectPicker
             v-if="projects.options.value.length > 0"
@@ -89,14 +90,11 @@ function openRepos(): void {
               data-testid="ade-repo-gate-chip"
             >
               <AdeRepoTag :code-repo-id="id" :label="labelOf(id)" />
-              <Button
-                variant="toolbar"
-                size="kira-icon"
-                :aria-label="t('space.ade.repoGate.remove.aria', { repo: labelOf(id) })"
+              <TooltipIconButton
+                icon="close"
+                :label="t('space.ade.repoGate.remove.aria', { repo: labelOf(id) })"
                 @click="drop(id)"
-              >
-                <CodiconIcon name="close" :size="12" />
-              </Button>
+              />
             </span>
           </div>
         </div>

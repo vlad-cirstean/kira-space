@@ -1,6 +1,5 @@
 import { t } from '@theme/i18n';
 import type { StepKind, Workflow, WorkflowStep } from '../wire';
-import type { Tone } from './actions';
 import { DEFAULT_MAX_RETURNS, defaultResults, reviewDefaultResults } from './stepResults';
 import { defaultSandbox } from './stepSandbox';
 
@@ -26,13 +25,6 @@ export const PLACEHOLDER_TOKENS_OUTSIDE = '{task} {jira} {worktree}';
 export function usesRepoTokens(text: string): boolean {
   return text.includes('{repo}') || text.includes('{branch}');
 }
-
-export const KIND_TONE: Record<StepKind, Tone> = {
-  agent: 'amber',
-  script: 'green',
-  review: 'blue',
-  manual: 'grey',
-};
 
 export function kindLabel(kind: StepKind): string {
   return t(`space.ade.workflows.kind.${kind}.option`);

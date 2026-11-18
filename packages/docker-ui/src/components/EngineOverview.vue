@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useQueryClient } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
+import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -21,7 +23,6 @@ import { useDockerStatsStore } from '../state/dockerStats';
 import { type DockerSection, useDockerUiStore } from '../state/dockerUi';
 import type { DockerStatsSample } from '../wire';
 import ContainerTable from './ContainerTable.vue';
-import DetailSection from './DetailSection.vue';
 import EndpointChip from './EndpointChip.vue';
 import EngineDiskSection from './EngineDiskSection.vue';
 import StatsSparkline from './StatsSparkline.vue';
@@ -167,24 +168,24 @@ function refresh(): Promise<void> {
 </script>
 
 <template>
-  <div ref="scrollEl" class="h-full overflow-auto p-3" data-testid="docker-engine-overview">
-    <div v-if="engine" class="flex flex-col gap-3">
-      <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h2 class="text-kira-lg font-medium">{{ t('docker.engine.title.title') }}</h2>
-        <Badge variant="info">{{ engine.version }}</Badge>
-        <span class="inline-flex items-center gap-1 text-kira-sm text-muted-foreground"
-          ><EndpointChip /></span
-        >
-        <span class="ml-auto flex items-center gap-1">
+  <div class="flex h-full min-h-0 flex-col" data-testid="docker-engine-overview">
+    <template v-if="engine">
+      <DetailHeader :title="t('docker.engine.title.title')">
+        <template #meta>
+          <Badge variant="info">{{ engine.version }}</Badge>
+          <EndpointChip />
+        </template>
+        <template #actions>
           <Button
             size="kira"
             variant="toolbar"
             :disabled="startLocked"
             :pending="inFlight && bulk === 'start'"
+            data-tone="ok"
             data-testid="docker-start-stopped"
             @click="runAll(stoppedIds, 'start')"
           >
-            <CodiconIcon name="play" :size="12" class="text-ok" />
+            <CodiconIcon name="play" :size="13" />
             {{ t('docker.engine.startStopped.label') }}
           </Button>
           <Button
@@ -192,10 +193,11 @@ function refresh(): Promise<void> {
             variant="toolbar"
             :disabled="stopLocked"
             :pending="inFlight && bulk === 'stop'"
+            data-tone="error"
             data-testid="docker-stop-all"
             @click="runAll(runningIds, 'stop')"
           >
-            <CodiconIcon name="debug-stop" :size="12" class="text-error" />
+            <CodiconIcon name="debug-stop" :size="13" />
             {{ t('common.action.stopAll.label') }}
           </Button>
           <Button
@@ -204,104 +206,102 @@ function refresh(): Promise<void> {
             data-testid="docker-overview-refresh"
             @click="refresh"
           >
-            <CodiconIcon name="refresh" :size="12" />{{ t('common.action.refresh.label') }}
+            <CodiconIcon name="refresh" :size="13" />{{ t('common.action.refresh.label') }}
           </Button>
-        </span>
-      </div>
+        </template>
+      </DetailHeader>
+      <div ref="scrollEl" class="min-h-0 flex-1 overflow-auto p-3">
+        <div class="flex flex-col gap-3">
+          <div class="@container shrink-0">
+            <div class="grid grid-cols-1 gap-3 @xl:grid-cols-2 @4xl:grid-cols-4">
+              <DetailSection :title="t('common.field.status.label')">
+                <div class="flex items-baseline gap-1.5">
+                  <span class="text-kira-lg font-medium" data-testid="docker-engine-count">{{
+                    engine.running
+                  }}</span>
+                  <span class="text-muted-foreground">{{ t('common.state.running.status') }}</span>
+                </div>
+                <div class="flex h-1.5 w-full overflow-hidden rounded-full bg-field">
+                  <div class="bg-ok" :style="{ width: `${split.running}%` }" />
+                  <div class="bg-warn" :style="{ width: `${split.paused}%` }" />
+                  <div class="bg-subtle" :style="{ width: `${split.stopped}%` }" />
+                </div>
+                <div class="text-kira-sm text-muted-foreground" data-testid="docker-engine-counts">
+                  {{
+                    t('docker.engine.counts.label', {
+                      stopped: engine.stopped,
+                      paused: engine.paused,
+                    })
+                  }}
+                </div>
+              </DetailSection>
+              <DetailSection :title="t('docker.metric.cpu.label')">
+                <div class="flex items-baseline gap-1.5">
+                  <span class="text-kira-lg font-medium" data-testid="docker-engine-cpu">{{
+                    formatPercent(totals.cpu)
+                  }}</span>
+                  <span class="text-muted-foreground">{{
+                    t('docker.engine.of.label', { total: `${engine.cpus * 100}%` })
+                  }}</span>
+                </div>
+                <UsageBar :percent="cpuPercentOfCapacity" />
+                <StatsSparkline :values="cpuSeries" :max="cpuCapacity" height-class="h-[2rem]" />
+              </DetailSection>
+              <DetailSection :title="t('common.module.memory.label')">
+                <div class="flex items-baseline gap-1.5">
+                  <span class="text-kira-lg font-medium" data-testid="docker-engine-mem">{{
+                    formatBytes(totals.mem)
+                  }}</span>
+                  <span class="text-muted-foreground">{{
+                    t('docker.engine.of.label', { total: formatBytes(engine.memTotal) })
+                  }}</span>
+                </div>
+                <UsageBar :percent="memPercentOfTotal" />
+                <StatsSparkline
+                  :values="memSeries"
+                  :max="engine.memTotal"
+                  height-class="h-[2rem]"
+                />
+              </DetailSection>
+              <DetailSection :title="t('docker.engine.resources.title')" flush>
+                <button
+                  v-for="l in links"
+                  :key="l.section"
+                  type="button"
+                  :class="
+                    cn(
+                      rowVariants({ layout: 'menu' }),
+                      'h-control-lg w-full cursor-default gap-2 rounded-none px-3 text-left',
+                    )
+                  "
+                  :data-testid="`docker-overview-link-${l.section}`"
+                  @click="openSection(l.section)"
+                >
+                  <CodiconIcon :name="l.icon" :size="13" class="text-muted-foreground" />
+                  <span class="flex-1">{{ t(l.label) }}</span>
+                  <span :class="rowMeta">{{ l.count }}</span>
+                  <CodiconIcon name="chevron-right" :size="12" class="text-muted-foreground" />
+                </button>
+              </DetailSection>
+            </div>
+          </div>
 
-      <div class="@container shrink-0">
-        <div class="grid grid-cols-1 gap-3 @xl:grid-cols-2 @4xl:grid-cols-4">
-          <DetailSection :title="t('common.field.status.label')">
-            <div class="flex items-baseline gap-1.5">
-              <span class="text-kira-xl font-medium" data-testid="docker-engine-count">{{
-                engine.running
-              }}</span>
-              <span class="text-muted-foreground">{{ t('common.state.running.status') }}</span>
-            </div>
-            <div class="mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-field">
-              <div class="bg-ok" :style="{ width: `${split.running}%` }" />
-              <div class="bg-warn" :style="{ width: `${split.paused}%` }" />
-              <div class="bg-subtle" :style="{ width: `${split.stopped}%` }" />
-            </div>
-            <div class="mt-2 text-kira-sm text-muted-foreground" data-testid="docker-engine-counts">
-              {{
-                t('docker.engine.counts.label', { stopped: engine.stopped, paused: engine.paused })
-              }}
-            </div>
+          <EngineDiskSection />
+
+          <DetailSection :title="t('docker.section.containers.label')" flush class="shrink-0">
+            <ContainerTable :scroll-el="scrollEl" />
           </DetailSection>
-          <DetailSection :title="t('docker.metric.cpu.label')">
-            <div class="flex items-baseline gap-1.5">
-              <span class="text-kira-xl font-medium" data-testid="docker-engine-cpu">{{
-                formatPercent(totals.cpu)
-              }}</span>
-              <span class="text-muted-foreground">{{
-                t('docker.engine.of.label', { total: `${engine.cpus * 100}%` })
-              }}</span>
-            </div>
-            <div class="mt-2"><UsageBar :percent="cpuPercentOfCapacity" /></div>
-            <div class="mt-2"
-              ><StatsSparkline
-                :values="cpuSeries"
-                :max="cpuCapacity"
-                height-class="h-[2rem]"
-              /></div
-            >
-          </DetailSection>
-          <DetailSection :title="t('common.module.memory.label')">
-            <div class="flex items-baseline gap-1.5">
-              <span class="text-kira-xl font-medium" data-testid="docker-engine-mem">{{
-                formatBytes(totals.mem)
-              }}</span>
-              <span class="text-muted-foreground">{{
-                t('docker.engine.of.label', { total: formatBytes(engine.memTotal) })
-              }}</span>
-            </div>
-            <div class="mt-2"><UsageBar :percent="memPercentOfTotal" /></div>
-            <div class="mt-2"
-              ><StatsSparkline
-                :values="memSeries"
-                :max="engine.memTotal"
-                height-class="h-[2rem]"
-              /></div
-            >
-          </DetailSection>
-          <DetailSection :title="t('docker.engine.resources.title')" flush>
-            <button
-              v-for="l in links"
-              :key="l.section"
-              type="button"
-              :class="
-                cn(
-                  rowVariants({ layout: 'menu' }),
-                  'h-control-lg w-full cursor-default gap-2 rounded-none px-3 text-left',
-                )
-              "
-              :data-testid="`docker-overview-link-${l.section}`"
-              @click="openSection(l.section)"
-            >
-              <CodiconIcon :name="l.icon" :size="13" class="text-muted-foreground" />
-              <span class="flex-1">{{ t(l.label) }}</span>
-              <span :class="rowMeta">{{ l.count }}</span>
-              <CodiconIcon name="chevron-right" :size="12" class="text-muted-foreground" />
-            </button>
+
+          <DetailSection :title="t('docker.engine.engine.title')" class="shrink-0">
+            <KeyValueList>
+              <template v-for="[ k, v ] in facts" :key="k">
+                <dt>{{ k }}</dt>
+                <dd class="break-all font-data">{{ v }}</dd>
+              </template>
+            </KeyValueList>
           </DetailSection>
         </div>
       </div>
-
-      <EngineDiskSection />
-
-      <DetailSection :title="t('docker.section.containers.label')" flush class="shrink-0">
-        <ContainerTable :scroll-el="scrollEl" />
-      </DetailSection>
-
-      <DetailSection :title="t('docker.engine.engine.title')" class="shrink-0">
-        <KeyValueList>
-          <template v-for="[ k, v ] in facts" :key="k">
-            <dt>{{ k }}</dt>
-            <dd class="break-all font-data">{{ v }}</dd>
-          </template>
-        </KeyValueList>
-      </DetailSection>
-    </div>
+    </template>
   </div>
 </template>

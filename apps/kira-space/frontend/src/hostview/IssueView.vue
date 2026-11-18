@@ -4,6 +4,7 @@ import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { issueTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { useElementSize } from '@vueuse/core';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { formatRelative } from '@workbench/behaviour/format';
@@ -16,7 +17,6 @@ import HostViewFrame from './HostViewFrame.vue';
 import IssueAttachments from './IssueAttachments.vue';
 import IssueComments from './IssueComments.vue';
 import IssueSidebar from './IssueSidebar.vue';
-import { statusVariant } from './issueFormat';
 import MarkdownBody from './MarkdownBody.vue';
 import { issueKey, useIssueDetail } from './queries';
 import type { IssueTarget } from './wire';
@@ -42,7 +42,7 @@ const failure = computed(() => {
 const title = computed(() => detail.value?.title ?? props.target.key);
 const url = computed(() => detail.value?.ref.url || props.target.url);
 const label = computed(() => props.target.tracker.label);
-const tone = computed(() => statusVariant(detail.value?.statusCategory));
+const tone = computed(() => TONE_BADGE[issueTone(detail.value?.statusCategory)]);
 const body = useTemplateRef('body');
 const { width } = useElementSize(body);
 const stacked = computed(() => width.value < WIDE_PX);
@@ -81,8 +81,8 @@ function copyLink(): void {
       :class="stacked ? 'flex-col overflow-y-auto' : 'flex-row'"
       data-testid="issue-view"
     >
-      <main class="min-w-0 flex-1 p-4" :class="stacked ? '' : 'overflow-y-auto'">
-        <div class="mx-auto flex w-full max-w-[760px] flex-col gap-6">
+      <main class="min-w-0 flex-1 p-3" :class="stacked ? '' : 'overflow-y-auto'">
+        <div class="mx-auto flex w-full max-w-[760px] flex-col gap-3">
           <div class="flex flex-col gap-2">
             <div
               class="flex flex-wrap items-center gap-x-2 text-kira-sm text-muted-foreground"

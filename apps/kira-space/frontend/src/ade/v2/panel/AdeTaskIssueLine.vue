@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { t } from '@theme/i18n';
+import { issueTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed } from 'vue';
 import { useOpenHostView } from '../../../hostview/queries';
-import AdeChip from '../AdeChip.vue';
 import { gapText } from '../artifacts/gapText';
-import type { Tone } from '../board/actions';
 import { useTaskIssue } from '../queries';
 import { useMarkTrackedSeen } from '../updates/queries';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
@@ -29,7 +29,6 @@ const issue = computed(() => query.data.value);
 const shown = computed(
   () => query.isPending.value || (issue.value !== undefined && issue.value.reason !== 'noTracker'),
 );
-const CATEGORY_TONE: Record<string, Tone> = { new: 'grey', indeterminate: 'blue', done: 'green' };
 
 const gap = computed<ArtifactGap | null>(() => {
   const i = issue.value;
@@ -58,7 +57,7 @@ function viewIssue(): void {
     class="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5"
     data-testid="ade-task-issue"
   >
-    <Skeleton v-if="query.isPending.value" class="h-3 w-32" data-testid="ade-task-issue-loading" />
+    <Skeleton v-if="query.isPending.value" class="h-4 w-1/3" data-testid="ade-task-issue-loading" />
     <template v-else-if="issue">
       <span
         v-if="issue.title"
@@ -68,12 +67,14 @@ function viewIssue(): void {
           issue.title
         }}</span
       >
-      <AdeChip
+      <Badge
         v-if="issue.title && issue.status"
-        :label="issue.status"
-        :tone="CATEGORY_TONE[issue.statusCategory] ?? 'grey'"
+        :variant="TONE_BADGE[issueTone(issue.statusCategory)]"
         data-testid="ade-task-issue-status"
-      />
+        >{{
+          issue.status
+        }}</Badge
+      >
       <span
         v-if="!issue.reason && issue.summary.known"
         :class="cn(rowMeta, 'shrink-0 whitespace-nowrap')"
@@ -93,14 +94,9 @@ function viewIssue(): void {
         data-testid="ade-task-issue-view"
         @click="viewIssue"
       />
-      <span
-        v-if="gap"
-        class="basis-full text-kira-sm text-tone-amber"
-        data-testid="ade-task-issue-gap"
-        >{{
-          gapText(gap)
-        }}</span
-      >
+      <span v-if="gap" class="basis-full text-kira-sm text-warn" data-testid="ade-task-issue-gap">{{
+        gapText(gap)
+      }}</span>
     </template>
   </span>
 </template>

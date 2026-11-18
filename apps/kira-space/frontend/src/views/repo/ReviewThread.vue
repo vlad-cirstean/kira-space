@@ -13,6 +13,7 @@ import { Button } from '@theme/components/ui/button';
 import { Textarea } from '@theme/components/ui/textarea';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { useEventListener, useFocus, useResizeObserver, useTextareaAutosize } from '@vueuse/core';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
@@ -203,6 +204,10 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
             data-testid="review-thread-state"
             @click="act(() => props.onSetState?.(nextState))"
           >
+            <CodiconIcon
+              :name="current.state === 'addressed' ? 'issue-reopened' : 'check'"
+              :size="13"
+            />
             {{
               current.state === 'addressed'
                 ? t('git.review.comments.reopen.label')
@@ -210,7 +215,7 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
             }}
           </Button>
           <Button variant="toolbar" size="kira" data-testid="review-thread-edit" @click="startEdit">
-            <CodiconIcon name="pencil" :size="13" />
+            <CodiconIcon :name="ICON.edit" :size="13" />
             {{ t('common.action.edit.label') }}
           </Button>
           <Button variant="toolbar" size="kira" @click="emit('close')">
@@ -253,16 +258,16 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
       <template v-else>
         <SecondaryTabs
           v-model="kind"
-          variant="segmented"
+          variant="choice"
+          :aria-label="t('common.field.kind.label')"
           :items="KIND_ITEMS"
           data-testid="review-thread-kind"
         />
         <Textarea
+          :aria-label="t('common.comment.label')"
           ref="input"
           v-model="draft"
-          class="resize-none"
           :placeholder="t('space.repo.view.comment.placeholder')"
-          rows="3"
           data-testid="review-thread-input"
         />
         <div
@@ -280,7 +285,7 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
         >
         <div class="flex flex-wrap justify-end gap-1.5">
           <Button
-            variant="toolbar"
+            variant="dialog"
             size="kira"
             data-testid="review-thread-cancel"
             @click="mode === 'edit' ? cancelEdit() : emit('cancel')"

@@ -10,7 +10,6 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
-import { Tooltip, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -119,10 +118,8 @@ const filterText = computed({
   set: (v: string) => browseViewStore.setFilter(props.tab.id, v),
 });
 
-// The app's own shared search idiom (HttpRequestView.vue's toggleFieldFilter) replaces
-// this file's own always-visible `.filter-field` — `rt.filter`/`filteredNodes`/`countText` below
-// are untouched, only the affordance moves. Runtime store, not tab state: a lens, not a setting.
-// Kept across tab switches (P375) so an active filter never hides rows behind a closed bar.
+// Shared search idiom (HttpRequestView.vue's toggleFieldFilter), not an always-visible field.
+// Runtime store, not tab state: a lens, not a setting. Kept across tab switches (P375).
 const filterOpen = computed(() => rt.value?.filterOpen ?? false);
 function toggleFilter(): void {
   const open = !filterOpen.value;
@@ -386,11 +383,7 @@ onMounted(() => {
         @click="onUploadClick"
       />
       <span class="ml-auto" />
-      <Tooltip :disabled="true">
-        <TooltipTrigger as-child>
-          <RunState :state="runState" />
-        </TooltipTrigger>
-      </Tooltip>
+      <RunState :state="runState" />
       <div class="flex items-center gap-1.5 min-w-0"></div>
     </ViewToolbar>
 
@@ -496,12 +489,14 @@ onMounted(() => {
             v-else-if="rt.nodes.length === 0"
             fill
             data-testid="browse-empty"
+            icon="folder"
             :title="t('studio.browse.items.empty')"
           />
           <EmptyState
             v-else-if="filteredNodes.length === 0"
             fill
             data-testid="browse-empty"
+            :icon="ICON.search"
             :title="t('common.state.noMatches.empty')"
           />
           <div

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useRelativeTime } from '@workbench/behaviour/format';
 import { computed } from 'vue';
@@ -64,7 +64,7 @@ const prBase = computed(() => {
       icon="refresh"
       :label="fetchTip"
       :aria-label="t('common.fetchTarget.tooltip', { name: sync.data.value.remote })"
-      :icon-size="12"
+      :icon-size="16"
       variant="title"
       size="title"
       :pending="fetching"
@@ -74,40 +74,38 @@ const prBase = computed(() => {
     <span v-if="fetching" class="shrink-0 text-kira-sm text-subtle">{{
       t('common.fetching.loading')
     }}</span>
-    <Tooltip v-if="sync.data.value.branch.state === 'behind'">
-      <TooltipTrigger as-child>
-        <Button
-          variant="title"
-          size="title-labelled"
-          class="shrink-0"
-          :pending="updating"
-          data-testid="ade-review-sync-update-branch"
-          @click="updateNow('branch')"
-        >
-          <CodiconIcon name="arrow-down" :size="12" />
-          {{
-            t('space.ade.review.sync.updateBranch.label', { count: sync.data.value.branch.behind })
-          }}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ updateTip(sync.data.value.branch) }}</TooltipContent>
-    </Tooltip>
-    <Tooltip v-if="sync.data.value.base.state === 'behind'">
-      <TooltipTrigger as-child>
-        <Button
-          variant="title"
-          size="title-labelled"
-          class="shrink-0"
-          :pending="updating"
-          data-testid="ade-review-sync-update-base"
-          @click="updateNow('base')"
-        >
-          <CodiconIcon name="arrow-down" :size="12" />
-          {{ t('space.ade.review.sync.updateBase.label', { count: sync.data.value.base.behind }) }}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ updateTip(sync.data.value.base) }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip
+      v-if="sync.data.value.branch.state === 'behind'"
+      :text="updateTip(sync.data.value.branch)"
+      ><Button
+        variant="title"
+        size="title-labelled"
+        class="shrink-0"
+        :pending="updating"
+        data-testid="ade-review-sync-update-branch"
+        @click="updateNow('branch')"
+      >
+        <CodiconIcon name="arrow-down" :size="16" />
+        {{
+          t('space.ade.review.sync.updateBranch.label', { count: sync.data.value.branch.behind })
+        }}
+      </Button></TextTooltip
+    >
+    <TextTooltip
+      v-if="sync.data.value.base.state === 'behind'"
+      :text="updateTip(sync.data.value.base)"
+      ><Button
+        variant="title"
+        size="title-labelled"
+        class="shrink-0"
+        :pending="updating"
+        data-testid="ade-review-sync-update-base"
+        @click="updateNow('base')"
+      >
+        <CodiconIcon name="arrow-down" :size="16" />
+        {{ t('space.ade.review.sync.updateBase.label', { count: sync.data.value.base.behind }) }}
+      </Button></TextTooltip
+    >
     <Badge
       v-if="sync.data.value.branch.state === 'ahead'"
       class="shrink-0"
@@ -116,53 +114,48 @@ const prBase = computed(() => {
     >
       {{ t('space.ade.review.sync.ahead.status', { count: sync.data.value.branch.ahead }) }}
     </Badge>
-    <Tooltip v-if="sync.data.value.branch.state === 'diverged'">
-      <TooltipTrigger as-child>
-        <Badge
-          variant="warn"
-          tabindex="0"
-          class="shrink-0"
-          :aria-label="divergedHint(sync.data.value.branch)"
-          :data-state="sync.data.value.branch.state"
-          data-testid="ade-review-sync-branch-state"
-        >
-          {{ t('space.ade.review.sync.diverged.status') }}
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent>{{ divergedHint(sync.data.value.branch) }}</TooltipContent>
-    </Tooltip>
-    <Tooltip v-if="sync.data.value.base.state === 'diverged'">
-      <TooltipTrigger as-child>
-        <Badge
-          variant="warn"
-          tabindex="0"
-          class="shrink-0"
-          :aria-label="divergedHint(sync.data.value.base)"
-          :data-state="sync.data.value.base.state"
-          data-testid="ade-review-sync-base-state"
-        >
-          {{ t('space.ade.review.sync.diverged.status') }}
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent>{{ divergedHint(sync.data.value.base) }}</TooltipContent>
-    </Tooltip>
-    <Tooltip v-if="prBase">
-      <TooltipTrigger as-child>
-        <Badge
-          variant="warn"
-          tabindex="0"
-          class="shrink-0"
-          :aria-label="prBase.hint"
-          data-testid="ade-review-sync-pr-base"
-        >
-          {{ prBase.label }}
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent>{{ prBase.hint }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip
+      v-if="sync.data.value.branch.state === 'diverged'"
+      :text="divergedHint(sync.data.value.branch)"
+      ><Badge
+        variant="warn"
+        tabindex="0"
+        class="shrink-0"
+        :aria-label="divergedHint(sync.data.value.branch)"
+        :data-state="sync.data.value.branch.state"
+        data-testid="ade-review-sync-branch-state"
+      >
+        {{ t('space.ade.review.sync.diverged.status') }}
+      </Badge></TextTooltip
+    >
+    <TextTooltip
+      v-if="sync.data.value.base.state === 'diverged'"
+      :text="divergedHint(sync.data.value.base)"
+      ><Badge
+        variant="warn"
+        tabindex="0"
+        class="shrink-0"
+        :aria-label="divergedHint(sync.data.value.base)"
+        :data-state="sync.data.value.base.state"
+        data-testid="ade-review-sync-base-state"
+      >
+        {{ t('space.ade.review.sync.diverged.status') }}
+      </Badge></TextTooltip
+    >
+    <TextTooltip v-if="prBase" :text="prBase.hint"
+      ><Badge
+        variant="warn"
+        tabindex="0"
+        class="shrink-0"
+        :aria-label="prBase.hint"
+        data-testid="ade-review-sync-pr-base"
+      >
+        {{ prBase.label }}
+      </Badge></TextTooltip
+    >
     <span
       v-if="error"
-      class="flex min-w-0 max-w-64 text-kira-sm text-tone-red"
+      class="flex min-w-0 max-w-64 text-kira-sm text-error"
       data-testid="ade-review-sync-error"
       ><TruncatedText :text="error" /></span
     >

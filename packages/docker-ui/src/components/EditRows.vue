@@ -1,7 +1,9 @@
 <script setup lang="ts" generic="T">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 
 defineProps<{ items: T[]; addLabel: string; disabled?: boolean; testid: string }>();
 const emit = defineEmits<{ add: []; remove: [index: number] }>();
@@ -19,7 +21,7 @@ const emit = defineEmits<{ add: []; remove: [index: number] }>();
         <slot name="row" :item="item" :index="index" />
       </div>
       <TooltipIconButton
-        icon="trash"
+        :icon="ICON.remove"
         :label="t('common.action.remove.label')"
         :disabled="disabled"
         data-testid="docker-edit-row-remove"
@@ -33,7 +35,7 @@ const emit = defineEmits<{ add: []; remove: [index: number] }>();
       :disabled="disabled"
       data-testid="docker-edit-row-add"
       @click="emit('add')"
-    >
+      ><CodiconIcon :name="ICON.add" :size="13" />
       {{ addLabel }}
     </Button>
   </div>

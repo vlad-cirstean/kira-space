@@ -161,7 +161,7 @@ const ruleClass = computed(() => {
       >
         <CodiconIcon
           :name="h.merged ? 'check' : 'archive'"
-          :size="12"
+          :size="13"
           class="shrink-0 text-muted-foreground"
         />
         <span class="min-w-0 flex-1 truncate text-left font-medium text-fg">{{ h.title }}</span>
@@ -224,7 +224,7 @@ const ruleClass = computed(() => {
         data-testid="ade-span-row"
         @click="emit('select', s.taskId)"
       >
-        <CodiconIcon name="indent" :size="12" class="shrink-0 text-subtle" />
+        <CodiconIcon name="indent" :size="13" class="shrink-0 text-subtle" />
         <span class="shrink-0 whitespace-nowrap text-kira-sm text-subtle">{{ s.note }}</span>
         <span class="min-w-0 truncate font-medium text-fg">{{ s.title }}</span>
       </Button>

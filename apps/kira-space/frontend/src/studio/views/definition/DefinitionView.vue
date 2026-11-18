@@ -5,11 +5,11 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -287,6 +287,7 @@ const breadcrumb = computed(() => {
       <ToolbarSeparator />
       <div class="flex items-center gap-1.5 min-w-0">
         <SecondaryTabs
+          variant="segmented"
           :model-value="pane"
           :items="PANE_OPTIONS"
           data-testid="definition-pane"
@@ -314,30 +315,24 @@ const breadcrumb = computed(() => {
              own per-section content and count badges, nothing to copy as one document. -->
         <template v-if="pane === 'source'">
           <ToolbarSeparator />
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button variant="toolbar" size="kira" data-testid="definition-copy" @click="onCopy">
-                <CodiconIcon :name="ICON.copy" :size="13" />
-                {{ t('common.action.copy.label') }}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{{ t('studio.definition.copy.tooltip') }}</TooltipContent>
-          </Tooltip>
-        </template>
-        <Tooltip v-if="canOpenConsole">
-          <TooltipTrigger as-child>
-            <Button
-              variant="toolbar"
-              size="kira"
-              data-testid="definition-open-console"
-              @click="onOpenConsole"
-            >
-              <CodiconIcon name="terminal" :size="13" />
-              {{ t('studio.definition.openConsole.label') }}
+          <TextTooltip :text="t('studio.definition.copy.tooltip')">
+            <Button variant="toolbar" size="kira" data-testid="definition-copy" @click="onCopy">
+              <CodiconIcon :name="ICON.copy" :size="13" />
+              {{ t('common.action.copy.label') }}
             </Button>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('studio.definition.openConsole.tooltip') }}</TooltipContent>
-        </Tooltip>
+          </TextTooltip>
+        </template>
+        <TextTooltip v-if="canOpenConsole" :text="t('studio.definition.openConsole.tooltip')"
+          ><Button
+            variant="toolbar"
+            size="kira"
+            data-testid="definition-open-console"
+            @click="onOpenConsole"
+          >
+            <CodiconIcon name="terminal" :size="13" />
+            {{ t('studio.definition.openConsole.label') }}
+          </Button></TextTooltip
+        >
       </div>
     </ViewToolbar>
 

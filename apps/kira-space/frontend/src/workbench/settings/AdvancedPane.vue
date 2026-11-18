@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Field, FieldDescription, FieldError } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
@@ -79,33 +84,36 @@ const expensiveQueryRowsId = useId();
         t('space.settings.advanced.gitLogLevel.description')
       }}</FieldDescription>
     </LogLevelField>
-    <Field>
-      <div class="flex items-center justify-between gap-1">
-        <Label :for="switchId">{{ t('space.settings.advanced.ignoreRepoSettings.label') }}</Label>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
-          data-testid="settings-reset-ade-headlessSettingSources"
-          :disabled-trigger="isAtDefault('ade', 'headlessSettingSources')"
-          :disabled="isAtDefault('ade', 'headlessSettingSources')"
-          @click="resetLeaf('ade', 'headlessSettingSources')"
-        />
-      </div>
+    <Field orientation="horizontal">
       <Switch
         :id="switchId"
         :model-value="ignoreRepoSettings"
         data-testid="settings-ade-headless-sources"
         @update:model-value="(v) => setSources(v === true)"
       />
-      <FieldDescription>{{
-        t('space.settings.advanced.ignoreRepoSettings.description')
-      }}</FieldDescription>
+      <FieldContent>
+        <FieldLabel :for="switchId">{{
+          t('space.settings.advanced.ignoreRepoSettings.label')
+        }}</FieldLabel>
+        <FieldDescription>{{
+          t('space.settings.advanced.ignoreRepoSettings.description')
+        }}</FieldDescription>
+      </FieldContent>
+      <TooltipIconButton
+        class="ml-auto"
+        icon="discard"
+        :label="t('common.action.resetToDefault.label')"
+        data-testid="settings-reset-ade-headlessSettingSources"
+        :disabled-trigger="isAtDefault('ade', 'headlessSettingSources')"
+        :disabled="isAtDefault('ade', 'headlessSettingSources')"
+        @click="resetLeaf('ade', 'headlessSettingSources')"
+      />
     </Field>
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="opLogRetentionDaysId">{{
+        <FieldLabel :for="opLogRetentionDaysId">{{
           t('studio.settings.advanced.opLogRetention.label')
-        }}</Label>
+        }}</FieldLabel>
         <TooltipIconButton
           icon="discard"
           :label="t('common.action.resetToDefault.label')"
@@ -131,9 +139,9 @@ const expensiveQueryRowsId = useId();
 
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="expensiveQueryRowsId">{{
+        <FieldLabel :for="expensiveQueryRowsId">{{
           t('studio.settings.advanced.expensiveRows.label')
-        }}</Label>
+        }}</FieldLabel>
         <TooltipIconButton
           icon="discard"
           :label="t('common.action.resetToDefault.label')"

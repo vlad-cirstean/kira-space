@@ -2,6 +2,7 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { t } from '@theme/i18n';
@@ -9,7 +10,6 @@ import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { formatRelative } from '@workbench/behaviour/format';
 import { computed, ref, watch } from 'vue';
-import AdeChip from '../AdeChip.vue';
 import AdeOriginSession from '../details/AdeOriginSession.vue';
 import { useUpdateHandover } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
@@ -66,7 +66,6 @@ function time(h: Handover): string {
 
 <template>
   <Card
-    class="flex flex-col gap-1 p-2 text-kira-md"
     data-kind="handover"
     :data-author="author"
     :data-source="handover.source"
@@ -86,7 +85,7 @@ function time(h: Handover): string {
         data-testid="ade-note-author"
       >
         <CodiconIcon :name="AUTHOR_ICON[author]" :size="12" />
-        <AdeChip :label="authorLabel(author)" tone="grey" />
+        <Badge variant="default">{{ authorLabel(author) }}</Badge>
       </span>
       <Button
         v-if="child"
@@ -107,18 +106,18 @@ function time(h: Handover): string {
       <span v-if="noteStage(handover)" class="text-muted-foreground" data-testid="ade-note-stage">{{
         noteStage(handover)
       }}</span>
-      <AdeChip v-if="handover.source === 'run'" :label="t('common.action.run.label')" tone="grey" />
-      <AdeChip v-if="handover.state === 'draft'" :label="t('common.draft.status')" tone="amber" />
-      <AdeChip
-        v-if="handover.state === 'draft' && handover.finished"
-        :label="t('space.ade.handover.finished.status')"
-        tone="green"
-      />
-      <AdeChip
-        v-if="handover.edited && handover.state !== 'note'"
-        :label="t('llmPrompts.badge.edited.label')"
-        tone="grey"
-      />
+      <Badge v-if="handover.source === 'run'" variant="default">{{
+        t('common.action.run.label')
+      }}</Badge>
+      <Badge v-if="handover.state === 'draft'" variant="default">{{
+        t('common.draft.status')
+      }}</Badge>
+      <Badge v-if="handover.state === 'draft' && handover.finished" variant="ok">{{
+        t('space.ade.handover.finished.status')
+      }}</Badge>
+      <Badge v-if="handover.edited && handover.state !== 'note'" variant="default">{{
+        t('llmPrompts.badge.edited.label')
+      }}</Badge>
       <span class="ml-auto text-subtle">{{ time(handover) }}</span>
       <AdeOriginSession
         :task-id="taskId"
@@ -195,13 +194,12 @@ function time(h: Handover): string {
     />
     <div v-if="handover.state === 'draft' && !readonly && !editing" class="flex justify-end">
       <Button
-        variant="dialog"
+        variant="toolbar"
         size="kira"
         data-testid="ade-handover-move-on"
         @click="stage.open({ taskId })"
-        >{{
-          t('space.ade.handover.moveOn.label')
-        }}</Button
+        ><CodiconIcon name="arrow-right" :size="13" />
+        {{ t('space.ade.handover.moveOn.label') }}</Button
       >
     </div>
   </Card>

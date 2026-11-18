@@ -196,7 +196,7 @@ test('a date-format change applies to the already-mounted graph', async ({ relau
   const relative = await date.innerText();
 
   await page.locator('[data-testid="open-settings"]').click();
-  await page.locator('[data-testid="settings-date-format"]').selectOption('absolute');
+  await page.locator('[data-testid="settings-date-format-absolute"]').click();
   await page.locator('[data-testid="settings-save"]').click();
 
   await expect(date).not.toHaveText(relative);

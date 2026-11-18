@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import { t } from '@theme/i18n';
 import { formatBytes, formatPercent } from '@workbench/behaviour/format';
 import { computed } from 'vue';
 import { useDockerStatsStore } from '../state/dockerStats';
 import ContainerSizeSection from './ContainerSizeSection.vue';
-import DetailSection from './DetailSection.vue';
 import StatsSparkline from './StatsSparkline.vue';
 
 const props = defineProps<{ containerId: string; running: boolean }>();
@@ -29,8 +29,8 @@ const mem = computed(() => history.value.map((s) => s.memUsage));
       }}</p>
       <div v-else class="grid grid-cols-1 gap-3 @3xl:grid-cols-2">
         <DetailSection :title="t('docker.metric.cpu.label')">
-          <div class="mb-2 flex items-baseline justify-between">
-            <span class="text-kira-xl font-medium" data-testid="docker-stats-cpu">{{
+          <div class="flex items-baseline justify-between">
+            <span class="text-kira-lg font-medium" data-testid="docker-stats-cpu">{{
               formatPercent(latest.cpuPercent)
             }}</span>
             <span class="text-kira-sm text-muted-foreground">{{
@@ -40,8 +40,8 @@ const mem = computed(() => history.value.map((s) => s.memUsage));
           <StatsSparkline :values="cpu" height-class="h-24" />
         </DetailSection>
         <DetailSection :title="t('common.module.memory.label')">
-          <div class="mb-2 flex items-baseline justify-between">
-            <span class="text-kira-xl font-medium" data-testid="docker-stats-mem">{{
+          <div class="flex items-baseline justify-between">
+            <span class="text-kira-lg font-medium" data-testid="docker-stats-mem">{{
               formatBytes(latest.memUsage)
             }}</span>
             <span class="text-kira-sm text-muted-foreground">{{

@@ -1,3 +1,4 @@
+import type { StatusTone } from '@theme/lib/statusTone';
 import type { ContainerState, DockerPort } from '../wire';
 
 export function shortId(id: string): string {
@@ -11,12 +12,12 @@ export function isActiveState(state: ContainerState): boolean {
   return state === 'running' || state === 'paused' || state === 'restarting';
 }
 
-/** `StatusDot` tone for a container state. */
-export function stateDotTone(state: ContainerState): 'ok' | 'warn' | 'error' | 'muted' {
+/** RS.1 tone for a container state. */
+export function containerStateTone(state: ContainerState): StatusTone {
   if (state === 'running') return 'ok';
   if (state === 'paused' || state === 'restarting') return 'warn';
   if (state === 'dead') return 'error';
-  return 'muted';
+  return 'neutral';
 }
 
 /** Tailwind background for a usage bar: calm until it nears the limit. */

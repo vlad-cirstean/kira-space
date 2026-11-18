@@ -3,10 +3,11 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
+import { TONE_BADGE } from '@theme/lib/statusTone';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { isPrimaryModifier } from '@workbench/shortcuts/keys';
-import AdeChip from '../AdeChip.vue';
 import {
   artifactKindLabel,
   artifactStatusLabel,
@@ -16,6 +17,7 @@ import {
 import AdeLinkOpenExternal from '../details/AdeLinkOpenExternal.vue';
 import AdeOriginSession from '../details/AdeOriginSession.vue';
 import AdeTaskIssueLine from '../panel/AdeTaskIssueLine.vue';
+import { THEME_TONE } from '../tones';
 import type { Artifact, Task } from '../wire';
 import AdeLinkEdit from './AdeLinkEdit.vue';
 import { KINDS, type LinkItem } from './linkGroups';
@@ -83,11 +85,13 @@ function openTitle(e: MouseEvent): void {
           item.title || item.label
         }}</span
       >
-      <AdeChip
+      <Badge
         v-if="item.status && item.origin !== 'jira'"
-        :label="artifactStatusLabel(item.status)"
-        :tone="artifactStatusTone(item.status)"
-      />
+        :variant="TONE_BADGE[THEME_TONE[artifactStatusTone(item.status)]]"
+        >{{
+          artifactStatusLabel(item.status)
+        }}</Badge
+      >
     </div>
     <div
       v-if="item.url"
@@ -123,7 +127,7 @@ function openTitle(e: MouseEvent): void {
       v-if="canEdit() && item.origin === 'stored'"
       :model-value="item.kind"
       :items="kindItems"
-      variant="segmented"
+      variant="choice"
       :aria-label="t('space.ade.links.kind.aria')"
       data-testid="ade-links-card-kind"
       @update:model-value="onKind"

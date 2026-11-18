@@ -1,20 +1,22 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
-import { FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
+import { paneFrame } from '@theme/lib/frames';
+import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import SaveBar from '@workbench/components/SaveBar.vue';
 import '@vue-flow/core/dist/style.css';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { Input } from '@theme/components/ui/input';
@@ -23,6 +25,7 @@ import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
 import { type Connection, type Edge, type Node, useVueFlow, VueFlow } from '@vue-flow/core';
 import { useElementSize } from '@vueuse/core';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, onBeforeUnmount, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { kindLabel, PLACEHOLDER_TOKENS, STEP_KINDS } from '../board/workflowForm';
 import {
@@ -43,7 +46,6 @@ import AdeEndNode from './AdeEndNode.vue';
 import AdeResultEdge from './AdeResultEdge.vue';
 import AdeStepInspector from './AdeStepInspector.vue';
 import AdeStepNode from './AdeStepNode.vue';
-import AdeWorkflowSaveBar from './AdeWorkflowSaveBar.vue';
 import { useStepRemoval } from './useStepRemoval';
 
 // Graph mode: edits a local draft of the last valid workflow as a canvas of steps, one
@@ -57,6 +59,28 @@ const workflows = useWorkflows();
 const library = computed(() =>
   (workflows.data.value?.steps ?? []).flatMap((e) => (e.step ? [e.step] : [])),
 );
+const addStepItems = computed<MenuItem[]>(() => [
+  ...STEP_KINDS.map((k) => ({
+    type: 'item' as const,
+    id: k,
+    testId: `ade-wf-add-step-${k}`,
+    label: kindLabel(k),
+    run: () => draft.createStep(k),
+  })),
+  ...(library.value.length
+    ? [
+        { type: 'separator' as const },
+        { type: 'label' as const, label: t('space.ade.workflows.library.add.label') },
+        ...library.value.map((s) => ({
+          type: 'item' as const,
+          id: `library-${s.id}`,
+          testId: `ade-wf-add-library-${s.id}`,
+          label: s.name,
+          run: () => draft.createFromLibrary(s),
+        })),
+      ]
+    : []),
+]);
 const { confirmRemoveStep } = useStepRemoval();
 const { setViewport } = useVueFlow();
 
@@ -263,29 +287,29 @@ onBeforeUnmount(() => {
   <div
     v-if="draft.draft"
     ref="root"
-    class="flex h-full min-h-0 flex-col gap-3"
+    class="@container flex h-full min-h-0 flex-col gap-3"
     data-testid="ade-wf-form"
   >
-    <AdeWorkflowSaveBar
+    <SaveBar
       :dirty="draft.dirty"
       :saving="save.isPending.value"
+      testid-prefix="ade-wf"
       @save="saveNow"
       @discard="discard"
-    />
-    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <Label for="ade-wf-form-name" class="text-kira-sm text-muted-foreground">{{
-        t('common.field.name.label')
-      }}</Label>
+    >
+      <template #start>{{ t('space.ade.workflows.saveBar.applies.hint') }}</template>
+    </SaveBar>
+    <Field orientation="responsive">
+      <FieldLabel for="ade-wf-form-name">{{ t('common.field.name.label') }}</FieldLabel>
       <Input
         id="ade-wf-form-name"
         :model-value="draft.draft.name"
-        size="kira-lg"
-        class="w-72 font-medium"
+        class="w-56 font-medium"
         data-testid="ade-wf-form-name"
         @update:model-value="(v: string | number) => draft.patchWorkflow({ name: String(v) })"
       />
-    </div>
-    <div ref="split" class="flex min-h-96 flex-1 rounded-kira bg-bg">
+    </Field>
+    <div ref="split" :class="cn(paneFrame, 'flex min-h-96 flex-1')">
       <div class="relative min-w-0" :style="{ flex: `0 0 ${graphPane.size.value}%` }">
         <div
           ref="scroller"
@@ -297,8 +321,8 @@ onBeforeUnmount(() => {
               <defs>
                 <marker
                   v-for="m in [
-                    ['ade-arrow-ok', 'fill-tone-green-solid'],
-                    ['ade-arrow-fail', 'fill-tone-red-solid'],
+                    ['ade-arrow-ok', 'fill-ok'],
+                    ['ade-arrow-fail', 'fill-error'],
                     ['ade-arrow-neutral', 'fill-muted-foreground'],
                   ]"
                   :id="m[0]"
@@ -346,37 +370,16 @@ onBeforeUnmount(() => {
             <DropdownMenu>
               <DropdownMenuTrigger as-child>
                 <Button
-                  variant="dialog"
-                  size="kira-lg"
+                  variant="toolbar"
+                  size="kira"
                   class="bg-transparent"
                   data-testid="ade-wf-add-step"
-                >
+                  ><CodiconIcon name="add" :size="13" />
                   {{ t('space.ade.workflows.graph.addStep.label') }}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center">
-                <DropdownMenuItem
-                  v-for="k in STEP_KINDS"
-                  :key="k"
-                  :data-testid="`ade-wf-add-step-${k}`"
-                  @select="draft.createStep(k)"
-                >
-                  {{ kindLabel(k) }}
-                </DropdownMenuItem>
-                <template v-if="library.length">
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>{{
-                    t('space.ade.workflows.library.add.label')
-                  }}</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    v-for="s in library"
-                    :key="s.id"
-                    :data-testid="`ade-wf-add-library-${s.id}`"
-                    @select="draft.createFromLibrary(s)"
-                  >
-                    {{ s.name }}
-                  </DropdownMenuItem>
-                </template>
+                <MenuItems :items="addStepItems" />
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -399,11 +402,11 @@ onBeforeUnmount(() => {
             :step="draft.step"
             :steps="draft.draft.steps"
           />
-          <FieldDescription v-else class="p-3" data-testid="ade-wf-inspector-empty">
+          <InlineState kind="empty" v-else data-testid="ade-wf-inspector-empty">
             <CatalogText k="space.ade.workflows.graph.inspectorEmpty.emptyHint">
               <template #tokens><span class="font-data">{{ PLACEHOLDER_TOKENS }}</span></template>
             </CatalogText>
-          </FieldDescription>
+          </InlineState>
         </div>
       </div>
     </div>
@@ -433,6 +436,7 @@ onBeforeUnmount(() => {
   <EmptyState
     v-else
     fill
+    icon="type-hierarchy"
     :title="t('space.ade.workflows.graph.noValid.body')"
     data-testid="ade-wf-no-valid"
   >

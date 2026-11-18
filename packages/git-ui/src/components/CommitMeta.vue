@@ -24,14 +24,16 @@ import type { ChangeRequestLookup, ChangeRequestRecord, GitHostInfo } from '@kir
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import AttributeTooltip from '@theme/components/AttributeTooltip.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipDetails from '@theme/components/TooltipDetails.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
+import { FieldDescription } from '@theme/components/ui/field';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { hostWords, type MessageKey, t } from '@theme/i18n';
-import { cn } from '@theme/lib/utils';
+import { changeRequestTone, toolbarTone } from '@theme/lib/statusTone';
 import { formatAbsoluteUtc, formatAgeCompact } from '@workbench/behaviour/format';
 import { errorText } from '@workbench/bridge/codedError';
 import { createOpenExternal } from '@workbench/bridge/openExternal';
@@ -166,17 +168,6 @@ const signatureText = computed<string | undefined>(() => {
  *  rule applying everywhere else but here). `disabled` renders nothing at all — this computed is
  *  `undefined` for both `disabled` and "nothing resolved yet", collapsing them into the same
  *  "no row" template branch below. */
-
-// P110 A14 (§1.3): a lookup map, not string interpolation, so every text-badge-change-request-* class
-// Tailwind must scan appears as a complete literal below. Replaces the old dynamic
-// `meta-pr-icon--${state}` class, whose own colour rule lived in this file's deleted <style>.
-
-const CHANGE_REQUEST_ICON_CLASS: Readonly<Record<string, string>> = {
-  open: 'text-ok',
-  draft: 'text-muted-foreground',
-  merged: 'text-conn-violet',
-  closed: 'text-error',
-};
 
 interface ChangeRequestDetailView {
   readonly kind: 'changeRequests' | 'none' | 'unavailable';
@@ -334,7 +325,8 @@ const changeRequestIcon = computed(() => {
           <Button
             variant="toolbar"
             size="inline"
-            :class="cn('ml-auto leading-none', CHANGE_REQUEST_ICON_CLASS[changeRequestIcon!.state])"
+            class="ml-auto leading-none"
+            :data-tone="toolbarTone(changeRequestTone(changeRequestIcon!.state))"
             :aria-label="
               t('git.changeRequest.open.aria', {
                 changeRequestNoun: words.changeRequestNoun,
@@ -345,7 +337,7 @@ const changeRequestIcon = computed(() => {
             data-testid="commit-meta-change-request-icon"
             @click="openChangeRequest(changeRequestIcon!.number)"
           >
-            <CodiconIcon name="git-pull-request" :size="13" />
+            <CodiconIcon name="git-pull-request" :size="12" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>
@@ -374,24 +366,16 @@ const changeRequestIcon = computed(() => {
       ></p>
 
       <div v-if="expanded" class="flex flex-col gap-1 mt-1">
-        <p data-testid="meta-identity" class="text-graph-sm text-muted-foreground">
+        <FieldDescription data-testid="meta-identity">
           {{ detail.author.name }}
           &lt;{{ detail.author.email }}&gt;
-        </p>
-        <p
-          data-testid="meta-identity"
-          v-if="committerDiffersFromAuthor"
-          class="text-graph-sm text-muted-foreground"
-        >
+        </FieldDescription>
+        <FieldDescription data-testid="meta-identity" v-if="committerDiffersFromAuthor">
           {{ detail.committer.name }}
           &lt;{{ detail.committer.email }}&gt;
-          <span class="text-graph-sm">{{ t('git.commit.committer.label') }}</span>
-        </p>
-        <KeyValueList
-          data-testid="meta-trailers"
-          v-if="trailerRows.length > 0"
-          class="text-graph-sm"
-        >
+          <span>{{ t('git.commit.committer.label') }}</span>
+        </FieldDescription>
+        <KeyValueList data-testid="meta-trailers" v-if="trailerRows.length > 0" density="compact">
           <template v-for="(row, index) in trailerRows" :key="index">
             <dt>{{ row.token }}</dt>
             <dd v-if="row.name !== undefined">
@@ -400,7 +384,7 @@ const changeRequestIcon = computed(() => {
             <dd v-else>{{ row.raw }}</dd>
           </template>
         </KeyValueList>
-        <KeyValueList v-if="hasDetails" class="text-graph-sm">
+        <KeyValueList v-if="hasDetails" density="compact">
           <template v-if="detail.decoration.length > 0">
             <dt>{{ t('git.common.refs.label') }}</dt>
             <dd data-testid="meta-refs" ref="decorationEl" class="flex flex-wrap gap-0.5"></dd>
@@ -423,7 +407,7 @@ const changeRequestIcon = computed(() => {
                 <Button
                   variant="link"
                   size="inline"
-                  class="justify-start text-left whitespace-normal text-graph-sm"
+                  class="justify-start text-left whitespace-normal"
                   @click="openChangeRequest(cr.number)"
                 >
                   #{{ cr.number }} {{ cr.title }}
@@ -452,28 +436,22 @@ const changeRequestIcon = computed(() => {
         {{ expanded ? t('common.action.showLess.label') : t('common.action.showMore.label') }}
       </Button>
       <div class="ml-auto flex items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Badge
-              as="button"
-              type="button"
-              :aria-label="t('git.commit.copySha.tooltip')"
-              data-testid="commit-meta-sha"
-              @click="copySha"
-            >
-              <Identifier :value="detail.sha" :short="shortSha" />
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('git.commit.copySha.tooltip') }}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <span class="shrink-0 text-kira-sm text-muted-foreground">{{
-              formatAgeCompact(detail.committer.timestamp)
-            }}</span>
-          </TooltipTrigger>
-          <TooltipContent>{{ formatAbsoluteUtc(detail.committer.timestamp) }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="t('git.commit.copySha.tooltip')">
+          <Badge
+            as="button"
+            type="button"
+            :aria-label="t('git.commit.copySha.tooltip')"
+            data-testid="commit-meta-sha"
+            @click="copySha"
+          >
+            <Identifier :value="detail.sha" :short="shortSha" />
+          </Badge>
+        </TextTooltip>
+        <TextTooltip :text="formatAbsoluteUtc(detail.committer.timestamp)">
+          <span class="shrink-0 text-kira-sm text-muted-foreground">{{
+            formatAgeCompact(detail.committer.timestamp)
+          }}</span>
+        </TextTooltip>
         <TooltipIconButton
           icon="diff-multiple"
           :label="t('git.commit.openAllChanges.tooltip')"

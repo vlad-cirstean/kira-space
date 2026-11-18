@@ -2,6 +2,7 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { t } from '@theme/i18n';
+import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed } from 'vue';
 import { kindIcon } from '../kinds';
 import { useDescribe } from '../queries';
@@ -43,7 +44,7 @@ const view = computed<KubeTabView>(() =>
     :data-tab-id="tab.id"
     :data-active="tab.active"
   >
-    <div class="flex h-bar shrink-0 items-center gap-2 px-2">
+    <ViewToolbar>
       <span class="min-w-0 shrink truncate text-muted-foreground">
         {{ target.context }}
         ›
@@ -56,7 +57,7 @@ const view = computed<KubeTabView>(() =>
         :items="items"
         @update:model-value="(v) => tabs.setView(tab.id, v as KubeTabView)"
       />
-    </div>
+    </ViewToolbar>
     <div class="min-h-0 flex-1">
       <LogsView
         v-if="view === 'logs' && describe.data.value"

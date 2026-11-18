@@ -31,7 +31,7 @@ const attention = computed(() =>
     <PopoverTrigger as-child>
       <Button
         variant="toolbar"
-        size="kira-lg"
+        size="kira"
         class="shrink-0 gap-1"
         data-testid="ade-sessions-menu-trigger"
       >
@@ -40,10 +40,10 @@ const attention = computed(() =>
         >
         {{ t('space.common.sessions.label') }}
         <Badge variant="count" data-testid="ade-sessions-menu-count">{{ count }}</Badge>
-        <CodiconIcon name="chevron-down" :size="12" />
+        <CodiconIcon name="chevron-down" :size="13" />
       </Button>
     </PopoverTrigger>
-    <PopoverContent align="end" class="w-120 p-0" data-testid="ade-sessions-menu-popover">
+    <PopoverContent align="end" flush class="w-120" data-testid="ade-sessions-menu-popover">
       <AdeSessionsList
         :running="running"
         :stopped="stopped"

@@ -10,11 +10,11 @@ defineProps<{ icon: string; title: string; description?: string }>();
 <template>
   <div
     data-slot="module-start"
-    class="flex flex-1 min-h-0 items-center justify-center overflow-auto p-4"
+    class="flex flex-1 min-h-0 items-center justify-center overflow-auto p-3"
   >
     <div class="flex w-105 max-w-full flex-col items-center gap-4 text-center">
       <span class="text-subtle"><CodiconIcon :name="icon" :size="24" /></span>
-      <div class="tracking-normal text-kira-xl text-fg">{{ title }}</div>
+      <div class="text-kira-xl text-fg">{{ title }}</div>
       <div v-if="description" class="text-kira-md leading-normal text-muted-foreground">{{
         description
       }}</div>

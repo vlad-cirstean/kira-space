@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import CodeBlock from '@theme/components/CodeBlock.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
@@ -48,7 +51,7 @@ const backupsOpen = computed({
 
 <template>
   <div class="flex min-w-0 flex-col gap-3" data-testid="ade-settings-result">
-    <h3 class="m-0 text-kira-lg font-medium">{{ t('common.field.result.label') }}</h3>
+    <SectionHeading flush :label="t('common.field.result.label')" />
     <FieldDescription>{{ t('space.ade.settings.result.hint') }}</FieldDescription>
     <SecondaryTabs
       v-if="providers.length > 1"
@@ -89,25 +92,24 @@ const backupsOpen = computed({
         class="flex flex-col gap-1"
         data-testid="ade-settings-file"
       >
-        <div class="m-0 font-data text-kira-sm text-subtle">{{ f.name }}</div>
-        <pre
-          class="m-0 max-h-96 overflow-auto rounded-kira bg-field p-2 font-data text-kira-sm"
-        >{{ f.text }}</pre>
+        <SectionHeading flush data :label="f.name" />
+        <CodeBlock class="max-h-96 overflow-auto">{{ f.text }}</CodeBlock>
       </section>
       <section v-if="current.env.length > 0" class="flex flex-col gap-1">
-        <div class="m-0 text-kira-sm text-subtle">{{ t('docker.field.env.label') }}</div>
+        <SectionHeading flush :label="t('docker.field.env.label')" />
         <ul class="m-0 flex list-none flex-col gap-0.5 p-0" data-testid="ade-settings-env">
           <li v-for="e in current.env" :key="e.name" class="font-data text-kira-sm">
             {{ e.name }}={{ e.value }}
           </li>
         </ul>
       </section>
-      <FieldDescription
+      <InlineState
+        kind="empty"
         v-if="current.files.length === 0 && current.env.length === 0"
         data-testid="ade-settings-empty"
       >
         {{ t('space.ade.settings.result.empty.hint') }}
-      </FieldDescription>
+      </InlineState>
       <ul
         v-if="current.notes.length > 0"
         class="m-0 flex list-none flex-col gap-0.5 p-0 text-kira-sm"
@@ -116,9 +118,7 @@ const backupsOpen = computed({
         <li v-for="n in current.notes" :key="n">{{ n }}</li>
       </ul>
       <section v-if="current.kira.length > 0" class="flex flex-col gap-1">
-        <div class="m-0 text-kira-sm text-subtle">{{
-          t('space.ade.settings.result.kira.label')
-        }}</div>
+        <SectionHeading flush :label="t('space.ade.settings.result.kira.label')" />
         <ul
           class="m-0 flex list-none flex-col gap-0.5 p-0 text-kira-sm"
           data-testid="ade-settings-kira"

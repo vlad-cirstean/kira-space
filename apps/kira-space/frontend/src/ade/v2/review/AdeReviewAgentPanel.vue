@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
@@ -12,7 +13,6 @@ import { computed, ref } from 'vue';
 import { notifyReviewRepaint } from '../../../repo/git/reviewRepaint';
 import { useTerminalsStore } from '../../../state/terminals';
 import { useAgentSessionsStore } from '../../state';
-import AdeTip from '../AdeTip.vue';
 import { activityKind, withTuiActivity } from '../activity';
 import { blockingSetups } from '../board/setupGate';
 import { useLaunchOpener } from '../dialog/useLaunchOpener';
@@ -157,10 +157,10 @@ async function focus(): Promise<void> {
         class="flex flex-none items-center gap-2 px-2 py-1.5"
         data-testid="ade-review-forward-bar"
       >
-        <AdeTip :text="forwardTip">
+        <TextTooltip :text="forwardTip">
           <TooltipDisabledTrigger :disabled="forwardOff">
             <Button
-              variant="dialog"
+              variant="toolbar"
               size="kira"
               :pending="forwardM.isPending.value"
               :disabled="forwardOff"
@@ -171,8 +171,8 @@ async function focus(): Promise<void> {
               {{ t('space.ade.review.forward.label', { count: openCount }) }}
             </Button>
           </TooltipDisabledTrigger>
-        </AdeTip>
-        <AdeTip
+        </TextTooltip>
+        <TextTooltip
           :text="
             openCount === 0
               ? t('space.ade.review.copy.none.tooltip')
@@ -191,7 +191,7 @@ async function focus(): Promise<void> {
               {{ copied ? t('common.copy.copied.announce') : t('common.action.copy.label') }}
             </Button>
           </TooltipDisabledTrigger>
-        </AdeTip>
+        </TextTooltip>
       </div>
       <AdeTuiPane v-if="here" :view="view" class="min-h-0 flex-1" />
       <div
@@ -200,9 +200,10 @@ async function focus(): Promise<void> {
         data-testid="ade-review-elsewhere"
       >
         <p class="m-0">{{ t('space.ade.review.agent.elsewhere.hint') }}</p>
-        <Button variant="dialog" size="kira" data-testid="ade-review-focus" @click="focus">{{
-          t('space.ade.review.agent.focus.label')
-        }}</Button>
+        <Button variant="toolbar" size="kira" data-testid="ade-review-focus" @click="focus"
+          ><CodiconIcon name="go-to-file" :size="13" />
+          {{ t('space.ade.review.agent.focus.label') }}</Button
+        >
         <FieldDescription v-if="missing">{{
           t('space.ade.review.agent.gone.hint')
         }}</FieldDescription>
@@ -223,13 +224,13 @@ async function focus(): Promise<void> {
         data-testid="ade-review-setup"
       />
       <Button
-        variant="dialog"
+        variant="toolbar"
         size="kira"
         :pending="launchM.isPending.value"
         :disabled="waitingSetup"
         data-testid="ade-review-start"
         @click="start"
-      >
+        ><CodiconIcon name="play" :size="13" />
         {{
           waitingSetup
             ? t('space.ade.agentDialog.startsWhenReady.loading')

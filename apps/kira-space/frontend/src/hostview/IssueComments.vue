@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { FieldDescription } from '@theme/components/ui/field';
@@ -26,9 +27,14 @@ function openComment(url: string): void {
 <template>
   <section class="flex flex-col gap-3" data-testid="issue-comments">
     <SectionHeading :label="t('space.hostView.conversation.heading.title')" />
-    <FieldDescription v-if="comments.length === 0 && !omitted" data-testid="issue-comments-empty">{{
-      t('space.hostView.conversation.empty.empty')
-    }}</FieldDescription>
+    <InlineState
+      kind="empty"
+      v-if="comments.length === 0 && !omitted"
+      data-testid="issue-comments-empty"
+      >{{
+        t('space.hostView.conversation.empty.empty')
+      }}</InlineState
+    >
     <FieldDescription v-if="omitted" data-testid="issue-comments-omitted">{{
       t('space.hostView.issue.comments.omitted.hint', { label })
     }}</FieldDescription>

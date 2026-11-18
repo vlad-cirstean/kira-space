@@ -117,20 +117,15 @@ async function browse(): Promise<void> {
           <DialogTitle>{{
             t('studio.project.connectionDialog.newKindTitle.title', { kind: KIND_LABEL[kind] })
           }}</DialogTitle>
-          <span class="min-w-0 grow" />
-          <Button variant="toolbar" size="kira" @click="step = 'engine'">
-            <CodiconIcon name="chevron-left" :size="13" />
-            {{ t('studio.project.connectionDialog.changeEngine.title') }}
-          </Button>
         </template>
         <DialogTitle v-else>{{
           t('studio.project.connectionDialog.newConnection.title')
         }}</DialogTitle>
       </DialogHeader>
 
-      <DialogBody flush>
+      <DialogBody>
         <ConnectionEnginePicker v-if="step === 'engine'" :kind="kind" @pick="pickKind" />
-        <div v-else class="flex flex-col gap-3 p-3">
+        <div v-else class="flex flex-col gap-3">
           <Field>
             <FieldLabel for="new-connection-name">{{ t('common.field.name.label') }}</FieldLabel>
             <Input
@@ -168,6 +163,12 @@ async function browse(): Promise<void> {
       </DialogBody>
 
       <DialogFooter>
+        <template v-if="step === 'details'" #start>
+          <Button variant="dialog" size="kira-lg" @click="step = 'engine'">
+            <CodiconIcon name="chevron-left" :size="13" />
+            {{ t('studio.project.connectionDialog.changeEngine.title') }}
+          </Button>
+        </template>
         <Button
           variant="dialog"
           size="kira-lg"

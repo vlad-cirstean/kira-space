@@ -1,20 +1,23 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
+import { ICON } from '@theme/icons';
 import { paneFrame } from '@theme/lib/frames';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
 import { errorText } from '@workbench/bridge/codedError';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { configName } from '@workbench/config/configName';
 import { computed, ref, watch } from 'vue';
-import AdeTip from '../AdeTip.vue';
 import { useImportWorkflow, useNewWorkflow, useWorkflows } from '../queries';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import type { WorkflowEntry } from '../wire';
@@ -30,8 +33,7 @@ const newWf = useNewWorkflow();
 function rowClass(selected: boolean): string {
   return cn(
     rowVariants({ layout: 'double', selected }),
-    'box-border w-full flex-col items-stretch gap-0.5 whitespace-normal rounded-kira border-0 border-l-3 border-solid px-2 py-2 text-left',
-    selected ? 'border-l-tone-amber-solid' : 'border-l-transparent',
+    'box-border w-full flex-col items-stretch gap-0.5 whitespace-normal px-2 py-2 text-left',
   );
 }
 
@@ -99,22 +101,21 @@ async function createNew(): Promise<void> {
         {{ t('space.common.workflows.label') }}
         <template #actions>
           <Button
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             class="px-1.5"
             data-testid="ade-wf-import"
             @click="importOpen = !importOpen"
-          >
+            ><CodiconIcon name="cloud-download" :size="13" />
             {{ t('space.ade.workflows.page.import.label') }}
           </Button>
           <Button
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             class="px-1.5"
             data-testid="ade-wf-new"
             @click="createNew"
-          >
-            {{ t('space.ade.workflows.page.new.label') }}
+            ><CodiconIcon name="add" :size="13" />{{ t('space.ade.workflows.page.new.label') }}
           </Button>
         </template>
       </PanelHeader>
@@ -128,7 +129,6 @@ async function createNew(): Promise<void> {
               id="ade-wf-import-path"
               v-model="importPath"
               :placeholder="t('space.ade.workflows.page.importPath.example')"
-              size="kira-lg"
               class="min-w-0 flex-1 font-data"
               data-testid="ade-wf-import-path"
               @keydown.enter="runImport"
@@ -165,20 +165,14 @@ async function createNew(): Promise<void> {
           @click="pick(e.fileName)"
         >
           <span class="flex w-full items-center gap-1.5">
-            <span
-              class="min-w-0 flex-1 truncate text-kira-lg font-medium"
-              data-testid="ade-wf-row-name"
-              >{{
-                e.workflow?.name ?? configName(e.fileName)
-              }}</span
-            >
-            <AdeTip v-if="e.error" :text="e.error.message">
-              <span
-                class="shrink-0 text-kira-sm font-medium text-tone-red"
-                data-testid="ade-wf-row-error"
-                >✕</span
+            <span class="min-w-0 flex-1 truncate font-medium" data-testid="ade-wf-row-name">{{
+              e.workflow?.name ?? configName(e.fileName)
+            }}</span>
+            <TextTooltip v-if="e.error" :text="e.error.message">
+              <span class="shrink-0 text-error" data-testid="ade-wf-row-error"
+                ><CodiconIcon :name="ICON.error" :size="13" /></span
               >
-            </AdeTip>
+            </TextTooltip>
           </span>
           <span
             class="max-w-full truncate text-kira-sm text-muted-foreground"
@@ -187,7 +181,7 @@ async function createNew(): Promise<void> {
               stepList(e)
             }}</span
           >
-          <span class="text-kira-sm text-subtle" data-testid="ade-wf-row-used">{{
+          <span :class="rowMeta" data-testid="ade-wf-row-used">{{
             t('space.ade.workflows.page.usedBy.label', { count: e.usedBy })
           }}</span>
         </button>
@@ -199,11 +193,13 @@ async function createNew(): Promise<void> {
       </div>
     </div>
     <div :class="cn(paneFrame, 'flex flex-1 flex-col')">
-      <PanelHeader>{{
-        current?.workflow?.name ??
-        (current ? configName(current.fileName) : t('space.common.workflow.label'))
-      }}</PanelHeader>
-      <div class="min-h-0 flex-1 overflow-auto p-4">
+      <DetailHeader
+        :title="
+          current?.workflow?.name ??
+          (current ? configName(current.fileName) : t('space.common.workflow.label'))
+        "
+      />
+      <div class="min-h-0 flex-1 overflow-auto p-3">
         <AdeWorkflowEditor v-if="current" :key="current.fileName" :entry="current" />
       </div>
     </div>

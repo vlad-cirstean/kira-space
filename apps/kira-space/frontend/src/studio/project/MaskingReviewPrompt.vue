@@ -4,13 +4,12 @@ import { useQuery } from '@tanstack/vue-query';
 import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
-  DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { control } from '../bridge/control';
 import { useConnectionDialogStore } from '../state/connectionDialogs';
@@ -42,38 +41,36 @@ const onChord = shortcutKeydown(['form.submit'], () => review());
 
 <template>
   <Dialog :open="true" @update:open="(v) => !v && emit('hide')">
-    <DialogContent size="md" prompt data-testid="masking-review-dialog" @keydown="onChord">
+    <DialogContent size="sm" prompt data-testid="masking-review-dialog" @keydown="onChord">
       <DialogHeader>
         <DialogTitle>{{ entry.title }}</DialogTitle>
-      </DialogHeader>
-      <DialogBody class="flex flex-col gap-2">
-        <p class="m-0 text-muted-foreground" data-testid="masking-review-body">
+        <DialogDescription data-testid="masking-review-body">
           {{ t('studio.prompt.maskingReview.body', { count: pending.data.value?.count ?? 0 }) }}
-        </p>
-        <p v-if="more > 0" class="m-0 text-muted-foreground" data-testid="masking-review-more">
-          {{ t('common.moreWaiting.status', { count: more }) }}
-        </p>
-      </DialogBody>
+        </DialogDescription>
+      </DialogHeader>
       <DialogFooter>
+        <template v-if="more > 0" #start>
+          <span data-testid="masking-review-more">{{
+            t('common.moreWaiting.status', { count: more })
+          }}</span>
+        </template>
         <Button
-          :aria-keyshortcuts="formatShortcut('prompt.hide')"
+          :kbd="formatShortcut('prompt.hide')"
           variant="dialog"
           size="kira-lg"
           data-testid="masking-review-later"
           @click="emit('hide')"
         >
           {{ t('common.later.label') }}
-          <Kbd>{{ formatShortcut('prompt.hide') }}</Kbd>
         </Button>
         <Button
           variant="dialog-primary"
-          :aria-keyshortcuts="formatShortcut('form.submit')"
+          :kbd="formatShortcut('form.submit')"
           size="kira-lg"
           data-testid="masking-review-open"
           @click="review"
         >
           {{ t('studio.prompt.maskingReview.label') }}
-          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

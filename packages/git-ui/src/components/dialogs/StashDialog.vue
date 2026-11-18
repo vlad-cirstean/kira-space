@@ -343,7 +343,6 @@ function onClose(): void {
               :id="messageId"
               v-model="message"
               type="text"
-              size="kira-lg"
               class="w-full"
               :placeholder="t('git.dialog.stash.message.placeholder')"
             />
@@ -386,7 +385,6 @@ function onClose(): void {
               :id="branchNameId"
               v-model="branchName"
               type="text"
-              size="kira-lg"
               class="w-full"
               v-bind="form.invalidAttrs('branch')"
             />
@@ -404,13 +402,7 @@ function onClose(): void {
         <template v-else-if="mode === 'save'">
           <Field>
             <FieldLabel :for="saveLabelId">{{ t('git.dialog.stash.saveLabel.label') }}</FieldLabel>
-            <Input
-              :id="saveLabelId"
-              v-model="saveLabel"
-              type="text"
-              size="kira-lg"
-              class="w-full"
-            />
+            <Input :id="saveLabelId" v-model="saveLabel" type="text" class="w-full" />
           </Field>
           <FieldSet>
             <FieldLegend>{{ t('common.field.source.label') }}</FieldLegend>

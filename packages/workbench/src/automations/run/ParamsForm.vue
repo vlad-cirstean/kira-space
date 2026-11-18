@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import type { ScriptParam } from '@shared/domain/scripts';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import SecretInput from '@workbench/components/SecretInput.vue';
@@ -56,11 +54,8 @@ function toggle(p: ScriptParam, option: string, on: boolean): void {
 <template>
   <div class="flex flex-col gap-3" data-testid="run-params">
     <Field v-for="p in params" :key="p.name" :data-testid="`run-param-${p.name}`">
-      <FieldLabel :for="`${idBase}-${p.name}`">
-        <span class="font-data">{{ p.name }}</span
-        ><span v-if="p.required && !isSaved(p)" class="text-error">
-          *<span class="sr-only"> {{ t('common.required.label') }}</span></span
-        >
+      <FieldLabel :for="`${idBase}-${p.name}`" :required="p.required && !isSaved(p)">
+        <span class="font-data">{{ p.name }}</span>
       </FieldLabel>
       <SecretInput
         v-if="p.type === 'text' && p.secret"
@@ -93,7 +88,6 @@ function toggle(p: ScriptParam, option: string, on: boolean): void {
         v-else-if="p.type === 'select'"
         :id="`${idBase}-${p.name}`"
         variant="bordered"
-        size="kira-lg"
         :model-value="values[p.name]?.[0] ?? ''"
         :data-testid="`run-param-input-${p.name}`"
         @update:model-value="(v) => set(p.name, v === '' ? [] : [String(v)])"
@@ -106,18 +100,15 @@ function toggle(p: ScriptParam, option: string, on: boolean): void {
         class="flex flex-wrap gap-x-4 gap-y-1.5"
         :data-testid="`run-param-input-${p.name}`"
       >
-        <div v-for="o in p.options" :key="o" class="flex items-center gap-2">
+        <Field v-for="o in p.options" :key="o" orientation="horizontal" class="w-auto">
           <Checkbox
             :id="`${idBase}-${p.name}-${o}`"
-            class="size-3.5"
             :model-value="(values[p.name] ?? []).includes(o)"
             :data-testid="`run-param-option-${p.name}-${o}`"
             @update:model-value="(v) => toggle(p, o, v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
-          <Label :for="`${idBase}-${p.name}-${o}`">{{ o }}</Label>
-        </div>
+          />
+          <FieldLabel :for="`${idBase}-${p.name}-${o}`">{{ o }}</FieldLabel>
+        </Field>
       </div>
     </Field>
   </div>

@@ -11,9 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field } from '@theme/components/ui/field';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
@@ -133,15 +132,25 @@ watch(
 
         <template v-if="chosenFile">
           <Field>
-            <Label class="text-muted-foreground p-0">{{ t('common.field.key.label') }}</Label>
-            <Input v-model="key" class="font-data" data-testid="upload-key" />
+            <FieldLabel for="upload-object-key">{{ t('common.field.key.label') }}</FieldLabel>
+            <Input
+              id="upload-object-key"
+              v-model="key"
+              class="font-data"
+              data-testid="upload-key"
+            />
           </Field>
 
           <Field>
-            <Label class="text-muted-foreground p-0">{{
+            <FieldLabel for="upload-object-content-type">{{
               t('studio.http.body.contentType.placeholder')
-            }}</Label>
-            <Input v-model="contentType" class="font-data" data-testid="upload-content-type" />
+            }}</FieldLabel>
+            <Input
+              id="upload-object-content-type"
+              v-model="contentType"
+              class="font-data"
+              data-testid="upload-content-type"
+            />
           </Field>
         </template>
 

@@ -329,12 +329,17 @@ test('engine overview tabulates containers with humanized stats; section tabs sh
     ],
   });
   await expect(page.locator('[data-testid="docker-engine-mem"]')).toHaveText('1.5 GB');
+  await expect(page.locator('[data-testid="docker-engine-cpu"]')).not.toHaveClass(/text-kira-xl/);
   await expect(
     page.locator('[data-testid="docker-table-row"][data-name="shop-db-1"]'),
   ).toContainText('1.5 GB');
 
   await page.locator('[data-testid="docker-table-row"][data-name="solo"]').click();
   await expect(page.locator('[data-testid="docker-detail-name"]')).toHaveText('solo');
+  await expect(page.locator('[data-testid="docker-action-start"] .codicon')).toHaveCSS(
+    'font-size',
+    '13px',
+  );
   await page.locator('[data-testid="docker-overview-home"]').click();
   await expect(page.locator('[data-testid="docker-engine-overview"]')).toBeVisible();
 });
@@ -369,6 +374,14 @@ test('contract: image detail registry button asks Hub only on click, then opens 
 
   await alpine.click();
   await expect(page.locator('[data-testid="docker-resource-registry"]')).toBeVisible();
+  const header = page.locator('[data-testid="docker-resource-detail"] [data-slot="detail-header"]');
+  await expect(header.getByRole('heading', { level: 2 })).toHaveText(IMAGES[0].tags[0]);
+  await expect(header.locator('[data-testid="docker-resource-registry"]')).toBeVisible();
+  await expect(
+    page
+      .locator('[data-testid="docker-resource-detail"]')
+      .getByRole('heading', { level: 3, name: 'Details' }),
+  ).toBeVisible();
   expect(confirms).toBe(0);
   await page.locator('[data-testid="docker-resource-registry"]').click();
   await expect

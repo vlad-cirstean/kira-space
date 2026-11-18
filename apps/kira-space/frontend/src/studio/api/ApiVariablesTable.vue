@@ -114,12 +114,9 @@ function remove(i: number): void {
       <Checkbox
         :model-value="!!row.secret"
         :aria-label="t('common.secret.label')"
-        class="size-3.5"
         :data-testid="`api-variable-is-secret-${i}`"
         @update:model-value="(v) => setSecret(i, v === true)"
-      >
-        <CodiconIcon name="check" :size="12" />
-      </Checkbox>
+      />
       <Input
         :model-value="row.description ?? ''"
         :aria-label="t('studio.api.variablesDialog.description.aria')"
@@ -134,7 +131,8 @@ function remove(i: number): void {
       />
     </div>
     <div class="px-1.5">
-      <Button variant="toolbar" size="kira" data-testid="api-variable-add" @click="add">
+      <Button variant="toolbar" size="kira" data-testid="api-variable-add" @click="add"
+        ><CodiconIcon :name="ICON.add" :size="13" />
         {{ t('docker.edit.addVariable.label') }}
       </Button>
     </div>

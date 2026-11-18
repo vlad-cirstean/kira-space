@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { hostWords, type MessageParams, t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { errorText } from '@workbench/bridge/codedError';
 /**
  * The real shell. `AppToolbar.vue`/`CommitGrid.vue`/`LoadMoreButton.vue` are wired together here
@@ -1718,18 +1720,19 @@ onBeforeUnmount(() => {
     />
     <!-- G12 D6: outside the v-if="repoState" gate below, since bootError means bootstrap() never
          got that far — a blank panel is never an acceptable rendering of a failure. -->
-    <div
+    <EmptyState
       v-if="bootError && !repoState"
-      class="flex flex-col items-center justify-center gap-2 h-full p-4 text-center text-fg"
+      fill
+      icon="warning"
       data-testid="boot-error"
+      :title="t('common.state.loadFailed.title')"
+      :description="t('git.app.bootError.error', { error: bootError })"
     >
-      <p class="max-w-120 text-muted-foreground">{{
-        t('git.app.bootError.error', { error: bootError })
-      }}</p>
-      <Button variant="dialog" size="kira" data-testid="boot-retry" @click="retryBootstrap">
+      <Button variant="toolbar" size="kira" data-testid="boot-retry" @click="retryBootstrap"
+        ><CodiconIcon :name="ICON.refresh" :size="13" />
         {{ t('common.action.retry.label') }}
       </Button>
-    </div>
+    </EmptyState>
     <template v-else-if="repoState">
       <!-- bootstrap() keeps going after repoState is set — through persisted repo.open,
            the auto-open candidate loop and openStream — so a rejection from any of those must
@@ -1946,26 +1949,23 @@ onBeforeUnmount(() => {
               }"
             />
           </PopoverAnchor>
-          <PopoverContent
-            align="start"
-            :side-offset="0"
-            class="w-auto flex-row items-center gap-1 px-2 py-1"
-            destructive
-          >
-            <span>{{
-              t('git.common.forceDelete.body', { name: forceDeleteRefCandidate?.name ?? '' })
-            }}</span>
-            <Button variant="dialog-danger" size="kira" @click="confirmForceDeleteRef">{{
-              t('git.common.forceDelete.confirm')
-            }}</Button>
-            <Button
-              data-dialog-dismiss
-              variant="toolbar"
-              size="kira"
-              @click="forceDeleteRefCandidate = undefined"
-            >
-              {{ t('common.action.cancel.label') }}
-            </Button>
+          <PopoverContent align="start" :side-offset="0" class="w-80" destructive>
+            <p>
+              {{ t('git.common.forceDelete.body', { name: forceDeleteRefCandidate?.name ?? '' }) }}
+            </p>
+            <div class="flex justify-end gap-1">
+              <Button
+                data-dialog-dismiss
+                variant="dialog"
+                size="kira"
+                @click="forceDeleteRefCandidate = undefined"
+              >
+                {{ t('common.action.cancel.label') }}
+              </Button>
+              <Button variant="dialog-danger" size="kira" @click="confirmForceDeleteRef">{{
+                t('git.common.forceDelete.confirm')
+              }}</Button>
+            </div>
           </PopoverContent>
         </Popover>
         <RenameRefDialog

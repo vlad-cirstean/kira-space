@@ -113,7 +113,7 @@ test('Http request body — form-data with a real file field sends a path, never
   await rows.nth(0).locator('[data-testid="http-formdata-value"]').fill('hello');
 
   // Row 1 (now the trailing blank row): switch to File, name it, and pick a file.
-  await rows.nth(1).locator('[data-testid="http-formdata-kind"]').selectOption('file');
+  await rows.nth(1).locator('[data-testid="http-formdata-kind-file"]').click();
   await rows.nth(1).locator('[data-testid="http-formdata-name"]').fill('upload');
   await rows.nth(1).locator('[data-testid="http-formdata-choose-file"]').click();
   const fileCaption = rows.nth(1).locator('[data-testid="http-formdata-file-caption"]');

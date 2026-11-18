@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 /**
  * The visible half of every failure the live region already announces. An inline banner,
  * not a toast: it stays until dismissed or superseded, pushes layout instead of covering grid
  * rows, and needs no toast host in either app. `role="region"` replaces `Alert`'s own
  * `role="alert"` so the shared `sr-only` live region stays the single announcer.
  */
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
@@ -61,15 +61,12 @@ const canShowOperations = computed(() => props.notice.logged && props.showOperat
       >
         {{ t('git.failure.showOperations.label') }}
       </Button>
-      <Button
-        variant="toolbar"
-        size="kira-icon"
-        :aria-label="t('common.action.dismiss.label')"
+      <TooltipIconButton
+        icon="close"
+        :label="t('common.action.dismiss.label')"
         data-testid="failure-banner-dismiss"
         @click="emit('dismiss')"
-      >
-        <CodiconIcon name="close" :size="13" />
-      </Button>
+      />
     </AlertAction>
   </Alert>
 </template>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ApiEnvironmentFileModel, ApiFileVariable } from '@shared/domain/apiConfig';
+import InlineState from '@theme/components/InlineState.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { FieldDescription, FieldError } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import {
   TagsInput,
   TagsInputInput,
@@ -58,15 +58,17 @@ function hostsError(index: number, v: ApiFileVariable): string | undefined {
 <template>
   <div class="flex flex-col gap-3 p-3" data-testid="api-section-agent">
     <FieldDescription>{{ t('studio.api.agentAccess.intro.body') }}</FieldDescription>
-    <div class="flex items-center gap-2 text-kira-md">
+    <Field orientation="horizontal">
       <Checkbox
         :id="readsId"
         :model-value="env.agentAutoApproveReads ?? false"
         data-testid="api-agent-auto-reads"
         @update:model-value="(v) => (env.agentAutoApproveReads = v === true)"
       />
-      <Label :for="readsId">{{ t('studio.api.agentAccess.autoApproveReads.label') }}</Label>
-    </div>
+      <FieldLabel :for="readsId">{{
+        t('studio.api.agentAccess.autoApproveReads.label')
+      }}</FieldLabel>
+    </Field>
     <FieldError v-if="props.errorFor('/agentAutoApproveReads')">{{
       props.errorFor('/agentAutoApproveReads')
     }}</FieldError>
@@ -112,8 +114,8 @@ function hostsError(index: number, v: ApiFileVariable): string | undefined {
         </div>
       </li>
     </ul>
-    <FieldDescription v-if="!(env.variables ?? []).length" data-testid="api-agent-empty">{{
+    <InlineState kind="empty" v-if="!(env.variables ?? []).length" data-testid="api-agent-empty">{{
       t('studio.api.config.variables.empty')
-    }}</FieldDescription>
+    }}</InlineState>
   </div>
 </template>

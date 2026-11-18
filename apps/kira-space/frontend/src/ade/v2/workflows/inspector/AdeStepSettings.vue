@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import { setStageValue, stageValueValid } from '../../board/stageSettings';
 import { useWorkflows } from '../../queries';
 import type { StageSettingSpec } from '../../wire';
-import AdeInspectorRow from './AdeInspectorRow.vue';
 
 // A step's per-provider agent settings, one field per catalog entry.
 const props = defineProps<{ settings: Record<string, Record<string, string>>; stepId: string }>();
@@ -31,7 +31,8 @@ const onInput = (s: StageSettingSpec, v: string | number): void =>
   <div v-if="groups.length > 0" class="flex flex-col gap-3" data-testid="ade-wf-step-settings">
     <template v-for="g in groups" :key="g.provider">
       <span v-if="groups.length > 1" class="text-kira-sm text-subtle">{{ g.label }}</span>
-      <AdeInspectorRow v-for="s in g.specs" :key="s.key" :label="s.label" :for="id(s)">
+      <Field v-for="s in g.specs" :key="s.key" orientation="responsive">
+        <FieldLabel :for="id(s)">{{ s.label }}</FieldLabel>
         <Input
           :id="id(s)"
           type="number"
@@ -44,15 +45,15 @@ const onInput = (s: StageSettingSpec, v: string | number): void =>
           :data-testid="`ade-wf-setting-${key(s)}`"
           @update:model-value="(v: string | number) => onInput(s, v)"
         />
-        <template v-if="!stageValueValid(s, value(s))" #error>
+        <FieldError v-if="!stageValueValid(s, value(s))">
           <span :data-testid="`ade-wf-setting-error-${key(s)}`">{{
             t('space.ade.workflows.settings.range.error', { min: s.min, max: s.max })
           }}</span>
-        </template>
-        <template v-else #hint>
+        </FieldError>
+        <FieldDescription v-else>
           <span :data-testid="`ade-wf-setting-hint-${key(s)}`">{{ s.hint }}</span>
-        </template>
-      </AdeInspectorRow>
+        </FieldDescription>
+      </Field>
     </template>
   </div>
 </template>

@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import CodeBlock from '@theme/components/CodeBlock.vue';
+import DetailSection from '@theme/components/DetailSection.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Alert } from '@theme/components/ui/alert';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { Card } from '@theme/components/ui/card';
-import { FieldDescription, FieldError } from '@theme/components/ui/field';
+import { FieldDescription } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
 import { copyAndAnnounce } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
@@ -63,25 +64,22 @@ function copy(command: string): void {
   <div class="contents" v-show="active">
     <FieldDescription>{{ t('space.settings.cliTools.description') }}</FieldDescription>
 
-    <FieldError v-if="loadError" data-testid="cli-tools-error">{{
-      errorText(loadError)
-    }}</FieldError>
+    <Alert variant="error" v-if="loadError" data-testid="cli-tools-error"
+      ><AlertDescription>{{ errorText(loadError) }}</AlertDescription></Alert
+    >
 
-    <Card
+    <DetailSection
       v-for="tool in list"
       :key="tool.provider"
-      class="flex flex-col gap-2 p-3"
+      :title="tool.label"
       :data-testid="`cli-tool-${tool.provider}`"
     >
-      <div class="flex items-center justify-between gap-2">
-        <div class="flex flex-col">
-          <span class="font-medium">{{ tool.label }}</span>
-          <span class="text-kira-sm text-muted-foreground">{{ tool.cli }}</span>
-        </div>
+      <template #actions>
         <Badge :variant="state(tool).tone" :data-testid="`cli-tool-status-${tool.provider}`">
           {{ t(state(tool).label) }}
         </Badge>
-      </div>
+      </template>
+      <span class="text-kira-sm text-muted-foreground">{{ tool.cli }}</span>
 
       <div
         v-if="details(tool).length > 0"
@@ -104,11 +102,7 @@ function copy(command: string): void {
             {{ STEP_LABEL[step.purpose] ? t(STEP_LABEL[step.purpose]) : step.purpose }}
           </span>
           <span class="flex items-center gap-1">
-            <code
-              class="min-w-0 flex-1 break-all rounded-kira-sm bg-field px-2 py-1 font-data text-kira-sm"
-            >
-              {{ step.command }}
-            </code>
+            <CodeBlock class="min-w-0 flex-1">{{ step.command }}</CodeBlock>
             <TooltipIconButton
               icon="copy"
               :label="t('common.copyCommand.label')"
@@ -129,7 +123,7 @@ function copy(command: string): void {
           {{ t('space.settings.cliTools.docs.label') }}
         </Button>
       </div>
-    </Card>
+    </DetailSection>
 
     <div>
       <Button

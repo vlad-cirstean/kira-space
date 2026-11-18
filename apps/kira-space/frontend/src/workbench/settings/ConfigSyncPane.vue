@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { Alert } from '@theme/components/ui/alert';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Field, FieldDescription, FieldError } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import {
   Table,
@@ -123,17 +122,17 @@ async function onPull(): Promise<void> {
   <div class="contents" v-show="active">
     <FieldDescription>{{ t('space.settings.configSync.description') }}</FieldDescription>
 
-    <FieldError v-if="failure" data-testid="config-sync-pane-error">{{
-      errorText(failure)
-    }}</FieldError>
+    <Alert variant="error" v-if="failure" data-testid="config-sync-pane-error"
+      ><AlertDescription>{{ errorText(failure) }}</AlertDescription></Alert
+    >
 
     <template v-if="showForm">
       <Field>
-        <Label :for="urlId">{{ t('space.settings.configSync.url.label') }}</Label>
+        <FieldLabel :for="urlId">{{ t('space.settings.configSync.url.label') }}</FieldLabel>
         <Input :id="urlId" v-model="url" data-testid="config-sync-url" />
       </Field>
       <Field>
-        <Label :for="branchId">{{ t('common.field.branch.label') }}</Label>
+        <FieldLabel :for="branchId">{{ t('common.field.branch.label') }}</FieldLabel>
         <Input :id="branchId" v-model="branch" data-testid="config-sync-branch" />
       </Field>
       <div>
@@ -174,7 +173,9 @@ async function onPull(): Promise<void> {
       </Alert>
 
       <Field>
-        <Label :for="intervalId">{{ t('space.settings.configSync.interval.label') }}</Label>
+        <FieldLabel :for="intervalId">{{
+          t('space.settings.configSync.interval.label')
+        }}</FieldLabel>
         <Input
           :id="intervalId"
           type="number"
@@ -250,6 +251,11 @@ async function onPull(): Promise<void> {
             }}</TableCell>
             <TableCell>
               <NativeSelect
+                :aria-label="
+                  t('space.settings.configSync.mode.aria', {
+                    module: MODULE_LABEL[mod.name] ? t(MODULE_LABEL[mod.name]) : mod.name,
+                  })
+                "
                 variant="bordered"
                 :model-value="mod.mode"
                 :data-testid="`config-sync-mode-${mod.name}`"

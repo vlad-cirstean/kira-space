@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
-import AdeTip from '../AdeTip.vue';
 import { useTaskLeases } from '../leases/useTaskLeases';
 
 // A task's lease state on its row: the queue it holds, else its place in line.
@@ -17,7 +17,7 @@ const args = computed(() => ({
 </script>
 
 <template>
-  <AdeTip
+  <TextTooltip
     v-if="lease"
     :text="
       holds
@@ -36,5 +36,5 @@ const args = computed(() => ({
         class="max-w-24 truncate"
       />
     </span>
-  </AdeTip>
+  </TextTooltip>
 </template>

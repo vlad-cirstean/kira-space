@@ -1258,14 +1258,14 @@ test('the environment select opens an app-drawn menu carrying each environmentâ€
   expect(Math.round(menuBox.x + menuBox.width)).toBe(Math.round(selectBox.x + selectBox.width));
 
   const noneRow = page.locator('[data-testid="api-environment-option-none"]');
-  await expect(noneRow.locator('[data-testid="conn-dot"]')).toHaveClass(/bg-none/);
+  await expect(noneRow.locator('[data-testid="menu-swatch"]')).toHaveClass(/bg-none/);
 
   const rows = page.locator('[data-testid="api-environment-option"]');
   await expect(rows).toHaveCount(2);
   const prodRow = rows.filter({ hasText: 'Prod' });
   const stagingRow = rows.filter({ hasText: 'Staging' });
-  await expect(prodRow.locator('[data-testid="conn-dot"]')).not.toHaveClass(/none/);
-  await expect(stagingRow.locator('[data-testid="conn-dot"]')).toHaveClass(/none/);
+  await expect(prodRow.locator('[data-testid="menu-swatch"]')).not.toHaveClass(/none/);
+  await expect(stagingRow.locator('[data-testid="menu-swatch"]')).toHaveClass(/none/);
 
   await prodRow.click();
   await expect(menu).toHaveCount(0);

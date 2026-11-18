@@ -2,17 +2,25 @@
 import type { Caps } from '@shared/caps';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Label } from '@theme/components/ui/label';
-import { PopoverContent } from '@theme/components/ui/popover';
+import { PopoverBar, PopoverContent, PopoverList } from '@theme/components/ui/popover';
 import { Separator } from '@theme/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
-import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import {
+  type ComponentPublicInstance,
+  computed,
+  onBeforeUnmount,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue';
 import { useTabsStore } from '../../../state/tabs';
 import { nextProjectionFromSelectedColumns } from './menu';
 import { useGridViewStore } from './state';
@@ -85,7 +93,8 @@ function sameOrder(a: string[], b: string[] | null): boolean {
 
 // Persistence stays in onBeforeUnmount below (commits `order` alongside `selected`). Drag clone
 // stays inside the popover: a body-level one would count as an outside pointer and dismiss it.
-const listEl = useTemplateRef<HTMLElement>('listEl');
+const listComponent = useTemplateRef<ComponentPublicInstance>('listComponent');
+const listEl = computed<HTMLElement | null>(() => listComponent.value?.$el ?? null);
 useSortableReorder(
   listEl,
   () => order.value,
@@ -128,26 +137,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <PopoverContent align="end" class="w-56 gap-0 p-0" data-testid="columns-menu">
+  <PopoverContent align="end" flush class="w-56" data-testid="columns-menu">
     <div class="max-h-80 flex flex-col">
-      <div class="flex gap-1 p-1">
-        <Button variant="toolbar" size="kira" data-testid="columns-select-all" @click="selectAll">{{
-          t('common.state.all.option')
-        }}</Button>
-        <Button
-          variant="toolbar"
-          size="kira"
-          data-testid="columns-select-none"
-          @click="selectNone"
-          >{{
-            t('common.state.none.option')
-          }}</Button
+      <PopoverBar>
+        <Button variant="toolbar" size="kira" data-testid="columns-select-all" @click="selectAll"
+          ><CodiconIcon name="check-all" :size="13" />{{ t('common.state.all.option') }}</Button
         >
-      </div>
+        <Button variant="toolbar" size="kira" data-testid="columns-select-none" @click="selectNone"
+          ><CodiconIcon :name="ICON.clearAll" :size="13" />
+          {{ t('common.state.none.option') }}</Button
+        >
+      </PopoverBar>
       <!-- Drag a row to reorder — the same order the grid renders columns in
            (columns.ts's resolveColumnOrder). Checkbox toggles visibility; the PK's is locked.
            The container is always mounted: the sortable binds to it once, at mount. -->
-      <div ref="listEl" class="overflow-y-auto p-0.5">
+      <PopoverList ref="listComponent" class="overflow-y-auto">
         <InlineState v-if="!meta" kind="loading">{{
           t('studio.grid.columns.loading.loading')
         }}</InlineState>
@@ -161,30 +165,23 @@ onBeforeUnmount(() => {
           <span class="flex items-center shrink-0 text-subtle cursor-grab" aria-hidden="true"
             ><CodiconIcon name="gripper" :size="13" /></span
           >
-          <Tooltip v-if="pkNames.has(name)">
-            <TooltipTrigger as-child>
-              <Checkbox
-                :model-value="selected.has(name)"
-                disabled
-                data-testid="columns-menu-item"
-                @update:model-value="toggle(name)"
-              >
-                <CodiconIcon name="check" :size="12" />
-              </Checkbox>
-            </TooltipTrigger>
-            <TooltipContent>{{ t('studio.grid.columns.primaryKey.tooltip') }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip v-if="pkNames.has(name)" :text="t('studio.grid.columns.primaryKey.tooltip')"
+            ><Checkbox
+              :model-value="selected.has(name)"
+              disabled
+              data-testid="columns-menu-item"
+              @update:model-value="toggle(name)"
+            /></TextTooltip
+          >
           <Checkbox
             v-else
             :model-value="selected.has(name)"
             data-testid="columns-menu-item"
             @update:model-value="toggle(name)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
+          />
           {{ name }}
         </Label>
-      </div>
+      </PopoverList>
       <Separator class="my-1" />
       <div class="px-1.5 pb-1.5 text-kira-sm text-subtle" data-testid="columns-menu-footer">
         {{

@@ -72,7 +72,12 @@ const shownCount = computed(() => list.data.value?.rows.length ?? 0);
   <div class="flex h-full min-h-0 flex-col" data-testid="kube-browser">
     <QueryState :query="kinds" :is-empty="() => (kinds.data.value?.kinds.length ?? 0) === 0">
       <template #empty>
-        <EmptyState fill data-testid="kube-kinds-empty" :title="t('kubernetes.kinds.none.empty')" />
+        <EmptyState
+          fill
+          icon="symbol-misc"
+          data-testid="kube-kinds-empty"
+          :title="t('kubernetes.kinds.none.empty')"
+        />
       </template>
       <template #default="{ data }">
         <ViewToolbar>
@@ -93,7 +98,7 @@ const shownCount = computed(() => list.data.value?.rows.length ?? 0);
             @click="list.refetch()"
           />
         </ViewToolbar>
-        <ViewToolbar class="flex-wrap">
+        <ViewToolbar class="h-auto min-h-bar flex-wrap py-1">
           <NamespacePicker
             v-if="namespaced"
             :value="namespace"
@@ -108,6 +113,7 @@ const shownCount = computed(() => list.data.value?.rows.length ?? 0);
           />
           <Input
             v-model="selector"
+            size="kira"
             class="w-40"
             :placeholder="t('kubernetes.list.labelSelector.placeholder')"
             :aria-label="t('kubernetes.list.labelSelector.label')"
@@ -116,9 +122,9 @@ const shownCount = computed(() => list.data.value?.rows.length ?? 0);
             @change="applySelector"
           />
         </ViewToolbar>
-        <FieldError v-if="badSelector" class="px-2" data-testid="kube-selector-error">{{
-          badSelector
-        }}</FieldError>
+        <div v-if="badSelector" class="px-2">
+          <FieldError data-testid="kube-selector-error">{{ badSelector }}</FieldError>
+        </div>
         <div class="flex min-h-0 flex-1 flex-col">
           <QueryState v-if="!badSelector && kind" :query="list" :is-empty="() => false">
             <template #default="{ data: rows }">

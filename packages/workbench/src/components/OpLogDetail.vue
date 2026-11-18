@@ -2,6 +2,8 @@
 import type { EditorLanguageId } from '@shared/domain/editor';
 import type { OpLogRecord } from '@shared/domain/ops';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import KeyValueList from '@theme/components/KeyValueList.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Button } from '@theme/components/ui/button';
@@ -57,9 +59,9 @@ function stepDuration(step: OpLogStep): string {
     @keydown.home.stop
     @keydown.end.stop
   >
-    <dl class="m-0 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5">
-      <dt class="text-muted-foreground">{{ t('common.field.time.label') }}</dt>
-      <dd class="m-0 font-data">
+    <KeyValueList density="compact">
+      <dt>{{ t('common.field.time.label') }}</dt>
+      <dd class="font-data">
         {{
           t('common.dotPair.label', {
             first: formatDateTime(record.startedAt),
@@ -67,29 +69,27 @@ function stepDuration(step: OpLogStep): string {
           })
         }}
       </dd>
-      <dt class="text-muted-foreground">{{ t('common.field.duration.label') }}</dt>
-      <dd class="m-0 font-data">{{
+      <dt>{{ t('common.field.duration.label') }}</dt>
+      <dd class="font-data">{{
         displayValue(record.durationMs === null ? null : formatDuration(record.durationMs))
       }}</dd>
       <template v-for="field in fields" :key="field.label">
-        <dt class="text-muted-foreground">{{ field.label }}</dt>
-        <dd :class="cn('m-0 min-w-0 break-all', field.code && 'font-data')">{{ field.value }}</dd>
+        <dt>{{ field.label }}</dt>
+        <dd :class="cn('break-all', field.code && 'font-data')">{{ field.value }}</dd>
       </template>
-    </dl>
+    </KeyValueList>
 
     <section v-if="record.command" class="flex flex-col gap-0.5">
-      <div class="flex items-center gap-1 text-muted-foreground">
-        <span>{{ t('common.field.command.label') }}</span>
+      <SectionHeading flush :label="t('common.field.command.label')">
         <TooltipIconButton
           icon="copy"
           :label="t('common.copyCommand.label')"
           size="inline"
-          :icon-size="12"
           @click="
             copy(record.command ?? '', { message: t('workbench.opLog.copiedCommand.announce') })
           "
         />
-      </div>
+      </SectionHeading>
       <OpLogCodeBlock
         :text="record.command"
         :language="commandLanguage"
@@ -98,16 +98,14 @@ function stepDuration(step: OpLogStep): string {
     </section>
 
     <section v-if="record.error" class="flex flex-col gap-0.5">
-      <div class="flex items-center gap-1 text-muted-foreground">
-        <span>{{ t('workbench.opLog.error.status') }}</span>
+      <SectionHeading flush :label="t('workbench.opLog.error.status')">
         <TooltipIconButton
           icon="copy"
           :label="t('workbench.opLog.copyError.label')"
           size="inline"
-          :icon-size="12"
           @click="copy(record.error ?? '', { message: t('workbench.opLog.copiedError.announce') })"
         />
-      </div>
+      </SectionHeading>
       <OpLogCodeBlock :text="record.error" tone="error" data-testid="op-detail-error" />
     </section>
 

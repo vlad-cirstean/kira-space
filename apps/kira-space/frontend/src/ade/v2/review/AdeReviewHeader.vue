@@ -2,12 +2,14 @@
 import { shortSha } from '@kira/git-core';
 import { useQuery } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import Identifier from '@workbench/components/Identifier.vue';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
+import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
 import { computed } from 'vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import { taskTitle } from '../board/labels';
@@ -58,36 +60,28 @@ const headHint = computed(() => {
         :style="{ background: taskColor(task?.color ?? 0) }"
         data-testid="ade-review-task-colour"
       />
-      <span class="min-w-0 truncate text-kira-md font-medium" data-testid="ade-review-title">{{
-        title
-      }}</span>
+      <TitleBarTitle data-testid="ade-review-title">{{ title }}</TitleBarTitle>
       <AdeRepoTag :code-repo-id="target.codeRepoId" :label="repoLabel" />
       <span class="min-w-0 truncate font-data text-kira-sm" data-testid="ade-review-branch">{{
         target.branch
       }}</span>
-      <Tooltip :disabled="remoteBaseHint === ''">
-        <TooltipTrigger as-child>
-          <span class="shrink-0 text-kira-sm text-muted-foreground" data-testid="ade-review-base">{{
-            t('space.ade.review.header.base.label', { base: target.base })
-          }}</span>
-        </TooltipTrigger>
-        <TooltipContent>{{ remoteBaseHint }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="remoteBaseHint"
+        ><span class="shrink-0 text-kira-sm text-muted-foreground" data-testid="ade-review-base">{{
+          t('space.ade.review.header.base.label', { base: target.base })
+        }}</span></TextTooltip
+      >
       <AdeReviewSync :target="target" />
-      <Tooltip v-if="dirtyCount > 0">
-        <TooltipTrigger as-child>
-          <Badge
-            variant="warn"
-            tabindex="0"
-            class="wails-no-drag shrink-0"
-            :aria-label="hint"
-            data-testid="ade-review-uncommitted"
-          >
-            {{ t('space.ade.review.header.uncommitted.label', { count: dirtyCount }) }}
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>{{ hint }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-if="dirtyCount > 0" :text="hint"
+        ><Badge
+          variant="warn"
+          tabindex="0"
+          class="wails-no-drag shrink-0"
+          :aria-label="hint"
+          data-testid="ade-review-uncommitted"
+        >
+          {{ t('space.ade.review.header.uncommitted.label', { count: dirtyCount }) }}
+        </Badge></TextTooltip
+      >
       <Tooltip v-if="head">
         <TooltipTrigger as-child>
           <Badge

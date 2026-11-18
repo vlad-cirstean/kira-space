@@ -2,6 +2,7 @@
 import { FAKE_NAMES, loadDynamicGenerator } from '@kira/api-core';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -13,7 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { copyOrReportError } from '@workbench/behaviour/clipboard';
@@ -82,11 +82,11 @@ function close(): void {
 
 <template>
   <Dialog :open="true" @update:open="(v) => !v && close()">
-    <DialogContent size="md" data-testid="dynamic-values-dialog">
+    <DialogContent size="lg" data-testid="dynamic-values-dialog">
       <DialogHeader close-testid="dynamic-values-dialog-close">
         <DialogTitle>{{ t('studio.api.dynamicValues.title') }}</DialogTitle>
       </DialogHeader>
-      <DialogBody class="gap-1.5">
+      <DialogBody>
         <SearchField
           v-model="filterQuery"
           size="kira-lg"
@@ -102,9 +102,12 @@ function close(): void {
           :icon="ICON.search"
           :title="t('common.state.noMatches.empty')"
         />
-        <Tooltip v-for="entry in filteredEntries" :key="entry.name">
-          <TooltipTrigger as-child>
-            <Button
+        <div class="flex flex-col gap-1.5">
+          <TextTooltip
+            v-for="entry in filteredEntries"
+            :key="entry.name"
+            :text="t('common.action.copy.label')"
+            ><Button
               variant="toolbar"
               size="kira"
               class="h-auto min-h-6.5 w-full justify-between gap-1 px-1.5 py-1 text-left text-kira-md font-normal text-fg"
@@ -118,10 +121,9 @@ function close(): void {
               <Badge variant="info" class="min-w-0 truncate" data-testid="dynamic-values-sample">{{
                 samples[entry.name] ?? ''
               }}</Badge>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('common.action.copy.label') }}</TooltipContent>
-        </Tooltip>
+            </Button></TextTooltip
+          >
+        </div>
       </DialogBody>
 
       <DialogFooter>

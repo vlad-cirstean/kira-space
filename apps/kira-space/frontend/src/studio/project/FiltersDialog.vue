@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { NodeKind } from '@shared/domain/tree';
 import { EMPTY_VISIBILITY, type TreeVisibility } from '@shared/domain/treeFilter';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
@@ -13,16 +13,16 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
-import { rowMeta } from '@theme/lib/rowVariants';
+import { rowIndent, rowMeta } from '@theme/lib/rowVariants';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { useCappedList } from '@workbench/behaviour/cappedList';
 import { revealElement } from '@workbench/behaviour/focus';
@@ -215,27 +215,20 @@ const connectionName = computed(
             ? t('studio.project.filtersDialog.dialog.named.title', { connectionName })
             : t('studio.project.filtersDialog.dialog.title')
         }}</DialogTitle>
+        <DialogDescription>{{ t('studio.project.filtersDialog.intro.body') }}</DialogDescription>
       </DialogHeader>
 
       <DialogBody>
-        <FieldDescription>{{ t('studio.project.filtersDialog.intro.body') }}</FieldDescription>
-
         <section class="flex flex-col gap-1">
           <SectionHeading :label="t('studio.project.filtersDialog.kinds.heading.label')">
-            <span class="flex gap-1">
-              <Button variant="link" size="inline" @click="allKinds">{{
-                t('common.state.all.option')
-              }}</Button>
-              <Button variant="link" size="inline" @click="noneKinds">{{
-                t('common.state.none.option')
-              }}</Button>
-            </span>
+            <Button variant="link" size="inline" @click="allKinds">{{
+              t('common.state.all.option')
+            }}</Button>
+            <Button variant="link" size="inline" @click="noneKinds">{{
+              t('common.state.none.option')
+            }}</Button>
           </SectionHeading>
-          <Card
-            variant="list"
-            class="flex max-h-56 flex-col gap-px overflow-y-auto"
-            data-testid="filter-kind-list"
-          >
+          <Card variant="list" class="max-h-56 overflow-y-auto" data-testid="filter-kind-list">
             <Label
               v-for="row in kinds"
               :key="row.kind"
@@ -245,11 +238,9 @@ const connectionName = computed(
             >
               <Checkbox
                 :model-value="!row.hidden"
-                class="size-3.5 after:inset-0"
+                class="after:inset-0"
                 @update:model-value="onToggleKind(row.kind)"
-              >
-                <CodiconIcon name="check" :size="12" />
-              </Checkbox>
+              />
               <span class="min-w-0 flex-1 truncate text-kira-md">{{ row.label }}</span>
               <span :class="rowMeta">{{ row.count }}</span>
             </Label>
@@ -261,14 +252,12 @@ const connectionName = computed(
 
         <section class="flex flex-col gap-1">
           <SectionHeading :label="t('studio.project.filtersDialog.objects.heading.label')">
-            <span class="flex gap-1">
-              <Button variant="link" size="inline" @click="allObjects">{{
-                t('common.state.all.option')
-              }}</Button>
-              <Button variant="link" size="inline" @click="noneObjects">{{
-                t('common.state.none.option')
-              }}</Button>
-            </span>
+            <Button variant="link" size="inline" @click="allObjects">{{
+              t('common.state.all.option')
+            }}</Button>
+            <Button variant="link" size="inline" @click="noneObjects">{{
+              t('common.state.none.option')
+            }}</Button>
           </SectionHeading>
           <SearchField
             v-model="nameFilter"
@@ -276,11 +265,7 @@ const connectionName = computed(
             :placeholder="t('studio.project.filtersDialog.nameFilter.placeholder')"
             data-testid="filter-name-input"
           />
-          <Card
-            variant="list"
-            class="flex max-h-56 flex-col gap-px overflow-y-auto"
-            data-testid="filter-object-list"
-          >
+          <Card variant="list" class="max-h-56 overflow-y-auto" data-testid="filter-object-list">
             <div
               v-for="row in objects.visible.value"
               :key="row.path"
@@ -288,34 +273,24 @@ const connectionName = computed(
               data-testid="filter-object-row"
               :data-path="row.path"
               :data-state="row.state"
-              :style="{ paddingLeft: `${8 + row.depth * 14}px` }"
+              :style="rowIndent(row.depth)"
             >
               <TreeTwisty
                 :expanded="expandedPaths.has(row.path)"
                 :has-children="row.hasChildren"
                 @toggle="onToggleExpand(row.path)"
               />
-              <Tooltip :disabled="!row.disabledReason">
-                <TooltipTrigger as-child>
-                  <Label class="object-checkbox-label flex items-center flex-1 min-w-0 gap-1">
-                    <Checkbox
-                      :model-value="row.state === 'partial' ? 'indeterminate' : row.state !== 'off'"
-                      :disabled="row.disabled"
-                      class="size-3.5 after:inset-0"
-                      @update:model-value="onToggleNode(row)"
-                    >
-                      <template #default="{ state }">
-                        <CodiconIcon
-                          :name="state === 'indeterminate' ? 'dash' : 'check'"
-                          :size="12"
-                        />
-                      </template>
-                    </Checkbox>
-                    <span class="min-w-0 flex-1 truncate text-kira-md">{{ row.name }}</span>
-                  </Label>
-                </TooltipTrigger>
-                <TooltipContent v-if="row.disabledReason">{{ row.disabledReason }}</TooltipContent>
-              </Tooltip>
+              <TextTooltip :text="row.disabledReason"
+                ><Label class="object-checkbox-label flex items-center flex-1 min-w-0 gap-1">
+                  <Checkbox
+                    :model-value="row.state === 'partial' ? 'indeterminate' : row.state !== 'off'"
+                    :disabled="row.disabled"
+                    class="after:inset-0"
+                    @update:model-value="onToggleNode(row)"
+                  />
+                  <span class="min-w-0 flex-1 truncate text-kira-md">{{ row.name }}</span>
+                </Label></TextTooltip
+              >
               <span v-if="row.hasChildren" :class="rowMeta">{{ row.childCount }}</span>
             </div>
             <InlineState v-if="objectRows.length === 0" kind="empty">{{
@@ -350,12 +325,12 @@ const connectionName = computed(
 
       <DialogFooter>
         <template #start>
-          <FieldDescription
+          <span
             ><CatalogText k="studio.project.connectionScope.hint">
               <template #connectionName
                 ><span class="font-data">{{ connectionName }}</span></template
               >
-            </CatalogText></FieldDescription
+            </CatalogText></span
           >
         </template>
         <Button variant="dialog" size="kira-lg" @click="filtersDialogStore.closeFiltersDialog">{{

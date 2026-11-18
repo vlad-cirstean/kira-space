@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FieldDescription } from '@theme/components/ui/field';
+import InlineState from '@theme/components/InlineState.vue';
 import { t } from '@theme/i18n';
 import { useEventListener } from '@vueuse/core';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
@@ -30,7 +30,7 @@ useEventListener(root, 'click', (e: MouseEvent) => {
     data-testid="host-view-markdown"
     v-html="html"
   />
-  <FieldDescription v-else data-testid="host-view-no-description">{{
+  <InlineState kind="empty" v-else data-testid="host-view-no-description">{{
     t('space.hostView.description.empty.empty')
-  }}</FieldDescription>
+  }}</InlineState>
 </template>

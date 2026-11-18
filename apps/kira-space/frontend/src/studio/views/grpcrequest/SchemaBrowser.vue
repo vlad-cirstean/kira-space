@@ -129,6 +129,7 @@ function selectMethod(service: string, method: string): void {
       />
       <template v-if="tab.state.descriptorMode === 'reflection'">
         <Input
+          :aria-label="t('studio.grpc.target.label')"
           size="kira"
           :model-value="tab.state.target"
           :placeholder="t('studio.grpc.target.example')"
@@ -139,6 +140,7 @@ function selectMethod(service: string, method: string): void {
       </template>
       <template v-else>
         <Input
+          :aria-label="t('studio.grpc.schema.protoPath.label')"
           size="kira"
           :model-value="tab.state.protoPath"
           :placeholder="t('studio.grpc.schema.noProto.placeholder')"
@@ -151,7 +153,7 @@ function selectMethod(service: string, method: string): void {
           size="kira"
           data-testid="grpc-choose-proto"
           @click="chooseProtoFile"
-        >
+          ><CodiconIcon name="folder-opened" :size="13" />
           {{ t('common.action.choose.label') }}
         </Button>
       </template>
@@ -191,6 +193,7 @@ function selectMethod(service: string, method: string): void {
       </div>
       <div class="flex items-center gap-1">
         <Input
+          :aria-label="t('studio.grpc.schema.importPath.label')"
           v-model="newImportPath"
           size="kira"
           :placeholder="t('studio.grpc.schema.addImportPath.placeholder')"
@@ -202,7 +205,7 @@ function selectMethod(service: string, method: string): void {
           size="kira"
           data-testid="grpc-add-import-path"
           @click="addImportPath"
-        >
+          ><CodiconIcon :name="ICON.add" :size="13" />
           {{ t('common.action.add.label') }}
         </Button>
       </div>
@@ -221,7 +224,7 @@ function selectMethod(service: string, method: string): void {
     <div class="flex-1 min-h-0 overflow-auto px-1.5 py-1" data-testid="grpc-service-list">
       <template v-if="schema && filteredServices.length > 0">
         <div v-for="svc in filteredServices" :key="svc.fullName" class="mb-1.5">
-          <SectionHeading :label="svc.name" data-testid="grpc-service-name" />
+          <SectionHeading data :label="svc.name" data-testid="grpc-service-name" />
           <!-- The row's own template class list (P110 B29) supplies height/display/align-items/
                gap/padding/border-radius/color/font-size/cursor and its own hover/selected
                background; the extra classes here only supply what that list does not. -->

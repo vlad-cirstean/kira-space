@@ -2,6 +2,7 @@ import type { AppMetricsSample } from '@shared/protocol/events';
 import { expect, test } from './fixtures';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
+import { expectOn } from './support/toggleGroup';
 import type { ControlSnapshot } from './support/types';
 
 // The sandbox-runnable proof of window-chrome parity — mirroring Kira Studio's own
@@ -255,12 +256,12 @@ test('kira:menu:openSettings opens the Settings dialog', async ({ relaunch }) =>
 // P117 S2: same NativeSelect binding fix as Kira Studio's own settings-apply-on-save.spec.ts --
 // this app's own DateFormatField.vue used the identical pattern (P120: this field moved from the
 // former shared packages/workbench into this app), so the regression and its guard both apply here.
-test('the date-format select shows its real value on open (P117 S2)', async ({ relaunch }) => {
+test('the date-format choice shows its real value on open (P117 S2)', async ({ relaunch }) => {
   const { window } = await relaunch();
   await window.click('[data-testid="open-settings"]');
   await expect(window.locator('[data-testid="settings-dialog"]')).toBeVisible();
 
-  await expect(window.locator('[data-testid="settings-date-format"]')).toHaveValue('relative');
+  await expectOn(window.locator('[data-testid="settings-date-format-relative"]'));
 });
 
 test('kira:menu:toggleProjectPanel toggles the project panel', async ({ relaunch }) => {

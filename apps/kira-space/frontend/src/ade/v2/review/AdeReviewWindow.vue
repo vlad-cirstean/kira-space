@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import EmptyState from '@theme/components/EmptyState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
 import { t } from '@theme/i18n';
+import { paneFrame, windowBody } from '@theme/lib/frames';
+import { cn } from '@theme/lib/utils';
 import { useElementSize } from '@vueuse/core';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import MainView from '@workbench/components/MainView.vue';
@@ -102,9 +105,9 @@ const left = useLiveSize(
 <template>
   <div v-if="target" class="flex h-full flex-col" data-testid="ade-review-window">
     <AdeReviewHeader :target="target" />
-    <div ref="row" class="flex min-h-0 flex-1 gap-0.5 bg-chrome px-1.5 pb-0.5">
+    <div ref="row" :class="windowBody">
       <section
-        class="flex min-h-0 flex-none flex-col overflow-hidden rounded-kira bg-bg"
+        :class="cn(paneFrame, 'flex flex-none flex-col')"
         :style="{ width: `${left.size.value}px` }"
         :aria-label="t('space.ade.review.window.files.aria')"
         data-testid="ade-review-left"
@@ -124,7 +127,7 @@ const left = useLiveSize(
         v-bind="left.bind"
       />
       <section
-        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira bg-bg"
+        :class="cn(paneFrame, 'flex flex-1 flex-col')"
         :aria-label="t('space.ade.review.window.diffs.aria')"
         data-testid="ade-review-centre"
       >
@@ -137,9 +140,12 @@ const left = useLiveSize(
         <div class="min-h-0 flex-1">
           <MainView>
             <template #empty>
-              <p class="m-0 p-4 text-muted-foreground" data-testid="ade-review-empty">{{
-                t('space.ade.review.window.emptyHint.emptyHint')
-              }}</p>
+              <EmptyState
+                fill
+                icon="diff"
+                data-testid="ade-review-empty"
+                :title="t('space.ade.review.window.emptyHint.emptyHint')"
+              />
             </template>
           </MainView>
         </div>
@@ -155,7 +161,7 @@ const left = useLiveSize(
       />
       <section
         v-if="store.agentPanelVisible"
-        class="flex min-h-0 flex-none flex-col overflow-hidden rounded-kira bg-bg"
+        :class="cn(paneFrame, 'flex flex-none flex-col')"
         :style="{ width: `${right.size.value}px` }"
         :aria-label="t('space.ade.review.agent.label')"
         data-testid="ade-review-right"

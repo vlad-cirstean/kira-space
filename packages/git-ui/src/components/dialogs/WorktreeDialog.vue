@@ -229,7 +229,6 @@ function onClose(): void {
               :id="pathId"
               v-model="path"
               type="text"
-              size="kira-lg"
               class="w-full"
               :placeholder="t('git.dialog.worktree.path.example')"
             />
@@ -267,7 +266,6 @@ function onClose(): void {
                 :id="branchId"
                 v-model="branch"
                 type="text"
-                size="kira-lg"
                 class="w-full"
                 :placeholder="t('git.dialog.worktree.newBranch.example')"
                 v-bind="form.invalidAttrs('branch')"
@@ -342,8 +340,8 @@ function onClose(): void {
             </Alert>
             <Button
               v-if="canOfferDetachHere"
-              variant="dialog-primary"
-              size="kira-lg"
+              variant="dialog"
+              size="kira"
               @click="submitCreateDetached"
             >
               {{ t('git.dialog.worktree.detachHere.label') }}

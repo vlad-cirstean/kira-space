@@ -37,7 +37,7 @@ function envParts(e: ScriptRunPreview['env'][number]): TextPart[] {
 </script>
 
 <template>
-  <Card class="text-kira-sm" data-testid="run-preview">
+  <Card data-testid="run-preview">
     <div data-testid="run-folder">
       <CatalogText :k="folderKey" :params="folderParams">
         <template v-if="dir.mode === 'worktree'" #branch
@@ -49,7 +49,7 @@ function envParts(e: ScriptRunPreview['env'][number]): TextPart[] {
       </CatalogText>
     </div>
     <template v-if="preview.kind === 'smart'">
-      <div class="text-muted-foreground" data-testid="run-limits">
+      <div class="text-kira-sm text-muted-foreground" data-testid="run-limits">
         {{
           preview.maxBudgetUsd > 0
             ? t('automations.run.limits.label', {
@@ -82,7 +82,11 @@ function envParts(e: ScriptRunPreview['env'][number]): TextPart[] {
     <FieldError v-if="preview.secretIssue" data-testid="run-secret-issue">{{
       preview.secretIssue
     }}</FieldError>
-    <div v-if="preview.kind === 'smart'" class="text-muted-foreground" data-testid="run-isolated">
+    <div
+      v-if="preview.kind === 'smart'"
+      class="text-kira-sm text-muted-foreground"
+      data-testid="run-isolated"
+    >
       {{ t('automations.run.isolated.body') }}
     </div>
   </Card>

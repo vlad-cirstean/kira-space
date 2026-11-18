@@ -1,10 +1,9 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Field } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
-import { NativeSelect } from '@theme/components/ui/native-select';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
-import { useId } from 'vue';
+import { computed } from 'vue';
 import type { SettingsPaneProps } from '../../../workbench/settings/types';
 
 // P103 Part 2 (§5.5): extracted verbatim from workbench/SettingsDialog.vue's own
@@ -13,23 +12,27 @@ const props = defineProps<SettingsPaneProps>();
 
 const PAGE_SIZES = [10, 100, 1000, 10000] as const;
 
+const PAGE_SIZE_ITEMS = computed(() =>
+  PAGE_SIZES.map((size) => ({
+    value: String(size),
+    label: String(size),
+    testid: `settings-default-page-size-${size}`,
+  })),
+);
+
 function onDefaultPageSizeChange(rawValue: unknown): void {
   const value = Number(rawValue);
   const pageSize = PAGE_SIZES.find((size) => size === value);
   if (!pageSize) return;
   props.draft.data.defaultPageSize = pageSize;
 }
-
-// P110 I2-26: `for`/`id` preserves the old label-wraps-control implicit association (see
-// FontSizeField.vue's own precedent comment) now that the field wrapper is a plain <Field> div.
-const defaultPageSizeId = useId();
 </script>
 
 <template>
   <div class="contents" v-show="active">
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="defaultPageSizeId">{{ t('studio.settings.data.pageSize.label') }}</Label>
+        <FieldLabel>{{ t('studio.settings.data.pageSize.label') }}</FieldLabel>
         <TooltipIconButton
           icon="discard"
           :label="t('common.action.resetToDefault.label')"
@@ -39,17 +42,16 @@ const defaultPageSizeId = useId();
           @click="resetLeaf('data', 'defaultPageSize')"
         />
       </div>
-      <NativeSelect
-        :id="defaultPageSizeId"
-        variant="bordered"
+      <SecondaryTabs
+        variant="choice"
         size="kira-lg"
         class="self-start"
+        :aria-label="t('studio.settings.data.pageSize.label')"
+        :model-value="String(draft.data.defaultPageSize)"
+        :items="PAGE_SIZE_ITEMS"
         data-testid="settings-default-page-size"
-        :model-value="draft.data.defaultPageSize"
         @update:model-value="onDefaultPageSizeChange"
-      >
-        <option v-for="size in PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
-      </NativeSelect>
+      />
     </Field>
   </div>
 </template>

@@ -1,11 +1,13 @@
 import type { Transport, UiActionKind } from '@kira/git-ipc';
 import { i18n } from '@theme/i18n';
 import { provideShellServices } from '@workbench/bootstrapShell';
+import { KEPT_VIEW_STATE_KEY, type KeptViewState } from '@workbench/state/viewState';
 import { createApp, shallowReactive, shallowRef, type App as VueApp } from 'vue';
 import AppRoot from './App.vue';
 import type { RepoHead } from './components/GitViewHead.vue';
 import ReviewView from './components/review/ReviewView.vue';
 import { GRAPH_VISIBLE_KEY } from './graphVisibility.ts';
+import { REVIEW_KEEP_KEY } from './lib/reviewKeep.ts';
 import MountRoot from './MountRoot.vue';
 import type { ReviewApi, ReviewTarget, ReviewWorkingSection } from './state/review.ts';
 import type { DateFormat, ViewStateStore } from './state/viewState.ts';
@@ -66,6 +68,9 @@ export interface MountOptions {
   readonly onShowOperations?: () => void;
   /** Repo identity for the view head above the toolbar (graph and review views). */
   readonly repoHead?: RepoHead;
+  /** Review view only: keeps filter, selection, expanded rows and scroll across an unmount
+   *  (P660 Part 2). Every entry key starts with `key`; the host drops that prefix. */
+  readonly keep?: { readonly state: KeptViewState; readonly key: string };
 }
 
 /**
@@ -92,6 +97,7 @@ export function mount(container: Element, opts: MountOptions): MountHandle {
     dateFormat,
     onShowOperations,
     repoHead,
+    keep,
     ...rest
   } = opts;
   // P131 Part 2 §3.5: MountRoot wraps whichever root this mounts in the one TooltipProvider every
@@ -113,6 +119,10 @@ export function mount(container: Element, opts: MountOptions): MountHandle {
   app.use(i18n);
   // Dirty dialogs ask through the host's confirm store (git-ui has no Pinia of its own).
   provideShellServices(app);
+  if (view === 'review' && keep) {
+    app.provide(KEPT_VIEW_STATE_KEY, keep.state);
+    app.provide(REVIEW_KEEP_KEY, keep.key);
+  }
   const graphVisible = shallowRef(true);
   app.provide(GRAPH_VISIBLE_KEY, graphVisible);
   container.classList.add('h-full', 'w-full', 'overflow-hidden');

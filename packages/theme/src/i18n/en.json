@@ -182,6 +182,9 @@
       "default": {
         "aria": "Default {option}"
       },
+      "defaultValue": {
+        "label": "Default value"
+      },
       "multiselect": {
         "option": "Multiselect"
       },
@@ -529,6 +532,9 @@
       "bashHint": {
         "hint": "Bash commands the script may run, such as {example}. Empty allows any."
       },
+      "bashPattern": {
+        "label": "Bash pattern"
+      },
       "budget": {
         "label": "Budget in dollars"
       },
@@ -576,6 +582,9 @@
       },
       "timeoutExample": {
         "example": "15m"
+      },
+      "toolName": {
+        "label": "Tool name"
       },
       "tools": {
         "label": "Tools"
@@ -3249,6 +3258,9 @@
       "selectAll": {
         "label": "Select all"
       },
+      "selectItem": {
+        "aria": "Select {name}"
+      },
       "selectNone": {
         "label": "Select none"
       },
@@ -4241,10 +4253,15 @@
         "label": "Mount"
       },
       "mountSource": {
+        "label": "Mount source",
         "placeholder": "Volume name or host path"
       },
       "mountTarget": {
-        "example": "/path/in/container"
+        "example": "/path/in/container",
+        "label": "Mount target"
+      },
+      "mountType": {
+        "label": "Mount type"
       },
       "needsRecreate": {
         "hint": "This change needs a recreate."
@@ -4254,6 +4271,9 @@
       },
       "networkLocked": {
         "hint": "Networks can’t change in this network mode."
+      },
+      "networkToAdd": {
+        "label": "Network to add"
       },
       "noLimit": {
         "placeholder": "No limit"
@@ -4283,6 +4303,9 @@
       },
       "preserved": {
         "label": "Kept as is"
+      },
+      "protocol": {
+        "label": "Protocol"
       },
       "readOnlyShort": {
         "example": "ro"
@@ -4316,6 +4339,9 @@
         "recreate": {
           "label": "Needs recreate"
         }
+      },
+      "unit": {
+        "label": "Unit"
       },
       "unlimited": {
         "label": "Unlimited"
@@ -4863,7 +4889,7 @@
         "label": "Branch name"
       },
       "confirmToken": {
-        "aria": "Confirmation token"
+        "label": "Confirmation token"
       },
       "currentBranch": {
         "tooltip": "Current branch"
@@ -5025,6 +5051,9 @@
           "hint": "{branch} matches your protected pattern {pattern}. Type the branch name to confirm."
         },
         "title": "Force push {branch} to {remote}?"
+      },
+      "mainline": {
+        "label": "Mainline parent"
       },
       "postCheckoutPullConfirm": {
         "body": "{branch} is {count} commit behind {upstream}. | {branch} is {count} commits behind {upstream}.",
@@ -10656,6 +10685,7 @@
         },
         "finish": {
           "note": {
+            "label": "Finish note",
             "placeholder": "Note for the next step (optional)"
           }
         },
@@ -10710,6 +10740,9 @@
           "workflow": {
             "label": "Workflow review"
           }
+        },
+        "target": {
+          "label": "Implementer run"
         },
         "waiting": {
           "status": "Waiting for review"
@@ -11870,6 +11903,9 @@
         }
       },
       "row": {
+        "choice": {
+          "label": "Version to keep"
+        },
         "deactivate": {
           "label": "Never apply on this machine"
         },
@@ -12753,6 +12789,7 @@
           "label": "Fetch interval (minutes)"
         },
         "mode": {
+          "aria": "Sync mode for {module}",
           "combined": {
             "option": "Combined"
           },
@@ -13584,9 +13621,6 @@
             "label": "Edit as dotenv text"
           }
         },
-        "colour": {
-          "aria": "Environment colour"
-        },
         "description": {
           "aria": "Variable description"
         },
@@ -13871,6 +13905,7 @@
       },
       "timestamp": {
         "field": {
+          "label": "Timestamp value",
           "tooltip": "{format}, in the zone selected above"
         },
         "title": "Date and time",
@@ -14427,6 +14462,12 @@
       "cycleView": {
         "tooltip": "Jump by month or year"
       },
+      "hour": {
+        "label": "Clock hours"
+      },
+      "minute": {
+        "label": "Clock minutes"
+      },
       "month": {
         "april": {
           "label": "April"
@@ -14517,6 +14558,9 @@
       },
       "previousYears": {
         "tooltip": "Previous 16 years"
+      },
+      "second": {
+        "label": "Clock seconds"
       },
       "weekday": {
         "friday": {
@@ -14850,6 +14894,7 @@
         }
       },
       "sort": {
+        "label": "Sort",
         "tooltip": "Sort document: 1 is ascending, -1 is descending"
       }
     },
@@ -14901,6 +14946,9 @@
       "batches": {
         "status": "{count} batch of {size} | {count} batches of {size}"
       },
+      "constant": {
+        "aria": "Constant for {column}"
+      },
       "hidePreview": {
         "label": "Hide preview"
       },
@@ -14914,6 +14962,7 @@
         "tooltip": "{committed} of {count} row committed | {committed} of {count} rows committed"
       },
       "recipe": {
+        "aria": "Recipe for {column}",
         "binaryHex": {
           "label": "Binary (hex)"
         },
@@ -14993,6 +15042,9 @@
       },
       "seed": {
         "label": "Seed"
+      },
+      "sequenceStart": {
+        "aria": "Sequence start for {column}"
       },
       "stopped": {
         "error": "Stopped. {count} row committed. | Stopped. {count} rows committed."
@@ -15083,6 +15135,14 @@
       },
       "editNotStaged": {
         "error": "Edit not staged because the page reloaded."
+      },
+      "filter": {
+        "orderBy": {
+          "label": "Order by clause"
+        },
+        "where": {
+          "label": "Where clause"
+        }
       },
       "fkPreview": {
         "manyRows": {
@@ -15260,7 +15320,8 @@
       "method": {
         "choose": {
           "placeholder": "Choose a method"
-        }
+        },
+        "label": "RPC method"
       },
       "pane": {
         "metadata": {
@@ -15336,6 +15397,9 @@
         "filter": {
           "placeholder": "Filter services and methods"
         },
+        "importPath": {
+          "label": "Import path"
+        },
         "importPaths": {
           "label": "Import paths"
         },
@@ -15348,6 +15412,9 @@
         "protoFilter": {
           "label": "Protocol buffers"
         },
+        "protoPath": {
+          "label": "Proto file path"
+        },
         "source": {
           "proto": {
             "option": "Proto file"
@@ -15358,7 +15425,8 @@
         }
       },
       "target": {
-        "example": "api.example.com:443"
+        "example": "api.example.com:443",
+        "label": "Target"
       },
       "tls": {
         "plaintext": {
@@ -15376,6 +15444,9 @@
         },
         "clearFile": {
           "label": "Clear file"
+        },
+        "codeLanguage": {
+          "label": "Language"
         },
         "contentType": {
           "placeholder": "Content type"
@@ -15742,7 +15813,8 @@
         }
       },
       "url": {
-        "example": "https://api.example.com/users"
+        "example": "https://api.example.com/users",
+        "label": "Request URL"
       },
       "view": {
         "pretty": {
@@ -15808,6 +15880,9 @@
       },
       "editValue": {
         "label": "Edit value"
+      },
+      "enabled": {
+        "aria": "Row enabled"
       },
       "memoryUnknown": {
         "status": "Size unknown"
@@ -15974,6 +16049,9 @@
         },
         "noField": {
           "empty": "No matching field"
+        },
+        "operator": {
+          "label": "Operator"
         },
         "operatorBetween": {
           "option": "Is between"
@@ -16229,6 +16307,9 @@
       },
       "lastPage": {
         "label": "Last page"
+      },
+      "page": {
+        "label": "Page"
       }
     },
     "project": {
@@ -16242,9 +16323,6 @@
         },
         "changeEngine": {
           "title": "Change engine"
-        },
-        "colour": {
-          "aria": "Connection colour"
         },
         "column": {
           "placeholder": "Column"
@@ -16819,6 +16897,9 @@
           "unlabelled": {
             "label": "Unlabelled"
           }
+        },
+        "pick": {
+          "aria": "Value for {field}"
         },
         "reason": {
           "authSourceMongo": {
@@ -17784,7 +17865,10 @@
       },
       "poll": {
         "label": "Poll",
-        "tooltip": "Poll for messages"
+        "tooltip": "Poll for messages",
+        "visibility": {
+          "label": "Visibility timeout"
+        }
       },
       "pollConfirm": {
         "body": "Each poll hides received messages from other consumers for {duration} and raises their receive count.",

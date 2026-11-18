@@ -7,15 +7,18 @@ import {
 } from '@shared/domain/grpc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
+import InlineState from '@theme/components/InlineState.vue';
+import KeyValueList from '@theme/components/KeyValueList.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { rowVariants } from '@theme/lib/rowVariants';
+import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { formatBytes, formatClockTime, formatDuration } from '@workbench/behaviour/format';
 import { useKeptState } from '@workbench/behaviour/viewState';
@@ -295,15 +298,12 @@ onUnmounted(() => {
     <!-- `.response-status-row` stays a bare marker: api-ui-consistency.spec.ts locates it directly. -->
     <ViewToolbar class="response-status-row">
       <template v-if="hasCode">
-        <Tooltip v-if="codeHint">
-          <TooltipTrigger as-child>
-            <Badge data :variant="grpcCodeClass(code)" data-testid="grpc-status-chip">
-              {{ codeName }}
-              ({{ code }})
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>{{ codeHint }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip v-if="codeHint" :text="codeHint"
+          ><Badge data :variant="grpcCodeClass(code)" data-testid="grpc-status-chip">
+            {{ codeName }}
+            ({{ code }})
+          </Badge></TextTooltip
+        >
         <Badge data v-else :variant="grpcCodeClass(code)" data-testid="grpc-status-chip">
           {{ codeName }}
           ({{ code }})
@@ -360,8 +360,8 @@ onUnmounted(() => {
       }}</AlertDescription>
       <AlertAction>
         <Button
-          variant="toolbar"
-          size="kira"
+          variant="link"
+          size="inline"
           data-testid="grpc-history-back"
           @click="onBackToLatest"
         >
@@ -437,30 +437,30 @@ onUnmounted(() => {
       class="flex flex-1 min-h-0 flex-col gap-2 overflow-auto p-1.5"
       data-testid="grpc-response-metadata"
     >
-      <div class="metadata-group">
-        <div class="mb-0.5 text-kira-sm text-muted-foreground">{{
-          t('studio.grpc.response.header.label')
-        }}</div>
-        <div v-for="(h, i) in header" :key="`h${i}`" class="flex gap-1.5 text-kira-sm">
-          <span class="text-muted-foreground shrink-0 min-w-40 font-data">{{ h.name }}</span>
-          <span class="wrap-anywhere font-data">{{ h.value }}</span>
-        </div>
-        <div v-if="header.length === 0" class="text-kira-sm text-subtle">{{
+      <section class="flex flex-col gap-1">
+        <SectionHeading flush :label="t('studio.grpc.response.header.label')" />
+        <KeyValueList v-if="header.length">
+          <template v-for="(h, i) in header" :key="`h${i}`">
+            <dt class="font-data">{{ h.name }}</dt>
+            <dd class="font-data wrap-anywhere">{{ h.value }}</dd>
+          </template>
+        </KeyValueList>
+        <InlineState v-else kind="empty">{{
           t('studio.grpc.response.noHeader.empty')
-        }}</div>
-      </div>
-      <div class="metadata-group">
-        <div class="mb-0.5 text-kira-sm text-muted-foreground">{{
-          t('studio.grpc.response.trailer.label')
-        }}</div>
-        <div v-for="(tr, i) in trailer" :key="`t${i}`" class="flex gap-1.5 text-kira-sm">
-          <span class="text-muted-foreground shrink-0 min-w-40 font-data">{{ tr.name }}</span>
-          <span class="wrap-anywhere font-data">{{ tr.value }}</span>
-        </div>
-        <div v-if="trailer.length === 0" class="text-kira-sm text-subtle">{{
+        }}</InlineState>
+      </section>
+      <section class="flex flex-col gap-1">
+        <SectionHeading flush :label="t('studio.grpc.response.trailer.label')" />
+        <KeyValueList v-if="trailer.length">
+          <template v-for="(tr, i) in trailer" :key="`t${i}`">
+            <dt class="font-data">{{ tr.name }}</dt>
+            <dd class="font-data wrap-anywhere">{{ tr.value }}</dd>
+          </template>
+        </KeyValueList>
+        <InlineState v-else kind="empty">{{
           t('studio.grpc.response.noTrailer.empty')
-        }}</div>
-      </div>
+        }}</InlineState>
+      </section>
     </div>
     <div v-else class="flex flex-1 min-h-0 flex-col" data-testid="grpc-message-list">
       <!-- P104 §3.4: the scroll element @tanstack/vue-virtual measures and virtualizes against —
@@ -488,26 +488,26 @@ onUnmounted(() => {
               :style="{ height: `${messageRowHeight}px` }"
               @click="toggleExpanded(entry.m.seq)"
             >
-              <span class="text-kira-sm text-subtle" data-testid="grpc-message-offset">{{
+              <span :class="rowMeta" data-testid="grpc-message-offset">{{
                 t('studio.grpc.response.offset.status', {
                   duration: formatDuration(entry.m.offsetMs),
                 })
               }}</span>
-              <span class="text-kira-sm text-subtle">{{ formatBytes(entry.m.wireBytes) }}</span>
-              <Tooltip v-if="entry.m.truncated">
-                <TooltipTrigger as-child>
-                  <CodiconIcon
-                    :name="ICON.warning"
-                    :size="12"
-                    data-testid="grpc-message-truncated"
-                  />
-                </TooltipTrigger>
-                <TooltipContent>{{
+              <span :class="rowMeta">{{ formatBytes(entry.m.wireBytes) }}</span>
+              <TextTooltip
+                v-if="entry.m.truncated"
+                :text="
                   t('studio.grpc.response.messageCut.tooltip', { size: formatBytes(64 * 1024) })
-                }}</TooltipContent>
-              </Tooltip>
+                "
+                ><CodiconIcon
+                  :name="ICON.warning"
+                  :size="12"
+                  class="text-warn"
+                  data-testid="grpc-message-truncated"
+                /></TextTooltip
+              >
               <span class="ml-auto" />
-              <span class="text-kira-sm text-subtle">#{{ entry.m.seq }}</span>
+              <span :class="rowMeta">#{{ entry.m.seq }}</span>
             </button>
             <!-- Fixed height (not auto-grow) for the same reason .message-header's is — MUST stay
                  numerically equal to the script's own MESSAGE_DETAIL_HEIGHT (200px); a JSON

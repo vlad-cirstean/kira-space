@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { openPlan } from './support/adeV2';
 import { contract } from './support/contract';
@@ -6,6 +6,8 @@ import { IPC } from './support/ipcChannels';
 import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import { roundTrip, switchModule } from './support/moduleRoundTrip';
+import { scrollTo, scrollTop } from './support/scroll';
+import { expectOn } from './support/toggleGroup';
 import type { ControlSnapshot } from './support/types';
 
 // P660: view state of module panels and the Agents full view survives leaving the module and
@@ -13,15 +15,6 @@ import type { ControlSnapshot } from './support/types';
 
 const panelTab = (page: Page, name: 'repos' | 'files' | 'review') =>
   page.locator(`[data-testid="git-panel-tab-${name}"]`);
-const scrollTop = (el: Locator) => el.evaluate((e) => e.scrollTop);
-
-async function scrollTo(el: Locator, top: number): Promise<void> {
-  await el.evaluate((e, y) => {
-    e.scrollTop = y;
-  }, top);
-  await expect.poll(() => scrollTop(el)).toBeGreaterThan(0);
-}
-
 const REPO = {
   id: 'repo-state-1',
   name: 'state-repo',
@@ -208,18 +201,12 @@ test('Agents: plan scroll, All sessions filter and picked file survive page and 
   // Repositories: pick the second unclaimed file.
   await page.locator(t('ade-tab-repos')).click();
   await page.locator(t('ade-repos-tab-files')).click();
-  await page.locator(`${t('ade-repos-file')}[data-file="second.yaml"]`).click();
-  await expect(page.locator(`${t('ade-repos-file')}[data-file="second.yaml"]`)).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await page.locator(t('ade-repos-file-second.yaml')).click();
+  await expectOn(page.locator(t('ade-repos-file-second.yaml')));
 
   await roundTrip(page, 'git', 'ade');
 
-  await expect(page.locator(`${t('ade-repos-file')}[data-file="second.yaml"]`)).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await expectOn(page.locator(t('ade-repos-file-second.yaml')));
   await page.locator(t('ade-tab-needs')).click();
   await expect(page.locator(t('ade-all-session'))).toHaveCount(7);
   await page.locator(t('ade-tab-plan')).click();

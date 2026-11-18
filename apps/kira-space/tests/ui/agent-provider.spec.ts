@@ -93,6 +93,15 @@ test('the hermetic switch is off by default, saves on and resets', async ({ rela
   const sw = page.locator(t('settings-agent-hermetic'));
   await expect(sw).toHaveAttribute('aria-checked', 'false');
   await expect(page.getByText('Agents Kira starts skip your own agent config')).toBeVisible();
+  const row = page
+    .locator('[data-slot="field"][data-orientation="horizontal"]')
+    .filter({ has: sw });
+  await expect(row).toHaveCount(1);
+  const [swBox, labelBox] = await Promise.all([
+    sw.boundingBox(),
+    row.locator('[data-slot="field-label"]').boundingBox(),
+  ]);
+  expect(swBox?.x ?? 99).toBeLessThan(labelBox?.x ?? 0);
   await sw.click();
   await expect(sw).toHaveAttribute('aria-checked', 'true');
   await page.locator(t('settings-reset-agent-hermetic')).click();

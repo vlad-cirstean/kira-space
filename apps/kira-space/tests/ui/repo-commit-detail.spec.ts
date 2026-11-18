@@ -2,7 +2,14 @@ import { expect, test } from './fixtures';
 import { installClipboardSpy, lastClipboardWrite } from './studio/support/clipboard';
 import { contract } from './support/contract';
 import { gitStreamParams } from './support/gitStreamMock';
-import { openPortGraph, rootRow, SHA_A, SHA_B, singleRowChunks } from './support/gitUiPortFixtures';
+import {
+  COMMIT_DETAIL,
+  openPortGraph,
+  rootRow,
+  SHA_A,
+  SHA_B,
+  singleRowChunks,
+} from './support/gitUiPortFixtures';
 
 // Contract git-commit-detail. Backend half: gitflow TestCommitDetailAndDiff (rename) and
 // TestCommitDetailMergeParentSelector (merge). The sha, parents and times are the graph fixture's;
@@ -95,7 +102,7 @@ test('contract: the commit sha button copies the full 40-character sha', async (
   expect(detail.sha).toMatch(/^[0-9a-f]{40}$/);
   const page = await openPortGraph(relaunch, {
     chunks: singleRowChunks([rootRow(detail.sha, detail.subject)]),
-    results: { 'commit.detail': { ...detail, files: [], parents: [] } },
+    results: { 'commit.detail': { ...COMMIT_DETAIL, ...detail, files: [], parents: [] } },
   });
   await page.locator('[data-testid="commit-grid"] .slick-row[data-row="0"]').click();
   await expect(page.locator('[data-testid="commit-meta-sha"]')).toBeVisible();

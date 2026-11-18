@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailSection from '@theme/components/DetailSection.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -12,7 +15,6 @@ import {
   TableHeader,
   TableRow,
 } from '@theme/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import {
@@ -24,7 +26,6 @@ import {
 import Identifier from '@workbench/components/Identifier.vue';
 import { computed } from 'vue';
 import { useEngineDiskUsage } from '../queries';
-import DetailSection from './DetailSection.vue';
 
 const VOLUME_LIMIT = 10;
 
@@ -56,13 +57,10 @@ const sizeText = (n: number): string => (n < 0 ? displayValue(null) : formatByte
 <template>
   <DetailSection :title="t('docker.disk.title')" class="shrink-0">
     <template #actions>
-      <span class="ml-auto flex items-center gap-1 normal-case tracking-normal">
-        <Tooltip v-if="usage">
-          <TooltipTrigger as-child>
-            <span data-testid="docker-disk-taken">{{ ago }}</span>
-          </TooltipTrigger>
-          <TooltipContent>{{ formatDateTime(usage.takenAt) }}</TooltipContent>
-        </Tooltip>
+      <span class="ml-auto flex items-center gap-1">
+        <TextTooltip v-if="usage" :text="formatDateTime(usage.takenAt)"
+          ><span data-testid="docker-disk-taken">{{ ago }}</span></TextTooltip
+        >
         <TooltipIconButton
           icon="refresh"
           :label="t('docker.disk.measure.tooltip')"
@@ -82,9 +80,9 @@ const sizeText = (n: number): string => (n < 0 ? displayValue(null) : formatByte
     }}</InlineState>
     <div v-else-if="!usage" class="flex flex-wrap items-center gap-3">
       <InlineState kind="empty">{{ t('docker.disk.notMeasured.body') }}</InlineState>
-      <Button size="kira" variant="toolbar" data-testid="docker-disk-measure" @click="refresh">{{
-        t('docker.measure.label')
-      }}</Button>
+      <Button size="kira" variant="toolbar" data-testid="docker-disk-measure" @click="refresh"
+        ><CodiconIcon name="dashboard" :size="13" />{{ t('docker.measure.label') }}</Button
+      >
     </div>
     <template v-else>
       <Table>
@@ -115,7 +113,7 @@ const sizeText = (n: number): string => (n < 0 ? displayValue(null) : formatByte
           </TableRow>
         </TableBody>
       </Table>
-      <div v-if="topVolumes.length" class="mt-3">
+      <div v-if="topVolumes.length">
         <SectionHeading :label="t('docker.disk.volumesBySize.label')" />
         <div
           v-for="v in topVolumes"

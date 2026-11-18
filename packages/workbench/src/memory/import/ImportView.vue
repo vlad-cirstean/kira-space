@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 import PanelBar from '../../components/PanelBar.vue';
@@ -42,9 +44,7 @@ const jobItems = computed(() =>
         size="kira"
         data-testid="import-back"
         @click="memoryUi.view = 'memory'"
-        >{{
-          t('memory.import.back.label')
-        }}</Button
+        ><CodiconIcon :name="ICON.back" :size="13" />{{ t('memory.import.back.label') }}</Button
       >
       <SecondaryTabs
         class="min-w-0 overflow-x-auto"
@@ -56,6 +56,7 @@ const jobItems = computed(() =>
     <EmptyState
       v-if="!current"
       fill
+      icon="cloud-download"
       data-testid="import-empty"
       :title="t('memory.import.list.empty')"
       :description="t('memory.import.list.emptyHint')"

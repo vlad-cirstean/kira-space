@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { SETTINGS } from '@kira/git-core';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
@@ -9,6 +10,7 @@ import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed, ref } from 'vue';
+import { keptScrollIf } from '../../lib/reviewKeep.ts';
 import type { FileListMode } from '../../state/detail.ts';
 import type { DetailActions } from '../../state/detailActions.ts';
 import type { ReviewSessionState } from '../../state/review.ts';
@@ -23,6 +25,8 @@ const props = defineProps<{
   filter: string;
   /** The view's root: Escape counts only when it lands inside it (a graph tab can sit beside). */
   boundary: HTMLElement | null;
+  /** View-state key of the list scroll; null keeps none. */
+  keepScroll?: string | null;
 }>();
 
 // `generation` is read so a reset that lands on the same row count (a base override back to an
@@ -51,6 +55,11 @@ const { virtualizer, virtualItems, totalSize, onScroll } = useVirtualRows({
   rowHeight: () => COLLAPSED_ROW_ESTIMATE,
   scrollElement: rowsEl,
   pinned: () => focusedRow.value,
+});
+
+keptScrollIf(() => props.keepScroll ?? null, rowsEl, {
+  // A saved position past the first chunk would clamp; wait for the stream to end.
+  ready: () => totalSize.value > 0 && !props.review.streaming.value,
 });
 
 const focusedRowMounted = computed(() =>
@@ -137,6 +146,7 @@ function loadMore(): void {
 
   <div
     ref="rowsEl"
+    data-testid="review-commit-rows"
     class="flex-1 min-h-0 overflow-auto"
     role="tree"
     :aria-label="t('common.module.commits.label')"
@@ -183,7 +193,7 @@ function loadMore(): void {
       size="kira"
       :pending="review.isLoadingMore.value"
       @click="loadMore"
-    >
+      ><CodiconIcon name="fold-down" :size="13" />
       {{ loadMoreLabel() }}
     </Button>
   </div>

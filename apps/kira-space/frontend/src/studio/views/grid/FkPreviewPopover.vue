@@ -3,9 +3,9 @@ import type { ForeignKeyMeta } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
+import { PopoverBar, PopoverHeader, PopoverList } from '@theme/components/ui/popover';
 import { Table, TableBody, TableCell, TableRow } from '@theme/components/ui/table';
 import { t } from '@theme/i18n';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
@@ -96,12 +96,15 @@ onUnmounted(() => {
     :x="x"
     :y="y"
     :open="true"
-    class="w-80 gap-0 overflow-hidden p-0 max-h-(--reka-popover-content-available-height)"
+    flush
+    class="w-80 max-h-(--reka-popover-content-available-height)"
     @update:open="onOpenChange"
   >
     <div class="flex min-h-0 flex-col" data-testid="fk-preview">
-      <div class="flex items-center justify-between flex-none gap-1 p-1.5">
-        <span class="min-w-0 font-medium"><TruncatedText :text="tableLabel" /></span>
+      <PopoverBar class="justify-between">
+        <PopoverHeader class="min-w-0 font-medium"
+          ><TruncatedText :text="tableLabel" /></PopoverHeader
+        >
         <Badge
           v-if="state.status === 'ready' && state.hasMore"
           variant="info"
@@ -109,31 +112,30 @@ onUnmounted(() => {
         >
           {{ t('studio.grid.fkPreview.manyRows.status', { count: state.rows.length }) }}
         </Badge>
-      </div>
+      </PopoverBar>
 
-      <div class="flex flex-none gap-1 p-1.5">
+      <PopoverBar>
         <Button variant="toolbar" size="kira" data-testid="fk-preview-open" @click="onOpenClick">
           <CodiconIcon name="arrow-right" :size="13" />
           {{ t('common.action.openInNewTab.label') }}
         </Button>
-      </div>
+      </PopoverBar>
 
       <!-- flex-1 min-h-0 is load-bearing: without it a flex child refuses to shrink below its
            content height, and the panel overflows its own max-height instead of scrolling here. -->
-      <div class="flex-1 min-h-0 overflow-y-auto p-1.5">
+      <PopoverList class="flex-1 min-h-0 overflow-y-auto">
         <InlineState v-if="state.status === 'loading'" kind="loading" />
         <InlineState v-else-if="state.status === 'error'" kind="error">{{
           state.message
         }}</InlineState>
-        <Alert
+        <InlineState
           v-else-if="state.status === 'ready' && state.rows.length === 0"
-          variant="info"
+          kind="empty"
           data-testid="fk-preview-empty"
-        >
-          <AlertDescription>{{
+          >{{
             t('studio.grid.fkPreview.noMatch.empty', { table: tableLabel })
-          }}</AlertDescription>
-        </Alert>
+          }}</InlineState
+        >
         <!-- `header-key` marker; look matches SlickGridHost header badges. -->
         <Table v-else-if="state.status === 'ready'" columns>
           <TableBody>
@@ -167,7 +169,7 @@ onUnmounted(() => {
             </TableRow>
           </TableBody>
         </Table>
-      </div>
+      </PopoverList>
     </div>
   </PointPopover>
 </template>

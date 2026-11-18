@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import { Alert } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
-import { FieldDescription } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { storeToRefs } from 'pinia';
 import { computed, ref, useId } from 'vue';
@@ -55,7 +55,7 @@ const notice = computed(() => {
     class="mx-auto flex min-h-full w-full max-w-md flex-col justify-center gap-4 px-4 py-8"
     data-testid="pair-screen"
   >
-    <h1 class="m-0 text-kira-lg font-medium">{{ t('common.product.kiraSpace.label') }}</h1>
+    <DetailHeader as="h1" flush :title="t('common.product.kiraSpace.label')" />
     <p class="m-0 text-muted-foreground">
       {{ t('mobile.pair.intro.description') }}
     </p>
@@ -64,7 +64,7 @@ const notice = computed(() => {
     </FieldDescription>
 
     <template v-if="waiting">
-      <Card class="flex flex-col gap-1" data-testid="pair-waiting">
+      <Card data-testid="pair-waiting">
         <span class="text-muted-foreground">{{ t('mobile.pair.waiting.hint') }}</span>
         <span class="font-data text-kira-xl tracking-widest" data-testid="pair-code">{{
           code
@@ -83,8 +83,8 @@ const notice = computed(() => {
 
     <template v-else>
       <Alert v-if="notice" variant="error" data-testid="pair-notice">{{ notice }}</Alert>
-      <div class="flex flex-col gap-1">
-        <Label :for="labelId">{{ t('mobile.pair.name.label') }}</Label>
+      <Field>
+        <FieldLabel :for="labelId">{{ t('mobile.pair.name.label') }}</FieldLabel>
         <Input
           :id="labelId"
           v-model="label"
@@ -93,7 +93,7 @@ const notice = computed(() => {
           autocomplete="off"
           data-testid="pair-label"
         />
-      </div>
+      </Field>
       <Button
         variant="dialog-primary"
         size="kira-lg"

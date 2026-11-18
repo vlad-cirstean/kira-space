@@ -42,7 +42,6 @@ useFocus(
       :model-value="edit.text.value"
       :aria-label="t('space.ade.details.link.aria')"
       :placeholder="t('space.ade.details.link.placeholder')"
-      size="kira"
       data-testid="ade-links-edit-input"
       @update:model-value="edit.onInput"
       @blur="edit.onCommit"

@@ -49,6 +49,7 @@ const row = computed(() => card.value?.rows.find((r) => r.id === ui.selectedBran
     <EmptyState
       v-else
       fill
+      icon="tasklist"
       :title="t('space.ade.panel.empty.emptyHint')"
       data-testid="ade-panel-empty"
     />

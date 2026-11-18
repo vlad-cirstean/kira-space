@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import Spinner from '@theme/components/Spinner.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -10,12 +10,13 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { type MessageKey, t } from '@theme/i18n';
+import { TONE_BADGE, TONE_DOT } from '@theme/lib/statusTone';
 import { formatBytes, formatPercent } from '@workbench/behaviour/format';
 import Identifier from '@workbench/components/Identifier.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed, ref, watch } from 'vue';
-import { publishedPorts, shortId, stateDotTone } from '../lib/format';
+import { containerStateTone, publishedPorts, shortId } from '../lib/format';
 import type { ContainerAction } from '../queries';
 import { useContainerAction, useContainerDetail, useRegistryLink } from '../queries';
 import { useDockerEditStore } from '../state/dockerEdit';
@@ -77,20 +78,6 @@ const tabItems = computed(() =>
   })),
 );
 
-const stateVariant = computed(() => {
-  switch (c.value?.state) {
-    case 'running':
-      return 'ok';
-    case 'paused':
-    case 'restarting':
-      return 'warn';
-    case 'dead':
-      return 'error';
-    default:
-      return 'default';
-  }
-});
-
 // A stopped container cannot serve its Terminal tab: fall back to Overview.
 watch([running, c], () => {
   if (c.value && !running.value && ui.detailTab === 'terminal') {
@@ -108,23 +95,23 @@ function act(action: ContainerAction): void {
 
 <template>
   <div class="flex h-full flex-col" data-testid="docker-container-detail">
-    <div
+    <EmptyState
       v-if="recreating"
-      class="flex items-center gap-2 p-4 text-muted-foreground"
+      fill
+      loading
       data-testid="docker-detail-recreating"
-    >
-      <Spinner label="" />{{ t('docker.detail.recreating.loading') }}
-    </div>
+      :title="t('docker.detail.recreating.loading')"
+    />
     <QueryState v-else :query="detail" :is-empty="() => false">
       <template #error>
         <EmptyState
           fill
+          icon="warning"
           data-testid="docker-detail-error"
           :title="t('docker.detail.notFound.title')"
           :description="t('docker.detail.notFound.description')"
         >
-          <template #media><CodiconIcon name="warning" :size="24" class="text-warn" /></template>
-          <Button size="kira" variant="toolbar" @click="ui.select(null)">{{
+          <Button size="inline" variant="link" @click="ui.select(null)">{{
             t('docker.detail.backToOverview.label')
           }}</Button>
         </EmptyState>
@@ -136,95 +123,96 @@ function act(action: ContainerAction): void {
         </div>
       </template>
       <template v-if="c" #default="{ data }">
-        <div class="flex shrink-0 flex-col gap-1 px-3 py-2">
-          <div class="flex min-w-0 items-center gap-2">
-            <StatusDot :tone="stateDotTone(c.state)" />
-            <span
-              class="min-w-0 truncate text-kira-lg font-medium"
-              data-testid="docker-detail-name"
+        <DetailHeader title-testid="docker-detail-name" :title="c.name">
+          <template #leading><StatusDot :tone="TONE_DOT[containerStateTone(c.state)]" /></template>
+          <template #meta>
+            <Badge
+              :variant="TONE_BADGE[containerStateTone(c.state)]"
+              data-testid="docker-detail-state"
               >{{
-                c.name
-              }}</span
+                c.state
+              }}</Badge
             >
-            <Badge :variant="stateVariant" data-testid="docker-detail-state">{{ c.state }}</Badge>
-            <span class="ml-auto flex shrink-0 items-center gap-1">
-              <Button
-                size="kira"
-                variant="toolbar"
-                :disabled="isUp || lockedBy('start')"
-                :pending="pendingOf('start')"
-                data-testid="docker-action-start"
-                @click="act('start')"
-              >
-                <CodiconIcon name="play" :size="12" class="text-ok" />
-                {{ t('common.action.start.label') }}
-              </Button>
-              <Button
-                size="kira"
-                variant="toolbar"
-                :disabled="!isUp || lockedBy('stop')"
-                :pending="pendingOf('stop')"
-                data-testid="docker-action-stop"
-                @click="act('stop')"
-              >
-                <CodiconIcon name="debug-stop" :size="12" class="text-error" />
-                {{ t('common.action.stop.label') }}
-              </Button>
-              <Button
-                size="kira"
-                variant="toolbar"
-                :disabled="!isUp || lockedBy('restart')"
-                :pending="pendingOf('restart')"
-                data-testid="docker-action-restart"
-                @click="act('restart')"
-              >
-                <CodiconIcon name="debug-restart" :size="12" />
-                {{ t('common.action.restart.label') }}
-              </Button>
-            </span>
-          </div>
-          <div
-            class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-kira-sm text-muted-foreground"
-          >
-            <span class="min-w-0 truncate" data-testid="docker-detail-image">{{ c.image }}</span>
-            <TooltipIconButton
-              v-if="registry.url.value"
-              icon="link-external"
-              :label="t('docker.detail.openRegistry.tooltip')"
-              :disabled="registry.checking.value"
-              data-testid="docker-detail-registry"
-              @click="registry.open()"
-            />
-            <span v-if="registry.missing.value" data-testid="docker-registry-missing">{{
-              t('docker.detail.registryMissing.status')
-            }}</span>
-            <Identifier :value="c.id" :short="shortId" copyable data-testid="docker-detail-id" />
-            <span v-if="c.status">{{ c.status }}</span>
-            <span
-              v-for="p in publishedPorts(c.ports)"
-              :key="p"
-              class="font-data"
-              data-testid="docker-detail-port"
-              >:{{ p }}</span
+          </template>
+          <template #actions>
+            <Button
+              size="kira"
+              variant="toolbar"
+              :disabled="isUp || lockedBy('start')"
+              :pending="pendingOf('start')"
+              data-tone="ok"
+              data-testid="docker-action-start"
+              @click="act('start')"
             >
-            <span
-              v-if="live"
-              class="ml-auto flex items-center gap-3"
-              data-testid="docker-detail-live"
+              <CodiconIcon name="play" :size="13" />
+              {{ t('common.action.start.label') }}
+            </Button>
+            <Button
+              size="kira"
+              variant="toolbar"
+              :disabled="!isUp || lockedBy('stop')"
+              :pending="pendingOf('stop')"
+              data-tone="error"
+              data-testid="docker-action-stop"
+              @click="act('stop')"
             >
-              <span class="flex w-28 items-center gap-1.5">
-                {{ t('docker.metric.cpu.label') }}
-                <span class="font-data text-fg">{{ formatPercent(live.cpuPercent) }}</span>
-                <UsageBar :percent="live.cpuPercent" class="flex-1" />
+              <CodiconIcon name="debug-stop" :size="13" />
+              {{ t('common.action.stop.label') }}
+            </Button>
+            <Button
+              size="kira"
+              variant="toolbar"
+              :disabled="!isUp || lockedBy('restart')"
+              :pending="pendingOf('restart')"
+              data-testid="docker-action-restart"
+              @click="act('restart')"
+            >
+              <CodiconIcon name="debug-restart" :size="13" />
+              {{ t('common.action.restart.label') }}
+            </Button>
+          </template>
+          <template #description>
+            <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+              <span class="min-w-0 truncate" data-testid="docker-detail-image">{{ c.image }}</span>
+              <TooltipIconButton
+                v-if="registry.url.value"
+                icon="link-external"
+                :label="t('docker.detail.openRegistry.tooltip')"
+                :disabled="registry.checking.value"
+                data-testid="docker-detail-registry"
+                @click="registry.open()"
+              />
+              <span v-if="registry.missing.value" data-testid="docker-registry-missing">{{
+                t('docker.detail.registryMissing.status')
+              }}</span>
+              <Identifier :value="c.id" :short="shortId" copyable data-testid="docker-detail-id" />
+              <span v-if="c.status">{{ c.status }}</span>
+              <span
+                v-for="p in publishedPorts(c.ports)"
+                :key="p"
+                class="font-data"
+                data-testid="docker-detail-port"
+                >:{{ p }}</span
+              >
+              <span
+                v-if="live"
+                class="ml-auto flex items-center gap-3"
+                data-testid="docker-detail-live"
+              >
+                <span class="flex w-28 items-center gap-1.5">
+                  {{ t('docker.metric.cpu.label') }}
+                  <span class="font-data text-fg">{{ formatPercent(live.cpuPercent) }}</span>
+                  <UsageBar :percent="live.cpuPercent" class="flex-1" />
+                </span>
+                <span class="flex w-32 items-center gap-1.5">
+                  {{ t('docker.metric.ram.label') }}
+                  <span class="font-data text-fg">{{ formatBytes(live.memUsage) }}</span>
+                  <UsageBar :percent="live.memPercent" class="flex-1" />
+                </span>
               </span>
-              <span class="flex w-32 items-center gap-1.5">
-                {{ t('docker.metric.ram.label') }}
-                <span class="font-data text-fg">{{ formatBytes(live.memUsage) }}</span>
-                <UsageBar :percent="live.memPercent" class="flex-1" />
-              </span>
-            </span>
-          </div>
-        </div>
+            </div>
+          </template>
+        </DetailHeader>
         <Alert v-if="actions.error.value" variant="error" data-testid="docker-action-error">
           <AlertDescription>{{ (actions.error.value as Error).message }}</AlertDescription>
         </Alert>

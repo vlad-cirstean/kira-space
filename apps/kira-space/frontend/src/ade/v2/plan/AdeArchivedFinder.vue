@@ -34,7 +34,7 @@ function pick(taskId: string): void {
         data-testid="ade-archived-find"
       />
     </PopoverTrigger>
-    <PopoverContent class="w-96 p-0" align="start">
+    <PopoverContent flush class="w-96" align="start">
       <Command @update:model-value="(v) => pick(String(v))">
         <CommandInput :placeholder="t('space.ade.plan.history.find.label')" />
         <CommandList>

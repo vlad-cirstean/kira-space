@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { formatBytes } from '@workbench/behaviour/format';
 import { computed } from 'vue';
@@ -42,22 +43,19 @@ function onClearFile(): void {
       size="kira"
       data-testid="http-binary-choose-file"
       @click="onChooseFile"
-    >
+      ><CodiconIcon name="folder-opened" :size="13" />
       {{ t('studio.http.body.chooseFile.label') }}
     </Button>
     <template v-if="tab.state.binaryFile">
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <span
-            class="text-kira-sm text-muted-foreground p-0"
-            data-testid="http-binary-file-caption"
-            >{{
-              caption
-            }}</span
-          >
-        </TooltipTrigger>
-        <TooltipContent>{{ tab.state.binaryFile.path }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="tab.state.binaryFile.path">
+        <span
+          class="text-kira-sm text-muted-foreground p-0"
+          data-testid="http-binary-file-caption"
+          >{{
+            caption
+          }}</span
+        >
+      </TextTooltip>
       <TooltipIconButton
         icon="close"
         :label="t('common.action.clear.label')"

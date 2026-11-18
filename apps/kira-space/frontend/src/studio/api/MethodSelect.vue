@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { HTTP_METHODS, type HttpMethod, httpMethodToken } from '@shared/domain/http';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import {
   DropdownMenu,
@@ -38,6 +37,7 @@ function select(value: unknown): void {
       </DropdownMenuTrigger>
     </div>
     <DropdownMenuContent align="start" data-testid="method-menu">
+      <!-- radio: option label takes the per-method colour -->
       <DropdownMenuRadioGroup :model-value="method" @update:model-value="select">
         <DropdownMenuRadioItem
           v-for="m in HTTP_METHODS"
@@ -48,7 +48,6 @@ function select(value: unknown): void {
           :data-value="m"
         >
           {{ m }}
-          <template #indicator-icon><CodiconIcon name="check" :size="13" /></template>
         </DropdownMenuRadioItem>
       </DropdownMenuRadioGroup>
     </DropdownMenuContent>

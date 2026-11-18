@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Field, FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
@@ -30,7 +29,7 @@ const modelId = useId();
   <div class="contents" v-show="active">
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="modelId">{{ t('space.settings.memory.agentModel.label') }}</Label>
+        <FieldLabel :for="modelId">{{ t('space.settings.memory.agentModel.label') }}</FieldLabel>
         <TooltipIconButton
           icon="discard"
           :label="t('common.action.resetToDefault.label')"
@@ -43,7 +42,6 @@ const modelId = useId();
       <NativeSelect
         :id="modelId"
         variant="bordered"
-        size="kira-lg"
         data-testid="settings-memory-agent-model"
         :model-value="model"
         @update:model-value="onModelChange"

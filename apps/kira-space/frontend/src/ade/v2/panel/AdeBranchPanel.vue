@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import BranchChip from '@theme/components/BranchChip.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
+import { Card } from '@theme/components/ui/card';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { hostWords, type MessageKey, t } from '@theme/i18n';
+import { changeRequestTone, type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
@@ -18,11 +24,8 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
 import { useOpenChangeRequest } from '../../../hostview/queries';
 import { useRepos } from '../../../repo/state/reposQueries';
-import AdeChip from '../AdeChip.vue';
 import AdeForcePushDialog from '../AdeForcePushDialog.vue';
-import AdeTip from '../AdeTip.vue';
 import { useRunAutomation } from '../automation/useRunAutomation';
-import type { Tone } from '../board/actions';
 import { type RebaseAct, rebaseActs } from '../board/rebaseActions';
 import { baseNameOf } from '../board/reviewCode';
 import { type CardModel, type PlanModel, usePlanModel } from '../plan/usePlanModel';
@@ -32,7 +35,7 @@ import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
-import { ACTION_CLASS } from '../tones';
+import { THEME_TONE } from '../tones';
 import { useMarkTrackedSeen } from '../updates/queries';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { ChangeRequest, Deployment, Integration, Run } from '../wire';
@@ -40,7 +43,7 @@ import AdePanelFrame from './AdePanelFrame.vue';
 import AdeRunOutcome from './AdeRunOutcome.vue';
 import AdeWorktreeSetup from './AdeWorktreeSetup.vue';
 import { type HeaderAction, headerActions } from './headerActions';
-import { PR_TONE, prStateLabel } from './prState';
+import { prStateLabel } from './prState';
 
 // Branch mode: header (back link, git status, name, facts, Force push), Details and Sessions tabs.
 const props = defineProps<{ card: CardModel; row: CardModel['rows'][number]; model: PlanModel }>();
@@ -163,7 +166,14 @@ function run(a: HeaderAction, ev?: MouseEvent): void {
     reviewCode.open(props.card.task.id, id, null, { onError: (msg) => (setupError.value = msg) });
   }
 }
-const actionClass = (a: HeaderAction): string => ACTION_CLASS[a.tone];
+const HEADER_ICON = {
+  remerge: 'git-merge',
+  start: 'play',
+  automation: 'run-all',
+  created: 'check',
+  review: 'git-compare',
+  rebase: 'repo-pull',
+} as const;
 const canForcePush = computed(() => props.row.tag.actions.some((a) => a.kind === 'forcePush'));
 
 // ---- Details rows
@@ -241,10 +251,10 @@ const deployRows = computed((): Deployment[] => {
 /** Merging acts on a created branch of mine. */
 const canMerge = computed(() => branch.value.kind === 'mine' && branch.value.name !== '');
 
-const INTO_TONE: Record<Integration['status'], Tone> = {
-  merged: 'green',
-  stale: 'amber',
-  'not merged': 'grey',
+const INTO_TONE: Record<Integration['status'], StatusTone> = {
+  merged: 'ok',
+  stale: 'warn',
+  'not merged': 'neutral',
 };
 const INTO_STATUS = {
   merged: 'common.merged.status',
@@ -259,11 +269,11 @@ function intoNote(i: Integration): string {
     : '';
 }
 
-const DEPLOY_TONE: Record<Deployment['status'], Tone> = {
-  deployed: 'green',
-  stale: 'amber',
-  'not deployed': 'grey',
-  unknown: 'grey',
+const DEPLOY_TONE: Record<Deployment['status'], StatusTone> = {
+  deployed: 'ok',
+  stale: 'warn',
+  'not deployed': 'neutral',
+  unknown: 'neutral',
 };
 const DEPLOY_STATUS = {
   deployed: 'space.ade.branchPanel.state.deployed.status',
@@ -292,129 +302,128 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
     ]"
   >
     <template #header>
-      <Button
-        variant="link"
-        size="inline"
-        class="max-w-full justify-start self-start truncate"
-        data-testid="ade-panel-back"
-        @click="ui.select(card.task.id)"
+      <DetailHeader
+        data
+        wrap
+        title-testid="ade-panel-title"
+        :title="
+          row.draft ? t('space.ade.branchPanel.draftTitle.title', { repo: row.repo }) : branch.name
+        "
       >
-        {{ t('space.ade.branchPanel.back.label', { title: card.title }) }}
-      </Button>
-      <div class="flex items-start gap-2">
-        <span
-          class="mt-1 box-border size-3 shrink-0 rounded-kira-sm border-2"
-          :class="card.review && 'border-tone-blue-solid'"
-          :style="card.review ? undefined : { borderColor: card.color }"
-          data-testid="ade-panel-dot"
-        />
-        <AdeTip :text="row.tag.tip">
-          <AdeChip :label="chipLabel" :tone="row.tag.tone" />
-        </AdeTip>
-        <AdeTip v-if="branch.origin === 'agent'" :text="t('space.ade.agentOrigin.tooltip')">
-          <span class="mt-px inline-flex shrink-0 text-subtle" data-testid="ade-panel-agent">
-            <CodiconIcon name="sparkle" :size="13" />
-          </span>
-        </AdeTip>
-        <h3
-          class="m-0 line-clamp-2 min-w-0 flex-1 break-all font-data text-kira-lg font-medium text-fg"
-          data-testid="ade-panel-title"
-        >
-          {{
-            row.draft
-              ? t('space.ade.branchPanel.draftTitle.title', { repo: row.repo })
-              : branch.name
-          }}
-        </h3>
-      </div>
-      <div
-        v-if="checkout"
-        class="truncate text-kira-sm"
-        :class="checkout.mismatch ? 'text-tone-amber' : 'text-muted-foreground'"
-        :data-mismatch="checkout.mismatch || undefined"
-        data-testid="ade-panel-checkout"
-        >{{
-          checkout.text
-        }}</div
-      >
-      <div class="truncate text-kira-sm text-muted-foreground" data-testid="ade-panel-facts">{{
-        facts
-      }}</div>
-      <Alert v-if="setupError" variant="error" data-testid="ade-panel-setup-error"
-        ><AlertDescription>{{ setupError }}</AlertDescription></Alert
-      >
-      <Alert
-        v-if="ui.actionError[card.task.id]"
-        variant="error"
-        data-testid="ade-panel-action-error"
-        ><AlertDescription>{{ ui.actionError[card.task.id] }}</AlertDescription></Alert
-      >
-      <div v-if="canForcePush || setupFailed || actions.length" class="flex flex-wrap gap-1.5 pt-1">
-        <Button
-          variant="dialog"
-          v-if="setupFailed"
-          size="kira-lg"
-          :class="ACTION_CLASS.amber"
-          :pending="retrySetup.isPending.value"
-          data-testid="ade-panel-retry-setup"
-          @click="onRetrySetup"
-        >
-          {{ t('space.ade.setup.retry.label') }}
-        </Button>
-        <AdeTip v-if="canForcePush" :text="FORCE_PUSH_CMD">
+        <template #eyebrow>
           <Button
-            variant="dialog-danger"
-            size="kira-lg"
-            :class="ACTION_CLASS.amber"
-            data-testid="ade-panel-force-push"
-            @click="forcePush = true"
+            variant="link"
+            size="inline"
+            class="max-w-full truncate"
+            data-testid="ade-panel-back"
+            @click="ui.select(card.task.id)"
           >
-            {{ t('common.forcePush.label') }}
-          </Button>
-        </AdeTip>
-        <template v-for="a in actions" :key="(a.kind === 'rebase' ? a.act.id : a.kind) + a.label">
-          <AdeTip v-if="a.kind === 'review'" :parts="reviewChoice?.tip ?? []">
-            <TooltipDisabledTrigger :disabled="reviewOff">
-              <Button
-                variant="dialog"
-                size="kira-lg"
-                :class="actionClass(a)"
-                :disabled="reviewOff"
-                :data-testid="`ade-panel-action-${a.kind}`"
-                @click="run(a)"
-              >
-                <CodiconIcon name="git-compare" :size="13" />
-                {{ a.label }}
-              </Button>
-            </TooltipDisabledTrigger>
-          </AdeTip>
-          <AdeTip v-else-if="a.kind === 'rebase'" :parts="a.act.tip">
-            <TooltipDisabledTrigger :disabled="a.act.disabled">
-              <Button
-                variant="dialog"
-                size="kira-lg"
-                :class="actionClass(a)"
-                :disabled="a.act.disabled"
-                :data-testid="`ade-panel-action-${a.act.id}`"
-                @click="run(a)"
-              >
-                {{ a.label }}
-              </Button>
-            </TooltipDisabledTrigger>
-          </AdeTip>
-          <Button
-            variant="dialog"
-            v-else
-            size="kira-lg"
-            :class="actionClass(a)"
-            :disabled="a.kind === 'created'"
-            :data-testid="`ade-panel-action-${a.kind}`"
-            @click="(ev: MouseEvent) => run(a, ev)"
-          >
-            {{ a.label }}
+            {{ t('space.ade.branchPanel.back.label', { title: card.title }) }}
           </Button>
         </template>
-      </div>
+        <template #leading>
+          <span
+            class="box-border size-3 shrink-0 rounded-kira-sm border-2"
+            :class="card.review && 'border-info'"
+            :style="card.review ? undefined : { borderColor: card.color }"
+            data-testid="ade-panel-dot"
+          />
+          <TextTooltip :text="row.tag.tip">
+            <Badge :variant="TONE_BADGE[THEME_TONE[row.tag.tone]]">{{ chipLabel }}</Badge>
+          </TextTooltip>
+          <TextTooltip v-if="branch.origin === 'agent'" :text="t('space.ade.agentOrigin.tooltip')">
+            <span class="inline-flex shrink-0 text-subtle" data-testid="ade-panel-agent">
+              <CodiconIcon name="sparkle" :size="13" />
+            </span>
+          </TextTooltip>
+        </template>
+        <template #description>
+          <div
+            v-if="checkout"
+            class="truncate"
+            :class="checkout.mismatch && 'text-warn'"
+            :data-mismatch="checkout.mismatch || undefined"
+            data-testid="ade-panel-checkout"
+            >{{
+              checkout.text
+            }}</div
+          >
+          <div class="truncate" data-testid="ade-panel-facts">{{ facts }}</div>
+        </template>
+        <Alert v-if="setupError" variant="error" data-testid="ade-panel-setup-error"
+          ><AlertDescription>{{ setupError }}</AlertDescription></Alert
+        >
+        <Alert
+          v-if="ui.actionError[card.task.id]"
+          variant="error"
+          data-testid="ade-panel-action-error"
+          ><AlertDescription>{{ ui.actionError[card.task.id] }}</AlertDescription></Alert
+        >
+      </DetailHeader>
+    </template>
+    <template v-if="canForcePush || setupFailed || actions.length" #actions>
+      <Button
+        variant="toolbar"
+        v-if="setupFailed"
+        size="kira"
+        :pending="retrySetup.isPending.value"
+        data-testid="ade-panel-retry-setup"
+        @click="onRetrySetup"
+      >
+        <CodiconIcon name="refresh" :size="13" />{{ t('space.ade.setup.retry.label') }}
+      </Button>
+      <TextTooltip v-if="canForcePush" :text="FORCE_PUSH_CMD">
+        <Button
+          variant="toolbar"
+          size="kira"
+          data-tone="error"
+          data-testid="ade-panel-force-push"
+          @click="forcePush = true"
+        >
+          <CodiconIcon name="repo-force-push" :size="13" />{{ t('common.forcePush.label') }}
+        </Button>
+      </TextTooltip>
+      <template v-for="a in actions" :key="(a.kind === 'rebase' ? a.act.id : a.kind) + a.label">
+        <TextTooltip v-if="a.kind === 'review'" :parts="reviewChoice?.tip ?? []">
+          <TooltipDisabledTrigger :disabled="reviewOff">
+            <Button
+              variant="toolbar"
+              size="kira"
+              :disabled="reviewOff"
+              :data-testid="`ade-panel-action-${a.kind}`"
+              @click="run(a)"
+            >
+              <CodiconIcon name="git-compare" :size="13" />
+              {{ a.label }}
+            </Button>
+          </TooltipDisabledTrigger>
+        </TextTooltip>
+        <TextTooltip v-else-if="a.kind === 'rebase'" :parts="a.act.tip">
+          <TooltipDisabledTrigger :disabled="a.act.disabled">
+            <Button
+              variant="toolbar"
+              size="kira"
+              :disabled="a.act.disabled"
+              :data-testid="`ade-panel-action-${a.act.id}`"
+              @click="run(a)"
+            >
+              <CodiconIcon name="repo-pull" :size="13" />
+              {{ a.label }}
+            </Button>
+          </TooltipDisabledTrigger>
+        </TextTooltip>
+        <Button
+          variant="toolbar"
+          v-else
+          size="kira"
+          :disabled="a.kind === 'created'"
+          :data-testid="`ade-panel-action-${a.kind}`"
+          @click="(ev: MouseEvent) => run(a, ev)"
+        >
+          <CodiconIcon :name="HEADER_ICON[a.kind]" :size="13" />
+          {{ a.label }}
+        </Button>
+      </template>
     </template>
 
     <div
@@ -423,12 +432,14 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
       class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 pb-3 pt-3 text-kira-md"
       data-testid="ade-branch-details"
     >
-      <KeyValueList class="items-center">
+      <KeyValueList>
         <dt>{{ t('common.field.branch.label') }}</dt>
-        <dd class="flex min-h-row min-w-0 items-center gap-2">
-          <AdeChip :label="chipLabel" :tone="row.tag.tone" wide />
+        <dd class="flex min-w-0 items-center gap-2">
+          <Badge :variant="TONE_BADGE[THEME_TONE[row.tag.tone]]" class="min-w-21 justify-center">{{
+            chipLabel
+          }}</Badge>
           <template v-if="branch.name">
-            <AdeTip :text="branch.name">
+            <TextTooltip :text="branch.name">
               <a
                 v-if="branchUrl"
                 :href="branchUrl"
@@ -437,7 +448,7 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
                 ><BranchChip :name="branch.name" class="max-w-full" /></a
               >
               <BranchChip v-else :name="branch.name" class="max-w-1/2" />
-            </AdeTip>
+            </TextTooltip>
             <span class="flex-1" />
             <TooltipIconButton
               :icon="copied && copiedKey === 'branch' ? 'check' : 'copy'"
@@ -448,14 +459,14 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
           </template>
         </dd>
         <dt>{{ words.changeRequestShort }}</dt>
-        <dd class="flex min-h-row min-w-0 items-center gap-2" data-testid="ade-branch-pr">
-          <AdeChip
-            :label="
+        <dd class="flex min-w-0 items-center gap-2" data-testid="ade-branch-pr">
+          <Badge
+            :variant="TONE_BADGE[changeRequestTone(changeRequest?.state ?? '')]"
+            class="min-w-21 justify-center"
+            >{{
               changeRequest ? prStateLabel(changeRequest.state) : t('common.state.none.option')
-            "
-            :tone="changeRequest ? (PR_TONE[changeRequest.state] ?? 'grey') : 'grey'"
-            wide
-          />
+            }}</Badge
+          >
           <template v-if="changeRequest">
             <a
               :href="changeRequest.url"
@@ -492,60 +503,64 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
       />
 
       <div class="flex flex-col gap-0.5">
-        <div class="pb-0.5 text-kira-sm text-muted-foreground">{{
-          t('space.ade.branchPanel.mergedInto.label')
-        }}</div>
-        <div
-          v-for="i in intoRows"
-          :key="i.target"
-          class="flex min-h-row items-center gap-2 rounded-kira bg-elevated px-1.5"
-          data-testid="ade-branch-into"
-          :data-target="i.target"
-        >
-          <AdeChip :label="t(INTO_STATUS[i.status])" :tone="INTO_TONE[i.status]" wide />
-          <Identifier :value="i.target" />
-          <span class="min-w-0 flex-1 truncate text-kira-sm text-muted-foreground">{{
-            intoNote(i)
-          }}</span>
-          <Button
-            variant="dialog"
-            v-if="canMerge && i.status !== 'merged'"
-            size="kira"
-            class="shrink-0 "
-            :class="ACTION_CLASS[i.status === 'stale' ? 'amber' : 'agent']"
-            :pending="dialogs.pending.has(`merge:${branch.id}:${i.target}`)"
-            data-testid="ade-branch-merge"
-            @click="dialogs.merge(branch.id, i.target)"
+        <SectionHeading flush :label="t('space.ade.branchPanel.mergedInto.label')" />
+        <Card v-if="intoRows.length" variant="list">
+          <div
+            v-for="i in intoRows"
+            :key="i.target"
+            class="flex min-h-row items-center gap-2 px-1.5"
+            data-testid="ade-branch-into"
+            :data-target="i.target"
           >
-            {{
-              i.status === 'stale'
-                ? t('space.ade.needs.action.reMerge.label')
-                : t('common.merge.label')
-            }}
-          </Button>
-        </div>
+            <Badge :variant="TONE_BADGE[INTO_TONE[i.status]]" class="min-w-21 justify-center">{{
+              t(INTO_STATUS[i.status])
+            }}</Badge>
+            <Identifier :value="i.target" />
+            <span class="min-w-0 flex-1 truncate text-kira-sm text-muted-foreground">{{
+              intoNote(i)
+            }}</span>
+            <Button
+              variant="toolbar"
+              v-if="canMerge && i.status !== 'merged'"
+              size="kira"
+              class="shrink-0"
+              :pending="dialogs.pending.has(`merge:${branch.id}:${i.target}`)"
+              data-testid="ade-branch-merge"
+              @click="dialogs.merge(branch.id, i.target)"
+            >
+              <CodiconIcon name="git-merge" :size="13" />
+              {{
+                i.status === 'stale'
+                  ? t('space.ade.needs.action.reMerge.label')
+                  : t('common.merge.label')
+              }}
+            </Button>
+          </div>
+        </Card>
         <InlineState v-if="intoRows.length === 0" kind="empty">{{
           t('space.ade.branchPanel.noIntegration.emptyHint')
         }}</InlineState>
       </div>
 
       <div class="flex flex-col gap-0.5">
-        <div class="pb-0.5 text-kira-sm text-muted-foreground">{{
-          t('space.ade.branchPanel.deployedTo.label')
-        }}</div>
-        <div
-          v-for="d in deployRows"
-          :key="d.env"
-          class="flex min-h-row items-center gap-2 rounded-kira bg-elevated px-1.5"
-          data-testid="ade-branch-deploy"
-          :data-env="d.env"
-        >
-          <AdeChip :label="t(DEPLOY_STATUS[d.status])" :tone="DEPLOY_TONE[d.status]" wide />
-          <Identifier :value="d.env" />
-          <span class="min-w-0 truncate text-kira-sm text-muted-foreground">{{
-            deployNote(d)
-          }}</span>
-        </div>
+        <SectionHeading flush :label="t('space.ade.branchPanel.deployedTo.label')" />
+        <Card v-if="deployRows.length" variant="list">
+          <div
+            v-for="d in deployRows"
+            :key="d.env"
+            class="flex min-h-row items-center gap-2 px-1.5"
+            data-testid="ade-branch-deploy"
+            :data-env="d.env"
+          >
+            <Badge :variant="TONE_BADGE[DEPLOY_TONE[d.status]]" class="min-w-21 justify-center">{{
+              t(DEPLOY_STATUS[d.status])
+            }}</Badge>
+            <Identifier :value="d.env" />
+            <span class="min-w-0 truncate text-kira-sm text-muted-foreground">{{
+              deployNote(d)
+            }}</span>
+          </div>
+        </Card>
         <InlineState v-if="deployRows.length === 0" kind="empty">{{
           t('space.ade.branchPanel.noEnvironments.emptyHint')
         }}</InlineState>

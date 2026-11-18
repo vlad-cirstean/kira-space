@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Spinner from '@theme/components/Spinner.vue';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
@@ -9,8 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldError } from '@theme/components/ui/field';
-import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import { formatShortcut } from '../shortcuts/keys';
@@ -93,9 +92,13 @@ const onChord = shortcutKeydown(['form.submit'], () => {
           <Spinner :size="13" label="" />
           {{ t('workbench.update.checking.status') }}
         </p>
-        <FieldError v-else-if="state === 'checkFailed'" data-testid="update-dialog-check-error">
-          {{ store.checkError }}
-        </FieldError>
+        <Alert
+          v-else-if="state === 'checkFailed'"
+          variant="error"
+          data-testid="update-dialog-check-error"
+        >
+          <AlertDescription>{{ store.checkError }}</AlertDescription>
+        </Alert>
         <p v-else-if="state === 'upToDate'" class="m-0" data-testid="update-dialog-up-to-date">
           {{
             t('workbench.update.upToDate.body', {
@@ -131,10 +134,12 @@ const onChord = shortcutKeydown(['form.submit'], () => {
               })
             }}
           </p>
-          <FieldError v-if="state === 'error'" data-testid="update-dialog-error">
-            {{ store.installError }}
-            {{ t('workbench.update.installDetails.error', { log: store.installLogPath }) }}
-          </FieldError>
+          <Alert v-if="state === 'error'" variant="error" data-testid="update-dialog-error">
+            <AlertDescription>
+              {{ store.installError }}
+              {{ t('workbench.update.installDetails.error', { log: store.installLogPath }) }}
+            </AlertDescription>
+          </Alert>
         </template>
       </DialogBody>
 
@@ -162,37 +167,38 @@ const onChord = shortcutKeydown(['form.submit'], () => {
           <Button
             variant="dialog-primary"
             size="kira-lg"
+            :kbd="formatShortcut('form.submit')"
             data-testid="update-dialog-retry"
             @click="store.checkForUpdates()"
           >
             {{ t('common.action.retry.label') }}
-            <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
           </Button>
         </template>
         <template v-else-if="state === 'upToDate'">
           <Button
-            variant="dialog-primary"
+            variant="dialog"
             size="kira-lg"
+            :kbd="formatShortcut('form.submit')"
             data-testid="update-dialog-close"
             @click="store.later()"
           >
             {{ t('common.action.close.label') }}
-            <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
           </Button>
         </template>
         <template v-else>
           <Button
             variant="dialog"
             size="kira-lg"
+            :kbd="formatShortcut('prompt.hide')"
             data-testid="update-dialog-later"
             @click="store.later()"
           >
             {{ t('common.later.label') }}
-            <Kbd>{{ formatShortcut('prompt.hide') }}</Kbd>
           </Button>
           <Button
             variant="dialog-primary"
             size="kira-lg"
+            :kbd="formatShortcut('form.submit')"
             data-testid="update-dialog-install"
             @click="store.install()"
           >
@@ -201,7 +207,6 @@ const onChord = shortcutKeydown(['form.submit'], () => {
                 ? t('common.action.retry.label')
                 : t('workbench.update.install.label')
             }}
-            <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
           </Button>
         </template>
       </DialogFooter>

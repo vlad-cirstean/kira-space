@@ -56,8 +56,8 @@
 import type { SearchScope } from '@kira/git-core';
 import InlineState from '@theme/components/InlineState.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { NativeSelect } from '@theme/components/ui/native-select';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { useActiveDescendant } from '@workbench/behaviour/activeDescendant';
@@ -217,6 +217,12 @@ function onKeydown(event: KeyboardEvent): void {
   }
 }
 
+const SCOPE_ITEMS = computed(() => [
+  { value: 'both', label: t('git.search.scope.both.option'), testid: 'search-scope-both' },
+  { value: 'commits', label: t('common.module.commits.label'), testid: 'search-scope-commits' },
+  { value: 'refs', label: t('git.common.refs.label'), testid: 'search-scope-refs' },
+]);
+
 function onScopeChange(value: string): void {
   props.search.scope.value = value as SearchScope;
 }
@@ -255,18 +261,14 @@ defineExpose({ focusInput });
               match-case-testid="search-toggle-case"
             />
           </section>
-          <NativeSelect
-            variant="bordered"
-            size="kira"
+          <SecondaryTabs
+            variant="segmented"
             :aria-label="t('git.search.scope.aria')"
             data-testid="search-scope"
             :model-value="search.scope.value"
-            @update:model-value="(v) => onScopeChange(v as string)"
-          >
-            <option value="both">{{ t('git.search.scope.both.option') }}</option>
-            <option value="commits">{{ t('common.module.commits.label') }}</option>
-            <option value="refs">{{ t('git.common.refs.label') }}</option>
-          </NativeSelect>
+            :items="SCOPE_ITEMS"
+            @update:model-value="onScopeChange"
+          />
           <span
             v-if="countLabel"
             class="px-0.5 text-muted-foreground text-kira-sm whitespace-nowrap tabular-nums"
@@ -288,7 +290,8 @@ defineExpose({ focusInput });
     <PopoverContent
       align="start"
       :side-offset="2"
-      class="p-0 gap-0 w-120"
+      flush
+      class="w-120"
       @open-auto-focus.prevent
       @close-auto-focus.prevent
       @escape-key-down="(e) => e.preventDefault()"

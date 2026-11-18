@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { grpcMethodClass } from '@shared/domain/grpc';
 import { httpMethodToken } from '@shared/domain/http';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import HighlightedText from '@theme/components/HighlightedText.vue';
@@ -158,7 +157,9 @@ function onKeydown(e: KeyboardEvent): void {
     <Badge
       v-if="row.kind === 'request' && row.protocol === 'grpc'"
       class="w-14 shrink-0 overflow-hidden text-center text-ellipsis text-kira-sm"
-      :variant="grpcMethodClass(row.method)"
+      variant="chip"
+      data
+      :class="methodTextClass('other')"
       data-testid="grpc-collection-chip"
     >
       {{ t('studio.common.grpc.label') }}
@@ -181,6 +182,7 @@ function onKeydown(e: KeyboardEvent): void {
     <InlineEditInput
       v-if="renaming"
       :name="row.name"
+      :label="t('common.field.name.label')"
       data-testid="collection-rename-input"
       @commit="(name) => emit('rename', row, name)"
       @cancel="emit('cancelRename')"

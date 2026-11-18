@@ -5,9 +5,10 @@ import StatusDot from '@theme/components/StatusDot.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { rowActions, rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
+import { TONE_DOT } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
 import { computed } from 'vue';
-import { publishedPorts, stateDotTone } from '../lib/format';
+import { containerStateTone, publishedPorts } from '../lib/format';
 import type { ContainerAction } from '../queries';
 import type { DockerContainer } from '../wire';
 import OriginIcon from './OriginIcon.vue';
@@ -54,7 +55,10 @@ const portLabel = computed(() => {
     @click="emit('select', container)"
     @dblclick="emit('open', container)"
   >
-    <StatusDot :tone="stateDotTone(container.state)" data-testid="docker-state-dot" />
+    <StatusDot
+      :tone="TONE_DOT[containerStateTone(container.state)]"
+      data-testid="docker-state-dot"
+    />
     <span class="flex min-w-0 items-center gap-1.5">
       <span
         class="truncate"

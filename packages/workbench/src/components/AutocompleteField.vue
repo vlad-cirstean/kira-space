@@ -452,13 +452,14 @@ const fieldAttrs = computed(
         side="bottom"
         align="start"
         :side-offset="4"
-        class="autocomplete-suggestions z-(--kira-z-autocomplete) w-auto min-w-50 max-w-completion-max-w max-h-60 gap-0 overflow-x-hidden overflow-y-auto p-0.5 font-data"
+        flush
+        class="autocomplete-suggestions z-(--kira-z-autocomplete) w-auto min-w-50 max-w-completion-max-w max-h-60 overflow-x-hidden overflow-y-auto font-data"
         @open-auto-focus.prevent
         @close-auto-focus.prevent
         @interact-outside="onInteractOutside"
         @mousedown.prevent
       >
-        <ul :id="listId" v-bind="LISTBOX_ATTRS" class="m-0 list-none p-0">
+        <ul :id="listId" v-bind="LISTBOX_ATTRS" class="m-0 list-none p-0.5">
           <li
             v-for="(c, i) in filtered"
             :id="`${listId}-${i}`"
@@ -500,21 +501,24 @@ const fieldAttrs = computed(
         side="top"
         align="start"
         :side-offset="4"
-        class="var-hover-panel pointer-events-none z-(--kira-z-autocomplete) w-auto max-w-96 gap-0 overflow-hidden px-1.5 py-1 font-data"
+        flush
+        class="var-hover-panel pointer-events-none z-(--kira-z-autocomplete) w-auto max-w-96 font-data"
         data-testid="autocomplete-hover"
         @open-auto-focus.prevent
         @close-auto-focus.prevent
         @interact-outside.prevent
       >
-        <div
-          v-for="(line, i) in hoverLines"
-          :key="i"
-          class="hover-line whitespace-pre-wrap wrap-anywhere"
-          :class="{ 'mt-0.5 text-muted-foreground': i > 0 }"
-          >{{
-            line
-          }}</div
-        >
+        <div class="px-1.5 py-1">
+          <div
+            v-for="(line, i) in hoverLines"
+            :key="i"
+            class="hover-line whitespace-pre-wrap wrap-anywhere"
+            :class="{ 'mt-0.5 text-muted-foreground': i > 0 }"
+            >{{
+              line
+            }}</div
+          >
+        </div>
       </PopoverContent>
     </Popover>
   </div>
