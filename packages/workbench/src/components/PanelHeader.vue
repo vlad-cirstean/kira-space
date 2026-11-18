@@ -11,6 +11,8 @@
       ><slot name="start" /></div
     >
     <span v-if="$slots.default" class="font-medium"><slot /></span>
-    <div class="ml-auto flex items-center gap-1"><slot name="actions" /></div>
+    <div class="ml-auto flex items-center gap-1 normal-case tracking-normal"
+      ><slot name="actions" /></div
+    >
   </div>
 </template>

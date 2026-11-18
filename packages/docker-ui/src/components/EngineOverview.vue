@@ -214,7 +214,7 @@ function refresh(): Promise<void> {
             <div class="grid grid-cols-1 gap-3 @xl:grid-cols-2 @4xl:grid-cols-4">
               <DetailSection :title="t('common.field.status.label')">
                 <div class="flex items-baseline gap-1.5">
-                  <span class="text-kira-xl font-medium" data-testid="docker-engine-count">{{
+                  <span class="text-kira-lg font-medium" data-testid="docker-engine-count">{{
                     engine.running
                   }}</span>
                   <span class="text-muted-foreground">{{ t('common.state.running.status') }}</span>
@@ -238,7 +238,7 @@ function refresh(): Promise<void> {
               </DetailSection>
               <DetailSection :title="t('docker.metric.cpu.label')">
                 <div class="flex items-baseline gap-1.5">
-                  <span class="text-kira-xl font-medium" data-testid="docker-engine-cpu">{{
+                  <span class="text-kira-lg font-medium" data-testid="docker-engine-cpu">{{
                     formatPercent(totals.cpu)
                   }}</span>
                   <span class="text-muted-foreground">{{
@@ -256,7 +256,7 @@ function refresh(): Promise<void> {
               </DetailSection>
               <DetailSection :title="t('common.module.memory.label')">
                 <div class="flex items-baseline gap-1.5">
-                  <span class="text-kira-xl font-medium" data-testid="docker-engine-mem">{{
+                  <span class="text-kira-lg font-medium" data-testid="docker-engine-mem">{{
                     formatBytes(totals.mem)
                   }}</span>
                   <span class="text-muted-foreground">{{

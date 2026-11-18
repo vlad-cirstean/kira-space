@@ -30,7 +30,7 @@ const mem = computed(() => history.value.map((s) => s.memUsage));
       <div v-else class="grid grid-cols-1 gap-3 @3xl:grid-cols-2">
         <DetailSection :title="t('docker.metric.cpu.label')">
           <div class="mb-2 flex items-baseline justify-between">
-            <span class="text-kira-xl font-medium" data-testid="docker-stats-cpu">{{
+            <span class="text-kira-lg font-medium" data-testid="docker-stats-cpu">{{
               formatPercent(latest.cpuPercent)
             }}</span>
             <span class="text-kira-sm text-muted-foreground">{{
@@ -41,7 +41,7 @@ const mem = computed(() => history.value.map((s) => s.memUsage));
         </DetailSection>
         <DetailSection :title="t('common.module.memory.label')">
           <div class="mb-2 flex items-baseline justify-between">
-            <span class="text-kira-xl font-medium" data-testid="docker-stats-mem">{{
+            <span class="text-kira-lg font-medium" data-testid="docker-stats-mem">{{
               formatBytes(latest.memUsage)
             }}</span>
             <span class="text-kira-sm text-muted-foreground">{{

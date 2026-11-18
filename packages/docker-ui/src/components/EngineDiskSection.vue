@@ -56,7 +56,7 @@ const sizeText = (n: number): string => (n < 0 ? displayValue(null) : formatByte
 <template>
   <DetailSection :title="t('docker.disk.title')" class="shrink-0">
     <template #actions>
-      <span class="ml-auto flex items-center gap-1 normal-case tracking-normal">
+      <span class="ml-auto flex items-center gap-1">
         <Tooltip v-if="usage">
           <TooltipTrigger as-child>
             <span data-testid="docker-disk-taken">{{ ago }}</span>

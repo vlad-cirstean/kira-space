@@ -254,7 +254,7 @@ onUnmounted(teardownEditor);
     <div
       v-if="isMarkdown && view === 'reading'"
       ref="readingPane"
-      class="kira-prose flex-1 min-h-0 overflow-auto text-fg bg-bg font-ui text-kira-md leading-relaxed p-4 [&>*]:max-w-prose [&>pre]:max-w-none [&>table]:max-w-none"
+      class="kira-prose flex-1 min-h-0 overflow-auto text-fg bg-bg font-ui text-kira-md leading-normal p-3 [&>*]:max-w-prose [&>pre]:max-w-none [&>table]:max-w-none"
       data-testid="repo-file-markdown"
       v-html="renderedHtml"
     />

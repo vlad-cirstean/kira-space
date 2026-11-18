@@ -9,7 +9,7 @@ defineProps<{ title: string; flush?: boolean }>();
   <Card variant="section">
     <CardHeader>
       <CardTitle as="h3">{{ title }}</CardTitle>
-      <CardAction><slot name="actions" /></CardAction>
+      <CardAction class="normal-case tracking-normal"><slot name="actions" /></CardAction>
     </CardHeader>
     <CardContent :flush="flush">
       <slot />

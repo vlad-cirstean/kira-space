@@ -24,7 +24,7 @@ const ago = useRelativeTime(takenAt);
 <template>
   <DetailSection :title="t('docker.field.size.label')">
     <template #actions>
-      <span class="ml-auto flex items-center gap-1 normal-case tracking-normal">
+      <span class="ml-auto flex items-center gap-1">
         <Tooltip v-if="size">
           <TooltipTrigger as-child>
             <span data-testid="docker-size-taken">{{ ago }}</span>

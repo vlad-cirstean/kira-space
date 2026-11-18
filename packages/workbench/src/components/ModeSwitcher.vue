@@ -42,7 +42,7 @@ const emit = defineEmits<{ select: [mode: M] }>();
         >
           <!-- Icon at its own 16px design size, so the glyph fills its box (no per-glyph advance slack). -->
           <span
-            class="size-4 flex items-center justify-center shrink-0 leading-3.5"
+            class="size-4 flex items-center justify-center shrink-0 leading-none"
             data-testid="mode-tab-icon"
             ><CodiconIcon :name="modes[mode].icon" :size="16" /></span
           >

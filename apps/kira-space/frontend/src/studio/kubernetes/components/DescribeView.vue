@@ -226,7 +226,7 @@ const label = (id: SectionId): string => LABELS[id]();
             </template>
             <pre
               v-else
-              class="m-0 overflow-auto font-data text-kira-sm leading-relaxed"
+              class="m-0 overflow-auto font-data text-kira-sm leading-normal"
               data-testid="kube-manifest"
             ><template v-for="l in sections!.manifest" :key="l.n"><span class="mr-3 inline-block w-8 select-none text-right text-subtle">{{ l.n }}</span><span v-if="painted.has(l.n)" v-html="painted.get(l.n)"></span><HighlightedText v-else :parts="parts(l.text)" />
 </template></pre>

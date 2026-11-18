@@ -34,7 +34,7 @@ useKeptScroll('ade:needs', bodyEl);
     <PanelHeader>
       {{ t('common.needsYou.status') }}
       <template v-if="needs && !needs.empty" #actions>
-        <span class="normal-case tracking-normal" data-testid="ade-needs-summary">{{
+        <span data-testid="ade-needs-summary">{{
           t('space.ade.needsPage.summary.label', { count: needs.items.length })
         }}</span>
       </template>
