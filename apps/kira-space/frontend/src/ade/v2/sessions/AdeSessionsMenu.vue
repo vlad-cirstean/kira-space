@@ -31,7 +31,7 @@ const attention = computed(() =>
     <PopoverTrigger as-child>
       <Button
         variant="toolbar"
-        size="kira-lg"
+        size="kira"
         class="shrink-0 gap-1"
         data-testid="ade-sessions-menu-trigger"
       >

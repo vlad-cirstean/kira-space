@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription, FieldError } from '@theme/components/ui/field';
@@ -78,26 +79,26 @@ async function remove(): Promise<void> {
         @update:model-value="setMode"
       />
       <Button
-        variant="dialog"
-        size="kira-lg"
+        variant="toolbar"
+        size="kira"
         class="ml-auto"
         :disabled="!yaml.data.value"
         data-testid="ade-step-copy"
         @click="yaml.data.value && copy(yaml.data.value.yaml)"
-      >
+        ><CodiconIcon name="copy" :size="13" />
         {{
           copied ? t('common.copy.copied.announce') : t('space.ade.workflows.editor.copyYaml.label')
         }}
       </Button>
       <Button
-        variant="dialog-danger"
-        size="kira-lg"
+        variant="toolbar"
+        size="kira"
         :disabled="users.length > 0"
         :pending="del.isPending.value"
         data-testid="ade-step-delete"
         @click="remove"
-      >
-        {{ t('common.action.delete.label') }}
+        data-tone="error"
+        ><CodiconIcon name="trash" :size="13" />{{ t('common.action.delete.label') }}
       </Button>
     </div>
     <FieldDescription v-if="users.length" data-testid="ade-step-used-by">{{

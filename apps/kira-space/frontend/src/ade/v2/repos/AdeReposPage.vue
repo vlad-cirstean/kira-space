@@ -186,8 +186,8 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
         {{ t('common.module.repositories.label') }}
         <template #actions>
           <Button
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             class="px-1.5"
             data-testid="ade-repos-import"
             @click="onImport"
@@ -382,8 +382,8 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
               <Button
                 v-for="f in otherFiles"
                 :key="f.file"
-                variant="dialog"
-                size="kira-lg"
+                variant="toolbar"
+                size="kira"
                 :aria-pressed="pickedOther?.file === f.file"
                 data-testid="ade-repos-file"
                 :data-file="f.file"
@@ -394,6 +394,7 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
                   tone="error"
                   :label="t('space.repo.settingsFile.problem.aria')"
                 />
+                <CodiconIcon v-else name="file" :size="13" />
                 {{ configName(f.file) }}
               </Button>
             </div>
@@ -412,8 +413,8 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
               t('space.ade.repos.foldersHint.hint')
             }}</p>
             <Button
-              variant="dialog"
-              size="kira-lg"
+              variant="toolbar"
+              size="kira"
               :pending="addFolder.isPending.value"
               data-testid="ade-repos-add-folder"
               @click="onAddFolder"

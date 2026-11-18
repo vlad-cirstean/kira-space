@@ -169,12 +169,12 @@ async function pick(value: string): Promise<void> {
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
       <Button
-        variant="dialog"
-        size="kira-lg"
+        variant="toolbar"
+        size="kira"
         data-testid="ade-add"
         @pointerenter="prefetchNotesEditor"
       >
-        <CodiconIcon name="add" :size="12" />
+        <CodiconIcon name="add" :size="13" />
         {{ t('space.ade.add.trigger.label') }}
       </Button>
     </PopoverTrigger>
@@ -234,7 +234,7 @@ async function pick(value: string): Promise<void> {
           <div class="flex items-center gap-3">
             <Button
               variant="dialog-primary"
-              size="kira-lg"
+              size="kira"
               :disabled="cantAdd"
               data-testid="ade-nw-add"
               @click="addNew"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -65,13 +66,12 @@ function edit(): void {
           <TooltipContent>{{ t('space.ade.workflowBlock.outdatedHint.hint') }}</TooltipContent>
         </Tooltip>
         <Button
-          variant="dialog"
+          variant="toolbar"
           size="kira"
           class="ml-auto"
           data-testid="ade-edit-workflows"
           @click="edit"
-        >
-          {{ t('space.ade.workflowBlock.edit.label') }}
+          ><CodiconIcon name="edit" :size="13" />{{ t('space.ade.workflowBlock.edit.label') }}
         </Button>
       </div>
     </Field>

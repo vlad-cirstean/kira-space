@@ -144,7 +144,7 @@ const preset = (paths: readonly string[]): void => {
           <DropdownMenuTrigger as-child>
             <Button
               variant="dialog"
-              size="kira"
+              size="kira-lg"
               class="self-start"
               data-testid="ade-wf-sandbox-preset"
               >{{

@@ -159,13 +159,11 @@ const editing = ref<string | null>(null);
       <span>{{ t('space.ade.notes.empty.body') }}</span>
       <Button
         v-if="!readonly"
-        variant="dialog"
+        variant="toolbar"
         size="kira"
         data-testid="ade-note-add-empty"
         @click="composer.show(task.id)"
-        >{{
-          t('space.ade.notes.add.label')
-        }}</Button
+        ><CodiconIcon name="add" :size="13" />{{ t('space.ade.notes.add.label') }}</Button
       >
     </div>
     <template v-for="e in entries" :key="e.key">

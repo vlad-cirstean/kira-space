@@ -413,7 +413,7 @@ useKeptScroll('ade:plan', scrollEl, { ready: () => model.value !== null });
             <Alert variant="error" data-testid="ade-plan-error">
               <AlertDescription>{{ planError }}</AlertDescription>
               <AlertAction>
-                <Button variant="link" size="kira" @click="setPlan.reset()">{{
+                <Button variant="link" size="inline" @click="setPlan.reset()">{{
                   t('common.action.dismiss.label')
                 }}</Button>
               </AlertAction>
@@ -447,23 +447,23 @@ useKeptScroll('ade:plan', scrollEl, { ready: () => model.value !== null });
           <div v-if="model.view.hiddenCount > 0" class="mt-2">
             <Button
               variant="toolbar"
-              size="kira-lg"
+              size="kira"
               class="w-full justify-center text-muted-foreground"
               data-testid="ade-load-all"
               @click="ui.showAllItems = true"
             >
-              <CodiconIcon name="arrow-down" :size="12" />
+              <CodiconIcon name="arrow-down" :size="13" />
               <span>{{ model.view.moreButtonLabel }}</span>
             </Button>
           </div>
           <div v-if="model.view.canCollapse" class="mt-2">
             <Button
               variant="toolbar"
-              size="kira-lg"
+              size="kira"
               class="w-full justify-center text-muted-foreground"
               data-testid="ade-collapse"
               @click="ui.showAllItems = false"
-            >
+              ><CodiconIcon name="fold" :size="13" />
               {{ t('space.ade.plan.view.collapse.label', { count: ITEM_LIMIT }) }}
             </Button>
           </div>

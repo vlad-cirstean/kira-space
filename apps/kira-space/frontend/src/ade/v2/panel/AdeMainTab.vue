@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -103,14 +104,13 @@ useKeptScroll(() => `ade:task:${props.card.task.id}:main`, bodyEl);
         <div class="flex min-w-0 items-center gap-1.5">
           <span>{{ t('space.ade.taskTab.branchRequest.status') }}</span>
           <Button
-            variant="dialog"
+            variant="toolbar"
             size="kira"
             class="ml-auto"
             data-testid="ade-task-branch-request-open"
             @click="approvalsStore.open(`branch.request:${task.branchRequestId}`)"
-            >{{
-              t('space.ade.board.branchTag.review.label')
-            }}</Button
+            ><CodiconIcon name="git-compare" :size="13" />
+            {{ t('space.ade.board.branchTag.review.label') }}</Button
           >
         </div>
       </Field>

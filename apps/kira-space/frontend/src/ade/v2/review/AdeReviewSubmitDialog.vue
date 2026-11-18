@@ -160,12 +160,12 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void submit());
             <div class="flex items-start gap-3">
               <span class="min-w-0 flex-1">{{ error }}</span>
               <Button
-                variant="dialog"
+                variant="toolbar"
                 size="kira"
                 class="shrink-0"
                 data-testid="ade-review-submit-open"
                 @click="openChangeRequest(live.number)"
-              >
+                ><CodiconIcon name="go-to-file" :size="13" />
                 {{ t('space.ade.review.actions.open.label', { short }) }}
               </Button>
             </div>

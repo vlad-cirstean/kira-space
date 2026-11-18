@@ -60,7 +60,7 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
       </NativeSelect>
       <Button
         variant="link"
-        size="kira"
+        size="inline"
         class="shrink-0"
         data-testid="ade-step-edit-statuses"
         @click="wfUi.openStatuses()"

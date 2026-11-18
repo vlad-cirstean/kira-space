@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
@@ -28,14 +29,13 @@ function seen(itemKeys: string[]): void {
     <div class="flex items-center gap-2">
       <AdeChip :label="t('space.ade.updates.strip.title')" tone="blue" />
       <Button
-        variant="dialog"
+        variant="toolbar"
         size="kira"
         class="ml-auto"
         data-testid="ade-task-updates-seen-all"
         @click="seen([])"
-        >{{
-          t('space.ade.updates.markAllSeen.label')
-        }}</Button
+        ><CodiconIcon name="check" :size="13" />
+        {{ t('space.ade.updates.markAllSeen.label') }}</Button
       >
     </div>
     <div
@@ -46,13 +46,11 @@ function seen(itemKeys: string[]): void {
     >
       <span class="min-w-0 flex-1 truncate" :class="rowMeta">{{ describe(u) }}</span>
       <Button
-        variant="dialog"
+        variant="toolbar"
         size="kira"
         :data-testid="`ade-task-update-seen-${u.itemKey}`"
         @click="seen([u.itemKey])"
-        >{{
-          t('space.ade.updates.markSeen.label')
-        }}</Button
+        ><CodiconIcon name="check" :size="13" />{{ t('space.ade.updates.markSeen.label') }}</Button
       >
     </div>
   </div>

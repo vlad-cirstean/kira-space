@@ -92,8 +92,8 @@ const label = computed(() =>
       <TextTooltip v-if="choices.length" :parts="reviewTip">
         <TooltipDisabledTrigger :disabled="reviewDisabled">
           <Button
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             :disabled="reviewDisabled"
             data-testid="ade-panel-review"
             @click="(ev: MouseEvent) => reviewCode.openTask(card, ev.currentTarget as HTMLElement)"

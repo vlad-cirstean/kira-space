@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
@@ -30,16 +31,11 @@ function onDate(e: Event): void {
       />
     </Field>
     <span class="flex-1" />
-    <Button variant="dialog" size="kira-lg" data-testid="ade-hide-history" @click="emit('hide')">
-      {{ t('space.ade.plan.history.hide.label') }}
+    <Button variant="toolbar" size="kira" data-testid="ade-hide-history" @click="emit('hide')"
+      ><CodiconIcon name="eye-closed" :size="13" />{{ t('space.ade.plan.history.hide.label') }}
     </Button>
-    <Button
-      variant="dialog-primary"
-      size="kira-lg"
-      data-testid="ade-current-work"
-      @click="emit('current')"
-    >
-      {{ t('space.ade.plan.history.current.label') }}
+    <Button variant="toolbar" size="kira" data-testid="ade-current-work" @click="emit('current')"
+      ><CodiconIcon name="arrow-right" :size="13" />{{ t('space.ade.plan.history.current.label') }}
     </Button>
   </div>
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
@@ -45,13 +46,13 @@ async function setMode(v: unknown): Promise<void> {
         @update:model-value="setMode"
       />
       <Button
-        variant="dialog"
-        size="kira-lg"
+        variant="toolbar"
+        size="kira"
         class="ml-auto"
         :disabled="!yaml.data.value"
         data-testid="ade-wf-copy"
         @click="yaml.data.value && copy(yaml.data.value.yaml)"
-      >
+        ><CodiconIcon name="copy" :size="13" />
         {{
           copied ? t('common.copy.copied.announce') : t('space.ade.workflows.editor.copyYaml.label')
         }}

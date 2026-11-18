@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
@@ -169,14 +170,13 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
               t('space.ade.archived.restore.hint')
             }}</span>
             <Button
-              variant="dialog"
+              variant="toolbar"
               size="kira"
               class="shrink-0"
               :pending="restore.isPending.value"
               data-testid="ade-archived-restore"
               @click="onRestore"
-            >
-              {{ t('common.action.restore.label') }}
+              ><CodiconIcon name="discard" :size="13" />{{ t('common.action.restore.label') }}
             </Button>
           </div>
           <Alert v-if="restoreError" variant="error" data-testid="ade-archived-restore-error"

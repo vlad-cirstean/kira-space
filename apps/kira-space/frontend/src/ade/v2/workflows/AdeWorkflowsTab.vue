@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -99,22 +100,21 @@ async function createNew(): Promise<void> {
         {{ t('space.common.workflows.label') }}
         <template #actions>
           <Button
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             class="px-1.5"
             data-testid="ade-wf-import"
             @click="importOpen = !importOpen"
-          >
+            ><CodiconIcon name="cloud-download" :size="13" />
             {{ t('space.ade.workflows.page.import.label') }}
           </Button>
           <Button
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             class="px-1.5"
             data-testid="ade-wf-new"
             @click="createNew"
-          >
-            {{ t('space.ade.workflows.page.new.label') }}
+            ><CodiconIcon name="add" :size="13" />{{ t('space.ade.workflows.page.new.label') }}
           </Button>
         </template>
       </PanelHeader>

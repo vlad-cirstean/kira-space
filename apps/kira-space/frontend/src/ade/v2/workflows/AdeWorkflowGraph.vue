@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
@@ -344,11 +345,11 @@ onBeforeUnmount(() => {
             <DropdownMenu>
               <DropdownMenuTrigger as-child>
                 <Button
-                  variant="dialog"
-                  size="kira-lg"
+                  variant="toolbar"
+                  size="kira"
                   class="bg-transparent"
                   data-testid="ade-wf-add-step"
-                >
+                  ><CodiconIcon name="add" :size="13" />
                   {{ t('space.ade.workflows.graph.addStep.label') }}
                 </Button>
               </DropdownMenuTrigger>

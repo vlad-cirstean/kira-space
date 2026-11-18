@@ -195,13 +195,12 @@ function time(h: Handover): string {
     />
     <div v-if="handover.state === 'draft' && !readonly && !editing" class="flex justify-end">
       <Button
-        variant="dialog"
+        variant="toolbar"
         size="kira"
         data-testid="ade-handover-move-on"
         @click="stage.open({ taskId })"
-        >{{
-          t('space.ade.handover.moveOn.label')
-        }}</Button
+        ><CodiconIcon name="arrow-right" :size="13" />
+        {{ t('space.ade.handover.moveOn.label') }}</Button
       >
     </div>
   </Card>

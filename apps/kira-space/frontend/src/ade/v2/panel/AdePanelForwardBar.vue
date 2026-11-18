@@ -73,8 +73,9 @@ async function dismiss(): Promise<void> {
             }}</span>
             <TextTooltip :text="noTarget ? t('space.ade.panelForward.unreachable.tooltip') : ''">
               <TooltipDisabledTrigger :disabled="off">
+                <!-- conventions-allow N17: send commits the bar; outline primary, not approve (RB.2) -->
                 <Button
-                  variant="dialog-approve"
+                  variant="dialog-primary"
                   size="kira"
                   :pending="forwardM.isPending.value"
                   :disabled="off"

@@ -81,8 +81,8 @@ const item = computed<LinkItem | null>(() => {
         }}</span>
         <Button
           class="ml-auto"
-          variant="dialog-primary"
-          size="kira-lg"
+          variant="dialog"
+          size="kira"
           :pending="busy"
           :disabled="target.onTaskId !== ''"
           data-testid="ade-link-add"

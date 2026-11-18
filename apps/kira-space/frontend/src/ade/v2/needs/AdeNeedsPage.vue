@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
@@ -56,11 +57,11 @@ useKeptScroll('ade:needs', bodyEl);
         <div class="flex items-center gap-3 px-3 py-2 text-kira-md text-muted-foreground">
           <span class="flex-1" data-testid="ade-needs-footer">{{ needs.footer }}</span>
           <Button
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             data-testid="ade-needs-all"
             @click="ui.showAllSessions = !ui.showAllSessions"
-          >
+            ><CodiconIcon name="eye" :size="13" />
             {{
               ui.showAllSessions
                 ? t('space.ade.needsPage.hideAll.label')

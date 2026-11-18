@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ReviewComment } from '@kira/git-ipc';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
@@ -330,21 +331,19 @@ const stateLabel = (c: ReviewComment): string =>
         }}</span>
         <Button
           v-if="live"
-          variant="dialog"
+          variant="toolbar"
           size="kira"
           data-testid="ade-review-stop"
           @click="act(() => stop.mutateAsync({ runId: round!.run.id }), 'stopRuns')"
-        >
-          {{ t('common.action.stop.label') }}
+          ><CodiconIcon name="debug-stop" :size="13" />{{ t('common.action.stop.label') }}
         </Button>
         <Button
           v-if="round.run.resumable"
-          variant="dialog"
+          variant="toolbar"
           size="kira"
           data-testid="ade-review-resume"
           @click="act(() => resume.mutateAsync({ runId: round!.run.id }), 'resume')"
-        >
-          {{ t('common.action.resume.label') }}
+          ><CodiconIcon name="play" :size="13" />{{ t('common.action.resume.label') }}
         </Button>
         <Button
           variant="toolbar"

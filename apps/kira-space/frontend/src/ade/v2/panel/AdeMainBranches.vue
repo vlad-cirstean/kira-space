@@ -81,12 +81,11 @@ async function onAddRepo(id: string): Promise<void> {
         @select="(o) => onAddRepo(o.value)"
       />
       <Button
-        variant="dialog"
+        variant="toolbar"
         size="kira"
         data-testid="ade-add-branch"
         @click="addUi.openAttach(task.id, card.title)"
-      >
-        {{ t('space.ade.taskTab.addBranch.label') }}
+        ><CodiconIcon name="add" :size="13" />{{ t('space.ade.taskTab.addBranch.label') }}
       </Button>
     </SectionHeading>
     <div

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -82,7 +83,8 @@ async function createNew(kind: StepKind): Promise<void> {
         <template #actions>
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <Button variant="dialog" size="kira-lg" class="px-1.5" data-testid="ade-step-new">
+              <Button variant="toolbar" size="kira" class="px-1.5" data-testid="ade-step-new"
+                ><CodiconIcon name="add" :size="13" />
                 {{ t('space.ade.workflows.step.defaultName.label') }}
               </Button>
             </DropdownMenuTrigger>
