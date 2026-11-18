@@ -46,7 +46,8 @@ import {
 import { openRedisBrowse, REDIS_DB0 } from './support/redisFixture';
 import { connectionRow, expandRow, findRow, openBrowseLeaf, openRowMenu } from './support/tree';
 
-const BUDGET_MS = 250;
+// Unfixed baseline is 840-1640 ms; CI runners measured 275-401 ms on the fixed tree, local 60-220 ms.
+const BUDGET_MS = 500;
 const DOC_ROWS = 10_000;
 const DOC_BYTES = 2048;
 const DELAY_MS = 1500;
