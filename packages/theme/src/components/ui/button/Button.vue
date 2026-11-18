@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Spinner from '@theme/components/Spinner.vue';
+import { Kbd } from '@theme/components/ui/kbd';
 import { cn } from '@theme/lib/utils';
 import type { PrimitiveProps } from 'reka-ui';
 import { Primitive } from 'reka-ui';
@@ -13,6 +14,8 @@ interface Props extends PrimitiveProps {
   class?: HTMLAttributes['class'];
   /** An async action is running: disabled, `aria-busy`, and a spinner replaces the button's icon. */
   pending?: boolean;
+  /** Shortcut text (callers format it), shown as a Kbd after the label. */
+  kbd?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -29,6 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
     :as-child="asChild"
     :disabled="pending || undefined"
     :aria-busy="pending || undefined"
+    :aria-keyshortcuts="kbd || undefined"
     :class="
       cn(
         buttonVariants({ variant, size }),
@@ -39,5 +43,6 @@ const props = withDefaults(defineProps<Props>(), {
   >
     <Spinner v-if="pending && !asChild" label="" />
     <slot />
+    <Kbd v-if="kbd && !asChild">{{ kbd }}</Kbd>
   </Primitive>
 </template>
