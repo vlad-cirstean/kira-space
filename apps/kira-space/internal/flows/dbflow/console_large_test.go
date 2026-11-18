@@ -3,9 +3,11 @@ package dbflow
 import (
 	"errors"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
@@ -81,6 +83,14 @@ func TestConsoleSlowQueryResponsiveAndCancellable(t *testing.T) {
 		t.Fatal("Read did not answer within 5s while a statement ran")
 	}
 
+	// The fire is async: Cancel before the op registers answers false (the cancel is only remembered).
+	deadline := time.Now().Add(5 * time.Second)
+	for !slices.ContainsFunc(app.W.Router.RunningOps(), func(o adapterhost.RunningOp) bool { return o.OpID == opID }) {
+		if time.Now().After(deadline) {
+			t.Fatal("slow statement never registered as a running op within 5s")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	if ok, err := app.W.Router.Cancel(ctx, opID); err != nil || !ok {
 		t.Fatalf("Cancel(%s) = %v, %v", opID, ok, err)
 	}
