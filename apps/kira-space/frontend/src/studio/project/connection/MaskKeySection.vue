@@ -43,8 +43,6 @@ async function onRegenerateKey(): Promise<void> {
 <template>
   <Disclosure
     :label="t('studio.project.connectionDialog.privacy.key.title')"
-    trigger-class="text-fg font-medium"
-    content-class="flex flex-col gap-2 pt-1.5"
     data-testid="mask-key-section"
   >
     <FieldDescription class="w-full">{{

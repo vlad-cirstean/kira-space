@@ -313,9 +313,8 @@ function hopNotes(hop: HttpTimelineHop): HopNote[] {
 
           <Disclosure
             v-if="hopHeaders(hop).length > 0"
-            class="mt-0.5"
             :label="t('studio.http.timeline.responseHeaders.label')"
-            trigger-class="text-kira-sm text-subtle"
+            meta
           >
             <KeyValueList density="compact">
               <template v-for="(h, i) in hopHeaders(hop)" :key="i">

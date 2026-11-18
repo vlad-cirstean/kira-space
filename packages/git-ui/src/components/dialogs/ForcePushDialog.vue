@@ -137,20 +137,18 @@ function confirmPlain(): void {
           />
         </Field>
 
-        <Disclosure class="pt-2" trigger-class="text-muted-foreground">
+        <Disclosure meta>
           <template #label
             ><CatalogText k="git.dialog.forcePushConfirm.plain.label">
               <template #flag><code class="font-data">--force</code></template>
             </CatalogText></template
           >
-          <div class="mt-3">
-            <Alert variant="warn">
-              <AlertDescription>
-                {{ t('git.dialog.forcePushConfirm.plain.hint') }}
-              </AlertDescription>
-            </Alert>
-          </div>
-          <Field orientation="horizontal" class="mt-3">
+          <Alert variant="warn">
+            <AlertDescription>
+              {{ t('git.dialog.forcePushConfirm.plain.hint') }}
+            </AlertDescription>
+          </Alert>
+          <Field orientation="horizontal">
             <Checkbox
               :id="plainAckId"
               v-model="understandPlain"
@@ -160,7 +158,7 @@ function confirmPlain(): void {
               {{ t('git.dialog.forcePushConfirm.plainAck.label') }}
             </FieldLabel>
           </Field>
-          <div class="mt-3 flex justify-end">
+          <div class="flex justify-end">
             <Button
               variant="dialog-danger"
               size="kira-lg"

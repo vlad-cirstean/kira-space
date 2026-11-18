@@ -134,7 +134,6 @@ const open = ref<Record<string, boolean>>({});
             t('space.settings.fileTypes.extensions.label', { count: group.extensions.length })
           "
           :data-testid="`file-types-disclosure-${group.id}`"
-          content-class="flex flex-col gap-1 pt-1"
         >
           <div
             v-for="ext in group.extensions"

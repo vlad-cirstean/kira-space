@@ -157,7 +157,7 @@ const literal = computed(() => props.view.vars.length === 0);
 
       <Disclosure v-if="view.schema !== ''" :label="t('llmPrompts.schema.label')">
         <FieldDescription>{{ t('llmPrompts.schema.hint') }}</FieldDescription>
-        <CodeBlock data-testid="llm-prompt-schema" class="mt-1 max-h-64 overflow-auto">{{
+        <CodeBlock data-testid="llm-prompt-schema" class="max-h-64 overflow-auto">{{
           view.schema
         }}</CodeBlock>
       </Disclosure>

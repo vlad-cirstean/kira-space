@@ -143,10 +143,10 @@ async function rerun(): Promise<void> {
         <Disclosure
           v-if="isSmart"
           :label="t('automations.run.promptSent.label')"
-          trigger-class="text-kira-sm text-muted-foreground"
+          meta
           data-testid="script-run-prompt"
         >
-          <CodeBlock class="mt-1">{{ run.prompt }}</CodeBlock>
+          <CodeBlock>{{ run.prompt }}</CodeBlock>
         </Disclosure>
         <RunLog v-if="run.state !== 'waiting' && run.state !== 'skipped'" :run-id="run.id" />
       </div>

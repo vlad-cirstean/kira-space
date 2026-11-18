@@ -16,8 +16,6 @@ import type { HTMLAttributes } from 'vue';
 const props = defineProps<{
   label?: string;
   meta?: boolean;
-  triggerClass?: HTMLAttributes['class'];
-  contentClass?: HTMLAttributes['class'];
   class?: HTMLAttributes['class'];
 }>();
 
@@ -31,7 +29,6 @@ const open = defineModel<boolean>('open', { default: false });
         cn(
           'flex w-full min-w-0 cursor-default items-center gap-1 text-left',
           meta ? 'text-kira-sm text-muted-foreground' : 'text-kira-md',
-          props.triggerClass,
         )
       "
       :aria-label="label || $slots.label ? undefined : t('theme.disclosure.toggle.label')"
@@ -39,7 +36,7 @@ const open = defineModel<boolean>('open', { default: false });
       <CodiconIcon :name="open ? 'chevron-down' : 'chevron-right'" :size="12" class="shrink-0" />
       <slot name="label">{{ label }}</slot>
     </CollapsibleTrigger>
-    <CollapsibleContent :class="cn('flex flex-col gap-2 pt-1', props.contentClass)">
+    <CollapsibleContent class="flex flex-col gap-2 pt-1">
       <slot />
     </CollapsibleContent>
   </Collapsible>

@@ -343,7 +343,7 @@ onUnmounted(() => {
             <Disclosure
               v-if="unchangedHeaderRows.length > 0"
               :label="t('studio.http.diff.unchanged.status', { count: unchangedHeaderRows.length })"
-              trigger-class="text-kira-sm text-subtle"
+              meta
             >
               <Table>
                 <TableBody>

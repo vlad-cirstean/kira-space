@@ -165,7 +165,7 @@ const fileName = (path: string): string => path.split(/[\\/]/).pop() ?? path;
                         : t('space.ade.port.file.new.status')
                   }}</Badge>
                 </div>
-                <Disclosure v-if="f.changed" :label="fileName(f.path)" content-class="pt-1">
+                <Disclosure v-if="f.changed" :label="fileName(f.path)">
                   <div class="h-60">
                     <MonacoDiff
                       :original="f.before"

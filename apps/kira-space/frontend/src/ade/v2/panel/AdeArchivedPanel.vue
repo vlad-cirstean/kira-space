@@ -298,7 +298,6 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
                   v-if="b.comments.length"
                   :label="t('space.ade.archived.comments.label', { count: b.comments.length })"
                   data-testid="ade-archived-comments"
-                  content-class="flex flex-col gap-1 pt-1"
                 >
                   <div
                     v-for="(c, i) in b.comments"

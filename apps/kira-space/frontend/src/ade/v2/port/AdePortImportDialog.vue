@@ -251,11 +251,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
                       ••••
                     </li>
                   </ul>
-                  <Disclosure
-                    v-if="item.current"
-                    :label="t('space.ade.port.current.label')"
-                    content-class="pt-1"
-                  >
+                  <Disclosure v-if="item.current" :label="t('space.ade.port.current.label')">
                     <OpLogCodeBlock :text="item.current" :language="snippetLanguage(item.id)" />
                   </Disclosure>
                 </li>
