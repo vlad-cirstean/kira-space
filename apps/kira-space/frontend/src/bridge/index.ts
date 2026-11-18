@@ -467,9 +467,9 @@ const spaceControl = {
   openedFilesRead: (path: string): Promise<FileContent> =>
     unwrap(OpenedFilesService.Read({ path })).then((r) => trust<FileContent>(r)),
   // Terminal file links: which printed paths are openable files, and open one in Kira Space.
-  openedFilesTerminalResolve: (args: OpenedFilesTerminalResolveArgs): Promise<boolean[]> =>
-    unwrap<{ openable: boolean[] | null }>(OpenedFilesService.TerminalResolve(args)).then(
-      (r) => r.openable ?? [],
+  openedFilesTerminalResolve: (args: OpenedFilesTerminalResolveArgs): Promise<(string | null)[]> =>
+    unwrap<{ paths: string[] | null }>(OpenedFilesService.TerminalResolve(args)).then((r) =>
+      (r.paths ?? []).map((p) => p || null),
     ),
   openedFilesTerminalOpen: (args: OpenedFilesTerminalOpenArgs): Promise<void> =>
     unwrap(OpenedFilesService.TerminalOpen(args)),

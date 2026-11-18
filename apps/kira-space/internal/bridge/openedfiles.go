@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
@@ -35,6 +36,8 @@ type OpenedFilesTerminalResolveArgs struct {
 
 type OpenedFilesTerminalResolveResult struct {
 	Openable []bool `json:"openable"`
+	// Paths holds the absolute path per input, "" when not openable.
+	Paths []string `json:"paths"`
 }
 
 type OpenedFilesTerminalOpenArgs struct {
@@ -89,7 +92,7 @@ func (s *OpenedFilesService) Read(args OpenedFilesReadArgs) (codeworkspace.FileC
 }
 
 // TerminalResolve reports per path whether it names a file Kira Space can open, against the
-// terminal's live cwd (fallbackCwd once the terminal exited).
+// terminal's live cwd, then fallbackCwd (the start cwd, also used once the terminal exited).
 //
 // Trust: as Read's comment says, bound calls come only from this app's webviews, which already
 // run shells; the answer is a boolean limited to the supported file types.
@@ -105,11 +108,16 @@ func (s *OpenedFilesService) TerminalResolve(args OpenedFilesTerminalResolveArgs
 			return OpenedFilesTerminalResolveResult{}, err
 		}
 	}
-	cwd, err := s.termCwd(args.TerminalID, args.FallbackCwd)
+	cwds, err := s.termCwds(args.TerminalID, args.FallbackCwd)
 	if err != nil {
 		return OpenedFilesTerminalResolveResult{}, err
 	}
-	return OpenedFilesTerminalResolveResult{Openable: s.Files.Openable(cwd, userHome(), args.Paths)}, nil
+	paths := s.Files.Openable(cwds, userHome(), args.Paths)
+	openable := make([]bool, len(paths))
+	for i, p := range paths {
+		openable[i] = p != ""
+	}
+	return OpenedFilesTerminalResolveResult{Openable: openable, Paths: paths}, nil
 }
 
 // TerminalOpen opens one terminal path in an opened-files window, cursor at line and col.
@@ -126,16 +134,11 @@ func (s *OpenedFilesService) TerminalOpen(args OpenedFilesTerminalOpenArgs) erro
 	if args.Col > 0 && args.Line == 0 {
 		return ipcerr.Contract("col needs line")
 	}
-	cwd, err := s.termCwd(args.TerminalID, args.FallbackCwd)
+	cwds, err := s.termCwds(args.TerminalID, args.FallbackCwd)
 	if err != nil {
 		return err
 	}
-	abs, ok := openedfiles.TerminalPath(args.Path, cwd, userHome())
-	if ok {
-		err = s.Files.OpenAt(abs, args.Line, args.Col)
-	} else {
-		err = openedfiles.ErrNotOpenable
-	}
+	err = s.Files.OpenTerminalPath(args.Path, cwds, userHome(), args.Line, args.Col)
 	if errors.Is(err, openedfiles.ErrNotOpenable) {
 		return ipcerr.T(ipcerr.CodeNotFound, "backend.space.openedFiles.notOpenable.body", map[string]string{"path": args.Path})
 	}
@@ -149,17 +152,22 @@ func checkTermPath(p string) error {
 	return nil
 }
 
-// termCwd is the terminal's live cwd, else fallback; fallback is empty or absolute.
-func (s *OpenedFilesService) termCwd(terminalID, fallback string) (string, error) {
+// termCwds lists the cwds to try: the terminal's live cwd, then fallback (the start cwd) when it
+// differs. fallback is empty or absolute.
+func (s *OpenedFilesService) termCwds(terminalID, fallback string) ([]string, error) {
 	if fallback != "" && !filepath.IsAbs(fallback) {
-		return "", ipcerr.Contract("fallbackCwd must be absolute")
+		return nil, ipcerr.Contract("fallbackCwd must be absolute")
 	}
+	var out []string
 	if s.Cwd != nil {
 		if cwd, ok := s.Cwd(terminalID); ok && cwd != "" {
-			return cwd, nil
+			out = append(out, cwd)
 		}
 	}
-	return fallback, nil
+	if fallback != "" && !slices.Contains(out, fallback) {
+		out = append(out, fallback)
+	}
+	return out, nil
 }
 
 func userHome() string {

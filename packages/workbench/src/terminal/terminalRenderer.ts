@@ -50,8 +50,9 @@ export interface FileLinkTarget {
 }
 
 export interface TerminalFileLinks {
-  /** One answer per path: does it name an openable file, against tabId's live cwd. */
-  resolve(tabId: string, paths: string[]): Promise<boolean[]>;
+  /** One answer per path: the absolute path of the openable file it names, else null. Tries
+   *  tabId's live cwd, then its start cwd. */
+  resolve(tabId: string, paths: string[]): Promise<(string | null)[]>;
   /** Opens one target in Kira Space; never throws (announces a failure). */
   open(tabId: string, target: FileLinkTarget): void;
 }

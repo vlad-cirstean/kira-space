@@ -52,23 +52,31 @@ type RepoLister interface {
 // whose extension is in the vocabulary. Hidden repositories count: hidden only filters the Git panel.
 // A git repository that is not imported is never imported here.
 func Resolve(path string, repos []model.CodeRepo) (Target, error) {
+	t, _, err := resolve(path, repos, false)
+	return t, err
+}
+
+// resolve is Resolve plus the absolute path. With anyTypeInRepo the extension vocabulary applies
+// only to standalone files: repo files open as repo tabs, which read any file type.
+func resolve(path string, repos []model.CodeRepo, anyTypeInRepo bool) (Target, string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		return Target{}, err
+		return Target{}, "", err
 	}
-	if !filetypes.Supports(abs) {
-		return Target{}, fmt.Errorf("unsupported extension %q", filepath.Ext(abs))
+	supported := filetypes.Supports(abs)
+	if !supported && !anyTypeInRepo {
+		return Target{}, "", fmt.Errorf("unsupported extension %q", filepath.Ext(abs))
 	}
 	real, err := filepath.EvalSymlinks(abs)
 	if err != nil {
-		return Target{}, err
+		return Target{}, "", err
 	}
 	info, err := os.Stat(real)
 	if err != nil {
-		return Target{}, err
+		return Target{}, "", err
 	}
 	if !info.Mode().IsRegular() {
-		return Target{}, errors.New("not a regular file")
+		return Target{}, "", errors.New("not a regular file")
 	}
 	var best *model.CodeRepo
 	var bestRoot string
@@ -82,16 +90,19 @@ func Resolve(path string, repos []model.CodeRepo) (Target, error) {
 		}
 	}
 	if best == nil {
-		return Target{Path: abs}, nil
+		if !supported {
+			return Target{}, "", fmt.Errorf("unsupported extension %q", filepath.Ext(abs))
+		}
+		return Target{Path: abs}, abs, nil
 	}
 	rel, err := filepath.Rel(bestRoot, real)
 	if err != nil {
-		return Target{}, err
+		return Target{}, "", err
 	}
 	if _, err := codeworkspace.ValidateRelPath(best.Root, rel); err != nil {
-		return Target{}, err
+		return Target{}, "", err
 	}
-	return Target{RepoID: best.ID, RelPath: filepath.ToSlash(rel)}, nil
+	return Target{RepoID: best.ID, RelPath: filepath.ToSlash(rel)}, abs, nil
 }
 
 func within(root, p string) bool {

@@ -64,9 +64,9 @@ export function createFileLinkProvider(
           candidates.map((c) => c.m.path),
         )
         .then(
-          (openable) => {
+          (resolved) => {
             const links: ILink[] = candidates.flatMap(({ m, range }, i) => {
-              if (!openable[i]) return [];
+              if (!resolved[i]) return [];
               const matched = text.slice(m.start, m.end);
               const target: FileLinkTarget = { path: m.path, line: m.line, col: m.col };
               return [
