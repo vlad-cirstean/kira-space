@@ -52,8 +52,10 @@ export function useReviewKeep(args: {
   });
 
   if (prefix && kept) {
-    // A key's restore runs once; writes wait for it so setTarget's clear never lands over the kept value.
-    const expandedRestored = new Set<string>();
+    // Rows arrive in chunks. Per key, `pending` holds kept shas not seen yet: each chunk expands the
+    // ones that loaded, the stream's end drops the rest. Writes wait for the restore to start so
+    // setTarget's clear never lands over the kept value, and carry `pending` so unseen rows survive.
+    const pending = new Map<string, Set<string>>();
     const selectedRestored = new Set<string>();
     const listing = () => args.review.value?.phase.value === 'listing';
 
@@ -61,20 +63,32 @@ export function useReviewKeep(args: {
       () => args.review.value?.expandedShas.value,
       (shas) => {
         const key = branchKey.value;
-        if (!key || !shas || !listing() || !expandedRestored.has(key)) return;
-        kept.write(`${key}:expanded`, [...shas]);
+        const left = key ? pending.get(key) : undefined;
+        if (!key || !shas || !left || !listing()) return;
+        kept.write(`${key}:expanded`, [...shas, ...left]);
       },
     );
     watch(
-      [branchKey, () => args.review.value?.phase.value, () => args.review.value?.loadedRows.value],
-      ([key, phase, rows]) => {
+      [
+        branchKey,
+        () => args.review.value?.phase.value,
+        () => args.review.value?.loadedRows.value,
+        () => args.review.value?.streaming.value,
+      ],
+      ([key, phase, rows, streaming]) => {
         const review = args.review.value;
-        if (!key || !review || phase !== 'listing' || !rows || expandedRestored.has(key)) return;
-        expandedRestored.add(key);
-        const wanted = new Set(kept.read<string[]>(`${key}:expanded`, []));
-        for (let i = 0; i < rows; i++) {
-          const sha = review.store.shaAt(i);
-          if (wanted.has(sha)) review.expand(sha);
+        if (!key || !review || phase !== 'listing' || !rows) return;
+        let left = pending.get(key);
+        if (!left) {
+          left = new Set(kept.read<string[]>(`${key}:expanded`, []));
+          pending.set(key, left);
+        }
+        if (left.size > 0) {
+          for (let i = 0; i < rows && left.size > 0; i++) {
+            const sha = review.store.shaAt(i);
+            if (left.delete(sha)) review.expand(sha);
+          }
+          if (!streaming) left.clear();
         }
       },
     );

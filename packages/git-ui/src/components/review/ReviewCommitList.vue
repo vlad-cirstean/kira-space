@@ -57,7 +57,10 @@ const { virtualizer, virtualItems, totalSize, onScroll } = useVirtualRows({
   pinned: () => focusedRow.value,
 });
 
-keptScrollIf(() => props.keepScroll ?? null, rowsEl, { ready: () => totalSize.value > 0 });
+keptScrollIf(() => props.keepScroll ?? null, rowsEl, {
+  // A saved position past the first chunk would clamp; wait for the stream to end.
+  ready: () => totalSize.value > 0 && !props.review.streaming.value,
+});
 
 const focusedRowMounted = computed(() =>
   virtualItems.value.some((item) => item.index === focusedRow.value),
