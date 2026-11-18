@@ -9,7 +9,9 @@ import {
   reviewStateOf,
 } from '@shared/domain/maskReview';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import DetailSection from '@theme/components/DetailSection.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
@@ -208,14 +210,14 @@ const STATE_VARIANT = { masked: 'ok', reviewed: 'default', pending: 'warn' } as 
         :loading-label="t('studio.project.connectionDialog.privacy.reviewRefresh.tooltip')"
       >
         <template #error="{ retry }">
-          <div
-            class="flex items-center gap-2 text-kira-sm text-subtle"
-            data-testid="connection-privacy-review-offline"
-          >
-            <span>{{ t('studio.project.connectionDialog.privacy.reviewOffline.body') }}</span>
-            <Button size="kira" variant="dialog" @click="retry">{{
-              t('common.action.retry.label')
-            }}</Button>
+          <div class="flex items-center gap-2" data-testid="connection-privacy-review-offline">
+            <InlineState kind="error">{{
+              t('studio.project.connectionDialog.privacy.reviewOffline.body')
+            }}</InlineState>
+            <Button size="kira" variant="toolbar" @click="retry"
+              ><CodiconIcon name="refresh" :size="13" />
+              {{ t('common.action.retry.label') }}</Button
+            >
           </div>
         </template>
         <FieldDescription

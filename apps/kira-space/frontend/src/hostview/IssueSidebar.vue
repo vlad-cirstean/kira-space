@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
@@ -98,9 +99,9 @@ function openView(urlOrKey: string): void {
 
     <section class="flex flex-col gap-1.5" data-testid="issue-side-labels">
       <SectionHeading :label="t('space.hostView.labels.heading.title')" />
-      <FieldDescription v-if="detail.labels.length === 0">{{
+      <InlineState kind="empty" v-if="detail.labels.length === 0">{{
         t('space.hostView.labels.empty.empty')
-      }}</FieldDescription>
+      }}</InlineState>
       <div class="flex flex-wrap gap-1">
         <Badge v-for="l in detail.labels" :key="l" variant="chip" data-testid="issue-side-label">{{
           l
@@ -110,9 +111,9 @@ function openView(urlOrKey: string): void {
 
     <section class="flex flex-col gap-1.5" data-testid="issue-side-components">
       <SectionHeading :label="t('space.hostView.issue.components.heading.title')" />
-      <FieldDescription v-if="detail.components.length === 0">{{
+      <InlineState kind="empty" v-if="detail.components.length === 0">{{
         t('space.hostView.issue.components.empty.empty')
-      }}</FieldDescription>
+      }}</InlineState>
       <div class="flex flex-wrap gap-1">
         <Badge
           v-for="c in detail.components"

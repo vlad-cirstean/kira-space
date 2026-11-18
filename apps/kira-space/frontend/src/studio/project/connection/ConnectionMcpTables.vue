@@ -2,6 +2,8 @@
 import type { ConnectionFileMcp } from '@shared/domain/connectionConfig';
 import { TABLE_LIST_KINDS } from '@shared/domain/dbmcp';
 import { useQuery } from '@tanstack/vue-query';
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
@@ -138,14 +140,14 @@ function toggleShown(on: boolean): void {
           :loading-label="t('studio.project.connectionDialog.mcp.tablesLoading.label')"
         >
           <template #error="{ retry }">
-            <div
-              class="flex items-center gap-2 text-kira-sm text-subtle"
-              data-testid="connection-mcp-tables-offline"
-            >
-              <span>{{ t('studio.project.connectionDialog.mcp.tablesOffline.body') }}</span>
-              <Button size="kira" variant="dialog" @click="retry">{{
-                t('common.action.retry.label')
-              }}</Button>
+            <div class="flex items-center gap-2" data-testid="connection-mcp-tables-offline">
+              <InlineState kind="error">{{
+                t('studio.project.connectionDialog.mcp.tablesOffline.body')
+              }}</InlineState>
+              <Button size="kira" variant="toolbar" @click="retry"
+                ><CodiconIcon name="refresh" :size="13" />
+                {{ t('common.action.retry.label') }}</Button
+              >
             </div>
           </template>
           <div class="flex items-center gap-2">

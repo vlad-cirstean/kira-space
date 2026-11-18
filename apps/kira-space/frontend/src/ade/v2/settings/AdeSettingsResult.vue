@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodeBlock from '@theme/components/CodeBlock.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Button } from '@theme/components/ui/button';
@@ -102,12 +103,13 @@ const backupsOpen = computed({
           </li>
         </ul>
       </section>
-      <FieldDescription
+      <InlineState
+        kind="empty"
         v-if="current.files.length === 0 && current.env.length === 0"
         data-testid="ade-settings-empty"
       >
         {{ t('space.ade.settings.result.empty.hint') }}
-      </FieldDescription>
+      </InlineState>
       <ul
         v-if="current.notes.length > 0"
         class="m-0 flex list-none flex-col gap-0.5 p-0 text-kira-sm"

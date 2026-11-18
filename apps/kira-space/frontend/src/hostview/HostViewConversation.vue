@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -47,9 +48,9 @@ function reviewLabel(state: ReviewerState | undefined): string {
 <template>
   <section class="flex flex-col gap-3" data-testid="host-view-conversation">
     <SectionHeading :label="t('space.hostView.conversation.heading.title')" />
-    <FieldDescription v-if="threads.length === 0" data-testid="host-view-no-threads">{{
+    <InlineState kind="empty" v-if="threads.length === 0" data-testid="host-view-no-threads">{{
       t('space.hostView.conversation.empty.empty')
-    }}</FieldDescription>
+    }}</InlineState>
     <Collapsible
       v-for="thread in threads"
       :key="thread.id"

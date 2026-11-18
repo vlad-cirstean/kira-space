@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
@@ -72,9 +73,9 @@ const toggle = useAsyncAction((c: KubeCluster, enabled: boolean) =>
         </li>
       </ul>
     </Card>
-    <FieldDescription v-else data-testid="db-mcp-kube-empty">
+    <InlineState kind="empty" v-else data-testid="db-mcp-kube-empty">
       {{ t('studio.settings.dbMcp.kube.empty.empty') }}
-    </FieldDescription>
+    </InlineState>
     <Alert v-if="toggle.error.value" variant="error" data-testid="db-mcp-kube-error">
       <AlertDescription>{{ toggle.error.value }}</AlertDescription>
     </Alert>

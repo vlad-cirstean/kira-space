@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -194,9 +195,9 @@ const activeDevices = computed(() =>
       <p v-if="trusted" class="m-0 text-kira-sm" data-testid="mobile-access-trusted">
         {{ trustedText }}
       </p>
-      <FieldDescription v-else data-testid="mobile-access-trusted">
+      <InlineState kind="empty" v-else data-testid="mobile-access-trusted">
         {{ t('space.settings.mobileAccess.network.none.empty') }}
-      </FieldDescription>
+      </InlineState>
       <FieldDescription v-if="current" data-testid="mobile-access-current">
         {{
           t('space.settings.mobileAccess.network.current.status', {
@@ -207,9 +208,9 @@ const activeDevices = computed(() =>
           })
         }}
       </FieldDescription>
-      <FieldDescription v-else data-testid="mobile-access-current">
+      <InlineState kind="empty" v-else data-testid="mobile-access-current">
         {{ t('space.settings.mobileAccess.network.offNetwork.empty') }}
-      </FieldDescription>
+      </InlineState>
       <div class="flex gap-2">
         <Button
           variant="dialog"
@@ -296,9 +297,13 @@ const activeDevices = computed(() =>
 
     <FieldSet>
       <FieldLegend>{{ t('space.settings.mobileAccess.devices.title') }}</FieldLegend>
-      <FieldDescription v-if="activeDevices.length === 0" data-testid="mobile-devices-empty">
+      <InlineState
+        kind="empty"
+        v-if="activeDevices.length === 0"
+        data-testid="mobile-devices-empty"
+      >
         {{ t('space.settings.mobileAccess.devices.none.empty') }}
-      </FieldDescription>
+      </InlineState>
       <ul v-else class="m-0 flex list-none flex-col gap-1 p-0">
         <li
           v-for="device in activeDevices"

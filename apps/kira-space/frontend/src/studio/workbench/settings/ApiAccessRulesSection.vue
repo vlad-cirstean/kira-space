@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -142,9 +143,9 @@ function onRemove(index: number): void {
         </li>
       </ul>
     </Card>
-    <FieldDescription v-else data-testid="settings-db-mcp-api-rules-empty">{{
+    <InlineState kind="empty" v-else data-testid="settings-db-mcp-api-rules-empty">{{
       t('studio.settings.dbMcp.apiRules.empty.body')
-    }}</FieldDescription>
+    }}</InlineState>
     <Alert v-if="remove.error.value" variant="error" data-testid="settings-db-mcp-api-rules-error">
       <AlertDescription>{{ remove.error.value }}</AlertDescription>
     </Alert>

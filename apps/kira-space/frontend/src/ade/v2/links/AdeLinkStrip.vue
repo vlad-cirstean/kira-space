@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Collapsible, CollapsibleTrigger } from '@theme/components/ui/collapsible';
-import { FieldDescription, FieldError } from '@theme/components/ui/field';
+import { FieldError } from '@theme/components/ui/field';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { t } from '@theme/i18n';
@@ -203,13 +204,17 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
           >{{ gapText(g) }}{{ i < links.gaps.value.length - 1 ? ' ' : '' }}</span
         >
       </p>
-      <FieldError v-if="links.error.value" data-testid="ade-links-error">{{
+      <InlineState v-if="links.error.value" kind="error" data-testid="ade-links-error">{{
         links.error.value
-      }}</FieldError>
-      <FieldDescription v-if="links.groups.value.length === 0" data-testid="ade-links-empty">
+      }}</InlineState>
+      <InlineState
+        kind="empty"
+        v-if="links.groups.value.length === 0"
+        data-testid="ade-links-empty"
+      >
         {{ t('space.ade.details.empty.body')
         }}<template v-if="canAdd()"> {{ t('space.ade.links.empty.hint') }}</template>
-      </FieldDescription>
+      </InlineState>
       <span
         v-if="links.groups.value.length"
         :id="hintId"

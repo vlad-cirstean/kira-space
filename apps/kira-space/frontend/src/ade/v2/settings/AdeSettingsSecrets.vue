@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -82,9 +83,13 @@ const refExample = '$' + '{secret:name}';
         view.storage.reason ?? t('space.ade.settings.secrets.storageOff.hint')
       }}</AlertDescription>
     </Alert>
-    <FieldDescription v-if="view.secrets.length === 0" data-testid="ade-settings-secrets-none">
+    <InlineState
+      kind="empty"
+      v-if="view.secrets.length === 0"
+      data-testid="ade-settings-secrets-none"
+    >
       {{ t('space.ade.settings.secrets.none.hint') }}
-    </FieldDescription>
+    </InlineState>
     <ul v-else class="m-0 flex list-none flex-col gap-1 p-0">
       <li
         v-for="row in view.secrets"

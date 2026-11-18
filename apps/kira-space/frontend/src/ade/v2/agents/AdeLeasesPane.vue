@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import DetailSection from '@theme/components/DetailSection.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -9,7 +10,6 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
-import { FieldDescription } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -68,9 +68,9 @@ function holderItems(q: Queue): MenuItem[] {
           {{ t('space.ade.leases.add.label') }}
         </Button>
       </form>
-      <FieldDescription v-if="!data?.queues.length" data-testid="ade-leases-empty">
+      <InlineState kind="empty" v-if="!data?.queues.length" data-testid="ade-leases-empty">
         {{ t('space.ade.leases.empty.hint') }}
-      </FieldDescription>
+      </InlineState>
       <DetailSection
         v-for="q in data?.queues ?? []"
         :key="q.name"

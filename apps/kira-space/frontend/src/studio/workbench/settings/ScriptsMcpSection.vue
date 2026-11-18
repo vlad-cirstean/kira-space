@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Card } from '@theme/components/ui/card';
@@ -58,9 +59,9 @@ const toggle = useAsyncAction((id: string, enabled: boolean) =>
         </li>
       </ul>
     </Card>
-    <FieldDescription v-else data-testid="db-mcp-scripts-empty">
+    <InlineState kind="empty" v-else data-testid="db-mcp-scripts-empty">
       {{ t('automations.panel.none.empty') }}
-    </FieldDescription>
+    </InlineState>
     <Alert v-if="toggle.error.value" variant="error" data-testid="db-mcp-scripts-error">
       <AlertDescription>{{ toggle.error.value }}</AlertDescription>
     </Alert>

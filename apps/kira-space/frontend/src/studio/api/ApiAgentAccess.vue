@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -28,9 +29,9 @@ const rows = computed(() =>
   <section class="flex min-w-0 flex-col gap-2 p-2" data-testid="api-agent-access">
     <SectionHeading flush :label="t('studio.project.connectionDialog.mcp.access.label')" />
     <FieldDescription>{{ t('studio.api.agentAccess.overview.body') }}</FieldDescription>
-    <FieldDescription v-if="rows.length === 0" data-testid="api-agent-access-none">
+    <InlineState kind="empty" v-if="rows.length === 0" data-testid="api-agent-access-none">
       {{ t('studio.api.agentAccess.none.hint') }}
-    </FieldDescription>
+    </InlineState>
     <ul v-else class="m-0 flex list-none flex-col gap-2 p-0">
       <li
         v-for="env in rows"

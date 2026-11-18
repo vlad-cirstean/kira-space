@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ApiSecret } from '@shared/domain/apiConfig';
+import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -88,9 +89,9 @@ const refExample = '$' + '{secret:name}';
         storage.reason ?? t('studio.api.config.secrets.storageOff.hint')
       }}</AlertDescription>
     </Alert>
-    <FieldDescription v-if="secrets.length === 0" data-testid="api-secrets-none">
+    <InlineState kind="empty" v-if="secrets.length === 0" data-testid="api-secrets-none">
       {{ t('studio.api.config.secrets.none.hint') }}
-    </FieldDescription>
+    </InlineState>
     <ul v-else class="m-0 flex list-none flex-col gap-1 p-0">
       <li
         v-for="row in secrets"

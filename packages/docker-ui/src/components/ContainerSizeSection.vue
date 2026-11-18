@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import DetailSection from '@theme/components/DetailSection.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import Spinner from '@theme/components/Spinner.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
-import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { formatBytes, formatDateTime, useRelativeTime } from '@workbench/behaviour/format';
 import { computed } from 'vue';
@@ -39,9 +39,9 @@ const ago = useRelativeTime(takenAt);
       </span>
     </template>
 
-    <FieldError v-if="query.error.value" data-testid="docker-size-error">{{
+    <InlineState v-if="query.error.value" kind="error" data-testid="docker-size-error">{{
       query.error.value.message
-    }}</FieldError>
+    }}</InlineState>
 
     <div v-if="measuring && !size" class="flex items-center gap-2 text-muted-foreground">
       <Spinner label="" />{{ t('docker.measuring.loading') }}

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import { Badge } from '@theme/components/ui/badge';
@@ -104,9 +105,9 @@ function openCheck(c: Check): void {
 
     <section class="flex flex-col gap-1.5" data-testid="host-view-reviewers">
       <SectionHeading :label="t('space.hostView.reviewers.heading.title')" />
-      <FieldDescription v-if="detail.reviewers.length === 0">{{
+      <InlineState kind="empty" v-if="detail.reviewers.length === 0">{{
         t('space.hostView.reviewers.empty.empty')
-      }}</FieldDescription>
+      }}</InlineState>
       <div
         v-for="r in detail.reviewers"
         :key="r.person.login"
@@ -127,9 +128,9 @@ function openCheck(c: Check): void {
 
     <section class="flex flex-col gap-1.5" data-testid="host-view-checks">
       <SectionHeading :label="t('space.hostView.checks.heading.title')" />
-      <FieldDescription v-if="detail.checks.length === 0">{{
+      <InlineState kind="empty" v-if="detail.checks.length === 0">{{
         t('space.hostView.checks.empty.empty')
-      }}</FieldDescription>
+      }}</InlineState>
       <div
         v-for="c in detail.checks"
         :key="c.name"
@@ -162,9 +163,9 @@ function openCheck(c: Check): void {
 
     <section class="flex flex-col gap-1.5" data-testid="host-view-labels">
       <SectionHeading :label="t('space.hostView.labels.heading.title')" />
-      <FieldDescription v-if="detail.labels.length === 0">{{
+      <InlineState kind="empty" v-if="detail.labels.length === 0">{{
         t('space.hostView.labels.empty.empty')
-      }}</FieldDescription>
+      }}</InlineState>
       <div class="flex flex-wrap gap-1">
         <Badge
           v-for="l in detail.labels"
@@ -180,9 +181,9 @@ function openCheck(c: Check): void {
 
     <section class="flex flex-col gap-1.5" data-testid="host-view-assignees">
       <SectionHeading :label="t('space.hostView.assignees.heading.title')" />
-      <FieldDescription v-if="detail.assignees.length === 0">{{
+      <InlineState kind="empty" v-if="detail.assignees.length === 0">{{
         t('space.hostView.assignees.empty.empty')
-      }}</FieldDescription>
+      }}</InlineState>
       <span
         v-for="a in detail.assignees"
         :key="a.login"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ConnectionSummary } from '@shared/domain/connection';
 import { useQuery } from '@tanstack/vue-query';
+import InlineState from '@theme/components/InlineState.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
@@ -120,9 +121,9 @@ function mcpDescriptionFirstLine(conn: ConnectionSummary): string {
           </li>
         </ul>
       </Card>
-      <FieldDescription v-else data-testid="db-mcp-connections-empty">
+      <InlineState kind="empty" v-else data-testid="db-mcp-connections-empty">
         {{ t('studio.settings.dbMcp.empty.empty') }}
-      </FieldDescription>
+      </InlineState>
     </FieldSet>
   </div>
 </template>

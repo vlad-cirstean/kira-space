@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ApiEnvironmentFileModel, ApiFileVariable } from '@shared/domain/apiConfig';
+import InlineState from '@theme/components/InlineState.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
@@ -113,8 +114,8 @@ function hostsError(index: number, v: ApiFileVariable): string | undefined {
         </div>
       </li>
     </ul>
-    <FieldDescription v-if="!(env.variables ?? []).length" data-testid="api-agent-empty">{{
+    <InlineState kind="empty" v-if="!(env.variables ?? []).length" data-testid="api-agent-empty">{{
       t('studio.api.config.variables.empty')
-    }}</FieldDescription>
+    }}</InlineState>
   </div>
 </template>

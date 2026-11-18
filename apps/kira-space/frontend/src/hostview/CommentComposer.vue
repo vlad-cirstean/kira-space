@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card, CardContent } from '@theme/components/ui/card';
-import { FieldDescription } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { formatBytes } from '@theme/format';
 import { t } from '@theme/i18n';
@@ -103,7 +103,9 @@ const modes = computed(() => [
       />
       <Card v-else class="min-h-16" data-testid="comment-preview">
         <MarkdownBody v-if="body.trim()" :source="body" />
-        <FieldDescription v-else>{{ t('space.hostView.compose.preview.empty') }}</FieldDescription>
+        <InlineState kind="empty" v-else>{{
+          t('space.hostView.compose.preview.empty')
+        }}</InlineState>
       </Card>
       <Alert v-if="error" variant="error" data-testid="comment-error">
         <AlertDescription>{{ error }}</AlertDescription>
