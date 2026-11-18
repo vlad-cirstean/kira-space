@@ -666,7 +666,7 @@ Rank = visibility (how often a user sees it) × spread (modules) × count.
 9. **Empty/failed states drawn three ways** (§10): toned vs muted media, missing icon, ad hoc
    Skeleton shapes.
 10. **Key-value grids** (§7): `KeyValueList` with 7 variants plus 8 hand grids, dt muted vs subtle.
-11. **Checkbox restyled in 34 places** (§4 RF.8) and dropdowns hand-built in 22 files (§5).
+11. **Checkbox restyled in 34 places** (§4 RF.8) and dropdowns hand-built in 21 files (§5).
 12. **Pane padding p-3 vs p-4, sm vs md body text** (§13, §14).
 
 ## 19. Decisions for the user
@@ -675,7 +675,8 @@ Rank = visibility (how often a user sees it) × spread (modules) × count.
   everywhere else (recommended: smallest change, keeps the documented board look); or (b) retire the
   ADE palette app-wide.
 - **D2 New shared pieces**: `DetailHeader`, `Field orientation="responsive"`, `PopoverContent
-  flush`, `KeyValueList density="compact"`, `DetailSection` promoted to theme. All are thin
+  flush`, `KeyValueList density="compact"`, `DetailSection` and `TextTooltip` (from `AdeTip`)
+  promoted to theme. All are thin
   compositions of existing primitives; no new dependency. Accept or name any to drop.
 - **D3 Toasts** (RE.4): restrict to background outcomes (recommended) vs allow app-wide.
 
