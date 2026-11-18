@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import type { Locator } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import { TIMING } from '@workbench/behaviour/timing';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
@@ -45,7 +45,6 @@ async function scrollTo(el: Locator, top: number): Promise<number> {
 const CONNECTION_ID = 'conn-module-state';
 const FIXTURE = bigRowsFixture(CONNECTION_ID);
 const NAMES = WIDE_TABLE_COLUMNS.map((c) => c.name);
-const HEADERS = t('grid-header-cell');
 
 const WIDE_META = {
   path: WIDE_TABLE_PATH,

@@ -382,7 +382,9 @@ describe('branch second line', () => {
             .replace(/^(\S+): deployed sha unknown$/i, 'deployed sha of $1 unknown')
             .toLowerCase(),
         ];
-        expect([b.id, lc(line.context)]).toEqual([b.id, lc(row.hasSub ? row.sub : '')]);
+        // A draft row says `no branch` once, in its name (7bee03c6b): the mockup's sub line is `Forks from`.
+        const sub = row.hasSub ? row.sub.replace(/^no branch yet · from /i, 'forks from ') : '';
+        expect([b.id, lc(line.context)]).toEqual([b.id, lc(sub)]);
         expect([b.id, line.merged.map(pick)]).toEqual([b.id, row.into.map(pick)]);
         expect([b.id, line.deployed.map(pick)]).toEqual([b.id, row.deploys.map(pick)]);
       }
