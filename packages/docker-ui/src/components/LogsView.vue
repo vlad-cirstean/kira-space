@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { newUuid } from '@shared/ids';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { useDebounceFn } from '@vueuse/core';
 import { matchesQuery, splitMatches } from '@workbench/behaviour/match';
 import { TIMING } from '@workbench/behaviour/timing';
@@ -228,9 +230,10 @@ function clear(): void {
         data-testid="docker-logs-find"
         @click="findOpen = !findOpen"
       />
-      <Button variant="toolbar" size="kira" data-testid="docker-logs-clear" @click="clear">{{
-        t('common.action.clear.label')
-      }}</Button>
+      <Button variant="toolbar" size="kira" data-testid="docker-logs-clear" @click="clear"
+        ><CodiconIcon :name="ICON.clearAll" :size="13" />
+        {{ t('common.action.clear.label') }}</Button
+      >
     </ViewToolbar>
     <FindBar
       v-if="findOpen"
@@ -280,7 +283,7 @@ function clear(): void {
       class="absolute bottom-8 right-4"
       data-testid="docker-logs-jump"
       @click="jumpFollow"
-    >
+      ><CodiconIcon name="arrow-down" :size="13" />
       {{ t('docker.logs.jumpToLatest.label') }}
     </Button>
     <div

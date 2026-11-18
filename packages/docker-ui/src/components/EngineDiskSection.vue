@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import DetailSection from '@theme/components/DetailSection.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
@@ -79,9 +80,9 @@ const sizeText = (n: number): string => (n < 0 ? displayValue(null) : formatByte
     }}</InlineState>
     <div v-else-if="!usage" class="flex flex-wrap items-center gap-3">
       <InlineState kind="empty">{{ t('docker.disk.notMeasured.body') }}</InlineState>
-      <Button size="kira" variant="toolbar" data-testid="docker-disk-measure" @click="refresh">{{
-        t('docker.measure.label')
-      }}</Button>
+      <Button size="kira" variant="toolbar" data-testid="docker-disk-measure" @click="refresh"
+        ><CodiconIcon name="dashboard" :size="13" />{{ t('docker.measure.label') }}</Button
+      >
     </div>
     <template v-else>
       <Table>

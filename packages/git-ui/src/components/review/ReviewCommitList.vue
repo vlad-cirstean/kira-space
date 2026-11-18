@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { SETTINGS } from '@kira/git-core';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
@@ -189,7 +190,7 @@ function loadMore(): void {
       size="kira"
       :pending="review.isLoadingMore.value"
       @click="loadMore"
-    >
+      ><CodiconIcon name="fold-down" :size="13" />
       {{ loadMoreLabel() }}
     </Button>
   </div>

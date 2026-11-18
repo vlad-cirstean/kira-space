@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { ImportFile } from '@shared/domain/memoryImport';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { computed } from 'vue';
@@ -68,7 +70,7 @@ const variant = computed(() => {
       variant="toolbar"
       :data-testid="`import-retry-file-${file.relPath}`"
       @click="emit('retry')"
-    >
+      ><CodiconIcon :name="ICON.refresh" :size="13" />
       {{ t('common.action.retry.label') }}
     </Button>
   </div>

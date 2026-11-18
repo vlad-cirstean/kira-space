@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import Spinner from '@theme/components/Spinner.vue';
@@ -47,9 +48,9 @@ const ago = useRelativeTime(takenAt);
     </div>
     <div v-else-if="!size" class="flex flex-wrap items-center gap-3 text-muted-foreground">
       <span>{{ t('docker.size.notMeasured.body') }}</span>
-      <Button size="kira" variant="toolbar" data-testid="docker-size-measure" @click="refresh">{{
-        t('docker.measure.label')
-      }}</Button>
+      <Button size="kira" variant="toolbar" data-testid="docker-size-measure" @click="refresh"
+        ><CodiconIcon name="dashboard" :size="13" />{{ t('docker.measure.label') }}</Button
+      >
     </div>
     <KeyValueList v-else>
       <dt>{{ t('docker.size.writableLayer.label') }}</dt>

@@ -1,9 +1,11 @@
 <script setup lang="ts" generic="T">
 import { isRetryable } from '@shared/domain/errorCodes';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
 import { errorText, toCodedError } from '../bridge/codedError';
@@ -88,9 +90,8 @@ function retry(): void {
           variant="toolbar"
           data-testid="query-retry"
           @click="retry"
-          >{{
-            t('common.action.retry.label')
-          }}</Button
+          ><CodiconIcon :name="ICON.refresh" :size="13" />
+          {{ t('common.action.retry.label') }}</Button
         >
       </EmptyState>
       <InlineState v-else kind="error" data-testid="query-error">{{ message }}</InlineState>

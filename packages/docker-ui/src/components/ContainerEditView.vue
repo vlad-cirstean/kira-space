@@ -213,15 +213,9 @@ const originNotice = computed(() => {
         <AlertDescription>
           <div class="flex items-center gap-2">
             {{ t('docker.edit.stale.body') }}
-            <Button
-              size="kira"
-              variant="toolbar"
-              data-testid="docker-edit-reload"
-              @click="reload"
-              >{{
-                t('common.action.refresh.label')
-              }}</Button
-            >
+            <Button size="inline" variant="link" data-testid="docker-edit-reload" @click="reload">{{
+              t('common.action.refresh.label')
+            }}</Button>
           </div>
         </AlertDescription>
       </Alert>
@@ -283,8 +277,8 @@ const originNotice = computed(() => {
             />
             <Button
               v-if="!readOnly"
-              size="kira"
-              variant="toolbar"
+              size="kira-lg"
+              variant="dialog-primary"
               :disabled="!canApplyNow"
               :pending="applying === 'inPlace'"
               data-testid="docker-edit-apply-now"
@@ -316,8 +310,8 @@ const originNotice = computed(() => {
             />
             <Button
               v-if="!readOnly"
-              size="kira"
-              variant="toolbar"
+              size="kira-lg"
+              variant="dialog-primary"
               :disabled="!canRecreate"
               :pending="applying === 'recreate'"
               data-testid="docker-edit-apply-recreate"

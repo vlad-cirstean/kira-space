@@ -19,10 +19,12 @@
  * without demanding attention indefinitely.
  */
 import { describeInProgress } from '@kira/git-core';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Alert } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { computed, ref } from 'vue';
 import { renderText } from '../lib/text.ts';
 import type { OpsState } from '../state/ops.ts';
@@ -101,7 +103,7 @@ const PATH_DISPLAY_CAP = 20;
         "
         :aria-describedby="inProgress.unmergedCount > 0 ? CONTINUE_REASON_ID : undefined"
         @click="onContinue"
-      >
+        ><CodiconIcon name="debug-continue" :size="13" />
         {{ t('common.continue.label') }}
       </Button>
       <Button
@@ -111,7 +113,7 @@ const PATH_DISPLAY_CAP = 20;
         :pending="activeAction === 'skip'"
         :disabled="activeAction === 'continue' || activeAction === 'abort'"
         @click="onSkip"
-      >
+        ><CodiconIcon name="debug-step-over" :size="13" />
         {{ t('common.skip.label') }}
       </Button>
       <Button
@@ -122,7 +124,7 @@ const PATH_DISPLAY_CAP = 20;
         :pending="activeAction === 'abort'"
         :disabled="activeAction === 'continue' || activeAction === 'skip'"
         @click="onAbort"
-      >
+        ><CodiconIcon :name="ICON.stop" :size="13" />
         {{ t('common.abort.label') }}
       </Button>
     </div>

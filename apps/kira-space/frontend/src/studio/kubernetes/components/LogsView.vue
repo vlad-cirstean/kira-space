@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { newUuid } from '@shared/ids';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import { Button } from '@theme/components/ui/button';
@@ -242,9 +243,7 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
         size="kira"
         data-testid="kube-logs-reconnect"
         @click="open"
-        >{{
-          t('studio.common.reconnect.label')
-        }}</Button
+        ><CodiconIcon name="plug" :size="13" />{{ t('studio.common.reconnect.label') }}</Button
       >
     </div>
   </div>

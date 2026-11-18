@@ -13,8 +13,8 @@ const pageSearchFilterStore = usePageSearchFilterStore();
 <template>
   <EmptyState :icon="ICON.search" :title="t('studio.common.noMatchingRows.empty')">
     <Button
-      variant="toolbar"
-      size="kira"
+      variant="link"
+      size="inline"
       :data-testid="showAllTestid"
       @click="pageSearchFilterStore.setSearchFiltering(filterKey, false)"
     >

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -7,6 +8,7 @@ import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 import { formatCurrency } from '../../behaviour/format';
@@ -120,9 +122,7 @@ async function run(): Promise<void> {
         size="kira"
         data-testid="distill-back"
         @click="memoryUi.view = 'memory'"
-        >{{
-          t('memory.import.back.label')
-        }}</Button
+        ><CodiconIcon :name="ICON.back" :size="13" />{{ t('memory.import.back.label') }}</Button
       >
       <SecondaryTabs v-model="source" variant="segmented" :items="SOURCES" />
       <SecondaryTabs v-if="source === 'text'" v-model="mode" variant="segmented" :items="MODES" />

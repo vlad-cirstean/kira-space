@@ -151,7 +151,7 @@ async function onClear(): Promise<void> {
         :disabled="selected.length !== 2"
         data-testid="http-history-compare"
         @click="onCompare"
-      >
+        ><CodiconIcon name="diff" :size="13" />
         {{ t('studio.http.history.compare.label') }}
       </Button>
       <Button

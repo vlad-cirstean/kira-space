@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { HttpFormDataFieldState } from '@shared/domain/http';
 import { contentTypeForFilename } from '@shared/domain/objectStore';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
@@ -141,7 +142,7 @@ function onClearFile(index: number): void {
           size="kira"
           data-testid="http-formdata-choose-file"
           @click="onChooseFile(index)"
-        >
+          ><CodiconIcon name="folder-opened" :size="13" />
           {{ t('studio.http.body.chooseFile.label') }}
         </Button>
         <TextTooltip v-if="row.fileName" :text="row.path"

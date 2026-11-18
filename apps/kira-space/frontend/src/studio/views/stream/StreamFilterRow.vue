@@ -320,12 +320,8 @@ const partitionButtonLabel = computed(() => {
       >
     </div>
     <TextTooltip :text="t('studio.common.clearFilters.tooltip')">
-      <Button
-        variant="toolbar"
-        size="kira"
-        data-testid="stream-filter-clear"
-        @click="onClearFilter"
-      >
+      <Button variant="toolbar" size="kira" data-testid="stream-filter-clear" @click="onClearFilter"
+        ><CodiconIcon :name="ICON.clearAll" :size="13" />
         {{ t('common.action.clear.label') }}
       </Button>
     </TextTooltip>

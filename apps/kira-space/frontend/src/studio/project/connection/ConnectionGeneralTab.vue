@@ -8,6 +8,7 @@ import {
   MIN_SERVER_VERSION,
 } from '@shared/domain/connection';
 import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
@@ -163,7 +164,7 @@ async function onBrowseDatabaseFile(): Promise<void> {
         class="self-start"
         data-testid="connection-change-engine"
         @click="pickingEngine = true"
-      >
+        ><CodiconIcon name="arrow-swap" :size="13" />
         {{ t('studio.project.connectionDialog.changeEngine.title') }}
       </Button>
 

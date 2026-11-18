@@ -357,8 +357,8 @@ onUnmounted(() => {
       }}</AlertDescription>
       <AlertAction>
         <Button
-          variant="toolbar"
-          size="kira"
+          variant="link"
+          size="inline"
           data-testid="grpc-history-back"
           @click="onBackToLatest"
         >

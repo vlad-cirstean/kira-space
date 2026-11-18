@@ -121,7 +121,7 @@ function reviewLabel(state: ReviewerState | undefined): string {
             size="kira"
             data-testid="host-view-thread-reply"
             @click="replying = thread.id"
-          >
+            ><CodiconIcon name="reply" :size="13" />
             {{ t('space.common.reply.label') }}
           </Button>
           <CommentComposer

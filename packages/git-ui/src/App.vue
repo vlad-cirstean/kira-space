@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { hostWords, type MessageParams, t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { errorText } from '@workbench/bridge/codedError';
 /**
  * The real shell. `AppToolbar.vue`/`CommitGrid.vue`/`LoadMoreButton.vue` are wired together here
@@ -1726,7 +1728,8 @@ onBeforeUnmount(() => {
       :title="t('common.state.loadFailed.title')"
       :description="t('git.app.bootError.error', { error: bootError })"
     >
-      <Button variant="toolbar" size="kira" data-testid="boot-retry" @click="retryBootstrap">
+      <Button variant="toolbar" size="kira" data-testid="boot-retry" @click="retryBootstrap"
+        ><CodiconIcon :name="ICON.refresh" :size="13" />
         {{ t('common.action.retry.label') }}
       </Button>
     </EmptyState>

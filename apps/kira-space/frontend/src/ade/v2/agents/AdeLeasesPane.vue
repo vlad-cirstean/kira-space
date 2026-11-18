@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import { Badge } from '@theme/components/ui/badge';
@@ -11,6 +12,7 @@ import {
 import { FieldDescription } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import MenuItems from '@workbench/components/MenuItems.vue';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { useLeases } from '../leases/queries';
@@ -79,11 +81,12 @@ function holderItems(q: Queue): MenuItem[] {
           <Button
             variant="toolbar"
             size="kira"
+            data-tone="error"
             :aria-label="t('space.ade.leases.removeQueue.label')"
             :pending="store.saving()"
             :data-testid="`ade-lease-remove-${q.name}`"
             @click="store.removeQueue(q.name)"
-          >
+            ><CodiconIcon :name="ICON.delete" :size="13" />
             {{ t('space.ade.leases.removeQueue.label') }}
           </Button>
         </template>
@@ -100,6 +103,7 @@ function holderItems(q: Queue): MenuItem[] {
                   :data-testid="`ade-lease-holder-${q.name}`"
                 >
                   {{ q.holder.taskTitle }}
+                  <CodiconIcon name="chevron-down" :size="13" data-icon="inline-end" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">

@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { useCopy } from '../behaviour/clipboard';
 import { announceApp } from '../behaviour/liveRegion';
 import { errorText } from '../bridge/codedError';
@@ -34,7 +36,8 @@ async function onClick(): Promise<void> {
 </script>
 
 <template>
-  <Button variant="toolbar" size="kira" :disabled="disabled" @click="onClick">
+  <Button variant="toolbar" size="kira" :disabled="disabled" @click="onClick"
+    ><CodiconIcon :name="ICON.copy" :size="13" />
     {{ copied ? t('common.copy.copiedLog.announce') : t('common.action.copyLog.label') }}
   </Button>
 </template>

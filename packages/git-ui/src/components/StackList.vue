@@ -103,7 +103,7 @@ async function removeFromStack(branch: string): Promise<void> {
               group.summary.branches[group.summary.branches.length - 1]?.name ?? group.summary.base,
             )
           "
-        >
+          ><CodiconIcon name="layers" :size="13" />
           {{ t('git.common.restack.label') }}
         </Button>
       </SectionHeading>

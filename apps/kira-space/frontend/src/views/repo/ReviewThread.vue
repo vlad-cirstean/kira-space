@@ -203,6 +203,10 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
             data-testid="review-thread-state"
             @click="act(() => props.onSetState?.(nextState))"
           >
+            <CodiconIcon
+              :name="current.state === 'addressed' ? 'issue-reopened' : 'check'"
+              :size="13"
+            />
             {{
               current.state === 'addressed'
                 ? t('git.review.comments.reopen.label')

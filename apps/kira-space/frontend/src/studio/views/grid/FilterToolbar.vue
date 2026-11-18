@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SortSpec } from '@shared/domain/queries';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
@@ -246,9 +247,9 @@ function applyFromHistory(where: string | null, orderBy: SortSpec | null): void 
     />
   </div>
   <TextTooltip :text="t('studio.common.clearFilters.tooltip')">
-    <Button variant="toolbar" size="kira" @click="onClear">{{
-      t('common.action.clear.label')
-    }}</Button>
+    <Button variant="toolbar" size="kira" @click="onClear"
+      ><CodiconIcon :name="ICON.clearAll" :size="13" />{{ t('common.action.clear.label') }}</Button
+    >
   </TextTooltip>
   <ToolbarSeparator />
   <div ref="columnFilterWrap" class="flex w-48 shrink-0 items-center gap-1.5">

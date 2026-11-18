@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { useDockerStatus, useRetryStatus } from '../queries';
 
 const status = useDockerStatus();
@@ -25,9 +27,7 @@ const { retrying, retry } = useRetryStatus();
       variant="toolbar"
       :pending="retrying"
       @click="retry"
-      >{{
-        t('common.action.retry.label')
-      }}</Button
+      ><CodiconIcon :name="ICON.refresh" :size="13" />{{ t('common.action.retry.label') }}</Button
     >
   </EmptyState>
 </template>

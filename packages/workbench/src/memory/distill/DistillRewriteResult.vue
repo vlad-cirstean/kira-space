@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { DistillRewrite } from '@shared/domain/memoryDistill';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import type { MessageKey } from '@theme/i18n';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 import { copyAndAnnounce } from '../../behaviour/clipboard';
@@ -88,9 +90,9 @@ function copy(): void {
       </ul>
     </section>
     <div class="flex flex-wrap items-center gap-1.5">
-      <Button variant="toolbar" size="kira" data-testid="distill-rewrite-copy" @click="copy">{{
-        t('common.action.copy.label')
-      }}</Button>
+      <Button variant="toolbar" size="kira" data-testid="distill-rewrite-copy" @click="copy"
+        ><CodiconIcon :name="ICON.copy" :size="13" />{{ t('common.action.copy.label') }}</Button
+      >
     </div>
   </div>
 </template>

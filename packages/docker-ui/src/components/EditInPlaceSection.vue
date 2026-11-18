@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
@@ -432,9 +433,7 @@ const netChanged = (name: string): boolean => {
             :disabled="disabled || networkLocked || !toAdd"
             data-testid="docker-edit-network-add"
             @click="addNetwork"
-            >{{
-              t('docker.edit.attach.label')
-            }}</Button
+            ><CodiconIcon name="plug" :size="13" />{{ t('docker.edit.attach.label') }}</Button
           >
         </div>
       </div>

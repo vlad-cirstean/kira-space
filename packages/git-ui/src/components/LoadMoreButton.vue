@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 /**
  * §5.1.1's explicit "load more" affordance — pages of `pageSize` rows, never infinite scroll.
@@ -12,6 +13,7 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
  */
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { formatCount } from '@workbench/behaviour/format';
 import { computed } from 'vue';
 import { ASYNC_FAILURES, type AsyncFailure } from '../state/asyncFailures.ts';
@@ -60,20 +62,18 @@ function handleCancel(): void {
     class="flex items-center justify-center gap-1 py-1 px-2 shrink-0"
   >
     <TextTooltip :text="t('git.loadMore.loadAll.hint')">
-      <Button variant="toolbar" size="kira" :pending="isLoading" @click="handlePress">
+      <Button variant="toolbar" size="kira" :pending="isLoading" @click="handlePress"
+        ><CodiconIcon name="fold-down" :size="13" />
         {{ buttonLabel }}
       </Button>
     </TextTooltip>
-    <!-- G34: the toolbar Button box already matches this shape; Cancel keeps its one genuine
-         distinction, the underline. -->
     <Button
       v-if="isLoading"
       variant="toolbar"
       size="kira"
-      class="underline"
       :aria-label="t('git.loadMore.cancel.aria')"
       @click="handleCancel"
-    >
+      ><CodiconIcon :name="ICON.stop" :size="13" />
       {{ t('common.action.cancel.label') }}
     </Button>
   </div>

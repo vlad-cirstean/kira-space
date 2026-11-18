@@ -13,6 +13,7 @@ import {
 } from '@theme/components/ui/dropdown-menu';
 import { PopoverFooter } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
 import { computed, ref } from 'vue';
 import { ORIGIN_LABEL, SCOPE_LABEL } from './labels';
@@ -108,7 +109,7 @@ function clear(): void {
             size="kira"
             data-testid="memory-boost-project-clear"
             @click="clear"
-          >
+            ><CodiconIcon :name="ICON.clearAll" :size="13" />
             {{ t('memory.panel.boostProject.clear.label') }}
           </Button>
         </PopoverFooter>

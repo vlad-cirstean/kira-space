@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -7,6 +8,7 @@ import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
 import { copyAndAnnounce } from '../../behaviour/clipboard';
@@ -140,9 +142,7 @@ function importDocument(): void {
           :disabled="picked.length === 0"
           data-testid="distill-copy"
           @click="copy"
-          >{{
-            t('common.action.copy.label')
-          }}</Button
+          ><CodiconIcon :name="ICON.copy" :size="13" />{{ t('common.action.copy.label') }}</Button
         >
         <Button
           variant="toolbar"
@@ -150,9 +150,7 @@ function importDocument(): void {
           :disabled="picked.length === 0 || overStore"
           data-testid="distill-store"
           @click="storeOpen = true"
-          >{{
-            t('memory.distill.store.label')
-          }}</Button
+          ><CodiconIcon name="save" :size="13" />{{ t('memory.distill.store.label') }}</Button
         >
         <Button
           variant="toolbar"
@@ -161,9 +159,8 @@ function importDocument(): void {
           :disabled="picked.length === 0"
           data-testid="distill-import"
           @click="importDocument"
-          >{{
-            t('memory.distill.import.label')
-          }}</Button
+          ><CodiconIcon name="cloud-download" :size="13" />
+          {{ t('memory.distill.import.label') }}</Button
         >
       </div>
       <FieldDescription v-if="overStore" data-testid="distill-store-limit">{{

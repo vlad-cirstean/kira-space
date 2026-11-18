@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MemoryOrigin, MemoryScope } from '@shared/domain/memory';
 import type { ImportAction } from '@shared/domain/memoryImport';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import DetailHeader from '@theme/components/DetailHeader.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -10,6 +11,7 @@ import { Card } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Progress } from '@theme/components/ui/progress';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { storeToRefs } from 'pinia';
 import { computed, useTemplateRef } from 'vue';
@@ -116,9 +118,7 @@ async function discard(): Promise<void> {
           size="kira"
           data-testid="import-start"
           @click="startJob"
-          >{{
-            t('common.action.start.label')
-          }}</Button
+          ><CodiconIcon :name="ICON.run" :size="13" />{{ t('common.action.start.label') }}</Button
         >
         <Button
           v-if="job.state === 'running'"
@@ -126,9 +126,7 @@ async function discard(): Promise<void> {
           size="kira"
           data-testid="import-pause"
           @click="run('pause')"
-          >{{
-            t('memory.common.pause.label')
-          }}</Button
+          ><CodiconIcon name="debug-pause" :size="13" />{{ t('memory.common.pause.label') }}</Button
         >
         <Button
           v-if="job.state === 'paused'"
@@ -136,9 +134,8 @@ async function discard(): Promise<void> {
           size="kira"
           data-testid="import-resume"
           @click="run('resume')"
-          >{{
-            t('common.action.resume.label')
-          }}</Button
+          ><CodiconIcon name="debug-continue" :size="13" />
+          {{ t('common.action.resume.label') }}</Button
         >
         <Button
           v-if="job.state === 'running' || job.state === 'paused'"
@@ -146,9 +143,7 @@ async function discard(): Promise<void> {
           size="kira"
           data-testid="import-cancel"
           @click="run('cancel')"
-          >{{
-            t('common.action.cancel.label')
-          }}</Button
+          ><CodiconIcon :name="ICON.stop" :size="13" />{{ t('common.action.cancel.label') }}</Button
         >
         <Button
           v-if="job.totals.failedFiles > 0 && job.state !== 'running'"
@@ -156,7 +151,7 @@ async function discard(): Promise<void> {
           variant="toolbar"
           data-testid="import-retry-failed"
           @click="run('retryFailed')"
-        >
+          ><CodiconIcon :name="ICON.refresh" :size="13" />
           {{ t('memory.import.retryFailed.label') }}
         </Button>
         <Button
@@ -165,19 +160,18 @@ async function discard(): Promise<void> {
           size="kira"
           data-testid="import-dismiss"
           @click="run('dismiss')"
-          >{{
-            t('common.action.dismiss.label')
-          }}</Button
+          ><CodiconIcon :name="ICON.close" :size="13" />
+          {{ t('common.action.dismiss.label') }}</Button
         >
         <Button
           v-if="job.state !== 'running'"
           variant="toolbar"
           size="kira"
+          data-tone="error"
           data-testid="import-discard"
           @click="discard"
-          >{{
-            t('common.action.discard.label')
-          }}</Button
+          ><CodiconIcon :name="ICON.delete" :size="13" />
+          {{ t('common.action.discard.label') }}</Button
         >
       </template>
       <Alert

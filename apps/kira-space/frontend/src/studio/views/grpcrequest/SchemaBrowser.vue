@@ -153,7 +153,7 @@ function selectMethod(service: string, method: string): void {
           size="kira"
           data-testid="grpc-choose-proto"
           @click="chooseProtoFile"
-        >
+          ><CodiconIcon name="folder-opened" :size="13" />
           {{ t('common.action.choose.label') }}
         </Button>
       </template>
@@ -205,7 +205,7 @@ function selectMethod(service: string, method: string): void {
           size="kira"
           data-testid="grpc-add-import-path"
           @click="addImportPath"
-        >
+          ><CodiconIcon :name="ICON.add" :size="13" />
           {{ t('common.action.add.label') }}
         </Button>
       </div>

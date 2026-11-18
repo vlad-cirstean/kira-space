@@ -15,6 +15,7 @@ import { Button } from '@theme/components/ui/button';
  * staying the single fixed string this file used to render inline.
  */
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import Identifier from '@workbench/components/Identifier.vue';
 import { composeUndoTooltip } from '../state/liveAnnouncements.ts';
 import type { OpsState } from '../state/ops.ts';
@@ -48,7 +49,7 @@ async function undo(): Promise<void> {
         size="kira"
         class="text-kira-sm"
         @click="copy(ops.undoSlot.value.recoverySha, t('git.copy.recoverySha.announce'))"
-      >
+        ><CodiconIcon :name="ICON.copy" :size="13" />
         <Identifier :value="ops.undoSlot.value.recoverySha" :short="shortSha" />
       </Button>
     </TextTooltip>

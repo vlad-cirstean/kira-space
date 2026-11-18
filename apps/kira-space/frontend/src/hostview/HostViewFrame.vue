@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
 
 // The chrome both views share: title bar (badge, title, ref, refresh / copy / open), the loading
@@ -83,7 +85,8 @@ const emit = defineEmits<{ refresh: []; copy: []; open: [] }>();
       :title="t('common.state.loadFailed.title')"
       :description="failure"
     >
-      <Button size="kira" variant="toolbar" data-testid="host-view-retry" @click="emit('refresh')">
+      <Button size="kira" variant="toolbar" data-testid="host-view-retry" @click="emit('refresh')"
+        ><CodiconIcon :name="ICON.refresh" :size="13" />
         {{ t('common.action.retry.label') }}
       </Button>
     </EmptyState>

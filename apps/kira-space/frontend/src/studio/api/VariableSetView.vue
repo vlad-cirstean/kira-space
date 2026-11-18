@@ -138,7 +138,7 @@ function onHistoryClickFor(row: ApiVariable): void {
         size="kira"
         data-testid="variables-edit"
         @click="variablesDialogStore.open(fileName)"
-      >
+        ><CodiconIcon :name="ICON.edit" :size="13" />
         {{ t('common.action.edit.label') }}
       </Button>
     </ViewToolbar>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
 import { Progress } from '@theme/components/ui/progress';
 import { t } from '@theme/i18n';
@@ -59,9 +60,9 @@ function open(): void {
           )
         }}
       </span>
-      <Button variant="toolbar" size="kira" data-testid="memory-import-open" @click="open">{{
-        t('common.view.label')
-      }}</Button>
+      <Button variant="toolbar" size="kira" data-testid="memory-import-open" @click="open"
+        ><CodiconIcon name="eye" :size="13" />{{ t('common.view.label') }}</Button
+      >
     </div>
     <Progress v-if="job.state === 'running'" :model-value="percent" />
   </div>

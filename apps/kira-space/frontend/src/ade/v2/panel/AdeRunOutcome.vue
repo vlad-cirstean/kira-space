@@ -9,6 +9,7 @@ import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import Identifier from '@workbench/components/Identifier.vue';
@@ -138,7 +139,8 @@ function copy(): void {
         :badge="run.sandbox"
       />
       <span class="flex-1" />
-      <Button variant="toolbar" size="kira" data-testid="ade-outcome-copy" @click="copy">
+      <Button variant="toolbar" size="kira" data-testid="ade-outcome-copy" @click="copy"
+        ><CodiconIcon :name="ICON.copy" :size="13" />
         {{ copied ? t('common.copy.copied.announce') : t('common.copyForAgent.label') }}
       </Button>
     </div>
@@ -204,7 +206,7 @@ function copy(): void {
       class="self-start"
       data-testid="ade-outcome-log-toggle"
       @click="showLog = !showLog"
-    >
+      ><CodiconIcon name="output" :size="13" />
       {{ showLog ? t('space.common.hideLog.label') : t('space.common.showLog.label') }}
     </Button>
     <AdeRunLog v-if="showLog" kind="run" :id="run.id" />

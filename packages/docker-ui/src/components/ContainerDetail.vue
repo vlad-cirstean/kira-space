@@ -124,7 +124,7 @@ function act(action: ContainerAction): void {
           :title="t('docker.detail.notFound.title')"
           :description="t('docker.detail.notFound.description')"
         >
-          <Button size="kira" variant="toolbar" @click="ui.select(null)">{{
+          <Button size="inline" variant="link" @click="ui.select(null)">{{
             t('docker.detail.backToOverview.label')
           }}</Button>
         </EmptyState>

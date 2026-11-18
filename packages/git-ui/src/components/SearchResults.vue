@@ -26,6 +26,7 @@ import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { formatAgeCompact } from '@workbench/behaviour/format';
@@ -138,7 +139,7 @@ function optionClass(option: SearchOption): string {
       class="w-full justify-start"
       data-testid="search-body-button"
       @click="emit('runBodySearch')"
-    >
+      ><CodiconIcon :name="ICON.search" :size="13" />
       {{ t('git.search.bodySearch.label') }}
     </Button>
   </div>

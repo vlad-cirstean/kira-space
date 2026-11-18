@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SortSpec } from '@shared/domain/queries';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
@@ -190,9 +191,8 @@ function applyFromFilterHistory(where: string | null, orderBy: SortSpec | null):
         size="kira"
         data-testid="document-filter-clear"
         @click="onClearFilter"
-        >{{
-          t('common.action.clear.label')
-        }}</Button
+        ><CodiconIcon :name="ICON.clearAll" :size="13" />
+        {{ t('common.action.clear.label') }}</Button
       >
     </TextTooltip>
   </ViewToolbar>

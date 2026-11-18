@@ -367,8 +367,8 @@ onUnmounted(() => {
       </AlertDescription>
       <AlertAction>
         <Button
-          variant="toolbar"
-          size="kira"
+          variant="link"
+          size="inline"
           data-testid="http-history-back"
           @click="onBackToLatest"
         >

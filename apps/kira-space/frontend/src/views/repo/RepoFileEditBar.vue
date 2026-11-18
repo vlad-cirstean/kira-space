@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Kbd } from '@theme/components/ui/kbd';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 
 defineProps<{ editing: boolean; dirty: boolean; saving: boolean; locked: boolean }>();
@@ -19,7 +21,7 @@ defineEmits<{ edit: []; save: []; done: [] }>();
       :disabled="locked"
       data-testid="repo-file-edit"
       @click="$emit('edit')"
-    >
+      ><CodiconIcon :name="ICON.edit" :size="13" />
       {{ t('common.action.edit.label') }}
     </Button>
     <template v-else>
@@ -35,7 +37,7 @@ defineEmits<{ edit: []; save: []; done: [] }>();
             :pending="saving"
             data-testid="repo-file-save"
             @click="$emit('save')"
-          >
+            ><CodiconIcon name="save" :size="13" />
             {{ t('common.action.save.label') }}
           </Button>
         </TooltipTrigger>
@@ -49,7 +51,7 @@ defineEmits<{ edit: []; save: []; done: [] }>();
         :disabled="locked"
         data-testid="repo-file-done"
         @click="$emit('done')"
-      >
+        ><CodiconIcon name="check" :size="13" />
         {{ t('common.done.status') }}
       </Button>
     </template>

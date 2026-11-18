@@ -225,12 +225,12 @@ onUnmounted(teardownEditor);
         }}
       </AlertDescription>
       <AlertAction>
-        <Button variant="toolbar" size="kira" data-testid="repo-file-reload" @click="edit.reload()">
+        <Button variant="link" size="inline" data-testid="repo-file-reload" @click="edit.reload()">
           {{ t('common.action.refresh.label') }}
         </Button>
         <Button
-          variant="toolbar"
-          size="kira"
+          variant="link"
+          size="inline"
           data-testid="repo-file-overwrite"
           @click="edit.overwrite()"
         >

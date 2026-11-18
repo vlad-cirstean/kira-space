@@ -242,6 +242,7 @@ const stateLabel = (c: ReviewComment): string =>
               )
             "
           >
+            <CodiconIcon :name="c.state === 'addressed' ? 'issue-reopened' : 'check'" :size="13" />
             {{
               c.state === 'addressed'
                 ? t('git.review.comments.reopen.label')
@@ -350,7 +351,7 @@ const stateLabel = (c: ReviewComment): string =>
           size="kira"
           data-testid="ade-review-log-toggle"
           @click="showLog = !showLog"
-        >
+          ><CodiconIcon name="output" :size="13" />
           {{ showLog ? t('space.common.hideLog.label') : t('space.common.showLog.label') }}
         </Button>
       </div>

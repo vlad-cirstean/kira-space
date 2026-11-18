@@ -234,7 +234,7 @@ async function onSetActive(id: string): Promise<void> {
               size="kira"
               data-testid="environment-edit-variables"
               @click="onEditVariables(env.id, env.name)"
-            >
+              ><CodiconIcon :name="ICON.variables" :size="13" />
               {{ t('studio.api.environments.editVariables.label') }}
             </Button>
             <Button
@@ -242,7 +242,7 @@ async function onSetActive(id: string): Promise<void> {
               size="kira"
               data-testid="environment-edit"
               @click="variablesDialogStore.open(env.file, 'environment')"
-            >
+              ><CodiconIcon :name="ICON.environments" :size="13" />
               {{ t('studio.api.variablesDialog.editEnvironment.label') }}
             </Button>
             <TooltipIconButton

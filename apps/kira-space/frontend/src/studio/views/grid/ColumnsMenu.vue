@@ -9,6 +9,7 @@ import { Label } from '@theme/components/ui/label';
 import { PopoverContent } from '@theme/components/ui/popover';
 import { Separator } from '@theme/components/ui/separator';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
@@ -131,17 +132,12 @@ onBeforeUnmount(() => {
   <PopoverContent align="end" flush class="w-56" data-testid="columns-menu">
     <div class="max-h-80 flex flex-col">
       <div class="flex gap-1 p-1">
-        <Button variant="toolbar" size="kira" data-testid="columns-select-all" @click="selectAll">{{
-          t('common.state.all.option')
-        }}</Button>
-        <Button
-          variant="toolbar"
-          size="kira"
-          data-testid="columns-select-none"
-          @click="selectNone"
-          >{{
-            t('common.state.none.option')
-          }}</Button
+        <Button variant="toolbar" size="kira" data-testid="columns-select-all" @click="selectAll"
+          ><CodiconIcon name="check-all" :size="13" />{{ t('common.state.all.option') }}</Button
+        >
+        <Button variant="toolbar" size="kira" data-testid="columns-select-none" @click="selectNone"
+          ><CodiconIcon :name="ICON.clearAll" :size="13" />
+          {{ t('common.state.none.option') }}</Button
         >
       </div>
       <!-- Drag a row to reorder — the same order the grid renders columns in
