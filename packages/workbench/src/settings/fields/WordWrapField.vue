@@ -27,7 +27,7 @@ const wordWrapId = useId();
 
 <template>
   <FieldGroup>
-    <Field orientation="horizontal" class="items-start">
+    <Field orientation="horizontal">
       <Switch
         :id="wordWrapId"
         :model-value="appearance.wordWrap"
