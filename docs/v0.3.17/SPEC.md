@@ -15,7 +15,7 @@ Phases from `P672` (highest shipped: `P671`, chapter v0.3.16). Next new phase: `
 | P672 Part 7 | UI uniformity: status, tones, colours | Done |
 | P672 Part 8 | UI uniformity: tabs, segmented, choice | Done |
 | P672 Part 9 | UI uniformity: states, icons, type, spacing | Done |
-| P660 Part 2 | Git review panel state across module switches | Planned |
+| P660 Part 2 | Git review panel state across module switches | Done |
 | P672 Part 10 | Second pass over Parts 2..9 (iter2 plans) | Planned |
 | P673 | Re-pin ONNX Runtime, pinned release asset is gone | Planned |
 
@@ -110,6 +110,8 @@ Git review segment (`RepoReviewView.vue` hosting git-ui `ReviewView`) loses its 
 Continues P660 from chapter v0.3.16 (Part 1 Done there); keeps its number.
 
 Plan: `plans/P660-part2.md`.
+
+Result: Done. Commits C1 `921b3ac86` (workbench seam), C2 `839309591` (git-ui, host, guard), `050ece4a6` (shared `scrollTo` spec helper, forced by N8), C3 `fa249ccc4` (spec), C4 `287a77b23` (ARCHITECTURE). Design: host `useViewStateStore` reaches the git-ui mount through `MountOptions.keep` (`{ state, key }`), provided as `KEPT_VIEW_STATE_KEY` and `REVIEW_KEEP_KEY` on the review app only; `useKeptState`, `useKeptScroll` and `useKeptEditorScroll` resolve it by injection first, then the store, so Space and Studio are unchanged. New `packages/git-ui/src/lib/reviewKeep.ts` (`keptScrollIf`, `useReviewKeep`) keeps filter, filter bar, `showSearch`, per branch expanded rows, selected file and the commits, files and comments scrolls. Keys `git:review:<codeRepoId>` with `:filter|filterVisible|showSearch` and `:b:<branch>:selected|expanded|commits|files|comments`. Restore waits for `listing` and loaded rows or files, once per key; writes wait for that restore so `setTarget`'s clear never overwrites kept values. Cleanup: `closeRepoWorkspace` drops the repo prefix, `goBackToSelection` drops the branch prefix. Guard: U109 PERMANENT line for `ReviewView.vue` removed (49 left), `FileTree.vue` reason reworded. Files: 12 in C2 (`ReviewView.vue` 598 lines after format), 3 in C1, 1 new spec plus fixtures (`reviewFile` exported, `manyReviewFiles`) in C3. Step 0 at base (C1 plus the test id only): `openReviewListing` works in this sandbox (`repo-review-interaction` "clicking a file" passed), so no `fix(test)` was needed. Spec test 1 failed at the filter bar (`review-file-filter` absent); with soft assertions also the selected file and files tree scroll failed; tests 2 and 3 pass at base by design (they guard against over-keeping). Mutation check: with `keep` removed from `RepoReviewView.vue`, test 1 fails (`toHaveValue` on the filter), tests 2 and 3 pass; restored, not committed. Plan deviation: test 2 does the module round trip right after back-to-selection, before re-picking the branch (re-picking makes the durable session restore the branch on return). Verification: new spec 3 of 3 passed; targeted `ui` run (`review-module-state`, `module-state`, `studio/module-state`, `panel-find`, `repo-review-interaction`, `consistency-git`, `copy-coverage-git`, `list-keyboard-git`, `ade-v2-review*`, `repo-workspace`, `git-bound-review`) 201 passed; `bun run lint` (incl. guards, N10), `typecheck` and `lint:dead` clean through the pre-commit hook. Not verified: visual baselines (no markup or class change beyond one `data-testid`, none expected to move), `repo-graph*` specs (`FileTree` diff is a review-only prop, no provider in the graph). No unit tests, no flow half (renderer-only state).
 
 ## P672 Part 10: Second pass over Parts 2..9 (iter2 plans)
 
