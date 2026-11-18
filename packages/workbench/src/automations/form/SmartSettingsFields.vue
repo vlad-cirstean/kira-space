@@ -32,7 +32,6 @@ function onNoCostCap(on: boolean): void {
         :model-value="smart.model"
         @update:model-value="(v) => patch({ model: String(v) })"
         variant="bordered"
-        size="kira-lg"
         data-testid="smart-model"
       >
         <option v-for="m in info.models" :key="m.id" :value="m.id">{{ m.id }}</option>

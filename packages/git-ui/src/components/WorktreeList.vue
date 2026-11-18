@@ -210,7 +210,6 @@ async function confirmRemove(): Promise<void> {
             </p>
             <Input
               v-model="typedToken"
-              size="kira-lg"
               class="w-full"
               :aria-label="t('git.common.confirmToken.aria')"
             />

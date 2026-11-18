@@ -255,7 +255,6 @@ async function save(): Promise<void> {
               :id="graphScopeId"
               :model-value="draft['kiraSpace.graph.scope']"
               variant="bordered"
-              size="kira-lg"
               class="w-full"
               @update:model-value="(v) => onGraphScopeChange(v as string)"
             >
@@ -318,7 +317,6 @@ async function save(): Promise<void> {
               :id="hostProviderId"
               :model-value="draft['kiraSpace.gitHost.provider']"
               variant="bordered"
-              size="kira-lg"
               class="w-full"
               @update:model-value="(v) => (draft['kiraSpace.gitHost.provider'] = v as string)"
             >
@@ -339,7 +337,6 @@ async function save(): Promise<void> {
               :id="pullStrategyId"
               :model-value="draft['kiraSpace.pull.strategy']"
               variant="bordered"
-              size="kira-lg"
               class="w-full"
               @update:model-value="(v) => onPullStrategyChange(v as string)"
             >

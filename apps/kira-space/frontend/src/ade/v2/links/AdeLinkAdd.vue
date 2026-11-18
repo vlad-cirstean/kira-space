@@ -85,7 +85,6 @@ defineExpose({
         v-model="text"
         :placeholder="t('space.ade.details.addLine.placeholder')"
         :aria-label="t('space.ade.details.addLine.aria')"
-        size="kira"
         data-testid="ade-links-paste"
         @keydown="onKeydown"
         @paste="onPaste"

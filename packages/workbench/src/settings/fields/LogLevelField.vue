@@ -47,7 +47,6 @@ const fieldId = useId();
     <NativeSelect
       :id="fieldId"
       variant="bordered"
-      size="kira-lg"
       :data-testid="selectTestid"
       :model-value="advanced[leaf]"
       @update:model-value="onLogLevelChange"

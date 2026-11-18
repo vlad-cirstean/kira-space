@@ -103,7 +103,6 @@ function setKeepAwake(on: boolean): void {
       <NativeSelect
         :id="providerId"
         variant="bordered"
-        size="kira-lg"
         data-testid="settings-agent-provider"
         :model-value="draft.agent.provider"
         @update:model-value="(v) => setProvider(String(v))"

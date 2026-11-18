@@ -115,7 +115,6 @@ const appName = computed(() => t('common.product.kiraSpace.label'));
         <NativeSelect
           model-value=""
           variant="bordered"
-          size="kira-lg"
           :aria-label="t('automations.schedule.presets.aria')"
           data-testid="schedule-preset"
           @update:model-value="(v) => v !== '' && patch({ cron: String(v) })"

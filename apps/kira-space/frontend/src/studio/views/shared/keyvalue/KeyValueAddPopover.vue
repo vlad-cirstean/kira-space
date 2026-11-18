@@ -79,7 +79,6 @@ defineExpose({ dirty: computed(() => open.value && (name.value !== '' || value.v
         <Input
           v-model="name"
           v-bind="invalidAttrs('name')"
-          size="kira-lg"
           :placeholder="t('studio.keyValue.add.namePlaceholder.placeholder')"
           class="w-full"
           data-testid="keyvalue-add-name"
@@ -94,7 +93,6 @@ defineExpose({ dirty: computed(() => open.value && (name.value !== '' || value.v
         >
         <Input
           v-model="value"
-          size="kira-lg"
           :placeholder="t('studio.keyValue.add.valuePlaceholder.placeholder')"
           class="w-full"
           data-testid="keyvalue-add-value"

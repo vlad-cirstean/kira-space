@@ -45,7 +45,6 @@ const fieldId = useId();
     <NativeSelect
       :id="fieldId"
       variant="bordered"
-      size="kira-lg"
       data-testid="settings-date-format"
       :model-value="appearance.dateFormat"
       @update:model-value="onDateFormatChange"

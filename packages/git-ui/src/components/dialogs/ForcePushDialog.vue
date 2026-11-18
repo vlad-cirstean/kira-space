@@ -133,7 +133,6 @@ function confirmPlain(): void {
             v-model="typedBranch"
             type="text"
             :placeholder="resolvedBranch"
-            size="kira-lg"
             class="w-full"
             data-testid="force-push-confirm-branch"
           />

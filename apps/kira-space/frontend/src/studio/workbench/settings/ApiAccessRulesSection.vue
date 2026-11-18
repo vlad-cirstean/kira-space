@@ -144,7 +144,6 @@ function onRemove(index: number): void {
     <NativeSelect
       :id="defaultId"
       variant="bordered"
-      size="kira-lg"
       class="self-start"
       data-testid="settings-db-mcp-api-default"
       :model-value="settingsStore.dbMcp.apiDefault"

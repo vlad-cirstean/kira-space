@@ -117,7 +117,6 @@ const disableCookieJarId = useId();
       <NativeSelect
         :id="httpVersionId"
         variant="bordered"
-        size="kira-lg"
         class="self-start"
         data-testid="settings-api-httpVersion"
         :model-value="draft.api.httpVersion"

@@ -111,7 +111,6 @@ onBeforeUnmount(() => {
             id="ade-stage-target"
             v-model="store.toStepId"
             variant="bordered"
-            size="kira-lg"
             data-testid="ade-stage-target"
           >
             <option v-for="o in targets" :key="o.id" :value="o.id">{{ o.name }}</option>

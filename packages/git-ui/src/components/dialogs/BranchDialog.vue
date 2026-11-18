@@ -94,7 +94,6 @@ async function submit(): Promise<void> {
             :id="nameId"
             v-model="name"
             type="text"
-            size="kira-lg"
             class="w-full"
             v-bind="form.invalidAttrs('name')"
           />

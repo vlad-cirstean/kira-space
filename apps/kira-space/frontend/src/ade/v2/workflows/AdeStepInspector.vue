@@ -211,7 +211,6 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
       <Input
         :id="id('name')"
         :model-value="step.name"
-        size="kira-lg"
         appearance="inline"
         class="min-w-0 font-medium"
         data-testid="ade-wf-step-name"

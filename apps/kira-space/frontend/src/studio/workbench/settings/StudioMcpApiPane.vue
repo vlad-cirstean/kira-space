@@ -73,7 +73,6 @@ const dbMcpApiApprovalId = useId();
       <NativeSelect
         :id="dbMcpApiApprovalId"
         variant="bordered"
-        size="kira-lg"
         class="self-start"
         data-testid="settings-db-mcp-api-approval"
         :model-value="settingsStore.dbMcp.apiApproval"

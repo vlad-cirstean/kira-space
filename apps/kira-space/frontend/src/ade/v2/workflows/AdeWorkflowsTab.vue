@@ -128,7 +128,6 @@ async function createNew(): Promise<void> {
               id="ade-wf-import-path"
               v-model="importPath"
               :placeholder="t('space.ade.workflows.page.importPath.example')"
-              size="kira-lg"
               class="min-w-0 flex-1 font-data"
               data-testid="ade-wf-import-path"
               @keydown.enter="runImport"

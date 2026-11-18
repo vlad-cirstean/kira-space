@@ -43,7 +43,6 @@ const defaultPageSizeId = useId();
       <NativeSelect
         :id="defaultPageSizeId"
         variant="bordered"
-        size="kira-lg"
         class="self-start"
         data-testid="settings-default-page-size"
         :model-value="draft.data.defaultPageSize"

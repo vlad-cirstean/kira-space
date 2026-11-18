@@ -75,7 +75,6 @@ defineExpose({
         <SectionHeading :label="t('studio.keyValue.editValue.label')" />
         <Input
           v-model="draft"
-          size="kira-lg"
           class="w-full"
           data-testid="keyvalue-edit-input"
           @keydown.enter="onSave"

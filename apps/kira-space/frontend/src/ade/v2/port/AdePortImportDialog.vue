@@ -216,7 +216,6 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
                       v-if="item.modes?.length && picked.has(item.id)"
                       v-model="modes[item.id]"
                       variant="bordered"
-                      size="kira-lg"
                       :aria-label="t('space.ade.port.mode.aria')"
                       :data-testid="`ade-port-mode-${item.id}`"
                     >

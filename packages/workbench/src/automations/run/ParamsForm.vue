@@ -91,7 +91,6 @@ function toggle(p: ScriptParam, option: string, on: boolean): void {
         v-else-if="p.type === 'select'"
         :id="`${idBase}-${p.name}`"
         variant="bordered"
-        size="kira-lg"
         :model-value="values[p.name]?.[0] ?? ''"
         :data-testid="`run-param-input-${p.name}`"
         @update:model-value="(v) => set(p.name, v === '' ? [] : [String(v)])"

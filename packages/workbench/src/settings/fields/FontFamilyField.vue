@@ -55,7 +55,6 @@ const fieldId = useId();
     <NativeSelect
       :id="fieldId"
       variant="bordered"
-      size="kira-lg"
       class="self-start"
       data-testid="settings-font-family"
       :model-value="appearance.fontFamily"

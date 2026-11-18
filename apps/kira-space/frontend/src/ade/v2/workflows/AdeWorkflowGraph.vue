@@ -277,7 +277,6 @@ onBeforeUnmount(() => {
         <Input
           id="ade-wf-form-name"
           :model-value="draft.draft.name"
-          size="kira-lg"
           class="w-56 font-medium"
           data-testid="ade-wf-form-name"
           @update:model-value="(v: string | number) => draft.patchWorkflow({ name: String(v) })"

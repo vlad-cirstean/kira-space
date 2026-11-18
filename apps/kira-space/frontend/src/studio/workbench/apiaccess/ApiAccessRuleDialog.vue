@@ -94,7 +94,6 @@ function onSave(): void {
             :id="effectId"
             v-model="effect"
             variant="bordered"
-            size="kira-lg"
             class="self-start"
             data-testid="api-rule-effect"
           >

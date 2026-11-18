@@ -42,7 +42,6 @@ const modelId = useId();
       <NativeSelect
         :id="modelId"
         variant="bordered"
-        size="kira-lg"
         data-testid="settings-memory-agent-model"
         :model-value="model"
         @update:model-value="onModelChange"
