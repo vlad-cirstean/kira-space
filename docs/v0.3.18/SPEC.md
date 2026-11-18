@@ -1,7 +1,7 @@
 # v0.3.18
 
 Full-app UI uniformity audit, then a JavaScript engine for the API MCP: scripted transforms, result review with raw and transformed views, chained requests through kept variables, user-supplied values the agent never sees. Continues from chapter v0.3.17.
-Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `P680`. Branch
+Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `P681`. Branch
 `chapter/v0.3.18`.
 
 | # | Phase | Status |
@@ -12,6 +12,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P677 | API MCP: result review with raw and transformed views | Planned |
 | P678 | API MCP: kept variables and chained requests | Planned |
 | P679 | API MCP: user-supplied values the agent never sees | Planned |
+| P680 | DB MCP: JS scripting and kept variables for SQL | Planned |
 
 Chapter end (unasked, per working agreement): non-UI full run, 2 code review rounds (user set 2 for this chapter), visual baseline re-record in this sandbox (fonts match CI, check `fc-match sans-serif` prints `Inter` first), close, PR.
 
@@ -27,7 +28,7 @@ Plan: `plans/P674.md`.
 
 ## P675: JS engine for the API MCP
 
-Add an embedded JavaScript engine in Go, used only by the API MCP for now (no UI-facing scripting, no other MCP). Candidate: `dop251/goja` (pure Go); the plan must verify licence, maintenance, and compare alternatives. Requirements: hard CPU time limit and interrupt, memory ceiling, output size cap, no filesystem, network, process, timers or `require`; deterministic globals only (JSON, Math, Date, string and array builtins); big-integer handling documented (JSON numbers above 2^53); errors returned as structured messages with line and column. One engine package with a narrow interface so later features reuse it. Not in scope: jq or gojq filters.
+Add an embedded JavaScript engine in Go, used by the API MCP (P676 to P679) and later the DB MCP (P680); no UI-facing scripting. Design the interface for both from the start. Candidate: `dop251/goja` (pure Go); the plan must verify licence, maintenance, and compare alternatives. Requirements: hard CPU time limit and interrupt, memory ceiling, output size cap, no filesystem, network, process, timers or `require`; deterministic globals only (JSON, Math, Date, string and array builtins); big-integer handling documented (JSON numbers above 2^53); errors returned as structured messages with line and column. One engine package with a narrow interface so later features reuse it. Not in scope: jq or gojq filters.
 
 Plan: `plans/P675.md`.
 
@@ -45,7 +46,7 @@ Plan: `plans/P677.md`.
 
 ## P678: API MCP: kept variables and chained requests
 
-Chained requests: an agent gets ids from one request and passes them, parsed into a list, into a later POST. A script can store a result in a named variable held by Kira. The stored value is never returned to the AI; the agent can only refer to it by name in later requests and scripts. It must be obvious to the user that a request uses a variable: the approval card lists every variable the request or script reads (name, value, which request created it, age, expiry) and highlights where it is used in the request and script. A variables view (settings pane or panel) lists live variables with value, source and remaining time, and can clear them. Retention is short: default 1 hour, in memory only, wiped on app exit, expiry refreshed never silently. The user sees values in full (secrets from P679 masked until revealed); the agent sees names only. The plan decides storage package, size caps, naming rules, and how variable use is stated in agent-facing tool descriptions.
+Chained requests: an agent gets ids from one request and passes them, parsed into a list, into a later POST. A script can store a result in a named variable held by Kira. The stored value is never returned to the AI; the agent can only refer to it by name in later requests and scripts. It must be obvious to the user that a request uses a variable: the approval card lists every variable the request or script reads (name, value, which request created it, age, expiry) and highlights where it is used in the request and script. A variables view (settings pane or panel) lists live variables with value, source and remaining time, and can clear them. Retention is short: default 1 hour, in memory only, wiped on app exit, expiry refreshed never silently. The user sees values in full (secrets from P679 masked until revealed); the agent sees names only. The store is MCP-agnostic (P680 reuses it for SQL): one package, entries tagged with their source MCP and request. The plan decides storage package, size caps, naming rules, and how variable use is stated in agent-facing tool descriptions.
 
 Plan: `plans/P678.md`.
 
@@ -54,3 +55,9 @@ Plan: `plans/P678.md`.
 The agent prepares a request that needs a value only the user has (a token). The agent declares an input (name, label); the user provides it in the approval UI; the agent never sees the value; the value is reusable by name afterwards through the same variable store and retention as P678, marked as user-supplied and secret (masked by default, reveal on demand). Request and script reference it like any variable. Never logged, never in op log or history, never in prompts; redaction applies to responses that echo it. The plan covers entry UI, reuse across requests within retention, clearing, and what the agent is told (that an input exists, never its content).
 
 Plan: `plans/P679.md`.
+
+## P680: DB MCP: JS scripting and kept variables for SQL
+
+Give the SQL (database) MCP the same abilities as the API MCP: the agent prepares a query for the user and can post-process its result with a JS script before the result returns to the AI (parse, pick, anonymise); the script is shown to the user next to the statement in the approval card and the op log; results can be kept in named variables held by Kira (P678 store, same retention and visibility rules) and used by later queries or scripts, for example ids from one query passed as a list into the next. Kept values never return to the AI. Uses the P675 engine and the P678 store without forking either. Interacts with existing connection MCP settings (read, write and DDL modes, review results, masking): the script never widens what a connection allows, runs after masking and redaction, and a query's approval class is decided from the statement, not the script. Review view shows raw rows and transformed result as in P677. The plan decides tool shape, how variables bind into SQL safely (parameters, never string splicing), and per-adapter limits.
+
+Plan: `plans/P680.md`.
