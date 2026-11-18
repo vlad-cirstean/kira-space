@@ -71,7 +71,7 @@ const message = computed(() => {
         data-testid="memory-mcp-install"
         @click="install.mutate()"
       >
-        <CodiconIcon name="plug" :size="12" /> {{ t('common.registerWithAgent.label') }}
+        <CodiconIcon name="plug" :size="13" /> {{ t('common.registerWithAgent.label') }}
       </Button>
     </div>
   </FieldSet>

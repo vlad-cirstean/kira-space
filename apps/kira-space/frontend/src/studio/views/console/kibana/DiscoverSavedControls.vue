@@ -203,7 +203,7 @@ const saveChord = formatShortcut('form.save');
             :aria-label="t('studio.kibana.saved.more.aria')"
             data-testid="kibana-save-more"
           >
-            <CodiconIcon name="chevron-down" :size="12" />
+            <CodiconIcon name="chevron-down" :size="13" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

@@ -64,7 +64,7 @@ const prBase = computed(() => {
       icon="refresh"
       :label="fetchTip"
       :aria-label="t('common.fetchTarget.tooltip', { name: sync.data.value.remote })"
-      :icon-size="12"
+      :icon-size="16"
       variant="title"
       size="title"
       :pending="fetching"
@@ -84,7 +84,7 @@ const prBase = computed(() => {
           data-testid="ade-review-sync-update-branch"
           @click="updateNow('branch')"
         >
-          <CodiconIcon name="arrow-down" :size="12" />
+          <CodiconIcon name="arrow-down" :size="16" />
           {{
             t('space.ade.review.sync.updateBranch.label', { count: sync.data.value.branch.behind })
           }}
@@ -102,7 +102,7 @@ const prBase = computed(() => {
           data-testid="ade-review-sync-update-base"
           @click="updateNow('base')"
         >
-          <CodiconIcon name="arrow-down" :size="12" />
+          <CodiconIcon name="arrow-down" :size="16" />
           {{ t('space.ade.review.sync.updateBase.label', { count: sync.data.value.base.behind }) }}
         </Button>
       </TooltipTrigger>

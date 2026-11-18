@@ -64,7 +64,7 @@ function pickTask(id: string): void {
             <span class="truncate">{{
               taskTitle || t('automations.run.chooseTask.placeholder')
             }}</span>
-            <CodiconIcon name="chevron-down" :size="12" />
+            <CodiconIcon name="chevron-down" :size="13" />
           </Button>
         </PopoverTrigger>
         <PopoverContent flush class="w-96">

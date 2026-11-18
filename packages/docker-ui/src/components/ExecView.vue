@@ -49,7 +49,7 @@ const hostTab = (id: string) => ({
       :description="t('docker.exec.none.emptyHint')"
     >
       <Button size="kira" variant="toolbar" data-testid="docker-exec-new" @click="openSession">
-        <CodiconIcon name="add" :size="12" />
+        <CodiconIcon name="add" :size="13" />
         {{ t('common.newSession.label') }}
       </Button>
     </EmptyState>
@@ -73,7 +73,7 @@ const hostTab = (id: string) => ({
           />
         </span>
         <Button variant="toolbar" size="kira" data-testid="docker-exec-new" @click="openSession">
-          <CodiconIcon name="add" :size="12" />
+          <CodiconIcon name="add" :size="13" />
           {{ t('common.newSession.label') }}
         </Button>
       </div>

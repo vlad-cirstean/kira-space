@@ -150,7 +150,7 @@ function act(action: ContainerAction): void {
               data-testid="docker-action-start"
               @click="act('start')"
             >
-              <CodiconIcon name="play" :size="12" class="text-ok" />
+              <CodiconIcon name="play" :size="13" class="text-ok" />
               {{ t('common.action.start.label') }}
             </Button>
             <Button
@@ -161,7 +161,7 @@ function act(action: ContainerAction): void {
               data-testid="docker-action-stop"
               @click="act('stop')"
             >
-              <CodiconIcon name="debug-stop" :size="12" class="text-error" />
+              <CodiconIcon name="debug-stop" :size="13" class="text-error" />
               {{ t('common.action.stop.label') }}
             </Button>
             <Button
@@ -172,7 +172,7 @@ function act(action: ContainerAction): void {
               data-testid="docker-action-restart"
               @click="act('restart')"
             >
-              <CodiconIcon name="debug-restart" :size="12" />
+              <CodiconIcon name="debug-restart" :size="13" />
               {{ t('common.action.restart.label') }}
             </Button>
           </template>

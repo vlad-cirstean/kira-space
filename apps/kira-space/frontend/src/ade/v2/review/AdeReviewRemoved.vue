@@ -95,7 +95,7 @@ function rangeLabel(entry: ReviewRemovedEntry): string {
               data-testid="ade-review-removed-dismiss"
               @click="dismiss.mutate([entry.id])"
             >
-              <CodiconIcon name="close" :size="12" />
+              <CodiconIcon name="close" :size="13" />
             </Button>
           </TextTooltip>
         </div>

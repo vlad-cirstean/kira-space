@@ -75,7 +75,7 @@ const lists = computed(() =>
         :data-enforced="badge.enforced"
         :data-denials="badge.denials"
       >
-        <CodiconIcon name="lock" :size="12" />{{ label }}
+        <CodiconIcon name="lock" :size="13" />{{ label }}
       </Button>
     </PopoverTrigger>
     <PopoverContent class="w-96" align="start" data-testid="ade-run-sandbox-popover">

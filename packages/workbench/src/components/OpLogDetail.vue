@@ -85,7 +85,6 @@ function stepDuration(step: OpLogStep): string {
           icon="copy"
           :label="t('common.copyCommand.label')"
           size="inline"
-          :icon-size="12"
           @click="
             copy(record.command ?? '', { message: t('workbench.opLog.copiedCommand.announce') })
           "
@@ -105,7 +104,6 @@ function stepDuration(step: OpLogStep): string {
           icon="copy"
           :label="t('workbench.opLog.copyError.label')"
           size="inline"
-          :icon-size="12"
           @click="copy(record.error ?? '', { message: t('workbench.opLog.copiedError.announce') })"
         />
       </div>

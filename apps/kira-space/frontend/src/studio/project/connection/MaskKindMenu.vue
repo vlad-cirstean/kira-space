@@ -33,7 +33,7 @@ const items = computed<MenuItem[]>(() =>
     <DropdownMenuTrigger as-child>
       <Button size="kira" variant="dialog" :data-testid="testid">
         {{ t('studio.project.connectionDialog.privacy.maskAs.label') }}
-        <CodiconIcon name="chevron-down" :size="12" />
+        <CodiconIcon name="chevron-down" :size="13" />
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">

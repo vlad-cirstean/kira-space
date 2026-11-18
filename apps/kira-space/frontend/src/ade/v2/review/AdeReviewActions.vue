@@ -123,7 +123,7 @@ function done(kind: 'review' | 'comment'): void {
         <DropdownMenuTrigger as-child>
           <Button variant="title" size="title-labelled" data-testid="ade-review-actions-trigger">
             {{ t('space.ade.board.branchTag.review.label') }}
-            <CodiconIcon name="chevron-down" :size="12" />
+            <CodiconIcon name="chevron-down" :size="16" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -136,7 +136,7 @@ function done(kind: 'review' | 'comment'): void {
         data-testid="ade-review-cr-comment"
         @click="mode = 'conversation'"
       >
-        <CodiconIcon name="comment" :size="12" />
+        <CodiconIcon name="comment" :size="16" />
         {{ t('space.ade.review.actions.conversation.label', { short }) }}
       </Button>
     </template>

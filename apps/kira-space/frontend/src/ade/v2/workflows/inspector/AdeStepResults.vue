@@ -123,7 +123,7 @@ const targets = (next: string): WorkflowStep[] => {
       data-testid="ade-wf-add-result"
       @click="draft.createResult(step.id)"
     >
-      <CodiconIcon :name="ICON.add" :size="12" />
+      <CodiconIcon :name="ICON.add" :size="13" />
       {{ t('space.ade.workflows.results.add.label') }}
     </Button>
   </div>

@@ -147,7 +147,7 @@ const appName = computed(() => t('common.product.kiraSpace.label'));
               data-testid="schedule-timezone"
             >
               <span class="truncate">{{ schedule.timezone }}</span>
-              <CodiconIcon name="chevron-down" :size="12" />
+              <CodiconIcon name="chevron-down" :size="13" />
             </Button>
           </PopoverTrigger>
           <PopoverContent flush class="w-96">

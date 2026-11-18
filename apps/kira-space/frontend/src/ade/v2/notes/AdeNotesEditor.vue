@@ -243,7 +243,7 @@ function keepFocus(e: MouseEvent): void {
         @mousedown="keepFocus"
         @click="btn.run"
       >
-        <CodiconIcon v-if="btn.icon" :name="btn.icon" :size="12" />
+        <CodiconIcon v-if="btn.icon" :name="btn.icon" :size="13" />
         <span v-else>{{ btn.glyph }}</span>
       </Button>
       <template v-if="linkOpen">

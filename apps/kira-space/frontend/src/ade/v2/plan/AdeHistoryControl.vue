@@ -21,7 +21,7 @@ const emit = defineEmits<{ load: []; hide: []; pick: [taskId: string] }>();
         data-testid="ade-load-history"
         @click="open ? emit('hide') : emit('load')"
       >
-        <CodiconIcon name="history" :size="12" />
+        <CodiconIcon name="history" :size="13" />
         <span>{{
           open ? t('space.ade.plan.history.hide.label') : t('common.module.history.label')
         }}</span>

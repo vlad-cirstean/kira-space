@@ -96,7 +96,7 @@ function openRepos(): void {
                 :aria-label="t('space.ade.repoGate.remove.aria', { repo: labelOf(id) })"
                 @click="drop(id)"
               >
-                <CodiconIcon name="close" :size="12" />
+                <CodiconIcon name="close" :size="13" />
               </Button>
             </span>
           </div>

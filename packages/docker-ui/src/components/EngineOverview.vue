@@ -184,7 +184,7 @@ function refresh(): Promise<void> {
             data-testid="docker-start-stopped"
             @click="runAll(stoppedIds, 'start')"
           >
-            <CodiconIcon name="play" :size="12" class="text-ok" />
+            <CodiconIcon name="play" :size="13" class="text-ok" />
             {{ t('docker.engine.startStopped.label') }}
           </Button>
           <Button
@@ -195,7 +195,7 @@ function refresh(): Promise<void> {
             data-testid="docker-stop-all"
             @click="runAll(runningIds, 'stop')"
           >
-            <CodiconIcon name="debug-stop" :size="12" class="text-error" />
+            <CodiconIcon name="debug-stop" :size="13" class="text-error" />
             {{ t('common.action.stopAll.label') }}
           </Button>
           <Button
@@ -204,7 +204,7 @@ function refresh(): Promise<void> {
             data-testid="docker-overview-refresh"
             @click="refresh"
           >
-            <CodiconIcon name="refresh" :size="12" />{{ t('common.action.refresh.label') }}
+            <CodiconIcon name="refresh" :size="13" />{{ t('common.action.refresh.label') }}
           </Button>
         </template>
       </DetailHeader>

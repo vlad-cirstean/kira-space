@@ -94,7 +94,7 @@ async function askDelete(): Promise<void> {
           data-testid="ade-proof-step-open"
           @click="open.mutate()"
         >
-          <CodiconIcon :name="proofViewIcon(s.view as ProofView)" :size="12" />
+          <CodiconIcon :name="proofViewIcon(s.view as ProofView)" :size="13" />
           <span class="text-subtle">#{{ s.ordinal }}</span>
           <span class="truncate">{{ s.description }}</span>
           <span v-if="s.source" class="ml-auto text-subtle">{{ s.source }}</span>

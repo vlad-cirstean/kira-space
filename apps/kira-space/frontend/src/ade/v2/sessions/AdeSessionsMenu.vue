@@ -40,7 +40,7 @@ const attention = computed(() =>
         >
         {{ t('space.common.sessions.label') }}
         <Badge variant="count" data-testid="ade-sessions-menu-count">{{ count }}</Badge>
-        <CodiconIcon name="chevron-down" :size="12" />
+        <CodiconIcon name="chevron-down" :size="13" />
       </Button>
     </PopoverTrigger>
     <PopoverContent align="end" flush class="w-120" data-testid="ade-sessions-menu-popover">

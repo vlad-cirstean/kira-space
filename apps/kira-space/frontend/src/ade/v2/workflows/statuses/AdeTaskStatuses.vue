@@ -254,7 +254,7 @@ async function confirmRemove(): Promise<void> {
       <FieldError v-if="error && !removing" data-testid="ade-status-error">{{ error }}</FieldError>
       <div>
         <Button variant="dialog" size="kira-lg" data-testid="ade-status-add" @click="add">
-          <CodiconIcon :name="ICON.add" :size="12" />
+          <CodiconIcon :name="ICON.add" :size="13" />
           {{ t('space.ade.statuses.add.label') }}
         </Button>
       </div>

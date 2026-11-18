@@ -69,7 +69,7 @@ const hint = computed(() => COPY[reason.value].hint());
       data-testid="kube-retry"
       @click="refresh.run(clusterId)"
     >
-      <CodiconIcon name="refresh" :size="12" />
+      <CodiconIcon name="refresh" :size="13" />
       {{ t('common.action.retry.label') }}
     </Button>
   </EmptyState>
