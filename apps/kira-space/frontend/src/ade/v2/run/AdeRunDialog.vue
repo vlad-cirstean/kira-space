@@ -219,18 +219,16 @@ async function send(): Promise<void> {
           class="flex flex-col gap-1.5"
           data-testid="ade-run-context"
         >
-          <div v-if="handoverIn" class="flex flex-col gap-1" data-testid="ade-run-handover">
-            <span class="text-muted-foreground">{{
+          <Field v-if="handoverIn" data-testid="ade-run-handover">
+            <FieldLabel>{{
               t('space.ade.runDialog.handover.label', { stage: handoverIn.fromStepName })
-            }}</span>
+            }}</FieldLabel>
             <CodeBlock class="break-words">{{ handoverIn.body }}</CodeBlock>
-          </div>
-          <div v-if="taskNotes" class="flex flex-col gap-1" data-testid="ade-run-notes">
-            <span class="text-muted-foreground">{{
-              t('space.ade.runDialog.taskNotes.label')
-            }}</span>
+          </Field>
+          <Field v-if="taskNotes" data-testid="ade-run-notes">
+            <FieldLabel>{{ t('space.ade.runDialog.taskNotes.label') }}</FieldLabel>
             <CodeBlock class="break-words">{{ taskNotes }}</CodeBlock>
-          </div>
+          </Field>
         </div>
         <div v-if="smartStep" class="flex flex-col gap-1" data-testid="ade-run-smart">
           <div class="flex items-center gap-2 text-muted-foreground">

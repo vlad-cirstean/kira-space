@@ -178,11 +178,11 @@ async function discard(): Promise<void> {
           data-testid="ade-dialog-setup"
         />
 
-        <div v-if="baseBranch" class="flex items-center gap-2" data-testid="ade-dialog-base">
-          <span class="text-muted-foreground">{{ t('space.common.base.label') }}</span>
+        <Field v-if="baseBranch" orientation="responsive" data-testid="ade-dialog-base">
+          <FieldLabel for="ade-dialog-base-picker">{{ t('space.common.base.label') }}</FieldLabel>
           <BranchPicker
+            id="ade-dialog-base-picker"
             v-model:open="baseOpen"
-            size="kira"
             testid="ade-base-picker"
             :model-value="baseValue(baseChoice)"
             :branches="baseOpts"
@@ -192,7 +192,7 @@ async function discard(): Promise<void> {
             :loading="baseData.isPending.value"
             @select="(o) => dialogs.pickBase(baseChoiceOf(o.value))"
           />
-        </div>
+        </Field>
 
         <Alert
           v-for="b in view.blockers"
