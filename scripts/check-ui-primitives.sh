@@ -14,7 +14,7 @@
 #
 # Guards U110-U117: docs/v0.3.17/plans/P672-part2.md.
 #
-# Guards U118-U121: docs/v0.3.17/plans/P672-part4.md.
+# Guards U118-U121: docs/v0.3.17/plans/P672-part4.md; U118 flush rule: P672-part4-iter2.md.
 # Guards U122-U123: docs/v0.3.17/plans/P672-part5.md.
 # Guard U124: docs/v0.3.17/plans/P672-part6.md.
 # Guard U125: docs/v0.3.17/plans/P672-part7.md.
@@ -22,6 +22,7 @@
 # Guards U127-U132 and U88 steps 5-12: docs/v0.3.17/plans/P672-part9.md.
 # Guards U91, U110, U116, U123 (extended): docs/v0.3.17/plans/P672-part2-iter2.md.
 # Guard U133: docs/v0.3.17/plans/P672-part3-iter2.md.
+# Guards U134-U140: docs/v0.3.17/plans/P672-part4-iter2.md.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -274,7 +275,7 @@ U114@@v@@/ade/v2/plan/@@ADE tone class off the plan board (theme tones and Badge
 U115@@vt@@@@font-mono (use font-data)@@${TOK}font-mono(?![\w-])
 U116@@v@@@@toned icon in a hand menu entry (menu icons stay muted)@@(?s)<DropdownMenu(?:RadioItem|CheckboxItem|Label|SubTrigger)\b(?:(?!</DropdownMenu(?:RadioItem|CheckboxItem|Label|SubTrigger)>).)*?<CodiconIcon\b(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info|tone-)
 U117@@v@@@@segmented SecondaryTabs inside a form (a form value is variant choice)@@(?s)<(?:Field|FieldSet|DialogBody)\b(?&t)(?<!/)>(?:(?!</(?:Field|FieldSet|DialogBody)>).)*?<SecondaryTabs\b(?&t)\svariant="segmented"
-U118@@v@@@@DialogBody class other than min-h-* (only flush and min-h-*, RD.5)@@<DialogBody\b(?&t)\s:?class="(?!min-h-[\w.\[\]-]+")
+U118@@v@@@@DialogBody class other than min-h-* (only flush and min-h-*, RD.5); flush body never re-adds p-3@@<DialogBody\b(?&t)\s:?class="(?!min-h-[\w.\[\]-]+")|<DialogBody\b(?=(?&t)\sflush\b)(?&t)>\s*(?:<template\b(?&t)>\s*)?<div\b(?=(?&t)\sclass="[^"]*${TOK}p-3\b)
 U120@@v@@@@link Button not size inline (RB.1)@@<Button\b(?=(?&t)\svariant="link")(?!(?&t)\ssize="inline")
 U121@@v@@@@DialogDescription inside DialogBody (intro text is the header description, RD.4)@@(?s)<DialogBody\b(?&t)(?<!/)>(?:(?!</DialogBody>).)*?<DialogDescription\b
 U122@@v@@MenuItems.vue@@hand DropdownMenuItem (menus render MenuItems from a MenuItem[]; radio, checkbox and label blocks are other tags, RM.1)@@<DropdownMenuItem\b
@@ -289,6 +290,13 @@ U130@@v@@SectionHeading.vue|PanelHeader.vue|DetailSection.vue|VariableRow.vue|Va
 U131@@v@@@@EmptyState without icon or loading (RE.2)@@<EmptyState\b(?!(?&t)\s(?::?icon|loading)(?=[\s=/>]))
 U132@@vt@@/ade/v2/plan/|AdeShelfRow.vue|AdeActivityIcon.vue|AdeTaskPanel.vue|AdeBranchPanel.vue|AdeStepNode.vue@@border-l-3 or border-2 off the plan board and glyph outlines (RBo.2)@@${TOK}!?(?:border-l-3|border-2)(?![\w-])
 U133@@v@@@@form control without id, aria-label or aria-labelledby (RF.1; FieldLabel for/id, or aria-label in bars, rows and cells; a v-bind of attrs forwards the caller's name)@@<(?:Input|Textarea|NativeSelect|InputGroupInput|InputGroupTextarea|NumberStepperInput|AutocompleteField)\b(?!(?&t)\s(?:(?::?id|:?aria-label|:?aria-labelledby)=|v-bind="[$]?attrs"))
+U134@@v@@DateTimePicker.vue|AdeSessionStrip.vue|DynamicValuesDialog.vue|AdeTaskStatuses.vue@@labelled toolbar Button without leading icon (RB.2; CodiconIcon 13 first, select-like trigger ends chevron-down)@@<Button\b(?=(?&t)\svariant="toolbar")(?=(?&t)\ssize="kira")(?!(?&t)\s:?aria-pressed=)(?&t)>(?!(?:(?!</Button\s*>)[\s\S])*?name="chevron-down")\s*(?!<(?:CodiconIcon|Spinner|EngineIcon)\b)(?!</Button)\S
+U135@@v@@@@Kbd inside Button (Button kbd prop)@@<Button\b(?&t)>(?:(?!</Button\s*>)[\s\S])*?<Kbd\b
+U136@@v@@@@styled text in DialogFooter (#start sets text-kira-sm text-subtle; bare span)@@<DialogFooter\b(?&t)>(?:(?!</DialogFooter\s*>)[\s\S])*?(?:<FieldDescription\b|<span\b(?=(?&t)\sclass="[^"]*${TOK}text-(?:kira-sm|muted-foreground|subtle)\b))
+U137@@v@@@@dialog-danger footer without DialogContent destructive (RD.7)@@<DialogContent\b(?!(?&t)\s:?destructive\b)(?&t)>(?:(?!</DialogContent\s*>)[\s\S])*?<DialogFooter\b(?&t)>(?:(?!</DialogFooter\s*>)[\s\S])*?variant="dialog-danger"
+U138@@v@@@@FieldError as last DialogBody child (failure is an error Alert, RD.6)@@</FieldError\s*>\s*(?:</template\s*>\s*)*</DialogBody\s*>
+U139@@v@@@@two adjacent emphasised buttons (one emphasised button rightmost, RD.2)@@<Button\b(?=(?&t)\svariant="dialog-(?:danger|primary|approve)")(?&t)>(?:(?!</Button\s*>)[\s\S])*</Button\s*>\s*(?:<!--(?:(?!-->)[\s\S])*-->\s*)?<Button\b(?=(?&t)\svariant="dialog-(?:danger|primary|approve)")
+U140@@v@@@@dismiss label on an emphasised button (Close, Done, Dismiss are dialog)@@<Button\b(?=(?&t)\svariant="dialog-(?:primary|approve|danger)")(?&t)>(?:(?!</Button\s*>)[\s\S])*?t\('common\.(?:done\.status|action\.close\.label|action\.dismiss\.label)'\)
 GUARDS
 
 # hits: "U<n> path"
