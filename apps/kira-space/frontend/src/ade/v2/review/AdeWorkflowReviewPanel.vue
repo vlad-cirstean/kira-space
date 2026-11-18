@@ -2,10 +2,11 @@
 import type { ReviewComment } from '@kira/git-ipc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
-import { FieldError, FieldLabel } from '@theme/components/ui/field';
+import { FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { RadioGroup, RadioGroupCard } from '@theme/components/ui/radio-group';
 import { Textarea } from '@theme/components/ui/textarea';
@@ -363,7 +364,9 @@ const stateLabel = (c: ReviewComment): string =>
       <AdeRunLog v-if="showLog" kind="run" :id="round.run.id" max-height="180px" />
     </section>
 
-    <FieldError v-if="error" data-testid="ade-review-error">{{ error }}</FieldError>
+    <Alert variant="error" v-if="error" data-testid="ade-review-error"
+      ><AlertDescription>{{ error }}</AlertDescription></Alert
+    >
 
     <section v-if="state" class="flex flex-col gap-1.5" data-testid="ade-review-finish">
       <Textarea

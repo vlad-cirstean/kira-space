@@ -2,10 +2,10 @@
 import CodeBlock from '@theme/components/CodeBlock.vue';
 import DetailSection from '@theme/components/DetailSection.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Alert } from '@theme/components/ui/alert';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { FieldDescription, FieldError } from '@theme/components/ui/field';
+import { FieldDescription } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
 import { copyAndAnnounce } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
@@ -64,9 +64,9 @@ function copy(command: string): void {
   <div class="contents" v-show="active">
     <FieldDescription>{{ t('space.settings.cliTools.description') }}</FieldDescription>
 
-    <FieldError v-if="loadError" data-testid="cli-tools-error">{{
-      errorText(loadError)
-    }}</FieldError>
+    <Alert variant="error" v-if="loadError" data-testid="cli-tools-error"
+      ><AlertDescription>{{ errorText(loadError) }}</AlertDescription></Alert
+    >
 
     <DetailSection
       v-for="tool in list"

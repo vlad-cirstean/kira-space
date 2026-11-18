@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Alert } from '@theme/components/ui/alert';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import {
@@ -122,9 +122,9 @@ async function onPull(): Promise<void> {
   <div class="contents" v-show="active">
     <FieldDescription>{{ t('space.settings.configSync.description') }}</FieldDescription>
 
-    <FieldError v-if="failure" data-testid="config-sync-pane-error">{{
-      errorText(failure)
-    }}</FieldError>
+    <Alert variant="error" v-if="failure" data-testid="config-sync-pane-error"
+      ><AlertDescription>{{ errorText(failure) }}</AlertDescription></Alert
+    >
 
     <template v-if="showForm">
       <Field>

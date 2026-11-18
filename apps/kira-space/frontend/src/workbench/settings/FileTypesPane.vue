@@ -2,14 +2,8 @@
 import type { FileHandlerExt, FileHandlerGroup } from '@shared/domain/repo';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import Disclosure from '@theme/components/Disclosure.vue';
-import { Alert } from '@theme/components/ui/alert';
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@theme/components/ui/field';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
@@ -103,12 +97,16 @@ const open = ref<Record<string, boolean>>({});
       <Alert v-if="unrestored.length > 0" variant="warn" data-testid="file-types-unrestored">
         {{ t('space.settings.fileTypes.unrestored.body', { exts: unrestored.join(', ') }) }}
       </Alert>
-      <FieldError v-if="status.error.value" data-testid="file-types-load-error">
-        {{ errorText(status.error.value) }}
-      </FieldError>
-      <FieldError v-if="setHandlers.error.value" data-testid="file-types-set-error">
-        {{ errorText(setHandlers.error.value) }}
-      </FieldError>
+      <Alert variant="error" v-if="status.error.value" data-testid="file-types-load-error"
+        ><AlertDescription>
+          {{ errorText(status.error.value) }}
+        </AlertDescription></Alert
+      >
+      <Alert variant="error" v-if="setHandlers.error.value" data-testid="file-types-set-error"
+        ><AlertDescription>
+          {{ errorText(setHandlers.error.value) }}
+        </AlertDescription></Alert
+      >
 
       <Field v-for="group in groups" :key="group.id" :data-testid="`file-types-group-${group.id}`">
         <Field orientation="horizontal">

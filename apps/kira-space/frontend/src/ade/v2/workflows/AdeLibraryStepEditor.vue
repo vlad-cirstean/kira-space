@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { FieldDescription, FieldError } from '@theme/components/ui/field';
+import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
@@ -103,9 +104,9 @@ async function remove(): Promise<void> {
     <FieldDescription v-if="users.length" data-testid="ade-step-used-by">{{
       t('space.ade.steps.usedBy.hint', { workflows: users.join(', ') })
     }}</FieldDescription>
-    <FieldError v-if="deleteError" data-testid="ade-step-delete-error">{{
-      deleteError
-    }}</FieldError>
+    <Alert variant="error" v-if="deleteError" data-testid="ade-step-delete-error"
+      ><AlertDescription>{{ deleteError }}</AlertDescription></Alert
+    >
     <ConfigFileProblem
       :error="entry.error"
       :show-yaml="wfUi.stepMode !== 'yaml' ? () => void setMode('yaml') : undefined"
