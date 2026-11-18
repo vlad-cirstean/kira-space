@@ -98,7 +98,7 @@ const shownCount = computed(() => list.data.value?.rows.length ?? 0);
             @click="list.refetch()"
           />
         </ViewToolbar>
-        <ViewToolbar class="flex-wrap">
+        <ViewToolbar class="h-auto min-h-bar flex-wrap py-1">
           <NamespacePicker
             v-if="namespaced"
             :value="namespace"

@@ -190,7 +190,7 @@ function clear(): void {
 
 <template>
   <div class="relative flex h-full flex-col" data-testid="docker-logs">
-    <ViewToolbar class="flex-wrap">
+    <ViewToolbar class="h-auto min-h-bar flex-wrap py-1">
       <Toggle
         v-model="follow"
         size="kira"

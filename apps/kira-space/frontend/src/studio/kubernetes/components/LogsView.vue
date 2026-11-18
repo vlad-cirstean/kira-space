@@ -173,7 +173,7 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
 
 <template>
   <div class="flex h-full min-h-0 flex-col" data-testid="kube-logs">
-    <ViewToolbar class="flex-wrap">
+    <ViewToolbar class="h-auto min-h-bar flex-wrap py-1">
       <NativeSelect
         v-model="container"
         size="kira"
