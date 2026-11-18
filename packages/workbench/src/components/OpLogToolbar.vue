@@ -100,9 +100,9 @@ function toggleFacet(value: string): void {
     <slot />
     <Tooltip>
       <TooltipTrigger as-child>
-        <Button class="ml-auto" variant="dialog" size="kira-lg" @click="emit('clear')">{{
-          t('common.action.clear.label')
-        }}</Button>
+        <Button class="ml-auto" variant="toolbar" size="kira" @click="emit('clear')"
+          ><CodiconIcon name="clear-all" :size="13" />{{ t('common.action.clear.label') }}</Button
+        >
       </TooltipTrigger>
       <TooltipContent>{{ clearHint }}</TooltipContent>
     </Tooltip>

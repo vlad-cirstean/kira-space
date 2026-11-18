@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ScriptRun } from '@shared/domain/scriptRuns';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Button } from '@theme/components/ui/button';
@@ -53,12 +54,11 @@ function show(run: ScriptRun): void {
         </InlineState>
         <div class="px-1.5 pb-1.5">
           <Button
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             data-testid="runs-show-history"
             @click="ctx.showOperations()"
-          >
-            {{ t('automations.runs.showHistory.label') }}
+            ><CodiconIcon name="history" :size="13" />{{ t('automations.runs.showHistory.label') }}
           </Button>
         </div>
       </template>
@@ -105,12 +105,11 @@ function show(run: ScriptRun): void {
           </button>
           <Button
             v-if="run.state === 'running'"
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             data-testid="run-stop"
             @click="stop.mutate(run.id)"
-          >
-            {{ t('common.action.stop.label') }}
+            ><CodiconIcon name="debug-stop" :size="13" />{{ t('common.action.stop.label') }}
           </Button>
         </div>
       </div>

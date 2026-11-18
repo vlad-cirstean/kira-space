@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { HttpCookieWire, HttpResponseWire } from '@shared/domain/http';
 import { useMutation } from '@tanstack/vue-query';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
@@ -146,15 +147,14 @@ const showHopIndex = computed(() => (props.response?.timeline?.hops.length ?? 0)
           data-testid="http-cookies-filter"
         />
         <Button
-          variant="dialog"
+          variant="toolbar"
           size="kira"
           class="shrink-0"
           :disabled="requestCookies.length === 0"
           :pending="clearMutation.isPending.value"
           data-testid="http-cookies-clear-all"
           @click="onClearAll"
-        >
-          {{ t('common.action.clearAll.label') }}
+          ><CodiconIcon name="clear-all" :size="13" />{{ t('common.action.clearAll.label') }}
         </Button>
       </div>
       <span

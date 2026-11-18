@@ -104,7 +104,7 @@ defineExpose({ dirty: computed(() => open.value && (name.value !== '' || value.v
         <div class="flex justify-end gap-1">
           <Button
             variant="dialog"
-            size="kira-lg"
+            size="kira"
             data-testid="keyvalue-add-cancel"
             @click="open = false"
             >{{
@@ -113,7 +113,7 @@ defineExpose({ dirty: computed(() => open.value && (name.value !== '' || value.v
           >
           <Button
             variant="dialog-primary"
-            size="kira-lg"
+            size="kira"
             data-testid="keyvalue-add-save"
             :pending="pending"
             :disabled="disabled"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useMutation } from '@tanstack/vue-query';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import CodeBlock from '@theme/components/CodeBlock.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import InlineState from '@theme/components/InlineState.vue';
@@ -99,7 +100,7 @@ async function rerun(): Promise<void> {
         <Button
           v-if="run.state === 'waiting'"
           variant="dialog-primary"
-          size="kira-lg"
+          size="kira"
           class="ml-auto"
           data-testid="run-review"
           @click="claim.mutate(`schedule:${run.id}`)"
@@ -109,7 +110,7 @@ async function rerun(): Promise<void> {
         <Button
           v-if="run.state === 'waiting'"
           variant="dialog"
-          size="kira-lg"
+          size="kira"
           data-testid="run-decline"
           @click="decline.mutate(run.id)"
         >
@@ -117,13 +118,12 @@ async function rerun(): Promise<void> {
         </Button>
         <Button
           v-if="run.state === 'running'"
-          variant="dialog"
-          size="kira-lg"
+          variant="toolbar"
+          size="kira"
           class="ml-auto"
           data-testid="run-stop"
           @click="stop.mutate(run.id)"
-        >
-          {{ t('common.action.stop.label') }}
+          ><CodiconIcon name="debug-stop" :size="13" />{{ t('common.action.stop.label') }}
         </Button>
       </div>
       <div v-if="ended" class="flex flex-col gap-1.5" data-testid="script-run-result">
@@ -131,7 +131,7 @@ async function rerun(): Promise<void> {
         <Button
           v-if="canContinue"
           variant="dialog"
-          size="kira-lg"
+          size="kira"
           class="self-start"
           data-testid="run-continue"
           @click="continueInTerminal"

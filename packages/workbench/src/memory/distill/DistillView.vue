@@ -156,7 +156,7 @@ async function run(): Promise<void> {
       <div v-else class="flex min-w-0 items-center gap-2">
         <Button
           variant="dialog"
-          size="kira"
+          size="kira-lg"
           :pending="choose.isPending.value"
           :disabled="inFlight"
           data-testid="distill-choose"

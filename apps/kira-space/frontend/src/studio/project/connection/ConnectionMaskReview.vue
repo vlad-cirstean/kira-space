@@ -237,7 +237,7 @@ const STATE_VARIANT = { masked: 'ok', reviewed: 'default', pending: 'warn' } as 
               </NativeSelect>
               <Button
                 variant="dialog"
-                size="kira-lg"
+                size="kira"
                 :disabled="!on || needReview === 0"
                 data-testid="connection-privacy-review-allow-all"
                 @click="allowAllWaiting"

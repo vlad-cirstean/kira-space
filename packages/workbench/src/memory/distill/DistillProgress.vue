@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DistillStage } from '@shared/domain/memoryDistill';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import Spinner from '@theme/components/Spinner.vue';
 import { Button } from '@theme/components/ui/button';
 import type { MessageKey } from '@theme/i18n';
@@ -31,7 +32,7 @@ const STAGE_STATUS = {
         })
       : t('common.state.loading.loading')
   }}</span>
-  <Button variant="dialog" size="kira" data-testid="distill-cancel" @click="ui.cancel()">{{
-    t('common.action.cancel.label')
-  }}</Button>
+  <Button variant="toolbar" size="kira" data-testid="distill-cancel" @click="ui.cancel()"
+    ><CodiconIcon name="debug-stop" :size="13" />{{ t('common.action.cancel.label') }}</Button
+  >
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ScriptRun } from '@shared/domain/scriptRuns';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
@@ -88,31 +89,30 @@ async function copyForAgent(): Promise<void> {
       ><AlertDescription>{{ resumeError }}</AlertDescription></Alert
     >
     <div v-if="run.state !== 'running' && run.state !== 'waiting'" class="flex gap-1">
-      <Button variant="dialog" size="kira-lg" data-testid="run-copy" @click="copyForAgent">
+      <Button variant="toolbar" size="kira" data-testid="run-copy" @click="copyForAgent"
+        ><CodiconIcon name="copy" :size="13" />
         {{ copied ? t('common.copy.copied.announce') : t('common.copyForAgent.label') }}
       </Button>
       <Tooltip v-if="run.resumable">
         <TooltipTrigger as-child>
           <Button
-            variant="dialog"
-            size="kira-lg"
+            variant="toolbar"
+            size="kira"
             :pending="resume.isPending.value"
             data-testid="run-resume"
             @click="resume.mutate(run)"
-          >
-            {{ t('common.action.resume.label') }}
+            ><CodiconIcon name="play" :size="13" />{{ t('common.action.resume.label') }}
           </Button>
         </TooltipTrigger>
         <TooltipContent>{{ t('automations.run.resume.tooltip') }}</TooltipContent>
       </Tooltip>
       <Button
         v-if="run.scriptId"
-        variant="dialog"
-        size="kira-lg"
+        variant="toolbar"
+        size="kira"
         data-testid="run-again"
         @click="emit('rerun')"
-      >
-        {{ t('automations.run.again.label') }}
+        ><CodiconIcon name="refresh" :size="13" />{{ t('automations.run.again.label') }}
       </Button>
     </div>
   </div>

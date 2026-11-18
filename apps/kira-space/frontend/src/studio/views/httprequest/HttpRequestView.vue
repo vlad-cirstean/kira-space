@@ -419,8 +419,8 @@ onUnmounted(() => {
       <Tooltip>
         <TooltipTrigger as-child>
           <TooltipDisabledTrigger>
-            <Button
-              variant="dialog-approve"
+            <!-- conventions-allow N17: send is the query Run commit; outline primary, not approve (RB.2) --><Button
+              variant="dialog-primary"
               size="kira"
               data-testid="http-send"
               :pending="running"

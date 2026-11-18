@@ -85,7 +85,7 @@ defineExpose({
         <div class="flex justify-end gap-1">
           <Button
             variant="dialog"
-            size="kira-lg"
+            size="kira"
             data-testid="keyvalue-edit-cancel"
             @click="open = false"
             >{{
@@ -94,7 +94,7 @@ defineExpose({
           >
           <Button
             variant="dialog-primary"
-            size="kira-lg"
+            size="kira"
             data-testid="keyvalue-edit-save"
             :pending="pending"
             :disabled="disabled"

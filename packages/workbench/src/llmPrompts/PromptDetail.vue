@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { LlmPromptPart, LlmPromptView } from '@shared/domain/llmPrompts';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import CodeBlock from '@theme/components/CodeBlock.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import SecondaryTabs, { type SecondaryTabItem } from '@theme/components/SecondaryTabs.vue';
@@ -82,13 +83,12 @@ const literal = computed(() => props.view.vars.length === 0);
           <PromptTitle :view="view" />
         </h3>
         <Button
-          variant="dialog"
+          variant="toolbar"
           size="kira"
           data-testid="llm-prompt-reset"
           :disabled="!edited"
           @click="drafts.setText(view, view.defaultText)"
-        >
-          {{ t('common.action.resetToDefault.label') }}
+          ><CodiconIcon name="discard" :size="13" />{{ t('common.action.resetToDefault.label') }}
         </Button>
       </div>
       <FieldDescription>{{ description }}</FieldDescription>

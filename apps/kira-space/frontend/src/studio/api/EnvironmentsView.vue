@@ -145,12 +145,11 @@ async function onSetActive(id: string): Promise<void> {
       <RunState :state="runState" />
       <div class="flex items-center gap-1.5 shrink-0">
         <Button
-          variant="dialog-primary"
+          variant="toolbar"
           size="kira"
           data-testid="new-environment"
           @click="onNewEnvironment"
-        >
-          {{ t('studio.api.environments.new.label') }}
+          ><CodiconIcon name="add" :size="13" />{{ t('studio.api.environments.new.label') }}
         </Button>
       </div>
     </ViewToolbar>

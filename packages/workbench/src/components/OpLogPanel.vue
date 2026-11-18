@@ -341,8 +341,8 @@ function alignClass(column: OpLogColumn): string {
         data-testid="ops-no-match"
       >
         <Button
-          variant="dialog"
-          size="kira-lg"
+          variant="link"
+          size="inline"
           data-testid="ops-clear-filters"
           @click="emit('resetFilters')"
         >
