@@ -12,22 +12,22 @@
 #
 # Guards U72-U82: git show bd0c224688d9:docs/v2.2/plans/P266-consistency-audit.md section 4.4.
 #
-# Guards U110-U117: docs/v0.3.17/plans/P672-part2.md.
-# Guards U91, U110, U116, U123 (extended): docs/v0.3.17/plans/P672-part2-iter2.md.
-# Guard U133: docs/v0.3.17/plans/P672-part3-iter2.md.
-# Guards U118-U121: docs/v0.3.17/plans/P672-part4.md; U118 flush rule: P672-part4-iter2.md.
-# Guards U134-U140: docs/v0.3.17/plans/P672-part4-iter2.md.
-# Guards U122-U123: docs/v0.3.17/plans/P672-part5.md.
-# Guards U141-U145, U123 extended: docs/v0.3.17/plans/P672-part5-iter2.md.
-# Guard U124: docs/v0.3.17/plans/P672-part6.md.
-# Guards U146, U13, U36, U124 (extended): docs/v0.3.17/plans/P672-part6-iter2.md. U124 exempts AdeTaskCard: D1 board card tone, rail and selected fill.
-# Guard U125: docs/v0.3.17/plans/P672-part7.md.
-# Guards U147-U151: docs/v0.3.17/plans/P672-part7-iter2.md.
-# Guard U126: docs/v0.3.17/plans/P672-part8.md.
-# Guards U117 (extended), U152: docs/v0.3.17/plans/P672-part8-iter2.md.
-# Guards U127-U132 and U88 steps 5-12: docs/v0.3.17/plans/P672-part9.md.
-# Guards U153-U156, U73/U88/U90 extensions: docs/v0.3.17/plans/P672-part9-iter2.md.
-# Guards U157-U161, U149 extended: docs/v0.3.17/plans/P672-part10-final.md.
+# Guards U110-U117: docs/HISTORY.md (v0.3.17).
+# Guards U91, U110, U116, U123 (extended): docs/HISTORY.md (v0.3.17).
+# Guard U133: docs/HISTORY.md (v0.3.17).
+# Guards U118-U121: docs/HISTORY.md (v0.3.17); U118 flush rule: Part 4 iter2.
+# Guards U134-U140: docs/HISTORY.md (v0.3.17).
+# Guards U122-U123: docs/HISTORY.md (v0.3.17).
+# Guards U141-U145, U123 extended: docs/HISTORY.md (v0.3.17).
+# Guard U124: docs/HISTORY.md (v0.3.17).
+# Guards U146, U13, U36, U124 (extended): docs/HISTORY.md (v0.3.17). U124 exempts AdeTaskCard: D1 board card tone, rail and selected fill.
+# Guard U125: docs/HISTORY.md (v0.3.17).
+# Guards U147-U151: docs/HISTORY.md (v0.3.17).
+# Guard U126: docs/HISTORY.md (v0.3.17).
+# Guards U117 (extended), U152: docs/HISTORY.md (v0.3.17).
+# Guards U127-U132 and U88 steps 5-12: docs/HISTORY.md (v0.3.17).
+# Guards U153-U156, U73/U88/U90 extensions: docs/HISTORY.md (v0.3.17).
+# Guards U157-U161, U149 extended: docs/HISTORY.md (v0.3.17).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
