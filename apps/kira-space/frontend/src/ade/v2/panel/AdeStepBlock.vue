@@ -217,6 +217,7 @@ function logToggleLabel(runId: string): string {
 <template>
   <Card
     variant="list"
+    class="-mx-1"
     :class="boxClass"
     data-testid="ade-step-block"
     :data-step-id="block.step.id"
