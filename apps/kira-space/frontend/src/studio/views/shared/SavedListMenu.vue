@@ -84,11 +84,11 @@ defineSlots<{
 </script>
 
 <template>
-  <PopoverContent align="start" class="w-80 gap-0 p-0" :data-testid="panelTestid">
+  <PopoverContent align="start" flush class="w-80" :data-testid="panelTestid">
     <div class="max-h-100 overflow-y-auto">
       <SectionHeading :label="title" />
       <InlineState v-if="saved.length === 0" kind="empty">{{ emptySavedText }}</InlineState>
-      <div v-else ref="savedEl" role="listbox" :aria-label="title">
+      <div v-else ref="savedEl" role="listbox" :aria-label="title" class="p-1">
         <div
           v-for="entry in saved"
           :key="entry.id"
@@ -130,7 +130,13 @@ defineSlots<{
         <Separator class="my-1" />
         <SectionHeading :label="t('studio.savedList.recent.label')" />
         <InlineState v-if="recent.length === 0" kind="empty">{{ emptyRecentText }}</InlineState>
-        <div v-else ref="recentEl" role="listbox" :aria-label="t('studio.savedList.recent.label')">
+        <div
+          v-else
+          ref="recentEl"
+          role="listbox"
+          :aria-label="t('studio.savedList.recent.label')"
+          class="p-1"
+        >
           <div
             v-for="entry in recent"
             :key="entry.id"

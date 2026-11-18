@@ -102,7 +102,7 @@ onUnmounted(() => {
     <InlineState v-if="fieldNames.length === 0" kind="empty">{{
       t('studio.documents.projection.empty')
     }}</InlineState>
-    <div v-else class="overflow-y-auto p-0.5">
+    <div v-else class="overflow-y-auto p-1">
       <Label v-for="name in fieldNames" :key="name" :class="rowVariants()">
         <Checkbox
           :model-value="selected.has(name)"

@@ -85,7 +85,7 @@ function negate(index: number, f: KibanaFilter): void {
             {{ describe(f) }}
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" class="w-80 p-2">
+        <PopoverContent align="start" class="w-80">
           <FilterEditor
             :fields="fields"
             :initial="f"
@@ -127,7 +127,7 @@ function negate(index: number, f: KibanaFilter): void {
           {{ t('studio.kibana.filter.add.label') }}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" class="w-80 p-2">
+      <PopoverContent align="start" class="w-80">
         <FilterEditor
           v-if="adding"
           :fields="fields"

@@ -89,7 +89,7 @@ const isActive = (preset: KibanaTimePreset): boolean =>
           <span class="truncate">{{ label }}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" class="w-80 p-2" data-testid="kibana-time-popover">
+      <PopoverContent align="end" class="w-80" data-testid="kibana-time-popover">
         <div class="grid grid-cols-2 gap-x-2 gap-y-0.5">
           <button
             v-for="p in [...KIBANA_RELATIVE_PRESETS, ...KIBANA_CALENDAR_PRESETS]"
@@ -103,7 +103,7 @@ const isActive = (preset: KibanaTimePreset): boolean =>
             {{ t(PRESET_KEYS[p]) }}
           </button>
         </div>
-        <div class="mt-2 flex flex-col gap-1.5 pt-2">
+        <div class="flex flex-col gap-1.5">
           <div class="flex items-center gap-2 text-kira-sm text-muted-foreground">
             <span class="w-10 shrink-0">{{ t('studio.kibana.time.from.label') }}</span>
             <Input

@@ -315,7 +315,7 @@ async function onDeleteMessage(): Promise<void> {
             :reference="(addMessageTriggerEl?.$el as HTMLElement) ?? undefined"
             class="hidden"
           />
-          <PopoverContent align="end" class="w-96 p-0" data-testid="stream-add-message-panel">
+          <PopoverContent align="end" class="w-96" data-testid="stream-add-message-panel">
             <StreamComposeMessage
               :tab-id="tab.id"
               :kind="isKafka ? 'kafka' : 'sqs'"

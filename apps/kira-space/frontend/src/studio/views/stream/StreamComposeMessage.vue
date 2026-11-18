@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
+import { PopoverHeader, PopoverTitle } from '@theme/components/ui/popover';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { computed, ref, useId } from 'vue';
 import { produceKafkaMessage, sendSqsMessage } from './mutations';
 import { useStreamViewStore } from './state';
@@ -57,72 +55,61 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <div class="flex flex-col">
-    <PanelHeader>
-      <template #start><CodiconIcon name="add" :size="13" /></template>
-      {{ t(isKafka ? 'studio.stream.produce.label' : 'studio.stream.send.label') }}
-      <template #actions>
-        <TooltipIconButton
-          icon="close"
-          :label="t('common.action.close.label')"
-          @click="emit('close')"
-        />
-      </template>
-    </PanelHeader>
+  <PopoverHeader>
+    <PopoverTitle>{{
+      t(isKafka ? 'studio.stream.produce.label' : 'studio.stream.send.label')
+    }}</PopoverTitle>
+  </PopoverHeader>
+  <Field v-if="isKafka">
+    <FieldLabel :for="keyId">{{ t('studio.stream.compose.key.label') }}</FieldLabel>
+    <Input
+      :id="keyId"
+      :model-value="key"
+      :placeholder="t('common.state.none.option')"
+      class="font-data"
+      data-testid="stream-add-message-key"
+      @update:model-value="(v) => (key = String(v))"
+    />
+  </Field>
 
-    <div class="flex flex-col gap-1.5 p-2">
-      <Field v-if="isKafka">
-        <FieldLabel :for="keyId">{{ t('studio.stream.compose.key.label') }}</FieldLabel>
-        <Input
-          :id="keyId"
-          :model-value="key"
-          :placeholder="t('common.state.none.option')"
-          class="font-data"
-          data-testid="stream-add-message-key"
-          @update:model-value="(v) => (key = String(v))"
-        />
-      </Field>
+  <Field>
+    <FieldLabel :for="bodyId">{{ t('common.body.label') }}</FieldLabel>
+    <Textarea
+      class="min-h-32 max-h-90 resize-y font-data"
+      :id="bodyId"
+      v-model="body"
+      :placeholder="t('studio.stream.compose.body.placeholder')"
+      data-testid="stream-add-message-body"
+      @keydown="wrapSelectionOnType"
+    />
+  </Field>
 
-      <Field>
-        <FieldLabel :for="bodyId">{{ t('common.body.label') }}</FieldLabel>
-        <Textarea
-          class="min-h-32 max-h-90 resize-y font-data"
-          :id="bodyId"
-          v-model="body"
-          :placeholder="t('studio.stream.compose.body.placeholder')"
-          data-testid="stream-add-message-body"
-          @keydown="wrapSelectionOnType"
-        />
-      </Field>
+  <Field>
+    <FieldLabel :for="headersId">{{ t('studio.stream.compose.headers.label') }}</FieldLabel>
+    <Textarea
+      class="font-data"
+      :id="headersId"
+      v-model="headers"
+      :placeholder="HEADERS_EXAMPLE"
+      data-testid="stream-add-message-headers"
+      @keydown="wrapSelectionOnType"
+    />
+  </Field>
 
-      <Field>
-        <FieldLabel :for="headersId">{{ t('studio.stream.compose.headers.label') }}</FieldLabel>
-        <Textarea
-          class="font-data"
-          :id="headersId"
-          v-model="headers"
-          :placeholder="HEADERS_EXAMPLE"
-          data-testid="stream-add-message-headers"
-          @keydown="wrapSelectionOnType"
-        />
-      </Field>
+  <FieldError v-if="error" data-testid="stream-add-message-error">{{ error }}</FieldError>
 
-      <FieldError v-if="error" data-testid="stream-add-message-error">{{ error }}</FieldError>
-    </div>
-
-    <div class="flex justify-end gap-1.5 py-1.5 px-2">
-      <Button variant="dialog" size="kira-lg" @click="emit('close')">{{
-        t('common.action.cancel.label')
-      }}</Button>
-      <Button
-        variant="dialog-primary"
-        size="kira-lg"
-        :disabled="!canSubmit"
-        data-testid="stream-add-message-submit"
-        @click="submit"
-      >
-        {{ t(isKafka ? 'studio.stream.produceAction.label' : 'common.action.send.label') }}
-      </Button>
-    </div>
+  <div class="flex justify-end gap-1">
+    <Button variant="dialog" size="kira" data-dialog-dismiss @click="emit('close')">{{
+      t('common.action.cancel.label')
+    }}</Button>
+    <Button
+      variant="dialog-primary"
+      size="kira"
+      :disabled="!canSubmit"
+      data-testid="stream-add-message-submit"
+      @click="submit"
+    >
+      {{ t(isKafka ? 'studio.stream.produceAction.label' : 'common.action.send.label') }}
+    </Button>
   </div>
 </template>

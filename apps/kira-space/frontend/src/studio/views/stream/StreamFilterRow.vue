@@ -235,7 +235,7 @@ const partitionButtonLabel = computed(() => {
           :reference="(partitionTriggerEl?.$el as HTMLElement) ?? undefined"
           class="hidden"
         />
-        <PopoverContent align="start" class="w-56 p-0" data-testid="stream-partition-menu">
+        <PopoverContent align="start" flush class="w-56" data-testid="stream-partition-menu">
           <div class="flex flex-col max-h-60 overflow-y-auto gap-0.5 p-1">
             <QueryState :query="partitionsQuery" variant="inline">
               <template #empty>
@@ -301,7 +301,8 @@ const partitionButtonLabel = computed(() => {
             />
             <PopoverContent
               align="start"
-              class="w-56 p-0"
+              flush
+              class="w-56"
               data-testid="stream-filter-timestamp-calendar-popover"
             >
               <DateTimePicker

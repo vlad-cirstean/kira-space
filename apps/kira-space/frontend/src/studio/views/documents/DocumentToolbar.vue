@@ -153,7 +153,7 @@ const projectionCount = computed(() => {
             :reference="(projectionTriggerEl?.$el as HTMLElement) ?? undefined"
             class="hidden"
           />
-          <PopoverContent align="end" class="w-56 p-0" data-testid="document-projection-menu">
+          <PopoverContent align="end" flush class="w-56" data-testid="document-projection-menu">
             <ProjectionMenu :tab-id="tab.id" :caps="caps" />
           </PopoverContent>
         </Popover>

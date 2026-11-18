@@ -178,7 +178,8 @@ watch(calendarOpen, (open) => {
         </span>
         <PopoverContent
           align="start"
-          class="w-56 gap-0 p-0"
+          flush
+          class="w-56"
           data-testid="cell-editor-timestamp-calendar-popover"
         >
           <DateTimePicker :model-value="pickerDate" :zone="zone" @update:model-value="onPick" />

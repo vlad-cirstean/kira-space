@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { FieldError } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverHeader,
+  PopoverTitle,
+} from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
@@ -74,55 +79,55 @@ defineExpose({ dirty: computed(() => open.value && (name.value !== '' || value.v
       <PopoverAnchor :reference="anchorRef ?? undefined" />
     </div>
     <PopoverContent align="start" class="w-80" data-testid="keyvalue-add-popover">
-      <div class="flex flex-col gap-1.5 p-1.5">
-        <SectionHeading :label="t('studio.keyValue.add.title')" />
-        <Input
-          v-model="name"
-          v-bind="invalidAttrs('name')"
-          :placeholder="t('studio.keyValue.add.namePlaceholder.placeholder')"
-          class="w-full"
-          data-testid="keyvalue-add-name"
-        />
-        <FieldError
-          v-if="errorFor('name')"
-          :id="errorId('name')"
-          data-testid="keyvalue-add-name-error"
+      <PopoverHeader
+        ><PopoverTitle>{{ t('studio.keyValue.add.title') }}</PopoverTitle></PopoverHeader
+      >
+      <Input
+        v-model="name"
+        v-bind="invalidAttrs('name')"
+        :placeholder="t('studio.keyValue.add.namePlaceholder.placeholder')"
+        class="w-full"
+        data-testid="keyvalue-add-name"
+      />
+      <FieldError
+        v-if="errorFor('name')"
+        :id="errorId('name')"
+        data-testid="keyvalue-add-name-error"
+        >{{
+          errorFor('name')
+        }}</FieldError
+      >
+      <Input
+        v-model="value"
+        :placeholder="t('studio.keyValue.add.valuePlaceholder.placeholder')"
+        class="w-full"
+        data-testid="keyvalue-add-value"
+        @keydown.enter="onSave"
+      />
+      <Alert v-if="error" variant="error" data-testid="keyvalue-add-error">
+        <AlertDescription>{{ error }}</AlertDescription>
+      </Alert>
+      <div class="flex justify-end gap-1">
+        <Button
+          variant="dialog"
+          size="kira"
+          data-testid="keyvalue-add-cancel"
+          @click="open = false"
           >{{
-            errorFor('name')
-          }}</FieldError
+            t('common.action.cancel.label')
+          }}</Button
         >
-        <Input
-          v-model="value"
-          :placeholder="t('studio.keyValue.add.valuePlaceholder.placeholder')"
-          class="w-full"
-          data-testid="keyvalue-add-value"
-          @keydown.enter="onSave"
-        />
-        <Alert v-if="error" variant="error" data-testid="keyvalue-add-error">
-          <AlertDescription>{{ error }}</AlertDescription>
-        </Alert>
-        <div class="flex justify-end gap-1">
-          <Button
-            variant="dialog"
-            size="kira"
-            data-testid="keyvalue-add-cancel"
-            @click="open = false"
-            >{{
-              t('common.action.cancel.label')
-            }}</Button
-          >
-          <Button
-            variant="dialog-primary"
-            size="kira"
-            data-testid="keyvalue-add-save"
-            :pending="pending"
-            :disabled="disabled"
-            @click="onSave"
-            >{{
-              t('common.action.save.label')
-            }}</Button
-          >
-        </div>
+        <Button
+          variant="dialog-primary"
+          size="kira"
+          data-testid="keyvalue-add-save"
+          :pending="pending"
+          :disabled="disabled"
+          @click="onSave"
+          >{{
+            t('common.action.save.label')
+          }}</Button
+        >
       </div>
     </PopoverContent>
   </Popover>

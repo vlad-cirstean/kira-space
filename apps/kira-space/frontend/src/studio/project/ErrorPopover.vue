@@ -2,10 +2,14 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
 import { FieldError } from '@theme/components/ui/field';
-import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverFooter,
+  PopoverTrigger,
+} from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { copyOrReportError } from '@workbench/behaviour/clipboard';
-import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { ref } from 'vue';
 
 // A "click for full text" replacement for truncated inline error text (unreadable in a native
@@ -38,11 +42,7 @@ function onCopy(): void {
           <span class="truncate">{{ props.message }}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        class="w-96 max-h-60 gap-0 overflow-hidden p-0"
-        data-testid="error-popover"
-      >
+      <PopoverContent align="start" flush class="w-96 max-h-60" data-testid="error-popover">
         <FieldError
           class="overflow-auto whitespace-pre-wrap break-words p-2 font-data text-kira-md"
           >{{
@@ -52,16 +52,14 @@ function onCopy(): void {
         <FieldError v-if="copyError" class="px-2 pb-1" data-testid="error-popover-copy-error">
           {{ t('common.copy.failed.error', { error: copyError }) }}
         </FieldError>
-        <!-- Footer is the same 28px band used everywhere a toolbar sits at the edge of a floating
-             surface, with the border on top since this one closes the popover. -->
-        <ViewToolbar>
-          <Button variant="toolbar" size="kira" class="ml-auto" @click="onCopy">{{
-            t('common.action.copy.label')
-          }}</Button>
-          <Button variant="toolbar" size="kira" @click="open = false">{{
-            t('common.action.close.label')
-          }}</Button>
-        </ViewToolbar>
+        <PopoverFooter>
+          <Button variant="toolbar" size="kira" @click="onCopy"
+            ><CodiconIcon name="copy" :size="13" />{{ t('common.action.copy.label') }}</Button
+          >
+          <Button variant="toolbar" size="kira" @click="open = false"
+            ><CodiconIcon name="close" :size="13" />{{ t('common.action.close.label') }}</Button
+          >
+        </PopoverFooter>
       </PopoverContent>
     </Popover>
   </span>

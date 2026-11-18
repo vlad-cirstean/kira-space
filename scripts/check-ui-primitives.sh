@@ -152,19 +152,6 @@ PERMANENT
 # fixes it. Never PERMANENT. An entry that stops matching fails the run, so the block only shrinks;
 # P672 Part 9 deletes the block and this mechanism once it is empty.
 cat >"$TMP/temp" <<'TEMPORARY'
-U111 apps/kira-space/frontend/src/studio/api/VariableHistoryMenu.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/studio/api/VariablesOverviewPanel.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/studio/project/ErrorPopover.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/studio/views/console/kibana/FilterBar.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/studio/views/console/kibana/TimePicker.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/studio/views/documents/DocumentToolbar.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/studio/views/grid/ColumnsMenu.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/studio/views/grid/PreviewCommandPanel.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/studio/views/shared/SavedListMenu.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/studio/views/shared/celleditor/CellGenerateMenu.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/studio/views/shared/celleditor/TimestampPane.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/studio/views/stream/StreamFilterRow.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/studio/views/stream/StreamToolbar.vue # 2026-11-18 P672 Part 5
 U111 packages/git-ui/src/App.vue # 2026-11-18 P672 Part 5
 U111 packages/git-ui/src/components/RefsPopover.vue # 2026-11-18 P672 Part 5
 U111 packages/git-ui/src/components/SearchBox.vue # 2026-11-18 P672 Part 5

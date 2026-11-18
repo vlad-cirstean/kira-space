@@ -33,7 +33,7 @@ function apply(gen: Generator): void {
       />
       <PopoverAnchor :reference="anchorRef ?? undefined" />
     </span>
-    <PopoverContent align="start" class="w-56 gap-0 p-0" data-testid="cell-editor-generate-popover">
+    <PopoverContent align="start" flush class="w-56" data-testid="cell-editor-generate-popover">
       <div class="flex flex-col gap-px p-1">
         <Tooltip v-for="gen in GENERATORS" :key="gen.id">
           <TooltipTrigger as-child>

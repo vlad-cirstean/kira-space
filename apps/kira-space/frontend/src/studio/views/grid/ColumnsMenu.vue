@@ -128,7 +128,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <PopoverContent align="end" class="w-56 gap-0 p-0" data-testid="columns-menu">
+  <PopoverContent align="end" flush class="w-56" data-testid="columns-menu">
     <div class="max-h-80 flex flex-col">
       <div class="flex gap-1 p-1">
         <Button variant="toolbar" size="kira" data-testid="columns-select-all" @click="selectAll">{{
@@ -147,7 +147,7 @@ onBeforeUnmount(() => {
       <!-- Drag a row to reorder — the same order the grid renders columns in
            (columns.ts's resolveColumnOrder). Checkbox toggles visibility; the PK's is locked.
            The container is always mounted: the sortable binds to it once, at mount. -->
-      <div ref="listEl" class="overflow-y-auto p-0.5">
+      <div ref="listEl" class="overflow-y-auto p-1">
         <InlineState v-if="!meta" kind="loading">{{
           t('studio.grid.columns.loading.loading')
         }}</InlineState>

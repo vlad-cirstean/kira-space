@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { useQuery } from '@tanstack/vue-query';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs, { type SecondaryTabItem } from '@theme/components/SecondaryTabs.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { PopoverContent } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
-import PanelHeader from '@workbench/components/PanelHeader.vue';
 import MonacoDiff from '@workbench/editor/MonacoDiff.vue';
 import { computed, ref } from 'vue';
 import { useTabsStore } from '../../../state/tabs';
@@ -100,20 +99,16 @@ function close(): void {
 </script>
 
 <template>
-  <PopoverContent align="end" class="w-120 gap-0 p-0" data-testid="preview-command-panel">
+  <PopoverContent align="end" flush class="w-120" data-testid="preview-command-panel">
     <div class="max-h-96 flex flex-col">
-      <PanelHeader>
-        <template #start><CodiconIcon name="code" :size="13" /></template>
-        {{ t('docker.edit.pending.title') }}
-        <template #actions>
-          <TooltipIconButton
-            icon="close"
-            :label="t('common.action.close.label')"
-            data-testid="preview-command-close"
-            @click="close"
-          />
-        </template>
-      </PanelHeader>
+      <SectionHeading :label="t('docker.edit.pending.title')">
+        <TooltipIconButton
+          icon="close"
+          :label="t('common.action.close.label')"
+          data-testid="preview-command-close"
+          @click="close"
+        />
+      </SectionHeading>
       <SecondaryTabs
         v-if="hasEdits"
         v-model="view"

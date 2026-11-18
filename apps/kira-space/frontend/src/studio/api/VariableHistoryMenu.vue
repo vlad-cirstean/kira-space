@@ -44,7 +44,7 @@ function onEye(entry: ApiVariableHistoryEntry): void {
 </script>
 
 <template>
-  <PopoverContent align="start" class="w-80 gap-0 p-0" data-testid="variable-history">
+  <PopoverContent align="start" flush class="w-80" data-testid="variable-history">
     <div class="flex max-h-80 flex-col overflow-auto p-1">
       <InlineState
         v-if="variableSetStore.entries.length === 0"

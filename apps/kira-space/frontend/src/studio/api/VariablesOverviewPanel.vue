@@ -94,7 +94,7 @@ function editEnvironmentVariables(): void {
 </script>
 
 <template>
-  <PopoverContent align="start" class="w-96 gap-0 p-0" data-testid="variables-overview">
+  <PopoverContent align="start" flush class="w-96" data-testid="variables-overview">
     <div class="flex max-h-105 flex-col">
       <SearchField
         v-model="filterQuery"
