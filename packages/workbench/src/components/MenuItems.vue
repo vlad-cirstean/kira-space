@@ -19,10 +19,11 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import VarText from '@theme/components/VarText.vue';
 import { colorMarkClass } from '@theme/connColor';
-import { plainText, type TextPart } from '@theme/varText';
+import type { TextPart } from '@theme/varText';
 import { useId } from 'vue';
 import { formatShortcut } from '../shortcuts/keys';
 import type { MenuItem, MenuRadioOption } from '../state/contextMenu';
+import MenuHint from './MenuHint.vue';
 import MenuRowLabel from './MenuRowLabel.vue';
 
 defineProps<{ items: readonly MenuItem[] }>();
@@ -117,6 +118,7 @@ async function onItemClick(item: MenuItem): Promise<void> {
               :value="radioKey(opt.value)"
               :disabled="!!opt.disabled"
               :class="[opt.hint && HINT_WHEN_DISABLED, opt.detail && DETAIL_ROW]"
+              :aria-describedby="opt.hint ? `${uid}-${opt.id}-hint` : undefined"
               :data-testid="tidOf(opt)"
               :data-value="opt.value ?? ''"
               @select="onOptionSelect(opt, item.value)"
@@ -129,6 +131,12 @@ async function onItemClick(item: MenuItem): Promise<void> {
                 />
               </span>
               <MenuRowLabel :label="opt.label" :parts="opt.parts" :detail="opt.detail" />
+              <MenuHint
+                v-if="opt.hint"
+                :id="`${uid}-${opt.id}-hint`"
+                :test-id="`${tidOf(opt)}-reason`"
+                :hint="opt.hint"
+              />
             </DropdownMenuRadioItem>
           </TooltipTrigger>
           <TooltipContent v-if="opt.hint"><VarText :parts="hintParts(opt.hint)" /></TooltipContent>
@@ -142,6 +150,7 @@ async function onItemClick(item: MenuItem): Promise<void> {
           :model-value="item.checked"
           :disabled="!!item.disabled"
           :class="item.hint && HINT_WHEN_DISABLED"
+          :aria-describedby="item.hint ? `${uid}-${item.id}-hint` : undefined"
           :data-testid="tidOf(item)"
           @select="onCheckboxSelect($event, item)"
         >
@@ -154,6 +163,12 @@ async function onItemClick(item: MenuItem): Promise<void> {
             />
           </span>
           <MenuRowLabel :label="item.label" />
+          <MenuHint
+            v-if="item.hint"
+            :id="`${uid}-${item.id}-hint`"
+            :test-id="`${tidOf(item)}-reason`"
+            :hint="item.hint"
+          />
         </DropdownMenuCheckboxItem>
       </TooltipTrigger>
       <TooltipContent v-if="item.hint"><VarText :parts="hintParts(item.hint)" /></TooltipContent>
@@ -179,15 +194,12 @@ async function onItemClick(item: MenuItem): Promise<void> {
             />
           </span>
           <MenuRowLabel :label="item.label" :parts="item.parts" :detail="item.detail" />
-          <span
+          <MenuHint
             v-if="item.hint"
             :id="`${uid}-${item.id}-hint`"
-            :data-testid="`${tidOf(item)}-reason`"
-            class="sr-only"
-            >{{
-              plainText(hintParts(item.hint))
-            }}</span
-          >
+            :test-id="`${tidOf(item)}-reason`"
+            :hint="item.hint"
+          />
           <DropdownMenuShortcut v-if="item.shortcut" :data-testid="`${tidOf(item)}-shortcut`">{{
             formatShortcut(item.shortcut)
           }}</DropdownMenuShortcut>
