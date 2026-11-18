@@ -16,6 +16,7 @@ Phases from `P672` (highest shipped: `P671`, chapter v0.3.16). Next new phase: `
 | P672 Part 8 | UI uniformity: tabs, segmented, choice | Planned |
 | P672 Part 9 | UI uniformity: states, icons, type, spacing | Planned |
 | P660 Part 2 | Git review panel state across module switches | Planned |
+| P672 Part 10 | Second pass over Parts 2..9 (iter2 plans) | Planned |
 
 ## P672 Part 1: UI inventory and uniformity rules
 
@@ -80,3 +81,9 @@ Git review segment (`RepoReviewView.vue` hosting git-ui `ReviewView`) loses its 
 Continues P660 from chapter v0.3.16 (Part 1 Done there); keeps its number.
 
 Plan: `plans/P660-part2.md`.
+
+## P672 Part 10: Second pass over Parts 2..9 (iter2 plans)
+
+Standing user instruction: after all phases (P672 Parts 2..9 and P660 Part 2) are done, run a second full pass of the P672 UI uniformity Parts. User expects the first pass missed many things. Each of Parts 2..9 runs again, plan named `plans/P672-part<k>-iter2.md`, planned against the tree as the first pass left it. Planner re-reads current source and a fresh scan (codegraph, class-token), never trusts the first pass's summary or Results. Per working agreement "Multiple passes": one Opus plan and one Sonnet implementer per Part, in Part order. Part 10 planner either cuts this row into per-Part iter2 plans or runs it as one loop. Row names get no new numbers. Guard baselines from Part 2 stay empty. Chapter-end code review round follows this row (reviewer covers the whole chapter diff: findings, fix), then close. Tests: UI specs updated; visual baselines in PR CI; no new unit tests.
+
+Plan: `plans/P672-part10.md`.
