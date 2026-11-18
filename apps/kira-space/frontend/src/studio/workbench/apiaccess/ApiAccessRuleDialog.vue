@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
@@ -11,7 +12,6 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
-import { NativeSelect } from '@theme/components/ui/native-select';
 import {
   TagsInput,
   TagsInputInput,
@@ -29,7 +29,14 @@ const props = defineProps<{ rule?: ApiRule; pending: boolean; error: string | nu
 const open = defineModel<boolean>('open', { required: true });
 const emit = defineEmits<{ save: [rule: ApiRule] }>();
 
-const effectId = useId();
+const effectItems = computed(() => [
+  {
+    value: 'allow',
+    label: t('studio.project.connectionDialog.mcp.allow.label'),
+    testid: 'api-rule-effect-allow',
+  },
+  { value: 'deny', label: t('common.action.deny.label'), testid: 'api-rule-effect-deny' },
+]);
 const anyMethodId = useId();
 const methodsId = useId();
 const effect = ref<ApiRule['effect']>('allow');
@@ -88,21 +95,15 @@ function onSave(): void {
       </DialogHeader>
       <DialogBody>
         <Field>
-          <FieldLabel :for="effectId">{{
-            t('studio.settings.dbMcp.apiRules.effect.label')
-          }}</FieldLabel>
-          <NativeSelect
-            :id="effectId"
+          <FieldLabel>{{ t('studio.settings.dbMcp.apiRules.effect.label') }}</FieldLabel>
+          <SecondaryTabs
             v-model="effect"
-            variant="bordered"
-            class="self-start"
+            variant="choice"
+            size="kira-lg"
+            :aria-label="t('studio.settings.dbMcp.apiRules.effect.label')"
+            :items="effectItems"
             data-testid="api-rule-effect"
-          >
-            <option value="allow">{{
-              t('studio.project.connectionDialog.mcp.allow.label')
-            }}</option>
-            <option value="deny">{{ t('common.action.deny.label') }}</option>
-          </NativeSelect>
+          />
           <FieldDescription data-testid="api-rule-effect-hint">{{
             t('studio.settings.dbMcp.apiRules.effect.hint')
           }}</FieldDescription>

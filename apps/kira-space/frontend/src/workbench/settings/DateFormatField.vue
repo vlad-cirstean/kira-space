@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
-import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
-import { useId } from 'vue';
+import { computed } from 'vue';
 import type { Settings } from '../../state/settingsDomain';
 
 // The commit-date leaf (select, reset button, helper text) was byte-identical between
@@ -18,21 +18,28 @@ const props = defineProps<{
   resetLeaf: (section: 'appearance', key: 'dateFormat') => void;
 }>();
 
+const DATE_FORMAT_ITEMS = computed(() => [
+  {
+    value: 'relative',
+    label: t('space.settings.appearance.commitDate.relative.option'),
+    testid: 'settings-date-format-relative',
+  },
+  {
+    value: 'absolute',
+    label: t('space.settings.appearance.commitDate.absolute.option'),
+    testid: 'settings-date-format-absolute',
+  },
+]);
+
 function onDateFormatChange(value: unknown): void {
   props.appearance.dateFormat = String(value) as AppearanceSettings['dateFormat'];
 }
-
-// A native label delegates its click to its first labelable descendant -- with the Reset
-// button living inside the label (the old markup), that was the button, not the select, so
-// clicking the title/helper text reset the field instead of focusing the control. `for` + `id`
-// ties the label to the select explicitly instead, with the button as a sibling outside it.
-const fieldId = useId();
 </script>
 
 <template>
   <Field>
     <div class="flex items-center justify-between gap-1">
-      <FieldLabel :for="fieldId">{{ t('space.settings.appearance.commitDate.label') }}</FieldLabel>
+      <FieldLabel>{{ t('space.settings.appearance.commitDate.label') }}</FieldLabel>
       <TooltipIconButton
         icon="discard"
         :label="t('common.action.resetToDefault.label')"
@@ -42,20 +49,15 @@ const fieldId = useId();
         @click="resetLeaf('appearance', 'dateFormat')"
       />
     </div>
-    <NativeSelect
-      :id="fieldId"
-      variant="bordered"
-      data-testid="settings-date-format"
+    <SecondaryTabs
+      variant="choice"
+      size="kira-lg"
+      :aria-label="t('space.settings.appearance.commitDate.label')"
       :model-value="appearance.dateFormat"
+      :items="DATE_FORMAT_ITEMS"
+      data-testid="settings-date-format"
       @update:model-value="onDateFormatChange"
-    >
-      <option value="relative">{{
-        t('space.settings.appearance.commitDate.relative.option')
-      }}</option>
-      <option value="absolute">{{
-        t('space.settings.appearance.commitDate.absolute.option')
-      }}</option>
-    </NativeSelect>
+    />
     <FieldDescription>{{ t('space.settings.appearance.commitDate.description') }}</FieldDescription>
   </Field>
 </template>

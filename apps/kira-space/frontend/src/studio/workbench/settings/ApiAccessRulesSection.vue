@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -12,13 +13,12 @@ import {
   FieldLegend,
   FieldSet,
 } from '@theme/components/ui/field';
-import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import { computed, ref, useId } from 'vue';
+import { computed, ref } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
 import type { ApiRule } from '../../../state/settingsDomain';
 import ApiAccessRuleDialog from '../apiaccess/ApiAccessRuleDialog.vue';
@@ -41,7 +41,20 @@ const write = useAsyncAction((next: ApiRule[]) =>
 const setDefault = useAsyncAction((apiDefault: 'ask' | 'deny') =>
   settingsStore.patchSettings({ dbMcp: { apiDefault } }),
 );
-const defaultId = useId();
+const defaultItems = computed(() => [
+  {
+    value: 'ask',
+    label: t('studio.project.connectionDialog.mcp.prompt.label'),
+    disabled: setDefault.pending.value,
+    testid: 'settings-db-mcp-api-default-ask',
+  },
+  {
+    value: 'deny',
+    label: t('common.action.deny.label'),
+    disabled: setDefault.pending.value,
+    testid: 'settings-db-mcp-api-default-deny-option',
+  },
+]);
 const defaultHint = computed(() => {
   if (settingsStore.dbMcp.apiDefault === 'deny') return 'deny';
   return settingsStore.dbMcp.apiApproval === 'never' ? 'ask-never' : 'ask';
@@ -146,19 +159,16 @@ function onRemove(index: number): void {
       {{ t('studio.settings.dbMcp.apiRules.add.label') }}
     </Button>
     <Field data-testid="settings-db-mcp-api-default-field">
-      <FieldLabel :for="defaultId">{{ t('studio.settings.dbMcp.apiDefault.label') }}</FieldLabel>
-      <NativeSelect
-        :id="defaultId"
-        variant="bordered"
-        class="self-start"
-        data-testid="settings-db-mcp-api-default"
+      <FieldLabel>{{ t('studio.settings.dbMcp.apiDefault.label') }}</FieldLabel>
+      <SecondaryTabs
+        variant="choice"
+        size="kira-lg"
+        :aria-label="t('studio.settings.dbMcp.apiDefault.label')"
         :model-value="settingsStore.dbMcp.apiDefault"
-        :disabled="setDefault.pending.value"
+        :items="defaultItems"
+        data-testid="settings-db-mcp-api-default"
         @update:model-value="onDefaultChange"
-      >
-        <option value="ask">{{ t('studio.project.connectionDialog.mcp.prompt.label') }}</option>
-        <option value="deny">{{ t('common.action.deny.label') }}</option>
-      </NativeSelect>
+      />
       <FieldDescription
         v-if="defaultHint === 'deny'"
         data-testid="settings-db-mcp-api-default-deny"
