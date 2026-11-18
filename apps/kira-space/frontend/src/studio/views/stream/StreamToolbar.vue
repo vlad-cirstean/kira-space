@@ -180,7 +180,7 @@ async function onDeleteMessage(): Promise<void> {
         :icon="ICON.stop"
         :label="t('common.action.stop.label')"
         disabled-trigger
-        :class="{ 'text-error': running }"
+        :tone="running ? 'error' : undefined"
         data-testid="stream-stop"
         :disabled="!running"
         @click="streamViewStore.stop(tab.id)"
@@ -198,7 +198,7 @@ async function onDeleteMessage(): Promise<void> {
         "
         :aria-label="t('studio.stream.count.label')"
         content-testid="stream-count-tooltip"
-        :class="rt?.countError ? 'text-error' : ''"
+        :tone="rt?.countError ? 'error' : undefined"
         data-testid="stream-count"
         @click="streamViewStore.runCount(tab.id)"
       />

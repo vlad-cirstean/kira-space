@@ -95,7 +95,7 @@ defineExpose({ insertText: (text: string) => editorHost.value?.insertText(text) 
       v-if="running"
       variant="toolbar"
       size="kira"
-      class="text-error"
+      data-tone="error"
       data-testid="kibana-stop"
       @click="emit('stop')"
     >

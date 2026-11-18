@@ -288,7 +288,7 @@ function onCloseSearch(): void {
           :icon="ICON.stop"
           :label="t('common.action.stop.label')"
           disabled-trigger
-          :class="{ 'text-error': !!rt?.opId }"
+          :tone="rt?.opId ? 'error' : undefined"
           data-testid="toolbar-stop"
           :disabled="!rt?.opId"
           @click="onStop"

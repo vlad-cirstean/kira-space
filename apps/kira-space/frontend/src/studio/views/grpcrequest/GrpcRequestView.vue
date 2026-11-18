@@ -331,7 +331,7 @@ onUnmounted(() => {
           :icon="ICON.stop"
           :label="t('common.action.stop.label')"
           disabled-trigger
-          :class="{ 'is-live': running }"
+          :tone="running ? 'error' : undefined"
           :disabled="!running"
           data-testid="grpc-request-stop"
           @click="onStop"

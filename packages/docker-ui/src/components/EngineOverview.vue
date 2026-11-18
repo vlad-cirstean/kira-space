@@ -181,10 +181,11 @@ function refresh(): Promise<void> {
             variant="toolbar"
             :disabled="startLocked"
             :pending="inFlight && bulk === 'start'"
+            data-tone="ok"
             data-testid="docker-start-stopped"
             @click="runAll(stoppedIds, 'start')"
           >
-            <CodiconIcon name="play" :size="13" class="text-ok" />
+            <CodiconIcon name="play" :size="13" />
             {{ t('docker.engine.startStopped.label') }}
           </Button>
           <Button
@@ -192,10 +193,11 @@ function refresh(): Promise<void> {
             variant="toolbar"
             :disabled="stopLocked"
             :pending="inFlight && bulk === 'stop'"
+            data-tone="error"
             data-testid="docker-stop-all"
             @click="runAll(runningIds, 'stop')"
           >
-            <CodiconIcon name="debug-stop" :size="13" class="text-error" />
+            <CodiconIcon name="debug-stop" :size="13" />
             {{ t('common.action.stopAll.label') }}
           </Button>
           <Button

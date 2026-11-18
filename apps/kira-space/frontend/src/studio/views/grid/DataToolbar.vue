@@ -324,7 +324,7 @@ function onDeleteRow(): void {
       :aria-label="t('studio.grid.count.tooltip')"
       content-testid="toolbar-count-tooltip"
       data-testid="toolbar-count"
-      :class="rt?.countError ? 'text-error' : rt?.count?.stale ? 'text-warn' : ''"
+      :tone="rt?.countError ? 'error' : rt?.count?.stale ? 'warn' : undefined"
       @click="onCount"
     />
 

@@ -92,7 +92,7 @@ const targets = (next: string): WorkflowStep[] => {
           v-if="!fixed"
           icon="close"
           :label="t('space.ade.workflows.results.remove.tooltip')"
-          class="text-error"
+          tone="error"
           :disabled="step.results.length < 2"
           data-testid="ade-wf-result-remove"
           @click="draft.deleteResult(step.id, r.id)"

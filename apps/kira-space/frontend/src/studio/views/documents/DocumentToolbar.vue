@@ -68,7 +68,7 @@ const projectionCount = computed(() => {
         :icon="ICON.stop"
         :label="t('common.action.stop.label')"
         disabled-trigger
-        :class="{ 'text-error': running }"
+        :tone="running ? 'error' : undefined"
         data-testid="document-stop"
         :disabled="!running"
         @click="documentViewStore.stop(tab.id)"
@@ -108,7 +108,7 @@ const projectionCount = computed(() => {
         "
         :aria-label="t('studio.documents.count.run.aria')"
         content-testid="document-count-tooltip"
-        :class="rt?.countError ? 'text-error' : ''"
+        :tone="rt?.countError ? 'error' : undefined"
         data-testid="document-count"
         @click="documentViewStore.runCount(tab.id)"
       />

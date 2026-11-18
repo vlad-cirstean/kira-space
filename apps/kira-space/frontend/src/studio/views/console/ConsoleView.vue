@@ -257,7 +257,7 @@ onUnmounted(() => {
           icon="debug-stop"
           :label="t('common.action.stop.label')"
           disabled-trigger
-          :class="{ 'text-error': running }"
+          :tone="running ? 'error' : undefined"
           data-testid="console-stop"
           :disabled="!running"
           @click="onStop"

@@ -147,10 +147,11 @@ function act(action: ContainerAction): void {
               variant="toolbar"
               :disabled="isUp || lockedBy('start')"
               :pending="pendingOf('start')"
+              data-tone="ok"
               data-testid="docker-action-start"
               @click="act('start')"
             >
-              <CodiconIcon name="play" :size="13" class="text-ok" />
+              <CodiconIcon name="play" :size="13" />
               {{ t('common.action.start.label') }}
             </Button>
             <Button
@@ -158,10 +159,11 @@ function act(action: ContainerAction): void {
               variant="toolbar"
               :disabled="!isUp || lockedBy('stop')"
               :pending="pendingOf('stop')"
+              data-tone="error"
               data-testid="docker-action-stop"
               @click="act('stop')"
             >
-              <CodiconIcon name="debug-stop" :size="13" class="text-error" />
+              <CodiconIcon name="debug-stop" :size="13" />
               {{ t('common.action.stop.label') }}
             </Button>
             <Button
