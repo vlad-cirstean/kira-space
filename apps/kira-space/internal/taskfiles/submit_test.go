@@ -233,8 +233,9 @@ func TestChangedBudget(t *testing.T) {
 		}
 		best = min(best, time.Since(start))
 	}
-	if best > 5*time.Millisecond {
-		t.Fatalf("stat pass over %d files took %s, budget 5ms", MaxFilesPerTask, best)
+	// Generous for a loaded CI runner; still far below a pass that reads or hashes file contents.
+	if best > 25*time.Millisecond {
+		t.Fatalf("stat pass over %d files took %s, budget 25ms", MaxFilesPerTask, best)
 	}
 	e.disk("notes/20261101T090000-007.md", "changed")
 	if got, _ := e.svc.Changed(context.Background(), e.taskID); len(got) != 1 {
