@@ -2,7 +2,6 @@
 import type { ReviewComment, ReviewSessionSnapshot, Transport, UiActionKind } from '@kira/git-ipc';
 import { TransportError } from '@kira/git-ipc';
 import EmptyState from '@theme/components/EmptyState.vue';
-import { Button } from '@theme/components/ui/button';
 /**
  * The sidebar view's root, mounted by `main.ts` when `view === "review"`. States: no branch, ask
  * for a base, unrelated histories, nothing to review, the list, plus `resolving` and `error`.
@@ -12,7 +11,6 @@ import { Button } from '@theme/components/ui/button';
  * The branch arrives three ways: `props.target` (cold bootstrap), the `review.target` event (any
  * time), and the no-branch state's own picker.
  */
-import { FieldError } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { useLiveRegion } from '@workbench/behaviour/liveRegion';
@@ -44,6 +42,7 @@ import type { ViewStateStore } from '../../state/viewState.ts';
 import GitViewHead, { type RepoHead } from '../GitViewHead.vue';
 import ReviewCommentsPane from './ReviewCommentsPane.vue';
 import ReviewCommitList from './ReviewCommitList.vue';
+import ReviewFailure from './ReviewFailure.vue';
 import ReviewFilesPane from './ReviewFilesPane.vue';
 import ReviewNoBranch from './ReviewNoBranch.vue';
 import ReviewToolbars from './ReviewToolbars.vue';
@@ -458,20 +457,12 @@ useReviewAnnouncements(review, announce);
     <GitViewHead v-if="repoHead" :repo="repoHead" />
 
     <template v-if="bootError">
-      <div class="flex flex-col gap-2 p-3" data-testid="boot-error">
-        <p class="text-muted-foreground">{{
-          t('git.app.bootError.error', { error: bootError })
-        }}</p>
-        <Button
-          variant="dialog"
-          size="kira"
-          class="self-start"
-          data-testid="boot-retry"
-          @click="retryBootstrap"
-        >
-          {{ t('common.action.retry.label') }}
-        </Button>
-      </div>
+      <ReviewFailure
+        data-testid="boot-error"
+        retry-testid="boot-retry"
+        :description="t('git.app.bootError.error', { error: bootError })"
+        @retry="retryBootstrap"
+      />
     </template>
 
     <template v-else-if="!review">
@@ -505,18 +496,21 @@ useReviewAnnouncements(review, announce);
       />
 
       <div class="flex-1 min-h-0 flex flex-col">
-        <p v-if="review.phase.value === 'resolving'" class="p-3 text-muted-foreground">
-          {{ t('git.review.resolving.loading') }}
-        </p>
+        <EmptyState
+          v-if="review.phase.value === 'resolving'"
+          fill
+          loading
+          :title="t('git.review.resolving.loading')"
+        />
 
-        <div v-else-if="review.phase.value === 'error'" class="flex flex-col items-start gap-1 p-3">
-          <FieldError>{{
+        <ReviewFailure
+          v-else-if="review.phase.value === 'error'"
+          retry-testid="review-retry"
+          :description="
             t('git.review.async.compare.error', { error: review.resolveError.value ?? '' })
-          }}</FieldError>
-          <Button variant="dialog" size="kira" data-testid="review-retry" @click="retryCompare">
-            {{ t('common.action.retry.label') }}
-          </Button>
-        </div>
+          "
+          @retry="retryCompare"
+        />
 
         <div
           v-else-if="review.phase.value === 'ask'"

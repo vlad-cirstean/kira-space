@@ -4,8 +4,8 @@ import { shortSha } from '@kira/git-core';
 import EmptyState from '@theme/components/EmptyState.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
-import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { formatAbsoluteUtc, formatAgeCompact } from '@workbench/behaviour/format';
 /**
@@ -66,9 +66,11 @@ function onOpenFile(index: number, pinned: boolean): void {
 
 <template>
   <div class="flex flex-col min-h-0 h-full">
-    <FieldError v-if="stash.error.value" class="p-3">
-      {{ t('git.stash.loadError.error', { error: stash.error.value }) }}
-    </FieldError>
+    <Alert v-if="stash.error.value" variant="error" strip>
+      <AlertDescription>{{
+        t('git.stash.loadError.error', { error: stash.error.value })
+      }}</AlertDescription>
+    </Alert>
 
     <template v-if="entry">
       <ViewToolbar data-testid="detail-head">

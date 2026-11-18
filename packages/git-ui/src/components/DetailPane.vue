@@ -23,7 +23,7 @@
  */
 import type { CommitStore } from '@kira/git-core';
 import EmptyState from '@theme/components/EmptyState.vue';
-import { FieldError } from '@theme/components/ui/field';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import { openFileAnnounced } from '../lib/openFileAnnounced.ts';
@@ -69,9 +69,11 @@ function onOpenFile(index: number, pinned: boolean): void {
 
 <template>
   <div data-testid="detail-pane" class="flex flex-col min-h-0 h-full">
-    <FieldError v-if="detailState.error.value" class="p-3">
-      {{ t('git.detail.loadError.error', { error: detailState.error.value }) }}
-    </FieldError>
+    <Alert v-if="detailState.error.value" variant="error" strip>
+      <AlertDescription>{{
+        t('git.detail.loadError.error', { error: detailState.error.value })
+      }}</AlertDescription>
+    </Alert>
 
     <template v-if="detail">
       <CommitMeta

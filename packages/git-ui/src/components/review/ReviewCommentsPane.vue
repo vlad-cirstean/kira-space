@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { LineRange, ReviewComment } from '@kira/git-ipc';
 import AttributeTooltip from '@theme/components/AttributeTooltip.vue';
+import EmptyState from '@theme/components/EmptyState.vue';
 /**
  * The review sidebar's Comments pane, and the only new component this phase adds to
  * `packages/git-ui`: the centralized list, the copy-for-AI action and clear-all. The webview never
@@ -15,7 +16,6 @@ import InlineState from '@theme/components/InlineState.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
@@ -131,9 +131,15 @@ keptScrollIf(() => props.keepScroll ?? null, listEl, { ready: () => groups.value
       </div>
     </ViewToolbar>
 
-    <FieldError v-if="reviewComments.loadError.value" class="p-3">
-      {{ t('git.review.comments.loadError.error', { error: reviewComments.loadError.value }) }}
-    </FieldError>
+    <EmptyState
+      v-if="reviewComments.loadError.value"
+      fill
+      icon="warning"
+      :title="t('common.state.loadFailed.title')"
+      :description="
+        t('git.review.comments.loadError.error', { error: reviewComments.loadError.value })
+      "
+    />
 
     <template v-else>
       <template v-if="groups.length > 0">

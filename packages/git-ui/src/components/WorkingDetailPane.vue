@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CommitStore, FileChangeKind } from '@kira/git-core';
+import EmptyState from '@theme/components/EmptyState.vue';
 /**
  * The uncommitted-changes strip's own click-through target — `DetailPane.vue`'s
  * sibling for the one case that pane can never represent (the working tree is not a commit: no
@@ -12,7 +13,6 @@ import type { CommitStore, FileChangeKind } from '@kira/git-core';
  * `openInEditor`/`openAllChanges`, both commit-shaped), so sharing the instance costs nothing and
  * keeps "copy path"/announcements consistent across every pane in the app.
  */
-import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed } from 'vue';
@@ -57,9 +57,13 @@ function onOpenFile(index: number, pinned: boolean): void {
     <ViewToolbar data-testid="detail-head">
       <span class="min-w-0 truncate text-kira-md text-fg">{{ t('git.detail.working.title') }}</span>
     </ViewToolbar>
-    <FieldError v-if="workingState.error.value" class="p-3">
-      {{ t('git.detail.working.error', { error: workingState.error.value }) }}
-    </FieldError>
+    <EmptyState
+      v-if="workingState.error.value"
+      fill
+      icon="warning"
+      :title="t('common.state.loadFailed.title')"
+      :description="t('git.detail.working.error', { error: workingState.error.value })"
+    />
     <FileTree
       v-else
       class="flex-auto min-h-0"
