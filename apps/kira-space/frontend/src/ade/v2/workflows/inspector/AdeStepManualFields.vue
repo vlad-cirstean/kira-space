@@ -45,10 +45,10 @@ const outsideVars = computed(() => props.step.outsideRepo && usesRepoTokens(prop
         t('space.ade.workflows.stepInspector.prompt.aria')
       }}</FieldLabel>
       <Textarea
+        class="min-h-24 max-h-90 resize-y"
         :id="id('session-prompt')"
         :model-value="step.prompt"
         :placeholder="t('space.ade.workflows.stepInspector.prompt.placeholder')"
-        class="min-h-20 w-full resize-y leading-normal"
         data-testid="ade-wf-step-session-prompt"
         @update:model-value="(v: string | number) => emit('patch', { prompt: String(v) })"
       />

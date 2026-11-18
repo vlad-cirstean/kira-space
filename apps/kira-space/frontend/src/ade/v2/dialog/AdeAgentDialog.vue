@@ -278,9 +278,9 @@ async function discard(): Promise<void> {
             </Button>
           </div>
           <Textarea
+            class="min-h-24 max-h-90 resize-y"
             id="ade-dialog-message"
             :model-value="view.message"
-            class="max-h-90 resize-y"
             data-testid="ade-dialog-message"
             @update:model-value="(v) => (dialogs.msg = String(v))"
           />

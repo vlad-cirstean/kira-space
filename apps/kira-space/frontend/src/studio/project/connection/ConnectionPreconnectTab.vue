@@ -53,10 +53,9 @@ function setDelay(value: string): void {
     <Field class="flex-1">
       <FieldLabel>{{ t('studio.project.connectionDialog.preconnect.label') }}</FieldLabel>
       <Textarea
+        class="font-data"
         v-model="command"
         :aria-invalid="props.errorFor('/preconnect') ? true : undefined"
-        class="font-data"
-        rows="4"
         maxlength="2000"
         data-testid="connection-preconnect"
         @keydown="wrapSelectionOnType"

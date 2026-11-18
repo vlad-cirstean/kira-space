@@ -239,7 +239,7 @@ async function save(): Promise<void> {
             <NumberStepperInput
               :id="pageSizeId"
               :model-value="pageSizeText"
-              group-class="h-control w-32"
+              group-class="w-24"
               :min="SETTINGS['kiraSpace.graph.pageSize'].minimum"
               :max="SETTINGS['kiraSpace.graph.pageSize'].maximum"
               v-bind="form.invalidAttrs('pageSize')"
@@ -304,7 +304,7 @@ async function save(): Promise<void> {
             <FieldLabel :for="baseCandidatesId">
               {{ t('git.dialog.repoSettings.baseCandidates.label') }}
             </FieldLabel>
-            <Textarea :id="baseCandidatesId" v-model="baseCandidatesText" rows="3" class="w-full" />
+            <Textarea :id="baseCandidatesId" v-model="baseCandidatesText" />
           </Field>
         </FieldSet>
 

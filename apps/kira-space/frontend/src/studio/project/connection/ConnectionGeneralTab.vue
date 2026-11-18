@@ -130,7 +130,7 @@ async function onBrowseDatabaseFile(): Promise<void> {
     <ConnectionEnginePicker v-if="pickingEngine" :kind="kind" @pick="pickKind" />
     <template v-else>
       <div class="flex gap-2 items-start">
-        <Field class="flex-2">
+        <Field class="flex-1">
           <FieldLabel>{{ t('common.field.name.label') }}</FieldLabel>
           <Input
             :model-value="file.name"
@@ -233,7 +233,7 @@ async function onBrowseDatabaseFile(): Promise<void> {
             />
             <FieldError v-if="props.errorFor('/host')">{{ props.errorFor('/host') }}</FieldError>
           </Field>
-          <Field class="flex-none basis-24">
+          <Field class="flex-none w-24">
             <FieldLabel>{{ t('common.port.label') }}</FieldLabel>
             <NumberStepperInput
               :model-value="file.port ? String(file.port) : ''"

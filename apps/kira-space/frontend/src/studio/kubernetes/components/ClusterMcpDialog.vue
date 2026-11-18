@@ -96,9 +96,8 @@ function onSave(): void {
               ></FieldLabel
             >
             <Textarea
-              v-model="draft.description"
               class="font-data"
-              rows="2"
+              v-model="draft.description"
               maxlength="1000"
               data-testid="kube-mcp-description"
               @keydown="wrapSelectionOnType"

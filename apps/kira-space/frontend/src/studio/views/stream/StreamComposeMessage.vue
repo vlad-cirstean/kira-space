@@ -86,10 +86,9 @@ async function submit(): Promise<void> {
       <Field>
         <FieldLabel :for="bodyId">{{ t('common.body.label') }}</FieldLabel>
         <Textarea
+          class="min-h-32 max-h-90 resize-y font-data"
           :id="bodyId"
           v-model="body"
-          class="font-data"
-          rows="6"
           :placeholder="t('studio.stream.compose.body.placeholder')"
           data-testid="stream-add-message-body"
           @keydown="wrapSelectionOnType"
@@ -99,10 +98,9 @@ async function submit(): Promise<void> {
       <Field>
         <FieldLabel :for="headersId">{{ t('studio.stream.compose.headers.label') }}</FieldLabel>
         <Textarea
+          class="font-data"
           :id="headersId"
           v-model="headers"
-          class="font-data"
-          rows="3"
           :placeholder="HEADERS_EXAMPLE"
           data-testid="stream-add-message-headers"
           @keydown="wrapSelectionOnType"

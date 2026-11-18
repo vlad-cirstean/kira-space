@@ -42,7 +42,7 @@ const source = computed(() =>
 </script>
 
 <template>
-  <FieldSet class="gap-3" data-testid="repo-config">
+  <FieldSet data-testid="repo-config">
     <Field>
       <span class="text-muted-foreground">{{ t('common.field.colour.label') }}</span>
       <fieldset

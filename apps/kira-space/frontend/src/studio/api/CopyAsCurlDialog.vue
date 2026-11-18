@@ -74,10 +74,9 @@ function close(): void {
       </DialogHeader>
       <DialogBody>
         <Textarea
-          class="font-data min-h-44"
+          class="min-h-32 max-h-90 resize-y font-data"
           :model-value="command"
           readonly
-          rows="10"
           data-testid="copy-as-curl-command"
         />
 

@@ -368,8 +368,8 @@ const stateLabel = (c: ReviewComment): string =>
 
     <section v-if="state" class="flex flex-col gap-1.5" data-testid="ade-review-finish">
       <Textarea
+        class="min-h-24 max-h-90 resize-y"
         v-model="note"
-        rows="2"
         maxlength="2000"
         :placeholder="t('space.ade.reviewStep.finish.note.placeholder')"
         data-testid="ade-review-finish-note"

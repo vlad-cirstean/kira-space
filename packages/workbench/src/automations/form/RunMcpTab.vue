@@ -53,11 +53,11 @@ function patch(change: Partial<Mcp>): void {
           t('common.field.description.label')
         }}</FieldLabel>
         <Textarea
+          class="min-h-24 max-h-90 resize-y"
           id="script-mcp-description"
           :model-value="mcp.description ?? ''"
           :placeholder="t('automations.form.mcp.description.placeholder')"
           :aria-invalid="errorFor('/mcp/description') ? true : undefined"
-          rows="3"
           data-testid="script-mcp-description"
           @update:model-value="(v) => patch({ description: String(v) })"
         />
@@ -117,7 +117,7 @@ function patch(change: Partial<Mcp>): void {
             )
           "
           :aria-invalid="errorFor('/mcp/timeout') ? true : undefined"
-          class="w-32 font-data"
+          class="w-24 font-data"
           data-testid="script-mcp-timeout"
           @update:model-value="(v) => patch({ timeout: String(v) })"
         />

@@ -103,10 +103,10 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
     <Field>
       <FieldLabel :for="id('prompt')">{{ t('common.prompt.label') }}</FieldLabel>
       <Textarea
+        class="min-h-24 max-h-90 resize-y"
         :id="id('prompt')"
         :model-value="step.prompt"
         :placeholder="t('common.prompt.label')"
-        class="min-h-24 w-full resize-y leading-normal"
         data-testid="ade-wf-step-prompt"
         @update:model-value="(v: string | number) => emit('patch', { prompt: String(v) })"
       />

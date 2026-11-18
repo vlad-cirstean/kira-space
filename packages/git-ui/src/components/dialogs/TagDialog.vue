@@ -152,7 +152,7 @@ async function submit(): Promise<void> {
         </Field>
         <Field v-if="annotated">
           <FieldLabel :for="messageId">{{ t('common.message.label') }}</FieldLabel>
-          <Textarea :id="messageId" v-model="message" rows="3" class="w-full" />
+          <Textarea :id="messageId" v-model="message" />
         </Field>
       </DialogBody>
 

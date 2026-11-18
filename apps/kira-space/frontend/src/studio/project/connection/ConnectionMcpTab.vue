@@ -203,10 +203,9 @@ const timeoutThrottled = computed(
         ></FieldLabel
       >
       <Textarea
+        class="font-data"
         :model-value="mcp.description ?? ''"
         :aria-invalid="props.errorFor('/mcp/description') ? true : undefined"
-        class="font-data"
-        rows="2"
         maxlength="1000"
         :disabled="!enabled"
         data-testid="connection-mcp-description"

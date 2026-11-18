@@ -38,7 +38,7 @@ function onNoCostCap(on: boolean): void {
         <option v-for="m in info.models" :key="m.id" :value="m.id">{{ m.id }}</option>
       </NativeSelect>
     </Field>
-    <Field class="w-32">
+    <Field class="w-24">
       <FieldLabel for="smart-budget">{{ t('automations.smart.budget.label') }}</FieldLabel>
       <Input
         id="smart-budget"
@@ -60,7 +60,7 @@ function onNoCostCap(on: boolean): void {
       />
       <FieldLabel for="smart-no-cost-cap">{{ t('automations.smart.noCostCap.label') }}</FieldLabel>
     </Field>
-    <Field class="w-28">
+    <Field class="w-24">
       <FieldLabel for="smart-timeout">{{ t('common.field.timeout.label') }}</FieldLabel>
       <Input
         id="smart-timeout"

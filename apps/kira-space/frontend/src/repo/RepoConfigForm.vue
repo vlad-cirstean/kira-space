@@ -89,14 +89,14 @@ function addEnv(): void {
 
 <template>
   <div class="flex flex-col gap-4" data-testid="repo-config-form">
-    <FieldSet class="gap-3">
+    <FieldSet>
       <FieldLegend>{{ t('space.repo.config.repository.label') }}</FieldLegend>
       <Field>
         <FieldLabel for="repo-nick">{{ t('space.repo.config.nickname.label') }}</FieldLabel>
         <Input
           id="repo-nick"
           :model-value="file.nickname ?? ''"
-          class="max-w-60 font-data"
+          class="w-56 font-data"
           data-testid="repo-nick"
           @update:model-value="(v) => (file.nickname = String(v))"
         />
@@ -107,7 +107,7 @@ function addEnv(): void {
       </Field>
     </FieldSet>
 
-    <FieldSet class="gap-3">
+    <FieldSet>
       <FieldLegend>{{ t('common.module.worktrees.label') }}</FieldLegend>
       <Field>
         <FieldLabel for="repo-prepare">{{ t('space.repo.config.prepare.label') }}</FieldLabel>
@@ -120,7 +120,7 @@ function addEnv(): void {
           id="repo-prepare"
           :model-value="file.worktree?.prepare_script ?? ''"
           :run-ref="file.worktree?.prepare_run"
-          :rows="6"
+          multiline
           place="worktree"
           testid="repo-prepare"
           @update:model-value="setPrepare"
@@ -139,7 +139,7 @@ function addEnv(): void {
         <Input
           id="repo-timeout"
           :model-value="timeout.get()"
-          class="w-20 font-data"
+          class="w-24 font-data"
           data-testid="repo-timeout"
           @update:model-value="(v) => timeout.set(String(v))"
         />
@@ -182,7 +182,7 @@ function addEnv(): void {
       </Field>
     </FieldSet>
 
-    <FieldSet class="gap-3">
+    <FieldSet>
       <FieldLegend>{{ t('common.module.branches.label') }}</FieldLegend>
       <Field>
         <FieldLabel for="repo-targets">{{ t('space.repo.config.targets.label') }}</FieldLabel>
@@ -205,7 +205,7 @@ function addEnv(): void {
       </Field>
     </FieldSet>
 
-    <FieldSet class="gap-3">
+    <FieldSet>
       <FieldLegend>{{ t('space.repo.config.environments.title') }}</FieldLegend>
       <FieldDescription>
         <CatalogText k="space.repo.config.environments.intro.hint">

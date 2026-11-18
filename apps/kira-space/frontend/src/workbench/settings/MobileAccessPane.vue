@@ -189,7 +189,7 @@ const activeDevices = computed(() =>
       {{ t('space.settings.mobileAccess.plaintext.body') }}
     </Alert>
 
-    <FieldSet class="gap-1" data-testid="mobile-access-network">
+    <FieldSet data-testid="mobile-access-network">
       <FieldLegend>{{ t('space.settings.mobileAccess.network.title') }}</FieldLegend>
       <p v-if="trusted" class="m-0 text-kira-sm" data-testid="mobile-access-trusted">
         {{ trustedText }}
@@ -240,7 +240,7 @@ const activeDevices = computed(() =>
       </p>
     </FieldSet>
 
-    <FieldSet v-if="store.status.running" class="gap-1" data-testid="mobile-access-step-app">
+    <FieldSet v-if="store.status.running" data-testid="mobile-access-step-app">
       <FieldLegend>{{ t('space.settings.mobileAccess.openApp.title') }}</FieldLegend>
       <figure class="m-0 flex flex-col gap-0.5">
         <MobileQr :url="store.status.appUrl" />
@@ -294,7 +294,7 @@ const activeDevices = computed(() =>
       </Button>
     </Field>
 
-    <FieldSet class="gap-1">
+    <FieldSet>
       <FieldLegend>{{ t('space.settings.mobileAccess.devices.title') }}</FieldLegend>
       <FieldDescription v-if="activeDevices.length === 0" data-testid="mobile-devices-empty">
         {{ t('space.settings.mobileAccess.devices.none.empty') }}

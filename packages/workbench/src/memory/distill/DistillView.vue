@@ -136,7 +136,7 @@ async function run(): Promise<void> {
           originLabel
         }}</Badge>
         <Textarea
-          class="min-h-40 font-data"
+          class="min-h-32 max-h-90 resize-y font-data"
           :model-value="text"
           :disabled="inFlight"
           :placeholder="t('memory.distill.input.placeholder')"

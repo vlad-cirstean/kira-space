@@ -13,7 +13,7 @@ const props = defineProps<{
   id: string;
   testid: string;
   place: 'worktree' | 'repo';
-  rows?: number;
+  multiline?: boolean;
   placeholder?: string;
   ariaLabel?: string;
 }>();
@@ -63,11 +63,10 @@ const items = computed(() => [
     />
     <template v-if="mode === 'command'">
       <Textarea
-        v-if="props.rows"
+        class="min-h-32 max-h-90 resize-y font-data"
+        v-if="props.multiline"
         :id="id"
         :model-value="text"
-        :rows="props.rows"
-        class="field-sizing-fixed min-h-32 resize-y font-data leading-normal"
         :data-testid="testid"
         @update:model-value="(v) => (text = String(v))"
       />

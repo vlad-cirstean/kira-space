@@ -260,9 +260,7 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
         <Textarea
           ref="input"
           v-model="draft"
-          class="resize-none"
           :placeholder="t('space.repo.view.comment.placeholder')"
-          rows="3"
           data-testid="review-thread-input"
         />
         <div

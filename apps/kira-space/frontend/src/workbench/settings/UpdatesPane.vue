@@ -35,7 +35,6 @@ function toggle(kind: TrackedKind, id: string, value: boolean): void {
     <FieldSet
       v-for="group in TRACKED_KINDS"
       :key="group.kind"
-      class="gap-3"
       :data-testid="`settings-updates-${group.kind}`"
     >
       <div class="flex items-center justify-between gap-1">

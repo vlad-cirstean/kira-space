@@ -108,10 +108,10 @@ const preset = (paths: readonly string[]): void => {
       <Field>
         <FieldLabel :for="id('read')">{{ t('space.ade.workflows.sandbox.read.label') }}</FieldLabel>
         <Textarea
+          class="min-h-32 max-h-90 resize-y font-data"
           :id="id('read')"
           :model-value="readText"
           :placeholder="t('space.ade.workflows.sandbox.read.example')"
-          class="min-h-12 w-full resize-y font-data leading-normal"
           data-testid="ade-wf-sandbox-read"
           @update:model-value="onRead"
         />
@@ -133,10 +133,10 @@ const preset = (paths: readonly string[]): void => {
           t('space.ade.workflows.sandbox.allow.label')
         }}</FieldLabel>
         <Textarea
+          class="min-h-32 max-h-90 resize-y font-data"
           :id="id('allow')"
           :model-value="allowText"
           :placeholder="t('space.ade.workflows.sandbox.allow.example')"
-          class="min-h-12 w-full resize-y font-data leading-normal"
           data-testid="ade-wf-sandbox-allow"
           @update:model-value="onAllow"
         />

@@ -95,8 +95,6 @@ const modes = computed(() => [
     <Textarea
       v-if="mode === 'write'"
       v-model="body"
-      :rows="compact ? 3 : 5"
-      class="min-h-16 resize-none field-sizing-fixed"
       :aria-label="t('common.comment.label')"
       :placeholder="t('space.hostView.compose.body.placeholder')"
       data-testid="comment-body"

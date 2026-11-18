@@ -141,10 +141,7 @@ function onCancel(): void {
       <Textarea
         ref="input"
         v-model="text"
-        :class="[
-          'font-data min-h-24 max-h-24 resize-none',
-          showText ? '' : '[-webkit-text-security:disc]',
-        ]"
+        :class="['font-data', showText ? '' : '[-webkit-text-security:disc]']"
         :placeholder="t('studio.project.credentialPaste.input.example')"
         autocomplete="off"
         autocapitalize="off"

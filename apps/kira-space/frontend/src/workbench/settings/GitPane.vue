@@ -95,7 +95,7 @@ const graphFontSizeId = useId();
 
 <template>
   <div class="contents" v-show="active">
-    <FieldSet class="gap-3">
+    <FieldSet>
       <FieldLegend class="pt-0">{{ t('space.settings.git.remote.title') }}</FieldLegend>
       <FieldDescription>
         {{ t('space.settings.git.remote.description') }}
@@ -115,10 +115,9 @@ const graphFontSizeId = useId();
           />
         </div>
         <Textarea
+          class="font-data"
           :id="protectedBranchesId"
           v-model="protectedBranchesText"
-          class="font-data"
-          rows="4"
           :placeholder="t('space.settings.git.protected.example')"
           data-testid="settings-git-protected-branches"
         />
@@ -179,7 +178,7 @@ const graphFontSizeId = useId();
         <FieldDescription>{{ t('space.settings.git.gitPath.description') }}</FieldDescription>
       </Field>
     </FieldSet>
-    <FieldSet class="gap-3">
+    <FieldSet>
       <FieldLegend>{{ t('common.graph.label') }}</FieldLegend>
       <Field>
         <div class="flex items-center justify-between gap-1">

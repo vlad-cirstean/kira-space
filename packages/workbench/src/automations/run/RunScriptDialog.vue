@@ -194,10 +194,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
             </template>
             <template v-else>
               <Textarea
+                class="min-h-32 max-h-90 resize-y font-data"
                 :model-value="oneOff"
-                rows="6"
                 spellcheck="false"
-                class="field-sizing-fixed min-h-32 resize-y font-data leading-normal"
                 data-testid="run-prompt-input"
                 @update:model-value="(v) => (oneOff = String(v))"
               />

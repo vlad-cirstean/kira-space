@@ -242,9 +242,9 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
               t('space.ade.workflows.library.extraPrompt.label')
             }}</FieldLabel>
             <Textarea
+              class="min-h-24 max-h-90 resize-y"
               :id="id('extra-prompt')"
               :model-value="step.promptExtra ?? ''"
-              class="min-h-16 w-full resize-y leading-normal"
               data-testid="ade-wf-step-extra-prompt"
               @update:model-value="(v: string | number) => patch({ promptExtra: String(v) })"
             />

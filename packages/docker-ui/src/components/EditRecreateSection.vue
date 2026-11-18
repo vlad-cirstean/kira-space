@@ -137,9 +137,9 @@ function addMount(): void {
       v-slot="{ invalid, id }"
     >
       <Textarea
+        class="font-data"
         :id="id"
         v-model="entrypointText"
-        class="font-data"
         :disabled="disabled"
         data-testid="docker-edit-entrypoint"
         v-bind="invalid"
@@ -154,9 +154,9 @@ function addMount(): void {
       v-slot="{ invalid, id }"
     >
       <Textarea
+        class="font-data"
         :id="id"
         v-model="cmdText"
-        class="font-data"
         :disabled="disabled"
         data-testid="docker-edit-cmd"
         v-bind="invalid"

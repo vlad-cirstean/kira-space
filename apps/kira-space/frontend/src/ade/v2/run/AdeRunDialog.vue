@@ -271,10 +271,10 @@ async function send(): Promise<void> {
               data-testid="ade-run-message-skeleton"
             />
             <Textarea
+              class="min-h-24 max-h-90 resize-y"
               v-else
               id="ade-run-message"
               v-model="message"
-              class="max-h-90 resize-y"
               :data-dialog-initial="named.length === 0 || undefined"
               data-testid="ade-run-message"
             />

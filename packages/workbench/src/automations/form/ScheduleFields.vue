@@ -213,7 +213,7 @@ const appName = computed(() => t('common.product.kiraSpace.label'));
         :id="`${idBase}-timeout`"
         :model-value="schedule.timeout"
         :placeholder="t('automations.schedule.timeoutExample.example')"
-        class="w-32 font-data"
+        class="w-24 font-data"
         data-testid="schedule-timeout"
         @update:model-value="(v) => patch({ timeout: String(v) })"
       />

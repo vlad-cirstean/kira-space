@@ -76,7 +76,7 @@ const targets = (next: string): WorkflowStep[] => {
         <NativeSelect
           :id="id('route', r.id)"
           variant="bordered"
-          class="w-36 shrink-0"
+          class="w-40 shrink-0"
           :model-value="r.next"
           data-testid="ade-wf-result-route"
           @update:model-value="(v) => draft.route(step.id, r.id, String(v))"

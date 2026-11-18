@@ -61,10 +61,9 @@ useFocusOnMount(curlEl);
       </DialogHeader>
       <DialogBody>
         <Textarea
+          class="min-h-32 max-h-90 resize-y font-data"
           ref="curlEl"
           v-model="text"
-          class="font-data curl-textarea min-h-32"
-          rows="6"
           :placeholder="curlExample"
           data-testid="import-curl-textarea"
         />
