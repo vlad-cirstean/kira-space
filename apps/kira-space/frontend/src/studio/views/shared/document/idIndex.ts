@@ -4,7 +4,7 @@ import { cellText, type DocumentPage } from '@shared/protocol/page';
 const indexes = new WeakMap<DocumentPage, ReadonlyMap<string, number>>();
 
 /** Document `_id` text to row, decoded once per page rather than per height recompute. */
-export function documentIdRows(page: DocumentPage): ReadonlyMap<string, number> {
+function documentIdRows(page: DocumentPage): ReadonlyMap<string, number> {
   let index = indexes.get(page);
   if (!index) {
     const decoder = new TextDecoder();
