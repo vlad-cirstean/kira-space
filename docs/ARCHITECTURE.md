@@ -1296,13 +1296,14 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Use simple-icons for third-party brand marks and seti for file types.
 - @lucide/vue is allowed only inside vendored packages/theme/src/components/ui/** (guard U72).
 - The concept-to-icon table is ICON in packages/theme/src/icons.ts; a concept uses its row everywhere, and a kind of thing (file, engine) uses its kind icon.
-- Icon names gear, settings and kebab-vertical are banned.
+- Icon names gear, settings, kebab-vertical and pencil are banned.
 - No 'codicon-…' string literals are allowed outside CodiconIcon.vue, Spinner.vue, and the theme package (guard U73).
 
 | Concept | Icon |
 |---|---|
 | Delete (destroys stored data) | `trash` |
 | Remove from a list, row or selection; close; clear field | `close` |
+| Remove a draft row from a form list before save | `close` (`ICON.remove`); `trash` only when the click destroys stored data |
 | Clear all | `clear-all` |
 | Add | `add` |
 | Copy / duplicate | `copy` / `files` |
@@ -1433,7 +1434,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Every debounce, poll, tick and UI delay must be a TIMING key, and sort comparators must end on a stable key.
 - Bind shortcuts printed on a surface there; trees use useTreeShortcuts; refresh is F5 only; render cap is 500 via useCappedList.
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
-- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U152) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
+- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U156) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
 - check-ui-primitives.sh keeps 48 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
@@ -1465,10 +1466,14 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - State primitive by scope: whole pane EmptyState fill, list or section InlineState, failed operation with content kept Alert error, invalid field FieldError. EmptyState media only a content illustration. Skeleton shapes: text h-4, title h-control-lg w-1/3, block h-24 w-full. Failure: icon warning, title `common.state.loadFailed.title` or the view's failure key, error text as description, Retry toolbar. A block Skeleton may fill a fixed-height chart host.
 - Plain hint: TextTooltip (`text` or `parts`; no tooltip when empty) or Tooltip; TextTooltip also takes `side`, `contentTestid` and `kbd` (shortcut chip); TooltipIconButton takes a shortcut only through `kbd`, a `badge` slot and `contentTestid` (U144); a dead `:disabled="true"` Tooltip fails U142; TextTooltip around an icon-only Button fails U143; a plain-text Tooltip triple with only structural directives (`v-if`, `v-else-if`, `v-else`, `v-for`, `:key`), testid or side fails U123; a TextTooltip repeating a truncating child text is TruncatedText (U91); icon button TooltipIconButton; disabled reason TooltipDisabledTrigger; several facts TooltipDetails.
 - Type roles: xl landing hero, lg detail and dialog titles, md body and controls (no class), sm meta, badges, section labels; font-data for data only, never font-mono. xl only ModuleStart and pairing codes (U128); `leading-normal` only on prose, `leading-none` on icon-aligned lines; case and tracking only in SectionHeading, PanelHeader and DetailSection (their action slots reset them) or masked data (U130).
-- Spacing: bar px-1.5 gap-1; row from rowVariants gap-1.5; content pane p-3, gap-3 between blocks, gap-2 inside; dialog body p-3 gap-3; card, popover, radio card keep the primitive 2.5 inset with gap-1.5 inside; inline icon and text gap-1, chips gap-1.5. Icons 13 in kira buttons, menus, rows, bars; 12 in Badge, chip, inline text and status or inline size buttons; 16 DetailHeader, card tile or title bar; 24 empty state. Steps 5 and up fail U88 except EmptyState inset and pairing hero; indent paddings stay.
+- Spacing: bar px-1.5 gap-1; row from rowVariants gap-1.5; content pane p-3, blocks in a pane stack with gap-3, never margins, gap-2 inside; dialog body p-3 gap-3; card, popover, radio card keep the primitive 2.5 inset with gap-1.5 inside; inline icon and text gap-1, chips gap-1.5. Icons 13 in kira buttons, menus, rows, bars; 12 in Badge, chip, inline text and status or inline size buttons; 16 DetailHeader, card tile or title bar; 24 empty state. Steps 5 and up fail U88 except EmptyState inset and pairing hero; indent paddings stay.
 - Radii: rounded-kira-sm controls, rows, chips, inset blocks; rounded-kira containers; rounded-full dots, avatars, count badges. Dividers 1px border-border; border-l-2 only for quotes; shadows only from elevation tiers. border-l-3 and border-2 only on the plan board and glyph outlines (U132); no arbitrary shadow (U129).
 - Tabs by role: a form value is SecondaryTabs `choice` (or RadioGroupCard for up to 6 options with descriptions); content sections `tabs`; view switch in a bar `segmented`. Bar-hosted controls stay `segmented`. Size: `choice` kira-lg beside form controls, default in a row or composer; `tabs` and `segmented` take no size (U126). A `choice` label is Field + FieldLabel with the same text as its aria-label. A view switch of the same content in a ViewToolbar is `segmented`. A text toggle is `Toggle` (default variant); an icon toggle is TooltipIconButton `:pressed`; a single pick from a list is SecondaryTabs or a `rowVariants` list, never pressed toolbar Buttons (U152). Toggle-shaped controls share idle muted text and `fg` when on (toggleVariants).
-- Guards U110-U152 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
+- Pane frame is `paneFrame`, standalone window body is `windowBody` (frames.ts); no hand copy (U155).
+- Status glyphs are StatusDot or CodiconIcon, never text glyphs; arrows between values are `arrow-right` 12 (U156).
+- Disclosure owns its content spacing; secondary disclosures pass `meta`; no trigger or content classes (U154). Tree depth indent is `rowIndent` (U153).
+- Opacity never marks muted or state: tone, `rowVariants` muted/disabled, or `SORTABLE_GHOST_CLASS` (U90).
+- Guards U110-U156 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
 
 ## Process model
 
