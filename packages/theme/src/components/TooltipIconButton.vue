@@ -18,7 +18,7 @@ import { computed, useTemplateRef } from 'vue';
 // overwhelming majority of sites use the same string for both); `ariaLabel` is an escape hatch for
 // the few sites whose accessible name and tooltip text genuinely differ (a static aria-label next
 // to a dynamic tooltip). The default slot overrides the tooltip body for a site whose tooltip is
-// richer than plain text/an interpolation. Every other attribute (`data-testid`, `@click`,
+// richer than plain text/an interpolation. The `badge` slot draws over the icon (a status dot). Every other attribute (`data-testid`, `@click`,
 // `disabled`, extra classes) falls through to the Button via $attrs — inheritAttrs is off because
 // this component has no single root element to inherit onto.
 defineOptions({ inheritAttrs: false });
@@ -79,6 +79,7 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
           v-bind="$attrs"
         >
           <CodiconIcon :name="icon" :size="iconSize" />
+          <slot name="badge" />
         </Button>
       </TooltipDisabledTrigger>
       <Button
@@ -92,6 +93,7 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
         v-bind="$attrs"
       >
         <CodiconIcon :name="icon" :size="iconSize" />
+        <slot name="badge" />
       </Button>
     </TooltipTrigger>
     <TooltipContent><slot>{{ label }}</slot><Kbd v-if="kbd">{{ kbd }}</Kbd></TooltipContent>

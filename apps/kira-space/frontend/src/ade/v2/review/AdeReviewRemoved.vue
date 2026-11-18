@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { ReviewRemovedEntry } from '@kira/git-ipc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
-import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import {
   Collapsible,
@@ -86,18 +85,14 @@ function rangeLabel(entry: ReviewRemovedEntry): string {
           >
             {{ t('space.ade.changes.uncommitted.label') }}
           </Badge>
-          <TextTooltip :text="t('space.ade.review.removed.dismiss.tooltip')">
-            <Button
-              variant="toolbar"
-              size="kira-icon"
-              :aria-label="t('space.ade.review.removed.dismiss.aria', { path: entry.path })"
-              :pending="isDismissing(entry.id)"
-              data-testid="ade-review-removed-dismiss"
-              @click="dismiss.mutate([entry.id])"
-            >
-              <CodiconIcon name="close" :size="13" />
-            </Button>
-          </TextTooltip>
+          <TooltipIconButton
+            icon="close"
+            :label="t('space.ade.review.removed.dismiss.tooltip')"
+            :aria-label="t('space.ade.review.removed.dismiss.aria', { path: entry.path })"
+            :pending="isDismissing(entry.id)"
+            data-testid="ade-review-removed-dismiss"
+            @click="dismiss.mutate([entry.id])"
+          />
         </div>
         <div class="flex gap-2 text-kira-sm text-muted-foreground">
           <span data-testid="ade-review-removed-reviewed"

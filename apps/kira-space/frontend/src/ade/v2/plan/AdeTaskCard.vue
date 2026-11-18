@@ -9,7 +9,6 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
-import { Kbd } from '@theme/components/ui/kbd';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import { plainText } from '@theme/varText';
@@ -200,6 +199,7 @@ const boxClass = computed(() => {
                 v-if="choices.length"
                 icon="git-compare"
                 :label="t('space.ade.board.taskMenu.reviewCode.label')"
+                :kbd="formatShortcut('ade.reviewCode')"
                 class="size-4.5 shrink-0"
                 disabled-trigger
                 :pending="reviewCode.pendingFor(choices.map((c) => c.branchId))"
@@ -210,7 +210,6 @@ const boxClass = computed(() => {
                 "
               >
                 <VarText :parts="reviewTip" />
-                <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
               </TooltipIconButton>
             </span>
             <AdeTaskStatusMenu :card="card" />

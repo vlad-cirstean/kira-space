@@ -5,7 +5,6 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
-import { Kbd } from '@theme/components/ui/kbd';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -411,6 +410,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           v-if="choice"
           icon="git-compare"
           :label="t('space.ade.board.taskMenu.reviewCode.label')"
+          :kbd="formatShortcut('ade.reviewCode')"
           class="shrink-0"
           disabled-trigger
           :pending="reviewCode.pendingFor([row.id])"
@@ -419,7 +419,6 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           @click.stop="reviewCode.open(row.branch.taskId, row.id, rowRef)"
         >
           <VarText :parts="choice.tip" />
-          <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
         </TooltipIconButton>
         <slot />
       </div>
@@ -545,6 +544,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               v-if="choice"
               icon="git-compare"
               :label="t('space.ade.board.taskMenu.reviewCode.label')"
+              :kbd="formatShortcut('ade.reviewCode')"
               class="size-5 shrink-0"
               disabled-trigger
               :pending="reviewCode.pendingFor([row.id])"
@@ -553,7 +553,6 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               @click.stop="reviewCode.open(row.branch.taskId, row.id, rowRef)"
             >
               <VarText :parts="choice.tip" />
-              <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
             </TooltipIconButton>
           </span>
           <AdeOpStatus :task-id="row.branch.taskId" :branch-id="row.id" />

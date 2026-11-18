@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
@@ -90,14 +90,11 @@ function openRepos(): void {
               data-testid="ade-repo-gate-chip"
             >
               <AdeRepoTag :code-repo-id="id" :label="labelOf(id)" />
-              <Button
-                variant="toolbar"
-                size="kira-icon"
-                :aria-label="t('space.ade.repoGate.remove.aria', { repo: labelOf(id) })"
+              <TooltipIconButton
+                icon="close"
+                :label="t('space.ade.repoGate.remove.aria', { repo: labelOf(id) })"
                 @click="drop(id)"
-              >
-                <CodiconIcon name="close" :size="13" />
-              </Button>
+              />
             </span>
           </div>
         </div>

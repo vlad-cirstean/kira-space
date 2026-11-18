@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -111,25 +112,19 @@ function onRemove(index: number): void {
             }}</span>
           </div>
           <div class="flex shrink-0 items-center gap-0.5">
-            <Button
-              variant="toolbar"
-              size="kira-icon"
-              :aria-label="t('studio.settings.dbMcp.apiRules.edit.aria')"
+            <TooltipIconButton
+              :icon="ICON.edit"
+              :label="t('studio.settings.dbMcp.apiRules.edit.aria')"
               data-testid="api-rule-edit"
               @click="openDialog(i)"
-            >
-              <CodiconIcon :name="ICON.edit" :size="13" />
-            </Button>
-            <Button
-              variant="toolbar"
-              size="kira-icon"
+            />
+            <TooltipIconButton
+              :icon="ICON.delete"
+              :label="t('studio.project.connectionDialog.removeRule.tooltip')"
               :pending="remove.pending.value"
-              :aria-label="t('studio.project.connectionDialog.removeRule.tooltip')"
               data-testid="api-rule-remove"
               @click="onRemove(i)"
-            >
-              <CodiconIcon :name="ICON.delete" :size="13" />
-            </Button>
+            />
           </div>
         </li>
       </ul>

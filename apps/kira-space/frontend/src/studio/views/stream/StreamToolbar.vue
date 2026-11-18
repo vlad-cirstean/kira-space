@@ -12,7 +12,6 @@ import { Button } from '@theme/components/ui/button';
 import { FieldError } from '@theme/components/ui/field';
 import { InputGroup, InputGroupInput } from '@theme/components/ui/input-group';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
-import { Tooltip, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
@@ -340,10 +339,6 @@ async function onDeleteMessage(): Promise<void> {
       />
     </div>
     <span class="ml-auto" />
-    <Tooltip :disabled="true">
-      <TooltipTrigger as-child>
-        <RunState :state="runState" />
-      </TooltipTrigger>
-    </Tooltip>
+    <RunState :state="runState" />
   </ViewToolbar>
 </template>

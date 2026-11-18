@@ -461,7 +461,6 @@ watch(visibleBranchNames, (names) => {
             <SearchField
               ref="filterEl"
               v-model="filter"
-              class="w-full"
               :placeholder="t(TAB_FILTER_PLACEHOLDERS[activeTab])"
               :aria-label="t(TAB_FILTER_PLACEHOLDERS[activeTab])"
               @keydown.down="onFilterDown"

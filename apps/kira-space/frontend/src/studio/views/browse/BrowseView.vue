@@ -10,7 +10,6 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
-import { Tooltip, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -384,11 +383,7 @@ onMounted(() => {
         @click="onUploadClick"
       />
       <span class="ml-auto" />
-      <Tooltip :disabled="true">
-        <TooltipTrigger as-child>
-          <RunState :state="runState" />
-        </TooltipTrigger>
-      </Tooltip>
+      <RunState :state="runState" />
       <div class="flex items-center gap-1.5 min-w-0"></div>
     </ViewToolbar>
 

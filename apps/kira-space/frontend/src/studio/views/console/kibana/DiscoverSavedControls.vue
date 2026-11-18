@@ -11,9 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
-import { Kbd } from '@theme/components/ui/kbd';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { errorText, toCodedError } from '@workbench/bridge/codedError';
 import MenuItems from '@workbench/components/MenuItems.vue';
@@ -177,24 +175,19 @@ const saveChord = formatShortcut('form.save');
       />
     </span>
     <div class="flex items-center">
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
-            variant="toolbar"
-            size="kira"
-            :disabled="!d.body.value"
-            :pending="pending()"
-            data-testid="kibana-save"
-            @click="onSave"
-          >
-            <CodiconIcon name="save" :size="13" />
-            {{ t('common.action.save.label') }}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent
-          >{{ t('studio.kibana.saved.save.tooltip') }}<Kbd>{{ saveChord }}</Kbd></TooltipContent
+      <TextTooltip :text="t('studio.kibana.saved.save.tooltip')" :kbd="saveChord">
+        <Button
+          variant="toolbar"
+          size="kira"
+          :disabled="!d.body.value"
+          :pending="pending()"
+          data-testid="kibana-save"
+          @click="onSave"
         >
-      </Tooltip>
+          <CodiconIcon name="save" :size="13" />
+          {{ t('common.action.save.label') }}
+        </Button>
+      </TextTooltip>
       <DropdownMenu :modal="false">
         <DropdownMenuTrigger as-child>
           <Button

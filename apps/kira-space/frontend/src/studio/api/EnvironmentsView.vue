@@ -157,15 +157,12 @@ async function onSetActive(id: string): Promise<void> {
     <Alert v-if="variablesStore.error" variant="error" strip data-testid="environments-error">
       <AlertDescription>{{ variablesStore.error }}</AlertDescription>
       <AlertAction>
-        <Button
-          variant="toolbar"
-          size="kira-icon"
-          :aria-label="t('common.action.dismiss.label')"
+        <TooltipIconButton
+          :icon="ICON.close"
+          :label="t('common.action.dismiss.label')"
           data-testid="environments-error-dismiss"
           @click="variablesStore.dismissError"
-        >
-          <CodiconIcon :name="ICON.close" :size="13" />
-        </Button>
+        />
       </AlertAction>
     </Alert>
 

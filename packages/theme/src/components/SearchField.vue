@@ -7,7 +7,7 @@ import {
   InputGroupInput,
 } from '@theme/components/ui/input-group';
 import { t } from '@theme/i18n';
-import { type HTMLAttributes, useTemplateRef } from 'vue';
+import { useTemplateRef } from 'vue';
 
 // The one search/filter text box. Attrs (data-testid, @keydown, @keydown.enter, ...) land
 // on the <input>. Esc clears a non-empty value and stops there; an empty field lets Esc bubble so
@@ -15,19 +15,16 @@ import { type HTMLAttributes, useTemplateRef } from 'vue';
 // focus() (biome noAutofocus forbids the attribute).
 defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(
+const _props = withDefaults(
   defineProps<{
     placeholder?: string;
     ariaLabel?: string;
     size?: 'kira' | 'kira-lg';
-    /** Lands on the group box (width in a flex row); other attrs land on the <input>. */
-    class?: HTMLAttributes['class'];
   }>(),
   {
     placeholder: () => t('common.action.search.label'),
     ariaLabel: undefined,
     size: 'kira',
-    class: undefined,
   },
 );
 
@@ -54,7 +51,7 @@ defineExpose({ focus });
 </script>
 
 <template>
-  <InputGroup :variant="size" :class="props.class" data-slot="search-field">
+  <InputGroup :variant="size" data-slot="search-field">
     <InputGroupAddon align="inline-start">
       <CodiconIcon name="search" :size="13" />
     </InputGroupAddon>

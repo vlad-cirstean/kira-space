@@ -6,7 +6,7 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
-import { Tooltip, TooltipDisabledTrigger, TooltipTrigger } from '@theme/components/ui/tooltip';
+import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import RunState from '@theme/RunState.vue';
@@ -364,11 +364,7 @@ onUnmounted(() => {
         @click="onToggleSearch"
       />
       <span class="ml-auto" />
-      <Tooltip :disabled="true">
-        <TooltipTrigger as-child>
-          <RunState :state="runState" />
-        </TooltipTrigger>
-      </Tooltip>
+      <RunState :state="runState" />
     </ViewToolbar>
 
     <Alert

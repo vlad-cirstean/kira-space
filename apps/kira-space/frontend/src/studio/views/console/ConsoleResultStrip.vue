@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Button } from '@theme/components/ui/button';
 import { tabChipVariants } from '@theme/components/ui/tabs';
 import { t } from '@theme/i18n';
 import { rowActions, rowMeta } from '@theme/lib/rowVariants';
@@ -107,17 +106,14 @@ const statusLine = computed(() => {
             t('studio.console.result.tab.label', { n: i + 1 })
           }}</span>
         </button>
-        <Button
-          variant="toolbar"
-          size="kira-icon"
+        <TooltipIconButton
+          icon="close"
+          :label="t('studio.console.result.close.aria')"
           class="size-4"
           :class="result.key === rt.activeKey ? 'opacity-100' : rowActions"
-          :aria-label="t('studio.console.result.close.aria')"
           data-testid="console-result-close"
           @click="consoleViewStore.closeResult(tabId, result.key)"
-        >
-          <CodiconIcon name="close" :size="13" />
-        </Button>
+        />
       </div>
     </div>
     <span class="ml-auto" :class="rowMeta" data-testid="console-status">{{ statusLine }}</span>

@@ -8,7 +8,6 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
-import { Tooltip, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
@@ -192,10 +191,6 @@ const projectionCount = computed(() => {
       />
     </div>
     <span class="ml-auto" />
-    <Tooltip :disabled="true">
-      <TooltipTrigger as-child>
-        <RunState :state="runState" />
-      </TooltipTrigger>
-    </Tooltip>
+    <RunState :state="runState" />
   </ViewToolbar>
 </template>
