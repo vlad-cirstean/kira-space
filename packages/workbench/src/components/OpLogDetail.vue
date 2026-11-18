@@ -3,6 +3,7 @@ import type { EditorLanguageId } from '@shared/domain/editor';
 import type { OpLogRecord } from '@shared/domain/ops';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Button } from '@theme/components/ui/button';
@@ -79,8 +80,7 @@ function stepDuration(step: OpLogStep): string {
     </KeyValueList>
 
     <section v-if="record.command" class="flex flex-col gap-0.5">
-      <div class="flex items-center gap-1 text-muted-foreground">
-        <span>{{ t('common.field.command.label') }}</span>
+      <SectionHeading flush :label="t('common.field.command.label')">
         <TooltipIconButton
           icon="copy"
           :label="t('common.copyCommand.label')"
@@ -89,7 +89,7 @@ function stepDuration(step: OpLogStep): string {
             copy(record.command ?? '', { message: t('workbench.opLog.copiedCommand.announce') })
           "
         />
-      </div>
+      </SectionHeading>
       <OpLogCodeBlock
         :text="record.command"
         :language="commandLanguage"
@@ -98,15 +98,14 @@ function stepDuration(step: OpLogStep): string {
     </section>
 
     <section v-if="record.error" class="flex flex-col gap-0.5">
-      <div class="flex items-center gap-1 text-muted-foreground">
-        <span>{{ t('workbench.opLog.error.status') }}</span>
+      <SectionHeading flush :label="t('workbench.opLog.error.status')">
         <TooltipIconButton
           icon="copy"
           :label="t('workbench.opLog.copyError.label')"
           size="inline"
           @click="copy(record.error ?? '', { message: t('workbench.opLog.copiedError.announce') })"
         />
-      </div>
+      </SectionHeading>
       <OpLogCodeBlock :text="record.error" tone="error" data-testid="op-detail-error" />
     </section>
 

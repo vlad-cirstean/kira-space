@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -168,15 +170,15 @@ useKeptScroll(() => `ade:task:${props.card.task.id}:main`, bodyEl);
     </div>
 
     <div v-if="card.orchestrator" class="flex flex-col gap-1 px-1.5">
-      <span class="text-kira-sm text-subtle">{{ t('space.ade.orchestrator.children.label') }}</span>
+      <SectionHeading flush :label="t('space.ade.orchestrator.children.label')" />
       <AdeTaskChildren :card="card" testid="ade-main-children" />
-      <span
+      <InlineState
         v-if="!card.children.length && !card.archivedChildren.length"
-        class="text-muted-foreground"
+        kind="empty"
         data-testid="ade-main-children-empty"
         >{{
           t('space.ade.orchestrator.children.empty')
-        }}</span
+        }}</InlineState
       >
     </div>
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
@@ -165,10 +166,7 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
 
 <template>
   <div ref="root" class="flex flex-col gap-0.5" data-testid="ade-links" :data-mode="mode">
-    <div class="flex h-control items-center gap-1 text-kira-sm text-muted-foreground">
-      <span class="flex-1" data-testid="ade-links-title">{{
-        t('space.ade.details.links.title')
-      }}</span>
+    <SectionHeading flush :label="t('space.ade.details.links.title')" data-testid="ade-links-title">
       <AdeLinkAdd v-if="canAdd()" ref="adder" v-model:open="addOpen" :add="links.add">
         <TooltipIconButton
           icon="add"
@@ -177,7 +175,7 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
           data-testid="ade-links-add"
         />
       </AdeLinkAdd>
-    </div>
+    </SectionHeading>
     <QueryState :query="links.query" variant="inline">
       <template #loading>
         <div class="flex min-h-6 items-center gap-1" data-testid="ade-links-loading">

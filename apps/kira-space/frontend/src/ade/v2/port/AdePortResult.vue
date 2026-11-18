@@ -14,19 +14,19 @@ const base = (path: string): string => path.split(/[\\/]/).pop() ?? path;
   <div class="flex min-w-0 flex-col gap-3 text-kira-md" data-testid="ade-port-result">
     <SectionHeading flush :label="t('common.done.status')" />
     <section v-if="showWritten && result.written?.length" class="flex flex-col gap-0.5">
-      <div class="text-kira-sm text-subtle">{{ t('space.ade.port.written.label') }}</div>
+      <SectionHeading flush :label="t('space.ade.port.written.label')" />
       <ul class="m-0 list-none p-0 font-data text-kira-sm" data-testid="ade-port-written">
         <li v-for="p in result.written" :key="p">{{ p }}</li>
       </ul>
     </section>
     <section v-if="result.backups?.length" class="flex flex-col gap-0.5">
-      <div class="text-kira-sm text-subtle">{{ t('space.ade.port.backups.label') }}</div>
+      <SectionHeading flush :label="t('space.ade.port.backups.label')" />
       <ul class="m-0 list-none p-0 font-data text-kira-sm" data-testid="ade-port-backups">
         <li v-for="p in result.backups" :key="p">{{ base(p) }}</li>
       </ul>
     </section>
     <section v-if="result.servers?.length" class="flex flex-col gap-0.5">
-      <div class="text-kira-sm text-subtle">{{ t('space.ade.port.servers.title') }}</div>
+      <SectionHeading flush :label="t('space.ade.port.servers.title')" />
       <ul class="m-0 list-none p-0 text-kira-sm" data-testid="ade-port-servers">
         <li v-for="s in result.servers" :key="s.name">
           <span class="font-data">{{ s.name }}</span> {{ s.outcome
@@ -35,7 +35,7 @@ const base = (path: string): string => path.split(/[\\/]/).pop() ?? path;
       </ul>
     </section>
     <section v-if="result.secrets?.length" class="flex flex-col gap-0.5">
-      <div class="text-kira-sm text-subtle">{{ t('space.ade.port.savedSecrets.label') }}</div>
+      <SectionHeading flush :label="t('space.ade.port.savedSecrets.label')" />
       <ul class="m-0 list-none p-0 font-data text-kira-sm" data-testid="ade-port-secrets">
         <li v-for="s in result.secrets" :key="s">{{ s }}</li>
       </ul>

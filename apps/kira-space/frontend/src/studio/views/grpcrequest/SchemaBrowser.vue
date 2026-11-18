@@ -224,7 +224,7 @@ function selectMethod(service: string, method: string): void {
     <div class="flex-1 min-h-0 overflow-auto px-1.5 py-1" data-testid="grpc-service-list">
       <template v-if="schema && filteredServices.length > 0">
         <div v-for="svc in filteredServices" :key="svc.fullName" class="mb-1.5">
-          <SectionHeading :label="svc.name" data-testid="grpc-service-name" />
+          <SectionHeading data :label="svc.name" data-testid="grpc-service-name" />
           <!-- The row's own template class list (P110 B29) supplies height/display/align-items/
                gap/padding/border-radius/color/font-size/cursor and its own hover/selected
                background; the extra classes here only supply what that list does not. -->

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -75,8 +77,7 @@ const editing = ref<string | null>(null);
 
 <template>
   <div class="flex flex-col gap-2" data-testid="ade-task-chain">
-    <div class="flex items-center gap-1 text-kira-sm text-muted-foreground">
-      <span class="flex-1">{{ t('space.ade.proof.chain.title') }}</span>
+    <SectionHeading flush :label="t('space.ade.proof.chain.title')">
       <TextTooltip :text="t('space.ade.details.timeline.toggle.tooltip')">
         <Toggle
           :model-value="list.showTimeline"
@@ -109,7 +110,7 @@ const editing = ref<string | null>(null);
           @click="composer.show(task.id)"
         />
       </template>
-    </div>
+    </SectionHeading>
     <Card v-if="composing" data-testid="ade-note-composer">
       <AdeNotesEditor
         :key="`compose-${task.id}`"
@@ -145,11 +146,7 @@ const editing = ref<string | null>(null);
         >
       </div>
     </Card>
-    <div
-      v-if="!hasChain && !composing"
-      class="flex items-center gap-2 text-kira-sm text-subtle"
-      data-testid="ade-notes-empty"
-    >
+    <InlineState v-if="!hasChain && !composing" kind="empty" data-testid="ade-notes-empty">
       <span>{{ t('space.ade.notes.empty.body') }}</span>
       <Button
         v-if="!readonly"
@@ -159,7 +156,7 @@ const editing = ref<string | null>(null);
         @click="composer.show(task.id)"
         ><CodiconIcon name="add" :size="13" />{{ t('space.ade.notes.add.label') }}</Button
       >
-    </div>
+    </InlineState>
     <template v-for="e in entries" :key="e.key">
       <AdeNoteEntry
         v-if="e.kind === 'handover'"

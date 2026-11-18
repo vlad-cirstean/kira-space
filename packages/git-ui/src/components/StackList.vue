@@ -91,6 +91,7 @@ async function removeFromStack(branch: string): Promise<void> {
 
     <div v-for="group in stacks.visible" :key="group.summary.base" class="mb-1">
       <SectionHeading
+        data
         :label="group.summary.base"
         :data-kira-tip="t('git.stack.base.tooltip', { base: group.summary.base })"
       >

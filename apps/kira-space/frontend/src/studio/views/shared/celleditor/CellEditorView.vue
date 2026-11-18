@@ -4,6 +4,7 @@ import { pathTail } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
@@ -510,12 +511,12 @@ const statusLine = computed(() => {
         <!-- Hex/base64: the same bytes as editable plaintext, kept in lockstep with the encoded box
              above in both directions (encode<->decode, see onDecodedInput). -->
         <template v-if="showDecodedPane">
-          <div
-            class="flex shrink-0 items-center gap-1 bg-elevated text-subtle text-kira-sm leading-4 py-0.5 px-2"
+          <SectionHeading
+            :label="t('studio.cellEditor.decoded.label')"
+            class="shrink-0 bg-elevated"
           >
-            <CodiconIcon name="symbol-string" :size="13" />
-            <span>{{ t('studio.cellEditor.decoded.label') }}</span>
-          </div>
+            <template #leading><CodiconIcon name="symbol-string" :size="13" /></template>
+          </SectionHeading>
           <div
             v-if="decodedDoc !== null"
             class="flex-1 basis-5/12 min-h-0"
@@ -545,12 +546,12 @@ const statusLine = computed(() => {
         <!-- The three timestamp formats: TimestampPane owns its own readings, zone switch, editable
              field and calendar entirely — this file only decides whether to show it. -->
         <template v-else-if="isTimestampFormat">
-          <div
-            class="flex shrink-0 items-center gap-1 bg-elevated text-subtle text-kira-sm leading-4 py-0.5 px-2"
+          <SectionHeading
+            :label="t('studio.cellEditor.timestamp.title')"
+            class="shrink-0 bg-elevated"
           >
-            <CodiconIcon name="calendar" :size="13" />
-            <span>{{ t('studio.cellEditor.timestamp.title') }}</span>
-          </div>
+            <template #leading><CodiconIcon name="calendar" :size="13" /></template>
+          </SectionHeading>
           <TimestampPane
             class="shrink-0"
             :doc="doc"

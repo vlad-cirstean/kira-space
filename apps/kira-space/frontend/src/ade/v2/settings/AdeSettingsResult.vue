@@ -91,11 +91,11 @@ const backupsOpen = computed({
         class="flex flex-col gap-1"
         data-testid="ade-settings-file"
       >
-        <div class="m-0 font-data text-kira-sm text-subtle">{{ f.name }}</div>
+        <SectionHeading flush data :label="f.name" />
         <CodeBlock class="max-h-96 overflow-auto">{{ f.text }}</CodeBlock>
       </section>
       <section v-if="current.env.length > 0" class="flex flex-col gap-1">
-        <div class="m-0 text-kira-sm text-subtle">{{ t('docker.field.env.label') }}</div>
+        <SectionHeading flush :label="t('docker.field.env.label')" />
         <ul class="m-0 flex list-none flex-col gap-0.5 p-0" data-testid="ade-settings-env">
           <li v-for="e in current.env" :key="e.name" class="font-data text-kira-sm">
             {{ e.name }}={{ e.value }}
@@ -116,9 +116,7 @@ const backupsOpen = computed({
         <li v-for="n in current.notes" :key="n">{{ n }}</li>
       </ul>
       <section v-if="current.kira.length > 0" class="flex flex-col gap-1">
-        <div class="m-0 text-kira-sm text-subtle">{{
-          t('space.ade.settings.result.kira.label')
-        }}</div>
+        <SectionHeading flush :label="t('space.ade.settings.result.kira.label')" />
         <ul
           class="m-0 flex list-none flex-col gap-0.5 p-0 text-kira-sm"
           data-testid="ade-settings-kira"

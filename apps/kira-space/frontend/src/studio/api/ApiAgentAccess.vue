@@ -38,9 +38,8 @@ const rows = computed(() =>
         class="flex flex-col gap-1"
         :data-testid="`api-agent-access-env-${env.id}`"
       >
-        <div class="flex items-center gap-2">
-          <span :class="colorMarkClass('dot', env.color)" />
-          <span class="min-w-0 flex-1 truncate text-kira-md font-medium">{{ env.name }}</span>
+        <SectionHeading flush :label="env.name">
+          <template #leading><span :class="colorMarkClass('dot', env.color)" /></template>
           <Badge v-if="env.autoApproveReads" variant="warn">{{
             t('studio.api.agentAccess.autoReads.status')
           }}</Badge>
@@ -53,7 +52,7 @@ const rows = computed(() =>
           >
             {{ t('common.action.edit.label') }}
           </Button>
-        </div>
+        </SectionHeading>
         <ul class="m-0 flex list-none flex-col gap-0.5 p-0 pl-4">
           <li
             v-for="v in env.variables"

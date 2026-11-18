@@ -126,7 +126,7 @@ async function confirmRemove(): Promise<void> {
 <template>
   <section :aria-label="t('common.module.worktrees.label')">
     <SectionHeading :label="t('common.module.worktrees.label')">
-      <Button variant="toolbar" size="kira" class="ml-auto" @click="emit('createWorktree')"
+      <Button variant="toolbar" size="kira" @click="emit('createWorktree')"
         ><CodiconIcon :name="ICON.add" :size="13" />
         {{ t('git.worktree.create.label') }}
       </Button>

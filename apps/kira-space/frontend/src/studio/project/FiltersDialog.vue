@@ -221,14 +221,12 @@ const connectionName = computed(
       <DialogBody>
         <section class="flex flex-col gap-1">
           <SectionHeading :label="t('studio.project.filtersDialog.kinds.heading.label')">
-            <span class="flex gap-1">
-              <Button variant="link" size="inline" @click="allKinds">{{
-                t('common.state.all.option')
-              }}</Button>
-              <Button variant="link" size="inline" @click="noneKinds">{{
-                t('common.state.none.option')
-              }}</Button>
-            </span>
+            <Button variant="link" size="inline" @click="allKinds">{{
+              t('common.state.all.option')
+            }}</Button>
+            <Button variant="link" size="inline" @click="noneKinds">{{
+              t('common.state.none.option')
+            }}</Button>
           </SectionHeading>
           <Card variant="list" class="max-h-56 overflow-y-auto" data-testid="filter-kind-list">
             <Label
@@ -254,14 +252,12 @@ const connectionName = computed(
 
         <section class="flex flex-col gap-1">
           <SectionHeading :label="t('studio.project.filtersDialog.objects.heading.label')">
-            <span class="flex gap-1">
-              <Button variant="link" size="inline" @click="allObjects">{{
-                t('common.state.all.option')
-              }}</Button>
-              <Button variant="link" size="inline" @click="noneObjects">{{
-                t('common.state.none.option')
-              }}</Button>
-            </span>
+            <Button variant="link" size="inline" @click="allObjects">{{
+              t('common.state.all.option')
+            }}</Button>
+            <Button variant="link" size="inline" @click="noneObjects">{{
+              t('common.state.none.option')
+            }}</Button>
           </SectionHeading>
           <SearchField
             v-model="nameFilter"

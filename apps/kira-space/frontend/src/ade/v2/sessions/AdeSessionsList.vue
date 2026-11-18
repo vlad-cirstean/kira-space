@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import InlineState from '@theme/components/InlineState.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Command, CommandGroup, CommandInput, CommandList } from '@theme/components/ui/command';
 import { t } from '@theme/i18n';
 import { matchesQuery } from '@workbench/behaviour/match';
@@ -66,9 +67,9 @@ function onKeydown(ev: KeyboardEvent): void {
 </script>
 
 <template>
-  <div v-if="inline" class="px-3 pb-1 pt-2 text-kira-sm text-muted-foreground">{{
-    t('space.ade.sessionList.stopped.label')
-  }}</div>
+  <div v-if="inline" class="px-1.5 pt-2">
+    <SectionHeading flush :label="t('space.ade.sessionList.stopped.label')" />
+  </div>
   <Command
     ref="root"
     v-model:search="search"
