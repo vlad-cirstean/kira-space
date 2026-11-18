@@ -33,6 +33,7 @@ import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { hostWords, type MessageKey, t } from '@theme/i18n';
+import { changeRequestTone, TONE_TEXT } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
 import { formatAbsoluteUtc, formatAgeCompact } from '@workbench/behaviour/format';
 import { errorText } from '@workbench/bridge/codedError';
@@ -168,17 +169,6 @@ const signatureText = computed<string | undefined>(() => {
  *  rule applying everywhere else but here). `disabled` renders nothing at all — this computed is
  *  `undefined` for both `disabled` and "nothing resolved yet", collapsing them into the same
  *  "no row" template branch below. */
-
-// P110 A14 (§1.3): a lookup map, not string interpolation, so every text-badge-change-request-* class
-// Tailwind must scan appears as a complete literal below. Replaces the old dynamic
-// `meta-pr-icon--${state}` class, whose own colour rule lived in this file's deleted <style>.
-
-const CHANGE_REQUEST_ICON_CLASS: Readonly<Record<string, string>> = {
-  open: 'text-ok',
-  draft: 'text-muted-foreground',
-  merged: 'text-conn-violet',
-  closed: 'text-error',
-};
 
 interface ChangeRequestDetailView {
   readonly kind: 'changeRequests' | 'none' | 'unavailable';
@@ -336,7 +326,9 @@ const changeRequestIcon = computed(() => {
           <Button
             variant="toolbar"
             size="inline"
-            :class="cn('ml-auto leading-none', CHANGE_REQUEST_ICON_CLASS[changeRequestIcon!.state])"
+            :class="
+              cn('ml-auto leading-none', TONE_TEXT[changeRequestTone(changeRequestIcon!.state)])
+            "
             :aria-label="
               t('git.changeRequest.open.aria', {
                 changeRequestNoun: words.changeRequestNoun,

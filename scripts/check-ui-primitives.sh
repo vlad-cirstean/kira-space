@@ -310,7 +310,6 @@ U115@@vt@@@@font-mono (use font-data)@@${TOK}font-mono(?![\w-])
 U116@@vt@@@@toned menu icon (menu icons stay muted; a destructive item uses variant destructive)@@iconClass:\s*['"\x60][^'"\x60]*${TOK}text-(?:ok|warn|error|info|tone-)
 U117@@v@@@@segmented SecondaryTabs inside a form (a form value is variant choice)@@(?s)<(?:Field|FieldSet|DialogBody)\b(?&t)(?<!/)>(?:(?!</(?:Field|FieldSet|DialogBody)>).)*?<SecondaryTabs\b(?&t)\svariant="segmented"
 U118@@v@@@@DialogBody class other than min-h-* (only flush and min-h-*, RD.5)@@<DialogBody\b(?&t)\s:?class="(?!min-h-[\w.\[\]-]+")
-U119@@vt@@ade/v2/tones.ts|AdeTaskActionButton.vue@@ACTION_CLASS off the task step action (RB.3)@@\bACTION_CLASS\b
 U120@@v@@@@link Button not size inline (RB.1)@@<Button\b(?=(?&t)\svariant="link")(?!(?&t)\ssize="inline")
 U121@@v@@@@DialogDescription inside DialogBody (intro text is the header description, RD.4)@@(?s)<DialogBody\b(?&t)(?<!/)>(?:(?!</DialogBody>).)*?<DialogDescription\b
 U122@@v@@MenuItems.vue@@hand DropdownMenuItem (menus render MenuItems from a MenuItem[]; radio, checkbox and label blocks are other tags, RM.1)@@<DropdownMenuItem\b

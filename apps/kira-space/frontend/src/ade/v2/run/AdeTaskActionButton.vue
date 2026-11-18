@@ -4,7 +4,6 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { TASK_ACTION_ICON } from '../plan/glyphs';
 import type { CardModel } from '../plan/usePlanModel';
-import { ACTION_CLASS } from '../tones';
 import { usePrefetchRunPreview } from './runPreview';
 import { useTaskAction } from './useTaskAction';
 
@@ -40,10 +39,9 @@ function warm(): void {
     </TooltipIconButton>
     <TextTooltip v-else :text="action.tip">
       <Button
-        variant="dialog"
+        :variant="action.tone === 'red' ? 'dialog-danger' : 'dialog'"
         size="kira"
         class="shrink-0"
-        :class="ACTION_CLASS[action.tone]"
         :pending="busy"
         :data-testid="`ade-task-action-${action.kind}`"
         @pointerenter="warm"
