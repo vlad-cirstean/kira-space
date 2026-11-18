@@ -103,7 +103,6 @@ U36 packages/theme/src/components/VarText.vue # inline variable mark, not a cont
 # A (apps/kira-space)
 U100 apps/kira-space/frontend/src/studio/api/CopyAsCurlDialog.vue # read-only output fields, nothing to discard
 U34 apps/kira-space/frontend/src/studio/theme/EngineIcon.vue # engine brand marks are third-party logo colours
-U36 apps/kira-space/frontend/src/studio/project/connection/ConnectionEnginePicker.vue # engine tile is a selectable radio card, not a content box
 U46 apps/kira-space/frontend/src/studio/bridge/port.ts # bridge transport timeout
 U41 apps/kira-space/frontend/src/studio/editor/MonacoHost.vue # Monaco engine host reads modifier keys
 U62 apps/kira-space/frontend/src/studio/editor/MonacoHost.vue # Monaco engine host owns editor focus
