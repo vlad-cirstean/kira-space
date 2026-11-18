@@ -135,7 +135,7 @@ function editEnvironmentVariables(): void {
           v-for="row in filteredRows"
           :key="`${row.scope}:${row.id}`"
           class="grid min-w-0 grid-cols-[1.2fr_2fr_auto_1.5fr] items-center gap-1"
-          :class="[tableRowClass, tableCellClass, { 'opacity-50': row.shadowed }]"
+          :class="[tableRowClass, tableCellClass]"
           data-testid="variables-overview-row"
           :data-scope="row.scope"
           :data-shadowed="row.shadowed"

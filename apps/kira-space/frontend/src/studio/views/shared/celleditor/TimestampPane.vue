@@ -116,11 +116,11 @@ watch(calendarOpen, (open) => {
                 reading.local
               }}</TimestampReading
             >
-            <span class="opacity-50">·</span>
+            <span class="text-subtle">·</span>
             <TimestampReading :subtle="zone !== 'utc'" data-testid="cell-editor-timestamp-utc">{{
               reading.utc
             }}</TimestampReading>
-            <span class="opacity-50">·</span>
+            <span class="text-subtle">·</span>
             <TimestampReading subtle data-testid="cell-editor-timestamp-relative">{{
               reading.relative
             }}</TimestampReading>

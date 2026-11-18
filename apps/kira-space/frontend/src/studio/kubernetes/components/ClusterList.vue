@@ -8,6 +8,7 @@ import { cn } from '@theme/lib/utils';
 import { copyText } from '@workbench/behaviour/clipboard';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { matchesQuery } from '@workbench/behaviour/match';
+import { SORTABLE_GHOST_CLASS } from '@workbench/behaviour/sortableReorder';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { logError } from '@workbench/bridge/log';
 import QueryState from '@workbench/components/QueryState.vue';
@@ -167,7 +168,11 @@ const rowClass = (selected: boolean) =>
         v-for="row in rows"
         :key="row.key"
         :class="
-          cn(rowClass(isSelected(row)), 'relative', draggingId === row.cluster.id && 'opacity-50')
+          cn(
+            rowClass(isSelected(row)),
+            'relative',
+            draggingId === row.cluster.id && SORTABLE_GHOST_CLASS,
+          )
         "
         :style="rowIndent(0)"
         role="option"

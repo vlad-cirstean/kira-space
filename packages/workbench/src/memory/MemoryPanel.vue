@@ -204,7 +204,6 @@ const historyToggleId = useId();
                 cn(
                   rowVariants({ layout: 'double', selected: selectedId === memory.id }),
                   'w-full flex-col gap-1 whitespace-normal py-1.5 text-left',
-                  memory.historical && 'opacity-50',
                   VIRTUAL_ROW_CLASS,
                 )
               "
