@@ -7,7 +7,7 @@ import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
 
 // P308/P381: scripts reorder within their own set (ungrouped or one collection) and collections reorder
-// among themselves, by drag or Alt+arrows. The Go half is termflow TestScriptOrder; its contract
+// among themselves, by drag. The Go half is termflow TestScriptOrder; its contract
 // fixes the three call shapes.
 
 const NOW = '2026-01-01T00:00:00.000Z';
@@ -147,35 +147,6 @@ test('drag reorders ungrouped scripts, a collection own scripts and the collecti
   ]);
 });
 
-test('Alt+Arrow moves within the set; the first script of a collection never moves the collection', async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await relaunch({
-    control: [
-      LIST,
-      { channel: IPC.customScriptsReorder, args: { collection: 'X', ids: ['t2', 't1'] } },
-      { channel: IPC.customScriptsReorderCollections, args: { names: ['Y', 'X'] } },
-    ],
-  });
-  await open(page);
-
-  await row(page, 't1').focus();
-  await page.keyboard.press('Alt+ArrowUp');
-
-  // The Alt+ArrowDown call is the barrier: exactly one reorder call proves the Alt+ArrowUp above
-  // sent none.
-  await page.keyboard.press('Alt+ArrowDown');
-  await expect.poll(() => calls(control, IPC.customScriptsReorder)).toHaveLength(1);
-  expect(calls(control, IPC.customScriptsReorderCollections)).toHaveLength(0);
-  expect(await groupIds(page)).toEqual(['X', 'Y']);
-  await expect(row(page, 't1')).toBeFocused();
-
-  await header(page, 'X').focus();
-  await page.keyboard.press('Alt+ArrowDown');
-  await expect.poll(() => groupIds(page)).toEqual(['Y', 'X']);
-  expect(calls(control, IPC.customScriptsReorderCollections)).toHaveLength(1);
-});
-
 test('an active search pauses drag', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({ control: [LIST] });
   await open(page);
@@ -189,7 +160,7 @@ test('an active search pauses drag', async ({ relaunch }) => {
   expect(calls(control, IPC.customScriptsReorder)).toHaveLength(0);
 });
 
-// P381: the Move up/down menu items; shared with Space.
+// P669: no Move items, no Alt+arrow; shared with Space.
 registerOrderScenarios(
   { test, contract, ipc: IPC },
   { extraBase: [], modeTab: (page) => modeTab(page, 'automations') },

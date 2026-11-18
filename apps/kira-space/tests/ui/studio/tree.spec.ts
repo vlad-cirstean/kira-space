@@ -296,8 +296,6 @@ test('project tree — expansion, caching, disconnect/reconnect, search, filters
     'edit',
     'update-credentials',
     'duplicate',
-    'move-up',
-    'move-down',
     'copy-name',
     'copy-uri',
     'filters',
