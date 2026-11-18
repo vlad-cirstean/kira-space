@@ -17,6 +17,7 @@
 # Guards U118-U121: docs/v0.3.17/plans/P672-part4.md.
 # Guards U122-U123: docs/v0.3.17/plans/P672-part5.md.
 # Guard U124: docs/v0.3.17/plans/P672-part6.md.
+# Guard U125: docs/v0.3.17/plans/P672-part7.md.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -296,6 +297,7 @@ U121@@v@@@@DialogDescription inside DialogBody (intro text is the header descrip
 U122@@v@@MenuItems.vue@@hand DropdownMenuItem (menus render MenuItems from a MenuItem[]; radio, checkbox and label blocks are other tags, RM.1)@@<DropdownMenuItem\b
 U123@@v@@@@plain-text Tooltip triple (use TextTooltip, RT.1)@@(?s)<Tooltip>\s*<TooltipTrigger as-child>(?:(?!</TooltipTrigger>|<Tooltip\b).)*</TooltipTrigger>\s*<TooltipContent>\s*(?:\{\{(?:(?!\}\}).)*\}\}|[^<{]+)\s*</TooltipContent>\s*</Tooltip>
 U124@@v@@CodeBlock.vue@@Card class sets padding, gap, type or row layout (variant inset, section or list; code is CodeBlock; a row is never a Card, RC.1-RC.3)@@<Card\b(?&t)\s:?class="[^"]*${TOK}(?:font-data|whitespace-pre|flex-row|justify-between|p-|px-|py-|pt-|pb-|gap-|text-kira|text-muted|text-subtle)
+U125@@vt@@/ade/v2/plan/|/ade/v2/tones.ts|AdeChip.vue|PlanTaskCard.vue|AdeAutomationChip.vue@@ADE pastel map, tone token or toned AdeChip off the plan board (theme tones, Badge, statusTone.ts; P672 D1)@@\b(?:TONE_TEXT_CLASS|TONE_TAG_CLASS|SOLID_CLASS|ACTION_CLASS)\b|${TOK}(?:ring|outline|fill|stroke)-tone-[a-z]|--color-tone-|<AdeChip\b(?![^>]*\s:color=)
 GUARDS
 
 # hits: "U<n> path"
