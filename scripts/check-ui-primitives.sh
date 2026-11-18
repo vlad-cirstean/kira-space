@@ -26,6 +26,7 @@
 # Guards U146, U13, U36, U124 (extended): docs/v0.3.17/plans/P672-part6-iter2.md. U124 exempts AdeTaskCard: D1 board card tone, rail and selected fill.
 # Guards U141-U145, U123 extended: docs/v0.3.17/plans/P672-part5-iter2.md.
 # Guards U117 (extended), U152: docs/v0.3.17/plans/P672-part8-iter2.md.
+# Guards U147-U151: docs/v0.3.17/plans/P672-part7-iter2.md.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -307,6 +308,11 @@ U143@@v@@@@TextTooltip around an icon-only Button (use TooltipIconButton, RT.1)@
 U144@@v@@@@Kbd inside a TooltipIconButton body (use :kbd, RT.1)@@(?s)<TooltipIconButton\b(?&t)(?<!/)>(?:(?!</TooltipIconButton>).)*?<Kbd\b
 U145@@v@@@@margin or padding class on a popover bar control (use PopoverBar, RP.1)@@(?s)\A(?=.*<PopoverContent\b).*?<(?:SecondaryTabs|SearchField)\b(?&t)\s:?class="[^"]*${TOK}(?:m|mx|my|mt|mb|ml|mr|p|px|py)-
 U152@@v@@@@hand toggle (icon toggle is TooltipIconButton :pressed, text toggle is Toggle default variant, a single pick is SecondaryTabs or a rowVariants list)@@<Button\b(?=(?&t)\svariant="toolbar")(?&t)\s:?aria-pressed=|<Toggle\b(?&t)\s:?variant=
+U147@@v@@@@readable warn or note token outside Alert (use text-warn or text-info, RCo.1)@@${TOK}text-(?:warn|note)-text(?![\w-])
+U148@@v@@@@spin attribute on CodiconIcon (use Spinner, RS.1)@@<CodiconIcon\b(?&t)\s:?spin\b
+U149@@v@@@@tone class on a toolbar button (use tone or data-tone)@@(?:<TooltipIconButton\b|<Button\b(?=(?&t)\svariant="toolbar"))(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info)(?![\w-])
+U150@@v@@@@toned action icon (action icons stay muted, RI.2)@@<CodiconIcon\b(?=(?&t)\sname="(?:play|debug-stop|debug-start|run-all|debug-restart|debug-pause)")(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info)(?![\w-])
+U151@@v@@@@StatusDot status through a theme var colour (use tone)@@<StatusDot\b(?&t)\scolor="var\(--kira-
 GUARDS
 
 # hits: "U<n> path"
