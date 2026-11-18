@@ -13,7 +13,6 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
-import { Kbd } from '@theme/components/ui/kbd';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
@@ -238,23 +237,21 @@ function onChord(event: KeyboardEvent): void {
           size="kira-lg"
           :pending="decline.isPending.value"
           data-testid="schedule-confirm-decline"
-          :aria-keyshortcuts="formatShortcut('prompt.deny')"
+          :kbd="formatShortcut('prompt.deny')"
           @click="declineOrClose"
         >
           {{ t('git.dialog.postCheckoutPullConfirm.notNow.label') }}
-          <Kbd>{{ formatShortcut('prompt.deny') }}</Kbd>
         </Button>
         <Button
           variant="dialog-approve"
           size="kira-lg"
           :disabled="!canRun"
           :pending="accept.isPending.value"
-          :aria-keyshortcuts="formatShortcut('form.submit')"
+          :kbd="formatShortcut('form.submit')"
           data-testid="schedule-confirm-run"
           @click="run"
         >
           {{ t('common.action.run.label') }}
-          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

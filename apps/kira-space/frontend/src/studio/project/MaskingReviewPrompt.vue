@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { control } from '../bridge/control';
 import { useConnectionDialogStore } from '../state/connectionDialogs';
@@ -57,24 +56,22 @@ const onChord = shortcutKeydown(['form.submit'], () => review());
       </DialogBody>
       <DialogFooter>
         <Button
-          :aria-keyshortcuts="formatShortcut('prompt.hide')"
+          :kbd="formatShortcut('prompt.hide')"
           variant="dialog"
           size="kira-lg"
           data-testid="masking-review-later"
           @click="emit('hide')"
         >
           {{ t('common.later.label') }}
-          <Kbd>{{ formatShortcut('prompt.hide') }}</Kbd>
         </Button>
         <Button
           variant="dialog-primary"
-          :aria-keyshortcuts="formatShortcut('form.submit')"
+          :kbd="formatShortcut('form.submit')"
           size="kira-lg"
           data-testid="masking-review-open"
           @click="review"
         >
           {{ t('studio.prompt.maskingReview.label') }}
-          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

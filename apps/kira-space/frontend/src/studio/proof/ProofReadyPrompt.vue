@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Kbd } from '@theme/components/ui/kbd';
 import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
@@ -58,24 +57,22 @@ const onChord = shortcutKeydown(['form.submit'], () => openWindow());
       </DialogBody>
       <DialogFooter>
         <Button
-          :aria-keyshortcuts="formatShortcut('prompt.hide')"
+          :kbd="formatShortcut('prompt.hide')"
           variant="dialog"
           size="kira-lg"
           data-testid="proof-ready-later"
           @click="emit('hide')"
         >
           {{ t('common.later.label') }}
-          <Kbd>{{ formatShortcut('prompt.hide') }}</Kbd>
         </Button>
         <Button
           variant="dialog-primary"
-          :aria-keyshortcuts="formatShortcut('form.submit')"
+          :kbd="formatShortcut('form.submit')"
           size="kira-lg"
           data-testid="proof-ready-open"
           @click="openWindow()"
         >
           {{ t('common.action.open.label') }}
-          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>

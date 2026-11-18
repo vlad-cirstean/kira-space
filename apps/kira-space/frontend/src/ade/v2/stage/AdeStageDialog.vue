@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
-import { Kbd } from '@theme/components/ui/kbd';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { formatShortcut } from '@workbench/shortcuts/keys';
@@ -203,11 +202,12 @@ onBeforeUnmount(() => {
           variant="dialog-primary"
           size="kira-lg"
           :disabled="live || !store.toStepId"
-          :aria-keyshortcuts="routed ? formatShortcut('form.submit') : undefined"
+          :kbd="routed ? formatShortcut('form.submit') : undefined"
           data-testid="ade-stage-move"
           @click="move"
-          >{{ pass ? t('space.ade.board.taskAction.nextPass.label') : t('space.common.move.label')
-          }}<Kbd v-if="routed">{{ formatShortcut('form.submit') }}</Kbd></Button
+          >{{
+            pass ? t('space.ade.board.taskAction.nextPass.label') : t('space.common.move.label')
+          }}</Button
         >
       </DialogFooter>
     </DialogContent>

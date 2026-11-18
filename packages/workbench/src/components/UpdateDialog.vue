@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { FieldError } from '@theme/components/ui/field';
-import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import { formatShortcut } from '../shortcuts/keys';
@@ -162,37 +161,38 @@ const onChord = shortcutKeydown(['form.submit'], () => {
           <Button
             variant="dialog-primary"
             size="kira-lg"
+            :kbd="formatShortcut('form.submit')"
             data-testid="update-dialog-retry"
             @click="store.checkForUpdates()"
           >
             {{ t('common.action.retry.label') }}
-            <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
           </Button>
         </template>
         <template v-else-if="state === 'upToDate'">
           <Button
             variant="dialog-primary"
             size="kira-lg"
+            :kbd="formatShortcut('form.submit')"
             data-testid="update-dialog-close"
             @click="store.later()"
           >
             {{ t('common.action.close.label') }}
-            <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
           </Button>
         </template>
         <template v-else>
           <Button
             variant="dialog"
             size="kira-lg"
+            :kbd="formatShortcut('prompt.hide')"
             data-testid="update-dialog-later"
             @click="store.later()"
           >
             {{ t('common.later.label') }}
-            <Kbd>{{ formatShortcut('prompt.hide') }}</Kbd>
           </Button>
           <Button
             variant="dialog-primary"
             size="kira-lg"
+            :kbd="formatShortcut('form.submit')"
             data-testid="update-dialog-install"
             @click="store.install()"
           >
@@ -201,7 +201,6 @@ const onChord = shortcutKeydown(['form.submit'], () => {
                 ? t('common.action.retry.label')
                 : t('workbench.update.install.label')
             }}
-            <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
           </Button>
         </template>
       </DialogFooter>

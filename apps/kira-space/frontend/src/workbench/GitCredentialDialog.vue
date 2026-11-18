@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Input } from '@theme/components/ui/input';
-import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { useFocusOnMount } from '@workbench/behaviour/focus';
 import SecretInput from '@workbench/components/SecretInput.vue';
@@ -111,22 +110,20 @@ function onChord(event: KeyboardEvent): void {
         <Button
           variant="dialog"
           size="kira-lg"
-          :aria-keyshortcuts="formatShortcut('prompt.deny')"
+          :kbd="formatShortcut('prompt.deny')"
           data-testid="git-credential-cancel"
           @click="onCancel"
         >
           {{ t('common.action.cancel.label') }}
-          <Kbd>{{ formatShortcut('prompt.deny') }}</Kbd>
         </Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"
-          :aria-keyshortcuts="formatShortcut('form.submit')"
+          :kbd="formatShortcut('form.submit')"
           data-testid="git-credential-submit"
           @click="onSubmit"
         >
           {{ t('common.continue.label') }}
-          <Kbd>{{ formatShortcut('form.submit') }}</Kbd>
         </Button>
       </DialogFooter>
     </DialogContent>
