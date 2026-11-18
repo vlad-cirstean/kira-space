@@ -56,6 +56,8 @@ export function useReviewKeep(args: {
     // ones that loaded, the stream's end drops the rest. Writes wait for the restore to start so
     // setTarget's clear never lands over the kept value, and carry `pending` so unseen rows survive.
     const pending = new Map<string, Set<string>>();
+    // Rows already scanned per key; each chunk scans only the new rows.
+    const scanned = new Map<string, number>();
     const selectedRestored = new Set<string>();
     const listing = () => args.review.value?.phase.value === 'listing';
 
@@ -82,12 +84,16 @@ export function useReviewKeep(args: {
         if (!left) {
           left = new Set(kept.read<string[]>(`${key}:expanded`, []));
           pending.set(key, left);
+          scanned.set(key, 0);
         }
         if (left.size > 0) {
-          for (let i = 0; i < rows && left.size > 0; i++) {
+          let i = scanned.get(key) ?? 0;
+          if (rows < i) i = 0; // stream restarted with fewer rows
+          for (; i < rows && left.size > 0; i++) {
             const sha = review.store.shaAt(i);
             if (left.delete(sha)) review.expand(sha);
           }
+          scanned.set(key, i);
           if (!streaming) left.clear();
         }
       },
