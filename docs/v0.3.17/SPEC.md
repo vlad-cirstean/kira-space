@@ -1,6 +1,6 @@
 # v0.3.17
 
-UI uniformity across all modules. Continues from chapter v0.3.16 (P672 and P660 Part 2 moved here, keep their numbers).
+UI uniformity across all modules, plus the ONNX Runtime re-pin (P673). Continues from chapter v0.3.16 (P672 and P660 Part 2 moved here, keep their numbers).
 Phases from `P672` (highest shipped: `P671`, chapter v0.3.16). Next new phase: `P673`. Branch
 `chapter/v0.3.17`.
 
@@ -17,6 +17,7 @@ Phases from `P672` (highest shipped: `P671`, chapter v0.3.16). Next new phase: `
 | P672 Part 9 | UI uniformity: states, icons, type, spacing | Planned |
 | P660 Part 2 | Git review panel state across module switches | Planned |
 | P672 Part 10 | Second pass over Parts 2..9 (iter2 plans) | Planned |
+| P673 | Re-pin ONNX Runtime, pinned release asset is gone | Planned |
 
 ## P672 Part 1: UI inventory and uniformity rules
 
@@ -89,3 +90,11 @@ Plan: `plans/P660-part2.md`.
 Standing user instruction: after all phases (P672 Parts 2..9 and P660 Part 2) are done, run a second full pass of the P672 UI uniformity Parts. User expects the first pass missed many things. Each of Parts 2..9 runs again, plan named `plans/P672-part<k>-iter2.md`, planned against the tree as the first pass left it. Planner re-reads current source and a fresh scan (codegraph, class-token), never trusts the first pass's summary or Results. Per working agreement "Multiple passes": one Opus plan and one Sonnet implementer per Part, in Part order. Part 10 planner either cuts this row into per-Part iter2 plans or runs it as one loop. Row names get no new numbers. Guard baselines from Part 2 stay empty. Chapter-end code review round follows this row (reviewer covers the whole chapter diff: findings, fix), then close. Tests: UI specs updated; visual baselines in PR CI; no new unit tests.
 
 Plan: `plans/P672-part10.md`.
+
+## P673: Re-pin ONNX Runtime, pinned release asset is gone
+
+Release `v0.3.16` failed twice (run 44253115581, attempts 1 and 2): `build (macOS)`, step `bun run package`, `scripts/fetch-onnxruntime.sh osx-arm64` got `curl: (56) The requested URL returned error: 404` for `https://github.com/microsoft/onnxruntime/releases/download/v1.31.1/onnxruntime-osx-arm64-1.31.1.tgz`. Script and pin (`ORT_VERSION="1.31.1"`, SHA256s) unchanged since v0.2.25; v0.3.15 released with them. Diff `v0.3.15..main` touches nothing on the packaging path except `release-retention.yml` (own releases only). Cause not confirmed: asset likely removed upstream; sandbox cannot reach the URL.
+
+Scope: confirm the asset state on the upstream release page first. Then pin an available ONNX Runtime version or host the archive ourselves, whichever the plan finds sound. Update `ORT_VERSION` and both SHA256s in `scripts/fetch-onnxruntime.sh` and `internal/memory/embed/paths.go` (`verify-packaging.sh` S12 keeps them equal), re-check the `linux-x64` slice and the embeddings tests against the new version. `v0.3.16` stays unreleased until the v0.3.17 merge cuts a release; this phase must be Done before the chapter closes. Changes touching package integrity (checksum, source) need explicit plan rationale.
+
+Plan: `plans/P673.md`.
