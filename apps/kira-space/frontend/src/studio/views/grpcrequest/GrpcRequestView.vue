@@ -339,6 +339,7 @@ onUnmounted(() => {
       </div>
       <div class="grpc-target-field min-w-0 flex-1">
         <AutocompleteField
+          :aria-label="t('studio.grpc.target.label')"
           class="w-full"
           :model-value="tab.state.target"
           :placeholder="t('studio.grpc.target.example')"
@@ -360,6 +361,7 @@ onUnmounted(() => {
       />
       <div class="min-w-0 flex-1">
         <NativeSelect
+          :aria-label="t('studio.grpc.method.label')"
           variant="bordered"
           class="w-full"
           data-testid="grpc-method-select"

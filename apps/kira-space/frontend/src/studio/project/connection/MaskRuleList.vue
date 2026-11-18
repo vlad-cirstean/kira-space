@@ -78,6 +78,7 @@ function onAdd(): void {
 
     <div class="flex gap-2 items-center">
       <Input
+        :aria-label="t('studio.project.connectionDialog.column.placeholder')"
         v-model="newColumn"
         :placeholder="t('studio.project.connectionDialog.column.placeholder')"
         class="font-data"

@@ -203,6 +203,7 @@ const partitionButtonLabel = computed(() => {
           }}</span
         >
         <InputGroupInput
+          :aria-label="t('studio.stream.offset.label')"
           :model-value="offsetText"
           :placeholder="t('studio.stream.offset.placeholder')"
           class="h-full p-0 font-data"
@@ -270,6 +271,7 @@ const partitionButtonLabel = computed(() => {
               }}</span
             >
             <InputGroupInput
+              :aria-label="t('studio.stream.since.label')"
               :model-value="timestampText"
               :placeholder="t('studio.cellEditor.detect.iso8601.status')"
               class="h-full p-0 font-data"

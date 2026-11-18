@@ -211,6 +211,11 @@ async function onClear(): Promise<void> {
         @keydown="onRowKeydown($event, entry.id)"
       >
         <Checkbox
+          :aria-label="
+            t('common.action.selectItem.aria', {
+              name: `${entry.method} ${formatRelative(entry.sentAt)}`,
+            })
+          "
           data-testid="http-history-checkbox"
           :model-value="selected.includes(entry.id)"
           :disabled="!selected.includes(entry.id) && selected.length >= 2"

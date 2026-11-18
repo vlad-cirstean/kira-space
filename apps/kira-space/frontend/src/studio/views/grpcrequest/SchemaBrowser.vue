@@ -129,6 +129,7 @@ function selectMethod(service: string, method: string): void {
       />
       <template v-if="tab.state.descriptorMode === 'reflection'">
         <Input
+          :aria-label="t('studio.grpc.target.label')"
           size="kira"
           :model-value="tab.state.target"
           :placeholder="t('studio.grpc.target.example')"
@@ -139,6 +140,7 @@ function selectMethod(service: string, method: string): void {
       </template>
       <template v-else>
         <Input
+          :aria-label="t('studio.grpc.schema.protoPath.label')"
           size="kira"
           :model-value="tab.state.protoPath"
           :placeholder="t('studio.grpc.schema.noProto.placeholder')"
@@ -191,6 +193,7 @@ function selectMethod(service: string, method: string): void {
       </div>
       <div class="flex items-center gap-1">
         <Input
+          :aria-label="t('studio.grpc.schema.importPath.label')"
           v-model="newImportPath"
           size="kira"
           :placeholder="t('studio.grpc.schema.addImportPath.placeholder')"

@@ -221,6 +221,7 @@ async function onDeleteMessage(): Promise<void> {
             t('common.action.hide.label')
           }}</span>
           <InputGroupInput
+            :aria-label="t('studio.stream.poll.visibility.label')"
             :model-value="visibility.text.value"
             type="number"
             inputmode="numeric"

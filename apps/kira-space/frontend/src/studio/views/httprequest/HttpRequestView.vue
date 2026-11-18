@@ -379,6 +379,7 @@ onUnmounted(() => {
       />
       <div class="url-field min-w-0 flex-1">
         <AutocompleteField
+          :aria-label="t('studio.http.url.label')"
           class="w-full"
           :model-value="tab.state.url"
           :placeholder="t('studio.http.url.example')"

@@ -212,6 +212,7 @@ function applyFromHistory(where: string | null, orderBy: SortSpec | null): void 
   </div>
   <div class="flex-1 min-w-0">
     <AutocompleteField
+      :aria-label="t('studio.grid.filter.where.label')"
       v-model="whereText"
       class="w-full"
       prefix="WHERE"
@@ -229,6 +230,7 @@ function applyFromHistory(where: string | null, orderBy: SortSpec | null): void 
   </div>
   <div class="w-56 shrink-0">
     <AutocompleteField
+      :aria-label="t('studio.grid.filter.orderBy.label')"
       v-model="orderByText"
       class="w-full"
       prefix="ORDER BY"

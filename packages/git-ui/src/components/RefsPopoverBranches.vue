@@ -203,7 +203,7 @@ async function submitRename(from: string, to: string): Promise<void> {
       <InlineEditInput
         v-if="renaming === row.shortName"
         data-testid="branch-rename-input"
-        :aria-label="t('git.dialog.rename.title')"
+        :label="t('git.dialog.rename.title')"
         :name="row.shortName"
         @commit="(to) => submitRename(row.shortName, to)"
         @cancel="renaming = undefined"

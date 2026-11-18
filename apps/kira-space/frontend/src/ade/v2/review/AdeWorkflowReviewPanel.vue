@@ -286,6 +286,7 @@ const stateLabel = (c: ReviewComment): string =>
         </RadioGroupCard>
       </RadioGroup>
       <NativeSelect
+        :aria-label="t('space.ade.reviewStep.target.label')"
         v-if="route === 'implementer' && state && state.candidates.length > 0"
         variant="bordered"
         :model-value="targetRunId"
@@ -365,6 +366,7 @@ const stateLabel = (c: ReviewComment): string =>
 
     <section v-if="state" class="flex flex-col gap-1.5" data-testid="ade-review-finish">
       <Textarea
+        :aria-label="t('space.ade.reviewStep.finish.note.label')"
         class="min-h-24 max-h-90 resize-y"
         v-model="note"
         maxlength="2000"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import TruncatedText from '@theme/components/TruncatedText.vue';
+import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import InlineEditInput from '@workbench/components/InlineEditInput.vue';
 import { computed } from 'vue';
@@ -39,6 +40,7 @@ async function commit(title: string): Promise<void> {
   <InlineEditInput
     v-if="editing"
     :name="card.task.title"
+    :label="t('common.field.title.label')"
     class="h-4.5 text-kira-lg font-medium"
     data-testid="ade-card-title-input"
     @commit="commit"

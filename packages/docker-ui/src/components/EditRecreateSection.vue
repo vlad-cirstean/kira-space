@@ -191,6 +191,7 @@ function addMount(): void {
             v-bind="invalid"
           />
           <Input
+            :aria-label="t('common.field.value.label')"
             class="min-w-0 flex-1"
             :placeholder="t('common.field.value.label')"
             :model-value="split(item)[1]"
@@ -229,6 +230,7 @@ function addMount(): void {
             v-bind="invalid"
           />
           <Input
+            :aria-label="t('common.field.value.label')"
             class="min-w-0 flex-1"
             :placeholder="t('common.field.value.label')"
             :model-value="item[1]"
@@ -269,6 +271,7 @@ function addMount(): void {
             v-bind="invalid"
           />
           <NativeSelect
+            :aria-label="t('docker.edit.protocol.label')"
             v-model="item.proto"
             class="w-24"
             :disabled="disabled"
@@ -277,6 +280,7 @@ function addMount(): void {
             <option v-for="p in PROTOCOLS" :key="p" :value="p">{{ p }}</option>
           </NativeSelect>
           <Input
+            :aria-label="t('docker.edit.hostIp.placeholder')"
             class="w-40"
             :placeholder="t('docker.edit.hostIp.placeholder')"
             v-model="item.hostIp"
@@ -284,6 +288,7 @@ function addMount(): void {
             data-testid="docker-edit-port-ip"
           />
           <Input
+            :aria-label="t('docker.edit.hostPort.placeholder')"
             class="w-24"
             :placeholder="t('docker.edit.hostPort.placeholder')"
             v-model="item.hostPort"
@@ -325,6 +330,7 @@ function addMount(): void {
             <option v-for="m in MOUNT_TYPES" :key="m" :value="m">{{ m }}</option>
           </NativeSelect>
           <Input
+            :aria-label="t('docker.edit.mountSource.label')"
             class="min-w-0 flex-1"
             :placeholder="t('docker.edit.mountSource.placeholder')"
             :list="item.type === 'volume' ? 'docker-edit-volumes' : undefined"
@@ -333,6 +339,7 @@ function addMount(): void {
             data-testid="docker-edit-mount-source"
           />
           <Input
+            :aria-label="t('docker.edit.mountTarget.label')"
             class="min-w-0 flex-1"
             :placeholder="t('docker.edit.mountTarget.example')"
             v-model="item.target"

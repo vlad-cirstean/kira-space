@@ -140,6 +140,7 @@ function onCancel(): void {
         />
       </div>
       <Textarea
+        :aria-label="t('studio.project.credentialPaste.heading.label')"
         ref="input"
         v-model="text"
         :class="['font-data', showText ? '' : '[-webkit-text-security:disc]']"
@@ -167,6 +168,7 @@ function onCancel(): void {
           :data-testid="`paste-credentials-row-${row.field}`"
         >
           <NativeSelect
+            :aria-label="t('studio.project.credentialPaste.pick.aria', { field: row.field })"
             v-if="row.candidates.length > 1"
             :model-value="picks[row.field] ?? 0"
             class="min-w-0 flex-1 font-data"

@@ -146,6 +146,7 @@ watch(calendarOpen, (open) => {
         >
           <TooltipDisabledTrigger class="w-full">
             <Input
+              :aria-label="t('studio.cellEditor.timestamp.field.label')"
               :model-value="fieldText"
               :disabled="readonly"
               size="kira"

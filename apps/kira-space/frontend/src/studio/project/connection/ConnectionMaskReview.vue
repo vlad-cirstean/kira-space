@@ -222,6 +222,7 @@ const STATE_VARIANT = { masked: 'ok', reviewed: 'default', pending: 'warn' } as 
               data-testid="connection-privacy-review-search"
             />
             <NativeSelect
+              :aria-label="t('common.action.filter.label')"
               variant="bordered"
               :model-value="filter"
               data-testid="connection-privacy-review-filter"

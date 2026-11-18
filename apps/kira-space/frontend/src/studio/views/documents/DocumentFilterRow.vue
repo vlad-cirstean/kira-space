@@ -151,6 +151,7 @@ function applyFromFilterHistory(where: string | null, orderBy: SortSpec | null):
     <div class="flex-1 min-w-0">
       <TextTooltip :text="t('studio.documents.filter.tooltip')">
         <AutocompleteField
+          :aria-label="t('common.action.filter.label')"
           v-model="searchText"
           class="w-full"
           prefix="FILTER"
@@ -168,6 +169,7 @@ function applyFromFilterHistory(where: string | null, orderBy: SortSpec | null):
     <div class="w-72 shrink-0">
       <TextTooltip :text="t('studio.documents.sort.tooltip')">
         <AutocompleteField
+          :aria-label="t('studio.documents.sort.label')"
           v-model="sortText"
           class="w-full"
           prefix="SORT"

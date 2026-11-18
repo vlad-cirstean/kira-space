@@ -106,6 +106,7 @@ function resetTools(): void {
       </div>
       <InputGroup>
         <InputGroupInput
+          :aria-label="t('automations.smart.bashPattern.label')"
           v-model="draft"
           :placeholder="t('automations.smart.bashExample.example')"
           class="font-data"

@@ -209,6 +209,7 @@ function leave(): void {
         @submit.prevent="sendCompose"
       >
         <Input
+          :aria-label="t('common.message.label')"
           :model-value="compose"
           size="touch"
           class="flex-1"

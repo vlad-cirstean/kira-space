@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
+import { FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
 import { RadioGroup, RadioGroupCard } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
 import Identifier from '@workbench/components/Identifier.vue';
@@ -88,8 +88,9 @@ function confirm(): void {
           </AlertDescription>
         </Alert>
 
-        <template v-if="needsMainline">
-          <p>{{ t('git.dialog.revert.mainline.body') }}</p>
+        <FieldSet v-if="needsMainline">
+          <FieldLegend>{{ t('git.dialog.mainline.label') }}</FieldLegend>
+          <FieldDescription>{{ t('git.dialog.revert.mainline.body') }}</FieldDescription>
           <RadioGroup v-model="selectedMainline" class="gap-1.5">
             <template v-for="entry in preflight?.mainlineRequired" :key="entry.sha">
               <FieldDescription>
@@ -111,7 +112,7 @@ function confirm(): void {
               </RadioGroupCard>
             </template>
           </RadioGroup>
-        </template>
+        </FieldSet>
 
         <template v-if="!needsMainline || selectedMainline !== undefined">
           <PreflightPrediction

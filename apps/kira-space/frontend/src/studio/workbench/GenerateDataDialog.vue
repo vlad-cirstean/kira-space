@@ -315,6 +315,7 @@ function onSequenceStartChange(index: number, start: number): void {
                 </TableCell>
                 <TableCell>
                   <NativeSelect
+                    :aria-label="t('studio.generateData.recipe.aria', { column: plan.column.name })"
                     variant="bordered"
                     :data-testid="`generate-data-recipe-${plan.column.name}`"
                     :model-value="recipeSelectValue(plan.recipe)"
@@ -336,6 +337,9 @@ function onSequenceStartChange(index: number, start: number): void {
                 </TableCell>
                 <TableCell>
                   <Input
+                    :aria-label="
+                      t('studio.generateData.constant.aria', { column: plan.column.name })
+                    "
                     v-if="plan.recipe.kind === 'constant'"
                     :model-value="plan.recipe.value"
                     class="w-full font-data"
@@ -344,6 +348,9 @@ function onSequenceStartChange(index: number, start: number): void {
                     @update:model-value="(v) => onConstantChange(index, String(v))"
                   />
                   <NumberStepperInput
+                    :aria-label="
+                      t('studio.generateData.sequenceStart.aria', { column: plan.column.name })
+                    "
                     v-else-if="plan.recipe.kind === 'sequence'"
                     :model-value="String(plan.recipe.start)"
                     group-class="h-control-lg"

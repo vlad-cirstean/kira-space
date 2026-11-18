@@ -41,6 +41,7 @@ const idBase = useId();
       </div>
       <div class="flex items-center gap-1">
         <Input
+          :aria-label="t('automations.smart.toolName.label')"
           :model-value="typed"
           :placeholder="t('automations.smart.addTool.placeholder')"
           class="font-data"

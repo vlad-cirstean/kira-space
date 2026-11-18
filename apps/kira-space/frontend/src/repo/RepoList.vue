@@ -465,6 +465,7 @@ useTreeShortcuts(nav, {
         <InlineEditInput
           v-if="renamingRepoId === repo.id"
           :name="repo.name"
+          :label="t('common.field.name.label')"
           data-testid="repo-rename-input"
           @commit="(name) => commitRepoRename(repo.id, name)"
           @cancel="renamingRepoId = null"

@@ -98,6 +98,7 @@ function onClearFile(index: number): void {
     <template #value="{ row, update }">
       <div v-if="row.kind === 'text'" class="flex-1 min-w-0">
         <AutocompleteField
+          :aria-label="t('common.field.value.label')"
           v-if="variables"
           grow
           class="w-full"
@@ -112,6 +113,7 @@ function onClearFile(index: number): void {
         />
         <InputGroup v-else>
           <InputGroupTextarea
+            :aria-label="t('common.field.value.label')"
             :model-value="row.value"
             :placeholder="t('common.field.value.label')"
             data-testid="http-formdata-value"
@@ -124,6 +126,7 @@ function onClearFile(index: number): void {
 
     <template #trailing="{ row, index }">
       <NativeSelect
+        :aria-label="t('common.field.kind.label')"
         variant="bordered"
         data-testid="http-formdata-kind"
         :model-value="row.kind"
@@ -159,6 +162,7 @@ function onClearFile(index: number): void {
         />
         <div class="flex-1 min-w-0">
           <Input
+            :aria-label="t('studio.http.body.contentType.placeholder')"
             :model-value="row.contentType"
             :placeholder="t('studio.http.body.contentType.placeholder')"
             data-testid="http-formdata-content-type"

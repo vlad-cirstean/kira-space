@@ -46,14 +46,18 @@ function setDelay(value: string): void {
   const n = Number.parseInt(value, 10);
   patch({ delay_sec: Number.isNaN(n) ? 0 : n });
 }
+const idBase = useId();
 </script>
 
 <template>
   <div class="flex flex-col gap-3 p-3" data-testid="connection-section-preconnect">
     <Field class="flex-1">
-      <FieldLabel>{{ t('studio.project.connectionDialog.preconnect.label') }}</FieldLabel>
+      <FieldLabel :for="`${idBase}-connection-preconnect`">{{
+        t('studio.project.connectionDialog.preconnect.label')
+      }}</FieldLabel>
       <Textarea
-        class="font-data"
+        :id="`${idBase}-connection-preconnect`"
+        class="min-h-32 max-h-90 resize-y font-data"
         v-model="command"
         :aria-invalid="props.errorFor('/preconnect') ? true : undefined"
         maxlength="2000"
@@ -93,9 +97,12 @@ function setDelay(value: string): void {
     </Field>
 
     <Field v-if="command" class="flex-1">
-      <FieldLabel>{{ t('studio.project.connectionDialog.preconnectDelay.label') }}</FieldLabel>
+      <FieldLabel :for="`${idBase}-connection-preconnect-delay`">{{
+        t('studio.project.connectionDialog.preconnectDelay.label')
+      }}</FieldLabel>
       <div class="w-24">
         <NumberStepperInput
+          :id="`${idBase}-connection-preconnect-delay`"
           :min="0"
           :max="PRECONNECT_DELAY_RANGE.max"
           step="1"

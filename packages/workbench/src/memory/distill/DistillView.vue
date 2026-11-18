@@ -136,6 +136,7 @@ async function run(): Promise<void> {
           originLabel
         }}</Badge>
         <Textarea
+          :aria-label="t('common.field.text.label')"
           class="min-h-32 max-h-90 resize-y font-data"
           :model-value="text"
           :disabled="inFlight"

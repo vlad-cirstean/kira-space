@@ -42,6 +42,7 @@ function setAmount(v: string | number): void {
       @update:model-value="setAmount"
     />
     <NativeSelect
+      :aria-label="t('docker.edit.unit.label')"
       v-model="unit"
       class="w-24"
       :disabled="disabled || unlimited"

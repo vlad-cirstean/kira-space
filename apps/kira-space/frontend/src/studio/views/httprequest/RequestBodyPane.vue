@@ -208,6 +208,7 @@ const BODY_MODE_ITEMS = computed(() =>
         @update:model-value="(v) => setSelection(v as HttpBodySelection)"
       />
       <NativeSelect
+        :aria-label="t('studio.http.body.codeLanguage.label')"
         v-if="tab.state.bodyMode === 'code' && tab.state.codeLanguage !== 'json'"
         variant="bordered"
         data-testid="http-body-code-language"

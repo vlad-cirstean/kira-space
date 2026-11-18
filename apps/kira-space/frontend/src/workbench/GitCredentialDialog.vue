@@ -17,7 +17,7 @@ import { useFocusOnMount } from '@workbench/behaviour/focus';
 import SecretInput from '@workbench/components/SecretInput.vue';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
-import { type ComponentPublicInstance, computed, ref, useTemplateRef } from 'vue';
+import { type ComponentPublicInstance, computed, ref, useId, useTemplateRef } from 'vue';
 import { useGitCredentialStore } from '../state/gitCredential';
 
 // git's own askpass prompt, mounted by PromptHost for the routed `git-credential` entry whose ref
@@ -30,6 +30,7 @@ const store = useGitCredentialStore();
 const prompt = computed(() => store.prompts.find((p) => p.requestId === props.entry.ref) ?? null);
 
 const value = ref('');
+const promptId = useId();
 const secretField = useTemplateRef<{ input?: HTMLInputElement }>('secretField');
 const plainField = useTemplateRef<ComponentPublicInstance>('plainField');
 
@@ -75,17 +76,23 @@ function onChord(event: KeyboardEvent): void {
 
       <DialogBody>
         <!-- git's own text, rendered verbatim — never reformatted, never parsed. -->
-        <p class="m-0 font-data whitespace-pre-wrap" data-testid="git-credential-prompt">
+        <p
+          :id="promptId"
+          class="m-0 font-data whitespace-pre-wrap"
+          data-testid="git-credential-prompt"
+        >
           {{ prompt.prompt }}
         </p>
         <SecretInput
           v-if="prompt.masked"
           ref="secretField"
           v-model="value"
+          :aria-labelledby="promptId"
           data-testid="git-credential-input"
           data-dialog-initial
         />
         <Input
+          :aria-labelledby="promptId"
           v-else
           ref="plainField"
           v-model="value"

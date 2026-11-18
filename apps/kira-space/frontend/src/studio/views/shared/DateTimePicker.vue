@@ -220,7 +220,7 @@ const pageNextTitle = computed(() =>
       : t('studio.dateTimePicker.nextYears.tooltip'),
 );
 
-// The three clock steppers, each a writable computed so <Input type="number"> can v-model
+// The three clock steppers, each a writable computed so a number input can v-model
 // straight onto it — the browser's own native number stepper handles the chrome, so nothing
 // here needs to reinvent it, only clamp what a hand-typed value (as opposed to a stepper click,
 // which stepUp/stepDown already keeps in range) can push out of range.
@@ -350,6 +350,7 @@ const secondText = computed<string>({
     </div>
     <div class="flex items-center gap-0.5 pt-1">
       <Input
+        :aria-label="t('studio.dateTimePicker.hour.label')"
         v-model="hourText"
         type="number"
         min="0"
@@ -360,6 +361,7 @@ const secondText = computed<string>({
       />
       <span class="text-subtle">:</span>
       <Input
+        :aria-label="t('studio.dateTimePicker.minute.label')"
         v-model="minuteText"
         type="number"
         min="0"
@@ -370,6 +372,7 @@ const secondText = computed<string>({
       />
       <span class="text-subtle">:</span>
       <Input
+        :aria-label="t('studio.dateTimePicker.second.label')"
         v-model="secondText"
         type="number"
         min="0"

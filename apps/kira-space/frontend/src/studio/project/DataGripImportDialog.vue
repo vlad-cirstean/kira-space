@@ -228,6 +228,7 @@ async function onConfirm(): Promise<void> {
               <span class="w-4 shrink-0 flex justify-center">
                 <Checkbox
                   v-if="row.importable"
+                  :aria-label="t('common.action.selectItem.aria', { name: row.name })"
                   :model-value="datagripImportStore.selected.has(row.uuid)"
                   @update:model-value="datagripImportStore.toggleDataGripRow(row.uuid)"
                 />

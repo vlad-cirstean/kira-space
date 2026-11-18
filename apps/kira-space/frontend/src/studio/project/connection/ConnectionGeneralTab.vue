@@ -130,8 +130,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
     <template v-else>
       <div class="flex gap-2 items-start">
         <Field class="flex-1">
-          <FieldLabel>{{ t('common.field.name.label') }}</FieldLabel>
+          <FieldLabel :for="`${idBase}-connection-name`">{{
+            t('common.field.name.label')
+          }}</FieldLabel>
           <Input
+            :id="`${idBase}-connection-name`"
             :model-value="file.name"
             :aria-invalid="props.errorFor('/name') ? true : undefined"
             class="font-ui"
@@ -185,10 +188,13 @@ async function onBrowseDatabaseFile(): Promise<void> {
 
       <template v-if="mode === 'fields' && isFileStyle">
         <Field class="flex-1">
-          <FieldLabel>{{ t('studio.project.connectionDialog.databaseFile.label') }}</FieldLabel>
+          <FieldLabel :for="`${idBase}-connection-database`">{{
+            t('studio.project.connectionDialog.databaseFile.label')
+          }}</FieldLabel>
           <div class="flex items-center gap-1">
             <div class="flex-1 min-w-0">
               <Input
+                :id="`${idBase}-connection-database`"
                 :model-value="file.database ?? ''"
                 :aria-invalid="props.errorFor('/database') ? true : undefined"
                 class="font-data"
@@ -213,8 +219,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
       <template v-else-if="mode === 'fields'">
         <div v-if="!isAwsStyle" class="flex gap-2 items-start">
           <Field class="flex-1">
-            <FieldLabel>{{ t('studio.project.connectionDialog.host.label') }}</FieldLabel>
+            <FieldLabel :for="`${idBase}-connection-host`">{{
+              t('studio.project.connectionDialog.host.label')
+            }}</FieldLabel>
             <Input
+              :id="`${idBase}-connection-host`"
               :model-value="file.host ?? ''"
               :aria-invalid="props.errorFor('/host') ? true : undefined"
               class="font-data"
@@ -224,8 +233,9 @@ async function onBrowseDatabaseFile(): Promise<void> {
             <FieldError v-if="props.errorFor('/host')">{{ props.errorFor('/host') }}</FieldError>
           </Field>
           <Field class="flex-none w-24">
-            <FieldLabel>{{ t('common.port.label') }}</FieldLabel>
+            <FieldLabel :for="`${idBase}-connection-port`">{{ t('common.port.label') }}</FieldLabel>
             <NumberStepperInput
+              :id="`${idBase}-connection-port`"
               :model-value="file.port ? String(file.port) : ''"
               :aria-invalid="props.errorFor('/port') ? true : undefined"
               data-testid="connection-port"
@@ -236,8 +246,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
         </div>
         <div v-if="isAwsStyle" class="flex gap-2 items-start">
           <Field class="flex-1">
-            <FieldLabel>{{ t('studio.project.connectionDialog.region.label') }}</FieldLabel>
+            <FieldLabel :for="`${idBase}-connection-database`">{{
+              t('studio.project.connectionDialog.region.label')
+            }}</FieldLabel>
             <Input
+              :id="`${idBase}-connection-database`"
               :model-value="file.database ?? ''"
               :aria-invalid="props.errorFor('/database') ? true : undefined"
               class="font-data"
@@ -249,8 +262,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
             }}</FieldError>
           </Field>
           <Field class="flex-1">
-            <FieldLabel>{{ t('studio.project.connectionDialog.awsProfile.label') }}</FieldLabel>
+            <FieldLabel :for="`${idBase}-connection-username`">{{
+              t('studio.project.connectionDialog.awsProfile.label')
+            }}</FieldLabel>
             <Input
+              :id="`${idBase}-connection-username`"
               :model-value="file.username ?? ''"
               class="font-data"
               data-testid="connection-username"
@@ -260,12 +276,13 @@ async function onBrowseDatabaseFile(): Promise<void> {
         </div>
         <template v-else>
           <Field class="flex-1">
-            <FieldLabel>{{
+            <FieldLabel :for="`${idBase}-connection-database`">{{
               kind === 'kibana'
                 ? t('studio.kibana.space.label')
                 : t('studio.project.connectionDialog.database.label')
             }}</FieldLabel>
             <Input
+              :id="`${idBase}-connection-database`"
               :model-value="file.database ?? ''"
               :placeholder="kind === 'kibana' ? t('common.state.default.option') : undefined"
               :aria-invalid="props.errorFor('/database') ? true : undefined"
@@ -279,8 +296,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
           </Field>
           <div class="flex gap-2 items-start">
             <Field class="flex-1">
-              <FieldLabel>{{ t('common.user.label') }}</FieldLabel>
+              <FieldLabel :for="`${idBase}-connection-username`">{{
+                t('common.user.label')
+              }}</FieldLabel>
               <Input
+                :id="`${idBase}-connection-username`"
                 :model-value="file.username ?? ''"
                 class="font-data"
                 data-testid="connection-username"
@@ -288,8 +308,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
               />
             </Field>
             <Field class="flex-1">
-              <FieldLabel>{{ t('studio.project.connectionDialog.password.label') }}</FieldLabel>
+              <FieldLabel :for="`${idBase}-connection-password`">{{
+                t('studio.project.connectionDialog.password.label')
+              }}</FieldLabel>
               <SecretInput
+                :id="`${idBase}-connection-password`"
                 :model-value="secrets.password"
                 :set="savedPassword"
                 :reveal="connectionId ? () => revealSaved('password') : undefined"
@@ -309,8 +332,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
         </template>
       </template>
       <Field v-else class="flex-1">
-        <FieldLabel>{{ t('studio.project.connectionDialog.mode.uri.label') }}</FieldLabel>
+        <FieldLabel :for="`${idBase}-connection-uri`">{{
+          t('studio.project.connectionDialog.mode.uri.label')
+        }}</FieldLabel>
         <SecretInput
+          :id="`${idBase}-connection-uri`"
           :model-value="secrets.uri"
           :set="savedUri"
           :reveal="connectionId ? () => revealSaved('uri') : undefined"

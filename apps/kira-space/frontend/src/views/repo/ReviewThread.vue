@@ -259,6 +259,7 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
           data-testid="review-thread-kind"
         />
         <Textarea
+          :aria-label="t('common.comment.label')"
           ref="input"
           v-model="draft"
           :placeholder="t('space.repo.view.comment.placeholder')"

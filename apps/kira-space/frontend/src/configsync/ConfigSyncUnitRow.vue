@@ -84,6 +84,7 @@ const repoLine = computed(() => props.row.repo || props.row.origin || '');
     </button>
     <div class="flex items-center gap-3">
       <NativeSelect
+        :aria-label="t('space.configSync.row.choice.label')"
         v-if="row.kind === 'conflict'"
         variant="bordered"
         :model-value="choice"

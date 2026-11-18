@@ -80,6 +80,7 @@ defineExpose({
         ><PopoverTitle>{{ t('studio.keyValue.editValue.label') }}</PopoverTitle></PopoverHeader
       >
       <Input
+        :aria-label="t('studio.keyValue.editValue.label')"
         v-model="draft"
         class="w-full"
         data-testid="keyvalue-edit-input"

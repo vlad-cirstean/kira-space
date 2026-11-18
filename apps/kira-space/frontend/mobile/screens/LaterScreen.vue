@@ -50,6 +50,7 @@ async function add(): Promise<void> {
     <PermissionHint v-if="!canWrite" :what="t('mobile.later.writeOff.hint')" />
     <form v-else class="flex gap-2 border-b border-border p-3" @submit.prevent="add">
       <Input
+        :aria-label="t('space.ade.later.add.label')"
         :model-value="text"
         size="touch"
         class="flex-1"

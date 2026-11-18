@@ -159,6 +159,7 @@ function toggleDefault(i: number, option: string, on: boolean): void {
       <CardContent class="flex flex-col gap-1.5">
         <div class="flex items-center gap-1.5">
           <Input
+            :aria-label="t('common.field.name.label')"
             :model-value="p.name"
             :placeholder="t('common.field.name.label')"
             class="min-w-0 flex-1 font-data"
@@ -191,6 +192,7 @@ function toggleDefault(i: number, option: string, on: boolean): void {
           m
         }}</FieldError>
         <Input
+          :aria-label="t('automations.params.defaultValue.label')"
           v-if="p.type === 'text' && !p.secret"
           :model-value="p.default[0] ?? ''"
           :placeholder="t('common.state.default.option')"
@@ -237,6 +239,7 @@ function toggleDefault(i: number, option: string, on: boolean): void {
               @update:model-value="(v) => toggleDefault(i, o, v === true)"
             />
             <Input
+              :aria-label="t('automations.params.option.placeholder')"
               :model-value="o"
               :placeholder="t('automations.params.option.placeholder')"
               class="min-w-0 flex-1"

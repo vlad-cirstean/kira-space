@@ -16,7 +16,7 @@ import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
 import { errorText } from '@workbench/bridge/codedError';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import { useClusters, useSetClusterMcp } from '../queries';
 import type { KubeMcpSettings } from '../wire';
 
@@ -65,6 +65,7 @@ function onSave(): void {
     },
   );
 }
+const idBase = useId();
 </script>
 
 <template>
@@ -89,8 +90,11 @@ function onSave(): void {
         <FieldDescription>{{ t('kubernetes.mcp.enable.hint') }}</FieldDescription>
         <template v-if="draft.enabled">
           <Field>
-            <FieldLabel>{{ t('common.field.description.label') }}</FieldLabel>
+            <FieldLabel :for="`${idBase}-kube-mcp-description`">{{
+              t('common.field.description.label')
+            }}</FieldLabel>
             <Textarea
+              :id="`${idBase}-kube-mcp-description`"
               class="font-data"
               v-model="draft.description"
               maxlength="1000"

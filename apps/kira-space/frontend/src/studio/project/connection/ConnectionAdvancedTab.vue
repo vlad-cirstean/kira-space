@@ -74,6 +74,7 @@ function setThrottle(value: string): void {
   const n = Number.parseFloat(value);
   file.value.throttle_per_sec = Number.isNaN(n) ? 0 : n;
 }
+const idBase = useId();
 </script>
 
 <template>
@@ -110,10 +111,13 @@ function setThrottle(value: string): void {
     </Field>
 
     <Field v-if="hasRowEstimate" class="flex-1">
-      <FieldLabel>{{ t('studio.settings.advanced.expensiveRows.label') }}</FieldLabel>
+      <FieldLabel :for="`${idBase}-connection-explain-threshold`">{{
+        t('studio.settings.advanced.expensiveRows.label')
+      }}</FieldLabel>
       <div class="flex items-center gap-1">
         <div class="w-40">
           <NumberStepperInput
+            :id="`${idBase}-connection-explain-threshold`"
             :min="EXPLAIN_THRESHOLD_ROWS_RANGE.min"
             :max="EXPLAIN_THRESHOLD_ROWS_RANGE.max"
             step="1000"
@@ -157,9 +161,12 @@ function setThrottle(value: string): void {
     </Field>
 
     <Field class="flex-1">
-      <FieldLabel>{{ t('studio.project.connectionDialog.throttle.label') }}</FieldLabel>
+      <FieldLabel :for="`${idBase}-connection-throttle`">{{
+        t('studio.project.connectionDialog.throttle.label')
+      }}</FieldLabel>
       <div class="w-24">
         <NumberStepperInput
+          :id="`${idBase}-connection-throttle`"
           :min="0"
           :max="CONNECTION_THROTTLE_RANGE.max"
           step="0.5"

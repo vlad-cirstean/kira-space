@@ -138,6 +138,7 @@ const netChanged = (name: string): boolean => {
           <option v-for="r in RESTARTS" :key="r" :value="r">{{ r }}</option>
         </NativeSelect>
         <Input
+          :aria-label="t('docker.edit.retries.placeholder')"
           v-if="ip.restart.name === 'on-failure'"
           type="number"
           min="0"
@@ -415,6 +416,7 @@ const netChanged = (name: string): boolean => {
         </div>
         <div class="flex items-center gap-2">
           <NativeSelect
+            :aria-label="t('docker.edit.networkToAdd.label')"
             v-model="toAdd"
             class="w-40"
             :disabled="disabled || networkLocked"

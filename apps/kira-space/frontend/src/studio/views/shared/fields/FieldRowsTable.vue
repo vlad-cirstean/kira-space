@@ -286,6 +286,7 @@ useEventListener(containerRef, 'keydown', onContainerKeydown);
     >
       <Checkbox
         v-if="showEnabled"
+        :aria-label="t('studio.keyValue.enabled.aria')"
         :model-value="!!entry.row.enabled"
         :disabled="entry.index >= rows.length"
         :data-testid="`${testidPrefix}-enabled`"
@@ -300,6 +301,7 @@ useEventListener(containerRef, 'keydown', onContainerKeydown);
              `wholeFieldToken`: completion here still means "the whole field is one header name",
              which is independent of what `range-highlights`/`hover-at` paint. -->
         <AutocompleteField
+          :aria-label="t('common.field.name.label')"
           v-if="nameCandidates || valueVariableSupport"
           grow
           class="w-full"
@@ -314,6 +316,7 @@ useEventListener(containerRef, 'keydown', onContainerKeydown);
         />
         <InputGroup v-else>
           <InputGroupTextarea
+            :aria-label="t('common.field.name.label')"
             :model-value="entry.row.name"
             :placeholder="namePlaceholder"
             :data-testid="`${testidPrefix}-name`"
@@ -331,6 +334,7 @@ useEventListener(containerRef, 'keydown', onContainerKeydown);
       >
         <div class="min-w-0">
           <AutocompleteField
+            :aria-label="t('common.field.value.label')"
             v-if="valueVariableSupport"
             grow
             class="w-full"
@@ -347,6 +351,7 @@ useEventListener(containerRef, 'keydown', onContainerKeydown);
           />
           <InputGroup v-else>
             <InputGroupTextarea
+              :aria-label="t('common.field.value.label')"
               :model-value="entry.row.value"
               :placeholder="valuePlaceholder"
               :data-testid="`${testidPrefix}-value`"
@@ -362,6 +367,7 @@ useEventListener(containerRef, 'keydown', onContainerKeydown);
       <div v-if="showDescriptions" class="min-w-0">
         <InputGroup>
           <InputGroupTextarea
+            :aria-label="t('common.field.description.label')"
             :model-value="entry.row.description ?? ''"
             :placeholder="t('common.field.description.label')"
             :data-testid="`${testidPrefix}-description`"

@@ -174,6 +174,7 @@ const timeoutThrottled = computed(
     (file.value.throttle_per_sec ?? 0) > 0 &&
     (timeoutValue.value === 0 || timeoutValue.value >= 28),
 );
+const idBase = useId();
 </script>
 
 <template>
@@ -196,8 +197,11 @@ const timeoutThrottled = computed(
     </Field>
 
     <Field class="flex-1">
-      <FieldLabel>{{ t('common.field.description.label') }}</FieldLabel>
+      <FieldLabel :for="`${idBase}-connection-mcp-description`">{{
+        t('common.field.description.label')
+      }}</FieldLabel>
       <Textarea
+        :id="`${idBase}-connection-mcp-description`"
         class="font-data"
         :model-value="mcp.description ?? ''"
         :aria-invalid="props.errorFor('/mcp/description') ? true : undefined"
@@ -338,9 +342,12 @@ const timeoutThrottled = computed(
     </template>
 
     <Field class="flex-1">
-      <FieldLabel>{{ t('studio.project.connectionDialog.mcp.timeoutLabel.label') }}</FieldLabel>
+      <FieldLabel :for="`${idBase}-connection-mcp-timeout`">{{
+        t('studio.project.connectionDialog.mcp.timeoutLabel.label')
+      }}</FieldLabel>
       <div class="w-24">
         <NumberStepperInput
+          :id="`${idBase}-connection-mcp-timeout`"
           :min="0"
           :max="CONNECTION_MCP_STATEMENT_TIMEOUT.max"
           step="1"

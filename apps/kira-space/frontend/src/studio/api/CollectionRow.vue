@@ -181,6 +181,7 @@ function onKeydown(e: KeyboardEvent): void {
     <InlineEditInput
       v-if="renaming"
       :name="row.name"
+      :label="t('common.field.name.label')"
       data-testid="collection-rename-input"
       @commit="(name) => emit('rename', row, name)"
       @cancel="emit('cancelRename')"

@@ -251,6 +251,11 @@ async function onPull(): Promise<void> {
             }}</TableCell>
             <TableCell>
               <NativeSelect
+                :aria-label="
+                  t('space.settings.configSync.mode.aria', {
+                    module: MODULE_LABEL[mod.name] ? t(MODULE_LABEL[mod.name]) : mod.name,
+                  })
+                "
                 variant="bordered"
                 :model-value="mod.mode"
                 :data-testid="`config-sync-mode-${mod.name}`"

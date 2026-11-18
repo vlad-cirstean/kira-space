@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
+import { FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
 import { RadioGroup, RadioGroupCard } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
 import Identifier from '@workbench/components/Identifier.vue';
@@ -134,8 +135,9 @@ function confirm(): void {
           >
         </template>
 
-        <template v-if="!hasBlocker && needsMainline">
-          <p>{{ t('git.dialog.cherryPick.mainline.body') }}</p>
+        <FieldSet v-if="!hasBlocker && needsMainline">
+          <FieldLegend>{{ t('git.dialog.mainline.label') }}</FieldLegend>
+          <FieldDescription>{{ t('git.dialog.cherryPick.mainline.body') }}</FieldDescription>
           <RadioGroup v-model="selectedMainline" class="gap-1.5">
             <RadioGroupCard
               v-for="entry in preflight?.mainlineRequired"
@@ -151,7 +153,7 @@ function confirm(): void {
               </template>
             </RadioGroupCard>
           </RadioGroup>
-        </template>
+        </FieldSet>
 
         <template v-if="!hasBlocker && (!needsMainline || selectedMainline !== undefined)">
           <PreflightPrediction
