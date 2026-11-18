@@ -2,7 +2,7 @@
 import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
 import type { MaskKind } from '@shared/domain/mask';
 import { MASK_REVIEW_KINDS, type MaskReviewColumn } from '@shared/domain/maskReview';
-import { Card, CardContent, CardHeader, CardTitle } from '@theme/components/ui/card';
+import DetailSection from '@theme/components/DetailSection.vue';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -51,24 +51,19 @@ function maskFromReview(col: MaskReviewColumn, kind: MaskKind): void {
       :mcp-enabled="file.mcp?.enabled === true"
     />
 
-    <Card variant="section">
-      <CardHeader>
-        <CardTitle>{{ t('studio.project.connectionDialog.privacy.rules.title') }}</CardTitle>
-      </CardHeader>
-      <CardContent class="flex flex-col gap-2">
-        <FieldDescription class="w-full">{{
-          t('studio.project.connectionDialog.privacy.rules.description')
-        }}</FieldDescription>
-        <MaskRuleList
-          :model-value="rules"
-          :error-for="props.errorFor"
-          :has-rule="hasRule"
-          @update:model-value="(v) => (file.masks = v)"
-          @add="addRule"
-        />
-        <MaskKeySection v-if="rules.length > 0" :connection-id="connectionId" :kind="file.kind" />
-      </CardContent>
-    </Card>
+    <DetailSection :title="t('studio.project.connectionDialog.privacy.rules.title')">
+      <FieldDescription class="w-full">{{
+        t('studio.project.connectionDialog.privacy.rules.description')
+      }}</FieldDescription>
+      <MaskRuleList
+        :model-value="rules"
+        :error-for="props.errorFor"
+        :has-rule="hasRule"
+        @update:model-value="(v) => (file.masks = v)"
+        @add="addRule"
+      />
+      <MaskKeySection v-if="rules.length > 0" :connection-id="connectionId" :kind="file.kind" />
+    </DetailSection>
 
     <ConnectionMaskReview v-model="file" :connection-id="connectionId" @mask="maskFromReview" />
 
