@@ -364,6 +364,7 @@ onUnmounted(() => {
         <NativeSelect
           :aria-label="t('studio.grpc.method.label')"
           variant="bordered"
+          size="kira"
           class="w-full"
           data-testid="grpc-method-select"
           :model-value="selectedMethodValue"

@@ -113,6 +113,7 @@ const shownCount = computed(() => list.data.value?.rows.length ?? 0);
           />
           <Input
             v-model="selector"
+            size="kira"
             class="w-40"
             :placeholder="t('kubernetes.list.labelSelector.placeholder')"
             :aria-label="t('kubernetes.list.labelSelector.label')"
