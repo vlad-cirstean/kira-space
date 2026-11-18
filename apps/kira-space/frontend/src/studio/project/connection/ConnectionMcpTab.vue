@@ -12,6 +12,7 @@ import {
   hasWriteConsole,
   statementTimeoutEnforcementOf,
 } from '@shared/domain/dbmcp';
+import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import {
@@ -268,9 +269,9 @@ const idBase = useId();
       >
         {{ t('studio.project.connectionDialog.mcp.rowsOff.body') }}
       </FieldDescription>
-      <FieldDescription v-else class="w-full" data-testid="connection-mcp-rows-none">
+      <InlineState kind="empty" v-else class="w-full" data-testid="connection-mcp-rows-none">
         {{ t('studio.project.connectionDialog.mcp.rowsNone.body') }}
-      </FieldDescription>
+      </InlineState>
     </template>
 
     <ConnectionMcpMasked :mcp="mcp" :kind="file.kind" :enabled="enabled" @change="setMcp" />

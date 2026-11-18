@@ -122,9 +122,9 @@ const shownCount = computed(() => list.data.value?.rows.length ?? 0);
             @change="applySelector"
           />
         </ViewToolbar>
-        <FieldError v-if="badSelector" class="px-2" data-testid="kube-selector-error">{{
-          badSelector
-        }}</FieldError>
+        <div v-if="badSelector" class="px-2">
+          <FieldError data-testid="kube-selector-error">{{ badSelector }}</FieldError>
+        </div>
         <div class="flex min-h-0 flex-1 flex-col">
           <QueryState v-if="!badSelector && kind" :query="list" :is-empty="() => false">
             <template #default="{ data: rows }">

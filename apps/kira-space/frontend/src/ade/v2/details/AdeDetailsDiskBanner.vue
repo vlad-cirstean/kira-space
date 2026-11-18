@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import CodeBlock from '@theme/components/CodeBlock.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
@@ -12,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { ref } from 'vue';
 import type { DiskChange } from '../wire';
@@ -81,9 +81,9 @@ function stateLabel(c: DiskChange): string {
           <DialogDescription>{{ t('space.ade.details.diskDialog.body') }}</DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <FieldDescription v-if="!changes.data.value?.length">{{
+          <InlineState kind="empty" v-if="!changes.data.value?.length">{{
             t('space.ade.details.diskDialog.empty.body')
-          }}</FieldDescription>
+          }}</InlineState>
           <ul class="flex flex-col gap-3">
             <li
               v-for="c in changes.data.value ?? []"

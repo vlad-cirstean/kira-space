@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Disclosure from '@theme/components/Disclosure.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -176,9 +177,9 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
             >
               <li v-for="n in preview.notes" :key="n">{{ n }}</li>
             </ul>
-            <FieldDescription v-if="items.length === 0" data-testid="ade-port-none">
+            <InlineState kind="empty" v-if="items.length === 0" data-testid="ade-port-none">
               {{ t('space.ade.port.items.emptyHint') }}
-            </FieldDescription>
+            </InlineState>
             <div
               v-else
               ref="scrollEl"

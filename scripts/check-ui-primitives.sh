@@ -13,22 +13,21 @@
 # Guards U72-U82: git show bd0c224688d9:docs/v2.2/plans/P266-consistency-audit.md section 4.4.
 #
 # Guards U110-U117: docs/v0.3.17/plans/P672-part2.md.
-#
-# Guards U118-U121: docs/v0.3.17/plans/P672-part4.md; U118 flush rule: P672-part4-iter2.md.
-# Guards U122-U123: docs/v0.3.17/plans/P672-part5.md.
-# Guard U124: docs/v0.3.17/plans/P672-part6.md.
-# Guard U125: docs/v0.3.17/plans/P672-part7.md.
-# Guard U126: docs/v0.3.17/plans/P672-part8.md.
-# Guards U127-U132 and U88 steps 5-12: docs/v0.3.17/plans/P672-part9.md.
 # Guards U91, U110, U116, U123 (extended): docs/v0.3.17/plans/P672-part2-iter2.md.
 # Guard U133: docs/v0.3.17/plans/P672-part3-iter2.md.
+# Guards U118-U121: docs/v0.3.17/plans/P672-part4.md; U118 flush rule: P672-part4-iter2.md.
 # Guards U134-U140: docs/v0.3.17/plans/P672-part4-iter2.md.
-# Guards U146, U13, U36, U124 (extended): docs/v0.3.17/plans/P672-part6-iter2.md. U124 exempts AdeTaskCard: D1 board card tone, rail and selected fill.
+# Guards U122-U123: docs/v0.3.17/plans/P672-part5.md.
 # Guards U141-U145, U123 extended: docs/v0.3.17/plans/P672-part5-iter2.md.
-# Guards U117 (extended), U152: docs/v0.3.17/plans/P672-part8-iter2.md.
+# Guard U124: docs/v0.3.17/plans/P672-part6.md.
+# Guards U146, U13, U36, U124 (extended): docs/v0.3.17/plans/P672-part6-iter2.md. U124 exempts AdeTaskCard: D1 board card tone, rail and selected fill.
+# Guard U125: docs/v0.3.17/plans/P672-part7.md.
 # Guards U147-U151: docs/v0.3.17/plans/P672-part7-iter2.md.
-#
+# Guard U126: docs/v0.3.17/plans/P672-part8.md.
+# Guards U117 (extended), U152: docs/v0.3.17/plans/P672-part8-iter2.md.
+# Guards U127-U132 and U88 steps 5-12: docs/v0.3.17/plans/P672-part9.md.
 # Guards U153-U156, U73/U88/U90 extensions: docs/v0.3.17/plans/P672-part9-iter2.md.
+# Guards U157-U161, U149 extended: docs/v0.3.17/plans/P672-part10-final.md.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -312,13 +311,18 @@ U145@@v@@@@margin or padding class on a popover bar control (use PopoverBar, RP.
 U152@@v@@@@hand toggle (icon toggle is TooltipIconButton :pressed, text toggle is Toggle default variant, a single pick is SecondaryTabs or a rowVariants list)@@<Button\b(?=(?&t)\svariant="toolbar")(?&t)\s:?aria-pressed=|<Toggle\b(?&t)\s:?variant=
 U147@@v@@@@readable warn or note token outside Alert (use text-warn or text-info, RCo.1)@@${TOK}text-(?:warn|note)-text(?![\w-])
 U148@@v@@@@spin attribute on CodiconIcon (use Spinner, RS.1)@@<CodiconIcon\b(?&t)\s:?spin\b
-U149@@v@@@@tone class on a toolbar button (use tone or data-tone)@@(?:<TooltipIconButton\b|<Button\b(?=(?&t)\svariant="toolbar"))(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info)(?![\w-])
+U149@@v@@@@tone class or TONE_TEXT in a bound class on a toolbar button (use tone or data-tone)@@(?:<TooltipIconButton\b|<Button\b(?=(?&t)\svariant="toolbar"))(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info)(?![\w-])|(?:<TooltipIconButton\b|<Button\b(?=(?&t)\svariant="toolbar"))(?&t)\s:class="[^"]*(?:TONE_TEXT\[|'text-(?:ok|warn|error|info)')
 U150@@v@@@@toned action icon (action icons stay muted, RI.2)@@<CodiconIcon\b(?=(?&t)\sname="(?:play|debug-stop|debug-start|run-all|debug-restart|debug-pause)")(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info)(?![\w-])
 U151@@v@@@@StatusDot status through a theme var colour (use tone)@@<StatusDot\b(?&t)\scolor="var\(--kira-
 U153@@v@@OpLogPanel.vue@@hand depth indent (use rowIndent)@@paddingLeft:\s*\x60[^\x60]*\bdepth\b
 U154@@v@@@@Disclosure trigger or content class (use the meta prop; content spacing is built in)@@<Disclosure\b(?&t)\s:?(?:trigger-class|content-class)=
 U155@@v@@@@hand pane frame or window body (use paneFrame, windowBody)@@\bclass="(?=[^"]*${TOK}rounded-kira(?![\w-]))(?=[^"]*${TOK}bg-bg(?![\w-]))|\bclass="(?=[^"]*${TOK}bg-chrome(?![\w-]))(?=[^"]*${TOK}px-1\.5(?![\w.-]))(?=[^"]*${TOK}pb-0\.5(?![\w.-]))
 U156@@v@@@@text glyph as icon or status (use CodiconIcon or StatusDot)@@>\s*(?:✕|✓|▶|●|•|→|↔|↩)\s*<|\?\s*'(?:●|•)'(?!\.repeat)
+U157@@v@@@@FieldError as a pane or section failure (padded; use EmptyState, Alert or InlineState)@@<FieldError\b(?&t)\s:?class="[^"]*${TOK}p[xy]?-
+U158@@v@@@@FieldDescription as an empty state (use InlineState kind empty)@@<FieldDescription\b(?&t)>\s*\{\{\s*t\('[^']*\.(?:empty|none)\b|<FieldDescription\b(?&t)\sdata-testid="[^"]*-(?:empty|none)"
+U159@@v@@@@untoned chip Badge (use the default Badge)@@<Badge\b(?=(?&t)\svariant="chip")(?!(?&t)\s:?(?:class|style)=)(?&t)>
+U160@@v@@@@hand required asterisk (use FieldLabel required)@@class="text-error"(?&t)?>\s*\*
+U161@@v@@@@default-size form control in a bar (use size="kira")@@<(ViewToolbar|PanelHeader|PopoverBar)\b(?&t)>(?:(?!</\2\s*>)[\s\S])*?<(?:NativeSelect|Input)\b(?!(?&t)\ssize=)(?&t)
 GUARDS
 
 # hits: "U<n> path"

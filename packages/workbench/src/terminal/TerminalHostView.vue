@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InlineState from '@theme/components/InlineState.vue';
 // TerminalView.vue (Kira Studio) and RepoTerminalView.vue (Kira Space) stayed
 // line-identical past the useTerminalMount extraction — the rendererDeps object, the
 // composable call, the container/footer template and its scoped style. This owns that remainder;
@@ -8,7 +9,6 @@
 // TerminalHostTabState/TerminalHostDeps moved to terminalHost.ts (a plain .ts file
 // module.ts, also non-.vue, can import types from) — re-exported here so existing `.vue`
 // consumers of `./TerminalHostView.vue` keep working unchanged.
-import { FieldError } from '@theme/components/ui/field';
 import { ref } from 'vue';
 import type { TerminalHostDeps, TerminalHostTabState } from './terminalHost';
 import { useTerminalMount } from './useTerminalMount';
@@ -40,13 +40,14 @@ defineExpose({ focusTerminal });
     <slot />
     <div ref="container" class="flex-1 min-h-0" data-testid="repo-terminal-host" />
     <slot name="outcome" />
-    <FieldError
+    <InlineState
       v-if="!hideFooter && session?.status === 'failed'"
-      class="shrink-0 bg-chrome px-1 py-0.5"
+      kind="error"
+      class="shrink-0 bg-chrome"
       data-testid="repo-terminal-footer"
     >
       {{ footerText }}
-    </FieldError>
+    </InlineState>
     <div
       v-else-if="!hideFooter && session?.status === 'exited'"
       class="shrink-0 text-kira-sm bg-chrome py-0.5 px-1 text-muted-foreground"

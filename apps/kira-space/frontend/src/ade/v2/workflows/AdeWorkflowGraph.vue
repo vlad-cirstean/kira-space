@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
-import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { paneFrame } from '@theme/lib/frames';
@@ -401,11 +402,11 @@ onBeforeUnmount(() => {
             :step="draft.step"
             :steps="draft.draft.steps"
           />
-          <FieldDescription v-else class="p-3" data-testid="ade-wf-inspector-empty">
+          <InlineState kind="empty" v-else data-testid="ade-wf-inspector-empty">
             <CatalogText k="space.ade.workflows.graph.inspectorEmpty.emptyHint">
               <template #tokens><span class="font-data">{{ PLACEHOLDER_TOKENS }}</span></template>
             </CatalogText>
-          </FieldDescription>
+          </InlineState>
         </div>
       </div>
     </div>
