@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import DetailSection from '@theme/components/DetailSection.vue';
 import { Button } from '@theme/components/ui/button';
-import { Card } from '@theme/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,15 +68,13 @@ function holderItems(q: Queue): MenuItem[] {
       <FieldDescription v-if="!data?.queues.length" data-testid="ade-leases-empty">
         {{ t('space.ade.leases.empty.hint') }}
       </FieldDescription>
-      <Card
+      <DetailSection
         v-for="q in data?.queues ?? []"
         :key="q.name"
-        variant="section"
-        class="flex flex-col gap-2 p-3"
+        :title="q.name"
         :data-testid="`ade-lease-queue-${q.name}`"
       >
-        <div class="flex items-center gap-2">
-          <span class="min-w-0 flex-1 truncate font-medium">{{ q.name }}</span>
+        <template #actions>
           <Button
             variant="toolbar"
             size="kira"
@@ -87,56 +85,58 @@ function holderItems(q: Queue): MenuItem[] {
           >
             {{ t('space.ade.leases.removeQueue.label') }}
           </Button>
-        </div>
-        <div class="flex items-center gap-2 text-kira-sm">
-          <span class="w-16 shrink-0 text-muted-foreground">{{
-            t('space.ade.leases.holder.label')
-          }}</span>
-          <DropdownMenu v-if="q.holder">
-            <DropdownMenuTrigger as-child>
-              <Button
-                variant="toolbar"
-                size="kira"
-                class="min-w-0 truncate"
-                :pending="store.leaseBusy(q.name)"
-                :data-testid="`ade-lease-holder-${q.name}`"
+        </template>
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center gap-2 text-kira-sm">
+            <span class="w-16 shrink-0 text-muted-foreground">{{
+              t('space.ade.leases.holder.label')
+            }}</span>
+            <DropdownMenu v-if="q.holder">
+              <DropdownMenuTrigger as-child>
+                <Button
+                  variant="toolbar"
+                  size="kira"
+                  class="min-w-0 truncate"
+                  :pending="store.leaseBusy(q.name)"
+                  :data-testid="`ade-lease-holder-${q.name}`"
+                >
+                  {{ q.holder.taskTitle }}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <MenuItems :items="holderItems(q)" />
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <span v-else class="text-muted-foreground" :data-testid="`ade-lease-free-${q.name}`">{{
+              t('space.ade.leases.free.label')
+            }}</span>
+            <AdeChip
+              v-if="q.holder?.releaseAsked"
+              :label="t('space.ade.leases.asked.label')"
+              tone="amber"
+            />
+          </div>
+          <div class="flex items-start gap-2 text-kira-sm">
+            <span class="w-16 shrink-0 text-muted-foreground">{{
+              t('space.ade.leases.waiters.label')
+            }}</span>
+            <ol v-if="q.waiters.length" class="m-0 flex min-w-0 flex-col gap-1 p-0">
+              <li
+                v-for="w in q.waiters"
+                :key="w.sessionId"
+                class="flex list-none items-center gap-2"
+                :data-testid="`ade-lease-waiter-${q.name}-${w.position}`"
               >
-                {{ q.holder.taskTitle }}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <MenuItems :items="holderItems(q)" />
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <span v-else class="text-muted-foreground" :data-testid="`ade-lease-free-${q.name}`">{{
-            t('space.ade.leases.free.label')
-          }}</span>
-          <AdeChip
-            v-if="q.holder?.releaseAsked"
-            :label="t('space.ade.leases.asked.label')"
-            tone="amber"
-          />
+                <span class="text-muted-foreground">#{{ w.position }}</span>
+                <span class="min-w-0 truncate">{{ w.taskTitle }}</span>
+              </li>
+            </ol>
+            <span v-else class="text-muted-foreground">{{
+              t('space.ade.leases.waiters.empty.hint')
+            }}</span>
+          </div>
         </div>
-        <div class="flex items-start gap-2 text-kira-sm">
-          <span class="w-16 shrink-0 text-muted-foreground">{{
-            t('space.ade.leases.waiters.label')
-          }}</span>
-          <ol v-if="q.waiters.length" class="m-0 flex min-w-0 flex-col gap-1 p-0">
-            <li
-              v-for="w in q.waiters"
-              :key="w.sessionId"
-              class="flex list-none items-center gap-2"
-              :data-testid="`ade-lease-waiter-${q.name}-${w.position}`"
-            >
-              <span class="text-muted-foreground">#{{ w.position }}</span>
-              <span class="min-w-0 truncate">{{ w.taskTitle }}</span>
-            </li>
-          </ol>
-          <span v-else class="text-muted-foreground">{{
-            t('space.ade.leases.waiters.empty.hint')
-          }}</span>
-        </div>
-      </Card>
+      </DetailSection>
     </div>
   </div>
 </template>

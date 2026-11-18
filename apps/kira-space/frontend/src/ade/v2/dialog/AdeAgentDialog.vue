@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import CodeBlock from '@theme/components/CodeBlock.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Card } from '@theme/components/ui/card';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import {
   Dialog,
@@ -279,13 +279,13 @@ async function discard(): Promise<void> {
             data-testid="ade-dialog-message"
             @update:model-value="(v) => (dialogs.msg = String(v))"
           />
-          <Card
+          <CodeBlock
             v-if="view.suffix"
-            class="whitespace-pre-wrap font-data text-kira-sm text-muted-foreground"
+            class="text-muted-foreground"
             data-testid="ade-dialog-suffix"
             >{{
               view.suffix
-            }}</Card
+            }}</CodeBlock
           >
         </div>
 

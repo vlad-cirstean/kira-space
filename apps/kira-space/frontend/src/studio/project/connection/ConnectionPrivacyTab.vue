@@ -2,7 +2,7 @@
 import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
 import type { MaskKind } from '@shared/domain/mask';
 import { MASK_REVIEW_KINDS, type MaskReviewColumn } from '@shared/domain/maskReview';
-import { Card, CardHeader, CardTitle } from '@theme/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -55,7 +55,7 @@ function maskFromReview(col: MaskReviewColumn, kind: MaskKind): void {
       <CardHeader>
         <CardTitle>{{ t('studio.project.connectionDialog.privacy.rules.title') }}</CardTitle>
       </CardHeader>
-      <div class="flex flex-col gap-2 px-3 pb-3">
+      <CardContent class="flex flex-col gap-2">
         <FieldDescription class="w-full">{{
           t('studio.project.connectionDialog.privacy.rules.description')
         }}</FieldDescription>
@@ -67,7 +67,7 @@ function maskFromReview(col: MaskReviewColumn, kind: MaskKind): void {
           @add="addRule"
         />
         <MaskKeySection v-if="rules.length > 0" :connection-id="connectionId" :kind="file.kind" />
-      </div>
+      </CardContent>
     </Card>
 
     <ConnectionMaskReview v-model="file" :connection-id="connectionId" @mask="maskFromReview" />

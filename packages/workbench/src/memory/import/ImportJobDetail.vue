@@ -283,7 +283,7 @@ async function discard(): Promise<void> {
           q
         }}</span>
       </Alert>
-      <Card v-for="(d, i) in selectedFile.dropped" :key="`d${i}`" class="gap-0">
+      <Card v-for="(d, i) in selectedFile.dropped" :key="`d${i}`">
         <span>{{ d.fact }}</span>
         <span class="text-kira-sm text-muted-foreground">{{
           t('memory.import.file.dropped.label', { why: d.why })

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Badge } from '@theme/components/ui/badge';
-import { Card } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
+import { rowVariants } from '@theme/lib/rowVariants';
+import { cn } from '@theme/lib/utils';
 
 // One Studio MCP settings row: what an agent may see (name, status line, Exposed/Off badge) and the
 // switch that flips it. Testids derive from `testid`: `-row-`, `-` and `-toggle-` plus the id.
@@ -20,9 +21,13 @@ defineEmits<{ toggle: [enabled: boolean] }>();
 </script>
 
 <template>
-  <Card
-    variant="list"
-    class="flex-row items-center justify-between gap-1.5"
+  <div
+    :class="
+      cn(
+        rowVariants({ layout: 'double' }),
+        'items-center justify-between gap-1.5 whitespace-normal',
+      )
+    "
     :data-testid="`${testid}-row-${id}`"
   >
     <div class="flex flex-col min-w-0 gap-0.5">
@@ -44,5 +49,5 @@ defineEmits<{ toggle: [enabled: boolean] }>();
       />
       <slot name="actions" />
     </div>
-  </Card>
+  </div>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import CodeBlock from '@theme/components/CodeBlock.vue';
 import { Button } from '@theme/components/ui/button';
-import { Card } from '@theme/components/ui/card';
 import {
   Dialog,
   DialogBody,
@@ -218,17 +218,13 @@ async function send(): Promise<void> {
             <span class="text-muted-foreground">{{
               t('space.ade.runDialog.handover.label', { stage: handoverIn.fromStepName })
             }}</span>
-            <Card class="select-text whitespace-pre-wrap break-words font-data text-kira-sm">{{
-              handoverIn.body
-            }}</Card>
+            <CodeBlock class="break-words">{{ handoverIn.body }}</CodeBlock>
           </div>
           <div v-if="taskNotes" class="flex flex-col gap-1" data-testid="ade-run-notes">
             <span class="text-muted-foreground">{{
               t('space.ade.runDialog.taskNotes.label')
             }}</span>
-            <Card class="select-text whitespace-pre-wrap break-words font-data text-kira-sm">{{
-              taskNotes
-            }}</Card>
+            <CodeBlock class="break-words">{{ taskNotes }}</CodeBlock>
           </div>
         </div>
         <div v-if="smartStep" class="flex flex-col gap-1" data-testid="ade-run-smart">
@@ -236,13 +232,9 @@ async function send(): Promise<void> {
             <SmartBadge />
             <span>{{ smartStep.smartScript }}</span>
           </div>
-          <Card
-            v-if="smartBody"
-            class="whitespace-pre-wrap font-data text-kira-sm"
-            data-testid="ade-run-smart-body"
-          >
+          <CodeBlock v-if="smartBody" data-testid="ade-run-smart-body">
             <VarText :parts="smartBody" />
-          </Card>
+          </CodeBlock>
           <FieldError v-else data-testid="ade-run-smart-missing">{{
             t('space.ade.runDialog.smartMissing.error')
           }}</FieldError>

@@ -43,12 +43,7 @@ async function askDelete(): Promise<void> {
 </script>
 
 <template>
-  <Card
-    class="flex flex-col gap-2 p-2 text-kira-md"
-    data-kind="proof"
-    :data-slug="proof.slug"
-    data-testid="ade-proof-entry"
-  >
+  <Card data-kind="proof" :data-slug="proof.slug" data-testid="ade-proof-entry">
     <div class="flex items-center gap-2 text-kira-sm">
       <CodiconIcon name="beaker" :size="12" />
       <Button

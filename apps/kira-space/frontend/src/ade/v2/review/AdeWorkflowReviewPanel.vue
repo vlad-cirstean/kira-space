@@ -204,7 +204,6 @@ const stateLabel = (c: ReviewComment): string =>
       <Card
         v-for="c in comments"
         :key="c.id"
-        class="flex flex-col gap-1 p-2"
         data-testid="ade-review-comment"
         :data-comment-id="c.id"
         :data-state="c.state"

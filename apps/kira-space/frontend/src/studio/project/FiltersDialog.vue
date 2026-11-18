@@ -230,11 +230,7 @@ const connectionName = computed(
               }}</Button>
             </span>
           </SectionHeading>
-          <Card
-            variant="list"
-            class="flex max-h-56 flex-col gap-px overflow-y-auto"
-            data-testid="filter-kind-list"
-          >
+          <Card variant="list" class="max-h-56 overflow-y-auto" data-testid="filter-kind-list">
             <Label
               v-for="row in kinds"
               :key="row.kind"
@@ -273,11 +269,7 @@ const connectionName = computed(
             :placeholder="t('studio.project.filtersDialog.nameFilter.placeholder')"
             data-testid="filter-name-input"
           />
-          <Card
-            variant="list"
-            class="flex max-h-56 flex-col gap-px overflow-y-auto"
-            data-testid="filter-object-list"
-          >
+          <Card variant="list" class="max-h-56 overflow-y-auto" data-testid="filter-object-list">
             <div
               v-for="row in objects.visible.value"
               :key="row.path"

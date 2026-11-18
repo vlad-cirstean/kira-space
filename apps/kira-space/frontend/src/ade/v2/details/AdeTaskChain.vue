@@ -114,7 +114,7 @@ const editing = ref<string | null>(null);
         />
       </template>
     </div>
-    <Card v-if="composing" class="flex flex-col gap-2 p-2" data-testid="ade-note-composer">
+    <Card v-if="composing" data-testid="ade-note-composer">
       <AdeNotesEditor
         :key="`compose-${task.id}`"
         v-model="draft"

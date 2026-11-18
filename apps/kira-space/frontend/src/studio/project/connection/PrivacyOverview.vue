@@ -15,7 +15,7 @@ defineProps<{
 </script>
 
 <template>
-  <Card class="gap-1" data-testid="connection-privacy-overview">
+  <Card data-testid="connection-privacy-overview">
     <div class="text-fg font-medium">
       {{ t('studio.project.connectionDialog.privacy.overview.title') }}
     </div>

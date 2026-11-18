@@ -8,6 +8,8 @@ import { Field, FieldDescription, FieldLabel, FieldLegend } from '@theme/compone
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import { rowVariants } from '@theme/lib/rowVariants';
+import { cn } from '@theme/lib/utils';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { computed, ref, useId } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
@@ -73,15 +75,17 @@ function onRemove(index: number): void {
   >
     <AlertDescription>{{ t('studio.settings.dbMcp.apiRules.invalid.body') }}</AlertDescription>
   </Alert>
-  <ul
-    v-if="rules.length"
-    class="flex flex-col m-0 p-0 list-none gap-0.5"
-    data-testid="settings-db-mcp-api-rules"
-  >
-    <li v-for="(rule, i) in rules" :key="i">
-      <Card
-        variant="list"
-        class="flex-row items-center justify-between gap-1.5"
+  <Card v-if="rules.length" variant="list">
+    <ul class="m-0 flex list-none flex-col p-0" data-testid="settings-db-mcp-api-rules">
+      <li
+        v-for="(rule, i) in rules"
+        :key="i"
+        :class="
+          cn(
+            rowVariants({ layout: 'double' }),
+            'items-center justify-between gap-1.5 whitespace-normal',
+          )
+        "
         data-testid="settings-db-mcp-api-rule"
       >
         <div class="flex min-w-0 items-center gap-1.5">
@@ -120,9 +124,9 @@ function onRemove(index: number): void {
             <CodiconIcon :name="ICON.delete" :size="13" />
           </Button>
         </div>
-      </Card>
-    </li>
-  </ul>
+      </li>
+    </ul>
+  </Card>
   <FieldDescription v-else data-testid="settings-db-mcp-api-rules-empty">{{
     t('studio.settings.dbMcp.apiRules.empty.body')
   }}</FieldDescription>

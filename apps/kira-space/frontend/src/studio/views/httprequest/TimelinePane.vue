@@ -247,12 +247,7 @@ function hopNotes(hop: HttpTimelineHop): HopNote[] {
       </div>
 
       <div class="flex flex-col gap-1.5">
-        <Card
-          v-for="hop in activeTimeline.hops"
-          :key="hop.index"
-          class="gap-0.5"
-          data-testid="http-timeline-hop"
-        >
+        <Card v-for="hop in activeTimeline.hops" :key="hop.index" data-testid="http-timeline-hop">
           <div
             class="flex items-center gap-1 text-kira-sm font-data"
             data-testid="http-timeline-hop-caption"

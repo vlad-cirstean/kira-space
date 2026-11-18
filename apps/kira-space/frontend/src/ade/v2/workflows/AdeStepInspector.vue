@@ -284,8 +284,8 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
               <FieldDescription>{{
                 t('space.ade.workflows.stepInspector.finishNote.hint')
               }}</FieldDescription>
-              <Card class="text-kira-sm text-subtle" data-testid="ade-wf-finish-note">
-                <VarText :parts="finish" />
+              <Card data-testid="ade-wf-finish-note">
+                <FieldDescription><VarText :parts="finish" /></FieldDescription>
               </Card>
             </template>
           </template>

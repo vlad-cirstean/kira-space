@@ -87,10 +87,11 @@ function onMenu(ev: MouseEvent): void {
   }
   contextMenu.openContextMenu(ev, items);
 }
-const boxClass = computed(() => {
-  if (current.value) return 'border-tone-amber';
-  return '';
-});
+// Colour of the whole block: the current step's amber border, a skipped step muted.
+const boxClass = computed(() => [
+  skipped.value && 'text-muted-foreground',
+  current.value && 'border-tone-amber',
+]);
 /** The row of a run line held back by its branch's prepare script. */
 // A failed step that reported detail (reason, conflicted files, last git error) shows it.
 const reportRun = (runId: string) => {
@@ -215,9 +216,8 @@ function logToggleLabel(runId: string): string {
 
 <template>
   <Card
-    variant="section"
-    class="gap-0 py-1"
-    :class="[skipped ? 'text-muted-foreground' : '', boxClass]"
+    variant="list"
+    :class="boxClass"
     data-testid="ade-step-block"
     :data-step-id="block.step.id"
     :data-state="block.state"

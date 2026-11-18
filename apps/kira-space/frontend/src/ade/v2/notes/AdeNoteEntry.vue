@@ -66,7 +66,6 @@ function time(h: Handover): string {
 
 <template>
   <Card
-    class="flex flex-col gap-1 p-2 text-kira-md"
     data-kind="handover"
     :data-author="author"
     :data-source="handover.source"

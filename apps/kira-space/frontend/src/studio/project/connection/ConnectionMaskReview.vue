@@ -14,7 +14,7 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { Card, CardHeader, CardTitle } from '@theme/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@theme/components/ui/card';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
@@ -144,7 +144,7 @@ const STATE_VARIANT = { masked: 'ok', reviewed: 'default', pending: 'warn' } as 
     <CardHeader>
       <CardTitle>{{ t('studio.project.connectionDialog.privacy.review.title') }}</CardTitle>
     </CardHeader>
-    <div class="flex flex-col gap-2 px-3 pb-3">
+    <CardContent class="flex flex-col gap-2">
       <FieldDescription v-if="!applies" class="w-full" data-testid="connection-privacy-review-na">
         {{ t('studio.project.connectionDialog.privacy.reviewNa.body') }}
       </FieldDescription>
@@ -320,6 +320,6 @@ const STATE_VARIANT = { masked: 'ok', reviewed: 'default', pending: 'warn' } as 
           </template>
         </QueryState>
       </template>
-    </div>
+    </CardContent>
   </Card>
 </template>

@@ -6,6 +6,8 @@ import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { FieldDescription, FieldLegend } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { rowVariants } from '@theme/lib/rowVariants';
+import { cn } from '@theme/lib/utils';
 import type { SettingsPaneProps } from '../../../workbench/settings/types';
 import { useConnectionDialogStore } from '../../state/connectionDialogs';
 import { useConnectionsStore } from '../../state/connections';
@@ -44,15 +46,17 @@ function mcpDescriptionFirstLine(conn: ConnectionSummary): string {
     <FieldLegend>{{ t('studio.settings.dbMcp.exposed.label') }}</FieldLegend>
     <FieldDescription>{{ t('studio.settings.dbMcp.exposed.description') }}</FieldDescription>
     <FieldDescription>{{ t('studio.settings.dbMcp.defaults.hint') }}</FieldDescription>
-    <ul
-      v-if="connectionsStore.records.length"
-      class="flex flex-col m-0 p-0 list-none gap-0.5"
-      data-testid="db-mcp-connections-list"
-    >
-      <li v-for="conn in connectionsStore.records" :key="conn.id">
-        <Card
-          variant="list"
-          class="flex-row items-center justify-between gap-1.5"
+    <Card v-if="connectionsStore.records.length" variant="list">
+      <ul class="m-0 flex list-none flex-col p-0" data-testid="db-mcp-connections-list">
+        <li
+          v-for="conn in connectionsStore.records"
+          :key="conn.id"
+          :class="
+            cn(
+              rowVariants({ layout: 'double' }),
+              'items-center justify-between gap-1.5 whitespace-normal',
+            )
+          "
           :data-testid="`db-mcp-connection-row-${conn.id}`"
         >
           <div class="flex flex-col min-w-0 gap-0.5">
@@ -110,9 +114,9 @@ function mcpDescriptionFirstLine(conn: ConnectionSummary): string {
               {{ t('common.action.edit.label') }}
             </Button>
           </div>
-        </Card>
-      </li>
-    </ul>
+        </li>
+      </ul>
+    </Card>
     <FieldDescription v-else data-testid="db-mcp-connections-empty">
       {{ t('studio.settings.dbMcp.empty.empty') }}
     </FieldDescription>

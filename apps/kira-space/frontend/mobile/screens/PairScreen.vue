@@ -64,7 +64,7 @@ const notice = computed(() => {
     </FieldDescription>
 
     <template v-if="waiting">
-      <Card class="flex flex-col gap-1" data-testid="pair-waiting">
+      <Card data-testid="pair-waiting">
         <span class="text-muted-foreground">{{ t('mobile.pair.waiting.hint') }}</span>
         <span class="font-data text-kira-xl tracking-widest" data-testid="pair-code">{{
           code

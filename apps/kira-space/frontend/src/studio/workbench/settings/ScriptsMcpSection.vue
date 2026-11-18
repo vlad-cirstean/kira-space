@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
+import { Card } from '@theme/components/ui/card';
 import { FieldDescription, FieldLegend } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { applyRunFileEdits } from '@workbench/automations/runFileQueries';
@@ -25,39 +26,37 @@ const toggle = useAsyncAction((id: string, enabled: boolean) =>
 <template>
   <FieldLegend>{{ t('studio.settings.dbMcp.scripts.legend.label') }}</FieldLegend>
   <FieldDescription>{{ t('studio.settings.dbMcp.scripts.intro.description') }}</FieldDescription>
-  <ul
-    v-if="normal.length"
-    class="flex flex-col m-0 p-0 list-none gap-0.5"
-    data-testid="db-mcp-scripts-list"
-  >
-    <li v-for="s in normal" :key="s.id">
-      <McpExposureRow
-        :id="s.id"
-        testid="db-mcp-script"
-        :name="s.name"
-        :enabled="s.mcp?.enabled === true"
-        :status="
-          t(
-            s.mcp?.run === 'allow'
-              ? 'studio.settings.dbMcp.scripts.allow.status'
-              : 'studio.settings.dbMcp.scripts.prompt.status',
-          )
-        "
-        :pending="toggle.pending.value"
-        :toggle-aria="t('studio.settings.dbMcp.scripts.toggle.aria', { name: s.name })"
-        @toggle="(on) => toggle.run(s.id, on)"
-      >
-        <Badge
-          v-if="s.mcp?.enabled && s.mcp.mode === 'long'"
-          variant="default"
-          :data-testid="`db-mcp-script-long-${s.id}`"
-          >{{
-            t('studio.settings.dbMcp.scripts.long.status')
-          }}</Badge
+  <Card v-if="normal.length" variant="list">
+    <ul class="m-0 flex list-none flex-col p-0" data-testid="db-mcp-scripts-list">
+      <li v-for="s in normal" :key="s.id">
+        <McpExposureRow
+          :id="s.id"
+          testid="db-mcp-script"
+          :name="s.name"
+          :enabled="s.mcp?.enabled === true"
+          :status="
+            t(
+              s.mcp?.run === 'allow'
+                ? 'studio.settings.dbMcp.scripts.allow.status'
+                : 'studio.settings.dbMcp.scripts.prompt.status',
+            )
+          "
+          :pending="toggle.pending.value"
+          :toggle-aria="t('studio.settings.dbMcp.scripts.toggle.aria', { name: s.name })"
+          @toggle="(on) => toggle.run(s.id, on)"
         >
-      </McpExposureRow>
-    </li>
-  </ul>
+          <Badge
+            v-if="s.mcp?.enabled && s.mcp.mode === 'long'"
+            variant="default"
+            :data-testid="`db-mcp-script-long-${s.id}`"
+            >{{
+              t('studio.settings.dbMcp.scripts.long.status')
+            }}</Badge
+          >
+        </McpExposureRow>
+      </li>
+    </ul>
+  </Card>
   <FieldDescription v-else data-testid="db-mcp-scripts-empty">
     {{ t('automations.panel.none.empty') }}
   </FieldDescription>

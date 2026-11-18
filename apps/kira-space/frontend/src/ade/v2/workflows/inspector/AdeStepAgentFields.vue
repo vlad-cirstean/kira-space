@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodeBlock from '@theme/components/CodeBlock.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Card } from '@theme/components/ui/card';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
@@ -91,13 +92,9 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
     <FieldDescription v-if="secretNames" data-testid="ade-wf-step-secret-params">
       {{ t('space.ade.workflows.stepInspector.secretParams.hint', { names: secretNames }) }}
     </FieldDescription>
-    <Card
-      v-if="script"
-      class="font-data text-kira-sm whitespace-pre-wrap"
-      data-testid="ade-wf-step-body"
-    >
+    <CodeBlock v-if="script" data-testid="ade-wf-step-body">
       <VarText :parts="bodyParts" />
-    </Card>
+    </CodeBlock>
   </div>
   <template v-else>
     <Field>
@@ -119,12 +116,8 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
         }}</span>
       </FieldError>
     </Field>
-    <Card
-      v-if="step.prompt"
-      class="text-kira-sm text-muted-foreground"
-      data-testid="ade-wf-step-preview"
-    >
-      <VarText :parts="preview" />
+    <Card v-if="step.prompt" data-testid="ade-wf-step-preview">
+      <FieldDescription><VarText :parts="preview" /></FieldDescription>
     </Card>
   </template>
 </template>

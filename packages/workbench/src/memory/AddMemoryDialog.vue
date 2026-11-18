@@ -133,7 +133,7 @@ function select(id: string): void {
         <template v-if="stored && result">
           <ul class="m-0 flex list-none flex-col gap-1 p-0" data-testid="add-memory-outcomes">
             <li v-for="(o, i) in result.outcomes" :key="i">
-              <Card class="gap-0.5">
+              <Card>
                 <span
                   class="text-kira-sm text-muted-foreground"
                   :data-testid="`add-memory-outcome-${i}`"

@@ -2,7 +2,7 @@
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Card } from '@theme/components/ui/card';
+import { Card, CardContent } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { formatBytes } from '@theme/format';
@@ -80,67 +80,69 @@ const modes = computed(() => [
 <template>
   <Card
     variant="section"
-    class="relative gap-2 p-2"
+    class="relative"
     :data-compact="compact || undefined"
     data-testid="comment-composer"
   >
-    <div class="flex items-center gap-2">
-      <SecondaryTabs
-        v-model="mode"
-        :items="modes"
-        variant="segmented"
-        :aria-label="t('space.hostView.compose.mode.aria')"
-      />
-    </div>
-    <Textarea
-      v-if="mode === 'write'"
-      v-model="body"
-      :aria-label="t('common.comment.label')"
-      :placeholder="t('space.hostView.compose.body.placeholder')"
-      data-testid="comment-body"
-      @keydown="onSubmitKey"
-    />
-    <Card v-else class="min-h-16" data-testid="comment-preview">
-      <MarkdownBody v-if="body.trim()" :source="body" />
-      <FieldDescription v-else>{{ t('space.hostView.compose.preview.empty') }}</FieldDescription>
-    </Card>
-    <Alert v-if="error" variant="error" data-testid="comment-error">
-      <AlertDescription>{{ error }}</AlertDescription>
-    </Alert>
-    <div class="flex items-center gap-2">
-      <span
-        v-if="nearCap"
-        class="text-kira-sm"
-        :class="overCap ? 'text-error' : 'text-muted-foreground'"
-        data-testid="comment-cap"
-        >{{
-          t('common.ofTotal.label', {
-            value: formatBytes(bytes),
-            total: formatBytes(compose.maxBodyBytes),
-          })
-        }}</span
-      >
-      <div class="ml-auto flex items-center gap-2">
-        <Button
-          v-if="replyTo"
-          variant="dialog"
-          size="kira"
-          data-testid="comment-cancel"
-          @click="emit('cancel')"
-        >
-          {{ t('common.action.cancel.label') }}
-        </Button>
-        <Button
-          variant="dialog-primary"
-          size="kira"
-          :pending="post.isPending.value"
-          :disabled="!canPost"
-          data-testid="comment-post"
-          @click="submit"
-        >
-          {{ t('common.comment.label') }}
-        </Button>
+    <CardContent class="flex flex-col gap-2">
+      <div class="flex items-center gap-2">
+        <SecondaryTabs
+          v-model="mode"
+          :items="modes"
+          variant="segmented"
+          :aria-label="t('space.hostView.compose.mode.aria')"
+        />
       </div>
-    </div>
+      <Textarea
+        v-if="mode === 'write'"
+        v-model="body"
+        :aria-label="t('common.comment.label')"
+        :placeholder="t('space.hostView.compose.body.placeholder')"
+        data-testid="comment-body"
+        @keydown="onSubmitKey"
+      />
+      <Card v-else class="min-h-16" data-testid="comment-preview">
+        <MarkdownBody v-if="body.trim()" :source="body" />
+        <FieldDescription v-else>{{ t('space.hostView.compose.preview.empty') }}</FieldDescription>
+      </Card>
+      <Alert v-if="error" variant="error" data-testid="comment-error">
+        <AlertDescription>{{ error }}</AlertDescription>
+      </Alert>
+      <div class="flex items-center gap-2">
+        <span
+          v-if="nearCap"
+          class="text-kira-sm"
+          :class="overCap ? 'text-error' : 'text-muted-foreground'"
+          data-testid="comment-cap"
+          >{{
+            t('common.ofTotal.label', {
+              value: formatBytes(bytes),
+              total: formatBytes(compose.maxBodyBytes),
+            })
+          }}</span
+        >
+        <div class="ml-auto flex items-center gap-2">
+          <Button
+            v-if="replyTo"
+            variant="dialog"
+            size="kira"
+            data-testid="comment-cancel"
+            @click="emit('cancel')"
+          >
+            {{ t('common.action.cancel.label') }}
+          </Button>
+          <Button
+            variant="dialog-primary"
+            size="kira"
+            :pending="post.isPending.value"
+            :disabled="!canPost"
+            data-testid="comment-post"
+            @click="submit"
+          >
+            {{ t('common.comment.label') }}
+          </Button>
+        </div>
+      </div>
+    </CardContent>
   </Card>
 </template>

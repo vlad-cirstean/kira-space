@@ -67,12 +67,7 @@ function copy(command: string): void {
       errorText(loadError)
     }}</FieldError>
 
-    <Card
-      v-for="tool in list"
-      :key="tool.provider"
-      class="flex flex-col gap-2 p-3"
-      :data-testid="`cli-tool-${tool.provider}`"
-    >
+    <Card v-for="tool in list" :key="tool.provider" :data-testid="`cli-tool-${tool.provider}`">
       <div class="flex items-center justify-between gap-2">
         <div class="flex flex-col">
           <span class="font-medium">{{ tool.label }}</span>
