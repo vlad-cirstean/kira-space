@@ -37,17 +37,19 @@ function toggle(kind: TrackedKind, id: string, value: boolean): void {
       :key="group.kind"
       :data-testid="`settings-updates-${group.kind}`"
     >
-      <div class="flex items-center justify-between gap-1">
-        <FieldLegend>{{ t(`space.settings.updates.${group.kind}.title`) }}</FieldLegend>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
-          :data-testid="`settings-reset-tracking-${group.kind}`"
-          :disabled-trigger="isAtDefault('tracking', group.kind)"
-          :disabled="isAtDefault('tracking', group.kind)"
-          @click="resetLeaf('tracking', group.kind)"
-        />
-      </div>
+      <FieldLegend>
+        {{ t(`space.settings.updates.${group.kind}.title`) }}
+        <template #actions>
+          <TooltipIconButton
+            icon="discard"
+            :label="t('common.action.resetToDefault.label')"
+            :data-testid="`settings-reset-tracking-${group.kind}`"
+            :disabled-trigger="isAtDefault('tracking', group.kind)"
+            :disabled="isAtDefault('tracking', group.kind)"
+            @click="resetLeaf('tracking', group.kind)"
+          />
+        </template>
+      </FieldLegend>
       <FieldDescription>{{
         t(`space.settings.updates.${group.kind}.description`)
       }}</FieldDescription>

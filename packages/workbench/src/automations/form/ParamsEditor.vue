@@ -141,19 +141,14 @@ function toggleDefault(i: number, option: string, on: boolean): void {
 
 <template>
   <FieldSet data-testid="params-editor">
-    <div class="flex items-center gap-2">
-      <FieldLegend class="mb-0">{{ t('automations.params.title.label') }}</FieldLegend>
-      <Button
-        variant="dialog"
-        size="kira-lg"
-        class="ml-auto"
-        data-testid="param-add"
-        @click="add"
-        >{{
+    <FieldLegend>
+      {{ t('automations.params.title.label') }}
+      <template #actions>
+        <Button variant="dialog" size="kira-lg" data-testid="param-add" @click="add">{{
           t('automations.params.add.label')
-        }}</Button
-      >
-    </div>
+        }}</Button>
+      </template>
+    </FieldLegend>
     <FieldDescription v-if="kind === 'script'">
       {{ t('automations.params.scriptHint.description', { variable: PARAM_VAR }) }}
     </FieldDescription>

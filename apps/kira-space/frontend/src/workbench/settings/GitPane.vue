@@ -96,7 +96,7 @@ const graphFontSizeId = useId();
 <template>
   <div class="contents" v-show="active">
     <FieldSet>
-      <FieldLegend class="pt-0">{{ t('space.settings.git.remote.title') }}</FieldLegend>
+      <FieldLegend>{{ t('space.settings.git.remote.title') }}</FieldLegend>
       <FieldDescription>
         {{ t('space.settings.git.remote.description') }}
       </FieldDescription>

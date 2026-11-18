@@ -61,18 +61,19 @@ function resetTools(): void {
 
 <template>
   <FieldSet data-testid="smart-tools">
-    <div class="flex items-center gap-2">
-      <FieldLegend class="mb-0">{{ t('automations.smart.tools.label') }}</FieldLegend>
-      <Button
-        variant="dialog"
-        size="kira-lg"
-        class="ml-auto"
-        data-testid="smart-tools-default"
-        @click="resetTools"
-      >
-        {{ t('automations.smart.defaultTools.label') }}
-      </Button>
-    </div>
+    <FieldLegend>
+      {{ t('automations.smart.tools.label') }}
+      <template #actions>
+        <Button
+          variant="dialog"
+          size="kira-lg"
+          data-testid="smart-tools-default"
+          @click="resetTools"
+        >
+          {{ t('automations.smart.defaultTools.label') }}
+        </Button>
+      </template>
+    </FieldLegend>
     <div class="flex flex-wrap gap-x-4 gap-y-1">
       <Field v-for="tool in BUILTIN_TOOLS" :key="tool" orientation="horizontal" class="w-auto">
         <Checkbox
