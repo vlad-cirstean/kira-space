@@ -7,6 +7,7 @@ import { Skeleton } from '@theme/components/ui/skeleton';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
+import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
 
 // The chrome both views share: title bar (badge, title, ref, refresh / copy / open), the loading
 // skeleton and the failure alert with Retry. The body is the default slot.
@@ -28,9 +29,7 @@ const emit = defineEmits<{ refresh: []; copy: []; open: [] }>();
     <TitleBarBase>
       <div class="flex min-w-0 flex-1 items-center gap-2" data-testid="host-view-header">
         <slot name="badge" />
-        <span class="min-w-0 truncate text-kira-md font-medium" data-testid="host-view-title">{{
-          title
-        }}</span>
+        <TitleBarTitle data-testid="host-view-title">{{ title }}</TitleBarTitle>
         <span
           class="shrink-0 font-data text-kira-sm text-muted-foreground"
           data-testid="host-view-ref"

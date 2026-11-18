@@ -7,6 +7,7 @@ import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
+import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { computed } from 'vue';
 import { useReviewEdit } from './queries';
 import { useProofWindowStore } from './state';
@@ -66,11 +67,7 @@ const locked = computed(() => accept.isPending.value || reject.isPending.value);
 
 <template>
   <div class="flex h-full min-h-0 flex-col" data-testid="proof-change">
-    <div
-      class="flex h-tabbar shrink-0 items-center bg-chrome px-3 text-kira-sm font-medium text-muted-foreground"
-    >
-      {{ t('studio.proof.change.title') }}
-    </div>
+    <PanelHeader class="bg-chrome">{{ t('studio.proof.change.title') }}</PanelHeader>
     <p
       v-if="pending.reason"
       class="m-0 shrink-0 whitespace-pre-wrap p-3"

@@ -6,6 +6,7 @@ import { formatDateTime } from '@theme/format';
 import { t } from '@theme/i18n';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
+import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed } from 'vue';
 import { control } from '../bridge/control';
@@ -30,9 +31,7 @@ async function askDelete(): Promise<void> {
 <template>
   <TitleBarBase>
     <div class="flex min-w-0 flex-1 items-center gap-2" data-testid="proof-header">
-      <span class="min-w-0 truncate text-kira-md font-medium" data-testid="proof-title">{{
-        detail.name
-      }}</span>
+      <TitleBarTitle data-testid="proof-title">{{ detail.name }}</TitleBarTitle>
       <span class="shrink-0 text-kira-sm text-muted-foreground" data-testid="proof-steps">{{
         t('studio.proof.session.steps.label', { count: steps })
       }}</span>

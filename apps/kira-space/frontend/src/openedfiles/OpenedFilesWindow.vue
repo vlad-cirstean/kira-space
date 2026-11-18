@@ -4,14 +4,15 @@ import { t } from '@theme/i18n';
 import MainView from '@workbench/components/MainView.vue';
 import TabStrip from '@workbench/components/TabStrip.vue';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
+import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
 </script>
 
 <template>
   <div class="flex h-full flex-col" data-testid="opened-files-window">
     <TitleBarBase>
-      <span class="min-w-0 truncate text-kira-md font-medium" data-testid="opened-files-title">{{
+      <TitleBarTitle data-testid="opened-files-title">{{
         t('space.openedFiles.window.title')
-      }}</span>
+      }}</TitleBarTitle>
     </TitleBarBase>
     <div class="flex min-h-0 flex-1 bg-chrome px-1.5 pb-0.5">
       <section

@@ -6,6 +6,7 @@ import type { KeepAwakeStatus } from '../bridge/createCoreControl';
 import type { ModeRegistry } from '../modes';
 import ModeSwitcher from './ModeSwitcher.vue';
 import TitleBarBase from './TitleBar.vue';
+import TitleBarTitle from './TitleBarTitle.vue';
 import TitleBarWindowActions from './TitleBarWindowActions.vue';
 
 // Both apps' title bar: app title, mode switcher, the two panel toggles, Settings, window actions. Stores and
@@ -42,13 +43,7 @@ async function onSelect(mode: M): Promise<void> {
 <template>
   <TitleBarBase>
     <!-- First in-flow child: sits at the traffic-light inset. Plain text stays in the drag region. -->
-    <span
-      class="shrink-0 whitespace-nowrap text-kira-md font-medium"
-      data-testid="titlebar-app-title"
-      >{{
-        appTitle
-      }}</span
-    >
+    <TitleBarTitle class="shrink-0" data-testid="titlebar-app-title">{{ appTitle }}</TitleBarTitle>
     <ModeSwitcher :order="order" :modes="modes" :active="active" @select="onSelect" />
 
     <!-- Every interactive child overrides --wails-draggable (wails-no-drag), or clicking it would

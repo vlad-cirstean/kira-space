@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/to
 import { t } from '@theme/i18n';
 import Identifier from '@workbench/components/Identifier.vue';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
+import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
 import { computed } from 'vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import { taskTitle } from '../board/labels';
@@ -59,9 +60,7 @@ const headHint = computed(() => {
         :style="{ background: taskColor(task?.color ?? 0) }"
         data-testid="ade-review-task-colour"
       />
-      <span class="min-w-0 truncate text-kira-md font-medium" data-testid="ade-review-title">{{
-        title
-      }}</span>
+      <TitleBarTitle data-testid="ade-review-title">{{ title }}</TitleBarTitle>
       <AdeRepoTag :code-repo-id="target.codeRepoId" :label="repoLabel" />
       <span class="min-w-0 truncate font-data text-kira-sm" data-testid="ade-review-branch">{{
         target.branch
