@@ -1329,7 +1329,10 @@ reviewTest(
     // The menu item exists only once the review layer attached; wait for that, not for a retry.
     await expect(page.locator(t('repo-diff-editor'))).toHaveAttribute('data-review-ready', 'true');
     await renderedLine(modified, 'CHANGED 100').click({ button: 'right' });
-    await page.getByRole('menuitem', { name: 'Add review comment' }).click();
+    // Monaco menus act on the hovered item; a bare click can land before the hover focuses it.
+    const addItem = page.getByRole('menuitem', { name: 'Add review comment' });
+    await addItem.hover();
+    await addItem.click();
     const thread = page.locator(t('review-thread'));
     await expect(thread).toBeVisible();
     await thread.getByTestId('review-thread-input').fill('from the menu');
