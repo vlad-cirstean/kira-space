@@ -4,8 +4,7 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
@@ -94,36 +93,43 @@ function importDocument(): void {
       data-testid="distill-empty"
     />
     <template v-else>
-      <div class="flex items-center gap-1.5">
+      <Field orientation="horizontal">
         <Checkbox
           id="distill-select-all"
           :model-value="allPicked"
           data-testid="distill-select-all"
           @update:model-value="(v) => toggleAll(v === true)"
         />
-        <Label for="distill-select-all">{{ t('common.action.selectAll.label') }}</Label>
-      </div>
+        <FieldLabel for="distill-select-all">{{ t('common.action.selectAll.label') }}</FieldLabel>
+      </Field>
       <ul class="m-0 flex list-none flex-col gap-1 p-0">
-        <li v-for="(line, i) in lines" :key="i" class="flex items-start gap-1.5">
-          <Checkbox
-            :id="`distill-line-${i}`"
-            class="mt-0.5 shrink-0"
-            :model-value="selected.has(i)"
-            :aria-label="t('memory.distill.result.line.aria', { number: i + 1 })"
-            :data-testid="`distill-line-${i}`"
-            @update:model-value="(v) => toggle(i, v === true)"
-          />
-          <Label
-            :for="`distill-line-${i}`"
-            class="text-kira-md font-normal whitespace-pre-wrap"
-            :data-testid="`distill-text-${i}`"
-            >{{
-              line.text
-            }}</Label
-          >
-          <Badge v-if="line.kind === 'rule'" class="shrink-0" :data-testid="`distill-kind-${i}`">{{
-            t(KIND_LABEL.rule)
-          }}</Badge>
+        <li v-for="(line, i) in lines" :key="i">
+          <Field orientation="horizontal" class="items-start">
+            <Checkbox
+              :id="`distill-line-${i}`"
+              class="mt-0.5 shrink-0"
+              :model-value="selected.has(i)"
+              :aria-label="t('memory.distill.result.line.aria', { number: i + 1 })"
+              :data-testid="`distill-line-${i}`"
+              @update:model-value="(v) => toggle(i, v === true)"
+            />
+            <FieldLabel
+              :for="`distill-line-${i}`"
+              class="text-kira-md font-normal whitespace-pre-wrap"
+              :data-testid="`distill-text-${i}`"
+              >{{
+                line.text
+              }}</FieldLabel
+            >
+            <Badge
+              v-if="line.kind === 'rule'"
+              class="shrink-0"
+              :data-testid="`distill-kind-${i}`"
+              >{{
+                t(KIND_LABEL.rule)
+              }}</Badge
+            >
+          </Field>
         </li>
       </ul>
       <div class="flex flex-wrap items-center gap-1.5">

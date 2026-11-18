@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
@@ -167,8 +167,8 @@ function select(id: string): void {
                 <li v-for="(line, i) in lines" :key="i" class="whitespace-pre-wrap">{{ line }}</li>
               </ul>
             </template>
-            <template v-else>
-              <Label for="memory-text">{{ t('memory.add.text.label') }}</Label>
+            <Field v-else>
+              <FieldLabel for="memory-text">{{ t('memory.add.text.label') }}</FieldLabel>
               <Textarea
                 id="memory-text"
                 v-model="text"
@@ -183,7 +183,7 @@ function select(id: string): void {
                 >{{ text.length }}
                 / {{ MAX_TEXT }}</span
               >
-            </template>
+            </Field>
             <ScopeField
               v-model:scope="scope"
               v-model:project="project"
@@ -199,8 +199,8 @@ function select(id: string): void {
                 data-testid="add-memory-challenge"
               >
                 <span v-if="lines" class="text-kira-sm font-medium">{{ lines[c.index] }}</span>
-                <div v-for="(question, q) in c.questions" :key="q" class="flex flex-col gap-0.5">
-                  <Label :for="`memory-answer-${q}`">{{ question }}</Label>
+                <Field v-for="(question, q) in c.questions" :key="q">
+                  <FieldLabel :for="`memory-answer-${q}`">{{ question }}</FieldLabel>
                   <Textarea
                     :id="`memory-answer-${q}`"
                     v-model="answers[answerKey(c.index, q)]"
@@ -208,7 +208,7 @@ function select(id: string): void {
                     :placeholder="t('memory.add.answer.placeholder')"
                     data-testid="add-memory-answer"
                   />
-                </div>
+                </Field>
               </Alert>
             </template>
           </div>

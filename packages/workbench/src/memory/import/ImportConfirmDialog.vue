@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldError } from '@theme/components/ui/field';
+import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
@@ -164,8 +164,10 @@ async function dismiss(): Promise<void> {
               data-testid="import-origin"
             />
           </div>
-          <div v-if="origin === 'external'" class="flex flex-col gap-1">
-            <Label for="import-source-tag">{{ t('memory.import.confirm.sourceTag.label') }}</Label>
+          <Field v-if="origin === 'external'">
+            <FieldLabel for="import-source-tag">{{
+              t('memory.import.confirm.sourceTag.label')
+            }}</FieldLabel>
             <Input
               id="import-source-tag"
               v-model="sourceTag"
@@ -176,22 +178,24 @@ async function dismiss(): Promise<void> {
             <FieldError v-if="!tagValid" data-testid="import-source-tag-error">{{
               t('memory.import.confirm.sourceTag.error')
             }}</FieldError>
-          </div>
+          </Field>
           <ScopeField
             v-model:scope="scope"
             v-model:project="project"
             prefix="import"
             :scopes="SCOPES"
           />
-          <div class="flex items-center gap-1.5">
+          <Field orientation="horizontal">
             <Checkbox
               id="import-write-doc"
               :model-value="writeDoc"
               data-testid="import-write-doc"
               @update:model-value="(v) => (writeDoc = v === true)"
             />
-            <Label for="import-write-doc">{{ t('memory.import.confirm.writeDoc.label') }}</Label>
-          </div>
+            <FieldLabel for="import-write-doc">{{
+              t('memory.import.confirm.writeDoc.label')
+            }}</FieldLabel>
+          </Field>
         </template>
       </DialogBody>
       <DialogFooter>

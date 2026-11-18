@@ -5,7 +5,7 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { rowIndent, rowVariants } from '@theme/lib/rowVariants';
@@ -146,14 +146,14 @@ const historyToggleId = useId();
         :placeholder="t('memory.panel.search.placeholder')"
         data-testid="memory-search"
       />
-      <div class="flex items-center gap-1.5 text-kira-sm text-muted-foreground">
+      <Field orientation="horizontal" class="w-auto text-kira-sm text-muted-foreground">
         <Switch
           :id="historyToggleId"
           v-model="includeHistory"
           data-testid="memory-include-history"
         />
-        <Label :for="historyToggleId">{{ t('memory.panel.includeHistory.label') }}</Label>
-      </div>
+        <FieldLabel :for="historyToggleId">{{ t('memory.panel.includeHistory.label') }}</FieldLabel>
+      </Field>
       <MemoryFilters v-model:scopes="scopes" v-model:origins="origins" v-model:project="project" />
       <MemorySetupHint
         v-if="semanticNeedsSetup"

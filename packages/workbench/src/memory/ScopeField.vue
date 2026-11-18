@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MemoryScope } from '@shared/domain/memory';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
@@ -36,8 +37,8 @@ const scopeItems = computed(() =>
       @update:model-value="(v) => (scope = v as MemoryScope)"
     />
   </div>
-  <div v-if="scope === 'project'" class="flex flex-col gap-1">
-    <Label :for="`${prefix}-project`">{{ t('memory.common.project.label') }}</Label>
+  <Field v-if="scope === 'project'">
+    <FieldLabel :for="`${prefix}-project`">{{ t('memory.common.project.label') }}</FieldLabel>
     <ProjectPicker
       :id="`${prefix}-project`"
       :model-value="project || null"
@@ -48,5 +49,5 @@ const scopeItems = computed(() =>
       :loading="projects.isPending.value"
       @update:model-value="(v) => (project = v ?? '')"
     />
-  </div>
+  </Field>
 </template>
