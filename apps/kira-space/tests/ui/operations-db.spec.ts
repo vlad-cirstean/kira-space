@@ -6,7 +6,7 @@ import {
   SERVER_VERSION,
 } from './studio/support/postgresFixture';
 import { contract } from './support/contract';
-import { dbOp } from './support/dbOps';
+import { dbOp, unmaskedOps } from './support/dbOps';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 
@@ -365,7 +365,7 @@ test('contract: a delayed pre-connect row counts down before the connect', async
 // P328: the source column tells MCP tool calls from the user's own ops. Backend half:
 // TestDbMcpOpsCarrySource.
 test('contract: an op shows whether the user or MCP ran it', async ({ relaunch }) => {
-  const ops = contract<Record<string, unknown>[]>('ops-source', 'OpsService.Recent');
+  const ops = unmaskedOps(contract<Record<string, unknown>[]>('ops-source', 'OpsService.Recent'));
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.connectionsList, response: [] },
