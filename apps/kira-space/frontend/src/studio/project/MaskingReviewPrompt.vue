@@ -43,7 +43,7 @@ const onChord = shortcutKeydown(['form.submit'], () => review());
 
 <template>
   <Dialog :open="true" @update:open="(v) => !v && emit('hide')">
-    <DialogContent size="md" prompt data-testid="masking-review-dialog" @keydown="onChord">
+    <DialogContent size="sm" prompt data-testid="masking-review-dialog" @keydown="onChord">
       <DialogHeader>
         <DialogTitle>{{ entry.title }}</DialogTitle>
         <DialogDescription data-testid="masking-review-body">

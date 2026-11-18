@@ -74,7 +74,7 @@ async function submit(): Promise<void> {
 
 <template>
   <Dialog :open="open" @update:open="(v) => !v && cancel()">
-    <DialogContent size="md" :dirty="name !== currentName">
+    <DialogContent size="sm" :dirty="name !== currentName">
       <DialogHeader>
         <DialogTitle>{{ t('git.dialog.rename.title') }}</DialogTitle>
         <DialogDescription>

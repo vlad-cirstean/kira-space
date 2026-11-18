@@ -142,7 +142,7 @@ const lists = computed(() =>
     </PopoverContent>
   </Popover>
   <Dialog v-model:open="profileOpen">
-    <DialogContent size="lg" data-testid="ade-run-sandbox-profile-dialog">
+    <DialogContent size="xl" data-testid="ade-run-sandbox-profile-dialog">
       <DialogHeader>
         <DialogTitle>{{ t('space.ade.sandbox.profile.title') }}</DialogTitle>
       </DialogHeader>

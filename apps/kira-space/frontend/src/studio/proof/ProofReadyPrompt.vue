@@ -44,7 +44,7 @@ const onChord = shortcutKeydown(['form.submit'], () => openWindow());
 
 <template>
   <Dialog v-if="sessionQuery.isFetched.value" :open="true" @update:open="(v) => !v && emit('hide')">
-    <DialogContent size="md" prompt data-testid="proof-ready-dialog" @keydown="onChord">
+    <DialogContent size="sm" prompt data-testid="proof-ready-dialog" @keydown="onChord">
       <DialogHeader>
         <DialogTitle>{{ taskTitle || entry.title }}</DialogTitle>
         <DialogDescription v-if="taskTitle" data-testid="proof-ready-proof">

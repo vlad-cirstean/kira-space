@@ -188,7 +188,7 @@ async function confirmRemove(): Promise<void> {
     <!-- P131 Part 2 §5: opens inside RefsPopover's own modal Popover panel (§5.2) -- reka's
          modal content there prevents the panel dismissing under this nested Dialog. -->
     <Dialog :open="pendingRemove !== undefined" @update:open="(v) => !v && cancelRemove()">
-      <DialogContent :aria-describedby="undefined" size="md" :dirty="typedToken !== ''">
+      <DialogContent :aria-describedby="undefined" size="sm" :dirty="typedToken !== ''">
         <DialogHeader>
           <DialogTitle>{{
             pendingRemove

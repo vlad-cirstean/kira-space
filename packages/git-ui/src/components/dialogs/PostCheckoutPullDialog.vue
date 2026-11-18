@@ -40,7 +40,7 @@ function pullNow(): void {
 
 <template>
   <Dialog v-if="pending" :open="active" @update:open="(v) => !v && notNow()">
-    <DialogContent size="md">
+    <DialogContent size="sm">
       <DialogHeader>
         <DialogTitle>{{ t('git.dialog.postCheckoutPullConfirm.title') }}</DialogTitle>
         <DialogDescription>

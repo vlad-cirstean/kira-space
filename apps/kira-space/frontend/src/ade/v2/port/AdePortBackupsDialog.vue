@@ -63,7 +63,7 @@ async function restore(b: Backup): Promise<void> {
 
 <template>
   <Dialog v-model:open="open">
-    <DialogContent size="2xl" fixed-height data-testid="ade-port-backups-dialog">
+    <DialogContent size="lg" data-testid="ade-port-backups-dialog">
       <DialogHeader>
         <DialogTitle>{{
           t('space.ade.port.backupList.title', { agent: provider.label })

@@ -45,7 +45,7 @@ function stashAndCarry(): void {
 
 <template>
   <Dialog v-if="pending" :open="active" @update:open="(v) => !v && cancel()">
-    <DialogContent size="md">
+    <DialogContent size="sm">
       <DialogHeader>
         <DialogTitle>{{ t('git.dialog.pull.title') }}</DialogTitle>
         <DialogDescription>

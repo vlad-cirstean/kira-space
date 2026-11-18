@@ -82,7 +82,7 @@ function close(): void {
 
 <template>
   <Dialog :open="true" @update:open="(v) => !v && close()">
-    <DialogContent size="md" data-testid="dynamic-values-dialog">
+    <DialogContent size="lg" data-testid="dynamic-values-dialog">
       <DialogHeader close-testid="dynamic-values-dialog-close">
         <DialogTitle>{{ t('studio.api.dynamicValues.title') }}</DialogTitle>
       </DialogHeader>
