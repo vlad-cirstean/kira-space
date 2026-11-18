@@ -79,8 +79,8 @@ const hint = computed(() =>
       />
       <!-- mousedown.prevent: a click would otherwise blur the number input first and commit with the stale unit. -->
       <SecondaryTabs
-        variant="segmented"
-        size="kira"
+        variant="choice"
+        size="kira-lg"
         :model-value="unit"
         :items="unitItems"
         :aria-label="t('space.ade.estimate.unit.aria')"

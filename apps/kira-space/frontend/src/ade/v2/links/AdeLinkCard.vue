@@ -127,7 +127,7 @@ function openTitle(e: MouseEvent): void {
       v-if="canEdit() && item.origin === 'stored'"
       :model-value="item.kind"
       :items="kindItems"
-      variant="segmented"
+      variant="choice"
       :aria-label="t('space.ade.links.kind.aria')"
       data-testid="ade-links-card-kind"
       @update:model-value="onKind"

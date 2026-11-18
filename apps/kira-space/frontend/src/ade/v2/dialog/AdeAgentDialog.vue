@@ -233,8 +233,9 @@ async function discard(): Promise<void> {
             <span class="min-w-0 flex-1 truncate font-data text-kira-sm">{{ tg.branch }}</span>
           </div>
           <SecondaryTabs
-            variant="segmented"
+            variant="choice"
             size="kira-lg"
+            :aria-label="tg.branch"
             :model-value="tg.options.find((o) => o.on)?.value ?? ''"
             :items="tg.options"
             :data-testid="`ade-dialog-target-${i}`"

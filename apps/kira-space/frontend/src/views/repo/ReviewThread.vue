@@ -253,7 +253,8 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
       <template v-else>
         <SecondaryTabs
           v-model="kind"
-          variant="segmented"
+          variant="choice"
+          :aria-label="t('common.field.kind.label')"
           :items="KIND_ITEMS"
           data-testid="review-thread-kind"
         />

@@ -156,15 +156,11 @@ onBeforeUnmount(() => {
             :branches="!pass && store.toStepId === 'done'"
           />
         </div>
-        <div
-          v-if="store.closable.length"
-          class="flex flex-col gap-1.5"
-          data-testid="ade-stage-sessions"
-        >
-          <div class="text-muted-foreground">
+        <Field v-if="store.closable.length" data-testid="ade-stage-sessions">
+          <FieldLabel>
             {{ t('space.ade.stageDialog.sessions.label', { count: store.closable.length }) }}
             <span v-if="sessionStages" class="text-kira-sm">({{ sessionStages }})</span>
-          </div>
+          </FieldLabel>
           <SecondaryTabs
             variant="choice"
             size="kira-lg"
@@ -177,7 +173,7 @@ onBeforeUnmount(() => {
             @update:model-value="(v) => (store.closeChoice = v === 'keep' ? 'keep' : 'close')"
           />
           <FieldDescription>{{ t('space.ade.stageDialog.sessions.hint') }}</FieldDescription>
-        </div>
+        </Field>
         <Alert v-if="live" variant="error" data-testid="ade-stage-live">
           <AlertDescription>{{
             t('space.ade.board.taskMenu.liveBlocked.tooltip')
