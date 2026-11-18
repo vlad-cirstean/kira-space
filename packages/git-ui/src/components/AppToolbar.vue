@@ -372,7 +372,7 @@ const stashDisabled = computed(
           data-testid="autofetch-stopped"
           @click="onAutoFetchMarkerClick"
         >
-          <CodiconIcon name="warning" :size="13" />
+          <CodiconIcon name="warning" :size="13" class="text-warn" />
           {{ t('git.toolbar.autoFetchStopped.label') }}
         </Button>
       </TooltipTrigger>

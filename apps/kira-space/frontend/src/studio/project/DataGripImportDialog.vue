@@ -286,7 +286,7 @@ async function onConfirm(): Promise<void> {
               <span v-if="row.warnings.length > 0" class="flex shrink-0 gap-0.5">
                 <Tooltip v-for="w in row.warnings" :key="w">
                   <TooltipTrigger as-child>
-                    <span class="size-4 flex items-center justify-center shrink-0 text-subtle">
+                    <span class="size-4 flex items-center justify-center shrink-0 text-warn">
                       <CodiconIcon name="warning" :size="12" />
                     </span>
                   </TooltipTrigger>

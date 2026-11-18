@@ -499,6 +499,7 @@ onUnmounted(() => {
                   <CodiconIcon
                     :name="ICON.warning"
                     :size="12"
+                    class="text-warn"
                     data-testid="grpc-message-truncated"
                   />
                 </TooltipTrigger>

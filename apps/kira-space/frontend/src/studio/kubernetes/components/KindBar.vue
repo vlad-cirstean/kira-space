@@ -83,7 +83,7 @@ const options = computed<PickerOption[]>(() =>
         <CodiconIcon
           name="warning"
           :size="13"
-          class="shrink-0 text-muted-foreground"
+          class="shrink-0 text-warn"
           data-testid="kube-kinds-partial"
         />
       </TooltipTrigger>

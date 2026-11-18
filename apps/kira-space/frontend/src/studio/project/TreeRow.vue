@@ -216,7 +216,7 @@ function onKeydown(e: KeyboardEvent): void {
     <Tooltip v-if="fileProblem">
       <TooltipTrigger as-child>
         <span class="flex shrink-0 text-error" data-testid="tree-connection-problem">
-          <CodiconIcon name="warning" :size="13" />
+          <CodiconIcon name="error" :size="13" />
           <span class="sr-only">{{ fileProblem }}</span>
         </span>
       </TooltipTrigger>
