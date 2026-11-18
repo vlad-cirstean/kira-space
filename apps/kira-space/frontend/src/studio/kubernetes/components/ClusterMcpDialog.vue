@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import {
@@ -11,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
@@ -116,7 +117,9 @@ const idBase = useId();
             />
           </Field>
         </template>
-        <FieldError v-if="error" data-testid="kube-mcp-error">{{ error }}</FieldError>
+        <Alert v-if="error" variant="error" data-testid="kube-mcp-error">
+          <AlertDescription>{{ error }}</AlertDescription>
+        </Alert>
       </DialogBody>
       <DialogFooter>
         <Button variant="dialog" size="kira-lg" data-testid="kube-mcp-cancel" @click="open = false">

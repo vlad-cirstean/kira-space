@@ -78,7 +78,7 @@ const idBase = useId();
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 p-3" data-testid="connection-section-advanced">
+  <div class="flex flex-col gap-3" data-testid="connection-section-advanced">
     <Field orientation="horizontal">
       <Checkbox
         :id="connectionReadonlyId"

@@ -4889,7 +4889,7 @@
         "label": "Branch name"
       },
       "confirmToken": {
-        "aria": "Confirmation token"
+        "label": "Confirmation token"
       },
       "currentBranch": {
         "tooltip": "Current branch"

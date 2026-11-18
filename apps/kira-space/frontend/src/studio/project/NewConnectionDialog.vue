@@ -123,9 +123,9 @@ async function browse(): Promise<void> {
         }}</DialogTitle>
       </DialogHeader>
 
-      <DialogBody flush>
+      <DialogBody>
         <ConnectionEnginePicker v-if="step === 'engine'" :kind="kind" @pick="pickKind" />
-        <div v-else class="flex flex-col gap-3 p-3">
+        <div v-else class="flex flex-col gap-3">
           <Field>
             <FieldLabel for="new-connection-name">{{ t('common.field.name.label') }}</FieldLabel>
             <Input

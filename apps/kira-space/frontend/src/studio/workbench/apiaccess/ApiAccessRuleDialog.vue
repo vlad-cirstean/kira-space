@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import {
@@ -157,7 +158,9 @@ function onSave(): void {
             }}</FieldLabel>
           </Field>
         </Field>
-        <FieldError v-if="error" data-testid="api-rule-error">{{ error }}</FieldError>
+        <Alert v-if="error" variant="error" data-testid="api-rule-error">
+          <AlertDescription>{{ error }}</AlertDescription>
+        </Alert>
       </DialogBody>
       <DialogFooter>
         <Button variant="dialog" size="kira-lg" data-testid="api-rule-cancel" @click="open = false">

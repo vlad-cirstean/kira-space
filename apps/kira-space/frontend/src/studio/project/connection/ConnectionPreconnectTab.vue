@@ -50,7 +50,7 @@ const idBase = useId();
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 p-3" data-testid="connection-section-preconnect">
+  <div class="flex flex-col gap-3" data-testid="connection-section-preconnect">
     <Field class="flex-1">
       <FieldLabel :for="`${idBase}-connection-preconnect`">{{
         t('studio.project.connectionDialog.preconnect.label')

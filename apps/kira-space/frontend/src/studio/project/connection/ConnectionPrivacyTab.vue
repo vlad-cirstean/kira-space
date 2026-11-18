@@ -43,7 +43,7 @@ function maskFromReview(col: MaskReviewColumn, kind: MaskKind): void {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 p-3" data-testid="connection-section-privacy">
+  <div class="flex flex-col gap-3" data-testid="connection-section-privacy">
     <PrivacyOverview
       :rule-count="rules.length"
       :review-applies="MASK_REVIEW_KINDS.has(file.kind)"

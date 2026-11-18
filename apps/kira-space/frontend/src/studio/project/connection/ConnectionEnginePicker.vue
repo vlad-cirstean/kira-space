@@ -24,7 +24,7 @@ function pick(kind: ConnectionKind): void {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 p-3 min-h-0 flex-1">
+  <div class="flex flex-col gap-3 min-h-0 flex-1">
     <SearchField
       v-model="search"
       size="kira-lg"

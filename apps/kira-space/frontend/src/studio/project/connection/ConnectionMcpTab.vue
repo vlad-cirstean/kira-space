@@ -178,7 +178,7 @@ const idBase = useId();
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 p-3" data-testid="connection-section-mcp">
+  <div class="flex flex-col gap-3" data-testid="connection-section-mcp">
     <Field orientation="horizontal">
       <Checkbox
         :id="connectionMcpEnabledId"

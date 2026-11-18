@@ -125,7 +125,7 @@ async function onBrowseDatabaseFile(): Promise<void> {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 p-3" data-testid="connection-section-general">
+  <div class="flex flex-col gap-3" data-testid="connection-section-general">
     <ConnectionEnginePicker v-if="pickingEngine" :kind="kind" @pick="pickKind" />
     <template v-else>
       <div class="flex gap-2 items-start">
