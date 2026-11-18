@@ -2,6 +2,7 @@
 import type { ReviewComment } from '@kira/git-ipc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { FieldError, FieldLabel } from '@theme/components/ui/field';
@@ -9,11 +10,10 @@ import { NativeSelect } from '@theme/components/ui/native-select';
 import { RadioGroup, RadioGroupCard } from '@theme/components/ui/radio-group';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
+import { type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { errorText } from '@workbench/bridge/codedError';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
 import { computed, ref, watch } from 'vue';
-import AdeChip from '../AdeChip.vue';
-import type { Tone } from '../board/actions';
 import AdeRunLog from '../panel/AdeRunLog.vue';
 import AdeRunOutcome from '../panel/AdeRunOutcome.vue';
 import AdeOpStatus from '../plan/AdeOpStatus.vue';
@@ -142,12 +142,12 @@ async function confirmFinish(): Promise<void> {
   if (result) await doFinish(result);
 }
 
-const PHASE_TONE: Record<ReviewPhase, Tone> = {
-  waiting: 'blue',
-  sent: 'amber',
-  working: 'amber',
-  stuck: 'red',
-  done: 'green',
+const PHASE_TONE: Record<ReviewPhase, StatusTone> = {
+  waiting: 'info',
+  sent: 'info',
+  working: 'info',
+  stuck: 'error',
+  done: 'ok',
 };
 
 function lineLabel(c: ReviewComment): string {
@@ -173,11 +173,9 @@ const stateLabel = (c: ReviewComment): string =>
   >
     <div class="flex flex-wrap items-center gap-2">
       <span data-testid="ade-review-step-name">{{ state?.stepName }}</span>
-      <AdeChip
-        :label="reviewPhaseLabel(phase)"
-        :tone="PHASE_TONE[phase]"
-        data-testid="ade-review-phase"
-      />
+      <Badge :variant="TONE_BADGE[PHASE_TONE[phase]]" data-testid="ade-review-phase">{{
+        reviewPhaseLabel(phase)
+      }}</Badge>
       <AdeOpStatus :task-id="target.taskId" :branch-id="target.branchId" />
       <span
         v-if="round"
@@ -219,14 +217,16 @@ const stateLabel = (c: ReviewComment): string =>
               lineLabel(c)
             }}</Button
           >
-          <AdeChip
+          <Badge
             v-if="c.origin === 'working'"
-            :label="t('space.ade.changes.uncommitted.label')"
-            tone="amber"
+            variant="warn"
             data-testid="ade-review-comment-uncommitted"
-          />
-          <AdeChip :label="kindLabel(c)" :tone="c.kind === 'question' ? 'purple' : 'blue'" />
-          <AdeChip :label="stateLabel(c)" :tone="c.state === 'addressed' ? 'green' : 'amber'" />
+            >{{
+              t('space.ade.changes.uncommitted.label')
+            }}</Badge
+          >
+          <Badge variant="default">{{ kindLabel(c) }}</Badge>
+          <Badge :variant="c.state === 'addressed' ? 'ok' : 'warn'">{{ stateLabel(c) }}</Badge>
           <Button
             variant="toolbar"
             size="kira"

@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import AdeChip from '@ade/AdeChip.vue';
 import { needsKindLabel } from '@ade/board/needsYou';
+import { THEME_TONE } from '@ade/tones';
 import EmptyState from '@theme/components/EmptyState.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import { Alert } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { TONE_BADGE } from '@theme/lib/statusTone';
 import { useApprovals } from '@workbench/approvals/approvalsQueries';
 import { formatRelative } from '@workbench/behaviour/format';
 import { errorText } from '@workbench/bridge/codedError';
@@ -95,7 +97,9 @@ async function confirmTakeOver(): Promise<void> {
               :data-kind="item.kind"
             >
               <span class="flex items-center gap-2">
-                <AdeChip :label="needsKindLabel(item.kind)" :tone="item.tone" />
+                <Badge :variant="TONE_BADGE[THEME_TONE[item.tone]]">{{
+                  needsKindLabel(item.kind)
+                }}</Badge>
                 <span class="text-kira-sm text-subtle">{{
                   item.ageMs === null ? '' : formatRelative(0, item.ageMs)
                 }}</span>

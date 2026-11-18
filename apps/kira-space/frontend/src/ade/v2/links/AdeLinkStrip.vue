@@ -198,7 +198,7 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
       </template>
       <p
         v-if="links.gaps.value.length"
-        class="m-0 text-kira-sm text-tone-amber"
+        class="m-0 text-kira-sm text-warn"
         data-testid="ade-links-gaps"
       >
         <span

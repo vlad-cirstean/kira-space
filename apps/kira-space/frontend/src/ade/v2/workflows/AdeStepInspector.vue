@@ -14,12 +14,11 @@ import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
 import { finishVars, previewTextParts } from '../board/runMessage';
 import { overriddenKeys } from '../board/stepLibrary';
-import { hasContent, KIND_TONE, kindLabel, STEP_KINDS, withKind } from '../board/workflowForm';
+import { hasContent, kindLabel, STEP_KINDS, withKind } from '../board/workflowForm';
 import { useAdePromptPreview, useNewStep } from '../queries';
 import { useWorkflows } from '../readQueries';
 import { useAdeWorkflowDraftStore } from '../state/adeWorkflowDraft';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
-import { TONE_TEXT_CLASS } from '../tones';
 import type { StepKind, WorkflowStep } from '../wire';
 import AdeInspectorSection from './inspector/AdeInspectorSection.vue';
 import AdeStepAdvanced from './inspector/AdeStepAdvanced.vue';
@@ -134,7 +133,7 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
   >
     <div class="flex flex-col gap-2 px-3 pt-3 pb-2">
       <div class="flex items-center gap-2 text-kira-sm text-subtle">
-        <StatusDot :class="TONE_TEXT_CLASS[KIND_TONE[step.kind]]" color="currentColor" />
+        <StatusDot tone="muted" />
         <span v-if="!library" data-testid="ade-wf-step-position">{{
           t('space.ade.workflows.stepInspector.position.label', position)
         }}</span>

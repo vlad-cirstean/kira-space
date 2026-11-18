@@ -216,13 +216,11 @@ async function discard(): Promise<void> {
           {{ t('space.ade.agentDialog.noOp.hint') }}
         </FieldDescription>
 
-        <div
-          v-if="view.isArchive"
-          class="text-kira-md text-tone-amber"
-          data-testid="ade-dialog-risk"
-        >
-          {{ t('space.ade.agentDialog.risk.body', { risk: view.riskText }) }}
-        </div>
+        <Alert v-if="view.isArchive" variant="warn" data-testid="ade-dialog-risk">
+          <AlertDescription>{{
+            t('space.ade.agentDialog.risk.body', { risk: view.riskText })
+          }}</AlertDescription>
+        </Alert>
 
         <div
           v-for="(tg, i) in view.targets"

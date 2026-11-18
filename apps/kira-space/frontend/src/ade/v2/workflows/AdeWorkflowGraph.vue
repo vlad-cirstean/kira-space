@@ -317,8 +317,8 @@ onBeforeUnmount(() => {
               <defs>
                 <marker
                   v-for="m in [
-                    ['ade-arrow-ok', 'fill-tone-green-solid'],
-                    ['ade-arrow-fail', 'fill-tone-red-solid'],
+                    ['ade-arrow-ok', 'fill-ok'],
+                    ['ade-arrow-fail', 'fill-error'],
                     ['ade-arrow-neutral', 'fill-muted-foreground'],
                   ]"
                   :id="m[0]"

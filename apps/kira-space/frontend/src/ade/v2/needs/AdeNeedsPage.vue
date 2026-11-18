@@ -49,7 +49,7 @@ useKeptScroll('ade:needs', bodyEl);
         />
         <div
           v-if="needs.empty"
-          class="px-3 py-6 text-kira-lg text-tone-green"
+          class="px-3 py-6 text-kira-lg text-ok"
           data-testid="ade-needs-empty"
         >
           {{ t('space.ade.needsPage.empty.emptyHint') }}

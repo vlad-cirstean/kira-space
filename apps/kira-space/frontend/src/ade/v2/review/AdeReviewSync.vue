@@ -162,7 +162,7 @@ const prBase = computed(() => {
     </Tooltip>
     <span
       v-if="error"
-      class="flex min-w-0 max-w-64 text-kira-sm text-tone-red"
+      class="flex min-w-0 max-w-64 text-kira-sm text-error"
       data-testid="ade-review-sync-error"
       ><TruncatedText :text="error" /></span
     >

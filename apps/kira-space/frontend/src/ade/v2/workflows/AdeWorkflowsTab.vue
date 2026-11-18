@@ -174,7 +174,7 @@ async function createNew(): Promise<void> {
             >
             <TextTooltip v-if="e.error" :text="e.error.message">
               <span
-                class="shrink-0 text-kira-sm font-medium text-tone-red"
+                class="shrink-0 text-kira-sm font-medium text-error"
                 data-testid="ade-wf-row-error"
                 >✕</span
               >

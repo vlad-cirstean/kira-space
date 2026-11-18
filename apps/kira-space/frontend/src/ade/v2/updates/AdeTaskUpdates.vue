@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { computed } from 'vue';
-import AdeChip from '../AdeChip.vue';
 import { useMarkTrackedSeen } from './queries';
 import { useTaskUpdates } from './useTaskUpdates';
 
@@ -27,7 +27,7 @@ function seen(itemKeys: string[]): void {
     data-testid="ade-task-updates"
   >
     <div class="flex items-center gap-2">
-      <AdeChip :label="t('space.ade.updates.strip.title')" tone="blue" />
+      <Badge variant="info">{{ t('space.ade.updates.strip.title') }}</Badge>
       <Button
         variant="toolbar"
         size="kira"

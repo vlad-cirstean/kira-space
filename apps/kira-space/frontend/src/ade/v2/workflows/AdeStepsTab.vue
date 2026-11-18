@@ -4,6 +4,7 @@ import DetailHeader from '@theme/components/DetailHeader.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
@@ -20,8 +21,7 @@ import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { configName } from '@workbench/config/configName';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref, watch } from 'vue';
-import AdeChip from '../AdeChip.vue';
-import { KIND_TONE, kindLabel, STEP_KINDS } from '../board/workflowForm';
+import { kindLabel, STEP_KINDS } from '../board/workflowForm';
 import { useNewStep } from '../queries';
 import { useWorkflows } from '../readQueries';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
@@ -134,10 +134,10 @@ async function createNew(kind: StepKind): Promise<void> {
                 e.step?.name ?? e.fileName
               }}</span
             >
-            <AdeChip v-if="e.step" :label="kindLabel(e.step.kind)" :tone="KIND_TONE[e.step.kind]" />
+            <Badge v-if="e.step" variant="default">{{ kindLabel(e.step.kind) }}</Badge>
             <TextTooltip v-if="e.error" :text="e.error.message">
               <span
-                class="shrink-0 text-kira-sm font-medium text-tone-red"
+                class="shrink-0 text-kira-sm font-medium text-error"
                 data-testid="ade-step-row-error"
                 >✕</span
               >

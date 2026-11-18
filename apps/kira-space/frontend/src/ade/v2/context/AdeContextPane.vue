@@ -74,7 +74,7 @@ useShortcut(root, ['form.save'], () => void saveNow());
         <div class="flex flex-wrap items-center gap-2">
           <span
             class="min-w-0 flex-1 text-kira-sm"
-            :class="over ? 'text-tone-red' : 'text-subtle'"
+            :class="over ? 'text-error' : 'text-subtle'"
             data-testid="ade-context-size"
           >
             {{

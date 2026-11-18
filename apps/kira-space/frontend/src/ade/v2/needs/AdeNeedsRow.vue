@@ -1,12 +1,14 @@
 <script setup lang="ts">
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { TONE_BADGE } from '@theme/lib/statusTone';
 import { formatRelative } from '@workbench/behaviour/format';
 import { computed, ref } from 'vue';
 import type { Tone } from '../board/actions';
 import { type NeedsItem, needsActionLabel, needsKindLabel } from '../board/needsYou';
 import AdeRunLog from '../panel/AdeRunLog.vue';
-import { TONE_TAG_CLASS } from '../tones';
+import { THEME_TONE } from '../tones';
 import { useNeedsAction } from './useNeedsAction';
 
 // One needs-you item (mockup `needs`): kind chip, age, its one action, scope, what, over the task.
@@ -37,13 +39,13 @@ const ROW_BG_CLASS: Record<Tone, string> = {
     :data-item-id="item.id"
   >
     <div class="flex items-center gap-3 px-2 py-2" :class="ROW_BG_CLASS[item.tone]">
-      <span
-        class="w-23 shrink-0 whitespace-nowrap rounded-kira-sm px-2 py-0.5 text-center text-kira-sm"
-        :class="TONE_TAG_CLASS[item.tone]"
+      <Badge
+        :variant="TONE_BADGE[THEME_TONE[item.tone]]"
+        class="w-23 justify-center"
         data-testid="ade-needs-kind"
         >{{
           needsKindLabel(item.kind)
-        }}</span
+        }}</Badge
       >
       <span class="w-19 shrink-0 text-kira-md text-muted-foreground" data-testid="ade-needs-age">{{
         item.ageMs === null ? '' : formatRelative(0, item.ageMs)

@@ -152,18 +152,6 @@ PERMANENT
 # fixes it. Never PERMANENT. An entry that stops matching fails the run, so the block only shrinks;
 # P672 Part 9 deletes the block and this mechanism once it is empty.
 cat >"$TMP/temp" <<'TEMPORARY'
-U114 apps/kira-space/frontend/src/ade/v2/AdeActivityIcon.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/context/AdeContextPane.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/dialog/AdeAgentDialog.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/needs/AdeAllSessionRow.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/needs/AdeNeedsPage.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/review/AdeReviewSync.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/sessions/AdeSessionsRow.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/settings/AdeSettingsPane.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/workflows/AdeStepNode.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/workflows/AdeStepsTab.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/workflows/AdeWorkflowsTab.vue # 2026-11-18 P672 Part 7
 U114 packages/workbench/src/automations/RunFileDialog.vue # 2026-11-18 P672 Part 7
 U114 packages/workbench/src/automations/ScriptBrokenRow.vue # 2026-11-18 P672 Part 7
 U114 packages/workbench/src/automations/ScriptRow.vue # 2026-11-18 P672 Part 7

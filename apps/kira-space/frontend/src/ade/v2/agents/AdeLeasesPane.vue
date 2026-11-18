@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import DetailSection from '@theme/components/DetailSection.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
@@ -11,7 +12,6 @@ import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import MenuItems from '@workbench/components/MenuItems.vue';
 import type { MenuItem } from '@workbench/state/contextMenu';
-import AdeChip from '../AdeChip.vue';
 import { useLeases } from '../leases/queries';
 import { useAdeLeasesStore } from '../state/adeLeases';
 
@@ -110,11 +110,9 @@ function holderItems(q: Queue): MenuItem[] {
             <span v-else class="text-muted-foreground" :data-testid="`ade-lease-free-${q.name}`">{{
               t('space.ade.leases.free.label')
             }}</span>
-            <AdeChip
-              v-if="q.holder?.releaseAsked"
-              :label="t('space.ade.leases.asked.label')"
-              tone="amber"
-            />
+            <Badge v-if="q.holder?.releaseAsked" variant="warn">{{
+              t('space.ade.leases.asked.label')
+            }}</Badge>
           </div>
           <div class="flex items-start gap-2 text-kira-sm">
             <span class="w-16 shrink-0 text-muted-foreground">{{

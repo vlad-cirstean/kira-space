@@ -10,8 +10,8 @@ import { type EdgeData, NODE_H, type Point, RANK_SEP } from '../board/workflowGr
 const props = defineProps<EdgeProps<EdgeData>>();
 const d = computed(() => props.data as EdgeData);
 const TONE_STROKE = {
-  ok: 'stroke-tone-green-solid',
-  fail: 'stroke-tone-red-solid',
+  ok: 'stroke-ok',
+  fail: 'stroke-error',
   neutral: 'stroke-muted-foreground',
 };
 const TONE_MARKER = { ok: 'ade-arrow-ok', fail: 'ade-arrow-fail', neutral: 'ade-arrow-neutral' };

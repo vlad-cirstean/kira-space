@@ -130,7 +130,7 @@ defineExpose({ openMenu });
         <span class="flex min-w-0 items-center gap-1.5" :class="rowMeta">
           <span
             class="shrink-0"
-            :class="warn && 'text-tone-amber'"
+            :class="warn && 'text-warn'"
             data-testid="ade-sessions-row-state"
             >{{
               state

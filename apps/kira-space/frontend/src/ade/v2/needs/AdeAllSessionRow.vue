@@ -26,11 +26,11 @@ const state = computed(() => {
   return activityLabel(props.view.kind);
 });
 const stateClass = computed(() => {
-  if (props.view.kind === 'unseen') return 'text-tone-blue';
+  if (props.view.kind === 'unseen') return 'text-info';
   if (!running.value) return 'text-muted-foreground';
-  if (props.view.kind === 'input') return 'text-tone-amber';
-  if (props.view.kind === 'working') return 'text-tone-green';
-  return props.view.kind === 'waiting' ? 'text-tone-blue' : 'text-muted-foreground';
+  if (props.view.kind === 'input') return 'text-warn';
+  if (props.view.kind === 'working') return 'text-ok';
+  return props.view.kind === 'waiting' ? 'text-info' : 'text-muted-foreground';
 });
 /** A live interactive session opens; everything else is taken over. */
 const opens = computed(() => running.value && !props.view.headless);

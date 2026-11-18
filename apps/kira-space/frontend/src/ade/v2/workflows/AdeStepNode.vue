@@ -2,6 +2,7 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
@@ -17,10 +18,9 @@ import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import MenuItems from '@workbench/components/MenuItems.vue';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef } from 'vue';
-import AdeChip from '../AdeChip.vue';
 import { promptParts } from '../automation/smartStepBody';
 import { isDefaultSandbox } from '../board/stepSandbox';
-import { KIND_TONE, kindLabel, runsOnLabel, STEP_KINDS } from '../board/workflowForm';
+import { kindLabel, runsOnLabel, STEP_KINDS } from '../board/workflowForm';
 import { resultHandleId, type StepNodeData } from '../board/workflowGraph';
 import { useAdeWorkflowDraftStore } from '../state/adeWorkflowDraft';
 import { useStepRemoval } from './useStepRemoval';
@@ -176,7 +176,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
     />
     <div class="flex items-center gap-1.5 px-2 pt-2">
       <TextTooltip v-if="data.start" :text="t('common.action.start.label')"
-        ><span class="text-tone-green" data-testid="ade-wf-node-start">▶</span></TextTooltip
+        ><span class="text-ok" data-testid="ade-wf-node-start">▶</span></TextTooltip
       >
       <span class="shrink-0 font-medium" data-testid="ade-wf-node-number"
         >{{ data.index + 1 }}.</span
@@ -189,11 +189,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
           step.name
         }}</span
       >
-      <AdeChip
-        :label="kindLabel(step.kind)"
-        :tone="KIND_TONE[step.kind]"
-        data-testid="ade-wf-node-kind"
-      />
+      <Badge variant="default" data-testid="ade-wf-node-kind">{{ kindLabel(step.kind) }}</Badge>
       <TextTooltip
         v-if="step.use"
         :text="t('space.ade.workflows.stepNode.library.tooltip', { id: step.use })"
@@ -278,16 +274,14 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
           :data-result="r.id"
           :data-ok="r.ok"
         >
-          <StatusDot
-            :color="r.ok ? 'var(--color-tone-green-solid)' : 'var(--color-tone-red-solid)'"
-          />
+          <StatusDot :tone="r.ok ? 'ok' : 'error'" />
           <span v-if="labelled" class="truncate">{{ r.id }}</span>
           <Handle
             :id="resultHandleId(r.id)"
             type="source"
             :position="Position.Bottom"
             class="!size-3 !border-2 !border-bg"
-            :class="r.ok ? '!bg-tone-green-solid' : '!bg-tone-red-solid'"
+            :class="r.ok ? '!bg-ok' : '!bg-error'"
           />
         </span>
       </TextTooltip>
