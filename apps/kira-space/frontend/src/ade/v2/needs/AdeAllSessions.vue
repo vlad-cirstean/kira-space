@@ -107,7 +107,6 @@ const summary = computed(() => {
         variant="segmented"
         :model-value="filter"
         :items="filterItems"
-        count-badge
         @update:model-value="(v) => (filter = v as 'running' | 'stopped')"
       />
       <div class="flex gap-3">

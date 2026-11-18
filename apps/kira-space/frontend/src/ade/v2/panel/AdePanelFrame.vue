@@ -16,7 +16,7 @@ const tab = defineModel<T>({ required: true });
       <slot name="header" />
     </div>
     <PanelBar class="flex-row flex-wrap items-center">
-      <SecondaryTabs v-model="tab" :items="items" count-badge />
+      <SecondaryTabs v-model="tab" :items="items" />
       <div
         v-if="$slots.actions"
         class="ml-auto flex shrink-0 items-center gap-1"
