@@ -3,15 +3,19 @@ import { shallowRef, useTemplateRef, watch } from 'vue';
 import { useSortableReorder } from '../behaviour/sortableReorder';
 
 // One Sortable per group needs one component per group: a composable cannot run inside a v-for.
-const props = defineProps<{
-  ids: readonly string[];
-  draggable: string;
-  handle?: string;
-  keyboardHandle?: string;
-  disabled?: boolean;
-  group?: string;
-  itemId?: (el: HTMLElement) => string | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    ids: readonly string[];
+    draggable: string;
+    handle?: string;
+    keyboardHandle?: string;
+    disabled?: boolean;
+    group?: string;
+    itemId?: (el: HTMLElement) => string | null;
+    keyboard?: boolean;
+  }>(),
+  { keyboard: true },
+);
 const emit = defineEmits<{
   move: [fromId: string, toId: string];
   add: [id: string, beforeId: string | null];
@@ -39,7 +43,7 @@ useSortableReorder(
     keyboardHandle: props.keyboardHandle,
     // A grouped list stays live when empty or single: it still takes drops from its peers.
     disabled: () => props.disabled === true || (!props.group && stableIds.value.length < 2),
-    keyboard: true,
+    keyboard: props.keyboard,
     group: props.group,
     itemId: props.itemId,
     onAdd: (id, beforeId) => emit('add', id, beforeId),

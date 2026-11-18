@@ -113,7 +113,7 @@ function openGroup(name: string): void {
   collapsed.value = collapsed.value.filter((n) => n !== name);
 }
 
-// A search shows a filtered subset, so it pauses drag, Alt+arrow and the Move up/down items.
+// A search shows a filtered subset, so it pauses drag.
 const reorderOff = computed(() => search.value.trim() !== '');
 const ungroupedIds = computed(() => view.value.ungrouped.map((s) => s.id));
 const groupNames = computed(() => view.value.groups.map((g) => g.name));
@@ -342,17 +342,6 @@ function navItemOf(id: string): NavItem {
   );
 }
 
-// Alt+arrow stays on the lists' keyboard handling; these items run the same swap by menu.
-function setIdsOf(script: CustomScript): readonly string[] {
-  const group = view.value.groups.find((g) => g.name === script.collection);
-  return group ? group.rows.map((r) => r.id) : ungroupedIds.value;
-}
-
-function stepIds(ids: readonly string[], id: string, step: -1 | 1): string[] | null {
-  const neighbour = ids[ids.indexOf(id) + step];
-  return ids.includes(id) && neighbour ? moveId(ids, id, neighbour) : null;
-}
-
 const scriptActions: ScriptMenuActions = {
   run: runScript,
   runNow: (script) => {
@@ -371,19 +360,9 @@ const scriptActions: ScriptMenuActions = {
   collections: () => scripts.collections().map((c) => c.name),
   moveTo: (script, collection) => guarded(() => scripts.move(script.id, collection, null)),
   moveToNew: moveToNewCollection,
-  canMoveStep: (script, step) =>
-    !reorderOff.value && stepIds(setIdsOf(script), script.id, step) !== null,
-  moveStep: (script, step) => {
-    const order = stepIds(setIdsOf(script), script.id, step);
-    if (order) void guarded(() => scripts.reorder(script.collection, order));
-  },
 };
 
 function onGroupMenu(e: MouseEvent, name: string): void {
-  const step = (by: -1 | 1) => {
-    const order = stepIds(groupNames.value, name, by);
-    if (order) void guarded(() => scripts.reorderCollections(order));
-  };
   openMenu(
     { key: `group:${name}`, kind: 'group', id: name, depth: 0 },
     e,
@@ -394,8 +373,6 @@ function onGroupMenu(e: MouseEvent, name: string): void {
           renamingName.value = name;
         }),
       remove: () => confirmDeleteCollection(name),
-      step,
-      can: (by) => !reorderOff.value && stepIds(groupNames.value, name, by) !== null,
     }),
   );
 }
@@ -454,6 +431,7 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
               :group="SCRIPT_GROUP"
               :item-id="scriptIdOf"
               :disabled="reorderOff"
+              :keyboard="false"
               :class="['flex flex-col', ungroupedIds.length === 0 && 'min-h-2']"
               @move="(from, to) => reorderSet('', ungroupedIds, from, to)"
               @add="(id, beforeId) => dropScript('', id, beforeId)"
@@ -485,8 +463,8 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
               :ids="groupNames"
               draggable="[data-group-entry]"
               handle='[data-testid="script-group"]'
-              keyboard-handle='[data-testid="script-group"]'
               :disabled="reorderOff"
+              :keyboard="false"
               class="flex flex-col"
               @move="reorderGroups"
             >
@@ -514,6 +492,7 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
                   :group="SCRIPT_GROUP"
                   :item-id="scriptIdOf"
                   :disabled="reorderOff"
+                  :keyboard="false"
                   :class="['flex flex-col', group.rows.length === 0 && 'min-h-2']"
                   @add="(id, beforeId) => dropScript(group.name, id, beforeId)"
                   @move="

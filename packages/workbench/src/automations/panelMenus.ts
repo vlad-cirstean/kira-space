@@ -15,9 +15,6 @@ export interface ScriptMenuActions {
   collections(): readonly string[];
   moveTo(script: CustomScript, collection: string): void | Promise<void>;
   moveToNew(script: CustomScript): void | Promise<void>;
-  /** One place within the row's own set. */
-  moveStep(script: CustomScript, step: -1 | 1): void;
-  canMoveStep(script: CustomScript, step: -1 | 1): boolean;
   remove(script: CustomScript): void | Promise<void>;
 }
 
@@ -25,12 +22,9 @@ export interface GroupMenuActions {
   create(kind: ScriptKind): void;
   rename(): void;
   remove(): void | Promise<void>;
-  step(step: -1 | 1): void;
-  can(step: -1 | 1): boolean;
 }
 
 export function groupMenu(actions: GroupMenuActions): MenuItem[] {
-  const move = { step: actions.step, can: actions.can };
   return [
     ...newScriptItems(actions.create),
     {
@@ -42,22 +36,6 @@ export function groupMenu(actions: GroupMenuActions): MenuItem[] {
       run: () => actions.rename(),
     },
     { type: 'separator' },
-    {
-      type: 'item',
-      id: 'move-up',
-      label: t('common.moveUp.tooltip'),
-      icon: 'arrow-up',
-      disabled: !move.can(-1),
-      run: () => move.step(-1),
-    },
-    {
-      type: 'item',
-      id: 'move-down',
-      label: t('common.moveDown.tooltip'),
-      icon: 'arrow-down',
-      disabled: !move.can(1),
-      run: () => move.step(1),
-    },
     { type: 'separator' },
     {
       type: 'item',
@@ -135,24 +113,6 @@ export function scriptMenu(script: CustomScript, actions: ScriptMenuActions): Me
       onMove: (name) => actions.moveTo(script, name ?? ''),
       onNew: () => actions.moveToNew(script),
     }),
-    {
-      type: 'item',
-      id: 'move-up',
-      label: t('common.moveUp.tooltip'),
-      icon: 'arrow-up',
-      shortcut: 'list.moveUp',
-      disabled: !actions.canMoveStep(script, -1),
-      run: () => actions.moveStep(script, -1),
-    },
-    {
-      type: 'item',
-      id: 'move-down',
-      label: t('common.moveDown.tooltip'),
-      icon: 'arrow-down',
-      shortcut: 'list.moveDown',
-      disabled: !actions.canMoveStep(script, 1),
-      run: () => actions.moveStep(script, 1),
-    },
     { type: 'separator' },
     {
       type: 'item',
