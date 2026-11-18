@@ -170,7 +170,7 @@ const onChord = shortcutKeydown(['form.submit'], () => {
         </template>
         <template v-else-if="state === 'upToDate'">
           <Button
-            variant="dialog-primary"
+            variant="dialog"
             size="kira-lg"
             :kbd="formatShortcut('form.submit')"
             data-testid="update-dialog-close"

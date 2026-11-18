@@ -223,7 +223,7 @@ function select(id: string): void {
       <DialogFooter>
         <template v-if="stored">
           <Button
-            variant="dialog-primary"
+            variant="dialog"
             size="kira-lg"
             data-testid="add-memory-done"
             @click="emit('close')"

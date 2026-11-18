@@ -333,6 +333,14 @@ async function onConfirm(): Promise<void> {
         </template>
         <template v-if="!report">
           <Button
+            variant="dialog"
+            size="kira-lg"
+            data-testid="datagrip-import-cancel"
+            @click="datagripImportStore.closeDataGripImportDialog"
+          >
+            {{ t('common.action.cancel.label') }}
+          </Button>
+          <Button
             v-if="!datagripImportStore.preview"
             variant="dialog"
             size="kira-lg"
@@ -341,14 +349,6 @@ async function onConfirm(): Promise<void> {
             @click="pick.run"
           >
             {{ t('studio.project.dataGripImport.chooseAnother.label') }}
-          </Button>
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            data-testid="datagrip-import-cancel"
-            @click="datagripImportStore.closeDataGripImportDialog"
-          >
-            {{ t('common.action.cancel.label') }}
           </Button>
           <Button
             variant="dialog-primary"
@@ -363,7 +363,7 @@ async function onConfirm(): Promise<void> {
         </template>
         <Button
           v-else
-          variant="dialog-primary"
+          variant="dialog"
           size="kira-lg"
           data-testid="datagrip-import-report-close"
           @click="datagripImportStore.closeDataGripImportDialog"

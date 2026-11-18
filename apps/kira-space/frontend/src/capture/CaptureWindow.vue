@@ -92,12 +92,7 @@ useFocusOnMount(titleInput);
         t('space.capture.empty.body')
       }}</FieldDescription>
       <div class="mt-auto flex justify-end">
-        <Button
-          variant="dialog-primary"
-          size="kira-lg"
-          data-testid="capture-dismiss"
-          @click="close"
-        >
+        <Button variant="dialog" size="kira-lg" data-testid="capture-dismiss" @click="close">
           {{ t('common.action.dismiss.label') }}
         </Button>
       </div>
