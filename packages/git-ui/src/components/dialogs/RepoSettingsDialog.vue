@@ -303,7 +303,7 @@ async function save(): Promise<void> {
             <FieldLabel :for="baseCandidatesId">
               {{ t('git.dialog.repoSettings.baseCandidates.label') }}
             </FieldLabel>
-            <Textarea :id="baseCandidatesId" v-model="baseCandidatesText" />
+            <Textarea :id="baseCandidatesId" v-model="baseCandidatesText" class="font-data" />
           </Field>
         </FieldSet>
 

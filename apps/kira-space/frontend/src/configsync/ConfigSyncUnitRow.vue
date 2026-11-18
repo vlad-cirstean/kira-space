@@ -95,15 +95,15 @@ const repoLine = computed(() => props.row.repo || props.row.origin || '');
         <option value="shared">{{ t('space.configSync.row.shared.option') }}</option>
       </NativeSelect>
       <span v-if="row.kind !== 'unmatched'" class="ml-auto flex items-center gap-1.5">
-        <Label :for="switchId" class="text-kira-sm text-muted-foreground">
-          {{ t('space.configSync.row.deactivate.label') }}
-        </Label>
         <Checkbox
           :id="switchId"
           :model-value="row.deactivated"
           :data-testid="`config-sync-deactivate-${row.id}`"
           @update:model-value="(v) => emit('deactivate', v === true)"
         />
+        <Label :for="switchId" class="text-kira-sm text-muted-foreground">
+          {{ t('space.configSync.row.deactivate.label') }}
+        </Label>
       </span>
     </div>
   </li>

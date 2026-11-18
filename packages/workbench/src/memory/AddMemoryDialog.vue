@@ -12,10 +12,9 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, useId } from 'vue';
 import { errorText } from '../bridge/codedError';
 import { useStoreMemory } from './queries';
 import ScopeField from './ScopeField.vue';
@@ -25,6 +24,7 @@ import { useMemoryUiStore } from './store';
 // P285 Part 4: with `lines` (distilled output) it stores one fact per line instead of the text field.
 const props = defineProps<{ lines?: string[]; source?: string }>();
 const emit = defineEmits<{ close: [] }>();
+const linesId = useId();
 const ui = useMemoryUiStore();
 const store = useStoreMemory();
 
@@ -159,9 +159,12 @@ function select(id: string): void {
         <template v-else>
           <div class="flex flex-col gap-1">
             <template v-if="lines">
-              <Label>{{ t('memory.distill.store.items.label', { count: lines.length }) }}</Label>
+              <FieldLabel :id="linesId">{{
+                t('memory.distill.store.items.label', { count: lines.length })
+              }}</FieldLabel>
               <ul
                 class="m-0 flex max-h-48 list-none flex-col gap-0.5 overflow-y-auto p-0 text-kira-md"
+                :aria-labelledby="linesId"
                 data-testid="add-memory-lines"
               >
                 <li v-for="(line, i) in lines" :key="i" class="whitespace-pre-wrap">{{ line }}</li>

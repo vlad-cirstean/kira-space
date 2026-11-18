@@ -11,7 +11,6 @@ import {
   FieldLegend,
   FieldSet,
 } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
@@ -47,6 +46,7 @@ const confirmDialogStore = useConfirmDialogStore();
 const switchId = useId();
 const agentInputId = useId();
 const portId = useId();
+const deviceId = useId();
 
 const portDraft = ref(String(store.status.port));
 watch(
@@ -332,19 +332,22 @@ const activeDevices = computed(() =>
             </span>
           </span>
           <span class="flex shrink-0 items-center gap-2">
-            <Label class="flex items-center gap-1">
-              {{ t('space.ade.branchPanel.changes.label') }}
+            <Field orientation="horizontal" class="w-auto">
               <Switch
+                :id="`${deviceId}-${device.id}-write`"
                 :model-value="device.canWrite"
                 :data-testid="`mobile-device-write-${device.id}`"
                 @update:model-value="
                   (v) => onSetPermissions(device.id, v === true, device.canAgentInput)
                 "
               />
-            </Label>
-            <Label class="flex items-center gap-1">
-              {{ t('space.settings.mobileAccess.devices.agentInput.label') }}
+              <FieldLabel :for="`${deviceId}-${device.id}-write`">{{
+                t('space.ade.branchPanel.changes.label')
+              }}</FieldLabel>
+            </Field>
+            <Field orientation="horizontal" class="w-auto">
               <Switch
+                :id="`${deviceId}-${device.id}-agent-input`"
                 :model-value="device.canAgentInput"
                 :disabled="!store.status.agentInput"
                 :data-testid="`mobile-device-agent-input-${device.id}`"
@@ -352,7 +355,10 @@ const activeDevices = computed(() =>
                   (v) => onSetPermissions(device.id, device.canWrite, v === true)
                 "
               />
-            </Label>
+              <FieldLabel :for="`${deviceId}-${device.id}-agent-input`">{{
+                t('space.settings.mobileAccess.devices.agentInput.label')
+              }}</FieldLabel>
+            </Field>
             <TooltipIconButton
               icon="trash"
               :label="t('space.settings.mobileAccess.devices.revoke.label')"

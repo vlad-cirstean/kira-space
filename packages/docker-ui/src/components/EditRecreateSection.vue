@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Input } from '@theme/components/ui/input';
+import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
@@ -346,13 +347,13 @@ function addMount(): void {
             :disabled="disabled"
             data-testid="docker-edit-mount-target"
           />
-          <span class="flex shrink-0 items-center gap-1 text-muted-foreground"
+          <Label class="flex shrink-0 items-center gap-1 text-muted-foreground"
             ><Checkbox
               v-model="item.readOnly"
               :disabled="disabled"
               data-testid="docker-edit-mount-ro"
               :aria-label="t('common.state.readOnly.status')"
-            />{{ t('docker.edit.readOnlyShort.example') }}</span
+            />{{ t('docker.edit.readOnlyShort.example') }}</Label
           >
         </template>
       </EditRows>
