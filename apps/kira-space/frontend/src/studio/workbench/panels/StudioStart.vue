@@ -113,7 +113,7 @@ function openRecent(entry: RecentTableEntry): void {
     data-testid="no-tab-open"
   >
     <template v-if="recentEntries.length > 0" #below>
-      <SectionHeading :label="t('studio.start.recent.label')" class="mb-1.5 px-0" />
+      <SectionHeading flush :label="t('studio.start.recent.label')" class="mb-1.5" />
       <div class="flex flex-col">
         <button
           v-for="entry in recentEntries"
