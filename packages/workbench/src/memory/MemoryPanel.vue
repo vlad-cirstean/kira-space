@@ -30,7 +30,7 @@ import ImportMenu from './import/ImportMenu.vue';
 import ImportStatus from './import/ImportStatus.vue';
 import { useImportChangeSync } from './import/importQueries';
 import { useImportUiStore } from './import/importStore';
-import { KIND_LABEL, MATCH_LABEL, originText, SCOPE_LABEL } from './labels';
+import { KIND_LABEL, MATCH_LABEL, ORIGIN_BADGE, originText, SCOPE_LABEL } from './labels';
 import MemoryFilters from './MemoryFilters.vue';
 import MemoryScore from './MemoryScore.vue';
 import MemorySetupHint from './MemorySetupHint.vue';
@@ -213,19 +213,9 @@ const historyToggleId = useId();
             >
               <span class="line-clamp-2 text-kira-md">{{ memory.fact }}</span>
               <span class="flex items-center gap-1">
-                <Badge
-                  :variant="
-                    memory.origin === 'user'
-                      ? 'info'
-                      : memory.origin === 'external'
-                        ? 'warn'
-                        : 'default'
-                  "
-                  data-testid="memory-row-origin"
-                  >{{
-                    originText(memory.origin, memory.sourceTag)
-                  }}</Badge
-                >
+                <Badge :variant="ORIGIN_BADGE[memory.origin]" data-testid="memory-row-origin">{{
+                  originText(memory.origin, memory.sourceTag)
+                }}</Badge>
                 <Badge v-if="memory.kind === 'rule'" data-testid="memory-row-kind">{{
                   t(KIND_LABEL.rule)
                 }}</Badge>

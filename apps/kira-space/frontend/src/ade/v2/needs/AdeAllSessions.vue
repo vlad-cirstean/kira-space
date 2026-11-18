@@ -101,7 +101,7 @@ const summary = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 p-3" data-testid="ade-all-sessions">
+  <div class="flex flex-col gap-3 p-3" data-testid="ade-all-sessions">
     <div class="flex items-center gap-3">
       <SecondaryTabs
         variant="segmented"
@@ -125,13 +125,11 @@ const summary = computed(() => {
       class="flex flex-col gap-0.5"
       data-testid="ade-all-group"
     >
-      <div class="px-1.5 pb-1">
-        <SectionHeading :label="g.title">
-          <template #leading>
-            <span class="size-2.5 shrink-0 rounded-kira-sm" :style="{ background: g.color }" />
-          </template>
-        </SectionHeading>
-      </div>
+      <SectionHeading :label="g.title">
+        <template #leading>
+          <span class="size-2.5 shrink-0 rounded-kira-sm" :style="{ background: g.color }" />
+        </template>
+      </SectionHeading>
       <AdeAllSessionRow v-for="r in g.rows" :key="r.session.id" :view="r" :archived="g.archived" />
     </section>
     <InlineState v-if="groups.length === 0" kind="empty" data-testid="ade-all-empty">{{

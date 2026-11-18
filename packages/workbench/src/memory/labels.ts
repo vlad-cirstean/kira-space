@@ -47,6 +47,13 @@ export const GRADE_TEXT = {
   agent: 'memory.common.grade.agent.description',
 } as const satisfies Record<MemoryOrigin, MessageKey>;
 
+/** Badge variant by origin. */
+export const ORIGIN_BADGE = {
+  user: 'info',
+  external: 'warn',
+  agent: 'default',
+} as const satisfies Record<MemoryOrigin, 'info' | 'warn' | 'default'>;
+
 /** Origin label; an external origin names its source, such as "External · slack". */
 export function originText(origin: MemoryOrigin, sourceTag: string | null): string {
   if (origin === 'external' && sourceTag) {
