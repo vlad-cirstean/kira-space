@@ -2,6 +2,7 @@
 import type { LlmPromptPart, LlmPromptView } from '@shared/domain/llmPrompts';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import CodeBlock from '@theme/components/CodeBlock.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import SecondaryTabs, { type SecondaryTabItem } from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -77,11 +78,9 @@ const literal = computed(() => props.view.vars.length === 0);
 
 <template>
   <div class="flex min-w-0 flex-col gap-3" data-testid="llm-prompt-detail" :data-id="view.id">
-    <header class="flex flex-col gap-1">
-      <div class="flex items-center justify-between gap-2">
-        <h3 class="m-0 min-w-0 truncate text-kira-lg font-medium">
-          <PromptTitle :view="view" />
-        </h3>
+    <DetailHeader flush>
+      <template #title><PromptTitle :view="view" /></template>
+      <template #actions>
         <Button
           variant="toolbar"
           size="kira"
@@ -90,13 +89,13 @@ const literal = computed(() => props.view.vars.length === 0);
           @click="drafts.setText(view, view.defaultText)"
           ><CodiconIcon name="discard" :size="13" />{{ t('common.action.resetToDefault.label') }}
         </Button>
-      </div>
-      <FieldDescription>{{ description }}</FieldDescription>
-      <FieldDescription v-if="view.usedByKey !== ''">{{
-        t(view.usedByKey as MessageKey)
-      }}</FieldDescription>
-      <FieldDescription>{{ t(appliesKey) }}</FieldDescription>
-    </header>
+      </template>
+      <template #description>
+        <p class="m-0">{{ description }}</p>
+        <p v-if="view.usedByKey !== ''" class="m-0">{{ t(view.usedByKey as MessageKey) }}</p>
+        <p class="m-0">{{ t(appliesKey) }}</p>
+      </template>
+    </DetailHeader>
 
     <Alert v-if="view.invalid !== ''" variant="warn" data-testid="llm-prompt-invalid">
       <AlertDescription>{{

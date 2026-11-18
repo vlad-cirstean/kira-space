@@ -151,10 +151,7 @@ PERMANENT
 # fixes it. Never PERMANENT. An entry that stops matching fails the run, so the block only shrinks;
 # P672 Part 9 deletes the block and this mechanism once it is empty.
 cat >"$TMP/temp" <<'TEMPORARY'
-U112 apps/kira-space/frontend/mobile/AppShell.vue # 2026-11-18 P672 Part 6
 U112 apps/kira-space/frontend/mobile/components/PhoneApprovals.vue # 2026-11-18 P672 Part 6
-U112 apps/kira-space/frontend/mobile/screens/PairScreen.vue # 2026-11-18 P672 Part 6
-U112 apps/kira-space/frontend/mobile/screens/TerminalScreen.vue # 2026-11-18 P672 Part 6
 U112 apps/kira-space/frontend/src/ade/v2/later/AdeShelfSection.vue # 2026-11-18 P672 Part 6
 U112 apps/kira-space/frontend/src/ade/v2/needs/AdeAllSessions.vue # 2026-11-18 P672 Part 6
 U112 apps/kira-space/frontend/src/ade/v2/port/AdePortExportDialog.vue # 2026-11-18 P672 Part 6
@@ -164,11 +161,7 @@ U112 apps/kira-space/frontend/src/ade/v2/settings/AdeSettingsSecrets.vue # 2026-
 U112 apps/kira-space/frontend/src/ade/v2/workflows/statuses/AdeTaskStatuses.vue # 2026-11-18 P672 Part 6
 U112 apps/kira-space/frontend/src/studio/api/ApiAgentAccess.vue # 2026-11-18 P672 Part 6
 U112 apps/kira-space/frontend/src/studio/api/ApiSecrets.vue # 2026-11-18 P672 Part 6
-U112 packages/docker-ui/src/components/EngineOverview.vue # 2026-11-18 P672 Part 6
-U112 packages/git-ui/src/components/review/ReviewNoBranch.vue # 2026-11-18 P672 Part 6
-U112 packages/git-ui/src/components/review/ReviewView.vue # 2026-11-18 P672 Part 6
 U112 packages/workbench/src/automations/RunSecretsSection.vue # 2026-11-18 P672 Part 6
-U112 packages/workbench/src/llmPrompts/PromptDetail.vue # 2026-11-18 P672 Part 6
 U112 packages/workbench/src/memory/distill/DistillResult.vue # 2026-11-18 P672 Part 6
 U112 packages/workbench/src/memory/distill/DistillRewriteResult.vue # 2026-11-18 P672 Part 6
 U113 apps/kira-space/frontend/src/hostview/IssueSidebar.vue # 2026-11-18 P672 Part 6

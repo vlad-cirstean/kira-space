@@ -9,7 +9,7 @@ import {
   proofDiagramPayloadSchema,
   proofImagePayloadSchema,
 } from '@shared/domain/proof';
-import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
@@ -143,31 +143,19 @@ onBeforeUnmount(() => {
           :description="pageError"
         />
         <template v-else>
-          <div
-            class="flex min-h-control-lg shrink-0 items-start gap-2 px-3 py-2"
+          <DetailHeader
+            wrap
+            :icon="proofViewIcon(data.view)"
+            :title="data.description"
+            title-testid="proof-step-description"
             data-testid="proof-step-header"
           >
-            <CodiconIcon
-              :name="proofViewIcon(data.view)"
-              :size="16"
-              class="mt-0.5 shrink-0 text-muted-foreground"
-            />
-            <span
-              class="min-w-0 flex-1 break-words text-kira-lg font-medium leading-snug"
-              data-testid="proof-step-description"
-              >{{
-                data.description
-              }}</span
-            >
-            <Badge
-              class="shrink-0"
-              :aria-label="t('common.field.source.label')"
-              data-testid="proof-step-source"
-              >{{
+            <template #meta>
+              <Badge :aria-label="t('common.field.source.label')" data-testid="proof-step-source">{{
                 data.source
-              }}</Badge
-            >
-          </div>
+              }}</Badge>
+            </template>
+          </DetailHeader>
           <div
             v-if="data.query && view.seed.value"
             class="shrink-0 overflow-hidden"

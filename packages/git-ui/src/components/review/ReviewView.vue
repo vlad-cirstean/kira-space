@@ -483,10 +483,11 @@ useReviewAnnouncements(review, announce);
     </template>
 
     <template v-else-if="noActiveRepo">
-      <div class="flex flex-col gap-1 p-3 min-h-0">
-        <h2 class="text-kira-lg font-medium text-fg">{{ t('git.review.start.title') }}</h2>
-        <p>{{ t('git.review.noRepo.emptyHint') }}</p>
-      </div>
+      <EmptyState
+        fill
+        :title="t('git.review.start.title')"
+        :description="t('git.review.noRepo.emptyHint')"
+      />
     </template>
 
     <template v-else-if="!review.branch.value">

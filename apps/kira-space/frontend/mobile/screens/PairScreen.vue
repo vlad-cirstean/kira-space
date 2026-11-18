@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import { Alert } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
@@ -54,7 +55,7 @@ const notice = computed(() => {
     class="mx-auto flex min-h-full w-full max-w-md flex-col justify-center gap-4 px-4 py-8"
     data-testid="pair-screen"
   >
-    <h1 class="m-0 text-kira-lg font-medium">{{ t('common.product.kiraSpace.label') }}</h1>
+    <DetailHeader as="h1" flush :title="t('common.product.kiraSpace.label')" />
     <p class="m-0 text-muted-foreground">
       {{ t('mobile.pair.intro.description') }}
     </p>

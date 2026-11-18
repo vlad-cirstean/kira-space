@@ -2,6 +2,7 @@
 import { useMutation } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import CodeBlock from '@theme/components/CodeBlock.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -68,88 +69,87 @@ async function rerun(): Promise<void> {
 
 <template>
   <!-- h-full: MainView's host is not a flex column, flex-1 alone takes content height. -->
-  <div class="flex h-full min-h-0 flex-col gap-2 overflow-y-auto p-3" data-testid="script-run-view">
-    <InlineState
-      v-if="!run"
-      :kind="query.isPending.value ? 'loading' : 'empty'"
-      data-testid="script-run-missing"
-    >
-      {{
-        query.isPending.value
-          ? t('common.state.loading.loading')
-          : t('automations.run.missing.emptyHint')
-      }}
-    </InlineState>
-    <template v-else>
-      <div class="flex items-center gap-2" data-testid="script-run-header">
-        <SmartBadge v-if="isSmart" />
-        <span class="min-w-0 truncate font-medium">{{ run.scriptName }}</span>
-        <RunStatusBadge :state="run.state" />
-        <RunElapsed :run="run" class="text-kira-sm text-muted-foreground" />
-        <span v-if="isSmart" class="font-data text-kira-sm text-muted-foreground">{{
-          run.model
-        }}</span>
-        <span
-          v-if="run.resumedFrom"
-          class="text-kira-sm text-muted-foreground"
-          data-testid="script-run-resumed-from"
-          >{{
-            t('automations.run.resumedFrom.label')
-          }}</span
-        >
-        <Button
-          v-if="run.state === 'waiting'"
-          variant="dialog-primary"
-          size="kira"
-          class="ml-auto"
-          data-testid="run-review"
-          @click="claim.mutate(`schedule:${run.id}`)"
-        >
-          {{ t('automations.run.review.label') }}
-        </Button>
-        <Button
-          v-if="run.state === 'waiting'"
-          variant="dialog"
-          size="kira"
-          data-testid="run-decline"
-          @click="decline.mutate(run.id)"
-        >
-          {{ t('automations.run.decline.label') }}
-        </Button>
-        <Button
-          v-if="run.state === 'running'"
-          variant="toolbar"
-          size="kira"
-          class="ml-auto"
-          data-testid="run-stop"
-          @click="stop.mutate(run.id)"
-          ><CodiconIcon name="debug-stop" :size="13" />{{ t('common.action.stop.label') }}
-        </Button>
-      </div>
-      <div v-if="ended" class="flex flex-col gap-1.5" data-testid="script-run-result">
-        <RunOutcomeBlock :run="run" @rerun="rerun" />
-        <Button
-          v-if="canContinue"
-          variant="dialog"
-          size="kira"
-          class="self-start"
-          data-testid="run-continue"
-          @click="continueInTerminal"
-        >
-          {{ t('automations.run.continue.label') }}
-        </Button>
-        <Alert v-if="error" variant="error"><AlertDescription>{{ error }}</AlertDescription></Alert>
-      </div>
-      <CodeBlock v-if="!isSmart" data-testid="script-run-command">{{ run.command }}</CodeBlock>
-      <Disclosure
-        v-if="isSmart"
-        :label="t('automations.run.promptSent.label')"
-        trigger-class="text-kira-sm text-muted-foreground"
-        data-testid="script-run-prompt"
+  <div class="flex h-full min-h-0 flex-col" data-testid="script-run-view">
+    <div v-if="!run" class="p-3">
+      <InlineState
+        :kind="query.isPending.value ? 'loading' : 'empty'"
+        data-testid="script-run-missing"
       >
-        <CodeBlock class="mt-1">{{ run.prompt }}</CodeBlock>
-      </Disclosure>
-      <RunLog v-if="run.state !== 'waiting' && run.state !== 'skipped'" :run-id="run.id" />
+        {{
+          query.isPending.value
+            ? t('common.state.loading.loading')
+            : t('automations.run.missing.emptyHint')
+        }}
+      </InlineState>
+    </div>
+    <template v-else>
+      <DetailHeader :title="run.scriptName" data-testid="script-run-header">
+        <template v-if="isSmart" #leading><SmartBadge /></template>
+        <template #meta>
+          <RunStatusBadge :state="run.state" />
+          <RunElapsed :run="run" />
+          <span v-if="isSmart" class="font-data">{{ run.model }}</span>
+          <span v-if="run.resumedFrom" data-testid="script-run-resumed-from">{{
+            t('automations.run.resumedFrom.label')
+          }}</span>
+        </template>
+        <template v-if="run.state === 'waiting' || run.state === 'running'" #actions>
+          <Button
+            v-if="run.state === 'waiting'"
+            variant="dialog-primary"
+            size="kira"
+            data-testid="run-review"
+            @click="claim.mutate(`schedule:${run.id}`)"
+          >
+            {{ t('automations.run.review.label') }}
+          </Button>
+          <Button
+            v-if="run.state === 'waiting'"
+            variant="dialog"
+            size="kira"
+            data-testid="run-decline"
+            @click="decline.mutate(run.id)"
+          >
+            {{ t('automations.run.decline.label') }}
+          </Button>
+          <Button
+            v-if="run.state === 'running'"
+            variant="toolbar"
+            size="kira"
+            data-testid="run-stop"
+            @click="stop.mutate(run.id)"
+            ><CodiconIcon name="debug-stop" :size="13" />{{ t('common.action.stop.label') }}
+          </Button>
+        </template>
+      </DetailHeader>
+      <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 pb-3">
+        <div v-if="ended" class="flex flex-col gap-1.5" data-testid="script-run-result">
+          <RunOutcomeBlock :run="run" @rerun="rerun" />
+          <Button
+            v-if="canContinue"
+            variant="dialog"
+            size="kira"
+            class="self-start"
+            data-testid="run-continue"
+            @click="continueInTerminal"
+          >
+            {{ t('automations.run.continue.label') }}
+          </Button>
+          <Alert v-if="error" variant="error"
+            ><AlertDescription>{{ error }}</AlertDescription></Alert
+          >
+        </div>
+        <CodeBlock v-if="!isSmart" data-testid="script-run-command">{{ run.command }}</CodeBlock>
+        <Disclosure
+          v-if="isSmart"
+          :label="t('automations.run.promptSent.label')"
+          trigger-class="text-kira-sm text-muted-foreground"
+          data-testid="script-run-prompt"
+        >
+          <CodeBlock class="mt-1">{{ run.prompt }}</CodeBlock>
+        </Disclosure>
+        <RunLog v-if="run.state !== 'waiting' && run.state !== 'skipped'" :run-id="run.id" />
+      </div>
     </template>
   </div>
 </template>
