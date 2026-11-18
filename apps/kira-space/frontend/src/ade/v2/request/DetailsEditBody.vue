@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ApprovalItem } from '@shared/domain/approvals';
 import CodeBlock from '@theme/components/CodeBlock.vue';
+import KeyValueList from '@theme/components/KeyValueList.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Label } from '@theme/components/ui/label';
 import { type MessageKey, t } from '@theme/i18n';
@@ -29,10 +30,10 @@ function toggle(path: string): void {
 
 <template>
   <div class="flex flex-col gap-3" data-testid="ade-details-edit-body">
-    <p v-if="payload.reason" data-testid="ade-details-edit-reason">
-      <span class="text-muted-foreground">{{ t('common.field.reason.label') }}</span>
-      {{ payload.reason }}
-    </p>
+    <KeyValueList v-if="payload.reason">
+      <dt>{{ t('common.field.reason.label') }}</dt>
+      <dd data-testid="ade-details-edit-reason">{{ payload.reason }}</dd>
+    </KeyValueList>
     <div
       v-for="file in payload.items"
       :key="file.path"

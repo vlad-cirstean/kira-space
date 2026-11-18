@@ -89,17 +89,15 @@ function eventsFor(id: string) {
           <p class="m-0 text-kira-md whitespace-pre-wrap" data-testid="memory-detail-fact">{{
             selected.fact
           }}</p>
-          <p class="m-0 text-kira-md text-muted-foreground whitespace-pre-wrap">
-            <span class="font-medium">{{ t('common.field.reason.label') }}</span>
-            {{ selected.reason }}
-          </p>
           <div v-if="selected.keywords.length" class="flex flex-wrap gap-1">
             <Badge v-for="k in selected.keywords" :key="k">{{ k }}</Badge>
           </div>
           <FieldDescription data-testid="memory-detail-grade">{{
             t(GRADE_TEXT[selected.origin])
           }}</FieldDescription>
-          <KeyValueList density="compact">
+          <KeyValueList>
+            <dt>{{ t('common.field.reason.label') }}</dt>
+            <dd class="whitespace-pre-wrap">{{ selected.reason }}</dd>
             <dt>{{ t('memory.start.id.label') }}</dt>
             <dd>
               <Identifier :value="selected.lineageId" copyable data-testid="memory-detail-id" />

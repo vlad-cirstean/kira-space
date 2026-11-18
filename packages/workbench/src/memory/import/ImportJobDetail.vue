@@ -3,6 +3,7 @@ import type { MemoryOrigin, MemoryScope } from '@shared/domain/memory';
 import type { ImportAction } from '@shared/domain/memoryImport';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import DetailHeader from '@theme/components/DetailHeader.vue';
+import KeyValueList from '@theme/components/KeyValueList.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -247,25 +248,23 @@ async function discard(): Promise<void> {
           selectedFile.reason
         }}</p
       >
-      <div
-        v-if="selectedFile.groupId"
-        class="flex items-center gap-1.5 text-kira-sm text-muted-foreground"
-        data-testid="import-file-group"
-      >
-        <span>{{ t('memory.import.file.group.label') }}</span>
-        <Identifier :value="selectedFile.groupId" copyable />
-      </div>
+      <KeyValueList v-if="selectedFile.groupId || selectedFile.docPath">
+        <template v-if="selectedFile.groupId">
+          <dt>{{ t('memory.import.file.group.label') }}</dt>
+          <dd data-testid="import-file-group">
+            <Identifier :value="selectedFile.groupId" copyable />
+          </dd>
+        </template>
+        <template v-if="selectedFile.docPath">
+          <dt>{{ t('memory.import.file.docPath.label') }}</dt>
+          <dd data-testid="import-file-doc">
+            <Identifier :value="selectedFile.docPath" split="path" copyable />
+          </dd>
+        </template>
+      </KeyValueList>
       <FieldDescription v-if="selectedFile.orphaned > 0" data-testid="import-file-orphaned">{{
         t('memory.import.file.orphaned.label', { count: selectedFile.orphaned })
       }}</FieldDescription>
-      <div
-        v-if="selectedFile.docPath"
-        class="flex items-center gap-1.5 text-kira-sm text-muted-foreground"
-        data-testid="import-file-doc"
-      >
-        <span>{{ t('memory.import.file.docPath.label') }}</span>
-        <Identifier :value="selectedFile.docPath" split="path" copyable />
-      </div>
       <Alert
         v-if="selectedFile.docError"
         variant="warn"

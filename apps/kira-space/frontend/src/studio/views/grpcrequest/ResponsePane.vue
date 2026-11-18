@@ -7,7 +7,10 @@ import {
 } from '@shared/domain/grpc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
+import InlineState from '@theme/components/InlineState.vue';
+import KeyValueList from '@theme/components/KeyValueList.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
@@ -434,30 +437,30 @@ onUnmounted(() => {
       class="flex flex-1 min-h-0 flex-col gap-2 overflow-auto p-1.5"
       data-testid="grpc-response-metadata"
     >
-      <div class="metadata-group">
-        <div class="mb-0.5 text-kira-sm text-muted-foreground">{{
-          t('studio.grpc.response.header.label')
-        }}</div>
-        <div v-for="(h, i) in header" :key="`h${i}`" class="flex gap-1.5 text-kira-sm">
-          <span class="text-muted-foreground shrink-0 min-w-40 font-data">{{ h.name }}</span>
-          <span class="wrap-anywhere font-data">{{ h.value }}</span>
-        </div>
-        <div v-if="header.length === 0" class="text-kira-sm text-subtle">{{
+      <section class="flex flex-col gap-1">
+        <SectionHeading flush :label="t('studio.grpc.response.header.label')" />
+        <KeyValueList v-if="header.length">
+          <template v-for="(h, i) in header" :key="`h${i}`">
+            <dt class="font-data">{{ h.name }}</dt>
+            <dd class="font-data wrap-anywhere">{{ h.value }}</dd>
+          </template>
+        </KeyValueList>
+        <InlineState v-else kind="empty">{{
           t('studio.grpc.response.noHeader.empty')
-        }}</div>
-      </div>
-      <div class="metadata-group">
-        <div class="mb-0.5 text-kira-sm text-muted-foreground">{{
-          t('studio.grpc.response.trailer.label')
-        }}</div>
-        <div v-for="(tr, i) in trailer" :key="`t${i}`" class="flex gap-1.5 text-kira-sm">
-          <span class="text-muted-foreground shrink-0 min-w-40 font-data">{{ tr.name }}</span>
-          <span class="wrap-anywhere font-data">{{ tr.value }}</span>
-        </div>
-        <div v-if="trailer.length === 0" class="text-kira-sm text-subtle">{{
+        }}</InlineState>
+      </section>
+      <section class="flex flex-col gap-1">
+        <SectionHeading flush :label="t('studio.grpc.response.trailer.label')" />
+        <KeyValueList v-if="trailer.length">
+          <template v-for="(tr, i) in trailer" :key="`t${i}`">
+            <dt class="font-data">{{ tr.name }}</dt>
+            <dd class="font-data wrap-anywhere">{{ tr.value }}</dd>
+          </template>
+        </KeyValueList>
+        <InlineState v-else kind="empty">{{
           t('studio.grpc.response.noTrailer.empty')
-        }}</div>
-      </div>
+        }}</InlineState>
+      </section>
     </div>
     <div v-else class="flex flex-1 min-h-0 flex-col" data-testid="grpc-message-list">
       <!-- P104 §3.4: the scroll element @tanstack/vue-virtual measures and virtualizes against —
