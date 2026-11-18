@@ -180,7 +180,7 @@ async function pick(value: string): Promise<void> {
     </PopoverTrigger>
     <PopoverContent align="end" flush class="w-120" data-testid="ade-add-popover">
       <div class="p-1">
-        <SecondaryTabs v-model="tab" :items="tabItems" size="kira-lg" class="w-full" />
+        <SecondaryTabs v-model="tab" :items="tabItems" class="w-full" />
       </div>
       <div v-if="tab === 'new'" class="@container flex flex-col gap-2 p-3 text-kira-md">
         <Field orientation="responsive">

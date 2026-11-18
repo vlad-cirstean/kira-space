@@ -105,7 +105,6 @@ const summary = computed(() => {
     <div class="flex items-center gap-3">
       <SecondaryTabs
         variant="segmented"
-        size="kira-lg"
         :model-value="filter"
         :items="filterItems"
         count-badge

@@ -38,7 +38,6 @@ async function setMode(v: unknown): Promise<void> {
     <div class="flex flex-wrap items-center gap-3">
       <SecondaryTabs
         variant="segmented"
-        size="kira-lg"
         :model-value="wfUi.workflowMode"
         :items="modeItems"
         :aria-label="t('space.ade.workflows.editor.mode.aria')"

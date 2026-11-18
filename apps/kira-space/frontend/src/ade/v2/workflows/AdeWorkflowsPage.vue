@@ -39,7 +39,6 @@ useKeptScroll('ade:workflows', bodyEl);
   <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-0.5" data-testid="ade-workflows">
     <SecondaryTabs
       class="px-1 py-0.5"
-      size="kira-lg"
       :model-value="wfUi.tab"
       :items="tabs"
       :aria-label="t('space.ade.workflows.tabs.aria')"

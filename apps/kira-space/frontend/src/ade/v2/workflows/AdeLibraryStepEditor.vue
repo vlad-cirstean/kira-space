@@ -71,7 +71,6 @@ async function remove(): Promise<void> {
     <div class="flex flex-wrap items-center gap-3">
       <SecondaryTabs
         variant="segmented"
-        size="kira-lg"
         :model-value="wfUi.stepMode"
         :items="modeItems"
         :aria-label="t('space.ade.steps.mode.aria')"
