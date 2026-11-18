@@ -15,6 +15,10 @@ export const TONE_TEXT: Record<StatusTone, string> = {
   info: 'text-info',
   neutral: 'text-muted-foreground',
 };
+// Toolbar button tone (`data-tone`); neutral keeps the muted default.
+export type ToolbarTone = 'ok' | 'warn' | 'error' | 'info';
+export const toolbarTone = (t: StatusTone): ToolbarTone | undefined =>
+  t === 'neutral' ? undefined : t;
 export const TONE_DOT: Record<StatusTone, 'ok' | 'warn' | 'error' | 'info' | 'muted'> = {
   ok: 'ok',
   warn: 'warn',

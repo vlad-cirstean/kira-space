@@ -35,7 +35,7 @@ withDefaults(
     /** `aria-pressed`; the toolbar variant draws the pressed look from it. */
     pressed?: boolean;
     /** Colours the icon for a state: `ok` (done, on), `warn` or `error`. */
-    tone?: 'ok' | 'warn' | 'error';
+    tone?: 'ok' | 'warn' | 'error' | 'info';
     /** Shortcut text (callers format it), shown as a `Kbd` after the label. */
     kbd?: string;
     /** `data-testid` of the tooltip body. */
