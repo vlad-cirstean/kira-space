@@ -47,11 +47,29 @@ func Start() string {
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 	mux.HandleFunc("/debug/metrics", serveMetrics)
-	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	_, port, _ := net.SplitHostPort(ln.Addr().String())
+	srv := &http.Server{Handler: loopbackHostOnly(port, mux), ReadHeaderTimeout: 10 * time.Second}
 	go func() { _ = srv.Serve(ln) }()
 	addr := ln.Addr().String()
 	slog.Info("pprof listening", "scope", "pprof", "addr", addr)
 	return addr
+}
+
+// loopbackHostOnly rejects a Host header that is not a loopback host on the bound port: DNS
+// rebinding keeps the attacker's domain in Host while resolving it to 127.0.0.1.
+func loopbackHostOnly(port string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !allowedHost(r.Host, port) {
+			http.Error(w, "forbidden host", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func allowedHost(hostport, port string) bool {
+	host, p, err := net.SplitHostPort(hostport)
+	return err == nil && p == port && loopback(host)
 }
 
 func loopback(host string) bool {

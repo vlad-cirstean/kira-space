@@ -1100,7 +1100,7 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 | `KIRA_DEV` | Overrides the production check on a non-`production` build (`kirapaths`) | you |
 | `KIRA_INSECURE_SECRETS` | `1` stores secrets unencrypted on Linux without a keyring. Dev only | you; IPC fixture harness |
 | `KIRA_NO_STARTUP_ALERT` | Skips the native startup-failure dialog; the failure is still logged (`startupfail`) | you, CI and headless runs |
-| `KIRA_PPROF` | `127.0.0.1:<port>` serves `net/http/pprof` and `/debug/metrics` (heap objects, total, goroutines) in the app and in each `memory-mcp` it launches. Loopback only; port `0` picks a free one (logged). Off when unset | you |
+| `KIRA_PPROF` | `127.0.0.1:<port>` serves `net/http/pprof` and `/debug/metrics` (heap objects, total, goroutines) in the app and in each `memory-mcp` it launches. Loopback only, loopback `Host` header required (DNS rebinding); port `0` picks a free one (logged). Off when unset | you |
 | `KIRA_ORT_LIB` | ONNX Runtime shared library path, else the bundled copy | you |
 | `KIRA_TERMINAL_ID`, `KIRA_AGENT_HOOK_SOCKET`, `KIRA_AGENT_HOOK_TOKEN` | Identify a terminal and its hook socket to the Claude hook shim | `terminal` on launch, `harness/claude/hooks` |
 | `KIRA_USER_STATUSLINE` | The user's own statusline command the hook shim chains to | `harness/claude/hooks` shim |
