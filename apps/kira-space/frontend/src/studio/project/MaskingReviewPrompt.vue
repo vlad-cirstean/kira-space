@@ -50,7 +50,7 @@ const onChord = shortcutKeydown(['form.submit'], () => review());
           {{ t('studio.prompt.maskingReview.body', { count: pending.data.value?.count ?? 0 }) }}
         </DialogDescription>
       </DialogHeader>
-      <DialogBody class="flex flex-col gap-2">
+      <DialogBody>
         <p v-if="more > 0" class="m-0 text-muted-foreground" data-testid="masking-review-more">
           {{ t('common.moreWaiting.status', { count: more }) }}
         </p>

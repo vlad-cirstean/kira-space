@@ -86,7 +86,7 @@ function close(): void {
       <DialogHeader close-testid="dynamic-values-dialog-close">
         <DialogTitle>{{ t('studio.api.dynamicValues.title') }}</DialogTitle>
       </DialogHeader>
-      <DialogBody class="gap-1.5">
+      <DialogBody>
         <SearchField
           v-model="filterQuery"
           size="kira-lg"
@@ -102,26 +102,33 @@ function close(): void {
           :icon="ICON.search"
           :title="t('common.state.noMatches.empty')"
         />
-        <Tooltip v-for="entry in filteredEntries" :key="entry.name">
-          <TooltipTrigger as-child>
-            <Button
-              variant="toolbar"
-              size="kira"
-              class="h-auto min-h-6.5 w-full justify-between gap-1 px-1.5 py-1 text-left text-kira-md font-normal text-fg"
-              data-testid="dynamic-values-fake-row"
-              :data-name="entry.name"
-              @click="onCopy(entry.name)"
-            >
-              <code class="shrink-0 text-fg font-data" data-testid="dynamic-values-reference">{{
-                reference(entry.name)
-              }}</code>
-              <Badge variant="info" class="min-w-0 truncate" data-testid="dynamic-values-sample">{{
-                samples[entry.name] ?? ''
-              }}</Badge>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('common.action.copy.label') }}</TooltipContent>
-        </Tooltip>
+        <div class="flex flex-col gap-1.5">
+          <Tooltip v-for="entry in filteredEntries" :key="entry.name">
+            <TooltipTrigger as-child>
+              <Button
+                variant="toolbar"
+                size="kira"
+                class="h-auto min-h-6.5 w-full justify-between gap-1 px-1.5 py-1 text-left text-kira-md font-normal text-fg"
+                data-testid="dynamic-values-fake-row"
+                :data-name="entry.name"
+                @click="onCopy(entry.name)"
+              >
+                <code class="shrink-0 text-fg font-data" data-testid="dynamic-values-reference">{{
+                  reference(entry.name)
+                }}</code>
+                <Badge
+                  variant="info"
+                  class="min-w-0 truncate"
+                  data-testid="dynamic-values-sample"
+                  >{{
+                    samples[entry.name] ?? ''
+                  }}</Badge
+                >
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{{ t('common.action.copy.label') }}</TooltipContent>
+          </Tooltip>
+        </div>
       </DialogBody>
 
       <DialogFooter>

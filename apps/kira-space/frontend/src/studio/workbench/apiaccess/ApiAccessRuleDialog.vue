@@ -85,7 +85,7 @@ function onSave(): void {
       <DialogHeader>
         <DialogTitle>{{ t('studio.settings.dbMcp.apiRules.dialog.title') }}</DialogTitle>
       </DialogHeader>
-      <DialogBody class="flex flex-col gap-3">
+      <DialogBody>
         <Field>
           <FieldLabel :for="effectId">{{
             t('studio.settings.dbMcp.apiRules.effect.label')

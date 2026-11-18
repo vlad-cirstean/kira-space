@@ -76,7 +76,7 @@ function onSave(): void {
         }}</DialogTitle>
         <DialogDescription>{{ t('kubernetes.mcp.dialog.description') }}</DialogDescription>
       </DialogHeader>
-      <DialogBody v-if="draft" class="flex flex-col gap-3">
+      <DialogBody v-if="draft">
         <Field orientation="horizontal">
           <Checkbox
             id="kube-mcp-enabled"

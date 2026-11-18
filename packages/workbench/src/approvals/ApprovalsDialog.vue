@@ -80,8 +80,10 @@ function onChord(event: KeyboardEvent): void {
         </DialogDescription>
       </DialogHeader>
 
-      <DialogBody class="gap-0 py-0">
-        <ApprovalItemCard :key="current.id" :item="current" />
+      <DialogBody flush>
+        <div class="flex flex-1 flex-col px-3">
+          <ApprovalItemCard :key="current.id" :item="current" />
+        </div>
       </DialogBody>
 
       <DialogFooter class="flex-col items-stretch gap-2">

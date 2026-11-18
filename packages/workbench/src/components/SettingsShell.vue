@@ -212,37 +212,39 @@ async function onSave(): Promise<void> {
         <DialogTitle>{{ t('common.module.settings.label') }}</DialogTitle>
       </DialogHeader>
 
-      <DialogBody flush class="flex-row">
-        <nav class="w-44 shrink-0 min-h-0 overflow-y-auto flex flex-col gap-px py-1.5 px-1">
-          <button
-            v-for="section in sections"
-            :key="section"
-            type="button"
-            :class="
-              cn(
-                'text-left border-none',
-                rowVariants({ layout: 'nav', selected: activeSection === section }),
-                indentedSections?.includes(section) && 'pl-4',
-              )
-            "
-            :aria-current="activeSection === section ? 'page' : undefined"
-            :data-testid="`settings-section-${section}`"
-            @click="activeSection = section"
-          >
-            {{ sectionLabels[section] }}
-          </button>
-        </nav>
+      <DialogBody flush>
+        <div class="flex min-h-0 flex-1 flex-row">
+          <nav class="w-44 shrink-0 min-h-0 overflow-y-auto flex flex-col gap-px py-1.5 px-1">
+            <button
+              v-for="section in sections"
+              :key="section"
+              type="button"
+              :class="
+                cn(
+                  'text-left border-none',
+                  rowVariants({ layout: 'nav', selected: activeSection === section }),
+                  indentedSections?.includes(section) && 'pl-4',
+                )
+              "
+              :aria-current="activeSection === section ? 'page' : undefined"
+              :data-testid="`settings-section-${section}`"
+              @click="activeSection = section"
+            >
+              {{ sectionLabels[section] }}
+            </button>
+          </nav>
 
-        <section class="flex-1 overflow-auto flex flex-col p-3 gap-3">
-          <slot
-            name="pane"
-            :active-section="activeSection"
-            :draft="draft"
-            :is-at-default="isAtDefault"
-            :reset-leaf="resetLeaf"
-            :register-field-error="registerFieldError"
-          />
-        </section>
+          <section class="flex-1 overflow-auto flex flex-col p-3 gap-3">
+            <slot
+              name="pane"
+              :active-section="activeSection"
+              :draft="draft"
+              :is-at-default="isAtDefault"
+              :reset-leaf="resetLeaf"
+              :register-field-error="registerFieldError"
+            />
+          </section>
+        </div>
       </DialogBody>
 
       <UiDialogFooter>
