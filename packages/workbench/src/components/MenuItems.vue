@@ -37,6 +37,10 @@ function keyOf(item: MenuItem, idx: number): string {
   return item.type === 'separator' || item.type === 'label' ? `${item.type}-${idx}` : item.id;
 }
 
+function tidOf(item: { id: string; testId?: string }): string {
+  return item.testId ?? `menu-item-${item.id}`;
+}
+
 function swatchClass(swatch: string): string {
   return colorMarkClass('swatch', swatch === 'none' ? null : swatch);
 }
@@ -54,7 +58,7 @@ async function onItemClick(item: MenuItem): Promise<void> {
     <DropdownMenuLabel v-else-if="item.type === 'label'">{{ item.label }}</DropdownMenuLabel>
 
     <DropdownMenuSub v-else-if="item.type === 'submenu'">
-      <DropdownMenuSubTrigger :data-testid="`menu-item-${item.id}`">
+      <DropdownMenuSubTrigger :data-testid="tidOf(item)">
         <span class="flex items-center justify-center shrink-0 size-4">
           <CodiconIcon
             v-if="item.icon"
@@ -79,7 +83,7 @@ async function onItemClick(item: MenuItem): Promise<void> {
           :variant="item.danger ? 'danger' : 'default'"
           :class="[item.hint && HINT_WHEN_DISABLED, item.detail && DETAIL_ROW]"
           :aria-describedby="item.hint ? `${uid}-${item.id}-hint` : undefined"
-          :data-testid="`menu-item-${item.id}`"
+          :data-testid="tidOf(item)"
           @select="onItemClick(item)"
         >
           <span class="flex items-center justify-center shrink-0 size-4">
@@ -88,25 +92,30 @@ async function onItemClick(item: MenuItem): Promise<void> {
               v-else-if="item.icon"
               :name="item.icon"
               :size="13"
-              :class="item.iconClass ?? 'text-muted-foreground'"
+              :class="item.danger ? undefined : 'text-muted-foreground'"
             />
           </span>
           <span class="flex-1 min-w-0">
-            <span class="block truncate">{{ item.label }}</span>
+            <span class="block truncate">
+              <VarText v-if="item.parts" :parts="item.parts" />
+              <template v-else>{{ item.label }}</template>
+            </span>
             <span v-if="item.detail" class="block truncate text-kira-sm text-muted-foreground">{{
               item.detail
             }}</span>
           </span>
-          <span v-if="item.hint" :id="`${uid}-${item.id}-hint`" class="sr-only">{{
-            plainText(hintParts(item.hint))
-          }}</span>
-          <DropdownMenuShortcut
-            v-if="item.shortcut"
-            :data-testid="`menu-item-${item.id}-shortcut`"
+          <span
+            v-if="item.hint"
+            :id="`${uid}-${item.id}-hint`"
+            :data-testid="`${tidOf(item)}-reason`"
+            class="sr-only"
             >{{
-              formatShortcut(item.shortcut)
-            }}</DropdownMenuShortcut
+              plainText(hintParts(item.hint))
+            }}</span
           >
+          <DropdownMenuShortcut v-if="item.shortcut" :data-testid="`${tidOf(item)}-shortcut`">{{
+            formatShortcut(item.shortcut)
+          }}</DropdownMenuShortcut>
           <span v-if="item.checked" class="flex items-center justify-center shrink-0 size-4">
             <CodiconIcon name="check" :size="13" />
           </span>

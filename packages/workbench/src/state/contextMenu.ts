@@ -8,12 +8,14 @@ export type MenuItem =
   | {
       type: 'item';
       id: string;
+      /** Host `data-testid`; defaults to `menu-item-${id}`. May repeat across items. */
+      testId?: string;
       label: string;
+      /** Rich label (VarText) rendered in place of `label`; `label` carries its plain text. */
+      parts?: readonly TextPart[];
       /** A second, muted line under the label. */
       detail?: string;
       icon?: string;
-      /** Replaces the default muted icon colour (a Tailwind text-colour class). */
-      iconClass?: string;
       /** Renders a small color swatch instead of an icon — used by the Color submenu. */
       swatch?: string;
       danger?: boolean;
@@ -29,7 +31,14 @@ export type MenuItem =
       shortcut?: ShortcutId;
       run(): void | Promise<void>;
     }
-  | { type: 'submenu'; id: string; label: string; icon?: string; items: MenuItem[] }
+  | {
+      type: 'submenu';
+      id: string;
+      testId?: string;
+      label: string;
+      icon?: string;
+      items: MenuItem[];
+    }
   | { type: 'separator' }
   /** A non-interactive heading row above the items that follow it (P129 Part 5 §0.10's day
    *  context menu: the day's own `dayLong` above its one toggle). */

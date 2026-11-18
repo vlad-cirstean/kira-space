@@ -2,6 +2,7 @@ export { default as Popover } from '@theme/components/ui/popover/Popover.vue';
 export { default as PopoverAnchor } from '@theme/components/ui/popover/PopoverAnchor.vue';
 export { default as PopoverContent } from '@theme/components/ui/popover/PopoverContent.vue';
 export { default as PopoverDescription } from '@theme/components/ui/popover/PopoverDescription.vue';
+export { default as PopoverFooter } from '@theme/components/ui/popover/PopoverFooter.vue';
 export { default as PopoverHeader } from '@theme/components/ui/popover/PopoverHeader.vue';
 export { default as PopoverTitle } from '@theme/components/ui/popover/PopoverTitle.vue';
 export { default as PopoverTrigger } from '@theme/components/ui/popover/PopoverTrigger.vue';
