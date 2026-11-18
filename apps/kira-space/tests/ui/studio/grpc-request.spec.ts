@@ -635,7 +635,7 @@ test('gRPC request — a request in a collection opens the grpc-request tab kind
 
   const created = collectionRow(page, 'item-grpc-1');
   await expect(created).toBeVisible();
-  // D12's own chip: `grpcMethodClass` gives every gRPC row the one neutral class (no per-row
+  // D12's own chip: every gRPC row gets the one neutral chip (no per-row
   // streaming distinction — that lives in the method's own descriptor, unreachable from a
   // collection row without a live call), so this is the row's one identifying mark.
   await expect(created.locator('[data-testid="grpc-collection-chip"]')).toHaveText('gRPC');
