@@ -3,7 +3,7 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
-import { FieldDescription, FieldError } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
 import { Textarea } from '@theme/components/ui/textarea';
@@ -21,7 +21,6 @@ import { useAdeWorkflowDraftStore } from '../state/adeWorkflowDraft';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import { TONE_TEXT_CLASS } from '../tones';
 import type { StepKind, WorkflowStep } from '../wire';
-import AdeInspectorRow from './inspector/AdeInspectorRow.vue';
 import AdeInspectorSection from './inspector/AdeInspectorSection.vue';
 import AdeStepAdvanced from './inspector/AdeStepAdvanced.vue';
 import AdeStepAgentFields from './inspector/AdeStepAgentFields.vue';
@@ -238,12 +237,10 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
             @patch="patch"
           />
           <AdeStepManualFields v-else :step="step" @patch="patch" />
-          <AdeInspectorRow
-            v-if="extraPrompt"
-            stack
-            :label="t('space.ade.workflows.library.extraPrompt.label')"
-            :for="id('extra-prompt')"
-          >
+          <Field v-if="extraPrompt">
+            <FieldLabel :for="id('extra-prompt')">{{
+              t('space.ade.workflows.library.extraPrompt.label')
+            }}</FieldLabel>
             <Textarea
               :id="id('extra-prompt')"
               :model-value="step.promptExtra ?? ''"
@@ -251,8 +248,10 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
               data-testid="ade-wf-step-extra-prompt"
               @update:model-value="(v: string | number) => patch({ promptExtra: String(v) })"
             />
-            <template #hint>{{ t('space.ade.workflows.library.extraPrompt.hint') }}</template>
-          </AdeInspectorRow>
+            <FieldDescription>{{
+              t('space.ade.workflows.library.extraPrompt.hint')
+            }}</FieldDescription>
+          </Field>
         </AdeInspectorSection>
 
         <AdeInspectorSection

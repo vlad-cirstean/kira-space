@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Card } from '@theme/components/ui/card';
-import { FieldDescription } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Textarea } from '@theme/components/ui/textarea';
 import VarText from '@theme/components/VarText.vue';
@@ -12,7 +12,6 @@ import { useCustomScriptsStore } from '../../../../state/customScripts';
 import { promptParts, smartBodyParts } from '../../automation/smartStepBody';
 import { usesRepoTokens } from '../../board/workflowForm';
 import type { WorkflowStep } from '../../wire';
-import AdeInspectorRow from './AdeInspectorRow.vue';
 
 const props = defineProps<{ step: WorkflowStep }>();
 const emit = defineEmits<{ patch: [p: Partial<WorkflowStep>] }>();
@@ -62,7 +61,8 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
     @update:model-value="setMode"
   />
   <div v-if="smart" class="flex flex-col gap-3" data-testid="ade-wf-step-smart">
-    <AdeInspectorRow :label="t('common.smartScript.label')" :for="id('script')">
+    <Field orientation="responsive">
+      <FieldLabel :for="id('script')">{{ t('common.smartScript.label') }}</FieldLabel>
       <NativeSelect
         :id="id('script')"
         variant="bordered"
@@ -76,12 +76,12 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
         }}</option>
         <option v-for="r in smartScripts" :key="r.id" :value="r.name">✦ {{ r.name }}</option>
       </NativeSelect>
-      <template v-if="step.smartScript && !script" #error>
+      <FieldError v-if="step.smartScript && !script">
         <span data-testid="ade-wf-step-script-missing">{{
           t('space.ade.workflows.stepInspector.scriptMissing.error')
         }}</span>
-      </template>
-    </AdeInspectorRow>
+      </FieldError>
+    </Field>
     <ParamsForm
       v-if="plainParams.length > 0"
       :model-value="step.params"
@@ -100,7 +100,8 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
     </Card>
   </div>
   <template v-else>
-    <AdeInspectorRow stack :label="t('common.prompt.label')" :for="id('prompt')">
+    <Field>
+      <FieldLabel :for="id('prompt')">{{ t('common.prompt.label') }}</FieldLabel>
       <Textarea
         :id="id('prompt')"
         :model-value="step.prompt"
@@ -109,15 +110,15 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
         data-testid="ade-wf-step-prompt"
         @update:model-value="(v: string | number) => emit('patch', { prompt: String(v) })"
       />
-      <template v-if="outsideVars" #error>
+      <FieldError v-if="outsideVars">
         <span data-testid="ade-wf-step-outside-vars-error">{{
           t('space.ade.workflows.stepInspector.outsideVars.error', {
             repo: '{repo}',
             branch: '{branch}',
           })
         }}</span>
-      </template>
-    </AdeInspectorRow>
+      </FieldError>
+    </Field>
     <Card
       v-if="step.prompt"
       class="text-kira-sm text-muted-foreground"

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
 import { computed } from 'vue';
 import { useProjectOptions } from '../../../../repo/state/projectOptions';
 import type { WorkflowStep } from '../../wire';
-import AdeInspectorRow from './AdeInspectorRow.vue';
 import AdeStepAgentPick from './AdeStepAgentPick.vue';
 import AdeStepStatus from './AdeStepStatus.vue';
 
@@ -83,20 +83,20 @@ function setScope(v: string): void {
 </script>
 
 <template>
-  <AdeInspectorRow
-    v-if="canLeaveRepos"
-    :label="t('space.ade.workflows.stepInspector.repoAware.label')"
-    :for="id('repo-aware')"
-  >
+  <Field v-if="canLeaveRepos" orientation="responsive">
+    <FieldLabel :for="id('repo-aware')">{{
+      t('space.ade.workflows.stepInspector.repoAware.label')
+    }}</FieldLabel>
     <Checkbox
       :id="id('repo-aware')"
       :model-value="!step.outsideRepo"
       data-testid="ade-wf-step-repo-aware"
       @update:model-value="(v) => onRepoAware(v === true)"
     />
-    <template #hint>{{ t('space.ade.workflows.stepInspector.repoAware.hint') }}</template>
-  </AdeInspectorRow>
-  <AdeInspectorRow v-if="showRepos" :label="t('space.ade.workflows.field.runsOn.label')">
+    <FieldDescription>{{ t('space.ade.workflows.stepInspector.repoAware.hint') }}</FieldDescription>
+  </Field>
+  <Field v-if="showRepos" orientation="responsive">
+    <FieldLabel>{{ t('space.ade.workflows.field.runsOn.label') }}</FieldLabel>
     <SecondaryTabs
       :model-value="scope"
       :aria-label="t('space.ade.workflows.field.runsOn.label')"
@@ -114,21 +114,23 @@ function setScope(v: string): void {
       :error="projects.error.value"
       @select="(o) => emit('patch', { runsOn: `only ${o.label}` })"
     />
-    <template v-if="missing" #hint>
+    <FieldDescription v-if="missing">
       <span data-testid="ade-wf-step-scope-missing">{{
         t('space.ade.workflows.runsOn.missing.hint', { name: stored })
       }}</span>
-    </template>
-  </AdeInspectorRow>
-  <AdeInspectorRow :label="t('common.action.start.label')">
+    </FieldDescription>
+  </Field>
+  <Field orientation="responsive">
+    <FieldLabel>{{ t('common.action.start.label') }}</FieldLabel>
     <SecondaryTabs
       :model-value="step.before || 'auto'"
       :items="gates"
       data-testid="ade-wf-step-gate"
       @update:model-value="(v) => emit('patch', { before: v === 'approval' ? 'approval' : 'auto' })"
     />
-  </AdeInspectorRow>
-  <AdeInspectorRow :label="t('common.field.timeout.label')" :for="id('timeout')">
+  </Field>
+  <Field orientation="responsive">
+    <FieldLabel :for="id('timeout')">{{ t('common.field.timeout.label') }}</FieldLabel>
     <Input
       :id="id('timeout')"
       :model-value="step.timeout"
@@ -136,7 +138,7 @@ function setScope(v: string): void {
       data-testid="ade-wf-step-timeout"
       @update:model-value="(v: string | number) => emit('patch', { timeout: String(v) })"
     />
-  </AdeInspectorRow>
+  </Field>
   <AdeStepStatus :step="step" @patch="(p) => emit('patch', p)" />
   <AdeStepAgentPick
     v-if="step.kind === 'agent' || step.kind === 'review'"

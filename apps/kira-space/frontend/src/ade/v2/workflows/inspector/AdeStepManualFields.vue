@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { FieldDescription } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import { defaultSandbox } from '../../board/stepSandbox';
 import { usesRepoTokens } from '../../board/workflowForm';
 import type { WorkflowStep } from '../../wire';
-import AdeInspectorRow from './AdeInspectorRow.vue';
 
 const props = defineProps<{ step: WorkflowStep }>();
 const emit = defineEmits<{ patch: [p: Partial<WorkflowStep>] }>();
@@ -19,10 +18,10 @@ const outsideVars = computed(() => props.step.outsideRepo && usesRepoTokens(prop
   <FieldDescription data-testid="ade-wf-manual-note">{{
     t('space.ade.workflows.stepInspector.manualNote.hint')
   }}</FieldDescription>
-  <AdeInspectorRow
-    :label="t('space.ade.workflows.stepInspector.session.label')"
-    :for="id('session')"
-  >
+  <Field orientation="responsive">
+    <FieldLabel :for="id('session')">{{
+      t('space.ade.workflows.stepInspector.session.label')
+    }}</FieldLabel>
     <Checkbox
       :id="id('session')"
       :model-value="step.session"
@@ -39,13 +38,12 @@ const outsideVars = computed(() => props.step.outsideRepo && usesRepoTokens(prop
           })
       "
     />
-  </AdeInspectorRow>
+  </Field>
   <template v-if="step.session">
-    <AdeInspectorRow
-      stack
-      :label="t('space.ade.workflows.stepInspector.prompt.aria')"
-      :for="id('session-prompt')"
-    >
+    <Field>
+      <FieldLabel :for="id('session-prompt')">{{
+        t('space.ade.workflows.stepInspector.prompt.aria')
+      }}</FieldLabel>
       <Textarea
         :id="id('session-prompt')"
         :model-value="step.prompt"
@@ -54,26 +52,28 @@ const outsideVars = computed(() => props.step.outsideRepo && usesRepoTokens(prop
         data-testid="ade-wf-step-session-prompt"
         @update:model-value="(v: string | number) => emit('patch', { prompt: String(v) })"
       />
-      <template v-if="outsideVars" #error>
+      <FieldError v-if="outsideVars">
         <span data-testid="ade-wf-step-outside-vars-error">{{
           t('space.ade.workflows.stepInspector.outsideVars.error', {
             repo: '{repo}',
             branch: '{branch}',
           })
         }}</span>
-      </template>
-    </AdeInspectorRow>
-    <AdeInspectorRow
-      :label="t('space.ade.workflows.stepInspector.repoAware.label')"
-      :for="id('repo-aware')"
-    >
+      </FieldError>
+    </Field>
+    <Field orientation="responsive">
+      <FieldLabel :for="id('repo-aware')">{{
+        t('space.ade.workflows.stepInspector.repoAware.label')
+      }}</FieldLabel>
       <Checkbox
         :id="id('repo-aware')"
         :model-value="!step.outsideRepo"
         data-testid="ade-wf-step-repo-aware"
         @update:model-value="(v) => emit('patch', { outsideRepo: v !== true })"
       />
-      <template #hint>{{ t('space.ade.workflows.stepInspector.repoAware.hint') }}</template>
-    </AdeInspectorRow>
+      <FieldDescription>{{
+        t('space.ade.workflows.stepInspector.repoAware.hint')
+      }}</FieldDescription>
+    </Field>
   </template>
 </template>

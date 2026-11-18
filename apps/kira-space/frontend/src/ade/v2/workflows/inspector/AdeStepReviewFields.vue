@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { FieldDescription } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import type { ReviewStepConfig, WorkflowStep } from '../../wire';
 import { useStepScope } from '../stepScope';
-import AdeInspectorRow from './AdeInspectorRow.vue';
 
 const props = defineProps<{ step: WorkflowStep; steps: WorkflowStep[] }>();
 const library = useStepScope() === 'library';
@@ -25,10 +24,10 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
 
 <template>
   <div v-if="step.review" class="flex flex-col gap-3" data-testid="ade-wf-step-review">
-    <AdeInspectorRow
-      :label="t('space.ade.workflows.stepInspector.reviewSendTo.label')"
-      :for="id('review-send-to')"
-    >
+    <Field orientation="responsive">
+      <FieldLabel :for="id('review-send-to')">{{
+        t('space.ade.workflows.stepInspector.reviewSendTo.label')
+      }}</FieldLabel>
       <NativeSelect
         :id="id('review-send-to')"
         variant="bordered"
@@ -40,12 +39,11 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
         <option value="implementer">{{ t('space.ade.reviewStep.route.implementer.label') }}</option>
         <option value="new">{{ t('space.ade.reviewStep.route.new.label') }}</option>
       </NativeSelect>
-    </AdeInspectorRow>
-    <AdeInspectorRow
-      v-if="!library && step.review.sendTo === 'implementer'"
-      :label="t('space.ade.workflows.stepInspector.reviewImplementer.label')"
-      :for="id('review-implementer')"
-    >
+    </Field>
+    <Field v-if="!library && step.review.sendTo === 'implementer'" orientation="responsive">
+      <FieldLabel :for="id('review-implementer')">{{
+        t('space.ade.workflows.stepInspector.reviewImplementer.label')
+      }}</FieldLabel>
       <NativeSelect
         :id="id('review-implementer')"
         variant="bordered"
@@ -57,7 +55,7 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
         <option value="">{{ t('space.ade.workflows.stepInspector.reviewNearest.option') }}</option>
         <option v-for="s in implementers" :key="s.id" :value="s.id">{{ s.name }}</option>
       </NativeSelect>
-    </AdeInspectorRow>
+    </Field>
     <FieldDescription data-testid="ade-wf-review-note">{{
       t('space.ade.workflows.stepInspector.reviewNote.hint')
     }}</FieldDescription>
