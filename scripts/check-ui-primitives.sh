@@ -12,6 +12,8 @@
 #
 # Guards U72-U82: git show bd0c224688d9:docs/v2.2/plans/P266-consistency-audit.md section 4.4.
 #
+# Guards U110-U117: docs/v0.3.16/plans/P672-part2.md; their current offenders sit in the dated TEMPORARY block.
+#
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
 
@@ -144,6 +146,130 @@ U109 packages/git-ui/src/components/FileTree.vue # git-ui is its own Vue app wit
 U109 packages/git-ui/src/components/review/ReviewView.vue # git-ui is its own Vue app with no Pinia; P660 Part 2 changes its mount contract
 PERMANENT
 
+# "U<n> path # YYYY-MM-DD P672 Part <k>": a current offender of a P672 guard, kept until Part <k>
+# fixes it. Never PERMANENT. An entry that stops matching fails the run, so the block only shrinks;
+# P672 Part 9 deletes the block and this mechanism once it is empty.
+cat >"$TMP/temp" <<'TEMPORARY'
+U110 apps/kira-space/frontend/src/studio/api/ApiVariablesTable.vue # 2026-11-18 P672 Part 3
+U110 apps/kira-space/frontend/src/studio/approvals/ReviewResultOption.vue # 2026-11-18 P672 Part 3
+U110 apps/kira-space/frontend/src/studio/project/DataGripImportDialog.vue # 2026-11-18 P672 Part 3
+U110 apps/kira-space/frontend/src/studio/project/FiltersDialog.vue # 2026-11-18 P672 Part 3
+U110 apps/kira-space/frontend/src/studio/project/connection/CheckboxRow.vue # 2026-11-18 P672 Part 3
+U110 apps/kira-space/frontend/src/studio/project/connection/ConnectionMcpTables.vue # 2026-11-18 P672 Part 3
+U110 apps/kira-space/frontend/src/studio/views/documents/ProjectionMenu.vue # 2026-11-18 P672 Part 3
+U110 apps/kira-space/frontend/src/studio/views/grid/ColumnsMenu.vue # 2026-11-18 P672 Part 3
+U110 apps/kira-space/frontend/src/studio/views/httprequest/RequestSettingsPane.vue # 2026-11-18 P672 Part 3
+U110 apps/kira-space/frontend/src/studio/views/httprequest/ResponseHistoryList.vue # 2026-11-18 P672 Part 3
+U110 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # 2026-11-18 P672 Part 3
+U110 apps/kira-space/frontend/src/studio/views/stream/StreamFilterRow.vue # 2026-11-18 P672 Part 3
+U110 packages/git-ui/src/components/FileTree.vue # 2026-11-18 P672 Part 3
+U110 packages/workbench/src/automations/form/ParamsEditor.vue # 2026-11-18 P672 Part 3
+U110 packages/workbench/src/automations/form/ToolsField.vue # 2026-11-18 P672 Part 3
+U110 packages/workbench/src/automations/run/ParamsForm.vue # 2026-11-18 P672 Part 3
+U110 packages/workbench/src/memory/distill/DistillResult.vue # 2026-11-18 P672 Part 3
+U110 packages/workbench/src/memory/import/ImportConfirmDialog.vue # 2026-11-18 P672 Part 3
+U111 apps/kira-space/frontend/src/ade/v2/AdeAddPopover.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/ade/v2/links/AdeLinkAdd.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/ade/v2/panel/AdeTaskBranchForm.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/ade/v2/plan/AdeArchivedFinder.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/ade/v2/plan/AdeEstimateChip.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/ade/v2/plan/AdeTaskChildren.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/ade/v2/sessions/AdeSessionsMenu.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/ade/v2/status/AdeAgentsStatusItem.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/ade/v2/updates/AdeUpdatesPopover.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/ade/v2/workflows/statuses/AdeTaskStatuses.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/api/VariableHistoryMenu.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/api/VariablesOverviewPanel.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/project/ErrorPopover.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/views/console/kibana/FilterBar.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/views/console/kibana/TimePicker.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/views/documents/DocumentToolbar.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/views/grid/ColumnsMenu.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/views/grid/PreviewCommandPanel.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/views/shared/SavedListMenu.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/views/shared/celleditor/CellGenerateMenu.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/views/shared/celleditor/TimestampPane.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/views/stream/StreamFilterRow.vue # 2026-11-18 P672 Part 5
+U111 apps/kira-space/frontend/src/studio/views/stream/StreamToolbar.vue # 2026-11-18 P672 Part 5
+U111 packages/git-ui/src/App.vue # 2026-11-18 P672 Part 5
+U111 packages/git-ui/src/components/RefsPopover.vue # 2026-11-18 P672 Part 5
+U111 packages/git-ui/src/components/SearchBox.vue # 2026-11-18 P672 Part 5
+U111 packages/workbench/src/automations/form/ScheduleFields.vue # 2026-11-18 P672 Part 5
+U111 packages/workbench/src/automations/run/AdeContextFields.vue # 2026-11-18 P672 Part 5
+U111 packages/workbench/src/components/AutocompleteField.vue # 2026-11-18 P672 Part 5
+U111 packages/workbench/src/components/RunningOpsStatusItem.vue # 2026-11-18 P672 Part 5
+U111 packages/workbench/src/components/pickers/PickerPopover.vue # 2026-11-18 P672 Part 5
+U112 apps/kira-space/frontend/mobile/AppShell.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/mobile/components/PhoneApprovals.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/mobile/screens/PairScreen.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/mobile/screens/TerminalScreen.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/src/ade/v2/later/AdeShelfSection.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/src/ade/v2/needs/AdeAllSessions.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/src/ade/v2/panel/AdeArchivedPanel.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/src/ade/v2/panel/AdeBranchPanel.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/src/ade/v2/port/AdePortExportDialog.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/src/ade/v2/port/AdePortResult.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/src/ade/v2/settings/AdeSettingsResult.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/src/ade/v2/settings/AdeSettingsSecrets.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/src/ade/v2/workflows/statuses/AdeTaskStatuses.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/src/studio/api/ApiAgentAccess.vue # 2026-11-18 P672 Part 6
+U112 apps/kira-space/frontend/src/studio/api/ApiSecrets.vue # 2026-11-18 P672 Part 6
+U112 packages/docker-ui/src/components/EngineOverview.vue # 2026-11-18 P672 Part 6
+U112 packages/git-ui/src/components/review/ReviewNoBranch.vue # 2026-11-18 P672 Part 6
+U112 packages/git-ui/src/components/review/ReviewView.vue # 2026-11-18 P672 Part 6
+U112 packages/workbench/src/automations/RunSecretsSection.vue # 2026-11-18 P672 Part 6
+U112 packages/workbench/src/llmPrompts/PromptDetail.vue # 2026-11-18 P672 Part 6
+U112 packages/workbench/src/memory/distill/DistillResult.vue # 2026-11-18 P672 Part 6
+U112 packages/workbench/src/memory/distill/DistillRewriteResult.vue # 2026-11-18 P672 Part 6
+U113 apps/kira-space/frontend/src/ade/v2/AdeAddPopover.vue # 2026-11-18 P672 Part 6
+U113 apps/kira-space/frontend/src/ade/v2/panel/AdeArchivedPanel.vue # 2026-11-18 P672 Part 6
+U113 apps/kira-space/frontend/src/ade/v2/panel/AdeBranchPanel.vue # 2026-11-18 P672 Part 6
+U113 apps/kira-space/frontend/src/ade/v2/panel/AdeMainTab.vue # 2026-11-18 P672 Part 6
+U113 apps/kira-space/frontend/src/hostview/IssueSidebar.vue # 2026-11-18 P672 Part 6
+U113 apps/kira-space/frontend/src/repo/RepoIdentity.vue # 2026-11-18 P672 Part 6
+U113 apps/kira-space/frontend/src/studio/approvals/ProofReviewBody.vue # 2026-11-18 P672 Part 6
+U113 apps/kira-space/frontend/src/studio/views/httprequest/TimelinePane.vue # 2026-11-18 P672 Part 6
+U113 packages/git-ui/src/components/CommitMeta.vue # 2026-11-18 P672 Part 6
+U113 packages/theme/src/components/TooltipDetails.vue # 2026-11-18 P672 Part 6
+U113 packages/workbench/src/approvals/ApprovalDetails.vue # 2026-11-18 P672 Part 6
+U113 packages/workbench/src/approvals/ApprovalPairs.vue # 2026-11-18 P672 Part 6
+U113 packages/workbench/src/components/OpLogDetail.vue # 2026-11-18 P672 Part 6
+U113 packages/workbench/src/memory/MemoryStart.vue # 2026-11-18 P672 Part 6
+U114 apps/kira-space/frontend/src/ade/v2/AdeActivityIcon.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/context/AdeContextPane.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/dialog/AdeAgentDialog.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/needs/AdeAllSessionRow.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/needs/AdeNeedsPage.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/panel/AdeBranchPanel.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/panel/AdeRunOutcome.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/panel/AdeStepBlock.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/panel/AdeTaskIssueLine.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/review/AdeReviewSync.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/sessions/AdeSessionsRow.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/settings/AdeSettingsPane.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/workflows/AdeStepNode.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/workflows/AdeStepsTab.vue # 2026-11-18 P672 Part 7
+U114 apps/kira-space/frontend/src/ade/v2/workflows/AdeWorkflowsTab.vue # 2026-11-18 P672 Part 7
+U114 packages/workbench/src/automations/RunFileDialog.vue # 2026-11-18 P672 Part 7
+U114 packages/workbench/src/automations/ScriptBrokenRow.vue # 2026-11-18 P672 Part 7
+U114 packages/workbench/src/automations/ScriptRow.vue # 2026-11-18 P672 Part 7
+U115 apps/kira-space/frontend/src/ade/v2/details/AdeDetailsDiskBanner.vue # 2026-11-18 P672 Part 9
+U115 apps/kira-space/frontend/src/ade/v2/panel/AdePanelForwardBar.vue # 2026-11-18 P672 Part 9
+U115 apps/kira-space/frontend/src/ade/v2/request/DetailsEditBody.vue # 2026-11-18 P672 Part 9
+U115 apps/kira-space/frontend/src/studio/proof/ProofHeader.vue # 2026-11-18 P672 Part 9
+U115 apps/kira-space/frontend/src/workbench/settings/FileTypesPane.vue # 2026-11-18 P672 Part 9
+U116 packages/docker-ui/src/components/ContainerList.vue # 2026-11-18 P672 Part 5
+U117 apps/kira-space/frontend/src/ade/v2/dialog/AdeAgentDialog.vue # 2026-11-18 P672 Part 8
+U117 apps/kira-space/frontend/src/studio/project/connection/ConnectionGeneralTab.vue # 2026-11-18 P672 Part 8
+U117 apps/kira-space/frontend/src/studio/project/connection/ConnectionMcpMasked.vue # 2026-11-18 P672 Part 8
+U117 apps/kira-space/frontend/src/studio/project/connection/ConnectionMcpReview.vue # 2026-11-18 P672 Part 8
+U117 apps/kira-space/frontend/src/studio/project/connection/ConnectionMcpTab.vue # 2026-11-18 P672 Part 8
+U117 packages/workbench/src/automations/form/ParamsEditor.vue # 2026-11-18 P672 Part 8
+U117 packages/workbench/src/memory/import/ImportConfirmDialog.vue # 2026-11-18 P672 Part 8
+U117 packages/workbench/src/settings/fields/RowDensityField.vue # 2026-11-18 P672 Part 8
+TEMPORARY
+
 # `(?&t)` = the inside of one tag, quote-aware so `=>` or `a > b` inside an attribute value does not
 # end the tag early.
 PRE='(?(DEFINE)(?<t>(?:"[^"]*"|'"'"'[^'"'"']*'"'"'|[^>"'"'"'])*))'
@@ -259,6 +385,15 @@ U106@@v@@@@filled button (outline or toolbar; see P525 rules)@@<(?:Button|Toolti
 U107@@v@@@@icon in a dialog header (title, description and actions only)@@(?s)<DialogHeader\b(?&t)>(?:(?!</DialogHeader>|<Button\b|<TooltipIconButton\b).)*?<(?:CodiconIcon|EngineIcon|svg)\b
 U108@@v@@@@toolbar pressed look by class (use aria-pressed / aria-expanded; the toolbar variant draws it)@@<(?:Button|TooltipIconButton)\b(?&t)\s:class="[^"]*'bg-field
 U109@@s@@/behaviour/!|/testing/!@@panel view state in a component ref (use useKeptState, useKeptScroll)@@const \w*(?:[Ss]earch|[Qq]uery|[Ff]ilter|[Nn]eedle)\w*\s*=\s*ref\b|reactive\(\{[^}]*[Ss]earch\w*:\s*''
+U110@@v@@@@Checkbox restyled: size class or a check icon child (the primitive draws the 14px box and its CheckIcon)@@<Checkbox\b(?&t)\s:?class="[^"]*${TOK}size-|(?s)<Checkbox\b(?&t)(?<!/)>(?:(?!</Checkbox>).)*?<CodiconIcon\b
+U111@@v@@@@PopoverContent padding or gap class (default form popover, or flush for a list popover)@@<PopoverContent\b(?&t)\s:?class="[^"]*${TOK}(?:p|px|py|pt|pb|gap)-
+U112@@v@@DetailHeader.vue@@heading element outside DetailHeader (titles DetailHeader, sections SectionHeading or FieldLegend, cards CardTitle)@@<h[1-6]\b
+U113@@v@@@@KeyValueList class sets grid, gap, type or alignment (use density)@@<KeyValueList\b(?&t)\s:?class="[^"]*${TOK}(?:grid-cols-|gap-|text-|font-|items-|py-|\[&)
+U113@@v@@KeyValueList.vue@@hand key-value grid or raw <dl> (use KeyValueList)@@${TOK}grid-cols-\[(?:auto|max-content|72px|7\.5rem)_(?:1fr|minmax\(0,1fr\))\]|<dl\b
+U114@@v@@/ade/v2/plan/@@ADE tone class off the plan board (theme tones and Badge elsewhere, P672 D1)@@${TOK}(?:text|bg|border)-tone-[a-z]
+U115@@vt@@@@font-mono (use font-data)@@${TOK}font-mono(?![\w-])
+U116@@vt@@@@toned menu icon (menu icons stay muted; a destructive item uses variant destructive)@@iconClass:\s*['"\x60][^'"\x60]*${TOK}text-(?:ok|warn|error|info|tone-)
+U117@@v@@@@segmented SecondaryTabs inside a form (a form value is variant choice)@@(?s)<(?:Field|FieldSet|DialogBody)\b(?&t)(?<!/)>(?:(?!</(?:Field|FieldSet|DialogBody)>).)*?<SecondaryTabs\b(?&t)\svariant="segmented"
 GUARDS
 
 # hits: "U<n> path"
@@ -324,10 +459,25 @@ mv "$TMP/perm_ids" "$TMP/perm"
 sort -u "$TMP/perm" -o "$TMP/perm"
 
 STATUS=0
+if grep -Ev '^#|^$' "$TMP/temp" | grep -Ev '^U11[0-7] [^ ]+ # [0-9]{4}-[0-9]{2}-[0-9]{2} P672 Part [3-9]$' >"$TMP/bad"; then
+  while IFS= read -r bad; do
+    echo "check-ui-primitives: malformed temporary baseline: $bad" >&2
+  done <"$TMP/bad"
+  exit 1
+fi
+sed -e '/^#/d' -e 's/[[:space:]]*#.*$//' "$TMP/temp" | sort -u >"$TMP/temp_ids"
+comm -12 "$TMP/perm" "$TMP/temp_ids" >"$TMP/both"
+while read -r id f; do
+  echo "check-ui-primitives: in PERMANENT and TEMPORARY: $id $f" >&2
+  STATUS=1
+done <"$TMP/both"
+: >"$TMP/used_temp"
 : >"$TMP/used_perm"
 while read -r id f; do
   if grep -qxF "$id $f" "$TMP/perm"; then
     echo "$id $f" >>"$TMP/used_perm"
+  elif grep -qxF "$id $f" "$TMP/temp_ids"; then
+    echo "$id $f" >>"$TMP/used_temp"
   else
     msg=$(grep "^$id@@" "$TMP/guards" | head -1 | awk -F'@@' '{print $4}')
     echo "check-ui-primitives: $f: $id $msg" >&2
@@ -342,6 +492,14 @@ while read -r id f; do
     STATUS=1
   fi
 done <"$TMP/perm"
+
+sort -u "$TMP/used_temp" -o "$TMP/used_temp"
+while read -r id f; do
+  if ! grep -qxF "$id $f" "$TMP/used_temp"; then
+    echo "check-ui-primitives: stale temporary baseline: $id $f (fixed; delete the line)" >&2
+    STATUS=1
+  fi
+done <"$TMP/temp_ids"
 
 # A built-in exempt name that exempts nothing fails; a trailing `!` (blanket dirs) opts out.
 gn=0
@@ -364,6 +522,8 @@ done <"$TMP/guards"
 if [ "$STATUS" -ne 0 ]; then
   echo "check-ui-primitives: see git show bd0c224688d9:docs/v2.2/plans/P262-ui-unification.md, P263-ui-unification-2.md §2 and P264-behaviour-unification.md §3.3 and P266-consistency-audit.md §4.4." >&2
 else
+  n=$(wc -l <"$TMP/temp_ids" | tr -d ' ')
+  if [ "$n" -gt 0 ]; then echo "check-ui-primitives: $n temporary P672 baseline entries left."; fi
   echo "check-ui-primitives: every guarded element follows the P262-P266 rules."
 fi
 exit $STATUS
