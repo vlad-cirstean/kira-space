@@ -5,7 +5,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 
 | # | Phase | Status |
 |---|-------|--------|
-| P656 | Release retention deletes whole releases, never tags | Planned |
+| P656 | Release retention deletes whole releases, never tags | Done |
 | P657 | Memory tooltip Scripts category | Done |
 | P658 | SQL data view column search | Done |
 | P659 | Task card hover actions UX | Done |
