@@ -4,7 +4,13 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
+import {
+  Popover,
+  PopoverBar,
+  PopoverBody,
+  PopoverContent,
+  PopoverTrigger,
+} from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { refDebounced } from '@vueuse/core';
@@ -179,10 +185,10 @@ async function pick(value: string): Promise<void> {
       </Button>
     </PopoverTrigger>
     <PopoverContent align="end" flush class="w-120" data-testid="ade-add-popover">
-      <div class="p-1">
+      <PopoverBar>
         <SecondaryTabs v-model="tab" :items="tabItems" class="w-full" />
-      </div>
-      <div v-if="tab === 'new'" class="@container flex flex-col gap-2 p-3 text-kira-md">
+      </PopoverBar>
+      <PopoverBody v-if="tab === 'new'" class="@container">
         <Field orientation="responsive">
           <FieldLabel for="ade-nw-title">{{ t('common.field.title.label') }}</FieldLabel>
           <Input
@@ -242,15 +248,17 @@ async function pick(value: string): Promise<void> {
             }}</span>
           </div>
         </Field>
-      </div>
+      </PopoverBody>
       <div v-else>
-        <FieldDescription v-if="attachTo" class="truncate px-3 py-1.5" data-testid="ade-add-attach">
-          <CatalogText k="space.ade.add.attach.label">
-            <template #title
-              ><span class="font-medium text-fg">{{ attachTo.title }}</span></template
-            >
-          </CatalogText>
-        </FieldDescription>
+        <PopoverBody v-if="attachTo">
+          <FieldDescription class="truncate" data-testid="ade-add-attach">
+            <CatalogText k="space.ade.add.attach.label">
+              <template #title
+                ><span class="font-medium text-fg">{{ attachTo.title }}</span></template
+              >
+            </CatalogText>
+          </FieldDescription>
+        </PopoverBody>
         <BranchPicker
           v-model:search="q"
           inline
@@ -276,9 +284,9 @@ async function pick(value: string): Promise<void> {
           </template>
         </BranchPicker>
       </div>
-      <FieldError v-if="error" class="px-3 pb-2" data-testid="ade-add-error">{{
-        error
-      }}</FieldError>
+      <PopoverBody v-if="error">
+        <FieldError data-testid="ade-add-error">{{ error }}</FieldError>
+      </PopoverBody>
     </PopoverContent>
   </Popover>
 </template>

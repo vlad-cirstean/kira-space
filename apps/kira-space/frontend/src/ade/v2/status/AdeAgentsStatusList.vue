@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Button } from '@theme/components/ui/button';
-import { PopoverFooter } from '@theme/components/ui/popover';
+import { PopoverFooter, PopoverList } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import { useModeStore } from '../../../state/mode';
@@ -53,7 +55,8 @@ function showAll(): void {
 <template>
   <InlineState v-if="!model" kind="loading">{{ t('common.state.loading.loading') }}</InlineState>
   <template v-else>
-    <div class="flex flex-col gap-0.5 p-1">
+    <SectionHeading :label="t('space.statusBar.agents.tooltip')" />
+    <PopoverList>
       <AdeAgentsStatusRow
         v-for="r in rows"
         :key="r.session.id"
@@ -61,11 +64,12 @@ function showAll(): void {
         :title="titleOf(r.session.taskId)"
         @open="open(r.session.taskId, r.session.id, r.session.branchId)"
       />
-    </div>
+    </PopoverList>
     <PopoverFooter>
-      <Button variant="link" size="inline" data-testid="status-agents-all" @click="showAll">{{
-        t('space.ade.needsPage.showAll.label')
-      }}</Button>
+      <Button variant="toolbar" size="kira" data-testid="status-agents-all" @click="showAll">
+        <CodiconIcon name="link-external" :size="13" />
+        {{ t('space.ade.needsPage.showAll.label') }}
+      </Button>
     </PopoverFooter>
   </template>
 </template>

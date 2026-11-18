@@ -6,7 +6,7 @@ import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { PopoverContent } from '@theme/components/ui/popover';
+import { PopoverBar, PopoverContent } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import MonacoDiff from '@workbench/editor/MonacoDiff.vue';
@@ -109,14 +109,14 @@ function close(): void {
           @click="close"
         />
       </SectionHeading>
-      <SecondaryTabs
-        v-if="hasEdits"
-        v-model="view"
-        class="m-2 self-start"
-        variant="segmented"
-        :items="viewItems"
-        :aria-label="t('studio.grid.previewCommand.view.aria')"
-      />
+      <PopoverBar v-if="hasEdits">
+        <SecondaryTabs
+          v-model="view"
+          variant="segmented"
+          :items="viewItems"
+          :aria-label="t('studio.grid.previewCommand.view.aria')"
+        />
+      </PopoverBar>
       <template v-if="shownView === 'changes'">
         <ul
           class="flex max-h-24 flex-col overflow-auto"

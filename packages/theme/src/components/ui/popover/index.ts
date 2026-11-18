@@ -1,6 +1,7 @@
 export { default as Popover } from '@theme/components/ui/popover/Popover.vue';
 export { default as PopoverAnchor } from '@theme/components/ui/popover/PopoverAnchor.vue';
 export { default as PopoverBar } from '@theme/components/ui/popover/PopoverBar.vue';
+export { default as PopoverBody } from '@theme/components/ui/popover/PopoverBody.vue';
 export { default as PopoverContent } from '@theme/components/ui/popover/PopoverContent.vue';
 export { default as PopoverDescription } from '@theme/components/ui/popover/PopoverDescription.vue';
 export { default as PopoverFooter } from '@theme/components/ui/popover/PopoverFooter.vue';

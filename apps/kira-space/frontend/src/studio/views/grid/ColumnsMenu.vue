@@ -6,14 +6,21 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Label } from '@theme/components/ui/label';
-import { PopoverContent } from '@theme/components/ui/popover';
+import { PopoverBar, PopoverContent, PopoverList } from '@theme/components/ui/popover';
 import { Separator } from '@theme/components/ui/separator';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
-import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import {
+  type ComponentPublicInstance,
+  computed,
+  onBeforeUnmount,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue';
 import { useTabsStore } from '../../../state/tabs';
 import { nextProjectionFromSelectedColumns } from './menu';
 import { useGridViewStore } from './state';
@@ -86,7 +93,8 @@ function sameOrder(a: string[], b: string[] | null): boolean {
 
 // Persistence stays in onBeforeUnmount below (commits `order` alongside `selected`). Drag clone
 // stays inside the popover: a body-level one would count as an outside pointer and dismiss it.
-const listEl = useTemplateRef<HTMLElement>('listEl');
+const listComponent = useTemplateRef<ComponentPublicInstance>('listComponent');
+const listEl = computed<HTMLElement | null>(() => listComponent.value?.$el ?? null);
 useSortableReorder(
   listEl,
   () => order.value,
@@ -131,7 +139,7 @@ onBeforeUnmount(() => {
 <template>
   <PopoverContent align="end" flush class="w-56" data-testid="columns-menu">
     <div class="max-h-80 flex flex-col">
-      <div class="flex gap-1 p-1">
+      <PopoverBar>
         <Button variant="toolbar" size="kira" data-testid="columns-select-all" @click="selectAll"
           ><CodiconIcon name="check-all" :size="13" />{{ t('common.state.all.option') }}</Button
         >
@@ -139,11 +147,11 @@ onBeforeUnmount(() => {
           ><CodiconIcon :name="ICON.clearAll" :size="13" />
           {{ t('common.state.none.option') }}</Button
         >
-      </div>
+      </PopoverBar>
       <!-- Drag a row to reorder — the same order the grid renders columns in
            (columns.ts's resolveColumnOrder). Checkbox toggles visibility; the PK's is locked.
            The container is always mounted: the sortable binds to it once, at mount. -->
-      <div ref="listEl" class="overflow-y-auto p-1">
+      <PopoverList ref="listComponent" class="overflow-y-auto">
         <InlineState v-if="!meta" kind="loading">{{
           t('studio.grid.columns.loading.loading')
         }}</InlineState>
@@ -173,7 +181,7 @@ onBeforeUnmount(() => {
           />
           {{ name }}
         </Label>
-      </div>
+      </PopoverList>
       <Separator class="my-1" />
       <div class="px-1.5 pb-1.5 text-kira-sm text-subtle" data-testid="columns-menu-footer">
         {{

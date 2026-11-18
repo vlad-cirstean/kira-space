@@ -23,6 +23,7 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
 import {
   Popover,
   PopoverAnchor,
+  PopoverBar,
   PopoverContent,
   PopoverTrigger,
 } from '@theme/components/ui/popover';
@@ -439,30 +440,33 @@ watch(visibleBranchNames, (names) => {
         <div
           class="flex flex-col min-h-0 max-h-[min(520px,var(--reka-popover-content-available-height))]"
         >
-          <SecondaryTabs
-            data-testid="branch-tabs"
-            class="mx-1 mt-1"
-            :aria-label="t('git.picker.sections.aria')"
-            :model-value="activeTab"
-            :items="tabItems"
-            @update:model-value="(v) => (activeTab = v as PickerTab)"
-          >
-            <template #item="{ item }">
-              <CodiconIcon :name="item.icon ?? ''" :size="13" />
-              <span class="sr-only">{{ item.label }}</span>
-              <span :class="rowMeta" data-testid="picker-tab-badge">{{ item.count }}</span>
-            </template>
-          </SecondaryTabs>
+          <PopoverBar>
+            <SecondaryTabs
+              data-testid="branch-tabs"
+              class="w-full"
+              :aria-label="t('git.picker.sections.aria')"
+              :model-value="activeTab"
+              :items="tabItems"
+              @update:model-value="(v) => (activeTab = v as PickerTab)"
+            >
+              <template #item="{ item }">
+                <CodiconIcon :name="item.icon ?? ''" :size="13" />
+                <span class="sr-only">{{ item.label }}</span>
+                <span :class="rowMeta" data-testid="picker-tab-badge">{{ item.count }}</span>
+              </template>
+            </SecondaryTabs>
+          </PopoverBar>
 
-          <div class="m-1">
+          <PopoverBar>
             <SearchField
               ref="filterEl"
               v-model="filter"
+              class="w-full"
               :placeholder="t(TAB_FILTER_PLACEHOLDERS[activeTab])"
               :aria-label="t(TAB_FILTER_PLACEHOLDERS[activeTab])"
               @keydown.down="onFilterDown"
             />
-          </div>
+          </PopoverBar>
 
           <div
             ref="rowsScrollEl"

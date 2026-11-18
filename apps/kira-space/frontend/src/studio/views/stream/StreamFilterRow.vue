@@ -9,7 +9,7 @@ import { Checkbox } from '@theme/components/ui/checkbox';
 import { FieldError } from '@theme/components/ui/field';
 import { InputGroup, InputGroupInput } from '@theme/components/ui/input-group';
 import { Label } from '@theme/components/ui/label';
-import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
+import { Popover, PopoverAnchor, PopoverContent, PopoverList } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
@@ -234,7 +234,7 @@ const partitionButtonLabel = computed(() => {
           class="hidden"
         />
         <PopoverContent align="start" flush class="w-56" data-testid="stream-partition-menu">
-          <div class="flex flex-col max-h-60 overflow-y-auto gap-0.5 p-1">
+          <PopoverList class="max-h-60 overflow-y-auto">
             <QueryState :query="partitionsQuery" variant="inline">
               <template #empty>
                 <InlineState kind="empty">{{ t('studio.stream.noPartitions.empty') }}</InlineState>
@@ -255,7 +255,7 @@ const partitionButtonLabel = computed(() => {
                 </Label>
               </template>
             </QueryState>
-          </div>
+          </PopoverList>
         </PopoverContent>
       </Popover>
     </div>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
+import { Popover, PopoverAnchor, PopoverContent, PopoverList } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -34,7 +34,7 @@ function apply(gen: Generator): void {
       <PopoverAnchor :reference="anchorRef ?? undefined" />
     </span>
     <PopoverContent align="start" flush class="w-56" data-testid="cell-editor-generate-popover">
-      <div class="flex flex-col gap-px p-1">
+      <PopoverList>
         <TextTooltip v-for="gen in GENERATORS" :key="gen.id" :text="t(gen.hintKey)"
           ><button
             type="button"
@@ -45,7 +45,7 @@ function apply(gen: Generator): void {
             {{ t(gen.labelKey) }}
           </button></TextTooltip
         >
-      </div>
+      </PopoverList>
     </PopoverContent>
   </Popover>
 </template>

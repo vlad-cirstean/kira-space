@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
+import { Popover, PopoverContent, PopoverList, PopoverTrigger } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -74,7 +74,7 @@ const archived = computed(() =>
         </Button>
       </PopoverTrigger>
       <PopoverContent flush class="w-80" align="start">
-        <div class="flex flex-col gap-0.5 p-1">
+        <PopoverList>
           <button
             v-for="a in archived"
             :key="a.id"
@@ -86,7 +86,7 @@ const archived = computed(() =>
           >
             <span class="truncate">{{ a.title }}</span>
           </button>
-        </div>
+        </PopoverList>
       </PopoverContent>
     </Popover>
   </div>

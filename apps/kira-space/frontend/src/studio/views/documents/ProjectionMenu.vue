@@ -5,6 +5,7 @@ import InlineState from '@theme/components/InlineState.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Label } from '@theme/components/ui/label';
+import { PopoverBar, PopoverList } from '@theme/components/ui/popover';
 import { Separator } from '@theme/components/ui/separator';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -81,7 +82,7 @@ onUnmounted(() => {
 
 <template>
   <div class="max-h-80 flex flex-col">
-    <div class="flex gap-1 p-1">
+    <PopoverBar>
       <Button
         variant="toolbar"
         size="kira"
@@ -96,11 +97,11 @@ onUnmounted(() => {
         @click="selectNone"
         ><CodiconIcon :name="ICON.clearAll" :size="13" />{{ t('common.state.none.option') }}</Button
       >
-    </div>
+    </PopoverBar>
     <InlineState v-if="fieldNames.length === 0" kind="empty">{{
       t('studio.documents.projection.empty')
     }}</InlineState>
-    <div v-else class="overflow-y-auto p-1">
+    <PopoverList v-else class="overflow-y-auto">
       <Label v-for="name in fieldNames" :key="name" :class="rowVariants()">
         <Checkbox
           :model-value="selected.has(name)"
@@ -109,7 +110,7 @@ onUnmounted(() => {
         />
         {{ name }}
       </Label>
-    </div>
+    </PopoverList>
     <Separator class="my-1" />
     <div
       class="px-1.5 pb-1.5 text-kira-sm text-subtle"

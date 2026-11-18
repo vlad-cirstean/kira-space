@@ -4,6 +4,7 @@ import { Button } from '@theme/components/ui/button';
 import { FieldError } from '@theme/components/ui/field';
 import {
   Popover,
+  PopoverBody,
   PopoverContent,
   PopoverFooter,
   PopoverTrigger,
@@ -43,15 +44,14 @@ function onCopy(): void {
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" flush class="w-96 max-h-60" data-testid="error-popover">
-        <FieldError
-          class="overflow-auto whitespace-pre-wrap break-words p-2 font-data text-kira-md"
-          >{{
+        <PopoverBody class="min-h-0 gap-1 overflow-auto">
+          <FieldError class="whitespace-pre-wrap break-words font-data text-kira-md">{{
             props.message
-          }}</FieldError
-        >
-        <FieldError v-if="copyError" class="px-2 pb-1" data-testid="error-popover-copy-error">
-          {{ t('common.copy.failed.error', { error: copyError }) }}
-        </FieldError>
+          }}</FieldError>
+          <FieldError v-if="copyError" data-testid="error-popover-copy-error">
+            {{ t('common.copy.failed.error', { error: copyError }) }}
+          </FieldError>
+        </PopoverBody>
         <PopoverFooter>
           <Button variant="toolbar" size="kira" @click="onCopy"
             ><CodiconIcon name="copy" :size="13" />{{ t('common.action.copy.label') }}</Button

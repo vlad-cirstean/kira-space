@@ -2,6 +2,7 @@
 import type { KibanaTimePreset, KibanaTimeSelection } from '@shared/domain/kibana';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
 import { formatDateTime } from '@theme/format';
@@ -104,34 +105,39 @@ const isActive = (preset: KibanaTimePreset): boolean =>
           </button>
         </div>
         <div class="flex flex-col gap-1.5">
-          <div class="flex items-center gap-2 text-kira-sm text-muted-foreground">
-            <span class="w-10 shrink-0">{{ t('studio.kibana.time.from.label') }}</span>
+          <Field orientation="horizontal">
+            <FieldLabel for="kibana-time-from" class="w-10 shrink-0">{{
+              t('studio.kibana.time.from.label')
+            }}</FieldLabel>
             <Input
+              id="kibana-time-from"
               v-model="from"
               type="datetime-local"
-              :aria-label="t('studio.kibana.time.from.label')"
               data-testid="kibana-time-from"
             />
-          </div>
-          <div class="flex items-center gap-2 text-kira-sm text-muted-foreground">
-            <span class="w-10 shrink-0">{{ t('studio.kibana.time.to.label') }}</span>
+          </Field>
+          <Field orientation="horizontal">
+            <FieldLabel for="kibana-time-to" class="w-10 shrink-0">{{
+              t('studio.kibana.time.to.label')
+            }}</FieldLabel>
             <Input
+              id="kibana-time-to"
               v-model="to"
               type="datetime-local"
-              :aria-label="t('studio.kibana.time.to.label')"
               data-testid="kibana-time-to"
             />
+          </Field>
+          <div class="flex justify-end gap-1">
+            <Button
+              variant="dialog-primary"
+              size="kira"
+              :disabled="!absoluteValid"
+              data-testid="kibana-time-apply"
+              @click="applyAbsolute"
+            >
+              {{ t('studio.kibana.time.apply.label') }}
+            </Button>
           </div>
-          <Button
-            variant="dialog-primary"
-            size="kira"
-            class="self-end"
-            :disabled="!absoluteValid"
-            data-testid="kibana-time-apply"
-            @click="applyAbsolute"
-          >
-            {{ t('studio.kibana.time.apply.label') }}
-          </Button>
         </div>
       </PopoverContent>
     </Popover>

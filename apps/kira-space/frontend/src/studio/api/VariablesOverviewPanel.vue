@@ -6,7 +6,7 @@ import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { PopoverContent } from '@theme/components/ui/popover';
+import { PopoverContent, PopoverList } from '@theme/components/ui/popover';
 import { tableCellClass, tableRowClass } from '@theme/components/ui/table';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
@@ -106,7 +106,7 @@ function editEnvironmentVariables(): void {
         <AlertDescription>{{ copyError }}</AlertDescription>
       </Alert>
 
-      <div class="flex flex-col gap-0.5 overflow-y-auto p-1">
+      <PopoverList class="overflow-y-auto">
         <InlineState
           v-if="isFiltered && filteredRows.length === 0"
           kind="empty"
@@ -182,7 +182,7 @@ function editEnvironmentVariables(): void {
             ><TruncatedText :text="row.description" /></span
           >
         </div>
-      </div>
+      </PopoverList>
 
       <div class="flex flex-col gap-0.5 p-1">
         <Button

@@ -4,12 +4,12 @@ import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { PopoverContent } from '@theme/components/ui/popover';
+import { PopoverContent, PopoverFooter, PopoverList } from '@theme/components/ui/popover';
 import { Separator } from '@theme/components/ui/separator';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
-import { ref } from 'vue';
+import { type ComponentPublicInstance, computed, ref, useTemplateRef } from 'vue';
 
 // Popover shell for FilterHistoryMenu and ConsoleSavedMenu: a "Saved" list (pin, rename, delete,
 // click to apply) with an optional click-to-apply "Recent" list. Callers own what each action does.
@@ -43,7 +43,9 @@ function onRowKeydown(e: KeyboardEvent, entry: Entry): void {
   emit('apply', entry);
 }
 
-const savedEl = ref<HTMLElement | null>(null);
+// List navigation needs the DOM element behind the PopoverList component.
+const savedList = useTemplateRef<ComponentPublicInstance>('savedList');
+const savedEl = computed<HTMLElement | null>(() => savedList.value?.$el ?? null);
 const savedActive = ref<string | null>(null);
 const savedNav = useListNavigation<Entry>({
   container: savedEl,
@@ -55,7 +57,8 @@ const savedNav = useListNavigation<Entry>({
   typeahead: (entry) => props.entryText(entry),
 });
 
-const recentEl = ref<HTMLElement | null>(null);
+const recentList = useTemplateRef<ComponentPublicInstance>('recentList');
+const recentEl = computed<HTMLElement | null>(() => recentList.value?.$el ?? null);
 const recentActive = ref<string | null>(null);
 const recentNav = useListNavigation<Entry>({
   container: recentEl,
@@ -79,6 +82,9 @@ function isPinned(entry: Entry): boolean {
 defineSlots<{
   entry(props: { entry: Entry }): unknown;
   'entry-actions'?(props: { entry: Entry }): unknown;
+  /** Between the lists and the footer: alerts, and dialogs that must stay inside the popover. */
+  below?(props: Record<string, never>): unknown;
+  /** Action row: `toolbar` `kira` Buttons with a leading icon. */
   footer?(props: Record<string, never>): unknown;
 }>();
 </script>
@@ -88,7 +94,7 @@ defineSlots<{
     <div class="max-h-100 overflow-y-auto">
       <SectionHeading :label="title" />
       <InlineState v-if="saved.length === 0" kind="empty">{{ emptySavedText }}</InlineState>
-      <div v-else ref="savedEl" role="listbox" :aria-label="title" class="p-1">
+      <PopoverList v-else ref="savedList" role="listbox" :aria-label="title">
         <div
           v-for="entry in saved"
           :key="entry.id"
@@ -121,18 +127,17 @@ defineSlots<{
             />
           </span>
         </div>
-      </div>
+      </PopoverList>
 
       <template v-if="recent">
         <Separator class="my-1" />
         <SectionHeading :label="t('studio.savedList.recent.label')" />
         <InlineState v-if="recent.length === 0" kind="empty">{{ emptyRecentText }}</InlineState>
-        <div
+        <PopoverList
           v-else
-          ref="recentEl"
+          ref="recentList"
           role="listbox"
           :aria-label="t('studio.savedList.recent.label')"
-          class="p-1"
         >
           <div
             v-for="entry in recent"
@@ -147,10 +152,11 @@ defineSlots<{
           >
             <slot name="entry" :entry="entry" />
           </div>
-        </div>
+        </PopoverList>
       </template>
 
-      <slot name="footer" />
+      <slot name="below" />
+      <PopoverFooter><slot name="footer" /></PopoverFooter>
     </div>
   </PopoverContent>
 </template>
