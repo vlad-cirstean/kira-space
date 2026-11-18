@@ -71,8 +71,6 @@ function confirm(): void {
     <DialogContent size="md" destructive>
       <DialogHeader>
         <DialogTitle>{{ t('git.dialog.revert.title', { count: commitCount }) }}</DialogTitle>
-      </DialogHeader>
-      <DialogBody>
         <DialogDescription>
           {{
             t(
@@ -82,7 +80,8 @@ function confirm(): void {
             )
           }}
         </DialogDescription>
-
+      </DialogHeader>
+      <DialogBody>
         <Alert v-if="preflight?.detachedHead" variant="warn">
           <AlertDescription>
             {{ t('git.dialog.revert.detachedHead.hint') }}

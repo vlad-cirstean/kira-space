@@ -6,6 +6,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -66,11 +67,11 @@ function openRepos(): void {
     <DialogContent size="sm" data-testid="ade-repo-gate">
       <DialogHeader>
         <DialogTitle>{{ t('space.ade.repoGate.title') }}</DialogTitle>
+        <DialogDescription>{{
+          t('space.ade.repoGate.body', { task: card?.title ?? '' })
+        }}</DialogDescription>
       </DialogHeader>
       <DialogBody>
-        <FieldDescription>{{
-          t('space.ade.repoGate.body', { task: card?.title ?? '' })
-        }}</FieldDescription>
         <div v-if="registered" class="flex flex-col gap-2">
           <ProjectPicker
             v-if="projects.options.value.length > 0"

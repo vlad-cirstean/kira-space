@@ -43,8 +43,6 @@ function pullNow(): void {
     <DialogContent size="md">
       <DialogHeader>
         <DialogTitle>{{ t('git.dialog.postCheckoutPullConfirm.title') }}</DialogTitle>
-      </DialogHeader>
-      <DialogBody>
         <DialogDescription>
           <CatalogText
             k="git.dialog.postCheckoutPullConfirm.body"
@@ -54,7 +52,8 @@ function pullNow(): void {
             <template #upstream><Identifier :value="pending.upstreamShortName" /></template>
           </CatalogText>
         </DialogDescription>
-      </DialogBody>
+      </DialogHeader>
+      <DialogBody> </DialogBody>
 
       <DialogFooter>
         <Button

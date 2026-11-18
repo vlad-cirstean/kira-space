@@ -12,6 +12,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -214,11 +215,10 @@ const connectionName = computed(
             ? t('studio.project.filtersDialog.dialog.named.title', { connectionName })
             : t('studio.project.filtersDialog.dialog.title')
         }}</DialogTitle>
+        <DialogDescription>{{ t('studio.project.filtersDialog.intro.body') }}</DialogDescription>
       </DialogHeader>
 
       <DialogBody>
-        <FieldDescription>{{ t('studio.project.filtersDialog.intro.body') }}</FieldDescription>
-
         <section class="flex flex-col gap-1">
           <SectionHeading :label="t('studio.project.filtersDialog.kinds.heading.label')">
             <span class="flex gap-1">

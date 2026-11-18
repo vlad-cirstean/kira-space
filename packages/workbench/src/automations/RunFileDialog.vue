@@ -10,6 +10,7 @@ import {
   DialogBody,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -244,7 +245,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
     >
       <DialogHeader close-testid="run-file-close">
         <DialogTitle>{{ title }}</DialogTitle>
-        <SmartBadge v-if="isSmart" />
+        <DialogDescription v-if="isSmart"><SmartBadge /></DialogDescription>
       </DialogHeader>
       <ViewToolbar v-if="view?.editable" class="px-3">
         <SecondaryTabs

@@ -16,11 +16,12 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
@@ -77,17 +78,16 @@ async function submit(): Promise<void> {
 
 <template>
   <Dialog :open="open" @update:open="(v) => !v && cancel()">
-    <DialogContent :aria-describedby="undefined" size="md" :dirty="name !== ''">
+    <DialogContent size="md" :dirty="name !== ''">
       <DialogHeader>
         <DialogTitle>{{ t('git.dialog.branch.title') }}</DialogTitle>
-      </DialogHeader>
-      <DialogBody>
-        <FieldDescription>
+        <DialogDescription>
           <CatalogText k="git.dialog.branch.startPoint.description">
             <template #sha><Identifier :value="startPoint" :short="shortSha" /></template>
           </CatalogText>
-        </FieldDescription>
-
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody>
         <Field>
           <FieldLabel :for="nameId">{{ t('common.field.name.label') }}</FieldLabel>
           <Input

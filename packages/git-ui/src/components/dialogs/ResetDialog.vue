@@ -107,25 +107,35 @@ function confirm(): void {
             <template #ref><Identifier :value="refName" /></template>
             <template #sha><Identifier :value="shortTarget" /></template>
           </CatalogText>
-          <span v-if="preflight?.targetSubject" class="ml-1 font-normal text-muted-foreground">{{
-            preflight.targetSubject
-          }}</span>
         </DialogTitle>
+        <DialogDescription v-if="preflight">
+          <span v-if="preflight.targetSubject" class="block">{{ preflight.targetSubject }}</span>
+          <template v-if="preflight.leaving === 0 && preflight.gaining === 0">
+            {{ t('git.dialog.reset.alreadyHere.body') }}
+          </template>
+          <CatalogText
+            v-else-if="preflight.gaining === 0"
+            k="git.dialog.reset.leaving.body"
+            :params="{ count: preflight.leaving }"
+          >
+            <template #ref><Identifier :value="refName" /></template>
+          </CatalogText>
+          <template v-else>
+            {{
+              t('git.dialog.reset.diverged.body', {
+                leaving: preflight.leaving,
+                gaining: preflight.gaining,
+              })
+            }}
+          </template>
+        </DialogDescription>
       </DialogHeader>
       <DialogBody>
         <FieldDescription v-if="preflight && !preflight.branch">
           {{ t('git.dialog.reset.noBranch.hint') }}
         </FieldDescription>
 
-        <DialogDescription v-if="preflight?.leaving === 0 && preflight.gaining === 0">
-          {{ t('git.dialog.reset.alreadyHere.body') }}
-        </DialogDescription>
-        <template v-else-if="preflight?.gaining === 0">
-          <DialogDescription>
-            <CatalogText k="git.dialog.reset.leaving.body" :params="{ count: preflight.leaving }">
-              <template #ref><Identifier :value="refName" /></template>
-            </CatalogText>
-          </DialogDescription>
+        <template v-if="preflight && preflight.gaining === 0 && preflight.leaving > 0">
           <ul class="max-h-40 overflow-y-auto pl-3 font-data text-kira-md">
             <li v-for="c in preflight.leavingCommits" :key="c.sha">
               <Identifier :value="c.sha" :short="shortSha" /> {{ c.subject }}
@@ -135,14 +145,6 @@ function confirm(): void {
             t('git.dialog.reset.more.status')
           }}</p>
         </template>
-        <DialogDescription v-else-if="preflight">
-          {{
-            t('git.dialog.reset.diverged.body', {
-              leaving: preflight.leaving,
-              gaining: preflight.gaining,
-            })
-          }}
-        </DialogDescription>
 
         <FieldSet>
           <FieldLegend>{{ t('common.mode.label') }}</FieldLegend>

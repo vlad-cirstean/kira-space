@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -67,12 +68,12 @@ function onChord(event: KeyboardEvent): void {
     >
       <DialogHeader close-testid="git-credential-dialog-close">
         <DialogTitle>{{ t('space.gitCredential.dialog.title') }}</DialogTitle>
+        <DialogDescription data-testid="git-credential-repo">
+          {{ t('common.dotPair.label', { first: prompt.source, second: prompt.repoLabel }) }}
+        </DialogDescription>
       </DialogHeader>
 
       <DialogBody>
-        <p class="m-0 text-subtle" data-testid="git-credential-repo">
-          {{ t('common.dotPair.label', { first: prompt.source, second: prompt.repoLabel }) }}
-        </p>
         <!-- git's own text, rendered verbatim — never reformatted, never parsed. -->
         <p class="m-0 font-data whitespace-pre-wrap" data-testid="git-credential-prompt">
           {{ prompt.prompt }}

@@ -89,12 +89,11 @@ function confirm(): void {
     <DialogContent size="md" destructive>
       <DialogHeader>
         <DialogTitle>{{ t('git.dialog.cherryPick.title') }}</DialogTitle>
-      </DialogHeader>
-      <DialogBody>
         <DialogDescription>
           {{ t('git.dialog.cherryPick.description') }}
         </DialogDescription>
-
+      </DialogHeader>
+      <DialogBody>
         <Alert v-if="preflight?.detachedHead" variant="warn">
           <AlertDescription>
             {{ t('git.dialog.cherryPick.detachedHead.hint') }}

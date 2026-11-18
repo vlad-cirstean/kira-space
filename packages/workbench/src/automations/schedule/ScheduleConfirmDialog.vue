@@ -7,6 +7,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -157,10 +158,10 @@ function onChord(event: KeyboardEvent): void {
             ? t('automations.dialog.scheduleConfirm.title', { name: script.name })
             : t('automations.dialog.scheduleConfirm.untitledConfirm.title')
         }}</DialogTitle>
-        <SmartBadge v-if="script?.kind === 'smart'" />
-        <span class="text-kira-sm text-muted-foreground" data-testid="schedule-confirm-due">{{
-          due
-        }}</span>
+        <DialogDescription class="flex items-center gap-1.5">
+          <SmartBadge v-if="script?.kind === 'smart'" />
+          <span data-testid="schedule-confirm-due">{{ due }}</span>
+        </DialogDescription>
       </DialogHeader>
 
       <DialogBody>

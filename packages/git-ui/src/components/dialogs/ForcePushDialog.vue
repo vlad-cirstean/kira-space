@@ -98,8 +98,6 @@ function confirmPlain(): void {
         <DialogTitle>{{
           t('git.dialog.forcePushConfirm.title', { branch: pending.branch, remote: pending.remote })
         }}</DialogTitle>
-      </DialogHeader>
-      <DialogBody>
         <DialogDescription>
           <CatalogText
             :k="
@@ -117,7 +115,8 @@ function confirmPlain(): void {
             {{ t('git.dialog.forcePushConfirm.ahead.hint', { count: pending.preflight.behind }) }}
           </template>
         </DialogDescription>
-
+      </DialogHeader>
+      <DialogBody>
         <Alert v-if="protectedBy" variant="warn">
           <AlertDescription>
             <CatalogText k="git.dialog.forcePushConfirm.protected.hint">

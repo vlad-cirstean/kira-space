@@ -134,11 +134,7 @@ async function discard(): Promise<void> {
   <Dialog v-if="view" :open="true" @update:open="(v) => !v && dialogs.close()">
     <DialogContent size="lg" :dirty="view.edited" data-testid="ade-dialog">
       <DialogHeader>
-        <DialogTitle>
-          <span class="text-kira-lg font-medium" data-testid="ade-dialog-title">{{
-            view.title
-          }}</span>
-        </DialogTitle>
+        <DialogTitle data-testid="ade-dialog-title">{{ view.title }}</DialogTitle>
       </DialogHeader>
 
       <DialogBody>

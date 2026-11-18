@@ -8,11 +8,11 @@ import {
   DialogBody,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed, ref } from 'vue';
 import { useAsyncAction } from '../../behaviour/asyncAction';
@@ -56,9 +56,9 @@ async function save(): Promise<void> {
     <DialogContent size="md" data-testid="schedule-target-dialog">
       <DialogHeader close-testid="schedule-target-close">
         <DialogTitle>{{ t('automations.target.title', { name: script.name }) }}</DialogTitle>
+        <DialogDescription>{{ t('automations.target.hint') }}</DialogDescription>
       </DialogHeader>
       <DialogBody>
-        <FieldDescription>{{ t('automations.target.hint') }}</FieldDescription>
         <AdeContextFields
           v-if="pv"
           v-model:task-id="taskId"

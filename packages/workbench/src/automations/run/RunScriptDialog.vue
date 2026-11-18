@@ -9,6 +9,7 @@ import {
   DialogBody,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -161,7 +162,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
             ? t('automations.dialog.run.title', { name: script.name })
             : t('automations.dialog.run.untitled.title')
         }}</DialogTitle>
-        <SmartBadge v-if="isSmart" />
+        <DialogDescription v-if="isSmart"><SmartBadge /></DialogDescription>
       </DialogHeader>
 
       <DialogBody>

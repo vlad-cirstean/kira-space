@@ -87,31 +87,31 @@ function stashAndCarry(): void {
         <DialogTitle>{{
           t('git.dialog.checkout.title', { name: preflight?.target.name ?? '' })
         }}</DialogTitle>
+        <DialogDescription v-if="headline?.kind === 'inProgressOperation'">{{
+          t('git.common.operationInProgress.body')
+        }}</DialogDescription>
+        <DialogDescription v-else-if="headline?.kind === 'worktreeConflict'">
+          <CatalogText k="git.dialog.checkout.worktreeConflict.body">
+            <template #branch><Identifier :value="headline.branch" /></template>
+            <template #path><Identifier :value="headline.worktreePath" /></template>
+          </CatalogText>
+        </DialogDescription>
+        <DialogDescription v-else-if="headline?.kind === 'blockedByUntracked'">{{
+          t('git.dialog.checkout.untracked.body')
+        }}</DialogDescription>
+        <DialogDescription v-else-if="trackedBlocker">{{
+          t('git.dialog.checkout.localChanges.body')
+        }}</DialogDescription>
       </DialogHeader>
       <DialogBody>
-        <template v-if="headline?.kind === 'inProgressOperation'">
-          <DialogDescription>{{ t('git.common.operationInProgress.body') }}</DialogDescription>
-        </template>
-
-        <template v-else-if="headline?.kind === 'worktreeConflict'">
-          <DialogDescription>
-            <CatalogText k="git.dialog.checkout.worktreeConflict.body">
-              <template #branch><Identifier :value="headline.branch" /></template>
-              <template #path><Identifier :value="headline.worktreePath" /></template>
-            </CatalogText>
-          </DialogDescription>
-        </template>
-
-        <template v-else-if="headline?.kind === 'blockedByUntracked'">
-          <DialogDescription>{{ t('git.dialog.checkout.untracked.body') }}</DialogDescription>
+        <template v-if="headline?.kind === 'blockedByUntracked'">
           <ul class="max-h-40 overflow-y-auto pl-3 font-data text-kira-md">
             <li v-for="path in headline.paths" :key="path"><Identifier :value="path" /></li>
           </ul>
           <p>{{ t('git.dialog.checkout.untracked.hint') }}</p>
         </template>
 
-        <template v-else-if="trackedBlocker">
-          <DialogDescription>{{ t('git.dialog.checkout.localChanges.body') }}</DialogDescription>
+        <template v-else-if="headline?.kind === 'blockedByTracked' && trackedBlocker">
           <ul class="max-h-40 overflow-y-auto pl-3 font-data text-kira-md">
             <li v-for="path in trackedBlocker.paths" :key="path"><Identifier :value="path" /></li>
           </ul>

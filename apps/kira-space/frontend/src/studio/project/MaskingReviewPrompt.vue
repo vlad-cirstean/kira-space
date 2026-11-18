@@ -6,6 +6,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -45,11 +46,11 @@ const onChord = shortcutKeydown(['form.submit'], () => review());
     <DialogContent size="md" prompt data-testid="masking-review-dialog" @keydown="onChord">
       <DialogHeader>
         <DialogTitle>{{ entry.title }}</DialogTitle>
+        <DialogDescription data-testid="masking-review-body">
+          {{ t('studio.prompt.maskingReview.body', { count: pending.data.value?.count ?? 0 }) }}
+        </DialogDescription>
       </DialogHeader>
       <DialogBody class="flex flex-col gap-2">
-        <p class="m-0 text-muted-foreground" data-testid="masking-review-body">
-          {{ t('studio.prompt.maskingReview.body', { count: pending.data.value?.count ?? 0 }) }}
-        </p>
         <p v-if="more > 0" class="m-0 text-muted-foreground" data-testid="masking-review-more">
           {{ t('common.moreWaiting.status', { count: more }) }}
         </p>

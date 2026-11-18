@@ -5,11 +5,11 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { paneFrame } from '@theme/lib/frames';
@@ -82,10 +82,9 @@ function close(): void {
     <DialogContent size="xl" :dirty="dirty" data-testid="edit-raw-dialog">
       <DialogHeader close-testid="edit-raw-dialog-close">
         <DialogTitle>{{ t('studio.api.editRaw.title') }}</DialogTitle>
+        <DialogDescription data-testid="edit-raw-hint">{{ hint }}</DialogDescription>
       </DialogHeader>
       <DialogBody>
-        <FieldDescription data-testid="edit-raw-hint">{{ hint }}</FieldDescription>
-
         <div :class="[paneFrame, 'h-80']">
           <MonacoHost
             :doc="text"

@@ -7,6 +7,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -67,9 +68,9 @@ async function restore(b: Backup): Promise<void> {
         <DialogTitle>{{
           t('space.ade.port.backupList.title', { agent: provider.label })
         }}</DialogTitle>
+        <DialogDescription>{{ t('space.ade.port.backupList.hint') }}</DialogDescription>
       </DialogHeader>
       <DialogBody>
-        <FieldDescription>{{ t('space.ade.port.backupList.hint') }}</FieldDescription>
         <Alert v-if="error || backups.error.value" variant="error" data-testid="ade-port-error">
           <AlertDescription>{{ error || errorText(backups.error.value) }}</AlertDescription>
         </Alert>

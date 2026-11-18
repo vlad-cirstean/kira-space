@@ -55,10 +55,8 @@ function toggle(id: string, on: boolean): void {
   <Dialog :open="true" @update:open="(v) => !v && emit('close')">
     <DialogContent size="lg" data-testid="restore-dialog">
       <DialogHeader>
-        <div class="flex min-w-0 flex-col gap-0.5">
-          <DialogTitle>{{ title }}</DialogTitle>
-          <DialogDescription>{{ description }}</DialogDescription>
-        </div>
+        <DialogTitle>{{ title }}</DialogTitle>
+        <DialogDescription>{{ description }}</DialogDescription>
       </DialogHeader>
 
       <DialogBody>
