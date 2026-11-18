@@ -82,6 +82,7 @@ async function confirmTakeOver(): Promise<void> {
         <EmptyState
           v-if="model.needs.empty && !approvals?.length"
           fill
+          icon="check"
           data-testid="needs-empty"
           :title="t('mobile.needs.list.empty')"
           :description="model.needs.footer"

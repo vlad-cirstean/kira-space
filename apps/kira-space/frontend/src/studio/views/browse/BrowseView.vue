@@ -119,10 +119,8 @@ const filterText = computed({
   set: (v: string) => browseViewStore.setFilter(props.tab.id, v),
 });
 
-// The app's own shared search idiom (HttpRequestView.vue's toggleFieldFilter) replaces
-// this file's own always-visible `.filter-field` — `rt.filter`/`filteredNodes`/`countText` below
-// are untouched, only the affordance moves. Runtime store, not tab state: a lens, not a setting.
-// Kept across tab switches (P375) so an active filter never hides rows behind a closed bar.
+// Shared search idiom (HttpRequestView.vue's toggleFieldFilter), not an always-visible field.
+// Runtime store, not tab state: a lens, not a setting. Kept across tab switches (P375).
 const filterOpen = computed(() => rt.value?.filterOpen ?? false);
 function toggleFilter(): void {
   const open = !filterOpen.value;
@@ -496,12 +494,14 @@ onMounted(() => {
             v-else-if="rt.nodes.length === 0"
             fill
             data-testid="browse-empty"
+            icon="folder"
             :title="t('studio.browse.items.empty')"
           />
           <EmptyState
             v-else-if="filteredNodes.length === 0"
             fill
             data-testid="browse-empty"
+            :icon="ICON.search"
             :title="t('common.state.noMatches.empty')"
           />
           <div

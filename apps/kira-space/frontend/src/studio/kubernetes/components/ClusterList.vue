@@ -149,6 +149,7 @@ const rowClass = (selected: boolean) =>
     <template #empty>
       <EmptyState
         fill
+        icon="server"
         data-testid="kube-clusters-empty"
         :title="t('kubernetes.panel.none.empty')"
         :description="t('kubernetes.panel.noneHint.emptyHint')"

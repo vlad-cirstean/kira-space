@@ -72,7 +72,12 @@ const shownCount = computed(() => list.data.value?.rows.length ?? 0);
   <div class="flex h-full min-h-0 flex-col" data-testid="kube-browser">
     <QueryState :query="kinds" :is-empty="() => (kinds.data.value?.kinds.length ?? 0) === 0">
       <template #empty>
-        <EmptyState fill data-testid="kube-kinds-empty" :title="t('kubernetes.kinds.none.empty')" />
+        <EmptyState
+          fill
+          icon="symbol-misc"
+          data-testid="kube-kinds-empty"
+          :title="t('kubernetes.kinds.none.empty')"
+        />
       </template>
       <template #default="{ data }">
         <ViewToolbar>

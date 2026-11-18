@@ -56,6 +56,7 @@ const jobItems = computed(() =>
     <EmptyState
       v-if="!current"
       fill
+      icon="cloud-download"
       data-testid="import-empty"
       :title="t('memory.import.list.empty')"
       :description="t('memory.import.list.emptyHint')"

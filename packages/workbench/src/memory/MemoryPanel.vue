@@ -8,6 +8,7 @@ import { Badge } from '@theme/components/ui/badge';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { rowIndent, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { refDebounced } from '@vueuse/core';
@@ -176,6 +177,7 @@ const historyToggleId = useId();
         <template #empty>
           <EmptyState
             fill
+            :icon="query.trim() === '' ? 'book' : ICON.search"
             data-testid="memory-empty"
             :title="
               query.trim() === '' ? t('memory.panel.list.empty') : t('common.state.noMatches.empty')

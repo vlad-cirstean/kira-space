@@ -6,6 +6,7 @@ import SearchField from '@theme/components/SearchField.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { copyText } from '@workbench/behaviour/clipboard';
 import { compareNatural, matchesQuery, splitMatches } from '@workbench/behaviour/match';
 import { useKeptState } from '@workbench/behaviour/viewState';
@@ -159,6 +160,7 @@ const label = (id: SectionId): string => LABELS[id]();
       <div class="min-h-0 flex-1 overflow-auto p-2">
         <EmptyState
           v-if="needle !== '' && shown.length === 0"
+          :icon="ICON.search"
           data-testid="kube-describe-no-match"
           :title="t('common.state.noMatches.empty')"
         />

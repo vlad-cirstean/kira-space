@@ -118,6 +118,7 @@ onBeforeUnmount(() => {
   <EmptyState
     v-else
     fill
+    icon="symbol-event"
     :title="t('space.ade.steps.noValid.body')"
     data-testid="ade-step-no-valid"
   >

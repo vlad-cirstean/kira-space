@@ -482,13 +482,13 @@ useReviewAnnouncements(review, announce);
       <EmptyState fill loading :title="t('git.review.loading.loading')" />
     </template>
 
-    <template v-else-if="noActiveRepo">
-      <EmptyState
-        fill
-        :title="t('git.review.start.title')"
-        :description="t('git.review.noRepo.emptyHint')"
-      />
-    </template>
+    <EmptyState
+      v-else-if="noActiveRepo"
+      fill
+      icon="repo"
+      :title="t('git.review.start.title')"
+      :description="t('git.review.noRepo.emptyHint')"
+    />
 
     <template v-else-if="!review.branch.value">
       <ReviewNoBranch :refs-state="refsState" @pick="pickBranch" />

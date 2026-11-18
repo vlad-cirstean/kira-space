@@ -432,6 +432,7 @@ onBeforeUnmount(() => {
   <EmptyState
     v-else
     fill
+    icon="type-hierarchy"
     :title="t('space.ade.workflows.graph.noValid.body')"
     data-testid="ade-wf-no-valid"
   >

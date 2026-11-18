@@ -24,6 +24,7 @@ const open = ref<string | null>(null);
       <EmptyState
         v-if="model && !model.plan.length"
         fill
+        icon="tasklist"
         data-testid="plan-empty"
         :title="t('mobile.plan.list.empty')"
         :description="t('mobile.plan.list.emptyHint')"
