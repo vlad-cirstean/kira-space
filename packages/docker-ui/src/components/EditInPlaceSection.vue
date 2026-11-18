@@ -394,6 +394,7 @@ const netChanged = (name: string): boolean => {
           <span class="w-40 shrink-0 truncate font-data">{{ n.name }}</span>
           <Input
             class="min-w-0 flex-1"
+            :aria-label="t('docker.edit.aliases.placeholder')"
             :placeholder="t('docker.edit.aliases.placeholder')"
             :model-value="n.aliases.join(', ')"
             :disabled="disabled || networkLocked || noAliases(n.name)"

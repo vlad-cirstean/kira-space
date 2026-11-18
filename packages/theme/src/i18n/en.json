@@ -4260,6 +4260,9 @@
         "example": "/path/in/container",
         "label": "Mount target"
       },
+      "mountType": {
+        "label": "Mount type"
+      },
       "needsRecreate": {
         "hint": "This change needs a recreate."
       },

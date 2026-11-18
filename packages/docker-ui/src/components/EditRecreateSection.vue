@@ -184,6 +184,7 @@ function addMount(): void {
         <template #row="{ item, index }">
           <Input
             class="w-40"
+            :aria-label="t('common.field.key.label')"
             :placeholder="t('docker.edit.envKey.example')"
             :model-value="split(item)[0]"
             :disabled="disabled"
@@ -223,6 +224,7 @@ function addMount(): void {
         <template #row="{ item, index }">
           <Input
             class="w-40"
+            :aria-label="t('common.field.key.label')"
             :placeholder="t('common.field.key.label')"
             :model-value="item[0]"
             :disabled="disabled"
@@ -267,6 +269,7 @@ function addMount(): void {
             :placeholder="t('docker.edit.containerPort.placeholder')"
             :model-value="item.containerPort"
             :disabled="disabled"
+            :aria-label="t('docker.edit.containerPort.placeholder')"
             data-testid="docker-edit-port-container"
             @update:model-value="item.containerPort = toNumber($event)"
             v-bind="invalid"
@@ -324,6 +327,7 @@ function addMount(): void {
           <NativeSelect
             v-model="item.type"
             class="w-24"
+            :aria-label="t('docker.edit.mountType.label')"
             :disabled="disabled"
             data-testid="docker-edit-mount-type"
             v-bind="invalid"
@@ -378,6 +382,7 @@ function addMount(): void {
         <template #row="{ index }">
           <Input
             class="min-w-0 flex-1"
+            :aria-label="t('docker.edit.addCap.label')"
             :placeholder="t('docker.edit.capAdd.example')"
             v-model="rc.capAdd[index]"
             :disabled="disabled"
@@ -407,6 +412,7 @@ function addMount(): void {
         <template #row="{ index }">
           <Input
             class="min-w-0 flex-1"
+            :aria-label="t('docker.edit.dropCap.label')"
             :placeholder="t('docker.edit.capDrop.example')"
             v-model="rc.capDrop[index]"
             :disabled="disabled"

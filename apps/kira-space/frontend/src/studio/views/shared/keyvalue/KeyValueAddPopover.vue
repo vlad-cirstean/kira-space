@@ -84,6 +84,7 @@ defineExpose({ dirty: computed(() => open.value && (name.value !== '' || value.v
       >
       <Input
         v-model="name"
+        :aria-label="t('common.field.name.label')"
         v-bind="invalidAttrs('name')"
         :placeholder="t('studio.keyValue.add.namePlaceholder.placeholder')"
         class="w-full"
