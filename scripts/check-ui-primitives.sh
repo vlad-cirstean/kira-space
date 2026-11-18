@@ -12,7 +12,7 @@
 #
 # Guards U72-U82: git show bd0c224688d9:docs/v2.2/plans/P266-consistency-audit.md section 4.4.
 #
-# Guards U110-U117: docs/v0.3.17/plans/P672-part2.md; their current offenders sit in the dated TEMPORARY block.
+# Guards U110-U117: docs/v0.3.17/plans/P672-part2.md.
 #
 # Guards U118-U121: docs/v0.3.17/plans/P672-part4.md.
 # Guards U122-U123: docs/v0.3.17/plans/P672-part5.md.
@@ -148,17 +148,6 @@ U109 apps/kira-space/frontend/src/repo/RepoFileTree.vue # debounced copy of the 
 U109 packages/git-ui/src/components/FileTree.vue # git-ui is its own Vue app with no Pinia; P660 Part 2 changes its mount contract
 U109 packages/git-ui/src/components/review/ReviewView.vue # git-ui is its own Vue app with no Pinia; P660 Part 2 changes its mount contract
 PERMANENT
-
-# "U<n> path # YYYY-MM-DD P672 Part <k>": a current offender of a P672 guard, kept until Part <k>
-# fixes it. Never PERMANENT. An entry that stops matching fails the run, so the block only shrinks;
-# P672 Part 9 deletes the block and this mechanism once it is empty.
-cat >"$TMP/temp" <<'TEMPORARY'
-U115 apps/kira-space/frontend/src/ade/v2/details/AdeDetailsDiskBanner.vue # 2026-11-18 P672 Part 9
-U115 apps/kira-space/frontend/src/ade/v2/panel/AdePanelForwardBar.vue # 2026-11-18 P672 Part 9
-U115 apps/kira-space/frontend/src/ade/v2/request/DetailsEditBody.vue # 2026-11-18 P672 Part 9
-U115 apps/kira-space/frontend/src/studio/proof/ProofHeader.vue # 2026-11-18 P672 Part 9
-U115 apps/kira-space/frontend/src/workbench/settings/FileTypesPane.vue # 2026-11-18 P672 Part 9
-TEMPORARY
 
 # `(?&t)` = the inside of one tag, quote-aware so `=>` or `a > b` inside an attribute value does not
 # end the tag early.
@@ -357,25 +346,10 @@ mv "$TMP/perm_ids" "$TMP/perm"
 sort -u "$TMP/perm" -o "$TMP/perm"
 
 STATUS=0
-if grep -Ev '^#|^$' "$TMP/temp" | grep -Ev '^U11[0-7] [^ ]+ # [0-9]{4}-[0-9]{2}-[0-9]{2} P672 Part [3-9]$' >"$TMP/bad"; then
-  while IFS= read -r bad; do
-    echo "check-ui-primitives: malformed temporary baseline: $bad" >&2
-  done <"$TMP/bad"
-  exit 1
-fi
-sed -e '/^#/d' -e 's/[[:space:]]*#.*$//' "$TMP/temp" | sort -u >"$TMP/temp_ids"
-comm -12 "$TMP/perm" "$TMP/temp_ids" >"$TMP/both"
-while read -r id f; do
-  echo "check-ui-primitives: in PERMANENT and TEMPORARY: $id $f" >&2
-  STATUS=1
-done <"$TMP/both"
-: >"$TMP/used_temp"
 : >"$TMP/used_perm"
 while read -r id f; do
   if grep -qxF "$id $f" "$TMP/perm"; then
     echo "$id $f" >>"$TMP/used_perm"
-  elif grep -qxF "$id $f" "$TMP/temp_ids"; then
-    echo "$id $f" >>"$TMP/used_temp"
   else
     msg=$(grep "^$id@@" "$TMP/guards" | head -1 | awk -F'@@' '{print $4}')
     echo "check-ui-primitives: $f: $id $msg" >&2
@@ -390,14 +364,6 @@ while read -r id f; do
     STATUS=1
   fi
 done <"$TMP/perm"
-
-sort -u "$TMP/used_temp" -o "$TMP/used_temp"
-while read -r id f; do
-  if ! grep -qxF "$id $f" "$TMP/used_temp"; then
-    echo "check-ui-primitives: stale temporary baseline: $id $f (fixed; delete the line)" >&2
-    STATUS=1
-  fi
-done <"$TMP/temp_ids"
 
 # A built-in exempt name that exempts nothing fails; a trailing `!` (blanket dirs) opts out.
 gn=0
@@ -420,8 +386,6 @@ done <"$TMP/guards"
 if [ "$STATUS" -ne 0 ]; then
   echo "check-ui-primitives: see git show bd0c224688d9:docs/v2.2/plans/P262-ui-unification.md, P263-ui-unification-2.md §2 and P264-behaviour-unification.md §3.3 and P266-consistency-audit.md §4.4." >&2
 else
-  n=$(wc -l <"$TMP/temp_ids" | tr -d ' ')
-  if [ "$n" -gt 0 ]; then echo "check-ui-primitives: $n temporary P672 baseline entries left."; fi
   echo "check-ui-primitives: every guarded element follows the P262-P266 rules."
 fi
 exit $STATUS

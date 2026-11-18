@@ -150,7 +150,7 @@ const open = ref<Record<string, boolean>>({});
               :data-testid="`file-types-ext-${ext.ext}`"
               @update:model-value="(v) => toggleExt(ext, v === true)"
             />
-            <span class="font-mono">.{{ ext.ext }}</span>
+            <span class="font-data">.{{ ext.ext }}</span>
             <span
               class="ml-auto text-muted-foreground"
               :data-testid="`file-types-handler-${ext.ext}`"

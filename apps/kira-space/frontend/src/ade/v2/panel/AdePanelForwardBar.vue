@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import CodeBlock from '@theme/components/CodeBlock.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -109,10 +110,9 @@ async function dismiss(): Promise<void> {
               {{ t('space.ade.panelForward.preview.label') }}
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <pre
-                class="max-h-60 overflow-auto whitespace-pre-wrap rounded-kira-sm p-2 font-mono text-kira-sm"
-                data-testid="ade-panel-forward-preview"
-              >{{ data.preview }}</pre>
+              <CodeBlock class="max-h-60 overflow-auto" data-testid="ade-panel-forward-preview">{{
+                data.preview
+              }}</CodeBlock>
             </CollapsibleContent>
           </Collapsible></span
         >

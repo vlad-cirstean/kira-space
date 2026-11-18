@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ApprovalItem } from '@shared/domain/approvals';
+import CodeBlock from '@theme/components/CodeBlock.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Label } from '@theme/components/ui/label';
 import { type MessageKey, t } from '@theme/i18n';
@@ -54,10 +55,7 @@ function toggle(path: string): void {
       <p v-if="file.collision" class="text-muted-foreground">
         {{ t('space.ade.detailsEdit.collision.body', { by: file.collision }) }}
       </p>
-      <pre
-        v-if="file.text"
-        class="max-h-48 overflow-auto rounded-kira-sm bg-field p-2 font-mono text-kira-sm"
-      >{{ file.text }}</pre>
+      <CodeBlock v-if="file.text" class="max-h-48 overflow-auto">{{ file.text }}</CodeBlock>
     </div>
   </div>
 </template>

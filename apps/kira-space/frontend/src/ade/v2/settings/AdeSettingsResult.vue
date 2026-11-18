@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodeBlock from '@theme/components/CodeBlock.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Button } from '@theme/components/ui/button';
@@ -91,9 +92,7 @@ const backupsOpen = computed({
         data-testid="ade-settings-file"
       >
         <div class="m-0 font-data text-kira-sm text-subtle">{{ f.name }}</div>
-        <pre
-          class="m-0 max-h-96 overflow-auto rounded-kira bg-field p-2 font-data text-kira-sm"
-        >{{ f.text }}</pre>
+        <CodeBlock class="max-h-96 overflow-auto">{{ f.text }}</CodeBlock>
       </section>
       <section v-if="current.env.length > 0" class="flex flex-col gap-1">
         <div class="m-0 text-kira-sm text-subtle">{{ t('docker.field.env.label') }}</div>

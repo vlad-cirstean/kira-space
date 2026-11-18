@@ -43,7 +43,7 @@ async function askDelete(): Promise<void> {
         t('studio.proof.pending.label')
       }}</Badge>
       <span
-        class="min-w-0 truncate font-mono text-kira-sm text-muted-foreground"
+        class="min-w-0 truncate font-data text-kira-sm text-muted-foreground"
         :aria-label="t('studio.proof.folder.path.aria')"
         data-testid="proof-path"
         >{{

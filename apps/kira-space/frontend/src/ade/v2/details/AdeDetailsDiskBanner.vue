@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import CodeBlock from '@theme/components/CodeBlock.vue';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
@@ -115,10 +116,7 @@ function stateLabel(c: DiskChange): string {
                   {{ t('common.action.discard.label') }}
                 </Button>
               </div>
-              <pre
-                v-if="c.diff"
-                class="max-h-48 overflow-auto rounded-kira-sm bg-field p-2 font-mono text-kira-sm"
-              >{{ c.diff }}</pre>
+              <CodeBlock v-if="c.diff" class="max-h-48 overflow-auto">{{ c.diff }}</CodeBlock>
             </li>
           </ul>
         </DialogBody>
