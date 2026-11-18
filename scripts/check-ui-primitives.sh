@@ -12,7 +12,7 @@
 #
 # Guards U72-U82: git show bd0c224688d9:docs/v2.2/plans/P266-consistency-audit.md section 4.4.
 #
-# Guards U110-U117: docs/v0.3.16/plans/P672-part2.md; their current offenders sit in the dated TEMPORARY block.
+# Guards U110-U117: docs/v0.3.17/plans/P672-part2.md; their current offenders sit in the dated TEMPORARY block.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
