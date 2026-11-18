@@ -134,6 +134,10 @@ test('unavailable shows the reason and Retry asks again', async ({ relaunch }) =
   await expect(
     page.locator(`${t('host-view-failure')} [data-slot="empty-description"]`),
   ).toContainText('az login');
+  await expect(page.locator(`${t('host-view-failure')} [data-slot="empty-title"]`)).toHaveText(
+    'Couldn’t load',
+  );
+  await expect(page.locator(t('host-view-retry'))).toBeVisible();
   expect(calls(control, IPC.hostViewChangeRequest)).toHaveLength(1);
   await page.locator(t('host-view-retry')).click();
   await expect.poll(() => calls(control, IPC.hostViewChangeRequest)).toHaveLength(2);

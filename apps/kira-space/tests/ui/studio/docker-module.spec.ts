@@ -329,12 +329,17 @@ test('engine overview tabulates containers with humanized stats; section tabs sh
     ],
   });
   await expect(page.locator('[data-testid="docker-engine-mem"]')).toHaveText('1.5 GB');
+  await expect(page.locator('[data-testid="docker-engine-cpu"]')).not.toHaveClass(/text-kira-xl/);
   await expect(
     page.locator('[data-testid="docker-table-row"][data-name="shop-db-1"]'),
   ).toContainText('1.5 GB');
 
   await page.locator('[data-testid="docker-table-row"][data-name="solo"]').click();
   await expect(page.locator('[data-testid="docker-detail-name"]')).toHaveText('solo');
+  await expect(page.locator('[data-testid="docker-action-start"] .codicon')).toHaveCSS(
+    'font-size',
+    '13px',
+  );
   await page.locator('[data-testid="docker-overview-home"]').click();
   await expect(page.locator('[data-testid="docker-engine-overview"]')).toBeVisible();
 });

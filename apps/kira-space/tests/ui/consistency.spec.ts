@@ -295,6 +295,12 @@ studioTest.describe('databases module', () => {
     const panel = page.locator('[data-testid="docker-panel"]');
     await expect(panel.locator('[data-testid="query-error"]')).toContainText('database is locked');
     await expect(panel.locator('[data-testid="query-retry"]')).toHaveText('Retry');
+    const failure = panel.locator('[data-testid="query-error"]');
+    await expect(failure.locator('[data-slot="empty-icon"] .codicon')).toHaveCSS(
+      'font-size',
+      '24px',
+    );
+    await expect(failure.locator('.text-error')).toHaveCount(0);
   });
 
   studioTest(
