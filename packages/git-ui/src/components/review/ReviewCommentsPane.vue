@@ -117,17 +117,17 @@ keptScrollIf(() => props.keepScroll ?? null, listEl, { ready: () => groups.value
         :disabled="reviewComments.comments.value.length === 0 || reviewComments.pending.value"
         @click="reviewComments.confirmClear()"
       />
-      <div v-else class="flex items-center gap-1 ml-auto text-graph-md">
-        <Button variant="toolbar" size="kira" @click="reviewComments.clear()">
+      <div v-else class="flex items-center gap-1 ml-auto">
+        <Button variant="dialog" size="kira" @click="reviewComments.cancelClear()">{{
+          t('common.action.cancel.label')
+        }}</Button>
+        <Button variant="dialog-danger" size="kira" @click="reviewComments.clear()">
           {{
             t('git.review.comments.confirmClear.label', {
               count: reviewComments.comments.value.length,
             })
           }}
         </Button>
-        <Button variant="toolbar" size="kira" @click="reviewComments.cancelClear()">{{
-          t('common.action.cancel.label')
-        }}</Button>
       </div>
     </ViewToolbar>
 

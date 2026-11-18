@@ -151,7 +151,7 @@ function save(): void {
     <div class="flex justify-end gap-1.5">
       <Button
         type="button"
-        variant="toolbar"
+        variant="dialog"
         size="kira"
         data-testid="kibana-filter-cancel"
         @click="emit('cancel')"

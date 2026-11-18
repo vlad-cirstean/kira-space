@@ -280,7 +280,7 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
         >
         <div class="flex flex-wrap justify-end gap-1.5">
           <Button
-            variant="toolbar"
+            variant="dialog"
             size="kira"
             data-testid="review-thread-cancel"
             @click="mode === 'edit' ? cancelEdit() : emit('cancel')"

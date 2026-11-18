@@ -51,7 +51,7 @@ useShortcut(rootEl, ['form.save'], () => {
         </TooltipDisabledTrigger></TextTooltip
       >
       <Button
-        variant="toolbar"
+        variant="dialog"
         size="kira"
         :data-testid="`${testidPrefix}-cancel`"
         @click="emit('cancel')"
