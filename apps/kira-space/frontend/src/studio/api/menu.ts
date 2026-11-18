@@ -26,9 +26,6 @@ export interface CollectionMenuActions {
   collections(): readonly CollectionChoice[];
   moveTo(rows: readonly CollectionRowVm[], collectionId: string): void;
   moveToNewCollection(rows: readonly CollectionRowVm[]): void;
-  /** One place within the row's own sibling set. */
-  moveStep(row: CollectionRowVm, step: -1 | 1): Promise<void>;
-  canMoveStep(row: CollectionRowVm, step: -1 | 1): boolean;
   copyUrl(row: CollectionRowVm): void;
   importPostman(): void;
   /** The background menu's own "Import from curl…" item — opens the paste-a-curl-command
@@ -63,29 +60,6 @@ function moveMenu(rows: readonly CollectionRowVm[], actions: CollectionMenuActio
     },
     onNew: () => actions.moveToNewCollection(rows),
   });
-}
-
-function moveItems(row: CollectionRowVm, actions: CollectionMenuActions): MenuItem[] {
-  return [
-    {
-      type: 'item',
-      id: 'move-up',
-      label: t('common.moveUp.tooltip'),
-      icon: 'arrow-up',
-      shortcut: 'list.moveUp',
-      disabled: !actions.canMoveStep(row, -1),
-      run: () => actions.moveStep(row, -1),
-    },
-    {
-      type: 'item',
-      id: 'move-down',
-      label: t('common.moveDown.tooltip'),
-      icon: 'arrow-down',
-      shortcut: 'list.moveDown',
-      disabled: !actions.canMoveStep(row, 1),
-      run: () => actions.moveStep(row, 1),
-    },
-  ];
 }
 
 /** The menu for two or more selected rows: the actions that apply to a set. `deleteCount` is the
@@ -160,7 +134,6 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
         run: () => actions.copyUrl(row),
       },
       moveMenu([row], actions),
-      ...moveItems(row, actions),
       { type: 'separator' },
       deleteItem(row, actions),
     ];
@@ -226,7 +199,6 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
         icon: 'export',
         run: () => actions.exportCollection(row),
       },
-      ...moveItems(row, actions),
     );
   } else {
     items.push(
@@ -239,7 +211,6 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
         run: () => actions.duplicate(row),
       },
       moveMenu([row], actions),
-      ...moveItems(row, actions),
     );
   }
 

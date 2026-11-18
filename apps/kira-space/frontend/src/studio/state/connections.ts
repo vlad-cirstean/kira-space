@@ -86,15 +86,6 @@ export const useConnectionsStore = defineStore('connections', () => {
     }
   }
 
-  async function moveConnection(id: string, step: -1 | 1): Promise<void> {
-    const ids = state.records.map((r) => r.id);
-    const from = ids.indexOf(id);
-    const to = from + step;
-    if (from < 0 || to < 0 || to >= ids.length) return;
-    [ids[from], ids[to]] = [ids[to], ids[from]];
-    await reorderConnections(ids);
-  }
-
   async function deleteConnection(id: string): Promise<void> {
     await control.connectionsDelete(id);
     state.records = state.records.filter((r) => r.id !== id);
@@ -127,7 +118,6 @@ export const useConnectionsStore = defineStore('connections', () => {
     upsertRecord,
     duplicateConnection,
     reorderConnections,
-    moveConnection,
     deleteConnection,
     connectConnection,
     disconnectConnection,

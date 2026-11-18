@@ -12,11 +12,7 @@ import { STICKY_ROW_CLASS, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtua
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { isPrimaryModifier } from '@workbench/shortcuts/keys';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
-import {
-  runMenuShortcut,
-  runMenuShortcutAsync,
-  useContextMenuStore,
-} from '@workbench/state/contextMenu';
+import { runMenuShortcut, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import CollectionRow from './CollectionRow.vue';
 import {
@@ -132,10 +128,6 @@ const actions: CollectionMenuActions = {
   collections: () => collectionsStore.collections,
   moveTo: (rows, collectionId) => void collectionsStore.moveRowsToCollection(rows, collectionId),
   moveToNewCollection: (rows) => void collectionsStore.moveRowsToNewCollection(rows),
-  moveStep: async (row, step) => {
-    await collectionsStore.moveStep(row, step);
-  },
-  canMoveStep: (row, step) => collectionsStore.canMoveStep(row, step),
   copyUrl: (row) =>
     void copyOrReportError(
       row.url,
@@ -295,25 +287,11 @@ function viaMenu(id: ShortcutId): (key: string) => void {
     if (row) runMenuShortcut(menuItemsFor(row), id);
   };
 }
-// Rows are index-keyed, so after a move the focused element would show another row: wait for the
-// move to land, scroll to the moved row and focus it again. A multi-selection has no move items,
-// so the chord does nothing.
-function moveViaMenu(id: ShortcutId): (key: string) => void {
-  return (key) => {
-    const row = rowByKey.value.get(key);
-    if (!row || selection.count > 1) return;
-    void runMenuShortcutAsync(menuItemsFor(row), id)
-      .then(() => revealKey(key))
-      .then(() => nav.focusKey(key));
-  };
-}
 useTreeShortcuts(nav, {
   'tree.selectAll': () => selection.selectAll(visibleKeys.value),
   'tree.rename': viaMenu('tree.rename'),
   'tree.delete': viaMenu('tree.delete'),
   'tree.duplicate': viaMenu('tree.duplicate'),
-  'list.moveUp': moveViaMenu('list.moveUp'),
-  'list.moveDown': moveViaMenu('list.moveDown'),
 });
 
 const hasVisibleFocus = computed(() =>

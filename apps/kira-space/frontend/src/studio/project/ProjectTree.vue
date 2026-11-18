@@ -13,12 +13,7 @@ import { STICKY_ROW_CLASS, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtua
 import { logError } from '@workbench/bridge/log';
 import { configName } from '@workbench/config/configName';
 import { useRowHeight } from '@workbench/lib/rowHeight';
-import {
-  type MenuItem,
-  runMenuShortcut,
-  runMenuShortcutAsync,
-  useContextMenuStore,
-} from '@workbench/state/contextMenu';
+import { type MenuItem, runMenuShortcut, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { useTabsStore } from '../../state/tabs';
 import { useConnectionConfig } from '../state/connectionConfig';
@@ -249,24 +244,11 @@ function viaMenu(id: ShortcutId): (key: string) => void {
     if (row) runMenuShortcut(menuForRow(row), id);
   };
 }
-// Rows are index-keyed, so after a move the focused element would show another row: wait for the
-// move to land, scroll to the moved row and focus it again.
-function moveViaMenu(id: ShortcutId): (key: string) => void {
-  return (key) => {
-    const row = treeStore.visibleRows.find((r) => r.key === key);
-    if (!row) return;
-    void runMenuShortcutAsync(menuForRow(row), id)
-      .then(() => revealKey(key))
-      .then(() => nav.focusKey(key));
-  };
-}
 useTreeShortcuts(nav, {
   'tree.copyName': viaMenu('tree.copyName'),
   'tree.copyUri': viaMenu('tree.copyUri'),
   'tree.duplicate': viaMenu('tree.duplicate'),
   'tree.delete': viaMenu('tree.delete'),
-  'list.moveUp': moveViaMenu('list.moveUp'),
-  'list.moveDown': moveViaMenu('list.moveDown'),
 });
 
 // The tree background has no interactive role of its own: bind its listener via VueUse.
