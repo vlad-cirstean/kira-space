@@ -459,7 +459,7 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
                     data-testid="ade-repos-folder-watch"
                     @update:model-value="(v: boolean) => onWatch(f.path, v)"
                   />
-                  <Label :for="`ade-repos-watch-${i}`" class="text-kira-sm text-muted-foreground">{{
+                  <Label :for="`ade-repos-watch-${i}`">{{
                     t('space.ade.repos.folder.watch.label')
                   }}</Label>
                 </div>

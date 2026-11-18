@@ -9,9 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription, FieldError } from '@theme/components/ui/field';
+import { FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { Textarea } from '@theme/components/ui/textarea';
 import VarText from '@theme/components/VarText.vue';
@@ -188,13 +187,9 @@ async function send(): Promise<void> {
         <div v-if="named.length" class="flex flex-col gap-1.5" data-testid="ade-run-branches">
           <div v-for="(r, i) in named" :key="r.id" class="flex items-center gap-3">
             <AdeRepoTag :code-repo-id="r.branch.codeRepoId" :label="r.repo" />
-            <Label
-              :for="`ade-run-branch-${r.id}`"
-              class="whitespace-nowrap text-muted-foreground"
-              >{{
-                t('common.field.branch.label')
-              }}</Label
-            >
+            <FieldLabel :for="`ade-run-branch-${r.id}`" class="whitespace-nowrap">{{
+              t('common.field.branch.label')
+            }}</FieldLabel>
             <Input
               :id="`ade-run-branch-${r.id}`"
               v-model="names[r.id]"
@@ -256,9 +251,9 @@ async function send(): Promise<void> {
         </div>
         <div v-else class="flex flex-col gap-1">
           <div class="flex items-center gap-2">
-            <Label for="ade-run-message" class="flex-1 text-muted-foreground">{{
+            <FieldLabel for="ade-run-message" class="flex-1">{{
               t('space.ade.agentDialog.message.label')
-            }}</Label>
+            }}</FieldLabel>
             <Button
               v-if="edited"
               variant="toolbar"

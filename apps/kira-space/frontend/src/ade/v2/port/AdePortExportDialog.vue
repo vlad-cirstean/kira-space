@@ -13,8 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
@@ -174,14 +173,17 @@ const fileName = (path: string): string => path.split(/[\\/]/).pop() ?? path;
               class="flex flex-col gap-1"
               data-testid="ade-port-server-list"
             >
-              <Label class="flex items-center gap-2 text-kira-md font-medium">
+              <Field orientation="horizontal">
                 <Checkbox
+                  id="ade-port-servers"
                   v-model="servers"
                   :disabled="preview.cliMissing"
                   data-testid="ade-port-servers-check"
                 />
-                {{ t('space.ade.port.servers.title') }}
-              </Label>
+                <FieldLabel for="ade-port-servers">{{
+                  t('space.ade.port.servers.title')
+                }}</FieldLabel>
+              </Field>
               <ul class="m-0 flex list-none flex-col gap-0.5 p-0 text-kira-sm">
                 <li
                   v-for="s in serverList"

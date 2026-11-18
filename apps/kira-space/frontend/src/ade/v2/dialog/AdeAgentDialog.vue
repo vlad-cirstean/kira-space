@@ -13,8 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription, FieldLabel } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
@@ -208,14 +207,16 @@ async function discard(): Promise<void> {
         >
           <AlertDescription>{{ b.text }}</AlertDescription>
         </Alert>
-        <Label v-if="view.canAutostash" for="ade-dialog-autostash" class="text-kira-sm">
+        <Field v-if="view.canAutostash" orientation="horizontal">
           <Checkbox
             id="ade-dialog-autostash"
             v-model="dialogs.autostash"
             data-testid="ade-dialog-autostash"
           />
-          <span>{{ t('space.ade.agentDialog.autostash.label') }}</span>
-        </Label>
+          <FieldLabel for="ade-dialog-autostash">{{
+            t('space.ade.agentDialog.autostash.label')
+          }}</FieldLabel>
+        </Field>
         <FieldDescription v-if="view.noOp" data-testid="ade-dialog-noop">
           {{ t('space.ade.agentDialog.noOp.hint') }}
         </FieldDescription>
@@ -248,15 +249,17 @@ async function discard(): Promise<void> {
           />
         </div>
 
-        <Label v-if="view.canPush" for="ade-dialog-push" class="text-kira-sm">
+        <Field v-if="view.canPush" orientation="horizontal">
           <Checkbox id="ade-dialog-push" v-model="dialogs.push" data-testid="ade-dialog-push" />
-          <span>
-            <span data-testid="ade-dialog-push-label">{{ view.pushLabel }}</span>
-            <span v-if="!dialogs.push" class="text-subtle">
-              {{ t('space.ade.agentDialog.pushOff.hint') }}</span
-            >
-          </span>
-        </Label>
+          <FieldContent>
+            <FieldLabel for="ade-dialog-push">
+              <span data-testid="ade-dialog-push-label">{{ view.pushLabel }}</span>
+            </FieldLabel>
+            <FieldDescription v-if="!dialogs.push">{{
+              t('space.ade.agentDialog.pushOff.hint')
+            }}</FieldDescription>
+          </FieldContent>
+        </Field>
 
         <div v-if="view.showMessage" class="flex flex-col gap-1">
           <div class="flex items-center gap-2">

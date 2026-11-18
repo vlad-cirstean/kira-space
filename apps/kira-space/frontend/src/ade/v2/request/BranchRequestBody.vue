@@ -2,6 +2,7 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
@@ -139,13 +140,9 @@ function rowRisks(it: BranchRequestItem): { text: string; testid?: string }[] {
           :model-value="selected.includes(it.id)"
           @update:model-value="toggle(it.id)"
         />
-        <Label
-          :for="`ade-branch-request-${item.id}-${it.id}`"
-          class="font-data text-kira-md font-medium"
-          >{{
-            it.repo
-          }}</Label
-        >
+        <Label :for="`ade-branch-request-${item.id}-${it.id}`" class="font-data">{{
+          it.repo
+        }}</Label>
         <span class="font-data text-kira-md">{{ it.branch }}</span>
         <div class="flex min-w-0 flex-wrap items-baseline gap-x-3">
           <Tooltip :disabled="it.kind !== 'adopt' || !it.holder?.worktree">
@@ -180,9 +177,10 @@ function rowRisks(it: BranchRequestItem): { text: string; testid?: string }[] {
             {{ risk.text }}
           </span>
         </div>
-        <div
+        <Field
           v-if="it.kind === 'rename' && it.upstream"
-          class="col-span-3 col-start-2 flex items-center gap-1.5"
+          orientation="horizontal"
+          class="col-span-3 col-start-2"
         >
           <Checkbox
             :id="`ade-branch-request-remote-${item.id}-${it.id}`"
@@ -191,10 +189,10 @@ function rowRisks(it: BranchRequestItem): { text: string; testid?: string }[] {
             :data-testid="`ade-branch-request-remote-${it.id}`"
             @update:model-value="toggleRemote(it.id)"
           />
-          <Label :for="`ade-branch-request-remote-${item.id}-${it.id}`" class="text-kira-md">{{
+          <FieldLabel :for="`ade-branch-request-remote-${item.id}-${it.id}`">{{
             t('space.ade.branchRequest.renameRemote.label', { upstream: it.upstream })
-          }}</Label>
-        </div>
+          }}</FieldLabel>
+        </Field>
       </div>
     </div>
   </div>

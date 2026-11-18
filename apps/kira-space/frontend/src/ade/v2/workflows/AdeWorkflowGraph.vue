@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
-import { FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { errorText } from '@workbench/bridge/codedError';
@@ -273,17 +272,17 @@ onBeforeUnmount(() => {
       @discard="discard"
     />
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <Label for="ade-wf-form-name" class="text-kira-sm text-muted-foreground">{{
-        t('common.field.name.label')
-      }}</Label>
-      <Input
-        id="ade-wf-form-name"
-        :model-value="draft.draft.name"
-        size="kira-lg"
-        class="w-72 font-medium"
-        data-testid="ade-wf-form-name"
-        @update:model-value="(v: string | number) => draft.patchWorkflow({ name: String(v) })"
-      />
+      <Field orientation="horizontal" class="w-auto">
+        <FieldLabel for="ade-wf-form-name">{{ t('common.field.name.label') }}</FieldLabel>
+        <Input
+          id="ade-wf-form-name"
+          :model-value="draft.draft.name"
+          size="kira-lg"
+          class="w-56 font-medium"
+          data-testid="ade-wf-form-name"
+          @update:model-value="(v: string | number) => draft.patchWorkflow({ name: String(v) })"
+        />
+      </Field>
     </div>
     <div ref="split" class="flex min-h-96 flex-1 rounded-kira bg-bg">
       <div class="relative min-w-0" :style="{ flex: `0 0 ${graphPane.size.value}%` }">

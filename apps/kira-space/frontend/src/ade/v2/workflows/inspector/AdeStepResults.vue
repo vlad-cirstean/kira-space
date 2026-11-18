@@ -68,9 +68,7 @@ const targets = (next: string): WorkflowStep[] => {
             data-testid="ade-wf-result-ok"
             @update:model-value="(v) => draft.changeResult(step.id, r.id, { ok: v === true })"
           />
-          <Label :for="id('ok', r.id)" class="text-kira-sm text-muted-foreground">{{
-            t('space.ade.workflows.results.ok.label')
-          }}</Label>
+          <Label :for="id('ok', r.id)">{{ t('space.ade.workflows.results.ok.label') }}</Label>
         </template>
         <Label :for="id('route', r.id)" class="sr-only">{{
           t('space.ade.workflows.results.route.label')

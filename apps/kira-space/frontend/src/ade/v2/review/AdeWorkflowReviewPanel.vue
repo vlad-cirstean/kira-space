@@ -3,8 +3,7 @@ import type { ReviewComment } from '@kira/git-ipc';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
-import { FieldError } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { FieldError, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { RadioGroup, RadioGroupCard } from '@theme/components/ui/radio-group';
 import { Textarea } from '@theme/components/ui/textarea';
@@ -263,7 +262,7 @@ const stateLabel = (c: ReviewComment): string =>
     </section>
 
     <section class="flex flex-col gap-1.5" data-testid="ade-review-send">
-      <Label>{{ t('space.ade.workflows.stepInspector.reviewSendTo.label') }}</Label>
+      <FieldLabel>{{ t('space.ade.workflows.stepInspector.reviewSendTo.label') }}</FieldLabel>
       <RadioGroup
         :model-value="route"
         :aria-label="t('space.ade.workflows.stepInspector.reviewSendTo.label')"

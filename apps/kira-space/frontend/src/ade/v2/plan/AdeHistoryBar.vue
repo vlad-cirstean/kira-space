@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@theme/components/ui/button';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 
 // Sticky bar while scrolled into the open history region.
@@ -19,17 +19,17 @@ function onDate(e: Event): void {
     data-testid="ade-history-bar"
   >
     <span class="font-medium">{{ t('common.module.history.label') }}</span>
-    <Label for="ade-go-to-date" class="text-muted-foreground">{{
-      t('space.ade.plan.history.goTo.label')
-    }}</Label>
-    <Input
-      id="ade-go-to-date"
-      type="date"
-      size="kira-lg"
-      class="w-36 scheme-dark"
-      data-testid="ade-go-to-date"
-      @input="onDate"
-    />
+    <Field orientation="horizontal" class="w-auto">
+      <FieldLabel for="ade-go-to-date">{{ t('space.ade.plan.history.goTo.label') }}</FieldLabel>
+      <Input
+        id="ade-go-to-date"
+        type="date"
+        size="kira-lg"
+        class="w-36 scheme-dark"
+        data-testid="ade-go-to-date"
+        @input="onDate"
+      />
+    </Field>
     <span class="flex-1" />
     <Button variant="dialog" size="kira-lg" data-testid="ade-hide-history" @click="emit('hide')">
       {{ t('space.ade.plan.history.hide.label') }}

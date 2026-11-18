@@ -203,7 +203,6 @@ U112 packages/workbench/src/automations/RunSecretsSection.vue # 2026-11-18 P672 
 U112 packages/workbench/src/llmPrompts/PromptDetail.vue # 2026-11-18 P672 Part 6
 U112 packages/workbench/src/memory/distill/DistillResult.vue # 2026-11-18 P672 Part 6
 U112 packages/workbench/src/memory/distill/DistillRewriteResult.vue # 2026-11-18 P672 Part 6
-U113 apps/kira-space/frontend/src/ade/v2/AdeAddPopover.vue # 2026-11-18 P672 Part 6
 U113 apps/kira-space/frontend/src/ade/v2/panel/AdeArchivedPanel.vue # 2026-11-18 P672 Part 6
 U113 apps/kira-space/frontend/src/ade/v2/panel/AdeBranchPanel.vue # 2026-11-18 P672 Part 6
 U113 apps/kira-space/frontend/src/hostview/IssueSidebar.vue # 2026-11-18 P672 Part 6
@@ -241,7 +240,6 @@ U115 apps/kira-space/frontend/src/ade/v2/request/DetailsEditBody.vue # 2026-11-1
 U115 apps/kira-space/frontend/src/studio/proof/ProofHeader.vue # 2026-11-18 P672 Part 9
 U115 apps/kira-space/frontend/src/workbench/settings/FileTypesPane.vue # 2026-11-18 P672 Part 9
 U116 packages/docker-ui/src/components/ContainerList.vue # 2026-11-18 P672 Part 5
-U117 apps/kira-space/frontend/src/ade/v2/dialog/AdeAgentDialog.vue # 2026-11-18 P672 Part 8
 U117 apps/kira-space/frontend/src/studio/project/connection/ConnectionGeneralTab.vue # 2026-11-18 P672 Part 8
 U117 apps/kira-space/frontend/src/studio/project/connection/ConnectionMcpMasked.vue # 2026-11-18 P672 Part 8
 U117 apps/kira-space/frontend/src/studio/project/connection/ConnectionMcpReview.vue # 2026-11-18 P672 Part 8

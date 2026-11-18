@@ -11,8 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field, FieldDescription, FieldError } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
@@ -259,12 +258,9 @@ async function confirmRemove(): Promise<void> {
         {{ t('space.ade.statuses.defaults.title') }}
       </h4>
       <FieldDescription>{{ t('space.ade.statuses.defaults.description') }}</FieldDescription>
-      <div class="flex flex-col gap-2" data-testid="ade-status-defaults">
-        <div v-for="slot in SLOTS" :key="slot" class="flex items-start gap-3">
-          <div class="flex min-w-0 flex-1 flex-col">
-            <Label :for="`ade-status-default-${slot}`">{{ t(SLOT_LABEL[slot]) }}</Label>
-            <span class="text-kira-sm text-muted-foreground">{{ t(SLOT_HINT[slot]) }}</span>
-          </div>
+      <div class="@container flex flex-col gap-2" data-testid="ade-status-defaults">
+        <Field v-for="slot in SLOTS" :key="slot" orientation="responsive">
+          <FieldLabel :for="`ade-status-default-${slot}`">{{ t(SLOT_LABEL[slot]) }}</FieldLabel>
           <NativeSelect
             :id="`ade-status-default-${slot}`"
             variant="bordered"
@@ -277,7 +273,8 @@ async function confirmRemove(): Promise<void> {
             }}</option>
             <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
           </NativeSelect>
-        </div>
+          <FieldDescription>{{ t(SLOT_HINT[slot]) }}</FieldDescription>
+        </Field>
       </div>
     </Field>
 
@@ -306,16 +303,20 @@ async function confirmRemove(): Promise<void> {
               {{ t('space.ade.statuses.deleteDialog.steps.body', { count: uses.steps }) }}
             </li>
           </ul>
-          <Label for="ade-status-reassign">{{ t('space.ade.statuses.reassign.label') }}</Label>
-          <NativeSelect
-            id="ade-status-reassign"
-            v-model="reassignTo"
-            variant="bordered"
-            data-testid="ade-status-reassign"
-          >
-            <option v-for="o in targets" :key="o.id" :value="o.id">{{ o.name }}</option>
-          </NativeSelect>
-          <FieldError v-if="error" data-testid="ade-status-delete-error">{{ error }}</FieldError>
+          <Field>
+            <FieldLabel for="ade-status-reassign">{{
+              t('space.ade.statuses.reassign.label')
+            }}</FieldLabel>
+            <NativeSelect
+              id="ade-status-reassign"
+              v-model="reassignTo"
+              variant="bordered"
+              data-testid="ade-status-reassign"
+            >
+              <option v-for="o in targets" :key="o.id" :value="o.id">{{ o.name }}</option>
+            </NativeSelect>
+            <FieldError v-if="error" data-testid="ade-status-delete-error">{{ error }}</FieldError>
+          </Field>
         </DialogBody>
         <DialogFooter>
           <Button variant="dialog" size="kira-lg" @click="removing = null">{{

@@ -10,9 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Kbd } from '@theme/components/ui/kbd';
-import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { formatShortcut } from '@workbench/shortcuts/keys';
@@ -101,9 +100,9 @@ onBeforeUnmount(() => {
           <span v-if="!pass" class="text-muted-foreground" data-testid="ade-stage-from">{{
             t('space.ade.stageDialog.from.label', { stage: fromName })
           }}</span>
-          <Label for="ade-stage-target" class="ml-auto text-muted-foreground">{{
+          <FieldLabel for="ade-stage-target" class="ml-auto">{{
             t('space.ade.stageDialog.target.label')
-          }}</Label>
+          }}</FieldLabel>
           <span v-if="pass" class="font-medium" data-testid="ade-stage-pass-target">{{
             store.passStep?.name ?? ''
           }}</span>
@@ -118,14 +117,14 @@ onBeforeUnmount(() => {
             <option v-for="o in targets" :key="o.id" :value="o.id">{{ o.name }}</option>
           </NativeSelect>
         </div>
-        <div class="flex flex-col gap-1">
-          <Label for="ade-stage-notes" class="text-muted-foreground">{{
+        <Field>
+          <FieldLabel for="ade-stage-notes">{{
             t(
               pass
                 ? 'space.ade.stageDialog.passMessage.label'
                 : 'space.ade.stageDialog.notes.label',
             )
-          }}</Label>
+          }}</FieldLabel>
           <AdeNotesEditor
             id="ade-stage-notes"
             v-model="store.notes"
@@ -150,7 +149,7 @@ onBeforeUnmount(() => {
           <FieldDescription>{{
             t(pass ? 'space.ade.stageDialog.passMessage.hint' : 'space.ade.stageDialog.notes.hint')
           }}</FieldDescription>
-        </div>
+        </Field>
         <div v-if="store.card" data-testid="ade-stage-links">
           <AdeLinkStrip
             :task="store.card.task"
