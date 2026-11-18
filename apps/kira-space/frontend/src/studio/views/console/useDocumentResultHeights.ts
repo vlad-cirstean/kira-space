@@ -1,9 +1,10 @@
 import type { Page } from '@shared/protocol/page';
 import { computed, type Ref, watch } from 'vue';
+import { rowsOfIds } from '../shared/document/idIndex';
 import { useDocumentPageStatsStore } from '../shared/document/pageStatsStore';
 import { useDocumentRowsStore } from '../shared/document/rows';
 import { useHeightAnchor } from '../shared/document/useHeightAnchor';
-import { documentId, pageVersion } from './resultPages';
+import { getPage, pageVersion } from './resultPages';
 import { useConsoleViewStore } from './state';
 
 interface Options {
@@ -30,11 +31,9 @@ export function useDocumentResultHeights({ tabId, pageKey, page, rowIndices, scr
     void rowsStore.lineCountsVersion.n;
     const expanded = consoleViewStore.resultDocExpandedIds(tabId(), pageKey());
     if (expanded.length === 0) return undefined;
-    const open = new Set(expanded);
-    return rowIndices().map((row) => {
-      const id = documentId(pageKey(), row);
-      return rowsStore.knownRowHeight(pageKey(), row, null, id !== null && open.has(id));
-    });
+    const current = getPage(pageKey());
+    const open = rowsOfIds(current?.kind === 'document' ? current : null, expanded);
+    return rowIndices().map((row) => rowsStore.knownRowHeight(pageKey(), row, null, open.has(row)));
   });
 
   const hasExpanded = computed(

@@ -28,6 +28,7 @@ import { useRunState } from '../../state/runState';
 import EngineIcon from '../../theme/EngineIcon.vue';
 import DocumentRow from '../shared/document/DocumentRow.vue';
 import DocumentTree from '../shared/document/DocumentTree.vue';
+import { rowsOfIds } from '../shared/document/idIndex';
 import { type DocumentRowView, useDocumentRowsStore } from '../shared/document/rows';
 import { useHeightAnchor } from '../shared/document/useHeightAnchor';
 import SearchFilterNotice from '../shared/page/SearchFilterNotice.vue';
@@ -41,7 +42,7 @@ import DocumentFilterRow from './DocumentFilterRow.vue';
 import DocumentToolbar from './DocumentToolbar.vue';
 import { confirmDeleteDocument, rowMenu } from './menu';
 import { deleteDocument } from './mutations';
-import { documentId, documentRow, pageVersion, setVisibleWindow } from './page';
+import { documentId, documentRow, getPage, pageVersion, setVisibleWindow } from './page';
 import RowActionButton from './RowActionButton.vue';
 import { type Match, matchedRows, pageSearchApi } from './search';
 import { useDocumentViewStore } from './state';
@@ -165,12 +166,12 @@ const rowHeights = computed<number[]>(() => {
   void documentRowsStore.rowsVersion.n;
   void documentRowsStore.lineCountsVersion.n;
   // Every document defaults to expanded: with no collapsed entry no id is decoded at all.
-  const collapsed = new Set(
-    Object.entries(props.tab.state.expanded).flatMap(([id, open]) => (open === false ? id : [])),
+  const collapsedIds = Object.entries(props.tab.state.expanded).flatMap(([id, open]) =>
+    open === false ? id : [],
   );
+  const collapsed = rowsOfIds(getPage(props.tab.id), collapsedIds);
   return rows.value.map((row) => {
-    const id = collapsed.size > 0 ? documentId(props.tab.id, row) : null;
-    const expanded = id === null || !collapsed.has(id);
+    const expanded = !collapsed.has(row);
     return documentRowsStore.knownRowHeight(
       props.tab.id,
       row,
