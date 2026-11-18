@@ -52,7 +52,7 @@ export interface TaskMenuItem {
 }
 
 /** One option of a `TaskMenuRadio`; `value` is compared with the radio's. */
-export interface TaskRadioOption {
+interface TaskRadioOption {
   id: string;
   value: string;
   label: string;
@@ -62,7 +62,7 @@ export interface TaskRadioOption {
 }
 
 /** Mutually exclusive options (a submenu body); `value` marks the current one. */
-export interface TaskMenuRadio {
+interface TaskMenuRadio {
   type: 'radio';
   id: string;
   value: string | null;
