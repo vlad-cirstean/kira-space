@@ -256,8 +256,12 @@ const { workingOnly, showsPanes, pane, emptyNote } = useReviewWorkingOnly(
 // The file filter is revealed by the toolbar's search button; `filterVisible` gates it.
 const filterVisible = ref(false);
 
+// Declared before the composable below, which reads it at setup.
+const filter = ref('');
+
 // Type to search: a printable key in the commit list reveals the file filter and starts it.
 const { showSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: null,
   searchable: () => showsPanes.value,
   getSearch: () => filter.value,
   setSearch: (value) => {
@@ -265,6 +269,9 @@ const { showSearch } = usePanelHeaderSearch(rootEl, {
     if (value !== '') filterVisible.value = true;
   },
   searchTestid: 'review-file-filter',
+  onReveal: () => {
+    filterVisible.value = true;
+  },
 });
 watch(filterVisible, (visible) => {
   if (!visible) showSearch.value = false;
@@ -406,7 +413,6 @@ onBeforeUnmount(() => {
 // ReviewCommitRow/ReviewFilesPane's own FileTree instances render no toolbar of their own
 // (show-toolbar="false") and receive these as plain props.
 const listMode = ref<FileListMode>('tree');
-const filter = ref('');
 // Reactive so a host computed reading the navigator refreshes when the list order changes.
 const orderedPaths = computed(() =>
   orderedFilePaths(

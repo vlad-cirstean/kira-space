@@ -26,6 +26,7 @@ import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualR
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { runMenuShortcut, useContextMenuStore } from '@workbench/state/contextMenu';
+import { tabViewKey } from '@workbench/state/viewState';
 import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { BrowseTabRecord } from '../../../state/tabDomain';
 import { useTabsStore } from '../../../state/tabs';
@@ -270,13 +271,12 @@ function onUploadClick(): void {
 
 const { single: rowHeight } = useRowHeight();
 
-// P104 §3.4: VirtualList's own recipe, rebuilt on @tanstack/vue-virtual via the shared
-// useVirtualRows composable.
 const scrollEl = ref<HTMLElement | null>(null);
 const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({
   count: () => filteredNodes.value.length,
   rowHeight: () => rowHeight.value,
   scrollElement: scrollEl,
+  keepScroll: () => tabViewKey(props.tab.id, `browse:${currentLevelPath.value}`),
 });
 
 const activeKey = computed({

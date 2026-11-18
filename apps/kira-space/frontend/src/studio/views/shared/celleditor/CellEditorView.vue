@@ -19,6 +19,7 @@ import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import MonacoDiff from '@workbench/editor/MonacoDiff.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
+import { tabViewKey } from '@workbench/state/viewState';
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import type { ConsoleDiagnostic } from '../../../editor/diagnostics';
 import { findRanges } from '../../../editor/findRanges';
@@ -584,6 +585,12 @@ const statusLine = computed(() => {
       </template>
     </div>
 
-    <ResponseFindBar v-if="findOpen" ref="findBarRef" :targets="findTargets" @close="closeFind" />
+    <ResponseFindBar
+      v-if="findOpen"
+      ref="findBarRef"
+      :state-key="tabViewKey(cell.tabId, 'cell:find')"
+      :targets="findTargets"
+      @close="closeFind"
+    />
   </div>
 </template>

@@ -6,9 +6,10 @@ import { Switch } from '@theme/components/ui/switch';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
+import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
 import { useApprovalsStore } from '@workbench/state/approvals';
-import { computed, ref } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeParentChip from '../AdeParentChip.vue';
 import AdeTip from '../AdeTip.vue';
@@ -59,10 +60,14 @@ const spanDays = computed(() => props.card.entry.span);
 
 // ---- kind
 const toggle = computed(() => orchestratorToggle(props.card));
+
+const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
+useKeptScroll(() => `ade:task:${props.card.task.id}:main`, bodyEl);
 </script>
 
 <template>
   <div
+    ref="bodyEl"
     class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-1.5 py-3 text-kira-md"
     data-testid="ade-main-tab"
   >

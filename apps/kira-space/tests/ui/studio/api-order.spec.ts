@@ -8,7 +8,7 @@ import { openHttpMode } from './support/apiMode';
 import { collectionRow } from './support/apiRows';
 import { dragRow, settleFrames } from './support/tree';
 
-// Collections and environments keep a manual order (drag, Move up / Move down, Alt+Arrow); items
+// Collections and environments keep a manual order (drag; Alt+Arrow for environments); items
 // still reorder inside a collection. The Go half is apiflow TestApiOrder; contract api-order fixes
 // the call shapes and the trees. Seed order is file-load order: Zeta, Alpha, Mid.
 
@@ -151,34 +151,36 @@ test('an active search or Escape starts no collection reorder; a mixed selection
   expect(calls(control, IPC.collectionsMoveItems)).toHaveLength(0);
 });
 
-test('collection menu: Move up is disabled on the first; Move down, then Alt+ArrowDown, send the order', async ({
+test('collection and request menus have no Move items; Alt+ArrowDown moves nothing', async ({
   relaunch,
 }) => {
   const { window: page, control } = await relaunch({
     control: [
-      ...list(seed, treeIn([A, Z, M]), treeIn([A, M, Z])),
+      ...list(seed, treeIn([M, Z, A])),
       { channel: IPC.collectionsReorderCollections, response: null },
     ],
   });
   await openHttpMode(page);
+  await twisty(collectionRow(page, Z)).click();
 
-  await collectionRow(page, Z).click({ button: 'right' });
-  await expect(menuItem(page, 'move-up')).toHaveAttribute('data-disabled', '');
-  await expect(menuItem(page, 'move-down')).not.toHaveAttribute('data-disabled', '');
-  await menuItem(page, 'move-down').click();
-  await expect.poll(() => rowIds(page)).toEqual([A, Z, M]);
-  expect(calls(control, IPC.collectionsReorderCollections)[0].args).toMatchObject({
-    ids: [A, Z, M],
-  });
+  for (const row of [collectionRow(page, Z), collectionRow(page, R1)]) {
+    await row.click({ button: 'right' });
+    await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
+    await expect(menuItem(page, 'move-up')).toHaveCount(0);
+    await expect(menuItem(page, 'move-down')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[data-testid="context-menu"]')).toHaveCount(0);
+  }
 
   await collectionRow(page, Z).focus();
   await page.keyboard.press('Alt+ArrowDown');
-  await expect.poll(() => rowIds(page)).toEqual([A, M, Z]);
-  expect(calls(control, IPC.collectionsReorderCollections)).toHaveLength(2);
-  expect(calls(control, IPC.collectionsReorderCollections)[1].args).toMatchObject({
-    ids: [A, M, Z],
-  });
-  await expect(collectionRow(page, Z)).toBeFocused();
+  await collectionRow(page, R1).focus();
+  await page.keyboard.press('Alt+ArrowDown');
+  // Barrier: one drag lands exactly one call, so the chords sent none.
+  await dragRow(page, collectionRow(page, M), collectionRow(page, Z), 0.25);
+  await page.mouse.up();
+  await expect.poll(() => calls(control, IPC.collectionsReorderCollections)).toHaveLength(1);
+  expect(calls(control, IPC.collectionsMoveItems)).toHaveLength(0);
 });
 
 test('dragging a request above its sibling still sends MoveItems', async ({ relaunch }) => {

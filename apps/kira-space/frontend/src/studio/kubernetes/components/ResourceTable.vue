@@ -125,6 +125,7 @@ const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({
   count: () => rows.value.length,
   rowHeight: () => rowHeight.value,
   scrollElement: scrollEl,
+  keepScroll: () => `kubernetes:resources:${props.clusterId}:${props.kind}`,
   pinned: () => (activeIndex.value < 0 ? null : activeIndex.value),
 });
 const nav = useListNavigation<KubeRow>({

@@ -30,12 +30,13 @@ test('the lead slot holds the agent indicator first and no colour square remains
 }) => {
   const { window: page } = await openPlan(relaunch);
   for (const id of ['T_bill', 'T_hooks']) {
-    const line = `${head(id)} > div`;
-    expect(await firstChildTestId(page, line)).toBe('ade-row-lead');
+    expect(await firstChildTestId(page, head(id))).toBe('ade-row-lead');
     await expect(
-      page.locator(`${line} ${t('ade-row-lead')} ${t('ade-card-sessions')}`),
+      page.locator(`${head(id)} ${t('ade-row-lead')} ${t('ade-card-sessions')}`),
     ).toHaveCount(1);
   }
+  const box = await page.locator(`${head('T_bill')} ${t('ade-card-sessions')}`).boundingBox();
+  expect(Math.round(box?.height ?? 0)).toBe(24);
   await expect(page.locator(t('ade-card-dot'))).toHaveCount(0);
   // A task without sessions keeps an empty slot so status text lines up.
   await page.locator(t('ade-load-all')).click();

@@ -259,33 +259,6 @@ function canUpdateCredentials(record: ConnectionSummary | undefined): boolean {
   );
 }
 
-// Disabled at the ends and while a search filters the list: the visible order is then partial.
-function moveItems(connectionId: string): MenuItem[] {
-  const connections = useConnectionsStore();
-  const at = connections.records.findIndex((r) => r.id === connectionId);
-  const searching = useTreeStore().search.trim() !== '';
-  return [
-    {
-      type: 'item',
-      id: 'move-up',
-      label: t('common.moveUp.tooltip'),
-      icon: 'arrow-up',
-      shortcut: 'list.moveUp',
-      disabled: searching || at <= 0,
-      run: () => connections.moveConnection(connectionId, -1),
-    },
-    {
-      type: 'item',
-      id: 'move-down',
-      label: t('common.moveDown.tooltip'),
-      icon: 'arrow-down',
-      shortcut: 'list.moveDown',
-      disabled: searching || at < 0 || at >= connections.records.length - 1,
-      run: () => connections.moveConnection(connectionId, 1),
-    },
-  ];
-}
-
 function connectionMenu(row: TreeRowVm): MenuItem[] {
   const status = useConnectionsStore().states[row.connectionId]?.status ?? 'disconnected';
   const record = useConnectionsStore().connectionRecord(row.connectionId);
@@ -343,7 +316,6 @@ function connectionMenu(row: TreeRowVm): MenuItem[] {
         await useConnectionsStore().duplicateConnection(row.connectionId);
       },
     },
-    ...moveItems(row.connectionId),
     ...copyNameItems(row),
     {
       type: 'item',

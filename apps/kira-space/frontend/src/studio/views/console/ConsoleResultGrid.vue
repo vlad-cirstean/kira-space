@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ColumnDescriptor } from '@shared/protocol/page';
+import type { VirtualItem } from '@tanstack/vue-virtual';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
@@ -16,15 +17,24 @@ import DocumentRow from '../shared/document/DocumentRow.vue';
 import DocumentTree from '../shared/document/DocumentTree.vue';
 import { type DocumentRowView, useDocumentRowsStore } from '../shared/document/rows';
 import { datasetNumber } from '../shared/eventCoords';
+import { displayText } from '../shared/page/display';
 import { createMatchIndex } from '../shared/page/search';
 import { setVisibleRows } from '../shared/page/visibleRows';
 import ConsoleSlickGrid from './ConsoleSlickGrid.vue';
 import type { CopyAllFormat } from './copyAll';
 import { mongoDocumentRowMenu, rowAsJsonMenu } from './menu';
-import { documentRow, getPage, keyValueRow, pageVersion, setVisibleWindow } from './resultPages';
+import {
+  documentId,
+  documentRow,
+  getPage,
+  keyValueRow,
+  pageVersion,
+  setVisibleWindow,
+} from './resultPages';
 import type { ResultViewState } from './resultViewState';
 import { type Match, matchedRows, searchState } from './search';
 import { useConsoleViewStore } from './state';
+import { useDocumentResultHeights } from './useDocumentResultHeights';
 import { useResultScrollState } from './useResultScrollState';
 
 const cellSelectionStore = useCellSelectionStore();
@@ -81,27 +91,18 @@ const rowIndices = computed(() => {
 // views/shared/document/rows.ts, registered onto this result's own key in console/state.ts's
 // run()) — collapsed by default, per-result expansion state in the console runtime rather than
 // persisted tab state (a console result is runtime-only to begin with).
-const documentRows = computed<DocumentRowView[]>(() => {
-  void pageVersion.n;
-  const out: DocumentRowView[] = [];
-  for (const i of rowIndices.value) {
-    const view = documentRowsStore.rowView(props.pageKey, i);
-    if (view) out.push(view);
-  }
-  return out;
-});
-
-const documentRowHeights = computed<number[]>(() => {
+// Bounded by the rendered window, never the page: parsing every body of a 10 000-document result
+// froze the renderer on mount and on every `pageVersion` bump.
+const visibleDocRows = computed(() => {
   void pageVersion.n;
   void documentRowsStore.rowsVersion.n;
-  return documentRows.value.map((view) =>
-    documentRowsStore.rowHeight(
-      props.pageKey,
-      view.index,
-      null,
-      consoleViewStore.isResultDocExpanded(props.tabId, props.pageKey, view.id),
-    ),
-  );
+  const out: { vi: VirtualItem; view: DocumentRowView }[] = [];
+  for (const vi of docVirtual.virtualItems.value) {
+    const row = rowIndices.value[vi.index];
+    const view = row === undefined ? null : documentRowsStore.rowView(props.pageKey, row);
+    if (view) out.push({ vi, view });
+  }
+  return out;
 });
 
 function onToggleDocExpanded(id: string): void {
@@ -114,9 +115,20 @@ function onToggleDocExpanded(id: string): void {
 // the two is ever mounted at a time (the template's v-else-if/v-else) but each needs its own
 // scroll element, count and row-height source.
 const docScrollEl = ref<HTMLElement | null>(null);
+const {
+  heights: documentRowHeights,
+  hasExpanded: hasExpandedDocs,
+  fillWindow: fillWindowLineCounts,
+} = useDocumentResultHeights({
+  tabId: () => props.tabId,
+  pageKey: () => props.pageKey,
+  page: () => page.value,
+  rowIndices: () => rowIndices.value,
+  scrollEl: docScrollEl,
+});
 const docVirtual = useVirtualRows({
-  count: () => documentRows.value.length,
-  rowHeight: () => rowHeight.value,
+  count: () => rowIndices.value.length,
+  rowHeight: () => documentRowsStore.rowHeight(props.pageKey, 0, null, false),
   rowHeights: () => documentRowHeights.value,
   scrollElement: docScrollEl,
 });
@@ -129,21 +141,24 @@ const kvVirtual = useVirtualRows({
 });
 
 const selectedKey = computed(() => (selected.value ? String(selected.value.row) : null));
-const docNav = useListNavigation<DocumentRowView>({
+const docNav = useListNavigation<number>({
   container: docScrollEl,
-  items: () => documentRows.value,
-  key: (view) => String(view.index),
+  items: () => rowIndices.value,
+  key: (row) => String(row),
   activeKey: computed({
     get: () => selectedKey.value,
     set: (key) => {
       if (key !== null) selectDocumentRow(Number(key));
     },
   }),
-  onOpen: (view) => onToggleDocExpanded(view.id),
-  onSelect: (view) => selectDocumentRow(view.index),
-  onMenu: (view, rect) =>
-    contextMenuStore.openContextMenuAt(rect.left, rect.bottom, documentRowMenu(view.index), {
-      onRestoreFocus: () => void docNav.focusKey(String(view.index)),
+  onOpen: (row) => {
+    const id = documentId(props.pageKey, row);
+    if (id !== null) onToggleDocExpanded(id);
+  },
+  onSelect: selectDocumentRow,
+  onMenu: (row, rect) =>
+    contextMenuStore.openContextMenuAt(rect.left, rect.bottom, documentRowMenu(row), {
+      onRestoreFocus: () => void docNav.focusKey(String(row)),
     }),
   scrollToIndex: (index) => docVirtual.scrollToIndex(index),
   rendered: () => docVirtual.virtualItems.value,
@@ -168,7 +183,7 @@ const kvNav = useListNavigation<number>({
 });
 
 // Search state is keyed by tabId, like every watcher below. The virtualizers report positions within
-// `rowIndices`/`documentRows`: ascending, but non-contiguous while filtering (as DocumentView.vue's
+// `rowIndices`: ascending, but non-contiguous while filtering (as DocumentView.vue's
 // onVisibleRange). The same bounds prune resultPages.ts's decode cache, keyed by pageKey (a decode
 // cache is per result set; search priority is per tab), so resultPages.ts needs no watch of its own.
 watch(kvVirtual.virtualItems, (items) => {
@@ -183,18 +198,17 @@ watch(kvVirtual.virtualItems, (items) => {
 
 watch(docVirtual.virtualItems, (items) => {
   if (items.length === 0) return;
-  const list = documentRows.value;
-  const from = list[items[0].index]?.index;
-  const to = list[items[items.length - 1].index]?.index;
+  const list = rowIndices.value;
+  const from = list[items[0].index];
+  const to = list[items[items.length - 1].index];
   if (from === undefined || to === undefined) return;
   setVisibleRows(props.tabId, from, to + 1);
   setVisibleWindow(props.pageKey, from, to + 1);
-  // rows.ts's own parseCache is pruned to the rendered window everywhere else (DocumentView.vue's
-  // own onVisibleRange) but had no call site here at all — a Mongo console result's parsed node
-  // trees stayed resident for the life of the result instead of the rendered window
-  // docs/ARCHITECTURE.md's Caching section already documents for this tier.
+  // Keeps rows.ts's parseCache to the rendered window (docs/ARCHITECTURE.md, Caching).
   documentRowsStore.pruneRows(props.pageKey, from, to + 1);
+  fillWindowLineCounts(items);
 });
+watch(hasExpandedDocs, () => fillWindowLineCounts(docVirtual.virtualItems.value));
 
 // DocumentView.vue's own expand-all/collapse-all pair,
 // exposed the same way goToMatch already is (ConsoleView.vue calls through this ref) — its
@@ -204,7 +218,7 @@ function expandAll(): void {
   consoleViewStore.setAllResultDocsExpanded(
     props.tabId,
     props.pageKey,
-    documentRows.value.map((v) => v.id),
+    rowIndices.value.flatMap((row) => documentId(props.pageKey, row) ?? []),
     true,
   );
   emitViewState();
@@ -240,10 +254,7 @@ const { report: emitViewState } = useResultScrollState({
   page: () => page.value,
   scrollEl: () => (page.value?.kind === 'document' ? docScrollEl.value : kvScrollEl.value),
   selectedRow: () => selected.value?.row ?? null,
-  expandedIds: () =>
-    documentRows.value
-      .filter((v) => consoleViewStore.isResultDocExpanded(props.tabId, props.pageKey, v.id))
-      .map((v) => v.id),
+  expandedIds: () => consoleViewStore.resultDocExpandedIds(props.tabId, props.pageKey),
   onState: (state) => emit('update:viewState', state),
   onReady: () => emit('ready'),
 });
@@ -367,7 +378,7 @@ function selectKeyValueRowFromKeydown(e: KeyboardEvent): void {
 // The document and key-value branches' own row menu — the document branch
 // gets the Shell/Canonical/Relaxed submenu pair (mongoDocumentRowMenu); key-value has no
 // shell/EJSON format of its own and keeps the plain "Copy as JSON"/"Copy all as JSON" pair
-// (rowAsJsonMenu). Both cover every row currently displayed (i.e. rowIndices/documentRows — under
+// (rowAsJsonMenu). Both cover every row currently displayed (i.e. rowIndices — under
 // an active find-filter that's the filtered subset, same rule columnsToTsv's own callers already
 // follow). A copy failure lands here (component-local) since the
 // console has no actionError field the way documents/menu.ts's copyOrReportError writes into.
@@ -376,15 +387,12 @@ function onCopyError(message: string): void {
   copyError.value = message;
 }
 
-// allJson used to be a materialized array, built eagerly at
-// right-click time -- a whole-page decode (plus, for the key-value branch, a full
-// JSON.stringify(..., null, 2) per row) on a click that should cost ~0 ms, and one that re-
-// populates the decode/view caches for every row, undoing the visible-window pruning until the
-// next scroll. Both are thunks now, invoked only inside "Copy all as JSON"'s own run().
+// Copy-all bodies are thunks, run only inside "Copy all as JSON": a right-click must not decode the
+// whole page or undo the visible-window cache pruning.
 function documentRowMenu(index: number) {
   const body = documentRow(props.pageKey, index)?.body ?? '';
   const allBodies = () =>
-    documentRows.value.map((v) => documentRow(props.pageKey, v.index)?.body ?? '');
+    rowIndices.value.map((row) => documentRow(props.pageKey, row)?.body ?? '');
   // Over the inline threshold the encode runs in the shared parse worker: a 10 000-document page
   // otherwise blocks the main thread for hundreds of ms.
   const allText = (format: CopyAllFormat): Promise<string> => {
@@ -479,46 +487,39 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
         <!-- P48 F10-F12: this read-only copy of DocumentRow (no edit/delete affordance) wants no
              pointer cursor outside its head; DocumentRow.vue itself doesn't opt into that. -->
         <DocumentRow
-          v-for="vi in docVirtual.virtualItems.value"
+          v-for="{ vi, view } in visibleDocRows"
           :key="String(vi.key)"
           :class="[VIRTUAL_ROW_CLASS, 'cursor-default']"
           data-testid="console-result-doc-row"
-          :data-row="documentRows[vi.index]?.index"
-          :view="documentRows[vi.index]!"
+          :data-row="view.index"
+          :view="view"
           :row-scope="pageKey"
-          :nav-props="docNav.rowProps(String(documentRows[vi.index]!.index))"
-          :expanded="
-            consoleViewStore.isResultDocExpanded(tabId, pageKey, documentRows[vi.index]!.id)
-          "
-          :selected="isSelected(documentRows[vi.index]!.index, 0)"
-          :search-match="isSearchMatch(documentRows[vi.index]!.index, 0)"
-          :search-match-current="isCurrentSearchMatch(documentRows[vi.index]!.index, 0)"
+          :nav-props="docNav.rowProps(String(view.index))"
+          :expanded="consoleViewStore.isResultDocExpanded(tabId, pageKey, view.id)"
+          :selected="isSelected(view.index, 0)"
+          :search-match="isSearchMatch(view.index, 0)"
+          :search-match-current="isCurrentSearchMatch(view.index, 0)"
           :style="{ transform: `translateY(${vi.start}px)` }"
-          @toggle="onToggleDocExpanded(documentRows[vi.index]!.id)"
-          @select="selectDocumentRow(documentRows[vi.index]!.index)"
-          @contextmenu="onDocumentRowContextMenu($event, documentRows[vi.index]!.index)"
+          @toggle="onToggleDocExpanded(view.id)"
+          @select="selectDocumentRow(view.index)"
+          @contextmenu="onDocumentRowContextMenu($event, view.index)"
         >
           <template #body>
             <div
-              v-if="
-                consoleViewStore.isResultDocExpanded(tabId, pageKey, documentRows[vi.index]!.id)
-              "
+              v-if="consoleViewStore.isResultDocExpanded(tabId, pageKey, view.id)"
               class="flex-1 min-h-0 bg-elevated overflow-hidden"
               data-testid="document-body"
             >
               <DocumentTree
-                v-if="documentRows[vi.index]!.root"
+                v-if="view.root"
                 :tab-id="pageKey"
-                :row="documentRows[vi.index]!.index"
-                @toggle-path="
-                  (path) =>
-                    documentRowsStore.togglePath(pageKey, documentRows[vi.index]!.index, path)
-                "
+                :row="view.index"
+                @toggle-path="(path) => documentRowsStore.togglePath(pageKey, view.index, path)"
               />
               <pre
                 v-else
                 class="m-0 whitespace-pre-wrap break-words font-data py-1 px-2"
-              >{{ documentRow(pageKey, documentRows[vi.index]!.index)?.body }}</pre>
+              >{{ documentRow(pageKey, view.index)?.body }}</pre>
             </div>
           </template>
         </DocumentRow>
@@ -571,7 +572,7 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
               )
             "
           >
-            {{ kvRowAt(rowIndices[vi.index]!).field }}
+            {{ displayText(kvRowAt(rowIndices[vi.index]!).field) }}
           </div>
           <div
             class="cell"
@@ -589,7 +590,7 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
               )
             "
           >
-            {{ kvRowAt(rowIndices[vi.index]!).value }}
+            {{ displayText(kvRowAt(rowIndices[vi.index]!).value) }}
           </div>
         </div>
       </div>

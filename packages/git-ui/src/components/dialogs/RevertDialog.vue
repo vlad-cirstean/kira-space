@@ -11,7 +11,6 @@ import { Button } from '@theme/components/ui/button';
  * The modal shell is shadcn's `Dialog`/`DialogContent` now — this file still
  * only supplies its own body/footer content.
  */
-import { Card } from '@theme/components/ui/card';
 import {
   Dialog,
   DialogBody,
@@ -21,17 +20,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field, FieldLabel } from '@theme/components/ui/field';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
+import { FieldDescription } from '@theme/components/ui/field';
+import { RadioGroup, RadioGroupCard } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
-import CatalogText from '@theme/i18n/CatalogText.vue';
 import Identifier from '@workbench/components/Identifier.vue';
-import { computed, ref, useId, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { OpsState } from '../../state/ops.ts';
 import PreflightPrediction from './PreflightPrediction.vue';
 
 const props = defineProps<{ ops: OpsState }>();
-const mainlineId = useId();
 
 const preflight = computed(() => props.ops.pendingRevert.value);
 const active = computed(() => preflight.value !== undefined);
@@ -94,31 +91,26 @@ function confirm(): void {
 
         <template v-if="needsMainline">
           <p>{{ t('git.dialog.revert.mainline.body') }}</p>
-          <RadioGroup v-model="selectedMainline">
-            <Card v-for="entry in preflight?.mainlineRequired" :key="entry.sha">
-              <p class="m-0 mb-0.5"><Identifier :value="entry.sha" :short="shortSha" /></p>
-              <Field
+          <RadioGroup v-model="selectedMainline" class="gap-1.5">
+            <template v-for="entry in preflight?.mainlineRequired" :key="entry.sha">
+              <FieldDescription>
+                <Identifier :value="entry.sha" :short="shortSha" />
+              </FieldDescription>
+              <RadioGroupCard
                 v-for="parent in entry.parents"
                 :key="parent.parentNumber"
-                orientation="horizontal"
-                class="py-0.5"
+                :value="parent.parentNumber"
+                :data-testid="`revert-mainline-${parent.parentNumber}`"
+                :data-sha="entry.sha"
               >
-                <RadioGroupItem
-                  :id="`${mainlineId}-${entry.sha}-${parent.parentNumber}`"
-                  :value="parent.parentNumber"
-                />
-                <FieldLabel :for="`${mainlineId}-${entry.sha}-${parent.parentNumber}`">
-                  <span>
-                    <CatalogText
-                      k="git.common.mergeParent.option"
-                      :params="{ number: parent.parentNumber, subject: parent.subject }"
-                    >
-                      <template #sha><Identifier :value="parent.sha" :short="shortSha" /></template>
-                    </CatalogText>
-                  </span>
-                </FieldLabel>
-              </Field>
-            </Card>
+                <template #title>
+                  {{ t('git.common.mergeParent.option', { number: parent.parentNumber }) }}
+                </template>
+                <template #description>
+                  <Identifier :value="parent.sha" :short="shortSha" /> {{ parent.subject }}
+                </template>
+              </RadioGroupCard>
+            </template>
           </RadioGroup>
         </template>
 
@@ -141,7 +133,13 @@ function confirm(): void {
         <Button variant="dialog" size="kira-lg" data-dialog-dismiss @click="cancel">{{
           t('common.action.cancel.label')
         }}</Button>
-        <Button variant="dialog-primary" size="kira-lg" :disabled="!canConfirm" @click="confirm">
+        <Button
+          variant="dialog-primary"
+          size="kira-lg"
+          :disabled="!canConfirm"
+          data-testid="revert-confirm"
+          @click="confirm"
+        >
           {{ t('common.revert.label') }}
         </Button>
       </DialogFooter>

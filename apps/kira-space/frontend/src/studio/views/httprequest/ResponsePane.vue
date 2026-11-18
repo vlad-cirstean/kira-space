@@ -13,9 +13,11 @@ import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { formatBytes, formatClockTime, formatDuration } from '@workbench/behaviour/format';
 import { matchesQuery } from '@workbench/behaviour/match';
+import { useKeptEditorScroll, useKeptState } from '@workbench/behaviour/viewState';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import type { RangeHighlight } from '@workbench/editor/ranges';
 import { registerCommand } from '@workbench/shortcuts/commands';
+import { tabViewKey } from '@workbench/state/viewState';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
 import type { HttpRequestTabRecord } from '../../../state/tabDomain';
@@ -200,7 +202,7 @@ const filteredHeaders = computed(() => {
 
 // P16 D11: the find bar over the response body and the raw exchange's two documents. Component-
 // local (not tab state, D11's own note): a lens over what's already on screen, not a setting.
-const findOpen = ref(false);
+const findOpen = useKeptState(() => tabViewKey(props.tab.id, 'response:findOpen'), false);
 function toggleFind(): void {
   findOpen.value = !findOpen.value;
 }
@@ -209,6 +211,9 @@ function closeFind(): void {
 }
 
 const bodyHostRef = ref<FindBarHost | null>(null);
+const bodyScroll = useKeptEditorScroll(() =>
+  tabViewKey(props.tab.id, `response:${props.tab.state.responseView}`),
+);
 const rawPaneRef = ref<{
   requestHost: FindBarHost | null;
   responseHost: FindBarHost | null;
@@ -356,6 +361,7 @@ onUnmounted(() => {
     <ResponseFindBar
       v-if="findOpen && (tab.state.responsePane === 'body' || tab.state.responsePane === 'raw')"
       ref="findBarRef"
+      :state-key="tabViewKey(tab.id, 'response:find')"
       :targets="findTargets"
       @close="closeFind"
     />
@@ -503,6 +509,8 @@ onUnmounted(() => {
           :language="prettyFormat ?? 'plain'"
           readonly
           :range-highlights="bodyHighlights"
+          :scroll-top="bodyScroll.initial"
+          @update:scroll-top="bodyScroll.save"
         />
       </template>
       <EmptyState v-else icon="arrow-right" :title="t('studio.common.responseEmpty.empty')">

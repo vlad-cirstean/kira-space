@@ -80,7 +80,7 @@ export function baseMarker(b: Branch, graph: BranchGraph, mainName: string): Bas
   };
 }
 
-/** Second-line context of a branch not created yet: `No branch yet · from <base>`. */
+/** Second-line context of a branch not created yet: `Forks from <base>`. */
 export function baseContext(b: Branch, graph: BranchGraph): string {
   if (!isDraft(b)) return '';
   const parent = graph.parentOf.get(b.id);

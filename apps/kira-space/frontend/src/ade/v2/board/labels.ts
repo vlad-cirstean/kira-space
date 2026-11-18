@@ -76,7 +76,7 @@ function deploymentChips(b: Branch): LabelChip[] {
 }
 
 export interface BranchLine2 {
-  /** `no branch yet · from main` for a draft, the PR title for a review item, else ''. */
+  /** `Forks from main` for a draft, the PR title for a review item, else ''. */
   context: string;
   merged: LabelChip[];
   deployed: LabelChip[];

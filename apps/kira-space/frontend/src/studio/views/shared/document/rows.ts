@@ -62,12 +62,20 @@ interface TabRows {
   // full resetRows/dropRows (the whole page, or scope, is gone). `null` caches the "no root, raw
   // fallback" case so a document that failed to parse doesn't retry parsing it every call either.
   lineCounts: Map<number, number | null>;
+  /** Changes on every reset, and is never reused by a recreated entry: an off-thread result
+   *  carries the generation it was requested for and is dropped when it no longer matches. */
+  generation: number;
+  /** Sum and count of the non-null `lineCounts`, for the estimate `knownRowHeight` gives rows
+   *  nothing has counted yet. */
+  knownSum: number;
+  knownCount: number;
 }
 
 const HEAD_H = 26; // --kira-h-md
 const LINE_H = 18; // --kira-h-xs, OperationsPanel's own row height
 const BODY_PADDING_V = 8; // --kira-s-2 top + bottom, DocumentTree.vue's own body padding
 const EDITING_H = 220; // the fixed editor panel height (unchanged from the pre-P27 row)
+const ESTIMATE_LINES = 8; // an expanded row's line count before any row on the page is counted
 
 function countNodes(node: DocNode): number {
   let n = 1;
@@ -78,9 +86,14 @@ function countNodes(node: DocNode): number {
 export const useDocumentRowsStore = defineStore('documentRows', () => {
   const rowSources = new Map<string, RowSource>();
   const tabRows = new Map<string, TabRows>();
+  let nextGeneration = 0;
 
   /** The only reactive thing in this module — bumped on every parse-cache/expansion-set change. */
   const rowsVersion = reactive({ n: 0 });
+
+  /** Bumped when line counts are added (window fill, worker prime). Separate from `rowsVersion` so
+   *  a count fill does not re-run every mounted tree's visible lines. */
+  const lineCountsVersion = reactive({ n: 0 });
 
   /** Where `scope`'s rows come from — the document tab registers documents/page.ts's own
    *  documentRow on mount and unregisters on unmount; a console result set does the same with
@@ -111,10 +124,25 @@ export const useDocumentRowsStore = defineStore('documentRows', () => {
   function ensureTabRows(tabId: string): TabRows {
     let entry = tabRows.get(tabId);
     if (!entry) {
-      entry = { parseCache: new Map(), expandedPaths: new Map(), lineCounts: new Map() };
+      entry = {
+        parseCache: new Map(),
+        expandedPaths: new Map(),
+        lineCounts: new Map(),
+        generation: ++nextGeneration,
+        knownSum: 0,
+        knownCount: 0,
+      };
       tabRows.set(tabId, entry);
     }
     return entry;
+  }
+
+  function recordLineCount(entry: TabRows, row: number, lines: number | null): void {
+    entry.lineCounts.set(row, lines);
+    if (lines !== null) {
+      entry.knownSum += lines;
+      entry.knownCount++;
+    }
   }
 
   function parseRow(tabId: string, row: number): Parsed | null {
@@ -173,7 +201,13 @@ export const useDocumentRowsStore = defineStore('documentRows', () => {
     else set.add(path);
     // This row's own visible-line count just changed — the one cached answer that must not survive
     // this call, unlike every other row's on the page (finding 4).
-    ensureTabRows(tabId).lineCounts.delete(row);
+    const entry = ensureTabRows(tabId);
+    const old = entry.lineCounts.get(row);
+    if (typeof old === 'number') {
+      entry.knownSum -= old;
+      entry.knownCount--;
+    }
+    entry.lineCounts.delete(row);
     rowsVersion.n++;
   }
 
@@ -206,6 +240,9 @@ export const useDocumentRowsStore = defineStore('documentRows', () => {
       entry.parseCache.clear();
       entry.expandedPaths.clear();
       entry.lineCounts.clear();
+      entry.knownSum = 0;
+      entry.knownCount = 0;
+      entry.generation = ++nextGeneration;
     }
     rowsVersion.n++;
   }
@@ -305,14 +342,81 @@ export const useDocumentRowsStore = defineStore('documentRows', () => {
     if (lines === undefined) {
       const parsed = parseRow(tabId, row);
       lines = parsed?.root ? visibleLines(tabId, row).length : null;
-      entry.lineCounts.set(row, lines);
+      recordLineCount(entry, row, lines);
     }
     if (lines === null) return HEAD_H + EDITING_H;
     return HEAD_H + lines * LINE_H + BODY_PADDING_V;
   }
 
+  /**
+   * `rowHeight` for a caller that covers a whole page: an expanded row nothing has counted yet gets
+   * the running mean of the counted rows instead of a decode and parse, so the cost stays bounded
+   * by what the caller fills (`fillLineCounts` for the window, `primeLineCounts` for the page).
+   */
+  function knownRowHeight(
+    tabId: string,
+    row: number,
+    editingRow: number | null,
+    isExpanded: boolean,
+    hasSearchPreview = false,
+  ): number {
+    if (row === editingRow) return HEAD_H + EDITING_H;
+    if (!isExpanded) return hasSearchPreview ? HEAD_H + LINE_H : HEAD_H;
+    const entry = ensureTabRows(tabId);
+    const lines = entry.lineCounts.get(row);
+    if (lines === null) return HEAD_H + EDITING_H;
+    const count =
+      lines ??
+      (entry.knownCount > 0 ? Math.round(entry.knownSum / entry.knownCount) : ESTIMATE_LINES);
+    return HEAD_H + count * LINE_H + BODY_PADDING_V;
+  }
+
+  /** Counts `rows` (the rendered window) exactly, on this thread; rows already counted are skipped. */
+  function fillLineCounts(tabId: string, rows: Iterable<number>): void {
+    const entry = ensureTabRows(tabId);
+    let added = false;
+    for (const row of rows) {
+      if (entry.lineCounts.has(row)) continue;
+      const parsed = parseRow(tabId, row);
+      recordLineCount(entry, row, parsed?.root ? visibleLines(tabId, row).length : null);
+      added = true;
+    }
+    if (added) lineCountsVersion.n++;
+  }
+
+  /** The generation a `primeLineCounts` request must carry for the page `tabId` holds now. */
+  function generationOf(tabId: string): number {
+    return ensureTabRows(tabId).generation;
+  }
+
+  /**
+   * Fills line counts from the worker for the rows from `from` on (`-1` is the raw-fallback
+   * `null`), one batch of the page at a time. A row already
+   * counted, or with nested paths expanded, keeps its own answer: the worker counts the first layer
+   * only. No-op when the page was replaced or the scope dropped since the request.
+   */
+  function primeLineCounts(
+    tabId: string,
+    generation: number,
+    from: number,
+    counts: Int32Array,
+  ): void {
+    const entry = tabRows.get(tabId);
+    if (!entry || entry.generation !== generation) return;
+    let added = false;
+    for (let i = 0; i < counts.length; i++) {
+      const row = from + i;
+      if (entry.lineCounts.has(row)) continue;
+      if ((entry.expandedPaths.get(row)?.size ?? 0) > 0) continue;
+      recordLineCount(entry, row, counts[i] < 0 ? null : counts[i]);
+      added = true;
+    }
+    if (added) lineCountsVersion.n++;
+  }
+
   return {
     rowsVersion,
+    lineCountsVersion,
     registerDocumentRows,
     unregisterDocumentRows,
     rowView,
@@ -323,5 +427,9 @@ export const useDocumentRowsStore = defineStore('documentRows', () => {
     dropRows,
     retentionSnapshot,
     rowHeight,
+    knownRowHeight,
+    fillLineCounts,
+    generationOf,
+    primeLineCounts,
   };
 });

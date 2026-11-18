@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Page } from '@playwright/test';
+import type { ApprovalItem } from '@shared/domain/approvals';
 import type { KibanaDiscoverRequest } from '@shared/domain/kibana';
+import { liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { closeAllTabs } from '@workbench/testing/ui/heapProbe';
 import { diffSnapshotFiles } from '@workbench/testing/ui/heapSnapshot';
 import { MemSampler, type MemStep, runMemSteps, SNAPSHOTS } from '@workbench/testing/ui/memProbe';
@@ -31,7 +33,14 @@ import {
 } from '../ui/studio/support/mongoFixture';
 import { ORDER_ITEMS_PATH } from '../ui/studio/support/postgresFixture';
 import { expandRow, findRow, openBrowseLeaf } from '../ui/studio/support/tree';
-import { adeBoard, adeV2Control, openTask } from '../ui/support/adeV2';
+import {
+  adeBoard,
+  adeV2Control,
+  emitOpenSession,
+  emitSessions,
+  openTask,
+} from '../ui/support/adeV2';
+import { contract } from '../ui/support/contract';
 import { installGitStreamMock } from '../ui/support/gitStreamMock';
 import {
   BASE_RESULTS,
@@ -49,9 +58,15 @@ import { treeRow } from '../ui/support/repoRows';
 import type { ControlSnapshot } from '../ui/support/types';
 import { CONTROL, FIXTURE, makeDocs, openWidgets, readSnapshot } from './studio/documentsFixture';
 import {
+  AGENTS_WORLD,
   APP,
+  agentFrames,
+  agentsBoard,
+  agentsSessions,
+  browserPss,
   connect,
   duplicateOpen,
+  feedFrames,
   feedTerminal,
   graphChunks,
   lastStreamId,
@@ -1006,5 +1021,126 @@ studioTest.describe('Studio worlds', () => {
       (window as unknown as { __catalog: unknown }).__catalog = JSON.parse(text);
     }, json);
     await s.sample('parsed');
+  });
+});
+
+// P661: agents module only. 10 active tasks, 200 archived, 300 stopped session rows, 4 running TUI
+// sessions fed Claude-like ED2 redraws; 2 panes opened, 10 task switches, 50 board and sessions
+// pushes. Report-only: RAM, PSS and HEAPSNAP lines. `KIRA_RAM_WORLD=ade-agents`,
+// `KIRA_RAM_SNAPSHOTS=1` for the Terminal/BufferLine/Query constructor rows.
+test('ram: ade-agents', async ({ relaunch }, info) => {
+  test.skip(!worldEnabled('ade-agents'));
+  const board = agentsBoard();
+  const ids = board.tasks.map((t) => t.id);
+  const { window: page } = await relaunch({
+    control: adeV2Control([
+      { channel: IPC.adeTaskBoard, response: board },
+      { channel: IPC.adeTaskSessions, response: agentsSessions(ids) },
+      { channel: IPC.mobileLaunchOpened, response: null },
+    ]),
+  });
+  await page.clock.install();
+  await expect(page.locator('[data-testid="ade-card"]').first()).toBeVisible({ timeout: 30_000 });
+  const engine =
+    page.context().browser()?.browserType().name() === 'webkit' ? 'webkit' : 'chromium';
+  const pss = (label: string) => async () => {
+    console.log(`PSS ${APP} ade-agents ${engine} ${label} ${JSON.stringify(browserPss(engine))}`);
+  };
+  const pushes = (n: number): MemStep => ({
+    name: `push${n}`,
+    run: async () => {
+      for (let i = 0; i < 10; i++) {
+        await emitWailsEvent(page, IPC.adeTaskBoardChanged, null);
+        await emitSessions(page);
+        await page.waitForTimeout(150);
+      }
+    },
+    after: pss(`push${n}`),
+  });
+  await runMemSteps({
+    app: APP,
+    world: 'ade-agents',
+    page,
+    info,
+    steps: [
+      { name: 'board', run: async () => {}, after: pss('board') },
+      {
+        name: 'launch4',
+        run: async () => {
+          for (let i = 0; i < AGENTS_WORLD.running; i++) {
+            await emitWailsEvent(page, IPC.mobileOpenLaunch, {
+              launch: {
+                terminalId: `term-ag${i}`,
+                sessionId: `ag${i}`,
+                command: 'claude',
+                cwd: `/tmp/ag${i}`,
+              },
+              taskId: ids[i],
+              branchId: '',
+            });
+            await page.waitForTimeout(300);
+            await feedFrames(
+              page,
+              IPC.terminal,
+              `term-ag${i}`,
+              agentFrames(i, AGENTS_WORLD.bytesPerSession),
+            );
+          }
+          await page.waitForTimeout(1500);
+        },
+        after: pss('launch4'),
+      },
+      {
+        name: 'panes2',
+        run: async () => {
+          for (const i of [0, 1]) {
+            await emitOpenSession(page, { taskId: ids[i], branchId: '', sessionId: `ag${i}` });
+            await expect(page.locator('[data-testid="ade-tui-pane"]')).toBeVisible();
+            await page.waitForTimeout(500);
+          }
+        },
+        after: pss('panes2'),
+      },
+      {
+        name: 'switch10',
+        run: async () => {
+          const shown = await page
+            .locator('[data-testid="ade-card"]')
+            .evaluateAll((els) => els.map((e) => e.getAttribute('data-task-id') ?? ''));
+          for (let i = 0; i < 10; i++) {
+            await page
+              .locator(
+                `[data-testid="ade-card"][data-task-id="${shown[i % shown.length]}"] [data-testid="ade-card-head"]`,
+              )
+              .click();
+            await expect(page.locator('[data-testid="ade-panel"]')).toBeVisible();
+            await page.waitForTimeout(200);
+          }
+        },
+        after: pss('switch10'),
+      },
+      ...[10, 20, 30, 40, 50].map(pushes),
+      {
+        name: 'final',
+        run: () => page.waitForTimeout(5000),
+        snapshot: true,
+        after: pss('final'),
+      },
+      {
+        // An agent approval pending: whatever the surface loads for it (Monaco, P661 F5) shows here.
+        name: 'approval',
+        run: async () => {
+          const [item] = contract<ApprovalItem[]>(
+            'ade-orchestrator',
+            'ApprovalsService.List#taskCreate',
+          );
+          await pushApprovals(page, [liveItem(item, 1800)]);
+          await expect(page.locator('[data-testid="approvals-dialog"]')).toBeVisible();
+          await page.waitForTimeout(3000);
+        },
+        snapshot: true,
+        after: pss('approval'),
+      },
+    ],
   });
 });

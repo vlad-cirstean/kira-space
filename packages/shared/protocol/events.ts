@@ -143,7 +143,8 @@ export const CHANNEL = {
  *  it is phys_footprint — Activity Monitor's own "Memory" column, not its "Real Memory" one.
  *  logicalCPUs and processCount exist so the tooltip can say what cpuPercent is a
  *  percentage *of* and how many processes memoryBytes covers. The top-level figures are totals:
- *  app + agents, where agents are the agent CLI process trees Kira launched, subprocesses included. */
+ *  app + agents + scripts, where agents are the agent CLI process trees Kira launched and scripts are
+ *  the script process trees it launched (script runs, pre-connect scripts), subprocesses included. */
 export interface AppMetricsUsage {
   cpuPercent: number;
   memoryBytes: number;
@@ -157,6 +158,7 @@ export interface AppMetricsSample {
   processCount: number;
   app: AppMetricsUsage;
   agents: AppMetricsUsage;
+  scripts: AppMetricsUsage;
 }
 
 // P112: `kira:api:dataChanged`'s own payload (internal/bridge/apidata.go's ApiDataChange/

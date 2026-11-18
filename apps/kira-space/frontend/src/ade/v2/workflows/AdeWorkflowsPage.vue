@@ -3,7 +3,9 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { t } from '@theme/i18n';
 import { paneFrame } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
+import { useKeptScroll } from '@workbench/behaviour/viewState';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
+import { useTemplateRef } from 'vue';
 import { useAdeWorkflowsUiStore, type WorkflowsTab } from '../state/adeWorkflowsUi';
 import AdeStepsTab from './AdeStepsTab.vue';
 import AdeWorkflowsTab from './AdeWorkflowsTab.vue';
@@ -28,6 +30,9 @@ const tabs = [
 async function pick(next: string): Promise<void> {
   await wfUi.setTab(next as WorkflowsTab);
 }
+
+const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
+useKeptScroll('ade:workflows', bodyEl);
 </script>
 
 <template>
@@ -45,7 +50,7 @@ async function pick(next: string): Promise<void> {
     <AdeStepsTab v-else-if="wfUi.tab === 'steps'" />
     <div v-else :class="cn(paneFrame, 'flex flex-1 flex-col')">
       <PanelHeader>{{ t('space.ade.workflows.page.statuses.label') }}</PanelHeader>
-      <div class="min-h-0 flex-1 overflow-auto p-4">
+      <div ref="bodyEl" class="min-h-0 flex-1 overflow-auto p-4">
         <AdeTaskStatuses />
       </div>
     </div>

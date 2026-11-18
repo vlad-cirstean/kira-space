@@ -40,7 +40,6 @@ import ConnectionGeneralTab from './connection/ConnectionGeneralTab.vue';
 import ConnectionMcpTab from './connection/ConnectionMcpTab.vue';
 import ConnectionPreconnectTab from './connection/ConnectionPreconnectTab.vue';
 import ConnectionPrivacyTab from './connection/ConnectionPrivacyTab.vue';
-import ConnectionSecrets from './connection/ConnectionSecrets.vue';
 import {
   CONNECTION_FIELDS,
   CONNECTION_TAB_POINTERS,
@@ -354,13 +353,6 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
               @submit="saveNow"
             />
           </template>
-          <ConnectionSecrets
-            v-if="detail.id"
-            :connection-id="detail.id"
-            :connection-name="record?.name ?? configName(detail.file)"
-            :secrets="detail.secrets"
-            :storage-available="storageAvailable"
-          />
           <Alert v-if="saveError" variant="error" data-testid="connection-file-save-error">
             <AlertDescription>{{ saveError }}</AlertDescription>
             <AlertAction v-if="draft.conflict.value">

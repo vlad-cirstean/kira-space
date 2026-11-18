@@ -2,6 +2,7 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, test } from './fixtures';
 import { editorText } from './studio/support/editorText';
+import { dbQueryItem } from './support/approvalItems';
 import { contract } from './support/contract';
 
 // Frontend half of adeflow TestOrchestratorSpawn (taskCreateNoBase) and dbmcpflow
@@ -56,4 +57,24 @@ test('a payload the kind cannot read shows an error and Deny, never a blank card
   await expect(card.locator(t('approval-unreadable'))).toBeVisible();
   await expect(page.locator(t(`approval-deny-${it.id}`))).toBeVisible();
   await expect(page.locator(t(`approval-approve-${it.id}`))).toHaveCount(0);
+});
+
+// Monaco and its worker cost tens of MB: only kinds that render in it may load it.
+const monacoLoaded = (page: import('@playwright/test').Page) =>
+  page.evaluate(() => 'MonacoEnvironment' in self);
+
+test('an ADE approval does not load Monaco', async ({ relaunch }) => {
+  const it = first('ade-orchestrator', 'ApprovalsService.List#taskCreateNoBase');
+  const { window: page } = await relaunch({});
+  await pushApprovals(page, [it]);
+  await expect(page.locator(t(`approval-item-${it.id}`))).toBeVisible();
+  expect(await monacoLoaded(page)).toBe(false);
+});
+
+test('a db.query approval loads Monaco', async ({ relaunch }) => {
+  const it = dbQueryItem('db.query:1', 3);
+  const { window: page } = await relaunch({});
+  await pushApprovals(page, [it]);
+  await expect(page.locator(t(`approval-item-${it.id}`))).toBeVisible();
+  await expect.poll(() => monacoLoaded(page)).toBe(true);
 });

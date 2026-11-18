@@ -52,46 +52,73 @@ type RepoLister interface {
 // whose extension is in the vocabulary. Hidden repositories count: hidden only filters the Git panel.
 // A git repository that is not imported is never imported here.
 func Resolve(path string, repos []model.CodeRepo) (Target, error) {
+	t, _, err := resolve(path, resolveRepos(repos), false)
+	return t, err
+}
+
+// repoRoot is an imported repository with its symlink-resolved root, computed once per call.
+type repoRoot struct {
+	repo *model.CodeRepo
+	root string
+}
+
+// resolveRepos resolves each repository root once; a root that does not resolve is dropped.
+func resolveRepos(repos []model.CodeRepo) []repoRoot {
+	out := make([]repoRoot, 0, len(repos))
+	for i := range repos {
+		if root, err := filepath.EvalSymlinks(repos[i].Root); err == nil {
+			out = append(out, repoRoot{repo: &repos[i], root: root})
+		}
+	}
+	return out
+}
+
+// resolve is Resolve plus the absolute path. With anyTypeInRepo the extension vocabulary applies
+// only to standalone files: repo files open as repo tabs, which read any file type.
+func resolve(path string, repos []repoRoot, anyTypeInRepo bool) (Target, string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		return Target{}, err
+		return Target{}, "", err
 	}
-	if !filetypes.Supports(abs) {
-		return Target{}, fmt.Errorf("unsupported extension %q", filepath.Ext(abs))
+	supported := filetypes.Supports(abs)
+	if !supported && !anyTypeInRepo {
+		return Target{}, "", fmt.Errorf("unsupported extension %q", filepath.Ext(abs))
 	}
 	real, err := filepath.EvalSymlinks(abs)
 	if err != nil {
-		return Target{}, err
+		return Target{}, "", err
 	}
 	info, err := os.Stat(real)
 	if err != nil {
-		return Target{}, err
+		return Target{}, "", err
 	}
 	if !info.Mode().IsRegular() {
-		return Target{}, errors.New("not a regular file")
+		return Target{}, "", errors.New("not a regular file")
 	}
 	var best *model.CodeRepo
 	var bestRoot string
-	for i := range repos {
-		root, err := filepath.EvalSymlinks(repos[i].Root)
-		if err != nil || !within(root, real) {
+	for _, r := range repos {
+		if !within(r.root, real) {
 			continue
 		}
-		if best == nil || len(root) > len(bestRoot) {
-			best, bestRoot = &repos[i], root
+		if best == nil || len(r.root) > len(bestRoot) {
+			best, bestRoot = r.repo, r.root
 		}
 	}
 	if best == nil {
-		return Target{Path: abs}, nil
+		if !supported {
+			return Target{}, "", fmt.Errorf("unsupported extension %q", filepath.Ext(abs))
+		}
+		return Target{Path: abs}, abs, nil
 	}
 	rel, err := filepath.Rel(bestRoot, real)
 	if err != nil {
-		return Target{}, err
+		return Target{}, "", err
 	}
 	if _, err := codeworkspace.ValidateRelPath(best.Root, rel); err != nil {
-		return Target{}, err
+		return Target{}, "", err
 	}
-	return Target{RepoID: best.ID, RelPath: filepath.ToSlash(rel)}, nil
+	return Target{RepoID: best.ID, RelPath: filepath.ToSlash(rel)}, abs, nil
 }
 
 func within(root, p string) bool {
@@ -144,10 +171,10 @@ func (s *Service) Close() { s.co.Close() }
 // Open resolves paths and shows the ones that qualify in the files window. A path that does not
 // qualify is logged and skipped; none qualifying touches no window.
 func (s *Service) Open(paths []string) {
-	repos := s.repos()
+	repos := resolveRepos(s.repos())
 	var targets []Target
 	for _, p := range paths {
-		t, err := Resolve(p, repos)
+		t, _, err := resolve(p, repos, false)
 		if err != nil {
 			slog.Warn("opened files: skip path", "scope", "openedfiles", "path", p, "err", err)
 			continue

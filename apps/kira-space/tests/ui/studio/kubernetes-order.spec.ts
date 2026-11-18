@@ -1,19 +1,11 @@
 import type { Locator, Page } from '@playwright/test';
 import { expect, studioTest as test } from '../fixtures';
 import { emitWailsEvent } from '../support/mockRuntime';
-import {
-  clustersIn,
-  idOf,
-  k,
-  kubeError,
-  loc,
-  openKubernetes,
-  setupKubernetes,
-} from './support/kubernetesFixture';
+import { k, kubeError, loc, openKubernetes, setupKubernetes } from './support/kubernetesFixture';
 import { settleFrames } from './support/tree';
 
 // Contract kubernetes. Backend half: kubeflow TestClusterOrder. Clusters reorder by pointer drag
-// (kubernetes/components/clusterReorder.ts), Alt+Up/Down and the context menu.
+// (kubernetes/components/clusterReorder.ts). P669: no Move items, no Alt+arrow.
 
 const DEFAULT = ['kind-dev', 'bad-token', 'down', 'plugin-ctx'];
 const MOVED = ['down', 'kind-dev', 'bad-token', 'plugin-ctx'];
@@ -80,31 +72,24 @@ test('dropping outside a cluster row, or pressing Escape, reorders nothing', asy
   await expect.poll(() => orderOf(page)).toEqual(DEFAULT);
 });
 
-test('menu Move up is disabled on the first cluster; Alt+ArrowDown moves and keeps focus', async ({
-  relaunch,
-}) => {
-  const order = [idOf('bad-token'), idOf('kind-dev'), idOf('down'), idOf('plugin-ctx')];
-  const { page, kube } = await setupKubernetes(relaunch, { Reorder: () => clustersIn(order) });
+test('cluster menu has no Move items; Alt+ArrowDown moves nothing', async ({ relaunch }) => {
+  const { page, kube } = await setupKubernetes(relaunch);
   await open(page);
 
   await row(page, 'kind-dev').click({ button: 'right' });
-  await expect(page.locator('[data-testid="menu-item-move-up"]')).toHaveAttribute(
-    'data-disabled',
-    '',
-  );
-  await expect(page.locator('[data-testid="menu-item-move-down"]')).not.toHaveAttribute(
-    'data-disabled',
-    '',
-  );
+  await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
+  await expect(page.locator('[data-testid="menu-item-move-up"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="menu-item-move-down"]')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-testid="context-menu"]')).toHaveCount(0);
 
   await row(page, 'kind-dev').focus();
   await page.keyboard.press('Alt+ArrowDown');
-  await expect.poll(() => orderOf(page)).toEqual(['bad-token', 'kind-dev', 'down', 'plugin-ctx']);
-  await expect(row(page, 'kind-dev')).toBeFocused();
+  // Barrier: one drag lands exactly one call, so the chord sent none.
+  await dragTo(page, row(page, 'down'), row(page, 'kind-dev'), 'top');
+  await page.mouse.up();
+  await expect.poll(() => orderOf(page)).toEqual(MOVED);
   expect(kube.calls('Reorder')).toHaveLength(1);
-  expect(kube.calls('Reorder')[0].args).toEqual({ ids: order });
 });
 
 test('a search disables reorder', async ({ relaunch }) => {
@@ -119,14 +104,6 @@ test('a search disables reorder', async ({ relaunch }) => {
   await expect(indicator(page)).toHaveCount(0);
   await page.mouse.up();
   expect(kube.calls('Reorder')).toHaveLength(0);
-
-  await row(page, 'down').click({ button: 'right' });
-  for (const id of ['move-up', 'move-down']) {
-    await expect(page.locator(`[data-testid="menu-item-${id}"]`)).toHaveAttribute(
-      'data-disabled',
-      '',
-    );
-  }
 });
 
 test('a failed Reorder restores the stored order', async ({ relaunch }) => {

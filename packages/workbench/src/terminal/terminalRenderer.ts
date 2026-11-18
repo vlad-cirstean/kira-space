@@ -9,15 +9,22 @@ import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import { tooltipContentVariants } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
+import { useEventListener } from '@vueuse/core';
+import { copyOrReportError } from '../behaviour/clipboard';
+import { announceApp } from '../behaviour/liveRegion';
 import { isPrimaryModifier, primaryModifierName } from '../shortcuts/keys';
+import { useContextMenuStore } from '../state/contextMenu';
 import { registerTabRuntimeCleanup } from '../state/tabRuntime';
 import { createFileLinkProvider } from './fileLinkProvider';
+import { type HoveredLink, linkMenuItems } from './linkMenu';
 
 interface Attached {
   term: Terminal;
   fit: FitAddon;
   host: HTMLDivElement;
   off: () => void;
+  /** Attaches the renderer to `host`; the first call does the work. */
+  open: () => void;
 }
 
 // `useSettingsStore`/`useTerminalsStore` used to be imported directly (each app's own
@@ -48,8 +55,9 @@ export interface FileLinkTarget {
 }
 
 export interface TerminalFileLinks {
-  /** One answer per path: does it name an openable file, against tabId's live cwd. */
-  resolve(tabId: string, paths: string[]): Promise<boolean[]>;
+  /** One answer per path: the absolute path of the openable file it names, else null. Tries
+   *  tabId's live cwd, then its start cwd. */
+  resolve(tabId: string, paths: string[]): Promise<(string | null)[]>;
   /** Opens one target in Kira Space; never throws (announces a failure). */
   open(tabId: string, target: FileLinkTarget): void;
 }
@@ -139,14 +147,20 @@ function terminalTheme(): import('@xterm/xterm').ITheme {
 
 const encoder = new TextEncoder();
 
+// Claude Code keeps its own transcript; a TUI user scrolls back a screen or two. Each line costs
+// cols x 4 bytes, so this saves ~80% of an agent buffer against the 5000 default.
+const AGENT_SCROLLBACK = 1000;
+const DEFAULT_SCROLLBACK = 5000;
+
 /** Returns tabId's own attached Terminal, creating and wiring it on first call. `host` is a
- *  detached `<div>` — RepoTerminalView.vue appends it to its container on mount and never calls
- *  `term.open()` a second time (the one mechanically safe way to reattach an xterm across
- *  unmounts, since whether `open()` itself is re-entrant is never relied on). */
+ *  detached `<div>` — the view appends it to its container on mount. The Terminal parses and
+ *  buffers from creation, but `term.open(host)` (DOM renderer) waits for `openTerminalIfNeeded`,
+ *  so a never-viewed session pays no DOM. `open()` runs once and is never repeated on remount. */
 export function getOrCreateTerminal(
   tabId: string,
   deps: TerminalRendererDeps,
   size?: { cols: number; rows: number },
+  launchKind?: string,
 ): Attached {
   const existing = byTabId.get(tabId);
   if (existing) return existing;
@@ -156,20 +170,30 @@ export function getOrCreateTerminal(
 
   const appearance = deps.appearance();
   let hint: LinkHint | null = null;
+  // The link under the pointer; the right-click menu acts on it. xterm has no "link at point" API.
+  let hovered: HoveredLink | null = null;
   const activate = (event: MouseEvent, uri: string): void => {
+    // xterm activates on mouseup of any button; a right-click opens the menu instead.
+    if (event.button !== 0) return;
     if (deps.linkActivation === 'modifier' && !isPrimaryModifier(event)) return;
     if (!isWebUrl(uri)) return;
     hint?.hide();
     deps.openLink(uri);
   };
   const linkHover = {
-    hover: (e: MouseEvent, uri: string) => hint?.show(e, uri),
-    leave: () => hint?.hide(),
+    hover: (e: MouseEvent, uri: string) => {
+      hovered = { kind: 'web', uri };
+      hint?.show(e, uri);
+    },
+    leave: () => {
+      hovered = null;
+      hint?.hide();
+    },
   };
   const term = new Terminal({
     ...(size ?? {}),
     linkHandler: { activate, ...linkHover, allowNonHttpProtocols: false },
-    scrollback: 5000,
+    scrollback: launchKind === 'agent' ? AGENT_SCROLLBACK : DEFAULT_SCROLLBACK,
     cursorBlink: true,
     allowProposedApi: false,
     // VS Code parity: keeps screens cleared with ED2 in scrollback.
@@ -190,19 +214,21 @@ export function getOrCreateTerminal(
     }
     return false;
   });
-  term.open(host);
-  if (deps.linkActivation === 'modifier') hint = createLinkHint(term);
   const fileLinks = deps.fileLinks;
   if (fileLinks) {
     term.registerLinkProvider(
       createFileLinkProvider(term, tabId, fileLinks, {
         open: (event, target) => {
+          if (event.button !== 0) return;
           if (deps.linkActivation === 'modifier' && !isPrimaryModifier(event)) return;
           hint?.hide();
           fileLinks.open(tabId, target);
         },
-        hover: (event, text) => hint?.show(event, text),
-        leave: () => hint?.hide(),
+        hover: (event, text, link) => {
+          hovered = link;
+          hint?.show(event, text);
+        },
+        leave: linkHover.leave,
       }),
     );
   }
@@ -220,9 +246,40 @@ export function getOrCreateTerminal(
     deps.writeTerminal(tabId, bytes);
   });
 
-  const attached: Attached = { term, fit, host, off };
+  const menuActions = {
+    openLink: (uri: string) => {
+      if (isWebUrl(uri)) deps.openLink(uri);
+    },
+    openFile: (target: FileLinkTarget) => deps.fileLinks?.open(tabId, target),
+    copy: (text: string) => void copyOrReportError(text, announceApp),
+  };
+  const onContextMenu = (e: MouseEvent): void => {
+    if (!hovered) return;
+    e.preventDefault();
+    e.stopPropagation();
+    hint?.hide();
+    useContextMenuStore().openContextMenu(e, linkMenuItems(hovered, menuActions));
+  };
+
+  let opened = false;
+  const open = (): void => {
+    if (opened) return;
+    opened = true;
+    term.open(host);
+    if (deps.linkActivation !== 'modifier') return;
+    hint = createLinkHint(term);
+    // Capture runs before xterm's own contextmenu listener on the same element (word select).
+    useEventListener(term.element, 'contextmenu', onContextMenu, { capture: true });
+  };
+
+  const attached: Attached = { term, fit, host, off, open };
   byTabId.set(tabId, attached);
   return attached;
+}
+
+/** Attaches tabId's renderer to its host on first call; a no-op for an id with no terminal. */
+export function openTerminalIfNeeded(tabId: string): void {
+  byTabId.get(tabId)?.open();
 }
 
 /** Re-measures tabId's own terminal against its current container size and applies it — the

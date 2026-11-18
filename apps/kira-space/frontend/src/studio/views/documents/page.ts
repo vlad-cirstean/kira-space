@@ -1,12 +1,18 @@
 import { cellByteLength, cellText, type DocumentPage, isTruncated } from '@shared/protocol/page';
 import { compareNatural } from '@workbench/behaviour/match';
+import { useDocumentPageStatsStore } from '../shared/document/pageStatsStore';
 import { useDocumentRowsStore } from '../shared/document/rows';
 import { createPageStore, type RetentionEntry, retentionEntries } from '../shared/page/store';
 
 // P27 D21: a new page has new rows — every memoized parse and every nested-expansion path
-// views/shared/document/rows.ts holds for this tab is stale.
+// views/shared/document/rows.ts holds for this tab is stale. The reset comes first so the page-stats
+// request captures the new page's generation.
 const store = createPageStore<DocumentPage>({
-  onSet: (tabId) => useDocumentRowsStore().resetRows(tabId),
+  onSet: (tabId) => {
+    useDocumentRowsStore().resetRows(tabId);
+    const page = store.getPage(tabId);
+    if (page) useDocumentPageStatsStore().request(tabId, page);
+  },
 });
 
 export const pageVersion = store.pageVersion;
@@ -25,6 +31,13 @@ export interface DocumentRow {
   body: string;
   isTruncated: boolean;
   bodyByteLength: number;
+}
+
+/** One document's id, decoded without its body. */
+export function documentId(tabId: string, row: number): string | null {
+  const page = getPage(tabId);
+  if (!page || row < 0 || row >= page.rowCount) return null;
+  return store.cached(tabId, row, 'id', (decoder) => cellText(page.ids, row, decoder));
 }
 
 export function documentRow(tabId: string, row: number): DocumentRow | null {
@@ -59,13 +72,22 @@ export function documentRow(tabId: string, row: number): DocumentRow | null {
 // (there is no smaller correct answer for "every field name on the page"), but it no longer grows
 // `rows.ts`'s `parseCache` to the size of the whole page in the process.
 //
-// Four computeds plus ProjectionMenu call this per page load, so the result is memoized per page
-// object (setPage freezes and replaces the page, so identity is the page version).
+// Reactive readers (toolbar, filter row) use `pageFieldNames`, which the parse worker fills off the
+// main thread. This synchronous pass is the explicit-action fallback (the projection menu opened
+// before the worker answered) and is memoized per page object (setPage freezes and replaces the
+// page, so identity is the page version).
 const fieldNamesCache = new WeakMap<DocumentPage, string[]>();
 
-export function fieldNamesOnPage(tabId: string): string[] {
+/** The worker's field names for the current page; `null` until it has answered. */
+export function pageFieldNames(tabId: string): readonly string[] | null {
+  return useDocumentPageStatsStore().fieldNamesFor(tabId);
+}
+
+export function fieldNamesOnPage(tabId: string): readonly string[] {
   const page = getPage(tabId);
   if (!page) return [];
+  const ready = pageFieldNames(tabId);
+  if (ready) return ready;
   const cached = fieldNamesCache.get(page);
   if (cached) return cached;
   const names = new Set<string>();

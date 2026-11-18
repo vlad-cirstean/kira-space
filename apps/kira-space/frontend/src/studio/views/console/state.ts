@@ -14,6 +14,7 @@ import { control } from '../../bridge/control';
 import { data } from '../../bridge/data';
 import { useConnectionsStore } from '../../state/connections';
 import { useStaleDataStore } from '../../state/staleData';
+import { useDocumentPageStatsStore } from '../shared/document/pageStatsStore';
 import { useDocumentRowsStore } from '../shared/document/rows';
 import { applyLoadFailure, classifyLoadError, createRuntimeStore, stopOp } from '../shared/viewOp';
 import { explainStatementsFor, isExplainable } from './explain';
@@ -139,6 +140,7 @@ function releaseResult(rt: ConsoleViewRuntime, result: ConsoleResult): void {
   dropPlan(result.key);
   documentRowsStore.unregisterDocumentRows(result.key);
   documentRowsStore.dropRows(result.key);
+  useDocumentPageStatsStore().drop(result.key);
   pruneExpandedDocIds(rt, result.key);
 }
 
@@ -372,6 +374,15 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
 
   function isResultDocExpanded(tabId: string, resultKey: string, id: string): boolean {
     return runtime[tabId]?.expandedDocIds.has(`${resultKey}:${id}`) ?? false;
+  }
+
+  function resultDocExpandedIds(tabId: string, resultKey: string): string[] {
+    const set = runtime[tabId]?.expandedDocIds;
+    if (!set) return [];
+    const prefix = `${resultKey}:`;
+    const out: string[] = [];
+    for (const key of set) if (key.startsWith(prefix)) out.push(key.slice(prefix.length));
+    return out;
   }
 
   // ConsoleSlickGrid.vue's own onMounted/onColumnsResized read and write
@@ -711,6 +722,7 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
     toggleSearchOpen,
     setSearchOpen,
     isResultDocExpanded,
+    resultDocExpandedIds,
     consoleColumnWidths,
     setConsoleColumnWidths,
     toggleResultDocExpanded,

@@ -3,7 +3,8 @@ import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { type MessageKey, t } from '@theme/i18n';
 import { compareNatural } from '@workbench/behaviour/match';
-import { computed, ref } from 'vue';
+import { useKeptState } from '@workbench/behaviour/viewState';
+import { computed } from 'vue';
 import AdeActivityIcon from '../AdeActivityIcon.vue';
 import { ACTIVITY_RANK, type ActivityKind } from '../activity';
 import { usePlanModel } from '../plan/usePlanModel';
@@ -22,7 +23,7 @@ const SUMMARY = {
   waiting: 'space.ade.allSessions.summaryWaiting.label',
 } as const satisfies Partial<Record<ActivityKind, MessageKey>>;
 
-const filter = ref<'running' | 'stopped'>('running');
+const filter = useKeptState<'running' | 'stopped'>('ade:allSessions:filter', 'running');
 const running = computed(() => sessions.value.filter((s) => s.state === 'running').length);
 const stopped = computed(() => sessions.value.length - running.value);
 const filterItems = computed(() => [

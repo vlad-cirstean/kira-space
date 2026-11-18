@@ -16,6 +16,7 @@ import { paneFrame } from '@theme/lib/frames';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
+import { useKeptState } from '@workbench/behaviour/viewState';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import { errorText } from '@workbench/bridge/codedError';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
@@ -56,7 +57,7 @@ const selected = computed(
 );
 // Files that configure no listed repo (the path is unregistered, or an earlier file owns it).
 const otherFiles = computed(() => (repoFiles.data.value?.files ?? []).filter((f) => !f.repo));
-const pickedFile = ref('');
+const pickedFile = useKeptState('ade:repos:pickedFile', '');
 const pickedOther = computed(
   () => otherFiles.value.find((f) => f.file === pickedFile.value) ?? otherFiles.value[0] ?? null,
 );
@@ -85,6 +86,7 @@ const { virtualizer, virtualItems, totalSize, onScroll, scrollToIndex } = useVir
   count: () => codeRepos.records.length,
   rowHeight: () => rowHeight.single.value + 2,
   scrollElement: listEl,
+  keepScroll: 'ade:repos',
 });
 const windowRows = computed(() =>
   virtualItems.value.flatMap((item) => {

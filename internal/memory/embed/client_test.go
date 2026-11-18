@@ -64,6 +64,10 @@ func TestMain(m *testing.M) {
 			fmt.Println(`{"error":"no runtime here"}`)
 			os.Exit(2)
 		}
+		if mode == "shared" {
+			idle, _ := strconv.Atoi(os.Getenv("KIRA_EMBED_FAKE_IDLE_MS"))
+			os.Exit(serveSocket(os.Getenv("KIRA_EMBED_FAKE_SOCKET"), bufio.NewWriter(os.Stdout), &fakeEncoder{}, testSpec, time.Duration(idle)*time.Millisecond))
+		}
 		enc := &fakeEncoder{slow: mode == "slow"}
 		if n, ok := strings.CutPrefix(mode, "crash-after="); ok {
 			enc.crashAfter, _ = strconv.Atoi(n)

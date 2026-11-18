@@ -20,10 +20,10 @@ test('the title bar hides Memory by default', async ({ relaunch }) => {
   const modes = await page
     .locator('[data-testid="mode-tab"]')
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-mode')));
-  expect(modes).toEqual(['ade', 'automations', 'git', 'studio', 'api', 'docker', 'kubernetes']);
+  expect(modes).toEqual(['ade', 'automations', 'studio', 'api', 'docker', 'kubernetes', 'git']);
 });
 
-test('the title bar lists Agents, Runs, Memory, Git, then the Studio modules with Memory on', async ({
+test('the title bar lists Agents, Runs, the Studio modules, Git, then Memory last with Memory on', async ({
   relaunch,
 }) => {
   const { window: page } = await relaunch({ control: withMemory() });
@@ -33,20 +33,23 @@ test('the title bar lists Agents, Runs, Memory, Git, then the Studio modules wit
   expect(modes).toEqual([
     'ade',
     'automations',
-    'memory',
-    'git',
     'studio',
     'api',
     'docker',
     'kubernetes',
+    'git',
+    'memory',
   ]);
   await expect(modeTab(page, 'git')).toHaveClass(/is-active/);
   const tabs = page.locator('[data-testid="mode-tab"]');
-  const names = ['Agents', 'Runs', 'Memory', 'Git'];
+  const names = ['Agents', 'Runs'];
   for (const [i, name] of names.entries()) {
     await expect(tabs.nth(i)).toHaveAccessibleName(name);
     expect((await tabs.nth(i).innerText()).trim()).toBe('');
   }
+  await expect(tabs.nth(-2)).toHaveAccessibleName('Git');
+  await expect(tabs.last()).toHaveAccessibleName('Memory');
+  expect((await tabs.last().innerText()).trim()).toBe('');
   await modeTab(page, 'ade').hover();
   await expect(page.locator('[data-slot="tooltip-content"]').first()).toContainText('Agents');
 });

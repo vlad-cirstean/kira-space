@@ -165,43 +165,18 @@ async function open(
   return app;
 }
 
-test('connection secrets: the eye reveals the saved value once, a second press masks it', async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await open(relaunch, [revealOk('hunter2')]);
-  const input = page.locator('[data-testid="connection-secret-value"]');
-  const eye = page.locator('[data-testid="connection-secret-value-reveal"]');
-  await expect(input).toHaveValue('');
-  await expect(input).toHaveAttribute('type', 'password');
-  expect(revealCalls(control)).toHaveLength(0);
-
-  await eye.click();
-  await expect(input).toHaveValue('hunter2');
-  await expect(input).toHaveAttribute('type', 'text');
-  await expect(input).toHaveAttribute('readonly', '');
-  await expect(page.locator('[data-testid="connection-secret-save"]')).toBeDisabled();
-  expect(revealCalls(control)).toHaveLength(1);
-
-  await eye.click();
-  await expect(input).toHaveValue('');
-  await expect(input).toHaveAttribute('type', 'password');
-  expect(revealCalls(control)).toHaveLength(1);
-  expect(control.log().some((e) => e.channel === IPC.connectionConfigSetSecret)).toBe(false);
-});
-
-test('connection secrets: typing after hiding a reveal edits a fresh value', async ({
+test('connection general tab: typing after hiding a reveal edits a fresh value', async ({
   relaunch,
 }) => {
   const { window: page } = await open(relaunch, [revealOk('hunter2')]);
-  const input = page.locator('[data-testid="connection-secret-value"]');
-  const eye = page.locator('[data-testid="connection-secret-value-reveal"]');
+  const input = page.locator('[data-testid="connection-password"]');
+  const eye = page.locator('[data-testid="connection-password-reveal"]');
   await eye.click();
   await expect(input).toHaveValue('hunter2');
   await eye.click();
   await input.fill('new-pass');
   await expect(input).toHaveValue('new-pass');
   await expect(input).not.toHaveAttribute('readonly', '');
-  await expect(page.locator('[data-testid="connection-secret-save"]')).toBeEnabled();
 });
 
 test('connection general tab: the password reveals through its own eye', async ({ relaunch }) => {

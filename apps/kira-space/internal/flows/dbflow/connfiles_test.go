@@ -195,7 +195,7 @@ func TestConnectionConfigFile(t *testing.T) {
 	}
 }
 
-// Contract connection-secrets, read by tests/ui/connection-files.spec.ts: a password is a named
+// Contract connection-secrets, read by tests/ui/studio/secrets.spec.ts: a password is a named
 // secret the file refers to; no call returns its value but Reveal.
 func TestConnectionSecrets(t *testing.T) {
 	app := flowharness.New(t)
@@ -249,7 +249,7 @@ func TestConnectionSecrets(t *testing.T) {
 	}
 
 	// A secret the file names but nothing holds fails the connect by name.
-	if _, err := cfg.DeleteSecret(bridge.ConnectionSecretNameArgs{Kind: connfiles.KindPassword, Name: "pg.password"}); err != nil {
+	if err := app.W.ConnectionFiles.DeleteSecret(connfiles.KindPassword, "pg.password"); err != nil {
 		t.Fatal(err)
 	}
 	view, err = cfg.View()

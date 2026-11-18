@@ -15,10 +15,12 @@ import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import { moveId } from '@workbench/behaviour/sortableReorder';
 import { useTreeShortcuts } from '@workbench/behaviour/treeShortcuts';
+import { useKeptScroll, useKeptState } from '@workbench/behaviour/viewState';
 import MenuIconButton from '@workbench/components/MenuIconButton.vue';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import SortableList from '@workbench/components/SortableList.vue';
+import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef } from 'vue';
@@ -53,7 +55,7 @@ const scripts = ctx.scripts;
 const fileDialog = ref<string | null>(null);
 const targetFor = ref<CustomScript | null>(null);
 
-const search = ref('');
+const search = useKeptState('automations:panel:search', '');
 // The collection whose header shows the inline name field.
 const renamingName = ref<string | null>(null);
 const actionError = ref<string | null>(null);
@@ -111,7 +113,7 @@ function openGroup(name: string): void {
   collapsed.value = collapsed.value.filter((n) => n !== name);
 }
 
-// A search shows a filtered subset, so it pauses drag, Alt+arrow and the Move up/down items.
+// A search shows a filtered subset, so it pauses drag.
 const reorderOff = computed(() => search.value.trim() !== '');
 const ungroupedIds = computed(() => view.value.ungrouped.map((s) => s.id));
 const groupNames = computed(() => view.value.groups.map((g) => g.name));
@@ -185,6 +187,7 @@ async function guarded(fn: () => Promise<unknown>): Promise<void> {
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: 'automations:panel',
   searchable: () => true,
   getSearch: () => search.value,
   setSearch: (v) => {
@@ -242,7 +245,7 @@ const navItems = computed<NavItem[]>(() => [
 ]);
 
 const treeEl = useTemplateRef<HTMLElement>('treeEl');
-const activeKey = ref<string | null>(null);
+const activeKey = useKeptState<string | null>('automations:panel:activeKey', null);
 
 function scriptById(id: string): CustomScript | undefined {
   return scripts.records().find((s) => s.id === id);
@@ -339,17 +342,6 @@ function navItemOf(id: string): NavItem {
   );
 }
 
-// Alt+arrow stays on the lists' keyboard handling; these items run the same swap by menu.
-function setIdsOf(script: CustomScript): readonly string[] {
-  const group = view.value.groups.find((g) => g.name === script.collection);
-  return group ? group.rows.map((r) => r.id) : ungroupedIds.value;
-}
-
-function stepIds(ids: readonly string[], id: string, step: -1 | 1): string[] | null {
-  const neighbour = ids[ids.indexOf(id) + step];
-  return ids.includes(id) && neighbour ? moveId(ids, id, neighbour) : null;
-}
-
 const scriptActions: ScriptMenuActions = {
   run: runScript,
   runNow: (script) => {
@@ -368,19 +360,9 @@ const scriptActions: ScriptMenuActions = {
   collections: () => scripts.collections().map((c) => c.name),
   moveTo: (script, collection) => guarded(() => scripts.move(script.id, collection, null)),
   moveToNew: moveToNewCollection,
-  canMoveStep: (script, step) =>
-    !reorderOff.value && stepIds(setIdsOf(script), script.id, step) !== null,
-  moveStep: (script, step) => {
-    const order = stepIds(setIdsOf(script), script.id, step);
-    if (order) void guarded(() => scripts.reorder(script.collection, order));
-  },
 };
 
 function onGroupMenu(e: MouseEvent, name: string): void {
-  const step = (by: -1 | 1) => {
-    const order = stepIds(groupNames.value, name, by);
-    if (order) void guarded(() => scripts.reorderCollections(order));
-  };
   openMenu(
     { key: `group:${name}`, kind: 'group', id: name, depth: 0 },
     e,
@@ -391,8 +373,6 @@ function onGroupMenu(e: MouseEvent, name: string): void {
           renamingName.value = name;
         }),
       remove: () => confirmDeleteCollection(name),
-      step,
-      can: (by) => !reorderOff.value && stepIds(groupNames.value, name, by) !== null,
     }),
   );
 }
@@ -403,6 +383,8 @@ function onContextMenu(e: MouseEvent, script: CustomScript): void {
 
 // Right-click on empty space (the empty state included), the API tree's own pattern.
 const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
+const listScrollEl = useTemplateRef<HTMLElement>('listScrollEl');
+useKeptScroll('automations:list', listScrollEl);
 useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
   e.preventDefault();
   contextMenuStore.openContextMenu(e, newScriptItems(createScript));
@@ -421,6 +403,7 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
               showSearch ? t('common.action.hideSearch.label') : t('common.action.search.label')
             "
             :pressed="showSearch"
+            :kbd="formatShortcut('panel.find')"
             data-testid="toggle-search"
             @click="toggleSearch"
           />
@@ -437,7 +420,7 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
         <SearchField v-model="search" data-testid="tree-search" />
       </PanelBar>
       <div ref="bodyEl" class="flex min-h-0 flex-1 flex-col" data-testid="automations-body">
-        <div v-if="!empty" class="flex h-full flex-col overflow-y-auto">
+        <div v-if="!empty" ref="listScrollEl" class="flex h-full flex-col overflow-y-auto">
           <InlineState v-if="actionError" kind="error" data-testid="script-error">{{
             actionError
           }}</InlineState>
@@ -448,6 +431,7 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
               :group="SCRIPT_GROUP"
               :item-id="scriptIdOf"
               :disabled="reorderOff"
+              :keyboard="false"
               :class="['flex flex-col', ungroupedIds.length === 0 && 'min-h-2']"
               @move="(from, to) => reorderSet('', ungroupedIds, from, to)"
               @add="(id, beforeId) => dropScript('', id, beforeId)"
@@ -479,8 +463,8 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
               :ids="groupNames"
               draggable="[data-group-entry]"
               handle='[data-testid="script-group"]'
-              keyboard-handle='[data-testid="script-group"]'
               :disabled="reorderOff"
+              :keyboard="false"
               class="flex flex-col"
               @move="reorderGroups"
             >
@@ -508,6 +492,7 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
                   :group="SCRIPT_GROUP"
                   :item-id="scriptIdOf"
                   :disabled="reorderOff"
+                  :keyboard="false"
                   :class="['flex flex-col', group.rows.length === 0 && 'min-h-2']"
                   @add="(id, beforeId) => dropScript(group.name, id, beforeId)"
                   @move="

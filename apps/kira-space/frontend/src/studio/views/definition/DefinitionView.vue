@@ -16,10 +16,12 @@ import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
 import { copyOrReportError } from '@workbench/behaviour/clipboard';
 import { matchesQuery } from '@workbench/behaviour/match';
+import { useKeptScroll } from '@workbench/behaviour/viewState';
 import ToolbarSeparator from '@workbench/components/ToolbarSeparator.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { tabViewKey } from '@workbench/state/viewState';
+import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import type { DefinitionTabRecord } from '../../../state/tabDomain';
 import { useTabsStore } from '../../../state/tabs';
 import { findRanges } from '../../editor/findRanges';
@@ -105,6 +107,8 @@ const targetTail = computed(() => pathTail(props.tab.path));
 const targetLabel = computed(() => targetTail.value?.name ?? props.tab.path);
 
 const definition = computed(() => rt.value?.definition ?? null);
+const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
+useKeptScroll(() => tabViewKey(props.tab.id, 'definition'), bodyEl);
 const meta = computed(() => rt.value?.meta ?? null);
 const document = computed(() => (definition.value ? definitionText(definition.value) : ''));
 
@@ -411,7 +415,11 @@ const breadcrumb = computed(() => {
          everything below it stays conditional on the data it needs, exactly as before.
          Columns/Indexes/Constraints get the filtered arrays (computed above) instead of meta's own
          raw ones — filtering lives here, once, not in each section. -->
-      <div v-else-if="definition" class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 p-3">
+      <div
+        v-else-if="definition"
+        ref="bodyEl"
+        class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 p-3"
+      >
         <PropertiesSection
           v-for="section in definition.sections"
           :key="section.title"
@@ -440,6 +448,7 @@ const breadcrumb = computed(() => {
       <ResponseFindBar
         v-if="searchOpen && pane === 'source'"
         ref="findBarRef"
+        :state-key="tabViewKey(tab.id, 'definition:find')"
         :targets="findTargets"
         @close="closeSearch"
       />

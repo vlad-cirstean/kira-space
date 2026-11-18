@@ -7,7 +7,7 @@ import {
   CommandList,
 } from '@theme/components/ui/command';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
-import { usePaletteStore } from './palette';
+import { type PaletteCommand, usePaletteStore } from './palette';
 
 // The shared command palette. CommandDialog (reka-ui underneath) supplies the dialog role, focus
 // trap, restore, Escape and outside-click close. Commands come from the app via
@@ -20,6 +20,17 @@ function runCommand(id: string): void {
   const command = paletteStore.commands.find((c) => c.id === id);
   if (!command) return;
   paletteStore.closePalette();
+  if (command.movesFocus) pending = command;
+  else command.run();
+}
+
+// A focus-moving command runs once the dialog has restored (or skipped restoring) focus.
+let pending: PaletteCommand | null = null;
+function onCloseAutoFocus(event: Event): void {
+  if (!pending) return;
+  event.preventDefault();
+  const command = pending;
+  pending = null;
   command.run();
 }
 
@@ -29,7 +40,12 @@ function onOpenChange(open: boolean): void {
 </script>
 
 <template>
-  <CommandDialog :open="paletteStore.open" class="w-105" @update:open="onOpenChange">
+  <CommandDialog
+    :open="paletteStore.open"
+    class="w-105"
+    @update:open="onOpenChange"
+    @close-auto-focus="onCloseAutoFocus"
+  >
     <CommandInput
       data-testid="command-palette-input"
       :placeholder="placeholder"

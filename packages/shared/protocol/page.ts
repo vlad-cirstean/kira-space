@@ -208,6 +208,20 @@ export function cellText(chunk: TextColumnChunk, row: number, decoder: TextDecod
   return decoder.decode(chunk.data.subarray(chunk.offsets[row], chunk.offsets[row + 1]));
 }
 
+/** At most `maxBytes` of the cell, decoded non-fatally: a code point split at the cut becomes
+ *  U+FFFD. For width measurement, which never needs the whole of a 64 KiB cell. */
+export function cellPrefixText(
+  chunk: TextColumnChunk,
+  row: number,
+  decoder: TextDecoder,
+  maxBytes: number,
+): string {
+  const start = chunk.offsets[row];
+  return decoder.decode(
+    chunk.data.subarray(start, Math.min(chunk.offsets[row + 1], start + maxBytes)),
+  );
+}
+
 // The raw UTF-8 byte length of row i's value, straight from the offsets this
 // chunk already carries — for a caller that only wants a byte count (a "1.2 KB" badge), not the
 // decoded text. Equal to `new TextEncoder().encode(cellText(chunk, row, decoder)).length` for any

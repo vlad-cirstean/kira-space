@@ -54,6 +54,13 @@ export function cell(key: string, row: number, col: number): CellView {
   }));
 }
 
+/** Document-only: one document's id, decoded without its body (window-only callers). */
+export function documentId(key: string, row: number): string | null {
+  const page = getPage(key);
+  if (page?.kind !== 'document') return null;
+  return store.cached(key, row, 'id', (d) => cellText(page.ids, row, d));
+}
+
 /** Document-only: one document's id/body text, decoded from a DocumentPage's chunks. Mirrors
  *  views/documents/page.ts's own documentRow() — the divergence (this one
  *  hard-coded `isTruncated: false`) meant the console's own cell-editor publish could never know

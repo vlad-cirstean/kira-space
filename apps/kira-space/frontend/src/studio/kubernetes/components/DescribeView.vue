@@ -8,6 +8,7 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
 import { copyText } from '@workbench/behaviour/clipboard';
 import { compareNatural, matchesQuery, splitMatches } from '@workbench/behaviour/match';
+import { useKeptState } from '@workbench/behaviour/viewState';
 import QueryState from '@workbench/components/QueryState.vue';
 import { loadMonaco } from '@workbench/editor/monaco';
 import { paintOverlayHtml } from '@workbench/editor/paintSpans';
@@ -24,7 +25,10 @@ const describe = useDescribe({
   name: () => props.name,
 });
 
-const filter = ref('');
+const filter = useKeptState(
+  () => `kubernetes:describe:${props.clusterId}/${props.kind}/${props.namespace}/${props.name}`,
+  '',
+);
 const needle = computed(() => filter.value.trim().toLowerCase());
 const hit = (...texts: string[]): boolean => texts.some((x) => matchesQuery(x, filter.value));
 const parts = (text: string) => splitMatches(text, needle.value);

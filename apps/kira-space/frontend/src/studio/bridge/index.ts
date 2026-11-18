@@ -213,13 +213,6 @@ const studioControl = {
     unwrap(ConnectionConfigService.SetSecret({ kind, name, value })).then((r) =>
       trust<ConnectionConfigView>(r),
     ),
-  connectionConfigDeleteSecret: (
-    kind: ConnectionSecretKind,
-    name: string,
-  ): Promise<ConnectionConfigView> =>
-    unwrap(ConnectionConfigService.DeleteSecret({ kind, name })).then((r) =>
-      trust<ConnectionConfigView>(r),
-    ),
   onConnectionConfigChanged: (cb: () => void): (() => void) =>
     on(CHANNEL.connectionConfigChanged, cb),
   onConnectionFiltersChanged: (

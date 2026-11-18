@@ -50,6 +50,13 @@ export function headerCell(page: Page, column: string): Locator {
   return page.locator(`[data-testid="grid-header-cell"][data-column="${column}"]`);
 }
 
+/** `data-column` of every rendered header cell, in order. */
+export async function headerNames(page: Page): Promise<string[]> {
+  return page
+    .locator('[data-testid="grid-header-cell"]')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('data-column') ?? ''));
+}
+
 /** A whole rendered row, by page row index. Right-pane-only `data-testid="grid-row"` (D10) already
  *  disambiguates the two panes. */
 export function gridRow(page: Page, row: number): Locator {

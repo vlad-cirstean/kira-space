@@ -6,12 +6,12 @@ import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 import { connectionRow } from './support/tree';
 
-// The secrets section of a connection's file dialog (P475). Secret values are write-only: the
-// section lists names with set or unset state, saves a typed value once and never echoes it. The
-// storage status comes from the View: with no usable store the inputs are off. Backend half:
-// dbflow TestConnectionSecrets and the connfiles tests; this file only covers the rendering.
+// P670: the file dialog's secrets section is gone; the General tab's password and URI fields carry
+// secret state (set or not) and explain a missing store. Backend half: dbflow TestConnectionSecrets
+// and the connfiles tests; this file only covers the rendering.
 
-const PASSWORD = 'Zx9!pw;Qq7';
+// biome-ignore lint/suspicious/noTemplateCurlyInString: a secret reference in file text
+const PASSWORD_REF = '${secret:pg.password}';
 
 const CONN: ConnectionSummary = {
   file: 'pg.yaml',
@@ -96,6 +96,14 @@ function control(available: boolean, set: boolean): ControlSnapshot[] {
     { channel: IPC.connectionsList, response: [CONN] },
     { channel: IPC.connectionConfigView, response: view(available, set) },
     { channel: IPC.connectionConfigFile, response: detail(set) },
+    {
+      channel: IPC.connectionConfigForm,
+      response: {
+        text: detail(set).text,
+        problem: null,
+        value: { name: 'Pg', kind: 'postgres', mode: 'fields', password: PASSWORD_REF },
+      },
+    },
   ];
 }
 
@@ -105,44 +113,30 @@ async function openFile(page: import('@playwright/test').Page): Promise<void> {
   await expect(page.locator('[data-testid="connection-file-dialog"]')).toBeVisible();
 }
 
-test('with secret storage the section lists the name and takes a value once', async ({
+const TABS = ['general', 'advanced', 'preconnect', 'mcp', 'privacy', 'yaml'];
+
+test('with secret storage the General tab shows the password as not set and no section on any tab', async ({
   relaunch,
 }) => {
-  const { window: page, control: handle } = await relaunch({
-    control: [
-      ...control(true, false),
-      {
-        channel: IPC.connectionConfigSetSecret,
-        args: { kind: 'password', name: 'pg.password', value: PASSWORD },
-        response: view(true, true),
-      },
-    ],
-  });
-  const logged: string[] = [];
-  page.on('console', (m) => logged.push(m.text()));
+  const { window: page } = await relaunch({ control: control(true, false) });
 
   await openFile(page);
-  const row = page.locator('[data-testid="connection-secret-pg.password"]');
-  await expect(row).toBeVisible();
-  await expect(row.locator('[data-testid="connection-secret-state"]')).toHaveText('Not set');
-  await expect(page.locator('[data-testid="connection-secrets-storage-off"]')).toHaveCount(0);
-
-  const input = row.locator('[data-testid="connection-secret-value"]');
+  const input = page.locator('[data-testid="connection-password"]');
   await expect(input).toBeEnabled();
-  await expect(input).toHaveAttribute('type', 'password');
-  await input.fill(PASSWORD);
-  await row.locator('[data-testid="connection-secret-save"]').click();
-  await expect(input).toHaveValue('');
-  expect(handle.log().filter((e) => e.channel === IPC.connectionConfigSetSecret)).toHaveLength(1);
-  expect(logged.join('\n')).not.toContain(PASSWORD);
+  await expect(input).toHaveAttribute('placeholder', 'Not set');
+  await expect(page.locator('[data-testid="connection-secret-storage-off"]')).toHaveCount(0);
+  for (const tab of TABS) {
+    await page.locator(`[data-testid="connection-tab-${tab}"]`).click();
+    await expect(page.locator('[data-testid="connection-secrets"]')).toHaveCount(0);
+  }
 });
 
-test('without secret storage the section warns and the input is off', async ({ relaunch }) => {
+test('without secret storage the General tab explains and the password field is off', async ({
+  relaunch,
+}) => {
   const { window: page } = await relaunch({ control: control(false, false) });
 
   await openFile(page);
-  await expect(page.locator('[data-testid="connection-secrets-storage-off"]')).toBeVisible();
-  const row = page.locator('[data-testid="connection-secret-pg.password"]');
-  await expect(row.locator('[data-testid="connection-secret-value"]')).toBeDisabled();
-  await expect(row.locator('[data-testid="connection-secret-save"]')).toBeDisabled();
+  await expect(page.locator('[data-testid="connection-secret-storage-off"]')).toBeVisible();
+  await expect(page.locator('[data-testid="connection-password"]')).toBeDisabled();
 });

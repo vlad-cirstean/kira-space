@@ -90,17 +90,6 @@ export function useSetConnectionSecret() {
   );
 }
 
-export function useDeleteConnectionSecret() {
-  return useMutation(
-    {
-      mutationFn: (args: { kind: ConnectionSecretKind; name: string }) =>
-        control.connectionConfigDeleteSecret(args.kind, args.name),
-      onSuccess: refreshAfterSecret,
-    },
-    queryClient,
-  );
-}
-
 export function useTestConnection() {
   return useMutation({ mutationFn: (id: string) => control.connectionsTest(id) }, queryClient);
 }

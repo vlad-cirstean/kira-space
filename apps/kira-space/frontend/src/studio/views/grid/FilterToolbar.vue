@@ -1,23 +1,28 @@
 <script setup lang="ts">
 import type { SortSpec } from '@shared/domain/queries';
+import SearchField from '@theme/components/SearchField.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import { useFocus } from '@vueuse/core';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import AutocompleteField from '@workbench/components/AutocompleteField.vue';
-import { computed, ref, watch } from 'vue';
+import ToolbarSeparator from '@workbench/components/ToolbarSeparator.vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import type { DataTabRecord } from '../../../state/tabDomain';
 import { control } from '../../bridge/control';
 import { useConnectionsStore } from '../../state/connections';
 import FilterHistoryMenu from '../shared/FilterHistoryMenu.vue';
 import { identNeedsQuoting, quoteIdent, sqlDialectFor } from '../shared/sqlIdent';
+import { columnFilterSummary } from './columnFilter';
 import {
   orderByCandidates as buildOrderByCandidates,
   whereCandidates as buildWhereCandidates,
 } from './filterCompletion';
+import { getPage, pageVersion } from './page';
 import { useGridViewStore } from './state';
 
 // P48 D10: takes `tab` as a prop like every other view's toolbar — see DataToolbar.vue's own note.
@@ -67,6 +72,27 @@ const orderByText = computed({
   get: () => gridViewStore.runtime[props.tab.id]?.orderByDraft ?? sortToText(props.tab.state.sort),
   set: (v: string) => gridViewStore.setFilterDraft(props.tab.id, { orderBy: v }),
 });
+
+// Display-only column-name filter: typed text is the single source of truth (runtime store, so it
+// survives a tab switch); SlickGridHost.vue applies it to the grid after a short debounce.
+const columnFilterText = computed({
+  get: () => gridViewStore.runtime[props.tab.id]?.columnFilter ?? '',
+  set: (v: string) => gridViewStore.setColumnFilter(props.tab.id, v),
+});
+// `pageVersion.n` is read because the page map is not reactive (see SlickGridHost.vue).
+const columnFilterStatus = computed(() => {
+  void pageVersion.n;
+  const page = getPage(props.tab.id);
+  return page ? columnFilterSummary(page, columnFilterText.value) : null;
+});
+const columnFilterWrap = useTemplateRef<HTMLElement>('columnFilterWrap');
+const { focused: columnFilterFocused } = useFocus(
+  computed(() => columnFilterWrap.value?.querySelector('input')),
+);
+function focusColumnFilter(): void {
+  columnFilterFocused.value = true;
+}
+defineExpose({ focusColumnFilter });
 
 // Watched as two separate primitive-returning getters, not `watch(tab, ...)` on the whole
 // object: DataView.vue keys this component's ancestor by tab.id (remounted on tab switch, so
@@ -156,8 +182,9 @@ function applyFromHistory(where: string | null, orderBy: SortSpec | null): void 
 </script>
 
 <template>
-  <!-- LAW 02 / README: one row, two prefixed inputs, one verb — permanent, so Clear rather than
-       a close button that would make the grid change height under you. -->
+  <!-- LAW 02 / README: one row, two prefixed inputs, one verb, then the display-only column
+       filter — permanent, so Clear rather than a close button that would make the grid change
+       height under you. -->
   <div class="relative">
     <TooltipIconButton
       :icon="ICON.history"
@@ -224,4 +251,27 @@ function applyFromHistory(where: string | null, orderBy: SortSpec | null): void 
     </TooltipTrigger>
     <TooltipContent>{{ t('studio.common.clearFilters.tooltip') }}</TooltipContent>
   </Tooltip>
+  <ToolbarSeparator />
+  <div ref="columnFilterWrap" class="flex w-48 shrink-0 items-center gap-1.5">
+    <SearchField
+      v-model="columnFilterText"
+      :placeholder="t('studio.grid.columnFilter.field.placeholder')"
+      :aria-label="t('studio.grid.columnFilter.field.aria')"
+      :aria-invalid="columnFilterStatus?.noMatch ? 'true' : undefined"
+      data-testid="column-filter-input"
+    />
+    <span
+      v-if="columnFilterStatus"
+      class="shrink-0 whitespace-nowrap text-kira-sm text-subtle"
+      data-testid="column-filter-status"
+      >{{
+        columnFilterStatus.noMatch
+          ? t('studio.grid.columnFilter.noMatch.status')
+          : t('common.ofTotal.label', {
+              value: columnFilterStatus.shown,
+              total: columnFilterStatus.total,
+            })
+      }}</span
+    >
+  </div>
 </template>

@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import type { ScriptParam } from '@shared/domain/scripts';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
+import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import SecretInput from '@workbench/components/SecretInput.vue';
 import { useId } from 'vue';
+
+// Past this a toggle row gets too long; a select instead.
+const MAX_TOGGLE_CHOICES = 5;
+// SecondaryTabs drops an empty value, so None needs a non-empty one.
+const NONE = '\u0000';
 
 const values = defineModel<Record<string, string[]>>({ required: true });
 const props = defineProps<{
@@ -28,6 +34,14 @@ function set(name: string, next: string[]): void {
 
 function choices(p: ScriptParam): string[] {
   return p.required ? p.options : ['', ...p.options];
+}
+
+function selectItems(p: ScriptParam): { value: string; label: string; testid: string }[] {
+  return choices(p).map((o) => ({
+    value: o === '' ? NONE : o,
+    label: o === '' ? t('common.state.none.option') : o,
+    testid: `run-param-option-${p.name}-${o}`,
+  }));
 }
 
 function toggle(p: ScriptParam, option: string, on: boolean): void {
@@ -64,24 +78,29 @@ function toggle(p: ScriptParam, option: string, on: boolean): void {
         :data-testid="`run-param-input-${p.name}`"
         @update:model-value="(v) => set(p.name, String(v) === '' ? [] : [String(v)])"
       />
-      <RadioGroup
+      <SecondaryTabs
+        v-else-if="p.type === 'select' && choices(p).length <= MAX_TOGGLE_CHOICES"
+        variant="choice"
+        size="kira-lg"
+        wrap
+        :aria-label="p.name"
+        :items="selectItems(p)"
+        :model-value="values[p.name]?.[0] || NONE"
+        :data-testid="`run-param-input-${p.name}`"
+        @update:model-value="(v) => set(p.name, v === NONE ? [] : [v])"
+      />
+      <NativeSelect
         v-else-if="p.type === 'select'"
+        :id="`${idBase}-${p.name}`"
+        variant="bordered"
+        size="kira-lg"
         :model-value="values[p.name]?.[0] ?? ''"
-        class="flex flex-row flex-wrap gap-x-4 gap-y-1.5"
         :data-testid="`run-param-input-${p.name}`"
         @update:model-value="(v) => set(p.name, v === '' ? [] : [String(v)])"
       >
-        <div v-for="o in choices(p)" :key="o" class="flex items-center gap-2">
-          <RadioGroupItem
-            :id="`${idBase}-${p.name}-${o}`"
-            :value="o"
-            :data-testid="`run-param-option-${p.name}-${o}`"
-          />
-          <Label :for="`${idBase}-${p.name}-${o}`" :class="o === '' && 'text-muted-foreground'">{{
-            o === '' ? t('common.state.none.option') : o
-          }}</Label>
-        </div>
-      </RadioGroup>
+        <option value="" :disabled="p.required">{{ t('common.state.none.option') }}</option>
+        <option v-for="o in p.options" :key="o" :value="o">{{ o }}</option>
+      </NativeSelect>
       <div
         v-else
         class="flex flex-wrap gap-x-4 gap-y-1.5"

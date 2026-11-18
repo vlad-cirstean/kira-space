@@ -14,11 +14,12 @@ import { refDebounced } from '@vueuse/core';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { storeToRefs } from 'pinia';
-import { computed, ref, useId, useTemplateRef, watch } from 'vue';
+import { computed, useId, useTemplateRef, watch } from 'vue';
 import { useFocusOnMount } from '../behaviour/focus';
 import { useListNavigation } from '../behaviour/listNavigation';
 import { usePanelHeaderSearch } from '../behaviour/panelSearch';
 import { TIMING } from '../behaviour/timing';
+import { useKeptState } from '../behaviour/viewState';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '../behaviour/virtualRows';
 import QueryState from '../components/QueryState.vue';
 import { useRowHeight } from '../lib/rowHeight';
@@ -56,6 +57,7 @@ const searchInput = computed(
 useFocusOnMount(searchInput);
 // Recall-first: the field is always shown; a printable key on the list redirects into it.
 const { showSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: 'memory:panel',
   searchable: () => true,
   getSearch: () => query.value,
   setSearch: (value) => {
@@ -66,11 +68,11 @@ const { showSearch } = usePanelHeaderSearch(rootEl, {
 showSearch.value = true;
 
 const resultsEl = useTemplateRef<HTMLElement>('resultsEl');
-const activeKey = ref<string | null>(null);
+const activeKey = useKeptState<string | null>('memory:panel:activeKey', null);
 watch(
   selectedId,
   (id) => {
-    activeKey.value = id;
+    if (id !== null) activeKey.value = id;
   },
   { immediate: true },
 );
@@ -82,6 +84,7 @@ const { virtualizer, virtualItems, totalSize, scrollToIndex } = useVirtualRows({
   count: () => search.data.value?.length ?? 0,
   rowHeight: () => rowHeight.double.value + 8,
   scrollElement: resultsEl,
+  keepScroll: 'memory:results',
   pinned: () => (activeIndex.value < 0 ? null : activeIndex.value),
 });
 const windowRows = computed(() =>

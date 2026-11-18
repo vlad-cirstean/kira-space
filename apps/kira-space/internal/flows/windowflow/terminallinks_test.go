@@ -21,7 +21,13 @@ const linksScenario = "terminal-file-links"
 func TestTerminalFileLinks(t *testing.T) {
 	app := flowharness.New(t)
 	repo := app.NewRepo("proj")
-	repo.Commit("init", map[string]string{"src/a.go": "package a\n\nfunc a() {}\n"})
+	repo.Commit("init", map[string]string{
+		"src/a.go":     "package a\n\nfunc a() {}\n",
+		"src/Makefile": "all:\n",
+		"notes.txt":    "prose\n",
+		"My Docs/a.ts": "export {}\n",
+		"src/sub/b.go": "package sub\n",
+	})
 	rec, err := app.W.CodeWorkspace.ImportRepo(ctx, bridge.CodeWorkspaceImportArgs{Path: repo.Dir})
 	if err != nil {
 		t.Fatalf("ImportRepo: %v", err)
@@ -47,7 +53,7 @@ func TestTerminalFileLinks(t *testing.T) {
 		t.Fatalf("Terminal.Open: %v", err)
 	}
 
-	resolve := func(fallback string, paths ...string) []bool {
+	resolveFull := func(fallback string, paths ...string) bridge.OpenedFilesTerminalResolveResult {
 		t.Helper()
 		got, err := app.W.OpenedFilesSvc.TerminalResolve(bridge.OpenedFilesTerminalResolveArgs{
 			TerminalID: term, FallbackCwd: fallback, Paths: paths,
@@ -55,7 +61,22 @@ func TestTerminalFileLinks(t *testing.T) {
 		if err != nil {
 			t.Fatalf("TerminalResolve %v: %v", paths, err)
 		}
-		return got.Openable
+		return got
+	}
+	resolve := func(fallback string, paths ...string) []bool {
+		t.Helper()
+		got := resolveFull(fallback, paths...).Paths
+		out := make([]bool, len(got))
+		for i, p := range got {
+			out[i] = p != ""
+		}
+		return out
+	}
+	writeTerm := func(data string) {
+		t.Helper()
+		if err := app.W.Terminal.Write(terminal.WriteArgs{TerminalID: term, Data: base64.StdEncoding.EncodeToString([]byte(data))}); err != nil {
+			t.Fatal(err)
+		}
 	}
 	windows := func() int { return len(app.WindowMgr.OpenedKeyed) }
 
@@ -70,19 +91,64 @@ func TestTerminalFileLinks(t *testing.T) {
 			t.Fatal(err)
 		}
 		app.Contract(t, linksScenario, "OpenedFilesService.TerminalResolve", got)
-		if want := []bool{true, true, false, false, true, false, true}; !slices.Equal(got.Openable, want) {
-			t.Fatalf("openable = %v, want %v", got.Openable, want)
+		wantPaths := []string{
+			filepath.Join(repo.Dir, "src/a.go"), filepath.Join(repo.Dir, "src/a.go"), "", "", loose, "",
+			filepath.Join(app.Home, "k.json"),
+		}
+		if !slices.Equal(got.Paths, wantPaths) {
+			t.Fatalf("paths = %v, want %v", got.Paths, wantPaths)
+		}
+	})
+
+	t.Run("any file type inside a repo", func(t *testing.T) {
+		got := resolve("", "src/Makefile", "notes.txt", "notes/x.txt")
+		if want := []bool{true, true, false}; !slices.Equal(got, want) {
+			t.Fatalf("openable = %v, want %v", got, want)
+		}
+		if err := app.W.OpenedFilesSvc.TerminalOpen(bridge.OpenedFilesTerminalOpenArgs{TerminalID: term, Path: "src/Makefile"}); err != nil {
+			t.Fatal(err)
+		}
+		got2 := pendingFor(t, app, app.WindowMgr.OpenedKeyed[0])
+		want2 := []openedfiles.Target{{RepoID: rec.ID, RelPath: "src/Makefile"}}
+		if !slices.Equal(got2, want2) {
+			t.Fatalf("targets = %+v, want %+v", got2, want2)
+		}
+	})
+
+	t.Run("git diff prefixes", func(t *testing.T) {
+		got := resolveFull("", "a/src/a.go", "b/src/a.go", "a/missing.go")
+		want := filepath.Join(repo.Dir, "src/a.go")
+		if wantPaths := []string{want, want, ""}; !slices.Equal(got.Paths, wantPaths) {
+			t.Fatalf("paths = %v, want %v", got.Paths, wantPaths)
+		}
+	})
+
+	t.Run("spaces in a path", func(t *testing.T) {
+		got := resolve("", "My Docs/a.ts")
+		if !slices.Equal(got, []bool{true}) {
+			t.Fatalf("My Docs/a.ts = %v, want [true]", got)
 		}
 	})
 
 	t.Run("resolve follows cd", func(t *testing.T) {
-		if err := app.W.Terminal.Write(terminal.WriteArgs{TerminalID: term, Data: base64.StdEncoding.EncodeToString([]byte("cd src\r"))}); err != nil {
-			t.Fatal(err)
-		}
+		writeTerm("cd src\r")
 		testx.WaitUntil(t, 10*time.Second, func() bool { return slices.Equal(resolve("", "a.go"), []bool{true}) })
 		if got := resolve("", "src/a.go"); !slices.Equal(got, []bool{false}) {
 			t.Fatalf("src/a.go after cd = %v, want [false]", got)
 		}
+		if got := resolve(repo.Dir, "src/a.go"); !slices.Equal(got, []bool{true}) {
+			t.Fatalf("src/a.go after cd with start cwd fallback = %v, want [true]", got)
+		}
+	})
+
+	t.Run("foreground tool cwd", func(t *testing.T) {
+		writeTerm("(cd sub && sleep 30)\r")
+		testx.WaitUntil(t, 10*time.Second, func() bool { return slices.Equal(resolve("", "b.go"), []bool{true}) })
+		if got := resolve(repo.Dir, "src/a.go"); !slices.Equal(got, []bool{true}) {
+			t.Fatalf("src/a.go via fallback during foreground tool = %v, want [true]", got)
+		}
+		writeTerm("\x03")
+		testx.WaitUntil(t, 10*time.Second, func() bool { return slices.Equal(resolve("", "a.go"), []bool{true}) })
 	})
 
 	t.Run("open in a repo places the cursor", func(t *testing.T) {

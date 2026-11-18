@@ -31,6 +31,9 @@ export interface ApprovalKindDef {
   targetData?: boolean;
   /** Where is data (folder): data font. */
   whereData?: boolean;
+  /** The body renders in Monaco: the surface preloads it as the dialog opens, so the editor does not
+   *  pop in. Absent for a kind with no editor, which then never pays for Monaco. */
+  monaco?: boolean;
   /** Button words when Approve/Deny do not fit (Send/Withhold, Accept/Reject). */
   labels?: (item: ApprovalItem) => { approve: string; deny: string };
 }

@@ -6,9 +6,11 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { t } from '@theme/i18n';
 import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
+import { useKeptScroll, useKeptState } from '@workbench/behaviour/viewState';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
+import { formatShortcut } from '@workbench/shortcuts/keys';
 import { computed, onMounted, onUnmounted, reactive, useTemplateRef, watch } from 'vue';
 import { useCodeReposStore } from '../state/coderepos';
 import { useLayoutStore } from '../state/layout';
@@ -43,7 +45,10 @@ const repoId = computed(() => repoIdOfWorkspace(workspaceStore.active) ?? '');
 
 // P84 §8.4: two independent queries — one string would mean a filter typed on one tab silently
 // hides rows on the other. Each keeps its own text across tab switches.
-const local = reactive({ repoSearch: '', fileSearch: '' });
+const repoSearch = useKeptState('git:panel:repoSearch', '');
+const fileSearch = useKeptState('git:panel:fileSearch', '');
+const reposEl = useTemplateRef<HTMLElement>('reposEl');
+useKeptScroll('git:repos', reposEl);
 
 // Tab persists (state/search.ts, `kira.git.panelTab`, default Repos); no auto-switch on repo
 // open or mount. With no repo workspace active, Files/Review have nothing to show: display Repos
@@ -106,16 +111,17 @@ function onRefresh(): void {
 // P104 §3: PanelShell's own search/empty props, inlined -- the panel routes to one of two search
 // strings depending on which top-level tab is active (Repos vs. Files), same as before.
 const panelSearch = computed<string>({
-  get: () => (tab.value === 'repos' ? local.repoSearch : local.fileSearch),
+  get: () => (tab.value === 'repos' ? repoSearch.value : fileSearch.value),
   set: (v: string) => {
-    if (tab.value === 'repos') local.repoSearch = v;
-    else local.fileSearch = v;
+    if (tab.value === 'repos') repoSearch.value = v;
+    else fileSearch.value = v;
   },
 });
 const panelEmpty = computed(() => codeReposStore.records.length === 0);
 const panelSearchable = computed(() => tab.value !== 'review');
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: 'git:panel',
   searchable: () => panelSearchable.value,
   getSearch: () => panelSearch.value,
   setSearch: (v) => {
@@ -163,6 +169,7 @@ onUnmounted(() => {
             showSearch ? t('common.action.hideSearch.label') : t('common.action.search.label')
           "
           :pressed="showSearch"
+          :kbd="formatShortcut('panel.find')"
           data-testid="toggle-search"
           @click="toggleSearch"
         />
@@ -198,10 +205,11 @@ onUnmounted(() => {
         <div class="h-full flex flex-col min-h-0">
           <section
             v-if="tab === 'repos'"
+            ref="reposEl"
             class="flex-1 min-h-0 overflow-y-auto"
             data-testid="repo-section"
           >
-            <RepoList :search="local.repoSearch" />
+            <RepoList :search="repoSearch" />
           </section>
           <template v-else>
             <template v-if="repoId">
@@ -235,11 +243,7 @@ onUnmounted(() => {
                      state it sets would mean it never gets the chance to. Its own `rows` computed
                      is empty until the load resolves, then updates reactively — no separate loading
                      placeholder needed for a first open this fast. -->
-                  <RepoFileTree
-                    class="flex-1 min-h-0"
-                    :repo-id="repoId"
-                    :search="local.fileSearch"
-                  />
+                  <RepoFileTree class="flex-1 min-h-0" :repo-id="repoId" :search="fileSearch" />
                 </template>
                 <RepoSearchView
                   v-else-if="view === 'search'"

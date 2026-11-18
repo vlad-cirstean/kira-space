@@ -45,12 +45,6 @@ type ConnectionSecretArgs struct {
 	Value string `json:"value"`
 }
 
-// ConnectionSecretNameArgs names the secret to remove.
-type ConnectionSecretNameArgs struct {
-	Kind string `json:"kind"`
-	Name string `json:"name"`
-}
-
 // View answers every file's state and the secret names.
 func (s *ConnectionConfigService) View() (connfiles.View, error) {
 	v, err := s.Files.View()
@@ -146,18 +140,6 @@ func (s *ConnectionConfigService) SetSecret(args ConnectionSecretArgs) (connfile
 		return connfiles.View{}, ipcerr.BadRequest(i18n.T("backend.core.agentSettings.secretValue.body", nil))
 	}
 	if err := s.Files.PutSecret(args.Kind, args.Name, args.Value); err != nil {
-		return connfiles.View{}, ipcerr.Wrap(err)
-	}
-	s.Deps.Events.Emit(ChannelConnectionConfigChanged, struct{}{})
-	return s.View()
-}
-
-// DeleteSecret removes one secret; an absent name is not an error.
-func (s *ConnectionConfigService) DeleteSecret(args ConnectionSecretNameArgs) (connfiles.View, error) {
-	if err := validSecret(args.Kind, args.Name); err != nil {
-		return connfiles.View{}, err
-	}
-	if err := s.Files.DeleteSecret(args.Kind, args.Name); err != nil {
 		return connfiles.View{}, ipcerr.Wrap(err)
 	}
 	s.Deps.Events.Emit(ChannelConnectionConfigChanged, struct{}{})

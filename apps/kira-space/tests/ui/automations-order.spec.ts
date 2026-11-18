@@ -3,7 +3,7 @@ import { test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 
-// P381: Move up/down. Backend half: termflow TestScriptOrder.
+// P669: no Move items, no Alt+arrow. Backend half: termflow TestScriptOrder.
 
 registerOrderScenarios(
   { test, contract, ipc: IPC },

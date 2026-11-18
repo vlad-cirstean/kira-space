@@ -58,6 +58,9 @@ const MODE_ITEMS = computed(
 // for a named profile. A file kind (SQLite) carries the absolute path in `database`.
 const isAwsStyle = computed(() => AWS_STYLE_KINDS.has(kind.value));
 const isFileStyle = computed(() => FILE_KINDS.has(kind.value));
+const showsSecretField = computed(
+  () => mode.value === 'uri' || (!isAwsStyle.value && !isFileStyle.value),
+);
 const minVersionNote = computed(() => MIN_SERVER_VERSION[kind.value]);
 
 const pickingEngine = ref(false);
@@ -330,6 +333,13 @@ async function onBrowseDatabaseFile(): Promise<void> {
         }}</FieldError>
         <FieldError v-if="props.errorFor('/uri')">{{ props.errorFor('/uri') }}</FieldError>
       </Field>
+      <FieldDescription
+        v-if="!storageAvailable && showsSecretField"
+        data-testid="connection-secret-storage-off"
+        >{{
+          t('studio.connections.file.secrets.storageOff.hint')
+        }}</FieldDescription
+      >
     </template>
   </div>
 </template>

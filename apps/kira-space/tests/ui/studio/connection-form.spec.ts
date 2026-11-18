@@ -133,10 +133,13 @@ test('a typed password goes through the write-only call, never the file', async 
   const { window: page, control } = await open(relaunch, [
     { channel: IPC.connectionConfigSetSecret, response: view() },
   ]);
+  const logged: string[] = [];
+  page.on('console', (m) => logged.push(m.text()));
   await page.locator('[data-testid="connection-password"]').fill('hunter2');
   await page.locator('[data-testid="connection-file-save"]').click();
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.connectionConfigSetSecret)?.args)
     .toEqual({ kind: 'password', name: 'pg.password', value: 'hunter2' });
   expect(control.log().some((e) => e.channel === IPC.connectionConfigSaveFile)).toBe(false);
+  expect(logged.join('\n')).not.toContain('hunter2');
 });

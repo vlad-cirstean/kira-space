@@ -56,6 +56,7 @@ function useMeta(tabId: string, primaryKey: string[]): void {
     settledWidths: null,
     whereDraft: null,
     orderByDraft: null,
+    columnFilter: '',
   };
 }
 

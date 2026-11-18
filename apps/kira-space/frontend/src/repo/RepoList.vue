@@ -362,7 +362,7 @@ const nav = useListNavigation<NavRow>({
     }),
 });
 
-// Drag and Alt+arrows reorder top-level repos; a search shows a subset, so it pauses both.
+// Drag reorders top-level repos; a search shows a subset, so it pauses it.
 useSortableReorder(
   listEl,
   () => filteredRepos.value.map((r) => r.id),
@@ -373,8 +373,6 @@ useSortableReorder(
   {
     draggable: '.repo-entry',
     handle: '[data-testid="repo-row"]',
-    keyboardHandle: '[data-testid="repo-row"]',
-    keyboard: true,
     disabled: () => props.search.trim() !== '' || filteredRepos.value.length < 2,
   },
 );

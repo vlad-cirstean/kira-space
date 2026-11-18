@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { useKeptScroll } from '@workbench/behaviour/viewState';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
-import { computed } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import { usePlanModel } from '../plan/usePlanModel';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import AdeAllSessions from './AdeAllSessions.vue';
@@ -18,6 +19,9 @@ function taskOf(taskId: string): { title: string; color: string } {
   const card = model.value?.cardFor(taskId);
   return { title: card?.title ?? taskId, color: card?.color ?? 'var(--kira-fg-subtle)' };
 }
+
+const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
+useKeptScroll('ade:needs', bodyEl);
 </script>
 
 <template>
@@ -33,7 +37,7 @@ function taskOf(taskId: string): { title: string; color: string } {
         }}</span>
       </template>
     </PanelHeader>
-    <div class="flex min-h-0 flex-1 flex-col overflow-auto">
+    <div ref="bodyEl" class="flex min-h-0 flex-1 flex-col overflow-auto">
       <template v-if="needs">
         <AdeNeedsRow
           v-for="n in needs.items"

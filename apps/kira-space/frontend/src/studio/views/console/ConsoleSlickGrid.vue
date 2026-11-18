@@ -31,6 +31,7 @@ import {
   resetMeasureCtx,
   tooltipAttrs,
 } from '../shared/page/columns';
+import { displayText } from '../shared/page/display';
 import { setVisibleRows } from '../shared/page/visibleRows';
 import { searchCellLayers } from '../shared/slick/cssLayers';
 import {
@@ -163,9 +164,13 @@ function cellFormatter(
   const view = value as { text: string; isNull: boolean; truncated: boolean };
   if (view.isNull) return { text: nullCellText(), addClasses: 'cell-null' };
   if (view.truncated) {
-    return { text: view.text, addClasses: 'cell-truncated', toolTip: truncatedCellTip() };
+    return {
+      text: displayText(view.text),
+      addClasses: 'cell-truncated',
+      toolTip: truncatedCellTip(),
+    };
   }
-  return view.text;
+  return displayText(view.text);
 }
 
 // The header tooltip has to be written as attributes by hand (SlickGrid's own

@@ -7,8 +7,9 @@ import { Card } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { storeToRefs } from 'pinia';
-import { computed } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import { formatDateTime as when } from '../behaviour/format';
+import { useKeptScroll } from '../behaviour/viewState';
 import Identifier from '../components/Identifier.vue';
 import ModuleStart from '../components/ModuleStart.vue';
 import QueryState from '../components/QueryState.vue';
@@ -27,6 +28,10 @@ const history = useMemoryHistory(selectedId);
 const selected = computed(() =>
   history.data.value?.memories.find((m) => m.id === selectedId.value),
 );
+const detailEl = useTemplateRef<HTMLElement>('detailEl');
+useKeptScroll(() => (selectedId.value ? `memory:detail:${selectedId.value}` : null), detailEl, {
+  ready: () => history.data.value !== undefined,
+});
 const trail = computed(() => [...(history.data.value?.memories ?? [])].reverse());
 
 function eventsFor(id: string) {
@@ -37,7 +42,7 @@ function eventsFor(id: string) {
 <template>
   <ImportView v-if="ui.view === 'imports'" />
   <DistillView v-else-if="ui.view === 'distill'" />
-  <div v-else class="h-full overflow-y-auto" data-testid="memory-start">
+  <div v-else ref="detailEl" class="h-full overflow-y-auto" data-testid="memory-start">
     <ModuleStart
       v-if="!selectedId"
       class="h-full"

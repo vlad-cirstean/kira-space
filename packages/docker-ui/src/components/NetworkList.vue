@@ -39,7 +39,13 @@ function open(row: { network: { id: string } }): void {
         :description="ui.search.trim() ? t('docker.network.noMatches.emptyHint') : undefined"
       />
     </template>
-    <VirtualList :rows="rows" testid="docker-network-list" :select="open" :open="open">
+    <VirtualList
+      :rows="rows"
+      keep-scroll-key="docker:networks"
+      testid="docker-network-list"
+      :select="open"
+      :open="open"
+    >
       <template #row="{ row, nav }">
         <!-- biome-ignore lint/a11y/useKeyWithClickEvents: Enter comes from useListNavigation on the container. -->
         <div

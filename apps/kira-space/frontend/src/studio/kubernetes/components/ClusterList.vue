@@ -8,15 +8,11 @@ import { cn } from '@theme/lib/utils';
 import { copyText } from '@workbench/behaviour/clipboard';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { matchesQuery } from '@workbench/behaviour/match';
-import { useTreeShortcuts } from '@workbench/behaviour/treeShortcuts';
+import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { logError } from '@workbench/bridge/log';
 import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
-import {
-  type MenuItem,
-  runMenuShortcutAsync,
-  useContextMenuStore,
-} from '@workbench/state/contextMenu';
+import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, watch } from 'vue';
 import { useClusterProbes, useClusters, useRefreshCluster, useReorderClusters } from '../queries';
 import { useKubernetesUiStore } from '../state';
@@ -80,40 +76,6 @@ function selectRow(row: ClusterRow): void {
   ui.selectCluster(row.cluster.id);
 }
 
-// Disabled at the ends and while a search filters the list: the visible order is then partial.
-function moveItems(id: string): MenuItem[] {
-  const at = list.value.findIndex((c) => c.id === id);
-  return [
-    {
-      type: 'item',
-      id: 'move-up',
-      label: t('common.moveUp.tooltip'),
-      icon: 'arrow-up',
-      shortcut: 'list.moveUp',
-      disabled: searching.value || at <= 0,
-      run: () => moveCluster(id, -1),
-    },
-    {
-      type: 'item',
-      id: 'move-down',
-      label: t('common.moveDown.tooltip'),
-      icon: 'arrow-down',
-      shortcut: 'list.moveDown',
-      disabled: searching.value || at < 0 || at >= list.value.length - 1,
-      run: () => moveCluster(id, 1),
-    },
-  ];
-}
-
-async function moveCluster(id: string, step: -1 | 1): Promise<void> {
-  const ids = list.value.map((c) => c.id);
-  const from = ids.indexOf(id);
-  const to = from + step;
-  if (from < 0 || to < 0 || to >= ids.length) return;
-  [ids[from], ids[to]] = [ids[to], ids[from]];
-  await reorder.mutateAsync(ids).catch((err) => logError('kubernetes', 'reorder failed', err));
-}
-
 function menuFor(row: ClusterRow): MenuItem[] {
   return [
     {
@@ -139,11 +101,11 @@ function menuFor(row: ClusterRow): MenuItem[] {
         mcpClusterId.value = row.cluster.id;
       },
     },
-    ...moveItems(row.cluster.id),
   ];
 }
 
 const listEl = ref<HTMLElement | null>(null);
+useKeptScroll('kubernetes:clusters', listEl);
 const activeKey = ref<string | null>(null);
 const nav = useListNavigation<ClusterRow>({
   container: listEl,
@@ -162,19 +124,6 @@ const { draggingId, drop } = useClusterReorder({
   rowHeight: () => rowHeight.value,
   onReorder: (ids) =>
     void reorder.mutateAsync(ids).catch((err) => logError('kubernetes', 'reorder failed', err)),
-});
-
-// Rows are keyed by cluster, but the focused element may show another row after the move: refocus.
-function moveViaMenu(id: 'list.moveUp' | 'list.moveDown'): (key: string) => void {
-  return (key) => {
-    const row = rows.value.find((r) => r.key === key);
-    if (!row) return;
-    void runMenuShortcutAsync(menuFor(row), id).then(() => nav.focusKey(key));
-  };
-}
-useTreeShortcuts(nav, {
-  'list.moveUp': moveViaMenu('list.moveUp'),
-  'list.moveDown': moveViaMenu('list.moveDown'),
 });
 
 function onContext(row: ClusterRow, e: MouseEvent): void {

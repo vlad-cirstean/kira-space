@@ -17,7 +17,7 @@ a git client and code workspace, coding agents (Claude Code or OpenCode), a memo
 and a phone view on your home network. The same window also holds a visual database client for ten
 engines (DataGrip/DBeaver class), an HTTP/gRPC API client (Postman/Insomnia class), a Kubernetes
 view and a Docker manager. You switch between modules with the mode switcher: **Agents**,
-**Automations**, **Memory**, **Git**, **Studio** (databases), **Api**, **Docker** and **Kubernetes**.
+**Automations**, **Studio** (databases), **Api**, **Docker**, **Kubernetes**, **Git** and **Memory**.
 
 See the presentation page: [Kira Space](https://vlad-cirstean.github.io/kira-space/).
 

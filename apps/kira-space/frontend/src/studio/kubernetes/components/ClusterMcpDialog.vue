@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import {
@@ -12,7 +13,6 @@ import {
 } from '@theme/components/ui/dialog';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
@@ -27,6 +27,11 @@ const open = defineModel<boolean>('open', { required: true });
 const clusters = useClusters();
 const cluster = computed(() => clusters.data.value?.clusters.find((c) => c.id === props.clusterId));
 const save = useSetClusterMcp();
+
+const approvalItems = computed(() => [
+  { value: 'prompt', label: t('automations.form.mcp.prompt.label'), testid: 'kube-mcp-prompt' },
+  { value: 'allow', label: t('kubernetes.mcp.allow.label'), testid: 'kube-mcp-allow' },
+]);
 
 const draft = ref<KubeMcpSettings | null>(null);
 const error = ref<string | null>(null);
@@ -102,21 +107,15 @@ function onSave(): void {
           </Field>
           <Field>
             <FieldLabel>{{ t('kubernetes.mcp.approval.label') }}</FieldLabel>
-            <RadioGroup
+            <SecondaryTabs
+              variant="choice"
+              size="kira-lg"
+              :aria-label="t('kubernetes.mcp.approval.label')"
+              :items="approvalItems"
               :model-value="draft.approval"
-              class="gap-1.5"
               data-testid="kube-mcp-approval"
               @update:model-value="(v) => (draft!.approval = v === 'allow' ? 'allow' : 'prompt')"
-            >
-              <div class="flex items-center gap-2">
-                <RadioGroupItem id="kube-mcp-prompt" value="prompt" data-testid="kube-mcp-prompt" />
-                <Label for="kube-mcp-prompt">{{ t('automations.form.mcp.prompt.label') }}</Label>
-              </div>
-              <div class="flex items-center gap-2">
-                <RadioGroupItem id="kube-mcp-allow" value="allow" data-testid="kube-mcp-allow" />
-                <Label for="kube-mcp-allow">{{ t('kubernetes.mcp.allow.label') }}</Label>
-              </div>
-            </RadioGroup>
+            />
           </Field>
         </template>
         <FieldError v-if="error" data-testid="kube-mcp-error">{{ error }}</FieldError>

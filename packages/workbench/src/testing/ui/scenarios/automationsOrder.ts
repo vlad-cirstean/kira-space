@@ -63,7 +63,7 @@ const menuItem = (page: Page, id: string) => page.locator(`[data-testid="menu-it
 // Backend half: termflow TestScriptOrder (Reorder, ReorderCollections); its contract fixes the call
 // shapes.
 export function registerOrderScenarios(env: Env, options: Options): void {
-  const { test, contract, ipc: IPC } = env;
+  const { test, ipc: IPC } = env;
 
   const LIST: ControlSnapshot = {
     channel: IPC.customScriptsList,
@@ -75,69 +75,36 @@ export function registerOrderScenarios(env: Env, options: Options): void {
     await expect(page.locator('[data-testid="automations-panel"]')).toBeVisible();
   }
 
-  test('menu Move up and Move down reorder a script and a collection, disabled at the ends', async ({
+  test('script and collection menus have no Move items; Alt+ArrowDown moves nothing', async ({
     relaunch,
   }) => {
-    const { window: page, control } = await relaunch({
-      control: [
-        ...BASE,
-        {
-          channel: IPC.customScriptsReorder,
-          args: { collection: '', ids: ['s2', 's1', 's3'] },
-        },
-        {
-          channel: IPC.customScriptsReorderCollections,
-          args: { names: ['Y', 'X'] },
-        },
-      ],
-    });
+    const { window: page, control } = await relaunch({ control: BASE });
     await openPanel(page);
 
     await row(page, 's1').click({ button: 'right' });
-    await expect(menuItem(page, 'move-up')).toHaveAttribute('data-disabled', '');
-    await expect(menuItem(page, 'move-down')).not.toHaveAttribute('data-disabled', '');
-    await menuItem(page, 'move-down').click();
-    await expect
-      .poll(() => calls(control, IPC.customScriptsReorder))
-      .toEqual([
-        {
-          ...contract<object>('script-order', 'args:CustomScriptsService.Reorder#ungrouped'),
-          collection: '',
-          ids: ['s2', 's1', 's3'],
-        },
-      ]);
-
-    await row(page, 's3').click({ button: 'right' });
-    await expect(menuItem(page, 'move-down')).toHaveAttribute('data-disabled', '');
-    await page.keyboard.press('Escape');
-
-    await header(page, 'Y').click({ button: 'right' });
-    await expect(menuItem(page, 'move-down')).toHaveAttribute('data-disabled', '');
+    await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
+    await expect(menuItem(page, 'move-to-collection')).toBeVisible();
+    await expect(menuItem(page, 'remove')).toBeVisible();
+    await expect(menuItem(page, 'move-up')).toHaveCount(0);
+    await expect(menuItem(page, 'move-down')).toHaveCount(0);
     await page.keyboard.press('Escape');
 
     await header(page, 'X').click({ button: 'right' });
-    await expect(menuItem(page, 'move-up')).toHaveAttribute('data-disabled', '');
-    await menuItem(page, 'move-down').click();
-    await expect
-      .poll(() => calls(control, IPC.customScriptsReorderCollections))
-      .toEqual([
-        {
-          ...contract<object>('script-order', 'args:CustomScriptsService.ReorderCollections'),
-          names: ['Y', 'X'],
-        },
-      ]);
-    await expect.poll(() => groupIds(page)).toEqual(['Y', 'X']);
-  });
+    await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
+    await expect(menuItem(page, 'delete')).toBeVisible();
+    await expect(menuItem(page, 'move-up')).toHaveCount(0);
+    await expect(menuItem(page, 'move-down')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[data-testid="context-menu"]')).toHaveCount(0);
 
-  test('an active search disables the menu moves', async ({ relaunch }) => {
-    const { window: page } = await relaunch({ control: BASE });
-    await openPanel(page);
-
-    await page.click('[data-testid="toggle-search"]');
-    await page.fill('[data-testid="tree-search"]', 'echo');
-    await expect(row(page, 't2')).toBeVisible();
-    await row(page, 's2').click({ button: 'right' });
-    await expect(menuItem(page, 'move-up')).toHaveAttribute('data-disabled', '');
-    await expect(menuItem(page, 'move-down')).toHaveAttribute('data-disabled', '');
+    await row(page, 's1').focus();
+    await page.keyboard.press('Alt+ArrowDown');
+    await header(page, 'X').focus();
+    await page.keyboard.press('Alt+ArrowDown');
+    // Key events run in order, so a settled order proves both chords were handled.
+    await expect(row(page, 's1')).toBeVisible();
+    expect(calls(control, IPC.customScriptsReorder)).toHaveLength(0);
+    expect(calls(control, IPC.customScriptsReorderCollections)).toHaveLength(0);
+    expect(await groupIds(page)).toEqual(['X', 'Y']);
   });
 }

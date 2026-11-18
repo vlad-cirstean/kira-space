@@ -18,11 +18,13 @@ import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { formatBytes, formatClockTime, formatDuration } from '@workbench/behaviour/format';
+import { useKeptState } from '@workbench/behaviour/viewState';
 import { useVirtualRows } from '@workbench/behaviour/virtualRows';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import type { RangeHighlight } from '@workbench/editor/ranges';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { registerCommand } from '@workbench/shortcuts/commands';
+import { tabViewKey } from '@workbench/state/viewState';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { GrpcRequestTabRecord } from '../../../state/tabDomain';
 import { patchGrpcRequestTabState } from '../../api/tabs';
@@ -183,6 +185,7 @@ const messageRowHeights = computed(() =>
 // actual per-row height (P27 D18's contract), so toggling one row's expanded state re-measures.
 const scrollRef = ref<HTMLElement | null>(null);
 const { virtualItems: virtualMessages, totalSize: totalMessagesSize } = useVirtualRows({
+  keepScroll: () => tabViewKey(props.tab.id, 'grpc:messages'),
   count: () => messages.value.length,
   rowHeight: () => messageRowHeight.value,
   rowHeights: () => messageRowHeights.value,
@@ -211,7 +214,7 @@ function onBackToLatest(): void {
 // whichever message is expanded and on screen right now — the lowest-seq expanded one,
 // deterministic when more than one is open. A unary call's own auto-expand (above) makes this the
 // common case land exactly right with no extra action.
-const findOpen = ref(false);
+const findOpen = useKeptState(() => tabViewKey(props.tab.id, 'grpc:findOpen'), false);
 function toggleFind(): void {
   findOpen.value = !findOpen.value;
 }
@@ -544,6 +547,7 @@ onUnmounted(() => {
     <ResponseFindBar
       v-if="findOpen && tab.state.responsePane === 'messages'"
       ref="findBarRef"
+      :state-key="tabViewKey(tab.id, 'grpc:find')"
       :targets="findTargets"
       @close="closeFind"
     />

@@ -27,3 +27,18 @@
   color: var(--kira-warn);
   text-decoration: underline wavy var(--kira-warn);
 }
+
+/* Underlay (AutocompleteField ranges-only): the native field paints the glyphs, so a reference is a
+   tint behind them, never coloured text. (0,3,0) beats the (0,2,0) colour rules above. */
+.highlight-overlay.is-underlay .kira-ed-var,
+.highlight-overlay.is-underlay .kira-ed-var-secret {
+  color: transparent;
+  background-color: color-mix(in srgb, var(--kira-var-resolved) 22%, transparent);
+  border-radius: 2px;
+}
+
+.highlight-overlay.is-underlay .kira-ed-var-unknown {
+  color: transparent;
+  background-color: color-mix(in srgb, var(--kira-warn) 18%, transparent);
+  border-radius: 2px;
+}

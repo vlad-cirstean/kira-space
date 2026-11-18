@@ -11,7 +11,7 @@
  * `classifyReset`, holding `leaving`/`gaining`/`dirty` fixed (they do not depend on `mode` at all).
  *
  * The modal shell is shadcn's `Dialog`/`DialogContent` now, the mode
- * fieldset's radios are `RadioGroup`/`RadioGroupItem` (still an imperative `selectMode` call via
+ * fieldset's radios are `RadioGroup`/`RadioGroupCard` (still an imperative `selectMode` call via
  * `@update:model-value`, not a plain `v-model`), the stash-first checkbox is `Checkbox`+`Label`,
  * and the confirm-token field is `Input`.
  */
@@ -37,7 +37,7 @@ import {
   FieldSet,
 } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
+import { RadioGroup, RadioGroupCard } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import Identifier from '@workbench/components/Identifier.vue';
@@ -53,7 +53,6 @@ const active = computed(() => preflight.value !== undefined);
 const typedToken = ref('');
 const stashFirst = ref(false);
 const tokenId = useId();
-const modeId = useId();
 const stashFirstId = useId();
 
 // A genuinely new target resets the typed confirmation and the stash-first choice; a mode-radio
@@ -147,35 +146,30 @@ function confirm(): void {
 
         <FieldSet>
           <FieldLegend>{{ t('common.mode.label') }}</FieldLegend>
-          <RadioGroup :model-value="mode" @update:model-value="(v) => selectMode(v as ResetMode)">
-            <Field orientation="horizontal" class="items-start py-1">
-              <RadioGroupItem :id="`${modeId}-soft`" value="soft" class="mt-0.5" />
-              <FieldLabel :for="`${modeId}-soft`">
-                <span>
-                  <strong>{{ t('git.dialog.reset.soft.label') }}</strong>
-                  {{ t('git.dialog.reset.soft.description') }}
-                </span>
-              </FieldLabel>
-            </Field>
-            <Field orientation="horizontal" class="items-start py-1">
-              <RadioGroupItem :id="`${modeId}-mixed`" value="mixed" class="mt-0.5" />
-              <FieldLabel :for="`${modeId}-mixed`">
-                <span>
-                  <strong>{{ t('git.dialog.reset.mixed.label') }}</strong>
-                  {{ t('git.dialog.reset.mixed.description') }}
-                </span>
-              </FieldLabel>
-            </Field>
-            <Field orientation="horizontal" class="items-start py-1">
-              <RadioGroupItem :id="`${modeId}-hard`" value="hard" class="mt-0.5" />
-              <FieldLabel :for="`${modeId}-hard`">
-                <span>
-                  <strong>{{ t('git.dialog.reset.hard.label') }}</strong>
-                  {{ t('git.dialog.reset.hard.description') }}
-                  <strong>{{ t('git.dialog.reset.hard.hint') }}</strong>
-                </span>
-              </FieldLabel>
-            </Field>
+          <RadioGroup
+            class="gap-1.5"
+            :model-value="mode"
+            @update:model-value="(v) => selectMode(v as ResetMode)"
+          >
+            <RadioGroupCard value="soft" data-testid="reset-mode-soft">
+              <template #title>{{ t('git.dialog.reset.soft.label') }}</template>
+              <template #description>
+                {{ t('git.dialog.reset.soft.description') }}
+              </template>
+            </RadioGroupCard>
+            <RadioGroupCard value="mixed" data-testid="reset-mode-mixed">
+              <template #title>{{ t('git.dialog.reset.mixed.label') }}</template>
+              <template #description>
+                {{ t('git.dialog.reset.mixed.description') }}
+              </template>
+            </RadioGroupCard>
+            <RadioGroupCard value="hard" data-testid="reset-mode-hard">
+              <template #title>{{ t('git.dialog.reset.hard.label') }}</template>
+              <template #description>
+                {{ t('git.dialog.reset.hard.description') }}
+                <strong class="font-medium">{{ t('git.dialog.reset.hard.hint') }}</strong>
+              </template>
+            </RadioGroupCard>
           </RadioGroup>
         </FieldSet>
 

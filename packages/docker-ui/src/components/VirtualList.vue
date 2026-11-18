@@ -21,6 +21,8 @@ const props = withDefaults(
     menuFor?: (row: T) => MenuItem[];
     /** Group rows that expand and collapse (Right and Left). */
     tree?: ListNavigationOptions<T>['tree'];
+    /** View-state key: list scroll survives an unmount. */
+    keepScrollKey?: string;
   }>(),
   { testid: 'docker-list' },
 );
@@ -47,6 +49,7 @@ const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({
   rowHeight: () => props.rowHeight ?? defaultRowHeight.value,
   rowHeights: () => props.rowHeights,
   scrollElement: scrollEl,
+  keepScroll: () => props.keepScrollKey ?? null,
   pinned: () => (activeIndex.value < 0 ? null : activeIndex.value),
 });
 

@@ -9,6 +9,7 @@ import { type MessageKey, t } from '@theme/i18n';
 import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
+import { formatShortcut } from '@workbench/shortcuts/keys';
 import { computed, ref, useTemplateRef } from 'vue';
 import {
   useContainers,
@@ -72,6 +73,7 @@ const stopped = computed(() => (containers.data.value?.length ?? 0) - running.va
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
+  stateKey: 'docker:panel',
   searchable: () => ok.value,
   getSearch: () => ui.search,
   setSearch: (v) => {
@@ -103,6 +105,7 @@ async function refresh(): Promise<void> {
           "
           :pressed="showSearch"
           :disabled="!ok"
+          :kbd="formatShortcut('panel.find')"
           data-testid="toggle-search"
           @click="toggleSearch"
         />

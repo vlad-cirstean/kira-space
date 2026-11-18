@@ -11,10 +11,11 @@
  *
  * The modal shell is shadcn's `Dialog`/`DialogContent` now, `title` feeds
  * `DialogTitle`'s default slot, and the create phase's mode picker/text fields are
- * RadioGroup/Input.
+ * SecondaryTabs/Input.
  */
 import { validateRefName } from '@kira/git-core';
 import type { WorktreeAddPreflight } from '@kira/git-ipc';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
@@ -27,7 +28,6 @@ import {
 } from '@theme/components/ui/dialog';
 import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { useFormErrors } from '@workbench/behaviour/formErrors';
@@ -76,7 +76,23 @@ const seededBranch = ref('');
 const suggestedPath = ref('');
 const preflight = ref<WorktreeAddPreflight | undefined>(undefined);
 const pathId = useId();
-const modeId = useId();
+const modeItems = computed(() => [
+  {
+    value: 'existingBranch',
+    label: t('git.dialog.worktree.existingBranch.option'),
+    testid: 'worktree-mode-existingBranch',
+  },
+  {
+    value: 'newBranch',
+    label: t('git.dialog.worktree.newBranch.option'),
+    testid: 'worktree-mode-newBranch',
+  },
+  {
+    value: 'detach',
+    label: t('git.dialog.worktree.detach.option'),
+    testid: 'worktree-mode-detach',
+  },
+]);
 const branchId = useId();
 const startPointId = useId();
 let previewToken = 0;
@@ -220,26 +236,15 @@ function onClose(): void {
           </Field>
           <FieldSet>
             <FieldLegend>{{ t('git.dialog.worktree.startFrom.label') }}</FieldLegend>
-            <RadioGroup v-model="mode">
-              <Field orientation="horizontal">
-                <RadioGroupItem :id="`${modeId}-existingBranch`" value="existingBranch" />
-                <FieldLabel :for="`${modeId}-existingBranch`">{{
-                  t('git.dialog.worktree.existingBranch.option')
-                }}</FieldLabel>
-              </Field>
-              <Field orientation="horizontal">
-                <RadioGroupItem :id="`${modeId}-newBranch`" value="newBranch" />
-                <FieldLabel :for="`${modeId}-newBranch`">{{
-                  t('git.dialog.worktree.newBranch.option')
-                }}</FieldLabel>
-              </Field>
-              <Field orientation="horizontal">
-                <RadioGroupItem :id="`${modeId}-detach`" value="detach" />
-                <FieldLabel :for="`${modeId}-detach`">{{
-                  t('git.dialog.worktree.detach.option')
-                }}</FieldLabel>
-              </Field>
-            </RadioGroup>
+            <SecondaryTabs
+              variant="choice"
+              size="kira-lg"
+              :aria-label="t('git.dialog.worktree.startFrom.label')"
+              :items="modeItems"
+              :model-value="mode"
+              data-testid="worktree-mode"
+              @update:model-value="(v) => (mode = v as Mode)"
+            />
           </FieldSet>
 
           <Field v-if="mode === 'existingBranch'">

@@ -11,8 +11,8 @@ import {
 } from './support/postgresFixture';
 import { connectionRow, settleFrames } from './support/tree';
 
-// P308: connections reorder by pointer drag (project/connectionReorder.ts), Alt+Up/Down and the
-// context menu. The Go half is dbflow TestConnectionOrder; its contract fixes the call's args.
+// P308: connections reorder by pointer drag (project/connectionReorder.ts). P669: no Move items,
+// no Alt+arrow. The Go half is dbflow TestConnectionOrder; its contract fixes the call's args.
 
 const A = postgresConnectionSummary('conn-a', 'Alpha DB', 'blue');
 const B = postgresConnectionSummary('conn-b', 'Bravo DB', 'cyan');
@@ -108,36 +108,31 @@ test('dropping on a child row, or pressing Escape, reorders nothing', async ({ r
   await expect.poll(() => orderOf(page)).toEqual(['conn-a', 'conn-b', 'conn-c']);
 });
 
-test('menu Move up is disabled on the first row; Alt+ArrowDown moves and keeps focus', async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await relaunch({
-    control: [LIST, { channel: IPC.connectionsReorder, response: [B, A, C] }],
-  });
+test('connection menu has no Move items; Alt+ArrowDown moves nothing', async ({ relaunch }) => {
+  const C_FIRST: ControlSnapshot = {
+    channel: IPC.connectionsReorder,
+    response: [C, A, B],
+  };
+  const { window: page, control } = await relaunch({ control: [LIST, C_FIRST] });
   const alpha = connectionRow(page, 'Alpha');
 
   await alpha.click({ button: 'right' });
-  await expect(page.locator('[data-testid="menu-item-move-up"]')).toHaveAttribute(
-    'data-disabled',
-    '',
-  );
-  await expect(page.locator('[data-testid="menu-item-move-down"]')).not.toHaveAttribute(
-    'data-disabled',
-    '',
-  );
-  await expect(page.locator('[data-testid="menu-item-move-down-shortcut"]')).toHaveText(/Alt|⌥/);
+  await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
+  await expect(page.locator('[data-testid="menu-item-move-up"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="menu-item-move-down"]')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-testid="context-menu"]')).toHaveCount(0);
 
   await alpha.focus();
   await page.keyboard.press('Alt+ArrowDown');
-  await expect.poll(() => orderOf(page)).toEqual(['conn-b', 'conn-a', 'conn-c']);
-  await expect(connectionRow(page, 'Alpha')).toBeFocused();
+  // Barrier: one drag lands exactly one call, so the chord sent none.
+  await dragTo(page, connectionRow(page, 'Charlie'), alpha, 'top');
+  await page.mouse.up();
+  await expect.poll(() => orderOf(page)).toEqual(['conn-c', 'conn-a', 'conn-b']);
   expect(reorderCalls(control)).toHaveLength(1);
-  expect(reorderCalls(control)[0].args).toMatchObject({ ids: ['conn-b', 'conn-a', 'conn-c'] });
 });
 
-test('an active search pauses drag and the menu moves', async ({ relaunch }) => {
+test('an active search pauses drag', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({ control: [LIST] });
   await page.click('[data-testid="toggle-search"]');
   await page.fill('[data-testid="tree-search"]', 'DB');
@@ -147,12 +142,6 @@ test('an active search pauses drag and the menu moves', async ({ relaunch }) => 
   await expect(page.locator('[data-testid="tree-drop-indicator"]')).toHaveCount(0);
   await page.mouse.up();
   expect(reorderCalls(control)).toHaveLength(0);
-
-  await connectionRow(page, 'Bravo').click({ button: 'right' });
-  await expect(page.locator('[data-testid="menu-item-move-up"]')).toHaveAttribute(
-    'data-disabled',
-    '',
-  );
 });
 
 test('a rejected reorder restores the persisted order', async ({ relaunch }) => {

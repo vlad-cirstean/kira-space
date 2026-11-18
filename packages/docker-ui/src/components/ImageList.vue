@@ -44,7 +44,13 @@ function open(row: { image: { id: string } }): void {
         "
       />
     </template>
-    <VirtualList :rows="rows" testid="docker-image-list" :select="open" :open="open">
+    <VirtualList
+      :rows="rows"
+      keep-scroll-key="docker:images"
+      testid="docker-image-list"
+      :select="open"
+      :open="open"
+    >
       <template #row="{ row, nav }">
         <!-- biome-ignore lint/a11y/useKeyWithClickEvents: Enter comes from useListNavigation on the container. -->
         <div

@@ -137,11 +137,3 @@ export function runMenuShortcut(items: MenuItem[], id: ShortcutId): boolean {
   void item.run();
   return true;
 }
-
-/** Like `runMenuShortcut`, but resolves once the item's action settles. */
-export async function runMenuShortcutAsync(items: MenuItem[], id: ShortcutId): Promise<boolean> {
-  const item = findShortcutItem(items, id);
-  if (item?.type !== 'item') return false;
-  await item.run();
-  return true;
-}

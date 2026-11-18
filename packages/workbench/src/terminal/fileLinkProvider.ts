@@ -3,11 +3,12 @@
 import type { IBufferLine, ILink, ILinkProvider, Terminal } from '@xterm/xterm';
 import { logWarn } from '../bridge/log';
 import { type CellRow, findFilePaths, toCellRange } from './filePaths';
+import type { HoveredLink } from './linkMenu';
 import type { FileLinkTarget, TerminalFileLinks } from './terminalRenderer';
 
 export interface FileLinkHandlers {
   open(event: MouseEvent, target: FileLinkTarget): void;
-  hover(event: MouseEvent, text: string): void;
+  hover(event: MouseEvent, text: string, link: HoveredLink): void;
   leave(): void;
 }
 
@@ -64,9 +65,10 @@ export function createFileLinkProvider(
           candidates.map((c) => c.m.path),
         )
         .then(
-          (openable) => {
+          (resolved) => {
             const links: ILink[] = candidates.flatMap(({ m, range }, i) => {
-              if (!openable[i]) return [];
+              const abs = resolved[i];
+              if (!abs) return [];
               const matched = text.slice(m.start, m.end);
               const target: FileLinkTarget = { path: m.path, line: m.line, col: m.col };
               return [
@@ -78,7 +80,7 @@ export function createFileLinkProvider(
                   text: matched,
                   decorations: { underline: true, pointerCursor: true },
                   activate: (event) => handlers.open(event, target),
-                  hover: (event) => handlers.hover(event, matched),
+                  hover: (event) => handlers.hover(event, matched, { kind: 'file', target, abs }),
                   leave: () => handlers.leave(),
                 },
               ];

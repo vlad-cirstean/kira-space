@@ -14,8 +14,8 @@ const testAsset = "a.dmg"
 var nextID int64
 
 func rel(tag string) releaseline.Release {
-	nextID++
-	return releaseline.Release{Tag: tag, Assets: []releaseline.Asset{{ID: nextID, Name: testAsset, State: "uploaded", Size: 5}}}
+	nextID += 2
+	return releaseline.Release{ID: nextID, Tag: tag, Assets: []releaseline.Asset{{ID: nextID - 1, Name: testAsset, State: "uploaded", Size: 5}}}
 }
 
 func rels(tags ...string) []releaseline.Release {
@@ -52,7 +52,7 @@ func outcome(t *testing.T, rs []releaseline.Release, latest string) (kept, delet
 }
 
 func TestPlan(t *testing.T) {
-	live := rels("v0.3.14", "v0.3.13", "v0.3.12", "v0.3.11", "v0.3.10", "v0.3.9", "v0.3.6", "v0.3.5", "v0.3.4", "v0.3.3")
+	live := rels("v0.3.15", "v0.3.14", "v0.3.13", "v0.3.12", "v0.3.11", "v0.3.10", "v0.3.9", "v0.3.6", "v0.3.5", "v0.3.4", "v0.3.3")
 	tests := []struct {
 		name         string
 		rels         []releaseline.Release
@@ -60,9 +60,9 @@ func TestPlan(t *testing.T) {
 		kept, delete []string
 		errHas       string
 	}{
-		{"live shaped list", live, "v0.3.14",
-			[]string{"v0.3.10", "v0.3.11", "v0.3.12", "v0.3.13", "v0.3.14", "v0.3.3"},
-			[]string{"v0.3.4", "v0.3.5", "v0.3.6", "v0.3.9"}, ""},
+		{"live shaped list", live, "v0.3.15",
+			[]string{"v0.3.11", "v0.3.12", "v0.3.13", "v0.3.14", "v0.3.15", "v0.3.3"},
+			[]string{"v0.3.10", "v0.3.4", "v0.3.5", "v0.3.6", "v0.3.9"}, ""},
 		{"two past minors keep .0, first and last",
 			rels("v0.5.0", "v0.4.3", "v0.4.2", "v0.4.1", "v0.4.0", "v0.3.9", "v0.3.8", "v0.3.7", "v0.3.0", "v0.2.4", "v0.2.3", "v0.2.2", "v0.2.1", "v0.2.0"), "v0.5.0",
 			[]string{"v0.2.0", "v0.2.4", "v0.3.0", "v0.3.9", "v0.4.0", "v0.4.3", "v0.5.0"},
@@ -70,9 +70,12 @@ func TestPlan(t *testing.T) {
 		{"missing .0 keeps lowest with assets",
 			rels("v0.5.0", "v0.4.4", "v0.4.3", "v0.4.2", "v0.4.1"), "v0.5.0",
 			[]string{"v0.4.1", "v0.4.4", "v0.5.0"}, []string{"v0.4.2", "v0.4.3"}, ""},
-		{"release without assets is ignored for first and last",
-			append(rels("v0.4.0", "v0.3.5", "v0.3.4", "v0.3.3"), releaseline.Release{Tag: "v0.3.2"}, releaseline.Release{Tag: "v0.3.6"}), "v0.4.0",
-			[]string{"v0.3.3", "v0.3.5", "v0.4.0"}, []string{"v0.3.4"}, ""},
+		{"release without assets is deleted unless kept, never first or last",
+			append(rels("v0.4.0", "v0.3.5", "v0.3.4", "v0.3.3"), releaseline.Release{ID: 9001, Tag: "v0.3.2"}, releaseline.Release{ID: 9002, Tag: "v0.3.6"}), "v0.4.0",
+			[]string{"v0.3.3", "v0.3.5", "v0.4.0"}, []string{"v0.3.2", "v0.3.4", "v0.3.6"}, ""},
+		{"asset-less .0 still kept",
+			append(rels("v0.5.0", "v0.4.3", "v0.4.2", "v0.4.1"), releaseline.Release{ID: 9003, Tag: "v0.4.0"}), "v0.5.0",
+			[]string{"v0.4.0", "v0.4.1", "v0.4.3", "v0.5.0"}, []string{"v0.4.2"}, ""},
 		{"release without the updater asset uploaded is ignored for first and last",
 			append(rels("v0.4.0", "v0.3.5", "v0.3.4", "v0.3.3"),
 				edit(rel("v0.3.6"), func(r *releaseline.Release) { r.Assets[0].Name = "sums.txt" }),
@@ -114,18 +117,28 @@ func TestPlan(t *testing.T) {
 // A rerun after the deletions applied deletes nothing new.
 func TestPlanIsIdempotent(t *testing.T) {
 	rs := rels("v0.4.0", "v0.3.9", "v0.3.8", "v0.3.7", "v0.3.6", "v0.3.5", "v0.3.4", "v0.3.3")
+	kept, _, _ := outcome(t, rs, "v0.4.0")
 	_, dels, err := plan(rs, "v0.4.0", testAsset)
 	if err != nil || len(dels) == 0 {
 		t.Fatalf("first plan: %v, %d deletes", err, len(dels))
 	}
+	ids := map[int64]bool{}
+	for _, r := range rs {
+		ids[r.ID] = true
+	}
 	gone := map[int64]bool{}
 	for _, d := range dels {
+		if !ids[d.ID] {
+			t.Fatalf("delete id %d is not a release id", d.ID)
+		}
 		gone[d.ID] = true
 	}
-	for i := range rs {
-		rs[i].Assets = slices.DeleteFunc(rs[i].Assets, func(a releaseline.Asset) bool { return gone[a.ID] })
-	}
-	if _, again, err := plan(rs, "v0.4.0", testAsset); err != nil || len(again) != 0 {
+	rs = slices.DeleteFunc(rs, func(r releaseline.Release) bool { return gone[r.ID] })
+	keptAgain, again, err := outcome(t, rs, "v0.4.0")
+	if err != nil || len(again) != 0 {
 		t.Fatalf("rerun: %v, %d deletes, want none", err, len(again))
+	}
+	if !reflect.DeepEqual(kept, keptAgain) {
+		t.Fatalf("rerun kept %v, want %v", keptAgain, kept)
 	}
 }

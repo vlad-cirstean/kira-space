@@ -43,9 +43,11 @@ test('contract: the cluster menu turns MCP on, sets description and approval, Sa
   await expect(loc(page, 'kube-mcp-description')).toHaveCount(0);
   await expect(loc(page, 'kube-mcp-approval')).toHaveCount(0);
   await loc(page, 'kube-mcp-enabled').click();
-  await expect(loc(page, 'kube-mcp-prompt')).toHaveAttribute('data-state', 'checked');
+  await expect(loc(page, 'kube-mcp-prompt')).toHaveAttribute('data-state', 'on');
   await loc(page, 'kube-mcp-description').fill(args.mcp.description);
   await loc(page, `kube-mcp-${args.mcp.approval}`).click();
+  await loc(page, `kube-mcp-${args.mcp.approval}`).click();
+  await expect(loc(page, `kube-mcp-${args.mcp.approval}`)).toHaveAttribute('data-state', 'on');
   await loc(page, 'kube-mcp-save').click();
 
   await expect(loc(page, 'kube-mcp-dialog')).toHaveCount(0);
@@ -113,7 +115,7 @@ test('contract: an enabled cluster shows its approval in Studio MCP settings', a
   await loc(page, `db-mcp-kube-edit-${dev}`).click();
   await expect(loc(page, 'kube-mcp-dialog')).toBeVisible();
   await expect(loc(page, 'kube-mcp-enabled')).toHaveAttribute('data-state', 'checked');
-  await expect(loc(page, 'kube-mcp-allow')).toHaveAttribute('data-state', 'checked');
+  await expect(loc(page, 'kube-mcp-allow')).toHaveAttribute('data-state', 'on');
 });
 
 test('contract: a Kubernetes read shows the cluster and answers by item id', async ({

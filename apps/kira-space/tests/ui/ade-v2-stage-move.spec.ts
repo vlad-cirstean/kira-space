@@ -84,7 +84,7 @@ test('Next stage asks to close the open sessions; Close is the default', async (
   await action.click();
   await expect(page.locator(t('ade-stage-dialog'))).toBeVisible();
   await expect(page.locator(t('ade-stage-sessions'))).toContainText('2 sessions still open');
-  await expect(page.locator(t('ade-stage-close'))).toBeChecked();
+  await expect(page.locator(t('ade-stage-close'))).toHaveAttribute('aria-pressed', 'true');
   await page.locator(t('ade-stage-move')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStepDone)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskStepDone)[0]?.args).toEqual({
@@ -100,6 +100,8 @@ test('Keep open moves without closing', async ({ relaunch }) => {
   ]);
   await page.locator(cellAction('T_alerts', 'advance')).click();
   await page.locator(t('ade-stage-keep')).click();
+  await page.locator(t('ade-stage-keep')).click();
+  await expect(page.locator(t('ade-stage-keep'))).toHaveAttribute('aria-pressed', 'true');
   await page.locator(t('ade-stage-move')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStepDone)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskStepDone)[0]?.args).toEqual({ taskId: 'T_alerts' });

@@ -2,11 +2,11 @@
 import type { RunFile } from '@shared/domain/scripts';
 import { useQuery } from '@tanstack/vue-query';
 import PathChip from '@theme/components/PathChip.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import type { TextPart } from '@theme/varText';
@@ -37,6 +37,15 @@ const folderParts = computed<TextPart[]>(() => [
 ]);
 const folderError = computed(() => props.errorFor('/path') ?? props.errorFor('/dir'));
 
+const dirItems = computed(() => [
+  { value: 'kira', label: t('automations.dir.kira.label'), testid: 'script-dialog-dir-kira' },
+  {
+    value: 'fixed',
+    label: t('automations.dialog.script.chooseFolder.label'),
+    testid: 'script-dialog-dir-fixed',
+  },
+]);
+
 function setMode(mode: string): void {
   file.value.dir = mode === 'fixed' ? 'fixed' : '';
   if (mode !== 'fixed') file.value.path = '';
@@ -59,27 +68,15 @@ async function choose(): Promise<void> {
   <div class="flex flex-col gap-3" data-testid="run-tab-folder">
     <Field>
       <FieldLabel>{{ t('automations.dialog.script.runFolder.label') }}</FieldLabel>
-      <RadioGroup
+      <SecondaryTabs
+        variant="choice"
+        size="kira-lg"
+        :aria-label="t('automations.dialog.script.runFolder.label')"
+        :items="dirItems"
         :model-value="dirMode"
-        class="gap-1.5"
         data-testid="script-dialog-dirmode"
-        @update:model-value="(v) => setMode(String(v))"
-      >
-        <div class="flex items-center gap-2">
-          <RadioGroupItem id="script-dir-kira" value="kira" data-testid="script-dialog-dir-kira" />
-          <Label for="script-dir-kira">{{ t('automations.dir.kira.label') }}</Label>
-        </div>
-        <div class="flex items-center gap-2">
-          <RadioGroupItem
-            id="script-dir-fixed"
-            value="fixed"
-            data-testid="script-dialog-dir-fixed"
-          />
-          <Label for="script-dir-fixed">{{
-            t('automations.dialog.script.chooseFolder.label')
-          }}</Label>
-        </div>
-      </RadioGroup>
+        @update:model-value="setMode"
+      />
       <div v-if="dirMode === 'fixed'" class="flex items-center gap-1.5">
         <span class="flex min-w-0 flex-1" data-testid="script-dialog-workingdir">
           <PathChip v-if="file.path" :path="file.path" />

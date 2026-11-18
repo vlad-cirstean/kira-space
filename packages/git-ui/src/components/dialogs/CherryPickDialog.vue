@@ -21,17 +21,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field, FieldLabel } from '@theme/components/ui/field';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
+import { RadioGroup, RadioGroupCard } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
-import CatalogText from '@theme/i18n/CatalogText.vue';
 import Identifier from '@workbench/components/Identifier.vue';
-import { computed, ref, useId, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { OpsState } from '../../state/ops.ts';
 import PreflightPrediction from './PreflightPrediction.vue';
 
 const props = defineProps<{ ops: OpsState }>();
-const mainlineId = useId();
 
 const preflight = computed(() => props.ops.pendingCherryPick.value);
 const active = computed(() => preflight.value !== undefined);
@@ -140,28 +137,20 @@ function confirm(): void {
 
         <template v-if="!hasBlocker && needsMainline">
           <p>{{ t('git.dialog.cherryPick.mainline.body') }}</p>
-          <RadioGroup v-model="selectedMainline">
-            <Field
+          <RadioGroup v-model="selectedMainline" class="gap-1.5">
+            <RadioGroupCard
               v-for="entry in preflight?.mainlineRequired"
               :key="entry.parentNumber"
-              orientation="horizontal"
-              class="py-0.5"
+              :value="entry.parentNumber"
+              :data-testid="`cherry-pick-mainline-${entry.parentNumber}`"
             >
-              <RadioGroupItem
-                :id="`${mainlineId}-${entry.parentNumber}`"
-                :value="entry.parentNumber"
-              />
-              <FieldLabel :for="`${mainlineId}-${entry.parentNumber}`">
-                <span>
-                  <CatalogText
-                    k="git.common.mergeParent.option"
-                    :params="{ number: entry.parentNumber, subject: entry.subject }"
-                  >
-                    <template #sha><Identifier :value="entry.sha" :short="shortSha" /></template>
-                  </CatalogText>
-                </span>
-              </FieldLabel>
-            </Field>
+              <template #title>
+                {{ t('git.common.mergeParent.option', { number: entry.parentNumber }) }}
+              </template>
+              <template #description>
+                <Identifier :value="entry.sha" :short="shortSha" /> {{ entry.subject }}
+              </template>
+            </RadioGroupCard>
           </RadioGroup>
         </template>
 

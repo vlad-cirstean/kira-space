@@ -1075,6 +1075,20 @@ Needs Xcode command line tools. Not run in the sandbox, `wkhost.swift` is uncomp
    the real app: `__kiraScrollTrace` (`docs/PERF.md` section 2.1a). Note perceived smoothness and
    blank edges per page.
 
+### Agents module footprint run (user-run)
+
+Per-process memory with ADE open and agents running. Mac only; the sandbox has no `footprint`.
+
+1. Open the app on ADE only. Start 4 agent sessions on a seeded repo. Let each call the Kira
+   memory tool once. Wait 1 min.
+2. `ps -o pid,ppid,rss,command -g <pgid>` lists the tree. `footprint -p <pid>` for the app,
+   `com.apple.WebKit.WebContent`, `com.apple.WebKit.GPU`, `com.apple.WebKit.Networking`, each
+   `kira-space memory-mcp`, each `kira-space memory-embed`, each `claude`.
+3. Read the tooltip App/Agents/Scripts totals next to the footprint sum.
+4. Sandbox proxy for the same fixture: `KIRA_RAM_WORLD=ade-agents bunx playwright test
+   --config=apps/kira-space/playwright.perf.config.ts --project=heap heap-ram` prints `PSS` lines
+   per step. Footprint, not RSS, is the figure of record on Mac. Never `vmmap`.
+
 
 ## `KIRA_*` environment variables
 
@@ -1086,6 +1100,7 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 | `KIRA_DEV` | Overrides the production check on a non-`production` build (`kirapaths`) | you |
 | `KIRA_INSECURE_SECRETS` | `1` stores secrets unencrypted on Linux without a keyring. Dev only | you; IPC fixture harness |
 | `KIRA_NO_STARTUP_ALERT` | Skips the native startup-failure dialog; the failure is still logged (`startupfail`) | you, CI and headless runs |
+| `KIRA_PPROF` | `127.0.0.1:<port>` serves `net/http/pprof` and `/debug/metrics` (heap objects, total, goroutines) in the app and in each `memory-mcp` it launches. Loopback only, loopback `Host` header required (DNS rebinding); port `0` picks a free one (logged). Off when unset | you |
 | `KIRA_ORT_LIB` | ONNX Runtime shared library path, else the bundled copy | you |
 | `KIRA_TERMINAL_ID`, `KIRA_AGENT_HOOK_SOCKET`, `KIRA_AGENT_HOOK_TOKEN` | Identify a terminal and its hook socket to the Claude hook shim | `terminal` on launch, `harness/claude/hooks` |
 | `KIRA_USER_STATUSLINE` | The user's own statusline command the hook shim chains to | `harness/claude/hooks` shim |

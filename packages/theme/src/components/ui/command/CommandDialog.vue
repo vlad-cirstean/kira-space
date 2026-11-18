@@ -10,7 +10,7 @@ import {
 import { t } from '@theme/i18n';
 import { dialogSurface } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
-import type { DialogRootEmits, DialogRootProps } from 'reka-ui';
+import type { DialogContentEmits, DialogRootEmits, DialogRootProps } from 'reka-ui';
 import { DialogContent, DialogPortal, useForwardPropsEmits } from 'reka-ui';
 import type { HTMLAttributes } from 'vue';
 
@@ -23,7 +23,9 @@ const props = defineProps<
     class?: HTMLAttributes['class'];
   }
 >();
-const emits = defineEmits<DialogRootEmits>();
+const emits = defineEmits<
+  DialogRootEmits & { closeAutoFocus: DialogContentEmits['closeAutoFocus'] }
+>();
 
 const forwarded = useForwardPropsEmits(props, emits);
 </script>
@@ -34,6 +36,7 @@ const forwarded = useForwardPropsEmits(props, emits);
       <DialogOverlay />
       <DialogContent
         data-slot="dialog-content"
+        @close-auto-focus="emits('closeAutoFocus', $event)"
         :class="
           cn(
             dialogSurface,

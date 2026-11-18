@@ -10,8 +10,8 @@ import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
 import { acceptConfirm, cancelConfirm } from './support/dialogs';
 
-// Confirm-before-reveal for saved credentials, now from a connection file's secrets section
-// (P475). Follows secrets.spec.ts's pattern: mocking ConnectionsService.Reveal's response per
+// Confirm-before-reveal for saved credentials, from the General tab's password and URI fields
+// (P670 removed the file dialog's secrets section). Follows secrets.spec.ts's pattern: mocking ConnectionsService.Reveal's response per
 // scenario, rather than branching on the host OS or a real LocalAuthentication prompt this tier
 // cannot drive. All four RevealResult outcomes run here, on any OS: revealed, cancelled,
 // confirmation-required (the non-macOS/OS-auth-unavailable fallback this sandbox always takes),
@@ -59,12 +59,9 @@ const PASSWORD_SECRET: ConnectionSecret = {
   set: true,
   referenced: true,
 };
-const URI_SECRET: ConnectionSecret = {
-  kind: 'uri',
-  name: 'reveal.uri',
-  set: true,
-  referenced: true,
-};
+
+// biome-ignore lint/suspicious/noTemplateCurlyInString: a secret reference in file text
+const PASSWORD_REF = '${secret:reveal.password}';
 
 function boot(secret: ConnectionSecret, extra: ControlSnapshot[]): ControlSnapshot[] {
   const view: ConnectionConfigView = {
@@ -88,6 +85,14 @@ function boot(secret: ConnectionSecret, extra: ControlSnapshot[]): ControlSnapsh
     { channel: IPC.connectionsList, response: [CONN] },
     { channel: IPC.connectionConfigView, response: view },
     { channel: IPC.connectionConfigFile, response: detail },
+    {
+      channel: IPC.connectionConfigForm,
+      response: {
+        text: detail.text,
+        problem: null,
+        value: { name: CONN.name, kind: 'postgres', mode: 'fields', password: PASSWORD_REF },
+      },
+    },
     ...extra,
   ];
 }
@@ -104,8 +109,8 @@ async function openFile(page: Page): Promise<void> {
   await expect(page.locator('[data-testid="connection-file-dialog"]')).toBeVisible();
 }
 
-const field = (page: Page) => page.locator('[data-testid="connection-secret-value"]');
-const revealButton = (page: Page) => page.locator('[data-testid="connection-secret-value-reveal"]');
+const field = (page: Page) => page.locator('[data-testid="connection-password"]');
+const revealButton = (page: Page) => page.locator('[data-testid="connection-password-reveal"]');
 
 test('opening the file does not fetch or show the secret', async ({ relaunch }) => {
   // No connectionsReveal snapshot at all: an open that fetched the plaintext would fail on the
@@ -117,23 +122,6 @@ test('opening the file does not fetch or show the secret', async ({ relaunch }) 
   await expect(field(page)).toHaveValue('');
   await expect(revealButton(page)).toBeVisible();
   expect(control.log().filter((e) => e.channel === IPC.connectionsReveal)).toHaveLength(0);
-});
-
-test('revealing shows the value once per press', async ({ relaunch }) => {
-  const { window: page, control } = await relaunch({
-    control: boot(PASSWORD_SECRET, [
-      {
-        channel: IPC.connectionsReveal,
-        args: { id: CONN.id, confirmed: false },
-        response: { password: 'hunter2', error: null, outcome: 'revealed' },
-      },
-    ]),
-  });
-
-  await openFile(page);
-  await revealButton(page).click();
-  await expect(field(page)).toHaveValue('hunter2');
-  expect(control.log().filter((e) => e.channel === IPC.connectionsReveal)).toHaveLength(1);
 });
 
 test('a cancelled reveal shows nothing', async ({ relaunch }) => {
@@ -150,7 +138,7 @@ test('a cancelled reveal shows nothing', async ({ relaunch }) => {
   await openFile(page);
   await revealButton(page).click();
   await expect(field(page)).toHaveValue('');
-  await expect(page.locator('[data-testid="connection-secret-error"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="connection-secret-reveal-error"]')).toHaveCount(0);
 });
 
 test('OS auth unavailable routes through the in-app confirmation', async ({ relaunch }) => {
@@ -188,49 +176,4 @@ test('OS auth unavailable routes through the in-app confirmation', async ({ rela
   const revealCalls = control.log().filter((e) => e.channel === IPC.connectionsReveal);
   expect(revealCalls).toHaveLength(3);
   expect(revealCalls[2]?.args).toEqual({ id: CONN.id, confirmed: true });
-});
-
-test("a reveal error renders in the section's error slot", async ({ relaunch }) => {
-  const { window: page } = await relaunch({
-    control: boot(PASSWORD_SECRET, [
-      {
-        channel: IPC.connectionsReveal,
-        args: { id: CONN.id, confirmed: false },
-        response: {
-          password: null,
-          error: 'The stored credential could not be decrypted.',
-          outcome: 'error',
-        },
-      },
-    ]),
-  });
-
-  await openFile(page);
-  await revealButton(page).click();
-  await expect(page.locator('[data-testid="connection-secret-error"]')).toHaveText(
-    'The stored credential could not be decrypted.',
-  );
-  await expect(field(page)).toHaveValue('');
-});
-
-test('a URI secret reveals the URI, not a password', async ({ relaunch }) => {
-  const { window: page, control } = await relaunch({
-    control: boot(URI_SECRET, [
-      {
-        channel: IPC.connectionsReveal,
-        args: { id: CONN.id, confirmed: false },
-        response: {
-          outcome: 'revealed',
-          password: null,
-          uri: 'postgresql://u:hunter2@h:5432/db',
-          error: null,
-        },
-      },
-    ]),
-  });
-
-  await openFile(page);
-  await revealButton(page).click();
-  await expect(field(page)).toHaveValue('postgresql://u:hunter2@h:5432/db');
-  expect(control.log().filter((e) => e.channel === IPC.connectionsReveal)).toHaveLength(1);
 });

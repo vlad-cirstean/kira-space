@@ -7,7 +7,7 @@ import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 import { repoRowById } from './support/repoRows';
 
-// P308: top-level repos in the Git panel reorder by drag and Alt+Up/Down; worktree rows stay in git
+// P308: top-level repos in the Git panel reorder by drag only (P669: no Alt+Up/Down); worktree rows stay in git
 // order. Backend half: repoflow import_test "rename, colour and reorder persist".
 
 const t = (id: string) => `[data-testid="${id}"]`;
@@ -79,9 +79,7 @@ test('drag a repo above another sends ReorderRepos and shows the new order', asy
   });
 });
 
-test('Alt+ArrowUp on a repo row moves it; on a worktree row it moves nothing', async ({
-  relaunch,
-}) => {
+test('Alt+ArrowUp on a repo or worktree row moves nothing', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({
     control: [LIST, { channel: IPC.codeWorkspaceReorderRepos, response: [B, A] }],
   });
@@ -95,24 +93,22 @@ test('Alt+ArrowUp on a repo row moves it; on a worktree row it moves nothing', a
   await expect(worktree).toBeVisible();
   await worktree.focus();
   await page.keyboard.press('Alt+ArrowUp');
-
-  // The call below is the barrier: exactly one call proves the worktree Alt+ArrowUp sent none.
   await repoRowById(page, B.id).focus();
   await page.keyboard.press('Alt+ArrowUp');
+
+  // Barrier: one drag lands exactly one call, so the chords sent none.
+  await dragAbove(page, B.id, A.id);
   await expect.poll(() => orderOf(page)).toEqual([B.id, A.id]);
   expect(calls(control, IPC.codeWorkspaceReorderRepos)).toHaveLength(1);
-  expect(calls(control, IPC.codeWorkspaceReorderRepos)[0]?.args).toEqual({ ids: [B.id, A.id] });
 });
 
-test('an active search pauses drag and Alt+Arrow', async ({ relaunch }) => {
+test('an active search pauses drag', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({ control: [LIST] });
   await page.locator(t('toggle-search')).click();
   await page.locator(t('tree-search')).fill('repo');
   await expect(page.locator(t('repo-row'))).toHaveCount(2);
 
   await dragAbove(page, B.id, A.id);
-  await repoRowById(page, B.id).focus();
-  await page.keyboard.press('Alt+ArrowUp');
   // Absence of a call: nothing to await, no later event on the same channel.
   await page.waitForTimeout(100);
   expect(calls(control, IPC.codeWorkspaceReorderRepos)).toHaveLength(0);

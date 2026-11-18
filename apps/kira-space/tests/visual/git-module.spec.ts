@@ -141,6 +141,24 @@ const MOCK_RESULTS = {
     autoFetch: null,
   },
   'stash.list': { entries: [] },
+  'preflight.reset': {
+    target: sha(1),
+    targetSubject: SUBJECTS[1],
+    mode: 'mixed',
+    currentHead: sha(0),
+    branch: 'main',
+    leaving: 1,
+    gaining: 0,
+    leavingCommits: [{ sha: sha(0), subject: SUBJECTS[0] }],
+    leavingTruncated: false,
+    dirty: { staged: [], unstaged: ['src/App.vue'], untracked: [] },
+    destroys: [],
+    inProgress: null,
+    requiresTypedConfirmation: false,
+    routes: ['stashFirst'],
+    verdict: 'clean',
+    blockers: [],
+  },
   'working.detail': { files: FILES.slice(0, 3) },
   'commit.detail': {
     sha: sha(1),
@@ -272,4 +290,19 @@ test('git module: row context menu (P258)', async ({ relaunch }) => {
   const menu = win.getByRole('menu');
   await expect(menu).toBeVisible();
   await expect(menu).toHaveScreenshot('git-row-menu.png');
+});
+
+test('git module: reset dialog (P667)', async ({ relaunch }) => {
+  const win = await openGraph(relaunch);
+  await win
+    .locator('[data-testid="commit-grid"] .slick-row[data-row="1"]')
+    .click({ button: 'right' });
+  await win.locator('[data-testid="menu-item-resetToThisCommit"]').click();
+  const dialog = win.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('[data-testid="reset-mode-mixed"]')).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await expect(dialog).toHaveScreenshot('git-reset-dialog.png');
 });

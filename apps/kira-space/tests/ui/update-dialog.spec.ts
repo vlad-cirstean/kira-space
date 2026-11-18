@@ -46,6 +46,20 @@ test('update available: the routed dialog shows, Later dismisses it, the item re
   const item = window.locator('[data-testid="update-available"]');
   await expect(item).toBeVisible();
   await expect(item).toHaveText('Update 1.3.0');
+  // P663: the update item sits first in the status bar's left group, never in the right.
+  await expect(
+    window.locator('[data-testid="status-bar-left"] [data-testid="update-available"]'),
+  ).toBeVisible();
+  await expect(
+    window.locator('[data-testid="status-bar-right"] [data-testid="update-available"]'),
+  ).toHaveCount(0);
+  await expect
+    .poll(() =>
+      window
+        .locator('[data-testid="status-bar-left"]')
+        .evaluate((el) => el.firstElementChild?.getAttribute('data-testid')),
+    )
+    .toBe('update-available');
 
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.promptsRaise)?.args)

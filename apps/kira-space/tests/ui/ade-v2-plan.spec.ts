@@ -100,6 +100,15 @@ test('branch status tags keep their tones', async ({ relaunch }) => {
   expect(tags.some((x) => x.tone === 'blue')).toBe(true);
 });
 
+test('a draft row says no branch once', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch);
+  await page.locator('[data-testid="ade-load-all"]').click();
+  const row = page.locator('[data-testid="ade-branch-row"][data-branch-id="d_csv_api"]');
+  await expect(row.locator('[data-testid="ade-branch-name"]')).toHaveText('New branch');
+  await expect(row.locator('[data-testid="ade-branch-context"]')).toHaveText('Forks from main');
+  await expect(row).not.toContainText(/no branch/i);
+});
+
 test('a card shows its agent sessions as one state; click opens the Sessions tab', async ({
   relaunch,
 }) => {

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useKeptScroll } from '@workbench/behaviour/viewState';
+import { useTemplateRef } from 'vue';
 import AdeLinkStrip from '../links/AdeLinkStrip.vue';
 import type { Task } from '../wire';
 import AdeDetailsDiskBanner from './AdeDetailsDiskBanner.vue';
@@ -13,10 +15,17 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ openSession: [sessionId: string] }>();
+
+const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
+useKeptScroll(() => `ade:details:${props.task.id}`, bodyEl);
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3" data-testid="ade-details-tab">
+  <div
+    ref="bodyEl"
+    class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3"
+    data-testid="ade-details-tab"
+  >
     <AdeDetailsDiskBanner :task-id="task.id" :readonly="readonly" />
     <AdeLinkStrip
       :task="props.task"

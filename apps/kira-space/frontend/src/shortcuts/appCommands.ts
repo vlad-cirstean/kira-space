@@ -1,4 +1,5 @@
 import { t } from '@theme/i18n';
+import { openActivePanelSearch } from '@workbench/behaviour/panelSearch';
 import { runCommand } from '@workbench/shortcuts/commands';
 import type { PaletteCommand } from '@workbench/shortcuts/palette';
 import { useAppUpdateStore } from '../state/appUpdate';
@@ -47,6 +48,12 @@ export function appPaletteCommands(): () => PaletteCommand[] {
             run: () => {
               settingsStore.settingsOpen = true;
             },
+          },
+          {
+            id: 'panel.find',
+            label: t('space.shortcuts.palette.searchPanel.label'),
+            movesFocus: true,
+            run: () => void openActivePanelSearch(),
           },
           {
             id: 'toggle-project-panel',

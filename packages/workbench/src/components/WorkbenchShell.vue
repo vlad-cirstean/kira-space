@@ -65,6 +65,7 @@ function commitOps(size: number): void {
       <div
         v-if="projectVisible"
         class="overflow-hidden min-w-0 min-h-0 rounded-kira bg-bg"
+        data-slot="side-panel"
         data-testid="project-panel"
         :style="{ flex: `0 0 ${projectSize}px` }"
       >

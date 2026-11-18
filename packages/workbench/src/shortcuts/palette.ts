@@ -5,6 +5,8 @@ export interface PaletteCommand {
   id: string;
   label: string;
   run: () => void;
+  /** Moves focus itself: runs after the dialog's close auto-focus so the restore cannot undo it. */
+  movesFocus?: true;
 }
 
 export const usePaletteStore = defineStore('palette', () => {

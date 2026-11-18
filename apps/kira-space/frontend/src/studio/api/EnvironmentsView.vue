@@ -14,8 +14,10 @@ import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
+import { useKeptScroll } from '@workbench/behaviour/viewState';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
+import { tabViewKey } from '@workbench/state/viewState';
 import { computed, useTemplateRef } from 'vue';
 import type { EnvironmentsTabRecord } from '../../state/tabDomain';
 import { useConnectionsStore } from '../state/connections';
@@ -59,6 +61,8 @@ const displayEnvironments = computed(() =>
 // Drag by the grip, or Alt+Arrow on a focused grip: rows hold a radio and buttons, which a whole-row
 // drag would start from. The radio group owns the arrow keys, hence the keyboard handle.
 const listEl = useTemplateRef<HTMLElement>('listEl');
+const scrollEl = useTemplateRef<HTMLElement>('scrollEl');
+useKeptScroll(() => tabViewKey(props.tab.id, 'environments'), scrollEl);
 useSortableReorder(
   listEl,
   () => displayEnvironments.value.map((env) => env.id),
@@ -166,7 +170,7 @@ async function onSetActive(id: string): Promise<void> {
       </AlertAction>
     </Alert>
 
-    <div class="flex flex-1 min-h-0 flex-col overflow-y-auto">
+    <div ref="scrollEl" class="flex flex-1 min-h-0 flex-col overflow-y-auto">
       <RadioGroup
         class="contents"
         :aria-label="t('studio.api.environments.activeGroup.aria')"

@@ -68,7 +68,6 @@ import { resolveForExport, resolveTabState, useHttpRequestViewStore } from './st
 import { type FindBarHandle, type RequestBodyHandle, useRequestFind } from './useRequestFind';
 import { useSeenSaved } from './useSeenSaved';
 
-// MainView.vue keys this component by tab.id — same discipline as every other *View.vue.
 const props = defineProps<{ tab: HttpRequestTabRecord }>();
 
 const editRawStore = useEditRawStore();
@@ -529,6 +528,7 @@ onUnmounted(() => {
     <ResponseFindBar
       v-if="requestFindOpen"
       ref="requestFindBarRef"
+      :state-key="`tab:${tab.id}:request:find`"
       :targets="requestFindTargets"
       @close="closeRequestFind"
     />

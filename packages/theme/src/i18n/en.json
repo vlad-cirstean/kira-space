@@ -3111,6 +3111,9 @@
       "copyId": {
         "label": "Copy ID"
       },
+      "copyLink": {
+        "label": "Copy link"
+      },
       "copyLog": {
         "label": "Copy log"
       },
@@ -4870,7 +4873,7 @@
         "confirm": "Force delete"
       },
       "mergeParent": {
-        "option": "Parent {number}: {sha} {subject}"
+        "option": "Parent {number}"
       },
       "operationInProgress": {
         "body": "An operation is already in progress. Resolve or abort it first."
@@ -8665,7 +8668,7 @@
       },
       "baseMarker": {
         "draft": {
-          "label": "No branch yet · from {base}"
+          "label": "Forks from {base}"
         },
         "startsFrom": {
           "tooltip": "Starts from {base}"
@@ -10680,9 +10683,11 @@
         },
         "route": {
           "implementer": {
+            "description": "Resume the agent run that made these changes, with its context.",
             "label": "Implementer session"
           },
           "new": {
+            "description": "Start a dedicated review agent session. Later rounds resume it.",
             "label": "New review agent"
           }
         },
@@ -13129,6 +13134,9 @@
         "previousTab": {
           "label": "Go to previous tab"
         },
+        "searchPanel": {
+          "label": "Search panel"
+        },
         "toggleOperationsPanel": {
           "label": "Show or hide operations"
         },
@@ -14051,21 +14059,8 @@
           "hint": "This connection has an error. Kira uses the last valid version until you fix it."
         },
         "secrets": {
-          "clearConfirm": {
-            "body": "The saved value is deleted. The connection keeps the reference.",
-            "title": "Clear the secret “{name}”?"
-          },
-          "kindUri": {
-            "label": "URI"
-          },
-          "none": {
-            "hint": "This connection references no secrets."
-          },
           "storageOff": {
             "hint": "Secure storage is off, so secrets can’t be saved or read."
-          },
-          "value": {
-            "aria": "New value for {name}"
           }
         },
         "title": "Connection: {name}"
@@ -15023,6 +15018,15 @@
       },
       "columnCount": {
         "status": "{count} column | {count} columns"
+      },
+      "columnFilter": {
+        "field": {
+          "aria": "Filter columns by name",
+          "placeholder": "Column name"
+        },
+        "noMatch": {
+          "status": "No match"
+        }
       },
       "columns": {
         "footerClient": {
@@ -17647,6 +17651,9 @@
         "explainQuery": {
           "label": "Explain query"
         },
+        "filterColumns": {
+          "label": "Filter grid columns"
+        },
         "formatQuery": {
           "label": "Format query"
         },
@@ -18466,7 +18473,7 @@
           "label": "Cores"
         },
         "interval": {
-          "hint": "CPU is a share of total capacity. Agents include their subprocesses. Updates every 5 seconds."
+          "hint": "CPU is a share of total capacity. Agents and scripts include their subprocesses. Updates every 5 seconds."
         },
         "processes": {
           "label": "Processes"
@@ -18511,7 +18518,7 @@
         "status": "Process exited with code {code}"
       },
       "link": {
-        "tooltip": "{modifier}-click to open"
+        "tooltip": "{modifier}-click to open, right-click for more"
       },
       "startFailed": {
         "error": "Couldn’t start the terminal."

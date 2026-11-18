@@ -39,6 +39,7 @@ const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({
   count: () => rows.value.length,
   rowHeight: () => rowHeight.value,
   scrollElement: scrollEl,
+  keepScroll: () => `git:search:${props.repoId}`,
 });
 
 // §7.3: "Searching…" while running, "N results in M files" when done, "(stopped at 10,000)"
@@ -92,6 +93,7 @@ function onSelect(row: RepoSearchRowVm): void {
 // Type-to-search: a printable key on the results lands in the query field.
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 usePanelHeaderSearch(rootEl, {
+  stateKey: 'git:search',
   searchable: () => true,
   getSearch: () => query.value,
   setSearch: (v) => {

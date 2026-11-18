@@ -10,6 +10,7 @@ import { approvalsControlKey } from '@workbench/approvals/approvalsQueries';
 import { provideApprovalKinds } from '@workbench/approvals/registry';
 import { automationsModuleKey } from '@workbench/automations/module';
 import ScheduleConfirmPrompt from '@workbench/automations/schedule/ScheduleConfirmPrompt.vue';
+import { openFocusedPanelSearch } from '@workbench/behaviour/panelSearch';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import AppLiveRegion from '@workbench/components/AppLiveRegion.vue';
 import ConfirmDialog from '@workbench/components/ConfirmDialog.vue';
@@ -165,7 +166,9 @@ onMounted(() => {
     control.onTabPrev(prevTab),
     control.onTabClose(closeTab),
     control.onCommandPalette(paletteStore.togglePalette),
-    control.onViewFind(() => runCommand('view.find')),
+    control.onViewFind(() => {
+      if (!openFocusedPanelSearch()) runCommand('view.find');
+    }),
     studioControl.onNewConnection(() => connectionDialogStore.openNew()),
     studioControl.onNewRequest(() => {
       modeStore.setMode('api');

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { RunFile } from '@shared/domain/scripts';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -20,6 +20,15 @@ const mcp = computed<Mcp>(() => file.value.mcp ?? {});
 const enabled = computed(() => mcp.value.enabled === true);
 const run = computed(() => mcp.value.run ?? 'prompt');
 const mode = computed(() => mcp.value.mode ?? 'short');
+
+const runItems = computed(() => [
+  { value: 'prompt', label: t('automations.form.mcp.prompt.label'), testid: 'script-mcp-prompt' },
+  { value: 'allow', label: t('automations.form.mcp.allow.label'), testid: 'script-mcp-allow' },
+]);
+const modeItems = computed(() => [
+  { value: 'short', label: t('automations.form.mcp.short.label'), testid: 'script-mcp-short' },
+  { value: 'long', label: t('automations.form.mcp.long.label'), testid: 'script-mcp-long' },
+]);
 
 function patch(change: Partial<Mcp>): void {
   file.value.mcp = { ...mcp.value, ...change };
@@ -65,21 +74,15 @@ function patch(change: Partial<Mcp>): void {
 
       <Field>
         <FieldLabel>{{ t('automations.form.mcp.run.label') }}</FieldLabel>
-        <RadioGroup
+        <SecondaryTabs
+          variant="choice"
+          size="kira-lg"
+          :aria-label="t('automations.form.mcp.run.label')"
+          :items="runItems"
           :model-value="run"
-          class="gap-1.5"
           data-testid="script-mcp-run"
           @update:model-value="(v) => patch({ run: v === 'allow' ? 'allow' : 'prompt' })"
-        >
-          <div class="flex items-center gap-2">
-            <RadioGroupItem id="script-mcp-prompt" value="prompt" data-testid="script-mcp-prompt" />
-            <Label for="script-mcp-prompt">{{ t('automations.form.mcp.prompt.label') }}</Label>
-          </div>
-          <div class="flex items-center gap-2">
-            <RadioGroupItem id="script-mcp-allow" value="allow" data-testid="script-mcp-allow" />
-            <Label for="script-mcp-allow">{{ t('automations.form.mcp.allow.label') }}</Label>
-          </div>
-        </RadioGroup>
+        />
         <FieldError v-if="errorFor('/mcp/run')" data-testid="script-mcp-run-error">{{
           errorFor('/mcp/run')
         }}</FieldError>
@@ -87,21 +90,15 @@ function patch(change: Partial<Mcp>): void {
 
       <Field>
         <FieldLabel>{{ t('automations.form.mcp.mode.label') }}</FieldLabel>
-        <RadioGroup
+        <SecondaryTabs
+          variant="choice"
+          size="kira-lg"
+          :aria-label="t('automations.form.mcp.mode.label')"
+          :items="modeItems"
           :model-value="mode"
-          class="gap-1.5"
           data-testid="script-mcp-mode"
           @update:model-value="(v) => patch({ mode: v === 'long' ? 'long' : 'short' })"
-        >
-          <div class="flex items-center gap-2">
-            <RadioGroupItem id="script-mcp-short" value="short" data-testid="script-mcp-short" />
-            <Label for="script-mcp-short">{{ t('automations.form.mcp.short.label') }}</Label>
-          </div>
-          <div class="flex items-center gap-2">
-            <RadioGroupItem id="script-mcp-long" value="long" data-testid="script-mcp-long" />
-            <Label for="script-mcp-long">{{ t('automations.form.mcp.long.label') }}</Label>
-          </div>
-        </RadioGroup>
+        />
         <FieldDescription>{{ t('automations.form.mcp.mode.hint') }}</FieldDescription>
         <FieldError v-if="errorFor('/mcp/mode')" data-testid="script-mcp-mode-error">{{
           errorFor('/mcp/mode')

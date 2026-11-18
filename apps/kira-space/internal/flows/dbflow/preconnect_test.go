@@ -14,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/metrics"
 )
 
 func opUpdates(app *flowharness.App, mark int) []oplog.Record {
@@ -242,4 +243,31 @@ func TestSQLiteTestPreconnectKilledOnQuit(t *testing.T) {
 		syscall.Kill(pid, syscall.SIGKILL)
 		t.Fatalf("pre-connect script pid %d survived quit", pid)
 	}
+}
+
+// Backend half of the status bar Scripts scenario for a pre-connect script; UI half is
+// window-chrome.spec.ts. A sidecar shows under Scripts, not Agents, and Scripts empties on disconnect.
+func TestSQLitePreconnectCountsAsScript(t *testing.T) {
+	const timeout = 15 * time.Second // >= 3 metric intervals
+	app := flowharness.New(t)
+	in := sqliteInput("tunnel", newSQLiteFile(t))
+	in.Preconnect = ptr("exec sleep 30")
+	conn := createConn(t, app, in)
+
+	mark := app.Events.Mark()
+	if st := connect(t, app, conn.ID); st.Status != "connected" {
+		t.Fatalf("Connect = %+v, want connected", st)
+	}
+	s := app.WaitMetrics(t, mark, func(s metrics.Sample) bool {
+		return s.Scripts.ProcessCount >= 1 && s.Scripts.MemoryBytes > 0
+	}, timeout)
+	if s.Agents.ProcessCount != 0 {
+		t.Fatalf("pre-connect script filed under Agents: %+v", s)
+	}
+	flowharness.CheckMetricsTotals(t, s)
+
+	if st, err := app.W.Connections.Disconnect(bridge.ConnectionsIDArgs{ID: conn.ID}); err != nil || st.Status == "connected" {
+		t.Fatalf("Disconnect = %+v (%v)", st, err)
+	}
+	app.WaitMetrics(t, app.Events.Mark(), func(s metrics.Sample) bool { return s.Scripts.ProcessCount == 0 }, timeout)
 }

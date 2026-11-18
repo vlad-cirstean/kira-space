@@ -8,7 +8,6 @@ import {
   topmost,
   zoneFor,
 } from '../../../frontend/src/studio/api/collectionDrop';
-import { collectionStepOrder } from '../../../frontend/src/studio/api/state/collectionOrder';
 import type { CollectionRowVm } from '../../../frontend/src/studio/api/state/collections';
 
 function item(
@@ -169,14 +168,5 @@ describe('collectionOrderFor', () => {
     expect(collectionOrderFor(order, new Set(['b', 'c']), 'b', 'after')).toBeNull();
     expect(collectionOrderFor(order, new Set(['b']), 'a', 'after')).toBeNull();
     expect(collectionOrderFor(order, new Set(['a']), 'b', 'before')).toBeNull();
-  });
-});
-
-describe('collectionStepOrder', () => {
-  test('swaps one place; the ends return null', () => {
-    expect(collectionStepOrder(['a', 'b', 'c'], 'b', -1)).toEqual(['b', 'a', 'c']);
-    expect(collectionStepOrder(['a', 'b', 'c'], 'b', 1)).toEqual(['a', 'c', 'b']);
-    expect(collectionStepOrder(['a', 'b', 'c'], 'a', -1)).toBeNull();
-    expect(collectionStepOrder(['a', 'b', 'c'], 'c', 1)).toBeNull();
   });
 });

@@ -11,13 +11,19 @@
 // rows.ts imports vue's reactive() and state/tabRuntime.ts (registerTabRuntimeCleanup), neither of
 // which reach window/bridge, so no window stub is needed here.
 import { describe, expect, test } from 'bun:test';
+import { compareNatural } from '@workbench/behaviour/match';
 import { setActivePinia } from 'pinia';
 import { pinia } from '../../../frontend/src/state/pinia';
+import { documentPageStats } from '../../../frontend/src/studio/views/shared/document/pageStats';
 import { useDocumentRowsStore } from '../../../frontend/src/studio/views/shared/document/rows';
 
 setActivePinia(pinia);
 const {
   dropRows,
+  fillLineCounts,
+  generationOf,
+  knownRowHeight,
+  primeLineCounts,
   pruneRows,
   registerDocumentRows,
   resetRows,
@@ -179,6 +185,143 @@ describe('rowHeight line-count cache (finding 4)', () => {
       // documentRow() returns null for row 999, so parseRow bails before ever calling
       // parseDocument — this just confirms the cache doesn't spuriously invent a parse either.
       expect(parseCalls).toBe(0);
+    } finally {
+      unregisterDocumentRows(tabId);
+      dropRows(tabId);
+    }
+  });
+});
+
+const EQUIVALENCE_BODIES = [
+  TWO_FIELD_BODY,
+  NESTED_BODY,
+  '{"$oid":"507f1f77bcf86cd799439011"}',
+  '{"_id":{"$oid":"507f1f77bcf86cd799439011"},"z":1,"a10":2,"a2":{"x":[1,2]}}',
+  '{"a":1,"b":"trunc',
+  '[1,2,3]',
+  'not json',
+  '{}',
+];
+
+// The old `fieldNamesOnPage` loop, kept as the oracle.
+function oldFieldNames(bodies: readonly string[]): string[] {
+  const names = new Set<string>();
+  for (const body of bodies) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      continue;
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) continue;
+    for (const key of Object.keys(parsed as Record<string, unknown>)) {
+      if (key !== '_id') names.add(key);
+    }
+  }
+  return [...names].sort(compareNatural);
+}
+
+describe('documentPageStats equals the main-thread height model', () => {
+  const encoder = new TextEncoder();
+  const chunks = EQUIVALENCE_BODIES.map((b) => encoder.encode(b));
+  const offsets = new Uint32Array(chunks.length + 1);
+  chunks.forEach((c, i) => {
+    offsets[i + 1] = offsets[i] + c.length;
+  });
+  const data = new Uint8Array(offsets[chunks.length]);
+  chunks.forEach((c, i) => {
+    data.set(c, offsets[i]);
+  });
+  const stats = documentPageStats({ data, offsets });
+
+  test('line counts match rowHeight for every body shape', () => {
+    EQUIVALENCE_BODIES.forEach((body, row) => {
+      const tabId = scope(`equiv-${row}`, body);
+      try {
+        const counted = stats.lineCounts[row];
+        const expected = counted < 0 ? HEAD_H + 220 : HEAD_H + counted * LINE_H + BODY_PADDING_V;
+        expect(rowHeight(tabId, 0, null, true)).toBe(expected);
+      } finally {
+        unregisterDocumentRows(tabId);
+        dropRows(tabId);
+      }
+    });
+  });
+
+  test('field names match the old fieldNamesOnPage rule', () => {
+    expect(stats.fieldNames).toEqual(oldFieldNames(EQUIVALENCE_BODIES));
+  });
+});
+
+const height = (lines: number) => HEAD_H + lines * LINE_H + BODY_PADDING_V;
+
+describe('page-wide height model: window fill, worker prime, estimate', () => {
+  test('knownRowHeight parses nothing and follows the mean of the filled counts', () => {
+    const tabId = scope('known');
+    try {
+      withParseCounting(() => {
+        expect(knownRowHeight(tabId, 3, null, true)).toBe(height(8)); // nothing counted yet
+      });
+      expect(parseCalls).toBe(0);
+      fillLineCounts(tabId, [0]); // two lines
+      withParseCounting(() => {
+        expect(knownRowHeight(tabId, 3, null, true)).toBe(height(2));
+        expect(knownRowHeight(tabId, 0, null, true)).toBe(height(2));
+        expect(knownRowHeight(tabId, 3, null, false)).toBe(HEAD_H);
+      });
+      expect(parseCalls).toBe(0);
+    } finally {
+      unregisterDocumentRows(tabId);
+      dropRows(tabId);
+    }
+  });
+
+  test('fillLineCounts parses only rows with no entry', () => {
+    const tabId = scope('fill');
+    try {
+      withParseCounting(() => fillLineCounts(tabId, [0, 1]));
+      expect(parseCalls).toBe(2 * PARSES_PER_ROW);
+      withParseCounting(() => fillLineCounts(tabId, [0, 1]));
+      expect(parseCalls).toBe(0);
+    } finally {
+      unregisterDocumentRows(tabId);
+      dropRows(tabId);
+    }
+  });
+
+  test('primeLineCounts fills only uncounted, un-toggled rows and maps -1 to the raw fallback', () => {
+    const tabId = scope('prime', NESTED_BODY);
+    try {
+      fillLineCounts(tabId, [0]); // two lines
+      togglePath(tabId, 1, 'b'); // row 1 now has nested paths: not the worker's to answer
+      primeLineCounts(tabId, generationOf(tabId), 0, Int32Array.of(9, 9, 5, -1));
+      primeLineCounts(tabId, generationOf(tabId), 4, Int32Array.of(6));
+      withParseCounting(() => {
+        expect(knownRowHeight(tabId, 0, null, true)).toBe(height(2));
+        expect(knownRowHeight(tabId, 2, null, true)).toBe(height(5));
+        expect(knownRowHeight(tabId, 3, null, true)).toBe(HEAD_H + 220);
+        expect(knownRowHeight(tabId, 4, null, true)).toBe(height(6)); // a later batch lands at its own offset
+      });
+      expect(parseCalls).toBe(0);
+      fillLineCounts(tabId, [1]);
+      expect(knownRowHeight(tabId, 1, null, true)).toBe(height(4));
+    } finally {
+      unregisterDocumentRows(tabId);
+      dropRows(tabId);
+    }
+  });
+
+  test('a stale generation is a no-op after resetRows or dropRows', () => {
+    const tabId = scope('stale');
+    try {
+      const generation = generationOf(tabId);
+      resetRows(tabId);
+      primeLineCounts(tabId, generation, 0, Int32Array.of(7));
+      expect(knownRowHeight(tabId, 0, null, true)).toBe(height(8));
+      const second = generationOf(tabId);
+      dropRows(tabId);
+      primeLineCounts(tabId, second, 0, Int32Array.of(7));
+      expect(knownRowHeight(tabId, 0, null, true)).toBe(height(8));
     } finally {
       unregisterDocumentRows(tabId);
       dropRows(tabId);

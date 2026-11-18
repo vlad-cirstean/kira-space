@@ -22,7 +22,8 @@ export type ShortcutScope =
   | 'form'
   | 'editor'
   | 'list'
-  | 'prompt';
+  | 'prompt'
+  | 'panel';
 
 export interface Binding {
   chord: Chord;
@@ -38,6 +39,8 @@ export const SHORTCUTS = {
   'view.toggleOperationsPanel': { scope: 'global', chord: { key: 'J', cmdOrCtrl: true } },
   'view.commandPalette': { scope: 'global', chord: { key: 'P', cmdOrCtrl: true, shift: true } },
   'view.find': { scope: 'view', chord: { key: 'F', cmdOrCtrl: true } },
+  // Left-panel search. Same chord as view.find, routed by focus (panelSearch.ts), not by scope.
+  'panel.find': { scope: 'panel', chord: { key: 'F', cmdOrCtrl: true } },
   'view.refresh': { scope: 'view', chord: { key: 'F5' } },
   'view.run': { scope: 'view', chord: { key: 'Return', cmdOrCtrl: true } },
   'view.runAll': { scope: 'view', chord: { key: 'Return', cmdOrCtrl: true, shift: true } },

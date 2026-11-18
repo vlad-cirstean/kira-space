@@ -9,14 +9,14 @@
     }
   ],
   "OpenedFilesService.TerminalResolve": {
-    "openable": [
-      true,
-      true,
-      false,
-      false,
-      true,
-      false,
-      true
+    "paths": [
+      "<work>/proj/src/a.go",
+      "<work>/proj/src/a.go",
+      "",
+      "",
+      "<work>/notes/b.json",
+      "",
+      "<home>/k.json"
     ]
   },
   "args:OpenedFilesService.TerminalOpen": {

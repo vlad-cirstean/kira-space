@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures';
-import { type AdeBoardFx, adeBoard, adeFixture, openPlan, revealRow } from './support/adeV2';
+import { type AdeBoardFx, adeBoard, adeFixture, openPlan } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
 
 // The Plan card's icon row: the tag and the step action in the head line, the tag and at most
@@ -74,7 +74,7 @@ test('the task tag and step action are icons in the head line', async ({ relaunc
   const action = head.locator(t('ade-task-action-session'));
   await expect(action).toHaveText('');
   const last = await head
-    .locator('> div')
+    .locator('> div > div')
     .first()
     .locator('button')
     .last()
@@ -117,19 +117,17 @@ test('each branch row has one tag; kinds map to glyphs and urgent ones are solid
   await expect(page.locator(`${row('b_search')} ${t('ade-tag')}`).first()).toBeVisible();
 });
 
-test('a failed rebase row shows the tag, one action and More; More lists the rest', async ({
+test('a failed rebase row shows the tag and one action; right-click lists the rest', async ({
   relaunch,
 }) => {
   const { window: page } = await open(relaunch, failedRebase);
   const r = page.locator(row('b_auth'));
-  await revealRow(page, 'b_auth', 'board', 'ade-branch-more');
   await expect(r.locator(t('ade-tag'))).toHaveAttribute('data-kind', 'rebasePending');
-  await expect(r.locator(t('ade-branch-more'))).toBeVisible();
   const cluster = r.locator(
-    `${t('ade-tag')}, ${t('ade-branch-more')}, [data-testid^="ade-rebase"], ${t('ade-abort-rebase')}, ${t('ade-see-log')}, ${t('ade-take-over')}`,
+    `${t('ade-tag')}, [data-testid^="ade-rebase"], ${t('ade-abort-rebase')}, ${t('ade-see-log')}, ${t('ade-take-over')}`,
   );
-  await expect(cluster).toHaveCount(3);
-  await r.locator(t('ade-branch-more')).click();
+  await expect(cluster).toHaveCount(2);
+  await r.click({ button: 'right' });
   await expect(page.locator(item('ade-row-action-seeLog'))).toBeVisible();
   await expect(page.locator(item('ade-row-action-takeOver'))).toBeVisible();
   await expect(page.locator('[data-testid^="menu-item-ade-fix-"]').first()).toBeVisible();
@@ -150,8 +148,8 @@ test('state glyphs and danger actions stay visible; the action cluster shows on 
     await expect(el).toBeVisible();
     expect(await el.evaluate((e) => getComputedStyle(e).opacity)).toBe('1');
   }
-  const rowCluster = r.locator(t('ade-branch-more'));
-  const headCluster = head.locator(t('ade-card-more'));
+  const rowCluster = r.locator(t('ade-task-branch-menu'));
+  const headCluster = head.locator(t('ade-card-add'));
   await expect(rowCluster).toBeHidden();
   await expect(headCluster).toBeHidden();
 
@@ -172,6 +170,40 @@ test('state glyphs and danger actions stay visible; the action cluster shows on 
   await head.focus();
   await expect(head).toBeFocused();
   await expect(headCluster).toBeVisible();
+  await expect(page.locator(`${t('ade-plan')} ${t('ade-card-more')}`)).toHaveCount(0);
+  await expect(page.locator(`${t('ade-plan')} ${t('ade-branch-more')}`)).toHaveCount(0);
+});
+
+test('hover actions sit right', async ({ relaunch }) => {
+  const { window: page } = await open(relaunch, failedRebase);
+  const head = page.locator(`${task('T_auth')} ${t('ade-card-head')}`);
+  await head.hover();
+  const actions = head.locator(t('ade-card-actions'));
+  await expect(actions).toBeVisible();
+  const title = await head.locator(t('ade-card-title')).boundingBox();
+  const status = await head.locator(t('ade-row-status')).boundingBox();
+  const box = await actions.boundingBox();
+  if (!title || !status || !box) throw new Error('no box');
+  expect(box.x).toBeGreaterThanOrEqual(title.x + title.width);
+  expect(box.x + box.width).toBeLessThanOrEqual(status.x + 1);
+
+  const r = page.locator(row('b_auth'));
+  await r.hover();
+  const rowActions = r.locator(t('ade-branch-actions'));
+  await expect(rowActions).toBeVisible();
+  const name = await r.locator(t('ade-branch-name')).boundingBox();
+  const rb = await rowActions.boundingBox();
+  const rr = await r.boundingBox();
+  if (!name || !rb || !rr) throw new Error('no box');
+  expect(rb.x).toBeGreaterThanOrEqual(name.x + name.width);
+  expect(rr.x + rr.width - (rb.x + rb.width)).toBeLessThanOrEqual(60);
+});
+
+test('Shift+F10 on a focused row opens the row menu', async ({ relaunch }) => {
+  const { window: page } = await open(relaunch, failedRebase);
+  await page.locator(row('b_auth')).focus();
+  await page.keyboard.press('Shift+F10');
+  await expect(page.locator(item('ade-row-action-seeLog'))).toBeVisible();
 });
 
 test('right-click on the status text or a branch tag opens the matching menu', async ({

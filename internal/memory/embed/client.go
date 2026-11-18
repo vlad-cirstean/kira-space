@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,9 +47,15 @@ var ErrClosed = errors.New("embed: client closed")
 type ClientOptions struct {
 	Spec Spec
 	Home string
-	// Command builds the worker process for modelDir; nil runs this executable as `memory-embed`.
-	Command     func(modelDir string) *exec.Cmd
-	IdleTimeout time.Duration
+	// Command builds the private worker process for modelDir; nil runs this executable as
+	// `memory-embed`, and (with Socket unset) shares one worker per user, see SocketPath.
+	Command func(modelDir string) *exec.Cmd
+	// Socket is the unix socket of the shared worker. Empty with a nil Command picks
+	// SocketPath(Home); empty with a Command means a private worker per client.
+	Socket string
+	// ServeCommand builds the shared worker process listening on socket; nil runs this executable.
+	ServeCommand func(modelDir, socket string) *exec.Cmd
+	IdleTimeout  time.Duration
 	// OnState runs after every change of Status, outside the client's locks.
 	OnState func()
 }
@@ -75,21 +82,35 @@ func NewClient(o ClientOptions) *Client {
 	}
 	if o.Command == nil {
 		o.Command = defaultCommand
+		if o.Socket == "" {
+			o.Socket = SocketPath(o.Home)
+		}
+	}
+	if o.ServeCommand == nil {
+		o.ServeCommand = defaultServeCommand
 	}
 	c := &Client{opts: o, dir: ModelDir(o.Home, o.Spec), sem: make(chan struct{}, 1)}
 	c.notified = c.Status()
 	return c
 }
 
-func defaultCommand(modelDir string) *exec.Cmd {
+func executable() string {
 	exe, err := os.Executable()
 	if err != nil {
-		return exec.Command("kira-space-missing-executable")
+		return "kira-space-missing-executable"
 	}
 	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = resolved
 	}
-	return exec.Command(exe, "memory-embed", "--model-dir", modelDir)
+	return exe
+}
+
+func defaultCommand(modelDir string) *exec.Cmd {
+	return exec.Command(executable(), "memory-embed", "--model-dir", modelDir)
+}
+
+func defaultServeCommand(modelDir, socket string) *exec.Cmd {
+	return exec.Command(executable(), "memory-embed", "--model-dir", modelDir, "--socket", socket)
 }
 
 func (c *Client) Spec() Spec { return c.opts.Spec }
@@ -163,6 +184,10 @@ func (c *Client) Embed(ctx context.Context, texts []string, query bool) ([][]flo
 }
 
 func (c *Client) roundTrip(ctx context.Context, texts []string) ([][]float32, error) {
+	return c.roundTripOnce(ctx, texts, false)
+}
+
+func (c *Client) roundTripOnce(ctx context.Context, texts []string, retried bool) ([][]float32, error) {
 	w, err := c.ensureWorker(ctx)
 	if err != nil {
 		return nil, err
@@ -178,15 +203,19 @@ func (c *Client) roundTrip(ctx context.Context, texts []string) ([][]float32, er
 	w.nextID++
 	req := workerRequest{ID: w.nextID, Texts: texts}
 	var rep workerReply
-	err = json.NewEncoder(w.Stdin).Encode(req)
+	err = json.NewEncoder(w.out).Encode(req)
 	if err == nil {
-		err = w.Dec.Decode(&rep)
+		err = w.dec.Decode(&rep)
 	}
 	if err != nil {
 		w.Kill()
 		c.dropWorker(w)
 		if ctxErr := rctx.Err(); ctxErr != nil {
 			return nil, ctxErr
+		}
+		// A shared worker may have idled out since the last request: one fresh connection.
+		if w.shared && !retried {
+			return c.roundTripOnce(ctx, texts, true)
 		}
 		err = fmt.Errorf("embedding worker failed: %w%s", err, w.Diagnostics())
 		c.setErr(err)
@@ -270,27 +299,45 @@ func (c *Client) ensureWorker(ctx context.Context) (*worker, error) {
 }
 
 func (c *Client) spawn(ctx context.Context) (*worker, error) {
+	if c.opts.Socket != "" {
+		w, err := c.connectShared(ctx)
+		if err == nil || ctx.Err() != nil {
+			return w, err
+		}
+		// No shared worker on this platform or path: a private one, as before.
+	}
+	return c.spawnPrivate(ctx)
+}
+
+func (c *Client) spawnPrivate(ctx context.Context) (*worker, error) {
 	proc, err := workerproc.Start(c.opts.Command(c.dir))
 	if err != nil {
 		return nil, fmt.Errorf("start embedding worker: %w", err)
 	}
-	w := &worker{Proc: proc}
+	w := &worker{out: proc.Stdin, dec: proc.Dec, kill: proc.Kill, stop: proc.Stop, diag: proc.Diagnostics}
 	var hello workerHello
-	if err := w.Hello(ctx, helloTimeout, &hello); err != nil {
+	if err := proc.Hello(ctx, helloTimeout, &hello); err != nil {
 		if errors.Is(err, workerproc.ErrHelloTimeout) {
-			return nil, fmt.Errorf("embedding worker did not start in time%s", w.Diagnostics())
+			return nil, fmt.Errorf("embedding worker did not start in time%s", proc.Diagnostics())
 		}
-		return nil, fmt.Errorf("embedding worker exited before ready: %w%s", err, w.Diagnostics())
+		return nil, fmt.Errorf("embedding worker exited before ready: %w%s", err, proc.Diagnostics())
 	}
-	if hello.Error != "" || !hello.Ready || hello.Dim != c.opts.Spec.Dim {
+	if err := c.checkHello(hello); err != nil {
 		w.Kill()
+		return nil, err
+	}
+	return w, nil
+}
+
+func (c *Client) checkHello(hello workerHello) error {
+	if hello.Error != "" || !hello.Ready || hello.Dim != c.opts.Spec.Dim {
 		msg := hello.Error
 		if msg == "" {
 			msg = "unexpected hello"
 		}
-		return nil, errors.New(msg)
+		return errors.New(msg)
 	}
-	return w, nil
+	return nil
 }
 
 func (c *Client) stopIdle() {
@@ -345,8 +392,17 @@ func (c *Client) Close() error {
 	return nil
 }
 
-// worker is a running process plus its request counter.
+// worker is a private worker process or a connection to the shared one, plus its request counter.
 type worker struct {
-	*workerproc.Proc
+	out    io.Writer
+	dec    *json.Decoder
+	kill   func()
+	stop   func()
+	diag   func() string
+	shared bool
 	nextID int
 }
+
+func (w *worker) Kill()               { w.kill() }
+func (w *worker) Stop()               { w.stop() }
+func (w *worker) Diagnostics() string { return w.diag() }

@@ -9,6 +9,7 @@ import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
+import { formatShortcut } from '@workbench/shortcuts/keys';
 import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import ApiConfigProblems from './ApiConfigProblems.vue';
 import CollectionsTree from './CollectionsTree.vue';
@@ -58,7 +59,8 @@ function onSearch(value: string): void {
 // shared usePanelHeaderSearch composable rather than an inline copy.
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
-  searchable: () => true,
+  stateKey: 'api:panel',
+  searchable: () => !empty.value,
   getSearch: () => collectionsStore.search,
   setSearch: onSearch,
 });
@@ -140,6 +142,7 @@ onUnmounted(() => {
           "
           :aria-label="t('common.action.search.label')"
           :pressed="showSearch"
+          :kbd="formatShortcut('panel.find')"
           data-testid="toggle-search"
           @click="toggleSearch"
         />

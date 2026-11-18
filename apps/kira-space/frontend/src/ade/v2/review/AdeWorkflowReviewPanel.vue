@@ -5,7 +5,7 @@ import { Card } from '@theme/components/ui/card';
 import { FieldError } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
+import { RadioGroup, RadioGroupCard } from '@theme/components/ui/radio-group';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
@@ -266,7 +266,8 @@ const stateLabel = (c: ReviewComment): string =>
       <Label>{{ t('space.ade.workflows.stepInspector.reviewSendTo.label') }}</Label>
       <RadioGroup
         :model-value="route"
-        class="flex flex-col gap-1"
+        :aria-label="t('space.ade.workflows.stepInspector.reviewSendTo.label')"
+        class="gap-1.5"
         data-testid="ade-review-route"
         @update:model-value="
           (v) => {
@@ -275,43 +276,35 @@ const stateLabel = (c: ReviewComment): string =>
           }
         "
       >
-        <div class="flex items-center gap-2">
-          <RadioGroupItem
-            id="ade-review-route-implementer"
-            value="implementer"
-            data-testid="ade-review-route-implementer"
-          />
-          <Label for="ade-review-route-implementer">{{
-            t('space.ade.reviewStep.route.implementer.label')
-          }}</Label>
-        </div>
-        <NativeSelect
-          v-if="route === 'implementer' && state && state.candidates.length > 0"
-          variant="bordered"
-          :model-value="targetRunId"
-          data-testid="ade-review-target"
-          @update:model-value="
-            (v) => {
-              touched = true;
-              targetRunId = String(v);
-            }
-          "
-        >
-          <option v-for="cand in state.candidates" :key="cand.runId" :value="cand.runId">
-            {{
-              t('space.ade.reviewStep.candidate.label', { step: cand.step, attempt: cand.attempt })
-            }}
-          </option>
-        </NativeSelect>
-        <div class="flex items-center gap-2">
-          <RadioGroupItem
-            id="ade-review-route-new"
-            value="new"
-            data-testid="ade-review-route-new"
-          />
-          <Label for="ade-review-route-new">{{ t('space.ade.reviewStep.route.new.label') }}</Label>
-        </div>
+        <RadioGroupCard value="implementer" data-testid="ade-review-route-implementer">
+          <template #title>{{ t('space.ade.reviewStep.route.implementer.label') }}</template>
+          <template #description>{{
+            t('space.ade.reviewStep.route.implementer.description')
+          }}</template>
+        </RadioGroupCard>
+        <RadioGroupCard value="new" data-testid="ade-review-route-new">
+          <template #title>{{ t('space.ade.reviewStep.route.new.label') }}</template>
+          <template #description>{{ t('space.ade.reviewStep.route.new.description') }}</template>
+        </RadioGroupCard>
       </RadioGroup>
+      <NativeSelect
+        v-if="route === 'implementer' && state && state.candidates.length > 0"
+        variant="bordered"
+        :model-value="targetRunId"
+        data-testid="ade-review-target"
+        @update:model-value="
+          (v) => {
+            touched = true;
+            targetRunId = String(v);
+          }
+        "
+      >
+        <option v-for="cand in state.candidates" :key="cand.runId" :value="cand.runId">
+          {{
+            t('space.ade.reviewStep.candidate.label', { step: cand.step, attempt: cand.attempt })
+          }}
+        </option>
+      </NativeSelect>
       <AdeTip :text="sendTip">
         <span class="inline-flex">
           <Button

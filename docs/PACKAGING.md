@@ -432,10 +432,11 @@ repo the macOS job bills at 10x, about 190 billed minutes in total.
    after publish against the published assets. A failure found there means a fixed next patch tag
    (the updater offers only strictly newer versions); optionally delete the bad release so
    `/releases/latest` falls back to the previous one and the updater's step target falls back to
-   the previous last patch. Installed copies are not downgraded. Never delete the assets of a kept
-   release by hand: retention (below) keeps each minor's `.0`, first and last release because the
+   the previous last patch. Installed copies are not downgraded. Never delete a kept
+   release, or its assets, by hand: retention (below) keeps each minor's `.0`, first and last release because the
    updater steps to them. `install-smoke` runs `install.sh` twice: first the latest-release path,
-   then `--tag=<tag>` over it.
+   then `--tag=<tag>` over it. Never re-dispatch `release.yml` for a tag retention deleted: `publish`
+   refuses only a tag that has a published release, so it would republish an old version.
 
 Recovery:
 
@@ -528,14 +529,15 @@ found. `verify-packaging.sh` S16 replays `internal/releaseline/testdata/next_ste
 test uses, through that function, so the two cannot drift.
 Last patch holds a minor's migrations, so an old install must pass through it.
 
-**Release retention (P653).** `release-retention.yml` deletes the assets of releases the updater no
-longer needs, so the repository does not keep every DMG. It keeps every asset of: each minor's `.0`,
-each minor's first and last release (those the updater would pick: published, platform asset uploaded), the 5 newest releases of the current minor, and
-the `/releases/latest` release. Tags, release pages, drafts, prereleases and `/releases/latest` are
-never touched; the only endpoint it deletes through is `releases/assets/{id}`. Selection is Go
-(`scripts/releaseretention`, sharing `internal/releaseline` with the updater). Triggers: `workflow_run` after a
-successful `Release`, a daily schedule as fallback (the plan is idempotent), and `workflow_dispatch`
-with `dry_run` (default `true`). Unattended runs only delete when the repository variable
+**Release retention (P653, P656).** `release-retention.yml` deletes releases the updater no longer
+needs, whole, with their assets, so the repository does not keep every DMG. It keeps: each minor's
+`.0`, each minor's first and last release (those the updater would pick: published, platform asset
+uploaded), the 5 newest releases of the current minor, and the `/releases/latest` release. Git tags,
+drafts, prereleases and `/releases/latest` are never touched; a deleted release's tag stays. The only
+endpoint it deletes through is `releases/{id}`; the TSV is `release id, tag`; a 404 on delete counts as
+already deleted. Selection is Go (`scripts/releaseretention`, sharing `internal/releaseline` with the
+updater). Triggers: `workflow_run` after a successful `Release`, a daily schedule as fallback (the plan
+is idempotent), and `workflow_dispatch` with `dry_run` (default `true`). Unattended runs only delete when the repository variable
 `RELEASE_RETENTION` is `apply`; otherwise they dry-run. Each decision is logged to the job summary.
 
 **What a future *silent* auto-update (no click at all) would require, in order:** code signing and
