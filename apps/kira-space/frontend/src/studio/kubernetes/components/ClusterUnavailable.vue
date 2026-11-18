@@ -48,14 +48,12 @@ const hint = computed(() => COPY[reason.value].hint());
 <template>
   <EmptyState
     fill
+    icon="debug-disconnect"
     data-testid="kube-unavailable"
     :data-reason="reason"
     :title="title"
     :description="hint"
   >
-    <template #media
-      ><CodiconIcon name="debug-disconnect" :size="24" class="text-error" /></template
-    >
     <FieldDescription
       v-if="status.message"
       class="max-w-md"

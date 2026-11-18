@@ -2,7 +2,6 @@
 import type { CommitStore } from '@kira/git-core';
 import { shortSha } from '@kira/git-core';
 import EmptyState from '@theme/components/EmptyState.vue';
-import Spinner from '@theme/components/Spinner.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
@@ -99,8 +98,6 @@ function onOpenFile(index: number, pinned: boolean): void {
       />
     </template>
 
-    <EmptyState v-else-if="!stash.error.value" :title="t('common.state.loading.loading')">
-      <template #media><Spinner :size="24" label="" /></template>
-    </EmptyState>
+    <EmptyState v-else-if="!stash.error.value" loading :title="t('common.state.loading.loading')" />
   </div>
 </template>

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
@@ -12,6 +11,7 @@ const { retrying, retry } = useRetryStatus();
 <template>
   <EmptyState
     fill
+    icon="debug-disconnect"
     :loading="!status.data.value"
     data-testid="docker-panel-unavailable"
     :title="
@@ -19,9 +19,6 @@ const { retrying, retry } = useRetryStatus();
     "
     :description="status.data.value ? t('docker.panel.unavailable.description') : undefined"
   >
-    <template #media>
-      <CodiconIcon name="debug-disconnect" :size="24" class="text-error" />
-    </template>
     <Button
       v-if="status.data.value"
       size="kira"

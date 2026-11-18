@@ -23,7 +23,6 @@
  */
 import type { CommitStore } from '@kira/git-core';
 import EmptyState from '@theme/components/EmptyState.vue';
-import Spinner from '@theme/components/Spinner.vue';
 import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -106,9 +105,8 @@ function onOpenFile(index: number, pinned: boolean): void {
     <EmptyState
       v-else-if="!detailState.error.value"
       fill
+      loading
       :title="t('common.state.loading.loading')"
-    >
-      <template #media><Spinner :size="24" label="" /></template>
-    </EmptyState>
+    />
   </div>
 </template>

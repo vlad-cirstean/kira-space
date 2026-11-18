@@ -281,6 +281,7 @@ onUnmounted(teardownEditor);
     v-else
     fill
     icon="warning"
-    :title="errorMessage || t('space.repo.view.openFileFailed.error')"
+    :title="t('space.repo.view.openFileFailed.error')"
+    :description="errorMessage || undefined"
   />
 </template>

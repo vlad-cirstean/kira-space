@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import EmptyState from '@theme/components/EmptyState.vue';
-import Spinner from '@theme/components/Spinner.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
@@ -182,11 +181,10 @@ function cellClass(row: number, col: 'field' | 'value') {
     <div class="flex-1 min-h-0 flex flex-col overflow-hidden" data-testid="keyvalue-list">
       <EmptyState
         v-if="!rt || rt.rowCount === 0"
-        :icon="rt ? 'database' : undefined"
+        icon="database"
+        :loading="!rt"
         :title="rt ? t('studio.keyValue.noData.empty') : t('common.state.loading.loading')"
-      >
-        <template v-if="!rt" #media><Spinner :size="24" /></template>
-      </EmptyState>
+      />
       <SearchFilterNotice
         v-else-if="displayRows && displayRows.length === 0"
         data-testid="keyvalue-no-matching-rows"

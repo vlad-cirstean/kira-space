@@ -1,6 +1,5 @@
 <script setup lang="ts" generic="T">
 import { isRetryable } from '@shared/domain/errorCodes';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import { Button } from '@theme/components/ui/button';
@@ -78,11 +77,11 @@ function retry(): void {
       <EmptyState
         v-if="variant === 'pane'"
         fill
+        icon="warning"
         data-testid="query-error"
         :title="t('common.state.loadFailed.title')"
         :description="message"
       >
-        <template #media><CodiconIcon name="error" :size="24" class="text-error" /></template>
         <Button
           v-if="canRetry"
           size="kira"

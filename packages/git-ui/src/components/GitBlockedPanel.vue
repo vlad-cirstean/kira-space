@@ -5,7 +5,6 @@
  * place of the toolbar and list entirely, not layered over them.
  */
 import type { GitStatus } from '@kira/git-ipc';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { computed } from 'vue';
 import { STATE_ICONS } from '../icons/index.ts';
@@ -24,12 +23,9 @@ const copy = computed(() => {
     v-if="copy"
     fill
     role="alert"
+    :icon="STATE_ICONS.warning"
     data-testid="git-blocked-panel"
     :title="copy.title"
     :description="copy.detail"
-  >
-    <template #media
-      ><CodiconIcon :name="STATE_ICONS.warning" :size="24" class="text-error" /></template
-    >
-  </EmptyState>
+  />
 </template>

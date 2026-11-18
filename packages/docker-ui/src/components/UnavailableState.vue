@@ -49,10 +49,13 @@ const copy = computed(() => {
 </script>
 
 <template>
-  <EmptyState fill data-testid="docker-unavailable" :title="copy.title" :description="copy.hint">
-    <template #media
-      ><CodiconIcon name="debug-disconnect" :size="24" class="text-error" /></template
-    >
+  <EmptyState
+    fill
+    icon="debug-disconnect"
+    data-testid="docker-unavailable"
+    :title="copy.title"
+    :description="copy.hint"
+  >
     <Identifier :value="status.endpoint.host" data-testid="docker-unavailable-endpoint" />
     <FieldDescription v-if="status.message" class="max-w-md">{{ status.message }}</FieldDescription>
     <div class="flex items-center gap-2">

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import EmptyState from '@theme/components/EmptyState.vue';
-import Spinner from '@theme/components/Spinner.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
@@ -253,11 +252,10 @@ const CELL_BASE =
     <EmptyState
       v-else-if="!rt || rt.rowCount === 0"
       class="no-rows absolute inset-0"
-      :icon="rt ? 'inbox' : undefined"
+      icon="inbox"
+      :loading="!rt"
       :title="rt ? t('studio.stream.noMessages.empty') : t('common.state.loading.loading')"
-    >
-      <template v-if="!rt" #media><Spinner :size="24" /></template>
-    </EmptyState>
+    />
     <SearchFilterNotice
       v-else-if="displayRows && displayRows.length === 0"
       class="no-rows absolute inset-0"

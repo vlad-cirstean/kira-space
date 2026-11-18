@@ -120,11 +120,11 @@ function act(action: ContainerAction): void {
       <template #error>
         <EmptyState
           fill
+          icon="warning"
           data-testid="docker-detail-error"
           :title="t('docker.detail.notFound.title')"
           :description="t('docker.detail.notFound.description')"
         >
-          <template #media><CodiconIcon name="warning" :size="24" class="text-warn" /></template>
           <Button size="kira" variant="toolbar" @click="ui.select(null)">{{
             t('docker.detail.backToOverview.label')
           }}</Button>

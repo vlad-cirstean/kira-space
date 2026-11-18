@@ -3,7 +3,6 @@ import { pathTail } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import HighlightedText from '@theme/components/HighlightedText.vue';
-import Spinner from '@theme/components/Spinner.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -449,11 +448,10 @@ onUnmounted(() => {
         <EmptyState
           v-if="!rt || rt.rowCount === 0"
           fill
-          :icon="rt ? 'json' : undefined"
+          icon="json"
+          :loading="!rt"
           :title="rt ? t('studio.documents.empty') : t('common.state.loading.loading')"
-        >
-          <template v-if="!rt" #media><Spinner :size="24" /></template>
-        </EmptyState>
+        />
         <SearchFilterNotice
           v-else-if="displayRows && displayRows.length === 0"
           class="h-full"

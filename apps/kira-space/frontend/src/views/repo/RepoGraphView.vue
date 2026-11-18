@@ -6,6 +6,7 @@
 // Each mount holds its own lease over the per-workspace transport (gitTransportFor).
 import type { MountHandle } from '@kira/git-ui';
 import EmptyState from '@theme/components/EmptyState.vue';
+import { t } from '@theme/i18n';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { loadGitUi } from '../../repo/git/gitUiModule';
 import { takePendingBlameReveal } from '../../repo/git/hostHandlers';
@@ -98,5 +99,11 @@ onUnmounted(() => {
 
 <template>
   <div v-if="!errorMessage" ref="container" class="h-full w-full" data-testid="repo-graph-host" />
-  <EmptyState v-else fill icon="warning" :title="errorMessage" />
+  <EmptyState
+    v-else
+    fill
+    icon="warning"
+    :title="t('git.graph.loadFailed.error')"
+    :description="errorMessage"
+  />
 </template>
