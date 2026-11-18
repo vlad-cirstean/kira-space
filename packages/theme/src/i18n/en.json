@@ -3111,6 +3111,9 @@
       "copyId": {
         "label": "Copy ID"
       },
+      "copyLink": {
+        "label": "Copy link"
+      },
       "copyLog": {
         "label": "Copy log"
       },
@@ -18515,7 +18518,7 @@
         "status": "Process exited with code {code}"
       },
       "link": {
-        "tooltip": "{modifier}-click to open"
+        "tooltip": "{modifier}-click to open, right-click for more"
       },
       "startFailed": {
         "error": "Couldn’t start the terminal."

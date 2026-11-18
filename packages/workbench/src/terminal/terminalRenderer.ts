@@ -9,9 +9,14 @@ import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import { tooltipContentVariants } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
+import { useEventListener } from '@vueuse/core';
+import { copyOrReportError } from '../behaviour/clipboard';
+import { announceApp } from '../behaviour/liveRegion';
 import { isPrimaryModifier, primaryModifierName } from '../shortcuts/keys';
+import { useContextMenuStore } from '../state/contextMenu';
 import { registerTabRuntimeCleanup } from '../state/tabRuntime';
 import { createFileLinkProvider } from './fileLinkProvider';
+import { type HoveredLink, linkMenuItems } from './linkMenu';
 
 interface Attached {
   term: Terminal;
@@ -165,15 +170,25 @@ export function getOrCreateTerminal(
 
   const appearance = deps.appearance();
   let hint: LinkHint | null = null;
+  // The link under the pointer; the right-click menu acts on it. xterm has no "link at point" API.
+  let hovered: HoveredLink | null = null;
   const activate = (event: MouseEvent, uri: string): void => {
+    // xterm activates on mouseup of any button; a right-click opens the menu instead.
+    if (event.button !== 0) return;
     if (deps.linkActivation === 'modifier' && !isPrimaryModifier(event)) return;
     if (!isWebUrl(uri)) return;
     hint?.hide();
     deps.openLink(uri);
   };
   const linkHover = {
-    hover: (e: MouseEvent, uri: string) => hint?.show(e, uri),
-    leave: () => hint?.hide(),
+    hover: (e: MouseEvent, uri: string) => {
+      hovered = { kind: 'web', uri };
+      hint?.show(e, uri);
+    },
+    leave: () => {
+      hovered = null;
+      hint?.hide();
+    },
   };
   const term = new Terminal({
     ...(size ?? {}),
@@ -204,12 +219,16 @@ export function getOrCreateTerminal(
     term.registerLinkProvider(
       createFileLinkProvider(term, tabId, fileLinks, {
         open: (event, target) => {
+          if (event.button !== 0) return;
           if (deps.linkActivation === 'modifier' && !isPrimaryModifier(event)) return;
           hint?.hide();
           fileLinks.open(tabId, target);
         },
-        hover: (event, text) => hint?.show(event, text),
-        leave: () => hint?.hide(),
+        hover: (event, text, link) => {
+          hovered = link;
+          hint?.show(event, text);
+        },
+        leave: linkHover.leave,
       }),
     );
   }
@@ -227,12 +246,30 @@ export function getOrCreateTerminal(
     deps.writeTerminal(tabId, bytes);
   });
 
+  const menuActions = {
+    openLink: (uri: string) => {
+      if (isWebUrl(uri)) deps.openLink(uri);
+    },
+    openFile: (target: FileLinkTarget) => deps.fileLinks?.open(tabId, target),
+    copy: (text: string) => void copyOrReportError(text, announceApp),
+  };
+  const onContextMenu = (e: MouseEvent): void => {
+    if (!hovered) return;
+    e.preventDefault();
+    e.stopPropagation();
+    hint?.hide();
+    useContextMenuStore().openContextMenu(e, linkMenuItems(hovered, menuActions));
+  };
+
   let opened = false;
   const open = (): void => {
     if (opened) return;
     opened = true;
     term.open(host);
-    if (deps.linkActivation === 'modifier') hint = createLinkHint(term);
+    if (deps.linkActivation !== 'modifier') return;
+    hint = createLinkHint(term);
+    // Capture runs before xterm's own contextmenu listener on the same element (word select).
+    useEventListener(term.element, 'contextmenu', onContextMenu, { capture: true });
   };
 
   const attached: Attached = { term, fit, host, off, open };
