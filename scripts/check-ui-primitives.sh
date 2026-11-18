@@ -15,6 +15,7 @@
 # Guards U110-U117: docs/v0.3.17/plans/P672-part2.md; their current offenders sit in the dated TEMPORARY block.
 #
 # Guards U118-U121: docs/v0.3.17/plans/P672-part4.md.
+# Guards U122-U123: docs/v0.3.17/plans/P672-part5.md.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -345,6 +346,8 @@ U118@@v@@@@DialogBody class other than min-h-* (only flush and min-h-*, RD.5)@@<
 U119@@vt@@ade/v2/tones.ts|AdeTaskActionButton.vue@@ACTION_CLASS off the task step action (RB.3)@@\bACTION_CLASS\b
 U120@@v@@@@link Button not size inline (RB.1)@@<Button\b(?=(?&t)\svariant="link")(?!(?&t)\ssize="inline")
 U121@@v@@@@DialogDescription inside DialogBody (intro text is the header description, RD.4)@@(?s)<DialogBody\b(?&t)(?<!/)>(?:(?!</DialogBody>).)*?<DialogDescription\b
+U122@@v@@MenuItems.vue@@hand DropdownMenuItem (menus render MenuItems from a MenuItem[]; radio, checkbox and label blocks are other tags, RM.1)@@<DropdownMenuItem\b
+U123@@v@@@@plain-text Tooltip triple (use TextTooltip, RT.1)@@(?s)<Tooltip>\s*<TooltipTrigger as-child>(?:(?!</TooltipTrigger>|<Tooltip\b).)*</TooltipTrigger>\s*<TooltipContent>\s*(?:\{\{(?:(?!\}\}).)*\}\}|[^<{]+)\s*</TooltipContent>\s*</Tooltip>
 GUARDS
 
 # hits: "U<n> path"
