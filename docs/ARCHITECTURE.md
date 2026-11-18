@@ -1417,10 +1417,10 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - With DialogContent dirty, outside click is ignored, and Esc and the header X ask the discard confirm; footer Cancel never asks.
 - Every host (Studio, Space, Space mobile, git-ui mount()) calls provideShellServices(app) from bootstrapShell.ts once per createApp, providing CONFIRM_DISCARD_KEY backed by the confirm store, because theme cannot import the store.
 - Each host mounts one ConfirmDialog; mobile passes touch for 44px buttons. Tabs ask before closing a dirty tab (TabKindDef.isDirty). A kind with `confirmClose` asks its own question instead; the confirm store's `choose()` adds a secondary button, and one button stays emphasised.
-- Two button looks: toolbar (borderless) and outline (1px border, transparent, hover:bg-field). No filled button. Emphasis is the border: dialog-primary is the accent outline with text-fg, dialog-danger is the error outline, ADE task actions use ACTION_CLASS tone outlines.
-- A labelled destructive action is dialog-danger; an icon or toolbar one is toolbar plus data-tone="error". Toggle state goes through aria-pressed (TooltipIconButton pressed) or aria-expanded, never a bg-field class.
+- Two button looks: toolbar (borderless) and outline (1px border, transparent, hover:bg-field). No filled button. Emphasis is the border: dialog-primary is the accent outline with text-fg, dialog-danger is the error outline, the ADE task step action (AdeTaskActionButton) alone uses ACTION_CLASS tone outlines.
+- A labelled destructive commit (footer, confirm strip) is dialog-danger; an in-view, icon or toolbar one is toolbar plus data-tone="error". Toggle state goes through aria-pressed (TooltipIconButton pressed) or aria-expanded, never a bg-field class.
 - Fills stay only on state controls (Checkbox, Radio, Switch, Progress), selection (bg-select, date cells) and indicators (StatusDot, Badge, ADE SOLID_CLASS, AdeAttention). Solid fill on a button fails U106.
-- DialogHeader has no icon (U107), and a dialog footer has one emphasised button. Dialog, command palette and text prompt share dialogSurface (`bg-dialog`, darker than `bg`, over scrim 0.6); popover, menus and toasts share floatingSurface (`bg-elevated`). Both in packages/theme/src/lib/frames.ts.
+- DialogHeader has no icon (U107), and a dialog footer has one emphasised button. Dialog, command palette and text prompt share dialogSurface (`bg-dialog`, darker than `bg`, over scrim 0.6); popover, menus and toasts share floatingSurface (`bg-elevated`). Both in packages/theme/src/lib/frames.ts. DialogHeader stacks title and DialogDescription; extras (badges, subject) live in the description, buttons in footer #start.
 - Toasts and corner prompt chips share one top-right column (packages/workbench CornerStack): chips (ApprovalsToast, ConfigSyncToast) first, Sonner toasts below, 8px under the title bar, 16px from the right edge; the toast offset follows the chips' measured height.
 - Operation failures use Alert variant="error" in the body; FieldError is only under a field or as a one-line footer status, paired with aria-invalid and aria-describedby (useFormErrors).
 - Use Button pending for busy state, never :disabled on a busy flag.
@@ -1432,7 +1432,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Every debounce, poll, tick and UI delay must be a TIMING key, and sort comparators must end on a stable key.
 - Bind shortcuts printed on a surface there; trees use useTreeShortcuts; refresh is F5 only; render cap is 500 via useCappedList.
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
-- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U117) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
+- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U121) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
 - check-ui-primitives.sh keeps 53 named PERMANENT lines, each with a reason, plus a dated TEMPORARY block for the P672 guards; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
@@ -1467,7 +1467,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Spacing: bar px-1.5 gap-1; row from rowVariants gap-1.5; content pane p-3, gap-3 between blocks, gap-2 inside; dialog body p-3 gap-3; card, popover, radio card keep the primitive 2.5 inset with gap-1.5 inside; inline icon and text gap-1, chips gap-1.5. Icons 13 in buttons, menus, rows, bars; 12 in Badge or inline text; 16 DetailHeader or card tile; 24 empty state.
 - Radii: rounded-kira-sm controls, rows, chips, inset blocks; rounded-kira containers; rounded-full dots, avatars, count badges. Dividers 1px border-border; border-l-2 only for quotes; shadows only from elevation tiers.
 - Tabs by role: a form value is SecondaryTabs `choice` (or RadioGroupCard for up to 6 options with descriptions); content sections `tabs`; view switch in a bar `segmented`.
-- Guards U110-U117 in check-ui-primitives.sh hold these rules; current offenders sit in its dated TEMPORARY block, one line per file naming the P672 Part that fixes it, never PERMANENT. A fixed entry left behind fails as stale; Part 9 removes the block.
+- Guards U110-U121 in check-ui-primitives.sh hold these rules; current offenders sit in its dated TEMPORARY block, one line per file naming the P672 Part that fixes it, never PERMANENT. U118-U121 landed with zero offenders and have no TEMPORARY line. A fixed entry left behind fails as stale; Part 9 removes the block.
 
 ## Process model
 
